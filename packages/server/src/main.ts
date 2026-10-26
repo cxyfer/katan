@@ -32,6 +32,9 @@ export function createLogger(level: ServerConfig['logLevel']): Logger {
 export interface RunningService {
   config: ServerConfig;
   repo: Repository;
+  rooms: RoomService;
+  games: GameCoordinator;
+  chat: ChatService;
   close(): Promise<void>;
   port: number;
 }
@@ -99,10 +102,21 @@ export async function startService(
   const port = typeof address === 'object' && address ? address.port : config.port;
   log('info', 'service listening', { host: config.host, port, database: db.kind });
 
+  const sweepTimer = setInterval(() => {
+    void rooms
+      .sweepStaleLobbies()
+      .then((removed) => {
+        if (removed.length > 0) log('info', 'swept stale lobbies', { removed: removed.length });
+      })
+      .catch((error) => log('warn', 'stale lobby sweep failed', { error: String(error) }));
+  }, Math.max(config.presenceSweepIntervalMs, 60_000));
+  sweepTimer.unref?.();
+
   let closing = false;
   const close = async (): Promise<void> => {
     if (closing) return;
     closing = true;
+    clearInterval(sweepTimer);
     log('info', 'shutting down');
     await ws.close();
     await new Promise<void>((resolvePromise) => server.close(() => resolvePromise()));
@@ -114,7 +128,7 @@ export async function startService(
   }, config.shutdownTimeoutMs);
   shutdownTimer.unref?.();
 
-  return { config, repo, close, port };
+  return { config, repo, rooms, games, chat, close, port };
 }
 
 const isMain =

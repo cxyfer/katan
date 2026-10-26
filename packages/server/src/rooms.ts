@@ -605,6 +605,31 @@ export class RoomService {
     return { gameId };
   }
 
+  // -- housekeeping --------------------------------------------------------
+
+  /**
+   * Removes abandoned pre-game lobbies only. A running, suspended, interrupted
+   * or terminal game is never reaped as a stale lobby (§4.8), and a lobby with
+   * a live socket is left alone regardless of its age.
+   */
+  async sweepStaleLobbies(now: Date = new Date()): Promise<string[]> {
+    const ttlMs = this.deps.config.limits.roomIdleTtlMinutes * 60_000;
+    const removed: string[] = [];
+    for (const room of await this.repo.listAllRooms()) {
+      if (room.status !== 'lobby') continue;
+      // Presence is decided by live sockets, not by the durable flag, so a
+      // lobby whose members never opened a socket can still be reclaimed.
+      if ((this.runtimes.get(room.id)?.connections.size ?? 0) > 0) continue;
+      const memberships = await this.repo.listMemberships(room.id);
+      const idleMs = now.getTime() - Date.parse(room.updated_at);
+      if (memberships.length > 0 && idleMs <= ttlMs) continue;
+      await this.repo.deleteRoom(room.id);
+      this.runtimes.delete(room.id);
+      removed.push(room.id);
+    }
+    return removed;
+  }
+
   // -- presence ------------------------------------------------------------
 
   async registerConnection(connection: Connection): Promise<void> {

@@ -114,8 +114,10 @@ These are recorded rather than hidden. None of them is presented as verified.
    WebSocket to produce the absence.
 9. **Advisory turn clock is stored, not enforced.** The value is validated and
    displayed; no timer drives an overdue cue yet.
-10. **Stale-lobby cleanup is not scheduled.** The TTL is documented and the
-    sweep excludes resumable games by design, but no background job runs it.
+10. **Stale-lobby cleanup is scheduled but coarse.** A background sweep runs
+    at least once a minute and removes idle pre-game lobbies only; presence is
+    decided by live sockets, so a lobby whose members never opened a socket is
+    reclaimed once its TTL elapses. No test waits out the real interval.
 11. **Rules-version dispatch is single-version.** The engine version is stored
     per game and unknown versions are refused at the schema level, but only one
     engine implementation ships, so no old-version fixture exists yet.

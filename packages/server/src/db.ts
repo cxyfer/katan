@@ -527,6 +527,10 @@ export class Repository {
     return rows[0] ?? null;
   }
 
+  async listAllRooms(): Promise<RoomRow[]> {
+    return this.db.all<RoomRow>('SELECT * FROM rooms ORDER BY created_at ASC');
+  }
+
   async listPublicRooms(): Promise<RoomRow[]> {
     return this.db.all<RoomRow>(
       `SELECT * FROM rooms WHERE visibility = 'public' AND status IN ('lobby', 'playing')
