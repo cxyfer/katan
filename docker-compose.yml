@@ -1,0 +1,34 @@
+services:
+  catan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: catan:local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      HOST: "0.0.0.0"
+      SQLITE_PATH: /data/catan.sqlite
+      WEB_DIST_PATH: /app/web
+      COOKIE_SECURE: "false" # set to true behind TLS
+      LOG_LEVEL: info
+      DEFAULT_DISCONNECT_GRACE_SECONDS: "300"
+      DEFAULT_TURN_CLOCK_SECONDS: "0"
+    volumes:
+      - catan-data:/data
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  catan-data:

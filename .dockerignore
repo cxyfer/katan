@@ -1,0 +1,17 @@
+.git
+.gitignore
+.github
+node_modules
+**/node_modules
+**/dist
+.data
+.tmp
+coverage
+*.log
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+docs
+.worktrees
+.vscode
+.idea

@@ -53,7 +53,17 @@ export interface ClearCommand {
   kind: 'clear';
 }
 
-export type CommandEvent = BeginCommand | ReceiptCommand | TransportFailure | ClearCommand;
+/** Emitted after a successful snapshot refresh, unblocking a stale retry. */
+export interface RefreshedCommand {
+  kind: 'refreshed';
+}
+
+export type CommandEvent =
+  | BeginCommand
+  | ReceiptCommand
+  | TransportFailure
+  | ClearCommand
+  | RefreshedCommand;
 
 /** Error message ids that mean "your view was stale", not "your move was bad". */
 export const STALE_MESSAGE_ID = 'error.E_STALE_REVISION';
@@ -109,6 +119,9 @@ export function commandReducer(
       return state ? applyReceipt(state, event.receipt) : null;
     case 'transport-failure':
       return state ? applyTransportFailure(state, event.error) : null;
+    case 'refreshed':
+      // A stale rejection becomes retryable only once the view is fresh.
+      return state && state.status === 'stale' ? { ...state, status: 'rejected' } : state;
     default:
       return state;
   }

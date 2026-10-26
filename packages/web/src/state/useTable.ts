@@ -79,6 +79,7 @@ export interface TableActions {
   refreshSnapshot(): Promise<void>;
   submitCommand(command: CommandPayload, labelId: string): Promise<void>;
   resolveCommand(): Promise<void>;
+  retryCommand(): Promise<void>;
   clearCommand(): void;
   saveGame(): Promise<void>;
   suspendGame(): Promise<void>;
@@ -177,6 +178,7 @@ export function useTable(options: UseTableOptions): TableController {
     if (result.ok) {
       dispatch({ type: 'snapshot', snapshot: result.data });
       dispatch({ type: 'room-error', error: null });
+      dispatch({ type: 'command', event: { kind: 'refreshed' } });
     } else if (result.error.code === 'E_NETWORK') {
       dispatch({ type: 'connection', connection: 'offline' });
     } else {
@@ -311,12 +313,11 @@ export function useTable(options: UseTableOptions): TableController {
       if (result.ok) {
         roomIdRef.current = result.data.id;
         applyRoom(result, 'join');
-        void actions.loadChat(result.data.id);
+        void loadChatRef.current?.(result.data.id);
       } else {
         applyRoom(result, 'join');
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [api, applyRoom],
   );
 
@@ -458,6 +459,8 @@ export function useTable(options: UseTableOptions): TableController {
             type: 'announce',
             announcement: { messageId: 'a11y.actionAccepted', params: {} },
           });
+          // Clear the local preview only once the server confirmed the move.
+          dispatch({ type: 'selection', selection: EMPTY_SELECTION });
           await refreshAfterAccepted();
         }
       } else {
@@ -493,7 +496,6 @@ export function useTable(options: UseTableOptions): TableController {
           baseRevision: snapshot.revision,
         },
       });
-      dispatch({ type: 'selection', selection: EMPTY_SELECTION });
       await runCommand(commandId, command, snapshot.revision);
     },
     [dispatch, runCommand],
@@ -509,6 +511,17 @@ export function useTable(options: UseTableOptions): TableController {
   const clearCommand = useCallback((): void => {
     dispatch({ type: 'command', event: { kind: 'clear' } });
   }, [dispatch]);
+
+  /**
+   * Retry after a definitive rejection. A *new* command id is minted here: the
+   * rejected id already has a stored receipt and must not be replayed as if it
+   * were a fresh attempt.
+   */
+  const retryCommand = useCallback(async (): Promise<void> => {
+    const pending = stateRef.current.command;
+    if (!pending || pending.status !== 'rejected') return;
+    await submitCommand(pending.command, pending.labelId);
+  }, [submitCommand]);
 
   // ---------------------------------------------------------------------
   // save / suspend / resume
@@ -584,6 +597,7 @@ export function useTable(options: UseTableOptions): TableController {
     },
     [api, dispatch],
   );
+  loadChatRef.current = loadChat;
 
   const deliverChat = useCallback(
     async (clientMessageId: string, text: string): Promise<void> => {
@@ -706,6 +720,7 @@ export function useTable(options: UseTableOptions): TableController {
       refreshSnapshot,
       submitCommand,
       resolveCommand,
+      retryCommand,
       clearCommand,
       saveGame,
       suspendGame,
@@ -739,6 +754,7 @@ export function useTable(options: UseTableOptions): TableController {
       refreshSnapshot,
       submitCommand,
       resolveCommand,
+      retryCommand,
       clearCommand,
       saveGame,
       suspendGame,
@@ -787,9 +803,7 @@ export function useTable(options: UseTableOptions): TableController {
               // Gap: the ordering guarantee says refetch, never patch.
               void refreshSnapshot();
             } else {
-              for (const event of payload.events) {
-                dispatch({ type: 'event' as never, event } as never);
-              }
+              dispatch({ type: 'events', events: payload.events });
             }
             break;
           }
@@ -845,6 +859,15 @@ export function useTable(options: UseTableOptions): TableController {
       });
     }
   }, [currentRoomId, currentGameId]);
+
+  // A room that is already playing (join, reconnect, resume) must pull the
+  // authoritative projection rather than assume the client has one.
+  const roomGameId = state.room?.gameId ?? null;
+  useEffect(() => {
+    if (!roomGameId) return;
+    if (stateRef.current.game?.gameId === roomGameId) return;
+    void openGame(roomGameId);
+  }, [roomGameId, openGame]);
 
   return { state, dispatch, actions };
 }

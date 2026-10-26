@@ -1,0 +1,38 @@
+services:
+  catan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: catan:local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      HOST: "0.0.0.0"
+      DATABASE_URL: postgres://catan:${POSTGRES_PASSWORD:-catan}@postgres:5432/catan
+      WEB_DIST_PATH: /app/web
+      COOKIE_SECURE: "false" # set to true behind TLS
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stop_grace_period: 30s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: catan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-catan}
+      POSTGRES_DB: catan
+    volumes:
+      - catan-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catan -d catan"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  catan-postgres:
