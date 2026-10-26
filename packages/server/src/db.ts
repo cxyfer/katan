@@ -99,9 +99,27 @@ interface PgPool {
   end(): Promise<void>;
 }
 
-export async function createPostgresDialect(connectionString: string): Promise<SqlDialect> {
-  const { default: pg } = (await import('pg')) as unknown as { default: { Pool: new (options: { connectionString: string }) => PgPool } };
-  const pool = new pg.Pool({ connectionString });
+export async function createPostgresDialect(
+  connectionString: string,
+  schema?: string,
+): Promise<SqlDialect> {
+  const { default: pg } = (await import('pg')) as unknown as {
+    default: {
+      Pool: new (options: { connectionString: string; options?: string }) => PgPool;
+    };
+  };
+  let pool: PgPool;
+  if (schema) {
+    // Isolate this deployment (or test harness) in its own schema. The sweep
+    // and room registry are global by design, so two instances sharing one
+    // database would otherwise see each other's rooms.
+    const bootstrap = new pg.Pool({ connectionString });
+    await bootstrap.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
+    await bootstrap.end();
+    pool = new pg.Pool({ connectionString, options: `-c search_path=${schema}` });
+  } else {
+    pool = new pg.Pool({ connectionString });
+  }
   let client: PgClient | null = null;
 
   const dialect: SqlDialect = {
@@ -146,9 +164,11 @@ export async function createPostgresDialect(connectionString: string): Promise<S
 export async function createDialect(options: {
   databaseUrl?: string;
   sqlitePath?: string;
+  /** PostgreSQL schema to isolate this instance in. */
+  schema?: string;
 }): Promise<SqlDialect> {
   if (options.databaseUrl && options.databaseUrl.startsWith('postgres')) {
-    return createPostgresDialect(options.databaseUrl);
+    return createPostgresDialect(options.databaseUrl, options.schema);
   }
   if (options.databaseUrl && options.databaseUrl.startsWith('sqlite')) {
     return createSqliteDialect(options.databaseUrl.replace(/^sqlite:(\/\/)?/, ''));

@@ -42,8 +42,42 @@ All commands were run from the repository root unless stated otherwise.
 | 14 | `docker run … catan:local` then `SMOKE_BASE_URL=… node scripts/smoke.mjs` | 13/13 checks passed; container healthy and still running after 20 s |
 | 15 | `docker stop -t 30 catan-app` then `docker start catan-app` | graceful `SIGTERM` logged; the same guest identity was restored from the volume |
 | 16 | `docker compose -f docker-compose.postgres.yml up -d --no-build` then the smoke run | `/readyz` → `ready`; 13/13 checks passed; `guests`/`games`/`chat_messages` rows present in PostgreSQL |
+| 17 | Playwright + Chromium 156 headless, three isolated browser contexts against the published URL | lobby → start → settlement → road, `PROBLEMS: none` (see below) |
 
-All sixteen commands were executed in this session.
+All seventeen commands were executed in this session.
+
+## Real-browser verification
+
+The API-level smoke test could not see a defect that only a browser produces, so
+the flow was replayed in headless Chromium (Playwright 156.0.8078.4) with three
+isolated contexts, one per seat, against the published URL. The run asserts:
+
+- entry and nickname for all three seats, with no `E_NETWORK` state;
+- a private three-seat room, two joins, three ready signals, and `start` enabled
+  with no blockers;
+- the board renders (SVG present) and a settlement then a road are placed by
+  clicking the engine-provided legal targets;
+- the turn passes to the second seat, which then sees its own legal targets;
+- **zero** failed requests, zero `/api/*` responses >= 400, and zero console
+  errors.
+
+Two defects were found and fixed by this run, neither of which any existing test
+could observe:
+
+1. **Every API call failed in a real browser.** `ApiClient` stored the host
+   `fetch` in a private field and invoked it as `this.#fetch(...)`, passing the
+   client instance as the receiver; the browser's native `fetch` rejects any
+   receiver other than its global with `TypeError: Illegal invocation`. Node's
+   `fetch` and the injected test fakes tolerate it, so the suite was green while
+   the application was unusable. Fixed at the transport adapter, with a
+   regression test whose fake enforces the browser's receiver contract (it fails
+   without the fix).
+2. **Service notices rendered as raw ids.** 32 of the 40 message ids the service
+   authors (`blocker.*` and its own `error.E_*`) were absent from both catalogs,
+   so a player saw `blocker.seats` instead of a sentence. Fixed by giving
+   `@catan/protocol` the service vocabulary, adding a server-side guard test that
+   scans the source for undeclared ids, adding the missing keys in both locales,
+   and extending the client parity test to the full 95-id set.
 
 ## Fixture families passed
 
@@ -90,8 +124,9 @@ intact, and serves the PostgreSQL Compose stack with `/readyz` reporting
 
 ## Observed play sessions
 
-**None.** No human playtest, no physical-device session and no screen-reader
-walkthrough was performed in this environment. U-03, U-04, U-06, U-07 and U-08
+No **human** playtest, physical-device session or screen-reader walkthrough was
+performed in this environment. The headless-Chromium run above is automated
+interaction evidence, not a substitute for U-03, U-04, U-07 or U-08. U-03, U-04, U-06, U-07 and U-08
 therefore remain unverified; `docs/FIDELITY.md` lists them as gaps rather than
 claims.
 

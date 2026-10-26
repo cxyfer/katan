@@ -8,6 +8,7 @@ import {
 import {
   ERROR_MESSAGE_IDS as PROTOCOL_ERROR_IDS,
   EVENT_MESSAGE_IDS as PROTOCOL_EVENT_IDS,
+  REQUIRED_MESSAGE_IDS as PROTOCOL_REQUIRED_IDS,
 } from '@catan/protocol';
 import { asLocale, detectLocale, hasMessage, interpolate, t } from '../src/i18n/index.ts';
 import { translateEvent, translateNotice } from '../src/i18n/events.ts';
@@ -54,6 +55,18 @@ describe('catalog parity', () => {
     for (const id of REQUIRED_MESSAGE_IDS) {
       expect(hasMessage('zh-Hant', id), `zh-Hant missing ${id}`).toBe(true);
       expect(hasMessage('en', id), `en missing ${id}`).toBe(true);
+    }
+  });
+
+  it('renders every service-owned id, including lobby blockers', () => {
+    // The server authors its own notices and rejections; a missing key here
+    // previously showed a raw id such as `blocker.seats` to players.
+    expect(PROTOCOL_REQUIRED_IDS.length).toBeGreaterThanOrEqual(90);
+    for (const id of PROTOCOL_REQUIRED_IDS) {
+      expect(hasMessage('zh-Hant', id), `zh-Hant missing ${id}`).toBe(true);
+      expect(hasMessage('en', id), `en missing ${id}`).toBe(true);
+      expect(t('en', id, { capacity: 4, seated: 2, players: ['A', 'B'], field: 'x', max: 6, seatedCount: 1, profileId: 'base-2025', color: 'red', seatedPlayers: 1, code: 'E_X' })).not.toBe(id);
+      expect(t('zh-Hant', id, { capacity: 4, seated: 2, players: ['A', 'B'], field: 'x', max: 6, profileId: 'base-2025', color: 'red', code: 'E_X' })).not.toBe(id);
     }
   });
 

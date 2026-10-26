@@ -170,8 +170,14 @@ export class ApiClient implements CatanApi {
       credentials: 'same-origin',
     };
     if (body !== undefined) init.body = JSON.stringify(body);
+    // The transport is a host function, not a method of this client. Calling
+    // `this.#fetch(...)` would pass the ApiClient as the receiver, and the
+    // browser's native `fetch` rejects any receiver other than its global with
+    // "Illegal invocation". Call it as a plain function so every adopted
+    // transport (native, polyfilled or injected) is invoked correctly.
+    const transport = this.#fetch;
     try {
-      const response = await this.#fetch(`${this.#baseUrl}${path}${encodeQuery(query)}`, init);
+      const response = await transport(`${this.#baseUrl}${path}${encodeQuery(query)}`, init);
       let parsed: unknown = null;
       try {
         parsed = await response.json();

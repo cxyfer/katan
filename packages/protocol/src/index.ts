@@ -16,6 +16,72 @@ import type { GameEvent, GameView, Resource } from '@catan/rules';
  */
 export const ERROR_MESSAGE_IDS: readonly string[] = COMMAND_ERROR_CODES.map((code) => `error.${code}`);
 export const EVENT_MESSAGE_IDS: readonly string[] = RULE_EVENT_TYPES.map((type) => `event.${type}`);
+
+/**
+ * Rejections authored by the service rather than the rules engine: room
+ * lifecycle, admission, policy, chat, storage and transport failures. A server
+ * test keeps this list exactly in step with the literals in `packages/server`.
+ */
+export const SERVER_ERROR_IDS: readonly string[] = [
+  'error.E_ABANDON_DISABLED',
+  'error.E_BAD_REQUEST',
+  'error.E_BODY_TOO_LARGE',
+  'error.E_CAPACITY_BELOW_SEATED',
+  'error.E_CHAT_INVALID',
+  'error.E_CHAT_RATE_LIMITED',
+  'error.E_CHAT_TOO_LONG',
+  'error.E_COLOR_TAKEN',
+  'error.E_COMMAND_ID_REUSED',
+  'error.E_GAME_NOT_FOUND',
+  'error.E_GAME_SUSPENDED',
+  'error.E_INTERNAL',
+  'error.E_INVALID_COLOR',
+  'error.E_INVALID_JSON',
+  'error.E_INVALID_NICKNAME',
+  'error.E_INVALID_POLICY',
+  'error.E_INVALID_VISIBILITY',
+  'error.E_MISSING_FIELD',
+  'error.E_NOT_A_MEMBER',
+  'error.E_NOT_FOUND',
+  'error.E_NOT_HOST',
+  'error.E_NOT_SEATED',
+  'error.E_NO_ABSENT_PLAYER',
+  'error.E_NO_PROPOSAL',
+  'error.E_NO_SESSION',
+  'error.E_ROOM_CAPACITY',
+  'error.E_ROOM_FULL',
+  'error.E_ROOM_NOT_FOUND',
+  'error.E_ROOM_STARTED',
+  'error.E_SAVE_FAILED',
+  'error.E_STALE_REVISION',
+  'error.E_START_BLOCKED',
+  'error.E_UNSUPPORTED',
+  'error.E_UNSUPPORTED_COMBINATION',
+];
+
+/** Lobby notices explaining why a game cannot start yet. */
+export const ROOM_NOTICE_IDS: readonly string[] = [
+  'blocker.seats',
+  'blocker.notReady',
+  'blocker.disconnected',
+  'blocker.noHost',
+  'blocker.profilePlayerCount',
+];
+
+/**
+ * Every message id a client can be asked to render. A client that ships a
+ * catalog missing one of these would show a raw internal key to a player, so
+ * both locales must cover this set (§8.7).
+ */
+export const REQUIRED_MESSAGE_IDS: readonly string[] = [
+  ...new Set([
+    ...ERROR_MESSAGE_IDS,
+    ...EVENT_MESSAGE_IDS,
+    ...SERVER_ERROR_IDS,
+    ...ROOM_NOTICE_IDS,
+  ]),
+];
+
 export { COMMAND_ERROR_CODES, RULE_EVENT_TYPES };
 
 export type Visibility = 'private' | 'public';

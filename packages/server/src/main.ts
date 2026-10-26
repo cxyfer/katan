@@ -53,6 +53,7 @@ export async function startService(
   }
   const db = await createDialect({
     ...(config.databaseUrl ? { databaseUrl: config.databaseUrl } : {}),
+    ...(config.databaseSchema ? { schema: config.databaseSchema } : {}),
     sqlitePath: config.sqlitePath,
   });
   const applied = await migrate(db);

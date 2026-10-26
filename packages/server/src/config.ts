@@ -15,6 +15,8 @@ export interface ServerConfig {
   host: string;
   port: number;
   databaseUrl: string | null;
+  /** Optional PostgreSQL schema; defaults to the connection's search path. */
+  databaseSchema: string | null;
   sqlitePath: string;
   sessionCookieName: string;
   cookieSecure: boolean;
@@ -43,6 +45,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     host: env.HOST ?? '0.0.0.0',
     port: int(env.PORT, 3000),
     databaseUrl: env.DATABASE_URL && env.DATABASE_URL !== '' ? env.DATABASE_URL : null,
+    databaseSchema: env.DATABASE_SCHEMA && env.DATABASE_SCHEMA !== '' ? env.DATABASE_SCHEMA : null,
     sqlitePath: env.SQLITE_PATH ?? './.data/catan.sqlite',
     sessionCookieName: env.SESSION_COOKIE_NAME ?? 'catan_session',
     cookieSecure: bool(env.COOKIE_SECURE, env.NODE_ENV === 'production'),

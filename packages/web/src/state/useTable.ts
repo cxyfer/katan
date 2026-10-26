@@ -226,12 +226,16 @@ export function useTable(options: UseTableOptions): TableController {
   // ---------------------------------------------------------------------
 
   const bootstrap = useCallback(async (): Promise<void> => {
-    const [configResult, sessionResult, profilesResult, gamesResult] = await Promise.all([
+    // `listGames` is an authenticated endpoint, so it is only requested once a
+    // session is known to exist; otherwise a first visit would fire a
+    // guaranteed 401 and log a spurious console error.
+    const [configResult, sessionResult, profilesResult] = await Promise.all([
       api.getConfig(),
       api.getSession(),
       api.listProfiles(),
-      api.listGames(),
     ]);
+    const knownSession = sessionResult.ok ? sessionResult.data.player : null;
+    const gamesResult = knownSession ? await api.listGames() : null;
     const config: ServerConfigView = configResult.ok
       ? configResult.data
       : {
@@ -254,14 +258,14 @@ export function useTable(options: UseTableOptions): TableController {
           },
         };
     const stored = readStoredLocale(storage);
-    const session = sessionResult.ok ? sessionResult.data.player : null;
+    const session = knownSession;
     const locale = stored ?? session?.locale ?? detectLocale(languages);
     dispatch({
       type: 'bootstrapped',
       session,
       config,
       profiles: profilesResult.ok ? profilesResult.data.profiles : [],
-      games: gamesResult.ok ? gamesResult.data.games : [],
+      games: gamesResult?.ok ? gamesResult.data.games : [],
       locale,
       nickname: session?.nickname ?? readStoredNickname(storage),
     });

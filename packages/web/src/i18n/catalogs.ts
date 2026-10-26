@@ -11,7 +11,12 @@
  */
 
 import type { Locale } from '@catan/protocol';
-import { ERROR_MESSAGE_IDS as PROTOCOL_ERROR_IDS, EVENT_MESSAGE_IDS as PROTOCOL_EVENT_IDS } from '@catan/protocol';
+import {
+  ERROR_MESSAGE_IDS as PROTOCOL_ERROR_IDS,
+  EVENT_MESSAGE_IDS as PROTOCOL_EVENT_IDS,
+  REQUIRED_MESSAGE_IDS as PROTOCOL_REQUIRED_IDS,
+  SERVER_ERROR_IDS as PROTOCOL_SERVER_ERROR_IDS,
+} from '@catan/protocol';
 import { en } from './en.ts';
 import { zhHant } from './zh-Hant.ts';
 
@@ -31,45 +36,35 @@ export const SUPPORTED_LOCALES: readonly Locale[] = ['zh-Hant', 'en'];
 export const DEFAULT_LOCALE: Locale = 'zh-Hant';
 
 /**
- * Client-only message ids: transport and API codes that never originate in the
- * rules engine, so they are not part of the protocol's derived lists.
+ * Ids this client synthesises itself, which therefore cannot appear in the
+ * server-owned vocabulary: a transport failure it detected, and the generic
+ * envelopes it builds from an unrecognised HTTP status.
+ *
+ * Everything else the client must render comes from `PROTOCOL_REQUIRED_IDS`;
+ * duplicating server ids here previously let the service's own notices
+ * (`blocker.*`) go untranslated without any test noticing.
  */
 export const CLIENT_ERROR_MESSAGE_IDS: readonly string[] = [
-  'error.E_STALE_REVISION',
-  'error.E_COMMAND_ID_REUSED',
   'error.E_NETWORK',
-  'error.E_ROOM_FULL',
-  'error.E_ROOM_NOT_FOUND',
-  'error.E_NOT_IN_ROOM',
-  'error.E_CHAT_TOO_LONG',
-  'error.E_CHAT_RATE_LIMITED',
   'error.E_UNAUTHORIZED',
-  'error.E_INVALID_INVITE',
+  'error.E_INVALID_COMMAND',
+  'error.unknown',
 ];
 
-/**
- * Legacy/defensive rule-error ids kept localisable even though the current
- * engine revision no longer emits them.
- */
-export const LEGACY_ERROR_MESSAGE_IDS: readonly string[] = [
-  'error.E_OCCUPIED',
-  'error.E_DISTANCE_RULE',
-  'error.E_NOT_CONNECTED',
-  'error.E_INVALID_HARBOR_RATE',
-  'error.E_UNSUPPORTED',
+/** Every id a client must be able to render, from both owners. */
+export const REQUIRED_MESSAGE_IDS: readonly string[] = [
+  ...new Set([...PROTOCOL_REQUIRED_IDS, ...CLIENT_ERROR_MESSAGE_IDS]),
 ];
+
+export { PROTOCOL_REQUIRED_IDS };
 
 /** Canonical rule-event message ids, re-exported from `@catan/protocol`. */
 export const EVENT_MESSAGE_IDS: readonly string[] = PROTOCOL_EVENT_IDS;
 
-/** Canonical command-error message ids, re-exported from `@catan/protocol`. */
+/**
+ * Every error id this client may have to render: the service-owned vocabulary
+ * plus the envelopes the client synthesises itself.
+ */
 export const ERROR_MESSAGE_IDS: readonly string[] = [
-  ...PROTOCOL_ERROR_IDS,
-  ...CLIENT_ERROR_MESSAGE_IDS,
-  ...LEGACY_ERROR_MESSAGE_IDS,
-];
-
-export const REQUIRED_MESSAGE_IDS: readonly string[] = [
-  ...EVENT_MESSAGE_IDS,
-  ...ERROR_MESSAGE_IDS,
+  ...new Set([...PROTOCOL_ERROR_IDS, ...PROTOCOL_SERVER_ERROR_IDS, ...CLIENT_ERROR_MESSAGE_IDS]),
 ];

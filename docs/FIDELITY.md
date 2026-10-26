@@ -125,7 +125,10 @@ These are recorded rather than hidden. None of them is presented as verified.
 5. **No real-device or screen-reader evidence.** U-03 (physical iOS/Android),
    U-04 (manual assistive-technology walkthrough), U-06 (measured
    responsiveness), U-07 (novice observation) and U-08 (expert playtest) have
-   not been performed. Only automated component tests exist.
+   not been performed. Automated coverage is jsdom component tests plus one
+   headless-Chromium interaction run (three contexts, lobby to setup
+   placement); no screenshots, visual baselines, touch, rotation, IME or
+   screen-reader evidence exists.
 6. **Multi-client browser races are unverified.** R-TRADE concurrency and
    R-ROOM admission races are exercised through the service API, not through
    several real browsers.

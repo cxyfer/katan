@@ -81,12 +81,16 @@ export async function startHarness(
   // The whole service suite can be replayed against PostgreSQL by exporting
   // TEST_POSTGRES_URL; the default remains the single-instance SQLite mode.
   const postgresUrl = options.postgresUrl ?? process.env.TEST_POSTGRES_URL;
+  // One schema per harness: the room sweep and registry are global by design,
+  // so a shared database would let one suite reclaim another suite's lobbies.
+  const schema = postgresUrl ? `t_${Math.random().toString(36).slice(2, 10)}` : null;
   const service = await startService(
     {
       port: 0,
       host: '127.0.0.1',
       sqlitePath: postgresUrl ? ':memory:' : join(dataDir, 'test.sqlite'),
       ...(postgresUrl ? { databaseUrl: postgresUrl } : {}),
+      ...(schema ? { databaseSchema: schema } : {}),
       ...overrides,
     },
     () => undefined,
@@ -108,6 +112,8 @@ export async function startHarness(
     },
     async close() {
       await service.close();
+      // The disposable schema is left behind; the test database is dropped by
+      // the operator between runs.
       rmSync(dataDir, { recursive: true, force: true });
     },
   };

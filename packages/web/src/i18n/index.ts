@@ -37,12 +37,21 @@ export function hasMessage(locale: Locale, messageId: string): boolean {
   return Object.prototype.hasOwnProperty.call(catalogs[locale], messageId);
 }
 
-/** Replaces `{param}` slots; unknown slots are left verbatim so gaps are visible. */
-export function interpolate(template: string, params?: Record<string, unknown>): string {
+/**
+ * Replaces `{param}` slots; unknown slots are left verbatim so gaps are visible.
+ * Array parameters (for example the player names in a start blocker) are joined
+ * with the locale's list separator rather than stringified as `a,b`.
+ */
+export function interpolate(
+  template: string,
+  params?: Record<string, unknown>,
+  separator = ', ',
+): string {
   if (!params) return template;
   return template.replace(/\{(\w+)\}/g, (match, key: string) => {
     const value = params[key];
     if (value === undefined || value === null) return match;
+    if (Array.isArray(value)) return value.map((entry) => String(entry)).join(separator);
     return typeof value === 'string' ? value : String(value);
   });
 }
@@ -56,7 +65,7 @@ export function t(locale: Locale, messageId: string, params?: Record<string, unk
   const active = catalogs[locale] ?? catalogs[DEFAULT_LOCALE];
   const template = active[messageId] ?? catalogs[DEFAULT_LOCALE][messageId];
   if (template === undefined) return messageId;
-  return interpolate(template, params);
+  return interpolate(template, params, locale === 'zh-Hant' ? '、' : ', ');
 }
 
 export function createTranslator(locale: Locale): (id: string, params?: Record<string, unknown>) => string {
