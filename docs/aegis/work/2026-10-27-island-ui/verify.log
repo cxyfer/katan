@@ -1,0 +1,162 @@
+
+> catan@0.1.0 verify /data/home/workspace/catan
+> pnpm typecheck && pnpm -r test && pnpm build && pnpm smoke
+
+
+> catan@0.1.0 typecheck /data/home/workspace/catan
+> pnpm -r typecheck
+
+Scope: 4 of 5 workspace projects
+packages/rules typecheck$ tsc --noEmit
+packages/rules typecheck: Done
+packages/protocol typecheck$ tsc --noEmit
+packages/protocol typecheck: Done
+packages/web typecheck$ tsc --noEmit
+packages/server typecheck$ tsc --noEmit
+packages/server typecheck: Done
+packages/web typecheck: Done
+Scope: 4 of 5 workspace projects
+packages/rules test$ vitest run
+packages/rules test:  RUN  v5.0.5 /data/home/workspace/catan/packages/rules
+packages/rules test:  ✓ test/trade.test.ts (13 tests) 43ms
+packages/rules test:  ✓ test/production.test.ts (10 tests) 61ms
+packages/rules test:  ✓ test/paired.test.ts (11 tests) 78ms
+packages/rules test:  ✓ test/setup.test.ts (9 tests) 28ms
+packages/rules test:  ✓ test/seven.test.ts (10 tests) 41ms
+packages/rules test:  ✓ test/devcards.test.ts (11 tests) 56ms
+packages/rules test:  ✓ test/awards.test.ts (10 tests) 31ms
+packages/rules test:  ✓ test/victory.test.ts (7 tests) 27ms
+packages/rules test:  ✓ test/privacy.test.ts (7 tests) 27ms
+packages/rules test:  ✓ test/topology.test.ts (9 tests) 16ms
+packages/rules test:  ✓ test/profiles.test.ts (8 tests) 5ms
+packages/rules test:  ✓ test/message-ids.test.ts (4 tests) 4ms
+packages/rules test:  Test Files  12 passed (12)
+packages/rules test:       Tests  109 passed (109)
+packages/rules test:    Start at  20:21:42
+packages/rules test:    Duration  606ms (tests 60%, import 24%, transform 11%, worker 4%)
+packages/rules test: Done
+packages/protocol test$ vitest run
+packages/protocol test:  RUN  v5.0.5 /data/home/workspace/catan/packages/protocol
+packages/protocol test:  ✓ test/protocol.test.ts (7 tests) 5ms
+packages/protocol test:  Test Files  1 passed (1)
+packages/protocol test:       Tests  7 passed (7)
+packages/protocol test:    Start at  20:21:43
+packages/protocol test:    Duration  114ms (import 45%, transform 34%, tests 13%, worker 7%)
+packages/protocol test: Done
+packages/server test$ vitest run
+packages/web test$ vitest run
+packages/server test:  RUN  v5.0.5 /data/home/workspace/catan/packages/server
+packages/web test:  RUN  v5.0.5 /data/home/workspace/catan/packages/web
+packages/server test: (node:295708) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:295707) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:295714) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test:  ✓ test/abandonment.test.ts (7 tests) 747ms
+packages/server test:  ✓ test/game.test.ts (11 tests) 845ms
+packages/server test: (node:295755) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:295763) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test:  ✓ test/recovery.test.ts (8 tests) 1102ms
+packages/server test:  ✓ test/chat.test.ts (9 tests) 199ms
+packages/server test: (node:295779) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:295772) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test:  ✓ test/rooms.test.ts (14 tests) 484ms
+packages/server test: (node:295789) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test:  ✓ test/housekeeping.test.ts (3 tests) 328ms
+packages/server test:  ✓ test/session.test.ts (7 tests) 129ms
+packages/server test:  ✓ test/play.test.ts (6 tests) 463ms
+packages/server test:    ✓ base play slice (2)
+packages/server test:      ✓ plays a complete turn: roll, resolve, build, end turn 353ms
+packages/server test:  ✓ test/vocabulary.test.ts (4 tests) 7ms
+packages/server test: (node:295797) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test:  ✓ test/db-contract.test.ts (24 tests | 11 skipped) 25ms
+packages/server test:  Test Files  10 passed (10)
+packages/server test:       Tests  82 passed | 11 skipped (93)
+packages/server test:    Start at  20:21:43
+packages/server test:    Duration  2.34s (tests 78%, import 17%, transform 5%)
+packages/server test:     Isolate  10 workers spawned · ~110ms startup each (spawn + environment, per file)
+packages/server test:              at least ~256ms faster with isolate: false — reuses workers across files instead of one per file
+packages/server test: Done
+packages/web test:  ✓ test/resilience.test.tsx (9 tests) 1488ms
+packages/web test:    ✓ persistence UX (4)
+packages/web test:      ✓ reports a pending save, then a failed save, and never claims success 721ms
+packages/web test:      ✓ returns to the resume list only after an acknowledged save 301ms
+packages/web test:  ✓ test/trade.test.tsx (10 tests) 2374ms
+packages/web test:    ✓ structured trading (4)
+packages/web test:      ✓ creates an offer from the current terms and audience 803ms
+packages/web test:      ✓ responds to somebody else’s offer with the exact displayed terms 410ms
+packages/web test:      ✓ lets the proposer withdraw or settle a consented table-wide offer 407ms
+packages/web test:  ✓ test/app.test.tsx (18 tests) 2750ms
+packages/web test:    ✓ board rendering (4)
+packages/web test:      ✓ exposes dice and public-score context in en 688ms
+packages/web test:      ✓ exposes dice and public-score context in zh-TW 375ms
+packages/web test:  ✓ test/i18n.test.ts (15 tests) 23ms
+packages/web test:  ✓ test/chat-visibility.test.tsx (1 test) 366ms
+packages/web test:    ✓ responsive chat visibility (1)
+packages/web test:      ✓ resynchronizes retained mobile chat after desktop handoff, with unread only while hidden 366ms
+packages/web test:  ✓ test/lobby.test.tsx (7 tests) 866ms
+packages/web test:  ✓ test/actions.test.ts (10 tests) 9ms
+packages/web test:  ✓ test/board.test.ts (10 tests) 9ms
+packages/web test:  ✓ test/transport.test.ts (4 tests) 6ms
+packages/web test:  ✓ test/chat.test.ts (7 tests) 6ms
+packages/web test:  ✓ test/socket.test.ts (3 tests) 4ms
+packages/web test:  ✓ test/api.test.ts (6 tests) 5ms
+packages/web test:  ✓ test/commands.test.ts (9 tests) 4ms
+packages/web test:  ✓ test/drawer.test.ts (4 tests) 3ms
+packages/web test:  Test Files  14 passed (14)
+packages/web test:       Tests  113 passed (113)
+packages/web test:    Start at  20:21:43
+packages/web test:    Duration  5.91s (tests 50%, environment 39%, setup 7%, import 3%, transform 1%)
+packages/web test: Environment  jsdom was created 14 times · 6.31s total, 39% of tracked time
+packages/web test:              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+packages/web test:              learn more: https://vitest.dev/guide/improving-performance#test-environments
+packages/web test: Done
+
+> catan@0.1.0 build /data/home/workspace/catan
+> pnpm --filter @catan/web build && pnpm --filter @catan/server build
+
+
+> @catan/web@0.1.0 build /data/home/workspace/catan/packages/web
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 75 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.47 kB │ gzip:   0.29 kB
+dist/assets/index-BHi775Ad.css   35.16 kB │ gzip:   8.89 kB
+dist/assets/index-B6m5ISOt.js   393.06 kB │ gzip: 116.87 kB │ map: 1,618.77 kB
+
+✓ built in 183ms
+
+> @catan/server@0.1.0 build /data/home/workspace/catan/packages/server
+> node build.mjs
+
+built /data/home/workspace/catan/packages/server/dist/server.mjs
+
+> catan@0.1.0 smoke /data/home/workspace/catan
+> node scripts/smoke.mjs
+
+PASS  service answers /healthz
+PASS  built client is served from the same origin — 473 bytes
+PASS  client bundle is reachable — /assets/index-B6m5ISOt.js
+PASS  guest sessions issued
+PASS  configuration is published — zh-Hant,en
+PASS  public room with an open seat is discoverable
+PASS  a full lobby is no longer advertised
+PASS  game starts once every seat is ready
+PASS  initial placement completes through the API — 12 commands, revision 13
+PASS  board has the base inventory
+PASS  a dice roll is accepted — revision 14
+PASS  room chat accepts a message
+PASS  other seats never receive hidden resources
+
+13/13 checks passed

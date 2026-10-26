@@ -2,6 +2,7 @@ import { useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import { BoardView } from './BoardView.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
+import { GameIcon, IslandIllustration } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 
 /**
@@ -23,7 +24,9 @@ export function ResultScreen({ controller }: { controller: TableController }) {
   return (
     <div className="screen screen--result" id="main">
       <StatusStrip controller={controller} />
-      <section className="card" aria-labelledby="result-heading" data-testid="result-screen">
+      <section className="card result-hero" aria-labelledby="result-heading" data-testid="result-screen">
+        <div>
+        <span className="result-hero__emblem"><GameIcon name={result?.reason === 'victory' ? 'crown' : 'anchor'} size={42} /></span>
         <h1 id="result-heading">{t('play.result')}</h1>
         {result?.reason === 'victory' && winner ? (
           <p className="result__winner" data-testid="result-winner">
@@ -54,6 +57,8 @@ export function ResultScreen({ controller }: { controller: TableController }) {
         >
           {t('play.resultBackToLobby')}
         </button>
+        </div>
+        <IslandIllustration />
       </section>
 
       <section aria-labelledby="final-board-heading" className="card">

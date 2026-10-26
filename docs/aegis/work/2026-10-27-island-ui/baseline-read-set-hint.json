@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "aegis.schema.v0",
+  "candidateDocs": ["docs/SPEC.md", "docs/aegis/BASELINE-GOVERNANCE.md", "packages/web/src/state/useTable.ts", "packages/web/src/state/table.ts"],
+  "whyRelevant": "SPEC §8／8.8 定義介面要求與核准方向；controller與table reducer保留既有單一狀態權責",
+  "missingAuthority": []
+}

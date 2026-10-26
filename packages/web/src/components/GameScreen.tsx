@@ -4,17 +4,15 @@ import { requiredActionAnnouncement, requiredActionFor } from '../state/pending.
 import type { TableController } from '../state/useTable.ts';
 import { ActionBar } from './ActionBar.tsx';
 import { BoardView } from './BoardView.tsx';
-import { ChatPanel } from './ChatPanel.tsx';
+import { GameTools } from './GameTools.tsx';
 import { CommandStatus } from './CommandStatus.tsx';
 import { DevCardPanel } from './DevCardPanel.tsx';
-import { EventLog } from './EventLog.tsx';
 import { HandPanel } from './HandPanel.tsx';
 import { PendingPrompt } from './PendingPrompt.tsx';
 import { PlayersPanel } from './PlayersPanel.tsx';
 import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
 import { SelectionPreview } from './SelectionPreview.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
-import { TradePanel } from './TradePanel.tsx';
 import { MobileDrawer } from './MobileDrawer.tsx';
 import { useIsMobile } from './useIsMobile.ts';
 
@@ -76,39 +74,30 @@ export function GameScreen({ controller }: { controller: TableController }) {
       <PolicyProposalPanel controller={controller} />
 
       <div className="game__grid">
-        {!isMobile && (
-          <div className="game__side game__side--left">
-            <PlayersPanel controller={controller} />
-            <EventLog controller={controller} />
-          </div>
-        )}
-
         <div className="game__center">
+          {!isMobile && <PlayersPanel controller={controller} />}
           <BoardView controller={controller} />
           <SelectionPreview controller={controller} />
+          {!isMobile && (
+            <div className="game__inventory">
+              <HandPanel controller={controller} />
+              <DevCardPanel controller={controller} />
+            </div>
+          )}
+          {isMobile && <PlayersPanel controller={controller} />}
         </div>
 
         {!isMobile && (
-          <div className="game__side game__side--right">
+          <aside className="game__side game__side--right" aria-label={t('play.hints')}>
             <ActionBar controller={controller} />
-            <HandPanel controller={controller} />
-            <DevCardPanel controller={controller} />
-            <TradePanel controller={controller} />
-          </div>
-        )}
-
-        {isMobile && (
-          <div className="game__side game__side--left">
-            <PlayersPanel controller={controller} />
-          </div>
+            <GameTools controller={controller} />
+          </aside>
         )}
       </div>
 
       {isMobile && <MobileDrawer controller={controller} />}
 
-      {!isMobile && <ChatPanel controller={controller} />}
-
-      <section className="card" aria-labelledby="persistence-heading" data-testid="persistence-bar">
+      <section className="card persistence" aria-labelledby="persistence-heading" data-testid="persistence-bar">
         <h2 id="persistence-heading">{t('play.save')}</h2>
         <p className="muted">{t('entry.identityNote')}</p>
         <button

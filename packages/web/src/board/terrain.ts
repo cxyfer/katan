@@ -30,11 +30,11 @@ export const TERRAIN_SYMBOL: Readonly<Record<string, string>> = {
 };
 
 export const TERRAIN_FILL: Readonly<Record<string, string>> = {
-  forest: '#2f6b3a',
-  hills: '#a4552b',
-  pasture: '#7fb069',
-  fields: '#d8b24a',
-  mountains: '#7d7d86',
+  forest: '#91a676',
+  hills: '#d2a07e',
+  pasture: '#b9ca8b',
+  fields: '#e3c374',
+  mountains: '#a3b0ac',
   desert: '#e0cfa9',
   gold: '#c9a227',
   sea: '#2b5f8a',

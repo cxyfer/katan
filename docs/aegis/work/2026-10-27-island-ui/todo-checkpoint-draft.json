@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "aegis.schema.v0",
+  "taskId": "2026-10-27-island-ui",
+  "currentTodo": "none；授權實作與驗證已完成",
+  "completedTodos": ["核准方向與計畫", "入口首頁大廳", "遊戲桌手機結算", "規格與品質審查修復", "311 tests／13 smoke／304 browser assertions"],
+  "activeSlice": "handoff",
+  "evidenceRefs": ["docs/aegis/work/2026-10-27-island-ui/90-evidence.md", "docs/aegis/work/2026-10-27-island-ui/verify.log", "docs/screenshots/island-ui/browser-report.json"],
+  "blockedOn": null,
+  "nextStep": "由使用者檢視實際遊戲與截圖；若另有視覺回饋再開後續修改",
+  "updatedAt": "2026-10-27"
+}

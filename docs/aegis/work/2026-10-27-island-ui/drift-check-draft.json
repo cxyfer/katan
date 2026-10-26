@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "aegis.schema.v0",
+  "taskId": "2026-10-27-island-ui",
+  "taskIntentRef": "docs/aegis/work/2026-10-27-island-ui/task-intent-draft.json",
+  "baselineRefs": ["docs/SPEC.md", "docs/aegis/BASELINE-GOVERNANCE.md"],
+  "scopeStatus": "aligned",
+  "compatStatus": "preserved; regression and real browser seams verified",
+  "retirementStatus": "舊呈現由新樣式與既有元件取代，無保留第二套主題或新runtime權威",
+  "newRiskSignals": ["主觀視覺、實機及完整AT稽核未執行；證據已明示", "結算僅HTTP fixture，不代表真實勝局"],
+  "decision": "continue"
+}

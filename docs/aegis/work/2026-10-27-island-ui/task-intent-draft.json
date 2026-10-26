@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "aegis.schema.v0",
+  "requestedOutcome": "以使用者核准的海島開拓方向重設入口、首頁、大廳、遊戲桌及結算",
+  "goal": "一致且可操作的網頁遊戲 UI，保留既有遊戲與身分邊界",
+  "successEvidence": ["docs/aegis/work/2026-10-27-island-ui/90-evidence.md", "docs/screenshots/island-ui/browser-report.json"],
+  "stopCondition": "已實作範圍有新鮮回歸與真實瀏覽器證據，公開未驗證的主觀視覺及裝置範圍",
+  "nonGoals": ["遊戲規則或API變更", "新增擴充支援", "資料庫修改", "假統計或官方素材"],
+  "scope": "前端呈現、版面與可及語意；保留規則、協定及權威狀態",
+  "changeKinds": ["feature"],
+  "riskHints": ["多畫面雙語與手機斷點", "preview-confirm與私有資訊不可退化"]
+}

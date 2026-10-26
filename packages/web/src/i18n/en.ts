@@ -43,6 +43,32 @@ export const en: Catalog = {
   'locale.zh-Hant': '繁體中文',
   'locale.en': 'English',
 
+  // --- island pregame ------------------------------------------------------
+  'island.entry.eyebrow': 'Gather. Trade. Build.',
+  'island.entry.title': 'An island of possibility. A table for everyone.',
+  'island.entry.description':
+    'Settle a new shore, trade with your neighbours, and build your way across the island. Your next game starts here.',
+  'island.entry.cardEyebrow': 'Your seat awaits',
+  'island.feature.build': 'Build settlements',
+  'island.feature.trade': 'Trade resources',
+  'island.feature.together': 'Share the table',
+  'island.home.eyebrow': 'Welcome to the island',
+  'island.home.title': 'Gather your crew. Chart your next game.',
+  'island.home.description':
+    'Create a table for friends, follow an invitation, or return to an unfinished adventure.',
+  'island.home.createDescription': 'Choose your rules and make room for your crew.',
+  'island.home.joinDescription': 'Have an invitation? Your table is just a code away.',
+  'island.home.codePlaceholder': 'Enter your invite code',
+  'island.home.inviteNote': 'Ask the host for the room’s invite code.',
+  'island.lobby.eyebrow': 'Before the first settlement',
+  'island.lobby.title': 'Your crew is gathering.',
+  'island.lobby.description': 'Choose a colour, check the rules, and mark yourself ready.',
+  'island.lobby.seatNumber': 'Seat {number}',
+  'island.lobby.emptySeats': 'Available seats',
+  'island.lobby.emptySeat': 'Waiting for a player',
+  'island.lobby.inviteDescription': 'Share this code with the players you want at your table.',
+  'island.lobby.readyToStart': 'The table is ready. The host can begin the game.',
+
   // --- entry ---------------------------------------------------------------
   'entry.heading': 'Enter the table',
   'entry.intro': 'Pick a display name. It identifies you at the table, not an account.',

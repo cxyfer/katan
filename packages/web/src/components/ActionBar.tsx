@@ -4,6 +4,7 @@ import { deriveActions } from '../state/actions.ts';
 import { blocksNewCommands } from '../state/commands.ts';
 import type { TableController } from '../state/useTable.ts';
 import type { Selection } from '../state/table.ts';
+import { GameIcon } from './GameArt.tsx';
 
 /**
  * Action bar. Every disabled control shows *why* it is disabled, using the
@@ -50,7 +51,7 @@ export function ActionBar({ controller }: { controller: TableController }) {
                   arm(action.commandType, action.labelId);
                 }}
               >
-                {t(action.labelId)}
+                <span className="action-list__label"><GameIcon name={action.commandType === 'turn.roll' ? 'dice' : action.commandType === 'turn.end' ? 'flag' : action.id === 'build.devCard' ? 'cards' : action.id === 'build.road' ? 'trade' : action.id === 'build.city' ? 'crown' : 'home'} size={18} />{t(action.labelId)}</span>
                 {action.cost && (
                   <span className="action-list__cost">
                     {t('play.cost', { cost: formatResourceMap(locale, action.cost) })}

@@ -458,6 +458,10 @@ Once the vertical slice runs, capture rendered states and exercise them. Keep ac
 - Chat and nicknames remain player-authored text; no implicit translation, inventory certification or language restriction. The UI can localize their labels/status, not rewrite the message. Changing locale preserves mute preferences, board position, selected targets and pending command IDs.
 - U-I18N acceptance: translation-key completeness for both locales; mixed-locale clients complete setup, required responses, chat-assisted trade, policy vote, save/suspend/reconnect and result; switching locale during a draft or pending response preserves intent; rule/cost/consent values are identical; screen-reader names and narrow-screen layout work in both; original chat survives IME/reconnect unchanged. A passing English path does not imply Chinese parity or vice versa.
 
+### 8.8 Approved visual direction — 2026-10-27
+
+The user approved an island-exploration browser-game redesign: deep-ocean blue, warm gold and parchment, original local SVG island/terrain/card artwork, and consistent typography, surfaces, controls and status treatments. Entry/home present a game identity and clear create/join/resume paths; the lobby uses player seat cards, prominent invitation/readiness and explicit start blockers; play keeps the island board primary with stable player/hand/action regions and secondary-panel navigation. Mobile retains connectivity and mandatory controls outside secondary panels. Results inherit the same theme. Preserve all existing rules, protocol, identity, confirmations, recovery, information visibility and bilingual functionality. Do not imply unsupported expansions, fake activity statistics or official artwork. This approval selects a visual direction; rendered capture, interaction and device evidence remain separate verification obligations.
+
 ## 9. Security, Privacy, and Abuse Controls
 
 - Guest credentials are random, revocable server-issued tokens stored in secure, HTTP-only, SameSite cookies in production. Never trust a client-supplied player ID or room role.

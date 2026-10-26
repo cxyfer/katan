@@ -257,7 +257,7 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       return {
         ...state,
         drawer: action.drawer,
-        chat: action.drawer === 'chat' ? chatReducer(state.chat, { kind: 'open' }) : state.chat,
+        chat: chatReducer(state.chat, { kind: action.drawer === 'chat' ? 'open' : 'close' }),
       };
     case 'selection':
       return { ...state, selection: action.selection };

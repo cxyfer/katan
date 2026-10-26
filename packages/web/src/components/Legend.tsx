@@ -49,10 +49,10 @@ export function Legend() {
           <h3>{t('board.legendPieces')}</h3>
           <ul>
             <li>
-              <span aria-hidden="true">▲</span> {t('board.settlement')}
+              <svg width="20" height="20" viewBox="-16 -18 36 32" fill="#ddc393" stroke="#253d44" strokeWidth="2" aria-hidden="true"><path d="M-10 9V-4l10-9 10 9V9Z" /></svg> {t('board.settlement')}
             </li>
             <li>
-              <span aria-hidden="true">⬢</span> {t('board.city')}
+              <svg width="20" height="20" viewBox="-16 -18 36 32" fill="#ddc393" stroke="#253d44" strokeWidth="2" aria-hidden="true"><path d="M-13 9V-8l7-7 7 7v7l9-6 9 6V9Z" /></svg> {t('board.city')}
             </li>
             <li>
               <span aria-hidden="true">▬</span> {t('board.road')}

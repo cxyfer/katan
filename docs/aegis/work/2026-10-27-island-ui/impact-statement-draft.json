@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "aegis.schema.v0",
+  "affectedLayers": ["web presentation", "local SVG artwork", "localized copy", "UI regression tests"],
+  "owners": ["table controller/reducer（不變）", "server projections（不變）", "base/pregame/table stylesheet layers"],
+  "invariants": ["server-authoritative game", "self-only private data", "preview before confirm", "recovery outside secondary panels", "both locales"],
+  "compatBoundary": "既有命令、資料投影、身分、持久化及profile能力保留；無新增API或依賴",
+  "nonGoals": ["擴充規則", "新狀態權威", "假資料取代正常流程"]
+}

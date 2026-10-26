@@ -1,0 +1,2258 @@
+{
+  "base": "http://127.0.0.1:3000",
+  "checks": [
+    {
+      "name": "empty nickname shows inline validation",
+      "ok": true
+    },
+    {
+      "name": "01-entry/1366/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "01-entry/1366/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-entry/1366/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "01-entry/1366/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "01-entry/1366/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "01-entry/1366/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-entry/1366/en: language available",
+      "ok": true
+    },
+    {
+      "name": "01-entry/1366/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "01-entry/768/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "01-entry/768/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-entry/768/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "01-entry/768/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "01-entry/768/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "01-entry/768/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-entry/768/en: language available",
+      "ok": true
+    },
+    {
+      "name": "01-entry/768/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "01-entry/360/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "01-entry/360/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-entry/360/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "01-entry/360/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "01-entry/360/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "01-entry/360/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-entry/360/en: language available",
+      "ok": true
+    },
+    {
+      "name": "01-entry/360/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "01-entry/390/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "01-entry/390/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-entry/390/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "01-entry/390/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "01-entry/390/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "01-entry/390/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-entry/390/en: language available",
+      "ok": true
+    },
+    {
+      "name": "01-entry/390/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "locale switching retains nickname draft",
+      "ok": true
+    },
+    {
+      "name": "02-home/1366/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "02-home/1366/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-home/1366/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "02-home/1366/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "02-home/1366/zh-Hant: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "02-home/1366/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "02-home/1366/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-home/1366/en: language available",
+      "ok": true
+    },
+    {
+      "name": "02-home/1366/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "02-home/1366/en: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "02-home/768/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "02-home/768/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-home/768/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "02-home/768/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "02-home/768/zh-Hant: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "02-home/768/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "02-home/768/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-home/768/en: language available",
+      "ok": true
+    },
+    {
+      "name": "02-home/768/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "02-home/768/en: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "02-home/360/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "02-home/360/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-home/360/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "02-home/360/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "02-home/360/zh-Hant: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "02-home/360/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "02-home/360/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-home/360/en: language available",
+      "ok": true
+    },
+    {
+      "name": "02-home/360/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "02-home/360/en: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "02-home/390/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "02-home/390/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-home/390/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "02-home/390/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "02-home/390/zh-Hant: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "02-home/390/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "02-home/390/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-home/390/en: language available",
+      "ok": true
+    },
+    {
+      "name": "02-home/390/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "02-home/390/en: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "start gated before everyone ready",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/1366/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/1366/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/1366/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/1366/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/1366/zh-Hant: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "lobby/1366/zh-Hant: prominent invitation code",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/1366/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/1366/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/1366/en: language available",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/1366/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/1366/en: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "lobby/1366/en: prominent invitation code",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/768/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/768/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/768/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/768/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/768/zh-Hant: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "lobby/768/zh-Hant: prominent invitation code",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/768/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/768/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/768/en: language available",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/768/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/768/en: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "lobby/768/en: prominent invitation code",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/360/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/360/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/360/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/360/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/360/zh-Hant: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "lobby/360/zh-Hant: prominent invitation code",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/360/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/360/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/360/en: language available",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/360/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/360/en: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "lobby/360/en: prominent invitation code",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/390/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/390/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/390/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/390/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/390/zh-Hant: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "lobby/390/zh-Hant: prominent invitation code",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/390/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/390/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/390/en: language available",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/390/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "03-lobby/390/en: compact inline checkbox",
+      "ok": true
+    },
+    {
+      "name": "lobby/390/en: prominent invitation code",
+      "ok": true
+    },
+    {
+      "name": "04-setup/1366/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "04-setup/1366/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "04-setup/1366/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "04-setup/1366/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "04-setup/1366/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "04-setup/1366/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "04-setup/1366/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "04-setup/1366/en: language available",
+      "ok": true
+    },
+    {
+      "name": "04-setup/1366/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "04-setup/1366/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "04-setup/768/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "04-setup/768/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "04-setup/768/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "04-setup/768/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "04-setup/768/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "04-setup/768/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "04-setup/768/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "04-setup/768/en: language available",
+      "ok": true
+    },
+    {
+      "name": "04-setup/768/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "04-setup/768/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "04-setup/360/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "04-setup/360/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "04-setup/360/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "04-setup/360/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "04-setup/360/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "04-setup/360/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "04-setup/360/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "04-setup/360/en: language available",
+      "ok": true
+    },
+    {
+      "name": "04-setup/360/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "04-setup/360/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "04-setup/390/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "04-setup/390/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "04-setup/390/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "04-setup/390/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "04-setup/390/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "04-setup/390/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "04-setup/390/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "04-setup/390/en: language available",
+      "ok": true
+    },
+    {
+      "name": "04-setup/390/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "04-setup/390/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "nineteen original terrain tiles",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "cancel leaves revision unchanged",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "selection does not submit before confirmation",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances server revision",
+      "ok": true
+    },
+    {
+      "name": "all twelve placements complete in preroll",
+      "ok": true
+    },
+    {
+      "name": "desktop trade draft survives tab navigation",
+      "ok": true
+    },
+    {
+      "name": "05-game/1366/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "05-game/1366/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "05-game/1366/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "05-game/1366/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "05-game/1366/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "game/1366/zh-Hant: both actual dice visible",
+      "ok": true
+    },
+    {
+      "name": "game/1366/zh-Hant: named dice group exposed",
+      "ok": true
+    },
+    {
+      "name": "game/1366/zh-Hant: public score context retained",
+      "ok": true
+    },
+    {
+      "name": "05-game/1366/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "05-game/1366/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "05-game/1366/en: language available",
+      "ok": true
+    },
+    {
+      "name": "05-game/1366/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "05-game/1366/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "game/1366/en: both actual dice visible",
+      "ok": true
+    },
+    {
+      "name": "game/1366/en: named dice group exposed",
+      "ok": true
+    },
+    {
+      "name": "game/1366/en: public score context retained",
+      "ok": true
+    },
+    {
+      "name": "05-game/768/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "05-game/768/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "05-game/768/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "05-game/768/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "05-game/768/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "game/768/zh-Hant: both actual dice visible",
+      "ok": true
+    },
+    {
+      "name": "game/768/zh-Hant: named dice group exposed",
+      "ok": true
+    },
+    {
+      "name": "game/768/zh-Hant: public score context retained",
+      "ok": true
+    },
+    {
+      "name": "05-game/768/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "05-game/768/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "05-game/768/en: language available",
+      "ok": true
+    },
+    {
+      "name": "05-game/768/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "05-game/768/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "game/768/en: both actual dice visible",
+      "ok": true
+    },
+    {
+      "name": "game/768/en: named dice group exposed",
+      "ok": true
+    },
+    {
+      "name": "game/768/en: public score context retained",
+      "ok": true
+    },
+    {
+      "name": "05-game/360/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "05-game/360/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "05-game/360/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "05-game/360/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "05-game/360/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "game/360/zh-Hant: both actual dice visible",
+      "ok": true
+    },
+    {
+      "name": "game/360/zh-Hant: named dice group exposed",
+      "ok": true
+    },
+    {
+      "name": "game/360/zh-Hant: public score context retained",
+      "ok": true
+    },
+    {
+      "name": "05-game/360/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "05-game/360/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "05-game/360/en: language available",
+      "ok": true
+    },
+    {
+      "name": "05-game/360/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "05-game/360/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "game/360/en: both actual dice visible",
+      "ok": true
+    },
+    {
+      "name": "game/360/en: named dice group exposed",
+      "ok": true
+    },
+    {
+      "name": "game/360/en: public score context retained",
+      "ok": true
+    },
+    {
+      "name": "05-game/390/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "05-game/390/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "05-game/390/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "05-game/390/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "05-game/390/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "game/390/zh-Hant: both actual dice visible",
+      "ok": true
+    },
+    {
+      "name": "game/390/zh-Hant: named dice group exposed",
+      "ok": true
+    },
+    {
+      "name": "game/390/zh-Hant: public score context retained",
+      "ok": true
+    },
+    {
+      "name": "05-game/390/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "05-game/390/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "05-game/390/en: language available",
+      "ok": true
+    },
+    {
+      "name": "05-game/390/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "05-game/390/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "game/390/en: both actual dice visible",
+      "ok": true
+    },
+    {
+      "name": "game/390/en: named dice group exposed",
+      "ok": true
+    },
+    {
+      "name": "game/390/en: public score context retained",
+      "ok": true
+    },
+    {
+      "name": "Fit board consumes measured space in short viewport",
+      "ok": true
+    },
+    {
+      "name": "mobile trade draft survives panel switching",
+      "ok": true
+    },
+    {
+      "name": "mobile chat draft survives panel switching",
+      "ok": true
+    },
+    {
+      "name": "required prompt is outside secondary drawer",
+      "ok": true
+    },
+    {
+      "name": "mobile event history is reachable",
+      "ok": true
+    },
+    {
+      "name": "visible mobile chat stays read after breakpoint handoff",
+      "ok": true
+    },
+    {
+      "name": "opponents private resources stay absent",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/1366/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/1366/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/1366/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/1366/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/1366/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/1366/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/1366/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/1366/en: language available",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/1366/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/1366/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/768/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/768/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/768/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/768/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/768/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/768/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/768/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/768/en: language available",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/768/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/768/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/360/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/360/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/360/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/360/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/360/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/360/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/360/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/360/en: language available",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/360/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/360/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/390/zh-Hant: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/390/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/390/zh-Hant: language available",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/390/zh-Hant: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/390/zh-Hant: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/390/en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/390/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/390/en: language available",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/390/en: button targets >=44px",
+      "ok": true
+    },
+    {
+      "name": "07-result-fixture/390/en: fitted height obeys measured available space",
+      "ok": true
+    },
+    {
+      "name": "result uses supplied published winner score",
+      "ok": true
+    },
+    {
+      "name": "no browser runtime exceptions",
+      "ok": true
+    }
+  ],
+  "captures": [
+    {
+      "scenario": "01-entry",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/01-entry-1366x768-zh-Hant.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "01-entry",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/01-entry-1366x768-en.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "01-entry",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/01-entry-768x1024-zh-Hant.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "01-entry",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/01-entry-768x1024-en.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "01-entry",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/01-entry-360x640-zh-Hant.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "01-entry",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/01-entry-360x640-en.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "01-entry",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/01-entry-390x844-zh-Hant.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "01-entry",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/01-entry-390x844-en.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "02-home",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/02-home-1366x768-zh-Hant.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "02-home",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/02-home-1366x768-en.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "02-home",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/02-home-768x1024-zh-Hant.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "02-home",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/02-home-768x1024-en.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "02-home",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/02-home-360x640-zh-Hant.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "02-home",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/02-home-360x640-en.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "02-home",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/02-home-390x844-zh-Hant.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "02-home",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/02-home-390x844-en.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "03-lobby",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/03-lobby-1366x768-zh-Hant.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "03-lobby",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/03-lobby-1366x768-en.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "03-lobby",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/03-lobby-768x1024-zh-Hant.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "03-lobby",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/03-lobby-768x1024-en.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "03-lobby",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/03-lobby-360x640-zh-Hant.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "03-lobby",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/03-lobby-360x640-en.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "03-lobby",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/03-lobby-390x844-zh-Hant.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "03-lobby",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/03-lobby-390x844-en.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": null
+      }
+    },
+    {
+      "scenario": "04-setup",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/04-setup-1366x768-zh-Hant.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 29,
+          "y": 468.265625,
+          "width": 958,
+          "height": 453.109375,
+          "top": 468.265625,
+          "right": 987,
+          "bottom": 921.375,
+          "left": 29
+        }
+      }
+    },
+    {
+      "scenario": "04-setup",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/04-setup-1366x768-en.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 29,
+          "y": 468.265625,
+          "width": 958,
+          "height": 284,
+          "top": 468.265625,
+          "right": 987,
+          "bottom": 752.265625,
+          "left": 29
+        }
+      }
+    },
+    {
+      "scenario": "04-setup",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/04-setup-768x1024-zh-Hant.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 20.1875,
+          "y": 255.109375,
+          "width": 727.625,
+          "height": 523,
+          "top": 255.109375,
+          "right": 747.8125,
+          "bottom": 778.109375,
+          "left": 20.1875
+        }
+      }
+    },
+    {
+      "scenario": "04-setup",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/04-setup-768x1024-en.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 20.1875,
+          "y": 255.109375,
+          "width": 727.625,
+          "height": 552.953125,
+          "top": 255.109375,
+          "right": 747.8125,
+          "bottom": 808.0625,
+          "left": 20.1875
+        }
+      }
+    },
+    {
+      "scenario": "04-setup",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/04-setup-360x640-zh-Hant.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 12.1875,
+          "y": 288.484375,
+          "width": 335.625,
+          "height": 294.390625,
+          "top": 288.484375,
+          "right": 347.8125,
+          "bottom": 582.875,
+          "left": 12.1875
+        }
+      }
+    },
+    {
+      "scenario": "04-setup",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/04-setup-360x640-en.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 12.1875,
+          "y": 288.484375,
+          "width": 335.625,
+          "height": 294.390625,
+          "top": 288.484375,
+          "right": 347.8125,
+          "bottom": 582.875,
+          "left": 12.1875
+        }
+      }
+    },
+    {
+      "scenario": "04-setup",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/04-setup-390x844-zh-Hant.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 12.1875,
+          "y": 288.484375,
+          "width": 365.625,
+          "height": 388.234375,
+          "top": 288.484375,
+          "right": 377.8125,
+          "bottom": 676.71875,
+          "left": 12.1875
+        }
+      }
+    },
+    {
+      "scenario": "04-setup",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/04-setup-390x844-en.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 12.1875,
+          "y": 288.484375,
+          "width": 365.625,
+          "height": 388.234375,
+          "top": 288.484375,
+          "right": 377.8125,
+          "bottom": 676.71875,
+          "left": 12.1875
+        }
+      }
+    },
+    {
+      "scenario": "05-game",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/05-game-1366x768-zh-Hant.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 29,
+          "y": 666.1875,
+          "width": 958,
+          "height": 453.109375,
+          "top": 666.1875,
+          "right": 987,
+          "bottom": 1119.296875,
+          "left": 29
+        }
+      }
+    },
+    {
+      "scenario": "05-game",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/05-game-1366x768-en.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 29,
+          "y": 666.1875,
+          "width": 958,
+          "height": 240,
+          "top": 666.1875,
+          "right": 987,
+          "bottom": 906.1875,
+          "left": 29
+        }
+      }
+    },
+    {
+      "scenario": "05-game",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/05-game-768x1024-zh-Hant.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 20.1875,
+          "y": 453.03125,
+          "width": 727.625,
+          "height": 325,
+          "top": 453.03125,
+          "right": 747.8125,
+          "bottom": 778.03125,
+          "left": 20.1875
+        }
+      }
+    },
+    {
+      "scenario": "05-game",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/05-game-768x1024-en.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 20.1875,
+          "y": 453.03125,
+          "width": 727.625,
+          "height": 552.953125,
+          "top": 453.03125,
+          "right": 747.8125,
+          "bottom": 1005.984375,
+          "left": 20.1875
+        }
+      }
+    },
+    {
+      "scenario": "05-game",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/05-game-360x640-zh-Hant.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 12.1875,
+          "y": 486.40625,
+          "width": 335.625,
+          "height": 240,
+          "top": 486.40625,
+          "right": 347.8125,
+          "bottom": 726.40625,
+          "left": 12.1875
+        }
+      }
+    },
+    {
+      "scenario": "05-game",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/05-game-360x640-en.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 12.1875,
+          "y": 486.40625,
+          "width": 335.625,
+          "height": 240,
+          "top": 486.40625,
+          "right": 347.8125,
+          "bottom": 726.40625,
+          "left": 12.1875
+        }
+      }
+    },
+    {
+      "scenario": "05-game",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/05-game-390x844-zh-Hant.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 12.1875,
+          "y": 486.40625,
+          "width": 365.625,
+          "height": 342,
+          "top": 486.40625,
+          "right": 377.8125,
+          "bottom": 828.40625,
+          "left": 12.1875
+        }
+      }
+    },
+    {
+      "scenario": "05-game",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/05-game-390x844-en.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 12.1875,
+          "y": 486.40625,
+          "width": 365.625,
+          "height": 342,
+          "top": 486.40625,
+          "right": 377.8125,
+          "bottom": 828.40625,
+          "left": 12.1875
+        }
+      }
+    },
+    {
+      "scenario": "07-result-fixture",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/07-result-fixture-1366x768-zh-Hant.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 50.796875,
+          "y": 698.953125,
+          "width": 1264.40625,
+          "height": 453.109375,
+          "top": 698.953125,
+          "right": 1315.203125,
+          "bottom": 1152.0625,
+          "left": 50.796875
+        }
+      }
+    },
+    {
+      "scenario": "07-result-fixture",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/07-result-fixture-1366x768-en.png",
+      "metrics": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 50.796875,
+          "y": 698.953125,
+          "width": 1264.40625,
+          "height": 240,
+          "top": 698.953125,
+          "right": 1315.203125,
+          "bottom": 938.953125,
+          "left": 50.796875
+        }
+      }
+    },
+    {
+      "scenario": "07-result-fixture",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/07-result-fixture-768x1024-zh-Hant.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 38.78125,
+          "y": 667.78125,
+          "width": 690.4375,
+          "height": 340,
+          "top": 667.78125,
+          "right": 729.21875,
+          "bottom": 1007.78125,
+          "left": 38.78125
+        }
+      }
+    },
+    {
+      "scenario": "07-result-fixture",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/07-result-fixture-768x1024-en.png",
+      "metrics": {
+        "width": 768,
+        "documentWidth": 768,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 38.78125,
+          "y": 667.78125,
+          "width": 690.4375,
+          "height": 340,
+          "top": 667.78125,
+          "right": 729.21875,
+          "bottom": 1007.78125,
+          "left": 38.78125
+        }
+      }
+    },
+    {
+      "scenario": "07-result-fixture",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/07-result-fixture-360x640-zh-Hant.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 29.1875,
+          "y": 887.3125,
+          "width": 301.625,
+          "height": 240,
+          "top": 887.3125,
+          "right": 330.8125,
+          "bottom": 1127.3125,
+          "left": 29.1875
+        }
+      }
+    },
+    {
+      "scenario": "07-result-fixture",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/07-result-fixture-360x640-en.png",
+      "metrics": {
+        "width": 360,
+        "documentWidth": 360,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 29.1875,
+          "y": 887.3125,
+          "width": 301.625,
+          "height": 240,
+          "top": 887.3125,
+          "right": 330.8125,
+          "bottom": 1127.3125,
+          "left": 29.1875
+        }
+      }
+    },
+    {
+      "scenario": "07-result-fixture",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/island-ui/07-result-fixture-390x844-zh-Hant.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 29.1875,
+          "y": 901.59375,
+          "width": 331.625,
+          "height": 240,
+          "top": 901.59375,
+          "right": 360.8125,
+          "bottom": 1141.59375,
+          "left": 29.1875
+        }
+      }
+    },
+    {
+      "scenario": "07-result-fixture",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/island-ui/07-result-fixture-390x844-en.png",
+      "metrics": {
+        "width": 390,
+        "documentWidth": 390,
+        "duplicateIds": [],
+        "smallButtons": [],
+        "languageVisible": true,
+        "board": {
+          "x": 29.1875,
+          "y": 901.59375,
+          "width": 331.625,
+          "height": 240,
+          "top": 901.59375,
+          "right": 360.8125,
+          "bottom": 1141.59375,
+          "left": 29.1875
+        }
+      }
+    }
+  ],
+  "runtimeErrors": [],
+  "terminalResult": "HTTP fixture; not evidence of a completed server game",
+  "visualReview": "Screenshots captured; model image input unavailable, no subjective visual approval claimed."
+}

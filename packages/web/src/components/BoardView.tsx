@@ -24,6 +24,7 @@ import { nameOf } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
 import { Legend } from './Legend.tsx';
+import { GameIcon, TerrainIllustration } from './GameArt.tsx';
 
 const BOARD_SCALE = 100;
 const BASE_TOPOLOGY = 'hex-r2';
@@ -206,6 +207,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   return (
     <div className="board" data-testid="board" ref={boardRef}>
       <div className="board__toolbar" role="group" aria-label={t('board.heading')}>
+        <span className="board__heading"><GameIcon name="compass" size={18} />{t('board.heading')}</span>
         <button
           type="button"
           className="button button--ghost"
@@ -244,6 +246,7 @@ export function BoardView({ controller }: { controller: TableController }) {
             {t('board.listTargets')}
           </button>
         )}
+        {view.turn.dice && <span className="board__dice" role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`}>{view.turn.dice.map((value, index) => <span className="board__die" key={index} aria-hidden="true">{value}</span>)}</span>}
       </div>
 
       <svg
@@ -270,13 +273,15 @@ export function BoardView({ controller }: { controller: TableController }) {
                   data-testid={`hex-${hex.index}`}
                   points={hex.points}
                   fill={terrainFill(terrain)}
-                  stroke="#1b1b1b"
-                  strokeWidth={1}
+                  stroke="#ede1b7"
+                  strokeWidth={3}
+                  strokeLinejoin="round"
                 />
+                <TerrainIllustration terrain={terrain} x={hex.cx} y={hex.cy - 14} scale={.95} />
                 <text
                   className="board__terrain"
-                  x={hex.cx}
-                  y={hex.cy - 16}
+                  x={hex.cx - 53}
+                  y={hex.cy + 35}
                   textAnchor="middle"
                   aria-hidden="true"
                 >
@@ -285,19 +290,20 @@ export function BoardView({ controller }: { controller: TableController }) {
                 </text>
                 {number !== null && number !== undefined && (
                   <>
+                    <circle cx={hex.cx} cy={hex.cy + 34} r={25} fill="#f4e8c9" stroke="#b49b68" strokeWidth={2} />
                     <text
-                      className="board__number"
+                      className={`board__number${number === 6 || number === 8 ? ' board__number--hot' : ''}`}
                       x={hex.cx}
-                      y={hex.cy + 10}
+                      y={hex.cy + 40}
                       textAnchor="middle"
                       aria-hidden="true"
                     >
                       {number}
                     </text>
                     <text
-                      className="board__pips"
+                      className={`board__pips${number === 6 || number === 8 ? ' board__pips--hot' : ''}`}
                       x={hex.cx}
-                      y={hex.cy + 26}
+                      y={hex.cy + 53}
                       textAnchor="middle"
                       aria-hidden="true"
                     >
@@ -357,21 +363,20 @@ export function BoardView({ controller }: { controller: TableController }) {
             return (
               <g key={`building-${vertex.index}`} data-testid={`building-${vertex.index}`}>
                 {building.city ? (
-                  <polygon
-                    points={`${vertex.x},${vertex.y - 12} ${vertex.x + 11},${vertex.y + 8} ${vertex.x - 11},${vertex.y + 8}`}
+                  <path
+                    d={`M${vertex.x - 13} ${vertex.y + 9}v-17l7-7 7 7v7l9-6 9 6v10Z`}
                     fill={color}
-                    stroke="#111"
+                    stroke="#21343a"
                     strokeWidth={2}
+                    strokeLinejoin="round"
                   />
                 ) : (
-                  <rect
-                    x={vertex.x - 8}
-                    y={vertex.y - 8}
-                    width={16}
-                    height={16}
+                  <path
+                    d={`M${vertex.x - 10} ${vertex.y + 9}v-13l10-9 10 9v13Z`}
                     fill={color}
-                    stroke="#111"
+                    stroke="#21343a"
                     strokeWidth={2}
+                    strokeLinejoin="round"
                   />
                 )}
                 <title>{`${label} · ${nameResolver(building.player)}`}</title>

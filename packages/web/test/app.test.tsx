@@ -67,6 +67,23 @@ describe('entry and locale', () => {
 });
 
 describe('board rendering', () => {
+  it.each([
+    ['en', 'Dice: 3 + 4', 'Public score: '],
+    ['zh-TW', '骰子: 3 + 4', '公開分數: '],
+  ])('exposes dice and public-score context in %s', async (language, diceName, scoreLabel) => {
+    const view = makeView();
+    view.turn.dice = [3, 4];
+    renderApp(createFakeApi({ snapshot: makeSnapshot(view) }), [language]);
+    fireEvent.click(await screen.findByTestId('resume-g1'));
+    await screen.findByTestId('board-svg');
+    // 已有 session 的語系優先於瀏覽器偏好，因此明確操作遊戲語言切換。
+    fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: language === 'en' ? 'en' : 'zh-Hant' } });
+    expect(await screen.findByRole('img', { name: diceName })).toBeTruthy();
+    for (const player of view.players) {
+      expect(screen.getByTestId(`seat-${player.seat}`).textContent).toContain(scoreLabel + player.publicScore);
+    }
+  });
+
   it('renders 19 hexes, the robber and harbour tokens from the real fixed layout', async () => {
     const board = fixedBoard();
     const api = createFakeApi({ snapshot: makeSnapshot(makeView({ board })) });

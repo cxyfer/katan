@@ -2,6 +2,7 @@ import { useT } from '../i18n/context.tsx';
 import { formatDateTime } from '../i18n/format.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
+import { GameBrand, GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 
 const CONNECTION_LABEL: Record<string, string> = {
@@ -29,6 +30,7 @@ export function StatusStrip({ controller }: { controller: TableController }) {
 
   return (
     <header className="status-strip" data-testid="status-strip">
+      <GameBrand compact />
       <span
         className={`status-strip__item status-strip__item--${state.connection}`}
         data-testid="connection-state"
@@ -38,7 +40,8 @@ export function StatusStrip({ controller }: { controller: TableController }) {
         {t(CONNECTION_LABEL[state.connection] ?? 'app.online')}
       </span>
 
-      <span className="status-strip__item" data-testid="save-state" data-state={save.status}>
+      <span className="status-strip__item status-strip__save" data-testid="save-state" data-state={save.status}>
+        <GameIcon name="anchor" size={15} />
         {save.status === 'idle' && t('play.save')}
         {save.status === 'pending' && t('play.savePending')}
         {save.status === 'saved' && t('play.saveSaved')}
