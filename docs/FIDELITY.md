@@ -48,7 +48,7 @@ verification before the row may be offered.
 | R-B03 | 7 → half rounded down, multi-responder discards, no trade before resolution, empty victim, no multiplied theft, desert, knight does not trigger discards | `packages/rules/test/seven.test.ts` (10 cases) | covered |
 | R-B04 | domestic exchange legality, bank 4:1/3:1/2:1, stale/expired offers, consent, revision invalidates consent, one settlement | `packages/rules/test/trade.test.ts` (13 cases) | covered |
 | R-B05 | cannot play a card the turn it is bought, one per turn, pre-roll knight, monopoly / year of plenty / road building, VP card victory, empty deck | `packages/rules/test/devcards.test.ts` (11 cases) | covered |
-| R-B06 | Longest Road ≥ 5 along a trail, branches, loops, opponent cuts, incumbent tie retention, award reassignment, Largest Army transfer | `packages/rules/test/awards.test.ts` (10 cases) | covered |
+| R-B06 | Longest Road ≥ 5 along a trail, branches, loops, opponent cuts, incumbent tie retention, award reassignment, Largest Army transfer | `packages/rules/test/awards.test.ts` (10 cases) | covered; see the tie-break note below |
 | R-B07 | win at own turn start, no win from an outside-turn gain, several VP cards together, award loss before the next turn, terminal state rejects commands | `packages/rules/test/victory.test.ts` (7 cases) | covered |
 | R-VIS | per-player projection, hidden hands/cards/deck, private event parameters, room-discovery metadata | `packages/rules/test/privacy.test.ts` (7), `packages/server/test/game.test.ts` (HTTP) | covered |
 | R-ROOM | join/start/settings races, full room, not-ready/disconnected start, host transfer, seats kept in a running game | `packages/server/test/rooms.test.ts` | covered |
@@ -72,6 +72,27 @@ pnpm --filter @catan/web test          # client component tests
 # Replay the whole service suite against PostgreSQL
 TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server test
 ```
+
+## Deliberate interpretations
+
+These are decisions the source material leaves open; they are recorded so a
+reviewer can challenge them rather than discover them by accident.
+
+- **Longest Road is a trail, not a simple path.** The specification says "along
+  a legal trail, without counting a piece twice or summing independent
+  branches", so a closed loop counts its full length and a branch contributes
+  only its two longest arms. `longestRouteLength` implements exactly that.
+- **Award ties with no incumbent go to the earliest seat.** A tie while an
+  award is held keeps it with the incumbent (source-derived). When the
+  incumbent has lost eligibility and two players tie at the same new value, the
+  lowest seat index takes the award, because the snapshot does not record which
+  player reached the value first.
+- **Setup order starts play with the first placer.** Round 1 runs forward and
+  round 2 runs in reverse, so the player who placed the first settlement is also
+  the last to place in round 2; play then begins with that seat.
+- **Bank shortage** follows B25 p.6: when the bank cannot pay every entitled
+  player, nobody receives that resource; when exactly one player is entitled,
+  they receive whatever remains.
 
 ## Known gaps and unresolved items
 

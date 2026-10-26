@@ -271,24 +271,21 @@ export interface GameState {
 }
 
 /**
- * Every rejection the engine can produce. This array is the single source of
- * truth: the union type is derived from it so clients can assert that their
- * localisation catalogs cover all of them.
+ * Every rejection the engine can actually produce. This array is the single
+ * source of truth: the union type is derived from it so clients can assert
+ * that their localisation catalogs cover all of them. A test keeps it exactly
+ * in step with the `fail(...)` calls in `engine.ts`.
  */
 export const COMMAND_ERROR_CODES = [
   'E_NOT_YOUR_TURN',
   'E_NOT_ACTOR',
   'E_WRONG_PHASE',
   'E_PENDING_EFFECT',
-  'E_OCCUPIED',
-  'E_DISTANCE_RULE',
-  'E_NOT_CONNECTED',
   'E_NO_PIECES',
   'E_INSUFFICIENT_RESOURCES',
   'E_BANK_EMPTY',
   'E_DECK_EMPTY',
   'E_ILLEGAL_TARGET',
-  'E_INVALID_HARBOR_RATE',
   'E_CARD_NOT_HELD',
   'E_CARD_JUST_BOUGHT',
   'E_CARD_ALREADY_PLAYED',
@@ -302,7 +299,6 @@ export const COMMAND_ERROR_CODES = [
   'E_NOT_RECIPIENT',
   'E_NOT_CONSENTED',
   'E_GAME_OVER',
-  'E_UNSUPPORTED',
   'E_INVALID_COMMAND',
 ] as const;
 

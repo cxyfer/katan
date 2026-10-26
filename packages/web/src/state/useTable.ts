@@ -192,7 +192,11 @@ export function useTable(options: UseTableOptions): TableController {
       const result = await api.getGame(gameId);
       if (result.ok) {
         dispatch({ type: 'snapshot', snapshot: result.data });
-        if (result.data.roomId) roomIdRef.current = result.data.roomId;
+        if (result.data.roomId) {
+          roomIdRef.current = result.data.roomId;
+          // Resume/reconnect: recover authorized recent chat history.
+          void loadChatRef.current?.(result.data.roomId);
+        }
       } else {
         dispatch({ type: 'room-error', error: noticeFrom(result.error) });
       }

@@ -3,11 +3,9 @@
  * engine's events and rejections are enumerable.
  */
 
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import engineSource from '../src/engine.ts?raw';
 import { COMMAND_ERROR_CODES, RULE_EVENT_TYPES } from '../src/types.ts';
-
-const engineSource = readFileSync(new URL('../src/engine.ts', import.meta.url), 'utf8');
 
 describe('message ids', () => {
   it('lists every event type the engine actually emits', () => {
@@ -22,13 +20,18 @@ describe('message ids', () => {
     expect(unused).toEqual([]);
   });
 
-  it('lists every rejection the engine actually returns', () => {
+  it('lists exactly the rejections the engine actually returns', () => {
     const raised = new Set<string>();
     for (const match of engineSource.matchAll(/fail\('([^']+)'/g)) raised.add(match[1]!);
+    expect(raised.size).toBeGreaterThan(15);
     const missing = [...raised].filter(
       (code) => !(COMMAND_ERROR_CODES as readonly string[]).includes(code),
     );
     expect(missing).toEqual([]);
+    // The converse: a listed code that nothing raises would make the client
+    // carry a translation for an unreachable state.
+    const unused = (COMMAND_ERROR_CODES as readonly string[]).filter((code) => !raised.has(code));
+    expect(unused).toEqual([]);
   });
 
   it('has no duplicate ids', () => {

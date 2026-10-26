@@ -25,9 +25,10 @@ describe('action availability', () => {
     expect(roll.enabled).toBe(true);
     expect(roll.reasonId).toBeNull();
 
+    // Hints are per-viewer: the engine only sets `canRoll` for the actor.
     const waiting = stateWith({
       game: makeSnapshot(
-        makeView({ hints: makeHints({ canRoll: true, canEndTurn: false }), phase: 'preroll', turnPlayerId: 'p2' }),
+        makeView({ hints: makeHints({ canRoll: false, canEndTurn: false }), phase: 'preroll', turnPlayerId: 'p2' }),
       ),
     });
     const otherRoll = deriveActions(waiting, 'p1').find((action) => action.id === 'roll')!;
@@ -127,7 +128,7 @@ describe('required action derivation', () => {
 
     const theirs = stateWith({
       game: makeSnapshot(
-        makeView({ hints: makeHints({ canRoll: true, canEndTurn: false }), phase: 'preroll', turnPlayerId: 'p2' }),
+        makeView({ hints: makeHints({ canRoll: false, canEndTurn: false }), phase: 'preroll', turnPlayerId: 'p2' }),
       ),
     });
     expect(requiredActionFor(theirs)).toMatchObject({ kind: 'roll', mine: false, waitingFor: ['p2'] });
@@ -164,7 +165,7 @@ describe('required action derivation', () => {
     expect(requiredActionAnnouncement(null, (id) => id)).toBeNull();
     const theirs = requiredActionFor(
       stateWith({
-        game: makeSnapshot(makeView({ hints: makeHints({ canRoll: true }), phase: 'preroll', turnPlayerId: 'p2' })),
+        game: makeSnapshot(makeView({ hints: makeHints({ canRoll: false }), phase: 'preroll', turnPlayerId: 'p2' })),
       }),
     );
     expect(requiredActionAnnouncement(theirs, (id) => id)).toBeNull();

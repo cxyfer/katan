@@ -55,7 +55,7 @@ export function makePlayer(overrides: Partial<PublicPlayerView> = {}): PublicPla
     nickname: 'Alex',
     seat: 0,
     color: 'red',
-    handSize: 3,
+    handSize: 10,
     devCardCount: 1,
     newDevCardCount: 0,
     playedKnights: 0,
@@ -65,7 +65,7 @@ export function makePlayer(overrides: Partial<PublicPlayerView> = {}): PublicPla
     cityWalls: 0,
     defenders: 0,
     improvements: {},
-    resources: { lumber: 1, brick: 1, wool: 1, grain: 0, ore: 0 },
+    resources: { lumber: 2, brick: 2, wool: 2, grain: 2, ore: 2 },
     devCards: ['knight'],
     newDevCards: [],
     progressCards: [],
@@ -148,7 +148,7 @@ export function makeIdentity(overrides: Partial<PlayerIdentity> = {}): PlayerIde
   return {
     id: 'p1',
     nickname: 'Alex',
-    locale: 'zh-Hant',
+    locale: 'en',
     createdAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
   };
