@@ -76,13 +76,6 @@ export function formatGrantMap(
   return parts.length > 0 ? parts.join('；') : '—';
 }
 
-export function formatPlayerList(
-  players: readonly string[],
-  nameOf: (playerId: string) => string,
-): string {
-  return players.map(nameOf).join('、');
-}
-
 export function formatDice(dice: readonly number[] | null | undefined): string {
   if (!dice || dice.length === 0) return '—';
   return dice.join(' + ');

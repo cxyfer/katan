@@ -9,7 +9,7 @@
 import type { Locale } from '@catan/protocol';
 import type { GameEvent } from '@catan/rules';
 import { t } from './index.ts';
-import { formatDice, formatGrantMap, formatPlayerList, formatResourceMap } from './format.ts';
+import { formatDice, formatGrantMap, formatResourceMap } from './format.ts';
 
 export interface EventText {
   messageId: string;
@@ -180,6 +180,8 @@ export function eventParams(
         give: formatResourceMap(locale, p.give as Record<string, number>),
         want: formatResourceMap(locale, p.want as Record<string, number>),
       };
+    case 'game.abandoned':
+      return { reason: t(locale, `play.resultReason.${str(p.reason, 'abandoned')}`) };
     case 'game.finished':
       return {
         player: player(),
@@ -187,18 +189,21 @@ export function eventParams(
         target: num(p.target),
       };
     default:
-      return { players: formatPlayerList([], nameOf) };
+      // An id we do not know how to parameterise still renders its own text.
+      return {};
   }
 }
 
 export function translateEvent(locale: Locale, event: GameEvent, nameOf: NameResolver): EventText {
   const params = eventParams(locale, event, nameOf);
-  const known = t(locale, event.type, params) !== event.type;
+  // Canonical id shape from `@catan/protocol`: `event.<engine event type>`.
+  const messageId = `event.${event.type}`;
+  const text = t(locale, messageId, params);
   return {
-    messageId: event.type,
+    messageId,
     params,
-    text: known ? t(locale, event.type, params) : event.type,
-    unknown: !known,
+    text: text === messageId ? event.type : text,
+    unknown: text === messageId,
   };
 }
 

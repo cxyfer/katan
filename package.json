@@ -11,6 +11,8 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "build": "pnpm --filter @catan/web build && pnpm --filter @catan/server build",
+    "smoke": "node scripts/smoke.mjs",
+    "verify": "pnpm typecheck && pnpm -r test && pnpm build && pnpm smoke",
     "dev": "node scripts/dev.mjs",
     "start": "node packages/server/dist/server.mjs"
   },

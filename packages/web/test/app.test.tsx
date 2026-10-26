@@ -182,6 +182,36 @@ describe('pan and zoom', () => {
   });
 });
 
+describe('event log and paired play', () => {
+  it('renders engine events in the active locale, including game.abandoned', async () => {
+    const api = createFakeApi({
+      snapshot: makeSnapshot(
+        makeView({
+          hints: makeHints(),
+          events: [
+            { seq: 1, type: 'turn.rolled', params: { playerId: 'p1', dice: [3, 4], total: 7 } },
+            { seq: 2, type: 'game.abandoned', params: { reason: 'abandoned' } },
+          ],
+        }),
+      ),
+    });
+    await openGame(api);
+
+    const log = screen.getByTestId('event-list');
+    expect(log.textContent).toContain('rolled 3 + 4');
+    expect(log.textContent).toContain('The game was abandoned');
+    expect(log.textContent).not.toContain('event.game.abandoned');
+  });
+
+  it('marks the paired second actor', async () => {
+    const view = makeView({ hints: makeHints() });
+    view.turn.pairedActor = 2;
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    await openGame(api);
+    expect(screen.getByTestId('paired-actor').textContent).toContain('Player 2 of 2');
+  });
+});
+
 describe('command outcome handling', () => {
   it('resolves an unknown outcome before offering a retry, then retries with a new id', async () => {
     const api = createFakeApi({

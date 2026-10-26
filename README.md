@@ -43,12 +43,20 @@ invite code, and start once every seat is ready. See
 ## Verification
 
 ```bash
+pnpm verify                          # typecheck + all tests + build + post-build smoke
+```
+
+Individual gates:
+
+```bash
 pnpm typecheck                       # all packages
-pnpm --filter @catan/rules test      # rules fixtures R-B01–R-B07, R-VIS
-pnpm --filter @catan/server test     # service fixtures R-ROOM/R-POLICY/R-SAVE/R-REC/R-CHAT
+pnpm --filter @catan/rules test      # rules fixtures R-B01–R-B07, R-56, R-VIS
+pnpm --filter @catan/server test     # R-ROOM/R-POLICY/R-SAVE/R-REC/R-CHAT
 pnpm --filter @catan/protocol test
 pnpm --filter @catan/web test        # client component tests
 pnpm build                           # client bundle + service bundle
+pnpm smoke                           # boots the built artefacts and plays a setup
+SMOKE_BASE_URL=http://host:3000 pnpm smoke   # verify a running deployment
 ```
 
 To replay the service suite against PostgreSQL:

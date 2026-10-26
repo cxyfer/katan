@@ -11,6 +11,7 @@ import { EventLog } from './EventLog.tsx';
 import { HandPanel } from './HandPanel.tsx';
 import { PendingPrompt } from './PendingPrompt.tsx';
 import { PlayersPanel } from './PlayersPanel.tsx';
+import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
 import { SelectionPreview } from './SelectionPreview.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
 import { TradePanel } from './TradePanel.tsx';
@@ -71,6 +72,8 @@ export function GameScreen({ controller }: { controller: TableController }) {
       )}
 
       <CommandStatus controller={controller} />
+
+      <PolicyProposalPanel controller={controller} />
 
       <div className="game__grid">
         {!isMobile && (

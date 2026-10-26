@@ -64,6 +64,11 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
           );
         })}
       </ol>
+      {view.turn.pairedActor === 2 && (
+        <p className="badge" data-testid="paired-actor">
+          {t('play.pairedActor', { actor: 2 })}
+        </p>
+      )}
       <h3>{t('play.awards')}</h3>
       <ul className="award-list" data-testid="award-list">
         <li>

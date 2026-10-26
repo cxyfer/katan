@@ -59,7 +59,10 @@ verification before the row may be offered.
 | R-56 | partner = third seat to the left, five- and six-seat pair cycles, production only on Player 1, no domestic trade for Player 2, build/bank/card actions for Player 2, card carry between roles, either role may win | `packages/rules/test/paired.test.ts` (11 cases) | covered at engine level; profile stays disabled |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
-| U-01…U-08, U-I18N | rendered interactions, devices, accessibility, playtests | `packages/web` component tests only | **partially covered — see gaps** |
+| U-01, U-02, U-05 | rendered layout, mouse/keyboard/touch selection, dense content | `packages/web/test/*.test.tsx` (jsdom) | **partially covered** — no real viewport or pointer device |
+| U-03, U-04, U-06, U-07, U-08 | devices, assistive technology, measured responsiveness, novice/expert playtests | – | **not covered** |
+| U-I18N | both locales for every flow, draft-safe switching, catalog parity | `packages/web/test/i18n.test.ts` and the protocol-list coverage test | **partially covered** — no IME or mixed-locale session |
+| Container | image builds, runs non-root, health, volume persistence, SIGTERM, PostgreSQL mode | `docker build`, `docker run`, `docker compose -f docker-compose.postgres.yml`, `scripts/smoke.mjs` | covered (see `docs/EVIDENCE.md`) |
 
 ## Test commands
 
@@ -127,7 +130,10 @@ These are recorded rather than hidden. None of them is presented as verified.
    R-ROOM admission races are exercised through the service API, not through
    several real browsers.
 7. **Presence timing is exercised through the API only.** The host-succession
-   grace timer is implemented, but no test waits out a real grace period.
+   grace timer is implemented, but no test waits out a real grace period, and
+   the client's second-tab "active elsewhere" state is display-only — the
+   newest-connection seat control is enforced by the service but not yet
+   surfaced as a reclaim action in the client.
 8. **Abandonment is implemented but not yet exercised with real presence
    timing.** The vote, its invalidation on reconnection and the no-winner
    terminal transition are covered through the API with an injected

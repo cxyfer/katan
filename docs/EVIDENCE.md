@@ -34,11 +34,16 @@ All commands were run from the repository root unless stated otherwise.
 | 6 | `pnpm --filter @catan/server exec tsc --noEmit` | clean |
 | 7 | `node packages/server/build.mjs` | `built dist/server.mjs` |
 | 8 | bundled service smoke test (`/healthz`, `POST /api/session`) | `200` with `{status:"ok"}` and a `HttpOnly; SameSite=Lax` session cookie |
-| 9 | `pnpm --filter @catan/web test` | see the client section below |
-| 10 | `docker build` of the published image | see the container section below |
+| 9 | `pnpm --filter @catan/web exec tsc --noEmit` | clean |
+| 10 | `pnpm --filter @catan/web test` | 101 passed / 11 files |
+| 11 | `pnpm --filter @catan/web exec vite build` | `dist/index.html` 0.47 kB, CSS 6.57 kB, JS 360.52 kB (gzip 107.90 kB) |
+| 12 | `node scripts/smoke.mjs` (built artefacts, SQLite) | 13/13 checks passed |
+| 13 | `DOCKER_BUILDKIT=0 docker build -t catan:local .` | image built, non-root runtime |
+| 14 | `docker run … catan:local` then `SMOKE_BASE_URL=… node scripts/smoke.mjs` | 13/13 checks passed; container healthy and still running after 20 s |
+| 15 | `docker stop -t 30 catan-app` then `docker start catan-app` | graceful `SIGTERM` logged; the same guest identity was restored from the volume |
+| 16 | `docker compose -f docker-compose.postgres.yml up -d --no-build` then the smoke run | `/readyz` → `ready`; 13/13 checks passed; `guests`/`games`/`chat_messages` rows present in PostgreSQL |
 
-Commands 1–8 were executed in this session. Commands 9–10 are recorded in the
-sections below with their actual outcome.
+All sixteen commands were executed in this session.
 
 ## Fixture families passed
 
@@ -53,7 +58,35 @@ sections below with their actual outcome.
 | R-REC | `packages/server/test/{recovery,db-contract}.test.ts` on SQLite and PostgreSQL |
 | R-TRADE | `packages/rules/test/trade.test.ts` (engine); service-level races not exercised with several browsers |
 | R-CHAT | `packages/server/test/chat.test.ts` |
-| Message-id completeness | `packages/rules/test/message-ids.test.ts`, `packages/protocol/test/protocol.test.ts` |
+| Message-id completeness | `packages/rules/test/message-ids.test.ts`, `packages/protocol/test/protocol.test.ts`, catalog parity in `packages/web/test/i18n.test.ts` |
+| U-01…U-05, U-I18N (partial) | `packages/web/test/*.test.tsx` — jsdom component tests only |
+
+## Client coverage
+
+`packages/web` ships 101 jsdom component tests. They cover catalog parity and
+protocol-list coverage, board geometry (19 hexes / 54 vertices / 72 edges with
+engine-identical indices), action-hint enable/disable with reason ids, the
+command lifecycle (submitting → unknown → resolve → stale → refresh → retry with
+a new command id, draft preserved on rejection), chat send states with
+deduplication and personal mute, the mobile drawer never covering the required
+action, keyboard target selection, pan/zoom never committing, trade
+offer/respond/settle/withdraw, and the lobby policy flow.
+
+What they do **not** cover: any real browser, device, touch, screen-reader or
+200%-zoom run; no screenshots or visual-regression baselines; no live server or
+WebSocket transport (the socket is faked); no timing measurements; no IME
+behaviour; and no Seafarers/Cities & Knights surfaces.
+
+## Container verification
+
+The published image was built and run, and the smoke script was pointed at the
+running container (`SMOKE_BASE_URL`) so the shipped artefacts were exercised
+together: client delivery, guest session, room discovery, start, a full initial
+placement of 12 commands, a dice roll, chat and a projection check. The runtime
+is non-root (`uid=10001`), writes SQLite into the mounted volume, reports
+`healthy`, survives a `docker stop`/`docker start` cycle with the guest identity
+intact, and serves the PostgreSQL Compose stack with `/readyz` reporting
+`ready`.
 
 ## Observed play sessions
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RESOURCES, type Offer, type Resource } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatResourceMap } from '../i18n/format.ts';
+import { Dialog } from './Dialog.tsx';
 import type { TableController } from '../state/useTable.ts';
 
 function emptyTerms(): Partial<Record<Resource, number>> {
@@ -27,6 +28,14 @@ export function TradePanel({ controller }: { controller: TableController }) {
   const [bankGive, setBankGive] = useState<Resource>('lumber');
   const [bankReceive, setBankReceive] = useState<Resource>('brick');
   const [counterparty, setCounterparty] = useState<string>('');
+  /**
+   * Settlement is irreversible once the server commits it, so it goes through
+   * an explicit confirmation dialog that names the exact terms
+   * (docs/SPEC.md §8.2). The dialog returns focus to the settle button.
+   */
+  const [pendingSettle, setPendingSettle] = useState<
+    { offerId: string; terms: string; counterparty: string } | null
+  >(null);
 
   if (!view) return null;
   const offers = view.offers.filter((offer) => offer.status === 'open' || offer.status === 'agreed');
@@ -83,7 +92,8 @@ export function TradePanel({ controller }: { controller: TableController }) {
                     <button
                       type="button"
                       className="button button--chip"
-                      aria-label={`${t(`resource.${resource}`)} −`}
+                      data-testid={`${side}-sub-${resource}`}
+                      aria-label={`${t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')} ${t(`resource.${resource}`)} −`}
                       onClick={() => bump(setter, terms, resource, -1)}
                     >
                       −
@@ -94,7 +104,8 @@ export function TradePanel({ controller }: { controller: TableController }) {
                     <button
                       type="button"
                       className="button button--chip"
-                      aria-label={`${t(`resource.${resource}`)} +`}
+                      data-testid={`${side}-add-${resource}`}
+                      aria-label={`${t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')} ${t(`resource.${resource}`)} +`}
                       onClick={() => bump(setter, terms, resource, 1)}
                     >
                       +
@@ -129,9 +140,56 @@ export function TradePanel({ controller }: { controller: TableController }) {
             counterparty={counterparty}
             setCounterparty={setCounterparty}
             onSubmit={(command, labelId) => void actions.submitCommand(command, labelId)}
+            onSettle={(offer) =>
+              setPendingSettle({
+                offerId: offer.id,
+                terms: `${formatResourceMap(locale, offer.give)} → ${formatResourceMap(locale, offer.want)}`,
+                counterparty,
+              })
+            }
           />
         ))}
       </div>
+
+      {pendingSettle && (
+        <Dialog
+          title={t('play.tradeSettle')}
+          testId="settle-dialog"
+          onClose={() => setPendingSettle(null)}
+        >
+          <p data-testid="settle-dialog-terms">{pendingSettle.terms}</p>
+          <p className="muted">{t('play.tradeExpiresAtWindowEnd')}</p>
+          <div className="offer__actions">
+            <button
+              type="button"
+              className="button button--primary"
+              data-testid="confirm-settle"
+              onClick={() => {
+                const request = pendingSettle;
+                setPendingSettle(null);
+                void actions.submitCommand(
+                  {
+                    type: 'trade.settle',
+                    offerId: request.offerId,
+                    ...(request.counterparty ? { counterparty: request.counterparty } : {}),
+                  },
+                  'play.tradeSettle',
+                );
+              }}
+            >
+              {t('play.tradeSettle')}
+            </button>
+            <button
+              type="button"
+              className="button button--ghost"
+              data-testid="cancel-settle"
+              onClick={() => setPendingSettle(null)}
+            >
+              {t('app.cancel')}
+            </button>
+          </div>
+        </Dialog>
+      )}
 
       <div className="bank-trade">
         <h3>{t('play.bankTrade')}</h3>
@@ -198,6 +256,7 @@ function OfferRow({
   counterparty,
   setCounterparty,
   onSubmit,
+  onSettle,
 }: {
   offer: Offer;
   selfId: string | null;
@@ -205,6 +264,7 @@ function OfferRow({
   counterparty: string;
   setCounterparty: (value: string) => void;
   onSubmit: (command: { type: string } & Record<string, unknown>, labelId: string) => void;
+  onSettle: (offer: Offer) => void;
 }) {
   const t = useT();
   const locale = useLocale();
@@ -316,16 +376,7 @@ function OfferRow({
               type="button"
               className="button button--primary"
               data-testid={`settle-${offer.id}`}
-              onClick={() =>
-                onSubmit(
-                  {
-                    type: 'trade.settle',
-                    offerId: offer.id,
-                    ...(offer.to === 'all' ? { counterparty } : {}),
-                  },
-                  'play.tradeSettle',
-                )
-              }
+              onClick={() => onSettle(offer)}
             >
               {t('play.tradeSettle')}
             </button>

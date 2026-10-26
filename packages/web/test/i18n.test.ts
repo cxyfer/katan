@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-  catalogs,
   ERROR_MESSAGE_IDS,
   EVENT_MESSAGE_IDS,
   REQUIRED_MESSAGE_IDS,
+  catalogs,
 } from '../src/i18n/catalogs.ts';
+import {
+  ERROR_MESSAGE_IDS as PROTOCOL_ERROR_IDS,
+  EVENT_MESSAGE_IDS as PROTOCOL_EVENT_IDS,
+} from '@catan/protocol';
 import { asLocale, detectLocale, hasMessage, interpolate, t } from '../src/i18n/index.ts';
 import { translateEvent, translateNotice } from '../src/i18n/events.ts';
 import { makeEvent } from '../src/test/fixtures.ts';
@@ -25,19 +29,38 @@ describe('catalog parity', () => {
     }
   });
 
-  it('covers every engine event type and every error code in both locales', () => {
-    expect(EVENT_MESSAGE_IDS).toHaveLength(32);
-    expect(ERROR_MESSAGE_IDS.length).toBeGreaterThanOrEqual(27);
+  it('covers every id in the protocol’s derived ERROR_MESSAGE_IDS list', () => {
+    expect(PROTOCOL_ERROR_IDS.length).toBeGreaterThanOrEqual(20);
+    for (const id of PROTOCOL_ERROR_IDS) {
+      expect(id.startsWith('error.'), `unexpected id shape: ${id}`).toBe(true);
+      expect(hasMessage('zh-Hant', id), `zh-Hant missing ${id}`).toBe(true);
+      expect(hasMessage('en', id), `en missing ${id}`).toBe(true);
+    }
+  });
+
+  it('covers every id in the protocol’s derived EVENT_MESSAGE_IDS list', () => {
+    expect(PROTOCOL_EVENT_IDS.length).toBeGreaterThanOrEqual(30);
+    for (const id of PROTOCOL_EVENT_IDS) {
+      expect(id.startsWith('event.'), `unexpected id shape: ${id}`).toBe(true);
+      expect(hasMessage('zh-Hant', id), `zh-Hant missing ${id}`).toBe(true);
+      expect(hasMessage('en', id), `en missing ${id}`).toBe(true);
+    }
+  });
+
+  it('re-exports the protocol lists and adds only client-side extras', () => {
+    expect(EVENT_MESSAGE_IDS).toEqual(PROTOCOL_EVENT_IDS);
+    for (const id of PROTOCOL_ERROR_IDS) expect(ERROR_MESSAGE_IDS).toContain(id);
+    expect(ERROR_MESSAGE_IDS).toContain('error.E_NETWORK');
     for (const id of REQUIRED_MESSAGE_IDS) {
       expect(hasMessage('zh-Hant', id), `zh-Hant missing ${id}`).toBe(true);
       expect(hasMessage('en', id), `en missing ${id}`).toBe(true);
     }
   });
 
-  it('uses the engine event type as the message id (no renaming layer)', () => {
+  it('renders every catalogued rule event as a real sentence in both locales', () => {
     for (const id of EVENT_MESSAGE_IDS) {
-      expect(catalogs.en[id]).toBeTypeOf('string');
       expect(t('en', id, {})).not.toBe(id);
+      expect(t('zh-Hant', id, {})).not.toBe(id);
     }
   });
 });
@@ -60,9 +83,16 @@ describe('t()', () => {
     const en = translateEvent('en', event, nameOf);
     const zh = translateEvent('zh-Hant', event, nameOf);
     expect(en.unknown).toBe(false);
+    expect(en.messageId).toBe('event.build.road');
     expect(en.text).toContain('41');
     expect(zh.text).toContain('41');
     expect(zh.text).not.toBe(en.text);
+  });
+
+  it('renders the newly added game.abandoned event without a raw parameter', () => {
+    const translated = translateEvent('en', makeEvent(9, 'game.abandoned', { reason: 'abandoned' }), (id) => id);
+    expect(translated.unknown).toBe(false);
+    expect(translated.text).toBe('The game was abandoned: Abandoned by table agreement.');
   });
 
   it('never leaks a raw message id for an unknown error code', () => {

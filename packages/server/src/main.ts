@@ -35,7 +35,10 @@ export interface RunningService {
   rooms: RoomService;
   games: GameCoordinator;
   chat: ChatService;
+  /** Stops accepting work, drains and closes the database. Idempotent. */
   close(): Promise<void>;
+  /** Graceful shutdown for a received signal, with a hard-stop deadline. */
+  shutdown(reason: string): Promise<void>;
   port: number;
 }
 
@@ -112,23 +115,42 @@ export async function startService(
   }, Math.max(config.presenceSweepIntervalMs, 60_000));
   sweepTimer.unref?.();
 
-  let closing = false;
-  const close = async (): Promise<void> => {
-    if (closing) return;
-    closing = true;
-    clearInterval(sweepTimer);
-    log('info', 'shutting down');
-    await ws.close();
-    await new Promise<void>((resolvePromise) => server.close(() => resolvePromise()));
-    await db.close();
+  let closing: Promise<void> | null = null;
+  const close = (): Promise<void> => {
+    closing ??= (async () => {
+      clearInterval(sweepTimer);
+      log('info', 'shutting down');
+      await ws.close();
+      await new Promise<void>((resolvePromise) => server.close(() => resolvePromise()));
+      await db.close();
+    })();
+    return closing;
   };
 
-  const shutdownTimer = setTimeout(() => {
-    void close().finally(() => process.exit(0));
-  }, config.shutdownTimeoutMs);
-  shutdownTimer.unref?.();
-
-  return { config, repo, rooms, games, chat, close, port };
+  return {
+    config,
+    repo,
+    rooms,
+    games,
+    chat,
+    close,
+    async shutdown(reason: string): Promise<void> {
+      log('info', 'received signal', { signal: reason });
+      // The hard deadline is armed only once shutdown has actually begun, so a
+      // healthy process is never stopped by a startup timer.
+      const deadline = setTimeout(() => {
+        log('warn', 'shutdown deadline exceeded, exiting');
+        process.exit(0);
+      }, config.shutdownTimeoutMs);
+      deadline.unref?.();
+      try {
+        await close();
+      } finally {
+        clearTimeout(deadline);
+      }
+    },
+    port,
+  };
 }
 
 const isMain =
@@ -140,8 +162,10 @@ if (isMain) {
   startService({}, log)
     .then((service) => {
       const stop = (signal: string) => {
-        log('info', 'received signal', { signal });
-        void service.close().then(() => process.exit(0));
+        void service.shutdown(signal).then(
+          () => process.exit(0),
+          () => process.exit(1),
+        );
       };
       process.on('SIGTERM', () => stop('SIGTERM'));
       process.on('SIGINT', () => stop('SIGINT'));

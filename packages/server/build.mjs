@@ -2,12 +2,17 @@
 
 import { build } from 'esbuild';
 import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 
-mkdirSync('dist', { recursive: true });
+// Paths resolve against this file so the script also works from the repo root.
+const packageDir = import.meta.dirname;
+const outDir = join(packageDir, 'dist');
+mkdirSync(outDir, { recursive: true });
 
 await build({
-  entryPoints: ['src/main.ts'],
-  outfile: 'dist/server.mjs',
+  absWorkingDir: packageDir,
+  entryPoints: [join(packageDir, 'src/main.ts')],
+  outfile: join(outDir, 'server.mjs'),
   bundle: true,
   platform: 'node',
   target: 'node22',
@@ -24,4 +29,4 @@ await build({
   external: ['pg-native', 'bufferutil', 'utf-8-validate'],
 });
 
-process.stdout.write('built dist/server.mjs\n');
+process.stdout.write(`built ${join(outDir, 'server.mjs')}\n`);

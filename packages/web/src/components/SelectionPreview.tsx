@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
-import { getTopology } from '@catan/rules';
+import { COSTS, getTopology } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
 import { describeTarget } from '../board/targets.ts';
-import { COSTS } from '@catan/rules';
 import { nameOf } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 

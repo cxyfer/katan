@@ -3,6 +3,7 @@ import type { RoomPolicy } from '@catan/protocol';
 import { POLICY_BOUNDS } from '@catan/protocol';
 import { useT } from '../i18n/context.tsx';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
+import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
 import type { ScreenProps } from './props.ts';
 
 const COLORS = ['red', 'blue', 'orange', 'white', 'green', 'brown'] as const;
@@ -214,47 +215,7 @@ export function LobbyScreen({ controller }: ScreenProps) {
         </button>
       </section>
 
-      {room.pendingPolicy && (
-        <section className="card" aria-labelledby="proposal-heading" data-testid="policy-proposal">
-          <h2 id="proposal-heading">{t('lobby.policyProposal')}</h2>
-          <p className="muted">
-            {t('lobby.policyConsentCount', {
-              approved: room.pendingPolicy.consents.length,
-              total: room.members.length,
-            })}
-          </p>
-          <ul>
-            <li>
-              {t('lobby.policy.turnClockSeconds')}: {room.pendingPolicy.before.turnClockSeconds} →{' '}
-              {room.pendingPolicy.after.turnClockSeconds}
-            </li>
-            <li>
-              {t('lobby.policy.disconnectGraceSeconds')}: {room.pendingPolicy.before.disconnectGraceSeconds} →{' '}
-              {room.pendingPolicy.after.disconnectGraceSeconds}
-            </li>
-            <li>
-              {t('lobby.policy.allowAbandonment')}:{' '}
-              {room.pendingPolicy.after.allowAbandonment ? t('app.yes') : t('app.no')}
-            </li>
-          </ul>
-          <button
-            type="button"
-            className="button button--primary"
-            data-testid="policy-approve"
-            onClick={() => void actions.respondPolicy(room.pendingPolicy!.id, true)}
-          >
-            {t('lobby.policyApprove')}
-          </button>
-          <button
-            type="button"
-            className="button"
-            data-testid="policy-reject"
-            onClick={() => void actions.respondPolicy(room.pendingPolicy!.id, false)}
-          >
-            {t('lobby.policyReject')}
-          </button>
-        </section>
-      )}
+      <PolicyProposalPanel controller={controller} />
 
       {state.roomError && (
         <p className="error" role="alert">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useT } from '../i18n/context.tsx';
 
 /**
  * Modal dialog with the two accessibility behaviours that are easy to miss:
@@ -18,6 +19,7 @@ export function Dialog({
   testId?: string;
   labelledBy?: string;
 }) {
+  const t = useT();
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<Element | null>(null);
 
@@ -52,10 +54,13 @@ export function Dialog({
       >
         <header className="dialog__header">
           <h2 id={titleId}>{title}</h2>
-          <button type="button" className="button button--ghost" onClick={onClose}>
-            {/* Label is injected by the caller through `children` context; the
-                visible text here stays a symbol so no catalog key is needed. */}
-            ✕
+          <button
+            type="button"
+            className="button button--ghost"
+            aria-label={t('app.close')}
+            onClick={onClose}
+          >
+            <span aria-hidden="true">✕</span>
           </button>
         </header>
         <div className="dialog__body">{children}</div>

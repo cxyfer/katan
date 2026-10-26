@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { RESOURCES, type Resource } from '@catan/rules';
-import { useT } from '../i18n/context.tsx';
+import { useLocale, useT } from '../i18n/context.tsx';
+import { formatResourceList } from '../i18n/format.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import type { TableController } from '../state/useTable.ts';
 
@@ -13,6 +14,7 @@ import type { TableController } from '../state/useTable.ts';
  */
 export function PendingPrompt({ controller }: { controller: TableController }) {
   const t = useT();
+  const locale = useLocale();
   const { state, actions } = controller;
   const view = state.game?.view ?? null;
   const selfId = state.session?.id ?? null;
@@ -52,6 +54,11 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
             {t('play.pending.discardRequired', { required })} ·{' '}
             {t('play.pending.discardSelected', { selected })}
           </p>
+          {selected > 0 && (
+            <p className="muted" data-testid="discard-picked">
+              {formatResourceList(locale, discardPick)}
+            </p>
+          )}
           <ul className="resource-picker">
             {RESOURCES.map((resource) => (
               <li key={resource}>
