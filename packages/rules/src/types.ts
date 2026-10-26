@@ -160,6 +160,8 @@ export interface TurnState {
   setup: SetupState | null;
   /** Set when the current 5-6 player pair is on its second actor. */
   pairedActor: 1 | 2;
+  /** Index of the current Player 1 / Player 2 pair (paired profiles only). */
+  pairIndex: number;
 }
 
 export interface DiscardPending {
@@ -285,6 +287,7 @@ export type CommandErrorCode =
   | 'E_CARD_NOT_HELD'
   | 'E_CARD_JUST_BOUGHT'
   | 'E_CARD_ALREADY_PLAYED'
+  | 'E_PAIRED_NO_DOMESTIC_TRADE'
   | 'E_NO_ELIGIBLE_VICTIM'
   | 'E_ROBBER_SAME_HEX'
   | 'E_INVALID_DISCARD_COUNT'

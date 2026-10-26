@@ -105,7 +105,7 @@ export interface CreateGameOptions {
 
 export function createGame(options: CreateGameOptions): GameState {
   const profile = requireProfile(options.profileId);
-  if (!profile.enabled) throw new Error(`profile is not enabled: ${profile.id}`);
+  if (!profile.implemented) throw new Error(`profile is not implemented: ${profile.id}`);
   if (!profile.playerCounts.includes(options.players.length)) {
     throw new Error(`profile ${profile.id} does not support ${options.players.length} players`);
   }
@@ -169,6 +169,7 @@ export function createGame(options: CreateGameOptions): GameState {
       devCardPlayed: false,
       setup: { order, index: 0, stage: 'building', round: 1, lastVertex: null },
       pairedActor: 1,
+      pairIndex: 0,
     },
     pending: null,
     offers: [],
@@ -329,22 +330,46 @@ function expireOffers(state: GameState, reason: 'window' | 'withdrawn' | 'gameOv
 }
 
 function beginTurn(state: GameState, seat: number): void {
+  openActorWindow(state, seat, 1, 'preroll');
+}
+
+/**
+ * Opens an action window for one actor. `pairedActor` distinguishes the
+ * production actor (1) from the second actor (2) of a 5-6 player pair.
+ */
+function openActorWindow(
+  state: GameState,
+  seat: number,
+  pairedActor: 1 | 2,
+  phase: 'preroll' | 'action',
+): void {
   const player = state.players[seat]!;
+  // Cards bought on an earlier turn become playable when that seat next acts.
   player.devCards.push(...player.newDevCards);
   player.newDevCards = [];
   player.progressCards.push(...player.newProgressCards);
   player.newProgressCards = [];
   state.turn.seat = seat;
-  state.turn.phase = 'preroll';
+  state.turn.phase = phase;
   state.turn.dice = null;
   state.turn.devCardPlayed = false;
   state.turn.setup = null;
-  state.turn.pairedActor = 1;
+  state.turn.pairedActor = pairedActor;
   state.pending = null;
   state.windowId += 1;
   expireOffers(state, 'window');
-  emit(state, 'turn.started', { playerId: player.id, windowId: state.windowId });
+  emit(state, 'turn.started', {
+    playerId: player.id,
+    windowId: state.windowId,
+    pairedActor,
+  });
   checkVictory(state);
+}
+
+/** The partner of a seat in a 5-6 player game: the third player to their left. */
+export function partnerSeat(state: GameState, seat: number): number {
+  const count = state.players.length;
+  return (seat + 3) % count;
 }
 
 function checkVictory(state: GameState): void {
@@ -622,10 +647,33 @@ function endTurn(state: GameState, actorId: string): CommandOutcome {
   if (guard) return guard;
   if (state.turn.phase !== 'action') return fail('E_WRONG_PHASE', { phase: state.turn.phase });
   if (state.pending) return fail('E_PENDING_EFFECT', { pending: state.pending.kind });
-  const nextSeat = (state.turn.seat + 1) % state.players.length;
-  emit(state, 'turn.ended', { playerId: actorId });
-  beginTurn(state, nextSeat);
+  const profile = requireProfile(state.profileId);
+  emit(state, 'turn.ended', { playerId: actorId, pairedActor: state.turn.pairedActor });
+
+  if (profile.paired && state.turn.pairedActor === 1) {
+    // Player 2 acts next, without another production roll (§5.5).
+    openActorWindow(state, partnerSeat(state, state.turn.seat), 2, 'action');
+    return { ok: true, state, events: [] };
+  }
+
+  if (profile.paired) {
+    // Both markers advance to the next player to their left.
+    state.turn.pairIndex += 1;
+    beginTurn(state, state.turn.pairIndex % state.players.length);
+    return { ok: true, state, events: [] };
+  }
+
+  beginTurn(state, (state.turn.seat + 1) % state.players.length);
   return { ok: true, state, events: [] };
+}
+
+/** Paired Player 2 may not start or settle a domestic exchange. */
+function pairedTradeBlocked(state: GameState, actorId: string): CommandOutcome | null {
+  const profile = requireProfile(state.profileId);
+  if (!profile.paired) return null;
+  if (state.turn.pairedActor !== 2) return null;
+  if (currentPlayer(state).id !== actorId) return null;
+  return fail('E_PAIRED_NO_DOMESTIC_TRADE');
 }
 
 // ---------------------------------------------------------------------------
@@ -1008,6 +1056,8 @@ function createOffer(
 ): CommandOutcome {
   const guard = requireOpenWindow(state);
   if (guard) return guard;
+  const tradeBlock = pairedTradeBlocked(state, actorId);
+  if (tradeBlock) return tradeBlock;
   const turnActor = currentPlayer(state).id;
   // Anyone may propose during the open window, but an offer from a non-actor
   // must be a counteroffer addressed to the action-window actor.
@@ -1109,6 +1159,8 @@ function settleOffer(
 ): CommandOutcome {
   const guard = requireActionPhase(state, actorId);
   if (guard) return guard;
+  const tradeBlock = pairedTradeBlocked(state, actorId);
+  if (tradeBlock) return tradeBlock;
   const offer = state.offers.find((candidate) => candidate.id === offerId);
   if (!offer) return fail('E_UNKNOWN_OFFER', { offerId });
   if (offer.status !== 'open') return fail('E_OFFER_CLOSED', { status: offer.status });

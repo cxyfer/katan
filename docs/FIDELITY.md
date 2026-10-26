@@ -28,6 +28,17 @@ Every other row of the §5.7 matrix is registered with `enabled: false` and a
 `unavailableReasonKey`; the lobby does not offer it and the server rejects a
 modified client that requests it (`resolveCombination` → `disabled`).
 
+The registry separates two questions:
+
+- `implemented` — the engine can execute the profile's rules. `createGame`
+  requires this, so fixtures can exercise a profile before it is advertised.
+- `enabled` — the lobby advertises it and the service accepts it.
+
+`base-paired-2025` (5–6 players) is `implemented: true`, `enabled: false`: the
+paired-turn procedure is implemented and fixture-tested, while the 5–6
+setup/supply and development-deck transcription still needs source
+verification before the row may be offered.
+
 ## Fixture → evidence map
 
 | Fixture | Contract | Automated evidence | Status |
@@ -44,6 +55,7 @@ modified client that requests it (`resolveCombination` → `disabled`).
 | R-POLICY | pre-start host edit clears readiness, bounds, host-only rejection, all-seat consent, rejection leaves policy, host transfer cancels | `packages/server/test/rooms.test.ts` | covered |
 | R-SAVE | save barrier acknowledgement, idempotent request id, no table-wide pause, all-seat suspension, readiness-gated resume, rejection | `packages/server/test/recovery.test.ts` | covered |
 | R-REC | restart restores revision/seat/receipts; terminal result persists; repository contract on SQLite **and** PostgreSQL | `packages/server/test/recovery.test.ts`, `packages/server/test/db-contract.test.ts` | covered (SQLite + PostgreSQL 16) |
+| R-56 | partner = third seat to the left, five- and six-seat pair cycles, production only on Player 1, no domestic trade for Player 2, build/bank/card actions for Player 2, card carry between roles, either role may win | `packages/rules/test/paired.test.ts` (11 cases) | covered at engine level; profile stays disabled |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
 | U-01…U-08, U-I18N | rendered interactions, devices, accessibility, playtests | `packages/web` component tests only | **partially covered — see gaps** |
@@ -77,9 +89,14 @@ These are recorded rather than hidden. None of them is presented as verified.
    transcription.** The number tokens are laid in the printed spiral order; the
    6/8-adjacency restriction is not applied because it is not part of the base
    B25 procedure.
-4. **No expansion profile is enabled.** 5–6 players, Seafarers, Cities &
-   Knights and their combination are registered targets only. Enabling any row
-   requires its own fixtures (R-56, R-SF, R-CK, R-COMB) to pass first.
+4. **Only the base row is advertised.** 5–6 players, Seafarers, Cities &
+   Knights and their combination remain `enabled: false`. The paired-turn
+   procedure for 5–6 is implemented and tested, but the row stays closed until
+   B56-25 setup, supply and deck contents are transcribed and verified, and
+   until R-SF/R-CK/R-COMB fixtures exist for the other rows. The 5-player pair
+   cycle is derived from the specification's wording ("the third player to
+   Player 1's left", "both markers move to the next player to their left")
+   rather than transcribed page-by-page from B56-25.
 5. **No real-device or screen-reader evidence.** U-03 (physical iOS/Android),
    U-04 (manual assistive-technology walkthrough), U-06 (measured
    responsiveness), U-07 (novice observation) and U-08 (expert playtest) have

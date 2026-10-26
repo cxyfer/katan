@@ -37,6 +37,12 @@ export interface ProfileDefinition {
   hasPirate: boolean;
   longestRouteIncludesShips: boolean;
   retainLargestArmy: boolean;
+  /**
+   * The engine can execute this profile's rules. Separate from `enabled` so
+   * fixtures can exercise an implemented profile while the lobby still refuses
+   * to advertise it until its evidence is complete.
+   */
+  implemented: boolean;
   /** False until the profile's rules and fixtures have passed. */
   enabled: boolean;
   /** i18n message id explaining why an entry is unavailable. */
@@ -81,17 +87,21 @@ function baseProfile(
     hasPirate: false,
     longestRouteIncludesShips: false,
     retainLargestArmy: true,
+    implemented: false,
     enabled: false,
     ...overrides,
   };
 }
 
 export const PROFILES: readonly ProfileDefinition[] = [
-  baseProfile('base-2025', [3, 4], { enabled: true }),
+  baseProfile('base-2025', [3, 4], { implemented: true, enabled: true }),
 
   baseProfile('base-paired-2025', [5, 6], {
     paired: true,
     bankPerResource: 24,
+    // Paired turns (§5.5) are implemented; the 5–6 setup/supply and deck
+    // transcription still needs source verification before this row is offered.
+    implemented: true,
     unavailableReasonKey: 'profile.unavailable.paired',
   }),
 

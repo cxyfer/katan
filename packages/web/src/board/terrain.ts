@@ -59,6 +59,19 @@ export const RESOURCE_GLYPH: Readonly<Record<string, string>> = {
   ore: '◆',
 };
 
+/** Single-letter resource codes used on harbour tokens and compact panels. */
+export const RESOURCE_LETTER: Readonly<Record<string, string>> = {
+  lumber: 'L',
+  brick: 'B',
+  wool: 'W',
+  grain: 'G',
+  ore: 'O',
+};
+
+export function resourceLetter(resource: string): string {
+  return RESOURCE_LETTER[resource] ?? '?';
+}
+
 /** Probability pips per dice total (out of 36), shown as a non-colour cue. */
 export const NUMBER_PIPS: Readonly<Record<number, number>> = {
   2: 1,

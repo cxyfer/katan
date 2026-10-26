@@ -1,0 +1,338 @@
+import { useState } from 'react';
+import { RESOURCES, type Offer, type Resource } from '@catan/rules';
+import { useLocale, useT } from '../i18n/context.tsx';
+import { formatNumber, formatResourceMap } from '../i18n/format.ts';
+import type { TableController } from '../state/useTable.ts';
+
+function emptyTerms(): Partial<Record<Resource, number>> {
+  return {};
+}
+
+/**
+ * Trading: structured offers plus the bank/harbour exchange (docs/SPEC.md §4.5).
+ *
+ * Offers are negotiation, not proof of inventory: nothing is reserved, the
+ * displayed revision is the one consent binds to, and only a settle command
+ * moves cards. Bank exchange never waits for another player.
+ */
+export function TradePanel({ controller }: { controller: TableController }) {
+  const t = useT();
+  const locale = useLocale();
+  const { state, actions } = controller;
+  const view = state.game?.view ?? null;
+  const selfId = state.session?.id ?? null;
+  const [give, setGive] = useState<Partial<Record<Resource, number>>>(emptyTerms());
+  const [want, setWant] = useState<Partial<Record<Resource, number>>>(emptyTerms());
+  const [to, setTo] = useState<string>('all');
+  const [bankGive, setBankGive] = useState<Resource>('lumber');
+  const [bankReceive, setBankReceive] = useState<Resource>('brick');
+  const [counterparty, setCounterparty] = useState<string>('');
+
+  if (!view) return null;
+  const offers = view.offers.filter((offer) => offer.status === 'open' || offer.status === 'agreed');
+  const others = view.players.filter((player) => player.id !== selfId);
+  const nameOf = (playerId: string) =>
+    playerId === 'all' ? t('play.tradeToAll') : (view.players.find((p) => p.id === playerId)?.nickname ?? playerId);
+  const rates = view.hints?.bankRates;
+
+  const bump = (
+    setter: (value: Partial<Record<Resource, number>>) => void,
+    terms: Partial<Record<Resource, number>>,
+    resource: Resource,
+    delta: number,
+  ) => {
+    const next = { ...terms };
+    const value = (next[resource] ?? 0) + delta;
+    if (value <= 0) delete next[resource];
+    else next[resource] = value;
+    setter(next);
+  };
+
+  return (
+    <section className="panel" aria-labelledby="trade-heading" data-testid="trade-panel">
+      <h2 id="trade-heading">{t('play.trade')}</h2>
+
+      <div className="trade-builder">
+        <h3>{t('play.tradeNew')}</h3>
+        <div className="field">
+          <label htmlFor="offer-to">{t('play.tradeTo')}</label>
+          <select
+            id="offer-to"
+            data-testid="offer-to"
+            value={to}
+            onChange={(event) => setTo(event.target.value)}
+          >
+            <option value="all">{t('play.tradeToAll')}</option>
+            {others.map((player) => (
+              <option key={player.id} value={player.id}>
+                {player.nickname}
+              </option>
+            ))}
+          </select>
+        </div>
+        {(['give', 'want'] as const).map((side) => {
+          const terms = side === 'give' ? give : want;
+          const setter = side === 'give' ? setGive : setWant;
+          return (
+            <fieldset key={side}>
+              <legend>{t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')}</legend>
+              <ul className="term-list">
+                {RESOURCES.map((resource) => (
+                  <li key={resource}>
+                    <span>{t(`resource.${resource}`)}</span>
+                    <button
+                      type="button"
+                      className="button button--chip"
+                      aria-label={`${t(`resource.${resource}`)} −`}
+                      onClick={() => bump(setter, terms, resource, -1)}
+                    >
+                      −
+                    </button>
+                    <output data-testid={`${side}-${resource}`}>
+                      {formatNumber(locale, terms[resource] ?? 0)}
+                    </output>
+                    <button
+                      type="button"
+                      className="button button--chip"
+                      aria-label={`${t(`resource.${resource}`)} +`}
+                      onClick={() => bump(setter, terms, resource, 1)}
+                    >
+                      +
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
+          );
+        })}
+        <button
+          type="button"
+          className="button button--primary"
+          data-testid="create-offer"
+          onClick={() =>
+            void actions.submitCommand({ type: 'trade.offer', to, give, want }, 'play.tradeNew')
+          }
+        >
+          {t('play.tradeCreate')}
+        </button>
+        <p className="muted">{t('play.tradeNoReservation')}</p>
+      </div>
+
+      <div className="offer-list" data-testid="offer-list">
+        {offers.length === 0 && <p className="muted">{t('play.tradeNoOffers')}</p>}
+        {offers.map((offer) => (
+          <OfferRow
+            key={offer.id}
+            offer={offer}
+            selfId={selfId}
+            nameOf={nameOf}
+            counterparty={counterparty}
+            setCounterparty={setCounterparty}
+            onSubmit={(command, labelId) => void actions.submitCommand(command, labelId)}
+          />
+        ))}
+      </div>
+
+      <div className="bank-trade">
+        <h3>{t('play.bankTrade')}</h3>
+        <div className="field field--inline">
+          <label htmlFor="bank-give">{t('play.bankTradeGive')}</label>
+          <select
+            id="bank-give"
+            data-testid="bank-give"
+            value={bankGive}
+            onChange={(event) => setBankGive(event.target.value as Resource)}
+          >
+            {RESOURCES.map((resource) => (
+              <option key={resource} value={resource}>
+                {t(`resource.${resource}`)} ({rates?.[resource] ?? 4}:1)
+              </option>
+            ))}
+          </select>
+          <label htmlFor="bank-receive">{t('play.bankTradeReceive')}</label>
+          <select
+            id="bank-receive"
+            data-testid="bank-receive"
+            value={bankReceive}
+            onChange={(event) => setBankReceive(event.target.value as Resource)}
+          >
+            {RESOURCES.map((resource) => (
+              <option key={resource} value={resource}>
+                {t(`resource.${resource}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+        {rates && (
+          <p className="muted" data-testid="bank-rate">
+            {t('play.bankTradeRate', {
+              resource: t(`resource.${bankGive}`),
+              rate: rates[bankGive],
+            })}
+          </p>
+        )}
+        {bankGive === bankReceive && <p className="error">{t('play.bankTradeSame')}</p>}
+        <button
+          type="button"
+          className="button"
+          data-testid="bank-submit"
+          disabled={bankGive === bankReceive}
+          onClick={() =>
+            void actions.submitCommand(
+              { type: 'trade.bank', give: bankGive, receive: bankReceive },
+              'play.bankTrade',
+            )
+          }
+        >
+          {t('play.bankTradeSubmit')}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function OfferRow({
+  offer,
+  selfId,
+  nameOf,
+  counterparty,
+  setCounterparty,
+  onSubmit,
+}: {
+  offer: Offer;
+  selfId: string | null;
+  nameOf: (playerId: string) => string;
+  counterparty: string;
+  setCounterparty: (value: string) => void;
+  onSubmit: (command: { type: string } & Record<string, unknown>, labelId: string) => void;
+}) {
+  const t = useT();
+  const locale = useLocale();
+  const isMine = offer.from === selfId;
+  const isRecipient = offer.to === 'all' ? !isMine : offer.to === selfId;
+  const consented = Object.entries(offer.responses)
+    .filter(([, response]) => response === 'consented')
+    .map(([playerId]) => playerId);
+  const canSettle =
+    isMine &&
+    (offer.to === 'all' ? consented.length > 0 : offer.responses[offer.to] === 'consented');
+
+  return (
+    <article className="offer" data-testid={`offer-${offer.id}`}>
+      <header>
+        <strong>{t('play.tradeOfferFrom', { player: nameOf(offer.from) })}</strong>{' '}
+        <span className="muted">
+          {offer.to === 'all' ? t('play.tradeToAll') : t('play.tradeOfferTo', { player: nameOf(offer.to) })}
+        </span>
+      </header>
+      <p>
+        {t('play.tradeGive')}: {formatResourceMap(locale, offer.give)} · {t('play.tradeWant')}:{' '}
+        {formatResourceMap(locale, offer.want)}
+      </p>
+      <p className="muted">
+        {t(`play.tradeStatus.${offer.status}`)} · {t('play.tradeRevision', { revision: offer.revision })}
+      </p>
+      <ul className="response-list">
+        {Object.entries(offer.responses).map(([playerId, response]) => (
+          <li key={playerId}>
+            {nameOf(playerId)}: {t(`play.tradeResponse.${response}`)}
+          </li>
+        ))}
+      </ul>
+      <div className="offer__actions">
+        {isRecipient && offer.status === 'open' && (
+          <>
+            <button
+              type="button"
+              className="button"
+              data-testid={`decline-${offer.id}`}
+              onClick={() => onSubmit({ type: 'trade.respond', offerId: offer.id, response: 'declined' }, 'play.tradeDecline')}
+            >
+              {t('play.tradeDecline')}
+            </button>
+            <button
+              type="button"
+              className="button"
+              data-testid={`interested-${offer.id}`}
+              onClick={() => onSubmit({ type: 'trade.respond', offerId: offer.id, response: 'interested' }, 'play.tradeInterested')}
+            >
+              {t('play.tradeInterested')}
+            </button>
+            <button
+              type="button"
+              className="button button--primary"
+              data-testid={`consent-${offer.id}`}
+              onClick={() => onSubmit({ type: 'trade.respond', offerId: offer.id, response: 'consented' }, 'play.tradeConsent')}
+            >
+              {t('play.tradeConsent')}
+            </button>
+          </>
+        )}
+        {isMine && (
+          <>
+            <button
+              type="button"
+              className="button"
+              data-testid={`revise-${offer.id}`}
+              onClick={() =>
+                onSubmit(
+                  { type: 'trade.revise', offerId: offer.id, give: offer.want, want: offer.give },
+                  'play.tradeRevise',
+                )
+              }
+            >
+              {t('play.tradeRevise')}
+            </button>
+            <button
+              type="button"
+              className="button"
+              data-testid={`withdraw-${offer.id}`}
+              onClick={() => onSubmit({ type: 'trade.withdraw', offerId: offer.id }, 'play.tradeWithdraw')}
+            >
+              {t('play.tradeWithdraw')}
+            </button>
+          </>
+        )}
+        {canSettle && (
+          <>
+            {offer.to === 'all' && (
+              <label>
+                {t('play.tradeTo')}
+                <select
+                  data-testid={`counterparty-${offer.id}`}
+                  value={counterparty}
+                  onChange={(event) => setCounterparty(event.target.value)}
+                >
+                  <option value="">—</option>
+                  {consented.map((playerId) => (
+                    <option key={playerId} value={playerId}>
+                      {nameOf(playerId)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <button
+              type="button"
+              className="button button--primary"
+              data-testid={`settle-${offer.id}`}
+              onClick={() =>
+                onSubmit(
+                  {
+                    type: 'trade.settle',
+                    offerId: offer.id,
+                    ...(offer.to === 'all' ? { counterparty } : {}),
+                  },
+                  'play.tradeSettle',
+                )
+              }
+            >
+              {t('play.tradeSettle')}
+            </button>
+          </>
+        )}
+      </div>
+      <p className="muted">{t('play.tradeExpiresAtWindowEnd')}</p>
+    </article>
+  );
+}

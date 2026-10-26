@@ -108,7 +108,7 @@ describe('ruleset registry', () => {
     ).toMatchObject({ ok: true });
   });
 
-  it('refuses to create a game for a disabled profile', () => {
+  it('refuses to create a game for an unimplemented profile', () => {
     expect(() =>
       createGame({
         profileId: 'sf-new-shores-2025',
@@ -120,7 +120,23 @@ describe('ruleset registry', () => {
         setupMode: 'fixed',
         rng: seededRng(1),
       }),
-    ).toThrow(/not enabled/);
+    ).toThrow(/not implemented/);
+  });
+
+  it('refuses to create a game for a profile that is implemented but not advertised', () => {
+    // `base-paired-2025` can be executed by the engine, yet the lobby must not
+    // offer it until its 5-6 setup/supply evidence is complete.
+    expect(getProfile('base-paired-2025')!.implemented).toBe(true);
+    expect(selectableProfiles(6).map((profile) => profile.id)).toEqual([]);
+    expect(
+      resolveCombination({
+        playerCount: 6,
+        seafarers: false,
+        citiesKnights: false,
+        scenario: null,
+        setupMode: 'fixed',
+      }),
+    ).toEqual({ ok: false, reason: 'disabled' });
   });
 
   it('refuses a player count the profile does not support', () => {
