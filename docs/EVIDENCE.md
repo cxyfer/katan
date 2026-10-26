@@ -43,6 +43,8 @@ All commands were run from the repository root unless stated otherwise.
 | 15 | `docker stop -t 30 catan-app` then `docker start catan-app` | graceful `SIGTERM` logged; the same guest identity was restored from the volume |
 | 16 | `docker compose -f docker-compose.postgres.yml up -d --no-build` then the smoke run | `/readyz` → `ready`; 13/13 checks passed; `guests`/`games`/`chat_messages` rows present in PostgreSQL |
 | 17 | Playwright + Chromium 156 headless, three isolated browser contexts against the published URL | lobby → start → settlement → road, `PROBLEMS: none` (see below) |
+| 18 | Same harness, full three-player game advanced through the API then rendered | 12 setup commands accepted, roll accepted, 12 states captured in `docs/screenshots/` |
+| 19 | Board-fit measurement at 1366×768 before and after the fix | SVG bottom `803` → `752` against a `768` viewport; whole map now above the fold |
 
 All seventeen commands were executed in this session.
 
@@ -72,7 +74,12 @@ could observe:
    the application was unusable. Fixed at the transport adapter, with a
    regression test whose fake enforces the browser's receiver contract (it fails
    without the fix).
-2. **Service notices rendered as raw ids.** 32 of the 40 message ids the service
+2. **The "Fit board" control did not fit the board.** `resetView` only reset pan
+   and zoom, while the SVG was capped at `70vh` measured from the wrong edge, so
+   at the specification's primary desktop viewport (1366×768) the map ended 25px
+   below the fold. Fixed by measuring the SVG's own top edge and sizing the board
+   to the remaining viewport height; verified by measurement and screenshots.
+3. **Service notices rendered as raw ids.** 32 of the 40 message ids the service
    authors (`blocker.*` and its own `error.E_*`) were absent from both catalogs,
    so a player saw `blocker.seats` instead of a sentence. Fixed by giving
    `@catan/protocol` the service vocabulary, adding a server-side guard test that

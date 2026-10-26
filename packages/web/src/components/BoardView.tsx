@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -51,6 +52,8 @@ export function BoardView({ controller }: { controller: TableController }) {
   const locale = useLocale();
   const { state, actions } = controller;
   const view = state.game?.view ?? null;
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -156,10 +159,38 @@ export function BoardView({ controller }: { controller: TableController }) {
     }
   };
 
+  /**
+   * Sizes the board so the whole map fits between its own top edge and the
+   * bottom of the viewport. The control is labelled "Fit board", so it must
+   * actually fit rather than only resetting pan and zoom (SPEC U-01: board
+   * panning is deliberate, not accidental whole-page overflow).
+   */
+  const fitBoard = useCallback(() => {
+    const node = boardRef.current;
+    // Measure the SVG itself: the toolbar sits above it, so the container's top
+    // would overstate the space actually available to the map.
+    const svg = svgRef.current ?? node;
+    if (!node || !svg) return;
+    const top = svg.getBoundingClientRect().top;
+    const viewport = globalThis.innerHeight || 0;
+    const available = Math.max(240, Math.round(viewport - top - 16));
+    node.style.setProperty('--board-available', `${available}px`);
+  }, []);
+
   const resetView = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
+    fitBoard();
   };
+
+  // Keep the board fitted while the viewport changes (rotation, zoom, resize).
+  useEffect(() => {
+    if (!view) return;
+    fitBoard();
+    const onResize = () => fitBoard();
+    globalThis.addEventListener('resize', onResize);
+    return () => globalThis.removeEventListener('resize', onResize);
+  }, [fitBoard, view]);
 
   if (!view) {
     return (
@@ -173,7 +204,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const selectedIndex = state.selection.index;
 
   return (
-    <div className="board" data-testid="board">
+    <div className="board" data-testid="board" ref={boardRef}>
       <div className="board__toolbar" role="group" aria-label={t('board.heading')}>
         <button
           type="button"
@@ -216,6 +247,7 @@ export function BoardView({ controller }: { controller: TableController }) {
       </div>
 
       <svg
+        ref={svgRef}
         className="board__svg"
         data-testid="board-svg"
         role="img"
