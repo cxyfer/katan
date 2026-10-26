@@ -6,7 +6,6 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
-import { getTopology } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { buildGeometry, type BoardGeometry, type Point } from '../board/geometry.ts';
 import { boardIntent, type BoardIntent } from '../board/intent.ts';

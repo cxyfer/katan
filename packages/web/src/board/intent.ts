@@ -71,7 +71,9 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
   }
 
   const pending = view.pending;
-  if (pending && pending.actor === selfId) {
+  // `discard` is the one pending effect with no single actor and no board
+  // target: the discard UI owns it, not the board.
+  if (pending && pending.kind !== 'discard' && pending.actor === selfId) {
     if (pending.kind === 'moveRobber') {
       return {
         kind: 'hex',

@@ -380,6 +380,30 @@ export function createHttpHandler(deps: HttpDeps) {
     };
   });
 
+  route('POST', '/api/games/:gameId/abandon', async ({ params, body, playerId }) => {
+    requireSession(playerId);
+    const proposalId = optionalString(body, 'proposalId');
+    if (proposalId) {
+      const approve = asObject(body).approve;
+      return {
+        data: await deps.games.consentAbandon(
+          playerId!,
+          params.gameId!,
+          proposalId,
+          approve === undefined ? true : approve === true,
+        ),
+      };
+    }
+    return { data: await deps.games.proposeAbandon(playerId!, params.gameId!) };
+  });
+
+  route('POST', '/api/rooms/:roomId/withdraw', async ({ params, body, playerId }) => {
+    requireSession(playerId);
+    const withdrawn = asObject(body).withdrawn;
+    if (typeof withdrawn !== 'boolean') throw badRequest('error.E_MISSING_FIELD', { field: 'withdrawn' });
+    return { data: await deps.rooms.setWithdrawn(playerId!, params.roomId!, withdrawn) };
+  });
+
   route('POST', '/api/games/:gameId/save', async ({ params, body, playerId }) => {
     requireSession(playerId);
     return { data: await deps.games.save(playerId!, params.gameId!, requireString(body, 'requestId')) };

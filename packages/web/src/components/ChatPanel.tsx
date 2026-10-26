@@ -20,11 +20,6 @@ export function ChatPanel({ controller }: { controller: TableController }) {
   const chat = state.chat;
   const selfId = state.session?.id ?? null;
   const messages = useMemo(() => visibleMessages(chat), [chat]);
-  const nameOf = (playerId: string) =>
-    state.room?.members.find((member) => member.playerId === playerId)?.nickname ??
-    state.game?.view.players.find((player) => player.id === playerId)?.nickname ??
-    playerId;
-
   const pending = chat.entries.filter((entry) => entry.status !== 'sent');
 
   return (

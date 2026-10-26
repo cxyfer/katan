@@ -2,7 +2,7 @@ import { COSTS, RESOURCES } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
 import { Legend } from './Legend.tsx';
-import type { TableController } from './props.ts';
+import type { TableController } from '../state/useTable.ts';
 
 /** In-game help: costs, legend and the profile summary (docs/SPEC.md §8.4). */
 export function HelpPanel({ controller }: { controller: TableController }) {

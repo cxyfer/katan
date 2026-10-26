@@ -1218,6 +1218,23 @@ function settleOffer(
   return { ok: true, state, events: [] };
 }
 
+/**
+ * Terminal transition for a table that agreed to end an interrupted game.
+ *
+ * This is a lifecycle transition, not a rule: it produces no winner, cancels
+ * outstanding negotiation and rejects every later strategic command (§4.6).
+ */
+export function abandonGame(state: GameState): GameState {
+  if (state.result) return state;
+  const next = clone(state);
+  next.result = { playerId: null, reason: 'abandoned', atSeq: next.seq };
+  next.turn.phase = 'gameOver';
+  next.pending = null;
+  expireOffers(next, 'gameOver');
+  emit(next, 'game.abandoned', { reason: 'abandoned' });
+  return next;
+}
+
 // ---------------------------------------------------------------------------
 // views
 // ---------------------------------------------------------------------------

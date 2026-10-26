@@ -52,6 +52,7 @@ verification before the row may be offered.
 | R-B07 | win at own turn start, no win from an outside-turn gain, several VP cards together, award loss before the next turn, terminal state rejects commands | `packages/rules/test/victory.test.ts` (7 cases) | covered |
 | R-VIS | per-player projection, hidden hands/cards/deck, private event parameters, room-discovery metadata | `packages/rules/test/privacy.test.ts` (7), `packages/server/test/game.test.ts` (HTTP) | covered |
 | R-ROOM | join/start/settings races, full room, not-ready/disconnected start, host transfer, seats kept in a running game | `packages/server/test/rooms.test.ts` | covered |
+| R-ROOM (abandonment) | absent-seat requirement, every connected seat confirms, reconnect cancels the vote, policy opt-out, explicit withdrawal and retraction, no-winner terminal result | `packages/server/test/abandonment.test.ts` (7 cases) | covered |
 | R-POLICY | pre-start host edit clears readiness, bounds, host-only rejection, all-seat consent, rejection leaves policy, host transfer cancels | `packages/server/test/rooms.test.ts` | covered |
 | R-SAVE | save barrier acknowledgement, idempotent request id, no table-wide pause, all-seat suspension, readiness-gated resume, rejection | `packages/server/test/recovery.test.ts` | covered |
 | R-REC | restart restores revision/seat/receipts; terminal result persists; repository contract on SQLite **and** PostgreSQL | `packages/server/test/recovery.test.ts`, `packages/server/test/db-contract.test.ts` | covered (SQLite + PostgreSQL 16) |
@@ -106,10 +107,11 @@ These are recorded rather than hidden. None of them is presented as verified.
    several real browsers.
 7. **Presence timing is exercised through the API only.** The host-succession
    grace timer is implemented, but no test waits out a real grace period.
-8. **Abandonment of an interrupted table is not implemented.** §4.6's
-   unanimous-currently-connected abandonment vote is described in the policy
-   model but no endpoint or engine transition exists yet; the room policy
-   records the operator's intent only.
+8. **Abandonment is implemented but not yet exercised with real presence
+   timing.** The vote, its invalidation on reconnection and the no-winner
+   terminal transition are covered through the API with an injected
+   disconnection; no test waits out a real grace period or closes a real
+   WebSocket to produce the absence.
 9. **Advisory turn clock is stored, not enforced.** The value is validated and
    displayed; no timer drives an overdue cue yet.
 10. **Stale-lobby cleanup is not scheduled.** The TTL is documented and the

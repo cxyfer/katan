@@ -13,7 +13,7 @@ import type { ScreenProps } from './props.ts';
 export function HomeScreen({ controller }: ScreenProps) {
   const t = useT();
   const locale = useLocale();
-  const { state, dispatch, actions } = controller;
+  const { state, actions } = controller;
   const [code, setCode] = useState('');
   const [visibility, setVisibility] = useState<'private' | 'public'>('private');
   const [capacity, setCapacity] = useState(4);

@@ -9,13 +9,7 @@
 import type { Locale } from '@catan/protocol';
 import type { GameEvent } from '@catan/rules';
 import { t } from './index.ts';
-import {
-  formatDice,
-  formatGrantMap,
-  formatPlayerList,
-  formatResourceList,
-  formatResourceMap,
-} from './format.ts';
+import { formatDice, formatGrantMap, formatPlayerList, formatResourceMap } from './format.ts';
 
 export interface EventText {
   messageId: string;

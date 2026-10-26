@@ -52,11 +52,12 @@ export const NETWORK_ERROR: ApiError = {
   messageId: 'error.E_NETWORK',
 };
 
-export interface RoomQuery {
+/** A type alias (not an interface) so it is assignable to a query record. */
+export type RoomQuery = {
   playerCount?: number;
   profileId?: string;
   hasSeats?: boolean;
-}
+};
 
 export interface CreateRoomBody {
   visibility: 'private' | 'public';

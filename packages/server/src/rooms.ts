@@ -385,6 +385,26 @@ export class RoomService {
     return this.view(roomId, playerId);
   }
 
+  /**
+   * Records or retracts an explicit withdrawal. A withdrawal is separate from
+   * Save and leave and never removes the seat (§4.6).
+   */
+  async setWithdrawn(playerId: string, roomId: string, withdrawn: boolean): Promise<RoomView> {
+    await this.requireMembership(roomId, playerId);
+    await this.repo.updateMembership(roomId, playerId, { withdrawn: withdrawn ? 1 : 0 });
+    if (withdrawn) {
+      // A withdrawal invalidates a pending abandonment vote.
+      await this.cancelPendingProposals(roomId);
+    }
+    this.broadcastRoom(roomId);
+    return this.view(roomId, playerId);
+  }
+
+  /** Cancels any open vote when the eligibility of the voters changes. */
+  async invalidateGameVotes(gameId: string): Promise<void> {
+    await this.repo.cancelOpenGameProposals(gameId);
+  }
+
   async setReady(playerId: string, roomId: string, ready: boolean): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     if (room.status !== 'lobby') {
@@ -590,6 +610,9 @@ export class RoomService {
   async registerConnection(connection: Connection): Promise<void> {
     const roomId = connection.roomId;
     if (!roomId) return;
+    // A returning connection invalidates a vote it did not participate in.
+    const room = await this.repo.findRoom(roomId);
+    if (room?.game_id) await this.invalidateGameVotes(room.game_id);
     const runtime = this.runtime(roomId);
     const set = runtime.connections.get(connection.playerId) ?? new Set<Connection>();
     set.add(connection);

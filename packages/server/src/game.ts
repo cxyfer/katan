@@ -7,6 +7,7 @@
  */
 
 import {
+  abandonGame,
   actionHints,
   applyCommand,
   createGame,
@@ -474,6 +475,115 @@ export class GameCoordinator {
       this.deps.rooms.broadcastRoom(game.room_id);
       return { resumed: true, waitingFor: [] };
     });
+  }
+
+  // -- abandonment of an interrupted table --------------------------------
+
+  /**
+   * §4.6: any connected seated player may propose abandonment once the policy
+   * allows it and at least one seat is absent or has withdrawn. Every currently
+   * connected seated player must confirm the same proposal.
+   */
+  async proposeAbandon(playerId: string, gameId: string): Promise<{ proposalId: string }> {
+    return this.withLock(gameId, async () => {
+      const game = await this.requireGame(gameId);
+      await this.requireSeat(game, playerId);
+      const room = await this.repo.findRoom(game.room_id);
+      if (!room) throw new ServiceError('E_ROOM_NOT_FOUND', 'error.E_ROOM_NOT_FOUND', {}, 404);
+      const policy = this.policyOfRoom(room.policy_json);
+      if (!policy.allowAbandonment) {
+        throw new ServiceError('E_ABANDON_DISABLED', 'error.E_ABANDON_DISABLED', {}, 409);
+      }
+      const state = JSON.parse(game.state_json) as GameState;
+      if (state.result) {
+        throw new ServiceError('E_GAME_OVER', 'error.E_GAME_OVER', { gameId }, 409);
+      }
+      const memberships = await this.repo.listMemberships(game.room_id);
+      if (!memberships.some((member) => member.connected !== 1 || member.withdrawn === 1)) {
+        throw new ServiceError('E_NO_ABSENT_PLAYER', 'error.E_NO_ABSENT_PLAYER', {}, 409);
+      }
+      const existing = await this.repo.findOpenGameProposal(gameId, 'abandon');
+      if (existing) return { proposalId: existing.id };
+      const proposalId = newId('abandon');
+      await this.repo.insertGameProposal({
+        id: proposalId,
+        game_id: gameId,
+        kind: 'abandon',
+        proposed_by: playerId,
+        status: 'open',
+        created_at: new Date().toISOString(),
+      });
+      await this.repo.insertGameConsent(proposalId, playerId);
+      await this.tryApplyAbandon(game, proposalId);
+      return { proposalId };
+    });
+  }
+
+  async consentAbandon(
+    playerId: string,
+    gameId: string,
+    proposalId: string,
+    approve: boolean,
+  ): Promise<{ abandoned: boolean }> {
+    return this.withLock(gameId, async () => {
+      const game = await this.requireGame(gameId);
+      await this.requireSeat(game, playerId);
+      const proposal = await this.repo.findOpenGameProposal(gameId, 'abandon');
+      if (!proposal || proposal.id !== proposalId) {
+        throw new ServiceError('E_NO_PROPOSAL', 'error.E_NO_PROPOSAL', { proposalId }, 404);
+      }
+      if (!approve) {
+        await this.repo.updateGameProposalStatus(proposalId, 'rejected');
+        return { abandoned: false };
+      }
+      await this.repo.insertGameConsent(proposalId, playerId);
+      return { abandoned: await this.tryApplyAbandon(game, proposalId) };
+    });
+  }
+
+  private async tryApplyAbandon(game: GameRow, proposalId: string): Promise<boolean> {
+    const room = await this.repo.findRoom(game.room_id);
+    if (!room) return false;
+    if (!this.policyOfRoom(room.policy_json).allowAbandonment) {
+      await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
+      return false;
+    }
+    const memberships = await this.repo.listMemberships(game.room_id);
+    // Recheck the absence condition: a reconnection invalidates the vote.
+    if (!memberships.some((member) => member.connected !== 1 || member.withdrawn === 1)) {
+      await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
+      return false;
+    }
+    const voters = memberships.filter((member) => member.connected === 1);
+    const consents = new Set(await this.repo.listGameConsents(proposalId));
+    if (!voters.every((voter) => consents.has(voter.player_id))) return false;
+
+    const fresh = await this.requireGame(game.id);
+    const current = JSON.parse(fresh.state_json) as GameState;
+    if (current.result) {
+      // A committed victory outranks a later abandonment request.
+      await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
+      return false;
+    }
+    const abandoned = abandonGame(current);
+    await this.repo.transaction(async () => {
+      await this.repo.saveGame(game.id, abandoned, fresh.revision + 1, 'abandoned', null);
+      await this.repo.appendEvents(game.id, fresh.revision + 1, abandoned.log.slice(-1));
+      await this.repo.updateGameProposalStatus(proposalId, 'applied');
+      await this.repo.updateRoom(game.room_id, { status: 'abandoned' });
+      await this.repo.cancelOpenGameProposals(game.id);
+    });
+    this.deps.rooms.broadcastRoom(game.room_id);
+    return true;
+  }
+
+  private policyOfRoom(policyJson: string): { allowAbandonment: boolean } {
+    try {
+      const parsed = JSON.parse(policyJson) as { allowAbandonment?: boolean };
+      return { allowAbandonment: parsed.allowAbandonment !== false };
+    } catch {
+      return { allowAbandonment: true };
+    }
   }
 
   /** Game state for tests and diagnostics; never exposed over HTTP directly. */
