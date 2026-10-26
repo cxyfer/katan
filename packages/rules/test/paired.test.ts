@@ -17,14 +17,14 @@ import type { GameState } from '../src/types.ts';
 
 function pairedGame(players: 5 | 6): GameState {
   const { state } = newGame({ players, profileId: 'base-paired-2025', seed: 2026 });
-  return runSetup(state, scriptedRng(9));
+  return runSetup(state, scriptedRng([9]));
 }
 
 /** Ends the current action window without rolling (fixture shortcut). */
 function endWindow(state: GameState): GameState {
   const actor = state.players[state.turn.seat]!.id;
   const prepared: GameState = { ...state, turn: { ...state.turn, phase: 'action' } };
-  return act(prepared, actor, { type: 'turn.end' }, scriptedRng(0)).state;
+  return act(prepared, actor, { type: 'turn.end' }, scriptedRng([0])).state;
 }
 
 describe('R-56 paired profiles', () => {
@@ -119,17 +119,17 @@ describe('R-56 paired profiles', () => {
       state,
       actor,
       { type: 'trade.bank', give: 'lumber', receive: 'ore' },
-      scriptedRng(0),
+      scriptedRng([0]),
     ).state;
     expect(handOf(afterBank, actor).ore).toBe(2);
 
-    const afterBuy = act(afterBank, actor, { type: 'build.devCard' }, scriptedRng(0)).state;
+    const afterBuy = act(afterBank, actor, { type: 'build.devCard' }, scriptedRng([0])).state;
     expect(afterBuy.players[seat]!.newDevCards).toEqual(['knight']);
 
     const roadsBefore = afterBuy.board.roads.filter((road) => road?.player === actor).length;
     const target = legalRoadEdges(afterBuy, actor)[0];
     expect(target).toBeDefined();
-    const afterRoad = act(afterBuy, actor, { type: 'build.road', edge: target! }, scriptedRng(0)).state;
+    const afterRoad = act(afterBuy, actor, { type: 'build.road', edge: target! }, scriptedRng([0])).state;
     expect(afterRoad.board.roads.filter((road) => road?.player === actor).length).toBe(roadsBefore + 1);
   });
 
@@ -142,7 +142,7 @@ describe('R-56 paired profiles', () => {
     // A scoring effect during Player 2's own window ends the game.
     state.players[seat]!.devCards = ['monopoly'];
     setHand(state, actor, {});
-    const played = act(state, actor, { type: 'dev.playMonopoly', resource: 'ore' }, scriptedRng(0)).state;
+    const played = act(state, actor, { type: 'dev.playMonopoly', resource: 'ore' }, scriptedRng([0])).state;
     expect(played.result).toMatchObject({ playerId: actor, reason: 'victory' });
     expect(played.turn.phase).toBe('gameOver');
   });
@@ -155,7 +155,7 @@ describe('R-56 paired profiles', () => {
     state = { ...state, turn: { ...state.turn, phase: 'action' } };
     setHand(state, firstActor, { wool: 1, grain: 1, ore: 1 });
     state.devDeck = ['knight'];
-    state = act(state, firstActor, { type: 'build.devCard' }, scriptedRng(0)).state;
+    state = act(state, firstActor, { type: 'build.devCard' }, scriptedRng([0])).state;
     expect(state.players[firstSeat]!.newDevCards).toEqual(['knight']);
 
     // Player 1 ends, then advance until the same seat acts again as Player 2.

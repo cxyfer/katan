@@ -148,6 +148,29 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       {pending && pending.kind === 'freeRoads' && (
         <p className="muted">{t('play.pending.freeRoads', { remaining: pending.remaining })}</p>
       )}
+
+      {/* Mandatory turn actions stay inside the prompt so a mobile player never
+          has to open a drawer to act (docs/SPEC.md §8.1/§8.4). */}
+      {!pending && action?.mine && action.kind === 'roll' && (
+        <button
+          type="button"
+          className="button button--primary"
+          data-testid="prompt-roll"
+          onClick={() => void actions.submitCommand({ type: 'turn.roll' }, 'play.roll')}
+        >
+          {t('play.roll')}
+        </button>
+      )}
+      {!pending && action?.mine && action.kind === 'turn' && view.hints?.canEndTurn && (
+        <button
+          type="button"
+          className="button"
+          data-testid="prompt-end-turn"
+          onClick={() => void actions.submitCommand({ type: 'turn.end' }, 'play.endTurn')}
+        >
+          {t('play.endTurn')}
+        </button>
+      )}
     </section>
   );
 }
