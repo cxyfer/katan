@@ -1,17 +1,17 @@
 # Browser-Based CATAN-Style Game: Design Specification
 
 Date: 2026-10-26
-Status: Revised design proposal for user review
-Revision: 2026-10-26 — rule fidelity, interaction flows, recovery, and acceptance review incorporated
+Status: Product decisions D-01–D-06 confirmed; implementation and technical validation pending
+Revision: 2026-10-26 — approved rules/scope, configurable room policies, server saves, text chat, and bilingual UI incorporated
 Scope: Product requirements, system design, implementation plan, and acceptance criteria
 
 ## 1. Summary
 
-Build a browser-based, multiplayer hex-board trading game for friends and public-table play. The initial product target supports 3–6 players, private rooms, a public room browser, touch-capable responsive controls, and room-selected rule modules. The planned first full release targets the base game, the 5–6 player rules, Seafarers, and Cities & Knights, including only combinations and scenarios that have been implemented and verified.
+Build a browser-based, multiplayer hex-board trading game for friends and public-table play. The initial product target supports 3–6 players, private rooms, a public room browser, touch-capable responsive controls, and room-selected rule modules. The confirmed final first-release target is the full §5.7 base/5–6/Seafarers/Cities & Knights matrix. Deliver a playable base game first, then enable expansions/combinations only after verification. Room text chat, Traditional Chinese/English UI, and server-side save/resume are part of the first release.
 
 Ship the web client and game service as a Docker image. Operators choose SQLite for a compact single-instance installation or PostgreSQL for a separately managed database. Players initially join using a nickname and a persistent browser guest identity; account login is deferred.
 
-This is a proposal, not an implementation authorization or an accepted architecture decision record. Section 3 records user requirements. The user has requested incorporation of the review findings into this document; that request does not separately approve every newly proposed product default. Concrete recommendations and their decision deadlines are recorded in §14.1. Requirements written as “must” describe the proposed design once approved, not completed implementation.
+The user confirmed D-01–D-06 on 2026-10-26, including the follow-up choices on mid-game policy changes and server-side saves; §14.1 is the decision record. Section 3 records user requirements. These approvals establish the product baseline, not completed implementation, test evidence, an architecture decision record, or authorization to begin coding in this documentation task. Technology candidates still require their planned proof; remaining operational details are listed separately and do not reopen the confirmed product choices.
 
 The fidelity reference is the selected official physical tabletop rules, including their information boundaries and negotiation opportunities. Visual presentation may be original; rule shortcuts, automatic decisions, or convenience features must not remove a legal strategic choice. This revision contains no claim of a rendered UI, completed game, or verified implementation.
 
@@ -35,6 +35,7 @@ The fidelity reference is the selected official physical tabletop rules, includi
 - Automatic AI takeover of a disconnected player.
 - Every published scenario or every possible expansion combination. The room may enable only combinations explicitly listed as supported.
 - A companion app for physical-board play.
+- Downloadable/importable player saves, historical-state rollback, and cloned/forked games. Operator backup/restore remains separate from a player-facing save feature.
 
 ## 3. Confirmed Product Requirements
 
@@ -50,6 +51,12 @@ The fidelity reference is the selected official physical tabletop rules, includi
 | P-08 | Provide a deployable Docker image. |
 | P-09 | Commit each completed implementation phase separately. |
 | P-10 | Review and close rule/mechanism gaps, provide a complete web UI/UX, and keep play as close as practical to the selected original rules and tabletop experience. |
+| P-11 | Use the 2025 official rule family, retain the full §5.7 matrix as the final target, and deliver a playable base game before expansions. |
+| P-12 | Configure room policies at creation or by the host before start; after start, policy changes require every seated player's consent. Transfer host authority when the host leaves. |
+| P-13 | Automatically persist games and provide explicit server-side save-and-leave/resume; no downloadable/importable save, fork, or rollback to an older state in v1. |
+| P-14 | Provide structured trading plus room text chat for negotiation, discussion, reminders, and social interaction. |
+| P-15 | Initially deploy one application instance; retain the executable rule versions required by unfinished games. |
+| P-16 | Provide Traditional Chinese and English in the first release, with the approved desktop/mobile/accessibility and seat-control behavior. |
 
 ## 4. User Flows
 
@@ -67,7 +74,7 @@ Clearing browser storage or changing devices can lose access to a guest identity
 - Browse/filter public rooms by open seats, player count, expansion/rule set, and room status; do not reveal player hands or other private game state.
 - Join by invite link/code or by selecting an open public room.
 - In the lobby, select a color, inspect settings, and mark ready.
-- Only the host may change settings or start the game. A settings change clears ready status for all players.
+- Before start, only the host may change validated settings or start the game; settings changes clear readiness. After start, immutable game rules stay locked, while room-policy changes follow the all-seat approval contract in §5.8.
 - Starting locks the rules, map/scenario, seats, and player count.
 
 ### 4.3 Play, disconnect, and recover
@@ -75,7 +82,7 @@ Clearing browser storage or changing devices can lose access to a guest identity
 - The UI distinguishes the turn owner, the current action-window actor, and players with mandatory responses. Every player sees their own available actions, costs, disabled reasons, and required responses; a player with no current action sees whom the game is waiting for.
 - The server validates each action and publishes the resulting authorized view to each player.
 - On a temporary disconnect, retain the seat and show connection status. Rejoining with the same guest identity restores the seat, private player view, and any unresolved required choice.
-- A disconnected player is not silently replaced by an AI, skipped, or assigned a random discard. The proposed presence/abandonment policy is specified in §4.6 and requires decision D-03 before multiplayer acceptance.
+- A disconnected player is not silently replaced by an AI, skipped, or assigned a random discard. Apply the confirmed room policy and safeguards in §4.6/§5.8. A host cannot unilaterally change an active game's policy, and manually saving is not a withdrawal or a request to abandon.
 - On normal service/container restart, recover saved games and allow players to reconnect. If recovery is impossible or a save is corrupt, preserve the last recoverable data and show a clear failure rather than silently starting a new game.
 - The home/room screen offers “Resume game” for the current identity's unfinished seats. Recovery explains missed public actions, the current required action, and whether an outstanding command committed. It never asks the player to guess whether to repeat a purchase or trade.
 
@@ -98,7 +105,7 @@ Optional panels may be closed without abandoning a required response. The requir
 
 ### 4.5 Trading and negotiation
 
-Proposed v1 interaction: public structured offers and counteroffers, without requiring voice or general-purpose text chat (D-04). Offers are negotiation, not proof of inventory. The engine enforces legal participants and actual inventory at settlement; the UI must not expose another player's hand through offer eligibility or inventory-specific errors.
+Confirmed v1 interaction (D-04): public structured offers and counteroffers **plus room text chat**. Chat supports free-form negotiation, discussion, reminders, and social conversation without requiring external voice; only a structured transaction can transfer cards. A chat promise or “yes” is not transaction consent. Offers are negotiation, not proof of inventory. The engine enforces legal participants and actual inventory at settlement; the UI must not expose another player's hand through offer eligibility or inventory-specific errors.
 
 1. During an eligible action window, the action actor creates an offer to one player or all eligible players. Others may propose a counteroffer to that actor. An offer states resource quantities given/received from a named player's perspective, audience, window ID, offer ID, and revision.
 2. Recipients can decline, express interest, or consent to the exact displayed terms. A counteroffer is a new proposal/version requiring consent; it cannot silently rewrite an existing agreement. The action actor selects one consenting counterparty and confirms the final exchange.
@@ -107,25 +114,38 @@ Proposed v1 interaction: public structured offers and counteroffers, without req
 5. Unsettled offers expire at the end of their action window, a game pause/end, disconnection of a required party, or service restart. Expiration and its reason are visible. A committed exchange survives these events. Draft editing can be preserved locally during a retry, but resubmission must use current terms and state.
 6. Executed domestic exchanges and their quantities are public. Bank/harbor exchange has a separate entry showing the player's applicable rate and available choices; it does not wait for another player. Paired Player 2 has no domestic-trade entry.
 
-Acceptance: four clients exercise concurrent interest, counteroffers, term edits after consent, withdrawal, resource changes, phase changes, and connection loss before/after commit. Include definitive rejection followed by a new confirmation, replay of the rejected receipt, and expiry racing settlement. Old terms cannot settle; a completed trade deducts and grants resources once; everyone can distinguish negotiation, failure, expiration, and completion.
+Acceptance: four clients exercise concurrent interest, counteroffers, term edits after consent, withdrawal, resource changes, phase changes, and connection loss before/after commit. Include definitive rejection followed by a new confirmation, replay of the rejected receipt, and expiry racing settlement. Old terms cannot settle; a completed trade deducts and grants resources once; everyone can distinguish negotiation, failure, expiration, and completion. A chat message alone can never settle an offer.
+
+#### Room text chat contract
+
+- Provide one room-wide plain-text channel available in the lobby, game, pause/save coordination, and result view to authenticated members of that room. No direct messages, attachments, executable markup, external spectators, or automatic translation in v1. During play, the audience is the seated players; later membership in a new game grants no access to the previous game's private channel history.
+- Clearly separate player-authored chat from authoritative game events, rule notices, trade terms, and policy-vote controls. Show stable sender identity/seat/color-label plus nickname, server timestamp, and message status; changing a nickname cannot impersonate another seat or a system notification.
+- Allow conversation outside the sender's action window, but do not expand their legal actions. Player 2 can talk while domestic trades remain disabled. Chat claims about cards are user-authored statements, not server-certified inventory; never automatically append private hands, debug state, or card-effect inspection data.
+- Enforce authenticated room membership, bounded message length/history pages, per-sender and per-room rate limits, and safe plain-text rendering server-side. Exact operational limits are documented before public deployment. Reject HTML/script execution; display links as inert text in v1. Room codes, credentials, and protected state are never added automatically to chat.
+- Use client message IDs with durable acknowledgement/deduplication and server ordering. Distinguish sending, sent, rejected/rate-limited, and unknown outcome; retry an unknown send with the same ID. Preserve an unsent local draft where safe and fetch authorized recent history after reconnect without duplicate messages. Chat does not advance the strategic game revision or invalidate a player's move merely because someone typed.
+- Provide per-user mute and visible rate-limit/rejection feedback for immediate abuse control. Muting affects that viewer's chat only: it cannot hide game events/required-action prompts, remove a seat, or prevent voting. Host status alone does not grant a new power to silence the table, delete others' history, or bypass all-seat policy consent. Broader room-wide moderation/reporting powers require a separately agreed policy and are outside v1 scope.
+- Keep an unread indicator when the panel is closed, do not steal focus or scroll away from a player reading earlier messages, and do not announce every message over a mandatory action. On mobile, chat uses the secondary drawer and must not cover the board's required controls. User-authored text is shown verbatim in either UI locale; system notices are localized separately.
+- Bind saved chat history to its room/game membership epoch. While a game remains resumable, its participants can recover authorized recent/history pages under the disclosed retention policy. New-game members cannot inherit that history; chat retention/deletion is documented alongside game retention. A personal mute does not delete shared history.
+
+R-CHAT acceptance: mixed-locale clients negotiate in text then confirm a structured trade; messages during another player's turn cannot execute a move; identical nicknames remain distinguishable; injection/rate-limit attempts fail safely; personal mute does not suppress mandatory actions or policy votes; send-ack loss/reconnect does not duplicate messages; unauthorized/new-game members cannot fetch old history; narrow-screen chat and soft keyboard do not block required gameplay.
 
 ### 4.6 Presence, host transfer, pause, and abandonment
 
-These are concrete proposed defaults under D-03, not rules of physical CATAN. They do not add a turn clock or alter game scoring. The proposed disconnect grace period is five minutes, measured from the server-observed loss of the seat's last authenticated live connection; it is a presence threshold, not a deadline for making a move. The server records `disconnected_at` after a transport close or expiry of its documented heartbeat-liveness deadline, not when the connection was created; successful seat reconnection clears it. After service restart, start a fresh recovery grace period before absence can authorize host transfer or abandonment; do not count server downtime as player inactivity.
+D-03 is confirmed with configurable room policies and the fixed safeguards in §5.8; these are online room behaviors, not changes to physical CATAN scoring. Defaults are no turn clock/AI, a five-minute disconnect grace period, all-seat consent for pause/resume, and the defined connected-player abandonment option. If enabled, a turn clock is advisory only: expiry prompts players but never chooses a move, discards, skips, or awards a win. The room's disconnect grace period is measured from the server-observed loss of the seat's last authenticated live connection; it is a presence threshold, not a move deadline. The server records `disconnected_at` after a transport close or expiry of its documented heartbeat-liveness deadline, not when the connection was created; successful seat reconnection clears it. After service restart, start a fresh recovery grace period before absence can authorize host transfer or abandonment; do not count server downtime as player inactivity.
 
-| Situation | Proposed behavior | Authority and recovery |
+| Situation | Confirmed/default behavior | Authority and recovery |
 |---|---|---|
-| Host voluntarily leaves a lobby | Transfer host to the earliest-joined connected remaining member; close an empty lobby. | Publish the new host. No game has started and no seat receives a competitive advantage. |
-| Lobby host disconnects | Retain the host during the grace period. After expiry, transfer to the earliest-joined connected member. | Reconnection before expiry retains the role; after transfer, the former host returns as an ordinary member. Host alone is insufficient to start: all occupied seats must be connected, ready, and match an eligible player count. |
+| Host deliberately leaves a room, including Save and leave | Transfer room administration to the earliest-joined connected remaining member; close only a genuinely empty pre-game lobby. | Active/saved seats are not removed. If nobody remains online, retain the room/game; elect the earliest-joined connected member when members return. Returning former hosts do not displace a valid successor. |
+| Host unexpectedly disconnects | Retain the role during the applicable grace period. After expiry, transfer to the earliest-joined connected member, or elect on a later member's return if none is online. | Reconnection before expiry retains the role; after transfer, the former host returns without reclaiming it. Host status cannot bypass readiness: all occupied seats must be connected, ready, and match an eligible count to start. |
 | A seated player disconnects during play | Retain their seat. Unaffected legal actions may continue until that player must respond; then expose a persistent waiting state. | Never auto-discard, auto-roll, skip an actor, or replace them. End-of-game results take precedence if legally reached before a required response. |
 | A player returns | Restore the same seat and authoritative state; clear the missing status. | Confirm command outcomes, expire obsolete negotiation, and resume their unresolved choice. A connection returning during an abandonment vote invalidates that vote. |
 | Players want a break | Any seated player may propose pause; require consent from all seated players. On acceptance, freeze game commands and expire offers while retaining pending effects. | Resume requires all seats connected and explicit readiness. Presence/recovery remains available while paused. No strategic action is undone. |
-| A player explicitly withdraws, or remains missing beyond the grace period | Mark the session interrupted. Any connected seated player may propose abandonment; all currently connected seated players must confirm the same proposal. | Verify the missing/withdrawn condition and voter membership again at commit; cancel the proposal if either changes. On agreement, save an `abandoned` result without a winner. Without agreement, retain the interrupted game for later resumption; participants can leave the page and find it through Resume game. |
+| A player explicitly withdraws, or remains missing beyond the grace period | Mark the session interrupted. If the selected policy permits abandonment, any connected seated player may propose it; all currently connected seated players must confirm the same proposal. | Verify policy, absence, and voter membership again at commit; cancel the proposal if eligibility changes. On agreement, save an `abandoned` result without a winner. If abandonment is disabled or no agreement exists, retain the interrupted game for later resumption. A deliberately saved/suspended table does not count expected absence as an abandonment trigger. |
 | Game already started and host changes | A host change only affects room administration; it cannot kick a seated player, change rules, inspect hidden state, or decide their move. | Seat ownership and game-rule authority remain unchanged. |
 
 `Interrupted` is a presence flag, not a pause of every action: unaffected legal play may continue, but an absent/withdrawn player's required response blocks progression. An abandonment proposal alone does not freeze the game. Serialize its final commit with all game commands and recheck that the game is nonterminal, the absence condition still holds, and the current connected voter set has consented. The first valid terminal transition wins: a committed normal victory cancels abandonment, while committed abandonment rejects later strategic commands. Reconnection clears the absence flag and invalidates the vote; an explicit withdrawal must be retracted before that seat may act. Explicit consensual `paused` state, unlike interruption, freezes all strategic commands until resume. Test vote + victory, vote + reconnect, and voter disconnect races.
 
-The abandonment confirmation names the absent player(s), explains that it terminates the saved game without a winner, and is separate from closing the page. A player can retract an explicit withdrawal before abandonment commits, invalidating the proposal. This policy deliberately permits remaining connected players to end a table after prolonged absence; D-03 must explicitly resolve that trade-off before public tables ship. Interrupted games are not removed by stale-lobby cleanup; retention is an operator policy disclosed before deletion.
+The abandonment confirmation names the absent player(s), explains that it terminates the saved game without a winner, and is separate from closing the page. A player can retract an explicit withdrawal before abandonment commits, invalidating the proposal. The confirmed default permits remaining connected players to end an interrupted table after prolonged absence, but the host can disable this option before play or propose a change requiring all-seat consent after start. Never treat a Save and leave request as explicit withdrawal; a player leaving alone still follows the room's disclosed absence policy unless the whole table has agreed to suspend. Interrupted games are not removed by stale-lobby cleanup; retention is an operator policy disclosed before deletion.
 
 ### 4.7 Game completion and another game
 
@@ -134,18 +154,31 @@ The abandonment confirmation names the absent player(s), explains that it termin
 - Keep the final board inspectable. Reveal the winner's necessary victory-point cards according to the selected rules; do not automatically reveal other hidden hands or deck order.
 - Offer return to lobby and another game. Reuse membership/settings as a proposal, allocate a new game ID, and require readiness again. The completed game remains immutable; invite links never let a new visitor occupy a seat in that completed game.
 
+### 4.8 Automatic save, Save and leave, and resume
+
+Confirmed D-03 save mode: server-side automatic persistence plus an explicit save-and-leave action. A save records the continuing game, not a new copy or a selectable historical checkpoint. The UI's `suspended` label means the existing authoritative paused state with `pauseReason=saved`; it does not introduce a second pause engine or independent recovery owner. The same browser-bound identity owns the same seat on return; there is no download/import, rollback, branch, or cross-device seat-recovery feature in v1.
+
+- **Automatic save:** every accepted game transition uses §7.2's durable boundary. Show the most recent acknowledged save time/revision and a clear unavailable/pending state on storage failure. Saving does not expose private cards or change a random result.
+- **Save and leave (one player):** any seated player may request a server save barrier with a unique request ID. After all earlier accepted game commands commit, durably acknowledge the recorded revision, seat, and save time; only then confirm successful save and leave the live connection while retaining membership. This does not pause everyone else or mark the player as withdrawn. Warn that others may continue and that the room's ordinary absence/abandonment policy still applies. On return, resume the latest state, not necessarily the revision at departure.
+- **Save and suspend table:** any seated player may propose a shared save/pause. All seated players must consent; an absent player is not treated as consenting. Atomically checkpoint and mark the game `suspended` before declaring it safe for everyone to leave. Cancel negotiation and pending room-policy proposals, preserve strategic pending effects, and freeze moves/advisory clocks. Once suspended, expected offline time cannot authorize abandonment or ordinary stale-lobby deletion; only the separately disclosed operator retention process can retire a saved game, with prior notice and the stated recovery policy. Host administration can still transfer without changing seats or unpausing the game.
+- **Resume suspended table:** reconnect using original identities, load the same game/version and authorized views, and collect all-seat readiness. Only then resume the pending phase/choice. Host presence alone is insufficient. Restarting the service or opening the saved-game entry never automatically resumes play or starts absence/advisory deadlines while suspended.
+- **Failure/unknown outcome:** a save acknowledgement lost in transit is resolved by its request ID and existing receipt before retry. A failed manual checkpoint does not erase prior autosaves; keep the user on a retry/recovery screen rather than claiming a successful save. Browser closure before acknowledgement cannot be prevented, so recovery uses the last committed server state and visibly reports it.
+- **Save discovery and lifecycle:** the home screen lists the identity's ongoing/suspended games, ruleset, participants, last activity/save time, and whether all seats are needed. Only original members can resume; knowing an invite/game ID is not enough. Completed/abandoned games are inspectable results, not resumable saves. Recovered private state and chat obey their original audience boundaries.
+
+R-SAVE acceptance: autosave plus save-and-leave in an ordinary turn and during a required choice; one person leaving versus a fully suspended table; host transfer when the host leaves after saving; all players offline across a restart; unanimous suspend/resume; save commit racing a trade or victory; acknowledgement loss and duplicate save requests; storage failure; same-identity seat restoration without replaying dice/cards; refusal of a historical-revision resume or unauthorized seat claim. A terminal result wins over a later suspend/save request; no save operation can resurrect an ended game.
+
 ## 5. Room Settings and Rule Compatibility
 
 Room configuration is validated as a complete ruleset, not as independent unchecked toggles.
 
-### 5.1 Proposed settings
+### 5.1 Room settings
 
 - Visibility: private or public.
 - Player capacity: 3, 4, 5, or 6.
 - Expansion modules: base rules are mandatory; Seafarers and Cities & Knights are optional selections.
 - Scenario/map: choices depend on selected modules and player count.
 - Victory target: derived from the selected official scenario/rule profile by default; custom targets are not in the first-release scope unless separately approved.
-- Turn timer: off by default; whether to offer a timer remains a product decision for post-MVP.
+- Room policies: advisory turn clock off by default, disconnect grace five minutes, and the absence/pause/save behavior in §5.8. The host configures them before start; approved post-start changes require all seats. No setting enables AI or automatic strategic decisions.
 
 ### 5.2 Compatibility policy
 
@@ -154,11 +187,11 @@ Room configuration is validated as a complete ruleset, not as independent unchec
 - A game stores a snapshot of its ruleset and rule version. Deploying a new rules version must not silently change an in-progress game's behavior.
 - Start with the base game and the user-selected targets (5–6 players, Seafarers, Cities & Knights). Add scenarios/combinations only after rule implementation and tests pass.
 - The official product family has multiple expansions and scenario-specific compatibility constraints; therefore “any combination of checkboxes” is explicitly not promised. For example, the official Seafarers guidance lists suitable Cities & Knights combinations and scenario limitations. See references.
-- The proposed edition baseline is the 2025 English rulebook family in §5.3, including paired-player turns for 5–6 players. D-01 must confirm this fidelity target before implementing rule behavior. Historical special-building rules are a separate profile and are not silently mixed into this baseline.
+- Confirmed D-01 baseline: the 2025 English rulebook family in §5.3, including paired-player turns for 5–6 players. Both UI languages implement this same rule meaning. Historical special-building rules are a separate profile and are not silently mixed into this baseline.
 
-### 5.3 Proposed rulebook baseline and source precedence
+### 5.3 Confirmed rulebook baseline and source precedence
 
-| Source ID | Proposed authoritative edition | Required coverage |
+| Source ID | Confirmed authoritative edition | Required coverage |
 |---|---|---|
 | B25 | CATAN – The Game, CN3081, 2025 | Base setup, supply, actions, cards, awards, scoring, and almanac exceptions. |
 | B56-25 | CATAN – 5–6, CN3082, 2025 | Larger setup/supply and paired-player roles, action permissions, and victory timing. |
@@ -186,7 +219,7 @@ Each fixture must state its starting state, actor/window, command, expected resu
 
 ### 5.5 Paired-player rules for 5–6 players
 
-The proposed 2025 procedure replaces the historical special-building phase. Player 1 performs production and an action phase; Player 2 is the third player to Player 1's left in the official seating order and then performs an action phase without another production roll. After Player 2 finishes, both markers move to the next player to their left. Record seating orientation explicitly in the board/UI; verify both five- and six-seat cycles.
+The confirmed 2025 procedure replaces the historical special-building phase. Player 1 performs production and an action phase; Player 2 is the third player to Player 1's left in the official seating order and then performs an action phase without another production roll. After Player 2 finishes, both markers move to the next player to their left. Record seating orientation explicitly in the board/UI; verify both five- and six-seat cycles.
 
 | Role | Permitted activity | Restrictions and victory |
 |---|---|---|
@@ -222,9 +255,9 @@ For any approved Seafarers + Cities & Knights profile, R-COMB fixtures explicitl
 - Knight/pirate actions and progress-card ship interactions follow their specific clauses. Do not infer that every card mentioning the robber can move the pirate; Bishop remains robber-only.
 - Both 5–6 expansion rulebooks apply when that player count is enabled; proving each expansion separately does not prove their combination.
 
-### 5.7 Proposed first-release profile matrix
+### 5.7 Confirmed final release target matrix
 
-D-02 proposes **Heading for New Shores** as the first Seafarers scenario, including its explicitly tested C&K combination. These are target profiles, not currently supported features. Each row containing multiple counts is expanded to a separate registry entry and acceptance run for each count; fixed/variable setup modes also have distinct recorded setup descriptors. No unchecked combination is enabled.
+Confirmed D-02 selects **Heading for New Shores** as the first Seafarers scenario and retains the full matrix, including its C&K combination, as the final target. Deliver base first, then expansion milestones; these are target profiles, not currently supported features. Each row containing multiple counts is expanded to a separate registry entry and acceptance run for each count; fixed/variable setup modes also have distinct recorded setup descriptors. No unchecked combination is enabled.
 
 | Profile family | Counts | Official setup source | Victory target | Required rules/fixtures |
 |---|---|---|---|---|
@@ -239,7 +272,27 @@ D-02 proposes **Heading for New Shores** as the first Seafarers scenario, includ
 
 Heading for New Shores starts on the main island. Its initial settlements/roads/ships follow the scenario's constraints; for C&K substitute the prescribed second city. Each player earns two additional special points for their first settlement on each small island, regardless of whether another player has already settled there. Implement the per-player/per-island claim once, not a global first-arrival bonus. SF25 pp.3–5 establish the three-/four-player layouts and 14-point target. SF56-25 pp.3–4 retain that scenario except for specified setup changes, with no target change; their common five-/six-player layout fixes the small islands but uses the prescribed variable main-island setup and random harbors at marked positions, not a fully fixed board. COMB adds two to that target.
 
-The actual layout data must transcribe the source map's terrain, numbers, harbors, island IDs, robber/pirate positions, and inventory into reviewed fixtures for each supported count; do not generate a merely similar-looking island. Variable setup follows the source's constraints and uses recorded server randomness. Fog/exploration scenarios and other Seafarers scenarios are deferred; do not implement or expose their mechanics solely because the engine can represent hidden hexes. A combined 5–6 row remains disabled until all applicable clauses and fixtures pass; if a contradiction remains, revise the proposed release matrix visibly rather than silently advertising the row.
+The actual layout data must transcribe the source map's terrain, numbers, harbors, island IDs, robber/pirate positions, and inventory into reviewed fixtures for each supported count; do not generate a merely similar-looking island. Variable setup follows the source's constraints and uses recorded server randomness. Fog/exploration scenarios and other Seafarers scenarios are deferred; do not implement or expose their mechanics solely because the engine can represent hidden hexes. A combined 5–6 row remains disabled until all applicable clauses and fixtures pass; if a contradiction remains, seek approval to revise the confirmed release target visibly rather than silently advertising the row.
+
+### 5.8 Room-policy settings and post-start approval
+
+Room policy is separate from the immutable game profile. The host may set validated policy values when creating a room and change them before start; changes clear readiness and show an updated human-readable summary. Once play begins, the host may **propose**, but not unilaterally apply, a policy change. Every original seated player, including the host, must consent to the exact proposal. A missing player cannot be skipped or represented by the host.
+
+| Setting | Confirmed default and allowed v1 variation | Fixed safeguard |
+|---|---|---|
+| Turn clock | Off; optionally enable an advisory clock with a positive duration from validated server limits. | Expiry shows an overdue cue only. No forced end turn, random move/discard, AI, or automatic win/loss; a required responder still chooses. |
+| Disconnect grace | Five minutes by default; host selects another positive duration within documented server bounds. | Use server-detected disconnection; restart recovery gets a fresh grace period. Changing the duration cannot retroactively make an existing absence expire. |
+| Long absence / explicit withdrawal | Allow §4.6's unanimous-currently-connected abandonment by default; alternatively retain the interrupted game without that option. | Never reinterpret ordinary Save and leave as withdrawal. An ended game has no winner unless normal victory committed first; suspended-table absences do not trigger abandonment. |
+| Host succession | Automatic transfer to the earliest-joined eligible connected member. | Always enabled; applies when a host deliberately leaves and after the applicable unexpected-disconnect grace. Authority is administrative only. |
+| Pause / save / resume | All-seat consent for a table-wide pause/save; all-seat readiness to resume. Individual Save and leave is always available. | These consent/privacy/no-rollback safeguards cannot be weakened by room settings. |
+
+Rules edition, enabled expansions/scenario, player count/seat ownership, victory target and map remain locked after start even with a policy vote; changing them requires a new game. Language is a per-user preference, not a host-controlled game policy.
+
+A policy proposal contains its own ID, base policy revision, exact before/after values and consent per stable player ID. Show it in both locales and keep ordinary legal play available while it is pending. Bind consent to that proposal, not to the strategic game revision: a normal move/chat must not silently change the proposed terms. Editing terms, host transfer, a voter's disconnect, entering pause/suspension, restart, or terminal completion cancels pending consent; publish the cancellation. A rejection leaves existing settings unchanged.
+
+Once all seats consent, serialize acceptance with game/room lifecycle transitions, recheck host/seat authority and the current policy revision, and persist the new policy version/audit event atomically. New time budgets apply at the next eligible action window or newly detected absence; existing windows, absences, and abandonment eligibility keep the policy version with which they began. Display the effective boundary. No update can shorten a currently running clock, revive an ended game, or bypass an already required response. On resume, start fresh windows/grace timing under the latest accepted policy rather than charging paused time.
+
+R-POLICY acceptance: creation/pre-game edits clear readiness; a host-only post-start write is rejected; all original seats must consent; edited proposals require fresh consent; mixed-locale users see identical terms; missing seats block approval; host succession and disconnect cancel pending votes; restart preserves accepted policy but cancels pending proposals; new settings do not retroactively expire a current wait; policy commit racing suspension/victory produces one valid ordered outcome.
 
 ## 6. Proposed Architecture
 
@@ -298,12 +351,15 @@ Technology selection should be confirmed against the repository/runtime environm
 ### 7.1 Core records (logical model)
 
 - Guest player: stable ID, display nickname, creation/update timestamps, optional future account link.
-- Room: room ID/code, visibility, host player ID, settings/ruleset ID, lifecycle status, timestamps.
+- Room: room ID/code, visibility, host player ID, immutable game-profile reference, accepted room-policy values/revision, lifecycle status, and timestamps. Store policy-change proposals/consents separately from accepted policy; they are cancelled, not applied, on the invalidation boundaries in §5.8.
 - Membership/seat: room ID, player ID, color, readiness, connection status, seat order.
 - Game snapshot: game ID, ruleset/profile and immutable rules-engine version, board topology/state, turn owner/action window, pending effect/response state, public and private player state, random outcomes/remaining shuffled decks sufficient for deterministic recovery, and persistence revision. A seed is not exposed to clients and is not a substitute for already committed outcomes.
 - Game event: ordered command/result metadata sufficient for audit/recovery, without exposing secret card identities to unauthorized clients.
 - Command receipt: game ID, authenticated actor ID, command ID, canonical payload digest, accepted/rejected outcome, and committed revision. Receipts survive restart and remain available for at least the lifetime of a resumable game.
 - Negotiation: offer ID/revision, originator, consenting parties, terms, action-window ID, and status. An offer is not a resource reservation; pending negotiation can expire on restart, but completed exchange and its receipt cannot disappear.
+- Save receipt/checkpoint marker: save-request ID, actor/game ID, acknowledged authoritative revision/time, and result. It references the same canonical game state as autosave, not a second independent save engine or historical restore branch. Suspension state and all-seat readiness are durable game/session metadata.
+- Chat: stable message ID and client-send ID, room/game membership epoch, sender ID, text, server ordering/time, moderation status and deduplication receipt. Use a separate chat sequence; do not reuse strategic game revisions for message traffic. Room/member authorization applies to live and history fetches.
+- Locale preference: per-user supported locale (`zh-Hant` or `en`), separate from game rules/state. Commands, receipts, saves, policies and events use stable IDs/canonical values so either locale can resume the same game.
 
 ### 7.2 Commit/recovery boundary
 
@@ -319,7 +375,7 @@ SQLite mode requires a mounted persistent directory and a single application wri
 
 ### 7.3 Rules-version execution and upgrades
 
-Proposed strategy D-05: retain the exact rules-engine implementations and compatible snapshot readers needed by unfinished games; new games use the release's selected default. The ruleset registry dispatches to the stored version. Merely storing a version string or settings snapshot is not sufficient.
+Confirmed strategy D-05: retain the exact rules-engine implementations and compatible snapshot readers needed by unfinished games; new games use the release's selected default. The ruleset registry dispatches to the stored version. Merely storing a version string or settings snapshot is not sufficient.
 
 - Before deployment or startup, inventory unfinished games and check availability of their engine/profile versions and schema readers. An incompatible release must refuse to take over those games, preserve data, and report the blocking versions; never silently route them to the newest engine.
 - Old versions may be retired only when no unfinished game references them and the documented restore policy for retained backups is satisfied. Restoring an older backup may require its original compatible image and migration path.
@@ -333,7 +389,7 @@ R-REC acceptance: for each database, restart during initial placement, partial m
 ### 8.1 Layout and shared-table context
 
 - Desktop keeps the board primary, with stable locations for seat order/player status, own resources/cards, required actions, trade panel, and public event log. Show the last dice result, affected hexes, production summary, public score/awards, and current required responders. Preserve board orientation when the turn changes.
-- Tablet reflows secondary panels. Mobile uses a compact status strip and one secondary drawer at a time; opening hand/trade/help must not hide the current mandatory action, connectivity, or the way back to the board. Preserve zoom/pan when switching panels.
+- Tablet reflows secondary panels. Mobile uses a compact status strip and one secondary drawer at a time; opening hand/trade/chat/help must not hide the current mandatory action, connectivity, or the way back to the board. Preserve zoom/pan when switching panels.
 - Use a coherent set of visual tokens, icons, spacing, typography, and interaction states across lobby, board, cards, and dialogs. Terrain, resources, player pieces, and progress-card categories need distinct labels/symbols as well as color. Build illustrations from licensed/original assets rather than copying the official art.
 - Public room rows show human-readable rules/edition, scenario, player count, seat availability, and status. Lobby settings explain incompatible choices before start; the room code/invite and start blockers are visible. Long nicknames, duplicate display names, full six-seat tables, large hands, and dense expansion boards must be part of visual checks, not only empty demo screens.
 
@@ -357,7 +413,8 @@ The server's player projection, event log, toasts, accessibility announcements, 
 | Production and domestic exchange | Dice, public production, completed domestic trade terms and quantities. | Do not expose an exact current hand merely because past public actions allow players to make estimates. No automatic opponent-hand inference assistant in v1. |
 | Discard and theft | Who discarded how many; who stole from whom; effect completion. | Discard identities remain with the discarder/server. A stolen card identity is visible only to thief and victim, unless a selected rule explicitly says otherwise. |
 | Card effects | Played cards and rule-required public outcomes; C&K public VP cards are not treated like hidden base VP cards. | Spy/inspection and similar effects grant only the specific temporary view authorized by that card; do not broadcast it or retain access after resolution. |
-| Negotiation | Proposed structured terms and responses use the public negotiation design in §4.5. | Inventory checks and error detail cannot reveal another player's current cards. A valid proposal does not certify ownership. |
+| Negotiation | Offered structured terms and responses use the public negotiation design in §4.5. | Inventory checks and error detail cannot reveal another player's current cards. A valid proposal does not certify ownership. |
+| Room chat | Player-authored messages to the authorized room/game audience; distinguish them from engine-confirmed events. | Never append private state automatically. User-chosen disclosures are not an engine hand projection; old-game history is not exposed to new-game members or public discovery. |
 | Game over | Winner, terminal reason, final board, public score components and victory cards that must be revealed. | Other players' private cards and deck order are not automatically exposed. |
 
 For each enabled card/scenario, document any exception in that profile's fixture. Public room discovery receives only lobby metadata, not this seated-player projection. R-VIS tests compare at least three identities plus an outsider for initial join, every sensitive event, reconnect, and game over. Legitimate deduction from public play is not a security failure; direct transmission or derived leakage of protected fields is.
@@ -367,12 +424,12 @@ For each enabled card/scenario, document any exception in that profile's fixture
 - Persistently show “Your turn”, “Your response required”, or “Waiting for …” as distinct states. Discard shows required/selected counts; victim, gold, card, and expansion choices name the action and its completion condition. New required prompts are announced and reachable without losing valid unrelated drafts.
 - Provide an in-game cost reference, terrain/resource/expansion legend, and contextual rule help. Disabled actions explain whether the obstacle is inventory, timing, connectivity, distance, piece supply, or permissions, without revealing another player's private state.
 - Lobby rule summaries explain the edition and major departures from base, especially paired turns and C&K substitutions. Learning help is optional and dismissible; core play cannot require reading a full external tutorial.
-- Cover loading, empty room list, invalid/expired invitation, full room, not-ready/start-blocked, submitting, declined/stale trade, offline, reconnecting, unknown command outcome, interrupted/paused, game over, recovery-blocked, and persistence failure states. Distinguish a retryable network issue from a rejected action or incompatible save.
-- A same-identity second tab must not create a second seat or independent action authority. Proposed default: the newest authenticated connection controls the seat, the old tab shows “Active in another tab” and cannot mutate until control is deliberately reclaimed. Reject commands from superseded connections and test no duplicate seat or ambiguous command ownership.
+- Cover loading, empty room list, invalid/expired invitation, full room, not-ready/start-blocked, submitting, declined/stale trade, offline, reconnecting, unknown command outcome, policy vote, save pending/failed, suspended/resume readiness, interrupted/paused, game over, recovery-blocked, and persistence failure states. Distinguish a retryable network issue from a rejected action or incompatible save.
+- A same-identity second tab must not create a second seat or independent action authority. Confirmed default: the newest authenticated connection controls the seat, the old tab shows “Active in another tab” and cannot mutate until control is deliberately reclaimed. Reject commands from superseded connections and test no duplicate seat or ambiguous command ownership.
 
 ### 8.5 Device, accessibility, and experience acceptance
 
-Proposed baseline D-06: Traditional Chinese player-facing UI with consistent game terminology, English internal identifiers; additional localizations are deferred. Target WCAG 2.2 AA for applicable interface content/controls; this is a verification target, not a conformance claim. In particular, provide semantic names, visible focus, complete keyboard operation, dialog focus return, non-color status, readable contrast, text resizing, and target size/spacing or equivalent accessible alternatives. Board geometry does not exempt surrounding controls or remove the need for a non-precision way to choose a legal target.
+Confirmed D-06 baseline: **Traditional Chinese (`zh-Hant`) and English (`en`)** player-facing UI from the first release, with consistent mapped game terminology and English internal identifiers. Both locales cover the same complete functionality; additional languages are deferred. Target WCAG 2.2 AA for applicable interface content/controls; this is a verification target, not a conformance claim. In particular, provide semantic names, visible focus, complete keyboard operation, dialog focus return, non-color status, readable contrast, text resizing, and target size/spacing or equivalent accessible alternatives. Board geometry does not exempt surrounding controls or remove the need for a non-precision way to choose a legal target.
 
 | ID | Required check and acceptance |
 |---|---|
@@ -380,16 +437,26 @@ Proposed baseline D-06: Traditional Chinese player-facing UI with consistent gam
 | U-02 | Test mouse, keyboard-only, and touch for setup → roll → trade → build → end turn, plus discard/robber and each enabled expansion response. A pan/pinch does not place a piece; adjacent targets are distinguishable; preview cancellation has no side effect. |
 | U-03 | Use a real iOS Safari device and Android Chrome device for touch acceptance, plus desktop Chromium/Firefox/WebKit browser checks with versions recorded. Include rotation, software keyboard, background/resume, slow connection, reconnect, and six-player dense boards. Emulation supplements rather than replaces physical-device evidence. |
 | U-04 | Automated accessibility checks plus manual keyboard/focus, 200% text zoom, reduced-motion, non-color identification, and a screen-reader walkthrough of required choices and trade completion. Document uncovered assistive technologies; no blanket accessibility claim from an automated scan. |
-| U-05 | Representative content includes long Traditional Chinese nicknames, duplicate names, maximum selected pieces, many resource/progress cards, many log entries, disabled actions, and recovery errors. Critical text cannot be truncated without an accessible way to read it. |
-| U-06 | Proposed initial responsiveness budget: visible local selection/submission feedback within 100 ms; committed-action acknowledgement p95 ≤1 s on the recorded reference device/server with six clients, 150 ms simulated RTT and no injected storage failure. Record at least 100 eligible commands and the workload. A result pending for 2 s shows an explicit waiting/recovery cue, never an assumed success. Measure production behavior; tune the budget only with recorded evidence, not by silently weakening it. |
+| U-05 | Representative content includes long Traditional Chinese and English nicknames/text, duplicate names, maximum selected pieces, many resource/progress cards, many log entries, disabled actions, and recovery errors. Critical text cannot be truncated without an accessible way to read it. |
+| U-06 | Accepted initial responsiveness target (measurement pending): visible local selection/submission feedback within 100 ms; committed-action acknowledgement p95 ≤1 s on the recorded reference device/server with six clients, 150 ms simulated RTT and no injected storage failure. Record at least 100 eligible commands and the workload. A result pending for 2 s shows an explicit waiting/recovery cue, never an assumed success. Measure production behavior; tune the budget only with recorded evidence, not by silently weakening it. |
 | U-07 | A new player completes initial placement and a full turn with built-in help, can explain one blocked move, and can recover from a rejected trade. Observe at least one player unfamiliar with the interface; record assistance, errors, and unresolved friction rather than asserting “intuitive”. |
 | U-08 | A group familiar with the selected tabletop edition completes a full four-player game; observe negotiation, waiting, information visibility, and rules disputes. Later repeat with six players and every released expansion/profile. Include at least one mobile participant. Any blocker, wrong rule outcome, hidden-data leak, or required developer intervention must be resolved/retested before that milestone passes. |
 
 ### 8.6 Prototype and visual evidence before expansion work
 
-Before Phase 2 rules/UI breadth grows, review six connected prototype state groups: lobby/readiness/host departure; main board/hand/mandatory action/help; multi-party trade/counteroffer/expiration; narrow mobile selection/preview; unknown command outcome/reconnect/resume; and result/final board/new lobby. Use realistic six-seat/expansion-density fixtures even while only base is playable. Prototypes may simulate effects but are not evidence that the engine or persistence works.
+Before Phase 2 rules/UI breadth grows, review six connected prototype state groups: bilingual lobby/readiness/policy vote/host departure; main board/hand/mandatory action/help; text-chat-assisted trade/counteroffer/expiration; narrow mobile selection/preview; unknown command outcome/save/suspend/reconnect/resume; and result/final board/new lobby. Use realistic six-seat/expansion-density fixtures even while only base is playable. Prototypes may simulate effects but are not evidence that the engine or persistence works.
 
-Once the vertical slice runs, capture rendered states and exercise them. Keep accepted screenshots with their viewport, content and state as visual regression baselines; verify actual interactions separately. Phase 2 must already satisfy its core mobile/keyboard flows; Phase 7 is broad regression/hardening, not the first responsiveness review.
+Once the vertical slice runs, capture rendered states and exercise them. Keep accepted screenshots with their locale, viewport, content and state as visual regression baselines; verify actual interactions separately. Phase 2 must already satisfy its core mobile/keyboard flows; Phase 7 is broad regression/hardening, not the first responsiveness review.
+
+### 8.7 Traditional Chinese / English parity
+
+- Provide a language switch from first entry, lobby and in-game settings; persist the player's explicit choice in the same browser. Initial selection uses supported browser preferences, falling back to Traditional Chinese for unsupported languages. Different players in the same room may use different locales. Do not reload the game or discard a draft/choice when switching.
+- All player-facing navigation, room policies/votes, action labels, card explanations, costs, tooltips, legal-action errors, help, notifications, chat statuses, save/recovery flows, end-game summaries and accessible names must exist in both languages. Unsupported internal keys/raw server errors are not a user-facing fallback.
+- Use stable message IDs/error codes and typed parameters rather than server-authored sentences as the protocol. Localize public game events and system/admin notices on each client, including historical/reconnected events. Store resource/card/scenario IDs and canonical numeric values, never translated text as rules/save identity. Policy consent binds to the same values regardless of display language.
+- Maintain a reviewed terminology map between the official English baseline and Traditional Chinese names for terrain, resources, commodities, cards, actions and expansions. Translation must not change timing, costs, target eligibility or win conditions. Explain card effects in original wording consistent with the source rather than copying unlicensed card artwork/text wholesale.
+- Format counts, dates/times and pluralization per locale without changing canonical data. Use fonts that support both scripts; test English expansion/wrapping, long Chinese names, IME composition, and mixed-script chat. Enter during IME composition cannot accidentally send a message or confirm a move.
+- Chat and nicknames remain player-authored text; no implicit translation, inventory certification or language restriction. The UI can localize their labels/status, not rewrite the message. Changing locale preserves mute preferences, board position, selected targets and pending command IDs.
+- U-I18N acceptance: translation-key completeness for both locales; mixed-locale clients complete setup, required responses, chat-assisted trade, policy vote, save/suspend/reconnect and result; switching locale during a draft or pending response preserves intent; rule/cost/consent values are identical; screen-reader names and narrow-screen layout work in both; original chat survives IME/reconnect unchanged. A passing English path does not imply Chinese parity or vice versa.
 
 ## 9. Security, Privacy, and Abuse Controls
 
@@ -420,18 +487,18 @@ Each phase/subphase is a reviewable delivery slice and must be committed separat
 - Current Aegis TDD mode: `off`. This corrects the previous proposal's automatic `strict` route; the user has not separately requested test-first development.
 - Required rule, protocol, privacy, database, recovery, UI, and container tests remain mandatory. TDD mode changes workflow sequencing, not the evidence needed for acceptance. Do not claim a red/green sequence unless it was actually followed.
 - Every slice records the requirement/fixture IDs covered, commands run, result, environment, and uncovered risks. Source-derived expected outcomes, not test-count or coverage percentage alone, establish fidelity.
-- Run focused tests during each slice, then relevant package checks, both database integration suites, browser flows, and container tests at their milestones. No phase becomes complete merely because it compiles or one game reaches victory.
+- Run focused tests during each slice, then relevant package checks, both database integration suites, both-locale browser flows, and container tests at their milestones. No phase becomes complete merely because it compiles or one game reaches victory.
 
 ### Phase 0 — Revised design and decision baseline (this document)
 
 - Deliver this specification with source-linked rules, profile matrix, interaction/visibility contracts, recovery policy, and observable acceptance IDs.
-- Review D-01–D-06 at their gates; confirm the phase's requirements before dependent implementation. Approval of documentation edits does not silently approve a remaining product decision.
+- Apply confirmed D-01–D-06 without re-requesting their approval. Review remaining technical proof and operational values at the relevant milestone; any new product-scope change requires explicit approval.
 - Review the six prototype state groups in §8.6 before committing to the board/trade interaction structure. Prototype fidelity does not count as a working engine.
 - Acceptance: no conflicting rule editions or unmarked proposed defaults; every review gap maps to a contract and verification case; residual choices have a recommendation, owner, and gate.
 
 ### Phase 1 — Foundation and bounded architecture proof
 
-- Establish approved web/service/rules/protocol boundaries, workspace tooling, lint/typecheck/test scripts, and local documentation.
+- Establish approved web/service/rules/protocol boundaries, workspace tooling, lint/typecheck/test scripts, both locale catalogs/stable message IDs, and local documentation.
 - Define board topology, finite supplies, player identity, per-player projection, action-window/pending-effect contracts, ruleset versions, command receipts, and deterministic test seams. The rules package has no networking or database dependency.
 - Before adopting the room framework, prove guest-seat mapping, private projections, sequential command handling, reconnect after a committed command, and durable restoration in a bounded spike; document pass/fail against these contracts rather than assuming built-in reconnect restores the database.
 - Implement one base setup/production path through a minimal client/service; include narrow-screen and keyboard selection. Add a baseline non-root Docker build/health endpoint once the path runs end-to-end.
@@ -439,7 +506,7 @@ Each phase/subphase is a reviewable delivery slice and must be committed separat
 
 ### Phase 2A — Private lobby, seating, and initial placement
 
-- Implement guest identity, private invites, unique seats/colors, readiness/start guards, settings lock, host-transfer policy, resume entry, and session-control policy.
+- Implement guest identity, private invites, unique seats/colors, readiness/start guards, immutable-rules lock, configurable room policies, unanimous post-start policy approval, host transfer, resume entry and session-control policy. Establish both locale catalogs and entry/lobby/settings language switching.
 - Implement R-B01 and the setup/action-window projection, with per-player authorization and negative payload tests.
 - Establish the shared repository schema and SQLite/PostgreSQL migration/contract harness, including identity/seat/game IDs and initial snapshots. Durability edge coverage expands in 2C; do not defer the data boundary until after building the whole engine.
 - Acceptance: three-/four-client lobby to completed setup; concurrent joins/settings/start attempts are resolved consistently; disconnected/unready seats cannot be silently started; initial placement works by touch and keyboard at U-01 viewports; unauthorized payloads contain no private state.
@@ -447,18 +514,18 @@ Each phase/subphase is a reviewable delivery slice and must be committed separat
 ### Phase 2B — Complete base play and trading experience
 
 - Complete R-B02–R-B07, finite bank/deck/piece accounting, all base card effects, awards, victory, and persistent pending choices.
-- Implement §4.4–4.5 flows: mandatory actions, structured negotiation, bank/harbor trading, contextual help, pending-result feedback, final board, and new-game readiness. Apply §8.3 visibility to all events and errors.
-- Acceptance: complete three- and four-player games plus source-derived boundary fixtures; four-client counteroffer/race tests; U-01/U-02/U-05/U-07; initial real-device keyboard/touch checks and R-VIS. New-player assistance and expert rule disputes are recorded, not hidden behind scripted success.
+- Implement §4.4–4.5 flows: mandatory actions, structured negotiation plus room text chat, bank/harbor trading, contextual help, pending-result feedback, final board, and new-game readiness. Include chat permissions/personal mute/deduplication and both UI locales; apply §8.3 visibility to all events, histories and errors.
+- Acceptance: complete three- and four-player games plus source-derived boundary fixtures; four-client counteroffer/race tests; R-CHAT and mixed-locale U-I18N; U-01/U-02/U-05/U-07; initial real-device keyboard/touch checks and R-VIS. New-player assistance and expert rule disputes are recorded, not hidden behind scripted success.
 
 ### Phase 2C — Durable recovery and base-play validation
 
-- Complete atomic state/event/receipt persistence, per-game serialization, stale/duplicate command outcomes, interrupted/pause/abandon policy, process restoration, version dispatch and incompatible-image handling across both databases.
-- Exercise R-REC for all base states, including abrupt termination, write failure, and lost acknowledgements; verify old-version behavior through an upgrade fixture.
+- Complete atomic state/event/receipt persistence, per-game serialization, stale/duplicate command outcomes, approved policy revisions, interrupted/pause/abandon behavior, manual save barriers, all-seat save/suspend/resume, process restoration, version dispatch and incompatible-image handling across both databases.
+- Exercise R-REC, R-SAVE and R-POLICY for all base states, including abrupt termination, write failure, lost acknowledgements, host departure, all-offline suspended recovery, and vote/save/victory races; verify old-version behavior through an upgrade fixture.
 - Acceptance: same database contract suite passes on SQLite and PostgreSQL; required choices resume without reroll/retheft; no hidden-data leak on reconnect; U-03/U-04 base flows; at least one full four-player expert-tabletop playtest under U-08 with a mobile participant. Address blocking fidelity/usability findings before expansion implementation. Record performance baseline under U-06.
 
 ### Phase 3 — Public room browser and operational Docker distributions
 
-- Add public-room listing/filtering, room visibility enforcement, admission race handling, and stale-room cleanup.
+- Add public-room listing/filtering, room visibility enforcement, admission race handling, public chat abuse limits, and stale-lobby cleanup that excludes resumable/suspended games. Document game/chat retention and operator backup policies.
 - Publish/build the single image and SQLite/PostgreSQL Compose examples, migrations, health/readiness, graceful shutdown, and backup/restore/upgrade docs.
 - Acceptance: public rooms are discoverable only while joinable; private rooms never appear; simultaneous joins cannot exceed capacity; both database deployment modes start, persist, restart, and recover from a documented backup.
 
@@ -482,7 +549,7 @@ Each phase/subphase is a reviewable delivery slice and must be committed separat
 
 ### Phase 7 — Cross-profile hardening and release validation
 
-- Re-run U-01–U-08 for the supported layouts/controls, supported browser/device conditions, and full six-player content. Responsive, accessibility, and playtest fixes already begin in Phase 2; this phase checks regressions and remaining breadth.
+- Re-run U-01–U-08 and U-I18N in both locales for supported layouts/controls, browser/device conditions and full six-player content; include policy approval, chat, and save/resume alongside game actions. Responsive, accessibility, bilingual, and playtest fixes already begin in Phase 2; this phase checks regressions and remaining breadth.
 - Validate Docker instructions on clean SQLite/PostgreSQL deployments; perform backup restore, graceful and abrupt restart, rules-version upgrade/refusal, and schema rollback-path checks. Document exact supported profiles, engine/image versions, configuration, and limitations.
 - Acceptance: fixture-to-test mapping is complete for released profiles; rules, privacy, both database suites, browser interactions and container recovery checks pass; tabletop playtest blockers are resolved/retested; measured responsiveness and manual accessibility gaps are disclosed. No unsupported combination appears in the lobby or release claims.
 
@@ -492,7 +559,7 @@ Each phase/subphase is a reviewable delivery slice and must be committed separat
 - Compatibility matrix: ruleset registry tests enumerate allowed player count × expansion × scenario combinations and reject all others.
 - Server: integration tests for concurrent joins/trades, duplicate/retried commands, reconnection, authorization, private projections, recovery and migrations.
 - Database: same repository contract suite against SQLite and PostgreSQL, including transactions, constraint behavior, restart recovery, and schema upgrades.
-- Browser: multi-client end-to-end paths for private invite, public discovery, readiness/start, trade, expansion configuration, disconnect/reconnect, and game completion.
+- Browser: multi-client and mixed-locale end-to-end paths for private invite, public discovery, readiness/start, structured trade plus text chat, room-policy approval, expansion configuration, save/suspend/resume, disconnect/reconnect, and game completion.
 - UI: screenshot/viewport verification at desktop, tablet, and mobile sizes, plus keyboard and touch interaction checks. A screenshot alone does not prove task completion.
 - Container: build image, run as non-root, verify health/readiness, volume persistence, SIGTERM handling, and clean restore using both database modes.
 
@@ -508,7 +575,10 @@ Each enabled profile has a compact fixture index mapping official source/page �
 | R-VIS | Compare authorized payloads/logs/notifications/errors across three seats and an outsider. Include new join, targeted card inspection, private scoring, theft/discard, reconnect, final board and public-list endpoints. |
 | R-REC | Same transaction/receipt/recovery assertions on SQLite and PostgreSQL at each named crash/choice boundary in §7.3; old-version games use the old engine; absent engine versions fail visibly without state mutation. |
 | R-ROOM | Join/start/settings races, last seat, not-ready/disconnected start, host transfer, same-identity second tab, pause/resume, reconnection during abandonment vote, absent-player recovery and immutable terminal games. |
-| U-01–U-08 | Rendered interactions, viewport/device/browser records, visual baselines with realistic data, manual accessibility, responsiveness measurement and observed novice/expert complete-game evidence. |
+| R-POLICY | Exact all-seat consent, host-only rejection, pre-start readiness reset, proposal invalidation, versioned safe effective boundaries, restart and concurrent terminal/suspend behavior under §5.8. |
+| R-SAVE | Individual save/leave versus all-seat suspension; durable acknowledgements; latest-state/same-seat restore; all-offline restart; failed/duplicate requests; immutable terminal games and no historical rollback under §4.8. |
+| R-CHAT | Room/audience authorization, structured-trade separation, safe rendering/rate limits/personal mute, durable send deduplication and reconnect history isolation under §4.5. |
+| U-01–U-08 / U-I18N | Rendered interactions in both locales, mixed-locale rooms/votes, translation completeness, draft-safe switching, IME behavior, device/keyboard/screen-reader evidence, measured responsiveness and novice/expert playtests. |
 
 Automated tests must include impossible/unauthorized moves, not only successful paths. Game completion alone cannot prove edge cases; screenshot stability cannot prove task success. For every failed case retain the starting fixture and trace needed to reproduce it, while excluding credentials/private hands from ordinary operational logs. Before enabling public rooms, test that abuse controls and expired invitations do not leak private room/seat information.
 
@@ -523,7 +593,7 @@ Automated tests must include impossible/unauthorized moves, not only successful 
 
 1. A new player can enter a nickname, create/join a private or public room, play, disconnect, and resume in the same browser without an account.
 2. Public room data exposes only lobby/game metadata intended for discovery; private rooms and hidden game information remain private.
-3. Host can select every supported target ruleset/scenario; the server rejects unsupported combinations and locks settings after start.
+3. Host can select every supported target ruleset/scenario; the server rejects unsupported combinations and locks game rules after start. Room-policy changes require every original seat's consent and take effect only at the specified safe boundary.
 4. The release supports base, 5–6 player rules, Seafarers, and Cities & Knights for each explicitly declared compatible scenario/player-count combination.
 5. Games can finish under supported rule sets and report the correct winner/score.
 6. SQLite and PostgreSQL modes pass the same core persistence contract suite and recover after application restart.
@@ -534,30 +604,34 @@ Automated tests must include impossible/unauthorized moves, not only successful 
 11. Players can negotiate, identify and finish out-of-turn required actions, resolve uncertain command outcomes, resume interrupted games, and distinguish abandonment from victory using the approved §4 policies.
 12. Rendered/device/manual accessibility and playtest evidence covers U-01–U-08 at the relevant milestones; remaining limitations are disclosed. No critical action depends on hover, precision dragging, color alone, or a development operator's intervention.
 13. Upgrade/recovery tests prove that an unfinished game retains its actual executable rules version, pending effects, committed randomness, private view and idempotent command results. Unsupported-image recovery fails explicitly and preserves data.
+14. Configurable room policies use all-seat approval after start, never unilateral host edits; agreed updates cannot retroactively shorten a current wait or alter the immutable game profile.
+15. Autosave and manual Save and leave show acknowledged persistence and restore the latest game with original seats. All-seat save/suspend survives all players going offline and a server restart; no historical rollback, export/import, or unauthorized seat claim is possible.
+16. Room text chat supports negotiation alongside structured trading, with authorized history, safe rendering, rate limits, mute, deduplication and mobile usability. Chat messages cannot move cards or impersonate authoritative game events.
+17. Traditional Chinese and English cover every player-facing flow from entry through recovery/result. Mixed-locale players share identical rules, terms, policy votes and saved state; switching language preserves intent and does not reveal private information.
 
 ## 14. Risks and Open Items
 
-- **Rules and fidelity:** §5 pins a concrete proposed edition family and named scenario matrix; D-01/D-02 still need acceptance. Source-map coordinates and every card/scenario clause must be transcribed and independently checked before enabling a profile. This document is not a replacement for the official rulebooks.
+- **Rules and fidelity:** D-01/D-02 confirm §5's 2025 edition family and full named target matrix, delivered in stages with base first. Source-map coordinates and every card/scenario clause must be transcribed and independently checked before enabling a profile. This document is not a replacement for the official rulebooks.
 - **Rights and assets:** Product name, logo, illustrations, card text, and commercial/public distribution may have intellectual-property constraints. Do not copy official assets or text without permission; obtain appropriate legal review/licensing before a public branded release. This is a risk note, not legal advice. Fidelity means mechanics and information/decision opportunities, not an unauthorized visual clone.
-- **Expansion scope:** Each expansion has multiple scenarios and not all combinations are compatible. §5.7 is the bounded proposed first-release matrix; additional scenarios, exploration, community maps and historical rule profiles require an explicit scope change.
+- **Expansion scope:** Each expansion has multiple scenarios and not all combinations are compatible. §5.7 is the confirmed bounded final first-release target matrix; additional scenarios, exploration, community maps and historical rule profiles require an explicit scope change.
 - **Guest identity loss:** Browser-bound identity cannot recover across devices/storage loss. Warn before reliance on a long saved game; host powers cannot reassign a lost guest's active seat. Future account linking should preserve the stable player ID.
 - **Operations and data:** One application replica is supported. Both database modes need bounded resource use, migration/backup/restore evidence, interrupted-game retention policy and deletion notice. PostgreSQL alone does not solve live-room ownership.
 - **Recovery and version retention:** §7.3 preserves active behavior but adds maintenance cost for referenced engine versions. A rejected alternative is silently applying new rules; any future migration/retirement requires its own evidence and approval.
-- **Presence and public play:** D-03's no-clock/no-AI policy protects strategic choices but may leave tables interrupted. Its explicit abandonment option sacrifices eventual recovery for a deliberate no-winner termination. Neither policy prevents all griefing; do not claim a moderated competitive service.
-- **Evidence gap:** No application, rendered prototype, physical-device test, complete-game observation, or production performance result exists at this revision. Proposed UX budgets and verification methods are targets, not measured outcomes.
+- **Presence and public play:** D-03's configurable advisory-clock/absence policy and no-AI/no-forced-action safeguards protect strategic choices but may leave tables interrupted. Its explicit abandonment option sacrifices eventual recovery for a deliberate no-winner termination. Neither policy prevents all griefing; do not claim a moderated competitive service.
+- **Evidence gap:** No application, rendered prototype, physical-device test, complete-game observation, or production performance result exists at this revision. Accepted UX budgets and verification methods are targets, not measured outcomes.
 
-### 14.1 Decisions required before dependent implementation
+### 14.1 Confirmed decisions and implementation gates
 
-All rows are **proposed, awaiting user confirmation**. The current request authorizes specification updates, not automatic acceptance of new defaults. A rejected recommendation is revised here before dependent code; do not silently fill a pending choice while claiming the design is accepted.
+**D-01–D-06 are user-confirmed as of 2026-10-26.** The user selected the following options and accepted the remaining recommendations. A follow-up explicitly confirmed all-seat approval for post-start policy changes and server autosave plus manual save-and-leave without export/rollback. These choices no longer require repeated product approval; implementation gates below concern evidence, not re-asking the same decisions. A future change to the confirmed scope needs explicit approval.
 
-| ID | Decision / recommended concrete default | Alternative and trade-off | Owner and latest gate |
+| ID | Confirmed decision | Retained boundary / trade-off | Implementation evidence gate |
 |---|---|---|---|
-| D-01 | Adopt the 2025 English rulebook family and paired 5–6 turns in §5.3; preserve the same mechanical meaning in Traditional Chinese UI. | Target a specific older/localized edition instead; record differences as a separate baseline, never combine versions ad hoc. | User; before rule-behavior implementation in Phase 1. |
-| D-02 | First Seafarers scenario is Heading for New Shores; proposed first full release includes the explicit standalone/combined rows and counts in §5.7. | A narrower first release can defer combination rows; a different scenario changes maps, scoring and required effects. Do not remove already confirmed expansion goals without approval. | User; before scenario implementation/claims, with matrix agreed before expansion scheduling. |
-| D-03 | No turn timer/AI; five-minute disconnect grace, deterministic lobby host transfer, consensual pause, and explicit no-winner abandonment by all currently connected seats under §4.6. | Indefinite recoverable suspension avoids ending an absent player's game but leaves public tables unresolved; timed auto-actions change play and are not implied. Confirm the connected-player abandonment authority specifically. | User; before Phase 2A host lifecycle and Phase 2C interruption acceptance; mandatory before public tables. |
-| D-04 | Structured public offer/counteroffer/consent flows and limited negotiation responses; no general text/voice chat required in v1. | Text chat better supports free-form negotiation and table talk but adds abuse/privacy/UI scope; decide from prototype/playtest evidence if structured negotiation is insufficient. | User; before trading interaction implementation in Phase 2B. |
-| D-05 | Single replica, retain rules engines/readers required by unfinished games, and block incompatible takeover as in §7.3. Select React/Node/room framework/SQL layer only after the bounded proof. | Drain all games before incompatible upgrades is simpler but operationally restrictive; active-rule migration needs a separate policy and evidence. Custom WebSocket infrastructure remains an architecture alternative, not a second simultaneous owner. | User for upgrade/deployment behavior; implementation lead for evidence-backed library choice; before Phase 2C persistence/upgrade acceptance. |
-| D-06 | Traditional Chinese UI; §8.5 viewports/browser/device/accessibility scope and proposed responsiveness budget; original readable tabletop-style visuals. Newest same-identity connection owns seat control, with explicit reclaim. | Other language/visual direction, device floor or multi-tab policy changes UI acceptance; tune provisional performance thresholds only from documented measurement. | User for product scope/seat-control behavior; implementation lead records environment and evidence; before prototype acceptance and Phase 2A–2B UI baseline. |
+| D-01 | Adopt the 2025 official base/5–6/expansion rule family and paired-player turns in §5.3. Both UI languages preserve the same mechanical meaning. | No silent mixing with older/localized rule variants. | Phase 1 onward: source-derived rules and versioned fixtures. |
+| D-02 | Keep the full §5.7 matrix as the final release target; use Heading for New Shores first and include the named standalone/combined profiles. Deliver and playtest base first, then expand by stages. | Full target is not a claim that every combination exists now; unverified profiles remain disabled. | Phase 2 base playtest, then per-profile/count evidence in Phases 4–6. |
+| D-03 | Room policies configurable on creation/by host before start; after start, every seated player must approve changes. Host leaves → transfer administration. Autosave plus explicit server-side Save and leave; all-seat save/suspend/resume under §§4.6–4.8/5.8. | Default no clock/AI, five-minute grace and the approved absence policy. Optional clock is advisory, not automated play. No save export/import, rollback, cloned game or cross-device seat claim. Ruleset/score/seat identity remain immutable after start. | Phase 2A policy/host controls; 2C R-POLICY/R-SAVE/R-REC, consent and terminal-race checks. |
+| D-04 | Structured trading **and room text chat** in v1 for negotiation, discussion, reminders and social interaction. | Chat cannot settle trades or alter rules; authenticated audience, personal mute, rate limits and safe rendering required. Voice/video remains out of scope. | Phase 2B R-CHAT/R-TRADE, privacy and mobile interaction checks; public abuse controls in Phase 3. |
+| D-05 | One deployed application instance initially; retain executable rule engines/readers needed by unfinished games and block incompatible takeover. | No multi-instance failover claim or silent active-rule migration. Specific libraries remain evidence-backed technical choices, not product blockers. | Phase 1 framework proof; Phase 2C old-version recovery; Phase 3 upgrade/backup operations. |
+| D-06 | First release supports **Traditional Chinese and English**. Retain desktop-first complete mobile play, original readable tabletop visuals, §8.5 accessibility/device targets, and newest-connection seat control with explicit reclaim. | Locale is per player and cannot change rules; original chat is not auto-translated. Performance thresholds are acceptance targets to measure, not proven results. | Phase 1 bilingual foundation; Phase 2 bilingual flows/real devices; all later profiles retain locale and accessibility coverage. |
 
 Operational values such as public rate limits, room caps, interrupted/finished-game retention, backup frequency, and reference deployment resources must be documented and tested before Phase 3/public launch. They are not substitutes for D-03's game behavior and must not delete active games as ordinary stale lobbies.
 
@@ -575,11 +649,21 @@ Operational values such as public rate limits, room caps, interrupted/finished-g
 - Commit each completed implementation phase.
 - Audit design, UI/UX and mechanics for gaps and fidelity; incorporate that review into this specification before implementation.
 
-### Proposed, pending confirmation at the named gate
+### Confirmed decision follow-up — 2026-10-26
 
-- D-01–D-06 in §14.1 are the decision source for newly specified defaults. Do not promote this list into “user-confirmed” because the documentation was edited or committed.
-- Technical choices remain React/TypeScript/Vite, Node.js, Colyseus as a candidate, SVG board, and Kysely or equivalent, subject to the architecture proof; no framework adoption is claimed.
-- The revised plan replaces the previous automatic strict-TDD proposal with the current `off` workflow setting while retaining all required acceptance tests.
+- D-01: 2025 official rules across base, 5–6 players and expansions; no edition mixing.
+- D-02: keep the full matrix as the final target and deliver/playtest base first; retain the recommended Heading for New Shores scenario.
+- D-03: creation/pre-game host settings; post-start changes require every seated player's consent; host succession on departure. The user explicitly selected server autosave plus manual Save and leave, without downloadable/importable saves or historical rollback.
+- D-04: structured trading **plus text chat**, replacing the earlier structured-only proposal.
+- D-05: one deployed instance for now, with retained executable rules/readers for unfinished games.
+- D-06: Traditional Chinese **and English** in the first release, replacing the earlier Chinese-only proposal. The user accepted the remaining recommended device/accessibility/visual and newest-connection seat-control choices.
+- All-seat save/suspend and resume operationalize the accepted save feature using the existing consensual-pause safeguard; individual saving does not silently pause everyone else or withdraw a seat.
+
+### Technical and operational follow-through
+
+- Product choices above are confirmed; library selection remains React/TypeScript/Vite, Node.js, Colyseus as a candidate, SVG board, and Kysely or equivalent, subject to the architecture proof. No installed framework or passing prototype is claimed.
+- Finalize documented bounds for advisory clocks/grace, message length/rate/history, room caps, reference deployment resources, backup and game/chat retention before the relevant implementation/public milestone. These values cannot weaken fixed consent/privacy/no-rollback safeguards.
+- TDD workflow remains `off` while all required acceptance tests remain mandatory. No coding or test-first sequence is claimed by this documentation update.
 
 ### Review evidence and limits
 
