@@ -1,0 +1,484 @@
+/**
+ * Game coordination: serialised command handling, durable receipts, save
+ * barriers, suspension and resume.
+ *
+ * Every accepted transition is persisted atomically together with its ordered
+ * events and command receipt before anything is published (§7.2).
+ */
+
+import {
+  actionHints,
+  applyCommand,
+  createGame,
+  ENGINE_VERSION,
+  projectGame,
+  requireProfile,
+  secureRng,
+  type Command,
+  type GameState,
+} from '@catan/rules';
+import type {
+  CommandReceipt,
+  CommandRequest,
+  GameSnapshot,
+  Notice,
+  ResumableGameView,
+  RoomStatus,
+  SaveReceipt,
+} from '@catan/protocol';
+import type { ServerConfig } from './config.ts';
+import { digestPayload, newId, type GameRow, type Repository, type RoomRow } from './db.ts';
+import { ServiceError, type RoomService } from './rooms.ts';
+
+const RECEIPT_EVENT_LIMIT = 200;
+
+export interface GameCoordinatorDeps {
+  repo: Repository;
+  rooms: RoomService;
+  config: ServerConfig;
+}
+
+export class GameCoordinator {
+  private readonly locks = new Map<string, Promise<unknown>>();
+
+  constructor(private readonly deps: GameCoordinatorDeps) {}
+
+  private get repo(): Repository {
+    return this.deps.repo;
+  }
+
+  /** Serialises work per game so concurrent handlers cannot race. */
+  private withLock<T>(gameId: string, fn: () => Promise<T>): Promise<T> {
+    const previous = this.locks.get(gameId) ?? Promise.resolve();
+    const next = previous.then(fn, fn);
+    this.locks.set(
+      gameId,
+      next.catch(() => undefined),
+    );
+    return next;
+  }
+
+  // -- creation ------------------------------------------------------------
+
+  async startGame(room: RoomRow, playerIds: string[]): Promise<string> {
+    const profile = requireProfile(room.profile_id);
+    const players: { id: string; nickname: string; color: 'red' }[] = [];
+    for (const playerId of playerIds) {
+      const guest = await this.repo.findGuest(playerId);
+      players.push({
+        id: playerId,
+        nickname: guest?.nickname ?? 'player',
+        color: 'red' as const,
+      });
+    }
+    // Colours and seats come from the lobby membership, not from the client.
+    const memberships = await this.repo.listMemberships(room.id);
+    const ordered = memberships
+      .slice()
+      .sort((a, b) => a.seat - b.seat)
+      .map((membership) => {
+        const guestIndex = players.findIndex((player) => player.id === membership.player_id);
+        return {
+          id: membership.player_id,
+          nickname: players[guestIndex]?.nickname ?? 'player',
+          color: membership.color as never,
+        };
+      });
+
+    const state = createGame({
+      profileId: profile.id,
+      players: ordered,
+      setupMode: room.setup_mode as 'fixed' | 'variable',
+      rng: secureRng(),
+    });
+    const gameId = newId('game');
+    const now = new Date().toISOString();
+    await this.repo.transaction(async () => {
+      await this.repo.insertGame({
+        id: gameId,
+        room_id: room.id,
+        profile_id: profile.id,
+        engine_version: ENGINE_VERSION,
+        state_json: JSON.stringify(state),
+        revision: 1,
+        status: 'playing',
+        pause_reason: null,
+        result_json: null,
+        created_at: now,
+        updated_at: now,
+      });
+      await this.repo.appendEvents(gameId, 1, state.log);
+    });
+    return gameId;
+  }
+
+  // -- reads ---------------------------------------------------------------
+
+  async requireGame(gameId: string): Promise<GameRow> {
+    const game = await this.repo.findGame(gameId);
+    if (!game) throw new ServiceError('E_GAME_NOT_FOUND', 'error.E_GAME_NOT_FOUND', { gameId }, 404);
+    return game;
+  }
+
+  /** A player may only read games they hold a seat in. */
+  async requireSeat(game: GameRow, playerId: string): Promise<void> {
+    const membership = await this.repo.findMembership(game.room_id, playerId);
+    if (!membership) {
+      throw new ServiceError('E_NOT_SEATED', 'error.E_NOT_SEATED', { gameId: game.id }, 403);
+    }
+  }
+
+  async snapshot(gameId: string, playerId: string): Promise<GameSnapshot> {
+    const game = await this.requireGame(gameId);
+    await this.requireSeat(game, playerId);
+    const state = JSON.parse(game.state_json) as GameState;
+    const events = await this.repo.listEvents(gameId, Math.max(0, state.seq - 40), 40);
+    const view = projectGame(state, playerId, {
+      events,
+      hints: actionHints(state, playerId),
+    });
+    return { gameId, roomId: game.room_id, revision: game.revision, view };
+  }
+
+  async events(
+    playerId: string,
+    gameId: string,
+    after: number,
+    limit: number,
+  ): Promise<{ events: CommandReceipt['events']; revision: number }> {
+    const game = await this.requireGame(gameId);
+    await this.requireSeat(game, playerId);
+    const events = await this.repo.listEvents(gameId, after, Math.min(limit, 500));
+    const filtered = events.filter((event) => !event.private || event.private.to.includes(playerId));
+    return {
+      events: filtered.map((event) => {
+        if (!event.private) return event;
+        return { seq: event.seq, type: event.type, params: { ...event.params, ...event.private.params } };
+      }),
+      revision: game.revision,
+    };
+  }
+
+  async resumableGames(playerId: string): Promise<ResumableGameView[]> {
+    const rooms = await this.repo.listRoomsForPlayer(playerId);
+    const out: ResumableGameView[] = [];
+    for (const room of rooms) {
+      if (room.status === 'lobby' || room.status === 'completed' || room.status === 'abandoned') continue;
+      const game = await this.repo.findGameByRoom(room.id);
+      if (!game) continue;
+      const memberships = await this.repo.listMemberships(room.id);
+      const players = [];
+      for (const membership of memberships) {
+        const guest = await this.repo.findGuest(membership.player_id);
+        players.push({
+          playerId: membership.player_id,
+          nickname: guest?.nickname ?? 'player',
+          color: membership.color,
+        });
+      }
+      out.push({
+        gameId: game.id,
+        roomId: room.id,
+        roomCode: room.code,
+        profileId: room.profile_id,
+        status: room.status as RoomStatus,
+        players,
+        lastSavedAt: game.updated_at,
+        revision: game.revision,
+        allSeatsNeeded: true,
+      });
+    }
+    return out;
+  }
+
+  // -- commands ------------------------------------------------------------
+
+  async submit(playerId: string, gameId: string, request: CommandRequest): Promise<CommandReceipt> {
+    return this.withLock(gameId, async () => {
+      const game = await this.requireGame(gameId);
+      await this.requireSeat(game, playerId);
+
+      const digest = digestPayload({ command: request.command, expectedRevision: request.expectedRevision });
+      const existing = await this.repo.findReceipt(gameId, playerId, request.commandId);
+      if (existing) {
+        if (existing.payload_digest !== digest) {
+          throw new ServiceError('E_COMMAND_ID_REUSED', 'error.E_COMMAND_ID_REUSED', {
+            commandId: request.commandId,
+          });
+        }
+        return this.receiptFromRow(existing);
+      }
+
+      const room = await this.repo.findRoom(game.room_id);
+      if (room?.status === 'suspended') {
+        throw new ServiceError('E_GAME_SUSPENDED', 'error.E_GAME_SUSPENDED', { gameId }, 409);
+      }
+      if (room?.status === 'completed' || room?.status === 'abandoned') {
+        throw new ServiceError('E_GAME_OVER', 'error.E_GAME_OVER', { gameId }, 409);
+      }
+
+      if (request.expectedRevision !== game.revision) {
+        const rejection = await this.recordRejection(game, playerId, request, digest, {
+          messageId: 'error.E_STALE_REVISION',
+          params: { expected: request.expectedRevision, current: game.revision },
+        });
+        return rejection;
+      }
+
+      const state = JSON.parse(game.state_json) as GameState;
+      const outcome = applyCommand(state, playerId, request.command as unknown as Command, secureRng());
+
+      if (!outcome.ok) {
+        return this.recordRejection(game, playerId, request, digest, {
+          messageId: `error.${outcome.error.code}`,
+          params: outcome.error.params ?? {},
+        });
+      }
+
+      const revision = game.revision + 1;
+      const events = outcome.events;
+      await this.repo.transaction(async () => {
+        await this.repo.saveGame(
+          gameId,
+          outcome.state,
+          revision,
+          outcome.state.result ? 'completed' : game.status,
+          game.pause_reason,
+        );
+        await this.repo.appendEvents(gameId, revision, events);
+        await this.repo.insertReceipt({
+          game_id: gameId,
+          player_id: playerId,
+          command_id: request.commandId,
+          payload_digest: digest,
+          outcome: 'accepted',
+          revision,
+          error_json: null,
+          events_json: JSON.stringify(events.slice(-RECEIPT_EVENT_LIMIT)),
+          created_at: new Date().toISOString(),
+        });
+      });
+
+      if (outcome.state.result) {
+        await this.repo.updateRoom(game.room_id, { status: 'completed' });
+      }
+      this.publish(game.room_id, gameId, revision, events);
+      return {
+        commandId: request.commandId,
+        outcome: 'accepted',
+        revision,
+        events,
+      };
+    });
+  }
+
+  private async recordRejection(
+    game: GameRow,
+    playerId: string,
+    request: CommandRequest,
+    digest: string,
+    error: Notice,
+  ): Promise<CommandReceipt> {
+    await this.repo.insertReceipt({
+      game_id: game.id,
+      player_id: playerId,
+      command_id: request.commandId,
+      payload_digest: digest,
+      outcome: 'rejected',
+      revision: game.revision,
+      error_json: JSON.stringify(error),
+      events_json: '[]',
+      created_at: new Date().toISOString(),
+    });
+    return {
+      commandId: request.commandId,
+      outcome: 'rejected',
+      revision: game.revision,
+      error,
+      events: [],
+    };
+  }
+
+  private receiptFromRow(row: {
+    outcome: string;
+    revision: number;
+    error_json: string | null;
+    events_json: string;
+    command_id: string;
+  }): CommandReceipt {
+    const receipt: CommandReceipt = {
+      commandId: row.command_id,
+      outcome: row.outcome as 'accepted' | 'rejected',
+      revision: row.revision,
+      events: JSON.parse(row.events_json) as CommandReceipt['events'],
+    };
+    if (row.error_json) receipt.error = JSON.parse(row.error_json) as Notice;
+    return receipt;
+  }
+
+  /** Pushes a fresh authorised projection to every connected seated player. */
+  private publish(roomId: string, gameId: string, revision: number, events: CommandReceipt['events']): void {
+    const memberships = this.deps.rooms.connectionsInRoom(roomId);
+    const seen = new Set<string>();
+    for (const connection of memberships) {
+      if (seen.has(connection.playerId)) continue;
+      seen.add(connection.playerId);
+      void this.snapshot(gameId, connection.playerId)
+        .then((snapshot) => {
+          this.deps.rooms.sendTo(connection.playerId, { type: 'snapshot', payload: snapshot }, roomId);
+        })
+        .catch(() => undefined);
+    }
+    void events;
+    void revision;
+  }
+
+  // -- save, suspend, resume ----------------------------------------------
+
+  /** Individual save barrier: acknowledges the current committed revision. */
+  async save(playerId: string, gameId: string, requestId: string): Promise<SaveReceipt> {
+    return this.withLock(gameId, async () => {
+      const game = await this.requireGame(gameId);
+      await this.requireSeat(game, playerId);
+      const existing = await this.repo.findSaveReceipt(gameId, playerId, requestId);
+      if (existing) {
+        return {
+          requestId,
+          gameId,
+          revision: existing.revision,
+          savedAt: existing.saved_at,
+          outcome: existing.outcome as 'saved' | 'failed',
+        };
+      }
+      const savedAt = new Date().toISOString();
+      try {
+        await this.repo.transaction(async () => {
+          await this.repo.saveGame(gameId, JSON.parse(game.state_json) as GameState, game.revision, game.status, game.pause_reason);
+          await this.repo.insertSaveReceipt({
+            game_id: gameId,
+            player_id: playerId,
+            request_id: requestId,
+            revision: game.revision,
+            outcome: 'saved',
+            saved_at: savedAt,
+          });
+        });
+      } catch (error) {
+        void error;
+        return {
+          requestId,
+          gameId,
+          revision: game.revision,
+          savedAt,
+          outcome: 'failed',
+          error: { messageId: 'error.E_SAVE_FAILED' },
+        };
+      }
+      return { requestId, gameId, revision: game.revision, savedAt, outcome: 'saved' };
+    });
+  }
+
+  /** All-seat save/suspend proposal; the table freezes once everyone consents. */
+  async proposeSuspend(playerId: string, gameId: string): Promise<{ proposalId: string }> {
+    return this.withLock(gameId, async () => {
+      const game = await this.requireGame(gameId);
+      await this.requireSeat(game, playerId);
+      const existing = await this.repo.findOpenGameProposal(gameId, 'suspend');
+      if (existing) return { proposalId: existing.id };
+      const proposalId = newId('suspend');
+      await this.repo.insertGameProposal({
+        id: proposalId,
+        game_id: gameId,
+        kind: 'suspend',
+        proposed_by: playerId,
+        status: 'open',
+        created_at: new Date().toISOString(),
+      });
+      await this.repo.insertGameConsent(proposalId, playerId);
+      await this.tryApplySuspend(game, proposalId);
+      return { proposalId };
+    });
+  }
+
+  async consentSuspend(
+    playerId: string,
+    gameId: string,
+    proposalId: string,
+    approve: boolean,
+  ): Promise<{ suspended: boolean }> {
+    return this.withLock(gameId, async () => {
+      const game = await this.requireGame(gameId);
+      await this.requireSeat(game, playerId);
+      const proposal = await this.repo.findOpenGameProposal(gameId, 'suspend');
+      if (!proposal || proposal.id !== proposalId) {
+        throw new ServiceError('E_NO_PROPOSAL', 'error.E_NO_PROPOSAL', { proposalId }, 404);
+      }
+      if (!approve) {
+        await this.repo.updateGameProposalStatus(proposalId, 'rejected');
+        return { suspended: false };
+      }
+      await this.repo.insertGameConsent(proposalId, playerId);
+      return { suspended: await this.tryApplySuspend(game, proposalId) };
+    });
+  }
+
+  private async tryApplySuspend(game: GameRow, proposalId: string): Promise<boolean> {
+    const memberships = await this.repo.listMemberships(game.room_id);
+    const consents = new Set(await this.repo.listGameConsents(proposalId));
+    if (!memberships.every((membership) => consents.has(membership.player_id))) return false;
+    await this.repo.transaction(async () => {
+      await this.repo.saveGame(
+        game.id,
+        JSON.parse(game.state_json) as GameState,
+        game.revision,
+        'suspended',
+        'saved',
+      );
+      await this.repo.updateGameProposalStatus(proposalId, 'applied');
+      await this.repo.updateRoom(game.room_id, { status: 'suspended' });
+      await this.repo.clearGameReady(game.id);
+    });
+    this.deps.rooms.broadcastRoom(game.room_id);
+    return true;
+  }
+
+  /** Resume requires every seat to be connected and explicitly ready. */
+  async setResumeReady(
+    playerId: string,
+    gameId: string,
+    ready: boolean,
+  ): Promise<{ resumed: boolean; waitingFor: string[] }> {
+    return this.withLock(gameId, async () => {
+      const game = await this.requireGame(gameId);
+      await this.requireSeat(game, playerId);
+      await this.repo.setGameReady(gameId, playerId, ready);
+      const memberships = await this.repo.listMemberships(game.room_id);
+      const readiness = new Map(
+        (await this.repo.listGameReady(gameId)).map((row) => [row.player_id, row.ready === 1]),
+      );
+      const waitingFor = memberships
+        .filter((membership) => membership.connected !== 1 || readiness.get(membership.player_id) !== true)
+        .map((membership) => membership.player_id);
+      if (waitingFor.length > 0) return { resumed: false, waitingFor };
+      await this.repo.transaction(async () => {
+        await this.repo.saveGame(
+          gameId,
+          JSON.parse(game.state_json) as GameState,
+          game.revision,
+          'playing',
+          null,
+        );
+        await this.repo.updateRoom(game.room_id, { status: 'playing' });
+        await this.repo.clearGameReady(gameId);
+      });
+      this.deps.rooms.broadcastRoom(game.room_id);
+      return { resumed: true, waitingFor: [] };
+    });
+  }
+
+  /** Game state for tests and diagnostics; never exposed over HTTP directly. */
+  async rawState(gameId: string): Promise<GameState> {
+    const game = await this.requireGame(gameId);
+    return JSON.parse(game.state_json) as GameState;
+  }
+}

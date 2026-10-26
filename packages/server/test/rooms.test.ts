@@ -1,0 +1,351 @@
+/** R-ROOM / R-POLICY: lobby lifecycle, readiness, host succession, policy votes. */
+
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { startHarness, startedGame, type TestHarness } from './helpers.ts';
+
+let harness: TestHarness;
+
+beforeAll(async () => {
+  harness = await startHarness();
+});
+
+afterAll(async () => {
+  await harness.close();
+});
+
+interface RoomShape {
+  id: string;
+  code: string;
+  hostId: string;
+  status: string;
+  capacity: number;
+  members: { playerId: string; ready: boolean; connected: boolean; host: boolean; color: string }[];
+  startBlockers: { messageId: string }[];
+  policy: { disconnectGraceSeconds: number; turnClockSeconds: number; allowAbandonment: boolean };
+  policyRevision: number;
+  pendingPolicy: { id: string; consents: string[]; after: { turnClockSeconds: number } } | null;
+}
+
+describe('R-ROOM lobby', () => {
+  it('creates a private room with an unguessable code and the creator as host', async () => {
+    const host = await harness.client('Host');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    expect(room.code).toHaveLength(8);
+    expect(room.status).toBe('lobby');
+    expect(room.members).toHaveLength(1);
+    expect(room.members[0]!.host).toBe(true);
+  });
+
+  it('rejects unsupported combinations server-side', async () => {
+    const host = await harness.client('Host2');
+    host.expectError(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 5,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+      'E_UNSUPPORTED_COMBINATION',
+    );
+    host.expectError(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 4,
+        profileId: 'sf-new-shores-2025',
+        setupMode: 'fixed',
+      }),
+      'E_UNSUPPORTED_COMBINATION',
+    );
+  });
+
+  it('hides private rooms from the public list and exposes public ones', async () => {
+    const host = await harness.client('Host3');
+    const privateRoom = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    const publicRoom = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'public',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    const viewer = await harness.client('Viewer');
+    const list = viewer.expectOk<{ rooms: { id: string; code: string | null }[] }>(
+      await viewer.get('/api/rooms'),
+    );
+    const ids = list.rooms.map((room) => room.id);
+    expect(ids).toContain(publicRoom.id);
+    expect(ids).not.toContain(privateRoom.id);
+  });
+
+  it('joins by code, assigns unique seats and colours, and refuses overflow', async () => {
+    const host = await harness.client('SeatHost');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    const second = await harness.client('Second');
+    const third = await harness.client('Third');
+    const fourth = await harness.client('Fourth');
+    second.expectOk(await second.post('/api/rooms/join', { code: room.code }));
+    third.expectOk(await third.post('/api/rooms/join', { code: room.code }));
+    fourth.expectError(await fourth.post('/api/rooms/join', { code: room.code }), 'E_ROOM_FULL');
+
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.members).toHaveLength(3);
+    expect(new Set(view.members.map((member) => member.color)).size).toBe(3);
+    expect(new Set(view.members.map((member) => member.playerId)).size).toBe(3);
+  });
+
+  it('clears readiness whenever settings change', async () => {
+    const host = await harness.client('ReadyHost');
+    const other = await harness.client('ReadyOther');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    other.expectOk(await other.post('/api/rooms/join', { code: room.code }));
+    host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    other.expectOk(await other.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    let view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.members.every((member) => member.ready)).toBe(true);
+
+    view = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${room.id}/settings`, { capacity: 3 }),
+    );
+    expect(view.members.every((member) => member.ready)).toBe(false);
+  });
+
+  it('blocks start until every seat is present, connected and ready', async () => {
+    const host = await harness.client('StartHost');
+    const other = await harness.client('StartOther');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    other.expectOk(await other.post('/api/rooms/join', { code: room.code }));
+    let view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.startBlockers.map((blocker) => blocker.messageId)).toContain('blocker.seats');
+
+    host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    other.expectOk(await other.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    host.expectError(await host.post(`/api/rooms/${room.id}/start`), 'E_START_BLOCKED');
+
+    const third = await harness.client('StartThird');
+    third.expectOk(await third.post('/api/rooms/join', { code: room.code }));
+    view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.startBlockers.map((blocker) => blocker.messageId)).toContain('blocker.notReady');
+
+    third.expectOk(await third.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    const started = host.expectOk<{ gameId: string }>(await host.post(`/api/rooms/${room.id}/start`));
+    expect(started.gameId).toMatch(/^game_/);
+    view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.status).toBe('playing');
+  });
+
+  it('refuses a non-host settings or start request', async () => {
+    const host = await harness.client('AuthHost');
+    const other = await harness.client('AuthOther');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    other.expectOk(await other.post('/api/rooms/join', { code: room.code }));
+    other.expectError(
+      await other.post(`/api/rooms/${room.id}/settings`, { capacity: 3 }),
+      'E_NOT_HOST',
+    );
+    other.expectError(await other.post(`/api/rooms/${room.id}/start`), 'E_NOT_HOST');
+  });
+
+  it('transfers administration to the earliest-joined remaining member when the host leaves', async () => {
+    const host = await harness.client('LeaveHost');
+    const second = await harness.client('LeaveSecond');
+    const third = await harness.client('LeaveThird');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    second.expectOk(await second.post('/api/rooms/join', { code: room.code }));
+    third.expectOk(await third.post('/api/rooms/join', { code: room.code }));
+    const result = host.expectOk<{ left: boolean; hostTransferredTo: string | null }>(
+      await host.post(`/api/rooms/${room.id}/leave`),
+    );
+    expect(result.hostTransferredTo).toBe(second.playerId);
+    const view = second.expectOk<RoomShape>(await second.get(`/api/rooms/${room.id}`));
+    expect(view.hostId).toBe(second.playerId);
+    expect(view.members).toHaveLength(2);
+  });
+
+  it('closes an empty pre-game lobby and keeps seats of a running game', async () => {
+    const empty = await harness.client('EmptyHost');
+    const emptyRoom = empty.expectOk<RoomShape>(
+      await empty.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    empty.expectOk(await empty.post(`/api/rooms/${emptyRoom.id}/leave`));
+    empty.expectError(await empty.get(`/api/rooms/${emptyRoom.id}`), 'E_ROOM_NOT_FOUND');
+
+    const { clients, roomId } = await startedGame(harness, 3);
+    const host = clients[0]!;
+    const leaver = clients[1]!;
+    const result = leaver.expectOk<{ hostTransferredTo: string | null }>(
+      await leaver.post(`/api/rooms/${roomId}/leave`),
+    );
+    void result;
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${roomId}`));
+    expect(view.members).toHaveLength(3);
+    const stillSeated = view.members.find((member) => member.playerId === leaver.playerId);
+    expect(stillSeated).toBeDefined();
+  });
+});
+
+describe('R-POLICY room policy', () => {
+  it('lets the host set policy before start and clears readiness', async () => {
+    const host = await harness.client('PolicyHost');
+    const other = await harness.client('PolicyOther');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    other.expectOk(await other.post('/api/rooms/join', { code: room.code }));
+    host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    const view = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${room.id}/policy`, {
+        policy: { turnClockSeconds: 120, disconnectGraceSeconds: 600, allowAbandonment: false },
+      }),
+    );
+    expect(view.policy.turnClockSeconds).toBe(120);
+    expect(view.policy.disconnectGraceSeconds).toBe(600);
+    expect(view.policy.allowAbandonment).toBe(false);
+    expect(view.members.find((member) => member.playerId === host.playerId)!.ready).toBe(false);
+  });
+
+  it('rejects policy values outside the documented bounds', async () => {
+    const host = await harness.client('BoundsHost');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    host.expectError(
+      await host.post(`/api/rooms/${room.id}/policy`, {
+        policy: { disconnectGraceSeconds: 1 },
+      }),
+      'E_INVALID_POLICY',
+    );
+    host.expectError(
+      await host.post(`/api/rooms/${room.id}/policy`, {
+        policy: { turnClockSeconds: -5 },
+      }),
+      'E_INVALID_POLICY',
+    );
+  });
+
+  it('requires every seated player to consent after start and rejects a host-only write', async () => {
+    const { clients, roomId } = await startedGame(harness, 3);
+    const [host, second, third] = clients as [typeof clients[0], typeof clients[0], typeof clients[0]];
+
+    const proposed = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${roomId}/policy`, {
+        policy: { turnClockSeconds: 60 },
+      }),
+    );
+    expect(proposed.pendingPolicy).not.toBeNull();
+    expect(proposed.policy.turnClockSeconds).toBe(0);
+    const proposalId = proposed.pendingPolicy!.id;
+    expect(proposed.pendingPolicy!.consents).toContain(host.playerId);
+
+    // A non-host cannot propose.
+    second.expectError(
+      await second.post(`/api/rooms/${roomId}/policy`, { policy: { turnClockSeconds: 90 } }),
+      'E_NOT_HOST',
+    );
+
+    const afterSecond = second.expectOk<RoomShape>(
+      await second.post(`/api/rooms/${roomId}/policy/consent`, { proposalId, approve: true }),
+    );
+    expect(afterSecond.policy.turnClockSeconds).toBe(0);
+    expect(afterSecond.pendingPolicy).not.toBeNull();
+
+    const afterThird = third.expectOk<RoomShape>(
+      await third.post(`/api/rooms/${roomId}/policy/consent`, { proposalId, approve: true }),
+    );
+    expect(afterThird.policy.turnClockSeconds).toBe(60);
+    expect(afterThird.pendingPolicy).toBeNull();
+    expect(afterThird.policyRevision).toBeGreaterThan(1);
+  });
+
+  it('leaves the policy unchanged when a seat rejects', async () => {
+    const { clients, roomId } = await startedGame(harness, 3);
+    const [host, second] = clients as [typeof clients[0], typeof clients[0]];
+    const proposed = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${roomId}/policy`, {
+        policy: { disconnectGraceSeconds: 900 },
+      }),
+    );
+    const proposalId = proposed.pendingPolicy!.id;
+    const rejected = second.expectOk<RoomShape>(
+      await second.post(`/api/rooms/${roomId}/policy/consent`, { proposalId, approve: false }),
+    );
+    expect(rejected.policy.disconnectGraceSeconds).toBe(300);
+    expect(rejected.pendingPolicy).toBeNull();
+  });
+
+  it('cancels a pending proposal when the host transfers', async () => {
+    const { clients, roomId } = await startedGame(harness, 3);
+    const [host, second] = clients as [typeof clients[0], typeof clients[0]];
+    host.expectOk(
+      await host.post(`/api/rooms/${roomId}/policy`, { policy: { turnClockSeconds: 30 } }),
+    );
+    host.expectOk(await host.post(`/api/rooms/${roomId}/leave`));
+    const view = second.expectOk<RoomShape>(await second.get(`/api/rooms/${roomId}`));
+    expect(view.pendingPolicy).toBeNull();
+    expect(view.hostId).toBe(second.playerId);
+  });
+});

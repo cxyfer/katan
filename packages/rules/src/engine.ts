@@ -1185,11 +1185,24 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
   const isTurn = currentPlayer(state).id === playerId;
   const inAction = isTurn && state.turn.phase === 'action' && !state.pending;
   const freeRoads = state.pending?.kind === 'freeRoads' && state.pending.actor === playerId;
+  const setup = state.turn.setup;
+  const setupIsMine = !!setup && state.players[setup.order[setup.index] ?? -1]?.id === playerId;
+  const setupBuilding = setupIsMine && setup!.stage === 'building';
+  const setupRoad = setupIsMine && setup!.stage === 'road';
   return {
     canRoll: isTurn && state.turn.phase === 'preroll' && !state.pending,
     canEndTurn: inAction,
-    legalRoads: inAction || freeRoads ? legalRoadEdges(state, playerId) : [],
-    legalSettlements: inAction ? legalBuildingVertices(state, playerId) : [],
+    legalRoads:
+      inAction || freeRoads
+        ? legalRoadEdges(state, playerId)
+        : setupRoad
+          ? legalRoadEdges(state, playerId, { setup: true, lastVertex: setup!.lastVertex })
+          : [],
+    legalSettlements: inAction
+      ? legalBuildingVertices(state, playerId)
+      : setupBuilding
+        ? legalBuildingVertices(state, playerId, { setup: true })
+        : [],
     legalCities: inAction
       ? state.board.buildings
           .map((building, vertex) => ({ building, vertex }))
