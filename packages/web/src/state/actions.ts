@@ -91,9 +91,10 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
   ): ActionDescriptor => {
     const legal = targets.length;
     let reason: string | null = null;
-    if (legal === 0) reason = 'play.disabled.noTargets';
-    else if (!isTurnActor) reason = 'play.disabled.notYourTurn';
+    if (!isTurnActor) reason = 'play.disabled.notYourTurn';
+    else if (view?.turn.phase !== 'action') reason = 'play.disabled.timing';
     else if (pending && pending.kind !== 'freeRoads') reason = 'play.disabled.pending';
+    else if (legal === 0) reason = 'play.disabled.noTargets';
     else if (cost && !canAfford(resources, cost)) reason = 'play.disabled.inventory';
     return {
       id,

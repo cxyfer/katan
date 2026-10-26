@@ -6,7 +6,17 @@
  * id plus typed parameters (§8.7).
  */
 
+import { COMMAND_ERROR_CODES, RULE_EVENT_TYPES } from '@catan/rules';
 import type { GameEvent, GameView, Resource } from '@catan/rules';
+
+/**
+ * Stable message ids a client must be able to render. Both lists come from the
+ * rules package, so a new event or rejection cannot ship without a translation
+ * key being required.
+ */
+export const ERROR_MESSAGE_IDS: readonly string[] = COMMAND_ERROR_CODES.map((code) => `error.${code}`);
+export const EVENT_MESSAGE_IDS: readonly string[] = RULE_EVENT_TYPES.map((type) => `event.${type}`);
+export { COMMAND_ERROR_CODES, RULE_EVENT_TYPES };
 
 export type Visibility = 'private' | 'public';
 export type RoomStatus = 'lobby' | 'playing' | 'suspended' | 'completed' | 'abandoned';

@@ -65,3 +65,22 @@ describe('protocol contract', () => {
     }
   });
 });
+
+describe('message id coverage', () => {
+  it('derives an error message id for every rejection the engine can return', async () => {
+    const { ERROR_MESSAGE_IDS, COMMAND_ERROR_CODES } = await import('../src/index.ts');
+    expect(ERROR_MESSAGE_IDS).toHaveLength(COMMAND_ERROR_CODES.length);
+    expect(ERROR_MESSAGE_IDS).toContain('error.E_PAIRED_NO_DOMESTIC_TRADE');
+    expect(ERROR_MESSAGE_IDS).toContain('error.E_GAME_OVER');
+    expect(ERROR_MESSAGE_IDS).toContain('error.E_INSUFFICIENT_RESOURCES');
+    for (const id of ERROR_MESSAGE_IDS) expect(id).toMatch(/^error\.E_[A-Z_]+$/);
+  });
+
+  it('derives an event message id for every event the engine emits', async () => {
+    const { EVENT_MESSAGE_IDS } = await import('../src/index.ts');
+    expect(EVENT_MESSAGE_IDS).toContain('event.game.created');
+    expect(EVENT_MESSAGE_IDS).toContain('event.trade.completed');
+    expect(EVENT_MESSAGE_IDS).toContain('event.game.abandoned');
+    for (const id of EVENT_MESSAGE_IDS) expect(id).toMatch(/^event\.[a-z]+\.[a-zA-Z]+$/);
+  });
+});

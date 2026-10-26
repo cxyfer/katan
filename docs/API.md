@@ -45,6 +45,8 @@ Conventions:
 | GET | `/api/games/:gameId/events` | query `after?`, `limit?` | `{ events: GameEvent[], revision }` |
 | POST | `/api/games/:gameId/commands` | `CommandRequest` | `CommandReceipt` |
 | POST | `/api/games/:gameId/save` | `{ requestId }` | `SaveReceipt` |
+| POST | `/api/games/:gameId/abandon` | `{}` or `{ proposalId, approve }` | `{ proposalId }` or `{ abandoned }` |
+| POST | `/api/rooms/:roomId/withdraw` | `{ withdrawn }` | `RoomView` |
 | POST | `/api/games/:gameId/suspend` | `{ proposalId? }` | `RoomView` |
 | POST | `/api/games/:gameId/resume` | `{ ready }` | `RoomView` |
 | GET | `/api/rooms/:roomId/chat` | query `after?`, `limit?` | `ChatPage` |

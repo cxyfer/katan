@@ -34,7 +34,12 @@ export function CommandStatus({ controller }: { controller: TableController }) {
           <p>
             <strong>{t('command.unknownTitle')}</strong> {t('command.unknownHelp')}
           </p>
-          <button type="button" className="button" onClick={() => void actions.resolveCommand()}>
+          <button
+            type="button"
+            className="button"
+            data-testid="command-resolve"
+            onClick={() => void actions.resolveCommand()}
+          >
             {t('command.resolve')}
           </button>
         </>
@@ -44,7 +49,12 @@ export function CommandStatus({ controller }: { controller: TableController }) {
           <p>
             <strong>{t('command.staleTitle')}</strong> {t('command.staleHelp')}
           </p>
-          <button type="button" className="button" onClick={() => void actions.refreshSnapshot()}>
+          <button
+            type="button"
+            className="button"
+            data-testid="command-refresh"
+            onClick={() => void actions.refreshSnapshot()}
+          >
             {t('app.refresh')}
           </button>
         </>
@@ -62,7 +72,12 @@ export function CommandStatus({ controller }: { controller: TableController }) {
 
       <div className="command-status__actions">
         {canRetry(command) && (
-          <button type="button" className="button" onClick={() => void actions.retryCommand()}>
+          <button
+            type="button"
+            className="button"
+            data-testid="command-retry"
+            onClick={() => void actions.retryCommand()}
+          >
             {t('command.retry')}
           </button>
         )}
