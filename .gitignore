@@ -1,0 +1,49 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+.vite/
+packages/web/dist/
+packages/server/dist/
+
+# runtime data (SQLite volumes, uploads)
+.data/
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# test / coverage output
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+vitest-report/
+
+# local environment
+.env
+.env.*
+!.env.example
+*.local
+
+# logs and temp
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.tmp/
+tmp/
+
+# editor / OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
