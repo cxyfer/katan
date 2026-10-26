@@ -104,6 +104,33 @@ export function GameScreen({ controller }: { controller: TableController }) {
       {isMobile && <MobileDrawer controller={controller} />}
 
       {!isMobile && <ChatPanel controller={controller} />}
+
+      <section className="card" aria-labelledby="persistence-heading" data-testid="persistence-bar">
+        <h2 id="persistence-heading">{t('play.save')}</h2>
+        <p className="muted">{t('entry.identityNote')}</p>
+        <button
+          type="button"
+          className="button"
+          data-testid="save-and-leave"
+          disabled={state.save.status === 'pending'}
+          onClick={() => void controller.actions.saveGame()}
+        >
+          {state.save.status === 'pending' ? t('play.savePending') : t('play.saveAndLeave')}
+        </button>
+        <button
+          type="button"
+          className="button"
+          data-testid="suspend-propose"
+          onClick={() => void controller.actions.suspendGame()}
+        >
+          {t('play.suspendPropose')}
+        </button>
+        {state.save.status === 'failed' && (
+          <p className="error" role="alert" data-testid="save-failed">
+            {t('play.saveFailed')}
+          </p>
+        )}
+      </section>
     </div>
   );
 }

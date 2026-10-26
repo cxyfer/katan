@@ -317,9 +317,11 @@ describe('chat integration', () => {
     fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'hello table' } });
     fireEvent.click(screen.getByTestId('chat-send'));
 
-    const pending = await screen.findByTestId('chat-pending');
-    expect(pending.textContent).toContain('hello table');
-    expect(pending.textContent).toContain('Outcome unknown');
+    await screen.findByTestId('chat-pending');
+    await waitFor(() =>
+      expect(screen.getByTestId('chat-pending').textContent).toContain('Outcome unknown'),
+    );
+    expect(screen.getByTestId('chat-pending').textContent).toContain('hello table');
 
     const first = api.callsOf('sendChat')[0]!.args[1] as { clientMessageId: string };
     api.setChatSendResult({

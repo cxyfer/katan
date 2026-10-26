@@ -148,8 +148,16 @@ export function useTable(options: UseTableOptions): TableController {
 
   const currentRoomId = state.room?.id ?? null;
   const currentGameId = state.game?.gameId ?? state.room?.gameId ?? null;
-  roomIdRef.current = currentRoomId;
-  gameIdRef.current = currentGameId;
+
+  // Refs mirror authoritative ids for use inside async callbacks. They are
+  // updated in effects (never during render) and only ever *set*, so a render
+  // triggered by an unrelated slice of state cannot clear a live id.
+  useEffect(() => {
+    if (currentRoomId) roomIdRef.current = currentRoomId;
+  }, [currentRoomId]);
+  useEffect(() => {
+    if (currentGameId) gameIdRef.current = currentGameId;
+  }, [currentGameId]);
 
   // ---------------------------------------------------------------------
   // low level helpers
