@@ -1,0 +1,51 @@
+# Standard release notes
+
+Every GitHub Release uses this format. Do not write notes from scratch.
+
+```bash
+./scripts/release-notes.sh vX.Y.Z          # writes .tmp/release-notes-vX.Y.Z.md
+$EDITOR .tmp/release-notes-vX.Y.Z.md       # fill in the TODO markers
+./scripts/release-notes-lint.sh .tmp/release-notes-vX.Y.Z.md
+gh release create vX.Y.Z --notes-file .tmp/release-notes-vX.Y.Z.md --verify-tag
+```
+
+The script fills in `What's Changed`, `New Contributors` and `Full Changelog` from the commits
+and pull requests since the previous tag, and leaves the summary and the highlights for you.
+
+GitHub renders a newline inside a release body as a hard line break. Every paragraph and every
+bullet below is therefore a single source line: write the whole paragraph on one line and let the
+editor soft-wrap it. The lint script rejects a draft that still has wrapped prose.
+
+## The shape
+
+```markdown
+> [!IMPORTANT]
+> One paragraph on what this release is and why it matters.
+>
+> What changes for an existing install: the command to run, defaults that moved, anything the reader must do. Drop this paragraph when there is nothing to say.
+
+## Highlights
+
+* **Area**: What changed, in plain user-facing prose, and what it means for the reader.
+* **Area**: Another group of related work.
+
+---
+
+## What's Changed
+* <generated>
+
+## New Contributors
+* <generated; omitted when nobody new contributed>
+
+**Full Changelog**: <generated>
+```
+
+## Rules
+
+1. **Lead with the callout.** Most readers never scroll past it. Say what the release is, then say what breaks or changes for an existing install. Pre-releases say so and name the exact tag to pull.
+2. **Write the highlights for players and operators, not for the git history.** One bullet per area, a bold area name, then prose: what a person can now do in the game, or must now do differently when deploying. Group related commits into one bullet. Never paste commit subjects here.
+3. **Explain a changed default with the fix.** "The container now writes to `/data` and the old volume is ignored; mount `-v catan-data:/data`" beats "storage path changed".
+4. **`What's Changed` is generated.** Only edit it to fix a title that reads badly. It is built from the `(#N)` suffix in commit subjects, because this repository squashes and rewrites merges and GitHub's own generator drops those pull requests.
+5. **English only.** The release notes are not localised, even though the client is.
+6. **Pre-releases stay pre-releases.** A `-rc.N` tag is published with `--prerelease` and never takes `latest`, `X.Y` or the branch tag. See [RELEASING.md](../RELEASING.md).
+7. **Never hard-wrap prose in the release body.** GitHub turns a newline inside a release body into a hard line break, so a paragraph wrapped at 80 columns reaches the reader broken mid-sentence. Keep each callout paragraph and each highlight bullet on one source line; [`scripts/release-notes-lint.sh`](../scripts/release-notes-lint.sh) fails a draft that is still wrapped.
