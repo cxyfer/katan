@@ -1,0 +1,211 @@
+name: Docker image
+
+# One build per commit, pushed by digest. The smoke test runs the pushed
+# digest, and the release tags are only ever moved onto a digest that passed
+# that test, so a published tag cannot describe a different build than the one
+# that was verified.
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    name: Build and push by digest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-qemu-action@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # Only the immutable commit tag is pushed here; release tags are applied
+      # later, by digest, once the smoke test has run.
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,format=short,prefix=sha-
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          # Both platforms on every event: arm64 is smoke tested below and the
+          # publish job only retags what that test actually pulled.
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+  smoke:
+    name: Smoke test digest (${{ matrix.platform }})
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            depth: full
+          - platform: linux/arm64
+            depth: basic
+    steps:
+      - uses: actions/checkout@v7
+
+      # arm64 runs under emulation on an amd64 runner.
+      - uses: docker/setup-qemu-action@v4
+        if: matrix.platform != 'linux/amd64'
+
+      - uses: actions/setup-node@v7
+        if: matrix.depth == 'full'
+        with:
+          node-version: "22"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # Pulled by digest: this is byte-for-byte the image the publish job
+      # retags, not a local rebuild.
+      - name: Start the pushed digest
+        run: |
+          set -euo pipefail
+          docker run --detach --name catan-smoke --platform ${{ matrix.platform }} \
+            --publish 3411:3000 \
+            --env COOKIE_SECURE=false --env LOG_LEVEL=warn \
+            "${{ env.IMAGE }}@${{ needs.build.outputs.digest }}"
+          for _ in $(seq 1 90); do
+            code=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              http://127.0.0.1:3411/healthz || true)
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "container never became healthy; logs follow" >&2
+          docker logs catan-smoke >&2
+          exit 1
+
+      - name: Readiness probe
+        run: |
+          set -euo pipefail
+          curl --silent --fail http://127.0.0.1:3411/healthz
+          curl --silent --fail http://127.0.0.1:3411/readyz
+
+      - name: Smoke test the running image
+        if: matrix.depth == 'full'
+        run: SMOKE_BASE_URL=http://127.0.0.1:3411 node scripts/smoke.mjs
+
+      - name: Container logs
+        if: failure()
+        run: docker logs catan-smoke || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm --force catan-smoke || true
+
+  publish:
+    name: Promote tested digest
+    needs: [build, smoke]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # latest only moves on the default branch and on v* tags; every build also
+      # keeps its immutable sha-<short> tag for rollback.
+      - name: Release tags
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Retag the tested digest
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          args=()
+          while IFS= read -r tag; do
+            if [ -n "$tag" ]; then
+              args+=(--tag "$tag")
+            fi
+          done <<< "$TAGS"
+          if [ "${#args[@]}" -eq 0 ]; then
+            echo "no release tag resolved for this ref" >&2
+            exit 1
+          fi
+          docker buildx imagetools create "${args[@]}" "${IMAGE}@${DIGEST}"
+
+      - name: Summary
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          {
+            echo "### Published image"
+            echo
+            echo '```'
+            echo "$TAGS"
+            echo '```'
+            echo
+            echo "Tested digest: \`$DIGEST\`"
+          } >> "$GITHUB_STEP_SUMMARY"
