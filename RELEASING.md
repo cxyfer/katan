@@ -35,9 +35,11 @@ publishes to its own namespace.
 
 ## Rules
 
-1. **The tag must equal the `package.json` version.** `v0.2.0` requires `"version": "0.2.0"`. The
-   workflow does not check this today, so a mismatch ships an image labelled with the wrong version;
-   `scripts/release-notes.sh` warns about it.
+1. **The tag must equal the `package.json` version.** `v0.2.0` requires `"version": "0.2.0"`. That
+   file is the only copy: `packages/server/build.mjs` stamps it into the bundle at build time, so
+   `/healthz` reports the version of the tag that was built. The workflow does not check the tag
+   against it today, so a mismatch still ships a mislabelled image; `scripts/release-notes.sh` warns
+   about it.
 2. **Tag only merged commits.** The workflow file must exist on the tagged commit, so push `master`
    before the tag.
 3. **Never move or reuse a published tag.** The tag is the identity of an image. Publish a new patch
@@ -80,6 +82,9 @@ The version lives in one file:
 |------|--------------|
 | [`package.json`](package.json) | `"version": "0.2.0"` |
 
+Nothing else carries the version. `packages/server/build.mjs` reads this file and defines
+`__CATAN_VERSION__` when it bundles the service, which is what `/healthz` reports.
+
 ```bash
 git add package.json
 git commit -m "🔖 release: v0.2.0"
@@ -108,7 +113,15 @@ docker login ghcr.io      # only if the package is private
 docker buildx imagetools inspect ghcr.io/cxyfer/katan:0.2.0
 ```
 
-`imagetools inspect` must list both `linux/amd64` and `linux/arm64`.
+`imagetools inspect` must list both `linux/amd64` and `linux/arm64`. The health response must carry
+the release version, which proves the tag, the bundle and the image agree:
+
+```bash
+docker run --rm -d --name catan-version-check -p 3411:3000 \
+  ghcr.io/cxyfer/katan:0.2.0
+curl -s http://127.0.0.1:3411/healthz      # {"ok":true,"data":{"version":"0.2.0",...}}
+docker rm -f catan-version-check
+```
 
 ### 5. Publish the GitHub Release
 
