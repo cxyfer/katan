@@ -1,0 +1,1927 @@
+{
+  "identity": {
+    "id": "p1",
+    "nickname": "Captain Alexandra Longname",
+    "locale": "en",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  },
+  "config": {
+    "locales": [
+      "zh-Hant",
+      "en"
+    ],
+    "policyBounds": {
+      "turnClockSeconds": {
+        "min": 0,
+        "max": 3600
+      },
+      "disconnectGraceSeconds": {
+        "min": 30,
+        "max": 3600
+      }
+    },
+    "defaultPolicy": {
+      "turnClockSeconds": 0,
+      "disconnectGraceSeconds": 300,
+      "allowAbandonment": true,
+      "hostSuccession": "automatic"
+    },
+    "limits": {
+      "nicknameMaxLength": 24,
+      "chatMaxLength": 400,
+      "chatRatePerMinute": 30,
+      "roomCapacityMax": 6
+    }
+  },
+  "profiles": [
+    {
+      "id": "base-2025",
+      "labelKey": "profile.base-2025",
+      "playerCounts": [
+        3,
+        4
+      ],
+      "paired": false,
+      "modules": {
+        "seafarers": false,
+        "citiesKnights": false
+      },
+      "scenario": null,
+      "victoryTarget": 10,
+      "setupModes": [
+        "fixed",
+        "variable"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "base-paired-2025",
+      "labelKey": "profile.base-paired-2025",
+      "playerCounts": [
+        5,
+        6
+      ],
+      "paired": true,
+      "modules": {
+        "seafarers": false,
+        "citiesKnights": false
+      },
+      "scenario": null,
+      "victoryTarget": 10,
+      "setupModes": [
+        "fixed",
+        "variable"
+      ],
+      "enabled": true
+    }
+  ],
+  "room": {
+    "id": "r1",
+    "code": "ABC123",
+    "visibility": "private",
+    "status": "playing",
+    "hostId": "p1",
+    "profileId": "base-paired-2025",
+    "setupMode": "fixed",
+    "capacity": 6,
+    "policy": {
+      "turnClockSeconds": 0,
+      "disconnectGraceSeconds": 300,
+      "allowAbandonment": true,
+      "hostSuccession": "automatic"
+    },
+    "policyRevision": 1,
+    "members": [
+      {
+        "playerId": "p1",
+        "nickname": "Captain Alexandra Longname",
+        "seat": 0,
+        "color": "red",
+        "ready": true,
+        "connected": true,
+        "host": true,
+        "joinedAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "playerId": "p2",
+        "nickname": "小美航海家與群島探索隊長",
+        "seat": 1,
+        "color": "blue",
+        "ready": true,
+        "connected": true,
+        "host": false,
+        "joinedAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "playerId": "p3",
+        "nickname": "Bartholomew the Navigator",
+        "seat": 2,
+        "color": "orange",
+        "ready": true,
+        "connected": true,
+        "host": false,
+        "joinedAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "playerId": "p4",
+        "nickname": "Charlotte of Golden Harbor",
+        "seat": 3,
+        "color": "white",
+        "ready": true,
+        "connected": true,
+        "host": false,
+        "joinedAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "playerId": "p5",
+        "nickname": "Éléonore Longue Traversée",
+        "seat": 4,
+        "color": "green",
+        "ready": true,
+        "connected": true,
+        "host": false,
+        "joinedAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "playerId": "p6",
+        "nickname": "鄭成功與六人島嶼遠征艦隊",
+        "seat": 5,
+        "color": "brown",
+        "ready": true,
+        "connected": true,
+        "host": false,
+        "joinedAt": "2026-01-01T00:00:00.000Z"
+      }
+    ],
+    "gameId": "g1",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z",
+    "startBlockers": [],
+    "pendingPolicy": null
+  },
+  "games": [
+    {
+      "gameId": "g1",
+      "roomId": "r1",
+      "roomCode": "ABC123",
+      "profileId": "base-paired-2025",
+      "status": "playing",
+      "players": [
+        {
+          "playerId": "p1",
+          "nickname": "Captain Alexandra Longname",
+          "color": "red"
+        },
+        {
+          "playerId": "p2",
+          "nickname": "小美航海家與群島探索隊長",
+          "color": "blue"
+        },
+        {
+          "playerId": "p3",
+          "nickname": "Bartholomew the Navigator",
+          "color": "orange"
+        },
+        {
+          "playerId": "p4",
+          "nickname": "Charlotte of Golden Harbor",
+          "color": "white"
+        },
+        {
+          "playerId": "p5",
+          "nickname": "Éléonore Longue Traversée",
+          "color": "green"
+        },
+        {
+          "playerId": "p6",
+          "nickname": "鄭成功與六人島嶼遠征艦隊",
+          "color": "brown"
+        }
+      ],
+      "lastSavedAt": "2026-01-02T03:04:05.000Z",
+      "revision": 12,
+      "allSeatsNeeded": false
+    }
+  ],
+  "snapshot": {
+    "gameId": "g1",
+    "roomId": "r1",
+    "revision": 12,
+    "view": {
+      "engineVersion": "test",
+      "profileId": "base-paired-2025",
+      "victoryTarget": 10,
+      "players": [
+        {
+          "id": "p1",
+          "nickname": "Captain Alexandra Longname",
+          "seat": 0,
+          "color": "red",
+          "handSize": 19,
+          "devCardCount": 6,
+          "newDevCardCount": 3,
+          "playedKnights": 0,
+          "publicScore": 2,
+          "longestRoadLength": 2,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {},
+          "resources": {
+            "lumber": 7,
+            "brick": 0,
+            "wool": 4,
+            "grain": 6,
+            "ore": 2
+          },
+          "devCards": [
+            "knight",
+            "roadBuilding",
+            "yearOfPlenty",
+            "monopoly",
+            "victoryPoint",
+            "knight"
+          ],
+          "newDevCards": [
+            "knight",
+            "monopoly",
+            "victoryPoint"
+          ],
+          "progressCards": [],
+          "newProgressCards": [],
+          "ownScore": 4
+        },
+        {
+          "id": "p2",
+          "nickname": "小美航海家與群島探索隊長",
+          "seat": 1,
+          "color": "blue",
+          "handSize": 9,
+          "devCardCount": 1,
+          "newDevCardCount": 0,
+          "playedKnights": 1,
+          "publicScore": 3,
+          "longestRoadLength": 3,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p3",
+          "nickname": "Bartholomew the Navigator",
+          "seat": 2,
+          "color": "orange",
+          "handSize": 10,
+          "devCardCount": 2,
+          "newDevCardCount": 0,
+          "playedKnights": 2,
+          "publicScore": 4,
+          "longestRoadLength": 4,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p4",
+          "nickname": "Charlotte of Golden Harbor",
+          "seat": 3,
+          "color": "white",
+          "handSize": 11,
+          "devCardCount": 3,
+          "newDevCardCount": 0,
+          "playedKnights": 3,
+          "publicScore": 5,
+          "longestRoadLength": 5,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p5",
+          "nickname": "Éléonore Longue Traversée",
+          "seat": 4,
+          "color": "green",
+          "handSize": 12,
+          "devCardCount": 4,
+          "newDevCardCount": 0,
+          "playedKnights": 4,
+          "publicScore": 6,
+          "longestRoadLength": 6,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p6",
+          "nickname": "鄭成功與六人島嶼遠征艦隊",
+          "seat": 5,
+          "color": "brown",
+          "handSize": 13,
+          "devCardCount": 5,
+          "newDevCardCount": 0,
+          "playedKnights": 5,
+          "publicScore": 7,
+          "longestRoadLength": 7,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        }
+      ],
+      "board": {
+        "topologyId": "hex-r56",
+        "terrain": [
+          "mountains",
+          "pasture",
+          "forest",
+          "fields",
+          "pasture",
+          "hills",
+          "fields",
+          "fields",
+          "forest",
+          "desert",
+          "mountains",
+          "forest",
+          "mountains",
+          "hills",
+          "pasture",
+          "desert",
+          "fields",
+          "mountains",
+          "forest",
+          "fields",
+          "hills",
+          "pasture",
+          "fields",
+          "mountains",
+          "pasture",
+          "forest",
+          "hills",
+          "forest",
+          "pasture",
+          "hills"
+        ],
+        "numbers": [
+          10,
+          2,
+          9,
+          12,
+          6,
+          4,
+          10,
+          9,
+          11,
+          null,
+          3,
+          8,
+          8,
+          3,
+          4,
+          null,
+          5,
+          6,
+          11,
+          10,
+          2,
+          9,
+          12,
+          6,
+          4,
+          10,
+          9,
+          11,
+          3,
+          8
+        ],
+        "harbors": [
+          {
+            "edge": 53,
+            "type": "generic"
+          },
+          {
+            "edge": 18,
+            "type": "grain"
+          },
+          {
+            "edge": 3,
+            "type": "generic"
+          },
+          {
+            "edge": 13,
+            "type": "ore"
+          },
+          {
+            "edge": 29,
+            "type": "wool"
+          },
+          {
+            "edge": 47,
+            "type": "generic"
+          },
+          {
+            "edge": 70,
+            "type": "brick"
+          },
+          {
+            "edge": 84,
+            "type": "lumber"
+          },
+          {
+            "edge": 111,
+            "type": "generic"
+          },
+          {
+            "edge": 106,
+            "type": "generic"
+          },
+          {
+            "edge": 103,
+            "type": "generic"
+          }
+        ],
+        "islands": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "robber": 9,
+        "pirate": null,
+        "buildings": [
+          {
+            "player": "p1",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p2",
+            "city": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p3",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p4",
+            "city": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p5",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p6",
+            "city": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p1",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null
+        ],
+        "roads": [
+          {
+            "player": "p1",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p2",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p3",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p4",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p5",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p6",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p1",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p2",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p3",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p4",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p5",
+            "ship": false
+          },
+          null
+        ]
+      },
+      "bank": {
+        "lumber": 19,
+        "brick": 19,
+        "wool": 19,
+        "grain": 19,
+        "ore": 19
+      },
+      "devDeckSize": 20,
+      "turn": {
+        "seat": 0,
+        "playerId": "p1",
+        "phase": "action",
+        "dice": [
+          2,
+          5
+        ],
+        "devCardPlayed": false,
+        "setup": null,
+        "pairedActor": 2
+      },
+      "pending": null,
+      "offers": [],
+      "windowId": 1,
+      "seq": 12,
+      "result": null,
+      "awards": {
+        "longestRoad": "p6",
+        "largestArmy": "p5"
+      },
+      "events": [],
+      "hints": {
+        "canRoll": false,
+        "canEndTurn": true,
+        "legalRoads": [],
+        "legalSettlements": [],
+        "legalCities": [],
+        "bankRates": {
+          "lumber": 4,
+          "brick": 4,
+          "wool": 4,
+          "grain": 4,
+          "ore": 4
+        },
+        "pendingKind": null
+      }
+    }
+  },
+  "empty": {
+    "gameId": "g1",
+    "roomId": "r1",
+    "revision": 12,
+    "view": {
+      "engineVersion": "test",
+      "profileId": "base-paired-2025",
+      "victoryTarget": 10,
+      "players": [
+        {
+          "id": "p1",
+          "nickname": "Captain Alexandra Longname",
+          "seat": 0,
+          "color": "red",
+          "handSize": 0,
+          "devCardCount": 0,
+          "newDevCardCount": 0,
+          "playedKnights": 0,
+          "publicScore": 2,
+          "longestRoadLength": 2,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {},
+          "resources": {
+            "lumber": 0,
+            "brick": 0,
+            "wool": 0,
+            "grain": 0,
+            "ore": 0
+          },
+          "devCards": [],
+          "newDevCards": [],
+          "progressCards": [],
+          "newProgressCards": [],
+          "ownScore": 4
+        },
+        {
+          "id": "p2",
+          "nickname": "小美航海家與群島探索隊長",
+          "seat": 1,
+          "color": "blue",
+          "handSize": 9,
+          "devCardCount": 1,
+          "newDevCardCount": 0,
+          "playedKnights": 1,
+          "publicScore": 3,
+          "longestRoadLength": 3,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p3",
+          "nickname": "Bartholomew the Navigator",
+          "seat": 2,
+          "color": "orange",
+          "handSize": 10,
+          "devCardCount": 2,
+          "newDevCardCount": 0,
+          "playedKnights": 2,
+          "publicScore": 4,
+          "longestRoadLength": 4,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p4",
+          "nickname": "Charlotte of Golden Harbor",
+          "seat": 3,
+          "color": "white",
+          "handSize": 11,
+          "devCardCount": 3,
+          "newDevCardCount": 0,
+          "playedKnights": 3,
+          "publicScore": 5,
+          "longestRoadLength": 5,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p5",
+          "nickname": "Éléonore Longue Traversée",
+          "seat": 4,
+          "color": "green",
+          "handSize": 12,
+          "devCardCount": 4,
+          "newDevCardCount": 0,
+          "playedKnights": 4,
+          "publicScore": 6,
+          "longestRoadLength": 6,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p6",
+          "nickname": "鄭成功與六人島嶼遠征艦隊",
+          "seat": 5,
+          "color": "brown",
+          "handSize": 13,
+          "devCardCount": 5,
+          "newDevCardCount": 0,
+          "playedKnights": 5,
+          "publicScore": 7,
+          "longestRoadLength": 7,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        }
+      ],
+      "board": {
+        "topologyId": "hex-r56",
+        "terrain": [
+          "mountains",
+          "pasture",
+          "forest",
+          "fields",
+          "pasture",
+          "hills",
+          "fields",
+          "fields",
+          "forest",
+          "desert",
+          "mountains",
+          "forest",
+          "mountains",
+          "hills",
+          "pasture",
+          "desert",
+          "fields",
+          "mountains",
+          "forest",
+          "fields",
+          "hills",
+          "pasture",
+          "fields",
+          "mountains",
+          "pasture",
+          "forest",
+          "hills",
+          "forest",
+          "pasture",
+          "hills"
+        ],
+        "numbers": [
+          10,
+          2,
+          9,
+          12,
+          6,
+          4,
+          10,
+          9,
+          11,
+          null,
+          3,
+          8,
+          8,
+          3,
+          4,
+          null,
+          5,
+          6,
+          11,
+          10,
+          2,
+          9,
+          12,
+          6,
+          4,
+          10,
+          9,
+          11,
+          3,
+          8
+        ],
+        "harbors": [
+          {
+            "edge": 53,
+            "type": "generic"
+          },
+          {
+            "edge": 18,
+            "type": "grain"
+          },
+          {
+            "edge": 3,
+            "type": "generic"
+          },
+          {
+            "edge": 13,
+            "type": "ore"
+          },
+          {
+            "edge": 29,
+            "type": "wool"
+          },
+          {
+            "edge": 47,
+            "type": "generic"
+          },
+          {
+            "edge": 70,
+            "type": "brick"
+          },
+          {
+            "edge": 84,
+            "type": "lumber"
+          },
+          {
+            "edge": 111,
+            "type": "generic"
+          },
+          {
+            "edge": 106,
+            "type": "generic"
+          },
+          {
+            "edge": 103,
+            "type": "generic"
+          }
+        ],
+        "islands": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "robber": 9,
+        "pirate": null,
+        "buildings": [
+          {
+            "player": "p1",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p2",
+            "city": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p3",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p4",
+            "city": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p5",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p6",
+            "city": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p1",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null
+        ],
+        "roads": [
+          {
+            "player": "p1",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p2",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p3",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p4",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p5",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p6",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p1",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p2",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p3",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p4",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p5",
+            "ship": false
+          },
+          null
+        ]
+      },
+      "bank": {
+        "lumber": 19,
+        "brick": 19,
+        "wool": 19,
+        "grain": 19,
+        "ore": 19
+      },
+      "devDeckSize": 20,
+      "turn": {
+        "seat": 0,
+        "playerId": "p1",
+        "phase": "action",
+        "dice": [
+          2,
+          5
+        ],
+        "devCardPlayed": false,
+        "setup": null,
+        "pairedActor": 2
+      },
+      "pending": null,
+      "offers": [],
+      "windowId": 1,
+      "seq": 12,
+      "result": null,
+      "awards": {
+        "longestRoad": "p6",
+        "largestArmy": "p5"
+      },
+      "events": [],
+      "hints": {
+        "canRoll": false,
+        "canEndTurn": true,
+        "legalRoads": [],
+        "legalSettlements": [],
+        "legalCities": [],
+        "bankRates": {
+          "lumber": 4,
+          "brick": 4,
+          "wool": 4,
+          "grain": 4,
+          "ore": 4
+        },
+        "pendingKind": null
+      }
+    }
+  },
+  "pending": {
+    "gameId": "g1",
+    "roomId": "r1",
+    "revision": 12,
+    "view": {
+      "engineVersion": "test",
+      "profileId": "base-paired-2025",
+      "victoryTarget": 10,
+      "players": [
+        {
+          "id": "p1",
+          "nickname": "Captain Alexandra Longname",
+          "seat": 0,
+          "color": "red",
+          "handSize": 19,
+          "devCardCount": 6,
+          "newDevCardCount": 3,
+          "playedKnights": 0,
+          "publicScore": 2,
+          "longestRoadLength": 2,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {},
+          "resources": {
+            "lumber": 7,
+            "brick": 0,
+            "wool": 4,
+            "grain": 6,
+            "ore": 2
+          },
+          "devCards": [
+            "knight",
+            "roadBuilding",
+            "yearOfPlenty",
+            "monopoly",
+            "victoryPoint",
+            "knight"
+          ],
+          "newDevCards": [
+            "knight",
+            "monopoly",
+            "victoryPoint"
+          ],
+          "progressCards": [],
+          "newProgressCards": [],
+          "ownScore": 4
+        },
+        {
+          "id": "p2",
+          "nickname": "小美航海家與群島探索隊長",
+          "seat": 1,
+          "color": "blue",
+          "handSize": 9,
+          "devCardCount": 1,
+          "newDevCardCount": 0,
+          "playedKnights": 1,
+          "publicScore": 3,
+          "longestRoadLength": 3,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p3",
+          "nickname": "Bartholomew the Navigator",
+          "seat": 2,
+          "color": "orange",
+          "handSize": 10,
+          "devCardCount": 2,
+          "newDevCardCount": 0,
+          "playedKnights": 2,
+          "publicScore": 4,
+          "longestRoadLength": 4,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p4",
+          "nickname": "Charlotte of Golden Harbor",
+          "seat": 3,
+          "color": "white",
+          "handSize": 11,
+          "devCardCount": 3,
+          "newDevCardCount": 0,
+          "playedKnights": 3,
+          "publicScore": 5,
+          "longestRoadLength": 5,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p5",
+          "nickname": "Éléonore Longue Traversée",
+          "seat": 4,
+          "color": "green",
+          "handSize": 12,
+          "devCardCount": 4,
+          "newDevCardCount": 0,
+          "playedKnights": 4,
+          "publicScore": 6,
+          "longestRoadLength": 6,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        },
+        {
+          "id": "p6",
+          "nickname": "鄭成功與六人島嶼遠征艦隊",
+          "seat": 5,
+          "color": "brown",
+          "handSize": 13,
+          "devCardCount": 5,
+          "newDevCardCount": 0,
+          "playedKnights": 5,
+          "publicScore": 7,
+          "longestRoadLength": 7,
+          "bonusPoints": 0,
+          "cityWalls": 0,
+          "defenders": 0,
+          "improvements": {}
+        }
+      ],
+      "board": {
+        "topologyId": "hex-r56",
+        "terrain": [
+          "mountains",
+          "pasture",
+          "forest",
+          "fields",
+          "pasture",
+          "hills",
+          "fields",
+          "fields",
+          "forest",
+          "desert",
+          "mountains",
+          "forest",
+          "mountains",
+          "hills",
+          "pasture",
+          "desert",
+          "fields",
+          "mountains",
+          "forest",
+          "fields",
+          "hills",
+          "pasture",
+          "fields",
+          "mountains",
+          "pasture",
+          "forest",
+          "hills",
+          "forest",
+          "pasture",
+          "hills"
+        ],
+        "numbers": [
+          10,
+          2,
+          9,
+          12,
+          6,
+          4,
+          10,
+          9,
+          11,
+          null,
+          3,
+          8,
+          8,
+          3,
+          4,
+          null,
+          5,
+          6,
+          11,
+          10,
+          2,
+          9,
+          12,
+          6,
+          4,
+          10,
+          9,
+          11,
+          3,
+          8
+        ],
+        "harbors": [
+          {
+            "edge": 53,
+            "type": "generic"
+          },
+          {
+            "edge": 18,
+            "type": "grain"
+          },
+          {
+            "edge": 3,
+            "type": "generic"
+          },
+          {
+            "edge": 13,
+            "type": "ore"
+          },
+          {
+            "edge": 29,
+            "type": "wool"
+          },
+          {
+            "edge": 47,
+            "type": "generic"
+          },
+          {
+            "edge": 70,
+            "type": "brick"
+          },
+          {
+            "edge": 84,
+            "type": "lumber"
+          },
+          {
+            "edge": 111,
+            "type": "generic"
+          },
+          {
+            "edge": 106,
+            "type": "generic"
+          },
+          {
+            "edge": 103,
+            "type": "generic"
+          }
+        ],
+        "islands": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "robber": 9,
+        "pirate": null,
+        "buildings": [
+          {
+            "player": "p1",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p2",
+            "city": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p3",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p4",
+            "city": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p5",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p6",
+            "city": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p1",
+            "city": true
+          },
+          null,
+          null,
+          null,
+          null
+        ],
+        "roads": [
+          {
+            "player": "p1",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p2",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p3",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p4",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p5",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p6",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p1",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p2",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p3",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p4",
+            "ship": false
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "player": "p5",
+            "ship": false
+          },
+          null
+        ]
+      },
+      "bank": {
+        "lumber": 19,
+        "brick": 19,
+        "wool": 19,
+        "grain": 19,
+        "ore": 19
+      },
+      "devDeckSize": 20,
+      "turn": {
+        "seat": 0,
+        "playerId": "p1",
+        "phase": "action",
+        "dice": [
+          2,
+          5
+        ],
+        "devCardPlayed": false,
+        "setup": null,
+        "pairedActor": 2
+      },
+      "pending": {
+        "kind": "yearOfPlenty",
+        "actor": "p1",
+        "remaining": 2
+      },
+      "offers": [],
+      "windowId": 1,
+      "seq": 12,
+      "result": null,
+      "awards": {
+        "longestRoad": "p6",
+        "largestArmy": "p5"
+      },
+      "events": [],
+      "hints": {
+        "canRoll": false,
+        "canEndTurn": true,
+        "legalRoads": [],
+        "legalSettlements": [],
+        "legalCities": [],
+        "bankRates": {
+          "lumber": 4,
+          "brick": 4,
+          "wool": 4,
+          "grain": 4,
+          "ore": 4
+        },
+        "pendingKind": "yearOfPlenty"
+      }
+    }
+  }
+}

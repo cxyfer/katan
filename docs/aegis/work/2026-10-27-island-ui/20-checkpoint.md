@@ -1,5 +1,18 @@
 # 海島 UI — 卡牌遊戲舞台重製檢查點
 
+## Active follow-up: score rail, hand and dice
+
+- Design and implementation plan approved by the user; no further design gate remains.
+- TaskStartSnapshot: `/data/home/workspace/catan`, master @ b7891ef; no remotes, one worktree, no staged paths/active merge. Existing dirty paths: approved plan and three user screenshots (02-home-zh, 07a-trade-panel-zh, 07b-chat-panel-zh); preserve those screenshots unstaged. Optional `printenv` ended exit 1 because queried optional vars were absent; Git inspection itself succeeded.
+- Decision: code-change at canonical presentation owners; old fixed-height hand packs new dev controls into resource fan space. Allocate separate card rows and local scroll; no rules/API/projection changes. ArchitectureReviewRequired: no runtime architecture change. TDD Mode off / Decision skipped / strict authority none; rendered regression and browser checks required.
+- Current: implementation and independent review complete; no unresolved source finding. Runtime owners unchanged. Score rail and default-collapsed hand retain private projection boundaries; accepted-only notice moves to corner; each authoritative roll restarts its centered presentation.
+- Final evidence: `pnpm verify` exit 0, 324 tests passed / 11 existing DB skips, 13/13 smoke; real three-player browser 144 checks / 20 captures; isolated rich six-seat browser 190/190 checks / 12 bilingual viewport cases / 8 captures / no pageerrors. Final assets index-DIALwB7a.css and index-BN2uccZK.js. See [current evidence](90-evidence.md).
+- Review fixes verified: seq-keyed dice animation, preview above hand, mobile rail clearance, short-landscape handle, tools hit-testing, corner notice versus hand/action allocation. Complexity within-budget; no ADR or new rules/protocol/runtime owner. TDD remains off.
+- Git delivery: no remote, one worktree, no active MERGE_HEAD verified. Selective local commit contains this follow-up only; three pre-existing user screenshot edits remain unstaged. All implementation, review, evidence and documentation work is complete.
+
+## 前版歷史記錄（以下數字不證明本輪版本）
+
+
 - 本次接續：2026-10-27；使用者指出舊版仍是面板式網頁排版，提供橫向卡牌遊戲參考圖並要求重新研究修改。沿用同一 workstream，master @ af784f3，repository 無 remote。
 - 目標已完成：滿版橫向／可全螢幕舞台、置中棋盤、上緣玩家 HUD、下緣扇形私有資源手牌、右側回合與建造操作、左下可收合工具；直屏以同一套元件保持可玩。
 - 兼容邊界已保持：規則、協定、server-authoritative projection、私有資料、命令確認與 pending receipt、身分、存檔／暫停／恢復、雙語與既有 test hooks 未改語意。

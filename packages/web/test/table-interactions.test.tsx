@@ -1,0 +1,134 @@
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { App } from '../src/App.tsx';
+import { memoryStorage } from '../src/state/session.ts';
+import { createFakeApi } from '../src/test/fake-api.ts';
+import { makePlayer, makeSnapshot, makeView } from '../src/test/fixtures.ts';
+
+async function open(view = makeView()) {
+  const api = createFakeApi({ snapshot: makeSnapshot(view, Math.max(view.seq, ...view.events.map((event) => event.seq))) });
+  render(<App services={{ api, storage: memoryStorage(), languages: ['en'], connectSocket: false }} />);
+  fireEvent.click(await screen.findByTestId('resume-g1'));
+  await screen.findByTestId('board-svg');
+  return api;
+}
+function pointerEnter(element: Element, type = 'mouse') {
+  const event = new Event('pointerover', { bubbles: true });
+  Object.defineProperty(event, 'pointerType', { value: type });
+  fireEvent(element, event);
+}
+afterEach(() => vi.useRealTimers());
+
+describe('table interactions', () => {
+  it('keeps six public seats visible while details collapse and only shows own private score', async () => {
+    const players = Array.from({ length: 6 }, (_, seat) => makePlayer({ id: `p${seat + 1}`, seat, nickname: 'ABCDEFGHIJKLMNOPQRSTUVWX', ownScore: 9 }));
+    await open(makeView({ players }));
+    const panel = screen.getByTestId('players-panel');
+    expect(panel.getAttribute('data-expanded')).toBe('false');
+    expect(panel.querySelectorAll('.seat__score')).toHaveLength(6);
+    expect(panel.querySelectorAll('.seat__own-score')).toHaveLength(1);
+    expect(screen.queryByTestId('own-player-hud')).toBeNull();
+    fireEvent.click(screen.getByTestId('players-toggle'));
+    expect(panel.getAttribute('data-expanded')).toBe('true');
+    fireEvent.keyDown(panel, { key: 'Escape' });
+    expect(panel.getAttribute('data-expanded')).toBe('false');
+    expect(document.activeElement).toBe(screen.getByTestId('players-toggle'));
+  });
+
+  it('opens on hover, delays close, preserves focus and remains open when pinned', async () => {
+    await open();
+    vi.useFakeTimers();
+    const hand = screen.getByTestId('hand-panel');
+    expect(hand.getAttribute('data-expanded')).toBe('false');
+    pointerEnter(hand, 'touch');
+    expect(hand.getAttribute('data-expanded')).toBe('false');
+    pointerEnter(hand);
+    expect(hand.getAttribute('data-expanded')).toBe('true');
+    fireEvent.pointerLeave(hand);
+    act(() => vi.advanceTimersByTime(200));
+    expect(hand.getAttribute('data-expanded')).toBe('true');
+    act(() => vi.advanceTimersByTime(121));
+    expect(hand.getAttribute('data-expanded')).toBe('false');
+    fireEvent.click(screen.getByTestId('hand-pin'));
+    fireEvent.pointerLeave(hand);
+    act(() => vi.advanceTimersByTime(500));
+    expect(hand.getAttribute('data-pinned')).toBe('true');
+    expect(hand.getAttribute('data-expanded')).toBe('true');
+    fireEvent.keyDown(hand, { key: 'Escape' });
+    expect(hand.getAttribute('data-expanded')).toBe('false');
+    expect(hand.getAttribute('data-pinned')).toBe('false');
+    expect(document.activeElement).toBe(screen.getByTestId('hand-toggle'));
+    fireEvent.click(screen.getByTestId('hand-toggle'));
+    const resource = screen.getByTestId('resource-lumber').querySelector('button')!;
+    act(() => resource.focus());
+    fireEvent.pointerLeave(hand);
+    act(() => vi.advanceTimersByTime(500));
+    expect(hand.getAttribute('data-expanded')).toBe('true');
+    act(() => screen.getByTestId('players-toggle').focus());
+    act(() => vi.advanceTimersByTime(500));
+    expect(hand.getAttribute('data-expanded')).toBe('false');
+  });
+
+  it('preserves monopoly choice across collapse and never offers new or victory-point cards for play', async () => {
+    const view = makeView();
+    view.players[0]!.devCards = ['monopoly', 'victoryPoint'];
+    view.players[0]!.newDevCards = ['knight', 'roadBuilding'];
+    const api = await open(view);
+    fireEvent.click(screen.getByTestId('hand-toggle'));
+    fireEvent.change(screen.getByTestId('monopoly-resource'), { target: { value: 'ore' } });
+    fireEvent.click(screen.getByTestId('hand-toggle'));
+    fireEvent.click(screen.getByTestId('hand-toggle'));
+    expect((screen.getByTestId('monopoly-resource') as HTMLSelectElement).value).toBe('ore');
+    expect(screen.getByTestId('new-devcards').querySelector('button')).toBeNull();
+    expect(screen.queryByTestId('play-victoryPoint-1')).toBeNull();
+    fireEvent.click(screen.getByTestId('play-monopoly-0'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(api.callsOf('sendCommand')[0]!.args[1]).toMatchObject({ command: { type: 'dev.playMonopoly', resource: 'ore' } });
+  });
+
+  it('keeps accepted feedback in the corner until dismissed and unknown results in the central recovery area', async () => {
+    const api = await open();
+    fireEvent.click(screen.getByTestId('action-endTurn'));
+    const corner = await screen.findByTestId('accepted-notice');
+    expect(corner.contains(screen.getByTestId('command-status'))).toBe(true);
+    vi.useFakeTimers();
+    act(() => vi.advanceTimersByTime(30000));
+    expect(screen.getByTestId('accepted-notice')).toBe(corner);
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByTestId('accepted-notice')).toBeNull();
+    vi.useRealTimers();
+    api.setCommandResult({ ok: false, error: { code: 'E_NETWORK', messageId: 'error.E_NETWORK' } });
+    fireEvent.click(screen.getByTestId('action-endTurn'));
+    await screen.findByTestId('command-resolve');
+    expect(screen.getByTestId('command-status').closest('.game__messages')).toBeTruthy();
+    expect(screen.queryByTestId('accepted-notice')).toBeNull();
+  });
+
+  it('restarts the central presentation for a second authoritative roll before the first finishes', async () => {
+    const view = makeView({ events: [{ seq: 13, type: 'turn.rolled', params: { playerId: 'p1', dice: [2, 5], total: 7 } }] });
+    view.turn.dice = [2, 5];
+    const api = await open(view);
+    const firstPanel = (await screen.findByTestId('dice-focus')).querySelector('.dice-focus__panel');
+    const next = makeView({ events: [{ seq: 14, type: 'turn.rolled', params: { playerId: 'p1', dice: [6, 6], total: 12 } }] });
+    next.turn.dice = [6, 6];
+    api.setSnapshot(makeSnapshot(next, 14));
+    fireEvent.click(screen.getByTestId('action-endTurn'));
+    await waitFor(() => expect(screen.getByTestId('dice-focus').textContent).toContain('Rolled 6 + 6 = 12'));
+    const secondPanel = screen.getByTestId('dice-focus').querySelector('.dice-focus__panel');
+    expect(secondPanel).not.toBe(firstPanel);
+    fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: 'zh-Hant' } });
+    expect(screen.getByTestId('dice-focus').querySelector('.dice-focus__panel')).toBe(secondPanel);
+  });
+
+  it('shows event dice centrally then leaves the compact result without replaying on locale change', async () => {
+    const view = makeView({ events: [{ seq: 13, type: 'turn.rolled', params: { playerId: 'p1', dice: [2, 5], total: 7 } }] });
+    view.turn.dice = [2, 5];
+    await open(view);
+    expect((await screen.findByTestId('dice-focus')).textContent).toContain('Rolled 2 + 5 = 7');
+    await waitFor(() => expect(screen.queryByTestId('dice-focus')).toBeNull(), { timeout: 2200 });
+    fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: 'zh-Hant' } });
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(screen.getByTestId('dice-roll-animation').textContent).toContain('2');
+    expect(screen.getByTestId('dice-roll-animation').textContent).toContain('5');
+  });
+});

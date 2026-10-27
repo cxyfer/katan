@@ -1,6 +1,7 @@
 @layer base, pregame, table;
 @import './styles/pregame.css' layer(pregame);
 @import './styles/table.css' layer(table);
+@import './styles/table-interactions.css' layer(table);
 
 /* 共用基礎在最低層；畫面配置依上述順序覆寫。 */
 @layer base {

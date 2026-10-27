@@ -8,6 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { buildGeometry, type BoardGeometry, type Point } from '../board/geometry.ts';
 import { boardIntent, type BoardIntent } from '../board/intent.ts';
@@ -63,6 +64,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [cluster, setCluster] = useState<number[] | null>(null);
   const [diceRolling, setDiceRolling] = useState(false);
+  const [focusedRoll, setFocusedRoll] = useState<{ seq: number; dice: [number, number] } | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
   const lastDiceEventRef = useRef<number | null>(null);
@@ -101,13 +103,16 @@ export function BoardView({ controller }: { controller: TableController }) {
   useEffect(() => {
     const rolled = view?.events.slice().reverse().find((event) => event.type === 'turn.rolled');
     if (!rolled || rolled.seq === lastDiceEventRef.current) return;
+    const dice = rolled.params.dice;
+    if (!Array.isArray(dice) || dice.length !== 2 || !dice.every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) return;
     lastDiceEventRef.current = rolled.seq;
+    setFocusedRoll({ seq: rolled.seq, dice: [dice[0] as number, dice[1] as number] });
     setDiceRolling(true);
     if (diceTimerRef.current !== null) globalThis.clearTimeout(diceTimerRef.current);
     diceTimerRef.current = globalThis.setTimeout(() => {
       diceTimerRef.current = null;
       setDiceRolling(false);
-    }, 900);
+    }, 1600);
   }, [view?.events]);
 
   useEffect(() => () => {
@@ -338,6 +343,18 @@ export function BoardView({ controller }: { controller: TableController }) {
         )}
       </div>
 
+      {diceRolling && focusedRoll && boardRef.current && createPortal(
+        <div className="dice-focus" data-testid="dice-focus" role="status" aria-live="polite">
+          <div className="dice-focus__panel" key={focusedRoll.seq}>
+            <span className="dice-focus__label">{t('play.dice')}</span>
+            <div className="dice-focus__pair" aria-hidden="true">
+              {focusedRoll.dice.map((value, index) => <span className="dice-focus__die" key={index}>{value}</span>)}
+            </div>
+            <strong>{t('play.diceResult', { first: focusedRoll.dice[0], second: focusedRoll.dice[1], total: focusedRoll.dice[0] + focusedRoll.dice[1] })}</strong>
+          </div>
+        </div>,
+        boardRef.current.closest('[data-testid="game-stage"]') ?? boardRef.current,
+      )}
       <svg
         ref={svgRef}
         className="board__svg"

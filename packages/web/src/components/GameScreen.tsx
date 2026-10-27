@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/context.tsx';
-import { formatNumber } from '../i18n/format.ts';
 import { requiredActionAnnouncement, requiredActionFor } from '../state/pending.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ActionBar } from './ActionBar.tsx';
@@ -24,7 +23,6 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const fullscreen = useFullscreen(stageRef);
   const action = requiredActionFor(state);
   const [announcement, setAnnouncement] = useState('');
-  const self = state.game?.view.players.find((player) => player.id === state.session?.id);
   const view = state.game?.view;
 
   useEffect(() => {
@@ -67,7 +65,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
               <p>{t(suspended ? 'play.suspended' : 'play.interrupted')}</p>
               <button type="button" className="button" data-testid="resume-ready" onClick={() => void controller.actions.resumeTable(true)}>{t('play.resumeReady')}</button>
             </div>}
-            <CommandStatus controller={controller} />
+            {state.command?.status !== 'accepted' && <CommandStatus controller={controller} />}
             <PolicyProposalPanel controller={controller} />
           </div>
           <div className="game__map"><BoardView controller={controller} /></div>
@@ -78,13 +76,9 @@ export function GameScreen({ controller }: { controller: TableController }) {
           </aside>
         </div>
         <footer className="game__dock">
-          <div className="game__identity" data-testid="own-player-hud">
-            <span className="game__score"><GameIcon name="crown" size={21} /><strong>{formatNumber(state.locale, self?.ownScore ?? self?.publicScore ?? 0)}</strong><span>/ {formatNumber(state.locale, view?.victoryTarget ?? 10)}</span></span>
-            <span className="game__identity-name">{self?.nickname ?? state.session?.nickname}</span>
-            <span className="game__identity-caption">{t('play.ownScore')}</span>
-          </div>
           <HandPanel controller={controller} />
         </footer>
+        {state.command?.status === 'accepted' && <div className="game__receipt" data-testid="accepted-notice"><CommandStatus controller={controller} /></div>}
       </div>
 
       <GameTools controller={controller} />

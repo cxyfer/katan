@@ -5,6 +5,7 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-10-27 | work | docs/aegis/work/2026-10-27-island-ui/table-interactions-evidence.md | Collapsible table interaction browser evidence |
 | 2026-10-27 | work | docs/aegis/work/2026-10-27-island-ui/10-intent.md | Island game UI redesign intent |
 | 2026-10-27 | work | docs/aegis/work/2026-10-27-island-ui/20-checkpoint.md | Island game UI redesign checkpoint |
 | 2026-10-27 | work | docs/aegis/work/2026-10-27-island-ui/90-evidence.md | Island game UI redesign evidence |

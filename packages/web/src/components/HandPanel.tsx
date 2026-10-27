@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { RESOURCES, type Resource } from '@catan/rules';
 import { useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
@@ -29,11 +29,83 @@ export function HandPanel({ controller }: { controller: TableController }) {
     return () => document.removeEventListener('keydown', handleKey);
   }, [inspected]);
 
+  const [expanded, setExpanded] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const handRef = useRef<HTMLElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const hoverRef = useRef(false);
+  const pinnedRef = useRef(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = () => {
+    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  };
+  const close = () => {
+    cancelClose();
+    pinnedRef.current = false;
+    hoverRef.current = false;
+    setPinned(false);
+    setExpanded(false);
+    setInspected(null);
+    toggleRef.current?.focus();
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => {
+      closeTimer.current = null;
+      if (!hoverRef.current && !pinnedRef.current && !handRef.current?.contains(document.activeElement)) {
+        setExpanded(false);
+        setInspected(null);
+      }
+    }, 320);
+  };
+  useEffect(() => () => {
+    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+  }, []);
+
   return (
-    <section className="panel hand" aria-labelledby="hand-heading" data-testid="hand-panel">
-      <h2 id="hand-heading"><GameIcon name="cards" size={18} />{t('play.hand')}<span className="badge">{formatNumber(state.locale, totalHandCards)}</span></h2>
+    <section className="panel hand" aria-labelledby="hand-heading" data-testid="hand-panel" ref={handRef}
+      data-expanded={expanded} data-pinned={pinned}
+      onPointerEnter={(event) => {
+        if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
+        hoverRef.current = true;
+        cancelClose();
+        setExpanded(true);
+      }}
+      onPointerLeave={() => { hoverRef.current = false; scheduleClose(); }}
+      onFocusCapture={(event) => {
+        cancelClose();
+        if (event.target.closest('.hand__content')) setExpanded(true);
+      }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) scheduleClose();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); event.stopPropagation(); close(); }
+      }}
+    >
+      <header className="hand__handle">
+        <h2 id="hand-heading" className="visually-hidden">{t('play.hand')}</h2>
+        <button type="button" className="button hand__toggle" ref={toggleRef} data-testid="hand-toggle"
+          aria-expanded={expanded} aria-controls="hand-content"
+          aria-label={t(expanded ? 'table.collapseHand' : 'table.expandHand')}
+          onClick={() => { if (expanded) close(); else { cancelClose(); setExpanded(true); } }}>
+          <GameIcon name="cards" size={18} /><span>{t('play.hand')}</span><span className="badge">{formatNumber(state.locale, totalHandCards)}</span>
+          <span aria-hidden="true">{expanded ? '⌄' : '⌃'}</span>
+        </button>
+        <button type="button" className="button hand__pin" data-testid="hand-pin" aria-pressed={pinned}
+          aria-label={t(pinned ? 'table.unpinHand' : 'table.pinHand')}
+          onClick={() => {
+            pinnedRef.current = !pinnedRef.current;
+            setPinned(pinnedRef.current);
+            if (pinnedRef.current) { cancelClose(); setExpanded(true); } else scheduleClose();
+          }}><GameIcon name="anchor" size={16} /><span>{t(pinned ? 'table.unpinHand' : 'table.pinHand')}</span></button>
+      </header>
+      <div className="hand__content" id="hand-content" hidden={!expanded}>
       {totalHandCards === 0 && <p className="hand__empty muted">{t('play.handEmpty')}</p>}
       <p id="hand-hint" className="hand__hint muted">{t('table.handHint')}</p>
+      <div className="hand__resources">
+      <h3>{t('table.resources')}</h3>
       <ul className="resource-list">
         {RESOURCES.map((resource, index) => {
           const count = resources?.[resource];
@@ -64,13 +136,12 @@ export function HandPanel({ controller }: { controller: TableController }) {
           );
         })}
       </ul>
+      </div>
       <div className="hand__development">
          <DevCardPanel controller={controller} embedded />
        </div>
-       <p className="hand__summary muted">
-        {t('play.handSize')}: {formatNumber(state.locale, totalHandCards)} ·{' '}
-        {t('play.ownScore')}: {formatNumber(state.locale, self?.ownScore ?? self?.publicScore ?? 0)}
-      </p>
+      <p className="hand__summary muted">{t('play.handSize')}: {formatNumber(state.locale, totalHandCards)}</p>
+      </div>
     </section>
   );
 }

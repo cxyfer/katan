@@ -1,40 +1,51 @@
-# 海島開拓 UI：卡牌遊戲舞台驗證證據
+# 海島開拓 UI：計分側欄、手牌與骰子互動驗證
 
-## 已交付範圍
+## 本輪交付
 
-本次使用者追蹤要求已將遊戲桌重製為類似卡牌遊戲的橫向／全螢幕舞台：棋盤居中、上緣玩家 HUD、下緣私有資源卡扇形手牌、右側回合／建造行動、左下可收合交易／聊天／事件／說明工具，並提供使用者觸發的原生 Fullscreen API。直屏仍以同一套元件重排，不切換到另一個狀態 owner。
+使用者已批准本輪設計與實作計畫。左側計分欄預設收合，保留每個座位的顏色、公開分數與回合狀態；展開後顯示詳細資料，含隱藏分數的個人總分仍只顯示於本人座位。桌面展開會為側欄保留棋盤空間，窄螢幕改用可關閉的側邊覆層。
 
-資源卡使用本地原創 SVG 景觀插畫，點擊只做本地檢視並以 `aria-pressed` 呈現，不會送出遊戲命令。工具面板保留掛載以保存交易／聊天草稿；必要回應、連線狀態、命令結果與返回牌桌不在可關閉工具內。既有 Catan 規則、server-authoritative 投影、私有資源邊界、命令 preview／confirm、身分、存檔／暫停／恢復與雙語功能均保留。
+下緣手牌預設收合，保留張數與操作把手。滑鼠／筆移入展開，移出延遲 320ms 收合；固定或焦點留在手牌內時保持展開。觸控與鍵盤有明確切換按鈕，Escape 收合並將焦點還原至把手。資源卡與發展卡使用獨立可水平捲動的列；短橫屏使用手牌內部垂直捲動。子元件保留掛載，monopoly 選項不因收合遺失。新購卡及勝利點數卡沒有出牌按鈕。
 
-## 最新全專案驗證
+每個新的權威 `turn.rolled` 事件以原始骰子值在舞台中央放大呈現 1600ms，之後保留工具列結果；事件序號讓連續事件重新啟動動畫，相同事件及語系切換不重播。Reduced motion 保留結果但停用位移動畫。僅 accepted 命令結果移往右下角，持續到使用者關閉；必要回應、錯誤與未知結果的處理維持顯著。
 
-- `pnpm verify` exit 0。
-- 全 workspace typecheck 成功；rules 110、protocol 7、server 84、web 117，合計 318 tests passed；server 另有 11 個既存 SQLite/PostgreSQL contract tests skipped，未當成通過證據。
-- Web/server production build 成功；最後 client bundle：`index-CQPvGCia.css`、`index-CLlw1FRo.js`。
-- Smoke 13/13 通過：同 origin client、session/config、房間／滿席、準備開局、12 次初始放置、棋盤、擲骰、聊天及其他座位不可取得私有資源。
-- Rules R-56 額外驗證 30 hex、11 harbors、24/resource bank、34 張 development deck；server room lifecycle 覆蓋 5/6 paired start 與 settings mismatch rejection。
-## 卡牌舞台瀏覽器證據
+## 最終驗證結果
 
-執行 [verify-card-table.py](verify-card-table.py)，Python Playwright + `/usr/bin/chromium`，連接既有 `http://127.0.0.1:3000`，不另啟替代服務。
+- `pnpm verify`：exit 0；全 workspace typecheck、production build 成功。
+- rules 110、protocol 7、server 84、web 123，合計 **324 tests passed**。Server 另有 **11 個既有資料庫 contract tests skipped**，未計入通過。
+- Web 新增 [6 個互動回歸測試](../../../../packages/web/test/table-interactions.test.tsx)：六席公開／私有分數邊界、hover／延遲／固定／焦點／touch／Escape、monopoly 草稿與新購卡限制、通知位置與關閉、連續骰子事件及語系不重播。
+- Smoke **13/13**：同源前端、身分／設定、房間／滿席、開局、12 次初始放置、擲骰、聊天及其他座位無私有資源。
+- 最終前端產物：`index-DIALwB7a.css`、`index-BN2uccZK.js`；瀏覽器矩陣逐筆記錄同一組資產。
+- 獨立程式審查原先指出手牌遮住確認面板及連續骰子不重新播放，修正後再次讀碼確認；最終瀏覽器以實際點擊與 `animationstart` 確認修正效果，無未解決 finding。
 
-- 最終結果：144 assertions、20 captures、0 browser runtime exceptions。
-- viewport：1366×768、800×450、844×390、768×1024、390×844、360×640；每個 viewport 都跑 `zh-Hant` 與 `en`。
-- 真實流程：三個瀏覽器身分建立／加入三人房、準備與開局、12 次初始放置、鍵盤選取／取消／確認、擲骰、資源卡檢視、交易／聊天草稿在面板切換與尺寸切換中保留、Escape 關閉工具並還原焦點、原生全螢幕進出與外部退出同步。
-- DOM／幾何檢查：文件無水平或垂直 overflow、ID 唯一、棋盤可見、五張私有資源卡具有可讀名稱、必要提示在 viewport 內、hand 完整落在 viewport 內且文件不溢位。
-- 受限環境：提供的 GUI URL 回傳 HTTP 401，因此 browser evidence 使用既有本機同源服務；未宣稱 GUI URL 已驗證。- 主要截圖：[1366×768 遊戲桌](../../../screenshots/card-table/02-game-1366x768-zh-Hant.png)、[800×450 窄橫屏](../../../screenshots/card-table/02-game-800x450-zh-Hant.png)、[390×844 直屏](../../../screenshots/card-table/02-game-390x844-zh-Hant.png)、[英文版](../../../screenshots/card-table/02-game-1366x768-en.png)。完整索引在 [card-table README](../../../screenshots/card-table/README.md)，機器可讀結果在 [browser-report.json](../../../screenshots/card-table/browser-report.json)。
+## 兩種瀏覽器證據
 
-## 程式與相容性審查
+共同環境：現有 `http://127.0.0.1:3000`、Python 3.13.5、Playwright、`/usr/bin/chromium` 154.0.8037.57。六種 viewport：1366×768、800×450、844×390、768×1024、390×844、360×640；每種皆測 `zh-Hant`／`en`。
 
-- 需求／介面 owner：`GameScreen` 統一舞台，`GameTools` 統一次要工具，`HandPanel` 保持私有手牌資料邊界，`ActionBar` 保持 `deriveActions` 與 server hint，`useFullscreen` 只處理瀏覽器全螢幕能力與事件同步。
-- 舊 `MobileDrawer` 不再由遊戲主畫面掛載，避免同一 viewport 存在兩套面板 owner；既有 reducer／測試 carrier 暫時保留，沒有再承載 runtime UI 行為。後續若要清理 reducer API，應另開明確的 code-retirement slice，不混入本次視覺交付。
-- 本輪新增的規則／服務變更限定於 `base-paired-2025` 的 profile-owned B56 layout/deck/supply 與 room profile/capacity canonical guard；沒有新增依賴或持久化 schema。
-- 完整 web 117 tests 通過；reviewer agent 已針對 B56 rules、room settings、hand layout、窄橫屏 allocation 回報，修正後由本地 source readback、完整測試與真實 Chromium 證據收束。
+| 證據 | 結果 | 已執行範圍 |
+| --- | --- | --- |
+| [真實三人 runner](verify-card-table.py)／[報告](../../../screenshots/table-interactions/real/browser-report.json) | exit 0，**144 assertions、20 screenshots、0 runtime errors** | 實際服務建立／加入三人房、準備、12 次初始放置、鍵盤取消／確認、擲骰、資源卡本地檢視、交易／聊天草稿跨工具與尺寸保留、聊天送出、Escape 焦點還原、原生全螢幕進出 |
+| [六席密集卡牌 runner](verify-table-interactions.py)／[報告](table-interactions-report.json) | exit 0，**190/190 checks、12/12 matrix cases、8 screenshots、0 pageerrors** | 正式前端；瀏覽器內攔截全部 API／WebSocket，以六個長暱稱、30 hex、舊／新發展卡及空手牌固定資料驗證呈現與互動，未寫入真實伺服器 |
 
-## 未涵蓋與殘餘風險
+密集情境涵蓋：無文件溢出、棋盤可見、六席分數經本地捲動皆可命中、桌面側欄保留／窄屏覆層、手牌與收合側欄避讓、兩列分開且本地捲動可達、monopoly 保留、hover／固定／鍵盤／觸控模擬、Escape 還原、必要回應高於手牌及側欄、accepted 持續及關閉、rejected／unknown 回復、中央權威骰子值／尺寸／計時／連續動畫／reduced motion。
 
-- 未做實機觸控、Safari／Firefox、螢幕閱讀器、完整 WCAG 對比與真實使用者測試；Chromium 鍵盤與 DOM 檢查不等於完整 AT 驗收。
-- 截圖與 DOM geometry 證明構圖與互動覆蓋，不取代使用者對美術方向的最後審美判斷。
-- 測試服務建立的 sessions／rooms／games 沒有刪除資料庫或重設任何使用者資料。
-- 無 Git remote；未 push、建 PR 或 merge。使用者原有上層截圖變更保留，新證據獨立在 `docs/screenshots/card-table/`。
+在 1366×768、844×390、360×640 另以固定展開手牌實際點擊選取預覽確認，均成功；成功通知均不與手牌相交。最窄橫屏通知寬 158px，左緣 x672，手牌右緣 x654。第二個骰子事件在第一次結束前送達，觀測到兩次 `animationstart`。檢查不使用強制點擊。
 
-信心：B。核心目標操作與多尺寸 Chromium 已實際驗證，設備／AT／外部瀏覽器仍是明確未覆蓋範圍。
+[桌面手牌](../../../screenshots/table-interactions/02-desktop-expanded-en.png)、[手機手牌](../../../screenshots/table-interactions/03-expanded-390x844-zh-Hant.png)、[短橫屏](../../../screenshots/table-interactions/03-expanded-844x390-zh-Hant.png)、[中央骰子](../../../screenshots/table-interactions/05-central-dice-en.png)、[必要回應與側欄](../../../screenshots/table-interactions/06-mobile-required-prompt-with-rail-en.png) 已直接檢視。完整索引與重現命令見 [截圖 README](../../../screenshots/table-interactions/README.md)。
+
+## 責任邊界與複雜度
+
+[已批准計畫](../../plans/2026-10-27-island-ui.md) 與 [SPEC §8.8](../../../SPEC.md) 為需求基準。`GameScreen` 負責版面、`PlayersPanel` 負責公開計分呈現、`HandPanel` 負責本地收合互動、`DevCardPanel` 保留出牌路徑、`BoardView` 負責骰子呈現、`CommandStatus` 保留命令回復責任；無新 runtime owner、規則／協定／投影／持久化／依賴變動，無 ADR 變更訊號。基準對齊：aligned，scope requirements + architecture。
+
+複雜度控制：within-budget。新增的互動樣式依批准計畫放在既有 table cascade layer；未展開或重寫舊壓縮樣式。舊樣式仍服務舞台、工具及其他未變動結構，本輪覆寫計分／手牌互動；其整體整理應在獨立樣式維護工作中以同一瀏覽器矩陣驗證。重複底部個人 HUD 已移除，發展卡只由手牌掛載。舊 `MobileDrawer` 仍無 runtime 引用，保留既有 state/test carrier，不在本輪刪除範圍。
+
+Aegis `bundle`、`check` 結構檢查成功；這只證明工作記錄結構，不證明功能或需求驗收。第一次以不存在的 `python` 執行 exit 127，改用主機可用的 `python3` 後 exit 0。
+
+## 未覆蓋與交付狀態
+
+- 未執行實機觸控、Safari／Firefox、螢幕閱讀器、完整 WCAG 對比或真實使用者測試；Chromium 觸控／鍵盤模擬不等同實機或 AT 驗收。
+- 密集 fixtures 只驗證前端呈現與互動；引擎／服務證據來自完整測試、smoke 與真實三人流程。截圖不替代使用者對美術方向的判斷。
+- 測試建立的本機 sessions／rooms／games 未刪除或重設資料庫。
+- 無 remote；僅建立本地提交，沒有 push／PR／merge。三張原有首頁／交易／聊天截圖變更保持不動並留在提交之外。
+- 證據等級：**L2、信心 B**。已覆蓋本輪目標及相關回歸；設備／瀏覽器／AT 邊界如上。
+
+本文件取代同一路徑先前的卡牌舞台證據；舊 318 tests 與舊 HUD／扇形手牌描述屬前版。原版截圖仍在 [card-table 歷史索引](../../../screenshots/card-table/README.md)，不作為本輪互動通過證據。

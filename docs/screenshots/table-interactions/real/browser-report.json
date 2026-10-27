@@ -1,0 +1,2801 @@
+{
+  "base": "http://127.0.0.1:3000",
+  "browser": "154.0.8037.57",
+  "checks": [
+    {
+      "name": "海岸領航員: home has no document overflow",
+      "ok": true
+    },
+    {
+      "name": "海岸領航員: base room defaults to three seats",
+      "ok": true
+    },
+    {
+      "name": "小美: home has no document overflow",
+      "ok": true
+    },
+    {
+      "name": "小美: base room defaults to three seats",
+      "ok": true
+    },
+    {
+      "name": "ABCDEFGHIJKLMNOPQRSTUVWX: home has no document overflow",
+      "ok": true
+    },
+    {
+      "name": "ABCDEFGHIJKLMNOPQRSTUVWX: base room defaults to three seats",
+      "ok": true
+    },
+    {
+      "name": "lobby has no document overflow",
+      "ok": true
+    },
+    {
+      "name": "setup guide names remaining placements",
+      "ok": true
+    },
+    {
+      "name": "tools initially collapsed",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/zh-Hant: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/zh-Hant: board visible",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/zh-Hant: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/zh-Hant: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/zh-Hant: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/en: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/en: board visible",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/en: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/en: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/1366x768/en: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/zh-Hant: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/zh-Hant: board visible",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/zh-Hant: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/zh-Hant: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/zh-Hant: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/en: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/en: board visible",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/en: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/en: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/800x450/en: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/zh-Hant: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/zh-Hant: board visible",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/zh-Hant: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/zh-Hant: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/zh-Hant: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/en: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/en: board visible",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/en: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/en: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "01-setup/390x844/en: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "selection itself does not commit",
+      "ok": true
+    },
+    {
+      "name": "cancel has no side effect",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances revision",
+      "ok": true
+    },
+    {
+      "name": "twelve placements complete",
+      "ok": true
+    },
+    {
+      "name": "server returned two dice",
+      "ok": true
+    },
+    {
+      "name": "inspection does not issue game command",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/zh-Hant: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/zh-Hant: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/zh-Hant: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/zh-Hant: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/zh-Hant: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/en: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/en: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/en: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/en: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/1366x768/en: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/zh-Hant: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/zh-Hant: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/zh-Hant: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/zh-Hant: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/zh-Hant: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/en: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/en: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/en: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/en: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/800x450/en: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/zh-Hant: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/zh-Hant: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/zh-Hant: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/zh-Hant: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/zh-Hant: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/en: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/en: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/en: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/en: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/844x390/en: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/zh-Hant: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/zh-Hant: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/zh-Hant: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/zh-Hant: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/zh-Hant: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/en: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/en: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/en: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/en: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/768x1024/en: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/zh-Hant: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/zh-Hant: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/zh-Hant: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/zh-Hant: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/zh-Hant: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/en: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/en: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/en: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/en: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/390x844/en: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/zh-Hant: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/zh-Hant: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/zh-Hant: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/zh-Hant: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/zh-Hant: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/zh-Hant: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/en: no page overflow",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/en: board visible",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/en: all five named cards",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/en: prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "02-game/360x640/en: hand fully inside viewport",
+      "ok": true
+    },
+    {
+      "name": "trade draft preserved",
+      "ok": true
+    },
+    {
+      "name": "chat draft preserved",
+      "ok": true
+    },
+    {
+      "name": "draft survives landscape resize",
+      "ok": true
+    },
+    {
+      "name": "mandatory prompt outside tool surface",
+      "ok": true
+    },
+    {
+      "name": "trade draft survives portrait resize",
+      "ok": true
+    },
+    {
+      "name": "actual full-screen element is game stage",
+      "ok": true
+    },
+    {
+      "name": "browser exit synchronizes button",
+      "ok": true
+    },
+    {
+      "name": "save and suspend reachable",
+      "ok": true
+    },
+    {
+      "name": "opponent private resources absent",
+      "ok": true
+    },
+    {
+      "name": "no runtime exceptions",
+      "ok": true
+    }
+  ],
+  "captures": [
+    {
+      "scenario": "01-setup",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/table-interactions/real/01-setup-1366x768-zh-Hant.png",
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 180.53125,
+          "width": 1044,
+          "height": 519.46875,
+          "top": 180.53125,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "hand": {
+          "x": 92,
+          "y": 674,
+          "width": 900,
+          "height": 46,
+          "top": 674,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 33.84375,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 92.03125,
+          "left": 88
+        },
+        "actions": {
+          "x": 1138,
+          "y": 97.296875,
+          "width": 214,
+          "height": 329.3125,
+          "top": 97.296875,
+          "right": 1352,
+          "bottom": 426.609375,
+          "left": 1138
+        },
+        "visibleCards": [
+          {
+            "name": "木材，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "磚塊，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "羊毛，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "小麥，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "礦石，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "01-setup",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/table-interactions/real/01-setup-1366x768-en.png",
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 180.53125,
+          "width": 1044,
+          "height": 519.46875,
+          "top": 180.53125,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "hand": {
+          "x": 92,
+          "y": 674,
+          "width": 900,
+          "height": 46,
+          "top": 674,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 33.84375,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 92.03125,
+          "left": 88
+        },
+        "actions": {
+          "x": 1138,
+          "y": 97.296875,
+          "width": 214,
+          "height": 368.84375,
+          "top": 97.296875,
+          "right": 1352,
+          "bottom": 466.140625,
+          "left": 1138
+        },
+        "visibleCards": [
+          {
+            "name": "Lumber, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Brick, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Wool, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Grain, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Ore, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "01-setup",
+      "viewport": [
+        800,
+        450
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/table-interactions/real/01-setup-800x450-zh-Hant.png",
+      "metrics": {
+        "width": 800,
+        "height": 450,
+        "documentWidth": 800,
+        "documentHeight": 450,
+        "duplicateIds": [],
+        "board": {
+          "x": 72,
+          "y": 155.71875,
+          "width": 538,
+          "height": 246.28125,
+          "top": 155.71875,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "hand": {
+          "x": 80,
+          "y": 356,
+          "width": 530,
+          "height": 46,
+          "top": 356,
+          "right": 610,
+          "bottom": 402,
+          "left": 80
+        },
+        "prompt": {
+          "x": 76,
+          "y": 52.375,
+          "width": 528,
+          "height": 26.15625,
+          "top": 52.375,
+          "right": 604,
+          "bottom": 78.53125,
+          "left": 76
+        },
+        "actions": {
+          "x": 620,
+          "y": 82.515625,
+          "width": 166,
+          "height": 240.59375,
+          "top": 82.515625,
+          "right": 786,
+          "bottom": 323.109375,
+          "left": 620
+        },
+        "visibleCards": [
+          {
+            "name": "木材，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "磚塊，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "羊毛，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "小麥，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "礦石，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "01-setup",
+      "viewport": [
+        800,
+        450
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/table-interactions/real/01-setup-800x450-en.png",
+      "metrics": {
+        "width": 800,
+        "height": 450,
+        "documentWidth": 800,
+        "documentHeight": 450,
+        "duplicateIds": [],
+        "board": {
+          "x": 72,
+          "y": 155.71875,
+          "width": 538,
+          "height": 246.28125,
+          "top": 155.71875,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "hand": {
+          "x": 80,
+          "y": 356,
+          "width": 530,
+          "height": 46,
+          "top": 356,
+          "right": 610,
+          "bottom": 402,
+          "left": 80
+        },
+        "prompt": {
+          "x": 76,
+          "y": 52.375,
+          "width": 528,
+          "height": 26.15625,
+          "top": 52.375,
+          "right": 604,
+          "bottom": 78.53125,
+          "left": 76
+        },
+        "actions": {
+          "x": 620,
+          "y": 82.515625,
+          "width": 166,
+          "height": 274.609375,
+          "top": 82.515625,
+          "right": 786,
+          "bottom": 357.125,
+          "left": 620
+        },
+        "visibleCards": [
+          {
+            "name": "Lumber, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Brick, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Wool, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Grain, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Ore, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "01-setup",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/table-interactions/real/01-setup-390x844-zh-Hant.png",
+      "metrics": {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "documentHeight": 844,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 199.75,
+          "width": 327,
+          "height": 440.25,
+          "top": 199.75,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "hand": {
+          "x": 66,
+          "y": 744,
+          "width": 317,
+          "height": 46,
+          "top": 744,
+          "right": 383,
+          "bottom": 790,
+          "left": 66
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 320,
+          "height": 30,
+          "top": 48.84375,
+          "right": 383,
+          "bottom": 78.84375,
+          "left": 63
+        },
+        "actions": {
+          "x": 58,
+          "y": 636,
+          "width": 325,
+          "height": 107.53125,
+          "top": 636,
+          "right": 383,
+          "bottom": 743.53125,
+          "left": 58
+        },
+        "visibleCards": [
+          {
+            "name": "木材，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "磚塊，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "羊毛，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "小麥，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "礦石，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "01-setup",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/table-interactions/real/01-setup-390x844-en.png",
+      "metrics": {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "documentHeight": 844,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 219.6875,
+          "width": 327,
+          "height": 420.3125,
+          "top": 219.6875,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "hand": {
+          "x": 66,
+          "y": 744,
+          "width": 317,
+          "height": 46,
+          "top": 744,
+          "right": 383,
+          "bottom": 790,
+          "left": 66
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 320,
+          "height": 30,
+          "top": 48.84375,
+          "right": 383,
+          "bottom": 78.84375,
+          "left": 63
+        },
+        "actions": {
+          "x": 58,
+          "y": 636,
+          "width": 325,
+          "height": 118.75,
+          "top": 636,
+          "right": 383,
+          "bottom": 754.75,
+          "left": 58
+        },
+        "visibleCards": [
+          {
+            "name": "Lumber, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Brick, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Wool, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Grain, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Ore, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-1366x768-zh-Hant.png",
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "hand": {
+          "x": 92,
+          "y": 674,
+          "width": 900,
+          "height": 46,
+          "top": 674,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 88
+        },
+        "actions": {
+          "x": 1138,
+          "y": 97.296875,
+          "width": 214,
+          "height": 313,
+          "top": 97.296875,
+          "right": 1352,
+          "bottom": 410.296875,
+          "left": 1138
+        },
+        "visibleCards": [
+          {
+            "name": "木材，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "磚塊，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "羊毛，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "小麥，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "礦石，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-1366x768-en.png",
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "hand": {
+          "x": 92,
+          "y": 674,
+          "width": 900,
+          "height": 46,
+          "top": 674,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 88
+        },
+        "actions": {
+          "x": 1138,
+          "y": 97.296875,
+          "width": 214,
+          "height": 352.53125,
+          "top": 97.296875,
+          "right": 1352,
+          "bottom": 449.828125,
+          "left": 1138
+        },
+        "visibleCards": [
+          {
+            "name": "Lumber, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Brick, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Wool, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Grain, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Ore, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        800,
+        450
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-800x450-zh-Hant.png",
+      "metrics": {
+        "width": 800,
+        "height": 450,
+        "documentWidth": 800,
+        "documentHeight": 450,
+        "duplicateIds": [],
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 538,
+          "height": 312.625,
+          "top": 89.375,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "hand": {
+          "x": 80,
+          "y": 356,
+          "width": 530,
+          "height": 46,
+          "top": 356,
+          "right": 610,
+          "bottom": 402,
+          "left": 80
+        },
+        "prompt": {
+          "x": 76,
+          "y": 52.375,
+          "width": 528,
+          "height": 64.953125,
+          "top": 52.375,
+          "right": 604,
+          "bottom": 117.328125,
+          "left": 76
+        },
+        "actions": {
+          "x": 620,
+          "y": 82.515625,
+          "width": 166,
+          "height": 228.25,
+          "top": 82.515625,
+          "right": 786,
+          "bottom": 310.765625,
+          "left": 620
+        },
+        "visibleCards": [
+          {
+            "name": "木材，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "磚塊，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "羊毛，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "小麥，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "礦石，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        800,
+        450
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-800x450-en.png",
+      "metrics": {
+        "width": 800,
+        "height": 450,
+        "documentWidth": 800,
+        "documentHeight": 450,
+        "duplicateIds": [],
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 538,
+          "height": 312.625,
+          "top": 89.375,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "hand": {
+          "x": 80,
+          "y": 356,
+          "width": 530,
+          "height": 46,
+          "top": 356,
+          "right": 610,
+          "bottom": 402,
+          "left": 80
+        },
+        "prompt": {
+          "x": 76,
+          "y": 52.375,
+          "width": 528,
+          "height": 64.953125,
+          "top": 52.375,
+          "right": 604,
+          "bottom": 117.328125,
+          "left": 76
+        },
+        "actions": {
+          "x": 620,
+          "y": 82.515625,
+          "width": 166,
+          "height": 262.265625,
+          "top": 82.515625,
+          "right": 786,
+          "bottom": 344.78125,
+          "left": 620
+        },
+        "visibleCards": [
+          {
+            "name": "Lumber, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Brick, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Wool, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Grain, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Ore, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        844,
+        390
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-844x390-zh-Hant.png",
+      "metrics": {
+        "width": 844,
+        "height": 390,
+        "documentWidth": 844,
+        "documentHeight": 390,
+        "duplicateIds": [],
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "hand": {
+          "x": 80,
+          "y": 296,
+          "width": 574,
+          "height": 46,
+          "top": 296,
+          "right": 654,
+          "bottom": 342,
+          "left": 80
+        },
+        "prompt": {
+          "x": 76,
+          "y": 52.375,
+          "width": 572,
+          "height": 64.953125,
+          "top": 52.375,
+          "right": 648,
+          "bottom": 117.328125,
+          "left": 76
+        },
+        "actions": {
+          "x": 664,
+          "y": 82.515625,
+          "width": 166,
+          "height": 228.25,
+          "top": 82.515625,
+          "right": 830,
+          "bottom": 310.765625,
+          "left": 664
+        },
+        "visibleCards": [
+          {
+            "name": "木材，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "磚塊，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "羊毛，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "小麥，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "礦石，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        844,
+        390
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-844x390-en.png",
+      "metrics": {
+        "width": 844,
+        "height": 390,
+        "documentWidth": 844,
+        "documentHeight": 390,
+        "duplicateIds": [],
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "hand": {
+          "x": 80,
+          "y": 296,
+          "width": 574,
+          "height": 46,
+          "top": 296,
+          "right": 654,
+          "bottom": 342,
+          "left": 80
+        },
+        "prompt": {
+          "x": 76,
+          "y": 52.375,
+          "width": 572,
+          "height": 64.953125,
+          "top": 52.375,
+          "right": 648,
+          "bottom": 117.328125,
+          "left": 76
+        },
+        "actions": {
+          "x": 664,
+          "y": 82.515625,
+          "width": 166,
+          "height": 262.265625,
+          "top": 82.515625,
+          "right": 830,
+          "bottom": 344.78125,
+          "left": 664
+        },
+        "visibleCards": [
+          {
+            "name": "Lumber, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Brick, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Wool, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Grain, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Ore, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-768x1024-zh-Hant.png",
+      "metrics": {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "documentHeight": 1024,
+        "duplicateIds": [],
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "hand": {
+          "x": 80,
+          "y": 930,
+          "width": 498,
+          "height": 46,
+          "top": 930,
+          "right": 578,
+          "bottom": 976,
+          "left": 80
+        },
+        "prompt": {
+          "x": 76,
+          "y": 58.1875,
+          "width": 496,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 572,
+          "bottom": 130.828125,
+          "left": 76
+        },
+        "actions": {
+          "x": 588,
+          "y": 97.296875,
+          "width": 166,
+          "height": 330.875,
+          "top": 97.296875,
+          "right": 754,
+          "bottom": 428.171875,
+          "left": 588
+        },
+        "visibleCards": [
+          {
+            "name": "木材，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "磚塊，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "羊毛，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "小麥，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "礦石，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        768,
+        1024
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-768x1024-en.png",
+      "metrics": {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "documentHeight": 1024,
+        "duplicateIds": [],
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "hand": {
+          "x": 80,
+          "y": 930,
+          "width": 498,
+          "height": 46,
+          "top": 930,
+          "right": 578,
+          "bottom": 976,
+          "left": 80
+        },
+        "prompt": {
+          "x": 76,
+          "y": 58.1875,
+          "width": 496,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 572,
+          "bottom": 130.828125,
+          "left": 76
+        },
+        "actions": {
+          "x": 588,
+          "y": 97.296875,
+          "width": 166,
+          "height": 356.78125,
+          "top": 97.296875,
+          "right": 754,
+          "bottom": 454.078125,
+          "left": 588
+        },
+        "visibleCards": [
+          {
+            "name": "Lumber, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Brick, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Wool, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Grain, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Ore, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-390x844-zh-Hant.png",
+      "metrics": {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "documentHeight": 844,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 446.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 560,
+          "left": 58
+        },
+        "hand": {
+          "x": 66,
+          "y": 744,
+          "width": 317,
+          "height": 46,
+          "top": 744,
+          "right": 383,
+          "bottom": 790,
+          "left": 66
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 320,
+          "height": 68.796875,
+          "top": 48.84375,
+          "right": 383,
+          "bottom": 117.640625,
+          "left": 63
+        },
+        "actions": {
+          "x": 58,
+          "y": 556,
+          "width": 325,
+          "height": 107.53125,
+          "top": 556,
+          "right": 383,
+          "bottom": 663.53125,
+          "left": 58
+        },
+        "visibleCards": [
+          {
+            "name": "木材，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "磚塊，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "羊毛，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "小麥，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "礦石，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-390x844-en.png",
+      "metrics": {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "documentHeight": 844,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 446.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 560,
+          "left": 58
+        },
+        "hand": {
+          "x": 66,
+          "y": 744,
+          "width": 317,
+          "height": 46,
+          "top": 744,
+          "right": 383,
+          "bottom": 790,
+          "left": 66
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 320,
+          "height": 68.796875,
+          "top": 48.84375,
+          "right": 383,
+          "bottom": 117.640625,
+          "left": 63
+        },
+        "actions": {
+          "x": 58,
+          "y": 556,
+          "width": 325,
+          "height": 118.75,
+          "top": 556,
+          "right": 383,
+          "bottom": 674.75,
+          "left": 58
+        },
+        "visibleCards": [
+          {
+            "name": "Lumber, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Brick, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Wool, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Grain, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Ore, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "zh-Hant",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-360x640-zh-Hant.png",
+      "metrics": {
+        "width": 360,
+        "height": 640,
+        "documentWidth": 360,
+        "documentHeight": 640,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 130.46875,
+          "width": 297,
+          "height": 225.53125,
+          "top": 130.46875,
+          "right": 355,
+          "bottom": 356,
+          "left": 58
+        },
+        "hand": {
+          "x": 66,
+          "y": 540,
+          "width": 287,
+          "height": 46,
+          "top": 540,
+          "right": 353,
+          "bottom": 586,
+          "left": 66
+        },
+        "prompt": {
+          "x": 63,
+          "y": 65.46875,
+          "width": 290,
+          "height": 68.796875,
+          "top": 65.46875,
+          "right": 353,
+          "bottom": 134.265625,
+          "left": 63
+        },
+        "actions": {
+          "x": 58,
+          "y": 352,
+          "width": 295,
+          "height": 107.53125,
+          "top": 352,
+          "right": 353,
+          "bottom": 459.53125,
+          "left": 58
+        },
+        "visibleCards": [
+          {
+            "name": "木材，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "磚塊，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "羊毛，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "小麥，持有 1 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "礦石，持有 0 張；點擊放大查看",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "02-game",
+      "viewport": [
+        360,
+        640
+      ],
+      "locale": "en",
+      "screenshot": "docs/screenshots/table-interactions/real/02-game-360x640-en.png",
+      "metrics": {
+        "width": 360,
+        "height": 640,
+        "documentWidth": 360,
+        "documentHeight": 640,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 297,
+          "height": 242.15625,
+          "top": 113.84375,
+          "right": 355,
+          "bottom": 356,
+          "left": 58
+        },
+        "hand": {
+          "x": 66,
+          "y": 540,
+          "width": 287,
+          "height": 46,
+          "top": 540,
+          "right": 353,
+          "bottom": 586,
+          "left": 66
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 290,
+          "height": 68.796875,
+          "top": 48.84375,
+          "right": 353,
+          "bottom": 117.640625,
+          "left": 63
+        },
+        "actions": {
+          "x": 58,
+          "y": 352,
+          "width": 295,
+          "height": 118.75,
+          "top": 352,
+          "right": 353,
+          "bottom": 470.75,
+          "left": 58
+        },
+        "visibleCards": [
+          {
+            "name": "Lumber, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Brick, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Wool, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Grain, 1 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          {
+            "name": "Ore, 0 held; select to inspect",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "runtimeErrors": [],
+  "roomCode": "EX8WHQC7",
+  "scope": "Real three-player UI setup, roll, card inspection, drafts/chat, responsive game stage and native fullscreen. No physical-device or screen-reader acceptance."
+}

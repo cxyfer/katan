@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright, expect
 
 BASE = os.environ.get('UI_BASE_URL', 'http://127.0.0.1:3000')
 ROOT = Path(__file__).resolve().parents[4]
-OUT = ROOT / 'docs/screenshots/card-table'
+OUT = ROOT / os.environ.get('UI_EVIDENCE_DIR', 'docs/screenshots/card-table')
 OUT.mkdir(parents=True, exist_ok=True)
 checks, captures, errors = [], [], []
 SIZES = [(1366, 768), (800, 450), (844, 390), (768, 1024), (390, 844), (360, 640)]
@@ -129,6 +129,7 @@ with sync_playwright() as p:
     expect(host.get_by_test_id('board')).to_have_attribute('data-zoom', '1')
     # New game-card inspection is local only.
     current = api(contexts[0],'GET',path)
+    host.get_by_test_id('hand-pin').click()
     card = host.get_by_test_id('resource-lumber').locator('button')
     card.click()
     expect(card).to_have_attribute('aria-pressed','true')
