@@ -83,9 +83,24 @@ export function buildTopology(radius: number, id = `hex-r${radius}`): BoardTopol
       if (Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) <= radius) coords.push({ q, r });
     }
   }
-  coords.sort((a, b) => (a.r - b.r) || (a.q - b.q));
+  return buildTopologyFromCoords(coords, id, radius, 9);
+}
 
-  // Corner positions must be derived from exact centres: rounding the centre
+/** Builds the elongated 5–6 player board rows: 3-4-5-6-5-4-3. */
+export function buildPlayer56Topology(id = 'hex-r56'): BoardTopology {
+  const rowLengths = [3, 4, 5, 6, 5, 4, 3];
+  const coords: HexCoord[] = [];
+  for (let index = 0; index < rowLengths.length; index++) {
+    const r = index - 3;
+    const length = rowLengths[index]!;
+    const start = -Math.floor(length / 2);
+    for (let offset = 0; offset < length; offset++) coords.push({ q: start + offset, r });
+  }
+  return buildTopologyFromCoords(coords, id, 3, 11);
+}
+
+function buildTopologyFromCoords(coords: HexCoord[], id: string, radius: number, harborCount: number): BoardTopology {
+  coords.sort((a, b) => (a.r - b.r) || (a.q - b.q));
   // first would push shared corners onto different quantisation buckets.
   const exactCentres = coords.map((c) => hexCenter(c));
   const hexes = coords.map((c, index) => ({
@@ -182,7 +197,7 @@ export function buildTopology(radius: number, id = `hex-r${radius}`): BoardTopol
     vertices,
     edges,
     coastalEdges,
-    harborSlots: pickHarborSlots(coastalEdges),
+    harborSlots: pickHarborSlots(coastalEdges, harborCount),
   };
 }
 
@@ -192,16 +207,14 @@ export function buildTopology(radius: number, id = `hex-r${radius}`): BoardTopol
  * onto the nearest coastal edge with the same spacing pattern (see
  * docs/FIDELITY.md — positions still require physical-board verification).
  */
-function pickHarborSlots(coastalEdges: number[]): number[] {
+function pickHarborSlots(coastalEdges: number[], count = 9): number[] {
   const total = coastalEdges.length;
-  const count = 9;
   if (total < count) return coastalEdges.slice();
   const slots: number[] = [];
-  const spacing = [3, 4, 3, 3, 4, 3, 3, 4, 3];
-  let cursor = 0;
-  for (let i = 0; i < count; i++) {
+  const spacing = count === 11 ? [3, 3, 4, 3, 3, 4, 3, 3, 4, 3, 3] : [3, 4, 3, 3, 4, 3, 3, 4, 3];
+  for (let i = 0, cursor = 0; i < count; i++) {
     slots.push(coastalEdges[cursor % total]!);
-    cursor += spacing[i % spacing.length]!;
+    cursor += spacing[i]!;
   }
   return slots;
 }

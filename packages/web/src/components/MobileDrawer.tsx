@@ -3,7 +3,6 @@ import { useT } from '../i18n/context.tsx';
 import type { TableController } from '../state/useTable.ts';
 import { ActionBar } from './ActionBar.tsx';
 import { ChatPanel } from './ChatPanel.tsx';
-import { DevCardPanel } from './DevCardPanel.tsx';
 import { EventLog } from './EventLog.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { HandPanel } from './HandPanel.tsx';
@@ -58,7 +57,7 @@ export function MobileDrawer({ controller }: { controller: TableController }) {
       </div>
       <div className="drawer__content" data-testid="drawer-content" data-panel={drawer} hidden={drawer === 'none'}>
         {PANELS.map((panel) => <div key={panel} id={`drawer-panel-${panel}`} role="tabpanel" aria-labelledby={`drawer-tab-${panel}`} tabIndex={0} hidden={drawer !== panel}>
-          {panel === 'hand' && <><HandPanel controller={controller} /><DevCardPanel controller={controller} /><ActionBar controller={controller} /></>}
+          {panel === 'hand' && <><HandPanel controller={controller} /><ActionBar controller={controller} /></>}
           {panel === 'trade' && <TradePanel controller={controller} />}
           {panel === 'chat' && <ChatPanel controller={controller} />}
           {panel === 'help' && <><EventLog controller={controller} /><HelpPanel controller={controller} /></>}

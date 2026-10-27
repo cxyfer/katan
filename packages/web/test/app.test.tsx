@@ -84,6 +84,36 @@ describe('board rendering', () => {
     }
   });
 
+  it('animates the authoritative roll event while retaining its final values', async () => {
+    const view = makeView({
+      events: [{ seq: 13, type: 'turn.rolled', params: { playerId: 'p1', dice: [2, 5], total: 7 } }],
+    });
+    view.turn.dice = [2, 5];
+    await openGame(createFakeApi({ snapshot: makeSnapshot(view, 13) }));
+    const dice = await waitFor(() => {
+      const element = screen.getByTestId('dice-roll-animation');
+      expect(element.className).toContain('board__dice--rolling');
+      return element;
+    });
+    expect(dice.textContent).toContain('2');
+    expect(dice.textContent).toContain('5');
+    expect(dice.textContent).toContain('Rolled 2 + 5 = 7');
+  });
+
+
+  it('renders development cards inside the private hand dock', async () => {
+    const view = makeView();
+    view.players[0]!.devCards = ['knight'];
+    view.players[0]!.newDevCards = ['roadBuilding'];
+    await openGame(createFakeApi({ snapshot: makeSnapshot(view) }));
+
+    expect(screen.getByTestId('hand-panel').querySelector('[data-testid="devcards-panel"]')).toBeTruthy();
+    expect(screen.getByTestId('hand-panel').textContent).toContain('Knight');
+    expect(screen.getByTestId('new-devcards').textContent).toContain('Road building');
+    expect(screen.queryByTestId('devcards-dock')).toBeNull();
+    expect(screen.getByTestId('play-knight-0')).toBeTruthy();
+  });
+
   it('renders 19 hexes, the robber and harbour tokens from the real fixed layout', async () => {
     const board = fixedBoard();
     const api = createFakeApi({ snapshot: makeSnapshot(makeView({ board })) });
@@ -176,6 +206,33 @@ describe('keyboard target selection', () => {
 });
 
 describe('pan and zoom', () => {
+  it('changes the visible zoom level and board transform', async () => {
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView()) });
+    await openGame(api);
+    const board = screen.getByTestId('board');
+    const svg = screen.getByTestId('board-svg');
+    const before = svg.querySelector('g')?.getAttribute('transform');
+    expect(board.getAttribute('data-zoom')).toBe('1');
+    fireEvent.click(screen.getByTestId('zoom-in'));
+    expect(board.getAttribute('data-zoom')).toBe('1.25');
+    expect(screen.getByTestId('zoom-readout').textContent).toContain('125%');
+    expect(svg.querySelector('g')?.getAttribute('transform')).not.toBe(before);
+    fireEvent.keyDown(svg, { key: '0' });
+    expect(board.getAttribute('data-zoom')).toBe('1');
+  });
+
+  it('shows prominent setup guidance and server-provided setup targets', async () => {
+    const view = makeView({
+      setup: { seat: 0, stage: 'building', round: 1, remaining: 8 },
+      hints: makeHints({ legalSettlements: [2] }),
+    });
+    await openGame(createFakeApi({ snapshot: makeSnapshot(view) }));
+    expect(screen.getByTestId('setup-guide').textContent).toContain('Place your Settlement');
+    expect(screen.getByTestId('setup-guide').textContent).toContain('8 placements remain');
+    expect(screen.getByTestId('target-vertex-2')).toBeTruthy();
+    expect(screen.queryByTestId('target-vertex-3')).toBeNull();
+  });
+
   it('never commits a placement at the end of a pan gesture', async () => {
     const api = createFakeApi({
       snapshot: makeSnapshot(makeView({ hints: makeHints({ legalRoads: [5] }) })),
@@ -329,19 +386,20 @@ describe('mobile drawer', () => {
       const prompt = screen.getByTestId('required-action-prompt');
       expect(prompt.getAttribute('data-mine')).toBe('true');
 
-      fireEvent.click(screen.getByTestId('drawer-tab-chat'));
-      const drawer = screen.getByTestId('mobile-drawer');
+      fireEvent.click(screen.getByTestId('tool-tab-chat'));
+      const surface = screen.getByTestId('tool-panel-chat');
       const chat = await screen.findByTestId('chat-panel');
 
-      expect(drawer.contains(chat)).toBe(true);
-      expect(drawer.contains(prompt)).toBe(false);
-      expect(drawer.contains(screen.getByTestId('status-strip'))).toBe(false);
+      expect(surface.contains(chat)).toBe(true);
+      expect(screen.getByTestId('game-stage').contains(prompt)).toBe(true);
+      expect(screen.getByTestId('game-stage').contains(screen.getByTestId('status-strip'))).toBe(true);
+      expect(screen.getByTestId('tool-panel-chat').hasAttribute('hidden')).toBe(false);
       expect(prompt.hasAttribute('hidden')).toBe(false);
       expect(prompt.getAttribute('aria-hidden')).toBeNull();
       expect(screen.getByTestId('discard-submit')).toBeTruthy();
 
-      // The drawer can be closed again without losing the prompt.
-      fireEvent.click(screen.getByTestId('drawer-close'));
+      // 工具面板關閉後，必要回應仍然可見。
+      fireEvent.click(screen.getByTestId('tool-close'));
       expect(screen.getByTestId('required-action-prompt')).toBeTruthy();
     } finally {
       window.innerWidth = previous;

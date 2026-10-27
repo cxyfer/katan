@@ -28,9 +28,9 @@ describe('ruleset registry', () => {
 
   it('enables only the profiles whose rules and fixtures have passed', () => {
     const enabled = PROFILES.filter((profile) => profile.enabled).map((profile) => profile.id);
-    expect(enabled).toEqual(['base-2025']);
-    expect(selectableProfiles().map((profile) => profile.id)).toEqual(['base-2025']);
-    expect(selectableProfiles(5).map((profile) => profile.id)).toEqual([]);
+    expect(enabled).toEqual(['base-2025', 'base-paired-2025']);
+    expect(selectableProfiles().map((profile) => profile.id)).toEqual(['base-2025', 'base-paired-2025']);
+    expect(selectableProfiles(5).map((profile) => profile.id)).toEqual(['base-paired-2025']);
   });
 
   it('keeps the confirmed victory targets and player counts', () => {
@@ -65,8 +65,7 @@ describe('ruleset registry', () => {
       }),
     ).toMatchObject({ ok: true });
 
-    // Five players with base modules resolves to the registered paired
-    // profile, which stays disabled until its rules and fixtures pass.
+    // Five players with base modules resolve to the registered paired profile.
     expect(
       resolveCombination({
         playerCount: 5,
@@ -75,7 +74,7 @@ describe('ruleset registry', () => {
         scenario: null,
         setupMode: 'fixed',
       }),
-    ).toEqual({ ok: false, reason: 'disabled' });
+    ).toMatchObject({ ok: true, profile: { id: 'base-paired-2025' } });
 
     expect(
       resolveCombination({
@@ -123,11 +122,9 @@ describe('ruleset registry', () => {
     ).toThrow(/not implemented/);
   });
 
-  it('refuses to create a game for a profile that is implemented but not advertised', () => {
-    // `base-paired-2025` can be executed by the engine, yet the lobby must not
-    // offer it until its 5-6 setup/supply evidence is complete.
+  it('advertises the verified paired profile for six players', () => {
     expect(getProfile('base-paired-2025')!.implemented).toBe(true);
-    expect(selectableProfiles(6).map((profile) => profile.id)).toEqual([]);
+    expect(selectableProfiles(6).map((profile) => profile.id)).toEqual(['base-paired-2025']);
     expect(
       resolveCombination({
         playerCount: 6,
@@ -136,7 +133,7 @@ describe('ruleset registry', () => {
         scenario: null,
         setupMode: 'fixed',
       }),
-    ).toEqual({ ok: false, reason: 'disabled' });
+    ).toMatchObject({ ok: true, profile: { id: 'base-paired-2025' } });
   });
 
   it('refuses a player count the profile does not support', () => {

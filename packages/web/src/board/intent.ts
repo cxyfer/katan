@@ -2,10 +2,9 @@
  * Which board target the current interaction is asking for, and which targets
  * are legal for it.
  *
- * Server hints are used whenever they exist (`hints.legalRoads`, …). Setup and
- * robber placement are not covered by hints, so they fall back to a purely
- * local filter that is explicitly advisory — the server still rejects anything
- * illegal and the rejection is what the player finally sees.
+ * Server hints are used whenever they exist (`hints.legalRoads`, …), including
+ * initial setup. The server still rejects anything illegal and the rejection is
+ * what the player finally sees.
  */
 
 import type { TableState } from '../state/table.ts';
@@ -103,15 +102,15 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
             kind: 'vertex',
             commandType: 'setup.placeBuilding',
             labelId: 'play.build.settlement',
-            targets: allVertices(state),
-            fromHints: false,
+            targets: view.hints?.legalSettlements ?? allVertices(state),
+            fromHints: !!view.hints,
           }
         : {
             kind: 'edge',
             commandType: 'setup.placeRoad',
             labelId: 'play.build.road',
-            targets: allEdges(state),
-            fromHints: false,
+            targets: view.hints?.legalRoads ?? allEdges(state),
+            fromHints: !!view.hints,
           };
     }
   }
@@ -131,9 +130,9 @@ export function targetsFor(state: TableState, commandType: string, selfId: strin
     case 'build.city':
       return hints?.legalCities ?? [];
     case 'setup.placeBuilding':
-      return allVertices(state);
+      return hints?.legalSettlements ?? allVertices(state);
     case 'setup.placeRoad':
-      return allEdges(state);
+      return hints?.legalRoads ?? allEdges(state);
     case 'pending.moveRobber':
     case 'dev.playKnight':
       return robberHexes(state);

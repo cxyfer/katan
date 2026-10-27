@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { GameBrand, GameIcon, IslandIllustration } from './GameArt.tsx';
 import { useLocale, useT } from '../i18n/context.tsx';
@@ -11,15 +11,20 @@ import type { ScreenProps } from './props.ts';
  * The public room list is built only from `RoomSummaryView`, which carries
  * lobby metadata and never seated-player state (docs/SPEC.md §8.3).
  */
+type HomePane = 'table' | 'resume' | 'rooms' | 'identity';
+
 export function HomeScreen({ controller }: ScreenProps) {
   const t = useT();
   const locale = useLocale();
   const { state, actions } = controller;
+  const [homePane, setHomePane] = useState<HomePane>('table');
   const [code, setCode] = useState('');
   const [visibility, setVisibility] = useState<'private' | 'public'>('private');
-  const [capacity, setCapacity] = useState(4);
+  const [capacity, setCapacity] = useState(3);
   const [profileId, setProfileId] = useState('');
   const [setupMode, setSetupMode] = useState<'fixed' | 'variable'>('fixed');
+  const homePanes = ['table', 'resume', 'rooms', 'identity'] as const;
+  const homeTabRef = useRef<HTMLButtonElement | null>(null);
 
   const profiles = state.profiles.filter((profile) => profile.enabled);
   const chosenProfile = useMemo(
@@ -40,7 +45,37 @@ export function HomeScreen({ controller }: ScreenProps) {
           <LanguageSwitch onChange={actions.setLocale} />
         </div>
       </header>
-
+      <nav className="home__nav" aria-label={t('home.navigation')} role="tablist">
+        {homePanes.map((pane, index) => (
+          <button
+            ref={homePane === pane ? homeTabRef : undefined}
+            id={`home-tab-${pane}`}
+            key={pane}
+            type="button"
+            tabIndex={homePane === pane ? 0 : -1}
+            className={`button home__nav-tab${homePane === pane ? ' home__nav-tab--active' : ''}`}
+            role="tab"
+            aria-selected={homePane === pane}
+            aria-controls={`home-pane-${pane}`}
+            onClick={() => setHomePane(pane)}
+            onKeyDown={(event) => {
+              let next = index;
+              if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % homePanes.length;
+              else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index + homePanes.length - 1) % homePanes.length;
+              else if (event.key === 'Home') next = 0;
+              else if (event.key === 'End') next = homePanes.length - 1;
+              else return;
+              event.preventDefault();
+              const target = homePanes[next]!;
+              setHomePane(target);
+              requestAnimationFrame(() => document.getElementById(`home-tab-${target}`)?.focus());
+            }}
+          >
+            <GameIcon name={pane === 'table' ? 'flag' : pane === 'resume' ? 'anchor' : pane === 'rooms' ? 'users' : 'settings'} size={16} />
+            {t(`home.pane.${pane}`)}
+          </button>
+        ))}
+      </nav>
       <section className="hero hero--home" aria-labelledby="home-heading">
         <div className="hero__copy">
           <p className="hero__eyebrow"><GameIcon name="compass" />{t('island.home.eyebrow')}</p>
@@ -50,7 +85,7 @@ export function HomeScreen({ controller }: ScreenProps) {
         <div className="hero__art"><IslandIllustration /></div>
       </section>
 
-      <div className="home__actions">
+      <div className="home__actions" id="home-pane-table" role="tabpanel" aria-labelledby="home-tab-table" hidden={homePane !== 'table'}>
         <section aria-labelledby="create-heading" className="card home__create">
           <div className="section-heading">
             <span className="section-heading__icon"><GameIcon name="flag" size={25} /></span>
@@ -175,7 +210,7 @@ export function HomeScreen({ controller }: ScreenProps) {
         </section>
       </div>
 
-      <section aria-labelledby="resume-heading" className="card home__resume">
+      <section id="home-pane-resume" role="tabpanel" aria-labelledby="home-tab-resume" hidden={homePane !== 'resume'} className="card home__resume">
         <div className="section-heading">
           <span className="section-heading__icon"><GameIcon name="scroll" size={24} /></span>
           <div className="section-heading__copy"><h2 id="resume-heading">{t('home.resumeGames')}</h2></div>
@@ -212,7 +247,7 @@ export function HomeScreen({ controller }: ScreenProps) {
         )}
       </section>
 
-      <section aria-labelledby="rooms-heading" className="card home__rooms">
+      <section id="home-pane-rooms" role="tabpanel" aria-labelledby="home-tab-rooms" hidden={homePane !== 'rooms'} className="card home__rooms">
         <div className="section-heading">
           <span className="section-heading__icon"><GameIcon name="globe" size={24} /></span>
           <div className="section-heading__copy"><h2 id="rooms-heading">{t('home.publicRooms')}</h2></div>
@@ -295,7 +330,7 @@ export function HomeScreen({ controller }: ScreenProps) {
         )}
       </section>
 
-      <section aria-labelledby="identity-heading" className="card home__identity">
+      <section id="home-pane-identity" role="tabpanel" aria-labelledby="home-tab-identity" hidden={homePane !== 'identity'} className="card home__identity">
         <div className="section-heading">
           <span className="section-heading__icon"><GameIcon name="users" size={23} /></span>
           <div className="section-heading__copy"><h2 id="identity-heading">{t('entry.changeNickname')}</h2></div>

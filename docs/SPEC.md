@@ -462,6 +462,10 @@ Once the vertical slice runs, capture rendered states and exercise them. Keep ac
 
 The user approved an island-exploration browser-game redesign: deep-ocean blue, warm gold and parchment, original local SVG island/terrain/card artwork, and consistent typography, surfaces, controls and status treatments. Entry/home present a game identity and clear create/join/resume paths; the lobby uses player seat cards, prominent invitation/readiness and explicit start blockers; play keeps the island board primary with stable player/hand/action regions and secondary-panel navigation. Mobile retains connectivity and mandatory controls outside secondary panels. Results inherit the same theme. Preserve all existing rules, protocol, identity, confirmations, recovery, information visibility and bilingual functionality. Do not imply unsupported expansions, fake activity statistics or official artwork. This approval selects a visual direction; rendered capture, interaction and device evidence remain separate verification obligations.
 
+#### Follow-up visual revision — 2026-10-27
+
+The user requested a second pass after the first panel-oriented game layout did not match the supplied landscape card-game reference. The play surface now presents the same board-first game as a viewport-filling table: floating public player HUD above the board, private resource cards as a fanned lower hand, contextual turn/build controls at the right, and a collapsible secondary tool dock. Fullscreen is user-triggered and reversible; portrait layouts use the same owners and remain operable. This is a presentation revision only: rules, projections, private information boundaries, command preview/confirmation, recovery, identity and bilingual parity remain unchanged. Browser captures and interaction evidence are tracked separately from this requirement.
+
 ## 9. Security, Privacy, and Abuse Controls
 
 - Guest credentials are random, revocable server-issued tokens stored in secure, HTTP-only, SameSite cookies in production. Never trust a client-supplied player ID or room role.

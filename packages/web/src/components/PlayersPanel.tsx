@@ -1,10 +1,11 @@
+import type { CSSProperties } from 'react';
 import { useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 
-/** 玩家卡只使用公開投影；個人真實分數僅在本人卡片呈現。 */
+/** 玩家列只使用公開投影；個人真實分數僅在本人座位呈現。 */
 export function PlayersPanel({ controller }: { controller: TableController }) {
   const t = useT();
   const { state } = controller;
@@ -21,16 +22,28 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
       <ol className="seat-list" data-testid="seat-list">
         {view.players.map((player) => {
           const isTurn = view.turn.playerId === player.id;
+          const isSelf = player.id === selfId;
           return (
-            <li key={player.id} className={`seat${isTurn ? ' seat--turn' : ''}`} data-testid={`seat-${player.seat}`} data-turn={isTurn ? 'true' : 'false'}>
+            <li
+              key={player.id}
+              className={`seat${isTurn ? ' seat--turn' : ''}${isSelf ? ' seat--self' : ''}`}
+              style={{ '--player-color': playerColorHex(player.color) } as CSSProperties}
+              data-testid={`seat-${player.seat}`}
+              data-turn={isTurn ? 'true' : 'false'}
+              data-self={isSelf ? 'true' : 'false'}
+            >
               <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>{Array.from(player.nickname)[0]}</span>
-              <span className="seat__identity"><span className="seat__name">{player.nickname}{player.id === selfId ? ` (${t('app.you')})` : ''}</span>{isTurn && <span className="badge">{t('play.turnOwner')}</span>}</span>
+              <span className="seat__identity"><span className="seat__name">{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>{isTurn && <span className="badge">{t('play.turnOwner')}</span>}</span>
               <span className="seat__score"><GameIcon name="crown" size={15} /><span className="visually-hidden">{t('play.publicScore')}: </span>{formatNumber(state.locale, player.publicScore)}</span>
-              <span className="seat__stats">
-                {t('play.handSize')}: {formatNumber(state.locale, player.handSize)} · {t('play.devCardCount')}: {formatNumber(state.locale, player.devCardCount)}
-                {player.id === selfId && player.ownScore !== undefined && <span>{t('play.ownScore')}: {formatNumber(state.locale, player.ownScore)}</span>}
+              <span className="seat__inventory">
+                <span title={t('play.handSize')}><GameIcon name="cards" size={14} /><span className="visually-hidden">{t('play.handSize')}: </span>{formatNumber(state.locale, player.handSize)}</span>
+                <span title={t('play.devCardCount')}><GameIcon name="book" size={14} /><span className="visually-hidden">{t('play.devCardCount')}: </span>{formatNumber(state.locale, player.devCardCount)}</span>
+                {isSelf && player.ownScore !== undefined && <span className="seat__own-score" title={t('play.ownScore')}><GameIcon name="shield" size={14} /><span className="visually-hidden">{t('play.ownScore')}: </span>{formatNumber(state.locale, player.ownScore)}</span>}
               </span>
-              <span className="seat__details">{t('play.knightsPlayed')}: {formatNumber(state.locale, player.playedKnights)} · {t('play.longestRoadLength')}: {formatNumber(state.locale, player.longestRoadLength)}</span>
+              <span className="seat__details">
+                <span title={t('play.knightsPlayed')}><GameIcon name="shield" size={13} /><span className="visually-hidden">{t('play.knightsPlayed')}: </span>{formatNumber(state.locale, player.playedKnights)}</span>
+                <span title={t('play.longestRoadLength')}><GameIcon name="trade" size={13} /><span className="visually-hidden">{t('play.longestRoadLength')}: </span>{formatNumber(state.locale, player.longestRoadLength)}</span>
+              </span>
             </li>
           );
         })}

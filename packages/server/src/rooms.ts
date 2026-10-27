@@ -228,9 +228,9 @@ export class RoomService {
       scenario: profile.scenario,
       setupMode: input.setupMode,
     });
-    if (!combination.ok) {
+    if (!combination.ok || combination.profile.id !== profile.id) {
       throw new ServiceError('E_UNSUPPORTED_COMBINATION', 'error.E_UNSUPPORTED_COMBINATION', {
-        reason: combination.reason,
+        reason: combination.ok ? 'profile-mismatch' : combination.reason,
         profileId: input.profileId,
         playerCount: input.capacity,
       });
@@ -443,9 +443,11 @@ export class RoomService {
       scenario: profile.scenario,
       setupMode,
     });
-    if (!combination.ok) {
+    if (!combination.ok || combination.profile.id !== profile.id) {
       throw new ServiceError('E_UNSUPPORTED_COMBINATION', 'error.E_UNSUPPORTED_COMBINATION', {
-        reason: combination.reason,
+        reason: combination.ok ? 'profile-mismatch' : combination.reason,
+        profileId,
+        playerCount: capacity,
       });
     }
     const memberships = await this.repo.listMemberships(roomId);

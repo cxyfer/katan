@@ -10,7 +10,7 @@ before its fixtures pass.
 | Source | Edition | Used for |
 |---|---|---|
 | B25 | CATAN – The Game, CN3081, 2025 | board inventory, setup, production, 7-handling, trade, cards, awards, victory |
-| B56-25 | CATAN – 5–6, CN3082, 2025 | paired-player roles (profile registered, disabled) |
+| B56-25 | CATAN – 5–6, CN3082, 2025 | 30-hex paired board, expanded supply/development deck, paired-player roles |
 | SF25 / SF56-25 | Seafarers, CN3083/CN3084, 2025 | registered target profiles, disabled |
 | CK25 / CK56-25 | Cities & Knights, CN3087/CN3088, 2025 | registered target profiles, disabled |
 | COMB | Seafarers + C&K guidance | registered target profile, disabled |
@@ -23,6 +23,7 @@ publisher's rulebooks. No official artwork or card text is copied.
 | Profile | Counts | Victory target | Status |
 |---|---|---|---|
 | `base-2025` | 3, 4 | 10 | **enabled** |
+| `base-paired-2025` | 5, 6 | 10 | **enabled** |
 
 Every other row of the §5.7 matrix is registered with `enabled: false` and a
 `unavailableReasonKey`; the lobby does not offer it and the server rejects a
@@ -34,10 +35,7 @@ The registry separates two questions:
   requires this, so fixtures can exercise a profile before it is advertised.
 - `enabled` — the lobby advertises it and the service accepts it.
 
-`base-paired-2025` (5–6 players) is `implemented: true`, `enabled: false`: the
-paired-turn procedure is implemented and fixture-tested, while the 5–6
-setup/supply and development-deck transcription still needs source
-verification before the row may be offered.
+`base-paired-2025` is enabled after the B56-25 fixture set verifies the 30-hex topology, 11 harbors, 24/resource bank, 34-card development deck, setup order, and paired turns. Expansion profiles remain closed pending their own source transcription.
 
 ## Fixture → evidence map
 
@@ -56,7 +54,7 @@ verification before the row may be offered.
 | R-POLICY | pre-start host edit clears readiness, bounds, host-only rejection, all-seat consent, rejection leaves policy, host transfer cancels | `packages/server/test/rooms.test.ts` | covered |
 | R-SAVE | save barrier acknowledgement, idempotent request id, no table-wide pause, all-seat suspension, readiness-gated resume, rejection | `packages/server/test/recovery.test.ts` | covered |
 | R-REC | restart restores revision/seat/receipts; terminal result persists; repository contract on SQLite **and** PostgreSQL | `packages/server/test/recovery.test.ts`, `packages/server/test/db-contract.test.ts` | covered (SQLite + PostgreSQL 16) |
-| R-56 | partner = third seat to the left, five- and six-seat pair cycles, production only on Player 1, no domestic trade for Player 2, build/bank/card actions for Player 2, card carry between roles, either role may win | `packages/rules/test/paired.test.ts` (11 cases) | covered at engine level; profile stays disabled |
+| R-56 | 30-hex/11-harbor B56 board, 24/resource bank, 34-card deck, setup order, partner = third seat to the left, five- and six-seat pair cycles, production only on Player 1, no domestic trade for Player 2, build/bank/card actions for Player 2, card carry between roles, either role may win | `packages/rules/test/paired.test.ts` (12 cases) and `packages/server/test/rooms.test.ts` | covered at engine and room lifecycle level |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
 | U-01, U-02, U-05 | rendered layout, mouse/keyboard/touch selection, dense content | `packages/web/test/*.test.tsx` (jsdom) plus `docs/screenshots/` captured at 1366×768, 768×1024 and 390×844 | **partially covered** — layout measured and captured, but no touch, rotation or pointer-device run |

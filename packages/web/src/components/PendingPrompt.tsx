@@ -8,7 +8,7 @@ import type { TableController } from '../state/useTable.ts';
 /**
  * Mandatory-response prompt (docs/SPEC.md §4.4/§8.4).
  *
- * Rendered by the game layout itself — never inside the mobile drawer — so it
+ * Rendered by the game layout itself — never inside a closable tool surface — so it
  * cannot be hidden by opening hand/trade/chat/help. It stays in the document
  * until the engine's pending effect is resolved.
  */
@@ -156,8 +156,8 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
         <p className="muted">{t('play.pending.freeRoads', { remaining: pending.remaining })}</p>
       )}
 
-      {/* Mandatory turn actions stay inside the prompt so a mobile player never
-          has to open a drawer to act (docs/SPEC.md §8.1/§8.4). */}
+      {/* Mandatory turn actions stay inside the prompt so a player never
+          has to open a secondary tool surface to act (docs/SPEC.md §8.1/§8.4). */}
       {!pending && action?.mine && action.kind === 'roll' && (
         <button
           type="button"

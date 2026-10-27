@@ -1,7 +1,9 @@
 # Island game UI redesign — intent
 
 ## TaskIntentDraft
-- Outcome: a cohesive browser-game UI across entry, home, lobby and play, not a recolored engineering form.
+- Outcome: immersive, landscape / fullscreen card-game presentation of the existing Catan game, following the user's supplied reference. The 2026-10-27 follow-up replaces the old panel layout as the active target.
+- Authorized revision: central island board, floating HUD, fanned resource cards, contextual actions and closed-by-default tools; preserve playable portrait and all existing rule/data boundaries.
+- Active session goal: goal-c18e37d0-e8a7-46e8-a9c3-1e1d916d1dcb. Current TaskStartSnapshot: master @ af784f3, no remote, source clean before this revision; pre-existing screenshots preserved.
 - Approved: direction A, island exploration, deep ocean / gold / parchment; user confirmed in the design-choice tool on 2026-10-27.
 - Parent: ../../plans/2026-10-27-island-ui.md; session goal goal-760a0ed0-0882-4b56-a6b4-195cc73e3620.
 - Scope: frontend layout, original SVG art, visual tokens, presentation helpers, bilingual copy and UI tests.

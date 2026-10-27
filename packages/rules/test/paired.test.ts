@@ -28,12 +28,31 @@ function endWindow(state: GameState): GameState {
 }
 
 describe('R-56 paired profiles', () => {
-  it('keeps the paired profile implemented but not advertised until verified', () => {
+  it('advertises the verified paired profile with the expanded supply', () => {
     const profile = getProfile('base-paired-2025')!;
     expect(profile.paired).toBe(true);
     expect(profile.implemented).toBe(true);
-    expect(profile.enabled).toBe(false);
+    expect(profile.enabled).toBe(true);
     expect(profile.bankPerResource).toBe(24);
+  });
+
+  it('ships complete five- and six-seat setup, supply and deck fixtures', () => {
+    for (const players of [5, 6] as const) {
+      const { state } = newGame({ players, profileId: 'base-paired-2025', seed: 2026 });
+      expect(state.turn.setup?.order).toHaveLength(players * 2);
+      expect(Object.values(state.bank)).toEqual([24, 24, 24, 24, 24]);
+      expect(state.devDeck).toHaveLength(34);
+      expect(state.board.layout.topologyId).toBe('hex-r56');
+      expect(state.board.layout.terrain).toHaveLength(30);
+      expect(state.board.layout.harbors).toHaveLength(11);
+
+      const finished = runSetup(state, scriptedRng([9]));
+      expect(finished.turn.setup).toBeNull();
+      for (const player of finished.players) {
+        expect(finished.board.buildings.filter((building) => building?.player === player.id)).toHaveLength(2);
+        expect(finished.board.roads.filter((road) => road?.player === player.id)).toHaveLength(2);
+      }
+    }
   });
 
   it('pairs a seat with the third player to its left', () => {
@@ -112,7 +131,7 @@ describe('R-56 paired profiles', () => {
     state = endWindow(state);
     const seat = state.turn.seat;
     const actor = state.players[seat]!.id;
-    setHand(state, actor, { lumber: 4, brick: 4, ore: 1, grain: 1, wool: 1 });
+    setHand(state, actor, { lumber: 5, brick: 4, ore: 1, grain: 1, wool: 1 });
     state.devDeck = ['knight'];
 
     const afterBank = act(

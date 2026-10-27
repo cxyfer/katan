@@ -65,6 +65,60 @@ describe('R-ROOM lobby', () => {
     );
   });
 
+  it('rejects profile and capacity mismatches during lobby settings updates', async () => {
+    const host = await harness.client('SettingsGuard');
+    const baseRoom = host.expectOk<RoomShape>(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 3, profileId: 'base-2025', setupMode: 'fixed',
+    }));
+    host.expectError(
+      await host.post(`/api/rooms/${baseRoom.id}/settings`, { capacity: 5 }),
+      'E_UNSUPPORTED_COMBINATION',
+    );
+
+    const pairedRoom = host.expectOk<RoomShape>(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 5, profileId: 'base-paired-2025', setupMode: 'fixed',
+    }));
+    host.expectError(
+      await host.post(`/api/rooms/${pairedRoom.id}/settings`, { capacity: 3 }),
+      'E_UNSUPPORTED_COMBINATION',
+    );
+  });
+
+  it('starts verified five- and six-seat base paired rooms', async () => {
+    for (const capacity of [5, 6] as const) {
+      const clients = [];
+      for (let index = 0; index < capacity; index++) {
+        clients.push(await harness.client(`Paired${capacity}-${index}`));
+      }
+      const host = clients[0]!;
+      const room = host.expectOk<RoomShape>(
+        await host.post('/api/rooms', {
+          visibility: 'private',
+          capacity,
+          profileId: 'base-paired-2025',
+          setupMode: 'fixed',
+        }),
+      );
+      for (const client of clients.slice(1)) {
+        client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
+      }
+      for (const client of clients) {
+        client.expectOk(await client.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+      }
+      const ready = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+      expect(ready.members).toHaveLength(capacity);
+      expect(ready.startBlockers).toEqual([]);
+
+      const started = host.expectOk<{ gameId: string }>(await host.post(`/api/rooms/${room.id}/start`));
+      const snapshot = host.expectOk<{ view: { profileId: string; players: unknown[]; turn: { setup: unknown } } }>(
+        await host.get(`/api/games/${started.gameId}`),
+      );
+      expect(snapshot.view.profileId).toBe('base-paired-2025');
+      expect(snapshot.view.players).toHaveLength(capacity);
+      expect(snapshot.view.turn.setup).not.toBeNull();
+    }
+  });
+
   it('hides private rooms from the public list and exposes public ones', async () => {
     const host = await harness.client('Host3');
     const privateRoom = host.expectOk<RoomShape>(

@@ -10,7 +10,7 @@ const PLAYABLE = new Set(['knight', 'roadBuilding', 'yearOfPlenty', 'monopoly'])
  * not playable (docs/SPEC.md §4.4); the server still enforces this, the UI just
  * refuses to offer a move that cannot succeed.
  */
-export function DevCardPanel({ controller }: { controller: TableController }) {
+export function DevCardPanel({ controller, embedded = false }: { controller: TableController; embedded?: boolean }) {
   const t = useT();
   const { state, actions } = controller;
   const [monopolyResource, setMonopolyResource] = useState<Resource>('lumber');
@@ -43,7 +43,7 @@ export function DevCardPanel({ controller }: { controller: TableController }) {
   };
 
   return (
-    <section className="panel" aria-labelledby="devcards-heading" data-testid="devcards-panel">
+    <section className={embedded ? 'devcards devcards--hand' : 'panel devcards'} aria-labelledby="devcards-heading" data-testid="devcards-panel">
       <h2 id="devcards-heading">{t('play.devCards')}</h2>
       {held.length === 0 && fresh.length === 0 && <p className="muted">{t('play.devCardsEmpty')}</p>}
       {held.length > 0 && (

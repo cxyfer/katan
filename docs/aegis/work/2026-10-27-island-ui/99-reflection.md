@@ -1,27 +1,25 @@
-# 海島 UI — 回顧
+# 海島 UI — 卡牌遊戲舞台重製回顧
 
 ## 交付與證據
 
-從入口、首頁、大廳到遊戲桌／結算，採用同一套海島視覺與本地 SVG，而不是在原頁面只換配色。桌面把玩家、棋盤、手牌與行動分區；次要工具用頁籤收納，手機保留必要提示並使用四頁籤面板。
+這次追蹤修正沒有再堆疊側邊面板，而是保留既有 Catan 規則並重建遊戲畫面的視覺層級：滿版舞台、浮動玩家 HUD、中心棋盤、下緣扇形手牌、右側操作 rail 與可收合工具 dock。資源卡使用原創本地 SVG 景觀，檢視只改本地 UI state；Fullscreen 由使用者按鈕觸發，事件狀態是真實瀏覽器狀態。
 
-最新全專案驗證 311 tests／13 smoke、Chromium 304 assertions／52 captures 全部通過；兩階段獨立原始碼審查的已確認問題均修正。詳細範圍與限制由 [evidence](90-evidence.md) 單一記錄維護，不把審查或結構性 helper 當產品驗收。
+`pnpm verify` exit 0：318 tests passed、11 個既存 DB tests skipped、build、13/13 smoke。`verify-card-table.py` 以真實 Chromium 完成 144 assertions、20 captures、0 browser exceptions，覆蓋六個 desktop/tablet/mobile 尺寸、兩語系、三人 setup、卡牌檢視、工具草稿與 native fullscreen。Rules R-56 另覆蓋 30 hex、11 harbors、24/resource bank、34-card deck；完整範圍與限制由 [90-evidence](90-evidence.md) 維護。
 
 ## 有效做法
 
-- 先保留 controller／server 投影，再在呈現 owner 組合新介面。沒有為美術新增網路、規則或第二份狀態。
-- CSS cascade layers 明確定義 base → pregame → table；玩家 seat 規則限定作用域，避免跨畫面覆寫大廳座位。
-- 分頁內容保持掛載隱藏以保存表單；chat 可見性使用既有 reducer，並針對手機／桌面掛載交接驗證未讀，而不是只看頁籤外觀。
-- 審查與實際反例互補：Fit board 的失效 CSS consumer 可由 source 找出；24 字元不斷詞勝者在 360px 的溢位由真正 browser matrix 重現，修正後將同一反例保留。
-- 公開分數與骰子既有文字語意在改成圖像後需要明確恢復；雙語 role/name regression 比僅檢查裝飾 SVG 更能保護使用者資訊。
+- 先保留 controller、projection 與命令 owners，再只在畫面 owners 重組，避免把「卡牌遊戲感」誤做成另一套規則。
+- 用同一個 GameTools owner 跨尺寸重排，工具內容保持掛載，交易與聊天草稿不因工具或 viewport 切換遺失。
+- 用 CSS grid 的 `auto + 1fr` 承載雙語 status strip，再用 `minmax(0, ...)` 限制手牌 row；這解決英文長文案在窄橫屏推高舞台的實際回歸。
+- 用 strict browser evidence 檢查真實 DOM geometry、全螢幕外部退出、鍵盤焦點與 server revision，而不是只靠靜態截圖。
 
-## 改善機會
+## 保留邊界與改善機會
 
-- 新 acceptance harness 的測試 ID、state factory、事件 discriminator、session 語系優先與 Python import 假設曾造成失敗。已分辨 harness 與 production 問題，只以最終完整成功執行當證據；下次先用小範圍契約檢查減少全矩陣重跑。
-- 當前模型不能讀圖，DOM geometry、互動成功和產出截圖不等於主觀視覺驗收。下一步品質提升應由使用者／可讀圖 reviewer 檢視截圖及實機，不能追加虛假的視覺通過標記。
-- 結算用明示 HTTP fixture，不把短期 UI 驗證變成冗長或非授權資料庫操控。完整伺服器勝局、其他瀏覽器與 AT 是後續可選驗收，不隱藏於本次完成宣稱。
+- 舊 MobileDrawer 已停止掛載，GameTools 是牌桌的 canonical secondary-panel owner；state reducer carrier 仍保留，避免把 code retirement 混入本次視覺交付。若要清理，應另開明確 slice 並完成負向引用檢查。
+- 本次沒有 Safari／Firefox、實機觸控、讀屏器與完整 WCAG 稽核；Chromium 的焦點與語意檢查不能代表所有 assistive technology。
+- 瀏覽器證據使用正常服務建立測試資料，未刪除 DB 或重設真實資料。沒有 remote，因此不 push、建 PR 或 merge。
+- 兩個獨立 reviewer agent 在回覆前失敗，沒有把失敗視為通過；本次以 coordinator readback、full verify、strict browser report 以及明確殘餘風險完成交付判斷。
 
 ## 複雜度與安全收束
 
-within-budget；新增 SVG helper 與 GameTools 各有單一呈現責任，既有大 controller 沒有新責任；原全域樣式改由三層清楚的 owner 控制，沒有保留雙主題或新增 fallback。沒有未解複雜度超標事項。
-
-使用者原有截圖變更不納入本次提交；新證據在獨立子目錄。無刪除／移動／reset／stash／資料庫重設。無 remote，不 push、建立 PR 或 merge。方法包與紀錄沒有額外完成權威。
+within-budget；新增 ResourceCardArt 與 useFullscreen 都是局部純呈現／瀏覽器能力 owner，沒有新增 server、規則、依賴、API、資料 schema 或第二份遊戲狀態。原使用者截圖變更保持原狀，新證據獨立保存。

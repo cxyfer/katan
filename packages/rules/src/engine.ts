@@ -113,7 +113,7 @@ export function createGame(options: CreateGameOptions): GameState {
     throw new Error(`profile ${profile.id} does not support ${options.setupMode} setup`);
   }
 
-  const layout = buildBaseLayout({ mode: options.setupMode, rng: options.rng });
+  const layout = buildBaseLayout({ topology: getTopology(profile.topologyId), mode: options.setupMode, rng: options.rng });
   const topo = getTopology(layout.topologyId);
   const board: BoardState = {
     layout,

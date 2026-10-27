@@ -50,6 +50,24 @@ export const BASE_HARBOR_TOKENS: readonly HarborType[] = [
   'generic',
 ];
 
+export const PAIRED_TERRAIN_MULTISET: readonly Terrain[] = [
+  ...Array<Terrain>(6).fill('forest'),  ...Array<Terrain>(6).fill('pasture'),
+  ...Array<Terrain>(6).fill('fields'),
+  ...Array<Terrain>(5).fill('hills'),
+  ...Array<Terrain>(5).fill('mountains'),
+  ...Array<Terrain>(2).fill('desert'),
+];
+
+export const PAIRED_NUMBER_TOKENS: readonly number[] = [
+  ...BASE_NUMBER_TOKENS,
+  2, 3, 4, 5, 6, 8, 9, 10, 11, 12,
+];
+
+export const PAIRED_HARBOR_TOKENS: readonly HarborType[] = [
+  'generic', 'grain', 'generic', 'ore', 'wool', 'generic',
+  'brick', 'lumber', 'generic', 'generic', 'generic',
+];
+
 /**
  * Fixed (first-game) base board, transcribed in row order where rows are the
  * hexes with equal axial `r` sorted by `q` (r = -2 is the top row).
@@ -68,6 +86,26 @@ export const FIXED_BASE_NUMBERS: readonly (number | null)[] = [
   9, 11, null, 3, 8,
   8, 3, 4, 5,
   5, 6, 11,
+];
+
+export const FIXED_PAIRED_TERRAIN: readonly Terrain[] = [
+  'mountains', 'pasture', 'forest',
+  'fields', 'pasture', 'hills', 'fields',
+  'fields', 'forest', 'desert', 'mountains', 'forest',
+  'mountains', 'hills', 'pasture', 'desert', 'fields', 'mountains',
+  'forest', 'fields', 'hills', 'pasture', 'fields',
+  'mountains', 'pasture', 'forest', 'hills',
+  'forest', 'pasture', 'hills',
+];
+
+export const FIXED_PAIRED_NUMBERS: readonly (number | null)[] = [
+  10, 2, 9,
+  12, 6, 4, 10,
+  9, 11, null, 3, 8,
+  8, 3, 4, null, 5, 6,
+  11, 10, 2, 9, 12,
+  6, 4, 10, 9,
+  11, 3, 8,
 ];
 
 /**
@@ -112,39 +150,46 @@ export interface BaseLayoutOptions {
 
 export function buildBaseLayout(options: BaseLayoutOptions): BoardLayout {
   const topo = options.topology ?? buildTopology(2);
-  if (topo.hexes.length !== 19) {
-    throw new Error(`base layout requires a 19-hex board, got ${topo.hexes.length}`);
+  const paired = topo.hexes.length === 30;
+  const expectedHexes = paired ? 30 : 19;
+  if (topo.hexes.length !== expectedHexes) {
+    throw new Error(`base layout requires ${expectedHexes}-hex board, got ${topo.hexes.length}`);
   }
+  const terrainPool = paired ? PAIRED_TERRAIN_MULTISET : BASE_TERRAIN_MULTISET;
+  const numberTokens = paired ? PAIRED_NUMBER_TOKENS : BASE_NUMBER_TOKENS;
+  const harborTokens = paired ? PAIRED_HARBOR_TOKENS : BASE_HARBOR_TOKENS;
   if (options.mode === 'fixed') {
+    const terrain = (paired ? FIXED_PAIRED_TERRAIN : FIXED_BASE_TERRAIN).slice();
+    const numbers = (paired ? FIXED_PAIRED_NUMBERS : FIXED_BASE_NUMBERS).slice();
     return {
       topologyId: topo.id,
-      terrain: FIXED_BASE_TERRAIN.slice(),
-      numbers: FIXED_BASE_NUMBERS.slice(),
+      terrain,
+      numbers,
       harbors: topo.harborSlots.map((edge, i) => ({
         edge,
-        type: BASE_HARBOR_TOKENS[i % BASE_HARBOR_TOKENS.length]!,
+        type: harborTokens[i % harborTokens.length]!,
       })),
       islands: topo.hexes.map(() => 0),
-      robber: FIXED_BASE_TERRAIN.indexOf('desert'),
+      robber: terrain.indexOf('desert'),
       pirate: null,
     };
   }
 
-  const terrain = shuffle(BASE_TERRAIN_MULTISET, options.rng);
+  const terrain = shuffle(terrainPool, options.rng);
   const order = spiralOrder(topo);
   const numbers: (number | null)[] = topo.hexes.map(() => null);
-  const tokens = shuffle(BASE_NUMBER_TOKENS, options.rng);
+  const tokens = shuffle(numberTokens, options.rng);
   let cursor = 0;
   for (const hex of order) {
     if (terrain[hex] === 'desert') continue;
     numbers[hex] = tokens[cursor++] ?? null;
   }
-  const harborTokens = shuffle(BASE_HARBOR_TOKENS, options.rng);
+  const shuffledHarbors = shuffle(harborTokens, options.rng);
   return {
     topologyId: topo.id,
     terrain,
     numbers,
-    harbors: topo.harborSlots.map((edge, i) => ({ edge, type: harborTokens[i]! })),
+    harbors: topo.harborSlots.map((edge, i) => ({ edge, type: shuffledHarbors[i]! })),
     islands: topo.hexes.map(() => 0),
     robber: terrain.indexOf('desert'),
     pirate: null,

@@ -6,6 +6,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
+  type WheelEvent as ReactWheelEvent,
 } from 'react';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { buildGeometry, type BoardGeometry, type Point } from '../board/geometry.ts';
@@ -30,6 +31,8 @@ const BOARD_SCALE = 100;
 const BASE_TOPOLOGY = 'hex-r2';
 /** Ambiguity threshold in screen pixels; divided by zoom to get user units. */
 const AMBIGUITY_PX = 30;
+const MIN_ZOOM = 0.7;
+const MAX_ZOOM = 3;
 
 interface DragState {
   startX: number;
@@ -59,12 +62,20 @@ export function BoardView({ controller }: { controller: TableController }) {
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [cluster, setCluster] = useState<number[] | null>(null);
+  const [diceRolling, setDiceRolling] = useState(false);
   const dragRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
+  const lastDiceEventRef = useRef<number | null>(null);
+  const diceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const topologyId = view?.board.topologyId ?? BASE_TOPOLOGY;
   const geometry: BoardGeometry = useMemo(() => buildGeometry(topologyId, BOARD_SCALE), [topologyId]);
   const topology = geometry.topology;
+  const [viewBoxX, viewBoxY, viewBoxWidth, viewBoxHeight] = geometry.viewBox.split(/\s+/).map(Number);
+  const viewBoxCenter = {
+    x: viewBoxX + viewBoxWidth / 2,
+    y: viewBoxY + viewBoxHeight / 2,
+  };
   const selfId = state.session?.id ?? null;
   const nameResolver = useMemo(() => nameOf(state), [state]);
   const intent: BoardIntent | null = useMemo(
@@ -86,6 +97,22 @@ export function BoardView({ controller }: { controller: TableController }) {
     }
     return map;
   }, [geometry, intent]);
+
+  useEffect(() => {
+    const rolled = view?.events.slice().reverse().find((event) => event.type === 'turn.rolled');
+    if (!rolled || rolled.seq === lastDiceEventRef.current) return;
+    lastDiceEventRef.current = rolled.seq;
+    setDiceRolling(true);
+    if (diceTimerRef.current !== null) globalThis.clearTimeout(diceTimerRef.current);
+    diceTimerRef.current = globalThis.setTimeout(() => {
+      diceTimerRef.current = null;
+      setDiceRolling(false);
+    }, 900);
+  }, [view?.events]);
+
+  useEffect(() => () => {
+    if (diceTimerRef.current !== null) globalThis.clearTimeout(diceTimerRef.current);
+  }, []);
 
   const minDistance = AMBIGUITY_PX / Math.max(zoom, 0.2);
 
@@ -130,7 +157,26 @@ export function BoardView({ controller }: { controller: TableController }) {
     [choose],
   );
 
-  // --- pan/zoom -----------------------------------------------------------
+  const clampPan = useCallback(
+    (next: Point, nextZoom = zoom): Point => {
+      const maxX = geometry.width * Math.max(nextZoom - 1, 0) * 0.5;
+      const maxY = geometry.height * Math.max(nextZoom - 1, 0) * 0.5;
+      return {
+        x: Math.max(-maxX, Math.min(maxX, next.x)),
+        y: Math.max(-maxY, Math.min(maxY, next.y)),
+      };
+    },
+    [geometry.height, geometry.width, zoom],
+  );
+
+  const setBoardZoom = useCallback(
+    (nextZoom: number) => {
+      const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, nextZoom));
+      setZoom(clamped);
+      setPan((current) => clampPan(current, clamped));
+    },
+    [clampPan],
+  );
 
   const onPointerDown = (event: ReactMouseEvent<SVGSVGElement>) => {
     dragRef.current = {
@@ -148,7 +194,10 @@ export function BoardView({ controller }: { controller: TableController }) {
     const dx = event.clientX - drag.startX;
     const dy = event.clientY - drag.startY;
     if (Math.hypot(dx, dy) > 4) drag.moved = true;
-    if (drag.moved) setPan({ x: drag.panX + dx, y: drag.panY + dy });
+    if (!drag.moved) return;
+    const rect = svgRef.current?.getBoundingClientRect();
+    const unitsPerPixel = rect && rect.width > 0 ? geometry.width / rect.width : 1;
+    setPan(clampPan({ x: drag.panX + dx * unitsPerPixel, y: drag.panY + dy * unitsPerPixel }));
   };
 
   const onPointerUp = () => {
@@ -157,6 +206,25 @@ export function BoardView({ controller }: { controller: TableController }) {
     if (drag?.moved) {
       // The gesture was a pan: the click that follows must not place a piece.
       suppressClickRef.current = true;
+    }
+  };
+
+  const onWheel = (event: ReactWheelEvent<SVGSVGElement>) => {
+    event.preventDefault();
+    setBoardZoom(zoom * (event.deltaY < 0 ? 1.12 : 0.89));
+  };
+
+  const onBoardKeyDown = (event: ReactKeyboardEvent<SVGSVGElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      setBoardZoom(zoom * 1.25);
+    } else if (event.key === '-' || event.key === '_') {
+      event.preventDefault();
+      setBoardZoom(zoom / 1.25);
+    } else if (event.key === '0') {
+      event.preventDefault();
+      resetView();
     }
   };
 
@@ -203,16 +271,31 @@ export function BoardView({ controller }: { controller: TableController }) {
 
   const board = view.board;
   const selectedIndex = state.selection.index;
+  const setup = view.turn.setup;
+  const setupActor = setup ? view.players.find((player) => player.seat === setup.seat) : undefined;
+  const setupPiece = setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
+  const setupMine = setupActor?.id === selfId;
 
   return (
-    <div className="board" data-testid="board" ref={boardRef}>
+    <div className="board" data-testid="board" data-zoom={zoom} ref={boardRef}>
+      {setup && (
+        <section className={`board__setup-guide${setupMine ? ' board__setup-guide--mine' : ''}`} data-testid="setup-guide" aria-live="polite">
+          <div className="board__setup-title">
+            <GameIcon name={setup.stage === 'building' ? 'home' : 'flag'} size={20} />
+            <strong>{setupMine ? t('board.setupPlace', { piece: setupPiece }) : t('board.setupWaiting', { player: setupActor?.nickname ?? '—', piece: setupPiece })}</strong>
+          </div>
+          <span>{t('board.setupGuide', { round: setup.round })}</span>
+          <span>{t('board.setupProgress', { remaining: setup.remaining })}</span>
+          {setupMine && <p>{t('board.setupPickTarget')}</p>}
+        </section>
+      )}
       <div className="board__toolbar" role="group" aria-label={t('board.heading')}>
         <span className="board__heading"><GameIcon name="compass" size={18} />{t('board.heading')}</span>
         <button
           type="button"
           className="button button--ghost"
           data-testid="zoom-in"
-          onClick={() => setZoom((value) => Math.min(3, value * 1.25))}
+          onClick={() => setBoardZoom(zoom * 1.25)}
         >
           {t('board.zoomIn')}
         </button>
@@ -220,7 +303,7 @@ export function BoardView({ controller }: { controller: TableController }) {
           type="button"
           className="button button--ghost"
           data-testid="zoom-out"
-          onClick={() => setZoom((value) => Math.max(0.25, value / 1.25))}
+          onClick={() => setBoardZoom(zoom / 1.25)}
         >
           {t('board.zoomOut')}
         </button>
@@ -246,7 +329,13 @@ export function BoardView({ controller }: { controller: TableController }) {
             {t('board.listTargets')}
           </button>
         )}
-        {view.turn.dice && <span className="board__dice" role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`}>{view.turn.dice.map((value, index) => <span className="board__die" key={index} aria-hidden="true">{value}</span>)}</span>}
+        <span className="board__zoom-readout" data-testid="zoom-readout">{t('board.zoomLevel', { percent: Math.round(zoom * 100) })}</span>
+        {view.turn.dice && (
+          <span className={`board__dice${diceRolling ? ' board__dice--rolling' : ''}`} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
+            {view.turn.dice.map((value, index) => <span className="board__die" key={index} aria-hidden="true">{value}</span>)}
+            <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
+          </span>
+        )}
       </div>
 
       <svg
@@ -255,14 +344,17 @@ export function BoardView({ controller }: { controller: TableController }) {
         data-testid="board-svg"
         role="img"
         aria-label={t('a11y.boardRegion')}
+         tabIndex={0}
         viewBox={geometry.viewBox}
         preserveAspectRatio="xMidYMid meet"
         onMouseDown={onPointerDown}
         onMouseMove={onPointerMove}
         onMouseUp={onPointerUp}
         onMouseLeave={onPointerUp}
+         onWheel={onWheel}
+         onKeyDown={onBoardKeyDown}
       >
-        <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
+        <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
           {geometry.hexes.map((hex) => {
             const terrain = board.terrain[hex.index] ?? 'sea';
             const number = board.numbers[hex.index];

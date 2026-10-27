@@ -30,6 +30,7 @@ export interface ProfileDefinition {
   victoryTarget: number;
   setupModes: ('fixed' | 'variable')[];
   boardRadius: number;
+  topologyId: string;
   bankPerResource: number;
   commodityBankPerType: number;
   pieces: ProfilePieces;
@@ -57,6 +58,14 @@ const BASE_DEV_DECK: readonly DevCardType[] = [
   ...Array<DevCardType>(2).fill('monopoly'),
 ];
 
+const PAIRED_DEV_DECK: readonly DevCardType[] = [
+  ...BASE_DEV_DECK,
+  ...Array<DevCardType>(6).fill('knight'),
+  'roadBuilding',
+  'yearOfPlenty',
+  'monopoly',
+];
+
 const BASE_PIECES: ProfilePieces = {
   settlements: 5,
   cities: 4,
@@ -80,6 +89,7 @@ function baseProfile(
     victoryTarget: 10,
     setupModes: ['fixed', 'variable'],
     boardRadius: 2,
+    topologyId: 'hex-r2',
     bankPerResource: 19,
     commodityBankPerType: 0,
     pieces: { ...BASE_PIECES },
@@ -98,11 +108,13 @@ export const PROFILES: readonly ProfileDefinition[] = [
 
   baseProfile('base-paired-2025', [5, 6], {
     paired: true,
+    boardRadius: 3,
+    topologyId: 'hex-r56',
     bankPerResource: 24,
-    // Paired turns (§5.5) are implemented; the 5–6 setup/supply and deck
-    // transcription still needs source verification before this row is offered.
+    devDeck: PAIRED_DEV_DECK,
+    // Paired turns and the 5–6 base setup/supply/deck fixtures are verified.
     implemented: true,
-    unavailableReasonKey: 'profile.unavailable.paired',
+    enabled: true,
   }),
 
   baseProfile('sf-new-shores-2025', [3, 4], {
