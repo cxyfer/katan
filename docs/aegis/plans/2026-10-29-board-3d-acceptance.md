@@ -2,6 +2,8 @@
 
 日期：2026-10-29。狀態：**待批准驗收契約，所有案例尚未在新 3D 實作上執行。**
 
+> Execution note (2026-10-29): the user approved implementation. Proposal-era observations below remain historical; current progress is in `../work/2026-10-29-board-3d/20-checkpoint.md`. Implementation approval is not visual/device acceptance.
+
 配套：[研究](2026-10-29-board-3d-research.md)、[實施與三 agent 分工](2026-10-29-board-3d-plan.md)。
 
 ## 1. 如何判定交付

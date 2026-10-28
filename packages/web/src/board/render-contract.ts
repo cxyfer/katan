@@ -1,4 +1,4 @@
-import type { PlayerColor, PublicBoardView } from '@catan/rules';
+import type { PublicPlayerView, PublicBoardView } from '@catan/rules';
 import type { BoardGeometry } from './geometry.ts';
 import type { BoardIntent } from './intent.ts';
 import type { BoardEffectGroup } from './animation.ts';
@@ -35,7 +35,7 @@ export interface SceneSelection { kind: TargetKind; index: number; playerId: str
 export interface BoardSceneInput {
   geometry: BoardGeometry;
   board: PublicBoardView;
-  players: readonly { id: string; seat: number; color: PlayerColor }[];
+  players: readonly { id: string; seat: number; color: PublicPlayerView['color'] }[];
   intent: BoardIntent | null;
   selection: SceneSelection | null;
   active: BoardEffectGroup | null;

@@ -2,6 +2,8 @@
 
 日期：2026-10-29。狀態：**研究完成、方案待批准，尚未實作或通過視覺驗收。**
 
+> Execution note (2026-10-29): the user approved implementation. Proposal-era observations below remain historical; current progress is in `../work/2026-10-29-board-3d/20-checkpoint.md`. Implementation approval is not visual/device acceptance.
+
 配套文件：[實施與三 agent 交接計畫](2026-10-29-board-3d-plan.md)、[驗收標準](2026-10-29-board-3d-acceptance.md)。
 
 ## 1. 結論

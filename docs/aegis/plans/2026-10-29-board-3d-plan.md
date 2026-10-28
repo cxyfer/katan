@@ -2,6 +2,8 @@
 
 日期：2026-10-29。狀態：**提案，等待使用者批准；本階段不實作。**
 
+> Execution note (2026-10-29): the user approved implementation. Proposal-era observations below remain historical; current progress is in `../work/2026-10-29-board-3d/20-checkpoint.md`. Implementation approval is not visual/device acceptance.
+
 前置閱讀：[研究](2026-10-29-board-3d-research.md)、[驗收](2026-10-29-board-3d-acceptance.md)。ArchitectureReviewRequired: **yes**，涉及 renderer 邊界、相機投影、輸入與相容路徑。TDD Route: off／不宣稱 test-first；每個切片仍須補測並驗證。
 
 ## 1. 目標、邊界與變更必要性

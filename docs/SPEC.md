@@ -338,7 +338,7 @@ Single deployable application service (Node.js + TypeScript)
 ### 6.4 Technology proposal (not yet approved)
 
 - Monorepo/package manager: TypeScript with pnpm workspaces.
-- Web: React, TypeScript, Vite; SVG for interactive board geometry.
+- Web: React, TypeScript, Vite; DOM target controls over SVG compatibility or lazy, opt-in Three.js / React Three Fiber modeled board geometry.
 - Service: Node.js and TypeScript; evaluate Colyseus for room/session and reconnect lifecycle. Keep rules engine framework-independent so it can be tested without a live room server.
 - SQL: Kysely (or equivalent typed SQL layer) with explicit portable schema/migrations for SQLite and PostgreSQL. Avoid database-specific behavior in rules and application services.
 - Validation/tests: unit/property-style rule tests, service integration tests against both database engines, and browser end-to-end tests for room flows.
@@ -474,7 +474,9 @@ Production effects consume only positive integer aggregate grants from the viewe
 
 Production and theft share a maximum of 24 flight icons; overflow retains complete aggregate receipt text and the authoritative record. Particle count is zero. Effects are non-interactive and hidden from accessibility navigation; no continuous RAF/ticker or Canvas context is added. The existing limit of eight presentation groups, each at most 800 ms, applies. Reduced motion, background transitions, mandatory actions, offline/recovery and unmount cancel pending effects without delaying results or responses.
 
-SVG remains the engineering candidate; no Pixi/R3F runtime, renderer switch or dependency has been introduced and the conditional GPU comparison has not started. The [D1 decision](aegis/work/2026-10-28-board-visual-spike/d1-decision.md) and [P3 evidence record](aegis/work/2026-10-28-board-visual-spike/p3-acceptance.md) distinguish unit/DOM and headless Chromium capture from acceptance. Local active-frame scheduling samples do not establish reference-device performance, and user acceptance of the before/after images and videos is still pending. This implementation changes no rules, protocol, privacy boundary or command ownership and does not claim M1/M3/M4 completion.
+The original SVG candidate and [D1 decision](aegis/work/2026-10-28-board-visual-spike/d1-decision.md) remain historical evidence, not proof of modeled 3D quality. On 2026-10-29 the user approved execution of the [modeled board plan](aegis/plans/2026-10-29-board-3d-plan.md): fixed orthographic Three.js / React Three Fiber rendering with real tile sides, buildings, roads, robber and terrain. The same topology IDs, controller, confirmation, animation cursor and public projection remain authoritative. DOM controls own input; models cannot submit commands. SVG remains the default and explicit GPU-free compatibility path; `?renderer=r3f` and `?renderer=auto` are experimental opt-ins, with `?quality=low` reducing shadows and DPR rather than removing volume. Unknown renderer values normalize to auto. Loading and GPU faults retain playable SVG and the current selection/drafts; context restoration does not silently retry. Renderer changes rebase the existing presentation cursor without replaying history. Actual DOM seats anchor stage-local aggregate effects; absent or hidden anchors produce text rather than invented flight endpoints.
+
+The [3D acceptance matrix](aegis/plans/2026-10-29-board-3d-acceptance.md) separates engineering, art acceptance, reference-device performance and physical-device/accessibility gates. Auto 3D must not become the default until all required gates and explicit user visual acceptance are recorded. Software-rendered Chromium results do not establish phone GPU performance. This presentation work changes no rules, wire schema, identity, privacy or command ownership and does not claim M1/M3/M4 completion.
 
 ## 9. Security, Privacy, and Abuse Controls
 
@@ -679,7 +681,7 @@ Operational values such as public rate limits, room caps, interrupted/finished-g
 
 ### Technical and operational follow-through
 
-- Product choices above are confirmed; library selection remains React/TypeScript/Vite, Node.js, Colyseus as a candidate, SVG board, and Kysely or equivalent, subject to the architecture proof. No installed framework or passing prototype is claimed.
+- Product choices above are confirmed; the original library shortlist was React/TypeScript/Vite, Node.js, Colyseus as a candidate, SVG board, and Kysely or equivalent. The web renderer now follows section 8.8's SVG-default / experimental modeled R3F boundary; that engineering implementation does not imply visual, reference-device or accessibility acceptance.
 - Finalize documented bounds for advisory clocks/grace, message length/rate/history, room caps, reference deployment resources, backup and game/chat retention before the relevant implementation/public milestone. These values cannot weaken fixed consent/privacy/no-rollback safeguards.
 - TDD workflow remains `off` while all required acceptance tests remain mandatory. No coding or test-first sequence is claimed by this documentation update.
 

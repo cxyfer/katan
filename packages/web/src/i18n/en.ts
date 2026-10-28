@@ -9,6 +9,18 @@
 import type { Catalog } from './catalogs.ts';
 
 export const en: Catalog = {
+  'board.renderer': 'Board renderer',
+  'board.rendererSvg': 'SVG (compatible)',
+  'board.renderer3d': '3D (experimental)',
+  'board.rendererAuto': 'Auto (experimental)',
+  'board.quality': '3D quality',
+  'board.qualityStandard': 'Standard',
+  'board.qualityLow': 'Low',
+  'board.rendererLoading': 'Loading 3D; SVG remains playable.',
+  'board.rendererFailed': '3D unavailable; SVG remains playable.',
+  'board.rendererReady': 'Experimental 3D',
+  'board.rendererRetry': 'Retry 3D',
+  'board.rendererSettings': 'Display',
   // --- app shell -----------------------------------------------------------
   'app.title': 'Catan Table',
   'app.tagline': 'Shared-table Catan-style play in the browser',

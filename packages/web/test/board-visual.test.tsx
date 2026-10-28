@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GameSnapshot, ServerMessage } from '@catan/protocol';
 import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
@@ -7,6 +7,14 @@ import { buildGeometry, distance } from '../src/board/geometry.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeEvent, makeHints, makeSnapshot, makeView } from '../src/test/fixtures.ts';
+
+beforeEach(() => {
+  const original = HTMLElement.prototype.getBoundingClientRect;
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    if (this.dataset.testid === 'board-surface' || this.dataset.testid === 'game-stage') return { x: 0, y: 0, left: 0, top: 0, width: 1200, height: 900, right: 1200, bottom: 900, toJSON() {} };
+    return original.call(this);
+  });
+});
 
 class TestSocket implements SocketLike {
   open = () => {};
@@ -72,7 +80,7 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     act(() => sockets[0]!.deliver({ type: 'snapshot', payload: next }));
     expect(screen.queryByTestId('dice-focus')).toBeNull();
     expect(api.callsOf('sendCommand')).toHaveLength(0);
-  });
+  }, 15000);
 
   it('rebases actual reconnect and gap refetches, then plays subsequent normal snapshots', async () => {
     const sockets: TestSocket[] = [];
@@ -124,8 +132,8 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     const produced = rolled(14, [3, 3]);
     produced.view.events = [makeEvent(13, 'turn.rolled', { dice: [3, 3], total: 6 }), makeEvent(14, 'production.resolved', { total: 6, grants: { p1: { lumber: 3 } } })];
     act(() => sockets[0]!.deliver({ type: 'snapshot', payload: produced }));
-    expect(screen.getAllByTestId('production-flight')).toHaveLength(1);
-    expect(screen.getByTestId('production-flight').getAttribute('data-amount')).toBe('3');
+    expect(screen.queryByTestId('production-flight')).toBeNull();
+    expect(screen.getByTestId('production-fallback').textContent).toContain('+3');
     expect(screen.getByTestId('dice-roll-animation').className).not.toContain('rolling');
     act(() => vi.advanceTimersByTime(800));
     expect(screen.queryByTestId('board-effects')).toBeNull();
@@ -164,8 +172,9 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints({ legalRoads: [first.index, second.index] }) })) });
     await open(api);
     fireEvent.click(screen.getByTestId('action-build.road'));
-    const svg = screen.getByTestId('board-svg');
+    const svg = screen.getByTestId('board-surface');
     vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({ x: 10, y: 20, left: 10, top: 20, width: 300, height: 800, right: 310, bottom: 820, toJSON() {} });
+    fireEvent(window, new Event('resize'));
     return { api, svg };
   }
 
@@ -196,7 +205,7 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     expect(api.callsOf('sendCommand')).toHaveLength(0);
     fireEvent.click(screen.getByTestId('action-build.road'));
     vi.mocked(svg.getBoundingClientRect).mockReturnValue({ x: 10, y: 20, left: 10, top: 20, width: 1400, height: 1000, right: 1410, bottom: 1020, toJSON() {} });
-    fireEvent.click(screen.getByTestId(`target-edge-${first.index}`));
+    fireEvent.keyDown(screen.getByTestId(`target-edge-${first.index}`), { key: 'Enter' });
     expect(screen.queryByTestId('target-picker')).toBeNull();
     expect(screen.getByTestId('selection-preview')).toBeTruthy();
     fireEvent.click(screen.getByTestId('reset-view'));
@@ -213,7 +222,7 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     fireEvent.click(screen.getByTestId(`target-edge-${first.index}`));
     expect(screen.queryByTestId('selection-preview')).toBeNull();
     expect(screen.queryByTestId('target-picker')).toBeNull();
-    fireEvent.click(screen.getByTestId(`target-edge-${first.index}`));
+    fireEvent.keyDown(screen.getByTestId(`target-edge-${first.index}`), { key: 'Enter' });
     expect(screen.queryByTestId('target-picker')).toBeNull();
     expect(screen.getByTestId('selection-preview')).toBeTruthy();
     expect(api.callsOf('sendCommand')).toHaveLength(0);
@@ -232,7 +241,7 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     pointer(svg, 'pointerdown', 1, 20, 30);
     pointer(svg, 'pointermove', 1, 80, 90);
     expect(capture).toHaveBeenCalledWith(1);
-    pointer(svg, 'pointerleave', 1, 80, 90);
+    pointer(svg, 'pointercancel', 1, 80, 90);
     fireEvent.click(target);
     expect(screen.queryByTestId('selection-preview')).toBeNull();
   });

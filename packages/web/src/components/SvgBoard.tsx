@@ -3,14 +3,11 @@ import type { GameView } from '@catan/rules';
 import type { BoardEffectGroup } from '../board/animation.ts';
 import type { BoardGeometry, Point } from '../board/geometry.ts';
 import type { BoardIntent } from '../board/intent.ts';
-import type { TargetKind } from '../board/targets.ts';
 import type { TableState } from '../state/table.ts';
-import { useT, useLocale } from '../i18n/context.tsx';
-import { describeTarget } from '../board/targets.ts';
+import { useT } from '../i18n/context.tsx';
 import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrainLetter, terrainSymbol } from '../board/terrain.ts';
 import { confirmedPlacement } from '../board/effects.ts';
 import { BuildingPiece, TerrainIllustration } from './GameArt.tsx';
-import { BoardEffects } from './BoardEffects.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
@@ -20,23 +17,17 @@ interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'
   selection: TableState['selection'];
   selfId: string | null;
   intent: BoardIntent | null;
-  points: Map<number, Point>;
   pan: Point;
   zoom: number;
   viewBoxCenter: Point;
   nameResolver: (id: string) => string;
-  handleTargetClick: (kind: TargetKind, index: number) => void;
-  handleKeyDown: (event: React.KeyboardEvent<SVGElement>, kind: TargetKind, index: number) => void;
 }
 
-export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, intent, points, pan, zoom, viewBoxCenter, nameResolver, handleTargetClick, handleKeyDown, ...svgProps }: SvgBoardProps) {
+export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
   const t = useT();
-  const locale = useLocale();
   const board = view.board;
-  const topology = geometry.topology;
-  const selectedIndex = selection.index;
   return (
-    <svg {...svgProps} ref={svgRef} className="board__svg" data-testid="board-svg" role="img" aria-label={t('a11y.boardRegion')} tabIndex={0} viewBox={geometry.viewBox} preserveAspectRatio="xMidYMid meet">
+    <svg {...svgProps} ref={svgRef} className="board__svg" data-testid="board-svg" role="img" aria-label={t('a11y.boardRegion')} viewBox={geometry.viewBox} preserveAspectRatio="xMidYMid meet">
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
           <g aria-hidden="true" pointerEvents="none">
             {geometry.hexes.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 10)" />)}
@@ -154,37 +145,6 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             );
           })}
 
-          {intent &&
-            intent.targets.map((index) => {
-              const point = points.get(index);
-              if (!point) return null;
-              const option = describeTarget(
-                { locale, topology, board, nameOf: nameResolver },
-                intent.kind,
-                index,
-              );
-              const selected = selectedIndex === index;
-              return (
-                <circle
-                  key={`target-${intent.kind}-${index}`}
-                  className={`board__target${selected ? ' board__target--selected' : ''}`}
-                  data-testid={`target-${intent.kind}-${index}`}
-                  data-target-kind={intent.kind}
-                  data-target-index={index}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${t('board.legalTarget')}: ${option.label} ${option.detail}`}
-                  cx={point.x}
-                  cy={point.y}
-                  r={intent.kind === 'hex' ? 30 : 12}
-                  onClick={() => handleTargetClick(intent.kind, index)}
-                  onKeyDown={(event) => handleKeyDown(event, intent.kind, index)}
-                >
-                  <title>{`${option.label} — ${option.detail}`}</title>
-                </circle>
-              );
-            })}
-
           {geometry.hexes[board.robber] && (
             <g data-testid="robber" aria-hidden="true">
               <circle
@@ -212,7 +172,6 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
               {intent.kind === 'hex' && geometry.hexes[selection.index] && <circle cx={geometry.hexes[selection.index]!.cx} cy={geometry.hexes[selection.index]!.cy} r={20} fill="#24353a" stroke="#fff1bd" strokeDasharray="4 4" />}
             </g>
           )}
-          <BoardEffects group={active} geometry={geometry} view={view} />
         </g>
       </svg>
   );

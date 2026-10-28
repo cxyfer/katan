@@ -20,5 +20,7 @@ export default defineConfig({
     include: ['test/**/*.test.ts', 'test/**/*.test.tsx'],
     globals: false,
     restoreMocks: true,
+    // Bound jsdom concurrency so full-suite contention does not starve timers.
+    maxWorkers: 4,
   },
 });

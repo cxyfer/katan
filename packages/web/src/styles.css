@@ -3,6 +3,23 @@
 @import './styles/table.css' layer(table);
 @import './styles/table-interactions.css' layer(table);
 @import './styles/board-visual.css' layer(table);
+@import './styles/board-targets.css';
+@import './styles/board-3d-effects.css';
+
+@layer table {
+  .board__surface { position: relative; width: 100%; height: clamp(300px, 60vh, 620px); min-height: 104px; touch-action: none; overflow: hidden; }
+  .screen--game .board__surface { flex: 1; height: 100%; min-height: 104px; }
+  .board__surface .board__svg { width: 100%; height: 100%; min-height: 0; pointer-events: none; }
+  .board__surface:focus-visible { outline: 2px solid #e5c77e; outline-offset: -3px; }
+  .board__scene { position: absolute; inset: 0; pointer-events: none; }
+  .board__scene canvas { pointer-events: none; }
+  .board__display-settings { position: relative; color: #e4d4a6; font-size: .65rem; }
+  .board__display-settings summary { cursor: pointer; padding: 8px; border: 1px solid #a7b49666; border-radius: 5px; background: #0d2c33; }
+  .board__display-settings[open] { z-index: 48; padding: 10px; max-width: min(290px, 85vw); background: #0d2c33; border: 1px solid #a7b49666; border-radius: 5px; }
+  .board__display-settings label { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .board__display-settings select { min-height: 36px; min-width: 0; width: 165px; padding: 4px; font-size: .75rem; }
+  .board__display-settings p { max-width: 220px; margin: 6px 0; }
+}
 
 /* 共用基礎在最低層；畫面配置依上述順序覆寫。 */
 @layer base {

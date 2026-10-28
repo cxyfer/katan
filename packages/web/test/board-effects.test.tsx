@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { confirmedPlacement, MAX_FLIGHT_ICONS, neutralThefts, productionGrants } from '../src/board/effects.ts';
 import { boardEffectGroup } from '../src/board/animation.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
+import type { BoardEffectAnchors } from '../src/board/render-contract.ts';
 import { BoardEffects } from '../src/components/BoardEffects.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { makeEvent, makeView } from '../src/test/fixtures.ts';
@@ -31,10 +32,22 @@ describe('authorized aggregate presentation', () => {
     expect(confirmedPlacement([], board, 'vertex', 0)).toBe(false);
   });
 
-  function overlay(params: Record<string, unknown>, type = 'production.resolved') {
+  function effectAnchors(players: readonly { id: string }[]): BoardEffectAnchors {
+    return {
+      stage: { left: 0, top: 0, width: 1000, height: 800 },
+      seats: new Map(players.map((player, seat) => [player.id, {
+        left: 20, top: 100 + seat * 80, width: 160, height: 56,
+      }])),
+      aggregate: { left: 800, top: 20, width: 120, height: 40 },
+      targets: [],
+    };
+  }
+
+  function overlay(params: Record<string, unknown>, type = 'production.resolved', players = 6) {
     const view = makeView();
-    view.players = Array.from({ length: 6 }, (_, seat) => ({ ...view.players[0]!, id: `p${seat + 1}`, seat }));
-    return render(<LocaleProvider locale="en"><svg><BoardEffects group={boardEffectGroup('g1', [makeEvent(1, type, params)])} geometry={buildGeometry('hex-r56')} view={view} /></svg></LocaleProvider>);
+    view.players = Array.from({ length: players }, (_, seat) => ({ ...view.players[0]!, id: `p${seat + 1}`, seat }));
+    return render(<LocaleProvider locale="en"><BoardEffects group={boardEffectGroup('g1', [makeEvent(1, type, params)])}
+      geometry={buildGeometry('hex-r56')} view={view} anchors={effectAnchors(view.players)} /></LocaleProvider>);
   }
 
   it('bounds simultaneous flight icons at 24 while retaining complete aggregate receipt text', () => {
@@ -53,16 +66,16 @@ describe('authorized aggregate presentation', () => {
   it('labels aggregate allocation in both supported locales without fallback or corrupted text', () => {
     const view = makeView();
     const group = boardEffectGroup('g1', [makeEvent(1, 'production.resolved', { grants: { p1: { lumber: 1 } } })]);
-    const { container, rerender } = render(<LocaleProvider locale="zh-Hant"><svg><BoardEffects group={group} geometry={buildGeometry('hex-r2')} view={view} /></svg></LocaleProvider>);
+    const { container, rerender } = render(<LocaleProvider locale="zh-Hant"><BoardEffects group={group} geometry={buildGeometry('hex-r2')} view={view} anchors={effectAnchors(view.players)} /></LocaleProvider>);
     expect(container.textContent).toContain('實際彙總配發');
-    rerender(<LocaleProvider locale="en"><svg><BoardEffects group={group} geometry={buildGeometry('hex-r2')} view={view} /></svg></LocaleProvider>);
+    rerender(<LocaleProvider locale="en"><BoardEffects group={group} geometry={buildGeometry('hex-r2')} view={view} anchors={effectAnchors(view.players)} /></LocaleProvider>);
     expect(container.textContent).toContain('Aggregate allocation');
   });
 
   it('renders identical neutral theft markup for three viewers and an outsider regardless of private resource', () => {
     const html: string[] = [];
     for (const resource of ['ore', 'grain', undefined, undefined]) {
-      const { container, unmount } = overlay({ playerId: 'p1', victim: 'p2', ...(resource ? { resource } : {}) }, 'robber.stole');
+      const { container, unmount } = overlay({ playerId: 'p1', victim: 'p2', ...(resource ? { resource } : {}) }, 'robber.stole', 3);
       html.push(container.innerHTML);
       expect(container.querySelectorAll('[data-testid="neutral-theft"]')).toHaveLength(1);
       expect(container.querySelector('[data-testid="neutral-theft"]')?.getAttribute('style')).not.toContain('--flight-y: 0px');

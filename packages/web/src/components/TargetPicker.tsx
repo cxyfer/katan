@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useId, useMemo, useRef } from 'react';
 import type { BoardTopology, PublicBoardView } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { ambiguousWith, describeTarget, type TargetKind, type TargetOption } from '../board/targets.ts';
@@ -19,6 +19,7 @@ export function TargetPicker({
   targets,
   nameOf,
   onChoose,
+  onCancel,
   ambiguousOnly,
   minDistance,
 }: {
@@ -29,11 +30,17 @@ export function TargetPicker({
   targets: readonly number[];
   nameOf: (playerId: string) => string;
   onChoose: (index: number) => void;
+  onCancel?: () => void;
   ambiguousOnly?: number[];
   minDistance?: number;
 }) {
   const t = useT();
   const locale = useLocale();
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const restoreOnUnmountRef = useRef(true);
+  const focusInsideRef = useRef(false);
+  const headingId = useId();
 
   const options: TargetOption[] = useMemo(() => {
     const context = { locale, topology, board, nameOf };
@@ -57,9 +64,48 @@ export function TargetPicker({
 
   const note = ambiguousOnly && ambiguousOnly.length > 1 ? t('board.ambiguousHint') : null;
 
+  const restorePreviousFocus = () => {
+    const previous = previousFocusRef.current;
+    if (previous?.isConnected) previous.focus();
+  };
+
+  useEffect(() => {
+    const active = document.activeElement;
+    previousFocusRef.current = active instanceof HTMLElement ? active : null;
+    pickerRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+    return () => {
+      if (restoreOnUnmountRef.current && focusInsideRef.current) {
+        restorePreviousFocus();
+      }
+    };
+  }, []);
+
+  const cancel = () => {
+    restoreOnUnmountRef.current = false;
+    restorePreviousFocus();
+    onCancel?.();
+  };
+
   return (
-    <div className="target-picker" data-testid="target-picker">
-      <h3>{t('board.chooseTarget')}</h3>
+    <div
+      ref={pickerRef}
+      className="target-picker"
+      data-testid="target-picker"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={headingId}
+      onFocusCapture={() => { focusInsideRef.current = true; }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) focusInsideRef.current = false;
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || !onCancel) return;
+        event.preventDefault();
+        event.stopPropagation();
+        cancel();
+      }}
+    >
+      <h3 id={headingId}>{t('board.chooseTarget')}</h3>
       {note && <p className="muted">{note}</p>}
       <p className="muted">{t('board.targets', { count: options.length })}</p>
       <ul className="target-picker__list">
@@ -74,7 +120,10 @@ export function TargetPicker({
                 type="button"
                 className="button button--target"
                 data-testid={`picker-${option.kind}-${option.index}`}
-                onClick={() => onChoose(option.index)}
+                onClick={() => {
+                  restoreOnUnmountRef.current = false;
+                  onChoose(option.index);
+                }}
               >
                 <span className="target-picker__label">{option.label}</span>
                 <span className="target-picker__detail">{option.detail}</span>

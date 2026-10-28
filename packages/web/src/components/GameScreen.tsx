@@ -34,7 +34,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const interrupted = state.room?.status === 'playing' && state.connection !== 'online';
 
   return (
-    <div className="screen screen--game" id="main" data-testid="game-stage" ref={stageRef}>
+    <div className="screen screen--game" id="main" data-testid="game-stage" data-board-stage="" ref={stageRef}>
       <div className="table-atmosphere" aria-hidden="true">
         <svg className="table-atmosphere__coast" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" focusable="false">
           <path d="M0 110 100 165 130 230 70 300 145 380 100 455 0 510Z" fill="#082d32" />

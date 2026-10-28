@@ -9,6 +9,18 @@
 import type { Catalog } from './catalogs.ts';
 
 export const zhHant: Catalog = {
+  'board.renderer': '棋盤渲染',
+  'board.rendererSvg': 'SVG（相容）',
+  'board.renderer3d': '3D（實驗）',
+  'board.rendererAuto': '自動（實驗）',
+  'board.quality': '3D 品質',
+  'board.qualityStandard': '標準',
+  'board.qualityLow': '低',
+  'board.rendererLoading': '載入 3D 中，SVG 仍可操作。',
+  'board.rendererFailed': '3D 無法使用，SVG 仍可操作。',
+  'board.rendererReady': '實驗 3D',
+  'board.rendererRetry': '重試 3D',
+  'board.rendererSettings': '顯示',
   // --- app shell -----------------------------------------------------------
   'app.title': '卡坦桌遊桌',
   'app.tagline': '在瀏覽器上共享同一張桌的卡坦式對局',

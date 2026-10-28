@@ -1,0 +1,135 @@
+@layer table {
+  .board-target-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 44;
+    pointer-events: none;
+  }
+
+  .board-target-overlay:focus {
+    outline: none;
+  }
+
+  .board-target {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: transparent;
+    cursor: pointer;
+    pointer-events: auto;
+    transform: translate(-50%, -50%);
+    touch-action: none;
+  }
+
+  .board-target::before {
+    content: '';
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    border: 2px solid var(--accent-strong);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent),
+      0 1px 5px #00151d99;
+    pointer-events: none;
+  }
+
+  .board-target--hex::before {
+    width: 13px;
+    height: 13px;
+  }
+
+  .board-target--edge::before {
+    width: 5px;
+    height: 5px;
+    border-width: 1px;
+    opacity: .9;
+  }
+
+  .board-target:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+    background: color-mix(in srgb, var(--focus) 16%, transparent);
+  }
+
+  .board-target:hover {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .board-target--selected {
+    background: color-mix(in srgb, var(--focus) 20%, transparent);
+    box-shadow: 0 0 0 3px var(--focus);
+  }
+
+  .board-target__edge {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    filter: drop-shadow(0 1px 2px #00151daa);
+  }
+
+  .board-target__edge-halo,
+  .board-target__edge-line {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .board-target__edge-halo {
+    stroke: color-mix(in srgb, var(--accent) 28%, transparent);
+    stroke-width: 9;
+  }
+
+  .board-target__edge-line {
+    stroke: var(--accent-strong);
+    stroke-width: 3.5;
+  }
+
+  .board-target__edge-node {
+    fill: var(--focus);
+    stroke: #102b32;
+    stroke-width: 1;
+  }
+
+  .board-target:focus-visible::before,
+  .board-target:hover::before {
+    border-color: var(--focus);
+  }
+
+  .board-target:focus-visible .board-target__edge-line,
+  .board-target:hover .board-target__edge-line {
+    stroke: var(--focus);
+  }
+
+  @media (forced-colors: active) {
+    .board-target:focus-visible {
+      outline: 3px solid Highlight;
+      background: transparent;
+    }
+
+    .board-target__edge {
+      filter: none;
+    }
+
+    .board-target__edge-halo {
+      stroke: transparent;
+    }
+
+    .board-target__edge-line,
+    .board-target__edge-node {
+      stroke: Highlight;
+      fill: Highlight;
+    }
+  }
+}

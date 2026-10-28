@@ -1,0 +1,122 @@
+/* Stage-local, non-interactive effects. Presentation coordinates come from DOM rects. */
+@layer table {
+.board-3d-effects {
+  position: absolute;
+  inset: 0;
+  z-index: 56;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.board-3d-effects,
+.board-3d-effects * {
+  pointer-events: none;
+}
+
+.board-3d-effects text {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 750;
+  fill: #263b33;
+}
+
+.board-3d-effects .board-effects__source {
+  fill: #fff4b3;
+  fill-opacity: .15;
+  stroke: #fff1ae;
+  stroke-width: 4px;
+  animation: board-3d-production-hint 800ms ease-out both;
+}
+
+.board-3d-effects .board-effects__aggregate rect,
+.board-3d-effects .board-effects__receipt rect {
+  fill: #f3e3bc;
+  stroke: #8f7954;
+  stroke-width: 2px;
+}
+
+.board-3d-effects .board-effects__aggregate {
+  animation: board-3d-production-hint 800ms ease-out both;
+}
+
+.board-3d-effects .board-effects__flight rect {
+  fill: #f8e8c2;
+  stroke: #665a40;
+  stroke-width: 2px;
+}
+
+.board-3d-effects .board-effects__flight {
+  opacity: 0;
+  animation: board-3d-aggregate-flight 800ms ease-in-out both;
+}
+
+.board-3d-effects .board-effects__receipt text {
+  font-size: 10px;
+}
+
+.board-3d-effects .board-effects__receipt {
+  animation: board-3d-grant-receipt 800ms ease-out both;
+}
+
+.board-3d-effects .board-effects__theft {
+  animation: board-3d-neutral-flight 650ms ease-in-out both;
+}
+
+.board-3d-effects .board-effects__theft rect {
+  fill: #dbd0b8;
+  stroke: #394b4c;
+  stroke-width: 2px;
+}
+
+.board-3d-effects .board-effects__theft path {
+  fill: none;
+  stroke: #586462;
+  stroke-width: 2px;
+}
+
+.board-3d-effects .board-effects__fallback {
+  paint-order: stroke;
+  stroke: #102d32;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+@keyframes board-3d-production-hint {
+  0%, 20% { opacity: 0; }
+  30%, 48% { opacity: 1; }
+  70%, 100% { opacity: 0; }
+}
+
+@keyframes board-3d-aggregate-flight {
+  0%, 35% { opacity: 0; transform: translate(0, 0); }
+  40% { opacity: 1; }
+  80% { opacity: 1; transform: translate(var(--flight-x), var(--flight-y)); }
+  90%, 100% { opacity: 0; transform: translate(var(--flight-x), var(--flight-y)); }
+}
+
+@keyframes board-3d-grant-receipt {
+  0%, 76% { opacity: 0; }
+  85%, 100% { opacity: 1; }
+}
+
+@keyframes board-3d-neutral-flight {
+  0% { opacity: 0; }
+  15% { opacity: 1; transform: none; }
+  85% { opacity: 1; transform: translate(var(--flight-x), var(--flight-y)); }
+  100% { opacity: 0; transform: translate(var(--flight-x), var(--flight-y)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-3d-effects,
+  .board-3d-effects * {
+    animation: none;
+  }
+
+  .board-3d-effects {
+    display: none;
+  }
+}
+}
