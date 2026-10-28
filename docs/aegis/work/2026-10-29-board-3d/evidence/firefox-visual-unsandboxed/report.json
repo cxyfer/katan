@@ -1,0 +1,790 @@
+{
+  "schemaVersion": 1,
+  "runId": "firefox-visual-unsandboxed",
+  "startedAt": "2026-10-28T18:56:12Z",
+  "status": "PASS",
+  "suite": "visual",
+  "requestedRenderer": "r3f",
+  "quality": "standard",
+  "browser": "firefox",
+  "cases": [
+    {
+      "id": "H3-source-frozen",
+      "status": "PASS",
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1"
+    },
+    {
+      "id": "T01-source",
+      "status": "PASS",
+      "detail": "All served HTML/JS/CSS match this worktree dist byte for byte."
+    },
+    {
+      "id": "R04-capture-hex-r2-1366x768-en",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "requestedRenderer": "r3f",
+      "effectiveRenderer": "r3f",
+      "quality": "standard",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/board-hex-r2-1366x768-en-r3f-standard-1366x768-en.png",
+      "screenshotHash": "57ffef55d29f95b422568dc6d8a70be57c177df1eee7c1cf9932384dab650088",
+      "webgl": {
+        "available": true,
+        "lost": false,
+        "version": "WebGL 2.0",
+        "shadingLanguage": "WebGL GLSL ES 3.00",
+        "vendor": "Mozilla",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+        "unmaskedVendor": "Google Inc. (NVIDIA)",
+        "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+        "drawingBuffer": [
+          1044,
+          585
+        ],
+        "readPixel": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "actual": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready",
+        "fallbackReason": null,
+        "svg": false,
+        "canvas": {
+          "width": 1044,
+          "height": 585,
+          "cssWidth": 1044,
+          "cssHeight": 586
+        },
+        "targets": 0,
+        "effects": 0,
+        "diceOverlay": 0,
+        "hexes": 0,
+        "buildings": 0,
+        "roads": 0,
+        "board": {
+          "x": 84,
+          "y": 114.19999694824219,
+          "width": 1044,
+          "height": 585.7999877929688,
+          "top": 114.19999694824219,
+          "right": 1128,
+          "bottom": 699.9999847412109,
+          "left": 84
+        },
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "dpr": 1
+        },
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "resources": [
+          "http://127.0.0.1:52648/assets/index-DeF8S8Wj.js",
+          "http://127.0.0.1:52648/assets/index-DGT5H3u5.css",
+          "http://127.0.0.1:52648/favicon.ico",
+          "http://127.0.0.1:52648/api/config",
+          "http://127.0.0.1:52648/api/session",
+          "http://127.0.0.1:52648/api/profiles",
+          "http://127.0.0.1:52648/api/games",
+          "http://127.0.0.1:52648/api/games/g1",
+          "http://127.0.0.1:52648/api/rooms/r1/chat?limit=50",
+          "http://127.0.0.1:52648/assets/BoardScene3D-DYeWSKad.js",
+          "http://127.0.0.1:52648/assets/board-atlas-gwoo0gAO.svg"
+        ],
+        "contextDiagnostics": {
+          "attempts": [
+            {
+              "type": "webgl2",
+              "ok": true,
+              "error": null,
+              "canvas": {
+                "width": 300,
+                "height": 150,
+                "connected": true
+              }
+            }
+          ],
+          "creationErrors": [],
+          "errorEvents": [],
+          "created": [
+            {
+              "type": "webgl2",
+              "lost": false,
+              "version": "WebGL 2.0",
+              "vendor": "Mozilla",
+              "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+              "unmaskedVendor": "Google Inc. (NVIDIA)",
+              "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar"
+            }
+          ]
+        }
+      },
+      "renderer": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready"
+      },
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+      "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+      "errors": [],
+      "consoleErrors": [],
+      "caughtExceptions": [],
+      "unmapped": []
+    },
+    {
+      "id": "R04-capture-hex-r2-390x844-zh-Hant",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "requestedRenderer": "r3f",
+      "effectiveRenderer": "r3f",
+      "quality": "standard",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/board-hex-r2-390x844-zh-Hant-r3f-standard-390x844-zh-Hant.png",
+      "screenshotHash": "3db198c8a52892b280e02f1fc4683c44b8e0b3d58b4a2b2b47c5c18113108f8f",
+      "webgl": {
+        "available": true,
+        "lost": false,
+        "version": "WebGL 2.0",
+        "shadingLanguage": "WebGL GLSL ES 3.00",
+        "vendor": "Mozilla",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+        "unmaskedVendor": "Google Inc. (NVIDIA)",
+        "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+        "drawingBuffer": [
+          327,
+          526
+        ],
+        "readPixel": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "actual": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready",
+        "fallbackReason": null,
+        "svg": false,
+        "canvas": {
+          "width": 327,
+          "height": 526,
+          "cssWidth": 327,
+          "cssHeight": 526
+        },
+        "targets": 0,
+        "effects": 0,
+        "diceOverlay": 0,
+        "hexes": 0,
+        "buildings": 0,
+        "roads": 0,
+        "board": {
+          "x": 58,
+          "y": 113.86666870117188,
+          "width": 327,
+          "height": 526.13330078125,
+          "top": 113.86666870117188,
+          "right": 385,
+          "bottom": 639.9999694824219,
+          "left": 58
+        },
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "resources": [
+          "http://127.0.0.1:52648/assets/index-DeF8S8Wj.js",
+          "http://127.0.0.1:52648/assets/index-DGT5H3u5.css",
+          "http://127.0.0.1:52648/favicon.ico",
+          "http://127.0.0.1:52648/api/config",
+          "http://127.0.0.1:52648/api/session",
+          "http://127.0.0.1:52648/api/profiles",
+          "http://127.0.0.1:52648/api/games",
+          "http://127.0.0.1:52648/api/games/g1",
+          "http://127.0.0.1:52648/api/rooms/r1/chat?limit=50",
+          "http://127.0.0.1:52648/assets/BoardScene3D-DYeWSKad.js",
+          "http://127.0.0.1:52648/assets/board-atlas-gwoo0gAO.svg"
+        ],
+        "contextDiagnostics": {
+          "attempts": [
+            {
+              "type": "webgl2",
+              "ok": true,
+              "error": null,
+              "canvas": {
+                "width": 300,
+                "height": 150,
+                "connected": true
+              }
+            }
+          ],
+          "creationErrors": [],
+          "errorEvents": [],
+          "created": [
+            {
+              "type": "webgl2",
+              "lost": false,
+              "version": "WebGL 2.0",
+              "vendor": "Mozilla",
+              "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+              "unmaskedVendor": "Google Inc. (NVIDIA)",
+              "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar"
+            }
+          ]
+        }
+      },
+      "renderer": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready"
+      },
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+      "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+      "errors": [],
+      "consoleErrors": [],
+      "caughtExceptions": [],
+      "unmapped": []
+    },
+    {
+      "id": "R04-capture-hex-r56-1366x768-zh-Hant",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "requestedRenderer": "r3f",
+      "effectiveRenderer": "r3f",
+      "quality": "standard",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/board-hex-r56-1366x768-zh-Hant-r3f-standard-1366x768-zh-Hant.png",
+      "screenshotHash": "c8a38f509ec8893c28a87ee3d828b1777f612dfe1003d2a16a851faf787a281f",
+      "webgl": {
+        "available": true,
+        "lost": false,
+        "version": "WebGL 2.0",
+        "shadingLanguage": "WebGL GLSL ES 3.00",
+        "vendor": "Mozilla",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+        "unmaskedVendor": "Google Inc. (NVIDIA)",
+        "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+        "drawingBuffer": [
+          1044,
+          585
+        ],
+        "readPixel": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "actual": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready",
+        "fallbackReason": null,
+        "svg": false,
+        "canvas": {
+          "width": 1044,
+          "height": 585,
+          "cssWidth": 1044,
+          "cssHeight": 586
+        },
+        "targets": 0,
+        "effects": 0,
+        "diceOverlay": 0,
+        "hexes": 0,
+        "buildings": 0,
+        "roads": 0,
+        "board": {
+          "x": 84,
+          "y": 114.19999694824219,
+          "width": 1044,
+          "height": 585.7999877929688,
+          "top": 114.19999694824219,
+          "right": 1128,
+          "bottom": 699.9999847412109,
+          "left": 84
+        },
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "dpr": 1
+        },
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "resources": [
+          "http://127.0.0.1:52648/assets/index-DeF8S8Wj.js",
+          "http://127.0.0.1:52648/assets/index-DGT5H3u5.css",
+          "http://127.0.0.1:52648/favicon.ico",
+          "http://127.0.0.1:52648/api/config",
+          "http://127.0.0.1:52648/api/session",
+          "http://127.0.0.1:52648/api/profiles",
+          "http://127.0.0.1:52648/api/games",
+          "http://127.0.0.1:52648/api/games/g1",
+          "http://127.0.0.1:52648/api/rooms/r1/chat?limit=50",
+          "http://127.0.0.1:52648/assets/BoardScene3D-DYeWSKad.js",
+          "http://127.0.0.1:52648/assets/board-atlas-gwoo0gAO.svg"
+        ],
+        "contextDiagnostics": {
+          "attempts": [
+            {
+              "type": "webgl2",
+              "ok": true,
+              "error": null,
+              "canvas": {
+                "width": 300,
+                "height": 150,
+                "connected": true
+              }
+            }
+          ],
+          "creationErrors": [],
+          "errorEvents": [],
+          "created": [
+            {
+              "type": "webgl2",
+              "lost": false,
+              "version": "WebGL 2.0",
+              "vendor": "Mozilla",
+              "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+              "unmaskedVendor": "Google Inc. (NVIDIA)",
+              "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar"
+            }
+          ]
+        }
+      },
+      "renderer": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready"
+      },
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+      "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+      "errors": [],
+      "consoleErrors": [],
+      "caughtExceptions": [],
+      "unmapped": []
+    },
+    {
+      "id": "R04-capture-hex-r56-390x844-en",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "requestedRenderer": "r3f",
+      "effectiveRenderer": "r3f",
+      "quality": "standard",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/board-hex-r56-390x844-en-r3f-standard-390x844-en.png",
+      "screenshotHash": "b2582fffef799d31ed42a0e9ac855335b366dfc88a7611e95317f3a68778c595",
+      "webgl": {
+        "available": true,
+        "lost": false,
+        "version": "WebGL 2.0",
+        "shadingLanguage": "WebGL GLSL ES 3.00",
+        "vendor": "Mozilla",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+        "unmaskedVendor": "Google Inc. (NVIDIA)",
+        "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+        "drawingBuffer": [
+          327,
+          526
+        ],
+        "readPixel": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "actual": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready",
+        "fallbackReason": null,
+        "svg": false,
+        "canvas": {
+          "width": 327,
+          "height": 526,
+          "cssWidth": 327,
+          "cssHeight": 526
+        },
+        "targets": 0,
+        "effects": 0,
+        "diceOverlay": 0,
+        "hexes": 0,
+        "buildings": 0,
+        "roads": 0,
+        "board": {
+          "x": 58,
+          "y": 113.86666870117188,
+          "width": 327,
+          "height": 526.13330078125,
+          "top": 113.86666870117188,
+          "right": 385,
+          "bottom": 639.9999694824219,
+          "left": 58
+        },
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1
+        },
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "resources": [
+          "http://127.0.0.1:52648/assets/index-DGT5H3u5.css",
+          "http://127.0.0.1:52648/assets/index-DeF8S8Wj.js",
+          "http://127.0.0.1:52648/favicon.ico",
+          "http://127.0.0.1:52648/api/config",
+          "http://127.0.0.1:52648/api/session",
+          "http://127.0.0.1:52648/api/profiles",
+          "http://127.0.0.1:52648/api/games",
+          "http://127.0.0.1:52648/api/games/g1",
+          "http://127.0.0.1:52648/api/rooms/r1/chat?limit=50",
+          "http://127.0.0.1:52648/assets/BoardScene3D-DYeWSKad.js",
+          "http://127.0.0.1:52648/assets/board-atlas-gwoo0gAO.svg"
+        ],
+        "contextDiagnostics": {
+          "attempts": [
+            {
+              "type": "webgl2",
+              "ok": true,
+              "error": null,
+              "canvas": {
+                "width": 300,
+                "height": 150,
+                "connected": true
+              }
+            }
+          ],
+          "creationErrors": [],
+          "errorEvents": [],
+          "created": [
+            {
+              "type": "webgl2",
+              "lost": false,
+              "version": "WebGL 2.0",
+              "vendor": "Mozilla",
+              "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+              "unmaskedVendor": "Google Inc. (NVIDIA)",
+              "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar"
+            }
+          ]
+        }
+      },
+      "renderer": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready"
+      },
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+      "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+      "errors": [],
+      "consoleErrors": [],
+      "caughtExceptions": [],
+      "unmapped": []
+    },
+    {
+      "id": "V01-V07-human-art-acceptance",
+      "status": "NOT RUN",
+      "detail": "Captures are engineering candidates; true-volume and user visual acceptance require manual review. No V case is marked PASS."
+    },
+    {
+      "id": "R04-capture-completeness",
+      "status": "PASS",
+      "captures": 4,
+      "expected": 4
+    }
+  ],
+  "artifacts": [
+    "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/board-hex-r2-1366x768-en-r3f-standard-1366x768-en.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/board-hex-r2-390x844-zh-Hant-r3f-standard-390x844-zh-Hant.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/board-hex-r56-1366x768-zh-Hant-r3f-standard-1366x768-zh-Hant.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/board-hex-r56-390x844-en-r3f-standard-390x844-en.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/report.json",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/server.log"
+  ],
+  "metrics": {},
+  "limitations": [
+    "API and WebSocket delivery use deterministic authorized fixture routes; this is not the R02 real-flow gate.",
+    "Headless Chromium may use SwiftShader; WebGL2 success proves a context/render path, not physical GPU or mobile performance.",
+    "Playwright browsers are worktree-local in .tmp/board-3d-browsers rather than .tmp/board-3d-venv/browsers; no global browser install was used.",
+    "Mocked onUnavailable callbacks in jsdom are source tests and are never promoted to native context-loss PASS.",
+    "No screen reader, user visual acceptance or physical mobile device was used."
+  ],
+  "provenance": {
+    "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+    "workingTreeStatus": [
+      "?? docs/aegis/work/2026-10-29-board-3d/evidence/"
+    ],
+    "sourceWorkingTreeStatus": [],
+    "sourcePaths": [
+      "packages/web/src",
+      "packages/web/index.html",
+      "packages/web/package.json",
+      "packages/web/tsconfig.json",
+      "packages/web/vite.config.ts",
+      "packages/web/test",
+      "packages/rules/src",
+      "packages/rules/package.json",
+      "packages/protocol/src",
+      "packages/protocol/package.json",
+      "packages/server/src",
+      "packages/server/package.json",
+      "scripts/board-visual/fixtures.mjs",
+      "scripts/board-visual/verify.py",
+      "scripts/board-3d",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "tsconfig.base.json"
+    ],
+    "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+    "worktreeDirty": true,
+    "sourceDirty": false,
+    "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+    "buildFiles": {
+      "assets/board-atlas-gwoo0gAO.svg": {
+        "sha256": "bf71959a5409400a4b11fe25b2b07ef9a2cab865dea6cc8cddd7876bbd1c8d02",
+        "bytes": 6555
+      },
+      "assets/BoardScene3D-DYeWSKad.js": {
+        "sha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24",
+        "bytes": 935514
+      },
+      "assets/BoardScene3D-DYeWSKad.js.map": {
+        "sha256": "fa755a1b6312146b31c0ad20cf5091096a68d62e8b35f73f20a0d7846203807e",
+        "bytes": 4242678
+      },
+      "assets/index-DeF8S8Wj.js": {
+        "sha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d",
+        "bytes": 448899
+      },
+      "assets/index-DeF8S8Wj.js.map": {
+        "sha256": "ef477e432d922c29fbacc69f592d2794d424369d6c2f67d6dd85ad9536dfa9ec",
+        "bytes": 1811210
+      },
+      "assets/index-DGT5H3u5.css": {
+        "sha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2",
+        "bytes": 80273
+      },
+      "index.html": {
+        "sha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e",
+        "bytes": 486
+      }
+    }
+  },
+  "environment": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]",
+    "pythonExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\Scripts\\python.exe",
+    "node": "v24.12.0",
+    "pnpm": "10.28.0",
+    "cpu": "AMD Ryzen 7 6800H with Radeon Graphics         ",
+    "logicalCpuCount": 16,
+    "ramBytes": 67911081984,
+    "gpu": [
+      {
+        "Name": "NVIDIA GeForce RTX 3060 Laptop GPU",
+        "DriverVersion": "32.0.15.6607",
+        "CurrentRefreshRate": 120
+      },
+      {
+        "Name": "AMD Radeon(TM) Graphics",
+        "DriverVersion": "31.0.12024.2005",
+        "CurrentRefreshRate": 144
+      }
+    ],
+    "powerMode": "not observed",
+    "refreshRateHz": "not observed",
+    "browserCache": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-browsers",
+    "targetBrowser": "firefox",
+    "mode": "headless",
+    "rendererNotes": "effective/WebGL values are recorded per capture; software GPU inference requires unmasked renderer evidence",
+    "playwright": "1.64.1",
+    "browserRevisions": [
+      {
+        "name": "chromium",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome for Testing"
+      },
+      {
+        "name": "chromium-headless-shell",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome Headless Shell"
+      },
+      {
+        "name": "firefox",
+        "revision": "1555",
+        "installByDefault": true,
+        "browserVersion": "157.0",
+        "title": "Firefox"
+      },
+      {
+        "name": "webkit",
+        "revision": "2370",
+        "installByDefault": true,
+        "revisionOverrides": {
+          "mac14": "2251",
+          "mac14-arm64": "2251"
+        },
+        "browserVersion": "27.2",
+        "title": "WebKit"
+      },
+      {
+        "name": "ffmpeg",
+        "revision": "1013",
+        "installByDefault": true
+      },
+      {
+        "name": "winldd",
+        "revision": "1007",
+        "installByDefault": false
+      },
+      {
+        "name": "android",
+        "revision": "1001",
+        "installByDefault": false
+      }
+    ],
+    "browserExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-browsers\\firefox-1555\\firefox\\firefox.exe",
+    "executableSha256": "c949e57fba9a65ab6c434a76e32d2c72eb43f8b99a7c48ee7e927a4fad4b2a36",
+    "browserVersion": "157.0"
+  },
+  "fixture": {
+    "path": ".tmp/board-3d-fixtures-final.json",
+    "sha256": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+    "seed": 7,
+    "sources": {
+      "packages/web/src/test/fixtures.ts": "71095a419ea2ca47adfecac1fe15f6c9b4a0606dadbd4d7d2d153ca6a1098270",
+      "packages/rules/src/engine.ts": "313b19f2e186c3ce6d7786a4cc23cd6eb0f7acd81c158b404ff80b78532afa54",
+      "packages/rules/src/project.ts": "9618392c06a5a7dcd017cfb3acddb984f08a6c6e222f6f322fb3754faa14ba9c",
+      "packages/rules/src/topology.ts": "80bb08608c3866250ba5608e3bf68e9a5c4060b87bccd367f50498c7b6872889",
+      "packages/rules/src/layout.ts": "b1a888da2fd2abb80d66737b21266de5e6566d7921c049f2a428ccae8de8216d"
+    }
+  },
+  "server": {
+    "ownership": "runner",
+    "baseUrl": "http://127.0.0.1:52648",
+    "pid": 24428,
+    "temporaryDirectory": "C:\\Users\\shene\\AppData\\Local\\Temp\\catan-board-visual-p8b25dfr",
+    "database": "independent temporary SQLite, deleted in finally",
+    "cleanup": {
+      "childExitCode": 1,
+      "temporaryDatabaseRemoved": true
+    }
+  },
+  "assetHashes": {
+    "/assets/BoardScene3D-DYeWSKad.js": {
+      "sha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24",
+      "bytes": 935514,
+      "servedSha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24"
+    },
+    "/assets/index-DeF8S8Wj.js": {
+      "sha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d",
+      "bytes": 448899,
+      "servedSha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d"
+    },
+    "/assets/index-DGT5H3u5.css": {
+      "sha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2",
+      "bytes": 80273,
+      "servedSha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2"
+    },
+    "/": {
+      "sha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e",
+      "bytes": 486,
+      "servedSha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e"
+    }
+  },
+  "effectiveRenderer": "r3f",
+  "rendererStatus": "ready",
+  "finishedAt": "2026-10-28T18:56:34Z",
+  "manualAcceptance": {
+    "V": {
+      "V01": "NOT RUN",
+      "V02": "NOT RUN",
+      "V03": "NOT RUN",
+      "V04": "NOT RUN",
+      "V05": "NOT RUN",
+      "V06": "NOT RUN",
+      "V07": "NOT RUN"
+    },
+    "A": {
+      "A01-screen-reader": "BLOCKED",
+      "A02-human-visual-zoom-gray": "NOT RUN",
+      "A03-automated-projection-review": "NOT RUN"
+    },
+    "R": {
+      "R02-real-flow": "BLOCKED",
+      "R03-physical-devices": "BLOCKED",
+      "R04-artifact-reproduction": "PASS"
+    }
+  }
+}

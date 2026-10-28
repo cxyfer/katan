@@ -1,0 +1,366 @@
+{
+  "algorithm": "SHA256",
+  "scope": "Evidence files relative to this directory; manifest excludes itself",
+  "files": {
+    ".gitattributes": {
+      "sha256": "b5b0eeb828fa159c08357f7b4ce54832917425b95597e760c9d33413517f39c3",
+      "bytes": 190
+    },
+    "auto-faults-final/report.json": {
+      "sha256": "dc2a9e0bd6d4e249a196630dbb55ac2a453c4ced34ce80f9ae7d8ac42a22f862",
+      "bytes": 25523
+    },
+    "auto-faults-final/server.log": {
+      "sha256": "831083eee659a10ab5c9a2ace16b11785cf3065ac92517430a7c67fe46dc123d",
+      "bytes": 169
+    },
+    "capture-closeup.py": {
+      "sha256": "265b78953e4ed5c5a91b6c02eabf7ac9c36be3f2295f9ff8a4d14dffe67fa598",
+      "bytes": 3305
+    },
+    "closeup-final/modeled-pieces-closeup-r3f-standard-1366x768-en.png": {
+      "sha256": "fdc4f2772f7ae751992773bff7516fa7f0d24c84bdc2fbccf3a26dbc4e83de58",
+      "bytes": 452881
+    },
+    "closeup-final/report.json": {
+      "sha256": "920845d8b025690d3f47fa85734486974b414aa7c2ecc35235af48aca17d76d6",
+      "bytes": 4738
+    },
+    "closeup-final/server.log": {
+      "sha256": "529c896eb2f00199789de8de940d5e32bdc263e05a7b6861aff996ea2010255e",
+      "bytes": 169
+    },
+    "firefox-visual/report.json": {
+      "sha256": "8de1a291cf1355eab5250a3323df9e3004b0f10af8527a8a4b7dc8b6774241b5",
+      "bytes": 16656
+    },
+    "firefox-visual/server.log": {
+      "sha256": "692bd3b025d740d165e7f15b8342a6817a0c652d6749759fd86bf841f1c1e5b9",
+      "bytes": 169
+    },
+    "firefox-visual-unsandboxed/board-hex-r2-1366x768-en-r3f-standard-1366x768-en.png": {
+      "sha256": "57ffef55d29f95b422568dc6d8a70be57c177df1eee7c1cf9932384dab650088",
+      "bytes": 289685
+    },
+    "firefox-visual-unsandboxed/board-hex-r2-390x844-zh-Hant-r3f-standard-390x844-zh-Hant.png": {
+      "sha256": "3db198c8a52892b280e02f1fc4683c44b8e0b3d58b4a2b2b47c5c18113108f8f",
+      "bytes": 130465
+    },
+    "firefox-visual-unsandboxed/board-hex-r56-1366x768-zh-Hant-r3f-standard-1366x768-zh-Hant.png": {
+      "sha256": "c8a38f509ec8893c28a87ee3d828b1777f612dfe1003d2a16a851faf787a281f",
+      "bytes": 318292
+    },
+    "firefox-visual-unsandboxed/board-hex-r56-390x844-en-r3f-standard-390x844-en.png": {
+      "sha256": "b2582fffef799d31ed42a0e9ac855335b366dfc88a7611e95317f3a68778c595",
+      "bytes": 135067
+    },
+    "firefox-visual-unsandboxed/report.json": {
+      "sha256": "84f33903acbddac0abe66c267387cf418023a501d90be9cfa1d30663855ece64",
+      "bytes": 27397
+    },
+    "firefox-visual-unsandboxed/server.log": {
+      "sha256": "af16447039e2d794417ca1e168de0bac8c2eb81d277740b5391bd39b50315d1c",
+      "bytes": 169
+    },
+    "fixtures-final.json": {
+      "sha256": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+      "bytes": 602736
+    },
+    "r3f-low-final/board-hex-r2-1366x768-en-r3f-low-1366x768-en.png": {
+      "sha256": "b1876cc49e3a22199105ecd356392f676279f9f6a00a1c0db0d2685586024517",
+      "bytes": 324083
+    },
+    "r3f-low-final/board-hex-r2-390x844-zh-Hant-r3f-low-390x844-zh-Hant.png": {
+      "sha256": "9e529a7ba74d6918e12ad57d3b5ab4a7909b5b7d4e37d083f011e5c9619bd52b",
+      "bytes": 129769
+    },
+    "r3f-low-final/board-hex-r56-1366x768-zh-Hant-r3f-low-1366x768-zh-Hant.png": {
+      "sha256": "986b8105419ca4442eb74fee75e6a79f2bdf463e8192bbdbb366c6653f30a478",
+      "bytes": 355002
+    },
+    "r3f-low-final/board-hex-r56-390x844-en-r3f-low-390x844-en.png": {
+      "sha256": "8f9a7ff24d032cc4e3cb85682386bae8112765a706f882e2151ca11500f3eb26",
+      "bytes": 132586
+    },
+    "r3f-low-final/events-sequence.webm": {
+      "sha256": "334f42f5f856d110955b3fb6a9b039280c273d5ff4691cc657ca494c821da18e",
+      "bytes": 2032591
+    },
+    "r3f-low-final/P01-frame-intervals-1.json": {
+      "sha256": "aa8fc9b339a75b819c30f92bddc1f9e71718a98a21e6a01e2b3dce86545c085a",
+      "bytes": 83568
+    },
+    "r3f-low-final/P01-frame-intervals-2.json": {
+      "sha256": "46580208fa532b1bed47d0d308a8a501bd7f3ab5b22ff44ca0863a0e16dc686b",
+      "bytes": 81771
+    },
+    "r3f-low-final/P01-frame-intervals-3.json": {
+      "sha256": "bb8d986483dc9e14a6ea2c86ca22fa273289a04102143142aada526188a0a102",
+      "bytes": 79546
+    },
+    "r3f-low-final/privacy-outsider-r3f-low-1366x768-en.png": {
+      "sha256": "b46972368314c1cb658c58b029b69628625438fa8b629d65d8a74b87bb3a7fe1",
+      "bytes": 313024
+    },
+    "r3f-low-final/privacy-p1-r3f-low-1366x768-en.png": {
+      "sha256": "1139c1e7a2cde3d6675fc13f1e89c800b60e48d5961fcc4dac6daaf0de551114",
+      "bytes": 333416
+    },
+    "r3f-low-final/privacy-p2-r3f-low-1366x768-en.png": {
+      "sha256": "6dad1836eb6b0cd2738f384647d53bfc83d264cd0cef9e83b382a12c4c54046f",
+      "bytes": 313494
+    },
+    "r3f-low-final/privacy-p3-r3f-low-1366x768-en.png": {
+      "sha256": "f4e12d8d3f25eb38e989e78a222fefc0d8fdd8e9b56efdda8c055fa32aec8db6",
+      "bytes": 313752
+    },
+    "r3f-low-final/report.json": {
+      "sha256": "1bd9ede033204ab25133edd4e3b560f3e978e53a6322496144ee11818b5a51f6",
+      "bytes": 374001
+    },
+    "r3f-low-final/server.log": {
+      "sha256": "c0d15651ad0826d7a9b5aa3ee700b7df2ec3aef44897831d5b0cf3610764d2f2",
+      "bytes": 169
+    },
+    "r3f-low-final/videos/page@9c2a2359799f5474da0dae204c123e17.webm": {
+      "sha256": "334f42f5f856d110955b3fb6a9b039280c273d5ff4691cc657ca494c821da18e",
+      "bytes": 2032591
+    },
+    "r3f-standard-chromium/board-hex-r2-1366x768-en-r3f-standard-1366x768-en.png": {
+      "sha256": "9e35b11bc56650feafd91e4f1620f467121f16bc27259628cedd7080246a3882",
+      "bytes": 345700
+    },
+    "r3f-standard-chromium/board-hex-r2-390x844-zh-Hant-r3f-standard-390x844-zh-Hant.png": {
+      "sha256": "d7f464d766ffb7ac8408ce27a5f6163a09cbb86a4713f4f5fea639c52f711f31",
+      "bytes": 137700
+    },
+    "r3f-standard-chromium/board-hex-r56-1366x768-zh-Hant-r3f-standard-1366x768-zh-Hant.png": {
+      "sha256": "e47744c9c40925fc95e9a400470beef6abce2d4aba5467b961df6ee3474f63dc",
+      "bytes": 378579
+    },
+    "r3f-standard-chromium/board-hex-r56-390x844-en-r3f-standard-390x844-en.png": {
+      "sha256": "05edadee8f73b1d7f37aca713cbc587aede3e0f6f3ef19a7219fcd41d9446c68",
+      "bytes": 141841
+    },
+    "r3f-standard-chromium/P01-frame-intervals-1.json": {
+      "sha256": "80f703be9cc58c8fac7bac74e267133d3bb65c5951a866293f5fc5e804813421",
+      "bytes": 83904
+    },
+    "r3f-standard-chromium/P01-frame-intervals-2.json": {
+      "sha256": "700110956818e26cf521a1d81b3885b4bfacce27c91355c494b66f7037487f8d",
+      "bytes": 82284
+    },
+    "r3f-standard-chromium/P01-frame-intervals-3.json": {
+      "sha256": "aa1d268bf665249cb0c26821b764629e3e8edf77132dba2057ac2ed877fa7dcf",
+      "bytes": 81120
+    },
+    "r3f-standard-chromium/privacy-outsider-r3f-standard-1366x768-en.png": {
+      "sha256": "8dab0172034ee65becd145d83a57d9e7732aa63ee36361b9b704beef01842c3f",
+      "bytes": 336031
+    },
+    "r3f-standard-chromium/privacy-p1-r3f-standard-1366x768-en.png": {
+      "sha256": "d4db377cc7fa78b1642c6b51d7592952cdf3176265c17c28c6ca1f77c8067830",
+      "bytes": 354858
+    },
+    "r3f-standard-chromium/privacy-p2-r3f-standard-1366x768-en.png": {
+      "sha256": "d8c07f07344147e364816367e27d7351b58afc9c46e561a0bbaab0804a1a18d7",
+      "bytes": 335827
+    },
+    "r3f-standard-chromium/privacy-p3-r3f-standard-1366x768-en.png": {
+      "sha256": "9069920b1231297c98aecff06250a906a57b8b74d5315315376d9d964846e655",
+      "bytes": 335903
+    },
+    "r3f-standard-chromium/report.json": {
+      "sha256": "1d62d96c04a5e083d8b148799cc5c0cab4c4fec735dfc2683a9916b0737e17c0",
+      "bytes": 376648
+    },
+    "r3f-standard-chromium/server.log": {
+      "sha256": "6d1133bb40bdd6ecc8a820630d2997b554941c1d22c1a35a6f529c570c09647d",
+      "bytes": 169
+    },
+    "r3f-standard-chromium/videos/page@4036467a16de0056a0c163f6ec086fa8.webm": {
+      "sha256": "db62eed19509971c671bfd359111dab3fa8a979bf8a0750f9c6247520499cadc",
+      "bytes": 1370903
+    },
+    "r3f-standard-events-final/events-sequence.webm": {
+      "sha256": "095292f32374ec817be9e81d1a1c69862c9aa50c13375133d537d713428dfc02",
+      "bytes": 2033322
+    },
+    "r3f-standard-events-final/privacy-outsider-r3f-standard-1366x768-en.png": {
+      "sha256": "79989359926a5b6b68791728baaa02f747ff43892fd3aa32cfc2a9e44dde7f30",
+      "bytes": 336055
+    },
+    "r3f-standard-events-final/privacy-p1-r3f-standard-1366x768-en.png": {
+      "sha256": "d4db377cc7fa78b1642c6b51d7592952cdf3176265c17c28c6ca1f77c8067830",
+      "bytes": 354858
+    },
+    "r3f-standard-events-final/privacy-p2-r3f-standard-1366x768-en.png": {
+      "sha256": "9fa9b92d82a69664d1a1c7112033061ff7faa0231b705b7cf72723687c36a243",
+      "bytes": 335845
+    },
+    "r3f-standard-events-final/privacy-p3-r3f-standard-1366x768-en.png": {
+      "sha256": "be0fa6a7e4c3651f9f7130299d9ec4247782291098b36279bf27f169b64c0520",
+      "bytes": 336035
+    },
+    "r3f-standard-events-final/report.json": {
+      "sha256": "568f021e358506082f0a8fa00ff8ddd639f7f6819bc440366ea7739c764d52d0",
+      "bytes": 16811
+    },
+    "r3f-standard-events-final/server.log": {
+      "sha256": "c79aee1bb075aa6807a78d3e6aac484e999df90eb3d31fffb558118bfbe18d68",
+      "bytes": 169
+    },
+    "r3f-standard-events-final/videos/page@12cc8e36820511aaab7ec4efbe2ef0b0.webm": {
+      "sha256": "095292f32374ec817be9e81d1a1c69862c9aa50c13375133d537d713428dfc02",
+      "bytes": 2033322
+    },
+    "r3f-standard-final/board-hex-r2-1366x768-en-r3f-standard-1366x768-en.png": {
+      "sha256": "9e35b11bc56650feafd91e4f1620f467121f16bc27259628cedd7080246a3882",
+      "bytes": 345700
+    },
+    "r3f-standard-final/board-hex-r2-390x844-zh-Hant-r3f-standard-390x844-zh-Hant.png": {
+      "sha256": "d7f464d766ffb7ac8408ce27a5f6163a09cbb86a4713f4f5fea639c52f711f31",
+      "bytes": 137700
+    },
+    "r3f-standard-final/board-hex-r56-1366x768-zh-Hant-r3f-standard-1366x768-zh-Hant.png": {
+      "sha256": "e47744c9c40925fc95e9a400470beef6abce2d4aba5467b961df6ee3474f63dc",
+      "bytes": 378579
+    },
+    "r3f-standard-final/board-hex-r56-390x844-en-r3f-standard-390x844-en.png": {
+      "sha256": "05edadee8f73b1d7f37aca713cbc587aede3e0f6f3ef19a7219fcd41d9446c68",
+      "bytes": 141841
+    },
+    "r3f-standard-final/events-sequence.webm": {
+      "sha256": "d6a1aadbacc018c5cf58738c326e48c3af474c69eca2296b606e7e9a7e360b49",
+      "bytes": 1098928
+    },
+    "r3f-standard-final/P01-frame-intervals-1.json": {
+      "sha256": "9cc55fa0f350a0734b8b57a56d5d1a63f89741d235fafbada914d962346d8a0e",
+      "bytes": 83519
+    },
+    "r3f-standard-final/P01-frame-intervals-2.json": {
+      "sha256": "825284dcbc36449d2987dbe95a36760cdc8b70eaa096bb688c41d1eea34f26ef",
+      "bytes": 81175
+    },
+    "r3f-standard-final/P01-frame-intervals-3.json": {
+      "sha256": "beddfcd6b84a417b73443c21654aaca1ad0eb7ab858606ee2ed144799dc6eca2",
+      "bytes": 81920
+    },
+    "r3f-standard-final/privacy-outsider-r3f-standard-1366x768-en.png": {
+      "sha256": "011bb34d22c08c776137579749633b18823f73e891b0e8822e217f175f12eae8",
+      "bytes": 335887
+    },
+    "r3f-standard-final/privacy-p1-r3f-standard-1366x768-en.png": {
+      "sha256": "d4db377cc7fa78b1642c6b51d7592952cdf3176265c17c28c6ca1f77c8067830",
+      "bytes": 354858
+    },
+    "r3f-standard-final/privacy-p2-r3f-standard-1366x768-en.png": {
+      "sha256": "4cf7815ae29130152f7173c4903604a1552ccf77e804bf7ad768be88c8639454",
+      "bytes": 335148
+    },
+    "r3f-standard-final/privacy-p3-r3f-standard-1366x768-en.png": {
+      "sha256": "898970383bb83193f48df6b27aff75414cdd787ad46b9bbb429fcd9f783a3389",
+      "bytes": 335825
+    },
+    "r3f-standard-final/report.json": {
+      "sha256": "698effe2a06c06850dd6c4f70134ec16b1d3729fb2aa8a1fefc2f51879d3cb00",
+      "bytes": 376019
+    },
+    "r3f-standard-final/server.log": {
+      "sha256": "54fbd23af55a6cb5595f2ce69385d2c89d91571a5ee171820fbc8b9be6a74d37",
+      "bytes": 169
+    },
+    "r3f-standard-final/videos/page@b472fe81e6e2f245a509ee5b7c8f84dc.webm": {
+      "sha256": "d6a1aadbacc018c5cf58738c326e48c3af474c69eca2296b606e7e9a7e360b49",
+      "bytes": 1098928
+    },
+    "svg-final/board-hex-r2-1366x768-en-svg-standard-1366x768-en.png": {
+      "sha256": "f5074d91cdf5ba16253040d07cf79cc70a3bd04d233d136565f7d88fb31699d0",
+      "bytes": 695991
+    },
+    "svg-final/board-hex-r2-390x844-zh-Hant-svg-standard-390x844-zh-Hant.png": {
+      "sha256": "7e964f53f0220ff84200cf53b64453ab75f4dac8cefb63cc7866707c21111f31",
+      "bytes": 265074
+    },
+    "svg-final/board-hex-r56-1366x768-zh-Hant-svg-standard-1366x768-zh-Hant.png": {
+      "sha256": "c54570307974eaa6bf316b92b64b885aef5c76300682bea43aa83d5dbbbe33d2",
+      "bytes": 755168
+    },
+    "svg-final/board-hex-r56-390x844-en-svg-standard-390x844-en.png": {
+      "sha256": "ae1fd8554c7fab7a989b9f8267ba64d0fb055a93b3f2c6ca15fdd1908d43a24f",
+      "bytes": 276332
+    },
+    "svg-final/events-sequence.webm": {
+      "sha256": "02be1090d7c712970e24dbe1978aad45358ba817cf706c14465405290970e995",
+      "bytes": 2536596
+    },
+    "svg-final/P01-frame-intervals-1.json": {
+      "sha256": "10ad24fee02d5373ba593b6768a00a05a183f9f2a0ba9a56d3c1783d9a46ccdf",
+      "bytes": 83785
+    },
+    "svg-final/P01-frame-intervals-2.json": {
+      "sha256": "17f98c228c8205a42343e3e331852a5e633ad254f9b1ea31a7eb7eb1037abb79",
+      "bytes": 81271
+    },
+    "svg-final/P01-frame-intervals-3.json": {
+      "sha256": "a118be684768b5ef1070cd5f8b80c252310e711e6977cac1d11fd2949e17a726",
+      "bytes": 80766
+    },
+    "svg-final/privacy-outsider-svg-standard-1366x768-en.png": {
+      "sha256": "6075996c77dcd4a5609703ce22f1f61bba9dbd91e3248b5bc575b0f6de91ba65",
+      "bytes": 692511
+    },
+    "svg-final/privacy-p1-svg-standard-1366x768-en.png": {
+      "sha256": "e0ad15cd5579b018b14ed1f2db7aadc84cd16866ef3b29779a8749e7af0b2eb9",
+      "bytes": 709510
+    },
+    "svg-final/privacy-p2-svg-standard-1366x768-en.png": {
+      "sha256": "c00a4cad261bf0cf2c31729272782d5c40bcd07a931219018c6ebbe3613d436b",
+      "bytes": 692286
+    },
+    "svg-final/privacy-p3-svg-standard-1366x768-en.png": {
+      "sha256": "c1a95de5823141cf42eb5497f9575992e5dc10798fe3b8fd382bd3988afdde57",
+      "bytes": 692400
+    },
+    "svg-final/report.json": {
+      "sha256": "abfc3289b2d4f48a7e17fffdc3c1a73a4dd2515a2929479b0ef20bbb9918d68d",
+      "bytes": 354537
+    },
+    "svg-final/server.log": {
+      "sha256": "e5a8e53f4d176497af9330b6cd1ebbb86d2ca2fc8104686164bde8f5177a44b5",
+      "bytes": 169
+    },
+    "svg-final/videos/page@015a968a09e04f7a90e24ee4c5b15769.webm": {
+      "sha256": "02be1090d7c712970e24dbe1978aad45358ba817cf706c14465405290970e995",
+      "bytes": 2536596
+    },
+    "verify.log": {
+      "sha256": "9cf2bb2ef42fd0e6232223757203585e18fe581c569d351ac8883bb307bf42fa",
+      "bytes": 7018
+    },
+    "webkit-visual/board-hex-r2-1366x768-en-r3f-standard-1366x768-en.png": {
+      "sha256": "5733fd66c3a0c03b307f4e17d559896324639353b935cbad8fe12af543488a39",
+      "bytes": 200404
+    },
+    "webkit-visual/board-hex-r2-390x844-zh-Hant-r3f-standard-390x844-zh-Hant.png": {
+      "sha256": "c551bfdf4929d82cb36576551d2323f1edf3f08cc6214080ac710f86cb126b81",
+      "bytes": 97227
+    },
+    "webkit-visual/board-hex-r56-1366x768-zh-Hant-r3f-standard-1366x768-zh-Hant.png": {
+      "sha256": "76cbc094167bd98af37c8464d885696d56441cc4342de9e2322ea3b140e82b8d",
+      "bytes": 224400
+    },
+    "webkit-visual/board-hex-r56-390x844-en-r3f-standard-390x844-en.png": {
+      "sha256": "25de3deb68d0b2548fb8cfec68b2bd150c30f4b5b53861c5fc7ed66af5c2bbfa",
+      "bytes": 108180
+    },
+    "webkit-visual/report.json": {
+      "sha256": "a2c96e304ebf41cfc80db3bb4debdd1728a622137ea8afcef2f90d8f88b5b24a",
+      "bytes": 26415
+    },
+    "webkit-visual/server.log": {
+      "sha256": "eb9a2ab18ae125f1ac1bf2d08686e1d7df9da336c686ff6e23705fbed692e76a",
+      "bytes": 167
+    }
+  }
+}

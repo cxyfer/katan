@@ -1,0 +1,4 @@
+# Preserve raw evidence bytes for SHA256 verification on all platforms.
+* -text whitespace=cr-at-eol
+# Console output is retained verbatim, including its original spacing.
+*.log -whitespace

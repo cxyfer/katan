@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 1,
+  "runId": "firefox-visual",
+  "startedAt": "2026-10-28T18:54:58Z",
+  "status": "FAIL",
+  "suite": "visual",
+  "requestedRenderer": "r3f",
+  "quality": "standard",
+  "browser": "firefox",
+  "cases": [
+    {
+      "id": "H3-source-frozen",
+      "status": "PASS",
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1"
+    },
+    {
+      "id": "T01-source",
+      "status": "PASS",
+      "detail": "All served HTML/JS/CSS match this worktree dist byte for byte."
+    },
+    {
+      "id": "R04-capture-hex-r2-1366x768-en",
+      "status": "FAIL",
+      "error": "BrowserContext.new_page: Target crashed ",
+      "traceback": "Traceback (most recent call last):\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\scripts\\board-3d\\verify.py\", line 507, in visuals\n    scenario = Scenario(browser, base, args, fixture, board, locale, size, out, motion=\"reduce\")\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\scripts\\board-3d\\verify.py\", line 321, in __init__\n    self.page = self.context.new_page()\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\sync_api\\_generated.py\", line 2746, in new_page\n    return mapping.from_impl(self._sync(self._impl_obj.new_page()))\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_sync_base.py\", line 111, in _sync\n    return task.result()\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_browser_context.py\", line 353, in new_page\n    return from_channel(await self._channel.send(\"newPage\", None))\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_connection.py\", line 78, in send\n    return await self._connection.wrap_api_call(\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_connection.py\", line 636, in wrap_api_call\n    raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nplaywright._impl._errors.Error: BrowserContext.new_page: Target crashed \n"
+    },
+    {
+      "id": "R04-capture-hex-r2-390x844-zh-Hant",
+      "status": "FAIL",
+      "error": "BrowserContext.new_page: Target crashed ",
+      "traceback": "Traceback (most recent call last):\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\scripts\\board-3d\\verify.py\", line 507, in visuals\n    scenario = Scenario(browser, base, args, fixture, board, locale, size, out, motion=\"reduce\")\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\scripts\\board-3d\\verify.py\", line 321, in __init__\n    self.page = self.context.new_page()\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\sync_api\\_generated.py\", line 2746, in new_page\n    return mapping.from_impl(self._sync(self._impl_obj.new_page()))\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_sync_base.py\", line 111, in _sync\n    return task.result()\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_browser_context.py\", line 353, in new_page\n    return from_channel(await self._channel.send(\"newPage\", None))\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_connection.py\", line 78, in send\n    return await self._connection.wrap_api_call(\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_connection.py\", line 636, in wrap_api_call\n    raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nplaywright._impl._errors.Error: BrowserContext.new_page: Target crashed \n"
+    },
+    {
+      "id": "R04-capture-hex-r56-1366x768-zh-Hant",
+      "status": "FAIL",
+      "error": "BrowserContext.new_page: Target crashed ",
+      "traceback": "Traceback (most recent call last):\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\scripts\\board-3d\\verify.py\", line 507, in visuals\n    scenario = Scenario(browser, base, args, fixture, board, locale, size, out, motion=\"reduce\")\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\scripts\\board-3d\\verify.py\", line 321, in __init__\n    self.page = self.context.new_page()\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\sync_api\\_generated.py\", line 2746, in new_page\n    return mapping.from_impl(self._sync(self._impl_obj.new_page()))\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_sync_base.py\", line 111, in _sync\n    return task.result()\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_browser_context.py\", line 353, in new_page\n    return from_channel(await self._channel.send(\"newPage\", None))\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_connection.py\", line 78, in send\n    return await self._connection.wrap_api_call(\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_connection.py\", line 636, in wrap_api_call\n    raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nplaywright._impl._errors.Error: BrowserContext.new_page: Target crashed \n"
+    },
+    {
+      "id": "R04-capture-hex-r56-390x844-en",
+      "status": "FAIL",
+      "error": "BrowserContext.new_page: Target crashed ",
+      "traceback": "Traceback (most recent call last):\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\scripts\\board-3d\\verify.py\", line 507, in visuals\n    scenario = Scenario(browser, base, args, fixture, board, locale, size, out, motion=\"reduce\")\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\scripts\\board-3d\\verify.py\", line 321, in __init__\n    self.page = self.context.new_page()\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\sync_api\\_generated.py\", line 2746, in new_page\n    return mapping.from_impl(self._sync(self._impl_obj.new_page()))\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_sync_base.py\", line 111, in _sync\n    return task.result()\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_browser_context.py\", line 353, in new_page\n    return from_channel(await self._channel.send(\"newPage\", None))\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_connection.py\", line 78, in send\n    return await self._connection.wrap_api_call(\n  File \"D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\lib\\site-packages\\playwright\\_impl\\_connection.py\", line 636, in wrap_api_call\n    raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nplaywright._impl._errors.Error: BrowserContext.new_page: Target crashed \n"
+    },
+    {
+      "id": "V01-V07-human-art-acceptance",
+      "status": "NOT RUN",
+      "detail": "Captures are engineering candidates; true-volume and user visual acceptance require manual review. No V case is marked PASS."
+    },
+    {
+      "id": "R04-capture-completeness",
+      "status": "FAIL",
+      "captures": 0,
+      "expected": 4
+    }
+  ],
+  "artifacts": [
+    "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual/report.json",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual/server.log"
+  ],
+  "metrics": {},
+  "limitations": [
+    "API and WebSocket delivery use deterministic authorized fixture routes; this is not the R02 real-flow gate.",
+    "Headless Chromium may use SwiftShader; WebGL2 success proves a context/render path, not physical GPU or mobile performance.",
+    "Playwright browsers are worktree-local in .tmp/board-3d-browsers rather than .tmp/board-3d-venv/browsers; no global browser install was used.",
+    "Mocked onUnavailable callbacks in jsdom are source tests and are never promoted to native context-loss PASS.",
+    "No screen reader, user visual acceptance or physical mobile device was used."
+  ],
+  "provenance": {
+    "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+    "workingTreeStatus": [
+      "?? docs/aegis/work/2026-10-29-board-3d/evidence/"
+    ],
+    "sourceWorkingTreeStatus": [],
+    "sourcePaths": [
+      "packages/web/src",
+      "packages/web/index.html",
+      "packages/web/package.json",
+      "packages/web/tsconfig.json",
+      "packages/web/vite.config.ts",
+      "packages/web/test",
+      "packages/rules/src",
+      "packages/rules/package.json",
+      "packages/protocol/src",
+      "packages/protocol/package.json",
+      "packages/server/src",
+      "packages/server/package.json",
+      "scripts/board-visual/fixtures.mjs",
+      "scripts/board-visual/verify.py",
+      "scripts/board-3d",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "tsconfig.base.json"
+    ],
+    "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+    "worktreeDirty": true,
+    "sourceDirty": false,
+    "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+    "buildFiles": {
+      "assets/board-atlas-gwoo0gAO.svg": {
+        "sha256": "bf71959a5409400a4b11fe25b2b07ef9a2cab865dea6cc8cddd7876bbd1c8d02",
+        "bytes": 6555
+      },
+      "assets/BoardScene3D-DYeWSKad.js": {
+        "sha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24",
+        "bytes": 935514
+      },
+      "assets/BoardScene3D-DYeWSKad.js.map": {
+        "sha256": "fa755a1b6312146b31c0ad20cf5091096a68d62e8b35f73f20a0d7846203807e",
+        "bytes": 4242678
+      },
+      "assets/index-DeF8S8Wj.js": {
+        "sha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d",
+        "bytes": 448899
+      },
+      "assets/index-DeF8S8Wj.js.map": {
+        "sha256": "ef477e432d922c29fbacc69f592d2794d424369d6c2f67d6dd85ad9536dfa9ec",
+        "bytes": 1811210
+      },
+      "assets/index-DGT5H3u5.css": {
+        "sha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2",
+        "bytes": 80273
+      },
+      "index.html": {
+        "sha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e",
+        "bytes": 486
+      }
+    }
+  },
+  "environment": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]",
+    "pythonExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\Scripts\\python.exe",
+    "node": "v24.12.0",
+    "pnpm": "10.28.0",
+    "cpu": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "logicalCpuCount": 16,
+    "ramBytes": null,
+    "gpu": null,
+    "powerMode": "not observed",
+    "refreshRateHz": "not observed",
+    "browserCache": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-browsers",
+    "hardwareQueryLimitation": "powershell exited 1: Get-CimInstance : 拒絕存取 \nAt line:1 char:39\n+ ... tionPreference='Stop'; @{cpu=(Get-CimInstance Win32_Processor | Selec ...\n+                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n    + CategoryInfo          : PermissionDenied: (root\\cimv2:Win32_Processor:String) [Get-CimInstance], CimException\n    + FullyQualifiedErrorId : HRESULT 0x80041003,Microsoft.Management.Infrastructure.CimCmdlets.GetCimInstanceCommand",
+    "targetBrowser": "firefox",
+    "mode": "headless",
+    "rendererNotes": "effective/WebGL values are recorded per capture; software GPU inference requires unmasked renderer evidence",
+    "playwright": "1.64.1",
+    "browserRevisions": [
+      {
+        "name": "chromium",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome for Testing"
+      },
+      {
+        "name": "chromium-headless-shell",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome Headless Shell"
+      },
+      {
+        "name": "firefox",
+        "revision": "1555",
+        "installByDefault": true,
+        "browserVersion": "157.0",
+        "title": "Firefox"
+      },
+      {
+        "name": "webkit",
+        "revision": "2370",
+        "installByDefault": true,
+        "revisionOverrides": {
+          "mac14": "2251",
+          "mac14-arm64": "2251"
+        },
+        "browserVersion": "27.2",
+        "title": "WebKit"
+      },
+      {
+        "name": "ffmpeg",
+        "revision": "1013",
+        "installByDefault": true
+      },
+      {
+        "name": "winldd",
+        "revision": "1007",
+        "installByDefault": false
+      },
+      {
+        "name": "android",
+        "revision": "1001",
+        "installByDefault": false
+      }
+    ],
+    "browserExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-browsers\\firefox-1555\\firefox\\firefox.exe",
+    "executableSha256": "c949e57fba9a65ab6c434a76e32d2c72eb43f8b99a7c48ee7e927a4fad4b2a36",
+    "browserVersion": "157.0"
+  },
+  "fixture": {
+    "path": ".tmp/board-3d-fixtures-final.json",
+    "sha256": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+    "seed": 7,
+    "sources": {
+      "packages/web/src/test/fixtures.ts": "71095a419ea2ca47adfecac1fe15f6c9b4a0606dadbd4d7d2d153ca6a1098270",
+      "packages/rules/src/engine.ts": "313b19f2e186c3ce6d7786a4cc23cd6eb0f7acd81c158b404ff80b78532afa54",
+      "packages/rules/src/project.ts": "9618392c06a5a7dcd017cfb3acddb984f08a6c6e222f6f322fb3754faa14ba9c",
+      "packages/rules/src/topology.ts": "80bb08608c3866250ba5608e3bf68e9a5c4060b87bccd367f50498c7b6872889",
+      "packages/rules/src/layout.ts": "b1a888da2fd2abb80d66737b21266de5e6566d7921c049f2a428ccae8de8216d"
+    }
+  },
+  "server": {
+    "ownership": "runner",
+    "baseUrl": "http://127.0.0.1:55533",
+    "pid": 11380,
+    "temporaryDirectory": "C:\\Users\\shene\\AppData\\Local\\Temp\\catan-board-visual-xn9a94gl",
+    "database": "independent temporary SQLite, deleted in finally",
+    "cleanup": {
+      "childExitCode": 1,
+      "temporaryDatabaseRemoved": true
+    }
+  },
+  "assetHashes": {
+    "/assets/BoardScene3D-DYeWSKad.js": {
+      "sha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24",
+      "bytes": 935514,
+      "servedSha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24"
+    },
+    "/assets/index-DeF8S8Wj.js": {
+      "sha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d",
+      "bytes": 448899,
+      "servedSha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d"
+    },
+    "/assets/index-DGT5H3u5.css": {
+      "sha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2",
+      "bytes": 80273,
+      "servedSha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2"
+    },
+    "/": {
+      "sha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e",
+      "bytes": 486,
+      "servedSha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e"
+    }
+  },
+  "finishedAt": "2026-10-28T18:55:05Z",
+  "manualAcceptance": {
+    "V": {
+      "V01": "NOT RUN",
+      "V02": "NOT RUN",
+      "V03": "NOT RUN",
+      "V04": "NOT RUN",
+      "V05": "NOT RUN",
+      "V06": "NOT RUN",
+      "V07": "NOT RUN"
+    },
+    "A": {
+      "A01-screen-reader": "BLOCKED",
+      "A02-human-visual-zoom-gray": "NOT RUN",
+      "A03-automated-projection-review": "NOT RUN"
+    },
+    "R": {
+      "R02-real-flow": "BLOCKED",
+      "R03-physical-devices": "BLOCKED",
+      "R04-artifact-reproduction": "FAIL"
+    }
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "status": "PASS",
+  "cases": [
+    {
+      "id": "T01-source",
+      "status": "PASS",
+      "detail": "All served HTML/JS/CSS match this worktree dist byte for byte."
+    }
+  ],
+  "artifacts": [],
+  "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+  "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+  "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+  "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+  "captureScriptHash": "265b78953e4ed5c5a91b6c02eabf7ac9c36be3f2295f9ff8a4d14dffe67fa598",
+  "scope": "Closeup candidates, no art/performance acceptance",
+  "assetHashes": {
+    "/assets/BoardScene3D-DYeWSKad.js": {
+      "sha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24",
+      "bytes": 935514,
+      "servedSha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24"
+    },
+    "/assets/index-DeF8S8Wj.js": {
+      "sha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d",
+      "bytes": 448899,
+      "servedSha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d"
+    },
+    "/assets/index-DGT5H3u5.css": {
+      "sha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2",
+      "bytes": 80273,
+      "servedSha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2"
+    },
+    "/": {
+      "sha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e",
+      "bytes": 486,
+      "servedSha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e"
+    }
+  },
+  "browserVersion": "155.0.8059.86",
+  "actual": {
+    "requested": "r3f",
+    "effective": "r3f",
+    "quality": "standard",
+    "status": "ready",
+    "fallbackReason": null,
+    "svg": false,
+    "canvas": {
+      "width": 1044,
+      "height": 585,
+      "cssWidth": 1044,
+      "cssHeight": 586
+    },
+    "targets": 0,
+    "effects": 0,
+    "diceOverlay": 0,
+    "hexes": 0,
+    "buildings": 0,
+    "roads": 0,
+    "board": {
+      "x": 84,
+      "y": 114.1875,
+      "width": 1044,
+      "height": 585.8125,
+      "top": 114.1875,
+      "right": 1128,
+      "bottom": 700,
+      "left": 84
+    },
+    "viewport": {
+      "width": 1366,
+      "height": 768,
+      "dpr": 1
+    },
+    "locale": "en",
+    "htmlLang": "zh-Hant",
+    "document": {
+      "width": 1366,
+      "height": 768
+    },
+    "resources": [
+      "http://127.0.0.1:56447/assets/index-DeF8S8Wj.js",
+      "http://127.0.0.1:56447/assets/index-DGT5H3u5.css",
+      "http://127.0.0.1:56447/api/config",
+      "http://127.0.0.1:56447/api/session",
+      "http://127.0.0.1:56447/api/profiles",
+      "http://127.0.0.1:56447/favicon.ico",
+      "http://127.0.0.1:56447/api/games",
+      "http://127.0.0.1:56447/api/games/g1",
+      "http://127.0.0.1:56447/api/rooms/r1/chat?limit=50",
+      "http://127.0.0.1:56447/assets/BoardScene3D-DYeWSKad.js",
+      "http://127.0.0.1:56447/assets/board-atlas-gwoo0gAO.svg"
+    ],
+    "contextDiagnostics": {
+      "attempts": [
+        {
+          "type": "webgl2",
+          "ok": true,
+          "error": null,
+          "canvas": {
+            "width": 300,
+            "height": 150,
+            "connected": true
+          }
+        }
+      ],
+      "creationErrors": [],
+      "errorEvents": [],
+      "created": [
+        {
+          "type": "webgl2",
+          "lost": false,
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "vendor": "WebKit",
+          "renderer": "WebKit WebGL",
+          "unmaskedVendor": "Google Inc. (NVIDIA)",
+          "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Laptop GPU (0x00002520) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        }
+      ]
+    }
+  },
+  "webgl": {
+    "available": true,
+    "lost": false,
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "shadingLanguage": "WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)",
+    "vendor": "WebKit",
+    "renderer": "WebKit WebGL",
+    "unmaskedVendor": "Google Inc. (NVIDIA)",
+    "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Laptop GPU (0x00002520) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "drawingBuffer": [
+      1044,
+      585
+    ],
+    "readPixel": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "errors": [],
+  "consoleErrors": [],
+  "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/closeup-final/modeled-pieces-closeup-r3f-standard-1366x768-en.png",
+  "screenshotHash": "fdc4f2772f7ae751992773bff7516fa7f0d24c84bdc2fbccf3a26dbc4e83de58",
+  "buildUnchanged": true,
+  "sourceUnchanged": true
+}

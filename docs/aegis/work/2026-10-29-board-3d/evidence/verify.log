@@ -1,0 +1,123 @@
+
+> catan@0.1.0 verify D:\Workspace\Projects\katan\.worktrees\board-3d
+> pnpm typecheck && pnpm -r test && pnpm build && pnpm smoke
+
+
+> catan@0.1.0 typecheck D:\Workspace\Projects\katan\.worktrees\board-3d
+> pnpm -r typecheck
+
+Scope: 4 of 5 workspace projects
+packages/rules typecheck$ tsc --noEmit
+packages/rules typecheck: Done
+packages/protocol typecheck$ tsc --noEmit
+packages/protocol typecheck: Done
+packages/server typecheck$ tsc --noEmit
+packages/web typecheck$ tsc --noEmit
+packages/server typecheck: Done
+packages/web typecheck: Done
+Scope: 4 of 5 workspace projects
+packages/rules test$ vitest run
+packages/rules test:  RUN  v5.0.5 D:/Workspace/Projects/katan/.worktrees/board-3d/packages/rules
+packages/rules test:  Test Files  12 passed (12)
+packages/rules test:       Tests  110 passed (110)
+packages/rules test:    Start at  02:27:31
+packages/rules test:    Duration  1.19s (tests 47%, import 36%, transform 9%, worker 7%, environment 1%)
+packages/rules test: Done
+packages/protocol test$ vitest run
+packages/protocol test:  RUN  v5.0.5 D:/Workspace/Projects/katan/.worktrees/board-3d/packages/protocol
+packages/protocol test:  Test Files  1 passed (1)
+packages/protocol test:       Tests  7 passed (7)
+packages/protocol test:    Start at  02:27:33
+packages/protocol test:    Duration  490ms (import 44%, transform 39%, tests 10%, worker 7%)
+packages/protocol test: Done
+packages/server test$ vitest run
+packages/web test$ vitest run
+packages/server test:  RUN  v5.0.5 D:/Workspace/Projects/katan/.worktrees/board-3d/packages/server
+packages/web test:  RUN  v5.0.5 D:/Workspace/Projects/katan/.worktrees/board-3d/packages/web
+packages/server test: (node:64904) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:73876) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:58884) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:2168) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:52704) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:62312) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:84924) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:61696) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test: (node:80516) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+packages/server test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/server test:  Test Files  10 passed (10)
+packages/server test:       Tests  84 passed | 11 skipped (95)
+packages/server test:    Start at  02:27:34
+packages/server test:    Duration  5.32s (tests 77%, import 16%, transform 5%, worker 1%)
+packages/server test: Done
+packages/web test:  Test Files  27 passed (27)
+packages/web test:       Tests  227 passed (227)
+packages/web test:    Start at  02:27:34
+packages/web test:    Duration  81.80s (environment 50%, tests 39%, setup 8%, import 2%, transform 1%)
+packages/web test: Environment  jsdom was created 27 times · 153.05s total, 50% of tracked time
+packages/web test:              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+packages/web test:              learn more: https://vitest.dev/guide/improving-performance#test-environments
+packages/web test: Done
+
+> catan@0.1.0 build D:\Workspace\Projects\katan\.worktrees\board-3d
+> pnpm --filter @catan/web build && pnpm --filter @catan/server build
+
+
+> @catan/web@0.1.0 build D:\Workspace\Projects\katan\.worktrees\board-3d\packages\web
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 109 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                         0.48 kB │ gzip:   0.30 kB
+dist/assets/board-atlas-gwoo0gAO.svg    6.55 kB │ gzip:   0.84 kB
+dist/assets/index-DGT5H3u5.css         80.27 kB │ gzip:  18.20 kB
+dist/assets/index-DeF8S8Wj.js         448.89 kB │ gzip: 134.99 kB │ map: 1,811.21 kB
+dist/assets/BoardScene3D-DYeWSKad.js  935.51 kB │ gzip: 249.25 kB │ map: 4,242.67 kB
+
+✓ built in 1.25s
+node.exe : [plugin builtin:vite-reporter] 
+位於 C:\Users\shene\AppData\Roaming\npm\pnpm.ps1:24 字元:5
++     & "node$exe"  "$basedir/node_modules/pnpm/bin/pnpm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([plugin builtin:vite-reporter] :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeS
+plitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+> @catan/server@0.1.0 build D:\Workspace\Projects\katan\.worktrees\board-3d\packages\server
+> node build.mjs
+
+built D:\Workspace\Projects\katan\.worktrees\board-3d\packages\server\dist\server.mjs
+
+> catan@0.1.0 smoke D:\Workspace\Projects\katan\.worktrees\board-3d
+> node scripts/smoke.mjs
+
+PASS  service answers /healthz
+PASS  built client is served from the same origin — 486 bytes
+PASS  client bundle is reachable — /assets/index-DeF8S8Wj.js
+PASS  guest sessions issued
+PASS  configuration is published — zh-Hant,en
+PASS  public room with an open seat is discoverable
+PASS  a full lobby is no longer advertised
+PASS  game starts once every seat is ready
+PASS  initial placement completes through the API — 12 commands, revision 13
+PASS  board has the base inventory
+PASS  a dice roll is accepted — revision 14
+PASS  room chat accepts a message
+PASS  other seats never receive hidden resources
+
+13/13 checks passed

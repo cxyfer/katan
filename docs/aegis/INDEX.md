@@ -13,6 +13,22 @@ Entries are workspace records, not authoritative runtime decisions.
 | 2026-10-29 | work | docs/aegis/work/2026-10-29-board-3d/30-effects-integration.md | Stage-local effect integration contract |
 | 2026-10-29 | work | docs/aegis/work/2026-10-29-board-3d/31-runner-status.md | Browser runner environment and measurement limits |
 | 2026-10-29 | work | docs/aegis/work/2026-10-29-board-3d/40-review.md | Three-owner cross-review findings and repairs |
+| 2026-10-29 | work | docs/aegis/work/2026-10-29-board-3d/90-evidence.md | Fixed-build results, provenance and open acceptance gates |
+| 2026-10-29 | work | docs/aegis/work/2026-10-29-board-3d/99-reflection.md | Engineering delivery and default-retention decision |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/manifest.json | Evidence file hashes and byte sizes |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/fixtures-final.json | Retained deterministic public-projection fixtures |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/verify.log | Full repository verification output |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-final/report.json | Chromium standard all-suite results |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/r3f-low-final/report.json | Chromium low all-suite results |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/svg-final/report.json | SVG comparison all-suite results |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/report.json | Bounded standard event video retest |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/auto-faults-final/report.json | Auto renderer negative-path evidence |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual-unsandboxed/report.json | Firefox visual retest outside sandbox |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/report.json | WebKit visual evidence with actual viewport metadata |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/closeup-final/report.json | Supplemental modeled-piece closeup provenance |
+| 2026-10-29 | work | docs/aegis/work/2026-10-29-board-3d/evidence/capture-closeup.py | Supplemental closeup reproducer |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-chromium/report.json | Retained initial video-finalization failure |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-board-3d/evidence/firefox-visual/report.json | Retained sandbox browser-startup failure |
 | 2026-10-28 | plan | docs/aegis/plans/2026-10-28-board-visual-spike.md | Board visual implementation and renderer decision plan |
 | 2026-10-28 | plan | docs/aegis/plans/2026-10-28-board-visual-spike-acceptance.md | Board visual acceptance cases and evidence protocol |
 | 2026-10-28 | work | docs/aegis/work/2026-10-28-board-visual-spike/d1-decision.md | Provisional SVG engineering decision and GPU reopening conditions |
