@@ -31,6 +31,7 @@ import type {
   SceneBounds,
 } from './render-contract.ts';
 import { boardViewport, parseViewBox } from './viewport.ts';
+import { CAMERA_AZIMUTH_DEG, cameraElevation } from './three/camera.ts';
 
 export const MIN_BOARD_ZOOM = 0.7;
 export const MAX_BOARD_ZOOM = 3;
@@ -72,6 +73,7 @@ export interface BoardViewportControls {
   pan: { x: number; y: number };
   cameraFit: OrthographicCameraFit | null;
   setZoom: (value: number) => void;
+  rotate: (deltaDeg: number) => void;
   fit: () => void;
   measure: () => void;
   gestureActive: boolean;
@@ -83,6 +85,7 @@ export interface BoardViewportControls {
 interface ViewState {
   center: { x: number; z: number };
   zoom: number;
+  azimuthDeg: number;
 }
 
 interface Point {
@@ -156,7 +159,8 @@ export function useBoardViewport({
   const effectiveBounds = useMemo(() => bounds ?? geometryBounds(geometry), [bounds, geometry]);
   const fittedCenter = useMemo(() => centerOf(effectiveBounds), [effectiveBounds]);
   const requestedInitialZoom = clamp(Number.isFinite(initialZoom) ? initialZoom : 1, MIN_BOARD_ZOOM, MAX_BOARD_ZOOM);
-  const [view, setView] = useState<ViewState>(() => ({ center: fittedCenter, zoom: requestedInitialZoom }));
+  const [view, setView] = useState<ViewState>(() => ({ center: fittedCenter, zoom: requestedInitialZoom,
+    azimuthDeg: camera.azimuthDeg ?? CAMERA_AZIMUTH_DEG }));
   const [rect, setRect] = useState<CssRect>({ left: 0, top: 0, width: 0, height: 0 });
   const [gestureActive, setGestureActive] = useState(false);
   const viewRef = useRef(view);
@@ -178,9 +182,10 @@ export function useBoardViewport({
     };
   }, [effectiveBounds, fittedCenter]);
 
-  const applyView = useCallback((next: ViewState) => {
+  const applyView = useCallback((next: Omit<ViewState, 'azimuthDeg'> & { azimuthDeg?: number }) => {
     const zoom = clamp(next.zoom, MIN_BOARD_ZOOM, MAX_BOARD_ZOOM);
-    const value = { zoom, center: clampCenter(next.center, zoom) };
+    const azimuthDeg = next.azimuthDeg ?? viewRef.current.azimuthDeg;
+    const value = { zoom, center: clampCenter(next.center, zoom), azimuthDeg: ((azimuthDeg % 360) + 360) % 360 };
     viewRef.current = value;
     setView(value);
   }, [clampCenter]);
@@ -191,9 +196,15 @@ export function useBoardViewport({
     applyView({ center: current.center, zoom: value });
   }, [applyView]);
 
+  const rotate = useCallback((deltaDeg: number) => {
+    if (renderer === 'svg' || !Number.isFinite(deltaDeg) || gestureRef.current) return;
+    const current = viewRef.current;
+    applyView({ ...current, azimuthDeg: current.azimuthDeg + deltaDeg });
+  }, [applyView, renderer]);
+
   const fit = useCallback(() => {
     measureRef.current();
-    applyView({ center: fittedCenter, zoom: 1 });
+    applyView({ center: fittedCenter, zoom: 1, azimuthDeg: CAMERA_AZIMUTH_DEG });
   }, [applyView, fittedCenter]);
 
   const measure = useCallback(() => {
@@ -274,7 +285,7 @@ export function useBoardViewport({
   useEffect(() => {
     if (resetKeyRef.current === currentResetKey) return;
     resetKeyRef.current = currentResetKey;
-    applyView({ center: fittedCenter, zoom: requestedInitialZoom });
+    applyView({ center: fittedCenter, zoom: requestedInitialZoom, azimuthDeg: CAMERA_AZIMUTH_DEG });
   }, [applyView, currentResetKey, fittedCenter, requestedInitialZoom]);
 
   const screenDeltaToWorld = useCallback((
@@ -514,19 +525,27 @@ export function useBoardViewport({
     } else if (event.key === '0' || event.key === 'Home') {
       event.preventDefault();
       fit();
+    } else if (renderer !== 'svg' && (event.key === '[' || event.key === ']')) {
+      event.preventDefault();
+      rotate(event.key === '[' ? -30 : 30);
     } else if (event.key.startsWith('Arrow')) {
       event.preventDefault();
       const stepX = (effectiveBounds.max.x - effectiveBounds.min.x) * 0.08 / current.zoom;
       const stepZ = (effectiveBounds.max.z - effectiveBounds.min.z) * 0.08 / current.zoom;
+      const directionX = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+      const directionY = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
+      const delta = renderer !== 'svg' && projection
+        ? screenDeltaToWorld({ x: directionX * rect.width * 0.08, y: directionY * rect.height * 0.08 }, current.zoom, current.center)
+        : { x: directionX * stepX, y: directionY * stepZ };
       applyView({
         zoom: current.zoom,
         center: {
-          x: current.center.x + (event.key === 'ArrowRight' ? stepX : event.key === 'ArrowLeft' ? -stepX : 0),
-          z: current.center.z + (event.key === 'ArrowDown' ? stepZ : event.key === 'ArrowUp' ? -stepZ : 0),
+          x: current.center.x + delta.x,
+          z: current.center.z + delta.y,
         },
       });
     }
-  }, [applyView, effectiveBounds, fit, setZoom]);
+  }, [applyView, effectiveBounds, fit, projection, rect, renderer, rotate, screenDeltaToWorld, setZoom]);
 
   useEffect(() => () => {
     gestureRef.current?.pointers.clear();
@@ -561,14 +580,17 @@ export function useBoardViewport({
   const viewport = useMemo<BoardViewportState>(() => ({
     center: view.center,
     zoom: view.zoom,
+    azimuthDeg: view.azimuthDeg,
     // A hidden/zero-sized surface is authoritative and invalidates stale targets.
     rect,
   }), [rect, view]);
 
   const cameraFit = useMemo(() => {
     if (!finiteRect(rect)) return null;
-    return fitOrthographicCamera(effectiveBounds, rect, camera);
-  }, [camera, effectiveBounds, rect]);
+    return fitOrthographicCamera(effectiveBounds, rect, {
+      elevationDeg: cameraElevation(rect), margin: 0.08, ...camera, azimuthDeg: view.azimuthDeg,
+    });
+  }, [camera, effectiveBounds, rect, view.azimuthDeg]);
 
   const surfaceProps: BoardGestureProps = {
     onPointerDown,
@@ -589,6 +611,7 @@ export function useBoardViewport({
     pan: svgPanForCenter(geometry, view.center, view.zoom),
     cameraFit,
     setZoom,
+    rotate,
     fit,
     measure,
     gestureActive,

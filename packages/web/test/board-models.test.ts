@@ -83,8 +83,9 @@ describe('modeled board pieces', () => {
 
     const resources = boardSceneResources();
     expect(resources.geometries.tileCap).not.toBe(resources.geometries.tileWall);
-    expect(resources.materials.tileSide).not.toBe(resources.materials.tileTop.forest);
-    expect(Object.values(resources.materials.tileTop)).not.toContain(resources.materials.tileSide);
+    expect(resources.materials.tileSide).not.toBe(resources.materials.diorama);
+    expect(resources.materials.tileSide.vertexColors).toBe(false);
+    expect(resources.materials.diorama.vertexColors).toBe(true);
     surfaces.cap.dispose();
     surfaces.wall.dispose();
     tile.dispose();
@@ -199,7 +200,7 @@ describe('modeled board pieces', () => {
     const bounds56 = sceneBounds(buildGeometry('hex-r56', 100), board56);
     for (const bounds of [bounds2, bounds56]) {
       expect([bounds.min.x, bounds.min.y, bounds.min.z, bounds.max.x, bounds.max.y, bounds.max.z].every(Number.isFinite)).toBe(true);
-      expect(bounds.min.y).toBeCloseTo(-BOARD_MODEL_METRICS.tileSideHeight, 10);
+      expect(bounds.min.y).toBeCloseTo(-BOARD_MODEL_METRICS.coastDepth, 10);
       expect(bounds.max.y).toBeGreaterThanOrEqual(BOARD_MODEL_METRICS.robberHeight);
       expect(bounds.max.x - bounds.min.x).toBeLessThan(17);
       expect(bounds.max.z - bounds.min.z).toBeLessThan(16);

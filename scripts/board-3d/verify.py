@@ -651,14 +651,18 @@ def privacy_events(browser, base, args, fixture, report, out) -> None:
             failure = scenario.page.get_by_test_id("board").locator("xpath=.").get_attribute("data-renderer-status")
             if failure == "failed":
                 raise RuntimeError(f"renderer failed during privacy capture: {failure}")
-            theft = scenario.page.get_by_test_id("neutral-theft")
-            theft.wait_for(state="attached", timeout=10000)
-            overlay = scenario.page.get_by_test_id("board-effects")
-            markup.append(overlay.inner_html())
+            # Read the transient overlay atomically while it exists. A screenshot
+            # may outlive its normal 800ms lifetime, especially on software GPUs.
+            sample = scenario.page.wait_for_function("""() => {
+              const overlay = document.querySelector('[data-testid="board-effects"]');
+              if (!overlay?.querySelector('[data-testid="neutral-theft"]')) return false;
+              return {markup: overlay.innerHTML, text: overlay.textContent};
+            }""", timeout=10000).json_value()
+            markup.append(sample["markup"])
             image = scenario.screenshot(f"privacy-{item['viewer']}", viewport=(1366, 768), locale="en")
             report["artifacts"].append(relative(image))
-            case(report, f"E05-privacy-{item['viewer']}", "PASS" if overlay.text_content() == "" and not scenario.errors else "FAIL",
-                 viewer=item["viewer"], screenshot=relative(image), evidence=evidence_base(report, scenario))
+            case(report, f"E05-privacy-{item['viewer']}", "PASS" if sample["text"] == "" and not scenario.errors else "FAIL",
+                 viewer=item["viewer"], activeOverlay=sample, screenshot=relative(image), evidence=evidence_base(report, scenario))
         except Exception as error:
             case(report, f"E05-privacy-{item['viewer']}", "FAIL", error=str(error), traceback=traceback.format_exc())
         finally:

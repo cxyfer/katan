@@ -107,11 +107,34 @@ function installRects() {
 beforeEach(() => {
   sceneMock.props = null;
   sceneMock.unavailable = null;
-  history.replaceState(null, '', '/');
+  // Start on the compatibility renderer so these tests exercise explicit switches.
+  history.replaceState(null, '', '/?renderer=svg');
   installRects();
 });
 
 describe('renderer lifecycle and presentation cursor', () => {
+  it('exposes camera rotation only in 3D, preserves game selection, and restores the initial view', async () => {
+    const api = createFakeApi({ snapshot: rolled(12) });
+    await openGame(api);
+    expect(screen.queryByTestId('rotate-left')).toBeNull();
+    fireEvent.change(screen.getByTestId('renderer-select'), { target: { value: 'r3f' } });
+    await waitFor(() => expect(screen.getByTestId('board').getAttribute('data-effective-renderer')).toBe('r3f'));
+    fireEvent.click(screen.getByTestId('action-build.road'));
+    fireEvent.click(await screen.findByTestId('target-edge-5'));
+    await screen.findByTestId('selection-preview');
+    fireEvent.click(screen.getByRole('button', { name: 'Rotate right' }));
+    expect(sceneMock.props!.viewport.azimuthDeg).toBe(50);
+    fireEvent.keyDown(screen.getByTestId('board-surface'), { key: '[' });
+    expect(sceneMock.props!.viewport.azimuthDeg).toBe(20);
+    fireEvent.keyDown(screen.getByTestId('board-surface'), { key: '[' });
+    expect(sceneMock.props!.viewport.azimuthDeg).toBe(350);
+    fireEvent.click(screen.getByTestId('reset-view'));
+    expect(sceneMock.props!.viewport.azimuthDeg).toBe(20);
+    expect(screen.getByTestId('selection-preview')).toBeTruthy();
+    expect(screen.getAllByTestId('target-edge-5')).toHaveLength(1);
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
   it('L01 cancels the active presentation on a renderer switch and plays only the next authoritative event', async () => {
     const socket = new TestSocket();
     const api = createFakeApi({ snapshot: rolled(12) });

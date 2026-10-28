@@ -41,11 +41,11 @@ export default function BoardScene3D(props: BoardSceneProps) {
           fallback={<span>3D rendering unavailable</span>}
           onCreated={({ gl }) => {
             gl.toneMapping = ACESFilmicToneMapping;
-            gl.toneMappingExposure = 1.05;
+            gl.toneMappingExposure = 1.12;
             gl.shadowMap.type = PCFShadowMap;
           }}
         >
-          <color attach="background" args={['#102c3b']} />
+          <color attach="background" args={['#529da7']} />
           <SceneContent {...props} />
         </Canvas>
       </div>

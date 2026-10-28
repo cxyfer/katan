@@ -60,9 +60,9 @@ function finiteBounds(bounds: SceneBounds): boolean {
 }
 
 /**
- * Fits all eight corners of the complete scene bounds into an orthographic
+ * Fits the complete model envelope (or all eight bounds corners) into an orthographic
  * camera. Desktop callers use the default 50 degree elevation; a narrow
- * portrait caller passes 60 degrees. Azimuth stays fixed at 20 degrees.
+ * portrait caller passes 60 degrees. The initial azimuth is 20 degrees.
  */
 export function fitOrthographicCamera(
   bounds: SceneBounds,
@@ -74,6 +74,10 @@ export function fitOrthographicCamera(
   }: Omit<CameraFitOptions, 'bounds' | 'rect'> = {},
 ): OrthographicCameraFit {
   if (!finiteBounds(bounds)) throw new RangeError('scene bounds must be finite and ordered');
+  if (bounds.fitPoints && (bounds.fitPoints.length === 0 || bounds.fitPoints.some((point) =>
+    ![point.x, point.y, point.z].every(Number.isFinite)))) {
+    throw new RangeError('scene fit points must be nonempty and finite');
+  }
   if (!Number.isFinite(viewport.width) || !Number.isFinite(viewport.height) || viewport.width <= 0 || viewport.height <= 0) {
     throw new RangeError('camera fit requires a positive CSS rect');
   }
@@ -103,23 +107,24 @@ export function fitOrthographicCamera(
   let minY = Infinity;
   let maxY = -Infinity;
   let maxForward = 0;
-  for (const x of [bounds.min.x, bounds.max.x]) {
-    for (const y of [bounds.min.y, bounds.max.y]) {
-      for (const z of [bounds.min.z, bounds.max.z]) {
-        const relative = subtract({ x, y, z }, target);
-        const projectedX = dot(relative, right);
-        const projectedY = dot(relative, cameraUp);
-        minX = Math.min(minX, projectedX);
-        maxX = Math.max(maxX, projectedX);
-        minY = Math.min(minY, projectedY);
-        maxY = Math.max(maxY, projectedY);
-        maxForward = Math.max(maxForward, Math.abs(dot(relative, forward)));
-      }
-    }
+  const points = bounds.fitPoints ?? [bounds.min.x, bounds.max.x].flatMap((x) =>
+    [bounds.min.y, bounds.max.y].flatMap((y) => [bounds.min.z, bounds.max.z].map((z) => ({ x, y, z }))));
+  for (const point of points) {
+    const relative = subtract(point, target);
+    const projectedX = dot(relative, right);
+    const projectedY = dot(relative, cameraUp);
+    minX = Math.min(minX, projectedX);
+    maxX = Math.max(maxX, projectedX);
+    minY = Math.min(minY, projectedY);
+    maxY = Math.max(maxY, projectedY);
+    maxForward = Math.max(maxForward, Math.abs(dot(relative, forward)));
   }
 
   const aspect = viewport.width / viewport.height;
-  const halfHeight = Math.max((maxY - minY) / 2, (maxX - minX) / (2 * aspect)) * (1 + margin);
+  // The target stays at the bounds center; an asymmetric envelope must reserve
+  // its furthest extent on each axis instead of half its min/max span.
+  const halfHeight = Math.max(Math.abs(minY), Math.abs(maxY),
+    Math.abs(minX) / aspect, Math.abs(maxX) / aspect) * (1 + margin);
   const halfWidth = halfHeight * aspect;
   const radius = Math.hypot(bounds.max.x - bounds.min.x, bounds.max.y - bounds.min.y, bounds.max.z - bounds.min.z) / 2;
   const distance = Math.max(radius * 3, 1);

@@ -42,7 +42,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const [cluster, setCluster] = useState<number[] | null>(null);
   const [requested, setRequested] = useState<RendererMode>(() => {
     const query = new URLSearchParams(globalThis.location.search);
-    return query.has('renderer') ? rendererMode(query.get('renderer')) : 'svg';
+    return rendererMode(query.get('renderer'));
   });
   const [quality, setQuality] = useState(() => qualityMode(new URLSearchParams(globalThis.location.search).get('quality')));
   const [ready, setReady] = useState(false);
@@ -133,7 +133,7 @@ export function BoardView({ controller }: { controller: TableController }) {
     ? { kind: intent.kind, index: state.selection.index, playerId: selfId } : null;
 
   return (
-    <div className="board" data-testid="board" data-zoom={zoom} ref={boardRef}
+    <div className="board" data-testid="board" data-zoom={zoom} data-camera-azimuth={controls.viewport.azimuthDeg} ref={boardRef}
       data-requested-renderer={requested} data-effective-renderer={effective} data-quality={quality}
       data-renderer-status={failure ? 'failed' : requested === 'svg' ? 'idle' : effective === 'r3f' ? 'ready' : 'loading'} data-fallback-reason={failure ?? undefined}>
       {setup && (
@@ -165,6 +165,14 @@ export function BoardView({ controller }: { controller: TableController }) {
         >
           {t('board.zoomOut')}
         </button>
+        {effective === 'r3f' && <>
+          <button type="button" className="button button--ghost" data-testid="rotate-left"
+            aria-keyshortcuts="[" title={t('board.rotateLeftHint')} disabled={controls.gestureActive}
+            onClick={() => controls.rotate(-30)}>{t('board.rotateLeft')}</button>
+          <button type="button" className="button button--ghost" data-testid="rotate-right"
+            aria-keyshortcuts="]" title={t('board.rotateRightHint')} disabled={controls.gestureActive}
+            onClick={() => controls.rotate(30)}>{t('board.rotateRight')}</button>
+        </>}
         <button
           type="button"
           className="button button--ghost"

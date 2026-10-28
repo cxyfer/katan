@@ -7,17 +7,18 @@ export const BOARD_MODEL_METRICS = Object.freeze({
   tileRadius: 1,
   // Extrusion depth 0.18 plus one 0.008 bevel on each side.
   tileSideHeight: 0.196,
+  coastDepth: 0.34,
   tileGap: 0.012,
   roadHalfWidth: 0.05,
-  terrainHeight: 0.34,
-  buildingHeight: 0.31,
+  terrainHeight: 0.86,
+  buildingHeight: 0.61,
   robberOriginY: 0.01,
   robberLocalHeight: 0.565,
   // Hood cone translated to 0.455 with a 0.11 half-height, plus the group Y.
   robberHeight: 0.575,
   badgeHeight: 0.06,
-  harborOffset: 0.38,
-  harborHalfDiagonal: 0.31,
+  harborOffset: 0.85,
+  harborHalfDiagonal: 0.43,
 });
 
 export interface BoardPlanePoint {
@@ -51,8 +52,9 @@ function includePoint(bounds: SceneBounds, point: WorldPoint): void {
  * or robber, even when a particular sparse board does not currently use it.
  */
 export function sceneBounds(geometry: BoardGeometry, _board?: PublicBoardView): SceneBounds {
+  const fitPoints: WorldPoint[] = [];
   const bounds: SceneBounds = {
-    min: { x: Infinity, y: -BOARD_MODEL_METRICS.tileSideHeight, z: Infinity },
+    min: { x: Infinity, y: -BOARD_MODEL_METRICS.coastDepth, z: Infinity },
     max: { x: -Infinity, y: Math.max(
       BOARD_MODEL_METRICS.terrainHeight,
       BOARD_MODEL_METRICS.buildingHeight,
@@ -65,6 +67,9 @@ export function sceneBounds(geometry: BoardGeometry, _board?: PublicBoardView): 
     for (const corner of hex.corners) {
       const point = geometryToWorld(geometry, corner.x, corner.y);
       includePoint(bounds, { x: point.x, y: 0, z: point.z });
+      for (const y of [-BOARD_MODEL_METRICS.coastDepth, BOARD_MODEL_METRICS.terrainHeight]) {
+        fitPoints.push({ ...point, y });
+      }
     }
   }
 
@@ -75,6 +80,14 @@ export function sceneBounds(geometry: BoardGeometry, _board?: PublicBoardView): 
       y: 0,
       z: point.z,
     });
+    // A rotated city footprint fits inside this square around its vertex.
+    for (const dx of [-0.31, 0.31]) for (const dz of [-0.31, 0.31]) {
+      for (const y of [-BOARD_MODEL_METRICS.coastDepth, BOARD_MODEL_METRICS.buildingHeight]) {
+        const corner = { x: point.x + dx, y, z: point.z + dz };
+        fitPoints.push(corner);
+        includePoint(bounds, corner);
+      }
+    }
   }
 
   // Roads overhang a shared endpoint by at most half a road width. Apply the
@@ -84,26 +97,38 @@ export function sceneBounds(geometry: BoardGeometry, _board?: PublicBoardView): 
   bounds.min.z -= BOARD_MODEL_METRICS.roadHalfWidth;
   bounds.max.z += BOARD_MODEL_METRICS.roadHalfWidth;
 
-  // Harbors may extend beyond the topology. Their exact in-plane angle is not
-  // needed for fitting, so reserve the plaque half diagonal around each edge
-  // midpoint. This remains complete if art direction changes the long axis.
-  const [viewX, viewY, viewWidth, viewHeight] = geometry.viewBox.trim().split(/[\s,]+/).map(Number);
-  const width = viewWidth! / geometry.scale;
-  const height = viewHeight! / geometry.scale;
-  if (Number.isFinite(width) && Number.isFinite(height)) {
-    const edgeExtension = Math.max(BOARD_MODEL_METRICS.harborOffset, BOARD_MODEL_METRICS.harborHalfDiagonal);
-    const left = viewX! / geometry.scale;
-    const top = viewY! / geometry.scale;
-    bounds.min.x = Math.min(bounds.min.x, left - edgeExtension);
-    bounds.max.x = Math.max(bounds.max.x, left + width + edgeExtension);
-    bounds.min.z = Math.min(bounds.min.z, top - edgeExtension);
-    bounds.max.z = Math.max(bounds.max.z, top + height + edgeExtension);
+  // Fit actual coastal models instead of the SVG viewBox's label padding.
+  // A pier is .85 long seaward, with .43 reserved on either side of its axis.
+  for (const edge of geometry.edges) {
+    const topologyEdge = geometry.topology.edges[edge.index];
+    if (!topologyEdge || topologyEdge.hexes.length !== 1) continue;
+    const hex = geometry.hexes[topologyEdge.hexes[0]!]!;
+    const a = geometryToWorld(geometry, edge.x1, edge.y1);
+    const b = geometryToWorld(geometry, edge.x2, edge.y2);
+    const center = geometryToWorld(geometry, hex.cx, hex.cy);
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const length = Math.hypot(dx, dz);
+    const mx = (a.x + b.x) / 2;
+    const mz = (a.z + b.z) / 2;
+    const sign = (mx - center.x) * dz + (mz - center.z) * -dx > 0 ? 1 : -1;
+    for (const side of [-1, 1]) for (const outward of [0, BOARD_MODEL_METRICS.harborOffset]) {
+      for (const y of [-BOARD_MODEL_METRICS.coastDepth, 0.55]) {
+        const corner = {
+          x: mx + dz / length * sign * outward + dx / length * side * BOARD_MODEL_METRICS.harborHalfDiagonal,
+          y,
+          z: mz - dx / length * sign * outward + dz / length * side * BOARD_MODEL_METRICS.harborHalfDiagonal,
+        };
+        fitPoints.push(corner);
+        includePoint(bounds, corner);
+      }
+    }
   }
 
   if (![bounds.min.x, bounds.min.y, bounds.min.z, bounds.max.x, bounds.max.y, bounds.max.z].every(Number.isFinite)) {
     return { min: { x: -1, y: -BOARD_MODEL_METRICS.tileSideHeight, z: -1 }, max: { x: 1, y: 1, z: 1 } };
   }
-  return bounds;
+  return { ...bounds, fitPoints };
 }
 
 export function boundsCenter(bounds: SceneBounds): BoardPlanePoint {

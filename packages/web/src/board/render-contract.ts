@@ -8,10 +8,17 @@ export type RendererMode = 'auto' | 'svg' | 'r3f';
 export type QualityMode = 'standard' | 'low';
 export interface CssRect { left: number; top: number; width: number; height: number }
 export interface WorldPoint { x: number; y: number; z: number }
-export interface SceneBounds { min: WorldPoint; max: WorldPoint }
+export interface SceneBounds {
+  min: WorldPoint;
+  max: WorldPoint;
+  /** Complete model-envelope corners used to avoid fitting empty AABB corners. */
+  fitPoints?: readonly WorldPoint[];
+}
 export interface BoardViewportState {
   center: { x: number; z: number };
   zoom: number;
+  /** Camera orbit around the board; omitted callers keep the initial 20° view. */
+  azimuthDeg?: number;
   rect: CssRect;
 }
 export interface ProjectionSnapshot {

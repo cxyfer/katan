@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BoardSceneProps } from '../src/board/render-contract.ts';
+import type { CommandRequest } from '@catan/protocol';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
@@ -11,6 +12,7 @@ const sceneMock = vi.hoisted(() => ({
   mounts: 0,
   props: null as BoardSceneProps | null,
   unavailable: null as string | null,
+  autoReady: true,
 }));
 
 vi.mock('../src/board/three/BoardScene3D.tsx', () => {
@@ -29,7 +31,7 @@ vi.mock('../src/board/three/BoardScene3D.tsx', () => {
           version: 1,
           clip: { near: -1, far: 1 },
         });
-        props.onReady();
+        if (sceneMock.autoReady) props.onReady();
       }, [props.onProjection, props.onReady, props.onUnavailable, props.viewport.rect]);
       return <div data-testid="board-scene-mock" aria-hidden="true" />;
     },
@@ -50,7 +52,9 @@ beforeEach(() => {
   sceneMock.props = null;
   sceneMock.unavailable = null;
   sceneMock.mounts = 0;
-  history.replaceState(null, '', '/');
+  sceneMock.autoReady = true;
+  // Most boundary cases start on SVG and explicitly request the 3D transition.
+  history.replaceState(null, '', '/?renderer=svg');
   const original = HTMLElement.prototype.getBoundingClientRect;
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
     if (this.dataset.testid === 'board-surface') {
@@ -72,6 +76,44 @@ beforeEach(() => {
 });
 
 describe('renderer fallback boundary', { timeout: 15_000 }, () => {
+  it('defaults / to auto, waits for 3D readiness, and preserves the controller through fallback', async () => {
+    history.replaceState(null, '', '/');
+    sceneMock.autoReady = false;
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints({ legalRoads: [5] }) })) });
+    await openGame(api);
+    const board = screen.getByTestId('board');
+    expect(board.getAttribute('data-requested-renderer')).toBe('auto');
+    expect(board.getAttribute('data-effective-renderer')).toBe('svg');
+    expect(board.getAttribute('data-renderer-status')).toBe('loading');
+    expect(screen.getByTestId('renderer-select')).toHaveProperty('value', 'auto');
+    await screen.findByTestId('board-scene-mock');
+    act(() => sceneMock.props!.onReady());
+    await waitFor(() => expect(board.getAttribute('data-effective-renderer')).toBe('r3f'));
+    expect(board.getAttribute('data-renderer-status')).toBe('ready');
+    expect(screen.queryByTestId('board-svg')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('action-build.road'));
+    fireEvent.click(await screen.findByTestId('target-edge-5'));
+    await screen.findByTestId('selection-preview');
+    const focus = document.activeElement;
+    act(() => sceneMock.props!.onUnavailable('webgl-context-lost'));
+    await waitFor(() => expect(board.getAttribute('data-renderer-status')).toBe('failed'));
+    expect(board.getAttribute('data-requested-renderer')).toBe('auto');
+    expect(board.getAttribute('data-effective-renderer')).toBe('svg');
+    expect(screen.getByTestId('board-svg')).toBeTruthy();
+    expect(screen.getAllByTestId('target-edge-5')).toHaveLength(1);
+    expect(screen.getByTestId('target-edge-5').getAttribute('aria-pressed')).toBe('true');
+    expect(document.activeElement).toBe(focus);
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+
+    api.setCommandResult({ ok: true, data: { commandId: 'display-fallback', outcome: 'accepted', revision: 13, events: [] } });
+    fireEvent.click(screen.getByTestId('confirm-selection'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    const request = api.callsOf('sendCommand')[0]!.args[1] as CommandRequest;
+    expect(request.command).toEqual({ type: 'build.road', edge: 5 });
+    expect(request.expectedRevision).toBe(12);
+  });
+
   it('normalizes an unknown renderer query to auto and waits for loading to become ready', async () => {
     history.replaceState(null, '', '/?renderer=not-a-renderer&quality=cinematic');
     await openGame(createFakeApi());
