@@ -18,7 +18,7 @@
       "ok": true
     },
     {
-      "name": "01-entry/1366/zh-Hant: button targets >=44px",
+      "name": "01-entry/1366/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -34,7 +34,7 @@
       "ok": true
     },
     {
-      "name": "01-entry/1366/en: button targets >=44px",
+      "name": "01-entry/1366/en: button targets >=36px",
       "ok": true
     },
     {
@@ -50,7 +50,7 @@
       "ok": true
     },
     {
-      "name": "01-entry/768/zh-Hant: button targets >=44px",
+      "name": "01-entry/768/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -66,7 +66,7 @@
       "ok": true
     },
     {
-      "name": "01-entry/768/en: button targets >=44px",
+      "name": "01-entry/768/en: button targets >=36px",
       "ok": true
     },
     {
@@ -82,7 +82,7 @@
       "ok": true
     },
     {
-      "name": "01-entry/360/zh-Hant: button targets >=44px",
+      "name": "01-entry/360/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -98,7 +98,7 @@
       "ok": true
     },
     {
-      "name": "01-entry/360/en: button targets >=44px",
+      "name": "01-entry/360/en: button targets >=36px",
       "ok": true
     },
     {
@@ -114,7 +114,7 @@
       "ok": true
     },
     {
-      "name": "01-entry/390/zh-Hant: button targets >=44px",
+      "name": "01-entry/390/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -130,7 +130,7 @@
       "ok": true
     },
     {
-      "name": "01-entry/390/en: button targets >=44px",
+      "name": "01-entry/390/en: button targets >=36px",
       "ok": true
     },
     {
@@ -150,7 +150,7 @@
       "ok": true
     },
     {
-      "name": "02-home/1366/zh-Hant: button targets >=44px",
+      "name": "02-home/1366/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -170,7 +170,7 @@
       "ok": true
     },
     {
-      "name": "02-home/1366/en: button targets >=44px",
+      "name": "02-home/1366/en: button targets >=36px",
       "ok": true
     },
     {
@@ -190,7 +190,7 @@
       "ok": true
     },
     {
-      "name": "02-home/768/zh-Hant: button targets >=44px",
+      "name": "02-home/768/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -210,7 +210,7 @@
       "ok": true
     },
     {
-      "name": "02-home/768/en: button targets >=44px",
+      "name": "02-home/768/en: button targets >=36px",
       "ok": true
     },
     {
@@ -230,7 +230,7 @@
       "ok": true
     },
     {
-      "name": "02-home/360/zh-Hant: button targets >=44px",
+      "name": "02-home/360/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -250,7 +250,7 @@
       "ok": true
     },
     {
-      "name": "02-home/360/en: button targets >=44px",
+      "name": "02-home/360/en: button targets >=36px",
       "ok": true
     },
     {
@@ -270,7 +270,7 @@
       "ok": true
     },
     {
-      "name": "02-home/390/zh-Hant: button targets >=44px",
+      "name": "02-home/390/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -290,7 +290,7 @@
       "ok": true
     },
     {
-      "name": "02-home/390/en: button targets >=44px",
+      "name": "02-home/390/en: button targets >=36px",
       "ok": true
     },
     {
@@ -314,7 +314,7 @@
       "ok": true
     },
     {
-      "name": "03-lobby/1366/zh-Hant: button targets >=44px",
+      "name": "03-lobby/1366/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -338,7 +338,7 @@
       "ok": true
     },
     {
-      "name": "03-lobby/1366/en: button targets >=44px",
+      "name": "03-lobby/1366/en: button targets >=36px",
       "ok": true
     },
     {
@@ -362,7 +362,7 @@
       "ok": true
     },
     {
-      "name": "03-lobby/768/zh-Hant: button targets >=44px",
+      "name": "03-lobby/768/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -386,7 +386,7 @@
       "ok": true
     },
     {
-      "name": "03-lobby/768/en: button targets >=44px",
+      "name": "03-lobby/768/en: button targets >=36px",
       "ok": true
     },
     {
@@ -410,7 +410,7 @@
       "ok": true
     },
     {
-      "name": "03-lobby/360/zh-Hant: button targets >=44px",
+      "name": "03-lobby/360/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -434,7 +434,7 @@
       "ok": true
     },
     {
-      "name": "03-lobby/360/en: button targets >=44px",
+      "name": "03-lobby/360/en: button targets >=36px",
       "ok": true
     },
     {
@@ -458,7 +458,7 @@
       "ok": true
     },
     {
-      "name": "03-lobby/390/zh-Hant: button targets >=44px",
+      "name": "03-lobby/390/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -482,7 +482,7 @@
       "ok": true
     },
     {
-      "name": "03-lobby/390/en: button targets >=44px",
+      "name": "03-lobby/390/en: button targets >=36px",
       "ok": true
     },
     {
@@ -506,7 +506,7 @@
       "ok": true
     },
     {
-      "name": "04-setup/1366/zh-Hant: button targets >=44px",
+      "name": "04-setup/1366/zh-Hant: button targets >=24px",
       "ok": true
     },
     {
@@ -526,7 +526,7 @@
       "ok": true
     },
     {
-      "name": "04-setup/1366/en: button targets >=44px",
+      "name": "04-setup/1366/en: button targets >=24px",
       "ok": true
     },
     {
@@ -546,7 +546,7 @@
       "ok": true
     },
     {
-      "name": "04-setup/768/zh-Hant: button targets >=44px",
+      "name": "04-setup/768/zh-Hant: button targets >=24px",
       "ok": true
     },
     {
@@ -566,7 +566,7 @@
       "ok": true
     },
     {
-      "name": "04-setup/768/en: button targets >=44px",
+      "name": "04-setup/768/en: button targets >=24px",
       "ok": true
     },
     {
@@ -586,7 +586,7 @@
       "ok": true
     },
     {
-      "name": "04-setup/360/zh-Hant: button targets >=44px",
+      "name": "04-setup/360/zh-Hant: button targets >=24px",
       "ok": true
     },
     {
@@ -606,7 +606,7 @@
       "ok": true
     },
     {
-      "name": "04-setup/360/en: button targets >=44px",
+      "name": "04-setup/360/en: button targets >=24px",
       "ok": true
     },
     {
@@ -626,7 +626,7 @@
       "ok": true
     },
     {
-      "name": "04-setup/390/zh-Hant: button targets >=44px",
+      "name": "04-setup/390/zh-Hant: button targets >=24px",
       "ok": true
     },
     {
@@ -646,7 +646,7 @@
       "ok": true
     },
     {
-      "name": "04-setup/390/en: button targets >=44px",
+      "name": "04-setup/390/en: button targets >=24px",
       "ok": true
     },
     {
@@ -778,7 +778,7 @@
       "ok": true
     },
     {
-      "name": "05-game/1366/zh-Hant: button targets >=44px",
+      "name": "05-game/1366/zh-Hant: button targets >=24px",
       "ok": true
     },
     {
@@ -810,7 +810,7 @@
       "ok": true
     },
     {
-      "name": "05-game/1366/en: button targets >=44px",
+      "name": "05-game/1366/en: button targets >=24px",
       "ok": true
     },
     {
@@ -842,7 +842,7 @@
       "ok": true
     },
     {
-      "name": "05-game/768/zh-Hant: button targets >=44px",
+      "name": "05-game/768/zh-Hant: button targets >=24px",
       "ok": true
     },
     {
@@ -874,7 +874,7 @@
       "ok": true
     },
     {
-      "name": "05-game/768/en: button targets >=44px",
+      "name": "05-game/768/en: button targets >=24px",
       "ok": true
     },
     {
@@ -906,7 +906,7 @@
       "ok": true
     },
     {
-      "name": "05-game/360/zh-Hant: button targets >=44px",
+      "name": "05-game/360/zh-Hant: button targets >=24px",
       "ok": true
     },
     {
@@ -938,7 +938,7 @@
       "ok": true
     },
     {
-      "name": "05-game/360/en: button targets >=44px",
+      "name": "05-game/360/en: button targets >=24px",
       "ok": true
     },
     {
@@ -970,7 +970,7 @@
       "ok": true
     },
     {
-      "name": "05-game/390/zh-Hant: button targets >=44px",
+      "name": "05-game/390/zh-Hant: button targets >=24px",
       "ok": true
     },
     {
@@ -1002,7 +1002,7 @@
       "ok": true
     },
     {
-      "name": "05-game/390/en: button targets >=44px",
+      "name": "05-game/390/en: button targets >=24px",
       "ok": true
     },
     {
@@ -1026,6 +1026,14 @@
       "ok": true
     },
     {
+      "name": "the retired mobile drawer is no longer mounted",
+      "ok": true
+    },
+    {
+      "name": "mobile trade draft records the added resource",
+      "ok": true
+    },
+    {
       "name": "mobile trade draft survives panel switching",
       "ok": true
     },
@@ -1034,11 +1042,11 @@
       "ok": true
     },
     {
-      "name": "required prompt is outside secondary drawer",
+      "name": "required prompt is outside the tool surface",
       "ok": true
     },
     {
-      "name": "mobile event history is reachable",
+      "name": "mobile event history is reachable from the log tab",
       "ok": true
     },
     {
@@ -1062,7 +1070,7 @@
       "ok": true
     },
     {
-      "name": "07-result-fixture/1366/zh-Hant: button targets >=44px",
+      "name": "07-result-fixture/1366/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -1082,7 +1090,7 @@
       "ok": true
     },
     {
-      "name": "07-result-fixture/1366/en: button targets >=44px",
+      "name": "07-result-fixture/1366/en: button targets >=36px",
       "ok": true
     },
     {
@@ -1102,7 +1110,7 @@
       "ok": true
     },
     {
-      "name": "07-result-fixture/768/zh-Hant: button targets >=44px",
+      "name": "07-result-fixture/768/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -1122,7 +1130,7 @@
       "ok": true
     },
     {
-      "name": "07-result-fixture/768/en: button targets >=44px",
+      "name": "07-result-fixture/768/en: button targets >=36px",
       "ok": true
     },
     {
@@ -1142,7 +1150,7 @@
       "ok": true
     },
     {
-      "name": "07-result-fixture/360/zh-Hant: button targets >=44px",
+      "name": "07-result-fixture/360/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -1162,7 +1170,7 @@
       "ok": true
     },
     {
-      "name": "07-result-fixture/360/en: button targets >=44px",
+      "name": "07-result-fixture/360/en: button targets >=36px",
       "ok": true
     },
     {
@@ -1182,7 +1190,7 @@
       "ok": true
     },
     {
-      "name": "07-result-fixture/390/zh-Hant: button targets >=44px",
+      "name": "07-result-fixture/390/zh-Hant: button targets >=36px",
       "ok": true
     },
     {
@@ -1202,7 +1210,7 @@
       "ok": true
     },
     {
-      "name": "07-result-fixture/390/en: button targets >=44px",
+      "name": "07-result-fixture/390/en: button targets >=36px",
       "ok": true
     },
     {
@@ -1367,7 +1375,28 @@
         "width": 1366,
         "documentWidth": 1366,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "建立／加入",
+            "width": 106.75,
+            "height": 36
+          },
+          {
+            "id": "繼續對局",
+            "width": 95.234375,
+            "height": 36
+          },
+          {
+            "id": "公開房間",
+            "width": 95.234375,
+            "height": 36
+          },
+          {
+            "id": "身分設定",
+            "width": 95.234375,
+            "height": 36
+          }
+        ],
         "languageVisible": true,
         "board": null
       }
@@ -1384,7 +1413,28 @@
         "width": 1366,
         "documentWidth": 1366,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "Play table",
+            "width": 105.640625,
+            "height": 36
+          },
+          {
+            "id": "Resume",
+            "width": 94.40625,
+            "height": 36
+          },
+          {
+            "id": "Public rooms",
+            "width": 123.53125,
+            "height": 36
+          },
+          {
+            "id": "Identity",
+            "width": 94.28125,
+            "height": 36
+          }
+        ],
         "languageVisible": true,
         "board": null
       }
@@ -1401,7 +1451,28 @@
         "width": 768,
         "documentWidth": 768,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "建立／加入",
+            "width": 106.75,
+            "height": 36
+          },
+          {
+            "id": "繼續對局",
+            "width": 95.234375,
+            "height": 36
+          },
+          {
+            "id": "公開房間",
+            "width": 95.234375,
+            "height": 36
+          },
+          {
+            "id": "身分設定",
+            "width": 95.234375,
+            "height": 36
+          }
+        ],
         "languageVisible": true,
         "board": null
       }
@@ -1418,7 +1489,28 @@
         "width": 768,
         "documentWidth": 768,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "Play table",
+            "width": 105.640625,
+            "height": 36
+          },
+          {
+            "id": "Resume",
+            "width": 94.40625,
+            "height": 36
+          },
+          {
+            "id": "Public rooms",
+            "width": 123.53125,
+            "height": 36
+          },
+          {
+            "id": "Identity",
+            "width": 94.28125,
+            "height": 36
+          }
+        ],
         "languageVisible": true,
         "board": null
       }
@@ -1435,7 +1527,28 @@
         "width": 360,
         "documentWidth": 360,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "建立／加入",
+            "width": 86.75,
+            "height": 36
+          },
+          {
+            "id": "繼續對局",
+            "width": 78.03125,
+            "height": 36
+          },
+          {
+            "id": "公開房間",
+            "width": 78.03125,
+            "height": 36
+          },
+          {
+            "id": "身分設定",
+            "width": 78.03125,
+            "height": 36
+          }
+        ],
         "languageVisible": true,
         "board": null
       }
@@ -1452,7 +1565,28 @@
         "width": 360,
         "documentWidth": 360,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "Play table",
+            "width": 81.03125,
+            "height": 36
+          },
+          {
+            "id": "Resume",
+            "width": 73.203125,
+            "height": 36
+          },
+          {
+            "id": "Public rooms",
+            "width": 93.5,
+            "height": 36
+          },
+          {
+            "id": "Identity",
+            "width": 73.109375,
+            "height": 36
+          }
+        ],
         "languageVisible": true,
         "board": null
       }
@@ -1469,7 +1603,28 @@
         "width": 390,
         "documentWidth": 390,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "建立／加入",
+            "width": 95.140625,
+            "height": 36
+          },
+          {
+            "id": "繼續對局",
+            "width": 85.234375,
+            "height": 36
+          },
+          {
+            "id": "公開房間",
+            "width": 85.234375,
+            "height": 36
+          },
+          {
+            "id": "身分設定",
+            "width": 85.234375,
+            "height": 36
+          }
+        ],
         "languageVisible": true,
         "board": null
       }
@@ -1486,7 +1641,28 @@
         "width": 390,
         "documentWidth": 390,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "Play table",
+            "width": 88.640625,
+            "height": 36
+          },
+          {
+            "id": "Resume",
+            "width": 79.75,
+            "height": 36
+          },
+          {
+            "id": "Public rooms",
+            "width": 102.796875,
+            "height": 36
+          },
+          {
+            "id": "Identity",
+            "width": 79.65625,
+            "height": 36
+          }
+        ],
         "languageVisible": true,
         "board": null
       }
@@ -1639,17 +1815,83 @@
         "width": 1366,
         "documentWidth": 1366,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 84.796875,
+            "height": 38
+          },
+          {
+            "id": "players-toggle",
+            "width": 44,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "zoom-out",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "reset-view",
+            "width": 62.125,
+            "height": 32
+          },
+          {
+            "id": "open-target-picker",
+            "width": 72.359375,
+            "height": 32
+          },
+          {
+            "id": "action-endTurn",
+            "width": 186.40625,
+            "height": 43
+          },
+          {
+            "id": "hand-toggle",
+            "width": 132.9375,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 107.140625,
+            "height": 36
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 66.84375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 66.84375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 87.3125,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 66.84375,
+            "height": 37
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 29,
-          "y": 468.265625,
-          "width": 958,
-          "height": 453.109375,
-          "top": 468.265625,
-          "right": 987,
-          "bottom": 921.375,
-          "left": 29
+          "x": 84,
+          "y": 180.53125,
+          "width": 1044,
+          "height": 519.46875,
+          "top": 180.53125,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
         }
       }
     },
@@ -1665,17 +1907,83 @@
         "width": 1366,
         "documentWidth": 1366,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 107.421875,
+            "height": 38
+          },
+          {
+            "id": "players-toggle",
+            "width": 44,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 61.953125,
+            "height": 32
+          },
+          {
+            "id": "zoom-out",
+            "width": 69.515625,
+            "height": 32
+          },
+          {
+            "id": "reset-view",
+            "width": 66.765625,
+            "height": 32
+          },
+          {
+            "id": "open-target-picker",
+            "width": 102.765625,
+            "height": 32
+          },
+          {
+            "id": "action-endTurn",
+            "width": 186.40625,
+            "height": 43
+          },
+          {
+            "id": "hand-toggle",
+            "width": 143.71875,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 128.8125,
+            "height": 36
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 73.453125,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 68.59375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 91.515625,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 68.75,
+            "height": 37
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 29,
-          "y": 468.265625,
-          "width": 958,
-          "height": 284,
-          "top": 468.265625,
-          "right": 987,
-          "bottom": 752.265625,
-          "left": 29
+          "x": 84,
+          "y": 180.53125,
+          "width": 1044,
+          "height": 519.46875,
+          "top": 180.53125,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
         }
       }
     },
@@ -1691,17 +1999,83 @@
         "width": 768,
         "documentWidth": 768,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 84.796875,
+            "height": 38
+          },
+          {
+            "id": "players-toggle",
+            "width": 44,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "zoom-out",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "reset-view",
+            "width": 62.125,
+            "height": 32
+          },
+          {
+            "id": "open-target-picker",
+            "width": 72.359375,
+            "height": 32
+          },
+          {
+            "id": "action-endTurn",
+            "width": 144.8125,
+            "height": 43
+          },
+          {
+            "id": "hand-toggle",
+            "width": 132.9375,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 107.140625,
+            "height": 36
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 66.84375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 66.84375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 87.3125,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 66.84375,
+            "height": 37
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 20.1875,
-          "y": 255.109375,
-          "width": 727.625,
-          "height": 523,
-          "top": 255.109375,
-          "right": 747.8125,
-          "bottom": 778.109375,
-          "left": 20.1875
+          "x": 72,
+          "y": 180.53125,
+          "width": 506,
+          "height": 775.46875,
+          "top": 180.53125,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
         }
       }
     },
@@ -1717,17 +2091,83 @@
         "width": 768,
         "documentWidth": 768,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 107.421875,
+            "height": 38
+          },
+          {
+            "id": "players-toggle",
+            "width": 44,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 61.953125,
+            "height": 32
+          },
+          {
+            "id": "zoom-out",
+            "width": 69.515625,
+            "height": 32
+          },
+          {
+            "id": "reset-view",
+            "width": 66.765625,
+            "height": 32
+          },
+          {
+            "id": "open-target-picker",
+            "width": 102.765625,
+            "height": 32
+          },
+          {
+            "id": "action-endTurn",
+            "width": 144.8125,
+            "height": 43
+          },
+          {
+            "id": "hand-toggle",
+            "width": 143.71875,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 128.8125,
+            "height": 36
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 73.453125,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 68.59375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 91.515625,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 68.75,
+            "height": 37
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 20.1875,
-          "y": 255.109375,
-          "width": 727.625,
-          "height": 552.953125,
-          "top": 255.109375,
-          "right": 747.8125,
-          "bottom": 808.0625,
-          "left": 20.1875
+          "x": 72,
+          "y": 180.53125,
+          "width": 506,
+          "height": 775.46875,
+          "top": 180.53125,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
         }
       }
     },
@@ -1743,17 +2183,78 @@
         "width": 360,
         "documentWidth": 360,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 32.1875,
+            "height": 32.1875
+          },
+          {
+            "id": "players-toggle",
+            "width": 40,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 44,
+            "height": 27
+          },
+          {
+            "id": "zoom-out",
+            "width": 44,
+            "height": 27
+          },
+          {
+            "id": "reset-view",
+            "width": 49.984375,
+            "height": 27
+          },
+          {
+            "id": "open-target-picker",
+            "width": 58.78125,
+            "height": 27
+          },
+          {
+            "id": "hand-toggle",
+            "width": 124.3125,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 97.40625,
+            "height": 36
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 36,
+            "height": 33
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 12.1875,
-          "y": 288.484375,
-          "width": 335.625,
-          "height": 294.390625,
-          "top": 288.484375,
-          "right": 347.8125,
-          "bottom": 582.875,
-          "left": 12.1875
+          "x": 58,
+          "y": 216.375,
+          "width": 297,
+          "height": 219.625,
+          "top": 216.375,
+          "right": 355,
+          "bottom": 436,
+          "left": 58
         }
       }
     },
@@ -1769,17 +2270,78 @@
         "width": 360,
         "documentWidth": 360,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 32.1875,
+            "height": 32.1875
+          },
+          {
+            "id": "players-toggle",
+            "width": 40,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 49.828125,
+            "height": 27
+          },
+          {
+            "id": "zoom-out",
+            "width": 56.328125,
+            "height": 27
+          },
+          {
+            "id": "reset-view",
+            "width": 53.953125,
+            "height": 27
+          },
+          {
+            "id": "open-target-picker",
+            "width": 84.90625,
+            "height": 27
+          },
+          {
+            "id": "hand-toggle",
+            "width": 134.1875,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 117.25,
+            "height": 36
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 36,
+            "height": 33
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 12.1875,
-          "y": 288.484375,
-          "width": 335.625,
-          "height": 294.390625,
-          "top": 288.484375,
-          "right": 347.8125,
-          "bottom": 582.875,
-          "left": 12.1875
+          "x": 58,
+          "y": 219.6875,
+          "width": 297,
+          "height": 216.3125,
+          "top": 219.6875,
+          "right": 355,
+          "bottom": 436,
+          "left": 58
         }
       }
     },
@@ -1795,17 +2357,78 @@
         "width": 390,
         "documentWidth": 390,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 32.1875,
+            "height": 32.1875
+          },
+          {
+            "id": "players-toggle",
+            "width": 40,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 44,
+            "height": 27
+          },
+          {
+            "id": "zoom-out",
+            "width": 44,
+            "height": 27
+          },
+          {
+            "id": "reset-view",
+            "width": 49.984375,
+            "height": 27
+          },
+          {
+            "id": "open-target-picker",
+            "width": 58.78125,
+            "height": 27
+          },
+          {
+            "id": "hand-toggle",
+            "width": 124.3125,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 97.40625,
+            "height": 36
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 36,
+            "height": 33
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 12.1875,
-          "y": 288.484375,
-          "width": 365.625,
-          "height": 388.234375,
-          "top": 288.484375,
-          "right": 377.8125,
-          "bottom": 676.71875,
-          "left": 12.1875
+          "x": 58,
+          "y": 199.75,
+          "width": 327,
+          "height": 440.25,
+          "top": 199.75,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
         }
       }
     },
@@ -1821,17 +2444,78 @@
         "width": 390,
         "documentWidth": 390,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 32.1875,
+            "height": 32.1875
+          },
+          {
+            "id": "players-toggle",
+            "width": 40,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 49.828125,
+            "height": 27
+          },
+          {
+            "id": "zoom-out",
+            "width": 56.328125,
+            "height": 27
+          },
+          {
+            "id": "reset-view",
+            "width": 53.953125,
+            "height": 27
+          },
+          {
+            "id": "open-target-picker",
+            "width": 84.90625,
+            "height": 27
+          },
+          {
+            "id": "hand-toggle",
+            "width": 134.1875,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 117.25,
+            "height": 36
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 36,
+            "height": 33
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 12.1875,
-          "y": 288.484375,
-          "width": 365.625,
-          "height": 388.234375,
-          "top": 288.484375,
-          "right": 377.8125,
-          "bottom": 676.71875,
-          "left": 12.1875
+          "x": 58,
+          "y": 219.6875,
+          "width": 327,
+          "height": 420.3125,
+          "top": 219.6875,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
         }
       }
     },
@@ -1847,17 +2531,93 @@
         "width": 1366,
         "documentWidth": 1366,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 84.796875,
+            "height": 38
+          },
+          {
+            "id": "players-toggle",
+            "width": 44,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "zoom-out",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "reset-view",
+            "width": 62.125,
+            "height": 32
+          },
+          {
+            "id": "open-target-picker",
+            "width": 72.359375,
+            "height": 32
+          },
+          {
+            "id": "action-endTurn",
+            "width": 186.40625,
+            "height": 43
+          },
+          {
+            "id": "hand-toggle",
+            "width": 132.9375,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 107.140625,
+            "height": 36
+          },
+          {
+            "id": "略過",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 66.84375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 66.84375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 87.3125,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 66.84375,
+            "height": 37
+          },
+          {
+            "id": "tool-close",
+            "width": 180.8125,
+            "height": 34
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 29,
-          "y": 666.1875,
-          "width": 958,
-          "height": 453.109375,
-          "top": 666.1875,
-          "right": 987,
-          "bottom": 1119.296875,
-          "left": 29
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
         }
       }
     },
@@ -1873,17 +2633,93 @@
         "width": 1366,
         "documentWidth": 1366,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 107.421875,
+            "height": 38
+          },
+          {
+            "id": "players-toggle",
+            "width": 44,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 61.953125,
+            "height": 32
+          },
+          {
+            "id": "zoom-out",
+            "width": 69.515625,
+            "height": 32
+          },
+          {
+            "id": "reset-view",
+            "width": 66.765625,
+            "height": 32
+          },
+          {
+            "id": "open-target-picker",
+            "width": 102.765625,
+            "height": 32
+          },
+          {
+            "id": "action-endTurn",
+            "width": 186.40625,
+            "height": 43
+          },
+          {
+            "id": "hand-toggle",
+            "width": 143.71875,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 128.8125,
+            "height": 36
+          },
+          {
+            "id": "Dismiss",
+            "width": 54.609375,
+            "height": 32
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 73.453125,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 68.59375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 91.515625,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 68.75,
+            "height": 37
+          },
+          {
+            "id": "tool-close",
+            "width": 314.84375,
+            "height": 34
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 29,
-          "y": 666.1875,
-          "width": 958,
-          "height": 240,
-          "top": 666.1875,
-          "right": 987,
-          "bottom": 906.1875,
-          "left": 29
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
         }
       }
     },
@@ -1899,17 +2735,93 @@
         "width": 768,
         "documentWidth": 768,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 84.796875,
+            "height": 38
+          },
+          {
+            "id": "players-toggle",
+            "width": 44,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "zoom-out",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "reset-view",
+            "width": 62.125,
+            "height": 32
+          },
+          {
+            "id": "open-target-picker",
+            "width": 72.359375,
+            "height": 32
+          },
+          {
+            "id": "action-endTurn",
+            "width": 144.8125,
+            "height": 43
+          },
+          {
+            "id": "hand-toggle",
+            "width": 132.9375,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 107.140625,
+            "height": 36
+          },
+          {
+            "id": "略過",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 66.84375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 66.84375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 87.3125,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 66.84375,
+            "height": 37
+          },
+          {
+            "id": "tool-close",
+            "width": 180.8125,
+            "height": 34
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 20.1875,
-          "y": 453.03125,
-          "width": 727.625,
-          "height": 325,
-          "top": 453.03125,
-          "right": 747.8125,
-          "bottom": 778.03125,
-          "left": 20.1875
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
         }
       }
     },
@@ -1925,17 +2837,93 @@
         "width": 768,
         "documentWidth": 768,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 107.421875,
+            "height": 38
+          },
+          {
+            "id": "players-toggle",
+            "width": 44,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 61.953125,
+            "height": 32
+          },
+          {
+            "id": "zoom-out",
+            "width": 69.515625,
+            "height": 32
+          },
+          {
+            "id": "reset-view",
+            "width": 66.765625,
+            "height": 32
+          },
+          {
+            "id": "open-target-picker",
+            "width": 102.765625,
+            "height": 32
+          },
+          {
+            "id": "action-endTurn",
+            "width": 144.8125,
+            "height": 43
+          },
+          {
+            "id": "hand-toggle",
+            "width": 143.71875,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 128.8125,
+            "height": 36
+          },
+          {
+            "id": "Dismiss",
+            "width": 54.609375,
+            "height": 32
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 73.453125,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 68.59375,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 91.515625,
+            "height": 37
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 68.75,
+            "height": 37
+          },
+          {
+            "id": "tool-close",
+            "width": 314.84375,
+            "height": 34
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 20.1875,
-          "y": 453.03125,
-          "width": 727.625,
-          "height": 552.953125,
-          "top": 453.03125,
-          "right": 747.8125,
-          "bottom": 1005.984375,
-          "left": 20.1875
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
         }
       }
     },
@@ -1951,17 +2939,88 @@
         "width": 360,
         "documentWidth": 360,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 32.1875,
+            "height": 32.1875
+          },
+          {
+            "id": "players-toggle",
+            "width": 40,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 44,
+            "height": 27
+          },
+          {
+            "id": "zoom-out",
+            "width": 44,
+            "height": 27
+          },
+          {
+            "id": "reset-view",
+            "width": 49.984375,
+            "height": 27
+          },
+          {
+            "id": "open-target-picker",
+            "width": 58.78125,
+            "height": 27
+          },
+          {
+            "id": "hand-toggle",
+            "width": 124.3125,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 97.40625,
+            "height": 36
+          },
+          {
+            "id": "略過",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-close",
+            "width": 180.8125,
+            "height": 34
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 12.1875,
-          "y": 486.40625,
-          "width": 335.625,
-          "height": 240,
-          "top": 486.40625,
-          "right": 347.8125,
-          "bottom": 726.40625,
-          "left": 12.1875
+          "x": 58,
+          "y": 130.46875,
+          "width": 297,
+          "height": 225.53125,
+          "top": 130.46875,
+          "right": 355,
+          "bottom": 356,
+          "left": 58
         }
       }
     },
@@ -1977,17 +3036,83 @@
         "width": 360,
         "documentWidth": 360,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 32.1875,
+            "height": 32.1875
+          },
+          {
+            "id": "players-toggle",
+            "width": 40,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 49.828125,
+            "height": 27
+          },
+          {
+            "id": "zoom-out",
+            "width": 56.328125,
+            "height": 27
+          },
+          {
+            "id": "reset-view",
+            "width": 53.953125,
+            "height": 27
+          },
+          {
+            "id": "open-target-picker",
+            "width": 84.90625,
+            "height": 27
+          },
+          {
+            "id": "hand-toggle",
+            "width": 134.1875,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 117.25,
+            "height": 36
+          },
+          {
+            "id": "Dismiss",
+            "width": 54.609375,
+            "height": 32
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 36,
+            "height": 33
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 12.1875,
-          "y": 486.40625,
-          "width": 335.625,
-          "height": 240,
-          "top": 486.40625,
-          "right": 347.8125,
-          "bottom": 726.40625,
-          "left": 12.1875
+          "x": 58,
+          "y": 125.125,
+          "width": 297,
+          "height": 230.875,
+          "top": 125.125,
+          "right": 355,
+          "bottom": 356,
+          "left": 58
         }
       }
     },
@@ -2003,17 +3128,88 @@
         "width": 390,
         "documentWidth": 390,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 32.1875,
+            "height": 32.1875
+          },
+          {
+            "id": "players-toggle",
+            "width": 40,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 44,
+            "height": 27
+          },
+          {
+            "id": "zoom-out",
+            "width": 44,
+            "height": 27
+          },
+          {
+            "id": "reset-view",
+            "width": 49.984375,
+            "height": 27
+          },
+          {
+            "id": "open-target-picker",
+            "width": 58.78125,
+            "height": 27
+          },
+          {
+            "id": "hand-toggle",
+            "width": 124.3125,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 97.40625,
+            "height": 36
+          },
+          {
+            "id": "略過",
+            "width": 44,
+            "height": 32
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-close",
+            "width": 180.8125,
+            "height": 34
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 12.1875,
-          "y": 486.40625,
-          "width": 365.625,
-          "height": 342,
-          "top": 486.40625,
-          "right": 377.8125,
-          "bottom": 828.40625,
-          "left": 12.1875
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 446.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 560,
+          "left": 58
         }
       }
     },
@@ -2029,17 +3225,83 @@
         "width": 390,
         "documentWidth": 390,
         "duplicateIds": [],
-        "smallButtons": [],
+        "smallButtons": [
+          {
+            "id": "toggle-fullscreen",
+            "width": 32.1875,
+            "height": 32.1875
+          },
+          {
+            "id": "players-toggle",
+            "width": 40,
+            "height": 40
+          },
+          {
+            "id": "zoom-in",
+            "width": 49.828125,
+            "height": 27
+          },
+          {
+            "id": "zoom-out",
+            "width": 56.328125,
+            "height": 27
+          },
+          {
+            "id": "reset-view",
+            "width": 53.953125,
+            "height": 27
+          },
+          {
+            "id": "open-target-picker",
+            "width": 84.90625,
+            "height": 27
+          },
+          {
+            "id": "hand-toggle",
+            "width": 134.1875,
+            "height": 36
+          },
+          {
+            "id": "hand-pin",
+            "width": 117.25,
+            "height": 36
+          },
+          {
+            "id": "Dismiss",
+            "width": 54.609375,
+            "height": 32
+          },
+          {
+            "id": "tool-tab-trade",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-chat",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-log",
+            "width": 36,
+            "height": 33
+          },
+          {
+            "id": "tool-tab-help",
+            "width": 36,
+            "height": 33
+          }
+        ],
         "languageVisible": true,
         "board": {
-          "x": 12.1875,
-          "y": 486.40625,
-          "width": 365.625,
-          "height": 342,
-          "top": 486.40625,
-          "right": 377.8125,
-          "bottom": 828.40625,
-          "left": 12.1875
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 446.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 560,
+          "left": 58
         }
       }
     },
@@ -2059,12 +3321,12 @@
         "languageVisible": true,
         "board": {
           "x": 50.796875,
-          "y": 698.953125,
+          "y": 662.328125,
           "width": 1264.40625,
-          "height": 453.109375,
-          "top": 698.953125,
+          "height": 240,
+          "top": 662.328125,
           "right": 1315.203125,
-          "bottom": 1152.0625,
+          "bottom": 902.328125,
           "left": 50.796875
         }
       }
@@ -2085,12 +3347,12 @@
         "languageVisible": true,
         "board": {
           "x": 50.796875,
-          "y": 698.953125,
+          "y": 662.328125,
           "width": 1264.40625,
           "height": 240,
-          "top": 698.953125,
+          "top": 662.328125,
           "right": 1315.203125,
-          "bottom": 938.953125,
+          "bottom": 902.328125,
           "left": 50.796875
         }
       }
@@ -2110,14 +3372,14 @@
         "smallButtons": [],
         "languageVisible": true,
         "board": {
-          "x": 38.78125,
-          "y": 667.78125,
-          "width": 690.4375,
-          "height": 340,
-          "top": 667.78125,
-          "right": 729.21875,
-          "bottom": 1007.78125,
-          "left": 38.78125
+          "x": 47.59375,
+          "y": 628.625,
+          "width": 672.8125,
+          "height": 379,
+          "top": 628.625,
+          "right": 720.40625,
+          "bottom": 1007.625,
+          "left": 47.59375
         }
       }
     },
@@ -2136,14 +3398,14 @@
         "smallButtons": [],
         "languageVisible": true,
         "board": {
-          "x": 38.78125,
-          "y": 667.78125,
-          "width": 690.4375,
-          "height": 340,
-          "top": 667.78125,
-          "right": 729.21875,
-          "bottom": 1007.78125,
-          "left": 38.78125
+          "x": 47.59375,
+          "y": 628.625,
+          "width": 672.8125,
+          "height": 379,
+          "top": 628.625,
+          "right": 720.40625,
+          "bottom": 1007.625,
+          "left": 47.59375
         }
       }
     },
@@ -2163,12 +3425,12 @@
         "languageVisible": true,
         "board": {
           "x": 29.1875,
-          "y": 887.3125,
+          "y": 856.984375,
           "width": 301.625,
           "height": 240,
-          "top": 887.3125,
+          "top": 856.984375,
           "right": 330.8125,
-          "bottom": 1127.3125,
+          "bottom": 1096.984375,
           "left": 29.1875
         }
       }
@@ -2189,12 +3451,12 @@
         "languageVisible": true,
         "board": {
           "x": 29.1875,
-          "y": 887.3125,
+          "y": 870.984375,
           "width": 301.625,
           "height": 240,
-          "top": 887.3125,
+          "top": 870.984375,
           "right": 330.8125,
-          "bottom": 1127.3125,
+          "bottom": 1110.984375,
           "left": 29.1875
         }
       }
@@ -2215,12 +3477,12 @@
         "languageVisible": true,
         "board": {
           "x": 29.1875,
-          "y": 901.59375,
+          "y": 871.265625,
           "width": 331.625,
           "height": 240,
-          "top": 901.59375,
+          "top": 871.265625,
           "right": 360.8125,
-          "bottom": 1141.59375,
+          "bottom": 1111.265625,
           "left": 29.1875
         }
       }
@@ -2241,12 +3503,12 @@
         "languageVisible": true,
         "board": {
           "x": 29.1875,
-          "y": 901.59375,
+          "y": 885.265625,
           "width": 331.625,
           "height": 240,
-          "top": 901.59375,
+          "top": 885.265625,
           "right": 360.8125,
-          "bottom": 1141.59375,
+          "bottom": 1125.265625,
           "left": 29.1875
         }
       }
