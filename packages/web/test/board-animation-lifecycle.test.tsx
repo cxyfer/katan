@@ -28,6 +28,23 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('board animation lifecycle (E07–E09, A01)', () => {
+  it('rebases the existing cursor on renderer reset without replaying or changing synchronization', () => {
+    const { result, rerender, unmount } = mount();
+    const next = props(13);
+    rerender(next);
+    rerender(props(14));
+    expect(result.current.pendingCount).toBe(2);
+    act(() => result.current.resetPresentation());
+    expect(result.current.active).toBeNull();
+    expect(result.current.pendingCount).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    rerender(props(14));
+    expect(result.current.active).toBeNull();
+    rerender(props(15));
+    expect(result.current.active?.events[0]?.seq).toBe(15);
+    expect(next.sync).toEqual({ generation: 1, cause: 'snapshot' });
+    unmount();
+  });
   it('plays a new snapshot once for at most 800ms, without restarting on unrelated renders', () => {
     const { result, rerender, unmount } = mount();
     expect(result.current.active).toBeNull();

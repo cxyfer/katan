@@ -1,0 +1,64 @@
+import type { PlayerColor, PublicBoardView } from '@catan/rules';
+import type { BoardGeometry } from './geometry.ts';
+import type { BoardIntent } from './intent.ts';
+import type { BoardEffectGroup } from './animation.ts';
+import type { TargetKind } from './targets.ts';
+
+export type RendererMode = 'auto' | 'svg' | 'r3f';
+export type QualityMode = 'standard' | 'low';
+export interface CssRect { left: number; top: number; width: number; height: number }
+export interface WorldPoint { x: number; y: number; z: number }
+export interface SceneBounds { min: WorldPoint; max: WorldPoint }
+export interface BoardViewportState {
+  center: { x: number; z: number };
+  zoom: number;
+  rect: CssRect;
+}
+export interface ProjectionSnapshot {
+  /** Column-major camera projectionMatrix * matrixWorldInverse. */
+  viewProjection: readonly number[];
+  rect: CssRect;
+  version: number;
+  clip: { near: number; far: number };
+}
+export interface ProjectedAnchor {
+  x: number;
+  y: number;
+  visible: boolean;
+}
+export interface ProjectedTarget extends ProjectedAnchor {
+  kind: TargetKind;
+  index: number;
+  endpoints?: readonly [ProjectedAnchor, ProjectedAnchor];
+}
+export interface SceneSelection { kind: TargetKind; index: number; playerId: string }
+export interface BoardSceneInput {
+  geometry: BoardGeometry;
+  board: PublicBoardView;
+  players: readonly { id: string; seat: number; color: PlayerColor }[];
+  intent: BoardIntent | null;
+  selection: SceneSelection | null;
+  active: BoardEffectGroup | null;
+  viewport: BoardViewportState;
+  quality: QualityMode;
+  motionAllowed: boolean;
+}
+export interface BoardSceneProps extends BoardSceneInput {
+  onProjection: (projection: ProjectionSnapshot) => void;
+  onReady: () => void;
+  onUnavailable: (reason: string) => void;
+}
+export interface BoardEffectAnchors {
+  stage: CssRect;
+  seats: ReadonlyMap<string, CssRect>;
+  aggregate: CssRect | null;
+  targets: readonly ProjectedTarget[];
+}
+
+export function rendererMode(value: string | null): RendererMode {
+  return value === 'svg' || value === 'r3f' ? value : 'auto';
+}
+
+export function qualityMode(value: string | null): QualityMode {
+  return value === 'low' ? 'low' : 'standard';
+}
