@@ -1,0 +1,17 @@
+# Local build override.
+#
+# The base Compose files run the published image (ghcr.io/cxyfer/katan). Add this
+# file to build the image from the checkout instead:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
+#   POSTGRES_PASSWORD='<secret>' docker compose -f docker-compose.postgres.yml \
+#     -f docker-compose.build.yml up --build -d
+#
+# The locally built image is tagged catan:local, so it never shadows the
+# published tag.
+services:
+  catan:
+    image: catan:local
+    build:
+      context: .
+      dockerfile: Dockerfile

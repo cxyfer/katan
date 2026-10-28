@@ -36,10 +36,15 @@ disconnect grace `30–3600`. Invalid values are rejected with
 
 ## Deployment
 
+The Compose files run the published `ghcr.io/cxyfer/katan:latest` image; `docker
+compose pull` refreshes it. While the repository is private the package is
+private too, so `docker login ghcr.io` with a token that has `read:packages` (or
+a public package) is required before the first pull.
+
 ### SQLite (single instance)
 
 ```bash
-docker compose up --build -d
+docker compose up -d
 docker compose logs -f catan
 ```
 
@@ -50,12 +55,26 @@ the supported one-replica topology provides.
 ### PostgreSQL
 
 ```bash
-POSTGRES_PASSWORD='<secret>' docker compose -f docker-compose.postgres.yml up --build -d
+POSTGRES_PASSWORD='<secret>' docker compose -f docker-compose.postgres.yml up -d
 ```
 
 Migrations run at startup inside a transaction per migration. A failure to
 migrate stops the service with a non-zero exit instead of starting with partial
 state.
+
+### Build from the checkout
+
+Add `docker-compose.build.yml` to compile the image from the checkout instead of
+pulling the published one:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
+POSTGRES_PASSWORD='<secret>' docker compose -f docker-compose.postgres.yml \
+  -f docker-compose.build.yml up --build -d
+```
+
+The local image is tagged `catan:local`, so a later `docker compose pull` does
+not replace it.
 
 ## Health and readiness
 
@@ -103,7 +122,8 @@ Restore into an empty database, then start the service and verify `/readyz`.
 
 1. Record the running image tag and the current `schema_migrations` rows.
 2. Back up the database.
-3. Start the new image. Migrations are forward-only; an incompatible schema
+3. Pull and start the new image (`docker compose pull` then
+   `docker compose up -d`). Migrations are forward-only; an incompatible schema
    fails startup loudly instead of running with partial state.
 4. Unfinished games keep the rules-engine version stored in their snapshot
    (`games.engine_version`). A release that cannot execute a referenced engine
