@@ -36,10 +36,13 @@ disconnect grace `30–3600`. Invalid values are rejected with
 
 ## Deployment
 
-The Compose files run the published `ghcr.io/cxyfer/katan:latest` image; `docker
-compose pull` refreshes it. While the repository is private the package is
-private too, so `docker login ghcr.io` with a token that has `read:packages` (or
-a public package) is required before the first pull.
+The Compose files run the published `ghcr.io/cxyfer/katan:latest` image;
+`docker compose pull` refreshes it. `latest` moves on every `master` push and
+stable release, so pin an exact version tag (`ghcr.io/cxyfer/katan:0.1.0`) or a
+digest in the `image:` line when a deployment must be reproducible. While the
+repository is private the package is private too, so `docker login ghcr.io` with
+a token that has `read:packages` (or a public package) is required before the
+first pull.
 
 ### SQLite (single instance)
 
@@ -120,7 +123,13 @@ Restore into an empty database, then start the service and verify `/readyz`.
 
 ## Upgrade and rollback
 
-1. Record the running image tag and the current `schema_migrations` rows.
+1. Record the running image digest and the current `schema_migrations` rows.
+   `latest` moves with every release, so it cannot identify the old image:
+
+   ```bash
+   docker image inspect ghcr.io/cxyfer/katan:latest \
+     --format '{{index .RepoDigests 0}}'   # ghcr.io/cxyfer/katan@sha256:<digest>
+   ```
 2. Back up the database.
 3. Pull and start the new image (`docker compose pull` then
    `docker compose up -d`). Migrations are forward-only; an incompatible schema
@@ -129,9 +138,10 @@ Restore into an empty database, then start the service and verify `/readyz`.
    (`games.engine_version`). A release that cannot execute a referenced engine
    version must refuse to take over those games and preserve their data
    (SPEC §7.3); this release ships one engine version and refuses unknown ones.
-5. Rollback: restore the previous image tag. If the new image applied a
-   migration, restore the matching backup — schema migrations are not
-   automatically reversible.
+5. Rollback: pin the recorded digest in the Compose `image:` line
+   (`ghcr.io/cxyfer/katan@sha256:<digest>`) and run `docker compose up -d`. If
+   the new image applied a migration, restore the matching backup — schema
+   migrations are not automatically reversible.
 
 ## Retention
 
