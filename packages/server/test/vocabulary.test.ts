@@ -10,6 +10,7 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   ERROR_MESSAGE_IDS,
@@ -18,7 +19,7 @@ import {
   SERVER_ERROR_IDS,
 } from '@catan/protocol';
 
-function serviceSources(dir = new URL('../src', import.meta.url).pathname): string[] {
+function serviceSources(dir = fileURLToPath(new URL('../src', import.meta.url))): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
