@@ -82,8 +82,30 @@ try {
         seat: player.seat, color: player.color, host: player.id === 'p1' })),
     });
     const topology = r.getTopology(topologyId);
+    // Separate synthetic pending state, resolved by the engine and projected per viewer.
+    const regularState = state;
+    state = structuredClone(state);
+    state.players[1].resources.lumber += 1;
+    state.bank.lumber -= 1;
+    state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'knight', pirate: false };
+    const destinationHex = topology.hexes.findIndex((hex, index) => index !== state.board.robber && r.verticesOfHex(topology, index).some((vertex) => state.board.buildings[vertex]?.player === 'p2'));
+    apply('p1', { type: 'pending.moveRobber', hex: destinationHex });
+    const victim = state.pending.candidates.find((id) => id === 'p2') ?? state.pending.candidates[0];
+    const beforeTheft = state;
+    apply('p1', { type: 'pending.steal', victim });
+    const privacy = ['p1', victim, 'p3', 'outsider'].map((viewer) => ({ viewer,
+      identity: f.makeIdentity({ id: viewer, nickname: viewer }),
+      baseline: f.makeSnapshot(r.projectGame(beforeTheft, viewer, { events: beforeTheft.log.slice(-40) }), revision - 1),
+      snapshot: f.makeSnapshot(r.projectGame(state, viewer, { events: state.log.slice(-40) }), revision),
+    }));
+    for (const item of privacy) {
+      const theft = item.snapshot.view.events.findLast((event) => event.type === 'robber.stole');
+      if (!theft || (item.viewer !== 'p1' && item.viewer !== victim && 'resource' in theft.params)) throw new Error('theft projection privacy regression');
+      if (item.snapshot.view.players.some((player) => player.id !== item.viewer && player.resources)) throw new Error('private hand leaked');
+    }
+    state = regularState;
     boards.push({ id: topologyId, topologyId, seed, snapshot: initial, historySnapshot: projected, baseline, sequence,
-      room, games: [f.makeResumable({ status: 'playing', profileId,
+      privacy, room, games: [f.makeResumable({ status: 'playing', profileId,
         players: initial.view.players.map(({ id: playerId, nickname, color }) => ({ playerId, nickname, color })),
       })],
       topology: { hexes: topology.hexes.length, vertices: topology.vertices.length, edges: topology.edges.length },
@@ -95,7 +117,8 @@ try {
   }
   const fixture = { schemaVersion: 1, seed, sources,
     limitations: ['Synthetic fixture resource provisioning; projected engine snapshots, not a real network game.',
-      'Static snapshot deliberately omits history for animation-free comparison; historySnapshot preserves current initial-history behavior for E01.',
+      'Static snapshot deliberately omits history for animation-free comparison; historySnapshot verifies E01 baseline without replay after P1A.',
+      'Privacy setup injects a separate synthetic knight pending state and one victim card, then resolves move/steal with the engine and projects three seats plus an outsider.',
       'Sequence is emitted by rules commands and authorized with projectGame for p1; no private engine state is exported.'],
     identity: f.makeIdentity({ nickname: names[0] }), config: f.makeConfig(),
     profiles: [f.makeProfile(), f.makeProfile({ id: 'base-paired-2025', labelKey: 'profile.base-paired-2025', playerCounts: [5, 6], paired: true })], boards,

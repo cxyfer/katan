@@ -1,0 +1,2617 @@
+{
+  "runId": "after-svg-p1b-source-final",
+  "status": "PASS",
+  "startedAt": "2026-10-28T13:44:41Z",
+  "finishedAt": "2026-10-28T13:51:48Z",
+  "commit": "34da589ff859139ee0097bf715e103ca220a94d5",
+  "dirty": true,
+  "workingTreeStatus": [
+    "M docs/aegis/INDEX.md",
+    " M docs/aegis/work/2026-10-28-board-visual-spike/p0-report.md",
+    " M packages/web/src/components/BoardView.tsx",
+    " M packages/web/src/components/GameArt.tsx",
+    " M packages/web/src/i18n/en.ts",
+    " M packages/web/src/i18n/zh-Hant.ts",
+    " M packages/web/src/styles.css",
+    " M packages/web/test/app.test.tsx",
+    " M packages/web/test/board-visual.test.tsx",
+    " M scripts/board-visual/fixtures.mjs",
+    " M scripts/board-visual/verify.py",
+    "?? docs/aegis/work/2026-10-28-board-visual-spike/p1b-report.md",
+    "?? packages/web/src/board/effects.ts",
+    "?? packages/web/src/components/BoardEffects.tsx",
+    "?? packages/web/src/styles/board-visual.css",
+    "?? packages/web/test/board-effects.test.tsx"
+  ],
+  "mode": "fixture",
+  "renderer": "svg",
+  "fixture": {
+    "path": "test-results/board-visual/fixtures-p1b.json",
+    "sha256": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+    "seed": 7
+  },
+  "assetHashes": {
+    "/assets/index-CC8C3fNQ.js": {
+      "sha256": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d",
+      "bytes": 423562,
+      "servedSha256": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+    },
+    "/assets/index-Czrjx5ha.css": {
+      "sha256": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+      "bytes": 76790,
+      "servedSha256": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44"
+    },
+    "/": {
+      "sha256": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+      "bytes": 486,
+      "servedSha256": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971"
+    }
+  },
+  "environment": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]",
+    "pythonExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-visual-spike\\.tmp\\board-visual-venv\\Scripts\\python.exe",
+    "node": "v24.12.0",
+    "pnpm": "10.28.0",
+    "cpu": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "logicalCpuCount": 16,
+    "ramBytes": null,
+    "gpu": null,
+    "powerMode": "not observed",
+    "refreshRateHz": "not observed",
+    "browserCache": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-visual-spike\\.tmp\\board-visual-browsers",
+    "hardwareQueryLimitation": "powershell exited 1: Get-CimInstance : 拒絕存取 \nAt line:1 char:39\n+ ... tionPreference='Stop'; @{cpu=(Get-CimInstance Win32_Processor | Selec ...\n+                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n    + CategoryInfo          : PermissionDenied: (root\\cimv2:Win32_Processor:String) [Get-CimInstance], CimException\n    + FullyQualifiedErrorId : HRESULT 0x80041003,Microsoft.Management.Infrastructure.CimCmdlets.GetCimInstanceCommand",
+    "playwright": "1.64.1",
+    "browserRevisions": [
+      {
+        "name": "chromium",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome for Testing"
+      },
+      {
+        "name": "chromium-headless-shell",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome Headless Shell"
+      },
+      {
+        "name": "firefox",
+        "revision": "1555",
+        "installByDefault": true,
+        "browserVersion": "157.0",
+        "title": "Firefox"
+      },
+      {
+        "name": "webkit",
+        "revision": "2370",
+        "installByDefault": true,
+        "revisionOverrides": {
+          "mac14": "2251",
+          "mac14-arm64": "2251"
+        },
+        "browserVersion": "27.2",
+        "title": "WebKit"
+      },
+      {
+        "name": "ffmpeg",
+        "revision": "1013",
+        "installByDefault": true
+      },
+      {
+        "name": "winldd",
+        "revision": "1007",
+        "installByDefault": false
+      },
+      {
+        "name": "android",
+        "revision": "1001",
+        "installByDefault": false
+      }
+    ],
+    "browser": "chromium",
+    "browserExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-visual-spike\\.tmp\\board-visual-browsers\\chromium-1248\\chrome-win64\\chrome.exe",
+    "executableSha256": "7f08161bbeb2853ffe1780a9ded4985087f52efb9725d7d8207aabdd42f7cfb9",
+    "browserVersion": "156.0.8078.4"
+  },
+  "server": {
+    "ownership": "runner",
+    "baseUrl": "http://127.0.0.1:59385",
+    "pid": 85868,
+    "temporaryDirectory": "C:\\Users\\shene\\AppData\\Local\\Temp\\catan-board-visual-4phnpt9e",
+    "artifactSha256": "a948c863d7f06caa5879bd6d209ab2ee07e33501acad3aee5428a2eec46cffc1",
+    "database": "independent temporary SQLite, deleted in finally",
+    "cleanup": {
+      "childExitCode": 1,
+      "temporaryDatabaseRemoved": true
+    }
+  },
+  "limitations": [
+    "API and WebSocket are fixture routes; no real command acknowledgement or P06 measured.",
+    "No physical mobile device, screen reader, input latency, heap/GPU leak proof or visual acceptance.",
+    "rAF intervals are active CSS animation scheduling proxies, not GPU render time.",
+    "P1A baselines historical snapshots without replay. Static comparison still omits history for continuity with the P0 control.",
+    "Existing index.html keeps lang=zh-Hant even with English selected. Captures verify the actual locale switch; document language is recorded as an existing accessibility gap.",
+    "T01 denotes this runner provenance/replay check; acceptance document has no separate T section.",
+    "Synthetic fixture resource provisioning; projected engine snapshots, not a real network game.",
+    "Static snapshot deliberately omits history for animation-free comparison; historySnapshot verifies E01 baseline without replay after P1A.",
+    "Privacy setup injects a separate synthetic knight pending state and one victim card, then resolves move/steal with the engine and projects three seats plus an outsider.",
+    "Sequence is emitted by rules commands and authorized with projectGame for p1; no private engine state is exported."
+  ],
+  "cases": [
+    {
+      "id": "T01-source",
+      "status": "PASS",
+      "detail": "All served HTML/JS/CSS match this worktree dist byte for byte."
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 314.4303283691406,
+          "y": 129.0011444091797,
+          "width": 583.132568359375,
+          "height": 554.1651611328125,
+          "top": 129.0011444091797,
+          "right": 897.5628967285156,
+          "bottom": 683.1663055419922,
+          "left": 314.4303283691406
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-zh-Hant-1366x768.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-800x450",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        800,
+        450
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 800,
+          "height": 450
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 538,
+          "height": 312.625,
+          "top": 89.375,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "world": {
+          "x": 185.40078735351562,
+          "y": 97.28045654296875,
+          "width": 311.19482421875,
+          "height": 295.7360534667969,
+          "top": 97.28045654296875,
+          "right": 496.5956115722656,
+          "bottom": 393.0165100097656,
+          "left": 185.40078735351562
+        },
+        "document": {
+          "width": 800,
+          "height": 450
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-zh-Hant-800x450.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-844x390",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        844,
+        390
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.26388549804688,
+          "y": 95.76322174072266,
+          "width": 251.46932983398438,
+          "height": 238.97744750976562,
+          "top": 95.76322174072266,
+          "right": 488.73321533203125,
+          "bottom": 334.7406692504883,
+          "left": 237.26388549804688
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-zh-Hant-844x390.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-768x1024",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        768,
+        1024
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "world": {
+          "x": 90.92033386230469,
+          "y": 311.83380126953125,
+          "width": 468.15386962890625,
+          "height": 444.89813232421875,
+          "top": 311.83380126953125,
+          "right": 559.0742034912109,
+          "bottom": 756.73193359375,
+          "left": 90.92033386230469
+        },
+        "document": {
+          "width": 768,
+          "height": 1024
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-zh-Hant-768x1024.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-390x844",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 70.2271728515625,
+          "y": 232.64125061035156,
+          "width": 302.5421447753906,
+          "height": 287.51318359375,
+          "top": 232.64125061035156,
+          "right": 372.7693176269531,
+          "bottom": 520.1544342041016,
+          "left": 70.2271728515625
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-zh-Hant-390x844.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-360x640",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 360,
+          "height": 640
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 130.46875,
+          "width": 297,
+          "height": 305.53125,
+          "top": 130.46875,
+          "right": 355,
+          "bottom": 436,
+          "left": 58
+        },
+        "world": {
+          "x": 69.10541534423828,
+          "y": 152.1905059814453,
+          "width": 274.7860107421875,
+          "height": 261.1358642578125,
+          "top": 152.1905059814453,
+          "right": 343.8914260864258,
+          "bottom": 413.3263702392578,
+          "left": 69.10541534423828
+        },
+        "document": {
+          "width": 360,
+          "height": 640
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-zh-Hant-360x640.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 314.4303283691406,
+          "y": 129.0011444091797,
+          "width": 583.132568359375,
+          "height": 554.1651611328125,
+          "top": 129.0011444091797,
+          "right": 897.5628967285156,
+          "bottom": 683.1663055419922,
+          "left": 314.4303283691406
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-en-1366x768.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-800x450",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        800,
+        450
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 800,
+          "height": 450
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 538,
+          "height": 312.625,
+          "top": 89.375,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "world": {
+          "x": 185.40078735351562,
+          "y": 97.28045654296875,
+          "width": 311.19482421875,
+          "height": 295.7360534667969,
+          "top": 97.28045654296875,
+          "right": 496.5956115722656,
+          "bottom": 393.0165100097656,
+          "left": 185.40078735351562
+        },
+        "document": {
+          "width": 800,
+          "height": 450
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-en-800x450.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-844x390",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        844,
+        390
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.26388549804688,
+          "y": 95.76322174072266,
+          "width": 251.46932983398438,
+          "height": 238.97744750976562,
+          "top": 95.76322174072266,
+          "right": 488.73321533203125,
+          "bottom": 334.7406692504883,
+          "left": 237.26388549804688
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-en-844x390.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-768x1024",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        768,
+        1024
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "world": {
+          "x": 90.92033386230469,
+          "y": 311.83380126953125,
+          "width": 468.15386962890625,
+          "height": 444.89813232421875,
+          "top": 311.83380126953125,
+          "right": 559.0742034912109,
+          "bottom": 756.73193359375,
+          "left": 90.92033386230469
+        },
+        "document": {
+          "width": 768,
+          "height": 1024
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-en-768x1024.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-390x844",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 70.2271728515625,
+          "y": 232.64125061035156,
+          "width": 302.5421447753906,
+          "height": 287.51318359375,
+          "top": 232.64125061035156,
+          "right": 372.7693176269531,
+          "bottom": 520.1544342041016,
+          "left": 70.2271728515625
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-en-390x844.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-360x640",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 360,
+          "height": 640
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 297,
+          "height": 322.15625,
+          "top": 113.84375,
+          "right": 355,
+          "bottom": 436,
+          "left": 58
+        },
+        "world": {
+          "x": 69.10541534423828,
+          "y": 143.8780059814453,
+          "width": 274.7860107421875,
+          "height": 261.1358642578125,
+          "top": 143.8780059814453,
+          "right": 343.8914260864258,
+          "bottom": 405.0138702392578,
+          "left": 69.10541534423828
+        },
+        "document": {
+          "width": 360,
+          "height": 640
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-en-360x640.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 316.64227294921875,
+          "y": 125.20277404785156,
+          "width": 577.7177734375,
+          "height": 562.2799072265625,
+          "top": 125.20277404785156,
+          "right": 894.3600463867188,
+          "bottom": 687.4826812744141,
+          "left": 316.64227294921875
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-zh-Hant-1366x768.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-800x450",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        800,
+        450
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 800,
+          "height": 450
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 538,
+          "height": 312.625,
+          "top": 89.375,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "world": {
+          "x": 186.4642333984375,
+          "y": 95.25341796875,
+          "width": 308.422119140625,
+          "height": 300.0665588378906,
+          "top": 95.25341796875,
+          "right": 494.8863525390625,
+          "bottom": 395.3199768066406,
+          "left": 186.4642333984375
+        },
+        "document": {
+          "width": 800,
+          "height": 450
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-zh-Hant-800x450.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-844x390",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        844,
+        390
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.92530822753906,
+          "y": 94.12521362304688,
+          "width": 249.4267120361328,
+          "height": 242.47683715820312,
+          "top": 94.12521362304688,
+          "right": 487.3520202636719,
+          "bottom": 336.60205078125,
+          "left": 237.92530822753906
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-zh-Hant-844x390.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-768x1024",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        768,
+        1024
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "world": {
+          "x": 80.46366882324219,
+          "y": 296.8675537109375,
+          "width": 488.22955322265625,
+          "height": 475.1829833984375,
+          "top": 296.8675537109375,
+          "right": 568.6932220458984,
+          "bottom": 772.050537109375,
+          "left": 80.46366882324219
+        },
+        "document": {
+          "width": 768,
+          "height": 1024
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-zh-Hant-768x1024.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-390x844",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 63.368247985839844,
+          "y": 222.96939086914062,
+          "width": 315.61724853515625,
+          "height": 307.0846252441406,
+          "top": 222.96939086914062,
+          "right": 378.9854965209961,
+          "bottom": 530.0540161132812,
+          "left": 63.368247985839844
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-zh-Hant-390x844.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-360x640",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 360,
+          "height": 640
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 130.46875,
+          "width": 297,
+          "height": 305.53125,
+          "top": 130.46875,
+          "right": 355,
+          "bottom": 436,
+          "left": 58
+        },
+        "world": {
+          "x": 62.7791862487793,
+          "y": 143.4059600830078,
+          "width": 286.75811767578125,
+          "height": 278.9117431640625,
+          "top": 143.4059600830078,
+          "right": 349.53730392456055,
+          "bottom": 422.3177032470703,
+          "left": 62.7791862487793
+        },
+        "document": {
+          "width": 360,
+          "height": 640
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-zh-Hant-360x640.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 316.64227294921875,
+          "y": 125.20277404785156,
+          "width": 577.7177734375,
+          "height": 562.2799072265625,
+          "top": 125.20277404785156,
+          "right": 894.3600463867188,
+          "bottom": 687.4826812744141,
+          "left": 316.64227294921875
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-en-1366x768.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-800x450",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        800,
+        450
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 800,
+          "height": 450
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 538,
+          "height": 312.625,
+          "top": 89.375,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "world": {
+          "x": 186.4642333984375,
+          "y": 95.25341796875,
+          "width": 308.422119140625,
+          "height": 300.0665588378906,
+          "top": 95.25341796875,
+          "right": 494.8863525390625,
+          "bottom": 395.3199768066406,
+          "left": 186.4642333984375
+        },
+        "document": {
+          "width": 800,
+          "height": 450
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-en-800x450.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-844x390",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        844,
+        390
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.92530822753906,
+          "y": 94.12521362304688,
+          "width": 249.4267120361328,
+          "height": 242.47683715820312,
+          "top": 94.12521362304688,
+          "right": 487.3520202636719,
+          "bottom": 336.60205078125,
+          "left": 237.92530822753906
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-en-844x390.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-768x1024",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        768,
+        1024
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "world": {
+          "x": 80.46366882324219,
+          "y": 296.8675537109375,
+          "width": 488.22955322265625,
+          "height": 475.1829833984375,
+          "top": 296.8675537109375,
+          "right": 568.6932220458984,
+          "bottom": 772.050537109375,
+          "left": 80.46366882324219
+        },
+        "document": {
+          "width": 768,
+          "height": 1024
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-en-768x1024.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-390x844",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 63.368247985839844,
+          "y": 222.96939086914062,
+          "width": 315.61724853515625,
+          "height": 307.0846252441406,
+          "top": 222.96939086914062,
+          "right": 378.9854965209961,
+          "bottom": 530.0540161132812,
+          "left": 63.368247985839844
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-en-390x844.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-360x640",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 360,
+          "height": 640
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 297,
+          "height": 322.15625,
+          "top": 113.84375,
+          "right": 355,
+          "bottom": 436,
+          "left": 58
+        },
+        "world": {
+          "x": 62.7791862487793,
+          "y": 135.0934600830078,
+          "width": 286.75811767578125,
+          "height": 278.9117431640625,
+          "top": 135.0934600830078,
+          "right": 349.53730392456055,
+          "bottom": 414.0052032470703,
+          "left": 62.7791862487793
+        },
+        "document": {
+          "width": 360,
+          "height": 640
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "loadedAssetHashes": {
+        "/": "07474deead646825b4fe7ad6a74deac35d3ec90a825f124d1ed6d5740756b971",
+        "/assets/index-Czrjx5ha.css": "398706fa360a91c672fbc8498083d417ae6165cf86714f0e3a11b9e7398d4d44",
+        "/assets/index-CC8C3fNQ.js": "bb563a5ecb7c2b0bbb020127b454abbee9f72771780b4af38d774abbf4b0c59d"
+      },
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-en-360x640.png"
+    },
+    {
+      "id": "V01-human-acceptance",
+      "status": "NOT RUN",
+      "detail": "24 captures are review candidates; visual acceptance requires human review."
+    },
+    {
+      "id": "T01-sequence-hex-r2-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        1366,
+        768
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 314.4303283691406,
+          "y": 129.0011444091797,
+          "width": 583.132568359375,
+          "height": 554.1651611328125,
+          "top": 129.0011444091797,
+          "right": 897.5628967285156,
+          "bottom": 683.1663055419922,
+          "left": 314.4303283691406
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "checkpoints": [
+        {
+          "flights": 1,
+          "drops": 0,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": "Aggregate allocation",
+          "rollingToolbar": 0,
+          "command": "turn.roll",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-1366x768-turn.roll.png",
+          "receiptScreenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-1366x768-production-receipt.png"
+        },
+        {
+          "flights": 0,
+          "drops": 1,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.city",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-1366x768-build.city.png"
+        },
+        {
+          "flights": 0,
+          "drops": 0,
+          "reveals": 1,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.road",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-1366x768-build.road.png"
+        }
+      ],
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/after-svg-p1b-source-final/events-hex-r2-1366x768.zip"
+    },
+    {
+      "id": "T01-sequence-hex-r2-390x844",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        390,
+        844
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 70.2271728515625,
+          "y": 232.64125061035156,
+          "width": 302.5421447753906,
+          "height": 287.51318359375,
+          "top": 232.64125061035156,
+          "right": 372.7693176269531,
+          "bottom": 520.1544342041016,
+          "left": 70.2271728515625
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "checkpoints": [
+        {
+          "flights": 1,
+          "drops": 0,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": "Aggregate allocation",
+          "rollingToolbar": 0,
+          "command": "turn.roll",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-390x844-turn.roll.png",
+          "receiptScreenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-390x844-production-receipt.png"
+        },
+        {
+          "flights": 0,
+          "drops": 1,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.city",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-390x844-build.city.png"
+        },
+        {
+          "flights": 0,
+          "drops": 0,
+          "reveals": 1,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.road",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-390x844-build.road.png"
+        }
+      ],
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/after-svg-p1b-source-final/events-hex-r2-390x844.zip"
+    },
+    {
+      "id": "T01-sequence-hex-r2-844x390",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        844,
+        390
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.26388549804688,
+          "y": 95.76322174072266,
+          "width": 251.46932983398438,
+          "height": 238.97744750976562,
+          "top": 95.76322174072266,
+          "right": 488.73321533203125,
+          "bottom": 334.7406692504883,
+          "left": 237.26388549804688
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "checkpoints": [
+        {
+          "flights": 1,
+          "drops": 0,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": "Aggregate allocation",
+          "rollingToolbar": 0,
+          "command": "turn.roll",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-844x390-turn.roll.png",
+          "receiptScreenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-844x390-production-receipt.png"
+        },
+        {
+          "flights": 0,
+          "drops": 1,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.city",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-844x390-build.city.png"
+        },
+        {
+          "flights": 0,
+          "drops": 0,
+          "reveals": 1,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.road",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r2-844x390-build.road.png"
+        }
+      ],
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/after-svg-p1b-source-final/events-hex-r2-844x390.zip"
+    },
+    {
+      "id": "T01-sequence-hex-r56-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        1366,
+        768
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 316.64227294921875,
+          "y": 125.20277404785156,
+          "width": 577.7177734375,
+          "height": 562.2799072265625,
+          "top": 125.20277404785156,
+          "right": 894.3600463867188,
+          "bottom": 687.4826812744141,
+          "left": 316.64227294921875
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "checkpoints": [
+        {
+          "flights": 3,
+          "drops": 0,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": "實際彙總配發",
+          "rollingToolbar": 0,
+          "command": "turn.roll",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-1366x768-turn.roll.png",
+          "receiptScreenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-1366x768-production-receipt.png"
+        },
+        {
+          "flights": 0,
+          "drops": 1,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.city",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-1366x768-build.city.png"
+        },
+        {
+          "flights": 0,
+          "drops": 0,
+          "reveals": 1,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.road",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-1366x768-build.road.png"
+        }
+      ],
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/after-svg-p1b-source-final/events-hex-r56-1366x768.zip"
+    },
+    {
+      "id": "T01-sequence-hex-r56-390x844",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        390,
+        844
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 63.368247985839844,
+          "y": 222.96939086914062,
+          "width": 315.61724853515625,
+          "height": 307.0846252441406,
+          "top": 222.96939086914062,
+          "right": 378.9854965209961,
+          "bottom": 530.0540161132812,
+          "left": 63.368247985839844
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "checkpoints": [
+        {
+          "flights": 3,
+          "drops": 0,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": "Aggregate allocation",
+          "rollingToolbar": 0,
+          "command": "turn.roll",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-390x844-turn.roll.png",
+          "receiptScreenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-390x844-production-receipt.png"
+        },
+        {
+          "flights": 0,
+          "drops": 1,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.city",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-390x844-build.city.png"
+        },
+        {
+          "flights": 0,
+          "drops": 0,
+          "reveals": 1,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.road",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-390x844-build.road.png"
+        }
+      ],
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/after-svg-p1b-source-final/events-hex-r56-390x844.zip"
+    },
+    {
+      "id": "T01-sequence-hex-r56-844x390",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        844,
+        390
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.92530822753906,
+          "y": 94.12521362304688,
+          "width": 249.4267120361328,
+          "height": 242.47683715820312,
+          "top": 94.12521362304688,
+          "right": 487.3520202636719,
+          "bottom": 336.60205078125,
+          "left": 237.92530822753906
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "checkpoints": [
+        {
+          "flights": 3,
+          "drops": 0,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": "Aggregate allocation",
+          "rollingToolbar": 0,
+          "command": "turn.roll",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-844x390-turn.roll.png",
+          "receiptScreenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-844x390-production-receipt.png"
+        },
+        {
+          "flights": 0,
+          "drops": 1,
+          "reveals": 0,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.city",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-844x390-build.city.png"
+        },
+        {
+          "flights": 0,
+          "drops": 0,
+          "reveals": 1,
+          "overlayPointer": "none",
+          "aggregateText": null,
+          "rollingToolbar": 0,
+          "command": "build.road",
+          "screenshot": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-844x390-build.road.png"
+        }
+      ],
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/after-svg-p1b-source-final/events-hex-r56-844x390.zip"
+    },
+    {
+      "id": "A01-browser-reduce",
+      "status": "PASS",
+      "before": 0,
+      "after": 0,
+      "persistentDice": "2\n4\nRolled 2 + 4 = 6",
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/reduce-reduce.png",
+      "errors": []
+    },
+    {
+      "id": "P02-reduce-reduce",
+      "status": "PASS",
+      "windowMs": 30000,
+      "rafCalls": 0,
+      "activeAnimations": 0
+    },
+    {
+      "id": "A01-browser-no-preference",
+      "status": "PASS",
+      "before": 1,
+      "after": 0,
+      "persistentDice": "2\n4\nRolled 2 + 4 = 6",
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/reduce-no-preference.png",
+      "errors": []
+    },
+    {
+      "id": "P02-reduce-no-preference",
+      "status": "PASS",
+      "windowMs": 30000,
+      "rafCalls": 0,
+      "activeAnimations": 0
+    },
+    {
+      "id": "E01-P02-history-idle",
+      "status": "PASS",
+      "windowMs": 30000,
+      "historicalOverlays": 0,
+      "operation": "Load full authorized history; no replay or application RAF during 30s idle."
+    },
+    {
+      "id": "A05-projection-p1",
+      "status": "PASS",
+      "viewer": "p1",
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/privacy-p1.png",
+      "errors": [],
+      "operation": "Deliver own projected engine theft snapshot over browser WebSocket; overlay contains neutral geometry only.",
+      "trace": "test-results/board-visual/after-svg-p1b-source-final/privacy-p1.zip"
+    },
+    {
+      "id": "A05-projection-p2",
+      "status": "PASS",
+      "viewer": "p2",
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/privacy-p2.png",
+      "errors": [],
+      "operation": "Deliver own projected engine theft snapshot over browser WebSocket; overlay contains neutral geometry only.",
+      "trace": "test-results/board-visual/after-svg-p1b-source-final/privacy-p2.zip"
+    },
+    {
+      "id": "A05-projection-p3",
+      "status": "PASS",
+      "viewer": "p3",
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/privacy-p3.png",
+      "errors": [],
+      "operation": "Deliver own projected engine theft snapshot over browser WebSocket; overlay contains neutral geometry only.",
+      "trace": "test-results/board-visual/after-svg-p1b-source-final/privacy-p3.zip"
+    },
+    {
+      "id": "A05-projection-outsider",
+      "status": "PASS",
+      "viewer": "outsider",
+      "screenshot": "test-results/board-visual/after-svg-p1b-source-final/privacy-outsider.png",
+      "errors": [],
+      "operation": "Deliver own projected engine theft snapshot over browser WebSocket; overlay contains neutral geometry only.",
+      "trace": "test-results/board-visual/after-svg-p1b-source-final/privacy-outsider.zip"
+    },
+    {
+      "id": "V05-neutral-three-seats-outsider",
+      "status": "PASS",
+      "distinctOverlayMarkup": 1,
+      "viewers": [
+        "p1",
+        "p2",
+        "p3",
+        "outsider"
+      ],
+      "detail": "Compares only the presentation overlay; authorized private hand/log content intentionally differs per viewer."
+    },
+    {
+      "id": "P03-P04-P05-P06-device-assistive",
+      "status": "NOT RUN",
+      "detail": "No owner registry/heap/GPU trend, cold cache timing, 100-input paint or real 6-seat acknowledgement benchmark; no physical device or screen reader acceptance."
+    },
+    {
+      "id": "P01-after-desktop-1",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with contiguous monotonic fixture event sequences (presentation load only).",
+      "actual": {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 1,
+        "windowMs": 30000,
+        "activeSamples": 869,
+        "p95Ms": 8.700000000000728,
+        "maxMs": 91.59999999999991,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-1.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-1.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-after-desktop-2",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with contiguous monotonic fixture event sequences (presentation load only).",
+      "actual": {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 2,
+        "windowMs": 30000,
+        "activeSamples": 862,
+        "p95Ms": 8.599999999998545,
+        "maxMs": 108.19999999999709,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-2.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-2.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-after-desktop-3",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with contiguous monotonic fixture event sequences (presentation load only).",
+      "actual": {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 3,
+        "windowMs": 30000,
+        "activeSamples": 866,
+        "p95Ms": 8.89999999999418,
+        "maxMs": 91.59999999999127,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-3.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-3.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-after-emulated-mobile-1",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with contiguous monotonic fixture event sequences (presentation load only).",
+      "actual": {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 1,
+        "windowMs": 30000,
+        "activeSamples": 907,
+        "p95Ms": 8.600000000000364,
+        "maxMs": 66.59999999999854,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-1.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-1.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-after-emulated-mobile-2",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with contiguous monotonic fixture event sequences (presentation load only).",
+      "actual": {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 2,
+        "windowMs": 30000,
+        "activeSamples": 906,
+        "p95Ms": 8.89999999999418,
+        "maxMs": 58.400000000001455,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-2.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-2.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-after-emulated-mobile-3",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with contiguous monotonic fixture event sequences (presentation load only).",
+      "actual": {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 3,
+        "windowMs": 30000,
+        "activeSamples": 904,
+        "p95Ms": 8.799999999988358,
+        "maxMs": 66.5,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-3.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-3.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-reference-hardware-targets",
+      "status": "NOT RUN",
+      "detail": "Local desktop and emulated mobile capture only; reference mobile hardware and 60Hz/power calibration are unavailable. Sample PASS means evidence captured, not performance acceptance."
+    }
+  ],
+  "sourceReport": {
+    "path": "test-results/board-visual/after-svg-p1b-source-final/report.json",
+    "sha256": "66f5a0657dcea66cb8b15f7c5434b1d53e7ac3ac78da4051fcda5aec655989e5"
+  },
+  "caseCounts": {
+    "PASS": 47,
+    "NOT RUN": 3
+  },
+  "metrics": {
+    "activeFrameIntervals": [
+      {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 1,
+        "windowMs": 30000,
+        "activeSamples": 869,
+        "p95Ms": 8.700000000000728,
+        "maxMs": 91.59999999999991,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-1.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-1.timeline.json"
+      },
+      {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 2,
+        "windowMs": 30000,
+        "activeSamples": 862,
+        "p95Ms": 8.599999999998545,
+        "maxMs": 108.19999999999709,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-2.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-2.timeline.json"
+      },
+      {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 3,
+        "windowMs": 30000,
+        "activeSamples": 866,
+        "p95Ms": 8.89999999999418,
+        "maxMs": 91.59999999999127,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-3.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-desktop-3.timeline.json"
+      },
+      {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 1,
+        "windowMs": 30000,
+        "activeSamples": 907,
+        "p95Ms": 8.600000000000364,
+        "maxMs": 66.59999999999854,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-1.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-1.timeline.json"
+      },
+      {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 2,
+        "windowMs": 30000,
+        "activeSamples": 906,
+        "p95Ms": 8.89999999999418,
+        "maxMs": 58.400000000001455,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-2.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-2.timeline.json"
+      },
+      {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 3,
+        "windowMs": 30000,
+        "activeSamples": 904,
+        "p95Ms": 8.799999999988358,
+        "maxMs": 66.5,
+        "trace": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-3.zip",
+        "browserTimeline": "test-results/board-visual/after-svg-p1b-source-final/frames-emulated-mobile-3.timeline.json"
+      }
+    ]
+  },
+  "captureCounts": {
+    "static": 24,
+    "eventVideosAndTraces": 6,
+    "privacyViewers": 4,
+    "activeFrameWindows": 6
+  },
+  "scriptHashes": {
+    "scripts/board-visual/fixtures.mjs": "0e4780a3024672def0d79d5401bc03f9bf9fa24fc1794d2a660efd71eea9097e",
+    "scripts/board-visual/verify.py": "965590bc24079689af212542fd45e0e9887cc315740e3d40d0064a1046fbf5b2",
+    "packages/web/src/board/effects.ts": "e95eb944ec73f72cc4dd9f6a5953cfdb07a984b14849e11a3af9c8f14a12ba20",
+    "packages/web/src/components/BoardEffects.tsx": "8a11a82a81bec79bc644026ab5fbb0b8b8b1ea1efefdad0709cfe19af9f517d1",
+    "packages/web/src/components/BoardView.tsx": "fce539120f25a46c2022b7fd87497c8176ab7cd7c231b8c7ef0e0d3b91b3c214",
+    "packages/web/src/styles/board-visual.css": "a11c337cd05f12f756e5e5a72274bc4f86793fdd80b44524d41bc8ee46346381"
+  },
+  "artifacts": [
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-hex-r2-en-desktop.png",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/hex-r2-en-1366x768.png",
+      "sha256": "7cd4e4977d0bfa1b7f700e8df15124459a8332c7d6e3bcba8f19dcb4bc37f895",
+      "bytes": 700449
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-hex-r56-zh-Hant-desktop.png",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-zh-Hant-1366x768.png",
+      "sha256": "1cee78e9615a80dfe0199d50bd67d0b5d1bc58c97745d4ebf18eaf6b98a52415",
+      "bytes": 760597
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-hex-r56-en-mobile.png",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-en-390x844.png",
+      "sha256": "20addbeb25a538a2112bf41e0c931991545a3c1cb037535dd064b95f67d7aa9f",
+      "bytes": 278192
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-hex-r56-zh-Hant-landscape.png",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/hex-r56-zh-Hant-844x390.png",
+      "sha256": "2ae95d1af31ed7488b9cd505fbec86bcaa3946e60fd7d6c2439fc40ce662b175",
+      "bytes": 267015
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-production-zh-Hant-desktop.png",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-1366x768-turn.roll.png",
+      "sha256": "13b8e4648e59241c59f09d5b7e3d7686a36760156088f7e510c46085d0aa9f07",
+      "bytes": 768657
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-city-zh-Hant-desktop.png",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-1366x768-build.city.png",
+      "sha256": "9387f2ec450fa62bee974fd231428bbdbb37fcfba12e8e8be6c79428b1bf5799",
+      "bytes": 762695
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-road-zh-Hant-desktop.png",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/event-hex-r56-1366x768-build.road.png",
+      "sha256": "bd973a991961d0e07127f21be8cd2093f3a628bf833f53ce862e04b303ce4ce6",
+      "bytes": 762637
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-neutral-theft-outsider.png",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/privacy-outsider.png",
+      "sha256": "14d0fb6b2e3fd95b3fa28aabedbd4a12d459c8561b660c458b1d9fbae34ec239",
+      "bytes": 738388
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-reduced-motion.png",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/reduce-no-preference.png",
+      "sha256": "a63fc720d665eb1cbcdbfc1d174e9c69629228a26151e28239d14daec15c5fab",
+      "bytes": 279054
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-hex-r2-desktop-events.webm",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/events-hex-r2-1366x768.webm",
+      "sha256": "28ae388ec91005548d02221cd4abaadc90cc1ac43c9210fcc63cebe8979eb5b8",
+      "bytes": 2721745
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-hex-r56-mobile-events.webm",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/events-hex-r56-390x844.webm",
+      "sha256": "c2b6de4dea0e0a8bfde122464d8859bc42697355ce93c769d16b116f4147e958",
+      "bytes": 1282304
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/after-neutral-theft-outsider-trace.zip",
+      "sourcePath": "test-results/board-visual/after-svg-p1b-source-final/privacy-outsider.zip",
+      "sha256": "973f087a5981128b4700e46f03d66f969186daf09c4ef16a65ded7603866e99c",
+      "bytes": 868879
+    }
+  ],
+  "projectVerification": {
+    "focused": {
+      "exitCode": 0,
+      "files": 4,
+      "tests": 46
+    },
+    "web": {
+      "exitCode": 0,
+      "files": 20,
+      "tests": 167
+    },
+    "typecheck": 0,
+    "build": 0,
+    "smoke": {
+      "exitCode": 0,
+      "checks": 13
+    },
+    "verify": {
+      "exitCode": 1,
+      "failure": "Existing Windows vocabulary.test.ts double-drive ENOENT; 3 failed, 81 passed, 11 skipped."
+    },
+    "gitDiffCheck": 0
+  },
+  "selectedVideoDurationsSeconds": {
+    "after-hex-r2-desktop-events.webm": 12.08,
+    "after-hex-r56-mobile-events.webm": 12.6
+  }
+}

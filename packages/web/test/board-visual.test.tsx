@@ -117,6 +117,29 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     expect(screen.queryByTestId('dice-focus')).toBeNull();
   });
 
+  it('uses confirmed projection for aggregate production and placement, and cancels the entire overlay on recovery', async () => {
+    const sockets: TestSocket[] = [];
+    await open(createFakeApi({ snapshot: rolled(12) }), sockets);
+    vi.useFakeTimers();
+    const produced = rolled(14, [3, 3]);
+    produced.view.events = [makeEvent(13, 'turn.rolled', { dice: [3, 3], total: 6 }), makeEvent(14, 'production.resolved', { total: 6, grants: { p1: { lumber: 3 } } })];
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: produced }));
+    expect(screen.getAllByTestId('production-flight')).toHaveLength(1);
+    expect(screen.getByTestId('production-flight').getAttribute('data-amount')).toBe('3');
+    expect(screen.getByTestId('dice-roll-animation').className).not.toContain('rolling');
+    act(() => vi.advanceTimersByTime(800));
+    expect(screen.queryByTestId('board-effects')).toBeNull();
+    const built = rolled(15);
+    built.view.events = [makeEvent(15, 'build.city', { playerId: 'p1', vertex: 0 })];
+    built.view.board.buildings[0] = { player: 'p1', city: true };
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: built }));
+    expect(screen.getByTestId('building-0').querySelector('.board__building-drop')).toBeTruthy();
+    act(() => sockets[0]!.disconnect());
+    expect(screen.queryByTestId('board-effects')).toBeNull();
+    expect(screen.getByTestId('building-0').querySelector('.board__building-drop')).toBeNull();
+    expect(screen.getByTestId('building-0')).toBeTruthy();
+  });
+
   it('interrupts presentation for a new mandatory prompt while its control remains available', async () => {
     const sockets: TestSocket[] = [];
     await open(createFakeApi({ snapshot: rolled(12) }), sockets);
@@ -153,6 +176,7 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     fireEvent.click(screen.getByTestId(`picker-edge-${second.index}`));
     expect(screen.queryByTestId('target-picker')).toBeNull();
     expect(screen.getByTestId('selection-preview').textContent).toContain(`Path ${second.index}`);
+    expect(screen.getByTestId('board-preview-ghost').getAttribute('aria-hidden')).toBe('true');
     expect(api.callsOf('sendCommand')).toHaveLength(0);
     fireEvent.click(screen.getByTestId('confirm-selection'));
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
@@ -168,6 +192,7 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     expect(screen.getByTestId('selection-preview').textContent).toContain(`Path ${first.index}`);
     fireEvent.click(screen.getByTestId('cancel-selection'));
     expect(screen.queryByTestId('selection-preview')).toBeNull();
+    expect(screen.queryByTestId('board-preview-ghost')).toBeNull();
     expect(api.callsOf('sendCommand')).toHaveLength(0);
     fireEvent.click(screen.getByTestId('action-build.road'));
     vi.mocked(svg.getBoundingClientRect).mockReturnValue({ x: 10, y: 20, left: 10, top: 20, width: 1400, height: 1000, right: 1410, bottom: 1020, toJSON() {} });

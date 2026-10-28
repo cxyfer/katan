@@ -28,7 +28,9 @@ import { nameOf } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
 import { Legend } from './Legend.tsx';
-import { GameIcon, TerrainIllustration } from './GameArt.tsx';
+import { BuildingPiece, GameIcon, TerrainIllustration } from './GameArt.tsx';
+import { BoardEffects } from './BoardEffects.tsx';
+import { confirmedPlacement } from '../board/effects.ts';
 
 const BOARD_SCALE = 100;
 const BASE_TOPOLOGY = 'hex-r2';
@@ -358,7 +360,7 @@ export function BoardView({ controller }: { controller: TableController }) {
         )}
         <span className="board__zoom-readout" data-testid="zoom-readout">{t('board.zoomLevel', { percent: Math.round(zoom * 100) })}</span>
         {view.turn.dice && (
-          <span className={`board__dice${diceRolling ? ' board__dice--rolling' : ''}`} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
+          <span className="board__dice" role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
             {view.turn.dice.map((value, index) => <span className="board__die" key={index} aria-hidden="true">{value}</span>)}
             <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
           </span>
@@ -366,7 +368,7 @@ export function BoardView({ controller }: { controller: TableController }) {
       </div>
 
       {diceRolling && focusedRoll && boardRef.current && createPortal(
-        <div className="dice-focus" data-testid="dice-focus" role="status" aria-live="polite">
+        <div className="dice-focus" data-testid="dice-focus" aria-hidden="true">
           <div className="dice-focus__panel" key={focusedRoll.seq}>
             <span className="dice-focus__label">{t('play.dice')}</span>
             <div className="dice-focus__pair" aria-hidden="true">
@@ -395,6 +397,9 @@ export function BoardView({ controller }: { controller: TableController }) {
          onKeyDown={onBoardKeyDown}
       >
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
+          <g aria-hidden="true" pointerEvents="none">
+            {geometry.hexes.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 10)" />)}
+          </g>
           {geometry.hexes.map((hex) => {
             const terrain = board.terrain[hex.index] ?? 'sea';
             const number = board.numbers[hex.index];
@@ -402,6 +407,7 @@ export function BoardView({ controller }: { controller: TableController }) {
             return (
               <g key={`hex-${hex.index}`}>
                 <polygon
+                  className="board__tile-top"
                   data-testid={`hex-${hex.index}`}
                   points={hex.points}
                   fill={terrainFill(terrain)}
@@ -468,9 +474,11 @@ export function BoardView({ controller }: { controller: TableController }) {
             const road = board.roads[edge.index];
             if (!road) return null;
             const player = view.players.find((candidate) => candidate.id === road.player);
+            const arriving = confirmedPlacement(animation.active?.events ?? [], board, 'edge', edge.index);
             return (
+              <g key={`road-${edge.index}`}>
+              <line x1={edge.x1} y1={edge.y1 + 3} x2={edge.x2} y2={edge.y2 + 3} stroke="#10242c" strokeWidth={11} strokeLinecap="round" opacity={.7} aria-hidden="true" />
               <line
-                key={`road-${edge.index}`}
                 data-testid={`road-${edge.index}`}
                 x1={edge.x1}
                 y1={edge.y1}
@@ -483,6 +491,8 @@ export function BoardView({ controller }: { controller: TableController }) {
               >
                 <title>{`${t('board.road')} · ${nameResolver(road.player)}`}</title>
               </line>
+              {arriving && <line key={animation.active?.id} className="board__road-reveal" x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} pathLength={1} stroke={playerColorHex(player?.color ?? 'white')} strokeWidth={10} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
+              </g>
             );
           })}
 
@@ -492,25 +502,12 @@ export function BoardView({ controller }: { controller: TableController }) {
             const player = view.players.find((candidate) => candidate.id === building.player);
             const color = playerColorHex(player?.color ?? 'white');
             const label = building.city ? t('board.city') : t('board.settlement');
+            const arriving = confirmedPlacement(animation.active?.events ?? [], board, 'vertex', vertex.index);
             return (
               <g key={`building-${vertex.index}`} data-testid={`building-${vertex.index}`}>
-                {building.city ? (
-                  <path
-                    d={`M${vertex.x - 13} ${vertex.y + 9}v-17l7-7 7 7v7l9-6 9 6v10Z`}
-                    fill={color}
-                    stroke="#21343a"
-                    strokeWidth={2}
-                    strokeLinejoin="round"
-                  />
-                ) : (
-                  <path
-                    d={`M${vertex.x - 10} ${vertex.y + 9}v-13l10-9 10 9v13Z`}
-                    fill={color}
-                    stroke="#21343a"
-                    strokeWidth={2}
-                    strokeLinejoin="round"
-                  />
-                )}
+                <g key={arriving ? animation.active!.id : 'rest'} className={arriving ? 'board__building-drop' : undefined}>
+                  <BuildingPiece x={vertex.x} y={vertex.y} city={building.city} color={color} />
+                </g>
                 <title>{`${label} · ${nameResolver(building.player)}`}</title>
               </g>
             );
@@ -567,6 +564,14 @@ export function BoardView({ controller }: { controller: TableController }) {
               </text>
             </g>
           )}
+          {state.selection.index !== null && intent && state.selection.kind === intent.kind && intent.targets.includes(state.selection.index) && (
+            <g className="board__preview-ghost" data-testid="board-preview-ghost" aria-hidden="true" pointerEvents="none">
+              {intent.kind === 'vertex' && geometry.vertices[state.selection.index] && <BuildingPiece x={geometry.vertices[state.selection.index]!.x} y={geometry.vertices[state.selection.index]!.y} city={intent.commandType === 'build.city'} color={playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white')} />}
+              {intent.kind === 'edge' && geometry.edges[state.selection.index] && <line x1={geometry.edges[state.selection.index]!.x1} y1={geometry.edges[state.selection.index]!.y1} x2={geometry.edges[state.selection.index]!.x2} y2={geometry.edges[state.selection.index]!.y2} stroke={playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white')} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />}
+              {intent.kind === 'hex' && geometry.hexes[state.selection.index] && <circle cx={geometry.hexes[state.selection.index]!.cx} cy={geometry.hexes[state.selection.index]!.cy} r={20} fill="#24353a" stroke="#fff1bd" strokeDasharray="4 4" />}
+            </g>
+          )}
+          <BoardEffects group={animation.active} geometry={geometry} view={view} />
         </g>
       </svg>
 

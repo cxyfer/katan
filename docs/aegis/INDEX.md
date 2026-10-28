@@ -9,6 +9,8 @@ Entries are workspace records, not authoritative runtime decisions.
 | 2026-10-28 | plan | docs/aegis/plans/2026-10-28-board-visual-spike-acceptance.md | Board visual acceptance cases and evidence protocol |
 | 2026-10-28 | work | docs/aegis/work/2026-10-28-board-visual-spike/p0-report.md | Board visual P0 production control evidence |
 | 2026-10-28 | work | docs/aegis/work/2026-10-28-board-visual-spike/p1a-report.md | Board visual P1A event lifecycle and CSS projection verification |
+| 2026-10-28 | work | docs/aegis/work/2026-10-28-board-visual-spike/p1b-report.md | Board visual P1B SVG materials, aggregate effects and production browser evidence |
+| 2026-10-28 | artifact | docs/aegis/work/2026-10-28-board-visual-spike/p1b-evidence.json | Board visual P1B source hashes, cases, frame samples and selected captures |
 | 2026-10-28 | artifact | docs/aegis/work/2026-10-28-board-visual-spike/p0-evidence.json | Board visual P0 control metadata and metrics |
 | 2026-10-28 | work | docs/aegis/work/2026-10-28-screenshots/capture-canonical.py | Canonical screenshot recapture harness |
 | 2026-10-28 | artifact | docs/aegis/work/2026-10-28-screenshots/capture-report.json | Canonical screenshot capture report |

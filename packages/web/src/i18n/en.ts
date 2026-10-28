@@ -199,6 +199,7 @@ export const en: Catalog = {
   'lobby.notHost': 'Only the host can change settings or start the game.',
 
   // --- board ---------------------------------------------------------------
+  'board.productionAggregate': 'Aggregate allocation',
   'board.heading': 'Board',
   'board.legend': 'Legend',
   'board.legendTerrain': 'Terrain and symbol',

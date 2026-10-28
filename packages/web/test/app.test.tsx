@@ -302,6 +302,8 @@ describe('command outcome handling', () => {
 
     const status = await screen.findByTestId('command-status');
     expect(status.getAttribute('data-status')).toBe('unknown');
+    expect(screen.queryByTestId('board-effects')).toBeNull();
+    expect(document.querySelector('.board__building-drop,.board__road-reveal')).toBeNull();
     expect(screen.getByTestId('command-resolve')).toBeTruthy();
     expect(screen.queryByTestId('command-retry')).toBeNull();
 
@@ -366,6 +368,9 @@ describe('command outcome handling', () => {
     );
     expect(screen.getByTestId('selection-preview')).toBeTruthy();
     expect(screen.getByTestId('command-status').textContent).toContain('Your draft input was kept.');
+    expect(screen.getByTestId('board-preview-ghost')).toBeTruthy();
+    expect(screen.queryByTestId('board-effects')).toBeNull();
+    expect(document.querySelector('.board__building-drop,.board__road-reveal')).toBeNull();
   });
 });
 

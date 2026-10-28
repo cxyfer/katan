@@ -169,6 +169,7 @@ class Scenario:
         if video:
             options.update(record_video_dir=str(out / 'videos'), record_video_size=options['viewport'])
         self.context = browser.new_context(**options)
+        self.context.add_init_script("window.__appRafCalls=0; const originalRaf=window.requestAnimationFrame; window.requestAnimationFrame=function(callback){window.__appRafCalls++;return originalRaf.call(window,callback)}")
         self.context.add_init_script(f"localStorage.setItem('catan.locale', {json.dumps(locale)});")
         self.context.route('**/api/**', self.route)
         self.context.route_web_socket('**/ws', self.connect)
@@ -296,26 +297,50 @@ def event_capture(browser, base, args, fixture, report, out):
     for board in fixture['boards']:
         for size in ((1366, 768), (390, 844), (844, 390)):
             tag = f'{board["id"]}-{size[0]}x{size[1]}'
-            scenario = Scenario(browser, base, args.renderer, fixture, board, 'en', size, report, out,
+            locale = 'zh-Hant' if args.suite == 'p1b' and board['id'] == 'hex-r56' and size == (1366, 768) else 'en'
+            scenario = Scenario(browser, base, args.renderer, fixture, board, locale, size, report, out,
                                 video=True, motion='no-preference', initial='baseline')
             trace = out / f'events-{tag}.zip'
             video = scenario.page.video
             scenario.context.tracing.start(screenshots=True, snapshots=True, sources=False)
             try:
                 started = time.monotonic()
+                checkpoints = []
                 for step in board['sequence']:
                     scenario.page.wait_for_timeout(max(0, step['atMs'] - (time.monotonic() - started) * 1000))
                     scenario.send(step['snapshot'])
+                    if args.suite == 'p1b':
+                        scenario.page.wait_for_timeout(320 if step['command']['type'] == 'turn.roll' else 100)
+                        checkpoint = scenario.page.evaluate("""() => ({flights:document.querySelectorAll('[data-testid="production-flight"]').length,
+                          drops:document.querySelectorAll('.board__building-drop').length,reveals:document.querySelectorAll('.board__road-reveal').length,
+                          overlayPointer:document.querySelector('[data-testid="board-effects"]') ? getComputedStyle(document.querySelector('[data-testid="board-effects"]')).pointerEvents:null,
+                          aggregateText:document.querySelector('.board-effects__aggregate text')?.textContent,
+                          rollingToolbar:document.querySelectorAll('.board__dice--rolling').length})""")
+                        image = out / f'event-{tag}-{step["command"]["type"]}.png'
+                        scenario.page.screenshot(path=str(image))
+                        checkpoint.update(command=step['command']['type'], screenshot=relative(image))
+                        checkpoints.append(checkpoint)
+                        if step['command']['type'] == 'turn.roll':
+                            scenario.page.wait_for_timeout(290)
+                            receipt_image = out / f'event-{tag}-production-receipt.png'
+                            scenario.page.screenshot(path=str(receipt_image))
+                            checkpoint['receiptScreenshot'] = relative(receipt_image)
                 scenario.page.wait_for_timeout(max(0, 10000 - (time.monotonic() - started) * 1000))
                 actual = scenario.page.evaluate(GEOMETRY)
                 expected = board['sequence'][-1]['snapshot']['view']['board']
                 okay = (actual['roads'] == sum(bool(item) for item in expected['roads'])
                         and actual['buildings'] == sum(bool(item) for item in expected['buildings'])
                         and not scenario.errors and not scenario.unmapped)
+                if args.suite == 'p1b':
+                    expected_grants = next(event['params']['grants'] for event in board['sequence'][0]['snapshot']['view']['events'] if event['type'] == 'production.resolved')
+                    grant_types = sum(1 for resources in expected_grants.values() for amount in resources.values() if amount > 0)
+                    okay = okay and checkpoints[0]['flights'] == min(24, grant_types) and checkpoints[1]['drops'] == 1 and checkpoints[2]['reveals'] == 1 and all(c['rollingToolbar'] == 0 and c['overlayPointer'] == 'none' for c in checkpoints)
+                    if grant_types:
+                        okay = okay and checkpoints[0]['aggregateText'] == ('實際彙總配發' if locale == 'zh-Hant' else 'Aggregate allocation')
                 case(report, 'T01-sequence-' + tag, 'PASS' if okay else 'FAIL', fixture=board['id'],
-                     topology=board['topologyId'], locale='en', viewport=list(size),
+                     topology=board['topologyId'], locale=locale, viewport=list(size),
                      operation='Replay recorded authorized full snapshots over mocked WebSocket for 10s.',
-                     actual=actual, errors=scenario.errors, unmapped=scenario.unmapped, trace=relative(trace))
+                     actual=actual, checkpoints=checkpoints, errors=scenario.errors, unmapped=scenario.unmapped, trace=relative(trace))
             finally:
                 scenario.context.tracing.stop(path=str(trace))
                 scenario.close()
@@ -347,6 +372,8 @@ def performance_before(browser, base, args, fixture, report, out):
             # Warm the existing roll animation before recording three equal windows.
             scenario.send(board['sequence'][0]['snapshot'])
             scenario.page.wait_for_timeout(2000)
+            next_seq = board['sequence'][0]['snapshot']['view']['seq']
+            next_revision = board['sequence'][0]['snapshot']['revision']
             for repetition in range(3):
                 trace = out / f'frames-{label}-{repetition + 1}.zip'
                 scenario.context.tracing.start(screenshots=True, snapshots=True, sources=False)
@@ -361,11 +388,14 @@ def performance_before(browser, base, args, fixture, report, out):
                 for pulse in range(10):
                     scenario.page.wait_for_timeout(max(0, pulse * 3000 - (time.monotonic() - started) * 1000))
                     snapshot = copy.deepcopy(board['sequence'][0]['snapshot'])
-                    offset = 1000 + repetition * 1000 + pulse * 10
-                    snapshot['revision'] += offset
-                    snapshot['view']['seq'] += offset
-                    for event in snapshot['view']['events']:
-                        event['seq'] += offset
+                    events = [event for event in snapshot['view']['events'] if event['type'] in ('turn.rolled', 'production.resolved')]
+                    for event in events:
+                        next_seq += 1
+                        event['seq'] = next_seq
+                    next_revision += 1
+                    snapshot['revision'] = next_revision
+                    snapshot['view']['seq'] = next_seq
+                    snapshot['view']['events'] = events
                     scenario.send(snapshot)
                 scenario.page.wait_for_function('window.__boardFrameResult !== null', timeout=35000)
                 raw = scenario.page.evaluate('window.__boardFrameResult')
@@ -398,14 +428,71 @@ def performance_before(browser, base, args, fixture, report, out):
                 records.append(record)
                 report['metrics']['activeFrameIntervals'] = records
                 report['artifacts'].append(relative(trace))
-                case(report, f'P01-before-{label}-{repetition + 1}', 'PASS' if raw and not scenario.errors else 'FAIL',
-                     operation='Warm then sample 30s; replay roll snapshots every 3s with monotonic fixture sequence offsets.',
+                case(report, f'P01-{"after" if args.suite == "p1b" else "before"}-{label}-{repetition + 1}', 'PASS' if raw and not scenario.errors else 'FAIL',
+                     operation='Warm then sample 30s; replay roll snapshots every 3s with contiguous monotonic fixture event sequences (presentation load only).',
                      actual={key: value for key, value in record.items() if key != 'raw'}, errors=scenario.errors)
                 write_report(report, out)
         finally:
             scenario.close()
     report['metrics']['activeFrameIntervals'] = records
     case(report, 'P01-reference-hardware-targets', 'NOT RUN', detail='Local desktop and emulated mobile capture only; reference mobile hardware and 60Hz/power calibration are unavailable. Sample PASS means evidence captured, not performance acceptance.')
+
+
+def p1b_checks(browser, base, args, fixture, report, out):
+    board = fixture['boards'][-1]
+    # Both initial and changing reduced motion use real browser media queries.
+    for mode in ('reduce', 'no-preference'):
+        scenario = Scenario(browser, base, args.renderer, fixture, board, 'en', (390, 844), report, out, motion=mode, initial='baseline')
+        try:
+            scenario.send(board['sequence'][0]['snapshot'])
+            scenario.page.wait_for_timeout(100)
+            before = scenario.page.locator('[data-testid="board-effects"]').count()
+            scenario.page.emulate_media(reduced_motion='reduce')
+            scenario.page.wait_for_timeout(100)
+            after = scenario.page.locator('[data-testid="board-effects"]').count()
+            dice = scenario.page.get_by_test_id('dice-roll-animation').inner_text()
+            okay = before == (0 if mode == 'reduce' else 1) and after == 0 and '2' in dice and '4' in dice and not scenario.errors
+            path = out / f'reduce-{mode}.png'
+            scenario.page.screenshot(path=str(path))
+            case(report, 'A01-browser-' + mode, 'PASS' if okay else 'FAIL', before=before, after=after, persistentDice=dice, screenshot=relative(path), errors=scenario.errors)
+            # Instrumented application rAF only: the fixture runner does not schedule during this window.
+            before_raf = scenario.page.evaluate('window.__appRafCalls')
+            scenario.page.wait_for_timeout(30000)
+            after_raf = scenario.page.evaluate('window.__appRafCalls')
+            case(report, 'P02-reduce-' + mode, 'PASS' if before_raf == after_raf else 'FAIL', windowMs=30000, rafCalls=after_raf-before_raf, activeAnimations=scenario.page.evaluate("document.getAnimations().filter(a=>a.playState==='running').length"))
+        finally:
+            scenario.close()
+    scenario = Scenario(browser, base, args.renderer, fixture, board, 'en', (1366, 768), report, out, motion='no-preference', initial='historySnapshot')
+    try:
+        history = scenario.page.locator('[data-testid="board-effects"],[data-testid="dice-focus"]').count()
+        before_raf = scenario.page.evaluate('window.__appRafCalls')
+        scenario.page.wait_for_timeout(30000)
+        case(report, 'E01-P02-history-idle', 'PASS' if history == 0 and before_raf == scenario.page.evaluate('window.__appRafCalls') else 'FAIL', windowMs=30000, historicalOverlays=history, operation='Load full authorized history; no replay or application RAF during 30s idle.')
+    finally:
+        scenario.close()
+    markup = []
+    for item in board['privacy']:
+        viewer_fixture = copy.deepcopy(fixture)
+        viewer_fixture['identity'] = item['identity']
+        viewer_board = copy.deepcopy(board)
+        viewer_board['baseline'] = item['baseline']
+        scenario = Scenario(browser, base, args.renderer, viewer_fixture, viewer_board, 'en', (1366, 768), report, out, motion='no-preference', initial='baseline')
+        trace = out / f'privacy-{item["viewer"]}.zip'
+        scenario.context.tracing.start(screenshots=True, snapshots=True, sources=False)
+        try:
+            scenario.send(item['snapshot'])
+            scenario.page.get_by_test_id('neutral-theft').wait_for(state='attached')
+            overlay = scenario.page.get_by_test_id('board-effects')
+            markup.append(overlay.inner_html())
+            screenshot = out / f'privacy-{item["viewer"]}.png'
+            scenario.page.screenshot(path=str(screenshot))
+            hidden = all(player['id'] == item['viewer'] or 'resources' not in player for player in item['snapshot']['view']['players'])
+            case(report, 'A05-projection-' + item['viewer'], 'PASS' if hidden and not scenario.errors and overlay.text_content() == '' else 'FAIL', viewer=item['viewer'], screenshot=relative(screenshot), errors=scenario.errors, operation='Deliver own projected engine theft snapshot over browser WebSocket; overlay contains neutral geometry only.', trace=relative(trace))
+        finally:
+            scenario.context.tracing.stop(path=str(trace))
+            scenario.close()
+    case(report, 'V05-neutral-three-seats-outsider', 'PASS' if len(set(markup)) == 1 else 'FAIL', distinctOverlayMarkup=len(set(markup)), viewers=[item['viewer'] for item in board['privacy']], detail='Compares only the presentation overlay; authorized private hand/log content intentionally differs per viewer.')
+    case(report, 'P03-P04-P05-P06-device-assistive', 'NOT RUN', detail='No owner registry/heap/GPU trend, cold cache timing, 100-input paint or real 6-seat acknowledgement benchmark; no physical device or screen reader acceptance.')
 
 
 def main():
@@ -416,6 +503,7 @@ def main():
     parser.add_argument('--fixture', required=True)
     parser.add_argument('--browser', choices=('chromium', 'firefox', 'webkit'), default='chromium')
     parser.add_argument('--executable-path')
+    parser.add_argument('--suite', choices=('control', 'p1b'), default='control', help='p1b adds animation checkpoints, reduced motion, history and projected theft privacy checks')
     args = parser.parse_args()
     out = output_path(args.out)
     report = {'runId': out.name, 'startedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
@@ -424,7 +512,7 @@ def main():
               'limitations': ['API and WebSocket are fixture routes; no real command acknowledgement or P06 measured.',
                               'No physical mobile device, screen reader, input latency, heap/GPU leak proof or visual acceptance.',
                               'rAF intervals are active CSS animation scheduling proxies, not GPU render time.',
-                              'P0 changes no UI. E01 historical initial-load replay remains existing behavior; static comparison uses no event history.',
+                              'P1A baselines historical snapshots without replay. Static comparison still omits history for continuity with the P0 control.',
                               'Existing index.html keeps lang=zh-Hant even with English selected. Captures verify the actual locale switch; document language is recorded as an existing accessibility gap.',
                               'T01 denotes this runner provenance/replay check; acceptance document has no separate T section.']}
     child = temporary = log = None
@@ -476,6 +564,9 @@ def main():
                 write_report(report, out)
                 event_capture(browser, base, args, fixture, report, out)
                 write_report(report, out)
+                if args.suite == 'p1b':
+                    p1b_checks(browser, base, args, fixture, report, out)
+                    write_report(report, out)
                 performance_before(browser, base, args, fixture, report, out)
             finally:
                 browser.close()
