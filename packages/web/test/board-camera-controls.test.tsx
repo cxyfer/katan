@@ -12,7 +12,7 @@ function snapshot(bounds: ReturnType<typeof sceneBounds>, viewport: BoardViewpor
   const camera = new OrthographicCamera();
   applySceneCamera(camera, fitSceneCamera(bounds, viewport.rect, viewport.azimuthDeg, viewport.elevationDeg), viewport);
   return { viewProjection: new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).toArray(),
-    rect: viewport.rect, version: 1, clip: { near: -1, far: 1 } };
+    rect: viewport.rect, cameraZoom: camera.zoom, version: 1, clip: { near: -1, far: 1 } };
 }
 
 describe('rotatable orthographic board camera', () => {
@@ -102,7 +102,7 @@ describe('rotatable orthographic board camera', () => {
     const target = targetsFromGeometry(geometry, 'hex', [0])[0]!;
     const start = projectWorldPoint({ matrix: before.viewProjection, rect, point: target.world });
     const event = { currentTarget: surface, target: surface, pointerId: 1, pointerType: 'mouse', button: 0,
-      clientX: 500, clientY: 350, preventDefault: vi.fn() };
+      shiftKey: true, clientX: 500, clientY: 350, preventDefault: vi.fn() };
     act(() => result.current.surfaceProps.onPointerDown(event as never));
     act(() => result.current.surfaceProps.onPointerMove({ ...event, clientX: 520, clientY: 362 } as never));
     act(() => result.current.surfaceProps.onPointerUp({ ...event, clientX: 520, clientY: 362 } as never));

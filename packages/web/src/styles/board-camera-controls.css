@@ -31,6 +31,9 @@
   box-shadow: 0 6px 16px #254d4921;
 }
 .board-camera-angle--preview input[type='range'] { accent-color: #557769; }
+.board-camera-hint { margin: 0; padding: 4px 12px; color: #c7d7cf; font-size: 10px; text-align: center; }
+.board__surface, .island-preview__surface { cursor: grab; }
+.board__surface[data-gesture-active='true'], .island-preview__surface[data-gesture-active='true'] { cursor: grabbing; }
 @media (max-width: 760px) {
   .board-camera-angle--preview { min-height: 38px; padding-block: 0; }
   .board-camera-angle--preview input[type='range'] { min-height: 38px; width: 130px; }

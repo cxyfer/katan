@@ -287,20 +287,22 @@ function rectFromCanvas(canvas: HTMLCanvasElement, fallback: CssRect): CssRect {
 function ProjectionBridge({ props }: { props: SceneProps }) {
   const { camera, gl, invalidate } = useThree();
   const versionRef = useRef(0);
-  const lastRef = useRef<{ matrix: number[]; rect: CssRect } | null>(null);
+  const lastRef = useRef<{ matrix: number[]; rect: CssRect; cameraZoom: number } | null>(null);
   useLayoutEffect(() => {
     camera.updateMatrixWorld(true);
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
     const viewProjection = new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     const matrix = viewProjection.toArray();
     const rect = rectFromCanvas(gl.domElement, props.viewport.rect);
+    const cameraZoom = camera instanceof OrthographicCamera ? camera.zoom : 1;
     const previous = lastRef.current;
-    if (previous && previous.matrix.length === matrix.length && previous.matrix.every((value, index) => Math.abs(value - matrix[index]!) < 1e-10) &&
+    if (previous && previous.cameraZoom === cameraZoom && previous.matrix.length === matrix.length && previous.matrix.every((value, index) => Math.abs(value - matrix[index]!) < 1e-10) &&
         previous.rect.left === rect.left && previous.rect.top === rect.top && previous.rect.width === rect.width && previous.rect.height === rect.height) return;
-    lastRef.current = { matrix, rect };
+    lastRef.current = { matrix, rect, cameraZoom };
     versionRef.current += 1;
     const snapshot: ProjectionSnapshot = {
       viewProjection: matrix,
+      cameraZoom,
       rect,
       version: versionRef.current,
       // Projection helper clips normalized device coordinates.

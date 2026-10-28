@@ -225,6 +225,8 @@ export function BoardView({ controller }: { controller: TableController }) {
         </details>
       </div>
 
+      {effective === 'r3f' && <p className="board-camera-hint" data-testid="camera-gesture-hint">{t('board.cameraGestureHint')}</p>}
+
       {diceRolling && focusedRoll && boardRef.current && createPortal(
         <div className="dice-focus" data-testid="dice-focus" aria-hidden="true">
           <div className="dice-focus__panel" key={focusedRoll.seq}>
@@ -237,7 +239,8 @@ export function BoardView({ controller }: { controller: TableController }) {
         </div>,
         boardRef.current.closest('[data-testid="game-stage"]') ?? boardRef.current,
       )}
-      <div ref={surfaceRef} className="board__surface" data-testid="board-surface" role="region" aria-label={t('a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>
+      <div ref={surfaceRef} className="board__surface" data-testid="board-surface" role="region"
+        aria-label={t(effective === 'r3f' ? 'a11y.boardRegion3d' : 'a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>
         {requested !== 'svg' && !failure && <div className="board__scene" aria-hidden="true" style={{ opacity: effective === 'r3f' ? 1 : 0 }}>
           <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
             <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))}

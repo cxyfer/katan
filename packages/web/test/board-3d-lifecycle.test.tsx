@@ -113,6 +113,34 @@ beforeEach(() => {
 });
 
 describe('renderer lifecycle and presentation cursor', () => {
+  it('keeps an orbit drag on a legal target from selecting it and accepts the next deliberate tap', async () => {
+    const api = createFakeApi({ snapshot: rolled(12) });
+    await openGame(api);
+    fireEvent.change(screen.getByTestId('renderer-select'), { target: { value: 'r3f' } });
+    await waitFor(() => expect(screen.getByTestId('board').getAttribute('data-effective-renderer')).toBe('r3f'));
+    fireEvent.click(screen.getByTestId('action-build.road'));
+    const target = await screen.findByTestId('target-edge-5');
+    const pointer = (type: string, x: number, y: number) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperties(event, { pointerId: { value: 1 }, pointerType: { value: 'mouse' },
+        button: { value: 0 }, clientX: { value: x }, clientY: { value: y } });
+      fireEvent(target, event);
+    };
+    pointer('pointerdown', 100, 100);
+    pointer('pointermove', 120, 116);
+    pointer('pointerup', 120, 116);
+    fireEvent.click(target);
+    expect(sceneMock.props!.viewport.azimuthDeg).toBe(13);
+    expect(sceneMock.props!.viewport.elevationDeg).toBe(54);
+    expect(screen.queryByTestId('selection-preview')).toBeNull();
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+    pointer('pointerdown', 120, 116);
+    pointer('pointerup', 120, 116);
+    fireEvent.click(target);
+    expect(await screen.findByTestId('selection-preview')).toBeTruthy();
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
   it('exposes camera rotation only in 3D, preserves game selection, and restores the initial view', async () => {
     const api = createFakeApi({ snapshot: rolled(12) });
     await openGame(api);

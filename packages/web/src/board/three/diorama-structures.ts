@@ -195,7 +195,8 @@ export function createRoadModel(color: string, seat: number): BufferGeometry {
   for (let index = 0; index < count; index++) {
     box(model, '#f8e9c9', [-0.32 + index * 0.125, 0.043, 0], [0.022, 0.004, 0.047]);
   }
-  return model.build();
+  // Widen every cobble, curb and seat mark together without moving the X endpoints.
+  return model.build().scale(1, 0.055 / 0.045, 0.15 / 0.085);
 }
 
 function boatHull(): BufferGeometry {

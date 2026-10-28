@@ -2,7 +2,7 @@ import { Color, Mesh, MeshBasicMaterial, Raycaster, Vector3, type BufferGeometry
 import { describe, expect, it } from 'vitest';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { fixedBoard } from '../src/test/fixtures.ts';
-import { geometryToWorld } from '../src/board/three/bounds.ts';
+import { BOARD_MODEL_METRICS, geometryToWorld } from '../src/board/three/bounds.ts';
 import {
   createHarborModel,
   createRoadModel,
@@ -118,8 +118,10 @@ describe('baked architectural miniatures', () => {
     const bounds = validateModel(first);
     expect(bounds.min.x).toBeCloseTo(-0.5, 6);
     expect(bounds.max.x).toBeCloseTo(0.5, 6);
-    expect(bounds.max.z - bounds.min.z).toBeCloseTo(0.085, 6);
-    expect(bounds.max.y).toBeCloseTo(0.045, 6);
+    expect(bounds.max.z - bounds.min.z).toBeCloseTo(0.15, 6);
+    expect(bounds.max.y).toBeCloseTo(0.055, 6);
+    expect(Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z))).toBeCloseTo(BOARD_MODEL_METRICS.roadHalfWidth, 6);
+    expect(first.getAttribute('position').count / 3).toBe(268);
     expect(sixth.getAttribute('position').count).toBeGreaterThan(first.getAttribute('position').count);
     first.dispose();
     sixth.dispose();

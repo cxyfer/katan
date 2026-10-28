@@ -26,6 +26,8 @@ export interface BoardViewportState {
 export interface ProjectionSnapshot {
   /** Column-major camera projectionMatrix * matrixWorldInverse. */
   viewProjection: readonly number[];
+  /** Orthographic camera zoom used to produce this matrix, independent of pending UI state. */
+  cameraZoom?: number;
   rect: CssRect;
   version: number;
   clip: { near: number; far: number };

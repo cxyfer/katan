@@ -141,7 +141,7 @@ def main():
                     settled(page)
                     assert state(page)["azimuth"] == 20
                     surface = page.get_by_test_id("island-preview-surface")
-                    before = state(page)["center"]
+                    before_orbit = state(page)
                     rect = surface.bounding_box()
                     page.mouse.move(rect["x"] + rect["width"] * .5, rect["y"] + rect["height"] * .55)
                     page.mouse.down()
@@ -149,7 +149,36 @@ def main():
                                     rect["y"] + rect["height"] * .55 + 35, steps=8)
                     page.mouse.up()
                     settled(page)
-                    assert state(page)["center"] != before
+                    orbited = state(page)
+                    assert orbited["center"] == before_orbit["center"]
+                    assert orbited["azimuth"] != before_orbit["azimuth"]
+                    assert orbited["elevation"] != before_orbit["elevation"]
+                    assert orbited["cameraMatrix"] != before_orbit["cameraMatrix"]
+                    page.get_by_test_id("preview-fit").click()
+                    page.get_by_test_id("preview-zoom-in").click()
+                    page.get_by_test_id("preview-zoom-in").click()
+                    settled(page)
+                    before_pan = state(page)
+                    page.keyboard.down("Shift")
+                    page.mouse.move(rect["x"] + rect["width"] * .5, rect["y"] + rect["height"] * .55)
+                    page.mouse.down()
+                    page.mouse.move(rect["x"] + rect["width"] * .5 + 40,
+                                    rect["y"] + rect["height"] * .55 + 20, steps=8)
+                    page.mouse.up()
+                    page.keyboard.up("Shift")
+                    settled(page)
+                    panned = state(page)
+                    assert panned["center"] != before_pan["center"]
+                    assert panned["azimuth"] == before_pan["azimuth"]
+                    assert panned["elevation"] == before_pan["elevation"]
+                    page.mouse.move(rect["x"] + rect["width"] * .5, rect["y"] + rect["height"] * .55)
+                    page.mouse.down(button="right")
+                    page.mouse.move(rect["x"] + rect["width"] * .5 - 30,
+                                    rect["y"] + rect["height"] * .55 - 15, steps=6)
+                    page.mouse.up(button="right")
+                    settled(page)
+                    assert state(page)["center"] != panned["center"]
+                    assert state(page)["azimuth"] == panned["azimuth"]
                     surface.focus()
                     page.keyboard.press("]")
                     settled(page)
@@ -178,7 +207,9 @@ def main():
                     report["cases"].append({"viewport": [width, height], "initial": initial,
                                             "final": state(page), "status": "PASS",
                                             "elevationRange": {"low": low, "high": high},
-                                            "checked": ["fit", "zoom", "rotate", "elevation 25/80 real camera", "drag", "keyboard",
+                                            "drag": {"orbited": orbited, "shiftPanned": panned},
+                                            "checked": ["fit", "zoom", "rotate", "elevation 25/80 real camera",
+                                                        "left drag orbit", "Shift-left/right drag pan", "keyboard",
                                                         "19/30 topology", "low quality", "overflow"]})
                     context.close()
             finally:

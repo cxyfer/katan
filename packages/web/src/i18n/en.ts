@@ -227,6 +227,7 @@ export const en: Catalog = {
   'board.rotateRightHint': 'Rotate camera right 30° (] on the board)',
   'board.viewingAngle': 'Viewing angle',
   'board.viewingAngleDegrees': '{degrees} degrees',
+  'board.cameraGestureHint': 'Drag to rotate and tilt · Shift-drag or right-drag to pan · Wheel / pinch to zoom',
   'board.resetView': 'Reset view',
   'board.fitBoard': 'Fit board',
   'board.zoomLevel': 'Zoom {percent}%',
@@ -478,6 +479,7 @@ export const en: Catalog = {
   'a11y.actionRejected': 'Action rejected: {reason}',
   'a11y.newMessage': 'New chat message from {player}.',
   'a11y.boardRegion': 'Game board. Use the candidate list for a non-precision way to choose a target.',
+  'a11y.boardRegion3d': '3D game board. Drag left or right to rotate, up or down to tilt. Shift-drag or right-drag to pan. Wheel or pinch to zoom; move two fingers to pan. Home resets the view. Use the candidate list to choose a target without precise pointing.',
 
   // --- profiles ------------------------------------------------------------
   'profile.base-2025': 'Base game, 3–4 players',

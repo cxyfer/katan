@@ -8,6 +8,7 @@ import {
   type CSSProperties,
   type FocusEventHandler,
   type KeyboardEventHandler,
+  type MouseEventHandler,
   type PointerEventHandler,
   type RefObject,
   type WheelEventHandler,
@@ -38,6 +39,8 @@ export const MAX_BOARD_ZOOM = 3;
 export const MIN_CAMERA_ELEVATION = 25;
 export const MAX_CAMERA_ELEVATION = 80;
 export const DRAG_SUPPRESSION_PX = 6;
+export const ORBIT_AZIMUTH_DEG_PER_PX = 0.35;
+export const ORBIT_ELEVATION_DEG_PER_PX = 0.25;
 
 export type ViewportSurface = Element & {
   setPointerCapture?: (pointerId: number) => void;
@@ -53,6 +56,7 @@ export interface BoardGestureProps {
   onBlur: FocusEventHandler<Element>;
   onWheel: WheelEventHandler<Element>;
   onKeyDown: KeyboardEventHandler<Element>;
+  onContextMenu: MouseEventHandler<Element>;
   style: CSSProperties;
   'aria-busy': boolean;
   'data-gesture-active': 'true' | 'false';
@@ -101,6 +105,10 @@ interface GestureState {
   pointers: Map<number, Point>;
   startCenter: { x: number; z: number };
   startZoom: number;
+  startProjection: ProjectionSnapshot | null;
+  startAzimuth: number;
+  startElevation: number;
+  mode: 'orbit' | 'pan';
   startCentroid: Point;
   startDistance: number;
   primaryStart: Point;
@@ -305,22 +313,23 @@ export function useBoardViewport({
     delta: Point,
     zoom: number,
     around: { x: number; z: number },
+    snapshot: ProjectionSnapshot | null = projection,
   ): Point => {
-    if (renderer !== 'svg' && projection) {
+    if (renderer !== 'svg' && snapshot) {
       const epsilon = 0.005;
       const basePoint = { x: around.x, y: 0, z: around.z };
-      const base = projectWorldPoint({ matrix: projection.viewProjection, point: basePoint, rect: projection.rect, clip: projection.clip });
+      const base = projectWorldPoint({ matrix: snapshot.viewProjection, point: basePoint, rect: snapshot.rect, clip: snapshot.clip });
       const plusX = projectWorldPoint({
-        matrix: projection.viewProjection,
+        matrix: snapshot.viewProjection,
         point: { x: around.x + epsilon, y: 0, z: around.z },
-        rect: projection.rect,
-        clip: projection.clip,
+        rect: snapshot.rect,
+        clip: snapshot.clip,
       });
       const plusZ = projectWorldPoint({
-        matrix: projection.viewProjection,
+        matrix: snapshot.viewProjection,
         point: { x: around.x, y: 0, z: around.z + epsilon },
-        rect: projection.rect,
-        clip: projection.clip,
+        rect: snapshot.rect,
+        clip: snapshot.clip,
       });
       if (base.visible && plusX.visible && plusZ.visible) {
         const a = (plusX.x - base.x) / epsilon;
@@ -329,8 +338,12 @@ export function useBoardViewport({
         const d = (plusZ.y - base.y) / epsilon;
         const determinant = a * d - c * b;
         if (Number.isFinite(determinant) && Math.abs(determinant) > 1e-8) {
-          const worldX = (delta.x * d - c * delta.y) / determinant;
-          const worldZ = (a * delta.y - b * delta.x) / determinant;
+          // A pinch changes zoom while using its frozen starting matrix. Scale
+          // from that matrix's real camera zoom, not possibly pending view state.
+          const zoomScale = snapshot.cameraZoom !== undefined && Number.isFinite(snapshot.cameraZoom) && snapshot.cameraZoom > 0
+            ? snapshot.cameraZoom / clamp(zoom, MIN_BOARD_ZOOM, MAX_BOARD_ZOOM) : 1;
+          const worldX = (delta.x * d - c * delta.y) / determinant * zoomScale;
+          const worldZ = (a * delta.y - b * delta.x) / determinant * zoomScale;
           if (Number.isFinite(worldX) && Number.isFinite(worldZ)) {
             return { x: worldX, y: worldZ };
           }
@@ -348,12 +361,16 @@ export function useBoardViewport({
     return { x: svgDelta.x / geometry.scale / zoom, y: svgDelta.y / geometry.scale / zoom };
   }, [geometry, projection, rect, renderer]);
 
-  const startGesture = useCallback((pointerId: number, point: Point) => {
+  const startGesture = useCallback((pointerId: number, point: Point, mode: GestureState['mode']) => {
     const current = viewRef.current;
     gestureRef.current = {
       pointers: new Map([[pointerId, point]]),
       startCenter: current.center,
       startZoom: current.zoom,
+      startProjection: projection,
+      startAzimuth: current.azimuthDeg,
+      startElevation: current.elevationDeg ?? cameraElevation(rect),
+      mode,
       startCentroid: point,
       startDistance: 0,
       primaryStart: point,
@@ -362,7 +379,7 @@ export function useBoardViewport({
       captured: new Set(),
     };
     setGestureActive(true);
-  }, []);
+  }, [projection, rect]);
 
   const armClickSuppression = useCallback(() => {
     if (suppressTimerRef.current !== null) clearTimeout(suppressTimerRef.current);
@@ -381,12 +398,15 @@ export function useBoardViewport({
     if (points[0]) gesture.primaryStart = points[0];
     gesture.startCenter = current.center;
     gesture.startZoom = current.zoom;
+    gesture.startProjection = projection;
+    gesture.startAzimuth = current.azimuthDeg;
+    gesture.startElevation = current.elevationDeg ?? cameraElevation(rect);
     gesture.startCentroid = centroid(points);
     gesture.startDistance = points.length > 1 ? pointerDistance(points[0]!, points[1]!) : 0;
     gesture.moved = true;
     gesture.pinching = points.length > 1;
     suppressClickRef.current = true;
-  }, []);
+  }, [projection, rect]);
 
   const capture = useCallback((event: { currentTarget: ViewportSurface; pointerId: number; preventDefault: () => void }, gesture: GestureState) => {
     try {
@@ -428,7 +448,8 @@ export function useBoardViewport({
   }, []);
 
   const onPointerDown = useCallback((event: React.PointerEvent<Element>) => {
-    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    if (event.pointerType === 'mouse' && event.button !== 0 &&
+        (renderer === 'svg' || event.button !== 2)) return;
     // A fresh user gesture always starts with clean click suppression. The
     // click belonging to the previous gesture, when present, arrives before it.
     suppressClickRef.current = false;
@@ -439,7 +460,8 @@ export function useBoardViewport({
     const point = { x: event.clientX, y: event.clientY };
     const gesture = gestureRef.current;
     if (!gesture) {
-      startGesture(event.pointerId, point);
+      const mode = renderer === 'svg' || event.shiftKey || event.button === 2 ? 'pan' : 'orbit';
+      startGesture(event.pointerId, point, mode);
       return;
     }
     gesture.pointers.set(event.pointerId, point);
@@ -454,11 +476,15 @@ export function useBoardViewport({
         }
       }
     }
-  }, [rebasePinch, startGesture]);
+  }, [rebasePinch, renderer, startGesture]);
 
   const onPointerMove = useCallback((event: React.PointerEvent<Element>) => {
     const gesture = gestureRef.current;
     if (!gesture?.pointers.has(event.pointerId)) return;
+    if (event.pointerType === 'mouse' && event.buttons === 0) {
+      finishGesture(gesture.moved || gesture.pinching);
+      return;
+    }
     const point = { x: event.clientX, y: event.clientY };
     gesture.pointers.set(event.pointerId, point);
     const points = [...gesture.pointers.values()];
@@ -474,7 +500,7 @@ export function useBoardViewport({
       const delta = screenDeltaToWorld({
         x: currentCentroid.x - gesture.startCentroid.x,
         y: currentCentroid.y - gesture.startCentroid.y,
-      }, nextZoom, gesture.startCenter);
+      }, nextZoom, gesture.startCenter, gesture.startProjection);
       applyView({
         zoom: nextZoom,
         center: { x: gesture.startCenter.x - delta.x, z: gesture.startCenter.z - delta.y },
@@ -486,23 +512,38 @@ export function useBoardViewport({
     if (!gesture.moved && Math.hypot(drag.x, drag.y) < DRAG_SUPPRESSION_PX) return;
     gesture.moved = true;
     capture(event, gesture);
-    const delta = screenDeltaToWorld(drag, gesture.startZoom, gesture.startCenter);
+    if (gesture.mode === 'orbit') {
+      applyView({
+        zoom: gesture.startZoom,
+        center: gesture.startCenter,
+        azimuthDeg: gesture.startAzimuth - drag.x * ORBIT_AZIMUTH_DEG_PER_PX,
+        elevationDeg: clamp(gesture.startElevation + drag.y * ORBIT_ELEVATION_DEG_PER_PX,
+          MIN_CAMERA_ELEVATION, MAX_CAMERA_ELEVATION),
+      });
+      return;
+    }
+    const delta = screenDeltaToWorld(drag, gesture.startZoom, gesture.startCenter, gesture.startProjection);
     applyView({
       zoom: gesture.startZoom,
       center: { x: gesture.startCenter.x - delta.x, z: gesture.startCenter.z - delta.y },
     });
-  }, [applyView, capture, rebasePinch, screenDeltaToWorld]);
+  }, [applyView, capture, finishGesture, rebasePinch, screenDeltaToWorld]);
 
-  const onPointerUp = useCallback((event: React.PointerEvent<Element>) => {
+  const endPointer = useCallback((pointerId: number) => {
     const gesture = gestureRef.current;
-    if (!gesture?.pointers.has(event.pointerId)) return;
-    gesture.pointers.delete(event.pointerId);
+    if (!gesture?.pointers.has(pointerId)) return;
+    gesture.pointers.delete(pointerId);
     if (gesture.pointers.size > 0) {
+      // The lifted pointer implicitly loses capture after pointerup. It must
+      // not cancel the remaining finger's freshly rebased orbit gesture.
+      gesture.captured.delete(pointerId);
       rebasePinch(gesture);
       return;
     }
     finishGesture(gesture.moved || gesture.pinching);
   }, [finishGesture, rebasePinch]);
+
+  const onPointerUp = useCallback((event: React.PointerEvent<Element>) => endPointer(event.pointerId), [endPointer]);
 
   const cancelGesture = useCallback(() => {
     const gesture = gestureRef.current;
@@ -510,7 +551,26 @@ export function useBoardViewport({
     finishGesture(true);
   }, [finishGesture]);
 
+  useEffect(() => {
+    if (!gestureActive) return;
+    // Before the drag threshold there is deliberately no capture, so an up
+    // outside the board still needs to release the pending gesture owner.
+    const onWindowPointerUp = (event: PointerEvent) => endPointer(event.pointerId);
+    const onWindowPointerCancel = (event: PointerEvent) => {
+      if (gestureRef.current?.pointers.has(event.pointerId)) cancelGesture();
+    };
+    globalThis.addEventListener('pointerup', onWindowPointerUp);
+    globalThis.addEventListener('pointercancel', onWindowPointerCancel);
+    return () => {
+      globalThis.removeEventListener('pointerup', onWindowPointerUp);
+      globalThis.removeEventListener('pointercancel', onWindowPointerCancel);
+    };
+  }, [cancelGesture, endPointer, gestureActive]);
+
   const onLostPointerCapture = useCallback((event: React.PointerEvent<Element>) => {
+    // A touch target's implicit capture loss bubbles here when ownership moves
+    // to this surface. Only losing the surface's own capture cancels a gesture.
+    if (event.target !== event.currentTarget) return;
     const gesture = gestureRef.current;
     if (gesture?.captured.has(event.pointerId)) cancelGesture();
   }, [cancelGesture]);
@@ -525,6 +585,10 @@ export function useBoardViewport({
     const current = viewRef.current;
     setZoom(current.zoom * (event.deltaY < 0 ? 1.12 : 0.89));
   }, [setZoom]);
+
+  const onContextMenu = useCallback((event: React.MouseEvent<Element>) => {
+    if (renderer !== 'svg') event.preventDefault();
+  }, [renderer]);
 
   const onKeyDown = useCallback((event: React.KeyboardEvent<Element>) => {
     if (event.target !== event.currentTarget) return;
@@ -616,6 +680,7 @@ export function useBoardViewport({
     onBlur,
     onWheel,
     onKeyDown,
+    onContextMenu,
     style: { touchAction: 'none', position: 'relative' },
     'aria-busy': gestureActive,
     'data-gesture-active': gestureActive ? 'true' : 'false',

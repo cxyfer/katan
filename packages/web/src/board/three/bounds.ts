@@ -9,7 +9,7 @@ export const BOARD_MODEL_METRICS = Object.freeze({
   tileSideHeight: 0.196,
   coastDepth: 0.34,
   tileGap: 0.012,
-  roadHalfWidth: 0.05,
+  roadHalfWidth: 0.075,
   terrainHeight: 0.86,
   buildingHeight: 0.81,
   robberOriginY: 0.01,

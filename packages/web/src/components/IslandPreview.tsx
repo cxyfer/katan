@@ -55,7 +55,7 @@ export default function IslandPreview() {
           <p>從林間到海岸，換個角度，細看每一處風景。</p>
         </div>
         <div className="island-preview__surface" ref={surfaceRef} tabIndex={0} role="region"
-          aria-label="島嶼模型。拖曳移動，滾輪縮放；左右中括號旋轉，Home 重設。"
+          aria-label="島嶼模型。按住拖曳調整視角：左右旋轉，上下調整俯視角。Shift 加拖曳或右鍵拖曳平移；滾輪或雙指縮放，雙指移動平移，Home 重設。"
           data-testid="island-preview-surface" data-camera-azimuth={controls.viewport.azimuthDeg} data-azimuth={controls.viewport.azimuthDeg}
           data-zoom={zoom} data-elevation={controls.viewport.elevationDeg}
           data-center-x={controls.viewport.center.x} data-center-z={controls.viewport.center.z}
@@ -73,7 +73,7 @@ export default function IslandPreview() {
           </div>}
         </div>
         <div className="island-preview__navigation">
-          <p className="island-preview__hint">拖曳移動 <span>·</span> 滾輪／雙指縮放 <span>·</span> [ ] 旋轉</p>
+          <p className="island-preview__hint">拖曳旋轉／俯仰 <span>·</span> Shift／右鍵拖曳平移 <span>·</span> 滾輪／雙指縮放</p>
           <div className="island-preview__controls" role="group" aria-label="鏡頭控制">
             <button type="button" data-testid="preview-rotate-left" onClick={() => controls.rotate(-30)} disabled={!!failure || controls.gestureActive}
               aria-label="鏡頭向左旋轉 30 度" title="向左旋轉 [">↶</button>

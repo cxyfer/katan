@@ -177,11 +177,13 @@ function HookHarness({
   renderer = 'svg',
   sceneKey,
   showSurface = true,
+  withTarget = false,
 }: {
   projection?: ProjectionSnapshot | null;
   renderer?: RendererMode;
   sceneKey?: string;
   showSurface?: boolean;
+  withTarget?: boolean;
 }) {
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const bounds: SceneBounds = {
@@ -197,7 +199,9 @@ function HookHarness({
     fromHints: true,
   };
   return <div data-board-stage="" data-testid="hook-stage">
-    {showSurface && <div ref={surfaceRef} data-testid="gesture-surface" {...controls.surfaceProps} />}
+    {showSurface && <div ref={surfaceRef} data-testid="gesture-surface" {...controls.surfaceProps}>
+      {withTarget && <button type="button" data-testid="gesture-target">Target</button>}
+    </div>}
     <output data-testid="viewport">{JSON.stringify(controls.viewport)}</output>
     <output data-testid="pan">{JSON.stringify(controls.pan)}</output>
     <output data-testid="gesture">{String(controls.gestureActive)}</output>
@@ -212,7 +216,7 @@ function HookHarness({
   </div>;
 }
 
-function pointer(element: Element, type: string, id: number, x: number, y: number) {
+function pointer(element: Element, type: string, id: number, x: number, y: number, shiftKey = false) {
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperties(event, {
     pointerId: { value: id },
@@ -220,11 +224,50 @@ function pointer(element: Element, type: string, id: number, x: number, y: numbe
     clientX: { value: x },
     clientY: { value: y },
     button: { value: 0 },
+    shiftKey: { value: shiftKey },
   });
   fireEvent(element, event);
 }
 
 describe('useBoardViewport single gesture owner', () => {
+  it.each(['orbit', 'pinch'] as const)('ignores a target capture-transfer bubble during %s but cancels surface capture loss', (mode) => {
+    render(<HookHarness renderer="r3f" withTarget />);
+    const surface = screen.getByTestId('gesture-surface');
+    const target = screen.getByTestId('gesture-target');
+    const capture = vi.fn();
+    const release = vi.fn();
+    Object.defineProperties(surface, {
+      setPointerCapture: { configurable: true, value: capture },
+      releasePointerCapture: { configurable: true, value: release },
+    });
+    pointer(target, 'pointerdown', 1, 20, 20);
+    if (mode === 'pinch') pointer(target, 'pointerdown', 2, 40, 20);
+    else pointer(target, 'pointermove', 1, 40, 20);
+    expect(capture).toHaveBeenCalledWith(1);
+    expect(screen.getByTestId('gesture').textContent).toBe('true');
+    const before = JSON.parse(screen.getByTestId('viewport').textContent!);
+
+    // The old touch target loses its implicit capture after the surface takes
+    // ownership. Dispatch on the child to exercise real React event bubbling.
+    pointer(target, 'lostpointercapture', 1, 40, 20);
+    if (mode === 'pinch') pointer(target, 'lostpointercapture', 2, 40, 20);
+    expect(screen.getByTestId('gesture').textContent).toBe('true');
+    expect(release).not.toHaveBeenCalled();
+    if (mode === 'pinch') {
+      pointer(surface, 'pointermove', 2, 60, 20);
+      expect(JSON.parse(screen.getByTestId('viewport').textContent!).zoom).toBe(2);
+    } else {
+      pointer(surface, 'pointermove', 1, 60, 20);
+      expect(JSON.parse(screen.getByTestId('viewport').textContent!).azimuthDeg).not.toBe(before.azimuthDeg);
+    }
+
+    pointer(surface, 'lostpointercapture', mode === 'pinch' ? 2 : 1, 60, 20);
+    expect(screen.getByTestId('gesture').textContent).toBe('false');
+    expect(release).toHaveBeenCalledWith(1);
+    fireEvent.click(screen.getByTestId('consume'));
+    expect(screen.getByTestId('consume').getAttribute('data-consumed')).toBe('true');
+  });
+
   it('measures CSS rect, clamps 0.7–3 zoom, keeps fit center, and emits SVG pan', () => {
     render(<HookHarness />);
     const surface = screen.getByTestId('gesture-surface');
@@ -360,7 +403,7 @@ describe('useBoardViewport single gesture owner', () => {
     });
     fireEvent(window, new Event('resize'));
     fireEvent.click(screen.getByTestId('zoom-3'));
-    pointer(surface, 'pointerdown', 7, 20, 20);
+    pointer(surface, 'pointerdown', 7, 20, 20, true);
     pointer(surface, 'pointermove', 7, 30, 20);
     const viewport = JSON.parse(screen.getByTestId('viewport').textContent!);
     expect(viewport.center.x).toBeCloseTo(-0.2, 8);

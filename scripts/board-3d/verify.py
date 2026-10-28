@@ -563,8 +563,60 @@ def interactions(browser, base, args, fixture, report, out) -> None:
                 case(report, "I08-camera-elevation", "PASS" if moved else "FAIL",
                      range=[25, 80], lowTargetPositions=low, highTargetPositions=high,
                      restoredElevation=50, detail="Real range input and keyboard limits change live target projections; fit restores the default angle.")
+                anchor = target_buttons.first.bounding_box()
+                x, y = anchor["x"] + anchor["width"] / 2, anchor["y"] + anchor["height"] / 2
+                scenario.page.mouse.move(x, y)
+                scenario.page.mouse.down()
+                scenario.page.mouse.move(x + 48, y + 24, steps=8)
+                scenario.page.mouse.up()
+                scenario.page.evaluate("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+                orbit = scenario.page.get_by_test_id("board").evaluate("""node => ({
+                  azimuth:Number(node.dataset.cameraAzimuth), elevation:Number(node.dataset.cameraElevation)
+                })""")
+                no_selection = scenario.page.get_by_test_id("selection-preview").count() == 0
+                case(report, "I09-orbit-from-target", "PASS" if orbit["azimuth"] != 20 and
+                     orbit["elevation"] != 50 and no_selection else "FAIL", actual=orbit,
+                     noAccidentalSelection=no_selection,
+                     detail="Left drag starting on a legal target orbits both axes without selecting it.")
+                scenario.page.get_by_test_id("reset-view").click()
+                scenario.page.wait_for_function("document.querySelector('[data-testid=\"board\"]')?.dataset.cameraAzimuth === '20'")
+                if args.browser == "chromium":
+                    cdp = scenario.context.new_cdp_session(scenario.page)
+                    cdp.send("Emulation.setTouchEmulationEnabled", {"enabled": True, "maxTouchPoints": 2})
+                    scenario.page.evaluate("""() => {
+                      window.__orbitCaptureLoss = [];
+                      document.querySelector('[data-testid="board-surface"]').addEventListener('lostpointercapture', event => {
+                        window.__orbitCaptureLoss.push({target:event.target.dataset.testid,
+                          currentTarget:event.currentTarget.dataset.testid, pointerId:event.pointerId});
+                      }, true);
+                    }""")
+                    anchor = target_buttons.first.bounding_box()
+                    x, y = anchor["x"] + anchor["width"] / 2, anchor["y"] + anchor["height"] / 2
+                    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart",
+                             "touchPoints": [{"id": 1, "x": x, "y": y}]})
+                    for step in range(1, 7):
+                        cdp.send("Input.dispatchTouchEvent", {"type": "touchMove",
+                                 "touchPoints": [{"id": 1, "x": x + step * 8, "y": y + step * 4}]})
+                    touch_active = scenario.page.get_by_test_id("board-surface").get_attribute("data-gesture-active")
+                    cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+                    scenario.page.evaluate("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+                    touch = scenario.page.get_by_test_id("board").evaluate("""node => ({
+                      azimuth:Number(node.dataset.cameraAzimuth), elevation:Number(node.dataset.cameraElevation)
+                    })""")
+                    no_selection = scenario.page.get_by_test_id("selection-preview").count() == 0
+                    case(report, "I10-touch-capture-transfer", "PASS" if touch_active == "true" and
+                         touch["azimuth"] != 20 and touch["elevation"] != 50 and no_selection else "FAIL",
+                         actual=touch, activeUntilRelease=touch_active, noAccidentalSelection=no_selection,
+                         captureLoss=scenario.page.evaluate("window.__orbitCaptureLoss"),
+                         detail="Chromium synthetic touch starts on a target and transfers implicit capture to the orbit surface; not a physical-device check.")
+                    cdp.detach()
+                    scenario.page.get_by_test_id("reset-view").click()
+                else:
+                    case(report, "I10-touch-capture-transfer", "NOT RUN", detail="Requires Chromium CDP synthetic touch.")
             else:
                 case(report, "I08-camera-elevation", "NOT RUN", detail="Elevation applies to the modeled renderer.")
+                case(report, "I09-orbit-from-target", "NOT RUN", detail="Orbit applies to the modeled renderer.")
+                case(report, "I10-touch-capture-transfer", "NOT RUN", detail="Orbit applies to the modeled renderer.")
             targets = target_buttons.count()
             target_records = target_buttons.evaluate_all("""nodes => nodes.map(node => {
               const box=node.getBoundingClientRect();
