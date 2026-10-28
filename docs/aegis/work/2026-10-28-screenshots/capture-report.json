@@ -1,0 +1,1725 @@
+{
+  "base": "http://127.0.0.1:3000",
+  "browser": "154.0.8037.57",
+  "deviceScaleFactor": 2,
+  "scope": "Real three-player game driven through the UI; no fixtures and no direct database writes. Captures are review states, not visual-regression baselines.",
+  "captures": [
+    {
+      "file": "docs/screenshots/01-entry-zh.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        842
+      ],
+      "fullPage": true,
+      "deviceScaleFactor": 2,
+      "element": false,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 842,
+        "duplicateIds": [],
+        "board": null,
+        "prompt": null,
+        "hand": null,
+        "players": null
+      }
+    },
+    {
+      "file": "docs/screenshots/02-home-zh.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": true,
+      "deviceScaleFactor": 2,
+      "element": false,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": null,
+        "prompt": null,
+        "hand": null,
+        "players": null
+      }
+    },
+    {
+      "file": "docs/screenshots/03-lobby-zh.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": true,
+      "deviceScaleFactor": 2,
+      "element": false,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": null,
+        "prompt": null,
+        "hand": null,
+        "players": null
+      }
+    },
+    {
+      "file": "docs/screenshots/04-setup-zh.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": false,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 180.53125,
+          "width": 1044,
+          "height": 519.46875,
+          "top": 180.53125,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 33.84375,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 92.03125,
+          "left": 88
+        },
+        "hand": {
+          "x": 92,
+          "y": 674,
+          "width": 900,
+          "height": 46,
+          "top": 674,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 68,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 76,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/05-table-zh.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": false,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 88
+        },
+        "hand": {
+          "x": 92,
+          "y": 361.859375,
+          "width": 900,
+          "height": 358.140625,
+          "top": 361.859375,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 68,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 76,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/06-other-seat-zh.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": false,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 53.671875,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 111.859375,
+          "left": 88
+        },
+        "hand": {
+          "x": 92,
+          "y": 361.859375,
+          "width": 900,
+          "height": 358.140625,
+          "top": 361.859375,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 68,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 76,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/08-table-en.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": false,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 88
+        },
+        "hand": {
+          "x": 92,
+          "y": 361.859375,
+          "width": 900,
+          "height": 358.140625,
+          "top": 361.859375,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 68,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 76,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/07a-trade-panel-zh.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 88
+        },
+        "hand": {
+          "x": 92,
+          "y": 361.859375,
+          "width": 900,
+          "height": 358.140625,
+          "top": 361.859375,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 68,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 76,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/07b-chat-panel-zh.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 88
+        },
+        "hand": {
+          "x": 92,
+          "y": 674,
+          "width": 900,
+          "height": 46,
+          "top": 674,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 68,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 76,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/15-panel-log.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "prompt": {
+          "x": 88,
+          "y": 58.1875,
+          "width": 1034,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 88
+        },
+        "hand": {
+          "x": 92,
+          "y": 674,
+          "width": 900,
+          "height": 46,
+          "top": 674,
+          "right": 992,
+          "bottom": 720,
+          "left": 92
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 68,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 76,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/12-panel-seats.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 258,
+          "y": 114.1875,
+          "width": 870,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 258
+        },
+        "prompt": {
+          "x": 262,
+          "y": 58.1875,
+          "width": 860,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 262
+        },
+        "hand": {
+          "x": 266,
+          "y": 674,
+          "width": 862,
+          "height": 46,
+          "top": 674,
+          "right": 1128,
+          "bottom": 720,
+          "left": 266
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 242,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 250,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/13-panel-hand.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 258,
+          "y": 114.1875,
+          "width": 870,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 258
+        },
+        "prompt": {
+          "x": 262,
+          "y": 58.1875,
+          "width": 860,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 262
+        },
+        "hand": {
+          "x": 266,
+          "y": 361.859375,
+          "width": 862,
+          "height": 358.140625,
+          "top": 361.859375,
+          "right": 1128,
+          "bottom": 720,
+          "left": 266
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 242,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 250,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/14-panel-devcards.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 258,
+          "y": 114.1875,
+          "width": 870,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 258
+        },
+        "prompt": {
+          "x": 262,
+          "y": 58.1875,
+          "width": 860,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 262
+        },
+        "hand": {
+          "x": 266,
+          "y": 361.859375,
+          "width": 862,
+          "height": 358.140625,
+          "top": 361.859375,
+          "right": 1128,
+          "bottom": 720,
+          "left": 266
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 242,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 250,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/16-panel-actions.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 258,
+          "y": 114.1875,
+          "width": 870,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 258
+        },
+        "prompt": {
+          "x": 262,
+          "y": 58.1875,
+          "width": 860,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 262
+        },
+        "hand": {
+          "x": 266,
+          "y": 361.859375,
+          "width": 862,
+          "height": 358.140625,
+          "top": 361.859375,
+          "right": 1128,
+          "bottom": 720,
+          "left": 266
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 242,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 250,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/17-panel-legend.png",
+      "viewport": [
+        1366,
+        768
+      ],
+      "document": [
+        1366,
+        768
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "scrollHeight": 768,
+        "duplicateIds": [],
+        "board": {
+          "x": 258,
+          "y": 114.1875,
+          "width": 870,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 258
+        },
+        "prompt": {
+          "x": 262,
+          "y": 58.1875,
+          "width": 860,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 1122,
+          "bottom": 130.828125,
+          "left": 262
+        },
+        "hand": {
+          "x": 266,
+          "y": 361.859375,
+          "width": 862,
+          "height": 358.140625,
+          "top": 361.859375,
+          "right": 1128,
+          "bottom": 720,
+          "left": 266
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 242,
+          "height": 649.8125,
+          "top": 60.1875,
+          "right": 250,
+          "bottom": 710,
+          "left": 8
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/09-mobile-table-zh.png",
+      "viewport": [
+        390,
+        844
+      ],
+      "document": [
+        390,
+        844
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": false,
+      "metrics": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "scrollHeight": 844,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 446.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 560,
+          "left": 58
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 320,
+          "height": 68.796875,
+          "top": 48.84375,
+          "right": 383,
+          "bottom": 117.640625,
+          "left": 63
+        },
+        "hand": {
+          "x": 66,
+          "y": 437.421875,
+          "width": 317,
+          "height": 352.578125,
+          "top": 437.421875,
+          "right": 383,
+          "bottom": 790,
+          "left": 66
+        },
+        "players": {
+          "x": 4,
+          "y": 53.84375,
+          "width": 260,
+          "height": 732.15625,
+          "top": 53.84375,
+          "right": 264,
+          "bottom": 786,
+          "left": 4
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/10-mobile-tools-zh.png",
+      "viewport": [
+        390,
+        844
+      ],
+      "document": [
+        390,
+        844
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": false,
+      "metrics": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "scrollHeight": 844,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 446.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 560,
+          "left": 58
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 320,
+          "height": 68.796875,
+          "top": 48.84375,
+          "right": 383,
+          "bottom": 117.640625,
+          "left": 63
+        },
+        "hand": {
+          "x": 66,
+          "y": 437.421875,
+          "width": 317,
+          "height": 352.578125,
+          "top": 437.421875,
+          "right": 383,
+          "bottom": 790,
+          "left": 66
+        },
+        "players": {
+          "x": 4,
+          "y": 53.84375,
+          "width": 260,
+          "height": 732.15625,
+          "top": 53.84375,
+          "right": 264,
+          "bottom": 786,
+          "left": 4
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/19-mobile-tool-trade.png",
+      "viewport": [
+        390,
+        844
+      ],
+      "document": [
+        390,
+        844
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "scrollHeight": 844,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 446.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 560,
+          "left": 58
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 320,
+          "height": 68.796875,
+          "top": 48.84375,
+          "right": 383,
+          "bottom": 117.640625,
+          "left": 63
+        },
+        "hand": {
+          "x": 66,
+          "y": 437.421875,
+          "width": 317,
+          "height": 352.578125,
+          "top": 437.421875,
+          "right": 383,
+          "bottom": 790,
+          "left": 66
+        },
+        "players": {
+          "x": 4,
+          "y": 53.84375,
+          "width": 260,
+          "height": 732.15625,
+          "top": 53.84375,
+          "right": 264,
+          "bottom": 786,
+          "left": 4
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/19-mobile-tool-chat.png",
+      "viewport": [
+        390,
+        844
+      ],
+      "document": [
+        390,
+        844
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "scrollHeight": 844,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 446.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 560,
+          "left": 58
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 320,
+          "height": 68.796875,
+          "top": 48.84375,
+          "right": 383,
+          "bottom": 117.640625,
+          "left": 63
+        },
+        "hand": {
+          "x": 66,
+          "y": 437.421875,
+          "width": 317,
+          "height": 352.578125,
+          "top": 437.421875,
+          "right": 383,
+          "bottom": 790,
+          "left": 66
+        },
+        "players": {
+          "x": 4,
+          "y": 53.84375,
+          "width": 260,
+          "height": 732.15625,
+          "top": 53.84375,
+          "right": 264,
+          "bottom": 786,
+          "left": 4
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/19-mobile-tool-log.png",
+      "viewport": [
+        390,
+        844
+      ],
+      "document": [
+        390,
+        844
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "scrollHeight": 844,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 446.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 560,
+          "left": 58
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 320,
+          "height": 68.796875,
+          "top": 48.84375,
+          "right": 383,
+          "bottom": 117.640625,
+          "left": 63
+        },
+        "hand": {
+          "x": 66,
+          "y": 437.421875,
+          "width": 317,
+          "height": 352.578125,
+          "top": 437.421875,
+          "right": 383,
+          "bottom": 790,
+          "left": 66
+        },
+        "players": {
+          "x": 4,
+          "y": 53.84375,
+          "width": 260,
+          "height": 732.15625,
+          "top": 53.84375,
+          "right": 264,
+          "bottom": 786,
+          "left": 4
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/19-mobile-tool-help.png",
+      "viewport": [
+        390,
+        844
+      ],
+      "document": [
+        390,
+        844
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": true,
+      "metrics": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "scrollHeight": 844,
+        "duplicateIds": [],
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 446.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 560,
+          "left": 58
+        },
+        "prompt": {
+          "x": 63,
+          "y": 48.84375,
+          "width": 320,
+          "height": 68.796875,
+          "top": 48.84375,
+          "right": 383,
+          "bottom": 117.640625,
+          "left": 63
+        },
+        "hand": {
+          "x": 66,
+          "y": 437.421875,
+          "width": 317,
+          "height": 352.578125,
+          "top": 437.421875,
+          "right": 383,
+          "bottom": 790,
+          "left": 66
+        },
+        "players": {
+          "x": 4,
+          "y": 53.84375,
+          "width": 260,
+          "height": 732.15625,
+          "top": 53.84375,
+          "right": 264,
+          "bottom": 786,
+          "left": 4
+        }
+      }
+    },
+    {
+      "file": "docs/screenshots/11-tablet-zh.png",
+      "viewport": [
+        768,
+        1024
+      ],
+      "document": [
+        768,
+        1024
+      ],
+      "fullPage": false,
+      "deviceScaleFactor": 2,
+      "element": false,
+      "metrics": {
+        "width": 768,
+        "height": 1024,
+        "scrollWidth": 768,
+        "scrollHeight": 1024,
+        "duplicateIds": [],
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "prompt": {
+          "x": 76,
+          "y": 58.1875,
+          "width": 496,
+          "height": 72.640625,
+          "top": 58.1875,
+          "right": 572,
+          "bottom": 130.828125,
+          "left": 76
+        },
+        "hand": {
+          "x": 80,
+          "y": 617.859375,
+          "width": 498,
+          "height": 358.140625,
+          "top": 617.859375,
+          "right": 578,
+          "bottom": 976,
+          "left": 80
+        },
+        "players": {
+          "x": 8,
+          "y": 60.1875,
+          "width": 260,
+          "height": 905.8125,
+          "top": 60.1875,
+          "right": 268,
+          "bottom": 966,
+          "left": 8
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "name": "01-entry-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "01-entry-zh: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "01-entry-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "entry keeps the nickname field empty",
+      "ok": true
+    },
+    {
+      "name": "02-home-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "02-home-zh: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "02-home-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "the lobby names at least one start blocker",
+      "ok": true
+    },
+    {
+      "name": "03-lobby-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "03-lobby-zh: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "03-lobby-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "04-setup-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "04-setup-zh: the game table fits the viewport",
+      "ok": true
+    },
+    {
+      "name": "04-setup-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "04-setup-zh: board visible",
+      "ok": true
+    },
+    {
+      "name": "04-setup-zh: board inside viewport",
+      "ok": true
+    },
+    {
+      "name": "04-setup-zh: required prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "04-setup-zh: hand inside viewport",
+      "ok": true
+    },
+    {
+      "name": "selecting a placement does not commit it",
+      "ok": true
+    },
+    {
+      "name": "cancelling a placement has no side effect",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "confirmed placement advances the revision",
+      "ok": true
+    },
+    {
+      "name": "all twelve opening placements go through the UI",
+      "ok": true
+    },
+    {
+      "name": "the roll is a server outcome",
+      "ok": true
+    },
+    {
+      "name": "05-table-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "05-table-zh: the game table fits the viewport",
+      "ok": true
+    },
+    {
+      "name": "05-table-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "05-table-zh: board visible",
+      "ok": true
+    },
+    {
+      "name": "05-table-zh: board inside viewport",
+      "ok": true
+    },
+    {
+      "name": "05-table-zh: required prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "05-table-zh: hand inside viewport",
+      "ok": true
+    },
+    {
+      "name": "the other seat projection hides every opponent resource pile",
+      "ok": true
+    },
+    {
+      "name": "the other seat still sees its own resource cards",
+      "ok": true
+    },
+    {
+      "name": "06-other-seat-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "06-other-seat-zh: the game table fits the viewport",
+      "ok": true
+    },
+    {
+      "name": "06-other-seat-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "06-other-seat-zh: board visible",
+      "ok": true
+    },
+    {
+      "name": "06-other-seat-zh: board inside viewport",
+      "ok": true
+    },
+    {
+      "name": "06-other-seat-zh: required prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "06-other-seat-zh: hand inside viewport",
+      "ok": true
+    },
+    {
+      "name": "08-table-en: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "08-table-en: the game table fits the viewport",
+      "ok": true
+    },
+    {
+      "name": "08-table-en: unique ids",
+      "ok": true
+    },
+    {
+      "name": "08-table-en: board visible",
+      "ok": true
+    },
+    {
+      "name": "08-table-en: board inside viewport",
+      "ok": true
+    },
+    {
+      "name": "08-table-en: required prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "08-table-en: hand inside viewport",
+      "ok": true
+    },
+    {
+      "name": "the structured trade builder records the added resource",
+      "ok": true
+    },
+    {
+      "name": "07a-trade-panel-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "07a-trade-panel-zh: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "07a-trade-panel-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "07b-chat-panel-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "07b-chat-panel-zh: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "07b-chat-panel-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "15-panel-log: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "15-panel-log: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "15-panel-log: unique ids",
+      "ok": true
+    },
+    {
+      "name": "the empty development area states that no card is held",
+      "ok": true
+    },
+    {
+      "name": "12-panel-seats: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "12-panel-seats: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "12-panel-seats: unique ids",
+      "ok": true
+    },
+    {
+      "name": "the pinned hand stays expanded",
+      "ok": true
+    },
+    {
+      "name": "13-panel-hand: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "13-panel-hand: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "13-panel-hand: unique ids",
+      "ok": true
+    },
+    {
+      "name": "14-panel-devcards: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "14-panel-devcards: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "14-panel-devcards: unique ids",
+      "ok": true
+    },
+    {
+      "name": "16-panel-actions: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "16-panel-actions: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "16-panel-actions: unique ids",
+      "ok": true
+    },
+    {
+      "name": "the legend reports itself open",
+      "ok": true
+    },
+    {
+      "name": "17-panel-legend: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "17-panel-legend: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "17-panel-legend: unique ids",
+      "ok": true
+    },
+    {
+      "name": "09-mobile-table-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "09-mobile-table-zh: the game table fits the viewport",
+      "ok": true
+    },
+    {
+      "name": "09-mobile-table-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "09-mobile-table-zh: board visible",
+      "ok": true
+    },
+    {
+      "name": "09-mobile-table-zh: board inside viewport",
+      "ok": true
+    },
+    {
+      "name": "09-mobile-table-zh: required prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "09-mobile-table-zh: hand inside viewport",
+      "ok": true
+    },
+    {
+      "name": "10-mobile-tools-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "10-mobile-tools-zh: the game table fits the viewport",
+      "ok": true
+    },
+    {
+      "name": "10-mobile-tools-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "10-mobile-tools-zh: board visible",
+      "ok": true
+    },
+    {
+      "name": "10-mobile-tools-zh: board inside viewport",
+      "ok": true
+    },
+    {
+      "name": "10-mobile-tools-zh: required prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "10-mobile-tools-zh: hand inside viewport",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-trade: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-trade: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-trade: unique ids",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-chat: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-chat: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-chat: unique ids",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-log: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-log: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-log: unique ids",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-help: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-help: the document height is measured, not clipped",
+      "ok": true
+    },
+    {
+      "name": "19-mobile-tool-help: unique ids",
+      "ok": true
+    },
+    {
+      "name": "11-tablet-zh: no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "11-tablet-zh: the game table fits the viewport",
+      "ok": true
+    },
+    {
+      "name": "11-tablet-zh: unique ids",
+      "ok": true
+    },
+    {
+      "name": "11-tablet-zh: board visible",
+      "ok": true
+    },
+    {
+      "name": "11-tablet-zh: board inside viewport",
+      "ok": true
+    },
+    {
+      "name": "11-tablet-zh: required prompt inside viewport",
+      "ok": true
+    },
+    {
+      "name": "11-tablet-zh: hand inside viewport",
+      "ok": true
+    },
+    {
+      "name": "no browser runtime exceptions",
+      "ok": true
+    }
+  ],
+  "runtimeErrors": [],
+  "notes": [
+    "No seat could afford a development card in this deal; 14-panel-devcards records the empty development area."
+  ],
+  "visualReview": "Captured at deviceScaleFactor 2; the capture model has no image input, so no subjective visual approval is claimed."
+}

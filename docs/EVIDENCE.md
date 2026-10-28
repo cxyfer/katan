@@ -43,7 +43,7 @@ All commands were run from the repository root unless stated otherwise.
 | 15 | `docker stop -t 30 catan-app` then `docker start catan-app` | graceful `SIGTERM` logged; the same guest identity was restored from the volume |
 | 16 | `docker compose -f docker-compose.postgres.yml up -d --no-build` then the smoke run | `/readyz` → `ready`; 13/13 checks passed; `guests`/`games`/`chat_messages` rows present in PostgreSQL |
 | 17 | Playwright + Chromium 156 headless, three isolated browser contexts against the published URL | lobby → start → settlement → road, `PROBLEMS: none` (see below) |
-| 18 | Same harness, full three-player game advanced through the API then rendered | 12 setup commands accepted, roll accepted, 12 states captured in `docs/screenshots/` |
+| 18 | Same harness, full three-player game advanced through the API then rendered | 12 setup commands accepted, roll accepted, 12 states captured in `docs/screenshots/` (superseded by the 2026-10-28 refresh below) |
 | 19 | Board-fit measurement at 1366×768 before and after the fix | SVG bottom `803` → `752` against a `768` viewport; whole map now above the fold |
 
 All seventeen commands were executed in this session.
@@ -85,6 +85,28 @@ could observe:
    `@catan/protocol` the service vocabulary, adding a server-side guard test that
    scans the source for undeclared ids, adding the missing keys in both locales,
    and extending the client parity test to the full 95-id set.
+
+## Screenshot refresh (2026-10-28)
+
+Two interface redesigns landed after the 2026-10-26 captures, so every set under
+`docs/screenshots/` was re-rendered against the current build
+(`index-BN2uccZK.js`, `index-DIALwB7a.css`). All runs used headless Chromium
+against the existing service on `127.0.0.1:3000`; none started a replacement
+server.
+
+| Set | Harness | Result |
+|---|---|---|
+| Canonical 22 states at `deviceScaleFactor: 2` | `docs/aegis/work/2026-10-28-screenshots/capture-canonical.py` | 119 assertions, 0 page errors |
+| `island-ui/` 53 states (6 scenes × 4 viewports × 2 locales + 5 mobile panels) | `verify-browser.py` | 306 assertions, 0 page errors |
+| `card-table/` 20 states (6 viewports × 2 locales) | `verify-card-table.py` | 144 assertions, 0 page errors |
+| `table-interactions/` 8 fixture states + `real/` 20 states | `verify-table-interactions.py`, `verify-card-table.py` | 190/190 checks and 144 assertions |
+
+The canonical, `card-table/` and `real/` sets drive a real three-player game
+through the UI; the interaction set still mocks every `/api/**` call. The
+terminal result remains an injected HTTP fixture, not a completed server game.
+Two measured layout facts are recorded rather than corrected: the entry document
+is 842 px tall at 1366×768, and the 360×640 lobby capture shows the invite card
+over the ready control.
 
 ## Fixture families passed
 
