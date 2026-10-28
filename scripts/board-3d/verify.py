@@ -131,7 +131,7 @@ BOARD_STATE = """() => {
   fallbackReason: board?.dataset.fallbackReason ?? null,
   svg: !!document.querySelector('[data-testid="board-svg"]'),
   canvas: canvas ? {width: canvas.width, height: canvas.height, cssWidth: canvas.clientWidth, cssHeight: canvas.clientHeight} : null,
-  targets: document.querySelectorAll('[data-testid^="target-"]').length,
+  targets: document.querySelectorAll('button[data-target-kind]').length,
   effects: document.querySelectorAll('[data-testid="board-effects"]').length,
   diceOverlay: document.querySelectorAll('[data-testid="dice-focus"]').length,
   hexes: document.querySelectorAll('[data-testid^="hex-"]').length,
@@ -308,6 +308,7 @@ class Scenario:
         if video:
             options.update(record_video_dir=str(out / "videos"), record_video_size=options["viewport"])
         self.closed = False
+        self.video_started_at = time.monotonic() if video else None
         self.context = browser.new_context(**options)
         self.context.add_init_script(f"localStorage.setItem('catan.locale', {json.dumps(locale)});")
         self.context.add_init_script(GPU_INSTRUMENT)
@@ -606,13 +607,23 @@ def privacy_events(browser, base, args, fixture, report, out) -> None:
             scenario.send(step["snapshot"])
             scenario.page.wait_for_timeout(100)
             event_checks.append({"step": step["command"]["type"], "effects": scenario.page.locator('[data-testid="board-effects"]').count()})
+        video_target_ms = 11000
+        video_minimum_ms = 10000
+        video_maximum_ms = 15000
+        recorded_ms = int((time.monotonic() - scenario.video_started_at) * 1000)
+        if recorded_ms < video_target_ms:
+            scenario.page.wait_for_timeout(video_target_ms - recorded_ms)
+            recorded_ms = int((time.monotonic() - scenario.video_started_at) * 1000)
         evidence = evidence_base(report, scenario)
         video = scenario.save_video("events-sequence")
         if video:
             report["artifacts"].append(relative(video))
-        okay = before == 0 and dice == 1 and settled == 0 and not scenario.errors and not scenario.unmapped
+        video_duration_ok = video_minimum_ms <= recorded_ms <= video_maximum_ms
+        okay = before == 0 and dice == 1 and settled == 0 and not scenario.errors and not scenario.unmapped and video_duration_ok
         case(report, "E01-roll-overlay-lifecycle", "PASS" if okay else "FAIL", fixture=board["id"],
-             checkpoints=event_checks, video=relative(video) if video else None, evidence=evidence)
+             checkpoints=event_checks, video=relative(video) if video else None,
+             recordingElapsedMs=recorded_ms, videoMinimumMs=video_minimum_ms, videoMaximumMs=video_maximum_ms,
+             evidence=evidence)
     except Exception as error:
         case(report, "E01-roll-overlay-lifecycle", "FAIL", error=str(error), traceback=traceback.format_exc())
     finally:
@@ -687,11 +698,16 @@ def faults(browser, base, args, fixture, report, out) -> None:
 
     scenario = None
     try:
+        if args.renderer == "svg":
+            case(report, "G01-webgl2-unavailable", "NOT RUN", explicitSvg=True, detail='Explicit SVG was requested; WebGL-unavailable, blocked GPU-chunk, and native context-loss failure preconditions are irrelevant.')
+            raise StopIteration
         scenario = Scenario(browser, base, args, fixture, board, "en", (800, 450), out, init_script=NO_WEBGL)
         state = scenario.state()
         update_renderer_evidence(report, state)
         okay = state["effective"] == "svg" and state["status"] == "failed" and bool(state["fallbackReason"]) and state["svg"] and not scenario.unmapped
         case(report, "G01-webgl2-unavailable", "PASS" if okay else "FAIL", actual=state, evidence=evidence_base(report, scenario))
+    except StopIteration:
+        pass
     except Exception as error:
         case(report, "G01-webgl2-unavailable", "FAIL", error=str(error), traceback=traceback.format_exc())
     finally:
@@ -700,6 +716,9 @@ def faults(browser, base, args, fixture, report, out) -> None:
 
     scenario = None
     try:
+        if args.renderer == "svg":
+            case(report, "G02-scene-chunk-blocked", "NOT RUN", explicitSvg=True, detail='Explicit SVG was requested; WebGL-unavailable, blocked GPU-chunk, and native context-loss failure preconditions are irrelevant.')
+            raise StopIteration
         scenario = Scenario(browser, base, args, fixture, board, "en", (800, 450), out,
                             block_asset=lambda url: bool(re.search(r"(BoardScene3D|SceneContent|three[-_.])", url)))
         state = scenario.state()
@@ -707,6 +726,8 @@ def faults(browser, base, args, fixture, report, out) -> None:
         okay = bool(scenario.blocked_assets) and state["effective"] == "svg" and state["status"] == "failed"
         case(report, "G02-scene-chunk-blocked", "PASS" if okay else "FAIL", blockedAssets=scenario.blocked_assets,
              actual=state, evidence=evidence_base(report, scenario))
+    except StopIteration:
+        pass
     except Exception as error:
         case(report, "G02-scene-chunk-blocked", "FAIL", error=str(error), traceback=traceback.format_exc())
     finally:
@@ -730,6 +751,9 @@ def faults(browser, base, args, fixture, report, out) -> None:
 
     scenario = None
     try:
+        if args.renderer == "svg":
+            case(report, "G03-native-context-loss", "NOT RUN", explicitSvg=True, detail='Explicit SVG was requested; WebGL-unavailable, blocked GPU-chunk, and native context-loss failure preconditions are irrelevant.')
+            raise StopIteration
         scenario = Scenario(browser, base, args, fixture, board, "en", (1366, 768), out)
         initial = scenario.state()
         if initial["effective"] != "r3f":
