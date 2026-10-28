@@ -38,6 +38,7 @@ export interface HexGeometry {
   index: number;
   cx: number;
   cy: number;
+  corners: Point[];
   points: string;
 }
 
@@ -75,6 +76,7 @@ export function buildGeometry(topologyId: string, scale = 100): BoardGeometry {
       index,
       cx: hex.x * scale,
       cy: hex.y * scale,
+      corners,
       points: corners.map((corner) => `${corner.x.toFixed(2)},${corner.y.toFixed(2)}`).join(' '),
     };
   });

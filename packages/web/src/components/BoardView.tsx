@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -13,6 +13,8 @@ import { useLocale, useT } from '../i18n/context.tsx';
 import { buildGeometry, type BoardGeometry, type Point } from '../board/geometry.ts';
 import { boardIntent, type BoardIntent } from '../board/intent.ts';
 import { ambiguousWith, describeTarget, type TargetKind } from '../board/targets.ts';
+import { boardViewport, parseViewBox } from '../board/viewport.ts';
+import { useBoardAnimation } from '../board/useBoardAnimation.ts';
 import {
   pipsFor,
   playerColorHex,
@@ -30,7 +32,7 @@ import { GameIcon, TerrainIllustration } from './GameArt.tsx';
 
 const BOARD_SCALE = 100;
 const BASE_TOPOLOGY = 'hex-r2';
-/** Ambiguity threshold in screen pixels; divided by zoom to get user units. */
+/** 歧義距離以投影後的 CSS px 計算。 */
 const AMBIGUITY_PX = 30;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 3;
@@ -63,20 +65,28 @@ export function BoardView({ controller }: { controller: TableController }) {
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [cluster, setCluster] = useState<number[] | null>(null);
-  const [diceRolling, setDiceRolling] = useState(false);
-  const [focusedRoll, setFocusedRoll] = useState<{ seq: number; dice: [number, number] } | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
-  const lastDiceEventRef = useRef<number | null>(null);
-  const diceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointersRef = useRef(new Map<number, Point>());
+  const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
+  const animation = useBoardAnimation(state.game, state.gameSync, state.connection === 'online',
+    !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll');
+  const focusedRoll = useMemo(() => {
+    const rolled = animation.active?.events.find((event) => event.type === 'turn.rolled');
+    const dice = rolled?.params.dice;
+    if (!rolled || !Array.isArray(dice) || dice.length !== 2 ||
+        !dice.every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) return null;
+    return { seq: rolled.seq, dice: [dice[0], dice[1]] as [number, number] };
+  }, [animation.active]);
+  const diceRolling = focusedRoll !== null;
 
   const topologyId = view?.board.topologyId ?? BASE_TOPOLOGY;
   const geometry: BoardGeometry = useMemo(() => buildGeometry(topologyId, BOARD_SCALE), [topologyId]);
   const topology = geometry.topology;
-  const [viewBoxX, viewBoxY, viewBoxWidth, viewBoxHeight] = geometry.viewBox.split(/\s+/).map(Number);
+  const viewBox = useMemo(() => parseViewBox(geometry.viewBox), [geometry]);
   const viewBoxCenter = {
-    x: viewBoxX + viewBoxWidth / 2,
-    y: viewBoxY + viewBoxHeight / 2,
+    x: viewBox.x + viewBox.width / 2,
+    y: viewBox.y + viewBox.height / 2,
   };
   const selfId = state.session?.id ?? null;
   const nameResolver = useMemo(() => nameOf(state), [state]);
@@ -100,45 +110,34 @@ export function BoardView({ controller }: { controller: TableController }) {
     return map;
   }, [geometry, intent]);
 
-  useEffect(() => {
-    const rolled = view?.events.slice().reverse().find((event) => event.type === 'turn.rolled');
-    if (!rolled || rolled.seq === lastDiceEventRef.current) return;
-    const dice = rolled.params.dice;
-    if (!Array.isArray(dice) || dice.length !== 2 || !dice.every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) return;
-    lastDiceEventRef.current = rolled.seq;
-    setFocusedRoll({ seq: rolled.seq, dice: [dice[0] as number, dice[1] as number] });
-    setDiceRolling(true);
-    if (diceTimerRef.current !== null) globalThis.clearTimeout(diceTimerRef.current);
-    diceTimerRef.current = globalThis.setTimeout(() => {
-      diceTimerRef.current = null;
-      setDiceRolling(false);
-    }, 1600);
-  }, [view?.events]);
+  const viewport = useCallback(() => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    return rect ? boardViewport({ viewBox, rect, zoom, pan }) : null;
+  }, [viewBox, zoom, pan]);
 
-  useEffect(() => () => {
-    if (diceTimerRef.current !== null) globalThis.clearTimeout(diceTimerRef.current);
-  }, []);
-
-  const minDistance = AMBIGUITY_PX / Math.max(zoom, 0.2);
+  const selectTarget = useCallback((kind: TargetKind, index: number) => {
+    if (!intent) return;
+    setCluster(null);
+    setPickerOpen(false);
+    actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
+  }, [actions, intent]);
 
   const choose = useCallback(
     (kind: TargetKind, index: number) => {
       if (!intent) return;
-      const near = ambiguousWith(index, intent.targets, points, minDistance);
+      const projection = viewport();
+      const screenPoints = new Map([...points].map(([target, point]) => [target, projection?.worldToScreen(point) ?? point]));
+      // 無法量測畫面時改用明確的候選清單。
+      const near = projection ? ambiguousWith(index, intent.targets, screenPoints, AMBIGUITY_PX)
+        : intent.targets.length > 1 ? intent.targets : null;
       if (near && near.length > 1) {
         setCluster(near);
         setPickerOpen(true);
         return;
       }
-      setCluster(null);
-      actions.selectTarget({
-        kind,
-        index,
-        commandType: intent.commandType,
-        labelId: intent.labelId,
-      });
+      selectTarget(kind, index);
     },
-    [actions, intent, minDistance, points],
+    [intent, points, selectTarget, viewport],
   );
 
   const handleTargetClick = useCallback(
@@ -156,10 +155,10 @@ export function BoardView({ controller }: { controller: TableController }) {
     (event: ReactKeyboardEvent<SVGElement>, kind: TargetKind, index: number) => {
       if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
         event.preventDefault();
-        choose(kind, index);
+        selectTarget(kind, index);
       }
     },
-    [choose],
+    [selectTarget],
   );
 
   const clampPan = useCallback(
@@ -183,7 +182,16 @@ export function BoardView({ controller }: { controller: TableController }) {
     [clampPan],
   );
 
-  const onPointerDown = (event: ReactMouseEvent<SVGSVGElement>) => {
+  const onPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    suppressClickRef.current = false;
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const pointers = [...pointersRef.current.values()];
+    if (pointers.length > 1) {
+      pinchRef.current = { distance: Math.hypot(pointers[0]!.x - pointers[1]!.x, pointers[0]!.y - pointers[1]!.y), zoom };
+      if (dragRef.current) dragRef.current.moved = true;
+      return;
+    }
     dragRef.current = {
       startX: event.clientX,
       startY: event.clientY,
@@ -193,22 +201,36 @@ export function BoardView({ controller }: { controller: TableController }) {
     };
   };
 
-  const onPointerMove = (event: ReactMouseEvent<SVGSVGElement>) => {
+  const onPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (!pointersRef.current.has(event.pointerId)) return;
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const pointers = [...pointersRef.current.values()];
+    const pinch = pinchRef.current;
+    if (pinch && pointers.length > 1) {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      const distance = Math.hypot(pointers[0]!.x - pointers[1]!.x, pointers[0]!.y - pointers[1]!.y);
+      if (pinch.distance > 0) setBoardZoom(pinch.zoom * distance / pinch.distance);
+      return;
+    }
     const drag = dragRef.current;
     if (!drag) return;
     const dx = event.clientX - drag.startX;
     const dy = event.clientY - drag.startY;
     if (Math.hypot(dx, dy) > 4) drag.moved = true;
     if (!drag.moved) return;
-    const rect = svgRef.current?.getBoundingClientRect();
-    const unitsPerPixel = rect && rect.width > 0 ? geometry.width / rect.width : 1;
-    setPan(clampPan({ x: drag.panX + dx * unitsPerPixel, y: drag.panY + dy * unitsPerPixel }));
+    // 移動後才捕捉指標，保留普通點擊的原始 target。
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const delta = viewport()?.screenDeltaToPan({ x: dx, y: dy });
+    if (delta) setPan(clampPan({ x: drag.panX + delta.x, y: drag.panY + delta.y }));
   };
 
   const onPointerUp = () => {
     const drag = dragRef.current;
+    const pinching = pinchRef.current !== null;
     dragRef.current = null;
-    if (drag?.moved) {
+    pinchRef.current = null;
+    pointersRef.current.clear();
+    if (drag?.moved || pinching) {
       // The gesture was a pan: the click that follows must not place a piece.
       suppressClickRef.current = true;
     }
@@ -364,10 +386,11 @@ export function BoardView({ controller }: { controller: TableController }) {
          tabIndex={0}
         viewBox={geometry.viewBox}
         preserveAspectRatio="xMidYMid meet"
-        onMouseDown={onPointerDown}
-        onMouseMove={onPointerMove}
-        onMouseUp={onPointerUp}
-        onMouseLeave={onPointerUp}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerLeave={onPointerUp}
          onWheel={onWheel}
          onKeyDown={onBoardKeyDown}
       >
@@ -557,12 +580,11 @@ export function BoardView({ controller }: { controller: TableController }) {
           kind={intent.kind}
           targets={intent.targets}
           nameOf={nameResolver}
-          minDistance={minDistance}
           {...(cluster ? { ambiguousOnly: cluster } : {})}
           onChoose={(index) => {
             setPickerOpen(false);
             setCluster(null);
-            choose(intent.kind, index);
+            selectTarget(intent.kind, index);
           }}
         />
       )}

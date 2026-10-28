@@ -139,5 +139,29 @@ describe('state-level resilience', () => {
       events: [{ seq: 13, type: 'turn.rolled', params: { total: 7 } }],
     });
     expect(replayed.game?.view.events).toHaveLength(2);
+    expect(replayed.game?.revision).toBe(12);
+    expect(replayed.game?.view.seq).toBe(12);
+  });
+
+  it('does not replace an authoritative projection with old revisions, sequences or generations (E04)', () => {
+    const current = makeSnapshot({ ...makeView(), seq: 100 }, 3);
+    let state = tableReducer(initialTableState('en'), { type: 'snapshot', snapshot: current });
+    state = tableReducer(state, { type: 'game-sync', generation: 2, cause: 'reconnect' });
+    for (const snapshot of [makeSnapshot({ ...makeView(), seq: 101 }, 2), makeSnapshot({ ...makeView(), seq: 99 }, 4)]) {
+      expect(tableReducer(state, { type: 'snapshot', snapshot, generation: 2 })).toBe(state);
+    }
+    const otherGame = { ...makeSnapshot(), gameId: 'g2' };
+    expect(tableReducer(state, { type: 'snapshot', snapshot: otherGame, generation: 1 })).toBe(state);
+    expect(tableReducer(state, { type: 'snapshot', snapshot: otherGame, generation: 2 }).game?.gameId).toBe('g2');
+  });
+
+  it('sorts and deduplicates events without deriving revision from their seq or accepting another game', () => {
+    const state = tableReducer(initialTableState('en'), { type: 'snapshot', snapshot: makeSnapshot({ ...makeView(), seq: 100 }, 3) });
+    const events = [{ seq: 102, type: 'production.resolved', params: {} }, { seq: 101, type: 'turn.rolled', params: {} }, { seq: 102, type: 'production.resolved', params: {} }];
+    expect(tableReducer(state, { type: 'events', events, gameId: 'other' })).toBe(state);
+    const next = tableReducer(state, { type: 'events', events, gameId: 'g1', revision: 4 });
+    expect(next.game?.view.events.map((event) => event.seq)).toEqual([101, 102]);
+    expect(next.game?.revision).toBe(4);
+    expect(next.game?.view.seq).toBe(100);
   });
 });

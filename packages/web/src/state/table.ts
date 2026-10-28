@@ -31,6 +31,13 @@ export type Screen = 'entry' | 'home' | 'lobby' | 'game' | 'result';
 export type ConnectionState = 'online' | 'offline' | 'reconnecting';
 export type DrawerPanel = 'none' | 'hand' | 'trade' | 'chat' | 'help';
 
+export type GameSyncCause = 'open' | 'resume' | 'reconnect' | 'gap' | 'snapshot' | 'command' | 'refresh' | 'events';
+export type GameSyncBoundary = Extract<GameSyncCause, 'open' | 'resume' | 'reconnect' | 'gap'>;
+export interface GameSyncMetadata {
+  generation: number;
+  cause: GameSyncCause;
+}
+
 export interface Selection {
   kind: 'vertex' | 'edge' | 'hex' | null;
   index: number | null;
@@ -73,6 +80,9 @@ export interface TableState {
   roomError: Notice | null;
   games: ResumableGameView[];
   game: GameSnapshot | null;
+  gameSync: GameSyncMetadata;
+  /** 下一個有效投影建立演出 baseline。 */
+  gameSyncPending: boolean;
   connection: ConnectionState;
   socketStatus: SocketStatus;
   /** docs/SPEC.md §8.4: newest connection controls the seat. */
@@ -103,6 +113,8 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     roomError: null,
     games: [],
     game: null,
+    gameSync: { generation: 0, cause: 'open' },
+    gameSyncPending: false,
     connection: 'online',
     socketStatus: 'closed',
     activeElsewhere: false,
@@ -129,8 +141,9 @@ export type TableAction =
   | { type: 'room'; room: RoomView | null }
   | { type: 'room-error'; error: Notice | null }
   | { type: 'games'; games: ResumableGameView[] }
-  | { type: 'snapshot'; snapshot: GameSnapshot | null }
-  | { type: 'events'; events: GameEvent[] }
+  | { type: 'game-sync'; cause: GameSyncBoundary; generation: number }
+  | { type: 'snapshot'; snapshot: GameSnapshot | null; cause?: GameSyncCause; generation?: number }
+  | { type: 'events'; events: GameEvent[]; gameId?: string; revision?: number }
   | { type: 'connection'; connection: ConnectionState }
   | { type: 'socket-status'; status: SocketStatus }
   | { type: 'active-elsewhere'; value: boolean }
@@ -216,27 +229,41 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       return { ...state, roomError: action.error };
     case 'games':
       return { ...state, games: action.games };
+    case 'game-sync':
+      if (action.generation <= state.gameSync.generation) return state;
+      return { ...state, gameSync: { generation: action.generation, cause: action.cause }, gameSyncPending: true };
     case 'snapshot': {
       const snapshot = action.snapshot;
+      const generation = action.generation ?? state.gameSync.generation;
+      if (generation < state.gameSync.generation) return state;
+      const current = state.game;
+      if (snapshot && current?.gameId === snapshot.gameId &&
+          (snapshot.revision < current.revision || snapshot.view.seq < current.view.seq)) return state;
       const terminal = snapshot?.view.result != null;
       return {
         ...state,
         game: snapshot,
+        gameSync: { generation, cause: state.gameSyncPending ? state.gameSync.cause : (action.cause ?? 'snapshot') },
+        gameSyncPending: false,
         screen: snapshot ? (terminal ? 'result' : 'game') : state.screen,
       };
     }
     case 'events': {
       const current = state.game;
       if (!current) return state;
-      const lastSeq = current.view.events.at(-1)?.seq ?? 0;
-      const incoming = action.events.filter((event) => event.seq > lastSeq);
+      if (action.gameId && action.gameId !== current.gameId) return state;
+      if (action.revision !== undefined && action.revision < current.revision) return state;
+      const lastSeq = Math.max(current.view.seq, ...current.view.events.map((event) => event.seq));
+      const incoming = [...new Map(action.events.filter((event) => event.seq > lastSeq)
+        .map((event) => [event.seq, event])).values()].sort((a, b) => a.seq - b.seq);
       if (incoming.length === 0) return state;
       const events = [...current.view.events, ...incoming].slice(-200);
       return {
         ...state,
+        gameSync: state.gameSyncPending ? state.gameSync : { ...state.gameSync, cause: 'events' },
         game: {
           ...current,
-          revision: Math.max(current.revision, incoming.at(-1)?.seq ?? current.revision),
+          revision: action.revision ?? current.revision,
           view: { ...current.view, events },
         },
       };

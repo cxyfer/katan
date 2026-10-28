@@ -104,28 +104,31 @@ describe('table interactions', () => {
     expect(screen.queryByTestId('accepted-notice')).toBeNull();
   });
 
-  it('restarts the central presentation for a second authoritative roll before the first finishes', async () => {
-    const view = makeView({ events: [{ seq: 13, type: 'turn.rolled', params: { playerId: 'p1', dice: [2, 5], total: 7 } }] });
-    view.turn.dice = [2, 5];
-    const api = await open(view);
-    const firstPanel = (await screen.findByTestId('dice-focus')).querySelector('.dice-focus__panel');
-    const next = makeView({ events: [{ seq: 14, type: 'turn.rolled', params: { playerId: 'p1', dice: [6, 6], total: 12 } }] });
+  it('plays a new command-refresh snapshot once and preserves it across locale / panel changes', async () => {
+    const api = await open();
+    const next = makeView({ events: [{ seq: 13, type: 'turn.rolled', params: { playerId: 'p1', dice: [6, 6], total: 12 } }] });
+    next.seq = 13;
     next.turn.dice = [6, 6];
-    api.setSnapshot(makeSnapshot(next, 14));
+    api.setSnapshot(makeSnapshot(next, 13));
     fireEvent.click(screen.getByTestId('action-endTurn'));
     await waitFor(() => expect(screen.getByTestId('dice-focus').textContent).toContain('Rolled 6 + 6 = 12'));
-    const secondPanel = screen.getByTestId('dice-focus').querySelector('.dice-focus__panel');
-    expect(secondPanel).not.toBe(firstPanel);
+    const panel = screen.getByTestId('dice-focus').querySelector('.dice-focus__panel');
     fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: 'zh-Hant' } });
-    expect(screen.getByTestId('dice-focus').querySelector('.dice-focus__panel')).toBe(secondPanel);
+    fireEvent.click(screen.getByTestId('hand-toggle'));
+    fireEvent.click(screen.getByTestId('zoom-in'));
+    expect(screen.getByTestId('dice-focus').querySelector('.dice-focus__panel')).toBe(panel);
+    await waitFor(() => expect(screen.queryByTestId('dice-focus')).toBeNull());
+    fireEvent.click(screen.getByTestId('action-endTurn'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(2));
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
   });
 
-  it('shows event dice centrally then leaves the compact result without replaying on locale change', async () => {
+  it('retains compact dice from initial history without a central replay (E01)', async () => {
     const view = makeView({ events: [{ seq: 13, type: 'turn.rolled', params: { playerId: 'p1', dice: [2, 5], total: 7 } }] });
     view.turn.dice = [2, 5];
+    view.seq = 13;
     await open(view);
-    expect((await screen.findByTestId('dice-focus')).textContent).toContain('Rolled 2 + 5 = 7');
-    await waitFor(() => expect(screen.queryByTestId('dice-focus')).toBeNull(), { timeout: 2200 });
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
     fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: 'zh-Hant' } });
     expect(screen.queryByTestId('dice-focus')).toBeNull();
     expect(screen.getByTestId('dice-roll-animation').textContent).toContain('2');

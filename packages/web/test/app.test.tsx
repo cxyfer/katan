@@ -84,17 +84,16 @@ describe('board rendering', () => {
     }
   });
 
-  it('animates the authoritative roll event while retaining its final values', async () => {
+  it('shows the authoritative final dice without replaying initial history (E01)', async () => {
     const view = makeView({
       events: [{ seq: 13, type: 'turn.rolled', params: { playerId: 'p1', dice: [2, 5], total: 7 } }],
     });
     view.turn.dice = [2, 5];
+    view.seq = 13;
     await openGame(createFakeApi({ snapshot: makeSnapshot(view, 13) }));
-    const dice = await waitFor(() => {
-      const element = screen.getByTestId('dice-roll-animation');
-      expect(element.className).toContain('board__dice--rolling');
-      return element;
-    });
+    const dice = screen.getByTestId('dice-roll-animation');
+    expect(dice.className).not.toContain('board__dice--rolling');
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
     expect(dice.textContent).toContain('2');
     expect(dice.textContent).toContain('5');
     expect(dice.textContent).toContain('Rolled 2 + 5 = 7');
@@ -242,9 +241,11 @@ describe('pan and zoom', () => {
     const target = await screen.findByTestId('target-edge-5');
     const svg = screen.getByTestId('board-svg');
 
-    fireEvent.mouseDown(svg, { clientX: 10, clientY: 10 });
-    fireEvent.mouseMove(svg, { clientX: 80, clientY: 60 });
-    fireEvent.mouseUp(svg, { clientX: 80, clientY: 60 });
+    for (const [type, x, y] of [['pointerdown', 10, 10], ['pointermove', 80, 60], ['pointerup', 80, 60]] as const) {
+      const event = new Event(type, { bubbles: true });
+      Object.defineProperties(event, { pointerId: { value: 1 }, pointerType: { value: 'mouse' }, button: { value: 0 }, clientX: { value: x }, clientY: { value: y } });
+      fireEvent(svg, event);
+    }
     fireEvent.click(target);
 
     expect(screen.queryByTestId('selection-preview')).toBeNull();

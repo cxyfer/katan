@@ -43,6 +43,8 @@ import {
   initialTableState,
   tableReducer,
   type DrawerPanel,
+  type GameSyncBoundary,
+  type GameSyncCause,
   type Selection,
   type TableAction,
   type TableState,
@@ -143,6 +145,7 @@ export function useTable(options: UseTableOptions): TableController {
   const socketRef = useRef<SocketClient | null>(null);
   const roomIdRef = useRef<string | null>(null);
   const gameIdRef = useRef<string | null>(null);
+  const syncGenerationRef = useRef(0);
   /** Late-bound so `joinRoom` can fetch history without a declaration cycle. */
   const loadChatRef = useRef<TableActions['loadChat'] | null>(null);
 
@@ -179,12 +182,27 @@ export function useTable(options: UseTableOptions): TableController {
     [dispatch],
   );
 
-  const refreshSnapshot = useCallback(async (): Promise<void> => {
+  const beginGameSync = useCallback((cause: GameSyncBoundary): number => {
+    const generation = ++syncGenerationRef.current;
+    dispatch({ type: 'game-sync', cause, generation });
+    return generation;
+  }, []);
+
+  const receiveSnapshot = useCallback((snapshot: GameSnapshot, generation: number, cause: GameSyncCause) => {
+    if (generation !== syncGenerationRef.current || snapshot.gameId !== gameIdRef.current) return;
+    dispatch({ type: 'snapshot', snapshot, generation, cause });
+  }, []);
+
+  const refreshGame = useCallback(async (cause: GameSyncCause = 'refresh'): Promise<void> => {
+    if (cause === 'reconnect' || cause === 'gap' || cause === 'resume') beginGameSync(cause);
+    const generation = syncGenerationRef.current;
     const gameId = gameIdRef.current;
     if (!gameId) return;
     const result = await api.getGame(gameId);
+    if (generation !== syncGenerationRef.current || gameId !== gameIdRef.current) return;
     if (result.ok) {
-      dispatch({ type: 'snapshot', snapshot: result.data });
+      receiveSnapshot(result.data, generation,
+        cause === 'reconnect' || cause === 'gap' || cause === 'resume' ? 'refresh' : cause);
       dispatch({ type: 'room-error', error: null });
       dispatch({ type: 'command', event: { kind: 'refreshed' } });
     } else if (result.error.code === 'E_NETWORK') {
@@ -192,14 +210,18 @@ export function useTable(options: UseTableOptions): TableController {
     } else {
       dispatch({ type: 'room-error', error: noticeFrom(result.error) });
     }
-  }, [api, dispatch]);
+  }, [api, dispatch, beginGameSync, receiveSnapshot]);
+
+  const refreshSnapshot = useCallback(() => refreshGame(), [refreshGame]);
 
   const openGame = useCallback(
     async (gameId: string): Promise<void> => {
       gameIdRef.current = gameId;
+      const generation = beginGameSync('open');
       const result = await api.getGame(gameId);
       if (result.ok) {
-        dispatch({ type: 'snapshot', snapshot: result.data });
+        if (generation !== syncGenerationRef.current || gameId !== gameIdRef.current) return;
+        receiveSnapshot(result.data, generation, 'refresh');
         if (result.data.roomId) {
           roomIdRef.current = result.data.roomId;
           // Resume/reconnect: recover authorized recent chat history.
@@ -209,7 +231,7 @@ export function useTable(options: UseTableOptions): TableController {
         dispatch({ type: 'room-error', error: noticeFrom(result.error) });
       }
     },
-    [api, dispatch],
+    [api, dispatch, beginGameSync, receiveSnapshot],
   );
 
   const refreshRooms = useCallback(
@@ -449,8 +471,8 @@ export function useTable(options: UseTableOptions): TableController {
   // ---------------------------------------------------------------------
 
   const refreshAfterAccepted = useCallback(async (): Promise<void> => {
-    await refreshSnapshot();
-  }, [refreshSnapshot]);
+    await refreshGame('command');
+  }, [refreshGame]);
 
   const runCommand = useCallback(
     async (commandId: string, command: CommandPayload, expectedRevision: number): Promise<void> => {
@@ -581,10 +603,13 @@ export function useTable(options: UseTableOptions): TableController {
       const gameId = gameIdRef.current;
       if (!gameId) return;
       const result = await api.resumeGame(gameId, ready);
-      if (result.ok) applyRoom(result, 'resume');
+      if (result.ok) {
+        applyRoom(result, 'resume');
+        await refreshGame('resume');
+      }
       else dispatch({ type: 'toast', notice: noticeFrom(result.error) });
     },
-    [api, applyRoom, dispatch],
+    [api, applyRoom, dispatch, refreshGame],
   );
 
   // ---------------------------------------------------------------------
@@ -800,7 +825,7 @@ export function useTable(options: UseTableOptions): TableController {
         dispatch({ type: 'socket-status', status });
         if (status === 'open') dispatch({ type: 'connection', connection: 'online' });
         if (status === 'closed') dispatch({ type: 'connection', connection: 'reconnecting' });
-        if (status === 'open') void refreshSnapshot();
+        if (status === 'open') void refreshGame('reconnect');
       },
       onMessage: (message) => {
         switch (message.type) {
@@ -808,18 +833,20 @@ export function useTable(options: UseTableOptions): TableController {
             dispatch({ type: 'room', room: message.payload });
             break;
           case 'snapshot':
-            dispatch({ type: 'snapshot', snapshot: message.payload });
+            receiveSnapshot(message.payload, syncGenerationRef.current, 'snapshot');
             break;
           case 'events': {
             const payload = message.payload as { gameId: string; revision: number; events: GameEvent[] };
             const current = stateRef.current.game;
-            const lastSeq = current?.view.events.at(-1)?.seq ?? 0;
-            const first = payload.events[0]?.seq ?? lastSeq + 1;
-            if (first > lastSeq + 1) {
+            if (!current || current.gameId !== payload.gameId) break;
+            const lastSeq = Math.max(current.view.seq, ...current.view.events.map((event) => event.seq));
+            const incoming = [...new Set(payload.events.map((event) => event.seq))]
+              .filter((seq) => seq > lastSeq).sort((a, b) => a - b);
+            if (incoming.some((seq, index) => seq !== lastSeq + index + 1)) {
               // Gap: the ordering guarantee says refetch, never patch.
-              void refreshSnapshot();
+              void refreshGame('gap');
             } else {
-              dispatch({ type: 'events', events: payload.events });
+              dispatch({ type: 'events', gameId: payload.gameId, revision: payload.revision, events: payload.events });
             }
             break;
           }
@@ -863,7 +890,7 @@ export function useTable(options: UseTableOptions): TableController {
       client.close();
       socketRef.current = null;
     };
-  }, [options.connectSocket, options.socketFactory, refreshSnapshot, socketUrl, dispatch]);
+  }, [options.connectSocket, options.socketFactory, refreshGame, receiveSnapshot, socketUrl, dispatch]);
 
   useEffect(() => {
     const client = socketRef.current;
