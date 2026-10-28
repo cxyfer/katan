@@ -30,11 +30,26 @@ pnpm dev            # client dev server + service on http://127.0.0.1:3000
 
 ## Quick start (Docker)
 
+The Compose files run the published `ghcr.io/cxyfer/katan` image:
+
 ```bash
-docker compose up --build -d     # SQLite, persistent volume
+docker compose up -d     # SQLite, persistent volume
 # or
-POSTGRES_PASSWORD='<secret>' docker compose -f docker-compose.postgres.yml up --build -d
+POSTGRES_PASSWORD='<secret>' docker compose -f docker-compose.postgres.yml up -d
 ```
+
+To build the image from this checkout instead, add the build override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
+# or
+POSTGRES_PASSWORD='<secret>' docker compose -f docker-compose.postgres.yml \
+  -f docker-compose.build.yml up --build -d
+```
+
+While the repository is private the package is private too: before the first
+pull, run `docker login ghcr.io` with a token that has `read:packages`, or make
+the package public.
 
 Open `http://localhost:3000`, enter a nickname, create a private room, share the
 invite code, and start once every seat is ready. See

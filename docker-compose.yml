@@ -1,9 +1,8 @@
+# Runs the published image (ghcr.io/cxyfer/katan). To build from this checkout,
+# add docker-compose.build.yml (see docs/OPERATIONS.md).
 services:
   catan:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: catan:local
+    image: ghcr.io/cxyfer/katan:latest
     restart: unless-stopped
     ports:
       - "3000:3000"
