@@ -19,6 +19,8 @@ export interface BoardViewportState {
   zoom: number;
   /** Camera orbit around the board; omitted callers keep the initial 20° view. */
   azimuthDeg?: number;
+  /** User-selected viewing elevation; omitted callers use the responsive default. */
+  elevationDeg?: number;
   rect: CssRect;
 }
 export interface ProjectionSnapshot {

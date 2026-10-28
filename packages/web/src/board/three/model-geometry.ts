@@ -142,17 +142,5 @@ export function createFieldGeometry(): BufferGeometry {
 }
 
 export function createTokenBodyGeometry(): CylinderGeometry {
-  return new CylinderGeometry(0.205, 0.225, 0.035, 12, 1, false).translate(0, 0.0175, 0);
-}
-
-export function createRobberCloakGeometry(): ConeGeometry {
-  return new ConeGeometry(0.19, 0.39, 7).translate(0, 0.195, 0);
-}
-
-export function createRobberHeadGeometry(): SphereGeometry {
-  return new SphereGeometry(0.095, 7, 5).translate(0, 0.39, 0);
-}
-
-export function createRobberHoodGeometry(): ConeGeometry {
-  return new ConeGeometry(0.14, 0.22, 7).translate(0, 0.455, 0);
+  return new CylinderGeometry(0.26, 0.28, 0.045, 16, 1, false).translate(0, 0.0225, 0);
 }

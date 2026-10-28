@@ -14,9 +14,10 @@ export function cameraElevation(rect: Pick<CssRect, 'width' | 'height'>): number
     : DESKTOP_ELEVATION_DEG;
 }
 
-export function fitSceneCamera(bounds: SceneBounds, rect: CssRect, azimuthDeg = CAMERA_AZIMUTH_DEG): OrthographicCameraFit {
+export function fitSceneCamera(bounds: SceneBounds, rect: CssRect, azimuthDeg = CAMERA_AZIMUTH_DEG,
+  elevationDeg = cameraElevation(rect)): OrthographicCameraFit {
   return fitOrthographicCamera(bounds, rect, {
-    elevationDeg: cameraElevation(rect),
+    elevationDeg,
     azimuthDeg,
     margin: 0.08,
   });

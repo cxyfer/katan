@@ -11,11 +11,10 @@ export const BOARD_MODEL_METRICS = Object.freeze({
   tileGap: 0.012,
   roadHalfWidth: 0.05,
   terrainHeight: 0.86,
-  buildingHeight: 0.61,
+  buildingHeight: 0.81,
   robberOriginY: 0.01,
-  robberLocalHeight: 0.565,
-  // Hood cone translated to 0.455 with a 0.11 half-height, plus the group Y.
-  robberHeight: 0.575,
+  robberLocalHeight: 0.92,
+  robberHeight: 0.93,
   badgeHeight: 0.06,
   harborOffset: 0.85,
   harborHalfDiagonal: 0.43,
@@ -67,7 +66,7 @@ export function sceneBounds(geometry: BoardGeometry, _board?: PublicBoardView): 
     for (const corner of hex.corners) {
       const point = geometryToWorld(geometry, corner.x, corner.y);
       includePoint(bounds, { x: point.x, y: 0, z: point.z });
-      for (const y of [-BOARD_MODEL_METRICS.coastDepth, BOARD_MODEL_METRICS.terrainHeight]) {
+      for (const y of [-BOARD_MODEL_METRICS.coastDepth, Math.max(BOARD_MODEL_METRICS.terrainHeight, BOARD_MODEL_METRICS.robberHeight)]) {
         fitPoints.push({ ...point, y });
       }
     }

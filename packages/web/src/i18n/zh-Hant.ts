@@ -222,6 +222,8 @@ export const zhHant: Catalog = {
   'board.rotateRight': '向右旋轉',
   'board.rotateLeftHint': '鏡頭向左旋轉 30°（棋盤快捷鍵 [）',
   'board.rotateRightHint': '鏡頭向右旋轉 30°（棋盤快捷鍵 ]）',
+  'board.viewingAngle': '觀看角度',
+  'board.viewingAngleDegrees': '{degrees} 度',
   'board.resetView': '重設視角',
   'board.fitBoard': '符合棋盤',
   'board.zoomLevel': '縮放 {percent}%',

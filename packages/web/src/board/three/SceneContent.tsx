@@ -33,6 +33,7 @@ import { DioramaTerrain } from './DioramaTerrain.tsx';
 import { DioramaBuildings, DioramaRoads, DioramaHarbors } from './DioramaStructures.tsx';
 import { createRoadModel, createSettlementModel, harborLabelInstances } from './diorama-structures.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
+import { createRobberModel } from './diorama-robber.ts';
 import { atlasGeometryKey, boardSceneResources, type BoardSceneResources } from './resources.ts';
 
 type SceneProps = Pick<BoardSceneProps,
@@ -166,6 +167,7 @@ function NumberBadges({ props, resources, texture }: { props: SceneProps; resour
   const labels = tokens.map((token) => ({
     ...token,
     position: [token.position[0], 0.058, token.position[2]] as const,
+    rotationY: (props.viewport.azimuthDeg ?? 20) * Math.PI / 180,
   }));
   return (
     <>
@@ -189,25 +191,24 @@ function HarborLabels({ props, resources, texture }: { props: SceneProps; resour
     const cell = HARBOR_ATLAS_CELLS[type]!;
     return <AtlasMesh key={type} texture={texture}
       geometry={resources.geometries.atlas[atlasGeometryKey(cell)]!}
-      instances={labels.filter((harbor) => harborAtlasKey(harbor.type) === type)} />;
+      instances={labels.filter((harbor) => harborAtlasKey(harbor.type) === type).map((label) => ({
+        ...label,
+        rotationY: label.rotationY + (Math.cos(label.rotationY - (props.viewport.azimuthDeg ?? 20) * Math.PI / 180) < 0 ? Math.PI : 0),
+      }))} />;
   });
 }
 
 function Robber({ props, resources }: { props: SceneProps; resources: BoardSceneResources }) {
+  const model = useDioramaGeometry(createRobberModel, []);
   const hex = props.geometry.hexes[props.board.robber];
   if (!hex) return null;
   const x = hex.cx / props.geometry.scale;
-  const z = hex.cy / props.geometry.scale - 0.08;
+  const z = hex.cy / props.geometry.scale;
   const castShadow = props.quality === 'standard';
   return (
-    <group position={[x, BOARD_MODEL_METRICS.robberOriginY, z]} rotation={[0, Math.PI / 7, 0]} dispose={null}>
-      <mesh geometry={resources.geometries.robberCloak} material={resources.materials.robber} castShadow={castShadow} dispose={null} />
-      <mesh geometry={resources.geometries.robberHead} material={resources.materials.robber} castShadow={castShadow} dispose={null} />
-      <mesh geometry={resources.geometries.robberHood} material={resources.materials.robber} castShadow={castShadow} dispose={null} />
-      <mesh position={[0, 0.39, -0.091]} material={resources.materials.robberFace} dispose={null}>
-        <sphereGeometry args={[0.045, 6, 4]} />
-      </mesh>
-    </group>
+    <mesh position={[x, BOARD_MODEL_METRICS.robberOriginY, z]}
+      rotation={[0, (props.viewport.azimuthDeg ?? 20) * Math.PI / 180, 0]}
+      geometry={model} material={resources.materials.diorama} castShadow={castShadow} dispose={null} />
   );
 }
 
@@ -268,7 +269,7 @@ function CameraRig({ props }: { props: SceneProps }) {
     if (!(camera instanceof OrthographicCamera)) return;
     if (![props.viewport.rect.width, props.viewport.rect.height].every(Number.isFinite) ||
         props.viewport.rect.width <= 0 || props.viewport.rect.height <= 0) return;
-    const fit = fitSceneCamera(bounds, props.viewport.rect, props.viewport.azimuthDeg);
+    const fit = fitSceneCamera(bounds, props.viewport.rect, props.viewport.azimuthDeg, props.viewport.elevationDeg);
     applySceneCamera(camera, fit, props.viewport);
     invalidate();
   }, [bounds, camera, invalidate, props.viewport]);

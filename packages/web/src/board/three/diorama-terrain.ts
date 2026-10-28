@@ -156,7 +156,6 @@ function mountains(b: ModelBuilder, random: () => number, variant: number, gold 
   for (let index = 0; index < 22; index++) {
     const x = -0.57 + random() * 1.13;
     const z = -0.02 - random() * 0.08;
-    if (Math.hypot(x, z - 0.34) < 0.3) continue;
     pebble(b, gold && index % 3 === 0 ? '#d6b356' : stone[index % stone.length]!, x, z, 0.016 + random() * 0.026);
   }
   // Dark fractured seams sit on the near slopes, away from the number badge.
@@ -250,7 +249,6 @@ function pasture(b: ModelBuilder, random: () => number, variant: number) {
     const side = flower % 2 ? 1 : -1;
     const x = side * (0.32 + random() * 0.22);
     const z = -0.02 + random() * 0.24;
-    if (Math.hypot(x, z - 0.34) < 0.29) continue;
     branch(b, [x, 0.01, z], [x, 0.04, z], 0.0025, '#739369', 3, true);
     b.add(new OctahedronGeometry(0.011, 0), flower % 3 ? '#eee5b4' : '#cda09d', [x, 0.043, z]);
   }
@@ -280,7 +278,7 @@ function desert(b: ModelBuilder, random: () => number, variant: number) {
 
 function sea(b: ModelBuilder, variant: number) {
   for (let wave = 0; wave < 5; wave++) {
-    const z = -0.5 + wave * 0.14;
+    const z = -0.5 + wave * 0.13;
     const x = (wave % 2 ? -0.16 : 0.16) + variant * 0.012;
     for (let segment = 0; segment < 7; segment++) {
       const ax = x - 0.2 + segment * 0.06;
@@ -305,5 +303,7 @@ export function createTerrainModel(terrain: string, variant = 0): BufferGeometry
     case 'desert': desert(builder, random, normalized); break;
     default: sea(builder, normalized); break;
   }
-  return builder.build();
+  // Keep the central number/robber well physically clear while retaining each
+  // landscape's complete groups of trees, livestock, rows and quarry details.
+  return builder.build().scale(0.8, 1, 0.5).translate(0, 0, -0.34);
 }

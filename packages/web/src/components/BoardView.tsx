@@ -6,7 +6,7 @@ import { boardIntent } from '../board/intent.ts';
 import type { TargetKind } from '../board/targets.ts';
 import { parseViewBox } from '../board/viewport.ts';
 import { useBoardAnimation } from '../board/useBoardAnimation.ts';
-import { useBoardViewport } from '../board/useBoardViewport.ts';
+import { MAX_CAMERA_ELEVATION, MIN_CAMERA_ELEVATION, useBoardViewport } from '../board/useBoardViewport.ts';
 import { rendererMode, qualityMode, type RendererMode, type ProjectionSnapshot, type BoardEffectAnchors, type CssRect } from '../board/render-contract.ts';
 import { sceneBounds } from '../board/three/bounds.ts';
 import { nameOf } from '../state/table.ts';
@@ -17,6 +17,7 @@ import { BoardEffects } from './BoardEffects.tsx';
 import { Legend } from './Legend.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { SvgBoard } from './SvgBoard.tsx';
+import '../styles/board-camera-controls.css';
 
 class SceneBoundary extends Component<{ children: ReactNode; onUnavailable: (reason: string) => void }, { failed: boolean }> {
   override state = { failed: false };
@@ -133,7 +134,8 @@ export function BoardView({ controller }: { controller: TableController }) {
     ? { kind: intent.kind, index: state.selection.index, playerId: selfId } : null;
 
   return (
-    <div className="board" data-testid="board" data-zoom={zoom} data-camera-azimuth={controls.viewport.azimuthDeg} ref={boardRef}
+    <div className="board" data-testid="board" data-zoom={zoom} data-camera-azimuth={controls.viewport.azimuthDeg}
+      data-camera-elevation={controls.viewport.elevationDeg} ref={boardRef}
       data-requested-renderer={requested} data-effective-renderer={effective} data-quality={quality}
       data-renderer-status={failure ? 'failed' : requested === 'svg' ? 'idle' : effective === 'r3f' ? 'ready' : 'loading'} data-fallback-reason={failure ?? undefined}>
       {setup && (
@@ -172,6 +174,14 @@ export function BoardView({ controller }: { controller: TableController }) {
           <button type="button" className="button button--ghost" data-testid="rotate-right"
             aria-keyshortcuts="]" title={t('board.rotateRightHint')} disabled={controls.gestureActive}
             onClick={() => controls.rotate(30)}>{t('board.rotateRight')}</button>
+          <label className="board-camera-angle">
+            <span>{t('board.viewingAngle')}</span>
+            <input type="range" min={MIN_CAMERA_ELEVATION} max={MAX_CAMERA_ELEVATION} step={1}
+              data-testid="camera-elevation" value={controls.viewport.elevationDeg}
+              aria-label={t('board.viewingAngle')} aria-valuetext={t('board.viewingAngleDegrees', { degrees: Math.round(controls.viewport.elevationDeg ?? 50) })}
+              disabled={controls.gestureActive} onChange={(event) => controls.setElevation(Number(event.target.value))} />
+            <output>{Math.round(controls.viewport.elevationDeg ?? 50)}°</output>
+          </label>
         </>}
         <button
           type="button"

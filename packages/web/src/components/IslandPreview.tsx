@@ -4,7 +4,8 @@ import { createIslandPreviewBoard, ISLAND_PREVIEW_PLAYERS } from '../board/islan
 import type { ProjectionSnapshot, QualityMode } from '../board/render-contract.ts';
 import { sceneBounds } from '../board/three/bounds.ts';
 import BoardScene3D from '../board/three/BoardScene3D.tsx';
-import { useBoardViewport } from '../board/useBoardViewport.ts';
+import { MAX_CAMERA_ELEVATION, MIN_CAMERA_ELEVATION, useBoardViewport } from '../board/useBoardViewport.ts';
+import '../styles/board-camera-controls.css';
 import '../styles/island-preview.css';
 
 const TERRAINS = [
@@ -56,7 +57,8 @@ export default function IslandPreview() {
         <div className="island-preview__surface" ref={surfaceRef} tabIndex={0} role="region"
           aria-label="島嶼模型。拖曳移動，滾輪縮放；左右中括號旋轉，Home 重設。"
           data-testid="island-preview-surface" data-camera-azimuth={controls.viewport.azimuthDeg} data-azimuth={controls.viewport.azimuthDeg}
-          data-zoom={zoom} data-center-x={controls.viewport.center.x} data-center-z={controls.viewport.center.z}
+          data-zoom={zoom} data-elevation={controls.viewport.elevationDeg}
+          data-center-x={controls.viewport.center.x} data-center-z={controls.viewport.center.z}
           {...controls.surfaceProps} style={{ ...controls.surfaceProps.style, position: 'absolute' }}>
           {!failure && <BoardScene3D key={`${topologyId}:${attempt}`} geometry={geometry} board={board}
             players={ISLAND_PREVIEW_PLAYERS} intent={null} selection={null} active={null}
@@ -84,6 +86,14 @@ export default function IslandPreview() {
               aria-label="鏡頭向右旋轉 30 度" title="向右旋轉 ]">↷</button>
             <button type="button" data-testid="preview-fit" className="island-preview__reset" onClick={controls.fit}>重設視角</button>
           </div>
+          <label className="board-camera-angle board-camera-angle--preview">
+            <span>觀看角度</span>
+            <input type="range" data-testid="preview-elevation" min={MIN_CAMERA_ELEVATION} max={MAX_CAMERA_ELEVATION} step={1}
+              aria-label="觀看角度" aria-valuetext={`${Math.round(controls.viewport.elevationDeg ?? 50)} 度`}
+              value={controls.viewport.elevationDeg} disabled={!!failure || controls.gestureActive}
+              onChange={(event) => controls.setElevation(Number(event.target.value))} />
+            <output>{Math.round(controls.viewport.elevationDeg ?? 50)}°</output>
+          </label>
         </div>
       </section>
       <aside className="island-preview__guide" aria-labelledby="guide-title">

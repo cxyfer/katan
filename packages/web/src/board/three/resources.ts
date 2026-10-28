@@ -7,9 +7,6 @@ import { playerColorHex } from '../terrain.ts';
 import { createAtlasPlaneGeometry, HARBOR_ATLAS_CELLS, NUMBER_ATLAS_CELLS, type AtlasCell } from './atlas.ts';
 import {
   createHexTileSurfaces,
-  createRobberCloakGeometry,
-  createRobberHeadGeometry,
-  createRobberHoodGeometry,
   createTokenBodyGeometry,
 } from './model-geometry.ts';
 
@@ -20,9 +17,6 @@ export interface BoardSceneResources {
     readonly tileCap: BufferGeometry;
     readonly tileWall: BufferGeometry;
     readonly token: BufferGeometry;
-    readonly robberCloak: BufferGeometry;
-    readonly robberHead: BufferGeometry;
-    readonly robberHood: BufferGeometry;
     readonly atlas: Readonly<Record<string, PlaneGeometry>>;
   };
   readonly materials: {
@@ -30,8 +24,6 @@ export interface BoardSceneResources {
     readonly tileSide: MeshStandardMaterial;
     readonly ghost: Readonly<Record<string, MeshStandardMaterial>>;
     readonly token: MeshStandardMaterial;
-    readonly robber: MeshStandardMaterial;
-    readonly robberFace: MeshStandardMaterial;
   };
   readonly disposed: () => boolean;
 }
@@ -123,9 +115,6 @@ function createResources(): Omit<BoardSceneResources, 'acquire' | 'release' | 'd
       tileCap: tile.cap,
       tileWall: tile.wall,
       token: createTokenBodyGeometry(),
-      robberCloak: createRobberCloakGeometry(),
-      robberHead: createRobberHeadGeometry(),
-      robberHood: createRobberHoodGeometry(),
       atlas: atlasGeometries,
     },
     materials: {
@@ -133,8 +122,6 @@ function createResources(): Omit<BoardSceneResources, 'acquire' | 'release' | 'd
       tileSide: material('#a58c60', 0.94),
       ghost,
       token: material('#e8d5ad', 0.88),
-      robber: material('#17191b', 0.9),
-      robberFace: material('#050505', 1),
     },
   };
 }

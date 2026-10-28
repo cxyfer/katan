@@ -10,7 +10,7 @@ import { useBoardViewport } from '../src/board/useBoardViewport.ts';
 
 function snapshot(bounds: ReturnType<typeof sceneBounds>, viewport: BoardViewportState): ProjectionSnapshot {
   const camera = new OrthographicCamera();
-  applySceneCamera(camera, fitSceneCamera(bounds, viewport.rect, viewport.azimuthDeg), viewport);
+  applySceneCamera(camera, fitSceneCamera(bounds, viewport.rect, viewport.azimuthDeg, viewport.elevationDeg), viewport);
   return { viewProjection: new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).toArray(),
     rect: viewport.rect, version: 1, clip: { near: -1, far: 1 } };
 }
@@ -93,9 +93,10 @@ describe('rotatable orthographic board camera', () => {
     const { result, rerender } = renderHook(({ projection }: { projection: ProjectionSnapshot | null }) =>
       useBoardViewport({ geometry, bounds, surfaceRef, renderer: 'r3f', projection }),
     { initialProps: { projection: null as ProjectionSnapshot | null } });
-    act(() => { result.current.setZoom(2); result.current.rotate(90); });
+    act(() => { result.current.setZoom(2); result.current.rotate(90); result.current.setElevation(35); });
     expect(result.current.viewport.azimuthDeg).toBe(110);
-    expect(result.current.cameraFit).toEqual(fitSceneCamera(bounds, rect, 110));
+    expect(result.current.viewport.elevationDeg).toBe(35);
+    expect(result.current.cameraFit).toEqual(fitSceneCamera(bounds, rect, 110, 35));
     const before = snapshot(bounds, result.current.viewport);
     rerender({ projection: before });
     const target = targetsFromGeometry(geometry, 'hex', [0])[0]!;
@@ -120,8 +121,9 @@ describe('rotatable orthographic board camera', () => {
     expect(result.current.viewport.azimuthDeg).toBe(80);
     expect(nestedPreventDefault).not.toHaveBeenCalled();
     expect(result.current.viewport.zoom).toBe(2);
+    expect(result.current.viewport.elevationDeg).toBe(35);
     act(() => result.current.fit());
-    expect(result.current.viewport).toMatchObject({ azimuthDeg: 20, zoom: 1,
+    expect(result.current.viewport).toMatchObject({ azimuthDeg: 20, elevationDeg: 50, zoom: 1,
       center: { x: (bounds.min.x + bounds.max.x) / 2, z: (bounds.min.z + bounds.max.z) / 2 } });
   });
 
@@ -130,11 +132,53 @@ describe('rotatable orthographic board camera', () => {
     const surfaceRef = { current: document.createElement('div') };
     const { result } = renderHook(() => useBoardViewport({ geometry, surfaceRef, renderer: 'svg' }));
     act(() => result.current.rotate(30));
+    act(() => result.current.setElevation(25));
     const preventDefault = vi.fn();
     act(() => result.current.surfaceProps.onKeyDown({ target: surfaceRef.current, currentTarget: surfaceRef.current,
       key: ']', preventDefault } as never));
     expect(result.current.viewport.azimuthDeg).toBe(20);
     expect(preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('changes the real Three camera elevation, retains full fit, and restores desktop/portrait angles', () => {
+    for (const [width, height, defaultAngle] of [[1100, 700, 50], [390, 700, 60]] as const) {
+      const geometry = buildGeometry('hex-r2');
+      const bounds = sceneBounds(geometry);
+      const rect = { left: 0, top: 0, width, height };
+      const surface = document.createElement('div');
+      vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({ ...rect, x: 0, y: 0,
+        right: width, bottom: height, toJSON() {} });
+      const { result, unmount } = renderHook(() => useBoardViewport({ geometry, bounds,
+        surfaceRef: { current: surface }, renderer: 'r3f' }));
+      expect(result.current.viewport.elevationDeg).toBe(defaultAngle);
+      const initial = snapshot(bounds, result.current.viewport);
+      act(() => result.current.setElevation(25));
+      const tilted = snapshot(bounds, result.current.viewport);
+      expect(tilted.viewProjection).not.toEqual(initial.viewProjection);
+      expect(result.current.cameraFit).toEqual(fitSceneCamera(bounds, rect, 20, 25));
+      for (const elevationDeg of [25, 80]) {
+        act(() => result.current.setElevation(elevationDeg));
+        const fit = result.current.cameraFit!;
+        const camera = new OrthographicCamera();
+        applySceneCamera(camera, fit, result.current.viewport);
+        const offset = camera.position.clone().sub(new Vector3(fit.target.x, fit.target.y, fit.target.z));
+        expect(Math.asin(offset.y / offset.length()) * 180 / Math.PI).toBeCloseTo(elevationDeg, 8);
+        const projection = snapshot(bounds, result.current.viewport);
+        for (const point of bounds.fitPoints!) {
+          expect(projectWorldPoint({ matrix: projection.viewProjection, rect, point }).visible).toBe(true);
+        }
+      }
+      act(() => { result.current.setZoom(2); result.current.rotate(30); });
+      expect(result.current.viewport.elevationDeg).toBe(80);
+      act(() => result.current.setElevation(900));
+      expect(result.current.viewport.elevationDeg).toBe(80);
+      act(() => result.current.setElevation(0));
+      expect(result.current.viewport.elevationDeg).toBe(25);
+      act(() => result.current.surfaceProps.onKeyDown({ target: surface, currentTarget: surface,
+        key: 'Home', preventDefault() {} } as never));
+      expect(result.current.viewport).toMatchObject({ elevationDeg: defaultAngle, azimuthDeg: 20, zoom: 1 });
+      unmount();
+    }
   });
 
   it('keeps arrow pan aligned with the screen after the camera rotates to the far side', () => {

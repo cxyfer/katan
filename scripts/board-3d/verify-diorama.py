@@ -28,6 +28,8 @@ def state(page):
         ready: root?.dataset.rendererStatus,
         zoom: Number(surface?.dataset.zoom),
         azimuth: Number(surface?.dataset.azimuth),
+        elevation: Number(surface?.dataset.elevation),
+        cameraMatrix: window.__previewGpuViewMatrix ?? null,
         center: [Number(surface?.dataset.centerX), Number(surface?.dataset.centerZ)],
         surface: surface?.getBoundingClientRect().toJSON(),
         viewport: [innerWidth, innerHeight],
@@ -73,6 +75,22 @@ def main():
                                                   device_scale_factor=1, reduced_motion="reduce",
                                                   has_touch=width < 700)
                     page = context.new_page()
+                    # Observe the actual camera matrix uploaded to WebGL, not a UI dataset.
+                    page.add_init_script("""(() => {
+                      const prototype = WebGL2RenderingContext.prototype;
+                      const names = new WeakMap();
+                      const locate = prototype.getUniformLocation;
+                      prototype.getUniformLocation = function(program, name) {
+                        const location = locate.call(this, program, name);
+                        if (location) names.set(location, name);
+                        return location;
+                      };
+                      const upload = prototype.uniformMatrix4fv;
+                      prototype.uniformMatrix4fv = function(location, transpose, value, ...rest) {
+                        if (names.get(location) === 'viewMatrix') window.__previewGpuViewMatrix = Array.from(value);
+                        return upload.call(this, location, transpose, value, ...rest);
+                      };
+                    })();""")
                     page.on("pageerror", lambda error: report["errors"].append(str(error)))
                     page.on("console", lambda message: report["errors"].append(message.text)
                             if message.type == "error" else None)
@@ -84,9 +102,34 @@ def main():
                     assert initial["webgl"] and initial["zoom"] == 1
                     assert initial["documentWidth"] <= width, initial
                     assert initial["surface"]["height"] >= height - 90, initial
+                    assert initial["elevation"] == (50 if width > 700 else 60), initial
                     name = f"island-19-{width}x{height}.png"
                     page.screenshot(path=str(out / name), full_page=True, animations="disabled")
                     report["screenshots"].append(name)
+                    slider = page.get_by_test_id("preview-elevation")
+                    assert slider.evaluate("""element => {
+                      const r = element.getBoundingClientRect();
+                      return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === element;
+                    }"""), "camera slider must receive real pointer input"
+                    slider.click()
+                    slider.press("Home")
+                    settled(page)
+                    low = state(page)
+                    assert low["elevation"] == 25, low
+                    assert low["cameraMatrix"] and low["cameraMatrix"] != initial["cameraMatrix"], low
+                    name = f"island-low-angle-{width}x{height}.png"
+                    page.screenshot(path=str(out / name), full_page=True, animations="disabled")
+                    report["screenshots"].append(name)
+                    slider.press("End")
+                    settled(page)
+                    high = state(page)
+                    assert high["elevation"] == 80, high
+                    assert high["cameraMatrix"] != low["cameraMatrix"], high
+                    name = f"island-overhead-{width}x{height}.png"
+                    page.screenshot(path=str(out / name), full_page=True, animations="disabled")
+                    report["screenshots"].append(name)
+                    page.get_by_test_id("preview-fit").click()
+                    settled(page)
                     page.get_by_test_id("preview-zoom-in").click()
                     page.get_by_test_id("preview-zoom-in").click()
                     settled(page)
@@ -114,6 +157,7 @@ def main():
                     page.keyboard.press("Home")
                     settled(page)
                     assert state(page)["zoom"] == 1 and state(page)["azimuth"] == 20
+                    assert state(page)["elevation"] == initial["elevation"]
                     page.get_by_test_id("preview-zoom-in").click()
                     page.get_by_test_id("preview-zoom-in").click()
                     settled(page)
@@ -133,7 +177,8 @@ def main():
                     assert state(page)["webgl"]
                     report["cases"].append({"viewport": [width, height], "initial": initial,
                                             "final": state(page), "status": "PASS",
-                                            "checked": ["fit", "zoom", "rotate", "drag", "keyboard",
+                                            "elevationRange": {"low": low, "high": high},
+                                            "checked": ["fit", "zoom", "rotate", "elevation 25/80 real camera", "drag", "keyboard",
                                                         "19/30 topology", "low quality", "overflow"]})
                     context.close()
             finally:

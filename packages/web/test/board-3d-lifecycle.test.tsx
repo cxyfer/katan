@@ -122,6 +122,8 @@ describe('renderer lifecycle and presentation cursor', () => {
     fireEvent.click(screen.getByTestId('action-build.road'));
     fireEvent.click(await screen.findByTestId('target-edge-5'));
     await screen.findByTestId('selection-preview');
+    fireEvent.change(screen.getByRole('slider', { name: 'Viewing angle' }), { target: { value: '75' } });
+    expect(sceneMock.props!.viewport.elevationDeg).toBe(75);
     fireEvent.click(screen.getByRole('button', { name: 'Rotate right' }));
     expect(sceneMock.props!.viewport.azimuthDeg).toBe(50);
     fireEvent.keyDown(screen.getByTestId('board-surface'), { key: '[' });
@@ -130,6 +132,7 @@ describe('renderer lifecycle and presentation cursor', () => {
     expect(sceneMock.props!.viewport.azimuthDeg).toBe(350);
     fireEvent.click(screen.getByTestId('reset-view'));
     expect(sceneMock.props!.viewport.azimuthDeg).toBe(20);
+    expect(sceneMock.props!.viewport.elevationDeg).toBe(50);
     expect(screen.getByTestId('selection-preview')).toBeTruthy();
     expect(screen.getAllByTestId('target-edge-5')).toHaveLength(1);
     expect(api.callsOf('sendCommand')).toHaveLength(0);

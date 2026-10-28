@@ -121,38 +121,54 @@ function seatMarks(model: ModelBuilder, seat: number, front: number, span: numbe
 export function createSettlementModel(color: string, city: boolean, seat: number): BufferGeometry {
   const model = new ModelBuilder();
   if (!city) {
-    box(model, tint(color, -0.25), [0, 0.015, 0], [0.274, 0.03, 0.238]);
-    house(model, color, 0, 0, 0.216, 0.184, 0.218, 0.115);
-    box(model, '#c3936c', [0.068, 0.348, 0.035], [0.036, 0.135, 0.038]);
-    box(model, STONE, [0.068, 0.413, 0.035], [0.048, 0.018, 0.049]);
-    box(model, DARK, [0.068, 0.423, 0.035], [0.024, 0.003, 0.025]);
-    seatMarks(model, seat, -0.116, 0.175);
+    // A low single cottage remains unmistakably smaller than the double-tower city.
+    box(model, tint(color, -0.25), [0, 0.015, 0], [0.25, 0.03, 0.218]);
+    house(model, color, 0, 0, 0.197, 0.17, 0.145, 0.1);
+    box(model, '#c3936c', [0.059, 0.271, 0.027], [0.029, 0.098, 0.031]);
+    box(model, STONE, [0.059, 0.322, 0.027], [0.04, 0.012, 0.042]);
+    box(model, DARK, [0.059, 0.329, 0.027], [0.021, 0.002, 0.022]);
+    seatMarks(model, seat, -0.107, 0.175);
   } else {
-    // The city is a courtyard ensemble with two houses and a separate stone keep.
-    box(model, tint(color, -0.28), [0, 0.017, 0], [0.412, 0.034, 0.33]);
-    box(model, '#d7c8a6', [0, 0.038, -0.11], [0.36, 0.013, 0.086]);
-    for (let index = 0; index < 6; index++) {
-      box(model, '#c2b496', [-0.15 + index * 0.06, 0.046, -0.115], [0.051, 0.006, 0.065]);
+    // Twin stone towers, an open gate and a rear hall create a castle silhouette.
+    box(model, tint(color, -0.28), [0, 0.017, 0], [0.414, 0.034, 0.35]);
+    box(model, '#d7c8a6', [0, 0.039, 0], [0.37, 0.014, 0.305]);
+    const gate = new Shape();
+    gate.moveTo(-0.083, 0.046);
+    gate.lineTo(-0.083, 0.385);
+    gate.lineTo(0.083, 0.385);
+    gate.lineTo(0.083, 0.046);
+    gate.lineTo(0.044, 0.046);
+    gate.lineTo(0.044, 0.214);
+    gate.lineTo(0, 0.267);
+    gate.lineTo(-0.044, 0.214);
+    gate.lineTo(-0.044, 0.046);
+    gate.closePath();
+    model.add(new ExtrudeGeometry(gate, { depth: 0.089, bevelEnabled: false, steps: 1 }), STONE, [0, 0, -0.126]);
+    box(model, tint(color, -0.16), [0, 0.372, -0.079], [0.178, 0.027, 0.103]);
+    for (const x of [-0.064, 0, 0.064]) {
+      box(model, STONE, [x, 0.405, -0.079], [0.033, 0.042, 0.093]);
     }
-    house(model, color, -0.09, 0.015, 0.18, 0.2, 0.22, 0.12);
-    house(model, color, 0.11, -0.065, 0.12, 0.126, 0.165, 0.085);
-    const towerX = 0.106;
-    const towerZ = 0.09;
-    box(model, STONE, [towerX, 0.25, towerZ], [0.137, 0.42, 0.137]);
-    for (let course = 0; course < 5; course++) {
-      const y = 0.093 + course * 0.072;
-      box(model, '#a6ae9d', [towerX, y, towerZ], [0.142, 0.007, 0.142]);
-      for (const side of [-1, 1]) {
-        box(model, '#e1d5b6', [towerX + side * 0.064, y + 0.025, towerZ - 0.071], [0.021, 0.031, 0.011]);
+    for (const x of [-0.026, 0, 0.026]) {
+      box(model, TIMBER, [x, 0.132, -0.12], [0.006, 0.171, 0.009]);
+    }
+    box(model, TIMBER, [0, 0.12, -0.12], [0.081, 0.009, 0.01]);
+    box(model, PLASTER, [0, 0.205, 0.067], [0.159, 0.318, 0.133]);
+    box(model, tint(color, -0.18), [0, 0.36, 0.067], [0.186, 0.025, 0.164]);
+    model.add(pitchedRoof(0.186, 0.119, 0.164), color, [0, 0.367, 0.067]);
+    for (const side of [-1, 1]) {
+      const towerX = side * 0.118;
+      const towerZ = -0.027;
+      const top = side < 0 ? 0.626 : 0.568;
+      model.add(new CylinderGeometry(0.065, 0.072, top - 0.046, 6), STONE, [towerX, (top + 0.046) / 2, towerZ]);
+      for (const y of [0.13, 0.31, top - 0.017]) {
+        model.add(new CylinderGeometry(0.076, 0.076, 0.024, 6), '#e5d5b5', [towerX, y, towerZ]);
       }
+      model.add(new CylinderGeometry(0.081, 0.081, 0.027, 6), tint(color, -0.16), [towerX, top, towerZ]);
+      model.add(new ConeGeometry(0.087, 0.143, 6), color, [towerX, top + 0.081, towerZ]);
+      box(model, DARK, [towerX, top - 0.127, towerZ - 0.065], [0.026, 0.079, 0.009]);
+      box(model, DARK, [towerX, top - 0.127, towerZ + 0.065], [0.026, 0.079, 0.009]);
     }
-    box(model, tint(color, -0.12), [towerX, 0.447, towerZ], [0.158, 0.027, 0.158]);
-    model.add(new ConeGeometry(0.12, 0.112, 4), color, [towerX, 0.51, towerZ], [1, 1, 1], [0, Math.PI / 4, 0]);
-    windowFront(model, towerX, 0.36, towerZ - 0.074, color, 0.036);
-    box(model, DARK, [towerX + 0.072, 0.36, towerZ], [0.008, 0.06, 0.032]);
-    box(model, '#c3936c', [-0.14, 0.36, 0.06], [0.029, 0.128, 0.03]);
-    box(model, STONE, [-0.14, 0.425, 0.06], [0.04, 0.016, 0.04]);
-    seatMarks(model, seat, -0.159, 0.23);
+    seatMarks(model, seat, -0.17, 0.23);
   }
   return model.build();
 }
@@ -212,7 +228,7 @@ function crate(model: ModelBuilder, x: number, z: number) {
   box(model, TIMBER, [x, 0.127, z - 0.041], [0.009, 0.089, 0.009], [0, 0, -Math.PI / 4]);
 }
 
-export const HARBOR_LABEL_POSITION: Vec3 = [0, 0.156, 0.22];
+export const HARBOR_LABEL_POSITION: Vec3 = [0, 0.205, 0.285];
 
 export function createHarborModel(): BufferGeometry {
   const model = new ModelBuilder();
@@ -227,20 +243,20 @@ export function createHarborModel(): BufferGeometry {
     }
   }
   for (let plank = 0; plank < 12; plank++) {
-    box(model, plank % 3 ? WOOD : '#c7975d', [0, 0.072, 0.025 + plank * 0.047], [0.432, 0.031, 0.043]);
+    box(model, plank % 3 ? WOOD : '#c7975d', [0, 0.072, 0.025 + plank * 0.05], [0.432, 0.031, 0.047]);
   }
   // A raised trading sign clears the piling caps and remains legible at board fit.
   for (const x of [-0.13, 0.13]) {
-    box(model, TIMBER, [x, 0.112, 0.22], [0.023, 0.06, 0.09]);
+    box(model, TIMBER, [x, 0.136, 0.285], [0.023, 0.105, 0.09]);
   }
-  box(model, TIMBER, [0, 0.142, 0.22], [0.46, 0.015, 0.28]);
-  box(model, '#eed9ab', [0, 0.151, 0.22], [0.448, 0.009, 0.268]);
-  crate(model, -0.122, 0.43);
-  model.add(new CylinderGeometry(0.037, 0.033, 0.09, 6), '#a26e40', [0.11, 0.131, 0.44]);
+  box(model, TIMBER, [0, 0.191, 0.285], [0.72, 0.015, 0.43]);
+  box(model, '#eed9ab', [0, 0.1995, 0.285], [0.704, 0.009, 0.414]);
+  crate(model, -0.122, 0.55);
+  model.add(new CylinderGeometry(0.037, 0.033, 0.09, 6), '#a26e40', [0.11, 0.131, 0.55]);
   for (const y of [0.102, 0.158]) {
-    model.add(new TorusGeometry(0.036, 0.004, 3, 6), DARK, [0.11, y, 0.44], [1, 1, 1], [Math.PI / 2, 0, 0]);
+    model.add(new TorusGeometry(0.036, 0.004, 3, 6), DARK, [0.11, y, 0.55], [1, 1, 1], [Math.PI / 2, 0, 0]);
   }
-  model.add(new TorusGeometry(0.028, 0.007, 3, 6), ROPE, [-0.1, 0.096, 0.08], [1, 1, 1], [Math.PI / 2, 0, 0]);
+  model.add(new TorusGeometry(0.028, 0.007, 3, 6), ROPE, [-0.1, 0.096, 0.04], [1, 1, 1], [Math.PI / 2, 0, 0]);
   // Mooring rope and a side-tied fishing boat give each harbor a maritime silhouette.
   // The ocean is at Y=-.285: submerge the keel while retaining the dock elevation.
   const boatYOffset = -0.312;
@@ -292,7 +308,7 @@ export function harborLabelInstances(geometry: BoardGeometry, board: PublicBoard
     return {
       ...harbor,
       position: [harbor.position[0] + cos * x + sin * z, y, harbor.position[2] - sin * x + cos * z],
-      scale: [0.43, 1, 0.25],
+      scale: [0.68, 1, 0.39],
     };
   });
 }

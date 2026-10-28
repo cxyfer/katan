@@ -116,9 +116,9 @@ export function numberTokens(geometry: BoardGeometry, board: PublicBoardView): N
       value,
       // The badge plane sits just above the token cylinder top to avoid
       // z-fighting while keeping the token body as a real volume.
-      position: [center.x, 0, center.z + 0.34] as Vec3,
+      position: [center.x, 0, center.z] as Vec3,
       rotationY: 0,
-      scale: [0.42, 1, 0.42] as Vec3,
+      scale: [0.62, 1, 0.62] as Vec3,
     }];
   });
 }

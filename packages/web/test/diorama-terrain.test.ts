@@ -107,7 +107,7 @@ describe('miniature terrain landscapes', () => {
     }
   });
 
-  it.each(terrains)('%s leaves shared placement lanes and the front token clear', terrain => {
+  it.each(terrains)('%s leaves shared placement lanes and the central token well clear', terrain => {
     for (let variant = 0; variant < 3; variant++) {
       const geometry = createTerrainModel(terrain, variant);
       const positions = geometry.getAttribute('position');
@@ -120,14 +120,14 @@ describe('miniature terrain landscapes', () => {
         maxX = Math.max(maxX, Math.abs(x));
         maxDiagonal = Math.max(maxDiagonal, Math.abs(z) + Math.abs(x) / Math.sqrt(3));
         const next = vertex % 3 === 2 ? vertex - 2 : vertex + 1;
-        tokenDistance = Math.min(tokenDistance, distanceToSegment(x, z - 0.34, positions.getX(next), positions.getZ(next) - 0.34));
+        tokenDistance = Math.min(tokenDistance, distanceToSegment(x, z, positions.getX(next), positions.getZ(next)));
         if (vertex % 3 === 0) {
           const ax = x;
-          const az = z - 0.34;
+          const az = z;
           const bx = positions.getX(vertex + 1);
-          const bz = positions.getZ(vertex + 1) - 0.34;
+          const bz = positions.getZ(vertex + 1);
           const cx = positions.getX(vertex + 2);
-          const cz = positions.getZ(vertex + 2) - 0.34;
+          const cz = positions.getZ(vertex + 2);
           const area = (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
           const sides = [ax * bz - az * bx, bx * cz - bz * cx, cx * az - cz * ax];
           if (Math.abs(area) > 1e-12 && (sides.every(side => side >= 0) || sides.every(side => side <= 0))) tokenDistance = 0;
@@ -135,7 +135,7 @@ describe('miniature terrain landscapes', () => {
       }
       expect(maxX, `${terrain} side boundary`).toBeLessThanOrEqual(Math.sqrt(3) * 0.86 / 2 + 0.00001);
       expect(maxDiagonal, `${terrain} sloping boundary`).toBeLessThanOrEqual(0.86001);
-      expect(tokenDistance, `${terrain} complete triangle token clearance`).toBeGreaterThanOrEqual(0.23999);
+      expect(tokenDistance, `${terrain} complete triangle central clearance`).toBeGreaterThanOrEqual(0.29999);
       geometry.dispose();
     }
   });

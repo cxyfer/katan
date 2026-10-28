@@ -35,6 +35,8 @@ import { CAMERA_AZIMUTH_DEG, cameraElevation } from './three/camera.ts';
 
 export const MIN_BOARD_ZOOM = 0.7;
 export const MAX_BOARD_ZOOM = 3;
+export const MIN_CAMERA_ELEVATION = 25;
+export const MAX_CAMERA_ELEVATION = 80;
 export const DRAG_SUPPRESSION_PX = 6;
 
 export type ViewportSurface = Element & {
@@ -74,6 +76,7 @@ export interface BoardViewportControls {
   cameraFit: OrthographicCameraFit | null;
   setZoom: (value: number) => void;
   rotate: (deltaDeg: number) => void;
+  setElevation: (value: number) => void;
   fit: () => void;
   measure: () => void;
   gestureActive: boolean;
@@ -86,6 +89,7 @@ interface ViewState {
   center: { x: number; z: number };
   zoom: number;
   azimuthDeg: number;
+  elevationDeg: number | null;
 }
 
 interface Point {
@@ -160,7 +164,7 @@ export function useBoardViewport({
   const fittedCenter = useMemo(() => centerOf(effectiveBounds), [effectiveBounds]);
   const requestedInitialZoom = clamp(Number.isFinite(initialZoom) ? initialZoom : 1, MIN_BOARD_ZOOM, MAX_BOARD_ZOOM);
   const [view, setView] = useState<ViewState>(() => ({ center: fittedCenter, zoom: requestedInitialZoom,
-    azimuthDeg: camera.azimuthDeg ?? CAMERA_AZIMUTH_DEG }));
+    azimuthDeg: camera.azimuthDeg ?? CAMERA_AZIMUTH_DEG, elevationDeg: camera.elevationDeg ?? null }));
   const [rect, setRect] = useState<CssRect>({ left: 0, top: 0, width: 0, height: 0 });
   const [gestureActive, setGestureActive] = useState(false);
   const viewRef = useRef(view);
@@ -182,10 +186,13 @@ export function useBoardViewport({
     };
   }, [effectiveBounds, fittedCenter]);
 
-  const applyView = useCallback((next: Omit<ViewState, 'azimuthDeg'> & { azimuthDeg?: number }) => {
+  const applyView = useCallback((next: Omit<ViewState, 'azimuthDeg' | 'elevationDeg'> & {
+    azimuthDeg?: number; elevationDeg?: number | null;
+  }) => {
     const zoom = clamp(next.zoom, MIN_BOARD_ZOOM, MAX_BOARD_ZOOM);
     const azimuthDeg = next.azimuthDeg ?? viewRef.current.azimuthDeg;
-    const value = { zoom, center: clampCenter(next.center, zoom), azimuthDeg: ((azimuthDeg % 360) + 360) % 360 };
+    const elevationDeg = next.elevationDeg === undefined ? viewRef.current.elevationDeg : next.elevationDeg;
+    const value = { zoom, center: clampCenter(next.center, zoom), azimuthDeg: ((azimuthDeg % 360) + 360) % 360, elevationDeg };
     viewRef.current = value;
     setView(value);
   }, [clampCenter]);
@@ -202,9 +209,15 @@ export function useBoardViewport({
     applyView({ ...current, azimuthDeg: current.azimuthDeg + deltaDeg });
   }, [applyView, renderer]);
 
+  const setElevation = useCallback((value: number) => {
+    if (renderer === 'svg' || !Number.isFinite(value) || gestureRef.current) return;
+    const current = viewRef.current;
+    applyView({ ...current, elevationDeg: clamp(value, MIN_CAMERA_ELEVATION, MAX_CAMERA_ELEVATION) });
+  }, [applyView, renderer]);
+
   const fit = useCallback(() => {
     measureRef.current();
-    applyView({ center: fittedCenter, zoom: 1, azimuthDeg: CAMERA_AZIMUTH_DEG });
+    applyView({ center: fittedCenter, zoom: 1, azimuthDeg: CAMERA_AZIMUTH_DEG, elevationDeg: null });
   }, [applyView, fittedCenter]);
 
   const measure = useCallback(() => {
@@ -285,7 +298,7 @@ export function useBoardViewport({
   useEffect(() => {
     if (resetKeyRef.current === currentResetKey) return;
     resetKeyRef.current = currentResetKey;
-    applyView({ center: fittedCenter, zoom: requestedInitialZoom, azimuthDeg: CAMERA_AZIMUTH_DEG });
+    applyView({ center: fittedCenter, zoom: requestedInitialZoom, azimuthDeg: CAMERA_AZIMUTH_DEG, elevationDeg: null });
   }, [applyView, currentResetKey, fittedCenter, requestedInitialZoom]);
 
   const screenDeltaToWorld = useCallback((
@@ -577,20 +590,22 @@ export function useBoardViewport({
     });
   }, [geometry, projection, rect, renderer, view]);
 
+  const elevationDeg = view.elevationDeg ?? cameraElevation(rect);
   const viewport = useMemo<BoardViewportState>(() => ({
     center: view.center,
     zoom: view.zoom,
     azimuthDeg: view.azimuthDeg,
+    elevationDeg,
     // A hidden/zero-sized surface is authoritative and invalidates stale targets.
     rect,
-  }), [rect, view]);
+  }), [elevationDeg, rect, view]);
 
   const cameraFit = useMemo(() => {
     if (!finiteRect(rect)) return null;
     return fitOrthographicCamera(effectiveBounds, rect, {
-      elevationDeg: cameraElevation(rect), margin: 0.08, ...camera, azimuthDeg: view.azimuthDeg,
+      margin: 0.08, ...camera, azimuthDeg: view.azimuthDeg, elevationDeg,
     });
-  }, [camera, effectiveBounds, rect, view.azimuthDeg]);
+  }, [camera, effectiveBounds, elevationDeg, rect, view.azimuthDeg]);
 
   const surfaceProps: BoardGestureProps = {
     onPointerDown,
@@ -612,6 +627,7 @@ export function useBoardViewport({
     cameraFit,
     setZoom,
     rotate,
+    setElevation,
     fit,
     measure,
     gestureActive,

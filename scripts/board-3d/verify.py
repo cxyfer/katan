@@ -546,6 +546,25 @@ def interactions(browser, base, args, fixture, report, out) -> None:
             action.click()
             target_buttons = scenario.page.locator('button[data-testid^="target-edge-"]')
             target_buttons.first.wait_for(state="visible")
+            if state["effective"] == "r3f":
+                slider = scenario.page.get_by_test_id("camera-elevation")
+                slider.click()
+                slider.press("Home")
+                scenario.page.wait_for_function("document.querySelector('[data-testid=\"board\"]')?.dataset.cameraElevation === '25'")
+                scenario.page.evaluate("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+                low = target_buttons.evaluate_all("nodes => nodes.map(n => { const r=n.getBoundingClientRect(); return [r.x,r.y]; })")
+                slider.press("End")
+                scenario.page.wait_for_function("document.querySelector('[data-testid=\"board\"]')?.dataset.cameraElevation === '80'")
+                scenario.page.evaluate("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+                high = target_buttons.evaluate_all("nodes => nodes.map(n => { const r=n.getBoundingClientRect(); return [r.x,r.y]; })")
+                moved = len(low) == len(high) and any(math.dist(a, b) > 2 for a, b in zip(low, high))
+                scenario.page.get_by_test_id("reset-view").click()
+                scenario.page.wait_for_function("document.querySelector('[data-testid=\"board\"]')?.dataset.cameraElevation === '50'")
+                case(report, "I08-camera-elevation", "PASS" if moved else "FAIL",
+                     range=[25, 80], lowTargetPositions=low, highTargetPositions=high,
+                     restoredElevation=50, detail="Real range input and keyboard limits change live target projections; fit restores the default angle.")
+            else:
+                case(report, "I08-camera-elevation", "NOT RUN", detail="Elevation applies to the modeled renderer.")
             targets = target_buttons.count()
             target_records = target_buttons.evaluate_all("""nodes => nodes.map(node => {
               const box=node.getBoundingClientRect();

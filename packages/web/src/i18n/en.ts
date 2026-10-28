@@ -225,6 +225,8 @@ export const en: Catalog = {
   'board.rotateRight': 'Rotate right',
   'board.rotateLeftHint': 'Rotate camera left 30° ([ on the board)',
   'board.rotateRightHint': 'Rotate camera right 30° (] on the board)',
+  'board.viewingAngle': 'Viewing angle',
+  'board.viewingAngleDegrees': '{degrees} degrees',
   'board.resetView': 'Reset view',
   'board.fitBoard': 'Fit board',
   'board.zoomLevel': 'Zoom {percent}%',

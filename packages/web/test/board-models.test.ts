@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Box3, type BufferGeometry } from 'three';
+import { Box3, Color, type BufferGeometry } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { fixedBoard } from '../src/test/fixtures.ts';
@@ -10,9 +10,7 @@ import {
   createGabledRoofGeometry,
   createHexTileGeometry,
   createHexTileSurfaces,
-  createRobberCloakGeometry,
-  createRobberHeadGeometry,
-  createRobberHoodGeometry,
+  createTokenBodyGeometry,
   createUnitBoxGeometry,
 } from '../src/board/three/model-geometry.ts';
 import {
@@ -28,6 +26,7 @@ import {
 } from '../src/board/three/model-specs.ts';
 import { disposeWhenReleased, finiteTransform, instanceMatrix } from '../src/board/three/transforms.ts';
 import { boardSceneResources } from '../src/board/three/resources.ts';
+import { createRobberModel } from '../src/board/three/diorama-robber.ts';
 
 function boardWith(cityAt = 1) {
   const source = fixedBoard();
@@ -158,6 +157,18 @@ describe('modeled board pieces', () => {
     const tokens = numberTokens(geometry, board);
     expect(tokens.length).toBe(board.numbers.filter((value) => value !== null).length);
     expect(tokens.every((token) => token.position[1] === 0)).toBe(true);
+    for (const token of tokens) {
+      const hex = geometry.hexes[token.index]!;
+      const center = geometryToWorld(geometry, hex.cx, hex.cy);
+      expect(token.position).toEqual([center.x, 0, center.z]);
+      expect(token.scale).toEqual([0.62, 1, 0.62]);
+    }
+    const body = createTokenBodyGeometry();
+    const bodyBounds = expectFiniteBounds(body);
+    expect(bodyBounds.max.x - bodyBounds.min.x).toBeGreaterThan(0.55);
+    expect(bodyBounds.max.x).toBeLessThan(0.3);
+    expect(bodyBounds.max.z).toBeLessThan(0.3);
+    body.dispose();
     expect(tokens.every((token) => Object.hasOwn(NUMBER_ATLAS_CELLS, token.value))).toBe(true);
     expect(harborInstances(geometry, board).every((harbor) => harbor.type in HARBOR_ATLAS_CELLS)).toBe(true);
     for (const [value, cell] of Object.entries(NUMBER_ATLAS_CELLS)) {
@@ -173,19 +184,51 @@ describe('modeled board pieces', () => {
     }
 
     const source = readFileSync(resolve(process.cwd(), 'src/assets/board3d/board-atlas.svg'), 'utf8');
-    expect(source).toContain('3:1');
-    for (const letter of ['L', 'B', 'W', 'G', 'O']) expect(source).toContain(`2:1 ${letter}`);
+    const atlas = new DOMParser().parseFromString(source, 'image/svg+xml');
+    expect(atlas.querySelector('parsererror')).toBeNull();
+    expect(atlas.querySelector('#harbor-generic text')?.textContent).toBe('3:1');
+    for (const [resource, name] of Object.entries({ lumber: 'WOOD', brick: 'BRICK', wool: 'WOOL', grain: 'GRAIN', ore: 'ORE' })) {
+      const harbor = atlas.querySelector(`#harbor-${resource}`)!;
+      expect(harbor.textContent).toContain('2:1');
+      expect(harbor.textContent).toContain(name);
+      expect(harbor.querySelector(`#icon-${resource}`)).not.toBeNull();
+      expect(harbor.querySelector('rect')?.getAttribute('width')).toBe('240');
+      expect(harbor.querySelector('rect')?.getAttribute('height')).toBe('240');
+    }
+    for (const number of Object.keys(NUMBER_ATLAS_CELLS)) {
+      expect(atlas.querySelector(`#number-${number} text`)?.getAttribute('font-size')).toBe(number.length === 1 ? '112' : '100');
+    }
+    for (const number of [6, 8]) {
+      expect(atlas.querySelector(`#number-${number} text`)?.getAttribute('fill')).toBe('#8f211c');
+      expect(atlas.querySelector(`#number-${number} text:last-child`)?.textContent).toBe('•••••');
+    }
   });
 
-  it('V05 models a hooded robber with real depth outside the number badge footprint', () => {
-    const pieces = [createRobberCloakGeometry(), createRobberHeadGeometry(), createRobberHoodGeometry()];
-    const boxes = pieces.map(expectFiniteBounds);
-    expect(boxes[0]!.max.y - boxes[0]!.min.y).toBeGreaterThan(0.35);
-    expect(boxes[1]!.max.y - boxes[1]!.min.y).toBeGreaterThan(0.15);
-    expect(boxes[2]!.max.y - boxes[2]!.min.y).toBeGreaterThan(0.15);
-    expect(boxes[2]!.max.y).toBeCloseTo(BOARD_MODEL_METRICS.robberLocalHeight, 5);
-    expect(BOARD_MODEL_METRICS.robberOriginY + boxes[2]!.max.y).toBeCloseTo(BOARD_MODEL_METRICS.robberHeight, 5);
-    for (const geometry of pieces) geometry.dispose();
+  it('V05 gives the enlarged robber a colored face, mask, cloak, satchel and staff within the fit envelope', () => {
+    const model = createRobberModel();
+    const bounds = expectFiniteBounds(model);
+    expect(bounds.min.y).toBeGreaterThan(-1e-6);
+    expect(bounds.max.y).toBeGreaterThan(0.88);
+    expect(bounds.max.y).toBeLessThanOrEqual(BOARD_MODEL_METRICS.robberLocalHeight);
+    expect(BOARD_MODEL_METRICS.robberOriginY + bounds.max.y).toBeLessThanOrEqual(BOARD_MODEL_METRICS.robberHeight);
+    const positions = model.getAttribute('position');
+    const colors = model.getAttribute('color');
+    expect(colors.count).toBe(positions.count);
+    expect(Array.from(colors.array).every(Number.isFinite)).toBe(true);
+    expect(positions.count / 3).toBeLessThan(2_000);
+    for (let index = 0; index < positions.count; index++) {
+      expect(Math.hypot(positions.getX(index), positions.getZ(index))).toBeLessThan(0.3);
+    }
+    // Visible face, pale eyes and leather accessories must survive geometry baking.
+    for (const [hex, minimumY] of [['#bd9977', 0.65], ['#ece2c6', 0.74], ['#855f3d', 0.35]] as const) {
+      const color = new Color(hex);
+      expect(Array.from({ length: colors.count }, (_, index) => index).some((index) =>
+        positions.getY(index) > minimumY &&
+        Math.abs(colors.getX(index) - color.r) < 1e-6 &&
+        Math.abs(colors.getY(index) - color.g) < 1e-6 &&
+        Math.abs(colors.getZ(index) - color.b) < 1e-6)).toBe(true);
+    }
+    model.dispose();
   });
 
   it('V06 supplies complete finite bounds for both supported topologies', () => {

@@ -1,4 +1,4 @@
-import { Color, Vector3, type BufferGeometry } from 'three';
+import { Color, Mesh, MeshBasicMaterial, Raycaster, Vector3, type BufferGeometry } from 'three';
 import { describe, expect, it } from 'vitest';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { fixedBoard } from '../src/test/fixtures.ts';
@@ -59,31 +59,43 @@ function coloredVerticesAbove(model: BufferGeometry, color: string, height: numb
 }
 
 describe('baked architectural miniatures', () => {
-  it('settlements have closed cream walls, player-colored pitched roofs and a tall chimney', () => {
+  it('settlements remain low single cottages with closed cream walls and colored pitched roofs', () => {
     const model = createSettlementModel('#c0392b', false, 0);
     const bounds = validateModel(model);
     expect(bounds.max.x - bounds.min.x).toBeLessThan(0.29);
     expect(bounds.max.z - bounds.min.z).toBeLessThan(0.26);
     expect(bounds.min.y).toBeGreaterThanOrEqual(0);
-    expect(bounds.max.y).toBeGreaterThan(0.4);
-    expect(bounds.max.y).toBeLessThan(0.45);
-    expect(coloredVerticesAbove(model, '#c0392b', 0.29)).toBeGreaterThan(0);
+    expect(bounds.max.y).toBeGreaterThan(0.3);
+    expect(bounds.max.y).toBeLessThan(0.34);
+    expect(coloredVerticesAbove(model, '#c0392b', 0.24)).toBeGreaterThan(0);
     expect(coloredVerticesAbove(model, '#f4dfb5', 0.12)).toBeGreaterThan(10);
     expect(coloredVerticesAbove(model, '#263b3d', 0.12)).toBeGreaterThan(10);
     model.dispose();
   });
 
-  it('cities use a wider courtyard and a distinct keep above the houses', () => {
+  it('cities have a tall double-tower silhouette and an open gate, distinctly above cottages', () => {
     const settlement = createSettlementModel('#2c6fb5', false, 2);
     const city = createSettlementModel('#2c6fb5', true, 2);
     const bounds = validateModel(city);
     expect(bounds.max.x - bounds.min.x).toBeLessThan(0.43);
     expect(bounds.max.x - bounds.min.x).toBeGreaterThan(0.39);
-    expect(bounds.max.y).toBeGreaterThan(0.52);
-    expect(bounds.max.y).toBeLessThan(0.58);
-    expect(city.getAttribute('position').count).toBeGreaterThan(settlement.getAttribute('position').count * 1.6);
+    expect(bounds.max.y).toBeGreaterThan(0.75);
+    expect(bounds.max.y).toBeLessThan(0.85);
+    expect(bounds.max.y).toBeGreaterThan(settlement.boundingBox!.max.y * 2.2);
+    expect(city.getAttribute('position').count / 3).toBeLessThan(750);
     expect(coloredVerticesAbove(city, '#c2c4ae', 0.4)).toBeGreaterThan(0);
-    expect(coloredVerticesAbove(city, '#2c6fb5', 0.48)).toBeGreaterThan(0);
+    expect(coloredVerticesAbove(city, '#2c6fb5', 0.68)).toBeGreaterThan(0);
+    const positions = city.getAttribute('position');
+    const highX = Array.from({ length: positions.count }, (_, index) => index)
+      .filter((index) => positions.getY(index) > 0.68).map((index) => positions.getX(index));
+    expect(highX.some((x) => x < -0.08)).toBe(true);
+    expect(highX.some((x) => x > 0.08)).toBe(true);
+    expect(highX.every((x) => Math.abs(x) > 0.05)).toBe(true);
+    const material = new MeshBasicMaterial();
+    const castle = new Mesh(city, material);
+    const gateRay = new Raycaster(new Vector3(0.013, 0.17, -0.4), new Vector3(0, 0, 1));
+    expect(gateRay.intersectObject(castle)[0]!.point.z).toBeGreaterThan(-0.03);
+    material.dispose();
     settlement.dispose();
     city.dispose();
   });
@@ -116,7 +128,7 @@ describe('baked architectural miniatures', () => {
   it('harbors include a closed shallow hull, pier pilings, deck cargo and a cream sail', () => {
     const model = createHarborModel();
     const bounds = validateModel(model);
-    expect(model.getAttribute('position').count / 3).toBeLessThanOrEqual(1_000);
+    expect(model.getAttribute('position').count / 3).toBeLessThanOrEqual(1_100);
     expect(bounds.max.z).toBeLessThanOrEqual(0.85);
     expect(bounds.min.z).toBeGreaterThanOrEqual(0);
     expect(bounds.min.y).toBeLessThan(-0.31);
@@ -135,7 +147,7 @@ describe('baked architectural miniatures', () => {
     expect(Math.min(...hullY)).toBeLessThan(-0.285);
     expect(Math.max(...hullY)).toBeGreaterThan(-0.285);
     expect(Math.max(...hullY)).toBeLessThan(-0.24);
-    expect(coloredVerticesAbove(model, '#eed9ab', 0.15)).toBeGreaterThan(0);
+    expect(coloredVerticesAbove(model, '#eed9ab', 0.2)).toBeGreaterThan(0);
     model.dispose();
   });
 
@@ -160,8 +172,9 @@ describe('baked architectural miniatures', () => {
       expect(finiteTransform(label)).toBe(true);
       const localLabel = new Vector3(...label.position).applyMatrix4(instanceMatrix(harbor).invert());
       expect(localLabel.x).toBeCloseTo(0, 6);
-      expect(localLabel.y).toBeCloseTo(0.156, 6);
-      expect(localLabel.z).toBeCloseTo(0.22, 6);
+      expect(localLabel.y).toBeCloseTo(0.205, 6);
+      expect(localLabel.z).toBeCloseTo(0.285, 6);
+      expect(label.scale).toEqual([0.68, 1, 0.39]);
     }
   });
 });
