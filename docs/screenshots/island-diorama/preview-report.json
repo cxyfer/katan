@@ -1,0 +1,653 @@
+{
+  "cases": [
+    {
+      "viewport": [
+        1600,
+        1000
+      ],
+      "initial": {
+        "ready": "ready",
+        "zoom": 1,
+        "azimuth": 20,
+        "elevation": 50,
+        "cameraMatrix": [
+          0.9396926164627075,
+          -0.2620026171207428,
+          0.21984630823135376,
+          0,
+          5.551115123125783e-17,
+          0.6427876353263855,
+          0.7660444378852844,
+          0,
+          -0.3420201539993286,
+          -0.7198463082313538,
+          0.6040228009223938,
+          0,
+          -1.7694179454963432e-15,
+          -0.18962234258651733,
+          -21.29817771911621,
+          1
+        ],
+        "center": [
+          0,
+          0
+        ],
+        "surface": {
+          "x": 0,
+          "y": 72,
+          "width": 1290,
+          "height": 928,
+          "top": 72,
+          "right": 1290,
+          "bottom": 1000,
+          "left": 0
+        },
+        "viewport": [
+          1600,
+          1000
+        ],
+        "documentWidth": 1600,
+        "webgl": true,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "canvas": [
+          1290,
+          928
+        ]
+      },
+      "final": {
+        "ready": "ready",
+        "zoom": 1,
+        "azimuth": 20,
+        "elevation": 50,
+        "cameraMatrix": [
+          0.9396926164627075,
+          -0.2620026171207428,
+          0.21984630823135376,
+          0,
+          5.551115123125783e-17,
+          0.6427876353263855,
+          0.7660444378852844,
+          0,
+          -0.3420201539993286,
+          -0.7198463082313538,
+          0.6040228009223938,
+          0,
+          0.4068991243839264,
+          -0.30307289958000183,
+          -27.103559494018555,
+          1
+        ],
+        "center": [
+          -0.4330130000000003,
+          0
+        ],
+        "surface": {
+          "x": 0,
+          "y": 72,
+          "width": 1290,
+          "height": 928,
+          "top": 72,
+          "right": 1290,
+          "bottom": 1000,
+          "left": 0
+        },
+        "viewport": [
+          1600,
+          1000
+        ],
+        "documentWidth": 1600,
+        "webgl": true,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "canvas": [
+          1290,
+          928
+        ]
+      },
+      "status": "PASS",
+      "elevationRange": {
+        "low": {
+          "ready": "ready",
+          "zoom": 1,
+          "azimuth": 20,
+          "elevation": 25,
+          "cameraMatrix": [
+            0.9396926164627075,
+            -0.14454396069049835,
+            0.3099755048751831,
+            0,
+            1.3877787807814457e-17,
+            0.9063078165054321,
+            0.4226182699203491,
+            0,
+            -0.3420201539993286,
+            -0.3971312642097473,
+            0.8516507148742676,
+            0,
+            -2.0261570199409107e-15,
+            -0.2673608064651489,
+            -21.196866989135742,
+            1
+          ],
+          "center": [
+            0,
+            0
+          ],
+          "surface": {
+            "x": 0,
+            "y": 72,
+            "width": 1290,
+            "height": 928,
+            "top": 72,
+            "right": 1290,
+            "bottom": 1000,
+            "left": 0
+          },
+          "viewport": [
+            1600,
+            1000
+          ],
+          "documentWidth": 1600,
+          "webgl": true,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "canvas": [
+            1290,
+            928
+          ]
+        },
+        "high": {
+          "ready": "ready",
+          "zoom": 1,
+          "azimuth": 20,
+          "elevation": 80,
+          "cameraMatrix": [
+            0.9396926164627075,
+            -0.33682408928871155,
+            0.05939117446541786,
+            0,
+            6.938893903907228e-18,
+            0.1736481785774231,
+            0.9848077297210693,
+            0,
+            -0.3420201539993286,
+            -0.9254165887832642,
+            0.16317591071128845,
+            0,
+            -1.0408340855860843e-17,
+            -0.051226213574409485,
+            -21.362712860107422,
+            1
+          ],
+          "center": [
+            0,
+            0
+          ],
+          "surface": {
+            "x": 0,
+            "y": 72,
+            "width": 1290,
+            "height": 928,
+            "top": 72,
+            "right": 1290,
+            "bottom": 1000,
+            "left": 0
+          },
+          "viewport": [
+            1600,
+            1000
+          ],
+          "documentWidth": 1600,
+          "webgl": true,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "canvas": [
+            1290,
+            928
+          ]
+        }
+      },
+      "drag": {
+        "orbited": {
+          "ready": "ready",
+          "zoom": 1.5625,
+          "azimuth": 352,
+          "elevation": 58.75,
+          "cameraMatrix": [
+            0.9902680516242981,
+            0.11898073554039001,
+            -0.07219928503036499,
+            0,
+            1.3877787807814457e-17,
+            0.5187732577323914,
+            0.8549118638038635,
+            -0.0,
+            0.13917310535907745,
+            -0.8465919494628906,
+            0.5137245655059814,
+            0,
+            -4.822531263215524e-16,
+            -0.1530381143093109,
+            -21.324392318725586,
+            1
+          ],
+          "center": [
+            0,
+            0
+          ],
+          "surface": {
+            "x": 0,
+            "y": 72,
+            "width": 1290,
+            "height": 928,
+            "top": 72,
+            "right": 1290,
+            "bottom": 1000,
+            "left": 0
+          },
+          "viewport": [
+            1600,
+            1000
+          ],
+          "documentWidth": 1600,
+          "webgl": true,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "canvas": [
+            1290,
+            928
+          ]
+        },
+        "shiftPanned": {
+          "ready": "ready",
+          "zoom": 1.5625,
+          "azimuth": 20,
+          "elevation": 50,
+          "cameraMatrix": [
+            0.9396926164627075,
+            -0.2620026171207428,
+            0.21984630823135376,
+            0,
+            5.551115123125783e-17,
+            0.6427876353263855,
+            0.7660444378852844,
+            0,
+            -0.3420201539993286,
+            -0.7198463082313538,
+            0.6040228009223938,
+            0,
+            0.2605878412723541,
+            -0.3199162781238556,
+            -21.1888484954834,
+            1
+          ],
+          "center": [
+            -0.3030455221202015,
+            -0.07070286282202047
+          ],
+          "surface": {
+            "x": 0,
+            "y": 72,
+            "width": 1290,
+            "height": 928,
+            "top": 72,
+            "right": 1290,
+            "bottom": 1000,
+            "left": 0
+          },
+          "viewport": [
+            1600,
+            1000
+          ],
+          "documentWidth": 1600,
+          "webgl": true,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "canvas": [
+            1290,
+            928
+          ]
+        }
+      },
+      "checked": [
+        "fit",
+        "zoom",
+        "rotate",
+        "elevation 25/80 real camera",
+        "left drag orbit",
+        "Shift-left/right drag pan",
+        "keyboard",
+        "19/30 topology",
+        "low quality",
+        "overflow"
+      ]
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "initial": {
+        "ready": "ready",
+        "zoom": 1,
+        "azimuth": 20,
+        "elevation": 60,
+        "cameraMatrix": [
+          0.9396926164627075,
+          -0.29619812965393066,
+          0.1710100769996643,
+          0,
+          0,
+          0.5,
+          0.8660253882408142,
+          0,
+          -0.3420201539993286,
+          -0.813797652721405,
+          0.46984630823135376,
+          0,
+          -6.245004513516506e-17,
+          -0.14749999344348907,
+          -21.32767105102539,
+          1
+        ],
+        "center": [
+          0,
+          0
+        ],
+        "surface": {
+          "x": 0,
+          "y": 64,
+          "width": 390,
+          "height": 780,
+          "top": 64,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "viewport": [
+          390,
+          844
+        ],
+        "documentWidth": 390,
+        "webgl": true,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "canvas": [
+          390,
+          780
+        ]
+      },
+      "final": {
+        "ready": "ready",
+        "zoom": 1,
+        "azimuth": 20,
+        "elevation": 60,
+        "cameraMatrix": [
+          0.9396926164627075,
+          -0.29619812965393066,
+          0.1710100769996643,
+          0,
+          0,
+          0.5,
+          0.8660253882408142,
+          0,
+          -0.3420201539993286,
+          -0.813797652721405,
+          0.46984630823135376,
+          0,
+          0.4068991243839264,
+          -0.27575764060020447,
+          -27.154199600219727,
+          1
+        ],
+        "center": [
+          -0.4330130000000003,
+          0
+        ],
+        "surface": {
+          "x": 0,
+          "y": 64,
+          "width": 390,
+          "height": 780,
+          "top": 64,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "viewport": [
+          390,
+          844
+        ],
+        "documentWidth": 390,
+        "webgl": true,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "canvas": [
+          390,
+          780
+        ]
+      },
+      "status": "PASS",
+      "elevationRange": {
+        "low": {
+          "ready": "ready",
+          "zoom": 1,
+          "azimuth": 20,
+          "elevation": 25,
+          "cameraMatrix": [
+            0.9396926164627075,
+            -0.14454396069049835,
+            0.3099755048751831,
+            0,
+            1.3877787807814457e-17,
+            0.9063078165054321,
+            0.4226182699203491,
+            0,
+            -0.3420201539993286,
+            -0.3971312642097473,
+            0.8516507148742676,
+            0,
+            -2.0261570199409107e-15,
+            -0.2673608064651489,
+            -21.196866989135742,
+            1
+          ],
+          "center": [
+            0,
+            0
+          ],
+          "surface": {
+            "x": 0,
+            "y": 64,
+            "width": 390,
+            "height": 780,
+            "top": 64,
+            "right": 390,
+            "bottom": 844,
+            "left": 0
+          },
+          "viewport": [
+            390,
+            844
+          ],
+          "documentWidth": 390,
+          "webgl": true,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "canvas": [
+            390,
+            780
+          ]
+        },
+        "high": {
+          "ready": "ready",
+          "zoom": 1,
+          "azimuth": 20,
+          "elevation": 80,
+          "cameraMatrix": [
+            0.9396926164627075,
+            -0.33682408928871155,
+            0.05939117446541786,
+            0,
+            6.938893903907228e-18,
+            0.1736481785774231,
+            0.9848077297210693,
+            0,
+            -0.3420201539993286,
+            -0.9254165887832642,
+            0.16317591071128845,
+            0,
+            -1.0408340855860843e-17,
+            -0.051226213574409485,
+            -21.362712860107422,
+            1
+          ],
+          "center": [
+            0,
+            0
+          ],
+          "surface": {
+            "x": 0,
+            "y": 64,
+            "width": 390,
+            "height": 780,
+            "top": 64,
+            "right": 390,
+            "bottom": 844,
+            "left": 0
+          },
+          "viewport": [
+            390,
+            844
+          ],
+          "documentWidth": 390,
+          "webgl": true,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "canvas": [
+            390,
+            780
+          ]
+        }
+      },
+      "drag": {
+        "orbited": {
+          "ready": "ready",
+          "zoom": 1.5625,
+          "azimuth": 352,
+          "elevation": 68.75,
+          "cameraMatrix": [
+            0.9902680516242981,
+            0.12971042096614838,
+            -0.05044162645936012,
+            0,
+            4.163336342344337e-17,
+            0.36243805289268494,
+            0.9320078492164612,
+            -0.0,
+            0.13917310535907745,
+            -0.9229376316070557,
+            0.35891082882881165,
+            0,
+            -9.280770596475918e-16,
+            -0.10691922158002853,
+            -21.347135543823242,
+            1
+          ],
+          "center": [
+            0,
+            0
+          ],
+          "surface": {
+            "x": 0,
+            "y": 64,
+            "width": 390,
+            "height": 780,
+            "top": 64,
+            "right": 390,
+            "bottom": 844,
+            "left": 0
+          },
+          "viewport": [
+            390,
+            844
+          ],
+          "documentWidth": 390,
+          "webgl": true,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "canvas": [
+            390,
+            780
+          ]
+        },
+        "shiftPanned": {
+          "ready": "ready",
+          "zoom": 1.5625,
+          "azimuth": 20,
+          "elevation": 60,
+          "cameraMatrix": [
+            0.9396926164627075,
+            -0.29619812965393066,
+            0.1710100769996643,
+            0,
+            0,
+            0.5,
+            0.8660253882408142,
+            0,
+            -0.3420201539993286,
+            -0.813797652721405,
+            0.46984630823135376,
+            0,
+            0.7110208868980408,
+            -0.5030104517936707,
+            -21.122417449951172,
+            1
+          ],
+          "center": [
+            -0.8085431242657488,
+            -0.14256796787456819
+          ],
+          "surface": {
+            "x": 0,
+            "y": 64,
+            "width": 390,
+            "height": 780,
+            "top": 64,
+            "right": 390,
+            "bottom": 844,
+            "left": 0
+          },
+          "viewport": [
+            390,
+            844
+          ],
+          "documentWidth": 390,
+          "webgl": true,
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+          "canvas": [
+            390,
+            780
+          ]
+        }
+      },
+      "checked": [
+        "fit",
+        "zoom",
+        "rotate",
+        "elevation 25/80 real camera",
+        "left drag orbit",
+        "Shift-left/right drag pan",
+        "keyboard",
+        "19/30 topology",
+        "low quality",
+        "overflow"
+      ]
+    }
+  ],
+  "errors": [],
+  "apiCalls": [],
+  "screenshots": [
+    "island-19-1600x1000.png",
+    "island-low-angle-1600x1000.png",
+    "island-overhead-1600x1000.png",
+    "island-detail.png",
+    "island-30-1600x1000.png",
+    "island-19-390x844.png",
+    "island-low-angle-390x844.png",
+    "island-overhead-390x844.png",
+    "island-30-390x844.png"
+  ],
+  "sourceHash": "646eb1e63118e7a6b1d0fac56c1a613d62d0261cbeafeb2600e2909a102d0b21",
+  "status": "PASS"
+}

@@ -8,6 +8,8 @@ Entries are workspace records, not authoritative runtime decisions.
 | 2026-10-29 | plan | docs/aegis/plans/2026-10-29-board-3d-research.md | Modeled board research and compatibility assessment |
 | 2026-10-29 | plan | docs/aegis/plans/2026-10-29-board-3d-plan.md | Modeled board contracts and three-agent execution plan |
 | 2026-10-29 | plan | docs/aegis/plans/2026-10-29-board-3d-acceptance.md | Modeled board acceptance and evidence boundaries |
+| 2026-10-29 | plan | docs/aegis/plans/2026-10-29-island-diorama.md | Detailed island replacement, models and camera scope |
+| 2026-10-29 | work | docs/aegis/work/2026-10-29-island-diorama.md | Island replacement verification and review images |
 | 2026-10-29 | work | docs/aegis/work/2026-10-29-board-3d/10-intent.md | Modeled board execution intent and baseline lock |
 | 2026-10-29 | work | docs/aegis/work/2026-10-29-board-3d/20-checkpoint.md | Modeled board integration checkpoint |
 | 2026-10-29 | work | docs/aegis/work/2026-10-29-board-3d/30-effects-integration.md | Stage-local effect integration contract |
