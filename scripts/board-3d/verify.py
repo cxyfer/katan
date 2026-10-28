@@ -307,6 +307,7 @@ class Scenario:
         }
         if video:
             options.update(record_video_dir=str(out / "videos"), record_video_size=options["viewport"])
+        self.closed = False
         self.context = browser.new_context(**options)
         self.context.add_init_script(f"localStorage.setItem('catan.locale', {json.dumps(locale)});")
         self.context.add_init_script(GPU_INSTRUMENT)
@@ -450,6 +451,10 @@ class Scenario:
 
     def save_video(self, name: str) -> Path | None:
         video = self.page.video
+        # Playwright finalizes recorded video when the page closes. save_as is
+        # valid only afterwards, and close() remains safe from the caller's
+        # outer finally block.
+        self.close()
         if not video:
             return None
         path = self.out / f"{name}.webm"
@@ -457,7 +462,14 @@ class Scenario:
         return path
 
     def close(self) -> None:
-        self.context.close()
+        if self.closed:
+            return
+        self.closed = True
+        try:
+            if not self.page.is_closed():
+                self.page.close()
+        finally:
+            self.context.close()
 
 
 def evidence_base(report: dict, scenario: Scenario) -> dict:
@@ -594,12 +606,13 @@ def privacy_events(browser, base, args, fixture, report, out) -> None:
             scenario.send(step["snapshot"])
             scenario.page.wait_for_timeout(100)
             event_checks.append({"step": step["command"]["type"], "effects": scenario.page.locator('[data-testid="board-effects"]').count()})
+        evidence = evidence_base(report, scenario)
         video = scenario.save_video("events-sequence")
         if video:
             report["artifacts"].append(relative(video))
         okay = before == 0 and dice == 1 and settled == 0 and not scenario.errors and not scenario.unmapped
         case(report, "E01-roll-overlay-lifecycle", "PASS" if okay else "FAIL", fixture=board["id"],
-             checkpoints=event_checks, video=relative(video) if video else None, evidence=evidence_base(report, scenario))
+             checkpoints=event_checks, video=relative(video) if video else None, evidence=evidence)
     except Exception as error:
         case(report, "E01-roll-overlay-lifecycle", "FAIL", error=str(error), traceback=traceback.format_exc())
     finally:
