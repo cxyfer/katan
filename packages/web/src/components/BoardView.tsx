@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -13,6 +13,8 @@ import { useLocale, useT } from '../i18n/context.tsx';
 import { buildGeometry, type BoardGeometry, type Point } from '../board/geometry.ts';
 import { boardIntent, type BoardIntent } from '../board/intent.ts';
 import { ambiguousWith, describeTarget, type TargetKind } from '../board/targets.ts';
+import { boardViewport, parseViewBox } from '../board/viewport.ts';
+import { useBoardAnimation } from '../board/useBoardAnimation.ts';
 import {
   pipsFor,
   playerColorHex,
@@ -26,11 +28,13 @@ import { nameOf } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
 import { Legend } from './Legend.tsx';
-import { GameIcon, TerrainIllustration } from './GameArt.tsx';
+import { BuildingPiece, GameIcon, TerrainIllustration } from './GameArt.tsx';
+import { BoardEffects } from './BoardEffects.tsx';
+import { confirmedPlacement } from '../board/effects.ts';
 
 const BOARD_SCALE = 100;
 const BASE_TOPOLOGY = 'hex-r2';
-/** Ambiguity threshold in screen pixels; divided by zoom to get user units. */
+/** 歧義距離以投影後的 CSS px 計算。 */
 const AMBIGUITY_PX = 30;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 3;
@@ -63,20 +67,28 @@ export function BoardView({ controller }: { controller: TableController }) {
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [cluster, setCluster] = useState<number[] | null>(null);
-  const [diceRolling, setDiceRolling] = useState(false);
-  const [focusedRoll, setFocusedRoll] = useState<{ seq: number; dice: [number, number] } | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
-  const lastDiceEventRef = useRef<number | null>(null);
-  const diceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointersRef = useRef(new Map<number, Point>());
+  const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
+  const animation = useBoardAnimation(state.game, state.gameSync, state.connection === 'online',
+    !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll');
+  const focusedRoll = useMemo(() => {
+    const rolled = animation.active?.events.find((event) => event.type === 'turn.rolled');
+    const dice = rolled?.params.dice;
+    if (!rolled || !Array.isArray(dice) || dice.length !== 2 ||
+        !dice.every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) return null;
+    return { seq: rolled.seq, dice: [dice[0], dice[1]] as [number, number] };
+  }, [animation.active]);
+  const diceRolling = focusedRoll !== null;
 
   const topologyId = view?.board.topologyId ?? BASE_TOPOLOGY;
   const geometry: BoardGeometry = useMemo(() => buildGeometry(topologyId, BOARD_SCALE), [topologyId]);
   const topology = geometry.topology;
-  const [viewBoxX, viewBoxY, viewBoxWidth, viewBoxHeight] = geometry.viewBox.split(/\s+/).map(Number);
+  const viewBox = useMemo(() => parseViewBox(geometry.viewBox), [geometry]);
   const viewBoxCenter = {
-    x: viewBoxX + viewBoxWidth / 2,
-    y: viewBoxY + viewBoxHeight / 2,
+    x: viewBox.x + viewBox.width / 2,
+    y: viewBox.y + viewBox.height / 2,
   };
   const selfId = state.session?.id ?? null;
   const nameResolver = useMemo(() => nameOf(state), [state]);
@@ -100,45 +112,34 @@ export function BoardView({ controller }: { controller: TableController }) {
     return map;
   }, [geometry, intent]);
 
-  useEffect(() => {
-    const rolled = view?.events.slice().reverse().find((event) => event.type === 'turn.rolled');
-    if (!rolled || rolled.seq === lastDiceEventRef.current) return;
-    const dice = rolled.params.dice;
-    if (!Array.isArray(dice) || dice.length !== 2 || !dice.every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) return;
-    lastDiceEventRef.current = rolled.seq;
-    setFocusedRoll({ seq: rolled.seq, dice: [dice[0] as number, dice[1] as number] });
-    setDiceRolling(true);
-    if (diceTimerRef.current !== null) globalThis.clearTimeout(diceTimerRef.current);
-    diceTimerRef.current = globalThis.setTimeout(() => {
-      diceTimerRef.current = null;
-      setDiceRolling(false);
-    }, 1600);
-  }, [view?.events]);
+  const viewport = useCallback(() => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    return rect ? boardViewport({ viewBox, rect, zoom, pan }) : null;
+  }, [viewBox, zoom, pan]);
 
-  useEffect(() => () => {
-    if (diceTimerRef.current !== null) globalThis.clearTimeout(diceTimerRef.current);
-  }, []);
-
-  const minDistance = AMBIGUITY_PX / Math.max(zoom, 0.2);
+  const selectTarget = useCallback((kind: TargetKind, index: number) => {
+    if (!intent) return;
+    setCluster(null);
+    setPickerOpen(false);
+    actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
+  }, [actions, intent]);
 
   const choose = useCallback(
     (kind: TargetKind, index: number) => {
       if (!intent) return;
-      const near = ambiguousWith(index, intent.targets, points, minDistance);
+      const projection = viewport();
+      const screenPoints = new Map([...points].map(([target, point]) => [target, projection?.worldToScreen(point) ?? point]));
+      // 無法量測畫面時改用明確的候選清單。
+      const near = projection ? ambiguousWith(index, intent.targets, screenPoints, AMBIGUITY_PX)
+        : intent.targets.length > 1 ? intent.targets : null;
       if (near && near.length > 1) {
         setCluster(near);
         setPickerOpen(true);
         return;
       }
-      setCluster(null);
-      actions.selectTarget({
-        kind,
-        index,
-        commandType: intent.commandType,
-        labelId: intent.labelId,
-      });
+      selectTarget(kind, index);
     },
-    [actions, intent, minDistance, points],
+    [intent, points, selectTarget, viewport],
   );
 
   const handleTargetClick = useCallback(
@@ -156,10 +157,10 @@ export function BoardView({ controller }: { controller: TableController }) {
     (event: ReactKeyboardEvent<SVGElement>, kind: TargetKind, index: number) => {
       if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
         event.preventDefault();
-        choose(kind, index);
+        selectTarget(kind, index);
       }
     },
-    [choose],
+    [selectTarget],
   );
 
   const clampPan = useCallback(
@@ -183,7 +184,16 @@ export function BoardView({ controller }: { controller: TableController }) {
     [clampPan],
   );
 
-  const onPointerDown = (event: ReactMouseEvent<SVGSVGElement>) => {
+  const onPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    suppressClickRef.current = false;
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const pointers = [...pointersRef.current.values()];
+    if (pointers.length > 1) {
+      pinchRef.current = { distance: Math.hypot(pointers[0]!.x - pointers[1]!.x, pointers[0]!.y - pointers[1]!.y), zoom };
+      if (dragRef.current) dragRef.current.moved = true;
+      return;
+    }
     dragRef.current = {
       startX: event.clientX,
       startY: event.clientY,
@@ -193,22 +203,36 @@ export function BoardView({ controller }: { controller: TableController }) {
     };
   };
 
-  const onPointerMove = (event: ReactMouseEvent<SVGSVGElement>) => {
+  const onPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (!pointersRef.current.has(event.pointerId)) return;
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const pointers = [...pointersRef.current.values()];
+    const pinch = pinchRef.current;
+    if (pinch && pointers.length > 1) {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      const distance = Math.hypot(pointers[0]!.x - pointers[1]!.x, pointers[0]!.y - pointers[1]!.y);
+      if (pinch.distance > 0) setBoardZoom(pinch.zoom * distance / pinch.distance);
+      return;
+    }
     const drag = dragRef.current;
     if (!drag) return;
     const dx = event.clientX - drag.startX;
     const dy = event.clientY - drag.startY;
     if (Math.hypot(dx, dy) > 4) drag.moved = true;
     if (!drag.moved) return;
-    const rect = svgRef.current?.getBoundingClientRect();
-    const unitsPerPixel = rect && rect.width > 0 ? geometry.width / rect.width : 1;
-    setPan(clampPan({ x: drag.panX + dx * unitsPerPixel, y: drag.panY + dy * unitsPerPixel }));
+    // 移動後才捕捉指標，保留普通點擊的原始 target。
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const delta = viewport()?.screenDeltaToPan({ x: dx, y: dy });
+    if (delta) setPan(clampPan({ x: drag.panX + delta.x, y: drag.panY + delta.y }));
   };
 
   const onPointerUp = () => {
     const drag = dragRef.current;
+    const pinching = pinchRef.current !== null;
     dragRef.current = null;
-    if (drag?.moved) {
+    pinchRef.current = null;
+    pointersRef.current.clear();
+    if (drag?.moved || pinching) {
       // The gesture was a pan: the click that follows must not place a piece.
       suppressClickRef.current = true;
     }
@@ -336,7 +360,7 @@ export function BoardView({ controller }: { controller: TableController }) {
         )}
         <span className="board__zoom-readout" data-testid="zoom-readout">{t('board.zoomLevel', { percent: Math.round(zoom * 100) })}</span>
         {view.turn.dice && (
-          <span className={`board__dice${diceRolling ? ' board__dice--rolling' : ''}`} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
+          <span className="board__dice" role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
             {view.turn.dice.map((value, index) => <span className="board__die" key={index} aria-hidden="true">{value}</span>)}
             <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
           </span>
@@ -344,7 +368,7 @@ export function BoardView({ controller }: { controller: TableController }) {
       </div>
 
       {diceRolling && focusedRoll && boardRef.current && createPortal(
-        <div className="dice-focus" data-testid="dice-focus" role="status" aria-live="polite">
+        <div className="dice-focus" data-testid="dice-focus" aria-hidden="true">
           <div className="dice-focus__panel" key={focusedRoll.seq}>
             <span className="dice-focus__label">{t('play.dice')}</span>
             <div className="dice-focus__pair" aria-hidden="true">
@@ -364,14 +388,18 @@ export function BoardView({ controller }: { controller: TableController }) {
          tabIndex={0}
         viewBox={geometry.viewBox}
         preserveAspectRatio="xMidYMid meet"
-        onMouseDown={onPointerDown}
-        onMouseMove={onPointerMove}
-        onMouseUp={onPointerUp}
-        onMouseLeave={onPointerUp}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerLeave={onPointerUp}
          onWheel={onWheel}
          onKeyDown={onBoardKeyDown}
       >
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
+          <g aria-hidden="true" pointerEvents="none">
+            {geometry.hexes.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 10)" />)}
+          </g>
           {geometry.hexes.map((hex) => {
             const terrain = board.terrain[hex.index] ?? 'sea';
             const number = board.numbers[hex.index];
@@ -379,6 +407,7 @@ export function BoardView({ controller }: { controller: TableController }) {
             return (
               <g key={`hex-${hex.index}`}>
                 <polygon
+                  className="board__tile-top"
                   data-testid={`hex-${hex.index}`}
                   points={hex.points}
                   fill={terrainFill(terrain)}
@@ -445,9 +474,11 @@ export function BoardView({ controller }: { controller: TableController }) {
             const road = board.roads[edge.index];
             if (!road) return null;
             const player = view.players.find((candidate) => candidate.id === road.player);
+            const arriving = confirmedPlacement(animation.active?.events ?? [], board, 'edge', edge.index);
             return (
+              <g key={`road-${edge.index}`}>
+              <line x1={edge.x1} y1={edge.y1 + 3} x2={edge.x2} y2={edge.y2 + 3} stroke="#10242c" strokeWidth={11} strokeLinecap="round" opacity={.7} aria-hidden="true" />
               <line
-                key={`road-${edge.index}`}
                 data-testid={`road-${edge.index}`}
                 x1={edge.x1}
                 y1={edge.y1}
@@ -460,6 +491,8 @@ export function BoardView({ controller }: { controller: TableController }) {
               >
                 <title>{`${t('board.road')} · ${nameResolver(road.player)}`}</title>
               </line>
+              {arriving && <line key={animation.active?.id} className="board__road-reveal" x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} pathLength={1} stroke={playerColorHex(player?.color ?? 'white')} strokeWidth={10} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
+              </g>
             );
           })}
 
@@ -469,25 +502,12 @@ export function BoardView({ controller }: { controller: TableController }) {
             const player = view.players.find((candidate) => candidate.id === building.player);
             const color = playerColorHex(player?.color ?? 'white');
             const label = building.city ? t('board.city') : t('board.settlement');
+            const arriving = confirmedPlacement(animation.active?.events ?? [], board, 'vertex', vertex.index);
             return (
               <g key={`building-${vertex.index}`} data-testid={`building-${vertex.index}`}>
-                {building.city ? (
-                  <path
-                    d={`M${vertex.x - 13} ${vertex.y + 9}v-17l7-7 7 7v7l9-6 9 6v10Z`}
-                    fill={color}
-                    stroke="#21343a"
-                    strokeWidth={2}
-                    strokeLinejoin="round"
-                  />
-                ) : (
-                  <path
-                    d={`M${vertex.x - 10} ${vertex.y + 9}v-13l10-9 10 9v13Z`}
-                    fill={color}
-                    stroke="#21343a"
-                    strokeWidth={2}
-                    strokeLinejoin="round"
-                  />
-                )}
+                <g key={arriving ? animation.active!.id : 'rest'} className={arriving ? 'board__building-drop' : undefined}>
+                  <BuildingPiece x={vertex.x} y={vertex.y} city={building.city} color={color} />
+                </g>
                 <title>{`${label} · ${nameResolver(building.player)}`}</title>
               </g>
             );
@@ -544,6 +564,14 @@ export function BoardView({ controller }: { controller: TableController }) {
               </text>
             </g>
           )}
+          {state.selection.index !== null && intent && state.selection.kind === intent.kind && intent.targets.includes(state.selection.index) && (
+            <g className="board__preview-ghost" data-testid="board-preview-ghost" aria-hidden="true" pointerEvents="none">
+              {intent.kind === 'vertex' && geometry.vertices[state.selection.index] && <BuildingPiece x={geometry.vertices[state.selection.index]!.x} y={geometry.vertices[state.selection.index]!.y} city={intent.commandType === 'build.city'} color={playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white')} />}
+              {intent.kind === 'edge' && geometry.edges[state.selection.index] && <line x1={geometry.edges[state.selection.index]!.x1} y1={geometry.edges[state.selection.index]!.y1} x2={geometry.edges[state.selection.index]!.x2} y2={geometry.edges[state.selection.index]!.y2} stroke={playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white')} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />}
+              {intent.kind === 'hex' && geometry.hexes[state.selection.index] && <circle cx={geometry.hexes[state.selection.index]!.cx} cy={geometry.hexes[state.selection.index]!.cy} r={20} fill="#24353a" stroke="#fff1bd" strokeDasharray="4 4" />}
+            </g>
+          )}
+          <BoardEffects group={animation.active} geometry={geometry} view={view} />
         </g>
       </svg>
 
@@ -557,12 +585,11 @@ export function BoardView({ controller }: { controller: TableController }) {
           kind={intent.kind}
           targets={intent.targets}
           nameOf={nameResolver}
-          minDistance={minDistance}
           {...(cluster ? { ambiguousOnly: cluster } : {})}
           onChoose={(index) => {
             setPickerOpen(false);
             setCluster(null);
-            choose(intent.kind, index);
+            selectTarget(intent.kind, index);
           }}
         />
       )}

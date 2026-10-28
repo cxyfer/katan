@@ -196,6 +196,7 @@ export const zhHant: Catalog = {
   'lobby.notHost': '只有房主可以變更設定或開始遊戲。',
 
   // --- board ---------------------------------------------------------------
+  'board.productionAggregate': '實際彙總配發',
   'board.heading': '棋盤',
   'board.legend': '圖例',
   'board.legendTerrain': '地形與符號',

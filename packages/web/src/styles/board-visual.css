@@ -1,0 +1,31 @@
+/* 地塊與棋子保留既有平面座標，不壓縮文字或改變合法目標。 */
+.board__tile-base { fill: #8e7951; stroke: #544d3b; stroke-width: 3px; stroke-linejoin: round; filter: drop-shadow(0 4px 2px #061b2866); }
+.board__tile-top { filter: drop-shadow(0 2px 1px #172c2a55); }
+.board__preview-ghost { opacity: .48; filter: drop-shadow(0 0 4px #fff0b1); }
+.board__building-drop { animation: building-drop 290ms cubic-bezier(.2,.7,.3,1) both; }
+.board__road-reveal { stroke-dasharray: 1; animation: edge-reveal 240ms ease-out both; }
+@keyframes building-drop { 0% { transform: translateY(-19px); } 75% { transform: translateY(2px); } 100% { transform: none; } }
+@keyframes edge-reveal { from { stroke-dashoffset: 1; opacity: .6; } to { stroke-dashoffset: 0; opacity: 0; } }
+.board-effects, .board-effects * { pointer-events: none; }
+.board-effects text { font-family: var(--font); font-size: 12px; font-weight: 750; fill: #263b33; }
+.board-effects__source { fill: #fff4b3; fill-opacity: .15; stroke: #fff1ae; stroke-width: 4px; animation: production-hint 800ms ease-out both; }
+.board-effects__aggregate rect, .board-effects__receipt rect { fill: #f3e3bc; stroke: #8f7954; stroke-width: 2px; }
+.board-effects__aggregate { animation: production-hint 800ms ease-out both; }
+.board-effects__flight rect { fill: #f8e8c2; stroke: #665a40; stroke-width: 2px; }
+.board-effects__flight { opacity: 0; animation: aggregate-flight 800ms ease-in-out both; }
+.board-effects__receipt text { font-size: 10px; }
+.board-effects__receipt { animation: grant-receipt 800ms ease-out both; }
+.board-effects__theft { animation: neutral-flight 650ms ease-in-out both; }
+.board-effects__theft rect { fill: #dbd0b8; stroke: #394b4c; stroke-width: 2px; }
+.board-effects__theft path { fill: none; stroke: #586462; stroke-width: 2px; }
+@keyframes production-hint { 0%,20% { opacity: 0; } 30%,48% { opacity: 1; } 70%,100% { opacity: 0; } }
+@keyframes aggregate-flight { 0%,35% { opacity: 0; transform: translate(0,0); } 40% { opacity: 1; } 80% { opacity: 1; transform: translate(var(--flight-x),var(--flight-y)); } 90%,100% { opacity: 0; transform: translate(var(--flight-x),var(--flight-y)); } }
+@keyframes grant-receipt { 0%,76% { opacity: 0; } 85%,100% { opacity: 1; } }
+@keyframes neutral-flight { 0% { opacity: 0; } 15% { opacity: 1; transform: none; } 85% { opacity: 1; transform: translate(var(--flight-x),var(--flight-y)); } 100% { opacity: 0; transform: translate(var(--flight-x),var(--flight-y)); } }
+/* 骰子只由中央單一事件播放；工具列永遠保留結果，不重複搖動。 */
+.dice-focus__panel { animation: board-dice-arrive 800ms ease-out both; }
+@keyframes board-dice-arrive { 0% { opacity: .3; transform: scale(.75) rotate(-5deg); } 18%,25% { opacity: 1; transform: none; } 40%,100% { opacity: 0; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .board__building-drop, .board__road-reveal, .board-effects *, .dice-focus__panel { animation: none; }
+  .board__road-reveal, .board-effects { display: none; }
+}

@@ -80,9 +80,10 @@
 .screen--game .game__receipt .button { min-height: 32px; padding: 3px 7px; font-size: .64rem; }
 .screen--game .board__dice { position: static; transform: none; }
 .screen--game .board__dice--rolling, .screen--game .board__dice--rolling .board__die { animation: none; }
+.screen--game .board__svg { touch-action: none; }
 .screen--game .board__die:nth-child(2) { transform: none; }
 .dice-focus { position: absolute; inset: 0; z-index: 70; display: grid; place-items: center; pointer-events: none; }
-.dice-focus__panel { padding: 20px 28px; border: 1px solid #d6c28a99; border-radius: 20px; background: radial-gradient(ellipse at top,#35584bed,#0c2a30f0); box-shadow: 0 20px 90px #00151da0; text-align: center; animation: dice-focus-arrive 1s ease-out both; }
+.dice-focus__panel { padding: 20px 28px; border: 1px solid #d6c28a99; border-radius: 20px; background: radial-gradient(ellipse at top,#35584bed,#0c2a30f0); box-shadow: 0 20px 90px #00151da0; text-align: center; animation: dice-focus-arrive .8s ease-out both; }
 .dice-focus__label { display: block; font-size: .85rem; color: #e4d4a6; margin-bottom: 12px; }
 .dice-focus__pair { display: flex; justify-content: center; gap: 20px; margin-bottom: 18px; }
 .dice-focus__die { display: grid; place-items: center; width: clamp(70px, 9vw, 116px); height: clamp(70px, 9vw, 116px); border-radius: 18px; color: #483c27; background: linear-gradient(140deg,#fff4d7,#d7b776); border: 2px solid #ffeab2; box-shadow: 0 7px #9b7e4a, 0 14px 20px #00141b88; font-size: clamp(2.7rem, 6vw, 4rem); font-family: var(--font-display); font-weight: 750; }

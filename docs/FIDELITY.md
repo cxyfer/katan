@@ -57,10 +57,40 @@ The registry separates two questions:
 | R-56 | 30-hex/11-harbor B56 board, 24/resource bank, 34-card deck, setup order, partner = third seat to the left, five- and six-seat pair cycles, production only on Player 1, no domestic trade for Player 2, build/bank/card actions for Player 2, card carry between roles, either role may win | `packages/rules/test/paired.test.ts` (12 cases) and `packages/server/test/rooms.test.ts` | covered at engine and room lifecycle level |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
-| U-01, U-02, U-05 | rendered layout, mouse/keyboard/touch selection, dense content | `packages/web/test/*.test.tsx` (jsdom) plus `docs/screenshots/` captured at 1366×768, 768×1024 and 390×844 | **partially covered** — layout measured and captured, but no touch, rotation or pointer-device run |
+| U-01, U-02, U-05 | rendered layout, mouse/keyboard/touch selection, dense content | `packages/web/test/*.test.tsx` (jsdom), `docs/screenshots/`, and the P1B headless Chromium captures below | **partially covered** — captured layouts and DOM pointer/keyboard contracts; no physical touch, rotation or pointer-device acceptance |
 | U-03, U-04, U-06, U-07, U-08 | devices, assistive technology, measured responsiveness, novice/expert playtests | – | **not covered** |
 | U-I18N | both locales for every flow, draft-safe switching, catalog parity | `packages/web/test/i18n.test.ts` and the protocol-list coverage test | **partially covered** — no IME or mixed-locale session |
 | Container | image builds, runs non-root, health, volume persistence, SIGTERM, PostgreSQL mode | `docker build`, `docker run`, `docker compose -f docker-compose.postgres.yml`, `scripts/smoke.mjs` | covered (see `docs/EVIDENCE.md`) |
+
+## Board visual spike evidence — 2026-10-28
+
+The [P1A report](aegis/work/2026-10-28-board-visual-spike/p1a-report.md),
+[P1B report](aegis/work/2026-10-28-board-visual-spike/p1b-report.md) and
+[curated source metadata](aegis/work/2026-10-28-board-visual-spike/p1b-evidence.json)
+record unit/DOM tests and the final P1B production build in headless Chromium.
+The capture run completed 47 PASS, 0 FAIL, 0 BLOCKED and 3 NOT RUN cases:
+24 static states (19/30 hexes, zh-Hant/en, six viewports, DPR 1), six event
+videos/traces, six 30-second active-frame windows, reduced-motion/idle checks,
+and engine-projected theft views for three seats plus an outsider. Captures
+are review candidates, not accepted visual baselines; canonical screenshots
+were not replaced. The [D1 decision](aegis/work/2026-10-28-board-visual-spike/d1-decision.md)
+retains SVG provisionally and leaves the conditional GPU comparison unstarted.
+
+| Acceptance family | Evidence covered | Remaining scope / status |
+| --- | --- | --- |
+| E01–E10 | Cursor/baseline, ordering, stale responses, recovery, new-game reset, bounded queue, cancellation, lifecycle and rejected/unknown/preview contracts in unit/DOM tests; production history baseline and new roll/build/production capture | **partially covered** — native recovery/receipt races and complete real-client flow are not established by fixture replay |
+| I01–I07 | CSS-pixel projection math, DOM drag/pinch/cancel, ambiguity picker, keyboard preview/confirm, resize/fit and non-interactive overlay | **partially covered** — native touch/pinch/rotation, 200% text zoom and full browser input matrix remain unverified; I06 GPU comparison NOT RUN |
+| V01–V07 | 24 static captures, building/road/production middle frames, aggregate/empty-grant and neutral-theft tests, selected before/after videos | **partially covered** — human judgment of thickness, causality, receipt readability, dense/zoomed-board clarity and interference remains NOT RUN |
+| A01 / A05 | Initial/changing reduce in Chromium, lifecycle cancellation, no-focus/no-pointer overlay, authorized projections and identical neutral theft overlay across three seats/outsider | **covered in the stated automated scope** — complete keyboard journey, 200% text zoom, screen reader and accessibility scan/manual acceptance remain NOT RUN; English still retains static HTML `lang=zh-Hant` |
+| P01–P07 | Six local active-window captures; idle/reduce application RAF delta zero; 24 flight cap and zero particles in DOM; no GPU dependency | **partially covered** — reference hardware, true background 30 s, registry/heap/GPU trends, three cold-cache loads, 100-input paint, six-client RTT/ack and DPR 2/3 acceptance remain NOT RUN |
+
+Local active rAF interval p95 was 8.6–8.9 ms, with maxima 58.4–108.2 ms
+(P0 control p95 8.5 ms). These scheduling proxies use different presentation
+windows from P0 and are not GPU render time. Reference mobile hardware,
+60 Hz/power calibration and full hardware inventory were unavailable; no
+performance acceptance or absence of stutter is claimed. See the
+[P3 record](aegis/work/2026-10-28-board-visual-spike/p3-acceptance.md) for the
+final integration gate and explicit M0–M4 status.
 
 ## Test commands
 
@@ -123,10 +153,12 @@ These are recorded rather than hidden. None of them is presented as verified.
 5. **No real-device or screen-reader evidence.** U-03 (physical iOS/Android),
    U-04 (manual assistive-technology walkthrough), U-06 (measured
    responsiveness), U-07 (novice observation) and U-08 (expert playtest) have
-   not been performed. Automated coverage is jsdom component tests plus one
-   headless-Chromium interaction run (three contexts, lobby to setup
-   placement); no screenshots, visual baselines, touch, rotation, IME or
-   screen-reader evidence exists.
+   not been performed. Automated coverage includes jsdom tests, the prior
+   headless-Chromium lobby/setup interaction run and the P1B production
+   captures above. Screenshots and videos exist; accepted visual baselines,
+   physical touch/rotation, 200% text zoom, IME, screen-reader, Firefox/WebKit
+   runtime and reference-hardware evidence remain absent. Chromium viewport
+   emulation does not close the physical-device gap.
 6. **Multi-client browser races are unverified.** R-TRADE concurrency and
    R-ROOM admission races are exercised through the service API, not through
    several real browsers.
