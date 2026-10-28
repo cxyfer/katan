@@ -7,6 +7,8 @@ Entries are workspace records, not authoritative runtime decisions.
 | --- | --- | --- | --- |
 | 2026-10-28 | plan | docs/aegis/plans/2026-10-28-board-visual-spike.md | Board visual implementation and renderer decision plan |
 | 2026-10-28 | plan | docs/aegis/plans/2026-10-28-board-visual-spike-acceptance.md | Board visual acceptance cases and evidence protocol |
+| 2026-10-28 | work | docs/aegis/work/2026-10-28-board-visual-spike/p0-report.md | Board visual P0 production control evidence |
+| 2026-10-28 | artifact | docs/aegis/work/2026-10-28-board-visual-spike/p0-evidence.json | Board visual P0 control metadata and metrics |
 | 2026-10-28 | work | docs/aegis/work/2026-10-28-screenshots/capture-canonical.py | Canonical screenshot recapture harness |
 | 2026-10-28 | artifact | docs/aegis/work/2026-10-28-screenshots/capture-report.json | Canonical screenshot capture report |
 | 2026-10-27 | work | docs/aegis/work/2026-10-27-island-ui/table-interactions-evidence.md | Collapsible table interaction browser evidence |

@@ -1,0 +1,2126 @@
+{
+  "runId": "before-svg-control",
+  "status": "PASS",
+  "startedAt": "2026-10-28T12:32:43Z",
+  "finishedAt": "2026-10-28T12:38:19Z",
+  "commit": "25e97f335ed5741f9475e2ab4911c2100cadef66",
+  "dirty": true,
+  "workingTreeStatus": [
+    "M .gitignore",
+    "?? docs/aegis/work/2026-10-28-board-visual-spike/",
+    "?? scripts/board-visual/"
+  ],
+  "mode": "fixture",
+  "renderer": "svg",
+  "fixture": {
+    "path": "test-results/board-visual/fixtures.json",
+    "sha256": "0f5de2162c1db41f375c35dd1ad4f455d3e37fefc9f159bb93b4c6b111c147ed",
+    "seed": 7
+  },
+  "assetHashes": {
+    "/assets/index-BN2uccZK.js": {
+      "sha256": "96db6d3216f24a1c825781ddbdbf9a4bc6a17a517b529a8b32b992657fb3377b",
+      "bytes": 412370,
+      "servedSha256": "96db6d3216f24a1c825781ddbdbf9a4bc6a17a517b529a8b32b992657fb3377b"
+    },
+    "/assets/index-DIALwB7a.css": {
+      "sha256": "4932dfa52bc8139fff340bc74fdcad50eea0068721e92de1208969cb5b568cc5",
+      "bytes": 74265,
+      "servedSha256": "4932dfa52bc8139fff340bc74fdcad50eea0068721e92de1208969cb5b568cc5"
+    },
+    "/": {
+      "sha256": "52b5850b116bd67503bc17d1b04e03db0d7be888efb1d6e08a87e476e4d09a3f",
+      "bytes": 486,
+      "servedSha256": "52b5850b116bd67503bc17d1b04e03db0d7be888efb1d6e08a87e476e4d09a3f"
+    }
+  },
+  "environment": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]",
+    "pythonExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-visual-spike\\.tmp\\board-visual-venv\\Scripts\\python.exe",
+    "node": "v24.12.0",
+    "pnpm": "10.28.0",
+    "cpu": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "logicalCpuCount": 16,
+    "ramBytes": null,
+    "gpu": null,
+    "powerMode": "not observed",
+    "refreshRateHz": "not observed",
+    "browserCache": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-visual-spike\\.tmp\\board-visual-browsers",
+    "hardwareQueryLimitation": "powershell exited 1: Get-CimInstance : 拒絕存取 \nAt line:1 char:39\n+ ... tionPreference='Stop'; @{cpu=(Get-CimInstance Win32_Processor | Selec ...\n+                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n    + CategoryInfo          : PermissionDenied: (root\\cimv2:Win32_Processor:String) [Get-CimInstance], CimException\n    + FullyQualifiedErrorId : HRESULT 0x80041003,Microsoft.Management.Infrastructure.CimCmdlets.GetCimInstanceCommand",
+    "playwright": "1.64.1",
+    "browserRevisions": [
+      {
+        "name": "chromium",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome for Testing"
+      },
+      {
+        "name": "chromium-headless-shell",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome Headless Shell"
+      },
+      {
+        "name": "firefox",
+        "revision": "1555",
+        "installByDefault": true,
+        "browserVersion": "157.0",
+        "title": "Firefox"
+      },
+      {
+        "name": "webkit",
+        "revision": "2370",
+        "installByDefault": true,
+        "revisionOverrides": {
+          "mac14": "2251",
+          "mac14-arm64": "2251"
+        },
+        "browserVersion": "27.2",
+        "title": "WebKit"
+      },
+      {
+        "name": "ffmpeg",
+        "revision": "1013",
+        "installByDefault": true
+      },
+      {
+        "name": "winldd",
+        "revision": "1007",
+        "installByDefault": false
+      },
+      {
+        "name": "android",
+        "revision": "1001",
+        "installByDefault": false
+      }
+    ],
+    "browser": "chromium",
+    "browserExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-visual-spike\\.tmp\\board-visual-browsers\\chromium-1248\\chrome-win64\\chrome.exe",
+    "executableSha256": "7f08161bbeb2853ffe1780a9ded4985087f52efb9725d7d8207aabdd42f7cfb9",
+    "browserVersion": "156.0.8078.4"
+  },
+  "server": {
+    "ownership": "runner",
+    "baseUrl": "http://127.0.0.1:62205",
+    "pid": 51460,
+    "temporaryDirectory": "C:\\Users\\shene\\AppData\\Local\\Temp\\catan-board-visual-4nfnvavc",
+    "artifactSha256": "a948c863d7f06caa5879bd6d209ab2ee07e33501acad3aee5428a2eec46cffc1",
+    "database": "independent temporary SQLite, deleted in finally",
+    "cleanup": {
+      "childExitCode": 1,
+      "temporaryDatabaseRemoved": true
+    }
+  },
+  "limitations": [
+    "API and WebSocket are fixture routes; no real command acknowledgement or P06 measured.",
+    "No physical mobile device, screen reader, input latency, heap/GPU leak proof or visual acceptance.",
+    "rAF intervals are active CSS animation scheduling proxies, not GPU render time.",
+    "P0 changes no UI. E01 historical initial-load replay remains existing behavior; static comparison uses no event history.",
+    "Existing index.html keeps lang=zh-Hant even with English selected. Captures verify the actual locale switch; document language is recorded as an existing accessibility gap.",
+    "T01 denotes this runner provenance/replay check; acceptance document has no separate T section.",
+    "Synthetic fixture resource provisioning; projected engine snapshots, not a real network game.",
+    "Static snapshot deliberately omits history for animation-free comparison; historySnapshot preserves current initial-history behavior for E01.",
+    "Sequence is emitted by rules commands and authorized with projectGame for p1; no private engine state is exported."
+  ],
+  "sourceReport": {
+    "path": "test-results/board-visual/before-svg-control/report.json",
+    "sha256": "662b4699f3af629f2fc661998858d27a39f7b0b8f52c82ade9f560f6c1c8bad8",
+    "runnerExitCode": 0
+  },
+  "caseCounts": {
+    "PASS": 37,
+    "FAIL": 0,
+    "NOT RUN": 2,
+    "BLOCKED": 0
+  },
+  "captureCounts": {
+    "static": 24,
+    "eventVideosAndTraces": 6,
+    "performanceWindows": 6
+  },
+  "cases": [
+    {
+      "id": "T01-source",
+      "status": "PASS",
+      "detail": "All served HTML/JS/CSS match this worktree dist byte for byte."
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 314.4303283691406,
+          "y": 129.0011444091797,
+          "width": 583.132568359375,
+          "height": 547.431640625,
+          "top": 129.0011444091797,
+          "right": 897.5628967285156,
+          "bottom": 676.4327850341797,
+          "left": 314.4303283691406
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-zh-Hant-1366x768.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-800x450",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        800,
+        450
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 800,
+          "height": 450
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 538,
+          "height": 312.625,
+          "top": 89.375,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "world": {
+          "x": 185.40078735351562,
+          "y": 97.28045654296875,
+          "width": 311.19482421875,
+          "height": 292.1426696777344,
+          "top": 97.28045654296875,
+          "right": 496.5956115722656,
+          "bottom": 389.4231262207031,
+          "left": 185.40078735351562
+        },
+        "document": {
+          "width": 800,
+          "height": 450
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-zh-Hant-800x450.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-844x390",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        844,
+        390
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.26388549804688,
+          "y": 95.76322174072266,
+          "width": 251.46932983398438,
+          "height": 236.07369995117188,
+          "top": 95.76322174072266,
+          "right": 488.73321533203125,
+          "bottom": 331.83692169189453,
+          "left": 237.26388549804688
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-zh-Hant-844x390.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-768x1024",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        768,
+        1024
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "world": {
+          "x": 90.92033386230469,
+          "y": 311.83380126953125,
+          "width": 468.15386962890625,
+          "height": 439.4923095703125,
+          "top": 311.83380126953125,
+          "right": 559.0742034912109,
+          "bottom": 751.3261108398438,
+          "left": 90.92033386230469
+        },
+        "document": {
+          "width": 768,
+          "height": 1024
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-zh-Hant-768x1024.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-390x844",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 70.2271728515625,
+          "y": 232.64125061035156,
+          "width": 302.5421447753906,
+          "height": 284.019775390625,
+          "top": 232.64125061035156,
+          "right": 372.7693176269531,
+          "bottom": 516.6610260009766,
+          "left": 70.2271728515625
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-zh-Hant-390x844.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-zh-Hant-360x640",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 360,
+          "height": 640
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 130.46875,
+          "width": 297,
+          "height": 305.53125,
+          "top": 130.46875,
+          "right": 355,
+          "bottom": 436,
+          "left": 58
+        },
+        "world": {
+          "x": 69.10541534423828,
+          "y": 152.1905059814453,
+          "width": 274.7860107421875,
+          "height": 257.962890625,
+          "top": 152.1905059814453,
+          "right": 343.8914260864258,
+          "bottom": 410.1533966064453,
+          "left": 69.10541534423828
+        },
+        "document": {
+          "width": 360,
+          "height": 640
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-zh-Hant-360x640.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 314.4303283691406,
+          "y": 129.0011444091797,
+          "width": 583.132568359375,
+          "height": 547.431640625,
+          "top": 129.0011444091797,
+          "right": 897.5628967285156,
+          "bottom": 676.4327850341797,
+          "left": 314.4303283691406
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-en-1366x768.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-800x450",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        800,
+        450
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 800,
+          "height": 450
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 538,
+          "height": 312.625,
+          "top": 89.375,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "world": {
+          "x": 185.40078735351562,
+          "y": 97.28045654296875,
+          "width": 311.19482421875,
+          "height": 292.1426696777344,
+          "top": 97.28045654296875,
+          "right": 496.5956115722656,
+          "bottom": 389.4231262207031,
+          "left": 185.40078735351562
+        },
+        "document": {
+          "width": 800,
+          "height": 450
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-en-800x450.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-844x390",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        844,
+        390
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.26388549804688,
+          "y": 95.76322174072266,
+          "width": 251.46932983398438,
+          "height": 236.07369995117188,
+          "top": 95.76322174072266,
+          "right": 488.73321533203125,
+          "bottom": 331.83692169189453,
+          "left": 237.26388549804688
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-en-844x390.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-768x1024",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        768,
+        1024
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "world": {
+          "x": 90.92033386230469,
+          "y": 311.83380126953125,
+          "width": 468.15386962890625,
+          "height": 439.4923095703125,
+          "top": 311.83380126953125,
+          "right": 559.0742034912109,
+          "bottom": 751.3261108398438,
+          "left": 90.92033386230469
+        },
+        "document": {
+          "width": 768,
+          "height": 1024
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-en-768x1024.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-390x844",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 70.2271728515625,
+          "y": 232.64125061035156,
+          "width": 302.5421447753906,
+          "height": 284.019775390625,
+          "top": 232.64125061035156,
+          "right": 372.7693176269531,
+          "bottom": 516.6610260009766,
+          "left": 70.2271728515625
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-en-390x844.png"
+    },
+    {
+      "id": "V01-capture-hex-r2-en-360x640",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 360,
+          "height": 640
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 297,
+          "height": 322.15625,
+          "top": 113.84375,
+          "right": 355,
+          "bottom": 436,
+          "left": 58
+        },
+        "world": {
+          "x": 69.10541534423828,
+          "y": 143.8780059814453,
+          "width": 274.7860107421875,
+          "height": 257.962890625,
+          "top": 143.8780059814453,
+          "right": 343.8914260864258,
+          "bottom": 401.8408966064453,
+          "left": 69.10541534423828
+        },
+        "document": {
+          "width": 360,
+          "height": 640
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r2-en-360x640.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 317.2855224609375,
+          "y": 125.20277404785156,
+          "width": 577.0745239257812,
+          "height": 557.27294921875,
+          "top": 125.20277404785156,
+          "right": 894.3600463867188,
+          "bottom": 682.4757232666016,
+          "left": 317.2855224609375
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-zh-Hant-1366x768.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-800x450",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        800,
+        450
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 800,
+          "height": 450
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 538,
+          "height": 312.625,
+          "top": 89.375,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "world": {
+          "x": 186.4642333984375,
+          "y": 95.25341796875,
+          "width": 308.422119140625,
+          "height": 297.3945617675781,
+          "top": 95.25341796875,
+          "right": 494.8863525390625,
+          "bottom": 392.6479797363281,
+          "left": 186.4642333984375
+        },
+        "document": {
+          "width": 800,
+          "height": 450
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-zh-Hant-800x450.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-844x390",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        844,
+        390
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.92530822753906,
+          "y": 94.12521362304688,
+          "width": 249.4267120361328,
+          "height": 240.317626953125,
+          "top": 94.12521362304688,
+          "right": 487.3520202636719,
+          "bottom": 334.4428405761719,
+          "left": 237.92530822753906
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-zh-Hant-844x390.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-768x1024",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        768,
+        1024
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "world": {
+          "x": 80.84980010986328,
+          "y": 296.8675537109375,
+          "width": 487.8433837890625,
+          "height": 470.95159912109375,
+          "top": 296.8675537109375,
+          "right": 568.6931838989258,
+          "bottom": 767.8191528320312,
+          "left": 80.84980010986328
+        },
+        "document": {
+          "width": 768,
+          "height": 1024
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-zh-Hant-768x1024.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-390x844",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 63.368247985839844,
+          "y": 222.96939086914062,
+          "width": 315.61724853515625,
+          "height": 304.3501281738281,
+          "top": 222.96939086914062,
+          "right": 378.9854965209961,
+          "bottom": 527.3195190429688,
+          "left": 63.368247985839844
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-zh-Hant-390x844.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-zh-Hant-360x640",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 360,
+          "height": 640
+        },
+        "dpr": 1,
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 130.46875,
+          "width": 297,
+          "height": 305.53125,
+          "top": 130.46875,
+          "right": 355,
+          "bottom": 436,
+          "left": 58
+        },
+        "world": {
+          "x": 62.7791862487793,
+          "y": 143.4059600830078,
+          "width": 286.75811767578125,
+          "height": 276.4281005859375,
+          "top": 143.4059600830078,
+          "right": 349.53730392456055,
+          "bottom": 419.8340606689453,
+          "left": 62.7791862487793
+        },
+        "document": {
+          "width": 360,
+          "height": 640
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-zh-Hant-360x640.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 317.2855224609375,
+          "y": 125.20277404785156,
+          "width": 577.0745239257812,
+          "height": 557.27294921875,
+          "top": 125.20277404785156,
+          "right": 894.3600463867188,
+          "bottom": 682.4757232666016,
+          "left": 317.2855224609375
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-en-1366x768.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-800x450",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        800,
+        450
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 800,
+          "height": 450
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 538,
+          "height": 312.625,
+          "top": 89.375,
+          "right": 610,
+          "bottom": 402,
+          "left": 72
+        },
+        "world": {
+          "x": 186.4642333984375,
+          "y": 95.25341796875,
+          "width": 308.422119140625,
+          "height": 297.3945617675781,
+          "top": 95.25341796875,
+          "right": 494.8863525390625,
+          "bottom": 392.6479797363281,
+          "left": 186.4642333984375
+        },
+        "document": {
+          "width": 800,
+          "height": 450
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-en-800x450.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-844x390",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        844,
+        390
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.92530822753906,
+          "y": 94.12521362304688,
+          "width": 249.4267120361328,
+          "height": 240.317626953125,
+          "top": 94.12521362304688,
+          "right": 487.3520202636719,
+          "bottom": 334.4428405761719,
+          "left": 237.92530822753906
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-en-844x390.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-768x1024",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        768,
+        1024
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 114.1875,
+          "width": 506,
+          "height": 841.8125,
+          "top": 114.1875,
+          "right": 578,
+          "bottom": 956,
+          "left": 72
+        },
+        "world": {
+          "x": 80.84980010986328,
+          "y": 296.8675537109375,
+          "width": 487.8433837890625,
+          "height": 470.95159912109375,
+          "top": 296.8675537109375,
+          "right": 568.6931838989258,
+          "bottom": 767.8191528320312,
+          "left": 80.84980010986328
+        },
+        "document": {
+          "width": 768,
+          "height": 1024
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-en-768x1024.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-390x844",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 63.368247985839844,
+          "y": 222.96939086914062,
+          "width": 315.61724853515625,
+          "height": 304.3501281738281,
+          "top": 222.96939086914062,
+          "right": 378.9854965209961,
+          "bottom": 527.3195190429688,
+          "left": 63.368247985839844
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-en-390x844.png"
+    },
+    {
+      "id": "V01-capture-hex-r56-en-360x640",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1,
+      "operation": "Load history-free static snapshot with reduced motion; capture unchanged production UI.",
+      "actual": {
+        "viewport": {
+          "width": 360,
+          "height": 640
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 297,
+          "height": 322.15625,
+          "top": 113.84375,
+          "right": 355,
+          "bottom": 436,
+          "left": 58
+        },
+        "world": {
+          "x": 62.7791862487793,
+          "y": 135.0934600830078,
+          "width": 286.75811767578125,
+          "height": 276.4281005859375,
+          "top": 135.0934600830078,
+          "right": 349.53730392456055,
+          "bottom": 411.5215606689453,
+          "left": 62.7791862487793
+        },
+        "document": {
+          "width": 360,
+          "height": 640
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "screenshot": "test-results/board-visual/before-svg-control/hex-r56-en-360x640.png"
+    },
+    {
+      "id": "V01-human-acceptance",
+      "status": "NOT RUN",
+      "detail": "24 captures are review candidates; visual acceptance requires human review."
+    },
+    {
+      "id": "T01-sequence-hex-r2-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        1366,
+        768
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 314.4303283691406,
+          "y": 129.0011444091797,
+          "width": 583.132568359375,
+          "height": 547.431640625,
+          "top": 129.0011444091797,
+          "right": 897.5628967285156,
+          "bottom": 676.4327850341797,
+          "left": 314.4303283691406
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/before-svg-control/events-hex-r2-1366x768.zip"
+    },
+    {
+      "id": "T01-sequence-hex-r2-390x844",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        390,
+        844
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 70.2271728515625,
+          "y": 232.64125061035156,
+          "width": 302.5421447753906,
+          "height": 284.019775390625,
+          "top": 232.64125061035156,
+          "right": 372.7693176269531,
+          "bottom": 516.6610260009766,
+          "left": 70.2271728515625
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/before-svg-control/events-hex-r2-390x844.zip"
+    },
+    {
+      "id": "T01-sequence-hex-r2-844x390",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        844,
+        390
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.26388549804688,
+          "y": 95.76322174072266,
+          "width": 251.46932983398438,
+          "height": 236.07369995117188,
+          "top": 95.76322174072266,
+          "right": 488.73321533203125,
+          "bottom": 331.83692169189453,
+          "left": 237.26388549804688
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 19,
+        "harbors": 9,
+        "buildings": 8,
+        "roads": 9,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/before-svg-control/events-hex-r2-844x390.zip"
+    },
+    {
+      "id": "T01-sequence-hex-r56-1366x768",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        1366,
+        768
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 84,
+          "y": 114.1875,
+          "width": 1044,
+          "height": 585.8125,
+          "top": 114.1875,
+          "right": 1128,
+          "bottom": 700,
+          "left": 84
+        },
+        "world": {
+          "x": 317.2855224609375,
+          "y": 125.20277404785156,
+          "width": 577.0745239257812,
+          "height": 557.27294921875,
+          "top": 125.20277404785156,
+          "right": 894.3600463867188,
+          "bottom": 682.4757232666016,
+          "left": 317.2855224609375
+        },
+        "document": {
+          "width": 1366,
+          "height": 768
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/before-svg-control/events-hex-r56-1366x768.zip"
+    },
+    {
+      "id": "T01-sequence-hex-r56-390x844",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        390,
+        844
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 58,
+          "y": 113.84375,
+          "width": 327,
+          "height": 526.15625,
+          "top": 113.84375,
+          "right": 385,
+          "bottom": 640,
+          "left": 58
+        },
+        "world": {
+          "x": 63.368247985839844,
+          "y": 222.96939086914062,
+          "width": 315.61724853515625,
+          "height": 304.3501281738281,
+          "top": 222.96939086914062,
+          "right": 378.9854965209961,
+          "bottom": 527.3195190429688,
+          "left": 63.368247985839844
+        },
+        "document": {
+          "width": 390,
+          "height": 844
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/before-svg-control/events-hex-r56-390x844.zip"
+    },
+    {
+      "id": "T01-sequence-hex-r56-844x390",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        844,
+        390
+      ],
+      "operation": "Replay recorded authorized full snapshots over mocked WebSocket for 10s.",
+      "actual": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "dpr": 1,
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "board": {
+          "x": 72,
+          "y": 89.375,
+          "width": 582,
+          "height": 252.625,
+          "top": 89.375,
+          "right": 654,
+          "bottom": 342,
+          "left": 72
+        },
+        "world": {
+          "x": 237.92530822753906,
+          "y": 94.12521362304688,
+          "width": 249.4267120361328,
+          "height": 240.317626953125,
+          "top": 94.12521362304688,
+          "right": 487.3520202636719,
+          "bottom": 334.4428405761719,
+          "left": 237.92530822753906
+        },
+        "document": {
+          "width": 844,
+          "height": 390
+        },
+        "hexes": 30,
+        "harbors": 11,
+        "buildings": 12,
+        "roads": 13,
+        "diceOverlay": 0,
+        "activeAnimations": 0,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "renderer": "svg"
+      },
+      "errors": [],
+      "unmapped": [],
+      "trace": "test-results/board-visual/before-svg-control/events-hex-r56-844x390.zip"
+    },
+    {
+      "id": "P01-before-desktop-1",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with monotonic fixture sequence offsets.",
+      "actual": {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 1,
+        "windowMs": 30000,
+        "activeSamples": 1192,
+        "p95Ms": 8.5,
+        "maxMs": 19.5,
+        "trace": "test-results/board-visual/before-svg-control/frames-desktop-1.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-desktop-1.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-before-desktop-2",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with monotonic fixture sequence offsets.",
+      "actual": {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 2,
+        "windowMs": 30000,
+        "activeSamples": 1196,
+        "p95Ms": 8.5,
+        "maxMs": 15.099999999998545,
+        "trace": "test-results/board-visual/before-svg-control/frames-desktop-2.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-desktop-2.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-before-desktop-3",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with monotonic fixture sequence offsets.",
+      "actual": {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 3,
+        "windowMs": 30000,
+        "activeSamples": 1193,
+        "p95Ms": 8.5,
+        "maxMs": 16.60000000000582,
+        "trace": "test-results/board-visual/before-svg-control/frames-desktop-3.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-desktop-3.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-before-emulated-mobile-1",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with monotonic fixture sequence offsets.",
+      "actual": {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 1,
+        "windowMs": 30000,
+        "activeSamples": 1197,
+        "p95Ms": 8.5,
+        "maxMs": 12.900000000001455,
+        "trace": "test-results/board-visual/before-svg-control/frames-emulated-mobile-1.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-emulated-mobile-1.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-before-emulated-mobile-2",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with monotonic fixture sequence offsets.",
+      "actual": {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 2,
+        "windowMs": 30000,
+        "activeSamples": 1197,
+        "p95Ms": 8.5,
+        "maxMs": 14.200000000004366,
+        "trace": "test-results/board-visual/before-svg-control/frames-emulated-mobile-2.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-emulated-mobile-2.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-before-emulated-mobile-3",
+      "status": "PASS",
+      "operation": "Warm then sample 30s; replay roll snapshots every 3s with monotonic fixture sequence offsets.",
+      "actual": {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 3,
+        "windowMs": 30000,
+        "activeSamples": 1196,
+        "p95Ms": 8.5,
+        "maxMs": 13.89999999999418,
+        "trace": "test-results/board-visual/before-svg-control/frames-emulated-mobile-3.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-emulated-mobile-3.timeline.json"
+      },
+      "errors": []
+    },
+    {
+      "id": "P01-reference-hardware-targets",
+      "status": "NOT RUN",
+      "detail": "Local desktop and emulated mobile capture only; reference mobile hardware and 60Hz/power calibration are unavailable. Sample PASS means evidence captured, not performance acceptance."
+    }
+  ],
+  "metrics": {
+    "activeFrameIntervals": [
+      {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 1,
+        "windowMs": 30000,
+        "activeSamples": 1192,
+        "p95Ms": 8.5,
+        "maxMs": 19.5,
+        "trace": "test-results/board-visual/before-svg-control/frames-desktop-1.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-desktop-1.timeline.json"
+      },
+      {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 2,
+        "windowMs": 30000,
+        "activeSamples": 1196,
+        "p95Ms": 8.5,
+        "maxMs": 15.099999999998545,
+        "trace": "test-results/board-visual/before-svg-control/frames-desktop-2.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-desktop-2.timeline.json"
+      },
+      {
+        "device": "desktop",
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "repetition": 3,
+        "windowMs": 30000,
+        "activeSamples": 1193,
+        "p95Ms": 8.5,
+        "maxMs": 16.60000000000582,
+        "trace": "test-results/board-visual/before-svg-control/frames-desktop-3.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-desktop-3.timeline.json"
+      },
+      {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 1,
+        "windowMs": 30000,
+        "activeSamples": 1197,
+        "p95Ms": 8.5,
+        "maxMs": 12.900000000001455,
+        "trace": "test-results/board-visual/before-svg-control/frames-emulated-mobile-1.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-emulated-mobile-1.timeline.json"
+      },
+      {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 2,
+        "windowMs": 30000,
+        "activeSamples": 1197,
+        "p95Ms": 8.5,
+        "maxMs": 14.200000000004366,
+        "trace": "test-results/board-visual/before-svg-control/frames-emulated-mobile-2.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-emulated-mobile-2.timeline.json"
+      },
+      {
+        "device": "emulated-mobile",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "repetition": 3,
+        "windowMs": 30000,
+        "activeSamples": 1196,
+        "p95Ms": 8.5,
+        "maxMs": 13.89999999999418,
+        "trace": "test-results/board-visual/before-svg-control/frames-emulated-mobile-3.zip",
+        "browserTimeline": "test-results/board-visual/before-svg-control/frames-emulated-mobile-3.timeline.json"
+      }
+    ],
+    "rawSamplesLocation": "test-results/board-visual/before-svg-control/report.json"
+  },
+  "scriptHashes": {
+    "scripts/board-visual/fixtures.mjs": "4930066455e58a5b22b89fdffba4a8e54655016304fdc723a8d34da6068dcb25",
+    "scripts/board-visual/verify.py": "ae26cba6e3e19f0df558f0b8f73a5ebcf0dc87e0513180bc5a446edbff6b7728"
+  },
+  "artifacts": [
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/before-hex-r2-en-desktop.png",
+      "source": "test-results/board-visual/before-svg-control/hex-r2-en-1366x768.png",
+      "sha256": "055cfd4d323d89142fdae9ba59624b2ff2527690d6e129e63a0895c0511bad84"
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/before-hex-r56-zh-Hant-desktop.png",
+      "source": "test-results/board-visual/before-svg-control/hex-r56-zh-Hant-1366x768.png",
+      "sha256": "edc6aa70bf27ce023c4730f86df7116e6a63e7d87e1456cc4531bd1c0106ac14"
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/before-hex-r56-en-mobile.png",
+      "source": "test-results/board-visual/before-svg-control/hex-r56-en-390x844.png",
+      "sha256": "91e63f952e188a8d14ae51cdfa62a26803575392578611f93d3bbe15d24feb0d"
+    },
+    {
+      "path": "docs/aegis/work/2026-10-28-board-visual-spike/before-hex-r56-zh-Hant-landscape.png",
+      "source": "test-results/board-visual/before-svg-control/hex-r56-zh-Hant-844x390.png",
+      "sha256": "17719a68945b13cad5093e9d5a0805fa6462749530bfd233a92094696d13dc81"
+    }
+  ],
+  "projectVerification": {
+    "command": "pnpm verify",
+    "exitCode": 1,
+    "status": "FAIL",
+    "detail": "Existing packages/server/test/vocabulary.test.ts Windows URL.pathname path error: D:\\D:\\...\\packages\\server\\src; 3 failed, 81 passed, 11 skipped. Product and test files unchanged in P0.",
+    "log": "test-results/board-visual/pnpm-verify.log"
+  },
+  "remaining": [
+    "Human visual acceptance and reference physical mobile performance are NOT RUN.",
+    "Firefox and WebKit were installed but not executed.",
+    "Screen reader, acknowledgement/input latency and heap/GPU leak acceptance are NOT RUN.",
+    "Existing English UI HTML lang=zh-Hant gap remains; historical initial-roll replay is reserved for P1."
+  ]
+}
