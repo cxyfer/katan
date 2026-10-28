@@ -37,28 +37,32 @@ publishes to its own namespace.
 
 1. **The tag must equal the `package.json` version.** `v0.2.0` requires `"version": "0.2.0"`. That
    file is the only copy: `packages/server/build.mjs` stamps it into the bundle at build time, so
-   `/healthz` reports the version of the tag that was built. The workflow does not check the tag
-   against it today, so a mismatch still ships a mislabelled image; `scripts/release-notes.sh` warns
-   about it.
-2. **Tag only merged commits.** The workflow file must exist on the tagged commit, so push `master`
+   `/healthz` reports the version of the tag that was built. The build job rejects a tag that does not
+   match, and the smoke job rejects an image whose health response disagrees with the commit it was
+   built from.
+2. **A release is its own commit.** Bump `package.json` in a `🔖 release: vX.Y.Z` commit, push it to
+   `master`, and tag that commit — not a feature commit that happens to be at the tip. `v0.1.0` is the
+   one exception: it was tagged before this contract existed, on a commit whose `package.json` already
+   declared `0.1.0`, so there was nothing to bump.
+3. **Tag only merged commits.** The workflow file must exist on the tagged commit, so push `master`
    before the tag.
-3. **Never move or reuse a published tag.** The tag is the identity of an image. Publish a new patch
+4. **Never move or reuse a published tag.** The tag is the identity of an image. Publish a new patch
    version instead.
-4. **Only stable tags move `X.Y` and `latest`.** A pre-release keeps its exact tag so it cannot
+5. **Only stable tags move `X.Y` and `latest`.** A pre-release keeps its exact tag so it cannot
    hijack what players pull.
-5. **Publishing happens on `master`, not only on tags.** A tag and a `master` push of the same commit
+6. **Publishing happens on `master`, not only on tags.** A tag and a `master` push of the same commit
    are two builds: the digests differ because the attestations carry different timestamps. If the
    order matters, wait for the `master` run to finish before tagging.
-6. **The GitHub Release is manual, in the standard format.** Publish it after the image exists, with
+7. **The GitHub Release is manual, in the standard format.** Publish it after the image exists, with
    notes scaffolded by [`scripts/release-notes.sh`](scripts/release-notes.sh) and shaped by
    [`.github/release-notes-template.md`](.github/release-notes-template.md). Keep every prose
    paragraph and highlight bullet on one source line — GitHub turns a newline inside a release body
    into a hard break — and run [`scripts/release-notes-lint.sh`](scripts/release-notes-lint.sh) on
    the draft.
-7. **GHCR visibility is a repository setting.** A private repository produces a private package.
+8. **GHCR visibility is a repository setting.** A private repository produces a private package.
    Authenticate with `docker login ghcr.io` (token scope `read:packages`) or make the package
    public.
-8. **Pull request builds also push into the package.** They are test artefacts under `sha-<short>` and
+9. **Pull request builds also push into the package.** They are test artefacts under `sha-<short>` and
    may be pruned; they are never referenced by a release tag.
 
 ## Release checklist
@@ -92,7 +96,9 @@ git push origin master
 ```
 
 The repository uses gitmoji-style subjects; `🔖 release: vX.Y.Z` matches the existing history.
-Waiting for the `master` run to finish here keeps the tag build the one that ends up on `latest`.
+This commit is what step 3 tags: it carries the version the tag promises, and the build job refuses
+a tag whose `package.json` disagrees. Waiting for the `master` run to finish here keeps the tag build
+the one that ends up on `latest`.
 
 ### 3. Tag and push
 
@@ -113,8 +119,9 @@ docker login ghcr.io      # only if the package is private
 docker buildx imagetools inspect ghcr.io/cxyfer/katan:0.2.0
 ```
 
-`imagetools inspect` must list both `linux/amd64` and `linux/arm64`. The health response must carry
-the release version, which proves the tag, the bundle and the image agree:
+`imagetools inspect` must list both `linux/amd64` and `linux/arm64`. The workflow already asserts
+that `/healthz` reports the version of the commit it built, so this manual check is a second opinion
+on the same claim — the tag, the bundle and the image must agree:
 
 ```bash
 docker run --rm -d --name catan-version-check -p 3411:3000 \

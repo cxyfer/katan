@@ -35,6 +35,24 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      # A tag is a promise about the contents of the commit it points at: the
+      # bundle is stamped from package.json, so a mismatch publishes an image
+      # labelled with a version it does not contain.
+      - name: Tag matches the package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error file=package.json::tag $GITHUB_REF_NAME does not match the package.json version $version"
+            exit 1
+          fi
+          echo "tag $GITHUB_REF_NAME matches package.json $version"
+
       - uses: docker/setup-qemu-action@v4
 
       - uses: docker/setup-buildx-action@v4
@@ -133,6 +151,26 @@ jobs:
           set -euo pipefail
           curl --silent --fail http://127.0.0.1:3411/healthz
           curl --silent --fail http://127.0.0.1:3411/readyz
+
+      # The image must report the version of the commit it was built from; this
+      # is what catches a build-time stamp that silently stopped working.
+      - name: Image reports the package version
+        if: matrix.depth == 'full'
+        run: |
+          set -euo pipefail
+          expected="$(node -p "require('./package.json').version")"
+          actual="$(curl --silent --fail http://127.0.0.1:3411/healthz | node -e '
+            let body = "";
+            process.stdin.on("data", (chunk) => { body += chunk; });
+            process.stdin.on("end", () => {
+              process.stdout.write(String(JSON.parse(body).data.version));
+            });
+          ')"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::/healthz reports '$actual' but package.json declares '$expected'"
+            exit 1
+          fi
+          echo "/healthz reports $actual"
 
       - name: Smoke test the running image
         if: matrix.depth == 'full'
