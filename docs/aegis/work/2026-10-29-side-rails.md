@@ -76,3 +76,32 @@ command processing. Chromium touch emulation and software WebGL do not establish
 physical-device, screen-reader, Firefox, or WebKit coverage. The report's
 `sourceHead` is the pre-commit base; source and asset digests identify the tested
 working tree. No production deployment or automatic merge is part of this task.
+
+## Review follow-up (2026-10-30)
+
+- Replaced the obsolete expanded-hand `.game__actions` collision rule with an
+  unlayered `.action-rail` override that actually wins over the current layout.
+  On narrow screens the rail sits above the open fan and keeps its content
+  scrollable, with no width change.
+- GameScreen coordinates the two rail disclosures below 650px. Opening either
+  side closes and unpins the other, including after a desktop-to-mobile resize.
+  Desktop can still show both. Mounted actions and selected targets survive;
+  keyboard focus returns to the collapsed rail's toggle.
+- While the narrow action rail is open, the single current-turn flag escapes
+  the scoreboard's stacking context through a table overlay. It follows the
+  original row on scroll/resize without blocking the action underneath it.
+- A regression test failed against the previous independently pinned rails, then
+  passed with the coordination fix. The full web suite passes 363 tests;
+  typecheck and production build pass.
+- Browser checks now cover touch pin/switch, both focus directions, resize,
+  expanded-hand avoidance, and access to the rightmost card and hand close
+  control. The harness waits for the actual clip transition to finish instead of
+  assuming a fixed delay is sufficient during software 3D rendering.
+
+Final review browser matrix: **12/12 passed**, source digest unchanged; the
+initial report remains available.
+
+- [Review browser report](2026-10-29-side-rails/review-report.json)
+- [Review web tests](2026-10-29-side-rails/review-web-tests.txt)
+- [Expanded hand avoidance](../../screenshots/side-rails/review-hand-expanded.png)
+- [Turn flag above the open rail](../../screenshots/side-rails/review-turn-flag.png)

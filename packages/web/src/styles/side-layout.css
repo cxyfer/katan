@@ -32,3 +32,10 @@
 }
 /* 側欄動作必須高於透明的棋盤檢視命中層。 */
 .screen--game .action-rail { z-index: 47; }
+/* 手牌展開時，右欄移到卡片上方；原欄位內容仍可捲動。 */
+@media (max-width: 649px) {
+  .screen--game:has(.hand.hand-fan[data-expanded="true"]) .action-rail {
+    top: auto; bottom: 252px; transform: none;
+    max-height: min(104px, calc(100% - 260px));
+  }
+}

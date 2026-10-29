@@ -20,6 +20,44 @@ function pointerEnter(element: Element, type = 'mouse') {
 afterEach(() => vi.useRealTimers());
 
 describe('table interactions', { timeout: 15000 }, () => {
+  it('unpins and closes the opposite rail on narrow screens without remounting actions', async () => {
+    const width = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    try {
+      await open();
+      const players = screen.getByTestId('players-panel');
+      const actions = screen.getByTestId('action-rail');
+      const road = screen.getByTestId('action-build.road');
+      fireEvent.click(screen.getByTestId('players-pin'));
+      expect(players.getAttribute('data-expanded')).toBe('true');
+      expect(players.getAttribute('data-pinned')).toBe('true');
+      act(() => screen.getByTestId('action-rail-toggle').focus());
+      expect(actions.getAttribute('data-expanded')).toBe('true');
+      expect(players.getAttribute('data-expanded')).toBe('false');
+      expect(players.getAttribute('data-pinned')).toBe('false');
+      const flag = screen.getByTestId('seat-turn-flag');
+      expect(flag.parentElement?.classList.contains('game__table')).toBe(true);
+      act(() => road.focus());
+      pointerEnter(players);
+      expect(players.getAttribute('data-expanded')).toBe('true');
+      expect(actions.getAttribute('data-expanded')).toBe('false');
+      expect(document.activeElement).toBe(screen.getByTestId('action-rail-toggle'));
+      expect(screen.getByTestId('action-build.road')).toBe(road);
+      expect(screen.getByTestId('seat-turn-flag').parentElement).toBe(screen.getByTestId('seat-0'));
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    }
+  });
+
+  it('keeps both rails available together on desktop', async () => {
+    await open();
+    fireEvent.click(screen.getByTestId('players-pin'));
+    act(() => screen.getByTestId('action-rail-toggle').focus());
+    expect(screen.getByTestId('players-panel').getAttribute('data-expanded')).toBe('true');
+    expect(screen.getByTestId('players-panel').getAttribute('data-pinned')).toBe('true');
+    expect(screen.getByTestId('action-rail').getAttribute('data-expanded')).toBe('true');
+  });
+
   it('keeps six public seats visible while details collapse and only shows own private score', async () => {
     const players = Array.from({ length: 6 }, (_, seat) => makePlayer({ id: `p${seat + 1}`, seat, nickname: 'ABCDEFGHIJKLMNOPQRSTUVWX', ownScore: 9 }));
     await open(makeView({ players }));

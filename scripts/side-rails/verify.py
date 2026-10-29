@@ -138,14 +138,22 @@ def turn_flag(page):
     require(flag.count() == 1 and flag.is_visible(), "current-turn flag is missing or duplicated")
     row = page.locator('[data-board-seat][data-turn="true"]')
     row.scroll_into_view_if_needed()
+    settle(page)
     box, flag_box = rect(row), rect(flag)
     require(abs(flag_box["y"] + flag_box["height"] / 2 - box["y"] - box["height"] / 2) <= 1,
             "turn flag not vertically centered on row")
     require(flag_box["x"] + flag_box["width"] >= box["x"] + box["width"] - 1,
             "turn flag does not reach row right edge")
     require(flag.evaluate("""element => {
-      const r=element.getBoundingClientRect(), top=document.elementFromPoint(r.right-3,r.top+r.height/2);
-      return !!top && (top===element || element.contains(top));
+      const before=element.style.pointerEvents;
+      element.style.pointerEvents='auto';
+      try {
+        const r=element.getBoundingClientRect();
+        return [r.left+r.width/2,r.right-3].every(x => {
+          const top=document.elementFromPoint(x,r.top+r.height/2);
+          return !!top && (top===element || element.contains(top));
+        });
+      } finally { element.style.pointerEvents=before; }
     }"""), "turn flag right edge is clipped or covered")
     return flag_box
 
@@ -218,6 +226,8 @@ def right_rail(scenario):
     expanded(page, "action-rail", True)
     same_rect(before, rect(panel), "right rail changed size or position on hover")
     same_rect(surface_before, rect(page.get_by_test_id("board-surface")), "right hover moved map")
+    page.wait_for_function("""() =>
+      getComputedStyle(document.querySelector('.action-rail__content')).clipPath === 'inset(0px)'""")
     clips = panel.locator(".action-rail__content").evaluate(
         "element => getComputedStyle(element).clipPath")
     require(clips == "inset(0px)", f"right rail did not reveal full content: {clips}")
@@ -383,6 +393,105 @@ def receipt_feedback(scenario):
                          for item in requests]}
 
 
+def review_collisions(scenario):
+    page = scenario.page
+    left = page.get_by_test_id("players-panel")
+    right = page.get_by_test_id("action-rail")
+    left_toggle = page.get_by_test_id("players-toggle")
+    right_toggle = page.get_by_test_id("action-rail-toggle")
+    narrow = page.viewport_size["width"] <= 649
+    if narrow:
+        expanded(page, "players-panel", False)
+        require(left.get_attribute("data-pinned") == "false", "opening actions retained player pin")
+        turn_flag(page)
+        left_toggle.focus()
+        expanded(page, "players-panel", True)
+        expanded(page, "action-rail", False)
+        turn_flag(page)
+        right_toggle.focus()
+        expanded(page, "action-rail", True)
+        expanded(page, "players-panel", False)
+        left_toggle.tap()
+        expanded(page, "players-panel", True)
+        expanded(page, "action-rail", False)
+        page.get_by_test_id("players-pin").tap()
+        require(left.get_attribute("data-pinned") == "true", "touch pin failed")
+        right_toggle.tap()
+        expanded(page, "action-rail", True)
+        expanded(page, "players-panel", False)
+        require(left.get_attribute("data-pinned") == "false", "touch opening actions retained pin")
+        turn_flag(page)
+    else:
+        expanded(page, "players-panel", True)
+        expanded(page, "action-rail", True)
+    page.mouse.move(page.viewport_size["width"] / 2, 4)
+    page.keyboard.press("Escape")
+    page.get_by_test_id("board-surface").focus()
+    expanded(page, "action-rail", False)
+    right_toggle.click()
+    expanded(page, "action-rail", True)
+    hand = page.get_by_test_id("hand-panel")
+    hand.focus()
+    expanded(page, "hand-panel", True)
+    expanded(page, "action-rail", True)
+    hand_box, rail_box = rect(hand), rect(right)
+    if narrow:
+        require(rail_box["y"] + rail_box["height"] <= hand_box["y"],
+                f"action rail overlaps expanded hand: {rail_box} vs {hand_box}")
+        reachable(right_toggle, "action toggle above expanded hand")
+        bounded(page, rail_box, "action rail above expanded hand")
+    reachable(hand.locator(".hand-fan__close"), "expanded hand close")
+    require(visible_point(hand.locator(".development-card__inspect").last),
+            "rightmost development card is covered")
+    page.screenshot(path=str(scenario.out / "hand-expanded.png"), animations="disabled")
+    page.keyboard.press("Escape")
+    expanded(page, "hand-panel", False)
+    page.get_by_test_id("board-surface").focus()
+    settle(page)
+    resized = False
+    if page.viewport_size["width"] > 900:
+        original_size = dict(page.viewport_size)
+        left_toggle.focus()
+        expanded(page, "players-panel", True)
+        page.get_by_test_id("players-pin").click()
+        right_toggle.focus()
+        expanded(page, "action-rail", True)
+        page.set_viewport_size({"width": 390, "height": 844})
+        expanded(page, "players-panel", False)
+        expanded(page, "action-rail", True)
+        require(left.get_attribute("data-pinned") == "false", "resize retained overlapping pin")
+        page.set_viewport_size(original_size)
+        settle(page)
+        resized = True
+    return {"narrowExclusive": narrow, "resizeExclusive": resized,
+            "hand": hand_box, "actions": rail_box}
+
+
+def other_turn_flags(scenario):
+    page = scenario.page
+    if page.viewport_size["width"] > 649:
+        return []
+    left = page.get_by_test_id("players-panel")
+    toggle = page.get_by_test_id("action-rail-toggle")
+    checked = []
+    players = scenario.snapshot["view"]["players"]
+    for player in (players[1], players[-1]):
+        snapshot = copy.deepcopy(scenario.snapshot)
+        snapshot["revision"] += 1
+        snapshot["view"]["turn"].update(playerId=player["id"], seat=player["seat"])
+        scenario.send(snapshot)
+        page.locator(f'[data-board-seat="{player["id"]}"][data-turn="true"]').wait_for()
+        toggle.focus()
+        expanded(page, "action-rail", True)
+        expanded(page, "players-panel", False)
+        checked.append({"seat": player["seat"], "flag": turn_flag(page)})
+        require(page.get_by_test_id("seat-turn-flag").evaluate(
+            "element => getComputedStyle(element).pointerEvents === 'none'"),
+            "floating turn flag blocks actions below it")
+    page.screenshot(path=str(scenario.out / "other-turn-flag.png"), animations="disabled")
+    return checked
+
+
 def fixture_board(source):
     board = copy.deepcopy(source)
     own, opponent = board["snapshot"]["view"]["players"][:2]
@@ -468,9 +577,13 @@ def main():
                     page.get_by_test_id("action-rail-toggle").focus()
                     expanded(page, "action-rail", True)
                     page.screenshot(path=str(case_dir / "expanded.png"), animations="disabled")
+                    result["activeCheck"] = "reviewCollisions"
+                    result["checks"]["reviewCollisions"] = review_collisions(scenario)
                     if renderer == "svg" and source["id"] == "hex-r2":
                         result["activeCheck"] = "receiptFeedback"
                         result["checks"]["receiptFeedback"] = receipt_feedback(scenario)
+                    result["activeCheck"] = "otherTurnFlags"
+                    result["checks"]["otherTurnFlags"] = other_turn_flags(scenario)
                     result["checks"]["finalDocument"] = no_overflow(page)
                     require(not scenario.errors and not scenario.unmapped,
                             f"runtime/API errors: {scenario.errors} {scenario.unmapped}")

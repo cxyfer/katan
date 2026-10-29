@@ -97,7 +97,8 @@
 }
 .screen--game .players[data-expanded="true"] .seat__identity { grid-column: 1 / -1; grid-row: 2; }
 .screen--game .players .seat__name { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .76rem; line-height: 1.35; }
-.screen--game .players .seat__turn {
+.screen--game .players .seat__turn,
+.screen--game .seat-turn-overlay {
   position: absolute;
   top: 50%;
   right: -16px;
@@ -112,6 +113,12 @@
   border-radius: 3px 7px 7px 3px;
   box-shadow: 2px 3px 7px #00151d66;
   z-index: 1;
+}
+.screen--game .seat-turn-overlay {
+  right: auto;
+  transform: none;
+  z-index: 49;
+  pointer-events: none;
 }
 .screen--game .players .seat__score,
 .screen--game .players[data-expanded="false"] .seat__score { grid-column: 3; grid-row: 1; flex-direction: row; gap: 3px; font-size: 1.05rem; }

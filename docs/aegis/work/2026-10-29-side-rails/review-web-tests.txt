@@ -1,0 +1,12 @@
+
+ RUN  v5.0.5 /home/usaya/workspace/github/katan/.worktrees/side-rails/packages/web
+
+
+ Test Files  38 passed (38)
+      Tests  363 passed (363)
+   Start at  00:23:10
+   Duration  86.58s (tests 52%, environment 38%, setup 6%, import 3%, transform 1%)
+
+Environment  jsdom was created 38 times · 30.61s total, 38% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments

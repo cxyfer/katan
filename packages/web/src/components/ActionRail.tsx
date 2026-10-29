@@ -6,18 +6,37 @@ import { GameIcon } from './GameArt.tsx';
 import '../styles/action-rail.css';
 
 /** 水平揭開既有操作，不重新掛載動作或改動已選取的建造目標。 */
-export function ActionRail({ controller }: { controller: TableController }) {
+export function ActionRail({ controller, onExpand, collapseRequested = false }: {
+  controller: TableController; onExpand?: () => void; collapseRequested?: boolean;
+}) {
   const t = useT();
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const railRef = useRef<HTMLElement>(null);
   const consumeTouchClick = useRef(false);
   const togglePointerExpanded = useRef<boolean | null>(null);
   const dismissing = useRef(false);
   const expanded = !dismissed && (hovered || focused || pinned);
   const view = controller.state.game?.view;
+
+  useEffect(() => {
+    if (expanded) onExpand?.();
+  }, [expanded, onExpand]);
+  useEffect(() => {
+    if (!collapseRequested) return;
+    setHovered(false);
+    setFocused(false);
+    setPinned(false);
+    setDismissed(true);
+    if (railRef.current?.contains(document.activeElement)) {
+      dismissing.current = true;
+      toggleRef.current?.focus();
+      dismissing.current = false;
+    }
+  }, [collapseRequested]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -37,6 +56,7 @@ export function ActionRail({ controller }: { controller: TableController }) {
 
   return (
     <aside
+      ref={railRef}
       className="action-rail"
       aria-label={t('table.build')}
       data-testid="action-rail"
