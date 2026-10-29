@@ -5,6 +5,9 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-10-30 | artifact | docs/aegis/work/2026-10-29-side-rails/review-report.json | Review regression checks for rail exclusivity, expanded hands and turn flags |
+| 2026-10-29 | work | docs/aegis/work/2026-10-29-side-rails.md | Centered horizontal side rails and automatic command receipts |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-side-rails/report.json | Production side rail geometry, touch and receipt verification |
 | 2026-10-29 | work | docs/aegis/work/2026-10-29-table-experience.md | Map inspection, centered dice, held-card fan and hover score verification |
 | 2026-10-29 | artifact | docs/aegis/work/2026-10-29-table-experience/evidence/browser-report.json | Eight-case table interaction browser results and asset provenance |
 | 2026-10-29 | artifact | docs/aegis/work/2026-10-29-table-experience/evidence/verify.log | Final table interaction repository verification |

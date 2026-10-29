@@ -91,7 +91,6 @@
   .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__card:focus-within,
   .screen--game .hand.hand-fan[data-expanded="true"] .resource-card--inspected,
   .screen--game .hand.hand-fan[data-expanded="true"] .development-card--inspected { transform: translateX(calc(var(--hand-position) * var(--fan-spread))) translateY(-24px) rotate(0) scale(1.08); }
-  .screen--game:has(.hand.hand-fan[data-expanded="true"]) .game__actions { bottom: 252px; max-height: 104px; }
   .screen--game:has(.hand.hand-fan[data-expanded="true"]) .game__receipt { bottom: 362px; }
   .screen--game .hand.hand-fan .hand-fan__close { bottom: 3px; right: 56px; }
 }

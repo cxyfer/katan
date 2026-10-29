@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/context.tsx';
 import { requiredActionAnnouncement, requiredActionFor } from '../state/pending.ts';
 import type { TableController } from '../state/useTable.ts';
-import { ActionBar } from './ActionBar.tsx';
+import { ActionRail } from './ActionRail.tsx';
+import '../styles/side-layout.css';
 import { BoardView } from './BoardView.tsx';
 import { GameTools } from './GameTools.tsx';
 import { GameIcon } from './GameArt.tsx';
@@ -14,6 +15,7 @@ import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
 import { SelectionPreview } from './SelectionPreview.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
 import { useFullscreen } from './useFullscreen.ts';
+import { useIsMobile } from './useIsMobile.ts';
 
 /** 同一張遊戲桌涵蓋橫屏與直屏，切換尺寸不卸載手牌或工具草稿。 */
 export function GameScreen({ controller }: { controller: TableController }) {
@@ -23,7 +25,10 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const fullscreen = useFullscreen(stageRef);
   const action = requiredActionFor(state);
   const [announcement, setAnnouncement] = useState('');
-  const view = state.game?.view;
+  const narrow = useIsMobile('(max-width: 649px)');
+  const [activeRail, setActiveRail] = useState<'players' | 'actions' | null>(null);
+  const openPlayers = useCallback(() => setActiveRail('players'), []);
+  const openActions = useCallback(() => setActiveRail('actions'), []);
 
   useEffect(() => {
     const next = requiredActionAnnouncement(action, t);
@@ -56,7 +61,8 @@ export function GameScreen({ controller }: { controller: TableController }) {
       {fullscreen.failed && <p className="table-fullscreen-error notice" role="alert">{t('table.fullscreenFailed')}</p>}
 
       <div className="game__table">
-        <PlayersPanel controller={controller} />
+        <PlayersPanel controller={controller} onExpand={openPlayers} collapseRequested={narrow && activeRail === 'actions'}
+          floatingTurnFlag={narrow && activeRail === 'actions'} />
         <div className="game__playfield">
           <div className="game__messages">
             <PendingPrompt controller={controller} />
@@ -70,10 +76,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
           </div>
           <div className="game__map"><BoardView controller={controller} /></div>
           <div className="game__preview"><SelectionPreview controller={controller} /></div>
-          <aside className="game__actions" aria-label={t('play.hints')}>
-            <div className="game__phase"><span className="game__phase-dot" /><span>{view ? t('play.phase.' + view.turn.phase) : t('app.loading')}</span><GameIcon name="flag" size={15} /></div>
-            <ActionBar controller={controller} />
-          </aside>
+          <ActionRail controller={controller} onExpand={openActions} collapseRequested={narrow && activeRail === 'players'} />
         </div>
         <footer className="game__dock">
           <HandPanel controller={controller} />

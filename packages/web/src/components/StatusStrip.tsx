@@ -60,7 +60,7 @@ export function StatusStrip({ controller, fullscreen }: {
         </span>
       )}
 
-      <span className="status-strip__item" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}>
+      <span className="visually-hidden" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}>
         {action ? t(action.messageId, action.params) : t('app.loading')}
       </span>
 

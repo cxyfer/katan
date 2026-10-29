@@ -1,0 +1,4031 @@
+{
+  "sourceHead": "8e7b70c8345fdaf4dcb0e304469d175b31aabbc5",
+  "sourceDigest": "021b2ad5dc2a4514eb57a7f7f0a2d43207a54817a36b3ceb57cb07239a0ac78c",
+  "buildDigest": "523c5a26e0798162bd7cdf89c515fd07fb02df48941b75edb97cf5a2b0179692",
+  "assets": {
+    "assets/BoardScene3D-BUER9kzx.js": {
+      "sha256": "b7ce46ac3a2d64a37c588ad65103d22ab7c29618b044b1bba01e2aca32094aac",
+      "bytes": 954597
+    },
+    "assets/BoardScene3D-BUER9kzx.js.map": {
+      "sha256": "b0a97c62c2a32555a0b74468e88862237c88d0249e14c16078ce3bc563b20cb1",
+      "bytes": 4364844
+    },
+    "assets/IslandPreview-6VpjSEr9.css": {
+      "sha256": "01320e60a675adf503f3e581c335f5ab3b634df087425e3ada59a6f899a8c1db",
+      "bytes": 7621
+    },
+    "assets/IslandPreview-EDAkybVG.js": {
+      "sha256": "bf60d407e6ae53da4414179b1c420362e57b573c83f408069774adfbfdbbb850",
+      "bytes": 8383
+    },
+    "assets/IslandPreview-EDAkybVG.js.map": {
+      "sha256": "b8933770b0c64293d18f42863be83c79722f4a8c60e0e78cfa14f495011915ba",
+      "bytes": 20643
+    },
+    "assets/board-atlas-CYx_3mJD.svg": {
+      "sha256": "a5feda529e3aa794fcbb270a87030a04547f46747da22b5ee54a44e300b00f18",
+      "bytes": 9652
+    },
+    "assets/index-DMvFyr58.js": {
+      "sha256": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4",
+      "bytes": 480096
+    },
+    "assets/index-DMvFyr58.js.map": {
+      "sha256": "02c095b562df48be1be86a28859cffd47ddd7700425dd918ad373f5ad615f574",
+      "bytes": 1884620
+    },
+    "assets/index-Dw8ba23F.css": {
+      "sha256": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+      "bytes": 109515
+    },
+    "index.html": {
+      "sha256": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+      "bytes": 473
+    }
+  },
+  "fixture": "docs/aegis/work/2026-10-29-board-3d/evidence/fixtures-final.json",
+  "fixtureDigest": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+  "fixtureOverrides": "Held devcards, road/army medals, self hidden VP, bilingual opponent nickname.",
+  "limitations": [
+    "Chromium software WebGL and emulated touch; physical devices and screen readers not run.",
+    "Production frontend with deterministic API/WebSocket fixtures; live server commands not exercised."
+  ],
+  "cases": [
+    {
+      "name": "svg-desktop-hex-r2",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "players": 4,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 8,
+              "y": 265.75,
+              "width": 216,
+              "height": 418.6875
+            },
+            "right": {
+              "x": 1140,
+              "y": 255.59375,
+              "width": 210,
+              "height": 439
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 849.8125
+          },
+          "board": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 801.8125
+          },
+          "surface": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 801.8125
+          },
+          "toolbar": {
+            "x": 4,
+            "y": 94.1875,
+            "width": 128,
+            "height": 84
+          },
+          "document": {
+            "width": 1366,
+            "height": 900,
+            "viewportWidth": 1366,
+            "viewportHeight": 900,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 8,
+            "y": 265.75,
+            "width": 216,
+            "height": 418.6875
+          },
+          "expanded": {
+            "x": 8,
+            "y": 265.75,
+            "width": 216,
+            "height": 418.6875
+          },
+          "rowsBefore": [
+            {
+              "x": 15,
+              "y": 321.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 401.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 481.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 561.75,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 15,
+              "y": 321.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 401.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 481.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 561.75,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "flagBefore": {
+            "x": 208,
+            "y": 344.75,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 208,
+            "y": 344.75,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 15,
+                "y": 321.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 15,
+                "y": 401.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 15,
+                "y": 481.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 15,
+                "y": 561.75,
+                "width": 202,
+                "height": 76
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          },
+          "expanded": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 618.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "End turn"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 322.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Road\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 1145,
+                "y": 396.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Settlement\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 1145,
+                "y": 470.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "City\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 544.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Development card\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 1366,
+            "height": 900,
+            "viewportWidth": 1366,
+            "viewportHeight": 900,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "reviewCollisions": {
+          "narrowExclusive": false,
+          "resizeExclusive": true,
+          "hand": {
+            "x": 292,
+            "y": 656,
+            "width": 782,
+            "height": 244
+          },
+          "actions": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          }
+        },
+        "receiptFeedback": {
+          "unknownResolveReachable": true,
+          "sameCommandReplayed": true,
+          "acceptedDismissSeconds": 4.19,
+          "acceptedButtons": 0,
+          "injectedFailure": "first command transport timed out; replay returned accepted fixture receipt",
+          "requests": [
+            {
+              "command": {
+                "type": "turn.end"
+              },
+              "expectedRevision": 20
+            },
+            {
+              "command": {
+                "type": "turn.end"
+              },
+              "expectedRevision": 20
+            }
+          ]
+        },
+        "otherTurnFlags": [],
+        "finalDocument": {
+          "width": 1366,
+          "height": 900,
+          "viewportWidth": 1366,
+          "viewportHeight": 900,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_TIMED_OUT"
+      ],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4"
+      }
+    },
+    {
+      "name": "svg-desktop-hex-r56",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "players": 6,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 8,
+              "y": 185.75,
+              "width": 216,
+              "height": 578.6875
+            },
+            "right": {
+              "x": 1140,
+              "y": 255.59375,
+              "width": 210,
+              "height": 439
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 849.8125
+          },
+          "board": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 801.8125
+          },
+          "surface": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 801.8125
+          },
+          "toolbar": {
+            "x": 4,
+            "y": 94.1875,
+            "width": 128,
+            "height": 84
+          },
+          "document": {
+            "width": 1366,
+            "height": 900,
+            "viewportWidth": 1366,
+            "viewportHeight": 900,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 8,
+            "y": 185.75,
+            "width": 216,
+            "height": 578.6875
+          },
+          "expanded": {
+            "x": 8,
+            "y": 185.75,
+            "width": 216,
+            "height": 578.6875
+          },
+          "rowsBefore": [
+            {
+              "x": 15,
+              "y": 241.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 321.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 401.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 481.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 561.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 641.75,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 15,
+              "y": 241.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 321.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 401.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 481.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 561.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 641.75,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "flagBefore": {
+            "x": 208,
+            "y": 264.75,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 208,
+            "y": 264.75,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 15,
+                "y": 241.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 15,
+                "y": 321.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 15,
+                "y": 401.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 15,
+                "y": 481.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p5",
+              "rect": {
+                "x": 15,
+                "y": 561.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p6",
+              "rect": {
+                "x": 15,
+                "y": 641.75,
+                "width": 202,
+                "height": 76
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          },
+          "expanded": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 618.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "End turn"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 322.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Road\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 1145,
+                "y": 396.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Settlement\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 1145,
+                "y": 470.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "City\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 544.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Development card\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 1366,
+            "height": 900,
+            "viewportWidth": 1366,
+            "viewportHeight": 900,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "reviewCollisions": {
+          "narrowExclusive": false,
+          "resizeExclusive": true,
+          "hand": {
+            "x": 292,
+            "y": 656,
+            "width": 782,
+            "height": 244
+          },
+          "actions": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          }
+        },
+        "otherTurnFlags": [],
+        "finalDocument": {
+          "width": 1366,
+          "height": 900,
+          "viewportWidth": 1366,
+          "viewportHeight": 900,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4"
+      }
+    },
+    {
+      "name": "svg-mobile-hex-r2",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "players": 4,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 4,
+              "y": 249.890625,
+              "width": 196,
+              "height": 387
+            },
+            "right": {
+              "x": 164,
+              "y": 238.890625,
+              "width": 210,
+              "height": 409
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 801.21875
+          },
+          "board": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 753.21875
+          },
+          "surface": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 753.21875
+          },
+          "toolbar": {
+            "x": 2,
+            "y": 76.78125,
+            "width": 140,
+            "height": 92
+          },
+          "document": {
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "viewportHeight": 844,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 4,
+            "y": 249.890625,
+            "width": 196,
+            "height": 387
+          },
+          "expanded": {
+            "x": 4,
+            "y": 249.890625,
+            "width": 196,
+            "height": 387
+          },
+          "rowsBefore": [
+            {
+              "x": 9,
+              "y": 303.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 376.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 449.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 522.890625,
+              "width": 186,
+              "height": 70
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 9,
+              "y": 303.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 376.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 449.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 522.890625,
+              "width": 186,
+              "height": 70
+            }
+          ],
+          "flagBefore": {
+            "x": 186,
+            "y": 323.890625,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 186,
+            "y": 323.890625,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 9,
+                "y": 303.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 9,
+                "y": 376.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 9,
+                "y": 449.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 9,
+                "y": 522.890625,
+                "width": 186,
+                "height": 70
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 164,
+            "y": 238.890625,
+            "width": 210,
+            "height": 409
+          },
+          "expanded": {
+            "x": 164,
+            "y": 238.890625,
+            "width": 210,
+            "height": 409
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 571.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "結束回合"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 275.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "道路\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 169,
+                "y": 349.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "聚落\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 169,
+                "y": 423.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "城市\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 497.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "發展卡\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "viewportHeight": 844,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "touch": {
+          "players": "false",
+          "actions": "false",
+          "commandsSubmitted": []
+        },
+        "reviewCollisions": {
+          "narrowExclusive": true,
+          "resizeExclusive": false,
+          "hand": {
+            "x": 34,
+            "y": 632,
+            "width": 322,
+            "height": 212
+          },
+          "actions": {
+            "x": 164,
+            "y": 488,
+            "width": 210,
+            "height": 104
+          }
+        },
+        "receiptFeedback": {
+          "unknownResolveReachable": true,
+          "sameCommandReplayed": true,
+          "acceptedDismissSeconds": 4.451,
+          "acceptedButtons": 0,
+          "injectedFailure": "first command transport timed out; replay returned accepted fixture receipt",
+          "requests": [
+            {
+              "command": {
+                "type": "turn.end"
+              },
+              "expectedRevision": 20
+            },
+            {
+              "command": {
+                "type": "turn.end"
+              },
+              "expectedRevision": 20
+            }
+          ]
+        },
+        "otherTurnFlags": [
+          {
+            "seat": 1,
+            "flag": {
+              "x": 186,
+              "y": 396.890625,
+              "width": 24,
+              "height": 30
+            }
+          },
+          {
+            "seat": 3,
+            "flag": {
+              "x": 186,
+              "y": 542.890625,
+              "width": 24,
+              "height": 30
+            }
+          }
+        ],
+        "finalDocument": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_TIMED_OUT"
+      ],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4"
+      }
+    },
+    {
+      "name": "svg-mobile-hex-r56",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "players": 6,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 4,
+              "y": 176.890625,
+              "width": 196,
+              "height": 533
+            },
+            "right": {
+              "x": 164,
+              "y": 238.890625,
+              "width": 210,
+              "height": 409
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 801.21875
+          },
+          "board": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 753.21875
+          },
+          "surface": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 753.21875
+          },
+          "toolbar": {
+            "x": 2,
+            "y": 76.78125,
+            "width": 140,
+            "height": 92
+          },
+          "document": {
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "viewportHeight": 844,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 4,
+            "y": 176.890625,
+            "width": 196,
+            "height": 533
+          },
+          "expanded": {
+            "x": 4,
+            "y": 176.890625,
+            "width": 196,
+            "height": 533
+          },
+          "rowsBefore": [
+            {
+              "x": 9,
+              "y": 230.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 303.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 376.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 449.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 522.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 595.890625,
+              "width": 186,
+              "height": 70
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 9,
+              "y": 230.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 303.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 376.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 449.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 522.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 595.890625,
+              "width": 186,
+              "height": 70
+            }
+          ],
+          "flagBefore": {
+            "x": 186,
+            "y": 250.890625,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 186,
+            "y": 250.890625,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 9,
+                "y": 230.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 9,
+                "y": 303.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 9,
+                "y": 376.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 9,
+                "y": 449.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p5",
+              "rect": {
+                "x": 9,
+                "y": 522.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p6",
+              "rect": {
+                "x": 9,
+                "y": 595.890625,
+                "width": 186,
+                "height": 70
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 164,
+            "y": 238.890625,
+            "width": 210,
+            "height": 409
+          },
+          "expanded": {
+            "x": 164,
+            "y": 238.890625,
+            "width": 210,
+            "height": 409
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 571.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "結束回合"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 275.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "道路\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 169,
+                "y": 349.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "聚落\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 169,
+                "y": 423.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "城市\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 497.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "發展卡\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "viewportHeight": 844,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "touch": {
+          "players": "false",
+          "actions": "false",
+          "commandsSubmitted": []
+        },
+        "reviewCollisions": {
+          "narrowExclusive": true,
+          "resizeExclusive": false,
+          "hand": {
+            "x": 34,
+            "y": 632,
+            "width": 322,
+            "height": 212
+          },
+          "actions": {
+            "x": 164,
+            "y": 488,
+            "width": 210,
+            "height": 104
+          }
+        },
+        "otherTurnFlags": [
+          {
+            "seat": 1,
+            "flag": {
+              "x": 186,
+              "y": 323.890625,
+              "width": 24,
+              "height": 30
+            }
+          },
+          {
+            "seat": 5,
+            "flag": {
+              "x": 186,
+              "y": 615.890625,
+              "width": 24,
+              "height": 30
+            }
+          }
+        ],
+        "finalDocument": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4"
+      }
+    },
+    {
+      "name": "svg-landscape-hex-r2",
+      "renderer": "svg",
+      "viewport": [
+        844,
+        390
+      ],
+      "locale": "zh-Hant",
+      "players": 4,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 8,
+              "y": 102.375,
+              "width": 216,
+              "height": 229.625
+            },
+            "right": {
+              "x": 618,
+              "y": 134.375,
+              "width": 210,
+              "height": 165.625
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 345.625
+          },
+          "board": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 297.625
+          },
+          "surface": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 297.625
+          },
+          "toolbar": {
+            "x": 228,
+            "y": 52.375,
+            "width": 140,
+            "height": 92
+          },
+          "document": {
+            "width": 844,
+            "height": 390,
+            "viewportWidth": 844,
+            "viewportHeight": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 8,
+            "y": 102.375,
+            "width": 216,
+            "height": 229.625
+          },
+          "expanded": {
+            "x": 8,
+            "y": 102.375,
+            "width": 216,
+            "height": 229.625
+          },
+          "rowsBefore": [
+            {
+              "x": 15,
+              "y": 158.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 238.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 318.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 398.375,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 15,
+              "y": 158.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 238.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 318.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 398.375,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "flagBefore": {
+            "x": 208,
+            "y": 181.375,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 208,
+            "y": 181.375,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 15,
+                "y": 158.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 15,
+                "y": 211.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 15,
+                "y": 183.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 15,
+                "y": 211.375,
+                "width": 202,
+                "height": 76
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          },
+          "expanded": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 224.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "結束回合"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 201.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "道路\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 623,
+                "y": 250.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "聚落\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 623,
+                "y": 210.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "城市\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 250.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "發展卡\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 844,
+            "height": 390,
+            "viewportWidth": 844,
+            "viewportHeight": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "touch": {
+          "players": "false",
+          "actions": "false",
+          "commandsSubmitted": []
+        },
+        "reviewCollisions": {
+          "narrowExclusive": false,
+          "resizeExclusive": false,
+          "hand": {
+            "x": 244,
+            "y": 200,
+            "width": 356,
+            "height": 190
+          },
+          "actions": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          }
+        },
+        "receiptFeedback": {
+          "unknownResolveReachable": true,
+          "sameCommandReplayed": true,
+          "acceptedDismissSeconds": 4.051,
+          "acceptedButtons": 0,
+          "injectedFailure": "first command transport timed out; replay returned accepted fixture receipt",
+          "requests": [
+            {
+              "command": {
+                "type": "turn.end"
+              },
+              "expectedRevision": 20
+            },
+            {
+              "command": {
+                "type": "turn.end"
+              },
+              "expectedRevision": 20
+            }
+          ]
+        },
+        "otherTurnFlags": [],
+        "finalDocument": {
+          "width": 844,
+          "height": 390,
+          "viewportWidth": 844,
+          "viewportHeight": 390,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_TIMED_OUT"
+      ],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4"
+      }
+    },
+    {
+      "name": "svg-landscape-hex-r56",
+      "renderer": "svg",
+      "viewport": [
+        844,
+        390
+      ],
+      "locale": "zh-Hant",
+      "players": 6,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 8,
+              "y": 102.375,
+              "width": 216,
+              "height": 229.625
+            },
+            "right": {
+              "x": 618,
+              "y": 134.375,
+              "width": 210,
+              "height": 165.625
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 345.625
+          },
+          "board": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 297.625
+          },
+          "surface": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 297.625
+          },
+          "toolbar": {
+            "x": 228,
+            "y": 52.375,
+            "width": 140,
+            "height": 92
+          },
+          "document": {
+            "width": 844,
+            "height": 390,
+            "viewportWidth": 844,
+            "viewportHeight": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 8,
+            "y": 102.375,
+            "width": 216,
+            "height": 229.625
+          },
+          "expanded": {
+            "x": 8,
+            "y": 102.375,
+            "width": 216,
+            "height": 229.625
+          },
+          "rowsBefore": [
+            {
+              "x": 15,
+              "y": 158.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 238.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 318.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 398.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 478.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 558.375,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 15,
+              "y": 158.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 238.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 318.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 398.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 478.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 558.375,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "flagBefore": {
+            "x": 208,
+            "y": 181.375,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 208,
+            "y": 181.375,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 15,
+                "y": 158.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 15,
+                "y": 211.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 15,
+                "y": 183.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 15,
+                "y": 211.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p5",
+              "rect": {
+                "x": 15,
+                "y": 183.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p6",
+              "rect": {
+                "x": 15,
+                "y": 211.375,
+                "width": 202,
+                "height": 76
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          },
+          "expanded": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 224.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "結束回合"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 201.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "道路\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 623,
+                "y": 250.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "聚落\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 623,
+                "y": 210.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "城市\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 250.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "發展卡\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 844,
+            "height": 390,
+            "viewportWidth": 844,
+            "viewportHeight": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "touch": {
+          "players": "false",
+          "actions": "false",
+          "commandsSubmitted": []
+        },
+        "reviewCollisions": {
+          "narrowExclusive": false,
+          "resizeExclusive": false,
+          "hand": {
+            "x": 244,
+            "y": 200,
+            "width": 356,
+            "height": 190
+          },
+          "actions": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          }
+        },
+        "otherTurnFlags": [],
+        "finalDocument": {
+          "width": 844,
+          "height": 390,
+          "viewportWidth": 844,
+          "viewportHeight": 390,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4"
+      }
+    },
+    {
+      "name": "r3f-desktop-hex-r2",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "players": 4,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 8,
+              "y": 265.75,
+              "width": 216,
+              "height": 418.6875
+            },
+            "right": {
+              "x": 1140,
+              "y": 255.59375,
+              "width": 210,
+              "height": 439
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 849.8125
+          },
+          "board": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 801.8125
+          },
+          "surface": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 801.8125
+          },
+          "toolbar": {
+            "x": 4,
+            "y": 94.1875,
+            "width": 128,
+            "height": 84
+          },
+          "document": {
+            "width": 1366,
+            "height": 900,
+            "viewportWidth": 1366,
+            "viewportHeight": 900,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 8,
+            "y": 265.75,
+            "width": 216,
+            "height": 418.6875
+          },
+          "expanded": {
+            "x": 8,
+            "y": 265.75,
+            "width": 216,
+            "height": 418.6875
+          },
+          "rowsBefore": [
+            {
+              "x": 15,
+              "y": 321.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 401.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 481.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 561.75,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 15,
+              "y": 321.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 401.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 481.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 561.75,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "flagBefore": {
+            "x": 208,
+            "y": 344.75,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 208,
+            "y": 344.75,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 15,
+                "y": 321.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 15,
+                "y": 401.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 15,
+                "y": 481.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 15,
+                "y": 561.75,
+                "width": 202,
+                "height": 76
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          },
+          "expanded": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 618.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "End turn"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 322.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Road\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 1145,
+                "y": 396.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Settlement\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 1145,
+                "y": 470.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "City\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 544.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Development card\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 1366,
+            "height": 900,
+            "viewportWidth": 1366,
+            "viewportHeight": 900,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "reviewCollisions": {
+          "narrowExclusive": false,
+          "resizeExclusive": true,
+          "hand": {
+            "x": 292,
+            "y": 656,
+            "width": 782,
+            "height": 244
+          },
+          "actions": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          }
+        },
+        "otherTurnFlags": [],
+        "finalDocument": {
+          "width": 1366,
+          "height": 900,
+          "viewportWidth": 1366,
+          "viewportHeight": 900,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4",
+        "/assets/BoardScene3D-BUER9kzx.js": "b7ce46ac3a2d64a37c588ad65103d22ab7c29618b044b1bba01e2aca32094aac"
+      }
+    },
+    {
+      "name": "r3f-desktop-hex-r56",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "players": 6,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 8,
+              "y": 185.75,
+              "width": 216,
+              "height": 578.6875
+            },
+            "right": {
+              "x": 1140,
+              "y": 255.59375,
+              "width": 210,
+              "height": 439
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 849.8125
+          },
+          "board": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 801.8125
+          },
+          "surface": {
+            "x": 0,
+            "y": 50.1875,
+            "width": 1366,
+            "height": 801.8125
+          },
+          "toolbar": {
+            "x": 4,
+            "y": 94.1875,
+            "width": 128,
+            "height": 84
+          },
+          "document": {
+            "width": 1366,
+            "height": 900,
+            "viewportWidth": 1366,
+            "viewportHeight": 900,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 8,
+            "y": 185.75,
+            "width": 216,
+            "height": 578.6875
+          },
+          "expanded": {
+            "x": 8,
+            "y": 185.75,
+            "width": 216,
+            "height": 578.6875
+          },
+          "rowsBefore": [
+            {
+              "x": 15,
+              "y": 241.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 321.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 401.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 481.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 561.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 641.75,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 15,
+              "y": 241.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 321.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 401.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 481.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 561.75,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 641.75,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "flagBefore": {
+            "x": 208,
+            "y": 264.75,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 208,
+            "y": 264.75,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 15,
+                "y": 241.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 15,
+                "y": 321.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 15,
+                "y": 401.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 15,
+                "y": 481.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p5",
+              "rect": {
+                "x": 15,
+                "y": 561.75,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p6",
+              "rect": {
+                "x": 15,
+                "y": 641.75,
+                "width": 202,
+                "height": 76
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          },
+          "expanded": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 618.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "End turn"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 322.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Road\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 1145,
+                "y": 396.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Settlement\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 1145,
+                "y": 470.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "City\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 1145,
+                "y": 544.59375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "Development card\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 1366,
+            "height": 900,
+            "viewportWidth": 1366,
+            "viewportHeight": 900,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "reviewCollisions": {
+          "narrowExclusive": false,
+          "resizeExclusive": true,
+          "hand": {
+            "x": 292,
+            "y": 656,
+            "width": 782,
+            "height": 244
+          },
+          "actions": {
+            "x": 1140,
+            "y": 255.59375,
+            "width": 210,
+            "height": 439
+          }
+        },
+        "otherTurnFlags": [],
+        "finalDocument": {
+          "width": 1366,
+          "height": 900,
+          "viewportWidth": 1366,
+          "viewportHeight": 900,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4",
+        "/assets/BoardScene3D-BUER9kzx.js": "b7ce46ac3a2d64a37c588ad65103d22ab7c29618b044b1bba01e2aca32094aac"
+      }
+    },
+    {
+      "name": "r3f-mobile-hex-r2",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "players": 4,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 4,
+              "y": 249.890625,
+              "width": 196,
+              "height": 387
+            },
+            "right": {
+              "x": 164,
+              "y": 238.890625,
+              "width": 210,
+              "height": 409
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 801.21875
+          },
+          "board": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 753.21875
+          },
+          "surface": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 753.21875
+          },
+          "toolbar": {
+            "x": 2,
+            "y": 76.78125,
+            "width": 140,
+            "height": 92
+          },
+          "document": {
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "viewportHeight": 844,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 4,
+            "y": 249.890625,
+            "width": 196,
+            "height": 387
+          },
+          "expanded": {
+            "x": 4,
+            "y": 249.890625,
+            "width": 196,
+            "height": 387
+          },
+          "rowsBefore": [
+            {
+              "x": 9,
+              "y": 303.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 376.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 449.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 522.890625,
+              "width": 186,
+              "height": 70
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 9,
+              "y": 303.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 376.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 449.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 522.890625,
+              "width": 186,
+              "height": 70
+            }
+          ],
+          "flagBefore": {
+            "x": 186,
+            "y": 323.890625,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 186,
+            "y": 323.890625,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 9,
+                "y": 303.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 9,
+                "y": 376.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 9,
+                "y": 449.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 9,
+                "y": 522.890625,
+                "width": 186,
+                "height": 70
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 164,
+            "y": 238.890625,
+            "width": 210,
+            "height": 409
+          },
+          "expanded": {
+            "x": 164,
+            "y": 238.890625,
+            "width": 210,
+            "height": 409
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 571.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "結束回合"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 275.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "道路\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 169,
+                "y": 349.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "聚落\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 169,
+                "y": 423.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "城市\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 497.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "發展卡\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "viewportHeight": 844,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "touch": {
+          "players": "false",
+          "actions": "false",
+          "commandsSubmitted": []
+        },
+        "reviewCollisions": {
+          "narrowExclusive": true,
+          "resizeExclusive": false,
+          "hand": {
+            "x": 34,
+            "y": 632,
+            "width": 322,
+            "height": 212
+          },
+          "actions": {
+            "x": 164,
+            "y": 488,
+            "width": 210,
+            "height": 104
+          }
+        },
+        "otherTurnFlags": [
+          {
+            "seat": 1,
+            "flag": {
+              "x": 186,
+              "y": 396.890625,
+              "width": 24,
+              "height": 30
+            }
+          },
+          {
+            "seat": 3,
+            "flag": {
+              "x": 186,
+              "y": 542.890625,
+              "width": 24,
+              "height": 30
+            }
+          }
+        ],
+        "finalDocument": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4",
+        "/assets/BoardScene3D-BUER9kzx.js": "b7ce46ac3a2d64a37c588ad65103d22ab7c29618b044b1bba01e2aca32094aac"
+      }
+    },
+    {
+      "name": "r3f-mobile-hex-r56",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "players": 6,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 4,
+              "y": 176.890625,
+              "width": 196,
+              "height": 533
+            },
+            "right": {
+              "x": 164,
+              "y": 238.890625,
+              "width": 210,
+              "height": 409
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 801.21875
+          },
+          "board": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 753.21875
+          },
+          "surface": {
+            "x": 0,
+            "y": 42.78125,
+            "width": 390,
+            "height": 753.21875
+          },
+          "toolbar": {
+            "x": 2,
+            "y": 76.78125,
+            "width": 140,
+            "height": 92
+          },
+          "document": {
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "viewportHeight": 844,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 4,
+            "y": 176.890625,
+            "width": 196,
+            "height": 533
+          },
+          "expanded": {
+            "x": 4,
+            "y": 176.890625,
+            "width": 196,
+            "height": 533
+          },
+          "rowsBefore": [
+            {
+              "x": 9,
+              "y": 230.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 303.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 376.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 449.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 522.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 595.890625,
+              "width": 186,
+              "height": 70
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 9,
+              "y": 230.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 303.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 376.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 449.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 522.890625,
+              "width": 186,
+              "height": 70
+            },
+            {
+              "x": 9,
+              "y": 595.890625,
+              "width": 186,
+              "height": 70
+            }
+          ],
+          "flagBefore": {
+            "x": 186,
+            "y": 250.890625,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 186,
+            "y": 250.890625,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 9,
+                "y": 230.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 9,
+                "y": 303.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 9,
+                "y": 376.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 9,
+                "y": 449.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p5",
+              "rect": {
+                "x": 9,
+                "y": 522.890625,
+                "width": 186,
+                "height": 70
+              }
+            },
+            {
+              "player": "p6",
+              "rect": {
+                "x": 9,
+                "y": 595.890625,
+                "width": 186,
+                "height": 70
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 164,
+            "y": 238.890625,
+            "width": 210,
+            "height": 409
+          },
+          "expanded": {
+            "x": 164,
+            "y": 238.890625,
+            "width": 210,
+            "height": 409
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 571.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "結束回合"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 275.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "道路\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 169,
+                "y": 349.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "聚落\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 169,
+                "y": 423.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "城市\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 169,
+                "y": 497.890625,
+                "width": 200,
+                "height": 49
+              },
+              "name": "發展卡\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 390,
+            "height": 844,
+            "viewportWidth": 390,
+            "viewportHeight": 844,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "touch": {
+          "players": "false",
+          "actions": "false",
+          "commandsSubmitted": []
+        },
+        "reviewCollisions": {
+          "narrowExclusive": true,
+          "resizeExclusive": false,
+          "hand": {
+            "x": 34,
+            "y": 632,
+            "width": 322,
+            "height": 212
+          },
+          "actions": {
+            "x": 164,
+            "y": 488,
+            "width": 210,
+            "height": 104
+          }
+        },
+        "otherTurnFlags": [
+          {
+            "seat": 1,
+            "flag": {
+              "x": 186,
+              "y": 323.890625,
+              "width": 24,
+              "height": 30
+            }
+          },
+          {
+            "seat": 5,
+            "flag": {
+              "x": 186,
+              "y": 615.890625,
+              "width": 24,
+              "height": 30
+            }
+          }
+        ],
+        "finalDocument": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4",
+        "/assets/BoardScene3D-BUER9kzx.js": "b7ce46ac3a2d64a37c588ad65103d22ab7c29618b044b1bba01e2aca32094aac"
+      }
+    },
+    {
+      "name": "r3f-landscape-hex-r2",
+      "renderer": "r3f",
+      "viewport": [
+        844,
+        390
+      ],
+      "locale": "zh-Hant",
+      "players": 4,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 8,
+              "y": 102.375,
+              "width": 216,
+              "height": 229.625
+            },
+            "right": {
+              "x": 618,
+              "y": 134.375,
+              "width": 210,
+              "height": 165.625
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 345.625
+          },
+          "board": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 297.625
+          },
+          "surface": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 297.625
+          },
+          "toolbar": {
+            "x": 228,
+            "y": 52.375,
+            "width": 140,
+            "height": 92
+          },
+          "document": {
+            "width": 844,
+            "height": 390,
+            "viewportWidth": 844,
+            "viewportHeight": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 8,
+            "y": 102.375,
+            "width": 216,
+            "height": 229.625
+          },
+          "expanded": {
+            "x": 8,
+            "y": 102.375,
+            "width": 216,
+            "height": 229.625
+          },
+          "rowsBefore": [
+            {
+              "x": 15,
+              "y": 158.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 238.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 318.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 398.375,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 15,
+              "y": 158.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 238.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 318.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 398.375,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "flagBefore": {
+            "x": 208,
+            "y": 181.375,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 208,
+            "y": 181.375,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 15,
+                "y": 158.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 15,
+                "y": 211.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 15,
+                "y": 183.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 15,
+                "y": 211.375,
+                "width": 202,
+                "height": 76
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          },
+          "expanded": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 224.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "結束回合"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 201.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "道路\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 623,
+                "y": 250.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "聚落\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 623,
+                "y": 210.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "城市\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 250.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "發展卡\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 844,
+            "height": 390,
+            "viewportWidth": 844,
+            "viewportHeight": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "touch": {
+          "players": "false",
+          "actions": "false",
+          "commandsSubmitted": []
+        },
+        "reviewCollisions": {
+          "narrowExclusive": false,
+          "resizeExclusive": false,
+          "hand": {
+            "x": 244,
+            "y": 200,
+            "width": 356,
+            "height": 190
+          },
+          "actions": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          }
+        },
+        "otherTurnFlags": [],
+        "finalDocument": {
+          "width": 844,
+          "height": 390,
+          "viewportWidth": 844,
+          "viewportHeight": 390,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4",
+        "/assets/BoardScene3D-BUER9kzx.js": "b7ce46ac3a2d64a37c588ad65103d22ab7c29618b044b1bba01e2aca32094aac"
+      }
+    },
+    {
+      "name": "r3f-landscape-hex-r56",
+      "renderer": "r3f",
+      "viewport": [
+        844,
+        390
+      ],
+      "locale": "zh-Hant",
+      "players": 6,
+      "checks": {
+        "geometry": {
+          "rails": {
+            "left": {
+              "x": 8,
+              "y": 102.375,
+              "width": 216,
+              "height": 229.625
+            },
+            "right": {
+              "x": 618,
+              "y": 134.375,
+              "width": 210,
+              "height": 165.625
+            }
+          },
+          "table": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 345.625
+          },
+          "board": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 297.625
+          },
+          "surface": {
+            "x": 0,
+            "y": 44.375,
+            "width": 844,
+            "height": 297.625
+          },
+          "toolbar": {
+            "x": 228,
+            "y": 52.375,
+            "width": 140,
+            "height": 92
+          },
+          "document": {
+            "width": 844,
+            "height": 390,
+            "viewportWidth": 844,
+            "viewportHeight": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "left": {
+          "collapsed": {
+            "x": 8,
+            "y": 102.375,
+            "width": 216,
+            "height": 229.625
+          },
+          "expanded": {
+            "x": 8,
+            "y": 102.375,
+            "width": 216,
+            "height": 229.625
+          },
+          "rowsBefore": [
+            {
+              "x": 15,
+              "y": 158.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 238.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 318.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 398.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 478.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 558.375,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "rowsAfter": [
+            {
+              "x": 15,
+              "y": 158.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 238.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 318.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 398.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 478.375,
+              "width": 202,
+              "height": 76
+            },
+            {
+              "x": 15,
+              "y": 558.375,
+              "width": 202,
+              "height": 76
+            }
+          ],
+          "flagBefore": {
+            "x": 208,
+            "y": 181.375,
+            "width": 24,
+            "height": 30
+          },
+          "flagAfter": {
+            "x": 208,
+            "y": 181.375,
+            "width": 24,
+            "height": 30
+          },
+          "reachableRows": [
+            {
+              "player": "p1",
+              "rect": {
+                "x": 15,
+                "y": 158.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p2",
+              "rect": {
+                "x": 15,
+                "y": 211.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p3",
+              "rect": {
+                "x": 15,
+                "y": 183.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p4",
+              "rect": {
+                "x": 15,
+                "y": 211.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p5",
+              "rect": {
+                "x": 15,
+                "y": 183.375,
+                "width": 202,
+                "height": 76
+              }
+            },
+            {
+              "player": "p6",
+              "rect": {
+                "x": 15,
+                "y": 211.375,
+                "width": 202,
+                "height": 76
+              }
+            }
+          ],
+          "keyboard": "focus opens; Escape closes and restores toggle"
+        },
+        "right": {
+          "collapsed": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          },
+          "expanded": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          },
+          "controls": [
+            {
+              "id": "action-endTurn",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 224.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "結束回合"
+            },
+            {
+              "id": "action-build.road",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 201.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "道路\n1\n1"
+            },
+            {
+              "id": "action-build.settlement",
+              "enabled": false,
+              "rect": {
+                "x": 623,
+                "y": 250.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "聚落\n1\n1\n1\n1"
+            },
+            {
+              "id": "action-build.city",
+              "enabled": false,
+              "rect": {
+                "x": 623,
+                "y": 210.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "城市\n2\n3"
+            },
+            {
+              "id": "action-build.devCard",
+              "enabled": true,
+              "rect": {
+                "x": 623,
+                "y": 250.375,
+                "width": 200,
+                "height": 49
+              },
+              "name": "發展卡\n1\n1\n1"
+            }
+          ],
+          "keyboard": "focus/Enter opens; Escape closes and restores toggle"
+        },
+        "mapControls": {
+          "settings": "closed",
+          "document": {
+            "width": 844,
+            "height": 390,
+            "viewportWidth": 844,
+            "viewportHeight": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "touch": {
+          "players": "false",
+          "actions": "false",
+          "commandsSubmitted": []
+        },
+        "reviewCollisions": {
+          "narrowExclusive": false,
+          "resizeExclusive": false,
+          "hand": {
+            "x": 244,
+            "y": 200,
+            "width": 356,
+            "height": 190
+          },
+          "actions": {
+            "x": 618,
+            "y": 134.375,
+            "width": 210,
+            "height": 165.625
+          }
+        },
+        "otherTurnFlags": [],
+        "finalDocument": {
+          "width": 844,
+          "height": 390,
+          "viewportWidth": 844,
+          "viewportHeight": 390,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "status": "PASS",
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "1ebd8e477c0bbb8659bedc22673d7a7b9ab96baeaaf56b56036608c85d24d7b0",
+        "/assets/index-Dw8ba23F.css": "4d104b56b6760d007ab4de6034bcc48a70e3a59d9fdb28ca0475ae3a9fae2ceb",
+        "/assets/index-DMvFyr58.js": "daf6a46f0b246a7bdb765c0330fbfbe9d0bfa196cacc9c7834f151e2e94e50b4",
+        "/assets/BoardScene3D-BUER9kzx.js": "b7ce46ac3a2d64a37c588ad65103d22ab7c29618b044b1bba01e2aca32094aac"
+      }
+    }
+  ],
+  "browser": "145.0.7632.6",
+  "sourceDigestAfter": "021b2ad5dc2a4514eb57a7f7f0a2d43207a54817a36b3ceb57cb07239a0ac78c",
+  "expectedCases": 12,
+  "passedCases": 12
+}

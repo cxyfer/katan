@@ -20,6 +20,44 @@ function pointerEnter(element: Element, type = 'mouse') {
 afterEach(() => vi.useRealTimers());
 
 describe('table interactions', { timeout: 15000 }, () => {
+  it('unpins and closes the opposite rail on narrow screens without remounting actions', async () => {
+    const width = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    try {
+      await open();
+      const players = screen.getByTestId('players-panel');
+      const actions = screen.getByTestId('action-rail');
+      const road = screen.getByTestId('action-build.road');
+      fireEvent.click(screen.getByTestId('players-pin'));
+      expect(players.getAttribute('data-expanded')).toBe('true');
+      expect(players.getAttribute('data-pinned')).toBe('true');
+      act(() => screen.getByTestId('action-rail-toggle').focus());
+      expect(actions.getAttribute('data-expanded')).toBe('true');
+      expect(players.getAttribute('data-expanded')).toBe('false');
+      expect(players.getAttribute('data-pinned')).toBe('false');
+      const flag = screen.getByTestId('seat-turn-flag');
+      expect(flag.parentElement?.classList.contains('game__table')).toBe(true);
+      act(() => road.focus());
+      pointerEnter(players);
+      expect(players.getAttribute('data-expanded')).toBe('true');
+      expect(actions.getAttribute('data-expanded')).toBe('false');
+      expect(document.activeElement).toBe(screen.getByTestId('action-rail-toggle'));
+      expect(screen.getByTestId('action-build.road')).toBe(road);
+      expect(screen.getByTestId('seat-turn-flag').parentElement).toBe(screen.getByTestId('seat-0'));
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    }
+  });
+
+  it('keeps both rails available together on desktop', async () => {
+    await open();
+    fireEvent.click(screen.getByTestId('players-pin'));
+    act(() => screen.getByTestId('action-rail-toggle').focus());
+    expect(screen.getByTestId('players-panel').getAttribute('data-expanded')).toBe('true');
+    expect(screen.getByTestId('players-panel').getAttribute('data-pinned')).toBe('true');
+    expect(screen.getByTestId('action-rail').getAttribute('data-expanded')).toBe('true');
+  });
+
   it('keeps six public seats visible while details collapse and only shows own private score', async () => {
     const players = Array.from({ length: 6 }, (_, seat) => makePlayer({ id: `p${seat + 1}`, seat, nickname: 'ABCDEFGHIJKLMNOPQRSTUVWX', ownScore: 9 }));
     await open(makeView({ players }));
@@ -88,16 +126,15 @@ describe('table interactions', { timeout: 15000 }, () => {
     expect(api.callsOf('sendCommand')[0]!.args[1]).toMatchObject({ command: { type: 'dev.playMonopoly', resource: 'ore' } });
   });
 
-  it('keeps accepted feedback in the corner until dismissed and unknown results in the central recovery area', async () => {
+  it('auto-hides accepted feedback and retains unknown results in the side recovery area', async () => {
     const api = await open();
-    fireEvent.click(screen.getByTestId('action-endTurn'));
-    const corner = await screen.findByTestId('accepted-notice');
-    expect(corner.contains(screen.getByTestId('command-status'))).toBe(true);
     vi.useFakeTimers();
-    act(() => vi.advanceTimersByTime(30000));
-    expect(screen.getByTestId('accepted-notice')).toBe(corner);
-    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
-    expect(screen.queryByTestId('accepted-notice')).toBeNull();
+    await act(async () => { fireEvent.click(screen.getByTestId('action-endTurn')); });
+    const corner = screen.getByTestId('accepted-notice');
+    expect(corner.contains(screen.getByTestId('command-status'))).toBe(true);
+    act(() => vi.advanceTimersByTime(4000));
+    expect(screen.queryByTestId('command-status')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Dismiss' })).toBeNull();
     vi.useRealTimers();
     api.setCommandResult({ ok: false, error: { code: 'E_NETWORK', messageId: 'error.E_NETWORK' } });
     fireEvent.click(screen.getByTestId('action-endTurn'));

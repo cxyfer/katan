@@ -1,7 +1,9 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
+import { requiredActionFor } from '../state/pending.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/scoreboard-hover.css';
@@ -17,8 +19,52 @@ function ScoreMark({ icon, label, value, awarded = false, testId }: {
   </span>;
 }
 
+function TurnFlag({ floating }: { floating: boolean }) {
+  const t = useT();
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const [overlay, setOverlay] = useState<{ host: HTMLElement; left: number; top: number; visible: boolean } | null>(null);
+  useLayoutEffect(() => {
+    if (!floating) { setOverlay(null); return; }
+    const anchor = anchorRef.current;
+    const host = anchor?.closest<HTMLElement>('.game__table');
+    const list = anchor?.closest<HTMLElement>('.seat-list');
+    const panel = anchor?.closest<HTMLElement>('.players');
+    if (!anchor || !host || !list || !panel) return;
+    const measure = () => {
+      const flag = anchor.getBoundingClientRect();
+      const root = host.getBoundingClientRect();
+      const clip = list.getBoundingClientRect();
+      setOverlay({ host, left: flag.left - root.left, top: flag.top - root.top,
+        visible: flag.top >= clip.top && flag.bottom <= clip.bottom });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const node of [host, panel, list]) observer.observe(node);
+    globalThis.addEventListener('resize', measure);
+    globalThis.addEventListener('scroll', measure, true);
+    return () => {
+      observer.disconnect();
+      globalThis.removeEventListener('resize', measure);
+      globalThis.removeEventListener('scroll', measure, true);
+    };
+  }, [floating]);
+  const contents = <><GameIcon name="flag" size={15} /><span className="visually-hidden">{t('play.turnOwner')}</span></>;
+  return <>
+    <span ref={anchorRef} className="seat__turn" data-testid={overlay ? undefined : 'seat-turn-flag'}
+      title={t('play.turnOwner')} aria-hidden={overlay ? true : undefined}
+      style={overlay ? { visibility: 'hidden' } : undefined}>{contents}</span>
+    {overlay && createPortal(
+      <span className="seat-turn-overlay" data-testid="seat-turn-flag" title={t('play.turnOwner')}
+        hidden={!overlay.visible} style={{ left: overlay.left, top: overlay.top }}>{contents}</span>,
+      overlay.host,
+    )}
+  </>;
+}
+
 /** 玩家列只使用公開投影；個人真實分數僅在本人座位呈現。 */
-export function PlayersPanel({ controller }: { controller: TableController }) {
+export function PlayersPanel({ controller, onExpand, collapseRequested = false, floatingTurnFlag = false }: {
+  controller: TableController; onExpand?: () => void; collapseRequested?: boolean; floatingTurnFlag?: boolean;
+}) {
   const t = useT();
   const { state } = controller;
   const view = state.game?.view;
@@ -56,12 +102,30 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
   }, []);
   const id = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (expanded) onExpand?.();
+  }, [expanded, onExpand]);
+  useEffect(() => {
+    if (!collapseRequested) return;
+    clearClose();
+    pointerInside.current = false;
+    focusInside.current = false;
+    setPinned(false);
+    setPreviewOpen(false);
+    if (panelRef.current?.contains(document.activeElement)) {
+      restoringFocus.current = true;
+      toggleRef.current?.focus();
+      restoringFocus.current = false;
+    }
+  }, [collapseRequested]);
   if (!view) return null;
 
   const selfId = state.session?.id ?? null;
+  const action = requiredActionFor(state);
+  const players = [...view.players].sort((left, right) => left.seat - right.seat);
   const headingId = `players-heading-${id}`;
   const detailsIdForSeat = (seat: number) => `players-details-${id}-${seat}`;
-  const detailsIds = view.players.map((player) => detailsIdForSeat(player.seat)).join(' ');
+  const detailsIds = players.map((player) => detailsIdForSeat(player.seat)).join(' ');
 
   return (
     <section
@@ -84,6 +148,9 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
       onPointerDown={() => { pointerFocus.current = true; focusInside.current = false; }}
       onPointerUp={() => { pointerFocus.current = false; }}
       onPointerCancel={() => { pointerFocus.current = false; }}
+      // 觸控的相容性 mousedown 可能在 pointerup 後才觸發焦點。
+      onMouseDown={() => { pointerFocus.current = true; focusInside.current = false; }}
+      onMouseUp={() => { pointerFocus.current = false; }}
       onFocus={() => {
         focusInside.current = !pointerFocus.current;
         clearClose();
@@ -144,7 +211,7 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
         </button>
       </header>
       <ol className="seat-list" data-testid="seat-list">
-        {view.players.map((player) => {
+        {players.map((player) => {
           const isTurn = view.turn.playerId === player.id;
           const isSelf = player.id === selfId;
           const total = isSelf ? (player.ownScore ?? player.publicScore) : player.publicScore;
@@ -169,12 +236,13 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
               data-self={isSelf ? 'true' : 'false'}
               title={compactLabel}
             >
-              <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>{Array.from(player.nickname)[0]}</span>
-              <span className="seat__identity">
-                <span className="seat__name" title={player.nickname}>{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>
-                {isTurn && <span className="seat__turn" title={t('play.turnOwner')}><GameIcon name="flag" size={12} /><span className="visually-hidden">{t('play.turnOwner')}</span></span>}
-              </span>
-              <span className={`seat__score${isSelf && player.ownScore !== undefined ? ' seat__own-score' : ''}`} title={scoreLabel}><GameIcon name="crown" size={15} /><span className="visually-hidden">{scoreLabel}: </span>{number(total)}</span>
+              <div className="seat__summary">
+                <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>{Array.from(player.nickname)[0]}</span>
+                <span className="seat__identity">
+                  <span className="seat__name" title={player.nickname}>{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>
+                </span>
+                <span className={`seat__score${isSelf && player.ownScore !== undefined ? ' seat__own-score' : ''}`} title={scoreLabel}><GameIcon name="crown" size={15} /><span className="visually-hidden">{scoreLabel}: </span>{number(total)}</span>
+              </div>
               <div className="players__details" id={detailsIdForSeat(player.seat)} hidden={!expanded}>
                 <div className="players__stats" role="group" aria-label={t('table.playersBreakdown')}>
                   <ScoreMark icon="home" label={t('table.playersSettlements', { count: number(settlements) })} value={number(settlements)} />
@@ -192,10 +260,15 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
                   {hiddenBonus > 0 && <ScoreMark icon="sparkles" label={t('table.playersHiddenBonus')} value={number(hiddenBonus)} />}
                 </div>
               </div>
+              {isTurn && <TurnFlag floating={floatingTurnFlag} />}
             </li>
           );
         })}
       </ol>
+      <p className="players__obligation" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}>
+        <GameIcon name="flag" size={14} />
+        <span>{action ? t(action.messageId, action.params) : t('app.loading')}</span>
+      </p>
       {view.turn.pairedActor === 2 && <p className="badge players__paired-actor" data-testid="paired-actor">{t('play.pairedActor', { actor: 2 })}</p>}
     </section>
   );

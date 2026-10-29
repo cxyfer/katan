@@ -1,0 +1,41 @@
+/* 側邊 HUD 疊在棋盤上，不再用訊息列壓縮地圖高度。 */
+.screen--game .game__table { display: block; position: relative; min-height: 0; }
+.screen--game .game__playfield { position: absolute; inset: 0; display: block; padding: 0; }
+.screen--game .game__map { position: absolute; inset: 0 0 48px; min-height: 0; }
+.screen--game .game__messages {
+  position: absolute; top: 8px; left: auto; right: 12px; transform: none;
+  width: min(260px, calc(100% - 70px)); max-height: 28%; overflow: auto;
+  scrollbar-width: thin; z-index: 65; font-size: .72rem;
+}
+.screen--game .game__messages:empty { display: none; }
+.screen--game .game__messages .prompt { padding: 8px 10px; }
+.screen--game .game__messages .prompt h2 { font-size: .8rem; }
+.screen--game .game__messages .prompt p { font-size: .7rem; }
+.screen--game .game__receipt { position: absolute; inset: auto 12px 52px auto; width: min(240px, calc(100% - 24px)); z-index: 67; pointer-events: none; }
+.screen--game .game__receipt:not(:has(.command-status)) { display: none; }
+.screen--game .game__receipt .command-status { padding: 10px 14px; font-size: .75rem; }
+.screen--game .game__receipt p { margin: 0; }
+.screen--game .game__dock { left: 54px; right: 54px; }
+.screen--game .status-strip [data-testid="turn-state"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (max-width: 649px) {
+  .screen--game { --hud-height: 48px; }
+  .screen--game .status-strip { flex-wrap: nowrap; gap: 6px; }
+  .screen--game .status-strip__save { font-size: .55rem; }
+  .screen--game .game__messages { right: 6px; width: min(205px, calc(100% - 62px)); max-height: 26%; }
+  .screen--game .game__dock { left: 34px; right: 34px; }
+}
+/* 短橫屏保留上方通知與下方選單空間，側欄本身可捲動。 */
+.screen--game .action-rail { max-height: calc(100% - 200px); }
+@media (max-height: 520px) {
+  .screen--game .game__messages { max-height: 80px; }
+  .screen--game .action-rail { max-height: calc(100% - 180px); }
+}
+/* 側欄動作必須高於透明的棋盤檢視命中層。 */
+.screen--game .action-rail { z-index: 47; }
+/* 手牌展開時，右欄移到卡片上方；原欄位內容仍可捲動。 */
+@media (max-width: 649px) {
+  .screen--game:has(.hand.hand-fan[data-expanded="true"]) .action-rail {
+    top: auto; bottom: 252px; transform: none;
+    max-height: min(104px, calc(100% - 260px));
+  }
+}
