@@ -48,6 +48,8 @@ describe('public map inspection', () => {
     project();
     const board = fixedBoard();
     board.buildings[4] = { player: 'p2', city: false };
+    board.buildings[0] = { player: 'p2', city: false };
+    board.roads[0] = { player: 'p2', ship: false };
     const edge = geometry.topology.vertices[4]!.edges[0]!;
     board.roads[edge] = { player: 'p2', ship: false };
     const onInspect = vi.fn();
@@ -60,6 +62,20 @@ describe('public map inspection', () => {
     const width = Number(building.getAttribute('width')), height = Number(building.getAttribute('height'));
     expect(center.x >= left && center.x <= left + width && center.y >= top && center.y <= top + height).toBe(false);
     expect(Number(building.getAttribute('data-hit-size'))).toBeLessThan(44);
+    if (renderer === 'svg') {
+      for (const vertex of [0, 4]) {
+        const hit = screen.getByTestId(`inspect-vertex-${vertex}`);
+        const x = Number(hit.getAttribute('x')), y = Number(hit.getAttribute('y'));
+        const w = Number(hit.getAttribute('width')), h = Number(hit.getAttribute('height'));
+        for (const adjacent of geometry.topology.vertices[vertex]!.edges) {
+          const roadGeometry = geometry.edges[adjacent]!;
+          const midpoint = result.current.projectPoint({ x: (roadGeometry.x1 + roadGeometry.x2) / 2 / geometry.scale,
+            y: 0, z: (roadGeometry.y1 + roadGeometry.y2) / 2 / geometry.scale });
+          expect(midpoint.x >= x && midpoint.x <= x + w && midpoint.y >= y && midpoint.y <= y + h,
+            `vertex ${vertex} must not cover the midpoint of road ${adjacent}`).toBe(false);
+        }
+      }
+    }
     const road = screen.getByTestId(`inspect-edge-${edge}`);
     expect(Number(road.getAttribute('stroke-width'))).toBeLessThan(44);
     expect(road.style.strokeWidth).toBe(road.getAttribute('stroke-width'));

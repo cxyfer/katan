@@ -39,7 +39,6 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
   const rect = controls.viewport.rect;
   const hitSize = inspectionHitSize(elements.filter((element) => element.kind === 'hex')
     .map((element) => element.outline!.map(controls.projectPoint)));
-  const halfHit = hitSize / 2;
   const layerRef = useRef<SVGSVGElement | null>(null);
   const focusedRef = useRef<string | null>(null);
   useEffect(() => {
@@ -60,10 +59,21 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
       const anchor = controls.projectPoint(element.world);
       const outline = element.outline?.map(controls.projectPoint);
       if (!Number.isFinite(anchor.x) || !Number.isFinite(anchor.y) || (!anchor.visible && !outline?.some((point) => point.visible))) return null;
+      // A square around a vertex must end before its incident road midpoints.
+      // 0.6 leaves space even when a road runs diagonally across the square.
+      const incidentLengths = element.kind === 'vertex' ? geometry.topology.vertices[element.index]!.edges.flatMap((index) => {
+        const edge = geometry.edges[index]!;
+        const a = controls.projectPoint({ x: edge.x1 / geometry.scale, y: 0, z: edge.y1 / geometry.scale });
+        const b = controls.projectPoint({ x: edge.x2 / geometry.scale, y: 0, z: edge.y2 / geometry.scale });
+        const length = Math.hypot(a.x - b.x, a.y - b.y);
+        return Number.isFinite(length) && length > 0 ? [length] : [];
+      }) : [];
+      const pieceHitSize = incidentLengths.length ? Math.min(hitSize, Math.min(...incidentLengths) * 0.6) : hitSize;
+      const halfHit = pieceHitSize / 2;
       const option = inspectDescription(context, element);
       const active = selected?.kind === element.kind && selected.index === element.index;
       const shared = { role: 'button', tabIndex: 0, 'aria-label': `${t('board.inspect')}: ${option.title} ${option.detail}`,
-        'aria-pressed': active, 'data-hit-size': hitSize, 'data-testid': `inspect-${element.kind}-${element.index}`,
+        'aria-pressed': active, 'data-hit-size': pieceHitSize, 'data-testid': `inspect-${element.kind}-${element.index}`,
         onFocus: () => { focusedRef.current = `inspect-${element.kind}-${element.index}`; },
         onClick: () => choose(element), onKeyDown: (event: React.KeyboardEvent) => keyboard(event, element),
         className: `board-inspect-hit${active ? ' board-inspect-hit--active' : ''}` };
@@ -75,7 +85,7 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
       const top = element.top ? controls.projectPoint(element.top) : anchor;
       return <rect key={`${element.kind}-${element.index}`} {...shared} rx={10}
         x={Math.min(anchor.x, top.x) - rect.left - halfHit} y={Math.min(anchor.y, top.y) - rect.top - halfHit}
-        width={Math.abs(anchor.x - top.x) + hitSize} height={Math.abs(anchor.y - top.y) + hitSize} />;
+        width={Math.abs(anchor.x - top.x) + pieceHitSize} height={Math.abs(anchor.y - top.y) + pieceHitSize} />;
     })}
   </svg>;
 }
