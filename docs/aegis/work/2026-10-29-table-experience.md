@@ -127,6 +127,8 @@ screen readers, Firefox/WebKit, reference-hardware performance, and human
 visual acceptance were not run for these interaction changes. The existing
 large 3D bundle warning remains a build warning.
 
-The four delegated feature branches are retained for provenance. The
-integration worktree remains available for PR review; clean temporary
-subagent worktrees can be archived after delivery without deleting branches.
+The four delegated feature branches are retained for provenance. Their clean
+temporary worktrees were archived using the native managed-worktree lifecycle;
+artifact readback, Git registration, and exact path checks confirmed all four
+archives completed. The integration worktree remains available for PR review.
+The main checkout's pre-existing documentation changes remain untouched.

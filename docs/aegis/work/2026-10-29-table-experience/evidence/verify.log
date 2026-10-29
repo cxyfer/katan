@@ -87,7 +87,7 @@ dist/assets/index-CmPYNxt7.js           475.36 kB │ gzip: 142.93 kB │ map: 1
 dist/assets/BoardScene3D-6HpOYErP.js    954.59 kB │ gzip: 256.97 kB │ map: 4,369.35 kB
 
 ✓ built in 654ms
-[plugin builtin:vite-reporter] 
+[plugin builtin:vite-reporter]
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
