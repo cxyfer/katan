@@ -76,11 +76,12 @@ describe('entry and locale', () => {
 
 describe('board rendering', () => {
   it.each([
-    ['en', 'Dice: 3 + 4', 'Public score: '],
-    ['zh-TW', '骰子: 3 + 4', '公開分數: '],
-  ])('exposes dice and public-score context in %s', async (language, diceName, scoreLabel) => {
+    ['en', 'Dice: 3 + 4', 'Public score: ', 'Your total: '],
+    ['zh-TW', '骰子: 3 + 4', '公開分數: ', '你的總分: '],
+  ])('exposes dice, own total and opponents’ public scores in %s', async (language, diceName, publicScoreLabel, ownScoreLabel) => {
     const view = makeView();
     view.turn.dice = [3, 4];
+    view.players[0]!.ownScore = 4;
     renderApp(createFakeApi({ snapshot: makeSnapshot(view) }), [language]);
     fireEvent.click(await screen.findByTestId('resume-g1'));
     await screen.findByTestId('board-svg');
@@ -88,7 +89,9 @@ describe('board rendering', () => {
     fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: language === 'en' ? 'en' : 'zh-Hant' } });
     expect(await screen.findByRole('img', { name: diceName })).toBeTruthy();
     for (const player of view.players) {
-      expect(screen.getByTestId(`seat-${player.seat}`).textContent).toContain(scoreLabel + player.publicScore);
+      const isSelf = player.id === 'p1';
+      const score = screen.getByTestId(`seat-${player.seat}`).querySelector('.seat__score');
+      expect(score?.textContent).toBe((isSelf ? ownScoreLabel : publicScoreLabel) + (isSelf ? player.ownScore : player.publicScore));
     }
   });
 
