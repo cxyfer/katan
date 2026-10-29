@@ -316,6 +316,7 @@ export const en: Catalog = {
   'play.waitingForPlayers': 'Waiting for {players}',
   'play.roll': 'Roll dice',
   'play.rollDice': 'Roll',
+  'dice.rolling': 'Rolling…',
   'play.diceResult': 'Rolled {first} + {second} = {total}',
   'play.endTurn': 'End turn',
   'play.build': 'Build',

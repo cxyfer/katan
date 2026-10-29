@@ -112,13 +112,16 @@ describe('table interactions', { timeout: 15000 }, () => {
     api.setSnapshot(makeSnapshot(next, 13));
     vi.useFakeTimers();
     await act(async () => { fireEvent.click(screen.getByTestId('action-endTurn')); });
-    expect(screen.getByTestId('dice-focus').textContent).toContain('Rolled 6 + 6 = 12');
+    expect(screen.getByTestId('dice-focus').getAttribute('data-phase')).toBe('rolling');
+    expect(screen.getByTestId('dice-announcement').textContent).toBe('');
     const panel = screen.getByTestId('dice-focus').querySelector('.dice-focus__panel');
     fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: 'zh-Hant' } });
     fireEvent.click(screen.getByTestId('hand-toggle'));
     fireEvent.click(screen.getByTestId('zoom-in'));
     expect(screen.getByTestId('dice-focus').querySelector('.dice-focus__panel')).toBe(panel);
-    act(() => vi.advanceTimersByTime(800));
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByTestId('dice-announcement').textContent).toContain('6 + 6 = 12');
+    act(() => vi.advanceTimersByTime(1000));
     expect(screen.queryByTestId('dice-focus')).toBeNull();
     await act(async () => { fireEvent.click(screen.getByTestId('action-endTurn')); });
     expect(api.callsOf('sendCommand')).toHaveLength(2);

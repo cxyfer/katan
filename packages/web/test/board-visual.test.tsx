@@ -62,8 +62,11 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     vi.useFakeTimers();
     const next = rolled(13, [6, 6]);
     act(() => sockets[0]!.deliver({ type: 'snapshot', payload: next }));
+    expect(screen.getByTestId('dice-focus').parentElement).toBe(document.body);
+    expect(screen.getByTestId('dice-roll-animation').getAttribute('aria-hidden')).toBe('true');
     const panel = screen.getByTestId('dice-focus').querySelector('.dice-focus__panel');
-    expect(screen.getByTestId('dice-focus').textContent).toContain('6 + 6 = 12');
+    expect(screen.getByTestId('dice-focus').getAttribute('data-phase')).toBe('rolling');
+    expect(screen.getByTestId('dice-focus').textContent).not.toContain('6 + 6 = 12');
     act(() => vi.advanceTimersByTime(400));
     act(() => {
       sockets[0]!.deliver({ type: 'snapshot', payload: next });
@@ -74,9 +77,12 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     fireEvent.click(screen.getByTestId('zoom-in'));
     fireEvent(window, new Event('resize'));
     expect(screen.getByTestId('dice-focus').querySelector('.dice-focus__panel')).toBe(panel);
-    act(() => vi.advanceTimersByTime(400));
+    act(() => vi.advanceTimersByTime(1100));
+    expect(screen.getByTestId('dice-focus').textContent).toContain('6 + 6 = 12');
+    act(() => vi.advanceTimersByTime(1000));
     expect(screen.queryByTestId('dice-focus')).toBeNull();
     expect(screen.getByTestId('dice-roll-animation').textContent).toContain('6');
+    expect(screen.getByTestId('dice-roll-animation').getAttribute('aria-hidden')).toBeNull();
     act(() => sockets[0]!.deliver({ type: 'snapshot', payload: next }));
     expect(screen.queryByTestId('dice-focus')).toBeNull();
     expect(api.callsOf('sendCommand')).toHaveLength(0);

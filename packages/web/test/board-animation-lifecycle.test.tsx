@@ -36,10 +36,12 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.pendingCount).toBe(2);
     act(() => result.current.resetPresentation());
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     expect(result.current.pendingCount).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
     rerender(props(14));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     rerender(props(15));
     expect(result.current.active?.events[0]?.seq).toBe(15);
     expect(next.sync).toEqual({ generation: 1, cause: 'snapshot' });
@@ -48,6 +50,7 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
   it('plays a new snapshot once for at most 800ms, without restarting on unrelated renders', () => {
     const { result, rerender, unmount } = mount();
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     rerender(props(13));
     const group = result.current.active;
     expect(group?.events[0]?.seq).toBe(13);
@@ -58,8 +61,10 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.active).toBe(group);
     act(() => vi.advanceTimersByTime(1));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice?.seq).toBe(13);
     rerender(props(13));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice?.seq).toBe(13);
     unmount();
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -91,6 +96,9 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.active?.events[0]?.seq).toBe(16);
     act(() => vi.advanceTimersByTime(800));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice?.seq).toBe(16);
+    act(() => vi.advanceTimersByTime(500));
+    expect(result.current.activeDice).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
     unmount();
   });
@@ -100,19 +108,24 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     rerender(props(13));
     rerender({ ...props(13), mandatory: true });
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
     rerender(props(13));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     rerender(props(14));
     expect(result.current.active).toBeTruthy();
     rerender({ ...props(14), online: false });
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     rerender(props(50, 'reconnect', 2));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     rerender(props(51, 'snapshot', 2));
     expect(result.current.active).toBeTruthy();
     rerender(props(60, 'gap', 3));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
     unmount();
   });
@@ -124,9 +137,11 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(vi.getTimerCount()).toBe(0);
     rerender(props(14));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     act(() => { hidden = false; document.dispatchEvent(new Event('visibilitychange')); });
     rerender(props(14));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     rerender(props(15));
     expect(result.current.active?.events[0]?.seq).toBe(15);
     unmount();
@@ -166,14 +181,17 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     const { result, rerender, unmount } = mount();
     rerender(props(13));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
     act(() => { media.matches = false; media.dispatchEvent(new Event('change')); });
     rerender(props(13));
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     rerender(props(14));
     expect(result.current.active).toBeTruthy();
     act(() => { media.matches = true; media.dispatchEvent(new Event('change')); });
     expect(result.current.active).toBeNull();
+    expect(result.current.activeDice).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
     unmount();
     for (const args of addMedia.mock.calls) expect(removeMedia.mock.calls).toContainEqual(args);
@@ -183,7 +201,7 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
   it('discards timers and history on unmount / remount, also in StrictMode', () => {
     const first = mount();
     first.rerender(props(13));
-    expect(vi.getTimerCount()).toBe(1);
+    expect(vi.getTimerCount()).toBe(2);
     first.unmount();
     expect(vi.getTimerCount()).toBe(0);
     const second = renderHook(() => useBoardAnimation(snapshot(13), props().sync, true, false), { wrapper: StrictMode });

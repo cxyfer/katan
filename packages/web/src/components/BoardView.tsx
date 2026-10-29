@@ -15,6 +15,7 @@ import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
 import { BoardTargetOverlay } from './BoardTargetOverlay.tsx';
 import { BoardEffects } from './BoardEffects.tsx';
+import { DicePresentation } from './DicePresentation.tsx';
 import { Legend } from './Legend.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { SvgBoard } from './SvgBoard.tsx';
@@ -131,13 +132,7 @@ export function BoardView({ controller }: { controller: TableController }) {
     inspect({ kind, index });
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
   }, [actions, intent, inspect]);
-  const focusedRoll = useMemo(() => {
-    const rolled = animation.active?.events.find((event) => event.type === 'turn.rolled');
-    const dice = rolled?.params.dice;
-    if (!rolled || !Array.isArray(dice) || dice.length !== 2 || !dice.every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) return null;
-    return { seq: rolled.seq, dice: [dice[0], dice[1]] as [number, number] };
-  }, [animation.active]);
-  const diceRolling = focusedRoll !== null;
+  const focusedRoll = animation.activeDice;
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);
 
   if (!view) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
@@ -224,7 +219,7 @@ export function BoardView({ controller }: { controller: TableController }) {
         )}
         <span className="board__zoom-readout" data-testid="zoom-readout">{t('board.zoomLevel', { percent: Math.round(zoom * 100) })}</span>
         {view.turn.dice && (
-          <span className="board__dice" role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
+          <span className="board__dice" data-presenting={focusedRoll ? 'true' : undefined} aria-hidden={focusedRoll ? true : undefined} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
             {view.turn.dice.map((value, index) => <span className="board__die" key={index} aria-hidden="true">{value}</span>)}
             <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
           </span>
@@ -244,17 +239,9 @@ export function BoardView({ controller }: { controller: TableController }) {
 
       {effective === 'r3f' && <p className="board-camera-hint" data-testid="camera-gesture-hint">{t('board.cameraGestureHint')}</p>}
 
-      {diceRolling && focusedRoll && boardRef.current && createPortal(
-        <div className="dice-focus" data-testid="dice-focus" aria-hidden="true">
-          <div className="dice-focus__panel" key={focusedRoll.seq}>
-            <span className="dice-focus__label">{t('play.dice')}</span>
-            <div className="dice-focus__pair" aria-hidden="true">
-              {focusedRoll.dice.map((value, index) => <span className="dice-focus__die" key={index}>{value}</span>)}
-            </div>
-            <strong>{t('play.diceResult', { first: focusedRoll.dice[0], second: focusedRoll.dice[1], total: focusedRoll.dice[0] + focusedRoll.dice[1] })}</strong>
-          </div>
-        </div>,
-        boardRef.current.closest('[data-testid="game-stage"]') ?? boardRef.current,
+      {focusedRoll && createPortal(
+        <DicePresentation key={focusedRoll.id} dice={focusedRoll.dice} />,
+        document.fullscreenElement ?? document.body,
       )}
       <div ref={surfaceRef} className="board__surface" data-testid="board-surface" role="region"
         aria-label={t(effective === 'r3f' ? 'a11y.boardRegion3d' : 'a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>

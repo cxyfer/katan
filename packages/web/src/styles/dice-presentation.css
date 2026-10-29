@@ -1,0 +1,16 @@
+/* Portal 脫離地圖與側欄的定位／裁切，標準及全螢幕均以可見視窗置中。 */
+.board__dice[data-presenting="true"] { visibility: hidden; }
+.dice-presentation { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; pointer-events: none; padding: 16px; }
+.dice-presentation .dice-presentation__panel { width: min(360px, 100%); box-sizing: border-box; padding: 24px; border: 1px solid #d6c28aaa; border-radius: 20px; background: radial-gradient(ellipse at top,#35584bf5,#0c2a30f5); box-shadow: 0 20px 90px #00151dbb; text-align: center; animation: none; }
+.dice-presentation__label { display: block; margin-bottom: 22px; font-size: .9rem; color: #e4d4a6; letter-spacing: .12em; }
+.dice-presentation__pair { display: flex; justify-content: center; gap: 26px; margin-bottom: 28px; }
+.dice-presentation__die { display: grid; place-items: center; width: clamp(70px, 12vw, 102px); aspect-ratio: 1; border: 2px solid #ffeab2; border-radius: 18px; color: #483c27; background: linear-gradient(140deg,#fff4d7,#d7b776); box-shadow: 0 7px #9b7e4a, 0 14px 20px #00141b88; font-family: var(--font-display); font-size: 3.4rem; font-weight: 750; }
+.dice-presentation__die--rolling { animation: dice-tumble 420ms ease-in-out infinite; }
+.dice-presentation__die--rolling:nth-child(2) { animation-direction: reverse; animation-delay: -170ms; }
+.dice-presentation__die--rolling::before { content: '⚀'; font-family: sans-serif; animation: dice-faces 480ms step-end infinite; }
+.dice-presentation__die--rolling:nth-child(2)::before { animation-delay: -240ms; }
+.dice-presentation .dice-presentation__panel strong { display: block; min-height: 1.5em; color: #f7e7bd; font-size: .95rem; }
+@keyframes dice-tumble { 0%,100% { transform: translateY(0) rotate(-13deg); } 50% { transform: translateY(-12px) rotate(18deg); } }
+@keyframes dice-faces { 0%,100% { content: '⚀'; } 16% { content: '⚄'; } 33% { content: '⚂'; } 50% { content: '⚅'; } 66% { content: '⚁'; } 83% { content: '⚃'; } }
+@media (max-height: 420px) { .dice-presentation .dice-presentation__panel { padding: 14px; } .dice-presentation__label { margin-bottom: 14px; } .dice-presentation__pair { margin-bottom: 18px; } .dice-presentation__die { width: 64px; font-size: 2.8rem; } }
+@media (prefers-reduced-motion: reduce) { .dice-presentation__die--rolling, .dice-presentation__die--rolling::before { animation: none; } }

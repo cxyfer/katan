@@ -312,6 +312,7 @@ export const zhHant: Catalog = {
   'play.waitingForPlayers': '等待 {players}',
   'play.roll': '擲骰',
   'play.rollDice': '擲骰',
+  'dice.rolling': '擲骰中…',
   'play.diceResult': '擲出 {first} + {second} = {total}',
   'play.endTurn': '結束回合',
   'play.build': '建造',
