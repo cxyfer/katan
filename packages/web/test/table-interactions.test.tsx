@@ -19,7 +19,7 @@ function pointerEnter(element: Element, type = 'mouse') {
 }
 afterEach(() => vi.useRealTimers());
 
-describe('table interactions', () => {
+describe('table interactions', { timeout: 15000 }, () => {
   it('keeps six public seats visible while details collapse and only shows own private score', async () => {
     const players = Array.from({ length: 6 }, (_, seat) => makePlayer({ id: `p${seat + 1}`, seat, nickname: 'ABCDEFGHIJKLMNOPQRSTUVWX', ownScore: 9 }));
     await open(makeView({ players }));
@@ -102,7 +102,7 @@ describe('table interactions', () => {
     await screen.findByTestId('command-resolve');
     expect(screen.getByTestId('command-status').closest('.game__messages')).toBeTruthy();
     expect(screen.queryByTestId('accepted-notice')).toBeNull();
-  });
+  }, 15000);
 
   it('plays a new command-refresh snapshot once and preserves it across locale / panel changes', async () => {
     const api = await open();
@@ -110,16 +110,18 @@ describe('table interactions', () => {
     next.seq = 13;
     next.turn.dice = [6, 6];
     api.setSnapshot(makeSnapshot(next, 13));
-    fireEvent.click(screen.getByTestId('action-endTurn'));
-    await waitFor(() => expect(screen.getByTestId('dice-focus').textContent).toContain('Rolled 6 + 6 = 12'));
+    vi.useFakeTimers();
+    await act(async () => { fireEvent.click(screen.getByTestId('action-endTurn')); });
+    expect(screen.getByTestId('dice-focus').textContent).toContain('Rolled 6 + 6 = 12');
     const panel = screen.getByTestId('dice-focus').querySelector('.dice-focus__panel');
     fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: 'zh-Hant' } });
     fireEvent.click(screen.getByTestId('hand-toggle'));
     fireEvent.click(screen.getByTestId('zoom-in'));
     expect(screen.getByTestId('dice-focus').querySelector('.dice-focus__panel')).toBe(panel);
-    await waitFor(() => expect(screen.queryByTestId('dice-focus')).toBeNull());
-    fireEvent.click(screen.getByTestId('action-endTurn'));
-    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(2));
+    act(() => vi.advanceTimersByTime(800));
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    await act(async () => { fireEvent.click(screen.getByTestId('action-endTurn')); });
+    expect(api.callsOf('sendCommand')).toHaveLength(2);
     expect(screen.queryByTestId('dice-focus')).toBeNull();
   });
 

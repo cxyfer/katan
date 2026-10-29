@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { CommandRequest } from '@catan/protocol';
 import type { Offer } from '@catan/rules';
@@ -6,6 +6,14 @@ import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeHints, makeSnapshot, makeView } from '../src/test/fixtures.ts';
+
+beforeEach(() => {
+  const original = HTMLElement.prototype.getBoundingClientRect;
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    if (this.dataset.testid === 'board-surface') return { x: 0, y: 0, left: 0, top: 0, width: 1200, height: 900, right: 1200, bottom: 900, toJSON() {} };
+    return original.call(this);
+  });
+});
 
 function renderApp(api: FakeApi) {
   return render(
@@ -188,7 +196,7 @@ describe('development cards and pending effects', () => {
 
     fireEvent.click(screen.getByTestId('play-knight-0'));
     const target = await screen.findByTestId('target-hex-0');
-    expect(target.getAttribute('role')).toBe('button');
+    expect(target.tagName).toBe('BUTTON');
   });
 
   it('submits exactly the required discard count', async () => {

@@ -9,6 +9,18 @@
 import type { Catalog } from './catalogs.ts';
 
 export const zhHant: Catalog = {
+  'board.renderer': '棋盤渲染',
+  'board.rendererSvg': 'SVG（相容）',
+  'board.renderer3d': '3D（實驗）',
+  'board.rendererAuto': '自動（實驗）',
+  'board.quality': '3D 品質',
+  'board.qualityStandard': '標準',
+  'board.qualityLow': '低',
+  'board.rendererLoading': '載入 3D 中，SVG 仍可操作。',
+  'board.rendererFailed': '3D 無法使用，SVG 仍可操作。',
+  'board.rendererReady': '實驗 3D',
+  'board.rendererRetry': '重試 3D',
+  'board.rendererSettings': '顯示',
   // --- app shell -----------------------------------------------------------
   'app.title': '卡坦桌遊桌',
   'app.tagline': '在瀏覽器上共享同一張桌的卡坦式對局',
@@ -206,6 +218,13 @@ export const zhHant: Catalog = {
   'board.pirate': '海盜',
   'board.zoomIn': '放大',
   'board.zoomOut': '縮小',
+  'board.rotateLeft': '向左旋轉',
+  'board.rotateRight': '向右旋轉',
+  'board.rotateLeftHint': '鏡頭向左旋轉 30°（棋盤快捷鍵 [）',
+  'board.rotateRightHint': '鏡頭向右旋轉 30°（棋盤快捷鍵 ]）',
+  'board.viewingAngle': '觀看角度',
+  'board.viewingAngleDegrees': '{degrees} 度',
+  'board.cameraGestureHint': '拖曳旋轉／俯仰 · Shift／右鍵拖曳平移 · 滾輪／雙指縮放',
   'board.resetView': '重設視角',
   'board.fitBoard': '符合棋盤',
   'board.zoomLevel': '縮放 {percent}%',
@@ -455,6 +474,7 @@ export const zhHant: Catalog = {
   'a11y.actionRejected': '動作被拒絕：{reason}',
   'a11y.newMessage': '來自 {player} 的新聊天訊息。',
   'a11y.boardRegion': '遊戲棋盤。若需非精準的選取方式，請使用候選清單。',
+  'a11y.boardRegion3d': '3D 遊戲棋盤。按住拖曳調整視角：左右旋轉，上下調整俯視角。Shift 加拖曳或右鍵拖曳平移；滾輪或雙指縮放，雙指移動平移。Home 重設視角。若需非精準的選取方式，請使用候選清單。',
 
   // --- profiles ------------------------------------------------------------
   'profile.base-2025': '基本版，3–4 人',

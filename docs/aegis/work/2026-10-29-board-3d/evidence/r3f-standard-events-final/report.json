@@ -1,0 +1,433 @@
+{
+  "schemaVersion": 1,
+  "runId": "r3f-standard-events-final",
+  "startedAt": "2026-10-28T18:58:28Z",
+  "status": "PASS",
+  "suite": "events",
+  "requestedRenderer": "r3f",
+  "quality": "standard",
+  "browser": "chromium",
+  "cases": [
+    {
+      "id": "H3-source-frozen",
+      "status": "PASS",
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1"
+    },
+    {
+      "id": "T01-source",
+      "status": "PASS",
+      "detail": "All served HTML/JS/CSS match this worktree dist byte for byte."
+    },
+    {
+      "id": "E01-roll-overlay-lifecycle",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "checkpoints": [
+        {
+          "step": "roll",
+          "overlayBefore": 0,
+          "overlayAfter": 1
+        },
+        {
+          "step": "settled",
+          "overlayAfter": 0
+        },
+        {
+          "step": "build.city",
+          "effects": 1
+        },
+        {
+          "step": "build.road",
+          "effects": 1
+        }
+      ],
+      "video": "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/events-sequence.webm",
+      "recordingElapsedMs": 11000,
+      "videoMinimumMs": 10000,
+      "videoMaximumMs": 15000,
+      "evidence": {
+        "renderer": {
+          "requested": "r3f",
+          "effective": "r3f",
+          "quality": "standard",
+          "status": "ready"
+        },
+        "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+        "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+        "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+        "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+        "errors": [],
+        "consoleErrors": [],
+        "caughtExceptions": [],
+        "unmapped": []
+      }
+    },
+    {
+      "id": "E02-authoritative-placement",
+      "status": "NOT RUN",
+      "detail": "Receipt/confirmedPlacement equivalence and 240-290ms timing were not asserted by this browser pass."
+    },
+    {
+      "id": "E03-preview-ghost-depth",
+      "status": "NOT RUN",
+      "detail": "Live ghost depthWrite/occlusion inspection was not run."
+    },
+    {
+      "id": "E04-production-aggregate-cap",
+      "status": "NOT RUN",
+      "detail": "The 24-icon production/theft cap is source-tested; no captured high-count browser fixture was run here."
+    },
+    {
+      "id": "E06-event-recovery",
+      "status": "NOT RUN",
+      "detail": "Setup/reroll/robber/discard/offline/reconnecting/unknown receipt recovery was not exercised end to end."
+    },
+    {
+      "id": "E05-privacy-p1",
+      "status": "PASS",
+      "viewer": "p1",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/privacy-p1-r3f-standard-1366x768-en.png",
+      "evidence": {
+        "renderer": {
+          "requested": "r3f",
+          "effective": "r3f",
+          "quality": "standard",
+          "status": "ready"
+        },
+        "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+        "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+        "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+        "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+        "errors": [],
+        "consoleErrors": [],
+        "caughtExceptions": [],
+        "unmapped": []
+      }
+    },
+    {
+      "id": "E05-privacy-p2",
+      "status": "PASS",
+      "viewer": "p2",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/privacy-p2-r3f-standard-1366x768-en.png",
+      "evidence": {
+        "renderer": {
+          "requested": "r3f",
+          "effective": "r3f",
+          "quality": "standard",
+          "status": "ready"
+        },
+        "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+        "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+        "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+        "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+        "errors": [],
+        "consoleErrors": [],
+        "caughtExceptions": [],
+        "unmapped": []
+      }
+    },
+    {
+      "id": "E05-privacy-p3",
+      "status": "PASS",
+      "viewer": "p3",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/privacy-p3-r3f-standard-1366x768-en.png",
+      "evidence": {
+        "renderer": {
+          "requested": "r3f",
+          "effective": "r3f",
+          "quality": "standard",
+          "status": "ready"
+        },
+        "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+        "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+        "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+        "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+        "errors": [],
+        "consoleErrors": [],
+        "caughtExceptions": [],
+        "unmapped": []
+      }
+    },
+    {
+      "id": "E05-privacy-outsider",
+      "status": "PASS",
+      "viewer": "outsider",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/privacy-outsider-r3f-standard-1366x768-en.png",
+      "evidence": {
+        "renderer": {
+          "requested": "r3f",
+          "effective": "r3f",
+          "quality": "standard",
+          "status": "ready"
+        },
+        "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+        "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+        "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+        "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+        "errors": [],
+        "consoleErrors": [],
+        "caughtExceptions": [],
+        "unmapped": []
+      }
+    },
+    {
+      "id": "E05-neutral-markup-equality",
+      "status": "PASS",
+      "viewers": [
+        "p1",
+        "p2",
+        "p3",
+        "outsider"
+      ],
+      "distinctMarkup": 1
+    },
+    {
+      "id": "E06-reduced-motion",
+      "status": "PASS",
+      "overlays": 0,
+      "persistentDice": "2\n4\nRolled 2 + 4 = 6",
+      "evidence": {
+        "renderer": {
+          "requested": "r3f",
+          "effective": "r3f",
+          "quality": "standard",
+          "status": "ready"
+        },
+        "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+        "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+        "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+        "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+        "errors": [],
+        "consoleErrors": [],
+        "caughtExceptions": [],
+        "unmapped": []
+      }
+    },
+    {
+      "id": "E01-background-reconnect",
+      "status": "NOT RUN",
+      "detail": "Background visibility and real reconnect require a controlled service lifecycle; jsdom lifecycle tests are supplementary and not promoted to browser PASS."
+    }
+  ],
+  "artifacts": [
+    "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/events-sequence.webm",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/privacy-outsider-r3f-standard-1366x768-en.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/privacy-p1-r3f-standard-1366x768-en.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/privacy-p2-r3f-standard-1366x768-en.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/privacy-p3-r3f-standard-1366x768-en.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/report.json",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/server.log",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/r3f-standard-events-final/videos/page@12cc8e36820511aaab7ec4efbe2ef0b0.webm"
+  ],
+  "metrics": {},
+  "limitations": [
+    "API and WebSocket delivery use deterministic authorized fixture routes; this is not the R02 real-flow gate.",
+    "Headless Chromium may use SwiftShader; WebGL2 success proves a context/render path, not physical GPU or mobile performance.",
+    "Playwright browsers are worktree-local in .tmp/board-3d-browsers rather than .tmp/board-3d-venv/browsers; no global browser install was used.",
+    "Mocked onUnavailable callbacks in jsdom are source tests and are never promoted to native context-loss PASS.",
+    "No screen reader, user visual acceptance or physical mobile device was used."
+  ],
+  "provenance": {
+    "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+    "workingTreeStatus": [
+      "?? docs/aegis/work/2026-10-29-board-3d/evidence/"
+    ],
+    "sourceWorkingTreeStatus": [],
+    "sourcePaths": [
+      "packages/web/src",
+      "packages/web/index.html",
+      "packages/web/package.json",
+      "packages/web/tsconfig.json",
+      "packages/web/vite.config.ts",
+      "packages/web/test",
+      "packages/rules/src",
+      "packages/rules/package.json",
+      "packages/protocol/src",
+      "packages/protocol/package.json",
+      "packages/server/src",
+      "packages/server/package.json",
+      "scripts/board-visual/fixtures.mjs",
+      "scripts/board-visual/verify.py",
+      "scripts/board-3d",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "tsconfig.base.json"
+    ],
+    "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+    "worktreeDirty": true,
+    "sourceDirty": false,
+    "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+    "buildFiles": {
+      "assets/board-atlas-gwoo0gAO.svg": {
+        "sha256": "bf71959a5409400a4b11fe25b2b07ef9a2cab865dea6cc8cddd7876bbd1c8d02",
+        "bytes": 6555
+      },
+      "assets/BoardScene3D-DYeWSKad.js": {
+        "sha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24",
+        "bytes": 935514
+      },
+      "assets/BoardScene3D-DYeWSKad.js.map": {
+        "sha256": "fa755a1b6312146b31c0ad20cf5091096a68d62e8b35f73f20a0d7846203807e",
+        "bytes": 4242678
+      },
+      "assets/index-DeF8S8Wj.js": {
+        "sha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d",
+        "bytes": 448899
+      },
+      "assets/index-DeF8S8Wj.js.map": {
+        "sha256": "ef477e432d922c29fbacc69f592d2794d424369d6c2f67d6dd85ad9536dfa9ec",
+        "bytes": 1811210
+      },
+      "assets/index-DGT5H3u5.css": {
+        "sha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2",
+        "bytes": 80273
+      },
+      "index.html": {
+        "sha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e",
+        "bytes": 486
+      }
+    }
+  },
+  "environment": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]",
+    "pythonExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\Scripts\\python.exe",
+    "node": "v24.12.0",
+    "pnpm": "10.28.0",
+    "cpu": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "logicalCpuCount": 16,
+    "ramBytes": null,
+    "gpu": null,
+    "powerMode": "not observed",
+    "refreshRateHz": "not observed",
+    "browserCache": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-browsers",
+    "hardwareQueryLimitation": "powershell exited 1: Get-CimInstance : 拒絕存取 \nAt line:1 char:39\n+ ... tionPreference='Stop'; @{cpu=(Get-CimInstance Win32_Processor | Selec ...\n+                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n    + CategoryInfo          : PermissionDenied: (root\\cimv2:Win32_Processor:String) [Get-CimInstance], CimException\n    + FullyQualifiedErrorId : HRESULT 0x80041003,Microsoft.Management.Infrastructure.CimCmdlets.GetCimInstanceCommand",
+    "targetBrowser": "chromium",
+    "mode": "headless",
+    "rendererNotes": "effective/WebGL values are recorded per capture; software GPU inference requires unmasked renderer evidence",
+    "playwright": "1.64.1",
+    "browserRevisions": [
+      {
+        "name": "chromium",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome for Testing"
+      },
+      {
+        "name": "chromium-headless-shell",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome Headless Shell"
+      },
+      {
+        "name": "firefox",
+        "revision": "1555",
+        "installByDefault": true,
+        "browserVersion": "157.0",
+        "title": "Firefox"
+      },
+      {
+        "name": "webkit",
+        "revision": "2370",
+        "installByDefault": true,
+        "revisionOverrides": {
+          "mac14": "2251",
+          "mac14-arm64": "2251"
+        },
+        "browserVersion": "27.2",
+        "title": "WebKit"
+      },
+      {
+        "name": "ffmpeg",
+        "revision": "1013",
+        "installByDefault": true
+      },
+      {
+        "name": "winldd",
+        "revision": "1007",
+        "installByDefault": false
+      },
+      {
+        "name": "android",
+        "revision": "1001",
+        "installByDefault": false
+      }
+    ],
+    "browserExecutable": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "executableSha256": "15188ffe6bb074b2fc8f90d8e0fa4b8a17fa390ce49e58f55a94cd52edf9bec0",
+    "browserVersion": "155.0.8059.86"
+  },
+  "fixture": {
+    "path": ".tmp/board-3d-fixtures-final.json",
+    "sha256": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+    "seed": 7,
+    "sources": {
+      "packages/web/src/test/fixtures.ts": "71095a419ea2ca47adfecac1fe15f6c9b4a0606dadbd4d7d2d153ca6a1098270",
+      "packages/rules/src/engine.ts": "313b19f2e186c3ce6d7786a4cc23cd6eb0f7acd81c158b404ff80b78532afa54",
+      "packages/rules/src/project.ts": "9618392c06a5a7dcd017cfb3acddb984f08a6c6e222f6f322fb3754faa14ba9c",
+      "packages/rules/src/topology.ts": "80bb08608c3866250ba5608e3bf68e9a5c4060b87bccd367f50498c7b6872889",
+      "packages/rules/src/layout.ts": "b1a888da2fd2abb80d66737b21266de5e6566d7921c049f2a428ccae8de8216d"
+    }
+  },
+  "server": {
+    "ownership": "runner",
+    "baseUrl": "http://127.0.0.1:53744",
+    "pid": 61324,
+    "temporaryDirectory": "C:\\Users\\shene\\AppData\\Local\\Temp\\catan-board-visual-18qfp01d",
+    "database": "independent temporary SQLite, deleted in finally",
+    "cleanup": {
+      "childExitCode": 1,
+      "temporaryDatabaseRemoved": true
+    }
+  },
+  "assetHashes": {
+    "/assets/BoardScene3D-DYeWSKad.js": {
+      "sha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24",
+      "bytes": 935514,
+      "servedSha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24"
+    },
+    "/assets/index-DeF8S8Wj.js": {
+      "sha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d",
+      "bytes": 448899,
+      "servedSha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d"
+    },
+    "/assets/index-DGT5H3u5.css": {
+      "sha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2",
+      "bytes": 80273,
+      "servedSha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2"
+    },
+    "/": {
+      "sha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e",
+      "bytes": 486,
+      "servedSha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e"
+    }
+  },
+  "effectiveRenderer": "r3f",
+  "rendererStatus": "ready",
+  "finishedAt": "2026-10-28T18:58:56Z",
+  "manualAcceptance": {
+    "V": {
+      "V01": "NOT RUN",
+      "V02": "NOT RUN",
+      "V03": "NOT RUN",
+      "V04": "NOT RUN",
+      "V05": "NOT RUN",
+      "V06": "NOT RUN",
+      "V07": "NOT RUN"
+    },
+    "A": {
+      "A01-screen-reader": "BLOCKED",
+      "A02-human-visual-zoom-gray": "NOT RUN",
+      "A03-automated-projection-review": "NOT RUN"
+    },
+    "R": {
+      "R02-real-flow": "BLOCKED",
+      "R03-physical-devices": "BLOCKED",
+      "R04-artifact-reproduction": "NOT RUN"
+    }
+  }
+}

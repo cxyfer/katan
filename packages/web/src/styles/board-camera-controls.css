@@ -1,0 +1,40 @@
+.board-camera-angle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 8px;
+  min-height: 44px;
+  color: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.board-camera-angle input[type='range'] {
+  min-width: 80px;
+  width: 105px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  accent-color: #d4b476;
+  background: transparent;
+  cursor: pointer;
+}
+.board-camera-angle output { min-width: 30px; font-variant-numeric: tabular-nums; text-align: right; }
+.board-camera-angle--preview {
+  pointer-events: auto;
+  color: #263e3c;
+  background: #f5efdf;
+  border: 1px solid #264b4726;
+  border-radius: 6px;
+  padding: 3px 12px;
+  box-shadow: 0 6px 16px #254d4921;
+}
+.board-camera-angle--preview input[type='range'] { accent-color: #557769; }
+.board-camera-hint { margin: 0; padding: 4px 12px; color: #c7d7cf; font-size: 10px; text-align: center; }
+.board__surface, .island-preview__surface { cursor: grab; }
+.board__surface[data-gesture-active='true'], .island-preview__surface[data-gesture-active='true'] { cursor: grabbing; }
+@media (max-width: 760px) {
+  .board-camera-angle--preview { min-height: 38px; padding-block: 0; }
+  .board-camera-angle--preview input[type='range'] { min-height: 38px; width: 130px; }
+}

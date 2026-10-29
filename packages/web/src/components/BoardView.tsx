@@ -1,312 +1,143 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
-} from 'react';
+import { Component, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocale, useT } from '../i18n/context.tsx';
-import { buildGeometry, type BoardGeometry, type Point } from '../board/geometry.ts';
-import { boardIntent, type BoardIntent } from '../board/intent.ts';
-import { ambiguousWith, describeTarget, type TargetKind } from '../board/targets.ts';
-import { boardViewport, parseViewBox } from '../board/viewport.ts';
+import { useT } from '../i18n/context.tsx';
+import { buildGeometry } from '../board/geometry.ts';
+import { boardIntent } from '../board/intent.ts';
+import type { TargetKind } from '../board/targets.ts';
+import { parseViewBox } from '../board/viewport.ts';
 import { useBoardAnimation } from '../board/useBoardAnimation.ts';
-import {
-  pipsFor,
-  playerColorHex,
-  resourceLetter,
-  seatDash,
-  terrainFill,
-  terrainLetter,
-  terrainSymbol,
-} from '../board/terrain.ts';
+import { MAX_CAMERA_ELEVATION, MIN_CAMERA_ELEVATION, useBoardViewport } from '../board/useBoardViewport.ts';
+import { rendererMode, qualityMode, type RendererMode, type ProjectionSnapshot, type BoardEffectAnchors, type CssRect } from '../board/render-contract.ts';
+import { sceneBounds } from '../board/three/bounds.ts';
 import { nameOf } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
-import { Legend } from './Legend.tsx';
-import { BuildingPiece, GameIcon, TerrainIllustration } from './GameArt.tsx';
+import { BoardTargetOverlay } from './BoardTargetOverlay.tsx';
 import { BoardEffects } from './BoardEffects.tsx';
-import { confirmedPlacement } from '../board/effects.ts';
+import { Legend } from './Legend.tsx';
+import { GameIcon } from './GameArt.tsx';
+import { SvgBoard } from './SvgBoard.tsx';
+import '../styles/board-camera-controls.css';
 
-const BOARD_SCALE = 100;
-const BASE_TOPOLOGY = 'hex-r2';
-/** 歧義距離以投影後的 CSS px 計算。 */
-const AMBIGUITY_PX = 30;
-const MIN_ZOOM = 0.7;
-const MAX_ZOOM = 3;
-
-interface DragState {
-  startX: number;
-  startY: number;
-  panX: number;
-  panY: number;
-  moved: boolean;
+class SceneBoundary extends Component<{ children: ReactNode; onUnavailable: (reason: string) => void }, { failed: boolean }> {
+  override state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  override componentDidCatch() { this.props.onUnavailable('scene-error'); }
+  override render() { return this.state.failed ? null : this.props.children; }
 }
 
-/**
- * SVG board rendered from `GameView.board` (docs/SPEC.md §8.1/§8.2).
- *
- * Two behaviours are load-bearing and tested:
- * - pan/zoom never commits a placement (a drag marks the next click as
- *   suppressed);
- * - nearby legal targets are resolved through a candidate list instead of
- *   guessing which one the pointer meant.
- */
+function cssRect(element: Element): CssRect {
+  const { left, top, width, height } = element.getBoundingClientRect();
+  return { left, top, width, height };
+}
+
+/** One controller, selection, gesture surface and event cursor across renderers. */
 export function BoardView({ controller }: { controller: TableController }) {
   const t = useT();
-  const locale = useLocale();
   const { state, actions } = controller;
   const view = state.game?.view ?? null;
-  const boardRef = useRef<HTMLDivElement | null>(null);
-  const svgRef = useRef<SVGSVGElement | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
+  const boardRef = useRef<HTMLDivElement>(null);
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [cluster, setCluster] = useState<number[] | null>(null);
-  const dragRef = useRef<DragState | null>(null);
-  const suppressClickRef = useRef(false);
-  const pointersRef = useRef(new Map<number, Point>());
-  const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
+  const [requested, setRequested] = useState<RendererMode>(() => {
+    const query = new URLSearchParams(globalThis.location.search);
+    return rendererMode(query.get('renderer'));
+  });
+  const [quality, setQuality] = useState(() => qualityMode(new URLSearchParams(globalThis.location.search).get('quality')));
+  const [ready, setReady] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [projection, setProjection] = useState<ProjectionSnapshot | null>(null);
+  const [effective, setEffective] = useState<'svg' | 'r3f'>('svg');
+  const Scene = useMemo(() => lazy(() => import('../board/three/BoardScene3D.tsx')), [attempt]);
   const animation = useBoardAnimation(state.game, state.gameSync, state.connection === 'online',
     !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll');
+  const geometry = useMemo(() => buildGeometry(view?.board.topologyId ?? 'hex-r2'), [view?.board.topologyId]);
+  const bounds = useMemo(() => sceneBounds(geometry), [geometry]);
+  const controls = useBoardViewport({ geometry, surfaceRef, bounds, projection, renderer: effective,
+    sceneKey: `${state.game?.gameId ?? 'none'}:${!!view}` });
+  const { zoom } = controls.viewport;
+  const selfId = state.session?.id ?? null;
+  const nameResolver = useMemo(() => nameOf(state), [state]);
+  const intent = useMemo(() => boardIntent(state, selfId), [state, selfId]);
+  const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
+  const hexTargets = useMemo(() => controls.projectedTargets({ kind: 'hex', commandType: '', labelId: '', fromHints: false, targets: geometry.hexes.map((hex) => hex.index) }), [controls.projectedTargets, geometry]);
+  const viewBox = useMemo(() => parseViewBox(geometry.viewBox), [geometry]);
+  const viewBoxCenter = { x: viewBox.x + viewBox.width / 2, y: viewBox.y + viewBox.height / 2 };
+  const [anchors, setAnchors] = useState<BoardEffectAnchors | null>(null);
+  const stage = boardRef.current?.closest<HTMLElement>('[data-board-stage]') ?? boardRef.current;
+
+  useLayoutEffect(() => {
+    if (!stage || !animation.active) return;
+    const measure = () => {
+      const seats = new Map<string, CssRect>();
+      stage.querySelectorAll<HTMLElement>('[data-board-seat]').forEach((node) => {
+        if (node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden') {
+          seats.set(node.dataset.boardSeat!, cssRect(node));
+        }
+      });
+      const aggregate = boardRef.current?.querySelector('[data-board-aggregate]');
+      setAnchors({ stage: cssRect(stage), seats, aggregate: aggregate ? cssRect(aggregate) : null, targets: hexTargets });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    stage.querySelectorAll('[data-board-seat], [data-board-aggregate]').forEach((node) => observer.observe(node));
+    globalThis.addEventListener('resize', measure);
+    globalThis.addEventListener('scroll', measure, true);
+    return () => { observer.disconnect(); globalThis.removeEventListener('resize', measure); globalThis.removeEventListener('scroll', measure, true); };
+  }, [stage, animation.active, hexTargets]);
+
+  useLayoutEffect(() => {
+    const next = requested !== 'svg' && !failure && ready && !controls.gestureActive ? 'r3f' : 'svg';
+    // A pending pointer keeps its projection until pointerup/cancel.
+    if (controls.gestureActive && !failure && requested !== 'svg') return;
+    if (next !== effective) { animation.resetPresentation(); setEffective(next); }
+  }, [requested, failure, ready, controls.gestureActive, effective, animation.resetPresentation]);
+
+  const unavailable = useCallback((reason: string) => {
+    animation.resetPresentation();
+    setFailure(reason);
+    setReady(false);
+    setEffective('svg');
+    setProjection(null);
+  }, [animation.resetPresentation]);
+  const sceneReady = useCallback(() => setReady(true), []);
+  const changeRenderer = (mode: RendererMode) => {
+    animation.resetPresentation();
+    setRequested(mode); setReady(false); setFailure(null); setEffective('svg'); setProjection(null); setAttempt((value) => value + 1);
+  };
+  const selectTarget = useCallback((kind: TargetKind, index: number) => {
+    if (!intent || kind !== intent.kind || !intent.targets.includes(index)) return;
+    setCluster(null); setPickerOpen(false);
+    actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
+  }, [actions, intent]);
   const focusedRoll = useMemo(() => {
     const rolled = animation.active?.events.find((event) => event.type === 'turn.rolled');
     const dice = rolled?.params.dice;
-    if (!rolled || !Array.isArray(dice) || dice.length !== 2 ||
-        !dice.every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) return null;
+    if (!rolled || !Array.isArray(dice) || dice.length !== 2 || !dice.every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) return null;
     return { seq: rolled.seq, dice: [dice[0], dice[1]] as [number, number] };
   }, [animation.active]);
   const diceRolling = focusedRoll !== null;
+  useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);
 
-  const topologyId = view?.board.topologyId ?? BASE_TOPOLOGY;
-  const geometry: BoardGeometry = useMemo(() => buildGeometry(topologyId, BOARD_SCALE), [topologyId]);
-  const topology = geometry.topology;
-  const viewBox = useMemo(() => parseViewBox(geometry.viewBox), [geometry]);
-  const viewBoxCenter = {
-    x: viewBox.x + viewBox.width / 2,
-    y: viewBox.y + viewBox.height / 2,
-  };
-  const selfId = state.session?.id ?? null;
-  const nameResolver = useMemo(() => nameOf(state), [state]);
-  const intent: BoardIntent | null = useMemo(
-    () => boardIntent(state, selfId),
-    [state, selfId],
-  );
-
-  const points = useMemo(() => {
-    const map = new Map<number, Point>();
-    if (!intent) return map;
-    if (intent.kind === 'vertex') {
-      for (const vertex of geometry.vertices) map.set(vertex.index, { x: vertex.x, y: vertex.y });
-    } else if (intent.kind === 'edge') {
-      for (const edge of geometry.edges) {
-        map.set(edge.index, { x: (edge.x1 + edge.x2) / 2, y: (edge.y1 + edge.y2) / 2 });
-      }
-    } else {
-      for (const hex of geometry.hexes) map.set(hex.index, { x: hex.cx, y: hex.cy });
-    }
-    return map;
-  }, [geometry, intent]);
-
-  const viewport = useCallback(() => {
-    const rect = svgRef.current?.getBoundingClientRect();
-    return rect ? boardViewport({ viewBox, rect, zoom, pan }) : null;
-  }, [viewBox, zoom, pan]);
-
-  const selectTarget = useCallback((kind: TargetKind, index: number) => {
-    if (!intent) return;
-    setCluster(null);
-    setPickerOpen(false);
-    actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
-  }, [actions, intent]);
-
-  const choose = useCallback(
-    (kind: TargetKind, index: number) => {
-      if (!intent) return;
-      const projection = viewport();
-      const screenPoints = new Map([...points].map(([target, point]) => [target, projection?.worldToScreen(point) ?? point]));
-      // 無法量測畫面時改用明確的候選清單。
-      const near = projection ? ambiguousWith(index, intent.targets, screenPoints, AMBIGUITY_PX)
-        : intent.targets.length > 1 ? intent.targets : null;
-      if (near && near.length > 1) {
-        setCluster(near);
-        setPickerOpen(true);
-        return;
-      }
-      selectTarget(kind, index);
-    },
-    [intent, points, selectTarget, viewport],
-  );
-
-  const handleTargetClick = useCallback(
-    (kind: TargetKind, index: number) => {
-      if (suppressClickRef.current) {
-        suppressClickRef.current = false;
-        return;
-      }
-      choose(kind, index);
-    },
-    [choose],
-  );
-
-  const handleKeyDown = useCallback(
-    (event: ReactKeyboardEvent<SVGElement>, kind: TargetKind, index: number) => {
-      if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
-        event.preventDefault();
-        selectTarget(kind, index);
-      }
-    },
-    [selectTarget],
-  );
-
-  const clampPan = useCallback(
-    (next: Point, nextZoom = zoom): Point => {
-      const maxX = geometry.width * Math.max(nextZoom - 1, 0) * 0.5;
-      const maxY = geometry.height * Math.max(nextZoom - 1, 0) * 0.5;
-      return {
-        x: Math.max(-maxX, Math.min(maxX, next.x)),
-        y: Math.max(-maxY, Math.min(maxY, next.y)),
-      };
-    },
-    [geometry.height, geometry.width, zoom],
-  );
-
-  const setBoardZoom = useCallback(
-    (nextZoom: number) => {
-      const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, nextZoom));
-      setZoom(clamped);
-      setPan((current) => clampPan(current, clamped));
-    },
-    [clampPan],
-  );
-
-  const onPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (event.pointerType === 'mouse' && event.button !== 0) return;
-    suppressClickRef.current = false;
-    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    const pointers = [...pointersRef.current.values()];
-    if (pointers.length > 1) {
-      pinchRef.current = { distance: Math.hypot(pointers[0]!.x - pointers[1]!.x, pointers[0]!.y - pointers[1]!.y), zoom };
-      if (dragRef.current) dragRef.current.moved = true;
-      return;
-    }
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      panX: pan.x,
-      panY: pan.y,
-      moved: false,
-    };
-  };
-
-  const onPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (!pointersRef.current.has(event.pointerId)) return;
-    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    const pointers = [...pointersRef.current.values()];
-    const pinch = pinchRef.current;
-    if (pinch && pointers.length > 1) {
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-      const distance = Math.hypot(pointers[0]!.x - pointers[1]!.x, pointers[0]!.y - pointers[1]!.y);
-      if (pinch.distance > 0) setBoardZoom(pinch.zoom * distance / pinch.distance);
-      return;
-    }
-    const drag = dragRef.current;
-    if (!drag) return;
-    const dx = event.clientX - drag.startX;
-    const dy = event.clientY - drag.startY;
-    if (Math.hypot(dx, dy) > 4) drag.moved = true;
-    if (!drag.moved) return;
-    // 移動後才捕捉指標，保留普通點擊的原始 target。
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    const delta = viewport()?.screenDeltaToPan({ x: dx, y: dy });
-    if (delta) setPan(clampPan({ x: drag.panX + delta.x, y: drag.panY + delta.y }));
-  };
-
-  const onPointerUp = () => {
-    const drag = dragRef.current;
-    const pinching = pinchRef.current !== null;
-    dragRef.current = null;
-    pinchRef.current = null;
-    pointersRef.current.clear();
-    if (drag?.moved || pinching) {
-      // The gesture was a pan: the click that follows must not place a piece.
-      suppressClickRef.current = true;
-    }
-  };
-
-  const onWheel = (event: ReactWheelEvent<SVGSVGElement>) => {
-    event.preventDefault();
-    setBoardZoom(zoom * (event.deltaY < 0 ? 1.12 : 0.89));
-  };
-
-  const onBoardKeyDown = (event: ReactKeyboardEvent<SVGSVGElement>) => {
-    if (event.target !== event.currentTarget) return;
-    if (event.key === '+' || event.key === '=') {
-      event.preventDefault();
-      setBoardZoom(zoom * 1.25);
-    } else if (event.key === '-' || event.key === '_') {
-      event.preventDefault();
-      setBoardZoom(zoom / 1.25);
-    } else if (event.key === '0') {
-      event.preventDefault();
-      resetView();
-    }
-  };
-
-  /**
-   * Sizes the board so the whole map fits between its own top edge and the
-   * bottom of the viewport. The control is labelled "Fit board", so it must
-   * actually fit rather than only resetting pan and zoom (SPEC U-01: board
-   * panning is deliberate, not accidental whole-page overflow).
-   */
-  const fitBoard = useCallback(() => {
-    const node = boardRef.current;
-    // Measure the SVG itself: the toolbar sits above it, so the container's top
-    // would overstate the space actually available to the map.
-    const svg = svgRef.current ?? node;
-    if (!node || !svg) return;
-    const top = svg.getBoundingClientRect().top;
-    const viewport = globalThis.innerHeight || 0;
-    const available = Math.max(240, Math.round(viewport - top - 16));
-    node.style.setProperty('--board-available', `${available}px`);
-  }, []);
-
-  const resetView = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-    fitBoard();
-  };
-
-  // Keep the board fitted while the viewport changes (rotation, zoom, resize).
-  useEffect(() => {
-    if (!view) return;
-    fitBoard();
-    const onResize = () => fitBoard();
-    globalThis.addEventListener('resize', onResize);
-    return () => globalThis.removeEventListener('resize', onResize);
-  }, [fitBoard, view]);
-
-  if (!view) {
-    return (
-      <p className="muted" data-testid="board-missing">
-        {t('app.loading')}
-      </p>
-    );
-  }
-
+  if (!view) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
   const board = view.board;
-  const selectedIndex = state.selection.index;
+  const topology = geometry.topology;
   const setup = view.turn.setup;
   const setupActor = setup ? view.players.find((player) => player.seat === setup.seat) : undefined;
   const setupPiece = setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
   const setupMine = setupActor?.id === selfId;
+  const selection = intent && state.connection === 'online' && selfId && state.selection.kind === intent.kind && state.selection.index !== null && intent.targets.includes(state.selection.index)
+    ? { kind: intent.kind, index: state.selection.index, playerId: selfId } : null;
 
   return (
-    <div className="board" data-testid="board" data-zoom={zoom} ref={boardRef}>
+    <div className="board" data-testid="board" data-zoom={zoom} data-camera-azimuth={controls.viewport.azimuthDeg}
+      data-camera-elevation={controls.viewport.elevationDeg} ref={boardRef}
+      data-requested-renderer={requested} data-effective-renderer={effective} data-quality={quality}
+      data-renderer-status={failure ? 'failed' : requested === 'svg' ? 'idle' : effective === 'r3f' ? 'ready' : 'loading'} data-fallback-reason={failure ?? undefined}>
       {setup && (
         <section className={`board__setup-guide${setupMine ? ' board__setup-guide--mine' : ''}`} data-testid="setup-guide" aria-live="polite">
           <div className="board__setup-title">
@@ -319,12 +150,12 @@ export function BoardView({ controller }: { controller: TableController }) {
         </section>
       )}
       <div className="board__toolbar" role="group" aria-label={t('board.heading')}>
-        <span className="board__heading"><GameIcon name="compass" size={18} />{t('board.heading')}</span>
+        <span className="board__heading" data-board-aggregate=""><GameIcon name="compass" size={18} />{t('board.heading')}</span>
         <button
           type="button"
           className="button button--ghost"
           data-testid="zoom-in"
-          onClick={() => setBoardZoom(zoom * 1.25)}
+          onClick={() => controls.setZoom(zoom * 1.25)}
         >
           {t('board.zoomIn')}
         </button>
@@ -332,15 +163,31 @@ export function BoardView({ controller }: { controller: TableController }) {
           type="button"
           className="button button--ghost"
           data-testid="zoom-out"
-          onClick={() => setBoardZoom(zoom / 1.25)}
+          onClick={() => controls.setZoom(zoom / 1.25)}
         >
           {t('board.zoomOut')}
         </button>
+        {effective === 'r3f' && <>
+          <button type="button" className="button button--ghost" data-testid="rotate-left"
+            aria-keyshortcuts="[" title={t('board.rotateLeftHint')} disabled={controls.gestureActive}
+            onClick={() => controls.rotate(-30)}>{t('board.rotateLeft')}</button>
+          <button type="button" className="button button--ghost" data-testid="rotate-right"
+            aria-keyshortcuts="]" title={t('board.rotateRightHint')} disabled={controls.gestureActive}
+            onClick={() => controls.rotate(30)}>{t('board.rotateRight')}</button>
+          <label className="board-camera-angle">
+            <span>{t('board.viewingAngle')}</span>
+            <input type="range" min={MIN_CAMERA_ELEVATION} max={MAX_CAMERA_ELEVATION} step={1}
+              data-testid="camera-elevation" value={controls.viewport.elevationDeg}
+              aria-label={t('board.viewingAngle')} aria-valuetext={t('board.viewingAngleDegrees', { degrees: Math.round(controls.viewport.elevationDeg ?? 50) })}
+              disabled={controls.gestureActive} onChange={(event) => controls.setElevation(Number(event.target.value))} />
+            <output>{Math.round(controls.viewport.elevationDeg ?? 50)}°</output>
+          </label>
+        </>}
         <button
           type="button"
           className="button button--ghost"
           data-testid="reset-view"
-          onClick={resetView}
+          onClick={controls.fit}
         >
           {t('board.fitBoard')}
         </button>
@@ -365,7 +212,20 @@ export function BoardView({ controller }: { controller: TableController }) {
             <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
           </span>
         )}
+        <details className="board__display-settings">
+          <summary>{t('board.rendererSettings')}</summary>
+          <label>{t('board.renderer')}<select data-testid="renderer-select" value={requested} onChange={(event) => changeRenderer(rendererMode(event.target.value))}>
+            <option value="svg">{t('board.rendererSvg')}</option><option value="r3f">{t('board.renderer3d')}</option><option value="auto">{t('board.rendererAuto')}</option>
+          </select></label>
+          <label>{t('board.quality')}<select data-testid="quality-select" value={quality} onChange={(event) => setQuality(qualityMode(event.target.value))}>
+            <option value="standard">{t('board.qualityStandard')}</option><option value="low">{t('board.qualityLow')}</option>
+          </select></label>
+          <p role="status" data-testid="renderer-status">{failure ? t('board.rendererFailed') : requested === 'svg' ? t('board.rendererSvg') : effective === 'r3f' ? t('board.rendererReady') : t('board.rendererLoading')}</p>
+          {failure && <button type="button" data-testid="renderer-retry" onClick={() => changeRenderer(requested)}>{t('board.rendererRetry')}</button>}
+        </details>
       </div>
+
+      {effective === 'r3f' && <p className="board-camera-hint" data-testid="camera-gesture-hint">{t('board.cameraGestureHint')}</p>}
 
       {diceRolling && focusedRoll && boardRef.current && createPortal(
         <div className="dice-focus" data-testid="dice-focus" aria-hidden="true">
@@ -379,220 +239,29 @@ export function BoardView({ controller }: { controller: TableController }) {
         </div>,
         boardRef.current.closest('[data-testid="game-stage"]') ?? boardRef.current,
       )}
-      <svg
-        ref={svgRef}
-        className="board__svg"
-        data-testid="board-svg"
-        role="img"
-        aria-label={t('a11y.boardRegion')}
-         tabIndex={0}
-        viewBox={geometry.viewBox}
-        preserveAspectRatio="xMidYMid meet"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        onPointerLeave={onPointerUp}
-         onWheel={onWheel}
-         onKeyDown={onBoardKeyDown}
-      >
-        <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
-          <g aria-hidden="true" pointerEvents="none">
-            {geometry.hexes.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 10)" />)}
-          </g>
-          {geometry.hexes.map((hex) => {
-            const terrain = board.terrain[hex.index] ?? 'sea';
-            const number = board.numbers[hex.index];
-            const pips = pipsFor(number ?? null);
-            return (
-              <g key={`hex-${hex.index}`}>
-                <polygon
-                  className="board__tile-top"
-                  data-testid={`hex-${hex.index}`}
-                  points={hex.points}
-                  fill={terrainFill(terrain)}
-                  stroke="#ede1b7"
-                  strokeWidth={3}
-                  strokeLinejoin="round"
-                />
-                <TerrainIllustration terrain={terrain} x={hex.cx} y={hex.cy - 14} scale={.95} />
-                <text
-                  className="board__terrain"
-                  x={hex.cx - 53}
-                  y={hex.cy + 35}
-                  textAnchor="middle"
-                  aria-hidden="true"
-                >
-                  {terrainSymbol(terrain)}
-                  {terrainLetter(terrain)}
-                </text>
-                {number !== null && number !== undefined && (
-                  <>
-                    <circle cx={hex.cx} cy={hex.cy + 34} r={25} fill="#f4e8c9" stroke="#b49b68" strokeWidth={2} />
-                    <text
-                      className={`board__number${number === 6 || number === 8 ? ' board__number--hot' : ''}`}
-                      x={hex.cx}
-                      y={hex.cy + 40}
-                      textAnchor="middle"
-                      aria-hidden="true"
-                    >
-                      {number}
-                    </text>
-                    <text
-                      className={`board__pips${number === 6 || number === 8 ? ' board__pips--hot' : ''}`}
-                      x={hex.cx}
-                      y={hex.cy + 53}
-                      textAnchor="middle"
-                      aria-hidden="true"
-                    >
-                      {'•'.repeat(pips)}
-                    </text>
-                  </>
-                )}
-              </g>
-            );
-          })}
-
-          {board.harbors.map((harbor) => {
-            const edge = geometry.edges[harbor.edge];
-            if (!edge) return null;
-            const cx = (edge.x1 + edge.x2) / 2;
-            const cy = (edge.y1 + edge.y2) / 2;
-            const label =
-              harbor.type === 'generic' ? '3:1' : `2:1${resourceLetter(harbor.type)}`;
-            return (
-              <g key={`harbor-${harbor.edge}`} data-testid={`harbor-${harbor.edge}`}>
-                <circle cx={cx} cy={cy} r={13} fill="#f7f3e3" stroke="#1b1b1b" strokeWidth={1.5} />
-                <text className="board__harbor" x={cx} y={cy + 4} textAnchor="middle" aria-hidden="true">
-                  {label}
-                </text>
-              </g>
-            );
-          })}
-
-          {geometry.edges.map((edge) => {
-            const road = board.roads[edge.index];
-            if (!road) return null;
-            const player = view.players.find((candidate) => candidate.id === road.player);
-            const arriving = confirmedPlacement(animation.active?.events ?? [], board, 'edge', edge.index);
-            return (
-              <g key={`road-${edge.index}`}>
-              <line x1={edge.x1} y1={edge.y1 + 3} x2={edge.x2} y2={edge.y2 + 3} stroke="#10242c" strokeWidth={11} strokeLinecap="round" opacity={.7} aria-hidden="true" />
-              <line
-                data-testid={`road-${edge.index}`}
-                x1={edge.x1}
-                y1={edge.y1}
-                x2={edge.x2}
-                y2={edge.y2}
-                stroke={playerColorHex(player?.color ?? 'white')}
-                strokeWidth={7}
-                strokeDasharray={seatDash(player?.seat ?? 0)}
-                strokeLinecap="round"
-              >
-                <title>{`${t('board.road')} · ${nameResolver(road.player)}`}</title>
-              </line>
-              {arriving && <line key={animation.active?.id} className="board__road-reveal" x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} pathLength={1} stroke={playerColorHex(player?.color ?? 'white')} strokeWidth={10} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
-              </g>
-            );
-          })}
-
-          {geometry.vertices.map((vertex) => {
-            const building = board.buildings[vertex.index];
-            if (!building) return null;
-            const player = view.players.find((candidate) => candidate.id === building.player);
-            const color = playerColorHex(player?.color ?? 'white');
-            const label = building.city ? t('board.city') : t('board.settlement');
-            const arriving = confirmedPlacement(animation.active?.events ?? [], board, 'vertex', vertex.index);
-            return (
-              <g key={`building-${vertex.index}`} data-testid={`building-${vertex.index}`}>
-                <g key={arriving ? animation.active!.id : 'rest'} className={arriving ? 'board__building-drop' : undefined}>
-                  <BuildingPiece x={vertex.x} y={vertex.y} city={building.city} color={color} />
-                </g>
-                <title>{`${label} · ${nameResolver(building.player)}`}</title>
-              </g>
-            );
-          })}
-
-          {intent &&
-            intent.targets.map((index) => {
-              const point = points.get(index);
-              if (!point) return null;
-              const option = describeTarget(
-                { locale, topology, board, nameOf: nameResolver },
-                intent.kind,
-                index,
-              );
-              const selected = selectedIndex === index;
-              return (
-                <circle
-                  key={`target-${intent.kind}-${index}`}
-                  className={`board__target${selected ? ' board__target--selected' : ''}`}
-                  data-testid={`target-${intent.kind}-${index}`}
-                  data-target-kind={intent.kind}
-                  data-target-index={index}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${t('board.legalTarget')}: ${option.label} ${option.detail}`}
-                  cx={point.x}
-                  cy={point.y}
-                  r={intent.kind === 'hex' ? 30 : 12}
-                  onClick={() => handleTargetClick(intent.kind, index)}
-                  onKeyDown={(event) => handleKeyDown(event, intent.kind, index)}
-                >
-                  <title>{`${option.label} — ${option.detail}`}</title>
-                </circle>
-              );
-            })}
-
-          {geometry.hexes[board.robber] && (
-            <g data-testid="robber" aria-hidden="true">
-              <circle
-                cx={geometry.hexes[board.robber]!.cx}
-                cy={geometry.hexes[board.robber]!.cy + 2}
-                r={17}
-                fill="#141414"
-                stroke="#f5f5f5"
-                strokeWidth={2}
-              />
-              <text
-                className="board__robber"
-                x={geometry.hexes[board.robber]!.cx}
-                y={geometry.hexes[board.robber]!.cy + 7}
-                textAnchor="middle"
-              >
-                R
-              </text>
-            </g>
-          )}
-          {state.selection.index !== null && intent && state.selection.kind === intent.kind && intent.targets.includes(state.selection.index) && (
-            <g className="board__preview-ghost" data-testid="board-preview-ghost" aria-hidden="true" pointerEvents="none">
-              {intent.kind === 'vertex' && geometry.vertices[state.selection.index] && <BuildingPiece x={geometry.vertices[state.selection.index]!.x} y={geometry.vertices[state.selection.index]!.y} city={intent.commandType === 'build.city'} color={playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white')} />}
-              {intent.kind === 'edge' && geometry.edges[state.selection.index] && <line x1={geometry.edges[state.selection.index]!.x1} y1={geometry.edges[state.selection.index]!.y1} x2={geometry.edges[state.selection.index]!.x2} y2={geometry.edges[state.selection.index]!.y2} stroke={playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white')} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />}
-              {intent.kind === 'hex' && geometry.hexes[state.selection.index] && <circle cx={geometry.hexes[state.selection.index]!.cx} cy={geometry.hexes[state.selection.index]!.cy} r={20} fill="#24353a" stroke="#fff1bd" strokeDasharray="4 4" />}
-            </g>
-          )}
-          <BoardEffects group={animation.active} geometry={geometry} view={view} />
-        </g>
-      </svg>
-
+      <div ref={surfaceRef} className="board__surface" data-testid="board-surface" role="region"
+        aria-label={t(effective === 'r3f' ? 'a11y.boardRegion3d' : 'a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>
+        {requested !== 'svg' && !failure && <div className="board__scene" aria-hidden="true" style={{ opacity: effective === 'r3f' ? 1 : 0 }}>
+          <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
+            <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))}
+              intent={intent} selection={selection} active={animation.active} viewport={controls.viewport} quality={quality}
+              motionAllowed={animation.active !== null} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />
+          </Suspense></SceneBoundary>
+        </div>}
+        {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} active={animation.active}
+          selection={selection ? state.selection : { ...state.selection, index: null }} selfId={selfId} intent={intent}
+          pan={controls.pan} zoom={zoom} viewBoxCenter={viewBoxCenter} nameResolver={nameResolver} />}
+        <BoardTargetOverlay targets={targets} rect={controls.viewport.rect} selection={selection} board={board} topology={topology} nameOf={nameResolver}
+          renderer={effective} onSelect={selectTarget} consumeSuppressedClick={controls.consumeSuppressedClick}
+          fallbackFocusRef={surfaceRef} onCancel={actions.cancelSelection}
+          onAmbiguous={(_kind, _index, candidates) => { setCluster([...candidates]); setPickerOpen(true); }} />
+      </div>
+      {stage && animation.active && anchors && createPortal(<BoardEffects group={animation.active} geometry={geometry} view={view} anchors={anchors} />, stage)}
       <Legend />
-
-      {pickerOpen && intent && (
-        <TargetPicker
-          geometry={geometry}
-          board={board}
-          topology={topology}
-          kind={intent.kind}
-          targets={intent.targets}
-          nameOf={nameResolver}
-          {...(cluster ? { ambiguousOnly: cluster } : {})}
-          onChoose={(index) => {
-            setPickerOpen(false);
-            setCluster(null);
-            selectTarget(intent.kind, index);
-          }}
-        />
-      )}
+      {pickerOpen && intent && <TargetPicker geometry={geometry} board={board} topology={topology} kind={intent.kind}
+        targets={intent.targets} nameOf={nameResolver} {...(cluster ? { ambiguousOnly: cluster } : {})}
+        onCancel={() => { setPickerOpen(false); setCluster(null); }}
+        onChoose={(index) => selectTarget(intent.kind, index)} />}
     </div>
   );
 }

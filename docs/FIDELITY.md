@@ -150,7 +150,7 @@ These are recorded rather than hidden. None of them is presented as verified.
    cycle is derived from the specification's wording ("the third player to
    Player 1's left", "both markers move to the next player to their left")
    rather than transcribed page-by-page from B56-25.
-5. **No real-device or screen-reader evidence.** U-03 (physical iOS/Android),
+5. **No real-device or screen-reader evidence.** The 2026-10-29 [island diorama replacement](aegis/plans/2026-10-29-island-diorama.md) starts in auto 3D with SVG loading/failure compatibility and an explicit `?renderer=svg` option. Its [verification record](aegis/work/2026-10-29-island-diorama.md) separates model and camera tests, production WebGL captures and open human/device checks. The original candidate's [acceptance matrix](aegis/plans/2026-10-29-board-3d-acceptance.md) and [execution checkpoint](aegis/work/2026-10-29-board-3d/20-checkpoint.md) are historical; no prior SVG capture proves modeled 3D quality. U-03 (physical iOS/Android),
    U-04 (manual assistive-technology walkthrough), U-06 (measured
    responsiveness), U-07 (novice observation) and U-08 (expert playtest) have
    not been performed. Automated coverage includes jsdom tests, the prior

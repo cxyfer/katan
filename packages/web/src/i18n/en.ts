@@ -9,6 +9,18 @@
 import type { Catalog } from './catalogs.ts';
 
 export const en: Catalog = {
+  'board.renderer': 'Board renderer',
+  'board.rendererSvg': 'SVG (compatible)',
+  'board.renderer3d': '3D (experimental)',
+  'board.rendererAuto': 'Auto (experimental)',
+  'board.quality': '3D quality',
+  'board.qualityStandard': 'Standard',
+  'board.qualityLow': 'Low',
+  'board.rendererLoading': 'Loading 3D; SVG remains playable.',
+  'board.rendererFailed': '3D unavailable; SVG remains playable.',
+  'board.rendererReady': 'Experimental 3D',
+  'board.rendererRetry': 'Retry 3D',
+  'board.rendererSettings': 'Display',
   // --- app shell -----------------------------------------------------------
   'app.title': 'Catan Table',
   'app.tagline': 'Shared-table Catan-style play in the browser',
@@ -209,6 +221,13 @@ export const en: Catalog = {
   'board.pirate': 'Pirate',
   'board.zoomIn': 'Zoom in',
   'board.zoomOut': 'Zoom out',
+  'board.rotateLeft': 'Rotate left',
+  'board.rotateRight': 'Rotate right',
+  'board.rotateLeftHint': 'Rotate camera left 30° ([ on the board)',
+  'board.rotateRightHint': 'Rotate camera right 30° (] on the board)',
+  'board.viewingAngle': 'Viewing angle',
+  'board.viewingAngleDegrees': '{degrees} degrees',
+  'board.cameraGestureHint': 'Drag to rotate and tilt · Shift-drag or right-drag to pan · Wheel / pinch to zoom',
   'board.resetView': 'Reset view',
   'board.fitBoard': 'Fit board',
   'board.zoomLevel': 'Zoom {percent}%',
@@ -460,6 +479,7 @@ export const en: Catalog = {
   'a11y.actionRejected': 'Action rejected: {reason}',
   'a11y.newMessage': 'New chat message from {player}.',
   'a11y.boardRegion': 'Game board. Use the candidate list for a non-precision way to choose a target.',
+  'a11y.boardRegion3d': '3D game board. Drag left or right to rotate, up or down to tilt. Shift-drag or right-drag to pan. Wheel or pinch to zoom; move two fingers to pan. Home resets the view. Use the candidate list to choose a target without precise pointing.',
 
   // --- profiles ------------------------------------------------------------
   'profile.base-2025': 'Base game, 3–4 players',

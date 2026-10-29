@@ -7,8 +7,14 @@
  * simply set `window.innerWidth` to exercise the mobile layout.
  */
 
-import { afterEach } from 'vitest';
+import { afterEach, beforeEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
+
+beforeEach(() => {
+  // jsdom has no GPU: ordinary app tests intentionally exercise SVG. Renderer
+  // lifecycle tests override this query explicitly to verify the 3D default.
+  history.replaceState(null, '', '/?renderer=svg');
+});
 
 afterEach(() => {
   cleanup();

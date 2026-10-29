@@ -64,6 +64,7 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
               className={`seat${isTurn ? ' seat--turn' : ''}${isSelf ? ' seat--self' : ''}`}
               style={{ '--player-color': playerColorHex(player.color) } as CSSProperties}
               data-testid={`seat-${player.seat}`}
+              data-board-seat={player.id}
               data-turn={isTurn ? 'true' : 'false'}
               data-self={isSelf ? 'true' : 'false'}
               title={compactLabel}

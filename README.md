@@ -28,6 +28,19 @@ pnpm install
 pnpm dev            # client dev server + service on http://127.0.0.1:3000
 ```
 
+Open `http://127.0.0.1:3000/?preview=island` to inspect the island models without
+creating a room. The preview uses the game's 3D renderer and offers 19/30-tile
+layouts, quality settings, and a 25–80° viewing-angle slider. Hold the left
+mouse button and drag horizontally to rotate or vertically to change elevation;
+Shift-left drag or right drag pans, and the wheel zooms. Single-touch drag
+orbits; two fingers pinch to zoom and move together to pan.
+Focus the map to use arrow keys to pan, `[` / `]` to rotate, and Home to fit.
+The 30-tile preview is a visual demonstration; expansion rules remain disabled.
+
+Games use 3D when available, with a playable SVG board during loading or GPU
+failure. Add `?renderer=svg` for the explicit 2D path or `?quality=low` for
+reduced shadow and pixel-density costs.
+
 ## Quick start (Docker)
 
 The Compose files run the published `ghcr.io/cxyfer/katan` image:
@@ -73,6 +86,19 @@ pnpm build                           # client bundle + service bundle
 pnpm smoke                           # boots the built artefacts and plays a setup
 SMOKE_BASE_URL=http://host:3000 pnpm smoke   # verify a running deployment
 ```
+
+The production island preview can be captured and exercised with the existing
+board evidence runner's Python/Playwright environment:
+
+```bash
+python scripts/board-3d/verify-diorama.py --out test-results/island-diorama
+```
+
+Build first with `pnpm build`; choose a new empty output directory. This checks
+desktop/mobile viewports, both layouts, zoom, left-drag orbit, alternate pan,
+actual WebGL camera elevation changes, quality changes, browser errors and
+the preview's absence of game/identity API calls. Viewport
+emulation does not establish physical-device performance.
 
 To replay the service suite against PostgreSQL:
 

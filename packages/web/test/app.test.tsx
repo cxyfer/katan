@@ -1,10 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { CommandRequest } from '@catan/protocol';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { fixedBoard, makeHints, makeSnapshot, makeView } from '../src/test/fixtures.ts';
+
+beforeEach(() => {
+  const original = HTMLElement.prototype.getBoundingClientRect;
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    if (this.dataset.testid === 'board-surface') return { x: 0, y: 0, left: 0, top: 0, width: 1200, height: 900, right: 1200, bottom: 900, toJSON() {} };
+    return original.call(this);
+  });
+});
 
 function renderApp(api: FakeApi, languages: readonly string[] = ['en']) {
   return render(
@@ -184,8 +192,8 @@ describe('keyboard target selection', () => {
     fireEvent.click(screen.getByTestId('action-build.road'));
 
     const target = await screen.findByTestId('target-edge-5');
-    expect(target.getAttribute('tabindex')).toBe('0');
-    expect(target.getAttribute('role')).toBe('button');
+    expect((target as HTMLButtonElement).tabIndex).toBe(0);
+    expect(target.tagName).toBe('BUTTON');
     expect(target.getAttribute('aria-label')).toContain('Path 5');
 
     target.focus();
@@ -216,7 +224,7 @@ describe('pan and zoom', () => {
     expect(board.getAttribute('data-zoom')).toBe('1.25');
     expect(screen.getByTestId('zoom-readout').textContent).toContain('125%');
     expect(svg.querySelector('g')?.getAttribute('transform')).not.toBe(before);
-    fireEvent.keyDown(svg, { key: '0' });
+    fireEvent.keyDown(screen.getByTestId('board-surface'), { key: '0' });
     expect(board.getAttribute('data-zoom')).toBe('1');
   });
 
@@ -239,12 +247,12 @@ describe('pan and zoom', () => {
     await openGame(api);
     fireEvent.click(screen.getByTestId('action-build.road'));
     const target = await screen.findByTestId('target-edge-5');
-    const svg = screen.getByTestId('board-svg');
+    const surface = screen.getByTestId('board-surface');
 
     for (const [type, x, y] of [['pointerdown', 10, 10], ['pointermove', 80, 60], ['pointerup', 80, 60]] as const) {
       const event = new Event(type, { bubbles: true });
       Object.defineProperties(event, { pointerId: { value: 1 }, pointerType: { value: 'mouse' }, button: { value: 0 }, clientX: { value: x }, clientY: { value: y } });
-      fireEvent(svg, event);
+      fireEvent(surface, event);
     }
     fireEvent.click(target);
 

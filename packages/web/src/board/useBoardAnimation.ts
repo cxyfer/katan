@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameSnapshot } from '@catan/protocol';
 import type { GameSyncMetadata } from '../state/table.ts';
 import {
@@ -23,18 +23,19 @@ export function useBoardAnimation(
   const reduced = useRef(false);
   const [queue, setQueue] = useState<BoardEffectGroup[]>([]);
 
+  const resetPresentation = useCallback(() => {
+    if (timer.current !== null) globalThis.clearTimeout(timer.current);
+    timer.current = null;
+    cursor.current = decideBoardAnimation(null, latest.current.snapshot, latest.current.sync).cursor;
+    setQueue([]);
+  }, []);
+
   useEffect(() => {
     const media = globalThis.matchMedia('(prefers-reduced-motion: reduce)');
     reduced.current = media.matches;
     visible.current = !document.hidden;
-    const cancel = () => {
-      if (timer.current !== null) globalThis.clearTimeout(timer.current);
-      timer.current = null;
-      cursor.current = decideBoardAnimation(null, latest.current.snapshot, latest.current.sync).cursor;
-      setQueue([]);
-    };
-    const onVisibility = () => { visible.current = !document.hidden; cancel(); };
-    const onMotion = () => { reduced.current = media.matches; cancel(); };
+    const onVisibility = () => { visible.current = !document.hidden; resetPresentation(); };
+    const onMotion = () => { reduced.current = media.matches; resetPresentation(); };
     document.addEventListener('visibilitychange', onVisibility);
     media.addEventListener('change', onMotion);
     return () => {
@@ -44,7 +45,7 @@ export function useBoardAnimation(
       timer.current = null;
       cursor.current = null;
     };
-  }, []);
+  }, [resetPresentation]);
 
   useEffect(() => {
     const decision = decideBoardAnimation(
@@ -76,5 +77,6 @@ export function useBoardAnimation(
     active: online && !mandatory && visible.current && !reduced.current &&
       cursor.current?.gameId === snapshot?.gameId && cursor.current?.syncGeneration === sync.generation ? active : null,
     pendingCount: queue.length,
+    resetPresentation,
   };
 }

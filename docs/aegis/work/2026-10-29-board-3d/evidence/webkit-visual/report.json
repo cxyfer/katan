@@ -1,0 +1,776 @@
+{
+  "schemaVersion": 1,
+  "runId": "webkit-visual",
+  "startedAt": "2026-10-28T18:55:16Z",
+  "status": "PASS",
+  "suite": "visual",
+  "requestedRenderer": "r3f",
+  "quality": "standard",
+  "browser": "webkit",
+  "cases": [
+    {
+      "id": "H3-source-frozen",
+      "status": "PASS",
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1"
+    },
+    {
+      "id": "T01-source",
+      "status": "PASS",
+      "detail": "All served HTML/JS/CSS match this worktree dist byte for byte."
+    },
+    {
+      "id": "R04-capture-hex-r2-1366x768-en",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "en",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "requestedRenderer": "r3f",
+      "effectiveRenderer": "r3f",
+      "quality": "standard",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/board-hex-r2-1366x768-en-r3f-standard-1366x768-en.png",
+      "screenshotHash": "5733fd66c3a0c03b307f4e17d559896324639353b935cbad8fe12af543488a39",
+      "webgl": {
+        "available": true,
+        "lost": false,
+        "version": "WebGL 2.0",
+        "shadingLanguage": "WebGL GLSL ES 3.00",
+        "vendor": "WebKit",
+        "renderer": "WebKit WebGL",
+        "unmaskedVendor": "Apple Inc.",
+        "unmaskedRenderer": "Apple GPU",
+        "drawingBuffer": [
+          1010,
+          566
+        ],
+        "readPixel": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "actual": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready",
+        "fallbackReason": null,
+        "svg": false,
+        "canvas": {
+          "width": 1010,
+          "height": 566,
+          "cssWidth": 915,
+          "cssHeight": 514
+        },
+        "targets": 0,
+        "effects": 0,
+        "diceOverlay": 0,
+        "hexes": 0,
+        "buildings": 0,
+        "roads": 0,
+        "board": {
+          "x": 83.98584747314453,
+          "y": 114.07075500488281,
+          "width": 915.1557006835938,
+          "height": 513.4811401367188,
+          "top": 114.07075500488281,
+          "right": 999.1415481567383,
+          "bottom": 627.5518951416016,
+          "left": 83.98584747314453
+        },
+        "viewport": {
+          "width": 1237,
+          "height": 695,
+          "dpr": 1.1041666269302368
+        },
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "document": {
+          "width": 1238,
+          "height": 696
+        },
+        "resources": [
+          "http://127.0.0.1:56835/assets/index-DeF8S8Wj.js",
+          "http://127.0.0.1:56835/assets/index-DGT5H3u5.css",
+          "http://127.0.0.1:56835/api/config",
+          "http://127.0.0.1:56835/api/session",
+          "http://127.0.0.1:56835/api/profiles",
+          "http://127.0.0.1:56835/api/games",
+          "http://127.0.0.1:56835/api/games/g1",
+          "http://127.0.0.1:56835/api/rooms/r1/chat?limit=50",
+          "http://127.0.0.1:56835/assets/BoardScene3D-DYeWSKad.js",
+          "http://127.0.0.1:56835/assets/board-atlas-gwoo0gAO.svg"
+        ],
+        "contextDiagnostics": {
+          "attempts": [
+            {
+              "type": "webgl2",
+              "ok": true,
+              "error": null,
+              "canvas": {
+                "width": 300,
+                "height": 150,
+                "connected": true
+              }
+            }
+          ],
+          "creationErrors": [],
+          "errorEvents": [],
+          "created": [
+            {
+              "type": "webgl2",
+              "lost": false,
+              "version": "WebGL 2.0",
+              "vendor": "WebKit",
+              "renderer": "WebKit WebGL",
+              "unmaskedVendor": "Apple Inc.",
+              "unmaskedRenderer": "Apple GPU"
+            }
+          ]
+        }
+      },
+      "renderer": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready"
+      },
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+      "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+      "errors": [],
+      "consoleErrors": [],
+      "caughtExceptions": [],
+      "unmapped": []
+    },
+    {
+      "id": "R04-capture-hex-r2-390x844-zh-Hant",
+      "status": "PASS",
+      "fixture": "hex-r2",
+      "topology": "hex-r2",
+      "locale": "zh-Hant",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "requestedRenderer": "r3f",
+      "effectiveRenderer": "r3f",
+      "quality": "standard",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/board-hex-r2-390x844-zh-Hant-r3f-standard-390x844-zh-Hant.png",
+      "screenshotHash": "c551bfdf4929d82cb36576551d2323f1edf3f08cc6214080ac710f86cb126b81",
+      "webgl": {
+        "available": true,
+        "lost": false,
+        "version": "WebGL 2.0",
+        "shadingLanguage": "WebGL GLSL ES 3.00",
+        "vendor": "WebKit",
+        "renderer": "WebKit WebGL",
+        "unmaskedVendor": "Apple Inc.",
+        "unmaskedRenderer": "Apple GPU",
+        "drawingBuffer": [
+          320,
+          438
+        ],
+        "readPixel": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "actual": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready",
+        "fallbackReason": null,
+        "svg": false,
+        "canvas": {
+          "width": 320,
+          "height": 438,
+          "cssWidth": 290,
+          "cssHeight": 397
+        },
+        "targets": 0,
+        "effects": 0,
+        "diceOverlay": 0,
+        "hexes": 0,
+        "buildings": 0,
+        "roads": 0,
+        "board": {
+          "x": 57.99056625366211,
+          "y": 163.6273651123047,
+          "width": 290.2217102050781,
+          "height": 396.76416015625,
+          "top": 163.6273651123047,
+          "right": 348.21227645874023,
+          "bottom": 560.3915252685547,
+          "left": 57.99056625366211
+        },
+        "viewport": {
+          "width": 353,
+          "height": 764,
+          "dpr": 1.1041666269302368
+        },
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "document": {
+          "width": 354,
+          "height": 765
+        },
+        "resources": [
+          "http://127.0.0.1:56835/assets/index-DeF8S8Wj.js",
+          "http://127.0.0.1:56835/assets/index-DGT5H3u5.css",
+          "http://127.0.0.1:56835/api/config",
+          "http://127.0.0.1:56835/api/session",
+          "http://127.0.0.1:56835/api/profiles",
+          "http://127.0.0.1:56835/api/games",
+          "http://127.0.0.1:56835/api/games/g1",
+          "http://127.0.0.1:56835/api/rooms/r1/chat?limit=50",
+          "http://127.0.0.1:56835/assets/BoardScene3D-DYeWSKad.js",
+          "http://127.0.0.1:56835/assets/board-atlas-gwoo0gAO.svg"
+        ],
+        "contextDiagnostics": {
+          "attempts": [
+            {
+              "type": "webgl2",
+              "ok": true,
+              "error": null,
+              "canvas": {
+                "width": 300,
+                "height": 150,
+                "connected": true
+              }
+            }
+          ],
+          "creationErrors": [],
+          "errorEvents": [],
+          "created": [
+            {
+              "type": "webgl2",
+              "lost": false,
+              "version": "WebGL 2.0",
+              "vendor": "WebKit",
+              "renderer": "WebKit WebGL",
+              "unmaskedVendor": "Apple Inc.",
+              "unmaskedRenderer": "Apple GPU"
+            }
+          ]
+        }
+      },
+      "renderer": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready"
+      },
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+      "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+      "errors": [],
+      "consoleErrors": [],
+      "caughtExceptions": [],
+      "unmapped": []
+    },
+    {
+      "id": "R04-capture-hex-r56-1366x768-zh-Hant",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "zh-Hant",
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 1,
+      "requestedRenderer": "r3f",
+      "effectiveRenderer": "r3f",
+      "quality": "standard",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/board-hex-r56-1366x768-zh-Hant-r3f-standard-1366x768-zh-Hant.png",
+      "screenshotHash": "76cbc094167bd98af37c8464d885696d56441cc4342de9e2322ea3b140e82b8d",
+      "webgl": {
+        "available": true,
+        "lost": false,
+        "version": "WebGL 2.0",
+        "shadingLanguage": "WebGL GLSL ES 3.00",
+        "vendor": "WebKit",
+        "renderer": "WebKit WebGL",
+        "unmaskedVendor": "Apple Inc.",
+        "unmaskedRenderer": "Apple GPU",
+        "drawingBuffer": [
+          1010,
+          565
+        ],
+        "readPixel": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "actual": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready",
+        "fallbackReason": null,
+        "svg": false,
+        "canvas": {
+          "width": 1010,
+          "height": 565,
+          "cssWidth": 915,
+          "cssHeight": 513
+        },
+        "targets": 0,
+        "effects": 0,
+        "diceOverlay": 0,
+        "hexes": 0,
+        "buildings": 0,
+        "roads": 0,
+        "board": {
+          "x": 83.98584747314453,
+          "y": 115.35848999023438,
+          "width": 915.1557006835938,
+          "height": 512.1934204101562,
+          "top": 115.35848999023438,
+          "right": 999.1415481567383,
+          "bottom": 627.5519104003906,
+          "left": 83.98584747314453
+        },
+        "viewport": {
+          "width": 1237,
+          "height": 695,
+          "dpr": 1.1041666269302368
+        },
+        "locale": "zh-Hant",
+        "htmlLang": "zh-Hant",
+        "document": {
+          "width": 1238,
+          "height": 696
+        },
+        "resources": [
+          "http://127.0.0.1:56835/assets/index-DeF8S8Wj.js",
+          "http://127.0.0.1:56835/assets/index-DGT5H3u5.css",
+          "http://127.0.0.1:56835/api/config",
+          "http://127.0.0.1:56835/api/session",
+          "http://127.0.0.1:56835/api/profiles",
+          "http://127.0.0.1:56835/api/games",
+          "http://127.0.0.1:56835/api/games/g1",
+          "http://127.0.0.1:56835/api/rooms/r1/chat?limit=50",
+          "http://127.0.0.1:56835/assets/BoardScene3D-DYeWSKad.js",
+          "http://127.0.0.1:56835/assets/board-atlas-gwoo0gAO.svg"
+        ],
+        "contextDiagnostics": {
+          "attempts": [
+            {
+              "type": "webgl2",
+              "ok": true,
+              "error": null,
+              "canvas": {
+                "width": 300,
+                "height": 150,
+                "connected": true
+              }
+            }
+          ],
+          "creationErrors": [],
+          "errorEvents": [],
+          "created": [
+            {
+              "type": "webgl2",
+              "lost": false,
+              "version": "WebGL 2.0",
+              "vendor": "WebKit",
+              "renderer": "WebKit WebGL",
+              "unmaskedVendor": "Apple Inc.",
+              "unmaskedRenderer": "Apple GPU"
+            }
+          ]
+        }
+      },
+      "renderer": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready"
+      },
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+      "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+      "errors": [],
+      "consoleErrors": [],
+      "caughtExceptions": [],
+      "unmapped": []
+    },
+    {
+      "id": "R04-capture-hex-r56-390x844-en",
+      "status": "PASS",
+      "fixture": "hex-r56",
+      "topology": "hex-r56",
+      "locale": "en",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1,
+      "requestedRenderer": "r3f",
+      "effectiveRenderer": "r3f",
+      "quality": "standard",
+      "screenshot": "docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/board-hex-r56-390x844-en-r3f-standard-390x844-en.png",
+      "screenshotHash": "25de3deb68d0b2548fb8cfec68b2bd150c30f4b5b53861c5fc7ed66af5c2bbfa",
+      "webgl": {
+        "available": true,
+        "lost": false,
+        "version": "WebGL 2.0",
+        "shadingLanguage": "WebGL GLSL ES 3.00",
+        "vendor": "WebKit",
+        "renderer": "WebKit WebGL",
+        "unmaskedVendor": "Apple Inc.",
+        "unmaskedRenderer": "Apple GPU",
+        "drawingBuffer": [
+          320,
+          489
+        ],
+        "readPixel": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "actual": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready",
+        "fallbackReason": null,
+        "svg": false,
+        "canvas": {
+          "width": 320,
+          "height": 489,
+          "cssWidth": 290,
+          "cssHeight": 444
+        },
+        "targets": 0,
+        "effects": 0,
+        "diceOverlay": 0,
+        "hexes": 0,
+        "buildings": 0,
+        "roads": 0,
+        "board": {
+          "x": 57.99056625366211,
+          "y": 117.05660247802734,
+          "width": 290.2217102050781,
+          "height": 443.33489990234375,
+          "top": 117.05660247802734,
+          "right": 348.21227645874023,
+          "bottom": 560.3915023803711,
+          "left": 57.99056625366211
+        },
+        "viewport": {
+          "width": 353,
+          "height": 764,
+          "dpr": 1.1041666269302368
+        },
+        "locale": "en",
+        "htmlLang": "zh-Hant",
+        "document": {
+          "width": 354,
+          "height": 765
+        },
+        "resources": [
+          "http://127.0.0.1:56835/assets/index-DeF8S8Wj.js",
+          "http://127.0.0.1:56835/assets/index-DGT5H3u5.css",
+          "http://127.0.0.1:56835/api/config",
+          "http://127.0.0.1:56835/api/session",
+          "http://127.0.0.1:56835/api/profiles",
+          "http://127.0.0.1:56835/api/games",
+          "http://127.0.0.1:56835/api/games/g1",
+          "http://127.0.0.1:56835/api/rooms/r1/chat?limit=50",
+          "http://127.0.0.1:56835/assets/BoardScene3D-DYeWSKad.js",
+          "http://127.0.0.1:56835/assets/board-atlas-gwoo0gAO.svg"
+        ],
+        "contextDiagnostics": {
+          "attempts": [
+            {
+              "type": "webgl2",
+              "ok": true,
+              "error": null,
+              "canvas": {
+                "width": 300,
+                "height": 150,
+                "connected": true
+              }
+            }
+          ],
+          "creationErrors": [],
+          "errorEvents": [],
+          "created": [
+            {
+              "type": "webgl2",
+              "lost": false,
+              "version": "WebGL 2.0",
+              "vendor": "WebKit",
+              "renderer": "WebKit WebGL",
+              "unmaskedVendor": "Apple Inc.",
+              "unmaskedRenderer": "Apple GPU"
+            }
+          ]
+        }
+      },
+      "renderer": {
+        "requested": "r3f",
+        "effective": "r3f",
+        "quality": "standard",
+        "status": "ready"
+      },
+      "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+      "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+      "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+      "fixtureHash": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+      "errors": [],
+      "consoleErrors": [],
+      "caughtExceptions": [],
+      "unmapped": []
+    },
+    {
+      "id": "V01-V07-human-art-acceptance",
+      "status": "NOT RUN",
+      "detail": "Captures are engineering candidates; true-volume and user visual acceptance require manual review. No V case is marked PASS."
+    },
+    {
+      "id": "R04-capture-completeness",
+      "status": "PASS",
+      "captures": 4,
+      "expected": 4
+    }
+  ],
+  "artifacts": [
+    "docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/board-hex-r2-1366x768-en-r3f-standard-1366x768-en.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/board-hex-r2-390x844-zh-Hant-r3f-standard-390x844-zh-Hant.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/board-hex-r56-1366x768-zh-Hant-r3f-standard-1366x768-zh-Hant.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/board-hex-r56-390x844-en-r3f-standard-390x844-en.png",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/report.json",
+    "docs/aegis/work/2026-10-29-board-3d/evidence/webkit-visual/server.log"
+  ],
+  "metrics": {},
+  "limitations": [
+    "API and WebSocket delivery use deterministic authorized fixture routes; this is not the R02 real-flow gate.",
+    "Headless Chromium may use SwiftShader; WebGL2 success proves a context/render path, not physical GPU or mobile performance.",
+    "Playwright browsers are worktree-local in .tmp/board-3d-browsers rather than .tmp/board-3d-venv/browsers; no global browser install was used.",
+    "Mocked onUnavailable callbacks in jsdom are source tests and are never promoted to native context-loss PASS.",
+    "No screen reader, user visual acceptance or physical mobile device was used."
+  ],
+  "provenance": {
+    "sourceSha": "12860b332e8069b08f12f188435877d96f9aa212",
+    "workingTreeStatus": [
+      "?? docs/aegis/work/2026-10-29-board-3d/evidence/"
+    ],
+    "sourceWorkingTreeStatus": [],
+    "sourcePaths": [
+      "packages/web/src",
+      "packages/web/index.html",
+      "packages/web/package.json",
+      "packages/web/tsconfig.json",
+      "packages/web/vite.config.ts",
+      "packages/web/test",
+      "packages/rules/src",
+      "packages/rules/package.json",
+      "packages/protocol/src",
+      "packages/protocol/package.json",
+      "packages/server/src",
+      "packages/server/package.json",
+      "scripts/board-visual/fixtures.mjs",
+      "scripts/board-visual/verify.py",
+      "scripts/board-3d",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "tsconfig.base.json"
+    ],
+    "sourceHash": "e633078d83eefba24ac43ce97df8c5a7d2bd902019de77e08e0574baba296efb",
+    "worktreeDirty": true,
+    "sourceDirty": false,
+    "buildHash": "5a384b3c525d1536139fb45a7c5c15ea91a31c71730de273c07ccba1038189e1",
+    "buildFiles": {
+      "assets/board-atlas-gwoo0gAO.svg": {
+        "sha256": "bf71959a5409400a4b11fe25b2b07ef9a2cab865dea6cc8cddd7876bbd1c8d02",
+        "bytes": 6555
+      },
+      "assets/BoardScene3D-DYeWSKad.js": {
+        "sha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24",
+        "bytes": 935514
+      },
+      "assets/BoardScene3D-DYeWSKad.js.map": {
+        "sha256": "fa755a1b6312146b31c0ad20cf5091096a68d62e8b35f73f20a0d7846203807e",
+        "bytes": 4242678
+      },
+      "assets/index-DeF8S8Wj.js": {
+        "sha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d",
+        "bytes": 448899
+      },
+      "assets/index-DeF8S8Wj.js.map": {
+        "sha256": "ef477e432d922c29fbacc69f592d2794d424369d6c2f67d6dd85ad9536dfa9ec",
+        "bytes": 1811210
+      },
+      "assets/index-DGT5H3u5.css": {
+        "sha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2",
+        "bytes": 80273
+      },
+      "index.html": {
+        "sha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e",
+        "bytes": 486
+      }
+    }
+  },
+  "environment": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]",
+    "pythonExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-venv\\Scripts\\python.exe",
+    "node": "v24.12.0",
+    "pnpm": "10.28.0",
+    "cpu": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "logicalCpuCount": 16,
+    "ramBytes": null,
+    "gpu": null,
+    "powerMode": "not observed",
+    "refreshRateHz": "not observed",
+    "browserCache": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-browsers",
+    "hardwareQueryLimitation": "powershell exited 1: Get-CimInstance : 拒絕存取 \nAt line:1 char:39\n+ ... tionPreference='Stop'; @{cpu=(Get-CimInstance Win32_Processor | Selec ...\n+                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n    + CategoryInfo          : PermissionDenied: (root\\cimv2:Win32_Processor:String) [Get-CimInstance], CimException\n    + FullyQualifiedErrorId : HRESULT 0x80041003,Microsoft.Management.Infrastructure.CimCmdlets.GetCimInstanceCommand",
+    "targetBrowser": "webkit",
+    "mode": "headless",
+    "rendererNotes": "effective/WebGL values are recorded per capture; software GPU inference requires unmasked renderer evidence",
+    "playwright": "1.64.1",
+    "browserRevisions": [
+      {
+        "name": "chromium",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome for Testing"
+      },
+      {
+        "name": "chromium-headless-shell",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome Headless Shell"
+      },
+      {
+        "name": "firefox",
+        "revision": "1555",
+        "installByDefault": true,
+        "browserVersion": "157.0",
+        "title": "Firefox"
+      },
+      {
+        "name": "webkit",
+        "revision": "2370",
+        "installByDefault": true,
+        "revisionOverrides": {
+          "mac14": "2251",
+          "mac14-arm64": "2251"
+        },
+        "browserVersion": "27.2",
+        "title": "WebKit"
+      },
+      {
+        "name": "ffmpeg",
+        "revision": "1013",
+        "installByDefault": true
+      },
+      {
+        "name": "winldd",
+        "revision": "1007",
+        "installByDefault": false
+      },
+      {
+        "name": "android",
+        "revision": "1001",
+        "installByDefault": false
+      }
+    ],
+    "browserExecutable": "D:\\Workspace\\Projects\\katan\\.worktrees\\board-3d\\.tmp\\board-3d-browsers\\webkit-2370\\Playwright.exe",
+    "executableSha256": "5c2f7bf3592d67bf74a32b01d08ad3b156fd4fff0fea0fabe8dbf99bd37d48f3",
+    "browserVersion": "27.2"
+  },
+  "fixture": {
+    "path": ".tmp/board-3d-fixtures-final.json",
+    "sha256": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+    "seed": 7,
+    "sources": {
+      "packages/web/src/test/fixtures.ts": "71095a419ea2ca47adfecac1fe15f6c9b4a0606dadbd4d7d2d153ca6a1098270",
+      "packages/rules/src/engine.ts": "313b19f2e186c3ce6d7786a4cc23cd6eb0f7acd81c158b404ff80b78532afa54",
+      "packages/rules/src/project.ts": "9618392c06a5a7dcd017cfb3acddb984f08a6c6e222f6f322fb3754faa14ba9c",
+      "packages/rules/src/topology.ts": "80bb08608c3866250ba5608e3bf68e9a5c4060b87bccd367f50498c7b6872889",
+      "packages/rules/src/layout.ts": "b1a888da2fd2abb80d66737b21266de5e6566d7921c049f2a428ccae8de8216d"
+    }
+  },
+  "server": {
+    "ownership": "runner",
+    "baseUrl": "http://127.0.0.1:56835",
+    "pid": 600,
+    "temporaryDirectory": "C:\\Users\\shene\\AppData\\Local\\Temp\\catan-board-visual-6tjywz9s",
+    "database": "independent temporary SQLite, deleted in finally",
+    "cleanup": {
+      "childExitCode": 1,
+      "temporaryDatabaseRemoved": true
+    }
+  },
+  "assetHashes": {
+    "/assets/BoardScene3D-DYeWSKad.js": {
+      "sha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24",
+      "bytes": 935514,
+      "servedSha256": "b876aa2700bed8d4933ef221cd82bf32f9723b465f9f3aed06a7fd56872afe24"
+    },
+    "/assets/index-DeF8S8Wj.js": {
+      "sha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d",
+      "bytes": 448899,
+      "servedSha256": "83e0b3cf715553602ebcc3ab60402e7072cd9dcde3fe7c0fc57a98f6c9402a1d"
+    },
+    "/assets/index-DGT5H3u5.css": {
+      "sha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2",
+      "bytes": 80273,
+      "servedSha256": "5005991f2f25ee75c6b9b4cb801d95a3a2041c318f054bf902a3b6529f0120f2"
+    },
+    "/": {
+      "sha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e",
+      "bytes": 486,
+      "servedSha256": "ae94b363f5e8764fd29c29f55e841d0abae93e654115208dbbb0015f56a2dd6e"
+    }
+  },
+  "effectiveRenderer": "r3f",
+  "rendererStatus": "ready",
+  "finishedAt": "2026-10-28T18:55:36Z",
+  "manualAcceptance": {
+    "V": {
+      "V01": "NOT RUN",
+      "V02": "NOT RUN",
+      "V03": "NOT RUN",
+      "V04": "NOT RUN",
+      "V05": "NOT RUN",
+      "V06": "NOT RUN",
+      "V07": "NOT RUN"
+    },
+    "A": {
+      "A01-screen-reader": "BLOCKED",
+      "A02-human-visual-zoom-gray": "NOT RUN",
+      "A03-automated-projection-review": "NOT RUN"
+    },
+    "R": {
+      "R02-real-flow": "BLOCKED",
+      "R03-physical-devices": "BLOCKED",
+      "R04-artifact-reproduction": "PASS"
+    }
+  }
+}
