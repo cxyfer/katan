@@ -2,7 +2,7 @@
 @layer table {
 /* 真正的持牌扇形；穩定的透明感應區涵蓋卡片間隙，不跟著分數欄位移。 */
 .screen--game .game__dock:has(.hand-fan) {
-  left: 0; right: 0; bottom: 0; height: auto; padding: 0;
+  left: 0; right: 0; bottom: 0; height: auto; padding: 0; z-index: 48;
 }
 .screen--game .game__dock:has(.hand-fan)::before { display: none; }
 .screen--game .hand.hand-fan,
@@ -78,7 +78,7 @@
 .screen--game .hand.hand-fan[data-expanded="false"] .development-card__play,
 .screen--game .hand.hand-fan[data-expanded="false"] .development-card__choice { visibility: hidden; }
 @media (max-width: 649px) {
-  .screen--game .hand.hand-fan[data-expanded] { --fan-card-width: 104px; --fan-card-height: 165px; --fan-spread: calc(50vw - 66px); width: 100%; height: 62px; }
+  .screen--game .hand.hand-fan[data-expanded] { --fan-card-width: 104px; --fan-card-height: 165px; --fan-spread: calc(50vw - 104px); width: 100%; height: 62px; }
   .screen--game .hand.hand-fan[data-expanded="true"] { height: 212px; }
   .screen--game .hand.hand-fan[data-expanded="false"] .hand-fan__card { transform: translateX(calc(var(--hand-position) * 59px)) translateY(var(--fan-card-height)) rotate(calc(var(--hand-position) * 9deg)); }
   .screen--game .hand.hand-fan .resource-card__art { height: 70px; flex-basis: 70px; }

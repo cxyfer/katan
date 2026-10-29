@@ -11,7 +11,7 @@
   box-shadow: 8px 4px 28px #00151d50;
 }
 .screen--game .players[data-expanded="true"] { width: min(320px, calc(100% - 16px)); }
-.screen--game .players__header { justify-content: flex-end; flex-wrap: wrap; }
+.screen--game .players__header { justify-content: flex-start; flex-wrap: wrap; max-width: calc(var(--score-width) - 20px); }
 .screen--game .players[data-expanded="true"] .players__heading { flex-basis: 100%; }
 .screen--game .players__pin {
   display: grid;

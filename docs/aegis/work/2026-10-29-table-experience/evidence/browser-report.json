@@ -1,0 +1,232 @@
+{
+  "fixture": "docs\\aegis\\work\\2026-10-29-board-3d\\evidence\\fixtures-final.json",
+  "cases": [
+    {
+      "board": "hex-r2",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        "scoreboard hover, stable board, pin/unpin and score privacy",
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.547
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r56",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        "scoreboard hover, stable board, pin/unpin and score privacy",
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.547
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r2",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        "scoreboard hover, stable board, pin/unpin and score privacy",
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.562
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r56",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        "scoreboard hover, stable board, pin/unpin and score privacy",
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.563
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r2",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        "scoreboard hover, stable board, pin/unpin and score privacy",
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.547
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r56",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        "scoreboard hover, stable board, pin/unpin and score privacy",
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.531
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r2",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        "scoreboard hover, stable board, pin/unpin and score privacy",
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.547
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r56",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        "scoreboard hover, stable board, pin/unpin and score privacy",
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.547
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    }
+  ],
+  "limitations": [
+    "Chromium with software WebGL; emulated viewports and pointer input.",
+    "Physical touch devices, screen readers and human visual acceptance not run."
+  ],
+  "sourceHead": "1dd21c648d90c2a407196ac89f03cc2e5e20b0c9",
+  "sourceDigest": "bfd326affe59ae624713e1e09977de6da03c17f63a11a920635f47b4ca879578",
+  "fixtureDigest": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+  "buildDigest": "0dbeecd0c443ebe14a0aa24b70ecbe4f0f6d4794472cd0eace670e087f23c3a6",
+  "assets": {
+    "assets/board-atlas-B_YnWwGI.svg": {
+      "sha256": "64c5decd85aedacb2d3df74c3eca946dddd096d91fb74828e51dc03fc5a62904",
+      "bytes": 9769
+    },
+    "assets/BoardScene3D-6HpOYErP.js": {
+      "sha256": "f76175a0f6c235af69030803de34f866ba6b00f61712640d7b8be61cd6698393",
+      "bytes": 954597
+    },
+    "assets/BoardScene3D-6HpOYErP.js.map": {
+      "sha256": "c49beb81ae44807aabcd73b088c3f0fc261f2b332eadab3f9bab41d3de44c79c",
+      "bytes": 4369355
+    },
+    "assets/index-BJhACqbC.css": {
+      "sha256": "487daf729d1d003ae263333bbf34879511c0acd6fe6cde141392ffeb8a50327c",
+      "bytes": 96250
+    },
+    "assets/index-CmPYNxt7.js": {
+      "sha256": "5a167aeaa8ba9f8fc124c8d9d3c3e10726cc5566f979f40f86a74868e342ce60",
+      "bytes": 475363
+    },
+    "assets/index-CmPYNxt7.js.map": {
+      "sha256": "8b4cfe2dee5f5ac94d7f9a6ea011ca6c64fdc0f4cd458c569abb4485e423dfb7",
+      "bytes": 1895469
+    },
+    "assets/IslandPreview-6VpjSEr9.css": {
+      "sha256": "01320e60a675adf503f3e581c335f5ab3b634df087425e3ada59a6f899a8c1db",
+      "bytes": 7621
+    },
+    "assets/IslandPreview-B_B1_92d.js": {
+      "sha256": "5b3e9dd2ac0175b18ef4a5574193c80e724d876a6631fa01e7a1f88248fa5f23",
+      "bytes": 8383
+    },
+    "assets/IslandPreview-B_B1_92d.js.map": {
+      "sha256": "161056ea2ddddbb574619656f5fae52688a57d94be15a09cd97196a788fe09fc",
+      "bytes": 20979
+    },
+    "index.html": {
+      "sha256": "21d317c9dc2e1b71c93075e6e52cd793045bfc2d454b4eac32ae426212fc4217",
+      "bytes": 486
+    }
+  },
+  "browser": "155.0.8059.86"
+}
