@@ -24,6 +24,7 @@ export function useBoardAnimation(
   latest.current = { snapshot, sync };
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const diceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mandatoryRollSeq = useRef<number | null>(null);
   const visible = useRef(!document.hidden);
   const reduced = useRef(false);
   const [queue, setQueue] = useState<BoardEffectGroup[]>([]);
@@ -37,6 +38,7 @@ export function useBoardAnimation(
     cursor.current = decideBoardAnimation(null, latest.current.snapshot, latest.current.sync).cursor;
     setQueue([]);
     setDiceQueue([]);
+    mandatoryRollSeq.current = null;
   }, []);
 
   useEffect(() => {
@@ -60,16 +62,35 @@ export function useBoardAnimation(
 
   useEffect(() => {
     const decision = decideBoardAnimation(
-      cursor.current, snapshot, sync, !online || mandatory || !visible.current || reduced.current,
+      cursor.current, snapshot, sync, !online || !visible.current || reduced.current,
     );
     cursor.current = decision.cursor;
     if (decision.kind === 'baseline') {
       setQueue([]);
       setDiceQueue([]);
-    } else if (decision.events.length > 0 && snapshot) {
+      mandatoryRollSeq.current = null;
+      return;
+    }
+    const rolls = snapshot ? diceRollPresentations(snapshot.gameId, decision.events) : [];
+    if (mandatory) {
+      setQueue([]);
+      const pending = snapshot?.view.pending;
+      const rollPending = pending?.kind === 'discard' || (pending?.kind === 'moveRobber' && pending.cause === 'seven');
+      const seven = rollPending ? rolls.findLast((roll) => roll.dice[0] + roll.dice[1] === 7) : undefined;
+      // 同包七點可與必要提示並存；任何後續權威進度都讓位給必要操作，且不補播。
+      if (seven && snapshot) {
+        mandatoryRollSeq.current = snapshot.view.seq;
+        setDiceQueue([seven]);
+      } else if (mandatoryRollSeq.current !== snapshot?.view.seq) {
+        mandatoryRollSeq.current = null;
+        setDiceQueue([]);
+      }
+      return;
+    }
+    mandatoryRollSeq.current = null;
+    if (decision.events.length > 0 && snapshot) {
       const groups = boardEffectGroups(snapshot.gameId, decision.events);
       setQueue((current) => enqueueBoardEffects(current, groups));
-      const rolls = diceRollPresentations(snapshot.gameId, decision.events);
       if (rolls.length > 0) {
         setDiceQueue((current) => current.length + rolls.length > MAX_EFFECT_GROUPS ? [] : [...current, ...rolls]);
       }
@@ -103,12 +124,12 @@ export function useBoardAnimation(
     };
   }, [activeDice]);
 
-  const canPresent = online && !mandatory && visible.current && !reduced.current &&
+  const canPresent = online && visible.current && !reduced.current &&
     cursor.current?.gameId === snapshot?.gameId && cursor.current?.syncGeneration === sync.generation;
   return {
-    activeDice: canPresent ? activeDice : null,
+    activeDice: canPresent && (!mandatory || mandatoryRollSeq.current === snapshot?.view.seq) ? activeDice : null,
     pendingDiceCount: diceQueue.length,
-    active: canPresent ? active : null,
+    active: canPresent && !mandatory ? active : null,
     pendingCount: queue.length,
     resetPresentation,
   };

@@ -62,7 +62,7 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     vi.useFakeTimers();
     const next = rolled(13, [6, 6]);
     act(() => sockets[0]!.deliver({ type: 'snapshot', payload: next }));
-    expect(screen.getByTestId('dice-focus').parentElement).toBe(document.body);
+    expect(screen.getByTestId('dice-focus').parentElement).toBe(screen.getByTestId('game-stage'));
     expect(screen.getByTestId('dice-roll-animation').getAttribute('aria-hidden')).toBe('true');
     const panel = screen.getByTestId('dice-focus').querySelector('.dice-focus__panel');
     expect(screen.getByTestId('dice-focus').getAttribute('data-phase')).toBe('rolling');
@@ -152,6 +152,32 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     expect(screen.queryByTestId('board-effects')).toBeNull();
     expect(screen.getByTestId('building-0').querySelector('.board__building-drop')).toBeNull();
     expect(screen.getByTestId('building-0')).toBeTruthy();
+  });
+
+  it('rolls seven while its required discard prompt remains immediately usable, then yields to later progress', async () => {
+    const sockets: TestSocket[] = [];
+    const api = createFakeApi({ snapshot: rolled(12) });
+    await open(api, sockets);
+    vi.useFakeTimers();
+    const seven = rolled(14, [2, 5]);
+    seven.view.events = [makeEvent(13, 'turn.rolled', { dice: [2, 5], total: 7 }), makeEvent(14, 'discard.required')];
+    seven.view.pending = { kind: 'discard', required: { p1: 1 }, waitingFor: ['p1'] };
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: seven }));
+    expect(screen.getByTestId('dice-focus').getAttribute('data-phase')).toBe('rolling');
+    expect(screen.getByTestId('dice-focus').getAttribute('data-mandatory')).toBe('true');
+    expect(screen.getByTestId('required-action-prompt')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('discard-add-lumber'));
+    expect((screen.getByTestId('discard-submit') as HTMLButtonElement).disabled).toBe(false);
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByTestId('dice-announcement').textContent).toContain('2 + 5 = 7');
+    const progressed = rolled(16, [2, 5]);
+    progressed.view.events = [makeEvent(15, 'discard.submitted'), makeEvent(16, 'robber.moveRequired')];
+    progressed.view.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven' };
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: progressed }));
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(screen.getByTestId('required-action-prompt')).toBeTruthy();
+    expect(screen.getAllByTestId(/^target-hex-/).length).toBeGreaterThan(0);
   });
 
   it('interrupts presentation for a new mandatory prompt while its control remains available', async () => {

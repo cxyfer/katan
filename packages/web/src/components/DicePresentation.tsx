@@ -4,7 +4,7 @@ import { useT } from '../i18n/context.tsx';
 import '../styles/dice-presentation.css';
 
 /** 純呈現；點數只來自權威事件，翻滾圖案不參與遊戲狀態或命令。 */
-export function DicePresentation({ dice }: { dice: readonly [number, number] }) {
+export function DicePresentation({ dice, mandatory = false }: { dice: readonly [number, number]; mandatory?: boolean }) {
   const t = useT();
   const [revealed, setRevealed] = useState(false);
   useEffect(() => {
@@ -13,7 +13,7 @@ export function DicePresentation({ dice }: { dice: readonly [number, number] }) 
   }, []);
   const result = t('play.diceResult', { first: dice[0], second: dice[1], total: dice[0] + dice[1] });
 
-  return <div className="dice-presentation" data-testid="dice-focus" data-phase={revealed ? 'result' : 'rolling'}>
+  return <div className="dice-presentation" data-testid="dice-focus" data-mandatory={mandatory ? 'true' : undefined} data-phase={revealed ? 'result' : 'rolling'}>
     <div className="dice-presentation__panel dice-focus__panel">
       <span className="dice-presentation__label">{t('play.dice')}</span>
       <div className="dice-presentation__pair" aria-hidden="true">

@@ -18,7 +18,7 @@ function Harness(input: ReturnType<typeof props>) {
   const animation = useBoardAnimation(input.snapshot, input.sync, input.online, input.mandatory);
   return <LocaleProvider locale="en">
     <span data-testid="board-effect-active">{animation.active ? 'yes' : 'no'}</span>
-    {animation.activeDice && <DicePresentation key={animation.activeDice.id} dice={animation.activeDice.dice} />}
+    {animation.activeDice && <DicePresentation key={animation.activeDice.id} dice={animation.activeDice.dice} mandatory={input.mandatory} />}
   </LocaleProvider>;
 }
 let media: EventTarget & { matches: boolean };
@@ -95,6 +95,38 @@ describe('centered dice presentation', () => {
       expect(vi.getTimerCount()).toBe(0);
     },
   );
+
+  it.each(['discard', 'moveRobber'] as const)('presents a new seven with same-envelope %s, then cancels on later required progress', (kind) => {
+    const { rerender, unmount } = open();
+    const seven = props(14);
+    seven.mandatory = true;
+    seven.snapshot.view.turn.dice = [2, 5];
+    seven.snapshot.view.events = [
+      makeEvent(13, 'turn.rolled', { dice: [2, 5], total: 7 }),
+      makeEvent(14, kind === 'discard' ? 'discard.required' : 'robber.moveRequired'),
+    ];
+    seven.snapshot.view.pending = kind === 'discard'
+      ? { kind: 'discard', required: { p1: 1 }, waitingFor: ['p1'] }
+      : { kind: 'moveRobber', actor: 'p1', cause: 'seven' };
+    rerender(<Harness {...seven} />);
+    expect(screen.getByTestId('dice-focus').getAttribute('data-mandatory')).toBe('true');
+    expect(screen.getByTestId('dice-focus').getAttribute('data-phase')).toBe('rolling');
+    expect(screen.getByTestId('board-effect-active').textContent).toBe('no');
+    act(() => vi.advanceTimersByTime(700));
+    rerender(<Harness {...seven} />);
+    act(() => vi.advanceTimersByTime(800));
+    expect(screen.getByTestId('dice-announcement').textContent).toBe('Rolled 2 + 5 = 7');
+    const progressed = props(15);
+    progressed.mandatory = true;
+    progressed.snapshot.view.events = [makeEvent(15, 'robber.moved')];
+    progressed.snapshot.view.pending = { kind: 'steal', actor: 'p1', hex: 1, candidates: ['p2'] };
+    rerender(<Harness {...progressed} />);
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    rerender(<Harness {...props(15)} />);
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    unmount();
+  });
 
   it('presents two rolls from one event delta in order without revealing the next result early', () => {
     const { rerender, unmount } = open();

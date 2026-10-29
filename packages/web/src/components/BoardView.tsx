@@ -240,8 +240,8 @@ export function BoardView({ controller }: { controller: TableController }) {
       {effective === 'r3f' && <p className="board-camera-hint" data-testid="camera-gesture-hint">{t('board.cameraGestureHint')}</p>}
 
       {focusedRoll && createPortal(
-        <DicePresentation key={focusedRoll.id} dice={focusedRoll.dice} />,
-        document.fullscreenElement ?? document.body,
+        <DicePresentation key={focusedRoll.id} dice={focusedRoll.dice} mandatory={!!view.pending} />,
+        document.fullscreenElement ?? boardRef.current?.closest('[data-testid="game-stage"]') ?? document.body,
       )}
       <div ref={surfaceRef} className="board__surface" data-testid="board-surface" role="region"
         aria-label={t(effective === 'r3f' ? 'a11y.boardRegion3d' : 'a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>

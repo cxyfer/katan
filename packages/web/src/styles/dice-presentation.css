@@ -1,6 +1,7 @@
-/* Portal 脫離地圖與側欄的定位／裁切，標準及全螢幕均以可見視窗置中。 */
+/* 固定定位以可見視窗置中；portal 保留桌面層級，必要操作提示可顯示在骰子上方。 */
 .board__dice[data-presenting="true"] { visibility: hidden; }
 .dice-presentation { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; pointer-events: none; padding: 16px; }
+.dice-presentation[data-mandatory="true"] { z-index: 64; }
 .dice-presentation .dice-presentation__panel { width: min(360px, 100%); box-sizing: border-box; padding: 24px; border: 1px solid #d6c28aaa; border-radius: 20px; background: radial-gradient(ellipse at top,#35584bf5,#0c2a30f5); box-shadow: 0 20px 90px #00151dbb; text-align: center; animation: none; }
 .dice-presentation__label { display: block; margin-bottom: 22px; font-size: .9rem; color: #e4d4a6; letter-spacing: .12em; }
 .dice-presentation__pair { display: flex; justify-content: center; gap: 26px; margin-bottom: 28px; }
