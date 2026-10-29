@@ -84,6 +84,8 @@ export const en: Catalog = {
   // --- immersive game table ------------------------------------------------
   'table.tools': 'Table tools',
   'table.closePanel': 'Close panel and return to the board',
+  'table.handFanHint': 'Hover, focus, or tap the cards to spread your hand. Inspect a card to see its details. Press Escape or tap outside to gather the cards.',
+  'table.inspectCard': 'Inspect {card}',
   'table.handHint': 'Tap a card to inspect · Spend resources to build and trade',
   'table.expandPlayers': 'Expand player scores',
   'table.collapsePlayers': 'Collapse player scores',

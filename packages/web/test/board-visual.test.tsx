@@ -73,7 +73,7 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
       sockets[0]!.deliver({ type: 'snapshot', payload: rolled(12, [1, 1]) });
     });
     fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: 'zh-Hant' } });
-    fireEvent.click(screen.getByTestId('hand-toggle'));
+    fireEvent.focus(screen.getByTestId('hand-panel'));
     fireEvent.click(screen.getByTestId('zoom-in'));
     fireEvent(window, new Event('resize'));
     expect(screen.getByTestId('dice-focus').querySelector('.dice-focus__panel')).toBe(panel);
