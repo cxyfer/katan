@@ -10,7 +10,7 @@ function open(view = makeView(), selfId: string | null = 'p1') {
   const state = initialTableState('en');
   state.session = selfId ? makeIdentity({ id: selfId }) : null;
   state.game = makeSnapshot(view);
-  const controller = { state, dispatch: vi.fn(), actions: {} } as TableController;
+  const controller = { state, dispatch: vi.fn(), actions: {} } as unknown as TableController;
   render(<LocaleProvider locale="en"><button>Outside</button><PlayersPanel controller={controller} /></LocaleProvider>);
   return screen.getByTestId('players-panel');
 }
