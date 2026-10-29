@@ -490,6 +490,12 @@ The user's next correction preserves native scenery dimensions: complete trees, 
 
 The prior [3D acceptance matrix](aegis/plans/2026-10-29-board-3d-acceptance.md) remains a record of that candidate's engineering, art, reference-device and physical-device/accessibility gates. This replacement's implementation and browser checks do not establish user visual acceptance or phone GPU performance. Those human/device checks remain open; changing the local renderer default does not close them. This presentation work changes no rules, wire schema, identity, privacy or command ownership and does not claim M1/M3/M4 completion.
 
+#### Hover information and compact score rail correction — 2026-10-30
+
+The follow-up to PR #10 removes click-to-center/zoom and the map-element explorer panel. Hovering a terrain tile, building, road, harbor or legal action target for 1.5 seconds displays public information beside that element without changing the camera or selecting an action. Keyboard focus provides the same delayed information; Escape dismisses it. Brief passes, touch taps, dragging and camera changes do not open stale information. The floating information remains readable while hovered and stays within the viewport, including fullscreen.
+
+The left score rail now changes width: collapsed it retains player color/initials, authoritative totals and the turn flag; expanded it also shows names, score breakdowns and the pin control. Expansion overlays to the right without moving the board. Existing pointer, keyboard, touch, pinning and narrow-screen mutual exclusion remain. This revision supersedes the fixed-width disclosure from PR #10; rules, private information and explicit action confirmation retain their existing owners.
+
 ## 9. Security, Privacy, and Abuse Controls
 
 - Guest credentials are random, revocable server-issued tokens stored in secure, HTTP-only, SameSite cookies in production. Never trust a client-supplied player ID or room role.

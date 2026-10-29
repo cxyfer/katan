@@ -84,7 +84,6 @@ export interface BoardViewportControls {
   rotate: (deltaDeg: number) => void;
   setElevation: (value: number) => void;
   fit: () => void;
-  focus: (point: WorldPoint) => void;
   projectPoint: (point: WorldPoint) => ProjectedAnchor;
   measure: () => void;
   gestureActive: boolean;
@@ -181,7 +180,6 @@ export function useBoardViewport({
   const [gestureActive, setGestureActive] = useState(false);
   const viewRef = useRef(view);
   const gestureRef = useRef<GestureState | null>(null);
-  const inspectionCenterRef = useRef<{ x: number; z: number } | null>(null);
   const suppressClickRef = useRef(false);
   const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resetKeyRef = useRef(`${sceneKey ?? geometry.topologyId}:${boundsKey(effectiveBounds)}`);
@@ -193,12 +191,9 @@ export function useBoardViewport({
     const movement = Math.max(1 - 1 / clamp(zoom, MIN_BOARD_ZOOM, MAX_BOARD_ZOOM), 0);
     const halfX = (effectiveBounds.max.x - effectiveBounds.min.x) / 2;
     const halfZ = (effectiveBounds.max.z - effectiveBounds.min.z) / 2;
-    const inspected = inspectionCenterRef.current;
     return {
-      x: clamp(center.x, Math.min(fittedCenter.x - halfX * movement, inspected?.x ?? Infinity),
-        Math.max(fittedCenter.x + halfX * movement, inspected?.x ?? -Infinity)),
-      z: clamp(center.z, Math.min(fittedCenter.z - halfZ * movement, inspected?.z ?? Infinity),
-        Math.max(fittedCenter.z + halfZ * movement, inspected?.z ?? -Infinity)),
+      x: clamp(center.x, fittedCenter.x - halfX * movement, fittedCenter.x + halfX * movement),
+      z: clamp(center.z, fittedCenter.z - halfZ * movement, fittedCenter.z + halfZ * movement),
     };
   }, [effectiveBounds, fittedCenter]);
 
@@ -206,7 +201,6 @@ export function useBoardViewport({
     azimuthDeg?: number; elevationDeg?: number | null;
   }) => {
     const zoom = clamp(next.zoom, MIN_BOARD_ZOOM, MAX_BOARD_ZOOM);
-    if (zoom <= 1) inspectionCenterRef.current = null;
     const azimuthDeg = next.azimuthDeg ?? viewRef.current.azimuthDeg;
     const elevationDeg = next.elevationDeg === undefined ? viewRef.current.elevationDeg : next.elevationDeg;
     const value = { zoom, center: clampCenter(next.center, zoom), azimuthDeg: ((azimuthDeg % 360) + 360) % 360, elevationDeg };
@@ -231,18 +225,6 @@ export function useBoardViewport({
     const current = viewRef.current;
     applyView({ ...current, elevationDeg: clamp(value, MIN_CAMERA_ELEVATION, MAX_CAMERA_ELEVATION) });
   }, [applyView, renderer]);
-
-  // Inspection may center coastal pieces beyond the normal pan envelope.
-  // This is an immediate camera update, including when reduced motion is set.
-  const focus = useCallback((point: WorldPoint) => {
-    if (![point.x, point.y, point.z].every(Number.isFinite) || gestureRef.current) return;
-    const value = { ...viewRef.current, zoom: Math.max(2.2, viewRef.current.zoom),
-      center: { x: clamp(point.x, effectiveBounds.min.x, effectiveBounds.max.x),
-        z: clamp(point.z, effectiveBounds.min.z, effectiveBounds.max.z) } };
-    inspectionCenterRef.current = value.center;
-    viewRef.current = value;
-    setView(value);
-  }, [effectiveBounds]);
 
   const fit = useCallback(() => {
     measureRef.current();
@@ -327,7 +309,6 @@ export function useBoardViewport({
   useEffect(() => {
     if (resetKeyRef.current === currentResetKey) return;
     resetKeyRef.current = currentResetKey;
-    inspectionCenterRef.current = null;
     applyView({ center: fittedCenter, zoom: requestedInitialZoom, azimuthDeg: CAMERA_AZIMUTH_DEG, elevationDeg: null });
   }, [applyView, currentResetKey, fittedCenter, requestedInitialZoom]);
 
@@ -732,7 +713,6 @@ export function useBoardViewport({
     rotate,
     setElevation,
     fit,
-    focus,
     projectPoint,
     measure,
     gestureActive,

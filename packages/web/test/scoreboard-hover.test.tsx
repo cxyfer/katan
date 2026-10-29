@@ -50,14 +50,14 @@ describe('player scoreboard previews', () => {
     expect(obligation.closest('.players__details')).toBeNull();
   });
 
-  it('keeps six names, colors, turn indication and authoritative totals visible when collapsed', () => {
+  it('keeps six colors, turn indication and totals in the compact rail and reveals names and pinning on expansion', () => {
     const players = Array.from({ length: 6 }, (_, seat) => makePlayer({ id: `p${seat + 1}`, seat, nickname: `Player ${seat + 1}`, ownScore: 9 }));
     const panel = open(makeView({ players }));
     expect(panel.getAttribute('data-expanded')).toBe('false');
     expect(panel.querySelectorAll('[data-board-seat]')).toHaveLength(6);
     for (const player of players) {
       const seat = screen.getByTestId(`seat-${player.seat}`);
-      expect(seat.querySelector('.seat__name')?.hasAttribute('hidden')).toBe(false);
+      expect(seat.querySelector('.seat__identity')?.hasAttribute('hidden')).toBe(true);
       expect(seat.querySelector('.seat__name')?.textContent).toContain(player.nickname);
       expect((seat as HTMLElement).style.getPropertyValue('--player-color')).not.toBe('');
       expect(seat.querySelector('.seat__score')?.textContent).toContain(player.seat === 0 ? '9' : '2');
@@ -66,6 +66,12 @@ describe('player scoreboard previews', () => {
     expect(screen.getByTestId('seat-0').getAttribute('data-turn')).toBe('true');
     expect(within(screen.getByTestId('seat-0')).getByText('Turn owner')).toBeTruthy();
     expect(screen.getAllByTestId('players-hidden-vp')).toHaveLength(1);
+    expect(screen.getByTestId('players-pin').hidden).toBe(true);
+    pointer(panel, 'pointerover');
+    expect(screen.getByTestId('players-pin').hidden).toBe(false);
+    for (const player of players) {
+      expect(screen.getByTestId(`seat-${player.seat}`).querySelector('.seat__identity')?.hasAttribute('hidden')).toBe(false);
+    }
   });
 
   it('opens on mouse hover, tolerates re-entry, and closes after leaving without pinning', () => {

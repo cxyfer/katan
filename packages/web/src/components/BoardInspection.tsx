@@ -1,4 +1,5 @@
-import { useEffect, useId, useMemo, useRef, type RefObject } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import type { PublicBoardView } from '@catan/rules';
 import type { BoardGeometry } from '../board/geometry.ts';
 import type { BoardViewportControls } from '../board/useBoardViewport.ts';
@@ -13,11 +14,10 @@ interface Props {
   renderer: 'svg' | 'r3f';
   controls: BoardViewportControls;
   nameOf: (id: string) => string;
-  selected: Inspection | null;
-  onInspect: (target: Inspection) => void;
-  onClose: () => void;
   fallbackFocusRef: RefObject<HTMLElement | null>;
 }
+
+export const INSPECTION_DELAY_MS = 1500;
 
 /** Keep dense fitted maps selectable without letting piece padding cover tile centers. */
 export function inspectionHitSize(outlines: readonly (readonly ProjectedAnchor[])[]): number {
@@ -31,7 +31,7 @@ export function inspectionHitSize(outlines: readonly (readonly ProjectedAnchor[]
 }
 
 /** Inspection sits below legal targets; both use the same camera projection. */
-export function BoardInspectionLayer({ geometry, board, renderer, controls, nameOf, selected, onInspect, fallbackFocusRef }: Props) {
+export function BoardInspectionLayer({ geometry, board, renderer, controls, nameOf, fallbackFocusRef }: Props) {
   const locale = useLocale();
   const t = useT();
   const elements = useMemo(() => inspectionElements(geometry, board, renderer), [geometry, board, renderer]);
@@ -41,7 +41,120 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
     .map((element) => element.outline!.map(controls.projectPoint)));
   const layerRef = useRef<SVGSVGElement | null>(null);
   const focusedRef = useRef<string | null>(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointerFocus = useRef(false);
+  const [hovered, setHovered] = useState<{ target: Inspection; node: Element } | null>(null);
+  const [position, setPosition] = useState({ left: 0, top: 0 });
+  const tooltipId = useId();
+  const clearTimers = () => {
+    if (openTimer.current !== null) clearTimeout(openTimer.current);
+    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+    openTimer.current = closeTimer.current = null;
+  };
+  const dismiss = () => { clearTimers(); setHovered(null); };
+  const scheduleClose = () => {
+    clearTimers();
+    closeTimer.current = setTimeout(() => setHovered(null), 160);
+  };
+
+  // 同時涵蓋檢視命中層與上方的合法操作目標，不改變選取或相機。
   useEffect(() => {
+    const surface = layerRef.current?.parentElement;
+    if (!surface) return;
+    dismiss();
+    const targetNode = (target: EventTarget | null) => target instanceof Element
+      ? target.closest('[data-inspection-kind], [data-target-kind]') : null;
+    const enter = (event: PointerEvent | FocusEvent) => {
+      if (controls.gestureActive || ('pointerType' in event && (event.pointerType === 'touch' || event.buttons))) return;
+      if (event.type === 'focusin' && pointerFocus.current) return;
+      const node = targetNode(event.target);
+      if (!node || node.contains(event.relatedTarget as Node | null)) return;
+      const kind = node.getAttribute('data-inspection-kind') ?? node.getAttribute('data-target-kind');
+      const index = Number(node.getAttribute('data-inspection-index') ?? node.getAttribute('data-target-index'));
+      if (!kind || !Number.isInteger(index)) return;
+      dismiss();
+      openTimer.current = setTimeout(() => {
+        if (node.isConnected) setHovered({ target: { kind: kind as Inspection['kind'], index }, node });
+      }, INSPECTION_DELAY_MS);
+    };
+    const leave = (event: PointerEvent | FocusEvent) => {
+      const node = targetNode(event.target);
+      if (!node || node.contains(event.relatedTarget as Node | null)) return;
+      if (event.type === 'focusout') dismiss();
+      else scheduleClose();
+    };
+    const press = () => { pointerFocus.current = true; dismiss(); };
+    const keyboard = (event: KeyboardEvent) => {
+      pointerFocus.current = false;
+      if (event.key === 'Escape') dismiss();
+    };
+    const scroll = (event: Event) => {
+      if (!(event.target instanceof Node) || !popupRef.current?.contains(event.target)) dismiss();
+    };
+    const leaveBoard = (event: FocusEvent | PointerEvent) => {
+      if (event.target instanceof Node && !surface.contains(event.target) && !popupRef.current?.contains(event.target)) dismiss();
+    };
+    surface.addEventListener('pointerover', enter);
+    surface.addEventListener('pointerout', leave);
+    surface.addEventListener('focusin', enter);
+    surface.addEventListener('focusout', leave);
+    surface.addEventListener('pointerdown', press);
+    surface.addEventListener('pointercancel', dismiss);
+    surface.addEventListener('wheel', dismiss);
+    document.addEventListener('keydown', keyboard);
+    document.addEventListener('focusin', leaveBoard);
+    document.addEventListener('pointerdown', leaveBoard);
+    globalThis.addEventListener('resize', dismiss);
+    globalThis.addEventListener('scroll', scroll, true);
+    return () => {
+      clearTimers();
+      surface.removeEventListener('pointerover', enter);
+      surface.removeEventListener('pointerout', leave);
+      surface.removeEventListener('focusin', enter);
+      surface.removeEventListener('focusout', leave);
+      surface.removeEventListener('pointerdown', press);
+      surface.removeEventListener('pointercancel', dismiss);
+      surface.removeEventListener('wheel', dismiss);
+      document.removeEventListener('keydown', keyboard);
+      document.removeEventListener('focusin', leaveBoard);
+      document.removeEventListener('pointerdown', leaveBoard);
+      globalThis.removeEventListener('resize', dismiss);
+      globalThis.removeEventListener('scroll', scroll, true);
+    };
+  }, [controls.viewport, controls.gestureActive]);
+
+  useEffect(() => {
+    if (!hovered) return;
+    hovered.node.setAttribute('aria-describedby', tooltipId);
+    return () => hovered.node.removeAttribute('aria-describedby');
+  }, [hovered, tooltipId]);
+
+  const description = hovered ? inspectDescription(context, hovered.target) : null;
+  useLayoutEffect(() => {
+    const popup = popupRef.current;
+    if (!hovered || !popup) return;
+    if (!hovered.node.isConnected) { dismiss(); return; }
+    const anchor = hovered.node.getBoundingClientRect();
+    const box = popup.getBoundingClientRect();
+    let left = anchor.right + 12;
+    let top = anchor.top + anchor.height / 2 - box.height / 2;
+    if (left + box.width > innerWidth - 8) {
+      left = anchor.left - box.width - 12;
+      if (left < 8) {
+        left = anchor.left + (anchor.width - box.width) / 2;
+        top = anchor.bottom + 12 + box.height <= innerHeight - 8
+          ? anchor.bottom + 12 : anchor.top - box.height - 12;
+      }
+    }
+    setPosition({
+      left: Math.max(8, Math.min(left, innerWidth - box.width - 8)),
+      top: Math.max(8, Math.min(top, innerHeight - box.height - 8)),
+    });
+  }, [hovered, board, locale]);
+  useEffect(() => {
+    if (hovered && !hovered.node.isConnected) dismiss();
     if (focusedRef.current && !layerRef.current?.querySelector(`[data-testid="${focusedRef.current}"]`)) {
       focusedRef.current = null;
       // A later focus move may have happened after the node was detached.
@@ -51,13 +164,7 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
       }
     }
   });
-  const choose = (target: Inspection) => { if (!controls.consumeSuppressedClick()) onInspect(target); };
-  const keyboard = (event: React.KeyboardEvent, target: Inspection) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault(); event.stopPropagation(); onInspect(target);
-    }
-  };
-  return <svg ref={layerRef} className="board-inspect-layer" data-testid="board-inspect-layer" width={rect.width} height={rect.height}
+  return <><svg ref={layerRef} className="board-inspect-layer" data-testid="board-inspect-layer" width={rect.width} height={rect.height}
     aria-label={t('board.inspectMap')} role="group" onBlur={(event) => {
       if (!event.currentTarget.contains(event.relatedTarget)) focusedRef.current = null;
     }}>
@@ -77,12 +184,11 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
       const pieceHitSize = incidentLengths.length ? Math.min(hitSize, Math.min(...incidentLengths) * 0.6) : hitSize;
       const halfHit = pieceHitSize / 2;
       const option = inspectDescription(context, element);
-      const active = selected?.kind === element.kind && selected.index === element.index;
-      const shared = { role: 'button', tabIndex: 0, 'aria-label': `${t('board.inspect')}: ${option.title} ${option.detail}`,
-        'aria-pressed': active, 'data-hit-size': pieceHitSize, 'data-testid': `inspect-${element.kind}-${element.index}`,
+      const shared = { role: 'img', tabIndex: 0, 'aria-label': `${option.title} ${option.detail}`,
+        'data-inspection-kind': element.kind, 'data-inspection-index': element.index,
+        'data-hit-size': pieceHitSize, 'data-testid': `inspect-${element.kind}-${element.index}`,
         onFocus: () => { focusedRef.current = `inspect-${element.kind}-${element.index}`; },
-        onClick: () => choose(element), onKeyDown: (event: React.KeyboardEvent) => keyboard(event, element),
-        className: `board-inspect-hit${active ? ' board-inspect-hit--active' : ''}` };
+        className: 'board-inspect-hit' };
       if (element.kind === 'hex' && outline) return <polygon key={`hex-${element.index}`} {...shared}
         points={outline.map((point) => `${point.x - rect.left},${point.y - rect.top}`).join(' ')} />;
       if (element.kind === 'edge' && outline) return <line key={`edge-${element.index}`} {...shared}
@@ -93,45 +199,15 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
         x={Math.min(anchor.x, top.x) - rect.left - halfHit} y={Math.min(anchor.y, top.y) - rect.top - halfHit}
         width={Math.abs(anchor.x - top.x) + pieceHitSize} height={Math.abs(anchor.y - top.y) + pieceHitSize} />;
     })}
-  </svg>;
-}
-
-export function BoardInspectionPanel({ geometry, board, renderer, nameOf, selected, onInspect, onClose, fallbackFocusRef }: Props) {
-  const locale = useLocale();
-  const t = useT();
-  const id = useId();
-  const context = { locale, board, topology: geometry.topology, nameOf };
-  const elements = useMemo(() => inspectionElements(geometry, board, renderer), [geometry, board, renderer]);
-  const description = selected ? inspectDescription(context, selected) : null;
-  const close = () => { onClose(); fallbackFocusRef.current?.focus(); };
-  return <section className="board-inspection" data-testid="board-inspection" aria-label={t('board.inspectMap')}>
-    <details className="board-inspection__browser">
-      <summary>{t('board.inspectMap')}</summary>
-      <label htmlFor={id}>{t('board.inspectChoose')}</label>
-      <select id={id} value="" onChange={(event) => {
-        const [kind, index] = event.target.value.split(':');
-        if (kind) onInspect({ kind: kind as Inspection['kind'], index: Number(index) });
-      }}>
-        <option value="" disabled>{t('board.inspectChoose')}</option>
-        {elements.map((element) => <option key={`${element.kind}:${element.index}`} value={`${element.kind}:${element.index}`}>
-          {inspectDescription(context, element).title}
-        </option>)}
-      </select>
-    </details>
-    {description && <div className="board-inspection__detail" data-testid="inspection-detail" onKeyDown={(event) => {
-      if (event.key === 'Escape') { event.preventDefault(); close(); }
-    }}>
-      <div className="board-inspection__heading"><h3>{description.title}</h3>
-        <button type="button" className="button button--ghost" onClick={close} aria-label={t('board.inspectClose')}>×</button></div>
-      <div role="status" aria-live="polite" aria-atomic="true">
+  </svg>
+    {hovered && description && createPortal(
+      <div ref={popupRef} id={tooltipId} role="tooltip" className="board-inspection-tooltip" data-testid="inspection-detail"
+        style={position} onPointerEnter={clearTimers} onPointerLeave={scheduleClose}>
+        <h3>{description.title}</h3>
         <p>{description.detail}</p>
         <ul>{description.lines.map((line, index) => <li key={index}>{line}</li>)}</ul>
-      </div>
-      {description.relatedHexes.length > 0 && <div className="board-inspection__related" aria-label={t('board.inspectRelated')}>
-        <span>{t('board.inspectRelated')}</span>
-        {description.relatedHexes.map((index) => <button key={index} type="button" className="button button--ghost"
-          onClick={() => onInspect({ kind: 'hex', index })}>{t('board.hex', { index })}</button>)}
-      </div>}
-    </div>}
-  </section>;
+        {description.relatedHexes.length > 0 && <p>{t('board.inspectRelated')}: {description.relatedHexes.map((index) => t('board.hex', { index })).join(', ')}</p>}
+      </div>, document.fullscreenElement ?? document.body,
+    )}
+  </>;
 }

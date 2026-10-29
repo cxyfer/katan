@@ -196,6 +196,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           className="players__pin"
           type="button"
           data-testid="players-pin"
+          hidden={!expanded}
           aria-pressed={pinned}
           aria-controls={detailsIds}
           aria-label={t(pinned ? 'table.playersUnpin' : 'table.playersPin')}
@@ -238,7 +239,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
             >
               <div className="seat__summary">
                 <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>{Array.from(player.nickname)[0]}</span>
-                <span className="seat__identity">
+                <span className="seat__identity" hidden={!expanded}>
                   <span className="seat__name" title={player.nickname}>{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>
                 </span>
                 <span className={`seat__score${isSelf && player.ownScore !== undefined ? ' seat__own-score' : ''}`} title={scoreLabel}><GameIcon name="crown" size={15} /><span className="visually-hidden">{scoreLabel}: </span>{number(total)}</span>
@@ -265,11 +266,12 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           );
         })}
       </ol>
-      <p className="players__obligation" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}>
+      <p className="players__obligation" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}
+        title={action ? t(action.messageId, action.params) : t('app.loading')}>
         <GameIcon name="flag" size={14} />
-        <span>{action ? t(action.messageId, action.params) : t('app.loading')}</span>
+        <span className={expanded ? undefined : 'visually-hidden'}>{action ? t(action.messageId, action.params) : t('app.loading')}</span>
       </p>
-      {view.turn.pairedActor === 2 && <p className="badge players__paired-actor" data-testid="paired-actor">{t('play.pairedActor', { actor: 2 })}</p>}
+      {view.turn.pairedActor === 2 && <p hidden={!expanded} className="badge players__paired-actor" data-testid="paired-actor">{t('play.pairedActor', { actor: 2 })}</p>}
     </section>
   );
 }

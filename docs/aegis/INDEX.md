@@ -5,6 +5,8 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-10-30 | work | docs/aegis/work/2026-10-30-hover-details.md | Delayed element tooltips and a compact collapsing player rail |
+| 2026-10-30 | artifact | docs/aegis/work/2026-10-30-hover-details/report.json | Twelve production browser checks for delayed information and collapsing rails |
 | 2026-10-30 | artifact | docs/aegis/work/2026-10-29-side-rails/review-report.json | Review regression checks for rail exclusivity, expanded hands and turn flags |
 | 2026-10-29 | work | docs/aegis/work/2026-10-29-side-rails.md | Centered horizontal side rails and automatic command receipts |
 | 2026-10-29 | artifact | docs/aegis/work/2026-10-29-side-rails/report.json | Production side rail geometry, touch and receipt verification |

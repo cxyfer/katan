@@ -5,7 +5,6 @@ import { buildGeometry } from '../board/geometry.ts';
 import { boardIntent } from '../board/intent.ts';
 import type { TargetKind } from '../board/targets.ts';
 import { parseViewBox } from '../board/viewport.ts';
-import { targetsFromGeometry } from '../board/projection.ts';
 import { useBoardAnimation } from '../board/useBoardAnimation.ts';
 import { MAX_CAMERA_ELEVATION, MIN_CAMERA_ELEVATION, useBoardViewport } from '../board/useBoardViewport.ts';
 import { rendererMode, qualityMode, type RendererMode, type ProjectionSnapshot, type BoardEffectAnchors, type CssRect } from '../board/render-contract.ts';
@@ -19,8 +18,7 @@ import { DicePresentation } from './DicePresentation.tsx';
 import { Legend } from './Legend.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { SvgBoard } from './SvgBoard.tsx';
-import { BoardInspectionLayer, BoardInspectionPanel } from './BoardInspection.tsx';
-import { inspectionElements, type BoardInspection } from '../board/inspection.ts';
+import { BoardInspectionLayer } from './BoardInspection.tsx';
 import '../styles/board-camera-controls.css';
 
 class SceneBoundary extends Component<{ children: ReactNode; onUnavailable: (reason: string) => void }, { failed: boolean }> {
@@ -45,7 +43,6 @@ export function BoardView({ controller }: { controller: TableController }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [messageHost, setMessageHost] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [inspection, setInspection] = useState<BoardInspection | null>(null);
   const [cluster, setCluster] = useState<number[] | null>(null);
   const [requested, setRequested] = useState<RendererMode>(() => {
     const query = new URLSearchParams(globalThis.location.search);
@@ -119,24 +116,11 @@ export function BoardView({ controller }: { controller: TableController }) {
     animation.resetPresentation();
     setRequested(mode); setReady(false); setFailure(null); setEffective('svg'); setProjection(null); setAttempt((value) => value + 1);
   };
-  const inspect = useCallback((target: BoardInspection) => {
-    if (!view) return;
-    const element = inspectionElements(geometry, view.board, effective)
-      .find((candidate) => candidate.kind === target.kind && candidate.index === target.index);
-    const anchor = element ?? (target.kind === 'harbor' ? null :
-      targetsFromGeometry(geometry, target.kind, [target.index])[0]);
-    if (!anchor) return;
-    setInspection(target);
-    controls.focus(anchor.world);
-  }, [controls.focus, effective, geometry, view]);
-  useEffect(() => { setInspection(null); }, [state.game?.gameId, geometry.topologyId]);
-
   const selectTarget = useCallback((kind: TargetKind, index: number) => {
     if (!intent || kind !== intent.kind || !intent.targets.includes(index)) return;
     setCluster(null); setPickerOpen(false);
-    inspect({ kind, index });
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
-  }, [actions, intent, inspect]);
+  }, [actions, intent]);
   const focusedRoll = animation.activeDice;
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);
 
@@ -203,7 +187,7 @@ export function BoardView({ controller }: { controller: TableController }) {
           data-testid="reset-view"
           aria-label={t('board.fitBoard')}
           title={t('board.fitBoard')}
-          onClick={() => { controls.fit(); setInspection(null); }}
+          onClick={controls.fit}
         >
           <GameIcon name="compass" size={18} />
         </button>
@@ -274,16 +258,15 @@ export function BoardView({ controller }: { controller: TableController }) {
         {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} active={animation.active}
           selection={selection ? state.selection : { ...state.selection, index: null }} selfId={selfId} intent={intent}
           pan={controls.pan} zoom={zoom} viewBoxCenter={viewBoxCenter} nameResolver={nameResolver} />}
-        <BoardInspectionLayer geometry={geometry} board={board} renderer={effective} controls={controls}
-          nameOf={nameResolver} selected={inspection} onInspect={inspect} onClose={() => setInspection(null)} fallbackFocusRef={surfaceRef} />
+        <BoardInspectionLayer key={`${state.game?.gameId}:${geometry.topologyId}:${effective}`}
+          geometry={geometry} board={board} renderer={effective} controls={controls}
+          nameOf={nameResolver} fallbackFocusRef={surfaceRef} />
         <BoardTargetOverlay targets={targets} rect={controls.viewport.rect} selection={selection} board={board} topology={topology} nameOf={nameResolver}
           renderer={effective} onSelect={selectTarget} consumeSuppressedClick={controls.consumeSuppressedClick}
           fallbackFocusRef={surfaceRef} onCancel={actions.cancelSelection}
           onAmbiguous={(_kind, _index, candidates) => { setCluster([...candidates]); setPickerOpen(true); }} />
       </div>
       {stage && animation.active && anchors && createPortal(<BoardEffects group={animation.active} geometry={geometry} view={view} anchors={anchors} />, stage)}
-      <BoardInspectionPanel geometry={geometry} board={board} renderer={effective} controls={controls}
-        nameOf={nameResolver} selected={inspection} onInspect={inspect} onClose={() => setInspection(null)} fallbackFocusRef={surfaceRef} />
       <Legend />
       {pickerOpen && intent && <TargetPicker geometry={geometry} board={board} topology={topology} kind={intent.kind}
         targets={intent.targets} nameOf={nameResolver} {...(cluster ? { ambiguousOnly: cluster } : {})}

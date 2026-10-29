@@ -1,7 +1,7 @@
 @layer base, pregame, table;
 @layer table {
-/* 列高與欄寬不隨展開改變；明細只從右側進入預留的空間。 */
-.screen--game:has(.players[data-testid="players-panel"]) { --score-width: 216px; }
+/* 收起時只保留色標與分數；展開後向右增加寬度，不推移棋盤。 */
+.screen--game:has(.players[data-testid="players-panel"]) { --score-width: 68px; --score-expanded-width: 216px; }
 .screen--game .game__table:has(.players) { position: relative; }
 .screen--game .players[data-testid="players-panel"],
 .screen--game .players[data-testid="players-panel"][data-expanded="true"] {
@@ -25,6 +25,7 @@
   overscroll-behavior: contain;
 }
 .screen--game .players[data-testid="players-panel"][data-expanded="true"] {
+  width: var(--score-expanded-width);
   background: linear-gradient(100deg, #102d32eb, #1b3b37f2) !important;
   border-color: #b5a67555 !important;
   box-shadow: 8px 4px 28px #00151d50 !important;
@@ -72,8 +73,9 @@
 }
 .screen--game .players .seat__summary {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
-  grid-template-rows: 26px;
+  grid-template-columns: 26px;
+  grid-template-rows: 26px 22px;
+  justify-content: center;
   align-content: center;
   align-items: center;
   gap: 4px;
@@ -88,13 +90,14 @@
   width: 76px;
 }
 .screen--game .players .seat__swatch { grid-column: 1; grid-row: 1; width: 26px; height: 26px; font-size: .8rem; }
-.screen--game .players .seat__identity,
-.screen--game .players[data-expanded="false"] .seat__identity {
+.screen--game .players .seat__identity {
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
   display: block;
 }
+.screen--game .players .seat__identity[hidden],
+.screen--game .players__pin[hidden] { display: none; }
 .screen--game .players[data-expanded="true"] .seat__identity { grid-column: 1 / -1; grid-row: 2; }
 .screen--game .players .seat__name { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .76rem; line-height: 1.35; }
 .screen--game .players .seat__turn,
@@ -121,8 +124,8 @@
   pointer-events: none;
 }
 .screen--game .players .seat__score,
-.screen--game .players[data-expanded="false"] .seat__score { grid-column: 3; grid-row: 1; flex-direction: row; gap: 3px; font-size: 1.05rem; }
-.screen--game .players[data-expanded="true"] .seat__score { grid-column: 2; justify-self: end; }
+.screen--game .players[data-expanded="false"] .seat__score { grid-column: 1; grid-row: 2; justify-self: center; flex-direction: row; gap: 3px; font-size: 1.05rem; }
+.screen--game .players[data-expanded="true"] .seat__score { grid-column: 2; grid-row: 1; justify-self: end; }
 .screen--game .players .seat__score svg { width: 12px; }
 .screen--game .players .seat--turn { border-left-color: var(--player-color); }
 .screen--game .players .players__details[hidden] { display: none; }
@@ -161,9 +164,10 @@
 }
 .screen--game .players__obligation > svg { flex: 0 0 auto; margin-top: 2px; }
 .screen--game .players__obligation[data-mine="true"] { color: #ffe2a0; }
+.screen--game .players[data-expanded="false"] .players__obligation { justify-content: center; }
 @keyframes scoreboard-reveal { from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateX(-8px); } to { opacity: 1; clip-path: inset(0); transform: none; } }
 @media (max-width: 649px) {
-  .screen--game:has(.players[data-testid="players-panel"]) { --score-width: 196px; }
+  .screen--game:has(.players[data-testid="players-panel"]) { --score-width: 60px; --score-expanded-width: 196px; }
   .screen--game .players[data-testid="players-panel"],
   .screen--game .players[data-testid="players-panel"][data-expanded="true"] { margin-left: 4px !important; padding: 4px !important; max-height: calc(100% - 156px); }
   .screen--game .players .seat-list { grid-auto-rows: 70px; gap: 3px; }
