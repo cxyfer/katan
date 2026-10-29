@@ -5,6 +5,9 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-10-29 | work | docs/aegis/work/2026-10-29-table-experience.md | Map inspection, centered dice, held-card fan and hover score verification |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-table-experience/evidence/browser-report.json | Eight-case table interaction browser results and asset provenance |
+| 2026-10-29 | artifact | docs/aegis/work/2026-10-29-table-experience/evidence/verify.log | Final table interaction repository verification |
 | 2026-10-29 | plan | docs/aegis/plans/2026-10-29-board-3d-research.md | Modeled board research and compatibility assessment |
 | 2026-10-29 | plan | docs/aegis/plans/2026-10-29-board-3d-plan.md | Modeled board contracts and three-agent execution plan |
 | 2026-10-29 | plan | docs/aegis/plans/2026-10-29-board-3d-acceptance.md | Modeled board acceptance and evidence boundaries |

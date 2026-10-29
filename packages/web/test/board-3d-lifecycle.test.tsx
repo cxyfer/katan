@@ -181,7 +181,8 @@ describe('renderer lifecycle and presentation cursor', () => {
     expect(api.callsOf('sendCommand')).toHaveLength(0);
 
     act(() => socket.deliver({ type: 'snapshot', payload: rolled(14, [2, 2]) }));
-    expect((await screen.findByTestId('dice-focus')).textContent).toContain('2 + 2 = 4');
+    expect((await screen.findByTestId('dice-focus')).getAttribute('data-phase')).toBe('rolling');
+    expect(screen.getByTestId('dice-announcement').textContent).toBe('');
   });
 
   it('L02 context-unavailable callback clears presentation without losing the selected target or replaying on retry', async () => {

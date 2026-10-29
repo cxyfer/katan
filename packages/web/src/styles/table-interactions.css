@@ -2,14 +2,14 @@
 .screen--game { --score-width: 76px; --hand-bottom: 48px; --card-width: 112px; --card-height: 152px; }
 .screen--game .game__table { display: grid; grid-template-columns: var(--score-width) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; }
 .screen--game:has(.players[data-expanded="true"]) { --score-width: 250px; }
-.screen--game .game__playfield { grid-column: 2; grid-row: 1; min-width: 0; }
+.screen--game .game__playfield { grid-column: 2; grid-row: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 8px; padding: 8px calc(var(--rail-width) + 24px) 68px 8px; }
 .screen--game .game-tools { z-index: 60; }
 .screen--game .game__menu { z-index: 61; }
 .screen--game .game__preview { z-index: 66; }
 .screen--game:has(.game__receipt) .game__actions { bottom: 150px; }
-.screen--game .game__map { inset: 64px calc(var(--rail-width) + 24px) 68px 8px; }
+.screen--game .game__map { position: relative; inset: auto; grid-row: 2; min-height: 0; }
 .screen--game .game__actions { top: 18px; right: 14px; bottom: 66px; overflow-y: auto; scrollbar-width: thin; }
-.screen--game .game__messages { top: 8px; left: 12px; transform: none; width: calc(100% - var(--rail-width) - 42px); max-height: 52%; z-index: 65; }
+.screen--game .game__messages { position: relative; top: auto; left: auto; transform: none; width: auto; grid-row: 1; max-height: min(38dvh, 340px); z-index: 65; }
 
 .screen--game .players { grid-row: 1; grid-column: 1; align-self: stretch; width: auto; min-width: 0; margin: 10px 0 58px 8px !important; padding: 6px !important; background: #102d32ed !important; border: 1px solid #b5a67555 !important; border-radius: 12px; overflow-y: auto; scrollbar-width: thin; z-index: 46; }
 .screen--game .players__header { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
@@ -79,6 +79,9 @@
 .screen--game .game__receipt .command-status__actions { margin-top: 3px; }
 .screen--game .game__receipt .button { min-height: 32px; padding: 3px 7px; font-size: .64rem; }
 .screen--game .board__dice { position: static; transform: none; }
+.screen--game .board__toolbar { position: relative; top: auto; right: auto; order: 0; flex: 0 0 auto; z-index: 44; }
+.screen--game .board__toolbar:has(.board__display-settings[open]) { z-index: 62; }
+.screen--game .board__surface { order: 1; }
 .screen--game .board__dice--rolling, .screen--game .board__dice--rolling .board__die { animation: none; }
 .screen--game .board__svg { touch-action: none; }
 .screen--game .board__die:nth-child(2) { transform: none; }
@@ -96,7 +99,7 @@
 }
 @media (max-height: 520px) and (min-width: 650px) {
   .screen--game { --card-width: 100px; --card-height: 140px; }
-  .screen--game .game__map { top: 45px; bottom: 48px; }
+  .screen--game .game__playfield { padding-bottom: 48px; }
   .screen--game .players { margin-top: 5px !important; }
   .screen--game .players .seat-list { gap: 4px; }
   .screen--game .players[data-expanded="false"] .seat { grid-template-columns: 24px 1fr; padding: 4px 2px; gap: 2px; }
@@ -111,9 +114,13 @@
   .screen--game .players { margin-left: 4px !important; padding: 4px !important; }
   .screen--game .players__toggle { min-width: 40px; width: 40px; }
   .screen--game .players .seat__swatch { width: 26px; height: 30px; }
-  .screen--game .game__map { inset: 70px 5px 204px 0; }
+  .screen--game .game__playfield { padding: 5px 5px 204px 0; }
   .screen--game .game__actions { inset: auto 7px 104px 0; width: auto; max-height: 104px; overflow: auto; }
-  .screen--game .game__messages { left: 5px; width: calc(100% - 12px); max-height: 44%; top: 5px; }
+  .screen--game .game__messages { max-height: min(32dvh, 260px); }
+  .screen--game .status-strip .game-brand__name { display: none; }
+  .screen--game .board__toolbar { flex-wrap: nowrap; justify-content: flex-start; min-height: 44px; overflow-x: auto; scrollbar-width: thin; }
+  .screen--game .board__toolbar > * { flex-shrink: 0; }
+  .screen--game .board__display-settings[open] { position: fixed; top: auto; right: 8px; bottom: 112px; max-height: min(60dvh, 400px); overflow-y: auto; }
   .screen--game .game__dock { left: calc(var(--score-width) + 8px); right: 7px; }
   .screen--game .hand__handle { padding: 3px; }
   .screen--game .hand__handle .button { font-size: .64rem; padding: 4px 6px; }
@@ -121,7 +128,7 @@
   .screen--game .hand__hint { font-size: .56rem; }
   .screen--game .game__receipt { bottom: 105px; right: 8px; width: min(210px, 65vw); }
   .screen--game:has(.game__receipt) .game__actions { bottom: 184px; }
-  .screen--game:has(.game__receipt) .game__map { bottom: 284px; }
+  .screen--game:has(.game__receipt) .game__playfield { padding-bottom: 284px; }
   .screen--game:has(.hand[data-expanded="true"]) .game__receipt { bottom: calc(var(--hand-bottom) + min(58dvh, 440px) + 48px); }
   .dice-focus__panel { max-width: calc(100% - 24px); padding: 18px; }
   .dice-focus__panel strong { font-size: .76rem; }

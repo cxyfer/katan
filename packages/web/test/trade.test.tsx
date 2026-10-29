@@ -182,6 +182,7 @@ describe('development cards and pending effects', () => {
     await openGame(api);
 
     fireEvent.change(screen.getByTestId('monopoly-resource'), { target: { value: 'ore' } });
+    fireEvent.focus(screen.getByTestId('hand-panel'));
     fireEvent.click(screen.getByTestId('play-monopoly-0'));
 
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
@@ -194,6 +195,7 @@ describe('development cards and pending effects', () => {
     const api = createFakeApi({ snapshot: makeSnapshot(view) });
     await openGame(api);
 
+    fireEvent.focus(screen.getByTestId('hand-panel'));
     fireEvent.click(screen.getByTestId('play-knight-0'));
     const target = await screen.findByTestId('target-hex-0');
     expect(target.tagName).toBe('BUTTON');

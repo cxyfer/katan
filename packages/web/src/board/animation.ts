@@ -3,6 +3,25 @@ import type { GameSyncMetadata } from '../state/table.ts';
 
 export const MAX_EFFECT_GROUPS = 8;
 export const MAX_EFFECT_DURATION_MS = 800;
+export const DICE_ROLL_DURATION_MS = 1500;
+export const DICE_RESULT_HOLD_MS = 1000;
+export const DICE_PRESENTATION_DURATION_MS = DICE_ROLL_DURATION_MS + DICE_RESULT_HOLD_MS;
+
+export interface DiceRollPresentation {
+  id: string;
+  seq: number;
+  dice: [number, number];
+}
+
+/** 只從新收到的權威事件建立骰子演出，不由 snapshot 的保留點數補播。 */
+export function diceRollPresentations(gameId: string, events: readonly GameEvent[]): DiceRollPresentation[] {
+  return events.flatMap((event) => {
+    const dice = event.params.dice;
+    if (event.type !== 'turn.rolled' || !Array.isArray(dice) || dice.length !== 2 ||
+        !dice.every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) return [];
+    return [{ id: `${gameId}:${event.seq}`, seq: event.seq, dice: [dice[0], dice[1]] as [number, number] }];
+  });
+}
 
 /** 演出進度獨立於命令版本與盤面狀態。 */
 export interface PresentationCursor {

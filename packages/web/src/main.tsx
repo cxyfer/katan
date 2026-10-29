@@ -1,8 +1,8 @@
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
+import './styles.css';
 import { App } from './App.tsx';
 import { createApiClient } from './api/client.ts';
-import './styles.css';
 
 const container = document.getElementById('root');
 const preview = new URLSearchParams(globalThis.location.search).get('preview') === 'island';

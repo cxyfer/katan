@@ -35,11 +35,14 @@ describe('table interactions', { timeout: 15000 }, () => {
     expect(document.activeElement).toBe(screen.getByTestId('players-toggle'));
   });
 
-  it('opens on hover, delays close, preserves focus and remains open when pinned', async () => {
+  it('fans actual card faces on hover, bridges gaps, and keeps keyboard focus until Escape', async () => {
     await open();
     vi.useFakeTimers();
     const hand = screen.getByTestId('hand-panel');
     expect(hand.getAttribute('data-expanded')).toBe('false');
+    expect(screen.queryByTestId('hand-toggle')).toBeNull();
+    expect(screen.queryByTestId('hand-pin')).toBeNull();
+    expect(hand.querySelectorAll('.hand-fan__card')).toHaveLength(6);
     pointerEnter(hand, 'touch');
     expect(hand.getAttribute('data-expanded')).toBe('false');
     pointerEnter(hand);
@@ -47,39 +50,38 @@ describe('table interactions', { timeout: 15000 }, () => {
     fireEvent.pointerLeave(hand);
     act(() => vi.advanceTimersByTime(200));
     expect(hand.getAttribute('data-expanded')).toBe('true');
+    pointerEnter(hand);
     act(() => vi.advanceTimersByTime(121));
-    expect(hand.getAttribute('data-expanded')).toBe('false');
-    fireEvent.click(screen.getByTestId('hand-pin'));
-    fireEvent.pointerLeave(hand);
-    act(() => vi.advanceTimersByTime(500));
-    expect(hand.getAttribute('data-pinned')).toBe('true');
     expect(hand.getAttribute('data-expanded')).toBe('true');
-    fireEvent.keyDown(hand, { key: 'Escape' });
+    fireEvent.pointerLeave(hand);
+    act(() => vi.advanceTimersByTime(321));
     expect(hand.getAttribute('data-expanded')).toBe('false');
-    expect(hand.getAttribute('data-pinned')).toBe('false');
-    expect(document.activeElement).toBe(screen.getByTestId('hand-toggle'));
-    fireEvent.click(screen.getByTestId('hand-toggle'));
     const resource = screen.getByTestId('resource-lumber').querySelector('button')!;
     act(() => resource.focus());
     fireEvent.pointerLeave(hand);
     act(() => vi.advanceTimersByTime(500));
     expect(hand.getAttribute('data-expanded')).toBe('true');
+    fireEvent.keyDown(resource, { key: 'Escape' });
+    expect(hand.getAttribute('data-expanded')).toBe('false');
+    expect(document.activeElement).toBe(hand);
+    fireEvent.keyDown(hand, { key: 'Enter' });
+    expect(hand.getAttribute('data-expanded')).toBe('true');
+    expect(document.activeElement).toBe(resource);
     act(() => screen.getByTestId('players-toggle').focus());
     act(() => vi.advanceTimersByTime(500));
     expect(hand.getAttribute('data-expanded')).toBe('false');
   });
-
   it('preserves monopoly choice across collapse and never offers new or victory-point cards for play', async () => {
     const view = makeView();
     view.players[0]!.devCards = ['monopoly', 'victoryPoint'];
     view.players[0]!.newDevCards = ['knight', 'roadBuilding'];
     const api = await open(view);
-    fireEvent.click(screen.getByTestId('hand-toggle'));
+    fireEvent.focus(screen.getByTestId('hand-panel'));
     fireEvent.change(screen.getByTestId('monopoly-resource'), { target: { value: 'ore' } });
-    fireEvent.click(screen.getByTestId('hand-toggle'));
-    fireEvent.click(screen.getByTestId('hand-toggle'));
+    fireEvent.keyDown(screen.getByTestId('hand-panel'), { key: 'Escape' });
+    fireEvent.focus(screen.getByTestId('hand-panel'));
     expect((screen.getByTestId('monopoly-resource') as HTMLSelectElement).value).toBe('ore');
-    expect(screen.getByTestId('new-devcards').querySelector('button')).toBeNull();
+    expect(screen.getByTestId('new-devcards').querySelector('.development-card__play')).toBeNull();
     expect(screen.queryByTestId('play-victoryPoint-1')).toBeNull();
     fireEvent.click(screen.getByTestId('play-monopoly-0'));
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
@@ -112,13 +114,16 @@ describe('table interactions', { timeout: 15000 }, () => {
     api.setSnapshot(makeSnapshot(next, 13));
     vi.useFakeTimers();
     await act(async () => { fireEvent.click(screen.getByTestId('action-endTurn')); });
-    expect(screen.getByTestId('dice-focus').textContent).toContain('Rolled 6 + 6 = 12');
+    expect(screen.getByTestId('dice-focus').getAttribute('data-phase')).toBe('rolling');
+    expect(screen.getByTestId('dice-announcement').textContent).toBe('');
     const panel = screen.getByTestId('dice-focus').querySelector('.dice-focus__panel');
     fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: 'zh-Hant' } });
-    fireEvent.click(screen.getByTestId('hand-toggle'));
+    fireEvent.focus(screen.getByTestId('hand-panel'));
     fireEvent.click(screen.getByTestId('zoom-in'));
     expect(screen.getByTestId('dice-focus').querySelector('.dice-focus__panel')).toBe(panel);
-    act(() => vi.advanceTimersByTime(800));
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByTestId('dice-announcement').textContent).toContain('6 + 6 = 12');
+    act(() => vi.advanceTimersByTime(1000));
     expect(screen.queryByTestId('dice-focus')).toBeNull();
     await act(async () => { fireEvent.click(screen.getByTestId('action-endTurn')); });
     expect(api.callsOf('sendCommand')).toHaveLength(2);

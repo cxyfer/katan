@@ -5,6 +5,7 @@ import { buildGeometry } from '../board/geometry.ts';
 import { boardIntent } from '../board/intent.ts';
 import type { TargetKind } from '../board/targets.ts';
 import { parseViewBox } from '../board/viewport.ts';
+import { targetsFromGeometry } from '../board/projection.ts';
 import { useBoardAnimation } from '../board/useBoardAnimation.ts';
 import { MAX_CAMERA_ELEVATION, MIN_CAMERA_ELEVATION, useBoardViewport } from '../board/useBoardViewport.ts';
 import { rendererMode, qualityMode, type RendererMode, type ProjectionSnapshot, type BoardEffectAnchors, type CssRect } from '../board/render-contract.ts';
@@ -14,9 +15,12 @@ import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
 import { BoardTargetOverlay } from './BoardTargetOverlay.tsx';
 import { BoardEffects } from './BoardEffects.tsx';
+import { DicePresentation } from './DicePresentation.tsx';
 import { Legend } from './Legend.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { SvgBoard } from './SvgBoard.tsx';
+import { BoardInspectionLayer, BoardInspectionPanel } from './BoardInspection.tsx';
+import { inspectionElements, type BoardInspection } from '../board/inspection.ts';
 import '../styles/board-camera-controls.css';
 
 class SceneBoundary extends Component<{ children: ReactNode; onUnavailable: (reason: string) => void }, { failed: boolean }> {
@@ -40,6 +44,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const surfaceRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [inspection, setInspection] = useState<BoardInspection | null>(null);
   const [cluster, setCluster] = useState<number[] | null>(null);
   const [requested, setRequested] = useState<RendererMode>(() => {
     const query = new URLSearchParams(globalThis.location.search);
@@ -109,18 +114,25 @@ export function BoardView({ controller }: { controller: TableController }) {
     animation.resetPresentation();
     setRequested(mode); setReady(false); setFailure(null); setEffective('svg'); setProjection(null); setAttempt((value) => value + 1);
   };
+  const inspect = useCallback((target: BoardInspection) => {
+    if (!view) return;
+    const element = inspectionElements(geometry, view.board, effective)
+      .find((candidate) => candidate.kind === target.kind && candidate.index === target.index);
+    const anchor = element ?? (target.kind === 'harbor' ? null :
+      targetsFromGeometry(geometry, target.kind, [target.index])[0]);
+    if (!anchor) return;
+    setInspection(target);
+    controls.focus(anchor.world);
+  }, [controls.focus, effective, geometry, view]);
+  useEffect(() => { setInspection(null); }, [state.game?.gameId, geometry.topologyId]);
+
   const selectTarget = useCallback((kind: TargetKind, index: number) => {
     if (!intent || kind !== intent.kind || !intent.targets.includes(index)) return;
     setCluster(null); setPickerOpen(false);
+    inspect({ kind, index });
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
-  }, [actions, intent]);
-  const focusedRoll = useMemo(() => {
-    const rolled = animation.active?.events.find((event) => event.type === 'turn.rolled');
-    const dice = rolled?.params.dice;
-    if (!rolled || !Array.isArray(dice) || dice.length !== 2 || !dice.every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) return null;
-    return { seq: rolled.seq, dice: [dice[0], dice[1]] as [number, number] };
-  }, [animation.active]);
-  const diceRolling = focusedRoll !== null;
+  }, [actions, intent, inspect]);
+  const focusedRoll = animation.activeDice;
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);
 
   if (!view) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
@@ -187,7 +199,7 @@ export function BoardView({ controller }: { controller: TableController }) {
           type="button"
           className="button button--ghost"
           data-testid="reset-view"
-          onClick={controls.fit}
+          onClick={() => { controls.fit(); setInspection(null); }}
         >
           {t('board.fitBoard')}
         </button>
@@ -207,7 +219,7 @@ export function BoardView({ controller }: { controller: TableController }) {
         )}
         <span className="board__zoom-readout" data-testid="zoom-readout">{t('board.zoomLevel', { percent: Math.round(zoom * 100) })}</span>
         {view.turn.dice && (
-          <span className="board__dice" role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
+          <span className="board__dice" data-presenting={focusedRoll ? 'true' : undefined} aria-hidden={focusedRoll ? true : undefined} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
             {view.turn.dice.map((value, index) => <span className="board__die" key={index} aria-hidden="true">{value}</span>)}
             <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
           </span>
@@ -227,17 +239,9 @@ export function BoardView({ controller }: { controller: TableController }) {
 
       {effective === 'r3f' && <p className="board-camera-hint" data-testid="camera-gesture-hint">{t('board.cameraGestureHint')}</p>}
 
-      {diceRolling && focusedRoll && boardRef.current && createPortal(
-        <div className="dice-focus" data-testid="dice-focus" aria-hidden="true">
-          <div className="dice-focus__panel" key={focusedRoll.seq}>
-            <span className="dice-focus__label">{t('play.dice')}</span>
-            <div className="dice-focus__pair" aria-hidden="true">
-              {focusedRoll.dice.map((value, index) => <span className="dice-focus__die" key={index}>{value}</span>)}
-            </div>
-            <strong>{t('play.diceResult', { first: focusedRoll.dice[0], second: focusedRoll.dice[1], total: focusedRoll.dice[0] + focusedRoll.dice[1] })}</strong>
-          </div>
-        </div>,
-        boardRef.current.closest('[data-testid="game-stage"]') ?? boardRef.current,
+      {focusedRoll && createPortal(
+        <DicePresentation key={focusedRoll.id} dice={focusedRoll.dice} mandatory={!!view.pending} />,
+        document.fullscreenElement ?? boardRef.current?.closest('[data-testid="game-stage"]') ?? document.body,
       )}
       <div ref={surfaceRef} className="board__surface" data-testid="board-surface" role="region"
         aria-label={t(effective === 'r3f' ? 'a11y.boardRegion3d' : 'a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>
@@ -251,12 +255,16 @@ export function BoardView({ controller }: { controller: TableController }) {
         {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} active={animation.active}
           selection={selection ? state.selection : { ...state.selection, index: null }} selfId={selfId} intent={intent}
           pan={controls.pan} zoom={zoom} viewBoxCenter={viewBoxCenter} nameResolver={nameResolver} />}
+        <BoardInspectionLayer geometry={geometry} board={board} renderer={effective} controls={controls}
+          nameOf={nameResolver} selected={inspection} onInspect={inspect} onClose={() => setInspection(null)} fallbackFocusRef={surfaceRef} />
         <BoardTargetOverlay targets={targets} rect={controls.viewport.rect} selection={selection} board={board} topology={topology} nameOf={nameResolver}
           renderer={effective} onSelect={selectTarget} consumeSuppressedClick={controls.consumeSuppressedClick}
           fallbackFocusRef={surfaceRef} onCancel={actions.cancelSelection}
           onAmbiguous={(_kind, _index, candidates) => { setCluster([...candidates]); setPickerOpen(true); }} />
       </div>
       {stage && animation.active && anchors && createPortal(<BoardEffects group={animation.active} geometry={geometry} view={view} anchors={anchors} />, stage)}
+      <BoardInspectionPanel geometry={geometry} board={board} renderer={effective} controls={controls}
+        nameOf={nameResolver} selected={inspection} onInspect={inspect} onClose={() => setInspection(null)} fallbackFocusRef={surfaceRef} />
       <Legend />
       {pickerOpen && intent && <TargetPicker geometry={geometry} board={board} topology={topology} kind={intent.kind}
         targets={intent.targets} nameOf={nameResolver} {...(cluster ? { ambiguousOnly: cluster } : {})}

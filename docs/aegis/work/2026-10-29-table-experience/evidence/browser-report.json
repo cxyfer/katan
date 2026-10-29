@@ -1,0 +1,273 @@
+{
+  "fixture": "docs\\aegis\\work\\2026-10-29-board-3d\\evidence\\fixtures-final.json",
+  "cases": [
+    {
+      "board": "hex-r2",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        {
+          "scoreboard": "same-width icon counters and medals, all seats fit, hover, pin/unpin and privacy",
+          "players": 4,
+          "collapsedWidth": 160,
+          "expandedWidth": 160
+        },
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.547
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r56",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        {
+          "scoreboard": "same-width icon counters and medals, all seats fit, hover, pin/unpin and privacy",
+          "players": 6,
+          "collapsedWidth": 160,
+          "expandedWidth": 160
+        },
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.563
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r2",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        {
+          "scoreboard": "same-width icon counters and medals, all seats fit, hover, pin/unpin and privacy",
+          "players": 4,
+          "collapsedWidth": 120,
+          "expandedWidth": 120
+        },
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.562
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r56",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        {
+          "scoreboard": "same-width icon counters and medals, all seats fit, hover, pin/unpin and privacy",
+          "players": 6,
+          "collapsedWidth": 120,
+          "expandedWidth": 120
+        },
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.547
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r2",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        {
+          "scoreboard": "same-width icon counters and medals, all seats fit, hover, pin/unpin and privacy",
+          "players": 4,
+          "collapsedWidth": 160,
+          "expandedWidth": 160
+        },
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.532
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r56",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "locale": "en",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        {
+          "scoreboard": "same-width icon counters and medals, all seats fit, hover, pin/unpin and privacy",
+          "players": 6,
+          "collapsedWidth": 160,
+          "expandedWidth": 160
+        },
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.531
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r2",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        {
+          "scoreboard": "same-width icon counters and medals, all seats fit, hover, pin/unpin and privacy",
+          "players": 4,
+          "collapsedWidth": 120,
+          "expandedWidth": 120
+        },
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.562
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    },
+    {
+      "board": "hex-r56",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "checks": [
+        "bounded map surface, reachable fit control and display settings",
+        {
+          "scoreboard": "same-width icon counters and medals, all seats fit, hover, pin/unpin and privacy",
+          "players": 6,
+          "collapsedWidth": 120,
+          "expandedWidth": 120
+        },
+        "centered card peek, held fan, raised card, fresh cards and Escape",
+        "map pointer/keyboard inspection, fit and drag suppression",
+        {
+          "dice": "center, delayed result and no replay",
+          "rollingSeconds": 1.547
+        }
+      ],
+      "status": "PASS",
+      "runtimeErrors": [],
+      "unexpectedApiCalls": []
+    }
+  ],
+  "fixtureOverrides": "Local held cards, p1 road award (+2) and hidden VP (+1), p2 army award (+2), long bilingual names.",
+  "limitations": [
+    "Chromium with software WebGL; emulated viewports and pointer input.",
+    "Physical touch devices, screen readers and human visual acceptance not run."
+  ],
+  "sourceHead": "619372abfd607cfdf8c94be336d217314940ae1c",
+  "sourceDigest": "94b8036bad510c71d0e7693a5c0514c73fbb19c4eb271eab8854b9a5e67b62a0",
+  "fixtureDigest": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+  "buildDigest": "ced463d280ae462abb4ff351d217f96a918b34e8cf6a0841604adb4962b542a3",
+  "assets": {
+    "assets/board-atlas-B_YnWwGI.svg": {
+      "sha256": "64c5decd85aedacb2d3df74c3eca946dddd096d91fb74828e51dc03fc5a62904",
+      "bytes": 9769
+    },
+    "assets/BoardScene3D-Bk2FSlrH.js": {
+      "sha256": "56e099b7a12147dad9cb53f1a69a71befe4e5fee7936afa22e8c8adec954c827",
+      "bytes": 954597
+    },
+    "assets/BoardScene3D-Bk2FSlrH.js.map": {
+      "sha256": "aaa3ce447b3ab5319805a520d470cf1c7580a4a2c3e4780fc90450dc981bd73b",
+      "bytes": 4369355
+    },
+    "assets/index-BGmlFS50.css": {
+      "sha256": "b1edb235d5e270991e318d6ff320c2b6bcc1b82f25960a92a4c3cbe7ea333d30",
+      "bytes": 97522
+    },
+    "assets/index-BYwwW6l2.js": {
+      "sha256": "b7394841a1a50d27c104cb5d6d02aa9a24a7a3d0a40c3d86ea6070d42ad31894",
+      "bytes": 474249
+    },
+    "assets/index-BYwwW6l2.js.map": {
+      "sha256": "b12719fc413bb4a140621aa0d19c6654938574d0f21d837fd0794fc4c6efcec6",
+      "bytes": 1893573
+    },
+    "assets/IslandPreview-6VpjSEr9.css": {
+      "sha256": "01320e60a675adf503f3e581c335f5ab3b634df087425e3ada59a6f899a8c1db",
+      "bytes": 7621
+    },
+    "assets/IslandPreview-BnTXMtPu.js": {
+      "sha256": "4002909958b0750a6566aacff07e7ca3bfdcb6b18db8fb480e0c86db89a77777",
+      "bytes": 8383
+    },
+    "assets/IslandPreview-BnTXMtPu.js.map": {
+      "sha256": "38a3ea2f868786e9710892f3c8290c71f25178abbc3ca82015d225236bc9d8e0",
+      "bytes": 20979
+    },
+    "index.html": {
+      "sha256": "04aacb85e98148c80a71bc240ee0a7804c82a827e20998b39883ea17af005668",
+      "bytes": 486
+    }
+  },
+  "browser": "155.0.8059.86"
+}

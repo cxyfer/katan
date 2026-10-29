@@ -18,6 +18,8 @@ export function GameIcon({ name, size = 20, className = '' }: { name: string; si
     flag: <path d="M5 22V3m0 1c6-4 8 4 15 0v10c-7 4-9-4-15 0" />,
     book: <><path d="M12 5C8 2 4 3 2 4v15c4-2 7-1 10 1 3-2 6-3 10-1V4c-2-1-6-2-10 1v15" /></>,
     home: <><path d="m2 11 10-8 10 8M5 9v12h14V9M10 21v-7h4v7" /></>,
+    city: <><path d="M3 21V9l5-5 5 5v12M13 12l4-4 4 4v9H3M7 21v-6h3v6M7 9h2m7 4h2m-2 4h2" /></>,
+    route: <><circle cx="5" cy="5" r="2" /><circle cx="19" cy="19" r="2" /><path d="M7 5h8a4 4 0 0 1 0 8H9a3 3 0 0 0 0 6h8" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="m10 2-1 3-3 1-3-1-1 3 2 3v2l-2 3 1 3 3-1 3 1 1 3h4l1-3 3-1 3 1 1-3-2-3v-2l2-3-1-3-3 1-3-1-1-3h-4Z" /></>,
     shield: <path d="M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6l-9-4Zm-4 10 3 3 5-6" />,
     copy: <><rect x="8" y="8" width="13" height="13" rx="2" /><path d="M16 8V3H3v13h5" /></>,
