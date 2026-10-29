@@ -44,7 +44,11 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
   useEffect(() => {
     if (focusedRef.current && !layerRef.current?.querySelector(`[data-testid="${focusedRef.current}"]`)) {
       focusedRef.current = null;
-      fallbackFocusRef.current?.focus();
+      // A later focus move may have happened after the node was detached.
+      const active = document.activeElement;
+      if (!active || active === document.body || layerRef.current?.contains(active)) {
+        fallbackFocusRef.current?.focus();
+      }
     }
   });
   const choose = (target: Inspection) => { if (!controls.consumeSuppressedClick()) onInspect(target); };
@@ -54,7 +58,9 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
     }
   };
   return <svg ref={layerRef} className="board-inspect-layer" data-testid="board-inspect-layer" width={rect.width} height={rect.height}
-    aria-label={t('board.inspectMap')} role="group">
+    aria-label={t('board.inspectMap')} role="group" onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget)) focusedRef.current = null;
+    }}>
     {elements.map((element) => {
       const anchor = controls.projectPoint(element.world);
       const outline = element.outline?.map(controls.projectPoint);

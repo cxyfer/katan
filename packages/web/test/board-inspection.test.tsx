@@ -90,6 +90,34 @@ describe('public map inspection', () => {
     expect(enlarged).not.toBeNull();
   });
 
+  it.each([false, true])('restores a removed inspection target only while it owns focus (leave layer: %s)', (leaveLayer) => {
+    const board = fixedBoard();
+    board.buildings[0] = { player: 'p2', city: false };
+    const surfaceRef = { current: document.createElement('div') };
+    surfaceRef.current.tabIndex = 0;
+    const focusFallback = vi.spyOn(surfaceRef.current, 'focus');
+    vi.spyOn(surfaceRef.current, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0,
+      width: 1100, height: 700, right: 1100, bottom: 700, toJSON() {} });
+    const { result } = renderHook(() => useBoardViewport({ geometry, renderer: 'svg', surfaceRef }));
+    const props = { geometry, board, renderer: 'svg' as const, controls: result.current,
+      nameOf: () => 'Public owner', selected: null, onInspect: vi.fn(), onClose: vi.fn(), fallbackFocusRef: surfaceRef };
+    const content = (currentBoard: typeof board) => <><BoardInspectionLayer {...props} board={currentBoard} />
+      <button type="button" data-testid="outside-inspection">Hand card</button></>;
+    const rendered = render(content(board));
+    const target = screen.getByTestId('inspect-vertex-0');
+    target.focus();
+    expect(document.activeElement).toBe(target);
+    if (leaveLayer) screen.getByTestId('outside-inspection').focus();
+    const updated = { ...board, buildings: board.buildings.map(() => null) };
+    rendered.rerender(content(updated));
+    if (leaveLayer) {
+      expect(document.activeElement).toBe(screen.getByTestId('outside-inspection'));
+      expect(focusFallback).not.toHaveBeenCalled();
+    } else {
+      expect(focusFallback).toHaveBeenCalledTimes(1);
+    }
+  });
+
   it('describes terrain probability, robber, building score, road owner and harbour access from public board data', () => {
     const board = fixedBoard();
     const productive = board.numbers.findIndex((number) => number === 6);
