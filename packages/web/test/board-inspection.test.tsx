@@ -1,12 +1,11 @@
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { Matrix4, OrthographicCamera } from 'three';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App.tsx';
-import { BoardInspectionLayer, BoardInspectionPanel } from '../src/components/BoardInspection.tsx';
+import { BoardInspectionLayer, INSPECTION_DELAY_MS } from '../src/components/BoardInspection.tsx';
 import type { ProjectionSnapshot } from '../src/board/render-contract.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { inspectDescription, inspectionElements } from '../src/board/inspection.ts';
-import { projectWorldPoint } from '../src/board/projection.ts';
 import { sceneBounds } from '../src/board/three/bounds.ts';
 import { applySceneCamera, fitSceneCamera } from '../src/board/three/camera.ts';
 import { useBoardViewport } from '../src/board/useBoardViewport.ts';
@@ -25,6 +24,7 @@ beforeEach(() => {
 });
 
 const geometry = buildGeometry('hex-r2');
+afterEach(() => vi.useRealTimers());
 
 describe('public map inspection', () => {
   it.each(['svg', 'r3f'] as const)('keeps fitted mobile %s tile centers clear of piece padding and retains keyboard access', (renderer) => {
@@ -52,10 +52,9 @@ describe('public map inspection', () => {
     board.roads[0] = { player: 'p2', ship: false };
     const edge = geometry.topology.vertices[4]!.edges[0]!;
     board.roads[edge] = { player: 'p2', ship: false };
-    const onInspect = vi.fn();
     const props = () => ({ geometry, board, renderer, controls: result.current, nameOf: () => 'Public owner',
-      selected: null, onInspect, onClose: vi.fn(), fallbackFocusRef: surfaceRef });
-    const rendered = render(<><BoardInspectionLayer {...props()} /><BoardInspectionPanel {...props()} /></>);
+      fallbackFocusRef: surfaceRef });
+    const rendered = render(<div><BoardInspectionLayer {...props()} /></div>);
     const building = screen.getByTestId('inspect-vertex-4');
     const center = result.current.projectPoint(inspectionElements(geometry, board, renderer).find((item) => item.kind === 'hex' && item.index === 0)!.world);
     const left = Number(building.getAttribute('x')), top = Number(building.getAttribute('y'));
@@ -79,13 +78,11 @@ describe('public map inspection', () => {
     const road = screen.getByTestId(`inspect-edge-${edge}`);
     expect(Number(road.getAttribute('stroke-width'))).toBeLessThan(44);
     expect(road.style.strokeWidth).toBe(road.getAttribute('stroke-width'));
-    fireEvent.keyDown(building, { key: 'Enter' });
-    expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'vertex', index: 4 }));
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'vertex:4' } });
-    expect(onInspect).toHaveBeenCalledTimes(2);
+    expect(building.getAttribute('tabindex')).toBe('0');
+    expect(building.getAttribute('aria-label')).toContain('Public owner');
     act(() => result.current.setZoom(3));
     project();
-    rendered.rerender(<><BoardInspectionLayer {...props()} /><BoardInspectionPanel {...props()} /></>);
+    rendered.rerender(<div><BoardInspectionLayer {...props()} /></div>);
     const enlarged = screen.getAllByTestId('board-inspect-layer')[0]!.querySelector('[data-hit-size="44"]');
     expect(enlarged).not.toBeNull();
   });
@@ -100,7 +97,7 @@ describe('public map inspection', () => {
       width: 1100, height: 700, right: 1100, bottom: 700, toJSON() {} });
     const { result } = renderHook(() => useBoardViewport({ geometry, renderer: 'svg', surfaceRef }));
     const props = { geometry, board, renderer: 'svg' as const, controls: result.current,
-      nameOf: () => 'Public owner', selected: null, onInspect: vi.fn(), onClose: vi.fn(), fallbackFocusRef: surfaceRef };
+      nameOf: () => 'Public owner', fallbackFocusRef: surfaceRef };
     const content = (currentBoard: typeof board) => <><BoardInspectionLayer {...props} board={currentBoard} />
       <button type="button" data-testid="outside-inspection">Hand card</button></>;
     const rendered = render(content(board));
@@ -141,75 +138,147 @@ describe('public map inspection', () => {
     expect(dock.world).not.toEqual(inspectionElements(geometry, board, 'svg').find((item) => item.kind === 'harbor')!.world);
   });
 
-  it.each(['svg', 'r3f'] as const)('moves the actual %s viewport to a coastal element, enlarges it and restores full fit', (renderer) => {
-    const bounds = sceneBounds(geometry);
-    const surface = document.createElement('div');
-    vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({ x: 20, y: 50, left: 20, top: 50,
-      width: 1100, height: 700, right: 1120, bottom: 750, toJSON() {} });
-    const { result } = renderHook(() => useBoardViewport({ geometry, bounds, renderer, surfaceRef: { current: surface } }));
-    const initial = result.current.viewport;
-    const target = inspectionElements(geometry, fixedBoard(), renderer).find((item) => item.kind === 'harbor')!;
-    act(() => result.current.focus(target.world));
-    expect(result.current.viewport.zoom).toBe(2.2);
-    expect(result.current.viewport.center).toEqual({ x: target.world.x, z: target.world.z });
-    if (renderer === 'svg') {
-      const projected = result.current.projectPoint(target.world);
-      expect(projected.x).toBeCloseTo(570, 5);
-      expect(projected.y).toBeCloseTo(400, 5);
-    } else {
-      const before = new OrthographicCamera();
-      const after = new OrthographicCamera();
-      const fit = fitSceneCamera(bounds, initial.rect, initial.azimuthDeg, initial.elevationDeg);
-      applySceneCamera(before, fit, initial);
-      applySceneCamera(after, fit, result.current.viewport);
-      expect(after.position.toArray()).not.toEqual(before.position.toArray());
-      expect(after.zoom).toBe(2.2);
-      act(() => { result.current.rotate(30); result.current.setElevation(35); });
-      expect(result.current.viewport.center).toEqual({ x: target.world.x, z: target.world.z });
-      const matrix = new Matrix4().multiplyMatrices(after.projectionMatrix, after.matrixWorldInverse).toArray();
-      expect(projectWorldPoint({ matrix, point: target.world, rect: initial.rect }).visible).toBe(true);
-    }
-    act(() => result.current.fit());
-    expect(result.current.viewport).toEqual(initial);
-  });
-
-  it('opens inspection through pointer and keyboard without commands, preserves build confirmation and clears inspection on fit', async () => {
+  async function open() {
     const board = fixedBoard();
     board.buildings[0] = { player: 'p2', city: true };
     board.roads[5] = { player: 'p2', ship: false };
     const api = createFakeApi({ snapshot: makeSnapshot(makeView({ board, hints: makeHints({ legalRoads: [8] }) })) });
-    render(<App services={{ api, storage: memoryStorage(), languages: ['en'], connectSocket: false }} />);
+    const rendered = render(<App services={{ api, storage: memoryStorage(), languages: ['en'], connectSocket: false }} />);
     fireEvent.click(await screen.findByTestId('resume-g1'));
-    fireEvent.click(await screen.findByTestId('inspect-hex-0'));
-    expect(screen.getByTestId('board').getAttribute('data-zoom')).toBe('2.2');
-    expect(screen.getByTestId('inspection-detail').textContent).toContain('Roll chance');
-    expect(api.callsOf('sendCommand')).toHaveLength(0);
-    fireEvent.click(screen.getByTestId('reset-view'));
-    expect(screen.queryByTestId('inspection-detail')).toBeNull();
-    fireEvent.keyDown(screen.getByTestId('inspect-vertex-0'), { key: 'Enter' });
-    expect(screen.getByTestId('inspection-detail').textContent).toContain('Building value: 2');
-    expect(screen.getByTestId('inspection-detail').textContent).toContain('小美');
-    fireEvent.click(screen.getByTestId('reset-view'));
-    fireEvent.click(screen.getByTestId('action-build.road'));
-    fireEvent.click(await screen.findByTestId('target-edge-8'));
-    await screen.findByTestId('selection-preview');
-    expect(document.activeElement).toBe(screen.getByTestId('preview-heading'));
-    expect(screen.getByTestId('inspection-detail')).toBeTruthy();
-    expect(api.callsOf('sendCommand')).toHaveLength(0);
-    fireEvent.click(screen.getByTestId('reset-view'));
+    await screen.findByTestId('inspect-hex-0');
+    vi.useFakeTimers();
+    return { api, ...rendered };
+  }
+
+  it('waits 1.5 seconds before describing an element without changing the viewport or sending a command', async () => {
+    const { api } = await open();
+    const target = screen.getByTestId('inspect-hex-0');
+    expect(screen.queryByTestId('board-inspection')).toBeNull();
+    fireEvent.click(target);
+    expect(screen.queryByRole('tooltip')).toBeNull();
     expect(screen.getByTestId('board').getAttribute('data-zoom')).toBe('1');
+    fireEvent.pointerOver(target, { pointerType: 'mouse' });
+    act(() => vi.advanceTimersByTime(INSPECTION_DELAY_MS - 1));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByRole('tooltip').textContent).toContain('Roll chance');
+    expect(target.getAttribute('aria-describedby')).toBe(screen.getByRole('tooltip').id);
+    expect(screen.getByTestId('board').getAttribute('data-zoom')).toBe('1');
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
   });
 
-  it('suppresses inspection after a drag and lets the next deliberate click inspect normally', async () => {
-    render(<App services={{ api: createFakeApi(), storage: memoryStorage(), languages: ['en'], connectSocket: false }} />);
-    fireEvent.click(await screen.findByTestId('resume-g1'));
-    const surface = await screen.findByTestId('board-surface');
+  it('cancels short hovers, restarts the delay on a different element, and ignores touch', async () => {
+    await open();
+    const tile = screen.getByTestId('inspect-hex-0');
+    const building = screen.getByTestId('inspect-vertex-0');
+    fireEvent.pointerOver(tile, { pointerType: 'mouse' });
+    act(() => vi.advanceTimersByTime(1200));
+    fireEvent.pointerOut(tile, { relatedTarget: building });
+    fireEvent.pointerOver(building, { pointerType: 'mouse', relatedTarget: tile });
+    act(() => vi.advanceTimersByTime(1200));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    act(() => vi.advanceTimersByTime(300));
+    expect(screen.getByRole('tooltip').textContent).toContain('Building value: 2');
+    fireEvent.pointerOut(building);
+    act(() => vi.advanceTimersByTime(161));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.pointerOver(tile, { pointerType: 'touch' });
+    act(() => vi.advanceTimersByTime(2000));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('keeps the tooltip open while reading it, dismisses on Escape, and supports delayed keyboard focus', async () => {
+    await open();
+    const building = screen.getByTestId('inspect-vertex-0');
+    act(() => building.focus());
+    act(() => vi.advanceTimersByTime(1500));
+    const popup = screen.getByRole('tooltip');
+    expect(popup.textContent).toContain('小美');
+    expect(document.activeElement).toBe(building);
+    fireEvent.pointerOut(building, { relatedTarget: popup });
+    fireEvent.pointerOver(popup, { pointerType: 'mouse', relatedTarget: building });
+    act(() => vi.advanceTimersByTime(2000));
+    expect(screen.getByRole('tooltip')).toBe(popup);
+    fireEvent.keyDown(building, { key: 'Escape' });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(building.hasAttribute('aria-describedby')).toBe(false);
+    act(() => vi.advanceTimersByTime(2000));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    act(() => screen.getByTestId('board-surface').focus());
+    act(() => building.focus());
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+    act(() => screen.getByTestId('board-surface').focus());
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('cancels pending inspection on drag, camera changes and unmount', async () => {
+    const { unmount } = await open();
+    const target = screen.getByTestId('inspect-hex-0');
+    const surface = screen.getByTestId('board-surface');
+    fireEvent.pointerOver(target, { pointerType: 'mouse' });
+    act(() => vi.advanceTimersByTime(1000));
     fireEvent.pointerDown(surface, { pointerId: 1, pointerType: 'mouse', button: 0, clientX: 200, clientY: 200 });
     fireEvent.pointerMove(surface, { pointerId: 1, pointerType: 'mouse', buttons: 1, clientX: 250, clientY: 220 });
     fireEvent.pointerUp(surface, { pointerId: 1, pointerType: 'mouse', button: 0, clientX: 250, clientY: 220 });
-    fireEvent.click(screen.getByTestId('inspect-hex-0'));
-    expect(screen.queryByTestId('inspection-detail')).toBeNull();
-    fireEvent.click(screen.getByTestId('inspect-hex-0'));
-    await waitFor(() => expect(screen.getByTestId('inspection-detail')).toBeTruthy());
+    act(() => vi.advanceTimersByTime(2000));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.pointerOver(target, { pointerType: 'mouse' });
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('zoom-in'));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.pointerOver(target, { pointerType: 'mouse' });
+    unmount();
+    act(() => vi.advanceTimersByTime(2000));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it.each(['mouse', 'touch'])('does not open a tooltip from %s tap focus', async (pointerType) => {
+    await open();
+    const target = screen.getByTestId('inspect-hex-0');
+    fireEvent.pointerDown(target, { pointerId: 1, pointerType, button: 0, clientX: 200, clientY: 200 });
+    fireEvent.pointerUp(target, { pointerId: 1, pointerType, button: 0, clientX: 200, clientY: 200 });
+    act(() => target.focus());
+    act(() => vi.advanceTimersByTime(2000));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(screen.getByTestId('board').getAttribute('data-zoom')).toBe('1');
+    fireEvent.keyDown(target, { key: 'Tab' });
+    act(() => screen.getByTestId('board-surface').focus());
+    act(() => target.focus());
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+  });
+
+  it('cancels hover information when keyboard users move to controls outside the board', async () => {
+    await open();
+    const target = screen.getByTestId('inspect-hex-0');
+    fireEvent.pointerOver(target, { pointerType: 'mouse' });
+    act(() => vi.advanceTimersByTime(1000));
+    act(() => screen.getByTestId('action-rail-toggle').focus());
+    act(() => vi.advanceTimersByTime(2000));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.pointerOver(target, { pointerType: 'mouse' });
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+    act(() => screen.getByTestId('zoom-in').focus());
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('inspects legal targets on hover while retaining explicit build confirmation and the current zoom', async () => {
+    const { api } = await open();
+    fireEvent.click(screen.getByTestId('zoom-out'));
+    fireEvent.click(screen.getByTestId('action-build.road'));
+    const target = screen.getByTestId('target-edge-8');
+    fireEvent.pointerOver(target, { pointerType: 'mouse' });
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+    fireEvent.pointerDown(target, { pointerType: 'mouse', button: 0 });
+    fireEvent.click(target);
+    expect(screen.getByTestId('selection-preview')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByTestId('preview-heading'));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(screen.getByTestId('board').getAttribute('data-zoom')).toBe('0.8');
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
   });
 });

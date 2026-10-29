@@ -51,34 +51,10 @@ def toolbar(scenario, report):
 
 
 def inspect_map(scenario, report):
-    page = scenario.page
-    board = page.get_by_test_id("board")
-    for kind in ("hex", "vertex", "edge", "harbor"):
-        page.get_by_test_id("reset-view").click()
-        target = page.locator(f'[data-testid^="inspect-{kind}-"]').first
-        target.click()
-        page.get_by_test_id("inspection-detail").wait_for()
-        require(float(board.get_attribute("data-zoom")) >= 2.2, f"{kind} did not zoom")
-        require(target.get_attribute("aria-pressed") == "true", f"{kind} did not select")
-        require(page.get_by_test_id("inspection-detail").inner_text().strip(), "empty inspection")
-    page.get_by_test_id("reset-view").click()
-    require(board.get_attribute("data-zoom") == "1", "fit did not reset zoom")
-    require(page.get_by_test_id("inspection-detail").count() == 0, "fit did not close detail")
-    surface = page.get_by_test_id("board-surface")
-    surface.focus()
-    first = page.locator('[data-testid^="inspect-hex-"]').first
-    first.focus()
-    page.keyboard.press("Enter")
-    page.get_by_test_id("inspection-detail").wait_for()
-    page.get_by_test_id("reset-view").click()
-    point = center(rect(page.locator('[data-testid^="inspect-hex-"]').first))
-    page.mouse.move(*point)
-    page.mouse.down()
-    page.mouse.move(point[0] + 44, point[1] + 30, steps=8)
-    page.mouse.up()
-    require(page.get_by_test_id("inspection-detail").count() == 0, "drag inspected an element")
-    page.get_by_test_id("reset-view").click()
-    report.append("map pointer/keyboard inspection, fit and drag suppression")
+    spec = importlib.util.spec_from_file_location("side_rail_checks", ROOT / "scripts/side-rails/verify.py")
+    checks = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(checks)
+    report.append({"inspectionHover": checks.inspection_hover(scenario)})
 
 
 def scoreboard(scenario, report):
@@ -92,7 +68,7 @@ def scoreboard(scenario, report):
     require(panel.get_attribute("data-pinned") == "false", "hover pinned scoreboard")
     after = rect(surface)
     require(before == after, "scoreboard expansion moved board")
-    require(abs(rect(panel)["width"] - collapsed_width) < 1, "scoreboard changed width on expansion")
+    require(rect(panel)["width"] > collapsed_width + 100, "scoreboard did not expand in width")
     seats = panel.locator("[data-board-seat]")
     require(seats.count() == len(scenario.snapshot["view"]["players"]), "a player is missing")
     boxes = [rect(seats.nth(index)) for index in range(seats.count())]
@@ -118,9 +94,9 @@ def scoreboard(scenario, report):
     page.wait_for_timeout(360)
     require(panel.get_attribute("data-expanded") == "false", "unpin did not collapse after leave")
     names = panel.locator(".seat__name")
-    require(all(names.nth(i).is_visible() for i in range(names.count())), "collapsed name hidden")
+    require(all(not names.nth(i).is_visible() for i in range(names.count())), "collapsed name retained")
     require(page.get_by_test_id("players-hidden-vp").count() == 1, "private scores leaked")
-    report.append({"scoreboard": "same-width icon counters and medals, all seats fit, hover, pin/unpin and privacy",
+    report.append({"scoreboard": "compact rail with expanding icon counters and medals, all seats fit, hover, pin/unpin and privacy",
                    "players": seats.count(), "collapsedWidth": collapsed_width, "expandedWidth": bounds["width"]})
 
 

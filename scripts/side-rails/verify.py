@@ -169,17 +169,23 @@ def left_rail(scenario):
     require(rows.count() == len(scenario.snapshot["view"]["players"]), "player count differs from fixture")
     before = [rect(rows.nth(i)) for i in range(rows.count())]
     panel_before = rect(panel)
+    require(panel.locator(".seat__identity:not([hidden])").count() == 0, "collapsed rail retained names")
+    require(not page.get_by_test_id("players-pin").is_visible(), "collapsed rail retained pin control")
     surface_before = rect(page.get_by_test_id("board-surface"))
     flag_before = turn_flag(page)
     panel.locator(".players__toggle").hover()
     expanded(page, "players-panel", True)
+    expanded_box = rect(panel)
     after = [rect(rows.nth(i)) for i in range(rows.count())]
-    same_rect(panel_before, rect(panel), "left rail moved on hover")
+    same_rect(panel_before, rect(panel), "left rail anchor moved on hover", keys=("x",))
+    require(rect(panel)["width"] >= panel_before["width"] + 100, "left rail did not expand in width")
+    require(panel_before["width"] <= 70, "collapsed rail is not compact")
+    require(panel.locator(".seat__identity:not([hidden])").count() == rows.count(), "expanded names hidden")
     same_rect(surface_before, rect(page.get_by_test_id("board-surface")), "left hover moved map")
     for index, (old, new) in enumerate(zip(before, after)):
-        same_rect(old, new, f"player row {index} moved on hover")
+        same_rect(old, new, f"player row {index} changed height", keys=("height",))
     flag_after = turn_flag(page)
-    same_rect(flag_before, flag_after, "current-turn flag moved on hover")
+    require(flag_after["x"] > flag_before["x"] + 100, "turn flag did not follow expanded edge")
     require(panel.locator(".players__details:not([hidden])").count() == rows.count(),
             "expanded scoreboard details missing")
     require(panel.get_by_test_id("players-hidden-vp").count() == 1, "private scores leaked")
@@ -200,16 +206,90 @@ def left_rail(scenario):
     page.keyboard.press("Escape")
     expanded(page, "players-panel", False)
     require(panel.get_attribute("data-pinned") == "false", "Escape did not unpin")
-    page.keyboard.press("Tab")
+    page.keyboard.press("Enter")
     expanded(page, "players-panel", True)
     page.keyboard.press("Escape")
     expanded(page, "players-panel", False)
     page.get_by_test_id("board-surface").focus()
     settle(page)
-    return {"collapsed": panel_before, "expanded": rect(panel),
+    return {"collapsed": panel_before, "expanded": expanded_box,
             "rowsBefore": before, "rowsAfter": after, "flagBefore": flag_before,
             "flagAfter": flag_after, "reachableRows": reached,
             "keyboard": "focus opens; Escape closes and restores toggle"}
+
+
+
+def inspection_hover(scenario):
+    page = scenario.page
+    board = page.get_by_test_id("board")
+    require(page.get_by_test_id("board-inspection").count() == 0, "explorer component retained")
+    checks = []
+    for kind in ("hex", "vertex", "edge", "harbor"):
+        page.get_by_test_id("reset-view").click()
+        page.mouse.move(page.viewport_size["width"] / 2, 4)
+        page.get_by_test_id("board-surface").focus()
+        targets = page.locator(f'[data-testid^="inspect-{kind}-"]')
+        candidate = next(((targets.nth(i), visible_point(targets.nth(i))) for i in range(targets.count())
+                          if visible_point(targets.nth(i))), None)
+        require(candidate is not None, f"no reachable {kind} inspection target")
+        target, point = candidate
+        initial_zoom = board.get_attribute("data-zoom")
+        page.mouse.move(*point)
+        page.wait_for_timeout(1100)
+        require(page.get_by_role("tooltip").count() == 0, f"{kind} tooltip opened too early")
+        popup = page.get_by_role("tooltip")
+        popup.wait_for()
+        require(popup.inner_text().strip(), "empty inspection tooltip")
+        require(board.get_attribute("data-zoom") == initial_zoom, "hover changed zoom")
+        bounded(page, rect(popup), "inspection tooltip")
+        placement = popup.evaluate("""(element, id) => {
+          const a=document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
+          const b=element.getBoundingClientRect();
+          const canFit=a.right+12+b.width<=innerWidth-8 || a.left-12-b.width>=8 ||
+            a.bottom+12+b.height<=innerHeight-8 || a.top-12-b.height>=8;
+          return {canFit, apart:b.left>=a.right || b.right<=a.left || b.top>=a.bottom || b.bottom<=a.top};
+        }""", target.get_attribute("data-testid"))
+        require(not placement["canFit"] or placement["apart"], "tooltip covers its element despite available room")
+        checks.append({"kind": kind, "target": target.get_attribute("data-testid"), "tooltip": rect(popup)})
+        if kind == "hex":
+            page.screenshot(path=str(scenario.out / "hover-tooltip.png"), animations="disabled")
+            popup.hover()
+            page.wait_for_timeout(250)
+            require(popup.is_visible(), "tooltip disappeared while reading it")
+            page.keyboard.press("Escape")
+            require(popup.count() == 0, "Escape did not dismiss tooltip")
+            page.mouse.click(*point)
+            page.wait_for_timeout(1700)
+            require(board.get_attribute("data-zoom") == initial_zoom, "click changed zoom")
+            require(popup.count() == 0, "click focused an inspection popup")
+        page.mouse.move(page.viewport_size["width"] / 2, 4)
+        page.get_by_test_id("board-surface").focus()
+        page.wait_for_timeout(200)
+        require(popup.count() == 0, "tooltip remained after leaving")
+    target = page.locator('[data-testid^="inspect-hex-"]').first
+    page.keyboard.press("Tab")
+    target.focus()
+    page.wait_for_timeout(1100)
+    require(page.get_by_role("tooltip").count() == 0, "keyboard tooltip opened too early")
+    page.get_by_role("tooltip").wait_for()
+    require(target.get_attribute("aria-describedby"), "keyboard target lacks tooltip association")
+    page.keyboard.press("Escape")
+    require(page.get_by_role("tooltip").count() == 0, "keyboard Escape did not close tooltip")
+    page.get_by_test_id("board-surface").focus()
+    page.get_by_test_id("toggle-fullscreen").click()
+    page.wait_for_function("() => !!document.fullscreenElement")
+    settle(page)
+    page.keyboard.press("Tab")
+    target.focus()
+    page.get_by_role("tooltip").wait_for()
+    require(page.get_by_role("tooltip").evaluate("element => document.fullscreenElement.contains(element)"),
+            "fullscreen tooltip is outside fullscreen host")
+    bounded(page, rect(page.get_by_role("tooltip")), "fullscreen tooltip")
+    page.keyboard.press("Escape")
+    page.evaluate("() => document.fullscreenElement ? document.exitFullscreen() : Promise.resolve()")
+    settle(page)
+    page.get_by_test_id("board-surface").focus()
+    return {"delayMs": 1500, "elements": checks, "keyboard": "delayed focus and Escape", "fullscreen": True}
 
 
 def right_rail(scenario):
@@ -565,6 +645,8 @@ def main():
                     result["checks"]["left"] = left_rail(scenario)
                     result["activeCheck"] = "right"
                     result["checks"]["right"] = right_rail(scenario)
+                    result["activeCheck"] = "inspectionHover"
+                    result["checks"]["inspectionHover"] = inspection_hover(scenario)
                     result["activeCheck"] = "mapControls"
                     result["checks"]["mapControls"] = map_controls(scenario)
                     if size[0] < 900:
