@@ -118,29 +118,37 @@ describe('player scoreboard previews', () => {
     expect(panel.getAttribute('data-expanded')).toBe('false');
   });
 
-  it('derives point sources from projected buildings, awards and only the owner’s private cards', () => {
+  it('shows compact counters and award medals with accessible labels and only the owner’s private cards', () => {
     const view = makeView();
     view.board.buildings[0] = { player: 'p1', city: false };
     view.board.buildings[1] = { player: 'p1', city: true };
     view.awards.longestRoad = 'p1';
-    view.players[0] = makePlayer({ publicScore: 6, ownScore: 9, bonusPoints: 1, devCards: ['victoryPoint'], newDevCards: ['victoryPoint'] });
+    view.awards.largestArmy = 'p2';
+    view.players[0] = makePlayer({ publicScore: 6, ownScore: 9, bonusPoints: 1, longestRoadLength: 5, devCards: ['victoryPoint'], newDevCards: ['victoryPoint'] });
     // 即使測試輸入意外含有他人私密欄位，介面仍不得揭露。
     view.players[1]!.ownScore = 99;
     view.players[1]!.devCards = ['victoryPoint', 'victoryPoint'];
+    view.players[1]!.playedKnights = 3;
     const panel = open(view);
     pointer(panel, 'pointerover');
-    const ownBreakdown = screen.getByTestId('seat-0').querySelector('.players__breakdown')!;
-    const pointsFor = (label: string) => within(ownBreakdown as HTMLElement).getByText(label).nextElementSibling?.textContent;
-    expect(pointsFor('Settlements (1 × 1)')).toBe('1');
-    expect(pointsFor('Cities (1 × 2)')).toBe('2');
-    expect(pointsFor('Longest road')).toBe('2');
-    expect(pointsFor('Public bonus points')).toBe('1');
-    expect(pointsFor('Your hidden victory-point cards')).toBe('2');
-    expect(pointsFor('Your other hidden points')).toBe('1');
-    expect(pointsFor('Your total')).toBe('9');
-    expect(screen.getByTestId('seat-1').textContent).not.toContain('99');
-    expect(within(screen.getByTestId('seat-1')).queryByText('Your hidden victory-point cards')).toBeNull();
-    expect(within(screen.getByTestId('seat-1')).getAllByText(/Public score/)).toHaveLength(2);
+    const ownSeat = within(screen.getByTestId('seat-0'));
+    for (const label of ['Settlements (1 × 1): 1', 'Cities (1 × 2): 1', 'Public bonus points: 1',
+      'Your hidden victory-point cards: 2', 'Your other hidden points: 1']) {
+      expect(ownSeat.getByRole('img', { name: label }).getAttribute('title')).toBe(label);
+    }
+    const road = ownSeat.getByRole('img', { name: 'Longest route · Longest road (+2): 5' });
+    expect(road.classList.contains('score-mark--medal')).toBe(true);
+    expect(road.querySelector('.score-mark__points')?.textContent).toBe('+2');
+    expect(screen.getByTestId('seat-0').querySelector('.seat__score')?.textContent).toBe('Your total: 9');
+    const opponent = screen.getByTestId('seat-1');
+    expect(within(opponent).getByRole('img', { name: 'Knights played · Largest army (+2): 3' }).classList.contains('score-mark--medal')).toBe(true);
+    expect(opponent.textContent).not.toContain('99');
+    expect(within(opponent).queryByRole('img', { name: /Your hidden/ })).toBeNull();
+    expect(opponent.querySelector('.seat__score')?.textContent).toBe('Public score: 2');
+    expect(panel.querySelectorAll('.score-mark--medal')).toHaveLength(2);
+    expect(panel.querySelector('dl')).toBeNull();
+    expect(panel.querySelector('.players__awards')).toBeNull();
+    expect(ownSeat.queryByText('Your hidden victory-point cards')).toBeNull();
   });
 
   it('does not reveal private score fields without a matching signed-in player', () => {

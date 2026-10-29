@@ -86,11 +86,28 @@ def scoreboard(scenario, report):
     panel = page.get_by_test_id("players-panel")
     surface = page.get_by_test_id("board-surface")
     before = rect(surface)
+    collapsed_width = rect(panel)["width"]
     panel.hover()
     require(panel.get_attribute("data-expanded") == "true", "scoreboard hover did not expand")
     require(panel.get_attribute("data-pinned") == "false", "hover pinned scoreboard")
     after = rect(surface)
     require(before == after, "scoreboard expansion moved board")
+    require(abs(rect(panel)["width"] - collapsed_width) < 1, "scoreboard changed width on expansion")
+    seats = panel.locator("[data-board-seat]")
+    require(seats.count() == len(scenario.snapshot["view"]["players"]), "a player is missing")
+    boxes = [rect(seats.nth(index)) for index in range(seats.count())]
+    require(max(box["width"] for box in boxes) - min(box["width"] for box in boxes) < 1,
+            "player cards have inconsistent widths")
+    bounds = rect(panel)
+    require(all(box["y"] >= bounds["y"] and box["y"] + box["height"] <= bounds["y"] + bounds["height"]
+                for box in boxes), "expanded player cards do not all fit in scoreboard")
+    require(panel.evaluate("element => element.scrollWidth <= element.clientWidth"), "scoreboard content overflows horizontally")
+    require(panel.locator(".score-mark--medal").count() == 2, "award medals are missing")
+    require(panel.locator("dl").count() == 0, "old itemized score list retained")
+    require(panel.locator(".score-mark").evaluate_all(
+        "marks => marks.every(mark => mark.getAttribute('aria-label') && mark.title)"),
+        "score icons lack accessible names or explanations")
+    page.screenshot(path=str(scenario.out / f"{scenario.args.renderer}-{page.viewport_size['width']}-scoreboard.png"))
     pin = page.get_by_test_id("players-pin")
     pin.click()
     page.mouse.move(4, 4)
@@ -103,7 +120,8 @@ def scoreboard(scenario, report):
     names = panel.locator(".seat__name")
     require(all(names.nth(i).is_visible() for i in range(names.count())), "collapsed name hidden")
     require(page.get_by_test_id("players-hidden-vp").count() == 1, "private scores leaked")
-    report.append("scoreboard hover, stable board, pin/unpin and score privacy")
+    report.append({"scoreboard": "same-width icon counters and medals, all seats fit, hover, pin/unpin and privacy",
+                   "players": seats.count(), "collapsedWidth": collapsed_width, "expandedWidth": bounds["width"]})
 
 
 def hand(scenario, report):
@@ -196,6 +214,7 @@ def main():
     fixture_path = ROOT / "docs/aegis/work/2026-10-29-board-3d/evidence/fixtures-final.json"
     fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
     report = {"fixture": str(fixture_path.relative_to(ROOT)), "cases": [],
+              "fixtureOverrides": "Local held cards, p1 road award (+2) and hidden VP (+1), p2 army award (+2), long bilingual names.",
               "limitations": ["Chromium with software WebGL; emulated viewports and pointer input.",
                               "Physical touch devices, screen readers and human visual acceptance not run."]}
     digest, assets = board_evidence.build_manifest()
@@ -226,8 +245,11 @@ def main():
                     case_dir.mkdir(exist_ok=True)
                     own = board["snapshot"]["view"]["players"][0]
                     own.update(devCards=["knight", "monopoly"], newDevCards=["victoryPoint"],
-                               devCardCount=2, newDevCardCount=1)
-                    board["snapshot"]["view"]["players"][1]["nickname"] = "小美航海家"
+                               devCardCount=2, newDevCardCount=1, longestRoadLength=5,
+                               publicScore=own["publicScore"] + 2, ownScore=own["publicScore"] + 3)
+                    opponent = board["snapshot"]["view"]["players"][1]
+                    opponent.update(nickname="小美航海家", playedKnights=3, publicScore=opponent["publicScore"] + 2)
+                    board["snapshot"]["view"]["awards"].update(longestRoad=own["id"], largestArmy=opponent["id"])
                     scenario = board_evidence.Scenario(browser, base, SimpleNamespace(renderer=renderer, quality="standard"),
                                                        fixture, board, language, size, case_dir, initial="snapshot",
                                                        motion="no-preference")
@@ -258,7 +280,8 @@ def main():
                         result["layout"] = scenario.page.evaluate("""() => Object.fromEntries([
                           '.screen--game', '.status-strip', '.game-brand__name', '.game__table',
                           '.game__playfield', '.game__messages', '.game__map', '.board',
-                          '.board__toolbar', '.board__surface', '[data-testid="reset-view"]'
+                          '.board__toolbar', '.board__surface', '[data-testid="reset-view"]',
+                          '.players', '.players__heading', '.players .seat-list', '.players .seat'
                         ].map(selector => {
                           const element=document.querySelector(selector), style=getComputedStyle(element);
                           return [selector, {rect:element.getBoundingClientRect().toJSON(), display:style.display,

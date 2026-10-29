@@ -58,11 +58,18 @@ actions. Fresh cards join the fan with their unavailable state. Escape and a
 small close control collapse the fan. The old DECK header and hand PIN/toggle
 controls are removed.
 
-The collapsed left scoreboard retains name, color, current-turn marker, and
-score. Hover or focus reveals buildings, awards, and score details without
-resizing the board. PIN is the only persistent expansion state; unpinning
-allows collapse after pointer/focus departure. Opponents retain public scores;
-only the local player sees their private victory-point breakdown and own total.
+The collapsed left scoreboard retains name, color, current-turn flag, and
+score. Following the user's compact-scoreboard request, hover or focus reveals
+a three-column grid of icon counters for settlements, cities, hand size,
+development cards, route length, and played knights. The longest-road and
+largest-army holders receive gold medals with a `+2` badge; local hidden points
+and public bonus points use smaller icon counters. Labels remain available
+through accessible names and hover titles instead of itemized text rows.
+Both states keep the same width: 160 px on desktop and 120 px on mobile.
+All six equal-width player cards fit in the tested 390 x 844 viewport.
+PIN is the only persistent expansion state; unpinning allows collapse after
+pointer/focus departure. Opponents retain public scores; only the local player
+sees their private victory-point counters and own total.
 
 ## Integration repairs and review
 
@@ -81,21 +88,30 @@ only the local player sees their private victory-point breakdown and own total.
 - An independent subagent review found stale inspection focus ownership.
   The map owner reproduced it, added a regression, and corrected focus
   restoration so an external control retains focus.
+- Reset the inherited auto-fit seat-list columns to one column for the compact
+  scoreboard. Reset the visually hidden heading's old off-panel position,
+  removing horizontal scroll overflow without hiding player content.
 
 ## Verification
 
 The retained browser report is
-`2026-10-29-table-experience/evidence/browser-report.json`. It records the
-pre-integration-commit HEAD, source digest, fixture digest, production asset
-hashes, browser version, individual checks, and measured roll duration. Source
-and runner files were unchanged after that capture; the final commit packages
-the already-verified working-tree changes and evidence.
+`2026-10-29-table-experience/evidence/browser-report.json`. The refreshed report
+covers the compact icon/medal follow-up and records its pre-commit HEAD, source
+digest, fixture digest, production asset hashes, browser version, individual
+checks, and measured roll duration. Source and runner files were unchanged
+after that capture; the follow-up commit packages the verified working-tree
+changes and evidence.
+
+- Source SHA-256:
+  `94b8036bad510c71d0e7693a5c0514c73fbb19c4eb271eab8854b9a5e67b62a0`.
+- Production build SHA-256:
+  `ced463d280ae462abb4ff351d217f96a918b34e8cf6a0841604adb4962b542a3`.
 
 Commands:
 
 ```powershell
 pnpm verify
-python scripts/table-experience/verify.py --out test-results/table-experience-review --executable-path 'C:/Program Files/Google/Chrome/Application/chrome.exe'
+python scripts/table-experience/verify.py --out test-results/score-medals-final --executable-path 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 ```
 
 The browser runner requires Python, the Python Playwright package, and a
@@ -107,8 +123,11 @@ to a live deployment.
 - Browser matrix: **8/8 PASS** across 19- and 30-tile boards, SVG and R3F,
   desktop 1366 x 900 English, and mobile 390 x 844 Traditional Chinese.
 - Each case checks bounded map layout, usable Fit/display controls, scoreboard
-  hover/PIN/privacy, centered card peek and full fan, card lift and bounds,
-  fresh cards, Escape, all four map element types, keyboard activation, drag
+  hover/PIN/privacy, equal player-card widths, unchanged panel width between
+  states, all four/six players fitting vertically, no horizontal score overflow,
+  two award medals, accessible icon names, and absence of the old itemized list.
+  It also checks centered card peek and full fan, card lift and bounds, fresh
+  cards, Escape, all four map element types, keyboard activation, drag
   suppression, centered dice, delayed authoritative result, and no replay.
 - Measured rolling duration: **1.531-1.563 seconds**.
 - Runtime errors: **0**. Unexpected API calls: **0**.
@@ -118,6 +137,7 @@ to a live deployment.
 - Final repository verification is retained as
   `2026-10-29-table-experience/evidence/verify.log`.
 - Selected captures are in `docs/screenshots/table-experience/`.
+  `six-player-scoreboard.png` shows the expanded six-player mobile scoreboard.
 
 ## Evidence boundaries
 
