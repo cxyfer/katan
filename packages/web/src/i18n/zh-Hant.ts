@@ -81,7 +81,7 @@ export const zhHant: Catalog = {
   // --- immersive game table ------------------------------------------------
   'table.tools': '牌桌工具',
   'table.closePanel': '收起面板，回到棋盤',
-  'table.handFanHint': '移入游標、鍵盤聚焦或輕觸卡片以展開手牌。查看卡片可閱讀詳情；按 Escape 或輕觸外側收合。',
+  'table.handFanHint': '移入游標、鍵盤聚焦或輕觸卡片以展開手牌。查看卡片可閱讀詳情，也可在卡面左右滑動逐張查看；按 Escape 或輕觸外側收合。',
   'table.inspectCard': '查看{card}',
   'table.handHint': '輕觸卡牌查看 · 建造與交易時使用資源',
   'table.expandPlayers': '展開玩家計分',

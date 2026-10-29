@@ -17,7 +17,7 @@
 }
 .screen--game .hand.hand-fan[data-expanded="true"] { height: 244px; overflow: visible; }
 .screen--game .hand.hand-fan .hand__content {
-  position: absolute; inset: 0; max-height: none; overflow: visible; padding: 0;
+  position: absolute; inset: 0; max-height: none; overflow: visible; padding: 0; touch-action: pan-y;
 }
 .screen--game .hand.hand-fan .resource-list,
 .screen--game .hand.hand-fan:has(.devcards--hand) .resource-list,
@@ -28,17 +28,17 @@
 }
 .screen--game .hand.hand-fan .devcards--hand > h2,
 .screen--game .hand.hand-fan .devcards--hand > p:not([data-testid="devcard-unknown"]) { display: none; }
-.screen--game .hand.hand-fan .hand-fan__card,
-.screen--game .hand.hand-fan .devcards--hand [data-testid="new-devcards"] .hand-fan__card {
-  position: absolute; left: calc(50% - var(--fan-card-width) / 2); bottom: 15px;
+.screen--game .hand.hand-fan .hand-fan__card:is(.resource-card, .development-card) {
+
+  position: absolute; left: calc(50% - var(--fan-card-width) / 2); bottom: 45px;
   display: flex; flex-direction: column; width: var(--fan-card-width); min-width: 0;
   height: var(--fan-card-height); min-height: var(--fan-card-height); margin: 0; flex: none;
   z-index: var(--card-index); transform-origin: 50% 100%;
-  transform: translateX(calc(var(--hand-position) * 70px)) translateY(calc(var(--fan-card-height) - 30px)) rotate(calc(var(--hand-position) * 9deg));
+  transform: translateX(calc(var(--hand-position) * 70px)) translateY(var(--fan-card-height)) rotate(calc(var(--hand-position) * 9deg));
   transition: transform 240ms cubic-bezier(.2,.7,.25,1), filter 160ms;
 }
 .screen--game .hand.hand-fan[data-expanded="false"] .hand-fan__card {
-  transform: translateX(calc(var(--hand-position) * 70px)) translateY(calc(var(--fan-card-height) - 30px)) rotate(calc(var(--hand-position) * 9deg));
+  transform: translateX(calc(var(--hand-position) * 70px)) translateY(var(--fan-card-height)) rotate(calc(var(--hand-position) * 9deg));
 }
 .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__card {
   transform: translateX(calc(var(--hand-position) * var(--fan-spread))) translateY(var(--hand-arc)) rotate(var(--hand-angle));
@@ -78,9 +78,9 @@
 .screen--game .hand.hand-fan[data-expanded="false"] .development-card__play,
 .screen--game .hand.hand-fan[data-expanded="false"] .development-card__choice { visibility: hidden; }
 @media (max-width: 649px) {
-  .screen--game .hand.hand-fan { --fan-card-width: 104px; --fan-card-height: 165px; --fan-spread: calc(50vw - 66px); width: 100%; height: 62px; }
+  .screen--game .hand.hand-fan[data-expanded] { --fan-card-width: 104px; --fan-card-height: 165px; --fan-spread: calc(50vw - 66px); width: 100%; height: 62px; }
   .screen--game .hand.hand-fan[data-expanded="true"] { height: 212px; }
-  .screen--game .hand.hand-fan[data-expanded="false"] .hand-fan__card { transform: translateX(calc(var(--hand-position) * 59px)) translateY(calc(var(--fan-card-height) - 30px)) rotate(calc(var(--hand-position) * 9deg)); }
+  .screen--game .hand.hand-fan[data-expanded="false"] .hand-fan__card { transform: translateX(calc(var(--hand-position) * 59px)) translateY(var(--fan-card-height)) rotate(calc(var(--hand-position) * 9deg)); }
   .screen--game .hand.hand-fan .resource-card__art { height: 70px; flex-basis: 70px; }
   .screen--game .hand.hand-fan .resource-card__use { font-size: .53rem; }
   .screen--game .hand.hand-fan .resource-list__label { font-size: .7rem; }
@@ -93,10 +93,10 @@
   .screen--game .hand.hand-fan[data-expanded="true"] .development-card--inspected { transform: translateX(calc(var(--hand-position) * var(--fan-spread))) translateY(-24px) rotate(0) scale(1.08); }
   .screen--game:has(.hand.hand-fan[data-expanded="true"]) .game__actions { bottom: 252px; max-height: 104px; }
   .screen--game:has(.hand.hand-fan[data-expanded="true"]) .game__receipt { bottom: 362px; }
-  .screen--game .hand.hand-fan .hand-fan__close { bottom: 3px; right: 5px; }
+  .screen--game .hand.hand-fan .hand-fan__close { bottom: 3px; right: 56px; }
 }
 @media (max-height: 520px) and (min-width: 650px) {
-  .screen--game .hand.hand-fan { --fan-card-height: 156px; --fan-card-width: 108px; }
+  .screen--game .hand.hand-fan[data-expanded] { --fan-card-height: 156px; --fan-card-width: 108px; }
   .screen--game .hand.hand-fan[data-expanded="true"] { height: 190px; }
   .screen--game .hand.hand-fan .resource-card__art { height: 60px; flex-basis: 60px; }
   .screen--game .hand.hand-fan .development-card__art { height: 52px; flex-basis: 52px; }

@@ -88,6 +88,31 @@ describe('held card fan', () => {
     expect(screen.getByTestId('new-devcards').querySelector('.development-card__inspect')).toBeTruthy();
   });
 
+  it('swipes through a dense hand without commands and leaves resource selectors to native touch handling', async () => {
+    const view = makeView();
+    view.players[0]!.devCards = Array.from({ length: 20 }, (_, index) => index === 0 ? 'monopoly' : 'knight');
+    const api = await open(view);
+    const lumber = screen.getByTestId('resource-lumber').querySelector('button')!;
+    const brick = screen.getByTestId('resource-brick').querySelector('button')!;
+    const swipe = (element: Element) => {
+      for (const [type, x] of [['pointerdown', 220], ['pointerup', 100]] as const) {
+        const event = new Event(type, { bubbles: true });
+        Object.defineProperties(event, { pointerType: { value: 'touch' }, clientX: { value: x } });
+        fireEvent(element, event);
+      }
+      fireEvent.click(element);
+    };
+    touch(lumber);
+    swipe(lumber);
+    expect(document.activeElement).toBe(brick);
+    swipe(brick);
+    expect(document.activeElement).toBe(screen.getByTestId('resource-wool').querySelector('button'));
+    swipe(screen.getByTestId('monopoly-resource'));
+    expect(document.activeElement).toBe(screen.getByTestId('resource-wool').querySelector('button'));
+    fireEvent.change(screen.getByTestId('monopoly-resource'), { target: { value: 'ore' } });
+    expect((screen.getByTestId('monopoly-resource') as HTMLSelectElement).value).toBe('ore');
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
   it('preserves the pending-action guard when the full hand is revealed', async () => {
     const view = makeView({ pending: { kind: 'discard', required: { p1: 2 }, waitingFor: ['p1'] } });
     const api = await open(view);

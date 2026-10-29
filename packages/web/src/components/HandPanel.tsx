@@ -27,11 +27,20 @@ export function HandPanel({ controller }: { controller: TableController }) {
   const hoverRef = useRef(false);
   const touchOpenRef = useRef(false);
   const suppressClickRef = useRef(false);
+  const swipeStartRef = useRef<number | null>(null);
+  const focusedCardRef = useRef(0);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cancelClose = () => {
     if (closeTimer.current !== null) clearTimeout(closeTimer.current);
     closeTimer.current = null;
+  };
+  const inspectAdjacent = (direction: number) => {
+    const faces = handRef.current?.querySelectorAll<HTMLButtonElement>('.resource-card__inspect, .development-card__inspect');
+    if (!faces?.length) return;
+    const next = (focusedCardRef.current + direction + faces.length) % faces.length;
+    setInspected(null);
+    faces[next]?.focus();
   };
   const collapse = () => {
     cancelClose();
@@ -79,14 +88,25 @@ export function HandPanel({ controller }: { controller: TableController }) {
       }}
       onPointerLeave={() => { hoverRef.current = false; scheduleClose(); }}
       onPointerDownCapture={(event) => {
+        suppressClickRef.current = false;
         if (event.pointerType !== 'touch') return;
         touchOpenRef.current = true;
+        swipeStartRef.current = event.target instanceof Element && event.target.closest('.resource-card__inspect, .development-card__inspect') ? event.clientX : null;
         if (!expanded) {
           suppressClickRef.current = true;
           setExpanded(true);
         }
       }}
-      onPointerCancelCapture={() => { suppressClickRef.current = false; }}
+      onPointerUpCapture={(event) => {
+        const start = swipeStartRef.current;
+        swipeStartRef.current = null;
+        if (event.pointerType === 'touch' && start !== null && Math.abs(event.clientX - start) > 32) {
+          event.preventDefault();
+          suppressClickRef.current = true;
+          inspectAdjacent(event.clientX < start ? 1 : -1);
+        }
+      }}
+      onPointerCancelCapture={() => { suppressClickRef.current = false; swipeStartRef.current = null; }}
       onClickCapture={(event) => {
         if (suppressClickRef.current || !expanded) {
           suppressClickRef.current = false;
@@ -95,7 +115,15 @@ export function HandPanel({ controller }: { controller: TableController }) {
           setExpanded(true);
         }
       }}
-      onFocusCapture={() => { cancelClose(); setExpanded(true); }}
+      onFocusCapture={(event) => {
+        cancelClose();
+        setExpanded(true);
+        const face = event.target.closest('.hand-fan__card')?.querySelector('.resource-card__inspect, .development-card__inspect');
+        if (face) {
+          const faces = Array.from(event.currentTarget.querySelectorAll('.resource-card__inspect, .development-card__inspect'));
+          focusedCardRef.current = faces.indexOf(face);
+        }
+      }}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           touchOpenRef.current = false;
