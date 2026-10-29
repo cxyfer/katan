@@ -1,0 +1,67 @@
+/* 固定收合欄寬；詳情覆蓋棋盤，不改變地圖與手牌的可用版面。 */
+.screen--game:has(.players[data-testid="players-panel"]) { --score-width: 168px; }
+.screen--game .game__table:has(.players) { position: relative; }
+.screen--game .players {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--score-width) - 8px);
+  max-width: calc(100% - 16px);
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+  box-shadow: 8px 4px 28px #00151d50;
+}
+.screen--game .players[data-expanded="true"] { width: min(320px, calc(100% - 16px)); }
+.screen--game .players__header { justify-content: flex-end; flex-wrap: wrap; }
+.screen--game .players[data-expanded="true"] .players__heading { flex-basis: 100%; }
+.screen--game .players__pin {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 5px;
+  border: 1px solid #b5a67566;
+  border-radius: 8px;
+  background: #244642;
+  color: #eed49b;
+  cursor: pointer;
+}
+.screen--game .players__pin[aria-pressed="true"] { color: #ffdfa0; border-color: #c4ae6c; background: #6c5c2c; }
+.screen--game .players__pin:focus-visible, .screen--game .players__toggle:focus-visible { outline: 2px solid #ffe1a0; outline-offset: 2px; }
+.screen--game .players[data-expanded="true"] .players__toggle svg { transform: rotate(180deg); }
+.screen--game .players .seat, .screen--game .players[data-expanded="false"] .seat {
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  justify-items: stretch;
+  gap: 5px;
+  padding: 7px 4px;
+}
+.screen--game .players .seat__swatch { grid-column: 1; grid-row: 1; width: 26px; height: 30px; }
+.screen--game .players .seat__identity, .screen--game .players[data-expanded="false"] .seat__identity {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.screen--game .players .seat__name { display: block; overflow: visible; white-space: normal; overflow-wrap: anywhere; font-size: .73rem; line-height: 1.35; }
+.screen--game .players .seat__identity .badge, .screen--game .players[data-expanded="false"] .seat__identity .badge { max-width: 100%; font-size: .58rem; white-space: normal; text-align: left; }
+.screen--game .players .seat__score, .screen--game .players[data-expanded="false"] .seat__score { grid-column: 3; grid-row: 1; font-size: 1rem; }
+.screen--game .players .seat__score svg { width: 13px; }
+.screen--game .players .seat--turn { border-left: 3px solid var(--player-color); background: #42645055; }
+.screen--game .players .players__details[hidden], .screen--game .players .players__awards[hidden] { display: none; }
+.screen--game .players .seat__inventory, .screen--game .players .seat__details { display: flex; flex-wrap: wrap; gap: 10px; font-size: .73rem; }
+.screen--game .players__breakdown { margin: 4px 0; padding-top: 6px; border-top: 1px solid #b5a67544; font-size: .72rem; }
+.screen--game .players__breakdown > div { display: flex; justify-content: space-between; gap: 12px; margin: 3px 0; }
+.screen--game .players__breakdown dd { margin: 0; font-variant-numeric: tabular-nums; }
+.screen--game .players__breakdown-total { padding-top: 5px; border-top: 1px solid #b5a67544; color: #f2db9e; font-weight: 700; }
+@media (max-width: 649px) {
+  .screen--game:has(.players[data-testid="players-panel"]) { --score-width: 124px; }
+  .screen--game .players { width: calc(var(--score-width) - 4px); }
+  .screen--game .players .seat, .screen--game .players[data-expanded="false"] .seat { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 3px; padding: 6px 2px; }
+  .screen--game .players .seat__swatch { width: 20px; height: 25px; font-size: .65rem; }
+  .screen--game .players .seat__name { font-size: .67rem; }
+  .screen--game .players__header { gap: 4px; }
+  .screen--game .players__pin { min-width: 40px; }
+}
