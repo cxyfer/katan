@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { canRetry, needsRefresh, needsResolve } from '../state/commands.ts';
 import { translateNotice } from '../i18n/events.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
@@ -16,7 +17,13 @@ export function CommandStatus({ controller }: { controller: TableController }) {
   const locale = useLocale();
   const { state, actions } = controller;
   const command = state.command;
-  if (!command) return null;
+  const [dismissedId, setDismissedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (command?.status !== 'accepted') return;
+    const timer = setTimeout(() => setDismissedId(command.commandId), 4000);
+    return () => clearTimeout(timer);
+  }, [command?.commandId, command?.status]);
+  if (!command || (command.status === 'accepted' && command.commandId === dismissedId)) return null;
 
   const reason = command.error ? translateNotice(locale, command.error) : '';
 
@@ -70,7 +77,7 @@ export function CommandStatus({ controller }: { controller: TableController }) {
       {needsResolve(command) && <span className="visually-hidden">{t('command.retryUnavailable')}</span>}
       {needsRefresh(command) && <span className="visually-hidden">{t('command.staleHelp')}</span>}
 
-      <div className="command-status__actions">
+      {command.status !== 'accepted' && <div className="command-status__actions">
         {canRetry(command) && (
           <button
             type="button"
@@ -84,7 +91,7 @@ export function CommandStatus({ controller }: { controller: TableController }) {
         <button type="button" className="button button--ghost" onClick={() => actions.clearCommand()}>
           {t('app.dismiss')}
         </button>
-      </div>
+      </div>}
     </div>
   );
 }

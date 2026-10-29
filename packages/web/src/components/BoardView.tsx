@@ -43,6 +43,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const boardRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [messageHost, setMessageHost] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [inspection, setInspection] = useState<BoardInspection | null>(null);
   const [cluster, setCluster] = useState<number[] | null>(null);
@@ -73,6 +74,10 @@ export function BoardView({ controller }: { controller: TableController }) {
   const viewBoxCenter = { x: viewBox.x + viewBox.width / 2, y: viewBox.y + viewBox.height / 2 };
   const [anchors, setAnchors] = useState<BoardEffectAnchors | null>(null);
   const stage = boardRef.current?.closest<HTMLElement>('[data-board-stage]') ?? boardRef.current;
+
+  useLayoutEffect(() => {
+    setMessageHost(boardRef.current?.closest('[data-testid="game-stage"]')?.querySelector<HTMLElement>('.game__messages') ?? null);
+  }, [state.game?.gameId]);
 
   useLayoutEffect(() => {
     if (!stage || !animation.active) return;
@@ -144,100 +149,114 @@ export function BoardView({ controller }: { controller: TableController }) {
   const setupMine = setupActor?.id === selfId;
   const selection = intent && state.connection === 'online' && selfId && state.selection.kind === intent.kind && state.selection.index !== null && intent.targets.includes(state.selection.index)
     ? { kind: intent.kind, index: state.selection.index, playerId: selfId } : null;
+  const setupGuide = setup && (
+    <section className={`board__setup-guide${setupMine ? ' board__setup-guide--mine' : ''}`} data-testid="setup-guide" aria-live="polite">
+      <div className="board__setup-title">
+        <GameIcon name={setup.stage === 'building' ? 'home' : 'flag'} size={20} />
+        <strong>{setupMine ? t('board.setupPlace', { piece: setupPiece }) : t('board.setupWaiting', { player: setupActor?.nickname ?? '—', piece: setupPiece })}</strong>
+      </div>
+      <span>{t('board.setupGuide', { round: setup.round })}</span>
+      <span>{t('board.setupProgress', { remaining: setup.remaining })}</span>
+      {setupMine && <p>{t('board.setupPickTarget')}</p>}
+    </section>
+  );
 
   return (
-    <div className="board" data-testid="board" data-zoom={zoom} data-camera-azimuth={controls.viewport.azimuthDeg}
+    <div className="board board--side-controls" data-testid="board" data-zoom={zoom} data-camera-azimuth={controls.viewport.azimuthDeg}
       data-camera-elevation={controls.viewport.elevationDeg} ref={boardRef}
       data-requested-renderer={requested} data-effective-renderer={effective} data-quality={quality}
       data-renderer-status={failure ? 'failed' : requested === 'svg' ? 'idle' : effective === 'r3f' ? 'ready' : 'loading'} data-fallback-reason={failure ?? undefined}>
-      {setup && (
-        <section className={`board__setup-guide${setupMine ? ' board__setup-guide--mine' : ''}`} data-testid="setup-guide" aria-live="polite">
-          <div className="board__setup-title">
-            <GameIcon name={setup.stage === 'building' ? 'home' : 'flag'} size={20} />
-            <strong>{setupMine ? t('board.setupPlace', { piece: setupPiece }) : t('board.setupWaiting', { player: setupActor?.nickname ?? '—', piece: setupPiece })}</strong>
-          </div>
-          <span>{t('board.setupGuide', { round: setup.round })}</span>
-          <span>{t('board.setupProgress', { remaining: setup.remaining })}</span>
-          {setupMine && <p>{t('board.setupPickTarget')}</p>}
-        </section>
-      )}
-      <div className="board__toolbar" role="group" aria-label={t('board.heading')}>
-        <span className="board__heading" data-board-aggregate=""><GameIcon name="compass" size={18} />{t('board.heading')}</span>
+      {setupGuide && (messageHost ? createPortal(setupGuide, messageHost) : setupGuide)}
+      <div className="board__toolbar board__toolbar--side" role="group" aria-label={t('board.heading')}>
+        <span className="visually-hidden" data-board-aggregate="">{t('board.heading')}</span>
         <button
           type="button"
           className="button button--ghost"
           data-testid="zoom-in"
+          aria-label={t('board.zoomIn')}
+          title={t('board.zoomIn')}
           onClick={() => controls.setZoom(zoom * 1.25)}
         >
-          {t('board.zoomIn')}
+          <GameIcon name="plus" size={18} />
         </button>
         <button
           type="button"
           className="button button--ghost"
           data-testid="zoom-out"
+          aria-label={t('board.zoomOut')}
+          title={t('board.zoomOut')}
           onClick={() => controls.setZoom(zoom / 1.25)}
         >
-          {t('board.zoomOut')}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true" focusable="false"><path d="M4 12h16" /></svg>
         </button>
         {effective === 'r3f' && <>
           <button type="button" className="button button--ghost" data-testid="rotate-left"
-            aria-keyshortcuts="[" title={t('board.rotateLeftHint')} disabled={controls.gestureActive}
-            onClick={() => controls.rotate(-30)}>{t('board.rotateLeft')}</button>
+            aria-label={t('board.rotateLeft')} aria-keyshortcuts="[" title={t('board.rotateLeftHint')} disabled={controls.gestureActive}
+            onClick={() => controls.rotate(-30)}><GameIcon name="refresh" className="board__rotate-left" size={18} /></button>
           <button type="button" className="button button--ghost" data-testid="rotate-right"
-            aria-keyshortcuts="]" title={t('board.rotateRightHint')} disabled={controls.gestureActive}
-            onClick={() => controls.rotate(30)}>{t('board.rotateRight')}</button>
-          <label className="board-camera-angle">
-            <span>{t('board.viewingAngle')}</span>
-            <input type="range" min={MIN_CAMERA_ELEVATION} max={MAX_CAMERA_ELEVATION} step={1}
-              data-testid="camera-elevation" value={controls.viewport.elevationDeg}
-              aria-label={t('board.viewingAngle')} aria-valuetext={t('board.viewingAngleDegrees', { degrees: Math.round(controls.viewport.elevationDeg ?? 50) })}
-              disabled={controls.gestureActive} onChange={(event) => controls.setElevation(Number(event.target.value))} />
-            <output>{Math.round(controls.viewport.elevationDeg ?? 50)}°</output>
-          </label>
+            aria-label={t('board.rotateRight')} aria-keyshortcuts="]" title={t('board.rotateRightHint')} disabled={controls.gestureActive}
+            onClick={() => controls.rotate(30)}><GameIcon name="refresh" size={18} /></button>
         </>}
         <button
           type="button"
           className="button button--ghost"
           data-testid="reset-view"
+          aria-label={t('board.fitBoard')}
+          title={t('board.fitBoard')}
           onClick={() => { controls.fit(); setInspection(null); }}
         >
-          {t('board.fitBoard')}
+          <GameIcon name="compass" size={18} />
         </button>
         {intent && (
           <button
             type="button"
-            className="button"
+            className="button board__target-picker-toggle"
             data-testid="open-target-picker"
+            aria-label={t('board.listTargets')}
+            title={t('board.listTargets')}
             aria-expanded={pickerOpen}
             onClick={() => {
               setCluster(null);
               setPickerOpen((open) => !open);
             }}
           >
-            {t('board.listTargets')}
+            <GameIcon name="route" size={18} />
           </button>
         )}
-        <span className="board__zoom-readout" data-testid="zoom-readout">{t('board.zoomLevel', { percent: Math.round(zoom * 100) })}</span>
-        {view.turn.dice && (
-          <span className="board__dice" data-presenting={focusedRoll ? 'true' : undefined} aria-hidden={focusedRoll ? true : undefined} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
-            {view.turn.dice.map((value, index) => <span className="board__die" key={index} aria-hidden="true">{value}</span>)}
-            <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
-          </span>
-        )}
         <details className="board__display-settings">
-          <summary>{t('board.rendererSettings')}</summary>
-          <label>{t('board.renderer')}<select data-testid="renderer-select" value={requested} onChange={(event) => changeRenderer(rendererMode(event.target.value))}>
-            <option value="svg">{t('board.rendererSvg')}</option><option value="r3f">{t('board.renderer3d')}</option><option value="auto">{t('board.rendererAuto')}</option>
-          </select></label>
-          <label>{t('board.quality')}<select data-testid="quality-select" value={quality} onChange={(event) => setQuality(qualityMode(event.target.value))}>
-            <option value="standard">{t('board.qualityStandard')}</option><option value="low">{t('board.qualityLow')}</option>
-          </select></label>
-          <p role="status" data-testid="renderer-status">{failure ? t('board.rendererFailed') : requested === 'svg' ? t('board.rendererSvg') : effective === 'r3f' ? t('board.rendererReady') : t('board.rendererLoading')}</p>
-          {failure && <button type="button" data-testid="renderer-retry" onClick={() => changeRenderer(requested)}>{t('board.rendererRetry')}</button>}
+          <summary data-testid="board-display-settings" aria-label={t('board.rendererSettings')} title={t('board.rendererSettings')}><GameIcon name="settings" size={18} /></summary>
+          <div className="board__display-settings-panel">
+            <strong>{t('board.rendererSettings')}</strong>
+            <span className="board__zoom-readout" data-testid="zoom-readout">{t('board.zoomLevel', { percent: Math.round(zoom * 100) })}</span>
+            {effective === 'r3f' && <>
+              <label className="board-camera-angle">
+                <span>{t('board.viewingAngle')}</span>
+                <input type="range" min={MIN_CAMERA_ELEVATION} max={MAX_CAMERA_ELEVATION} step={1}
+                  data-testid="camera-elevation" value={controls.viewport.elevationDeg}
+                  aria-label={t('board.viewingAngle')} aria-valuetext={t('board.viewingAngleDegrees', { degrees: Math.round(controls.viewport.elevationDeg ?? 50) })}
+                  disabled={controls.gestureActive} onChange={(event) => controls.setElevation(Number(event.target.value))} />
+                <output>{Math.round(controls.viewport.elevationDeg ?? 50)}°</output>
+              </label>
+              <p className="board-camera-hint" data-testid="camera-gesture-hint">{t('board.cameraGestureHint')}</p>
+            </>}
+            <label>{t('board.renderer')}<select data-testid="renderer-select" value={requested} onChange={(event) => changeRenderer(rendererMode(event.target.value))}>
+              <option value="svg">{t('board.rendererSvg')}</option><option value="r3f">{t('board.renderer3d')}</option><option value="auto">{t('board.rendererAuto')}</option>
+            </select></label>
+            <label>{t('board.quality')}<select data-testid="quality-select" value={quality} onChange={(event) => setQuality(qualityMode(event.target.value))}>
+              <option value="standard">{t('board.qualityStandard')}</option><option value="low">{t('board.qualityLow')}</option>
+            </select></label>
+            <p role="status" data-testid="renderer-status">{failure ? t('board.rendererFailed') : requested === 'svg' ? t('board.rendererSvg') : effective === 'r3f' ? t('board.rendererReady') : t('board.rendererLoading')}</p>
+            {failure && <button type="button" data-testid="renderer-retry" onClick={() => changeRenderer(requested)}>{t('board.rendererRetry')}</button>}
+          </div>
         </details>
       </div>
 
-      {effective === 'r3f' && <p className="board-camera-hint" data-testid="camera-gesture-hint">{t('board.cameraGestureHint')}</p>}
+      {view.turn.dice && (
+        <span className="board__dice" data-presenting={focusedRoll ? 'true' : undefined} aria-hidden={focusedRoll ? true : undefined} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
+          {view.turn.dice.map((value, index) => <span className="board__die" key={index} aria-hidden="true">{value}</span>)}
+          <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
+        </span>
+      )}
 
       {focusedRoll && createPortal(
         <DicePresentation key={focusedRoll.id} dice={focusedRoll.dice} mandatory={!!view.pending} />,

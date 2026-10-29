@@ -88,16 +88,15 @@ describe('table interactions', { timeout: 15000 }, () => {
     expect(api.callsOf('sendCommand')[0]!.args[1]).toMatchObject({ command: { type: 'dev.playMonopoly', resource: 'ore' } });
   });
 
-  it('keeps accepted feedback in the corner until dismissed and unknown results in the central recovery area', async () => {
+  it('auto-hides accepted feedback and retains unknown results in the side recovery area', async () => {
     const api = await open();
-    fireEvent.click(screen.getByTestId('action-endTurn'));
-    const corner = await screen.findByTestId('accepted-notice');
-    expect(corner.contains(screen.getByTestId('command-status'))).toBe(true);
     vi.useFakeTimers();
-    act(() => vi.advanceTimersByTime(30000));
-    expect(screen.getByTestId('accepted-notice')).toBe(corner);
-    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
-    expect(screen.queryByTestId('accepted-notice')).toBeNull();
+    await act(async () => { fireEvent.click(screen.getByTestId('action-endTurn')); });
+    const corner = screen.getByTestId('accepted-notice');
+    expect(corner.contains(screen.getByTestId('command-status'))).toBe(true);
+    act(() => vi.advanceTimersByTime(4000));
+    expect(screen.queryByTestId('command-status')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Dismiss' })).toBeNull();
     vi.useRealTimers();
     api.setCommandResult({ ok: false, error: { code: 'E_NETWORK', messageId: 'error.E_NETWORK' } });
     fireEvent.click(screen.getByTestId('action-endTurn'));

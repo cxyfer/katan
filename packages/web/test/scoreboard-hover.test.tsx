@@ -24,6 +24,32 @@ function pointer(element: Element, eventName: string, pointerType = 'mouse') {
 afterEach(() => vi.useRealTimers());
 
 describe('player scoreboard previews', () => {
+  it('keeps seat order and the turn flag outside the hideable details', () => {
+    const players = [makePlayer({ id: 'p3', seat: 2 }), makePlayer({ id: 'p1', seat: 0 }), makePlayer({ id: 'p2', seat: 1 })];
+    const panel = open(makeView({ players }));
+    expect([...screen.getByTestId('seat-list').children].map((seat) => seat.getAttribute('data-testid'))).toEqual(['seat-0', 'seat-1', 'seat-2']);
+    const flag = screen.getByTestId('seat-turn-flag');
+    expect(flag.parentElement).toBe(screen.getByTestId('seat-0'));
+    expect(flag.closest('[hidden]')).toBeNull();
+    pointer(panel, 'pointerover');
+    expect(flag.parentElement).toBe(screen.getByTestId('seat-0'));
+    expect(flag.closest('.players__details')).toBeNull();
+  });
+
+  it.each([
+    { view: makeView(), selfId: 'p1', label: 'Your turn', mine: 'true' },
+    { view: makeView({ turnPlayerId: 'p2' }), selfId: 'p1', label: 'Waiting for 小美', mine: 'false' },
+    { view: makeView({ pending: { kind: 'moveRobber', actor: 'p1', cause: 'seven' } }), selfId: 'p1', label: 'Move the robber', mine: 'true' },
+    { view: makeView({ turnPlayerId: 'p2' }), selfId: null, label: 'Waiting for 小美', mine: 'false' },
+  ])('keeps the current obligation visible while collapsed: $label', ({ view, selfId, label, mine }) => {
+    const panel = open(view, selfId);
+    const obligation = within(panel).getByTestId('turn-state');
+    expect(obligation.textContent).toContain(label);
+    expect(obligation.getAttribute('data-mine')).toBe(mine);
+    expect(obligation.closest('[hidden]')).toBeNull();
+    expect(obligation.closest('.players__details')).toBeNull();
+  });
+
   it('keeps six names, colors, turn indication and authoritative totals visible when collapsed', () => {
     const players = Array.from({ length: 6 }, (_, seat) => makePlayer({ id: `p${seat + 1}`, seat, nickname: `Player ${seat + 1}`, ownScore: 9 }));
     const panel = open(makeView({ players }));
@@ -115,6 +141,26 @@ describe('player scoreboard previews', () => {
     expect(panel.getAttribute('data-expanded')).toBe('true');
     expect(panel.getAttribute('data-pinned')).toBe('false');
     pointer(screen.getByRole('button', { name: 'Outside' }), 'pointerdown', 'touch');
+    expect(panel.getAttribute('data-expanded')).toBe('false');
+  });
+
+  it('opens on the first real touch tap when compatibility mouse focus follows pointerup', () => {
+    const panel = open();
+    const toggle = screen.getByTestId('players-toggle');
+    pointer(toggle, 'pointerdown', 'touch');
+    pointer(toggle, 'pointerup', 'touch');
+    fireEvent.mouseDown(toggle);
+    act(() => toggle.focus());
+    fireEvent.mouseUp(toggle);
+    fireEvent.click(toggle);
+    expect(panel.getAttribute('data-expanded')).toBe('true');
+    expect(panel.getAttribute('data-pinned')).toBe('false');
+
+    pointer(toggle, 'pointerdown', 'touch');
+    pointer(toggle, 'pointerup', 'touch');
+    fireEvent.mouseDown(toggle);
+    fireEvent.mouseUp(toggle);
+    fireEvent.click(toggle);
     expect(panel.getAttribute('data-expanded')).toBe('false');
   });
 

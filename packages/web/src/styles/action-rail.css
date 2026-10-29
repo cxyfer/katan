@@ -1,0 +1,243 @@
+.action-rail {
+  --action-rail-width: 210px;
+  --action-rail-peek: 46px;
+  position: absolute;
+  z-index: 34;
+  top: 50%;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  width: var(--action-rail-width);
+  max-height: 100%;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.action-rail__toggle {
+  position: relative;
+  display: flex;
+  flex: 0 0 36px;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  width: var(--action-rail-peek);
+  min-height: 36px;
+  padding: 6px;
+  border: 1px solid #a99d6d66;
+  border-radius: 7px;
+  background: #19373bf2;
+  color: #e2d09e;
+  font: inherit;
+  font-size: .69rem;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: border-radius .2s ease, background .2s ease;
+}
+
+.action-rail__toggle > span {
+  position: absolute;
+  top: -1px;
+  right: 100%;
+  bottom: -1px;
+  display: flex;
+  align-items: center;
+  width: calc(var(--action-rail-width) - var(--action-rail-peek));
+  padding: 6px 12px;
+  border: 1px solid #a99d6d66;
+  border-right: 0;
+  border-radius: 7px 0 0;
+  background: #19373bf2;
+  white-space: nowrap;
+  pointer-events: none;
+  clip-path: inset(0 0 0 100%);
+  transition: clip-path .2s ease;
+}
+
+.action-rail__toggle > svg {
+  flex: 0 0 auto;
+  transform: rotate(180deg);
+  transition: transform .2s ease;
+}
+
+.action-rail__toggle:focus-visible {
+  outline: 2px solid #f5d394;
+  outline-offset: -3px;
+}
+
+.action-rail__content {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  pointer-events: auto;
+  clip-path: inset(0 0 0 calc(var(--action-rail-width) - var(--action-rail-peek)));
+  border: 1px solid transparent;
+  border-radius: 0 0 9px 9px;
+  transition: clip-path .2s ease, background .2s ease, border-color .2s ease;
+}
+
+.action-rail .action-rail__phase {
+  position: relative;
+  justify-content: flex-start;
+  height: 30px;
+  margin: 0;
+  padding: 0 11px;
+  font-size: .61rem;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+
+.action-rail__phase > svg {
+  margin-left: auto;
+}
+
+/* 舊面板的 !important 位於 table layer，覆寫也需留在同層。 */
+@layer table {
+  .action-rail .action-panel {
+    padding: 0 4px 4px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+.action-rail .action-panel h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.action-rail .action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.action-rail .action-list li {
+  position: relative;
+  flex: 0 0 auto;
+  padding-bottom: 22px;
+}
+
+.action-rail .action-list__button,
+.action-rail .action-list__turn .action-list__button {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  height: 49px;
+  min-height: 49px;
+  padding: 3px 0 3px 8px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  font-size: .68rem;
+}
+
+.action-rail .action-list__label,
+.action-rail .action-list__turn .action-list__label {
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.action-rail .action-list__label > svg {
+  box-sizing: border-box;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  padding: 9px;
+  border: 1px solid #84957b66;
+  border-radius: 8px;
+  background: #19383be8;
+}
+
+.action-rail .action-list__button[data-enabled="true"] .action-list__label > svg {
+  color: #f5d89b;
+  border-color: #d6b871;
+  background: #495039ed;
+}
+
+.action-rail .action-list__button--armed .action-list__label > svg {
+  box-shadow: 0 0 0 1px #edcf8f, 0 0 12px #dbb66d55;
+}
+
+.action-rail .action-list__cost {
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  justify-content: flex-start;
+}
+
+.action-rail .action-list__reason,
+.action-rail .action-list__count {
+  position: absolute;
+  right: 42px;
+  bottom: 0;
+  left: 8px;
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  text-align: left;
+  font-size: .52rem;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.action-rail .action-list__turn[data-action="endTurn"] {
+  order: 5;
+}
+
+.action-rail[data-expanded="true"] .action-rail__toggle {
+  border-radius: 0 7px 0 0;
+}
+
+.action-rail[data-expanded="true"] .action-rail__toggle > span {
+  clip-path: inset(0);
+}
+
+.action-rail[data-expanded="true"] .action-rail__toggle > svg {
+  transform: none;
+}
+
+.action-rail[data-expanded="true"] .action-rail__content {
+  border-color: #a99d6d66;
+  background: linear-gradient(155deg, #1d3d3bf5, #102a30f5);
+  clip-path: inset(0);
+}
+
+.action-rail[data-expanded="true"] .action-list__button {
+  border-color: #7c8a6855;
+  background: #29423d;
+}
+
+.action-rail[data-expanded="true"] .action-list__button[data-enabled="true"] {
+  color: #f5d89b;
+  border-color: #d6b871;
+  background: #4c5036;
+}
+
+.action-rail[data-expanded="true"] .action-list__turn:has([data-enabled="true"]) .action-list__button {
+  color: #2b3028;
+  background: linear-gradient(135deg, #f1d59c, #bf9654);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-rail__toggle,
+  .action-rail__toggle > span,
+  .action-rail__toggle > svg,
+  .action-rail__content {
+    transition: none;
+  }
+}

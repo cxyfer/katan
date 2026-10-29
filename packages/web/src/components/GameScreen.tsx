@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/context.tsx';
 import { requiredActionAnnouncement, requiredActionFor } from '../state/pending.ts';
 import type { TableController } from '../state/useTable.ts';
-import { ActionBar } from './ActionBar.tsx';
+import { ActionRail } from './ActionRail.tsx';
+import '../styles/side-layout.css';
 import { BoardView } from './BoardView.tsx';
 import { GameTools } from './GameTools.tsx';
 import { GameIcon } from './GameArt.tsx';
@@ -23,7 +24,6 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const fullscreen = useFullscreen(stageRef);
   const action = requiredActionFor(state);
   const [announcement, setAnnouncement] = useState('');
-  const view = state.game?.view;
 
   useEffect(() => {
     const next = requiredActionAnnouncement(action, t);
@@ -70,10 +70,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
           </div>
           <div className="game__map"><BoardView controller={controller} /></div>
           <div className="game__preview"><SelectionPreview controller={controller} /></div>
-          <aside className="game__actions" aria-label={t('play.hints')}>
-            <div className="game__phase"><span className="game__phase-dot" /><span>{view ? t('play.phase.' + view.turn.phase) : t('app.loading')}</span><GameIcon name="flag" size={15} /></div>
-            <ActionBar controller={controller} />
-          </aside>
+          <ActionRail controller={controller} />
         </div>
         <footer className="game__dock">
           <HandPanel controller={controller} />

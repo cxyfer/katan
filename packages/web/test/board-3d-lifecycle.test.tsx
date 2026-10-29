@@ -144,12 +144,19 @@ describe('renderer lifecycle and presentation cursor', () => {
   it('exposes camera rotation only in 3D, preserves game selection, and restores the initial view', async () => {
     const api = createFakeApi({ snapshot: rolled(12) });
     await openGame(api);
+    for (const testId of ['zoom-in', 'zoom-out', 'reset-view']) {
+      const button = screen.getByTestId(testId);
+      expect(button.getAttribute('aria-label')).toBeTruthy();
+      expect(button.getAttribute('title')).toBe(button.getAttribute('aria-label'));
+      expect(button.textContent).toBe('');
+    }
     expect(screen.queryByTestId('rotate-left')).toBeNull();
     fireEvent.change(screen.getByTestId('renderer-select'), { target: { value: 'r3f' } });
     await waitFor(() => expect(screen.getByTestId('board').getAttribute('data-effective-renderer')).toBe('r3f'));
     fireEvent.click(screen.getByTestId('action-build.road'));
     fireEvent.click(await screen.findByTestId('target-edge-5'));
     await screen.findByTestId('selection-preview');
+    fireEvent.click(screen.getByTestId('board-display-settings'));
     fireEvent.change(screen.getByRole('slider', { name: 'Viewing angle' }), { target: { value: '75' } });
     expect(sceneMock.props!.viewport.elevationDeg).toBe(75);
     fireEvent.click(screen.getByRole('button', { name: 'Rotate right' }));

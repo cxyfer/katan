@@ -32,8 +32,106 @@
 }
 .board-camera-angle--preview input[type='range'] { accent-color: #557769; }
 .board-camera-hint { margin: 0; padding: 4px 12px; color: #c7d7cf; font-size: 10px; text-align: center; }
+.board--side-controls .board__toolbar--side {
+  position: absolute;
+  inset: 44px auto auto 4px;
+  z-index: 45;
+  display: grid;
+  grid-template-columns: repeat(3, 40px);
+  align-content: start;
+  gap: 4px;
+  width: max-content;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+.board--side-controls .board__toolbar--side:has(.board__target-picker-toggle) { grid-template-columns: repeat(4, 40px); }
+.board--side-controls .board__toolbar--side:has(.board__display-settings[open]) { z-index: 62; }
+.board--side-controls .board__toolbar--side > .button,
+.board--side-controls .board__display-settings > summary {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  color: #e4d8b1;
+  background: #0d2c33ed;
+  border: 1px solid #a7b49666;
+  border-radius: 8px;
+  box-shadow: 0 3px 10px #031a2333;
+  cursor: pointer;
+}
+.board--side-controls .board__toolbar--side > .button:focus-visible,
+.board--side-controls .board__display-settings > summary:focus-visible { outline: 2px solid #e5c77e; outline-offset: 2px; }
+.board--side-controls .board__rotate-left { transform: scaleX(-1); }
+.board--side-controls .board__display-settings,
+.board--side-controls .board__display-settings[open] {
+  position: static;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+.board--side-controls .board__display-settings > summary { list-style: none; }
+.board--side-controls .board__display-settings > summary::-webkit-details-marker { display: none; }
+.board--side-controls .board__display-settings[open] > summary { border-color: #e5c77e; background: #375347; }
+.board--side-controls .board__display-settings-panel {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 8px);
+  display: grid;
+  gap: 6px;
+  width: min(280px, calc(100vw - 118px));
+  max-height: calc(100dvh - 150px);
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: #e4d4a6;
+  background: #0d2c33fa;
+  border: 1px solid #a7b49688;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px #00151d88;
+}
+.board--side-controls .board__display-settings-panel > strong { font-size: .75rem; }
+.board--side-controls .board__display-settings-panel label { justify-content: space-between; }
+.board--side-controls .board__display-settings-panel select { flex: 1; max-width: 165px; }
+.board--side-controls .board__display-settings-panel .board-camera-angle { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 0; }
+.board--side-controls .board-camera-angle > span { grid-column: 1 / -1; }
+.board--side-controls .board-camera-angle input[type='range'] { width: 100%; min-width: 0; }
+.board--side-controls .board-camera-hint { padding: 0; text-align: left; }
+.board--side-controls .board__zoom-readout { padding: 0; border: 0; background: none; }
+.board--side-controls .board__dice { position: absolute; right: 12px; bottom: 16px; z-index: 10; transform: none; }
+.screen--game .board--side-controls > .board__setup-guide { position: absolute; inset: 8px 12px auto auto; z-index: 45; width: min(260px, calc(100% - 70px)); }
+.screen--game .game__messages > .board__setup-guide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  margin: 4px 0;
+  padding: 8px 10px;
+  animation: none;
+}
+.screen--game .game__messages > .board__setup-guide > span { grid-column: 1; white-space: normal; font-size: .67rem; }
+.screen--game .game__messages .board__setup-title { align-items: flex-start; font-size: .75rem; }
+.screen--game .game__messages .board__setup-title > svg { flex: 0 0 auto; }
+.screen--game .game__messages > .board__setup-guide p { font-size: .67rem; }
 .board__surface, .island-preview__surface { cursor: grab; }
 .board__surface[data-gesture-active='true'], .island-preview__surface[data-gesture-active='true'] { cursor: grabbing; }
+@media (pointer: coarse), (max-width: 649px) {
+  .board--side-controls .board__toolbar--side { grid-template-columns: repeat(3, 44px); inset: 34px auto auto 2px; }
+  .board--side-controls .board__toolbar--side:has(.board__target-picker-toggle) { grid-template-columns: repeat(4, 44px); }
+  .board--side-controls .board__toolbar--side > .button,
+  .board--side-controls .board__display-settings > summary { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+}
+@media (max-height: 520px) and (min-width: 650px) {
+  .screen--game .board--side-controls .board__toolbar--side { top: 8px; left: calc(var(--score-width) + 12px); }
+}
+@media (max-width: 649px) {
+  .board--side-controls .board__display-settings-panel { position: fixed; inset: auto 8px 112px auto; width: min(280px, calc(100vw - 24px)); max-height: min(60dvh, 400px); }
+}
 @media (max-width: 760px) {
   .board-camera-angle--preview { min-height: 38px; padding-block: 0; }
   .board-camera-angle--preview input[type='range'] { min-height: 38px; width: 130px; }

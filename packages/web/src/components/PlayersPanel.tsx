@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
+import { requiredActionFor } from '../state/pending.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/scoreboard-hover.css';
@@ -59,9 +60,11 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
   if (!view) return null;
 
   const selfId = state.session?.id ?? null;
+  const action = requiredActionFor(state);
+  const players = [...view.players].sort((left, right) => left.seat - right.seat);
   const headingId = `players-heading-${id}`;
   const detailsIdForSeat = (seat: number) => `players-details-${id}-${seat}`;
-  const detailsIds = view.players.map((player) => detailsIdForSeat(player.seat)).join(' ');
+  const detailsIds = players.map((player) => detailsIdForSeat(player.seat)).join(' ');
 
   return (
     <section
@@ -84,6 +87,9 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
       onPointerDown={() => { pointerFocus.current = true; focusInside.current = false; }}
       onPointerUp={() => { pointerFocus.current = false; }}
       onPointerCancel={() => { pointerFocus.current = false; }}
+      // 觸控的相容性 mousedown 可能在 pointerup 後才觸發焦點。
+      onMouseDown={() => { pointerFocus.current = true; focusInside.current = false; }}
+      onMouseUp={() => { pointerFocus.current = false; }}
       onFocus={() => {
         focusInside.current = !pointerFocus.current;
         clearClose();
@@ -144,7 +150,7 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
         </button>
       </header>
       <ol className="seat-list" data-testid="seat-list">
-        {view.players.map((player) => {
+        {players.map((player) => {
           const isTurn = view.turn.playerId === player.id;
           const isSelf = player.id === selfId;
           const total = isSelf ? (player.ownScore ?? player.publicScore) : player.publicScore;
@@ -169,12 +175,13 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
               data-self={isSelf ? 'true' : 'false'}
               title={compactLabel}
             >
-              <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>{Array.from(player.nickname)[0]}</span>
-              <span className="seat__identity">
-                <span className="seat__name" title={player.nickname}>{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>
-                {isTurn && <span className="seat__turn" title={t('play.turnOwner')}><GameIcon name="flag" size={12} /><span className="visually-hidden">{t('play.turnOwner')}</span></span>}
-              </span>
-              <span className={`seat__score${isSelf && player.ownScore !== undefined ? ' seat__own-score' : ''}`} title={scoreLabel}><GameIcon name="crown" size={15} /><span className="visually-hidden">{scoreLabel}: </span>{number(total)}</span>
+              <div className="seat__summary">
+                <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>{Array.from(player.nickname)[0]}</span>
+                <span className="seat__identity">
+                  <span className="seat__name" title={player.nickname}>{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>
+                </span>
+                <span className={`seat__score${isSelf && player.ownScore !== undefined ? ' seat__own-score' : ''}`} title={scoreLabel}><GameIcon name="crown" size={15} /><span className="visually-hidden">{scoreLabel}: </span>{number(total)}</span>
+              </div>
               <div className="players__details" id={detailsIdForSeat(player.seat)} hidden={!expanded}>
                 <div className="players__stats" role="group" aria-label={t('table.playersBreakdown')}>
                   <ScoreMark icon="home" label={t('table.playersSettlements', { count: number(settlements) })} value={number(settlements)} />
@@ -192,10 +199,15 @@ export function PlayersPanel({ controller }: { controller: TableController }) {
                   {hiddenBonus > 0 && <ScoreMark icon="sparkles" label={t('table.playersHiddenBonus')} value={number(hiddenBonus)} />}
                 </div>
               </div>
+              {isTurn && <span className="seat__turn" data-testid="seat-turn-flag" title={t('play.turnOwner')}><GameIcon name="flag" size={15} /><span className="visually-hidden">{t('play.turnOwner')}</span></span>}
             </li>
           );
         })}
       </ol>
+      <p className="players__obligation" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}>
+        <GameIcon name="flag" size={14} />
+        <span>{action ? t(action.messageId, action.params) : t('app.loading')}</span>
+      </p>
       {view.turn.pairedActor === 2 && <p className="badge players__paired-actor" data-testid="paired-actor">{t('play.pairedActor', { actor: 2 })}</p>}
     </section>
   );
