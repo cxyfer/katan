@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, type RefObject } from 'react';
 import type { PublicBoardView } from '@catan/rules';
 import type { BoardGeometry } from '../board/geometry.ts';
 import type { BoardViewportControls } from '../board/useBoardViewport.ts';
+import type { ProjectedAnchor } from '../board/render-contract.ts';
 import { inspectDescription, inspectionElements, type BoardInspection as Inspection } from '../board/inspection.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
 import '../styles/board-inspection.css';
@@ -18,6 +19,17 @@ interface Props {
   fallbackFocusRef: RefObject<HTMLElement | null>;
 }
 
+/** Keep dense fitted maps selectable without letting piece padding cover tile centers. */
+export function inspectionHitSize(outlines: readonly (readonly ProjectedAnchor[])[]): number {
+  const spans = outlines.flatMap((points) => {
+    if (!points.length || points.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y))) return [];
+    const width = Math.max(...points.map((point) => point.x)) - Math.min(...points.map((point) => point.x));
+    const height = Math.max(...points.map((point) => point.y)) - Math.min(...points.map((point) => point.y));
+    return width > 0 && height > 0 ? [Math.min(width, height)] : [];
+  });
+  return spans.length ? Math.max(18, Math.min(44, Math.min(...spans) * 0.6)) : 44;
+}
+
 /** Inspection sits below legal targets; both use the same camera projection. */
 export function BoardInspectionLayer({ geometry, board, renderer, controls, nameOf, selected, onInspect, fallbackFocusRef }: Props) {
   const locale = useLocale();
@@ -25,6 +37,9 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
   const elements = useMemo(() => inspectionElements(geometry, board, renderer), [geometry, board, renderer]);
   const context = { locale, board, topology: geometry.topology, nameOf };
   const rect = controls.viewport.rect;
+  const hitSize = inspectionHitSize(elements.filter((element) => element.kind === 'hex')
+    .map((element) => element.outline!.map(controls.projectPoint)));
+  const halfHit = hitSize / 2;
   const layerRef = useRef<SVGSVGElement | null>(null);
   const focusedRef = useRef<string | null>(null);
   useEffect(() => {
@@ -48,7 +63,7 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
       const option = inspectDescription(context, element);
       const active = selected?.kind === element.kind && selected.index === element.index;
       const shared = { role: 'button', tabIndex: 0, 'aria-label': `${t('board.inspect')}: ${option.title} ${option.detail}`,
-        'aria-pressed': active, 'data-testid': `inspect-${element.kind}-${element.index}`,
+        'aria-pressed': active, 'data-hit-size': hitSize, 'data-testid': `inspect-${element.kind}-${element.index}`,
         onFocus: () => { focusedRef.current = `inspect-${element.kind}-${element.index}`; },
         onClick: () => choose(element), onKeyDown: (event: React.KeyboardEvent) => keyboard(event, element),
         className: `board-inspect-hit${active ? ' board-inspect-hit--active' : ''}` };
@@ -56,11 +71,11 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
         points={outline.map((point) => `${point.x - rect.left},${point.y - rect.top}`).join(' ')} />;
       if (element.kind === 'edge' && outline) return <line key={`edge-${element.index}`} {...shared}
         x1={outline[0]!.x - rect.left} y1={outline[0]!.y - rect.top}
-        x2={outline[1]!.x - rect.left} y2={outline[1]!.y - rect.top} strokeWidth={44} />;
+        x2={outline[1]!.x - rect.left} y2={outline[1]!.y - rect.top} strokeWidth={hitSize} style={{ strokeWidth: hitSize }} />;
       const top = element.top ? controls.projectPoint(element.top) : anchor;
       return <rect key={`${element.kind}-${element.index}`} {...shared} rx={10}
-        x={Math.min(anchor.x, top.x) - rect.left - 22} y={Math.min(anchor.y, top.y) - rect.top - 22}
-        width={Math.max(44, Math.abs(anchor.x - top.x) + 44)} height={Math.max(44, Math.abs(anchor.y - top.y) + 44)} />;
+        x={Math.min(anchor.x, top.x) - rect.left - halfHit} y={Math.min(anchor.y, top.y) - rect.top - halfHit}
+        width={Math.abs(anchor.x - top.x) + hitSize} height={Math.abs(anchor.y - top.y) + hitSize} />;
     })}
   </svg>;
 }

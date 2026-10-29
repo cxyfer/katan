@@ -2,6 +2,8 @@ import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-li
 import { Matrix4, OrthographicCamera } from 'three';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App.tsx';
+import { BoardInspectionLayer, BoardInspectionPanel } from '../src/components/BoardInspection.tsx';
+import type { ProjectionSnapshot } from '../src/board/render-contract.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { inspectDescription, inspectionElements } from '../src/board/inspection.ts';
 import { projectWorldPoint } from '../src/board/projection.ts';
@@ -25,6 +27,53 @@ beforeEach(() => {
 const geometry = buildGeometry('hex-r2');
 
 describe('public map inspection', () => {
+  it.each(['svg', 'r3f'] as const)('keeps fitted mobile %s tile centers clear of piece padding and retains keyboard access', (renderer) => {
+    const bounds = sceneBounds(geometry);
+    const rect = { left: 0, top: 0, width: 390, height: 220 };
+    const surface = document.createElement('div');
+    vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({ ...rect, x: 0, y: 0,
+      right: rect.width, bottom: rect.height, toJSON() {} });
+    const surfaceRef = { current: surface };
+    const { result, rerender } = renderHook(({ projection }: { projection: ProjectionSnapshot | null }) =>
+      useBoardViewport({ geometry, bounds, renderer, surfaceRef, projection }),
+    { initialProps: { projection: null as ProjectionSnapshot | null } });
+    const project = () => {
+      if (renderer !== 'r3f') return;
+      const camera = new OrthographicCamera();
+      applySceneCamera(camera, fitSceneCamera(bounds, rect, result.current.viewport.azimuthDeg,
+        result.current.viewport.elevationDeg), result.current.viewport);
+      rerender({ projection: { viewProjection: new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).toArray(),
+        rect, version: 1, clip: { near: -1, far: 1 } } });
+    };
+    project();
+    const board = fixedBoard();
+    board.buildings[4] = { player: 'p2', city: false };
+    const edge = geometry.topology.vertices[4]!.edges[0]!;
+    board.roads[edge] = { player: 'p2', ship: false };
+    const onInspect = vi.fn();
+    const props = () => ({ geometry, board, renderer, controls: result.current, nameOf: () => 'Public owner',
+      selected: null, onInspect, onClose: vi.fn(), fallbackFocusRef: surfaceRef });
+    const rendered = render(<><BoardInspectionLayer {...props()} /><BoardInspectionPanel {...props()} /></>);
+    const building = screen.getByTestId('inspect-vertex-4');
+    const center = result.current.projectPoint(inspectionElements(geometry, board, renderer).find((item) => item.kind === 'hex' && item.index === 0)!.world);
+    const left = Number(building.getAttribute('x')), top = Number(building.getAttribute('y'));
+    const width = Number(building.getAttribute('width')), height = Number(building.getAttribute('height'));
+    expect(center.x >= left && center.x <= left + width && center.y >= top && center.y <= top + height).toBe(false);
+    expect(Number(building.getAttribute('data-hit-size'))).toBeLessThan(44);
+    const road = screen.getByTestId(`inspect-edge-${edge}`);
+    expect(Number(road.getAttribute('stroke-width'))).toBeLessThan(44);
+    expect(road.style.strokeWidth).toBe(road.getAttribute('stroke-width'));
+    fireEvent.keyDown(building, { key: 'Enter' });
+    expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'vertex', index: 4 }));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'vertex:4' } });
+    expect(onInspect).toHaveBeenCalledTimes(2);
+    act(() => result.current.setZoom(3));
+    project();
+    rendered.rerender(<><BoardInspectionLayer {...props()} /><BoardInspectionPanel {...props()} /></>);
+    const enlarged = screen.getAllByTestId('board-inspect-layer')[0]!.querySelector('[data-hit-size="44"]');
+    expect(enlarged).not.toBeNull();
+  });
+
   it('describes terrain probability, robber, building score, road owner and harbour access from public board data', () => {
     const board = fixedBoard();
     const productive = board.numbers.findIndex((number) => number === 6);
