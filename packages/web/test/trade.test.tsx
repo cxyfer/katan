@@ -136,18 +136,21 @@ describe('structured trading', () => {
     const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints() })) });
     await openGame(api, 'trade');
 
-    const clear = screen.getByTestId('clear-offer') as HTMLButtonElement;
-    expect(clear.disabled).toBe(true);
+    const clear = screen.getByTestId('clear-offer');
+    expect(clear.getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(screen.getByTestId('give-add-lumber'));
     fireEvent.click(screen.getByTestId('want-add-ore'));
     fireEvent.change(screen.getByTestId('offer-to'), { target: { value: 'p2' } });
-    expect(clear.disabled).toBe(false);
+    expect(clear.getAttribute('aria-disabled')).toBeNull();
+    clear.focus();
     fireEvent.click(clear);
 
     expect(screen.getByTestId('give-lumber').textContent).toBe('0');
     expect(screen.getByTestId('want-ore').textContent).toBe('0');
     expect((screen.getByTestId('offer-to') as HTMLSelectElement).value).toBe('p2');
-    expect(clear.disabled).toBe(true);
+    expect(clear.getAttribute('aria-disabled')).toBe('true');
+    // 焦點留在按鈕上，鍵盤使用者不會被丟回頁首。
+    expect(document.activeElement).toBe(clear);
     expect(api.callsOf('sendCommand')).toHaveLength(0);
   });
 

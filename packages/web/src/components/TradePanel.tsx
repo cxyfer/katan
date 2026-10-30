@@ -1,8 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { RESOURCES, type Offer, type Resource } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatResourceMap } from '../i18n/format.ts';
 import { Dialog } from './Dialog.tsx';
+import { shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/trade.css';
 
@@ -49,8 +50,11 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
   const [give, setGive] = useState<Terms>(emptyTerms());
   const [want, setWant] = useState<Terms>(emptyTerms());
   const [hint, setHint] = useState<TradeHint | null>(null);
+  const hintRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (!hint) return;
+    // 提示可能落在可捲動面板的下緣之外，出現時捲入可視範圍（只在新提示時捲動一次）。
+    hintRef.current?.scrollIntoView?.({ block: 'nearest' });
     const timer = globalThis.setTimeout(() => setHint(null), TRADE_HINT_MS);
     return () => globalThis.clearTimeout(timer);
   }, [hint]);
@@ -66,12 +70,11 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
   >(null);
 
   if (!view) return null;
-  const owned = view.players.find((player) => player.id === selfId)?.resources;
+  // 與手牌顯示一致：擲骰演出期間以擲骰前的數量檢查，不提前透露產出。
+  const owned = shownHand(state);
   const showHint = (scope: string, text: string) => setHint((current) => ({ id: (current?.id ?? 0) + 1, scope, text }));
   const hintFor = (scope: string) => hint?.scope === scope
-    ? <p key={hint.id} className="notice notice--warning trade-hint" role="alert" data-testid={`trade-hint-${scope}`}
-        // 提示可能落在可捲動面板的下緣之外，出現時捲入可視範圍。
-        ref={(node) => node?.scrollIntoView?.({ block: 'nearest' })}>{hint.text}</p>
+    ? <p key={hint.id} ref={hintRef} className="notice notice--warning trade-hint" role="alert" data-testid={`trade-hint-${scope}`}>{hint.text}</p>
     : null;
   const draftEmpty = Object.keys(give).length === 0 && Object.keys(want).length === 0;
   const offers = view.offers.filter((offer) => offer.status === 'open' || offer.status === 'agreed');
@@ -189,8 +192,10 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
             type="button"
             className="button button--ghost"
             data-testid="clear-offer"
-            disabled={draftEmpty}
+            // 用 aria-disabled 而非 disabled：清空後焦點留在按鈕上，不會掉回 body。
+            aria-disabled={draftEmpty || undefined}
             onClick={() => {
+              if (draftEmpty) return;
               setGive(emptyTerms());
               setWant(emptyTerms());
               if (hint?.scope === 'builder') setHint(null);

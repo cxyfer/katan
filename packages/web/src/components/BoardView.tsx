@@ -56,8 +56,10 @@ export function BoardView({ controller }: { controller: TableController }) {
   const [projection, setProjection] = useState<ProjectionSnapshot | null>(null);
   const [effective, setEffective] = useState<'svg' | 'r3f'>('svg');
   const Scene = useMemo(() => lazy(() => import('../board/three/BoardScene3D.tsx')), [attempt]);
+  const { dispatch } = controller;
+  const onDiceChange = useCallback((presenting: boolean) => dispatch({ type: 'dice-presenting', value: presenting }), [dispatch]);
   const animation = useBoardAnimation(state.game, state.gameSync, state.connection === 'online',
-    !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll');
+    !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll', onDiceChange);
   const geometry = useMemo(() => buildGeometry(view?.board.topologyId ?? 'hex-r2'), [view?.board.topologyId]);
   const bounds = useMemo(() => sceneBounds(geometry), [geometry]);
   const controls = useBoardViewport({ geometry, surfaceRef, bounds, projection, renderer: effective,
@@ -124,10 +126,6 @@ export function BoardView({ controller }: { controller: TableController }) {
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
   }, [actions, intent]);
   const focusedRoll = animation.activeDice;
-  const presentingDice = focusedRoll !== null;
-  const { dispatch } = controller;
-  useLayoutEffect(() => { dispatch({ type: 'dice-presenting', value: presentingDice }); }, [dispatch, presentingDice]);
-  useEffect(() => () => dispatch({ type: 'dice-presenting', value: false }), [dispatch]);
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);
 
   if (!view) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;

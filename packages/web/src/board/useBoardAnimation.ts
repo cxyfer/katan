@@ -18,6 +18,8 @@ export function useBoardAnimation(
   sync: GameSyncMetadata,
   online: boolean,
   mandatory: boolean,
+  /** 骰子佇列（含排隊中的骰子）由空轉非空或反之時，於繪製前同步通知。 */
+  onDiceChange?: (presenting: boolean) => void,
 ) {
   const cursor = useRef<PresentationCursor | null>(null);
   const latest = useRef({ snapshot, sync });
@@ -29,6 +31,16 @@ export function useBoardAnimation(
   const reduced = useRef(false);
   const [queue, setQueue] = useState<BoardEffectGroup[]>([]);
   const [diceQueue, setDiceQueue] = useState<DiceRollPresentation[]>([]);
+  // 以 ref 同步追蹤骰子佇列，才能在同一個 effect 內立即回報是否仍在演出。
+  const diceQueueRef = useRef<DiceRollPresentation[]>([]);
+  const onDiceChangeRef = useRef(onDiceChange);
+  onDiceChangeRef.current = onDiceChange;
+  const updateDice = useCallback((next: (current: DiceRollPresentation[]) => DiceRollPresentation[]) => {
+    const value = next(diceQueueRef.current);
+    diceQueueRef.current = value;
+    setDiceQueue(value);
+    onDiceChangeRef.current?.(value.length > 0);
+  }, []);
 
   const resetPresentation = useCallback(() => {
     if (timer.current !== null) globalThis.clearTimeout(timer.current);
@@ -37,9 +49,9 @@ export function useBoardAnimation(
     diceTimer.current = null;
     cursor.current = decideBoardAnimation(null, latest.current.snapshot, latest.current.sync).cursor;
     setQueue([]);
-    setDiceQueue([]);
+    updateDice(() => []);
     mandatoryRollSeq.current = null;
-  }, []);
+  }, [updateDice]);
 
   useEffect(() => {
     const media = globalThis.matchMedia('(prefers-reduced-motion: reduce)');
@@ -57,6 +69,8 @@ export function useBoardAnimation(
       if (diceTimer.current !== null) globalThis.clearTimeout(diceTimer.current);
       diceTimer.current = null;
       cursor.current = null;
+      diceQueueRef.current = [];
+      onDiceChangeRef.current?.(false);
     };
   }, [resetPresentation]);
 
@@ -68,7 +82,7 @@ export function useBoardAnimation(
     cursor.current = decision.cursor;
     if (decision.kind === 'baseline') {
       setQueue([]);
-      setDiceQueue([]);
+      updateDice(() => []);
       mandatoryRollSeq.current = null;
       return;
     }
@@ -81,10 +95,12 @@ export function useBoardAnimation(
       // 同包七點可與必要提示並存；任何後續權威進度都讓位給必要操作，且不補播。
       if (seven && snapshot) {
         mandatoryRollSeq.current = snapshot.view.seq;
-        setDiceQueue([seven]);
+        updateDice(() => [seven]);
       } else if (mandatoryRollSeq.current !== snapshot?.view.seq) {
         mandatoryRollSeq.current = null;
-        setDiceQueue([]);
+        updateDice(() => []);
+      } else {
+        updateDice((current) => current);
       }
       return;
     }
@@ -93,10 +109,13 @@ export function useBoardAnimation(
       const groups = boardEffectGroups(snapshot.gameId, decision.events);
       setQueue((current) => enqueueBoardEffects(current, groups));
       if (rolls.length > 0) {
-        setDiceQueue((current) => current.length + rolls.length > MAX_EFFECT_GROUPS ? [] : [...current, ...rolls]);
+        updateDice((current) => current.length + rolls.length > MAX_EFFECT_GROUPS ? [] : [...current, ...rolls]);
+        return;
       }
     }
-  }, [snapshot, sync.generation, sync.cause, online, mandatory]);
+    // 沒有新擲骰時也回報一次，校正 reducer 對這筆更新的暫定判斷。
+    updateDice((current) => current);
+  }, [snapshot, sync.generation, sync.cause, online, mandatory, updateDice]);
 
   const active = queue[0] ?? null;
   const activeDice = diceQueue[0] ?? null;
@@ -122,13 +141,13 @@ export function useBoardAnimation(
     if (!activeDice || diceHeld) return;
     diceTimer.current = globalThis.setTimeout(() => {
       diceTimer.current = null;
-      setDiceQueue((current) => current.slice(1));
+      updateDice((current) => current.slice(1));
     }, DICE_PRESENTATION_DURATION_MS);
     return () => {
       if (diceTimer.current !== null) globalThis.clearTimeout(diceTimer.current);
       diceTimer.current = null;
     };
-  }, [activeDice, diceHeld]);
+  }, [activeDice, diceHeld, updateDice]);
 
   const canPresent = online && visible.current && !reduced.current &&
     cursor.current?.gameId === snapshot?.gameId && cursor.current?.syncGeneration === sync.generation;

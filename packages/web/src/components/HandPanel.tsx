@@ -7,6 +7,7 @@ import { ResourceCardArt } from './ResourceCardArt.tsx';
 import { DevCardPanel } from './DevCardPanel.tsx';
 import { HandGainOverlay } from './HandGainOverlay.tsx';
 import { useHandGains } from './useHandGains.ts';
+import { shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/hand-fan.css';
 
@@ -20,13 +21,15 @@ export function HandPanel({ controller }: { controller: TableController }) {
   const t = useT();
   const { state } = controller;
   const self = state.game?.view.players.find((player) => player.id === state.session?.id) ?? null;
-  const resources = self?.resources;
+  // 擲骰演出期間顯示擲骰前的數量，點數揭曉前不從手牌透露結果。
+  const resources = shownHand(state);
   const totalHandCards = (self?.handSize ?? 0) + (self?.devCardCount ?? 0) + (self?.newDevCardCount ?? 0);
   const visibleCount = RESOURCES.length + (self?.devCards?.length ?? 0) + (self?.newDevCards?.length ?? 0);
   const [inspected, setInspected] = useState<Resource | null>(null);
   const [expanded, setExpanded] = useState(false);
   const handRef = useRef<HTMLElement>(null);
-  const gains = useHandGains(state.game, state.gameSync, state.session?.id ?? null, state.connection === 'online', state.gameSyncPending);
+  const gains = useHandGains(state.game, state.gameSync, state.session?.id ?? null, state.connection === 'online', state.gameSyncPending,
+    state.dicePresenting);
   const hoverRef = useRef(false);
   const touchOpenRef = useRef(false);
   const suppressClickRef = useRef(false);
@@ -149,10 +152,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
         {totalHandCards === 0 && <p className="hand__empty muted">{t('play.handEmpty')}</p>}
         <ul className="resource-list" aria-label={t('table.resources')}>
           {RESOURCES.map((resource, index) => {
-            // 擲骰演出期間先不計入等待落下的卡，點數揭曉前不從手牌數字透露結果。
-            const authoritative = resources?.[resource];
-            const held = state.dicePresenting ? gains.filter((gain) => gain.resource === resource).length : 0;
-            const count = authoritative === undefined ? undefined : Math.max(0, authoritative - held);
+            const count = resources?.[resource];
             const countLabel = count === undefined ? '—' : formatNumber(state.locale, count);
             const isInspected = inspected === resource;
             return (
