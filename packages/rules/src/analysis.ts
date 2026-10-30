@@ -267,9 +267,21 @@ export interface ProductionResult {
  * Production for one hex/terrain at the given total.
  * Bank shortage rule (B25 p.6): if the bank cannot pay every entitled player,
  * nobody receives that resource; if exactly one player is entitled, they take
- * whatever remains.
+ * whatever remains. Called alone this judges the hex in isolation; use
+ * `productionForRoll` to apply the rule across all hexes of a resource.
  */
 export function productionForHex(
+  state: GameState,
+  hex: number,
+  diceTotal: number,
+): ProductionResult | null {
+  const result = rawProductionForHex(state, hex, diceTotal);
+  if (!result) return null;
+  return applyBankLimit([result], state.bank[result.resource!])[0]!;
+}
+
+/** 單一地形格的原始應得量（尚未套用銀行上限）。 */
+function rawProductionForHex(
   state: GameState,
   hex: number,
   diceTotal: number,
@@ -290,39 +302,58 @@ export function productionForHex(
   if (state.board.robber === hex) {
     return { terrain, resource, hex, entitlements: [], granted: [], starved: false, blocked: entitlements };
   }
+  return { terrain, resource, hex, entitlements, granted: [], starved: false, blocked: [] };
+}
 
-  const demand = entitlements.reduce((sum, share) => sum + share.amount, 0);
-  const available = state.bank[resource];
+/**
+ * 對同一資源的所有地形格一次套用銀行不足規則：合計需求超過庫存時，
+ * 多名玩家則全部不發；僅一名玩家則依序發到庫存用完為止。
+ */
+function applyBankLimit(results: ProductionResult[], available: number): ProductionResult[] {
+  const all = results.flatMap((result) => result.entitlements);
+  const demand = all.reduce((sum, share) => sum + share.amount, 0);
   if (demand <= available) {
-    return { terrain, resource, hex, entitlements, granted: entitlements, starved: false, blocked: [] };
+    return results.map((result) => ({ ...result, granted: result.entitlements, starved: false }));
   }
-  const distinct = new Set(entitlements.map((share) => share.playerId));
-  if (distinct.size === 1 && entitlements.length > 0) {
-    const only = entitlements[0]!;
-    const amount = Math.min(only.amount, available);
-    return {
-      terrain,
-      resource,
-      hex,
-      entitlements,
-      granted: amount > 0 ? [{ ...only, amount }] : [],
-      starved: false,
-      blocked: [],
-    };
+  if (new Set(all.map((share) => share.playerId)).size === 1) {
+    let remaining = available;
+    return results.map((result) => {
+      const granted: ProductionShare[] = [];
+      for (const share of result.entitlements) {
+        const amount = Math.min(share.amount, remaining);
+        remaining -= amount;
+        if (amount > 0) granted.push({ ...share, amount });
+      }
+      return { ...result, granted, starved: false };
+    });
   }
-  return { terrain, resource, hex, entitlements, granted: [], starved: true, blocked: [] };
+  return results.map((result) => ({
+    ...result,
+    granted: [],
+    starved: result.entitlements.length > 0,
+  }));
 }
 
 function verticesOfHexIndex(topo: BoardTopology, hex: number): number[] {
   return verticesOfHex(topo, hex);
 }
 
-/** Total production for a dice roll, applying bank limits per resource. */
+/**
+ * Total production for a dice roll. The bank limit is applied once per
+ * resource across every hex producing it, not hex by hex.
+ */
 export function productionForRoll(state: GameState, diceTotal: number): ProductionResult[] {
-  const results: ProductionResult[] = [];
+  const raw: ProductionResult[] = [];
   for (let hex = 0; hex < state.board.layout.terrain.length; hex++) {
-    const result = productionForHex(state, hex, diceTotal);
-    if (result) results.push(result);
+    const result = rawProductionForHex(state, hex, diceTotal);
+    if (result) raw.push(result);
   }
-  return results;
+  const limited = new Map<number, ProductionResult>();
+  for (const resource of RESOURCES) {
+    const group = raw.filter((result) => result.resource === resource);
+    if (group.length === 0) continue;
+    for (const result of applyBankLimit(group, state.bank[resource])) limited.set(result.hex, result);
+  }
+  // 維持依地形格索引排序的輸出順序。
+  return raw.map((result) => limited.get(result.hex)!);
 }
