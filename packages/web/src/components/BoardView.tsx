@@ -126,6 +126,8 @@ export function BoardView({ controller }: { controller: TableController }) {
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
   }, [actions, intent]);
   const focusedRoll = animation.activeDice;
+  // 佇列中仍有骰子（例如後一次擲骰排在前一組特效之後）時，靜態點數也先隱藏。
+  const hideStaticDice = focusedRoll !== null || state.dicePresenting;
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);
 
   if (!view) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
@@ -240,7 +242,7 @@ export function BoardView({ controller }: { controller: TableController }) {
       </div>
 
       {view.turn.dice && (
-        <span className="board__dice" data-presenting={focusedRoll ? 'true' : undefined} aria-hidden={focusedRoll ? true : undefined} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
+        <span className="board__dice" data-presenting={hideStaticDice ? 'true' : undefined} aria-hidden={hideStaticDice ? true : undefined} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
           {view.turn.dice.map((value, index) => <DieFace className="board__die" key={index} value={value} />)}
           <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
         </span>

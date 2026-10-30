@@ -193,6 +193,31 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     expect(screen.getAllByTestId(/^target-hex-/).length).toBeGreaterThan(0);
   });
 
+  it('keeps the static dice hidden while a later roll waits behind earlier effects', async () => {
+    const sockets: TestSocket[] = [];
+    await open(createFakeApi({ snapshot: rolled(12) }), sockets);
+    vi.useFakeTimers();
+    const twice = rolled(15, [1, 1]);
+    twice.view.events = [
+      makeEvent(13, 'turn.rolled', { dice: [2, 6], total: 8 }),
+      makeEvent(14, 'production.resolved', { total: 8, grants: { p1: { lumber: 1 } } }),
+      makeEvent(15, 'turn.rolled', { dice: [1, 1], total: 2 }),
+    ];
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: twice }));
+    const staticDice = screen.getByTestId('dice-roll-animation');
+    expect(staticDice.getAttribute('data-presenting')).toBe('true');
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS));
+    // 第一組特效播放中、第二顆骰子排隊：最終點數仍不可見。
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(staticDice.getAttribute('data-presenting')).toBe('true');
+    expect(staticDice.getAttribute('aria-hidden')).toBe('true');
+    act(() => vi.advanceTimersByTime(800));
+    expect(screen.getByTestId('dice-focus')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS));
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(staticDice.getAttribute('data-presenting')).toBeNull();
+  });
+
   it('blocks every command entry point and status surface until the dice settle', async () => {
     const sockets: TestSocket[] = [];
     const api = createFakeApi({ snapshot: rolled(12) });
