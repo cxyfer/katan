@@ -182,6 +182,19 @@ export function ResourceIcon({ resource, size = 48 }: { resource: string; size?:
   return <svg width={size} height={size} viewBox="-72 -62 144 105" aria-hidden="true" focusable="false"><TerrainIllustration terrain={resource} /></svg>;
 }
 
+const RESOURCE_GLYPHS: Record<string, ReactNode> = {
+  lumber: <><path d="M12 2.5 6 10.5h3.2L5 16h5.6v5h2.8v-5H19l-4.2-5.5H18Z" /></>,
+  brick: <><path d="M3 14.5h8.2v5H3Zm9.8 0H21v5h-8.2ZM7.4 8.5h9.2v5H7.4ZM3 8.5h3.4v5H3Zm14.6 0H21v5h-3.4Z" /></>,
+  wool: <><path d="M5.2 9.6a3 3 0 0 1 4.6-2.8 3.2 3.2 0 0 1 5.6.4 2.9 2.9 0 0 1 1.8 4.7 2.9 2.9 0 0 1-3.4 3.7 3.3 3.3 0 0 1-5.2.1 3 3 0 0 1-3.4-3.6 2.6 2.6 0 0 1 0-2.5Z" /><path d="M17.2 9.8c1.6-.8 3.6.2 3.7 2.2 0 1.5-1.2 2.6-2.7 2.5Z" /><path d="M8 16.5v4m3-4v4m3-4v4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></>,
+  grain: <><path d="M11.1 21V7.5h1.8V21Z" /><path d="M12 2.3c1.6 1.3 1.6 3.5 0 4.9-1.6-1.4-1.6-3.6 0-4.9Zm-.6 7.4C9.2 9.9 7.6 8.7 7.2 6.6c2.2-.1 3.9 1.1 4.2 3.1Zm1.2 0c.3-2 2-3.2 4.2-3.1-.4 2.1-2 3.3-4.2 3.1Zm-1.2 4.2c-2.2.2-3.8-1-4.2-3.1 2.2-.1 3.9 1.1 4.2 3.1Zm1.2 0c.3-2 2-3.2 4.2-3.1-.4 2.1-2 3.3-4.2 3.1Zm-1.2 4.2c-2.2.2-3.8-1-4.2-3.1 2.2-.1 3.9 1.1 4.2 3.1Zm1.2 0c.3-2 2-3.2 4.2-3.1-.4 2.1-2 3.3-4.2 3.1Z" /></>,
+  ore: <><path d="m2.5 19.5 5.8-10 3.3 4.2 3.7-8.2 6.2 14Z" /><path d="m15.3 5.5-1.2 6.2 2.6 2.1M8.3 9.5l.9 4.6" fill="none" stroke="var(--glyph-shade, #0005)" strokeWidth="1.3" strokeLinejoin="round" /></>,
+};
+
+/** 扁平的資源符號，用於卡角與數量列；在小尺寸下仍可辨識。 */
+export function ResourceGlyph({ resource, size = 18 }: { resource: string; size?: number }) {
+  return <svg className="resource-glyph" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">{RESOURCE_GLYPHS[resource]}</svg>;
+}
+
 export function BuildingPiece({ x, y, city, color }: { x: number; y: number; city: boolean; color: string }) {
   return <g transform={`translate(${x} ${y})`}>
     <ellipse cy={10} rx={city ? 23 : 15} ry={5} fill="#071d28" opacity=".5" />

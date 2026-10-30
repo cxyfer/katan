@@ -46,15 +46,6 @@
 .screen--game .hand__empty, .screen--game .hand__summary { display: block; position: static; font-size: .64rem; margin: 4px 0; }
 .screen--game .hand__resources { min-width: 0; padding-bottom: 8px; }
 .screen--game .hand__resources h3, .screen--game .devcards--hand h2 { position: static; inset: auto; transform: none; width: auto; height: auto; display: block; margin: 0 0 3px; font-size: .68rem; color: #dcc993; }
-.screen--game .hand .resource-list, .screen--game .hand:has(.devcards--hand) .resource-list { display: flex; flex: none; align-items: stretch; justify-content: flex-start; gap: 12px; height: auto; min-height: 0; padding: 9px 6px 10px; margin: 0; overflow-x: auto; overflow-y: hidden; list-style: none; scrollbar-width: thin; }
-.screen--game .hand .resource-card { flex: 0 0 var(--card-width); height: var(--card-height); margin: 0; bottom: auto; transform: none; }
-.screen--game .hand .resource-card:hover, .screen--game .hand .resource-card:focus-within, .screen--game .hand .resource-card--inspected { transform: translateY(-3px); }
-.screen--game .hand .resource-card__inspect { padding: 4px; border-radius: 8px; }
-.screen--game .hand .resource-card__art { height: 64px; flex: 0 0 64px; }
-.screen--game .hand .resource-card__corner { top: -4px; left: -3px; width: 25px; height: 25px; min-width: 25px; }
-.screen--game .hand .resource-list__label { font-size: .72rem; padding: 2px; }
-.screen--game .hand .resource-list__count { font-size: 1.2rem; }
-.screen--game .hand .resource-card__use { font-size: .52rem; padding: 2px 0; }
 .screen--game .hand__development { min-width: 0; max-height: none; margin: 0; padding: 8px 0 0; overflow: visible; border-top: 1px solid #bca87544; }
 .screen--game .devcards--hand { display: block; margin: 0; padding: 0; }
 .screen--game .devcards--hand p { font-size: .65rem; margin: 4px 0; }
@@ -133,4 +124,4 @@
   .dice-focus__panel { max-width: calc(100% - 24px); padding: 18px; }
   .dice-focus__panel strong { font-size: .76rem; }
 }
-@media (prefers-reduced-motion: reduce) { .dice-focus__panel { animation: none; } .screen--game .hand .resource-card { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .dice-focus__panel { animation: none; } }

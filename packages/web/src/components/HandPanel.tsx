@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { RESOURCES, type Resource } from '@catan/rules';
+import { RESOURCES } from '@catan/rules';
 import { useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
-import { ResourceIcon } from './GameArt.tsx';
+import { GameIcon, ResourceGlyph } from './GameArt.tsx';
 import { ResourceCardArt } from './ResourceCardArt.tsx';
 import { DevCardPanel } from './DevCardPanel.tsx';
 import { HandGainOverlay } from './HandGainOverlay.tsx';
@@ -11,10 +11,27 @@ import { shownHand, shownHandSize } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/hand-fan.css';
 
-/** 每種資源合併為一張計數卡；只讀取本人投影，檢視不送出遊戲命令。 */
-export function handCardStyle(index: number, count: number): CSSProperties {
-  const position = count <= 1 ? 0 : (index / (count - 1)) * 2 - 1;
-  return { '--hand-position': position, '--hand-angle': `${position * 16}deg`, '--hand-arc': `${position * position * 24}px`, '--card-index': index } as CSSProperties;
+const CARD_FACES = '.hand-card__face, .development-card__inspect';
+/** 不同種類的牌之間多留的間距（以一張牌的步距為單位）。 */
+const GROUP_GAP = 0.6;
+
+/** 依群組排出扇形位置：同種牌相鄰、群組間留空；張數少時扇形自動收窄。 */
+export function handFanStyles(groups: readonly number[]): CSSProperties[] {
+  const slots: number[] = [];
+  let slot = 0;
+  for (const size of groups) {
+    if (size <= 0) continue;
+    for (let card = 0; card < size; card += 1) slots.push(slot++);
+    slot += GROUP_GAP;
+  }
+  const span = slots.at(-1) ?? 0;
+  const tilt = Math.min(16, span * 2.4);
+  const arc = Math.min(24, span * 3);
+  return slots.map((value, index) => {
+    const position = span === 0 ? 0 : (value / span) * 2 - 1;
+    return { '--hand-position': position, '--hand-span': span, '--hand-angle': `${position * tilt}deg`,
+      '--hand-arc': `${position * position * arc}px`, '--card-index': index } as CSSProperties;
+  });
 }
 
 export function HandPanel({ controller }: { controller: TableController }) {
@@ -23,11 +40,16 @@ export function HandPanel({ controller }: { controller: TableController }) {
   const self = state.game?.view.players.find((player) => player.id === state.session?.id) ?? null;
   // 擲骰演出期間顯示擲骰前的數量，點數揭曉前不從手牌透露結果。
   const resources = shownHand(state);
-  const totalHandCards = (self ? shownHandSize(state, self) : 0) + (self?.devCardCount ?? 0) + (self?.newDevCardCount ?? 0);
-  const visibleCount = RESOURCES.length + (self?.devCards?.length ?? 0) + (self?.newDevCards?.length ?? 0);
-  const [inspected, setInspected] = useState<Resource | null>(null);
+  const resourceCards = self ? shownHandSize(state, self) : 0;
+  const totalHandCards = resourceCards + (self?.devCardCount ?? 0) + (self?.newDevCardCount ?? 0);
+  // 仿實體手牌：只列出持有的資源，每一張都是獨立的卡。
+  const held = RESOURCES.flatMap((resource) => Array.from({ length: resources?.[resource] ?? 0 }, (_, copy) => ({ resource, copy })));
+  const heldDev = self?.devCards?.length ?? 0;
+  const fanStyles = handFanStyles([...RESOURCES.map((resource) => resources?.[resource] ?? 0), heldDev, self?.newDevCards?.length ?? 0]);
+  const [inspected, setInspected] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const handRef = useRef<HTMLElement>(null);
+  const tallyRef = useRef<HTMLUListElement>(null);
   const gains = useHandGains(state.game, state.gameSync, state.session?.id ?? null, state.connection === 'online', state.gameSyncPending,
     state.dicePresenting);
   const hoverRef = useRef(false);
@@ -42,7 +64,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
     closeTimer.current = null;
   };
   const inspectAdjacent = (direction: number) => {
-    const faces = handRef.current?.querySelectorAll<HTMLButtonElement>('.resource-card__inspect, .development-card__inspect');
+    const faces = handRef.current?.querySelectorAll<HTMLButtonElement>(CARD_FACES);
     if (!faces?.length) return;
     const next = (focusedCardRef.current + direction + faces.length) % faces.length;
     setInspected(null);
@@ -97,7 +119,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
         suppressClickRef.current = false;
         if (event.pointerType !== 'touch') return;
         touchOpenRef.current = true;
-        swipeStartRef.current = event.target instanceof Element && event.target.closest('.resource-card__inspect, .development-card__inspect') ? event.clientX : null;
+        swipeStartRef.current = event.target instanceof Element && event.target.closest(CARD_FACES) ? event.clientX : null;
         if (!expanded) {
           suppressClickRef.current = true;
           setExpanded(true);
@@ -124,9 +146,9 @@ export function HandPanel({ controller }: { controller: TableController }) {
       onFocusCapture={(event) => {
         cancelClose();
         setExpanded(true);
-        const face = event.target.closest('.hand-fan__card')?.querySelector('.resource-card__inspect, .development-card__inspect');
+        const face = event.target.closest('.hand-fan__card')?.querySelector(CARD_FACES);
         if (face) {
-          const faces = Array.from(event.currentTarget.querySelectorAll('.resource-card__inspect, .development-card__inspect'));
+          const faces = Array.from(event.currentTarget.querySelectorAll(CARD_FACES));
           focusedCardRef.current = faces.indexOf(face);
         }
       }}
@@ -142,7 +164,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
         if ((event.key === 'Enter' || event.key === ' ') && event.target === event.currentTarget) {
           event.preventDefault();
           setExpanded(true);
-          handRef.current?.querySelector<HTMLButtonElement>('.resource-card__inspect')?.focus();
+          handRef.current?.querySelector<HTMLButtonElement>(CARD_FACES)?.focus();
         }
       }}
     >
@@ -150,34 +172,52 @@ export function HandPanel({ controller }: { controller: TableController }) {
       <p id="hand-hint" className="visually-hidden">{t('table.handFanHint')}</p>
       <div className="hand__content" id="hand-content">
         {totalHandCards === 0 && <p className="hand__empty muted">{t('play.handEmpty')}</p>}
-        <ul className="resource-list" aria-label={t('table.resources')}>
-          {RESOURCES.map((resource, index) => {
-            const count = resources?.[resource];
-            const countLabel = count === undefined ? '—' : formatNumber(state.locale, count);
-            const isInspected = inspected === resource;
+        <ul className="hand-card-list" aria-label={t('table.resources')}>
+          {held.map(({ resource, copy }, index) => {
+            const id = `${resource}-${copy}`;
+            const isInspected = inspected === id;
             return (
-              <li key={resource} className={`hand-fan__card resource-card resource-card--${resource}${count === 0 ? ' resource-card--empty' : ''}${count === undefined ? ' resource-card--missing' : ''}${isInspected ? ' resource-card--inspected' : ''}`}
-                style={handCardStyle(index, visibleCount)} data-testid={`resource-${resource}`}>
-                <button type="button" className="resource-card__inspect"
-                  aria-label={t('table.resourceCard', { resource: t(`resource.${resource}`), count: countLabel })}
-                  aria-pressed={isInspected} aria-describedby={`hand-hint resource-use-${resource}`}
-                  onClick={() => setInspected((current) => current === resource ? null : resource)}>
-                  <span className="resource-card__corner"><ResourceIcon resource={resource} size={25} /></span>
-                  <span className="resource-card__art"><ResourceCardArt resource={resource} /></span>
-                  <span className="resource-list__label">{t(`resource.${resource}`)}</span>
-                  <span className="resource-list__count">{countLabel}</span>
-                  <span id={`resource-use-${resource}`} className="resource-card__use">{t(`table.resourceUse.${resource}`)}</span>
+              <li key={id} className={`hand-fan__card hand-card hand-card--${resource}${isInspected ? ' hand-card--inspected' : ''}`}
+                style={fanStyles[index]} data-testid={`resource-card-${resource}-${copy}`} data-resource={resource}>
+                <button type="button" className="hand-card__face"
+                  aria-label={t('table.resourceCard', { resource: t(`resource.${resource}`), index: formatNumber(state.locale, copy + 1), count: formatNumber(state.locale, resources?.[resource] ?? 0) })}
+                  aria-pressed={isInspected} aria-describedby={`hand-hint hand-card-use-${id}`}
+                  onClick={() => setInspected((current) => current === id ? null : id)}>
+                  <span className="hand-card__art"><ResourceCardArt resource={resource} /></span>
+                  <span className="hand-card__pip"><ResourceGlyph resource={resource} size={17} /></span>
+                  <span className="hand-card__name">{t(`resource.${resource}`)}</span>
+                  <span id={`hand-card-use-${id}`} className="hand-card__use">{t(`table.resourceUse.${resource}`)}</span>
                 </button>
               </li>
             );
           })}
         </ul>
-        <DevCardPanel controller={controller} embedded handExpanded={expanded} handStyle={(index) => handCardStyle(index, visibleCount)} />
+        <DevCardPanel controller={controller} embedded handExpanded={expanded} handStyle={(index) => fanStyles[held.length + index] ?? {}} />
         <button type="button" className="hand-fan__close" onClick={collapse} tabIndex={expanded ? 0 : -1}
           aria-label={t('table.collapseHand')}>⌄</button>
       </div>
     </section>
-      <HandGainOverlay gains={gains} handRef={handRef} />
+      <ul className="resource-tally" ref={tallyRef} aria-label={t('table.resourceTally')} data-testid="resource-tally">
+        {RESOURCES.map((resource) => {
+          const count = resources?.[resource];
+          const label = count === undefined ? '—' : formatNumber(state.locale, count);
+          return (
+            <li key={resource} className={`resource-tally__item resource-tally__item--${resource}${count ? '' : ' resource-tally__item--empty'}`}
+              data-testid={`resource-${resource}`} title={t(`resource.${resource}`)}>
+              <span className="resource-tally__icon"><ResourceGlyph resource={resource} size={16} /></span>
+              <span className="visually-hidden">{t(`resource.${resource}`)}</span>
+              {/* 以數量為 key，數字變動時重新掛載以播放跳動提示。 */}
+              <span key={label} className="resource-tally__count">{label}</span>
+            </li>
+          );
+        })}
+        <li className="resource-tally__item resource-tally__item--total" data-testid="resource-tally-total" title={t('play.handSize')}>
+          <span className="resource-tally__icon"><GameIcon name="cards" size={15} /></span>
+          <span className="visually-hidden">{t('play.handSize')}</span>
+          <span className="resource-tally__count">{formatNumber(state.locale, totalHandCards)}</span>
+        </li>
+      </ul>
+      <HandGainOverlay gains={gains} anchorRef={tallyRef} />
     </>
   );
 }

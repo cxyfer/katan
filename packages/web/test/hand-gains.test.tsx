@@ -38,7 +38,7 @@ describe('own resource cards descending into the hand', () => {
     const { rerender } = render(<HandPanel controller={controller(props())} />, { wrapper: StrictMode });
     expect(screen.queryByTestId('hand-gains')).toBeNull();
     rerender(<HandPanel controller={controller(props(13, 4))} />);
-    expect(screen.getByTestId('resource-lumber').querySelector('.resource-list__count')!.textContent).toBe('4');
+    expect(screen.getByTestId('resource-lumber').querySelector('.resource-tally__count')!.textContent).toBe('4');
     const overlay = screen.getByTestId('hand-gains');
     expect(overlay.parentElement).toBe(document.body);
     expect(overlay.getAttribute('aria-hidden')).toBe('true');
@@ -52,7 +52,7 @@ describe('own resource cards descending into the hand', () => {
     expect(screen.queryByTestId('hand-gains')).toBeNull();
     rerender(<HandPanel controller={controller(props(14, 1))} />);
     expect(screen.queryByTestId('hand-gains')).toBeNull();
-    expect(screen.getByTestId('resource-lumber').querySelector('.resource-list__count')!.textContent).toBe('1');
+    expect(screen.getByTestId('resource-lumber').querySelector('.resource-tally__count')!.textContent).toBe('1');
   });
 
   it('waits for the dice presentation before dropping rolled resources, and holds the count meanwhile', () => {
@@ -87,7 +87,7 @@ describe('own resource cards descending into the hand', () => {
     const big = rolled(14, 14);
     const panel = render(<HandPanel controller={controller(props(), false)} />);
     panel.rerender(<HandPanel controller={controller(big, true)} />);
-    const count = () => screen.getByTestId('resource-lumber').querySelector('.resource-list__count')!.textContent;
+    const count = () => screen.getByTestId('resource-lumber').querySelector('.resource-tally__count')!.textContent;
     expect(count()).toBe('2');
     panel.rerender(<HandPanel controller={controller(big, false)} />);
     expect(count()).toBe('14');

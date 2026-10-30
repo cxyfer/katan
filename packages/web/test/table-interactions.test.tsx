@@ -80,7 +80,8 @@ describe('table interactions', { timeout: 15000 }, () => {
     expect(hand.getAttribute('data-expanded')).toBe('false');
     expect(screen.queryByTestId('hand-toggle')).toBeNull();
     expect(screen.queryByTestId('hand-pin')).toBeNull();
-    expect(hand.querySelectorAll('.hand-fan__card')).toHaveLength(6);
+    // 每張資源各自成卡（10 張）加上一張發展卡
+    expect(hand.querySelectorAll('.hand-fan__card')).toHaveLength(11);
     pointerEnter(hand, 'touch');
     expect(hand.getAttribute('data-expanded')).toBe('false');
     pointerEnter(hand);
@@ -94,7 +95,7 @@ describe('table interactions', { timeout: 15000 }, () => {
     fireEvent.pointerLeave(hand);
     act(() => vi.advanceTimersByTime(321));
     expect(hand.getAttribute('data-expanded')).toBe('false');
-    const resource = screen.getByTestId('resource-lumber').querySelector('button')!;
+    const resource = screen.getByTestId('resource-card-lumber-0').querySelector('button')!;
     act(() => resource.focus());
     fireEvent.pointerLeave(hand);
     act(() => vi.advanceTimersByTime(500));

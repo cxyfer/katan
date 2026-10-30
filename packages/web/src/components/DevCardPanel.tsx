@@ -49,7 +49,7 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
       <strong className="development-card__name">{t(`devCard.${card}`)}</strong>
       <span className="development-card__state">{isNew ? t('play.newDevCards') : t('table.heldCards')}</span>
     </>;
-    return <li onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInspected(null); }} key={`${card}-${index}`} style={handStyle?.(RESOURCES.length + index + (isNew ? held.length : 0))}
+    return <li onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInspected(null); }} key={`${card}-${index}`} style={handStyle?.(index + (isNew ? held.length : 0))}
       className={`development-card development-card--${card}${embedded ? ' hand-fan__card' : ''}${isNew ? ' development-card--new' : ''}${inspected === id ? ' development-card--inspected' : ''}`}>
       {embedded ? <button type="button" className="development-card__inspect" aria-pressed={inspected === id}
         aria-label={`${t('table.inspectCard', { card: t(`devCard.${card}`) })} · ${isNew ? t('play.newDevCards') : t('table.heldCards')}`}

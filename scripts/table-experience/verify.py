@@ -112,7 +112,7 @@ def hand(scenario, report):
     page.mouse.move(x, box["y"] + 12)
     page.wait_for_function("document.querySelector('[data-testid=\"hand-panel\"]').dataset.expanded === 'true'")
     page.wait_for_timeout(280)
-    card = page.get_by_test_id("resource-wool")
+    card = panel.locator(".hand-fan__card").first
     # 重疊手牌只露出一段卡面；使用實際可命中的區域，避免點在下一張卡的中心。
     point = card.evaluate("""element => {
       const r=element.getBoundingClientRect();

@@ -10,6 +10,10 @@
   --fan-spread: clamp(70px, calc(50vw - var(--rail-width) - 80px), 350px);
   --fan-card-width: 126px;
   --fan-card-height: 190px;
+  /* 展開時每張牌露出的寬度與收合時的露出寬度；張數少時扇形自然收窄。 */
+  --fan-step: 66px;
+  --fan-rest-step: 22px;
+  --fan-rest-spread: 150px;
   display: block; position: relative; width: min(920px, calc(100% - 2 * var(--rail-width) - 48px)); max-width: none;
   height: 70px; min-height: 0; margin: 0 auto !important; padding: 0 !important;
   background: none !important; border: 0 !important; border-radius: 0; box-shadow: none !important;
@@ -19,8 +23,7 @@
 .screen--game .hand.hand-fan .hand__content {
   position: absolute; inset: 0; max-height: none; overflow: visible; padding: 0; touch-action: pan-y;
 }
-.screen--game .hand.hand-fan .resource-list,
-.screen--game .hand.hand-fan:has(.devcards--hand) .resource-list,
+.screen--game .hand.hand-fan .hand-card-list,
 .screen--game .hand.hand-fan .development-lists,
 .screen--game .hand.hand-fan .devcards--hand,
 .screen--game .hand.hand-fan .devcards--hand .card-list {
@@ -28,34 +31,29 @@
 }
 .screen--game .hand.hand-fan .devcards--hand > h2,
 .screen--game .hand.hand-fan .devcards--hand > p:not([data-testid="devcard-unknown"]) { display: none; }
-.screen--game .hand.hand-fan .hand-fan__card:is(.resource-card, .development-card) {
-
+.screen--game .hand.hand-fan .hand-fan__card:is(.hand-card, .development-card) {
+  --fan-reach: min(var(--fan-spread), calc(var(--hand-span) * var(--fan-step) / 2));
+  --fan-rest: min(var(--fan-rest-spread), calc(var(--hand-span) * var(--fan-rest-step) / 2));
   position: absolute; left: calc(50% - var(--fan-card-width) / 2); bottom: 45px;
   display: flex; flex-direction: column; width: var(--fan-card-width); min-width: 0;
   height: var(--fan-card-height); min-height: var(--fan-card-height); margin: 0; flex: none;
   z-index: var(--card-index); transform-origin: 50% 100%;
-  transform: translateX(calc(var(--hand-position) * 70px)) translateY(var(--fan-card-height)) rotate(calc(var(--hand-position) * 9deg));
+  transform: translateX(calc(var(--hand-position) * var(--fan-rest))) translateY(var(--fan-card-height)) rotate(calc(var(--hand-angle) * .55));
   transition: transform 240ms cubic-bezier(.2,.7,.25,1), filter 160ms;
 }
 .screen--game .hand.hand-fan[data-expanded="false"] .hand-fan__card {
-  transform: translateX(calc(var(--hand-position) * 70px)) translateY(var(--fan-card-height)) rotate(calc(var(--hand-position) * 9deg));
+  transform: translateX(calc(var(--hand-position) * var(--fan-rest))) translateY(var(--fan-card-height)) rotate(calc(var(--hand-angle) * .55));
 }
 .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__card {
-  transform: translateX(calc(var(--hand-position) * var(--fan-spread))) translateY(var(--hand-arc)) rotate(var(--hand-angle));
+  transform: translateX(calc(var(--hand-position) * var(--fan-reach))) translateY(var(--hand-arc)) rotate(var(--hand-angle));
 }
 .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__card:hover,
 .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__card:focus-within,
-.screen--game .hand.hand-fan[data-expanded="true"] .resource-card--inspected,
+.screen--game .hand.hand-fan[data-expanded="true"] .hand-card--inspected,
 .screen--game .hand.hand-fan[data-expanded="true"] .development-card--inspected {
-  z-index: 100; transform: translateX(calc(var(--hand-position) * var(--fan-spread))) translateY(-36px) rotate(0) scale(1.16);
+  z-index: 100; transform: translateX(calc(var(--hand-position) * var(--fan-reach))) translateY(-36px) rotate(0) scale(1.16);
   filter: drop-shadow(0 10px 14px #00151d88);
 }
-.screen--game .hand.hand-fan .resource-card__inspect { padding: 6px; border-radius: 9px; }
-.screen--game .hand.hand-fan .resource-card__art { height: 91px; flex: 0 0 91px; margin-top: 4px; }
-.screen--game .hand.hand-fan .resource-list__label { font-size: .8rem; padding: 3px 0; }
-.screen--game .hand.hand-fan .resource-list__count { top: -4px; right: -4px; font-size: .88rem; }
-.screen--game .hand.hand-fan .resource-card__corner { top: -4px; left: -4px; }
-.screen--game .hand.hand-fan .resource-card__use { font-size: .6rem; padding: 4px 0; }
 .screen--game .hand.hand-fan .development-card { padding: 6px; border-radius: 9px; }
 .screen--game .hand.hand-fan .development-card__inspect {
   display: flex; flex-direction: column; align-items: stretch; padding: 0; border: 0; background: none;
@@ -77,32 +75,122 @@
 .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__close { display: block; }
 .screen--game .hand.hand-fan[data-expanded="false"] .development-card__play,
 .screen--game .hand.hand-fan[data-expanded="false"] .development-card__choice { visibility: hidden; }
+/* 資源牌牌面：全幅風景、左上角資源徽記、名稱緞帶；數量改由上方的數量列呈現。 */
+.hand-card {
+  --rc: #6f8e68; --rc-deep: #2c4733;
+  list-style: none;
+}
+.hand-card--lumber { --rc: #557f55; --rc-deep: #21402c; }
+.hand-card--brick { --rc: #bd6e4d; --rc-deep: #6a3122; }
+.hand-card--wool { --rc: #8fae69; --rc-deep: #43612e; }
+.hand-card--grain { --rc: #d6aa4b; --rc-deep: #7b5715; }
+.hand-card--ore { --rc: #8296aa; --rc-deep: #36495c; }
+.hand-card__face {
+  position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto auto; justify-items: stretch;
+  width: 100%; height: 100%; padding: 5px; margin: 0; cursor: pointer; overflow: hidden;
+  color: #fff4d8; font: inherit; text-align: center; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--rc) 45%, #fff3cf);
+  background:
+    radial-gradient(120% 60% at 50% 0%, #ffffff26, #fff0 60%),
+    linear-gradient(170deg, color-mix(in srgb, var(--rc) 82%, #fff6dc), var(--rc-deep));
+  box-shadow: 0 0 0 1.5px #172a26, 0 7px 14px #00131c80, inset 0 0 0 1px #ffffff1f;
+  transition: box-shadow 160ms, border-color 160ms;
+}
+.hand-card__art {
+  display: block; min-height: 0; overflow: hidden; border-radius: 6px;
+  border: 1.5px solid #f6e7bd; background: var(--rc);
+  box-shadow: inset 0 0 0 1px #0003, 0 1px 0 #ffffff33;
+}
+.hand-card__art .resource-card-art { display: block; width: 100%; height: 100%; }
+.hand-card__pip {
+  position: absolute; top: 9px; left: 9px; z-index: 1; display: grid; place-items: center;
+  width: 27px; height: 27px; border-radius: 50%; color: #fff6dc; background: var(--rc-deep);
+  border: 1.5px solid #f6e7bd; box-shadow: 0 2px 5px #0008;
+}
+.hand-card__name {
+  justify-self: center; z-index: 1; margin-top: -13px; padding: 3px 15px 4px;
+  color: #2d2618; background: linear-gradient(#fbf0cf, #e6d29f);
+  font-family: var(--font-display); font-size: .8rem; font-weight: 750; line-height: 1.1; letter-spacing: .02em;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 50%, 100% 100%, 0 100%, 7px 50%);
+  filter: drop-shadow(0 2px 2px #0006);
+}
+.hand-card__use {
+  padding: 4px 3px 1px; font-size: .57rem; line-height: 1.3; color: #fff1cf; opacity: .92;
+  text-shadow: 0 1px 1px #0007;
+}
+.hand-card:hover .hand-card__face,
+.hand-card:focus-within .hand-card__face,
+.hand-card--inspected .hand-card__face {
+  border-color: #fff0b0;
+  box-shadow: 0 0 0 2px #e1c376, 0 0 22px #f4d08355, 0 12px 24px #00182099;
+}
+.hand-card__face:focus-visible { outline: 3px solid #ffe7a1; outline-offset: 2px; }
+
+/* 資源數量列：以圖示＋數字列出五種資源與手牌總數，固定在手牌上緣，展開時隨之上移。 */
+.resource-tally {
+  position: absolute; left: 50%; bottom: calc(100% + 6px); z-index: 0; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 3px; margin: 0; padding: 4px 5px; list-style: none;
+  background: #0c272de8; border: 1px solid #b9a87566; border-radius: 999px;
+  box-shadow: 0 4px 14px #00131c66; backdrop-filter: blur(4px); white-space: nowrap;
+}
+.resource-tally__item {
+  --rc: #6f8e68;
+  display: flex; align-items: center; gap: 5px; padding: 2px 9px 2px 2px; border-radius: 999px;
+  transition: opacity 200ms;
+}
+.resource-tally__item--lumber { --rc: #557f55; }
+.resource-tally__item--brick { --rc: #bd6e4d; }
+.resource-tally__item--wool { --rc: #86a660; }
+.resource-tally__item--grain { --rc: #cf9f3c; }
+.resource-tally__item--ore { --rc: #7a8fa4; }
+.resource-tally__icon {
+  display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  color: #fff8e6; background: var(--rc); box-shadow: inset 0 0 0 1px #ffffff40, 0 1px 2px #0006;
+}
+.resource-tally__count {
+  display: inline-block; min-width: 1ch; color: #fff3d2; font-size: .92rem; font-weight: 750;
+  font-variant-numeric: tabular-nums; line-height: 1; animation: resource-tally-pop 380ms ease-out;
+}
+.resource-tally__item--empty { opacity: .42; }
+.resource-tally__item--empty .resource-tally__icon { filter: saturate(.3); }
+.resource-tally__item--total { margin-left: 2px; padding-left: 7px; border-left: 1px solid #b9a87555; border-radius: 0 999px 999px 0; }
+.resource-tally__item--total .resource-tally__icon { width: 20px; color: #ead6a6; background: none; box-shadow: none; }
+@keyframes resource-tally-pop {
+  0% { transform: scale(1.45); color: #ffe08a; }
+  100% { transform: scale(1); }
+}
+
 @media (max-width: 649px) {
   /* 窄螢幕的工具列橫跨底部，手牌整體抬到工具列上方，避免卡片藏在圖示後面。 */
   .screen--game .game__dock:has(.hand-fan) { bottom: 50px; }
-  .screen--game .hand.hand-fan[data-expanded] { --fan-card-width: 104px; --fan-card-height: 165px; --fan-spread: calc(50vw - 104px); width: 100%; height: 62px; }
+  .screen--game .hand.hand-fan[data-expanded] { --fan-card-width: 104px; --fan-card-height: 165px; --fan-spread: calc(50vw - 80px); --fan-step: 50px; --fan-rest-step: 18px; --fan-rest-spread: 120px; width: 100%; height: 62px; }
   .screen--game .hand.hand-fan[data-expanded="true"] { height: 212px; }
-  .screen--game .hand.hand-fan[data-expanded="false"] .hand-fan__card { transform: translateX(calc(var(--hand-position) * 59px)) translateY(var(--fan-card-height)) rotate(calc(var(--hand-position) * 9deg)); }
-  .screen--game .hand.hand-fan .resource-card__art { height: 70px; flex-basis: 70px; }
-  .screen--game .hand.hand-fan .resource-card__use { font-size: .53rem; }
-  .screen--game .hand.hand-fan .resource-list__label { font-size: .7rem; }
+  .screen--game .hand.hand-fan .hand-card__name { font-size: .7rem; }
+  .screen--game .hand.hand-fan .hand-card__use { font-size: .52rem; }
   .screen--game .hand.hand-fan .development-card__art { height: 62px; flex-basis: 62px; }
   .screen--game .hand.hand-fan .development-card__name { font-size: .65rem; }
   .screen--game .hand.hand-fan .development-card__play { min-height: 32px; font-size: .54rem; }
   .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__card:hover,
   .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__card:focus-within,
-  .screen--game .hand.hand-fan[data-expanded="true"] .resource-card--inspected,
-  .screen--game .hand.hand-fan[data-expanded="true"] .development-card--inspected { transform: translateX(calc(var(--hand-position) * var(--fan-spread))) translateY(-24px) rotate(0) scale(1.08); }
+  .screen--game .hand.hand-fan[data-expanded="true"] .hand-card--inspected,
+  .screen--game .hand.hand-fan[data-expanded="true"] .development-card--inspected { transform: translateX(calc(var(--hand-position) * var(--fan-reach))) translateY(-24px) rotate(0) scale(1.08); }
   .screen--game:has(.hand.hand-fan[data-expanded="true"]) .game__receipt { bottom: 412px; }
   .screen--game .hand.hand-fan .hand-fan__close { bottom: 3px; right: 56px; }
+  .resource-tally { gap: 1px; padding: 3px; }
+  .resource-tally__item { gap: 3px; padding: 1px 6px 1px 1px; }
+  .resource-tally__icon { width: 21px; height: 21px; }
+  .resource-tally__count { font-size: .82rem; }
 }
 @media (max-height: 520px) and (min-width: 650px) {
   .screen--game .hand.hand-fan[data-expanded] { --fan-card-height: 156px; --fan-card-width: 108px; }
   .screen--game .hand.hand-fan[data-expanded="true"] { height: 190px; }
-  .screen--game .hand.hand-fan .resource-card__art { height: 60px; flex-basis: 60px; }
+  .screen--game .hand.hand-fan .hand-card__use { display: none; }
   .screen--game .hand.hand-fan .development-card__art { height: 52px; flex-basis: 52px; }
 }
-@media (prefers-reduced-motion: reduce) { .screen--game .hand.hand-fan .hand-fan__card { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .screen--game .hand.hand-fan .hand-fan__card { transition: none; }
+  .resource-tally, .resource-tally__count { transition: none; animation: none; }
+}
 
 
 }

@@ -15,7 +15,7 @@ export function ResourceCardArt({ resource }: { resource: Resource }) {
   const id = useId();
   const palette = PALETTES[resource];
   return (
-    <svg className={`resource-card-art resource-card-art--${resource}`} viewBox="0 0 180 208" aria-hidden="true" focusable="false">
+    <svg className={`resource-card-art resource-card-art--${resource}`} viewBox="0 0 180 208" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
       <defs>
         <linearGradient id={`${id}-sky`} x2="0" y2="1">
           <stop stopColor={palette.sky} />
