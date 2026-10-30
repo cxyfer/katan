@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
-import { GameBrand, GameIcon, IslandIllustration } from './GameArt.tsx';
+import { GameIcon, GameLogo, IslandIllustration, PregameScene } from './GameArt.tsx';
 import { useT } from '../i18n/context.tsx';
 import type { ScreenProps } from './props.ts';
 
@@ -35,71 +35,62 @@ export function EntryScreen({ controller }: ScreenProps) {
   };
 
   return (
-    <main className="screen screen--entry" id="main">
-      <header className="screen__header game-header">
-        <GameBrand />
+    <main className="screen screen--entry pregame" id="main">
+      <PregameScene />
+      <header className="pregame__topbar">
         <LanguageSwitch onChange={actions.setLocale} />
       </header>
 
-      <div className="entry-layout">
-        <section className="hero hero--entry" aria-labelledby="entry-hero-heading">
-          <div className="hero__copy">
-            <p className="hero__eyebrow"><GameIcon name="compass" />{t('island.entry.eyebrow')}</p>
-            <h1 className="hero__title" id="entry-hero-heading">{t('island.entry.title')}</h1>
-            <p className="hero__description">{t('island.entry.description')}</p>
-            <ul className="hero__features">
-              <li><GameIcon name="home" />{t('island.feature.build')}</li>
-              <li><GameIcon name="trade" />{t('island.feature.trade')}</li>
-              <li><GameIcon name="users" />{t('island.feature.together')}</li>
-            </ul>
-          </div>
-          <div className="hero__art"><IslandIllustration /></div>
+      <div className="entry-stage">
+        <section className="entry-stage__title" aria-labelledby="entry-logo">
+          <GameLogo id="entry-logo" />
+          <p className="entry-stage__lede">{t('island.entry.title')}</p>
         </section>
 
-        <section aria-labelledby="entry-heading" className="card entry-card">
-          <div className="section-heading">
-            <span className="section-heading__icon"><GameIcon name="ship" size={26} /></span>
-            <div className="section-heading__copy">
-              <p className="hero__eyebrow">{t('island.entry.cardEyebrow')}</p>
-              <h2 id="entry-heading">{t('entry.heading')}</h2>
-            </div>
-          </div>
-          <p className="muted">{t('entry.intro')}</p>
+        <div className="entry-stage__island"><IslandIllustration /></div>
+
+        <section aria-labelledby="entry-heading" className="plaque entry-card">
+          <h2 id="entry-heading" className="entry-card__heading">{t('entry.heading')}</h2>
+          <p className="entry-card__intro">{t('entry.intro')}</p>
           <form
+            className="entry-card__form"
             onSubmit={(event) => {
               event.preventDefault();
               void submit();
             }}
           >
-            <div className="field">
-              <label htmlFor="nickname-input">{t('entry.nicknameLabel')}</label>
-              <input
-                id="nickname-input"
-                data-testid="nickname-input"
-                name="nickname"
-                type="text"
-                autoComplete="nickname"
-                maxLength={max + 8}
-                placeholder={t('entry.nicknamePlaceholder')}
-                value={draft}
-                aria-invalid={error !== null}
-                aria-describedby={error ? 'nickname-error' : undefined}
-                onChange={(event) =>
-                  dispatch({ type: 'draft-nickname', value: event.target.value })
-                }
-              />
-            </div>
-            {error && (
-              <p className="error" id="nickname-error" role="alert">
-                {error}
-              </p>
-            )}
-            <button type="submit" className="button button--primary" disabled={submitting}>
+            <label htmlFor="nickname-input" className="visually-hidden">{t('entry.nicknameLabel')}</label>
+            <input
+              id="nickname-input"
+              data-testid="nickname-input"
+              name="nickname"
+              type="text"
+              autoComplete="nickname"
+              maxLength={max + 8}
+              placeholder={t('entry.nicknamePlaceholder')}
+              value={draft}
+              aria-invalid={error !== null}
+              aria-describedby={error ? 'nickname-error' : undefined}
+              onChange={(event) =>
+                dispatch({ type: 'draft-nickname', value: event.target.value })
+              }
+            />
+            <button type="submit" className="button button--primary button--hero" disabled={submitting}>
               {submitting ? t('app.loading') : t('entry.continue')}
               <GameIcon name="arrow-right" />
             </button>
           </form>
-          <p className="entry-card__note muted"><GameIcon name="shield" />{t('entry.identityNote')}</p>
+          {error && (
+            <p className="error" id="nickname-error" role="alert">
+              {error}
+            </p>
+          )}
+          <ul className="entry-card__features">
+            <li><GameIcon name="home" size={16} />{t('island.feature.build')}</li>
+            <li><GameIcon name="trade" size={16} />{t('island.feature.trade')}</li>
+            <li><GameIcon name="users" size={16} />{t('island.feature.together')}</li>
+          </ul>
+          <p className="entry-card__note"><GameIcon name="shield" size={16} />{t('entry.identityNote')}</p>
         </section>
       </div>
     </main>

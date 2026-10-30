@@ -143,6 +143,10 @@ export const zhHant: Catalog = {
   'home.pane.resume': '繼續對局',
   'home.pane.rooms': '公開房間',
   'home.pane.identity': '身分設定',
+  'home.paneHint.table': '開一張新桌，或用邀請碼加入',
+  'home.paneHint.resume': '回到進行中的對局',
+  'home.paneHint.rooms': '找一張還有空位的公開桌',
+  'home.paneHint.identity': '修改你的顯示名稱',
   'home.refreshRooms': '重新整理房間列表',
   'home.roomListEmpty': '沒有符合目前篩選條件的公開房間。',
 
@@ -215,6 +219,7 @@ export const zhHant: Catalog = {
   'lobby.youAreHost': '你是房主。',
   'lobby.capacityNote': '人數上限必須介於 3 到 6 之間。',
   'lobby.inviteCopied': '已複製邀請碼。',
+  'lobby.copyInvite': '複製邀請碼',
   'lobby.notHost': '只有房主可以變更設定或開始遊戲。',
 
   // --- board ---------------------------------------------------------------
