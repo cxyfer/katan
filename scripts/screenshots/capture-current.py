@@ -137,7 +137,8 @@ with sync_playwright() as p:
     host.locator('#room-capacity').select_option('3')
     host.get_by_test_id('create-room').click()
     code = host.get_by_test_id('room-code').inner_text()
-    shot(host, '03-lobby-waiting-1366x768-zh-Hant', 1366, 768, None, 300)
+    # 大廳已超出一個視窗高度（房間設定面板），整頁拍攝才看得到完整內容
+    shot(host, '03-lobby-waiting-1366x768-zh-Hant', 1366, 768, None, 300, full_page=True)
     for page in pages[1:]:
         page.locator('#join-code').fill(code)
         page.get_by_test_id('join-room').click()
@@ -145,7 +146,7 @@ with sync_playwright() as p:
     for page in pages:
         page.get_by_test_id('toggle-ready').click()
     expect(host.get_by_test_id('start-game')).to_be_enabled()
-    shot(host, '03-lobby-ready-1366x768-zh-Hant', 1366, 768, None, 300)
+    shot(host, '03-lobby-ready-1366x768-zh-Hant', 1366, 768, None, 300, full_page=True)
     host.get_by_test_id('start-game').click()
     expect(host.get_by_test_id('setup-guide')).to_be_visible()
 
