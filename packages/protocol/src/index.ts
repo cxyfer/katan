@@ -66,6 +66,7 @@ export const ROOM_NOTICE_IDS: readonly string[] = [
   'blocker.disconnected',
   'blocker.noHost',
   'blocker.profilePlayerCount',
+  'blocker.capacity',
 ];
 
 /**

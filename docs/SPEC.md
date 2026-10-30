@@ -74,8 +74,8 @@ Clearing browser storage or changing devices can lose access to a guest identity
 - Browse/filter public rooms by open seats, player count, expansion/rule set, and room status; do not reveal player hands or other private game state.
 - Join by invite link/code or by selecting an open public room.
 - In the lobby, select a color, inspect settings, and mark ready.
-- Before start, only the host may change validated settings or start the game; settings changes clear readiness. After start, immutable game rules stay locked, while room-policy changes follow the all-seat approval contract in §5.8.
-- Starting locks the rules, map/scenario, seats, and player count.
+- Before start, only the host may change validated settings or start the game; settings changes clear readiness. The host may change the room capacity down to, but never below, the number of seated players. After start, immutable game rules stay locked, while room-policy changes follow the all-seat approval contract in §5.8.
+- A lobby may start with any player count its ruleset profile supports, up to the room capacity; it does not need to be full. Starting locks the rules, map/scenario, seats, and actual player count.
 
 ### 4.3 Play, disconnect, and recover
 
@@ -175,7 +175,7 @@ Room configuration is validated as a complete ruleset, not as independent unchec
 ### 5.1 Room settings
 
 - Visibility: private or public.
-- Player capacity: 3, 4, 5, or 6.
+- Player capacity: 3, 4, 5, or 6. The host may change it before start, but not below the seated players and only to a count the selected profile supports. A game starts with any supported seated count up to that capacity, so a four-seat base room may start with three and a six-seat paired room with five.
 - Expansion modules: base rules are mandatory; Seafarers and Cities & Knights are optional selections.
 - Scenario/map: choices depend on selected modules and player count.
 - Victory target: derived from the selected official scenario/rule profile by default; custom targets are not in the first-release scope unless separately approved.
@@ -287,7 +287,7 @@ Room policy is separate from the immutable game profile. The host may set valida
 | Host succession | Automatic transfer to the earliest-joined eligible connected member. | Always enabled; applies when a host deliberately leaves and after the applicable unexpected-disconnect grace. Authority is administrative only. |
 | Pause / save / resume | All-seat consent for a table-wide pause/save; all-seat readiness to resume. Individual Save and leave is always available. | These consent/privacy/no-rollback safeguards cannot be weakened by room settings. |
 
-Rules edition, enabled expansions/scenario, player count/seat ownership, victory target and map remain locked after start even with a policy vote; changing them requires a new game. Language is a per-user preference, not a host-controlled game policy.
+Rules edition, enabled expansions/scenario, actual player count/seat ownership, victory target and map remain locked after start even with a policy vote; changing them requires a new game. Room capacity is a pre-start setting; the started game's actual seated count is immutable. Language is a per-user preference, not a host-controlled game policy.
 
 A policy proposal contains its own ID, base policy revision, exact before/after values and consent per stable player ID. Show it in both locales and keep ordinary legal play available while it is pending. Bind consent to that proposal, not to the strategic game revision: a normal move/chat must not silently change the proposed terms. Editing terms, host transfer, a voter's disconnect, entering pause/suspension, restart, or terminal completion cancels pending consent; publish the cancellation. A rejection leaves existing settings unchanged.
 
@@ -616,7 +616,7 @@ Each enabled profile has a compact fixture index mapping official source/page �
 | R-TRADE | Concurrent responses/settlements, changed terms after consent, inventory changes, withdrawals, role restrictions, window expiry, disconnect and restart; no double resource transfer or inventory leak. |
 | R-VIS | Compare authorized payloads/logs/notifications/errors across three seats and an outsider. Include new join, targeted card inspection, private scoring, theft/discard, reconnect, final board and public-list endpoints. |
 | R-REC | Same transaction/receipt/recovery assertions on SQLite and PostgreSQL at each named crash/choice boundary in §7.3; old-version games use the old engine; absent engine versions fail visibly without state mutation. |
-| R-ROOM | Join/start/settings races, last seat, not-ready/disconnected start, host transfer, same-identity second tab, pause/resume, reconnection during abandonment vote, absent-player recovery and immutable terminal games. |
+| R-ROOM | Join/start/settings races, last seat, capacity changes above/below seated players, short-handed start at the profile minimum, not-ready/disconnected start, host transfer, same-identity second tab, pause/resume, reconnection during abandonment vote, absent-player recovery and immutable terminal games. |
 | R-POLICY | Exact all-seat consent, host-only rejection, pre-start readiness reset, proposal invalidation, versioned safe effective boundaries, restart and concurrent terminal/suspend behavior under §5.8. |
 | R-SAVE | Individual save/leave versus all-seat suspension; durable acknowledgements; latest-state/same-seat restore; all-offline restart; failed/duplicate requests; immutable terminal games and no historical rollback under §4.8. |
 | R-CHAT | Room/audience authorization, structured-trade separation, safe rendering/rate limits/personal mute, durable send deduplication and reconnect history isolation under §4.5. |

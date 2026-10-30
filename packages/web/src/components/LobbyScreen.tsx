@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { RoomPolicy } from '@catan/protocol';
 import { POLICY_BOUNDS } from '@catan/protocol';
 import { useT } from '../i18n/context.tsx';
@@ -23,7 +23,25 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const { state, actions } = controller;
   const room = state.room;
   const [policyDraft, setPolicyDraft] = useState<RoomPolicy | null>(null);
+  const [capacityDraft, setCapacityDraft] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const profile = room ? state.profiles.find((item) => item.id === room.profileId) : undefined;
+  const capacityLimit = state.config?.limits.roomCapacityMax ?? Infinity;
+  // Only counts the ruleset and deployment allow, never below the seated players.
+  const capacityOptions = useMemo(
+    () =>
+      room
+        ? Array.from(new Set([...(profile?.playerCounts ?? []), room.capacity]))
+            .filter((count) => count >= room.members.length && count <= capacityLimit)
+            .sort((a, b) => a - b)
+        : [],
+    [profile, room?.capacity, room?.members.length, capacityLimit],
+  );
+  useEffect(() => {
+    if (capacityDraft !== null && !capacityOptions.includes(capacityDraft)) {
+      setCapacityDraft(null);
+    }
+  }, [capacityDraft, capacityOptions]);
 
   if (!room) {
     return (
@@ -44,7 +62,11 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const occupiedSeats = new Set(room.members.map((member) => member.seat));
   const emptySeats = Array.from({ length: room.capacity }, (_, seat) => seat)
     .filter((seat) => !occupiedSeats.has(seat));
-  const profile = state.profiles.find((item) => item.id === room.profileId);
+  const desiredCapacity = capacityDraft ?? room.capacity;
+  // A join can invalidate a pending value; fall back to the first legal count.
+  const selectedCapacity = capacityOptions.includes(desiredCapacity)
+    ? desiredCapacity
+    : (capacityOptions[0] ?? room.capacity);
 
   const setPolicyField = <K extends keyof RoomPolicy>(key: K, value: RoomPolicy[K]) => {
     setPolicyDraft({ ...policy, [key]: value });
@@ -188,6 +210,45 @@ export function LobbyScreen({ controller }: ScreenProps) {
 
           {profile?.paired && <p className="lobby__paired-note">{t('lobby.pairedNote')}</p>}
           <PolicyProposalPanel controller={controller} />
+          <section className="plaque lobby-settings" aria-labelledby="room-settings-heading">
+            <div className="section-heading">
+              <span className="section-heading__icon"><GameIcon name="users" size={23} /></span>
+              <div className="section-heading__copy">
+                <h2 id="room-settings-heading">{t('lobby.settingsTitle')}</h2>
+                <p className="muted">{t('lobby.settings.help')}</p>
+              </div>
+            </div>
+            <div className="lobby-settings__form">
+              <div className="field">
+                <label htmlFor="lobby-capacity">{t('lobby.capacity')}</label>
+                <select
+                  id="lobby-capacity"
+                  data-testid="lobby-capacity"
+                  value={selectedCapacity}
+                  disabled={!isHost}
+                  onChange={(event) => setCapacityDraft(Number(event.target.value))}
+                >
+                  {capacityOptions.map((count) => (
+                    <option key={count} value={count}>{count}</option>
+                  ))}
+                </select>
+                <p className="muted">{t('lobby.capacityNote')}</p>
+              </div>
+              <button
+                type="button"
+                className="button"
+                data-testid="save-settings"
+                disabled={!isHost || selectedCapacity === room.capacity}
+                onClick={() => {
+                  if (selectedCapacity !== room.capacity) {
+                    void actions.updateSettings({ capacity: selectedCapacity });
+                  }
+                }}
+              >
+                {t('lobby.settings.save')}
+              </button>
+            </div>
+          </section>
           <section className="plaque lobby-policy" aria-labelledby="policy-heading">
             <div className="section-heading">
               <span className="section-heading__icon"><GameIcon name="settings" size={23} /></span>

@@ -142,12 +142,11 @@ These are recorded rather than hidden. None of them is presented as verified.
    transcription.** The number tokens are laid in the printed spiral order; the
    6/8-adjacency restriction is not applied because it is not part of the base
    B25 procedure.
-4. **Only the base row is advertised.** 5–6 players, Seafarers, Cities &
-   Knights and their combination remain `enabled: false`. The paired-turn
-   procedure for 5–6 is implemented and tested, but the row stays closed until
-   B56-25 setup, supply and deck contents are transcribed and verified, and
-   until R-SF/R-CK/R-COMB fixtures exist for the other rows. The 5-player pair
-   cycle is derived from the specification's wording ("the third player to
+4. **The base and paired-base rows are advertised.** 5–6 uses
+   `base-paired-2025`, whose B56-25 setup, supply and deck contents are
+   transcribed and verified. Seafarers, Cities & Knights and their combination
+   remain `enabled: false` until R-SF/R-CK/R-COMB fixtures exist. The 5-player
+   pair cycle is derived from the specification's wording ("the third player to
    Player 1's left", "both markers move to the next player to their left")
    rather than transcribed page-by-page from B56-25.
 5. **No real-device or screen-reader evidence.** The 2026-10-29 [island diorama replacement](aegis/plans/2026-10-29-island-diorama.md) starts in auto 3D with SVG loading/failure compatibility and an explicit `?renderer=svg` option. Its [verification record](aegis/work/2026-10-29-island-diorama.md) separates model and camera tests, production WebGL captures and open human/device checks. The original candidate's [acceptance matrix](aegis/plans/2026-10-29-board-3d-acceptance.md) and [execution checkpoint](aegis/work/2026-10-29-board-3d/20-checkpoint.md) are historical; no prior SVG capture proves modeled 3D quality. U-03 (physical iOS/Android),

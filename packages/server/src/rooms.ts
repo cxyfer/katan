@@ -57,6 +57,7 @@ export interface RoomServiceDeps {
 
 export class RoomService {
   private readonly runtimes = new Map<string, RoomRuntime>();
+  private readonly roomLocks = new Map<string, Promise<unknown>>();
 
   constructor(private readonly deps: RoomServiceDeps) {}
 
@@ -71,6 +72,26 @@ export class RoomService {
       this.runtimes.set(roomId, runtime);
     }
     return runtime;
+  }
+
+  /**
+   * Serialises membership, capacity, policy and start transitions for one
+   * room. The start transition is a multi-step async operation, so a join or
+   * leave that reads the old membership snapshot in the middle of it could
+   * otherwise put a member outside the created game (or include an unvalidated
+   * one). The lock is not re-entrant: never call a locked public method from
+   * inside `fn`.
+   */
+  private withRoomLock<T>(roomId: string, fn: () => Promise<T>): Promise<T> {
+    const previous = this.roomLocks.get(roomId) ?? Promise.resolve();
+    const next = previous.then(fn, fn);
+    const settled = next.catch(() => undefined);
+    this.roomLocks.set(roomId, settled);
+    void settled.finally(() => {
+      // A newer operation may already have replaced this queue tail.
+      if (this.roomLocks.get(roomId) === settled) this.roomLocks.delete(roomId);
+    });
+    return next;
   }
 
   // -- queries -------------------------------------------------------------
@@ -156,16 +177,30 @@ export class RoomService {
     const blockers: Notice[] = [];
     if (room.status !== 'lobby') return blockers;
     const profile = requireProfile(room.profile_id);
-    if (members.length !== room.capacity) {
-      blockers.push({
-        messageId: 'blocker.seats',
-        params: { seated: members.length, capacity: room.capacity },
-      });
-    }
+    // A room no longer has to be full: any player count the profile supports
+    // may start, up to the room's capacity. Wait only for the profile floor.
+    const minimumPlayers = Math.min(...profile.playerCounts);
     if (!profile.playerCounts.includes(room.capacity)) {
       blockers.push({
         messageId: 'blocker.profilePlayerCount',
-        params: { profileId: profile.id, capacity: room.capacity },
+        params: { profileId: profile.id, playerCount: room.capacity },
+      });
+    }
+    if (members.length > room.capacity) {
+      blockers.push({
+        messageId: 'blocker.capacity',
+        params: { seated: members.length, capacity: room.capacity },
+      });
+    }
+    if (members.length < minimumPlayers) {
+      blockers.push({
+        messageId: 'blocker.seats',
+        params: { seated: members.length, min: minimumPlayers },
+      });
+    } else if (!profile.playerCounts.includes(members.length)) {
+      blockers.push({
+        messageId: 'blocker.profilePlayerCount',
+        params: { profileId: profile.id, playerCount: members.length },
       });
     }
     const notReady = members.filter((member) => !member.ready);
@@ -201,7 +236,9 @@ export class RoomService {
         profileId: room.profile_id,
         playerCount: memberships.length,
         capacity: room.capacity,
-        openSeats: Math.max(0, room.capacity - memberships.length),
+        // A started room's unused seats are no longer joinable, even when the
+        // game began below capacity.
+        openSeats: room.status === 'lobby' ? Math.max(0, room.capacity - memberships.length) : 0,
         createdAt: room.created_at,
       });
     }
@@ -289,6 +326,10 @@ export class RoomService {
   }
 
   async join(playerId: string, roomId: string): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.joinLocked(playerId, roomId));
+  }
+
+  private async joinLocked(playerId: string, roomId: string): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     const existing = await this.repo.findMembership(roomId, playerId);
     if (existing) {
@@ -327,6 +368,13 @@ export class RoomService {
   }
 
   async leave(playerId: string, roomId: string): Promise<{ left: true; hostTransferredTo: string | null }> {
+    return this.withRoomLock(roomId, () => this.leaveLocked(playerId, roomId));
+  }
+
+  private async leaveLocked(
+    playerId: string,
+    roomId: string,
+  ): Promise<{ left: true; hostTransferredTo: string | null }> {
     const room = await this.requireRoom(roomId);
     const membership = await this.repo.findMembership(roomId, playerId);
     if (!membership) return { left: true, hostTransferredTo: null };
@@ -356,6 +404,10 @@ export class RoomService {
   }
 
   async closeRoom(playerId: string, roomId: string): Promise<{ closed: true }> {
+    return this.withRoomLock(roomId, () => this.closeRoomLocked(playerId, roomId));
+  }
+
+  private async closeRoomLocked(playerId: string, roomId: string): Promise<{ closed: true }> {
     const room = await this.requireRoom(roomId);
     if (room.host_id !== playerId) {
       throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', {}, 403);
@@ -369,6 +421,10 @@ export class RoomService {
   }
 
   async setColor(playerId: string, roomId: string, color: string): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.setColorLocked(playerId, roomId, color));
+  }
+
+  private async setColorLocked(playerId: string, roomId: string, color: string): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     if (room.status !== 'lobby') {
       throw new ServiceError('E_ROOM_STARTED', 'error.E_ROOM_STARTED', {}, 409);
@@ -406,6 +462,10 @@ export class RoomService {
   }
 
   async setReady(playerId: string, roomId: string, ready: boolean): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.setReadyLocked(playerId, roomId, ready));
+  }
+
+  private async setReadyLocked(playerId: string, roomId: string, ready: boolean): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     if (room.status !== 'lobby') {
       throw new ServiceError('E_ROOM_STARTED', 'error.E_ROOM_STARTED', {}, 409);
@@ -425,6 +485,19 @@ export class RoomService {
       policy?: Partial<RoomPolicy>;
     },
   ): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.updateSettingsLocked(playerId, roomId, input));
+  }
+
+  private async updateSettingsLocked(
+    playerId: string,
+    roomId: string,
+    input: {
+      capacity?: number;
+      profileId?: string;
+      setupMode?: 'fixed' | 'variable';
+      policy?: Partial<RoomPolicy>;
+    },
+  ): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     if (room.host_id !== playerId) {
       throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', {}, 403);
@@ -435,6 +508,11 @@ export class RoomService {
     const profileId = input.profileId ?? room.profile_id;
     const setupMode = input.setupMode ?? (room.setup_mode as 'fixed' | 'variable');
     const capacity = input.capacity ?? room.capacity;
+    if (capacity > this.deps.config.limits.roomCapacityMax) {
+      throw new ServiceError('E_ROOM_CAPACITY', 'error.E_ROOM_CAPACITY', {
+        max: this.deps.config.limits.roomCapacityMax,
+      });
+    }
     const profile = requireProfile(profileId);
     const combination = resolveCombination({
       playerCount: capacity,
@@ -464,6 +542,13 @@ export class RoomService {
       }
       policy = check.policy;
     }
+    // Keep every intermediate state valid without a shared DB transaction:
+    // compacted seats still fit the old capacity, readiness is cleared before
+    // the new settings become visible, and the room lock blocks concurrent
+    // joins/starts. The dialect's transaction context is process-wide, so a
+    // settings transaction here would overlap transactions for other rooms.
+    if (capacity !== room.capacity) await this.compactSeats(roomId);
+    await this.clearReadiness(roomId);
     await this.repo.updateRoom(roomId, {
       profile_id: profileId,
       setup_mode: setupMode,
@@ -471,8 +556,6 @@ export class RoomService {
       policy_json: JSON.stringify(policy),
       policy_revision: room.policy_revision + 1,
     });
-    // Any settings change clears readiness (§4.2).
-    await this.clearReadiness(roomId);
     this.broadcastRoom(roomId);
     return this.view(roomId, playerId);
   }
@@ -482,6 +565,14 @@ export class RoomService {
    * a proposal requiring every original seated player's consent (§5.8).
    */
   async setPolicy(playerId: string, roomId: string, policy: Partial<RoomPolicy>): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.setPolicyLocked(playerId, roomId, policy));
+  }
+
+  private async setPolicyLocked(
+    playerId: string,
+    roomId: string,
+    policy: Partial<RoomPolicy>,
+  ): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     if (room.host_id !== playerId) {
       throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', {}, 403);
@@ -519,6 +610,17 @@ export class RoomService {
   }
 
   async consentPolicy(
+    playerId: string,
+    roomId: string,
+    proposalId: string,
+    approve: boolean,
+  ): Promise<RoomView> {
+    return this.withRoomLock(roomId, () =>
+      this.consentPolicyLocked(playerId, roomId, proposalId, approve),
+    );
+  }
+
+  private async consentPolicyLocked(
     playerId: string,
     roomId: string,
     proposalId: string,
@@ -576,7 +678,23 @@ export class RoomService {
     }
   }
 
+  /** Renumbers lobby seats to 0..n-1 while preserving their current order. */
+  private async compactSeats(roomId: string): Promise<void> {
+    const memberships = (await this.repo.listMemberships(roomId)).sort(
+      (a, b) => a.seat - b.seat,
+    );
+    for (const [seat, membership] of memberships.entries()) {
+      if (membership.seat !== seat) {
+        await this.repo.updateMembership(roomId, membership.player_id, { seat });
+      }
+    }
+  }
+
   async start(playerId: string, roomId: string): Promise<{ gameId: string }> {
+    return this.withRoomLock(roomId, () => this.startLocked(playerId, roomId));
+  }
+
+  private async startLocked(playerId: string, roomId: string): Promise<{ gameId: string }> {
     const room = await this.requireRoom(roomId);
     if (room.host_id !== playerId) {
       throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', {}, 403);

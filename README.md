@@ -74,7 +74,9 @@ pull, run `docker login ghcr.io` with a token that has `read:packages`, or make
 the package public.
 
 Open `http://localhost:3000`, enter a nickname, create a private room, share the
-invite code, and start once every seat is ready. See
+invite code, and start once every seated player is ready and the ruleset's
+minimum is met. A room does not need to be full: a four-seat base room may
+start with three, and a six-seat paired room with five. See
 [`docs/OPERATIONS.md`](docs/OPERATIONS.md) for configuration and backup.
 
 ## Verification
@@ -118,7 +120,8 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
 
 ## What is supported today
 
-- Base game (`base-2025`) for **3 and 4 players**, fixed or variable setup.
+- Base game (`base-2025`) for **3 and 4 players**, and paired base
+  (`base-paired-2025`) for **5 and 6 players**, fixed or variable setup.
 - Private rooms with invite codes and a public room list.
 - Guest identity via a secure browser cookie, with nickname changes.
 - Host-configured room policy before start; after start every seated player must
@@ -129,9 +132,9 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   save/suspend/resume, and restart recovery.
 - Traditional Chinese and English UI.
 
-Not yet enabled: 5–6 player paired turns, Seafarers and Cities & Knights. Those
-profiles are registered in the ruleset registry but disabled; the server rejects
-them. See [`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
+Not yet enabled: Seafarers and Cities & Knights. Those profiles are registered
+in the ruleset registry but disabled; the server rejects them. See
+[`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
 including the device, accessibility and playtest evidence that has not been
 produced.
 
