@@ -22,7 +22,7 @@
 - Drift decision：continue → completed；沒有規則／協定／架構漂移，也沒有未決授權。TDD off / skipped。
 - Retirement：遊戲 runtime 已停止掛載舊 `MobileDrawer`，新 canonical owner 是 `GameTools`；舊 reducer／carrier 暫時保留給現有 state/test surface，不在本次 scope 進行刪除，後續需另開 code-retirement slice。
 - 邊界與風險：[90-evidence](90-evidence.md) 已記錄實際證據、人工視覺／實機／Safari／Firefox／AT 未涵蓋範圍；沒有 reset、stash、DB 刪除或 push／PR／merge。
-- 交付檔案索引：[card-table README](../../../screenshots/card-table/README.md)、[browser report](../../../screenshots/card-table/browser-report.json)、[browser runner](verify-card-table.py)。
+- 交付檔案索引：[card-table README](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/card-table/README.md)、[browser report](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/card-table/browser-report.json)、[browser runner](verify-card-table.py)。
 
 ## 歷史基準
 
