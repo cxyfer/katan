@@ -42,7 +42,7 @@ The registry separates two questions:
 | Fixture | Contract | Automated evidence | Status |
 |---|---|---|---|
 | R-B01 | setup order, distance rule, coastal vertices, no duplicate occupancy, one starting grant, city upgrade returns the settlement | `packages/rules/test/setup.test.ts` (9 cases) | covered |
-| R-B02 | two independent dice, settlement 1 / city 2, finite supply, robber block, bank shortage rule | `packages/rules/test/production.test.ts` (10 cases) | covered |
+| R-B02 | two independent dice, settlement 1 / city 2, finite supply, robber block, bank shortage rule | `packages/rules/test/production.test.ts` (10 cases), `packages/rules/test/costs.test.ts` (spent cards return to the bank) | covered |
 | R-B03 | 7 → half rounded down, multi-responder discards, no trade before resolution, empty victim, no multiplied theft, desert, knight does not trigger discards | `packages/rules/test/seven.test.ts` (10 cases) | covered |
 | R-B04 | domestic exchange legality, bank 4:1/3:1/2:1, stale/expired offers, consent, revision invalidates consent, one settlement | `packages/rules/test/trade.test.ts` (13 cases) | covered |
 | R-B05 | cannot play a card the turn it is bought, one per turn, pre-roll knight, monopoly / year of plenty / road building, VP card victory, empty deck | `packages/rules/test/devcards.test.ts` (11 cases) | covered |
@@ -180,4 +180,8 @@ These are recorded rather than hidden. None of them is presented as verified.
     reclaimed once its TTL elapses. No test waits out the real interval.
 11. **Rules-version dispatch is single-version.** The engine version is stored
     per game and unknown versions are refused at the schema level, but only one
-    engine implementation ships, so no old-version fixture exists yet.
+    engine implementation ships, so no old-version fixture exists yet. The
+    server does not yet compare `games.engine_version` before executing a
+    command. Unfinished `base-2025.1` games run on `base-2025.2` under the
+    approved defect-fix exception in SPEC §7.3. Their banks stay short by
+    the cards 2025.1 already lost.
