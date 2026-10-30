@@ -38,7 +38,9 @@ import {
   writeStoredNickname,
   type StorageLike,
 } from './session.ts';
+import { DICE_PRESENTATION_DURATION_MS } from '../board/animation.ts';
 import {
+  awaitingProjection,
   EMPTY_SELECTION,
   initialTableState,
   tableReducer,
@@ -213,6 +215,23 @@ export function useTable(options: UseTableOptions): TableController {
   }, [api, dispatch, beginGameSync, receiveSnapshot]);
 
   const refreshSnapshot = useCallback(() => refreshGame(), [refreshGame]);
+
+  // 事件先到而投影遲遲未到（延遲或遺失）時，等擲骰演出時間過後主動補抓投影，
+  // 讓暫停的後續操作不會一直卡住；只更新投影，不改動指令狀態。
+  const projectionBehind = awaitingProjection(state);
+  useEffect(() => {
+    if (!projectionBehind) return;
+    const timer = globalThis.setTimeout(() => {
+      const generation = syncGenerationRef.current;
+      const gameId = gameIdRef.current;
+      if (!gameId || !awaitingProjection(stateRef.current)) return;
+      void api.getGame(gameId).then((result) => {
+        if (!result.ok || generation !== syncGenerationRef.current || gameId !== gameIdRef.current) return;
+        receiveSnapshot(result.data, generation, 'refresh');
+      });
+    }, DICE_PRESENTATION_DURATION_MS);
+    return () => globalThis.clearTimeout(timer);
+  }, [projectionBehind, api, receiveSnapshot]);
 
   const openGame = useCallback(
     async (gameId: string): Promise<void> => {
@@ -519,6 +538,16 @@ export function useTable(options: UseTableOptions): TableController {
       if (blocksNewCommands(current.command)) return;
       const snapshot: GameSnapshot | null = current.game;
       if (!snapshot) return;
+      // 所有指令入口（動作列、交易、兌換、發展卡、棋盤）共用：點數揭曉前、
+      // 或投影尚未追上已知事件時，不依過時畫面送出後續指令。
+      if (current.dicePresenting) {
+        dispatch({ type: 'toast', notice: localNotice('play.disabled.rolling') });
+        return;
+      }
+      if (awaitingProjection(current)) {
+        dispatch({ type: 'toast', notice: localNotice('play.disabled.syncing') });
+        return;
+      }
       if (current.activeElsewhere) {
         dispatch({ type: 'toast', notice: localNotice('app.activeInAnotherTab') });
         return;

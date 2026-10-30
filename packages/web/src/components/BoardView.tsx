@@ -9,7 +9,7 @@ import { useBoardAnimation } from '../board/useBoardAnimation.ts';
 import { MAX_CAMERA_ELEVATION, MIN_CAMERA_ELEVATION, useBoardViewport } from '../board/useBoardViewport.ts';
 import { rendererMode, qualityMode, type RendererMode, type ProjectionSnapshot, type BoardEffectAnchors, type CssRect } from '../board/render-contract.ts';
 import { sceneBounds } from '../board/three/bounds.ts';
-import { nameOf } from '../state/table.ts';
+import { followUpsHeld, nameOf } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
 import { BoardTargetOverlay } from './BoardTargetOverlay.tsx';
@@ -56,8 +56,10 @@ export function BoardView({ controller }: { controller: TableController }) {
   const [projection, setProjection] = useState<ProjectionSnapshot | null>(null);
   const [effective, setEffective] = useState<'svg' | 'r3f'>('svg');
   const Scene = useMemo(() => lazy(() => import('../board/three/BoardScene3D.tsx')), [attempt]);
+  const { dispatch } = controller;
+  const onDiceChange = useCallback((presenting: boolean) => dispatch({ type: 'dice-presenting', value: presenting }), [dispatch]);
   const animation = useBoardAnimation(state.game, state.gameSync, state.connection === 'online',
-    !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll');
+    !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll', onDiceChange);
   const geometry = useMemo(() => buildGeometry(view?.board.topologyId ?? 'hex-r2'), [view?.board.topologyId]);
   const bounds = useMemo(() => sceneBounds(geometry), [geometry]);
   const controls = useBoardViewport({ geometry, surfaceRef, bounds, projection, renderer: effective,
@@ -65,7 +67,8 @@ export function BoardView({ controller }: { controller: TableController }) {
   const { zoom } = controls.viewport;
   const selfId = state.session?.id ?? null;
   const nameResolver = useMemo(() => nameOf(state), [state]);
-  const intent = useMemo(() => boardIntent(state, selfId), [state, selfId]);
+  // 擲骰演出期間不開放由擲骰帶出的棋盤目標（例如七點後移動強盜）；玩家已選取中的建造不受影響。
+  const intent = useMemo(() => followUpsHeld(state) && !state.selection.commandType ? null : boardIntent(state, selfId), [state, selfId]);
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
   const hexTargets = useMemo(() => controls.projectedTargets({ kind: 'hex', commandType: '', labelId: '', fromHints: false, targets: geometry.hexes.map((hex) => hex.index) }), [controls.projectedTargets, geometry]);
   const viewBox = useMemo(() => parseViewBox(geometry.viewBox), [geometry]);
@@ -123,6 +126,8 @@ export function BoardView({ controller }: { controller: TableController }) {
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
   }, [actions, intent]);
   const focusedRoll = animation.activeDice;
+  // 佇列中仍有骰子（例如後一次擲骰排在前一組特效之後）時，靜態點數也先隱藏。
+  const hideStaticDice = focusedRoll !== null || state.dicePresenting;
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);
 
   if (!view) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
@@ -237,7 +242,7 @@ export function BoardView({ controller }: { controller: TableController }) {
       </div>
 
       {view.turn.dice && (
-        <span className="board__dice" data-presenting={focusedRoll ? 'true' : undefined} aria-hidden={focusedRoll ? true : undefined} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
+        <span className="board__dice" data-presenting={hideStaticDice ? 'true' : undefined} aria-hidden={hideStaticDice ? true : undefined} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
           {view.turn.dice.map((value, index) => <DieFace className="board__die" key={index} value={value} />)}
           <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
         </span>

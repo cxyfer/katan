@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DICE_PRESENTATION_DURATION_MS, DICE_ROLL_DURATION_MS, diceRollPresentations } from '../src/board/animation.ts';
+import { DICE_PRESENTATION_DURATION_MS, DICE_ROLL_DURATION_MS, MAX_EFFECT_DURATION_MS, diceRollPresentations } from '../src/board/animation.ts';
 import { useBoardAnimation } from '../src/board/useBoardAnimation.ts';
 import { DicePresentation } from '../src/components/DicePresentation.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
@@ -141,13 +141,22 @@ describe('centered dice presentation', () => {
     rerender(<Harness {...next} />);
     act(() => vi.advanceTimersByTime(DICE_ROLL_DURATION_MS));
     expect(screen.getByTestId('dice-announcement').textContent).toBe('Rolled 2 + 6 = 8');
+    expect(screen.getByTestId('board-effect-active').textContent).toBe('no');
     act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS - DICE_ROLL_DURATION_MS));
+    // 第一次擲骰的產出特效先播完，下一次擲骰才開始。
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(screen.getByTestId('board-effect-active').textContent).toBe('yes');
+    act(() => vi.advanceTimersByTime(MAX_EFFECT_DURATION_MS));
+    expect(screen.getByTestId('board-effect-active').textContent).toBe('no');
     expect(screen.getByTestId('dice-focus').getAttribute('data-phase')).toBe('rolling');
     expect(screen.getByTestId('dice-announcement').textContent).toBe('');
     act(() => vi.advanceTimersByTime(DICE_ROLL_DURATION_MS));
     expect(screen.getByTestId('dice-announcement').textContent).toBe('Rolled 1 + 1 = 2');
     act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS - DICE_ROLL_DURATION_MS));
     expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(screen.getByTestId('board-effect-active').textContent).toBe('yes');
+    act(() => vi.advanceTimersByTime(MAX_EFFECT_DURATION_MS));
+    expect(screen.getByTestId('board-effect-active').textContent).toBe('no');
     unmount();
     expect(vi.getTimerCount()).toBe(0);
   });

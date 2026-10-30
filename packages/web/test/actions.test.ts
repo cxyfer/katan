@@ -17,6 +17,33 @@ function stateWith(overrides: Partial<TableState> = {}): TableState {
 }
 
 describe('action availability', () => {
+  it('holds every action behind the rolling reason until the dice presentation ends', () => {
+    const game = makeSnapshot(makeView({ hints: makeHints({ legalRoads: [3], canEndTurn: true }) }));
+    const rolling = deriveActions(stateWith({ game, dicePresenting: true }), 'p1');
+    expect(rolling.find((action) => action.id === 'endTurn')).toMatchObject({
+      enabled: false,
+      reasonId: 'play.disabled.rolling',
+    });
+    expect(rolling.find((action) => action.id === 'build.road')).toMatchObject({
+      enabled: false,
+      reasonId: 'play.disabled.rolling',
+    });
+    // 由擲骰後投影推得的原因（沒有目標、資源不足、待處理）也先蓋掉，避免透露點數。
+    expect(rolling.find((action) => action.id === 'build.settlement')?.reasonId).toBe('play.disabled.rolling');
+    const seven = makeSnapshot(makeView({
+      hints: makeHints(),
+      pending: { kind: 'discard', required: { p1: 1 }, waitingFor: ['p1'] },
+    }));
+    const sevenActions = deriveActions(stateWith({ game: seven, dicePresenting: true }), 'p1');
+    expect(new Set(sevenActions.map((action) => action.reasonId))).toEqual(new Set(['play.disabled.rolling']));
+    expect(requiredActionFor(stateWith({ game: seven, dicePresenting: true }))).toMatchObject({ kind: 'rolling', mine: false });
+    expect(requiredActionFor(stateWith({ game: seven }))).toMatchObject({ kind: 'discard', mine: true });
+
+    const settled = deriveActions(stateWith({ game, dicePresenting: false }), 'p1');
+    expect(settled.find((action) => action.id === 'endTurn')).toMatchObject({ enabled: true, reasonId: null });
+    expect(settled.find((action) => action.id === 'build.road')).toMatchObject({ enabled: true, reasonId: null });
+  });
+
   it('enables roll only in the preroll phase for the turn owner', () => {
     const state = stateWith({
       game: makeSnapshot(makeView({ hints: makeHints({ canRoll: true, canEndTurn: false }), phase: 'preroll' })),

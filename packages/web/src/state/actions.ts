@@ -11,7 +11,7 @@
 
 import { COSTS, type Resource } from '@catan/rules';
 import type { GameSnapshot } from '@catan/protocol';
-import type { TableState } from './table.ts';
+import { awaitingProjection, type TableState } from './table.ts';
 import { blocksNewCommands } from './commands.ts';
 
 export interface ActionDescriptor {
@@ -56,12 +56,19 @@ interface ActionInput {
   selfId: string | null;
   connected: boolean;
   blockedByCommand: boolean;
+  /** 擲骰演出中：結果揭曉前不開放後續動作。 */
+  presentingDice: boolean;
+  /** 投影尚未追上已知事件：畫面是過時狀態。 */
+  syncing: boolean;
 }
 
 /** Shared reason resolution, in the priority order a player experiences it. */
 export function reasonFor(input: ActionInput, extra: string | null): string | null {
   if (!input.connected) return 'play.disabled.connectivity';
   if (input.blockedByCommand) return 'play.disabled.pending';
+  // 演出期間一律顯示擲骰原因：其他原因（待處理、資源不足）來自擲骰後的投影，會透露點數。
+  if (input.presentingDice) return 'play.disabled.rolling';
+  if (input.syncing) return 'play.disabled.syncing';
   return extra;
 }
 
@@ -71,7 +78,10 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
   const hints = view?.hints ?? null;
   const connected = state.connection === 'online';
   const blocked = blocksNewCommands(state.command);
-  const input: ActionInput = { snapshot, selfId, connected, blockedByCommand: blocked };
+  const presentingDice = state.dicePresenting;
+  const syncing = awaitingProjection(state);
+  const ready = !blocked && connected && !presentingDice && !syncing;
+  const input: ActionInput = { snapshot, selfId, connected, blockedByCommand: blocked, presentingDice, syncing };
   const resources = selfResources(snapshot, selfId);
   const isTurnActor = !!view && !!selfId && view.turn.playerId === selfId;
   const pending = view?.pending ?? null;
@@ -100,7 +110,7 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
       id,
       labelId,
       commandType,
-      enabled: reason === null && !blocked && connected,
+      enabled: reason === null && ready,
       reasonId: reasonFor(input, reason),
       cost,
       targetCount: legal,
@@ -113,7 +123,7 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
     id: 'roll',
     labelId: 'play.roll',
     commandType: 'turn.roll',
-    enabled: !!hints?.canRoll && !blocked && connected,
+    enabled: !!hints?.canRoll && ready,
     reasonId: reasonFor(input, hints?.canRoll ? null : phaseReason()),
     cost: null,
     targetCount: 0,
@@ -123,7 +133,7 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
     id: 'endTurn',
     labelId: 'play.endTurn',
     commandType: 'turn.end',
-    enabled: !!hints?.canEndTurn && !blocked && connected,
+    enabled: !!hints?.canEndTurn && ready,
     reasonId: reasonFor(input, hints?.canEndTurn ? null : phaseReason()),
     cost: null,
     targetCount: 0,
@@ -155,7 +165,7 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
     id: 'build.devCard',
     labelId: 'play.build.devCard',
     commandType: 'build.devCard',
-    enabled: devReason === null && !blocked && connected,
+    enabled: devReason === null && ready,
     reasonId: reasonFor(input, devReason),
     cost: COSTS.devCard,
     targetCount: 0,

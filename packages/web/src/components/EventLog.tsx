@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { translateEvent } from '../i18n/events.ts';
 import { formatDice, formatNumber } from '../i18n/format.ts';
-import { nameOf } from '../state/table.ts';
+import { nameOf, shownEvents } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 
 /**
@@ -15,13 +15,14 @@ export function EventLog({ controller }: { controller: TableController }) {
   const locale = useLocale();
   const { state } = controller;
   const nameResolver = useMemo(() => nameOf(state), [state]);
-  const events = state.game?.view.events ?? [];
+  // 擲骰演出期間不列出擲骰與其後的事件，點數揭曉後才補上。
+  const { events, diceHidden } = shownEvents(state);
   const recent = events.slice(-40).reverse();
 
   return (
     <section className="panel" aria-labelledby="log-heading" data-testid="event-log">
       <h2 id="log-heading">{t('play.events')}</h2>
-      {state.game?.view.turn.dice && (
+      {!diceHidden && state.game?.view.turn.dice && (
         <p className="muted" data-testid="last-dice">
           {t('play.dice')}: {formatDice(state.game.view.turn.dice)} ·{' '}
           {t('play.diceTotal', {

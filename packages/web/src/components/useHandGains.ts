@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GameSnapshot } from '@catan/protocol';
 import { RESOURCES, type Resource } from '@catan/rules';
 import { decideBoardAnimation, type PresentationCursor } from '../board/animation.ts';
@@ -13,6 +13,8 @@ export interface HandGain {
   resource: Resource;
   delayMs: number;
   expiresAt: number;
+  /** 擲骰演出期間建立的卡先保留不播放，演出結束才開始落下並計時。 */
+  held: boolean;
 }
 
 interface HandCursor {
@@ -28,7 +30,11 @@ export function useHandGains(
   playerId: string | null,
   online: boolean,
   syncPending = false,
+  /** 擲骰演出進行中（含排隊中的骰子）。 */
+  held = false,
 ) {
+  const heldRef = useRef(held);
+  heldRef.current = held;
   const cursor = useRef<HandCursor | null>(null);
   const latest = useRef({ snapshot, sync, playerId });
   latest.current = { snapshot, sync, playerId };
@@ -90,6 +96,8 @@ export function useHandGains(
       return;
     }
     const remaining = RESOURCES.map((resource) => Math.max(0, resources[resource] - previous.resources[resource]));
+    // 擲骰產出的資源等骰子演出（含排隊中的骰子）結束才落入手牌，避免點數揭曉前先透露結果。
+    const waiting = heldRef.current;
     const incoming: HandGain[] = [];
     // 大量獲取仍呈現各種資源，並限制裝飾性卡片數量。
     while (incoming.length < MAX_BURST_CARDS && remaining.some((count) => count > 0)) {
@@ -99,7 +107,8 @@ export function useHandGains(
         const delayMs = incoming.length * 45;
         incoming.push({
           id: `${snapshot.gameId}:${playerId}:${snapshot.view.seq}:${incoming.length}`,
-          resource, delayMs, expiresAt: Date.now() + HAND_GAIN_DURATION_MS + delayMs + 60,
+          resource, delayMs, held: waiting,
+          expiresAt: waiting ? Number.POSITIVE_INFINITY : Date.now() + HAND_GAIN_DURATION_MS + delayMs + 60,
         });
       }
     }
@@ -111,10 +120,22 @@ export function useHandGains(
   }, [snapshot, sync.generation, sync.cause, playerId, online, syncPending, baseline]);
 
   useEffect(() => {
-    if (!gains.length) return;
-    const deadline = Math.min(...gains.map((gain) => gain.expiresAt));
+    if (held || !gains.some((gain) => gain.held)) return;
+    // 演出結束：保留中的卡從現在開始落下，同批一起清理。
+    setGains((current) => {
+      const waiting = current.filter((gain) => gain.held);
+      if (!waiting.length) return current;
+      const expiresAt = Date.now() + HAND_GAIN_DURATION_MS + Math.max(...waiting.map((gain) => gain.delayMs)) + 60;
+      return current.map((gain) => gain.held ? { ...gain, held: false, expiresAt } : gain);
+    });
+  }, [held, gains]);
+
+  useEffect(() => {
+    const playing = gains.filter((gain) => !gain.held);
+    if (!playing.length) return;
+    const deadline = Math.min(...playing.map((gain) => gain.expiresAt));
     const timer = globalThis.setTimeout(() => {
-      setGains((current) => current.filter((gain) => gain.expiresAt > Date.now()));
+      setGains((current) => current.filter((gain) => gain.held || gain.expiresAt > Date.now()));
     }, Math.max(0, deadline - Date.now()));
     return () => globalThis.clearTimeout(timer);
   }, [gains]);
@@ -122,5 +143,6 @@ export function useHandGains(
   const canPresent = online && !syncPending && !document.hidden && !reduced.current &&
     cursor.current?.playerId === playerId && cursor.current.presentation.gameId === snapshot?.gameId &&
     cursor.current.presentation.syncGeneration === sync.generation;
-  return canPresent ? gains : [];
+  const playing = useMemo(() => gains.filter((gain) => !gain.held), [gains]);
+  return canPresent ? playing : [];
 }

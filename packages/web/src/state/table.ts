@@ -18,7 +18,9 @@ import type {
   RoomView,
   ServerConfigView,
 } from '@catan/protocol';
+import type { Resource } from '@catan/rules';
 import type { RoomQuery } from '../api/client.ts';
+import { diceRollPresentations } from '../board/animation.ts';
 import type { SocketStatus } from '../api/socket.ts';
 import { chatReducer, initialChatState, type ChatEvent, type ChatState } from './chat.ts';
 import {
@@ -28,6 +30,15 @@ import {
 } from './commands.ts';
 
 export type Screen = 'entry' | 'home' | 'lobby' | 'game' | 'result';
+
+export interface RollHold {
+  /** 擲骰前的本人手牌；手牌不可見時為 null。 */
+  hand: Partial<Record<Resource, number>> | null;
+  /** 擲骰前各玩家公開的手牌張數。 */
+  handSizes: Readonly<Record<string, number>>;
+  /** 擲骰前已知的最後事件序號。 */
+  eventSeq: number;
+}
 export type ConnectionState = 'online' | 'offline' | 'reconnecting';
 export type DrawerPanel = 'none' | 'hand' | 'trade' | 'exchange' | 'chat' | 'help';
 
@@ -92,6 +103,10 @@ export interface TableState {
   chat: ChatState;
   drawer: DrawerPanel;
   selection: Selection;
+  /** 擲骰演出進行中（含排隊中的骰子）；後續動作選項與資源演出等它結束才出現。 */
+  dicePresenting: boolean;
+  /** 擲骰演出期間凍結的擲骰前狀態，點數揭曉前不從手牌、玩家列表或紀錄透露結果。 */
+  rollHold: RollHold | null;
   toast: Notice | null;
   announcement: Announcement | null;
   fatal: Notice | null;
@@ -123,6 +138,8 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     chat: initialChatState(),
     drawer: 'none',
     selection: EMPTY_SELECTION,
+    dicePresenting: false,
+    rollHold: null,
     toast: null,
     announcement: null,
     fatal: null,
@@ -152,9 +169,69 @@ export type TableAction =
   | { type: 'chat'; event: ChatEvent }
   | { type: 'drawer'; drawer: DrawerPanel }
   | { type: 'selection'; selection: Selection }
+  | { type: 'dice-presenting'; value: boolean }
   | { type: 'toast'; notice: Notice | null }
   | { type: 'announce'; announcement: Announcement | null }
   | { type: 'fatal'; error: Notice | null };
+
+/**
+ * 新進的權威資料帶來尚未見過的擲骰時，先暫定進入擲骰演出並凍結擲骰前的本人手牌，
+ * 讓這筆更新的第一次繪製就不會透露點數；是否真的演出由盤面動畫在同次繪製前校正。
+ */
+function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<TableState> {
+  const current = state.game;
+  if (!current) return {};
+  const lastSeq = Math.max(current.view.seq, ...current.view.events.map((event) => event.seq));
+  const fresh = events.filter((event) => event.seq > lastSeq);
+  if (diceRollPresentations(current.gameId, fresh).length === 0) return {};
+  if (state.dicePresenting) return {};
+  const own = current.view.players.find((player) => player.id === state.session?.id)?.resources;
+  return {
+    dicePresenting: true,
+    rollHold: {
+      hand: own ? { ...own } : null,
+      handSizes: Object.fromEntries(current.view.players.map((player) => [player.id, player.handSize])),
+      eventSeq: lastSeq,
+    },
+  };
+}
+
+function activeHold(state: TableState): RollHold | null {
+  return state.dicePresenting ? state.rollHold : null;
+}
+
+/**
+ * 已收到權威事件、但投影尚未追上（事件先於投影抵達）。此時畫面上的提示與按鈕
+ * 都來自過時的投影，依它送出的指令必然被拒。
+ */
+export function awaitingProjection(state: TableState): boolean {
+  const game = state.game;
+  return !!game && game.view.events.some((event) => event.seq > game.view.seq);
+}
+
+/** 後續操作是否暫停：擲骰演出中，或投影尚未追上已知事件。 */
+export function followUpsHeld(state: TableState): boolean {
+  return state.dicePresenting || awaitingProjection(state);
+}
+
+/** 畫面上顯示的本人手牌：擲骰演出期間用擲骰前的數量。手牌不可見時為 undefined。 */
+export function shownHand(state: TableState): Partial<Record<Resource, number>> | undefined {
+  const own = state.game?.view.players.find((player) => player.id === state.session?.id)?.resources;
+  const held = activeHold(state)?.hand;
+  return own && held ? held : own;
+}
+
+/** 玩家公開的手牌張數：擲骰演出期間用擲骰前的張數。 */
+export function shownHandSize(state: TableState, player: { id: string; handSize: number }): number {
+  return activeHold(state)?.handSizes[player.id] ?? player.handSize;
+}
+
+/** 事件紀錄：擲骰演出期間只列出擲骰前已知的事件，並隱藏最新點數。 */
+export function shownEvents(state: TableState): { events: readonly GameEvent[]; diceHidden: boolean } {
+  const events = state.game?.view.events ?? [];
+  const hold = activeHold(state);
+  return hold ? { events: events.filter((event) => event.seq <= hold.eventSeq), diceHidden: true } : { events, diceHidden: false };
+}
 
 /** Screens are derived from authoritative room/game status, never guessed. */
 export function screenForRoom(room: RoomView | null): Screen {
@@ -242,6 +319,7 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       const terminal = snapshot?.view.result != null;
       return {
         ...state,
+        ...holdForRoll(state, snapshot && current?.gameId === snapshot.gameId ? snapshot.view.events : []),
         game: snapshot,
         gameSync: { generation, cause: state.gameSyncPending ? state.gameSync.cause : (action.cause ?? 'snapshot') },
         gameSyncPending: false,
@@ -260,6 +338,7 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       const events = [...current.view.events, ...incoming].slice(-200);
       return {
         ...state,
+        ...holdForRoll(state, incoming),
         gameSync: state.gameSyncPending ? state.gameSync : { ...state.gameSync, cause: 'events' },
         game: {
           ...current,
@@ -288,6 +367,9 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       };
     case 'selection':
       return { ...state, selection: action.selection };
+    case 'dice-presenting':
+      if (state.dicePresenting === action.value) return state;
+      return action.value ? { ...state, dicePresenting: true } : { ...state, dicePresenting: false, rollHold: null };
     case 'toast':
       return { ...state, toast: action.notice };
     case 'announce':

@@ -4,6 +4,7 @@ import type { GameSnapshot, ServerMessage } from '@catan/protocol';
 import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
 import { buildGeometry, distance } from '../src/board/geometry.ts';
+import { DICE_PRESENTATION_DURATION_MS } from '../src/board/animation.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeEvent, makeHints, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -138,6 +139,11 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     const produced = rolled(14, [3, 3]);
     produced.view.events = [makeEvent(13, 'turn.rolled', { dice: [3, 3], total: 6 }), makeEvent(14, 'production.resolved', { total: 6, grants: { p1: { lumber: 3 } } })];
     act(() => sockets[0]!.deliver({ type: 'snapshot', payload: produced }));
+    // 產出特效等骰子演出結束才播放，點數揭曉前不透露結果。
+    expect(screen.getByTestId('dice-focus')).toBeTruthy();
+    expect(screen.queryByTestId('board-effects')).toBeNull();
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS));
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
     expect(screen.queryByTestId('production-flight')).toBeNull();
     expect(screen.getByTestId('production-fallback').textContent).toContain('+3');
     expect(screen.getByTestId('dice-roll-animation').className).not.toContain('rolling');
@@ -154,7 +160,7 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     expect(screen.getByTestId('building-0')).toBeTruthy();
   });
 
-  it('rolls seven while its required discard prompt remains immediately usable, then yields to later progress', async () => {
+  it('rolls seven and reveals its required discard prompt only after the dice, then yields to later progress', async () => {
     const sockets: TestSocket[] = [];
     const api = createFakeApi({ snapshot: rolled(12) });
     await open(api, sockets);
@@ -165,12 +171,19 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     act(() => sockets[0]!.deliver({ type: 'snapshot', payload: seven }));
     expect(screen.getByTestId('dice-focus').getAttribute('data-phase')).toBe('rolling');
     expect(screen.getByTestId('dice-focus').getAttribute('data-mandatory')).toBe('true');
-    expect(screen.getByTestId('required-action-prompt')).toBeTruthy();
+    const prompt = screen.getByTestId('required-action-prompt');
+    expect(prompt.getAttribute('data-rolling')).toBe('true');
+    expect(prompt.textContent).toContain('Rolling');
+    expect(screen.queryByTestId('discard-add-lumber')).toBeNull();
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByTestId('dice-announcement').textContent).toContain('2 + 5 = 7');
+    expect(screen.queryByTestId('discard-add-lumber')).toBeNull();
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS - 1500));
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(screen.getByTestId('required-action-prompt').getAttribute('data-rolling')).toBeNull();
     fireEvent.click(screen.getByTestId('discard-add-lumber'));
     expect((screen.getByTestId('discard-submit') as HTMLButtonElement).disabled).toBe(false);
     expect(api.callsOf('sendCommand')).toHaveLength(0);
-    act(() => vi.advanceTimersByTime(1500));
-    expect(screen.getByTestId('dice-announcement').textContent).toContain('2 + 5 = 7');
     const progressed = rolled(16, [2, 5]);
     progressed.view.events = [makeEvent(15, 'discard.submitted'), makeEvent(16, 'robber.moveRequired')];
     progressed.view.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven' };
@@ -178,6 +191,89 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     expect(screen.queryByTestId('dice-focus')).toBeNull();
     expect(screen.getByTestId('required-action-prompt')).toBeTruthy();
     expect(screen.getAllByTestId(/^target-hex-/).length).toBeGreaterThan(0);
+  });
+
+  it('keeps follow-ups held after an event-first roll until its projection arrives', async () => {
+    const sockets: TestSocket[] = [];
+    const preroll = rolled(12);
+    preroll.view.turn.phase = 'preroll';
+    preroll.view.hints = makeHints({ canRoll: true, canEndTurn: false });
+    const api = createFakeApi({ snapshot: preroll });
+    await open(api, sockets);
+    expect(screen.getByTestId('prompt-roll')).toBeTruthy();
+    vi.useFakeTimers();
+    // 投影延遲：只有擲骰事件抵達，伺服器之後才回應補抓。
+    const projected = rolled(13, [4, 4]);
+    let respond: (value: { ok: true; data: GameSnapshot }) => void = () => {};
+    const fetch = vi.spyOn(api, 'getGame').mockReturnValueOnce(new Promise((done) => { respond = done; }));
+    act(() => sockets[0]!.deliver({ type: 'events', payload: {
+      gameId: 'g1', revision: 5, events: [makeEvent(13, 'turn.rolled', { dice: [4, 4], total: 8 })],
+    } }));
+    expect(screen.getByTestId('dice-focus')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS - 1));
+    expect(fetch).not.toHaveBeenCalled();
+    await act(async () => { vi.advanceTimersByTime(1); });
+    // 演出結束但投影未到：不恢復過時的擲骰按鈕，並主動補抓投影。
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(screen.queryByTestId('prompt-roll')).toBeNull();
+    expect(screen.getByTestId('required-action-prompt').textContent).toContain('Syncing');
+    expect(screen.getByTestId('action-roll').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByTestId('reason-roll').textContent).toBe('Syncing the table — please wait.');
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    expect(screen.getByTestId('required-action-prompt').textContent).toContain('Syncing');
+    await act(async () => respond({ ok: true, data: projected }));
+    expect(screen.getByTestId('required-action-prompt').textContent).not.toContain('Syncing');
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
+  it('keeps the static dice hidden while a later roll waits behind earlier effects', async () => {
+    const sockets: TestSocket[] = [];
+    await open(createFakeApi({ snapshot: rolled(12) }), sockets);
+    vi.useFakeTimers();
+    const twice = rolled(15, [1, 1]);
+    twice.view.events = [
+      makeEvent(13, 'turn.rolled', { dice: [2, 6], total: 8 }),
+      makeEvent(14, 'production.resolved', { total: 8, grants: { p1: { lumber: 1 } } }),
+      makeEvent(15, 'turn.rolled', { dice: [1, 1], total: 2 }),
+    ];
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: twice }));
+    const staticDice = screen.getByTestId('dice-roll-animation');
+    expect(staticDice.getAttribute('data-presenting')).toBe('true');
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS));
+    // 第一組特效播放中、第二顆骰子排隊：最終點數仍不可見。
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(staticDice.getAttribute('data-presenting')).toBe('true');
+    expect(staticDice.getAttribute('aria-hidden')).toBe('true');
+    act(() => vi.advanceTimersByTime(800));
+    expect(screen.getByTestId('dice-focus')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS));
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(staticDice.getAttribute('data-presenting')).toBeNull();
+  });
+
+  it('blocks every command entry point and status surface until the dice settle', async () => {
+    const sockets: TestSocket[] = [];
+    const api = createFakeApi({ snapshot: rolled(12) });
+    await open(api, sockets);
+    vi.useFakeTimers();
+    const seven = rolled(14, [2, 5]);
+    seven.view.events = [makeEvent(13, 'turn.rolled', { dice: [2, 5], total: 7 }), makeEvent(14, 'discard.required')];
+    seven.view.pending = { kind: 'discard', required: { p1: 1 }, waitingFor: ['p1'] };
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: seven }));
+    expect(screen.getByTestId('dice-focus')).toBeTruthy();
+    // 計分板與狀態列也只說擲骰中。
+    for (const state of screen.getAllByTestId('turn-state')) expect(state.textContent).toContain('Rolling');
+
+    fireEvent.click(screen.getByTestId('tool-tab-exchange'));
+    fireEvent.change(screen.getByTestId('bank-give'), { target: { value: 'lumber' } });
+    fireEvent.change(screen.getByTestId('bank-receive'), { target: { value: 'ore' } });
+    await act(async () => { fireEvent.click(screen.getByTestId('bank-submit')); });
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+    expect(screen.getByTestId('toast').textContent).toContain('Rolling — waiting for the result.');
+
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS));
+    for (const state of screen.getAllByTestId('turn-state')) expect(state.textContent).not.toContain('Rolling');
   });
 
   it('interrupts presentation for a new mandatory prompt while its control remains available', async () => {

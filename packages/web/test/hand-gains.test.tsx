@@ -55,6 +55,44 @@ describe('own resource cards descending into the hand', () => {
     expect(screen.getByTestId('resource-lumber').querySelector('.resource-list__count')!.textContent).toBe('1');
   });
 
+  it('waits for the dice presentation before dropping rolled resources, and holds the count meanwhile', () => {
+    const rolled = (seq: number, lumber: number) => {
+      const input = props(seq, lumber);
+      input.snapshot.view.events = [makeEvent(seq - 1, 'turn.rolled', { dice: [3, 3], total: 6 }), makeEvent(seq, 'production.resolved')];
+      return input;
+    };
+    type HeldInput = Input & { held: boolean };
+    const { result, rerender } = renderHook(
+      (input: HeldInput) => useHandGains(input.snapshot, input.sync, input.playerId, input.online, input.syncPending, input.held),
+      { initialProps: { ...props(), held: false }, wrapper: StrictMode },
+    );
+    const next = rolled(14, 4);
+    rerender({ ...next, held: true });
+    // 演出期間（含排隊中的骰子）不論多久都不開始落下。
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(result.current).toEqual([]);
+    rerender({ ...next, held: false });
+    expect(result.current.map((gain) => [gain.resource, gain.delayMs])).toEqual([['lumber', 0], ['lumber', 45]]);
+    act(() => vi.advanceTimersByTime(900));
+    expect(result.current).toEqual([]);
+
+    // 手牌數字在演出期間顯示擲骰前的完整數量，不受裝飾卡上限影響。
+    const controller = (input: Input, dicePresenting: boolean): TableController => ({
+      state: {
+        ...initialTableState('en', ''), game: input.snapshot, gameSync: input.sync, session: makeIdentity(), dicePresenting,
+        rollHold: dicePresenting ? { hand: { lumber: 2, brick: 2, wool: 2, grain: 2, ore: 2 }, handSizes: {}, eventSeq: 12 } : null,
+      },
+      actions: {} as TableController['actions'], dispatch: vi.fn(),
+    });
+    const big = rolled(14, 14);
+    const panel = render(<HandPanel controller={controller(props(), false)} />);
+    panel.rerender(<HandPanel controller={controller(big, true)} />);
+    const count = () => screen.getByTestId('resource-lumber').querySelector('.resource-list__count')!.textContent;
+    expect(count()).toBe('2');
+    panel.rerender(<HandPanel controller={controller(big, false)} />);
+    expect(count()).toBe('14');
+  });
+
   it('does not infer gains from opponent hand counts or private-looking opponent data', () => {
     const { result, rerender } = mount();
     const next = props(13);

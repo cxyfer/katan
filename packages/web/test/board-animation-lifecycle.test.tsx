@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DICE_PRESENTATION_DURATION_MS } from '../src/board/animation.ts';
 import { useBoardAnimation } from '../src/board/useBoardAnimation.ts';
 import { makeEvent, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 import type { GameSyncMetadata } from '../src/state/table.ts';
@@ -43,15 +44,26 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.active).toBeNull();
     expect(result.current.activeDice).toBeNull();
     rerender(props(15));
+    expect(result.current.activeDice?.seq).toBe(15);
+    expect(result.current.active).toBeNull();
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS));
     expect(result.current.active?.events[0]?.seq).toBe(15);
     expect(next.sync).toEqual({ generation: 1, cause: 'snapshot' });
     unmount();
   });
-  it('plays a new snapshot once for at most 800ms, without restarting on unrelated renders', () => {
+  it('plays a new snapshot once for at most 800ms after its dice, without restarting on unrelated renders', () => {
     const { result, rerender, unmount } = mount();
     expect(result.current.active).toBeNull();
     expect(result.current.activeDice).toBeNull();
     rerender(props(13));
+    // 盤面特效排在同組骰子演出之後。
+    expect(result.current.active).toBeNull();
+    expect(result.current.activeDice?.seq).toBe(13);
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS - 1));
+    rerender(props(13));
+    expect(result.current.active).toBeNull();
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.activeDice).toBeNull();
     const group = result.current.active;
     expect(group?.events[0]?.seq).toBe(13);
     act(() => vi.advanceTimersByTime(400));
@@ -61,10 +73,9 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.active).toBe(group);
     act(() => vi.advanceTimersByTime(1));
     expect(result.current.active).toBeNull();
-    expect(result.current.activeDice?.seq).toBe(13);
     rerender(props(13));
     expect(result.current.active).toBeNull();
-    expect(result.current.activeDice?.seq).toBe(13);
+    expect(result.current.activeDice).toBeNull();
     unmount();
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -77,11 +88,12 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.pendingCount).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
     rerender(props(22));
-    expect(result.current.active?.events[0]?.seq).toBe(22);
+    expect(result.current.activeDice?.seq).toBe(22);
+    expect(result.current.pendingCount).toBe(1);
     unmount();
   });
 
-  it('plays both new rolls in a continuous snapshot delta without extending either group deadline', () => {
+  it('plays both new rolls in a continuous snapshot delta in order, each dice before its own effects', () => {
     const { result, rerender, unmount } = mount();
     const next = props(15);
     next.snapshot.view.events = [makeEvent(13, 'turn.rolled'), makeEvent(14, 'production.resolved'), makeEvent(15, 'turn.rolled')];
@@ -90,15 +102,19 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.active?.events.map((event) => event.seq)).toEqual([13, 14]);
     act(() => vi.advanceTimersByTime(400));
     rerender(props(16));
+    // 較早的特效組播完前，後一次擲骰先等待。
+    expect(result.current.activeDice).toBeNull();
     act(() => vi.advanceTimersByTime(400));
     expect(result.current.active?.events[0]?.seq).toBe(15);
-    act(() => vi.advanceTimersByTime(800));
-    expect(result.current.active?.events[0]?.seq).toBe(16);
+    expect(result.current.activeDice).toBeNull();
     act(() => vi.advanceTimersByTime(800));
     expect(result.current.active).toBeNull();
     expect(result.current.activeDice?.seq).toBe(16);
-    act(() => vi.advanceTimersByTime(500));
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS));
     expect(result.current.activeDice).toBeNull();
+    expect(result.current.active?.events[0]?.seq).toBe(16);
+    act(() => vi.advanceTimersByTime(800));
+    expect(result.current.active).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
     unmount();
   });
@@ -114,7 +130,7 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.active).toBeNull();
     expect(result.current.activeDice).toBeNull();
     rerender(props(14));
-    expect(result.current.active).toBeTruthy();
+    expect(result.current.activeDice).toBeTruthy();
     rerender({ ...props(14), online: false });
     expect(result.current.active).toBeNull();
     expect(result.current.activeDice).toBeNull();
@@ -122,7 +138,7 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.active).toBeNull();
     expect(result.current.activeDice).toBeNull();
     rerender(props(51, 'snapshot', 2));
-    expect(result.current.active).toBeTruthy();
+    expect(result.current.activeDice).toBeTruthy();
     rerender(props(60, 'gap', 3));
     expect(result.current.active).toBeNull();
     expect(result.current.activeDice).toBeNull();
@@ -143,7 +159,7 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.active).toBeNull();
     expect(result.current.activeDice).toBeNull();
     rerender(props(15));
-    expect(result.current.active?.events[0]?.seq).toBe(15);
+    expect(result.current.activeDice?.seq).toBe(15);
     unmount();
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -188,7 +204,7 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     expect(result.current.active).toBeNull();
     expect(result.current.activeDice).toBeNull();
     rerender(props(14));
-    expect(result.current.active).toBeTruthy();
+    expect(result.current.activeDice).toBeTruthy();
     act(() => { media.matches = true; media.dispatchEvent(new Event('change')); });
     expect(result.current.active).toBeNull();
     expect(result.current.activeDice).toBeNull();
@@ -201,7 +217,8 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
   it('discards timers and history on unmount / remount, also in StrictMode', () => {
     const first = mount();
     first.rerender(props(13));
-    expect(vi.getTimerCount()).toBe(2);
+    // 只有骰子計時；同組盤面特效等骰子結束才開始計時。
+    expect(vi.getTimerCount()).toBe(1);
     first.unmount();
     expect(vi.getTimerCount()).toBe(0);
     const second = renderHook(() => useBoardAnimation(snapshot(13), props().sync, true, false), { wrapper: StrictMode });

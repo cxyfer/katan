@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { CommandRequest } from '@catan/protocol';
 import type { Offer } from '@catan/rules';
 import { App } from '../src/App.tsx';
+import { tradeShortfall } from '../src/components/TradePanel.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeHints, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -129,6 +130,109 @@ describe('structured trading', () => {
     fireEvent.click(screen.getByTestId('withdraw-offer-1'));
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(2));
     expect(lastCommand(api)).toEqual({ type: 'trade.withdraw', offerId: 'offer-1' });
+  });
+
+  it('clears the drafted terms while keeping the audience', async () => {
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints() })) });
+    await openGame(api, 'trade');
+
+    const clear = screen.getByTestId('clear-offer');
+    expect(clear.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(screen.getByTestId('give-add-lumber'));
+    fireEvent.click(screen.getByTestId('want-add-ore'));
+    fireEvent.change(screen.getByTestId('offer-to'), { target: { value: 'p2' } });
+    expect(clear.getAttribute('aria-disabled')).toBeNull();
+    clear.focus();
+    fireEvent.click(clear);
+
+    expect(screen.getByTestId('give-lumber').textContent).toBe('0');
+    expect(screen.getByTestId('want-ore').textContent).toBe('0');
+    expect((screen.getByTestId('offer-to') as HTMLSelectElement).value).toBe('p2');
+    expect(clear.getAttribute('aria-disabled')).toBe('true');
+    // 焦點留在按鈕上，鍵盤使用者不會被丟回頁首。
+    expect(document.activeElement).toBe(clear);
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
+  it('caps what you give at your own hand and explains why', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    onTestFinished(() => { vi.useRealTimers(); });
+    const view = makeView({ hints: makeHints() });
+    view.players[0]!.resources = { lumber: 2, brick: 0, wool: 1, grain: 2, ore: 2 };
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api, 'trade');
+
+    expect(screen.getByTestId('give-owned-wool').textContent).toBe('Have 1');
+    // 想要的一方沒有上限。
+    for (let index = 0; index < 4; index++) fireEvent.click(screen.getByTestId('want-add-wool'));
+    expect(screen.getByTestId('want-wool').textContent).toBe('4');
+    expect(screen.queryByTestId('trade-hint-builder')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('give-add-wool'));
+    const add = screen.getByTestId('give-add-wool');
+    expect(add.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(add);
+    expect(screen.getByTestId('give-wool').textContent).toBe('1');
+    const hint = screen.getByTestId('trade-hint-builder');
+    expect(hint.getAttribute('role')).toBe('alert');
+    expect(hint.textContent).toContain('You only have 1 Wool');
+
+    fireEvent.click(screen.getByTestId('give-add-brick'));
+    expect(screen.getByTestId('give-brick').textContent).toBe('0');
+
+    act(() => vi.advanceTimersByTime(4000));
+    expect(screen.queryByTestId('trade-hint-builder')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('create-offer'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(lastCommand(api)).toEqual({ type: 'trade.offer', to: 'all', give: { wool: 1 }, want: { wool: 4 } });
+  });
+
+  it('explains instead of consenting when your hand cannot cover the offer', async () => {
+    const view = makeView({
+      hints: makeHints(),
+      offers: [{ ...openOffer, want: { ore: 3, grain: 1 } }],
+    });
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api, 'trade');
+
+    const consent = screen.getByTestId('consent-offer-1');
+    expect(consent.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(consent);
+    const hint = screen.getByTestId('trade-hint-offer-1');
+    expect(hint.getAttribute('role')).toBe('alert');
+    expect(hint.textContent).toContain('1×Ore');
+    expect(hint.textContent).not.toContain('Grain');
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+
+    // 拒絕與表達興趣不需要資源。
+    fireEvent.click(screen.getByTestId('interested-offer-1'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(lastCommand(api)).toEqual({ type: 'trade.respond', offerId: 'offer-1', response: 'interested' });
+  });
+
+  it('explains instead of revising into terms the proposer cannot give', async () => {
+    const view = makeView({
+      hints: makeHints(),
+      offers: [{ ...openOffer, from: 'p1', give: { wool: 1 }, want: { ore: 3 } }],
+    });
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api, 'trade');
+
+    const revise = screen.getByTestId('revise-offer-1');
+    expect(revise.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(revise);
+    expect(screen.getByTestId('trade-hint-offer-1').textContent).toContain('1×Ore');
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
+  it('computes the shortfall against the visible hand only', () => {
+    expect(tradeShortfall({ lumber: 1, ore: 0 }, { lumber: 3, ore: 1, wool: 0 })).toEqual({ lumber: 2, ore: 1 });
+    expect(tradeShortfall({ lumber: 3 }, { lumber: 3 })).toBeNull();
+    expect(tradeShortfall(undefined, { lumber: 3 })).toBeNull();
   });
 
   it('does not offer settlement before a counterparty consents', async () => {
