@@ -1,7 +1,7 @@
 @layer base, pregame, table;
 @layer table {
 /* 收起時只保留色標與分數；展開後向右增加寬度，不推移棋盤。 */
-.screen--game:has(.players[data-testid="players-panel"]) { --score-width: 68px; --score-expanded-width: 216px; }
+.screen--game:has(.players[data-testid="players-panel"]) { --score-width: 68px; --score-expanded-width: 244px; }
 .screen--game .game__table:has(.players) { position: relative; }
 .screen--game .players[data-testid="players-panel"],
 .screen--game .players[data-testid="players-panel"][data-expanded="true"] {
@@ -87,7 +87,7 @@
 .screen--game .players[data-expanded="true"] .seat__summary {
   grid-template-columns: 26px minmax(0, 1fr);
   grid-template-rows: 26px 22px;
-  width: 76px;
+  width: 84px;
 }
 .screen--game .players .seat__swatch { grid-column: 1; grid-row: 1; width: 26px; height: 26px; font-size: .8rem; }
 .screen--game .players .seat__identity {
@@ -124,14 +124,14 @@
   pointer-events: none;
 }
 .screen--game .players .seat__score,
-.screen--game .players[data-expanded="false"] .seat__score { grid-column: 1; grid-row: 2; justify-self: center; flex-direction: row; gap: 3px; font-size: 1.05rem; }
-.screen--game .players[data-expanded="true"] .seat__score { grid-column: 2; grid-row: 1; justify-self: end; }
+.screen--game .players[data-expanded="false"] .seat__score { grid-column: 1; grid-row: 2; justify-self: center; flex-direction: row; gap: 3px; font-size: 1.05rem; padding: 0 6px; border-radius: 999px; background: #0d2c33d9; box-shadow: 0 2px 6px #00151d44; }
+.screen--game .players[data-expanded="true"] .seat__score { grid-column: 2; grid-row: 1; justify-self: end; padding: 0; background: none; box-shadow: none; }
 .screen--game .players .seat__score svg { width: 12px; }
 .screen--game .players .seat--turn { border-left-color: var(--player-color); }
 .screen--game .players .players__details[hidden] { display: none; }
 .screen--game .players .players__details {
   position: absolute;
-  inset: 6px 16px 6px 86px;
+  inset: 6px 16px 6px 94px;
   display: grid;
   grid-template-rows: 42px 16px;
   gap: 4px;
@@ -147,7 +147,7 @@
 .screen--game .score-mark--medal { color: #ffe0a0; }
 .screen--game .score-mark--medal .score-mark__icon { position: relative; isolation: isolate; background: #6b542d; border: 1px solid #e9c16e; border-radius: 50%; box-shadow: inset 0 0 0 2px #273f38; }
 .screen--game .score-mark--medal .score-mark__icon::after { content: ''; position: absolute; top: 13px; width: 11px; height: 8px; background: #d2aa60; clip-path: polygon(0 0, 100% 0, 85% 100%, 50% 65%, 15% 100%); z-index: -1; }
-.screen--game .score-mark__points { position: absolute; top: -2px; left: 9px; padding: 1px; color: #182d2b; background: #f0cf86; border-radius: 2px; font-size: .45rem; font-weight: 750; }
+.screen--game .score-mark__points { position: absolute; top: -6px; left: 10px; padding: 1px; color: #182d2b; background: #f0cf86; border-radius: 2px; font-size: .45rem; font-weight: 750; }
 .screen--game .players__bonuses .score-mark { color: #e6c98b; font-size: .62rem; }
 .screen--game .players__bonuses .score-mark__icon { width: 12px; height: 14px; }
 .screen--game .players__obligation {
@@ -167,14 +167,14 @@
 .screen--game .players[data-expanded="false"] .players__obligation { justify-content: center; }
 @keyframes scoreboard-reveal { from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateX(-8px); } to { opacity: 1; clip-path: inset(0); transform: none; } }
 @media (max-width: 649px) {
-  .screen--game:has(.players[data-testid="players-panel"]) { --score-width: 60px; --score-expanded-width: 196px; }
+  .screen--game:has(.players[data-testid="players-panel"]) { --score-width: 60px; --score-expanded-width: 208px; }
   .screen--game .players[data-testid="players-panel"],
   .screen--game .players[data-testid="players-panel"][data-expanded="true"] { margin-left: 4px !important; padding: 4px !important; max-height: calc(100% - 156px); }
   .screen--game .players .seat-list { grid-auto-rows: 70px; gap: 3px; }
   .screen--game .players .seat,
   .screen--game .players[data-expanded="false"] .seat { height: 70px; padding-inline: 2px 14px; }
-  .screen--game .players[data-expanded="true"] .seat__summary { width: 66px; }
-  .screen--game .players .players__details { left: 72px; right: 14px; top: 3px; bottom: 3px; }
+  .screen--game .players[data-expanded="true"] .seat__summary { width: 70px; }
+  .screen--game .players .players__details { left: 78px; right: 14px; top: 3px; bottom: 3px; }
   .screen--game .players .seat__name { font-size: .7rem; }
   .screen--game .players__header { gap: 4px; }
   .screen--game .players__pin { min-width: 40px; }

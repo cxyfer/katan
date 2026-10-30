@@ -8,9 +8,25 @@
   scrollbar-width: thin; z-index: 65; font-size: .72rem;
 }
 .screen--game .game__messages:empty { display: none; }
-.screen--game .game__messages .prompt { padding: 8px 10px; }
-.screen--game .game__messages .prompt h2 { font-size: .8rem; }
+.screen--game .game__messages .prompt {
+  position: relative; padding: 10px 12px; overflow: hidden;
+  background: #0d2c33f2; border: 1px solid #a7b49655; border-radius: 12px;
+  box-shadow: 0 10px 26px #03151d55;
+}
+/* 輪到自己時以金色描邊與頂端光帶強調，與「等待他人」的冷色卡明確區分。 */
+.screen--game .game__messages .prompt--mine {
+  background: linear-gradient(165deg, #2b3f35f5, #11302ff5 70%);
+  border-color: #e3bd79aa;
+  box-shadow: 0 0 0 1px #e3bd7926, 0 12px 30px #03151d66;
+}
+.screen--game .game__messages .prompt--mine::before {
+  content: ''; position: absolute; inset: 0 0 auto; height: 3px;
+  background: linear-gradient(90deg, transparent, #f1d59c, transparent);
+}
+.screen--game .game__messages .prompt h2 { font-size: .84rem; font-weight: 650; letter-spacing: .02em; }
+.screen--game .game__messages .prompt--mine h2 { color: #f6dda4; }
 .screen--game .game__messages .prompt p { font-size: .7rem; }
+.screen--game .game__messages .prompt > .button { width: 100%; min-height: 36px; margin-top: 8px; font-size: .76rem; }
 .screen--game .game__receipt { position: absolute; inset: auto 12px 52px auto; width: min(240px, calc(100% - 24px)); z-index: 67; pointer-events: none; }
 .screen--game .game__receipt:not(:has(.command-status)) { display: none; }
 .screen--game .game__receipt .command-status { padding: 10px 14px; font-size: .75rem; }
@@ -35,7 +51,15 @@
 /* 手牌展開時，右欄移到卡片上方；原欄位內容仍可捲動。 */
 @media (max-width: 649px) {
   .screen--game:has(.hand.hand-fan[data-expanded="true"]) .action-rail {
-    top: auto; bottom: 252px; transform: none;
-    max-height: min(104px, calc(100% - 260px));
+    top: auto; bottom: 302px; transform: none;
+    max-height: min(104px, calc(100% - 310px));
   }
+}
+/* 工具面板：關閉鈕只留圖示（名稱保留於 aria-label/title），紀錄面板不重複顯示與標題相同的小標。 */
+.screen--game .game-tools__close { width: 36px; min-width: 36px; height: 36px; min-height: 36px; padding: 0; border-radius: 8px; }
+.screen--game .game-tools__close > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.screen--game .game-tools__panel[data-testid="tool-panel-log"] > .panel > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (min-width: 900px) and (min-height: 521px) {
+  .screen--game .game-tools__tab,
+  .screen--game .game__menu > summary { min-height: 40px; padding-inline: .75rem; border-radius: 8px; font-size: .72rem; }
 }

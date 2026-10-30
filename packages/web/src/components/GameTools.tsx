@@ -90,7 +90,7 @@ export function GameTools({ controller }: { controller: TableController }) {
       <div className="game-tools__surface" hidden={tool === null} data-tool={tool ?? undefined}>
         <header className="game-tools__header">
           <h2 className="game-tools__title">{active ? t(active.label) : t('table.tools')}</h2>
-          <button type="button" className="button button--ghost game-tools__close" aria-label={t('table.closePanel')} onClick={close} data-testid="tool-close">
+          <button type="button" className="button button--ghost game-tools__close" aria-label={t('table.closePanel')} title={t('table.closePanel')} onClick={close} data-testid="tool-close">
             <GameIcon name="close" size={18} />
             <span>{t('table.closePanel')}</span>
           </button>
