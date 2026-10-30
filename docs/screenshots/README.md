@@ -9,7 +9,7 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 
 | Path | Contents | Captured from | Producer |
 |---|---|---|---|
-| [`current/`](current/) | Entry → home → lobby → setup → table → tools, full three-player flow, zh-Hant and en | `ca1e8db` (2026-10-30) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
+| [`current/`](current/) | Entry → home → lobby → setup → table → tools, full three-player flow, zh-Hant and en | `3264a94` (2026-10-30) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
 | [`hover-details/`](hover-details/) | Map-detail tooltips and collapsed/expanded rails, desktop and mobile | 2026-10-30 | `scripts/side-rails/verify.py`, see [work record](../aegis/work/2026-10-30-hover-details.md) |
 | [`table-ui-polish/`](table-ui-polish/) | Dice focus, hand-gain feedback, trade surface (desktop and mobile) | 2026-10-30 | `scripts/table-ui-polish/verify.py`, see [work record](../aegis/work/2026-10-30-table-ui-polish.md) |
 | [`island-diorama/`](island-diorama/README.md) | Standalone 3D island preview at several camera angles and sizes, plus game-surface checks | 2026-10-29 | `scripts/board-3d/verify-diorama.py`, see [work record](../aegis/work/2026-10-29-island-diorama.md) |
@@ -20,7 +20,7 @@ commit named in its record.
 
 ## `current/`
 
-Captured on 2026-10-30 from `ca1e8db` (the `pnpm build` output served on
+Captured on 2026-10-30 from `3264a94` (the `pnpm build` output served on
 `127.0.0.1:3000`), with a real three-player game driven through the UI. Every
 capture is at device scale factor 1. The script makes no assertions; it fails
 on any browser runtime error.
