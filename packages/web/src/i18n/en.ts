@@ -146,6 +146,10 @@ export const en: Catalog = {
   'home.pane.resume': 'Resume',
   'home.pane.rooms': 'Public rooms',
   'home.pane.identity': 'Identity',
+  'home.paneHint.table': 'Host a new table or join with a code',
+  'home.paneHint.resume': 'Return to a game in progress',
+  'home.paneHint.rooms': 'Find a public table with open seats',
+  'home.paneHint.identity': 'Change your display name',
   'home.refreshRooms': 'Refresh room list',
   'home.roomListEmpty': 'No public rooms match the current filters.',
 
@@ -218,6 +222,7 @@ export const en: Catalog = {
   'lobby.youAreHost': 'You are the host.',
   'lobby.capacityNote': 'Capacity must be between 3 and 6.',
   'lobby.inviteCopied': 'Invite code copied.',
+  'lobby.copyInvite': 'Copy code',
   'lobby.notHost': 'Only the host can change settings or start the game.',
 
   // --- board ---------------------------------------------------------------

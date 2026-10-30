@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { useT } from '../i18n/context.tsx';
 
 /** 原創向量圖形只負責呈現，不持有遊戲狀態。 */
@@ -36,11 +36,113 @@ export function GameIcon({ name, size = 20, className = '' }: { name: string; si
   return <svg className={`game-icon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{paths[name] ?? paths.compass}</svg>;
 }
 
+/** 遊戲徽記：黃銅六角框內的七格地形花窗，對應棋盤的六角地形語彙。 */
+export function HexEmblem({ size = 40, className = '' }: { size?: number; className?: string }) {
+  const brassId = `hex-emblem-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const cell = (r: number) => `0,${-r} ${r * .866},${-r / 2} ${r * .866},${r / 2} 0,${r} ${-r * .866},${r / 2} ${-r * .866},${-r / 2}`;
+  const tiles = [
+    { x: 0, y: 0, fill: '#e3c173' },
+    { x: 0, y: -17.3, fill: '#9eaaa4' },
+    { x: 15, y: -8.66, fill: '#d39a72' },
+    { x: 15, y: 8.66, fill: '#7f9a69' },
+    { x: 0, y: 17.3, fill: '#afc786' },
+    { x: -15, y: 8.66, fill: '#d6bb72' },
+    { x: -15, y: -8.66, fill: '#6f8c5e' },
+  ];
+  return <svg className={`hex-emblem ${className}`} width={size} height={size} viewBox="-50 -50 100 100" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id={brassId} x1="0" y1="-1" x2="0" y2="1">
+        <stop offset="0" stopColor="#f6dca0" />
+        <stop offset=".55" stopColor="#d4a356" />
+        <stop offset="1" stopColor="#8f6630" />
+      </linearGradient>
+    </defs>
+    <polygon points={cell(47)} fill={`url(#${brassId})`} />
+    <polygon points={cell(41)} fill="#0f3440" />
+    <g transform="rotate(30)">
+      {tiles.map((tile) => <polygon key={`${tile.x}:${tile.y}`} points={cell(9.4)} transform={`translate(${tile.x} ${tile.y}) rotate(-30)`} fill={tile.fill} stroke="#0f3440" strokeWidth="1.2" />)}
+    </g>
+    <path d="M-5 3.5v-4l5-4 5 4v4Z" fill="#c8553d" stroke="#3b2418" strokeWidth="1.2" strokeLinejoin="round" />
+  </svg>;
+}
+
 export function GameBrand({ compact = false }: { compact?: boolean }) {
   const t = useT();
   return <div className={`game-brand${compact ? ' game-brand--compact' : ''}`}>
-    <span className="game-brand__mark"><GameIcon name="compass" size={29} /></span>
+    <span className="game-brand__mark"><HexEmblem size={compact ? 34 : 44} /></span>
     <span className="game-brand__name">{t('app.title')}{!compact && <span className="game-brand__tagline">{t('app.tagline')}</span>}</span>
+  </div>;
+}
+
+/**
+ * 大型標題字標，只用在入口畫面；字面即遊戲名稱，作為該頁的 h1。
+ */
+export function GameLogo({ id }: { id?: string }) {
+  const t = useT();
+  return <div className="game-logo">
+    <HexEmblem size={92} className="game-logo__emblem" />
+    <h1 className="game-logo__title" id={id}>{t('app.title')}</h1>
+    <p className="game-logo__tagline">{t('app.tagline')}</p>
+  </div>;
+}
+
+/**
+ * 賽前畫面的全幅背景：黃昏天空、遠方島影與緩慢起伏的海浪。
+ * 純裝飾，不帶任何遊戲狀態；減少動態偏好下由全域規則停止動畫。
+ */
+export function PregameScene({ withIsland = false }: { withIsland?: boolean }) {
+  const wave = (y: number, amp: number) => {
+    let d = `M0 ${y}`;
+    for (let x = 0; x < 3200; x += 80) d += ` q20 ${-amp} 40 0 t40 0`;
+    return d;
+  };
+  return <div className="pregame-scene" aria-hidden="true">
+    <svg className="pregame-scene__sky" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" focusable="false">
+      <defs>
+        <linearGradient id="pregame-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#0d2235" />
+          <stop offset=".45" stopColor="#24405a" />
+          <stop offset=".78" stopColor="#7d6a6b" />
+          <stop offset="1" stopColor="#e2a46c" />
+        </linearGradient>
+        <linearGradient id="pregame-sea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#3f7f80" />
+          <stop offset=".25" stopColor="#1d5560" />
+          <stop offset="1" stopColor="#06202c" />
+        </linearGradient>
+        <radialGradient id="pregame-sun-glow">
+          <stop offset="0" stopColor="#ffd99a" stopOpacity=".75" />
+          <stop offset=".35" stopColor="#f2a865" stopOpacity=".28" />
+          <stop offset="1" stopColor="#f2a865" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="1600" height="472" fill="url(#pregame-sky)" />
+      <circle cx="1170" cy="455" r="330" fill="url(#pregame-sun-glow)" />
+      <circle cx="1170" cy="452" r="58" fill="#ffe2a8" />
+      <g fill="#f5d3a6" opacity=".22" transform="translate(0 -110)">
+        <ellipse cx="1320" cy="250" rx="220" ry="8" /><ellipse cx="1220" cy="270" rx="130" ry="5" />
+      </g>
+      <g transform="translate(0 -130)">
+        <path d="M0 600V585l70-14 60 6 90-30 70 22 80 6 50 10 30 15ZM860 600l40-14 70-30 55 20 40 6 35 18Z" fill="#33505c" />
+      <path d="M1380 600l50-22 40 8 60-24 70 26v12Z" fill="#2d4855" />
+      </g>
+      <rect y="468" width="1600" height="432" fill="url(#pregame-sea)" />
+      <g fill="#ffe0a8" className="pregame-scene__glint" transform="translate(0 -130)">
+        <rect x="1110" y="606" width="120" height="3" rx="1.5" opacity=".7" />
+        <rect x="1130" y="620" width="80" height="3" rx="1.5" opacity=".55" />
+        <rect x="1095" y="636" width="150" height="3" rx="1.5" opacity=".35" />
+        <rect x="1140" y="656" width="60" height="3" rx="1.5" opacity=".3" />
+        <rect x="1080" y="680" width="170" height="3" rx="1.5" opacity=".18" />
+      </g>
+    </svg>
+    <svg className="pregame-scene__waves" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" focusable="false">
+      <g fill="none" strokeLinecap="round">
+        <path className="pregame-scene__wave pregame-scene__wave--far" d={wave(520, 4)} stroke="#a6d3cc" strokeOpacity=".22" strokeWidth="2" />
+        <path className="pregame-scene__wave pregame-scene__wave--mid" d={wave(630, 7)} stroke="#a6d3cc" strokeOpacity=".16" strokeWidth="2.5" />
+        <path className="pregame-scene__wave pregame-scene__wave--near" d={wave(780, 11)} stroke="#a6d3cc" strokeOpacity=".11" strokeWidth="3" />
+      </g>
+    </svg>
+    {withIsland && <div className="pregame-scene__island"><IslandIllustration /></div>}
   </div>;
 }
 
@@ -102,7 +204,8 @@ export function IslandIllustration({ className = '' }: { className?: string }) {
     { x: 0, y: 100, terrain: 'fields', fill: '#d6bb72' },
   ];
   return <svg className={`island-illustration ${className}`} viewBox="0 0 680 510" fill="none" aria-hidden="true" focusable="false">
-    <ellipse cx="340" cy="320" rx="252" ry="151" fill="#061d29" opacity=".38" />
+    <ellipse cx="340" cy="320" rx="252" ry="151" fill="#3f8f8a" opacity=".45" />
+    <ellipse cx="340" cy="312" rx="214" ry="122" fill="#7cc0b2" opacity=".28" />
     <g className="island-illustration__ripples" stroke="#6ba6a4" opacity=".25"><ellipse cx="340" cy="290" rx="273" ry="170" /><ellipse cx="340" cy="290" rx="305" ry="191" strokeDasharray="4 11" /><path d="M27 345h38m-18 12h36m487-168h49m-22 13h42M106 112h29m-13 11h44" /></g>
     <g transform="translate(340 251) rotate(-8) scale(1.07 .84)">
       {tiles.map((tile) => <g key={`${tile.x}-${tile.y}`} transform={`translate(${tile.x} ${tile.y})`}><polygon points={hex} transform="translate(0 16)" fill="#b39b6d" stroke="#675b43" strokeWidth="3" /><polygon points={hex} fill={tile.fill} stroke="#e7d7a4" strokeWidth="4" /><polygon points="0,-57 49,-28 49,28 0,57 -49,28 -49,-28" stroke="#fff4cc" opacity=".25" /><TerrainIllustration terrain={tile.terrain} y={5} scale={.7} /></g>)}

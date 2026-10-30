@@ -3,7 +3,7 @@ import type { RoomPolicy } from '@catan/protocol';
 import { POLICY_BOUNDS } from '@catan/protocol';
 import { useT } from '../i18n/context.tsx';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
-import { GameBrand, GameIcon } from './GameArt.tsx';
+import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
 import type { ScreenProps } from './props.ts';
 
@@ -23,6 +23,7 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const { state, actions } = controller;
   const room = state.room;
   const [policyDraft, setPolicyDraft] = useState<RoomPolicy | null>(null);
+  const [copied, setCopied] = useState(false);
 
   if (!room) {
     return (
@@ -50,25 +51,55 @@ export function LobbyScreen({ controller }: ScreenProps) {
   };
 
   return (
-    <main className="screen screen--lobby" id="main">
-      <header className="screen__header game-header">
+    <main className="screen screen--lobby pregame" id="main">
+      <PregameScene />
+      <header className="pregame__topbar">
         <GameBrand compact />
         <LanguageSwitch onChange={actions.setLocale} />
       </header>
 
-      <div className="lobby__heading">
-        <p className="hero__eyebrow"><GameIcon name="anchor" />{t('island.lobby.eyebrow')}</p>
-        <h1 className="hero__title">{t('island.lobby.title')}</h1>
-        <p className="hero__description">{t('island.lobby.description')}</p>
-        <p className="lobby__summary muted">
-          {t(`profile.${room.profileId}`)} · {t(`lobby.roomStatus.${room.status}`)} ·{' '}
-          {t('lobby.capacity')}: {room.members.length}/{room.capacity}
-        </p>
+      <div className="lobby__banner">
+        <div className="lobby__heading">
+          <h1 className="lobby__title">{t('island.lobby.title')}</h1>
+          <p className="lobby__description">{t('island.lobby.description')}</p>
+          <ul className="lobby__summary" aria-label={t('lobby.rulesSummary')}>
+            <li><GameIcon name="book" size={15} />{t(`profile.${room.profileId}`)}</li>
+            <li><GameIcon name="compass" size={15} />{t(`lobby.roomStatus.${room.status}`)}</li>
+            <li><GameIcon name="mountain" size={15} />{t('lobby.setupMode.' + room.setupMode)}</li>
+            <li><GameIcon name={room.visibility === 'public' ? 'globe' : 'key'} size={15} />{t('lobby.visibility.' + room.visibility)}</li>
+          </ul>
+        </div>
+
+        <section className="lobby-invite" aria-labelledby="invite-heading">
+          <h2 id="invite-heading" className="lobby-invite__label">{t('lobby.inviteCode')}</h2>
+          <p className="lobby-invite__code"><code data-testid="room-code">{room.code}</code></p>
+          <div className="lobby-invite__actions">
+            <button
+              type="button"
+              className="button button--ghost button--small"
+              onClick={() => {
+                void navigator.clipboard?.writeText(room.code).then(() => {
+                  setCopied(true);
+                  window.setTimeout(() => setCopied(false), 2400);
+                }, () => setCopied(false));
+              }}
+            >
+              <GameIcon name={copied ? 'check' : 'copy'} size={16} />{t('lobby.copyInvite')}
+            </button>
+            <span className="lobby-invite__copied" role="status">{copied ? t('lobby.inviteCopied') : ''}</span>
+          </div>
+          <p className="lobby-invite__hint">{t('island.lobby.inviteDescription')}</p>
+          {host && (
+            <p className="lobby-invite__host" data-testid="host-name">
+              <GameIcon name="crown" size={16} />{t('app.host')}: {host.nickname}
+            </p>
+          )}
+        </section>
       </div>
 
       <div className="lobby__grid">
         <div className="lobby__main">
-          <section className="card lobby-players" aria-labelledby="seats-heading">
+          <section className="plaque lobby-players" aria-labelledby="seats-heading">
             <div className="section-heading">
               <span className="section-heading__icon"><GameIcon name="users" size={25} /></span>
               <div className="section-heading__copy"><h2 id="seats-heading">{t('lobby.members')}</h2></div>
@@ -155,74 +186,9 @@ export function LobbyScreen({ controller }: ScreenProps) {
             )}
           </section>
 
-          <section className="card lobby-rules" aria-labelledby="rules-heading">
-            <div className="section-heading">
-              <span className="section-heading__icon"><GameIcon name="book" size={23} /></span>
-              <div className="section-heading__copy"><h2 id="rules-heading">{t('lobby.rulesSummary')}</h2></div>
-            </div>
-            <p><strong>{t(`profile.${room.profileId}`)}</strong></p>
-            <p className="muted">{t('lobby.setupMode.' + room.setupMode)}</p>
-            {profile?.paired && <p className="muted">{t('lobby.pairedNote')}</p>}
-          </section>
+          {profile?.paired && <p className="lobby__paired-note">{t('lobby.pairedNote')}</p>}
           <PolicyProposalPanel controller={controller} />
-        </div>
-
-        <div className="lobby__aside">
-          <section className="card lobby-invite" aria-labelledby="invite-heading">
-            <div className="section-heading">
-              <span className="section-heading__icon"><GameIcon name="key" size={23} /></span>
-              <div className="section-heading__copy"><h2 id="invite-heading">{t('lobby.inviteCode')}</h2></div>
-            </div>
-            <p className="muted">{t('island.lobby.inviteDescription')}</p>
-            <p className="lobby-invite__code"><code data-testid="room-code">{room.code}</code></p>
-            <p className="muted">
-              {t('lobby.visibility.' + room.visibility)} · {t('lobby.setupMode.' + room.setupMode)}
-            </p>
-            {host && (
-              <p className="lobby-invite__host muted" data-testid="host-name">
-                <GameIcon name="crown" size={17} />{t('app.host')}: {host.nickname}
-              </p>
-            )}
-          </section>
-
-          <section className="card lobby-start" aria-labelledby="start-heading">
-            <h2 id="start-heading">{t('lobby.start')}</h2>
-            {startBlockers.length > 0 ? (
-              <div className="lobby-start__blockers" id="start-blockers" data-testid="start-blockers" role="status">
-                <p><strong>{t('lobby.startBlocked')}</strong></p>
-                <ul>
-                  {startBlockers.map((blocker, index) => (
-                    <li key={`${blocker.messageId}-${index}`}>
-                      {t(blocker.messageId, blocker.params)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : <p className="muted">{t('island.lobby.readyToStart')}</p>}
-            {!isHost && <p className="muted">{t('lobby.notHost')}</p>}
-            <button
-              type="button"
-              className="button button--primary"
-              data-testid="start-game"
-              disabled={!canStart}
-              aria-describedby={startBlockers.length > 0 ? 'start-blockers' : undefined}
-              onClick={() => void actions.startGame()}
-            >
-              <GameIcon name="ship" />{t('lobby.start')}
-            </button>
-            <div className="form-actions lobby-start__leave">
-              <button type="button" className="button button--ghost" data-testid="leave-room" onClick={() => void actions.leaveRoom()}>
-                {t('lobby.leave')}
-              </button>
-              {isHost && (
-                <button type="button" className="button button--ghost" data-testid="close-room" onClick={() => void actions.closeRoom()}>
-                  {t('lobby.closeRoom')}
-                </button>
-              )}
-            </div>
-          </section>
-
-          <section className="card lobby-policy" aria-labelledby="policy-heading">
+          <section className="plaque lobby-policy" aria-labelledby="policy-heading">
             <div className="section-heading">
               <span className="section-heading__icon"><GameIcon name="settings" size={23} /></span>
               <div className="section-heading__copy"><h2 id="policy-heading">{t('lobby.policyTitle')}</h2></div>
@@ -280,6 +246,46 @@ export function LobbyScreen({ controller }: ScreenProps) {
               {room.status === 'lobby' ? t('lobby.policy.save') : t('lobby.policyPropose')}
             </button>
           </section>
+        </div>
+
+        <div className="lobby__aside">
+          <section className="plaque lobby-start" aria-labelledby="start-heading">
+            <h2 id="start-heading">{t('lobby.start')}</h2>
+            {startBlockers.length > 0 ? (
+              <div className="lobby-start__blockers" id="start-blockers" data-testid="start-blockers" role="status">
+                <p><strong>{t('lobby.startBlocked')}</strong></p>
+                <ul>
+                  {startBlockers.map((blocker, index) => (
+                    <li key={`${blocker.messageId}-${index}`}>
+                      {t(blocker.messageId, blocker.params)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : <p className="muted">{t('island.lobby.readyToStart')}</p>}
+            {!isHost && <p className="muted">{t('lobby.notHost')}</p>}
+            <button
+              type="button"
+              className="button button--primary button--hero"
+              data-testid="start-game"
+              disabled={!canStart}
+              aria-describedby={startBlockers.length > 0 ? 'start-blockers' : undefined}
+              onClick={() => void actions.startGame()}
+            >
+              <GameIcon name="ship" />{t('lobby.start')}
+            </button>
+            <div className="form-actions lobby-start__leave">
+              <button type="button" className="button button--ghost" data-testid="leave-room" onClick={() => void actions.leaveRoom()}>
+                {t('lobby.leave')}
+              </button>
+              {isHost && (
+                <button type="button" className="button button--ghost" data-testid="close-room" onClick={() => void actions.closeRoom()}>
+                  {t('lobby.closeRoom')}
+                </button>
+              )}
+            </div>
+          </section>
+
         </div>
       </div>
 
