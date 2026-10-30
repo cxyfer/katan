@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { RESOURCES } from '@catan/rules';
 import { useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
@@ -57,6 +57,8 @@ export function HandPanel({ controller }: { controller: TableController }) {
   const suppressClickRef = useRef(false);
   const swipeStartRef = useRef<number | null>(null);
   const focusedCardRef = useRef(0);
+  const focusInsideRef = useRef(false);
+  const tallyMemory = useRef<Record<string, { label: string; bumped: boolean }>>({});
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cancelClose = () => {
@@ -69,6 +71,19 @@ export function HandPanel({ controller }: { controller: TableController }) {
     const next = (focusedCardRef.current + direction + faces.length) % faces.length;
     setInspected(null);
     faces[next]?.focus();
+  };
+  const inspectEdge = (last: boolean) => {
+    const faces = handRef.current?.querySelectorAll<HTMLButtonElement>(CARD_FACES);
+    if (!faces?.length) return;
+    setInspected(null);
+    faces[last ? faces.length - 1 : 0]?.focus();
+  };
+  // 只在數字實際變動後播放跳動提示；首次掛載與無關的重新渲染都不觸發。
+  const tallyBumped = (key: string, label: string) => {
+    const previous = tallyMemory.current[key];
+    if (!previous) tallyMemory.current[key] = { label, bumped: false };
+    else if (previous.label !== label) tallyMemory.current[key] = { label, bumped: true };
+    return tallyMemory.current[key]!.bumped;
   };
   const collapse = () => {
     cancelClose();
@@ -92,6 +107,17 @@ export function HandPanel({ controller }: { controller: TableController }) {
   useEffect(() => () => {
     if (closeTimer.current !== null) clearTimeout(closeTimer.current);
   }, []);
+  const heldKey = held.map(({ resource, copy }) => `${resource}-${copy}`).join(' ');
+  useLayoutEffect(() => {
+    // 牌數減少時，被檢視或持有焦點的那張牌可能已卸載：清掉殘留的檢視狀態，並把焦點留在手牌內。
+    if (inspected && !heldKey.split(' ').includes(inspected)) setInspected(null);
+    const active = document.activeElement;
+    if (focusInsideRef.current && (!active || active === document.body)) {
+      const faces = handRef.current?.querySelectorAll<HTMLButtonElement>(CARD_FACES);
+      const target = faces?.length ? faces[Math.min(focusedCardRef.current, faces.length - 1)] : handRef.current;
+      target?.focus();
+    }
+  }, [heldKey]);
   useEffect(() => {
     if (!expanded) return;
     const outside = (event: PointerEvent) => {
@@ -144,6 +170,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
         }
       }}
       onFocusCapture={(event) => {
+        focusInsideRef.current = true;
         cancelClose();
         setExpanded(true);
         const face = event.target.closest('.hand-fan__card')?.querySelector(CARD_FACES);
@@ -154,6 +181,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
       }}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          focusInsideRef.current = false;
           touchOpenRef.current = false;
           scheduleClose();
         }
@@ -161,6 +189,12 @@ export function HandPanel({ controller }: { controller: TableController }) {
       onKeyDown={(event) => {
         if (event.defaultPrevented) return;
         if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); collapse(); }
+        // 同種資源只佔一個 Tab 停駐點；方向鍵與 Home／End 逐張瀏覽整副手牌。
+        if (event.target instanceof Element && event.target.matches(CARD_FACES)) {
+          const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+          if (step !== undefined) { event.preventDefault(); inspectAdjacent(step); }
+          if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); inspectEdge(event.key === 'End'); }
+        }
         if ((event.key === 'Enter' || event.key === ' ') && event.target === event.currentTarget) {
           event.preventDefault();
           setExpanded(true);
@@ -179,9 +213,9 @@ export function HandPanel({ controller }: { controller: TableController }) {
             return (
               <li key={id} className={`hand-fan__card hand-card hand-card--${resource}${isInspected ? ' hand-card--inspected' : ''}`}
                 style={fanStyles[index]} data-testid={`resource-card-${resource}-${copy}`} data-resource={resource}>
-                <button type="button" className="hand-card__face"
+                <button type="button" className="hand-card__face" tabIndex={copy === 0 ? undefined : -1}
                   aria-label={t('table.resourceCard', { resource: t(`resource.${resource}`), index: formatNumber(state.locale, copy + 1), count: formatNumber(state.locale, resources?.[resource] ?? 0) })}
-                  aria-pressed={isInspected} aria-describedby={`hand-hint hand-card-use-${id}`}
+                  aria-pressed={isInspected} aria-describedby={`hand-card-use-${id}`}
                   onClick={() => setInspected((current) => current === id ? null : id)}>
                   <span className="hand-card__art"><ResourceCardArt resource={resource} /></span>
                   <span className="hand-card__pip"><ResourceGlyph resource={resource} size={17} /></span>
@@ -203,18 +237,21 @@ export function HandPanel({ controller }: { controller: TableController }) {
           const label = count === undefined ? '—' : formatNumber(state.locale, count);
           return (
             <li key={resource} className={`resource-tally__item resource-tally__item--${resource}${count ? '' : ' resource-tally__item--empty'}`}
-              data-testid={`resource-${resource}`} title={t(`resource.${resource}`)}>
+              data-testid={`resource-${resource}`}>
               <span className="resource-tally__icon"><ResourceGlyph resource={resource} size={16} /></span>
               <span className="visually-hidden">{t(`resource.${resource}`)}</span>
-              {/* 以數量為 key，數字變動時重新掛載以播放跳動提示。 */}
-              <span key={label} className="resource-tally__count">{label}</span>
+              {/* 以數量為 key，數字變動時重新掛載才會重播跳動提示。 */}
+              <span key={label} className={`resource-tally__count${tallyBumped(resource, label) ? ' resource-tally__count--bump' : ''}`}>{label}</span>
             </li>
           );
         })}
-        <li className="resource-tally__item resource-tally__item--total" data-testid="resource-tally-total" title={t('play.handSize')}>
+        <li className="resource-tally__item resource-tally__item--total" data-testid="resource-tally-total">
           <span className="resource-tally__icon"><GameIcon name="cards" size={15} /></span>
           <span className="visually-hidden">{t('play.handSize')}</span>
-          <span className="resource-tally__count">{formatNumber(state.locale, totalHandCards)}</span>
+          {(() => {
+            const label = formatNumber(state.locale, totalHandCards);
+            return <span key={label} className={`resource-tally__count${tallyBumped('total', label) ? ' resource-tally__count--bump' : ''}`}>{label}</span>;
+          })()}
         </li>
       </ul>
       <HandGainOverlay gains={gains} anchorRef={tallyRef} />

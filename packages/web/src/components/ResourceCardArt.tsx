@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { memo, useId } from 'react';
 import type { Resource } from '@catan/rules';
 import { TerrainIllustration } from './GameArt.tsx';
 
@@ -10,8 +10,8 @@ const PALETTES: Record<Resource, { sky: string; light: string; far: string; near
   ore: { sky: '#789da8', light: '#e3e4cd', far: '#8b9b9a', near: '#667b82', ground: '#405967' },
 };
 
-/** 原創卡面風景；與棋盤共用地形畫法，不讀取遊戲或手牌資料。 */
-export function ResourceCardArt({ resource }: { resource: Resource }) {
+/** 原創卡面風景；與棋盤共用地形畫法，不讀取遊戲或手牌資料。每張手牌各有一份，以 memo 避免重繪。 */
+export const ResourceCardArt = memo(function ResourceCardArt({ resource }: { resource: Resource }) {
   const id = useId();
   const palette = PALETTES[resource];
   return (
@@ -50,4 +50,4 @@ export function ResourceCardArt({ resource }: { resource: Resource }) {
       </g>
     </svg>
   );
-}
+});

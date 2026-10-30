@@ -133,6 +133,8 @@
   background: #0c272de8; border: 1px solid #b9a87566; border-radius: 999px;
   box-shadow: 0 4px 14px #00131c66; backdrop-filter: blur(4px); white-space: nowrap;
 }
+/* 純顯示，不攔截下方棋盤的點擊（蓋過 .game__dock > * 的 pointer-events: auto）。 */
+.game__dock .resource-tally { pointer-events: none; }
 .resource-tally__item {
   --rc: #6f8e68;
   display: flex; align-items: center; gap: 5px; padding: 2px 9px 2px 2px; border-radius: 999px;
@@ -149,8 +151,9 @@
 }
 .resource-tally__count {
   display: inline-block; min-width: 1ch; color: #fff3d2; font-size: .92rem; font-weight: 750;
-  font-variant-numeric: tabular-nums; line-height: 1; animation: resource-tally-pop 380ms ease-out;
+  font-variant-numeric: tabular-nums; line-height: 1;
 }
+.resource-tally__count--bump { animation: resource-tally-pop 380ms ease-out; }
 .resource-tally__item--empty { opacity: .42; }
 .resource-tally__item--empty .resource-tally__icon { filter: saturate(.3); }
 .resource-tally__item--total { margin-left: 2px; padding-left: 7px; border-left: 1px solid #b9a87555; border-radius: 0 999px 999px 0; }

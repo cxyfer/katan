@@ -158,4 +158,36 @@ describe('held card fan', () => {
     expect(styles[1]!['--hand-position']).toBeCloseTo(1 / 2.6 * 2 - 1);
     expect(styles[2]!['--hand-position']).toBe(1);
   });
+
+  it('keeps one tab stop per kind and walks every card with the arrow, Home and End keys', async () => {
+    const view = makeView();
+    view.players[0]!.resources = { lumber: 2, brick: 0, wool: 1, grain: 0, ore: 0 };
+    view.players[0]!.handSize = 3;
+    await open(view);
+    const face = (id: string) => screen.getByTestId(id).querySelector('button')!;
+    expect(face('resource-card-lumber-0').tabIndex).toBe(0);
+    expect(face('resource-card-lumber-1').tabIndex).toBe(-1);
+    expect(face('resource-card-wool-0').tabIndex).toBe(0);
+    act(() => face('resource-card-lumber-0').focus());
+    fireEvent.keyDown(face('resource-card-lumber-0'), { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(face('resource-card-lumber-1'));
+    fireEvent.keyDown(document.activeElement!, { key: 'End' });
+    // 最後一張是唯一的發展卡（騎士）
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Inspect Knight/ }));
+    fireEvent.keyDown(document.activeElement!, { key: 'Home' });
+    expect(document.activeElement).toBe(face('resource-card-lumber-0'));
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Inspect Knight/ }));
+  });
+
+  it('places development cards after every resource card in the fan order', async () => {
+    const view = makeView();
+    view.players[0]!.devCards = ['monopoly'];
+    view.players[0]!.newDevCards = ['knight'];
+    await open(view);
+    const cards = Array.from(screen.getByTestId('hand-panel').querySelectorAll<HTMLElement>('.hand-fan__card'));
+    expect(cards.map((card) => card.style.getPropertyValue('--card-index'))).toEqual(cards.map((_, index) => String(index)));
+    expect(cards.slice(-2).every((card) => card.classList.contains('development-card'))).toBe(true);
+    expect(cards.at(-1)!.style.getPropertyValue('--hand-position')).toBe('1');
+  });
 });
