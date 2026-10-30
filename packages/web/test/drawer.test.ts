@@ -3,7 +3,7 @@ import { initialTableState, tableReducer } from '../src/state/table.ts';
 import { makeChatMessage } from '../src/test/fixtures.ts';
 
 describe('drawer chat visibility', () => {
-  it.each(['none', 'hand', 'trade', 'help'] as const)('counts messages after leaving chat for %s and keeps the draft', (drawer) => {
+  it.each(['none', 'hand', 'trade', 'exchange', 'help'] as const)('counts messages after leaving chat for %s and keeps the draft', (drawer) => {
     let state = tableReducer(initialTableState('en'), { type: 'chat', event: { kind: 'draft', text: 'unfinished hello' } });
     state = tableReducer(state, { type: 'drawer', drawer: 'chat' });
     state = tableReducer(state, { type: 'chat', event: { kind: 'server-message', message: makeChatMessage({ id: 'visible', seq: 1, playerId: 'p2' }), selfId: 'p1' } });

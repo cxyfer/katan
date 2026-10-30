@@ -29,7 +29,7 @@ import {
 
 export type Screen = 'entry' | 'home' | 'lobby' | 'game' | 'result';
 export type ConnectionState = 'online' | 'offline' | 'reconnecting';
-export type DrawerPanel = 'none' | 'hand' | 'trade' | 'chat' | 'help';
+export type DrawerPanel = 'none' | 'hand' | 'trade' | 'exchange' | 'chat' | 'help';
 
 export type GameSyncCause = 'open' | 'resume' | 'reconnect' | 'gap' | 'snapshot' | 'command' | 'refresh' | 'events';
 export type GameSyncBoundary = Extract<GameSyncCause, 'open' | 'resume' | 'reconnect' | 'gap'>;

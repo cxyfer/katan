@@ -1,0 +1,5912 @@
+{
+  "sourceHead": "6fb4b43622154b3caf50f5962a67b2f2e0e1f72a",
+  "buildDigest": "bc1fcf1aaae33f7ab781292070cb482f40fe716fed35a64d43be6bc06ecf3c05",
+  "assets": {
+    "assets/BoardScene3D-k8B0JvLd.js": {
+      "sha256": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6",
+      "bytes": 954597
+    },
+    "assets/BoardScene3D-k8B0JvLd.js.map": {
+      "sha256": "fe178a81d5fbf0d5771a538a5b49878ecca9fbe119b31f94a89ffad5e562fe0d",
+      "bytes": 4364844
+    },
+    "assets/IslandPreview-6VpjSEr9.css": {
+      "sha256": "01320e60a675adf503f3e581c335f5ab3b634df087425e3ada59a6f899a8c1db",
+      "bytes": 7621
+    },
+    "assets/IslandPreview-RSC6WYfF.js": {
+      "sha256": "3e952c9a20798174ff7343623d8105b3a9efd8b8cfbcdda3c99c150250b0cbb2",
+      "bytes": 8383
+    },
+    "assets/IslandPreview-RSC6WYfF.js.map": {
+      "sha256": "f15c99dd0f0edd66e4c8542c3b5ca8009b4240e9dfd3b57648b49845d12f149c",
+      "bytes": 20643
+    },
+    "assets/board-atlas-CYx_3mJD.svg": {
+      "sha256": "a5feda529e3aa794fcbb270a87030a04547f46747da22b5ee54a44e300b00f18",
+      "bytes": 9652
+    },
+    "assets/index-DudUu8Ly.js": {
+      "sha256": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+      "bytes": 485888
+    },
+    "assets/index-DudUu8Ly.js.map": {
+      "sha256": "19c3ba178726dee3275e6bf95420e074f8188da53c03cb20223cc0ec6dad53bd",
+      "bytes": 1904779
+    },
+    "assets/index-YdLLjNon.css": {
+      "sha256": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+      "bytes": 111580
+    },
+    "index.html": {
+      "sha256": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+      "bytes": 473
+    }
+  },
+  "fixtureDigest": "d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55",
+  "scope": "Built frontend, deterministic API/WebSocket fixtures, Chromium only.",
+  "fixtureOverrides": "Synthetic contiguous public event/dice and own-resource gain snapshots.",
+  "limitations": [
+    "No real server command execution, physical device, screen reader or other browser engine.",
+    "Clock-controlled timing checks do not measure native animation smoothness."
+  ],
+  "cases": [
+    {
+      "name": "svg-desktop-en",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "en",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 22,
+              "y": 161.65625,
+              "width": 520,
+              "height": 545.34375,
+              "top": 161.65625,
+              "right": 542,
+              "bottom": 707,
+              "left": 22
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 543,
+            "scrollHeight": 543,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 23,
+              "y": 218.4375,
+              "width": 518,
+              "height": 487.5625,
+              "top": 218.4375,
+              "right": 541,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 23,
+              "y": 218.4375,
+              "width": 518,
+              "height": 487.5625,
+              "top": 218.4375,
+              "right": 541,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 39,
+              "y": 312.09375,
+              "width": 486,
+              "height": 281.875,
+              "top": 312.09375,
+              "right": 525,
+              "bottom": 593.96875,
+              "left": 39
+            },
+            "clientWidth": 486,
+            "scrollWidth": 486,
+            "clientHeight": 282,
+            "scrollHeight": 282,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 39,
+            "y": 312.09375,
+            "width": 237.796875,
+            "height": 269.875
+          },
+          "want": {
+            "x": 287.1875,
+            "y": 312.09375,
+            "width": 237.8125,
+            "height": 269.875
+          },
+          "verticalScrollingRequired": false,
+          "exchange": {
+            "rect": {
+              "x": 23,
+              "y": 471.9375,
+              "width": 408,
+              "height": 234.0625,
+              "top": 471.9375,
+              "right": 431,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 408,
+            "scrollWidth": 408,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 175.65625,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 628.3125,
+                "y": 8,
+                "width": 300,
+                "height": 315.75
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 650.3125,
+                "y": 79.90625,
+                "width": 300,
+                "height": 225.40625
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 628.3125,
+                "y": 137.53125,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-34",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 416.953125,
+                "y": 233.828125,
+                "width": 300,
+                "height": 187.03125
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 1366,
+          "height": 768,
+          "viewportWidth": 1366,
+          "viewportHeight": 768,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db"
+      }
+    },
+    {
+      "name": "svg-desktop-zh-Hant",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "zh-Hant",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 22,
+              "y": 161.65625,
+              "width": 520,
+              "height": 545.34375,
+              "top": 161.65625,
+              "right": 542,
+              "bottom": 707,
+              "left": 22
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 543,
+            "scrollHeight": 543,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 23,
+              "y": 218.4375,
+              "width": 518,
+              "height": 487.5625,
+              "top": 218.4375,
+              "right": 541,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 23,
+              "y": 218.4375,
+              "width": 518,
+              "height": 487.5625,
+              "top": 218.4375,
+              "right": 541,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 39,
+              "y": 312.09375,
+              "width": 486,
+              "height": 281.875,
+              "top": 312.09375,
+              "right": 525,
+              "bottom": 593.96875,
+              "left": 39
+            },
+            "clientWidth": 486,
+            "scrollWidth": 486,
+            "clientHeight": 282,
+            "scrollHeight": 282,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 39,
+            "y": 312.09375,
+            "width": 237.796875,
+            "height": 269.875
+          },
+          "want": {
+            "x": 287.1875,
+            "y": 312.09375,
+            "width": 237.8125,
+            "height": 269.875
+          },
+          "verticalScrollingRequired": false,
+          "exchange": {
+            "rect": {
+              "x": 23,
+              "y": 471.9375,
+              "width": 408,
+              "height": 234.0625,
+              "top": 471.9375,
+              "right": 431,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 408,
+            "scrollWidth": 408,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 175.65625,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 628.3125,
+                "y": 25.015625,
+                "width": 300,
+                "height": 258.1875
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 650.3125,
+                "y": 89.5,
+                "width": 300,
+                "height": 206.21875
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 628.3125,
+                "y": 137.53125,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-34",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 416.953125,
+                "y": 243.421875,
+                "width": 281.9375,
+                "height": 167.84375
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 1366,
+          "height": 768,
+          "viewportWidth": 1366,
+          "viewportHeight": 768,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db"
+      }
+    },
+    {
+      "name": "svg-mobile-en",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 10,
+              "y": 189,
+              "width": 370,
+              "height": 598,
+              "top": 189,
+              "right": 380,
+              "bottom": 787,
+              "left": 10
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 596,
+            "scrollHeight": 596,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 11,
+              "y": 264.96875,
+              "width": 368,
+              "height": 521.03125,
+              "top": 264.96875,
+              "right": 379,
+              "bottom": 786,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 521,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 11,
+              "y": 264.96875,
+              "width": 368,
+              "height": 625.84375,
+              "top": 264.96875,
+              "right": 379,
+              "bottom": 890.8125,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 626,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 27,
+              "y": 358.625,
+              "width": 336,
+              "height": 420.15625,
+              "top": 358.625,
+              "right": 363,
+              "bottom": 778.78125,
+              "left": 27
+            },
+            "clientWidth": 336,
+            "scrollWidth": 336,
+            "clientHeight": 420,
+            "scrollHeight": 420,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 27,
+            "y": 358.625,
+            "width": 162.796875,
+            "height": 408.15625
+          },
+          "want": {
+            "x": 200.1875,
+            "y": 358.625,
+            "width": 162.8125,
+            "height": 408.15625
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 11,
+              "y": 551.9375,
+              "width": 368,
+              "height": 234.0625,
+              "top": 551.9375,
+              "right": 379,
+              "bottom": 786,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 36.796875,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 639.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 639.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 714.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 714.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 639.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 639.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 714.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 714.59375,
+              "width": 40,
+              "height": 40
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 348.046875,
+                "width": 300,
+                "height": 315.75
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8.90625,
+                "y": 339.71875,
+                "width": 300,
+                "height": 225.40625
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 348.046875,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-2",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 328.03125,
+                "width": 300,
+                "height": 187.03125
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db"
+      }
+    },
+    {
+      "name": "svg-mobile-zh-Hant",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 10,
+              "y": 189,
+              "width": 370,
+              "height": 598,
+              "top": 189,
+              "right": 380,
+              "bottom": 787,
+              "left": 10
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 596,
+            "scrollHeight": 596,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 11,
+              "y": 245.78125,
+              "width": 368,
+              "height": 540.21875,
+              "top": 245.78125,
+              "right": 379,
+              "bottom": 786,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 540,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 11,
+              "y": 245.78125,
+              "width": 368,
+              "height": 625.84375,
+              "top": 245.78125,
+              "right": 379,
+              "bottom": 871.625,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 626,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 27,
+              "y": 339.4375,
+              "width": 336,
+              "height": 420.15625,
+              "top": 339.4375,
+              "right": 363,
+              "bottom": 759.59375,
+              "left": 27
+            },
+            "clientWidth": 336,
+            "scrollWidth": 336,
+            "clientHeight": 420,
+            "scrollHeight": 420,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 27,
+            "y": 339.4375,
+            "width": 162.796875,
+            "height": 408.15625
+          },
+          "want": {
+            "x": 200.1875,
+            "y": 339.4375,
+            "width": 162.8125,
+            "height": 408.15625
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 11,
+              "y": 551.9375,
+              "width": 368,
+              "height": 234.0625,
+              "top": 551.9375,
+              "right": 379,
+              "bottom": 786,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 36.796875,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 695.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 695.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 695.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 695.40625,
+              "width": 40,
+              "height": 40
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 348.046875,
+                "width": 300,
+                "height": 258.1875
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8.90625,
+                "y": 339.71875,
+                "width": 300,
+                "height": 206.21875
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 348.046875,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-2",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 328.03125,
+                "width": 281.9375,
+                "height": 167.84375
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db"
+      }
+    },
+    {
+      "name": "svg-small-en",
+      "renderer": "svg",
+      "viewport": [
+        320,
+        720
+      ],
+      "locale": "en",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 10,
+              "y": 189,
+              "width": 300,
+              "height": 474,
+              "top": 189,
+              "right": 310,
+              "bottom": 663,
+              "left": 10
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 472,
+            "scrollHeight": 472,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 11,
+              "y": 264.96875,
+              "width": 298,
+              "height": 397.03125,
+              "top": 264.96875,
+              "right": 309,
+              "bottom": 662,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 397,
+            "scrollHeight": 645,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 11,
+              "y": 264.96875,
+              "width": 298,
+              "height": 645.28125,
+              "top": 264.96875,
+              "right": 309,
+              "bottom": 910.25,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 645,
+            "scrollHeight": 645,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 27,
+              "y": 358.625,
+              "width": 266,
+              "height": 420.15625,
+              "top": 358.625,
+              "right": 293,
+              "bottom": 778.78125,
+              "left": 27
+            },
+            "clientWidth": 266,
+            "scrollWidth": 266,
+            "clientHeight": 420,
+            "scrollHeight": 420,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 27,
+            "y": 358.625,
+            "width": 127.796875,
+            "height": 408.15625
+          },
+          "want": {
+            "x": 165.1875,
+            "y": 358.625,
+            "width": 127.8125,
+            "height": 408.15625
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 11,
+              "y": 427.9375,
+              "width": 298,
+              "height": 234.0625,
+              "top": 427.9375,
+              "right": 309,
+              "bottom": 662,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 36.796875,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 621.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 621.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 466.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 466.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 621.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 621.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 466.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 466.59375,
+              "width": 40,
+              "height": 40
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 301.015625,
+                "width": 300,
+                "height": 315.75
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 294.171875,
+                "width": 300,
+                "height": 225.40625
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 301.015625,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-2",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 284.59375,
+                "width": 300,
+                "height": 187.03125
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 320,
+          "height": 720,
+          "viewportWidth": 320,
+          "viewportHeight": 720,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db"
+      }
+    },
+    {
+      "name": "svg-small-zh-Hant",
+      "renderer": "svg",
+      "viewport": [
+        320,
+        720
+      ],
+      "locale": "zh-Hant",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 10,
+              "y": 189,
+              "width": 300,
+              "height": 474,
+              "top": 189,
+              "right": 310,
+              "bottom": 663,
+              "left": 10
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 472,
+            "scrollHeight": 472,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 11,
+              "y": 245.78125,
+              "width": 298,
+              "height": 416.21875,
+              "top": 245.78125,
+              "right": 309,
+              "bottom": 662,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 416,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 11,
+              "y": 245.78125,
+              "width": 298,
+              "height": 625.84375,
+              "top": 245.78125,
+              "right": 309,
+              "bottom": 871.625,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 626,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 27,
+              "y": 339.4375,
+              "width": 266,
+              "height": 420.15625,
+              "top": 339.4375,
+              "right": 293,
+              "bottom": 759.59375,
+              "left": 27
+            },
+            "clientWidth": 266,
+            "scrollWidth": 266,
+            "clientHeight": 420,
+            "scrollHeight": 420,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 27,
+            "y": 339.4375,
+            "width": 127.796875,
+            "height": 408.15625
+          },
+          "want": {
+            "x": 165.1875,
+            "y": 339.4375,
+            "width": 127.8125,
+            "height": 408.15625
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 11,
+              "y": 427.9375,
+              "width": 298,
+              "height": 234.0625,
+              "top": 427.9375,
+              "right": 309,
+              "bottom": 662,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 36.796875,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 485.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 485.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 485.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 485.40625,
+              "width": 40,
+              "height": 40
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 301.015625,
+                "width": 300,
+                "height": 258.1875
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 294.171875,
+                "width": 300,
+                "height": 206.21875
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 301.015625,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-2",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 284.59375,
+                "width": 281.9375,
+                "height": 167.84375
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 320,
+          "height": 720,
+          "viewportWidth": 320,
+          "viewportHeight": 720,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db"
+      }
+    },
+    {
+      "name": "svg-landscape-en",
+      "renderer": "svg",
+      "viewport": [
+        844,
+        390
+      ],
+      "locale": "en",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 12,
+              "y": 82,
+              "width": 520,
+              "height": 265,
+              "top": 82,
+              "right": 532,
+              "bottom": 347,
+              "left": 12
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 263,
+            "scrollHeight": 263,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 13,
+              "y": 138.78125,
+              "width": 518,
+              "height": 207.21875,
+              "top": 138.78125,
+              "right": 531,
+              "bottom": 346,
+              "left": 13
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 207,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 13,
+              "y": 138.78125,
+              "width": 518,
+              "height": 487.5625,
+              "top": 138.78125,
+              "right": 531,
+              "bottom": 626.34375,
+              "left": 13
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 29,
+              "y": 232.4375,
+              "width": 486,
+              "height": 281.875,
+              "top": 232.4375,
+              "right": 515,
+              "bottom": 514.3125,
+              "left": 29
+            },
+            "clientWidth": 486,
+            "scrollWidth": 486,
+            "clientHeight": 282,
+            "scrollHeight": 282,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 29,
+            "y": 232.4375,
+            "width": 237.796875,
+            "height": 269.875
+          },
+          "want": {
+            "x": 277.1875,
+            "y": 232.4375,
+            "width": 237.8125,
+            "height": 269.875
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 13,
+              "y": 157.96875,
+              "width": 408,
+              "height": 234.0625,
+              "top": 157.96875,
+              "right": 421,
+              "bottom": 392.03125,
+              "left": 13
+            },
+            "clientWidth": 408,
+            "scrollWidth": 408,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 165.65625,
+              "y": 265.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 265.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 309.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 309.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 224.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 224.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 271.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 271.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 138.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 138.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 185.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 185.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 232.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 232.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 279.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 279.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 404.359375,
+                "y": 8,
+                "width": 300,
+                "height": 315.75
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 414.625,
+                "y": 8,
+                "width": 300,
+                "height": 225.40625
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 404.359375,
+                "y": 41.875,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-34",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 318.453125,
+                "y": 74,
+                "width": 300,
+                "height": 187.03125
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 844,
+          "height": 390,
+          "viewportWidth": 844,
+          "viewportHeight": 390,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db"
+      }
+    },
+    {
+      "name": "svg-landscape-zh-Hant",
+      "renderer": "svg",
+      "viewport": [
+        844,
+        390
+      ],
+      "locale": "zh-Hant",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 12,
+              "y": 82,
+              "width": 520,
+              "height": 265,
+              "top": 82,
+              "right": 532,
+              "bottom": 347,
+              "left": 12
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 263,
+            "scrollHeight": 263,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 13,
+              "y": 138.78125,
+              "width": 518,
+              "height": 207.21875,
+              "top": 138.78125,
+              "right": 531,
+              "bottom": 346,
+              "left": 13
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 207,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 13,
+              "y": 138.78125,
+              "width": 518,
+              "height": 487.5625,
+              "top": 138.78125,
+              "right": 531,
+              "bottom": 626.34375,
+              "left": 13
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 29,
+              "y": 232.4375,
+              "width": 486,
+              "height": 281.875,
+              "top": 232.4375,
+              "right": 515,
+              "bottom": 514.3125,
+              "left": 29
+            },
+            "clientWidth": 486,
+            "scrollWidth": 486,
+            "clientHeight": 282,
+            "scrollHeight": 282,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 29,
+            "y": 232.4375,
+            "width": 237.796875,
+            "height": 269.875
+          },
+          "want": {
+            "x": 277.1875,
+            "y": 232.4375,
+            "width": 237.8125,
+            "height": 269.875
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 13,
+              "y": 138.78125,
+              "width": 408,
+              "height": 234.0625,
+              "top": 138.78125,
+              "right": 421,
+              "bottom": 372.84375,
+              "left": 13
+            },
+            "clientWidth": 408,
+            "scrollWidth": 408,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 165.65625,
+              "y": 265.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 265.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 309.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 309.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 224.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 224.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 271.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 271.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 138.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 138.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 185.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 185.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 232.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 232.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 279.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 279.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 404.359375,
+                "y": 8,
+                "width": 300,
+                "height": 258.1875
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 414.625,
+                "y": 8,
+                "width": 300,
+                "height": 206.21875
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 404.359375,
+                "y": 41.875,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-34",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 318.453125,
+                "y": 83.59375,
+                "width": 281.9375,
+                "height": 167.84375
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 844,
+          "height": 390,
+          "viewportWidth": 844,
+          "viewportHeight": 390,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db"
+      }
+    },
+    {
+      "name": "r3f-desktop-en",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "en",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 22,
+              "y": 161.65625,
+              "width": 520,
+              "height": 545.34375,
+              "top": 161.65625,
+              "right": 542,
+              "bottom": 707,
+              "left": 22
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 543,
+            "scrollHeight": 543,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 23,
+              "y": 218.4375,
+              "width": 518,
+              "height": 487.5625,
+              "top": 218.4375,
+              "right": 541,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 23,
+              "y": 218.4375,
+              "width": 518,
+              "height": 487.5625,
+              "top": 218.4375,
+              "right": 541,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 39,
+              "y": 312.09375,
+              "width": 486,
+              "height": 281.875,
+              "top": 312.09375,
+              "right": 525,
+              "bottom": 593.96875,
+              "left": 39
+            },
+            "clientWidth": 486,
+            "scrollWidth": 486,
+            "clientHeight": 282,
+            "scrollHeight": 282,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 39,
+            "y": 312.09375,
+            "width": 237.796875,
+            "height": 269.875
+          },
+          "want": {
+            "x": 287.1875,
+            "y": 312.09375,
+            "width": 237.8125,
+            "height": 269.875
+          },
+          "verticalScrollingRequired": false,
+          "exchange": {
+            "rect": {
+              "x": 23,
+              "y": 471.9375,
+              "width": 408,
+              "height": 234.0625,
+              "top": 471.9375,
+              "right": 431,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 408,
+            "scrollWidth": 408,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 175.65625,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 722.171875,
+                "y": 55.34375,
+                "width": 300,
+                "height": 315.75
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 714.875,
+                "y": 123.90625,
+                "width": 300,
+                "height": 225.40625
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 697.921875,
+                "y": 185.21875,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-34",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 472,
+                "y": 169.75,
+                "width": 300,
+                "height": 187.03125
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 1366,
+          "height": 768,
+          "viewportWidth": 1366,
+          "viewportHeight": 768,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+        "/assets/BoardScene3D-k8B0JvLd.js": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6"
+      }
+    },
+    {
+      "name": "r3f-desktop-zh-Hant",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        768
+      ],
+      "locale": "zh-Hant",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 22,
+              "y": 161.65625,
+              "width": 520,
+              "height": 545.34375,
+              "top": 161.65625,
+              "right": 542,
+              "bottom": 707,
+              "left": 22
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 543,
+            "scrollHeight": 543,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 23,
+              "y": 218.4375,
+              "width": 518,
+              "height": 487.5625,
+              "top": 218.4375,
+              "right": 541,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 23,
+              "y": 218.4375,
+              "width": 518,
+              "height": 487.5625,
+              "top": 218.4375,
+              "right": 541,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 39,
+              "y": 312.09375,
+              "width": 486,
+              "height": 281.875,
+              "top": 312.09375,
+              "right": 525,
+              "bottom": 593.96875,
+              "left": 39
+            },
+            "clientWidth": 486,
+            "scrollWidth": 486,
+            "clientHeight": 282,
+            "scrollHeight": 282,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 39,
+            "y": 312.09375,
+            "width": 237.796875,
+            "height": 269.875
+          },
+          "want": {
+            "x": 287.1875,
+            "y": 312.09375,
+            "width": 237.8125,
+            "height": 269.875
+          },
+          "verticalScrollingRequired": false,
+          "exchange": {
+            "rect": {
+              "x": 23,
+              "y": 471.9375,
+              "width": 408,
+              "height": 234.0625,
+              "top": 471.9375,
+              "right": 431,
+              "bottom": 706,
+              "left": 23
+            },
+            "clientWidth": 408,
+            "scrollWidth": 408,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 175.65625,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 175.65625,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 231,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 345.03125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 392.21875,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 439.40625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 486.59375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 423.859375,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 479.203125,
+              "y": 533.78125,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 722.171875,
+                "y": 84.125,
+                "width": 300,
+                "height": 258.1875
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 714.875,
+                "y": 133.5,
+                "width": 300,
+                "height": 206.21875
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 697.921875,
+                "y": 185.21875,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-34",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 472,
+                "y": 179.34375,
+                "width": 281.9375,
+                "height": 167.84375
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 1366,
+          "height": 768,
+          "viewportWidth": 1366,
+          "viewportHeight": 768,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+        "/assets/BoardScene3D-k8B0JvLd.js": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6"
+      }
+    },
+    {
+      "name": "r3f-mobile-en",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 10,
+              "y": 189,
+              "width": 370,
+              "height": 598,
+              "top": 189,
+              "right": 380,
+              "bottom": 787,
+              "left": 10
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 596,
+            "scrollHeight": 596,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 11,
+              "y": 264.96875,
+              "width": 368,
+              "height": 521.03125,
+              "top": 264.96875,
+              "right": 379,
+              "bottom": 786,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 521,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 11,
+              "y": 264.96875,
+              "width": 368,
+              "height": 625.84375,
+              "top": 264.96875,
+              "right": 379,
+              "bottom": 890.8125,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 626,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 27,
+              "y": 358.625,
+              "width": 336,
+              "height": 420.15625,
+              "top": 358.625,
+              "right": 363,
+              "bottom": 778.78125,
+              "left": 27
+            },
+            "clientWidth": 336,
+            "scrollWidth": 336,
+            "clientHeight": 420,
+            "scrollHeight": 420,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 27,
+            "y": 358.625,
+            "width": 162.796875,
+            "height": 408.15625
+          },
+          "want": {
+            "x": 200.1875,
+            "y": 358.625,
+            "width": 162.8125,
+            "height": 408.15625
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 11,
+              "y": 551.9375,
+              "width": 368,
+              "height": 234.0625,
+              "top": 551.9375,
+              "right": 379,
+              "bottom": 786,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 36.796875,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 639.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 639.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 714.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 714.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 639.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 639.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 714.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 714.59375,
+              "width": 40,
+              "height": 40
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 23.328125,
+                "y": 359.625,
+                "width": 300,
+                "height": 315.75
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 46.484375,
+                "y": 363.734375,
+                "width": 300,
+                "height": 225.40625
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-1",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 359.625,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-34",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 378.296875,
+                "width": 300,
+                "height": 187.03125
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+        "/assets/BoardScene3D-k8B0JvLd.js": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6"
+      }
+    },
+    {
+      "name": "r3f-mobile-zh-Hant",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 10,
+              "y": 189,
+              "width": 370,
+              "height": 598,
+              "top": 189,
+              "right": 380,
+              "bottom": 787,
+              "left": 10
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 596,
+            "scrollHeight": 596,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 11,
+              "y": 245.78125,
+              "width": 368,
+              "height": 540.21875,
+              "top": 245.78125,
+              "right": 379,
+              "bottom": 786,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 540,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 11,
+              "y": 245.78125,
+              "width": 368,
+              "height": 625.84375,
+              "top": 245.78125,
+              "right": 379,
+              "bottom": 871.625,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 626,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 27,
+              "y": 339.4375,
+              "width": 336,
+              "height": 420.15625,
+              "top": 339.4375,
+              "right": 363,
+              "bottom": 759.59375,
+              "left": 27
+            },
+            "clientWidth": 336,
+            "scrollWidth": 336,
+            "clientHeight": 420,
+            "scrollHeight": 420,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 27,
+            "y": 339.4375,
+            "width": 162.796875,
+            "height": 408.15625
+          },
+          "want": {
+            "x": 200.1875,
+            "y": 339.4375,
+            "width": 162.8125,
+            "height": 408.15625
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 11,
+              "y": 551.9375,
+              "width": 368,
+              "height": 234.0625,
+              "top": 551.9375,
+              "right": 379,
+              "bottom": 786,
+              "left": 11
+            },
+            "clientWidth": 368,
+            "scrollWidth": 368,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 36.796875,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 695.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 140,
+              "y": 695.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 209.984375,
+              "y": 695.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 313.203125,
+              "y": 695.40625,
+              "width": 40,
+              "height": 40
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 23.328125,
+                "y": 359.625,
+                "width": 300,
+                "height": 258.1875
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 46.484375,
+                "y": 363.734375,
+                "width": 300,
+                "height": 206.21875
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-1",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 359.625,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-34",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 378.296875,
+                "width": 281.9375,
+                "height": 167.84375
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+        "/assets/BoardScene3D-k8B0JvLd.js": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6"
+      }
+    },
+    {
+      "name": "r3f-small-en",
+      "renderer": "r3f",
+      "viewport": [
+        320,
+        720
+      ],
+      "locale": "en",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 10,
+              "y": 189,
+              "width": 300,
+              "height": 474,
+              "top": 189,
+              "right": 310,
+              "bottom": 663,
+              "left": 10
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 472,
+            "scrollHeight": 472,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 11,
+              "y": 264.96875,
+              "width": 298,
+              "height": 397.03125,
+              "top": 264.96875,
+              "right": 309,
+              "bottom": 662,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 397,
+            "scrollHeight": 645,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 11,
+              "y": 264.96875,
+              "width": 298,
+              "height": 645.28125,
+              "top": 264.96875,
+              "right": 309,
+              "bottom": 910.25,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 645,
+            "scrollHeight": 645,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 27,
+              "y": 358.625,
+              "width": 266,
+              "height": 420.15625,
+              "top": 358.625,
+              "right": 293,
+              "bottom": 778.78125,
+              "left": 27
+            },
+            "clientWidth": 266,
+            "scrollWidth": 266,
+            "clientHeight": 420,
+            "scrollHeight": 420,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 27,
+            "y": 358.625,
+            "width": 127.796875,
+            "height": 408.15625
+          },
+          "want": {
+            "x": 165.1875,
+            "y": 358.625,
+            "width": 127.8125,
+            "height": 408.15625
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 11,
+              "y": 427.9375,
+              "width": 298,
+              "height": 234.0625,
+              "top": 427.9375,
+              "right": 309,
+              "bottom": 662,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 36.796875,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 621.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 621.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 466.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 466.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 415.21875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 490.0625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 564.90625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 621.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 621.75,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 466.59375,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 466.59375,
+              "width": 40,
+              "height": 40
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 310.5,
+                "width": 300,
+                "height": 315.75
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 11.203125,
+                "y": 313.875,
+                "width": 300,
+                "height": 225.40625
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-1",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 310.5,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-2",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 287.78125,
+                "width": 300,
+                "height": 187.03125
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 320,
+          "height": 720,
+          "viewportWidth": 320,
+          "viewportHeight": 720,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+        "/assets/BoardScene3D-k8B0JvLd.js": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6"
+      }
+    },
+    {
+      "name": "r3f-small-zh-Hant",
+      "renderer": "r3f",
+      "viewport": [
+        320,
+        720
+      ],
+      "locale": "zh-Hant",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 10,
+              "y": 189,
+              "width": 300,
+              "height": 474,
+              "top": 189,
+              "right": 310,
+              "bottom": 663,
+              "left": 10
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 472,
+            "scrollHeight": 472,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 11,
+              "y": 245.78125,
+              "width": 298,
+              "height": 416.21875,
+              "top": 245.78125,
+              "right": 309,
+              "bottom": 662,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 416,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 11,
+              "y": 245.78125,
+              "width": 298,
+              "height": 625.84375,
+              "top": 245.78125,
+              "right": 309,
+              "bottom": 871.625,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 626,
+            "scrollHeight": 626,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 27,
+              "y": 339.4375,
+              "width": 266,
+              "height": 420.15625,
+              "top": 339.4375,
+              "right": 293,
+              "bottom": 759.59375,
+              "left": 27
+            },
+            "clientWidth": 266,
+            "scrollWidth": 266,
+            "clientHeight": 420,
+            "scrollHeight": 420,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 27,
+            "y": 339.4375,
+            "width": 127.796875,
+            "height": 408.15625
+          },
+          "want": {
+            "x": 165.1875,
+            "y": 339.4375,
+            "width": 127.8125,
+            "height": 408.15625
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 11,
+              "y": 427.9375,
+              "width": 298,
+              "height": 234.0625,
+              "top": 427.9375,
+              "right": 309,
+              "bottom": 662,
+              "left": 11
+            },
+            "clientWidth": 298,
+            "scrollWidth": 298,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 36.796875,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 36.796875,
+              "y": 485.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 105,
+              "y": 485.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 396.03125,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 470.875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 545.71875,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 620.5625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 174.984375,
+              "y": 485.40625,
+              "width": 40,
+              "height": 40
+            },
+            {
+              "x": 243.203125,
+              "y": 485.40625,
+              "width": 40,
+              "height": 40
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 310.5,
+                "width": 300,
+                "height": 258.1875
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 11.203125,
+                "y": 313.875,
+                "width": 300,
+                "height": 206.21875
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-1",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 310.5,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-2",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 8,
+                "y": 287.78125,
+                "width": 281.9375,
+                "height": 167.84375
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 320,
+          "height": 720,
+          "viewportWidth": 320,
+          "viewportHeight": 720,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+        "/assets/BoardScene3D-k8B0JvLd.js": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6"
+      }
+    },
+    {
+      "name": "r3f-landscape-en",
+      "renderer": "r3f",
+      "viewport": [
+        844,
+        390
+      ],
+      "locale": "en",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 12,
+              "y": 82,
+              "width": 520,
+              "height": 265,
+              "top": 82,
+              "right": 532,
+              "bottom": 347,
+              "left": 12
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 263,
+            "scrollHeight": 263,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 13,
+              "y": 138.78125,
+              "width": 518,
+              "height": 207.21875,
+              "top": 138.78125,
+              "right": 531,
+              "bottom": 346,
+              "left": 13
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 207,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 13,
+              "y": 138.78125,
+              "width": 518,
+              "height": 487.5625,
+              "top": 138.78125,
+              "right": 531,
+              "bottom": 626.34375,
+              "left": 13
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 29,
+              "y": 232.4375,
+              "width": 486,
+              "height": 281.875,
+              "top": 232.4375,
+              "right": 515,
+              "bottom": 514.3125,
+              "left": 29
+            },
+            "clientWidth": 486,
+            "scrollWidth": 486,
+            "clientHeight": 282,
+            "scrollHeight": 282,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 29,
+            "y": 232.4375,
+            "width": 237.796875,
+            "height": 269.875
+          },
+          "want": {
+            "x": 277.1875,
+            "y": 232.4375,
+            "width": 237.8125,
+            "height": 269.875
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 13,
+              "y": 157.96875,
+              "width": 408,
+              "height": 234.0625,
+              "top": 157.96875,
+              "right": 421,
+              "bottom": 392.03125,
+              "left": 13
+            },
+            "clientWidth": 408,
+            "scrollWidth": 408,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 165.65625,
+              "y": 265.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 265.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 309.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 309.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 224.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 224.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 271.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 271.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 138.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 138.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 185.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 185.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 232.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 232.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 279.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 279.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 446.0625,
+                "y": 8,
+                "width": 300,
+                "height": 315.75
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 442.828125,
+                "y": 14.5,
+                "width": 300,
+                "height": 225.40625
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-1",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 404.265625,
+                "y": 55.921875,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-34",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 338.734375,
+                "y": 45.53125,
+                "width": 300,
+                "height": 187.03125
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 844,
+          "height": 390,
+          "viewportWidth": 844,
+          "viewportHeight": 390,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+        "/assets/BoardScene3D-k8B0JvLd.js": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6"
+      }
+    },
+    {
+      "name": "r3f-landscape-zh-Hant",
+      "renderer": "r3f",
+      "viewport": [
+        844,
+        390
+      ],
+      "locale": "zh-Hant",
+      "status": "PASS",
+      "checks": {
+        "toolForms": {
+          "surface": {
+            "rect": {
+              "x": 12,
+              "y": 82,
+              "width": 520,
+              "height": 265,
+              "top": 82,
+              "right": 532,
+              "bottom": 347,
+              "left": 12
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 263,
+            "scrollHeight": 263,
+            "scrollLeft": 0,
+            "overflowX": "hidden"
+          },
+          "panel": {
+            "rect": {
+              "x": 13,
+              "y": 138.78125,
+              "width": 518,
+              "height": 207.21875,
+              "top": 138.78125,
+              "right": 531,
+              "bottom": 346,
+              "left": 13
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 207,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "auto"
+          },
+          "trade": {
+            "rect": {
+              "x": 13,
+              "y": 138.78125,
+              "width": 518,
+              "height": 487.5625,
+              "top": 138.78125,
+              "right": 531,
+              "bottom": 626.34375,
+              "left": 13
+            },
+            "clientWidth": 518,
+            "scrollWidth": 518,
+            "clientHeight": 488,
+            "scrollHeight": 488,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "terms": {
+            "rect": {
+              "x": 29,
+              "y": 232.4375,
+              "width": 486,
+              "height": 281.875,
+              "top": 232.4375,
+              "right": 515,
+              "bottom": 514.3125,
+              "left": 29
+            },
+            "clientWidth": 486,
+            "scrollWidth": 486,
+            "clientHeight": 282,
+            "scrollHeight": 282,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "give": {
+            "x": 29,
+            "y": 232.4375,
+            "width": 237.796875,
+            "height": 269.875
+          },
+          "want": {
+            "x": 277.1875,
+            "y": 232.4375,
+            "width": 237.8125,
+            "height": 269.875
+          },
+          "verticalScrollingRequired": true,
+          "exchange": {
+            "rect": {
+              "x": 13,
+              "y": 138.78125,
+              "width": 408,
+              "height": 234.0625,
+              "top": 138.78125,
+              "right": 421,
+              "bottom": 372.84375,
+              "left": 13
+            },
+            "clientWidth": 408,
+            "scrollWidth": 408,
+            "clientHeight": 234,
+            "scrollHeight": 234,
+            "scrollLeft": 0,
+            "overflowX": "visible"
+          },
+          "quantityControls": [
+            {
+              "x": 165.65625,
+              "y": 265.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 265.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 309.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 309.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 224.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 224.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 271.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 271.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 165.65625,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 221,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 138.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 138.375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 185.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 185.5625,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 232.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 232.75,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 279.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 279.9375,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 413.859375,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "x": 469.203125,
+              "y": 310.125,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "draftsPreserved": true,
+          "sameResourceDisabled": true
+        },
+        "inspection": {
+          "clockControlled": true,
+          "targets": [
+            {
+              "kind": "hex",
+              "target": "inspect-hex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 446.0625,
+                "y": 8,
+                "width": 300,
+                "height": 258.1875
+              }
+            },
+            {
+              "kind": "vertex",
+              "target": "inspect-vertex-0",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 442.828125,
+                "y": 24.09375,
+                "width": 300,
+                "height": 206.21875
+              }
+            },
+            {
+              "kind": "edge",
+              "target": "inspect-edge-1",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 404.265625,
+                "y": 55.921875,
+                "width": 300,
+                "height": 148.65625
+              }
+            },
+            {
+              "kind": "harbor",
+              "target": "inspect-harbor-34",
+              "absentAtMs": 999,
+              "presentAtMs": 1000,
+              "rect": {
+                "x": 338.734375,
+                "y": 55.125,
+                "width": 281.9375,
+                "height": 167.84375
+              }
+            }
+          ],
+          "keyboardBoundary": [
+            999,
+            1000
+          ]
+        },
+        "document": {
+          "width": 844,
+          "height": 390,
+          "viewportWidth": 844,
+          "viewportHeight": 390,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+        "/assets/BoardScene3D-k8B0JvLd.js": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6"
+      }
+    },
+    {
+      "name": "svg-motion-en",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "status": "PASS",
+      "checks": {
+        "diceAndGains": {
+          "reducedMotion": false,
+          "dice": [
+            {
+              "focused": [
+                {
+                  "value": 1,
+                  "rect": {
+                    "x": 112,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 114,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 1
+                },
+                {
+                  "value": 6,
+                  "rect": {
+                    "x": 208,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 210,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 6
+                }
+              ],
+              "compact": [
+                {
+                  "value": 1,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 1
+                },
+                {
+                  "value": 6,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 6
+                }
+              ]
+            },
+            {
+              "focused": [
+                {
+                  "value": 2,
+                  "rect": {
+                    "x": 112,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 114,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 2
+                },
+                {
+                  "value": 5,
+                  "rect": {
+                    "x": 208,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 210,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 5
+                }
+              ],
+              "compact": [
+                {
+                  "value": 2,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 2
+                },
+                {
+                  "value": 5,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 5
+                }
+              ]
+            },
+            {
+              "focused": [
+                {
+                  "value": 3,
+                  "rect": {
+                    "x": 112,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 114,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 3
+                },
+                {
+                  "value": 4,
+                  "rect": {
+                    "x": 208,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 210,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 4
+                }
+              ],
+              "compact": [
+                {
+                  "value": 3,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 3
+                },
+                {
+                  "value": 4,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 4
+                }
+              ]
+            }
+          ],
+          "initialOverlays": 0,
+          "focusedScreenshot": "test-results/table-ui-polish-final-v2/svg-motion-en/dice-focused.png",
+          "gainScreenshot": "test-results/table-ui-polish-final-v2/svg-motion-en/hand-gains.png",
+          "gainOverlayCount": 3,
+          "gainRects": [
+            {
+              "x": 99.14119720458984,
+              "y": 747.087646484375,
+              "width": 48.574302673339844,
+              "height": 69.66021728515625
+            },
+            {
+              "x": 241.02967834472656,
+              "y": 722.332763671875,
+              "width": 50.60652160644531,
+              "height": 72.23651123046875
+            },
+            {
+              "x": 93.7083740234375,
+              "y": 689.6145629882812,
+              "width": 55.099609375,
+              "height": 76.8265380859375
+            }
+          ]
+        },
+        "document": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db"
+      }
+    },
+    {
+      "name": "svg-motion-zh-Hant-reduce",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "status": "PASS",
+      "checks": {
+        "diceAndGains": {
+          "reducedMotion": true,
+          "dice": [
+            {
+              "compact": [
+                {
+                  "value": 1,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 1
+                },
+                {
+                  "value": 6,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 6
+                }
+              ]
+            },
+            {
+              "compact": [
+                {
+                  "value": 2,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 2
+                },
+                {
+                  "value": 5,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 5
+                }
+              ]
+            },
+            {
+              "compact": [
+                {
+                  "value": 3,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 3
+                },
+                {
+                  "value": 4,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 4
+                }
+              ]
+            }
+          ],
+          "initialOverlays": 0,
+          "gainOverlayCount": 0
+        },
+        "document": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db"
+      }
+    },
+    {
+      "name": "r3f-motion-en",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "en",
+      "status": "PASS",
+      "checks": {
+        "diceAndGains": {
+          "reducedMotion": false,
+          "dice": [
+            {
+              "focused": [
+                {
+                  "value": 1,
+                  "rect": {
+                    "x": 112,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 114,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 1
+                },
+                {
+                  "value": 6,
+                  "rect": {
+                    "x": 208,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 210,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 6
+                }
+              ],
+              "compact": [
+                {
+                  "value": 1,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 1
+                },
+                {
+                  "value": 6,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 6
+                }
+              ]
+            },
+            {
+              "focused": [
+                {
+                  "value": 2,
+                  "rect": {
+                    "x": 112,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 114,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 2
+                },
+                {
+                  "value": 5,
+                  "rect": {
+                    "x": 208,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 210,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 5
+                }
+              ],
+              "compact": [
+                {
+                  "value": 2,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 2
+                },
+                {
+                  "value": 5,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 5
+                }
+              ]
+            },
+            {
+              "focused": [
+                {
+                  "value": 3,
+                  "rect": {
+                    "x": 112,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 114,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 3
+                },
+                {
+                  "value": 4,
+                  "rect": {
+                    "x": 208,
+                    "y": 383.359375,
+                    "width": 70,
+                    "height": 70
+                  },
+                  "pattern": {
+                    "x": 210,
+                    "y": 385.359375,
+                    "width": 66,
+                    "height": 66
+                  },
+                  "pips": 4
+                }
+              ],
+              "compact": [
+                {
+                  "value": 3,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 3
+                },
+                {
+                  "value": 4,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 4
+                }
+              ]
+            }
+          ],
+          "initialOverlays": 0,
+          "focusedScreenshot": "test-results/table-ui-polish-final-v2/r3f-motion-en/dice-focused.png",
+          "gainScreenshot": "test-results/table-ui-polish-final-v2/r3f-motion-en/hand-gains.png",
+          "gainOverlayCount": 3,
+          "gainRects": [
+            {
+              "x": 99.14119720458984,
+              "y": 747.087646484375,
+              "width": 48.574302673339844,
+              "height": 69.66021728515625
+            },
+            {
+              "x": 241.02967834472656,
+              "y": 722.332763671875,
+              "width": 50.60652160644531,
+              "height": 72.23651123046875
+            },
+            {
+              "x": 93.7083740234375,
+              "y": 689.6145629882812,
+              "width": 55.099609375,
+              "height": 76.8265380859375
+            }
+          ]
+        },
+        "document": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+        "/assets/BoardScene3D-k8B0JvLd.js": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6"
+      }
+    },
+    {
+      "name": "r3f-motion-zh-Hant-reduce",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "locale": "zh-Hant",
+      "status": "PASS",
+      "checks": {
+        "diceAndGains": {
+          "reducedMotion": true,
+          "dice": [
+            {
+              "compact": [
+                {
+                  "value": 1,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 1
+                },
+                {
+                  "value": 6,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 6
+                }
+              ]
+            },
+            {
+              "compact": [
+                {
+                  "value": 2,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 2
+                },
+                {
+                  "value": 5,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 5
+                }
+              ]
+            },
+            {
+              "compact": [
+                {
+                  "value": 3,
+                  "rect": {
+                    "x": 321.609375,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 322.609375,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 3
+                },
+                {
+                  "value": 4,
+                  "rect": {
+                    "x": 353,
+                    "y": 755,
+                    "width": 25,
+                    "height": 25
+                  },
+                  "pattern": {
+                    "x": 354,
+                    "y": 756,
+                    "width": 23,
+                    "height": 23
+                  },
+                  "pips": 4
+                }
+              ]
+            }
+          ],
+          "initialOverlays": 0,
+          "gainOverlayCount": 0
+        },
+        "document": {
+          "width": 390,
+          "height": 844,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "runtimeErrors": [],
+      "consoleErrors": [],
+      "unexpectedApiCalls": [],
+      "assetsVerified": {
+        "/": "b6dc6792e3a261a2e7748e81ecc14ca292f94a90876031c8a41bcb374a0d90ec",
+        "/assets/index-YdLLjNon.css": "56287a903e2e6ea94d8241cf97cd75d8d38f8ce011ed2b10e3491a623388e8aa",
+        "/assets/index-DudUu8Ly.js": "ff4732b3c4cbae9d67655c3e1c7a08dab13c77dad68a9bc27e50a4675c9285db",
+        "/assets/BoardScene3D-k8B0JvLd.js": "e6eeebaf697db780b48ccd32e16ee3585d42e84fe18cc5bc96f93ae8f45ddce6"
+      }
+    }
+  ],
+  "browser": "145.0.7632.6",
+  "passedCases": 20,
+  "totalCases": 20
+}

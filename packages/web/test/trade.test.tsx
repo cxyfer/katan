@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { CommandRequest } from '@catan/protocol';
 import type { Offer } from '@catan/rules';
 import { App } from '../src/App.tsx';
@@ -21,10 +21,11 @@ function renderApp(api: FakeApi) {
   );
 }
 
-async function openGame(api: FakeApi): Promise<void> {
+async function openGame(api: FakeApi, tool?: 'trade' | 'exchange'): Promise<void> {
   renderApp(api);
   fireEvent.click(await screen.findByTestId('resume-g1'));
   await screen.findByTestId('board-svg');
+  if (tool) fireEvent.click(screen.getByTestId(`tool-tab-${tool}`));
 }
 
 const ACCEPTED = {
@@ -55,7 +56,7 @@ describe('structured trading', () => {
   it('creates an offer from the current terms and audience', async () => {
     const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints() })) });
     api.setCommandResult(ACCEPTED);
-    await openGame(api);
+    await openGame(api, 'trade');
 
     fireEvent.click(screen.getByTestId('give-add-lumber'));
     fireEvent.click(screen.getByTestId('want-add-brick'));
@@ -76,7 +77,7 @@ describe('structured trading', () => {
       snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [openOffer] })),
     });
     api.setCommandResult(ACCEPTED);
-    await openGame(api);
+    await openGame(api, 'trade');
 
     const row = screen.getByTestId('offer-offer-1');
     expect(row.textContent).toContain('Offer from 小美');
@@ -101,7 +102,7 @@ describe('structured trading', () => {
       snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [consented] })),
     });
     api.setCommandResult(ACCEPTED);
-    await openGame(api);
+    await openGame(api, 'trade');
 
     fireEvent.change(screen.getByTestId('counterparty-offer-1'), { target: { value: 'p2' } });
     fireEvent.click(screen.getByTestId('settle-offer-1'));
@@ -134,7 +135,7 @@ describe('structured trading', () => {
     const api = createFakeApi({
       snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [{ ...openOffer, from: 'p1' }] })),
     });
-    await openGame(api);
+    await openGame(api, 'trade');
     expect(screen.queryByTestId('settle-offer-1')).toBeNull();
   });
 });
@@ -149,7 +150,7 @@ describe('bank and harbour exchange', () => {
       ),
     });
     api.setCommandResult(ACCEPTED);
-    await openGame(api);
+    await openGame(api, 'exchange');
 
     fireEvent.change(screen.getByTestId('bank-give'), { target: { value: 'lumber' } });
     fireEvent.change(screen.getByTestId('bank-receive'), { target: { value: 'ore' } });
@@ -162,11 +163,79 @@ describe('bank and harbour exchange', () => {
 
   it('refuses an exchange of the same resource client-side', async () => {
     const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints() })) });
-    await openGame(api);
+    await openGame(api, 'exchange');
     fireEvent.change(screen.getByTestId('bank-give'), { target: { value: 'wool' } });
     fireEvent.change(screen.getByTestId('bank-receive'), { target: { value: 'wool' } });
     expect((screen.getByTestId('bank-submit') as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText('Choose two different resources.')).toBeTruthy();
+  });
+});
+
+describe('separate trade and exchange tools', () => {
+  it.each([1280, 390, 320])('keeps separate drafts and side-by-side term groups at viewport %s', async (width) => {
+    const previousWidth = window.innerWidth;
+    window.innerWidth = width;
+    try {
+      const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints() })) });
+      await openGame(api, 'trade');
+
+      const trade = screen.getByTestId('trade-panel');
+      const exchange = screen.getByTestId('exchange-panel');
+      expect(within(trade).getByRole('heading', { level: 2, name: 'Trading' }).classList.contains('visually-hidden')).toBe(true);
+      const terms = within(trade).getByTestId('trade-terms');
+      expect(Array.from(terms.children)).toEqual([
+        screen.getByTestId('trade-terms-give'),
+        screen.getByTestId('trade-terms-want'),
+      ]);
+      expect(within(terms).getAllByRole('group')).toHaveLength(2);
+      expect(within(trade).queryByTestId('bank-submit')).toBeNull();
+      expect(within(exchange).queryByTestId('create-offer')).toBeNull();
+      expect(screen.getByTestId('tool-panel-exchange').hidden).toBe(true);
+
+      fireEvent.click(screen.getByTestId('give-add-wool'));
+      fireEvent.click(screen.getByTestId('give-add-wool'));
+      fireEvent.click(screen.getByTestId('want-add-grain'));
+      fireEvent.change(screen.getByTestId('offer-to'), { target: { value: 'p2' } });
+      fireEvent.click(screen.getByTestId('tool-tab-exchange'));
+      expect(screen.getByTestId('tool-panel-trade').hidden).toBe(true);
+      expect(screen.getByTestId('tool-panel-exchange').hidden).toBe(false);
+      fireEvent.change(screen.getByTestId('bank-give'), { target: { value: 'ore' } });
+      fireEvent.change(screen.getByTestId('bank-receive'), { target: { value: 'wool' } });
+      fireEvent.click(screen.getByTestId('tool-close'));
+      expect(document.activeElement).toBe(screen.getByTestId('tool-tab-exchange'));
+      fireEvent.click(screen.getByTestId('tool-tab-exchange'));
+      expect((screen.getByTestId('bank-give') as HTMLSelectElement).value).toBe('ore');
+      expect((screen.getByTestId('bank-receive') as HTMLSelectElement).value).toBe('wool');
+
+      fireEvent.change(screen.getByTestId('locale-switch-game'), { target: { value: 'zh-Hant' } });
+      expect(screen.getByTestId('tool-tab-exchange').getAttribute('aria-label')).toBe('兌換');
+      expect(screen.getByTestId('tool-tab-trade').getAttribute('aria-label')).toBe('交易');
+      fireEvent.click(screen.getByTestId('tool-tab-trade'));
+      expect(screen.getByTestId('give-wool').textContent).toBe('2');
+      expect(screen.getByTestId('want-grain').textContent).toBe('1');
+      expect((screen.getByTestId('offer-to') as HTMLSelectElement).value).toBe('p2');
+      expect(screen.getByTestId('give-wool').getAttribute('aria-label')).toBe('你付出 羊毛');
+      expect(api.callsOf('sendCommand')).toHaveLength(0);
+    } finally {
+      window.innerWidth = previousWidth;
+    }
+  });
+
+  it('includes exchange in keyboard navigation and returns focus after Escape', async () => {
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints() })) });
+    await openGame(api);
+    const trade = screen.getByTestId('tool-tab-trade');
+    const exchange = screen.getByTestId('tool-tab-exchange');
+    trade.focus();
+    fireEvent.keyDown(trade, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(exchange);
+    fireEvent.click(exchange);
+    expect(screen.getByTestId('tool-panel-exchange').hidden).toBe(false);
+    fireEvent.keyDown(screen.getByTestId('bank-give'), { key: 'Escape' });
+    expect(exchange.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(exchange);
+    fireEvent.keyDown(exchange, { key: 'End' });
+    expect(document.activeElement).toBe(screen.getByTestId('tool-tab-help'));
   });
 });
 

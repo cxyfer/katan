@@ -54,7 +54,8 @@ describe('centered dice presentation', () => {
     act(() => vi.advanceTimersByTime(1));
     expect(panel.getAttribute('data-phase')).toBe('result');
     expect(screen.getByTestId('dice-announcement').textContent).toBe('Rolled 2 + 6 = 8');
-    expect([...panel.querySelectorAll('.dice-presentation__die')].map((die) => die.textContent)).toEqual(['2', '6']);
+    expect([...panel.querySelectorAll('.dice-presentation__die')].map((die) => die.getAttribute('data-value'))).toEqual(['2', '6']);
+    expect([...panel.querySelectorAll('.dice-presentation__die')].map((die) => die.querySelectorAll('circle').length)).toEqual([2, 6]);
     act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS - DICE_ROLL_DURATION_MS - 1));
     expect(screen.getByTestId('dice-focus')).toBe(panel);
     act(() => vi.advanceTimersByTime(1));

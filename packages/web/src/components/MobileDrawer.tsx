@@ -4,13 +4,14 @@ import type { TableController } from '../state/useTable.ts';
 import { ActionBar } from './ActionBar.tsx';
 import { ChatPanel } from './ChatPanel.tsx';
 import { EventLog } from './EventLog.tsx';
+import { ExchangePanel } from './ExchangePanel.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { HandPanel } from './HandPanel.tsx';
 import { HelpPanel } from './HelpPanel.tsx';
 import { TradePanel } from './TradePanel.tsx';
 
-const PANELS = ['hand', 'trade', 'chat', 'help'] as const;
-const ICONS = { hand: 'cards', trade: 'trade', chat: 'chat', help: 'book' };
+const PANELS = ['hand', 'trade', 'exchange', 'chat', 'help'] as const;
+const ICONS = { hand: 'cards', trade: 'trade', exchange: 'anchor', chat: 'chat', help: 'book' };
 
 /** 非模態抽屜只顯示一個面板；保留掛載以免切換時丟失表單草稿。 */
 export function MobileDrawer({ controller }: { controller: TableController }) {
@@ -59,6 +60,7 @@ export function MobileDrawer({ controller }: { controller: TableController }) {
         {PANELS.map((panel) => <div key={panel} id={`drawer-panel-${panel}`} role="tabpanel" aria-labelledby={`drawer-tab-${panel}`} tabIndex={0} hidden={drawer !== panel}>
           {panel === 'hand' && <><HandPanel controller={controller} /><ActionBar controller={controller} /></>}
           {panel === 'trade' && <TradePanel controller={controller} />}
+          {panel === 'exchange' && <ExchangePanel controller={controller} />}
           {panel === 'chat' && <ChatPanel controller={controller} />}
           {panel === 'help' && <><EventLog controller={controller} /><HelpPanel controller={controller} /></>}
         </div>)}

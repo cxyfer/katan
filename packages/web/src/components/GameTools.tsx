@@ -4,12 +4,14 @@ import { formatNumber } from '../i18n/format.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ChatPanel } from './ChatPanel.tsx';
 import { EventLog } from './EventLog.tsx';
+import { ExchangePanel } from './ExchangePanel.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { HelpPanel } from './HelpPanel.tsx';
 import { TradePanel } from './TradePanel.tsx';
 
 const TOOLS = [
   { id: 'trade', label: 'drawer.trade', icon: 'trade' },
+  { id: 'exchange', label: 'drawer.exchange', icon: 'anchor' },
   { id: 'chat', label: 'drawer.chat', icon: 'chat' },
   { id: 'log', label: 'play.events', icon: 'scroll' },
   { id: 'help', label: 'drawer.help', icon: 'book' },
@@ -85,7 +87,7 @@ export function GameTools({ controller }: { controller: TableController }) {
           </button>
         ))}
       </nav>
-      <div className="game-tools__surface" hidden={tool === null}>
+      <div className="game-tools__surface" hidden={tool === null} data-tool={tool ?? undefined}>
         <header className="game-tools__header">
           <h2 className="game-tools__title">{active ? t(active.label) : t('table.tools')}</h2>
           <button type="button" className="button button--ghost game-tools__close" aria-label={t('table.closePanel')} onClick={close} data-testid="tool-close">
@@ -95,7 +97,8 @@ export function GameTools({ controller }: { controller: TableController }) {
         </header>
         {TOOLS.map((item) => (
           <section key={item.id} id={`tool-panel-${item.id}`} aria-labelledby={`tool-${item.id}`} hidden={tool !== item.id} className="game-tools__panel" data-testid={`tool-panel-${item.id}`}>
-            {item.id === 'trade' && <TradePanel controller={controller} />}
+            {item.id === 'trade' && <TradePanel controller={controller} embedded />}
+            {item.id === 'exchange' && <ExchangePanel controller={controller} />}
             {item.id === 'chat' && <ChatPanel controller={controller} />}
             {item.id === 'log' && <EventLog controller={controller} />}
             {item.id === 'help' && <HelpPanel controller={controller} />}

@@ -17,7 +17,7 @@ interface Props {
   fallbackFocusRef: RefObject<HTMLElement | null>;
 }
 
-export const INSPECTION_DELAY_MS = 1500;
+export const INSPECTION_DELAY_MS = 1000;
 
 /** Keep dense fitted maps selectable without letting piece padding cover tile centers. */
 export function inspectionHitSize(outlines: readonly (readonly ProjectedAnchor[])[]): number {

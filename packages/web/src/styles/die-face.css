@@ -1,0 +1,8 @@
+.die-face { position: relative; flex: none; overflow: hidden; }
+.die-face__pattern { position: absolute; inset: 0; display: block; width: 100%; height: 100%; fill: currentColor; }
+.die-face__pattern--rolling { opacity: 0; animation: die-face-cycle 480ms step-end infinite; }
+@keyframes die-face-cycle { 0% { opacity: 1; } 16.6667%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .die-face__pattern--rolling { animation: none; }
+  .die-face__pattern--rolling:first-child { opacity: 1; }
+}
