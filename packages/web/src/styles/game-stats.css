@@ -1,0 +1,304 @@
+@layer base, pregame, table;
+@layer table {
+  /* 賽後數據：分頁表格與兩張圖，沿用結算畫面的深色羊皮紙風格。 */
+  .game-stats {
+    --stats-surface: #17323c;
+    background: linear-gradient(135deg, #1a3741, #132c35);
+    border-color: #6f6a4f;
+  }
+  .game-stats__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.25rem;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .game-stats__header h2 {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    margin-bottom: .75rem;
+    color: var(--accent);
+    font-family: var(--font-display);
+  }
+  .game-stats__note {
+    margin-bottom: .75rem;
+    padding: .35rem .7rem;
+    color: var(--warning);
+    font-size: .8rem;
+    border-left: 3px solid var(--warning);
+    background: #f2ce8912;
+  }
+  .game-stats__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .game-stats__tab {
+    min-height: 40px;
+    padding: .45rem .95rem;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: .85rem;
+    letter-spacing: .03em;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: -1px;
+  }
+  .game-stats__tab:hover {
+    color: var(--text);
+    background: #ffffff08;
+  }
+  .game-stats__tab[aria-selected='true'] {
+    color: var(--accent);
+    font-weight: 600;
+    background: var(--stats-surface);
+    border-color: var(--border);
+    border-bottom: 1px solid var(--stats-surface);
+  }
+  .game-stats__tab:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+  .game-stats__section + .game-stats__section {
+    margin-top: 1.4rem;
+  }
+  .game-stats__section-title {
+    margin-bottom: .45rem;
+    color: #e6d6ab;
+    font-size: .9rem;
+    font-weight: 600;
+  }
+  /* relative：讓儲存格內的 visually-hidden 文字以捲動容器為定位基準，不撐寬頁面。 */
+  .game-stats__scroll {
+    position: relative;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .game-stats__table {
+    min-width: max-content;
+    font-size: .85rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .game-stats__table th,
+  .game-stats__table td {
+    padding: .55rem .7rem;
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
+  .game-stats__table thead th {
+    vertical-align: bottom;
+    white-space: normal;
+    min-width: 4.5rem;
+    max-width: 8rem;
+  }
+  .game-stats__table thead th:not(:first-child),
+  .game-stats__table td {
+    text-align: right;
+  }
+  .game-stats__table td:first-child {
+    font-weight: 400;
+  }
+  /* 列底色以變數套在每個儲存格上，固定的玩家欄才能與整列一致。 */
+  .game-stats__table tr {
+    --row-tint: transparent;
+  }
+  .game-stats__table tbody tr:nth-child(odd) {
+    --row-tint: #ffffff06;
+  }
+  .game-stats__table tbody tr[data-winner] {
+    --row-tint: #e3bd7917;
+  }
+  .game-stats__table tbody > tr > * {
+    background: var(--row-tint);
+  }
+  .game-stats__table .game-stats__player-col {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    text-align: left;
+    background: linear-gradient(var(--row-tint), var(--row-tint)), var(--stats-surface);
+  }
+  .game-stats__table tbody th.game-stats__player-col {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .game-stats__player {
+    display: inline-flex;
+    gap: .5rem;
+    align-items: center;
+  }
+  .game-stats__rank {
+    min-width: 1.2rem;
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    text-align: center;
+  }
+  .game-stats__swatch {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    background: var(--player-color);
+    border: 2px solid #f2eddf99;
+    border-radius: 50%;
+  }
+  .game-stats__name {
+    max-width: 12rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .game-stats__crown {
+    display: inline-flex;
+    color: var(--accent);
+  }
+  .game-stats__cell[title] {
+    cursor: help;
+    text-decoration: underline dotted #afc1c366;
+    text-underline-offset: 3px;
+  }
+  .game-stats__cell--best {
+    color: #fff4d6;
+    font-weight: 700;
+    box-shadow: inset 0 -2px var(--accent);
+  }
+  .game-stats__charts {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 1.5rem;
+  }
+  .stats-chart {
+    min-width: 0;
+    margin: 0;
+  }
+  .stats-chart__caption {
+    margin-bottom: .3rem;
+    font-size: .8rem;
+  }
+  .stats-chart__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem 1rem;
+    margin: 0 0 .4rem;
+    padding: 0;
+    color: var(--text-muted);
+    font-size: .8rem;
+    list-style: none;
+  }
+  .stats-chart__legend li {
+    display: inline-flex;
+    gap: .4rem;
+    align-items: center;
+  }
+  .stats-chart__frame {
+    position: relative;
+  }
+  .stats-chart__svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .stats-chart__svg:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 4px;
+    border-radius: 6px;
+  }
+  .stats-chart__grid {
+    stroke: #35505a;
+    stroke-width: 1;
+  }
+  .stats-chart__target {
+    stroke: #e3bd7966;
+    stroke-width: 1;
+  }
+  .stats-chart__crosshair {
+    stroke: #afc1c3aa;
+    stroke-width: 1;
+  }
+  .stats-chart__axis {
+    fill: var(--text-muted);
+    font-size: 11px;
+  }
+  .stats-chart__label,
+  .stats-chart__value {
+    fill: var(--text);
+    font-size: 12px;
+  }
+  .stats-chart__dot {
+    stroke: var(--stats-surface);
+    stroke-width: 2;
+  }
+  .stats-chart__bar {
+    fill: #d9ae65;
+  }
+  .stats-chart__column:hover .stats-chart__bar {
+    fill: #ecc988;
+  }
+  .stats-chart__expected {
+    stroke: var(--text);
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+  .stats-chart__tooltip {
+    position: absolute;
+    top: 8px;
+    z-index: 2;
+    min-width: 9rem;
+    padding: .5rem .7rem;
+    pointer-events: none;
+    font-size: .8rem;
+    background: #0d2229f2;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+  .stats-chart__tooltip-title {
+    margin-bottom: .25rem;
+    color: var(--text-muted);
+  }
+  .stats-chart__tooltip ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .stats-chart__tooltip li {
+    display: flex;
+    gap: .4rem;
+    align-items: center;
+  }
+  .stats-chart__tooltip strong {
+    min-width: 1.4rem;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .stats-chart__tooltip span {
+    color: var(--text-muted);
+  }
+  .stats-chart__data {
+    margin-top: .5rem;
+    font-size: .8rem;
+  }
+  .stats-chart__data summary {
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .stats-chart__data .game-stats__scroll {
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  @media (width < 900px) {
+    .game-stats__charts {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  @media (forced-colors: active) {
+    .game-stats__cell--best {
+      text-decoration: underline;
+    }
+  }
+}

@@ -1,3 +1,5 @@
+import type { GameStats } from './stats.ts';
+
 /**
  * Authoritative game-state types. Everything here must be JSON-serialisable:
  * snapshots are persisted verbatim and replayed through the rules engine.
@@ -268,6 +270,11 @@ export interface GameState {
   result: GameResult | null;
   /** Public log kept inside the snapshot for deterministic recovery. */
   log: GameEvent[];
+  /**
+   * Post-game statistics. Absent from snapshots written before statistics
+   * existed; the engine then initialises them on the next transition.
+   */
+  stats?: GameStats;
 }
 
 /**

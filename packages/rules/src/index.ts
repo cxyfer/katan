@@ -7,3 +7,4 @@ export * from './analysis.ts';
 export * from './profiles.ts';
 export * from './engine.ts';
 export * from './project.ts';
+export * from './stats.ts';
