@@ -542,15 +542,20 @@ export class RoomService {
       }
       policy = check.policy;
     }
-    await this.repo.updateRoom(roomId, {
-      profile_id: profileId,
-      setup_mode: setupMode,
-      capacity,
-      policy_json: JSON.stringify(policy),
-      policy_revision: room.policy_revision + 1,
+    await this.repo.transaction(async () => {
+      await this.repo.updateRoom(roomId, {
+        profile_id: profileId,
+        setup_mode: setupMode,
+        capacity,
+        policy_json: JSON.stringify(policy),
+        policy_revision: room.policy_revision + 1,
+      });
+      // Seats left behind by a departure can sit above a reduced capacity.
+      // Compact them into 0..n-1 so every seated player stays in range.
+      if (capacity !== room.capacity) await this.compactSeats(roomId);
+      // Any settings change clears readiness (§4.2).
+      await this.clearReadiness(roomId);
     });
-    // Any settings change clears readiness (§4.2).
-    await this.clearReadiness(roomId);
     this.broadcastRoom(roomId);
     return this.view(roomId, playerId);
   }
@@ -669,6 +674,18 @@ export class RoomService {
     for (const membership of await this.repo.listMemberships(roomId)) {
       if (membership.ready === 1) {
         await this.repo.updateMembership(roomId, membership.player_id, { ready: 0 });
+      }
+    }
+  }
+
+  /** Renumbers lobby seats to 0..n-1 while preserving their current order. */
+  private async compactSeats(roomId: string): Promise<void> {
+    const memberships = (await this.repo.listMemberships(roomId)).sort(
+      (a, b) => a.seat - b.seat,
+    );
+    for (const [seat, membership] of memberships.entries()) {
+      if (membership.seat !== seat) {
+        await this.repo.updateMembership(roomId, membership.player_id, { seat });
       }
     }
   }

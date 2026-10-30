@@ -32,7 +32,7 @@ interface RoomShape {
   status: string;
   capacity: number;
   gameId: string | null;
-  members: { playerId: string; ready: boolean; connected: boolean; host: boolean; color: string }[];
+  members: { playerId: string; seat: number; ready: boolean; connected: boolean; host: boolean; color: string }[];
   startBlockers: { messageId: string; params?: Record<string, unknown> }[];
   policy: { disconnectGraceSeconds: number; turnClockSeconds: number; allowAbandonment: boolean };
   policyRevision: number;
@@ -431,6 +431,45 @@ describe('R-ROOM lobby', () => {
     expect(raised.capacity).toBe(4);
     const fourth = await harness.client('CapacityRaiseFourth');
     fourth.expectOk(await fourth.post('/api/rooms/join', { code: room.code }));
+  });
+
+  it('compacts seats when lowering capacity after a mid-seat departure', async () => {
+    const clients = [];
+    for (let index = 0; index < 4; index++) {
+      clients.push(await harness.client(`SeatCompact-${index}`));
+    }
+    const host = clients[0]!;
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    for (const client of clients.slice(1)) {
+      client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
+    }
+    // Seat 2 leaves, leaving occupied seats 0, 1 and 3.
+    clients[2]!.expectOk(await clients[2]!.post(`/api/rooms/${room.id}/leave`));
+    let view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.members.map((member) => member.seat)).toEqual([0, 1, 3]);
+
+    view = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${room.id}/settings`, { capacity: 3 }),
+    );
+    expect(view.capacity).toBe(3);
+    expect(view.members.map((member) => member.seat)).toEqual([0, 1, 2]);
+
+    const remaining = [clients[0]!, clients[1]!, clients[3]!];
+    for (const client of remaining) {
+      client.expectOk(await client.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    }
+    const started = host.expectOk<{ gameId: string }>(await host.post(`/api/rooms/${room.id}/start`));
+    const snapshot = host.expectOk<{ view: { players: unknown[] } }>(
+      await host.get(`/api/games/${started.gameId}`),
+    );
+    expect(snapshot.view.players).toHaveLength(3);
   });
 
   it('enforces the deployment capacity maximum in lobby settings', async () => {
