@@ -25,10 +25,19 @@ docs/FIDELITY.md    fixture-to-evidence index and known gaps
 
 ```bash
 pnpm install
-pnpm dev            # client dev server + service on http://127.0.0.1:3000
+pnpm dev            # open http://localhost:5173 (Vite + proxied service)
 ```
 
-Open `http://127.0.0.1:3000/?preview=island` to inspect the island models without
+The service listens on port 3000; Vite forwards `/api` and `/ws` from port 5173
+so guest cookies and live table updates share the browser's origin. The runner
+compiles the TypeScript service using the same esbuild options as production,
+watches service/rules/protocol changes, and stops both servers on Ctrl-C or a
+runtime startup failure. No prior `pnpm build` is required. Data stays in
+`.data/catan.sqlite` unless `SQLITE_PATH` is set. If ports are occupied, stop
+the earlier dev session or use `PORT=3001 VITE_PORT=5174 pnpm dev`; Vite does not
+silently select a different port. Keep using one hostname for the same session.
+
+Open `http://localhost:5173/?preview=island` to inspect the island models without
 creating a room. The preview uses the game's 3D renderer and offers 19/30-tile
 layouts, quality settings, and a 25–80° viewing-angle slider. Hold the left
 mouse button and drag horizontally to rotate or vertically to change elevation;
@@ -84,6 +93,7 @@ pnpm --filter @catan/protocol test
 pnpm --filter @catan/web test        # client component tests
 pnpm build                           # client bundle + service bundle
 pnpm smoke                           # boots the built artefacts and plays a setup
+pnpm test:dev                        # temp SQLite, real dev proxy/socket/watch lifecycle
 SMOKE_BASE_URL=http://host:3000 pnpm smoke   # verify a running deployment
 ```
 
