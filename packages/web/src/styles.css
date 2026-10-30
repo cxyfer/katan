@@ -133,7 +133,7 @@ summary:hover { color: var(--accent); }
 .preview { border-color: #a78b57; background: #283c39; }
 .preview__actions, .command-status__actions, .offer__actions, .form-actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; margin-top: .8rem; }
 .toast { position: fixed; right: 1.5rem; bottom: 1rem; z-index: 45; display: flex; gap: 1rem; align-items: center; justify-content: space-between; max-width: min(520px, calc(100vw - 2rem)); border-color: #70877c; background: #21423f; }
-.list, .action-list, .resource-list, .card-list, .seat-list, .event-log, .chat__log, .target-picker__list, .color-list, .term-list, .response-list, .cost-list, .award-list { list-style: none; margin: 0; padding: 0; }
+.list, .action-list, .hand-card-list, .card-list, .seat-list, .event-log, .chat__log, .target-picker__list, .color-list, .term-list, .response-list, .cost-list, .award-list { list-style: none; margin: 0; padding: 0; }
 .list__row, .card-list__row, .term-list li { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; justify-content: space-between; padding: .8rem 0; border-bottom: 1px solid var(--border); }
 .table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .table th { font-size: .74rem; color: var(--text-muted); letter-spacing: .06em; font-weight: 500; }

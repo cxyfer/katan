@@ -29,6 +29,7 @@ export function GameIcon({ name, size = 20, className = '' }: { name: string; si
     sparkles: <path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3ZM20 2v4m-2-2h4" />,
     chat: <path d="M21 11a9 9 0 0 1-9 9H3l2-5a9 9 0 1 1 16-4ZM8 10h8m-8 4h5" />,
     trade: <path d="M3 7h17m-5-5 5 5-5 5M21 17H4m5-5-5 5 5 5" />,
+    scales: <path d="M12 3v18m-5 0h10M4 7h16M4 7l-3 7a3 3 0 0 0 6 0L4 7Zm16 0-3 7a3 3 0 0 0 6 0l-3-7Z" />,
     scroll: <><path d="M6 3h13a3 3 0 0 1 0 6h-2M6 3a3 3 0 0 0-3 3v12a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM6 21h12a3 3 0 0 0 3-3v-3h-4M12 8h2m-2 4h2" /></>,
     dice: <><rect x="3" y="3" width="18" height="18" rx="4" /><circle cx="8" cy="8" r="1" /><circle cx="16" cy="8" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="8" cy="16" r="1" /><circle cx="16" cy="16" r="1" /></>,
     anchor: <><circle cx="12" cy="5" r="3" /><path d="M12 8v14M3 13v3c0 8 18 8 18 0v-3M8 11h8M1 15l2-3 3 3m12 0 3-3 2 3" /></>,
@@ -180,6 +181,19 @@ export function TerrainIllustration({ terrain, x = 0, y = 0, scale = 1 }: { terr
 
 export function ResourceIcon({ resource, size = 48 }: { resource: string; size?: number }) {
   return <svg width={size} height={size} viewBox="-72 -62 144 105" aria-hidden="true" focusable="false"><TerrainIllustration terrain={resource} /></svg>;
+}
+
+const RESOURCE_GLYPHS: Record<string, ReactNode> = {
+  lumber: <><path d="M12 2.5 6 10.5h3.2L5 16h5.6v5h2.8v-5H19l-4.2-5.5H18Z" /></>,
+  brick: <><path d="M3 14.5h8.2v5H3Zm9.8 0H21v5h-8.2ZM7.4 8.5h9.2v5H7.4ZM3 8.5h3.4v5H3Zm14.6 0H21v5h-3.4Z" /></>,
+  wool: <><path d="M5.2 9.6a3 3 0 0 1 4.6-2.8 3.2 3.2 0 0 1 5.6.4 2.9 2.9 0 0 1 1.8 4.7 2.9 2.9 0 0 1-3.4 3.7 3.3 3.3 0 0 1-5.2.1 3 3 0 0 1-3.4-3.6 2.6 2.6 0 0 1 0-2.5Z" /><path d="M17.2 9.8c1.6-.8 3.6.2 3.7 2.2 0 1.5-1.2 2.6-2.7 2.5Z" /><path d="M8 16.5v4m3-4v4m3-4v4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></>,
+  grain: <><path d="M11.1 21V7.5h1.8V21Z" /><path d="M12 2.3c1.6 1.3 1.6 3.5 0 4.9-1.6-1.4-1.6-3.6 0-4.9Zm-.6 7.4C9.2 9.9 7.6 8.7 7.2 6.6c2.2-.1 3.9 1.1 4.2 3.1Zm1.2 0c.3-2 2-3.2 4.2-3.1-.4 2.1-2 3.3-4.2 3.1Zm-1.2 4.2c-2.2.2-3.8-1-4.2-3.1 2.2-.1 3.9 1.1 4.2 3.1Zm1.2 0c.3-2 2-3.2 4.2-3.1-.4 2.1-2 3.3-4.2 3.1Zm-1.2 4.2c-2.2.2-3.8-1-4.2-3.1 2.2-.1 3.9 1.1 4.2 3.1Zm1.2 0c.3-2 2-3.2 4.2-3.1-.4 2.1-2 3.3-4.2 3.1Z" /></>,
+  ore: <><path d="m2.5 19.5 5.8-10 3.3 4.2 3.7-8.2 6.2 14Z" /><path d="m15.3 5.5-1.2 6.2 2.6 2.1M8.3 9.5l.9 4.6" fill="none" stroke="var(--glyph-shade, #0005)" strokeWidth="1.3" strokeLinejoin="round" /></>,
+};
+
+/** 扁平的資源符號，用於卡角與數量列；在小尺寸下仍可辨識。 */
+export function ResourceGlyph({ resource, size = 18 }: { resource: string; size?: number }) {
+  return <svg className="resource-glyph" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">{RESOURCE_GLYPHS[resource]}</svg>;
 }
 
 export function BuildingPiece({ x, y, city, color }: { x: number; y: number; city: boolean; color: string }) {

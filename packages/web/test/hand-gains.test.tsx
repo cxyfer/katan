@@ -38,7 +38,7 @@ describe('own resource cards descending into the hand', () => {
     const { rerender } = render(<HandPanel controller={controller(props())} />, { wrapper: StrictMode });
     expect(screen.queryByTestId('hand-gains')).toBeNull();
     rerender(<HandPanel controller={controller(props(13, 4))} />);
-    expect(screen.getByTestId('resource-lumber').querySelector('.resource-list__count')!.textContent).toBe('4');
+    expect(screen.getByTestId('resource-lumber').querySelector('.resource-tally__count')!.textContent).toBe('4');
     const overlay = screen.getByTestId('hand-gains');
     expect(overlay.parentElement).toBe(document.body);
     expect(overlay.getAttribute('aria-hidden')).toBe('true');
@@ -52,7 +52,7 @@ describe('own resource cards descending into the hand', () => {
     expect(screen.queryByTestId('hand-gains')).toBeNull();
     rerender(<HandPanel controller={controller(props(14, 1))} />);
     expect(screen.queryByTestId('hand-gains')).toBeNull();
-    expect(screen.getByTestId('resource-lumber').querySelector('.resource-list__count')!.textContent).toBe('1');
+    expect(screen.getByTestId('resource-lumber').querySelector('.resource-tally__count')!.textContent).toBe('1');
   });
 
   it('waits for the dice presentation before dropping rolled resources, and holds the count meanwhile', () => {
@@ -87,7 +87,7 @@ describe('own resource cards descending into the hand', () => {
     const big = rolled(14, 14);
     const panel = render(<HandPanel controller={controller(props(), false)} />);
     panel.rerender(<HandPanel controller={controller(big, true)} />);
-    const count = () => screen.getByTestId('resource-lumber').querySelector('.resource-list__count')!.textContent;
+    const count = () => screen.getByTestId('resource-lumber').querySelector('.resource-tally__count')!.textContent;
     expect(count()).toBe('2');
     panel.rerender(<HandPanel controller={controller(big, false)} />);
     expect(count()).toBe('14');
@@ -281,5 +281,25 @@ describe('own resource cards descending into the hand', () => {
     unmount();
     for (const args of addMedia.mock.calls) expect(removeMedia.mock.calls).toContainEqual(args);
     for (const args of addDocument.mock.calls.filter(([type]) => type === 'visibilitychange')) expect(removeDocument.mock.calls).toContainEqual(args);
+  });
+
+  it('drops the inspected or focused card cleanly when the hand shrinks, and only pops a tally count that changed', () => {
+    const controller = (input: Input): TableController => ({
+      state: { ...initialTableState('en', ''), game: input.snapshot, gameSync: input.sync, session: makeIdentity() },
+      actions: {} as TableController['actions'], dispatch: vi.fn(),
+    });
+    const { rerender } = render(<HandPanel controller={controller(props(12, 3))} />);
+    expect(document.querySelector('.resource-tally__count--bump')).toBeNull();
+    const third = screen.getByTestId('resource-card-lumber-2').querySelector('button')!;
+    act(() => third.focus());
+    act(() => third.click());
+    expect(third.getAttribute('aria-pressed')).toBe('true');
+    rerender(<HandPanel controller={controller(props(13, 2))} />);
+    expect(screen.queryByTestId('resource-card-lumber-2')).toBeNull();
+    expect(screen.getByTestId('hand-panel').contains(document.activeElement)).toBe(true);
+    expect(screen.getByTestId('resource-lumber').querySelector('.resource-tally__count--bump')).toBeTruthy();
+    expect(screen.getByTestId('resource-brick').querySelector('.resource-tally__count--bump')).toBeNull();
+    rerender(<HandPanel controller={controller(props(14, 3))} />);
+    expect(screen.getByTestId('resource-card-lumber-2').querySelector('button')!.getAttribute('aria-pressed')).toBe('false');
   });
 });

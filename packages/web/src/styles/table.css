@@ -913,182 +913,10 @@
   position: absolute;
   top: -24px;
 }
-.resource-list__count {
-  z-index: 2;
-  color: #fff0c9;
-  background: #28443d;
-  border: 2px solid #d5c18d;
-  border-radius: 50%;
-  place-items: center;
-  min-width: 27px;
-  height: 27px;
-  padding: 0 4px;
-  font-size: .72rem;
-  font-weight: 750;
-  line-height: 1;
-  display: grid;
-  position: absolute;
-  top: -7px;
-  right: -7px;
-  box-shadow: 0 2px 5px #0007;
-}
-.resource-card--missing .resource-list__count {
-  color: #d8e2d1;
-  background: #354b43;
-}
-.resource-card--empty .resource-list__count {
-  color: #d5d9bd;
-  background: #5e6853;
-}
-.resource-card__use {
-  text-align: center;
-  color: #494b35;
-  flex: 1;
-  justify-content: center;
-  align-items: center;
-  padding: 5px 3px 2px;
-  font-size: .55rem;
-  line-height: 1.4;
-  display: flex;
-}
-.resource-list {
-  justify-content: center;
-  align-items: flex-end;
-  height: calc(100% - 35px);
-  padding: 0 16px;
-  display: flex;
-}
-.resource-card {
-  --resource-color:#7c9b70;
-  min-width: 0;
-  height: 169px;
-  transform: translateY(calc(var(--card-index,2) * 0px)) rotate(var(--card-angle,0deg));
-  transform-origin: 50% 125%;
-  z-index: var(--card-index,0);
-  flex: 0 120px;
-  margin: 0 -6px;
-  transition: transform .22s, filter .22s;
-  position: relative;
-}
-.resource-card:first-child,
-.resource-card:nth-child(5) {
-  bottom: -13px;
-}
-.resource-card:nth-child(2),
-.resource-card:nth-child(4) {
-  bottom: -3px;
-}
-.resource-card--lumber {
-  --resource-color:#537d56;
-}
-.resource-card--brick {
-  --resource-color:#bc7352;
-}
-.resource-card--wool {
-  --resource-color:#8da567;
-}
-.resource-card--grain {
-  --resource-color:#bf9f4f;
-}
-.resource-card--ore {
-  --resource-color:#758da2;
-}
-.resource-card__inspect {
-  color: #2f3329;
-  cursor: pointer;
-  background:
-    linear-gradient(
-      145deg,
-      #ebd8ab,
-      #bba273);
-  border: 2px solid #b9ac80;
-  border-radius: 9px;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-  padding: 5px;
-  transition: border-color .2s, box-shadow .2s;
-  display: flex;
-  position: relative;
-  box-shadow:
-    0 0 0 2px #263b31,
-    3px 5px #071d25,
-    0 7px 12px #00131c99,
-    inset 0 0 0 2px #fff7d73d;
-}
-.resource-card__corner {
-  color: #fff2ce;
-  z-index: 2;
-  background: #1f3d38;
-  border: 2px solid #d5c18d;
-  border-radius: 50%;
-  place-items: center;
-  min-width: 29px;
-  height: 29px;
-  padding: 0 4px;
-  font-size: .8rem;
-  font-weight: 700;
-  display: grid;
-  position: absolute;
-  top: -9px;
-  left: -8px;
-  box-shadow: 0 2px 5px #0007;
-}
-.resource-card__art {
-  background: var(--resource-color);
-  border: 1px solid #86724c88;
-  border-radius: 4px;
-  width: 100%;
-  height: 87px;
-  margin-top: 2px;
-  overflow: hidden;
-}
 .resource-card-art {
   width: 100%;
   height: 100%;
   display: block;
-}
-.resource-list__label {
-  color: #34392a;
-  font-family: var(--font-display);
-  text-align: center;
-  order: -1;
-  padding: 2px 4px 4px;
-  font-size: .82rem;
-  font-weight: 750;
-  line-height: 1.25;
-  display: block;
-}
-.resource-card--empty .resource-card__art {
-  filter: saturate(.55)brightness(.85);
-}
-.resource-card--empty .resource-card__inspect {
-  background:
-    linear-gradient(
-      140deg,
-      #c8c5a1,
-      #879685);
-  border-color: #92a48a;
-}
-.resource-card--empty .resource-card__corner {
-  color: #b3c8b1;
-  background: #334944;
-}
-.resource-card:hover,
-.resource-card:focus-within,
-.resource-card--inspected {
-  z-index: 10;
-  transform: translateY(-28px)rotate(0)scale(1.16);
-}
-.resource-card:hover .resource-card__inspect,
-.resource-card--inspected .resource-card__inspect,
-.resource-card:focus-within .resource-card__inspect {
-  border-color: #fff0b0;
-  box-shadow:
-    0 0 0 2px #bba26e,
-    0 0 22px #f4d08344,
-    0 12px 24px #00182099;
 }
 .hand__summary {
   text-align: center;
@@ -1452,19 +1280,6 @@
     --hand-height:216px;
     --rail-width:242px;
   }
-  .resource-card {
-    flex-basis: 139px;
-    height: 195px;
-  }
-  .resource-card__art {
-    height: 108px;
-  }
-  .resource-list__label {
-    font-size: .95rem;
-  }
-  .resource-card__use {
-    font-size: .65rem;
-  }
   .game__actions {
     right: 35px;
   }
@@ -1522,17 +1337,6 @@
   }
   .game__identity {
     margin-left: 5px;
-  }
-  .resource-card {
-    flex-basis: 105px;
-    height: 149px;
-    margin: 0 -7px;
-  }
-  .resource-card__art {
-    height: 70px;
-  }
-  .resource-card__use {
-    font-size: .5rem;
   }
   .screen--game .legend {
     left: 0;
@@ -1719,36 +1523,6 @@
     font-size: .56rem;
     bottom: 2px;
   }
-  .resource-list {
-    height: calc(100% - 24px);
-  }
-  .resource-card {
-    flex-basis: 85px;
-    height: 108px;
-    margin-inline: -6px;
-  }
-  .resource-card__inspect {
-    border-radius: 6px;
-    padding: 3px;
-  }
-  .resource-card__corner {
-    min-width: 23px;
-    height: 23px;
-    font-size: .65rem;
-    top: -7px;
-    left: -5px;
-  }
-  .resource-list__label {
-    padding: 1px 2px 2px;
-    font-size: .62rem;
-  }
-  .resource-card__art {
-    height: 48px;
-  }
-  .resource-card__use {
-    padding: 3px 1px;
-    font-size: .43rem;
-  }
   .hand__summary {
     font-size: .55rem;
     top: -22px;
@@ -1756,11 +1530,6 @@
   .hand__empty {
     font-size: .55rem;
     top: -19px;
-  }
-  .resource-card:hover,
-  .resource-card:focus-within,
-  .resource-card--inspected {
-    transform: translateY(-25px)rotate(0)scale(1.25);
   }
   .game__devcards {
     margin-bottom: 39px;
@@ -2065,42 +1834,6 @@
   .game__identity-caption {
     display: none;
   }
-  .resource-list {
-    height: calc(100% - 46px);
-    padding-inline: 5px;
-  }
-  .resource-card {
-    flex-basis: 73px;
-    height: 120px;
-    margin-inline: -9px;
-  }
-  .resource-card__inspect {
-    border-radius: 6px;
-    padding: 3px;
-  }
-  .resource-list__label {
-    padding-bottom: 2px;
-    font-size: .62rem;
-  }
-  .resource-card__art {
-    height: 53px;
-  }
-  .resource-card__corner {
-    min-width: 24px;
-    height: 24px;
-    font-size: .65rem;
-    top: -8px;
-    left: -5px;
-  }
-  .resource-card__use {
-    padding-inline: 0;
-    font-size: .43rem;
-  }
-  .resource-card:hover,
-  .resource-card:focus-within,
-  .resource-card--inspected {
-    transform: translateY(-20px)rotate(0)scale(1.22);
-  }
   .hand h2 {
     font-size: .53rem;
     bottom: 21px;
@@ -2286,11 +2019,6 @@
   display: flex;
   flex-direction: column;
 }
-.hand:has(.devcards--hand) .resource-list {
-  flex: 1;
-  min-height: 0;
-  height: auto;
-}
 .hand__development {
   z-index: 2;
   flex: 0 0 auto;
@@ -2429,9 +2157,6 @@
   .hand {
     min-height: 110px;
     height: 110px;
-  }
-  .resource-card {
-    height: 100px;
   }
   .hand__development {
     max-height: 44px;
