@@ -18,11 +18,13 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
   const { state, actions } = controller;
   const view = state.game?.view ?? null;
   const selfId = state.session?.id ?? null;
-  const action = requiredActionFor(state);
+  // 擲骰演出期間先只顯示「擲骰中」，點數揭曉後才給出棄牌、結束回合等後續選項。
+  const rolling = state.dicePresenting;
+  const action = rolling ? null : requiredActionFor(state);
   const [discardPick, setDiscardPick] = useState<Resource[]>([]);
 
   if (!view) return null;
-  const pending = view.pending;
+  const pending = rolling ? null : view.pending;
 
   const nameOf = (playerId: string) =>
     view.players.find((player) => player.id === playerId)?.nickname ?? playerId;
@@ -35,10 +37,11 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       className={`prompt${action?.mine ? ' prompt--mine' : ''}`}
       data-testid="required-action-prompt"
       data-mine={action?.mine ? 'true' : 'false'}
+      data-rolling={rolling ? 'true' : undefined}
       aria-labelledby="prompt-heading"
     >
       <h2 id="prompt-heading">
-        {action ? t(action.messageId, action.params) : t('play.waitingFor', { player: '—' })}
+        {rolling ? t('dice.rolling') : action ? t(action.messageId, action.params) : t('play.waitingFor', { player: '—' })}
       </h2>
       {action && !action.mine && action.waitingFor.length > 0 && (
         <p className="muted" data-testid="prompt-waiting">

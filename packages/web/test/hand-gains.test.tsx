@@ -3,6 +3,7 @@ import { act, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HandPanel } from '../src/components/HandPanel.tsx';
 import { MAX_HAND_GAIN_CARDS, useHandGains } from '../src/components/useHandGains.ts';
+import { DICE_PRESENTATION_DURATION_MS } from '../src/board/animation.ts';
 import { initialTableState, type GameSyncMetadata } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeEvent, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -53,6 +54,29 @@ describe('own resource cards descending into the hand', () => {
     rerender(<HandPanel controller={controller(props(14, 1))} />);
     expect(screen.queryByTestId('hand-gains')).toBeNull();
     expect(screen.getByTestId('resource-lumber').querySelector('.resource-list__count')!.textContent).toBe('1');
+  });
+
+  it('waits for the dice presentation before dropping rolled resources, and holds the count meanwhile', () => {
+    const rolled = (seq: number, lumber: number) => {
+      const input = props(seq, lumber);
+      input.snapshot.view.events = [makeEvent(seq - 1, 'turn.rolled', { dice: [3, 3], total: 6 }), makeEvent(seq, 'production.resolved')];
+      return input;
+    };
+    const { result, rerender } = mount();
+    rerender(rolled(14, 4));
+    expect(result.current.map((gain) => gain.delayMs)).toEqual([DICE_PRESENTATION_DURATION_MS, DICE_PRESENTATION_DURATION_MS + 45]);
+
+    const controller = (input: Input, dicePresenting: boolean): TableController => ({
+      state: { ...initialTableState('en', ''), game: input.snapshot, gameSync: input.sync, session: makeIdentity(), dicePresenting },
+      actions: {} as TableController['actions'], dispatch: vi.fn(),
+    });
+    const panel = render(<HandPanel controller={controller(props(), false)} />);
+    const next = rolled(14, 4);
+    panel.rerender(<HandPanel controller={controller(next, true)} />);
+    const count = () => screen.getByTestId('resource-lumber').querySelector('.resource-list__count')!.textContent;
+    expect(count()).toBe('2');
+    panel.rerender(<HandPanel controller={controller(next, false)} />);
+    expect(count()).toBe('4');
   });
 
   it('does not infer gains from opponent hand counts or private-looking opponent data', () => {

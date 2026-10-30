@@ -23,7 +23,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const { state } = controller;
   const stageRef = useRef<HTMLDivElement>(null);
   const fullscreen = useFullscreen(stageRef);
-  const action = requiredActionFor(state);
+  const action = state.dicePresenting ? null : requiredActionFor(state);
   const [announcement, setAnnouncement] = useState('');
   const narrow = useIsMobile('(max-width: 649px)');
   const [activeRail, setActiveRail] = useState<'players' | 'actions' | null>(null);

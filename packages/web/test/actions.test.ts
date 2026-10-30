@@ -17,6 +17,25 @@ function stateWith(overrides: Partial<TableState> = {}): TableState {
 }
 
 describe('action availability', () => {
+  it('holds otherwise-available actions until the dice presentation ends', () => {
+    const game = makeSnapshot(makeView({ hints: makeHints({ legalRoads: [3], canEndTurn: true }) }));
+    const rolling = deriveActions(stateWith({ game, dicePresenting: true }), 'p1');
+    expect(rolling.find((action) => action.id === 'endTurn')).toMatchObject({
+      enabled: false,
+      reasonId: 'play.disabled.rolling',
+    });
+    expect(rolling.find((action) => action.id === 'build.road')).toMatchObject({
+      enabled: false,
+      reasonId: 'play.disabled.rolling',
+    });
+    // 本來就不可用的動作保留原本的原因，不被擲骰提示蓋掉。
+    expect(rolling.find((action) => action.id === 'build.settlement')?.reasonId).toBe('play.disabled.noTargets');
+
+    const settled = deriveActions(stateWith({ game, dicePresenting: false }), 'p1');
+    expect(settled.find((action) => action.id === 'endTurn')).toMatchObject({ enabled: true, reasonId: null });
+    expect(settled.find((action) => action.id === 'build.road')).toMatchObject({ enabled: true, reasonId: null });
+  });
+
   it('enables roll only in the preroll phase for the turn owner', () => {
     const state = stateWith({
       game: makeSnapshot(makeView({ hints: makeHints({ canRoll: true, canEndTurn: false }), phase: 'preroll' })),

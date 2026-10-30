@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { GameSnapshot } from '@catan/protocol';
 import type { GameSyncMetadata } from '../state/table.ts';
 import {
@@ -60,7 +60,8 @@ export function useBoardAnimation(
     };
   }, [resetPresentation]);
 
-  useEffect(() => {
+  // 在繪製前決定演出，避免新投影的動作選項先閃現一幀才被擲骰演出蓋住。
+  useLayoutEffect(() => {
     const decision = decideBoardAnimation(
       cursor.current, snapshot, sync, !online || !visible.current || reduced.current,
     );
@@ -98,8 +99,14 @@ export function useBoardAnimation(
   }, [snapshot, sync.generation, sync.cause, online, mandatory]);
 
   const active = queue[0] ?? null;
+  const activeDice = diceQueue[0] ?? null;
+  // 依事件順序串成單一時間軸：同組（或更早）的骰子先揭曉，盤面特效（資源產出等）才播放；
+  // 較早的特效組播完前，後一次擲骰也先等待。
+  const lastEffectSeq = active ? active.events.at(-1)!.seq : null;
+  const effectHeld = activeDice !== null && lastEffectSeq !== null && activeDice.seq <= lastEffectSeq;
+  const diceHeld = activeDice !== null && lastEffectSeq !== null && lastEffectSeq < activeDice.seq;
   useEffect(() => {
-    if (!active) return;
+    if (!active || effectHeld) return;
     timer.current = globalThis.setTimeout(() => {
       timer.current = null;
       setQueue((current) => current.slice(1));
@@ -108,12 +115,11 @@ export function useBoardAnimation(
       if (timer.current !== null) globalThis.clearTimeout(timer.current);
       timer.current = null;
     };
-  }, [active]);
+  }, [active, effectHeld]);
 
   // 骰子與盤面特效共用事件游標及取消邊界，分開計時以免延長資源／建造特效。
-  const activeDice = diceQueue[0] ?? null;
   useEffect(() => {
-    if (!activeDice) return;
+    if (!activeDice || diceHeld) return;
     diceTimer.current = globalThis.setTimeout(() => {
       diceTimer.current = null;
       setDiceQueue((current) => current.slice(1));
@@ -122,14 +128,14 @@ export function useBoardAnimation(
       if (diceTimer.current !== null) globalThis.clearTimeout(diceTimer.current);
       diceTimer.current = null;
     };
-  }, [activeDice]);
+  }, [activeDice, diceHeld]);
 
   const canPresent = online && visible.current && !reduced.current &&
     cursor.current?.gameId === snapshot?.gameId && cursor.current?.syncGeneration === sync.generation;
   return {
-    activeDice: canPresent && (!mandatory || mandatoryRollSeq.current === snapshot?.view.seq) ? activeDice : null,
+    activeDice: canPresent && !diceHeld && (!mandatory || mandatoryRollSeq.current === snapshot?.view.seq) ? activeDice : null,
     pendingDiceCount: diceQueue.length,
-    active: canPresent && !mandatory ? active : null,
+    active: canPresent && !mandatory && !effectHeld ? active : null,
     pendingCount: queue.length,
     resetPresentation,
   };

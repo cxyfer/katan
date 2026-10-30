@@ -65,7 +65,8 @@ export function BoardView({ controller }: { controller: TableController }) {
   const { zoom } = controls.viewport;
   const selfId = state.session?.id ?? null;
   const nameResolver = useMemo(() => nameOf(state), [state]);
-  const intent = useMemo(() => boardIntent(state, selfId), [state, selfId]);
+  // 擲骰演出期間不開放由擲骰帶出的棋盤目標（例如七點後移動強盜）；玩家已選取中的建造不受影響。
+  const intent = useMemo(() => state.dicePresenting && !state.selection.commandType ? null : boardIntent(state, selfId), [state, selfId]);
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
   const hexTargets = useMemo(() => controls.projectedTargets({ kind: 'hex', commandType: '', labelId: '', fromHints: false, targets: geometry.hexes.map((hex) => hex.index) }), [controls.projectedTargets, geometry]);
   const viewBox = useMemo(() => parseViewBox(geometry.viewBox), [geometry]);
@@ -123,6 +124,10 @@ export function BoardView({ controller }: { controller: TableController }) {
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
   }, [actions, intent]);
   const focusedRoll = animation.activeDice;
+  const presentingDice = focusedRoll !== null;
+  const { dispatch } = controller;
+  useLayoutEffect(() => { dispatch({ type: 'dice-presenting', value: presentingDice }); }, [dispatch, presentingDice]);
+  useEffect(() => () => dispatch({ type: 'dice-presenting', value: false }), [dispatch]);
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);
 
   if (!view) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;

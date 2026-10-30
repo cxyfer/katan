@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameSnapshot } from '@catan/protocol';
 import { RESOURCES, type Resource } from '@catan/rules';
-import { decideBoardAnimation, type PresentationCursor } from '../board/animation.ts';
+import {
+  decideBoardAnimation,
+  diceRollPresentations,
+  DICE_PRESENTATION_DURATION_MS,
+  type PresentationCursor,
+} from '../board/animation.ts';
 import type { GameSyncMetadata } from '../state/table.ts';
 
 export const MAX_HAND_GAIN_CARDS = 12;
@@ -90,13 +95,15 @@ export function useHandGains(
       return;
     }
     const remaining = RESOURCES.map((resource) => Math.max(0, resources[resource] - previous.resources[resource]));
+    // 擲骰產出的資源等骰子演出結束才落入手牌，避免點數揭曉前先透露結果。
+    const holdMs = diceRollPresentations(snapshot.gameId, decision.events).length > 0 ? DICE_PRESENTATION_DURATION_MS : 0;
     const incoming: HandGain[] = [];
     // 大量獲取仍呈現各種資源，並限制裝飾性卡片數量。
     while (incoming.length < MAX_BURST_CARDS && remaining.some((count) => count > 0)) {
       for (const [index, resource] of RESOURCES.entries()) {
         if (remaining[index]! <= 0 || incoming.length === MAX_BURST_CARDS) continue;
         remaining[index] = remaining[index]! - 1;
-        const delayMs = incoming.length * 45;
+        const delayMs = holdMs + incoming.length * 45;
         incoming.push({
           id: `${snapshot.gameId}:${playerId}:${snapshot.view.seq}:${incoming.length}`,
           resource, delayMs, expiresAt: Date.now() + HAND_GAIN_DURATION_MS + delayMs + 60,

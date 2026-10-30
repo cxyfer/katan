@@ -100,6 +100,43 @@
     margin-top: .5rem;
   }
 
+  .trade-term__owned {
+    display: block;
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .trade-term__owned--over {
+    color: var(--warning);
+    font-weight: 600;
+  }
+
+  .trade-builder__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: .5rem;
+  }
+
+  .trade-panel .button[aria-disabled='true'] {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+
+  /* 本地阻擋時的提示：貼近觸發的按鈕彈出，數秒後自動消失。 */
+  .trade-panel .trade-hint {
+    margin: 0 0 .65rem;
+    padding: .55rem .75rem;
+    font-size: .82rem;
+    animation: trade-hint-pop 180ms ease-out both;
+  }
+
+  @keyframes trade-hint-pop {
+    from { opacity: 0; transform: translateY(4px) scale(.98); }
+    to { opacity: 1; transform: none; }
+  }
+
   .exchange-terms .field {
     min-width: 0;
   }

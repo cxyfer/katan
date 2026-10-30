@@ -149,7 +149,10 @@ export function HandPanel({ controller }: { controller: TableController }) {
         {totalHandCards === 0 && <p className="hand__empty muted">{t('play.handEmpty')}</p>}
         <ul className="resource-list" aria-label={t('table.resources')}>
           {RESOURCES.map((resource, index) => {
-            const count = resources?.[resource];
+            // 擲骰演出期間先不計入等待落下的卡，點數揭曉前不從手牌數字透露結果。
+            const authoritative = resources?.[resource];
+            const held = state.dicePresenting ? gains.filter((gain) => gain.resource === resource).length : 0;
+            const count = authoritative === undefined ? undefined : Math.max(0, authoritative - held);
             const countLabel = count === undefined ? '—' : formatNumber(state.locale, count);
             const isInspected = inspected === resource;
             return (

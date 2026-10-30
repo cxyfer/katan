@@ -92,6 +92,8 @@ export interface TableState {
   chat: ChatState;
   drawer: DrawerPanel;
   selection: Selection;
+  /** 擲骰演出進行中；後續動作選項與資源演出等它結束才出現。 */
+  dicePresenting: boolean;
   toast: Notice | null;
   announcement: Announcement | null;
   fatal: Notice | null;
@@ -123,6 +125,7 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     chat: initialChatState(),
     drawer: 'none',
     selection: EMPTY_SELECTION,
+    dicePresenting: false,
     toast: null,
     announcement: null,
     fatal: null,
@@ -152,6 +155,7 @@ export type TableAction =
   | { type: 'chat'; event: ChatEvent }
   | { type: 'drawer'; drawer: DrawerPanel }
   | { type: 'selection'; selection: Selection }
+  | { type: 'dice-presenting'; value: boolean }
   | { type: 'toast'; notice: Notice | null }
   | { type: 'announce'; announcement: Announcement | null }
   | { type: 'fatal'; error: Notice | null };
@@ -288,6 +292,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       };
     case 'selection':
       return { ...state, selection: action.selection };
+    case 'dice-presenting':
+      return state.dicePresenting === action.value ? state : { ...state, dicePresenting: action.value };
     case 'toast':
       return { ...state, toast: action.notice };
     case 'announce':
