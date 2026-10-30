@@ -43,8 +43,9 @@ unchanged.
   - A fresh `origin/master` build fails identically with the same runner. This failure existed before this change.
 - The runner's keyboard "too early" assertion still waited 1100 ms, from the old 1500 ms delay. It now waits 900 ms to match the current 1000 ms contract.
 
-Review images, before and after, are in `../../screenshots/ui-refresh/`. To
-reproduce the captures after `pnpm build`:
+Review images, before and after, were removed in the 2026-10-30 screenshot
+reorganization; they remain in git history at `ca1e8db` under
+`docs/screenshots/ui-refresh/`. To reproduce the captures after `pnpm build`:
 
 ```sh
 python3 scripts/ui-refresh/capture.py --out .tmp/ui-refresh-rerun

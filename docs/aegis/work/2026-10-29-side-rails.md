@@ -66,10 +66,10 @@ python3 scripts/side-rails/verify.py --out test-results/side-rails-recheck
 
 - Browser evidence: [report.json](2026-10-29-side-rails/report.json)
 - Frontend test evidence: [web-tests.txt](2026-10-29-side-rails/web-tests.txt)
-- [Desktop collapsed](../../screenshots/side-rails/desktop-collapsed.png)
-- [Desktop expanded](../../screenshots/side-rails/desktop-expanded.png)
-- [Mobile collapsed](../../screenshots/side-rails/mobile-collapsed.png)
-- [Short landscape expanded](../../screenshots/side-rails/landscape-expanded.png)
+- Review images (desktop/mobile/landscape) were removed in the 2026-10-30
+  screenshot reorganization; they remain in git history at `ca1e8db`
+  under `docs/screenshots/side-rails/`. Current captures live in
+  [`docs/screenshots/current/`](../../screenshots/current/).
 
 The fixtures mock API/WebSocket responses; this does not prove live-server
 command processing. Chromium touch emulation and software WebGL do not establish
@@ -103,5 +103,5 @@ initial report remains available.
 
 - [Review browser report](2026-10-29-side-rails/review-report.json)
 - [Review web tests](2026-10-29-side-rails/review-web-tests.txt)
-- [Expanded hand avoidance](../../screenshots/side-rails/review-hand-expanded.png)
-- [Turn flag above the open rail](../../screenshots/side-rails/review-turn-flag.png)
+- Review images (expanded-hand avoidance, turn flag above the open rail) were
+  removed in the same reorganization; see git history at `ca1e8db`.

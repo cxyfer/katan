@@ -136,8 +136,9 @@ to a live deployment.
   production web/server builds, and **13/13 smoke checks**.
 - Final repository verification is retained as
   `2026-10-29-table-experience/evidence/verify.log`.
-- Selected captures are in `docs/screenshots/table-experience/`.
-  `six-player-scoreboard.png` shows the expanded six-player mobile scoreboard.
+- Selected captures were removed in the 2026-10-30 screenshot reorganization;
+  they remain in git history at `ca1e8db` under `docs/screenshots/table-experience/`
+  (including `six-player-scoreboard.png`, the expanded six-player mobile scoreboard).
 
 ## Evidence boundaries
 
