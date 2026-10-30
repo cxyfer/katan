@@ -31,7 +31,10 @@ export function HomeScreen({ controller }: ScreenProps) {
     () => profiles.find((profile) => profile.id === profileId) ?? profiles[0] ?? null,
     [profiles, profileId],
   );
-  const capacityOptions = chosenProfile?.playerCounts ?? [3, 4];
+  const capacityLimit = state.config?.limits.roomCapacityMax ?? Infinity;
+  const capacityOptions = (chosenProfile?.playerCounts ?? [3, 4]).filter(
+    (count) => count <= capacityLimit,
+  );
   const effectiveCapacity = capacityOptions.includes(capacity) ? capacity : (capacityOptions[0] ?? 4);
   const setupOptions = chosenProfile?.setupModes ?? ['fixed', 'variable'];
   const effectiveSetup = setupOptions.includes(setupMode) ? setupMode : (setupOptions[0] ?? 'fixed');
@@ -168,7 +171,7 @@ export function HomeScreen({ controller }: ScreenProps) {
               type="button"
               className="button button--primary button--hero"
               data-testid="create-room"
-              disabled={!chosenProfile}
+              disabled={!chosenProfile || capacityOptions.length === 0}
               onClick={() =>
                 void actions.createRoom({
                   visibility,

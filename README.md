@@ -74,9 +74,9 @@ pull, run `docker login ghcr.io` with a token that has `read:packages`, or make
 the package public.
 
 Open `http://localhost:3000`, enter a nickname, create a private room, share the
-invite code, and start once the ruleset's minimum number of seated players is
-ready. A room does not need to be full: a four-seat base room may start with
-three, and a six-seat paired room with five. See
+invite code, and start once every seated player is ready and the ruleset's
+minimum is met. A room does not need to be full: a four-seat base room may
+start with three, and a six-seat paired room with five. See
 [`docs/OPERATIONS.md`](docs/OPERATIONS.md) for configuration and backup.
 
 ## Verification

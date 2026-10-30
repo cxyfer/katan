@@ -677,6 +677,7 @@ export const zhHant: Catalog = {
   'blocker.disconnected': '尚未連線：{players}',
   'blocker.noHost': '目前沒有已連線的房主。',
   'blocker.profilePlayerCount': '規則集 {profileId} 不支援 {playerCount} 人。',
+  'blocker.capacity': '房間人數上限為 {capacity}，但已入座 {seated} 位。',
   'error.E_ABANDON_DISABLED': '本房間已關閉「無人獲勝即結束中斷對局」的選項。',
   'error.E_BAD_REQUEST': '請求內容不完整或格式錯誤。',
   'error.E_BODY_TOO_LARGE': '請求內容過大。',

@@ -113,7 +113,7 @@ over the ready control.
 | Family | Evidence |
 |---|---|
 | R-B01 … R-B07 | `packages/rules/test/{setup,production,seven,trade,devcards,awards,victory}.test.ts` |
-| R-56 | `packages/rules/test/paired.test.ts` (engine-level; profile not advertised) |
+| R-56 | `packages/rules/test/paired.test.ts` (engine-level; `base-paired-2025` advertised) |
 | R-VIS | `packages/rules/test/privacy.test.ts`, `packages/server/test/game.test.ts` |
 | R-ROOM | `packages/server/test/{rooms,abandonment,housekeeping}.test.ts` |
 | R-POLICY | `packages/server/test/rooms.test.ts`, `packages/server/test/abandonment.test.ts` |
@@ -163,8 +163,8 @@ claims.
 
 The authoritative list is the "Known gaps and unresolved items" section of
 `docs/FIDELITY.md`. In summary: harbor positions are approximated, the fixed
-board transcription lacks a recorded page citation, only the base profile is
-advertised, no device/accessibility/playtest evidence exists, multi-browser
+board transcription lacks a recorded page citation, only the base and paired-base
+profiles are advertised, no device/accessibility/playtest evidence exists, multi-browser
 races and real presence timing are unexercised, the advisory turn clock is
 stored but not cued, and only one rules-engine version ships.
 

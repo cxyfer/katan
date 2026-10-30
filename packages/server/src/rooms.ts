@@ -75,10 +75,12 @@ export class RoomService {
   }
 
   /**
-   * Serialises membership, capacity and start transitions for one room. The
-   * start transition is a multi-step async operation, so a join or leave that
-   * reads the old membership snapshot in the middle of it could otherwise put
-   * a member outside the created game (or include an unvalidated one).
+   * Serialises membership, capacity, policy and start transitions for one
+   * room. The start transition is a multi-step async operation, so a join or
+   * leave that reads the old membership snapshot in the middle of it could
+   * otherwise put a member outside the created game (or include an unvalidated
+   * one). The lock is not re-entrant: never call a locked public method from
+   * inside `fn`.
    */
   private withRoomLock<T>(roomId: string, fn: () => Promise<T>): Promise<T> {
     const previous = this.roomLocks.get(roomId) ?? Promise.resolve();
@@ -180,6 +182,12 @@ export class RoomService {
       blockers.push({
         messageId: 'blocker.profilePlayerCount',
         params: { profileId: profile.id, playerCount: room.capacity },
+      });
+    }
+    if (members.length > room.capacity) {
+      blockers.push({
+        messageId: 'blocker.capacity',
+        params: { seated: members.length, capacity: room.capacity },
       });
     }
     if (members.length < minimumPlayers) {
@@ -498,6 +506,11 @@ export class RoomService {
     const profileId = input.profileId ?? room.profile_id;
     const setupMode = input.setupMode ?? (room.setup_mode as 'fixed' | 'variable');
     const capacity = input.capacity ?? room.capacity;
+    if (capacity > this.deps.config.limits.roomCapacityMax) {
+      throw new ServiceError('E_ROOM_CAPACITY', 'error.E_ROOM_CAPACITY', {
+        max: this.deps.config.limits.roomCapacityMax,
+      });
+    }
     const profile = requireProfile(profileId);
     const combination = resolveCombination({
       playerCount: capacity,
@@ -545,6 +558,14 @@ export class RoomService {
    * a proposal requiring every original seated player's consent (§5.8).
    */
   async setPolicy(playerId: string, roomId: string, policy: Partial<RoomPolicy>): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.setPolicyLocked(playerId, roomId, policy));
+  }
+
+  private async setPolicyLocked(
+    playerId: string,
+    roomId: string,
+    policy: Partial<RoomPolicy>,
+  ): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     if (room.host_id !== playerId) {
       throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', {}, 403);
@@ -582,6 +603,17 @@ export class RoomService {
   }
 
   async consentPolicy(
+    playerId: string,
+    roomId: string,
+    proposalId: string,
+    approve: boolean,
+  ): Promise<RoomView> {
+    return this.withRoomLock(roomId, () =>
+      this.consentPolicyLocked(playerId, roomId, proposalId, approve),
+    );
+  }
+
+  private async consentPolicyLocked(
     playerId: string,
     roomId: string,
     proposalId: string,

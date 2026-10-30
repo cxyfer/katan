@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { RoomPolicy } from '@catan/protocol';
 import { POLICY_BOUNDS } from '@catan/protocol';
 import { useT } from '../i18n/context.tsx';
@@ -25,6 +25,23 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const [policyDraft, setPolicyDraft] = useState<RoomPolicy | null>(null);
   const [capacityDraft, setCapacityDraft] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const profile = room ? state.profiles.find((item) => item.id === room.profileId) : undefined;
+  const capacityLimit = state.config?.limits.roomCapacityMax ?? Infinity;
+  // Only counts the ruleset and deployment allow, never below the seated players.
+  const capacityOptions = useMemo(
+    () =>
+      room
+        ? Array.from(new Set([...(profile?.playerCounts ?? []), room.capacity]))
+            .filter((count) => count >= room.members.length && count <= capacityLimit)
+            .sort((a, b) => a - b)
+        : [],
+    [profile, room?.capacity, room?.members.length, capacityLimit],
+  );
+  useEffect(() => {
+    if (capacityDraft !== null && !capacityOptions.includes(capacityDraft)) {
+      setCapacityDraft(null);
+    }
+  }, [capacityDraft, capacityOptions]);
 
   if (!room) {
     return (
@@ -45,18 +62,11 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const occupiedSeats = new Set(room.members.map((member) => member.seat));
   const emptySeats = Array.from({ length: room.capacity }, (_, seat) => seat)
     .filter((seat) => !occupiedSeats.has(seat));
-  const profile = state.profiles.find((item) => item.id === room.profileId);
-  // Only counts the ruleset supports, never below the players already seated.
-  const capacityOptions = Array.from(
-    new Set([...(profile?.playerCounts ?? []), room.capacity]),
-  )
-    .filter((count) => count >= room.members.length)
-    .sort((a, b) => a - b);
   const desiredCapacity = capacityDraft ?? room.capacity;
-  // A join can invalidate a pending lower value; fall back to the current cap.
+  // A join can invalidate a pending value; fall back to the first legal count.
   const selectedCapacity = capacityOptions.includes(desiredCapacity)
     ? desiredCapacity
-    : room.capacity;
+    : (capacityOptions[0] ?? room.capacity);
 
   const setPolicyField = <K extends keyof RoomPolicy>(key: K, value: RoomPolicy[K]) => {
     setPolicyDraft({ ...policy, [key]: value });

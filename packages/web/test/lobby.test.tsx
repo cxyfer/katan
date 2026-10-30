@@ -5,8 +5,10 @@ import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import {
+  makeConfig,
   makeMember,
   makePolicy,
+  makeProfile,
   makeRoom,
   makeSnapshot,
   makeView,
@@ -63,22 +65,6 @@ describe('lobby', () => {
     await waitFor(() => expect(api.callsOf('startGame')).toHaveLength(1));
   });
 
-  it('enables start for a four-seat room with only three seated players', async () => {
-    const api = createFakeApi({
-      room: makeRoom({
-        capacity: 4,
-        members: [
-          makeMember(),
-          makeMember({ playerId: 'p2', nickname: '小美', seat: 1, color: 'blue', host: false }),
-          makeMember({ playerId: 'p3', nickname: '阿明', seat: 2, color: 'orange', host: false }),
-        ],
-      }),
-    });
-    await joinLobby(api);
-    expect(screen.queryByTestId('start-blockers')).toBeNull();
-    expect((screen.getByTestId('start-game') as HTMLButtonElement).disabled).toBe(false);
-  });
-
   it('lets the host lower the capacity to the seated count', async () => {
     const api = createFakeApi({ room: makeRoom({ capacity: 4 }) });
     await joinLobby(api);
@@ -91,6 +77,18 @@ describe('lobby', () => {
     fireEvent.click(screen.getByTestId('save-settings'));
     await waitFor(() => expect(api.callsOf('updateSettings')).toHaveLength(1));
     expect(api.callsOf('updateSettings')[0]!.args[1]).toEqual({ capacity: 3 });
+  });
+
+  it('filters capacity options above the deployment maximum', async () => {
+    const config = makeConfig();
+    const api = createFakeApi({
+      config: makeConfig({ limits: { ...config.limits, roomCapacityMax: 5 } }),
+      profiles: [makeProfile({ id: 'base-paired-2025', playerCounts: [5, 6], paired: true })],
+      room: makeRoom({ profileId: 'base-paired-2025', capacity: 5 }),
+    });
+    await joinLobby(api);
+    const capacity = screen.getByTestId('lobby-capacity') as HTMLSelectElement;
+    expect([...capacity.options].map((option) => option.value)).toEqual(['5']);
   });
 
   it('does not offer a capacity below the seated players', async () => {

@@ -684,6 +684,7 @@ export const en: Catalog = {
   'blocker.disconnected': 'Not connected: {players}',
   'blocker.noHost': 'No connected host is present.',
   'blocker.profilePlayerCount': 'The {profileId} ruleset does not support {playerCount} players.',
+  'blocker.capacity': 'The room capacity is {capacity}, but {seated} players are seated.',
   'error.E_ABANDON_DISABLED': 'This room has disabled ending an interrupted game without a winner.',
   'error.E_BAD_REQUEST': 'The request was incomplete or malformed.',
   'error.E_BODY_TOO_LARGE': 'The request body is too large.',

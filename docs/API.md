@@ -55,9 +55,11 @@ Conventions:
 ### Room settings and start
 
 `POST /api/rooms/:roomId/settings` is host-only before start and accepts any
-subset of `capacity`, `profileId`, `setupMode` and `policy`. Capacity must be a
-count the room's profile supports and may not be lower than the seated players
-(`E_CAPACITY_BELOW_SEATED`); a change clears every seat's readiness.
+subset of `capacity`, `profileId`, `setupMode` and `policy`. A capacity above
+the deployment's `roomCapacityMax` is `E_ROOM_CAPACITY`; a count outside the
+room's profile range is `E_UNSUPPORTED_COMBINATION`; an otherwise valid count
+below the seated players is `E_CAPACITY_BELOW_SEATED`. A change clears every
+seat's readiness.
 
 `RoomView.startBlockers` is authoritative. A room may start with any seated
 count the profile supports up to its capacity, so it does not need to be full;

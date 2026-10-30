@@ -1,9 +1,21 @@
 /** R-ROOM / R-POLICY: lobby lifecycle, readiness, host succession, policy votes. */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { RoomServiceDeps } from '../src/rooms.ts';
 import { startHarness, startedGame, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;
+
+/** True when the promise has settled within `ms`; used to prove lock waiting. */
+function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
+  return Promise.race([
+    promise.then(
+      () => true,
+      () => true,
+    ),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), ms)),
+  ]);
+}
 
 beforeAll(async () => {
   harness = await startHarness();
@@ -186,29 +198,42 @@ describe('R-ROOM lobby', () => {
       client.expectOk(await client.post(`/api/rooms/${room.id}/ready`, { ready: true }));
     }
     const late = await harness.client('ConcurrentStartLate');
-
-    const [startResponse, joinResponse] = await Promise.all([
-      host.post<{ gameId: string }>(`/api/rooms/${room.id}/start`),
-      late.post('/api/rooms/join', { code: room.code }),
-    ]);
-    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
-
-    if (startResponse.body.ok) {
-      // The join lost the race and must not leave an extra seated player.
+    const deps = (harness.service.rooms as unknown as { deps: RoomServiceDeps }).deps;
+    const originalOnRoomStarted = deps.onRoomStarted;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let entered!: () => void;
+    const creating = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    deps.onRoomStarted = async (startedRoom, playerIds) => {
+      entered();
+      await gate;
+      return originalOnRoomStarted(startedRoom, playerIds);
+    };
+    try {
+      const startPromise = host.post<{ gameId: string }>(`/api/rooms/${room.id}/start`);
+      await creating;
+      const joinPromise = late.post('/api/rooms/join', { code: room.code });
+      // The start transition is paused inside onRoomStarted; a concurrent join
+      // must wait for the room lock instead of seating another player.
+      expect(await settlesWithin(joinPromise, 100)).toBe(false);
+      release();
+      const [startResponse, joinResponse] = await Promise.all([startPromise, joinPromise]);
+      const started = host.expectOk(startResponse);
       expect(joinResponse.body.ok).toBe(false);
       if (!joinResponse.body.ok) expect(joinResponse.body.error.code).toBe('E_ROOM_CLOSED');
+      const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
       expect(view.members).toHaveLength(3);
-      const started = startResponse.body.data;
       const snapshot = host.expectOk<{ view: { players: unknown[] } }>(
         await host.get(`/api/games/${started.gameId}`),
       );
       expect(snapshot.view.players).toHaveLength(3);
-    } else {
-      // The join won; the start must see the new unready seat and stay blocked.
-      expect(joinResponse.body.ok).toBe(true);
-      expect(startResponse.body.error.code).toBe('E_START_BLOCKED');
-      expect(view.members).toHaveLength(4);
-      expect(view.gameId).toBeNull();
+    } finally {
+      release();
+      deps.onRoomStarted = originalOnRoomStarted;
     }
   });
 
@@ -227,26 +252,43 @@ describe('R-ROOM lobby', () => {
       client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
     }
     const late = await harness.client('CapLate');
-
-    const [settingsResponse, joinResponse] = await Promise.all([
-      host.post(`/api/rooms/${room.id}/settings`, { capacity: 3 }),
-      late.post('/api/rooms/join', { code: room.code }),
-    ]);
-    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
-
-    expect(view.members.length).toBeLessThanOrEqual(view.capacity);
-    if (settingsResponse.body.ok) {
-      // The capacity change won; the fourth seat is now closed.
+    const repo = harness.service.repo;
+    const originalListMemberships = repo.listMemberships.bind(repo);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let entered!: () => void;
+    const readingMembers = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let armed = true;
+    repo.listMemberships = async (roomId: string) => {
+      if (armed && roomId === room.id) {
+        armed = false;
+        entered();
+        await gate;
+      }
+      return originalListMemberships(roomId);
+    };
+    try {
+      const settingsPromise = host.post(`/api/rooms/${room.id}/settings`, { capacity: 3 });
+      await readingMembers;
+      const joinPromise = late.post('/api/rooms/join', { code: room.code });
+      // The settings transition has read the seated snapshot but not applied
+      // the new capacity yet; the join must wait rather than seat a fourth.
+      expect(await settlesWithin(joinPromise, 100)).toBe(false);
+      release();
+      const [settingsResponse, joinResponse] = await Promise.all([settingsPromise, joinPromise]);
+      expect(settingsResponse.body.ok).toBe(true);
       expect(joinResponse.body.ok).toBe(false);
       if (!joinResponse.body.ok) expect(joinResponse.body.error.code).toBe('E_ROOM_FULL');
+      const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
       expect(view.capacity).toBe(3);
       expect(view.members).toHaveLength(3);
-    } else {
-      // The join won; lowering to three must be rejected.
-      expect(settingsResponse.body.error.code).toBe('E_CAPACITY_BELOW_SEATED');
-      expect(joinResponse.body.ok).toBe(true);
-      expect(view.capacity).toBe(4);
-      expect(view.members).toHaveLength(4);
+    } finally {
+      release();
+      repo.listMemberships = originalListMemberships;
     }
   });
 
@@ -375,6 +417,56 @@ describe('R-ROOM lobby', () => {
     expect(raised.capacity).toBe(4);
     const fourth = await harness.client('CapacityRaiseFourth');
     fourth.expectOk(await fourth.post('/api/rooms/join', { code: room.code }));
+  });
+
+  it('enforces the deployment capacity maximum in lobby settings', async () => {
+    const previous = harness.service.config.limits.roomCapacityMax;
+    harness.service.config.limits.roomCapacityMax = 5;
+    try {
+      const host = await harness.client('MaxCapacityHost');
+      const room = host.expectOk<RoomShape>(
+        await host.post('/api/rooms', {
+          visibility: 'private',
+          capacity: 5,
+          profileId: 'base-paired-2025',
+          setupMode: 'fixed',
+        }),
+      );
+      host.expectError(
+        await host.post(`/api/rooms/${room.id}/settings`, { capacity: 6 }),
+        'E_ROOM_CAPACITY',
+      );
+    } finally {
+      harness.service.config.limits.roomCapacityMax = previous;
+    }
+  });
+
+  it('blocks start when corrupt data leaves more seated players than the capacity', async () => {
+    const clients = [];
+    for (let index = 0; index < 4; index++) {
+      clients.push(await harness.client(`OverCapacity-${index}`));
+    }
+    const host = clients[0]!;
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    for (const client of clients.slice(1)) {
+      client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
+    }
+    for (const client of clients) {
+      client.expectOk(await client.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    }
+
+    // Simulate a stale writer or an old race that bypassed settings validation.
+    await harness.service.repo.updateRoom(room.id, { capacity: 3 });
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.startBlockers.map((blocker) => blocker.messageId)).toContain('blocker.capacity');
+    host.expectError(await host.post(`/api/rooms/${room.id}/start`), 'E_START_BLOCKED');
   });
 
   it('hides private rooms from the public list and exposes public ones', async () => {
