@@ -19,7 +19,8 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
   const selfId = state.session?.id ?? null;
   const view = state.game?.view ?? null;
   const self = view?.players.find((player) => player.id === selfId) ?? null;
-  const playable = !!view && view.turn.playerId === selfId && !view.turn.devCardPlayed && view.pending === null;
+  // 擲骰演出期間一律不可用，避免由是否待處理（七點）透露點數。
+  const playable = !!view && !state.dicePresenting && view.turn.playerId === selfId && !view.turn.devCardPlayed && view.pending === null;
   const held = self?.devCards ?? [];
   const fresh = self?.newDevCards ?? [];
 

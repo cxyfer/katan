@@ -377,6 +377,7 @@ export const zhHant: Catalog = {
   'play.tradeGiveLimit': '你只有 {count} 個{resource}，付出不能超過持有數量。',
   'play.tradeGiveShort': '你目前的資源不足以送出此提案，還缺 {missing}。',
   'play.tradeConsentShort': '你目前的資源不足以接受此提案，還缺 {missing}。',
+  'play.tradeReviseShort': '你目前的資源不足以改為付出這些條件，還缺 {missing}。',
   'play.tradeOfferFrom': '來自 {player} 的提案',
   'play.tradeOfferTo': '給 {player}',
   'play.tradeNoOffers': '沒有進行中的提案。',

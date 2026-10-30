@@ -213,6 +213,22 @@ describe('structured trading', () => {
     expect(lastCommand(api)).toEqual({ type: 'trade.respond', offerId: 'offer-1', response: 'interested' });
   });
 
+  it('explains instead of revising into terms the proposer cannot give', async () => {
+    const view = makeView({
+      hints: makeHints(),
+      offers: [{ ...openOffer, from: 'p1', give: { wool: 1 }, want: { ore: 3 } }],
+    });
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api, 'trade');
+
+    const revise = screen.getByTestId('revise-offer-1');
+    expect(revise.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(revise);
+    expect(screen.getByTestId('trade-hint-offer-1').textContent).toContain('1×Ore');
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
   it('computes the shortfall against the visible hand only', () => {
     expect(tradeShortfall({ lumber: 1, ore: 0 }, { lumber: 3, ore: 1, wool: 0 })).toEqual({ lumber: 2, ore: 1 });
     expect(tradeShortfall({ lumber: 3 }, { lumber: 3 })).toBeNull();

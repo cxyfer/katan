@@ -64,7 +64,8 @@ interface ActionInput {
 export function reasonFor(input: ActionInput, extra: string | null): string | null {
   if (!input.connected) return 'play.disabled.connectivity';
   if (input.blockedByCommand) return 'play.disabled.pending';
-  if (input.presentingDice && extra === null) return 'play.disabled.rolling';
+  // 演出期間一律顯示擲骰原因：其他原因（待處理、資源不足）來自擲骰後的投影，會透露點數。
+  if (input.presentingDice) return 'play.disabled.rolling';
   return extra;
 }
 

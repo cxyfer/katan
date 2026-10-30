@@ -381,6 +381,7 @@ export const en: Catalog = {
   'play.tradeGiveLimit': 'You only have {count} {resource}; you cannot give more than you hold.',
   'play.tradeGiveShort': 'You do not have enough to send this offer — short {missing}.',
   'play.tradeConsentShort': 'You do not have enough to accept this offer — short {missing}.',
+  'play.tradeReviseShort': 'You do not have enough to give these revised terms — short {missing}.',
   'play.tradeOfferFrom': 'Offer from {player}',
   'play.tradeOfferTo': 'to {player}',
   'play.tradeNoOffers': 'No open offers.',

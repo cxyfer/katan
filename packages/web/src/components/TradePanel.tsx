@@ -234,9 +234,10 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
             counterparty={counterparty}
             setCounterparty={setCounterparty}
             consentShortfall={tradeShortfall(owned, offer.want)}
+            reviseShortfall={offer.from === selfId ? tradeShortfall(owned, offer.want) : null}
             hint={hintFor(offer.id)}
-            onShortfall={(missing) =>
-              showHint(offer.id, t('play.tradeConsentShort', { missing: formatResourceMap(locale, missing) }))
+            onShortfall={(missing, messageId) =>
+              showHint(offer.id, t(messageId, { missing: formatResourceMap(locale, missing) }))
             }
             onSubmit={(command, labelId) => void actions.submitCommand(command, labelId)}
             onSettle={(offer) =>
@@ -301,6 +302,7 @@ function OfferRow({
   counterparty,
   setCounterparty,
   consentShortfall,
+  reviseShortfall,
   hint,
   onShortfall,
   onSubmit,
@@ -313,8 +315,10 @@ function OfferRow({
   setCounterparty: (value: string) => void;
   /** 接受者需付出提案的 `want`；不足時為缺少的數量。 */
   consentShortfall: Terms | null;
+  /** 修改條件會把 `want` 換成提案者的付出；不足時為缺少的數量。 */
+  reviseShortfall: Terms | null;
   hint: ReactNode;
-  onShortfall: (missing: Terms) => void;
+  onShortfall: (missing: Terms, messageId: string) => void;
   onSubmit: (command: { type: string } & Record<string, unknown>, labelId: string) => void;
   onSettle: (offer: Offer) => void;
 }) {
@@ -377,7 +381,7 @@ function OfferRow({
               aria-disabled={consentShortfall ? true : undefined}
               onClick={() => {
                 if (consentShortfall) {
-                  onShortfall(consentShortfall);
+                  onShortfall(consentShortfall, 'play.tradeConsentShort');
                   return;
                 }
                 onSubmit({ type: 'trade.respond', offerId: offer.id, response: 'consented' }, 'play.tradeConsent');
@@ -393,12 +397,17 @@ function OfferRow({
               type="button"
               className="button"
               data-testid={`revise-${offer.id}`}
-              onClick={() =>
+              aria-disabled={reviseShortfall ? true : undefined}
+              onClick={() => {
+                if (reviseShortfall) {
+                  onShortfall(reviseShortfall, 'play.tradeReviseShort');
+                  return;
+                }
                 onSubmit(
                   { type: 'trade.revise', offerId: offer.id, give: offer.want, want: offer.give },
                   'play.tradeRevise',
-                )
-              }
+                );
+              }}
             >
               {t('play.tradeRevise')}
             </button>

@@ -20,7 +20,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
   const selfId = state.session?.id ?? null;
   // 擲骰演出期間先只顯示「擲骰中」，點數揭曉後才給出棄牌、結束回合等後續選項。
   const rolling = state.dicePresenting;
-  const action = rolling ? null : requiredActionFor(state);
+  const action = requiredActionFor(state);
   const [discardPick, setDiscardPick] = useState<Resource[]>([]);
 
   if (!view) return null;
@@ -41,7 +41,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       aria-labelledby="prompt-heading"
     >
       <h2 id="prompt-heading">
-        {rolling ? t('dice.rolling') : action ? t(action.messageId, action.params) : t('play.waitingFor', { player: '—' })}
+        {action ? t(action.messageId, action.params) : t('play.waitingFor', { player: '—' })}
       </h2>
       {action && !action.mine && action.waitingFor.length > 0 && (
         <p className="muted" data-testid="prompt-waiting">

@@ -519,6 +519,11 @@ export function useTable(options: UseTableOptions): TableController {
       if (blocksNewCommands(current.command)) return;
       const snapshot: GameSnapshot | null = current.game;
       if (!snapshot) return;
+      // 所有指令入口（動作列、交易、兌換、發展卡、棋盤）共用：點數揭曉前不送出後續指令。
+      if (current.dicePresenting) {
+        dispatch({ type: 'toast', notice: localNotice('play.disabled.rolling') });
+        return;
+      }
       if (current.activeElsewhere) {
         dispatch({ type: 'toast', notice: localNotice('app.activeInAnotherTab') });
         return;
