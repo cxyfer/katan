@@ -317,6 +317,12 @@ export const en: Catalog = {
   'devCard.roadBuilding': 'Road building',
   'devCard.yearOfPlenty': 'Year of plenty',
   'devCard.monopoly': 'Monopoly',
+  'table.newCardTag': 'New',
+  'devCard.effect.knight': 'Move the robber and steal 1 card',
+  'devCard.effect.victoryPoint': 'Worth 1 victory point',
+  'devCard.effect.roadBuilding': 'Build 2 roads for free',
+  'devCard.effect.yearOfPlenty': 'Take any 2 resources from the bank',
+  'devCard.effect.monopoly': 'Take every card of one resource from all players',
 
   // --- play surface --------------------------------------------------------
   'play.phase.setup': 'Setup',

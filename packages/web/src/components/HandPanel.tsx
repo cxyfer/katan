@@ -172,6 +172,8 @@ export function HandPanel({ controller }: { controller: TableController }) {
       onFocusCapture={(event) => {
         focusInsideRef.current = true;
         cancelClose();
+        // 焦點移到另一張牌時，先前放大檢視的資源牌回到扇形中。
+        if (!event.target.closest('.hand-card--inspected')) setInspected(null);
         setExpanded(true);
         const face = event.target.closest('.hand-fan__card')?.querySelector(CARD_FACES);
         if (face) {

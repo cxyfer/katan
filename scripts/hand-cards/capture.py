@@ -172,8 +172,8 @@ with sync_playwright() as p:
             if player['id'] == identity[0]:
                 player['resources'] = dense
                 player['handSize'] = sum(dense.values())
-                player['devCards'] = ['knight', 'monopoly']
-                player['devCardCount'] = 2
+                player['devCards'] = ['knight', 'roadBuilding', 'yearOfPlenty', 'monopoly']
+                player['devCardCount'] = 4
                 player['newDevCards'] = ['victoryPoint']
                 player['newDevCardCount'] = 1
         return snapshot
@@ -212,6 +212,18 @@ with sync_playwright() as p:
     shot(staged, '06-dense-expanded-1366x768-zh-Hant')
     staged.get_by_test_id('resource-card-grain-1').locator('button').press('Enter')
     shot(staged, '07-dense-inspect-1366x768-zh-Hant')
+    if os.environ.get('HAND_CARD_CLOSEUPS'):
+        for kind in ['knight', 'roadBuilding', 'yearOfPlenty', 'monopoly', 'victoryPoint']:
+            card = staged.locator(f'.development-card--{kind}').first
+            card.locator('.development-card__inspect').focus()
+            staged.wait_for_timeout(400)
+            card.screenshot(path=str(OUT / f'closeup-{kind}.png'), animations='disabled')
+    staged.locator('.development-card--monopoly .development-card__inspect').focus()
+    shot(staged, '09-dense-devcard-1366x768-zh-Hant')
+    staged.locator('[data-testid=locale-switch-game]').select_option('en')
+    shot(staged, '09-dense-devcard-1366x768-en')
+    staged.locator('[data-testid=locale-switch-game]').select_option('zh-Hant')
+    staged.keyboard.press('Escape')
     staged.mouse.move(1180, 420)
     staged.wait_for_timeout(600)
     staged.set_viewport_size({'width': 390, 'height': 844})

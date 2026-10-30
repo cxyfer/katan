@@ -54,17 +54,65 @@
   z-index: 100; transform: translateX(calc(var(--hand-position) * var(--fan-reach))) translateY(-36px) rotate(0) scale(1.16);
   filter: drop-shadow(0 10px 14px #00151d88);
 }
-.screen--game .hand.hand-fan .development-card { padding: 6px; border-radius: 9px; }
-.screen--game .hand.hand-fan .development-card__inspect {
-  display: flex; flex-direction: column; align-items: stretch; padding: 0; border: 0; background: none;
-  color: inherit; cursor: pointer; font: inherit;
+/* 發展卡與資源牌同一套卡框：依卡種配色的外框、全幅插畫、徽記、名稱緞帶與效果說明。 */
+.development-card { --dc: #6c7392; --dc-deep: #2c3350; }
+.development-card--knight { --dc: #6c7392; --dc-deep: #2c3350; }
+.development-card--roadBuilding { --dc: #a57a50; --dc-deep: #533720; }
+.development-card--yearOfPlenty { --dc: #6f9a52; --dc-deep: #2f4a22; }
+.development-card--monopoly { --dc: #93638c; --dc-deep: #442442; }
+.development-card--victoryPoint { --dc: #c49a3a; --dc-deep: #6a4b12; }
+.screen--game .hand.hand-fan .development-card {
+  gap: 4px; padding: 5px; border-radius: 10px; color: #fff4d8;
+  border: 1px solid color-mix(in srgb, var(--dc) 45%, #fff3cf);
+  background:
+    radial-gradient(120% 60% at 50% 0%, #ffffff26, #fff0 60%),
+    linear-gradient(170deg, color-mix(in srgb, var(--dc) 82%, #fff6dc), var(--dc-deep));
+  box-shadow: 0 0 0 1.5px #172a26, 0 7px 14px #00131c80, inset 0 0 0 1px #ffffff1f;
 }
-.screen--game .hand.hand-fan .development-card__name { order: -1; min-height: 25px; padding-top: 2px; font-size: .76rem; }
-.screen--game .hand.hand-fan .development-card__art { height: 83px; flex-basis: 83px; }
-.screen--game .hand.hand-fan .development-card__state { margin-top: 5px; font-size: .56rem; }
-.screen--game .hand.hand-fan .development-card__play { min-height: 35px; font-size: .62rem; }
-.screen--game .hand.hand-fan .development-card__choice { margin-top: auto; width: 100%; min-height: 30px; padding: 2px; font-size: .64rem; }
-.screen--game .hand.hand-fan .development-card:has(.development-card__choice) .development-card__art { height: 50px; flex-basis: 50px; }
+.screen--game .hand.hand-fan .development-card--new { border-style: solid; }
+.screen--game .hand.hand-fan .development-card__inspect {
+  position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto auto; flex: 1 1 auto; min-height: 0;
+  padding: 0; border: 0; background: none; color: inherit; cursor: pointer; font: inherit; text-align: center;
+}
+.screen--game .hand.hand-fan .development-card__inspect:focus-visible { outline: 3px solid #ffe7a1; outline-offset: 2px; border-radius: 6px; }
+.screen--game .hand.hand-fan .development-card__art {
+  display: block; height: auto; min-height: 0; flex: none; overflow: hidden; border-radius: 6px;
+  border: 1.5px solid #f6e7bd; background: var(--dc); box-shadow: inset 0 0 0 1px #0003, 0 1px 0 #ffffff33;
+}
+.development-card__art .dev-card-art { display: block; width: 100%; height: 100%; }
+.screen--game .hand.hand-fan .development-card__pip {
+  position: absolute; top: 4px; left: 4px; z-index: 1; display: grid; place-items: center;
+  width: 27px; height: 27px; border-radius: 50%; color: #fff6dc; background: var(--dc-deep);
+  border: 1.5px solid #f6e7bd; box-shadow: 0 2px 5px #0008;
+}
+.screen--game .hand.hand-fan .development-card__tag {
+  position: absolute; top: 6px; right: 4px; z-index: 1; padding: 2px 7px; border-radius: 999px;
+  color: #fff4d8; background: #a8372f; border: 1px solid #f6e7bd; font-size: .58rem; font-weight: 750; line-height: 1.2;
+  box-shadow: 0 2px 4px #0006;
+}
+.screen--game .hand.hand-fan .development-card__name {
+  order: 0; justify-self: center; z-index: 1; min-height: 0; margin-top: -13px; padding: 3px 13px 4px;
+  color: #2d2618; background: linear-gradient(#fbf0cf, #e6d29f);
+  font-family: var(--font-display); font-size: .76rem; font-weight: 750; line-height: 1.1;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 50%, 100% 100%, 0 100%, 7px 50%);
+  filter: drop-shadow(0 2px 2px #0006);
+}
+.screen--game .hand.hand-fan .development-card__effect {
+  padding: 3px 2px 0; font-size: .55rem; line-height: 1.25; color: #fff1cf; text-shadow: 0 1px 1px #0007;
+}
+.screen--game .hand.hand-fan .development-card__play {
+  flex: none; min-height: 30px; margin: 0; padding: 2px 4px; font-size: .6rem; line-height: 1.15;
+  color: #2d2618; background: linear-gradient(#fbf0cf, #e3cd96); border: 1px solid #f6e7bd; border-radius: 6px;
+  box-shadow: 0 2px 4px #0005;
+}
+.screen--game .hand.hand-fan .development-card__play:disabled { opacity: .5; cursor: not-allowed; }
+.screen--game .hand.hand-fan .development-card__choice { flex: none; width: 100%; min-height: 28px; margin: 0; padding: 2px; font-size: .62rem; }
+.screen--game .hand.hand-fan .development-card:hover,
+.screen--game .hand.hand-fan .development-card:focus-within,
+.screen--game .hand.hand-fan .development-card--inspected {
+  border-color: #fff0b0;
+  box-shadow: 0 0 0 2px #e1c376, 0 0 22px #f4d08355, 0 12px 24px #00182099;
+}
 .screen--game .hand.hand-fan [data-testid="devcard-unknown"] { position: absolute; bottom: 240px; left: 50%; transform: translateX(-50%); width: min(400px, 85vw); padding: 8px; background: #102e32ed; border-radius: 8px; }
 .screen--game .hand.hand-fan .hand__empty { position: absolute; top: -12px; width: 100%; text-align: center; }
 .screen--game .hand.hand-fan .hand-fan__close {
@@ -170,9 +218,9 @@
   .screen--game .hand.hand-fan[data-expanded="true"] { height: 212px; }
   .screen--game .hand.hand-fan .hand-card__name { font-size: .7rem; }
   .screen--game .hand.hand-fan .hand-card__use { font-size: .52rem; }
-  .screen--game .hand.hand-fan .development-card__art { height: 62px; flex-basis: 62px; }
   .screen--game .hand.hand-fan .development-card__name { font-size: .65rem; }
-  .screen--game .hand.hand-fan .development-card__play { min-height: 32px; font-size: .54rem; }
+  .screen--game .hand.hand-fan .development-card__effect { font-size: .5rem; }
+  .screen--game .hand.hand-fan .development-card__play { min-height: 30px; font-size: .54rem; }
   .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__card:hover,
   .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__card:focus-within,
   .screen--game .hand.hand-fan[data-expanded="true"] .hand-card--inspected,
@@ -188,7 +236,7 @@
   .screen--game .hand.hand-fan[data-expanded] { --fan-card-height: 156px; --fan-card-width: 108px; }
   .screen--game .hand.hand-fan[data-expanded="true"] { height: 190px; }
   .screen--game .hand.hand-fan .hand-card__use { display: none; }
-  .screen--game .hand.hand-fan .development-card__art { height: 52px; flex-basis: 52px; }
+  .screen--game .hand.hand-fan .development-card__effect { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .screen--game .hand.hand-fan .hand-fan__card { transition: none; }

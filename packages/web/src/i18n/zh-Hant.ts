@@ -313,6 +313,12 @@ export const zhHant: Catalog = {
   'devCard.roadBuilding': '道路建設',
   'devCard.yearOfPlenty': '豐收之年',
   'devCard.monopoly': '壟斷',
+  'table.newCardTag': '新購',
+  'devCard.effect.knight': '移動盜賊並搶奪 1 張牌',
+  'devCard.effect.victoryPoint': '價值 1 勝利點',
+  'devCard.effect.roadBuilding': '免費鋪設 2 條道路',
+  'devCard.effect.yearOfPlenty': '從銀行拿取任意 2 張資源',
+  'devCard.effect.monopoly': '指定一種資源，收走所有玩家的該資源',
 
   // --- play surface --------------------------------------------------------
   'play.phase.setup': '初始佈局',

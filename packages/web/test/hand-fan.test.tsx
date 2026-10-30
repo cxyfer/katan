@@ -190,4 +190,29 @@ describe('held card fan', () => {
     expect(cards.slice(-2).every((card) => card.classList.contains('development-card'))).toBe(true);
     expect(cards.at(-1)!.style.getPropertyValue('--hand-position')).toBe('1');
   });
+
+  it('draws development cards with the shared card frame, an effect line and a tag on cards bought this turn', async () => {
+    const view = makeView();
+    view.players[0]!.devCards = ['yearOfPlenty'];
+    view.players[0]!.newDevCards = ['victoryPoint'];
+    await open(view);
+    const ready = screen.getByRole('button', { name: /Inspect Year of plenty/ }).closest('li')!;
+    expect(ready.querySelector('.dev-card-art--yearOfPlenty')).toBeTruthy();
+    expect(ready.querySelector('.development-card__pip svg')).toBeTruthy();
+    expect(ready.querySelector('.development-card__effect')!.textContent).toBe('Take any 2 resources from the bank');
+    expect(ready.querySelector('.development-card__tag')).toBeNull();
+    const fresh = screen.getByTestId('new-devcards').querySelector('li')!;
+    expect(fresh.querySelector('.development-card__tag')!.textContent).toBe('New');
+    expect(fresh.querySelector('.development-card__inspect')!.getAttribute('aria-label')).toContain('Bought this turn');
+  });
+
+  it('returns an inspected resource card to the fan when focus moves to another card', async () => {
+    await open();
+    const lumber = screen.getByTestId('resource-card-lumber-0').querySelector('button')!;
+    act(() => lumber.focus());
+    fireEvent.click(lumber);
+    expect(lumber.getAttribute('aria-pressed')).toBe('true');
+    act(() => screen.getByTestId('resource-card-wool-0').querySelector('button')!.focus());
+    expect(lumber.getAttribute('aria-pressed')).toBe('false');
+  });
 });

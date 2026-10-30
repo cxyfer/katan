@@ -4,9 +4,10 @@ import { useT } from '../i18n/context.tsx';
 import { followUpsHeld } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { GameIcon } from './GameArt.tsx';
+import { DevCardArt } from './DevCardArt.tsx';
 
 const PLAYABLE = new Set(['knight', 'roadBuilding', 'yearOfPlenty', 'monopoly']);
-const CARD_ICONS: Record<string, string> = { knight: 'shield', roadBuilding: 'trade', yearOfPlenty: 'sparkles', monopoly: 'book', victoryPoint: 'crown' };
+const CARD_ICONS: Record<string, string> = { knight: 'shield', roadBuilding: 'route', yearOfPlenty: 'sparkles', monopoly: 'scales', victoryPoint: 'crown' };
 
 /** 新購卡與勝利點數卡只顯示狀態；伺服器仍是出牌規則的唯一權威。 */
 export function DevCardPanel({ controller, embedded = false, handStyle, handExpanded }: {
@@ -44,10 +45,14 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
 
   const cardView = (card: string, index: number, isNew: boolean) => {
     const id = `${isNew ? 'new' : 'held'}-${index}`;
+    // 牌面與資源牌同一套卡框：插畫、左上角徽記、名稱緞帶與效果說明；新購卡另加標籤。
     const face = <>
-      <span className="development-card__art"><GameIcon name={CARD_ICONS[card] ?? 'book'} size={44} /></span>
+      <span className="development-card__art"><DevCardArt card={card} /></span>
+      <span className="development-card__pip"><GameIcon name={CARD_ICONS[card] ?? 'book'} size={15} /></span>
+      {isNew && <span className="development-card__tag" aria-hidden="true">{t('table.newCardTag')}</span>}
       <strong className="development-card__name">{t(`devCard.${card}`)}</strong>
-      <span className="development-card__state">{isNew ? t('play.newDevCards') : t('table.heldCards')}</span>
+      <span className="development-card__effect">{t(`devCard.effect.${card}`)}</span>
+      <span className="development-card__state visually-hidden">{isNew ? t('play.newDevCards') : t('table.heldCards')}</span>
     </>;
     return <li onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInspected(null); }} key={`${card}-${index}`} style={handStyle?.(index + (isNew ? held.length : 0))}
       className={`development-card development-card--${card}${embedded ? ' hand-fan__card' : ''}${isNew ? ' development-card--new' : ''}${inspected === id ? ' development-card--inspected' : ''}`}>
