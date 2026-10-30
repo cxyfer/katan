@@ -90,8 +90,17 @@ export function useBoardAnimation(
     if (mandatory) {
       setQueue([]);
       const pending = snapshot?.view.pending;
+      // 擲骰事件先於投影抵達時，舊投影仍停在 preroll；這次擲骰本身就結束了 preroll，
+      // 先保留骰子，等投影抵達再判斷是否讓位給必要操作（游標已消耗此事件，清掉就無法補播）。
+      if (snapshot && rolls.length > 0 && !pending && !snapshot.view.turn.setup) {
+        mandatoryRollSeq.current = snapshot.view.seq;
+        updateDice((current) => current.length + rolls.length > MAX_EFFECT_GROUPS ? [] : [...current, ...rolls]);
+        return;
+      }
       const rollPending = pending?.kind === 'discard' || (pending?.kind === 'moveRobber' && pending.cause === 'seven');
-      const seven = rollPending ? rolls.findLast((roll) => roll.dice[0] + roll.dice[1] === 7) : undefined;
+      const isSeven = (roll: DiceRollPresentation) => roll.dice[0] + roll.dice[1] === 7;
+      // 事件先到時七點已在佇列中，投影帶來的必要操作仍與它並存。
+      const seven = rollPending ? rolls.findLast(isSeven) ?? diceQueueRef.current.findLast(isSeven) : undefined;
       // 同包七點可與必要提示並存；任何後續權威進度都讓位給必要操作，且不補播。
       if (seven && snapshot) {
         mandatoryRollSeq.current = snapshot.view.seq;

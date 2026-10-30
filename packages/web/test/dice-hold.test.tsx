@@ -9,6 +9,7 @@ import { TradePanel } from '../src/components/TradePanel.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { initialTableState, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
+import type { GameView } from '@catan/rules';
 import { makeEvent, makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
 function base(): TableState {
@@ -128,6 +129,38 @@ describe('dice presentation flag', () => {
     expect(latest()).toBe(false);
     unmount();
     expect(latest()).toBe(false);
+  });
+
+  it.each([
+    ['an ordinary roll', [3, 4] as [number, number], undefined],
+    ['a seven with its discard', [2, 5] as [number, number], { kind: 'discard', required: { p1: 1 }, waitingFor: ['p1'] } as GameView['pending']],
+  ])('keeps %s that arrives as events before its projection', (_name, dice, pending) => {
+    const onDiceChange = vi.fn();
+    const preroll = makeView({ phase: 'preroll', hints: makeHints() });
+    preroll.seq = 12;
+    preroll.events = [makeEvent(12, 'turn.started')];
+    const before = makeSnapshot(preroll, 12);
+    // 事件先到：投影仍是擲骰前的 preroll，只多了擲骰事件。
+    const eventsFirst = { ...before, view: { ...preroll, events: [...preroll.events, makeEvent(13, 'turn.rolled', { dice })] } };
+    const projected = makeView({ phase: 'action', pending, hints: makeHints() });
+    projected.seq = 14;
+    projected.events = [makeEvent(13, 'turn.rolled', { dice }), makeEvent(14, pending ? 'discard.required' : 'production.resolved')];
+    const after = makeSnapshot(projected, 14);
+    type Step = { snapshot: typeof before; cause: 'snapshot' | 'events'; mandatory: boolean };
+    const { result, rerender } = renderHook(
+      (input: Step) => useBoardAnimation(input.snapshot, { generation: 1, cause: input.cause }, true, input.mandatory, onDiceChange),
+      { initialProps: { snapshot: before, cause: 'snapshot', mandatory: true } as Step },
+    );
+    rerender({ snapshot: eventsFirst, cause: 'events', mandatory: true });
+    expect(result.current.activeDice?.seq).toBe(13);
+    expect(onDiceChange.mock.calls.at(-1)?.[0]).toBe(true);
+    act(() => vi.advanceTimersByTime(1000));
+    rerender({ snapshot: after, cause: 'snapshot', mandatory: !!pending });
+    expect(result.current.activeDice?.seq).toBe(13);
+    expect(onDiceChange.mock.calls.at(-1)?.[0]).toBe(true);
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS - 1000));
+    expect(result.current.activeDice).toBeNull();
+    expect(onDiceChange.mock.calls.at(-1)?.[0]).toBe(false);
   });
 
   it('corrects a provisional hold when no dice will be presented', () => {
