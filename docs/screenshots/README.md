@@ -9,7 +9,7 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 
 | Path | Contents | Captured from | Producer |
 |---|---|---|---|
-| [`current/`](current/) | Entry → home → lobby → setup → table → tools, full three-player flow, zh-Hant and en | `3264a94` (2026-10-30) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
+| [`current/`](current/) | Entry → home → lobby → setup → table → tools → post-game statistics, full three-player game, zh-Hant and en | `2f343fa` (2026-10-30) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
 | [`hover-details/`](hover-details/) | Map-detail tooltips and collapsed/expanded rails, desktop and mobile | 2026-10-30 | `scripts/side-rails/verify.py`, see [work record](../aegis/work/2026-10-30-hover-details.md) |
 | [`table-ui-polish/`](table-ui-polish/) | Dice focus, hand-gain feedback, trade surface (desktop and mobile) | 2026-10-30 | `scripts/table-ui-polish/verify.py`, see [work record](../aegis/work/2026-10-30-table-ui-polish.md) |
 | [`island-diorama/`](island-diorama/README.md) | Standalone 3D island preview at several camera angles and sizes, plus game-surface checks | 2026-10-29 | `scripts/board-3d/verify-diorama.py`, see [work record](../aegis/work/2026-10-29-island-diorama.md) |
@@ -20,10 +20,13 @@ commit named in its record.
 
 ## `current/`
 
-Captured on 2026-10-30 from `3264a94` (the `pnpm build` output served on
-`127.0.0.1:3000`), with a real three-player game driven through the UI. Every
-capture is at device scale factor 1. The script makes no assertions; it fails
-on any browser runtime error.
+Captured on 2026-10-30 from `2f343fa` (the `pnpm build` output served with
+`WEB_DIST_PATH` set), with a real three-player game driven through the UI up to
+the table. The game is then finished through the same HTTP API the client uses,
+choosing legal moves from each player's own `hints`, so the result screen and
+post-game statistics come from a completed game. Every capture is at device
+scale factor 1. The script makes no assertions; it fails on any browser runtime
+error.
 
 | File | Locale | Viewport | State |
 |---|---|---|---|
@@ -41,9 +44,14 @@ on any browser runtime error.
 | `09-trade-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | trade tool open |
 | `10-chat-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | chat tool after sending one message |
 | `11-trade-390x844-zh-Hant.png` | zh-Hant | 390×844 | trade tool on a phone |
+| `12-result-overview-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | result screen, full page: outcome, overview tab of the post-game statistics, final board |
+| `12-result-overview-1366x768-en.png` | en | 1366×768 | the same result screen in English |
+| `13-result-economy-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | post-game statistics, economy tab (dice output, resource income, spending and losses) |
+| `14-result-timeline-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | post-game statistics, timeline tab (victory points per roll, dice distribution) |
+| `15-result-390x844-zh-Hant.png` | zh-Hant | 390×844 | result screen on a phone, full page, timeline tab |
 
 Regenerate into a new, empty directory after `pnpm build`, with the service
-running on `:3000` (or set `UI_BASE_URL`):
+running (`UI_BASE_URL` defaults to `http://127.0.0.1:3000`):
 
 ```sh
 python3 scripts/screenshots/capture-current.py docs/screenshots/current
