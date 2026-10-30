@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ApiResult, RoomSummaryView } from '@catan/protocol';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
@@ -51,5 +52,34 @@ describe('public room browser', () => {
     fireEvent.click(tab(/Public rooms/));
 
     await waitFor(() => expect(api.callsOf('listRooms')).toHaveLength(2));
+  });
+
+  it('keeps the filtered result when the older automatic request resolves last', async () => {
+    const api = createFakeApi();
+    const pending: Array<(result: ApiResult<{ rooms: RoomSummaryView[] }>) => void> = [];
+    api.listRooms = () =>
+      new Promise<ApiResult<{ rooms: RoomSummaryView[] }>>((resolve) => {
+        pending.push(resolve);
+      });
+
+    renderHome(api);
+    await screen.findByTestId('create-room');
+    fireEvent.click(tab(/Public rooms/));
+    await waitFor(() => expect(pending).toHaveLength(1));
+
+    fireEvent.change(screen.getByLabelText('Players'), { target: { value: '4' } });
+    await waitFor(() => expect(pending).toHaveLength(2));
+
+    // The filtered request answers first, then the older unfiltered one.
+    await act(async () => {
+      pending[1]!({ ok: true, data: { rooms: [makeRoomSummary({ id: 'filtered', capacity: 4 })] } });
+    });
+    expect((await screen.findByTestId('room-table')).textContent).toContain('2/4');
+
+    await act(async () => {
+      pending[0]!({ ok: true, data: { rooms: [makeRoomSummary({ id: 'stale', capacity: 3 })] } });
+    });
+    await waitFor(() => expect(screen.getByTestId('room-table').textContent).not.toContain('2/3'));
+    expect(screen.getByTestId('room-table').textContent).toContain('2/4');
   });
 });

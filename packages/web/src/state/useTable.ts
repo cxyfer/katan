@@ -148,6 +148,8 @@ export function useTable(options: UseTableOptions): TableController {
   const roomIdRef = useRef<string | null>(null);
   const gameIdRef = useRef<string | null>(null);
   const syncGenerationRef = useRef(0);
+  /** A newer room-list request invalidates every response still in flight. */
+  const roomListRequestRef = useRef(0);
   /** Late-bound so `joinRoom` can fetch history without a declaration cycle. */
   const loadChatRef = useRef<TableActions['loadChat'] | null>(null);
 
@@ -256,7 +258,12 @@ export function useTable(options: UseTableOptions): TableController {
   const refreshRooms = useCallback(
     async (query?: RoomQuery): Promise<void> => {
       if (query) dispatch({ type: 'room-query', query });
+      const request = roomListRequestRef.current + 1;
+      roomListRequestRef.current = request;
       const result = await api.listRooms(query ?? stateRef.current.roomQuery);
+      // A filter change may start a second request while this one is in
+      // flight; only the newest request may update the visible list.
+      if (request !== roomListRequestRef.current) return;
       if (result.ok) dispatch({ type: 'rooms', rooms: result.data.rooms });
     },
     [api, dispatch],
