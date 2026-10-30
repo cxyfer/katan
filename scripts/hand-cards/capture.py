@@ -1,10 +1,11 @@
 """拍攝手牌的收合 / 展開狀態（真實三人對局，連線既有服務）。
 
 用法（先 pnpm build 並啟動服務，輸出目錄須為全新空目錄）：
-  python3 scripts/hand-cards/capture.py <output-dir>
+  python3 scripts/hand-cards/capture.py docs/screenshots/hand-cards
 
 開局放置經由 API 完成，之後只擲骰、結束回合累積資源，讓房主持有多張重複的資源牌；
-隨後在桌面與手機畫面拍攝收合與展開的手牌。只拍照，不做斷言。
+隨後在桌面與手機畫面拍攝收合與展開的手牌、放大檢視與發展卡近照。檔名以拍攝順序
+編號。只拍照，不做斷言。
 """
 import json
 import os
@@ -84,10 +85,27 @@ def settle(page):
     page.evaluate('() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))')
 
 
+_shot_index = 0
+
+
+def next_name(name):
+    # 檔名以拍攝順序編號，讓整組截圖依序瀏覽
+    global _shot_index
+    _shot_index += 1
+    return f'{_shot_index:02d}-{name}.png'
+
+
 def shot(page, name, clip=None):
     settle(page)
-    page.screenshot(path=str(OUT / f'{name}.png'), animations='disabled', clip=clip)
-    print('CAPTURE', f'{name}.png', flush=True)
+    filename = next_name(name)
+    page.screenshot(path=str(OUT / filename), animations='disabled', clip=clip)
+    print('CAPTURE', filename, flush=True)
+
+
+def element_shot(locator, name):
+    filename = next_name(name)
+    locator.screenshot(path=str(OUT / filename), animations='disabled')
+    print('CAPTURE', filename, flush=True)
 
 
 with sync_playwright() as p:
@@ -140,28 +158,28 @@ with sync_playwright() as p:
     print('HAND', own_resources(contexts[0], path, identity[0]), flush=True)
 
     hand = host.get_by_test_id('hand-panel')
-    for locale, suffix in [('zh-Hant', 'zh-Hant'), ('en', 'en')]:
+    for locale in ['zh-Hant', 'en']:
         host.set_viewport_size({'width': 1366, 'height': 768})
         host.locator('[data-testid=locale-switch-game]').select_option(locale)
         host.mouse.move(1180, 420)
-        shot(host, f'01-collapsed-1366x768-{suffix}')
+        shot(host, f'hand-collapsed-1366x768-{locale}')
         hand.hover()
-        shot(host, f'02-expanded-1366x768-{suffix}')
+        shot(host, f'hand-expanded-1366x768-{locale}')
         host.mouse.move(1180, 420)
         host.wait_for_timeout(600)
 
     host.locator('[data-testid=locale-switch-game]').select_option('zh-Hant')
     host.set_viewport_size({'width': 390, 'height': 844})
-    shot(host, '03-collapsed-390x844-zh-Hant')
+    shot(host, 'hand-collapsed-390x844-zh-Hant')
     hand.dispatch_event('pointerdown', {'pointerType': 'touch'})
     hand.dispatch_event('click')
-    shot(host, '04-expanded-390x844-zh-Hant')
+    shot(host, 'hand-expanded-390x844-zh-Hant')
     host.keyboard.press('Escape')
     host.set_viewport_size({'width': 844, 'height': 390})
     host.mouse.move(700, 120)
-    shot(host, '04-collapsed-844x390-zh-Hant')
+    shot(host, 'hand-collapsed-844x390-zh-Hant')
     hand.hover()
-    shot(host, '04-expanded-844x390-zh-Hant')
+    shot(host, 'hand-expanded-844x390-zh-Hant')
     host.mouse.move(700, 120)
 
     # 大量手牌只用來檢查版面：在瀏覽器端改寫本人投影（HTTP 與 WebSocket 快照），不送出任何指令
@@ -207,21 +225,20 @@ with sync_playwright() as p:
     staged.locator('[data-testid=locale-switch-game]').select_option('zh-Hant')
     staged.set_viewport_size({'width': 1366, 'height': 768})
     staged.mouse.move(1180, 420)
-    shot(staged, '05-dense-collapsed-1366x768-zh-Hant')
+    shot(staged, 'hand-dense-collapsed-1366x768-zh-Hant')
     staged.get_by_test_id('hand-panel').hover()
-    shot(staged, '06-dense-expanded-1366x768-zh-Hant')
+    shot(staged, 'hand-dense-expanded-1366x768-zh-Hant')
     staged.get_by_test_id('resource-card-grain-1').locator('button').press('Enter')
-    shot(staged, '07-dense-inspect-1366x768-zh-Hant')
-    if os.environ.get('HAND_CARD_CLOSEUPS'):
-        for kind in ['knight', 'roadBuilding', 'yearOfPlenty', 'monopoly', 'victoryPoint']:
-            card = staged.locator(f'.development-card--{kind}').first
-            card.locator('.development-card__inspect').focus()
-            staged.wait_for_timeout(400)
-            card.screenshot(path=str(OUT / f'closeup-{kind}.png'), animations='disabled')
+    shot(staged, 'hand-dense-inspect-1366x768-zh-Hant')
+    for kind in ['knight', 'roadBuilding', 'yearOfPlenty', 'monopoly', 'victoryPoint']:
+        card = staged.locator(f'.development-card--{kind}').first
+        card.locator('.development-card__inspect').focus()
+        staged.wait_for_timeout(400)
+        element_shot(card, f'devcard-{kind}')
     staged.locator('.development-card--monopoly .development-card__inspect').focus()
-    shot(staged, '09-dense-devcard-1366x768-zh-Hant')
+    shot(staged, 'hand-dense-devcard-1366x768-zh-Hant')
     staged.locator('[data-testid=locale-switch-game]').select_option('en')
-    shot(staged, '09-dense-devcard-1366x768-en')
+    shot(staged, 'hand-dense-devcard-1366x768-en')
     staged.locator('[data-testid=locale-switch-game]').select_option('zh-Hant')
     staged.keyboard.press('Escape')
     staged.mouse.move(1180, 420)
@@ -230,7 +247,7 @@ with sync_playwright() as p:
     hand = staged.get_by_test_id('hand-panel')
     hand.dispatch_event('pointerdown', {'pointerType': 'touch'})
     hand.dispatch_event('click')
-    shot(staged, '08-dense-expanded-390x844-zh-Hant')
+    shot(staged, 'hand-dense-expanded-390x844-zh-Hant')
 
     browser.close()
     assert not errors, f'browser runtime errors: {errors}'
