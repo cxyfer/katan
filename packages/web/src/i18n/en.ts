@@ -153,6 +153,7 @@ export const en: Catalog = {
   'home.paneHint.identity': 'Change your display name',
   'home.refreshRooms': 'Refresh room list',
   'home.roomListEmpty': 'No public rooms match the current filters.',
+  'home.roomListFailed': 'The public room list could not be loaded. Try refreshing.',
 
   // --- lobby ---------------------------------------------------------------
   'lobby.visibility': 'Visibility',

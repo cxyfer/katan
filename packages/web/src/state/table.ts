@@ -75,6 +75,9 @@ export interface Announcement {
   params?: Record<string, unknown>;
 }
 
+/** Lifecycle of the public room list; only the newest request may settle it. */
+export type RoomListStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 export interface TableState {
   screen: Screen;
   locale: Locale;
@@ -87,6 +90,8 @@ export interface TableState {
   profiles: ProfileView[];
   rooms: RoomSummaryView[];
   roomQuery: RoomQuery;
+  roomsStatus: RoomListStatus;
+  roomsError: Notice | null;
   room: RoomView | null;
   roomError: Notice | null;
   games: ResumableGameView[];
@@ -124,6 +129,8 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     profiles: [],
     rooms: [],
     roomQuery: {},
+    roomsStatus: 'idle',
+    roomsError: null,
     room: null,
     roomError: null,
     games: [],
@@ -154,6 +161,8 @@ export type TableAction =
   | { type: 'session'; player: PlayerIdentity | null }
   | { type: 'screen'; screen: Screen }
   | { type: 'rooms'; rooms: RoomSummaryView[] }
+  | { type: 'rooms-request' }
+  | { type: 'rooms-error'; error: Notice }
   | { type: 'room-query'; query: RoomQuery }
   | { type: 'room'; room: RoomView | null }
   | { type: 'room-error'; error: Notice | null }
@@ -283,7 +292,11 @@ export function tableReducer(state: TableState, action: TableAction): TableState
     case 'screen':
       return { ...state, screen: action.screen };
     case 'rooms':
-      return { ...state, rooms: action.rooms };
+      return { ...state, rooms: action.rooms, roomsStatus: 'ready', roomsError: null };
+    case 'rooms-request':
+      return { ...state, roomsStatus: 'loading', roomsError: null };
+    case 'rooms-error':
+      return { ...state, roomsStatus: 'error', roomsError: action.error };
     case 'room-query':
       return { ...state, roomQuery: action.query };
     case 'room': {
