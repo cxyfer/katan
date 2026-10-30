@@ -16,7 +16,7 @@ with guest seats driven through the same HTTP API the client uses.
 Reproduce after `pnpm build`:
 
 ```sh
-python3 scripts/lobby-capacity/capture.py docs/screenshots/lobby-capacity
+python3 scripts/lobby-capacity/capture.py --out docs/screenshots/lobby-capacity
 ```
 
 The script starts its own service on a temporary SQLite database and checks the
