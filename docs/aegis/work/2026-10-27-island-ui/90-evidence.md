@@ -23,14 +23,14 @@
 
 | 證據 | 結果 | 已執行範圍 |
 | --- | --- | --- |
-| [真實三人 runner](verify-card-table.py)／[報告](../../../screenshots/table-interactions/real/browser-report.json) | exit 0，**144 assertions、20 screenshots、0 runtime errors** | 實際服務建立／加入三人房、準備、12 次初始放置、鍵盤取消／確認、擲骰、資源卡本地檢視、交易／聊天草稿跨工具與尺寸保留、聊天送出、Escape 焦點還原、原生全螢幕進出 |
+| [真實三人 runner](verify-card-table.py)／[報告](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/real/browser-report.json) | exit 0，**144 assertions、20 screenshots、0 runtime errors** | 實際服務建立／加入三人房、準備、12 次初始放置、鍵盤取消／確認、擲骰、資源卡本地檢視、交易／聊天草稿跨工具與尺寸保留、聊天送出、Escape 焦點還原、原生全螢幕進出 |
 | [六席密集卡牌 runner](verify-table-interactions.py)／[報告](table-interactions-report.json) | exit 0，**190/190 checks、12/12 matrix cases、8 screenshots、0 pageerrors** | 正式前端；瀏覽器內攔截全部 API／WebSocket，以六個長暱稱、30 hex、舊／新發展卡及空手牌固定資料驗證呈現與互動，未寫入真實伺服器 |
 
 密集情境涵蓋：無文件溢出、棋盤可見、六席分數經本地捲動皆可命中、桌面側欄保留／窄屏覆層、手牌與收合側欄避讓、兩列分開且本地捲動可達、monopoly 保留、hover／固定／鍵盤／觸控模擬、Escape 還原、必要回應高於手牌及側欄、accepted 持續及關閉、rejected／unknown 回復、中央權威骰子值／尺寸／計時／連續動畫／reduced motion。
 
 在 1366×768、844×390、360×640 另以固定展開手牌實際點擊選取預覽確認，均成功；成功通知均不與手牌相交。最窄橫屏通知寬 158px，左緣 x672，手牌右緣 x654。第二個骰子事件在第一次結束前送達，觀測到兩次 `animationstart`。檢查不使用強制點擊。
 
-[桌面手牌](../../../screenshots/table-interactions/02-desktop-expanded-en.png)、[手機手牌](../../../screenshots/table-interactions/03-expanded-390x844-zh-Hant.png)、[短橫屏](../../../screenshots/table-interactions/03-expanded-844x390-zh-Hant.png)、[中央骰子](../../../screenshots/table-interactions/05-central-dice-en.png)、[必要回應與側欄](../../../screenshots/table-interactions/06-mobile-required-prompt-with-rail-en.png) 已直接檢視。完整索引與重現命令見 [截圖 README](../../../screenshots/table-interactions/README.md)。
+[桌面手牌](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/02-desktop-expanded-en.png)、[手機手牌](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/03-expanded-390x844-zh-Hant.png)、[短橫屏](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/03-expanded-844x390-zh-Hant.png)、[中央骰子](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/05-central-dice-en.png)、[必要回應與側欄](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/06-mobile-required-prompt-with-rail-en.png) 已直接檢視。完整索引與重現命令見 [截圖 README](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/README.md)。
 
 ## 責任邊界與複雜度
 
@@ -48,4 +48,4 @@ Aegis `bundle`、`check` 結構檢查成功；這只證明工作記錄結構，�
 - 無 remote；僅建立本地提交，沒有 push／PR／merge。三張原有首頁／交易／聊天截圖變更保持不動並留在提交之外。
 - 證據等級：**L2、信心 B**。已覆蓋本輪目標及相關回歸；設備／瀏覽器／AT 邊界如上。
 
-本文件取代同一路徑先前的卡牌舞台證據；舊 318 tests 與舊 HUD／扇形手牌描述屬前版。原版截圖仍在 [card-table 歷史索引](../../../screenshots/card-table/README.md)，不作為本輪互動通過證據。
+本文件取代同一路徑先前的卡牌舞台證據；舊 318 tests 與舊 HUD／扇形手牌描述屬前版。原版截圖仍在 [card-table 歷史索引](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/card-table/README.md)，不作為本輪互動通過證據。

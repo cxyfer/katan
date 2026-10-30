@@ -17,14 +17,14 @@ Executed coverage includes document overflow and board size; all six compact sco
 
 All eight final captures were directly inspected:
 
-- [Desktop default](../../../screenshots/table-interactions/01-desktop-default-en.png)
-- [Desktop expanded hand](../../../screenshots/table-interactions/02-desktop-expanded-en.png)
-- [Short landscape expanded hand](../../../screenshots/table-interactions/03-expanded-844x390-zh-Hant.png)
-- [Portrait expanded hand](../../../screenshots/table-interactions/03-expanded-390x844-zh-Hant.png)
-- [Narrow portrait expanded hand](../../../screenshots/table-interactions/03-expanded-360x640-en.png)
-- [Persistent accepted notice](../../../screenshots/table-interactions/04-desktop-accepted-en.png)
-- [Centered authoritative dice](../../../screenshots/table-interactions/05-central-dice-en.png)
-- [Required prompt above expanded score rail and hand](../../../screenshots/table-interactions/06-mobile-required-prompt-with-rail-en.png)
+- [Desktop default](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/01-desktop-default-en.png)
+- [Desktop expanded hand](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/02-desktop-expanded-en.png)
+- [Short landscape expanded hand](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/03-expanded-844x390-zh-Hant.png)
+- [Portrait expanded hand](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/03-expanded-390x844-zh-Hant.png)
+- [Narrow portrait expanded hand](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/03-expanded-360x640-en.png)
+- [Persistent accepted notice](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/04-desktop-accepted-en.png)
+- [Centered authoritative dice](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/05-central-dice-en.png)
+- [Required prompt above expanded score rail and hand](https://github.com/cxyfer/katan/blob/ca1e8db/docs/screenshots/table-interactions/06-mobile-required-prompt-with-rail-en.png)
 
 Earlier observations were reported to the coordinator: the portrait hand extended beneath the collapsed score rail, and the short-landscape accepted notice overlapped the expanded hand by 34px. The final build passes the corresponding clearance checks. An expanded narrow score rail intentionally covers optional hand controls; Escape closes the rail, and the required response remains exposed above it.
 
