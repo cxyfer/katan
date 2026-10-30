@@ -233,6 +233,15 @@ function pay(player: PlayerState, cost: Partial<Record<Resource, number>>): void
   }
 }
 
+/** 建造與購卡的花費回到銀行，維持每種資源「銀行 + 手牌」總量守恆。 */
+function payBank(state: GameState, player: PlayerState, cost: Partial<Record<Resource, number>>): void {
+  pay(player, cost);
+  for (const resource of RESOURCES) {
+    const amount = cost[resource] ?? 0;
+    if (amount > 0) state.bank[resource] += amount;
+  }
+}
+
 function grant(player: PlayerState, resource: Resource, amount: number): void {
   player.resources[resource] += amount;
 }
@@ -716,7 +725,7 @@ function buildRoad(state: GameState, actorId: string, edge: number): CommandOutc
     if (!canAfford(player, COSTS.road)) {
       return fail('E_INSUFFICIENT_RESOURCES', { cost: COSTS.road });
     }
-    pay(player, COSTS.road);
+    payBank(state, player, COSTS.road);
   }
   state.board.roads[edge] = { player: actorId, ship: false };
   emit(state, 'build.road', { playerId: actorId, edge, free: !!free });
@@ -747,7 +756,7 @@ function buildSettlement(state: GameState, actorId: string, vertex: number): Com
   if (!canAfford(player, COSTS.settlement)) {
     return fail('E_INSUFFICIENT_RESOURCES', { cost: COSTS.settlement });
   }
-  pay(player, COSTS.settlement);
+  payBank(state, player, COSTS.settlement);
   state.board.buildings[vertex] = { player: actorId, city: false };
   emit(state, 'build.settlement', { playerId: actorId, vertex });
   afterBoardChange(state);
@@ -770,7 +779,7 @@ function buildCity(state: GameState, actorId: string, vertex: number): CommandOu
   if (!canAfford(player, COSTS.city)) {
     return fail('E_INSUFFICIENT_RESOURCES', { cost: COSTS.city });
   }
-  pay(player, COSTS.city);
+  payBank(state, player, COSTS.city);
   building.city = true;
   emit(state, 'build.city', { playerId: actorId, vertex });
   afterBoardChange(state);
@@ -786,7 +795,7 @@ function buyDevCard(state: GameState, actorId: string, rng: Rng): CommandOutcome
   if (!canAfford(player, COSTS.devCard)) {
     return fail('E_INSUFFICIENT_RESOURCES', { cost: COSTS.devCard });
   }
-  pay(player, COSTS.devCard);
+  payBank(state, player, COSTS.devCard);
   const index = rng.int(state.devDeck.length);
   const card = state.devDeck.splice(index, 1)[0]!;
   player.newDevCards.push(card);

@@ -9,7 +9,12 @@
 
 import type { DevCardType } from './types.ts';
 
-export const ENGINE_VERSION = 'base-2025.1';
+/**
+ * base-2025.2: building and development-card costs return to the bank.
+ * Unfinished base-2025.1 games run on this engine as an approved defect fix
+ * (SPEC §7.3, FIDELITY gap 11); 2025.1 leaked spent cards out of the supply.
+ */
+export const ENGINE_VERSION = 'base-2025.2';
 
 export interface ProfilePieces {
   settlements: number;

@@ -137,7 +137,10 @@ Restore into an empty database, then start the service and verify `/readyz`.
 4. Unfinished games keep the rules-engine version stored in their snapshot
    (`games.engine_version`). A release that cannot execute a referenced engine
    version must refuse to take over those games and preserve their data
-   (SPEC §7.3); this release ships one engine version and refuses unknown ones.
+   (SPEC §7.3); this release ships one engine version. Unfinished
+   `base-2025.1` games continue on `base-2025.2` under the approved
+   defect-fix exception (spent cards return to the bank). The cards they
+   already lost are not restored.
 5. Rollback: pin the recorded digest in the Compose `image:` line
    (`ghcr.io/cxyfer/katan@sha256:<digest>`) and run `docker compose up -d`. If
    the new image applied a migration, restore the matching backup — schema
