@@ -4,6 +4,7 @@ import { useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { requiredActionFor } from '../state/pending.ts';
+import { shownHandSize } from '../state/table.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/scoreboard-hover.css';
@@ -248,7 +249,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                 <div className="players__stats" role="group" aria-label={t('table.playersBreakdown')}>
                   <ScoreMark icon="home" label={t('table.playersSettlements', { count: number(settlements) })} value={number(settlements)} />
                   <ScoreMark icon="city" label={t('table.playersCities', { count: number(cities) })} value={number(cities)} />
-                  <ScoreMark icon="cards" label={t('play.handSize')} value={number(player.handSize)} />
+                  <ScoreMark icon="cards" label={t('play.handSize')} value={number(shownHandSize(state, player))} />
                   <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />
                   <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${t('play.award.longestRoad')} (+2)` : ''}`}
                     value={number(player.longestRoadLength)} awarded={longestRoad} />

@@ -3,7 +3,10 @@ import { act, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DICE_PRESENTATION_DURATION_MS, MAX_EFFECT_DURATION_MS } from '../src/board/animation.ts';
 import { useBoardAnimation } from '../src/board/useBoardAnimation.ts';
+import { EventLog } from '../src/components/EventLog.tsx';
+import { PlayersPanel } from '../src/components/PlayersPanel.tsx';
 import { TradePanel } from '../src/components/TradePanel.tsx';
+import { LocaleProvider } from '../src/i18n/context.tsx';
 import { initialTableState, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeEvent, makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -18,8 +21,11 @@ function base(): TableState {
 function rolledSnapshot(lumber: number) {
   const view = makeView({ hints: makeHints() });
   view.seq = 14;
-  view.events = [makeEvent(13, 'turn.rolled', { dice: [3, 3], total: 6 }), makeEvent(14, 'production.resolved')];
+  view.events = [makeEvent(12, 'turn.started'), makeEvent(13, 'turn.rolled', { dice: [3, 3], total: 6 }), makeEvent(14, 'production.resolved')];
   view.players[0]!.resources!.lumber = lumber;
+  view.players[0]!.handSize = lumber + 8;
+  view.players[1]!.handSize = 13;
+  view.turn.dice = [3, 3];
   return makeSnapshot(view, 14);
 }
 
@@ -27,7 +33,7 @@ describe('roll hold in the table state', () => {
   it('freezes the pre-roll hand from the first render of a rolled update until the dice settle', () => {
     let state = tableReducer(base(), { type: 'snapshot', snapshot: rolledSnapshot(9) });
     expect(state.dicePresenting).toBe(true);
-    expect(state.heldHand?.lumber).toBe(2);
+    expect(state.rollHold?.hand?.lumber).toBe(2);
     expect(shownHand(state)?.lumber).toBe(2);
 
     // 演出期間的後續投影不改寫已凍結的擲骰前手牌。
@@ -36,20 +42,43 @@ describe('roll hold in the table state', () => {
     later.revision = 15;
     later.view.events = [...later.view.events, makeEvent(15, 'turn.rolled', { dice: [1, 2], total: 3 })];
     state = tableReducer(state, { type: 'snapshot', snapshot: later });
-    expect(state.heldHand?.lumber).toBe(2);
+    expect(state.rollHold?.hand?.lumber).toBe(2);
 
     state = tableReducer(state, { type: 'dice-presenting', value: false });
-    expect(state.heldHand).toBeNull();
+    expect(state.rollHold).toBeNull();
     expect(shownHand(state)?.lumber).toBe(9);
   });
 
   it('also holds on an events-first roll and ignores updates without a new roll', () => {
     const events = tableReducer(base(), { type: 'events', events: [makeEvent(13, 'turn.rolled', { dice: [6, 6], total: 12 })] });
     expect(events.dicePresenting).toBe(true);
-    expect(events.heldHand?.lumber).toBe(2);
+    expect(events.rollHold?.hand?.lumber).toBe(2);
 
     const quiet = makeSnapshot({ ...makeView({ hints: makeHints() }), seq: 13, events: [makeEvent(13, 'build.road')] }, 13);
     expect(tableReducer(base(), { type: 'snapshot', snapshot: quiet }).dicePresenting).toBe(false);
+  });
+
+  it('keeps public hand sizes and the event log at their pre-roll state until the dice settle', () => {
+    const presenting = tableReducer(base(), { type: 'snapshot', snapshot: rolledSnapshot(9) });
+    const view = (state: TableState) => {
+      const controller: TableController = { state, dispatch: vi.fn(), actions: {} as TableController['actions'] };
+      return <LocaleProvider locale="en"><PlayersPanel controller={controller} /><EventLog controller={controller} /></LocaleProvider>;
+    };
+    const handSize = (seat: number) =>
+      screen.getByTestId(`seat-${seat}`).querySelector('[aria-label^="Cards in hand"]')!.getAttribute('aria-label');
+    const seqs = () => [...screen.getByTestId('event-list').querySelectorAll('[data-event]')].map((item) => item.getAttribute('data-event'));
+
+    const { rerender } = render(view(presenting));
+    expect(handSize(0)).toBe('Cards in hand: 10');
+    expect(handSize(1)).toBe('Cards in hand: 10');
+    expect(seqs()).toEqual(['turn.started']);
+    expect(screen.queryByTestId('last-dice')).toBeNull();
+
+    rerender(view(tableReducer(presenting, { type: 'dice-presenting', value: false })));
+    expect(handSize(0)).toBe('Cards in hand: 17');
+    expect(handSize(1)).toBe('Cards in hand: 13');
+    expect(seqs()).toEqual(['production.resolved', 'turn.rolled', 'turn.started']);
+    expect(screen.getByTestId('last-dice').textContent).toContain('3');
   });
 
   it('checks trade terms against the held hand while the dice are presenting', () => {

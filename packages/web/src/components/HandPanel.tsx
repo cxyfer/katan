@@ -7,7 +7,7 @@ import { ResourceCardArt } from './ResourceCardArt.tsx';
 import { DevCardPanel } from './DevCardPanel.tsx';
 import { HandGainOverlay } from './HandGainOverlay.tsx';
 import { useHandGains } from './useHandGains.ts';
-import { shownHand } from '../state/table.ts';
+import { shownHand, shownHandSize } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/hand-fan.css';
 
@@ -23,7 +23,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
   const self = state.game?.view.players.find((player) => player.id === state.session?.id) ?? null;
   // 擲骰演出期間顯示擲骰前的數量，點數揭曉前不從手牌透露結果。
   const resources = shownHand(state);
-  const totalHandCards = (self?.handSize ?? 0) + (self?.devCardCount ?? 0) + (self?.newDevCardCount ?? 0);
+  const totalHandCards = (self ? shownHandSize(state, self) : 0) + (self?.devCardCount ?? 0) + (self?.newDevCardCount ?? 0);
   const visibleCount = RESOURCES.length + (self?.devCards?.length ?? 0) + (self?.newDevCards?.length ?? 0);
   const [inspected, setInspected] = useState<Resource | null>(null);
   const [expanded, setExpanded] = useState(false);
