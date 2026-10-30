@@ -542,19 +542,19 @@ export class RoomService {
       }
       policy = check.policy;
     }
-    await this.repo.transaction(async () => {
-      await this.repo.updateRoom(roomId, {
-        profile_id: profileId,
-        setup_mode: setupMode,
-        capacity,
-        policy_json: JSON.stringify(policy),
-        policy_revision: room.policy_revision + 1,
-      });
-      // Seats left behind by a departure can sit above a reduced capacity.
-      // Compact them into 0..n-1 so every seated player stays in range.
-      if (capacity !== room.capacity) await this.compactSeats(roomId);
-      // Any settings change clears readiness (§4.2).
-      await this.clearReadiness(roomId);
+    // Keep every intermediate state valid without a shared DB transaction:
+    // compacted seats still fit the old capacity, readiness is cleared before
+    // the new settings become visible, and the room lock blocks concurrent
+    // joins/starts. The dialect's transaction context is process-wide, so a
+    // settings transaction here would overlap transactions for other rooms.
+    if (capacity !== room.capacity) await this.compactSeats(roomId);
+    await this.clearReadiness(roomId);
+    await this.repo.updateRoom(roomId, {
+      profile_id: profileId,
+      setup_mode: setupMode,
+      capacity,
+      policy_json: JSON.stringify(policy),
+      policy_revision: room.policy_revision + 1,
     });
     this.broadcastRoom(roomId);
     return this.view(roomId, playerId);
