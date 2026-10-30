@@ -14,14 +14,16 @@ Pushing a `vMAJOR.MINOR.PATCH` tag (optionally with a `-PRERELEASE` suffix) runs
 It does **not** bump the version, run `pnpm verify`, or create the GitHub Release. Those steps stay
 manual on purpose (see [Rules](#rules)).
 
-A push to `master` runs the same build and smoke test, and publishes `master` and `latest`. A
-documentation-only change is ignored by `paths-ignore`.
+A push to `master` runs the same build and smoke test, and publishes `master`, `latest` and
+`sha-<short>`. `latest` is skipped while the version on `master` is a pre-release, so merging a
+`-rc.N` bump cannot hand players an image stamped with a pre-release version. A documentation-only
+change is ignored by `paths-ignore`.
 
 ## Image tags
 
 | Git ref | Tags pushed | Notes |
 |---------|-------------|-------|
-| `master` | `master`, `latest`, `sha-<short>` | `latest` follows `master` |
+| `master` | `master`, `sha-<short>`, plus `latest` while the version is stable | `latest` follows `master` only while `master` declares a stable version |
 | `v0.2.0` (stable) | `0.2.0`, `0.2`, `latest`, `sha-<short>` | Moving tags follow the tag |
 | `v0.3.0-rc.1` | `0.3.0-rc.1`, `sha-<short>` | Pre-release: never moves `0.3` or `latest` |
 | Pull request | `sha-<short>` | Build and smoke test only; the digest is what a merge publishes |
@@ -48,8 +50,10 @@ publishes to its own namespace.
    before the tag.
 4. **Never move or reuse a published tag.** The tag is the identity of an image. Publish a new patch
    version instead.
-5. **Only stable tags move `X.Y` and `latest`.** A pre-release keeps its exact tag so it cannot
-   hijack what players pull.
+5. **Only stable versions move `X.Y` and `latest`.** A pre-release keeps its exact tag, and the same
+   rule covers the default branch: while `master` declares a `-rc.N` version it publishes `master`
+   and `sha-<short>` only, and `latest` stays on the last stable build. Either way a pre-release
+   cannot hijack what players pull.
 6. **Publishing happens on `master`, not only on tags.** A tag and a `master` push of the same commit
    are two builds: the digests differ because the attestations carry different timestamps. If the
    order matters, wait for the `master` run to finish before tagging.
@@ -98,7 +102,7 @@ git push origin master
 The repository uses gitmoji-style subjects; `🔖 release: vX.Y.Z` matches the existing history.
 This commit is what step 3 tags: it carries the version the tag promises, and the build job refuses
 a tag whose `package.json` disagrees. Waiting for the `master` run to finish here keeps the tag build
-the one that ends up on `latest`.
+the one that ends up on `latest`; a `-rc.N` bump leaves `latest` on the last stable build instead.
 
 ### 3. Tag and push
 
