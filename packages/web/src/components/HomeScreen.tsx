@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { useLocale, useT } from '../i18n/context.tsx';
@@ -38,6 +38,13 @@ export function HomeScreen({ controller }: ScreenProps) {
 
   const paneIcon: Record<HomePane, string> = { table: 'flag', resume: 'anchor', rooms: 'globe', identity: 'settings' };
   const paneCount: Partial<Record<HomePane, number>> = { resume: state.games.length, rooms: state.rooms.length };
+
+  // The room browser renders a live `GET /api/rooms` result, so opening the
+  // pane must fetch it instead of waiting for the refresh button. Re-running
+  // on every visit also picks up rooms created while this page stayed open.
+  useEffect(() => {
+    if (homePane === 'rooms') void actions.refreshRooms();
+  }, [homePane, actions.refreshRooms]);
 
   return (
     <main className="screen screen--home pregame" id="main">
