@@ -597,7 +597,7 @@ export const zhHant: Catalog = {
   'event.turn.rolled': '{player} 擲出 {dice}，總計 {total}。',
   'event.turn.ended': '{player} 結束了回合。',
   'event.production.resolved': '{total} 的生產：{grants}。',
-  'event.production.starved': '六角格 {hex} 無法支付 {resource}（不足 {total}）。',
+  'event.production.starved': '擲出 {total}：銀行的{resource}不足，六角格 {hex} 本次不發放。',
   'event.discard.required': '需要棄牌：{required}。',
   'event.discard.submitted': '{player} 棄掉了 {count} 張卡。',
   'event.robber.moveRequired': '{player} 必須移動強盜（{cause}）。',

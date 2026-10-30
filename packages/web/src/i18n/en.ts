@@ -603,7 +603,7 @@ export const en: Catalog = {
   'event.turn.rolled': '{player} rolled {dice} for a total of {total}.',
   'event.turn.ended': '{player} ended the turn.',
   'event.production.resolved': 'Production for {total}: {grants}.',
-  'event.production.starved': 'Hex {hex} could not pay out {resource} ({total} short).',
+  'event.production.starved': 'Roll of {total}: the bank is short of {resource}, so hex {hex} paid nothing.',
   'event.discard.required': 'Discards required: {required}.',
   'event.discard.submitted': '{player} discarded {count} card(s).',
   'event.robber.moveRequired': '{player} must move the robber ({cause}).',

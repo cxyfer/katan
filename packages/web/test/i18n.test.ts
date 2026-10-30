@@ -108,6 +108,14 @@ describe('t()', () => {
     expect(translated.text).toBe('The game was abandoned: Abandoned by table agreement.');
   });
 
+  it('renders a bank shortage with the dice total, not as a shortfall amount', () => {
+    const event = makeEvent(10, 'production.starved', { hex: 4, resource: 'ore', total: 6 });
+    expect(translateEvent('en', event, (id) => id).text).toBe(
+      'Roll of 6: the bank is short of Ore, so hex 4 paid nothing.',
+    );
+    expect(translateEvent('zh-Hant', event, (id) => id).text).toBe('擲出 6：銀行的礦石不足，六角格 4 本次不發放。');
+  });
+
   it('never leaks a raw message id for an unknown error code', () => {
     expect(translateNotice('en', { messageId: 'error.E_TOTALLY_NEW' })).toContain('E_TOTALLY_NEW');
     expect(translateNotice('en', { messageId: 'error.E_ILLEGAL_TARGET' })).toBe(
