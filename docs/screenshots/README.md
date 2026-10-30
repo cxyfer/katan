@@ -13,6 +13,7 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`hover-details/`](hover-details/) | Map-detail tooltips and collapsed/expanded rails, desktop and mobile | 2026-10-30 | `scripts/side-rails/verify.py`, see [work record](../aegis/work/2026-10-30-hover-details.md) |
 | [`table-ui-polish/`](table-ui-polish/) | Dice focus, hand-gain feedback, trade surface (desktop and mobile) | 2026-10-30 | `scripts/table-ui-polish/verify.py`, see [work record](../aegis/work/2026-10-30-table-ui-polish.md) |
 | [`island-diorama/`](island-diorama/README.md) | Standalone 3D island preview at several camera angles and sizes, plus game-surface checks | 2026-10-29 | `scripts/board-3d/verify-diorama.py`, see [work record](../aegis/work/2026-10-29-island-diorama.md) |
+| [`lobby-capacity/`](lobby-capacity/README.md) | Four-seat base and six-seat paired lobbies below capacity, plus the lowered-capacity state, desktop/mobile and both locales | 2026-10-30 | [`scripts/lobby-capacity/capture.py`](../../scripts/lobby-capacity/capture.py) |
 
 Only the `current/` set reflects the table as it is now. The other sets are
 focused feature reviews kept with their work records; each was captured at the

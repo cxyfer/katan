@@ -20,7 +20,7 @@ interface RoomShape {
   status: string;
   capacity: number;
   members: { playerId: string; ready: boolean; connected: boolean; host: boolean; color: string }[];
-  startBlockers: { messageId: string }[];
+  startBlockers: { messageId: string; params?: Record<string, unknown> }[];
   policy: { disconnectGraceSeconds: number; turnClockSeconds: number; allowAbandonment: boolean };
   policyRevision: number;
   pendingPolicy: { id: string; consents: string[]; after: { turnClockSeconds: number } } | null;
@@ -119,6 +119,178 @@ describe('R-ROOM lobby', () => {
     }
   });
 
+  it('starts a four-seat base room with three seated players', async () => {
+    const clients = [];
+    for (let index = 0; index < 3; index++) {
+      clients.push(await harness.client(`ShortBase-${index}`));
+    }
+    const host = clients[0]!;
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'public',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    for (const client of clients.slice(1)) {
+      client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
+    }
+    for (const client of clients) {
+      client.expectOk(await client.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    }
+
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.members).toHaveLength(3);
+    expect(view.capacity).toBe(4);
+    expect(view.startBlockers).toEqual([]);
+
+    const started = host.expectOk<{ gameId: string }>(await host.post(`/api/rooms/${room.id}/start`));
+    const snapshot = host.expectOk<{ view: { profileId: string; players: unknown[]; turn: { setup: unknown } } }>(
+      await host.get(`/api/games/${started.gameId}`),
+    );
+    expect(snapshot.view.profileId).toBe('base-2025');
+    expect(snapshot.view.players).toHaveLength(3);
+    expect(snapshot.view.turn.setup).not.toBeNull();
+
+    // The unoccupied fourth seat is not joinable after a short-handed start.
+    const viewer = await harness.client('ShortBaseViewer');
+    const list = viewer.expectOk<{
+      rooms: { id: string; status: string; openSeats: number }[];
+    }>(await viewer.get('/api/rooms'));
+    expect(list.rooms.find((entry) => entry.id === room.id)).toMatchObject({
+      status: 'playing',
+      openSeats: 0,
+    });
+  });
+
+  it('starts a six-seat paired room with five seated players', async () => {
+    const clients = [];
+    for (let index = 0; index < 5; index++) {
+      clients.push(await harness.client(`ShortPaired-${index}`));
+    }
+    const host = clients[0]!;
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 6,
+        profileId: 'base-paired-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    for (const client of clients.slice(1)) {
+      client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
+    }
+    for (const client of clients) {
+      client.expectOk(await client.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    }
+
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.members).toHaveLength(5);
+    expect(view.capacity).toBe(6);
+    expect(view.startBlockers).toEqual([]);
+
+    const started = host.expectOk<{ gameId: string }>(await host.post(`/api/rooms/${room.id}/start`));
+    const snapshot = host.expectOk<{ view: { profileId: string; players: unknown[]; turn: { setup: unknown } } }>(
+      await host.get(`/api/games/${started.gameId}`),
+    );
+    expect(snapshot.view.profileId).toBe('base-paired-2025');
+    expect(snapshot.view.players).toHaveLength(5);
+    expect(snapshot.view.turn.setup).not.toBeNull();
+  });
+
+  it('keeps a six-seat paired room blocked until five players are seated', async () => {
+    const clients = [];
+    for (let index = 0; index < 4; index++) {
+      clients.push(await harness.client(`ShortPairedBlocked-${index}`));
+    }
+    const host = clients[0]!;
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 6,
+        profileId: 'base-paired-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    for (const client of clients.slice(1)) {
+      client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
+    }
+    for (const client of clients) {
+      client.expectOk(await client.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    }
+
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.startBlockers.map((blocker) => blocker.messageId)).toContain('blocker.seats');
+    host.expectError(await host.post(`/api/rooms/${room.id}/start`), 'E_START_BLOCKED');
+  });
+
+  it('changes the capacity before start without dropping below the seated count', async () => {
+    const host = await harness.client('CapacityHost');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    for (let index = 0; index < 2; index++) {
+      const client = await harness.client(`CapacityGuest-${index}`);
+      client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
+    }
+
+    const lowered = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${room.id}/settings`, { capacity: 3 }),
+    );
+    expect(lowered.capacity).toBe(3);
+    const extra = await harness.client('CapacityExtra');
+    extra.expectError(await extra.post('/api/rooms/join', { code: room.code }), 'E_ROOM_FULL');
+
+    host.expectError(
+      await host.post(`/api/rooms/${room.id}/settings`, { capacity: 2 }),
+      'E_UNSUPPORTED_COMBINATION',
+    );
+  });
+
+  it('refuses a capacity below the seated players', async () => {
+    const host = await harness.client('CapacityFloorHost');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    for (let index = 0; index < 3; index++) {
+      const client = await harness.client(`CapacityFloorGuest-${index}`);
+      client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
+    }
+    host.expectError(
+      await host.post(`/api/rooms/${room.id}/settings`, { capacity: 3 }),
+      'E_CAPACITY_BELOW_SEATED',
+    );
+  });
+
+  it('raises the capacity within the ruleset before start', async () => {
+    const host = await harness.client('CapacityRaiseHost');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    const raised = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${room.id}/settings`, { capacity: 4 }),
+    );
+    expect(raised.capacity).toBe(4);
+    const fourth = await harness.client('CapacityRaiseFourth');
+    fourth.expectOk(await fourth.post('/api/rooms/join', { code: room.code }));
+  });
+
   it('hides private rooms from the public list and exposes public ones', async () => {
     const host = await harness.client('Host3');
     const privateRoom = host.expectOk<RoomShape>(
@@ -192,7 +364,7 @@ describe('R-ROOM lobby', () => {
     expect(view.members.every((member) => member.ready)).toBe(false);
   });
 
-  it('blocks start until every seat is present, connected and ready', async () => {
+  it('blocks start below the profile minimum, and until every seated player is connected and ready', async () => {
     const host = await harness.client('StartHost');
     const other = await harness.client('StartOther');
     const room = host.expectOk<RoomShape>(
@@ -206,6 +378,10 @@ describe('R-ROOM lobby', () => {
     other.expectOk(await other.post('/api/rooms/join', { code: room.code }));
     let view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
     expect(view.startBlockers.map((blocker) => blocker.messageId)).toContain('blocker.seats');
+    expect(view.startBlockers.find((blocker) => blocker.messageId === 'blocker.seats')?.params).toEqual({
+      seated: 2,
+      min: 3,
+    });
 
     host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
     other.expectOk(await other.post(`/api/rooms/${room.id}/ready`, { ready: true }));

@@ -328,7 +328,7 @@ export function HomeScreen({ controller }: ScreenProps) {
                       <button
                         type="button"
                         className="button"
-                        disabled={room.openSeats <= 0 || !room.code}
+                        disabled={room.status !== 'lobby' || room.openSeats <= 0 || !room.code}
                         onClick={() => room.code && void actions.joinRoom(room.code)}
                       >
                         {t('lobby.join')}<GameIcon name="chevron-right" />

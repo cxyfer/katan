@@ -247,6 +247,11 @@
 .lobby__grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); gap: 1.2rem; align-items: start; padding-bottom: 1rem; }
 .lobby__main, .lobby__aside { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
 .lobby__aside { position: sticky; top: 1rem; }
+.lobby-settings__form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem 1.2rem; }
+.lobby-settings__form .field { flex: 1 1 14rem; margin: 0; }
+.lobby-settings__form .field label { font-size: .8rem; }
+.lobby-settings__form .field p { margin: .35rem 0 0; font-size: .76rem; }
+.lobby-settings__form .button { flex: 0 0 auto; margin-bottom: .1rem; }
 .lobby-policy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1.2rem; align-items: end; }
 .lobby-policy > .section-heading, .lobby-policy > .field--checkbox, .lobby-policy > p, .lobby-policy > .button { grid-column: 1 / -1; }
 .lobby-policy > .button { justify-self: start; }

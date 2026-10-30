@@ -52,6 +52,19 @@ Conventions:
 | GET | `/api/rooms/:roomId/chat` | query `after?`, `limit?` | `ChatPage` |
 | POST | `/api/rooms/:roomId/chat` | `{ clientMessageId, text }` | `ChatMessageView` |
 
+### Room settings and start
+
+`POST /api/rooms/:roomId/settings` is host-only before start and accepts any
+subset of `capacity`, `profileId`, `setupMode` and `policy`. Capacity must be a
+count the room's profile supports and may not be lower than the seated players
+(`E_CAPACITY_BELOW_SEATED`); a change clears every seat's readiness.
+
+`RoomView.startBlockers` is authoritative. A room may start with any seated
+count the profile supports up to its capacity, so it does not need to be full;
+`blocker.seats` reports the profile minimum while below it, and
+`blocker.profilePlayerCount` reports a seated count the profile does not
+support.
+
 ### Command handling
 
 `POST /api/games/:gameId/commands`

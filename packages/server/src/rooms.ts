@@ -156,16 +156,24 @@ export class RoomService {
     const blockers: Notice[] = [];
     if (room.status !== 'lobby') return blockers;
     const profile = requireProfile(room.profile_id);
-    if (members.length !== room.capacity) {
-      blockers.push({
-        messageId: 'blocker.seats',
-        params: { seated: members.length, capacity: room.capacity },
-      });
-    }
+    // A room no longer has to be full: any player count the profile supports
+    // may start, up to the room's capacity. Wait only for the profile floor.
+    const minimumPlayers = Math.min(...profile.playerCounts);
     if (!profile.playerCounts.includes(room.capacity)) {
       blockers.push({
         messageId: 'blocker.profilePlayerCount',
-        params: { profileId: profile.id, capacity: room.capacity },
+        params: { profileId: profile.id, playerCount: room.capacity },
+      });
+    }
+    if (members.length < minimumPlayers) {
+      blockers.push({
+        messageId: 'blocker.seats',
+        params: { seated: members.length, min: minimumPlayers },
+      });
+    } else if (!profile.playerCounts.includes(members.length)) {
+      blockers.push({
+        messageId: 'blocker.profilePlayerCount',
+        params: { profileId: profile.id, playerCount: members.length },
       });
     }
     const notReady = members.filter((member) => !member.ready);
@@ -201,7 +209,9 @@ export class RoomService {
         profileId: room.profile_id,
         playerCount: memberships.length,
         capacity: room.capacity,
-        openSeats: Math.max(0, room.capacity - memberships.length),
+        // A started room's unused seats are no longer joinable, even when the
+        // game began below capacity.
+        openSeats: room.status === 'lobby' ? Math.max(0, room.capacity - memberships.length) : 0,
         createdAt: room.created_at,
       });
     }

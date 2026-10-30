@@ -63,6 +63,53 @@ describe('lobby', () => {
     await waitFor(() => expect(api.callsOf('startGame')).toHaveLength(1));
   });
 
+  it('enables start for a four-seat room with only three seated players', async () => {
+    const api = createFakeApi({
+      room: makeRoom({
+        capacity: 4,
+        members: [
+          makeMember(),
+          makeMember({ playerId: 'p2', nickname: '小美', seat: 1, color: 'blue', host: false }),
+          makeMember({ playerId: 'p3', nickname: '阿明', seat: 2, color: 'orange', host: false }),
+        ],
+      }),
+    });
+    await joinLobby(api);
+    expect(screen.queryByTestId('start-blockers')).toBeNull();
+    expect((screen.getByTestId('start-game') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('lets the host lower the capacity to the seated count', async () => {
+    const api = createFakeApi({ room: makeRoom({ capacity: 4 }) });
+    await joinLobby(api);
+
+    const capacity = screen.getByTestId('lobby-capacity') as HTMLSelectElement;
+    expect(capacity.disabled).toBe(false);
+    expect([...capacity.options].map((option) => option.value)).toEqual(['3', '4']);
+
+    fireEvent.change(capacity, { target: { value: '3' } });
+    fireEvent.click(screen.getByTestId('save-settings'));
+    await waitFor(() => expect(api.callsOf('updateSettings')).toHaveLength(1));
+    expect(api.callsOf('updateSettings')[0]!.args[1]).toEqual({ capacity: 3 });
+  });
+
+  it('does not offer a capacity below the seated players', async () => {
+    const api = createFakeApi({
+      room: makeRoom({
+        capacity: 4,
+        members: [
+          makeMember(),
+          makeMember({ playerId: 'p2', nickname: '小美', seat: 1, color: 'blue', host: false }),
+          makeMember({ playerId: 'p3', nickname: '阿明', seat: 2, color: 'orange', host: false }),
+          makeMember({ playerId: 'p4', nickname: '小華', seat: 3, color: 'white', host: false }),
+        ],
+      }),
+    });
+    await joinLobby(api);
+    const capacity = screen.getByTestId('lobby-capacity') as HTMLSelectElement;
+    expect([...capacity.options].map((option) => option.value)).toEqual(['4']);
+  });
+
   it('takes an open colour and toggles readiness', async () => {
     const api = createFakeApi({
       room: makeRoom({
@@ -77,6 +124,8 @@ describe('lobby', () => {
     await waitFor(() => expect(api.callsOf('takeSeat')).toHaveLength(1));
     expect(api.callsOf('takeSeat')[0]!.args[1]).toBe('green');
     expect(screen.getByText('Only the host can change settings or start the game.')).toBeTruthy();
+    expect((screen.getByTestId('lobby-capacity') as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByTestId('save-settings') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('toggles readiness for a seated viewer', async () => {
