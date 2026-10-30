@@ -85,10 +85,12 @@ export class RoomService {
   private withRoomLock<T>(roomId: string, fn: () => Promise<T>): Promise<T> {
     const previous = this.roomLocks.get(roomId) ?? Promise.resolve();
     const next = previous.then(fn, fn);
-    this.roomLocks.set(
-      roomId,
-      next.catch(() => undefined),
-    );
+    const settled = next.catch(() => undefined);
+    this.roomLocks.set(roomId, settled);
+    void settled.finally(() => {
+      // A newer operation may already have replaced this queue tail.
+      if (this.roomLocks.get(roomId) === settled) this.roomLocks.delete(roomId);
+    });
     return next;
   }
 

@@ -292,6 +292,20 @@ describe('R-ROOM lobby', () => {
     }
   });
 
+  it('does not retain room-lock entries after a rejected operation settles', async () => {
+    const locks = (harness.service.rooms as unknown as {
+      roomLocks: Map<string, Promise<unknown>>;
+    }).roomLocks;
+    const before = locks.size;
+    const host = await harness.client('LockCleanupHost');
+    host.expectError(
+      await host.post(`/api/rooms/room_missing_${Date.now()}/ready`, { ready: true }),
+      'E_ROOM_NOT_FOUND',
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(locks.size).toBe(before);
+  });
+
   it('starts a six-seat paired room with five seated players', async () => {
     const clients = [];
     for (let index = 0; index < 5; index++) {
