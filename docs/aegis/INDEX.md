@@ -5,6 +5,8 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-10-30 | work | docs/aegis/work/2026-10-30-ui-design-refresh.md | Frontend design and usability refresh |
+| 2026-10-30 | work | scripts/ui-refresh/capture.py | Entry, lobby and table review capture harness |
 | 2026-10-30 | plan | docs/aegis/plans/2026-10-30-table-ui-polish.md | Table UI polish after PR #11 |
 | 2026-10-30 | plan | docs/aegis/plans/2026-10-30-dev-runner.md | Development runner repair plan and evidence |
 | 2026-10-30 | work | docs/aegis/work/2026-10-30-table-ui-polish.md | UI polish verification and review |

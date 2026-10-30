@@ -269,7 +269,7 @@ def inspection_hover(scenario):
     target = page.locator('[data-testid^="inspect-hex-"]').first
     page.keyboard.press("Tab")
     target.focus()
-    page.wait_for_timeout(1100)
+    page.wait_for_timeout(900)
     require(page.get_by_role("tooltip").count() == 0, "keyboard tooltip opened too early")
     page.get_by_role("tooltip").wait_for()
     require(target.get_attribute("aria-describedby"), "keyboard target lacks tooltip association")
