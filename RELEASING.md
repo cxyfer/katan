@@ -22,11 +22,12 @@ ordinary development consumes no Actions minutes or package storage. There is no
 | Git ref | Tags pushed | Notes |
 |---------|-------------|-------|
 | `v0.2.0` (stable) | `0.2.0`, `0.2`, `latest`, `sha-<short>` | Moving tags follow the tag |
-| `v0.3.0-rc.1` | `0.3.0-rc.1`, `sha-<short>` | Pre-release: never moves `0.3` or `latest` |
+| `v0.3.0-rc.1` | `v0.3.0-rc.1`, `sha-<short>` | Pre-release: never moves `0.3` or `latest` |
 
-The image tag mirrors the version without the `v` prefix; `latest` is the only tag that is not a
-version. `sha-<short>` is per commit and exists for rollback: pin the digest when you need an exact
-build.
+Stable exact image tags mirror the version without the `v` prefix for compatibility with existing
+deployments. Pre-release exact tags mirror the Git tag, including its `v` prefix, so there is no
+ambiguous version string. `latest` is the only tag that is not a version. `sha-<short>` is per
+commit and exists for rollback: pin the digest when you need an exact build.
 
 The full image name is `ghcr.io/cxyfer/katan`. It is derived from `github.repository`, so a fork
 publishes to its own namespace.
@@ -126,6 +127,9 @@ curl -s http://127.0.0.1:3411/healthz      # {"ok":true,"data":{"version":"0.2.0
 docker rm -f catan-version-check
 ```
 
+For a pre-release, use the Git tag verbatim. For example, `v0.2.0-rc.3` publishes
+`ghcr.io/cxyfer/katan:v0.2.0-rc.3`, not `ghcr.io/cxyfer/katan:0.2.0-rc.3`.
+
 ### 5. Publish the GitHub Release
 
 Generate the skeleton, then write the callout and the highlights:
@@ -135,7 +139,7 @@ Generate the skeleton, then write the callout and the highlights:
 $EDITOR .tmp/release-notes-v0.2.0.md   # the callout and the ## Highlights list
 ./scripts/release-notes-lint.sh .tmp/release-notes-v0.2.0.md
 
-gh release create v0.2.0 --title "catan 0.2.0" \
+gh release create v0.2.0 --title "catan v0.2.0" \
   --notes-file .tmp/release-notes-v0.2.0.md --verify-tag
 ```
 

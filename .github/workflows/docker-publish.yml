@@ -214,15 +214,17 @@ jobs:
           echo "$GITHUB_REF_NAME carries $version (prerelease=$prerelease)"
 
       # `latest` and the moving `X.Y` tag only move on stable v* tags; a
-      # pre-release tag keeps just its exact version tag. Every build also keeps
-      # its immutable sha-<short> tag for rollback.
+      # pre-release keeps its exact Git tag, including the `v` prefix. Stable
+      # exact tags stay unprefixed for compatibility with existing pins. Every
+      # build also keeps its immutable sha-<short> tag for rollback.
       - name: Release tags
         id: meta
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern={{version}},enable=${{ !contains(github.ref_name, '-') }}
+            type=raw,value=${{ github.ref_name }},enable=${{ contains(github.ref_name, '-') }}
             type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref_name, '-') }}
             type=raw,value=latest,enable=${{ steps.version.outputs.prerelease == 'false' }}
 
