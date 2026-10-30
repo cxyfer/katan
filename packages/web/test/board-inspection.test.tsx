@@ -150,8 +150,9 @@ describe('public map inspection', () => {
     return { api, ...rendered };
   }
 
-  it('waits 1.5 seconds before describing an element without changing the viewport or sending a command', async () => {
+  it('waits exactly one second before describing an element without changing the viewport or sending a command', async () => {
     const { api } = await open();
+    expect(INSPECTION_DELAY_MS).toBe(1000);
     const target = screen.getByTestId('inspect-hex-0');
     expect(screen.queryByTestId('board-inspection')).toBeNull();
     fireEvent.click(target);
@@ -172,12 +173,12 @@ describe('public map inspection', () => {
     const tile = screen.getByTestId('inspect-hex-0');
     const building = screen.getByTestId('inspect-vertex-0');
     fireEvent.pointerOver(tile, { pointerType: 'mouse' });
-    act(() => vi.advanceTimersByTime(1200));
+    act(() => vi.advanceTimersByTime(800));
     fireEvent.pointerOut(tile, { relatedTarget: building });
     fireEvent.pointerOver(building, { pointerType: 'mouse', relatedTarget: tile });
-    act(() => vi.advanceTimersByTime(1200));
+    act(() => vi.advanceTimersByTime(800));
     expect(screen.queryByRole('tooltip')).toBeNull();
-    act(() => vi.advanceTimersByTime(300));
+    act(() => vi.advanceTimersByTime(200));
     expect(screen.getByRole('tooltip').textContent).toContain('Building value: 2');
     fireEvent.pointerOut(building);
     act(() => vi.advanceTimersByTime(161));
@@ -191,7 +192,7 @@ describe('public map inspection', () => {
     await open();
     const building = screen.getByTestId('inspect-vertex-0');
     act(() => building.focus());
-    act(() => vi.advanceTimersByTime(1500));
+    act(() => vi.advanceTimersByTime(INSPECTION_DELAY_MS));
     const popup = screen.getByRole('tooltip');
     expect(popup.textContent).toContain('小美');
     expect(document.activeElement).toBe(building);
@@ -206,7 +207,7 @@ describe('public map inspection', () => {
     expect(screen.queryByRole('tooltip')).toBeNull();
     act(() => screen.getByTestId('board-surface').focus());
     act(() => building.focus());
-    act(() => vi.advanceTimersByTime(1500));
+    act(() => vi.advanceTimersByTime(INSPECTION_DELAY_MS));
     expect(screen.getByRole('tooltip')).toBeTruthy();
     act(() => screen.getByTestId('board-surface').focus());
     expect(screen.queryByRole('tooltip')).toBeNull();
@@ -217,14 +218,14 @@ describe('public map inspection', () => {
     const target = screen.getByTestId('inspect-hex-0');
     const surface = screen.getByTestId('board-surface');
     fireEvent.pointerOver(target, { pointerType: 'mouse' });
-    act(() => vi.advanceTimersByTime(1000));
+    act(() => vi.advanceTimersByTime(800));
     fireEvent.pointerDown(surface, { pointerId: 1, pointerType: 'mouse', button: 0, clientX: 200, clientY: 200 });
     fireEvent.pointerMove(surface, { pointerId: 1, pointerType: 'mouse', buttons: 1, clientX: 250, clientY: 220 });
     fireEvent.pointerUp(surface, { pointerId: 1, pointerType: 'mouse', button: 0, clientX: 250, clientY: 220 });
     act(() => vi.advanceTimersByTime(2000));
     expect(screen.queryByRole('tooltip')).toBeNull();
     fireEvent.pointerOver(target, { pointerType: 'mouse' });
-    act(() => vi.advanceTimersByTime(1500));
+    act(() => vi.advanceTimersByTime(INSPECTION_DELAY_MS));
     expect(screen.getByRole('tooltip')).toBeTruthy();
     fireEvent.click(screen.getByTestId('zoom-in'));
     expect(screen.queryByRole('tooltip')).toBeNull();
@@ -246,7 +247,7 @@ describe('public map inspection', () => {
     fireEvent.keyDown(target, { key: 'Tab' });
     act(() => screen.getByTestId('board-surface').focus());
     act(() => target.focus());
-    act(() => vi.advanceTimersByTime(1500));
+    act(() => vi.advanceTimersByTime(INSPECTION_DELAY_MS));
     expect(screen.getByRole('tooltip')).toBeTruthy();
   });
 
@@ -254,12 +255,12 @@ describe('public map inspection', () => {
     await open();
     const target = screen.getByTestId('inspect-hex-0');
     fireEvent.pointerOver(target, { pointerType: 'mouse' });
-    act(() => vi.advanceTimersByTime(1000));
+    act(() => vi.advanceTimersByTime(800));
     act(() => screen.getByTestId('action-rail-toggle').focus());
     act(() => vi.advanceTimersByTime(2000));
     expect(screen.queryByRole('tooltip')).toBeNull();
     fireEvent.pointerOver(target, { pointerType: 'mouse' });
-    act(() => vi.advanceTimersByTime(1500));
+    act(() => vi.advanceTimersByTime(INSPECTION_DELAY_MS));
     expect(screen.getByRole('tooltip')).toBeTruthy();
     act(() => screen.getByTestId('zoom-in').focus());
     expect(screen.queryByRole('tooltip')).toBeNull();
@@ -271,7 +272,7 @@ describe('public map inspection', () => {
     fireEvent.click(screen.getByTestId('action-build.road'));
     const target = screen.getByTestId('target-edge-8');
     fireEvent.pointerOver(target, { pointerType: 'mouse' });
-    act(() => vi.advanceTimersByTime(1500));
+    act(() => vi.advanceTimersByTime(INSPECTION_DELAY_MS));
     expect(screen.getByRole('tooltip')).toBeTruthy();
     fireEvent.pointerDown(target, { pointerType: 'mouse', button: 0 });
     fireEvent.click(target);

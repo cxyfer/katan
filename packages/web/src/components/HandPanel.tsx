@@ -5,6 +5,8 @@ import { formatNumber } from '../i18n/format.ts';
 import { ResourceIcon } from './GameArt.tsx';
 import { ResourceCardArt } from './ResourceCardArt.tsx';
 import { DevCardPanel } from './DevCardPanel.tsx';
+import { HandGainOverlay } from './HandGainOverlay.tsx';
+import { useHandGains } from './useHandGains.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/hand-fan.css';
 
@@ -24,6 +26,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
   const [inspected, setInspected] = useState<Resource | null>(null);
   const [expanded, setExpanded] = useState(false);
   const handRef = useRef<HTMLElement>(null);
+  const gains = useHandGains(state.game, state.gameSync, state.session?.id ?? null, state.connection === 'online', state.gameSyncPending);
   const hoverRef = useRef(false);
   const touchOpenRef = useRef(false);
   const suppressClickRef = useRef(false);
@@ -78,7 +81,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
   }, [expanded]);
 
   return (
-    <section className="hand hand-fan" aria-labelledby="hand-heading" aria-describedby="hand-hint" data-testid="hand-panel"
+    <><section className="hand hand-fan" aria-labelledby="hand-heading" aria-describedby="hand-hint" data-testid="hand-panel"
       ref={handRef} tabIndex={0} data-expanded={expanded}
       onPointerEnter={(event) => {
         if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
@@ -171,5 +174,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
           aria-label={t('table.collapseHand')}>⌄</button>
       </div>
     </section>
+      <HandGainOverlay gains={gains} handRef={handRef} />
+    </>
   );
 }

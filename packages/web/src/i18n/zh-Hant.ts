@@ -353,7 +353,7 @@ export const zhHant: Catalog = {
   'play.cancelSelection': '取消選取',
   'play.legalTargets': '合法目標：{count}',
   'play.piecesLeft': '{piece}：剩 {count}',
-  'play.bankTrade': '銀行／港口交易',
+  'play.bankTrade': '銀行／港口兌換',
   'play.bankTradeRate': '你的 {resource} 匯率：{rate}:1',
   'play.bankTradeGive': '付出',
   'play.bankTradeReceive': '獲得',
@@ -489,6 +489,7 @@ export const zhHant: Catalog = {
   // --- drawer --------------------------------------------------------------
   'drawer.hand': '手牌與卡片',
   'drawer.trade': '交易',
+  'drawer.exchange': '兌換',
   'drawer.chat': '聊天',
   'drawer.help': '說明',
   'drawer.open': '開啟{panel}面板',

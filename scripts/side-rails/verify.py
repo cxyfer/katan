@@ -235,7 +235,7 @@ def inspection_hover(scenario):
         target, point = candidate
         initial_zoom = board.get_attribute("data-zoom")
         page.mouse.move(*point)
-        page.wait_for_timeout(1100)
+        page.wait_for_timeout(700)
         require(page.get_by_role("tooltip").count() == 0, f"{kind} tooltip opened too early")
         popup = page.get_by_role("tooltip")
         popup.wait_for()
@@ -289,7 +289,7 @@ def inspection_hover(scenario):
     page.evaluate("() => document.fullscreenElement ? document.exitFullscreen() : Promise.resolve()")
     settle(page)
     page.get_by_test_id("board-surface").focus()
-    return {"delayMs": 1500, "elements": checks, "keyboard": "delayed focus and Escape", "fullscreen": True}
+    return {"delayMs": 1000, "elements": checks, "keyboard": "delayed focus and Escape", "fullscreen": True}
 
 
 def right_rail(scenario):

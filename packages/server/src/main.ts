@@ -15,7 +15,7 @@ import { createWebSocketServer } from './ws.ts';
 
 // `build.mjs` replaces this with the root package.json version, so a release
 // bumps one file and `/healthz` reports the version of the tag that was built.
-// Source imports (tests, `pnpm dev`) see the fallback instead.
+// Source imports in tests see the fallback instead.
 declare const __CATAN_VERSION__: string;
 export const VERSION = typeof __CATAN_VERSION__ === 'string' ? __CATAN_VERSION__ : '0.0.0-dev';
 

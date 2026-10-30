@@ -357,7 +357,7 @@ export const en: Catalog = {
   'play.cancelSelection': 'Cancel selection',
   'play.legalTargets': 'Legal targets: {count}',
   'play.piecesLeft': '{piece}: {count} left',
-  'play.bankTrade': 'Bank / harbour trade',
+  'play.bankTrade': 'Bank / harbour exchange',
   'play.bankTradeRate': 'Your rate for {resource}: {rate}:1',
   'play.bankTradeGive': 'Give',
   'play.bankTradeReceive': 'Receive',
@@ -494,6 +494,7 @@ export const en: Catalog = {
   // --- drawer --------------------------------------------------------------
   'drawer.hand': 'Hand and cards',
   'drawer.trade': 'Trade',
+  'drawer.exchange': 'Exchange',
   'drawer.chat': 'Chat',
   'drawer.help': 'Help',
   'drawer.open': 'Open {panel} panel',

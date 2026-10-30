@@ -15,6 +15,7 @@ import { TargetPicker } from './TargetPicker.tsx';
 import { BoardTargetOverlay } from './BoardTargetOverlay.tsx';
 import { BoardEffects } from './BoardEffects.tsx';
 import { DicePresentation } from './DicePresentation.tsx';
+import { DieFace } from './DieFace.tsx';
 import { Legend } from './Legend.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { SvgBoard } from './SvgBoard.tsx';
@@ -237,7 +238,7 @@ export function BoardView({ controller }: { controller: TableController }) {
 
       {view.turn.dice && (
         <span className="board__dice" data-presenting={focusedRoll ? 'true' : undefined} aria-hidden={focusedRoll ? true : undefined} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
-          {view.turn.dice.map((value, index) => <span className="board__die" key={index} aria-hidden="true">{value}</span>)}
+          {view.turn.dice.map((value, index) => <DieFace className="board__die" key={index} value={value} />)}
           <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
         </span>
       )}

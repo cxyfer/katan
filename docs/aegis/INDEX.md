@@ -5,6 +5,10 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-10-30 | plan | docs/aegis/plans/2026-10-30-table-ui-polish.md | Table UI polish after PR #11 |
+| 2026-10-30 | plan | docs/aegis/plans/2026-10-30-dev-runner.md | Development runner repair plan and evidence |
+| 2026-10-30 | work | docs/aegis/work/2026-10-30-table-ui-polish.md | UI polish verification and review |
+| 2026-10-30 | work | docs/aegis/work/2026-10-30-dev-runner.md | Development runner and live-table repair |
 | 2026-10-30 | work | docs/aegis/work/2026-10-30-hover-details.md | Delayed element tooltips and a compact collapsing player rail |
 | 2026-10-30 | artifact | docs/aegis/work/2026-10-30-hover-details/report.json | Twelve production browser checks for delayed information and collapsing rails |
 | 2026-10-30 | artifact | docs/aegis/work/2026-10-29-side-rails/review-report.json | Review regression checks for rail exclusivity, expanded hands and turn flags |

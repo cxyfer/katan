@@ -4,19 +4,20 @@ import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatResourceMap } from '../i18n/format.ts';
 import { Dialog } from './Dialog.tsx';
 import type { TableController } from '../state/useTable.ts';
+import '../styles/trade.css';
 
 function emptyTerms(): Partial<Record<Resource, number>> {
   return {};
 }
 
 /**
- * Trading: structured offers plus the bank/harbour exchange (docs/SPEC.md §4.5).
+ * Structured player offers (docs/SPEC.md §4.5).
  *
  * Offers are negotiation, not proof of inventory: nothing is reserved, the
  * displayed revision is the one consent binds to, and only a settle command
- * moves cards. Bank exchange never waits for another player.
+ * moves cards.
  */
-export function TradePanel({ controller }: { controller: TableController }) {
+export function TradePanel({ controller, embedded = false }: { controller: TableController; embedded?: boolean }) {
   const t = useT();
   const locale = useLocale();
   const { state, actions } = controller;
@@ -25,8 +26,6 @@ export function TradePanel({ controller }: { controller: TableController }) {
   const [give, setGive] = useState<Partial<Record<Resource, number>>>(emptyTerms());
   const [want, setWant] = useState<Partial<Record<Resource, number>>>(emptyTerms());
   const [to, setTo] = useState<string>('all');
-  const [bankGive, setBankGive] = useState<Resource>('lumber');
-  const [bankReceive, setBankReceive] = useState<Resource>('brick');
   const [counterparty, setCounterparty] = useState<string>('');
   /**
    * Settlement is irreversible once the server commits it, so it goes through
@@ -42,7 +41,6 @@ export function TradePanel({ controller }: { controller: TableController }) {
   const others = view.players.filter((player) => player.id !== selfId);
   const nameOf = (playerId: string) =>
     playerId === 'all' ? t('play.tradeToAll') : (view.players.find((p) => p.id === playerId)?.nickname ?? playerId);
-  const rates = view.hints?.bankRates;
 
   const bump = (
     setter: (value: Partial<Record<Resource, number>>) => void,
@@ -58,8 +56,8 @@ export function TradePanel({ controller }: { controller: TableController }) {
   };
 
   return (
-    <section className="panel" aria-labelledby="trade-heading" data-testid="trade-panel">
-      <h2 id="trade-heading">{t('play.trade')}</h2>
+    <section className={`panel trade-panel${embedded ? ' trade-panel--embedded' : ''}`} aria-labelledby="trade-heading" data-testid="trade-panel">
+      <h2 id="trade-heading" className={embedded ? 'visually-hidden' : undefined}>{t('play.trade')}</h2>
 
       <div className="trade-builder">
         <h3>{t('play.tradeNew')}</h3>
@@ -79,43 +77,48 @@ export function TradePanel({ controller }: { controller: TableController }) {
             ))}
           </select>
         </div>
-        {(['give', 'want'] as const).map((side) => {
-          const terms = side === 'give' ? give : want;
-          const setter = side === 'give' ? setGive : setWant;
-          return (
-            <fieldset key={side}>
-              <legend>{t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')}</legend>
-              <ul className="term-list">
-                {RESOURCES.map((resource) => (
-                  <li key={resource}>
-                    <span>{t(`resource.${resource}`)}</span>
-                    <button
-                      type="button"
-                      className="button button--chip"
-                      data-testid={`${side}-sub-${resource}`}
-                      aria-label={`${t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')} ${t(`resource.${resource}`)} −`}
-                      onClick={() => bump(setter, terms, resource, -1)}
-                    >
-                      −
-                    </button>
-                    <output data-testid={`${side}-${resource}`}>
-                      {formatNumber(locale, terms[resource] ?? 0)}
-                    </output>
-                    <button
-                      type="button"
-                      className="button button--chip"
-                      data-testid={`${side}-add-${resource}`}
-                      aria-label={`${t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')} ${t(`resource.${resource}`)} +`}
-                      onClick={() => bump(setter, terms, resource, 1)}
-                    >
-                      +
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </fieldset>
-          );
-        })}
+        <div className="trade-terms" data-testid="trade-terms">
+          {(['give', 'want'] as const).map((side) => {
+            const terms = side === 'give' ? give : want;
+            const setter = side === 'give' ? setGive : setWant;
+            return (
+              <fieldset key={side} className="trade-terms__side" data-testid={`trade-terms-${side}`}>
+                <legend>{t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')}</legend>
+                <ul className="term-list">
+                  {RESOURCES.map((resource) => (
+                    <li key={resource} className="trade-term">
+                      <span className="trade-term__resource">{t(`resource.${resource}`)}</span>
+                      <div className="trade-term__controls">
+                        <button
+                          type="button"
+                          className="button button--chip"
+                          data-testid={`${side}-sub-${resource}`}
+                          aria-label={`${t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')} ${t(`resource.${resource}`)} −`}
+                          disabled={(terms[resource] ?? 0) === 0}
+                          onClick={() => bump(setter, terms, resource, -1)}
+                        >
+                          −
+                        </button>
+                        <output data-testid={`${side}-${resource}`} aria-label={`${t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')} ${t(`resource.${resource}`)}`}>
+                          {formatNumber(locale, terms[resource] ?? 0)}
+                        </output>
+                        <button
+                          type="button"
+                          className="button button--chip"
+                          data-testid={`${side}-add-${resource}`}
+                          aria-label={`${t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')} ${t(`resource.${resource}`)} +`}
+                          onClick={() => bump(setter, terms, resource, 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </fieldset>
+            );
+          })}
+        </div>
         <button
           type="button"
           className="button button--primary"
@@ -191,60 +194,6 @@ export function TradePanel({ controller }: { controller: TableController }) {
         </Dialog>
       )}
 
-      <div className="bank-trade">
-        <h3>{t('play.bankTrade')}</h3>
-        <div className="field field--inline">
-          <label htmlFor="bank-give">{t('play.bankTradeGive')}</label>
-          <select
-            id="bank-give"
-            data-testid="bank-give"
-            value={bankGive}
-            onChange={(event) => setBankGive(event.target.value as Resource)}
-          >
-            {RESOURCES.map((resource) => (
-              <option key={resource} value={resource}>
-                {t(`resource.${resource}`)} ({rates?.[resource] ?? 4}:1)
-              </option>
-            ))}
-          </select>
-          <label htmlFor="bank-receive">{t('play.bankTradeReceive')}</label>
-          <select
-            id="bank-receive"
-            data-testid="bank-receive"
-            value={bankReceive}
-            onChange={(event) => setBankReceive(event.target.value as Resource)}
-          >
-            {RESOURCES.map((resource) => (
-              <option key={resource} value={resource}>
-                {t(`resource.${resource}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-        {rates && (
-          <p className="muted" data-testid="bank-rate">
-            {t('play.bankTradeRate', {
-              resource: t(`resource.${bankGive}`),
-              rate: rates[bankGive],
-            })}
-          </p>
-        )}
-        {bankGive === bankReceive && <p className="error">{t('play.bankTradeSame')}</p>}
-        <button
-          type="button"
-          className="button"
-          data-testid="bank-submit"
-          disabled={bankGive === bankReceive}
-          onClick={() =>
-            void actions.submitCommand(
-              { type: 'trade.bank', give: bankGive, receive: bankReceive },
-              'play.bankTrade',
-            )
-          }
-        >
-          {t('play.bankTradeSubmit')}
-        </button>
-      </div>
     </section>
   );
 }
