@@ -6,10 +6,10 @@
  * how that is labelled and whether it is *our* obligation.
  */
 
-import type { TableState } from './table.ts';
+import { awaitingProjection, type TableState } from './table.ts';
 
 export interface RequiredAction {
-  kind: 'setup' | 'roll' | 'rolling' | 'discard' | 'moveRobber' | 'steal' | 'yearOfPlenty' | 'freeRoads' | 'turn';
+  kind: 'setup' | 'roll' | 'rolling' | 'syncing' | 'discard' | 'moveRobber' | 'steal' | 'yearOfPlenty' | 'freeRoads' | 'turn';
   /** Message id for the prompt headline. */
   messageId: string;
   params: Record<string, unknown>;
@@ -40,6 +40,10 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
   // 不從擲骰後的投影透露棄牌、強盜等結果。
   if (state.dicePresenting) {
     return { kind: 'rolling', messageId: 'dice.rolling', params: {}, mine: false, waitingFor: [] };
+  }
+  // 事件先到而投影未追上：不依過時投影提示擲骰或其他義務。
+  if (awaitingProjection(state)) {
+    return { kind: 'syncing', messageId: 'play.syncing', params: {}, mine: false, waitingFor: [] };
   }
 
   const pending = view.pending;

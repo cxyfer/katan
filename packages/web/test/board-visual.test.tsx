@@ -193,6 +193,40 @@ describe('authoritative transport animation (E01–E06, E08–E10)', () => {
     expect(screen.getAllByTestId(/^target-hex-/).length).toBeGreaterThan(0);
   });
 
+  it('keeps follow-ups held after an event-first roll until its projection arrives', async () => {
+    const sockets: TestSocket[] = [];
+    const preroll = rolled(12);
+    preroll.view.turn.phase = 'preroll';
+    preroll.view.hints = makeHints({ canRoll: true, canEndTurn: false });
+    const api = createFakeApi({ snapshot: preroll });
+    await open(api, sockets);
+    expect(screen.getByTestId('prompt-roll')).toBeTruthy();
+    vi.useFakeTimers();
+    // 投影延遲：只有擲骰事件抵達，伺服器之後才回應補抓。
+    const projected = rolled(13, [4, 4]);
+    let respond: (value: { ok: true; data: GameSnapshot }) => void = () => {};
+    const fetch = vi.spyOn(api, 'getGame').mockReturnValueOnce(new Promise((done) => { respond = done; }));
+    act(() => sockets[0]!.deliver({ type: 'events', payload: {
+      gameId: 'g1', revision: 5, events: [makeEvent(13, 'turn.rolled', { dice: [4, 4], total: 8 })],
+    } }));
+    expect(screen.getByTestId('dice-focus')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(DICE_PRESENTATION_DURATION_MS - 1));
+    expect(fetch).not.toHaveBeenCalled();
+    await act(async () => { vi.advanceTimersByTime(1); });
+    // 演出結束但投影未到：不恢復過時的擲骰按鈕，並主動補抓投影。
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(screen.queryByTestId('prompt-roll')).toBeNull();
+    expect(screen.getByTestId('required-action-prompt').textContent).toContain('Syncing');
+    expect(screen.getByTestId('action-roll').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByTestId('reason-roll').textContent).toBe('Syncing the table — please wait.');
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    expect(screen.getByTestId('required-action-prompt').textContent).toContain('Syncing');
+    await act(async () => respond({ ok: true, data: projected }));
+    expect(screen.getByTestId('required-action-prompt').textContent).not.toContain('Syncing');
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
   it('keeps the static dice hidden while a later roll waits behind earlier effects', async () => {
     const sockets: TestSocket[] = [];
     await open(createFakeApi({ snapshot: rolled(12) }), sockets);

@@ -355,6 +355,8 @@ export const en: Catalog = {
   'play.disabled.noTargets': 'No legal target is available.',
   'play.disabled.other': 'This action is currently unavailable.',
   'play.disabled.rolling': 'Rolling — waiting for the result.',
+  'play.disabled.syncing': 'Syncing the table — please wait.',
+  'play.syncing': 'Syncing the table…',
   'play.selectionTitle': 'Selected target',
   'play.selectionTarget': 'Target: {target}',
   'play.selectionCost': 'Cost: {cost}',

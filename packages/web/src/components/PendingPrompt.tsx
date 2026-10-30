@@ -3,6 +3,7 @@ import { RESOURCES, type Resource } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceList } from '../i18n/format.ts';
 import { requiredActionFor } from '../state/pending.ts';
+import { followUpsHeld } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 
 /**
@@ -19,7 +20,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
   const view = state.game?.view ?? null;
   const selfId = state.session?.id ?? null;
   // 擲骰演出期間先只顯示「擲骰中」，點數揭曉後才給出棄牌、結束回合等後續選項。
-  const rolling = state.dicePresenting;
+  const rolling = followUpsHeld(state);
   const action = requiredActionFor(state);
   const [discardPick, setDiscardPick] = useState<Resource[]>([]);
 

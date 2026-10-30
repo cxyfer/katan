@@ -200,6 +200,20 @@ function activeHold(state: TableState): RollHold | null {
   return state.dicePresenting ? state.rollHold : null;
 }
 
+/**
+ * 已收到權威事件、但投影尚未追上（事件先於投影抵達）。此時畫面上的提示與按鈕
+ * 都來自過時的投影，依它送出的指令必然被拒。
+ */
+export function awaitingProjection(state: TableState): boolean {
+  const game = state.game;
+  return !!game && game.view.events.some((event) => event.seq > game.view.seq);
+}
+
+/** 後續操作是否暫停：擲骰演出中，或投影尚未追上已知事件。 */
+export function followUpsHeld(state: TableState): boolean {
+  return state.dicePresenting || awaitingProjection(state);
+}
+
 /** 畫面上顯示的本人手牌：擲骰演出期間用擲骰前的數量。手牌不可見時為 undefined。 */
 export function shownHand(state: TableState): Partial<Record<Resource, number>> | undefined {
   const own = state.game?.view.players.find((player) => player.id === state.session?.id)?.resources;

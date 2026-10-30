@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { RESOURCES, type Resource } from '@catan/rules';
 import { useT } from '../i18n/context.tsx';
+import { followUpsHeld } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { GameIcon } from './GameArt.tsx';
 
@@ -20,7 +21,7 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
   const view = state.game?.view ?? null;
   const self = view?.players.find((player) => player.id === selfId) ?? null;
   // 擲骰演出期間一律不可用，避免由是否待處理（七點）透露點數。
-  const playable = !!view && !state.dicePresenting && view.turn.playerId === selfId && !view.turn.devCardPlayed && view.pending === null;
+  const playable = !!view && !followUpsHeld(state) && view.turn.playerId === selfId && !view.turn.devCardPlayed && view.pending === null;
   const held = self?.devCards ?? [];
   const fresh = self?.newDevCards ?? [];
 
