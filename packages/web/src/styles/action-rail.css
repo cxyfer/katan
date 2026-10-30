@@ -122,7 +122,10 @@
 .action-rail .action-list li {
   position: relative;
   flex: 0 0 auto;
-  padding-bottom: 22px;
+  padding-bottom: 26px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  transition: background .2s ease, border-color .2s ease;
 }
 
 .action-rail .action-list__button,
@@ -134,11 +137,11 @@
   width: 100%;
   height: 49px;
   min-height: 49px;
-  padding: 3px 0 3px 8px;
+  padding: 3px 4px 3px 9px;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  font-size: .68rem;
+  font-size: .76rem;
 }
 
 .action-rail .action-list__label,
@@ -174,23 +177,31 @@
 
 .action-rail .action-list__cost {
   position: absolute;
-  bottom: 0;
-  left: 8px;
+  bottom: 1px;
+  left: 9px;
   justify-content: flex-start;
+  gap: 5px;
+  font-size: .64rem;
+}
+
+.action-rail .action-list__cost-chip svg {
+  width: 15px;
+  height: 14px;
 }
 
 .action-rail .action-list__reason,
 .action-rail .action-list__count {
   position: absolute;
-  right: 42px;
-  bottom: 0;
-  left: 8px;
+  right: 8px;
+  bottom: 3px;
+  left: 9px;
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
+  color: #b9c7bd;
   text-align: left;
-  font-size: .52rem;
-  line-height: 1.25;
+  font-size: .6rem;
+  line-height: 1.15;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -217,27 +228,41 @@
   clip-path: inset(0);
 }
 
-.action-rail[data-expanded="true"] .action-list__button {
+/* 展開時整列（按鈕、費用與原因）是同一張卡，原因不再漂在兩張卡之間。 */
+.action-rail[data-expanded="true"] .action-list li {
   border-color: #7c8a6855;
-  background: #29423d;
+  background: #223d39;
+}
+
+.action-rail[data-expanded="true"] .action-list li:has([data-enabled="true"]) {
+  border-color: #d6b871;
+  background: #44482f;
 }
 
 .action-rail[data-expanded="true"] .action-list__button[data-enabled="true"] {
   color: #f5d89b;
-  border-color: #d6b871;
-  background: #4c5036;
 }
 
-.action-rail[data-expanded="true"] .action-list__turn:has([data-enabled="true"]) .action-list__button {
-  color: #2b3028;
+.action-rail[data-expanded="true"] .action-list li.action-list__turn:has([data-enabled="true"]) {
+  border-color: #f1d59c;
   background: linear-gradient(135deg, #f1d59c, #bf9654);
+}
+
+.action-rail[data-expanded="true"] .action-list li.action-list__turn:has([data-enabled="true"]) .action-list__button,
+.action-rail[data-expanded="true"] .action-list li.action-list__turn:has([data-enabled="true"]) .action-list__count {
+  color: #2b3028;
+}
+
+.action-rail .action-list li:has(.action-list__button:hover:not(:disabled)) {
+  border-color: #efd08f;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .action-rail__toggle,
   .action-rail__toggle > span,
   .action-rail__toggle > svg,
-  .action-rail__content {
+  .action-rail__content,
+  .action-rail .action-list li {
     transition: none;
   }
 }

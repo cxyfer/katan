@@ -273,3 +273,27 @@
   .screen--lobby .lobby__grid { grid-template-columns: minmax(0, 1fr); overflow: hidden; }
   .screen--lobby .lobby__aside { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
 }
+
+/* 座位卡：狀態標籤與連線文字並排換行，座號不壓到頭像；邀請碼保持單行。 */
+.lobby-seat__status { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .3rem .45rem; }
+.screen--lobby .lobby-seat { padding-top: 1.7rem; }
+.lobby-invite .lobby-invite__code { white-space: nowrap; overflow-wrap: normal; font-size: clamp(1.35rem, 3vw, 2.5rem); letter-spacing: clamp(.06em, 1vw, .19em); }
+/* 停用的主要按鈕改為中性色，避免看起來像可按的暗金色。 */
+.button--primary:disabled { background: #2a4148; border-color: #4f6668; color: #a9b8b4; box-shadow: none; opacity: .8; }
+/* 桌面首頁：建立／加入卡片依內容高度排列，不再拉伸出大片空白。 */
+.screen--home .home__actions { align-self: start; align-items: start; }
+.screen--home .home__actions > .card { max-height: 100%; }
+/* 窄螢幕改為整頁自然捲動，主要按鈕不會藏在卡片內部的捲動區裡。 */
+@media (max-width: 700px) {
+  .screen--home, .screen--lobby { height: auto; min-height: 100dvh; overflow: visible; padding-bottom: 1.25rem; }
+  .screen--home .home__actions > .card,
+  .screen--home .home__resume, .screen--home .home__rooms, .screen--home .home__identity { overflow: visible; max-height: none; }
+  .screen--home .home__rooms .room-list { max-height: none; }
+  .screen--lobby .lobby__grid { height: auto; overflow: visible; }
+  .screen--lobby .lobby__main, .screen--lobby .lobby__aside { overflow: visible; }
+}
+@media (max-width: 560px) {
+  .screen--lobby .lobby__aside { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+.home__join-note, .lobby-invite__host { display: flex; align-items: center; justify-content: inherit; gap: .4rem; }
+.lobby-invite__host { justify-content: center; }

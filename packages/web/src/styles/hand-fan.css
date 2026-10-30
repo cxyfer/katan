@@ -78,6 +78,8 @@
 .screen--game .hand.hand-fan[data-expanded="false"] .development-card__play,
 .screen--game .hand.hand-fan[data-expanded="false"] .development-card__choice { visibility: hidden; }
 @media (max-width: 649px) {
+  /* 窄螢幕的工具列橫跨底部，手牌整體抬到工具列上方，避免卡片藏在圖示後面。 */
+  .screen--game .game__dock:has(.hand-fan) { bottom: 50px; }
   .screen--game .hand.hand-fan[data-expanded] { --fan-card-width: 104px; --fan-card-height: 165px; --fan-spread: calc(50vw - 104px); width: 100%; height: 62px; }
   .screen--game .hand.hand-fan[data-expanded="true"] { height: 212px; }
   .screen--game .hand.hand-fan[data-expanded="false"] .hand-fan__card { transform: translateX(calc(var(--hand-position) * 59px)) translateY(var(--fan-card-height)) rotate(calc(var(--hand-position) * 9deg)); }
@@ -91,7 +93,7 @@
   .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__card:focus-within,
   .screen--game .hand.hand-fan[data-expanded="true"] .resource-card--inspected,
   .screen--game .hand.hand-fan[data-expanded="true"] .development-card--inspected { transform: translateX(calc(var(--hand-position) * var(--fan-spread))) translateY(-24px) rotate(0) scale(1.08); }
-  .screen--game:has(.hand.hand-fan[data-expanded="true"]) .game__receipt { bottom: 362px; }
+  .screen--game:has(.hand.hand-fan[data-expanded="true"]) .game__receipt { bottom: 412px; }
   .screen--game .hand.hand-fan .hand-fan__close { bottom: 3px; right: 56px; }
 }
 @media (max-height: 520px) and (min-width: 650px) {

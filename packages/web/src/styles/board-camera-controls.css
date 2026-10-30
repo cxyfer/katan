@@ -118,6 +118,25 @@
 .screen--game .game__messages .board__setup-title { align-items: flex-start; font-size: .75rem; }
 .screen--game .game__messages .board__setup-title > svg { flex: 0 0 auto; }
 .screen--game .game__messages > .board__setup-guide p { font-size: .67rem; }
+/* 圖例收合時是與相機工具列同款的小標籤，固定在工具列正上方，不再被左緣裁切。 */
+.screen--game .board--side-controls > .legend { top: 4px; left: 4px; max-width: calc(100vw - 16px); padding: 0; background: none; border: 0; }
+.screen--game .board--side-controls > .legend[open] { z-index: 63; width: min(530px, calc(100vw - 16px)); padding: 0 .8rem; background: #0d2c33fa; border: 1px solid #a7b49688; border-radius: 10px; box-shadow: 0 12px 32px #00151d88; }
+.screen--game .board--side-controls > .legend > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  margin: 0;
+  padding: 0 .75rem;
+  color: #e4d8b1;
+  font-size: .72rem;
+  font-weight: 650;
+  background: #0d2c33ed;
+  border: 1px solid #a7b49666;
+  border-radius: 8px;
+  box-shadow: 0 3px 10px #031a2333;
+}
+.screen--game .board--side-controls > .legend[open] > summary { margin-top: .5rem; border-color: #e5c77e; }
+.screen--game .board--side-controls > .legend > summary:hover { color: #f6e3b2; border-color: #e5c77e; }
 .board__surface, .island-preview__surface { cursor: grab; }
 .board__surface[data-gesture-active='true'], .island-preview__surface[data-gesture-active='true'] { cursor: grabbing; }
 @media (pointer: coarse), (max-width: 649px) {
@@ -125,9 +144,12 @@
   .board--side-controls .board__toolbar--side:has(.board__target-picker-toggle) { grid-template-columns: repeat(4, 44px); }
   .board--side-controls .board__toolbar--side > .button,
   .board--side-controls .board__display-settings > summary { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+  .screen--game .board--side-controls > .legend { top: 2px; left: 2px; }
+  .screen--game .board--side-controls > .legend > summary { min-height: 28px; font-size: .66rem; }
 }
 @media (max-height: 520px) and (min-width: 650px) {
   .screen--game .board--side-controls .board__toolbar--side { top: 8px; left: calc(var(--score-width) + 12px); }
+  .screen--game .board--side-controls > .legend { top: 8px; left: calc(var(--score-width) + 196px); }
 }
 @media (max-width: 649px) {
   .board--side-controls .board__display-settings-panel { position: fixed; inset: auto 8px 112px auto; width: min(280px, calc(100vw - 24px)); max-height: min(60dvh, 400px); }
