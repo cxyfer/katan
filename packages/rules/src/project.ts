@@ -8,6 +8,7 @@
 
 import { scoreOf, topologyOf, totalResources } from './analysis.ts';
 import { requireProfile } from './profiles.ts';
+import { cloneGameStats, type GameStats } from './stats.ts';
 import type { GameEvent, GameState, PlayerState, Resource, Offer } from './types.ts';
 import { RESOURCES } from './types.ts';
 
@@ -84,6 +85,12 @@ export interface GameView {
   awards: { longestRoad: string | null; largestArmy: string | null };
   events: GameEvent[];
   hints?: ActionHintsView;
+  /**
+   * Post-game statistics. Only present once the game has a result: several
+   * counters (drawn card types, stolen resources, hidden points) would leak
+   * hidden information while the game is still running.
+   */
+  stats?: GameStats;
 }
 
 export type PublicPendingView =
@@ -235,6 +242,7 @@ export function projectGame(
     events: (options.events ?? []).map((event) => projectEvent(event, viewerId)),
   };
   if (options.hints && viewer) view.hints = options.hints;
+  if (state.result && state.stats) view.stats = cloneGameStats(state.stats);
   return view;
 }
 

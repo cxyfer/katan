@@ -3,6 +3,7 @@ import { formatNumber } from '../i18n/format.ts';
 import { BoardView } from './BoardView.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
 import { GameIcon, IslandIllustration } from './GameArt.tsx';
+import { GameStatsPanel } from './GameStats.tsx';
 import type { TableController } from '../state/useTable.ts';
 
 /**
@@ -10,7 +11,8 @@ import type { TableController } from '../state/useTable.ts';
  *
  * `completed` and `abandoned` are shown distinctly; an abandoned game has no
  * fabricated winner. The final board stays inspectable, and only the score the
- * server chose to publish is rendered.
+ * server chose to publish is rendered. Post-game statistics appear only once
+ * the server includes them with the terminal view.
  */
 export function ResultScreen({ controller }: { controller: TableController }) {
   const t = useT();
@@ -60,6 +62,8 @@ export function ResultScreen({ controller }: { controller: TableController }) {
         </div>
         <IslandIllustration />
       </section>
+
+      {view?.stats && <GameStatsPanel view={view} />}
 
       <section aria-labelledby="final-board-heading" className="card">
         <h2 id="final-board-heading">{t('play.resultFinalBoard')}</h2>

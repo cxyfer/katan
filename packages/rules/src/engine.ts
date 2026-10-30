@@ -27,6 +27,14 @@ import {
 import { buildBaseLayout } from './layout.ts';
 import { ENGINE_VERSION, requireProfile, type ProfileDefinition } from './profiles.ts';
 import { shuffle, type Rng } from './rng.ts';
+import {
+  addResource,
+  addResources,
+  createGameStats,
+  ensureStats,
+  playerStats,
+  type PlayerStats,
+} from './stats.ts';
 import { getTopology } from './topology-registry.ts';
 import { verticesOfHex } from './topology.ts';
 import {
@@ -177,6 +185,7 @@ export function createGame(options: CreateGameOptions): GameState {
     seq: 0,
     result: null,
     log: [],
+    stats: createGameStats(players, true),
   };
 
   emit(state, 'game.created', {
@@ -240,6 +249,14 @@ function payBank(state: GameState, player: PlayerState, cost: Partial<Record<Res
     const amount = cost[resource] ?? 0;
     if (amount > 0) state.bank[resource] += amount;
   }
+}
+
+/** 建造與購卡：付款並記入統計的「消耗」。 */
+function payBuild(state: GameState, player: PlayerState, cost: Partial<Record<Resource, number>>): PlayerStats {
+  payBank(state, player, cost);
+  const stats = playerStats(state, player.id);
+  addResources(stats.spent, cost);
+  return stats;
 }
 
 function grant(player: PlayerState, resource: Resource, amount: number): void {
@@ -339,7 +356,17 @@ function expireOffers(state: GameState, reason: 'window' | 'withdrawn' | 'gameOv
 }
 
 function beginTurn(state: GameState, seat: number): void {
+  ensureStats(state).turns += 1;
+  // 每輪由第一個座位開始，於此取樣一次分數。
+  if (seat === 0) sampleTimeline(state);
   openActorWindow(state, seat, 1, 'preroll');
+}
+
+/** 記錄每位玩家當下的分數（含隱藏分），供結算畫面的分數走勢使用。 */
+function sampleTimeline(state: GameState): void {
+  ensureStats(state).timeline.push(
+    state.players.map((player) => scoreOf(state, player.id, { includeHidden: true })),
+  );
 }
 
 /**
@@ -367,6 +394,7 @@ function openActorWindow(
   state.pending = null;
   state.windowId += 1;
   expireOffers(state, 'window');
+  playerStats(state, player.id).turns += 1;
   emit(state, 'turn.started', {
     playerId: player.id,
     windowId: state.windowId,
@@ -391,6 +419,7 @@ function checkVictory(state: GameState): void {
     state.turn.phase = 'gameOver';
     state.pending = null;
     expireOffers(state, 'gameOver');
+    sampleTimeline(state);
     emit(state, 'game.finished', {
       playerId: player.id,
       reason: 'victory',
@@ -436,10 +465,19 @@ export function applyCommand(
   }
 
   const next = clone(state);
+  ensureStats(next);
   const outcome = dispatch(next, actorId, command, rng);
   if (!outcome.ok) return outcome;
+  trackPeakHands(next);
   const events = next.log.filter((event) => event.seq > state.seq);
   return { ok: true, state: next, events };
+}
+
+function trackPeakHands(state: GameState): void {
+  for (const player of state.players) {
+    const stats = playerStats(state, player.id);
+    stats.peakHand = Math.max(stats.peakHand, totalResources(player));
+  }
 }
 
 function dispatch(
@@ -535,6 +573,7 @@ function setupPlaceBuilding(state: GameState, actorId: string, vertex: number): 
       state.bank[resource] -= 1;
       gained[resource] = (gained[resource] ?? 0) + 1;
     }
+    addResources(playerStats(state, actorId).startingResources, gained);
     emit(state, 'setup.startingResources', { playerId: actorId, resources: gained });
   }
   afterBoardChange(state);
@@ -600,6 +639,11 @@ function rollDice(state: GameState, actorId: string, rng: Rng): CommandOutcome {
   const total = die1 + die2;
   state.turn.dice = [die1, die2];
   state.turn.phase = 'action';
+  const stats = ensureStats(state);
+  stats.dice[total] = (stats.dice[total] ?? 0) + 1;
+  const rollerStats = playerStats(state, actorId);
+  rollerStats.rolls += 1;
+  if (total === 7) rollerStats.sevens += 1;
   emit(state, 'turn.rolled', { playerId: actorId, dice: [die1, die2], total });
 
   if (total === 7) {
@@ -613,21 +657,35 @@ function rollDice(state: GameState, actorId: string, rng: Rng): CommandOutcome {
 function resolveProduction(state: GameState, total: number): void {
   const results = productionForRoll(state, total);
   const summary: Record<string, Partial<Record<Resource, number>>> = {};
+  const blockedPlayers = new Set<string>();
   for (const result of results) {
     if (!result.resource) continue;
+    const resource = result.resource;
     for (const share of result.granted) {
       const player = playerById(state, share.playerId);
       if (!player) continue;
-      grant(player, result.resource, share.amount);
-      state.bank[result.resource] -= share.amount;
+      grant(player, resource, share.amount);
+      state.bank[resource] -= share.amount;
+      addResource(playerStats(state, share.playerId).produced, resource, share.amount);
       summary[share.playerId] = summary[share.playerId] ?? {};
-      summary[share.playerId]![result.resource] =
-        (summary[share.playerId]![result.resource] ?? 0) + share.amount;
+      summary[share.playerId]![resource] = (summary[share.playerId]![resource] ?? 0) + share.amount;
+    }
+    for (const share of result.blocked) {
+      addResource(playerStats(state, share.playerId).blockedResources, resource, share.amount);
+      blockedPlayers.add(share.playerId);
+    }
+    // 銀行不足：每個建築應得量與實得量的差額
+    for (const share of result.entitlements) {
+      const paid = result.granted.find((candidate) => candidate.vertex === share.vertex)?.amount ?? 0;
+      if (share.amount > paid) {
+        addResource(playerStats(state, share.playerId).starvedResources, resource, share.amount - paid);
+      }
     }
     if (result.starved) {
       emit(state, 'production.starved', { hex: result.hex, resource: result.resource, total });
     }
   }
+  for (const playerId of blockedPlayers) playerStats(state, playerId).blockedRolls += 1;
   emit(state, 'production.resolved', { total, grants: summary });
 }
 
@@ -725,8 +783,11 @@ function buildRoad(state: GameState, actorId: string, edge: number): CommandOutc
     if (!canAfford(player, COSTS.road)) {
       return fail('E_INSUFFICIENT_RESOURCES', { cost: COSTS.road });
     }
-    payBank(state, player, COSTS.road);
+    payBuild(state, player, COSTS.road);
   }
+  const stats = playerStats(state, actorId);
+  if (free) stats.freeRoadsBuilt += 1;
+  else stats.roadsBuilt += 1;
   state.board.roads[edge] = { player: actorId, ship: false };
   emit(state, 'build.road', { playerId: actorId, edge, free: !!free });
   afterBoardChange(state);
@@ -756,7 +817,7 @@ function buildSettlement(state: GameState, actorId: string, vertex: number): Com
   if (!canAfford(player, COSTS.settlement)) {
     return fail('E_INSUFFICIENT_RESOURCES', { cost: COSTS.settlement });
   }
-  payBank(state, player, COSTS.settlement);
+  payBuild(state, player, COSTS.settlement).settlementsBuilt += 1;
   state.board.buildings[vertex] = { player: actorId, city: false };
   emit(state, 'build.settlement', { playerId: actorId, vertex });
   afterBoardChange(state);
@@ -779,7 +840,7 @@ function buildCity(state: GameState, actorId: string, vertex: number): CommandOu
   if (!canAfford(player, COSTS.city)) {
     return fail('E_INSUFFICIENT_RESOURCES', { cost: COSTS.city });
   }
-  payBank(state, player, COSTS.city);
+  payBuild(state, player, COSTS.city).citiesBuilt += 1;
   building.city = true;
   emit(state, 'build.city', { playerId: actorId, vertex });
   afterBoardChange(state);
@@ -795,10 +856,11 @@ function buyDevCard(state: GameState, actorId: string, rng: Rng): CommandOutcome
   if (!canAfford(player, COSTS.devCard)) {
     return fail('E_INSUFFICIENT_RESOURCES', { cost: COSTS.devCard });
   }
-  payBank(state, player, COSTS.devCard);
+  const stats = payBuild(state, player, COSTS.devCard);
   const index = rng.int(state.devDeck.length);
   const card = state.devDeck.splice(index, 1)[0]!;
   player.newDevCards.push(card);
+  stats.devCardsBought[card] += 1;
   emit(
     state,
     'build.devCard',
@@ -841,6 +903,9 @@ function playKnight(state: GameState, actorId: string, hex: number): CommandOutc
   player.playedKnights += 1;
   state.turn.devCardPlayed = true;
   state.board.robber = hex;
+  const stats = playerStats(state, actorId);
+  stats.devCardsPlayed.knight += 1;
+  stats.robberMoves += 1;
   emit(state, 'dev.knight', { playerId: actorId, hex, playedKnights: player.playedKnights });
   afterBoardChange(state);
 
@@ -872,6 +937,7 @@ function playRoadBuilding(state: GameState, actorId: string): CommandOutcome {
   if (player.newDevCards.includes('roadBuilding')) return fail('E_CARD_JUST_BOUGHT', { card: 'roadBuilding' });
   player.devCards.splice(player.devCards.indexOf('roadBuilding'), 1);
   state.turn.devCardPlayed = true;
+  playerStats(state, actorId).devCardsPlayed.roadBuilding += 1;
   emit(state, 'dev.roadBuilding', { playerId: actorId });
   const available = legalRoadEdges(state, actorId).length;
   const remaining = Math.min(2, available);
@@ -889,6 +955,7 @@ function playYearOfPlenty(state: GameState, actorId: string): CommandOutcome {
   if (player.newDevCards.includes('yearOfPlenty')) return fail('E_CARD_JUST_BOUGHT', { card: 'yearOfPlenty' });
   player.devCards.splice(player.devCards.indexOf('yearOfPlenty'), 1);
   state.turn.devCardPlayed = true;
+  playerStats(state, actorId).devCardsPlayed.yearOfPlenty += 1;
   state.pending = { kind: 'yearOfPlenty', actor: actorId, remaining: 2 };
   emit(state, 'dev.yearOfPlenty', { playerId: actorId });
   return { ok: true, state, events: [] };
@@ -903,6 +970,7 @@ function takeResource(state: GameState, actorId: string, resource: Resource): Co
   grant(playerById(state, actorId)!, resource, 1);
   state.bank[resource] -= 1;
   pending.remaining -= 1;
+  addResource(playerStats(state, actorId).yearOfPlenty, resource);
   emit(state, 'dev.yearOfPlentyPick', { playerId: actorId, resource });
   if (pending.remaining <= 0) state.pending = null;
   return { ok: true, state, events: [] };
@@ -917,6 +985,8 @@ function playMonopoly(state: GameState, actorId: string, resource: Resource): Co
   if (player.newDevCards.includes('monopoly')) return fail('E_CARD_JUST_BOUGHT', { card: 'monopoly' });
   player.devCards.splice(player.devCards.indexOf('monopoly'), 1);
   state.turn.devCardPlayed = true;
+  const stats = playerStats(state, actorId);
+  stats.devCardsPlayed.monopoly += 1;
   const taken: Record<string, number> = {};
   for (const other of state.players) {
     if (other.id === actorId) continue;
@@ -925,6 +995,8 @@ function playMonopoly(state: GameState, actorId: string, resource: Resource): Co
     other.resources[resource] = 0;
     grant(player, resource, amount);
     taken[other.id] = amount;
+    addResource(stats.monopolyGained, resource, amount);
+    addResource(playerStats(state, other.id).monopolyLost, resource, amount);
   }
   emit(state, 'dev.monopoly', { playerId: actorId, resource, taken });
   checkVictory(state);
@@ -961,6 +1033,7 @@ function submitDiscard(state: GameState, actorId: string, resources: Resource[])
     player.resources[resource] -= amount;
     state.bank[resource] += amount;
   }
+  addResources(playerStats(state, actorId).discarded, counts);
   pending.submitted[actorId] = resources.slice();
   emit(state, 'discard.submitted', { playerId: actorId, count: resources.length });
 
@@ -983,6 +1056,7 @@ function moveRobber(state: GameState, actorId: string, hex: number): CommandOutc
   if (!topo.hexes[hex]) return fail('E_ILLEGAL_TARGET', { hex });
   if (hex === state.board.robber) return fail('E_ROBBER_SAME_HEX', { hex });
   state.board.robber = hex;
+  playerStats(state, actorId).robberMoves += 1;
   emit(state, 'robber.moved', { playerId: actorId, hex, cause: pending.cause });
 
   const candidates = stealCandidates(state, hex, actorId);
@@ -1011,6 +1085,8 @@ function stealFrom(state: GameState, actorId: string, victim: string, rng: Rng):
   const resource = pool[rng.int(pool.length)]!;
   victimPlayer.resources[resource] -= 1;
   grant(playerById(state, actorId)!, resource, 1);
+  addResource(playerStats(state, actorId).stolen, resource);
+  addResource(playerStats(state, victim).robbed, resource);
   state.pending = null;
   emit(
     state,
@@ -1041,6 +1117,10 @@ function bankTrade(state: GameState, actorId: string, give: Resource, receive: R
   state.bank[give] += rate;
   player.resources[receive] += 1;
   state.bank[receive] -= 1;
+  const stats = playerStats(state, actorId);
+  stats.bankTrades += 1;
+  addResource(stats.bankGiven, give, rate);
+  addResource(stats.bankReceived, receive);
   emit(state, 'trade.bank', { playerId: actorId, give, receive, rate });
   return { ok: true, state, events: [] };
 }
@@ -1213,6 +1293,14 @@ function settleOffer(
     if (toPartner > 0) grant(partner, resource, toPartner);
     if (toProposer > 0) grant(proposer, resource, toProposer);
   }
+  const proposerStats = playerStats(state, proposer.id);
+  const partnerStats = playerStats(state, partner.id);
+  proposerStats.playerTrades += 1;
+  partnerStats.playerTrades += 1;
+  addResources(proposerStats.tradeGiven, offer.give);
+  addResources(proposerStats.tradeReceived, offer.want);
+  addResources(partnerStats.tradeGiven, offer.want);
+  addResources(partnerStats.tradeReceived, offer.give);
   offer.status = 'completed';
   offer.agreedWith = other;
   emit(state, 'trade.completed', {
@@ -1240,6 +1328,7 @@ export function abandonGame(state: GameState): GameState {
   next.turn.phase = 'gameOver';
   next.pending = null;
   expireOffers(next, 'gameOver');
+  sampleTimeline(next);
   emit(next, 'game.abandoned', { reason: 'abandoned' });
   return next;
 }

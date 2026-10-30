@@ -259,6 +259,8 @@ export interface ProductionResult {
   granted: ProductionShare[];
   /** True when the bank could not satisfy everyone and no one was paid. */
   starved: boolean;
+  /** Entitlements withheld because the robber sits on the hex. */
+  blocked: ProductionShare[];
 }
 
 /**
@@ -278,10 +280,6 @@ export function productionForHex(
   const resource = TERRAIN_RESOURCE[terrain] ?? null;
   if (!resource) return null;
   if (layout.numbers[hex] !== diceTotal) return null;
-  if (state.board.robber === hex) {
-    return { terrain, resource, hex, entitlements: [], granted: [], starved: false };
-  }
-
   const topo = topologyOf(state);
   const entitlements: ProductionShare[] = [];
   for (const vertex of verticesOfHexIndex(topo, hex)) {
@@ -289,11 +287,14 @@ export function productionForHex(
     if (!building) continue;
     entitlements.push({ playerId: building.player, amount: building.city ? 2 : 1, vertex });
   }
+  if (state.board.robber === hex) {
+    return { terrain, resource, hex, entitlements: [], granted: [], starved: false, blocked: entitlements };
+  }
 
   const demand = entitlements.reduce((sum, share) => sum + share.amount, 0);
   const available = state.bank[resource];
   if (demand <= available) {
-    return { terrain, resource, hex, entitlements, granted: entitlements, starved: false };
+    return { terrain, resource, hex, entitlements, granted: entitlements, starved: false, blocked: [] };
   }
   const distinct = new Set(entitlements.map((share) => share.playerId));
   if (distinct.size === 1 && entitlements.length > 0) {
@@ -306,9 +307,10 @@ export function productionForHex(
       entitlements,
       granted: amount > 0 ? [{ ...only, amount }] : [],
       starved: false,
+      blocked: [],
     };
   }
-  return { terrain, resource, hex, entitlements, granted: [], starved: true };
+  return { terrain, resource, hex, entitlements, granted: [], starved: true, blocked: [] };
 }
 
 function verticesOfHexIndex(topo: BoardTopology, hex: number): number[] {
