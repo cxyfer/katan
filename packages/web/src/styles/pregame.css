@@ -383,3 +383,12 @@
   .room-list td::before { content: attr(data-label); display: block; margin-bottom: .1rem; color: var(--text-muted); font-size: .65rem; }
   .room-list td:last-child { align-self: end; }
 }
+
+/* 減少動態：場景與進場動畫直接停用，元素停在最終狀態；不依賴 base 層全域規則的 !important 層序。 */
+@media (prefers-reduced-motion: reduce) {
+  .pregame-scene__wave, .pregame-scene__glint, .pregame-scene__island,
+  .entry-stage__island, .entry-stage__island .island-illustration,
+  .game-logo, .entry-card, .home-pane { animation: none; }
+  .home__nav-tab { transition: none; }
+  .home__nav-tab:hover { transform: none; }
+}
