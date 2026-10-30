@@ -19,6 +19,7 @@ interface RoomShape {
   hostId: string;
   status: string;
   capacity: number;
+  gameId: string | null;
   members: { playerId: string; ready: boolean; connected: boolean; host: boolean; color: string }[];
   startBlockers: { messageId: string; params?: Record<string, unknown> }[];
   policy: { disconnectGraceSeconds: number; turnClockSeconds: number; allowAbandonment: boolean };
@@ -162,6 +163,91 @@ describe('R-ROOM lobby', () => {
       status: 'playing',
       openSeats: 0,
     });
+  });
+
+  it('serialises a short-handed start against a concurrent join', async () => {
+    const clients = [];
+    for (let index = 0; index < 3; index++) {
+      clients.push(await harness.client(`ConcurrentStart-${index}`));
+    }
+    const host = clients[0]!;
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    for (const client of clients.slice(1)) {
+      client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
+    }
+    for (const client of clients) {
+      client.expectOk(await client.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    }
+    const late = await harness.client('ConcurrentStartLate');
+
+    const [startResponse, joinResponse] = await Promise.all([
+      host.post<{ gameId: string }>(`/api/rooms/${room.id}/start`),
+      late.post('/api/rooms/join', { code: room.code }),
+    ]);
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+
+    if (startResponse.body.ok) {
+      // The join lost the race and must not leave an extra seated player.
+      expect(joinResponse.body.ok).toBe(false);
+      if (!joinResponse.body.ok) expect(joinResponse.body.error.code).toBe('E_ROOM_CLOSED');
+      expect(view.members).toHaveLength(3);
+      const started = startResponse.body.data;
+      const snapshot = host.expectOk<{ view: { players: unknown[] } }>(
+        await host.get(`/api/games/${started.gameId}`),
+      );
+      expect(snapshot.view.players).toHaveLength(3);
+    } else {
+      // The join won; the start must see the new unready seat and stay blocked.
+      expect(joinResponse.body.ok).toBe(true);
+      expect(startResponse.body.error.code).toBe('E_START_BLOCKED');
+      expect(view.members).toHaveLength(4);
+      expect(view.gameId).toBeNull();
+    }
+  });
+
+  it('serialises a capacity reduction against a concurrent join', async () => {
+    const host = await harness.client('ConcurrentCapacityHost');
+    const room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    for (let index = 0; index < 2; index++) {
+      const client = await harness.client(`CapGuest-${index}`);
+      client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
+    }
+    const late = await harness.client('CapLate');
+
+    const [settingsResponse, joinResponse] = await Promise.all([
+      host.post(`/api/rooms/${room.id}/settings`, { capacity: 3 }),
+      late.post('/api/rooms/join', { code: room.code }),
+    ]);
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+
+    expect(view.members.length).toBeLessThanOrEqual(view.capacity);
+    if (settingsResponse.body.ok) {
+      // The capacity change won; the fourth seat is now closed.
+      expect(joinResponse.body.ok).toBe(false);
+      if (!joinResponse.body.ok) expect(joinResponse.body.error.code).toBe('E_ROOM_FULL');
+      expect(view.capacity).toBe(3);
+      expect(view.members).toHaveLength(3);
+    } else {
+      // The join won; lowering to three must be rejected.
+      expect(settingsResponse.body.error.code).toBe('E_CAPACITY_BELOW_SEATED');
+      expect(joinResponse.body.ok).toBe(true);
+      expect(view.capacity).toBe(4);
+      expect(view.members).toHaveLength(4);
+    }
   });
 
   it('starts a six-seat paired room with five seated players', async () => {

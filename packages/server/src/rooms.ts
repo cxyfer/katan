@@ -57,6 +57,7 @@ export interface RoomServiceDeps {
 
 export class RoomService {
   private readonly runtimes = new Map<string, RoomRuntime>();
+  private readonly roomLocks = new Map<string, Promise<unknown>>();
 
   constructor(private readonly deps: RoomServiceDeps) {}
 
@@ -71,6 +72,22 @@ export class RoomService {
       this.runtimes.set(roomId, runtime);
     }
     return runtime;
+  }
+
+  /**
+   * Serialises membership, capacity and start transitions for one room. The
+   * start transition is a multi-step async operation, so a join or leave that
+   * reads the old membership snapshot in the middle of it could otherwise put
+   * a member outside the created game (or include an unvalidated one).
+   */
+  private withRoomLock<T>(roomId: string, fn: () => Promise<T>): Promise<T> {
+    const previous = this.roomLocks.get(roomId) ?? Promise.resolve();
+    const next = previous.then(fn, fn);
+    this.roomLocks.set(
+      roomId,
+      next.catch(() => undefined),
+    );
+    return next;
   }
 
   // -- queries -------------------------------------------------------------
@@ -299,6 +316,10 @@ export class RoomService {
   }
 
   async join(playerId: string, roomId: string): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.joinLocked(playerId, roomId));
+  }
+
+  private async joinLocked(playerId: string, roomId: string): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     const existing = await this.repo.findMembership(roomId, playerId);
     if (existing) {
@@ -337,6 +358,13 @@ export class RoomService {
   }
 
   async leave(playerId: string, roomId: string): Promise<{ left: true; hostTransferredTo: string | null }> {
+    return this.withRoomLock(roomId, () => this.leaveLocked(playerId, roomId));
+  }
+
+  private async leaveLocked(
+    playerId: string,
+    roomId: string,
+  ): Promise<{ left: true; hostTransferredTo: string | null }> {
     const room = await this.requireRoom(roomId);
     const membership = await this.repo.findMembership(roomId, playerId);
     if (!membership) return { left: true, hostTransferredTo: null };
@@ -366,6 +394,10 @@ export class RoomService {
   }
 
   async closeRoom(playerId: string, roomId: string): Promise<{ closed: true }> {
+    return this.withRoomLock(roomId, () => this.closeRoomLocked(playerId, roomId));
+  }
+
+  private async closeRoomLocked(playerId: string, roomId: string): Promise<{ closed: true }> {
     const room = await this.requireRoom(roomId);
     if (room.host_id !== playerId) {
       throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', {}, 403);
@@ -379,6 +411,10 @@ export class RoomService {
   }
 
   async setColor(playerId: string, roomId: string, color: string): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.setColorLocked(playerId, roomId, color));
+  }
+
+  private async setColorLocked(playerId: string, roomId: string, color: string): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     if (room.status !== 'lobby') {
       throw new ServiceError('E_ROOM_STARTED', 'error.E_ROOM_STARTED', {}, 409);
@@ -416,6 +452,10 @@ export class RoomService {
   }
 
   async setReady(playerId: string, roomId: string, ready: boolean): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.setReadyLocked(playerId, roomId, ready));
+  }
+
+  private async setReadyLocked(playerId: string, roomId: string, ready: boolean): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     if (room.status !== 'lobby') {
       throw new ServiceError('E_ROOM_STARTED', 'error.E_ROOM_STARTED', {}, 409);
@@ -426,6 +466,19 @@ export class RoomService {
   }
 
   async updateSettings(
+    playerId: string,
+    roomId: string,
+    input: {
+      capacity?: number;
+      profileId?: string;
+      setupMode?: 'fixed' | 'variable';
+      policy?: Partial<RoomPolicy>;
+    },
+  ): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.updateSettingsLocked(playerId, roomId, input));
+  }
+
+  private async updateSettingsLocked(
     playerId: string,
     roomId: string,
     input: {
@@ -587,6 +640,10 @@ export class RoomService {
   }
 
   async start(playerId: string, roomId: string): Promise<{ gameId: string }> {
+    return this.withRoomLock(roomId, () => this.startLocked(playerId, roomId));
+  }
+
+  private async startLocked(playerId: string, roomId: string): Promise<{ gameId: string }> {
     const room = await this.requireRoom(roomId);
     if (room.host_id !== playerId) {
       throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', {}, 403);
