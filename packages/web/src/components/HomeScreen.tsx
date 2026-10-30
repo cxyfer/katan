@@ -266,7 +266,7 @@ export function HomeScreen({ controller }: ScreenProps) {
         )}
       </section>
 
-      <section id="home-pane-rooms" role="tabpanel" aria-labelledby="home-tab-rooms" hidden={homePane !== 'rooms'} className="home-pane home__rooms">
+      <section id="home-pane-rooms" role="tabpanel" aria-labelledby="home-tab-rooms" hidden={homePane !== 'rooms'} className="home-pane home__rooms" aria-busy={state.roomsStatus === 'loading'}>
         <div className="section-heading">
           <span className="section-heading__icon"><GameIcon name="globe" size={24} /></span>
           <div className="section-heading__copy"><h2 id="rooms-heading">{t('home.publicRooms')}</h2></div>
@@ -306,11 +306,21 @@ export function HomeScreen({ controller }: ScreenProps) {
             <label htmlFor="filter-seats">{t('lobby.filter.hasSeats')}</label>
           </div>
         </div>
+        {state.roomsError && (
+          <p className="error" role="alert" data-testid="rooms-error">{t('home.roomListFailed')}</p>
+        )}
         {state.rooms.length === 0 ? (
-          <div className="empty-state">
-            <GameIcon name="anchor" size={32} />
-            <p className="muted" data-testid="no-rooms">{t('home.roomListEmpty')}</p>
-          </div>
+          state.roomsStatus === 'loading' ? (
+            <div className="empty-state" role="status" data-testid="rooms-loading">
+              <GameIcon name="compass" size={32} />
+              <p className="muted">{t('app.loading')}</p>
+            </div>
+          ) : state.roomsStatus === 'error' ? null : (
+            <div className="empty-state">
+              <GameIcon name="anchor" size={32} />
+              <p className="muted" data-testid="no-rooms">{t('home.roomListEmpty')}</p>
+            </div>
+          )
         ) : (
           <div className="room-list">
             <table className="table" data-testid="room-table">

@@ -149,6 +149,7 @@ export const zhHant: Catalog = {
   'home.paneHint.identity': '修改你的顯示名稱',
   'home.refreshRooms': '重新整理房間列表',
   'home.roomListEmpty': '沒有符合目前篩選條件的公開房間。',
+  'home.roomListFailed': '無法載入公開房間列表，請重新整理。',
 
   // --- lobby ---------------------------------------------------------------
   'lobby.visibility': '可見性',

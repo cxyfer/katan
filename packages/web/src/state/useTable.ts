@@ -260,11 +260,13 @@ export function useTable(options: UseTableOptions): TableController {
       if (query) dispatch({ type: 'room-query', query });
       const request = roomListRequestRef.current + 1;
       roomListRequestRef.current = request;
+      dispatch({ type: 'rooms-request' });
       const result = await api.listRooms(query ?? stateRef.current.roomQuery);
       // A filter change may start a second request while this one is in
       // flight; only the newest request may update the visible list.
       if (request !== roomListRequestRef.current) return;
       if (result.ok) dispatch({ type: 'rooms', rooms: result.data.rooms });
+      else dispatch({ type: 'rooms-error', error: noticeFrom(result.error) });
     },
     [api, dispatch],
   );
