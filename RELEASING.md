@@ -14,19 +14,15 @@ Pushing a `vMAJOR.MINOR.PATCH` tag (optionally with a `-PRERELEASE` suffix) runs
 It does **not** bump the version, run `pnpm verify`, or create the GitHub Release. Those steps stay
 manual on purpose (see [Rules](#rules)).
 
-A push to `master` runs the same build and smoke test, and publishes `master`, `latest` and
-`sha-<short>`. `latest` is skipped while the version on `master` is a pre-release, so merging a
-`-rc.N` bump cannot hand players an image stamped with a pre-release version. A documentation-only
-change is ignored by `paths-ignore`.
+The workflow runs **only** on a `v*` tag push. Pull requests and pushes to `master` do not build, so
+ordinary development consumes no Actions minutes or package storage. There is no manual trigger.
 
 ## Image tags
 
 | Git ref | Tags pushed | Notes |
 |---------|-------------|-------|
-| `master` | `master`, `sha-<short>`, plus `latest` while the version is stable | `latest` follows `master` only while `master` declares a stable version |
 | `v0.2.0` (stable) | `0.2.0`, `0.2`, `latest`, `sha-<short>` | Moving tags follow the tag |
 | `v0.3.0-rc.1` | `0.3.0-rc.1`, `sha-<short>` | Pre-release: never moves `0.3` or `latest` |
-| Pull request | `sha-<short>` | Build and smoke test only; the digest is what a merge publishes |
 
 The image tag mirrors the version without the `v` prefix; `latest` is the only tag that is not a
 version. `sha-<short>` is per commit and exists for rollback: pin the digest when you need an exact
@@ -50,13 +46,12 @@ publishes to its own namespace.
    before the tag.
 4. **Never move or reuse a published tag.** The tag is the identity of an image. Publish a new patch
    version instead.
-5. **Only stable versions move `X.Y` and `latest`.** A pre-release keeps its exact tag, and the same
-   rule covers the default branch: while `master` declares a `-rc.N` version it publishes `master`
-   and `sha-<short>` only, and `latest` stays on the last stable build. Either way a pre-release
-   cannot hijack what players pull.
-6. **Publishing happens on `master`, not only on tags.** A tag and a `master` push of the same commit
-   are two builds: the digests differ because the attestations carry different timestamps. If the
-   order matters, wait for the `master` run to finish before tagging.
+5. **Only stable versions move `X.Y` and `latest`.** A pre-release keeps its exact tag and
+   `sha-<short>`, and `latest` stays on the last stable build, so a pre-release cannot hijack what
+   players pull.
+6. **Only tags build.** Merging to `master` publishes nothing, so a Dockerfile problem surfaces when
+   the tag is pushed. Run `pnpm verify` (and `docker build .` when the Dockerfile changed) before
+   tagging.
 7. **The GitHub Release is manual, in the standard format.** Publish it after the image exists, with
    notes scaffolded by [`scripts/release-notes.sh`](scripts/release-notes.sh) and shaped by
    [`.github/release-notes-template.md`](.github/release-notes-template.md). Keep every prose
@@ -66,8 +61,6 @@ publishes to its own namespace.
 8. **GHCR visibility is a repository setting.** A private repository produces a private package.
    Authenticate with `docker login ghcr.io` (token scope `read:packages`) or make the package
    public.
-9. **Pull request builds also push into the package.** They are test artefacts under `sha-<short>` and
-   may be pruned; they are never referenced by a release tag.
 
 ## Release checklist
 
@@ -101,8 +94,7 @@ git push origin master
 
 The repository uses gitmoji-style subjects; `🔖 release: vX.Y.Z` matches the existing history.
 This commit is what step 3 tags: it carries the version the tag promises, and the build job refuses
-a tag whose `package.json` disagrees. Waiting for the `master` run to finish here keeps the tag build
-the one that ends up on `latest`; a `-rc.N` bump leaves `latest` on the last stable build instead.
+a tag whose `package.json` disagrees. A `-rc.N` bump leaves `latest` on the last stable build.
 
 ### 3. Tag and push
 
@@ -153,12 +145,7 @@ draft if the prose is still wrapped. Add `--prerelease` for a `-rc.N` tag. The s
 `> [!IMPORTANT]` summary with the upgrade notes, a `## Highlights` list grouped by area, then
 `## What's Changed`, `## New Contributors` when it applies, and `**Full Changelog**`.
 
-## Manual rebuilds
+## Rebuilds
 
-*Actions → Docker image → Run workflow*, choosing the branch to rebuild.
-
-- Running it on `master` republishes `master` and `latest` from the current `master`.
-- Running it on another branch publishes that branch's name as a tag and nothing moving.
-
-Typical uses: a base-image CVE fix or a runner/toolchain change without a new application version.
-Rebuilding does not create a release; the notes stay manual.
+There is no manual trigger. A base-image CVE fix or toolchain change needs a new patch version and
+tag (rule 4: never move or reuse a published tag).
