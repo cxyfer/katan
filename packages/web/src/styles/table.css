@@ -1182,51 +1182,6 @@
   list-style: none;
   display: flex;
 }
-.discard-picker {
-  gap: .35rem;
-  margin: .5rem 0;
-  display: grid;
-}
-.discard-picker__item {
-  align-items: center;
-  gap: .35rem;
-  grid-template-columns: minmax(0, 1fr) auto;
-  display: grid;
-}
-.discard-picker__label {
-  min-width: 0;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: .1rem .4rem;
-  font-size: .78rem;
-  display: flex;
-}
-.discard-picker__name {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.discard-picker__owned {
-  color: var(--text-muted);
-  font-size: .66rem;
-  font-variant-numeric: tabular-nums;
-}
-.discard-picker__controls {
-  align-items: center;
-  gap: .2rem;
-  display: flex;
-}
-.discard-picker__controls .button {
-  min-width: 36px;
-  min-height: 36px;
-  padding: .2rem;
-  font-size: .9rem;
-}
-.discard-picker__count {
-  min-width: 1.5ch;
-  text-align: center;
-  font-size: .82rem;
-  font-variant-numeric: tabular-nums;
-}
 .event-log {
   max-height: 400px;
   overflow-y: auto;

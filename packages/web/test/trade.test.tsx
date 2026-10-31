@@ -432,50 +432,77 @@ describe('development cards and pending effects', () => {
     expect(lastCommand(api)).toEqual({ type: 'pending.discard', resources: ['wool', 'grain'] });
   });
 
-  it('shows owned counts, caps additions, and allows removing a pick', async () => {
+  it('moves cards between the hand and the discard pile, capped by the hand and the quota', async () => {
     const view = makeView({
       hints: null,
-      pending: { kind: 'discard', required: { p1: 5 }, waitingFor: ['p1'] },
+      pending: { kind: 'discard', required: { p1: 4 }, waitingFor: ['p1'] },
     });
-    view.players[0]!.resources = { lumber: 1, brick: 2, wool: 3, grain: 2, ore: 2 };
+    view.players[0]!.resources = { lumber: 1, brick: 2, wool: 3, grain: 2, ore: 0 };
     const api = createFakeApi({ snapshot: makeSnapshot(view) });
     api.setCommandResult(ACCEPTED);
     await openGame(api);
 
-    expect(screen.getByTestId('discard-owned-lumber').textContent).toContain('1');
-    fireEvent.click(screen.getByTestId('discard-add-lumber'));
+    const left = (resource: string) => screen.getByTestId(`discard-left-${resource}`).textContent;
+    const card = (resource: string) => screen.getByTestId(`discard-add-${resource}`);
+    const counts = () => screen.getByTestId('discard-counts').textContent;
+    const submit = () => screen.getByTestId('discard-submit') as HTMLButtonElement;
 
-    // 木頭只有一張：即使還沒選滿所需張數，也不能再選第二張。
-    expect((screen.getByTestId('discard-add-lumber') as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByTestId('discard-add-brick').hasAttribute('disabled')).toBe(false);
-    expect(screen.getByTestId('discard-picked-lumber').textContent).toBe('1');
+    // 五種資源一律列出：沒有的礦石也在，只是不能選。
+    expect(left('ore')).toBe('0');
+    expect(card('ore').getAttribute('aria-disabled')).toBe('true');
+    expect(left('wool')).toBe('3');
+    expect(counts()).toBe('0 / 4');
+    expect(screen.getByTestId('discard-after').textContent).toBe('8 left after discarding');
+    expect(submit().disabled).toBe(true);
+    expect(submit().textContent).toBe('Pick 4 more');
 
-    // 減號可逐張移除，移除後同一種資源可以再選。
-    fireEvent.click(screen.getByTestId('discard-sub-lumber'));
-    expect(screen.getByTestId('discard-picked-lumber').textContent).toBe('0');
-    expect(screen.getByTestId('discard-counts').textContent).toContain('Selected: 0');
-    expect((screen.getByTestId('discard-sub-lumber') as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByTestId('discard-add-lumber') as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(screen.getByTestId('discard-add-lumber'));
+    // 木材只有一張：移到棄牌區後手上變 0，再點也不會多選。
+    fireEvent.click(card('lumber'));
+    expect(left('lumber')).toBe('0');
+    expect(card('lumber').getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(card('lumber'));
+    expect(counts()).toBe('1 / 4');
+    expect(screen.getByTestId('discard-slot-0').getAttribute('data-resource')).toBe('lumber');
 
-    // 同一種資源有兩張時，減號只移除一張，不能清掉整組。
-    fireEvent.click(screen.getByTestId('discard-add-brick'));
-    fireEvent.click(screen.getByTestId('discard-add-brick'));
-    expect(screen.getByTestId('discard-picked-brick').textContent).toBe('2');
-    expect(screen.getByTestId('discard-add-brick').getAttribute('aria-describedby')).toBe('discard-state-brick');
-    fireEvent.click(screen.getByTestId('discard-sub-brick'));
-    expect(screen.getByTestId('discard-picked-brick').textContent).toBe('1');
-    expect(screen.getByTestId('discard-counts').textContent).toContain('Selected: 2');
-    fireEvent.click(screen.getByTestId('discard-add-brick'));
+    // 點棄牌區的牌放回手牌，焦點落回該資源的手牌。
+    fireEvent.click(screen.getByTestId('discard-slot-0'));
+    expect(left('lumber')).toBe('1');
+    expect(counts()).toBe('0 / 4');
+    expect(screen.queryByTestId('discard-slot-0')).toBeNull();
+    expect(document.activeElement).toBe(card('lumber'));
 
-    fireEvent.click(screen.getByTestId('discard-add-wool'));
-    fireEvent.click(screen.getByTestId('discard-add-wool'));
-    fireEvent.click(screen.getByTestId('discard-submit'));
+    // 同一種資源有兩張時，放回只退一張。
+    fireEvent.click(card('brick'));
+    fireEvent.click(card('brick'));
+    expect(left('brick')).toBe('0');
+    fireEvent.click(screen.getByTestId('discard-slot-1'));
+    expect(left('brick')).toBe('1');
+    expect(counts()).toBe('1 / 4');
+    expect(document.activeElement).toBe(screen.getByTestId('discard-slot-0'));
+
+    fireEvent.click(card('brick'));
+    fireEvent.click(card('lumber'));
+    fireEvent.click(card('wool'));
+    expect(counts()).toBe('4 / 4');
+    expect(screen.getByTestId('discard-after').textContent).toBe('4 left after discarding');
+    // 選滿後其他資源也不能再加。
+    expect(card('grain').getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(card('grain'));
+    expect(left('grain')).toBe('2');
+    expect(submit().disabled).toBe(false);
+    expect(submit().textContent).toBe('Discard 4');
+
+    // 「全部放回」清空棄牌區。
+    fireEvent.click(screen.getByTestId('discard-reset'));
+    expect(counts()).toBe('0 / 4');
+    expect(left('wool')).toBe('3');
+    for (const resource of ['wool', 'wool', 'brick', 'lumber']) fireEvent.click(card(resource));
+    fireEvent.click(submit());
 
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
     expect(lastCommand(api)).toEqual({
       type: 'pending.discard',
-      resources: ['lumber', 'brick', 'brick', 'wool', 'wool'],
+      resources: ['lumber', 'brick', 'wool', 'wool'],
     });
   });
 
@@ -514,7 +541,7 @@ describe('development cards and pending effects', () => {
     });
     const prompt = screen.getByTestId('required-action-prompt');
     expect(prompt.textContent).toContain('Waiting for other players to discard');
-    expect(prompt.textContent).toContain('小美');
+    expect(screen.getByTestId('prompt-waiting').textContent).toBe('Waiting for 小美 (3)');
     expect(screen.queryByTestId('prompt-waiting')).not.toBeNull();
     expect(screen.queryByTestId('discard-submit')).toBeNull();
     expect(screen.queryByTestId('discard-add-lumber')).toBeNull();
