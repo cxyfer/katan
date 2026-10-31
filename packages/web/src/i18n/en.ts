@@ -388,6 +388,8 @@ export const en: Catalog = {
   'play.tradeToAll': 'Everyone',
   'play.tradeGive': 'You give',
   'play.tradeWant': 'You receive',
+  'play.tradeGiveBy': '{player} gives',
+  'play.tradeWantBy': '{player} receives',
   'play.tradeCreate': 'Send offer',
   'play.tradeClear': 'Clear',
   'play.tradeOwned': 'Have {count}',
