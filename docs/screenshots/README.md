@@ -9,8 +9,9 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 
 | Path | Contents | Captured from | Producer |
 |---|---|---|---|
-| [`current/`](current/) | Entry → home → lobby → setup → table → tools → post-game statistics, full three-player game, zh-Hant and en | `ac3844b` (2026-10-30) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
-| [`hand-cards/`](hand-cards/) | Card faces from PR #27: collapsed/expanded hand fan, card inspect and development-card closeups (desktop, phone, landscape) | `ac3844b` (2026-10-30) | [`scripts/hand-cards/capture.py`](../../scripts/hand-cards/capture.py) |
+| [`current/`](current/) | Entry → home → lobby → setup → table → tools → post-game statistics, full three-player game, zh-Hant and en | `79c1039` (2026-10-31) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
+| [`hand-cards/`](hand-cards/) | Card faces from PR #27: collapsed/expanded hand fan, card inspect and development-card closeups (desktop, phone, landscape) | `79c1039` (2026-10-31) | [`scripts/hand-cards/capture.py`](../../scripts/hand-cards/capture.py) |
+| [`discard-prompt/`](discard-prompt/) | Discard picker from PR #33: card-based selection, per-resource caps, the waiting state for other players, and large discards at phone and short viewports | `79c1039` (2026-10-31) | [`scripts/discard-prompt/capture.py`](../../scripts/discard-prompt/capture.py) |
 | [`hover-details/`](hover-details/) | Map-detail tooltips and collapsed/expanded rails, desktop and mobile | 2026-10-30 | `scripts/side-rails/verify.py`, see [work record](../aegis/work/2026-10-30-hover-details.md) |
 | [`table-ui-polish/`](table-ui-polish/) | Dice focus, hand-gain feedback, trade surface (desktop and mobile) | 2026-10-30 | `scripts/table-ui-polish/verify.py`, see [work record](../aegis/work/2026-10-30-table-ui-polish.md) |
 | [`island-diorama/`](island-diorama/README.md) | Standalone 3D island preview at several camera angles and sizes, plus game-surface checks | 2026-10-29 | `scripts/board-3d/verify-diorama.py`, see [work record](../aegis/work/2026-10-29-island-diorama.md) |
@@ -25,7 +26,7 @@ commit named in its record.
 
 ## `current/`
 
-Captured on 2026-10-30 from `ac3844b` (the `pnpm build` output served with
+Captured on 2026-10-31 from `79c1039` (the `pnpm build` output served with
 `WEB_DIST_PATH` set), with a real three-player game driven through the UI up to
 the table. The game is then finished through the same HTTP API the client uses,
 choosing legal moves from each player's own `hints`, so the result screen and
@@ -67,7 +68,7 @@ The script needs Python Playwright with a Chromium it can launch.
 
 ## `hand-cards/`
 
-Captured on 2026-10-30 from `ac3844b` (the `pnpm build` output served with
+Captured on 2026-10-31 from `79c1039` (the `pnpm build` output served with
 `WEB_DIST_PATH` set), with a real three-player game. The host keeps ending
 turns until its hand holds enough cards, then the fan is captured collapsed and
 expanded at desktop, phone and landscape sizes. The final group rewrites only
@@ -78,6 +79,10 @@ capture is at device scale factor 1.
 This set covers the card faces PR #27 introduced: full-bleed art with a corner
 glyph, a name ribbon and a use caption, shared by resource and development
 cards, plus the resource tally above the hand.
+
+PR #34 keeps the hand dock collapsed when the player holds no cards. That state
+is in `current/04-setup-1366x768-zh-Hant.png` ("沒有資源卡。"), taken in the
+first opening round, before any resources are dealt.
 
 | File | Locale | Viewport | State |
 |---|---|---|---|
@@ -106,6 +111,44 @@ running (`UI_BASE_URL` defaults to `http://127.0.0.1:3000`):
 
 ```sh
 python3 scripts/hand-cards/capture.py docs/screenshots/hand-cards
+```
+
+## `discard-prompt/`
+
+Captured on 2026-10-31 from `79c1039` (the `pnpm build` output served with
+`WEB_DIST_PATH` set), with a real three-player game. Only dice and end-turn are
+driven until a 7 makes at least two players discard. The first player's picks
+are made in the UI, and the second player is still waiting to discard for the
+phone and short-viewport captures. The large-discard captures enlarge the
+second player's hand inside its own browser only; nothing is submitted for
+them. The script asserts that the resource rows and the submit button stay
+inside the message area and do not cover the hand dock, except at 320×480 where
+the panel lists the whole hand.
+
+This set covers the card-based discard picker from PR #33.
+
+| File | Locale | Viewport | State |
+|---|---|---|---|
+| `discard-empty-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | prompt opened, nothing picked yet |
+| `discard-owned-cap-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | one resource taken down to 0 in hand (disabled), then one card returned from the discard area and picked again |
+| `discard-selecting-390x844-zh-Hant.png` | zh-Hant | 390×844 | second player picking on a phone |
+| `discard-selecting-390x844-en.png` | en | 390×844 | the same picker in English, with longer labels |
+| `discard-selecting-844x390-zh-Hant.png` | zh-Hant | 844×390 | picker in phone landscape |
+| `discard-selecting-320x480-zh-Hant.png` | zh-Hant | 320×480 | smallest viewport, the panel lists the whole hand |
+| `discard-full-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | quota reached, submit enabled |
+| `discard-waiting-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | submitted, waiting for the other player to discard |
+| `discard-waiting-390x844-zh-Hant.png` | zh-Hant | 390×844 | waiting state on a phone |
+| `discard-big-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | large discard, fixed-height discard pile |
+| `discard-big-844x390-zh-Hant.png` | zh-Hant | 844×390 | large discard in phone landscape |
+| `discard-big-568x320-zh-Hant.png` | zh-Hant | 568×320 | large discard in a short landscape viewport |
+| `discard-big-390x844-zh-Hant.png` | zh-Hant | 390×844 | large discard on a phone |
+| `discard-big-320x480-zh-Hant.png` | zh-Hant | 320×480 | large discard at the smallest viewport |
+
+Regenerate into a new, empty directory after `pnpm build`, with the service
+running (`UI_BASE_URL` defaults to `http://127.0.0.1:3000`):
+
+```sh
+python3 scripts/discard-prompt/capture.py docs/screenshots/discard-prompt
 ```
 
 ## Limitations
