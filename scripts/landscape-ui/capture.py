@@ -170,7 +170,7 @@ with sync_playwright() as p:
     for page in pages:
         page.get_by_test_id('toggle-ready').click()
     expect(host.get_by_test_id('start-game')).to_be_enabled()
-    sweep(host, '03-lobby', [(1366, 768), (1024, 600), (844, 390), (390, 844)],
+    sweep(host, '03-lobby', [(1366, 768), (1024, 600), (844, 390), (390, 844), (1024, 1366)],
           controls=['room-code', 'toggle-ready', 'start-game', 'leave-room'])
 
     host.get_by_test_id('start-game').click()
@@ -210,6 +210,16 @@ with sync_playwright() as p:
     expect(host.get_by_test_id('result-screen')).to_be_visible(timeout=30000)
     host.wait_for_timeout(1500)
     sweep(host, '07-result', [(1366, 768), (844, 390)], 900, controls=['back-to-lobby', 'stats-tab-overview', 'board-surface'])
+    # 最終棋盤的圖例與顯示設定彈層打開後必須整個留在視窗內
+    for width, height in LANDSCAPE:
+        host.set_viewport_size({'width': width, 'height': height})
+        host.wait_for_timeout(300)
+        for toggle, panel in [('legend', '.legend__grid'), ('board-display-settings', '.board__display-settings-panel')]:
+            host.get_by_test_id(toggle).locator('xpath=self::summary | ./summary').first.click()
+            box = host.locator(f'.result-board {panel}').bounding_box()
+            if not box or box['x'] < 0 or box['y'] < 0 or box['x'] + box['width'] > width + 0.5 or box['y'] + box['height'] > height + 0.5:
+                unreachable.append(('07-result-popover', width, height, [f'{toggle}: {box}']))
+            host.get_by_test_id(toggle).locator('xpath=self::summary | ./summary').first.click()
     host.set_viewport_size({'width': 1366, 'height': 768})
     host.get_by_test_id('stats-tab-timeline').click()
     check(host, '08-result-timeline', 1366, 768, save=True)

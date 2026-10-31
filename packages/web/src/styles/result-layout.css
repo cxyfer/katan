@@ -66,6 +66,18 @@
   .screen--result .result-board .board { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: visible; }
   .screen--result .result-board .board__surface { flex: 1 1 auto; height: auto; min-height: 160px; border-radius: 14px; }
   .screen--result .result-board .board__toolbar--side { flex-wrap: wrap; max-width: calc(100% - 16px); }
+  /*
+   * 最終棋盤在左下角，往下開的彈層會被視窗切掉；貼齊左下又會蓋住自己的開關。
+   * 圖例與顯示設定改固定在右側統計欄上方，高度以視窗為上限，不碰左欄工具列。
+   */
+  .screen--result .board--side-controls .board__toolbar--side > .legend > .legend__grid,
+  .screen--result .board--side-controls .board__display-settings-panel {
+    position: fixed;
+    inset: 56px 16px auto auto;
+    max-height: calc(100dvh - 72px);
+  }
+  .screen--result .board--side-controls .board__toolbar--side > .legend > .legend__grid { width: min(530px, calc(62vw - 32px)); }
+  .screen--result .board--side-controls .board__display-settings-panel { width: min(280px, calc(62vw - 32px)); }
 }
 @media (orientation: landscape) and (min-width: 600px) and (max-height: 620px) {
   .screen--result .result-hero { grid-template-columns: minmax(0, 1fr); }

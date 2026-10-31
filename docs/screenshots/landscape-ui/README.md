@@ -12,7 +12,9 @@ On every landscape viewport it visits (1366×768, 1920×1080, 1280×720,
 1024×600, 844×390 and 667×375) the script asserts that the page itself does not
 scroll and that each screen's key controls are reachable: after scrolling the
 control into view inside its own panel, it lies fully inside the viewport and
-nothing covers its centre. It checks all six sizes for each screen and saves only
+nothing covers its centre. On the result screen it also opens the final board's
+legend and display settings and asserts that each stays inside the viewport
+while its toggle can still be clicked. It checks all six sizes for each screen and saves only
 the sizes listed below. Portrait viewports still fall back to a single scrolling
 column and are only photographed.
 
@@ -20,7 +22,7 @@ column and are only photographed.
 |---|---|
 | `01-entry-*` | entry: title and island on the left, nickname card on the right |
 | `02-home-*` | home; at 844×390 the menu shrinks to an icon rail |
-| `03-lobby-*` | lobby with three ready players: seats, room settings and policy, invite code and start in three columns; `390x844` is the portrait fallback |
+| `03-lobby-*` | lobby with three ready players: seats, room settings and policy, invite code and start in three columns; `390x844` and `1024x1366` are the portrait fallback |
 | `04-setup-1366x768` | opening placement with the setup guide |
 | `05-table-*` | table on the host's turn: both rails collapsed (they open on hover), camera controls and legend in one row, dice beside the resource tally; `390x844` is portrait |
 | `06-trade-1366x768` | trade tool |

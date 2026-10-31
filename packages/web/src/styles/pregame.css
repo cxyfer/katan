@@ -432,6 +432,9 @@
   .home-stage__panel { max-height: none; overflow: visible; }
   .pregame-scene__island { display: none; }
   .pregame-scene::after { background: linear-gradient(180deg, #06202c66 0%, #06202c99 100%); }
+}
+/* 大廳的直屏後備不分寬度：直立的大平板（例如 1024×1366）也改成單欄捲動。 */
+@media (orientation: portrait), (max-width: 599px) {
   .screen--lobby { height: auto; min-height: 100dvh; overflow: visible; padding-bottom: 1.5rem; }
   .lobby__layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "head" "main" "aside" "config"; }
   .lobby__main, .lobby__config, .lobby__aside { overflow: visible; }
