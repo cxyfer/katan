@@ -116,6 +116,18 @@ export class PaintedMesh {
   }
 }
 
+/** Wind a face so its normal points away from `center`. */
+export function outwardFace(mesh: PaintedMesh, a: Vec3, b: Vec3, c: Vec3, color: string, center: Vec3) {
+  const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+  const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+  const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+  const dx = (a[0] + b[0] + c[0]) / 3 - center[0];
+  const dy = (a[1] + b[1] + c[1]) / 3 - center[1];
+  const dz = (a[2] + b[2] + c[2]) / 3 - center[2];
+  if (nx * dx + ny * dy + nz * dz >= 0) mesh.face(a, b, c, color);
+  else mesh.face(a, c, b, color);
+}
+
 /** Smooth deterministic value noise in [0, 1] for procedural paint and relief. */
 export function valueNoise(seed: number): (x: number, y: number) => number {
   const hash = (x: number, y: number) => {

@@ -66,7 +66,9 @@ function diameter(points: readonly number[][]) {
 }
 
 describe('miniature terrain landscapes', () => {
-  it.each([['fields', 2400], ['forest', 1700], ['pasture', 1600]] as const)('%s stays within its triangle budget in every variant', (terrain, budget) => {
+  it.each([
+    ['forest', 2400], ['fields', 3400], ['pasture', 3200], ['hills', 2400], ['mountains', 1800], ['gold', 1800], ['desert', 2200],
+  ] as const)('%s stays within its triangle budget in every variant', (terrain, budget) => {
     for (let variant = 0; variant < 3; variant++) {
       const geometry = createTerrainModel(terrain, variant);
       expect(geometry.getAttribute('position').count / 3).toBeLessThanOrEqual(budget);
@@ -75,19 +77,18 @@ describe('miniature terrain landscapes', () => {
   });
 
   it.each([
-    { terrain: 'fields', detail: 'grain heads', paints: ['#e7c975', '#edce81', '#d7b45c'], count: 140 },
-    { terrain: 'fields', detail: 'wheat stems', paints: ['#d0ae58'], count: 140 },
-    { terrain: 'fields', detail: 'wheat leaves', paints: ['#c6ab61'], count: 140 },
-    { terrain: 'forest', detail: 'layered conifer crowns', paints: ['#426b51', '#577b58', '#6c8b61', '#385c4a'], count: 44 },
-    { terrain: 'forest', detail: 'broadleaf crowns', paints: ['#8ba36b', '#9bb77b', '#719564', '#a8bc80'], count: 8 },
-    { terrain: 'pasture', detail: 'sheep heads', paints: ['#665e52'], count: 5 },
-    { terrain: 'pasture', detail: 'sheep ears', paints: ['#8d8170'], count: 10 },
-    { terrain: 'pasture', detail: 'sheep legs', paints: ['#675c4e'], count: 20 },
-    { terrain: 'pasture', detail: 'wool tufts', paints: ['#f4eddb'], count: 25 },
-    { terrain: 'pasture', detail: 'flowers', paints: ['#eee5b4', '#cda09d'], count: 24 },
-    { terrain: 'forest', detail: 'moss banks', paints: ['#78976a', '#8ba276'], count: 2 },
-    { terrain: 'pasture', detail: 'grass banks', paints: ['#8da679', '#a6ba84'], count: 2 },
-    { terrain: 'desert', detail: 'dune banks', paints: ['#d9c395', '#e7d5a7', '#d0b888'], count: 3 },
+    { terrain: 'forest', detail: 'spruce tiers', paints: ['#2f5a45', '#3b6a4d', '#4b7b53', '#284f3f'], count: 48 },
+    { terrain: 'forest', detail: 'broadleaf crown puffs', paints: ['#7fa35e', '#93b56a', '#6c9254', '#a6c174'], count: 16 },
+    { terrain: 'forest', detail: 'sawn log ends and the stump top', paints: ['#dcbc8a'], count: 13 },
+    { terrain: 'fields', detail: 'windmill sails', paints: ['#f1e6c8'], count: 4 },
+    { terrain: 'fields', detail: 'stook caps', paints: ['#ecd38a'], count: 5 },
+    { terrain: 'pasture', detail: 'sheep heads and legs', paints: ['#3f3a35'], count: 35 },
+    { terrain: 'pasture', detail: 'fleece puffs, crowns and tails', paints: ['#faf5e6'], count: 42 },
+    { terrain: 'hills', detail: 'fired bricks', paints: ['#c4724f', '#d6875f', '#b0603f', '#cf7b55'], count: 40 },
+    { terrain: 'mountains', detail: 'ore cart wheels', paints: ['#2f3436'], count: 4 },
+    // Fronds meet at the crown, so each palm is one connected solid.
+    { terrain: 'desert', detail: 'palm crowns', paints: ['#5e8f4c', '#6fa057', '#4f7e43'], count: 2 },
+    { terrain: 'forest', detail: 'moss banks', paints: ['#6f9161', '#82a06e'], count: 2 },
   ])('$terrain keeps all $count $detail as closed volumes', ({ terrain, paints, count }) => {
     for (let variant = 0; variant < 3; variant++) {
       const geometry = createTerrainModel(terrain, variant);
@@ -101,34 +102,26 @@ describe('miniature terrain landscapes', () => {
     }
   });
 
-  it('keeps native grain, sheep and tree dimensions and volumes while moving them around the well', () => {
-    // Unscaled reference volumes from the original miniature sizes. Rigid
-    // translation/yaw must preserve these regardless of the new layout.
-    const treeVolumes = [0.04060859, 0.03819302, 0.03992385];
-    const sheepVolumes = [0.00497446, 0.00459424, 0.00488474];
+  it('keeps sheep, sails and trees at a readable miniature scale', () => {
     for (let variant = 0; variant < 3; variant++) {
-      const fields = createTerrainModel('fields', variant);
-      for (const grain of paintedSolids(fields, ['#e7c975', '#edce81', '#d7b45c'])) {
-        expect(grain.volume).toBeCloseTo(0.00000319, 9);
-        expect(diameter(grain.points)).toBeCloseTo(0.058, 5);
-      }
-      fields.dispose();
-
       const pasture = createTerrainModel('pasture', variant);
-      const woolBodies = paintedSolids(pasture, ['#e9e4cf']);
-      expect(woolBodies.reduce((sum, body) => sum + body.volume, 0)).toBeCloseTo(sheepVolumes[variant]!, 7);
-      for (const body of woolBodies.toSorted((a, c) => c.volume - a.volume).slice(0, 5)) {
-        expect(diameter(body.points)).toBeGreaterThan(0.156);
-        expect(diameter(body.points)).toBeLessThan(0.194);
+      const bodies = paintedSolids(pasture, ['#ece6d2']);
+      expect(bodies).toHaveLength(7);
+      for (const body of bodies) {
+        expect(diameter(body.points)).toBeGreaterThan(0.17);
+        expect(diameter(body.points)).toBeLessThan(0.23);
       }
       pasture.dispose();
 
+      const fields = createTerrainModel('fields', variant);
+      for (const sail of paintedSolids(fields, ['#f1e6c8'])) expect(diameter(sail.points)).toBeCloseTo(Math.hypot(0.046, 0.16, 0.005), 5);
+      expect(fields.boundingBox!.max.y).toBeGreaterThan(0.5);
+      fields.dispose();
+
       const forest = createTerrainModel('forest', variant);
-      const crowns = paintedSolids(forest, ['#426b51', '#577b58', '#6c8b61', '#385c4a']);
-      expect(crowns.reduce((sum, crown) => sum + crown.volume, 0)).toBeCloseTo(treeVolumes[variant]!, 7);
-      const largestCrown = Math.max(...crowns.map(crown => diameter(crown.points)));
-      expect(largestCrown).toBeGreaterThan(0.24);
-      expect(largestCrown).toBeLessThan(0.267);
+      const tiers = paintedSolids(forest, ['#2f5a45', '#3b6a4d', '#4b7b53', '#284f3f']);
+      expect(Math.max(...tiers.map(tier => diameter(tier.points)))).toBeGreaterThan(0.2);
+      expect(forest.boundingBox!.max.y).toBeGreaterThan(0.5);
       forest.dispose();
     }
   });
