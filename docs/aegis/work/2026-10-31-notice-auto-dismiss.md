@@ -146,15 +146,16 @@ Redesign:
 
 Verification for the redesign:
 
-- `pnpm verify`: typecheck clean; rules 138, protocol 7, server 96 passed with
-  11 PostgreSQL-only skips, web 476, production build, smoke 13/13, dev harness
-  1/1.
+- `pnpm verify` after merging master (#36): typecheck clean; rules 138,
+  protocol 7, server 96 passed with 11 PostgreSQL-only skips, web 528,
+  production build, smoke 13/13, dev harness 1/1. The #36 error cue keys off
+  the rejected command state, so it still plays without the removed toast.
 - `python3 scripts/side-rails/verify.py --renderer svg --viewport desktop
   --board hex-r2`: PASS.
 - `python3 scripts/notice-dismiss/capture.py` (rewritten): no toast for a
   rejection, Retry within the visible stack, 8 s/6 s ring durations, ring in
   step with the timer (80% left at 1.5 s of 8 s), hover hold with preserved
-  remaining time (6.36 s after leaving vs 6.29 s expected), 0.21 s turn-change
+  remaining time (6.34 s after leaving vs 6.29 s expected), 0.21 s turn-change
   fade, top-centre table toast, and an unknown receipt with no ring that stays.
   Captures: [`docs/screenshots/notice-dismiss/`](../../screenshots/notice-dismiss/README.md).
 - Exploratory runs (not in the capture set): 390×844 mobile layout,

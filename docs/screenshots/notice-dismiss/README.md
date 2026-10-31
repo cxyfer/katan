@@ -22,14 +22,14 @@ reason and retry; there is no duplicate toast.
 
 The capture run measured:
 
-- with 1.89 s elapsed, a 3.24 s hover held the receipt, which then left
-  **6.36 s** after the pointer moved away (expected 6.29 s: the remaining 6.11 s
+- with 1.89 s elapsed, a 3.22 s hover held the receipt, which then left
+  **6.34 s** after the pointer moved away (expected 6.29 s: the remaining 6.11 s
   plus the 0.18 s fade), so the hover preserved the remaining time;
 - the ring stayed in step with the timer: 80% left 1.5 s into the 8 s receipt,
   76% while held, and 74% left 1.5 s into the 6 s toast;
 - the turn change removed the receipt **0.21 s** after the snapshot (fade
   included);
-- the network toast detached after **6.59 s** (6 s deadline, 0.18 s fade, and
+- the network toast detached after **6.61 s** (6 s deadline, 0.18 s fade, and
   polling/screenshot overhead).
 
 ## Reproduce
