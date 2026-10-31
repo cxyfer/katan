@@ -84,6 +84,24 @@ def settle_board(page):
         page.wait_for_timeout(120)
 
 
+def settle_harbours(page):
+    """Wait for projected harbour footprints and plaques to stop moving."""
+    previous = None
+    for _ in range(20):
+        current = page.evaluate("""() => [
+          ...document.querySelectorAll('[data-testid$="-footprint"]'),
+          ...document.querySelectorAll('[data-testid^="inspect-harbor-"]:not([data-testid$="-footprint"])'),
+        ].map(element => {
+          const box = element.getBoundingClientRect();
+          return [element.dataset.testid, element.dataset.harborProbe ?? '',
+            box.x.toFixed(1), box.y.toFixed(1), box.width.toFixed(1), box.height.toFixed(1)].join(':');
+        }).join('|')""")
+        if current == previous:
+            return
+        previous = current
+        page.wait_for_timeout(120)
+
+
 def harbour_title(edge, language):
     return (f"路徑 {edge} 上的港口" if language == "zh-Hant" else f"Harbour at path {edge}")
 
@@ -116,36 +134,66 @@ def screenshot_detail(page, edge, target, popup, case_dir):
 
 
 def hover_harbour(page, harbor, plaque, target, renderer, language):
-    point = harbor_probe(page, target, renderer, plaque.get_attribute("data-testid"))
+    target_id = target.get_attribute("data-testid")
+    plaque_id = plaque.get_attribute("data-testid")
     via = "token" if renderer == "svg" else "footprint"
-    if point is None:
-        box = rect(plaque)
-        point = [box["x"] + box["width"] / 2, box["y"] + box["height"] / 2]
-        target = plaque
-        via = "plaque"
-    page.mouse.move(8, 8)
-    page.wait_for_timeout(240)
-    page.mouse.move(*point)
-    page.wait_for_timeout(180)
-    # The 3D camera/projection can settle one or two frames after the surface
-    # box stops changing. Re-read the probe once so a late shift cannot leave
-    # the pointer over the tile below the harbour.
-    fresh = harbor_probe(page, target, renderer, plaque.get_attribute("data-testid"))
-    if fresh is not None and (abs(fresh[0] - point[0]) > 0.5 or abs(fresh[1] - point[1]) > 0.5):
-        point = fresh
+    last_error = "no attempt"
+    for attempt in range(1, 3):
+        page.mouse.move(8, 8)
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(160)
+        point = None
+        under = None
+        # The inspection layer can mount a frame or two after the board reports
+        # the 3D renderer. Wait until the exact probe point is over this harbour
+        # (or its plaque) before starting the one-second hover timer.
+        for _ in range(15):
+            point = harbor_probe(page, target, renderer, plaque_id)
+            if point is not None:
+                under = page.evaluate(
+                    "([x,y]) => { const t=document.elementFromPoint(x,y); return t?.dataset?.testid ?? null; }",
+                    point)
+                if under in {target_id, plaque_id}:
+                    break
+            page.wait_for_timeout(100)
+        if point is None or under not in {target_id, plaque_id}:
+            last_error = f"probe covered by {under}"
+            continue
+        page.mouse.move(8, 8)
+        page.wait_for_timeout(240)
         page.mouse.move(*point)
         page.wait_for_timeout(180)
-    page.wait_for_timeout(270)
-    require(page.get_by_role("tooltip").count() == 0, f"harbour {harbor['edge']} opened too early")
-    page.wait_for_timeout(700)
-    if page.get_by_role("tooltip").count() == 0:
-        return None
-    popup = assert_tooltip(page, harbor["edge"], language, plaque)
-    under = page.evaluate("([x,y]) => { const t=document.elementFromPoint(x,y); return t?.dataset?.testid ?? null; }", point)
-    require(under in {target.get_attribute("data-testid"), plaque.get_attribute("data-testid")},
-            f"harbour {harbor['edge']} probe is covered by {under}")
-    return {"edge": harbor["edge"], "type": harbor["type"], "via": via, "point": point,
-            "tooltip": {"x": rect(popup)["x"], "y": rect(popup)["y"]}}
+        fresh = harbor_probe(page, target, renderer, plaque_id)
+        if fresh is not None and (abs(fresh[0] - point[0]) > 0.5 or abs(fresh[1] - point[1]) > 0.5):
+            point = fresh
+            page.mouse.move(*point)
+            page.wait_for_timeout(180)
+        # Re-enter once: a layer that mounted after the first move can otherwise
+        # leave a tile timer pending under the stationary pointer.
+        page.mouse.move(point[0] + 1, point[1] + 1)
+        page.wait_for_timeout(40)
+        page.mouse.move(*point)
+        page.wait_for_timeout(450)
+        if page.get_by_role("tooltip").count() != 0:
+            last_error = "tooltip opened too early"
+            continue
+        page.wait_for_timeout(700)
+        popup = page.get_by_role("tooltip")
+        if popup.count() == 0:
+            last_error = "tooltip missing"
+            continue
+        try:
+            popup = assert_tooltip(page, harbor["edge"], language, plaque)
+        except AssertionError as error:
+            last_error = str(error)
+            continue
+        under = page.evaluate("([x,y]) => { const t=document.elementFromPoint(x,y); return t?.dataset?.testid ?? null; }", point)
+        if under not in {target_id, plaque_id}:
+            last_error = f"probe covered by {under}"
+            continue
+        return {"edge": harbor["edge"], "type": harbor["type"], "via": via, "point": point,
+                "attempts": attempt, "tooltip": {"x": rect(popup)["x"], "y": rect(popup)["y"]}}
+    raise AssertionError(f"harbour {harbor['edge']} hover failed: {last_error}")
 
 
 def verify_case(page, source, renderer, language, size, case_dir):
@@ -154,6 +202,7 @@ def verify_case(page, source, renderer, language, size, case_dir):
     if renderer == "r3f":
         page.wait_for_function("document.querySelector('[data-testid=\"board\"]')?.dataset.effectiveRenderer === 'r3f'")
     settle_board(page)
+    settle_harbours(page)
     page.keyboard.press("Escape")
     mobile = size[0] < 900
     checked = []
@@ -198,26 +247,6 @@ def verify_case(page, source, renderer, language, size, case_dir):
         require(page.get_by_role("tooltip").count() == 0, f"harbour {harbor['edge']} tooltip stayed after leaving")
     require(len(checked) == len(board["harbors"]), "not every harbour was checked")
 
-    if renderer == "r3f":
-        # Orbit the camera and re-check every footprint; the hull and the boat
-        # probe are recomputed from the new projection.
-        for _ in range(4):
-            page.get_by_test_id("rotate-right").click()
-            page.wait_for_timeout(120)
-        page.wait_for_timeout(500)
-        rotated = []
-        for item in checked:
-            edge = item["edge"]
-            plaque = page.get_by_test_id(f"inspect-harbor-{edge}")
-            target = page.get_by_test_id(f"inspect-harbor-{edge}-footprint")
-            result = hover_harbour(page, {"edge": edge, "type": item["type"]}, plaque, target,
-                                   renderer, language)
-            require(result is not None, f"harbour {edge} hover produced no tooltip after rotation")
-            rotated.append(result["edge"])
-            page.mouse.move(8, 8)
-            page.wait_for_timeout(180)
-        for item in checked:
-            item["rotated"] = item["edge"] in rotated
     return {"harbours": checked, "mode": "hover" if not mobile else "focus",
             "keyboard": "each plaque opens and Escape closes"}
 

@@ -80,9 +80,14 @@ export function harborLabelPoint(placement: HarborPlacement): WorldPoint {
  * Local side/outward coordinates follow the diorama instance.
  */
 const HARBOR_HIT_POINTS: readonly (readonly [side: number, outward: number, height: number])[] = [
-  // Dock deck corners.
-  [-0.352, 0.08, 0.204], [0.352, 0.08, 0.204],
-  [-0.352, 0.49, 0.204], [0.352, 0.49, 0.204],
+  // Low shore walkway deck corners.
+  [-0.216, 0.0015, 0.0875], [0.216, 0.0015, 0.0875],
+  [-0.216, 0.5985, 0.0875], [0.216, 0.5985, 0.0875],
+  // Raised sign deck corners, at both its underside and top surface.
+  [-0.36, 0.07, 0.19], [0.36, 0.07, 0.19],
+  [-0.36, 0.50, 0.19], [0.36, 0.50, 0.19],
+  [-0.36, 0.07, 0.204], [0.36, 0.07, 0.204],
+  [-0.36, 0.50, 0.204], [0.36, 0.50, 0.204],
   // Pier frame at the shore and at the seaward end, at deck and water height.
   [-0.23, 0.0, 0.0], [0.23, 0.0, 0.0],
   [-0.23, 0.585, 0.0], [0.23, 0.585, 0.0],
@@ -90,10 +95,16 @@ const HARBOR_HIT_POINTS: readonly (readonly [side: number, outward: number, heig
   // Harbour plaque corners.
   [-0.34, 0.09, 0.205], [0.34, 0.09, 0.205],
   [-0.34, 0.48, 0.205], [0.34, 0.48, 0.205],
-  // Boat hull at the waterline, sail top and mast head.
-  [0.237, 0.44, -0.274], [0.403, 0.44, -0.274],
-  [0.237, 0.82, -0.274], [0.403, 0.82, -0.274],
+  // Boat hull corners at both visible rim heights and at the ocean clip.
+  [0.237, 0.44, -0.252], [0.403, 0.44, -0.252],
+  [0.237, 0.82, -0.252], [0.403, 0.82, -0.252],
+  [0.237, 0.44, -0.245], [0.403, 0.44, -0.245],
+  [0.237, 0.82, -0.245], [0.403, 0.82, -0.245],
+  [0.237, 0.44, -0.285], [0.403, 0.44, -0.285],
+  [0.237, 0.82, -0.285], [0.403, 0.82, -0.285],
   [0.32, 0.51, 0.188], [0.32, 0.74, 0.188],
+  [0.308, 0.618, 0.223], [0.332, 0.618, 0.223],
+  [0.308, 0.642, 0.223], [0.332, 0.642, 0.223],
   [0.32, 0.63, 0.223], [0.32, 0.805, 0.06],
 ];
 

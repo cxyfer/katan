@@ -9,6 +9,7 @@ import { harborHitPoints, harborPlacement, harborProbePoint, screenConvexHull } 
 import { inspectDescription, inspectionElements } from '../src/board/inspection.ts';
 import { sceneBounds } from '../src/board/three/bounds.ts';
 import { applySceneCamera, fitSceneCamera } from '../src/board/three/camera.ts';
+import { createHarborModel } from '../src/board/three/diorama-structures.ts';
 import { useBoardViewport } from '../src/board/useBoardViewport.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi } from '../src/test/fake-api.ts';
@@ -27,11 +28,23 @@ beforeEach(() => {
 const geometry = buildGeometry('hex-r2');
 afterEach(() => vi.useRealTimers());
 
-function polygonContains(polygon: readonly { x: number; y: number }[], point: { x: number; y: number }): boolean {
+function segmentDistance(point: { x: number; y: number }, a: { x: number; y: number },
+  b: { x: number; y: number }): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length = dx * dx + dy * dy;
+  const t = length > 0 ? Math.max(0, Math.min(1,
+    ((point.x - a.x) * dx + (point.y - a.y) * dy) / length)) : 0;
+  return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy));
+}
+
+function polygonContains(polygon: readonly { x: number; y: number }[], point: { x: number; y: number },
+  tolerance = 0): boolean {
   let contained = false;
   for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
     const a = polygon[index]!;
     const b = polygon[previous]!;
+    if (tolerance > 0 && segmentDistance(point, a, b) <= tolerance) return true;
     if ((a.y > point.y) !== (b.y > point.y) &&
         point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) contained = !contained;
   }
@@ -177,6 +190,9 @@ describe('public map inspection', () => {
       rect,
     };
     const r3fElements = inspectionElements(geometry, board, 'r3f');
+    const harborModel = createHarborModel();
+    const vertexPositions = harborModel.getAttribute('position');
+    expect(vertexPositions.count).toBeGreaterThan(100);
 
     // Local +X/+Z follow the diorama instance: +Z is outward, +X carries the
     // boat. The points below are real model heights, not a flat hit plane.
@@ -187,7 +203,7 @@ describe('public map inspection', () => {
       z: placement!.midpoint.z - Math.sin(placement!.rotationY) * side + Math.cos(placement!.rotationY) * outward,
     });
 
-    for (const elevation of [50, 60, 80]) {
+    for (const elevation of [25, 50, 60, 80]) {
       for (const azimuth of [20, 110, 245]) {
         for (const zoom of [1, 2]) {
           const camera = new OrthographicCamera();
@@ -226,6 +242,9 @@ describe('public map inspection', () => {
               modelPoint(placement, -0.33, 0.28, 0.204),
               modelPoint(placement, 0.33, 0.28, 0.204),
               modelPoint(placement, 0.1, 0.58, 0.1),
+              modelPoint(placement, 0.32, 0.63, -0.252),
+              modelPoint(placement, 0.32, 0.63, -0.245),
+              modelPoint(placement, 0.32, 0.63, -0.285),
               modelPoint(placement, 0.32, 0.63, -0.274),
               modelPoint(placement, 0.32, 0.63, -0.243),
               modelPoint(placement, 0.32, 0.63, -0.127),
@@ -240,6 +259,18 @@ describe('public map inspection', () => {
               expect(polygonContains(polygon, project(point)),
                 `${elevation}/${azimuth}/${zoom}/${harbor.edge}/${index}`).toBe(true);
             }
+            const outside: string[] = [];
+            for (let vertex = 0; vertex < vertexPositions.count; vertex += 1) {
+              const localY = vertexPositions.getY(vertex);
+              // The opaque ocean clips the submerged part of the hull.
+              if (localY < -0.285) continue;
+              const world = modelPoint(placement, vertexPositions.getX(vertex), vertexPositions.getZ(vertex), localY);
+              if (!polygonContains(polygon, project(world), 0.75)) {
+                outside.push(`${vertex}@${localY.toFixed(3)}`);
+                if (outside.length === 5) break;
+              }
+            }
+            expect(outside, `${elevation}/${azimuth}/${zoom}/${harbor.edge}`).toEqual([]);
           }
         }
       }

@@ -23,7 +23,9 @@ outside the same square.
   label position and fit bounds now read these values instead of repeating the
   pier, plaque and envelope constants.
 - In 3D, project the pier and boat corners at their real model heights and take
-  the screen-space convex hull. The hull is a pointer-only target below roads
+  the screen-space convex hull. The boat contributes corners at both visible
+  rim heights and at the ocean-clipped waterline, not one intermediate height.
+  The hull is a pointer-only target below roads
   and buildings, so a settlement at a harbour endpoint and a road along the
   coast stay hoverable. The existing plaque-sized rect remains the focusable
   harbour target above both. SVG keeps its compact token.
@@ -44,19 +46,21 @@ keep priority wherever they cross it.
   without PostgreSQL, web 533 passed in 51 files, build passed, smoke 13/13 and
   the compiled development-runner test passed.
 - Browser matrix: 4/4 passed with production build and deterministic fixtures
-  (`svg`/`r3f` at 1366×900 and 390×844). Desktop cases hover the projected boat
-  hull for all nine harbours, check the tooltip title, bounded placement and the
-  element under the pointer, then orbit the 3D camera by 120° and recheck every
-  harbour. Mobile cases focus every plaque and check the delayed tooltip,
-  `aria-describedby` and Escape. Source and build digests are compared before
-  and after the run.
-- Regression coverage: `board-inspection.test.tsx` now asserts the 3D harbour
+  (`svg`/`r3f` at 1366×900 and 390×844). Desktop cases wait until the exact
+  projected boat probe is exposed (no plaque fallback), hover it for all nine
+  harbours, check the tooltip title, bounded placement and the element under
+  the pointer. Mobile cases focus every plaque and check the delayed tooltip,
+  `aria-describedby` and Escape. Camera-angle coverage lives in the
+  deterministic projection test, not a flaky orbiting browser loop. Source and
+  build digests are compared before and after the run.
+- Regression coverage: `board-inspection.test.tsx` asserts the 3D harbour
   includes one pointer-only screen-space hull over the pier and boat, that the
-  focusable plaque remains a rect, and that the projected deck, boat hull, sail
-  and mast at their real model heights fall inside the hull for all nine fixed
-  harbours at 50°/60°/80° elevation, three azimuths and zoom 1/2. It also
-  asserts the footprint sits below a harbour road and endpoint building, while
-  the plaque stays above them.
+  focusable plaque remains a rect, and that every visible vertex of
+  `createHarborModel` (the ocean clips below -0.285) plus the plaque corners
+  projects inside the hull for all nine fixed harbours at
+  25°/50°/60°/80° elevation, three azimuths and zoom 1/2. It also asserts the
+  footprint sits below a harbour road and endpoint building, while the plaque
+  stays above them.
 - Screenshots: [3D desktop detail](../../screenshots/harbor-hover/r3f-desktop-detail.png),
   [3D desktop context](../../screenshots/harbor-hover/r3f-desktop.png),
   [SVG desktop detail](../../screenshots/harbor-hover/svg-desktop-detail.png),

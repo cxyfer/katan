@@ -14,11 +14,11 @@ showed no tooltip. The captures hover the far end of the rendered footprint.
 
 Captured on 2026-11-01 from the `fix/harbor-hover-info` working tree using the
 production build and deterministic API/WebSocket fixtures. Desktop captures
-hover the projected boat hull for all nine harbours, then orbit the 3D camera
-by 120° and recheck every harbour. Mobile captures focus every plaque; all
-cases check the one-second delay, tooltip title, viewport bounds,
-`aria-describedby` where applicable and Escape. Every capture is at device
-scale factor 1.
+hover the projected boat hull for all nine harbours. Mobile captures focus
+every plaque; all cases check the one-second delay, tooltip title, viewport
+bounds, `aria-describedby` where applicable and Escape. Camera-angle coverage
+is in the deterministic projection test. Every capture is at device scale
+factor 1.
 
 The aggregate is [report.json](report.json). Regenerate with:
 
