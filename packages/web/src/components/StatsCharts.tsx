@@ -15,6 +15,9 @@ const HEIGHT = 260;
 const MARGIN = { top: 16, right: 112, bottom: 34, left: 36 };
 const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
+/** 終點標籤與最後一個資料點的間距（viewBox 單位）。 */
+const LABEL_GAP = 10;
+const pct = (value: number, total: number) => `${(value / total) * 100}%`;
 
 export function ScoreTimelineChart({ view, stats }: { view: GameView; stats: GameStats }) {
   const t = useT();
@@ -140,11 +143,6 @@ export function ScoreTimelineChart({ view, stats }: { view: GameView; stats: Gam
               fill={playerColorHex(player.color)}
             />
           ))}
-          {[...endGroups].map(([score, names]) => (
-            <text key={score} className="stats-chart__label" x={x(samples.length - 1) + 10} y={y(score)} dominantBaseline="middle">
-              {formatNumber(locale, score)} {names.join('、')}
-            </text>
-          ))}
           {focus !== null && (
             <g aria-hidden="true">
               <line className="stats-chart__crosshair" x1={x(focus)} x2={x(focus)} y1={MARGIN.top} y2={MARGIN.top + PLOT_H} />
@@ -161,6 +159,25 @@ export function ScoreTimelineChart({ view, stats }: { view: GameView; stats: Gam
             </g>
           )}
         </svg>
+        {/*
+          終點標籤以 HTML 疊在右側邊界內，而非 SVG <text>：SVG 文字無法依實際字型截斷，
+          長暱稱或多人同分合併時會畫出圖表外，壓到相鄰的骰子圖或超出卡片。
+        */}
+        {[...endGroups].map(([score, names]) => (
+          <span
+            key={score}
+            className="stats-chart__end-label"
+            data-testid={`stats-timeline-end-${score}`}
+            aria-hidden="true"
+            style={{
+              left: pct(x(samples.length - 1) + LABEL_GAP, WIDTH),
+              top: pct(y(score), HEIGHT),
+              maxWidth: pct(MARGIN.right - LABEL_GAP, WIDTH),
+            }}
+          >
+            {formatNumber(locale, score)} {names.join('、')}
+          </span>
+        ))}
         {focused && focus !== null && (
           <div
             className="stats-chart__tooltip"
