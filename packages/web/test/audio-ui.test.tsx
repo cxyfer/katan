@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { GameView } from '@catan/rules';
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { App } from '../src/App.tsx';
 import type { SoundCue } from '../src/audio/cues.ts';
@@ -132,6 +133,25 @@ describe('useGameSounds', () => {
     // 擲骰前的騎士立即響；擲骰與七點警示交給協調器跟著骰子演出。
     expect(played).toEqual(['dev.knight']);
     expect(registered).toEqual([['g1:14', ['robber.alert']]]);
+  });
+
+  it('calls a discarding player back once when the tab is hidden before the alert', () => {
+    let hidden = false;
+    vi.spyOn(document, 'hidden', 'get').mockImplementation(() => hidden);
+    const played: SoundCue[] = [];
+    const output = { play: (cue: SoundCue) => { played.push(cue); }, rolls: { register: () => undefined } };
+    let state = gameState();
+    const { rerender } = renderHook(({ current }) => useGameSounds(current, output), { initialProps: { current: state } });
+    state = withSnapshot(state, [makeEvent(13, 'turn.rolled', { playerId: 'p2', dice: [3, 4], total: 7 }), makeEvent(14, 'discard.required', { required: { p1: 4 } })],
+      { pending: { kind: 'discard', required: { p1: 4 }, waitingFor: ['p1'] } as GameView['pending'] });
+    state = tableReducer(state, { type: 'dice-presenting', value: false });
+    rerender({ current: state });
+    // 可見時由七點警示提醒，不疊加「輪到你」。
+    expect(played).toEqual([]);
+    hidden = true;
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    expect(played).toEqual(['turn.yours']);
   });
 
   it('plays new authoritative events, the move hand-over, rejections and chat', () => {

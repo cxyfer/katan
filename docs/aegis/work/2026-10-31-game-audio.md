@@ -124,7 +124,10 @@ Codex review (P2) and an independent reviewer found these problems on
 - **Background call-back:** "your move" and trade offers now sound in a hidden
   tab; music and everything else stay silent there. The independent re-review
   of `2a7865a` added one case: a player who must discard while hidden gets
-  "your move", because `robber.alert` is silent in the background.
+  "your move", because `robber.alert` is silent in the background. Codex then
+  covered the remaining gap (`ce4ffce`): a discard that arrived while the tab was
+  visible and is still owed when the tab is hidden also triggers one
+  "your move".
 - **State race:** `ctx.state` lags `resume()`/`suspend()`, so `sync()` runs
   again after each successful transition. The independent re-review found
   that it should only do so when the target state was actually reached;
@@ -143,7 +146,7 @@ Codex review (P2) and an independent reviewer found these problems on
 ## Verification
 
 - `pnpm verify`: typecheck, rules 138, protocol 7, server 96 (+11 PostgreSQL
-  skips), web 503 tests, build, smoke 13/13, dev runner 1/1.
+  skips), web 504 tests, build, smoke 13/13, dev runner 1/1.
 - New web tests: cue mapping, privacy invariance, roll timing, staggering and
   caps; preference storage; music determinism and harmony; engine lifecycle on
   a fake `AudioContext` (no context before a gesture, mute/suspend, stale-cue

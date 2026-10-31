@@ -62,6 +62,8 @@ export function useGameSounds(state: TableState, { play, rolls }: GameSoundOutpu
   latest.current = state;
   const cursor = useRef<EventCursor | null>(null);
   const mine = useRef<boolean | null>(null);
+  /** 可見時欠的棄牌交給七點警示提醒；這次義務是否已用「輪到你」叫過玩家。 */
+  const discardCalled = useRef(false);
   const rejected = useRef<string | null>(null);
   const stale = useRef<string | null>(null);
   const unread = useRef(state.chat.unread);
@@ -95,8 +97,25 @@ export function useGameSounds(state: TableState, { play, rolls }: GameSoundOutpu
     }
     const next = attentionCue(mine.current, actionKind ? { kind: actionKind, mine: actionMine } : null, myTurn, document.hidden);
     mine.current = next.mine;
-    if (next.cue) play(next.cue);
+    if (actionKind !== 'discard' || !actionMine) discardCalled.current = false;
+    if (next.cue) {
+      if (actionKind === 'discard') discardCalled.current = true;
+      play(next.cue);
+    }
   }, [gameId, actionKind, actionMine, myTurn, play]);
+
+  // 欠著棄牌時切到背景：七點警示會隨盤面演出一起被丟棄，改用背景提示叫玩家回來一次。
+  useEffect(() => {
+    const onVisibility = () => {
+      if (!document.hidden || discardCalled.current) return;
+      const owed = requiredActionFor(latest.current);
+      if (owed?.kind !== 'discard' || !owed.mine) return;
+      discardCalled.current = true;
+      play('turn.yours');
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [play]);
 
   const commandStatus = state.command?.status ?? null;
   const commandId = state.command?.commandId ?? null;
