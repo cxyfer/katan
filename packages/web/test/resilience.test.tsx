@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { activeTurnKey, initialTableState, tableReducer } from '../src/state/table.ts';
+import type { GameView } from '@catan/rules';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeRoom, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
@@ -115,17 +116,19 @@ describe('state-level resilience', () => {
     expect(next.screen).toBe(state.screen);
   });
 
-  it('counts each turn instance separately even when the same player returns', () => {
-    const start = initialTableState('en');
-    const p1 = tableReducer(start, { type: 'snapshot', snapshot: makeSnapshot(makeView({ turnPlayerId: 'p1' }), 12) });
-    expect(p1.turnGeneration).toBe(1);
-    const duplicate = tableReducer(p1, { type: 'snapshot', snapshot: makeSnapshot(makeView({ turnPlayerId: 'p1' }), 13) });
-    expect(duplicate.turnGeneration).toBe(1);
-    const p2 = tableReducer(duplicate, { type: 'snapshot', snapshot: makeSnapshot(makeView({ turnPlayerId: 'p2' }), 13) });
-    expect(p2.turnGeneration).toBe(2);
-    const back = tableReducer(p2, { type: 'snapshot', snapshot: makeSnapshot(makeView({ turnPlayerId: 'p1' }), 14) });
-    expect(back.turnGeneration).toBe(3);
-    expect(activeTurnKey(back)).not.toBe(activeTurnKey(p1));
+  it('keys the active turn by window and setup progress', () => {
+    const stateFor = (windowId: number, setup: GameView['turn']['setup'] = null) => {
+      const view = makeView({ setup });
+      view.windowId = windowId;
+      return tableReducer(initialTableState('en'), { type: 'snapshot', snapshot: makeSnapshot(view) });
+    };
+    const first = stateFor(1);
+    expect(activeTurnKey(stateFor(1))).toBe(activeTurnKey(first));
+    expect(activeTurnKey(stateFor(2))).not.toBe(activeTurnKey(first));
+    const setupFirst = stateFor(1, { seat: 2, stage: 'building', round: 1, remaining: 4 });
+    const setupReverse = stateFor(1, { seat: 2, stage: 'building', round: 2, remaining: 3 });
+    expect(activeTurnKey(setupReverse)).not.toBe(activeTurnKey(setupFirst));
+    expect(activeTurnKey(setupFirst)).not.toBe(activeTurnKey(first));
   });
 
   it('keeps a draft nickname across a locale change but resets nothing else', () => {

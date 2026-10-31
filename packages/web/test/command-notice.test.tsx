@@ -7,10 +7,11 @@ import type { TableController } from '../src/state/useTable.ts';
 import type { CommandStatus as Status } from '../src/state/commands.ts';
 import { makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
-function controller(status: Status, commandId = 'first', turnPlayerId = 'p1', turnGeneration = 1) {
+function controller(status: Status, commandId = 'first', windowId = 1) {
   const state = initialTableState('en');
-  state.game = makeSnapshot(makeView({ turnPlayerId }));
-  state.turnGeneration = turnGeneration;
+  const view = makeView();
+  view.windowId = windowId;
+  state.game = makeSnapshot(view);
   state.command = { commandId, status, labelId: 'action.roll', command: { type: 'roll' }, error: null, baseRevision: 1, revision: 2 };
   return { state, actions: { clearCommand: vi.fn() } } as unknown as TableController;
 }
@@ -60,28 +61,28 @@ describe('side command receipt', () => {
   });
   it.each(['accepted', 'rejected'] as const)('clears %s feedback when the turn changes', (status) => {
     vi.useFakeTimers();
-    const { rerender } = render(notice(controller(status, 'first', 'p1')));
+    const { rerender } = render(notice(controller(status, 'first', 1)));
     expect(screen.getByTestId('command-status')).toBeTruthy();
-    rerender(notice(controller(status, 'first', 'p2', 2)));
+    rerender(notice(controller(status, 'first', 2)));
     expect(screen.queryByTestId('command-status')).toBeNull();
   });
   it('keeps unknown recovery across a turn change', () => {
     vi.useFakeTimers();
-    const { rerender } = render(notice(controller('unknown', 'first', 'p1')));
-    rerender(notice(controller('unknown', 'first', 'p2', 2)));
+    const { rerender } = render(notice(controller('unknown', 'first', 1)));
+    rerender(notice(controller('unknown', 'first', 2)));
     expect(screen.getByTestId('command-resolve')).toBeTruthy();
   });
   it('keeps a new receipt that arrives with a turn change', () => {
     vi.useFakeTimers();
-    const { rerender } = render(notice(controller('accepted', 'first', 'p1')));
-    rerender(notice(controller('accepted', 'second', 'p2', 2)));
+    const { rerender } = render(notice(controller('accepted', 'first', 1)));
+    rerender(notice(controller('accepted', 'second', 2)));
     expect(screen.getByTestId('command-status')).toBeTruthy();
   });
   it('clears a receipt when the same player starts a later turn', () => {
     vi.useFakeTimers();
-    const { rerender } = render(notice(controller('rejected', 'first', 'p1', 1)));
-    rerender(notice(controller('rejected', 'first', 'p2', 2)));
-    rerender(notice(controller('rejected', 'first', 'p1', 3)));
+    const { rerender } = render(notice(controller('rejected', 'first', 1)));
+    rerender(notice(controller('rejected', 'first', 2)));
+    rerender(notice(controller('rejected', 'first', 3)));
     expect(screen.queryByTestId('command-status')).toBeNull();
   });
   it('cancels an old receipt timer when another command needs recovery', () => {

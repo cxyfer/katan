@@ -115,6 +115,7 @@ def capture(out: Path) -> dict:
 
             snapshot = copy.deepcopy(scenario.snapshot)
             snapshot["revision"] += 1
+            snapshot["view"]["windowId"] += 1
             snapshot["view"]["turn"].update(playerId="p2", seat=1)
             switched = time.monotonic()
             scenario.send(snapshot)
@@ -137,12 +138,18 @@ def capture(out: Path) -> dict:
             require(not scenario.errors, f"page errors: {scenario.errors}")
             require(not scenario.console_errors, f"console errors: {scenario.console_errors}")
             result["apiRequests"] = requests
-            browser.close()
+            scenario.close()
             scenario = None
+            browser.close()
         return result
     finally:
         if scenario:
-            scenario.close()
+            try:
+                scenario.close()
+            except Exception:
+                # Playwright may already have stopped after a failed assertion;
+                # keep the original failure rather than masking it here.
+                pass
         if server[0]:
             board.stop_server(*server)
         (out / "report.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
