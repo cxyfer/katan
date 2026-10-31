@@ -76,6 +76,7 @@ def prompt_layout(page):
           : null,
         prompt: rect(q('[data-testid="required-action-prompt"]')),
         submit: rect(q('[data-testid="discard-submit"]')),
+        hand: rect(q('[data-testid="hand-panel"]')),
       };
     }""")
 
@@ -87,10 +88,17 @@ def assert_prompt_fits(page, label):
     assert data['prompt'] is not None, (label, data)
     assert data['submit'] is not None, (label, data)
     assert data['messages']['scrollHeight'] <= data['messages']['height'] + 1, (label, data)
-    assert data['prompt']['bottom'] <= data['messages']['rect']['bottom'] + 1, (label, data)
-    assert data['submit']['bottom'] <= data['messages']['rect']['bottom'] + 1, (label, data)
-    assert data['submit']['bottom'] <= data['viewport']['height'] + 1, (label, data)
-    print('FITS', label, {key: data[key] for key in ('viewport', 'messages', 'submit')}, flush=True)
+    for item in ('prompt', 'submit'):
+        assert data[item]['top'] >= data['messages']['rect']['top'] - 1, (label, item, data)
+        assert data[item]['bottom'] <= data['messages']['rect']['bottom'] + 1, (label, item, data)
+        assert data[item]['left'] >= data['messages']['rect']['left'] - 1, (label, item, data)
+        assert data[item]['right'] <= data['messages']['rect']['right'] + 1, (label, item, data)
+        assert data[item]['bottom'] <= data['viewport']['height'] + 1, (label, item, data)
+    # 短橫屏不可蓋住手牌 dock；手牌是下一個可操作區域。
+    if data['hand'] is not None:
+        assert data['prompt']['bottom'] <= data['hand']['top'] + 1, (label, data)
+        assert data['submit']['bottom'] <= data['hand']['top'] + 1, (label, data)
+    print('FITS', label, {key: data[key] for key in ('viewport', 'messages', 'prompt', 'submit', 'hand')}, flush=True)
 
 
 def resources_of(context, path, pid):
@@ -268,6 +276,9 @@ with sync_playwright() as p:
     expect(other_page.get_by_test_id('discard-submit')).to_be_visible()
     assert_prompt_fits(other_page, '390x844-selecting')
     shot(other_page, 'discard-selecting-390x844-zh-Hant')
+    for width, height in [(844, 390), (568, 320)]:
+        other_page.set_viewport_size({'width': width, 'height': height})
+        assert_prompt_fits(other_page, f'{width}x{height}-selecting')
 
     # Finish the first player's selection (respecting each cap) and submit.
     remaining = quota - sum(picked.values())
