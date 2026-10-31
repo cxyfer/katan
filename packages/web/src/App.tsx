@@ -49,7 +49,7 @@ function AppShell({ controller }: { controller: TableController }) {
   const t = useT();
   const locale = useLocale();
   const { state } = controller;
-  useGameSounds(state, useAudio().play);
+  useGameSounds(state, useAudio());
 
   return (
     <>

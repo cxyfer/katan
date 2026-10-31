@@ -104,8 +104,14 @@ Codex review (P2) and an independent reviewer found these problems on
 
   When the board skips the presentation (reduced motion, hidden tab), there is
   no rattle and the result plays at once.
-- **Stale replay:** cues scheduled before a mute fired on unmute. The effects
-  bus is now replaced whenever the context goes inactive.
+- **Already-scheduled cues (independent review; Codex P2 ×2 on `5c0dcfd`):**
+  Web Audio cannot cancel individual scheduled nodes. So `cancelPending()`
+  fades out the effects bus and swaps in a fresh one, which drops every cue
+  still waiting. It runs when:
+  - muting (otherwise the cues replayed on unmute);
+  - hiding the tab (otherwise dice/production cues sounded in the background);
+  - the board would drop its queue (overflow, presentation turned off);
+  - a sync generation changes.
 - **Background call-back:** "your move" and trade offers now sound in a hidden
   tab; music and everything else stay silent there.
 - **State race:** `ctx.state` lags `resume()`/`suspend()`, so `sync()` runs
@@ -123,7 +129,7 @@ Codex review (P2) and an independent reviewer found these problems on
 ## Verification
 
 - `pnpm verify`: typecheck, rules 138, protocol 7, server 96 (+11 PostgreSQL
-  skips), web 495 tests, build, smoke 13/13, dev runner 1/1.
+  skips), web 497 tests, build, smoke 13/13, dev runner 1/1.
 - New web tests: cue mapping, privacy invariance, roll timing, staggering and
   caps; preference storage; music determinism and harmony; engine lifecycle on
   a fake `AudioContext` (no context before a gesture, mute/suspend, stale-cue

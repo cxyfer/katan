@@ -235,13 +235,14 @@ export function scheduleCues(
   selfId: string | null,
   now: number,
   mode: ScheduleMode,
-): { timeline: CueTimeline; cues: ScheduledCue[] } {
-  if (events.length === 0) return { timeline, cues: [] };
+): { timeline: CueTimeline; cues: ScheduledCue[]; dropped: boolean } {
+  if (events.length === 0) return { timeline, cues: [], dropped: false };
   const groups = boardEffectGroups('', events).map((group) => group.events);
   const queued = timeline.ends.filter((end) => end > now);
   const occupying = groups.filter((group) => presentationLength(group, mode.effectsShown) > 0);
   if (!mode.presented || queued.length + occupying.length > MAX_EFFECT_GROUPS) {
-    return { timeline: IDLE_TIMELINE, cues: cuesForEvents(events, selfId, false) };
+    // 盤面此時丟掉排隊中的演出；`dropped` 通知呼叫端一併取消已排程的提示。
+    return { timeline: IDLE_TIMELINE, cues: cuesForEvents(events, selfId, false), dropped: queued.length > 0 };
   }
   const ends = [...queued];
   const cues: ScheduledCue[] = [];
@@ -251,5 +252,5 @@ export function scheduleCues(
     const length = presentationLength(group, mode.effectsShown);
     if (length > 0) ends.push(start + length);
   }
-  return { timeline: { ends }, cues };
+  return { timeline: { ends }, cues, dropped: false };
 }

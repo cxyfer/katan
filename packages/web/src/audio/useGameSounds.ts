@@ -51,8 +51,14 @@ function reducedMotion(): boolean {
   return typeof globalThis.matchMedia === 'function' && globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+export interface GameSoundOutput {
+  play(cue: SoundCue, delayMs?: number): void;
+  /** 盤面丟棄排隊中的演出時，取消已排程但尚未響起的提示。 */
+  cancelPending(): void;
+}
+
 /** 依桌面狀態變化發出音效。只在 App 掛載一次，跨大廳、牌桌與結算畫面持續追蹤。 */
-export function useGameSounds(state: TableState, play: (cue: SoundCue, delayMs?: number) => void): void {
+export function useGameSounds(state: TableState, { play, cancelPending }: GameSoundOutput): void {
   const latest = useRef(state);
   latest.current = state;
   const cursor = useRef<EventCursor | null>(null);
@@ -69,9 +75,12 @@ export function useGameSounds(state: TableState, play: (cue: SoundCue, delayMs?:
     const previous = cursor.current;
     const next = advanceEventCursor(previous, latest.current);
     cursor.current = next.cursor;
-    // 換代或分頁隱藏時，盤面會丟掉排隊中的演出重新建立基準；音效時間軸跟著清空。
-    if (!next.cursor || previous?.gameId !== next.cursor.gameId || previous.generation !== next.cursor.generation ||
-        document.hidden) {
+    // 換代時盤面丟掉排隊中的演出重新建立基準：音效時間軸清空，已排程的提示也取消。
+    // （分頁隱藏由引擎自己處理。）
+    if (!next.cursor || previous?.gameId !== next.cursor.gameId || previous.generation !== next.cursor.generation) {
+      if (timeline.current.ends.length > 0) cancelPending();
+      timeline.current = IDLE_TIMELINE;
+    } else if (document.hidden) {
       timeline.current = IDLE_TIMELINE;
     }
     if (next.events.length === 0) return;
@@ -83,8 +92,9 @@ export function useGameSounds(state: TableState, play: (cue: SoundCue, delayMs?:
       effectsShown: !view?.pending && !view?.turn.setup && view?.turn.phase !== 'preroll',
     });
     timeline.current = scheduled.timeline;
+    if (scheduled.dropped) cancelPending();
     for (const { cue, delayMs } of scheduled.cues) play(cue, delayMs);
-  }, [game, generation, gameSyncPending, selfId, play]);
+  }, [game, generation, gameSyncPending, selfId, play, cancelPending]);
 
   const action = requiredActionFor(state);
   const actionKind = action?.kind ?? null;

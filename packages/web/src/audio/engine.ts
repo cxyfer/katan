@@ -23,6 +23,8 @@ export interface AudioEngine {
   /** 在使用者手勢內同步呼叫：建立或恢復 AudioContext。 */
   unlock(): void;
   play(cue: SoundCue, delayMs?: number): void;
+  /** 丟掉所有已排程、尚未播完的效果音（盤面丟棄排隊中的演出時呼叫）。 */
+  cancelPending(): void;
   setPreferences(preferences: AudioPreferences): void;
   /** null 表示不播放背景音樂。 */
   setScene(scene: MusicScene | null): void;
@@ -57,6 +59,8 @@ const BACKGROUND_CUES: ReadonlySet<SoundCue> = new Set(['turn.yours', 'trade.off
 
 /** 同一個提示在這段時間內重複觸發時只發一次聲。 */
 const REPEAT_GUARD_SECONDS = 0.06;
+/** 丟棄已排程提示時舊匯流排的淡出時間，避免直接切斷造成喀聲。 */
+const BUS_FADE_SECONDS = 0.04;
 /** 排程時預留的前置時間，避免第一個節點落在已經過去的時間點。 */
 const SCHEDULE_PADDING_SECONDS = 0.01;
 
@@ -94,7 +98,11 @@ export class WebAudioEngine implements AudioEngine {
   private readonly random = seededRandom(Date.now() & 0xffff);
   private readonly createContext: ContextFactory;
   private readonly doc: AudioEngineOptions['document'];
-  private readonly onVisibility = () => this.sync();
+  private readonly onVisibility = () => {
+    // 背景分頁不演出：先前排好的骰子、產出等提示不該在背景補響。
+    if (this.hidden()) this.cancelPending();
+    this.sync();
+  };
 
   constructor(options: AudioEngineOptions = {}) {
     this.createContext = options.createContext ?? defaultContextFactory;
@@ -129,6 +137,11 @@ export class WebAudioEngine implements AudioEngine {
     } catch {
       // 音效只是輔助提示；任何節點錯誤都不能影響遊戲操作。
     }
+  }
+
+  cancelPending(): void {
+    const graph = this.graph;
+    if (graph && !this.disposed) this.replaceEffectsBus(graph);
   }
 
   setPreferences(preferences: AudioPreferences): void {
@@ -217,14 +230,28 @@ export class WebAudioEngine implements AudioEngine {
     for (const param of [graph.music.dry.gain, graph.music.wet.gain]) set(param, music);
   }
 
+  /**
+   * 換上新的效果匯流排：所有已排程的提示都接在舊匯流排上，舊匯流排淡出後斷開，
+   * 它們就再也不會響（Web Audio 無法逐一取消已排程的節點）。
+   */
   private replaceEffectsBus(graph: Graph): void {
     const previous = graph.effects;
     graph.effects = this.bus(graph.ctx, graph.master, graph.reverb);
     graph.effectsTarget = { ...graph.effectsTarget, output: graph.effects.dry, reverb: graph.effects.wet };
-    previous.dry.disconnect();
-    previous.wet.disconnect();
+    const now = graph.ctx.currentTime;
+    for (const node of [previous.dry, previous.wet]) {
+      node.gain.cancelScheduledValues(now);
+      node.gain.setValueAtTime(node.gain.value, now);
+      node.gain.linearRampToValueAtTime(0, now + BUS_FADE_SECONDS);
+    }
+    globalThis.setTimeout(() => {
+      previous.dry.disconnect();
+      previous.wet.disconnect();
+    }, BUS_FADE_SECONDS * 1000 + 30);
     this.lastStart.clear();
-    this.applyGains(true);
+    const effects = levelToGain(this.preferences.effects);
+    graph.effects.dry.gain.value = effects;
+    graph.effects.wet.gain.value = effects;
   }
 
   /** 每條匯流排的乾聲與殘響送出各有一個增益節點，兩者都跟著該匯流排的音量，調低音樂時殘響尾巴也一起變小。 */
@@ -274,6 +301,7 @@ export const SILENT_AUDIO_ENGINE: AudioEngine = Object.freeze({
   supported: false,
   unlock: () => undefined,
   play: () => undefined,
+  cancelPending: () => undefined,
   setPreferences: () => undefined,
   setScene: () => undefined,
   dispose: () => undefined,

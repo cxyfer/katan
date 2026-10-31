@@ -166,10 +166,12 @@ describe('event cues', () => {
     const full = { ends: Array.from({ length: MAX_EFFECT_GROUPS }, (_, index) => 10_000 + index * ROLL_GROUP) };
     const overflow = scheduleCues(full, roll(70, 7), 'p1', 9_000, SHOWN);
     expect(overflow.timeline).toEqual(IDLE_TIMELINE);
+    expect(overflow.dropped).toBe(true);
     expect(overflow.cues).toEqual(cuesForEvents(roll(70, 7), 'p1', false));
     // 已結束的組不算在佇列中。
     const expired = scheduleCues(full, roll(70, 7), 'p1', 100_000, SHOWN);
     expect(expired.cues[0]).toEqual({ cue: 'dice.roll', delayMs: 0 });
+    expect(expired.dropped).toBe(false);
   });
 
   it('skips the rattle and plays the result at once when the board does not present the dice', () => {

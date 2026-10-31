@@ -5,7 +5,7 @@ import type { SoundCue } from '../src/audio/cues.ts';
 import type { AudioEngine, MusicScene } from '../src/audio/engine.ts';
 import { AUDIO_KEY, type AudioPreferences } from '../src/audio/preferences.ts';
 import { advanceEventCursor, attentionCue, useGameSounds } from '../src/audio/useGameSounds.ts';
-import { DICE_PRESENTATION_DURATION_MS, DICE_ROLL_DURATION_MS, MAX_EFFECT_DURATION_MS } from '../src/board/animation.ts';
+import { DICE_PRESENTATION_DURATION_MS, DICE_ROLL_DURATION_MS, MAX_EFFECT_DURATION_MS, MAX_EFFECT_GROUPS } from '../src/board/animation.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import { STALE_MESSAGE_ID } from '../src/state/commands.ts';
 import { initialTableState, tableReducer, type TableState } from '../src/state/table.ts';
@@ -14,6 +14,7 @@ import { makeChatMessage, makeEvent, makeHints, makeIdentity, makeSnapshot, make
 
 interface RecordingEngine extends AudioEngine {
   played: Array<{ cue: SoundCue; delayMs: number | undefined }>;
+  cancels: number;
   scenes: Array<MusicScene | null>;
   preferences: AudioPreferences[];
   unlocks: number;
@@ -26,7 +27,9 @@ function recordingEngine(supported = true): RecordingEngine {
     scenes: [],
     preferences: [],
     unlocks: 0,
+    cancels: 0,
     unlock: () => { engine.unlocks += 1; },
+    cancelPending: () => { engine.cancels += 1; },
     play: (cue, delayMs) => { engine.played.push({ cue, delayMs }); },
     setPreferences: (preferences) => { engine.preferences.push(preferences); },
     setScene: (scene) => { engine.scenes.push(scene); },
@@ -122,7 +125,7 @@ describe('useGameSounds', () => {
     const played: Array<[SoundCue, number | undefined]> = [];
     const play = (cue: SoundCue, delayMs?: number) => { played.push([cue, delayMs]); };
     let state = gameState();
-    const { rerender } = renderHook(({ current }) => useGameSounds(current, play), { initialProps: { current: state } });
+    const { rerender } = renderHook(({ current }) => useGameSounds(current, { play, cancelPending: () => undefined }), { initialProps: { current: state } });
     state = tableReducer(state, { type: 'events', events: [makeEvent(13, 'turn.rolled', { playerId: 'p2', dice: [1, 2], total: 3 })] });
     rerender({ current: state });
     vi.setSystemTime(10_500);
@@ -133,10 +136,35 @@ describe('useGameSounds', () => {
     expect(played.slice(2)).toEqual([['dice.roll', wait], ['dice.land', wait + DICE_ROLL_DURATION_MS]]);
   });
 
+  it('cancels already scheduled cues when the board would drop its queue', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(20_000);
+    let cancels = 0;
+    const output = { play: () => undefined, cancelPending: () => { cancels += 1; } };
+    let state = gameState();
+    const { rerender } = renderHook(({ current }) => useGameSounds(current, output), { initialProps: { current: state } });
+    // 九次擲骰在演出追上前抵達：超過盤面佇列上限，盤面整批丟棄，已排程的聲音也要取消。
+    for (let index = 0; index < MAX_EFFECT_GROUPS + 1; index += 1) {
+      state = tableReducer(state, { type: 'dice-presenting', value: false });
+      state = tableReducer(state, { type: 'events', events: [makeEvent(13 + index, 'turn.rolled', { playerId: 'p2', dice: [1, 2], total: 3 })] });
+      rerender({ current: state });
+    }
+    expect(cancels).toBe(1);
+
+    // 重連換代時，排隊中的演出同樣被丟棄。
+    state = tableReducer(state, { type: 'dice-presenting', value: false });
+    state = tableReducer(state, { type: 'events', events: [makeEvent(40, 'turn.rolled', { playerId: 'p2', dice: [1, 2], total: 3 })] });
+    rerender({ current: state });
+    state = tableReducer(state, { type: 'game-sync', cause: 'reconnect', generation: 2 });
+    state = tableReducer(state, { type: 'snapshot', snapshot: makeSnapshot({ ...state.game!.view, seq: 40 }, 40), generation: 2 });
+    rerender({ current: state });
+    expect(cancels).toBe(2);
+  });
+
   it('plays new authoritative events, the move hand-over, rejections and chat', () => {
     const played: Array<[SoundCue, number | undefined]> = [];
     const play = (cue: SoundCue, delayMs?: number) => { played.push([cue, delayMs]); };
-    const { rerender } = renderHook(({ state }) => useGameSounds(state, play), { initialProps: { state: gameState() } });
+    const { rerender } = renderHook(({ state }) => useGameSounds(state, { play, cancelPending: () => undefined }), { initialProps: { state: gameState() } });
     expect(played).toEqual([]);
 
     let state = gameState();

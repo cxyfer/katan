@@ -177,6 +177,7 @@ describe('WebAudioEngine', () => {
   });
 
   it('discards cues scheduled before a mute instead of replaying them on unmute', async () => {
+    vi.useFakeTimers();
     const { instance, context } = engine();
     instance.unlock();
     await Promise.resolve();
@@ -186,9 +187,33 @@ describe('WebAudioEngine', () => {
     const before = context().gains.length;
     expect(context().gains.filter((gain) => gain.connections.length === 0)).toHaveLength(0);
     instance.setPreferences({ ...DEFAULT_AUDIO_PREFERENCES, muted: true });
+    // 舊匯流排先淡出再斷開，避免喀聲。
+    vi.advanceTimersByTime(100);
     expect(context().gains.slice(0, before).filter((gain) => gain.connections.length === 0)).toHaveLength(2);
     expect(context().gains.slice(before).every((gain) => gain.connections.length === 1)).toBe(true);
     expect(context().gains.length - before).toBe(2);
+  });
+
+  it('drops cues scheduled while visible when the tab is hidden, and on request', async () => {
+    vi.useFakeTimers();
+    const doc = fakeDocument();
+    const { instance, context } = engine(doc);
+    instance.unlock();
+    await Promise.resolve();
+    instance.play('production.self', 2500);
+    const before = context().gains.length;
+    doc.hidden = true;
+    doc.fire();
+    vi.advanceTimersByTime(100);
+    expect(context().gains.slice(0, before).filter((gain) => gain.connections.length === 0)).toHaveLength(2);
+
+    doc.hidden = false;
+    doc.fire();
+    instance.play('dice.land', 1500);
+    const second = context().gains.length;
+    instance.cancelPending();
+    vi.advanceTimersByTime(100);
+    expect(context().gains.slice(0, second).filter((gain) => gain.connections.length === 0)).toHaveLength(4);
   });
 
   it('keeps calling the player back from a hidden tab but stops the music there', async () => {
