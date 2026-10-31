@@ -3,8 +3,8 @@
 Before/after captures for the sculpted 3D island. See the
 [work record](../../aegis/work/2026-10-31-board-visual-polish.md).
 
-`before/` was captured from `6d1cb97` (`origin/master`); `after/` from
-`23e0fdb` on `feat/board-visual-polish`, whose 3D code matches this set. Both
+`before/` was captured from `6d1cb97` (`origin/master`); `after/` from the
+`feat/board-3d-coast` head with the remodelled terrain, harbors and robber. Both
 use the `pnpm build` output served with `WEB_DIST_PATH` set, headless Chromium
 with SwiftShader WebGL, device scale factor 1 and reduced motion. Each run plays
 a real three-player game: the setup and about 24 (before) or 45 (after) turns
