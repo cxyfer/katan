@@ -96,6 +96,8 @@ export interface TableState {
   roomError: Notice | null;
   games: ResumableGameView[];
   game: GameSnapshot | null;
+  /** Monotonic turn-instance counter; returning to a player is still a new turn. */
+  turnGeneration: number;
   gameSync: GameSyncMetadata;
   /** 下一個有效投影建立演出 baseline。 */
   gameSyncPending: boolean;
@@ -135,6 +137,7 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     roomError: null,
     games: [],
     game: null,
+    turnGeneration: 0,
     gameSync: { generation: 0, cause: 'open' },
     gameSyncPending: false,
     connection: 'online',
@@ -329,11 +332,18 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       const current = state.game;
       if (snapshot && current?.gameId === snapshot.gameId &&
           (snapshot.revision < current.revision || snapshot.view.seq < current.view.seq)) return state;
+      const turnChanged = snapshot != null && (
+        current == null ||
+        current.gameId !== snapshot.gameId ||
+        current.view.turn.seat !== snapshot.view.turn.seat ||
+        current.view.turn.playerId !== snapshot.view.turn.playerId
+      );
       const terminal = snapshot?.view.result != null;
       return {
         ...state,
         ...holdForRoll(state, snapshot && current?.gameId === snapshot.gameId ? snapshot.view.events : []),
         game: snapshot,
+        turnGeneration: state.turnGeneration + (turnChanged ? 1 : 0),
         gameSync: { generation, cause: state.gameSyncPending ? state.gameSync.cause : (action.cause ?? 'snapshot') },
         gameSyncPending: false,
         screen: snapshot ? (terminal ? 'result' : 'game') : state.screen,
@@ -403,6 +413,13 @@ export function selfPlayer(state: TableState) {
   const id = selfPlayerId(state);
   if (!id || !state.game) return null;
   return state.game.view.players.find((player) => player.id === id) ?? null;
+}
+
+/** Identity of the active turn instance; feedback from an older turn clears. */
+export function activeTurnKey(state: TableState): string | null {
+  const game = state.game;
+  if (!game) return null;
+  return `${game.gameId}:${state.turnGeneration}`;
 }
 
 export function nameOf(state: TableState): (playerId: string) => string {

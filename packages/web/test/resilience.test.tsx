@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
-import { initialTableState, tableReducer } from '../src/state/table.ts';
+import { activeTurnKey, initialTableState, tableReducer } from '../src/state/table.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeRoom, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
@@ -113,6 +113,19 @@ describe('state-level resilience', () => {
     });
     expect(next.fatal?.messageId).toBe('error.E_NETWORK');
     expect(next.screen).toBe(state.screen);
+  });
+
+  it('counts each turn instance separately even when the same player returns', () => {
+    const start = initialTableState('en');
+    const p1 = tableReducer(start, { type: 'snapshot', snapshot: makeSnapshot(makeView({ turnPlayerId: 'p1' }), 12) });
+    expect(p1.turnGeneration).toBe(1);
+    const duplicate = tableReducer(p1, { type: 'snapshot', snapshot: makeSnapshot(makeView({ turnPlayerId: 'p1' }), 13) });
+    expect(duplicate.turnGeneration).toBe(1);
+    const p2 = tableReducer(duplicate, { type: 'snapshot', snapshot: makeSnapshot(makeView({ turnPlayerId: 'p2' }), 13) });
+    expect(p2.turnGeneration).toBe(2);
+    const back = tableReducer(p2, { type: 'snapshot', snapshot: makeSnapshot(makeView({ turnPlayerId: 'p1' }), 14) });
+    expect(back.turnGeneration).toBe(3);
+    expect(activeTurnKey(back)).not.toBe(activeTurnKey(p1));
   });
 
   it('keeps a draft nickname across a locale change but resets nothing else', () => {

@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
 import { canRetry, needsRefresh, needsResolve } from '../state/commands.ts';
 import { translateNotice } from '../i18n/events.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
+import { activeTurnKey } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
+import {
+  ACCEPTED_RECEIPT_MS,
+  REJECTED_RECEIPT_MS,
+  useTransientNotice,
+} from './useTransientNotice.ts';
 
 /**
  * Command lifecycle feedback (docs/SPEC.md §8.2/§8.4).
@@ -10,20 +15,22 @@ import type { TableController } from '../state/useTable.ts';
  * The important product rule is encoded in the button set: while the outcome is
  * unknown the only offered action is "resolve the receipt"; a retry appears
  * only after a definitive rejection, and after a stale revision only after a
- * refresh.
+ * refresh. Accepted and rejected feedback clears on its own; unknown/stale
+ * recovery stays until it is resolved.
  */
 export function CommandStatus({ controller }: { controller: TableController }) {
   const t = useT();
   const locale = useLocale();
   const { state, actions } = controller;
   const command = state.command;
-  const [dismissedId, setDismissedId] = useState<string | null>(null);
-  useEffect(() => {
-    if (command?.status !== 'accepted') return;
-    const timer = setTimeout(() => setDismissedId(command.commandId), 4000);
-    return () => clearTimeout(timer);
-  }, [command?.commandId, command?.status]);
-  if (!command || (command.status === 'accepted' && command.commandId === dismissedId)) return null;
+  const transient = command?.status === 'accepted' || command?.status === 'rejected';
+  const visible = useTransientNotice(command?.commandId ?? null, {
+    timeoutMs: command?.status === 'accepted' ? ACCEPTED_RECEIPT_MS
+      : command?.status === 'rejected' ? REJECTED_RECEIPT_MS : null,
+    turnKey: activeTurnKey(state),
+    dismissOnTurnChange: transient,
+  });
+  if (!command || !visible) return null;
 
   const reason = command.error ? translateNotice(locale, command.error) : '';
 

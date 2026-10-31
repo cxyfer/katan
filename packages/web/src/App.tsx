@@ -8,6 +8,8 @@ import { HomeScreen } from './components/HomeScreen.tsx';
 import { LobbyScreen } from './components/LobbyScreen.tsx';
 import { GameScreen } from './components/GameScreen.tsx';
 import { ResultScreen } from './components/ResultScreen.tsx';
+import { Toast } from './components/Toast.tsx';
+import { activeTurnKey } from './state/table.ts';
 import type { TableController } from './state/useTable.ts';
 
 /**
@@ -53,18 +55,11 @@ function AppShell({ controller }: { controller: TableController }) {
         </div>
       )}
 
-      {state.toast && (
-        <div className="toast" role="status" data-testid="toast">
-          <span>{translateNotice(locale, state.toast)}</span>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => controller.dispatch({ type: 'toast', notice: null })}
-          >
-            {t('app.dismiss')}
-          </button>
-        </div>
-      )}
+      <Toast
+        notice={state.toast}
+        turnKey={activeTurnKey(state)}
+        onDismiss={() => controller.dispatch({ type: 'toast', notice: null })}
+      />
     </>
   );
 }
