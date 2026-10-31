@@ -45,12 +45,17 @@ outside 0.3.
 
 - Stepped shallows, a dashed swell, surf and a sand rim from the shared coastline.
 - Each tile keeps its flat fill and adds a texture pattern, a light gradient and an inner bevel.
-- Number tokens move to the tile centre; probability pips are drawn dots.
-- Each terrain has a new scene arranged around the token, clear of corners and lanes.
+- Each tile keeps the original single-icon language: one centred emblem on an
+  earthen plate above the number token, redrawn with two-tone light (pines with
+  a broadleaf, snow-capped peaks, a clay hill with a brick stack, five wheat
+  stalks, sheep by a fence, a butte and cactus). Probability pips are drawn dots
+  and the terrain letter/glyph tag sits left of the token.
+  An earlier iteration that scattered small scenes around a centred token was
+  dropped after review in favour of the single icon.
 - Harbours are two-plank jetties to a badge with ratio and resource glyph (`<title>` keeps `2:1L`).
 - Roads have a dark outline and highlight, keep the seat dash pattern, and are inset at their ends.
 - Settlements and cities are drawn with a lit face and a shaded side.
-- The robber is a hooded figure beside the token instead of over it.
+- The robber is a hooded figure to the right of the token instead of over it.
 
 ## Verification
 

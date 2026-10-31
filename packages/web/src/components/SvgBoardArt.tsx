@@ -177,136 +177,129 @@ function Sheep({ x, y, s = 1, flip = false }: { x: number; y: number; s?: number
   </g>;
 }
 
-function WheatRow({ x, y, length, s = 1 }: { x: number; y: number; length: number; s?: number }) {
-  const ears = Math.max(2, Math.round(length / 9));
-  return <g transform={`translate(${x} ${y}) scale(${s})`}>
-    <path d={`M${-length / 2} 2H${length / 2}`} stroke="#a77f2c" strokeWidth="3" strokeLinecap="round" opacity=".55" />
-    {Array.from({ length: ears }, (_, index) => {
-      const ex = -length / 2 + (index + 0.5) * length / ears;
-      const lean = index % 2 ? 2 : -1.5;
-      return <g key={index} transform={`translate(${ex} 0) rotate(${lean * 3})`}>
-        <path d="M0 1v-13" stroke="#b58d34" strokeWidth="1.2" />
-        <path d="M0-19q3.2 3 0 8-3.2-5 0-8Z" fill="#f2d27a" stroke="#c69a3c" strokeWidth=".8" />
-      </g>;
-    })}
-  </g>;
-}
-
-function Sheaf({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
-  return <g transform={`translate(${x} ${y}) scale(${s})`}>
-    <ellipse cy="1" rx="10" ry="3" fill="#5a4214" opacity=".25" />
-    <path d="M-8 0l4-20h8l4 20Z" fill="#e7c46a" stroke="#b48a33" strokeWidth="1" />
-    <path d="M-5-20q5-9 10 0" fill="#f3d888" stroke="#b48a33" strokeWidth="1" />
-    <path d="M-6-9h12" stroke="#8a6326" strokeWidth="2.4" />
-  </g>;
+/** A soft earthen plate that every emblem stands on. */
+function Ground({ fill, light, w = 118 }: { fill: string; light: string; w?: number }) {
+  const half = w / 2;
+  return <>
+    <ellipse cy="5" rx={half + 2} ry="9" fill="#0d1d16" opacity=".2" />
+    <path d={`M${-half} 2q${half} -26 ${w} 0q${-half} 10 ${-w} 0Z`} fill={fill} />
+    <path d={`M${-half * 0.62} -6q${half * 0.62} -14 ${half * 1.24} 0`} fill="none" stroke={light} strokeWidth="2.4" strokeLinecap="round" opacity=".75" />
+  </>;
 }
 
 function Cactus({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
   return <g transform={`translate(${x} ${y}) scale(${s})`} strokeLinecap="round" fill="none">
-    <ellipse cy="1" rx="8" ry="2.5" fill="#7a5f33" opacity=".25" />
-    <path d="M0 0v-28M0-12h-7v-9M0-17h6v-7" stroke="#4f7b52" strokeWidth="5.5" />
-    <path d="M-1.4 0v-27M-8.4-12v-8" stroke="#86ad78" strokeWidth="1.5" opacity=".8" />
+    <path d="M0 0v-30M0-12h-8v-10M0-18h7v-8" stroke="#3f6a46" strokeWidth="6.5" />
+    <path d="M0 0v-30M0-12h-8v-10M0-18h7v-8" stroke="#5f9160" strokeWidth="4.5" />
+    <path d="M-1.4-1v-27M-9.2-13v-8" stroke="#a6cf8f" strokeWidth="1.3" opacity=".8" />
   </g>;
 }
 
 function Butte({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
   const half = w / 2;
   return <g transform={`translate(${x} ${y})`}>
-    <path d={`M${-half} 0L${-half * 0.78} ${-h}H${half * 0.78}L${half} 0Z`} fill="#d29a6a" />
-    <path d={`M${-half * 0.93} ${-h * 0.35}H${half * 0.93}M${-half * 0.86} ${-h * 0.68}H${half * 0.86}`} stroke="#b97a4c" strokeWidth="2.2" />
-    <path d={`M${half * 0.2} ${-h}H${half * 0.78}L${half} 0H${half * 0.32}Z`} fill="#000" opacity=".15" />
-    <path d={`M${-half * 0.78} ${-h}H${half * 0.78}`} stroke="#ecc596" strokeWidth="2.4" />
+    <path d={`M${-half} 0L${-half * 0.76} ${-h}H${half * 0.76}L${half} 0Z`} fill="#d29a6a" />
+    <path d={`M${-half * 0.92} ${-h * 0.34}H${half * 0.92}M${-half * 0.84} ${-h * 0.68}H${half * 0.84}`} stroke="#b97a4c" strokeWidth="2.2" />
+    <path d={`M${half * 0.18} ${-h}H${half * 0.76}L${half} 0H${half * 0.3}Z`} fill="#4a2a14" opacity=".18" />
+    <path d={`M${-half * 0.76} ${-h}H${half * 0.76}`} stroke="#f0cd9f" strokeWidth="2.6" strokeLinecap="round" />
   </g>;
 }
 
-function Kiln({ x, y }: { x: number; y: number }) {
-  return <g transform={`translate(${x} ${y})`}>
-    <ellipse cy="1" rx="13" ry="3.5" fill="#4a2414" opacity=".25" />
-    <path d="M-11 0v-9q0-11 11-11t11 11V0Z" fill="#b8694a" stroke="#7c3f28" strokeWidth="1.2" />
-    <path d="M-4 0v-6q4-5 8 0V0Z" fill="#3a2419" />
-    <path d="M4-24h5v9h-5Z" fill="#7a4a35" />
-    <circle cx="8" cy="-29" r="3.5" fill="#eee8dd" opacity=".85" /><circle cx="11" cy="-35" r="2.6" fill="#f5f1e9" opacity=".7" />
-  </g>;
-}
-
-function BrickStack({ x, y }: { x: number; y: number }) {
+function BrickStack({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
   const brick = (bx: number, by: number, key: string) => <g key={key}>
-    <rect x={bx} y={by} width="9" height="5" fill="#cf8463" stroke="#8c4a32" strokeWidth=".9" />
-    <rect x={bx} y={by} width="9" height="1.6" fill="#eab08e" />
+    <rect x={bx} y={by} width="12" height="6.5" rx=".8" fill="#d18665" stroke="#86452e" strokeWidth="1" />
+    <rect x={bx + 1} y={by + 1} width="10" height="1.8" fill="#f0b996" opacity=".9" />
   </g>;
-  return <g transform={`translate(${x} ${y})`}>
-    <ellipse cx="0" cy="1" rx="16" ry="3.5" fill="#4a2414" opacity=".25" />
-    {[0, 1, 2].flatMap((row) => Array.from({ length: 3 - row }, (_, col) => brick(-13.5 + row * 4.5 + col * 9, -5 - row * 5, `${row}-${col}`)))}
+  return <g transform={`translate(${x} ${y}) scale(${s})`}>
+    <ellipse cy="1.5" rx="21" ry="4" fill="#4a2414" opacity=".25" />
+    {[0, 1, 2].flatMap((row) => Array.from({ length: 3 - row }, (_, col) => brick(-18 + row * 6 + col * 12, -6.5 - row * 6.5, `${row}-${col}`)))}
   </g>;
 }
 
-function Bones({ x, y }: { x: number; y: number }) {
-  return <g transform={`translate(${x} ${y})`} stroke="#f4ead2" strokeLinecap="round" fill="none">
-    <path d="M-10 0h18" strokeWidth="2.6" />
-    {[-7, -3, 1, 5].map((rx) => <path key={rx} d={`M${rx} 0q-2-5 1-7M${rx} 0q-2 5 1 7`} strokeWidth="1.4" />)}
+function WheatStalk({ x, h, lean }: { x: number; h: number; lean: number }) {
+  const kernels = [0, 1, 2, 3];
+  return <g transform={`translate(${x} 0) rotate(${lean})`}>
+    <path d={`M0 0V${-h}`} stroke="#9c7426" strokeWidth="2" strokeLinecap="round" />
+    <path d={`M0 ${-h * 0.35}q-9-4-11-12q8 2 11 9`} fill="#c9a447" />
+    {kernels.map((k) => {
+      const ky = -h + 3 + k * 6.5;
+      return <g key={k}>
+        <path d={`M0 ${ky + 3}q-7-1-7.5-7.5q6 1 7.5 6Z`} fill="#f1cf6e" stroke="#b78a2e" strokeWidth=".8" />
+        <path d={`M0 ${ky + 3}q7-1 7.5-7.5q-6 1-7.5 6Z`} fill="#e4bb55" stroke="#b78a2e" strokeWidth=".8" />
+      </g>;
+    })}
+    <path d={`M0 ${-h - 1}q-1.6-4 0-8 1.6 4 0 8Z`} fill="#f6da86" stroke="#b78a2e" strokeWidth=".8" />
+    <path d={`M-2 ${-h - 4}l-5-10M2 ${-h - 4}l5-10M0 ${-h - 8}v-9`} stroke="#d7b257" strokeWidth=".9" />
+  </g>;
+}
+
+function Fence({ from, to, y }: { from: number; to: number; y: number }) {
+  const posts = Math.round((to - from) / 14);
+  return <g>
+    <path d={`M${from} ${y - 9}H${to}M${from} ${y - 4}H${to}`} stroke="#c4a679" strokeWidth="2" />
+    {Array.from({ length: posts + 1 }, (_, index) => <path key={index} d={`M${from + index * (to - from) / posts} ${y}v-13`} stroke="#8e7254" strokeWidth="2.6" strokeLinecap="round" />)}
   </g>;
 }
 
 /**
- * Each terrain's scene sits around the central number token: tall features stay
- * in the back half, small details flank the token, lanes and corners stay clear.
+ * One centred emblem per terrain, like a printed tile icon: a single motif on
+ * an earthen plate, sitting above the number token.
  */
-export function TerrainScene({ terrain, x, y }: { terrain: string; x: number; y: number }) {
+export function TerrainEmblem({ terrain, x, y }: { terrain: string; x: number; y: number }) {
   let art: ReactNode;
   switch (terrain) {
     case 'forest':
       art = <>
-        <Pine x={-30} y={-40} s={.8} tone={1} /><Pine x={30} y={-42} s={.86} tone={2} /><Pine x={0} y={-52} s={1} />
-        <Pine x={-52} y={-4} s={.66} tone={2} /><Broadleaf x={50} y={2} s={.72} />
-        <Pine x={-38} y={42} s={.6} tone={1} /><Pine x={40} y={44} s={.56} />
+        <Ground fill="#4c7a45" light="#78a565" />
+        <Broadleaf x={-40} y={-2} s={.82} /><Pine x={40} y={-1} s={.92} tone={2} />
+        <Pine x={-17} y={1} s={1.08} tone={1} /><Pine x={14} y={3} s={1.32} />
       </>;
       break;
     case 'mountains':
     case 'gold':
       art = <>
-        <Peak x={-26} y={-30} w={56} h={46} /><Peak x={26} y={-30} w={52} h={40} /><Peak x={0} y={-30} w={66} h={58} />
-        <Peak x={-50} y={10} w={30} h={22} snow={false} /><Peak x={52} y={14} w={26} h={18} snow={false} />
-        <Rock x={-30} y={44} s={1.1} /><Rock x={34} y={46} s={.9} fill="#8a918b" /><Rock x={-12} y={56} s={.7} />
-        {terrain === 'gold' && <><Rock x={22} y={36} s={1.2} fill="#d9b44d" /><Rock x={-46} y={30} s={.9} fill="#e7c868" /></>}
+        <Ground fill={terrain === 'gold' ? '#8c7d4e' : '#76817f'} light={terrain === 'gold' ? '#c9b46a' : '#a4aca6'} />
+        <Peak x={-30} y={-2} w={58} h={44} /><Peak x={32} y={-2} w={54} h={40} /><Peak x={0} y={-1} w={74} h={64} />
+        <Rock x={-38} y={3} s={1.1} /><Rock x={42} y={4} s={.9} fill="#8a918b" />
+        {terrain === 'gold' && <><Rock x={14} y={4} s={1.3} fill="#e0b84a" /><Rock x={-12} y={5} s={1} fill="#f0d070" /></>}
       </>;
       break;
     case 'hills':
       art = <>
-        <Mound x={18} y={-32} w={84} h={40} colors={['#c27650', '#a85d3c', '#d79a72']} />
-        <Mound x={-34} y={-26} w={58} h={28} colors={['#b5694a', '#9a5236', '#d08a64']} />
-        <Kiln x={-46} y={22} /><BrickStack x={46} y={24} />
-        <Rock x={-24} y={52} s={.8} fill="#c98a66" /><Rock x={22} y={56} s={.7} fill="#b9745a" />
+        <Ground fill="#a75e3c" light="#d99a70" />
+        <Mound x={-14} y={0} w={92} h={50} colors={['#c27650', '#a35a3a', '#de9f76']} />
+        <Mound x={38} y={1} w={50} h={26} colors={['#b5694a', '#96503a', '#d08a64']} grass={false} />
+        <BrickStack x={26} y={5} s={1.15} />
       </>;
       break;
     case 'fields':
       art = <>
-        <WheatRow x={0} y={-58} length={44} /><WheatRow x={0} y={-38} length={76} /><WheatRow x={-46} y={-14} length={30} />
-        <WheatRow x={46} y={-14} length={30} /><WheatRow x={-44} y={24} length={34} s={.9} /><WheatRow x={44} y={24} length={34} s={.9} />
-        <Sheaf x={-20} y={54} s={.9} /><Sheaf x={20} y={54} s={.9} />
+        <Ground fill="#c29a3e" light="#ecd07a" />
+        <WheatStalk x={-30} h={38} lean={-14} /><WheatStalk x={30} h={38} lean={14} />
+        <WheatStalk x={-14} h={48} lean={-6} /><WheatStalk x={14} h={48} lean={6} /><WheatStalk x={0} h={56} lean={0} />
       </>;
       break;
     case 'pasture':
       art = <>
-        <path d="M-62-22q30-34 62-22 30-18 62 22Z" fill="#8fb565" opacity=".8" />
-        <path d="M-50-36v-10m22 6v-10m22 7v-10m22 9v-10m22 11v-10" stroke="#8e7655" strokeWidth="2.4" strokeLinecap="round" />
-        <path d="M-52-42q24-8 46-3t44 2" stroke="#b39871" strokeWidth="2" fill="none" />
-        <Sheep x={-24} y={-48} s={.82} /><Sheep x={28} y={-46} s={.78} flip />
-        <Sheep x={-48} y={14} s={.9} /><Sheep x={46} y={20} s={.86} flip /><Sheep x={-8} y={52} s={.74} flip />
-        {[-30, 24, 34].map((fx, index) => <circle key={fx} cx={fx} cy={index ? 48 : 40} r={2.4} fill={index % 2 ? '#f0e3a4' : '#e8a8a2'} />)}
+        <Ground fill="#7aa956" light="#b4d283" />
+        <Fence from={-54} to={-14} y={-8} />
+        <Sheep x={42} y={-7} s={1} flip />
+        <Sheep x={-12} y={4} s={1.75} />
+        <circle cx={-40} cy={2} r={2.6} fill="#f3e6a8" /><circle cx={46} cy={3} r={2.4} fill="#eaaaa4" />
       </>;
       break;
     case 'desert':
       art = <>
-        <path d="M-66-14q30-34 64-12 30-30 66 12Z" fill="#e9cf98" />
-        <path d="M-58-18q26-16 52-6m16-4q24-14 46 6" stroke="#f7e6bd" strokeWidth="2.4" fill="none" />
-        <Butte x={-28} y={-34} w={42} h={30} /><Cactus x={34} y={-28} s={1} /><Cactus x={52} y={18} s={.72} />
-        <Bones x={-44} y={36} /><Rock x={20} y={50} s={.9} fill="#c4a87a" /><Rock x={-12} y={56} s={.6} fill="#b89b6c" />
+        <Ground fill="#d8b77a" light="#f3e0b2" />
+        <path d="M-56 0q22-24 50-8 20-18 58 8Z" fill="#e8cd95" />
+        <path d="M-44-4q18-12 34-4m22-2q16-10 32 4" stroke="#f8e8c2" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+        <Butte x={-24} y={-2} w={46} h={36} /><Cactus x={28} y={1} s={1.35} />
       </>;
       break;
     default:
       art = <path d="M-40-10q10-8 20 0t20 0 20 0 20 0M-40 10q10-8 20 0t20 0 20 0 20 0" fill="none" stroke="#bfe6df" strokeWidth="2.5" />;
   }
-  return <g transform={`translate(${x} ${y})`} className="board__scene" aria-hidden="true" pointerEvents="none">{art}</g>;
+  return <g transform={`translate(${x} ${y})`} className="board__terrain-art" aria-hidden="true" pointerEvents="none">{art}</g>;
 }
 
 export function NumberToken({ x, y, number, pips, ids }: { x: number; y: number; number: number; pips: number; ids: BoardArtIds }) {

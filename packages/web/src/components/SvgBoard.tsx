@@ -7,7 +7,7 @@ import type { TableState } from '../state/table.ts';
 import { useT } from '../i18n/context.tsx';
 import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrainLetter, terrainSymbol } from '../board/terrain.ts';
 import { confirmedPlacement } from '../board/effects.ts';
-import { BoardArtDefs, BoardBuilding, boardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TerrainScene, TileFinish } from './SvgBoardArt.tsx';
+import { BoardArtDefs, BoardBuilding, boardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TerrainEmblem, TileFinish } from './SvgBoardArt.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
@@ -23,9 +23,12 @@ interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'
   nameResolver: (id: string) => string;
 }
 
-/** 有數字牌時強盜站在數字牌旁，不遮住點數。 */
+/** 圖示在上、數字牌在下，與實體版面相同。 */
+const TOKEN_DROP = 32;
+
+/** 有數字牌時強盜站在數字牌右側，不遮住點數；地形標記在左側。 */
 function robberSpot(hex: { cx: number; cy: number }, numbered: boolean): Point {
-  return numbered ? { x: hex.cx + 40, y: hex.cy - 2 } : { x: hex.cx, y: hex.cy + 4 };
+  return numbered ? { x: hex.cx + 46, y: hex.cy + TOKEN_DROP - 4 } : { x: hex.cx, y: hex.cy + TOKEN_DROP - 6 };
 }
 
 /** 道路兩端內縮，讓路口的村莊與城市保持完整可見。 */
@@ -63,16 +66,16 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
                   strokeLinejoin="round"
                 />
                 <TileFinish terrain={terrain} points={hex.points} cx={hex.cx} cy={hex.cy} ids={ids} />
-                <TerrainScene terrain={terrain} x={hex.cx} y={hex.cy} />
+                <TerrainEmblem terrain={terrain} x={hex.cx} y={hex.cy - 4} />
                 <g aria-hidden="true" pointerEvents="none">
-                  <rect x={hex.cx - 16} y={hex.cy + 61} width={32} height={15} rx={7.5} fill="#fff8e4" opacity=".55" />
-                  <text className="board__terrain" x={hex.cx} y={hex.cy + 72.5} textAnchor="middle">
+                  <rect x={hex.cx - 65} y={hex.cy + 25} width={30} height={15} rx={7.5} fill="#fff8e4" opacity=".55" />
+                  <text className="board__terrain" x={hex.cx - 50} y={hex.cy + 36.5} textAnchor="middle">
                     {terrainSymbol(terrain)}
                     {terrainLetter(terrain)}
                   </text>
                 </g>
                 {number !== null && number !== undefined && (
-                  <NumberToken x={hex.cx} y={hex.cy} number={number} pips={pipsFor(number)} ids={ids} />
+                  <NumberToken x={hex.cx} y={hex.cy + TOKEN_DROP} number={number} pips={pipsFor(number)} ids={ids} />
                 )}
               </g>
             );
