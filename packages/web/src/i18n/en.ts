@@ -418,6 +418,7 @@ export const en: Catalog = {
   'play.pending.discard': 'Discard {count} card(s)',
   'play.pending.discardWaiting': 'Waiting for other players to discard',
   'play.pending.discardOwned': 'Have {count}',
+  'play.pending.discardButtonState': 'Selected {selected}, have {owned}',
   'play.pending.discardRequired': 'Required: {required}',
   'play.pending.discardSelected': 'Selected: {selected}',
   'play.pending.discardSubmit': 'Submit discard',

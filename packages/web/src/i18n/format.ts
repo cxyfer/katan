@@ -53,13 +53,6 @@ export function formatResourceMap(
   return parts.length > 0 ? parts.join('、') : '—';
 }
 
-/** Renders a list of resource ids with multiplicities (e.g. a discard pile). */
-export function formatResourceList(locale: Locale, resources: readonly string[]): string {
-  const counts = new Map<string, number>();
-  for (const resource of resources) counts.set(resource, (counts.get(resource) ?? 0) + 1);
-  return formatResourceMap(locale, Object.fromEntries(counts));
-}
-
 /** Renders a per-player production/transfer summary (`{ p1: { wool: 2 } }`). */
 export function formatGrantMap(
   locale: Locale,

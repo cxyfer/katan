@@ -453,13 +453,21 @@ describe('development cards and pending effects', () => {
     // 減號可逐張移除，移除後同一種資源可以再選。
     fireEvent.click(screen.getByTestId('discard-sub-lumber'));
     expect(screen.getByTestId('discard-picked-lumber').textContent).toBe('0');
-    expect(screen.getByTestId('discard-counts').textContent).toContain('0');
+    expect(screen.getByTestId('discard-counts').textContent).toContain('Selected: 0');
     expect((screen.getByTestId('discard-sub-lumber') as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByTestId('discard-add-lumber') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByTestId('discard-add-lumber'));
 
+    // 同一種資源有兩張時，減號只移除一張，不能清掉整組。
     fireEvent.click(screen.getByTestId('discard-add-brick'));
     fireEvent.click(screen.getByTestId('discard-add-brick'));
+    expect(screen.getByTestId('discard-picked-brick').textContent).toBe('2');
+    expect(screen.getByTestId('discard-add-brick').getAttribute('aria-describedby')).toBe('discard-state-brick');
+    fireEvent.click(screen.getByTestId('discard-sub-brick'));
+    expect(screen.getByTestId('discard-picked-brick').textContent).toBe('1');
+    expect(screen.getByTestId('discard-counts').textContent).toContain('Selected: 2');
+    fireEvent.click(screen.getByTestId('discard-add-brick'));
+
     fireEvent.click(screen.getByTestId('discard-add-wool'));
     fireEvent.click(screen.getByTestId('discard-add-wool'));
     fireEvent.click(screen.getByTestId('discard-submit'));

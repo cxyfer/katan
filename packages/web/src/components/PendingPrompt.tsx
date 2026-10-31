@@ -93,6 +93,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
                       className="button button--chip"
                       data-testid={`discard-sub-${resource}`}
                       aria-label={`${t(`resource.${resource}`)} −`}
+                      aria-describedby={`discard-state-${resource}`}
                       disabled={picked === 0}
                       onClick={() =>
                         setDiscardPick((current) => {
@@ -105,24 +106,30 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
                     >
                       −
                     </button>
-                    <output
-                      className="discard-picker__count"
-                      data-testid={`discard-picked-${resource}`}
-                      aria-label={`${t(`resource.${resource}`)}: ${formatNumber(locale, picked)}`}
-                    >
+                    <span className="discard-picker__count" data-testid={`discard-picked-${resource}`} aria-hidden="true">
                       {formatNumber(locale, picked)}
-                    </output>
+                    </span>
                     <button
                       type="button"
                       className="button button--chip"
                       data-testid={`discard-add-${resource}`}
                       aria-label={`${t(`resource.${resource}`)} +`}
-                      aria-describedby={have === undefined ? undefined : `discard-owned-${resource}`}
+                      aria-describedby={`discard-state-${resource}`}
                       disabled={addDisabled}
                       onClick={() => setDiscardPick((current) => [...current, resource])}
                     >
                       +
                     </button>
+                    <span className="visually-hidden" id={`discard-state-${resource}`}>
+                      {have === undefined
+                        ? t('play.pending.discardSelected', {
+                            selected: formatNumber(locale, picked),
+                          })
+                        : t('play.pending.discardButtonState', {
+                            selected: formatNumber(locale, picked),
+                            owned: formatNumber(locale, have),
+                          })}
+                    </span>
                   </span>
                 </li>
               );
