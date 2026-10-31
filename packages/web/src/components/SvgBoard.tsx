@@ -104,7 +104,8 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             const hex = land === undefined ? undefined : geometry.hexes[land];
             if (!edge || !hex) return null;
             const label = harbor.type === 'generic' ? '3:1' : '2:1';
-            const name = harbor.type === 'generic' ? '3:1' : `2:1${resourceLetter(harbor.type)}`;
+            const name = harbor.type === 'generic' ? t('board.harborGeneric')
+              : t('board.harborResource', { resource: `${t(`resource.${harbor.type}`)} (${resourceLetter(harbor.type)})` });
             return (
               <g key={`harbor-${harbor.edge}`} data-testid={`harbor-${harbor.edge}`}>
                 <HarborMarker from={{ x: edge.x1, y: edge.y1 }} to={{ x: edge.x2, y: edge.y2 }}

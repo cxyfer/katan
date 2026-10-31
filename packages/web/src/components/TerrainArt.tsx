@@ -98,7 +98,6 @@ function Cactus({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
   </g>;
 }
 
-/** 一塊帶頂面與側面的立體磚，原點在正面左下角。 */
 /** 立體磚的三個面與刻線；原點在正面左下角，可串接多塊為單一路徑。 */
 function brickFaces(x: number, y: number) {
   return {
@@ -227,5 +226,5 @@ export function TerrainEmblem({ terrain, x, y }: { terrain: string; x: number; y
     default:
       art = <path d="M-40-10q10-8 20 0t20 0 20 0 20 0M-40 10q10-8 20 0t20 0 20 0 20 0" fill="none" stroke="#bfe6df" strokeWidth="2.5" />;
   }
-  return <g transform={`translate(${x} ${y})`} className="board__terrain-art" aria-hidden="true" pointerEvents="none">{art}</g>;
+  return <g transform={`translate(${x} ${y})`} className="terrain-emblem" aria-hidden="true" pointerEvents="none">{art}</g>;
 }

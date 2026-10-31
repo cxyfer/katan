@@ -36,7 +36,7 @@ on `feat/board-3d-coast`, so both branches can merge independently.
   drawn dots and the terrain letter/glyph tag sits left of the token.
   An earlier iteration that scattered small scenes around a centred token was
   dropped after review in favour of the single icon.
-- Harbours are two-plank jetties to a badge with ratio and resource glyph (`<title>` keeps `2:1L`).
+- Harbours are two-plank jetties to a badge with ratio and resource glyph; the `<title>` names the harbour in the current locale with its resource letter.
 - Roads have a dark outline and highlight, keep the seat dash pattern, and are inset at their ends.
 - Settlements and cities are drawn with a lit face and a shaded side.
 - The robber is a hooded figure to the right of the token instead of over it.
@@ -59,13 +59,15 @@ solid-colour cells) are unchanged.
   browser runtime error. Captures are in `docs/screenshots/svg-board-polish/`.
 - `svg-board-art.test.tsx`: two boards in one document share no `id`, every
   `url(#…)` paint resolves inside its own board, each tile has one emblem, and
-  every harbour badge sits outside its land hex and inside the view box.
+  every harbour badge (radius plus half its stroke) sits outside its land hex and
+  inside the view box, the memoised tile layer redraws after a layout change,
+  and harbour titles are localized.
 - `pnpm verify` passes: typecheck; rules 138, protocol 7, server 99 (11
-  PostgreSQL-only skipped), web 536 tests in 53 files; build, smoke, `test:dev`.
+  PostgreSQL-only skipped), web 538 tests in 53 files; build, smoke, `test:dev`.
 
 ## Review follow-ups
 
-- The view box padding grows from 0.35 to 0.55 hex and harbour badges sit 33
+- The view box padding grows from 0.35 to 0.55 hex and harbour badges sit 32
   units off the coast, so sand and badges stay inside the SVG fit instead of
   sliding under the side rails on a phone. Target projection reads the same
   view box, so hit targets stay aligned.
@@ -76,6 +78,10 @@ solid-colour cells) are unchanged.
   lobby test that mounts the board went from about 800 ms back to about 500 ms
   (`master`: about 490 ms) after a first `pnpm verify` timed out its 1 s
   `findBy` under parallel load.
+- A second subagent review found nothing high or medium; its low items are
+  fixed here: badge stroke inside the padding, localized harbour titles, the
+  emblem class renamed to `terrain-emblem`, and dead `.board__robber` and
+  text-pip CSS removed.
 - `coastline.ts` treats a vertex shared by two separate land regions and inland
   sea holes naively. Only disabled rulesets could produce such boards; the file
   stays byte-identical to the 3D branch's copy, so a fix belongs in a follow-up
