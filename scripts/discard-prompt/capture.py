@@ -5,8 +5,9 @@
 
 以真實三人對局進行：只擲骰與結束回合，直到 7 同時要求至少兩位玩家棄牌。
 第一位玩家在 UI 選牌並送出後，另一位玩家仍待棄牌，因此可拍到「等待其他玩家
-棄牌」；選牌畫面會先選滿一種低於配額的資源，確認該資源按鈕因持有上限而停用
-（若每種持有量都達到配額，則跳過這張，避免把總數選滿）。
+棄牌」；選牌畫面會先選滿一種低於配額的資源，確認上限與減號，並斷言訊息區
+能完整顯示最下方的送出按鈕（若每種持有量都達到配額，則跳過上限那張，避免把
+總數選滿）。
 
 畫面斷言只覆蓋這次修改的 UI 狀態；規則本身由 packages/rules/test/seven.test.ts
 與 packages/web/test 的單元測試負責。只拍照，不做完整對局驗證。
@@ -57,6 +58,39 @@ def shot(page, name):
     settle(page)
     page.screenshot(path=str(OUT / f'{name}.png'), animations='disabled')
     print('CAPTURE', f'{name}.png', flush=True)
+
+
+def prompt_layout(page):
+    return page.evaluate("""() => {
+      const q = (selector) => document.querySelector(selector);
+      const rect = (element) => {
+        if (!element) return null;
+        const box = element.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom, left: box.left, right: box.right };
+      };
+      const messages = q('.game__messages');
+      return {
+        viewport: { width: innerWidth, height: innerHeight },
+        messages: messages
+          ? { rect: rect(messages), height: messages.clientHeight, scrollHeight: messages.scrollHeight }
+          : null,
+        prompt: rect(q('[data-testid="required-action-prompt"]')),
+        submit: rect(q('[data-testid="discard-submit"]')),
+      };
+    }""")
+
+
+def assert_prompt_fits(page, label):
+    # 必要回應必須完整落在訊息區內，包含最下方的送出按鈕；不能只剩上半部。
+    data = prompt_layout(page)
+    assert data['messages'] is not None, (label, data)
+    assert data['prompt'] is not None, (label, data)
+    assert data['submit'] is not None, (label, data)
+    assert data['messages']['scrollHeight'] <= data['messages']['height'] + 1, (label, data)
+    assert data['prompt']['bottom'] <= data['messages']['rect']['bottom'] + 1, (label, data)
+    assert data['submit']['bottom'] <= data['messages']['rect']['bottom'] + 1, (label, data)
+    assert data['submit']['bottom'] <= data['viewport']['height'] + 1, (label, data)
+    print('FITS', label, {key: data[key] for key in ('viewport', 'messages', 'submit')}, flush=True)
 
 
 def resources_of(context, path, pid):
@@ -189,6 +223,9 @@ with sync_playwright() as p:
     resources = resources_of(dict(zip(identity, contexts))[first], path, first)
     for resource in RESOURCES:
         expect(page.get_by_test_id(f'discard-owned-{resource}')).to_have_text(f'持有 {resources[resource]}')
+        expect(page.get_by_test_id(f'discard-sub-{resource}')).to_be_visible()
+    expect(page.get_by_test_id('discard-sub-lumber')).to_be_disabled()
+    assert_prompt_fits(page, '1366x768-selecting')
     shot(page, 'discard-selecting-1366x768-zh-Hant')
 
     # A per-resource cap is only observable while the total stays below the
@@ -203,6 +240,13 @@ with sync_playwright() as p:
         for _ in range(resources[target]):
             page.get_by_test_id(f'discard-add-{target}').click()
         picked[target] = resources[target]
+        expect(page.get_by_test_id(f'discard-picked-{target}')).to_have_text(str(resources[target]))
+        expect(page.get_by_test_id(f'discard-sub-{target}')).to_be_enabled()
+        # 減號要能逐張移除，移除後同一種資源可以再選。
+        page.get_by_test_id(f'discard-sub-{target}').click()
+        expect(page.get_by_test_id(f'discard-picked-{target}')).to_have_text(str(resources[target] - 1))
+        expect(page.get_by_test_id(f'discard-add-{target}')).to_be_enabled()
+        page.get_by_test_id(f'discard-add-{target}').click()
         owned_buttons = {
             r: page.get_by_test_id(f'discard-add-{r}').is_disabled() for r in RESOURCES
         }
@@ -211,6 +255,7 @@ with sync_playwright() as p:
         prompt_box = page.get_by_test_id('required-action-prompt').bounding_box()
         print('DISABLED', owned_buttons, 'TARGET', target, 'BOX', prompt_box, flush=True)
         assert prompt_box is not None
+        assert_prompt_fits(page, '1366x768-owned-cap')
         shot(page, 'discard-owned-cap-1366x768-zh-Hant')
     else:
         print('SKIP per-resource cap: every held pile reaches the quota', flush=True)
@@ -221,6 +266,7 @@ with sync_playwright() as p:
     other_page.locator('[data-testid=locale-switch-game]').select_option('zh-Hant')
     other_page.set_viewport_size({'width': 390, 'height': 844})
     expect(other_page.get_by_test_id('discard-submit')).to_be_visible()
+    assert_prompt_fits(other_page, '390x844-selecting')
     shot(other_page, 'discard-selecting-390x844-zh-Hant')
 
     # Finish the first player's selection (respecting each cap) and submit.
