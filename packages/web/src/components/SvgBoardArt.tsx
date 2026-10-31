@@ -155,25 +155,29 @@ function Rock({ x, y, s = 1, fill = '#9aa19b' }: { x: number; y: number; s?: num
   </g>;
 }
 
-function Mound({ x, y, w, h, colors, grass = true }: { x: number; y: number; w: number; h: number; colors: readonly [string, string, string]; grass?: boolean }) {
-  const half = w / 2;
-  return <g transform={`translate(${x} ${y})`}>
-    <path d={`M${-half} 0C${-half * 0.7} ${-h * 1.2} ${half * 0.7} ${-h * 1.2} ${half} 0Z`} fill={colors[0]} />
-    <path d={`M${-half * 0.9} ${-h * 0.25}C${-half * 0.4} ${-h * 0.4} ${half * 0.4} ${-h * 0.4} ${half * 0.9} ${-h * 0.25}`} fill="none" stroke={colors[1]} strokeWidth="2.4" />
-    <path d={`M${-half * 0.72} ${-h * 0.55}C${-half * 0.3} ${-h * 0.7} ${half * 0.3} ${-h * 0.7} ${half * 0.72} ${-h * 0.55}`} fill="none" stroke={colors[2]} strokeWidth="2" />
-    <path d={`M${half * 0.1} ${-h * 0.88}C${half * 0.6} ${-h * 0.7} ${half * 0.86} ${-h * 0.3} ${half} 0H${half * 0.35}Z`} fill="#000" opacity=".14" />
-    {grass && <path d={`M${-half * 0.42} ${-h * 0.78}C${-half * 0.15} ${-h * 0.95} ${half * 0.2} ${-h * 0.95} ${half * 0.4} ${-h * 0.8}C${half * 0.1} ${-h * 0.86} ${-half * 0.15} ${-h * 0.86} ${-half * 0.42} ${-h * 0.78}Z`} fill="#93a95e" />}
-  </g>;
-}
 
 function Sheep({ x, y, s = 1, flip = false }: { x: number; y: number; s?: number; flip?: boolean }) {
+  // 捲毛身體由重疊圓構成：先畫略大的描邊圓，再畫毛色圓，最後點出毛捲。
+  const wool: readonly [number, number, number][] = [
+    [-13, -19, 8], [-4, -24, 9], [7, -23, 8.5], [14, -16, 7.5], [-15, -11, 7.5], [-4, -11, 9], [8, -11, 8.5],
+  ];
+  const leg = (lx: number, top: number, fill: string) => <rect x={lx - 2.2} y={top} width="4.4" height={-top + 0.5} rx="2" fill={fill} />;
   return <g transform={`translate(${x} ${y}) scale(${flip ? -s : s} ${s})`}>
-    <ellipse cy="2" rx="11" ry="2.8" fill="#2e4a24" opacity=".25" />
-    <path d="M-6 0v-5M5 0v-5" stroke="#4b4239" strokeWidth="2.2" strokeLinecap="round" />
-    <path d="M-10-7q-3-5 2-7 1-5 7-4 4-4 9 0 5 0 4 5 2 5-3 7H-8q-4 0-2-1Z" fill="#f6f1df" stroke="#d5cfb6" strokeWidth="1" />
-    <ellipse cx="11" cy="-10" rx="3.8" ry="4.6" fill="#4d463e" />
-    <path d="M10-14l5-2" stroke="#4d463e" strokeWidth="2" strokeLinecap="round" />
-    <circle cx="12.4" cy="-11" r=".9" fill="#f8f2df" />
+    <ellipse cy="1" rx="22" ry="3.6" fill="#24401c" opacity=".28" />
+    {leg(-10, -10, '#3a312a')}{leg(10, -10, '#3a312a')}
+    {wool.map(([cx, cy, r]) => <circle key={`o${cx}${cy}`} cx={cx} cy={cy} r={r + 1.4} fill="#cfc6aa" />)}
+    {wool.map(([cx, cy, r]) => <circle key={`w${cx}${cy}`} cx={cx} cy={cy} r={r} fill="#f8f3e3" />)}
+    <path d="M-17-8q8 5 16 2t16-1" fill="none" stroke="#e2d9bf" strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M-9-24q2-3 5-1M3-27q2-3 5 0M-14-16q2-3 5-1" fill="none" stroke="#e2d9bf" strokeWidth="1.4" strokeLinecap="round" />
+    {leg(-14, -7, '#4b4037')}{leg(5, -7, '#4b4037')}
+    <g transform="translate(19 -21) rotate(18)">
+      <ellipse cx="-3" cy="-6" rx="5.2" ry="2.4" transform="rotate(-35 -3 -6)" fill="#3a312a" />
+      <ellipse rx="6.4" ry="8.6" fill="#4d433a" />
+      <ellipse cx="1.5" cy="5" rx="4" ry="3.4" fill="#6b5f53" />
+      <circle cx="2.2" cy="-1.5" r="1.5" fill="#fbf6e6" /><circle cx="2.6" cy="-1.3" r=".7" fill="#1d1915" />
+      <ellipse cx="3" cy="-6.5" rx="5" ry="2.2" transform="rotate(10 3 -6.5)" fill="#5c5046" />
+      <circle cx="-2.5" cy="-8.4" r="3" fill="#f8f3e3" /><circle cx="0.5" cy="-9.4" r="2.6" fill="#f8f3e3" />
+    </g>
   </g>;
 }
 
@@ -188,31 +192,32 @@ function Ground({ fill, light, w = 118 }: { fill: string; light: string; w?: num
 }
 
 function Cactus({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
-  return <g transform={`translate(${x} ${y}) scale(${s})`} strokeLinecap="round" fill="none">
-    <path d="M0 0v-30M0-12h-8v-10M0-18h7v-8" stroke="#3f6a46" strokeWidth="6.5" />
-    <path d="M0 0v-30M0-12h-8v-10M0-18h7v-8" stroke="#5f9160" strokeWidth="4.5" />
-    <path d="M-1.4-1v-27M-9.2-13v-8" stroke="#a6cf8f" strokeWidth="1.3" opacity=".8" />
+  const outline = 'M0 0V-31M0-13h-5q-4 0-4-4v-7M0-19h5q4 0 4-4v-5';
+  return <g transform={`translate(${x} ${y}) scale(${s})`} strokeLinecap="round" strokeLinejoin="round" fill="none">
+    <ellipse cy="1" rx="9" ry="2.4" fill="#7a5f33" opacity=".28" stroke="none" />
+    <path d={outline} stroke="#3c6644" strokeWidth="7" />
+    <path d={outline} stroke="#5e9161" strokeWidth="5" />
+    <path d="M-1.5-2v-27M-10-16v-6M7.5-22v-4" stroke="#a9d192" strokeWidth="1.3" opacity=".85" />
   </g>;
 }
 
-function Butte({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
-  const half = w / 2;
-  return <g transform={`translate(${x} ${y})`}>
-    <path d={`M${-half} 0L${-half * 0.76} ${-h}H${half * 0.76}L${half} 0Z`} fill="#d29a6a" />
-    <path d={`M${-half * 0.92} ${-h * 0.34}H${half * 0.92}M${-half * 0.84} ${-h * 0.68}H${half * 0.84}`} stroke="#b97a4c" strokeWidth="2.2" />
-    <path d={`M${half * 0.18} ${-h}H${half * 0.76}L${half} 0H${half * 0.3}Z`} fill="#4a2a14" opacity=".18" />
-    <path d={`M${-half * 0.76} ${-h}H${half * 0.76}`} stroke="#f0cd9f" strokeWidth="2.6" strokeLinecap="round" />
+
+/** 一塊帶頂面與側面的立體磚，原點在正面左下角。 */
+function Brick({ x, y }: { x: number; y: number }) {
+  return <g transform={`translate(${x} ${y})`} strokeLinejoin="round" stroke="#7d3a24" strokeWidth=".9">
+    <path d="M0-7l4-3.5h14L14-7Z" fill="#eda27c" />
+    <path d="M14-7l4-3.5V-3.5L14 0Z" fill="#9c4d33" />
+    <rect x="0" y="-7" width="14" height="7" fill="#c96b4a" />
+    <path d="M1.6-4.6h10.8" stroke="#e08a66" strokeWidth="1" />
   </g>;
 }
 
 function BrickStack({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
-  const brick = (bx: number, by: number, key: string) => <g key={key}>
-    <rect x={bx} y={by} width="12" height="6.5" rx=".8" fill="#d18665" stroke="#86452e" strokeWidth="1" />
-    <rect x={bx + 1} y={by + 1} width="10" height="1.8" fill="#f0b996" opacity=".9" />
-  </g>;
+  // 由下而上、由左而右疊放，後畫的磚自然蓋住前一塊的側面。
+  const rows: readonly (readonly number[])[] = [[-21, -7, 7], [-14, 0], [-7]];
   return <g transform={`translate(${x} ${y}) scale(${s})`}>
-    <ellipse cy="1.5" rx="21" ry="4" fill="#4a2414" opacity=".25" />
-    {[0, 1, 2].flatMap((row) => Array.from({ length: 3 - row }, (_, col) => brick(-18 + row * 6 + col * 12, -6.5 - row * 6.5, `${row}-${col}`)))}
+    <ellipse cx="2" cy="1" rx="26" ry="4.2" fill="#4a2414" opacity=".28" />
+    {rows.map((row, level) => row.map((bx) => <Brick key={`${level}:${bx}`} x={bx} y={-level * 7} />))}
   </g>;
 }
 
@@ -267,9 +272,15 @@ export function TerrainEmblem({ terrain, x, y }: { terrain: string; x: number; y
     case 'hills':
       art = <>
         <Ground fill="#a75e3c" light="#d99a70" />
-        <Mound x={-14} y={0} w={92} h={50} colors={['#c27650', '#a35a3a', '#de9f76']} />
-        <Mound x={38} y={1} w={50} h={26} colors={['#b5694a', '#96503a', '#d08a64']} grass={false} />
-        <BrickStack x={26} y={5} s={1.15} />
+        {/* 背後的紅土丘：岩層條紋、背光面與零星草叢。 */}
+        <path d="M-56 1C-50-30-22-50 0-50S44-28 52 1Z" fill="#c27650" />
+        <path d="M0-50C22-50 44-28 52 1H16C20-20 14-38 0-50Z" fill="#8f4a2f" opacity=".35" />
+        <path d="M-48-14Q0-28 49-12M-41-28Q-4-40 38-27M-26-41Q0-48 22-41" fill="none" stroke="#a35a3a" strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M-50-8Q0-21 50-6" fill="none" stroke="#e1a47b" strokeWidth="1.6" strokeLinecap="round" opacity=".8" />
+        <path d="M-16-49q6-6 14-3 6-4 12 1-12-2-26 2Z" fill="#8fa35a" />
+        <path d="M-42-20q3-5 8-3-4 0-8 3ZM30-30q3-4 7-1-4-1-7 1Z" fill="#8fa35a" />
+        <BrickStack x={20} y={6} s={1.05} />
+        <Brick x={-38} y={6} />
       </>;
       break;
     case 'fields':
@@ -282,18 +293,24 @@ export function TerrainEmblem({ terrain, x, y }: { terrain: string; x: number; y
     case 'pasture':
       art = <>
         <Ground fill="#7aa956" light="#b4d283" />
-        <Fence from={-54} to={-14} y={-8} />
-        <Sheep x={42} y={-7} s={1} flip />
-        <Sheep x={-12} y={4} s={1.75} />
+        <Fence from={18} to={54} y={-9} />
+        <Sheep x={-38} y={-5} s={.78} />
+        <Sheep x={4} y={4} s={1.3} />
         <circle cx={-40} cy={2} r={2.6} fill="#f3e6a8" /><circle cx={46} cy={3} r={2.4} fill="#eaaaa4" />
       </>;
       break;
     case 'desert':
       art = <>
         <Ground fill="#d8b77a" light="#f3e0b2" />
-        <path d="M-56 0q22-24 50-8 20-18 58 8Z" fill="#e8cd95" />
-        <path d="M-44-4q18-12 34-4m22-2q16-10 32 4" stroke="#f8e8c2" strokeWidth="2.2" fill="none" strokeLinecap="round" />
-        <Butte x={-24} y={-2} w={46} h={36} /><Cactus x={28} y={1} s={1.35} />
+        {/* 遠方不規則的砂岩丘，前方兩道沙丘有受光面與背風陰影。 */}
+        <path d="M-48 0l3-13 8-4 4-11 7-3h14l4 9 7 2 3 20Z" fill="#cf9161" />
+        <path d="M-10-31h4l4 9 7 2 3 20H-6l2-14Z" fill="#9c5c37" opacity=".35" />
+        <path d="M-37-17l4-11 7-3h14M-44-9h44" fill="none" stroke="#e7b585" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M-60 2C-44-17-20-20-2-6 10-17 34-20 60 2Z" fill="#ecd29a" />
+        <path d="M-2-6C10-17 34-20 60 2H24C30-6 14-12-2-6ZM-60 2C-44-17-20-20-2-6-14-2-34-2-60 2Z" fill="#c9a26a" opacity=".45" />
+        <path d="M-50-5C-38-14-20-15-6-7M6-10C18-16 34-15 50-4" fill="none" stroke="#fff1cc" strokeWidth="1.3" strokeLinecap="round" opacity=".75" />
+        <Cactus x={30} y={0} s={1.25} />
+        <Rock x={-34} y={3} s={.9} fill="#c4a27a" /><Rock x={-22} y={4} s={.55} fill="#b38f66" />
       </>;
       break;
     default:
