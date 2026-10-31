@@ -44,7 +44,7 @@ now covers the setup same-seat boundary and an advancing window.
 ## Verification
 
 - `pnpm verify`: typecheck clean; rules 138, protocol 7, server 96 passed with 11
-  PostgreSQL-only skips, web 462, production build, smoke 13/13, dev harness 1/1.
+  PostgreSQL-only skips, web 463, production build, smoke 13/13, dev harness 1/1.
 - Focused production-browser capture and assertions
   (`python3 scripts/notice-dismiss/capture.py --out test-results/notice-dismiss`):
   toast detached after 6.05 s, rejected receipt after 8.01 s, both detached
@@ -69,6 +69,8 @@ now covers the setup same-seat boundary and an advancing window.
     effect's dependencies;
   - pauses the timer while the toast or receipt contains focus, so a focused
     Dismiss/retry control does not disappear;
+  - drops that pause when a status update replaces the focused control without
+    a blur, so the replacement receipt still gets its deadline;
   - proves the real three-player setup sequence (including the same-seat forward
     to reverse pivot) and the final setup-to-play key change;
   - asserts that a rejected receipt does not gate a new command.

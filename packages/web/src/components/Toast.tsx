@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Notice } from '@catan/protocol';
 import { translateNotice } from '../i18n/events.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
@@ -20,6 +20,7 @@ export function Toast({
   const t = useT();
   const locale = useLocale();
   const [focused, setFocused] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const visible = useTransientNotice(notice, {
     timeoutMs: TOAST_DISMISS_MS,
     turnKey,
@@ -30,10 +31,15 @@ export function Toast({
   useEffect(() => {
     if (!visible) setFocused(false);
   }, [visible]);
+  useEffect(() => {
+    // Keep the pause only when the new notice still owns the focused element.
+    if (!rootRef.current?.contains(document.activeElement)) setFocused(false);
+  }, [notice]);
   if (!notice || !visible) return null;
 
   return (
     <div
+      ref={rootRef}
       className="toast"
       role="status"
       data-testid="toast"

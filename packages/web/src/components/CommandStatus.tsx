@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { canRetry, needsRefresh, needsResolve } from '../state/commands.ts';
 import { translateNotice } from '../i18n/events.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
@@ -25,6 +25,7 @@ export function CommandStatus({ controller }: { controller: TableController }) {
   const { state, actions } = controller;
   const command = state.command;
   const [focused, setFocused] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const transient = command?.status === 'accepted' || command?.status === 'rejected';
   const noticeKey = command ? `${command.commandId}:${command.status}` : null;
   const visible = useTransientNotice(noticeKey, {
@@ -37,12 +38,18 @@ export function CommandStatus({ controller }: { controller: TableController }) {
   useEffect(() => {
     if (!visible) setFocused(false);
   }, [visible]);
+  useEffect(() => {
+    // A status change can replace the focused Retry/Resolve/Refresh button
+    // without a blur; only keep the pause when focus is still inside.
+    if (!rootRef.current?.contains(document.activeElement)) setFocused(false);
+  }, [noticeKey]);
   if (!command || !visible) return null;
 
   const reason = command.error ? translateNotice(locale, command.error) : '';
 
   return (
     <div
+      ref={rootRef}
       className={`command-status command-status--${command.status}`}
       data-testid="command-status"
       data-status={command.status}

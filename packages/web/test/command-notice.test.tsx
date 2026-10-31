@@ -53,6 +53,17 @@ describe('side command receipt', () => {
     expect(screen.queryByTestId('command-status')).toBeNull();
     expect(value.actions.clearCommand).not.toHaveBeenCalled();
   });
+  it('restarts the deadline after a focused retry control is replaced', () => {
+    vi.useFakeTimers();
+    const { rerender } = render(notice(controller('rejected', 'same')));
+    fireEvent.focus(screen.getByTestId('command-retry'));
+    rerender(notice(controller('submitting', 'same')));
+    expect(screen.getByTestId('command-status')).toBeTruthy();
+    rerender(notice(controller('rejected', 'same')));
+    act(() => vi.advanceTimersByTime(8000));
+    expect(screen.queryByTestId('command-status')).toBeNull();
+  });
+
   it('holds rejected feedback while its retry control is focused', () => {
     vi.useFakeTimers();
     render(notice(controller('rejected')));
