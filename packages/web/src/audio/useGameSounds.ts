@@ -62,8 +62,9 @@ export function useGameSounds(state: TableState, { play, rolls }: GameSoundOutpu
   latest.current = state;
   const cursor = useRef<EventCursor | null>(null);
   const mine = useRef<boolean | null>(null);
-  /** 可見時欠的棄牌交給七點警示提醒；這次義務是否已用「輪到你」叫過玩家。 */
-  const discardCalled = useRef(false);
+  const attentionGame = useRef<string | null>(null);
+  /** 可見時欠的棄牌交給七點警示提醒；已用「輪到你」叫過玩家的那場棋局（換局或義務結束即重設）。 */
+  const discardCalled = useRef<string | null>(null);
   const rejected = useRef<string | null>(null);
   const stale = useRef<string | null>(null);
   const unread = useRef(state.chat.unread);
@@ -91,15 +92,17 @@ export function useGameSounds(state: TableState, { play, rolls }: GameSoundOutpu
   const gameId = game?.gameId ?? null;
   const myTurn = !!game && !game.view.result && selfId !== null && game.view.turn.playerId === selfId;
   useEffect(() => {
-    if (!gameId) {
+    // 沒有棋局或換到另一場棋局：重新建立基準，不把前一場的「輪到誰」帶過來。
+    if (gameId !== attentionGame.current) {
+      attentionGame.current = gameId;
       mine.current = null;
-      return;
     }
+    if (!gameId) return;
     const next = attentionCue(mine.current, actionKind ? { kind: actionKind, mine: actionMine } : null, myTurn, document.hidden);
     mine.current = next.mine;
-    if (actionKind !== 'discard' || !actionMine) discardCalled.current = false;
+    if (actionKind !== 'discard' || !actionMine || discardCalled.current !== gameId) discardCalled.current = null;
     if (next.cue) {
-      if (actionKind === 'discard') discardCalled.current = true;
+      if (actionKind === 'discard') discardCalled.current = gameId;
       play(next.cue);
     }
   }, [gameId, actionKind, actionMine, myTurn, play]);
@@ -107,10 +110,11 @@ export function useGameSounds(state: TableState, { play, rolls }: GameSoundOutpu
   // 欠著棄牌時切到背景：七點警示會隨盤面演出一起被丟棄，改用背景提示叫玩家回來一次。
   useEffect(() => {
     const onVisibility = () => {
-      if (!document.hidden || discardCalled.current) return;
+      const owedIn = latest.current.game?.gameId ?? null;
+      if (!document.hidden || !owedIn || discardCalled.current === owedIn) return;
       const owed = requiredActionFor(latest.current);
       if (owed?.kind !== 'discard' || !owed.mine) return;
-      discardCalled.current = true;
+      discardCalled.current = owedIn;
       play('turn.yours');
     };
     document.addEventListener('visibilitychange', onVisibility);

@@ -152,6 +152,15 @@ describe('useGameSounds', () => {
     act(() => { document.dispatchEvent(new Event('visibilitychange')); });
     act(() => { document.dispatchEvent(new Event('visibilitychange')); });
     expect(played).toEqual(['turn.yours']);
+
+    // 換到另一場同樣欠著棄牌的棋局：是新的義務，再叫一次。
+    hidden = false;
+    const other = { ...state.game!, gameId: 'g2', view: { ...state.game!.view } };
+    state = tableReducer({ ...state, game: null }, { type: 'snapshot', snapshot: other });
+    rerender({ current: state });
+    hidden = true;
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    expect(played).toEqual(['turn.yours', 'turn.yours']);
   });
 
   it('plays new authoritative events, the move hand-over, rejections and chat', () => {
