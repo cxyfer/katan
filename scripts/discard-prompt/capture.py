@@ -4,10 +4,10 @@
   python3 scripts/discard-prompt/capture.py <output-dir>
 
 以真實三人對局進行：只擲骰與結束回合，直到 7 同時要求至少兩位玩家棄牌。
-第一位玩家在 UI 選牌並送出後，另一位玩家仍待棄牌，因此可拍到「等待其他玩家
-棄牌」；選牌畫面會先選滿一種低於配額的資源，確認上限與減號，並斷言訊息區
-能完整顯示最下方的送出按鈕（若每種持有量都達到配額，則跳過上限那張，避免把
-總數選滿）。
+第一位玩家在 UI 把手牌點進棄牌區（含拿光某種資源、從棄牌區放回、選滿後送出），
+另一位玩家仍待棄牌，因此可拍到「等待其他玩家棄牌」。各尺寸都斷言五種資源與
+送出按鈕完整落在訊息區內，且不蓋住手牌 dock（320×480 例外：面板本身列出全部
+手牌，允許蓋到 dock）。
 
 畫面斷言只覆蓋這次修改的 UI 狀態；規則本身由 packages/rules/test/seven.test.ts
 與 packages/web/test 的單元測試負責。只拍照，不做完整對局驗證。
@@ -75,13 +75,14 @@ def prompt_layout(page):
           ? { rect: rect(messages), height: messages.clientHeight, scrollHeight: messages.scrollHeight }
           : null,
         prompt: rect(q('[data-testid="required-action-prompt"]')),
+        cards: [...document.querySelectorAll('[data-testid^="discard-add-"]')].map(rect),
         submit: rect(q('[data-testid="discard-submit"]')),
         hand: rect(q('[data-testid="hand-panel"]')),
       };
     }""")
 
 
-def assert_prompt_fits(page, label):
+def assert_prompt_fits(page, label, allow_hand_overlap=False):
     # 必要回應必須完整落在訊息區內，包含最下方的送出按鈕；不能只剩上半部。
     data = prompt_layout(page)
     assert data['messages'] is not None, (label, data)
@@ -94,8 +95,15 @@ def assert_prompt_fits(page, label):
         assert data[item]['left'] >= data['messages']['rect']['left'] - 1, (label, item, data)
         assert data[item]['right'] <= data['messages']['rect']['right'] + 1, (label, item, data)
         assert data[item]['bottom'] <= data['viewport']['height'] + 1, (label, item, data)
-    # 短橫屏不可蓋住手牌 dock；手牌是下一個可操作區域。
-    if data['hand'] is not None:
+    # 五種資源卡都要完整可見，不能被訊息區裁掉。
+    assert len(data['cards']) == 5, (label, data)
+    for card in data['cards']:
+        assert card['top'] >= data['messages']['rect']['top'] - 1, (label, card, data)
+        assert card['bottom'] <= data['messages']['rect']['bottom'] + 1, (label, card, data)
+        assert card['left'] >= data['messages']['rect']['left'] - 1, (label, card, data)
+        assert card['right'] <= data['messages']['rect']['right'] + 1, (label, card, data)
+    # 不可蓋住手牌 dock；手牌是下一個可操作區域。
+    if data['hand'] is not None and not allow_hand_overlap:
         assert data['prompt']['bottom'] <= data['hand']['top'] + 1, (label, data)
         assert data['submit']['bottom'] <= data['hand']['top'] + 1, (label, data)
     print('FITS', label, {key: data[key] for key in ('viewport', 'messages', 'prompt', 'submit', 'hand')}, flush=True)
@@ -229,18 +237,16 @@ with sync_playwright() as p:
     page.locator('[data-testid=locale-switch-game]').select_option('zh-Hant')
     expect(page.get_by_test_id('discard-submit')).to_be_visible()
     resources = resources_of(dict(zip(identity, contexts))[first], path, first)
-    for resource in RESOURCES:
-        expect(page.get_by_test_id(f'discard-owned-{resource}')).to_have_text(f'持有 {resources[resource]}')
-        expect(page.get_by_test_id(f'discard-sub-{resource}')).to_be_visible()
-    expect(page.get_by_test_id('discard-sub-lumber')).to_be_disabled()
-    assert_prompt_fits(page, '1366x768-selecting')
-    shot(page, 'discard-selecting-1366x768-zh-Hant')
-
-    # A per-resource cap is only observable while the total stays below the
-    # quota, so the pile must hold fewer cards than the quota. An eight-card
-    # hand split 4/4 has no such pile; skip this one capture rather than fill
-    # the quota and then click a button that is already disabled.
     quota = required[first]
+    for resource in RESOURCES:
+        expect(page.get_by_test_id(f'discard-left-{resource}')).to_have_text(str(resources[resource]))
+        expect(page.get_by_test_id(f'discard-add-{resource}')).to_be_visible()
+    expect(page.get_by_test_id('discard-counts')).to_have_text(f'0 / {quota}')
+    expect(page.get_by_test_id('discard-submit')).to_have_text(f'還要選 {quota} 張')
+    assert_prompt_fits(page, '1366x768-empty')
+    shot(page, 'discard-empty-1366x768-zh-Hant')
+
+    # 拿光一種低於配額的資源：手上變 0 並停用；從棄牌區點回一張後可以再選。
     candidates = [r for r in RESOURCES if 0 < resources[r] < quota]
     target = min(candidates, key=lambda r: resources[r]) if candidates else None
     picked = {r: 0 for r in RESOURCES}
@@ -248,37 +254,35 @@ with sync_playwright() as p:
         for _ in range(resources[target]):
             page.get_by_test_id(f'discard-add-{target}').click()
         picked[target] = resources[target]
-        expect(page.get_by_test_id(f'discard-picked-{target}')).to_have_text(str(resources[target]))
-        expect(page.get_by_test_id(f'discard-sub-{target}')).to_be_enabled()
-        # 減號要能逐張移除，移除後同一種資源可以再選。
-        page.get_by_test_id(f'discard-sub-{target}').click()
-        expect(page.get_by_test_id(f'discard-picked-{target}')).to_have_text(str(resources[target] - 1))
-        expect(page.get_by_test_id(f'discard-add-{target}')).to_be_enabled()
+        expect(page.get_by_test_id(f'discard-left-{target}')).to_have_text('0')
+        expect(page.get_by_test_id(f'discard-add-{target}')).to_have_attribute('aria-disabled', 'true')
+        page.get_by_test_id('discard-slot-0').click()
+        expect(page.get_by_test_id(f'discard-left-{target}')).to_have_text('1')
+        expect(page.get_by_test_id(f'discard-add-{target}')).to_have_attribute('aria-disabled', 'false')
         page.get_by_test_id(f'discard-add-{target}').click()
-        owned_buttons = {
-            r: page.get_by_test_id(f'discard-add-{r}').is_disabled() for r in RESOURCES
-        }
-        assert owned_buttons[target], (target, resources, owned_buttons)
-        assert any(not disabled for r, disabled in owned_buttons.items() if r != target), owned_buttons
-        prompt_box = page.get_by_test_id('required-action-prompt').bounding_box()
-        print('DISABLED', owned_buttons, 'TARGET', target, 'BOX', prompt_box, flush=True)
-        assert prompt_box is not None
+        expect(page.get_by_test_id('discard-counts')).to_have_text(f'{resources[target]} / {quota}')
         assert_prompt_fits(page, '1366x768-owned-cap')
         shot(page, 'discard-owned-cap-1366x768-zh-Hant')
     else:
         print('SKIP per-resource cap: every held pile reaches the quota', flush=True)
 
-    # Second waiting player, phone-sized.
+    # Second waiting player: phone, then every short viewport, with a few picks.
     other = waiting[1]
     other_page = pages[identity.index(other)]
     other_page.locator('[data-testid=locale-switch-game]').select_option('zh-Hant')
-    other_page.set_viewport_size({'width': 390, 'height': 844})
+    other_resources = resources_of(dict(zip(identity, contexts))[other], path, other)
     expect(other_page.get_by_test_id('discard-submit')).to_be_visible()
+    held = [r for r in RESOURCES if other_resources[r] > 0]
+    for resource in held[:2]:
+        other_page.get_by_test_id(f'discard-add-{resource}').click()
+    other_page.set_viewport_size({'width': 390, 'height': 844})
     assert_prompt_fits(other_page, '390x844-selecting')
     shot(other_page, 'discard-selecting-390x844-zh-Hant')
     for width, height in [(844, 390), (667, 375), (640, 360), (568, 320), (320, 480)]:
         other_page.set_viewport_size({'width': width, 'height': height})
-        assert_prompt_fits(other_page, f'{width}x{height}-selecting')
+        assert_prompt_fits(other_page, f'{width}x{height}-selecting', allow_hand_overlap=(width, height) == (320, 480))
+        if (width, height) in [(844, 390), (320, 480)]:
+            shot(other_page, f'discard-selecting-{width}x{height}-zh-Hant')
 
     # Finish the first player's selection (respecting each cap) and submit.
     remaining = quota - sum(picked.values())
@@ -294,19 +298,29 @@ with sync_playwright() as p:
         remaining -= take
     assert remaining == 0, (picked, required[first])
     expect(page.get_by_test_id('discard-submit')).to_be_enabled()
+    expect(page.get_by_test_id('discard-submit')).to_have_text(f'棄掉 {quota} 張')
+    assert_prompt_fits(page, '1366x768-full')
+    shot(page, 'discard-full-1366x768-zh-Hant')
     page.get_by_test_id('discard-submit').click()
 
     expect(page.get_by_test_id('discard-submit')).to_have_count(0)
     waiting_prompt = page.get_by_test_id('required-action-prompt')
     expect(waiting_prompt).to_have_attribute('data-mine', 'false')
     expect(waiting_prompt).to_contain_text('等待其他玩家棄牌')
-    expect(waiting_prompt).to_contain_text(names[identity.index(other)])
+    expect(waiting_prompt).to_contain_text(f'{names[identity.index(other)]}（{required[other]} 張）')
     expect(page.get_by_test_id('discard-add-lumber')).to_have_count(0)
     print('WAITING_BOX', waiting_prompt.bounding_box(), flush=True)
     shot(page, 'discard-waiting-1366x768-zh-Hant')
 
     page.set_viewport_size({'width': 390, 'height': 844})
     shot(page, 'discard-waiting-390x844-zh-Hant')
+
+    # 英文較長：確認卡名與按鈕文字在手機直屏不溢出。
+    other_page.locator('[data-testid=locale-switch-game]').select_option('en')
+    other_page.set_viewport_size({'width': 390, 'height': 844})
+    expect(other_page.get_by_test_id('discard-submit')).to_contain_text('more')
+    assert_prompt_fits(other_page, '390x844-selecting-en')
+    shot(other_page, 'discard-selecting-390x844-en')
 
     if errors:
         print('PAGE ERRORS', errors, flush=True)
