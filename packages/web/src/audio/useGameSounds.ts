@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { GameEvent } from '@catan/protocol';
 import { requiredActionFor, type RequiredAction } from '../state/pending.ts';
 import type { TableState } from '../state/table.ts';
-import { cuesForEvents, placeOnTimeline, type CueTimeline, type SoundCue } from './cues.ts';
+import { IDLE_TIMELINE, scheduleCues, type CueTimeline, type SoundCue } from './cues.ts';
 
 export interface EventCursor {
   gameId: string;
@@ -56,7 +56,7 @@ export function useGameSounds(state: TableState, play: (cue: SoundCue, delayMs?:
   const latest = useRef(state);
   latest.current = state;
   const cursor = useRef<EventCursor | null>(null);
-  const timeline = useRef<CueTimeline>({ idleAt: 0 });
+  const timeline = useRef<CueTimeline>(IDLE_TIMELINE);
   const mine = useRef<boolean | null>(null);
   const rejected = useRef<string | null>(null);
   const stale = useRef<string | null>(null);
@@ -72,22 +72,18 @@ export function useGameSounds(state: TableState, play: (cue: SoundCue, delayMs?:
     // 換代或分頁隱藏時，盤面會丟掉排隊中的演出重新建立基準；音效時間軸跟著清空。
     if (!next.cursor || previous?.gameId !== next.cursor.gameId || previous.generation !== next.cursor.generation ||
         document.hidden) {
-      timeline.current = { idleAt: 0 };
+      timeline.current = IDLE_TIMELINE;
     }
     if (next.events.length === 0) return;
-    // 分頁隱藏時盤面不演出；仍交給引擎，由它決定哪些提示值得在背景響起。
-    const presented = !document.hidden && !reducedMotion();
-    const cues = cuesForEvents(next.events, selfId, presented);
-    if (!presented) {
-      for (const { cue, delayMs } of cues) play(cue, delayMs);
-      return;
-    }
-    // 與 BoardView 傳給 useBoardAnimation 的 mandatory 判斷相同。
+    // 分頁隱藏時盤面不演出；提示仍交給引擎，由它決定哪些值得在背景響起。
+    // effectsShown 與 BoardView 傳給 useBoardAnimation 的 mandatory 判斷相反。
     const view = latest.current.game?.view;
-    const effectsShown = !view?.pending && !view?.turn.setup && view?.turn.phase !== 'preroll';
-    const placed = placeOnTimeline(timeline.current, next.events, cues, Date.now(), effectsShown);
-    timeline.current = placed.timeline;
-    for (const { cue, delayMs } of placed.cues) play(cue, delayMs);
+    const scheduled = scheduleCues(timeline.current, next.events, selfId, Date.now(), {
+      presented: !document.hidden && !reducedMotion(),
+      effectsShown: !view?.pending && !view?.turn.setup && view?.turn.phase !== 'preroll',
+    });
+    timeline.current = scheduled.timeline;
+    for (const { cue, delayMs } of scheduled.cues) play(cue, delayMs);
   }, [game, generation, gameSyncPending, selfId, play]);
 
   const action = requiredActionFor(state);

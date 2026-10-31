@@ -11,6 +11,7 @@
 
 import type { GameEvent } from '@catan/protocol';
 import {
+  boardEffectGroups,
   DICE_PRESENTATION_DURATION_MS,
   DICE_ROLL_DURATION_MS,
   MAX_EFFECT_DURATION_MS,
@@ -195,42 +196,60 @@ export function cuesForEvents(events: readonly GameEvent[], selfId: string | nul
 }
 
 /**
- * 盤面把演出串成單一時間軸（board/useBoardAnimation.ts）：每批事件是一個特效組
- * （MAX_EFFECT_DURATION_MS），含擲骰的組先播完骰子演出，下一批要等前一批結束。
- * 盤面處於必要操作模式（`effectsShown` 為 false：有待處理、開局擺放或擲骰前）時
- * 不播特效組，只剩骰子演出佔用時間軸。這裡用相同的長度推算「演出何時空出來」。
+ * 盤面把演出串成單一時間軸（board/useBoardAnimation.ts）：每批事件在每次擲骰處切成
+ * 特效組（boardEffectGroups），每組播 MAX_EFFECT_DURATION_MS，含擲骰的組先播完骰子
+ * 演出，下一組要等前一組結束。盤面處於必要操作模式（`effectsShown` 為 false：
+ * 有待處理、開局擺放或擲骰前）時不播特效組，只剩骰子演出佔用時間軸。
  */
 export function presentationLength(events: readonly GameEvent[], effectsShown = true): number {
   const dice = events.some((event) => event.type === 'turn.rolled') ? DICE_PRESENTATION_DURATION_MS : 0;
   return dice + (effectsShown ? MAX_EFFECT_DURATION_MS : 0);
 }
 
-/** 積壓超過這個長度時，盤面會丟棄排隊中的演出（enqueueBoardEffects）；音效也一起放棄。 */
-export const MAX_AUDIO_BACKLOG_MS = MAX_EFFECT_GROUPS * MAX_EFFECT_DURATION_MS;
-
 export interface CueTimeline {
-  /** 已排程的演出預計結束的時間（毫秒時鐘），之前沒有排程時為 0。 */
-  idleAt: number;
+  /** 盤面佇列中每個演出組預計結束的時間（毫秒時鐘）。 */
+  ends: readonly number[];
+}
+
+export const IDLE_TIMELINE: CueTimeline = Object.freeze({ ends: [] });
+
+export interface ScheduleMode {
+  /** 盤面會演出這批事件（未要求減少動態、分頁可見）。 */
+  presented: boolean;
+  /** 盤面不在必要操作模式，會播特效組。 */
+  effectsShown: boolean;
 }
 
 /**
- * 把一批提示放上與盤面一致的時間軸：這批從「現在」與「前一批結束」中較晚者開始。
- * 例如前一次擲骰仍在演出時又來一次擲骰，第二次的落定聲與七點警示會延後到它自己的
- * 骰子揭曉時，不會比畫面先透露點數。畫面因減少動態等原因較快時，聲音只會較晚，不會較早。
+ * 把一批新事件排上與盤面一致的時間軸。批次在每次擲骰處切組，各組依序從
+ * 「前一組結束」開始，所以佇列中的第二、第三次擲骰的落定聲與七點警示，
+ * 都等到它們自己的骰子揭曉時才響，不會比畫面先透露點數。
+ *
+ * 盤面不演出（減少動態、背景分頁），或排隊組數超過盤面上限而被整批丟棄
+ * （enqueueBoardEffects）時，畫面直接顯示結果，聲音也立即播放、不搖骰。
+ * 畫面因此較快時，聲音只會較晚，不會較早。
  */
-export function placeOnTimeline(
+export function scheduleCues(
   timeline: CueTimeline,
   events: readonly GameEvent[],
-  cues: readonly ScheduledCue[],
+  selfId: string | null,
   now: number,
-  effectsShown = true,
+  mode: ScheduleMode,
 ): { timeline: CueTimeline; cues: ScheduledCue[] } {
   if (events.length === 0) return { timeline, cues: [] };
-  const wait = Math.max(0, timeline.idleAt - now);
-  if (wait > MAX_AUDIO_BACKLOG_MS) return { timeline: { idleAt: now }, cues: [] };
-  const start = now + wait;
-  return {
-    timeline: { idleAt: start + presentationLength(events, effectsShown) },
-    cues: cues.map((entry) => ({ ...entry, delayMs: entry.delayMs + wait })),
-  };
+  const groups = boardEffectGroups('', events).map((group) => group.events);
+  const queued = timeline.ends.filter((end) => end > now);
+  const occupying = groups.filter((group) => presentationLength(group, mode.effectsShown) > 0);
+  if (!mode.presented || queued.length + occupying.length > MAX_EFFECT_GROUPS) {
+    return { timeline: IDLE_TIMELINE, cues: cuesForEvents(events, selfId, false) };
+  }
+  const ends = [...queued];
+  const cues: ScheduledCue[] = [];
+  for (const group of groups) {
+    const start = Math.max(now, ends.at(-1) ?? now);
+    for (const entry of cuesForEvents(group, selfId, true)) cues.push({ ...entry, delayMs: entry.delayMs + start - now });
+    const length = presentationLength(group, mode.effectsShown);
+    if (length > 0) ends.push(start + length);
+  }
+  return { timeline: { ends }, cues };
 }

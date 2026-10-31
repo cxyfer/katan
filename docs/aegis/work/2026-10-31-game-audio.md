@@ -88,14 +88,22 @@ edges.
 Codex review (P2) and an independent reviewer found these problems on
 `d7cb5f8`. All of them are fixed, with regression tests:
 
-- **Queued rolls (Codex P2):** cues were timed from packet arrival, but the
-  board serialises presentations (dice 2.5 s + effect group 0.8 s per batch). A
-  second roll arriving mid-presentation could therefore reveal its result early.
-  `placeOnTimeline` now mirrors the board: each batch starts when the previous
-  presentation ends, and only the dice count during mandatory steps. A backlog
-  past the board's overflow limit is dropped. When the board skips the
-  presentation (reduced motion, hidden tab), there is no rattle and the result
-  plays at once.
+- **Queued rolls (Codex P2 on `d7cb5f8`; P1 + P2 on `594bdae`):** cues were
+  timed from packet arrival, but the board serialises presentations (dice
+  2.5 s + effect group 0.8 s per group). A second roll arriving mid-presentation
+  could therefore reveal its result early. The first fix still treated a
+  multi-roll delta as one group and used a millisecond backlog limit that was
+  shorter than the board's real one. `scheduleCues` now mirrors the board
+  directly:
+  - it splits each delta with `boardEffectGroups`;
+  - it queues each group behind the previous one's end;
+  - only the dice count during mandatory steps;
+  - it applies the board's own group-count overflow rule (more than
+    `MAX_EFFECT_GROUPS` queued groups → the board drops its queue and shows
+    results, so cues play at once).
+
+  When the board skips the presentation (reduced motion, hidden tab), there is
+  no rattle and the result plays at once.
 - **Stale replay:** cues scheduled before a mute fired on unmute. The effects
   bus is now replaced whenever the context goes inactive.
 - **Background call-back:** "your move" and trade offers now sound in a hidden
@@ -115,7 +123,7 @@ Codex review (P2) and an independent reviewer found these problems on
 ## Verification
 
 - `pnpm verify`: typecheck, rules 138, protocol 7, server 96 (+11 PostgreSQL
-  skips), web 492 tests, build, smoke 13/13, dev runner 1/1.
+  skips), web 495 tests, build, smoke 13/13, dev runner 1/1.
 - New web tests: cue mapping, privacy invariance, roll timing, staggering and
   caps; preference storage; music determinism and harmony; engine lifecycle on
   a fake `AudioContext` (no context before a gesture, mute/suspend, stale-cue

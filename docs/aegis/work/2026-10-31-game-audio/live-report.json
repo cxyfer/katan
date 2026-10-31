@@ -4,28 +4,28 @@
       "name": "浮浮酱 round 1 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.17388397455215454,
+      "peak": 0.17389391362667084,
       "ok": true
     },
     {
       "name": "浮浮酱 round 1 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.20576679706573486,
+      "peak": 0.20620213449001312,
       "ok": true
     },
     {
       "name": "Mika round 1 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.1739002764225006,
+      "peak": 0.17390091717243195,
       "ok": true
     },
     {
       "name": "Mika round 1 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.20621198415756226,
+      "peak": 0.20621196925640106,
       "ok": true
     },
     {
@@ -39,7 +39,7 @@
       "name": "Bo round 1 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.20621196925640106,
+      "peak": 0.20621195435523987,
       "ok": true
     },
     {
@@ -53,14 +53,14 @@
       "name": "Bo round 2 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.2071327269077301,
+      "peak": 0.20621198415756226,
       "ok": true
     },
     {
       "name": "Mika round 2 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.17390207946300507,
+      "peak": 0.17390021681785583,
       "ok": true
     },
     {
@@ -74,7 +74,7 @@
       "name": "浮浮酱 round 2 building (muted)",
       "expectAudible": false,
       "state": "suspended",
-      "peak": 0.00010991685121553019,
+      "peak": 0.00010991687304340303,
       "ok": true
     },
     {
@@ -88,7 +88,7 @@
       "name": "host roll",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.21749457716941833,
+      "peak": 0.2243843823671341,
       "ok": true
     }
   ],
