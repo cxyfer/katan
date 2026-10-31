@@ -9,7 +9,7 @@
 }
 /* 棄牌是必要回應：訊息區要容納完整選牌與送出按鈕，不能只露出上半部。 */
 .screen--game .game__messages:has(.discard-picker) {
-  max-height: min(calc(100% - 8px), 460px);
+  max-height: calc(100% - 8px);
 }
 .screen--game .game__messages:empty { display: none; }
 .screen--game .game__messages .prompt {
