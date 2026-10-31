@@ -4,10 +4,8 @@ import {
   CylinderGeometry,
   ExtrudeGeometry,
   Float32BufferAttribute,
-  LatheGeometry,
   Shape,
   SphereGeometry,
-  Vector2,
 } from 'three';
 
 const TILE_OUTER_RADIUS = 0.982;
@@ -143,15 +141,6 @@ export function createFieldGeometry(): BufferGeometry {
   return geometry;
 }
 
-/** A turned wooden disc: chamfered foot, rounded rim and a shallow dished face. */
-export function createTokenBodyGeometry(): BufferGeometry {
-  const profile = [
-    [0, 0], [0.262, 0], [0.276, 0.006], [0.281, 0.018], [0.281, 0.03], [0.276, 0.041],
-    [0.265, 0.047], [0.25, 0.048], [0.24, 0.044], [0.2, 0.0425], [0, 0.0425],
-  ].map(([x, y]) => new Vector2(x, y));
-  const geometry = new LatheGeometry(profile, 40);
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  return geometry;
+export function createTokenBodyGeometry(): CylinderGeometry {
+  return new CylinderGeometry(0.26, 0.28, 0.045, 16, 1, false).translate(0, 0.0225, 0);
 }

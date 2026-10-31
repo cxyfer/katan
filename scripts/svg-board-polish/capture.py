@@ -1,12 +1,11 @@
-"""拍攝 SVG 與 3D 棋盤的對照截圖（真實三人對局，連線既有服務）。
+"""拍攝 SVG 棋盤與共用地形圖示的截圖（真實三人對局，連線既有服務）。
 
 用法（先 pnpm build 並啟動服務，輸出目錄須為全新空目錄）：
-  python3 scripts/board-polish/capture.py <新的空輸出目錄>
+  python3 scripts/svg-board-polish/capture.py <新的空輸出目錄>
 
-對局以 HTTP API 完成初始放置並推進數個回合，讓棋盤上有村莊、城市、道路與
-移動過的強盜；再以同一位玩家的瀏覽器分別用 ?renderer=svg 與 ?renderer=r3f
-拍攝桌面與手機畫面、放大特寫、展開的手牌、入口頁島嶼插畫，以及 ?preview=island 的島嶼展示（含六人延伸島嶼
-與輕量畫質）。
+先拍入口頁的島嶼插畫；對局以 HTTP API 完成初始放置並推進數個回合，讓棋盤上
+有村莊、城市、道路與移動過的強盜；再以 ?renderer=svg 拍攝桌面與手機畫面、
+放大特寫與展開的手牌。
 
 只拍照，不做斷言；遇到瀏覽器執行期錯誤即失敗。
 """
@@ -106,9 +105,7 @@ def advance(contexts, identity, path, game_id, turns):
             ended += 1
 
 
-def settle(page, renderer):
-    if renderer == 'r3f':
-        page.wait_for_function("document.querySelector('[data-testid=board]')?.dataset.rendererStatus === 'ready'", timeout=30000)
+def settle(page):
     page.evaluate('document.fonts.ready')
     page.wait_for_timeout(600)
     page.evaluate('() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))')
@@ -128,7 +125,7 @@ def board_clip(page):
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
+    browser = p.chromium.launch(headless=True, args=['--no-sandbox'])
     contexts = [browser.new_context(viewport={'width': 1366, 'height': 768}, locale='zh-TW', reduced_motion='reduce') for _ in range(3)]
     pages = [c.new_page() for c in contexts]
     for page in pages:
@@ -167,47 +164,30 @@ with sync_playwright() as p:
     for page in pages[1:]:
         page.close()
 
-    for renderer in ('svg', 'r3f'):
-        for width, height, tag in ((1366, 768, 'desktop'), (390, 844, 'phone')):
-            host.set_viewport_size({'width': width, 'height': height})
-            host.goto(f'{BASE}/?renderer={renderer}')
-            # 重新整理後可能停在首頁的「繼續對局」，也可能直接回到牌桌
-            resume = host.get_by_test_id(f'resume-{game_id}')
-            tab = host.locator('#home-tab-resume')
-            expect(tab.or_(host.get_by_test_id('board')).first).to_be_visible()
-            if tab.is_visible():
-                tab.click()
-                resume.click()
-            expect(host.get_by_test_id('board')).to_be_visible()
-            settle(host, renderer)
-            shot(host, f'{renderer}-{tag}-{width}x{height}')
-            if tag == 'desktop':
-                shot(host, f'{renderer}-board-{width}x{height}', board_clip(host))
-                for _ in range(3):
-                    host.get_by_test_id('zoom-in').click()
-                settle(host, renderer)
-                shot(host, f'{renderer}-closeup-{width}x{height}', board_clip(host))
-                if renderer == 'svg':
-                    # 展開手牌：資源卡面同樣使用棋盤的地形圖示
-                    host.get_by_test_id('hand-panel').hover()
-                    host.wait_for_timeout(700)
-                    host.screenshot(path=str(OUT / f'hand-{width}x{height}.png'), animations='disabled')
-                    print('CAPTURE', f'hand-{width}x{height}.png', flush=True)
-
-    host.set_viewport_size({'width': 1600, 'height': 1000})
-    host.goto(f'{BASE}/?preview=island')
-    host.wait_for_function("document.querySelector('[data-testid=island-preview]')?.dataset.rendererStatus === 'ready'", timeout=30000)
-    host.wait_for_timeout(600)
-    shot(host, 'island-preview-1600x1000')
-    # 六人延伸島嶼，再切到輕量畫質（無陰影、無反鋸齒）
-    host.get_by_test_id('preview-topology').select_option('hex-r56')
-    host.wait_for_timeout(300)
-    host.wait_for_function("document.querySelector('[data-testid=island-preview]')?.dataset.rendererStatus === 'ready'", timeout=30000)
-    host.wait_for_timeout(600)
-    shot(host, 'island-preview-r56-1600x1000')
-    host.get_by_test_id('preview-quality').select_option('low')
-    host.wait_for_timeout(1200)
-    shot(host, 'island-preview-r56-low-1600x1000')
+    for width, height, tag in ((1366, 768, 'desktop'), (390, 844, 'phone')):
+        host.set_viewport_size({'width': width, 'height': height})
+        host.goto(f'{BASE}/?renderer=svg')
+        # 重新整理後可能停在首頁的「繼續對局」，也可能直接回到牌桌
+        resume = host.get_by_test_id(f'resume-{game_id}')
+        tab = host.locator('#home-tab-resume')
+        expect(tab.or_(host.get_by_test_id('board')).first).to_be_visible()
+        if tab.is_visible():
+            tab.click()
+            resume.click()
+        expect(host.get_by_test_id('board-svg')).to_be_visible()
+        settle(host)
+        shot(host, f'svg-{tag}-{width}x{height}')
+        if tag == 'desktop':
+            shot(host, f'svg-board-{width}x{height}', board_clip(host))
+            for _ in range(3):
+                host.get_by_test_id('zoom-in').click()
+            settle(host)
+            shot(host, f'svg-closeup-{width}x{height}', board_clip(host))
+            # 展開手牌：資源卡面同樣使用棋盤的地形圖示
+            host.get_by_test_id('hand-panel').hover()
+            host.wait_for_timeout(700)
+            host.screenshot(path=str(OUT / f'hand-{width}x{height}.png'), animations='disabled')
+            print('CAPTURE', f'hand-{width}x{height}.png', flush=True)
 
     browser.close()
     assert not errors, f'browser runtime errors: {errors}'

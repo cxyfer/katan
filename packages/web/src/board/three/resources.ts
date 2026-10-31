@@ -119,9 +119,9 @@ function createResources(): Omit<BoardSceneResources, 'acquire' | 'release' | 'd
     },
     materials: {
       diorama: new MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: 0.87, metalness: 0, flatShading: true }),
-      tileSide: material('#9a7d56', 0.94),
+      tileSide: material('#a58c60', 0.94),
       ghost,
-      token: material('#efe0bd', 0.72),
+      token: material('#e8d5ad', 0.88),
     },
   };
 }

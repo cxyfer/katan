@@ -139,15 +139,14 @@ function Lights({ quality }: { quality: 'standard' | 'low' }) {
   const shadows = quality === 'standard';
   return (
     <>
-      <ambientLight intensity={0.26} color="#fff3dc" />
-      <hemisphereLight args={['#e3f1f4', '#a48a64', 1.2]} />
-      {/* A cool rim from behind lifts silhouettes off the warm key light. */}
-      <directionalLight position={[6, 5, -8]} intensity={0.55} color="#bcd9ec" />
+      <ambientLight intensity={0.32} color="#fff3dc" />
+      <hemisphereLight args={['#e5f2f1', '#a08d6d', 1.25]} />
+      <directionalLight position={[6, 5, -8]} intensity={0.42} color="#c6e0ed" />
       <directionalLight
         castShadow={shadows}
         position={[-5, 10, 6]}
-        intensity={3.05}
-        color="#ffe9c6"
+        intensity={2.8}
+        color="#fff1cf"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-camera-left={-7}
