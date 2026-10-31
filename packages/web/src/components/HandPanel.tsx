@@ -42,12 +42,15 @@ export function HandPanel({ controller }: { controller: TableController }) {
   const resources = shownHand(state);
   const resourceCards = self ? shownHandSize(state, self) : 0;
   const totalHandCards = resourceCards + (self?.devCardCount ?? 0) + (self?.newDevCardCount ?? 0);
+  // 沒有牌可看時，收合的 deck 不再提供展開入口，避免玩家誤以為展開後是一片空白。
+  const canExpand = totalHandCards > 0;
   // 仿實體手牌：只列出持有的資源，每一張都是獨立的卡。
   const held = RESOURCES.flatMap((resource) => Array.from({ length: resources?.[resource] ?? 0 }, (_, copy) => ({ resource, copy })));
   const heldDev = self?.devCards?.length ?? 0;
   const fanStyles = handFanStyles([...RESOURCES.map((resource) => resources?.[resource] ?? 0), heldDev, self?.newDevCards?.length ?? 0]);
   const [inspected, setInspected] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const fanExpanded = expanded && canExpand;
   const handRef = useRef<HTMLElement>(null);
   const tallyRef = useRef<HTMLUListElement>(null);
   const gains = useHandGains(state.game, state.gameSync, state.session?.id ?? null, state.connection === 'online', state.gameSyncPending,
@@ -90,7 +93,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
     touchOpenRef.current = false;
     hoverRef.current = false;
     // 先移回卡組本身，再收合；下一次 Tab 可重新展開第一張卡。
-    handRef.current?.focus();
+    if (canExpand) handRef.current?.focus();
     setExpanded(false);
     setInspected(null);
   };
@@ -107,6 +110,19 @@ export function HandPanel({ controller }: { controller: TableController }) {
   useEffect(() => () => {
     if (closeTimer.current !== null) clearTimeout(closeTimer.current);
   }, []);
+  // 手牌中途清空（例如全部打出或丟棄）時，收合已展開的 deck 並清除殘留的互動狀態。
+  useEffect(() => {
+    if (canExpand) return;
+    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+    hoverRef.current = false;
+    touchOpenRef.current = false;
+    suppressClickRef.current = false;
+    swipeStartRef.current = null;
+    focusInsideRef.current = false;
+    setExpanded(false);
+    setInspected(null);
+  }, [canExpand]);
   const heldKey = held.map(({ resource, copy }) => `${resource}-${copy}`).join(' ');
   useLayoutEffect(() => {
     // 牌數減少時，被檢視或持有焦點的那張牌可能已卸載：清掉殘留的檢視狀態，並把焦點留在手牌內。
@@ -114,12 +130,12 @@ export function HandPanel({ controller }: { controller: TableController }) {
     const active = document.activeElement;
     if (focusInsideRef.current && (!active || active === document.body)) {
       const faces = handRef.current?.querySelectorAll<HTMLButtonElement>(CARD_FACES);
-      const target = faces?.length ? faces[Math.min(focusedCardRef.current, faces.length - 1)] : handRef.current;
-      target?.focus();
+      if (faces?.length) faces[Math.min(focusedCardRef.current, faces.length - 1)]?.focus();
+      else if (canExpand) handRef.current?.focus();
     }
-  }, [heldKey]);
+  }, [heldKey, canExpand]);
   useEffect(() => {
-    if (!expanded) return;
+    if (!fanExpanded) return;
     const outside = (event: PointerEvent) => {
       if (event.target instanceof Node && !handRef.current?.contains(event.target)) {
         touchOpenRef.current = false;
@@ -129,12 +145,14 @@ export function HandPanel({ controller }: { controller: TableController }) {
     };
     document.addEventListener('pointerdown', outside);
     return () => document.removeEventListener('pointerdown', outside);
-  }, [expanded]);
+  }, [fanExpanded]);
 
   return (
-    <><section className="hand hand-fan" aria-labelledby="hand-heading" aria-describedby="hand-hint" data-testid="hand-panel"
-      ref={handRef} tabIndex={0} data-expanded={expanded}
+    <><section className="hand hand-fan" aria-labelledby="hand-heading" aria-describedby={canExpand ? 'hand-hint' : undefined}
+      data-testid="hand-panel" ref={handRef} tabIndex={canExpand ? 0 : undefined} data-expanded={fanExpanded}
+      data-empty={canExpand ? undefined : 'true'}
       onPointerEnter={(event) => {
+        if (!canExpand) return;
         if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
         hoverRef.current = true;
         cancelClose();
@@ -142,6 +160,11 @@ export function HandPanel({ controller }: { controller: TableController }) {
       }}
       onPointerLeave={() => { hoverRef.current = false; scheduleClose(); }}
       onPointerDownCapture={(event) => {
+        if (!canExpand) {
+          suppressClickRef.current = false;
+          swipeStartRef.current = null;
+          return;
+        }
         suppressClickRef.current = false;
         if (event.pointerType !== 'touch') return;
         touchOpenRef.current = true;
@@ -152,6 +175,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
         }
       }}
       onPointerUpCapture={(event) => {
+        if (!canExpand) return;
         const start = swipeStartRef.current;
         swipeStartRef.current = null;
         if (event.pointerType === 'touch' && start !== null && Math.abs(event.clientX - start) > 32) {
@@ -162,6 +186,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
       }}
       onPointerCancelCapture={() => { suppressClickRef.current = false; swipeStartRef.current = null; }}
       onClickCapture={(event) => {
+        if (!canExpand) return;
         if (suppressClickRef.current || !expanded) {
           suppressClickRef.current = false;
           event.preventDefault();
@@ -170,6 +195,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
         }
       }}
       onFocusCapture={(event) => {
+        if (!canExpand) return;
         focusInsideRef.current = true;
         cancelClose();
         // 焦點移到另一張牌時，先前放大檢視的資源牌回到扇形中。
@@ -189,7 +215,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
         }
       }}
       onKeyDown={(event) => {
-        if (event.defaultPrevented) return;
+        if (!canExpand || event.defaultPrevented) return;
         if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); collapse(); }
         // 同種資源只佔一個 Tab 停駐點；方向鍵與 Home／End 逐張瀏覽整副手牌。
         if (event.target instanceof Element && event.target.matches(CARD_FACES)) {
@@ -228,9 +254,9 @@ export function HandPanel({ controller }: { controller: TableController }) {
             );
           })}
         </ul>
-        <DevCardPanel controller={controller} embedded handExpanded={expanded} handStyle={(index) => fanStyles[held.length + index] ?? {}} />
-        <button type="button" className="hand-fan__close" onClick={collapse} tabIndex={expanded ? 0 : -1}
-          aria-label={t('table.collapseHand')}>⌄</button>
+        <DevCardPanel controller={controller} embedded handExpanded={fanExpanded} handStyle={(index) => fanStyles[held.length + index] ?? {}} />
+        {fanExpanded && <button type="button" className="hand-fan__close" onClick={collapse}
+          aria-label={t('table.collapseHand')}>⌄</button>}
       </div>
     </section>
       <ul className="resource-tally" ref={tallyRef} aria-label={t('table.resourceTally')} data-testid="resource-tally">
