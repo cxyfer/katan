@@ -12,7 +12,9 @@
 畫面斷言只覆蓋這次修改的 UI 狀態；規則本身由 packages/rules/test/seven.test.ts
 與 packages/web/test 的單元測試負責。只拍照，不做完整對局驗證。
 """
+import json
 import os
+import re
 import sys
 import uuid
 from pathlib import Path
@@ -27,6 +29,8 @@ if OUT.exists() and any(OUT.iterdir()):
 OUT.mkdir(parents=True, exist_ok=True)
 errors = []
 RESOURCES = ['lumber', 'brick', 'wool', 'grain', 'ore']
+# 大量棄牌：22 張手牌要棄 11 張，進度條有 11 格，手牌與棄牌疊的角標出現兩位數。
+BIG_HAND = {'lumber': 12, 'brick': 4, 'wool': 3, 'grain': 2, 'ore': 1}
 
 
 def api(context, method, path):
@@ -169,6 +173,46 @@ def advance_to_multi_discard(contexts, identity, path, game_id, limit=600):
     raise AssertionError(f'no multi-player discard after {limit} steps ({seven_events} sevens)')
 
 
+def inflate_hand(snapshot, pid):
+    """只改這位玩家瀏覽器收到的快照：放大手牌與棄牌配額，伺服器狀態不變。"""
+    view = snapshot.get('view') or {}
+    for player in view.get('players', []):
+        if player['id'] == pid:
+            player['resources'] = dict(BIG_HAND)
+            player['handSize'] = sum(BIG_HAND.values())
+    pending = view.get('pending')
+    if pending and pending['kind'] == 'discard' and pid in pending['waitingFor']:
+        pending['required'][pid] = sum(BIG_HAND.values()) // 2
+    return snapshot
+
+
+def install_big_hand(context, pid):
+    def game_route(route):
+        response = route.fetch()
+        body = response.json()
+        if body.get('ok') and isinstance(body.get('data'), dict) and 'view' in body['data']:
+            inflate_hand(body['data'], pid)
+        route.fulfill(response=response, json=body)
+
+    def socket_route(ws):
+        server = ws.connect_to_server()
+
+        def from_server(message):
+            try:
+                data = json.loads(message)
+            except (TypeError, ValueError):
+                ws.send(message)
+                return
+            if data.get('type') == 'snapshot':
+                inflate_hand(data['payload'], pid)
+            ws.send(json.dumps(data))
+
+        server.on_message(from_server)
+
+    context.route(re.compile(r'.*/api/games/[^/?]+(\?.*)?$'), game_route)
+    context.route_web_socket(re.compile(r'.*/ws(\?.*)?$'), socket_route)
+
+
 def complete_setup(contexts, identity, path, game_id):
     by_id = dict(zip(identity, contexts))
     while True:
@@ -256,7 +300,7 @@ with sync_playwright() as p:
         picked[target] = resources[target]
         expect(page.get_by_test_id(f'discard-left-{target}')).to_have_text('0')
         expect(page.get_by_test_id(f'discard-add-{target}')).to_have_attribute('aria-disabled', 'true')
-        page.get_by_test_id('discard-slot-0').click()
+        page.get_by_test_id(f'discard-return-{target}').click()
         expect(page.get_by_test_id(f'discard-left-{target}')).to_have_text('1')
         expect(page.get_by_test_id(f'discard-add-{target}')).to_have_attribute('aria-disabled', 'false')
         page.get_by_test_id(f'discard-add-{target}').click()
@@ -321,6 +365,30 @@ with sync_playwright() as p:
     expect(other_page.get_by_test_id('discard-submit')).to_contain_text('more')
     assert_prompt_fits(other_page, '390x844-selecting-en')
     shot(other_page, 'discard-selecting-390x844-en')
+
+    # 大量棄牌（只在第二位玩家的瀏覽器放大快照，不送出）：棄牌區高度固定，各尺寸仍須完整可見。
+    big_quota = sum(BIG_HAND.values()) // 2
+    install_big_hand(contexts[identity.index(other)], other)
+    other_page.reload()
+    # 重新載入會回到首頁，從「繼續遊戲」回到同一局。
+    game_switch = other_page.locator('[data-testid=locale-switch-game]')
+    resume_tab = other_page.locator('#home-tab-resume')
+    expect(game_switch.or_(resume_tab)).to_be_visible()
+    if not game_switch.is_visible():
+        resume_tab.click()
+        other_page.get_by_test_id(f'resume-{game_id}').click()
+    game_switch.select_option('zh-Hant')
+    expect(other_page.get_by_test_id('discard-counts')).to_have_text(f'0 / {big_quota}')
+    expect(other_page.get_by_test_id('discard-left-lumber')).to_have_text(str(BIG_HAND['lumber']))
+    for _ in range(7):
+        other_page.get_by_test_id('discard-add-lumber').click()
+    other_page.get_by_test_id('discard-add-brick').click()
+    expect(other_page.get_by_test_id('discard-counts')).to_have_text(f'8 / {big_quota}')
+    for width, height in [(1366, 768), (390, 844), (844, 390), (667, 375), (640, 360), (568, 320), (320, 480)]:
+        other_page.set_viewport_size({'width': width, 'height': height})
+        assert_prompt_fits(other_page, f'{width}x{height}-big', allow_hand_overlap=(width, height) == (320, 480))
+        if (width, height) in [(1366, 768), (390, 844), (844, 390), (568, 320), (320, 480)]:
+            shot(other_page, f'discard-big-{width}x{height}-zh-Hant')
 
     if errors:
         print('PAGE ERRORS', errors, flush=True)
