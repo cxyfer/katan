@@ -6,12 +6,12 @@ import { initialTableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeIdentity, makePlayer, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
-function open(view = makeView(), selfId: string | null = 'p1') {
+function open(view = makeView(), selfId: string | null = 'p1', docked = false) {
   const state = initialTableState('en');
   state.session = selfId ? makeIdentity({ id: selfId }) : null;
   state.game = makeSnapshot(view);
   const controller = { state, dispatch: vi.fn(), actions: {} } as unknown as TableController;
-  render(<LocaleProvider locale="en"><button>Outside</button><PlayersPanel controller={controller} /></LocaleProvider>);
+  render(<LocaleProvider locale="en"><button>Outside</button><PlayersPanel controller={controller} docked={docked} /></LocaleProvider>);
   return screen.getByTestId('players-panel');
 }
 
@@ -208,5 +208,21 @@ describe('player scoreboard previews', () => {
     pointer(panel, 'pointerover');
     expect(screen.queryByTestId('players-hidden-vp')).toBeNull();
     expect(panel.querySelector('.seat__own-score')).toBeNull();
+  });
+
+  it('shows every seat breakdown without hover or pin controls when docked', () => {
+    const onPointer = open(makeView(), 'p1', true);
+    expect(onPointer.getAttribute('data-expanded')).toBe('true');
+    expect(onPointer.getAttribute('data-docked')).toBe('true');
+    expect(screen.getByTestId('players-toggle').hidden).toBe(true);
+    expect(screen.getByTestId('players-pin').hidden).toBe(true);
+    for (const seat of screen.getByTestId('seat-list').children) {
+      expect(seat.querySelector('.players__details')?.hasAttribute('hidden')).toBe(false);
+    }
+    pointer(onPointer, 'pointerover');
+    fireEvent.pointerLeave(onPointer);
+    fireEvent.pointerDown(screen.getByText('Outside'));
+    fireEvent.keyDown(onPointer, { key: 'Escape' });
+    expect(onPointer.getAttribute('data-expanded')).toBe('true');
   });
 });

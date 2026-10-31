@@ -5,6 +5,7 @@ import { StatusStrip } from './StatusStrip.tsx';
 import { GameIcon, IslandIllustration } from './GameArt.tsx';
 import { GameStatsPanel } from './GameStats.tsx';
 import type { TableController } from '../state/useTable.ts';
+import '../styles/result-layout.css';
 
 /**
  * Terminal view (docs/SPEC.md §4.7).
@@ -65,7 +66,7 @@ export function ResultScreen({ controller }: { controller: TableController }) {
 
       {view?.stats && <GameStatsPanel view={view} />}
 
-      <section aria-labelledby="final-board-heading" className="card">
+      <section aria-labelledby="final-board-heading" className="card result-board">
         <h2 id="final-board-heading">{t('play.resultFinalBoard')}</h2>
         <BoardView controller={controller} />
       </section>

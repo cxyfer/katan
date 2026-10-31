@@ -32,13 +32,14 @@
 }
 .board-camera-angle--preview input[type='range'] { accent-color: #557769; }
 .board-camera-hint { margin: 0; padding: 4px 12px; color: #c7d7cf; font-size: 10px; text-align: center; }
+/* 相機工具與圖例排成棋盤左上角的單一橫列，不再與側欄或展開鈕上下堆疊。 */
 .board--side-controls .board__toolbar--side {
   position: absolute;
-  inset: 44px auto auto 4px;
+  inset: 8px auto auto 8px;
   z-index: 45;
-  display: grid;
-  grid-template-columns: repeat(3, 40px);
-  align-content: start;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
   gap: 4px;
   width: max-content;
   min-height: 0;
@@ -46,7 +47,6 @@
   padding: 0;
   overflow: visible;
 }
-.board--side-controls .board__toolbar--side:has(.board__target-picker-toggle) { grid-template-columns: repeat(4, 40px); }
 .board--side-controls .board__toolbar--side:has(.board__display-settings[open]) { z-index: 62; }
 .board--side-controls .board__toolbar--side > .button,
 .board--side-controls .board__display-settings > summary {
@@ -105,6 +105,10 @@
 .board--side-controls .board-camera-hint { padding: 0; text-align: left; }
 .board--side-controls .board__zoom-readout { padding: 0; border: 0; background: none; }
 .board--side-controls .board__dice { position: absolute; right: 12px; bottom: 16px; z-index: 10; transform: none; }
+/* 牌桌上骰子貼在底部資源計數列左側，避開右側欄與左側計分板。 */
+@media (min-width: 650px) {
+  .screen--game .board--side-controls .board__dice { right: calc(50% + 184px); bottom: 12px; }
+}
 .screen--game .board--side-controls > .board__setup-guide { position: absolute; inset: 8px 12px auto auto; z-index: 45; width: min(260px, calc(100% - 70px)); }
 .screen--game .game__messages > .board__setup-guide {
   display: grid;
@@ -118,38 +122,57 @@
 .screen--game .game__messages .board__setup-title { align-items: flex-start; font-size: .75rem; }
 .screen--game .game__messages .board__setup-title > svg { flex: 0 0 auto; }
 .screen--game .game__messages > .board__setup-guide p { font-size: .67rem; }
-/* 圖例收合時是與相機工具列同款的小標籤，固定在工具列正上方，不再被左緣裁切。 */
-.screen--game .board--side-controls > .legend { top: 4px; left: 4px; max-width: calc(100vw - 16px); padding: 0; background: none; border: 0; }
-.screen--game .board--side-controls > .legend[open] { z-index: 63; width: min(530px, calc(100vw - 16px)); padding: 0 .8rem; background: #0d2c33fa; border: 1px solid #a7b49688; border-radius: 10px; box-shadow: 0 12px 32px #00151d88; }
-.screen--game .board--side-controls > .legend > summary {
+/* 圖例收合時是工具列最後一顆同高的文字鈕；展開的對照表懸在工具列下方。 */
+.board--side-controls .board__toolbar--side > .legend { position: relative; inset: auto; z-index: auto; width: auto; max-width: none; margin: 0; padding: 0; background: none; border: 0; }
+.board--side-controls .board__toolbar--side > .legend > summary {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
+  height: 40px;
+  min-height: 40px;
   margin: 0;
   padding: 0 .75rem;
   color: #e4d8b1;
   font-size: .72rem;
   font-weight: 650;
+  white-space: nowrap;
+  list-style: none;
   background: #0d2c33ed;
   border: 1px solid #a7b49666;
   border-radius: 8px;
   box-shadow: 0 3px 10px #031a2333;
+  cursor: pointer;
 }
-.screen--game .board--side-controls > .legend[open] > summary { margin-top: .5rem; border-color: #e5c77e; }
-.screen--game .board--side-controls > .legend > summary:hover { color: #f6e3b2; border-color: #e5c77e; }
+.board--side-controls .board__toolbar--side > .legend > summary::-webkit-details-marker { display: none; }
+.board--side-controls .board__toolbar--side > .legend[open] > summary,
+.board--side-controls .board__toolbar--side > .legend > summary:hover { color: #f6e3b2; border-color: #e5c77e; }
+.board--side-controls .board__toolbar--side > .legend > summary:focus-visible { outline: 2px solid #e5c77e; outline-offset: 2px; }
+.board--side-controls .board__toolbar--side > .legend > .legend__grid {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 63;
+  width: min(530px, calc(100vw - 32px));
+  max-height: min(70dvh, 420px);
+  overflow: auto;
+  padding: .6rem .9rem .8rem;
+  background: #0d2c33fa;
+  border: 1px solid #a7b49688;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px #00151d88;
+}
+.board--side-controls .board__toolbar--side:has(.legend[open]) { z-index: 62; }
 .board__surface, .island-preview__surface { cursor: grab; }
 .board__surface[data-gesture-active='true'], .island-preview__surface[data-gesture-active='true'] { cursor: grabbing; }
 @media (pointer: coarse), (max-width: 649px) {
-  .board--side-controls .board__toolbar--side { grid-template-columns: repeat(3, 44px); inset: 34px auto auto 2px; }
-  .board--side-controls .board__toolbar--side:has(.board__target-picker-toggle) { grid-template-columns: repeat(4, 44px); }
+  .board--side-controls .board__toolbar--side { inset: 6px auto auto 4px; }
   .board--side-controls .board__toolbar--side > .button,
-  .board--side-controls .board__display-settings > summary { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
-  .screen--game .board--side-controls > .legend { top: 2px; left: 2px; }
-  .screen--game .board--side-controls > .legend > summary { min-height: 28px; font-size: .66rem; }
+  .board--side-controls .board__display-settings > summary,
+  .board--side-controls .board__toolbar--side > .legend > summary { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+  .board--side-controls .board__toolbar--side > .legend > summary { width: auto; padding: 0 .6rem; font-size: .66rem; }
 }
-@media (max-height: 520px) and (min-width: 650px) {
-  .screen--game .board--side-controls .board__toolbar--side { top: 8px; left: calc(var(--score-width) + 12px); }
-  .screen--game .board--side-controls > .legend { top: 8px; left: calc(var(--score-width) + 196px); }
+@media (max-width: 649px) {
+  /* 手機直屏寬度有限：工具列換成兩列，避免超出棋盤。 */
+  .board--side-controls .board__toolbar--side { flex-wrap: wrap; width: 140px; }
 }
 @media (max-width: 649px) {
   .board--side-controls .board__display-settings-panel { position: fixed; inset: auto 8px 112px auto; width: min(280px, calc(100vw - 24px)); max-height: min(60dvh, 400px); }

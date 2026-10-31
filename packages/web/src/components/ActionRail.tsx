@@ -6,8 +6,10 @@ import { GameIcon } from './GameArt.tsx';
 import '../styles/action-rail.css';
 
 /** 水平揭開既有操作，不重新掛載動作或改動已選取的建造目標。 */
-export function ActionRail({ controller, onExpand, collapseRequested = false }: {
+export function ActionRail({ controller, onExpand, collapseRequested = false, docked = false }: {
   controller: TableController; onExpand?: () => void; collapseRequested?: boolean;
+  /** 寬螢幕常駐展開：不收合、不需 hover，也不顯示展開鈕。 */
+  docked?: boolean;
 }) {
   const t = useT();
   const [hovered, setHovered] = useState(false);
@@ -19,7 +21,7 @@ export function ActionRail({ controller, onExpand, collapseRequested = false }: 
   const consumeTouchClick = useRef(false);
   const togglePointerExpanded = useRef<boolean | null>(null);
   const dismissing = useRef(false);
-  const expanded = !dismissed && (hovered || focused || pinned);
+  const expanded = docked || (!dismissed && (hovered || focused || pinned));
   const view = controller.state.game?.view;
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export function ActionRail({ controller, onExpand, collapseRequested = false }: 
   }, [collapseRequested]);
 
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded || docked) return;
     const dismiss = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       if (event.target instanceof Element && event.target.closest('[role="dialog"], dialog')) return;
@@ -52,7 +54,7 @@ export function ActionRail({ controller, onExpand, collapseRequested = false }: 
     };
     document.addEventListener('keydown', dismiss);
     return () => document.removeEventListener('keydown', dismiss);
-  }, [expanded]);
+  }, [expanded, docked]);
 
   return (
     <aside
@@ -61,6 +63,7 @@ export function ActionRail({ controller, onExpand, collapseRequested = false }: 
       aria-label={t('table.build')}
       data-testid="action-rail"
       data-expanded={expanded ? 'true' : 'false'}
+      data-docked={docked ? 'true' : undefined}
       onPointerEnter={(event) => {
         if (event.pointerType === 'touch') return;
         setDismissed(false);
@@ -77,7 +80,7 @@ export function ActionRail({ controller, onExpand, collapseRequested = false }: 
         setDismissed(false);
       }}
       onPointerDownCapture={(event) => {
-        consumeTouchClick.current = event.pointerType === 'touch' && !expanded &&
+        consumeTouchClick.current = !docked && event.pointerType === 'touch' && !expanded &&
           event.target instanceof Element &&
           !!event.target.closest('.action-list__button');
       }}
@@ -96,6 +99,7 @@ export function ActionRail({ controller, onExpand, collapseRequested = false }: 
         type="button"
         className="action-rail__toggle"
         data-testid="action-rail-toggle"
+        hidden={docked}
         aria-label={expanded ? t('table.closePanel') : t('table.build')}
         title={expanded ? t('table.closePanel') : t('table.build')}
         aria-expanded={expanded}
