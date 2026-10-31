@@ -6,14 +6,16 @@ import {
   useState,
 } from 'react';
 import {
+  CanvasTexture,
   DoubleSide,
+  ImageLoader,
   LinearFilter,
+  LinearMipmapLinearFilter,
   Matrix4,
   MeshBasicMaterial,
   OrthographicCamera,
   SRGBColorSpace,
   Texture,
-  TextureLoader,
   type BufferGeometry,
 } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -49,6 +51,9 @@ function useLeasedResources(): BoardSceneResources {
   return resources;
 }
 
+/** The atlas SVG is 1024px; rasterize it larger so zoomed-in labels stay sharp. */
+const ATLAS_RASTER_SIZE = 2048;
+
 function useBoardAtlas(onUnavailable: (reason: string) => void): Texture | null {
   const { gl } = useThree();
   const [texture, setTexture] = useState<Texture | null>(null);
@@ -58,19 +63,27 @@ function useBoardAtlas(onUnavailable: (reason: string) => void): Texture | null 
   useEffect(() => {
     let active = true;
     let loaded: Texture | null = null;
-    const loader = new TextureLoader();
+    const loader = new ImageLoader();
     try {
       loader.load(
         BOARD_ATLAS_URL,
-        (next) => {
-          if (!active) {
-            next.dispose();
+        (image) => {
+          if (!active) return;
+          const canvas = document.createElement('canvas');
+          canvas.width = ATLAS_RASTER_SIZE;
+          canvas.height = ATLAS_RASTER_SIZE;
+          const context = canvas.getContext('2d');
+          if (!context) {
+            failureRef.current('texture');
             return;
           }
+          context.drawImage(image, 0, 0, ATLAS_RASTER_SIZE, ATLAS_RASTER_SIZE);
+          const next = new CanvasTexture(canvas);
           next.colorSpace = SRGBColorSpace;
-          next.anisotropy = Math.min(4, gl.capabilities.getMaxAnisotropy());
-          next.generateMipmaps = false;
-          next.minFilter = LinearFilter;
+          next.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
+          // Mipmaps keep small, zoomed-out labels from shimmering.
+          next.generateMipmaps = true;
+          next.minFilter = LinearMipmapLinearFilter;
           next.magFilter = LinearFilter;
           loaded = next;
           setTexture(next);
@@ -139,14 +152,15 @@ function Lights({ quality }: { quality: 'standard' | 'low' }) {
   const shadows = quality === 'standard';
   return (
     <>
-      <ambientLight intensity={0.32} color="#fff3dc" />
-      <hemisphereLight args={['#e5f2f1', '#a08d6d', 1.25]} />
-      <directionalLight position={[6, 5, -8]} intensity={0.42} color="#c6e0ed" />
+      <ambientLight intensity={0.26} color="#fff3dc" />
+      <hemisphereLight args={['#e3f1f4', '#a48a64', 1.2]} />
+      {/* A cool rim from behind lifts silhouettes off the warm key light. */}
+      <directionalLight position={[6, 5, -8]} intensity={0.55} color="#bcd9ec" />
       <directionalLight
         castShadow={shadows}
         position={[-5, 10, 6]}
-        intensity={2.8}
-        color="#fff1cf"
+        intensity={3.05}
+        color="#ffe9c6"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-camera-left={-7}

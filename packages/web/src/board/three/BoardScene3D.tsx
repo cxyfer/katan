@@ -30,7 +30,8 @@ export default function BoardScene3D(props: BoardSceneProps) {
           frameloop="demand"
           orthographic
           shadows={standard ? 'percentage' : false}
-          dpr={standard ? [1, 1.5] : [1, 1]}
+          // Follow the screen up to 2x so high-DPI displays are not upscaled from 1.5x.
+          dpr={standard ? [1, 2] : [1, 1]}
           gl={{ antialias: standard, alpha: false, powerPreference: 'high-performance' }}
           camera={{ position: [0, 10, 10], zoom: 1, near: 0.1, far: 100,
             left: -10, right: 10, top: 10, bottom: -10 }}

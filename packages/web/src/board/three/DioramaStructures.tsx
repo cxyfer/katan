@@ -102,10 +102,27 @@ export function DioramaRoads({ geometry, board, players, ...props }: PieceProps)
   });
 }
 
+function HarborBatch({ type, instances, material, quality }: Pick<BoardSceneProps, 'quality'> & {
+  type: string;
+  instances: readonly InstanceTransform[];
+  material: Material;
+}) {
+  const model = useDioramaGeometry(() => createHarborModel(type), [type]);
+  return <InstancedPrimitive geometry={model} material={material} instances={instances} castShadow={quality === 'standard'} />;
+}
+
 export function DioramaHarbors({ geometry, board, material, quality }: Pick<BoardSceneProps, 'geometry' | 'board' | 'quality'> & {
   material: Material;
 }) {
-  const model = useDioramaGeometry(createHarborModel, []);
-  const instances = useMemo(() => dioramaHarborInstances(geometry, board), [geometry, board]);
-  return <InstancedPrimitive geometry={model} material={material} instances={instances} castShadow={quality === 'standard'} />;
+  // Each trade gets its own cargo, so harbors batch by type.
+  const batches = useMemo(() => {
+    const grouped = new Map<string, InstanceTransform[]>();
+    for (const harbor of dioramaHarborInstances(geometry, board)) {
+      const items = grouped.get(harbor.type) ?? [];
+      items.push(harbor);
+      grouped.set(harbor.type, items);
+    }
+    return [...grouped.entries()];
+  }, [geometry, board]);
+  return batches.map(([type, instances]) => <HarborBatch key={type} type={type} instances={instances} material={material} quality={quality} />);
 }

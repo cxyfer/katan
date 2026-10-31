@@ -5,7 +5,7 @@ import {
   ConeGeometry,
   CylinderGeometry,
   ExtrudeGeometry,
-  Float32BufferAttribute,
+  IcosahedronGeometry,
   Quaternion,
   Shape,
   TorusGeometry,
@@ -14,7 +14,7 @@ import {
 import type { PublicBoardView } from '@catan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import { geometryToWorld } from './bounds.ts';
-import { ModelBuilder } from './diorama-geometry.ts';
+import { ModelBuilder, outwardFace, PaintedMesh } from './diorama-geometry.ts';
 import { harborInstances } from './model-specs.ts';
 import type { InstanceTransform, Vec3 } from './transforms.ts';
 
@@ -22,7 +22,6 @@ const PLASTER = '#f4dfb5';
 const STONE = '#c2c4ae';
 const TIMBER = '#6b442c';
 const DARK = '#263b3d';
-const WOOD = '#b9834d';
 const ROPE = '#dfcb93';
 
 function tint(color: string, amount: number): string {
@@ -199,24 +198,42 @@ export function createRoadModel(color: string, seat: number): BufferGeometry {
   return model.build().scale(1, 0.055 / 0.045, 0.15 / 0.085);
 }
 
+/** A lofted rowing hull: rounded bilges, a pointed stem and a flat transom, bow toward +Z. */
 function boatHull(): BufferGeometry {
-  const outline = [[-0.055, -0.17], [-0.083, -0.09], [-0.079, 0.085], [0, 0.19], [0.079, 0.085], [0.083, -0.09], [0.055, -0.17]];
-  const vertices: number[] = [];
-  const add = (...points: number[][]) => points.forEach((point) => vertices.push(...point));
-  for (let index = 0; index < outline.length; index++) {
-    const a = outline[index]!;
-    const b = outline[(index + 1) % outline.length]!;
-    const topA = [a[0]!, 0.038, a[1]!];
-    const topB = [b[0]!, 0.038, b[1]!];
-    const lowerA = [a[0]! * 0.55, -0.024, a[1]! * 0.8];
-    const lowerB = [b[0]! * 0.55, -0.024, b[1]! * 0.8];
-    add(topA, lowerA, topB, topB, lowerA, lowerB);
-    add([0, 0.038, 0], topA, topB);
-    add([0, -0.024, 0], lowerB, lowerA);
+  // [z, half-beam, keel depth] from transom to stem.
+  const stations: readonly (readonly [number, number, number])[] = [
+    [-0.17, 0.052, -0.012], [-0.11, 0.078, -0.022], [-0.02, 0.088, -0.026],
+    [0.07, 0.08, -0.024], [0.14, 0.05, -0.016], [0.19, 0, -0.004],
+  ];
+  const sheer = 0.038;
+  const section = ([z, beam, keel]: readonly [number, number, number]): Vec3[] => [
+    [-beam, sheer + (z > 0.12 ? 0.008 : 0), z], [-beam * 0.82, keel * 0.45, z], [0, keel, z],
+    [beam * 0.82, keel * 0.45, z], [beam, sheer + (z > 0.12 ? 0.008 : 0), z],
+  ];
+  const sections = stations.map(section);
+  const mesh = new PaintedMesh();
+  const key = (point: Vec3) => point.map((value) => value.toFixed(6)).join(',');
+  const face = (a: Vec3, b: Vec3, c: Vec3, center: Vec3) => {
+    if (key(a) === key(b) || key(b) === key(c) || key(a) === key(c)) return;
+    outwardFace(mesh, a, b, c, '#ffffff', center);
+  };
+  for (let station = 0; station < sections.length - 1; station++) {
+    const aft = sections[station]!;
+    const fore = sections[station + 1]!;
+    const center: Vec3 = [0, 0.006, (stations[station]![0] + stations[station + 1]![0]) / 2];
+    for (let k = 0; k < 4; k++) {
+      face(aft[k]!, aft[k + 1]!, fore[k + 1]!, center);
+      face(aft[k]!, fore[k + 1]!, fore[k]!, center);
+    }
+    const below: Vec3 = [center[0], -0.2, center[2]];
+    face(aft[0]!, aft[4]!, fore[4]!, below);
+    face(aft[0]!, fore[4]!, fore[0]!, below);
   }
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
-  geometry.computeVertexNormals();
+  const transom = sections[0]!;
+  for (let k = 0; k < 3; k++) face(transom[2]!, transom[k === 0 ? 0 : k + 1]!, transom[k === 0 ? 1 : k + 2]!, [0, 0.006, 0]);
+  face(transom[0]!, transom[2]!, transom[4]!, [0, 0.006, 0]);
+  const geometry = mesh.geometry();
+  geometry.deleteAttribute('color');
   return geometry;
 }
 
@@ -229,11 +246,58 @@ function crate(model: ModelBuilder, x: number, z: number) {
   box(model, TIMBER, [x, 0.127, z - 0.041], [0.009, 0.089, 0.009], [0, 0, -Math.PI / 4]);
 }
 
+/** Goods waiting on the pier advertise the harbor's trade. */
+function cargo(model: ModelBuilder, type: string, x: number, z: number) {
+  const deck = 0.088;
+  switch (type) {
+    case 'lumber':
+      for (const [dx, dy] of [[-0.02, 0], [0.02, 0], [0, 0.034]] as const) {
+        model.add(new CylinderGeometry(0.019, 0.019, 0.1, 7), '#86664a', [x + dx, deck + 0.019 + dy, z], [1, 1, 1], [Math.PI / 2, 0, 0]);
+        model.add(new CylinderGeometry(0.015, 0.015, 0.102, 7), '#dcbc8a', [x + dx, deck + 0.019 + dy, z], [1, 1, 1], [Math.PI / 2, 0, 0]);
+      }
+      break;
+    case 'brick':
+      for (let level = 0; level < 3; level++) {
+        for (const dx of [-0.022, 0.022]) {
+          box(model, ['#c4724f', '#d6875f', '#b0603f'][(level + (dx > 0 ? 1 : 0)) % 3]!, [x + dx, deck + 0.012 + level * 0.024, z], [0.04, 0.02, 0.07], [0, level % 2 ? 0.08 : 0, 0]);
+        }
+      }
+      break;
+    case 'wool':
+      for (const [dy, yaw] of [[0, 0.1], [0.046, -0.2]] as const) {
+        box(model, '#f1ead6', [x, deck + 0.023 + dy, z], [0.08, 0.044, 0.064], [0, yaw, 0]);
+        box(model, '#9b7951', [x, deck + 0.023 + dy, z], [0.084, 0.046, 0.008], [0, yaw, 0]);
+      }
+      break;
+    case 'grain':
+      for (const [dx, dz] of [[-0.024, -0.012], [0.026, 0.006], [0, 0.03]] as const) {
+        model.add(new CylinderGeometry(0.016, 0.026, 0.06, 7), '#d8c08a', [x + dx, deck + 0.03, z + dz]);
+        model.add(new CylinderGeometry(0.009, 0.014, 0.016, 7), '#c4a86c', [x + dx, deck + 0.068, z + dz]);
+      }
+      break;
+    case 'ore':
+      box(model, '#7a5a3c', [x, deck + 0.02, z], [0.09, 0.04, 0.07]);
+      for (let chunk = 0; chunk < 5; chunk++) {
+        model.add(new IcosahedronGeometry(1, 0), ['#5d6b78', '#6f7f8c', '#8b9aa6'][chunk % 3]!,
+          [x + (chunk - 2) * 0.016, deck + 0.046 + (chunk % 2) * 0.008, z + (chunk % 2 ? 0.012 : -0.012)], [0.02, 0.016, 0.018], [chunk, chunk * 2, 0]);
+      }
+      break;
+    default:
+      model.add(new CylinderGeometry(0.037, 0.033, 0.09, 8), '#a26e40', [x, 0.131, z]);
+      for (const y of [0.102, 0.158]) {
+        model.add(new TorusGeometry(0.036, 0.004, 3, 8), DARK, [x, y, z], [1, 1, 1], [Math.PI / 2, 0, 0]);
+      }
+  }
+}
+
 export const HARBOR_LABEL_POSITION: Vec3 = [0, 0.205, 0.285];
 
-export function createHarborModel(): BufferGeometry {
+export function createHarborModel(type = 'generic'): BufferGeometry {
   const model = new ModelBuilder();
   // The inland end is at the topology edge. All scenery points toward local +Z.
+  // A dressed-stone abutment anchors the pier to the shore.
+  box(model, '#a9a28f', [0, -0.11, 0.045], [0.5, 0.2, 0.09]);
+  for (const x of [-0.17, 0, 0.17]) box(model, '#bdb6a2', [x, -0.012, 0.046], [0.15, 0.02, 0.09]);
   for (const x of [-0.195, 0.195]) {
     box(model, TIMBER, [x, 0.035, 0.295], [0.033, 0.04, 0.58]);
     for (const z of [0.055, 0.3, 0.555]) {
@@ -242,22 +306,31 @@ export function createHarborModel(): BufferGeometry {
       model.add(new CylinderGeometry(0.027, 0.027, 0.013, 4), '#d1a46a', [x, 0.137, z]);
       model.add(new TorusGeometry(0.025, 0.004, 3, 6), ROPE, [x, 0.113, z], [1, 1, 1], [Math.PI / 2, 0, 0]);
     }
+    // Cross bracing between the pilings.
+    beam(model, '#5a3a26', [x, -0.02, 0.07], [x, -0.2, 0.29], 0.006);
+    beam(model, '#5a3a26', [x, -0.02, 0.54], [x, -0.2, 0.31], 0.006);
   }
   for (let plank = 0; plank < 12; plank++) {
-    box(model, plank % 3 ? WOOD : '#c7975d', [0, 0.072, 0.025 + plank * 0.05], [0.432, 0.031, 0.047]);
+    box(model, ['#b9834d', '#c7975d', '#ad7845'][plank % 3]!, [0, 0.072, 0.025 + plank * 0.05], [0.432 - (plank % 2) * 0.012, 0.031, 0.046]);
   }
-  // A raised trading sign clears the piling caps and remains legible at board fit.
+  // A raised, framed trading sign clears the piling caps and remains legible at board fit.
   for (const x of [-0.13, 0.13]) {
     box(model, TIMBER, [x, 0.136, 0.285], [0.023, 0.105, 0.09]);
   }
   box(model, TIMBER, [0, 0.191, 0.285], [0.72, 0.015, 0.43]);
   box(model, '#eed9ab', [0, 0.1995, 0.285], [0.704, 0.009, 0.414]);
-  crate(model, -0.122, 0.55);
-  model.add(new CylinderGeometry(0.037, 0.033, 0.09, 6), '#a26e40', [0.11, 0.131, 0.55]);
-  for (const y of [0.102, 0.158]) {
-    model.add(new TorusGeometry(0.036, 0.004, 3, 6), DARK, [0.11, y, 0.55], [1, 1, 1], [Math.PI / 2, 0, 0]);
+  for (const side of [-1, 1]) {
+    box(model, '#7a4c2e', [side * 0.355, 0.204, 0.285], [0.014, 0.009, 0.43]);
+    box(model, '#7a4c2e', [0, 0.204, 0.285 + side * 0.211], [0.724, 0.009, 0.012]);
   }
+  crate(model, -0.122, 0.55);
+  cargo(model, type, 0.11, 0.55);
   model.add(new TorusGeometry(0.028, 0.007, 3, 6), ROPE, [-0.1, 0.096, 0.04], [1, 1, 1], [Math.PI / 2, 0, 0]);
+  // A lantern on the seaward piling.
+  beam(model, '#3b3430', [-0.195, 0.143, 0.555], [-0.195, 0.31, 0.555], 0.006);
+  box(model, '#2b3133', [-0.195, 0.318, 0.555], [0.04, 0.008, 0.04]);
+  box(model, '#ffd27a', [-0.195, 0.296, 0.555], [0.03, 0.036, 0.03]);
+  box(model, '#2b3133', [-0.195, 0.275, 0.555], [0.04, 0.007, 0.04]);
   // Mooring rope and a side-tied fishing boat give each harbor a maritime silhouette.
   // The ocean is at Y=-.285: submerge the keel while retaining the dock elevation.
   const boatYOffset = -0.312;
@@ -265,7 +338,8 @@ export function createHarborModel(): BufferGeometry {
   const boatX = 0.32;
   const boatZ = 0.63;
   model.add(boatHull(), '#276d7b', [boatX, 0.022 + boatYOffset, boatZ]);
-  model.add(boatHull(), '#dfc28b', [boatX, 0.029 + boatYOffset, boatZ], [0.82, 0.8, 0.94]);
+  model.add(boatHull(), '#dfc28b', [boatX, 0.029 + boatYOffset, boatZ], [0.84, 0.8, 0.92]);
+  model.add(boatHull(), '#e7d7b0', [boatX, 0.057 + boatYOffset, boatZ], [1.03, 0.12, 1.01]);
   for (const z of [-0.1, 0.045]) {
     box(model, '#9b653c', [boatX, 0.069 + boatYOffset, boatZ + z], [0.13, 0.012, 0.029]);
   }
@@ -275,11 +349,18 @@ export function createHarborModel(): BufferGeometry {
   const sail = new Shape();
   sail.moveTo(0, 0);
   sail.lineTo(0.232, 0);
-  sail.lineTo(0.027, 0.315);
+  sail.quadraticCurveTo(0.12, 0.13, 0.027, 0.315);
   sail.closePath();
-  const sailGeometry = new ExtrudeGeometry(sail, { depth: 0.006, bevelEnabled: false, steps: 1 });
+  const sailGeometry = new ExtrudeGeometry(sail, { depth: 0.006, bevelEnabled: false, steps: 1, curveSegments: 4 });
   model.add(sailGeometry, '#f8ebc8', [boatX - 0.003, 0.185 + boatYOffset, boatZ - 0.12], [1, 1, 1], [0, -Math.PI / 2, 0]);
   beam(model, ROPE, [boatX, 0.515 + boatYOffset, boatZ], [boatX, 0.073 + boatYOffset, boatZ + 0.175], 0.002);
+  const pennant = new Shape();
+  pennant.moveTo(0, 0);
+  pennant.lineTo(0, 0.03);
+  pennant.lineTo(0.06, 0.015);
+  pennant.closePath();
+  model.add(new ExtrudeGeometry(pennant, { depth: 0.003, bevelEnabled: false, steps: 1 }), '#c0473a',
+    [boatX - 0.0015, 0.5 + boatYOffset, boatZ], [1, 1, 1], [0, -Math.PI / 2, 0]);
   return model.build();
 }
 

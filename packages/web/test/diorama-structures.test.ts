@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Color, Mesh, MeshBasicMaterial, Raycaster, Vector3, type BufferGeometry } from 'three';
 import { describe, expect, it } from 'vitest';
 import { buildGeometry } from '../src/board/geometry.ts';
@@ -130,7 +131,7 @@ describe('baked architectural miniatures', () => {
   it('harbors include a closed shallow hull, pier pilings, deck cargo and a cream sail', () => {
     const model = createHarborModel();
     const bounds = validateModel(model);
-    expect(model.getAttribute('position').count / 3).toBeLessThanOrEqual(1_100);
+    expect(model.getAttribute('position').count / 3).toBeLessThanOrEqual(1_600);
     expect(bounds.max.z).toBeLessThanOrEqual(0.85);
     expect(bounds.min.z).toBeGreaterThanOrEqual(0);
     expect(bounds.min.y).toBeLessThan(-0.31);
@@ -151,6 +152,21 @@ describe('baked architectural miniatures', () => {
     expect(Math.max(...hullY)).toBeLessThan(-0.24);
     expect(coloredVerticesAbove(model, '#eed9ab', 0.2)).toBeGreaterThan(0);
     model.dispose();
+  });
+
+  it('gives every trade its own closed cargo within the harbor envelope', () => {
+    const signatures = new Set<string>();
+    for (const type of ['generic', 'lumber', 'brick', 'wool', 'grain', 'ore']) {
+      const model = createHarborModel(type);
+      const bounds = validateModel(model);
+      expect(model.getAttribute('position').count / 3).toBeLessThanOrEqual(1_600);
+      expect(bounds.min.z).toBeGreaterThanOrEqual(0);
+      expect(bounds.max.z).toBeLessThanOrEqual(0.85);
+      expect(bounds.max.y).toBeLessThanOrEqual(0.55);
+      signatures.add(createHash('sha256').update(new Uint8Array((model.getAttribute('position').array as Float32Array).buffer)).digest('hex'));
+      model.dispose();
+    }
+    expect(signatures.size).toBe(6);
   });
 
   it.each(['hex-r2', 'hex-r56'])('keeps every %s coastal edge identity and places boats seaward', (topologyId) => {

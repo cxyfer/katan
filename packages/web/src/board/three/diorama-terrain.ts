@@ -1,7 +1,6 @@
 import {
   BoxGeometry,
   BufferGeometry,
-  CylinderGeometry,
   Euler,
   Float32BufferAttribute,
   IcosahedronGeometry,
@@ -12,11 +11,10 @@ import {
   TorusGeometry,
   Vector3,
 } from 'three';
-import { ModelBuilder, sceneryRandom } from './diorama-geometry.ts';
+import { ModelBuilder, outwardFace, PaintedMesh, sceneryRandom } from './diorama-geometry.ts';
 import type { Vec3 } from './transforms.ts';
 
 const TAU = Math.PI * 2;
-const greens = ['#426b51', '#577b58', '#6c8b61', '#385c4a'];
 const stone = ['#8c9290', '#a5aaa1', '#777f80', '#b7b7a9'];
 
 /** Closed radial solids triangulate each cap without a redundant center fan. */
@@ -64,10 +62,6 @@ function box(b: ModelBuilder, color: string, at: Vec3, size: Vec3, rotation: Vec
 
 function pebble(b: ModelBuilder, color: string, x: number, z: number, r: number, height = r * 1.25) {
   b.add(new IcosahedronGeometry(1, 0), color, [x, height * 0.48, z], [r, height * 0.5, r * 0.8], [0, x * 5, 0]);
-}
-
-function patch(b: ModelBuilder, color: string, x: number, z: number, rx: number, rz: number, height = 0.035) {
-  b.add(new SphereGeometry(1, 12, 6), color, [x, height * 0.5, z], [rx, height * 0.5, rz]);
 }
 
 /** Place an intact miniature with translation/yaw only; its dimensions stay native. */
@@ -124,211 +118,653 @@ function branch(b: ModelBuilder, from: Vec3, to: Vec3, radius: number, color: st
   center.y = Math.max(center.y, -geometry.boundingBox!.min.y);
   b.add(geometry, color, center.toArray() as [number, number, number]);
 }
+/** Keep every footprint vertex out of the token well and the shared building lanes. */
+function clampFootprint(x: number, z: number): [number, number] {
+  const radius = Math.hypot(x, z);
+  // Chords between two clamped corners still clear the 0.3 token well.
+  if (radius < 0.335) {
+    const scale = 0.335 / (radius || 1);
+    x *= scale; z *= scale;
+  }
+  const sideLimit = Math.sqrt(3) * 0.86 / 2 - 0.002;
+  x = Math.max(-sideLimit, Math.min(sideLimit, x));
+  const diagonal = Math.abs(z) + Math.abs(x) / Math.sqrt(3);
+  if (diagonal > 0.858) z = Math.sign(z) * Math.max(0, 0.858 - Math.abs(x) / Math.sqrt(3));
+  return [x, z];
+}
 
-function conifer(b: ModelBuilder, x: number, z: number, size: number, tint: number) {
-  const h = 0.39 * size;
-  b.add(radialSolid(0.014, 0.023, h * 0.7, 5), '#80674b', [x, h * 0.35, z]);
-  for (let layer = 0; layer < 4; layer++) {
-    const y = h * (0.36 + layer * 0.155);
-    const r = (0.115 - layer * 0.023) * size;
-    b.add(radialSolid(0, r, h * 0.43, 6), greens[(tint + layer) % greens.length]!, [x, y, z], [1, 1, 0.9], [0, layer * 0.55 + tint, 0]);
-    if (layer < 2) {
-      for (let limb = 0; limb < 3; limb++) {
-        const angle = limb * TAU / 3 + tint;
-        branch(b, [x, y - 0.035, z], [x + Math.cos(angle) * r * 0.86, y - 0.025, z + Math.sin(angle) * r * 0.86], 0.007, '#715b43', 3, true);
-      }
+interface MassOptions {
+  x: number; z: number; rx: number; rz: number; height: number; seed: number;
+  /** Ring heights in 0..1; the last level is the crest. */
+  levels: readonly number[];
+  /** Radius multiplier per level; zero closes the crest at a single peak. */
+  profile: (t: number) => number;
+  /** Paint for a face whose centroid sits at relative height t. */
+  paint: (t: number, face: number, random: () => number) => string;
+  sides?: number;
+  jitter?: number;
+  /** Keep ring heights exact so stepped terraces cannot cross. */
+  flatLevels?: boolean;
+}
+
+/** A closed faceted lathe with jittered rings, painted face by face by height. */
+function rockMass(mesh: PaintedMesh, options: MassOptions) {
+  const random = sceneryRandom(options.seed);
+  const sides = options.sides ?? 9;
+  const jitter = options.jitter ?? 0.26;
+  const phase = random() * TAU;
+  const rings = options.levels.map((t, level) => {
+    const scale = options.profile(t);
+    const lift = 0.95 + random() * 0.08;
+    const y = level === 0 ? 0 : options.height * t * (options.flatLevels ? 1 : lift);
+    return Array.from({ length: sides }, (_, index) => {
+      const angle = phase + (index + (random() - 0.5) * 0.35) / sides * TAU;
+      const wobble = 1 - jitter / 2 + random() * jitter;
+      const [x, z] = clampFootprint(
+        options.x + Math.sin(angle) * options.rx * scale * wobble,
+        options.z + Math.cos(angle) * options.rz * scale * wobble,
+      );
+      return [x, Math.min(y, 0.8), z] as Vec3;
+    });
+  });
+  const center: Vec3 = [options.x, options.height * 0.4, options.z];
+  let face = 0;
+  const outward = (a: Vec3, b: Vec3, c: Vec3, t: number) => {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const cx = (a[0] + b[0] + c[0]) / 3 - center[0];
+    const cy = (a[1] + b[1] + c[1]) / 3 - center[1];
+    const cz = (a[2] + b[2] + c[2]) / 3 - center[2];
+    const color = options.paint(t, face++, random);
+    if (nx * cx + ny * cy + nz * cz >= 0) mesh.face(a, b, c, color);
+    else mesh.face(a, c, b, color);
+  };
+  const pointed = options.profile(options.levels.at(-1)!) === 0;
+  for (let level = 0; level < rings.length - 1; level++) {
+    const lower = rings[level]!;
+    const upper = rings[level + 1]!;
+    const t = (options.levels[level]! + options.levels[level + 1]!) / 2;
+    // A crest of zero radius is a single peak, so its second triangle would be a sliver.
+    const peak = pointed && level === rings.length - 2;
+    for (let index = 0; index < sides; index++) {
+      const next = (index + 1) % sides;
+      outward(lower[index]!, lower[next]!, upper[index]!, t);
+      if (!peak) outward(lower[next]!, upper[next]!, upper[index]!, t + 0.04);
     }
   }
+  if (!pointed) {
+    const crest = rings.at(-1)!;
+    const apex: Vec3 = [options.x, Math.max(...crest.map((point) => point[1])) + options.height * 0.02, options.z];
+    for (let index = 0; index < sides; index++) outward(crest[index]!, crest[(index + 1) % sides]!, apex, 1);
+  }
+  const base = rings[0]!;
+  const floor: Vec3 = [options.x, 0, options.z];
+  for (let index = 0; index < sides; index++) {
+    const a = base[index]!;
+    const b = base[(index + 1) % sides]!;
+    // The floor faces down regardless of jitter.
+    const ny = (b[2] - a[2]) * (floor[0] - a[0]) - (b[0] - a[0]) * (floor[2] - a[2]);
+    const color = options.paint(0, face++, random);
+    if (ny <= 0) mesh.face(a, b, floor, color); else mesh.face(a, floor, b, color);
+  }
+}
+
+const SQRT3 = Math.sqrt(3);
+
+/** Largest radius a round feature centred at (x, z) can take inside the lanes and clear of the well. */
+function room(x: number, z: number): number {
+  const side = SQRT3 * 0.86 / 2 - 0.002 - Math.abs(x);
+  const slope = (0.858 - Math.abs(z) - Math.abs(x) / SQRT3) * SQRT3 / 2;
+  const well = Math.hypot(x, z) - 0.31;
+  return Math.max(0, Math.min(side, slope, well));
+}
+
+/** A thin closed leaf blade from base through a raised midrib to a pointed tip. */
+function blade(b: ModelBuilder, base: Vec3, mid: Vec3, tip: Vec3, width: number, color: string) {
+  const along = new Vector3(tip[0] - base[0], 0, tip[2] - base[2]).normalize();
+  const side = new Vector3(-along.z, 0, along.x).multiplyScalar(width);
+  const left: Vec3 = [mid[0] + side.x, mid[1], mid[2] + side.z];
+  const right: Vec3 = [mid[0] - side.x, mid[1], mid[2] - side.z];
+  const up: Vec3 = [mid[0], mid[1] + width * 0.25, mid[2]];
+  const down: Vec3 = [mid[0], mid[1] - width * 0.25, mid[2]];
+  const mesh = new PaintedMesh();
+  for (const end of [base, tip]) {
+    for (const [p, q] of [[left, up], [up, right], [right, down], [down, left]] as const) outwardFace(mesh, end, p, q, color, mid);
+  }
+  const geometry = mesh.geometry();
+  b.add(geometry, color);
+}
+
+// Forest: a dense mixed wood with felled timber for the lumber resource.
+
+const SPRUCE = ['#2f5a45', '#3b6a4d', '#4b7b53', '#284f3f'];
+const LEAF = ['#7fa35e', '#93b56a', '#6c9254', '#a6c174'];
+const BARK = '#6e5440';
+const CUT = '#dcbc8a';
+
+function spruce(b: ModelBuilder, x: number, z: number, radius: number, height: number, tint: number) {
+  b.add(radialSolid(radius * 0.13, radius * 0.2, height * 0.32, 5), BARK, [x, height * 0.16, z]);
+  for (let tier = 0; tier < 4; tier++) {
+    const h = height * (0.42 - tier * 0.03);
+    const y = height * (0.18 + tier * 0.19) + h / 2;
+    b.add(radialSolid(0, radius * (1 - tier * 0.2), h, 7), SPRUCE[(tint + tier) % SPRUCE.length]!,
+      [x, y, z], [1, 1, 1], [0, tier * 0.45 + tint, 0]);
+  }
+}
+
+function broadleaf(b: ModelBuilder, x: number, z: number, radius: number, height: number, tint: number) {
+  branch(b, [x, 0, z], [x, height * 0.6, z], radius * 0.14, '#7b5f45', 5);
+  b.add(new IcosahedronGeometry(1, 0), LEAF[tint % LEAF.length]!, [x, height * 0.72, z],
+    [radius * 0.62, radius * 0.56, radius * 0.62], [0, tint, 0]);
+  for (let puff = 0; puff < 3; puff++) {
+    const angle = puff * TAU / 3 + tint;
+    b.add(new IcosahedronGeometry(1, 0), LEAF[(tint + puff + 1) % LEAF.length]!,
+      [x + Math.cos(angle) * radius * 0.45, height * 0.58, z + Math.sin(angle) * radius * 0.45],
+      [radius * 0.5, radius * 0.46, radius * 0.5], [0, angle, 0]);
+  }
+}
+
+function logPile(b: ModelBuilder, x: number, z: number, yaw: number) {
+  const r = 0.026;
+  rigidGroup(b, x, z, yaw, (group) => {
+    [3, 2, 1].forEach((count, row) => {
+      const length = 0.21 - row * 0.014;
+      for (let log = 0; log < count; log++) {
+        const offset = (log - (count - 1) / 2) * r * 2.05;
+        const y = r + row * r * 1.75;
+        group.add(radialSolid(r, r, length, 7), log % 2 ? '#7a5b40' : '#86664a', [0, y, offset], [1, 1, 1], [0, 0, Math.PI / 2]);
+        for (const end of [-1, 1]) {
+          group.add(radialSolid(r * 0.82, r * 0.82, 0.004, 7), CUT, [end * (length / 2 + 0.002), y, offset], [1, 1, 1], [0, 0, Math.PI / 2]);
+        }
+      }
+    });
+  });
+}
+
+function stump(b: ModelBuilder, x: number, z: number) {
+  b.add(radialSolid(0.036, 0.044, 0.05, 7), BARK, [x, 0.025, z]);
+  b.add(radialSolid(0.032, 0.032, 0.004, 7), CUT, [x, 0.052, z]);
+  // An axe left in the stump marks the woodcutter's clearing.
+  branch(b, [x + 0.004, 0.05, z], [x + 0.05, 0.135, z + 0.01], 0.0055, '#a07a4f', 4);
+  box(b, '#8c9599', [x + 0.012, 0.062, z], [0.032, 0.022, 0.008], [0, 0, 1.05]);
 }
 
 function forest(b: ModelBuilder, random: () => number, variant: number) {
-  crescentPatch(b, '#78976a', -1.8, -0.06, 0.035);
-  crescentPatch(b, '#8ba276', 0.06, 1.8, 0.035);
-  const positions = [
-    [-0.59, 0], [-0.52, -0.3], [-0.3, -0.52], [0, -0.61], [0.3, -0.52], [0.52, -0.3], [0.59, 0],
-    [-0.45, -0.04], [-0.225, -0.39], [0.225, -0.39], [0.45, -0.04],
+  crescentPatch(b, '#6f9161', -1.9, -0.1, 0.03, 0.36, 0.72);
+  crescentPatch(b, '#82a06e', 0.1, 1.9, 0.03, 0.36, 0.72);
+  const stands: readonly (readonly [number, number, number, boolean])[] = [
+    [0, -0.68, 1.08, false], [-0.26, -0.56, 1, false], [0.26, -0.56, 1, false],
+    [-0.5, -0.4, 0.95, false], [0.5, -0.4, 0.95, false], [-0.13, -0.44, 0.85, true], [0.14, -0.43, 0.9, false],
+    [-0.62, -0.12, 0.9, true], [0.63, -0.1, 0.9, false], [-0.42, -0.2, 0.8, false], [0.42, -0.22, 0.85, true],
+    [-0.58, 0.2, 0.75, false], [0.6, 0.2, 0.75, false], [0.42, 0.44, 0.65, true],
+    [-0.12, 0.66, 0.55, false], [0.14, 0.62, 0.6, false],
   ];
-  positions.forEach(([x, z], index) => conifer(b, x!, z!, 0.78 + random() * 0.38, index + variant));
-  // Round, branching deciduous trees break up the needle-tree silhouette.
-  for (const [x, z] of [[-0.42, 0.24], [0.42, 0.24]]) {
-    branch(b, [x!, 0, z!], [x! + 0.018, 0.23, z!], 0.018, '#8b7053');
-    for (let crown = 0; crown < 4; crown++) {
-      const angle = crown * 2.2;
-      const dx = Math.cos(angle) * 0.045;
-      const dz = Math.sin(angle) * 0.045;
-      branch(b, [x!, 0.12, z!], [x! + dx, 0.23, z! + dz], 0.009, '#8b7053', 3, true);
-      b.add(new IcosahedronGeometry(1, 0), ['#8ba36b', '#9bb77b', '#719564', '#a8bc80'][crown]!, [x! + dx, 0.25 + random() * 0.035, z! + dz], [0.072, 0.078, 0.068]);
-    }
-  }
-  branch(b, [-0.54, 0.032, 0.43], [-0.36, 0.032, 0.38], 0.025, '#8f7250', 7);
-  b.add(new CylinderGeometry(0.019, 0.019, 0.004, 7), '#d0b184', [-0.54, 0.032, 0.43], [1, 1, 1], [0, 0, Math.PI / 2]);
-  for (const [x, z] of [[0.56, 0.32], [-0.61, 0.14], [0.5, -0.4], [-0.08, -0.71]]) pebble(b, '#a5ae95', x!, z!, 0.035);
+  stands.forEach(([x, z, size, round], index) => {
+    const scale = size * (0.92 + random() * 0.16);
+    const radius = Math.min(0.12 * scale, room(x, z) * 0.97);
+    const height = 0.44 * scale * (1 + Math.max(0, -z) * 0.3);
+    if (round) broadleaf(b, x, z, radius, height * 0.85, index + variant);
+    else spruce(b, x, z, radius, height, index + variant);
+  });
+  logPile(b, -0.36, 0.48, 0.55 + variant * 0.1);
+  stump(b, 0.22, 0.47);
+  for (const [x, z] of [[0.5, 0.06], [-0.3, 0.6], [-0.66, 0.02]]) pebble(b, '#a5ae95', x!, z!, 0.03);
 }
 
-/** A closed irregular ridge with a separate, continuous snow line. */
-function ridge(b: ModelBuilder, x: number, z: number, radius: number, height: number, seed: number) {
-  const random = sceneryRandom(seed);
-  const base: Vec3[] = Array.from({ length: 7 }, (_, index) => {
-    const angle = index / 7 * TAU;
-    const r = radius * (0.8 + random() * 0.2);
-    return [Math.cos(angle) * r, 0, Math.sin(angle) * r * 0.82];
-  });
-  const peak: Vec3 = [radius * 0.15, height, -radius * 0.12];
-  const addFace = (points: readonly Vec3[], color: string) => {
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(points.flat(), 3));
-    geometry.computeVertexNormals();
-    b.add(geometry, color, [x, 0, z]);
+// Mountains and gold: a snow-capped range with a working mine.
+
+const ROCK = ['#7d8784', '#6b7574', '#8f9893', '#5f6a6b', '#99a09a'];
+const SCREE = ['#8b8d80', '#9c9b8b', '#7c8077'];
+const SNOW = ['#f3f2ea', '#e2e7e2', '#fbf8ef'];
+const ORE = ['#5d6b78', '#6f7f8c', '#4c5966', '#8b9aa6'];
+const GOLD = ['#d8b34f', '#ebcd6e', '#c79a3c'];
+
+function peakPaint(snowline: number, gold: boolean) {
+  return (t: number, face: number, random: () => number) => {
+    const ragged = snowline + (random() - 0.5) * 0.14;
+    if (t > ragged) return SNOW[face % SNOW.length]!;
+    if (gold && t > 0.22 && t < 0.5 && random() < 0.28) return GOLD[face % 2 ? 0 : 2]!;
+    if (t < 0.2) return SCREE[face % SCREE.length]!;
+    return ROCK[Math.floor(random() * ROCK.length)]!;
   };
-  for (let index = 0; index < base.length; index++) {
-    const a = base[index]!;
-    const c = base[(index + 1) % base.length]!;
-    const snow = 0.64 + random() * 0.12;
-    const snowA: Vec3 = [a[0] + (peak[0] - a[0]) * snow, height * snow, a[2] + (peak[2] - a[2]) * snow];
-    const snowC: Vec3 = [c[0] + (peak[0] - c[0]) * snow, height * snow, c[2] + (peak[2] - c[2]) * snow];
-    addFace([a, snowA, snowC, a, snowC, c], stone[index % stone.length]!);
-    addFace([snowA, peak, snowC], ['#e7e9dc', '#f6f2df', '#cfd9d2'][index % 3]!);
-    addFace([[0, 0, 0], a, c], '#747d79');
+}
+
+/** A small dark pine for highland slopes; distinct paint from the forest tile. */
+function alpinePine(b: ModelBuilder, x: number, z: number, size: number, variant: number) {
+  const h = 0.36 * size;
+  b.add(radialSolid(0.012, 0.018, h * 0.4, 5), '#6f5a44', [x, h * 0.2, z]);
+  for (let layer = 0; layer < 3; layer++) {
+    b.add(radialSolid(0, (0.1 - layer * 0.022) * size, h * 0.5, 6), ['#33564a', '#3d6352', '#2c4c41'][(layer + variant) % 3]!,
+      [x, h * (0.42 + layer * 0.2), z], [1, 1, 1], [0, layer * 0.7, 0]);
+  }
+}
+
+/** A timber-framed adit with rails out to a loaded ore cart, all facing +Z. */
+function mine(b: ModelBuilder, x: number, z: number, gold: boolean) {
+  box(b, '#232829', [x, 0.05, z], [0.078, 0.1, 0.04]);
+  for (const side of [-1, 1]) box(b, '#7a5a3c', [x + side * 0.046, 0.062, z + 0.022], [0.016, 0.124, 0.018]);
+  box(b, '#6b4c33', [x, 0.13, z + 0.022], [0.124, 0.02, 0.026]);
+  const length = 0.23;
+  for (const side of [-1, 1]) box(b, '#5d6366', [x + side * 0.022, 0.008, z + 0.02 + length / 2], [0.006, 0.006, length]);
+  for (let sleeper = 0; sleeper < 6; sleeper++) box(b, '#7d6248', [x, 0.0025, z + 0.04 + sleeper * 0.04], [0.068, 0.005, 0.014]);
+  const cz = z + 0.17;
+  b.add(radialSolid(0.05, 0.038, 0.05, 4), '#5a4433', [x, 0.047, cz], [1, 1, 1.2], [0, Math.PI / 4, 0]);
+  box(b, '#3e4446', [x, 0.07, cz], [0.074, 0.006, 0.086]);
+  for (const dx of [-1, 1]) {
+    for (const dz of [-1, 1]) {
+      b.add(radialSolid(0.015, 0.015, 0.008, 6), '#2f3436', [x + dx * 0.038, 0.016, cz + dz * 0.028], [1, 1, 1], [0, 0, Math.PI / 2]);
+    }
+  }
+  const load = gold ? GOLD : ORE;
+  for (let chunk = 0; chunk < 6; chunk++) {
+    b.add(new IcosahedronGeometry(1, 0), load[chunk % load.length]!,
+      [x + ((chunk % 3) - 1) * 0.02, 0.078 + (chunk > 2 ? 0.012 : 0), cz + (chunk % 2 ? 0.016 : -0.016)],
+      [0.022, 0.017, 0.02], [chunk, chunk * 2, 0]);
   }
 }
 
 function mountains(b: ModelBuilder, random: () => number, variant: number, gold = false) {
-  ridge(b, 0, -0.54, 0.31, 0.77 + variant * 0.014, variant + 7);
-  ridge(b, -0.47, -0.3, 0.27, 0.59, variant + 13);
-  ridge(b, 0.48, -0.24, 0.2, 0.42, variant + 37);
-  ridge(b, -0.54, 0.12, 0.14, 0.32, variant + 41);
-  for (let index = 0; index < 22; index++) {
-    const angle = -1.85 + index * 3.7 / 21;
-    const radius = 0.39 + random() * 0.08;
-    const x = Math.sin(angle) * radius;
-    const z = -Math.cos(angle) * radius;
-    pebble(b, gold && index % 3 === 0 ? '#d6b356' : stone[index % stone.length]!, x, z, 0.016 + random() * 0.026);
+  const mesh = new PaintedMesh();
+  const peaks = [
+    { x: 0.02, z: -0.53, rx: 0.33, rz: 0.27, h: 0.77 + variant * 0.012, snow: 0.6 },
+    { x: -0.46, z: -0.3, rx: 0.27, rz: 0.22, h: 0.57, snow: 0.66 },
+    { x: 0.48, z: -0.25, rx: 0.22, rz: 0.19, h: 0.44, snow: 0.74 },
+    { x: -0.55, z: 0.12, rx: 0.15, rz: 0.13, h: 0.3, snow: 2 },
+  ];
+  peaks.forEach((peak, index) => rockMass(mesh, {
+    x: peak.x, z: peak.z, rx: peak.rx, rz: peak.rz, height: peak.h, seed: variant * 31 + index * 7 + 5,
+    levels: [0, 0.18, 0.4, 0.62, 0.82, 1], profile: (t) => t >= 1 ? 0 : Math.pow(1 - t, 0.85),
+    paint: peakPaint(peak.snow, gold), sides: 9,
+  }));
+  b.addPainted(mesh.geometry());
+  mine(b, -0.55, 0.255, gold);
+  // Loose scree around the foot of the range.
+  for (let index = 0; index < 18; index++) {
+    const angle = -1.85 + index * 3.7 / 17;
+    const radius = 0.4 + random() * 0.08;
+    pebble(b, gold && index % 3 === 0 ? '#d6b356' : stone[index % stone.length]!, Math.sin(angle) * radius, -Math.cos(angle) * radius, 0.016 + random() * 0.022);
   }
-  // Dark fractured seams sit on the near slopes, away from the number badge.
-  branch(b, [-0.02, 0.08, -0.32], [0.07, 0.33, -0.385], 0.012, '#596466');
-  branch(b, [0.44, 0.025, -0.06], [0.51, 0.18, -0.15], 0.009, '#596466');
+  for (const [x, z, size] of [[0.58, 0.1, 0.55], [0.47, 0.3, 0.48], [0.22, 0.56, 0.42]] as const) {
+    alpinePine(b, x, z, size, variant);
+  }
   if (gold) {
-    for (const [x, z] of [[-0.49, 0.3], [0.49, 0.25], [0.39, -0.03]]) {
-      pebble(b, '#caa24c', x!, z!, 0.083, 0.09);
-      pebble(b, '#ebcd6e', x! - 0.028, z! + 0.025, 0.047, 0.07);
+    // Gold nuggets glint in the scree.
+    for (const [x, z] of [[0.36, -0.02], [0.62, -0.14]] as const) {
+      pebble(b, '#caa24c', x, z, 0.05, 0.06);
+      pebble(b, '#ebcd6e', x - 0.022, z + 0.02, 0.03, 0.045);
     }
   }
+  // A heap of broken ore (or nuggets) waiting by the track.
+  for (let chunk = 0; chunk < 7; chunk++) {
+    const angle = chunk * 2.4;
+    const spread = chunk ? 0.035 : 0;
+    const color = gold ? GOLD[chunk % GOLD.length]! : ORE[chunk % ORE.length]!;
+    pebble(b, color, -0.3 + Math.cos(angle) * spread, 0.5 + Math.sin(angle) * spread * 0.7, chunk ? 0.028 : 0.04, chunk ? 0.04 : 0.065);
+  }
+}
+
+// Hills: terraced clay pits, a beehive kiln and fired brick.
+
+const CLAY = ['#b4684a', '#c98260', '#a65b3f', '#d39a72', '#bb7354'];
+const TURF = ['#97a862', '#a8b56d', '#8a9c5a'];
+const BRICK = ['#c4724f', '#d6875f', '#b0603f', '#cf7b55'];
+
+/** Terrace ledges sit at mid-heights .33 and .65; quads pass t and t + .04. */
+function terracePaint(t: number, face: number, random: () => number): string {
+  if (t >= 0.99 || (t > 0.32 && t < 0.38) || (t > 0.64 && t < 0.7)) return TURF[face % TURF.length]!;
+  const band = Math.floor((t + (random() - 0.5) * 0.04) * 9);
+  return CLAY[((band % CLAY.length) + CLAY.length) % CLAY.length]!;
+}
+
+function terraceProfile(t: number): number {
+  if (t <= 0.32) return 1 - t * 0.1;
+  if (t <= 0.64) return 0.74 - (t - 0.34) * 0.1;
+  return 0.5 - (t - 0.66) * 0.1;
+}
+
+function kiln(b: ModelBuilder, x: number, z: number) {
+  b.add(radialSolid(0.1, 0.108, 0.05, 10), '#9c5a3c', [x, 0.025, z]);
+  b.add(new SphereGeometry(0.1, 10, 5, 0, TAU, 0, Math.PI / 2), '#c0714c', [x, 0.05, z], [1, 0.9, 1]);
+  box(b, '#2d211c', [x, 0.05, z + 0.094], [0.05, 0.062, 0.022]);
+  box(b, '#e0a07a', [x, 0.086, z + 0.1], [0.072, 0.014, 0.018]);
+  b.add(radialSolid(0.022, 0.026, 0.12, 6), '#8a4f36', [x + 0.04, 0.17, z - 0.035]);
+  b.add(radialSolid(0.027, 0.027, 0.012, 6), '#5e3a2b', [x + 0.04, 0.234, z - 0.035]);
+  for (let puff = 0; puff < 3; puff++) {
+    b.add(new IcosahedronGeometry(1, 0), ['#ebe5da', '#f3eee5', '#faf6ef'][puff]!,
+      [x + 0.045 + puff * 0.016, 0.27 + puff * 0.045, z - 0.04 - puff * 0.01], [0.026 - puff * 0.004, 0.02 - puff * 0.003, 0.024 - puff * 0.004]);
+  }
+  for (const dz of [-0.02, 0.02]) b.add(radialSolid(0.012, 0.012, 0.09, 6), '#7a5b40', [x - 0.12, 0.012, z + 0.04 + dz], [1, 1, 1], [Math.PI / 2, 0, 0]);
+}
+
+function brickPallet(b: ModelBuilder, x: number, z: number, levels: number, yaw: number) {
+  rigidGroup(b, x, z, yaw, (group) => {
+    box(group, '#8a6845', [0, 0.008, 0], [0.21, 0.016, 0.135]);
+    for (let level = 0; level < levels; level++) {
+      for (let row = 0; row < 2; row++) {
+        for (let brick = 0; brick < 4; brick++) {
+          box(group, BRICK[(brick + row * 2 + level) % BRICK.length]!,
+            [-0.075 + brick * 0.05, 0.028 + level * 0.025, row ? 0.031 : -0.031], [0.046, 0.022, 0.058]);
+        }
+      }
+    }
+  });
 }
 
 function hills(b: ModelBuilder, random: () => number, variant: number) {
-  const clay = ['#b77c5d', '#c98e6c', '#d69f77', '#bb805d'];
-  rigidGroup(b, 0.04, -0.55, 3, group => {
-    for (let terrace = 0; terrace < 4; terrace++) {
-      const r = 0.32 - terrace * 0.058;
-      group.add(new CylinderGeometry(r * 0.91, r, 0.09, 7), clay[terrace]!, [-terrace * 0.018, 0.045 + terrace * 0.08, 0], [1, 1, 0.83]);
-      for (let cut = 0; cut < 3; cut++) box(group, '#916a54', [-0.15 + cut * 0.09, 0.08 + terrace * 0.065, 0.17 - terrace * 0.041], [0.06, 0.016, 0.018]);
+  const mesh = new PaintedMesh();
+  const pits = [
+    { x: 0.02, z: -0.52, rx: 0.34, rz: 0.25, h: 0.4 },
+    { x: -0.5, z: -0.22, rx: 0.2, rz: 0.17, h: 0.27 },
+    { x: 0.52, z: -0.2, rx: 0.17, rz: 0.15, h: 0.2 },
+  ];
+  pits.forEach((pit, index) => rockMass(mesh, {
+    x: pit.x, z: pit.z, rx: pit.rx, rz: pit.rz, height: pit.h, seed: variant * 17 + index * 13 + 3,
+    levels: [0, 0.32, 0.34, 0.64, 0.66, 1], profile: terraceProfile, paint: terracePaint,
+    sides: 11, jitter: 0.14, flatLevels: true,
+  }));
+  b.addPainted(mesh.geometry());
+  kiln(b, -0.45, 0.3);
+  brickPallet(b, 0.46, 0.26, 3, 0.4 + variant * 0.08);
+  brickPallet(b, 0.08, 0.56, 2, 0.1);
+  for (let rock = 0; rock < 10; rock++) {
+    const angle = -1.4 + rock * 2.8 / 9;
+    const radius = 0.66 + random() * 0.03;
+    pebble(b, CLAY[rock % 4]!, Math.sin(angle) * radius, -Math.cos(angle) * radius * 0.9, 0.02 + random() * 0.016);
+  }
+  for (const [x, z] of [[-0.2, 0.52], [0.62, 0.02], [-0.66, 0.08]]) {
+    for (let leaf = 0; leaf < 3; leaf++) {
+      b.add(new IcosahedronGeometry(1, 0), ['#7f8f4e', '#93a35a', '#6f8045'][leaf]!,
+        [x! + (leaf - 1) * 0.026, 0.028 + (leaf % 2) * 0.012, z! + (leaf % 2) * 0.018], [0.032, 0.028, 0.028]);
     }
-  });
-  patch(b, '#8c7059', -0.5, -0.26, 0.23, 0.22, 0.025);
-  for (let terrace = 0; terrace < 2; terrace++) {
-    b.add(new TorusGeometry(0.17 + terrace * 0.025, 0.024, 4, 9), clay[terrace]!, [-0.5, 0.045 + terrace * 0.05, -0.26], [1, 1, 0.8], [Math.PI / 2, 0, 0.1]);
   }
-  for (let level = 0; level < 3; level++) {
-    for (let brick = 0; brick < 4 - level; brick++) {
-      box(b, ['#c98262', '#db9a74', '#af7057'][(brick + level) % 3]!, [0.43 + brick * 0.065 - level * 0.015, 0.027 + level * 0.046, 0.08], [0.059, 0.041, 0.077], [0, (level % 2 ? Math.PI / 2 : 0) + variant * 0.04, 0]);
+}
+
+// Fields: ridged grain plots around a windmill, with stooks on the stubble.
+
+const RIPE = ['#e3be62', '#d9b257', '#ecca72'];
+const GREEN_GOLD = ['#c3b55c', '#b5a852', '#cfc068'];
+const SOIL = '#9a7a3e';
+
+function cropPlot(
+  b: ModelBuilder, mesh: PaintedMesh, random: () => number,
+  x: number, z: number, yaw: number, length: number, width: number, rows: number,
+  palette: readonly string[], height: number,
+) {
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  const place = (lx: number, y: number, lz: number): Vec3 => {
+    const [px, pz] = clampFootprint(x + lx * cos + lz * sin, z - lx * sin + lz * cos);
+    return [px, y, pz];
+  };
+  // Dark soil shows between the ridges.
+  const [a, c, d, e] = [place(-length / 2, 0.003, -width / 2), place(-length / 2, 0.003, width / 2),
+    place(length / 2, 0.003, -width / 2), place(length / 2, 0.003, width / 2)];
+  mesh.face(a, c, d, SOIL).face(d, c, e, SOIL);
+  const segments = 4;
+  const half = width / rows / 2;
+  for (let row = 0; row < rows; row++) {
+    const zc = -width / 2 + half * (2 * row + 1);
+    const color = palette[row % palette.length]!;
+    const tops = Array.from({ length: segments + 1 }, () => height * (0.8 + random() * 0.35));
+    for (let segment = 0; segment < segments; segment++) {
+      const x0 = -length / 2 + length * segment / segments;
+      const x1 = -length / 2 + length * (segment + 1) / segments;
+      const l0 = place(x0, 0, zc - half * 0.95), l1 = place(x1, 0, zc - half * 0.95);
+      const r0 = place(x0, 0, zc + half * 0.95), r1 = place(x1, 0, zc + half * 0.95);
+      const t0 = place(x0, tops[segment]!, zc), t1 = place(x1, tops[segment + 1]!, zc);
+      mesh.face(l0, t0, l1, color).face(l1, t0, t1, color).face(r0, r1, t0, color).face(r1, t1, t0, color);
+      if (segment === 0) mesh.face(l0, r0, t0, color);
+      if (segment === segments - 1) mesh.face(l1, t1, r1, color);
+    }
+    // Grain heads nod above each ridge.
+    for (let head = 0; head < 7; head++) {
+      const along = (head + 0.5) / 7;
+      const step = along * segments;
+      const index = Math.min(segments - 1, Math.floor(step));
+      const top = tops[index]! + (tops[index + 1]! - tops[index]!) * (step - index);
+      const [px, , pz] = place(-length / 2 + length * along, 0, zc + (random() - 0.5) * half * 0.6);
+      b.add(grainGeometry(), palette[(row + head) % palette.length]!, [px, top + 0.006, pz], [0.012, 0.018, 0.012],
+        [random() * 0.3 - 0.15, random() * TAU, random() * 0.3 - 0.15]);
     }
   }
-  for (let rock = 0; rock < 12; rock++) {
-    const angle = -1.5 + rock * 3 / 11;
-    const radius = 0.61 + random() * 0.02;
-    const x = Math.sin(angle) * radius;
-    const z = -Math.cos(angle) * radius;
-    pebble(b, clay[rock % 4]!, x, z, 0.025 + random() * 0.02);
+}
+
+function windmill(b: ModelBuilder, x: number, z: number, variant: number) {
+  b.add(radialSolid(0.102, 0.108, 0.03, 8), '#b9a88d', [x, 0.015, z]);
+  b.add(radialSolid(0.075, 0.1, 0.3, 8), '#efe4cf', [x, 0.18, z]);
+  b.add(radialSolid(0.082, 0.082, 0.02, 8), '#8f5b3c', [x, 0.34, z]);
+  b.add(radialSolid(0, 0.096, 0.13, 8), '#a5563b', [x, 0.415, z]);
+  box(b, '#5b3f2c', [x, 0.07, z + 0.099], [0.04, 0.07, 0.012], [0.08, 0, 0]);
+  box(b, '#33403f', [x, 0.22, z + 0.086], [0.026, 0.034, 0.01], [0.08, 0, 0]);
+  const hubY = 0.37;
+  const hubZ = z + 0.1;
+  b.add(radialSolid(0.018, 0.018, 0.05, 6), '#5b3f2c', [x, hubY, hubZ - 0.016], [1, 1, 1], [Math.PI / 2, 0, 0]);
+  for (let arm = 0; arm < 4; arm++) {
+    const angle = arm * Math.PI / 2 + 0.35 + variant * 0.2;
+    const rotation: Vec3 = [0, 0, angle];
+    const dx = -Math.sin(angle), dy = Math.cos(angle);
+    const sx = Math.cos(angle), sy = Math.sin(angle);
+    box(b, '#6b4a33', [x + dx * 0.11, hubY + dy * 0.11, hubZ], [0.012, 0.22, 0.01], rotation);
+    box(b, '#f1e6c8', [x + dx * 0.13 + sx * 0.03, hubY + dy * 0.13 + sy * 0.03, hubZ - 0.002], [0.046, 0.16, 0.005], rotation);
+    for (let bar = 0; bar < 3; bar++) {
+      const reach = 0.075 + bar * 0.055;
+      box(b, '#8a6a4a', [x + dx * reach + sx * 0.03, hubY + dy * reach + sy * 0.03, hubZ + 0.003], [0.052, 0.006, 0.004], rotation);
+    }
   }
-  for (const [x, z] of [[-0.5, 0.35], [0.5, 0.35]]) {
-    pebble(b, '#b88162', x!, z!, 0.09, 0.1);
-    box(b, '#dba581', [x! + 0.027, 0.085, z! - 0.01], [0.08, 0.025, 0.08]);
-  }
+}
+
+function stook(b: ModelBuilder, x: number, z: number, tint: number) {
+  b.add(radialSolid(0.014, 0.05, 0.1, 7), RIPE[tint % RIPE.length]!, [x, 0.05, z], [1, 1, 1], [0, tint, 0]);
+  b.add(radialSolid(0, 0.022, 0.04, 7), '#ecd38a', [x, 0.118, z]);
+  b.add(new TorusGeometry(0.029, 0.005, 3, 7), '#9b7951', [x, 0.07, z], [1, 1, 1], [Math.PI / 2, 0, 0]);
 }
 
 function fields(b: ModelBuilder, random: () => number, variant: number) {
-  for (let row = 0; row < 7; row++) {
-    const angle = (row - 3) * 0.56;
-    const inner = 0.36;
-    const outer = 0.69;
-    const middle = (inner + outer) / 2;
-    box(b, '#b59451', [Math.sin(angle) * middle, 0.008, -Math.cos(angle) * middle], [0.094, 0.016, outer - inner], [0, -angle, 0]);
-    for (let stalk = 0; stalk < 10; stalk++) {
-      const radius = inner + (outer - inner) * (stalk + 0.5) / 10;
-      for (let side = 0; side < 2; side++) {
-        const offset = (side ? 0.024 : -0.024) + (random() - 0.5) * 0.012;
-        const x = Math.sin(angle) * radius + Math.cos(angle) * offset;
-        const z = -Math.cos(angle) * radius + Math.sin(angle) * offset;
-        const h = 0.092 + random() * 0.045;
-        const bend = (random() - 0.5) * 0.016;
-        rigidGroup(b, x, z, -angle, group => {
-          branch(group, [0, 0.015, 0], [bend, h, 0], 0.003, '#d0ae58', 3, true);
-          group.add(grainGeometry(), ['#e7c975', '#edce81', '#d7b45c'][(row + variant) % 3]!, [bend, h + 0.018, 0], [0.01, 0.029, 0.011], [0, 0, -0.16 + side * 0.32]);
-          branch(group, [0, h * 0.45, 0], [0.022, h * 0.76, 0.006], 0.002, '#c6ab61', 3, true);
-        });
-      }
-    }
-  }
-  // Bound sheaves and a little boundary wall read clearly from the board view.
-  for (let bundle = 0; bundle < 3; bundle++) {
-    const x = -0.19 + bundle * 0.15;
-    const z = -0.64;
-    b.add(new CylinderGeometry(0.034, 0.05, 0.115, 7), '#dec17a', [x, 0.065, z], [1, 1, 0.8], [0, 0.2, 0.1]);
-    b.add(new TorusGeometry(0.031, 0.005, 4, 7), '#9b7951', [x, 0.065, z], [1, 1, 0.8], [Math.PI / 2, 0, 0]);
+  const mesh = new PaintedMesh();
+  cropPlot(b, mesh, random, -0.4, -0.38, 0.55, 0.36, 0.26, 6, RIPE, 0.07);
+  cropPlot(b, mesh, random, 0.4, -0.38, -0.55, 0.36, 0.26, 6, variant === 1 ? GREEN_GOLD : RIPE, 0.07);
+  cropPlot(b, mesh, random, -0.53, 0.1, Math.PI / 2, 0.34, 0.26, 6, variant === 2 ? GREEN_GOLD : RIPE, 0.065);
+  cropPlot(b, mesh, random, 0.53, 0.1, Math.PI / 2, 0.34, 0.26, 6, variant === 0 ? GREEN_GOLD : RIPE, 0.06);
+  b.addPainted(mesh.geometry());
+  windmill(b, 0, -0.62, variant);
+  for (const [index, [x, z]] of [[-0.3, 0.5], [-0.14, 0.6], [0.04, 0.64], [0.2, 0.58], [0.34, 0.48]].entries()) {
+    stook(b, x!, z!, index + variant);
   }
 }
 
-function sheep(b: ModelBuilder, x: number, z: number, rotation: number, size: number) {
-  const local = (px: number, y: number, pz: number): Vec3 => [x + (px * Math.cos(rotation) + pz * Math.sin(rotation)) * size, y * size, z + (-px * Math.sin(rotation) + pz * Math.cos(rotation)) * size];
-  const part = (geometry: BufferGeometry, color: string, at: Vec3, scale: Vec3) => b.add(geometry, color, local(...at), scale.map(value => value * size) as [number, number, number], [0, rotation, 0]);
-  for (const px of [-0.047, 0.047]) for (const pz of [-0.033, 0.033]) part(radialSolid(0.009, 0.01, 0.065, 3), '#675c4e', [px, 0.035, pz], [1, 1, 1]);
-  part(new SphereGeometry(1, 8, 4), '#e9e4cf', [0, 0.105, 0], [0.092, 0.065, 0.059]);
-  for (let tuft = 0; tuft < 5; tuft++) part(new OctahedronGeometry(1, 0), '#f4eddb', [-0.065 + tuft * 0.028, 0.135, (tuft % 2 ? 1 : -1) * 0.018], [0.035, 0.035, 0.034]);
-  part(new IcosahedronGeometry(1, 0), '#665e52', [0.091, 0.115, 0], [0.035, 0.043, 0.031]);
-  part(new OctahedronGeometry(1, 0), '#8d8170', [0.086, 0.144, -0.04], [0.026, 0.01, 0.018]);
-  part(new OctahedronGeometry(1, 0), '#8d8170', [0.086, 0.144, 0.04], [0.026, 0.01, 0.018]);
-  part(radialSolid(0, 1, 2, 3), '#262f2c', [0.112, 0.126, 0.023], [0.005, 0.005, 0.005]);
-  part(new OctahedronGeometry(1, 0), '#e9e4cf', [-0.09, 0.12, 0], [0.025, 0.026, 0.023]);
+// Pasture: rolling meadow, a flock of sheep, hay and a split-rail fence.
+
+const MEADOW = ['#8eae60', '#98b768', '#86a75a', '#a2bf70'];
+const WOOL = '#ece6d2';
+const FLEECE = '#faf5e6';
+const SHEEP_FACE = '#3f3a35';
+
+function sheep(b: ModelBuilder, x: number, z: number, yaw: number, size: number) {
+  rigidGroup(b, x, z, yaw, (group) => {
+    const s = size;
+    for (const px of [-0.045, 0.045]) {
+      for (const pz of [-0.03, 0.03]) group.add(radialSolid(0.009 * s, 0.011 * s, 0.062 * s, 4), SHEEP_FACE, [px * s, 0.031 * s, pz * s]);
+    }
+    group.add(new SphereGeometry(1, 8, 5), WOOL, [0, 0.1 * s, 0], [0.086 * s, 0.062 * s, 0.06 * s]);
+    for (let puff = 0; puff < 4; puff++) {
+      group.add(new IcosahedronGeometry(1, 0), FLEECE, [(-0.048 + puff * 0.032) * s, 0.136 * s, (puff % 2 ? 0.02 : -0.02) * s],
+        [0.034 * s, 0.03 * s, 0.033 * s], [0, puff, 0]);
+    }
+    group.add(new IcosahedronGeometry(1, 0), SHEEP_FACE, [0.094 * s, 0.118 * s, 0], [0.04 * s, 0.032 * s, 0.026 * s]);
+    group.add(new IcosahedronGeometry(1, 0), FLEECE, [0.082 * s, 0.146 * s, 0], [0.022 * s, 0.015 * s, 0.022 * s]);
+    for (const side of [-1, 1]) {
+      group.add(new OctahedronGeometry(1, 0), '#5a524a', [0.084 * s, 0.13 * s, side * 0.034 * s], [0.012 * s, 0.006 * s, 0.022 * s], [side * 0.5, 0, 0]);
+    }
+    group.add(new IcosahedronGeometry(1, 0), FLEECE, [-0.09 * s, 0.11 * s, 0], [0.018 * s, 0.018 * s, 0.016 * s]);
+  });
+}
+
+function hayBale(b: ModelBuilder, x: number, z: number, yaw: number) {
+  rigidGroup(b, x, z, yaw, (group) => {
+    group.add(radialSolid(0.04, 0.04, 0.075, 9), '#d9bb6a', [0, 0.04, 0], [1, 1, 1], [0, 0, Math.PI / 2]);
+    for (const end of [-1, 1]) group.add(radialSolid(0.03, 0.03, 0.003, 9), '#c9a655', [end * 0.039, 0.04, 0], [1, 1, 1], [0, 0, Math.PI / 2]);
+  });
+}
+
+function fence(b: ModelBuilder, points: readonly (readonly [number, number])[]) {
+  for (const [x, z] of points) box(b, '#a58a61', [x, 0.05, z], [0.018, 0.1, 0.018]);
+  for (let index = 0; index < points.length - 1; index++) {
+    const [ax, az] = points[index]!;
+    const [bx, bz] = points[index + 1]!;
+    branch(b, [ax, 0.045, az], [bx, 0.045, bz], 0.006, '#b89d72', 4);
+    branch(b, [ax, 0.083, az], [bx, 0.083, bz], 0.006, '#c3ab7e', 4);
+  }
 }
 
 function pasture(b: ModelBuilder, random: () => number, variant: number) {
-  crescentPatch(b, '#8da679', -1.95, -0.04, 0.065);
-  crescentPatch(b, '#a6ba84', 0.04, 1.95, 0.06);
-  for (const [index, [x, z]] of [[-0.48, -0.24], [-0.18, -0.53], [0.23, -0.5], [0.49, -0.1], [-0.45, 0.25]].entries()) sheep(b, x!, z!, -0.6 + index * 0.65 + variant * 0.15, 0.85 + random() * 0.2);
-  for (let post = 0; post < 5; post++) box(b, '#a58a61', [-0.43 + post * 0.22, 0.095, -0.57], [0.025, 0.186, 0.026], [0, 0, post % 2 ? 0.06 : -0.04]);
-  for (let rail = 0; rail < 4; rail++) {
-    branch(b, [-0.43 + rail * 0.22, 0.075, -0.57], [-0.21 + rail * 0.22, 0.105, -0.57], 0.009, '#b89d72');
-    branch(b, [-0.43 + rail * 0.22, 0.14, -0.57], [-0.21 + rail * 0.22, 0.15, -0.57], 0.009, '#c3ab7e');
-  }
-  for (let flower = 0; flower < 24; flower++) {
-    const side = flower % 2 ? 1 : -1;
-    const x = side * (0.32 + random() * 0.22);
-    const z = -0.02 + random() * 0.24;
-    branch(b, [x, 0.01, z], [x, 0.04, z], 0.0025, '#739369', 3, true);
-    b.add(new OctahedronGeometry(0.011, 0), flower % 3 ? '#eee5b4' : '#cda09d', [x, 0.043, z]);
+  const mesh = new PaintedMesh();
+  const knolls = [
+    { x: -0.04, z: -0.6, rx: 0.26, rz: 0.17, h: 0.12 },
+    { x: -0.56, z: -0.24, rx: 0.15, rz: 0.13, h: 0.08 },
+    { x: 0.56, z: -0.12, rx: 0.14, rz: 0.12, h: 0.07 },
+  ];
+  knolls.forEach((knoll, index) => rockMass(mesh, {
+    x: knoll.x, z: knoll.z, rx: knoll.rx, rz: knoll.rz, height: knoll.h, seed: variant * 11 + index * 5 + 2,
+    levels: [0, 0.3, 0.6, 0.85, 1], profile: (t) => t >= 1 ? 0.2 : Math.cos(t * Math.PI / 2) * 0.85 + 0.15,
+    paint: (t, face) => MEADOW[(face * 7 + Math.floor(t * 4)) % MEADOW.length]!, sides: 14, jitter: 0.08,
+  }));
+  b.addPainted(mesh.geometry());
+  const flock: readonly (readonly [number, number])[] = [
+    [-0.58, 0.06], [-0.3, -0.38], [0.26, -0.4], [0.58, 0.1], [0.42, 0.24], [-0.04, 0.6], [-0.56, 0.3],
+  ];
+  flock.forEach(([x, z], index) => sheep(b, x, z, -0.6 + index * 1.1 + variant * 0.4, 1.05 + random() * 0.2));
+  fence(b, [[0.18, 0.64], [0.36, 0.52], [0.53, 0.38], [0.66, 0.2]]);
+  hayBale(b, -0.32, 0.52, 0.7);
+  hayBale(b, -0.4, 0.42, 0.9);
+  broadleaf(b, 0.34, -0.5, Math.min(0.1, room(0.34, -0.5)), 0.34, variant + 1);
+  for (let flower = 0; flower < 20; flower++) {
+    const angle = random() * TAU;
+    const radius = 0.38 + random() * 0.3;
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    if (room(x, z) < 0.02) continue;
+    branch(b, [x, 0.008, z], [x, 0.035, z], 0.0025, '#739369', 3, true);
+    b.add(new OctahedronGeometry(0.01, 0), flower % 3 ? '#eee5b4' : '#cda09d', [x, 0.038, z]);
   }
 }
 
-function desert(b: ModelBuilder, random: () => number, variant: number) {
-  crescentPatch(b, '#d9c395', -1.65, -0.28, 0.13);
-  crescentPatch(b, '#e7d5a7', -0.12, 1.05, 0.16, 0.36, 0.7);
-  crescentPatch(b, '#d0b888', 1.18, 2.05, 0.075, 0.35, 0.65);
-  for (let ridgeIndex = 0; ridgeIndex < 4; ridgeIndex++) branch(b, [-0.25 + ridgeIndex * 0.06, 0.045 + ridgeIndex * 0.018, -0.44 - ridgeIndex * 0.04], [0.09 + ridgeIndex * 0.035, 0.09, -0.52 - ridgeIndex * 0.03], 0.008, '#eee0b8', 5);
-  const cactusX = variant % 2 ? -0.5 : 0.5;
-  const cactusZ = -0.28;
-  branch(b, [cactusX, 0, cactusZ], [cactusX, 0.3, cactusZ], 0.027, '#7b9b77', 7);
-  branch(b, [cactusX, 0.12, cactusZ], [cactusX - 0.07, 0.12, cactusZ], 0.018, '#78956e', 6);
-  branch(b, [cactusX - 0.07, 0.12, cactusZ], [cactusX - 0.07, 0.23, cactusZ], 0.018, '#8ca57b', 6);
-  branch(b, [cactusX, 0.18, cactusZ], [cactusX + 0.055, 0.18, cactusZ], 0.016, '#78956e', 6);
-  branch(b, [cactusX + 0.055, 0.18, cactusZ], [cactusX + 0.055, 0.25, cactusZ], 0.016, '#8ca57b', 6);
-  // A bleached spine with paired ribs gives the desert a distinct story.
-  branch(b, [-0.56, 0.022, 0.22], [-0.38, 0.022, 0.18], 0.009, '#eee5c8');
-  for (let rib = 0; rib < 4; rib++) {
-    const x = -0.53 + rib * 0.038;
-    branch(b, [x, 0.022, 0.21], [x - 0.012, 0.035, 0.26], 0.005, '#eee5c8');
-    branch(b, [x, 0.022, 0.21], [x - 0.018, 0.035, 0.155], 0.005, '#eee5c8');
+// Desert: dunes, a wind-cut butte and arch, and a palm oasis.
+
+const SAND = ['#e3c992', '#d6b67e', '#f0dcac', '#cba672'];
+const SANDSTONE = ['#c98b5c', '#dba274', '#bf7d52', '#e2b384'];
+
+/** A barchan-like dune: its crest leans downwind, so the lee face is steep. */
+function dune(mesh: PaintedMesh, x: number, z: number, rx: number, rz: number, height: number, lee: number) {
+  const rings = 5;
+  const sectors = 14;
+  const apex: Vec3 = [x + Math.cos(lee) * rx * 0.3, height, z + Math.sin(lee) * rz * 0.3];
+  const point = (ring: number, sector: number): Vec3 => {
+    if (ring === 0) return apex;
+    const s = ring / rings;
+    const angle = sector / sectors * TAU;
+    const [bx, bz] = clampFootprint(x + Math.cos(angle) * rx, z + Math.sin(angle) * rz);
+    return [apex[0] + (bx - apex[0]) * s, ring === rings ? 0 : height * Math.pow(1 - s * s, 1.1), apex[2] + (bz - apex[2]) * s];
+  };
+  const below: Vec3 = [apex[0], -1, apex[2]];
+  for (let ring = 0; ring < rings; ring++) {
+    for (let sector = 0; sector < sectors; sector++) {
+      const next = (sector + 1) % sectors;
+      // Pale crest over a warmer foot; facets alone carry the ripple.
+      const color = ring < 2 ? SAND[2]! : ring < 4 ? SAND[(sector % 2) * 2]! : SAND[sector % 2 ? 1 : 3]!;
+      if (ring === 0) outwardFace(mesh, apex, point(1, sector), point(1, next), color, below);
+      else {
+        outwardFace(mesh, point(ring, sector), point(ring + 1, sector), point(ring + 1, next), color, below);
+        outwardFace(mesh, point(ring, sector), point(ring + 1, next), point(ring, next), color, below);
+      }
+    }
   }
-  for (let rock = 0; rock < 10; rock++) pebble(b, rock % 2 ? '#b8a989' : '#c4b699', -0.55 + random() * 1.1, -0.51 + random() * 0.13, 0.018 + random() * 0.018);
+}
+
+function rockArch(b: ModelBuilder, x: number, z: number) {
+  const segments = 7;
+  const radius = 0.085;
+  for (let index = 0; index < segments; index++) {
+    const a0 = Math.PI * index / segments;
+    const a1 = Math.PI * (index + 1) / segments;
+    branch(b, [x + Math.cos(a0) * radius, 0.03 + Math.sin(a0) * radius * 1.4, z],
+      [x + Math.cos(a1) * radius, 0.03 + Math.sin(a1) * radius * 1.4, z], 0.024, SANDSTONE[index % SANDSTONE.length]!, 6);
+  }
+  for (const side of [-1, 1]) b.add(radialSolid(0.028, 0.038, 0.04, 6), SANDSTONE[side > 0 ? 2 : 0]!, [x + side * radius, 0.02, z]);
+}
+
+function palm(b: ModelBuilder, x: number, z: number, height: number, lean: number, tint: number) {
+  let previous: Vec3 = [x, 0, z];
+  for (let segment = 1; segment <= 4; segment++) {
+    const t = segment / 4;
+    const next: Vec3 = [x + Math.cos(lean) * t * t * 0.06, height * t, z + Math.sin(lean) * t * t * 0.06];
+    branch(b, previous, next, 0.016 - segment * 0.0015, segment % 2 ? '#8b6e4c' : '#9c7e58', 5);
+    previous = next;
+  }
+  const [tx, ty, tz] = previous;
+  for (let frond = 0; frond < 7; frond++) {
+    const angle = frond * TAU / 7 + tint;
+    blade(b, [tx, ty, tz], [tx + Math.cos(angle) * 0.06, ty + 0.02, tz + Math.sin(angle) * 0.06],
+      [tx + Math.cos(angle) * 0.11, ty - 0.035, tz + Math.sin(angle) * 0.11], 0.018, ['#5e8f4c', '#6fa057', '#4f7e43'][frond % 3]!);
+  }
+  for (let nut = 0; nut < 3; nut++) {
+    const angle = nut * TAU / 3 + tint;
+    b.add(new IcosahedronGeometry(0.011, 0), '#6b4e33', [tx + Math.cos(angle) * 0.014, ty - 0.012, tz + Math.sin(angle) * 0.014]);
+  }
+}
+
+function oasis(b: ModelBuilder, x: number, z: number) {
+  b.add(radialSolid(0.125, 0.135, 0.004, 12), '#c9ad78', [x, 0.002, z], [1, 1, 0.8]);
+  b.add(radialSolid(0.1, 0.104, 0.004, 12), '#4f9ea3', [x, 0.005, z], [1, 1, 0.8]);
+  b.add(radialSolid(0.055, 0.058, 0.002, 12), '#7cc2bf', [x - 0.015, 0.0075, z - 0.01], [1, 1, 0.8]);
+  for (let reed = 0; reed < 6; reed++) {
+    const angle = 0.6 + reed * 0.32;
+    const rx = x + Math.cos(angle) * 0.11;
+    const rz = z + Math.sin(angle) * 0.09;
+    branch(b, [rx, 0.004, rz], [rx + 0.004, 0.05 + (reed % 2) * 0.015, rz], 0.003, '#7f9b55', 3, true);
+  }
+}
+
+function saguaro(b: ModelBuilder, x: number, z: number) {
+  branch(b, [x, 0, z], [x, 0.3, z], 0.027, '#7b9b77', 7);
+  branch(b, [x, 0.12, z], [x - 0.07, 0.12, z], 0.018, '#78956e', 6);
+  branch(b, [x - 0.07, 0.12, z], [x - 0.07, 0.23, z], 0.018, '#8ca57b', 6);
+  branch(b, [x, 0.18, z], [x + 0.055, 0.18, z], 0.016, '#78956e', 6);
+  branch(b, [x + 0.055, 0.18, z], [x + 0.055, 0.25, z], 0.016, '#8ca57b', 6);
+}
+
+function desert(b: ModelBuilder, random: () => number, variant: number) {
+  const mesh = new PaintedMesh();
+  dune(mesh, -0.28, -0.5, 0.28, 0.19, 0.2, 0.4 + variant * 0.2);
+  dune(mesh, 0.38, 0.47, 0.17, 0.12, 0.1, 0.6);
+  dune(mesh, 0.56, -0.02, 0.13, 0.15, 0.11, 1.2);
+  // Wind-cut sandstone: a banded flat-topped butte and a slender spire beside it.
+  const sandstone = (t: number, face: number) => t > 0.97 ? ['#e6bf8c', '#dcb27e'][face % 2]!
+    : SANDSTONE[Math.floor(t * 5) % SANDSTONE.length]!;
+  rockMass(mesh, { x: 0.34, z: -0.5, rx: 0.16, rz: 0.13, height: 0.3, seed: 71 + variant,
+    levels: [0, 0.3, 0.62, 0.9, 1], profile: (t) => 1 - t * 0.22, paint: sandstone, sides: 8, jitter: 0.16 });
+  rockMass(mesh, { x: 0.58, z: -0.28, rx: 0.06, rz: 0.055, height: 0.2, seed: 89 + variant,
+    levels: [0, 0.4, 0.8, 1], profile: (t) => 1 - t * 0.35, paint: sandstone, sides: 7, jitter: 0.2 });
+  b.addPainted(mesh.geometry());
+  rockArch(b, -0.6, -0.1);
+  oasis(b, -0.36, 0.38);
+  palm(b, -0.55, 0.22, 0.3, Math.PI + 0.4, variant);
+  palm(b, -0.18, 0.52, 0.25, 0.9, variant + 1);
+  saguaro(b, 0.6, 0.2);
+  // A bleached spine with paired ribs.
+  branch(b, [0.02, 0.012, 0.62], [0.2, 0.012, 0.58], 0.008, '#eee5c8');
+  for (let rib = 0; rib < 4; rib++) {
+    const x = 0.05 + rib * 0.038;
+    branch(b, [x, 0.012, 0.61], [x - 0.012, 0.025, 0.655], 0.004, '#eee5c8');
+    branch(b, [x, 0.012, 0.61], [x - 0.018, 0.025, 0.56], 0.004, '#eee5c8');
+  }
+  for (let rock = 0; rock < 10; rock++) {
+    const angle = random() * TAU;
+    const radius = 0.4 + random() * 0.25;
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    if (room(x, z) > 0.03) pebble(b, rock % 2 ? '#b8a989' : '#c4b699', x, z, 0.014 + random() * 0.014);
+  }
 }
 
 function sea(b: ModelBuilder, variant: number) {

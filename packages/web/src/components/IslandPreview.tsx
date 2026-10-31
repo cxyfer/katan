@@ -9,12 +9,12 @@ import '../styles/board-camera-controls.css';
 import '../styles/island-preview.css';
 
 const TERRAINS = [
-  { name: '森林', en: 'WOODLAND', color: '#456449', detail: '層疊松林，深綠樹冠間的小徑。' },
-  { name: '丘陵', en: 'CLAY HILLS', color: '#b46643', detail: '暖色岩層與紅土，沿坡起伏。' },
-  { name: '牧場', en: 'PASTURE', color: '#8da768', detail: '草地、石籬，與悠閒的羊群。' },
-  { name: '麥田', en: 'GOLDEN FIELDS', color: '#c9a350', detail: '一畦畦金色麥穗，收穫在望。' },
-  { name: '山脈', en: 'HIGHLANDS', color: '#788689', detail: '稜角分明的峰頂與碎石礦脈。' },
-  { name: '沙漠', en: 'DUNES', color: '#cfb78a', detail: '沙丘、風化岩，島上的寂靜地帶。' },
+  { name: '森林', en: 'WOODLAND', color: '#456449', detail: '層疊雲杉與闊葉樹，林間堆著新伐的原木。' },
+  { name: '丘陵', en: 'CLAY HILLS', color: '#b46643', detail: '梯田般的紅土坑，窯爐旁疊著燒好的磚。' },
+  { name: '牧場', en: 'PASTURE', color: '#8da768', detail: '起伏草丘、木柵欄，與悠閒的羊群。' },
+  { name: '麥田', en: 'GOLDEN FIELDS', color: '#c9a350', detail: '一畦畦金色麥穗，風車守著收成。' },
+  { name: '山脈', en: 'HIGHLANDS', color: '#788689', detail: '積雪峰頂下，礦坑與滿載礦石的礦車。' },
+  { name: '沙漠', en: 'DUNES', color: '#cfb78a', detail: '沙丘、風蝕石拱與棕櫚綠洲。' },
 ];
 
 /** A persistent local art-review route using the game's renderer and camera owner. */
