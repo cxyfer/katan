@@ -177,19 +177,21 @@ export class WebAudioEngine implements AudioEngine {
     if (!graph || this.disposed) return;
     const active = this.wantsRunning();
     const state = graph.ctx.state as AudioContextState | 'interrupted';
-    const settle = () => {
-      if (this.graph === graph) this.sync();
+    // 只在真的到達目標狀態時再校正；resume() 完成卻仍未播放（例如 iOS 的 interrupted）
+    // 時不重試，避免無止盡地反覆呼叫，等下一次手勢。
+    const settle = (reached: AudioContextState) => {
+      if (this.graph === graph && graph.ctx.state === reached) this.sync();
     };
     if (active && state !== 'running' && state !== 'closed') {
       void graph.ctx.resume().then(() => {
         graph.sequencer.resync();
-        settle();
+        settle('running');
       }, () => undefined);
     } else if (!active && state === 'running') {
       graph.sequencer.stop();
       // 已排進時間軸、尚未響起的提示會在 context 恢復時一次補響；換掉效果匯流排把它們丟掉。
       this.replaceEffectsBus(graph);
-      void graph.ctx.suspend().then(settle, () => undefined);
+      void graph.ctx.suspend().then(() => settle('suspended'), () => undefined);
       return;
     }
     if (active && this.wantsMusic()) {

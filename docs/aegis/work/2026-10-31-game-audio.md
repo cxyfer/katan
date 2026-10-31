@@ -122,9 +122,14 @@ Codex review (P2) and an independent reviewer found these problems on
   unmute. Going inactive now fades out and swaps the effects bus, so nothing
   scheduled earlier survives.
 - **Background call-back:** "your move" and trade offers now sound in a hidden
-  tab; music and everything else stay silent there.
+  tab; music and everything else stay silent there. The independent re-review
+  of `2a7865a` added one case: a player who must discard while hidden gets
+  "your move", because `robber.alert` is silent in the background.
 - **State race:** `ctx.state` lags `resume()`/`suspend()`, so `sync()` runs
-  again after each successful transition.
+  again after each successful transition. The independent re-review found
+  that it should only do so when the target state was actually reached;
+  otherwise a `resume()` that resolves while still `interrupted` would retry
+  forever.
 - **Stale receipts:** a stale-revision rejection flips to `rejected` after the
   refresh. It no longer plays the error sound.
 - **Attention:** the viewer's whole turn counts as theirs, so "wait for
@@ -138,7 +143,7 @@ Codex review (P2) and an independent reviewer found these problems on
 ## Verification
 
 - `pnpm verify`: typecheck, rules 138, protocol 7, server 96 (+11 PostgreSQL
-  skips), web 499 tests, build, smoke 13/13, dev runner 1/1.
+  skips), web 503 tests, build, smoke 13/13, dev runner 1/1.
 - New web tests: cue mapping, privacy invariance, roll timing, staggering and
   caps; preference storage; music determinism and harmony; engine lifecycle on
   a fake `AudioContext` (no context before a gesture, mute/suspend, stale-cue
@@ -148,8 +153,9 @@ Codex review (P2) and an independent reviewer found these problems on
   attention transitions, stale receipts and hook integration; settings
   persistence, unlock, Escape/outside-click through `App`; and
   `audio-board.test.tsx`, which drives the real `App` + board over a socket and
-  checks the cue times against the dice presentation for one and two rolls in
-  a single delta.
+  checks the cue times against the dice presentation. It covers one roll, two
+  rolls in a single delta, an events-first delivery under StrictMode, and
+  reduced motion.
 - `scripts/audio/verify.py` ([report](2026-10-31-game-audio/palette-report.json)):
   all 28 cues render audible without clipping; no live context before the
   first click; island music RMS ≈ 0.025 while running and fading out after

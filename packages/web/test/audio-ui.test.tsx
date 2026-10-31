@@ -98,6 +98,8 @@ describe('attention cue', () => {
     expect(attentionCue(true, { kind: 'moveRobber', mine: true }, true).cue).toBeNull();
     // 別人擲出七點而自己要棄牌：robber.alert 已同時提醒，不疊加「輪到你」。
     expect(attentionCue(false, { kind: 'discard', mine: true }, false)).toEqual({ mine: true, cue: null });
+    // 分頁隱藏時七點警示不會響，要棄牌的玩家改由「輪到你」叫回來。
+    expect(attentionCue(false, { kind: 'discard', mine: true }, false, true).cue).toBe('turn.yours');
     // 輪到自己的回合開始時仍會響。
     expect(attentionCue(false, { kind: 'roll', mine: true }, true).cue).toBe('turn.yours');
   });

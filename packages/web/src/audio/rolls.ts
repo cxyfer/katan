@@ -45,6 +45,8 @@ export class RollSoundCoordinator {
 
   /** 某次擲骰的骰子出現在畫面上。 */
   started(id: string): void {
+    // 只接受仍在盤面佇列中的擲骰；已丟棄的 id 不再建立項目。
+    if (!this.queue.includes(id)) return;
     const entry = this.entry(id);
     if (entry.started) return;
     entry.started = true;

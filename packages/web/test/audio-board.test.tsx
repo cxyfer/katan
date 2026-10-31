@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GameEvent, ServerMessage } from '@catan/protocol';
@@ -52,12 +53,13 @@ function recordingEngine() {
   return { engine, played };
 }
 
-async function open() {
+async function open(strict = false) {
   const sockets: TestSocket[] = [];
   const { engine, played } = recordingEngine();
   const api = createFakeApi({ snapshot: snapshot(12, [makeEvent(12, 'turn.started', { playerId: 'p1' })]) });
-  render(<App services={{ api, storage: memoryStorage(), languages: ['en'], audio: engine,
-    socketFactory: () => { const socket = new TestSocket(); sockets.push(socket); return socket; } }} />);
+  const app = <App services={{ api, storage: memoryStorage(), languages: ['en'], audio: engine,
+    socketFactory: () => { const socket = new TestSocket(); sockets.push(socket); return socket; } }} />;
+  render(strict ? <StrictMode>{app}</StrictMode> : app);
   act(() => sockets[0]!.open());
   fireEvent.click(await screen.findByTestId('resume-g1'));
   await screen.findByTestId('board-svg');
@@ -86,6 +88,35 @@ describe('sound follows the board presentation', () => {
       { at: start, cue: 'dice.roll' },
       { at: start + DICE_ROLL_DURATION_MS, cue: 'dice.land' },
       { at: start + DICE_PRESENTATION_DURATION_MS, cue: 'production.self' },
+    ]);
+  });
+
+  it('behaves the same under StrictMode when the events packet arrives before the projection', async () => {
+    const { socket, played } = await open(true);
+    const start = Date.now();
+    const events = [roll(13, 5, [2, 3]), produce(14, 5)];
+    act(() => socket.deliver({ type: 'events', payload: { gameId: 'g1', revision: 13, events } }));
+    advance(300);
+    act(() => socket.deliver({ type: 'snapshot', payload: snapshot(14, events) }));
+    advance(DICE_PRESENTATION_DURATION_MS);
+    expect(played).toEqual([
+      { at: start, cue: 'dice.roll' },
+      { at: start + DICE_ROLL_DURATION_MS, cue: 'dice.land' },
+      { at: start + DICE_PRESENTATION_DURATION_MS, cue: 'production.self' },
+    ]);
+  });
+
+  it('plays the result at once without a rattle when reduced motion skips the dice', async () => {
+    const original = globalThis.matchMedia;
+    vi.spyOn(globalThis, 'matchMedia').mockImplementation((query: string) =>
+      query.includes('prefers-reduced-motion') ? { ...original(query), matches: true } as MediaQueryList : original(query));
+    const { socket, played } = await open();
+    const start = Date.now();
+    act(() => socket.deliver({ type: 'snapshot', payload: snapshot(14, [roll(13, 5, [2, 3]), produce(14, 5)]) }));
+    expect(screen.queryByTestId('dice-focus')).toBeNull();
+    expect(played).toEqual([
+      { at: start, cue: 'dice.land' },
+      { at: start + 120, cue: 'production.self' },
     ]);
   });
 

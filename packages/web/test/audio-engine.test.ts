@@ -236,6 +236,20 @@ describe('WebAudioEngine', () => {
     expect(context().state).toBe('suspended');
   });
 
+  it('does not keep retrying when resume settles without the context running', async () => {
+    const { instance, context } = engine();
+    instance.unlock();
+    await Promise.resolve();
+    instance.setPreferences({ ...DEFAULT_AUDIO_PREFERENCES, muted: true });
+    await Promise.resolve();
+    // 例如 iOS 的 interrupted：resume() 完成，但狀態沒有變成 running。
+    context().resume.mockImplementation(() => Promise.resolve());
+    const before = context().resume.mock.calls.length;
+    instance.setPreferences(DEFAULT_AUDIO_PREFERENCES);
+    for (let tick = 0; tick < 10; tick += 1) await Promise.resolve();
+    expect(context().resume.mock.calls.length).toBe(before + 1);
+  });
+
   it('closes the context on dispose and stops reacting', async () => {
     const doc = fakeDocument();
     const { instance, context } = engine(doc);

@@ -106,6 +106,12 @@ describe('RollSoundCoordinator', () => {
     expect(names()).toEqual(['dice.roll']);
   });
 
+  it('ignores a start signal for a roll the board no longer queues', () => {
+    coordinator.started('g1:90');
+    vi.advanceTimersByTime(10_000);
+    expect(played).toEqual([]);
+  });
+
   it('starts each roll once and stops everything on dispose', () => {
     coordinator.setQueue(['g1:80']);
     coordinator.register('g1:80', ['production.self']);

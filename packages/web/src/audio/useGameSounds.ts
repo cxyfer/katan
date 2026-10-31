@@ -41,10 +41,13 @@ export function attentionCue(
   previous: boolean | null,
   action: Pick<RequiredAction, 'kind' | 'mine'> | null,
   myTurn = false,
+  /** 分頁隱藏時七點警示不會響（不是背景提示），棄牌改由「輪到你」叫玩家回來。 */
+  hidden = false,
 ): { mine: boolean | null; cue: SoundCue | null } {
   if (action && TRANSIENT.has(action.kind)) return { mine: previous, cue: null };
   const mine = myTurn || (action?.mine ?? false);
-  return { mine, cue: previous === false && mine && action?.kind !== 'discard' ? 'turn.yours' : null };
+  const coveredByAlert = action?.kind === 'discard' && !hidden;
+  return { mine, cue: previous === false && mine && !coveredByAlert ? 'turn.yours' : null };
 }
 
 export interface GameSoundOutput {
@@ -90,7 +93,7 @@ export function useGameSounds(state: TableState, { play, rolls }: GameSoundOutpu
       mine.current = null;
       return;
     }
-    const next = attentionCue(mine.current, actionKind ? { kind: actionKind, mine: actionMine } : null, myTurn);
+    const next = attentionCue(mine.current, actionKind ? { kind: actionKind, mine: actionMine } : null, myTurn, document.hidden);
     mine.current = next.mine;
     if (next.cue) play(next.cue);
   }, [gameId, actionKind, actionMine, myTurn, play]);
