@@ -20,6 +20,8 @@ export function useBoardAnimation(
   mandatory: boolean,
   /** 骰子佇列（含排隊中的骰子）由空轉非空或反之時，於繪製前同步通知。 */
   onDiceChange?: (presenting: boolean) => void,
+  /** 骰子佇列內容（演出 id，依序）每次更新時同步通知；音效依此跟著實際演出。 */
+  onDiceQueue?: (ids: readonly string[]) => void,
 ) {
   const cursor = useRef<PresentationCursor | null>(null);
   const latest = useRef({ snapshot, sync });
@@ -35,11 +37,14 @@ export function useBoardAnimation(
   const diceQueueRef = useRef<DiceRollPresentation[]>([]);
   const onDiceChangeRef = useRef(onDiceChange);
   onDiceChangeRef.current = onDiceChange;
+  const onDiceQueueRef = useRef(onDiceQueue);
+  onDiceQueueRef.current = onDiceQueue;
   const updateDice = useCallback((next: (current: DiceRollPresentation[]) => DiceRollPresentation[]) => {
     const value = next(diceQueueRef.current);
     diceQueueRef.current = value;
     setDiceQueue(value);
     onDiceChangeRef.current?.(value.length > 0);
+    onDiceQueueRef.current?.(value.map((roll) => roll.id));
   }, []);
 
   const resetPresentation = useCallback(() => {
@@ -71,6 +76,7 @@ export function useBoardAnimation(
       cursor.current = null;
       diceQueueRef.current = [];
       onDiceChangeRef.current?.(false);
+      onDiceQueueRef.current?.([]);
     };
   }, [resetPresentation]);
 

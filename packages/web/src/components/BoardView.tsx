@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useAudio } from '../audio/context.tsx';
 import { useT } from '../i18n/context.tsx';
 import { buildGeometry } from '../board/geometry.ts';
 import { boardIntent } from '../board/intent.ts';
@@ -58,8 +59,10 @@ export function BoardView({ controller }: { controller: TableController }) {
   const Scene = useMemo(() => lazy(() => import('../board/three/BoardScene3D.tsx')), [attempt]);
   const { dispatch } = controller;
   const onDiceChange = useCallback((presenting: boolean) => dispatch({ type: 'dice-presenting', value: presenting }), [dispatch]);
+  const { rolls } = useAudio();
+  const onDiceQueue = useCallback((ids: readonly string[]) => rolls.setQueue(ids), [rolls]);
   const animation = useBoardAnimation(state.game, state.gameSync, state.connection === 'online',
-    !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll', onDiceChange);
+    !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll', onDiceChange, onDiceQueue);
   const geometry = useMemo(() => buildGeometry(view?.board.topologyId ?? 'hex-r2'), [view?.board.topologyId]);
   const bounds = useMemo(() => sceneBounds(geometry), [geometry]);
   const controls = useBoardViewport({ geometry, surfaceRef, bounds, projection, renderer: effective,
@@ -126,6 +129,11 @@ export function BoardView({ controller }: { controller: TableController }) {
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
   }, [actions, intent]);
   const focusedRoll = animation.activeDice;
+  // 骰子真的出現在畫面上才開始擲骰聲；點數揭曉與後果都以此為起點。
+  const focusedRollId = focusedRoll?.id ?? null;
+  useEffect(() => {
+    if (focusedRollId) rolls.started(focusedRollId);
+  }, [focusedRollId, rolls]);
   // 佇列中仍有骰子（例如後一次擲骰排在前一組特效之後）時，靜態點數也先隱藏。
   const hideStaticDice = focusedRoll !== null || state.dicePresenting;
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);

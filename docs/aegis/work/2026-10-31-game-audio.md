@@ -34,12 +34,22 @@ Browser constraints that shaped the engine:
 
 - `audio/cues.ts`: pure map from rule events to 28 cues. Cues depend only on
   public parameters and on whether the viewer is a party, never on the stolen
-  resource or the bought card (SPEC §8.3). Rolls follow the dice presentation:
-  the rattle starts on arrival, the landing knock plays at
-  `DICE_ROLL_DURATION_MS`, and consequences wait for
-  `DICE_PRESENTATION_DURATION_MS`, so the sound never reveals the result early.
-  Distinct cues in one batch are staggered 320 ms in event order and capped
-  by priority.
+  resource or the bought card (SPEC §8.3). `cueGroups` splits each delta at
+  every roll exactly like the board (`boardEffectGroups`). Distinct cues are
+  staggered 320 ms in event order and capped by priority.
+- `audio/rolls.ts`: `RollSoundCoordinator` follows the board's *actual* dice
+  presentation instead of predicting it:
+  - `useBoardAnimation` publishes its dice queue synchronously, and `BoardView`
+    reports when a roll's dice appear;
+  - rattle on appearance, landing knock at `DICE_ROLL_DURATION_MS`, and the
+    roll's consequences when the dice finish;
+  - a roll the board never queues (reduced motion, hidden tab, overflow,
+    mandatory step, no board) plays its result at once;
+  - a queued roll dropped before its reveal is cancelled, except the call-back
+    cues; one dropped after the reveal completes immediately.
+
+  Sound therefore never reveals a result before the dice do, and nothing plays
+  for a presentation that was discarded.
 - `audio/synth.ts`: primitives (tone, filtered noise, knock, marimba, bell,
   pluck, brass, coin, swish) and one recipe per cue, scheduled on absolute
   audio-clock times so the same code runs live or in an `OfflineAudioContext`.
@@ -88,30 +98,29 @@ edges.
 Codex review (P2) and an independent reviewer found these problems on
 `d7cb5f8`. All of them are fixed, with regression tests:
 
-- **Queued rolls (Codex P2 on `d7cb5f8`; P1 + P2 on `594bdae`):** cues were
-  timed from packet arrival, but the board serialises presentations (dice
-  2.5 s + effect group 0.8 s per group). A second roll arriving mid-presentation
-  could therefore reveal its result early. The first fix still treated a
-  multi-roll delta as one group and used a millisecond backlog limit that was
-  shorter than the board's real one. `scheduleCues` now mirrors the board
-  directly:
-  - it splits each delta with `boardEffectGroups`;
-  - it queues each group behind the previous one's end;
-  - only the dice count during mandatory steps;
-  - it applies the board's own group-count overflow rule (more than
-    `MAX_EFFECT_GROUPS` queued groups → the board drops its queue and shows
-    results, so cues play at once).
+- **Roll timing (Codex: P2 on `d7cb5f8`, P1 + P2 on `594bdae`, P2 ×2 on
+  `5c0dcfd`, P2 ×3 on `2b408b1`):** cues were first timed from packet arrival,
+  but the board serialises presentations, so a queued roll could reveal its
+  result early. Each later round mirrored the board's queue more closely:
+  - an audio timeline;
+  - per-roll groups;
+  - the board's group-count overflow rule;
+  - bus-level cancellation.
 
-  When the board skips the presentation (reduced motion, hidden tab), there is
-  no rattle and the result plays at once.
-- **Already-scheduled cues (independent review; Codex P2 ×2 on `5c0dcfd`):**
-  Web Audio cannot cancel individual scheduled nodes. So `cancelPending()`
-  fades out the effects bus and swaps in a fresh one, which drops every cue
-  still waiting. It runs when:
-  - muting (otherwise the cues replayed on unmute);
-  - hiding the tab (otherwise dice/production cues sounded in the background);
-  - the board would drop its queue (overflow, presentation turned off);
-  - a sync generation changes.
+  Each round, the reviews still found cases where the copy diverged:
+  - mandatory steps clearing the queue;
+  - cancellation that waited for the new snapshot instead of firing when
+    synchronization started;
+  - a background trade offer cancelled along with the bus.
+
+  The final design removes the copy: `RollSoundCoordinator` (above) is driven
+  by the board's own dice queue and presentation start. Mandatory clears,
+  resyncs, hidden tabs and overflows all reach audio through the same queue
+  update the board makes. Non-roll cues play on arrival, because they reveal
+  nothing.
+- **Mute replay (independent review):** cues scheduled before a mute fired on
+  unmute. Going inactive now fades out and swaps the effects bus, so nothing
+  scheduled earlier survives.
 - **Background call-back:** "your move" and trade offers now sound in a hidden
   tab; music and everything else stay silent there.
 - **State race:** `ctx.state` lags `resume()`/`suspend()`, so `sync()` runs
@@ -129,13 +138,18 @@ Codex review (P2) and an independent reviewer found these problems on
 ## Verification
 
 - `pnpm verify`: typecheck, rules 138, protocol 7, server 96 (+11 PostgreSQL
-  skips), web 497 tests, build, smoke 13/13, dev runner 1/1.
+  skips), web 499 tests, build, smoke 13/13, dev runner 1/1.
 - New web tests: cue mapping, privacy invariance, roll timing, staggering and
   caps; preference storage; music determinism and harmony; engine lifecycle on
   a fake `AudioContext` (no context before a gesture, mute/suspend, stale-cue
-  discard, hidden-tab call-back, slow-resume race, scheduler, dispose); event
-  cursor, presentation timeline, attention transitions, stale receipts and hook
-  integration; settings persistence, unlock, Escape/outside-click through `App`.
+  discard, hidden-tab call-back, slow-resume race, scheduler, dispose); the
+  roll coordinator (start/reveal/finish, start-before-register, never queued,
+  dropped before/after reveal, serial queue, timeout, dispose); event cursor,
+  attention transitions, stale receipts and hook integration; settings
+  persistence, unlock, Escape/outside-click through `App`; and
+  `audio-board.test.tsx`, which drives the real `App` + board over a socket and
+  checks the cue times against the dice presentation for one and two rolls in
+  a single delta.
 - `scripts/audio/verify.py` ([report](2026-10-31-game-audio/palette-report.json)):
   all 28 cues render audible without clipping; no live context before the
   first click; island music RMS ≈ 0.025 while running and fading out after

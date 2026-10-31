@@ -10,7 +10,7 @@
  * 處理的提示（BACKGROUND_CUES）。
  */
 
-import type { SoundCue } from './cues.ts';
+import { BACKGROUND_CUES, type SoundCue } from './cues.ts';
 import { MusicSequencer, type MusicScene } from './music.ts';
 import { DEFAULT_AUDIO_PREFERENCES, levelToGain, type AudioPreferences } from './preferences.ts';
 import { createImpulseResponse, createNoiseBuffer, renderCue, seededRandom, type SynthTarget } from './synth.ts';
@@ -23,8 +23,6 @@ export interface AudioEngine {
   /** 在使用者手勢內同步呼叫：建立或恢復 AudioContext。 */
   unlock(): void;
   play(cue: SoundCue, delayMs?: number): void;
-  /** 丟掉所有已排程、尚未播完的效果音（盤面丟棄排隊中的演出時呼叫）。 */
-  cancelPending(): void;
   setPreferences(preferences: AudioPreferences): void;
   /** null 表示不播放背景音樂。 */
   setScene(scene: MusicScene | null): void;
@@ -50,12 +48,6 @@ function hasWebAudio(): boolean {
   const scope = globalThis as unknown as { AudioContext?: unknown; webkitAudioContext?: unknown };
   return typeof scope.AudioContext === 'function' || typeof scope.webkitAudioContext === 'function';
 }
-
-/**
- * 分頁隱藏時仍會響的提示：輪到自己、有人向自己詢價。其餘聲音與音樂在背景分頁
- * 一律略過，玩家切到別的分頁時只會被真正需要回來處理的事叫回來。
- */
-const BACKGROUND_CUES: ReadonlySet<SoundCue> = new Set(['turn.yours', 'trade.offer']);
 
 /** 同一個提示在這段時間內重複觸發時只發一次聲。 */
 const REPEAT_GUARD_SECONDS = 0.06;
@@ -98,11 +90,7 @@ export class WebAudioEngine implements AudioEngine {
   private readonly random = seededRandom(Date.now() & 0xffff);
   private readonly createContext: ContextFactory;
   private readonly doc: AudioEngineOptions['document'];
-  private readonly onVisibility = () => {
-    // 背景分頁不演出：先前排好的骰子、產出等提示不該在背景補響。
-    if (this.hidden()) this.cancelPending();
-    this.sync();
-  };
+  private readonly onVisibility = () => this.sync();
 
   constructor(options: AudioEngineOptions = {}) {
     this.createContext = options.createContext ?? defaultContextFactory;
@@ -127,6 +115,8 @@ export class WebAudioEngine implements AudioEngine {
   play(cue: SoundCue, delayMs = 0): void {
     const graph = this.graph;
     if (!graph || this.disposed || this.preferences.muted || this.preferences.effects <= 0) return;
+    // 分頁隱藏時只響需要叫玩家回來的提示（BACKGROUND_CUES）；擲骰演出被盤面丟棄時，
+    // RollSoundCoordinator 也已取消其餘提示。
     if (graph.ctx.state !== 'running' || (this.hidden() && !BACKGROUND_CUES.has(cue))) return;
     const at = graph.ctx.currentTime + SCHEDULE_PADDING_SECONDS + Math.max(0, delayMs) / 1000;
     const previous = this.lastStart.get(cue);
@@ -137,11 +127,6 @@ export class WebAudioEngine implements AudioEngine {
     } catch {
       // 音效只是輔助提示；任何節點錯誤都不能影響遊戲操作。
     }
-  }
-
-  cancelPending(): void {
-    const graph = this.graph;
-    if (graph && !this.disposed) this.replaceEffectsBus(graph);
   }
 
   setPreferences(preferences: AudioPreferences): void {
@@ -301,7 +286,6 @@ export const SILENT_AUDIO_ENGINE: AudioEngine = Object.freeze({
   supported: false,
   unlock: () => undefined,
   play: () => undefined,
-  cancelPending: () => undefined,
   setPreferences: () => undefined,
   setScene: () => undefined,
   dispose: () => undefined,

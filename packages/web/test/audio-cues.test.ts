@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  CUE_STAGGER_MS,
-  cueForEvent,
-  cuesForEvents,
-  IDLE_TIMELINE,
-  MAX_CUES_PER_BATCH,
-  presentationLength,
-  scheduleCues,
-  SOUND_CUES,
-} from '../src/audio/cues.ts';
+import { CUE_STAGGER_MS, cueForEvent, cueGroups, MAX_CUES_PER_BATCH, SOUND_CUES, stagger } from '../src/audio/cues.ts';
 import { composeBar, chordForBar, SCENES, BEATS_PER_BAR } from '../src/audio/music.ts';
 import {
   AUDIO_KEY,
@@ -19,7 +10,6 @@ import {
   writeStoredAudio,
 } from '../src/audio/preferences.ts';
 import { CUE_LENGTH_SECONDS } from '../src/audio/synth.ts';
-import { DICE_PRESENTATION_DURATION_MS, DICE_ROLL_DURATION_MS, MAX_EFFECT_DURATION_MS, MAX_EFFECT_GROUPS } from '../src/board/animation.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import { makeEvent } from '../src/test/fixtures.ts';
 
@@ -64,27 +54,40 @@ describe('event cues', () => {
     expect(cueForEvent(offer('p1', 'all'), 'p1')).toBeNull();
   });
 
-  it('times a roll with the dice presentation and holds its consequences until the dice settle', () => {
-    const cues = cuesForEvents([
+  it('splits a batch at the roll and holds its consequences for the dice presentation', () => {
+    expect(cueGroups([
       makeEvent(13, 'turn.rolled', { playerId: 'p1', dice: [3, 4], total: 7 }),
       makeEvent(14, 'discard.required', { required: { p1: 4 } }),
       makeEvent(15, 'robber.moveRequired', { playerId: 'p1', cause: 'seven' }),
+    ], 'p1')).toEqual([
+      // 兩個強盜事件對應同一個提示，只響一次。
+      { rollSeq: 13, before: [], after: ['robber.alert'] },
+    ]);
+  });
+
+  it('keeps events before the roll apart and splits a delta at every roll like the board', () => {
+    const groups = cueGroups([
+      makeEvent(39, 'dev.knight', { playerId: 'p2', hex: 4 }),
+      makeEvent(40, 'turn.rolled', { playerId: 'p2', dice: [2, 2], total: 4 }),
+      makeEvent(41, 'production.resolved', { total: 4, grants: { p1: { ore: 1 } } }),
+      makeEvent(42, 'turn.ended', { playerId: 'p2' }),
+      makeEvent(43, 'turn.started', { playerId: 'p3' }),
+      makeEvent(44, 'turn.rolled', { playerId: 'p3', dice: [6, 1], total: 7 }),
+      makeEvent(45, 'robber.moveRequired', { playerId: 'p3', cause: 'seven' }),
     ], 'p1');
-    expect(cues).toEqual([
-      { cue: 'dice.roll', delayMs: 0 },
-      { cue: 'dice.land', delayMs: DICE_ROLL_DURATION_MS },
-      // 兩個強盜事件對應同一個提示，只響一次，且不早於骰子演出結束。
-      { cue: 'robber.alert', delayMs: DICE_PRESENTATION_DURATION_MS },
+    expect(groups).toEqual([
+      { rollSeq: 40, before: ['dev.knight'], after: ['production.self', 'turn.other'] },
+      { rollSeq: 44, before: [], after: ['robber.alert'] },
     ]);
   });
 
   it('staggers distinct cues of one batch in event order', () => {
-    const cues = cuesForEvents([
+    const [group] = cueGroups([
       makeEvent(21, 'dev.knight', { playerId: 'p2', hex: 4 }),
       makeEvent(20, 'robber.moved', { playerId: 'p2', hex: 4 }),
       makeEvent(22, 'robber.stole', { playerId: 'p2', victim: 'p3' }),
     ], 'p1');
-    expect(cues).toEqual([
+    expect(stagger(group!.before)).toEqual([
       { cue: 'robber.move', delayMs: 0 },
       { cue: 'dev.knight', delayMs: CUE_STAGGER_MS },
       { cue: 'robber.steal', delayMs: CUE_STAGGER_MS * 2 },
@@ -92,114 +95,16 @@ describe('event cues', () => {
   });
 
   it('keeps the most important cues when a large batch arrives', () => {
-    const events = [
+    const [group] = cueGroups([
       makeEvent(1, 'build.road', { playerId: 'p2' }),
       makeEvent(2, 'build.settlement', { playerId: 'p2' }),
       makeEvent(3, 'build.devCard', { playerId: 'p2' }),
       makeEvent(4, 'trade.bank', { playerId: 'p2' }),
       makeEvent(5, 'game.finished', { playerId: 'p1' }),
-    ];
-    const cues = cuesForEvents(events, 'p1');
-    expect(cues).toHaveLength(MAX_CUES_PER_BATCH);
-    expect(cues.map((entry) => entry.cue)).toContain('game.victory');
-    expect(cuesForEvents([], 'p1')).toEqual([]);
-  });
-
-  const SHOWN = { presented: true, effectsShown: true };
-  const ROLL_GROUP = DICE_PRESENTATION_DURATION_MS + MAX_EFFECT_DURATION_MS;
-  const roll = (seq: number, total: number) => [
-    makeEvent(seq, 'turn.rolled', { playerId: 'p2', dice: [total - 1, 1], total }),
-    makeEvent(seq + 1, 'robber.moveRequired', { playerId: 'p2', cause: 'seven' }),
-  ];
-
-  it('serialises a roll behind a presentation that is still playing, like the board does', () => {
-    const first = scheduleCues(IDLE_TIMELINE, roll(20, 6), 'p1', 1000, SHOWN);
-    expect(first.cues.find((entry) => entry.cue === 'dice.land')?.delayMs).toBe(DICE_ROLL_DURATION_MS);
-    expect(first.timeline.ends).toEqual([1000 + ROLL_GROUP]);
-
-    // 第二次擲骰在 400 ms 後抵達：畫面要等第一次的骰子與特效播完才開始，聲音也一樣。
-    const second = scheduleCues(first.timeline, roll(30, 7), 'p1', 1400, SHOWN);
-    const wait = ROLL_GROUP - 400;
-    expect(second.cues).toEqual([
-      { cue: 'dice.roll', delayMs: wait },
-      { cue: 'dice.land', delayMs: wait + DICE_ROLL_DURATION_MS },
-      { cue: 'robber.alert', delayMs: wait + DICE_PRESENTATION_DURATION_MS },
-    ]);
-  });
-
-  it('splits a delta at every roll so each result waits for its own dice', () => {
-    // 同一個差量含兩次擲骰：盤面切成兩組依序演出，第二組的七點不能隨第一組一起響。
-    const delta = [
-      makeEvent(40, 'turn.rolled', { playerId: 'p2', dice: [2, 2], total: 4 }),
-      makeEvent(41, 'production.resolved', { total: 4, grants: { p1: { ore: 1 } } }),
-      makeEvent(42, 'turn.ended', { playerId: 'p2' }),
-      makeEvent(43, 'turn.started', { playerId: 'p3' }),
-      ...roll(44, 7),
-    ];
-    const { cues, timeline } = scheduleCues(IDLE_TIMELINE, delta, 'p1', 0, SHOWN);
-    expect(cues).toEqual([
-      { cue: 'dice.roll', delayMs: 0 },
-      { cue: 'dice.land', delayMs: DICE_ROLL_DURATION_MS },
-      { cue: 'production.self', delayMs: DICE_PRESENTATION_DURATION_MS },
-      { cue: 'turn.other', delayMs: DICE_PRESENTATION_DURATION_MS + CUE_STAGGER_MS },
-      { cue: 'dice.roll', delayMs: ROLL_GROUP },
-      { cue: 'dice.land', delayMs: ROLL_GROUP + DICE_ROLL_DURATION_MS },
-      { cue: 'robber.alert', delayMs: ROLL_GROUP + DICE_PRESENTATION_DURATION_MS },
-    ]);
-    expect(timeline.ends).toEqual([ROLL_GROUP, ROLL_GROUP * 2]);
-  });
-
-  it('keeps queueing through any backlog the board still accepts', () => {
-    let timeline = IDLE_TIMELINE;
-    let last: ReturnType<typeof scheduleCues>['cues'] = [];
-    for (let index = 0; index < 3; index += 1) {
-      const result = scheduleCues(timeline, roll(50 + index * 2, 7), 'p1', index * 100, SHOWN);
-      timeline = result.timeline;
-      last = result.cues;
-    }
-    // 三次擲骰快速抵達：第三次的落定聲排在前兩組演出之後。
-    expect(last.find((entry) => entry.cue === 'dice.land')?.delayMs).toBe(ROLL_GROUP * 2 - 200 + DICE_ROLL_DURATION_MS);
-    expect(timeline.ends).toHaveLength(3);
-  });
-
-  it('plays the result immediately when the board drops an overflowing queue', () => {
-    const full = { ends: Array.from({ length: MAX_EFFECT_GROUPS }, (_, index) => 10_000 + index * ROLL_GROUP) };
-    const overflow = scheduleCues(full, roll(70, 7), 'p1', 9_000, SHOWN);
-    expect(overflow.timeline).toEqual(IDLE_TIMELINE);
-    expect(overflow.dropped).toBe(true);
-    expect(overflow.cues).toEqual(cuesForEvents(roll(70, 7), 'p1', false));
-    // 已結束的組不算在佇列中。
-    const expired = scheduleCues(full, roll(70, 7), 'p1', 100_000, SHOWN);
-    expect(expired.cues[0]).toEqual({ cue: 'dice.roll', delayMs: 0 });
-    expect(expired.dropped).toBe(false);
-  });
-
-  it('skips the rattle and plays the result at once when the board does not present the dice', () => {
-    const events = [
-      makeEvent(13, 'turn.rolled', { playerId: 'p2', dice: [3, 4], total: 7 }),
-      makeEvent(14, 'robber.moveRequired', { playerId: 'p2', cause: 'seven' }),
-    ];
-    expect(cuesForEvents(events, 'p1', false)).toEqual([
-      { cue: 'dice.land', delayMs: 0 },
-      { cue: 'robber.alert', delayMs: CUE_STAGGER_MS },
-    ]);
-  });
-
-  it('lets only the dice occupy the timeline while the board is in a mandatory step', () => {
-    const turn = [makeEvent(5, 'turn.started', { playerId: 'p2' })];
-    expect(presentationLength(turn, false)).toBe(0);
-    const mandatory = { presented: true, effectsShown: false };
-    expect(scheduleCues(IDLE_TIMELINE, turn, 'p1', 1000, mandatory).timeline.ends).toEqual([]);
-    const rolled = [makeEvent(6, 'turn.rolled', { playerId: 'p2', dice: [1, 1], total: 2 })];
-    expect(presentationLength(rolled, false)).toBe(DICE_PRESENTATION_DURATION_MS);
-    expect(scheduleCues(IDLE_TIMELINE, rolled, 'p1', 1000, mandatory).timeline.ends).toEqual([1000 + DICE_PRESENTATION_DURATION_MS]);
-  });
-
-  it('does not wait for a presentation the board skips', () => {
-    const queued = { ends: [50_000] };
-    const result = scheduleCues(queued, roll(80, 7), 'p1', 1000, { presented: false, effectsShown: true });
-    expect(result.cues).toEqual(cuesForEvents(roll(80, 7), 'p1', false));
-    expect(result.timeline).toEqual(IDLE_TIMELINE);
+    ], 'p1');
+    expect(group!.before).toHaveLength(MAX_CUES_PER_BATCH);
+    expect(group!.before).toContain('game.victory');
+    expect(cueGroups([], 'p1')).toEqual([]);
   });
 
   it('documents a length for every cue', () => {

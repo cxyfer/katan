@@ -4,21 +4,21 @@
       "name": "浮浮酱 round 1 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.17388303577899933,
+      "peak": 0.17387697100639343,
       "ok": true
     },
     {
       "name": "浮浮酱 round 1 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.20576676726341248,
+      "peak": 0.20708058774471283,
       "ok": true
     },
     {
       "name": "Mika round 1 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.1739002764225006,
+      "peak": 0.1739020049571991,
       "ok": true
     },
     {
@@ -39,56 +39,56 @@
       "name": "Bo round 1 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.2071327269077301,
+      "peak": 0.20621198415756226,
       "ok": true
     },
     {
       "name": "Bo round 2 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.17390207946300507,
+      "peak": 0.17390677332878113,
       "ok": true
     },
     {
       "name": "Bo round 2 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.20621195435523987,
+      "peak": 0.20713269710540771,
       "ok": true
     },
     {
       "name": "Mika round 2 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.17390021681785583,
+      "peak": 0.17390400171279907,
       "ok": true
     },
     {
       "name": "Mika round 2 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.2746391296386719,
+      "peak": 0.27463915944099426,
       "ok": true
     },
     {
       "name": "浮浮酱 round 2 building (muted)",
       "expectAudible": false,
       "state": "suspended",
-      "peak": 0.00010991688031936064,
+      "peak": 0.00010991685121553019,
       "ok": true
     },
     {
       "name": "浮浮酱 round 2 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.20960596203804016,
+      "peak": 0.2060135453939438,
       "ok": true
     },
     {
       "name": "host roll",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.2260468602180481,
+      "peak": 0.2292412519454956,
       "ok": true
     }
   ],

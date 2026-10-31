@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import type { GameEvent } from '@catan/protocol';
 import { requiredActionFor, type RequiredAction } from '../state/pending.ts';
 import type { TableState } from '../state/table.ts';
-import { IDLE_TIMELINE, scheduleCues, type CueTimeline, type SoundCue } from './cues.ts';
+import { cueGroups, stagger, type SoundCue } from './cues.ts';
+import type { RollSoundCoordinator } from './rolls.ts';
 
 export interface EventCursor {
   gameId: string;
@@ -46,23 +47,17 @@ export function attentionCue(
   return { mine, cue: previous === false && mine && action?.kind !== 'discard' ? 'turn.yours' : null };
 }
 
-/** 使用者要求減少動態時盤面不播骰子演出，聲音也不必等它。 */
-function reducedMotion(): boolean {
-  return typeof globalThis.matchMedia === 'function' && globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
 export interface GameSoundOutput {
   play(cue: SoundCue, delayMs?: number): void;
-  /** 盤面丟棄排隊中的演出時，取消已排程但尚未響起的提示。 */
-  cancelPending(): void;
+  /** 擲骰聲與其後果交給它，跟著盤面實際的骰子演出播放。 */
+  rolls: Pick<RollSoundCoordinator, 'register'>;
 }
 
 /** 依桌面狀態變化發出音效。只在 App 掛載一次，跨大廳、牌桌與結算畫面持續追蹤。 */
-export function useGameSounds(state: TableState, { play, cancelPending }: GameSoundOutput): void {
+export function useGameSounds(state: TableState, { play, rolls }: GameSoundOutput): void {
   const latest = useRef(state);
   latest.current = state;
   const cursor = useRef<EventCursor | null>(null);
-  const timeline = useRef<CueTimeline>(IDLE_TIMELINE);
   const mine = useRef<boolean | null>(null);
   const rejected = useRef<string | null>(null);
   const stale = useRef<string | null>(null);
@@ -71,30 +66,19 @@ export function useGameSounds(state: TableState, { play, cancelPending }: GameSo
 
   const { game, gameSyncPending } = state;
   const generation = state.gameSync.generation;
+  // 這個 effect 在棋盤（子元件）的 layout effect 之後執行：同一次更新裡，
+  // 盤面已先把新擲骰放進骰子佇列（或決定不演出），登記時即可判斷。
   useEffect(() => {
-    const previous = cursor.current;
-    const next = advanceEventCursor(previous, latest.current);
+    const next = advanceEventCursor(cursor.current, latest.current);
     cursor.current = next.cursor;
-    // 換代時盤面丟掉排隊中的演出重新建立基準：音效時間軸清空，已排程的提示也取消。
-    // （分頁隱藏由引擎自己處理。）
-    if (!next.cursor || previous?.gameId !== next.cursor.gameId || previous.generation !== next.cursor.generation) {
-      if (timeline.current.ends.length > 0) cancelPending();
-      timeline.current = IDLE_TIMELINE;
-    } else if (document.hidden) {
-      timeline.current = IDLE_TIMELINE;
+    const gameId = next.cursor?.gameId;
+    if (!gameId) return;
+    for (const group of cueGroups(next.events, selfId)) {
+      for (const { cue, delayMs } of stagger(group.before)) play(cue, delayMs);
+      // 與 diceRollPresentations 的演出 id 相同。
+      if (group.rollSeq !== null) rolls.register(`${gameId}:${group.rollSeq}`, group.after);
     }
-    if (next.events.length === 0) return;
-    // 分頁隱藏時盤面不演出；提示仍交給引擎，由它決定哪些值得在背景響起。
-    // effectsShown 與 BoardView 傳給 useBoardAnimation 的 mandatory 判斷相反。
-    const view = latest.current.game?.view;
-    const scheduled = scheduleCues(timeline.current, next.events, selfId, Date.now(), {
-      presented: !document.hidden && !reducedMotion(),
-      effectsShown: !view?.pending && !view?.turn.setup && view?.turn.phase !== 'preroll',
-    });
-    timeline.current = scheduled.timeline;
-    if (scheduled.dropped) cancelPending();
-    for (const { cue, delayMs } of scheduled.cues) play(cue, delayMs);
-  }, [game, generation, gameSyncPending, selfId, play, cancelPending]);
+  }, [game, generation, gameSyncPending, selfId, play, rolls]);
 
   const action = requiredActionFor(state);
   const actionKind = action?.kind ?? null;
