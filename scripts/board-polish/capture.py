@@ -5,7 +5,8 @@
 
 對局以 HTTP API 完成初始放置並推進數個回合，讓棋盤上有村莊、城市、道路與
 移動過的強盜；再以同一位玩家的瀏覽器分別用 ?renderer=svg 與 ?renderer=r3f
-拍攝桌面與手機畫面、放大特寫，以及 ?preview=island 的島嶼展示。
+拍攝桌面與手機畫面、放大特寫，以及 ?preview=island 的島嶼展示（含六人延伸島嶼
+與輕量畫質）。
 
 只拍照，不做斷言；遇到瀏覽器執行期錯誤即失敗。
 """
@@ -186,6 +187,15 @@ with sync_playwright() as p:
     host.wait_for_function("document.querySelector('[data-testid=island-preview]')?.dataset.rendererStatus === 'ready'", timeout=30000)
     host.wait_for_timeout(600)
     shot(host, 'island-preview-1600x1000')
+    # 六人延伸島嶼，再切到輕量畫質（無陰影、無反鋸齒）
+    host.get_by_test_id('preview-topology').select_option('hex-r56')
+    host.wait_for_timeout(300)
+    host.wait_for_function("document.querySelector('[data-testid=island-preview]')?.dataset.rendererStatus === 'ready'", timeout=30000)
+    host.wait_for_timeout(600)
+    shot(host, 'island-preview-r56-1600x1000')
+    host.get_by_test_id('preview-quality').select_option('low')
+    host.wait_for_timeout(1200)
+    shot(host, 'island-preview-r56-low-1600x1000')
 
     browser.close()
     assert not errors, f'browser runtime errors: {errors}'

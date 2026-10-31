@@ -19,6 +19,7 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`notice-dismiss/`](notice-dismiss/README.md) | Notice cards with the countdown ring around the close control: rejected receipt, hover hold, turn-change fade, network toast and the persistent unknown-outcome receipt | 2026-10-31 | [`scripts/notice-dismiss/capture.py`](../../scripts/notice-dismiss/capture.py) |
 | [`trade-offer-perspective/`](trade-offer-perspective/README.md) | The same open offer card as the proposer and as the recipient, card crops plus table viewport | 2026-10-31 | [`scripts/trade-offer-perspective/capture.py`](../../scripts/trade-offer-perspective/capture.py) |
 | [`game-audio/`](game-audio/README.md) | Sound settings in lobby and table (desktop, mobile, both locales) and the offline-rendered sound palette | 2026-10-31 | [`scripts/audio/live.py`](../../scripts/audio/live.py), [`scripts/audio/verify.py`](../../scripts/audio/verify.py) |
+| [`board-polish/`](board-polish/README.md) | Before/after SVG and 3D board: desktop fit, close-up and phone, the standalone island preview, the 30-hex island and low quality | 2026-10-31 | [`scripts/board-polish/capture.py`](../../scripts/board-polish/capture.py) |
 
 `current/` and `hand-cards/` reflect the table as it is now. The other sets are
 focused feature reviews kept with their work records; each was captured at the
