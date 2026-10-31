@@ -416,6 +416,8 @@ export const en: Catalog = {
   'play.tradeExpiresAtWindowEnd': 'Unsettled offers expire when this action window ends.',
   'play.tradeNoReservation': 'An offer reserves no resources until it is settled.',
   'play.pending.discard': 'Discard {count} card(s)',
+  'play.pending.discardWaiting': 'Waiting for other players to discard',
+  'play.pending.discardOwned': 'Have {count}',
   'play.pending.discardRequired': 'Required: {required}',
   'play.pending.discardSelected': 'Selected: {selected}',
   'play.pending.discardSubmit': 'Submit discard',

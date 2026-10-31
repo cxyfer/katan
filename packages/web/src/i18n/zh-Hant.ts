@@ -412,6 +412,8 @@ export const zhHant: Catalog = {
   'play.tradeExpiresAtWindowEnd': '未完成的提案會在此行動階段結束時逾期。',
   'play.tradeNoReservation': '提案在完成交換前不會保留任何資源。',
   'play.pending.discard': '棄掉 {count} 張卡',
+  'play.pending.discardWaiting': '等待其他玩家棄牌',
+  'play.pending.discardOwned': '持有 {count}',
   'play.pending.discardRequired': '需要：{required}',
   'play.pending.discardSelected': '已選：{selected}',
   'play.pending.discardSubmit': '送出棄牌',

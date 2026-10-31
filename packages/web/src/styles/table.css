@@ -1182,6 +1182,18 @@
   list-style: none;
   display: flex;
 }
+.discard-picker__item {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: .15rem;
+  display: flex;
+}
+.discard-picker__owned {
+  padding-inline: .3rem;
+  color: var(--text-muted);
+  font-size: .68rem;
+  font-variant-numeric: tabular-nums;
+}
 .event-log {
   max-height: 400px;
   overflow-y: auto;

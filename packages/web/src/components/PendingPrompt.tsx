@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { RESOURCES, type Resource } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
-import { formatResourceList } from '../i18n/format.ts';
+import { formatNumber, formatResourceList } from '../i18n/format.ts';
 import { requiredActionFor } from '../state/pending.ts';
-import { followUpsHeld } from '../state/table.ts';
+import { followUpsHeld, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 
 /**
@@ -30,8 +30,17 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
   const nameOf = (playerId: string) =>
     view.players.find((player) => player.id === playerId)?.nickname ?? playerId;
 
-  const required = pending && pending.kind === 'discard' ? (pending.required[selfId ?? ''] ?? 0) : 0;
+  const discard = pending && pending.kind === 'discard' ? pending : null;
+  // The engine keeps the original `required` set after a player submits; only
+  // `action.mine` (derived from `waitingFor`) decides whether this viewer still
+  // owes a selection. Re-deriving it from `required` would reopen the picker
+  // while the table waits for the remaining players.
+  const discardMine = discard !== null && action?.kind === 'discard' && action.mine;
+  const required = discardMine ? (discard.required[selfId ?? ''] ?? 0) : 0;
+  const owned = shownHand(state);
   const selected = discardPick.length;
+  const pickedCount = (resource: Resource) =>
+    discardPick.reduce((count, picked) => count + (picked === resource ? 1 : 0), 0);
 
   return (
     <section
@@ -52,7 +61,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
         </p>
       )}
 
-      {pending && pending.kind === 'discard' && required > 0 && (
+      {discardMine && discard && (
         <div className="prompt__body">
           <p data-testid="discard-counts">
             {t('play.pending.discardRequired', { required })} ·{' '}
@@ -63,20 +72,36 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
               {formatResourceList(locale, discardPick)}
             </p>
           )}
-          <ul className="resource-picker">
-            {RESOURCES.map((resource) => (
-              <li key={resource}>
-                <button
-                  type="button"
-                  className="button button--chip"
-                  data-testid={`discard-add-${resource}`}
-                  disabled={selected >= required}
-                  onClick={() => setDiscardPick((current) => [...current, resource])}
-                >
-                  {t(`resource.${resource}`)} +
-                </button>
-              </li>
-            ))}
+          <ul className="resource-picker discard-picker">
+            {RESOURCES.map((resource) => {
+              const have = owned?.[resource];
+              // 每種資源都不能選超過手上張數；選滿所需張數後整組停用。
+              const picked = pickedCount(resource);
+              const disabled = selected >= required || (have !== undefined && picked >= have);
+              return (
+                <li key={resource} className="discard-picker__item">
+                  <button
+                    type="button"
+                    className="button button--chip"
+                    data-testid={`discard-add-${resource}`}
+                    aria-describedby={have === undefined ? undefined : `discard-owned-${resource}`}
+                    disabled={disabled}
+                    onClick={() => setDiscardPick((current) => [...current, resource])}
+                  >
+                    {t(`resource.${resource}`)} +
+                  </button>
+                  {have !== undefined && (
+                    <span
+                      className="discard-picker__owned"
+                      id={`discard-owned-${resource}`}
+                      data-testid={`discard-owned-${resource}`}
+                    >
+                      {t('play.pending.discardOwned', { count: formatNumber(locale, have) })}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
           <button
             type="button"

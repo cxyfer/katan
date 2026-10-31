@@ -396,6 +396,59 @@ describe('development cards and pending effects', () => {
     expect(lastCommand(api)).toEqual({ type: 'pending.discard', resources: ['wool', 'grain'] });
   });
 
+  it('shows how many cards I hold and caps each resource at that amount', async () => {
+    const view = makeView({
+      hints: null,
+      pending: { kind: 'discard', required: { p1: 5 }, waitingFor: ['p1'] },
+    });
+    view.players[0]!.resources = { lumber: 1, brick: 2, wool: 3, grain: 2, ore: 2 };
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api);
+
+    expect(screen.getByTestId('discard-owned-lumber').textContent).toContain('1');
+    fireEvent.click(screen.getByTestId('discard-add-lumber'));
+
+    // 木頭只有一張：即使還沒選滿所需張數，也不能再選第二張。
+    expect((screen.getByTestId('discard-add-lumber') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId('discard-add-brick').hasAttribute('disabled')).toBe(false);
+
+    fireEvent.click(screen.getByTestId('discard-add-brick'));
+    fireEvent.click(screen.getByTestId('discard-add-brick'));
+    fireEvent.click(screen.getByTestId('discard-add-wool'));
+    fireEvent.click(screen.getByTestId('discard-add-wool'));
+    fireEvent.click(screen.getByTestId('discard-submit'));
+
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(lastCommand(api)).toEqual({
+      type: 'pending.discard',
+      resources: ['lumber', 'brick', 'brick', 'wool', 'wool'],
+    });
+  });
+
+  it('shows the remaining wait list instead of the picker once I have submitted', async () => {
+    const api = createFakeApi({
+      snapshot: makeSnapshot(
+        makeView({
+          hints: null,
+          // p1 still appears in `required` (it is the effect's original set)
+          // but no longer in `waitingFor` (the authoritative outstanding set).
+          pending: { kind: 'discard', required: { p1: 2, p2: 3 }, waitingFor: ['p2'] },
+        }),
+      ),
+    });
+    await openGame(api);
+
+    const prompt = screen.getByTestId('required-action-prompt');
+    expect(prompt.getAttribute('data-mine')).toBe('false');
+    expect(prompt.textContent).toContain('Waiting for other players to discard');
+    expect(prompt.textContent).toContain('小美');
+    expect(screen.queryByTestId('prompt-waiting')).not.toBeNull();
+    expect(screen.queryByTestId('discard-submit')).toBeNull();
+    expect(screen.queryByTestId('discard-add-lumber')).toBeNull();
+    expect(screen.getByTestId('live-region').textContent).not.toContain('Discard');
+  });
+
   it('lets the thief pick a victim from the engine’s candidate list', async () => {
     const api = createFakeApi({
       snapshot: makeSnapshot(
