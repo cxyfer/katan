@@ -191,6 +191,8 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
         className: 'board-inspect-hit' };
       if (element.kind === 'hex' && outline) return <polygon key={`hex-${element.index}`} {...shared}
         points={outline.map((point) => `${point.x - rect.left},${point.y - rect.top}`).join(' ')} />;
+      if (element.kind === 'harbor' && outline) return <polygon key={`harbor-${element.index}`} {...shared}
+        points={outline.map((point) => `${point.x - rect.left},${point.y - rect.top}`).join(' ')} />;
       if (element.kind === 'edge' && outline) return <line key={`edge-${element.index}`} {...shared}
         x1={outline[0]!.x - rect.left} y1={outline[0]!.y - rect.top}
         x2={outline[1]!.x - rect.left} y2={outline[1]!.y - rect.top} strokeWidth={hitSize} style={{ strokeWidth: hitSize }} />;

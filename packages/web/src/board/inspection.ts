@@ -6,6 +6,7 @@ import type { TargetContext, TargetKind } from './targets.ts';
 import { describeTarget } from './targets.ts';
 import { t } from '../i18n/index.ts';
 import { pipsFor, resourceOfTerrain } from './terrain.ts';
+import { harborHitOutline, harborLabelPoint, harborPlacement } from './harbor.ts';
 
 export interface BoardInspection { kind: TargetKind | 'harbor'; index: number }
 export interface InspectionElement extends BoardInspection { world: WorldPoint; outline?: WorldPoint[]; top?: WorldPoint }
@@ -22,20 +23,13 @@ export function inspectionElements(geometry: BoardGeometry, board: PublicBoardVi
     elements.push({ ...target, top: { ...target.world, y: renderer === 'r3f' ? 0.8 : 0 } });
   }
   for (const harbor of board.harbors) {
-    const edge = geometry.edges[harbor.edge];
-    if (!edge) continue;
-    const world = geometryPointToWorld(geometry, { x: (edge.x1 + edge.x2) / 2, y: (edge.y1 + edge.y2) / 2 });
-    // The diorama dock extends out of its coastal edge; SVG uses an edge token.
-    if (renderer === 'r3f') {
-      const adjacent = geometry.hexes[geometry.topology.edges[harbor.edge]!.hexes[0]!];
-      if (adjacent) {
-        const center = geometryPointToWorld(geometry, { x: adjacent.cx, y: adjacent.cy });
-        const dx = world.x - center.x, dz = world.z - center.z;
-        const length = Math.hypot(dx, dz) || 1;
-        world.x += dx / length * 0.285; world.z += dz / length * 0.285; world.y = 0.205;
-      }
-    }
-    elements.push({ kind: 'harbor', index: harbor.edge, world });
+    const placement = harborPlacement(geometry, harbor.edge);
+    if (!placement) continue;
+    // The diorama pier and boat extend out of the coastal edge. SVG keeps the
+    // compact token, while 3D projects the whole footprint as one hit region.
+    const world = renderer === 'r3f' ? harborLabelPoint(placement) : placement.midpoint;
+    const outline = renderer === 'r3f' ? harborHitOutline(geometry, harbor.edge) ?? undefined : undefined;
+    elements.push({ kind: 'harbor', index: harbor.edge, world, ...(outline ? { outline } : {}) });
   }
   return elements;
 }

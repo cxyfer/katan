@@ -1,10 +1,11 @@
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
-import { Matrix4, OrthographicCamera } from 'three';
+import { Matrix4, OrthographicCamera, Vector3 } from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App.tsx';
 import { BoardInspectionLayer, INSPECTION_DELAY_MS } from '../src/components/BoardInspection.tsx';
-import type { ProjectionSnapshot } from '../src/board/render-contract.ts';
+import type { BoardViewportState, ProjectionSnapshot, WorldPoint } from '../src/board/render-contract.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
+import { HARBOR_STRUCTURE, harborHitOutline, harborLabelPoint, harborPlacement } from '../src/board/harbor.ts';
 import { inspectDescription, inspectionElements } from '../src/board/inspection.ts';
 import { sceneBounds } from '../src/board/three/bounds.ts';
 import { applySceneCamera, fitSceneCamera } from '../src/board/three/camera.ts';
@@ -25,6 +26,17 @@ beforeEach(() => {
 
 const geometry = buildGeometry('hex-r2');
 afterEach(() => vi.useRealTimers());
+
+function polygonContains(polygon: readonly { x: number; y: number }[], point: { x: number; y: number }): boolean {
+  let contained = false;
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+    const a = polygon[index]!;
+    const b = polygon[previous]!;
+    if ((a.y > point.y) !== (b.y > point.y) &&
+        point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) contained = !contained;
+  }
+  return contained;
+}
 
 describe('public map inspection', () => {
   it.each(['svg', 'r3f'] as const)('keeps fitted mobile %s tile centers clear of piece padding and retains keyboard access', (renderer) => {
@@ -80,6 +92,14 @@ describe('public map inspection', () => {
     expect(road.style.strokeWidth).toBe(road.getAttribute('stroke-width'));
     expect(building.getAttribute('tabindex')).toBe('0');
     expect(building.getAttribute('aria-label')).toContain('Public owner');
+    const harbor = screen.getByTestId(`inspect-harbor-${board.harbors[0]!.edge}`);
+    if (renderer === 'r3f') {
+      expect(harbor.tagName.toLowerCase()).toBe('polygon');
+      expect(harbor.getAttribute('points')?.trim().split(/\s+/)).toHaveLength(5);
+    } else {
+      expect(harbor.tagName.toLowerCase()).toBe('rect');
+      expect(harbor.getAttribute('points')).toBeNull();
+    }
     act(() => result.current.setZoom(3));
     project();
     rendered.rerender(<div><BoardInspectionLayer {...props()} /></div>);
@@ -136,6 +156,52 @@ describe('public map inspection', () => {
     expect(elements.some((item) => item.kind === 'vertex' && item.index === vertex)).toBe(true);
     const dock = elements.find((item) => item.kind === 'harbor')!;
     expect(dock.world).not.toEqual(inspectionElements(geometry, board, 'svg').find((item) => item.kind === 'harbor')!.world);
+  });
+
+  it('gives a 3D harbour one hover polygon over the pier, plaque and moored boat', () => {
+    const board = fixedBoard();
+    const edge = board.harbors[0]!.edge;
+    const placement = harborPlacement(geometry, edge)!;
+    const label = harborLabelPoint(placement);
+    // Local +X/+Z follow the diorama instance: +Z is outward, +X carries the
+    // boat. Keep this independent of the tangent helper used by the hit area.
+    const modelPoint = (x: number, z: number, y: number): WorldPoint => ({
+      x: placement.midpoint.x + Math.cos(placement.rotationY) * x + Math.sin(placement.rotationY) * z,
+      y,
+      z: placement.midpoint.z - Math.sin(placement.rotationY) * x + Math.cos(placement.rotationY) * z,
+    });
+    const dockEnd = modelPoint(0, 0.58, 0.15);
+    const deckLeft = modelPoint(-0.35, 0.3, 0.19);
+    const deckRight = modelPoint(0.35, 0.3, 0.19);
+    const boat = modelPoint(0.32, 0.63, 0.05);
+    const boatOuter = modelPoint(0.4, 0.63, 0.05);
+    const r3f = inspectionElements(geometry, board, 'r3f').find((item) => item.kind === 'harbor' && item.index === edge)!;
+    const svg = inspectionElements(geometry, board, 'svg').find((item) => item.kind === 'harbor' && item.index === edge)!;
+    expect(svg.outline).toBeUndefined();
+    expect(r3f.world).toEqual(label);
+    expect(r3f.outline).toHaveLength(5);
+    expect(new Set(r3f.outline!.map((point) => point.y))).toEqual(new Set([HARBOR_STRUCTURE.hitHeight]));
+    expect(harborHitOutline(geometry, edge)).toEqual(r3f.outline);
+
+    const bounds = sceneBounds(geometry);
+    const rect = { left: 20, top: 50, width: 1100, height: 700 };
+    const viewport: BoardViewportState = {
+      center: { x: (bounds.min.x + bounds.max.x) / 2, z: (bounds.min.z + bounds.max.z) / 2 },
+      zoom: 1,
+      rect,
+    };
+    const camera = new OrthographicCamera();
+    applySceneCamera(camera, fitSceneCamera(bounds, rect), viewport);
+    const matrix = new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    const project = (point: WorldPoint) => {
+      const projected = new Vector3(point.x, point.y, point.z).applyMatrix4(matrix);
+      return { x: rect.left + (projected.x + 1) * 0.5 * rect.width,
+        y: rect.top + (1 - projected.y) * 0.5 * rect.height };
+    };
+    const polygon = r3f.outline!.map(project);
+    for (const point of [label, dockEnd, deckLeft, deckRight, boat, boatOuter]) {
+      expect(polygonContains(polygon, project(point))).toBe(true);
+    }
   });
 
   async function open() {

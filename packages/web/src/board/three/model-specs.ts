@@ -5,6 +5,7 @@ import { confirmedPlacement } from '../effects.ts';
 import type { BoardEffectGroup } from '../animation.ts';
 import type { SceneSelection } from '../render-contract.ts';
 import { geometryToWorld } from './bounds.ts';
+import { HARBOR_STRUCTURE, harborPlacement } from '../harbor.ts';
 import { horizontalRotation, type InstanceTransform, type Vec3 } from './transforms.ts';
 
 export const ROAD_ARRIVAL_TRANSFORM_MS = 240;
@@ -207,35 +208,18 @@ export function buildingParts(
 
 export function harborInstances(geometry: BoardGeometry, board: PublicBoardView): HarborInstance[] {
   return board.harbors.flatMap((harbor) => {
-    const edge = geometry.edges[harbor.edge];
-    if (!edge) return [];
-    const a = geometryToWorld(geometry, edge.x1, edge.y1);
-    const b = geometryToWorld(geometry, edge.x2, edge.y2);
-    const midpoint = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
-    const dx = b.x - a.x;
-    const dz = b.z - a.z;
-    const length = Math.hypot(dx, dz) || 1;
-    // The coastal edge has one adjacent hex; outward is away from that centre.
-    const adjacentHex = geometry.topology.edges[harbor.edge]?.hexes[0];
-    const hex = adjacentHex === undefined ? null : geometry.hexes[adjacentHex];
-    let normalX = dz / length;
-    let normalZ = -dx / length;
-    if (hex) {
-      const center = geometryToWorld(geometry, hex.cx, hex.cy);
-      if ((midpoint.x - center.x) * normalX + (midpoint.z - center.z) * normalZ < 0) {
-        normalX *= -1;
-        normalZ *= -1;
-      }
-    }
+    const placement = harborPlacement(geometry, harbor.edge);
+    if (!placement) return [];
+    const { midpoint, normal } = placement;
     return [{
       edge: harbor.edge,
       type: harbor.type,
       position: [
-        midpoint.x + normalX * 0.38,
-        0.045,
-        midpoint.z + normalZ * 0.38,
+        midpoint.x + normal.x * HARBOR_STRUCTURE.pierOffset,
+        HARBOR_STRUCTURE.deckHeight,
+        midpoint.z + normal.z * HARBOR_STRUCTURE.pierOffset,
       ],
-      rotationY: horizontalRotation(dx, dz),
+      rotationY: placement.rotationY,
     }];
   });
 }

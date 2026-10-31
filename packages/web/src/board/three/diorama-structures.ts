@@ -14,6 +14,7 @@ import {
 import type { PublicBoardView } from '@catan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import { geometryToWorld } from './bounds.ts';
+import { HARBOR_STRUCTURE } from '../harbor.ts';
 import { ModelBuilder } from './diorama-geometry.ts';
 import { harborInstances } from './model-specs.ts';
 import type { InstanceTransform, Vec3 } from './transforms.ts';
@@ -229,7 +230,7 @@ function crate(model: ModelBuilder, x: number, z: number) {
   box(model, TIMBER, [x, 0.127, z - 0.041], [0.009, 0.089, 0.009], [0, 0, -Math.PI / 4]);
 }
 
-export const HARBOR_LABEL_POSITION: Vec3 = [0, 0.205, 0.285];
+export const HARBOR_LABEL_POSITION: Vec3 = [0, HARBOR_STRUCTURE.labelHeight, HARBOR_STRUCTURE.labelOffset];
 
 export function createHarborModel(): BufferGeometry {
   const model = new ModelBuilder();
