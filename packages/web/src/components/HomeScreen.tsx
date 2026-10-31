@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
+import { SoundSettings } from './SoundSettings.tsx';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatDateTime } from '../i18n/format.ts';
@@ -59,6 +60,7 @@ export function HomeScreen({ controller }: ScreenProps) {
             <span className="identity-badge__token" aria-hidden="true">{initials(state.nickname ?? '')}</span>
             <span className="identity-badge__name">{state.nickname}</span>
           </span>
+          <SoundSettings />
           <LanguageSwitch onChange={actions.setLocale} />
         </div>
       </header>

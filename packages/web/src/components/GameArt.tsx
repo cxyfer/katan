@@ -35,6 +35,8 @@ export function GameIcon({ name, size = 20, className = '' }: { name: string; si
     scales: <path d="M12 3v18m-5 0h10M4 7h16M4 7l-3 7a3 3 0 0 0 6 0L4 7Zm16 0-3 7a3 3 0 0 0 6 0l-3-7Z" />,
     scroll: <><path d="M6 3h13a3 3 0 0 1 0 6h-2M6 3a3 3 0 0 0-3 3v12a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM6 21h12a3 3 0 0 0 3-3v-3h-4M12 8h2m-2 4h2" /></>,
     dice: <><rect x="3" y="3" width="18" height="18" rx="4" /><circle cx="8" cy="8" r="1" /><circle cx="16" cy="8" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="8" cy="16" r="1" /><circle cx="16" cy="16" r="1" /></>,
+    sound: <path d="M3 9v6h4l5 4V5L7 9H3Zm13-1a5 5 0 0 1 0 8m3-11a9 9 0 0 1 0 14" />,
+    'sound-off': <path d="M3 9v6h4l5 4V5L7 9H3Zm13 0 6 6m0-6-6 6" />,
     anchor: <><circle cx="12" cy="5" r="3" /><path d="M12 8v14M3 13v3c0 8 18 8 18 0v-3M8 11h8M1 15l2-3 3 3m12 0 3-3 2 3" /></>,
   };
   return <svg className={`game-icon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{paths[name] ?? paths.compass}</svg>;

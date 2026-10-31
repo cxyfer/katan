@@ -112,6 +112,18 @@ actual WebGL camera elevation changes, quality changes, browser errors and
 the preview's absence of game/identity API calls. Viewport
 emulation does not establish physical-device performance.
 
+Sound checks (build first; new empty output directories):
+
+```bash
+python3 scripts/audio/verify.py http://127.0.0.1:5173 test-results/audio-palette  # needs `pnpm dev`
+python3 scripts/audio/live.py test-results/audio-live                             # starts the built service
+```
+
+`verify.py` renders every cue offline and checks it is audible without
+clipping, then measures live music and effect output after a click. `live.py`
+plays a real three-player setup and checks that events arriving over the
+WebSocket are audible, and that they are silent while muted.
+
 To replay the service suite against PostgreSQL:
 
 ```bash
@@ -131,6 +143,9 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
 - Automatic persistence, individual *save and leave*, all-seat
   save/suspend/resume, and restart recovery.
 - Traditional Chinese and English UI.
+- Sound: event cues and generative background music synthesised live with the
+  Web Audio API (no audio files), with mute and separate effect/music volume in
+  every screen. Listen to the whole palette at `/?preview=sounds`.
 
 Not yet enabled: Seafarers and Cities & Knights. Those profiles are registered
 in the ruleset registry but disabled; the server rejects them. See

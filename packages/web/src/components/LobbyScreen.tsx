@@ -3,6 +3,7 @@ import type { RoomPolicy } from '@catan/protocol';
 import { POLICY_BOUNDS } from '@catan/protocol';
 import { useT } from '../i18n/context.tsx';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
+import { SoundSettings } from './SoundSettings.tsx';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
 import type { ScreenProps } from './props.ts';
@@ -77,7 +78,10 @@ export function LobbyScreen({ controller }: ScreenProps) {
       <PregameScene />
       <header className="pregame__topbar">
         <GameBrand compact />
-        <LanguageSwitch onChange={actions.setLocale} />
+        <div className="pregame__topbar-end">
+          <SoundSettings />
+          <LanguageSwitch onChange={actions.setLocale} />
+        </div>
       </header>
 
       <div className="lobby__banner">
