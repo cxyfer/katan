@@ -1,5 +1,5 @@
 /* 地塊與棋子保留既有平面座標，不壓縮文字或改變合法目標。 */
-.board__tile-base { fill: #8e7951; stroke: #544d3b; stroke-width: 3px; stroke-linejoin: round; filter: drop-shadow(0 4px 2px #061b2866); }
+.board__tile-base { fill: #7d6242; stroke: #4c3a26; stroke-width: 3px; stroke-linejoin: round; }
 .board__tile-top { filter: drop-shadow(0 2px 1px #172c2a55); }
 .board__preview-ghost { opacity: .48; filter: drop-shadow(0 0 4px #fff0b1); }
 .board__building-drop { animation: building-drop 290ms cubic-bezier(.2,.7,.3,1) both; }

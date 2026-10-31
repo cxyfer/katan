@@ -9,6 +9,8 @@ Entries are workspace records, not authoritative runtime decisions.
 | 2026-10-31 | artifact | scripts/board-polish/capture.py | Before/after SVG and 3D board capture harness |
 | 2026-10-31 | work | docs/aegis/work/2026-10-31-notice-auto-dismiss.md | Transient notice auto-dismissal and turn-boundary review |
 | 2026-10-31 | artifact | scripts/notice-dismiss/capture.py | Notice countdown ring, hover hold, fade and turn-change capture harness |
+| 2026-10-31 | work | docs/aegis/work/2026-10-31-svg-board-polish.md | Illustrated SVG board and shared terrain emblems |
+| 2026-10-31 | artifact | scripts/svg-board-polish/capture.py | Before/after SVG board, entry island and hand capture harness |
 | 2026-10-31 | work | docs/aegis/work/2026-10-31-game-audio.md | Procedural sound effects and generative music |
 | 2026-10-31 | artifact | docs/aegis/work/2026-10-31-game-audio/palette-report.json | Offline render peaks for every cue and live music/effect output |
 | 2026-10-31 | artifact | docs/aegis/work/2026-10-31-game-audio/live-report.json | Live three-player setup: audible events, silence while muted |
