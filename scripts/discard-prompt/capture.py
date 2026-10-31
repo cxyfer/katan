@@ -276,7 +276,7 @@ with sync_playwright() as p:
     expect(other_page.get_by_test_id('discard-submit')).to_be_visible()
     assert_prompt_fits(other_page, '390x844-selecting')
     shot(other_page, 'discard-selecting-390x844-zh-Hant')
-    for width, height in [(844, 390), (667, 375), (640, 360), (568, 320)]:
+    for width, height in [(844, 390), (667, 375), (640, 360), (568, 320), (320, 480)]:
         other_page.set_viewport_size({'width': width, 'height': height})
         assert_prompt_fits(other_page, f'{width}x{height}-selecting')
 
