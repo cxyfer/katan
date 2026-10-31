@@ -25,9 +25,10 @@ Browser constraints that shaped the engine:
 - iOS leaves Web Audio in the `ambient` audio session, so the ringer switch
   silences it. We keep that default instead of forcing `playback`, which would
   also pause the player's own music apps.
-- Hidden tabs throttle timers, so the context is suspended when the document is
-  hidden and the music scheduler skips missed bars on return instead of
-  replaying them.
+- Hidden tabs throttle timers, so music stops while the document is hidden and
+  the scheduler skips missed bars on return instead of replaying them. Only the
+  cues that need the player back (`turn.yours`, `trade.offer`) still sound in a
+  background tab; muting suspends the context.
 
 ## Design
 
@@ -50,8 +51,10 @@ Browser constraints that shaped the engine:
   so stopping fades out notes that were already scheduled.
 - `audio/engine.ts`: bus graph (effects and music each with dry and reverb
   sends) → master → compressor. It creates no context before a gesture, drops
-  cues fired before unlock or while muted or hidden, and ignores the same cue
-  repeated within 60 ms.
+  cues fired before unlock or while muted (and all but the call-back cues while
+  hidden), and ignores the same cue repeated within 60 ms. Going inactive
+  swaps in a fresh effects bus so already-scheduled cues cannot replay on
+  resume, and every resume/suspend re-checks the wanted state once it settles.
 - `audio/useGameSounds.ts`: one hook at the app root. It keeps an event cursor
   keyed by game id and sync generation, so open, resume, reconnect and gap
   refetches take a baseline and never replay history, and an event heard
@@ -80,15 +83,45 @@ stacking context, so the strip is raised while the panel is open, following
 `.board__toolbar:has([open])`. On phones the panel is pinned to the viewport
 edges.
 
+## Review follow-ups
+
+Codex review (P2) and an independent reviewer found these problems on
+`d7cb5f8`. All of them are fixed, with regression tests:
+
+- **Queued rolls (Codex P2):** cues were timed from packet arrival, but the
+  board serialises presentations (dice 2.5 s + effect group 0.8 s per batch). A
+  second roll arriving mid-presentation could therefore reveal its result early.
+  `placeOnTimeline` now mirrors the board: each batch starts when the previous
+  presentation ends, and only the dice count during mandatory steps. A backlog
+  past the board's overflow limit is dropped. When the board skips the
+  presentation (reduced motion, hidden tab), there is no rattle and the result
+  plays at once.
+- **Stale replay:** cues scheduled before a mute fired on unmute. The effects
+  bus is now replaced whenever the context goes inactive.
+- **Background call-back:** "your move" and trade offers now sound in a hidden
+  tab; music and everything else stay silent there.
+- **State race:** `ctx.state` lags `resume()`/`suspend()`, so `sync()` runs
+  again after each successful transition.
+- **Stale receipts:** a stale-revision rejection flips to `rejected` after the
+  refresh. It no longer plays the error sound.
+- **Attention:** the viewer's whole turn counts as theirs, so "wait for
+  discards, then move the robber" doesn't ring twice. Discards are announced by
+  the simultaneous `robber.alert` only.
+- **Music restart:** restarting the music re-aligns to a chord boundary, so the
+  pad/bass bed is never missing.
+- **Slider a11y:** the visible percentage is `aria-hidden`, since the slider's
+  `aria-valuetext` already announces it. Home/End/Page keys preview too.
+
 ## Verification
 
 - `pnpm verify`: typecheck, rules 138, protocol 7, server 96 (+11 PostgreSQL
-  skips), web 483 tests, build, smoke 13/13, dev runner 1/1.
+  skips), web 492 tests, build, smoke 13/13, dev runner 1/1.
 - New web tests: cue mapping, privacy invariance, roll timing, staggering and
   caps; preference storage; music determinism and harmony; engine lifecycle on
-  a fake `AudioContext` (no context before a gesture, mute/suspend, hidden tab,
-  scheduler, dispose); event cursor, attention transitions and hook
-  integration; settings persistence and unlock through `App`.
+  a fake `AudioContext` (no context before a gesture, mute/suspend, stale-cue
+  discard, hidden-tab call-back, slow-resume race, scheduler, dispose); event
+  cursor, presentation timeline, attention transitions, stale receipts and hook
+  integration; settings persistence, unlock, Escape/outside-click through `App`.
 - `scripts/audio/verify.py` ([report](2026-10-31-game-audio/palette-report.json)):
   all 28 cues render audible without clipping; no live context before the
   first click; island music RMS ≈ 0.025 while running and fading out after

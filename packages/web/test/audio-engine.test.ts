@@ -37,7 +37,19 @@ class FakeContext {
   sampleRate = 8000;
   destination = new FakeNode();
   created: Record<string, number> = {};
-  resume = vi.fn(async () => { this.state = 'running'; });
+  /** 設為 true 時 resume() 不會立即完成，用來重現轉換期間偏好又改變的情況。 */
+  holdResume = false;
+  private releaseResume: (() => void) | null = null;
+  resume = vi.fn(() => {
+    if (!this.holdResume) {
+      this.state = 'running';
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      this.releaseResume = () => { this.state = 'running'; resolve(); };
+    });
+  });
+  finishResume() { this.releaseResume?.(); }
   suspend = vi.fn(async () => { this.state = 'suspended'; });
   close = vi.fn(async () => { this.state = 'closed'; });
 
@@ -49,7 +61,13 @@ class FakeContext {
     this.created[kind] = (this.created[kind] ?? 0) + 1;
   }
 
-  createGain() { this.count('gain'); return Object.assign(new FakeNode(), { gain: new FakeParam() }); }
+  gains: FakeNode[] = [];
+  createGain() {
+    this.count('gain');
+    const node = Object.assign(new FakeNode(), { gain: new FakeParam() });
+    this.gains.push(node);
+    return node;
+  }
   createOscillator() { this.count('oscillator'); return new FakeSource(); }
   createBufferSource() { this.count('bufferSource'); return new FakeSource(); }
   createBiquadFilter() { this.count('filter'); return Object.assign(new FakeNode(), { type: 'lowpass', frequency: new FakeParam(), Q: new FakeParam() }); }
@@ -138,20 +156,6 @@ describe('WebAudioEngine', () => {
     expect(context().created.oscillator).toBeGreaterThan(before);
   });
 
-  it('pauses when the tab is hidden and resumes when it returns', async () => {
-    const doc = fakeDocument();
-    const { instance, context } = engine(doc);
-    instance.unlock();
-    await Promise.resolve();
-    doc.hidden = true;
-    doc.fire();
-    expect(context().suspend).toHaveBeenCalled();
-    await Promise.resolve();
-    doc.hidden = false;
-    doc.fire();
-    expect(context().resume).toHaveBeenCalledTimes(2);
-  });
-
   it('runs the music scheduler only while a scene is set and music is audible', async () => {
     vi.useFakeTimers();
     const { instance, context } = engine();
@@ -170,6 +174,63 @@ describe('WebAudioEngine', () => {
     vi.advanceTimersByTime(1000);
     expect(context().created.oscillator).toBe(oscillators);
     instance.setScene(null);
+  });
+
+  it('discards cues scheduled before a mute instead of replaying them on unmute', async () => {
+    const { instance, context } = engine();
+    instance.unlock();
+    await Promise.resolve();
+    instance.play('dice.land', 1500);
+    // 擲骰的落定聲排在 1.5 秒後；這時按下靜音，舊的效果匯流排（乾聲與殘響送出）必須斷開，
+    // 並換上新的匯流排，恢復時不會補響。
+    const before = context().gains.length;
+    expect(context().gains.filter((gain) => gain.connections.length === 0)).toHaveLength(0);
+    instance.setPreferences({ ...DEFAULT_AUDIO_PREFERENCES, muted: true });
+    expect(context().gains.slice(0, before).filter((gain) => gain.connections.length === 0)).toHaveLength(2);
+    expect(context().gains.slice(before).every((gain) => gain.connections.length === 1)).toBe(true);
+    expect(context().gains.length - before).toBe(2);
+  });
+
+  it('keeps calling the player back from a hidden tab but stops the music there', async () => {
+    vi.useFakeTimers();
+    const doc = fakeDocument();
+    const { instance, context } = engine(doc);
+    instance.unlock();
+    await Promise.resolve();
+    instance.setScene('island');
+    const ocean = context().created.bufferSource ?? 0;
+    doc.hidden = true;
+    doc.fire();
+    expect(context().suspend).not.toHaveBeenCalled();
+    const before = context().created.oscillator ?? 0;
+    instance.play('build.road');
+    expect(context().created.oscillator ?? 0).toBe(before);
+    instance.play('turn.yours');
+    expect(context().created.oscillator).toBeGreaterThan(before);
+    // 回到前景後音樂重新開始（新的海浪層）。
+    doc.hidden = false;
+    doc.fire();
+    expect(context().created.bufferSource).toBe(ocean + 2);
+  });
+
+  it('re-checks the wanted state after a slow resume settles', async () => {
+    const { instance, context } = engine();
+    instance.unlock();
+    await Promise.resolve();
+    instance.setPreferences({ ...DEFAULT_AUDIO_PREFERENCES, muted: true });
+    await Promise.resolve();
+    expect(context().state).toBe('suspended');
+
+    // 恢復尚未完成時又按下靜音：完成後必須再暫停一次，不能停在播放中。
+    context().holdResume = true;
+    instance.setPreferences(DEFAULT_AUDIO_PREFERENCES);
+    instance.setPreferences({ ...DEFAULT_AUDIO_PREFERENCES, muted: true });
+    const suspends = context().suspend.mock.calls.length;
+    context().finishResume();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(context().suspend.mock.calls.length).toBe(suspends + 1);
+    expect(context().state).toBe('suspended');
   });
 
   it('closes the context on dispose and stops reacting', async () => {

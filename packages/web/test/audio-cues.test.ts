@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { CUE_STAGGER_MS, cueForEvent, cuesForEvents, MAX_CUES_PER_BATCH, SOUND_CUES } from '../src/audio/cues.ts';
+import {
+  CUE_STAGGER_MS,
+  cueForEvent,
+  cuesForEvents,
+  MAX_AUDIO_BACKLOG_MS,
+  MAX_CUES_PER_BATCH,
+  placeOnTimeline,
+  presentationLength,
+  SOUND_CUES,
+} from '../src/audio/cues.ts';
 import { composeBar, chordForBar, SCENES, BEATS_PER_BAR } from '../src/audio/music.ts';
 import {
   AUDIO_KEY,
@@ -10,7 +19,7 @@ import {
   writeStoredAudio,
 } from '../src/audio/preferences.ts';
 import { CUE_LENGTH_SECONDS } from '../src/audio/synth.ts';
-import { DICE_PRESENTATION_DURATION_MS, DICE_ROLL_DURATION_MS } from '../src/board/animation.ts';
+import { DICE_PRESENTATION_DURATION_MS, DICE_ROLL_DURATION_MS, MAX_EFFECT_DURATION_MS } from '../src/board/animation.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import { makeEvent } from '../src/test/fixtures.ts';
 
@@ -94,6 +103,52 @@ describe('event cues', () => {
     expect(cues).toHaveLength(MAX_CUES_PER_BATCH);
     expect(cues.map((entry) => entry.cue)).toContain('game.victory');
     expect(cuesForEvents([], 'p1')).toEqual([]);
+  });
+
+  it('serialises a roll behind a presentation that is still playing, like the board does', () => {
+    const roll = (seq: number, total: number) => [
+      makeEvent(seq, 'turn.rolled', { playerId: 'p2', dice: [total - 1, 1], total }),
+      makeEvent(seq + 1, 'robber.moveRequired', { playerId: 'p2', cause: 'seven' }),
+    ];
+    const first = placeOnTimeline({ idleAt: 0 }, roll(20, 6), cuesForEvents(roll(20, 6), 'p1'), 1000);
+    expect(first.cues.find((entry) => entry.cue === 'dice.land')?.delayMs).toBe(DICE_ROLL_DURATION_MS);
+    expect(first.timeline.idleAt).toBe(1000 + DICE_PRESENTATION_DURATION_MS + MAX_EFFECT_DURATION_MS);
+
+    // 第二次擲骰在 400 ms 後抵達：畫面要等第一次的骰子與特效播完才開始，聲音也一樣。
+    const second = placeOnTimeline(first.timeline, roll(30, 7), cuesForEvents(roll(30, 7), 'p1'), 1400);
+    const wait = first.timeline.idleAt - 1400;
+    expect(second.cues).toEqual([
+      { cue: 'dice.roll', delayMs: wait },
+      { cue: 'dice.land', delayMs: wait + DICE_ROLL_DURATION_MS },
+      { cue: 'robber.alert', delayMs: wait + DICE_PRESENTATION_DURATION_MS },
+    ]);
+  });
+
+  it('skips the rattle and plays the result at once when the board does not present the dice', () => {
+    const events = [
+      makeEvent(13, 'turn.rolled', { playerId: 'p2', dice: [3, 4], total: 7 }),
+      makeEvent(14, 'robber.moveRequired', { playerId: 'p2', cause: 'seven' }),
+    ];
+    expect(cuesForEvents(events, 'p1', false)).toEqual([
+      { cue: 'dice.land', delayMs: 0 },
+      { cue: 'robber.alert', delayMs: CUE_STAGGER_MS },
+    ]);
+  });
+
+  it('lets only the dice occupy the timeline while the board is in a mandatory step', () => {
+    const turn = [makeEvent(5, 'turn.started', { playerId: 'p2' })];
+    expect(presentationLength(turn, false)).toBe(0);
+    expect(placeOnTimeline({ idleAt: 0 }, turn, [], 1000, false).timeline.idleAt).toBe(1000);
+    const roll = [makeEvent(6, 'turn.rolled', { playerId: 'p2', dice: [1, 1], total: 2 })];
+    expect(presentationLength(roll, false)).toBe(DICE_PRESENTATION_DURATION_MS);
+  });
+
+  it('starts immediately once the timeline is idle and drops an overflowing backlog', () => {
+    const road = [makeEvent(5, 'build.road', { playerId: 'p2' })];
+    expect(presentationLength(road)).toBe(MAX_EFFECT_DURATION_MS);
+    expect(placeOnTimeline({ idleAt: 500 }, road, cuesForEvents(road, 'p1'), 9000).cues).toEqual([{ cue: 'build.road', delayMs: 0 }]);
+    const flooded = placeOnTimeline({ idleAt: 9000 + MAX_AUDIO_BACKLOG_MS + 1 }, road, cuesForEvents(road, 'p1'), 9000);
+    expect(flooded).toEqual({ timeline: { idleAt: 9000 }, cues: [] });
   });
 
   it('documents a length for every cue', () => {

@@ -5,6 +5,9 @@ import { useT } from '../i18n/context.tsx';
 import { GameIcon } from './GameArt.tsx';
 import '../styles/sound-settings.css';
 
+/** 會改變滑桿數值的按鍵；放開時試聽一次新的音量。 */
+const VALUE_KEYS: ReadonlySet<string> = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown']);
+
 const SLIDERS = [
   { key: 'effects', label: 'audio.effects', preview: 'build.settlement' },
   { key: 'music', label: 'audio.music', preview: null },
@@ -60,13 +63,14 @@ export function SoundSettings({ testId = 'sound-settings' }: { testId?: string }
           <label key={key} className="sound-settings__slider">
             <span className="sound-settings__slider-label">
               <span>{t(label)}</span>
-              <output>{t('audio.level', { value: preferences[key] })}</output>
+              {/* 數值已由 aria-valuetext 朗讀；output 隱含 live region，隱藏以免拖曳時每一格都被播報。 */}
+              <output aria-hidden="true">{t('audio.level', { value: preferences[key] })}</output>
             </span>
             <input type="range" min={0} max={100} step={5} value={preferences[key]} disabled={!supported}
               data-testid={`sound-${key}`} aria-valuetext={t('audio.level', { value: preferences[key] })}
               onChange={(event) => setLevel(key, Number(event.target.value))}
               onPointerUp={() => { if (preview) play(preview); }}
-              onKeyUp={(event) => { if (preview && event.key.startsWith('Arrow')) play(preview); }} />
+              onKeyUp={(event) => { if (preview && VALUE_KEYS.has(event.key)) play(preview); }} />
           </label>
         ))}
         <button type="button" className="button button--ghost sound-settings__test" disabled={silent || preferences.effects === 0}

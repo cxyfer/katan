@@ -4,56 +4,56 @@
       "name": "浮浮酱 round 1 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.17389604449272156,
+      "peak": 0.17388397455215454,
       "ok": true
     },
     {
       "name": "浮浮酱 round 1 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.20569230616092682,
+      "peak": 0.20576679706573486,
       "ok": true
     },
     {
       "name": "Mika round 1 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.17390036582946777,
+      "peak": 0.1739002764225006,
       "ok": true
     },
     {
       "name": "Mika round 1 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.2071327269077301,
+      "peak": 0.20621198415756226,
       "ok": true
     },
     {
       "name": "Bo round 1 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.17390400171279907,
+      "peak": 0.17390021681785583,
       "ok": true
     },
     {
       "name": "Bo round 1 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.20713269710540771,
+      "peak": 0.20621196925640106,
       "ok": true
     },
     {
       "name": "Bo round 2 building",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.17390207946300507,
+      "peak": 0.17390021681785583,
       "ok": true
     },
     {
       "name": "Bo round 2 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.20713269710540771,
+      "peak": 0.2071327269077301,
       "ok": true
     },
     {
@@ -67,28 +67,28 @@
       "name": "Mika round 2 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.27647367119789124,
+      "peak": 0.27463915944099426,
       "ok": true
     },
     {
       "name": "浮浮酱 round 2 building (muted)",
       "expectAudible": false,
       "state": "suspended",
-      "peak": 0.00010994962212862447,
+      "peak": 0.00010991685121553019,
       "ok": true
     },
     {
       "name": "浮浮酱 round 2 road",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.20602785050868988,
+      "peak": 0.20590069890022278,
       "ok": true
     },
     {
       "name": "host roll",
       "expectAudible": true,
       "state": "running",
-      "peak": 0.21522927284240723,
+      "peak": 0.21749457716941833,
       "ok": true
     }
   ],

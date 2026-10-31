@@ -221,6 +221,8 @@ export class MusicSequencer {
     ocean.connect(dry);
     const target: SynthTarget = { ...this.target, output: dry, reverb: wet };
     this.session = { dry, wet, ocean, target, stopOcean: startOcean(target, ocean) };
+    // 從和弦的第一小節重新開始，恢復播放時不會只剩旋律、缺了和弦鋪底。
+    this.bar -= this.bar % SCENES[this.scene].barsPerChord;
     this.nextBarTime = now + 0.15;
     this.tick();
     this.timer = globalThis.setInterval(() => this.tick(), TICK_MS);

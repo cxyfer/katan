@@ -6,7 +6,8 @@
  *
  * 瀏覽器的自動播放政策要求 AudioContext 在使用者手勢中建立或恢復，所以引擎
  * 直到 `unlock()`（由第一次點擊／按鍵同步呼叫）才建立 context；在那之前的提示一律
- * 略過，不排隊補播。分頁隱藏或靜音時暫停 context，不在背景耗電。
+ * 略過，不排隊補播。靜音時暫停 context；分頁隱藏時停掉音樂，只保留需要玩家回來
+ * 處理的提示（BACKGROUND_CUES）。
  */
 
 import type { SoundCue } from './cues.ts';
@@ -48,6 +49,12 @@ function hasWebAudio(): boolean {
   return typeof scope.AudioContext === 'function' || typeof scope.webkitAudioContext === 'function';
 }
 
+/**
+ * 分頁隱藏時仍會響的提示：輪到自己、有人向自己詢價。其餘聲音與音樂在背景分頁
+ * 一律略過，玩家切到別的分頁時只會被真正需要回來處理的事叫回來。
+ */
+const BACKGROUND_CUES: ReadonlySet<SoundCue> = new Set(['turn.yours', 'trade.offer']);
+
 /** 同一個提示在這段時間內重複觸發時只發一次聲。 */
 const REPEAT_GUARD_SECONDS = 0.06;
 /** 排程時預留的前置時間，避免第一個節點落在已經過去的時間點。 */
@@ -64,6 +71,7 @@ interface Bus {
 interface Graph {
   ctx: AudioContext;
   master: GainNode;
+  reverb: ConvolverNode;
   effects: Bus;
   music: Bus;
   effectsTarget: SynthTarget;
@@ -111,7 +119,7 @@ export class WebAudioEngine implements AudioEngine {
   play(cue: SoundCue, delayMs = 0): void {
     const graph = this.graph;
     if (!graph || this.disposed || this.preferences.muted || this.preferences.effects <= 0) return;
-    if (graph.ctx.state !== 'running' || this.hidden()) return;
+    if (graph.ctx.state !== 'running' || (this.hidden() && !BACKGROUND_CUES.has(cue))) return;
     const at = graph.ctx.currentTime + SCHEDULE_PADDING_SECONDS + Math.max(0, delayMs) / 1000;
     const previous = this.lastStart.get(cue);
     if (previous !== undefined && Math.abs(at - previous) < REPEAT_GUARD_SECONDS) return;
@@ -156,20 +164,34 @@ export class WebAudioEngine implements AudioEngine {
   }
 
   private wantsMusic(): boolean {
-    return this.scene !== null && !this.preferences.muted && this.preferences.music > 0;
+    return this.scene !== null && !this.preferences.muted && this.preferences.music > 0 && !this.hidden();
   }
 
-  /** 依偏好、可見度與場景校正 context 與背景音樂的狀態。 */
+  /**
+   * 依偏好、可見度與場景校正 context 與背景音樂的狀態。
+   *
+   * `ctx.state` 在 resume()／suspend() 完成前不會改變，所以每次轉換成功後都再校正一次，
+   * 處理轉換期間偏好又改變的情況（例如恢復中途按下靜音）。轉換失敗（例如 iOS 不在手勢內）
+   * 不重試，等下一次手勢的 unlock()。
+   */
   private sync(): void {
     const graph = this.graph;
     if (!graph || this.disposed) return;
-    const active = this.wantsRunning() && !this.hidden();
+    const active = this.wantsRunning();
     const state = graph.ctx.state as AudioContextState | 'interrupted';
+    const settle = () => {
+      if (this.graph === graph) this.sync();
+    };
     if (active && state !== 'running' && state !== 'closed') {
-      void graph.ctx.resume().then(() => graph.sequencer.resync(), () => undefined);
+      void graph.ctx.resume().then(() => {
+        graph.sequencer.resync();
+        settle();
+      }, () => undefined);
     } else if (!active && state === 'running') {
       graph.sequencer.stop();
-      void graph.ctx.suspend().catch(() => undefined);
+      // 已排進時間軸、尚未響起的提示會在 context 恢復時一次補響；換掉效果匯流排把它們丟掉。
+      this.replaceEffectsBus(graph);
+      void graph.ctx.suspend().then(settle, () => undefined);
       return;
     }
     if (active && this.wantsMusic()) {
@@ -195,6 +217,25 @@ export class WebAudioEngine implements AudioEngine {
     for (const param of [graph.music.dry.gain, graph.music.wet.gain]) set(param, music);
   }
 
+  private replaceEffectsBus(graph: Graph): void {
+    const previous = graph.effects;
+    graph.effects = this.bus(graph.ctx, graph.master, graph.reverb);
+    graph.effectsTarget = { ...graph.effectsTarget, output: graph.effects.dry, reverb: graph.effects.wet };
+    previous.dry.disconnect();
+    previous.wet.disconnect();
+    this.lastStart.clear();
+    this.applyGains(true);
+  }
+
+  /** 每條匯流排的乾聲與殘響送出各有一個增益節點，兩者都跟著該匯流排的音量，調低音樂時殘響尾巴也一起變小。 */
+  private bus(ctx: AudioContext, master: AudioNode, reverb: AudioNode): Bus {
+    const dry = ctx.createGain();
+    dry.connect(master);
+    const wet = ctx.createGain();
+    wet.connect(reverb);
+    return { dry, wet };
+  }
+
   private build(ctx: AudioContext): Graph {
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -12;
@@ -213,20 +254,11 @@ export class WebAudioEngine implements AudioEngine {
     reverb.connect(reverbReturn);
     reverbReturn.connect(master);
 
-    // 每條匯流排的乾聲與殘響送出各有一個增益節點，兩者都跟著該匯流排的音量，
-    // 調低音樂時殘響尾巴也一起變小。
-    const bus = () => {
-      const dry = ctx.createGain();
-      dry.connect(master);
-      const wet = ctx.createGain();
-      wet.connect(reverb);
-      return { dry, wet };
-    };
-    const effects = bus();
-    const music = bus();
+    const effects = this.bus(ctx, master, reverb);
+    const music = this.bus(ctx, master, reverb);
     const noise = createNoiseBuffer(ctx, 3);
     return {
-      ctx, master, effects, music,
+      ctx, master, reverb, effects, music,
       effectsTarget: { ctx, output: effects.dry, reverb: effects.wet, noise },
       sequencer: new MusicSequencer({ ctx, output: music.dry, reverb: music.wet, noise }, this.scene ?? 'harbor'),
     };

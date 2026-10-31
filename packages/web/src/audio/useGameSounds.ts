@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { GameEvent } from '@catan/protocol';
 import { requiredActionFor, type RequiredAction } from '../state/pending.ts';
 import type { TableState } from '../state/table.ts';
-import { cuesForEvents, type SoundCue } from './cues.ts';
+import { cuesForEvents, placeOnTimeline, type CueTimeline, type SoundCue } from './cues.ts';
 
 export interface EventCursor {
   gameId: string;
@@ -32,16 +32,23 @@ export function advanceEventCursor(cursor: EventCursor | null, state: TableState
 const TRANSIENT: ReadonlySet<RequiredAction['kind']> = new Set(['rolling', 'syncing']);
 
 /**
- * 「輪到你」提示：義務從別人（或沒有）轉到自己時響一次，包含開局擺放、
- * 擲骰、棄牌、移動強盜。自己回合內的連續操作不重複提醒。
+ * 「輪到你」提示：義務從別人（或沒有）轉到自己時響一次，包含開局擺放、擲骰、
+ * 移動強盜。自己的整個回合都算「自己的」，所以擲出七點後等別人棄牌、再輪到自己
+ * 移動強盜時不會再響。棄牌由同時響起的七點警示（robber.alert）提醒，不再疊加。
  */
 export function attentionCue(
   previous: boolean | null,
   action: Pick<RequiredAction, 'kind' | 'mine'> | null,
+  myTurn = false,
 ): { mine: boolean | null; cue: SoundCue | null } {
   if (action && TRANSIENT.has(action.kind)) return { mine: previous, cue: null };
-  const mine = action?.mine ?? false;
-  return { mine, cue: previous === false && mine ? 'turn.yours' : null };
+  const mine = myTurn || (action?.mine ?? false);
+  return { mine, cue: previous === false && mine && action?.kind !== 'discard' ? 'turn.yours' : null };
+}
+
+/** 使用者要求減少動態時盤面不播骰子演出，聲音也不必等它。 */
+function reducedMotion(): boolean {
+  return typeof globalThis.matchMedia === 'function' && globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /** 依桌面狀態變化發出音效。只在 App 掛載一次，跨大廳、牌桌與結算畫面持續追蹤。 */
@@ -49,39 +56,67 @@ export function useGameSounds(state: TableState, play: (cue: SoundCue, delayMs?:
   const latest = useRef(state);
   latest.current = state;
   const cursor = useRef<EventCursor | null>(null);
+  const timeline = useRef<CueTimeline>({ idleAt: 0 });
   const mine = useRef<boolean | null>(null);
   const rejected = useRef<string | null>(null);
+  const stale = useRef<string | null>(null);
   const unread = useRef(state.chat.unread);
   const selfId = state.session?.id ?? null;
 
   const { game, gameSyncPending } = state;
   const generation = state.gameSync.generation;
   useEffect(() => {
-    const next = advanceEventCursor(cursor.current, latest.current);
+    const previous = cursor.current;
+    const next = advanceEventCursor(previous, latest.current);
     cursor.current = next.cursor;
-    for (const { cue, delayMs } of cuesForEvents(next.events, selfId)) play(cue, delayMs);
+    // 換代或分頁隱藏時，盤面會丟掉排隊中的演出重新建立基準；音效時間軸跟著清空。
+    if (!next.cursor || previous?.gameId !== next.cursor.gameId || previous.generation !== next.cursor.generation ||
+        document.hidden) {
+      timeline.current = { idleAt: 0 };
+    }
+    if (next.events.length === 0) return;
+    // 分頁隱藏時盤面不演出；仍交給引擎，由它決定哪些提示值得在背景響起。
+    const presented = !document.hidden && !reducedMotion();
+    const cues = cuesForEvents(next.events, selfId, presented);
+    if (!presented) {
+      for (const { cue, delayMs } of cues) play(cue, delayMs);
+      return;
+    }
+    // 與 BoardView 傳給 useBoardAnimation 的 mandatory 判斷相同。
+    const view = latest.current.game?.view;
+    const effectsShown = !view?.pending && !view?.turn.setup && view?.turn.phase !== 'preroll';
+    const placed = placeOnTimeline(timeline.current, next.events, cues, Date.now(), effectsShown);
+    timeline.current = placed.timeline;
+    for (const { cue, delayMs } of placed.cues) play(cue, delayMs);
   }, [game, generation, gameSyncPending, selfId, play]);
 
   const action = requiredActionFor(state);
   const actionKind = action?.kind ?? null;
   const actionMine = action?.mine ?? false;
   const gameId = game?.gameId ?? null;
+  const myTurn = !!game && !game.view.result && selfId !== null && game.view.turn.playerId === selfId;
   useEffect(() => {
     if (!gameId) {
       mine.current = null;
       return;
     }
-    const next = attentionCue(mine.current, actionKind ? { kind: actionKind, mine: actionMine } : null);
+    const next = attentionCue(mine.current, actionKind ? { kind: actionKind, mine: actionMine } : null, myTurn);
     mine.current = next.mine;
     if (next.cue) play(next.cue);
-  }, [gameId, actionKind, actionMine, play]);
+  }, [gameId, actionKind, actionMine, myTurn, play]);
 
   const commandStatus = state.command?.status ?? null;
   const commandId = state.command?.commandId ?? null;
   useEffect(() => {
-    if (commandStatus !== 'rejected' || !commandId || rejected.current === commandId) return;
+    if (!commandId) return;
+    if (commandStatus === 'stale') {
+      stale.current = commandId;
+      return;
+    }
+    if (commandStatus !== 'rejected' || rejected.current === commandId) return;
     rejected.current = commandId;
-    play('ui.error');
+    // 版本過時（畫面落後，不是操作錯誤）的指令在重新整理後才轉為 rejected，不發錯誤音。
+    if (stale.current !== commandId) play('ui.error');
   }, [commandStatus, commandId, play]);
 
   const { kind: selectionKind, index: selectionIndex } = state.selection;

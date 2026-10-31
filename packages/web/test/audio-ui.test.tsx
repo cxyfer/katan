@@ -1,12 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { App } from '../src/App.tsx';
 import type { SoundCue } from '../src/audio/cues.ts';
 import type { AudioEngine, MusicScene } from '../src/audio/engine.ts';
 import { AUDIO_KEY, type AudioPreferences } from '../src/audio/preferences.ts';
 import { advanceEventCursor, attentionCue, useGameSounds } from '../src/audio/useGameSounds.ts';
-import { DICE_ROLL_DURATION_MS } from '../src/board/animation.ts';
+import { DICE_PRESENTATION_DURATION_MS, DICE_ROLL_DURATION_MS, MAX_EFFECT_DURATION_MS } from '../src/board/animation.ts';
 import { memoryStorage } from '../src/state/session.ts';
+import { STALE_MESSAGE_ID } from '../src/state/commands.ts';
 import { initialTableState, tableReducer, type TableState } from '../src/state/table.ts';
 import { createFakeApi } from '../src/test/fake-api.ts';
 import { makeChatMessage, makeEvent, makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -89,8 +90,17 @@ describe('attention cue', () => {
     expect(attentionCue(null, { kind: 'roll', mine: true })).toEqual({ mine: true, cue: null });
     expect(attentionCue(false, { kind: 'roll', mine: true })).toEqual({ mine: true, cue: 'turn.yours' });
     expect(attentionCue(true, { kind: 'turn', mine: true }).cue).toBeNull();
-    expect(attentionCue(false, { kind: 'discard', mine: true }).cue).toBe('turn.yours');
     expect(attentionCue(true, null)).toEqual({ mine: false, cue: null });
+  });
+
+  it('counts the whole own turn as the viewer\'s and leaves discards to the seven alarm', () => {
+    // 自己擲出七點：等別人棄牌（自己不欠牌）後輪到自己移動強盜，不再響一次。
+    expect(attentionCue(true, { kind: 'discard', mine: false }, true)).toEqual({ mine: true, cue: null });
+    expect(attentionCue(true, { kind: 'moveRobber', mine: true }, true).cue).toBeNull();
+    // 別人擲出七點而自己要棄牌：robber.alert 已同時提醒，不疊加「輪到你」。
+    expect(attentionCue(false, { kind: 'discard', mine: true }, false)).toEqual({ mine: true, cue: null });
+    // 輪到自己的回合開始時仍會響。
+    expect(attentionCue(false, { kind: 'roll', mine: true }, true).cue).toBe('turn.yours');
   });
 
   it('treats the dice presentation and projection catch-up as transient', () => {
@@ -101,7 +111,28 @@ describe('attention cue', () => {
   });
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('useGameSounds', () => {
+  it('holds a second roll until the first roll has finished presenting', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    const played: Array<[SoundCue, number | undefined]> = [];
+    const play = (cue: SoundCue, delayMs?: number) => { played.push([cue, delayMs]); };
+    let state = gameState();
+    const { rerender } = renderHook(({ current }) => useGameSounds(current, play), { initialProps: { current: state } });
+    state = tableReducer(state, { type: 'events', events: [makeEvent(13, 'turn.rolled', { playerId: 'p2', dice: [1, 2], total: 3 })] });
+    rerender({ current: state });
+    vi.setSystemTime(10_500);
+    state = tableReducer(state, { type: 'dice-presenting', value: false });
+    state = tableReducer(state, { type: 'events', events: [makeEvent(14, 'turn.rolled', { playerId: 'p2', dice: [3, 4], total: 7 })] });
+    rerender({ current: state });
+    const wait = DICE_PRESENTATION_DURATION_MS + MAX_EFFECT_DURATION_MS - 500;
+    expect(played.slice(2)).toEqual([['dice.roll', wait], ['dice.land', wait + DICE_ROLL_DURATION_MS]]);
+  });
+
   it('plays new authoritative events, the move hand-over, rejections and chat', () => {
     const played: Array<[SoundCue, number | undefined]> = [];
     const play = (cue: SoundCue, delayMs?: number) => { played.push([cue, delayMs]); };
@@ -125,6 +156,16 @@ describe('useGameSounds', () => {
     rerender({ state });
     rerender({ state: { ...state } });
     expect(played).toEqual([['ui.error', undefined]]);
+
+    // 版本過時被拒、重新整理後轉成 rejected：畫面落後不是操作錯誤，不發錯誤音。
+    played.length = 0;
+    state = tableReducer(state, { type: 'command', event: { kind: 'begin', commandId: 'c2', labelId: 'x', command: { type: 'turn.end' }, baseRevision: 15 } });
+    state = tableReducer(state, { type: 'command', event: { kind: 'receipt', receipt: { commandId: 'c2', outcome: 'rejected', revision: 16, events: [], error: { messageId: STALE_MESSAGE_ID } } } });
+    rerender({ state });
+    state = tableReducer(state, { type: 'command', event: { kind: 'refreshed' } });
+    rerender({ state });
+    expect(state.command?.status).toBe('rejected');
+    expect(played).toEqual([]);
 
     played.length = 0;
     state = tableReducer(state, { type: 'chat', event: { kind: 'server-message', message: makeChatMessage({ playerId: 'p2' }), selfId: 'p1' } });
@@ -175,6 +216,23 @@ describe('sound settings', () => {
     const before = engine.unlocks;
     fireEvent.pointerDown(document.body);
     expect(engine.unlocks).toBe(before + 1);
+  });
+
+  it('closes on Escape (returning focus) and on a click outside, and hides the live value from screen readers', async () => {
+    renderApp(recordingEngine());
+    const details = (await screen.findByTestId('sound-settings')) as HTMLDetailsElement;
+    const summary = details.querySelector('summary')!;
+    details.open = true;
+    fireEvent.keyDown(screen.getByTestId('sound-effects'), { key: 'Escape' });
+    expect(details.open).toBe(false);
+    expect(document.activeElement).toBe(summary);
+
+    details.open = true;
+    fireEvent.pointerDown(screen.getByTestId('sound-mute'));
+    expect(details.open).toBe(true);
+    fireEvent.pointerDown(document.body);
+    expect(details.open).toBe(false);
+    for (const output of details.querySelectorAll('output')) expect(output.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('explains when the browser has no web audio', async () => {
