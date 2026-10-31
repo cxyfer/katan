@@ -80,6 +80,8 @@ export function HomeScreen({ controller }: ScreenProps) {
                 type="button"
                 tabIndex={homePane === pane ? 0 : -1}
                 className={`home__nav-tab${homePane === pane ? ' home__nav-tab--active' : ''}`}
+                // 手機橫屏只剩圖示時，滑鼠與觸控仍看得到名稱。
+                title={t(`home.pane.${pane}`)}
                 role="tab"
                 aria-selected={homePane === pane}
                 aria-controls={`home-pane-${pane}`}

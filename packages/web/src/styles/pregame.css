@@ -142,6 +142,46 @@
 .entry-card__features svg { color: var(--brass); }
 .entry-card__note { display: flex; gap: .5rem; align-items: flex-start; margin: .9rem 0 0; padding-top: .8rem; border-top: 1px solid #d9b06a26; color: #9fb1b0; font-size: .72rem; line-height: 1.7; }
 .entry-card__note svg { margin-top: .15rem; }
+/* 橫屏入口：左側標題與島嶼插圖、右側暱稱卡，整個畫面一頁看完。 */
+@media (orientation: landscape) and (min-width: 600px) {
+  .screen--entry { height: 100dvh; min-height: 0; overflow: hidden; padding-bottom: 0; }
+  .screen--entry .pregame__topbar { flex: 0 0 auto; }
+  .entry-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(340px, 500px);
+    grid-template-rows: auto minmax(0, auto);
+    grid-template-areas: "title card" "island card";
+    align-content: center;
+    align-items: center;
+    column-gap: clamp(2rem, 6vw, 6rem);
+    row-gap: 0;
+    width: min(100%, 1240px);
+    padding-bottom: clamp(1rem, 4vh, 3rem);
+    /* 極矮或放大字級時在舞台內捲動，暱稱卡不會被裁掉。 */
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .entry-stage__title { grid-area: title; align-self: end; }
+  .entry-stage__island { grid-area: island; align-self: start; justify-self: center; width: min(100%, 440px); margin: 0; }
+  .entry-stage__island .island-illustration { max-height: clamp(120px, 34vh, 320px); }
+  .entry-card { grid-area: card; align-self: center; width: 100%; }
+  .entry-card__form { flex-direction: column; }
+  .entry-card__form .button { width: 100%; }
+  .game-logo__title { font-size: clamp(2.4rem, 5.2vw, 5rem); white-space: nowrap; }
+}
+@media (orientation: landscape) and (min-width: 600px) and (max-height: 560px) {
+  .game-logo__emblem { width: 52px; }
+  .game-logo__title { font-size: clamp(2rem, 6vh, 3rem); }
+  .entry-stage__lede { margin-top: .4rem; font-size: .95rem; }
+  .entry-stage__island .island-illustration { max-height: 28vh; }
+  .entry-card { padding: 1rem 1.2rem; }
+  .entry-card__intro { margin-bottom: .6rem; font-size: .8rem; }
+  .entry-card__form input, .entry-card__form .button { min-height: 44px; }
+  .entry-card__features { display: none; }
+  .entry-card__note { margin-top: .6rem; padding-top: .5rem; font-size: .66rem; line-height: 1.5; }
+}
 @keyframes pregame-logo-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ---------- 首頁：主選單 ---------- */
@@ -211,14 +251,36 @@
 @keyframes pregame-pane-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* ---------- 房間大廳 ---------- */
-.screen--lobby { display: flex; flex-direction: column; }
-.screen--lobby > *:not(.pregame-scene) { width: 100%; max-width: 1320px; margin-inline: auto; }
-.lobby__banner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 2rem; align-items: center; padding: 1.2rem 0 1.6rem; }
-.lobby__title { margin: 0 0 .4rem; font-family: var(--font-display); font-size: clamp(1.8rem, 3.2vw, 2.7rem); line-height: 1.2; color: #f6e7c3; text-shadow: 0 3px 18px #0009; }
-.lobby__description { margin: 0 0 1rem; color: #cbd6d0; font-size: .9rem; }
-.lobby__summary { display: flex; flex-wrap: wrap; gap: .45rem; margin: 0; padding: 0; list-style: none; }
-.lobby__summary li { display: inline-flex; align-items: center; gap: .4rem; padding: .25rem .7rem; border: 1px solid #d9b06a40; border-radius: 999px; background: #0a2733cc; color: #e3d9bd; font-size: .76rem; }
+/* 橫向一頁：標題與座位、房間設定、邀請碼與開始三欄並列，不需要捲動。 */
+.screen--lobby { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; padding-bottom: 0; }
+.screen--lobby > *:not(.pregame-scene) { width: 100%; max-width: 1440px; margin-inline: auto; }
+.screen--lobby .pregame__topbar { flex: 0 0 auto; min-height: 56px; padding: .5rem 0; }
+.lobby__layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) clamp(260px, 24vw, 340px);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "head head aside" "main config aside";
+  gap: clamp(.7rem, 1.6vh, 1.1rem) clamp(.8rem, 1.4vw, 1.2rem);
+  padding-bottom: clamp(.8rem, 2vh, 1.4rem);
+}
+.lobby__heading { grid-area: head; display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1.2rem; min-width: 0; }
+.lobby__title { margin: 0; font-family: var(--font-display); font-size: clamp(1.5rem, 2.6vw, 2.2rem); line-height: 1.2; color: #f6e7c3; text-shadow: 0 3px 18px #0009; }
+.lobby__description { flex: 1 1 18rem; margin: 0; color: #cbd6d0; font-size: .86rem; }
+.lobby__summary { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: .45rem; margin: .2rem 0 0; padding: 0; list-style: none; }
+.lobby__summary li { display: inline-flex; align-items: center; gap: .4rem; padding: .2rem .7rem; border: 1px solid #d9b06a40; border-radius: 999px; background: #0a2733cc; color: #e3d9bd; font-size: .74rem; }
 .lobby__summary svg { color: var(--brass); }
+.lobby__main, .lobby__config, .lobby__aside {
+  display: flex; flex-direction: column; gap: clamp(.6rem, 1.4vh, 1rem); min-width: 0; min-height: 0;
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+}
+.lobby__main { grid-area: main; }
+.lobby__config { grid-area: config; }
+.lobby__aside { grid-area: aside; padding: .3rem .4rem 0; }
+.lobby__layout .plaque { flex: 0 0 auto; padding: clamp(.8rem, 2vh, 1.2rem) clamp(.9rem, 1.4vw, 1.3rem); }
+.lobby__layout .section-heading { margin-bottom: clamp(.5rem, 1.4vh, .9rem); }
+.lobby__layout .section-heading__icon { width: 34px; height: 38px; }
 
 /* 邀請碼船票：唯一的羊皮紙元素，左緣打孔。 */
 .lobby-invite {
@@ -244,65 +306,75 @@
 .lobby-invite__hint { margin: .5rem 0 0; color: #6d5a3d; font-size: .74rem; line-height: 1.5; }
 .lobby-invite__host { display: flex; align-items: center; gap: .35rem; margin: .5rem 0 0; padding-top: .5rem; border-top: 1px solid #b8925555; color: #5a4526; font-size: .76rem; font-weight: 600; }
 
-.lobby__grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); gap: 1.2rem; align-items: start; padding-bottom: 1rem; }
-.lobby__main, .lobby__aside { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
-.lobby__aside { position: sticky; top: 1rem; }
-.lobby-settings__form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem 1.2rem; }
-.lobby-settings__form .field { flex: 1 1 14rem; margin: 0; }
+.lobby-settings__form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem 1rem; }
+.lobby-settings__form .field { flex: 1 1 10rem; margin: 0; }
 .lobby-settings__form .field label { font-size: .8rem; }
-.lobby-settings__form .field p { margin: .35rem 0 0; font-size: .76rem; }
+.lobby-settings__form .field p { margin: .3rem 0 0; font-size: .72rem; }
 .lobby-settings__form .button { flex: 0 0 auto; margin-bottom: .1rem; }
-.lobby-policy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1.2rem; align-items: end; }
+.lobby-settings .section-heading__copy p { font-size: .74rem; }
+.lobby-policy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1rem; align-items: end; }
 .lobby-policy > .section-heading, .lobby-policy > .field--checkbox, .lobby-policy > p, .lobby-policy > .button { grid-column: 1 / -1; }
 .lobby-policy > .button { justify-self: start; }
-.lobby-policy > p { font-size: .8rem; }
-.lobby__aside .plaque, .lobby__main .plaque { margin: 0; }
+.lobby-policy > p { margin-bottom: .6rem; font-size: .76rem; }
+.lobby__config .lobby-policy { grid-template-columns: minmax(0, 1fr); }
+.lobby__config .lobby-policy > .field:not(.field--checkbox) { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem; align-items: center; gap: .6rem; }
+.lobby__config .lobby-policy > .field:not(.field--checkbox) label { margin: 0; line-height: 1.35; }
+.lobby__config .lobby-policy > .field input { text-align: right; }
+.lobby__config .lobby-settings__form .field { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem; align-items: center; gap: .3rem .6rem; }
+.lobby__config .lobby-settings__form .field label { margin: 0; }
+.lobby__config .lobby-settings__form .field p { grid-column: 1 / -1; }
+.lobby__config .lobby-settings__form .button { margin-left: auto; }
 .lobby__seat-count { padding: .2rem .65rem; border-radius: 999px; background: #e2b86626; color: #f3d696; font-size: .85rem; font-weight: 700; }
-.lobby__seats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .8rem; margin: .2rem 0 1.1rem; }
+.lobby__seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: .6rem; margin: 0 0 clamp(.6rem, 1.6vh, 1rem); }
 .lobby__occupied, .lobby__empty { display: contents; }
+/* 座位卡：左側色帶與頭像，右側名字、顏色與狀態；兩欄排列讓四個座位一眼看完。 */
 .lobby-seat {
   --seat-color: #9caaa3;
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) auto;
+  grid-template-areas: "avatar name number" "avatar meta meta" "avatar status status";
+  align-content: center;
   align-items: center;
-  gap: .35rem;
+  gap: .1rem .75rem;
   min-width: 0;
-  padding: 2rem .8rem 1rem;
-  text-align: center;
+  min-height: 92px;
+  padding: .6rem .8rem .6rem 1rem;
+  text-align: left;
   border: 1px solid #ffffff1a;
-  border-radius: 6px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--seat-color) 22%, transparent), #ffffff05 60%);
+  border-radius: 8px;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--seat-color) 24%, transparent), #ffffff05 70%);
   overflow-wrap: anywhere;
 }
-.lobby-seat::before { content: ''; position: absolute; top: -1px; left: 50%; width: 34px; height: 22px; transform: translateX(-50%); background: var(--seat-color); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 70%, 0 100%); }
+.lobby-seat::before { content: ''; position: absolute; inset: -1px auto -1px -1px; width: 5px; border-radius: 8px 0 0 8px; background: var(--seat-color); }
 .lobby-seat p, .lobby-seat h3 { margin: 0; }
 .lobby-seat__avatar {
+  grid-area: avatar;
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 64px;
-  margin: .2rem 0 .3rem;
+  width: 48px;
+  height: 54px;
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   background: linear-gradient(160deg, color-mix(in srgb, var(--seat-color) 85%, #fff), color-mix(in srgb, var(--seat-color) 70%, #10222a));
   color: #fbf6e8;
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   font-weight: 700;
   text-shadow: 0 1px 2px #0007;
 }
 .lobby-seat--white .lobby-seat__avatar { color: #2d2a22; text-shadow: none; }
-.lobby-seat__number { position: absolute; top: .45rem; left: .65rem; font-size: .68rem; color: #9fb1b0; }
-.lobby-seat__name { font-size: .95rem; font-weight: 700; }
-.lobby-seat__meta { display: flex; flex-wrap: wrap; justify-content: center; gap: .35rem; font-size: .72rem; }
+.lobby-seat__number { grid-area: number; align-self: start; padding-top: .15rem; font-size: .66rem; color: #9fb1b0; white-space: nowrap; }
+.lobby-seat__name { grid-area: name; font-size: .92rem; font-weight: 700; line-height: 1.3; }
+.lobby-seat__meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: .35rem; font-size: .72rem; }
 .lobby-seat__host { display: inline-flex; align-items: center; gap: .2rem; color: var(--brass); }
-.lobby-seat__status { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .3rem .45rem; margin-top: .2rem; font-size: .72rem; }
+.lobby-seat__status { grid-area: status; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .45rem; margin-top: .15rem; font-size: .72rem; }
 .lobby-seat__connection { font-size: .68rem; }
 .lobby-seat--ready { border-color: #7fae7c80; }
 .lobby-seat--self { box-shadow: 0 0 0 1px #d9b06a66, 0 0 24px #e2b86618; }
-.lobby-seat--empty { justify-content: center; border: 1px dashed #d9b06a40; background: #06202c55; color: var(--text-muted); }
+.lobby-seat--empty { grid-template-areas: "avatar name number"; border: 1px dashed #d9b06a40; background: #06202c55; color: var(--text-muted); }
 .lobby-seat--empty::before { display: none; }
 .lobby-seat--empty .lobby-seat__avatar { background: #ffffff10; color: #8ea5a7; }
+.lobby-seat--empty .lobby-seat__avatar svg { width: 24px; height: 24px; }
 .lobby-seat--empty .lobby-seat__name { font-weight: 500; font-size: .85rem; color: #9fb1b0; }
 .lobby-seat--red { --seat-color: #c9584a; }
 .lobby-seat--blue { --seat-color: #4f8fc0; }
@@ -325,14 +397,15 @@
 .lobby__paired-note { margin: 0; color: #b9c6c2; font-size: .82rem; }
 .lobby-start { border-color: #d9b06a99; }
 .lobby-start h2 { margin-bottom: .6rem; }
-.lobby-start > .button--primary { width: 100%; margin: .6rem 0 .2rem; }
+.lobby-start > .button--primary { width: 100%; margin: .4rem 0 .2rem; }
+.lobby-start > p { margin-bottom: .4rem; font-size: .84rem; }
 .lobby-start__blockers { padding: .7rem .9rem; border-left: 3px solid var(--warning); border-radius: 4px; background: #f2ce8912; }
 .lobby-start__blockers p { margin-bottom: .3rem; font-size: .85rem; }
 .lobby-start__blockers ul { margin: 0; padding-left: 1.1rem; color: #cbd6d0; font-size: .8rem; }
-.lobby-start__leave { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
+.lobby-start__leave { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
 .lobby-start__leave .button { flex: 1; }
 .lobby-policy .field label { font-size: .8rem; }
-.lobby-policy .field { margin-bottom: .75rem; }
+.lobby-policy .field { margin-bottom: .6rem; }
 .pregame > .error { padding: .7rem 1rem; border-radius: 6px; background: #3a1d1ccc; }
 
 /* ---------- 響應式 ---------- */
@@ -342,7 +415,8 @@
   .home__join { padding: 1.4rem 0 0; border-left: 0; border-top: 1px solid #d9b06a2e; }
   .pregame-scene__island { width: min(34vw, 420px); }
 }
-@media (max-width: 860px) {
+/* 只有直屏或很窄的畫面才改成單欄捲動；橫屏一律維持一頁式。 */
+@media (max-width: 860px) and (orientation: portrait), (max-width: 599px) {
   .screen--home { height: auto; min-height: 100dvh; overflow: visible; padding-bottom: 1.5rem; }
   .home-stage { grid-template-columns: minmax(0, 1fr); align-content: start; gap: 1.2rem; padding-top: .5rem; }
   .home-stage__menu { gap: 1rem; }
@@ -358,11 +432,77 @@
   .home-stage__panel { max-height: none; overflow: visible; }
   .pregame-scene__island { display: none; }
   .pregame-scene::after { background: linear-gradient(180deg, #06202c66 0%, #06202c99 100%); }
-  .lobby__banner { grid-template-columns: minmax(0, 1fr); gap: 1.2rem; }
+}
+/* 大廳的直屏後備不分寬度：直立的大平板（例如 1024×1366）也改成單欄捲動。 */
+@media (orientation: portrait), (max-width: 599px) {
+  .screen--lobby { height: auto; min-height: 100dvh; overflow: visible; padding-bottom: 1.5rem; }
+  .lobby__layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "head" "main" "aside" "config"; }
+  .lobby__main, .lobby__config, .lobby__aside { overflow: visible; }
   .lobby-invite { justify-self: start; width: min(100%, 420px); }
-  .lobby__grid { grid-template-columns: minmax(0, 1fr); }
-  .lobby__main, .lobby__aside { display: contents; }
-  .lobby-policy { order: 2; }
+}
+/* 高螢幕：三欄依內容高度排列並垂直置中，不把面板拉成細長空框。 */
+@media (min-height: 900px) and (orientation: landscape) {
+  .lobby__layout { grid-template-rows: auto auto; align-content: center; padding-bottom: 6vh; }
+}
+/* 中等寬度橫屏：三欄變窄，政策欄位改單欄。 */
+@media (max-width: 900px) and (orientation: landscape) {
+  .lobby__config .lobby-policy > .field:not(.field--checkbox),
+  .lobby__config .lobby-settings__form .field { grid-template-columns: minmax(0, 1fr) 4.5rem; }
+}
+@media (max-width: 1100px) and (orientation: landscape) {
+  .lobby-policy { grid-template-columns: minmax(0, 1fr); }
+  .lobby__layout .section-heading__copy p { display: none; }
+}
+/* 矮橫屏：收掉說明文字與裝飾圖示，讓三欄內容盡量不需要欄內捲動。 */
+@media (max-height: 640px) and (orientation: landscape) {
+  .pregame__topbar { min-height: 48px; padding: .35rem 0; }
+  .screen--lobby .pregame__topbar { min-height: 48px; padding: .35rem 0; }
+  .lobby__description, .lobby-invite__hint, .lobby__layout .section-heading__icon { display: none; }
+  .lobby__title { font-size: clamp(1.25rem, 2.2vw, 1.7rem); }
+  .lobby-seat { min-height: 70px; padding-block: .45rem; }
+  .lobby-seat__avatar { width: 40px; height: 45px; font-size: .9rem; }
+  .lobby-seat { grid-template-columns: 42px minmax(0, 1fr) auto; }
+  .lobby__summary { flex: 0 1 auto; margin: 0; }
+  .lobby__summary li { padding-block: .1rem; font-size: .7rem; }
+  .lobby-settings__form .field p { display: none; }
+  .lobby-invite { padding-block: .7rem; }
+  .lobby-invite__code code { font-size: clamp(1.3rem, 2.4vw, 1.9rem); }
+  .lobby__layout .field label { font-size: .74rem; }
+  .lobby__layout input, .lobby__layout select { min-height: 38px; padding-block: .3rem; }
+  .button--hero { min-height: 46px; }
+  .home-stage { grid-template-columns: minmax(230px, 320px) minmax(0, 1fr); gap: clamp(1rem, 3vw, 2.5rem); padding: .4rem 0 1rem; }
+  .home-stage__menu { gap: .7rem; }
+  .home-stage__title { margin: 0; font-size: clamp(1.3rem, 2.2vw, 1.8rem); }
+  .home-stage__description { display: none; }
+  .home__nav { gap: .35rem; }
+  .home__nav-tab { min-height: 48px; padding-block: .3rem; }
+  .home__nav-icon { width: 34px; height: 38px; }
+  .home-stage__panel { padding: 1rem 1.25rem; }
+  .home__actions { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .home__create { padding: 0 1.2rem 0 0; }
+  .home__join { padding: 0 0 0 1.2rem; border-top: 0; border-left: 1px solid #d9b06a2e; }
+}
+@media (max-height: 480px) and (orientation: landscape) {
+  /* 大廳右欄：邀請碼與開始面板縮成一個畫面高；房主已標在座位卡上。 */
+  .lobby-invite { padding: .5rem .9rem .5rem 1.7rem; }
+  .lobby-invite__host { display: none; }
+  .lobby-invite .lobby-invite__code { margin: 0 0 .25rem; }
+  .lobby-invite .button--small { min-height: 34px; }
+  .lobby-start h2 { margin-bottom: .2rem; font-size: 1rem; }
+  .lobby-start > p { font-size: .74rem; }
+  .lobby-start > .button--hero { min-height: 40px; margin-top: .2rem; }
+  .lobby-start__leave { margin-top: .4rem; }
+  .lobby-start__leave .button { min-height: 36px; }
+  /* 手機橫屏：選單收成只有圖示的窄欄，把寬度留給建立／加入表單。 */
+  .home-stage { grid-template-columns: 58px minmax(0, 1fr); gap: 1rem; }
+  .home-stage__title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .home__nav-tab { grid-template-columns: 34px; justify-content: center; padding: .3rem; }
+  .home__nav-copy { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .home__nav-count { position: absolute; top: 2px; right: 2px; min-width: 1.1rem; padding: 0 .25rem; font-size: .6rem; }
+  .home__nav-tab:hover { transform: none; }
+  .home__nav-hint { display: none; }
+  .home__nav-tab { min-height: 42px; }
+  .home__join-note { display: none; }
 }
 @media (max-width: 560px) {
   .pregame { padding-inline: .85rem; }
@@ -376,9 +516,7 @@
   .home-stage__panel { padding: 1.2rem 1rem; }
   .entry-card__form { flex-direction: column; }
   .entry-stage__island { margin-bottom: -1rem; }
-  .lobby__seats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
-  .lobby-seat { padding: 1.8rem .5rem .8rem; }
-  .lobby-seat__avatar { width: 48px; height: 54px; font-size: 1.05rem; }
+  .lobby__seats { grid-template-columns: minmax(0, 1fr); gap: .55rem; }
   .form-grid { grid-template-columns: minmax(0, 1fr); }
   .resume-card { flex-wrap: wrap; }
   .room-list thead { display: none; }

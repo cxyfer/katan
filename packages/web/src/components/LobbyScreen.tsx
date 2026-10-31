@@ -84,7 +84,7 @@ export function LobbyScreen({ controller }: ScreenProps) {
         </div>
       </header>
 
-      <div className="lobby__banner">
+      <div className="lobby__layout">
         <div className="lobby__heading">
           <h1 className="lobby__title">{t('island.lobby.title')}</h1>
           <p className="lobby__description">{t('island.lobby.description')}</p>
@@ -96,34 +96,6 @@ export function LobbyScreen({ controller }: ScreenProps) {
           </ul>
         </div>
 
-        <section className="lobby-invite" aria-labelledby="invite-heading">
-          <h2 id="invite-heading" className="lobby-invite__label">{t('lobby.inviteCode')}</h2>
-          <p className="lobby-invite__code"><code data-testid="room-code">{room.code}</code></p>
-          <div className="lobby-invite__actions">
-            <button
-              type="button"
-              className="button button--ghost button--small"
-              onClick={() => {
-                void navigator.clipboard?.writeText(room.code).then(() => {
-                  setCopied(true);
-                  window.setTimeout(() => setCopied(false), 2400);
-                }, () => setCopied(false));
-              }}
-            >
-              <GameIcon name={copied ? 'check' : 'copy'} size={16} />{t('lobby.copyInvite')}
-            </button>
-            <span className="lobby-invite__copied" role="status">{copied ? t('lobby.inviteCopied') : ''}</span>
-          </div>
-          <p className="lobby-invite__hint">{t('island.lobby.inviteDescription')}</p>
-          {host && (
-            <p className="lobby-invite__host" data-testid="host-name">
-              <GameIcon name="crown" size={16} />{t('app.host')}: {host.nickname}
-            </p>
-          )}
-        </section>
-      </div>
-
-      <div className="lobby__grid">
         <div className="lobby__main">
           <section className="plaque lobby-players" aria-labelledby="seats-heading">
             <div className="section-heading">
@@ -214,6 +186,74 @@ export function LobbyScreen({ controller }: ScreenProps) {
 
           {profile?.paired && <p className="lobby__paired-note">{t('lobby.pairedNote')}</p>}
           <PolicyProposalPanel controller={controller} />
+        </div>
+
+        <div className="lobby__aside">
+          <section className="lobby-invite" aria-labelledby="invite-heading">
+            <h2 id="invite-heading" className="lobby-invite__label">{t('lobby.inviteCode')}</h2>
+            <p className="lobby-invite__code"><code data-testid="room-code">{room.code}</code></p>
+            <div className="lobby-invite__actions">
+              <button
+                type="button"
+                className="button button--ghost button--small"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(room.code).then(() => {
+                    setCopied(true);
+                    window.setTimeout(() => setCopied(false), 2400);
+                  }, () => setCopied(false));
+                }}
+              >
+                <GameIcon name={copied ? 'check' : 'copy'} size={16} />{t('lobby.copyInvite')}
+              </button>
+              <span className="lobby-invite__copied" role="status">{copied ? t('lobby.inviteCopied') : ''}</span>
+            </div>
+            <p className="lobby-invite__hint">{t('island.lobby.inviteDescription')}</p>
+            {host && (
+              <p className="lobby-invite__host" data-testid="host-name">
+                <GameIcon name="crown" size={16} />{t('app.host')}: {host.nickname}
+              </p>
+            )}
+          </section>
+          <section className="plaque lobby-start" aria-labelledby="start-heading">
+            <h2 id="start-heading">{t('lobby.start')}</h2>
+            {startBlockers.length > 0 ? (
+              <div className="lobby-start__blockers" id="start-blockers" data-testid="start-blockers" role="status">
+                <p><strong>{t('lobby.startBlocked')}</strong></p>
+                <ul>
+                  {startBlockers.map((blocker, index) => (
+                    <li key={`${blocker.messageId}-${index}`}>
+                      {t(blocker.messageId, blocker.params)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : <p className="muted">{t('island.lobby.readyToStart')}</p>}
+            {!isHost && <p className="muted">{t('lobby.notHost')}</p>}
+            <button
+              type="button"
+              className="button button--primary button--hero"
+              data-testid="start-game"
+              disabled={!canStart}
+              aria-describedby={startBlockers.length > 0 ? 'start-blockers' : undefined}
+              onClick={() => void actions.startGame()}
+            >
+              <GameIcon name="ship" />{t('lobby.start')}
+            </button>
+            <div className="form-actions lobby-start__leave">
+              <button type="button" className="button button--ghost" data-testid="leave-room" onClick={() => void actions.leaveRoom()}>
+                {t('lobby.leave')}
+              </button>
+              {isHost && (
+                <button type="button" className="button button--ghost" data-testid="close-room" onClick={() => void actions.closeRoom()}>
+                  {t('lobby.closeRoom')}
+                </button>
+              )}
+            </div>
+          </section>
+
+        </div>
+
+        <div className="lobby__config">
           <section className="plaque lobby-settings" aria-labelledby="room-settings-heading">
             <div className="section-heading">
               <span className="section-heading__icon"><GameIcon name="users" size={23} /></span>
@@ -311,46 +351,6 @@ export function LobbyScreen({ controller }: ScreenProps) {
               {room.status === 'lobby' ? t('lobby.policy.save') : t('lobby.policyPropose')}
             </button>
           </section>
-        </div>
-
-        <div className="lobby__aside">
-          <section className="plaque lobby-start" aria-labelledby="start-heading">
-            <h2 id="start-heading">{t('lobby.start')}</h2>
-            {startBlockers.length > 0 ? (
-              <div className="lobby-start__blockers" id="start-blockers" data-testid="start-blockers" role="status">
-                <p><strong>{t('lobby.startBlocked')}</strong></p>
-                <ul>
-                  {startBlockers.map((blocker, index) => (
-                    <li key={`${blocker.messageId}-${index}`}>
-                      {t(blocker.messageId, blocker.params)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : <p className="muted">{t('island.lobby.readyToStart')}</p>}
-            {!isHost && <p className="muted">{t('lobby.notHost')}</p>}
-            <button
-              type="button"
-              className="button button--primary button--hero"
-              data-testid="start-game"
-              disabled={!canStart}
-              aria-describedby={startBlockers.length > 0 ? 'start-blockers' : undefined}
-              onClick={() => void actions.startGame()}
-            >
-              <GameIcon name="ship" />{t('lobby.start')}
-            </button>
-            <div className="form-actions lobby-start__leave">
-              <button type="button" className="button button--ghost" data-testid="leave-room" onClick={() => void actions.leaveRoom()}>
-                {t('lobby.leave')}
-              </button>
-              {isHost && (
-                <button type="button" className="button button--ghost" data-testid="close-room" onClick={() => void actions.closeRoom()}>
-                  {t('lobby.closeRoom')}
-                </button>
-              )}
-            </div>
-          </section>
-
         </div>
       </div>
 

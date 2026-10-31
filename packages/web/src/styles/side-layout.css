@@ -63,3 +63,17 @@
   .screen--game .game-tools__tab,
   .screen--game .game__menu > summary { min-height: 40px; padding-inline: .75rem; border-radius: 8px; font-size: .72rem; }
 }
+/* 矮橫屏：收合計分板從頂端排起並縮小每列高度，三到四位玩家都能完整排下；相機工具列讓到計分板右側。 */
+@media (max-height: 520px) and (min-width: 650px) {
+  .screen--game .players[data-testid="players-panel"],
+  .screen--game .players[data-testid="players-panel"][data-expanded="true"] {
+    inset: 6px auto auto 0; transform: none; max-height: calc(100% - 62px);
+  }
+  .screen--game .players__header { min-height: 34px; }
+  .screen--game .players .seat-list { grid-auto-rows: 58px; }
+  .screen--game .players .seat,
+  .screen--game .players[data-expanded="false"] .seat { height: 58px; padding-block: 3px; }
+  .screen--game .players .players__details { top: 2px; bottom: 2px; grid-template-rows: 36px 14px; }
+  .screen--game .players[data-expanded="false"] .players__obligation { display: none; }
+  .screen--game .board--side-controls .board__toolbar--side { left: 84px; top: 6px; }
+}
