@@ -5,7 +5,6 @@ import { confirmedPlacement } from '../effects.ts';
 import type { BoardEffectGroup } from '../animation.ts';
 import type { SceneSelection } from '../render-contract.ts';
 import { geometryToWorld } from './bounds.ts';
-import { HARBOR_STRUCTURE, harborPlacement } from '../harbor.ts';
 import { horizontalRotation, type InstanceTransform, type Vec3 } from './transforms.ts';
 
 export const ROAD_ARRIVAL_TRANSFORM_MS = 240;
@@ -45,12 +44,6 @@ export interface BuildingPart extends InstanceTransform {
   durationMs: number;
 }
 
-export interface HarborInstance {
-  edge: number;
-  type: string;
-  position: Vec3;
-  rotationY: number;
-}
 
 const TERRAIN_LAYOUTS: Readonly<Record<string, readonly { x: number; z: number; s?: number }[]>> = {
   forest: [{ x: -0.27, z: -0.2, s: 1 }, { x: -0.04, z: -0.29, s: 0.86 }, { x: 0.22, z: -0.17, s: 0.94 }],
@@ -204,24 +197,6 @@ export function buildingParts(
     }
   }
   return out;
-}
-
-export function harborInstances(geometry: BoardGeometry, board: PublicBoardView): HarborInstance[] {
-  return board.harbors.flatMap((harbor) => {
-    const placement = harborPlacement(geometry, harbor.edge);
-    if (!placement) return [];
-    const { midpoint, normal } = placement;
-    return [{
-      edge: harbor.edge,
-      type: harbor.type,
-      position: [
-        midpoint.x + normal.x * HARBOR_STRUCTURE.pierOffset,
-        HARBOR_STRUCTURE.deckHeight,
-        midpoint.z + normal.z * HARBOR_STRUCTURE.pierOffset,
-      ],
-      rotationY: placement.rotationY,
-    }];
-  });
 }
 
 export function legalGhostSelection(intent: BoardIntent | null, selection: SceneSelection | null): SceneSelection | null {

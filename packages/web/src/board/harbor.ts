@@ -1,6 +1,6 @@
 import type { BoardGeometry } from './geometry.ts';
 import type { WorldPoint } from './render-contract.ts';
-import { geometryToWorld } from './three/bounds.ts';
+import { geometryPointToWorld } from './projection.ts';
 
 /**
  * One shared description of the diorama harbour and its hover footprint.
@@ -8,20 +8,16 @@ import { geometryToWorld } from './three/bounds.ts';
  * values so a port cannot drift away from the area that can be hovered.
  */
 export const HARBOR_STRUCTURE = Object.freeze({
-  /** Distance from the coastal edge to the pier centre in world units. */
-  pierOffset: 0.38,
-  /** Deck height of the dock model. */
-  deckHeight: 0.045,
+  /** Conservative camera-fit envelope beyond the pier and boat. */
+  fitOffset: 0.85,
+  fitHalfDiagonal: 0.43,
   /** Harbour plaque: outward distance and height. */
   labelOffset: 0.285,
   labelHeight: 0.205,
-  /** Hover footprint: the pier plus the moored boat on its seaward side. */
-  hitStart: 0,
-  hitEnd: 0.84,
-  hitDockHalfWidth: 0.36,
-  hitBoatHalfWidth: 0.44,
-  hitBoatStart: 0.42,
-  hitHeight: 0.22,
+  /** Visible boat/sail point used to verify the footprint in a browser. */
+  probeSide: 0.32,
+  probeOutward: 0.63,
+  probeHeight: -0.27,
 });
 
 export interface HarborPlacement {
@@ -42,9 +38,10 @@ export function harborPlacement(geometry: BoardGeometry, edgeIndex: number): Har
   const edge = geometry.edges[edgeIndex];
   const topologyEdge = geometry.topology.edges[edgeIndex];
   if (!edge || !topologyEdge) return null;
-  const a = geometryToWorld(geometry, edge.x1, edge.y1);
-  const b = geometryToWorld(geometry, edge.x2, edge.y2);
-  const midpoint = { x: (a.x + b.x) / 2, y: 0, z: (a.z + b.z) / 2 };
+  const a = geometryPointToWorld(geometry, { x: edge.x1, y: edge.y1 });
+  const b = geometryPointToWorld(geometry, { x: edge.x2, y: edge.y2 });
+  const midpoint = geometryPointToWorld(geometry,
+    { x: (edge.x1 + edge.x2) / 2, y: (edge.y1 + edge.y2) / 2 });
   const dx = b.x - a.x;
   const dz = b.z - a.z;
   const length = Math.hypot(dx, dz) || 1;
@@ -53,7 +50,7 @@ export function harborPlacement(geometry: BoardGeometry, edgeIndex: number): Har
   const adjacentHex = topologyEdge.hexes[0];
   const hex = adjacentHex === undefined ? null : geometry.hexes[adjacentHex];
   if (hex) {
-    const center = geometryToWorld(geometry, hex.cx, hex.cy);
+    const center = geometryPointToWorld(geometry, { x: hex.cx, y: hex.cy });
     if ((midpoint.x - center.x) * normalX + (midpoint.z - center.z) * normalZ < 0) {
       normalX *= -1;
       normalZ *= -1;
@@ -77,25 +74,73 @@ export function harborLabelPoint(placement: HarborPlacement): WorldPoint {
 }
 
 /**
- * A flat footprint over the whole pier and its seaward boat at plaque height.
- * Projecting it gives the 3D view one hit region that matches the visible
- * harbour instead of a small square around the plaque. The boat sits on the
- * local +X side of the pier, so only the seaward half widens to cover it.
+ * Visible pier and boat corners at their actual model heights. Projecting the
+ * complete set and taking its screen hull covers the structure under any
+ * camera elevation without leaving the boat below a flat plaque-height plane.
+ * Local side/outward coordinates follow the diorama instance.
  */
-export function harborHitOutline(geometry: BoardGeometry, edgeIndex: number): WorldPoint[] | null {
+const HARBOR_HIT_POINTS: readonly (readonly [side: number, outward: number, height: number])[] = [
+  // Dock deck corners.
+  [-0.352, 0.08, 0.204], [0.352, 0.08, 0.204],
+  [-0.352, 0.49, 0.204], [0.352, 0.49, 0.204],
+  // Pier frame at the shore and at the seaward end, at deck and water height.
+  [-0.23, 0.0, 0.0], [0.23, 0.0, 0.0],
+  [-0.23, 0.585, 0.0], [0.23, 0.585, 0.0],
+  [-0.23, 0.585, 0.19], [0.23, 0.585, 0.19],
+  // Harbour plaque corners.
+  [-0.34, 0.09, 0.205], [0.34, 0.09, 0.205],
+  [-0.34, 0.48, 0.205], [0.34, 0.48, 0.205],
+  // Boat hull at the waterline, sail top and mast head.
+  [0.237, 0.44, -0.274], [0.403, 0.44, -0.274],
+  [0.237, 0.82, -0.274], [0.403, 0.82, -0.274],
+  [0.32, 0.51, 0.188], [0.32, 0.74, 0.188],
+  [0.32, 0.63, 0.223], [0.32, 0.805, 0.06],
+];
+
+/** World corners whose screen hull covers the rendered pier and boat. */
+export function harborHitPoints(geometry: BoardGeometry, edgeIndex: number): WorldPoint[] | null {
   const placement = harborPlacement(geometry, edgeIndex);
   if (!placement) return null;
   const { midpoint, normal, tangent } = placement;
-  const point = (outward: number, side: number): WorldPoint => ({
+  return HARBOR_HIT_POINTS.map(([side, outward, height]) => ({
     x: midpoint.x + normal.x * outward + tangent.x * side,
-    y: HARBOR_STRUCTURE.hitHeight,
+    y: height,
     z: midpoint.z + normal.z * outward + tangent.z * side,
-  });
-  return [
-    point(HARBOR_STRUCTURE.hitStart, -HARBOR_STRUCTURE.hitDockHalfWidth),
-    point(HARBOR_STRUCTURE.hitEnd, -HARBOR_STRUCTURE.hitDockHalfWidth),
-    point(HARBOR_STRUCTURE.hitEnd, HARBOR_STRUCTURE.hitBoatHalfWidth),
-    point(HARBOR_STRUCTURE.hitBoatStart, HARBOR_STRUCTURE.hitBoatHalfWidth),
-    point(HARBOR_STRUCTURE.hitStart, HARBOR_STRUCTURE.hitDockHalfWidth),
-  ];
+  }));
+}
+
+/** A visible point on the boat hull, independent of the hit hull. */
+export function harborProbePoint(geometry: BoardGeometry, edgeIndex: number): WorldPoint | null {
+  const placement = harborPlacement(geometry, edgeIndex);
+  if (!placement) return null;
+  const { midpoint, normal, tangent } = placement;
+  return {
+    x: midpoint.x + normal.x * HARBOR_STRUCTURE.probeOutward + tangent.x * HARBOR_STRUCTURE.probeSide,
+    y: HARBOR_STRUCTURE.probeHeight,
+    z: midpoint.z + normal.z * HARBOR_STRUCTURE.probeOutward + tangent.z * HARBOR_STRUCTURE.probeSide,
+  };
+}
+
+/** Andrew monotone-chain hull for the projected hit corners. */
+export function screenConvexHull(points: readonly { x: number; y: number }[]): { x: number; y: number }[] {
+  const finite = points.filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+  const unique = [...new Map(finite.map((point) => [`${point.x.toFixed(3)},${point.y.toFixed(3)}`, point])).values()]
+    .sort((a, b) => a.x - b.x || a.y - b.y);
+  if (unique.length <= 2) return unique;
+  const cross = (origin: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) =>
+    (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x);
+  const lower: { x: number; y: number }[] = [];
+  for (const point of unique) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, point) <= 0) lower.pop();
+    lower.push(point);
+  }
+  const upper: { x: number; y: number }[] = [];
+  for (let index = unique.length - 1; index >= 0; index -= 1) {
+    const point = unique[index]!;
+    while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, point) <= 0) upper.pop();
+    upper.push(point);
+  }
+  lower.pop();
+  upper.pop();
+  return [...lower, ...upper];
 }

@@ -9,13 +9,16 @@ showed no tooltip. The captures hover the far end of the rendered footprint.
 | `r3f-desktop.png` | 3D | 1366×900 | zh-Hant table with the harbour 34 tooltip open |
 | `r3f-desktop-detail.png` | 3D | 1366×900 | crop of the same harbour and tooltip |
 | `svg-desktop-detail.png` | SVG | 1366×900 | harbour token and tooltip |
-| `r3f-mobile-detail.png` | 3D | 390×844 | phone crop with harbour 2 and tooltip |
+| `r3f-mobile-detail.png` | 3D | 390×844 | phone crop with harbour 34 and tooltip |
+| `svg-mobile-detail.png` | SVG | 390×844 | phone crop with harbour 34 and tooltip |
 
 Captured on 2026-11-01 from the `fix/harbor-hover-info` working tree using the
-production build and deterministic API/WebSocket fixtures. Each capture waits
-for the one-second inspection delay; the browser case also checks the tooltip
-title, viewport bounds, `aria-describedby`, the element under the pointer, the
-keyboard delay and Escape. Every capture is at device scale factor 1.
+production build and deterministic API/WebSocket fixtures. Desktop captures
+hover the projected boat hull for all nine harbours, then orbit the 3D camera
+by 120° and recheck every harbour. Mobile captures focus every plaque; all
+cases check the one-second delay, tooltip title, viewport bounds,
+`aria-describedby` where applicable and Escape. Every capture is at device
+scale factor 1.
 
 The aggregate is [report.json](report.json). Regenerate with:
 

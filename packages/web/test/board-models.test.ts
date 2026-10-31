@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { Box3, Color, type BufferGeometry } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { buildGeometry } from '../src/board/geometry.ts';
+import { harborPlacement } from '../src/board/harbor.ts';
 import { fixedBoard } from '../src/test/fixtures.ts';
 import { BOARD_MODEL_METRICS, geometryToWorld, sceneBounds } from '../src/board/three/bounds.ts';
 import { HARBOR_ATLAS_CELLS, NUMBER_ATLAS_CELLS, createAtlasPlaneGeometry, normalizedAtlasCell } from '../src/board/three/atlas.ts';
@@ -17,7 +18,6 @@ import {
   BUILDING_ARRIVAL_TRANSFORM_MS,
   ROAD_ARRIVAL_TRANSFORM_MS,
   buildingParts,
-  harborInstances,
   legalGhostSelection,
   numberTokens,
   roadInstances,
@@ -170,7 +170,8 @@ describe('modeled board pieces', () => {
     expect(bodyBounds.max.z).toBeLessThan(0.3);
     body.dispose();
     expect(tokens.every((token) => Object.hasOwn(NUMBER_ATLAS_CELLS, token.value))).toBe(true);
-    expect(harborInstances(geometry, board).every((harbor) => harbor.type in HARBOR_ATLAS_CELLS)).toBe(true);
+    expect(board.harbors.every((harbor) => harbor.type in HARBOR_ATLAS_CELLS &&
+      Number.isFinite(harborPlacement(geometry, harbor.edge)!.rotationY))).toBe(true);
     for (const [value, cell] of Object.entries(NUMBER_ATLAS_CELLS)) {
       expect(value).toMatch(/^(2|3|4|5|6|8|9|10|11|12)$/);
       const uv = normalizedAtlasCell(cell);

@@ -6,30 +6,53 @@ import type { TargetContext, TargetKind } from './targets.ts';
 import { describeTarget } from './targets.ts';
 import { t } from '../i18n/index.ts';
 import { pipsFor, resourceOfTerrain } from './terrain.ts';
-import { harborHitOutline, harborLabelPoint, harborPlacement } from './harbor.ts';
+import { harborHitPoints, harborLabelPoint, harborPlacement, harborProbePoint } from './harbor.ts';
 
 export interface BoardInspection { kind: TargetKind | 'harbor'; index: number }
-export interface InspectionElement extends BoardInspection { world: WorldPoint; outline?: WorldPoint[]; top?: WorldPoint }
+export interface InspectionElement extends BoardInspection {
+  world: WorldPoint;
+  outline?: WorldPoint[];
+  top?: WorldPoint;
+  /** World corners projected into a screen-space hull for a pointer-only target. */
+  hull?: WorldPoint[];
+  /** Visible point used by the browser check, independent of the hull. */
+  probe?: WorldPoint;
+  pointerOnly?: boolean;
+}
 
 /** Public board positions only: no player hands or hidden scoring enter inspection. */
 export function inspectionElements(geometry: BoardGeometry, board: PublicBoardView, renderer: 'svg' | 'r3f'): InspectionElement[] {
   const elements: InspectionElement[] = geometry.hexes.map((hex) => ({ kind: 'hex', index: hex.index,
     world: geometryPointToWorld(geometry, { x: hex.cx, y: hex.cy }),
     outline: hex.corners.map((point) => geometryPointToWorld(geometry, point)) }));
+  for (const harbor of board.harbors) {
+    if (renderer !== 'r3f') continue;
+    const placement = harborPlacement(geometry, harbor.edge);
+    if (!placement) continue;
+    // The diorama pier and boat extend out of the coastal edge. This
+    // pointer-only footprint sits under roads and buildings, which can cross
+    // it in screen space; the plaque below stays the focusable target.
+    const hull = harborHitPoints(geometry, harbor.edge);
+    const probe = harborProbePoint(geometry, harbor.edge);
+    if (hull && probe) elements.push({ kind: 'harbor', index: harbor.edge, world: harborLabelPoint(placement),
+      hull, probe, pointerOnly: true });
+  }
   for (const target of targetsFromGeometry(geometry, 'edge', board.roads.flatMap((road, index) => road ? [index] : []))) {
     elements.push({ ...target, outline: target.endpoints ? [...target.endpoints] : undefined });
   }
+  // A tall settlement/city at a harbour endpoint can overlap the seaward
+  // footprint in screen space. Keep the building above that pointer-only
+  // footprint; the focusable plaque is appended after the buildings instead.
   for (const target of targetsFromGeometry(geometry, 'vertex', board.buildings.flatMap((building, index) => building ? [index] : []))) {
     elements.push({ ...target, top: { ...target.world, y: renderer === 'r3f' ? 0.8 : 0 } });
   }
+  // Keep the focusable plaque above buildings: it is the harbour's keyboard
+  // entry point and remains small enough not to swallow the settlement itself.
   for (const harbor of board.harbors) {
     const placement = harborPlacement(geometry, harbor.edge);
     if (!placement) continue;
-    // The diorama pier and boat extend out of the coastal edge. SVG keeps the
-    // compact token, while 3D projects the whole footprint as one hit region.
-    const world = renderer === 'r3f' ? harborLabelPoint(placement) : placement.midpoint;
-    const outline = renderer === 'r3f' ? harborHitOutline(geometry, harbor.edge) ?? undefined : undefined;
-    elements.push({ kind: 'harbor', index: harbor.edge, world, ...(outline ? { outline } : {}) });
+    elements.push({ kind: 'harbor', index: harbor.edge,
+      world: renderer === 'r3f' ? harborLabelPoint(placement) : placement.midpoint });
   }
   return elements;
 }

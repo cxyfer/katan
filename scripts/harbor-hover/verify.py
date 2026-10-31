@@ -44,7 +44,7 @@ def bounded(page, box, label):
             f"{label} outside viewport: {box}")
 
 
-def harbor_probe(page, target, renderer):
+def harbor_probe(page, target, renderer, plaque_id):
     """Return an exposed point over the rendered harbour footprint, or None."""
     if renderer == "svg":
         return target.evaluate("""element => {
@@ -57,99 +57,169 @@ def harbor_probe(page, target, renderer):
           }
           return null;
         }""")
-    return target.evaluate(r"""element => {
-      const svg = element.ownerSVGElement;
-      const frame = svg.getBoundingClientRect();
-      const values = element.getAttribute('points').trim().split(/[\s,]+/).map(Number);
-      const corners = [];
-      for (let index = 0; index < values.length; index += 2) corners.push([values[index], values[index + 1]]);
-      if (corners.length !== 5) throw new Error('harbour polygon needs five corners');
-      const near = [(corners[0][0] + corners[4][0]) / 2, (corners[0][1] + corners[4][1]) / 2];
-      const far = [(corners[1][0] + corners[2][0]) / 2, (corners[1][1] + corners[2][1]) / 2];
-      const boatNear = [corners[1][0] + (corners[2][0] - corners[1][0]) * 0.85,
-                        corners[1][1] + (corners[2][1] - corners[1][1]) * 0.85];
-      const boat = [(boatNear[0] + corners[3][0]) / 2, (boatNear[1] + corners[3][1]) / 2];
-      // Probe the boat lobe first, then fall back along the pier centre when
-      // stage UI covers that side of the harbour.
-      for (const [x0, y0] of [boat, [(near[0] + far[0]) / 2, (near[1] + far[1]) / 2],
-                              [near[0] + (far[0] - near[0]) * 0.35, near[1] + (far[1] - near[1]) * 0.35]]) {
-        const x = frame.left + x0, y = frame.top + y0;
-        if (x < 4 || y < 4 || x >= innerWidth - 4 || y >= innerHeight - 4) continue;
-        const top = document.elementFromPoint(x, y);
-        if (top === element || element.contains(top)) return [x, y];
-      }
+    return target.evaluate(r"""(element, plaqueId) => {
+      const raw = element.getAttribute('data-harbor-probe');
+      if (!raw) return null;
+      const [x, y] = raw.split(',').map(Number);
+      if (![x, y].every(Number.isFinite)) return null;
+      if (x < 4 || y < 4 || x >= innerWidth - 4 || y >= innerHeight - 4) return null;
+      const top = document.elementFromPoint(x, y);
+      if (top === element || element.contains(top) || top?.dataset?.testid === plaqueId) return [x, y];
       return null;
-    }""")
+    }""", plaque_id)
 
 
-def verify_case(page, source, renderer, language, case_dir):
+def settle_board(page):
+    """Wait for the responsive board surface to stop changing size/position."""
+    page.wait_for_timeout(350)
+    page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
+    previous = None
+    for _ in range(10):
+        box = page.get_by_test_id("board-surface").bounding_box()
+        require(box is not None, "board surface has no box")
+        key = tuple(round(box[item], 2) for item in ("x", "y", "width", "height"))
+        if key == previous:
+            return
+        previous = key
+        page.wait_for_timeout(120)
+
+
+def harbour_title(edge, language):
+    return (f"路徑 {edge} 上的港口" if language == "zh-Hant" else f"Harbour at path {edge}")
+
+
+def assert_tooltip(page, edge, language, plaque):
+    popup = page.get_by_role("tooltip")
+    require(popup.count() == 1, f"harbour {edge} tooltip missing")
+    text = popup.inner_text().strip()
+    require(text, f"harbour {edge} empty tooltip")
+    require(harbour_title(edge, language) in text,
+            f"harbour {edge} tooltip title missing: {text[:120]}")
+    require(plaque.get_attribute("aria-label"), f"harbour {edge} plaque lacks its accessible name")
+    bounded(page, rect(popup), f"harbour {edge} tooltip")
+    return popup
+
+
+def screenshot_detail(page, edge, target, popup, case_dir):
+    page.screenshot(path=str(case_dir / f"harbour-{edge}-hover.png"), animations="disabled")
+    target_box, tooltip_box = rect(target), rect(popup)
+    viewport = page.viewport_size
+    left = max(0, min(target_box["x"], tooltip_box["x"]) - 24)
+    top = max(0, min(target_box["y"], tooltip_box["y"]) - 24)
+    right = min(viewport["width"], max(target_box["x"] + target_box["width"],
+                                       tooltip_box["x"] + tooltip_box["width"]) + 24)
+    bottom = min(viewport["height"], max(target_box["y"] + target_box["height"],
+                                         tooltip_box["y"] + tooltip_box["height"]) + 24)
+    page.screenshot(path=str(case_dir / f"harbour-{edge}-hover-detail.png"),
+                    clip={"x": left, "y": top, "width": right - left, "height": bottom - top},
+                    animations="disabled")
+
+
+def hover_harbour(page, harbor, plaque, target, renderer, language):
+    point = harbor_probe(page, target, renderer, plaque.get_attribute("data-testid"))
+    via = "token" if renderer == "svg" else "footprint"
+    if point is None:
+        box = rect(plaque)
+        point = [box["x"] + box["width"] / 2, box["y"] + box["height"] / 2]
+        target = plaque
+        via = "plaque"
+    page.mouse.move(8, 8)
+    page.wait_for_timeout(240)
+    page.mouse.move(*point)
+    page.wait_for_timeout(180)
+    # The 3D camera/projection can settle one or two frames after the surface
+    # box stops changing. Re-read the probe once so a late shift cannot leave
+    # the pointer over the tile below the harbour.
+    fresh = harbor_probe(page, target, renderer, plaque.get_attribute("data-testid"))
+    if fresh is not None and (abs(fresh[0] - point[0]) > 0.5 or abs(fresh[1] - point[1]) > 0.5):
+        point = fresh
+        page.mouse.move(*point)
+        page.wait_for_timeout(180)
+    page.wait_for_timeout(270)
+    require(page.get_by_role("tooltip").count() == 0, f"harbour {harbor['edge']} opened too early")
+    page.wait_for_timeout(700)
+    if page.get_by_role("tooltip").count() == 0:
+        return None
+    popup = assert_tooltip(page, harbor["edge"], language, plaque)
+    under = page.evaluate("([x,y]) => { const t=document.elementFromPoint(x,y); return t?.dataset?.testid ?? null; }", point)
+    require(under in {target.get_attribute("data-testid"), plaque.get_attribute("data-testid")},
+            f"harbour {harbor['edge']} probe is covered by {under}")
+    return {"edge": harbor["edge"], "type": harbor["type"], "via": via, "point": point,
+            "tooltip": {"x": rect(popup)["x"], "y": rect(popup)["y"]}}
+
+
+def verify_case(page, source, renderer, language, size, case_dir):
     board = source["snapshot"]["view"]["board"]
     require(board.get("harbors"), "fixture board has no harbours")
     if renderer == "r3f":
         page.wait_for_function("document.querySelector('[data-testid=\"board\"]')?.dataset.effectiveRenderer === 'r3f'")
-    page.wait_for_timeout(500)
+    settle_board(page)
+    page.keyboard.press("Escape")
+    mobile = size[0] < 900
     checked = []
+    if mobile:
+        # Touch viewports have no hover. Verify that every plaque remains the
+        # keyboard-reachable harbour target and opens the same delayed tooltip.
+        for harbor in board["harbors"]:
+            plaque = page.get_by_test_id(f"inspect-harbor-{harbor['edge']}")
+            require(plaque.count() == 1, f"missing harbour plaque {harbor['edge']}")
+            plaque.focus()
+            page.wait_for_timeout(DELAY_MS - 150)
+            require(page.get_by_role("tooltip").count() == 0, f"harbour {harbor['edge']} focus opened too early")
+            page.get_by_role("tooltip").wait_for()
+            popup = assert_tooltip(page, harbor["edge"], language, plaque)
+            require(plaque.get_attribute("aria-describedby") == popup.get_attribute("id"),
+                    f"harbour {harbor['edge']} focus target lacks tooltip association")
+            checked.append({"edge": harbor["edge"], "type": harbor["type"], "via": "focus",
+                            "tooltip": {"x": rect(popup)["x"], "y": rect(popup)["y"]}})
+            if len(checked) == 1:
+                screenshot_detail(page, harbor["edge"], plaque, popup, case_dir)
+            page.keyboard.press("Escape")
+            require(page.get_by_role("tooltip").count() == 0, f"harbour {harbor['edge']} Escape failed")
+        require(len(checked) == len(board["harbors"]), "not every mobile harbour was checked")
+        return {"harbours": checked, "mode": "focus", "keyboard": "every plaque opens and Escape closes"}
+
     for harbor in board["harbors"]:
-        target = page.get_by_test_id(f"inspect-harbor-{harbor['edge']}")
-        require(target.count() == 1, f"missing harbour inspection target {harbor['edge']}")
+        plaque = page.get_by_test_id(f"inspect-harbor-{harbor['edge']}")
+        require(plaque.count() == 1, f"missing harbour inspection target {harbor['edge']}")
+        target = (page.get_by_test_id(f"inspect-harbor-{harbor['edge']}-footprint")
+                  if renderer == "r3f" else plaque)
         expected_tag = "polygon" if renderer == "r3f" else "rect"
         require(target.evaluate("element => element.tagName.toLowerCase()") == expected_tag,
                 f"harbour {harbor['edge']} should be a {expected_tag}")
-        point = harbor_probe(page, target, renderer)
-        if point is None:
-            continue
-        page.mouse.move(8, 8)
-        page.wait_for_timeout(240)
-        page.mouse.move(*point)
-        page.wait_for_timeout(450)
-        require(page.get_by_role("tooltip").count() == 0, f"harbour {harbor['edge']} opened too early")
-        page.wait_for_timeout(700)
-        popup = page.get_by_role("tooltip")
-        if popup.count() == 0:
-            page.mouse.move(8, 8)
-            page.wait_for_timeout(240)
-            continue
-        text = popup.inner_text().strip()
-        require(text, "empty harbour tooltip")
-        title = (f"路徑 {harbor['edge']} 上的港口" if language == "zh-Hant"
-                 else f"Harbour at path {harbor['edge']}")
-        require(title in text, f"harbour {harbor['edge']} tooltip title missing: {text[:120]}")
-        require(target.get_attribute("aria-describedby") == popup.get_attribute("id"),
-                "harbour target lacks its tooltip association")
-        bounded(page, rect(popup), f"harbour {harbor['edge']} tooltip")
-        # The visible boat/pier end must be hoverable, not only the plaque.
-        under = page.evaluate("([x,y]) => { const t=document.elementFromPoint(x,y); return t?.dataset?.testid ?? null; }", point)
-        require(under == f"inspect-harbor-{harbor['edge']}",
-                f"harbour {harbor['edge']} far end is covered by {under}")
-        checked.append({"edge": harbor["edge"], "type": harbor["type"], "point": point,
-                        "tooltip": {"x": rect(popup)["x"], "y": rect(popup)["y"]}})
-        page.screenshot(path=str(case_dir / f"harbour-{harbor['edge']}-hover.png"), animations="disabled")
-        target_box, tooltip_box = rect(target), rect(popup)
-        viewport = page.viewport_size
-        left = max(0, min(target_box["x"], tooltip_box["x"]) - 24)
-        top = max(0, min(target_box["y"], tooltip_box["y"]) - 24)
-        right = min(viewport["width"], max(target_box["x"] + target_box["width"],
-                                           tooltip_box["x"] + tooltip_box["width"]) + 24)
-        bottom = min(viewport["height"], max(target_box["y"] + target_box["height"],
-                                             tooltip_box["y"] + tooltip_box["height"]) + 24)
-        page.screenshot(path=str(case_dir / f"harbour-{harbor['edge']}-hover-detail.png"),
-                        clip={"x": left, "y": top, "width": right - left, "height": bottom - top},
-                        animations="disabled")
+        result = hover_harbour(page, harbor, plaque, target, renderer, language)
+        require(result is not None, f"harbour {harbor['edge']} hover produced no tooltip")
+        checked.append(result)
+        if len(checked) == 1:
+            screenshot_detail(page, harbor["edge"], target,
+                              page.get_by_role("tooltip"), case_dir)
         page.mouse.move(8, 8)
         page.wait_for_timeout(240)
         require(page.get_by_role("tooltip").count() == 0, f"harbour {harbor['edge']} tooltip stayed after leaving")
-        break
-    require(checked, f"no reachable harbour target with the {renderer} renderer")
-    # Keyboard access uses the same public target and delayed description.
-    target = page.get_by_test_id(f"inspect-harbor-{checked[0]['edge']}")
-    target.focus()
-    page.wait_for_timeout(DELAY_MS - 150)
-    require(page.get_by_role("tooltip").count() == 0, "harbour keyboard tooltip opened too early")
-    page.get_by_role("tooltip").wait_for()
-    require(target.get_attribute("aria-describedby"), "harbour keyboard target lacks tooltip association")
-    page.keyboard.press("Escape")
-    require(page.get_by_role("tooltip").count() == 0, "Escape did not dismiss the harbour tooltip")
-    return {"harbours": checked, "keyboard": "focus opens after one second; Escape dismisses"}
+    require(len(checked) == len(board["harbors"]), "not every harbour was checked")
+
+    if renderer == "r3f":
+        # Orbit the camera and re-check every footprint; the hull and the boat
+        # probe are recomputed from the new projection.
+        for _ in range(4):
+            page.get_by_test_id("rotate-right").click()
+            page.wait_for_timeout(120)
+        page.wait_for_timeout(500)
+        rotated = []
+        for item in checked:
+            edge = item["edge"]
+            plaque = page.get_by_test_id(f"inspect-harbor-{edge}")
+            target = page.get_by_test_id(f"inspect-harbor-{edge}-footprint")
+            result = hover_harbour(page, {"edge": edge, "type": item["type"]}, plaque, target,
+                                   renderer, language)
+            require(result is not None, f"harbour {edge} hover produced no tooltip after rotation")
+            rotated.append(result["edge"])
+            page.mouse.move(8, 8)
+            page.wait_for_timeout(180)
+        for item in checked:
+            item["rotated"] = item["edge"] in rotated
+    return {"harbours": checked, "mode": "hover" if not mobile else "focus",
+            "keyboard": "each plaque opens and Escape closes"}
 
 
 def main():
@@ -201,15 +271,19 @@ def main():
                     require(scenario.state()["effective"] == renderer, "requested renderer unavailable")
                     case = {"renderer": renderer, "viewport": size, "status": "FAIL"}
                     report["cases"].append(case)
-                    case["checks"] = verify_case(page, source, renderer, "zh-Hant", case_dir)
+                    case["checks"] = verify_case(page, source, renderer, "zh-Hant", size, case_dir)
                     page.screenshot(path=str(case_dir / "harbour-hover.png"), animations="disabled")
                     # The production server replaces the OG-image origin placeholder in
                     # index.html, so the harness's byte-for-byte index hash differs by
                     # design. JS/CSS hashes and runtime errors remain checked.
                     unexpected_errors = [error for error in scenario.errors
                                          if error != "loaded asset hash mismatch: /"]
-                    require(not unexpected_errors and not scenario.unmapped,
-                            f"runtime/API errors: {unexpected_errors} {scenario.unmapped}")
+                    require(not unexpected_errors and not scenario.unmapped and
+                            not scenario.console_errors and not scenario.failed_responses and
+                            not scenario.blocked_assets and not scenario.debugger_exceptions,
+                            f"runtime/API errors: {unexpected_errors} {scenario.unmapped} "
+                            f"{scenario.console_errors} {scenario.failed_responses} "
+                            f"{scenario.blocked_assets} {scenario.debugger_exceptions}")
                     case["status"] = "PASS"
                 except Exception as error:
                     case = next((item for item in report["cases"] if item["viewport"] == size and

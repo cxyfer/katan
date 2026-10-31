@@ -19,19 +19,23 @@ outside the same square.
 
 - Add `packages/web/src/board/harbor.ts` as the shared owner of the harbour
   frame (midpoint, outward normal, tangent, rotation), the plaque position and
-  the hover footprint. The 3D model placement and the label position now read
-  these values instead of repeating the 0.38 / 0.285 / 0.205 constants.
-- In 3D, project a flat footprint polygon over the pier and its seaward boat at
-  plaque height and use it as the harbour's single inspection target. The
-  seaward side widens over the boat; SVG keeps its compact token.
+  the hover footprint and the camera-fit envelope. The 3D model placement,
+  label position and fit bounds now read these values instead of repeating the
+  pier, plaque and envelope constants.
+- In 3D, project the pier and boat corners at their real model heights and take
+  the screen-space convex hull. The hull is a pointer-only target below roads
+  and buildings, so a settlement at a harbour endpoint and a road along the
+  coast stay hoverable. The existing plaque-sized rect remains the focusable
+  harbour target above both. SVG keeps its compact token.
 - Keep `describeTarget` and `inspectDescription` unchanged: the public text,
   ownership, endpoint list and related hexes are the same. No rule, wire,
   privacy or command behaviour changes.
 
 The hit target remains one focusable element per harbour, so keyboard focus
-and `aria-describedby` keep their existing semantics. The footprint starts at
-the coastal edge and stays seaward of the adjacent vertices, so coastal builds
-and roads keep their own targets.
+and `aria-describedby` keep their existing semantics. The new pointer footprint
+is `aria-hidden` and not in the tab order; the focusable plaque keeps the same
+label. Because the footprint sits below roads and buildings, their hit areas
+keep priority wherever they cross it.
 
 ## Verification
 
@@ -40,18 +44,24 @@ and roads keep their own targets.
   without PostgreSQL, web 533 passed in 51 files, build passed, smoke 13/13 and
   the compiled development-runner test passed.
 - Browser matrix: 4/4 passed with production build and deterministic fixtures
-  (`svg`/`r3f` at 1366×900 and 390×844). Each case hovers a point near the
-  boat end, waits for the one-second tooltip, checks the title, bounded
-  placement, `aria-describedby`, the element under the pointer and Escape.
-  Source and build digests are compared before and after the run.
+  (`svg`/`r3f` at 1366×900 and 390×844). Desktop cases hover the projected boat
+  hull for all nine harbours, check the tooltip title, bounded placement and the
+  element under the pointer, then orbit the 3D camera by 120° and recheck every
+  harbour. Mobile cases focus every plaque and check the delayed tooltip,
+  `aria-describedby` and Escape. Source and build digests are compared before
+  and after the run.
 - Regression coverage: `board-inspection.test.tsx` now asserts the 3D harbour
-  is one five-corner polygon and that the projected plaque, dock end, boat
-  centre and outer boat edge fall inside it; it also asserts SVG remains a
-  rect.
+  includes one pointer-only screen-space hull over the pier and boat, that the
+  focusable plaque remains a rect, and that the projected deck, boat hull, sail
+  and mast at their real model heights fall inside the hull for all nine fixed
+  harbours at 50°/60°/80° elevation, three azimuths and zoom 1/2. It also
+  asserts the footprint sits below a harbour road and endpoint building, while
+  the plaque stays above them.
 - Screenshots: [3D desktop detail](../../screenshots/harbor-hover/r3f-desktop-detail.png),
   [3D desktop context](../../screenshots/harbor-hover/r3f-desktop.png),
   [SVG desktop detail](../../screenshots/harbor-hover/svg-desktop-detail.png),
-  [3D phone detail](../../screenshots/harbor-hover/r3f-mobile-detail.png).
+  [3D phone detail](../../screenshots/harbor-hover/r3f-mobile-detail.png),
+  [SVG phone detail](../../screenshots/harbor-hover/svg-mobile-detail.png).
 
 The aggregate is [report.json](2026-11-01-harbor-hover/report.json). Reproduce
 after `pnpm build`:
@@ -76,3 +86,4 @@ JS/CSS and runtime errors. Confidence: B.
 - [3D desktop, harbour and tooltip](../../screenshots/harbor-hover/r3f-desktop-detail.png)
 - [SVG desktop, harbour and tooltip](../../screenshots/harbor-hover/svg-desktop-detail.png)
 - [3D phone, harbour and tooltip](../../screenshots/harbor-hover/r3f-mobile-detail.png)
+- [SVG phone, harbour and tooltip](../../screenshots/harbor-hover/svg-mobile-detail.png)

@@ -13,10 +13,8 @@ import {
 } from 'three';
 import type { PublicBoardView } from '@catan/rules';
 import type { BoardGeometry } from '../geometry.ts';
-import { geometryToWorld } from './bounds.ts';
-import { HARBOR_STRUCTURE } from '../harbor.ts';
+import { HARBOR_STRUCTURE, harborPlacement } from '../harbor.ts';
 import { ModelBuilder } from './diorama-geometry.ts';
-import { harborInstances } from './model-specs.ts';
 import type { InstanceTransform, Vec3 } from './transforms.ts';
 
 const PLASTER = '#f4dfb5';
@@ -289,16 +287,14 @@ export interface DioramaHarborInstance extends InstanceTransform {
   type: string;
 }
 
-/** Preserve public edge IDs while choosing the local +Z side from its adjacent hex. */
+/** Preserve public edge IDs and the shared pier orientation. */
 export function dioramaHarborInstances(geometry: BoardGeometry, board: PublicBoardView): DioramaHarborInstance[] {
-  return harborInstances(geometry, board).map((harbor) => {
-    const edge = geometry.edges[harbor.edge]!;
-    const midpoint = geometryToWorld(geometry, (edge.x1 + edge.x2) / 2, (edge.y1 + edge.y2) / 2);
-    const normalX = harbor.position[0] - midpoint.x;
-    const normalZ = harbor.position[2] - midpoint.z;
-    const rotationY = Math.sin(harbor.rotationY) * normalX + Math.cos(harbor.rotationY) * normalZ > 0
-      ? harbor.rotationY : harbor.rotationY + Math.PI;
-    return { edge: harbor.edge, type: harbor.type, position: [midpoint.x, 0, midpoint.z], rotationY, scale: [1, 1, 1] };
+  return board.harbors.flatMap((harbor) => {
+    const placement = harborPlacement(geometry, harbor.edge);
+    if (!placement) return [];
+    return [{ edge: harbor.edge, type: harbor.type,
+      position: [placement.midpoint.x, 0, placement.midpoint.z] as const,
+      rotationY: placement.rotationY, scale: [1, 1, 1] as const }];
   });
 }
 

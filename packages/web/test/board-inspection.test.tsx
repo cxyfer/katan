@@ -5,7 +5,7 @@ import { App } from '../src/App.tsx';
 import { BoardInspectionLayer, INSPECTION_DELAY_MS } from '../src/components/BoardInspection.tsx';
 import type { BoardViewportState, ProjectionSnapshot, WorldPoint } from '../src/board/render-contract.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
-import { HARBOR_STRUCTURE, harborHitOutline, harborLabelPoint, harborPlacement } from '../src/board/harbor.ts';
+import { harborHitPoints, harborPlacement, harborProbePoint, screenConvexHull } from '../src/board/harbor.ts';
 import { inspectDescription, inspectionElements } from '../src/board/inspection.ts';
 import { sceneBounds } from '../src/board/three/bounds.ts';
 import { applySceneCamera, fitSceneCamera } from '../src/board/three/camera.ts';
@@ -93,12 +93,17 @@ describe('public map inspection', () => {
     expect(building.getAttribute('tabindex')).toBe('0');
     expect(building.getAttribute('aria-label')).toContain('Public owner');
     const harbor = screen.getByTestId(`inspect-harbor-${board.harbors[0]!.edge}`);
+    expect(harbor.tagName.toLowerCase()).toBe('rect');
+    expect(harbor.getAttribute('tabindex')).toBe('0');
     if (renderer === 'r3f') {
-      expect(harbor.tagName.toLowerCase()).toBe('polygon');
-      expect(harbor.getAttribute('points')?.trim().split(/\s+/)).toHaveLength(5);
+      const footprint = screen.getByTestId(`inspect-harbor-${board.harbors[0]!.edge}-footprint`);
+      expect(footprint.tagName.toLowerCase()).toBe('polygon');
+      expect(footprint.getAttribute('points')?.trim().split(/\s+/).length).toBeGreaterThanOrEqual(3);
+      expect(footprint.getAttribute('data-harbor-probe')).toMatch(/^-?[\d.]+,/);
+      expect(footprint.getAttribute('tabindex')).toBe('-1');
+      expect(footprint.getAttribute('aria-hidden')).toBe('true');
     } else {
-      expect(harbor.tagName.toLowerCase()).toBe('rect');
-      expect(harbor.getAttribute('points')).toBeNull();
+      expect(screen.queryByTestId(`inspect-harbor-${board.harbors[0]!.edge}-footprint`)).toBeNull();
     }
     act(() => result.current.setZoom(3));
     project();
@@ -158,31 +163,12 @@ describe('public map inspection', () => {
     expect(dock.world).not.toEqual(inspectionElements(geometry, board, 'svg').find((item) => item.kind === 'harbor')!.world);
   });
 
-  it('gives a 3D harbour one hover polygon over the pier, plaque and moored boat', () => {
+  it('covers the rendered 3D pier and boat for every fixed harbour and camera', () => {
     const board = fixedBoard();
-    const edge = board.harbors[0]!.edge;
-    const placement = harborPlacement(geometry, edge)!;
-    const label = harborLabelPoint(placement);
-    // Local +X/+Z follow the diorama instance: +Z is outward, +X carries the
-    // boat. Keep this independent of the tangent helper used by the hit area.
-    const modelPoint = (x: number, z: number, y: number): WorldPoint => ({
-      x: placement.midpoint.x + Math.cos(placement.rotationY) * x + Math.sin(placement.rotationY) * z,
-      y,
-      z: placement.midpoint.z - Math.sin(placement.rotationY) * x + Math.cos(placement.rotationY) * z,
-    });
-    const dockEnd = modelPoint(0, 0.58, 0.15);
-    const deckLeft = modelPoint(-0.35, 0.3, 0.19);
-    const deckRight = modelPoint(0.35, 0.3, 0.19);
-    const boat = modelPoint(0.32, 0.63, 0.05);
-    const boatOuter = modelPoint(0.4, 0.63, 0.05);
-    const r3f = inspectionElements(geometry, board, 'r3f').find((item) => item.kind === 'harbor' && item.index === edge)!;
-    const svg = inspectionElements(geometry, board, 'svg').find((item) => item.kind === 'harbor' && item.index === edge)!;
-    expect(svg.outline).toBeUndefined();
-    expect(r3f.world).toEqual(label);
-    expect(r3f.outline).toHaveLength(5);
-    expect(new Set(r3f.outline!.map((point) => point.y))).toEqual(new Set([HARBOR_STRUCTURE.hitHeight]));
-    expect(harborHitOutline(geometry, edge)).toEqual(r3f.outline);
-
+    const harborEdge = board.harbors[0]!.edge;
+    const harborVertex = geometry.topology.edges[harborEdge]!.vertices[0]!;
+    board.roads[harborEdge] = { player: 'p2', ship: false };
+    board.buildings[harborVertex] = { player: 'p2', city: false };
     const bounds = sceneBounds(geometry);
     const rect = { left: 20, top: 50, width: 1100, height: 700 };
     const viewport: BoardViewportState = {
@@ -190,17 +176,73 @@ describe('public map inspection', () => {
       zoom: 1,
       rect,
     };
-    const camera = new OrthographicCamera();
-    applySceneCamera(camera, fitSceneCamera(bounds, rect), viewport);
-    const matrix = new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    const project = (point: WorldPoint) => {
-      const projected = new Vector3(point.x, point.y, point.z).applyMatrix4(matrix);
-      return { x: rect.left + (projected.x + 1) * 0.5 * rect.width,
-        y: rect.top + (1 - projected.y) * 0.5 * rect.height };
-    };
-    const polygon = r3f.outline!.map(project);
-    for (const point of [label, dockEnd, deckLeft, deckRight, boat, boatOuter]) {
-      expect(polygonContains(polygon, project(point))).toBe(true);
+    const r3fElements = inspectionElements(geometry, board, 'r3f');
+
+    // Local +X/+Z follow the diorama instance: +Z is outward, +X carries the
+    // boat. The points below are real model heights, not a flat hit plane.
+    const modelPoint = (placement: ReturnType<typeof harborPlacement>, side: number, outward: number,
+      height: number): WorldPoint => ({
+      x: placement!.midpoint.x + Math.cos(placement!.rotationY) * side + Math.sin(placement!.rotationY) * outward,
+      y: height,
+      z: placement!.midpoint.z - Math.sin(placement!.rotationY) * side + Math.cos(placement!.rotationY) * outward,
+    });
+
+    for (const elevation of [50, 60, 80]) {
+      for (const azimuth of [20, 110, 245]) {
+        for (const zoom of [1, 2]) {
+          const camera = new OrthographicCamera();
+          applySceneCamera(camera, fitSceneCamera(bounds, rect, azimuth, elevation), {
+            ...viewport, azimuthDeg: azimuth, elevationDeg: elevation, zoom });
+          const matrix = new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+          const project = (point: WorldPoint) => {
+            const projected = new Vector3(point.x, point.y, point.z).applyMatrix4(matrix);
+            return { x: rect.left + (projected.x + 1) * 0.5 * rect.width,
+              y: rect.top + (1 - projected.y) * 0.5 * rect.height };
+          };
+          for (const harbor of board.harbors) {
+            const footprint = r3fElements.find((item) => item.kind === 'harbor' &&
+              item.index === harbor.edge && item.pointerOnly)!;
+            const plaque = r3fElements.find((item) => item.kind === 'harbor' &&
+              item.index === harbor.edge && !item.pointerOnly)!;
+            expect(footprint.hull).toEqual(harborHitPoints(geometry, harbor.edge));
+            expect(footprint.probe).toEqual(harborProbePoint(geometry, harbor.edge));
+            expect(plaque.hull).toBeUndefined();
+            if (harbor.edge === harborEdge) {
+              const footprintIndex = r3fElements.indexOf(footprint);
+              const roadIndex = r3fElements.findIndex((item) => item.kind === 'edge' && item.index === harborEdge);
+              const buildingIndex = r3fElements.findIndex((item) => item.kind === 'vertex' && item.index === harborVertex);
+              expect(footprintIndex).toBeLessThan(roadIndex);
+              expect(footprintIndex).toBeLessThan(buildingIndex);
+              expect(r3fElements.indexOf(plaque)).toBeGreaterThan(buildingIndex);
+            }
+            const polygon = screenConvexHull(footprint.hull!.map(project));
+            expect(polygon.length).toBeGreaterThanOrEqual(3);
+            const placement = harborPlacement(geometry, harbor.edge)!;
+            // Interior samples of the real deck, hull, sail and mast. Points on
+            // the exact hull border are excluded because a half-open point test
+            // treats them as outside.
+            const points = [
+              modelPoint(placement, 0, 0.285, 0.204),
+              modelPoint(placement, -0.33, 0.28, 0.204),
+              modelPoint(placement, 0.33, 0.28, 0.204),
+              modelPoint(placement, 0.1, 0.58, 0.1),
+              modelPoint(placement, 0.32, 0.63, -0.274),
+              modelPoint(placement, 0.32, 0.63, -0.243),
+              modelPoint(placement, 0.32, 0.63, -0.127),
+              modelPoint(placement, 0.32, 0.6, -0.27),
+              modelPoint(placement, 0.32, 0.8, -0.27),
+              modelPoint(placement, 0.32, 0.6, -0.12),
+              modelPoint(placement, 0.32, 0.6, 0.18),
+              modelPoint(placement, 0.32, 0.6, 0.22),
+              footprint.probe!,
+            ];
+            for (const [index, point] of points.entries()) {
+              expect(polygonContains(polygon, project(point)),
+                `${elevation}/${azimuth}/${zoom}/${harbor.edge}/${index}`).toBe(true);
+            }
+          }
+        }
+      }
     }
   });
 

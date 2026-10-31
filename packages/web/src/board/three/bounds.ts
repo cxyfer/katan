@@ -1,6 +1,7 @@
 import type { PublicBoardView } from '@catan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import type { SceneBounds, WorldPoint } from '../render-contract.ts';
+import { HARBOR_STRUCTURE } from '../harbor.ts';
 
 /** Model dimensions are expressed in topology units where one hex radius is 1. */
 export const BOARD_MODEL_METRICS = Object.freeze({
@@ -16,8 +17,6 @@ export const BOARD_MODEL_METRICS = Object.freeze({
   robberLocalHeight: 0.92,
   robberHeight: 0.93,
   badgeHeight: 0.06,
-  harborOffset: 0.85,
-  harborHalfDiagonal: 0.43,
 });
 
 export interface BoardPlanePoint {
@@ -111,12 +110,12 @@ export function sceneBounds(geometry: BoardGeometry, _board?: PublicBoardView): 
     const mx = (a.x + b.x) / 2;
     const mz = (a.z + b.z) / 2;
     const sign = (mx - center.x) * dz + (mz - center.z) * -dx > 0 ? 1 : -1;
-    for (const side of [-1, 1]) for (const outward of [0, BOARD_MODEL_METRICS.harborOffset]) {
+    for (const side of [-1, 1]) for (const outward of [0, HARBOR_STRUCTURE.fitOffset]) {
       for (const y of [-BOARD_MODEL_METRICS.coastDepth, 0.55]) {
         const corner = {
-          x: mx + dz / length * sign * outward + dx / length * side * BOARD_MODEL_METRICS.harborHalfDiagonal,
+          x: mx + dz / length * sign * outward + dx / length * side * HARBOR_STRUCTURE.fitHalfDiagonal,
           y,
-          z: mz - dx / length * sign * outward + dz / length * side * BOARD_MODEL_METRICS.harborHalfDiagonal,
+          z: mz - dx / length * sign * outward + dz / length * side * HARBOR_STRUCTURE.fitHalfDiagonal,
         };
         fitPoints.push(corner);
         includePoint(bounds, corner);
