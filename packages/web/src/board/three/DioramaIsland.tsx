@@ -190,7 +190,7 @@ function Ocean({ geometry }: Pick<BoardSceneProps, 'geometry'>) {
         float surf = 1.0 - smoothstep(0.0, 0.05 + ripple * 0.008, shore);
         float swell = smoothstep(0.035, 0.0, abs(shore - 0.16 - broad * 0.025)) * smoothstep(0.1, 0.6, ripple * 0.5 + 0.5);
         water = mix(water, uFoam, clamp(surf * 0.85 + swell * 0.35, 0.0, 1.0));
-        float glint = pow(max(0.0, ripple), 18.0) * .09 * smoothstep(0.3, 1.5, shore);
+        float glint = pow(max(0.0, ripple), 24.0) * .05 * smoothstep(0.3, 1.5, shore);
         diffuseColor.rgb = water * (0.97 + broad * 0.03) + glint;
         `,
       );

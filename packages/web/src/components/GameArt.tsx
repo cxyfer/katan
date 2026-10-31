@@ -201,15 +201,6 @@ export function ResourceGlyph({ resource, size = 18 }: { resource: string; size?
   return <svg className="resource-glyph" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">{RESOURCE_GLYPHS[resource]}</svg>;
 }
 
-export function BuildingPiece({ x, y, city, color }: { x: number; y: number; city: boolean; color: string }) {
-  return <g transform={`translate(${x} ${y})`}>
-    <ellipse cy={10} rx={city ? 23 : 15} ry={5} fill="#071d28" opacity=".5" />
-    <path d={city ? 'M-13 9v-17l7-7 7 7v7l9-6 9 6v10Z' : 'M-10 9V-4L0-13 10-4V9Z'} fill={color} stroke="#21343a" strokeWidth={2} strokeLinejoin="round" />
-    <path d={city ? 'M-6-15 1-8v7l9-6 9 6v10H-6Z' : 'M0-13 10-4V9H0Z'} fill="#102c39" opacity=".23" />
-    <path d={city ? 'm-13-8 7-7 7 7M1-1l9-6 9 6' : 'm-10-4 10-9 10 9'} fill="none" stroke="#fff2c4" strokeWidth={2} opacity=".65" />
-  </g>;
-}
-
 /** 原創首頁插畫；六角島嶼只是裝飾，不呈現虛構遊戲狀態。 */
 export function IslandIllustration({ className = '' }: { className?: string }) {
   const hex = '0,-66 57,-33 57,33 0,66 -57,33 -57,-33';

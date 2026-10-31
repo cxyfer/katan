@@ -16,7 +16,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
 BASE = os.environ.get('UI_BASE_URL', 'http://127.0.0.1:3000')
-TURNS = int(os.environ.get('BOARD_TURNS', '24'))
+TURNS = int(os.environ.get('BOARD_TURNS', '45'))
 if len(sys.argv) != 2:
     sys.exit('usage: capture.py <new empty output directory>')
 OUT = Path(sys.argv[1])
@@ -114,6 +114,9 @@ def settle(page, renderer):
 
 
 def shot(page, name, clip=None):
+    # 游標移到角落，避免停在棋盤上觸發地塊說明
+    page.mouse.move(2, page.viewport_size['height'] - 2)
+    page.wait_for_timeout(150)
     page.screenshot(path=str(OUT / f'{name}.png'), animations='disabled', clip=clip)
     print('CAPTURE', f'{name}.png', flush=True)
 
