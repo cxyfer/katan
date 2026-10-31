@@ -3,15 +3,18 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { App } from './App.tsx';
 import { createApiClient } from './api/client.ts';
+import { createAudioEngine } from './audio/engine.ts';
 
 const container = document.getElementById('root');
-const preview = new URLSearchParams(globalThis.location.search).get('preview') === 'island';
-const IslandPreview = preview ? lazy(() => import('./components/IslandPreview.tsx')) : null;
+const preview = new URLSearchParams(globalThis.location.search).get('preview');
+const IslandPreview = preview === 'island' ? lazy(() => import('./components/IslandPreview.tsx')) : null;
+const SoundPreview = preview === 'sounds' ? lazy(() => import('./components/SoundPreview.tsx')) : null;
 if (container) {
   createRoot(container).render(
     <StrictMode>
       {IslandPreview ? <Suspense fallback={<p role="status">正在載入島嶼展示…</p>}><IslandPreview /></Suspense>
-        : <App services={{ api: createApiClient() }} />}
+        : SoundPreview ? <Suspense fallback={<p role="status">正在載入音效展示…</p>}><SoundPreview /></Suspense>
+          : <App services={{ api: createApiClient(), audio: createAudioEngine() }} />}
     </StrictMode>,
   );
 }
