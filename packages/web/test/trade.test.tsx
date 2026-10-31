@@ -1,12 +1,28 @@
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { CommandRequest } from '@catan/protocol';
+import type { CommandRequest, ServerMessage } from '@catan/protocol';
 import type { Offer } from '@catan/rules';
+import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
 import { offerTermsForViewer, tradeShortfall } from '../src/components/TradePanel.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
+
+class TestSocket implements SocketLike {
+  open = () => {};
+  disconnect = () => {};
+  message = (_data: string) => {};
+  send() {}
+  close() {}
+  onOpen(handler: () => void) { this.open = handler; }
+  onClose(handler: (info: { code: number; reason: string }) => void) {
+    this.disconnect = () => handler({ code: 1006, reason: 'test disconnect' });
+  }
+  onMessage(handler: (data: string) => void) { this.message = handler; }
+  onError() {}
+  deliver(message: ServerMessage) { this.message(JSON.stringify(message)); }
+}
 
 beforeEach(() => {
   const original = HTMLElement.prototype.getBoundingClientRect;
@@ -27,6 +43,26 @@ async function openGame(api: FakeApi, tool?: 'trade' | 'exchange'): Promise<void
   fireEvent.click(await screen.findByTestId('resume-g1'));
   await screen.findByTestId('board-svg');
   if (tool) fireEvent.click(screen.getByTestId(`tool-tab-${tool}`));
+}
+
+async function openGameWithSocket(api: FakeApi, sockets: TestSocket[]): Promise<void> {
+  render(
+    <App
+      services={{
+        api,
+        storage: memoryStorage(),
+        languages: ['en'],
+        socketFactory: () => {
+          const socket = new TestSocket();
+          sockets.push(socket);
+          return socket;
+        },
+      }}
+    />,
+  );
+  act(() => sockets[0]!.open());
+  fireEvent.click(await screen.findByTestId('resume-g1'));
+  await screen.findByTestId('board-svg');
 }
 
 const ACCEPTED = {
@@ -439,6 +475,132 @@ describe('development cards and pending effects', () => {
 
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
     expect(lastCommand(api)).toEqual({ type: 'pending.discard', resources: ['wool', 'grain'] });
+  });
+
+  it('moves cards between the hand and the discard pile, capped by the hand and the quota', async () => {
+    const view = makeView({
+      hints: null,
+      pending: { kind: 'discard', required: { p1: 4 }, waitingFor: ['p1'] },
+    });
+    view.players[0]!.resources = { lumber: 1, brick: 2, wool: 3, grain: 2, ore: 0 };
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api);
+
+    const left = (resource: string) => screen.getByTestId(`discard-left-${resource}`).textContent;
+    const card = (resource: string) => screen.getByTestId(`discard-add-${resource}`);
+    const counts = () => screen.getByTestId('discard-counts').textContent;
+    const submit = () => screen.getByTestId('discard-submit') as HTMLButtonElement;
+
+    // 五種資源一律列出：沒有的礦石也在，只是不能選。
+    expect(left('ore')).toBe('0');
+    expect(card('ore').getAttribute('aria-disabled')).toBe('true');
+    expect(left('wool')).toBe('3');
+    expect(counts()).toBe('0 / 4');
+    expect(screen.getByTestId('discard-after').textContent).toBe('8 left after discarding');
+    expect(submit().disabled).toBe(true);
+    expect(submit().textContent).toBe('Pick 4 more');
+
+    // 木材只有一張：移到棄牌區後手上變 0，再點也不會多選。
+    fireEvent.click(card('lumber'));
+    expect(left('lumber')).toBe('0');
+    expect(card('lumber').getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(card('lumber'));
+    expect(counts()).toBe('1 / 4');
+    expect(screen.getByTestId('discard-picked-lumber').textContent).toBe('×1');
+
+    // 點棄牌區的那疊放回手牌；最後一張放回後焦點落回該資源的手牌。
+    fireEvent.click(screen.getByTestId('discard-return-lumber'));
+    expect(left('lumber')).toBe('1');
+    expect(counts()).toBe('0 / 4');
+    expect(screen.queryByTestId('discard-return-lumber')).toBeNull();
+    expect(document.activeElement).toBe(card('lumber'));
+
+    // 同一種資源疊成一疊；放回只退一張，這疊還在時焦點留在原處。
+    fireEvent.click(card('brick'));
+    fireEvent.click(card('brick'));
+    expect(left('brick')).toBe('0');
+    expect(screen.getByTestId('discard-picked-brick').textContent).toBe('×2');
+    const brickStack = screen.getByTestId('discard-return-brick');
+    expect(brickStack.getAttribute('aria-label')).toBe('2 Brick in the discard pile; take one back');
+    brickStack.focus();
+    fireEvent.click(brickStack);
+    expect(left('brick')).toBe('1');
+    expect(counts()).toBe('1 / 4');
+    expect(screen.getByTestId('discard-picked-brick').textContent).toBe('×1');
+    expect(document.activeElement).toBe(screen.getByTestId('discard-return-brick'));
+
+    fireEvent.click(card('brick'));
+    fireEvent.click(card('lumber'));
+    fireEvent.click(card('wool'));
+    expect(counts()).toBe('4 / 4');
+    expect(screen.getByTestId('discard-after').textContent).toBe('4 left after discarding');
+    // 選滿後其他資源也不能再加。
+    expect(card('grain').getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(card('grain'));
+    expect(left('grain')).toBe('2');
+    expect(submit().disabled).toBe(false);
+    expect(submit().textContent).toBe('Discard 4');
+
+    // 一疊放完時焦點移到右邊的下一疊（木材 → 磚塊）。
+    fireEvent.click(screen.getByTestId('discard-return-lumber'));
+    expect(document.activeElement).toBe(screen.getByTestId('discard-return-brick'));
+    fireEvent.click(card('lumber'));
+
+    // 「全部放回」清空棄牌區。
+    fireEvent.click(screen.getByTestId('discard-reset'));
+    expect(counts()).toBe('0 / 4');
+    expect(left('wool')).toBe('3');
+    for (const resource of ['wool', 'wool', 'brick', 'lumber']) fireEvent.click(card(resource));
+    fireEvent.click(submit());
+
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(lastCommand(api)).toEqual({
+      type: 'pending.discard',
+      resources: ['lumber', 'brick', 'wool', 'wool'],
+    });
+  });
+
+  it('clears the picker and live announcement after I submit', async () => {
+    const sockets: TestSocket[] = [];
+    const pending = {
+      kind: 'discard' as const,
+      required: { p1: 2, p2: 3 },
+      waitingFor: ['p1', 'p2'],
+    };
+    const api = createFakeApi({
+      snapshot: makeSnapshot(makeView({ hints: null, pending })),
+    });
+    api.setCommandResult(ACCEPTED);
+    await openGameWithSocket(api, sockets);
+
+    expect(screen.getByTestId('required-action-prompt').getAttribute('data-mine')).toBe('true');
+    await waitFor(() => expect(screen.getByTestId('live-region').textContent).toContain('Discard'));
+
+    fireEvent.click(screen.getByTestId('discard-add-wool'));
+    fireEvent.click(screen.getByTestId('discard-add-grain'));
+    fireEvent.click(screen.getByTestId('discard-submit'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+
+    // p1 still appears in `required` (the effect's original set) but leaves
+    // `waitingFor` once the authoritative snapshot reports the submission.
+    const waiting = makeSnapshot(
+      makeView({ hints: null, pending: { ...pending, waitingFor: ['p2'] } }),
+      13,
+    );
+    waiting.view.seq = 13;
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: waiting }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('required-action-prompt').getAttribute('data-mine')).toBe('false');
+    });
+    const prompt = screen.getByTestId('required-action-prompt');
+    expect(prompt.textContent).toContain('Waiting for other players to discard');
+    expect(screen.getByTestId('prompt-waiting').textContent).toBe('Waiting for 小美 (3)');
+    expect(screen.queryByTestId('prompt-waiting')).not.toBeNull();
+    expect(screen.queryByTestId('discard-submit')).toBeNull();
+    expect(screen.queryByTestId('discard-add-lumber')).toBeNull();
+    expect(screen.getByTestId('live-region').textContent).toBe('');
   });
 
   it('lets the thief pick a victim from the engine’s candidate list', async () => {

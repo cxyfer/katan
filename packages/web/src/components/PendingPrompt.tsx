@@ -1,10 +1,9 @@
-import { useState } from 'react';
-import { RESOURCES, type Resource } from '@catan/rules';
-import { useLocale, useT } from '../i18n/context.tsx';
-import { formatResourceList } from '../i18n/format.ts';
+import { RESOURCES } from '@catan/rules';
+import { useT } from '../i18n/context.tsx';
 import { requiredActionFor } from '../state/pending.ts';
-import { followUpsHeld } from '../state/table.ts';
+import { followUpsHeld, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
+import { DiscardPicker } from './DiscardPicker.tsx';
 
 /**
  * Mandatory-response prompt (docs/SPEC.md §4.4/§8.4).
@@ -15,14 +14,12 @@ import type { TableController } from '../state/useTable.ts';
  */
 export function PendingPrompt({ controller }: { controller: TableController }) {
   const t = useT();
-  const locale = useLocale();
   const { state, actions } = controller;
   const view = state.game?.view ?? null;
   const selfId = state.session?.id ?? null;
   // 擲骰演出期間先只顯示「擲骰中」，點數揭曉後才給出棄牌、結束回合等後續選項。
   const rolling = followUpsHeld(state);
   const action = requiredActionFor(state);
-  const [discardPick, setDiscardPick] = useState<Resource[]>([]);
 
   if (!view) return null;
   const pending = rolling ? null : view.pending;
@@ -30,8 +27,13 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
   const nameOf = (playerId: string) =>
     view.players.find((player) => player.id === playerId)?.nickname ?? playerId;
 
-  const required = pending && pending.kind === 'discard' ? (pending.required[selfId ?? ''] ?? 0) : 0;
-  const selected = discardPick.length;
+  const discard = pending && pending.kind === 'discard' ? pending : null;
+  // The engine keeps the original `required` set after a player submits; only
+  // `action.mine` (derived from `waitingFor`) decides whether this viewer still
+  // owes a selection. Re-deriving it from `required` would reopen the picker
+  // while the table waits for the remaining players.
+  const discardMine = discard !== null && action?.kind === 'discard' && action.mine;
+  const required = discardMine ? (discard.required[selfId ?? ''] ?? 0) : 0;
 
   return (
     <section
@@ -47,60 +49,30 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       {action && !action.mine && action.waitingFor.length > 0 && (
         <p className="muted" data-testid="prompt-waiting">
           {t('play.waitingForPlayers', {
-            players: action.waitingFor.map(nameOf).join('、'),
+            // 棄牌張數是公開資訊（required），列出來讓等待的人知道還要多久；
+            // 陣列交給 interpolate 依語系的分隔符號串接。
+            players: action.waitingFor
+              .map((playerId) =>
+                discard
+                  ? t('play.pending.discardWaitingEntry', {
+                      player: nameOf(playerId),
+                      count: discard.required[playerId] ?? 0,
+                    })
+                  : nameOf(playerId),
+              ),
           })}
         </p>
       )}
 
-      {pending && pending.kind === 'discard' && required > 0 && (
+      {discardMine && discard && (
         <div className="prompt__body">
-          <p data-testid="discard-counts">
-            {t('play.pending.discardRequired', { required })} ·{' '}
-            {t('play.pending.discardSelected', { selected })}
-          </p>
-          {selected > 0 && (
-            <p className="muted" data-testid="discard-picked">
-              {formatResourceList(locale, discardPick)}
-            </p>
-          )}
-          <ul className="resource-picker">
-            {RESOURCES.map((resource) => (
-              <li key={resource}>
-                <button
-                  type="button"
-                  className="button button--chip"
-                  data-testid={`discard-add-${resource}`}
-                  disabled={selected >= required}
-                  onClick={() => setDiscardPick((current) => [...current, resource])}
-                >
-                  {t(`resource.${resource}`)} +
-                </button>
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            className="button button--ghost"
-            data-testid="discard-reset"
-            onClick={() => setDiscardPick([])}
-          >
-            {t('app.cancel')}
-          </button>
-          <button
-            type="button"
-            className="button button--primary"
-            data-testid="discard-submit"
-            disabled={selected !== required}
-            onClick={() => {
-              void actions.submitCommand(
-                { type: 'pending.discard', resources: discardPick },
-                'play.pending.discard',
-              );
-              setDiscardPick([]);
-            }}
-          >
-            {t('play.pending.discardSubmit')}
-          </button>
+          <DiscardPicker
+            required={required}
+            hand={shownHand(state)}
+            onSubmit={(resources) =>
+              void actions.submitCommand({ type: 'pending.discard', resources }, 'play.pending.discardSubmit')
+            }
+          />
         </div>
       )}
 

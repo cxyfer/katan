@@ -51,12 +51,17 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
     switch (pending.kind) {
       case 'discard': {
         const required = pending.required[me ?? ''] ?? 0;
+        // `required` is who owed at effect start; `waitingFor` is the
+        // authoritative outstanding set. Once I submit, I must drop the
+        // selection prompt and see the remaining wait list instead
+        // (docs/SPEC.md §4.4).
+        const mine = required > 0 && me !== null && pending.waitingFor.includes(me);
         return {
           kind: 'discard',
-          messageId: 'play.pending.discard',
-          params: { count: required },
-          mine: required > 0,
-          waitingFor: pending.waitingFor,
+          messageId: mine ? 'play.pending.discard' : 'play.pending.discardWaiting',
+          params: mine ? { count: required } : {},
+          mine,
+          waitingFor: mine ? [] : pending.waitingFor,
         };
       }
       case 'moveRobber':

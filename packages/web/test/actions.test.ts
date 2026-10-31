@@ -161,17 +161,39 @@ describe('required action derivation', () => {
     expect(requiredActionFor(theirs)).toMatchObject({ kind: 'roll', mine: false, waitingFor: ['p2'] });
   });
 
-  it('marks a discard as mine only when I owe cards', () => {
+  it('marks a discard as mine only while the engine still waits for me', () => {
     const board = fixedBoard();
     const pending = { kind: 'discard' as const, required: { p1: 4, p2: 3 }, waitingFor: ['p1', 'p2'] };
     const mine = stateWith({
       game: makeSnapshot(makeView({ board, pending, hints: null })),
     });
-    expect(requiredActionFor(mine)).toMatchObject({ kind: 'discard', mine: true, params: { count: 4 } });
+    expect(requiredActionFor(mine)).toMatchObject({
+      kind: 'discard',
+      mine: true,
+      params: { count: 4 },
+      waitingFor: [],
+    });
+
+    // p1 already submitted: `required` still lists p1, but the outstanding
+    // wait list does not. The prompt must switch to waiting for p2 instead of
+    // asking p1 to discard again (docs/SPEC.md §4.4).
+    const submitted = stateWith({
+      game: makeSnapshot(
+        makeView({ board, pending: { ...pending, waitingFor: ['p2'] }, hints: null }),
+      ),
+    });
+    const submittedAction = requiredActionFor(submitted);
+    expect(submittedAction).toMatchObject({
+      kind: 'discard',
+      mine: false,
+      messageId: 'play.pending.discardWaiting',
+      waitingFor: ['p2'],
+    });
+    expect(requiredActionAnnouncement(submittedAction, (id) => id)).toBeNull();
 
     const notMine = stateWith({
       game: makeSnapshot(
-        makeView({ board, pending: { ...pending, required: { p2: 3 } }, hints: null }),
+        makeView({ board, pending: { ...pending, required: { p2: 3 }, waitingFor: ['p2'] }, hints: null }),
       ),
     });
     expect(requiredActionFor(notMine)).toMatchObject({ kind: 'discard', mine: false });
