@@ -12,7 +12,7 @@ import {
   TorusGeometry,
   Vector3,
 } from 'three';
-import { ModelBuilder, sceneryRandom } from './diorama-geometry.ts';
+import { ModelBuilder, PaintedMesh, sceneryRandom } from './diorama-geometry.ts';
 import type { Vec3 } from './transforms.ts';
 
 const TAU = Math.PI * 2;
@@ -64,10 +64,6 @@ function box(b: ModelBuilder, color: string, at: Vec3, size: Vec3, rotation: Vec
 
 function pebble(b: ModelBuilder, color: string, x: number, z: number, r: number, height = r * 1.25) {
   b.add(new IcosahedronGeometry(1, 0), color, [x, height * 0.48, z], [r, height * 0.5, r * 0.8], [0, x * 5, 0]);
-}
-
-function patch(b: ModelBuilder, color: string, x: number, z: number, rx: number, rz: number, height = 0.035) {
-  b.add(new SphereGeometry(1, 12, 6), color, [x, height * 0.5, z], [rx, height * 0.5, rz]);
 }
 
 /** Place an intact miniature with translation/yaw only; its dimensions stay native. */
@@ -165,84 +161,212 @@ function forest(b: ModelBuilder, random: () => number, variant: number) {
   for (const [x, z] of [[0.56, 0.32], [-0.61, 0.14], [0.5, -0.4], [-0.08, -0.71]]) pebble(b, '#a5ae95', x!, z!, 0.035);
 }
 
-/** A closed irregular ridge with a separate, continuous snow line. */
-function ridge(b: ModelBuilder, x: number, z: number, radius: number, height: number, seed: number) {
-  const random = sceneryRandom(seed);
-  const base: Vec3[] = Array.from({ length: 7 }, (_, index) => {
-    const angle = index / 7 * TAU;
-    const r = radius * (0.8 + random() * 0.2);
-    return [Math.cos(angle) * r, 0, Math.sin(angle) * r * 0.82];
+/** Keep every footprint vertex out of the token well and the shared building lanes. */
+function clampFootprint(x: number, z: number): [number, number] {
+  const radius = Math.hypot(x, z);
+  // Chords between two clamped corners still clear the 0.3 token well.
+  if (radius < 0.335) {
+    const scale = 0.335 / (radius || 1);
+    x *= scale; z *= scale;
+  }
+  const sideLimit = Math.sqrt(3) * 0.86 / 2 - 0.002;
+  x = Math.max(-sideLimit, Math.min(sideLimit, x));
+  const diagonal = Math.abs(z) + Math.abs(x) / Math.sqrt(3);
+  if (diagonal > 0.858) z = Math.sign(z) * Math.max(0, 0.858 - Math.abs(x) / Math.sqrt(3));
+  return [x, z];
+}
+
+interface MassOptions {
+  x: number; z: number; rx: number; rz: number; height: number; seed: number;
+  /** Ring heights in 0..1; the last level is the crest. */
+  levels: readonly number[];
+  /** Radius multiplier per level; zero closes the crest at a single peak. */
+  profile: (t: number) => number;
+  /** Paint for a face whose centroid sits at relative height t. */
+  paint: (t: number, face: number, random: () => number) => string;
+  sides?: number;
+  jitter?: number;
+}
+
+/** A closed faceted lathe with jittered rings, painted face by face by height. */
+function rockMass(mesh: PaintedMesh, options: MassOptions) {
+  const random = sceneryRandom(options.seed);
+  const sides = options.sides ?? 9;
+  const jitter = options.jitter ?? 0.26;
+  const phase = random() * TAU;
+  const rings = options.levels.map((t, level) => {
+    const scale = options.profile(t);
+    const y = level === 0 ? 0 : options.height * t * (0.95 + random() * 0.08);
+    return Array.from({ length: sides }, (_, index) => {
+      const angle = phase + (index + (random() - 0.5) * 0.35) / sides * TAU;
+      const wobble = 1 - jitter / 2 + random() * jitter;
+      const [x, z] = clampFootprint(
+        options.x + Math.sin(angle) * options.rx * scale * wobble,
+        options.z + Math.cos(angle) * options.rz * scale * wobble,
+      );
+      return [x, Math.min(y, 0.8), z] as Vec3;
+    });
   });
-  const peak: Vec3 = [radius * 0.15, height, -radius * 0.12];
-  const addFace = (points: readonly Vec3[], color: string) => {
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(points.flat(), 3));
-    geometry.computeVertexNormals();
-    b.add(geometry, color, [x, 0, z]);
+  const center: Vec3 = [options.x, options.height * 0.4, options.z];
+  let face = 0;
+  const outward = (a: Vec3, b: Vec3, c: Vec3, t: number) => {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const cx = (a[0] + b[0] + c[0]) / 3 - center[0];
+    const cy = (a[1] + b[1] + c[1]) / 3 - center[1];
+    const cz = (a[2] + b[2] + c[2]) / 3 - center[2];
+    const color = options.paint(t, face++, random);
+    if (nx * cx + ny * cy + nz * cz >= 0) mesh.face(a, b, c, color);
+    else mesh.face(a, c, b, color);
   };
-  for (let index = 0; index < base.length; index++) {
+  const pointed = options.profile(options.levels.at(-1)!) === 0;
+  for (let level = 0; level < rings.length - 1; level++) {
+    const lower = rings[level]!;
+    const upper = rings[level + 1]!;
+    const t = (options.levels[level]! + options.levels[level + 1]!) / 2;
+    // A crest of zero radius is a single peak, so its second triangle would be a sliver.
+    const peak = pointed && level === rings.length - 2;
+    for (let index = 0; index < sides; index++) {
+      const next = (index + 1) % sides;
+      outward(lower[index]!, lower[next]!, upper[index]!, t);
+      if (!peak) outward(lower[next]!, upper[next]!, upper[index]!, t + 0.04);
+    }
+  }
+  if (!pointed) {
+    const crest = rings.at(-1)!;
+    const apex: Vec3 = [options.x, Math.max(...crest.map((point) => point[1])) + options.height * 0.02, options.z];
+    for (let index = 0; index < sides; index++) outward(crest[index]!, crest[(index + 1) % sides]!, apex, 1);
+  }
+  const base = rings[0]!;
+  const floor: Vec3 = [options.x, 0, options.z];
+  for (let index = 0; index < sides; index++) {
     const a = base[index]!;
-    const c = base[(index + 1) % base.length]!;
-    const snow = 0.64 + random() * 0.12;
-    const snowA: Vec3 = [a[0] + (peak[0] - a[0]) * snow, height * snow, a[2] + (peak[2] - a[2]) * snow];
-    const snowC: Vec3 = [c[0] + (peak[0] - c[0]) * snow, height * snow, c[2] + (peak[2] - c[2]) * snow];
-    addFace([a, snowA, snowC, a, snowC, c], stone[index % stone.length]!);
-    addFace([snowA, peak, snowC], ['#e7e9dc', '#f6f2df', '#cfd9d2'][index % 3]!);
-    addFace([[0, 0, 0], a, c], '#747d79');
+    const b = base[(index + 1) % sides]!;
+    // The floor faces down regardless of jitter.
+    const ny = (b[2] - a[2]) * (floor[0] - a[0]) - (b[0] - a[0]) * (floor[2] - a[2]);
+    const color = options.paint(0, face++, random);
+    if (ny <= 0) mesh.face(a, b, floor, color); else mesh.face(a, floor, b, color);
   }
 }
 
+const ROCK = ['#7d8784', '#6b7574', '#8f9893', '#5f6a6b', '#99a09a'];
+const SCREE = ['#8b8d80', '#9c9b8b', '#7c8077'];
+const SNOW = ['#f3f2ea', '#e2e7e2', '#fbf8ef'];
+
+function peakPaint(snowline: number, gold: boolean) {
+  return (t: number, face: number, random: () => number) => {
+    const ragged = snowline + (random() - 0.5) * 0.14;
+    if (t > ragged) return SNOW[face % SNOW.length]!;
+    if (gold && t > 0.22 && t < 0.5 && random() < 0.28) return ['#d8b34f', '#c79a3c'][face % 2]!;
+    if (t < 0.2) return SCREE[face % SCREE.length]!;
+    return ROCK[Math.floor(random() * ROCK.length)]!;
+  };
+}
+
 function mountains(b: ModelBuilder, random: () => number, variant: number, gold = false) {
-  ridge(b, 0, -0.54, 0.31, 0.77 + variant * 0.014, variant + 7);
-  ridge(b, -0.47, -0.3, 0.27, 0.59, variant + 13);
-  ridge(b, 0.48, -0.24, 0.2, 0.42, variant + 37);
-  ridge(b, -0.54, 0.12, 0.14, 0.32, variant + 41);
-  for (let index = 0; index < 22; index++) {
-    const angle = -1.85 + index * 3.7 / 21;
-    const radius = 0.39 + random() * 0.08;
-    const x = Math.sin(angle) * radius;
-    const z = -Math.cos(angle) * radius;
-    pebble(b, gold && index % 3 === 0 ? '#d6b356' : stone[index % stone.length]!, x, z, 0.016 + random() * 0.026);
+  const mesh = new PaintedMesh();
+  const peaks = [
+    { x: 0.02, z: -0.53, rx: 0.33, rz: 0.27, h: 0.77 + variant * 0.012, snow: 0.6 },
+    { x: -0.46, z: -0.3, rx: 0.27, rz: 0.22, h: 0.57, snow: 0.66 },
+    { x: 0.48, z: -0.25, rx: 0.22, rz: 0.19, h: 0.44, snow: 0.74 },
+    { x: -0.55, z: 0.13, rx: 0.15, rz: 0.13, h: 0.3, snow: 2 },
+  ];
+  peaks.forEach((peak, index) => rockMass(mesh, {
+    x: peak.x, z: peak.z, rx: peak.rx, rz: peak.rz, height: peak.h, seed: variant * 31 + index * 7 + 5,
+    levels: [0, 0.18, 0.4, 0.62, 0.82, 1], profile: (t) => t >= 1 ? 0 : Math.pow(1 - t, 0.85),
+    paint: peakPaint(peak.snow, gold), sides: 9,
+  }));
+  b.addPainted(mesh.geometry());
+  // Loose scree, hardy pines and gold ore around the foot of the range.
+  for (let index = 0; index < 18; index++) {
+    const angle = -1.85 + index * 3.7 / 17;
+    const radius = 0.4 + random() * 0.08;
+    pebble(b, gold && index % 3 === 0 ? '#d6b356' : stone[index % stone.length]!, Math.sin(angle) * radius, -Math.cos(angle) * radius, 0.016 + random() * 0.022);
   }
-  // Dark fractured seams sit on the near slopes, away from the number badge.
-  branch(b, [-0.02, 0.08, -0.32], [0.07, 0.33, -0.385], 0.012, '#596466');
-  branch(b, [0.44, 0.025, -0.06], [0.51, 0.18, -0.15], 0.009, '#596466');
+  for (const [x, z, size] of [[0.58, 0.1, 0.55], [0.47, 0.3, 0.48], [-0.33, 0.47, 0.5]] as const) {
+    alpinePine(b, x, z, size, variant);
+  }
   if (gold) {
-    for (const [x, z] of [[-0.49, 0.3], [0.49, 0.25], [0.39, -0.03]]) {
-      pebble(b, '#caa24c', x!, z!, 0.083, 0.09);
-      pebble(b, '#ebcd6e', x! - 0.028, z! + 0.025, 0.047, 0.07);
+    for (const [x, z] of [[-0.49, 0.3], [0.36, -0.02], [0.2, 0.52]]) {
+      pebble(b, '#caa24c', x!, z!, 0.07, 0.08);
+      pebble(b, '#ebcd6e', x! - 0.026, z! + 0.022, 0.04, 0.06);
+    }
+  }
+}
+
+/** A small dark pine for highland slopes; distinct paint from the forest tile. */
+function alpinePine(b: ModelBuilder, x: number, z: number, size: number, variant: number) {
+  const h = 0.36 * size;
+  b.add(radialSolid(0.012, 0.018, h * 0.4, 5), '#6f5a44', [x, h * 0.2, z]);
+  for (let layer = 0; layer < 3; layer++) {
+    b.add(radialSolid(0, (0.1 - layer * 0.022) * size, h * 0.5, 6), ['#33564a', '#3d6352', '#2c4c41'][(layer + variant) % 3]!,
+      [x, h * (0.42 + layer * 0.2), z], [1, 1, 1], [0, layer * 0.7, 0]);
+  }
+}
+
+const CLAY = ['#b4684a', '#c98260', '#a65b3f', '#d39a72', '#bb7354'];
+
+function clayPaint(grassTop: number) {
+  return (t: number, face: number, random: () => number) => {
+    if (t > grassTop) return ['#97a862', '#a8b56d', '#8a9c5a'][face % 3]!;
+    // Horizontal strata: the band index follows height, with a little wobble.
+    const band = Math.floor((t + (random() - 0.5) * 0.05) * 6);
+    return CLAY[((band % CLAY.length) + CLAY.length) % CLAY.length]!;
+  };
+}
+
+function kiln(b: ModelBuilder, x: number, z: number) {
+  b.add(radialSolid(0.08, 0.092, 0.09, 8), '#9c5a3c', [x, 0.045, z]);
+  b.add(new SphereGeometry(0.082, 8, 4, 0, TAU, 0, Math.PI / 2), '#b86a48', [x, 0.09, z], [1, 0.85, 1]);
+  box(b, '#7a4a35', [x + 0.03, 0.2, z - 0.03], [0.036, 0.11, 0.036]);
+  box(b, '#5e3a2b', [x + 0.03, 0.258, z - 0.03], [0.044, 0.012, 0.044]);
+  box(b, '#3b2a22', [x, 0.05, z + 0.083], [0.05, 0.06, 0.012]);
+  box(b, '#d39a72', [x, 0.084, z + 0.087], [0.064, 0.012, 0.014]);
+  // A wisp of smoke rising from the chimney.
+  b.add(new IcosahedronGeometry(1, 0), '#ebe5da', [x + 0.035, 0.31, z - 0.035], [0.026, 0.02, 0.024]);
+  b.add(new IcosahedronGeometry(1, 0), '#f3eee5', [x + 0.05, 0.355, z - 0.045], [0.02, 0.016, 0.019]);
+}
+
+function brickStack(b: ModelBuilder, x: number, z: number, levels: number, yaw: number) {
+  box(b, '#8a6845', [x, 0.008, z], [0.24, 0.016, 0.1], [0, yaw, 0]);
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  for (let level = 0; level < levels; level++) {
+    for (let brick = 0; brick < 4 - level; brick++) {
+      const along = -0.09 + brick * 0.062 + level * 0.031;
+      box(b, ['#c98262', '#db9a74', '#af7057'][(brick + level) % 3]!,
+        [x + cos * along, 0.037 + level * 0.044, z - sin * along], [0.056, 0.04, 0.074], [0, yaw, 0]);
     }
   }
 }
 
 function hills(b: ModelBuilder, random: () => number, variant: number) {
-  const clay = ['#b77c5d', '#c98e6c', '#d69f77', '#bb805d'];
-  rigidGroup(b, 0.04, -0.55, 3, group => {
-    for (let terrace = 0; terrace < 4; terrace++) {
-      const r = 0.32 - terrace * 0.058;
-      group.add(new CylinderGeometry(r * 0.91, r, 0.09, 7), clay[terrace]!, [-terrace * 0.018, 0.045 + terrace * 0.08, 0], [1, 1, 0.83]);
-      for (let cut = 0; cut < 3; cut++) box(group, '#916a54', [-0.15 + cut * 0.09, 0.08 + terrace * 0.065, 0.17 - terrace * 0.041], [0.06, 0.016, 0.018]);
-    }
-  });
-  patch(b, '#8c7059', -0.5, -0.26, 0.23, 0.22, 0.025);
-  for (let terrace = 0; terrace < 2; terrace++) {
-    b.add(new TorusGeometry(0.17 + terrace * 0.025, 0.024, 4, 9), clay[terrace]!, [-0.5, 0.045 + terrace * 0.05, -0.26], [1, 1, 0.8], [Math.PI / 2, 0, 0.1]);
-  }
-  for (let level = 0; level < 3; level++) {
-    for (let brick = 0; brick < 4 - level; brick++) {
-      box(b, ['#c98262', '#db9a74', '#af7057'][(brick + level) % 3]!, [0.43 + brick * 0.065 - level * 0.015, 0.027 + level * 0.046, 0.08], [0.059, 0.041, 0.077], [0, (level % 2 ? Math.PI / 2 : 0) + variant * 0.04, 0]);
-    }
-  }
+  const mesh = new PaintedMesh();
+  const mounds = [
+    { x: 0.04, z: -0.56, rx: 0.32, rz: 0.24, h: 0.36 },
+    { x: -0.47, z: -0.27, rx: 0.23, rz: 0.2, h: 0.25 },
+    { x: 0.5, z: -0.24, rx: 0.18, rz: 0.16, h: 0.18 },
+  ];
+  mounds.forEach((mound, index) => rockMass(mesh, {
+    x: mound.x, z: mound.z, rx: mound.rx, rz: mound.rz, height: mound.h, seed: variant * 17 + index * 13 + 3,
+    levels: [0, 0.25, 0.5, 0.72, 0.9, 1], profile: (t) => Math.pow(Math.cos(t * Math.PI / 2), 0.7) * 0.82 + 0.18,
+    paint: clayPaint(0.86), sides: 10, jitter: 0.18,
+  }));
+  b.addPainted(mesh.geometry());
+  kiln(b, -0.48, 0.24);
+  brickStack(b, 0.45, 0.18, 3, 0.25 + variant * 0.08);
+  brickStack(b, 0.1, 0.5, 2, 0.12);
   for (let rock = 0; rock < 12; rock++) {
     const angle = -1.5 + rock * 3 / 11;
-    const radius = 0.61 + random() * 0.02;
-    const x = Math.sin(angle) * radius;
-    const z = -Math.cos(angle) * radius;
-    pebble(b, clay[rock % 4]!, x, z, 0.025 + random() * 0.02);
+    const radius = 0.62 + random() * 0.02;
+    pebble(b, CLAY[rock % 4]!, Math.sin(angle) * radius, -Math.cos(angle) * radius, 0.022 + random() * 0.018);
   }
-  for (const [x, z] of [[-0.5, 0.35], [0.5, 0.35]]) {
-    pebble(b, '#b88162', x!, z!, 0.09, 0.1);
-    box(b, '#dba581', [x! + 0.027, 0.085, z! - 0.01], [0.08, 0.025, 0.08]);
+  for (const [x, z] of [[-0.2, 0.5], [0.4, 0.42], [-0.62, -0.02]]) {
+    for (let leaf = 0; leaf < 3; leaf++) {
+      b.add(new IcosahedronGeometry(1, 0), ['#7f8f4e', '#93a35a', '#6f8045'][leaf]!,
+        [x! + (leaf - 1) * 0.03, 0.03 + (leaf % 2) * 0.012, z! + (leaf % 2) * 0.02], [0.034, 0.03, 0.03]);
+    }
   }
 }
 
@@ -329,6 +453,21 @@ function desert(b: ModelBuilder, random: () => number, variant: number) {
     branch(b, [x, 0.022, 0.21], [x - 0.018, 0.035, 0.155], 0.005, '#eee5c8');
   }
   for (let rock = 0; rock < 10; rock++) pebble(b, rock % 2 ? '#b8a989' : '#c4b699', -0.55 + random() * 1.1, -0.51 + random() * 0.13, 0.018 + random() * 0.018);
+  // Wind-cut sandstone: a banded flat-topped butte and a slender spire beside it.
+  const sandstone = (t: number, face: number) => t > 0.97 ? ['#e6bf8c', '#dcb27e'][face % 2]!
+    : ['#c98b5c', '#dba274', '#bf7d52', '#e2b384'][Math.floor(t * 5) % 4]!;
+  const mesh = new PaintedMesh();
+  rockMass(mesh, { x: -cactusX * 0.86, z: -0.36, rx: 0.16, rz: 0.13, height: 0.27, seed: 71 + variant,
+    levels: [0, 0.3, 0.62, 0.9, 1], profile: (t) => 1 - t * 0.22, paint: sandstone, sides: 8, jitter: 0.16 });
+  rockMass(mesh, { x: cactusX * 0.2, z: -0.66, rx: 0.07, rz: 0.06, height: 0.2, seed: 89 + variant,
+    levels: [0, 0.4, 0.8, 1], profile: (t) => 1 - t * 0.35, paint: sandstone, sides: 7, jitter: 0.2 });
+  b.addPainted(mesh.geometry());
+  for (const [x, z] of [[cactusX * 0.62, 0.3], [-cactusX * 0.3, 0.55]]) {
+    for (let twig = 0; twig < 5; twig++) {
+      const angle = twig * TAU / 5;
+      branch(b, [x!, 0.004, z!], [x! + Math.cos(angle) * 0.04, 0.05, z! + Math.sin(angle) * 0.04], 0.004, '#9a8a62', 3, true);
+    }
+  }
 }
 
 function sea(b: ModelBuilder, variant: number) {
