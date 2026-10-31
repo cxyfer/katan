@@ -49,17 +49,20 @@
 @media (max-height: 520px) {
   .screen--game .game__messages { max-height: 80px; }
   /* 留下手牌 dock 的高度，避免必要提示蓋住手牌；內容不足時仍可完整顯示。 */
-  .screen--game .game__messages:has(.discard-picker) { max-height: calc(100% - 78px); }
+  .screen--game .game__messages:has(.discard-picker) {
+    width: min(340px, calc(100% - 16px));
+    max-height: calc(100% - 78px);
+  }
   .screen--game .game__messages .prompt:has(.discard-picker) { padding: 4px 8px; }
   .screen--game .game__messages .prompt:has(.discard-picker) .prompt__body { margin-top: .2rem; }
   .screen--game .game__messages .prompt:has(.discard-picker) .prompt__body > .button { min-height: 32px; padding-block: .2rem; }
-  .screen--game .game__messages .prompt:has(.discard-picker) .discard-picker { margin: .2rem 0; gap: .15rem; }
+  .screen--game .game__messages .prompt:has(.discard-picker) .discard-picker {
+    margin: .2rem 0;
+    gap: .15rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .screen--game .game__messages .discard-picker__controls .button { min-width: 32px; min-height: 32px; }
   .screen--game .action-rail { max-height: calc(100% - 180px); }
-}
-@media (max-height: 520px) and (max-width: 649px) {
-  .screen--game .game__messages:has(.discard-picker) { width: min(340px, calc(100% - 16px)); }
-  .screen--game .game__messages .discard-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 /* 側欄動作必須高於透明的棋盤檢視命中層。 */
 .screen--game .action-rail { z-index: 47; }
