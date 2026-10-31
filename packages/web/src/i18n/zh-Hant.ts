@@ -384,6 +384,8 @@ export const zhHant: Catalog = {
   'play.tradeToAll': '所有人',
   'play.tradeGive': '你付出',
   'play.tradeWant': '你獲得',
+  'play.tradeGiveBy': '{player} 付出',
+  'play.tradeWantBy': '{player} 獲得',
   'play.tradeCreate': '送出提案',
   'play.tradeClear': '清空',
   'play.tradeOwned': '持有 {count}',
