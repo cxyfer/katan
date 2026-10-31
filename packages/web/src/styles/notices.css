@@ -1,0 +1,82 @@
+/* 通知卡：語意圖示、內容、關閉鈕；會自動關閉的通知在關閉鈕外圈顯示倒數環。 */
+.notice-card {
+  --notice-tone: #8ec9bd;
+  --notice-shift: 8px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .25rem .7rem;
+  border-left: 3px solid var(--notice-tone);
+  animation: notice-enter 220ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.notice-card--info { --notice-tone: #8ec9bd; }
+.notice-card--error { --notice-tone: #ec9a7c; }
+.notice-card--warning { --notice-tone: var(--warning); }
+.notice-card--success { --notice-tone: #8fca9a; }
+.notice-card--pending { --notice-tone: #9fb4bd; }
+.notice-card[data-leaving='true'] { animation: notice-exit 180ms ease-in both; pointer-events: none; }
+.notice-card__icon {
+  display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  color: var(--notice-tone); background: color-mix(in srgb, var(--notice-tone) 16%, transparent);
+}
+.notice-card--pending .notice-card__icon svg { animation: notice-spin 1.4s linear infinite; }
+.notice-card > p { grid-column: 2; margin: 0; }
+.notice-card__title { font-weight: 650; color: var(--text); text-wrap: balance; }
+.notice-card__text { overflow-wrap: anywhere; }
+.notice-card__detail { grid-column: 2 / -1; min-width: 0; }
+.notice-card__detail > p { margin: 0; }
+.notice-card .command-status__actions { margin-top: .4rem; gap: .4rem .6rem; }
+.notice-card .command-status__actions > .muted { font-size: .92em; line-height: 1.35; }
+
+.notice-dismiss {
+  grid-column: 3; grid-row: 1;
+  position: relative; display: grid; place-items: center; flex: none;
+  width: 32px; height: 32px; margin: -3px -4px -3px 0; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--text-muted); cursor: pointer;
+}
+.notice-dismiss:hover { color: var(--text); background: #ffffff12; }
+.notice-dismiss:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.notice-dismiss__ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
+.notice-dismiss__track, .notice-dismiss__timer { fill: none; stroke-width: 2.5; }
+.notice-dismiss__track { stroke: #ffffff1c; }
+/* 圓環從 12 點方向依實際期限逆時針收回；暫停（懸停、聚焦、分頁隱藏）時轉為灰色。 */
+.notice-dismiss__timer {
+  stroke: var(--notice-tone); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 0;
+  animation: notice-countdown var(--notice-countdown) linear both;
+  transition: stroke .2s;
+}
+.notice-dismiss__timer[data-paused='true'] { stroke: var(--text-muted); }
+
+/* 浮動 toast：大廳等畫面在右下；牌桌上移到頂部中央，避免壓住手牌、牌桌選單與側欄。 */
+.toast.notice-card {
+  position: fixed; right: 1.5rem; bottom: 1rem; z-index: 80;
+  width: max-content; max-width: min(440px, calc(100vw - 2rem));
+  margin: 0; padding: .7rem .8rem .7rem .85rem;
+  background: #173a3df7; box-shadow: 0 14px 34px #02121a80;
+}
+.screen--game ~ .toast.notice-card {
+  --notice-shift: -8px;
+  top: 58px; right: auto; bottom: auto; left: 50%; translate: -50% 0;
+  max-width: min(400px, calc(100vw - 1.5rem)); font-size: .82rem;
+}
+
+/* 牌桌右上的回執沿用訊息欄密度，從上方滑入。 */
+.screen--game .game__messages .command-status.notice-card { --notice-shift: -6px; column-gap: .55rem; padding: .55rem .6rem .6rem .7rem; background: #102b30; }
+.screen--game .game__messages .command-status .button { min-height: 30px; padding: .2rem .65rem; }
+.screen--game .game__messages .command-status .notice-card__icon,
+.screen--game .game__receipt .command-status .notice-card__icon { width: 22px; height: 22px; }
+.screen--game .game__messages .command-status .notice-card__title { font-size: .76rem; }
+.screen--game .game__receipt .command-status.notice-card { column-gap: .55rem; }
+
+@keyframes notice-enter {
+  from { opacity: 0; transform: translateY(var(--notice-shift)) scale(.98); }
+}
+@keyframes notice-exit {
+  to { opacity: 0; transform: translateY(var(--notice-shift)) scale(.98); }
+}
+@keyframes notice-countdown {
+  to { stroke-dashoffset: 100; }
+}
+@keyframes notice-spin {
+  to { transform: rotate(360deg); }
+}

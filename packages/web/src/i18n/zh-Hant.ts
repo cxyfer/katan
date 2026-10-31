@@ -43,7 +43,6 @@ export const zhHant: Catalog = {
   'app.close': '關閉',
   'app.back': '返回',
   'app.refresh': '重新整理',
-  'app.dismiss': '略過',
   'app.you': '你',
   'app.host': '房主',
   'app.seat': '座位',

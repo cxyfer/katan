@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
-import { initialTableState, tableReducer } from '../src/state/table.ts';
+import { activeTurnKey, initialTableState, tableReducer } from '../src/state/table.ts';
+import type { GameView } from '@catan/rules';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeRoom, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
@@ -113,6 +114,47 @@ describe('state-level resilience', () => {
     });
     expect(next.fatal?.messageId).toBe('error.E_NETWORK');
     expect(next.screen).toBe(state.screen);
+  });
+
+  it('keys the active turn by window and setup progress', () => {
+    const stateFor = (windowId: number, setup: GameView['turn']['setup'] = null) => {
+      const view = makeView({ setup });
+      view.windowId = windowId;
+      return tableReducer(initialTableState('en'), { type: 'snapshot', snapshot: makeSnapshot(view) });
+    };
+    const first = stateFor(1);
+    expect(activeTurnKey(stateFor(1))).toBe(activeTurnKey(first));
+    expect(activeTurnKey(stateFor(2))).not.toBe(activeTurnKey(first));
+
+    // The real three-player setup order is 0,1,2,2,1,0; the fourth step is the
+    // same seat (2) taking its reverse placement, so only the progress changes.
+    const setupTurns: NonNullable<GameView['turn']['setup']>[] = [
+      { seat: 0, stage: 'building', round: 1, remaining: 6 },
+      { seat: 1, stage: 'building', round: 1, remaining: 5 },
+      { seat: 2, stage: 'building', round: 1, remaining: 4 },
+      { seat: 2, stage: 'building', round: 2, remaining: 3 },
+      { seat: 1, stage: 'building', round: 2, remaining: 2 },
+      { seat: 0, stage: 'building', round: 2, remaining: 1 },
+    ];
+    const setupKeys = setupTurns.map((setup) => activeTurnKey(stateFor(1, setup)));
+    expect(new Set(setupKeys).size).toBe(setupTurns.length);
+    expect(setupKeys[3]).not.toBe(setupKeys[2]);
+
+    const play = stateFor(2);
+    expect(activeTurnKey(play)).not.toBe(setupKeys[5]);
+    expect(activeTurnKey(stateFor(7))).not.toBe(activeTurnKey(play));
+  });
+
+  it('gives repeated toast messages a new run id', () => {
+    const first = tableReducer(initialTableState('en'), {
+      type: 'toast',
+      notice: { messageId: 'lobby.settingsSaved' },
+    });
+    const second = tableReducer(first, {
+      type: 'toast',
+      notice: { messageId: 'lobby.settingsSaved' },
+    });
+    expect(second.toastId).toBe(first.toastId + 1);
   });
 
   it('keeps a draft nickname across a locale change but resets nothing else', () => {

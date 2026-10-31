@@ -166,4 +166,8 @@ summary:hover { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
+/* 通知倒數環是剩餘時間的資訊而非裝飾動態：減少動態時仍依實際期限慢速消耗（進出場動畫照常停用）。 */
+@media (prefers-reduced-motion: reduce) {
+  .notice-dismiss__timer { animation-duration: var(--notice-countdown) !important; }
+}
 }

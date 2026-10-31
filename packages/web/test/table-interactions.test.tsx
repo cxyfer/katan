@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App.tsx';
+import { NOTICE_EXIT_MS } from '../src/components/useTransientNotice.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi } from '../src/test/fake-api.ts';
 import { makePlayer, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -133,9 +134,10 @@ describe('table interactions', { timeout: 15000 }, () => {
     await act(async () => { fireEvent.click(screen.getByTestId('action-endTurn')); });
     const corner = screen.getByTestId('accepted-notice');
     expect(corner.contains(screen.getByTestId('command-status'))).toBe(true);
+    expect(corner.querySelector('button')).toBeNull();
     act(() => vi.advanceTimersByTime(4000));
+    act(() => vi.advanceTimersByTime(NOTICE_EXIT_MS));
     expect(screen.queryByTestId('command-status')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Dismiss' })).toBeNull();
     vi.useRealTimers();
     api.setCommandResult({ ok: false, error: { code: 'E_NETWORK', messageId: 'error.E_NETWORK' } });
     fireEvent.click(screen.getByTestId('action-endTurn'));

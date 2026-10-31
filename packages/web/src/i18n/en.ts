@@ -43,7 +43,6 @@ export const en: Catalog = {
   'app.close': 'Close',
   'app.back': 'Back',
   'app.refresh': 'Refresh',
-  'app.dismiss': 'Dismiss',
   'app.you': 'You',
   'app.host': 'Host',
   'app.seat': 'Seat',

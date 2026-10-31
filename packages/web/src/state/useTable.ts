@@ -515,7 +515,7 @@ export function useTable(options: UseTableOptions): TableController {
         dispatch({ type: 'command', event: { kind: 'receipt', receipt: result.data } });
         const notice = receiptNotice(result.data);
         if (notice) {
-          dispatch({ type: 'toast', notice });
+          // 拒絕原因與「再試一次」由指令回執呈現；不再另發內容重複的 toast。
           dispatch({
             type: 'announce',
             announcement: { messageId: 'a11y.actionRejected', params: notice.params },

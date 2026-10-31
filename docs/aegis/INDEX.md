@@ -5,6 +5,8 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-10-31 | work | docs/aegis/work/2026-10-31-notice-auto-dismiss.md | Transient notice auto-dismissal and turn-boundary review |
+| 2026-10-31 | artifact | scripts/notice-dismiss/capture.py | Notice countdown ring, hover hold, fade and turn-change capture harness |
 | 2026-10-31 | work | docs/aegis/work/2026-10-31-game-audio.md | Procedural sound effects and generative music |
 | 2026-10-31 | artifact | docs/aegis/work/2026-10-31-game-audio/palette-report.json | Offline render peaks for every cue and live music/effect output |
 | 2026-10-31 | artifact | docs/aegis/work/2026-10-31-game-audio/live-report.json | Live three-player setup: audible events, silence while muted |

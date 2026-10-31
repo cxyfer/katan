@@ -113,6 +113,8 @@ export interface TableState {
   /** 擲骰演出期間凍結的擲骰前狀態，點數揭曉前不從手牌、玩家列表或紀錄透露結果。 */
   rollHold: RollHold | null;
   toast: Notice | null;
+  /** Monotonic identity for the current toast; a repeated message gets a new run. */
+  toastId: number;
   announcement: Announcement | null;
   fatal: Notice | null;
 }
@@ -148,6 +150,7 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     dicePresenting: false,
     rollHold: null,
     toast: null,
+    toastId: 0,
     announcement: null,
     fatal: null,
   };
@@ -384,7 +387,7 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       if (state.dicePresenting === action.value) return state;
       return action.value ? { ...state, dicePresenting: true } : { ...state, dicePresenting: false, rollHold: null };
     case 'toast':
-      return { ...state, toast: action.notice };
+      return { ...state, toast: action.notice, toastId: state.toastId + 1 };
     case 'announce':
       return { ...state, announcement: action.announcement };
     case 'fatal':
@@ -403,6 +406,18 @@ export function selfPlayer(state: TableState) {
   const id = selfPlayerId(state);
   if (!id || !state.game) return null;
   return state.game.view.players.find((player) => player.id === id) ?? null;
+}
+
+/** Identity of the active turn instance; feedback from an older turn clears. */
+export function activeTurnKey(state: TableState): string | null {
+  const game = state.game;
+  if (!game) return null;
+  // `windowId` advances on every normal action window (including paired actors
+  // and a reconnect that skipped a round). Setup does not open a window, so its
+  // decreasing remaining-step count supplies the same boundary.
+  const setup = game.view.turn.setup;
+  const setupStep = setup ? `${setup.round}:${setup.remaining}` : 'play';
+  return `${game.gameId}:${game.view.windowId}:${setupStep}`;
 }
 
 export function nameOf(state: TableState): (playerId: string) => string {
