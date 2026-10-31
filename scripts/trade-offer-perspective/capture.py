@@ -11,8 +11,9 @@ Then:
     python3 scripts/trade-offer-perspective/capture.py <new empty output directory>
 
 The script creates a temporary three-player room, finishes setup through the
-API, rolls once and has the turn player propose a table-wide offer. It only
-captures the two perspective shots; assertions are limited to the card text.
+API, rolls once and has the turn player propose a table-wide offer. It captures
+the offer card once from each seat, plus the table viewport with that card
+scrolled into view. Assertions cover the exact card text for both seats.
 """
 
 import os
@@ -31,6 +32,7 @@ OUT = Path(sys.argv[1])
 if OUT.exists() and any(OUT.iterdir()):
     sys.exit(f'output directory must be empty: {OUT}')
 OUT.mkdir(parents=True, exist_ok=True)
+ERRORS = []
 
 
 def api(context, method, path, data=None):
@@ -76,6 +78,8 @@ with sync_playwright() as p:
         for _ in range(3)
     ]
     pages = [context.new_page() for context in contexts]
+    for page in pages:
+        page.on('pageerror', lambda error: ERRORS.append(str(error)))
 
     # Three seats: the host creates the room, the other two join and everyone readies.
     for page, name in zip(pages, ['海岸領航員', '小美', '阿明']):
@@ -99,7 +103,10 @@ with sync_playwright() as p:
 
     identity = [api(context, 'GET', '/api/session')['player']['id'] for context in contexts]
     by_id = dict(zip(identity, contexts))
-    game_id = api(contexts[0], 'GET', '/api/games')['games'][0]['gameId']
+    games = api(contexts[0], 'GET', '/api/games')['games']
+    game = next((candidate for candidate in games if candidate['roomCode'] == code), None)
+    assert game, games
+    game_id = game['gameId']
     path = '/api/games/' + game_id
 
     # Finish initial placement through the API; the browser seats only observe.
@@ -173,10 +180,18 @@ with sync_playwright() as p:
     proposer_terms = pages[proposer_index].get_by_test_id(f'offer-terms-{offer_id}')
     expect(proposer_terms).to_have_text('你付出: 1×羊毛 · 你獲得: 1×礦石')
 
-    shot(pages[proposer_index], 'trade-offer-proposer-1366x768-zh-Hant')
-    shot(pages[recipient_index], 'trade-offer-recipient-1366x768-zh-Hant')
-    shot_offer(pages[proposer_index], offer_id, 'trade-offer-card-proposer-zh-Hant')
-    shot_offer(pages[recipient_index], offer_id, 'trade-offer-card-recipient-zh-Hant')
+    for index, seat in ((proposer_index, 'proposer'), (recipient_index, 'recipient')):
+        page = pages[index]
+        # Bring the terms into the viewport before the full-table shot; the
+        # tools panel has its own scroll area, so a card below the fold would
+        # otherwise be clipped in the capture.
+        terms = page.get_by_test_id(f'offer-terms-{offer_id}')
+        terms.scroll_into_view_if_needed()
+        box = terms.bounding_box()
+        assert box and box['y'] >= 0 and box['y'] + box['height'] <= 768, box
+        shot(page, f'trade-offer-{seat}-1366x768-zh-Hant')
+        shot_offer(page, offer_id, f'trade-offer-card-{seat}-zh-Hant')
 
+    assert not ERRORS, f'browser runtime errors: {ERRORS}'
     browser.close()
     print('DONE', flush=True)
