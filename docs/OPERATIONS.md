@@ -15,6 +15,7 @@ tested (SPEC §10).
 | `DATABASE_URL` | – | `postgres://…` selects PostgreSQL; `sqlite:/path` selects SQLite |
 | `SQLITE_PATH` | `./.data/catan.sqlite` | SQLite file when `DATABASE_URL` is unset |
 | `WEB_DIST_PATH` | – | Directory of the built client; unset serves API only |
+| `PUBLIC_URL` | – | Public origin (e.g. `https://catan.example.com`) used for the absolute `og:image` URL in link previews; unset derives it from `X-Forwarded-Proto`/`Host` |
 | `SESSION_COOKIE_NAME` | `catan_session` | Guest identity cookie name |
 | `COOKIE_SECURE` | `true` when `NODE_ENV=production` | Adds `Secure` to the cookie |
 | `NICKNAME_MAX_LENGTH` | `24` | Nickname bound (code points) |

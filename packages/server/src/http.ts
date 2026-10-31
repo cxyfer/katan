@@ -1,6 +1,6 @@
 /** Minimal HTTP layer: JSON API plus static delivery of the built client. */
 
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ApiResult, Locale } from '@catan/protocol';
@@ -142,6 +142,37 @@ function serveStatic(res: ServerResponse, root: string, pathname: string): boole
   const type = MIME[extname(target).toLowerCase()] ?? 'application/octet-stream';
   res.writeHead(200, { 'content-type': type, 'cache-control': 'no-cache' });
   createReadStream(target).pipe(res);
+  return true;
+}
+
+const ORIGIN_PLACEHOLDER = '__PUBLIC_ORIGIN__';
+const HOST_PATTERN = /^(?:[a-z0-9-]+(?:\.[a-z0-9-]+)*|\[[0-9a-f:]+\])(?::\d{1,5})?$/i;
+
+/** 對外 origin：優先採用 PUBLIC_URL，否則由（反向代理）請求標頭推導；無法確認時回傳空字串（退回相對路徑）。 */
+function publicOrigin(req: IncomingMessage, configured: string | null): string {
+  if (configured) {
+    try {
+      const url = new URL(configured);
+      if (url.protocol === 'http:' || url.protocol === 'https:') return url.origin;
+    } catch {
+      // 設定無效時改由標頭推導
+    }
+  }
+  const first = (value: string | string[] | undefined): string =>
+    (Array.isArray(value) ? value[0] : value)?.split(',')[0]?.trim().toLowerCase() ?? '';
+  const host = first(req.headers['x-forwarded-host']) || first(req.headers.host);
+  if (!HOST_PATTERN.test(host)) return '';
+  const proto = first(req.headers['x-forwarded-proto']) === 'https' ? 'https' : 'http';
+  return `${proto}://${host}`;
+}
+
+/** 提供 index.html，並把 og:image 等 meta 的絕對網址佔位符換成實際 origin（爬蟲不會解析相對路徑）。 */
+function serveIndex(req: IncomingMessage, res: ServerResponse, root: string, origin: string | null): boolean {
+  const target = resolve(join(root, 'index.html'));
+  if (!existsSync(target) || !statSync(target).isFile()) return false;
+  const html = readFileSync(target, 'utf8').replaceAll(ORIGIN_PLACEHOLDER, publicOrigin(req, origin));
+  res.writeHead(200, { 'content-type': MIME['.html']!, 'cache-control': 'no-cache' });
+  res.end(req.method === 'HEAD' ? undefined : html);
   return true;
 }
 
@@ -517,9 +548,12 @@ export function createHttpHandler(deps: HttpDeps) {
 
     if (deps.config.webDistPath && (method === 'GET' || method === 'HEAD')) {
       const root = deps.config.webDistPath;
-      if (serveStatic(res, root, pathname === '/' ? '/index.html' : pathname)) return;
+      const { publicUrl } = deps.config;
+      if (pathname === '/' || pathname === '/index.html') {
+        if (serveIndex(req, res, root, publicUrl)) return;
+      } else if (serveStatic(res, root, pathname)) return;
       // Single-page application fallback.
-      if (serveStatic(res, root, '/index.html')) return;
+      if (serveIndex(req, res, root, publicUrl)) return;
     }
     res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
     res.end('not found');
