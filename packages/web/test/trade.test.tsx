@@ -462,23 +462,28 @@ describe('development cards and pending effects', () => {
     expect(card('lumber').getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(card('lumber'));
     expect(counts()).toBe('1 / 4');
-    expect(screen.getByTestId('discard-slot-0').getAttribute('data-resource')).toBe('lumber');
+    expect(screen.getByTestId('discard-picked-lumber').textContent).toBe('×1');
 
-    // 點棄牌區的牌放回手牌，焦點落回該資源的手牌。
-    fireEvent.click(screen.getByTestId('discard-slot-0'));
+    // 點棄牌區的那疊放回手牌；最後一張放回後焦點落回該資源的手牌。
+    fireEvent.click(screen.getByTestId('discard-return-lumber'));
     expect(left('lumber')).toBe('1');
     expect(counts()).toBe('0 / 4');
-    expect(screen.queryByTestId('discard-slot-0')).toBeNull();
+    expect(screen.queryByTestId('discard-return-lumber')).toBeNull();
     expect(document.activeElement).toBe(card('lumber'));
 
-    // 同一種資源有兩張時，放回只退一張。
+    // 同一種資源疊成一疊；放回只退一張，這疊還在時焦點留在原處。
     fireEvent.click(card('brick'));
     fireEvent.click(card('brick'));
     expect(left('brick')).toBe('0');
-    fireEvent.click(screen.getByTestId('discard-slot-1'));
+    expect(screen.getByTestId('discard-picked-brick').textContent).toBe('×2');
+    const brickStack = screen.getByTestId('discard-return-brick');
+    expect(brickStack.getAttribute('aria-label')).toBe('2 Brick in the discard pile; take one back');
+    brickStack.focus();
+    fireEvent.click(brickStack);
     expect(left('brick')).toBe('1');
     expect(counts()).toBe('1 / 4');
-    expect(document.activeElement).toBe(screen.getByTestId('discard-slot-0'));
+    expect(screen.getByTestId('discard-picked-brick').textContent).toBe('×1');
+    expect(document.activeElement).toBe(screen.getByTestId('discard-return-brick'));
 
     fireEvent.click(card('brick'));
     fireEvent.click(card('lumber'));
@@ -491,6 +496,11 @@ describe('development cards and pending effects', () => {
     expect(left('grain')).toBe('2');
     expect(submit().disabled).toBe(false);
     expect(submit().textContent).toBe('Discard 4');
+
+    // 一疊放完時焦點移到右邊的下一疊（木材 → 磚塊）。
+    fireEvent.click(screen.getByTestId('discard-return-lumber'));
+    expect(document.activeElement).toBe(screen.getByTestId('discard-return-brick'));
+    fireEvent.click(card('lumber'));
 
     // 「全部放回」清空棄牌區。
     fireEvent.click(screen.getByTestId('discard-reset'));

@@ -48,36 +48,52 @@
 }
 .discard-card[data-empty] .discard-card__count { color: #9fb0aa; border-color: #6f817c; }
 
-/* 棄牌區：空格數就是要棄的張數；放進來的牌點一下即可放回手牌。 */
+/* 棄牌區：分段進度條的格數就是要棄的張數（多到幾十格也只佔一列）；
+   選好的牌依資源疊成最多五疊，點一疊放回一張，因此高度不隨張數增加。 */
+.discard__meter { display: flex; gap: 3px; height: 8px; }
+.discard__cell { flex: 1 1 0; min-width: 0; border-radius: 3px; background: #ffffff14; box-shadow: inset 0 0 0 1px #b9a87540; }
+.discard__cell--filled { background: var(--rc); box-shadow: inset 0 0 0 1px #fff3cf66; }
 .discard__pile {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; padding: 8px;
-  list-style: none; border-radius: 10px; background: #06191e8c; border: 1px solid #b9a87533;
+  display: flex; align-items: center; justify-content: center; gap: 16px; min-height: 84px; margin: 0;
+  padding: 10px 14px 8px; list-style: none; border-radius: 10px; background: #06191e8c; border: 1px solid #b9a87533;
 }
-.discard-slot {
-  position: relative; width: 46px; aspect-ratio: 5 / 7; border-radius: 6px;
-  border: 1.5px dashed #b9a87570; background: #ffffff08;
+.discard__pile-empty {
+  align-self: stretch; display: grid; place-items: center; flex: 1; border-radius: 7px;
+  border: 1.5px dashed #b9a87560; color: #c9d3c4aa; font-size: .72rem;
 }
-.discard-slot--filled { border: none; background: none; }
-.discard-slot__card {
+.discard-stack { position: relative; width: 46px; aspect-ratio: 5 / 7; }
+.discard-stack__card {
   position: relative; display: block; width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden;
   cursor: pointer; border-radius: 6px; border: 1.5px solid #f6e7bd; background: var(--rc);
   box-shadow: 0 0 0 1px #172a26, 0 3px 8px #0008; animation: discard-drop 180ms ease-out;
   transition: transform 120ms ease-out, box-shadow 120ms;
 }
-.discard-slot__card .resource-card-art { display: block; width: 100%; height: 100%; }
-.discard-slot__pip {
+/* 疊數越多，後面露出越多張牌邊（最多三層），一眼看出這疊不只一張。 */
+.discard-stack[data-depth="2"] .discard-stack__card {
+  box-shadow: 0 0 0 1px #172a26, 3px -3px 0 -1px var(--rc-deep), 3px -3px 0 0 #f6e7bd99, 0 3px 8px #0008;
+}
+.discard-stack[data-depth="3"] .discard-stack__card {
+  box-shadow: 0 0 0 1px #172a26, 3px -3px 0 -1px var(--rc-deep), 3px -3px 0 0 #f6e7bd99,
+    6px -6px 0 -1px var(--rc-deep), 6px -6px 0 0 #f6e7bd77, 0 3px 8px #0008;
+}
+.discard-stack__card .resource-card-art { display: block; width: 100%; height: 100%; border-radius: 4px; }
+.discard-stack__pip {
   position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); display: grid; place-items: center;
   width: 20px; height: 20px; border-radius: 50%; color: #fff6dc; background: var(--rc-deep); border: 1px solid #f6e7bd;
 }
-.discard-slot__undo {
-  position: absolute; top: 2px; right: 2px; display: grid; place-items: center; width: 16px; height: 16px;
+.discard-stack__undo {
+  position: absolute; top: 2px; left: 2px; display: grid; place-items: center; width: 16px; height: 16px;
   border-radius: 50%; color: #2d2618; background: #f6e7bd; font-size: .62rem; font-weight: 800; line-height: 1;
   box-shadow: 0 1px 3px #0008;
 }
-.discard-slot__card:hover, .discard-slot__card:focus-visible {
-  transform: translateY(-3px); box-shadow: 0 0 0 2px #e1c376, 0 6px 12px #000a;
+.discard-stack__count {
+  position: absolute; top: -9px; right: -12px; z-index: 1; display: grid; place-items: center;
+  min-width: 26px; height: 22px; padding: 0 6px; border-radius: 999px; pointer-events: none;
+  color: #2d2618; background: linear-gradient(#fbf0cf, #e6d29f); box-shadow: 0 2px 5px #0009;
+  font-size: .76rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
 }
-.discard-slot__card:focus-visible { outline: 3px solid #ffe7a1; outline-offset: 2px; }
+.discard-stack__card:hover, .discard-stack__card:focus-visible { transform: translateY(-3px); }
+.discard-stack__card:focus-visible { outline: 3px solid #ffe7a1; outline-offset: 2px; }
 
 .discard__actions { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
 .screen--game .game__messages .discard__actions .button { min-height: 40px; margin: 0; font-size: .8rem; }
@@ -92,15 +108,16 @@
   50% { box-shadow: 0 0 0 4px #f1d59c55; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .discard .discard-card__face, .discard-slot__card { transition: none; }
-  .discard-slot__card, .discard[data-full] .discard__actions .button--primary { animation: none; }
+  .discard .discard-card__face, .discard-stack__card { transition: none; }
+  .discard-stack__card, .discard[data-full] .discard__actions .button--primary { animation: none; }
 }
 
 /* 直屏手機：面板幾乎滿寬，卡片縮小但仍維持易點的尺寸。 */
 @media (max-width: 649px) {
   .screen--game .game__messages:has(.discard) { width: calc(100% - 12px); }
   .discard__hand { grid-template-columns: repeat(5, minmax(0, 64px)); gap: 8px; }
-  .discard-slot { width: 34px; }
+  .discard-stack { width: 40px; }
+  .discard__pile { gap: 14px; min-height: 76px; }
 }
 
 /* 短橫屏：手牌在左、棄牌區與按鈕在右，整個面板留在手牌 dock 上方。 */
@@ -116,10 +133,12 @@
   .discard .discard-card .hand-card__name { display: none; }
   .discard .discard-card .hand-card__pip { top: auto; bottom: 5px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; }
   .discard-card__count { top: -6px; right: -6px; min-width: 21px; height: 21px; font-size: .72rem; }
-  .discard__pile { padding: 5px; gap: 4px; }
-  .discard-slot { width: 26px; }
-  .discard-slot__pip { display: none; }
-  .discard-slot__undo { width: 13px; height: 13px; font-size: .52rem; }
+  .discard__meter { height: 6px; gap: 2px; }
+  .discard__pile { gap: 14px; min-height: 52px; padding: 8px 12px 5px; }
+  .discard-stack { width: 28px; }
+  .discard-stack__pip { display: none; }
+  .discard-stack__undo { width: 13px; height: 13px; font-size: .52rem; }
+  .discard-stack__count { top: -7px; right: -11px; min-width: 22px; height: 18px; padding: 0 4px; font-size: .66rem; }
   .screen--game .game__messages .discard__actions .button { min-height: 34px; padding-block: .2rem; }
 }
 @media (max-height: 520px) and (min-width: 520px) {

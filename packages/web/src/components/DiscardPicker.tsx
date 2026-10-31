@@ -11,8 +11,8 @@ const NONE: Counts = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
 
 /**
  * 棄牌選擇器（docs/SPEC.md §4.4）：仿實體操作，從「手牌」點一張移到「棄牌區」，
- * 點棄牌區的牌放回手牌。五種資源一律列出（沒有的變暗），棄牌區的空格數就是
- * 需要棄掉的張數，因此進度與剩餘量不必讀數字也看得出來。
+ * 點棄牌區的牌放回手牌。五種資源一律列出（沒有的變暗）；棄牌區依資源疊成最多
+ * 五疊，上方分段進度條的格數就是要棄的張數，因此要棄十幾張時高度也不會增加。
  */
 export function DiscardPicker({ required, hand, onSubmit }: {
   required: number;
@@ -23,8 +23,8 @@ export function DiscardPicker({ required, hand, onSubmit }: {
   const locale = useLocale();
   const [picked, setPicked] = useState<Counts>(NONE);
   const rootRef = useRef<HTMLDivElement>(null);
-  // 放回後焦點會隨按鈕消失；記下位置，重繪後移到同一格或該資源的手牌。
-  const refocus = useRef<{ index: number; resource: Resource } | null>(null);
+  // 一疊放回最後一張時按鈕會消失；重繪後把焦點移到下一疊，沒有就回到該資源的手牌。
+  const refocus = useRef<Resource | null>(null);
 
   const picks = RESOURCES.flatMap((resource) => Array.from({ length: picked[resource] }, () => resource));
   const selected = picks.length;
@@ -37,16 +37,19 @@ export function DiscardPicker({ required, hand, onSubmit }: {
     if (!target) return;
     refocus.current = null;
     const root = rootRef.current;
-    const slot = root?.querySelector<HTMLButtonElement>(`[data-testid="discard-slot-${Math.min(target.index, selected - 1)}"]`);
-    (slot ?? root?.querySelector<HTMLButtonElement>(`[data-testid="discard-add-${target.resource}"]`))?.focus();
-  }, [picked, selected]);
+    if (picked[target] > 0) return;
+    const stacks = RESOURCES.filter((resource) => picked[resource] > 0);
+    const next = stacks.find((resource) => RESOURCES.indexOf(resource) > RESOURCES.indexOf(target)) ?? stacks.at(-1);
+    const selector = next ? `[data-testid="discard-return-${next}"]` : `[data-testid="discard-add-${target}"]`;
+    root?.querySelector<HTMLButtonElement>(selector)?.focus();
+  }, [picked]);
 
   const take = (resource: Resource) => {
     if (full || picked[resource] >= (hand?.[resource] ?? 0)) return;
     setPicked((current) => ({ ...current, [resource]: current[resource] + 1 }));
   };
-  const giveBack = (resource: Resource, index: number) => {
-    refocus.current = { index, resource };
+  const giveBack = (resource: Resource) => {
+    refocus.current = resource;
     setPicked((current) => ({ ...current, [resource]: Math.max(0, current[resource] - 1) }));
   };
 
@@ -95,23 +98,30 @@ export function DiscardPicker({ required, hand, onSubmit }: {
             {t('play.pending.discardProgress', { selected: n(selected), required: n(required) })}
           </span>
         </h3>
-        <ol className="discard__pile">
+        <div className="discard__meter" aria-hidden="true">
           {Array.from({ length: required }, (_, index) => {
             const resource = picks[index];
-            if (!resource) return <li key={`empty-${index}`} className="discard-slot" aria-hidden="true" />;
-            return (
-              <li key={`${resource}-${index}`} className={`discard-slot discard-slot--filled hand-card--${resource}`}>
-                <button type="button" className="discard-slot__card" data-testid={`discard-slot-${index}`} data-resource={resource}
-                  aria-label={t('play.pending.discardReturn', { resource: t(`resource.${resource}`) })}
-                  onClick={() => giveBack(resource, index)}>
-                  <ResourceCardArt resource={resource} />
-                  <span className="discard-slot__pip"><ResourceGlyph resource={resource} size={12} /></span>
-                  <span className="discard-slot__undo" aria-hidden="true">↩</span>
-                </button>
-              </li>
-            );
+            return <span key={index} className={`discard__cell${resource ? ` discard__cell--filled hand-card--${resource}` : ''}`} />;
           })}
-        </ol>
+        </div>
+        <ul className="discard__pile">
+          {selected === 0 && <li className="discard__pile-empty">{t('play.pending.discardPileEmpty')}</li>}
+          {RESOURCES.filter((resource) => picked[resource] > 0).map((resource) => (
+            <li key={resource} className={`discard-stack hand-card--${resource}`} data-resource={resource}
+              data-depth={Math.min(picked[resource], 3)}>
+              <button type="button" className="discard-stack__card" data-testid={`discard-return-${resource}`}
+                aria-label={t('play.pending.discardReturn', { resource: t(`resource.${resource}`), count: n(picked[resource]) })}
+                onClick={() => giveBack(resource)}>
+                <ResourceCardArt resource={resource} />
+                <span className="discard-stack__pip"><ResourceGlyph resource={resource} size={12} /></span>
+                <span className="discard-stack__undo" aria-hidden="true">↩</span>
+              </button>
+              <span className="discard-stack__count" data-testid={`discard-picked-${resource}`} aria-hidden="true">
+                ×{n(picked[resource])}
+              </span>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <div className="discard__actions">
