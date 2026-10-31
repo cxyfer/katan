@@ -31,9 +31,10 @@ function statsFixture(view: GameView): GameStats {
   return stats;
 }
 
-function renderPanel(locale: 'en' | 'zh-Hant' = 'en', complete = true) {
+function renderPanel(locale: 'en' | 'zh-Hant' = 'en', complete = true, edit?: (view: GameView) => void) {
   const view = makeView({ result: { playerId: 'p1', reason: 'victory', score: 10 } });
   view.stats = statsFixture(view);
+  edit?.(view);
   view.stats.complete = complete;
   render(
     <LocaleProvider locale={locale}>
@@ -100,6 +101,19 @@ describe('post-game statistics', () => {
 
     expect(screen.getByTestId('stats-dice-7').textContent).toContain('1');
     expect(within(screen.getByTestId('stats-dice-table')).getAllByRole('row')).toHaveLength(12);
+  });
+
+  it('places timeline end labels inside the right margin so long names are clipped', () => {
+    renderPanel('en', true, (view) => {
+      view.players[2]!.nickname = 'ABCDEFGHIJKLMNOPQRSTUVWX';
+    });
+    fireEvent.click(screen.getByTestId('stats-tab-timeline'));
+    expect(screen.getByTestId('stats-timeline-end-10').textContent).toBe('10 Alex');
+    const long = screen.getByTestId('stats-timeline-end-5');
+    expect(long.textContent).toBe('5 ABCDEFGHIJKLMNOPQRSTUVWX');
+    expect(long.className).toBe('stats-chart__end-label');
+    // 左緣 + 最大寬度不超過 SVG 的 viewBox 寬度（100%）
+    expect(parseFloat(long.style.left) + parseFloat(long.style.maxWidth)).toBeLessThanOrEqual(100);
   });
 
   it('flags statistics that started mid-game, in Traditional Chinese', () => {

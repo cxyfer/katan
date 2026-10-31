@@ -196,6 +196,7 @@
   }
   .stats-chart__frame {
     position: relative;
+    container-type: inline-size;
   }
   .stats-chart__svg {
     display: block;
@@ -224,10 +225,23 @@
     fill: var(--text-muted);
     font-size: 11px;
   }
-  .stats-chart__label,
   .stats-chart__value {
     fill: var(--text);
     font-size: 12px;
+  }
+  .stats-chart__end-label {
+    position: absolute;
+    z-index: 1;
+    overflow: hidden;
+    color: var(--text);
+    /* 與 SVG 內 12px 文字等比縮放：12 / 640 為 viewBox 寬度比例 */
+    font-size: .75rem;
+    font-size: calc(100cqi * 12 / 640);
+    line-height: 1.2;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    transform: translateY(-50%);
   }
   .stats-chart__dot {
     stroke: var(--stats-surface);
