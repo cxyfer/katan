@@ -26,6 +26,26 @@ export function tradeShortfall(owned: Partial<Record<Resource, number>> | undefi
   return Object.keys(missing).length > 0 ? missing : null;
 }
 
+export interface ViewerOfferTerms {
+  give: Terms;
+  want: Terms;
+}
+
+/**
+ * 提案條款在規則層固定以提案者（`offer.from`）的視角儲存；介面必須換算成
+ * 觀看者自己的視角，否則被提案方會看到相反方向的付出與獲得。
+ * 既非提案者也非收件者（或尚未入座）時回傳 `null`，改以提案者具名呈現。
+ */
+export function offerTermsForViewer(
+  offer: Pick<Offer, 'from' | 'to' | 'give' | 'want'>,
+  selfId: string | null,
+): ViewerOfferTerms | null {
+  if (!selfId) return null;
+  if (offer.from === selfId) return { give: offer.give, want: offer.want };
+  if (offer.to === selfId || offer.to === 'all') return { give: offer.want, want: offer.give };
+  return null;
+}
+
 /** 本地提示只說明為何沒有送出，伺服器仍是資源是否足夠的最終裁決者。 */
 interface TradeHint {
   id: number;
@@ -325,7 +345,9 @@ function OfferRow({
   const t = useT();
   const locale = useLocale();
   const isMine = offer.from === selfId;
-  const isRecipient = offer.to === 'all' ? !isMine : offer.to === selfId;
+  const isRecipient = selfId !== null && !isMine && (offer.to === 'all' || offer.to === selfId);
+  // 收件者看到的付出／獲得與提案者相反；旁觀者改以提案者具名顯示。
+  const viewerTerms = offerTermsForViewer(offer, selfId);
   const consented = Object.entries(offer.responses)
     .filter(([, response]) => response === 'consented')
     .map(([playerId]) => playerId);
@@ -341,9 +363,18 @@ function OfferRow({
           {offer.to === 'all' ? t('play.tradeToAll') : t('play.tradeOfferTo', { player: nameOf(offer.to) })}
         </span>
       </header>
-      <p>
-        {t('play.tradeGive')}: {formatResourceMap(locale, offer.give)} · {t('play.tradeWant')}:{' '}
-        {formatResourceMap(locale, offer.want)}
+      <p data-testid={`offer-terms-${offer.id}`}>
+        {viewerTerms ? (
+          <>
+            {t('play.tradeGive')}: {formatResourceMap(locale, viewerTerms.give)} ·{' '}
+            {t('play.tradeWant')}: {formatResourceMap(locale, viewerTerms.want)}
+          </>
+        ) : (
+          <>
+            {t('play.tradeGiveBy', { player: nameOf(offer.from) })}: {formatResourceMap(locale, offer.give)} ·{' '}
+            {t('play.tradeWantBy', { player: nameOf(offer.from) })}: {formatResourceMap(locale, offer.want)}
+          </>
+        )}
       </p>
       <p className="muted">
         {t(`play.tradeStatus.${offer.status}`)} · {t('play.tradeRevision', { revision: offer.revision })}

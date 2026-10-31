@@ -16,6 +16,7 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`island-diorama/`](island-diorama/README.md) | Standalone 3D island preview at several camera angles and sizes, plus game-surface checks | 2026-10-29 | `scripts/board-3d/verify-diorama.py`, see [work record](../aegis/work/2026-10-29-island-diorama.md) |
 | [`lobby-capacity/`](lobby-capacity/README.md) | Four-seat base and six-seat paired lobbies below capacity, plus the lowered-capacity state, desktop/mobile and both locales | 2026-10-30 | [`scripts/lobby-capacity/capture.py`](../../scripts/lobby-capacity/capture.py) |
 | [`notice-dismiss/`](notice-dismiss/README.md) | Rejected toast and command receipt with countdown strips before, between and after their independent deadlines, plus turn-change dismissal | 2026-10-31 | [`scripts/notice-dismiss/capture.py`](../../scripts/notice-dismiss/capture.py) |
+| [`trade-offer-perspective/`](trade-offer-perspective/README.md) | The same open offer card as the proposer and as the recipient, card crops plus table viewport | 2026-10-31 | [`scripts/trade-offer-perspective/capture.py`](../../scripts/trade-offer-perspective/capture.py) |
 
 `current/` and `hand-cards/` reflect the table as it is now. The other sets are
 focused feature reviews kept with their work records; each was captured at the

@@ -1,10 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { App } from '../src/App.tsx';
-import { handFanStyles } from '../src/components/HandPanel.tsx';
+import { HandPanel, handFanStyles } from '../src/components/HandPanel.tsx';
+import { initialTableState } from '../src/state/table.ts';
 import { memoryStorage } from '../src/state/session.ts';
+import type { TableController } from '../src/state/useTable.ts';
 import { createFakeApi } from '../src/test/fake-api.ts';
-import { makeSnapshot, makeView } from '../src/test/fixtures.ts';
+import { makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
 async function open(view = makeView()) {
   const api = createFakeApi({ snapshot: makeSnapshot(view) });
@@ -13,14 +15,89 @@ async function open(view = makeView()) {
   await screen.findByTestId('board-svg');
   return api;
 }
+function pointerEnter(element: Element, type = 'mouse') {
+  const event = new Event('pointerover', { bubbles: true });
+  Object.defineProperty(event, 'pointerType', { value: type });
+  fireEvent(element, event);
+}
 function touch(element: Element) {
   const event = new Event('pointerdown', { bubbles: true });
   Object.defineProperty(event, 'pointerType', { value: 'touch' });
   fireEvent(element, event);
   fireEvent.click(element);
 }
+function emptyHandView() {
+  const view = makeView();
+  Object.assign(view.players[0]!, {
+    resources: { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 },
+    handSize: 0,
+    devCards: [],
+    newDevCards: [],
+    devCardCount: 0,
+    newDevCardCount: 0,
+  });
+  return view;
+}
+function panelController(view: ReturnType<typeof makeView>): TableController {
+  return {
+    state: { ...initialTableState('en'), game: makeSnapshot(view), session: makeIdentity() },
+    actions: {} as TableController['actions'],
+    dispatch: () => undefined,
+  };
+}
 
 describe('held card fan', () => {
+  it('keeps an empty hand collapsed and removes every expand affordance', async () => {
+    await open(emptyHandView());
+    const hand = screen.getByTestId('hand-panel');
+    expect(hand.dataset.empty).toBe('true');
+    expect(hand.dataset.expanded).toBe('false');
+    expect(hand.tabIndex).toBe(-1);
+    expect(hand.getAttribute('aria-describedby')).toBeNull();
+    expect(hand.querySelector('#hand-hint')).toBeNull();
+    expect(screen.getByText('No resource cards.')).toBeTruthy();
+
+    pointerEnter(hand);
+    fireEvent.focus(hand);
+    fireEvent.keyDown(hand, { key: ' ' });
+    touch(hand);
+    fireEvent.click(hand);
+    expect(hand.dataset.expanded).toBe('false');
+    expect(screen.queryByRole('button', { name: 'Collapse hand' })).toBeNull();
+  });
+
+  it('collapses when the hand empties, keeps focus in the dock, and stays collapsed when cards return', () => {
+    const view = makeView();
+    const { rerender } = render(<HandPanel controller={panelController(view)} />);
+    const hand = screen.getByTestId('hand-panel');
+    act(() => screen.getByTestId('resource-card-lumber-0').querySelector('button')!.focus());
+    expect(hand.dataset.expanded).toBe('true');
+
+    const empty = structuredClone(view);
+    Object.assign(empty.players[0]!, {
+      resources: { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 },
+      handSize: 0,
+      devCards: [],
+      newDevCards: [],
+      devCardCount: 0,
+      newDevCardCount: 0,
+    });
+    rerender(<HandPanel controller={panelController(empty)} />);
+    expect(hand.dataset.expanded).toBe('false');
+    expect(hand.tabIndex).toBe(-1);
+    expect(hand.querySelector('#hand-hint')).toBeNull();
+    // 最後一張牌卸載後，焦點仍留在 dock，而不是掉回 body。
+    expect(document.activeElement).toBe(hand);
+
+    // 內部展開狀態也必須重設，否則牌回來時會無故自動展開。
+    rerender(<HandPanel controller={panelController(view)} />);
+    expect(hand.dataset.expanded).toBe('false');
+    expect(hand.tabIndex).toBe(0);
+    expect(hand.querySelector('#hand-hint')).not.toBeNull();
+    pointerEnter(hand);
+    expect(hand.dataset.expanded).toBe('true');
+  });
+
   it('opens on the first touch without playing, then separates inspection from the explicit play action', async () => {
     const view = makeView();
     view.players[0]!.devCards = ['monopoly'];

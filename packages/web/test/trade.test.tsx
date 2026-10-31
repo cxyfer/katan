@@ -3,10 +3,10 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import type { CommandRequest } from '@catan/protocol';
 import type { Offer } from '@catan/rules';
 import { App } from '../src/App.tsx';
-import { tradeShortfall } from '../src/components/TradePanel.tsx';
+import { offerTermsForViewer, tradeShortfall } from '../src/components/TradePanel.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
-import { makeHints, makeSnapshot, makeView } from '../src/test/fixtures.ts';
+import { makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
 beforeEach(() => {
   const original = HTMLElement.prototype.getBoundingClientRect;
@@ -82,7 +82,9 @@ describe('structured trading', () => {
 
     const row = screen.getByTestId('offer-offer-1');
     expect(row.textContent).toContain('Offer from 小美');
-    expect(row.textContent).toContain('Wool');
+    // 被提案方看到的是自己的付出與獲得，不是提案者的視角。
+    expect(screen.getByTestId('offer-terms-offer-1').textContent)
+      .toBe('You give: 1×Ore · You receive: 1×Wool');
     fireEvent.click(screen.getByTestId('consent-offer-1'));
 
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
@@ -91,6 +93,46 @@ describe('structured trading', () => {
       offerId: 'offer-1',
       response: 'consented',
     });
+  });
+
+  it('shows a direct offer’s terms as the recipient’s own', async () => {
+    const api = createFakeApi({
+      snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [{ ...openOffer, to: 'p1' }] })),
+    });
+    await openGame(api, 'trade');
+
+    expect(screen.getByTestId('offer-terms-offer-1').textContent)
+      .toBe('You give: 1×Ore · You receive: 1×Wool');
+    expect(screen.getByTestId('decline-offer-1')).toBeTruthy();
+    expect(screen.getByTestId('interested-offer-1')).toBeTruthy();
+    expect(screen.getByTestId('consent-offer-1')).toBeTruthy();
+    // 接受者只同意條件，交換仍由提案者確認（既有的流程邊界）。
+    expect(screen.queryByTestId('settle-offer-1')).toBeNull();
+  });
+
+  it('names the proposer for a viewer who is not a party to a direct offer', async () => {
+    const offer: Offer = { ...openOffer, from: 'p1', to: 'p2' };
+    const api = createFakeApi({
+      identity: makeIdentity({ id: 'p3', nickname: 'Bo' }),
+      snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [offer] })),
+    });
+    await openGame(api, 'trade');
+
+    expect(screen.getByTestId('offer-terms-offer-1').textContent)
+      .toBe('Alex gives: 1×Wool · Alex receives: 1×Ore');
+    // 未被指名的人不能對直送提案回應。
+    for (const action of ['decline', 'interested', 'consent']) {
+      expect(screen.queryByTestId(`${action}-offer-1`)).toBeNull();
+    }
+  });
+
+  it('converts stored offer terms to the viewer’s own perspective', () => {
+    const offer = { from: 'p2', to: 'p1', give: { wool: 2 }, want: { ore: 1 } };
+    expect(offerTermsForViewer(offer, 'p2')).toEqual({ give: { wool: 2 }, want: { ore: 1 } });
+    expect(offerTermsForViewer(offer, 'p1')).toEqual({ give: { ore: 1 }, want: { wool: 2 } });
+    expect(offerTermsForViewer({ ...offer, to: 'all' }, 'p1')).toEqual({ give: { ore: 1 }, want: { wool: 2 } });
+    expect(offerTermsForViewer({ ...offer, to: 'p3' }, 'p1')).toBeNull();
+    expect(offerTermsForViewer(offer, null)).toBeNull();
   });
 
   it('lets the proposer withdraw or settle a consented table-wide offer', async () => {
@@ -105,6 +147,9 @@ describe('structured trading', () => {
     api.setCommandResult(ACCEPTED);
     await openGame(api, 'trade');
 
+    // 提案者看到的仍是自己的付出與獲得。
+    expect(screen.getByTestId('offer-terms-offer-1').textContent)
+      .toBe('You give: 1×Wool · You receive: 1×Ore');
     fireEvent.change(screen.getByTestId('counterparty-offer-1'), { target: { value: 'p2' } });
     fireEvent.click(screen.getByTestId('settle-offer-1'));
 
