@@ -46,12 +46,12 @@ now covers the setup same-seat boundary and an advancing window.
 ## Verification
 
 - `pnpm verify`: typecheck clean; rules 138, protocol 7, server 96 passed with 11
-  PostgreSQL-only skips, web 464, production build, smoke 13/13, dev harness 1/1.
+  PostgreSQL-only skips, web 469, production build, smoke 13/13, dev harness 1/1.
 - Focused production-browser capture and assertions
   (`python3 scripts/notice-dismiss/capture.py --out test-results/notice-dismiss`):
-  toast detached after 6.07 s, rejected receipt after 8.04 s, both detached
+  toast detached after 6.02 s, rejected receipt after 8.48 s, both detached
   0.03 s after a turn-changing snapshot. When the toast detached, the receipt
-  strip measured 24% of its width (two of eight seconds left). No page or
+  strip measured 25% of its width (two of eight seconds left). No page or
   console errors.
 - `python3 scripts/side-rails/verify.py --renderer svg --viewport desktop --board
   hex-r2`: PASS, including unknown-receipt resolution and the unchanged accepted

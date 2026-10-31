@@ -17,11 +17,11 @@ contains focus.
 
 The capture run measured:
 
-- toast detached after **6.07 s**;
-- rejected receipt detached after **8.04 s** (measured from the first capture,
+- toast detached after **6.02 s**;
+- rejected receipt detached after **8.48 s** (measured from the first capture,
   including the preceding wait and screenshot work);
 - both detached **0.03 s** after the turn-changing snapshot;
-- when the toast detached, the receipt strip measured **24%** of its width,
+- when the toast detached, the receipt strip measured **25%** of its width,
   matching the roughly two seconds left of its eight-second deadline.
 
 Unknown and stale command outcomes are intentionally absent from this set: they
