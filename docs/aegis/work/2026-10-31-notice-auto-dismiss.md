@@ -57,8 +57,12 @@ now covers the setup same-seat boundary and an advancing window.
 ## Review follow-up
 
 - Codex found that an actor-only turn key missed same-actor boundaries; the
-  window/setup key replaced it. The thread was resolved and Codex re-reviewed the
-  final head with no findings.
+  window/setup key replaced it. A later Codex pass found that removing a focused
+  Retry/Resolve/Refresh button did not emit a blur, so the replacement receipt
+  kept the focus pause and never started its deadline; `2f00f64` checks the new
+  root for focus and a regression test covers rejected → submitting → rejected.
+  Both threads are resolved. Final Codex re-review of `2f00f64` completed with no
+  findings.
 - The independent subagent review found no blocker in the main flow but asked for
   tighter hook identity and focus handling. The follow-up:
   - resets a dismissed identity when the notice key becomes null;
