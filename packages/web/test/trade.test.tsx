@@ -432,7 +432,7 @@ describe('development cards and pending effects', () => {
     expect(lastCommand(api)).toEqual({ type: 'pending.discard', resources: ['wool', 'grain'] });
   });
 
-  it('shows how many cards I hold and caps each resource at that amount', async () => {
+  it('shows owned counts, caps additions, and allows removing a pick', async () => {
     const view = makeView({
       hints: null,
       pending: { kind: 'discard', required: { p1: 5 }, waitingFor: ['p1'] },
@@ -448,6 +448,15 @@ describe('development cards and pending effects', () => {
     // 木頭只有一張：即使還沒選滿所需張數，也不能再選第二張。
     expect((screen.getByTestId('discard-add-lumber') as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId('discard-add-brick').hasAttribute('disabled')).toBe(false);
+    expect(screen.getByTestId('discard-picked-lumber').textContent).toBe('1');
+
+    // 減號可逐張移除，移除後同一種資源可以再選。
+    fireEvent.click(screen.getByTestId('discard-sub-lumber'));
+    expect(screen.getByTestId('discard-picked-lumber').textContent).toBe('0');
+    expect(screen.getByTestId('discard-counts').textContent).toContain('0');
+    expect((screen.getByTestId('discard-sub-lumber') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('discard-add-lumber') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByTestId('discard-add-lumber'));
 
     fireEvent.click(screen.getByTestId('discard-add-brick'));
     fireEvent.click(screen.getByTestId('discard-add-brick'));

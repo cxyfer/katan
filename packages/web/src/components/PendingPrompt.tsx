@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { RESOURCES, type Resource } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
-import { formatNumber, formatResourceList } from '../i18n/format.ts';
+import { formatNumber } from '../i18n/format.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { followUpsHeld, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
@@ -67,38 +67,63 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
             {t('play.pending.discardRequired', { required })} ·{' '}
             {t('play.pending.discardSelected', { selected })}
           </p>
-          {selected > 0 && (
-            <p className="muted" data-testid="discard-picked">
-              {formatResourceList(locale, discardPick)}
-            </p>
-          )}
           <ul className="resource-picker discard-picker">
             {RESOURCES.map((resource) => {
               const have = owned?.[resource];
-              // 每種資源都不能選超過手上張數；選滿所需張數後整組停用。
+              // 每種資源都不能選超過手上張數；選滿所需張數後不再增加。
               const picked = pickedCount(resource);
-              const disabled = selected >= required || (have !== undefined && picked >= have);
+              const addDisabled = selected >= required || (have !== undefined && picked >= have);
               return (
                 <li key={resource} className="discard-picker__item">
-                  <button
-                    type="button"
-                    className="button button--chip"
-                    data-testid={`discard-add-${resource}`}
-                    aria-describedby={have === undefined ? undefined : `discard-owned-${resource}`}
-                    disabled={disabled}
-                    onClick={() => setDiscardPick((current) => [...current, resource])}
-                  >
-                    {t(`resource.${resource}`)} +
-                  </button>
-                  {have !== undefined && (
-                    <span
-                      className="discard-picker__owned"
-                      id={`discard-owned-${resource}`}
-                      data-testid={`discard-owned-${resource}`}
+                  <span className="discard-picker__label">
+                    <span className="discard-picker__name">{t(`resource.${resource}`)}</span>
+                    {have !== undefined && (
+                      <span
+                        className="discard-picker__owned"
+                        id={`discard-owned-${resource}`}
+                        data-testid={`discard-owned-${resource}`}
+                      >
+                        {t('play.pending.discardOwned', { count: formatNumber(locale, have) })}
+                      </span>
+                    )}
+                  </span>
+                  <span className="discard-picker__controls">
+                    <button
+                      type="button"
+                      className="button button--chip"
+                      data-testid={`discard-sub-${resource}`}
+                      aria-label={`${t(`resource.${resource}`)} −`}
+                      disabled={picked === 0}
+                      onClick={() =>
+                        setDiscardPick((current) => {
+                          const index = current.lastIndexOf(resource);
+                          return index < 0
+                            ? current
+                            : [...current.slice(0, index), ...current.slice(index + 1)];
+                        })
+                      }
                     >
-                      {t('play.pending.discardOwned', { count: formatNumber(locale, have) })}
-                    </span>
-                  )}
+                      −
+                    </button>
+                    <output
+                      className="discard-picker__count"
+                      data-testid={`discard-picked-${resource}`}
+                      aria-label={`${t(`resource.${resource}`)}: ${formatNumber(locale, picked)}`}
+                    >
+                      {formatNumber(locale, picked)}
+                    </output>
+                    <button
+                      type="button"
+                      className="button button--chip"
+                      data-testid={`discard-add-${resource}`}
+                      aria-label={`${t(`resource.${resource}`)} +`}
+                      aria-describedby={have === undefined ? undefined : `discard-owned-${resource}`}
+                      disabled={addDisabled}
+                      onClick={() => setDiscardPick((current) => [...current, resource])}
+                    >
+                      +
+                    </button>
+                  </span>
                 </li>
               );
             })}

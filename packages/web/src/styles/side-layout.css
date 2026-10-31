@@ -7,6 +7,10 @@
   width: min(260px, calc(100% - 70px)); max-height: 28%; overflow: auto;
   scrollbar-width: thin; z-index: 65; font-size: .72rem;
 }
+/* 棄牌是必要回應：訊息區要容納完整選牌與送出按鈕，不能只露出上半部。 */
+.screen--game .game__messages:has(.discard-picker) {
+  max-height: min(calc(100% - 8px), 460px);
+}
 .screen--game .game__messages:empty { display: none; }
 .screen--game .game__messages .prompt {
   position: relative; padding: 10px 12px; overflow: hidden;
@@ -44,7 +48,18 @@
 .screen--game .action-rail { max-height: calc(100% - 200px); }
 @media (max-height: 520px) {
   .screen--game .game__messages { max-height: 80px; }
+  .screen--game .game__messages:has(.discard-picker) { max-height: calc(100% - 8px); }
+  .screen--game .game__messages .prompt:has(.discard-picker) { padding: 6px 8px; }
+  .screen--game .game__messages .prompt__body { margin-top: .3rem; }
+  .screen--game .game__messages .prompt__body > .button { min-height: 34px; }
+  .screen--game .game__messages .discard-picker { margin: .3rem 0; gap: .2rem; }
+  .screen--game .game__messages .discard-picker__controls .button { min-width: 32px; min-height: 32px; }
   .screen--game .action-rail { max-height: calc(100% - 180px); }
+}
+@media (max-height: 520px) and (max-width: 649px) {
+  .screen--game .game__messages:has(.discard-picker) { width: min(340px, calc(100% - 16px)); }
+  .screen--game .game__messages .discard-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .screen--game .game__messages .discard-picker__controls .button { min-width: 30px; }
 }
 /* 側欄動作必須高於透明的棋盤檢視命中層。 */
 .screen--game .action-rail { z-index: 47; }
