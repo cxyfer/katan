@@ -64,4 +64,29 @@ describe('transient toast', () => {
     rerender(toast({ ...saved }, 'g1:2', vi.fn()));
     expect(screen.getByTestId('toast')).toBeTruthy();
   });
+
+  it('holds the deadline while the dismiss control is focused', () => {
+    vi.useFakeTimers();
+    const onDismiss = vi.fn();
+    render(toast(saved, 'g1:1', onDismiss));
+    fireEvent.focus(screen.getByRole('button', { name: 'Dismiss' }));
+    act(() => vi.advanceTimersByTime(10000));
+    expect(screen.getByTestId('toast')).toBeTruthy();
+    expect(onDismiss).not.toHaveBeenCalled();
+    fireEvent.blur(screen.getByRole('button', { name: 'Dismiss' }));
+    act(() => vi.advanceTimersByTime(6000));
+    expect(screen.queryByTestId('toast')).toBeNull();
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the same notice object again after the toast is cleared', () => {
+    vi.useFakeTimers();
+    const onDismiss = vi.fn();
+    const { rerender } = render(toast(saved, 'g1:1', onDismiss));
+    act(() => vi.advanceTimersByTime(6000));
+    expect(screen.queryByTestId('toast')).toBeNull();
+    rerender(toast(null, 'g1:1', onDismiss));
+    rerender(toast(saved, 'g1:1', onDismiss));
+    expect(screen.getByTestId('toast')).toBeTruthy();
+  });
 });

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CommandStatus } from '../src/components/CommandStatus.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
@@ -52,6 +52,27 @@ describe('side command receipt', () => {
     act(() => vi.advanceTimersByTime(1));
     expect(screen.queryByTestId('command-status')).toBeNull();
     expect(value.actions.clearCommand).not.toHaveBeenCalled();
+  });
+  it('holds rejected feedback while its retry control is focused', () => {
+    vi.useFakeTimers();
+    render(notice(controller('rejected')));
+    const retry = screen.getByTestId('command-retry');
+    fireEvent.focus(retry);
+    act(() => vi.advanceTimersByTime(10000));
+    expect(screen.getByTestId('command-status')).toBeTruthy();
+    fireEvent.blur(retry);
+    act(() => vi.advanceTimersByTime(8000));
+    expect(screen.queryByTestId('command-status')).toBeNull();
+  });
+
+  it('shows a rejected outcome that reuses a dismissed accepted command id', () => {
+    vi.useFakeTimers();
+    const { rerender } = render(notice(controller('accepted', 'same')));
+    act(() => vi.advanceTimersByTime(4000));
+    expect(screen.queryByTestId('command-status')).toBeNull();
+    rerender(notice(controller('rejected', 'same')));
+    expect(screen.getByTestId('command-status')).toBeTruthy();
+    expect(screen.getByTestId('command-retry')).toBeTruthy();
   });
   it.each(['unknown', 'stale', 'submitting'] as const)('does not auto-dismiss %s', (status) => {
     vi.useFakeTimers();

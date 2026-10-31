@@ -44,15 +44,38 @@ now covers the setup same-seat boundary and an advancing window.
 ## Verification
 
 - `pnpm verify`: typecheck clean; rules 138, protocol 7, server 96 passed with 11
-  PostgreSQL-only skips, web 458, production build, smoke 13/13, dev harness 1/1.
+  PostgreSQL-only skips, web 462, production build, smoke 13/13, dev harness 1/1.
 - Focused production-browser capture and assertions
   (`python3 scripts/notice-dismiss/capture.py --out test-results/notice-dismiss`):
-  toast detached after 6.02 s, rejected receipt after 8.00 s, both detached
+  toast detached after 6.05 s, rejected receipt after 8.01 s, both detached
   0.03 s after a turn-changing snapshot; no page or console errors.
 - `python3 scripts/side-rails/verify.py --renderer svg --viewport desktop --board
   hex-r2`: PASS, including unknown-receipt resolution and the unchanged accepted
   receipt dismissal.
 - Review captures: [`docs/screenshots/notice-dismiss/`](../../screenshots/notice-dismiss/README.md).
+
+## Review follow-up
+
+- Codex found that an actor-only turn key missed same-actor boundaries; the
+  window/setup key replaced it. The thread was resolved and Codex re-reviewed the
+  final head with no findings.
+- The independent subagent review found no blocker in the main flow but asked for
+  tighter hook identity and focus handling. The follow-up:
+  - resets a dismissed identity when the notice key becomes null;
+  - guards a late timer with the scheduled key so it cannot hide a newer notice;
+  - includes the command status in a receipt's identity, so a changed outcome
+    with the same command id is visible;
+  - reads the turn key through a ref instead of omitting it from the timer
+    effect's dependencies;
+  - pauses the timer while the toast or receipt contains focus, so a focused
+    Dismiss/retry control does not disappear;
+  - proves the real three-player setup sequence (including the same-seat forward
+    to reverse pivot) and the final setup-to-play key change;
+  - asserts that a rejected receipt does not gate a new command.
+- Residual limits: dismissal is component-local, so a remount can show an
+  accepted/rejected receipt again; the reason text of a rejection is gone after
+  its 8 s window even though the original action remains available. The receipt
+  is a live region and focus pauses the timer; hover does not.
 
 ## Limitations
 

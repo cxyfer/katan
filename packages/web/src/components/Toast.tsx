@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { Notice } from '@catan/protocol';
 import { translateNotice } from '../i18n/events.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
@@ -18,16 +19,27 @@ export function Toast({
 }) {
   const t = useT();
   const locale = useLocale();
+  const [focused, setFocused] = useState(false);
   const visible = useTransientNotice(notice, {
     timeoutMs: TOAST_DISMISS_MS,
     turnKey,
     dismissOnTurnChange: true,
+    paused: focused,
     onDismiss,
   });
+  useEffect(() => {
+    if (!visible) setFocused(false);
+  }, [visible]);
   if (!notice || !visible) return null;
 
   return (
-    <div className="toast" role="status" data-testid="toast">
+    <div
+      className="toast"
+      role="status"
+      data-testid="toast"
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={() => setFocused(false)}
+    >
       <span>{translateNotice(locale, notice)}</span>
       <button type="button" className="button button--ghost" onClick={onDismiss}>
         {t('app.dismiss')}

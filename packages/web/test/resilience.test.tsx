@@ -125,10 +125,24 @@ describe('state-level resilience', () => {
     const first = stateFor(1);
     expect(activeTurnKey(stateFor(1))).toBe(activeTurnKey(first));
     expect(activeTurnKey(stateFor(2))).not.toBe(activeTurnKey(first));
-    const setupFirst = stateFor(1, { seat: 2, stage: 'building', round: 1, remaining: 4 });
-    const setupReverse = stateFor(1, { seat: 2, stage: 'building', round: 2, remaining: 3 });
-    expect(activeTurnKey(setupReverse)).not.toBe(activeTurnKey(setupFirst));
-    expect(activeTurnKey(setupFirst)).not.toBe(activeTurnKey(first));
+
+    // The real three-player setup order is 0,1,2,2,1,0; the fourth step is the
+    // same seat (2) taking its reverse placement, so only the progress changes.
+    const setupTurns: NonNullable<GameView['turn']['setup']>[] = [
+      { seat: 0, stage: 'building', round: 1, remaining: 6 },
+      { seat: 1, stage: 'building', round: 1, remaining: 5 },
+      { seat: 2, stage: 'building', round: 1, remaining: 4 },
+      { seat: 2, stage: 'building', round: 2, remaining: 3 },
+      { seat: 1, stage: 'building', round: 2, remaining: 2 },
+      { seat: 0, stage: 'building', round: 2, remaining: 1 },
+    ];
+    const setupKeys = setupTurns.map((setup) => activeTurnKey(stateFor(1, setup)));
+    expect(new Set(setupKeys).size).toBe(setupTurns.length);
+    expect(setupKeys[3]).not.toBe(setupKeys[2]);
+
+    const play = stateFor(2);
+    expect(activeTurnKey(play)).not.toBe(setupKeys[5]);
+    expect(activeTurnKey(stateFor(7))).not.toBe(activeTurnKey(play));
   });
 
   it('keeps a draft nickname across a locale change but resets nothing else', () => {

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { canRetry, needsRefresh, needsResolve } from '../state/commands.ts';
 import { translateNotice } from '../i18n/events.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
@@ -23,13 +24,19 @@ export function CommandStatus({ controller }: { controller: TableController }) {
   const locale = useLocale();
   const { state, actions } = controller;
   const command = state.command;
+  const [focused, setFocused] = useState(false);
   const transient = command?.status === 'accepted' || command?.status === 'rejected';
-  const visible = useTransientNotice(command?.commandId ?? null, {
+  const noticeKey = command ? `${command.commandId}:${command.status}` : null;
+  const visible = useTransientNotice(noticeKey, {
     timeoutMs: command?.status === 'accepted' ? ACCEPTED_RECEIPT_MS
       : command?.status === 'rejected' ? REJECTED_RECEIPT_MS : null,
     turnKey: activeTurnKey(state),
     dismissOnTurnChange: transient,
+    paused: focused,
   });
+  useEffect(() => {
+    if (!visible) setFocused(false);
+  }, [visible]);
   if (!command || !visible) return null;
 
   const reason = command.error ? translateNotice(locale, command.error) : '';
@@ -41,6 +48,8 @@ export function CommandStatus({ controller }: { controller: TableController }) {
       data-status={command.status}
       role="status"
       aria-live="polite"
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={() => setFocused(false)}
     >
       {command.status === 'submitting' && <p>{t('command.submitting')}</p>}
       {command.status === 'unknown' && (

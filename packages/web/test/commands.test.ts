@@ -3,6 +3,7 @@ import {
   applyReceipt,
   applyTransportFailure,
   beginCommand,
+  blocksNewCommands,
   canRetry,
   commandReducer,
   isBusy,
@@ -58,6 +59,8 @@ describe('command lifecycle', () => {
     });
     expect(rejected.status).toBe('rejected');
     expect(canRetry(rejected)).toBe(true);
+    // A rejected receipt is informational: hiding it must not gate a new action.
+    expect(blocksNewCommands(rejected)).toBe(false);
 
     const stale = applyReceipt(begin, {
       commandId: 'cmd-1',

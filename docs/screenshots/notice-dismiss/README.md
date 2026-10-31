@@ -15,9 +15,9 @@ toast and a rejected command receipt.
 
 The capture run measured:
 
-- toast detached after **6.02 s**;
-- rejected receipt detached after **8.00 s** (8.47 s measured, including the
-  preceding wait and screenshot work);
+- toast detached after **6.05 s**;
+- rejected receipt detached after **8.01 s** (measured from the first capture,
+  including the preceding wait and screenshot work);
 - both detached **0.03 s** after the turn-changing snapshot.
 
 Unknown and stale command outcomes are intentionally absent from this set: they
