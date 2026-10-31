@@ -21,7 +21,9 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`game-audio/`](game-audio/README.md) | Sound settings in lobby and table (desktop, mobile, both locales) and the offline-rendered sound palette | 2026-10-31 | [`scripts/audio/live.py`](../../scripts/audio/live.py), [`scripts/audio/verify.py`](../../scripts/audio/verify.py) |
 | [`board-polish/`](board-polish/README.md) | Before/after SVG and 3D board: desktop fit, close-up and phone, the standalone island preview, the 30-hex island and low quality | 2026-10-31 | [`scripts/board-polish/capture.py`](../../scripts/board-polish/capture.py) |
 
-`current/` and `hand-cards/` reflect the table as it is now. The other sets are
+`current/` and `hand-cards/` reflect the table as of `79c1039`; their board,
+terrain icons, card art and entry island predate the board polish, which
+[`board-polish/`](board-polish/README.md) shows. The other sets are
 focused feature reviews kept with their work records; each was captured at the
 commit named in its record.
 

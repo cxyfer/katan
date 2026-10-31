@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { useT } from '../i18n/context.tsx';
+import { TerrainEmblem } from './TerrainArt.tsx';
 
 /** 原創向量圖形只負責呈現，不持有遊戲狀態。 */
 export function GameIcon({ name, size = 20, className = '' }: { name: string; size?: number; className?: string }) {
@@ -152,36 +153,18 @@ export function PregameScene({ withIsland = false }: { withIsland?: boolean }) {
   </div>;
 }
 
-function Pine({ x, y, scale = 1 }: { x: number; y: number; scale?: number }) {
-  return <g transform={`translate(${x} ${y}) scale(${scale})`}><path d="M-3 0h6v22h-6z" fill="#775035" /><path d="m0-48-20 30h10L-24 4h48L10-18h10Z" fill="#234f42" /><path d="m0-48 0 52h24L10-18h10Z" fill="#326b50" /><path d="m0-35-10 16h10m0 3L-14 3H0" fill="none" stroke="#55956a" strokeWidth="2" /></g>;
-}
+const RESOURCE_TERRAIN: Readonly<Record<string, string>> = {
+  lumber: 'forest', brick: 'hills', wool: 'pasture', grain: 'fields', ore: 'mountains',
+};
 
-/** 每種地形的獨立圖像，搭配既有文字／符號，不以色彩作唯一辨識。 */
+/**
+ * 每種地形／資源的圖示，與棋盤共用同一份畫法；搭配既有文字與符號，不以色彩作唯一辨識。
+ * 原點約在圖示中心偏下（地面基線位於 y≈18），維持既有呼叫端的版面。
+ */
 export function TerrainIllustration({ terrain, x = 0, y = 0, scale = 1 }: { terrain: string; x?: number; y?: number; scale?: number }) {
-  let art;
-  switch (terrain) {
-    case 'forest': case 'lumber':
-      art = <><ellipse cy="12" rx="51" ry="12" fill="#355a35" opacity=".25" /><Pine x={-27} y={9} scale={.72} /><Pine x={26} y={10} scale={.8} /><Pine x={0} y={13} scale={1.05} /></>;
-      break;
-    case 'mountains': case 'ore':
-      art = <><path d="m-61 18 28-60L3 18Z" fill="#6b7d89" /><path d="m-33-42 3 60H3Z" fill="#485e6a" /><path d="m-43-21 10-21 12 23-11-5Z" fill="#e9e6d8" /><path d="m-16 21 34-76 43 76Z" fill="#849297" /><path d="m18-55 5 76h38Z" fill="#526771" /><path d="m5-25 13-30 18 31-16-7Z" fill="#f4f0df" /></>;
-      break;
-    case 'hills': case 'brick':
-      art = <><path d="M-62 22q10-50 40-45Q2-57 28-20q22-2 34 42Z" fill="#bb7653" /><path d="M-62 22q22-20 51-13 16-33 41-29L16 22Z" fill="#985035" /><g fill="#dba175" stroke="#8c4f36" strokeWidth="2"><path d="M-32 1h29v14h-29zM-10-13h29V1h-29zM4 3h29v14H4z" /><path d="m-32 1 6-6H3L-3 1Zm22-14 6-6h29l-6 6ZM4 3l6-6h29l-6 6Z" fill="#efc099" /></g></>;
-      break;
-    case 'fields': case 'grain':
-      art = <><path d="M-65 20q40-50 130 0Z" fill="#c39b42" /><path d="M-60 20Q-12-4 36 20m-58 0q28-17 73-4" fill="none" stroke="#f6d571" strokeWidth="3" />{[-28, -1, 27].map((n, i) => <g key={n} transform={`translate(${n} ${i === 1 ? -6 : 3})`} stroke="#725e2d" strokeWidth="2" fill="#f9dfa0"><path d="M0 22V-33" />{[-24, -13, -2].map((v) => <g key={v}><path d={`M0 ${v + 7}q-17-4-11-15Q0 ${v - 6} 0 ${v + 7}Z`} /><path d={`M0 ${v + 7}q17-4 11-15Q0 ${v - 6} 0 ${v + 7}Z`} /></g>)}</g>)}</>;
-      break;
-    case 'pasture': case 'wool':
-      art = <><path d="M-66 22q17-49 53-27Q25-38 66 22Z" fill="#78a16a" /><path d="M-65 22q39-19 79 0" fill="#568954" /><g transform="translate(0 -6)"><path d="M-17 16v13m26-13v13" stroke="#5b5143" strokeWidth="5" /><path d="M-27 3q-9-16 5-18 6-16 18-7 15-10 22 5 17-1 16 14 1 17-20 17h-29q-15 0-12-11" fill="#f3efd7" stroke="#d3d1b7" strokeWidth="2" /><ellipse cx="26" cy="3" rx="10" ry="13" fill="#615b50" /><path d="m28-5 12-5-3 12" fill="#615b50" /><circle cx="29" cy="0" r="2" fill="#f9f5e7" /></g></>;
-      break;
-    case 'desert':
-      art = <><path d="M-66 22q29-58 65-19 30-45 67 19Z" fill="#c9a165" /><path d="M-66 22q51-32 132 0Z" fill="#e6c68f" /><path d="M-28 11q29-24 62-5M-49 21q22-12 44-7" fill="none" stroke="#f7dda8" strokeWidth="3" /><path d="M24-15v-20m0 11h8v-9m-8 12h-7v-10" fill="none" stroke="#7a8760" strokeWidth="5" strokeLinecap="round" /></>;
-      break;
-    default:
-      art = <path d="M-52-5q13-13 26 0t26 0 26 0 26 0M-52 15q13-13 26 0t26 0 26 0 26 0" fill="none" stroke="#98cac6" strokeWidth="3" />;
-  }
-  return <g transform={`translate(${x} ${y}) scale(${scale})`} className="terrain-art" aria-hidden="true" pointerEvents="none">{art}</g>;
+  return <g transform={`translate(${x} ${y}) scale(${scale})`} className="terrain-art" aria-hidden="true" pointerEvents="none">
+    <TerrainEmblem terrain={RESOURCE_TERRAIN[terrain] ?? terrain} x={0} y={18} />
+  </g>;
 }
 
 export function ResourceIcon({ resource, size = 48 }: { resource: string; size?: number }) {
@@ -218,7 +201,11 @@ export function IslandIllustration({ className = '' }: { className?: string }) {
     <ellipse cx="340" cy="312" rx="214" ry="122" fill="#7cc0b2" opacity=".28" />
     <g className="island-illustration__ripples" stroke="#6ba6a4" opacity=".25"><ellipse cx="340" cy="290" rx="273" ry="170" /><ellipse cx="340" cy="290" rx="305" ry="191" strokeDasharray="4 11" /><path d="M27 345h38m-18 12h36m487-168h49m-22 13h42M106 112h29m-13 11h44" /></g>
     <g transform="translate(340 251) rotate(-8) scale(1.07 .84)">
-      {tiles.map((tile) => <g key={`${tile.x}-${tile.y}`} transform={`translate(${tile.x} ${tile.y})`}><polygon points={hex} transform="translate(0 16)" fill="#b39b6d" stroke="#675b43" strokeWidth="3" /><polygon points={hex} fill={tile.fill} stroke="#e7d7a4" strokeWidth="4" /><polygon points="0,-57 49,-28 49,28 0,57 -49,28 -49,-28" stroke="#fff4cc" opacity=".25" /><TerrainIllustration terrain={tile.terrain} y={5} scale={.7} /></g>)}
+      {/* 與棋盤一致的淺水與沙灘：放大的六角形彼此重疊成連續的海岸。 */}
+      {tiles.map((tile) => <polygon key={`shallow-${tile.x}-${tile.y}`} points={hex} transform={`translate(${tile.x} ${tile.y + 10}) scale(1.62)`} fill="#8ed6c8" opacity=".38" />)}
+      {tiles.map((tile) => <polygon key={`surf-${tile.x}-${tile.y}`} points={hex} transform={`translate(${tile.x} ${tile.y + 12}) scale(1.36)`} fill="#d9f3ea" />)}
+      {tiles.map((tile) => <polygon key={`sand-${tile.x}-${tile.y}`} points={hex} transform={`translate(${tile.x} ${tile.y + 12}) scale(1.28)`} fill="#e9d29d" />)}
+      {tiles.map((tile) => <g key={`${tile.x}-${tile.y}`} transform={`translate(${tile.x} ${tile.y})`}><polygon points={hex} transform="translate(0 16)" fill="#8d6f48" stroke="#5f4a31" strokeWidth="3" /><polygon points={hex} fill={tile.fill} stroke="#5d5440" strokeOpacity=".55" strokeWidth="3" /><polygon points="0,-57 49,-28 49,28 0,57 -49,28 -49,-28" stroke="#fff4cc" opacity=".3" /><TerrainIllustration terrain={tile.terrain} y={-6} scale={.76} /></g>)}
       <path d="m-57-84 0 66 57 34 57-34" stroke="#5c3e2c" strokeWidth="11" strokeLinecap="round" /><path d="m-57-84 0 66 57 34 57-34" stroke="#dc9e58" strokeWidth="7" strokeLinecap="round" />
       {[{ x: -57, y: -84 }, { x: 57, y: -18 }].map(({ x, y }) => <g key={x} transform={`translate(${x} ${y})`}><path d="M-13-3 0-16 13-3v19h-26Z" fill="#e9ba7a" stroke="#63442e" strokeWidth="2" /><path d="m-17-2 17-18 17 18" fill="#d36e4d" stroke="#663d2d" strokeWidth="2" /><path d="M-3 5h6v11h-6Z" fill="#765744" /></g>)}
     </g>

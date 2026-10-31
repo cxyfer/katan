@@ -7,7 +7,8 @@ import type { TableState } from '../state/table.ts';
 import { useT } from '../i18n/context.tsx';
 import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrainLetter, terrainSymbol } from '../board/terrain.ts';
 import { confirmedPlacement } from '../board/effects.ts';
-import { BoardArtDefs, BoardBuilding, boardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TerrainEmblem, TileFinish } from './SvgBoardArt.tsx';
+import { BoardArtDefs, BoardBuilding, boardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
+import { TerrainEmblem } from './TerrainArt.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
