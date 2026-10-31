@@ -52,8 +52,9 @@ describe('held card fan', () => {
     const hand = screen.getByTestId('hand-panel');
     expect(hand.dataset.empty).toBe('true');
     expect(hand.dataset.expanded).toBe('false');
-    expect(hand.hasAttribute('tabindex')).toBe(false);
+    expect(hand.tabIndex).toBe(-1);
     expect(hand.getAttribute('aria-describedby')).toBeNull();
+    expect(hand.querySelector('#hand-hint')).toBeNull();
     expect(screen.getByText('No resource cards.')).toBeTruthy();
 
     pointerEnter(hand);
@@ -65,11 +66,11 @@ describe('held card fan', () => {
     expect(screen.queryByRole('button', { name: 'Collapse hand' })).toBeNull();
   });
 
-  it('collapses when the hand empties and stays collapsed when cards return', () => {
+  it('collapses when the hand empties, keeps focus in the dock, and stays collapsed when cards return', () => {
     const view = makeView();
     const { rerender } = render(<HandPanel controller={panelController(view)} />);
     const hand = screen.getByTestId('hand-panel');
-    pointerEnter(hand);
+    act(() => screen.getByTestId('resource-card-lumber-0').querySelector('button')!.focus());
     expect(hand.dataset.expanded).toBe('true');
 
     const empty = structuredClone(view);
@@ -83,11 +84,16 @@ describe('held card fan', () => {
     });
     rerender(<HandPanel controller={panelController(empty)} />);
     expect(hand.dataset.expanded).toBe('false');
-    expect(hand.hasAttribute('tabindex')).toBe(false);
+    expect(hand.tabIndex).toBe(-1);
+    expect(hand.querySelector('#hand-hint')).toBeNull();
+    // 最後一張牌卸載後，焦點仍留在 dock，而不是掉回 body。
+    expect(document.activeElement).toBe(hand);
 
     // 內部展開狀態也必須重設，否則牌回來時會無故自動展開。
     rerender(<HandPanel controller={panelController(view)} />);
     expect(hand.dataset.expanded).toBe('false');
+    expect(hand.tabIndex).toBe(0);
+    expect(hand.querySelector('#hand-hint')).not.toBeNull();
     pointerEnter(hand);
     expect(hand.dataset.expanded).toBe('true');
   });

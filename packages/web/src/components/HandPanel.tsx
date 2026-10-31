@@ -131,7 +131,8 @@ export function HandPanel({ controller }: { controller: TableController }) {
     if (focusInsideRef.current && (!active || active === document.body)) {
       const faces = handRef.current?.querySelectorAll<HTMLButtonElement>(CARD_FACES);
       if (faces?.length) faces[Math.min(focusedCardRef.current, faces.length - 1)]?.focus();
-      else if (canExpand) handRef.current?.focus();
+      // 空手牌仍保留程式化焦點（tabIndex -1），最後一張牌卸載時焦點不會掉回 body。
+      else handRef.current?.focus();
     }
   }, [heldKey, canExpand]);
   useEffect(() => {
@@ -149,7 +150,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
 
   return (
     <><section className="hand hand-fan" aria-labelledby="hand-heading" aria-describedby={canExpand ? 'hand-hint' : undefined}
-      data-testid="hand-panel" ref={handRef} tabIndex={canExpand ? 0 : undefined} data-expanded={fanExpanded}
+      data-testid="hand-panel" ref={handRef} tabIndex={canExpand ? 0 : -1} data-expanded={fanExpanded}
       data-empty={canExpand ? undefined : 'true'}
       onPointerEnter={(event) => {
         if (!canExpand) return;
@@ -158,7 +159,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
         cancelClose();
         setExpanded(true);
       }}
-      onPointerLeave={() => { hoverRef.current = false; scheduleClose(); }}
+      onPointerLeave={() => { if (!canExpand) return; hoverRef.current = false; scheduleClose(); }}
       onPointerDownCapture={(event) => {
         if (!canExpand) {
           suppressClickRef.current = false;
@@ -208,6 +209,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
         }
       }}
       onBlurCapture={(event) => {
+        if (!canExpand) return;
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           focusInsideRef.current = false;
           touchOpenRef.current = false;
@@ -231,7 +233,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
       }}
     >
       <h2 id="hand-heading" className="visually-hidden">{t('play.hand')} · {t('play.handSize')}: {formatNumber(state.locale, totalHandCards)}</h2>
-      <p id="hand-hint" className="visually-hidden">{t('table.handFanHint')}</p>
+      {canExpand && <p id="hand-hint" className="visually-hidden">{t('table.handFanHint')}</p>}
       <div className="hand__content" id="hand-content">
         {totalHandCards === 0 && <p className="hand__empty muted">{t('play.handEmpty')}</p>}
         <ul className="hand-card-list" aria-label={t('table.resources')}>

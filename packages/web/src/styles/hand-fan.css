@@ -115,6 +115,8 @@
 }
 .screen--game .hand.hand-fan [data-testid="devcard-unknown"] { position: absolute; bottom: 240px; left: 50%; transform: translateX(-50%); width: min(400px, 85vw); padding: 8px; background: #102e32ed; border-radius: 8px; }
 .screen--game .hand.hand-fan .hand__empty { position: absolute; top: -12px; width: 100%; text-align: center; }
+/* 空手牌沒有扇形可遮，訊息改放在收合的 dock 內，避免被 overflow: clip 裁掉或與 tally 重疊。 */
+.screen--game .hand.hand-fan[data-empty="true"] .hand__empty { top: 50%; transform: translateY(-50%); }
 .screen--game .hand.hand-fan .hand-fan__close {
   display: none; position: absolute; right: 12px; bottom: 12px; z-index: 101;
   width: 44px; height: 44px; border-radius: 50%; color: #ead6a6; background: #102e32e8;
