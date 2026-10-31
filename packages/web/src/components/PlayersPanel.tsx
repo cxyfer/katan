@@ -63,17 +63,15 @@ function TurnFlag({ floating }: { floating: boolean }) {
 }
 
 /** 玩家列只使用公開投影；個人真實分數僅在本人座位呈現。 */
-export function PlayersPanel({ controller, onExpand, collapseRequested = false, floatingTurnFlag = false, docked = false }: {
+export function PlayersPanel({ controller, onExpand, collapseRequested = false, floatingTurnFlag = false }: {
   controller: TableController; onExpand?: () => void; collapseRequested?: boolean; floatingTurnFlag?: boolean;
-  /** 寬螢幕常駐展開成計分板：不需 hover，也不顯示展開與釘選鈕。 */
-  docked?: boolean;
 }) {
   const t = useT();
   const { state } = controller;
   const view = state.game?.view;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
-  const expanded = docked || pinned || previewOpen;
+  const expanded = pinned || previewOpen;
   const panelRef = useRef<HTMLElement>(null);
   const pointerInside = useRef(false);
   const focusInside = useRef(false);
@@ -138,7 +136,6 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
       data-testid="players-panel"
       data-expanded={expanded ? 'true' : 'false'}
       data-pinned={pinned ? 'true' : 'false'}
-      data-docked={docked ? 'true' : undefined}
       onPointerEnter={(event) => {
         if (event.pointerType === 'touch') return;
         pointerInside.current = true;
@@ -167,7 +164,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
         scheduleClose();
       }}
       onKeyDown={(event) => {
-        if (event.key === 'Escape' && expanded && !docked) {
+        if (event.key === 'Escape' && expanded) {
           event.preventDefault();
           clearClose();
           setPinned(false);
@@ -185,7 +182,6 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           className="players__toggle"
           type="button"
           data-testid="players-toggle"
-          hidden={docked}
           aria-expanded={expanded}
           aria-controls={detailsIds}
           aria-label={t(expanded ? 'table.collapsePlayers' : 'table.expandPlayers')}
@@ -201,7 +197,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           className="players__pin"
           type="button"
           data-testid="players-pin"
-          hidden={!expanded || docked}
+          hidden={!expanded}
           aria-pressed={pinned}
           aria-controls={detailsIds}
           aria-label={t(pinned ? 'table.playersUnpin' : 'table.playersPin')}

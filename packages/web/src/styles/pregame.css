@@ -143,7 +143,7 @@
 .entry-card__note { display: flex; gap: .5rem; align-items: flex-start; margin: .9rem 0 0; padding-top: .8rem; border-top: 1px solid #d9b06a26; color: #9fb1b0; font-size: .72rem; line-height: 1.7; }
 .entry-card__note svg { margin-top: .15rem; }
 /* 橫屏入口：左側標題與島嶼插圖、右側暱稱卡，整個畫面一頁看完。 */
-@media (orientation: landscape) and (min-width: 700px) {
+@media (orientation: landscape) and (min-width: 600px) {
   .screen--entry { height: 100dvh; min-height: 0; overflow: hidden; padding-bottom: 0; }
   .screen--entry .pregame__topbar { flex: 0 0 auto; }
   .entry-stage {
@@ -159,6 +159,9 @@
     row-gap: 0;
     width: min(100%, 1240px);
     padding-bottom: clamp(1rem, 4vh, 3rem);
+    /* 極矮或放大字級時在舞台內捲動，暱稱卡不會被裁掉。 */
+    overflow-y: auto;
+    scrollbar-width: thin;
   }
   .entry-stage__title { grid-area: title; align-self: end; }
   .entry-stage__island { grid-area: island; align-self: start; justify-self: center; width: min(100%, 440px); margin: 0; }
@@ -168,7 +171,7 @@
   .entry-card__form .button { width: 100%; }
   .game-logo__title { font-size: clamp(2.4rem, 5.2vw, 5rem); white-space: nowrap; }
 }
-@media (orientation: landscape) and (min-width: 700px) and (max-height: 560px) {
+@media (orientation: landscape) and (min-width: 600px) and (max-height: 560px) {
   .game-logo__emblem { width: 52px; }
   .game-logo__title { font-size: clamp(2rem, 6vh, 3rem); }
   .entry-stage__lede { margin-top: .4rem; font-size: .95rem; }
@@ -274,7 +277,7 @@
 }
 .lobby__main { grid-area: main; }
 .lobby__config { grid-area: config; }
-.lobby__aside { grid-area: aside; padding-top: .3rem; }
+.lobby__aside { grid-area: aside; padding: .3rem .4rem 0; }
 .lobby__layout .plaque { flex: 0 0 auto; padding: clamp(.8rem, 2vh, 1.2rem) clamp(.9rem, 1.4vw, 1.3rem); }
 .lobby__layout .section-heading { margin-bottom: clamp(.5rem, 1.4vh, .9rem); }
 .lobby__layout .section-heading__icon { width: 34px; height: 38px; }

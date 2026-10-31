@@ -21,43 +21,23 @@ function pointerEnter(element: Element, type = 'mouse') {
 afterEach(() => vi.useRealTimers());
 
 describe('table interactions', { timeout: 15000 }, () => {
-  it('docks the scoreboard and build rail beside the board on wide landscape screens', async () => {
+  it('keeps both rails collapsed until hovered on wide landscape screens', async () => {
     const width = window.innerWidth;
-    const height = window.innerHeight;
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1366 });
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1920 });
     try {
       await open();
-      expect(screen.getByTestId('game-stage').getAttribute('data-docked')).toBe('true');
       const players = screen.getByTestId('players-panel');
       const actions = screen.getByTestId('action-rail');
+      expect(players.getAttribute('data-expanded')).toBe('false');
+      expect(actions.getAttribute('data-expanded')).toBe('false');
+      expect(screen.getByTestId('players-toggle').hidden).toBe(false);
+      expect(screen.getByTestId('action-rail-toggle').hidden).toBe(false);
+      pointerEnter(players);
       expect(players.getAttribute('data-expanded')).toBe('true');
+      pointerEnter(actions);
       expect(actions.getAttribute('data-expanded')).toBe('true');
-      expect(screen.getByTestId('players-toggle').hidden).toBe(true);
-      expect(screen.getByTestId('action-rail-toggle').hidden).toBe(true);
-      // 提示與建造列同在右側欄，依序堆疊。
-      const side = actions.parentElement!;
-      expect(side.classList.contains('game__side')).toBe(true);
-      expect(side.firstElementChild?.classList.contains('game__messages')).toBe(true);
     } finally {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
-      Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
-    }
-  });
-
-  it('keeps collapsible rails on short landscape screens', async () => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1366 });
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 520 });
-    try {
-      await open();
-      expect(screen.getByTestId('game-stage').getAttribute('data-docked')).toBe('false');
-      expect(screen.getByTestId('players-panel').getAttribute('data-expanded')).toBe('false');
-      expect(screen.getByTestId('action-rail').getAttribute('data-expanded')).toBe('false');
-    } finally {
-      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
-      Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
     }
   });
 

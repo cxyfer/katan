@@ -173,6 +173,8 @@
 @media (max-width: 649px) {
   /* 手機直屏寬度有限：工具列換成兩列，避免超出棋盤。 */
   .board--side-controls .board__toolbar--side { flex-wrap: wrap; width: 140px; }
+  /* 圖例可能落在第二、三列，對照表改貼齊視窗左右邊，不再從按鈕位置往右溢出。 */
+  .board--side-controls .board__toolbar--side > .legend > .legend__grid { position: fixed; top: auto; left: 8px; right: 8px; width: auto; }
 }
 @media (max-width: 649px) {
   .board--side-controls .board__display-settings-panel { position: fixed; inset: auto 8px 112px auto; width: min(280px, calc(100vw - 24px)); max-height: min(60dvh, 400px); }

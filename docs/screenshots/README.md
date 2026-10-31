@@ -9,7 +9,7 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 
 | Path | Contents | Captured from | Producer |
 |---|---|---|---|
-| [`landscape-ui/`](landscape-ui/README.md) | Landscape one-page layout: entry, home, lobby, table with docked rails, trade, result, at 1366×768 down to 844×390, plus before/after table and lobby | 2026-10-31 | [`scripts/landscape-ui/capture.py`](../../scripts/landscape-ui/capture.py) |
+| [`landscape-ui/`](landscape-ui/README.md) | Landscape one-page layout: entry, home, lobby, table, trade and result from 1366×768 down to 844×390, plus before captures from `master` | 2026-10-31 | [`scripts/landscape-ui/capture.py`](../../scripts/landscape-ui/capture.py) |
 | [`current/`](current/) | Entry → home → lobby → setup → table → tools → post-game statistics, full three-player game, zh-Hant and en | `79c1039` (2026-10-31) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
 | [`hand-cards/`](hand-cards/) | Card faces from PR #27: collapsed/expanded hand fan, card inspect and development-card closeups (desktop, phone, landscape) | `79c1039` (2026-10-31) | [`scripts/hand-cards/capture.py`](../../scripts/hand-cards/capture.py) |
 | [`discard-prompt/`](discard-prompt/) | Discard picker from PR #33: card-based selection, per-resource caps, the waiting state for other players, and large discards at phone and short viewports | `79c1039` (2026-10-31) | [`scripts/discard-prompt/capture.py`](../../scripts/discard-prompt/capture.py) |
@@ -21,7 +21,7 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`trade-offer-perspective/`](trade-offer-perspective/README.md) | The same open offer card as the proposer and as the recipient, card crops plus table viewport | 2026-10-31 | [`scripts/trade-offer-perspective/capture.py`](../../scripts/trade-offer-perspective/capture.py) |
 | [`game-audio/`](game-audio/README.md) | Sound settings in lobby and table (desktop, mobile, both locales) and the offline-rendered sound palette | 2026-10-31 | [`scripts/audio/live.py`](../../scripts/audio/live.py), [`scripts/audio/verify.py`](../../scripts/audio/verify.py) |
 
-`landscape-ui/` reflects the current layout of every screen; `current/` and `hand-cards/` still show the earlier layout with collapsed side rails and a scrolling lobby and result screen. The other sets are
+`landscape-ui/` reflects the current layout of every screen; `current/` and `hand-cards/` still show the earlier layout with a scrolling lobby and result screen and the legend above the camera controls. The other sets are
 focused feature reviews kept with their work records; each was captured at the
 commit named in its record.
 

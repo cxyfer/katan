@@ -2,16 +2,10 @@
 .screen--game .game__table { display: block; position: relative; min-height: 0; }
 .screen--game .game__playfield { position: absolute; inset: 0; display: block; padding: 0; }
 .screen--game .game__map { position: absolute; inset: 0 0 48px; min-height: 0; }
-/* 右側欄：上方是回合提示與通知，下方接建造列；兩者同欄堆疊，不再互相覆蓋。 */
-.screen--game .game__side {
-  position: absolute; top: 8px; right: 12px; bottom: 60px; z-index: 47;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
-  width: min(260px, calc(100% - 70px)); min-height: 0; pointer-events: none;
-}
 .screen--game .game__messages {
-  position: relative; inset: auto; transform: none; flex: 0 0 auto;
-  width: 100%; max-height: 45%; overflow: auto; pointer-events: auto;
-  scrollbar-width: thin; z-index: auto; font-size: .72rem;
+  position: absolute; top: 8px; left: auto; right: 12px; transform: none;
+  width: min(260px, calc(100% - 70px)); max-height: 28%; overflow: auto;
+  scrollbar-width: thin; z-index: 65; font-size: .72rem;
 }
 .screen--game .game__messages:empty { display: none; }
 .screen--game .game__messages .prompt {
@@ -43,38 +37,23 @@
   .screen--game { --hud-height: 48px; }
   .screen--game .status-strip { flex-wrap: nowrap; gap: 6px; }
   .screen--game .status-strip__save { font-size: .55rem; }
-  .screen--game .game__side { right: 6px; width: min(205px, calc(100% - 62px)); }
-  .screen--game .game__messages { max-height: 26%; }
+  .screen--game .game__messages { right: 6px; width: min(205px, calc(100% - 62px)); max-height: 26%; }
   .screen--game .game__dock { left: 34px; right: 34px; }
 }
-/* 建造列跟在提示下方並吃掉剩餘高度，內容過多時在欄內捲動。 */
-.screen--game .action-rail {
-  position: relative; inset: auto; transform: none; z-index: auto;
-  flex: 0 1 auto; min-height: 0; max-height: none;
-}
+/* 短橫屏保留上方通知與下方選單空間，側欄本身可捲動。 */
+.screen--game .action-rail { max-height: calc(100% - 200px); }
 @media (max-height: 520px) {
-  .screen--game .game__side { top: 6px; bottom: 54px; gap: 6px; }
-  .screen--game .game__messages { max-height: 45%; }
-  /* 矮橫屏的收合計分板縮小每列高度，三到四位玩家都能完整排下。 */
-  .screen--game .players .seat-list { grid-auto-rows: 58px; }
-  .screen--game .players .seat,
-  .screen--game .players[data-expanded="false"] .seat { height: 58px; padding-block: 3px; }
-  .screen--game .players .players__details { top: 2px; bottom: 2px; grid-template-rows: 36px 14px; }
+  .screen--game .game__messages { max-height: 80px; }
+  .screen--game .action-rail { max-height: calc(100% - 180px); }
 }
-/* 矮橫屏（非常駐）：計分板改為從頂端排起並用滿高度，相機工具列讓到計分板右側。 */
-@media (max-height: 520px) and (min-width: 650px) {
-  .screen--game .players[data-testid="players-panel"],
-  .screen--game .players[data-testid="players-panel"][data-expanded="true"] {
-    inset: 6px auto auto 0; transform: none; max-height: calc(100% - 62px);
-  }
-  .screen--game .players__header { min-height: 34px; }
-  .screen--game .players[data-expanded="false"] .players__obligation { display: none; }
-  .screen--game .board--side-controls .board__toolbar--side { left: 84px; top: 6px; }
-}
+/* 側欄動作必須高於透明的棋盤檢視命中層。 */
+.screen--game .action-rail { z-index: 47; }
 /* 手牌展開時，右欄移到卡片上方；原欄位內容仍可捲動。 */
 @media (max-width: 649px) {
-  .screen--game:has(.hand.hand-fan[data-expanded="true"]) .game__side { bottom: 302px; }
-  .screen--game:has(.hand.hand-fan[data-expanded="true"]) .action-rail { max-height: 104px; }
+  .screen--game:has(.hand.hand-fan[data-expanded="true"]) .action-rail {
+    top: auto; bottom: 302px; transform: none;
+    max-height: min(104px, calc(100% - 310px));
+  }
 }
 /* 工具面板：關閉鈕只留圖示（名稱保留於 aria-label/title），紀錄面板不重複顯示與標題相同的小標。 */
 .screen--game .game-tools__close { width: 36px; min-width: 36px; height: 36px; min-height: 36px; padding: 0; border-radius: 8px; }
@@ -84,88 +63,17 @@
   .screen--game .game-tools__tab,
   .screen--game .game__menu > summary { min-height: 40px; padding-inline: .75rem; border-radius: 8px; font-size: .72rem; }
 }
-
-/*
- * 寬橫屏常駐版面：左欄計分板、中間棋盤、右欄提示與建造列。
- * 棋盤只占中間欄，3D 相機依實際可見區域置中，兩側資訊不必 hover 才看得到。
- */
-.screen--game[data-docked="true"] {
-  --side-width: clamp(240px, 19vw, 300px);
-  --side-inset: 12px;
-  --rail-width: var(--side-width);
-}
-.screen--game[data-docked="true"] .game__map {
-  inset: var(--side-inset) calc(var(--side-width) + 2 * var(--side-inset)) 64px calc(var(--side-width) + 2 * var(--side-inset));
-}
-/* 棋盤是一扇圓角的海面視窗，與兩側面板對齊，而不是沒有邊界的色塊。 */
-.screen--game[data-docked="true"] .board__surface {
-  border-radius: 16px;
-}
-.screen--game[data-docked="true"] .board__surface::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  box-shadow: inset 0 0 0 1px #d9b06a40, inset 0 0 48px #06202c40;
-}
-.screen--game[data-docked="true"] .game__side {
-  top: var(--side-inset); right: var(--side-inset); bottom: 64px; width: var(--side-width); gap: 10px;
-}
-.screen--game[data-docked="true"] .game__messages { max-height: 48%; }
-.screen--game[data-docked="true"] .action-rail { --action-rail-width: var(--side-width); width: 100%; }
-.screen--game[data-docked="true"] .action-rail__content {
-  border-radius: 12px; clip-path: none;
-}
-.screen--game[data-docked="true"] .action-rail .action-rail__phase {
-  height: 36px; padding: 0 14px; border-bottom: 1px solid #a99d6d33; font-size: .68rem;
-}
-.screen--game[data-docked="true"] .action-rail .action-list { gap: 5px; padding-top: 6px; }
-.screen--game[data-docked="true"] .action-rail .action-list li { background: #1b3633; }
-.screen--game[data-docked="true"] .players[data-testid="players-panel"] {
-  inset: var(--side-inset) auto auto var(--side-inset) !important;
-  transform: none;
-  width: var(--side-width) !important;
-  max-width: none;
-  max-height: calc(100% - var(--side-inset) - 64px);
-  margin: 0 !important;
-  padding: 10px !important;
-  border-radius: 12px;
-}
-.screen--game[data-docked="true"] .players__header { min-height: 0; margin-bottom: 8px; }
-.screen--game[data-docked="true"] .players .players__heading {
-  position: static; width: auto; height: auto; overflow: visible; clip-path: none;
-  display: flex; flex-direction: row; align-items: center; gap: .45rem; margin: 0;
-  color: #e9d49d; font-family: var(--font-display); font-size: .9rem; font-weight: 650; letter-spacing: .03em;
-}
-.screen--game[data-docked="true"] .players .players__heading > svg { display: inline; color: #d9b06a; }
-.screen--game[data-docked="true"] .players__target {
-  margin-left: auto; padding: 1px 8px; border: 1px solid #d9b06a55; border-radius: 999px;
-  color: #f0d79f; font-family: var(--font); font-size: .64rem; font-weight: 600; letter-spacing: 0;
-}
-.screen--game[data-docked="true"] .players .seat-list {
-  grid-auto-rows: 82px; gap: 6px; margin-right: 0; padding: 0 16px 0 0;
-}
-.screen--game[data-docked="true"] .players .seat {
-  height: 82px; padding: 8px 12px 8px 10px;
-  background: #0d2a2fcc; border: 1px solid #b5a67526; border-left: 3px solid var(--player-color); border-radius: 10px;
-}
-.screen--game[data-docked="true"] .players .seat--turn {
-  background: linear-gradient(120deg, #3e4a33ee, #173733ee);
-  border-color: #d8bd78; border-left-color: var(--player-color);
-  box-shadow: 0 0 0 1px #e3bd7933, 0 6px 18px #00151d55;
-}
-.screen--game[data-docked="true"] .players[data-expanded="true"] .seat__summary { width: 92px; }
-.screen--game[data-docked="true"] .players .seat__swatch { width: 30px; height: 30px; font-size: .9rem; }
-.screen--game[data-docked="true"] .players .seat__score { font-size: 1.2rem; }
-.screen--game[data-docked="true"] .players .players__details { inset: 8px 12px 8px 108px; }
-.screen--game[data-docked="true"] .players .seat__turn { right: -14px; }
-.screen--game[data-docked="true"] .players__obligation {
-  margin-top: 8px; padding: 10px 6px 2px; border-top: 1px solid #b5a67533; font-size: .74rem;
-}
-.screen--game[data-docked="true"] .game__dock { left: calc(var(--side-width) + 2 * var(--side-inset)); right: calc(var(--side-width) + 2 * var(--side-inset)); }
-.screen--game[data-docked="true"] .hand.hand-fan { width: 100%; }
-.screen--game[data-docked="true"] .table-atmosphere__compass { display: none; }
-/* 指令收據仍在手牌上方的右下角，但落在棋盤區內，不蓋住右欄的建造列。 */
-.screen--game[data-docked="true"] .game__receipt { right: calc(var(--side-width) + 2 * var(--side-inset) + 12px); bottom: 124px; }
-/* 工具面板（交易、聊天等）開在棋盤左緣，不蓋住計分板上的手牌數與分數。 */
-.screen--game[data-docked="true"] .game-tools__surface {
-  left: calc(var(--side-width) + 2 * var(--side-inset) - 14px);
-  max-height: calc(100dvh - 140px);
+/* 矮橫屏：收合計分板從頂端排起並縮小每列高度，三到四位玩家都能完整排下；相機工具列讓到計分板右側。 */
+@media (max-height: 520px) and (min-width: 650px) {
+  .screen--game .players[data-testid="players-panel"],
+  .screen--game .players[data-testid="players-panel"][data-expanded="true"] {
+    inset: 6px auto auto 0; transform: none; max-height: calc(100% - 62px);
+  }
+  .screen--game .players__header { min-height: 34px; }
+  .screen--game .players .seat-list { grid-auto-rows: 58px; }
+  .screen--game .players .seat,
+  .screen--game .players[data-expanded="false"] .seat { height: 58px; padding-block: 3px; }
+  .screen--game .players .players__details { top: 2px; bottom: 2px; grid-template-rows: 36px 14px; }
+  .screen--game .players[data-expanded="false"] .players__obligation { display: none; }
+  .screen--game .board--side-controls .board__toolbar--side { left: 84px; top: 6px; }
 }

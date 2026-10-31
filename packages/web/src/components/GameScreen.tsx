@@ -17,8 +17,6 @@ import { StatusStrip } from './StatusStrip.tsx';
 import { useFullscreen } from './useFullscreen.ts';
 import { useIsMobile } from './useIsMobile.ts';
 
-export const DOCKED_QUERY = '(min-width: 1100px) and (min-height: 600px)';
-
 /** 同一張遊戲桌涵蓋橫屏與直屏，切換尺寸不卸載手牌或工具草稿。 */
 export function GameScreen({ controller }: { controller: TableController }) {
   const t = useT();
@@ -28,8 +26,6 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const action = requiredActionFor(state);
   const [announcement, setAnnouncement] = useState('');
   const narrow = useIsMobile('(max-width: 649px)');
-  // 寬橫屏把計分板與建造列常駐在棋盤兩側；較小的畫面維持可收合的側欄。
-  const docked = useIsMobile(DOCKED_QUERY);
   const [activeRail, setActiveRail] = useState<'players' | 'actions' | null>(null);
   const openPlayers = useCallback(() => setActiveRail('players'), []);
   const openActions = useCallback(() => setActiveRail('actions'), []);
@@ -46,7 +42,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const interrupted = state.room?.status === 'playing' && state.connection !== 'online';
 
   return (
-    <div className="screen screen--game" id="main" data-testid="game-stage" data-board-stage="" data-docked={docked ? 'true' : 'false'} ref={stageRef}>
+    <div className="screen screen--game" id="main" data-testid="game-stage" data-board-stage="" ref={stageRef}>
       <div className="table-atmosphere" aria-hidden="true">
         <svg className="table-atmosphere__coast" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" focusable="false">
           <path d="M0 110 100 165 130 230 70 300 145 380 100 455 0 510Z" fill="#082d32" />
@@ -69,9 +65,8 @@ export function GameScreen({ controller }: { controller: TableController }) {
 
       <div className="game__table">
         <PlayersPanel controller={controller} onExpand={openPlayers} collapseRequested={narrow && activeRail === 'actions'}
-          floatingTurnFlag={narrow && activeRail === 'actions'} docked={docked} />
+          floatingTurnFlag={narrow && activeRail === 'actions'} />
         <div className="game__playfield">
-          <div className="game__side">
           <div className="game__messages">
             <PendingPrompt controller={controller} />
             {state.activeElsewhere && <p className="notice notice--warning" data-testid="active-elsewhere" role="alert">{t('app.activeInAnotherTab')} — {t('app.activeInAnotherTabHelp')}</p>}
@@ -82,10 +77,9 @@ export function GameScreen({ controller }: { controller: TableController }) {
             {state.command?.status !== 'accepted' && <CommandStatus controller={controller} />}
             <PolicyProposalPanel controller={controller} />
           </div>
-          <ActionRail controller={controller} onExpand={openActions} collapseRequested={narrow && activeRail === 'players'} docked={docked} />
-          </div>
           <div className="game__map"><BoardView controller={controller} /></div>
           <div className="game__preview"><SelectionPreview controller={controller} /></div>
+          <ActionRail controller={controller} onExpand={openActions} collapseRequested={narrow && activeRail === 'players'} />
         </div>
         <footer className="game__dock">
           <HandPanel controller={controller} />

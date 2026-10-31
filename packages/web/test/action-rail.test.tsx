@@ -6,7 +6,7 @@ import { initialTableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
-function open(phase: 'action' | 'preroll' = 'action', docked = false) {
+function open(phase: 'action' | 'preroll' = 'action') {
   const state = initialTableState('en');
   state.session = makeIdentity();
   state.game = makeSnapshot(makeView({
@@ -16,7 +16,7 @@ function open(phase: 'action' | 'preroll' = 'action', docked = false) {
   const selectTarget = vi.fn();
   const submitCommand = vi.fn();
   const controller = { state, actions: { selectTarget, submitCommand } } as unknown as TableController;
-  render(<LocaleProvider locale="en"><ActionRail controller={controller} docked={docked} /></LocaleProvider>);
+  render(<LocaleProvider locale="en"><ActionRail controller={controller} /></LocaleProvider>);
   return { rail: screen.getByTestId('action-rail'), toggle: screen.getByTestId('action-rail-toggle'), selectTarget, submitCommand };
 }
 
@@ -110,21 +110,5 @@ describe('action rail', () => {
     expect(submitCommand).toHaveBeenCalledWith({ type: 'turn.roll' }, 'play.roll');
     expect((screen.getByTestId('action-build.road') as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId('reason-build.road').textContent).toBeTruthy();
-  });
-
-  it('stays expanded without a toggle when docked beside the board', () => {
-    const { rail, toggle, submitCommand } = open('action', true);
-    expect(rail.getAttribute('data-expanded')).toBe('true');
-    expect(rail.getAttribute('data-docked')).toBe('true');
-    expect(toggle.hidden).toBe(true);
-    pointer(rail, 'pointerover');
-    fireEvent.pointerLeave(rail);
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(rail.getAttribute('data-expanded')).toBe('true');
-    // 常駐時觸控第一下就是操作本身，不會被當成「先展開」吞掉。
-    const endTurn = screen.getByTestId('action-endTurn');
-    pointer(endTurn, 'pointerdown', 'touch');
-    fireEvent.click(endTurn);
-    expect(submitCommand).toHaveBeenCalledWith({ type: 'turn.end' }, 'play.endTurn');
   });
 });

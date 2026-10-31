@@ -2,7 +2,7 @@
  * 結算頁橫向一頁式：左欄是勝負摘要與最終棋盤，右欄是賽後統計。
  * 統計分頁的內容在面板內捲動，整頁本身不捲動。
  */
-@media (orientation: landscape) and (min-width: 700px) {
+@media (orientation: landscape) and (min-width: 600px) {
   .screen--result {
     display: grid;
     grid-template-columns: minmax(320px, 36fr) minmax(0, 64fr);
@@ -62,10 +62,12 @@
     padding: .7rem .8rem .8rem;
   }
   .screen--result .result-board > h2 { flex: 0 0 auto; margin: 0 0 .5rem; font-size: .95rem; }
-  .screen--result .result-board .board { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
-  .screen--result .result-board .board__surface { flex: 1 1 auto; height: auto; min-height: 160px; }
+  /* 棋盤本身不裁切，讓圖例與顯示設定彈層可以超出小卡片；圓角改由海面自己裁。 */
+  .screen--result .result-board .board { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: visible; }
+  .screen--result .result-board .board__surface { flex: 1 1 auto; height: auto; min-height: 160px; border-radius: 14px; }
+  .screen--result .result-board .board__toolbar--side { flex-wrap: wrap; max-width: calc(100% - 16px); }
 }
-@media (orientation: landscape) and (min-width: 700px) and (max-height: 620px) {
+@media (orientation: landscape) and (min-width: 600px) and (max-height: 620px) {
   .screen--result .result-hero { grid-template-columns: minmax(0, 1fr); }
   .screen--result .result-hero .island-illustration { display: none; }
   .screen--result { grid-template-columns: minmax(260px, 34fr) minmax(0, 66fr); gap: 8px 12px; padding: 0 10px 10px; }
@@ -82,5 +84,7 @@
   .screen--result .board--side-controls .board__toolbar--side > .button,
   .screen--result .board--side-controls .board__display-settings > summary,
   .screen--result .board--side-controls .board__toolbar--side > .legend > summary { width: 32px; min-width: 32px; height: 32px; min-height: 32px; }
-  .screen--result .board--side-controls .board__toolbar--side > .legend { display: none; }
+  .screen--result .board--side-controls .board__toolbar--side > .legend > summary { width: auto; padding: 0 .5rem; font-size: .64rem; }
+  /* 小卡片只留一列工具：旋轉改用拖曳或鍵盤 [ ]，避免工具列換行蓋住棋盤中央。 */
+  .screen--result .board--side-controls .board__toolbar--side > [data-testid^="rotate-"] { display: none; }
 }

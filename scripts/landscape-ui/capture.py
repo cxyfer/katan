@@ -7,8 +7,11 @@
 以各玩家自己的 hints 經 API 推進（與 scripts/screenshots/capture-current.py
 相同的簡單策略），直到輪到房主行動，再拍牌桌；最後下完整局拍結算頁。
 
-唯一的斷言：每個橫向尺寸的頁面本身都不能捲動（documentElement 的捲動
-寬高不超過視窗）。直屏仍允許單欄捲動，只拍照不斷言。
+斷言（只在橫向尺寸）：
+- 頁面本身不能捲動（documentElement 的捲動寬高不超過視窗）；
+- 每個畫面的關鍵控制項都摸得到：捲到所在面板的可見範圍後，整個元素落在
+  視窗內，且中心點沒有被其他元素蓋住（overflow: hidden 裁掉的按鈕會失敗）。
+直屏仍允許單欄捲動，只拍照不斷言。
 """
 import os
 import sys
@@ -26,11 +29,23 @@ OUT.mkdir(parents=True, exist_ok=True)
 errors = []
 overflow = []
 RESOURCES = ['lumber', 'brick', 'wool', 'grain', 'ore']
-LANDSCAPE = [(1366, 768), (1920, 1080), (1280, 720), (1024, 600), (844, 390)]
+LANDSCAPE = [(1366, 768), (1920, 1080), (1280, 720), (1024, 600), (844, 390), (667, 375)]
+unreachable = []
+REACHABLE = '''(ids) => ids.flatMap((id) => {
+  const element = document.querySelector(`[data-testid="${id}"]`);
+  if (!element) return [`${id}: missing`];
+  element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  const box = element.getBoundingClientRect();
+  if (box.width === 0 || box.height === 0) return [`${id}: not rendered`];
+  if (box.left < 0 || box.top < 0 || box.right > innerWidth + 0.5 || box.bottom > innerHeight + 0.5) return [`${id}: outside viewport`];
+  const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+  if (!hit || !(element === hit || element.contains(hit) || hit.contains(element))) return [`${id}: covered by ${hit?.className || hit?.tagName}`];
+  return [];
+})'''
 
 
-def check(page, name, width, height, settle_ms=500, save=False):
-    # 每個尺寸都檢查橫屏不捲動；只有 save=True 的尺寸才存成截圖
+def check(page, name, width, height, settle_ms=500, save=False, controls=()):
+    # 每個尺寸都檢查橫屏不捲動與關鍵控制項；只有 save=True 的尺寸才存成截圖
     page.set_viewport_size({'width': width, 'height': height})
     page.wait_for_timeout(settle_ms)
     page.evaluate('() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))')
@@ -39,13 +54,17 @@ def check(page, name, width, height, settle_ms=500, save=False):
     scroll = page.evaluate('() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]')
     if width > height and (scroll[0] > width or scroll[1] > height):
         overflow.append((name, width, height, scroll))
+    if width > height and controls:
+        problems = page.evaluate(REACHABLE, list(controls))
+        if problems:
+            unreachable.append((name, width, height, problems))
     print('CAPTURE' if save else 'CHECK', name, width, height, 'scroll', scroll, flush=True)
 
 
-def sweep(page, name, saved, settle_ms=500):
+def sweep(page, name, saved, settle_ms=500, controls=()):
     # 所有橫向尺寸都斷言，另外拍下 saved 指定的尺寸（可含直屏）
     for width, height in dict.fromkeys(LANDSCAPE + saved):
-        check(page, name, width, height, settle_ms, (width, height) in saved)
+        check(page, name, width, height, settle_ms, (width, height) in saved, controls)
 
 
 def api(context, method, path):
@@ -132,13 +151,13 @@ with sync_playwright() as p:
     host = pages[0]
 
     host.goto(BASE)
-    sweep(host, '01-entry', [(1366, 768), (844, 390)])
+    sweep(host, '01-entry', [(1366, 768), (844, 390)], controls=['nickname-input'])
     for page, name in zip(pages, ['海岸領航員', '小美', 'ABCDEFGHIJKLMNOPQRSTUVWX']):
         page.goto(BASE)
         page.get_by_test_id('nickname-input').fill(name)
         page.locator('form button[type=submit]').click()
         expect(page.get_by_test_id('create-room')).to_be_visible()
-    sweep(host, '02-home', [(1366, 768), (844, 390)])
+    sweep(host, '02-home', [(1366, 768), (844, 390)], controls=['create-room'])
 
     host.set_viewport_size({'width': 1366, 'height': 768})
     host.locator('#room-capacity').select_option('3')
@@ -151,7 +170,8 @@ with sync_playwright() as p:
     for page in pages:
         page.get_by_test_id('toggle-ready').click()
     expect(host.get_by_test_id('start-game')).to_be_enabled()
-    sweep(host, '03-lobby', [(1366, 768), (1024, 600), (844, 390), (390, 844)])
+    sweep(host, '03-lobby', [(1366, 768), (1024, 600), (844, 390), (390, 844)],
+          controls=['room-code', 'toggle-ready', 'start-game', 'leave-room'])
 
     host.get_by_test_id('start-game').click()
     expect(host.get_by_test_id('setup-guide')).to_be_visible()
@@ -173,8 +193,11 @@ with sync_playwright() as p:
                 continue
             break
         step(contexts, identity, path, game_id)
+    else:
+        raise AssertionError('never reached an action phase on the host turn')
     host.wait_for_timeout(2500)
-    sweep(host, '05-table', [(1366, 768), (1920, 1080), (1024, 600), (844, 390), (390, 844)], 900)
+    sweep(host, '05-table', [(1366, 768), (1920, 1080), (1024, 600), (844, 390), (390, 844)], 900,
+          controls=['players-toggle', 'action-rail-toggle', 'zoom-in', 'tool-tab-trade', 'table-menu'])
 
     host.set_viewport_size({'width': 1366, 'height': 768})
     host.get_by_test_id('tool-tab-trade').click()
@@ -186,7 +209,7 @@ with sync_playwright() as p:
             break
     expect(host.get_by_test_id('result-screen')).to_be_visible(timeout=30000)
     host.wait_for_timeout(1500)
-    sweep(host, '07-result', [(1366, 768), (844, 390)], 900)
+    sweep(host, '07-result', [(1366, 768), (844, 390)], 900, controls=['back-to-lobby', 'stats-tab-overview', 'board-surface'])
     host.set_viewport_size({'width': 1366, 'height': 768})
     host.get_by_test_id('stats-tab-timeline').click()
     check(host, '08-result-timeline', 1366, 768, save=True)
@@ -194,4 +217,5 @@ with sync_playwright() as p:
     browser.close()
     assert not errors, f'browser runtime errors: {errors}'
     assert not overflow, f'landscape pages scroll: {overflow}'
-    print('DONE: no browser runtime errors, no landscape page scroll', flush=True)
+    assert not unreachable, f'unreachable controls: {unreachable}'
+    print('DONE: no browser runtime errors, no landscape page scroll, key controls reachable', flush=True)

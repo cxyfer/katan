@@ -33,14 +33,12 @@ interface FakeMediaQueryList {
   dispatchEvent(): boolean;
 }
 
-/** 只支援以 `and` 串接的寬高條件；沒有寬高條件的查詢一律不成立。 */
 function evaluate(query: string): boolean {
-  const features = [...query.matchAll(/\((min|max)-(width|height):\s*(\d+)px\)/g)];
-  if (features.length === 0) return false;
-  return features.every(([, bound, axis, value]) => {
-    const size = axis === 'width' ? globalThis.innerWidth : globalThis.innerHeight;
-    return bound === 'min' ? size >= Number(value) : size <= Number(value);
-  });
+  const max = /\(max-width:\s*(\d+)px\)/.exec(query);
+  if (max) return globalThis.innerWidth <= Number(max[1]);
+  const min = /\(min-width:\s*(\d+)px\)/.exec(query);
+  if (min) return globalThis.innerWidth >= Number(min[1]);
+  return false;
 }
 
 if (typeof globalThis.matchMedia !== 'function') {
