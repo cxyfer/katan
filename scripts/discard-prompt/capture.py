@@ -5,7 +5,8 @@
 
 以真實三人對局進行：只擲骰與結束回合，直到 7 同時要求至少兩位玩家棄牌。
 第一位玩家在 UI 選牌並送出後，另一位玩家仍待棄牌，因此可拍到「等待其他玩家
-棄牌」；選牌畫面會先選滿一種資源，確認該資源按鈕因持有上限而停用。
+棄牌」；選牌畫面會先選滿一種低於配額的資源，確認該資源按鈕因持有上限而停用
+（若每種持有量都達到配額，則跳過這張，避免把總數選滿）。
 
 畫面斷言只覆蓋這次修改的 UI 狀態；規則本身由 packages/rules/test/seven.test.ts
 與 packages/web/test 的單元測試負責。只拍照，不做完整對局驗證。
@@ -190,20 +191,29 @@ with sync_playwright() as p:
         expect(page.get_by_test_id(f'discard-owned-{resource}')).to_have_text(f'持有 {resources[resource]}')
     shot(page, 'discard-selecting-1366x768-zh-Hant')
 
-    # Pick out one resource until its own button disables, while the total is
-    # still below the requirement: this is the per-resource cap.
-    target = min((r for r in RESOURCES if resources[r] > 0), key=lambda r: resources[r])
-    for _ in range(resources[target]):
-        page.get_by_test_id(f'discard-add-{target}').click()
-    owned_buttons = {
-        r: page.get_by_test_id(f'discard-add-{r}').is_disabled() for r in RESOURCES
-    }
-    assert owned_buttons[target], (target, resources, owned_buttons)
-    assert any(not disabled for r, disabled in owned_buttons.items() if r != target), owned_buttons
-    prompt_box = page.get_by_test_id('required-action-prompt').bounding_box()
-    print('DISABLED', owned_buttons, 'TARGET', target, 'BOX', prompt_box, flush=True)
-    assert prompt_box is not None
-    shot(page, 'discard-owned-cap-1366x768-zh-Hant')
+    # A per-resource cap is only observable while the total stays below the
+    # quota, so the pile must hold fewer cards than the quota. An eight-card
+    # hand split 4/4 has no such pile; skip this one capture rather than fill
+    # the quota and then click a button that is already disabled.
+    quota = required[first]
+    candidates = [r for r in RESOURCES if 0 < resources[r] < quota]
+    target = min(candidates, key=lambda r: resources[r]) if candidates else None
+    picked = {r: 0 for r in RESOURCES}
+    if target is not None:
+        for _ in range(resources[target]):
+            page.get_by_test_id(f'discard-add-{target}').click()
+        picked[target] = resources[target]
+        owned_buttons = {
+            r: page.get_by_test_id(f'discard-add-{r}').is_disabled() for r in RESOURCES
+        }
+        assert owned_buttons[target], (target, resources, owned_buttons)
+        assert any(not disabled for r, disabled in owned_buttons.items() if r != target), owned_buttons
+        prompt_box = page.get_by_test_id('required-action-prompt').bounding_box()
+        print('DISABLED', owned_buttons, 'TARGET', target, 'BOX', prompt_box, flush=True)
+        assert prompt_box is not None
+        shot(page, 'discard-owned-cap-1366x768-zh-Hant')
+    else:
+        print('SKIP per-resource cap: every held pile reaches the quota', flush=True)
 
     # Second waiting player, phone-sized.
     other = waiting[1]
@@ -214,10 +224,7 @@ with sync_playwright() as p:
     shot(other_page, 'discard-selecting-390x844-zh-Hant')
 
     # Finish the first player's selection (respecting each cap) and submit.
-    picked = {r: (resources[target] if r == target else 0) for r in RESOURCES}
-    remaining = required[first] - picked[target]
-    if remaining < 0:
-        raise AssertionError('target resource exceeded the requirement')
+    remaining = quota - sum(picked.values())
     for resource in RESOURCES:
         if remaining <= 0:
             break
