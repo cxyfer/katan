@@ -44,27 +44,36 @@ function Rock({ x, y, s = 1, fill = '#9aa19b' }: { x: number; y: number; s?: num
   </g>;
 }
 
+/** 一組圓合成單一路徑；同色重疊的圓填色結果與分開繪製相同，但 DOM 節點少得多。 */
+function circles(list: readonly (readonly [number, number, number])[], grow = 0): string {
+  return list.map(([cx, cy, r]) => {
+    const radius = r + grow;
+    return `M${cx - radius} ${cy}a${radius} ${radius} 0 1 0 ${radius * 2} 0a${radius} ${radius} 0 1 0 ${-radius * 2} 0Z`;
+  }).join('');
+}
+
+const WOOL: readonly (readonly [number, number, number])[] = [
+  [-13, -19, 8], [-4, -24, 9], [7, -23, 8.5], [14, -16, 7.5], [-15, -11, 7.5], [-4, -11, 9], [8, -11, 8.5],
+];
+const WOOL_OUTLINE = circles(WOOL, 1.4);
+const WOOL_FILL = circles(WOOL);
+
 function Sheep({ x, y, s = 1, flip = false }: { x: number; y: number; s?: number; flip?: boolean }) {
   // 捲毛身體由重疊圓構成：先畫略大的描邊圓，再畫毛色圓，最後點出毛捲。
-  const wool: readonly [number, number, number][] = [
-    [-13, -19, 8], [-4, -24, 9], [7, -23, 8.5], [14, -16, 7.5], [-15, -11, 7.5], [-4, -11, 9], [8, -11, 8.5],
-  ];
-  const leg = (lx: number, top: number, fill: string) => <rect x={lx - 2.2} y={top} width="4.4" height={-top + 0.5} rx="2" fill={fill} />;
   return <g transform={`translate(${x} ${y}) scale(${flip ? -s : s} ${s})`}>
     <ellipse cy="1" rx="22" ry="3.6" fill="#24401c" opacity=".28" />
-    {leg(-10, -10, '#3a312a')}{leg(10, -10, '#3a312a')}
-    {wool.map(([cx, cy, r]) => <circle key={`o${cx}${cy}`} cx={cx} cy={cy} r={r + 1.4} fill="#cfc6aa" />)}
-    {wool.map(([cx, cy, r]) => <circle key={`w${cx}${cy}`} cx={cx} cy={cy} r={r} fill="#f8f3e3" />)}
-    <path d="M-17-8q8 5 16 2t16-1" fill="none" stroke="#e2d9bf" strokeWidth="2.2" strokeLinecap="round" />
-    <path d="M-9-24q2-3 5-1M3-27q2-3 5 0M-14-16q2-3 5-1" fill="none" stroke="#e2d9bf" strokeWidth="1.4" strokeLinecap="round" />
-    {leg(-14, -7, '#4b4037')}{leg(5, -7, '#4b4037')}
+    <path d="M-12.2-10h4.4v10.5h-4.4ZM7.8-10h4.4v10.5h-4.4Z" fill="#3a312a" />
+    <path d={WOOL_OUTLINE} fill="#cfc6aa" />
+    <path d={WOOL_FILL} fill="#f8f3e3" />
+    <path d="M-17-8q8 5 16 2t16-1M-9-24q2-3 5-1M3-27q2-3 5 0M-14-16q2-3 5-1" fill="none" stroke="#e2d9bf" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M-16.2-7h4.4v7.5h-4.4ZM2.8-7h4.4v7.5h-4.4Z" fill="#4b4037" />
     <g transform="translate(19 -21) rotate(18)">
       <ellipse cx="-3" cy="-6" rx="5.2" ry="2.4" transform="rotate(-35 -3 -6)" fill="#3a312a" />
       <ellipse rx="6.4" ry="8.6" fill="#4d433a" />
       <ellipse cx="1.5" cy="5" rx="4" ry="3.4" fill="#6b5f53" />
       <circle cx="2.2" cy="-1.5" r="1.5" fill="#fbf6e6" /><circle cx="2.6" cy="-1.3" r=".7" fill="#1d1915" />
       <ellipse cx="3" cy="-6.5" rx="5" ry="2.2" transform="rotate(10 3 -6.5)" fill="#5c5046" />
-      <circle cx="-2.5" cy="-8.4" r="3" fill="#f8f3e3" /><circle cx="0.5" cy="-9.4" r="2.6" fill="#f8f3e3" />
+      <path d={circles([[-2.5, -8.4, 3], [0.5, -9.4, 2.6]])} fill="#f8f3e3" />
     </g>
   </g>;
 }
@@ -90,36 +99,51 @@ function Cactus({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
 }
 
 /** 一塊帶頂面與側面的立體磚，原點在正面左下角。 */
+/** 立體磚的三個面與刻線；原點在正面左下角，可串接多塊為單一路徑。 */
+function brickFaces(x: number, y: number) {
+  return {
+    top: `M${x} ${y - 7}l4-3.5h14l-4 3.5Z`,
+    side: `M${x + 14} ${y - 7}l4-3.5v7l-4 3.5Z`,
+    front: `M${x} ${y - 7}h14v7h-14Z`,
+    groove: `M${x + 1.6} ${y - 4.6}h10.8`,
+  };
+}
+
 function Brick({ x, y }: { x: number; y: number }) {
-  return <g transform={`translate(${x} ${y})`} strokeLinejoin="round" stroke="#7d3a24" strokeWidth=".9">
-    <path d="M0-7l4-3.5h14L14-7Z" fill="#eda27c" />
-    <path d="M14-7l4-3.5V-3.5L14 0Z" fill="#9c4d33" />
-    <rect x="0" y="-7" width="14" height="7" fill="#c96b4a" />
-    <path d="M1.6-4.6h10.8" stroke="#e08a66" strokeWidth="1" />
+  const faces = brickFaces(x, y);
+  return <BrickFaces faces={[faces]} />;
+}
+
+/** 依頂面、側面、正面的順序繪製，後繪的正面蓋住前一塊的側面，與逐塊疊放的結果相同。 */
+function BrickFaces({ faces }: { faces: readonly ReturnType<typeof brickFaces>[] }) {
+  const join = (key: keyof ReturnType<typeof brickFaces>) => faces.map((face) => face[key]).join('');
+  return <g strokeLinejoin="round" stroke="#7d3a24" strokeWidth=".9">
+    <path d={join('top')} fill="#eda27c" />
+    <path d={join('side')} fill="#9c4d33" />
+    <path d={join('front')} fill="#c96b4a" />
+    <path d={join('groove')} stroke="#e08a66" strokeWidth="1" />
   </g>;
 }
 
+const BRICK_STACK = ([[-21, -7, 7], [-14, 0], [-7]] as const).flatMap((row, level) => row.map((bx) => brickFaces(bx, -level * 7)));
+
 function BrickStack({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
-  // 由下而上、由左而右疊放，後畫的磚自然蓋住前一塊的側面。
-  const rows: readonly (readonly number[])[] = [[-21, -7, 7], [-14, 0], [-7]];
   return <g transform={`translate(${x} ${y}) scale(${s})`}>
     <ellipse cx="2" cy="1" rx="26" ry="4.2" fill="#4a2414" opacity=".28" />
-    {rows.map((row, level) => row.map((bx) => <Brick key={`${level}:${bx}`} x={bx} y={-level * 7} />))}
+    <BrickFaces faces={BRICK_STACK} />
   </g>;
 }
 
 function WheatStalk({ x, h, lean }: { x: number; h: number; lean: number }) {
-  const kernels = [0, 1, 2, 3];
+  // 左右兩排麥粒各合成一條路徑，每株只需七個節點。
+  const rows = [0, 1, 2, 3].map((k) => -h + 6 + k * 6.5);
+  const left = rows.map((ky) => `M0 ${ky}q-7-1-7.5-7.5q6 1 7.5 6Z`).join('');
+  const right = rows.map((ky) => `M0 ${ky}q7-1 7.5-7.5q-6 1-7.5 6Z`).join('');
   return <g transform={`translate(${x} 0) rotate(${lean})`}>
     <path d={`M0 0V${-h}`} stroke="#9c7426" strokeWidth="2" strokeLinecap="round" />
     <path d={`M0 ${-h * 0.35}q-9-4-11-12q8 2 11 9`} fill="#c9a447" />
-    {kernels.map((k) => {
-      const ky = -h + 3 + k * 6.5;
-      return <g key={k}>
-        <path d={`M0 ${ky + 3}q-7-1-7.5-7.5q6 1 7.5 6Z`} fill="#f1cf6e" stroke="#b78a2e" strokeWidth=".8" />
-        <path d={`M0 ${ky + 3}q7-1 7.5-7.5q-6 1-7.5 6Z`} fill="#e4bb55" stroke="#b78a2e" strokeWidth=".8" />
-      </g>;
-    })}
+    <path d={left} fill="#f1cf6e" stroke="#b78a2e" strokeWidth=".8" />
+    <path d={right} fill="#e4bb55" stroke="#b78a2e" strokeWidth=".8" />
     <path d={`M0 ${-h - 1}q-1.6-4 0-8 1.6 4 0 8Z`} fill="#f6da86" stroke="#b78a2e" strokeWidth=".8" />
     <path d={`M-2 ${-h - 4}l-5-10M2 ${-h - 4}l5-10M0 ${-h - 8}v-9`} stroke="#d7b257" strokeWidth=".9" />
   </g>;

@@ -57,6 +57,28 @@ solid-colour cells) are unchanged.
   real three-player game through the HTTP API and captures the SVG board at
   desktop, close-up and phone sizes plus the expanded hand; it fails on any
   browser runtime error. Captures are in `docs/screenshots/svg-board-polish/`.
-- Test and `pnpm verify` results are recorded in the PR.
+- `svg-board-art.test.tsx`: two boards in one document share no `id`, every
+  `url(#…)` paint resolves inside its own board, each tile has one emblem, and
+  every harbour badge sits outside its land hex and inside the view box.
+- `pnpm verify` passes: typecheck; rules 138, protocol 7, server 99 (11
+  PostgreSQL-only skipped), web 536 tests in 54 files; build, smoke, `test:dev`.
+
+## Review follow-ups
+
+- The view box padding grows from 0.35 to 0.55 hex and harbour badges sit 33
+  units off the coast, so sand and badges stay inside the SVG fit instead of
+  sliding under the side rails on a phone. Target projection reads the same
+  view box, so hit targets stay aligned.
+- Shore, tiles, emblems and tokens render in a memoised `StaticTiles` layer, so
+  pan and zoom frames only re-render roads, buildings, the robber and the ghost.
+- Same-style shapes are merged into single paths (wool circles, brick faces,
+  wheat kernels). The board drops from 1,597 to 1,194 SVG elements; a jsdom
+  lobby test that mounts the board went from about 800 ms back to about 500 ms
+  (`master`: about 490 ms) after a first `pnpm verify` timed out its 1 s
+  `findBy` under parallel load.
+- `coastline.ts` treats a vertex shared by two separate land regions and inland
+  sea holes naively. Only disabled rulesets could produce such boards; the file
+  stays byte-identical to the 3D branch's copy, so a fix belongs in a follow-up
+  that both branches share.
 
 No physical-device, screen-reader or 200% zoom check was run.

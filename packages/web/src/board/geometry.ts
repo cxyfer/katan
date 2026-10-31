@@ -55,7 +55,8 @@ export interface BoardGeometry {
 }
 
 const CORNER_ANGLES = [30, 90, 150, 210, 270, 330].map((degrees) => (degrees * Math.PI) / 180);
-const PADDING = 0.35;
+// 港口徽章伸出海岸約 0.55 格；留白讓沙灘與徽章都落在 SVG 的適配範圍內。
+const PADDING = 0.55;
 
 function hexCorners(cx: number, cy: number, scale: number): Point[] {
   return CORNER_ANGLES.map((angle) => ({

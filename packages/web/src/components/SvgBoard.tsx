@@ -1,4 +1,4 @@
-import { useId, type ComponentProps, type Ref } from 'react';
+import { memo, useId, useMemo, type ComponentProps, type Ref } from 'react';
 import type { GameView } from '@catan/rules';
 import type { BoardEffectGroup } from '../board/animation.ts';
 import type { BoardGeometry, Point } from '../board/geometry.ts';
@@ -7,7 +7,7 @@ import type { TableState } from '../state/table.ts';
 import { useT } from '../i18n/context.tsx';
 import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrainLetter, terrainSymbol } from '../board/terrain.ts';
 import { confirmedPlacement } from '../board/effects.ts';
-import { BoardArtDefs, BoardBuilding, boardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
+import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
@@ -39,48 +39,64 @@ function inset(edge: { x1: number; y1: number; x2: number; y2: number }, amount 
   return { x1: edge.x1 + dx * amount, y1: edge.y1 + dy * amount, x2: edge.x2 - dx * amount, y2: edge.y2 - dy * amount };
 }
 
+/**
+ * 海岸、地塊、圖示與數字牌只隨版圖改變；拖曳或縮放時 SvgBoard 每個影格都會重繪，
+ * 這一層以 memo 跳過。
+ */
+const StaticTiles = memo(function StaticTiles({ geometry, terrain, numbers, ids }: {
+  geometry: BoardGeometry;
+  terrain: GameView['board']['terrain'];
+  numbers: GameView['board']['numbers'];
+  ids: BoardArtIds;
+}) {
+  return <>
+    <IslandShore geometry={geometry} ids={ids} />
+    <g aria-hidden="true" pointerEvents="none">
+      {geometry.hexes.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 9)" />)}
+    </g>
+    {geometry.hexes.map((hex) => {
+      const kind = terrain[hex.index] ?? 'sea';
+      const number = numbers[hex.index];
+      const fill = terrainFill(kind);
+      return (
+        <g key={`hex-${hex.index}`}>
+          <polygon
+            className="board__tile-top"
+            data-testid={`hex-${hex.index}`}
+            points={hex.points}
+            fill={fill}
+            stroke={shade(fill, -0.42)}
+            strokeWidth={2.5}
+            strokeLinejoin="round"
+          />
+          <TileFinish terrain={kind} points={hex.points} cx={hex.cx} cy={hex.cy} ids={ids} />
+          <TerrainEmblem terrain={kind} x={hex.cx} y={hex.cy - 4} />
+          <g aria-hidden="true" pointerEvents="none">
+            <rect x={hex.cx - 65} y={hex.cy + 25} width={30} height={15} rx={7.5} fill="#fff8e4" opacity=".55" />
+            <text className="board__terrain" x={hex.cx - 50} y={hex.cy + 36.5} textAnchor="middle">
+              {terrainSymbol(kind)}
+              {terrainLetter(kind)}
+            </text>
+          </g>
+          {number !== null && number !== undefined && (
+            <NumberToken x={hex.cx} y={hex.cy + TOKEN_DROP} number={number} pips={pipsFor(number)} ids={ids} />
+          )}
+        </g>
+      );
+    })}
+  </>;
+});
+
 export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
   const t = useT();
-  const ids = boardArtIds(`board-art-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`);
+  const prefix = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const ids = useMemo(() => boardArtIds(`board-art-${prefix}`), [prefix]);
   const board = view.board;
   const selfColor = playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white');
   return (
     <svg {...svgProps} ref={svgRef} className="board__svg" data-testid="board-svg" role="img" aria-label={t('a11y.boardRegion')} viewBox={geometry.viewBox} preserveAspectRatio="xMidYMid meet">
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
-          <IslandShore geometry={geometry} ids={ids} />
-          <g aria-hidden="true" pointerEvents="none">
-            {geometry.hexes.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 9)" />)}
-          </g>
-          {geometry.hexes.map((hex) => {
-            const terrain = board.terrain[hex.index] ?? 'sea';
-            const number = board.numbers[hex.index];
-            const fill = terrainFill(terrain);
-            return (
-              <g key={`hex-${hex.index}`}>
-                <polygon
-                  className="board__tile-top"
-                  data-testid={`hex-${hex.index}`}
-                  points={hex.points}
-                  fill={fill}
-                  stroke={shade(fill, -0.42)}
-                  strokeWidth={2.5}
-                  strokeLinejoin="round"
-                />
-                <TileFinish terrain={terrain} points={hex.points} cx={hex.cx} cy={hex.cy} ids={ids} />
-                <TerrainEmblem terrain={terrain} x={hex.cx} y={hex.cy - 4} />
-                <g aria-hidden="true" pointerEvents="none">
-                  <rect x={hex.cx - 65} y={hex.cy + 25} width={30} height={15} rx={7.5} fill="#fff8e4" opacity=".55" />
-                  <text className="board__terrain" x={hex.cx - 50} y={hex.cy + 36.5} textAnchor="middle">
-                    {terrainSymbol(terrain)}
-                    {terrainLetter(terrain)}
-                  </text>
-                </g>
-                {number !== null && number !== undefined && (
-                  <NumberToken x={hex.cx} y={hex.cy + TOKEN_DROP} number={number} pips={pipsFor(number)} ids={ids} />
-                )}
-              </g>
-            );
-          })}
+          <StaticTiles geometry={geometry} terrain={board.terrain} numbers={board.numbers} ids={ids} />
 
           {board.harbors.map((harbor) => {
             const edge = geometry.edges[harbor.edge];

@@ -142,7 +142,8 @@ export function HarborMarker({ from, to, center, type, label }: { from: Point; t
   let ny = my - center.y;
   const length = Math.hypot(nx, ny) || 1;
   nx /= length; ny /= length;
-  const badge = { x: mx + nx * 46, y: my + ny * 46 };
+  // 徽章外緣（33 + 半徑 22）不超過 viewBox 的 0.55 格留白。
+  const badge = { x: mx + nx * 33, y: my + ny * 33 };
   const pier = (corner: Point) => {
     const start = { x: corner.x + (mx - corner.x) * 0.22, y: corner.y + (my - corner.y) * 0.22 };
     const end = { x: badge.x + (start.x - badge.x) * 0.3, y: badge.y + (start.y - badge.y) * 0.3 };
