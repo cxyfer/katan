@@ -133,6 +133,30 @@ summary:hover { color: var(--accent); }
 .preview { border-color: #a78b57; background: #283c39; }
 .preview__actions, .command-status__actions, .offer__actions, .form-actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; margin-top: .8rem; }
 .toast { position: fixed; right: 1.5rem; bottom: 1rem; z-index: 45; display: flex; gap: 1rem; align-items: center; justify-content: space-between; max-width: min(520px, calc(100vw - 2rem)); border-color: #70877c; background: #21423f; }
+.command-status { position: relative; overflow: hidden; }
+.toast { overflow: hidden; }
+.notice-progress {
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #8ec9bd, #d8b36e);
+  animation-name: notice-countdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+  opacity: .9;
+}
+.notice-progress--accepted { background: linear-gradient(90deg, #7fbf9b, #d8b36e); }
+.notice-progress--rejected { background: linear-gradient(90deg, #d2a25f, #c46a55); }
+.notice-progress--toast { background: linear-gradient(90deg, #8ec9bd, #d8b36e); }
+@keyframes notice-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notice-progress { display: none; }
+}
 .list, .action-list, .hand-card-list, .card-list, .seat-list, .event-log, .chat__log, .target-picker__list, .color-list, .term-list, .response-list, .cost-list, .award-list { list-style: none; margin: 0; padding: 0; }
 .list__row, .card-list__row, .term-list li { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; justify-content: space-between; padding: .8rem 0; border-bottom: 1px solid var(--border); }
 .table { width: 100%; border-collapse: collapse; font-size: .9rem; }

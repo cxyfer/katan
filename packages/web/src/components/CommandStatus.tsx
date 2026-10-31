@@ -4,6 +4,7 @@ import { translateNotice } from '../i18n/events.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { activeTurnKey } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
+import { NoticeProgress } from './NoticeProgress.tsx';
 import {
   ACCEPTED_RECEIPT_MS,
   REJECTED_RECEIPT_MS,
@@ -26,13 +27,13 @@ export function CommandStatus({ controller }: { controller: TableController }) {
   const command = state.command;
   const [focused, setFocused] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const transient = command?.status === 'accepted' || command?.status === 'rejected';
+  const receiptMs = command?.status === 'accepted' ? ACCEPTED_RECEIPT_MS
+    : command?.status === 'rejected' ? REJECTED_RECEIPT_MS : null;
   const noticeKey = command ? `${command.commandId}:${command.status}` : null;
   const visible = useTransientNotice(noticeKey, {
-    timeoutMs: command?.status === 'accepted' ? ACCEPTED_RECEIPT_MS
-      : command?.status === 'rejected' ? REJECTED_RECEIPT_MS : null,
+    timeoutMs: receiptMs,
     turnKey: activeTurnKey(state),
-    dismissOnTurnChange: transient,
+    dismissOnTurnChange: receiptMs != null,
     paused: focused,
   });
   useEffect(() => {
@@ -115,6 +116,14 @@ export function CommandStatus({ controller }: { controller: TableController }) {
           {t('app.dismiss')}
         </button>
       </div>}
+      {receiptMs != null && (
+        <NoticeProgress
+          key={noticeKey}
+          timeoutMs={receiptMs}
+          paused={focused}
+          variant={command.status === 'accepted' ? 'accepted' : 'rejected'}
+        />
+      )}
     </div>
   );
 }

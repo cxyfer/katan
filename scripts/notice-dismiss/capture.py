@@ -4,8 +4,8 @@
 The harness serves `packages/web/dist` with a real service and the deterministic
 four-seat `hex-r2` fixture, but routes the next two `turn.end` commands to a
 definite rejection. That renders both a toast and a rejected command receipt,
-which lets the run measure their independent deadlines and the turn-change
-dismissal.
+which lets the run measure their independent deadlines, the depleting countdown
+strips and the turn-change dismissal.
 
 Run after `pnpm build`:
 
@@ -49,7 +49,7 @@ def capture(out: Path) -> dict:
     scenario = None
 
     def screenshot(name: str) -> None:
-        scenario.page.screenshot(path=str(out / name), animations="disabled")
+        scenario.page.screenshot(path=str(out / name), animations="allow")
         result["screenshots"].append(name)
 
     try:
@@ -91,19 +91,50 @@ def capture(out: Path) -> dict:
             page.wait_for_function(
                 "document.querySelector('[data-testid=\"command-status\"]')?.dataset.status === 'rejected'")
             page.get_by_test_id("toast").wait_for()
+
+            def progress() -> list[dict]:
+                return page.evaluate("""() => Array.from(
+                  document.querySelectorAll('[data-testid="notice-progress"]')
+                ).map(element => {
+                  const rect = element.getBoundingClientRect();
+                  const parent = element.parentElement.getBoundingClientRect();
+                  const style = getComputedStyle(element);
+                  const duration = style.animationDuration.endsWith('ms')
+                    ? parseFloat(style.animationDuration)
+                    : parseFloat(style.animationDuration) * 1000;
+                  return {width: rect.width, parentWidth: parent.width,
+                          durationMs: duration, play: style.animationPlayState};
+                })""")
+
             started = time.monotonic()
+            initial_progress = progress()
+            require(len(initial_progress) == 2,
+                    f"expected two countdown strips, got {initial_progress}")
+            require(any(abs(item["durationMs"] - 6000) < 1 for item in initial_progress),
+                    f"missing six-second strip: {initial_progress}")
+            require(any(abs(item["durationMs"] - 8000) < 1 for item in initial_progress),
+                    f"missing eight-second strip: {initial_progress}")
+            require(all(item["play"] == "running" for item in initial_progress),
+                    f"countdown strip is not running: {initial_progress}")
             screenshot("01-rejected-and-toast-zh-Hant.png")
 
             page.get_by_test_id("toast").wait_for(state="detached", timeout=8_000)
             result["timings"]["toastSeconds"] = round(time.monotonic() - started, 3)
             require(TOAST_SECONDS[0] <= result["timings"]["toastSeconds"] <= TOAST_SECONDS[1],
                     f"toast dismissal outside window: {result['timings']['toastSeconds']}")
+            after_toast = progress()
+            require(len(after_toast) == 1,
+                    f"expected only the receipt strip after the toast, got {after_toast}")
+            require(after_toast[0]["width"] / after_toast[0]["parentWidth"] < .6,
+                    f"receipt strip did not deplete: {after_toast}")
+            result["progress"] = {"initial": initial_progress, "afterToast": after_toast}
             screenshot("02-toast-gone-zh-Hant.png")
 
             status.wait_for(state="detached", timeout=10_000)
             result["timings"]["receiptSeconds"] = round(time.monotonic() - started, 3)
             require(RECEIPT_SECONDS[0] <= result["timings"]["receiptSeconds"] <= RECEIPT_SECONDS[1],
                     f"receipt dismissal outside window: {result['timings']['receiptSeconds']}")
+            require(not progress(), "countdown strip remained after the receipt cleared")
             screenshot("03-both-gone-zh-Hant.png")
 
             # A second rejection remains visible until the turn itself changes.
@@ -111,6 +142,7 @@ def capture(out: Path) -> dict:
             page.wait_for_function(
                 "document.querySelector('[data-testid=\"command-status\"]')?.dataset.status === 'rejected'")
             page.get_by_test_id("toast").wait_for()
+            require(len(progress()) == 2, "second rejection did not restore both strips")
             screenshot("04-before-turn-change-zh-Hant.png")
 
             snapshot = copy.deepcopy(scenario.snapshot)
@@ -125,6 +157,7 @@ def capture(out: Path) -> dict:
             result["timings"]["turnSwitchSeconds"] = round(time.monotonic() - switched, 3)
             require(result["timings"]["turnSwitchSeconds"] <= TURN_SWITCH_SECONDS,
                     f"turn change did not clear feedback promptly: {result['timings']['turnSwitchSeconds']}")
+            require(not progress(), "countdown strip survived the turn change")
             screenshot("05-after-turn-change-zh-Hant.png")
 
             result["state"] = {

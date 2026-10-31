@@ -15,17 +15,19 @@ persistence, identity or deployment changes.
 
 ## Behaviour
 
-| Surface | Auto-dismiss | Clears on turn change | Dismiss control |
-|---|---|---|---|
-| Toast | 6 s | yes | retained |
-| Accepted command receipt | 4 s (unchanged) | yes | none |
-| Rejected command receipt | 8 s | yes | retained, with retry |
-| Unknown / stale receipt | never | no | retained |
+| Surface | Auto-dismiss | Countdown strip | Clears on turn change | Dismiss control |
+|---|---|---|---|---|
+| Toast | 6 s | 6 s, pauses on focus | yes | retained |
+| Accepted command receipt | 4 s (unchanged) | 4 s, pauses on focus | yes | none |
+| Rejected command receipt | 8 s | 8 s, pauses on focus | yes | retained, with retry |
+| Unknown / stale receipt | never | none | no | retained |
 
-`useTransientNotice` owns the timer and turn-boundary rules. The toast's identity
-is the notice object and a receipt's identity is its command id, so a repeated
-message gets a fresh deadline and an old timer cannot hide it. Dismissing a
-receipt does not clear `state.command`; the previous accepted-receipt behaviour
+`useTransientNotice` owns the timer and turn-boundary rules. It preserves the
+remaining deadline across a focus pause, and `NoticeProgress` mirrors that run
+with a depleting strip; `toastId` gives a repeated toast a fresh strip. The
+toast's identity is `toastId`; a receipt's identity is its command id plus
+status. A repeated message therefore gets a fresh deadline and an old timer
+cannot hide it. Dismissing a receipt does not clear `state.command`; the previous accepted-receipt behaviour
 is preserved.
 
 ## Turn boundary
@@ -44,11 +46,13 @@ now covers the setup same-seat boundary and an advancing window.
 ## Verification
 
 - `pnpm verify`: typecheck clean; rules 138, protocol 7, server 96 passed with 11
-  PostgreSQL-only skips, web 463, production build, smoke 13/13, dev harness 1/1.
+  PostgreSQL-only skips, web 464, production build, smoke 13/13, dev harness 1/1.
 - Focused production-browser capture and assertions
   (`python3 scripts/notice-dismiss/capture.py --out test-results/notice-dismiss`):
-  toast detached after 6.05 s, rejected receipt after 8.01 s, both detached
-  0.03 s after a turn-changing snapshot; no page or console errors.
+  toast detached after 6.07 s, rejected receipt after 8.04 s, both detached
+  0.03 s after a turn-changing snapshot. When the toast detached, the receipt
+  strip measured 24% of its width (two of eight seconds left). No page or
+  console errors.
 - `python3 scripts/side-rails/verify.py --renderer svg --viewport desktop --board
   hex-r2`: PASS, including unknown-receipt resolution and the unchanged accepted
   receipt dismissal.
@@ -82,6 +86,18 @@ now covers the setup same-seat boundary and an advancing window.
   accepted/rejected receipt again; the reason text of a rejection is gone after
   its 8 s window even though the original action remains available. The receipt
   is a live region and focus pauses the timer; hover does not.
+
+## Countdown strip follow-up
+
+The user asked for a visible countdown in addition to automatic dismissal.
+`NoticeProgress` renders a 3 px strip along the lower edge of the toast and
+accepted/rejected receipts. Its CSS animation duration equals the notice
+deadline and its play state follows focus; the timer now keeps the remaining
+time instead of restarting a full interval after focus. A repeated toast gets a
+new `toastId` and a fresh strip. The strip is `aria-hidden` (the receipt remains
+a live region) and hidden under reduced motion, while the timer still clears the
+notice. The browser capture asserts both strip durations, their presence and
+depletion, and their removal with the notice.
 
 ## Limitations
 

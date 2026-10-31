@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Notice } from '@catan/protocol';
 import { translateNotice } from '../i18n/events.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
+import { NoticeProgress } from './NoticeProgress.tsx';
 import { TOAST_DISMISS_MS, useTransientNotice } from './useTransientNotice.ts';
 
 /**
@@ -10,10 +11,12 @@ import { TOAST_DISMISS_MS, useTransientNotice } from './useTransientNotice.ts';
  */
 export function Toast({
   notice,
+  toastId,
   turnKey,
   onDismiss,
 }: {
   notice: Notice | null;
+  toastId: number;
   turnKey: string | null;
   onDismiss: () => void;
 }) {
@@ -21,7 +24,7 @@ export function Toast({
   const locale = useLocale();
   const [focused, setFocused] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const visible = useTransientNotice(notice, {
+  const visible = useTransientNotice(notice ? toastId : null, {
     timeoutMs: TOAST_DISMISS_MS,
     turnKey,
     dismissOnTurnChange: true,
@@ -50,6 +53,12 @@ export function Toast({
       <button type="button" className="button button--ghost" onClick={onDismiss}>
         {t('app.dismiss')}
       </button>
+      <NoticeProgress
+        key={toastId}
+        timeoutMs={TOAST_DISMISS_MS}
+        paused={focused}
+        variant="toast"
+      />
     </div>
   );
 }

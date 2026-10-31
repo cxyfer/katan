@@ -43,6 +43,9 @@ export function useTransientNotice<T>(
   const keyRef = useRef<T | null>(key);
   const turnKeyRef = useRef<string | null>(turnKey);
   const lastKey = useRef<T | null>(null);
+  const lastTimeout = useRef<number | null>(timeoutMs);
+  const remaining = useRef<number | null>(timeoutMs);
+  const deadline = useRef<number | null>(null);
   const dismissRef = useRef(onDismiss);
   keyRef.current = key;
   turnKeyRef.current = turnKey;
@@ -52,23 +55,40 @@ export function useTransientNotice<T>(
     if (key == null) {
       appearedTurn.current = null;
       lastKey.current = null;
+      lastTimeout.current = null;
+      remaining.current = null;
+      deadline.current = null;
       setDismissed(null);
       return;
     }
-    if (lastKey.current !== key) {
+    if (lastKey.current !== key || lastTimeout.current !== timeoutMs) {
       lastKey.current = key;
+      lastTimeout.current = timeoutMs;
+      remaining.current = timeoutMs;
+      deadline.current = null;
       // Captured here on purpose: a later turn change must not extend the deadline.
       appearedTurn.current = turnKeyRef.current;
     }
     if (timeoutMs == null || paused) return;
+    const delay = remaining.current ?? timeoutMs;
+    const end = Date.now() + delay;
+    deadline.current = end;
     const timer = globalThis.setTimeout(() => {
       // The passive cleanup for an older key may not have run yet. Never let
       // its deadline dismiss the notice that replaced it.
       if (keyRef.current !== key) return;
+      remaining.current = 0;
+      deadline.current = null;
       setDismissed(key);
       dismissRef.current?.();
-    }, timeoutMs);
-    return () => globalThis.clearTimeout(timer);
+    }, delay);
+    return () => {
+      globalThis.clearTimeout(timer);
+      if (deadline.current != null) {
+        remaining.current = Math.max(0, deadline.current - Date.now());
+        deadline.current = null;
+      }
+    };
   }, [key, paused, timeoutMs]);
 
   useEffect(() => {

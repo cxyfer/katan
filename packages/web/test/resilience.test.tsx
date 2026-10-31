@@ -145,6 +145,18 @@ describe('state-level resilience', () => {
     expect(activeTurnKey(stateFor(7))).not.toBe(activeTurnKey(play));
   });
 
+  it('gives repeated toast messages a new run id', () => {
+    const first = tableReducer(initialTableState('en'), {
+      type: 'toast',
+      notice: { messageId: 'lobby.settingsSaved' },
+    });
+    const second = tableReducer(first, {
+      type: 'toast',
+      notice: { messageId: 'lobby.settingsSaved' },
+    });
+    expect(second.toastId).toBe(first.toastId + 1);
+  });
+
   it('keeps a draft nickname across a locale change but resets nothing else', () => {
     const state = initialTableState('en', '');
     const typed = tableReducer(state, { type: 'draft-nickname', value: '小美' });

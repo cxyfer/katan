@@ -26,6 +26,9 @@ describe('side command receipt', () => {
     render(notice(value));
     expect(screen.getByTestId('command-status')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
+    const progress = screen.getByTestId('notice-progress');
+    expect((progress as HTMLElement).style.animationDuration).toBe('4000ms');
+    expect(progress.className).toContain('notice-progress--accepted');
     act(() => vi.advanceTimersByTime(3999));
     expect(screen.getByTestId('command-status')).toBeTruthy();
     act(() => vi.advanceTimersByTime(1));
@@ -47,6 +50,9 @@ describe('side command receipt', () => {
     const value = controller('rejected');
     render(notice(value));
     expect(screen.getByTestId('command-retry')).toBeTruthy();
+    const progress = screen.getByTestId('notice-progress');
+    expect((progress as HTMLElement).style.animationDuration).toBe('8000ms');
+    expect(progress.className).toContain('notice-progress--rejected');
     act(() => vi.advanceTimersByTime(7999));
     expect(screen.getByTestId('command-status')).toBeTruthy();
     act(() => vi.advanceTimersByTime(1));
@@ -67,12 +73,17 @@ describe('side command receipt', () => {
   it('holds rejected feedback while its retry control is focused', () => {
     vi.useFakeTimers();
     render(notice(controller('rejected')));
+    act(() => vi.advanceTimersByTime(3000));
     const retry = screen.getByTestId('command-retry');
     fireEvent.focus(retry);
+    expect(screen.getByTestId('notice-progress').getAttribute('data-paused')).toBe('true');
     act(() => vi.advanceTimersByTime(10000));
     expect(screen.getByTestId('command-status')).toBeTruthy();
     fireEvent.blur(retry);
-    act(() => vi.advanceTimersByTime(8000));
+    expect(screen.getByTestId('notice-progress').getAttribute('data-paused')).toBe('false');
+    act(() => vi.advanceTimersByTime(4999));
+    expect(screen.getByTestId('command-status')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(1));
     expect(screen.queryByTestId('command-status')).toBeNull();
   });
 
@@ -88,6 +99,7 @@ describe('side command receipt', () => {
   it.each(['unknown', 'stale', 'submitting'] as const)('does not auto-dismiss %s', (status) => {
     vi.useFakeTimers();
     render(notice(controller(status)));
+    expect(screen.queryByTestId('notice-progress')).toBeNull();
     act(() => vi.advanceTimersByTime(10000));
     expect(screen.getByTestId('command-status')).toBeTruthy();
   });

@@ -57,6 +57,7 @@ function AppShell({ controller }: { controller: TableController }) {
 
       <Toast
         notice={state.toast}
+        toastId={state.toastId}
         turnKey={activeTurnKey(state)}
         onDismiss={() => controller.dispatch({ type: 'toast', notice: null })}
       />
