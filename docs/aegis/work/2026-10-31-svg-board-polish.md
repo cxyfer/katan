@@ -61,7 +61,7 @@ solid-colour cells) are unchanged.
   `url(#…)` paint resolves inside its own board, each tile has one emblem, and
   every harbour badge sits outside its land hex and inside the view box.
 - `pnpm verify` passes: typecheck; rules 138, protocol 7, server 99 (11
-  PostgreSQL-only skipped), web 536 tests in 54 files; build, smoke, `test:dev`.
+  PostgreSQL-only skipped), web 536 tests in 53 files; build, smoke, `test:dev`.
 
 ## Review follow-ups
 
