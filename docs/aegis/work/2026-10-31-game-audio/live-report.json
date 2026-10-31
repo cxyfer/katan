@@ -1,0 +1,106 @@
+{
+  "checks": [
+    {
+      "name": "浮浮酱 round 1 building",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.1817173808813095,
+      "ok": true
+    },
+    {
+      "name": "浮浮酱 round 1 road",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.20645198225975037,
+      "ok": true
+    },
+    {
+      "name": "Mika round 1 building",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.17390012741088867,
+      "ok": true
+    },
+    {
+      "name": "Mika round 1 road",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.20621195435523987,
+      "ok": true
+    },
+    {
+      "name": "Bo round 1 building",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.17390021681785583,
+      "ok": true
+    },
+    {
+      "name": "Bo round 1 road",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.20621195435523987,
+      "ok": true
+    },
+    {
+      "name": "Bo round 2 building",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.17390021681785583,
+      "ok": true
+    },
+    {
+      "name": "Bo round 2 road",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.2071327269077301,
+      "ok": true
+    },
+    {
+      "name": "Mika round 2 building",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.17390207946300507,
+      "ok": true
+    },
+    {
+      "name": "Mika round 2 road",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.27647367119789124,
+      "ok": true
+    },
+    {
+      "name": "浮浮酱 round 2 building (muted)",
+      "expectAudible": false,
+      "state": "suspended",
+      "peak": 8.896675717551261e-05,
+      "ok": true
+    },
+    {
+      "name": "浮浮酱 round 2 road",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.20600467920303345,
+      "ok": true
+    },
+    {
+      "name": "host roll",
+      "expectAudible": true,
+      "state": "running",
+      "peak": 0.21718841791152954,
+      "ok": true
+    }
+  ],
+  "failures": [],
+  "contextAfterFirstClick": [
+    "running"
+  ],
+  "afterSetup": {
+    "turn": true,
+    "phase": "preroll"
+  },
+  "consoleErrors": [
+    "WebSocket connection to 'ws://127.0.0.1:3017/ws' failed: HTTP Authentication failed; no valid credentials available"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "base": "http://127.0.0.1:5191",
+  "cues": {
+    "dice.roll": 0.377,
+    "dice.land": 0.28,
+    "production.self": 0.361,
+    "production.other": 0.127,
+    "build.road": 0.345,
+    "build.settlement": 0.347,
+    "build.city": 0.287,
+    "dev.buy": 0.295,
+    "dev.knight": 0.203,
+    "dev.monopoly": 0.214,
+    "dev.yearOfPlenty": 0.275,
+    "dev.roadBuilding": 0.387,
+    "robber.alert": 0.3,
+    "robber.move": 0.297,
+    "robber.steal": 0.14,
+    "robber.stolenFromYou": 0.164,
+    "discard": 0.118,
+    "trade.offer": 0.288,
+    "trade.complete": 0.231,
+    "trade.bank": 0.202,
+    "trade.cancel": 0.144,
+    "turn.yours": 0.309,
+    "turn.other": 0.035,
+    "game.victory": 0.399,
+    "game.over": 0.253,
+    "ui.select": 0.038,
+    "ui.error": 0.077,
+    "chat.message": 0.08
+  },
+  "failures": [],
+  "contextsBeforeGesture": 0,
+  "music": {
+    "state": "running",
+    "time": 5.584399092970521,
+    "peak": 0.10805000364780426,
+    "rms": 0.024977604390811415
+  },
+  "musicStopped": {
+    "state": "running",
+    "time": 8.045714285714286,
+    "peak": 4.085207910975441e-05,
+    "rms": 5.57962774734478e-06
+  },
+  "effect": {
+    "state": "running",
+    "time": 9.276371882086167,
+    "peak": 0.42723551392555237,
+    "rms": 0.05455357985913825
+  },
+  "consoleErrors": []
+}

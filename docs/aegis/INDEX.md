@@ -5,6 +5,11 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-10-31 | work | docs/aegis/work/2026-10-31-game-audio.md | Procedural sound effects and generative music |
+| 2026-10-31 | artifact | docs/aegis/work/2026-10-31-game-audio/palette-report.json | Offline render peaks for every cue and live music/effect output |
+| 2026-10-31 | artifact | docs/aegis/work/2026-10-31-game-audio/live-report.json | Live three-player setup: audible events, silence while muted |
+| 2026-10-31 | work | scripts/audio/verify.py | Sound palette browser check |
+| 2026-10-31 | work | scripts/audio/live.py | Live game audio check against the built service |
 | 2026-10-30 | work | docs/aegis/work/2026-10-30-ui-design-refresh.md | Frontend design and usability refresh |
 | 2026-10-30 | work | scripts/ui-refresh/capture.py | Entry, lobby and table review capture harness |
 | 2026-10-30 | plan | docs/aegis/plans/2026-10-30-table-ui-polish.md | Table UI polish after PR #11 |

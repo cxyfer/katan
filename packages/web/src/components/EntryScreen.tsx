@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
+import { SoundSettings } from './SoundSettings.tsx';
 import { GameIcon, GameLogo, IslandIllustration, PregameScene } from './GameArt.tsx';
 import { useT } from '../i18n/context.tsx';
 import type { ScreenProps } from './props.ts';
@@ -38,7 +39,10 @@ export function EntryScreen({ controller }: ScreenProps) {
     <main className="screen screen--entry pregame" id="main">
       <PregameScene />
       <header className="pregame__topbar">
-        <LanguageSwitch onChange={actions.setLocale} />
+        <div className="pregame__topbar-end">
+          <SoundSettings />
+          <LanguageSwitch onChange={actions.setLocale} />
+        </div>
       </header>
 
       <div className="entry-stage">

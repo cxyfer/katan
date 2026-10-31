@@ -1,0 +1,71 @@
+/* ---------- 音效設定：與語言切換並排的小按鈕與下拉面板 ---------- */
+.sound-settings { position: relative; flex: none; }
+.sound-settings__toggle {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 38px;
+  padding: .35rem .7rem;
+  color: #e9dcb8;
+  font-size: .72rem;
+  white-space: nowrap;
+  list-style: none;
+  cursor: pointer;
+  background: #0a2530cc;
+  border: 1px solid var(--brass-soft, #b0a17466);
+  border-radius: 8px;
+  user-select: none;
+}
+.sound-settings__toggle::-webkit-details-marker { display: none; }
+.sound-settings__toggle::marker { content: ""; }
+.sound-settings__toggle:hover { border-color: var(--accent); }
+.sound-settings__toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.sound-settings[data-muted=true] .sound-settings__toggle { color: #9fb0ad; }
+.sound-settings[open] .sound-settings__toggle { border-color: var(--accent); background: #173337; }
+
+.sound-settings__panel {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .8rem;
+  width: min(300px, calc(100vw - 24px));
+  padding: 1rem 1.1rem;
+  color: var(--text);
+  text-align: left;
+  background: #173337fc;
+  border: 1px solid #b2a16a99;
+  border-radius: 10px;
+  box-shadow: 0 18px 40px #020c1299;
+}
+.sound-settings__title { margin: 0; font-family: var(--font-display); font-size: .95rem; color: #f6e7c3; }
+.sound-settings__mute { display: flex; align-items: center; gap: .55rem; font-size: .8rem; cursor: pointer; }
+.sound-settings__mute input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+.sound-settings__state { margin-left: auto; color: var(--text-muted); font-size: .7rem; }
+.sound-settings__slider { display: flex; flex-direction: column; gap: .3rem; font-size: .78rem; }
+.sound-settings__slider-label { display: flex; justify-content: space-between; gap: .5rem; }
+.sound-settings__slider output { color: var(--accent); font-variant-numeric: tabular-nums; }
+.sound-settings__slider input { width: 100%; margin: 0; accent-color: var(--accent); }
+.sound-settings__slider input:disabled, .sound-settings__mute input:disabled { opacity: .5; }
+.sound-settings__test { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 36px; font-size: .76rem; }
+.sound-settings__note { margin: 0; font-size: .68rem; line-height: 1.5; }
+
+/* 面板的 z-index 只在狀態列的堆疊環境內有效；展開時讓整條狀態列浮到棋盤、
+   行動提示與回執之上（與 .board__toolbar 的 :has([open]) 做法相同）。 */
+.screen--game .status-strip:has(.sound-settings[open]) { z-index: 70; }
+
+/* 牌桌狀態列：與全螢幕按鈕同高、同色。 */
+.status-strip .sound-settings__toggle { min-height: 36px; padding: .35rem .6rem; font-size: .68rem; background: #233b3b; border-color: #b0a17466; border-radius: 6px; }
+
+@media (max-width: 900px) {
+  .sound-settings__summary-label { display: none; }
+  .sound-settings__toggle { padding: .35rem .5rem; }
+}
+@media (max-width: 649px) {
+  .status-strip .sound-settings__toggle { min-width: 32px; min-height: 32px; padding: .35rem; }
+  /* 窄螢幕上按鈕位置不固定：水平方向貼齊視窗兩側，垂直方向（top: auto）
+     保留在按鈕正下方的原位，面板不會被裁到畫面外。 */
+  .sound-settings__panel { position: fixed; top: auto; left: 12px; right: 12px; width: auto; margin-top: 8px; }
+}

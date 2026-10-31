@@ -2,6 +2,7 @@ import { useT } from '../i18n/context.tsx';
 import { formatDateTime } from '../i18n/format.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
+import { SoundSettings } from './SoundSettings.tsx';
 import { GameBrand, GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 
@@ -65,6 +66,7 @@ export function StatusStrip({ controller, fullscreen }: {
       </span>
 
       <span className="status-strip__spacer" />
+      <SoundSettings testId="sound-settings-game" />
       <LanguageSwitch onChange={actions.setLocale} testId="locale-switch-game" />
       {fullscreen && <button
         type="button"
