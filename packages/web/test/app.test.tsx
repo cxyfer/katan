@@ -379,6 +379,9 @@ describe('command outcome handling', () => {
     );
     expect(screen.getByTestId('selection-preview')).toBeTruthy();
     expect(screen.getByTestId('command-status').textContent).toContain('Your draft input was kept.');
+    // The receipt carries the reason; no duplicate toast repeats it.
+    expect(screen.getByTestId('command-status').textContent).toContain('Action rejected');
+    expect(screen.queryByTestId('toast')).toBeNull();
     expect(screen.getByTestId('board-preview-ghost')).toBeTruthy();
     expect(screen.queryByTestId('board-effects')).toBeNull();
     expect(document.querySelector('.board__building-drop,.board__road-reveal')).toBeNull();

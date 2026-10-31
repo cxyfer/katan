@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
 import type { Notice } from '@catan/protocol';
 import { translateNotice } from '../i18n/events.ts';
-import { useLocale, useT } from '../i18n/context.tsx';
-import { NoticeProgress } from './NoticeProgress.tsx';
-import { TOAST_DISMISS_MS, useTransientNotice } from './useTransientNotice.ts';
+import { useLocale } from '../i18n/context.tsx';
+import { GameIcon } from './GameArt.tsx';
+import { NoticeDismiss } from './NoticeDismiss.tsx';
+import { TOAST_DISMISS_MS, useNoticeHold, useTransientNotice } from './useTransientNotice.ts';
 
 /**
- * Non-blocking notice. It stays dismissible but no longer requires a click:
- * the timer clears it, and a turn switch clears anything from the old turn.
+ * Non-blocking notice. It closes on its own after a countdown shown around the
+ * close button, holds while hovered or focused, and fades out with the turn
+ * it belonged to.
  */
 export function Toast({
   notice,
@@ -20,44 +21,36 @@ export function Toast({
   turnKey: string | null;
   onDismiss: () => void;
 }) {
-  const t = useT();
   const locale = useLocale();
-  const [focused, setFocused] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const visible = useTransientNotice(notice ? toastId : null, {
+  const key = notice ? toastId : null;
+  const hold = useNoticeHold<HTMLDivElement>(key);
+  const { visible, leaving, held, dismiss } = useTransientNotice(key, {
     timeoutMs: TOAST_DISMISS_MS,
     turnKey,
     dismissOnTurnChange: true,
-    paused: focused,
+    paused: hold.held,
     onDismiss,
   });
-  useEffect(() => {
-    if (!visible) setFocused(false);
-  }, [visible]);
-  useEffect(() => {
-    // Keep the pause only when the new notice still owns the focused element.
-    if (!rootRef.current?.contains(document.activeElement)) setFocused(false);
-  }, [notice]);
   if (!notice || !visible) return null;
+  const tone = notice.messageId.startsWith('error.') ? 'error' : 'info';
 
   return (
     <div
-      ref={rootRef}
-      className="toast"
+      ref={hold.ref}
+      className={`toast notice-card notice-card--${tone}`}
       role="status"
       data-testid="toast"
-      onFocusCapture={() => setFocused(true)}
-      onBlurCapture={() => setFocused(false)}
+      data-tone={tone}
+      data-leaving={leaving ? 'true' : undefined}
+      {...hold.handlers}
     >
-      <span>{translateNotice(locale, notice)}</span>
-      <button type="button" className="button button--ghost" onClick={onDismiss}>
-        {t('app.dismiss')}
-      </button>
-      <NoticeProgress
-        key={toastId}
+      <span className="notice-card__icon"><GameIcon name={tone === 'error' ? 'alert' : 'info'} size={16} /></span>
+      <p className="notice-card__text">{translateNotice(locale, notice)}</p>
+      <NoticeDismiss
         timeoutMs={TOAST_DISMISS_MS}
-        paused={focused}
-        variant="toast"
+        paused={held}
+        run={toastId}
+        onClick={() => dismiss()}
       />
     </div>
   );
