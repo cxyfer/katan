@@ -6,14 +6,16 @@ import {
   useState,
 } from 'react';
 import {
+  CanvasTexture,
   DoubleSide,
+  ImageLoader,
   LinearFilter,
+  LinearMipmapLinearFilter,
   Matrix4,
   MeshBasicMaterial,
   OrthographicCamera,
   SRGBColorSpace,
   Texture,
-  TextureLoader,
   type BufferGeometry,
 } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -49,6 +51,9 @@ function useLeasedResources(): BoardSceneResources {
   return resources;
 }
 
+/** The atlas SVG is 1024px; rasterize it larger so zoomed-in labels stay sharp. */
+const ATLAS_RASTER_SIZE = 2048;
+
 function useBoardAtlas(onUnavailable: (reason: string) => void): Texture | null {
   const { gl } = useThree();
   const [texture, setTexture] = useState<Texture | null>(null);
@@ -58,19 +63,27 @@ function useBoardAtlas(onUnavailable: (reason: string) => void): Texture | null 
   useEffect(() => {
     let active = true;
     let loaded: Texture | null = null;
-    const loader = new TextureLoader();
+    const loader = new ImageLoader();
     try {
       loader.load(
         BOARD_ATLAS_URL,
-        (next) => {
-          if (!active) {
-            next.dispose();
+        (image) => {
+          if (!active) return;
+          const canvas = document.createElement('canvas');
+          canvas.width = ATLAS_RASTER_SIZE;
+          canvas.height = ATLAS_RASTER_SIZE;
+          const context = canvas.getContext('2d');
+          if (!context) {
+            failureRef.current('texture');
             return;
           }
+          context.drawImage(image, 0, 0, ATLAS_RASTER_SIZE, ATLAS_RASTER_SIZE);
+          const next = new CanvasTexture(canvas);
           next.colorSpace = SRGBColorSpace;
-          next.anisotropy = Math.min(4, gl.capabilities.getMaxAnisotropy());
-          next.generateMipmaps = false;
-          next.minFilter = LinearFilter;
+          next.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
+          // Mipmaps keep small, zoomed-out labels from shimmering.
+          next.generateMipmaps = true;
+          next.minFilter = LinearMipmapLinearFilter;
           next.magFilter = LinearFilter;
           loaded = next;
           setTexture(next);
