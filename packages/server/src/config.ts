@@ -21,6 +21,8 @@ export interface ServerConfig {
   sessionCookieName: string;
   cookieSecure: boolean;
   webDistPath: string | null;
+  /** 對外網址（如 https://catan.example.com），用於 og:image 等需絕對網址的 meta；未設定時由請求標頭推導。 */
+  publicUrl: string | null;
   defaultPolicy: RoomPolicy;
   policyBounds: PolicyBounds;
   limits: ServerLimits;
@@ -50,6 +52,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     sessionCookieName: env.SESSION_COOKIE_NAME ?? 'catan_session',
     cookieSecure: bool(env.COOKIE_SECURE, env.NODE_ENV === 'production'),
     webDistPath: env.WEB_DIST_PATH ?? null,
+    publicUrl: env.PUBLIC_URL && env.PUBLIC_URL !== '' ? env.PUBLIC_URL : null,
     defaultPolicy: {
       ...DEFAULT_POLICY,
       turnClockSeconds: int(env.DEFAULT_TURN_CLOCK_SECONDS, DEFAULT_POLICY.turnClockSeconds),

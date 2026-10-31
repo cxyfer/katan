@@ -17,7 +17,10 @@ let staticDir: string;
 beforeAll(async () => {
   harness = await startHarness();
   staticDir = mkdtempSync(join(tmpdir(), 'catan-web-'));
-  writeFileSync(join(staticDir, 'index.html'), '<!doctype html><title>CATAN client</title>');
+  writeFileSync(
+    join(staticDir, 'index.html'),
+    '<!doctype html><title>CATAN client</title><meta property="og:image" content="__PUBLIC_ORIGIN__/og-image.png" />',
+  );
   writeFileSync(join(staticDir, 'app.js'), 'console.log("client");');
   staticHarness = await startHarness({ webDistPath: staticDir });
 });
@@ -203,6 +206,32 @@ describe('static client delivery', () => {
     const route = await fetch(`${staticHarness.base}/room/ABC12345`);
     expect(route.status).toBe(200);
     expect(await route.text()).toContain('CATAN client');
+  });
+
+  it('fills the og:image origin from forwarded headers', async () => {
+    const res = await fetch(`${staticHarness.base}/room/ABC12345`, {
+      headers: { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'catan.example.com' },
+    });
+    expect(await res.text()).toContain('content="https://catan.example.com/og-image.png"');
+  });
+
+  it('rejects malformed forwarded hosts instead of injecting them', async () => {
+    const res = await fetch(`${staticHarness.base}/`, {
+      headers: { 'x-forwarded-host': '"><script>alert(1)</script>' },
+    });
+    const html = await res.text();
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('content="/og-image.png"');
+  });
+
+  it('prefers the configured PUBLIC_URL', async () => {
+    const configured = await startHarness({ webDistPath: staticDir, publicUrl: 'https://play.example.org/' });
+    try {
+      const res = await fetch(`${configured.base}/`, { headers: { 'x-forwarded-host': 'evil.test' } });
+      expect(await res.text()).toContain('content="https://play.example.org/og-image.png"');
+    } finally {
+      await configured.close();
+    }
   });
 
   it('still answers the API from the same origin', async () => {
