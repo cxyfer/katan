@@ -1,0 +1,102 @@
+/*
+ * 結算頁橫向一頁式：左欄是勝負摘要與最終棋盤，右欄是賽後統計。
+ * 統計分頁的內容在面板內捲動，整頁本身不捲動。
+ */
+@media (orientation: landscape) and (min-width: 600px) {
+  .screen--result {
+    display: grid;
+    grid-template-columns: minmax(320px, 36fr) minmax(0, 64fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas: "strip strip" "hero stats" "board stats";
+    gap: 12px 16px;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    margin: 0;
+    padding: 0 16px 16px;
+    overflow: hidden;
+  }
+  .screen--result:not(:has(.game-stats)) {
+    grid-template-columns: minmax(300px, 30fr) minmax(0, 70fr);
+    grid-template-areas: "strip strip" "hero board" "hero board";
+  }
+  .screen--result > .status-strip { grid-area: strip; margin: 0 -16px; }
+  .screen--result .result-hero {
+    grid-area: hero;
+    grid-template-columns: minmax(0, 1fr) clamp(96px, 9vw, 150px);
+    align-items: center;
+    gap: 1rem;
+    min-height: 0;
+    margin: 0;
+    padding: clamp(.8rem, 2vh, 1.3rem) clamp(1rem, 1.6vw, 1.5rem);
+  }
+  .screen--result .result-hero__emblem { margin-bottom: .2rem; }
+  .screen--result .result-hero__emblem svg { width: 30px; height: 30px; }
+  .screen--result .result-hero h1 { margin: 0; font-size: 1.15rem; letter-spacing: .06em; }
+  .screen--result .result__winner { margin: .15rem 0 .3rem; font-size: clamp(1.3rem, 2vw, 1.7rem); line-height: 1.25; }
+  .screen--result .result-hero p { margin-bottom: .3rem; font-size: .84rem; }
+  .screen--result .result-hero .button { margin-top: .4rem; }
+  .screen--result .result-hero .island-illustration { width: 100%; max-height: 140px; }
+  .screen--result .game-stats {
+    grid-area: stats;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+  .screen--result .game-stats__tabs { flex: 0 0 auto; }
+  .screen--result .game-stats__panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .screen--result .result-board {
+    grid-area: board;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin: 0;
+    padding: .7rem .8rem .8rem;
+  }
+  .screen--result .result-board > h2 { flex: 0 0 auto; margin: 0 0 .5rem; font-size: .95rem; }
+  /* 棋盤本身不裁切，讓圖例與顯示設定彈層可以超出小卡片；圓角改由海面自己裁。 */
+  .screen--result .result-board .board { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: visible; }
+  .screen--result .result-board .board__surface { flex: 1 1 auto; height: auto; min-height: 160px; border-radius: 14px; }
+  .screen--result .result-board .board__toolbar--side { flex-wrap: wrap; max-width: calc(100% - 16px); }
+  /*
+   * 最終棋盤在左下角，往下開的彈層會被視窗切掉；貼齊左下又會蓋住自己的開關。
+   * 圖例與顯示設定改固定在右側統計欄上方，高度以視窗為上限，不碰左欄工具列。
+   */
+  .screen--result .board--side-controls .board__toolbar--side > .legend > .legend__grid,
+  .screen--result .board--side-controls .board__display-settings-panel {
+    position: fixed;
+    inset: 56px 16px auto auto;
+    max-height: calc(100dvh - 72px);
+  }
+  .screen--result .board--side-controls .board__toolbar--side > .legend > .legend__grid { width: min(530px, calc(62vw - 32px)); }
+  .screen--result .board--side-controls .board__display-settings-panel { width: min(280px, calc(62vw - 32px)); }
+}
+@media (orientation: landscape) and (min-width: 600px) and (max-height: 620px) {
+  .screen--result .result-hero { grid-template-columns: minmax(0, 1fr); }
+  .screen--result .result-hero .island-illustration { display: none; }
+  .screen--result { grid-template-columns: minmax(260px, 34fr) minmax(0, 66fr); gap: 8px 12px; padding: 0 10px 10px; }
+  .screen--result > .status-strip { margin: 0 -10px; }
+  .screen--result .result-hero { padding: .6rem .9rem; }
+  .screen--result .result-hero__emblem { display: none; }
+  .screen--result .result-hero p { margin-bottom: .15rem; font-size: .76rem; }
+  .screen--result .result-hero .button { min-height: 38px; margin-top: .2rem; }
+  .screen--result .result-board { padding: .5rem; }
+  .screen--result .result-board > h2 { display: none; }
+  .screen--result .result-board .board__surface { min-height: 0; }
+  .screen--result .game-stats { padding: .7rem .9rem; }
+  .screen--result .board--side-controls .board__toolbar--side { inset: 4px auto auto 4px; gap: 3px; }
+  .screen--result .board--side-controls .board__toolbar--side > .button,
+  .screen--result .board--side-controls .board__display-settings > summary,
+  .screen--result .board--side-controls .board__toolbar--side > .legend > summary { width: 32px; min-width: 32px; height: 32px; min-height: 32px; }
+  .screen--result .board--side-controls .board__toolbar--side > .legend > summary { width: auto; padding: 0 .5rem; font-size: .64rem; }
+  /* 小卡片只留一列工具：旋轉改用拖曳或鍵盤 [ ]，避免工具列換行蓋住棋盤中央。 */
+  .screen--result .board--side-controls .board__toolbar--side > [data-testid^="rotate-"] { display: none; }
+}

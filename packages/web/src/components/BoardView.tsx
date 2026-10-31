@@ -247,6 +247,7 @@ export function BoardView({ controller }: { controller: TableController }) {
             {failure && <button type="button" data-testid="renderer-retry" onClick={() => changeRenderer(requested)}>{t('board.rendererRetry')}</button>}
           </div>
         </details>
+        <Legend />
       </div>
 
       {view.turn.dice && (
@@ -281,7 +282,6 @@ export function BoardView({ controller }: { controller: TableController }) {
           onAmbiguous={(_kind, _index, candidates) => { setCluster([...candidates]); setPickerOpen(true); }} />
       </div>
       {stage && animation.active && anchors && createPortal(<BoardEffects group={animation.active} geometry={geometry} view={view} anchors={anchors} />, stage)}
-      <Legend />
       {pickerOpen && intent && <TargetPicker geometry={geometry} board={board} topology={topology} kind={intent.kind}
         targets={intent.targets} nameOf={nameResolver} {...(cluster ? { ambiguousOnly: cluster } : {})}
         onCancel={() => { setPickerOpen(false); setCluster(null); }}

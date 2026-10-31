@@ -21,6 +21,26 @@ function pointerEnter(element: Element, type = 'mouse') {
 afterEach(() => vi.useRealTimers());
 
 describe('table interactions', { timeout: 15000 }, () => {
+  it('keeps both rails collapsed until hovered on wide landscape screens', async () => {
+    const width = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1920 });
+    try {
+      await open();
+      const players = screen.getByTestId('players-panel');
+      const actions = screen.getByTestId('action-rail');
+      expect(players.getAttribute('data-expanded')).toBe('false');
+      expect(actions.getAttribute('data-expanded')).toBe('false');
+      expect(screen.getByTestId('players-toggle').hidden).toBe(false);
+      expect(screen.getByTestId('action-rail-toggle').hidden).toBe(false);
+      pointerEnter(players);
+      expect(players.getAttribute('data-expanded')).toBe('true');
+      pointerEnter(actions);
+      expect(actions.getAttribute('data-expanded')).toBe('true');
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    }
+  });
+
   it('unpins and closes the opposite rail on narrow screens without remounting actions', async () => {
     const width = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
