@@ -32,7 +32,10 @@ export function GameScreen({ controller }: { controller: TableController }) {
 
   useEffect(() => {
     const next = requiredActionAnnouncement(action, t);
-    if (next) setAnnouncement(t(next.messageId, next.params));
+    // A completed discarder no longer owes an action; leaving the previous
+    // announcement in place would keep telling assistive tech to discard
+    // (docs/SPEC.md §4.4).
+    setAnnouncement(next ? t(next.messageId, next.params) : '');
   }, [action, t]);
 
   const suspended = state.room?.status === 'suspended';

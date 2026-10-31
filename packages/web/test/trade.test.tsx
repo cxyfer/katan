@@ -1,12 +1,28 @@
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { CommandRequest } from '@catan/protocol';
+import type { CommandRequest, ServerMessage } from '@catan/protocol';
 import type { Offer } from '@catan/rules';
+import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
 import { tradeShortfall } from '../src/components/TradePanel.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeHints, makeSnapshot, makeView } from '../src/test/fixtures.ts';
+
+class TestSocket implements SocketLike {
+  open = () => {};
+  disconnect = () => {};
+  message = (_data: string) => {};
+  send() {}
+  close() {}
+  onOpen(handler: () => void) { this.open = handler; }
+  onClose(handler: (info: { code: number; reason: string }) => void) {
+    this.disconnect = () => handler({ code: 1006, reason: 'test disconnect' });
+  }
+  onMessage(handler: (data: string) => void) { this.message = handler; }
+  onError() {}
+  deliver(message: ServerMessage) { this.message(JSON.stringify(message)); }
+}
 
 beforeEach(() => {
   const original = HTMLElement.prototype.getBoundingClientRect;
@@ -27,6 +43,26 @@ async function openGame(api: FakeApi, tool?: 'trade' | 'exchange'): Promise<void
   fireEvent.click(await screen.findByTestId('resume-g1'));
   await screen.findByTestId('board-svg');
   if (tool) fireEvent.click(screen.getByTestId(`tool-tab-${tool}`));
+}
+
+async function openGameWithSocket(api: FakeApi, sockets: TestSocket[]): Promise<void> {
+  render(
+    <App
+      services={{
+        api,
+        storage: memoryStorage(),
+        languages: ['en'],
+        socketFactory: () => {
+          const socket = new TestSocket();
+          sockets.push(socket);
+          return socket;
+        },
+      }}
+    />,
+  );
+  act(() => sockets[0]!.open());
+  fireEvent.click(await screen.findByTestId('resume-g1'));
+  await screen.findByTestId('board-svg');
 }
 
 const ACCEPTED = {
@@ -426,27 +462,46 @@ describe('development cards and pending effects', () => {
     });
   });
 
-  it('shows the remaining wait list instead of the picker once I have submitted', async () => {
+  it('clears the picker and live announcement after I submit', async () => {
+    const sockets: TestSocket[] = [];
+    const pending = {
+      kind: 'discard' as const,
+      required: { p1: 2, p2: 3 },
+      waitingFor: ['p1', 'p2'],
+    };
     const api = createFakeApi({
-      snapshot: makeSnapshot(
-        makeView({
-          hints: null,
-          // p1 still appears in `required` (it is the effect's original set)
-          // but no longer in `waitingFor` (the authoritative outstanding set).
-          pending: { kind: 'discard', required: { p1: 2, p2: 3 }, waitingFor: ['p2'] },
-        }),
-      ),
+      snapshot: makeSnapshot(makeView({ hints: null, pending })),
     });
-    await openGame(api);
+    api.setCommandResult(ACCEPTED);
+    await openGameWithSocket(api, sockets);
 
+    expect(screen.getByTestId('required-action-prompt').getAttribute('data-mine')).toBe('true');
+    await waitFor(() => expect(screen.getByTestId('live-region').textContent).toContain('Discard'));
+
+    fireEvent.click(screen.getByTestId('discard-add-wool'));
+    fireEvent.click(screen.getByTestId('discard-add-grain'));
+    fireEvent.click(screen.getByTestId('discard-submit'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+
+    // p1 still appears in `required` (the effect's original set) but leaves
+    // `waitingFor` once the authoritative snapshot reports the submission.
+    const waiting = makeSnapshot(
+      makeView({ hints: null, pending: { ...pending, waitingFor: ['p2'] } }),
+      13,
+    );
+    waiting.view.seq = 13;
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: waiting }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('required-action-prompt').getAttribute('data-mine')).toBe('false');
+    });
     const prompt = screen.getByTestId('required-action-prompt');
-    expect(prompt.getAttribute('data-mine')).toBe('false');
     expect(prompt.textContent).toContain('Waiting for other players to discard');
     expect(prompt.textContent).toContain('小美');
     expect(screen.queryByTestId('prompt-waiting')).not.toBeNull();
     expect(screen.queryByTestId('discard-submit')).toBeNull();
     expect(screen.queryByTestId('discard-add-lumber')).toBeNull();
-    expect(screen.getByTestId('live-region').textContent).not.toContain('Discard');
+    expect(screen.getByTestId('live-region').textContent).toBe('');
   });
 
   it('lets the thief pick a victim from the engine’s candidate list', async () => {
