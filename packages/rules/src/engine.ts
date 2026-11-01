@@ -958,10 +958,13 @@ function playYearOfPlenty(state: GameState, actorId: string): CommandOutcome {
   const player = playerById(state, actorId)!;
   if (!player.devCards.includes('yearOfPlenty')) return fail('E_CARD_NOT_HELD', { card: 'yearOfPlenty' });
   if (player.newDevCards.includes('yearOfPlenty')) return fail('E_CARD_JUST_BOUGHT', { card: 'yearOfPlenty' });
+  // 銀行不足兩張時只給得出現有的張數；完全沒有時不能打出，卡片留在手上。
+  const available = RESOURCES.reduce((sum, resource) => sum + state.bank[resource], 0);
+  if (available <= 0) return fail('E_BANK_EMPTY', { card: 'yearOfPlenty' });
   player.devCards.splice(player.devCards.indexOf('yearOfPlenty'), 1);
   state.turn.devCardPlayed = true;
   playerStats(state, actorId).devCardsPlayed.yearOfPlenty += 1;
-  state.pending = { kind: 'yearOfPlenty', actor: actorId, remaining: 2 };
+  state.pending = { kind: 'yearOfPlenty', actor: actorId, remaining: Math.min(2, available) };
   emit(state, 'dev.yearOfPlenty', { playerId: actorId });
   return { ok: true, state, events: [] };
 }

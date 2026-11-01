@@ -88,3 +88,23 @@ describe('Road Building with few road pieces left', () => {
     expect(events.find((event) => event.type === 'dev.roadBuildingFinished')?.params.placed).toBe(1);
   });
 });
+
+describe('Year of Plenty with a short bank', () => {
+  it('grants only what the bank holds and never stalls', () => {
+    const { state } = playableGame({ players: 4 });
+    state.bank = { lumber: 1, brick: 0, wool: 0, grain: 0, ore: 0 };
+    state.players[0]!.devCards = ['yearOfPlenty'];
+    const played = act(state, 'p1', { type: 'dev.playYearOfPlenty' }).state;
+    expect(played.pending).toEqual({ kind: 'yearOfPlenty', actor: 'p1', remaining: 1 });
+    const taken = act(played, 'p1', { type: 'pending.takeResource', resource: 'lumber' }).state;
+    expect(taken.pending).toBeNull();
+    expect(taken.turn.phase).toBe('action');
+  });
+
+  it('refuses the card while the bank is empty and keeps it', () => {
+    const { state } = playableGame({ players: 4 });
+    state.bank = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
+    state.players[0]!.devCards = ['yearOfPlenty'];
+    expectRejected(state, 'p1', { type: 'dev.playYearOfPlenty' }, 'E_BANK_EMPTY');
+  });
+});
