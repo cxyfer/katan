@@ -74,6 +74,10 @@ export interface RulesKit {
    * once its end-of-turn frames are resolved.
    */
   finishTurn(state: GameState): void;
+  /** Base road legality (connection, occupancy, module conditions) for a player. */
+  canPlaceRoad(state: GameState, playerId: string, edge: number): boolean;
+  /** Base settlement legality (distance rule, connection, module conditions). */
+  canPlaceBuilding(state: GameState, playerId: string, vertex: number, options?: { setup?: boolean }): boolean;
 }
 
 export interface ModuleContext {
@@ -85,6 +89,11 @@ export interface ModuleContext {
 /** Hook context for read-only views (no randomness, no mutation). */
 export interface ModuleViewContext {
   profile: ProfileDefinition;
+  /**
+   * Read-only engine legality checks, present when the engine itself calls
+   * the hook (action hints, board conditions); absent in plain projections.
+   */
+  rules?: Pick<RulesKit, 'canPlaceRoad' | 'canPlaceBuilding'>;
 }
 
 export interface RollResult {

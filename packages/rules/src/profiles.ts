@@ -240,6 +240,12 @@ const TRADERS_BARBARIANS_PROFILES: readonly ProfileDefinition[] = [
     victoryTarget: 11,
     enabled: true,
   }),
+  tbProfile('tb-fishing-2025', 'tb-fishing', [], 'pp. 9–10', {
+    layoutId: 'tb-fishing',
+    topologyId: 'tb-r2',
+    setupModes: ['variable'],
+    enabled: true,
+  }),
   tbProfile('tb-event-cards-2025', null, ['event-cards'], 'pp. 4–6', EVENT_DECK_CLOSED),
   tbProfile('tb-event-cards-friendly-robber-2025', null, ['event-cards', 'friendly-robber'], 'pp. 2, 4–6', EVENT_DECK_CLOSED),
   tbProfile('tb-event-cards-harbors-2025', null, ['event-cards', 'harbors'], 'pp. 2, 4–6', {

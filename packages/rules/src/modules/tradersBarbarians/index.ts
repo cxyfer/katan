@@ -13,12 +13,16 @@ import type {
   RollResult,
   RulesModule,
 } from '../types.ts';
+import './boards.ts';
+import { fishingPart } from './fishing/index.ts';
 import { TB, type TbPart } from './part.ts';
 import { friendlyRobberPart } from './variants/friendlyRobber.ts';
 import { harborsPart } from './variants/harbors.ts';
 
 /** Scenario id → parts it runs, shared parts first. */
-const SCENARIO_PARTS: Readonly<Record<string, readonly TbPart[]>> = {};
+const SCENARIO_PARTS: Readonly<Record<string, readonly TbPart[]>> = {
+  'tb-fishing': [fishingPart],
+};
 
 /** Variant id → part. */
 const VARIANT_PARTS: Readonly<Record<string, TbPart>> = {

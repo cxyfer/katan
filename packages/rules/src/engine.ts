@@ -261,8 +261,13 @@ function modulesOf(state: GameState): readonly RulesModule[] {
 }
 
 function viewContext(state: GameState): ModuleViewContext {
-  return { profile: requireProfile(state.profileId) };
+  return { profile: requireProfile(state.profileId), rules: VIEW_RULES };
 }
+
+const VIEW_RULES: ModuleViewContext['rules'] = {
+  canPlaceRoad: (state, playerId, edge) => canPlaceRoad(state, playerId, edge),
+  canPlaceBuilding: (state, playerId, vertex, options) => canPlaceBuilding(state, playerId, vertex, options ?? {}),
+};
 
 /** Engine services handed to rules modules (see `modules/types.ts`). */
 const KIT: RulesKit = {
@@ -282,6 +287,8 @@ const KIT: RulesKit = {
   resolveRollOutcome: (state, roll, rng) => resolveRollOutcome(state, roll, rng ?? null),
   finishSetupStep,
   finishTurn,
+  canPlaceRoad: (state, playerId, edge) => canPlaceRoad(state, playerId, edge),
+  canPlaceBuilding: (state, playerId, vertex, options) => canPlaceBuilding(state, playerId, vertex, options ?? {}),
 };
 
 function moduleContext(profile: ProfileDefinition, rng: Rng | null): ModuleContext {
