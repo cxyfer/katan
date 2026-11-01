@@ -441,6 +441,9 @@ def live_game(browser, contexts, pages, identity, game_id):
 
         complete_setup(table, FIX['coast'], FIX['shipNW'], ui_setup_ship)
         log('SETUP DONE')
+        if os.environ.get('SF_ONLY_CARDS'):
+            development_cards(table, page, game_id)
+            return
 
         state = {'built': False, 'moved': False, 'restored': False, 'settled': False}
 
@@ -569,7 +572,17 @@ def development_cards(table: Table, page, game_id):
         button = page.get_by_test_id(f'play-{card}-0')
         expect(button).to_be_attached()
         expect(button).to_be_enabled()
-        button.dispatch_event('click')
+        # The hand opens its card fan on hover before any card can be played.
+        page.get_by_test_id('hand-panel').hover()
+        expect(page.get_by_test_id('hand-panel')).to_have_attribute('data-expanded', 'true')
+        # A first tap may only raise (inspect) the overlapped card.
+        for _ in range(3):
+            button.click()
+            page.wait_for_timeout(800)
+            if table.snapshot(p1)['view']['turn']['devCardPlayed'] or page.get_by_test_id('selection-preview').count() \
+                    or card == 'knight' and page.get_by_test_id('bandit-choice').count():
+                return
+        raise AssertionError(f'could not play {card}')
 
     def free_piece(kind):
         hints = table.snapshot(p1)['view']['hints']
@@ -614,9 +627,12 @@ def development_cards(table: Table, page, game_id):
     open_game(page, game_id, 'svg')
     play_card('knight')
     expect(page.get_by_test_id('bandit-choice')).to_be_visible()
-    expect(page.get_by_test_id('pirate-to-frame')).to_be_visible()
+    pirate = table.snapshot(p1)['view']['board']['pirate']
+    if pirate is not None:
+        # Away from the frame, the frame is a legal pirate move as well.
+        expect(page.get_by_test_id('pirate-to-frame')).to_be_visible()
     shot(page, 'live-knight-pirate-choice-svg', 'Knight: robber on land or pirate at sea / to the frame')
-    target = FIX['pirateSea']
+    target = FIX['pirateSea'] if pirate != FIX['pirateSea'] else FIX['seaHex']
     ui_click_target(page, 'hex', target)
     ui_confirm(page)
     view = table.snapshot(p1)['view']
