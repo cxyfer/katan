@@ -218,8 +218,9 @@ export const PROFILES: readonly ProfileDefinition[] = [
     pieces: { ...BASE_PIECES, ships: 15 },
     hasPirate: true,
     longestRouteIncludesShips: true,
+    // R-SF fixtures pass and the SF25/SF56-25 evidence is in docs/FIDELITY.md.
     implemented: true,
-    unavailableReasonKey: 'profile.unavailable.seafarers',
+    enabled: true,
   }),
 
   // SF56-25 Heading for New Shores: fixed small islands, a variable main
@@ -244,8 +245,9 @@ export const PROFILES: readonly ProfileDefinition[] = [
     pieces: { ...BASE_PIECES, ships: 15 },
     hasPirate: true,
     longestRouteIncludesShips: true,
+    // R-SF fixtures pass and the SF25/SF56-25 evidence is in docs/FIDELITY.md.
     implemented: true,
-    unavailableReasonKey: 'profile.unavailable.seafarers',
+    enabled: true,
   }),
 
   baseProfile('ck-2025', [3, 4], {
