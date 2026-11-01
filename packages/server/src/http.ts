@@ -4,7 +4,7 @@ import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ApiResult, Locale } from '@catan/protocol';
-import { LOCALES } from '@catan/protocol';
+import { BOT_LEVELS, LOCALES } from '@catan/protocol';
 import { selectableProfiles, PROFILES } from '@catan/rules';
 import type { ServerConfig } from './config.ts';
 import { validateNickname } from './config.ts';
@@ -212,6 +212,7 @@ export function createHttpHandler(deps: HttpDeps) {
         chatRatePerMinute: deps.config.limits.chatRatePerMinute,
         roomCapacityMax: deps.config.limits.roomCapacityMax,
       },
+      bots: { enabled: deps.config.bots.enabled, levels: [...BOT_LEVELS] },
     },
   }));
 
@@ -295,12 +296,16 @@ export function createHttpHandler(deps: HttpDeps) {
     if (visibility !== 'private' && visibility !== 'public') {
       throw badRequest('error.E_INVALID_VISIBILITY');
     }
+    const input = asObject(body);
     const view = await deps.rooms.createRoom(playerId!, {
       visibility,
       capacity: requireNumber(body, 'capacity'),
       profileId: requireString(body, 'profileId'),
       setupMode: (optionalString(body, 'setupMode') ?? 'fixed') as 'fixed' | 'variable',
-      policy: (asObject(body).policy ?? {}) as never,
+      policy: (input.policy ?? {}) as never,
+      // 數量的型別與範圍由 RoomService 驗證；非數字一律視為不合法的數量。
+      ...(input.bots !== undefined ? { bots: typeof input.bots === 'number' ? input.bots : Number.NaN } : {}),
+      ...(input.botLevel !== undefined ? { botLevel: input.botLevel } : {}),
     });
     return { data: view };
   });
@@ -376,6 +381,16 @@ export function createHttpHandler(deps: HttpDeps) {
   route('POST', '/api/rooms/:roomId/close', async ({ params, playerId }) => {
     requireSession(playerId);
     return { data: await deps.rooms.closeRoom(playerId!, params.roomId!) };
+  });
+
+  route('POST', '/api/rooms/:roomId/bots', async ({ params, body, playerId }) => {
+    requireSession(playerId);
+    return { data: await deps.rooms.addBot(playerId!, params.roomId!, asObject(body).level) };
+  });
+
+  route('DELETE', '/api/rooms/:roomId/bots/:playerId', async ({ params, playerId }) => {
+    requireSession(playerId);
+    return { data: await deps.rooms.removeBot(playerId!, params.roomId!, params.playerId!) };
   });
 
   // -- games ---------------------------------------------------------------
