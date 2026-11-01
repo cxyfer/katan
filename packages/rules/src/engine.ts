@@ -276,8 +276,8 @@ const KIT: RulesKit = {
   afterBoardChange,
   checkVictory,
   enqueuePending,
-  completePending: (state) => completePending(state, null),
-  resolveRollOutcome: (state, roll) => resolveRollOutcome(state, roll, null),
+  completePending: (state, rng) => completePending(state, rng ?? null),
+  resolveRollOutcome: (state, roll, rng) => resolveRollOutcome(state, roll, rng ?? null),
   finishSetupStep,
 };
 
@@ -633,7 +633,7 @@ function dispatch(
     case 'turn.end':
       return endTurn(state, actorId);
     case 'build.road':
-      return buildRoad(state, actorId, command.edge);
+      return buildRoad(state, actorId, command.edge, rng);
     case 'build.settlement':
       return buildSettlement(state, actorId, command.vertex);
     case 'build.city':
@@ -651,11 +651,11 @@ function dispatch(
     case 'pending.discard':
       return submitDiscard(state, actorId, command.resources);
     case 'pending.moveRobber':
-      return moveRobber(state, actorId, command.hex);
+      return moveRobber(state, actorId, command.hex, rng);
     case 'pending.steal':
       return stealFrom(state, actorId, command.victim, rng);
     case 'pending.takeResource':
-      return takeResource(state, actorId, command.resource);
+      return takeResource(state, actorId, command.resource, rng);
     case 'trade.bank':
       return bankTrade(state, actorId, command.give, command.receive);
     case 'trade.offer':
@@ -960,7 +960,7 @@ function requireOpenWindow(state: GameState): CommandOutcome | null {
   return null;
 }
 
-function buildRoad(state: GameState, actorId: string, edge: number): CommandOutcome {
+function buildRoad(state: GameState, actorId: string, edge: number, rng: Rng): CommandOutcome {
   if (state.pending && state.pending.kind !== 'freeRoads') {
     return fail('E_PENDING_EFFECT', { pending: state.pending.kind });
   }
@@ -996,7 +996,7 @@ function buildRoad(state: GameState, actorId: string, edge: number): CommandOutc
         playerId: actorId,
         placed: (free.granted ?? 2) - free.remaining,
       });
-      completePending(state, null);
+      completePending(state, rng);
     }
   }
   checkVictory(state);
@@ -1170,7 +1170,7 @@ function playYearOfPlenty(state: GameState, actorId: string): CommandOutcome {
   return { ok: true, state, events: [] };
 }
 
-function takeResource(state: GameState, actorId: string, resource: Resource): CommandOutcome {
+function takeResource(state: GameState, actorId: string, resource: Resource, rng: Rng): CommandOutcome {
   const pending = state.pending;
   if (!pending || pending.kind !== 'yearOfPlenty') return fail('E_PENDING_EFFECT', { pending: pending?.kind ?? 'none' });
   if (pending.actor !== actorId) return fail('E_NOT_ACTOR');
@@ -1181,7 +1181,7 @@ function takeResource(state: GameState, actorId: string, resource: Resource): Co
   pending.remaining -= 1;
   addResource(playerStats(state, actorId).yearOfPlenty, resource);
   emit(state, 'dev.yearOfPlentyPick', { playerId: actorId, resource });
-  if (pending.remaining <= 0) completePending(state, null);
+  if (pending.remaining <= 0) completePending(state, rng);
   return { ok: true, state, events: [] };
 }
 
@@ -1254,7 +1254,7 @@ function submitDiscard(state: GameState, actorId: string, resources: Resource[])
   return { ok: true, state, events: [] };
 }
 
-function moveRobber(state: GameState, actorId: string, hex: number): CommandOutcome {
+function moveRobber(state: GameState, actorId: string, hex: number, rng: Rng): CommandOutcome {
   const pending = state.pending;
   if (!pending || pending.kind !== 'moveRobber') {
     return fail('E_PENDING_EFFECT', { pending: pending?.kind ?? 'none' });
@@ -1271,7 +1271,7 @@ function moveRobber(state: GameState, actorId: string, hex: number): CommandOutc
   if (candidates.length > 0) {
     state.pending = { kind: 'steal', actor: actorId, hex, candidates, pirate: false };
   } else {
-    completePending(state, null);
+    completePending(state, rng);
   }
   return { ok: true, state, events: [] };
 }

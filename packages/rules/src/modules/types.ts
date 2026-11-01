@@ -55,14 +55,17 @@ export interface RulesKit {
   /** Ends the game when the current actor has reached the target. */
   checkVictory(state: GameState): void;
   enqueuePending(state: GameState, ...frames: PendingFrame[]): void;
-  /** Finishes the active frame and runs any continuation that becomes active. */
-  completePending(state: GameState): void;
+  /**
+   * Finishes the active frame and runs any continuation that becomes active.
+   * Pass `ctx.rng` when a continuation may draw.
+   */
+  completePending(state: GameState, rng?: Rng): void;
   /**
    * Resolves the roll's base outcome: the 7 sequence or production, followed
    * by the modules' `afterProduction` stages. A module that deferred the roll
    * in `beforeProduction` calls this once its own frames are resolved.
    */
-  resolveRollOutcome(state: GameState, roll: RollResult): void;
+  resolveRollOutcome(state: GameState, roll: RollResult, rng?: Rng): void;
   /** Completes the current setup placement step (after its road/ship). */
   finishSetupStep(state: GameState): void;
 }
