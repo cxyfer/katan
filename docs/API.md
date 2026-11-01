@@ -27,15 +27,15 @@ Conventions:
 | GET | `/api/session` | – | `{ player: PlayerIdentity \| null }` |
 | POST | `/api/session` | `{ nickname, locale? }` | `{ player }` (sets cookie) |
 | PATCH | `/api/session` | `{ nickname?, locale? }` | `{ player }` |
-| GET | `/api/profiles` | – | `{ profiles: ProfileView[] }` |
+| GET | `/api/profiles` | – | `{ profiles: ProfileView[], selectable: string[] }` |
 | GET | `/api/rooms` | query `playerCount?`, `profileId?`, `hasSeats?` | `{ rooms: RoomSummaryView[] }` |
-| POST | `/api/rooms` | `{ visibility, capacity, profileId, setupMode, orderMode?, policy?, bots?, botLevel? }` | `RoomView` |
+| POST | `/api/rooms` | `{ visibility, capacity, profileId?, ruleset?, setupMode, orderMode?, policy?, bots?, botLevel? }` | `RoomView` |
 | POST | `/api/rooms/join` | `{ code }` | `RoomView` |
 | GET | `/api/rooms/:roomId` | – | `RoomView` |
 | POST | `/api/rooms/:roomId/leave` | – | `{ left: true, hostTransferredTo: string \| null }` |
 | POST | `/api/rooms/:roomId/seat` | `{ color }` | `RoomView` |
 | POST | `/api/rooms/:roomId/ready` | `{ ready }` | `RoomView` |
-| POST | `/api/rooms/:roomId/settings` | `{ capacity?, profileId?, setupMode?, orderMode?, policy? }` | `RoomView` |
+| POST | `/api/rooms/:roomId/settings` | `{ capacity?, profileId?, ruleset?, setupMode?, orderMode?, policy? }` | `RoomView` |
 | POST | `/api/rooms/:roomId/policy` | `{ policy }` | `RoomView` (pre-start applies, post-start proposes) |
 | POST | `/api/rooms/:roomId/policy/consent` | `{ proposalId, approve }` | `RoomView` |
 | POST | `/api/rooms/:roomId/start` | – | `{ gameId }` |
@@ -53,6 +53,45 @@ Conventions:
 | POST | `/api/games/:gameId/resume` | `{ ready }` | `RoomView` |
 | GET | `/api/rooms/:roomId/chat` | query `after?`, `limit?` | `ChatPage` |
 | POST | `/api/rooms/:roomId/chat` | `{ clientMessageId, text }` | `ChatMessageView` |
+
+### Ruleset registry
+
+`GET /api/profiles` lists every registry entry (SPEC §5.2), enabled or not;
+`selectable` names the enabled ones. A `ProfileView` is:
+
+```json
+{
+  "id": "base-paired-2025",
+  "labelKey": "profile.base-paired-2025",
+  "ruleVersion": "base-2025.2",
+  "expansions": [],
+  "scenario": null,
+  "variants": [],
+  "requiredBoxes": ["base", "base-5-6"],
+  "playerCounts": [5, 6],
+  "paired": true,
+  "victoryTarget": 10,
+  "setupModes": ["fixed", "variable"],
+  "enabled": true
+}
+```
+
+`expansions` is a set of `seafarers`, `citiesKnights`, `tradersBarbarians`,
+`explorersPirates` (empty for the base game); `scenario` and `variants` are
+registry ids. `requiredBoxes` is display metadata only and never validated.
+Disabled entries carry `unavailableReasonKey`. Every `labelKey`, reason and
+`expansion.*` / `scenario.*` / `variant.*` / `box.*` name is in the protocol's
+`RULESET_MESSAGE_IDS`, so both locales must translate it.
+
+A room names its ruleset either by `profileId` or by its parts,
+`ruleset: { expansions, scenario, variants? }`. The parts must equal one
+registered profile's exactly (order-insensitive set equality; nothing is
+inferred from pairwise compatibility), and that profile must support the
+capacity. When both are sent they must name the same profile. Failures are
+`E_UNSUPPORTED_COMBINATION` with `params.reason` one of `invalid-request`,
+`unknown-profile`, `disabled`, `bad-player-count`, `bad-setup-mode` or
+`profile-mismatch`. The started game stores the profile's `ruleVersion` as
+the snapshot's `engineVersion`.
 
 ### Room settings and start
 
@@ -140,6 +179,20 @@ Rules:
 - `expectedRevision` older than the current revision is rejected with
   `error.E_STALE_REVISION` unless the receipt already exists.
 - The acting player always comes from the session cookie.
+- Command types beyond the base set are accepted only when the game's profile
+  lists a rules module that handles them; otherwise `error.E_INVALID_COMMAND`.
+
+### Pending choices
+
+`GameView.pending` is the active mandatory choice and `GameView.pendingQueue`
+the choices queued behind it, in resolution order (always present, usually
+empty). Base frames keep their kinds (`discard`, `moveRobber`, `steal`,
+`yearOfPlenty`, `freeRoads`). A rules-module frame is
+`{ kind: "<module>.<step>", module, responders, data }`: `responders` are the
+players who still owe an answer and `data` holds only what the module chose to
+show this viewer. Expansion state, when a profile has rules modules, is in
+`GameView.modules[<id>]` and advisory targets in `hints.modules[<id>]`; base
+games have neither field.
 
 ## WebSocket `/ws`
 

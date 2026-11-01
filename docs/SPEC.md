@@ -93,7 +93,7 @@ Clearing browser storage or changing devices can lose access to a guest identity
 
 ### 4.4 Turn windows and mandatory responses
 
-The rules engine owns a phase/action-window contract: stable window/effect ID, turn owner, permitted actors, each actor's mandatory and optional actions, resolution order, completion condition, and next phase. A turn owner is not a universal authorization check. A pending effect stores the continuation needed to resume after its choices resolve; these fields are included in durable state.
+The rules engine owns a phase/action-window contract: stable window/effect ID, turn owner, permitted actors, each actor's mandatory and optional actions, resolution order, completion condition, and next phase. A turn owner is not a universal authorization check. A pending effect stores the continuation needed to resume after its choices resolve; these fields are included in durable state. Pending effects form an ordered queue: one roll or card may enqueue several mandatory choices, each with explicit responders, and each resolves completely before the next becomes active; a choice-free continuation step (for example production after a Cities & Knights barbarian attack) resolves as soon as it is reached. The base game never has more than one pending effect.
 
 | Window | Who acts and what the UI must communicate | Completion condition |
 |---|---|---|
@@ -198,16 +198,16 @@ Room configuration is validated as a complete ruleset, not as independent unchec
 
 - Visibility: private or public.
 - Player capacity: 3, 4, 5, or 6. The host may change it before start, but not below the seated players and only to a count the selected profile supports. A game starts with any supported seated count up to that capacity, so a four-seat base room may start with three and a six-seat paired room with five.
-- Expansion modules: base rules are mandatory; Seafarers and Cities & Knights are optional selections.
-- Scenario/map: choices depend on selected modules and player count.
+- Expansion set: base rules are mandatory; the lobby offers only expansion sets that some enabled registry profile has (today: the base game only). Seafarers, Cities & Knights, Traders & Barbarians and Explorers & Pirates are registry vocabulary, not free toggles.
+- Scenario/map: choices depend on the selected expansion set and player count. The host picks expansion set → scenario (with its variants) → player count, and that choice resolves to exactly one registry profile; the profile name and the boxes it needs are shown before the room is created.
 - Victory target: derived from the selected official scenario/rule profile by default; custom targets are not in the first-release scope unless separately approved.
 - Room policies: advisory turn clock off by default, disconnect grace five minutes, and the absence/pause/save behavior in §5.8. The host configures them before start; approved post-start changes require all seats. No setting enables AI or automatic strategic decisions.
 
 ### 5.2 Compatibility policy
 
-- Each supported ruleset/scenario is an explicit registry entry with a stable identifier, rule-version identifier, eligible player counts, enabled modules, map generator/setup, scoring target, and validation rules.
-- The lobby only offers valid combinations. Invalid combinations are rejected server-side even if a modified client submits them.
-- A game stores a snapshot of its ruleset and rule version. Deploying a new rules version must not silently change an in-progress game's behavior.
+- Each supported ruleset/scenario is an explicit registry entry with a stable identifier, rule-version identifier (`ruleVersion`), eligible player counts, expansion set (`expansions`), `scenario`, `variants`, rules modules, layout builder (`layoutId`) and default topology, scoring target, rulebook sources (source id + pages) and display-only `requiredBoxes`. An entry may be `implemented` (fixtures can run it) without being `enabled` (offered and accepted).
+- The lobby only offers valid combinations. Invalid combinations are rejected server-side even if a modified client submits them. The server resolves a request — a profile id, or `{ expansions, scenario, variants }` plus player count and setup mode — by exact, order-insensitive match against one enabled profile; it never infers a combination transitively (SF+CK and CK+T&B being registered says nothing about SF+CK+T&B).
+- A game stores a snapshot of its ruleset and rule version: the snapshot's `engineVersion` is the profile's `ruleVersion` at creation (`base-2025.2` for both base profiles). Deploying a new rules version must not silently change an in-progress game's behavior.
 - Start with the base game and the user-selected targets (5–6 players, Seafarers, Cities & Knights). Add scenarios/combinations only after rule implementation and tests pass.
 - The official product family has multiple expansions and scenario-specific compatibility constraints; therefore “any combination of checkboxes” is explicitly not promised. For example, the official Seafarers guidance lists suitable Cities & Knights combinations and scenario limitations. See references.
 - Confirmed D-01 baseline: the 2025 English rulebook family in §5.3, including paired-player turns for 5–6 players. Both UI languages implement this same rule meaning. Historical special-building rules are a separate profile and are not silently mixed into this baseline.
