@@ -39,6 +39,20 @@ is `aria-hidden` and not in the tab order; the focusable plaque keeps the same
 label. Because the footprint sits below roads and buildings, their hit areas
 keep priority wherever they cross it.
 
+## Merge with the remodelled harbour (#44)
+
+Merging `master` brought the remodelled diorama harbour: a dressed-stone
+abutment at the shore, cross bracing under the pier, a framed sign deck, a
+lantern on the seaward piling, per-trade cargo, a wider lofted boat hull with a
+gunwale cap and a pennant on the mast. The vertex coverage test failed on the
+abutment, bracing and lantern, so `HARBOR_HIT_POINTS` now also carries the
+abutment footing and caps, the bracing feet, the shore piling caps, the sign
+frame, the lantern head, the wider hull and gunwale and the pennant tip. The
+test builds `createHarborModel(type)` for each harbour's own trade instead of
+only the generic model. With the point-in-hull tolerance temporarily reduced
+from 0.75 px to 0.01 px every visible vertex still passed, so the footprint does
+not rely on that slack.
+
 ## Verification
 
 - `pnpm typecheck`: all packages passed.

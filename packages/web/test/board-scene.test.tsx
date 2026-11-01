@@ -62,7 +62,7 @@ describe('BoardScene3D boundary', () => {
       frameloop: 'demand',
       orthographic: true,
       shadows: 'percentage',
-      dpr: [1, 1.5],
+      dpr: [1, 2],
       tabIndex: -1,
     });
     expect(r3f.props!.camera).toMatchObject({ near: expect.any(Number), far: expect.any(Number), zoom: 1 });

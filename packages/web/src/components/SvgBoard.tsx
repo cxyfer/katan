@@ -1,4 +1,4 @@
-import type { ComponentProps, Ref } from 'react';
+import { memo, useId, useMemo, type ComponentProps, type Ref } from 'react';
 import type { GameView } from '@catan/rules';
 import type { BoardEffectGroup } from '../board/animation.ts';
 import type { BoardGeometry, Point } from '../board/geometry.ts';
@@ -7,7 +7,8 @@ import type { TableState } from '../state/table.ts';
 import { useT } from '../i18n/context.tsx';
 import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrainLetter, terrainSymbol } from '../board/terrain.ts';
 import { confirmedPlacement } from '../board/effects.ts';
-import { BuildingPiece, TerrainIllustration } from './GameArt.tsx';
+import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
+import { TerrainEmblem } from './TerrainArt.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
@@ -23,81 +24,93 @@ interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'
   nameResolver: (id: string) => string;
 }
 
+/** 圖示在上、數字牌在下，與實體版面相同。 */
+const TOKEN_DROP = 32;
+
+/** 有數字牌時強盜站在數字牌右側，不遮住點數；地形標記在左側。 */
+function robberSpot(hex: { cx: number; cy: number }, numbered: boolean): Point {
+  return numbered ? { x: hex.cx + 46, y: hex.cy + TOKEN_DROP - 4 } : { x: hex.cx, y: hex.cy + TOKEN_DROP - 6 };
+}
+
+/** 道路兩端內縮，讓路口的村莊與城市保持完整可見。 */
+function inset(edge: { x1: number; y1: number; x2: number; y2: number }, amount = 0.12) {
+  const dx = edge.x2 - edge.x1;
+  const dy = edge.y2 - edge.y1;
+  return { x1: edge.x1 + dx * amount, y1: edge.y1 + dy * amount, x2: edge.x2 - dx * amount, y2: edge.y2 - dy * amount };
+}
+
+/**
+ * 海岸、地塊、圖示與數字牌只隨版圖改變；拖曳或縮放時 SvgBoard 每個影格都會重繪，
+ * 這一層以 memo 跳過。
+ */
+const StaticTiles = memo(function StaticTiles({ geometry, terrain, numbers, ids }: {
+  geometry: BoardGeometry;
+  terrain: GameView['board']['terrain'];
+  numbers: GameView['board']['numbers'];
+  ids: BoardArtIds;
+}) {
+  return <>
+    <IslandShore geometry={geometry} ids={ids} />
+    <g aria-hidden="true" pointerEvents="none">
+      {geometry.hexes.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 9)" />)}
+    </g>
+    {geometry.hexes.map((hex) => {
+      const kind = terrain[hex.index] ?? 'sea';
+      const number = numbers[hex.index];
+      const fill = terrainFill(kind);
+      return (
+        <g key={`hex-${hex.index}`}>
+          <polygon
+            className="board__tile-top"
+            data-testid={`hex-${hex.index}`}
+            points={hex.points}
+            fill={fill}
+            stroke={shade(fill, -0.42)}
+            strokeWidth={2.5}
+            strokeLinejoin="round"
+          />
+          <TileFinish terrain={kind} points={hex.points} cx={hex.cx} cy={hex.cy} ids={ids} />
+          <TerrainEmblem terrain={kind} x={hex.cx} y={hex.cy - 4} />
+          <g aria-hidden="true" pointerEvents="none">
+            <rect x={hex.cx - 65} y={hex.cy + 25} width={30} height={15} rx={7.5} fill="#fff8e4" opacity=".55" />
+            <text className="board__terrain" x={hex.cx - 50} y={hex.cy + 36.5} textAnchor="middle">
+              {terrainSymbol(kind)}
+              {terrainLetter(kind)}
+            </text>
+          </g>
+          {number !== null && number !== undefined && (
+            <NumberToken x={hex.cx} y={hex.cy + TOKEN_DROP} number={number} pips={pipsFor(number)} ids={ids} />
+          )}
+        </g>
+      );
+    })}
+  </>;
+});
+
 export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
   const t = useT();
+  const prefix = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const ids = useMemo(() => boardArtIds(`board-art-${prefix}`), [prefix]);
   const board = view.board;
+  const selfColor = playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white');
   return (
     <svg {...svgProps} ref={svgRef} className="board__svg" data-testid="board-svg" role="img" aria-label={t('a11y.boardRegion')} viewBox={geometry.viewBox} preserveAspectRatio="xMidYMid meet">
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
-          <g aria-hidden="true" pointerEvents="none">
-            {geometry.hexes.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 10)" />)}
-          </g>
-          {geometry.hexes.map((hex) => {
-            const terrain = board.terrain[hex.index] ?? 'sea';
-            const number = board.numbers[hex.index];
-            const pips = pipsFor(number ?? null);
-            return (
-              <g key={`hex-${hex.index}`}>
-                <polygon
-                  className="board__tile-top"
-                  data-testid={`hex-${hex.index}`}
-                  points={hex.points}
-                  fill={terrainFill(terrain)}
-                  stroke="#ede1b7"
-                  strokeWidth={3}
-                  strokeLinejoin="round"
-                />
-                <TerrainIllustration terrain={terrain} x={hex.cx} y={hex.cy - 14} scale={.95} />
-                <text
-                  className="board__terrain"
-                  x={hex.cx - 53}
-                  y={hex.cy + 35}
-                  textAnchor="middle"
-                  aria-hidden="true"
-                >
-                  {terrainSymbol(terrain)}
-                  {terrainLetter(terrain)}
-                </text>
-                {number !== null && number !== undefined && (
-                  <>
-                    <circle cx={hex.cx} cy={hex.cy + 34} r={25} fill="#f4e8c9" stroke="#b49b68" strokeWidth={2} />
-                    <text
-                      className={`board__number${number === 6 || number === 8 ? ' board__number--hot' : ''}`}
-                      x={hex.cx}
-                      y={hex.cy + 40}
-                      textAnchor="middle"
-                      aria-hidden="true"
-                    >
-                      {number}
-                    </text>
-                    <text
-                      className={`board__pips${number === 6 || number === 8 ? ' board__pips--hot' : ''}`}
-                      x={hex.cx}
-                      y={hex.cy + 53}
-                      textAnchor="middle"
-                      aria-hidden="true"
-                    >
-                      {'•'.repeat(pips)}
-                    </text>
-                  </>
-                )}
-              </g>
-            );
-          })}
+          <StaticTiles geometry={geometry} terrain={board.terrain} numbers={board.numbers} ids={ids} />
 
           {board.harbors.map((harbor) => {
             const edge = geometry.edges[harbor.edge];
-            if (!edge) return null;
-            const cx = (edge.x1 + edge.x2) / 2;
-            const cy = (edge.y1 + edge.y2) / 2;
-            const label =
-              harbor.type === 'generic' ? '3:1' : `2:1${resourceLetter(harbor.type)}`;
+            const land = geometry.topology.edges[harbor.edge]?.hexes[0];
+            const hex = land === undefined ? undefined : geometry.hexes[land];
+            if (!edge || !hex) return null;
+            const label = harbor.type === 'generic' ? '3:1' : '2:1';
+            const name = harbor.type === 'generic' ? t('board.harborGeneric')
+              : t('board.harborResource', { resource: `${t(`resource.${harbor.type}`)} (${resourceLetter(harbor.type)})` });
             return (
               <g key={`harbor-${harbor.edge}`} data-testid={`harbor-${harbor.edge}`}>
-                <circle cx={cx} cy={cy} r={13} fill="#f7f3e3" stroke="#1b1b1b" strokeWidth={1.5} />
-                <text className="board__harbor" x={cx} y={cy + 4} textAnchor="middle" aria-hidden="true">
-                  {label}
-                </text>
+                <HarborMarker from={{ x: edge.x1, y: edge.y1 }} to={{ x: edge.x2, y: edge.y2 }}
+                  center={{ x: hex.cx, y: hex.cy }} type={harbor.type} label={label} />
+                <title>{name}</title>
               </g>
             );
           })}
@@ -106,24 +119,26 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             const road = board.roads[edge.index];
             if (!road) return null;
             const player = view.players.find((candidate) => candidate.id === road.player);
+            const color = playerColorHex(player?.color ?? 'white');
             const arriving = confirmedPlacement(active?.events ?? [], board, 'edge', edge.index);
+            const line = inset(edge);
             return (
               <g key={`road-${edge.index}`}>
-              <line x1={edge.x1} y1={edge.y1 + 3} x2={edge.x2} y2={edge.y2 + 3} stroke="#10242c" strokeWidth={11} strokeLinecap="round" opacity={.7} aria-hidden="true" />
+              <line {...line} transform="translate(0 3)" stroke="#10242c" strokeWidth={13} strokeLinecap="round" opacity={.4} aria-hidden="true" />
+              <line {...line} stroke="#20180f" strokeWidth={11} strokeLinecap="round" aria-hidden="true" />
               <line
                 data-testid={`road-${edge.index}`}
-                x1={edge.x1}
-                y1={edge.y1}
-                x2={edge.x2}
-                y2={edge.y2}
-                stroke={playerColorHex(player?.color ?? 'white')}
+                {...line}
+                stroke={color}
                 strokeWidth={7}
                 strokeDasharray={seatDash(player?.seat ?? 0)}
                 strokeLinecap="round"
               >
                 <title>{`${t('board.road')} · ${nameResolver(road.player)}`}</title>
               </line>
-              {arriving && <line key={active?.id} className="board__road-reveal" x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} pathLength={1} stroke={playerColorHex(player?.color ?? 'white')} strokeWidth={10} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
+              <line {...line} transform="translate(0 -1.6)" stroke={shade(color, 0.6)} strokeWidth={1.6} strokeLinecap="round"
+                strokeDasharray={seatDash(player?.seat ?? 0)} opacity={.55} aria-hidden="true" pointerEvents="none" />
+              {arriving && <line key={active?.id} className="board__road-reveal" {...line} pathLength={1} stroke={color} strokeWidth={10} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
               </g>
             );
           })}
@@ -138,7 +153,7 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             return (
               <g key={`building-${vertex.index}`} data-testid={`building-${vertex.index}`}>
                 <g key={arriving ? active!.id : 'rest'} className={arriving ? 'board__building-drop' : undefined}>
-                  <BuildingPiece x={vertex.x} y={vertex.y} city={building.city} color={color} />
+                  <BoardBuilding x={vertex.x} y={vertex.y} city={building.city} color={color} />
                 </g>
                 <title>{`${label} · ${nameResolver(building.player)}`}</title>
               </g>
@@ -147,32 +162,19 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
 
           {geometry.hexes[board.robber] && (
             <g data-testid="robber" aria-hidden="true">
-              <circle
-                cx={geometry.hexes[board.robber]!.cx}
-                cy={geometry.hexes[board.robber]!.cy + 2}
-                r={17}
-                fill="#141414"
-                stroke="#f5f5f5"
-                strokeWidth={2}
-              />
-              <text
-                className="board__robber"
-                x={geometry.hexes[board.robber]!.cx}
-                y={geometry.hexes[board.robber]!.cy + 7}
-                textAnchor="middle"
-              >
-                R
-              </text>
+              <RobberPiece {...robberSpot(geometry.hexes[board.robber]!, board.numbers[board.robber] != null)} ids={ids} />
             </g>
           )}
           {selection.index !== null && intent && selection.kind === intent.kind && intent.targets.includes(selection.index) && (
             <g className="board__preview-ghost" data-testid="board-preview-ghost" aria-hidden="true" pointerEvents="none">
-              {intent.kind === 'vertex' && geometry.vertices[selection.index] && <BuildingPiece x={geometry.vertices[selection.index]!.x} y={geometry.vertices[selection.index]!.y} city={intent.commandType === 'build.city'} color={playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white')} />}
-              {intent.kind === 'edge' && geometry.edges[selection.index] && <line x1={geometry.edges[selection.index]!.x1} y1={geometry.edges[selection.index]!.y1} x2={geometry.edges[selection.index]!.x2} y2={geometry.edges[selection.index]!.y2} stroke={playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white')} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />}
-              {intent.kind === 'hex' && geometry.hexes[selection.index] && <circle cx={geometry.hexes[selection.index]!.cx} cy={geometry.hexes[selection.index]!.cy} r={20} fill="#24353a" stroke="#fff1bd" strokeDasharray="4 4" />}
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && <BoardBuilding x={geometry.vertices[selection.index]!.x} y={geometry.vertices[selection.index]!.y} city={intent.commandType === 'build.city'} color={selfColor} />}
+              {intent.kind === 'edge' && geometry.edges[selection.index] && <line {...inset(geometry.edges[selection.index]!)} stroke={selfColor} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />}
+              {intent.kind === 'hex' && geometry.hexes[selection.index] && <RobberPiece {...robberSpot(geometry.hexes[selection.index]!, board.numbers[selection.index] != null)} ids={ids} />}
             </g>
           )}
         </g>
+        {/* 定義放在相機群組之後：第一個 <g> 永遠是平移縮放的容器。 */}
+        <BoardArtDefs ids={ids} />
       </svg>
   );
 }

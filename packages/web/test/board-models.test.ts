@@ -205,7 +205,7 @@ describe('modeled board pieces', () => {
     }
   });
 
-  it('V05 gives the enlarged robber a colored face, mask, cloak, satchel and staff within the fit envelope', () => {
+  it('V05 gives the enlarged robber a colored face, mask, hooded cloak, scarf, belt and loot within the fit envelope', () => {
     const model = createRobberModel();
     const bounds = expectFiniteBounds(model);
     expect(bounds.min.y).toBeGreaterThan(-1e-6);
@@ -220,8 +220,8 @@ describe('modeled board pieces', () => {
     for (let index = 0; index < positions.count; index++) {
       expect(Math.hypot(positions.getX(index), positions.getZ(index))).toBeLessThan(0.3);
     }
-    // Visible face, pale eyes and leather accessories must survive geometry baking.
-    for (const [hex, minimumY] of [['#bd9977', 0.65], ['#ece2c6', 0.74], ['#855f3d', 0.35]] as const) {
+    // Visible face, pale eyes, belt, scarf and loot sack must survive geometry baking.
+    for (const [hex, minimumY] of [['#bd9977', 0.65], ['#ece2c6', 0.74], ['#855f3d', 0.35], ['#8a3a2e', 0.55], ['#a18a5d', 0.4]] as const) {
       const color = new Color(hex);
       expect(Array.from({ length: colors.count }, (_, index) => index).some((index) =>
         positions.getY(index) > minimumY &&

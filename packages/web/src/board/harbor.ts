@@ -80,32 +80,40 @@ export function harborLabelPoint(placement: HarborPlacement): WorldPoint {
  * Local side/outward coordinates follow the diorama instance.
  */
 const HARBOR_HIT_POINTS: readonly (readonly [side: number, outward: number, height: number])[] = [
+  // Dressed-stone abutment at the shore, from its footing to its caps.
+  [-0.25, 0.0, -0.21], [0.25, 0.0, -0.21],
+  [-0.25, 0.091, -0.21], [0.25, 0.091, -0.21],
+  [-0.25, 0.0, -0.002], [0.25, 0.0, -0.002],
+  [-0.25, 0.091, -0.002], [0.25, 0.091, -0.002],
   // Low shore walkway deck corners.
   [-0.216, 0.0015, 0.0875], [0.216, 0.0015, 0.0875],
   [-0.216, 0.5985, 0.0875], [0.216, 0.5985, 0.0875],
-  // Raised sign deck corners, at both its underside and top surface.
-  [-0.36, 0.07, 0.19], [0.36, 0.07, 0.19],
-  [-0.36, 0.50, 0.19], [0.36, 0.50, 0.19],
-  [-0.36, 0.07, 0.204], [0.36, 0.07, 0.204],
-  [-0.36, 0.50, 0.204], [0.36, 0.50, 0.204],
-  // Pier frame at the shore and at the seaward end, at deck and water height.
+  // Raised, framed sign deck corners, at both its underside and frame top.
+  [-0.362, 0.068, 0.19], [0.362, 0.068, 0.19],
+  [-0.362, 0.502, 0.19], [0.362, 0.502, 0.19],
+  [-0.362, 0.068, 0.209], [0.362, 0.068, 0.209],
+  [-0.362, 0.502, 0.209], [0.362, 0.502, 0.209],
+  // Pier frame at the shore and at the seaward end, from the bracing feet to the deck.
   [-0.23, 0.0, 0.0], [0.23, 0.0, 0.0],
-  [-0.23, 0.585, 0.0], [0.23, 0.585, 0.0],
-  [-0.23, 0.585, 0.19], [0.23, 0.585, 0.19],
+  [-0.223, 0.027, 0.144], [0.223, 0.027, 0.144],
+  [-0.23, 0.605, -0.21], [0.23, 0.605, -0.21],
+  [-0.23, 0.605, 0.19], [0.23, 0.605, 0.19],
+  // Lantern on the seaward piling.
+  [-0.216, 0.534, 0.323], [-0.174, 0.534, 0.323],
+  [-0.216, 0.576, 0.323], [-0.174, 0.576, 0.323],
   // Harbour plaque corners.
   [-0.34, 0.09, 0.205], [0.34, 0.09, 0.205],
   [-0.34, 0.48, 0.205], [0.34, 0.48, 0.205],
-  // Boat hull corners at both visible rim heights and at the ocean clip.
-  [0.237, 0.44, -0.252], [0.403, 0.44, -0.252],
-  [0.237, 0.82, -0.252], [0.403, 0.82, -0.252],
-  [0.237, 0.44, -0.245], [0.403, 0.44, -0.245],
-  [0.237, 0.82, -0.245], [0.403, 0.82, -0.245],
-  [0.237, 0.44, -0.285], [0.403, 0.44, -0.285],
-  [0.237, 0.82, -0.285], [0.403, 0.82, -0.285],
+  // Boat hull and gunwale corners at their visible rim heights and at the ocean clip.
+  [0.228, 0.455, -0.245], [0.412, 0.455, -0.245],
+  [0.228, 0.825, -0.245], [0.412, 0.825, -0.245],
+  [0.228, 0.455, -0.285], [0.412, 0.455, -0.285],
+  [0.228, 0.825, -0.285], [0.412, 0.825, -0.285],
+  // Mast head, pennant, sail foot and forestay.
   [0.32, 0.51, 0.188], [0.32, 0.74, 0.188],
   [0.308, 0.618, 0.223], [0.332, 0.618, 0.223],
   [0.308, 0.642, 0.223], [0.332, 0.642, 0.223],
-  [0.32, 0.63, 0.223], [0.32, 0.805, 0.06],
+  [0.32, 0.63, 0.223], [0.32, 0.692, 0.219], [0.32, 0.805, 0.06],
 ];
 
 /** World corners whose screen hull covers the rendered pier and boat. */

@@ -190,9 +190,10 @@ describe('public map inspection', () => {
       rect,
     };
     const r3fElements = inspectionElements(geometry, board, 'r3f');
-    const harborModel = createHarborModel();
-    const vertexPositions = harborModel.getAttribute('position');
-    expect(vertexPositions.count).toBeGreaterThan(100);
+    // Each trade carries its own cargo, so test the model each harbour renders.
+    const harborModels = new Map(board.harbors.map((harbor) => [harbor.type, createHarborModel(harbor.type)]));
+    expect(harborModels.size).toBeGreaterThan(1);
+    for (const model of harborModels.values()) expect(model.getAttribute('position').count).toBeGreaterThan(100);
 
     // Local +X/+Z follow the diorama instance: +Z is outward, +X carries the
     // boat. The points below are real model heights, not a flat hit plane.
@@ -259,6 +260,7 @@ describe('public map inspection', () => {
               expect(polygonContains(polygon, project(point)),
                 `${elevation}/${azimuth}/${zoom}/${harbor.edge}/${index}`).toBe(true);
             }
+            const vertexPositions = harborModels.get(harbor.type)!.getAttribute('position');
             const outside: string[] = [];
             for (let vertex = 0; vertex < vertexPositions.count; vertex += 1) {
               const localY = vertexPositions.getY(vertex);
