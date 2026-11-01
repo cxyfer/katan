@@ -21,13 +21,15 @@ ordinary development consumes no Actions minutes or package storage. There is no
 
 | Git ref | Tags pushed | Notes |
 |---------|-------------|-------|
-| `v0.2.0` (stable) | `0.2.0`, `0.2`, `latest`, `sha-<short>` | Moving tags follow the tag |
-| `v0.3.0-rc.1` | `v0.3.0-rc.1`, `sha-<short>` | Pre-release: never moves `0.3` or `latest` |
+| `v0.2.0` (stable) | `v0.2.0`, `v0.2`, `latest`, `sha-<short>` | Moving tags follow the tag |
+| `v0.3.0-rc.1` | `v0.3.0-rc.1`, `sha-<short>` | Pre-release: never moves `v0.3` or `latest` |
 
-Stable exact image tags mirror the version without the `v` prefix for compatibility with existing
-deployments. Pre-release exact tags mirror the Git tag, including its `v` prefix, so there is no
-ambiguous version string. `latest` is the only tag that is not a version. `sha-<short>` is per
-commit and exists for rollback: pin the digest when you need an exact build.
+Every exact image tag is the Git tag verbatim, so stable and pre-release versions share one
+spelling: `v` followed by the version. `latest` is the only tag that is not a version. `sha-<short>`
+is per commit and exists for rollback: pin the digest when you need an exact build.
+
+`v0.1.0` predates this rule and was published as `0.1.0`. That tag stays on GHCR and is not removed,
+so existing pins keep working. Use `v` for every release after it.
 
 The full image name is `ghcr.io/cxyfer/katan`. It is derived from `github.repository`, so a fork
 publishes to its own namespace.
@@ -113,7 +115,7 @@ gh run list --workflow=docker-publish.yml --limit 5
 gh run watch <run-id>
 
 docker login ghcr.io      # only if the package is private
-docker buildx imagetools inspect ghcr.io/cxyfer/katan:0.2.0
+docker buildx imagetools inspect ghcr.io/cxyfer/katan:v0.2.0
 ```
 
 `imagetools inspect` must list both `linux/amd64` and `linux/arm64`. The workflow already asserts
@@ -122,13 +124,13 @@ on the same claim — the tag, the bundle and the image must agree:
 
 ```bash
 docker run --rm -d --name catan-version-check -p 3411:3000 \
-  ghcr.io/cxyfer/katan:0.2.0
+  ghcr.io/cxyfer/katan:v0.2.0
 curl -s http://127.0.0.1:3411/healthz      # {"ok":true,"data":{"version":"0.2.0",...}}
 docker rm -f catan-version-check
 ```
 
-For a pre-release, use the Git tag verbatim. For example, `v0.2.0-rc.3` publishes
-`ghcr.io/cxyfer/katan:v0.2.0-rc.3`, not `ghcr.io/cxyfer/katan:0.2.0-rc.3`.
+The image tag is the Git tag verbatim, so `v0.2.0-rc.3` publishes `ghcr.io/cxyfer/katan:v0.2.0-rc.3`
+and `v0.2.0` publishes `ghcr.io/cxyfer/katan:v0.2.0`. The `/healthz` version keeps the bare number.
 
 ### 5. Publish the GitHub Release
 
