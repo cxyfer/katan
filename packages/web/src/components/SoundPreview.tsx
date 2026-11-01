@@ -35,6 +35,11 @@ const DESCRIPTIONS: Record<SoundCue, string> = {
   'ui.select': '選擇目標 · Target selected',
   'ui.error': '操作被拒 · Action rejected',
   'chat.message': '收到聊天訊息 · Chat message',
+  'ship.build': '建造船隻 · Ship launched',
+  'ship.move': '移動船隻 · Ship sails to a new path',
+  'pirate.move': '海盜出航 · Pirate moves',
+  'gold.pick': '金礦地選資源 · Gold chosen',
+  'island.bonus': '登上新小島 · New island bonus',
 };
 
 function Waveform({ analysis }: { analysis: CueAnalysis | undefined }) {

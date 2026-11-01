@@ -438,6 +438,36 @@ const RECIPES: Record<SoundCue, Recipe> = {
       tone(s, { at: at + offset, type: 'square', freq: 150, decay: 0.09, gain: 0.05, filter: { type: 'lowpass', freq: 700 } });
     }
   },
+  // Seafarers: a hull settling into water, then a creak of rope.
+  'ship.build': (s, at) => {
+    swish(s, at, 900, 260, 0.35, 0.2, { pan: -0.15, reverb: 0.2 });
+    knock(s, at + 0.12, 150, 0.32, { reverb: 0.15 });
+    tone(s, { at: at + 0.28, type: 'triangle', freq: 330, to: 300, glide: 0.2, decay: 0.3, gain: 0.05, reverb: 0.25 });
+    marimba(s, at + 0.45, 69, 0.08, 0.6, { reverb: 0.3 });
+  },
+  // A sail filling with wind as the ship glides to its new path.
+  'ship.move': (s, at) => {
+    noise(s, { at, attack: 0.18, decay: 0.45, gain: 0.12, filter: { type: 'bandpass', freq: 700, to: 1600, q: 0.7 }, pan: -0.3 });
+    swish(s, at + 0.1, 500, 1400, 0.4, 0.12, { pan: 0.3, reverb: 0.25 });
+    pluck(s, at + 0.45, 67, 0.07, 0.6, { reverb: 0.3 });
+  },
+  // The pirate: a low horn under a rolling drum.
+  'pirate.move': (s, at) => {
+    tone(s, { at, freq: 73, to: 55, glide: 0.5, decay: 0.7, gain: 0.4 });
+    [0, 0.12, 0.22].forEach((offset) => knock(s, at + offset, 120, 0.22, { reverb: 0.2 }));
+    brass(s, at + 0.25, 46, 0.09, 0.4, { reverb: 0.4 });
+    brass(s, at + 0.25, 53, 0.06, 0.4, { reverb: 0.4 });
+  },
+  // Gold: a short glittering run of coins.
+  'gold.pick': (s, at) => {
+    [0, 0.06, 0.12].forEach((offset, index) => coin(s, at + offset, 3200 + index * 400, 0.06, { reverb: 0.25 }));
+    bell(s, at + 0.18, 88, 0.06, 0.9, { reverb: 0.4 });
+  },
+  // A new island: a rising fanfare of bells.
+  'island.bonus': (s, at) => {
+    [67, 72, 76, 79].forEach((midi, index) => bell(s, at + index * 0.09, midi, 0.08, 1.0, { reverb: 0.4, pan: -0.3 + index * 0.2 }));
+    brass(s, at + 0.36, 72, 0.06, 0.5, { reverb: 0.35 });
+  },
   // 氣泡「啵」兩聲。
   'chat.message': (s, at) => {
     tone(s, { at, freq: 520, to: 1040, glide: 0.07, decay: 0.1, gain: 0.08 });
@@ -459,4 +489,5 @@ export const CUE_LENGTH_SECONDS: Record<SoundCue, number> = {
   'trade.offer': 1.8, 'trade.complete': 1.2, 'trade.bank': 0.8, 'trade.cancel': 0.8,
   'turn.yours': 1.6, 'turn.other': 0.5, 'game.victory': 2.6, 'game.over': 2.6,
   'ui.select': 0.1, 'ui.error': 0.3, 'chat.message': 0.25,
+  'ship.build': 1.1, 'ship.move': 1.1, 'pirate.move': 1.0, 'gold.pick': 1.1, 'island.bonus': 1.4,
 };

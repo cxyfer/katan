@@ -180,3 +180,15 @@ describe('generative music', () => {
     expect(chordForBar('island', 0)).not.toEqual(chordForBar('island', style.barsPerChord));
   });
 });
+
+describe('seafarers cues', () => {
+  it('maps ship, pirate, gold and island events to their own cues', () => {
+    expect(cueForEvent(makeEvent(1, 'ship.built', { playerId: 'p2' }), 'p1')).toBe('ship.build');
+    expect(cueForEvent(makeEvent(1, 'setup.ship', { playerId: 'p1' }), 'p1')).toBe('ship.build');
+    expect(cueForEvent(makeEvent(1, 'ship.moved', { playerId: 'p1' }), 'p1')).toBe('ship.move');
+    expect(cueForEvent(makeEvent(1, 'pirate.moved', { playerId: 'p1', hex: null }), 'p1')).toBe('pirate.move');
+    expect(cueForEvent(makeEvent(1, 'gold.chosen', { playerId: 'p3' }), 'p1')).toBe('gold.pick');
+    expect(cueForEvent(makeEvent(1, 'island.bonus', { playerId: 'p3' }), 'p1')).toBe('island.bonus');
+    for (const cue of ['ship.build', 'ship.move', 'pirate.move', 'gold.pick', 'island.bonus']) expect(SOUND_CUES).toContain(cue);
+  });
+});

@@ -41,6 +41,12 @@ export const SOUND_CUES = [
   'ui.select',
   'ui.error',
   'chat.message',
+  // Seafarers
+  'ship.build',
+  'ship.move',
+  'pirate.move',
+  'gold.pick',
+  'island.bonus',
 ] as const;
 
 export type SoundCue = (typeof SOUND_CUES)[number];
@@ -124,6 +130,17 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
       return mine ? 'game.victory' : 'game.over';
     case 'game.abandoned':
       return 'game.over';
+    case 'ship.built':
+    case 'setup.ship':
+      return 'ship.build';
+    case 'ship.moved':
+      return 'ship.move';
+    case 'pirate.moved':
+      return 'pirate.move';
+    case 'gold.chosen':
+      return 'gold.pick';
+    case 'island.bonus':
+      return 'island.bonus';
     default:
       return null;
   }
