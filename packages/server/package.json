@@ -12,6 +12,7 @@
     "build": "node build.mjs"
   },
   "dependencies": {
+    "@catan/bots": "workspace:*",
     "@catan/protocol": "workspace:*",
     "@catan/rules": "workspace:*",
     "pg": "^8.23.1",

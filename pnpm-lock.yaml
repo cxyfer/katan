@@ -37,6 +37,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@catan/bots':
+        specifier: workspace:*
+        version: link:../bots
       '@catan/protocol':
         specifier: workspace:*
         version: link:../protocol
