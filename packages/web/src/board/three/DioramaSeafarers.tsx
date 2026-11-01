@@ -4,7 +4,7 @@ import type { BoardSceneProps } from '../render-contract.ts';
 import { playerColorHex } from '../terrain.ts';
 import { geometryToWorld } from './bounds.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
-import { createIslandTokenModel, createPirateModel, createShipModel, pirateTransform, shipInstances, shipTransform } from './diorama-ships.ts';
+import { createIslandTokenModel, createPirateModel, createShipModel, pirateTransform, SHIP_SCALE, shipInstances, shipTransform } from './diorama-ships.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import { SEA_LEVEL } from '../sea.ts';
 import { ROAD_ARRIVAL_TRANSFORM_MS } from './model-specs.ts';
@@ -29,7 +29,7 @@ function IslandTokens({ color, vertices, geometry, material }: Pick<Props, 'geom
     const vertex = geometry.vertices[index];
     if (!vertex) return [];
     const point = geometryToWorld(geometry, vertex.x, vertex.y);
-    return [{ position: [point.x + 0.16, 0.005, point.z + 0.15] as [number, number, number], rotationY: 0, scale: [1, 1, 1] as [number, number, number] }];
+    return [{ position: [point.x + 0.16, 0.005, point.z + 0.15] as [number, number, number], rotationY: 0, scale: [1.6, 1.6, 1.6] as [number, number, number] }];
   });
   return <InstancedPrimitive geometry={model} material={material} instances={instances} />;
 }
@@ -60,7 +60,7 @@ export function ShipGhost({ geometry, edge, material }: { geometry: Props['geome
   const model = useDioramaGeometry(() => createShipModel('#ffffff', 0), []);
   const transform = shipTransform(geometry, edge);
   if (!transform) return null;
-  return <mesh geometry={model} material={material} position={transform.position} rotation={[0, transform.rotationY, 0]} dispose={null} renderOrder={4} />;
+  return <mesh geometry={model} material={material} position={transform.position} rotation={[0, transform.rotationY, 0]} scale={SHIP_SCALE} dispose={null} renderOrder={4} />;
 }
 
 /** Ghost of the pirate on a candidate sea hex. */

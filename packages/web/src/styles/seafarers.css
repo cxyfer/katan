@@ -1,0 +1,12 @@
+/* Seafarers prompt parts: the gold picker must stay fully visible, like the discard picker. */
+.screen--game .game__messages:has(.gold-picker) { max-height: calc(100% - 70px); }
+.gold-picker .resource-picker {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .3rem; margin: .45rem 0;
+}
+.gold-picker .resource-picker .button {
+  display: flex; flex-direction: column; align-items: center; gap: .1rem;
+  width: 100%; min-height: 48px; padding: .25rem .1rem; font-size: .62rem; line-height: 1.1;
+}
+.gold-picker__actions { display: flex; gap: .4rem; margin-top: .4rem; }
+.gold-picker__actions .button { flex: 1; min-height: 34px; font-size: .72rem; }
+.bandit-choice .button, .ship-choice .button { width: 100%; min-height: 34px; margin-top: .4rem; font-size: .74rem; }

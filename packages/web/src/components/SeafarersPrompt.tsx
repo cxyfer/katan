@@ -7,6 +7,7 @@ import { blocksNewCommands } from '../state/commands.ts';
 import { followUpsHeld } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ResourceIcon } from './GameArt.tsx';
+import '../styles/seafarers.css';
 
 /**
  * Seafarers parts of the required-action prompt: the gold picker, the
@@ -42,10 +43,10 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
         onSubmit={(resources) => void actions.submitCommand({ type: 'gold.choose', resources }, 'play.pending.seafarers.gold')} />
     )}
     {(robberMine || knightArmed) && (
-      <div className="prompt__body" data-testid="bandit-choice">
+      <div className="prompt__body bandit-choice" data-testid="bandit-choice">
         <p className="muted">{t(knightArmed ? 'sf.bandit.knight' : 'sf.bandit.choose')}</p>
         {frameOpen && (
-          <button type="button" className="button" data-testid="pirate-frame" disabled={blocked}
+          <button type="button" className="button" data-testid="pirate-to-frame" disabled={blocked}
             onClick={() => void actions.submitCommand(knightArmed ? { type: 'dev.playKnight', hex: null } : { type: 'pending.moveRobber', hex: null }, 'sf.pirate.frame')}>
             {t('sf.pirate.frame')}
           </button>
@@ -53,7 +54,7 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
       </div>
     )}
     {shipChoice && (
-      <div className="prompt__body" data-testid="ship-choice">
+      <div className="prompt__body ship-choice" data-testid="ship-choice">
         {setupMine && <p className="muted">{t('sf.setup.choice')}</p>}
         {shipArmed
           ? roadsOpen && <button type="button" className="button" data-testid="choose-road" onClick={() => actions.cancelSelection()}>{t('sf.setup.roadInstead')}</button>
@@ -77,7 +78,7 @@ function GoldPicker({ count, bank, disabled, onSubmit }: {
   const tally: Partial<Record<Resource, number>> = {};
   for (const resource of picked) tally[resource] = (tally[resource] ?? 0) + 1;
   return (
-    <div className="prompt__body" data-testid="gold-picker">
+    <div className="prompt__body gold-picker" data-testid="gold-picker">
       <p>{t('sf.gold.pick', { count })}</p>
       <ul className="resource-picker">
         {RESOURCES.map((resource) => (
@@ -94,7 +95,7 @@ function GoldPicker({ count, bank, disabled, onSubmit }: {
       <p className="muted" data-testid="gold-selected">
         {picked.length > 0 ? t('sf.gold.chosen', { resources: formatResourceMap(locale, tally) }) : t('sf.gold.none')}
       </p>
-      <div className="prompt__actions">
+      <div className="gold-picker__actions">
         <button type="button" className="button" data-testid="gold-clear" disabled={picked.length === 0} onClick={() => setPicked([])}>
           {t('sf.gold.clear')}
         </button>

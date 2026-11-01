@@ -86,6 +86,9 @@ export function createIslandTokenModel(color: string): BufferGeometry {
   return model.build();
 }
 
+/** Ships read at board scale next to the roads (their model is built at 1:1). */
+export const SHIP_SCALE = 1.5;
+
 export interface ShipInstance extends InstanceTransform {
   index: number;
   playerId: string;
@@ -132,7 +135,7 @@ export function shipInstances(geometry: BoardGeometry, board: PublicBoardView, a
       arriving: confirmedPlacement(active?.events ?? [], board, 'edge', index),
       position: transform.position,
       rotationY: transform.rotationY,
-      scale: [1, 1, 1],
+      scale: [SHIP_SCALE, SHIP_SCALE, SHIP_SCALE],
     });
   });
   return out;
