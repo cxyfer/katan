@@ -45,8 +45,8 @@ The registry separates two questions:
 | R-B02 | two independent dice, settlement 1 / city 2, finite supply, robber block, bank shortage rule | `packages/rules/test/production.test.ts` (10 cases), `packages/rules/test/costs.test.ts` (spent cards return to the bank) | covered |
 | R-B03 | 7 → half rounded down, multi-responder discards, no trade before resolution, empty victim, no multiplied theft, desert, knight does not trigger discards | `packages/rules/test/seven.test.ts` (10 cases) | covered |
 | R-B04 | domestic exchange legality, bank 4:1/3:1/2:1, stale/expired offers, consent, revision invalidates consent, one settlement | `packages/rules/test/trade.test.ts` (13 cases) | covered |
-| R-B05 | cannot play a card the turn it is bought, one per turn, pre-roll knight, monopoly / year of plenty / road building, VP card victory, empty deck | `packages/rules/test/devcards.test.ts` (11 cases) | covered |
-| R-B06 | Longest Road ≥ 5 along a trail, branches, loops, opponent cuts, incumbent tie retention, award reassignment, Largest Army transfer | `packages/rules/test/awards.test.ts` (10 cases) | covered; see the tie-break note below |
+| R-B05 | cannot play a card the turn it is bought, one per turn, pre-roll knight, monopoly / year of plenty / road building, VP card victory, empty deck | `packages/rules/test/devcards.test.ts` (11 cases), `packages/rules/test/rule-gaps.test.ts` (older card after a same-type purchase; Road Building capped by road pieces; Year of Plenty capped by the bank) | covered |
+| R-B06 | Longest Road ≥ 5 along a trail, branches, loops, opponent cuts, incumbent tie retention, award reassignment, Largest Army transfer | `packages/rules/test/awards.test.ts` (10 cases), `packages/rules/test/rule-gaps.test.ts` (roads stop at an opponent building and continue from the player's own side) | covered; see the tie-break note below |
 | R-B07 | win at own turn start, no win from an outside-turn gain, several VP cards together, award loss before the next turn, terminal state rejects commands | `packages/rules/test/victory.test.ts` (7 cases) | covered |
 | R-VIS | per-player projection, hidden hands/cards/deck, private event parameters, room-discovery metadata | `packages/rules/test/privacy.test.ts` (7), `packages/server/test/game.test.ts` (HTTP) | covered |
 | R-ROOM | join/start/settings races, full room, not-ready/disconnected start, host transfer, seats kept in a running game | `packages/server/test/rooms.test.ts` | covered |
@@ -124,6 +124,10 @@ reviewer can challenge them rather than discover them by accident.
 - **Bank shortage** follows B25 p.6: when the bank cannot pay every entitled
   player, nobody receives that resource; when exactly one player is entitled,
   they receive whatever remains.
+- **Year of Plenty on a short bank** grants only what the bank holds: one pick
+  when a single card remains, and the card cannot be played while the bank is
+  empty (it stays in hand). The rulebook assumes a stocked bank; this keeps the
+  effect from waiting forever on cards that do not exist.
 
 ## Known gaps and unresolved items
 
@@ -181,6 +185,7 @@ These are recorded rather than hidden. None of them is presented as verified.
     per game and unknown versions are refused at the schema level, but only one
     engine implementation ships, so no old-version fixture exists yet. The
     server does not yet compare `games.engine_version` before executing a
-    command. Unfinished `base-2025.1` games run on `base-2025.2` under the
-    approved defect-fix exception in SPEC §7.3. Their banks stay short by
-    the cards 2025.1 already lost.
+    command. Unfinished `base-2025.1` and `base-2025.2` games run on
+    `base-2025.3` under the approved defect-fix exceptions in SPEC §7.3.
+    `base-2025.1` banks stay short by the cards already lost, and a road a
+    `base-2025.2` game let through an opponent's building stays on the board.

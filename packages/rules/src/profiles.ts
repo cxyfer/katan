@@ -11,10 +11,12 @@ import type { DevCardType } from './types.ts';
 
 /**
  * base-2025.2: building and development-card costs return to the bank.
- * Unfinished base-2025.1 games run on this engine as an approved defect fix
- * (SPEC §7.3, FIDELITY gap 11); 2025.1 leaked spent cards out of the supply.
+ * base-2025.3: roads stop at opponent buildings, Road Building and Year of
+ * Plenty cannot stall, and an older card stays playable after buying another.
+ * Unfinished base-2025.1 and base-2025.2 games run on this engine as approved
+ * defect fixes (SPEC §7.3, FIDELITY gap 11).
  */
-export const ENGINE_VERSION = 'base-2025.2';
+export const ENGINE_VERSION = 'base-2025.3';
 
 export interface ProfilePieces {
   settlements: number;
