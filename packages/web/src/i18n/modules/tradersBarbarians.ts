@@ -87,6 +87,12 @@ const en: Record<string, string> = {
   'tb.fishing.lake': 'Lake (2, 3, 11, 12)',
   'tb.help.tb-fishing': 'Fishing grounds and the lake give secret fish tokens on their numbers (city 2). Spend fish on your turn: 2 remove the robber, 3 steal a card, 4 take a resource, 5 free road, 7 development card. Hold at most 7. The old boot holder needs 11 VP and may pass it to a player with at least as many VP.',
   'terrain.lake': 'Lake (Lk)',
+  'terrain.swamp': 'Swamp (Sw)',
+  'terrain.oasis': 'Watering hole (O)',
+  'terrain.castle': 'Castle (C)',
+  'terrain.quarry': 'Quarry (Q)',
+  'terrain.glassworks': 'Glassworks (Gw)',
+  'terrain.keep': 'Castle (K)',
 };
 
 const zhHant: Record<string, string> = {
@@ -164,6 +170,12 @@ const zhHant: Record<string, string> = {
   'tb.fishing.lake': '湖泊（2、3、11、12）',
   'tb.help.tb-fishing': '漁場與湖泊在其數字擲出時發給祕密魚標記（城市 2 個）。在你的回合花魚：2 移除強盜、3 搶一張卡、4 拿一個資源、5 免費道路、7 發展卡。最多持有 7 個。舊靴子持有者需 11 分獲勝，並可交給分數不低於自己的玩家。',
   'terrain.lake': '湖泊（Lk）',
+  'terrain.swamp': '沼澤（Sw）',
+  'terrain.oasis': '綠洲水源（O）',
+  'terrain.castle': '城堡（C）',
+  'terrain.quarry': '採石場（Q）',
+  'terrain.glassworks': '玻璃工坊（Gw）',
+  'terrain.keep': '城堡（K）',
 };
 
 export const tradersBarbarians: ModuleCatalog = {

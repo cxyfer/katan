@@ -186,6 +186,17 @@ export const tradersBarbariansModule: RulesModule = {
     const hints: Record<string, unknown> = Object.fromEntries(
       parts(ctx).filter((part) => part.actionHints).map((part) => [part.id, part.actionHints!(state, playerId, ctx)]),
     );
+    // Board targets and pending board choices are published at the root so a
+    // client finds them without knowing which part asked.
+    const targets: Record<string, number[]> = {};
+    let board: unknown = null;
+    for (const value of Object.values(hints)) {
+      if (!value || typeof value !== 'object') continue;
+      Object.assign(targets, (value as { targets?: Record<string, number[]> }).targets ?? {});
+      board ??= (value as { board?: unknown }).board ?? null;
+    }
+    hints.targets = targets;
+    hints.board = board;
     if (parts(ctx).some((part) => part.robberTargets)) {
       // The robber's legal hexes when a part narrows them (the board's targets).
       const base = state.board.layout.terrain.map((_, hex) => hex).filter((hex) => hex !== state.board.robber);

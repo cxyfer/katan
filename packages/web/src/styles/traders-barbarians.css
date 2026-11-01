@@ -65,3 +65,7 @@
   outline: 2px solid #1d5e7a;
   background: rgba(29, 94, 122, 0.28);
 }
+.tb-ground__number {
+  font: 700 17px/1 var(--font-display, Georgia, serif);
+  fill: #12465a;
+}

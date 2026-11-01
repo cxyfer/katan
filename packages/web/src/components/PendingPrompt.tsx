@@ -4,6 +4,7 @@ import { requiredActionFor } from '../state/pending.ts';
 import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { DiscardPicker } from './DiscardPicker.tsx';
+import { TbPrompt } from './tb/TbPrompt.tsx';
 
 /**
  * Mandatory-response prompt (docs/SPEC.md §4.4/§8.4).
@@ -45,6 +46,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       <h2 id="prompt-heading">
         {action ? t(action.messageId, action.params) : t('play.waitingFor', { player: '—' })}
       </h2>
+      {!rolling && <TbPrompt controller={controller} />}
       {action && !action.mine && action.waitingFor.length > 0 && (
         <p className="muted" data-testid="prompt-waiting">
           {t('play.waitingForPlayers', {

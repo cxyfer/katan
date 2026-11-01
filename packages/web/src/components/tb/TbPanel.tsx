@@ -2,12 +2,14 @@ import type { ComponentType } from 'react';
 import { getProfile } from '@catan/rules';
 import { useT } from '../../i18n/context.tsx';
 import type { TableController } from '../../state/useTable.ts';
+import { FishingSection } from './FishingSection.tsx';
 import { HarborsSection } from './HarborsSection.tsx';
 import { tbView } from './model.ts';
 import '../../styles/traders-barbarians.css';
 
 /** Sections per T&B part id, shown when the game's projection has that part. */
 const SECTIONS: readonly [string, ComponentType<{ controller: TableController }>][] = [
+  ['tb-fishing', FishingSection],
   ['harbors', HarborsSection],
 ];
 

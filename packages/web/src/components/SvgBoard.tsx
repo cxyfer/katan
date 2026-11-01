@@ -9,6 +9,7 @@ import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrain
 import { confirmedPlacement } from '../board/effects.ts';
 import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
+import { TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
@@ -112,6 +113,7 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
     <svg {...svgProps} ref={svgRef} className="board__svg" data-testid="board-svg" role="img" aria-label={t('a11y.boardRegion')} viewBox={geometry.viewBox} preserveAspectRatio="xMidYMid meet">
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
           <StaticTiles geometry={geometry} terrain={board.terrain} numbers={board.numbers} ids={ids} />
+          <TbSvgUnder geometry={geometry} view={view} />
 
           {board.harbors.map((harbor) => {
             const edge = geometry.edges[harbor.edge];
@@ -175,6 +177,7 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             );
           })}
 
+          <TbSvgOver geometry={geometry} view={view} />
           {geometry.hexes[board.robber] && (
             <g data-testid="robber" aria-hidden="true">
               <RobberPiece {...robberSpot(geometry.hexes[board.robber]!, board.numbers[board.robber] != null)} ids={ids} />
