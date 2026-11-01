@@ -10,6 +10,7 @@ Entries are workspace records, not authoritative runtime decisions.
 | 2026-11-01 | artifact | docs/screenshots/bot-opponents/report.json | Bot opponents browser check results |
 | 2026-11-01 | spec | docs/aegis/specs/2026-11-01-bot-opponents.md | Built-in computer opponents: contracts, server integration and delivery plan |
 | 2026-11-01 | plan | docs/aegis/plans/2026-11-01-expansions-roadmap.md | Expansion roadmap: Seafarers, Cities & Knights, Traders & Barbarians, Explorers & Pirates |
+| 2026-11-01 | work | docs/aegis/work/2026-11-01-traders-barbarians.md | Traders & Barbarians (P5): TB25 transcription, variants and five scenarios |
 | 2026-11-01 | work | docs/aegis/work/2026-11-01-expansion-platform.md | Expansion platform (P0): registry v2, pending queue, modules, generic boards |
 | 2026-11-01 | artifact | scripts/expansion-platform/capture.py | Base/archipelago SVG and 3D capture and before/after comparison harness |
 | 2026-11-01 | artifact | scripts/expansion-platform/fixtures.mjs | Registry ProfileViews and in-game archipelago fixture generator |
