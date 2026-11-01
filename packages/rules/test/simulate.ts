@@ -52,9 +52,13 @@ function resolvePending(state: GameState, rng: ReturnType<typeof seededRng>): Ga
   }
 }
 
-export function simulateGame(seed: number, maxSteps = 6000): GameState {
+export function simulateGame(
+  seed: number,
+  maxSteps = 6000,
+  options: { players?: number; profileId?: string; mode?: 'fixed' | 'variable' } = {},
+): GameState {
   const rng = seededRng(seed);
-  let state = runSetup(newGame({ players: 4, seed }).state, rng);
+  let state = runSetup(newGame({ players: options.players ?? 4, seed, ...(options.profileId ? { profileId: options.profileId } : {}), ...(options.mode ? { mode: options.mode } : {}) }).state, rng);
   for (let step = 0; step < maxSteps && !state.result; step++) {
     const pendingNext = resolvePending(state, rng);
     if (pendingNext) {
