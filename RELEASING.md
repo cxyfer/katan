@@ -149,12 +149,13 @@ The release title is the tag verbatim, so `v0.2.0` is published as `v0.2.0`. Do 
 the project name: the tag already names the version, and the repository is where the project is
 identified.
 
-Add a `bash` block with the install and upgrade commands directly after the callout: the
-`docker login ghcr.io` the private package needs, `docker compose pull && docker compose up -d` for
-an in-place upgrade, and `docker run` with this release's exact tag for a direct run or a pinned
-Compose `image:`. Keep the block outside the callout — the lint reads every blockquote line as
-prose, so a fence inside the callout fails as hard-wrapped text. A `-rc.N` block pins the exact tag
-and drops the `docker compose pull` line, which would only reach the last stable build.
+Add a `bash` block with the install and upgrade commands directly after the callout:
+`docker compose pull && docker compose up -d` for an in-place upgrade, and `docker run` with this
+release's exact tag for a direct run or a pinned Compose `image:`. Write the block for the public
+package, so it carries no `docker login` line. Keep the block outside the callout — the lint reads
+every blockquote line as prose, so a fence inside the callout fails as hard-wrapped text. A `-rc.N`
+block pins the exact tag and drops the `docker compose pull` line, which would only reach the last
+stable build.
 
 Write each callout paragraph and each highlight bullet on one line; the lint command fails the
 draft if the prose is still wrapped. Add `--prerelease` for a `-rc.N` tag. The shape is fixed by
