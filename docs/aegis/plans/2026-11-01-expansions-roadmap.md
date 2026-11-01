@@ -152,6 +152,31 @@ Longest Trade Route, Road Building with ships, paired actor ship move. Maps
 transcribed per count. Assets: ship (per colour), pirate ship, island-bonus
 marker, gold/sea polish, ship build/move targets, cues.
 
+As built (2026-11-01, `feat/seafarers`; details in
+`docs/aegis/work/2026-11-01-seafarers.md`):
+
+- Both `sf-new-shores-*` profiles are enabled (`sf-2025.1`). The 3/4 maps are
+  transcribed per cell into `packages/rules/src/seafarers-boards.ts`
+  (topologies `sf-new-shores-3/-4/-56`, layout builder `sf-new-shores`); the
+  5–6 profile's only setup mode is `variable` (fixed small islands, random
+  main island and ports). The middle-row end cells of each outline are frame,
+  and the pirate starts there (`board.pirate = null`).
+- The base engine became sea-aware (land vertices/edges, roads extend only
+  roads, robber on land, road/ship junction only at an own building for the
+  trade route). New module hooks for later phases: `allowBuilding` (building
+  veto, e.g. scenario start islands), `moveBandit` (claims robber targets for
+  another bandit — C&K/SF+CK must keep the Bishop on the robber),
+  `freeRouteTargets` (extra Road Building pieces), `afterBoardChange` now gets
+  the kit; kit gained `legalRoads` and `placedFreeRoute`.
+- Ships are `RoadRef.ship` pieces owned by the `seafarers` module
+  (`build.ship`, `ship.move`, `setup.placeShip`); gold is the
+  `seafarers.gold` pending frame (`gold.choose`); module state tracks the
+  current window's built ships/move and the island claims.
+- Deviations: gold shortage ordering is an explicit interpretation (turn
+  order from the roller); SF-FAQ 18 ship-circle special cases conflict with
+  SF25 p. 2 and stay an open fixture (SF25 wording implemented); the 3/4
+  variable setup (SF25 p. 5) is not offered.
+
 ### P2 C&K core
 
 CK25/CK56-25. City-on-second-placement setup, three dice and event order

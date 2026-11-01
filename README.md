@@ -146,8 +146,15 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   Web Audio API (no audio files), with mute and separate effect/music volume in
   every screen. Listen to the whole palette at `/?preview=sounds`.
 
-Not yet enabled: Seafarers and Cities & Knights. Those profiles are registered
-in the ruleset registry but disabled; the server rejects them. See
+- **Seafarers — Heading for New Shores** for 3–6 players (SF25/SF56-25 2025
+  editions): the printed 3- and 4-player maps and the 5–6 map with its random
+  main island, ships (build, move, Road Building), the pirate, gold fields,
+  the per-player small-island bonus, Longest Trade Route and a 14-point goal,
+  in both the 3D and SVG boards.
+
+Not yet enabled: Cities & Knights and the Seafarers + Cities & Knights
+combination. Those profiles are registered in the ruleset registry but
+disabled; the server rejects them. See
 [`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
 including the device, accessibility and playtest evidence that has not been
 produced.

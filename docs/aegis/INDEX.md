@@ -10,6 +10,11 @@ Entries are workspace records, not authoritative runtime decisions.
 | 2026-11-01 | artifact | docs/screenshots/bot-opponents/report.json | Bot opponents browser check results |
 | 2026-11-01 | spec | docs/aegis/specs/2026-11-01-bot-opponents.md | Built-in computer opponents: contracts, server integration and delivery plan |
 | 2026-11-01 | plan | docs/aegis/plans/2026-11-01-expansions-roadmap.md | Expansion roadmap: Seafarers, Cities & Knights, Traders & Barbarians, Explorers & Pirates |
+| 2026-11-01 | work | docs/aegis/work/2026-11-01-seafarers.md | Seafarers (P1): Heading for New Shores sources, transcription, rules and evidence |
+| 2026-11-01 | artifact | scripts/seafarers/capture.py | Live New Shores browser run: lobby, 3/4/6-player maps, ship build/move, pirate, gold |
+| 2026-11-01 | artifact | scripts/seafarers/fixtures.mjs | Board indices for the Seafarers capture harness |
+| 2026-11-01 | artifact | docs/screenshots/seafarers/report.json | 28-case Seafarers capture report with sha256 per image |
+| 2026-11-01 | artifact | docs/aegis/work/2026-11-01-seafarers/base-compare-report.json | Base boards byte-identical to the P0 references |
 | 2026-11-01 | work | docs/aegis/work/2026-11-01-expansion-platform.md | Expansion platform (P0): registry v2, pending queue, modules, generic boards |
 | 2026-11-01 | artifact | scripts/expansion-platform/capture.py | Base/archipelago SVG and 3D capture and before/after comparison harness |
 | 2026-11-01 | artifact | scripts/expansion-platform/fixtures.mjs | Registry ProfileViews and in-game archipelago fixture generator |
