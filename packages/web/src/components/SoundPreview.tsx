@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SOUND_CUES, type SoundCue } from '../audio/cues.ts';
+import { TB_CUE_DESCRIPTIONS } from '../audio/tb-cues.ts';
 import { createAudioEngine, type MusicScene } from '../audio/engine.ts';
 import { renderCueOffline, type CueAnalysis } from '../audio/offline.ts';
 import { DEFAULT_AUDIO_PREFERENCES } from '../audio/preferences.ts';
@@ -35,6 +36,7 @@ const DESCRIPTIONS: Record<SoundCue, string> = {
   'ui.select': '選擇目標 · Target selected',
   'ui.error': '操作被拒 · Action rejected',
   'chat.message': '收到聊天訊息 · Chat message',
+  ...TB_CUE_DESCRIPTIONS,
 };
 
 function Waveform({ analysis }: { analysis: CueAnalysis | undefined }) {

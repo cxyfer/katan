@@ -277,7 +277,8 @@ export function BoardView({ controller }: { controller: TableController }) {
           <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
             <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))}
               intent={intent} selection={selection} active={animation.active} viewport={controls.viewport} quality={quality}
-              motionAllowed={animation.active !== null} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />
+              motionAllowed={animation.active !== null} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable}
+              {...(view.modules ? { modules: view.modules } : {})} />
           </Suspense></SceneBoundary>
         </div>}
         {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} active={animation.active}

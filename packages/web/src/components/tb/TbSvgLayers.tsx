@@ -13,6 +13,20 @@ import { tbPart } from './model.ts';
 
 interface FishingView {
   grounds: { valley: number; edges: [number, number]; vertices: [number, number, number]; number: number }[];
+  lake: number;
+  lakeNumbers: number[];
+}
+
+/** A small number disc (lake numbers, a hex's second number). */
+export function SmallNumber({ x, y, number }: { x: number; y: number; number: number }) {
+  const pips = pipsFor(number);
+  return (
+    <g transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`} aria-hidden="true">
+      <circle r={15} fill="#f6ecd2" stroke="#9d7c4c" strokeWidth={1.8} />
+      <text y={5} textAnchor="middle" className="tb-ground__number">{number}</text>
+      {Array.from({ length: pips }, (_, index) => <circle key={index} cx={(index - (pips - 1) / 2) * 3.4} cy={10} r={1.1} fill="#5b4630" />)}
+    </g>
+  );
 }
 
 function unit(x: number, y: number): Point {
@@ -71,6 +85,12 @@ export function TbSvgUnder({ geometry, view }: { geometry: BoardGeometry; view: 
         </pattern>
       </defs>
       {fishing.grounds.map((ground) => <FishingGround key={ground.valley} geometry={geometry} ground={ground} waves={waves} />)}
+      {geometry.hexes[fishing.lake] && fishing.lakeNumbers.map((number, index) => {
+        const hex = geometry.hexes[fishing.lake]!;
+        const dx = (index % 2 ? 1 : -1) * 30;
+        const dy = (index < 2 ? -1 : 1) * 24 + 8;
+        return <SmallNumber key={number} x={hex.cx + dx} y={hex.cy + dy} number={number} />;
+      })}
     </g>
   );
 }

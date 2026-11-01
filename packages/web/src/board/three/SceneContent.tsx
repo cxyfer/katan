@@ -36,10 +36,11 @@ import { DioramaBuildings, DioramaRoads, DioramaHarbors } from './DioramaStructu
 import { createRoadModel, createSettlementModel, harborLabelInstances } from './diorama-structures.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
 import { createRobberModel } from './diorama-robber.ts';
+import { TbScenePieces, tbNumberTokens } from './TbScenePieces.tsx';
 import { atlasGeometryKey, boardSceneResources, type BoardSceneResources } from './resources.ts';
 
 type SceneProps = Pick<BoardSceneProps,
-  'geometry' | 'board' | 'players' | 'intent' | 'selection' | 'active' | 'viewport' | 'quality' |
+  'geometry' | 'board' | 'players' | 'intent' | 'selection' | 'active' | 'viewport' | 'quality' | 'modules' |
   'motionAllowed' | 'onProjection' | 'onReady' | 'onUnavailable'>;
 
 function useLeasedResources(): BoardSceneResources {
@@ -176,7 +177,8 @@ function Lights({ quality }: { quality: 'standard' | 'low' }) {
 }
 
 function NumberBadges({ props, resources, texture }: { props: SceneProps; resources: BoardSceneResources; texture: Texture | null }) {
-  const tokens = useMemo(() => numberTokens(props.geometry, props.board), [props.board, props.geometry]);
+  const tokens = useMemo(() => [...numberTokens(props.geometry, props.board), ...tbNumberTokens(props.geometry, props.modules)],
+    [props.board, props.geometry, props.modules]);
   const bodies = tokens.map((token) => ({ ...token, scale: [1, 1, 1] as const }));
   const labels = tokens.map((token) => ({
     ...token,
@@ -410,6 +412,8 @@ function AtlasLayerContent({ props }: { props: SceneProps }) {
       <HarborLabels props={props} resources={resources} texture={texture} />
       <DioramaRoads {...props} material={resources.materials.diorama} />
       <DioramaBuildings {...props} material={resources.materials.diorama} />
+      <TbScenePieces geometry={props.geometry} board={props.board} players={props.players} modules={props.modules}
+        quality={props.quality} material={resources.materials.diorama} />
       <Robber props={props} resources={resources} />
       <SelectionGhost props={props} resources={resources} />
       <ReadyBridge ready={texture !== null && props.viewport.rect.width > 0 && props.viewport.rect.height > 0}

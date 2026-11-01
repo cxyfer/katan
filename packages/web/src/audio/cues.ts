@@ -11,6 +11,7 @@
 
 import type { GameEvent } from '@catan/protocol';
 import { boardEffectGroups } from '../board/animation.ts';
+import { TB_SOUND_CUES, tbCueForEvent } from './tb-cues.ts';
 
 export const SOUND_CUES = [
   'dice.roll',
@@ -41,6 +42,7 @@ export const SOUND_CUES = [
   'ui.select',
   'ui.error',
   'chat.message',
+  ...TB_SOUND_CUES,
 ] as const;
 
 export type SoundCue = (typeof SOUND_CUES)[number];
@@ -125,7 +127,7 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
     case 'game.abandoned':
       return 'game.over';
     default:
-      return null;
+      return tbCueForEvent(event);
   }
 }
 
