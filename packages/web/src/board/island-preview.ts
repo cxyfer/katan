@@ -1,4 +1,4 @@
-import { buildBaseLayout, getTopology, seededRng, type PublicBoardView } from '@catan/rules';
+import { archipelagoLayout, buildBaseLayout, getTopology, seededRng, type PublicBoardView } from '@catan/rules';
 import type { BoardSceneInput } from './render-contract.ts';
 
 export const ISLAND_PREVIEW_PLAYERS: BoardSceneInput['players'] = [
@@ -8,21 +8,32 @@ export const ISLAND_PREVIEW_PLAYERS: BoardSceneInput['players'] = [
   { id: 'display-white', seat: 3, color: 'white' },
 ];
 
-/** Deterministic public model display; it has no session, rules state or commands. */
-export function createIslandPreviewBoard(topologyId: 'hex-r2' | 'hex-r56' = 'hex-r2'): PublicBoardView {
+export type PreviewTopologyId = 'hex-r2' | 'hex-r56' | 'sample-archipelago';
+
+/**
+ * Deterministic public model display; it has no session, rules state or
+ * commands. `sample-archipelago` is the rules package's synthetic scenario
+ * board (sea frame, four islands, gold), not a rulebook map.
+ */
+export function createIslandPreviewBoard(topologyId: PreviewTopologyId = 'hex-r2'): PublicBoardView {
   const topology = getTopology(topologyId);
-  const layout = buildBaseLayout({ topology, mode: 'fixed', rng: seededRng(7) });
+  const layout = topologyId === 'sample-archipelago'
+    ? archipelagoLayout(topology)
+    : buildBaseLayout({ topology, mode: 'fixed', rng: seededRng(7) });
   const board: PublicBoardView = {
     topologyId: layout.topologyId,
     terrain: layout.terrain.slice(), numbers: layout.numbers.slice(),
     harbors: layout.harbors.map(({ edge, type }) => ({ edge, type })),
-    islands: layout.islands.slice(), robber: layout.robber, pirate: null,
+    islands: layout.islands.slice(), robber: layout.robber, pirate: layout.pirate,
     buildings: topology.vertices.map(() => null), roads: topology.edges.map(() => null),
   };
   const center = topology.hexes.reduce((sum, hex) => ({ x: sum.x + hex.x / topology.hexes.length,
     y: sum.y + hex.y / topology.hexes.length }), { x: 0, y: 0 });
+  // Pieces stand inland: on base islands at three-tile corners, on an
+  // archipelago wherever at least two land tiles meet.
+  const minLand = layout.terrain.includes('sea') ? 2 : 3;
   const candidates = topology.vertices.map((vertex, index) => ({ ...vertex, index }))
-    .filter((vertex) => vertex.hexes.length === 3);
+    .filter((vertex) => vertex.hexes.filter((hex) => layout.terrain[hex] !== 'sea').length >= minLand);
   const chosen: typeof candidates = [];
   // Spread the pieces through the interior so each roof and road stays legible.
   while (chosen.length < 8 && candidates.length) {

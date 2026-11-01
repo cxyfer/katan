@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { buildGeometry } from '../board/geometry.ts';
-import { createIslandPreviewBoard, ISLAND_PREVIEW_PLAYERS } from '../board/island-preview.ts';
+import { createIslandPreviewBoard, ISLAND_PREVIEW_PLAYERS, type PreviewTopologyId } from '../board/island-preview.ts';
 import type { ProjectionSnapshot, QualityMode } from '../board/render-contract.ts';
 import { sceneBounds } from '../board/three/bounds.ts';
 import BoardScene3D from '../board/three/BoardScene3D.tsx';
@@ -18,8 +18,8 @@ const TERRAINS = [
 ];
 
 /** A persistent local art-review route using the game's renderer and camera owner. */
-export default function IslandPreview() {
-  const [topologyId, setTopologyId] = useState<'hex-r2' | 'hex-r56'>('hex-r2');
+export default function IslandPreview({ initialTopology = 'hex-r2' }: { initialTopology?: PreviewTopologyId }) {
+  const [topologyId, setTopologyId] = useState<PreviewTopologyId>(initialTopology);
   const [quality, setQuality] = useState<QualityMode>('standard');
   const [projection, setProjection] = useState<ProjectionSnapshot | null>(null);
   const [ready, setReady] = useState(false);
@@ -27,14 +27,14 @@ export default function IslandPreview() {
   const [attempt, setAttempt] = useState(0);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const board = useMemo(() => createIslandPreviewBoard(topologyId), [topologyId]);
-  const geometry = useMemo(() => buildGeometry(topologyId), [topologyId]);
+  const geometry = useMemo(() => buildGeometry(topologyId, 100, board.terrain), [topologyId, board]);
   const bounds = useMemo(() => sceneBounds(geometry, board), [geometry, board]);
   const controls = useBoardViewport({ geometry, bounds, surfaceRef, renderer: 'r3f', projection,
     sceneKey: `island-preview:${topologyId}` });
   const unavailable = useCallback((reason: string) => { setFailure(reason); setReady(false); }, []);
   const sceneReady = useCallback(() => setReady(true), []);
   const retry = () => { setFailure(null); setReady(false); setProjection(null); setAttempt((value) => value + 1); };
-  const changeTopology = (value: 'hex-r2' | 'hex-r56') => {
+  const changeTopology = (value: PreviewTopologyId) => {
     setTopologyId(value); setProjection(null); setReady(false); setFailure(null); setAttempt((current) => current + 1);
   };
   const { zoom } = controls.viewport;
@@ -112,6 +112,7 @@ export default function IslandPreview() {
         <div className="island-preview__settings">
           <label>島嶼規模<select data-testid="preview-topology" value={topologyId} onChange={(event) => changeTopology(event.target.value as typeof topologyId)}>
             <option value="hex-r2">經典島嶼 · 19 塊</option><option value="hex-r56">延伸島嶼 · 30 塊</option>
+            <option value="sample-archipelago">示範群島 · 海域與金礦</option>
           </select></label>
           <label>畫面品質<select data-testid="preview-quality" value={quality} onChange={(event) => setQuality(event.target.value as QualityMode)}>
             <option value="standard">細緻</option><option value="low">輕量</option>

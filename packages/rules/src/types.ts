@@ -213,9 +213,10 @@ export interface ModulePending {
   kind: `${string}.${string}`;
   module: string;
   /**
-   * Players who still have to answer, in answering order. An empty list is a
-   * continuation step that the owning module resolves as soon as it becomes
-   * the active frame (for example "now resolve production").
+   * Players who still have to answer. The owning module decides whether they
+   * answer simultaneously or in the listed order. An empty list is a
+   * continuation step that the module resolves as soon as it becomes the
+   * active frame (for example "now resolve production").
    */
   responders: string[];
   data: Record<string, unknown>;

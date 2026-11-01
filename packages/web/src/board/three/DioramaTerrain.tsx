@@ -31,6 +31,8 @@ export function DioramaTerrain({ geometry, board, material, quality }: {
   const batches = useMemo(() => {
     const grouped = new Map<string, TerrainBatch>();
     for (const hex of geometry.hexes) {
+      // Sea hexes have no tile: the ocean plane is their surface.
+      if (geometry.land[hex.index] === false) continue;
       const terrain = board.terrain[hex.index] ?? 'sea';
       const variant = quality === 'low' ? 0 : hex.index % 3;
       const key = `${terrain}:${variant}`;
