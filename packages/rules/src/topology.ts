@@ -48,9 +48,13 @@ export interface BoardTopology {
   hexes: { q: number; r: number; x: number; y: number }[];
   vertices: VertexInfo[];
   edges: EdgeInfo[];
-  /** Coastal (single-hex) edges ordered by angle around the board centre. */
+  /**
+   * Boundary (single-hex) edges of the hex set, ordered by angle around the
+   * origin. With a sea frame these border the frame, not the land: the
+   * shoreline is a layout property (land/sea terrain).
+   */
   coastalEdges: number[];
-  /** Coastal edges that carry a harbor token, ordered clockwise. */
+  /** Edges that carry a harbour token, in token order. */
   harborSlots: number[];
 }
 
@@ -83,7 +87,7 @@ export function buildTopology(radius: number, id = `hex-r${radius}`): BoardTopol
       if (Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) <= radius) coords.push({ q, r });
     }
   }
-  return buildTopologyFromCoords(coords, id, radius, 9);
+  return buildTopologyFromCoords(coords, id, radius, (coastal) => pickHarborSlots(coastal, 9));
 }
 
 /** Builds the elongated 5–6 player board rows: 3-4-5-6-5-4-3. */
@@ -96,10 +100,73 @@ export function buildPlayer56Topology(id = 'hex-r56'): BoardTopology {
     const start = -Math.floor(length / 2);
     for (let offset = 0; offset < length; offset++) coords.push({ q: start + offset, r });
   }
-  return buildTopologyFromCoords(coords, id, 3, 11);
+  return buildTopologyFromCoords(coords, id, 3, (coastal) => pickHarborSlots(coastal, 11));
 }
 
-function buildTopologyFromCoords(coords: HexCoord[], id: string, radius: number, harborCount: number): BoardTopology {
+/** A harbour position: the side of a hex facing `NEIGHBOR_DIRS[side]`. */
+export interface HarborSlotSpec extends HexCoord {
+  side: number;
+}
+
+/**
+ * Explicit board shape for scenario maps: every hex (land and sea frame
+ * alike), possibly forming several separate islands, plus the marked harbour
+ * positions in token order.
+ */
+export interface TopologyDefinition {
+  id: string;
+  hexes: readonly HexCoord[];
+  harborSlots?: readonly HarborSlotSpec[];
+}
+
+/**
+ * Builds a topology from an explicit hex list. Hex order is normalised (rows
+ * by `r`, then `q`), so vertex and edge indices depend only on the set of
+ * coordinates, never on the order they were written in.
+ */
+export function buildTopologyFromHexes(definition: TopologyDefinition): BoardTopology {
+  const seen = new Set<string>();
+  for (const hex of definition.hexes) {
+    if (!Number.isInteger(hex.q) || !Number.isInteger(hex.r)) {
+      throw new Error(`topology ${definition.id}: non-integer hex ${hex.q},${hex.r}`);
+    }
+    const k = `${hex.q},${hex.r}`;
+    if (seen.has(k)) throw new Error(`topology ${definition.id}: duplicate hex ${k}`);
+    seen.add(k);
+  }
+  if (seen.size === 0) throw new Error(`topology ${definition.id}: no hexes`);
+  const coords = definition.hexes.map(({ q, r }) => ({ q, r }));
+  const radius = Math.max(...coords.map((c) => Math.max(Math.abs(c.q), Math.abs(c.r), Math.abs(c.q + c.r))));
+  return buildTopologyFromCoords(coords, definition.id, radius, (_coastal, edges, hexes) =>
+    (definition.harborSlots ?? []).map((slot) => harborSlotEdge(definition.id, slot, edges, hexes)));
+}
+
+function harborSlotEdge(
+  id: string,
+  slot: HarborSlotSpec,
+  edges: readonly EdgeInfo[],
+  hexes: readonly { q: number; r: number }[],
+): number {
+  const dir = NEIGHBOR_DIRS[slot.side];
+  const hex = hexes.findIndex((candidate) => candidate.q === slot.q && candidate.r === slot.r);
+  if (!dir || hex < 0) throw new Error(`topology ${id}: bad harbour slot ${slot.q},${slot.r}/${slot.side}`);
+  const a = hexCenter(slot);
+  const b = hexCenter({ q: slot.q + dir.q, r: slot.r + dir.r });
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const edge = edges.findIndex((candidate) =>
+    candidate.hexes.includes(hex) && Math.abs(candidate.x - mx) < 1e-4 && Math.abs(candidate.y - my) < 1e-4);
+  if (edge < 0) throw new Error(`topology ${id}: harbour slot ${slot.q},${slot.r}/${slot.side} has no edge`);
+  return edge;
+}
+
+type HarborSlotPicker = (
+  coastalEdges: number[],
+  edges: readonly EdgeInfo[],
+  hexes: readonly { q: number; r: number }[],
+) => number[];
+
+function buildTopologyFromCoords(coords: HexCoord[], id: string, radius: number, pickSlots: HarborSlotPicker): BoardTopology {
   coords.sort((a, b) => (a.r - b.r) || (a.q - b.q));
   // first would push shared corners onto different quantisation buckets.
   const exactCentres = coords.map((c) => hexCenter(c));
@@ -197,7 +264,7 @@ function buildTopologyFromCoords(coords: HexCoord[], id: string, radius: number,
     vertices,
     edges,
     coastalEdges,
-    harborSlots: pickHarborSlots(coastalEdges, harborCount),
+    harborSlots: pickSlots(coastalEdges, edges, hexes),
   };
 }
 

@@ -49,6 +49,8 @@ function resolvePending(state: GameState, rng: ReturnType<typeof seededRng>): Ga
       const edge = actionHints(state, pending.actor).legalRoads[0];
       return edge === undefined ? null : attempt(state, pending.actor, { type: 'build.road', edge }, rng);
     }
+    default:
+      return null;
   }
 }
 

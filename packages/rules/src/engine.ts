@@ -24,8 +24,19 @@ import {
   topologyOf,
   totalResources,
 } from './analysis.ts';
-import { buildBaseLayout } from './layout.ts';
-import { ENGINE_VERSION, requireProfile, type ProfileDefinition } from './profiles.ts';
+import { buildProfileLayout } from './layout-registry.ts';
+import type { CommandErrorCode } from './messages.ts';
+import { moduleCommandTypes, rulesModulesOf } from './modules/registry.ts';
+import type {
+  ModuleCommand,
+  ModuleContext,
+  ModuleViewContext,
+  RollResult,
+  RulesKit,
+  RulesModule,
+} from './modules/types.ts';
+import { advancePending, clearPending, enqueuePending, normalizePending, pendingQueueOf } from './pending.ts';
+import { requireProfile, type ProfileDefinition } from './profiles.ts';
 import { shuffle, type Rng } from './rng.ts';
 import {
   addResource,
@@ -41,7 +52,6 @@ import {
   RESOURCES,
   type BoardState,
   type CommandError,
-  type CommandErrorCode,
   type CommandOutcome,
   type DevCardType,
   type GameEvent,
@@ -50,6 +60,7 @@ import {
   type Offer,
   type OfferResponse,
   type Pending,
+  type PendingFrame,
   type PlayerColor,
   type PlayerState,
   type Resource,
@@ -123,7 +134,11 @@ export function createGame(options: CreateGameOptions): GameState {
     throw new Error(`profile ${profile.id} does not support ${options.setupMode} setup`);
   }
 
-  const layout = buildBaseLayout({ topology: getTopology(profile.topologyId), mode: options.setupMode, rng: options.rng });
+  const layout = buildProfileLayout(profile, {
+    mode: options.setupMode,
+    playerCount: options.players.length,
+    rng: options.rng,
+  });
   const topo = getTopology(layout.topologyId);
   const board: BoardState = {
     layout,
@@ -162,7 +177,7 @@ export function createGame(options: CreateGameOptions): GameState {
   ];
 
   const state: GameState = {
-    engineVersion: ENGINE_VERSION,
+    engineVersion: profile.ruleVersion,
     profileId: profile.id,
     seedCommitment: null,
     players,
@@ -195,6 +210,8 @@ export function createGame(options: CreateGameOptions): GameState {
     playerIds: players.map((player) => player.id),
     setupMode: options.setupMode,
   });
+  const ctx = moduleContext(profile, options.rng);
+  for (const module of rulesModulesOf(profile)) module.initGame?.(state, ctx);
   return state;
 }
 
@@ -231,6 +248,65 @@ function fail(code: CommandErrorCode, params?: Record<string, unknown>): Command
 
 function currentPlayer(state: GameState): PlayerState {
   return state.players[state.turn.seat]!;
+}
+
+function accept(state: GameState): CommandOutcome {
+  return { ok: true, state, events: [] };
+}
+
+function modulesOf(state: GameState): readonly RulesModule[] {
+  return rulesModulesOf(requireProfile(state.profileId));
+}
+
+function viewContext(state: GameState): ModuleViewContext {
+  return { profile: requireProfile(state.profileId) };
+}
+
+/** Engine services handed to rules modules (see `modules/types.ts`). */
+const KIT: RulesKit = {
+  emit,
+  fail,
+  accept,
+  currentPlayer,
+  topology: topologyOf,
+  canAfford,
+  payBuild: (state, player, cost) => {
+    payBuild(state, player, cost);
+  },
+  afterBoardChange,
+  checkVictory,
+  enqueuePending,
+  completePending: (state) => completePending(state, null),
+  resolveRollOutcome: (state, roll) => resolveRollOutcome(state, roll, null),
+  finishSetupStep,
+};
+
+function moduleContext(profile: ProfileDefinition, rng: Rng | null): ModuleContext {
+  return { profile, rng: rng ?? NO_RNG, kit: KIT };
+}
+
+/** Stand-in for transitions that must not draw (a draw would be a bug). */
+const NO_RNG: Rng = {
+  int() {
+    throw new Error('this transition has no randomness source');
+  },
+};
+
+/**
+ * Finishes the active frame. A module continuation frame (no responders)
+ * that becomes active is resolved straight away by its module.
+ */
+function completePending(state: GameState, rng: Rng | null): void {
+  let next = advancePending(state);
+  for (let guard = 0; next && next.kind.includes('.') && guard < 64; guard++) {
+    const frame = next as Extract<typeof next, { module: string }>;
+    if (frame.responders.length > 0) return;
+    const module = modulesOf(state).find((candidate) => candidate.id === frame.module);
+    if (!module?.resumePending) throw new Error(`no continuation for pending frame ${frame.kind}`);
+    module.resumePending(state, frame, moduleContext(requireProfile(state.profileId), rng));
+    if (state.pending !== frame) return;
+    next = advancePending(state);
+  }
 }
 
 function canAfford(player: PlayerState, cost: Partial<Record<Resource, number>>): boolean {
@@ -393,7 +469,7 @@ function openActorWindow(
   state.turn.devCardPlayed = false;
   state.turn.setup = null;
   state.turn.pairedActor = pairedActor;
-  state.pending = null;
+  clearPending(state);
   state.windowId += 1;
   expireOffers(state, 'window');
   playerStats(state, player.id).turns += 1;
@@ -419,7 +495,7 @@ function checkVictory(state: GameState): void {
   if (score >= profile.victoryTarget) {
     state.result = { playerId: player.id, reason: 'victory', atSeq: state.seq };
     state.turn.phase = 'gameOver';
-    state.pending = null;
+    clearPending(state);
     expireOffers(state, 'gameOver');
     sampleTimeline(state);
     emit(state, 'game.finished', {
@@ -436,6 +512,10 @@ function afterBoardChange(state: GameState): void {
     ...BASE_AWARD_RULES,
     longestRouteIncludesShips: requireProfile(state.profileId).longestRouteIncludesShips,
   });
+  const modules = modulesOf(state);
+  if (modules.length === 0) return;
+  const ctx = viewContext(state);
+  for (const module of modules) module.afterBoardChange?.(state, ctx);
 }
 
 // ---------------------------------------------------------------------------
@@ -472,10 +552,22 @@ export function normalizedPending(state: GameState): Pending | null {
   return pending;
 }
 
+/**
+ * The active frame and queue as the next command will see them: a stalled
+ * base frame (see `normalizedPending`) drops out and the next queued frame
+ * takes its place. Projection and hints share this view.
+ */
+export function effectivePending(state: GameState): { pending: Pending; queue: readonly PendingFrame[] } {
+  const queue = pendingQueueOf(state);
+  const pending = normalizedPending(state) ?? null;
+  if (pending || !state.pending) return { pending, queue };
+  return { pending: queue[0] ?? null, queue: queue.slice(1) };
+}
+
 export function applyCommand(
   state: GameState,
   actorId: string,
-  command: Command,
+  command: Command | ModuleCommand,
   rng: Rng,
 ): CommandOutcome {
   if (!command || typeof command.type !== 'string') return fail('E_INVALID_COMMAND');
@@ -485,17 +577,26 @@ export function applyCommand(
   if (state.result) return fail('E_GAME_OVER');
 
   const next = clone(state);
+  normalizePending(next);
   ensureStats(next);
   const previousPending = next.pending;
-  next.pending = normalizedPending(next);
-  if (next.pending && !PENDING_COMMANDS.has(command.type)) {
-    return fail('E_PENDING_EFFECT', { pending: next.pending.kind });
+  const normalized = normalizedPending(next);
+  if (normalized !== previousPending) {
+    if (normalized) {
+      next.pending = normalized;
+    } else {
+      if (previousPending?.kind === 'freeRoads') {
+        emit(next, 'dev.roadBuildingFinished', {
+          playerId: previousPending.actor,
+          placed: (previousPending.granted ?? 2) - previousPending.remaining,
+        });
+      }
+      // A stalled base frame ends like an answered one: the next queued frame activates.
+      completePending(next, rng);
+    }
   }
-  if (previousPending?.kind === 'freeRoads' && !next.pending) {
-    emit(next, 'dev.roadBuildingFinished', {
-      playerId: previousPending.actor,
-      placed: (previousPending.granted ?? 2) - previousPending.remaining,
-    });
+  if (next.pending && !PENDING_COMMANDS.has(command.type as CommandType) && !modulePendingCommand(next, command.type)) {
+    return fail('E_PENDING_EFFECT', { pending: next.pending.kind });
   }
   const outcome = dispatch(next, actorId, command, rng);
   if (!outcome.ok) return outcome;
@@ -511,12 +612,17 @@ function trackPeakHands(state: GameState): void {
   }
 }
 
+function modulePendingCommand(state: GameState, type: string): boolean {
+  return modulesOf(state).some((module) => module.pendingCommands?.includes(type));
+}
+
 function dispatch(
   state: GameState,
   actorId: string,
-  command: Command,
+  input: Command | ModuleCommand,
   rng: Rng,
 ): CommandOutcome {
+  const command = input as Command;
   switch (command.type) {
     case 'setup.placeBuilding':
       return setupPlaceBuilding(state, actorId, command.vertex);
@@ -563,8 +669,22 @@ function dispatch(
     case 'trade.settle':
       return settleOffer(state, actorId, command.offerId, command.counterparty);
     default:
-      return fail('E_INVALID_COMMAND');
+      return dispatchModuleCommand(state, actorId, input as ModuleCommand, rng);
   }
+}
+
+function dispatchModuleCommand(
+  state: GameState,
+  actorId: string,
+  command: ModuleCommand,
+  rng: Rng,
+): CommandOutcome {
+  const profile = requireProfile(state.profileId);
+  for (const module of rulesModulesOf(profile)) {
+    const handler = module.commands?.[command.type];
+    if (handler) return handler(state, actorId, command, moduleContext(profile, rng));
+  }
+  return fail('E_INVALID_COMMAND');
 }
 
 function requireTurnActor(state: GameState, actorId: string): CommandOutcome | null {
@@ -586,7 +706,7 @@ function setupPlaceBuilding(state: GameState, actorId: string, vertex: number): 
   if (!canPlaceBuilding(state, actorId, vertex, { setup: true })) {
     return fail('E_ILLEGAL_TARGET', { vertex });
   }
-  state.board.buildings[vertex] = { player: actorId, city: false };
+  state.board.buildings[vertex] = { player: actorId, city: setupPlacesCity(state, actorId, setup.round) };
   setup.stage = 'road';
   setup.lastVertex = vertex;
   emit(state, 'setup.building', { playerId: actorId, vertex, round: setup.round });
@@ -609,6 +729,13 @@ function setupPlaceBuilding(state: GameState, actorId: string, vertex: number): 
   }
   afterBoardChange(state);
   return { ok: true, state, events: [] };
+}
+
+function setupPlacesCity(state: GameState, playerId: string, round: 1 | 2): boolean {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return false;
+  const ctx = viewContext(state);
+  return modules.some((module) => module.setupBuilding?.(state, { playerId, round }, ctx) === 'city');
 }
 
 function terrainToResource(terrain: string): Resource | null {
@@ -640,7 +767,14 @@ function setupPlaceRoad(state: GameState, actorId: string, edge: number): Comman
   }
   state.board.roads[edge] = { player: actorId, ship: false };
   emit(state, 'setup.road', { playerId: actorId, edge });
+  finishSetupStep(state);
+  return { ok: true, state, events: [] };
+}
 
+/** Advances setup after a placement step's road (or a module's ship). */
+function finishSetupStep(state: GameState): void {
+  const setup = state.turn.setup;
+  if (!setup) return;
   setup.index += 1;
   setup.stage = 'building';
   setup.lastVertex = null;
@@ -650,11 +784,10 @@ function setupPlaceRoad(state: GameState, actorId: string, edge: number): Comman
     state.turn.setup = null;
     afterBoardChange(state);
     beginTurn(state, setup.order[0]!);
-    return { ok: true, state, events: [] };
+    return;
   }
   state.turn.seat = setup.order[setup.index]!;
   afterBoardChange(state);
-  return { ok: true, state, events: [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -665,9 +798,18 @@ function rollDice(state: GameState, actorId: string, rng: Rng): CommandOutcome {
   const guard = requireTurnActor(state, actorId);
   if (guard) return guard;
   if (state.turn.phase !== 'preroll') return fail('E_WRONG_PHASE', { phase: state.turn.phase });
-  const die1 = rng.int(6) + 1;
-  const die2 = rng.int(6) + 1;
-  const total = die1 + die2;
+  const profile = requireProfile(state.profileId);
+  const modules = rulesModulesOf(profile);
+  const ctx = moduleContext(profile, rng);
+  let roll: RollResult | undefined;
+  for (const module of modules) roll ??= module.rollDice?.(state, ctx);
+  if (!roll) {
+    const first = rng.int(6) + 1;
+    const second = rng.int(6) + 1;
+    roll = { dice: [first, second], total: first + second };
+  }
+  const [die1, die2] = roll.dice;
+  const total = roll.total;
   state.turn.dice = [die1, die2];
   state.turn.phase = 'action';
   const stats = ensureStats(state);
@@ -675,18 +817,38 @@ function rollDice(state: GameState, actorId: string, rng: Rng): CommandOutcome {
   const rollerStats = playerStats(state, actorId);
   rollerStats.rolls += 1;
   if (total === 7) rollerStats.sevens += 1;
-  emit(state, 'turn.rolled', { playerId: actorId, dice: [die1, die2], total });
+  emit(state, 'turn.rolled', {
+    playerId: actorId,
+    dice: [die1, die2],
+    total,
+    ...(roll.extra ? { extra: roll.extra } : {}),
+  });
 
-  if (total === 7) {
-    resolveSeven(state);
-    return { ok: true, state, events: [] };
+  for (const module of modules) {
+    if (module.beforeProduction?.(state, roll, ctx) === 'defer') return { ok: true, state, events: [] };
   }
-  resolveProduction(state, total);
+  resolveRollOutcome(state, roll, rng);
   return { ok: true, state, events: [] };
 }
 
-function resolveProduction(state: GameState, total: number): void {
-  const results = productionForRoll(state, total);
+/** The 7 sequence or production, then the modules' after-production stages. */
+function resolveRollOutcome(state: GameState, roll: RollResult, rng: Rng | null): void {
+  if (roll.total === 7) resolveSeven(state);
+  else resolveProduction(state, roll, rng);
+  const profile = requireProfile(state.profileId);
+  const modules = rulesModulesOf(profile);
+  if (modules.length === 0) return;
+  const ctx = moduleContext(profile, rng);
+  for (const module of modules) module.afterProduction?.(state, roll, ctx);
+}
+
+function resolveProduction(state: GameState, roll: RollResult, rng: Rng | null): void {
+  const total = roll.total;
+  let results = productionForRoll(state, total);
+  const profile = requireProfile(state.profileId);
+  for (const module of rulesModulesOf(profile)) {
+    if (module.modifyProduction) results = module.modifyProduction(state, results, roll, moduleContext(profile, rng));
+  }
   const summary: Record<string, Partial<Record<Resource, number>>> = {};
   const blockedPlayers = new Set<string>();
   for (const result of results) {
@@ -722,20 +884,24 @@ function resolveProduction(state: GameState, total: number): void {
 
 function resolveSeven(state: GameState): void {
   const required: Record<string, number> = {};
+  const modules = modulesOf(state);
+  const ctx = viewContext(state);
   for (const player of state.players) {
     const hand = totalResources(player);
-    if (hand > 7) required[player.id] = Math.floor(hand / 2);
+    let limit = 7;
+    for (const module of modules) if (module.discardLimit) limit = module.discardLimit(state, player, limit, ctx);
+    if (hand > limit) required[player.id] = Math.floor(hand / 2);
   }
   if (Object.keys(required).length > 0) {
-    state.pending = { kind: 'discard', required, submitted: {} };
+    enqueuePending(state, { kind: 'discard', required, submitted: {} });
     emit(state, 'discard.required', { required });
   } else {
-    state.pending = {
+    enqueuePending(state, {
       kind: 'moveRobber',
       actor: currentPlayer(state).id,
       cause: 'seven',
       pirate: false,
-    };
+    });
     emit(state, 'robber.moveRequired', { playerId: currentPlayer(state).id, cause: 'seven' });
   }
 }
@@ -830,7 +996,7 @@ function buildRoad(state: GameState, actorId: string, edge: number): CommandOutc
         playerId: actorId,
         placed: (free.granted ?? 2) - free.remaining,
       });
-      state.pending = null;
+      completePending(state, null);
     }
   }
   checkVictory(state);
@@ -951,7 +1117,7 @@ function playKnight(state: GameState, actorId: string, hex: number): CommandOutc
 
   const candidates = stealCandidates(state, hex, actorId);
   if (candidates.length > 0) {
-    state.pending = { kind: 'steal', actor: actorId, hex, candidates, pirate: false };
+    enqueuePending(state, { kind: 'steal', actor: actorId, hex, candidates, pirate: false });
   }
   checkVictory(state);
   return { ok: true, state, events: [] };
@@ -983,7 +1149,7 @@ function playRoadBuilding(state: GameState, actorId: string): CommandOutcome {
   const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, actorId);
   const remaining = Math.max(0, Math.min(2, available, pieces));
   if (remaining > 0) {
-    state.pending = { kind: 'freeRoads', actor: actorId, remaining, granted: remaining };
+    enqueuePending(state, { kind: 'freeRoads', actor: actorId, remaining, granted: remaining });
   }
   return { ok: true, state, events: [] };
 }
@@ -999,7 +1165,7 @@ function playYearOfPlenty(state: GameState, actorId: string): CommandOutcome {
   player.devCards.splice(player.devCards.indexOf('yearOfPlenty'), 1);
   state.turn.devCardPlayed = true;
   playerStats(state, actorId).devCardsPlayed.yearOfPlenty += 1;
-  state.pending = { kind: 'yearOfPlenty', actor: actorId, remaining: Math.min(2, available) };
+  enqueuePending(state, { kind: 'yearOfPlenty', actor: actorId, remaining: Math.min(2, available) });
   emit(state, 'dev.yearOfPlenty', { playerId: actorId });
   return { ok: true, state, events: [] };
 }
@@ -1015,7 +1181,7 @@ function takeResource(state: GameState, actorId: string, resource: Resource): Co
   pending.remaining -= 1;
   addResource(playerStats(state, actorId).yearOfPlenty, resource);
   emit(state, 'dev.yearOfPlentyPick', { playerId: actorId, resource });
-  if (pending.remaining <= 0) state.pending = null;
+  if (pending.remaining <= 0) completePending(state, null);
   return { ok: true, state, events: [] };
 }
 
@@ -1105,7 +1271,7 @@ function moveRobber(state: GameState, actorId: string, hex: number): CommandOutc
   if (candidates.length > 0) {
     state.pending = { kind: 'steal', actor: actorId, hex, candidates, pirate: false };
   } else {
-    state.pending = null;
+    completePending(state, null);
   }
   return { ok: true, state, events: [] };
 }
@@ -1129,7 +1295,7 @@ function stealFrom(state: GameState, actorId: string, victim: string, rng: Rng):
   grant(playerById(state, actorId)!, resource, 1);
   addResource(playerStats(state, actorId).stolen, resource);
   addResource(playerStats(state, victim).robbed, resource);
-  state.pending = null;
+  completePending(state, rng);
   emit(
     state,
     'robber.stole',
@@ -1368,7 +1534,7 @@ export function abandonGame(state: GameState): GameState {
   const next = clone(state);
   next.result = { playerId: null, reason: 'abandoned', atSeq: next.seq };
   next.turn.phase = 'gameOver';
-  next.pending = null;
+  clearPending(next);
   expireOffers(next, 'gameOver');
   sampleTimeline(next);
   emit(next, 'game.abandoned', { reason: 'abandoned' });
@@ -1387,11 +1553,13 @@ export interface ActionHints {
   legalCities: number[];
   bankRates: Record<Resource, number>;
   pendingKind: string | null;
+  /** Module-specific hints, keyed by module id (absent for base games). */
+  modules?: Record<string, unknown>;
 }
 
 /** Legal-action hints for the acting player's UI. Advisory only. */
 export function actionHints(state: GameState, playerId: string): ActionHints {
-  const pending = normalizedPending(state);
+  const { pending } = effectivePending(state);
   const isTurn = currentPlayer(state).id === playerId;
   const inAction = isTurn && state.turn.phase === 'action' && !pending;
   const freeRoads = pending?.kind === 'freeRoads' && pending.actor === playerId;
@@ -1421,7 +1589,20 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
       : [],
     bankRates: harborRates(state, playerId),
     pendingKind: pending ? pending.kind : null,
+    ...moduleHints(state, playerId),
   };
+}
+
+function moduleHints(state: GameState, playerId: string): { modules?: Record<string, unknown> } {
+  const modules = modulesOf(state).filter((module) => module.actionHints);
+  if (modules.length === 0) return {};
+  const ctx = viewContext(state);
+  return { modules: Object.fromEntries(modules.map((module) => [module.id, module.actionHints!(state, playerId, ctx)])) };
+}
+
+/** Command types the profile's rules modules handle, for protocol validation. */
+export function moduleCommandTypesOf(state: GameState): string[] {
+  return moduleCommandTypes(requireProfile(state.profileId));
 }
 
 export function profileOf(state: GameState): ProfileDefinition {
