@@ -9,7 +9,7 @@ import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrain
 import { confirmedPlacement } from '../board/effects.ts';
 import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
-import { TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
+import { TbBridge, TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
@@ -138,6 +138,12 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             const player = view.players.find((candidate) => candidate.id === road.player);
             const color = playerColorHex(player?.color ?? 'white');
             const arriving = confirmedPlacement(active?.events ?? [], board, 'edge', edge.index);
+            if (road.bridge) {
+              return <g key={`road-${edge.index}`} data-testid={`road-${edge.index}`} data-bridge="true">
+                <TbBridge {...edge} color={color} />
+                <title>{`${t('tb.rivers.bridge')} · ${nameResolver(road.player)}`}</title>
+              </g>;
+            }
             const line = inset(edge);
             return (
               <g key={`road-${edge.index}`}>

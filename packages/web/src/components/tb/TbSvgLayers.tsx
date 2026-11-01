@@ -2,6 +2,7 @@ import { useId } from 'react';
 import type { GameView } from '@catan/rules';
 import type { BoardGeometry, Point } from '../../board/geometry.ts';
 import { pipsFor } from '../../board/terrain.ts';
+import { riverCourse } from '../../board/tb-rivers.ts';
 import { useT } from '../../i18n/context.tsx';
 import { tbPart } from './model.ts';
 
@@ -73,17 +74,67 @@ function FishingGround({ geometry, ground, waves }: { geometry: BoardGeometry; g
   );
 }
 
+interface RiversView { paths: { hexes: number[]; sites: number[] }[] }
+
+/** A river from its spring through each crossed edge to its mouth, bending around number tokens. */
+function River({ geometry, path }: { geometry: BoardGeometry; path: RiversView['paths'][number] }) {
+  const t = useT();
+  const k = geometry.scale;
+  const f = (point: { x: number; y: number }) => `${(point.x * k).toFixed(1)} ${(point.y * k).toFixed(1)}`;
+  const segments = riverCourse(geometry.topology, path);
+  const d = segments.map((segment, index) =>
+    `${index === 0 ? `M${f(segment.from)} ` : ''}C${f(segment.c1)} ${f(segment.c2)} ${f(segment.to)}`).join(' ');
+  return (
+    <g className="tb-river" data-testid={`tb-river-${path.hexes[0]}`} pointerEvents="none">
+      <path d={d} fill="none" stroke="#2a6f97" strokeWidth={k * 0.2} strokeLinecap="round" opacity={0.55} />
+      <path d={d} fill="none" stroke="#5fb8dc" strokeWidth={k * 0.12} strokeLinecap="round" />
+      <path d={d} fill="none" stroke="#d6f3fa" strokeWidth={2} strokeDasharray="6 10" strokeLinecap="round" opacity={0.8} />
+      <title>{t('tb.rivers.title')}</title>
+    </g>
+  );
+}
+
+/** A bridge: a wooden arch along its edge in the owner's colour. */
+export function TbBridge({ x1, y1, x2, y2, color }: { x1: number; y1: number; x2: number; y2: number; color: string }) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.hypot(dx, dy) || 1;
+  const nx = -dy / length;
+  const ny = dx / length;
+  const inset = 0.1;
+  const ax = x1 + dx * inset;
+  const ay = y1 + dy * inset;
+  const bx = x2 - dx * inset;
+  const by = y2 - dy * inset;
+  const lift = 12;
+  return (
+    <g aria-hidden="true">
+      <path d={`M${ax} ${ay} Q${(x1 + x2) / 2 + nx * lift} ${(y1 + y2) / 2 + ny * lift} ${bx} ${by}`} fill="none" stroke="#20180f" strokeWidth={15} strokeLinecap="round" />
+      <path d={`M${ax} ${ay} Q${(x1 + x2) / 2 + nx * lift} ${(y1 + y2) / 2 + ny * lift} ${bx} ${by}`} fill="none" stroke="#8a6a48" strokeWidth={11} strokeLinecap="round" />
+      <path d={`M${ax} ${ay} Q${(x1 + x2) / 2 + nx * lift} ${(y1 + y2) / 2 + ny * lift} ${bx} ${by}`} fill="none" stroke={color} strokeWidth={5} strokeLinecap="round" strokeDasharray="5 4" />
+    </g>
+  );
+}
+
 export function TbSvgUnder({ geometry, view }: { geometry: BoardGeometry; view: GameView }) {
   const waves = `tb-waves-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const fishing = tbPart<FishingView>(view, 'tb-fishing');
-  if (!fishing) return null;
+  const rivers = tbPart<RiversView>(view, 'tb-rivers');
+  const extras = view.board.extraNumbers ?? [];
+  if (!fishing && !rivers && extras.length === 0) return null;
   return (
     <g className="tb-svg-under">
-      <defs>
+      {rivers?.paths.map((path) => <River key={path.hexes[0]} geometry={geometry} path={path} />)}
+      {extras.map((extra) => {
+        const hex = geometry.hexes[extra.hex];
+        return hex ? <SmallNumber key={`extra-${extra.hex}-${extra.number}`} x={hex.cx + 44} y={hex.cy - 30} number={extra.number} /> : null;
+      })}
+      {fishing && <g>
+      {fishing && <defs>
         <pattern id={waves} width="16" height="10" patternUnits="userSpaceOnUse">
           <path d="M0 6q4-4 8 0t8 0" fill="none" stroke="#bfe9f3" strokeWidth="1.5" />
         </pattern>
-      </defs>
+      </defs>}
       {fishing.grounds.map((ground) => <FishingGround key={ground.valley} geometry={geometry} ground={ground} waves={waves} />)}
       {geometry.hexes[fishing.lake] && fishing.lakeNumbers.map((number, index) => {
         const hex = geometry.hexes[fishing.lake]!;
@@ -91,6 +142,7 @@ export function TbSvgUnder({ geometry, view }: { geometry: BoardGeometry; view: 
         const dy = (index < 2 ? -1 : 1) * 24 + 8;
         return <SmallNumber key={number} x={hex.cx + dx} y={hex.cy + dy} number={number} />;
       })}
+      </g>}
     </g>
   );
 }

@@ -63,6 +63,25 @@ const SCENARIOS = {
       state.board.robber = slot.lake;
     },
   },
+  'tb-rivers': {
+    profileId: 'tb-rivers-2025',
+    seed: 22,
+    dress(state) {
+      const rivers = tb(state)['tb-rivers'];
+      const topology = rules.getTopology(state.board.layout.topologyId);
+      // Two bridges: p1 and p2 each own one, next to their own settlement.
+      rivers.bridgeSites.slice(0, 2).forEach((edge, index) => {
+        const owner = state.players[index].id;
+        const vertex = topology.edges[edge].vertices[0];
+        if (!state.board.buildings[vertex]) state.board.buildings[vertex] = { player: owner, city: false };
+        state.board.roads[edge] = { player: owner, ship: false, bridge: true };
+      });
+      const coins = tb(state)['tb-coins'];
+      coins.gold = { p1: 7, p2: 3, p3: 1, p4: 3 };
+      coins.supply = 100 - 14;
+      state.players[0].resources = { lumber: 2, brick: 2, wool: 4, grain: 1, ore: 0 };
+    },
+  },
 };
 
 const out = { profiles: rules.PROFILES.map(protocol.profileView), scenarios: {} };

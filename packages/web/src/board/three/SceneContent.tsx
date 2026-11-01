@@ -177,7 +177,7 @@ function Lights({ quality }: { quality: 'standard' | 'low' }) {
 }
 
 function NumberBadges({ props, resources, texture }: { props: SceneProps; resources: BoardSceneResources; texture: Texture | null }) {
-  const tokens = useMemo(() => [...numberTokens(props.geometry, props.board), ...tbNumberTokens(props.geometry, props.modules)],
+  const tokens = useMemo(() => [...numberTokens(props.geometry, props.board), ...tbNumberTokens(props.geometry, props.modules, props.board)],
     [props.board, props.geometry, props.modules]);
   const bodies = tokens.map((token) => ({ ...token, scale: [1, 1, 1] as const }));
   const labels = tokens.map((token) => ({

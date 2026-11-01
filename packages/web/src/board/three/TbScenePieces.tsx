@@ -3,6 +3,7 @@ import { BoxGeometry, CylinderGeometry, type Material } from 'three';
 import type { PublicBoardView } from '@catan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import { ModelBuilder, useDioramaGeometry } from './diorama-geometry.ts';
+import { cubicPoints, riverCourse } from '../tb-rivers.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import type { InstanceTransform, Vec3 } from './transforms.ts';
 
@@ -72,9 +73,13 @@ function fishingGrounds(b: ModelBuilder, context: TbPieceContext): boolean {
   return true;
 }
 
-/** Extra number badges: fishing grounds and the lake (drawn by the badge layer). */
-export function tbNumberTokens(geometry: BoardGeometry, modules: TbModules): { index: number; value: number; position: Vec3; rotationY: number; scale: Vec3 }[] {
+/** Extra number badges: fishing grounds, the lake and second hex numbers (drawn by the badge layer). */
+export function tbNumberTokens(geometry: BoardGeometry, modules: TbModules, board?: PublicBoardView): { index: number; value: number; position: Vec3; rotationY: number; scale: Vec3 }[] {
   const out: { index: number; value: number; position: Vec3; rotationY: number; scale: Vec3 }[] = [];
+  for (const extra of board?.extraNumbers ?? []) {
+    const hex = geometry.hexes[extra.hex];
+    if (hex) out.push({ index: extra.hex, value: extra.number, position: [hex.cx / geometry.scale + 0.42, 0, hex.cy / geometry.scale - 0.3], rotationY: 0, scale: [0.42, 1, 0.42] });
+  }
   const fishing = part<{ grounds: Ground[]; lake: number; lakeNumbers: number[] }>(modules, 'tb-fishing');
   if (fishing) {
     for (const ground of fishing.grounds) {
@@ -97,8 +102,43 @@ export function tbNumberTokens(geometry: BoardGeometry, modules: TbModules): { i
   return out;
 }
 
+function rivers(b: ModelBuilder, context: TbPieceContext): boolean {
+  const slot = part<{ paths: { hexes: number[]; sites: number[] }[] }>(context.modules, 'tb-rivers');
+  if (!slot) return false;
+  for (const path of slot.paths) {
+    for (const segment of riverCourse(context.geometry.topology, path)) {
+      const points = cubicPoints(segment, 10).map((point) => ({ x: point.x, z: point.y }));
+      for (let index = 1; index < points.length; index++) {
+        plank(b, '#4ea6cf', points[index - 1]!, points[index]!, 0.13, 0.012, 0.008);
+        plank(b, '#cdeef8', points[index - 1]!, points[index]!, 0.035, 0.014, 0.012);
+      }
+    }
+  }
+  return true;
+}
+
+function bridges(b: ModelBuilder, context: TbPieceContext): boolean {
+  let any = false;
+  context.board.roads.forEach((road, edge) => {
+    if (!road?.bridge) return;
+    any = true;
+    const [from, to] = context.geometry.topology.edges[edge]!.vertices;
+    const a = vertexWorld(context.geometry, from);
+    const c = vertexWorld(context.geometry, to);
+    const color = context.players.find((player) => player.id === road.player)?.color ?? 'white';
+    const tint = ({ red: '#c0392b', blue: '#2c6fb5', orange: '#d97b1f', white: '#f2f2f2', green: '#2e7d4f', brown: '#7b5230' } as Record<string, string>)[color] ?? '#888888';
+    // An arched deck: three planks rising to the middle, with rails in the owner's colour.
+    const inset = (t: number) => ({ x: a.x + (c.x - a.x) * t, z: a.z + (c.z - a.z) * t });
+    plank(b, '#8a6a48', inset(0.12), inset(0.38), 0.16, 0.04, 0.06);
+    plank(b, '#8a6a48', inset(0.38), inset(0.62), 0.16, 0.04, 0.1);
+    plank(b, '#8a6a48', inset(0.62), inset(0.88), 0.16, 0.04, 0.06);
+    plank(b, tint, inset(0.15), inset(0.85), 0.03, 0.04, 0.15);
+  });
+  return any;
+}
+
 /** Builders per scenario part; each returns false when its part is absent. */
-const BUILDERS: readonly ((b: ModelBuilder, context: TbPieceContext) => boolean)[] = [fishingGrounds];
+const BUILDERS: readonly ((b: ModelBuilder, context: TbPieceContext) => boolean)[] = [fishingGrounds, rivers, bridges];
 
 const IDENTITY: readonly InstanceTransform[] = [{ position: [0, 0, 0], rotationY: 0, scale: [1, 1, 1] }];
 

@@ -58,3 +58,38 @@ export function BootEmblem({ size }: { size?: number }) {
     </Emblem>
   );
 }
+
+/** A gold coin. */
+export function CoinEmblem({ size }: { size?: number }) {
+  return (
+    <Emblem size={size}>
+      <circle cx="16" cy="16" r="13" fill="#d9a62e" stroke="#8a6414" strokeWidth="2" />
+      <circle cx="16" cy="16" r="9" fill="none" stroke="#f6dc8a" strokeWidth="1.5" />
+      <path d="M13 11h6l-3 4 3 0-6 6" fill="none" stroke="#8a6414" strokeWidth="1.8" strokeLinecap="round" />
+    </Emblem>
+  );
+}
+
+/** A bridge arch over water. */
+export function BridgeEmblem({ size }: { size?: number }) {
+  return (
+    <Emblem size={size}>
+      <rect x="1.5" y="18" width="29" height="11" rx="3" fill="#3d8eb4" />
+      <path d="M3 18q13-12 26 0v4q-13-9-26 0Z" fill="#8a6a48" stroke="#4c3626" strokeWidth="1" />
+      <path d="M8 14v5M16 11v6M24 14v5" stroke="#4c3626" strokeWidth="1.2" />
+    </Emblem>
+  );
+}
+
+/** A purse of coins (Wealthiest) or an empty patched pouch (Poor). */
+export function WealthEmblem({ size, poor = false }: { size?: number; poor?: boolean }) {
+  return (
+    <Emblem size={size}>
+      <path d="M10 10h12l3 4q4 6 0 12-9 4-18 0-4-6 0-12Z" fill={poor ? '#9a8e78' : '#b23a3a'} stroke="#3a2414" strokeWidth="1.2" />
+      <path d="M11 10q5-4 10 0" fill="none" stroke="#3a2414" strokeWidth="1.5" />
+      {poor
+        ? <path d="M12 18h8M14 22h4" stroke="#3a2414" strokeWidth="1.2" />
+        : <><circle cx="13" cy="19" r="2.6" fill="#f2c94c" /><circle cx="19" cy="21" r="2.6" fill="#f2c94c" /></>}
+    </Emblem>
+  );
+}
