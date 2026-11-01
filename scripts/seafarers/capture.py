@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Seafarers (Heading for New Shores) browser evidence against the built service.
 
-Usage (``pnpm build`` first, start the service, output directory must be new and empty):
+Usage (``pnpm build`` first; the output directory must be new and empty):
 
-  PORT=3022 SQLITE_PATH=/tmp/sf.sqlite WEB_DIST_PATH=packages/web/dist node packages/server/dist/server.mjs &
-  python3 scripts/seafarers/capture.py <new-empty-output-dir>
+  SF_PORT=3023 python3 scripts/seafarers/capture.py <new-empty-output-dir>
+
+The harness starts the built service itself on ``SF_PORT`` with a private
+SQLite file (so it can restart it for one test-only fixture patch).
 
 Real games through the real UI and API (no mocked snapshots):
 
@@ -14,8 +16,12 @@ Real games through the real UI and API (no mocked snapshots):
 3. A live 4-player game. Player 1 starts on the east coast and places a
    starting ship through the road-or-ship switch; then, through the UI, builds a
    ship, moves a ship, settles the gold island (island bonus), moves the pirate
-   and chooses gold. Other seats and filler turns are played over the API by a
-   simple bot (roll, trade with the bank, end the turn).
+   and chooses gold; then plays Road Building as road + ship and as two ships
+   and a Knight that moves the pirate (the three cards are written into the
+   persisted hand while the service is stopped). Other seats and filler turns
+   are played over the API by a simple bot (roll, trade with the bank, end the
+   turn).
+4. The 5-player map in SVG and 3D.
 
 Each step asserts the DOM state it captures (targets present, prompt shown,
 board pieces drawn). ``report.json`` lists every case with its sha256.
@@ -25,15 +31,21 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import signal
+import sqlite3
 import subprocess
 import sys
+import tempfile
+import time
+import urllib.request
 import uuid
 from pathlib import Path
 
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-BASE = os.environ.get('UI_BASE_URL', 'http://127.0.0.1:3022')
+PORT = int(os.environ.get('SF_PORT', '3023'))
+BASE = f'http://127.0.0.1:{PORT}'
 if len(sys.argv) != 2:
     sys.exit('usage: capture.py <new empty output directory>')
 OUT = Path(sys.argv[1])
@@ -53,6 +65,51 @@ ERRORS: list[str] = []
 
 def log(*parts):
     print(*parts, flush=True)
+
+
+# ------------------------------------------------------------------------ server
+
+class Server:
+    """The built service on a private SQLite file, restartable for fixture patches."""
+
+    def __init__(self):
+        self.data = Path(tempfile.mkdtemp(prefix='katan-seafarers-'))
+        self.sqlite = self.data / 'seafarers.sqlite'
+        self.child = None
+
+    def start(self):
+        env = {**os.environ, 'PORT': str(PORT), 'HOST': '127.0.0.1', 'SQLITE_PATH': str(self.sqlite),
+               'WEB_DIST_PATH': str(ROOT / 'packages/web/dist'), 'LOG_LEVEL': 'warn'}
+        self.child = subprocess.Popen(['node', str(ROOT / 'packages/server/dist/server.mjs')], cwd=ROOT, env=env,
+                                      stdout=open(self.data / 'server.log', 'ab'), stderr=subprocess.STDOUT)
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            try:
+                with urllib.request.urlopen(f'{BASE}/healthz', timeout=1) as response:
+                    if response.status == 200:
+                        return
+            except OSError:
+                time.sleep(0.2)
+        raise AssertionError('service did not become healthy')
+
+    def stop(self):
+        if self.child and self.child.poll() is None:
+            self.child.send_signal(signal.SIGTERM)
+            self.child.wait(timeout=20)
+        self.child = None
+
+    def patch_game(self, game_id, mutate):
+        """Test-only fixture: edit the persisted snapshot while the service is down."""
+        self.stop()
+        with sqlite3.connect(self.sqlite) as db:
+            (raw,) = db.execute('SELECT state_json FROM games WHERE id = ?', (game_id,)).fetchone()
+            state = json.loads(raw)
+            mutate(state)
+            db.execute('UPDATE games SET state_json = ? WHERE id = ?', (json.dumps(state), game_id))
+        self.start()
+
+
+SERVER = Server()
 
 
 # --------------------------------------------------------------------------- API
@@ -325,14 +382,22 @@ def open_actions(page):
 # --------------------------------------------------------------------------- main
 
 def main():
+    SERVER.start()
+    try:
+        run()
+    finally:
+        SERVER.stop()
+
+
+def run():
     names = ['海岸領航員', 'Mira', '阿卡', 'Jonas', 'Ilse', 'Tomas']
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
 
         # Maps for 3 and 6 players (setup boards).
-        for count in (() if os.environ.get('SF_SKIP_MAPS') else (3, 6)):
+        for count in (() if os.environ.get('SF_SKIP_MAPS') else (3, 5, 6)):
             contexts, pages, _, game_id = start_game(browser, count, names)
-            map_shots(browser, contexts, pages, game_id, count, phone=count == 3 or count == 6)
+            map_shots(browser, contexts, pages, game_id, count, phone=count != 5)
             for context in contexts:
                 context.close()
 
@@ -469,12 +534,96 @@ def live_game(browser, contexts, pages, identity, game_id):
         shot(page, 'live-after-gold-svg', 'gold paid; seat panel with island bonus')
         open_game(page, game_id, 'r3f')
         shot(page, 'live-board-3d', 'live board in 3D', ms=2500)
+        development_cards(table, page, game_id)
 
 
 def ui_click_target_noconfirm(page, kind, index):
     target = page.get_by_test_id(f'target-{kind}-{index}')
     expect(target).to_be_attached()
     target.click(force=True)
+
+
+
+def development_cards(table: Table, page, game_id):
+    """Road Building with ships (road + ship, then two ships) and a Knight moving the pirate.
+
+    The cards are a test-only fixture written into player 1's persisted hand
+    while the service is stopped; everything after that is ordinary play.
+    """
+    p1 = table.identity[0]
+
+    def give_cards(state):
+        player = next(p for p in state['players'] if p['id'] == p1)
+        player['devCards'] = ['roadBuilding', 'roadBuilding', 'knight'] + [c for c in player['devCards'] if c not in ('roadBuilding', 'knight')]
+    SERVER.patch_game(game_id, give_cards)
+    for other in table.pages:
+        other.reload()
+
+    def p1_action(view):
+        return view['turn']['playerId'] == p1 and view['turn']['phase'] == 'action' and view['pending'] is None
+
+    def p1_preroll(view):
+        return view['turn']['playerId'] == p1 and view['turn']['phase'] == 'preroll' and view['pending'] is None
+
+    def play_card(card):
+        button = page.get_by_test_id(f'play-{card}-0')
+        expect(button).to_be_attached()
+        expect(button).to_be_enabled()
+        button.dispatch_event('click')
+
+    def free_piece(kind):
+        hints = table.snapshot(p1)['view']['hints']
+        if kind == 'ship':
+            page.get_by_test_id('choose-ship').click()
+            edge = hints['modules']['seafarers']['legalShips'][0]
+        else:
+            edge = hints['legalRoads'][0]
+        ui_click_target(page, 'edge', edge)
+        ui_confirm(page)
+        expect(page.locator(f'[data-testid="{"ship" if kind == "ship" else "road"}-{edge}"]')).to_be_visible()
+
+    # Road Building 1: a road, then a ship.
+    play_until(table, p1_action, lambda view: False)
+    open_game(page, game_id, 'svg')
+    play_card('roadBuilding')
+    expect(page.get_by_test_id('ship-choice')).to_be_visible()
+    shot(page, 'live-road-building-start-svg', 'Road Building: road by default, ship switch offered')
+    free_piece('road')
+    expect(page.get_by_test_id('ship-choice')).to_be_visible()
+    free_piece('ship')
+    view = table.snapshot(p1)['view']
+    assert view['pending'] is None, view['pending']
+    shot(page, 'live-road-building-road-ship-svg', 'Road Building finished with one road and one ship')
+    assert table.act(p1, {'type': 'turn.end'})
+
+    # Road Building 2: two ships.
+    play_until(table, p1_action, lambda view: False)
+    open_game(page, game_id, 'svg')
+    before = sum(1 for road in table.snapshot()['view']['board']['roads'] if road and road['ship'] and road['player'] == p1)
+    play_card('roadBuilding')
+    free_piece('ship')
+    free_piece('ship')
+    view = table.snapshot(p1)['view']
+    after = sum(1 for road in view['board']['roads'] if road and road['ship'] and road['player'] == p1)
+    assert view['pending'] is None and after == before + 2, (view['pending'], before, after)
+    shot(page, 'live-road-building-two-ships-svg', 'Road Building finished with two ships')
+    assert table.act(p1, {'type': 'turn.end'})
+
+    # Knight before the roll: move the pirate to another sea hex.
+    play_until(table, p1_preroll, lambda view: False)
+    open_game(page, game_id, 'svg')
+    play_card('knight')
+    expect(page.get_by_test_id('bandit-choice')).to_be_visible()
+    expect(page.get_by_test_id('pirate-to-frame')).to_be_visible()
+    shot(page, 'live-knight-pirate-choice-svg', 'Knight: robber on land or pirate at sea / to the frame')
+    target = FIX['pirateSea']
+    ui_click_target(page, 'hex', target)
+    ui_confirm(page)
+    view = table.snapshot(p1)['view']
+    assert view['board']['pirate'] == target, view['board']['pirate']
+    assert view['players'][0]['playedKnights'] >= 1
+    open_game(page, game_id, 'r3f')
+    shot(page, 'live-knight-pirate-moved-3d', 'pirate moved by a Knight', ms=2500)
 
 
 if __name__ == '__main__':

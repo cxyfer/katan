@@ -79,3 +79,30 @@ them, so each pair is one small island for the bonus.
 - **5–6 main-island discs.** B56-25 deals discs in their printed A–Z order
   along a spiral; the engine's base 5–6 variable board shuffles them (FIDELITY
   gap 3), and the New Shores main island uses that same procedure.
+
+## What was built
+
+| Area | Files | Notes for later phases |
+|---|---|---|
+| Maps | `packages/rules/src/seafarers-boards.ts`, registered in `topology-registry.ts` / `layout-registry.ts` | topologies `sf-new-shores-3`, `-4`, `-56`; builder `sf-new-shores`; `MAIN_ISLAND = 1` |
+| Sea-aware engine | `engine.ts`, `analysis.ts` (`isLandHex`, `isLandVertex`, `isLandEdge`, `isSeaEdge`) | buildings need land, roads need a land edge and extend only roads, robber on land, trade route joins road/ship only at an own building; base digests unchanged |
+| Hooks | `modules/types.ts`, `modules/README.md` | `allowBuilding`, `moveBandit` (+ `BanditMove`), `freeRouteTargets`; `afterBoardChange(state, ModuleContext)`; kit `legalRoads`, `placedFreeRoute` |
+| Module | `modules/seafarers/` (`ships.ts`, `pirate.ts`, `gold.ts`, `islands.ts`, `state.ts`, `messages.ts`) | commands `build.ship`, `ship.move`, `setup.placeShip`, `gold.choose`; frame `seafarers.gold`; module state per action window (`built`, `moved`) and island claims |
+| Profiles | `profiles.ts` | both `sf-new-shores-*` enabled; paired profile uses the B56-25 deck and `variable` setup |
+| Web | `board/seafarers.ts`, `board/sea.ts`, `components/SvgSeafarers.tsx`, `components/SeafarersPrompt.tsx`, `board/three/diorama-ships.ts`, `board/three/DioramaSeafarers.tsx`, `i18n/modules/seafarers*.ts`, `audio/` | ship/pirate/island-token art (SVG + procedural 3D), sea targets at the water plane, ship build/move actions, robber-or-pirate prompt with the frame, gold picker, road-or-ship switch, scoring and help, five new cues |
+| Evidence | `packages/rules/test/seafarers-*.test.ts`, `packages/server/test/seafarers.test.ts`, `packages/web/test/seafarers.test.tsx`, `scripts/seafarers/` | R-SF fixture map in `docs/FIDELITY.md` |
+
+## Verification
+
+- Rules: layouts (5), ships and moves (18), pirate/gold/routes/islands/paired/privacy (20), simulated 3/4/5/6-player games (5); base regression digests unchanged.
+- Service: New Shores room by ruleset parts, 3-player game start, idempotent `setup.placeShip` receipt.
+- Web: 7 client tests (actions, intents, gold picker, SVG pieces, sea target heights, event text in both locales).
+- Browser: `scripts/seafarers/capture.py` (curated captures in `docs/screenshots/seafarers/`), and the P0 base harness comparing the base boards byte-for-byte with the P0 references (`2026-11-01-seafarers/base-compare-report.json`).
+- `pnpm verify` results are recorded in the PR.
+
+## Limitations
+
+- No human playtest, physical device or screen-reader check of the expansion.
+- 3/4-player variable setup (SF25 p. 5) is not offered; other Seafarers scenarios are out of scope.
+- Open fixture: SF-FAQ 18 ship-circle cases vs SF25 p. 2 (SF25 implemented).
+- PostgreSQL repository tests were not run (no `TEST_POSTGRES_URL`).
