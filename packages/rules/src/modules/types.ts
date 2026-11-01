@@ -139,7 +139,11 @@ export interface RulesModule {
   pendingCommands?: readonly string[];
   /** Runs after every board change (build, setup placement, robber move). */
   afterBoardChange?(state: GameState, ctx: ModuleViewContext): void;
-  /** Resolves a continuation frame (`responders: []`) of this module. */
+  /**
+   * Resolves a continuation frame (`responders: []`) of this module when it
+   * becomes active. The engine advances the queue afterwards, so the hook
+   * must not call `kit.completePending` for that frame itself.
+   */
   resumePending?(state: GameState, frame: ModulePending, ctx: ModuleContext): void;
 
   // -- scoring ---------------------------------------------------------------

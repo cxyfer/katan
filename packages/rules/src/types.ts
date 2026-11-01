@@ -303,6 +303,11 @@ export interface GameState {
   /** Public log kept inside the snapshot for deterministic recovery. */
   log: GameEvent[];
   /**
+   * Server-only state owned by rules modules, keyed by module id. Absent for
+   * base games; it reaches clients only through each module's `project` hook.
+   */
+  moduleState?: Record<string, unknown>;
+  /**
    * Post-game statistics. Absent from snapshots written before statistics
    * existed; the engine then initialises them on the next transition.
    */
