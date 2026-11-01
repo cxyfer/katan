@@ -20,7 +20,15 @@ export type Terrain =
   | 'mountains'
   | 'desert'
   | 'gold'
-  | 'sea';
+  | 'sea'
+  // Traders & Barbarians scenario hexes; none of them produces resources.
+  | 'lake'
+  | 'swamp'
+  | 'oasis'
+  | 'castle'
+  | 'quarry'
+  | 'glassworks'
+  | 'keep';
 
 export const TERRAIN_RESOURCE: Partial<Record<Terrain, Resource>> = {
   forest: 'lumber',
@@ -48,7 +56,15 @@ export const PLAYER_COLORS: readonly PlayerColor[] = [
   'brown',
 ];
 
-export type DevCardType = 'knight' | 'victoryPoint' | 'roadBuilding' | 'yearOfPlenty' | 'monopoly';
+export type DevCardType =
+  | 'knight'
+  | 'victoryPoint'
+  | 'roadBuilding'
+  | 'yearOfPlenty'
+  | 'monopoly'
+  // Traders & Barbarians scenario deck.
+  | 'barbarianKnight'
+  | 'swiftJourney';
 
 export type ProgressCardType =
   | 'alchemist'
@@ -90,10 +106,16 @@ export interface BoardLayout {
   harbors: Harbor[];
   /** Island id per hex index (Seafarers). */
   islands: number[];
-  /** Hex index of the robber at setup. */
+  /** Hex index of the robber at setup; -1 when it starts beside the board. */
   robber: number;
   /** Hex index of the pirate, when the profile has one. */
   pirate: number | null;
+  /**
+   * Extra production numbers per hex (a hex that also produces on another
+   * total, e.g. a Traders & Barbarians river hex holding both 2 and 12).
+   * Omitted when no hex has one.
+   */
+  extraNumbers?: { hex: number; number: number }[];
 }
 
 export interface BuildingRef {
@@ -104,6 +126,8 @@ export interface BuildingRef {
 export interface RoadRef {
   player: string;
   ship: boolean;
+  /** A bridge on a river bridge site (Traders & Barbarians); a road for routes, not for piece limits. */
+  bridge?: boolean;
 }
 
 export interface BoardState {
@@ -247,6 +271,12 @@ export interface Offer {
   /** Resources the proposer receives. */
   want: Partial<Record<Resource, number>>;
   windowId: number;
+  /**
+   * Non-resource goods a rules module lets players trade (for example gold
+   * coins), keyed by good id. Omitted when the offer has none.
+   */
+  giveGoods?: Record<string, number>;
+  wantGoods?: Record<string, number>;
   status: OfferStatus;
   responses: Record<string, OfferResponse>;
   agreedWith: string | null;

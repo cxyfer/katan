@@ -35,13 +35,22 @@ profile rows, layout builder and i18n catalog file.
 | commands | `commands` / `pendingCommands` | module-owned command types; types accepted while a frame is pending |
 | board | `afterBoardChange` | after every board change, after awards are recomputed |
 | pending | `resumePending` | when a continuation frame (`responders: []`) of the module becomes active |
+| roll | `sevenRobberStep` | after a 7's discards: a frame replacing `moveRobber`, `null` for none |
+| robber | `robberTargets` / `stealCandidates` | narrow the robber's hexes and victims (7 and Knight) |
+| production | `hexProduces` / `productionAmount` | block a hex, change one building's entitlement before the bank limit |
+| building | `roadAllowed` / `buildingAllowed` | extra placement conditions (setup and action phase, city upgrades) |
+| building | `afterBuild` | after a settlement, city or road is placed (setup included), with `ctx.rng` |
+| turn | `beforeEndTurn` | on `turn.end`; `'defer'` opens an end-of-turn phase that calls `kit.finishTurn` |
+| trade | `harborAccess` / `tradeGoods` | harbour use per building; non-resource goods in domestic offers |
+| awards | `awardRules` | adjust award minimums and route weights before awards are recomputed |
 | scoring | `score` | inside `scoreOf`, added to the base score |
+| scoring | `victoryTarget` | a player's own target (`victoryTargetOf`, `PublicPlayerView.victoryTarget`) |
 | projection | `project` / `projectPending` / `actionHints` | `GameView.modules[id]`, module frames, `ActionHints.modules[id]` |
 
 Hooks get a `ModuleContext` (`profile`, `rng`, `kit`). `kit` exposes the engine
 services a module needs (`emit`, `fail`, `accept`, `payBuild`,
 `afterBoardChange`, `checkVictory`, `enqueuePending`, `completePending`,
-`resolveRollOutcome`, `finishSetupStep`, …) so module files never import
+`resolveRollOutcome`, `finishSetupStep`, `finishTurn`, …) so module files never import
 `engine.ts`. Module files must not call engine or analysis helpers at module
 top level (imports are cyclic through `registry.ts`).
 
@@ -70,3 +79,14 @@ locales to translate them. Module state goes in
 `setModuleState(state, '<id>', …)`; it is persisted in the snapshot and is
 never projected except through `project`. Randomness only comes from
 `ctx.rng`, and every outcome is stored in the state.
+
+## Board data for modules
+
+- `BoardLayout.extraNumbers` gives a hex a second production number (a river
+  hex holding both 2 and 12); the board view repeats it.
+- `RoadRef.bridge` marks a bridge: it is a road for connectivity and routes,
+  but `countRoads` (the road supply) skips it.
+- `TopologyDefinition.interiorPaths` adds a plaza vertex at a hex centre with
+  path edges to chosen corners; both carry `interior: true`, come after the
+  regular indices and are never coast.
+- `BoardLayout.robber = -1` starts the robber beside the board.

@@ -13,7 +13,7 @@
  * uses `ctx.rng` and stores every outcome in the state.
  */
 
-import type { ProductionResult, ScoreOptions } from '../analysis.ts';
+import type { AwardRules, ProductionResult, ScoreOptions } from '../analysis.ts';
 import type { CommandErrorCode } from '../messages.ts';
 import type { ProfileDefinition } from '../profiles.ts';
 import type { Rng } from '../rng.ts';
@@ -68,6 +68,12 @@ export interface RulesKit {
   resolveRollOutcome(state: GameState, roll: RollResult, rng?: Rng): void;
   /** Completes the current setup placement step (after its road/ship). */
   finishSetupStep(state: GameState): void;
+  /**
+   * Ends the current action window and opens the next one, without running
+   * `beforeEndTurn` again. A module that deferred the end of a turn calls this
+   * once its end-of-turn frames are resolved.
+   */
+  finishTurn(state: GameState): void;
 }
 
 export interface ModuleContext {
@@ -92,6 +98,27 @@ export interface RollResult {
 export interface SetupStep {
   playerId: string;
   round: 1 | 2;
+}
+
+/** A piece the engine just placed (setup or action phase). */
+export interface BuildEvent {
+  playerId: string;
+  piece: 'settlement' | 'city' | 'road';
+  vertex?: number;
+  edge?: number;
+  /** Placed during initial setup. */
+  setup: boolean;
+  /** Placed without paying (Road Building). */
+  free: boolean;
+}
+
+/** Non-resource goods a module lets players trade (e.g. gold coins). */
+export interface TradeGoods {
+  /** Good ids tradeable in this state. */
+  ids(state: GameState): readonly string[];
+  balance(state: GameState, playerId: string, good: string): number;
+  /** Moves goods between players; amounts were checked against `balance`. */
+  transfer(state: GameState, from: string, to: string, good: string, amount: number): void;
 }
 
 export type ModuleCommandHandler = (
@@ -128,6 +155,12 @@ export interface RulesModule {
    * calls `kit.resolveRollOutcome` from a continuation frame.
    */
   beforeProduction?(state: GameState, roll: RollResult, ctx: ModuleContext): 'continue' | 'defer';
+  /**
+   * Replaces the robber step of a 7 (after discards). Return a frame to make
+   * active, `null` for no robber step, or `undefined` to keep the base
+   * `moveRobber` frame.
+   */
+  sevenRobberStep?(state: GameState, actorId: string, ctx: ModuleContext): PendingFrame | null | undefined;
   /** Discard threshold for a player on a 7 (base: 7 cards). */
   discardLimit?(state: GameState, player: PlayerState, base: number, ctx: ModuleViewContext): number;
   /** Adjusts the production results before they are paid out. */
@@ -140,6 +173,37 @@ export interface RulesModule {
   commands?: Readonly<Record<string, ModuleCommandHandler>>;
   /** Command types accepted while a frame is pending (base gate otherwise). */
   pendingCommands?: readonly string[];
+  /** Extra condition for a road on `edge` (setup and action phase). */
+  roadAllowed?(state: GameState, playerId: string, edge: number, ctx: ModuleViewContext): boolean;
+  /** Extra condition for a settlement or city on `vertex` (setup and action phase). */
+  buildingAllowed?(
+    state: GameState,
+    playerId: string,
+    vertex: number,
+    kind: 'settlement' | 'city',
+    ctx: ModuleViewContext,
+  ): boolean;
+  /** Runs after a settlement, city or road was placed (setup included). */
+  afterBuild?(state: GameState, build: BuildEvent, ctx: ModuleContext): void;
+  /**
+   * Runs when the actor ends their action phase. Return `'defer'` after
+   * enqueueing end-of-turn frames; the module then calls `kit.finishTurn`.
+   */
+  beforeEndTurn?(state: GameState, actorId: string, ctx: ModuleContext): 'continue' | 'defer';
+  /** Legal robber hexes; `targets` is the base list (every hex but the current one). */
+  robberTargets?(state: GameState, actorId: string, targets: number[], ctx: ModuleViewContext): number[];
+  /** Filters the players the robber may steal from at `hex`. */
+  stealCandidates?(state: GameState, hex: number, actorId: string, candidates: string[], ctx: ModuleViewContext): string[];
+  /** False when a hex yields nothing this roll (counted as blocked). */
+  hexProduces?(state: GameState, hex: number, ctx: ModuleViewContext): boolean;
+  /** Adjusts one building's entitlement on a producing hex, before the bank limit. */
+  productionAmount?(state: GameState, hex: number, vertex: number, amount: number, ctx: ModuleViewContext): number;
+  /** Whether a player's building at `vertex` may use the harbour there. */
+  harborAccess?(state: GameState, playerId: string, vertex: number, ctx: ModuleViewContext): boolean;
+  /** Adjusts the award rules (minimums, route weights) before awards are recomputed. */
+  awardRules?(state: GameState, rules: AwardRules, ctx: ModuleViewContext): AwardRules;
+  /** Goods besides resources that domestic offers may carry. */
+  tradeGoods?: TradeGoods;
   /** Runs after every board change (build, setup placement, robber move). */
   afterBoardChange?(state: GameState, ctx: ModuleViewContext): void;
   /**
@@ -152,6 +216,8 @@ export interface RulesModule {
   // -- scoring ---------------------------------------------------------------
   /** Victory points this module adds for a player. */
   score?(state: GameState, playerId: string, options: ScoreOptions, ctx: ModuleViewContext): number;
+  /** The points a player needs to win; `base` is the profile target. */
+  victoryTarget?(state: GameState, playerId: string, base: number, ctx: ModuleViewContext): number;
 
   // -- projection ------------------------------------------------------------
   /** Viewer-filtered module state, published as `GameView.modules[id]`. */

@@ -32,6 +32,8 @@ export interface VertexInfo {
   edges: number[];
   x: number;
   y: number;
+  /** A point inside a hex (an interior-path plaza), not a hex corner. */
+  interior?: true;
 }
 
 export interface EdgeInfo {
@@ -40,6 +42,8 @@ export interface EdgeInfo {
   vertices: [number, number];
   x: number;
   y: number;
+  /** A path inside one hex (corner to plaza); never coast or harbour. */
+  interior?: true;
 }
 
 export interface BoardTopology {
@@ -117,6 +121,18 @@ export interface TopologyDefinition {
   id: string;
   hexes: readonly HexCoord[];
   harborSlots?: readonly HarborSlotSpec[];
+  /**
+   * Hexes crossed by paths to a plaza at their centre (Traders & Barbarians
+   * commodity hexes). Each listed corner (index into the corner order 30°,
+   * 90°, 150°, 210°, 270°, 330°, y downwards) gets an edge to a new centre
+   * vertex. Plaza vertices and path edges are appended after the regular ones,
+   * so the hex-corner indices match the same hex set without paths.
+   */
+  interiorPaths?: readonly InteriorPathSpec[];
+}
+
+export interface InteriorPathSpec extends HexCoord {
+  corners: readonly number[];
 }
 
 /**
@@ -137,8 +153,40 @@ export function buildTopologyFromHexes(definition: TopologyDefinition): BoardTop
   if (seen.size === 0) throw new Error(`topology ${definition.id}: no hexes`);
   const coords = definition.hexes.map(({ q, r }) => ({ q, r }));
   const radius = Math.max(...coords.map((c) => Math.max(Math.abs(c.q), Math.abs(c.r), Math.abs(c.q + c.r))));
-  return buildTopologyFromCoords(coords, definition.id, radius, (_coastal, edges, hexes) =>
+  const topology = buildTopologyFromCoords(coords, definition.id, radius, (_coastal, edges, hexes) =>
     (definition.harborSlots ?? []).map((slot) => harborSlotEdge(definition.id, slot, edges, hexes)));
+  for (const path of definition.interiorPaths ?? []) addInteriorPaths(topology, path);
+  return topology;
+}
+
+/** Appends a plaza vertex at a hex centre and an edge to each listed corner. */
+function addInteriorPaths(topology: BoardTopology, path: InteriorPathSpec): void {
+  const hex = topology.hexes.findIndex((candidate) => candidate.q === path.q && candidate.r === path.r);
+  if (hex < 0) throw new Error(`topology ${topology.id}: interior path on unknown hex ${path.q},${path.r}`);
+  const centre = topology.hexes[hex]!;
+  const plaza = topology.vertices.length;
+  topology.vertices.push({ hexes: [hex], edges: [], x: centre.x, y: centre.y, interior: true });
+  const exact = hexCenter(centre);
+  for (const corner of path.corners) {
+    const angle = CORNER_ANGLES[corner];
+    if (angle === undefined) throw new Error(`topology ${topology.id}: bad corner ${corner}`);
+    const x = exact.x + HEX_SIZE * Math.cos(angle);
+    const y = exact.y + HEX_SIZE * Math.sin(angle);
+    const vertex = topology.vertices.findIndex((info) =>
+      !info.interior && Math.abs(info.x - x) < 1e-4 && Math.abs(info.y - y) < 1e-4);
+    if (vertex < 0) throw new Error(`topology ${topology.id}: no corner ${corner} on ${path.q},${path.r}`);
+    const edge = topology.edges.length;
+    const a = topology.vertices[vertex]!;
+    topology.edges.push({
+      hexes: [hex],
+      vertices: [vertex, plaza],
+      x: round((a.x + centre.x) / 2),
+      y: round((a.y + centre.y) / 2),
+      interior: true,
+    });
+    a.edges.push(edge);
+    topology.vertices[plaza]!.edges.push(edge);
+  }
 }
 
 function harborSlotEdge(
