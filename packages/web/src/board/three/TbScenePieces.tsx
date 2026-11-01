@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { BoxGeometry, CylinderGeometry, type Material } from 'three';
+import { BoxGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, type Material } from 'three';
 import type { PublicBoardView } from '@catan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import { ModelBuilder, useDioramaGeometry } from './diorama-geometry.ts';
@@ -170,8 +170,44 @@ function trainWagons(b: ModelBuilder, context: TbPieceContext): boolean {
   return true;
 }
 
+const PLAYER_TINT: Record<string, string> = { red: '#c0392b', blue: '#2c6fb5', orange: '#d97b1f', white: '#f2f2f2', green: '#2e7d4f', brown: '#7b5230' };
+
+function figure(b: ModelBuilder, x: number, z: number, body: string, head: string, scale = 1) {
+  b.add(new CylinderGeometry(0.035 * scale, 0.05 * scale, 0.12 * scale, 8), body, [x, 0.06 * scale, z]);
+  b.add(new IcosahedronGeometry(0.035 * scale, 1), head, [x, 0.15 * scale, z]);
+}
+
+function barbarianFigures(b: ModelBuilder, context: TbPieceContext): boolean {
+  const slot = part<{ coastal: number[]; barbarians: Record<string, number>; conquered: number[]; knights: { player: string; edge: number }[] }>(context.modules, 'tb-barbarian-attack');
+  if (!slot) return false;
+  const { geometry } = context;
+  for (const hex of slot.coastal) {
+    const count = slot.barbarians[hex] ?? 0;
+    const centre = geometry.topology.hexes[hex]!;
+    if (slot.conquered.includes(hex)) {
+      b.add(new CylinderGeometry(0.62, 0.62, 0.01, 6), '#2a2624', [centre.x, 0.012, centre.y], [1, 1, 1], [0, Math.PI / 6, 0]);
+    }
+    for (let index = 0; index < count; index++) {
+      const x = centre.x - 0.42 + index * 0.17;
+      const z = centre.y - 0.35 + (index % 2) * 0.06;
+      figure(b, x, z, '#8a8f93', '#9aa0a4', 1.5);
+      // Horns.
+      b.add(new ConeGeometry(0.012, 0.05, 5), '#efe8d6', [x - 0.04, 0.27, z], [1, 1, 1], [0, 0, 0.6]);
+      b.add(new ConeGeometry(0.012, 0.05, 5), '#efe8d6', [x + 0.04, 0.27, z], [1, 1, 1], [0, 0, -0.6]);
+    }
+  }
+  for (const knight of slot.knights) {
+    const at = edgeYaw(context, knight.edge);
+    const color = context.players.find((player) => player.id === knight.player)?.color ?? 'white';
+    figure(b, at.x, at.z, PLAYER_TINT[color] ?? '#888888', '#c9cdd0', 1.6);
+    b.add(new BoxGeometry(0.008, 0.2, 0.008), '#3b2a1c', [at.x + 0.07, 0.18, at.z]);
+    b.add(new BoxGeometry(0.05, 0.03, 0.006), PLAYER_TINT[color] ?? '#888888', [at.x + 0.095, 0.26, at.z]);
+  }
+  return true;
+}
+
 /** Builders per scenario part; each returns false when its part is absent. */
-const BUILDERS: readonly ((b: ModelBuilder, context: TbPieceContext) => boolean)[] = [fishingGrounds, rivers, bridges, trainWagons];
+const BUILDERS: readonly ((b: ModelBuilder, context: TbPieceContext) => boolean)[] = [fishingGrounds, rivers, bridges, trainWagons, barbarianFigures];
 
 const IDENTITY: readonly InstanceTransform[] = [{ position: [0, 0, 0], rotationY: 0, scale: [1, 1, 1] }];
 

@@ -63,6 +63,8 @@ export interface Selection {
   extra?: Record<string, unknown>;
   /** Command field that receives the picked index (default: by `kind`). */
   field?: string;
+  /** Key of the module target list to use instead of the command type. */
+  targetsKey?: string;
 }
 
 export const EMPTY_SELECTION: Selection = {

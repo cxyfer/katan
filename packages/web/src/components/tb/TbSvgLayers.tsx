@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import type { GameView } from '@catan/rules';
 import type { BoardGeometry, Point } from '../../board/geometry.ts';
-import { pipsFor } from '../../board/terrain.ts';
+import { pipsFor, playerColorHex } from '../../board/terrain.ts';
 import { riverCourse } from '../../board/tb-rivers.ts';
 import { useT } from '../../i18n/context.tsx';
 import { tbPart } from './model.ts';
@@ -169,9 +169,93 @@ export function SvgWagon({ geometry, edge, color = '#9aa3a6', label }: { geometr
   );
 }
 
+interface BarbariansView {
+  castleEdges: number[];
+  coastal: number[];
+  barbarians: Record<string, number>;
+  conquered: number[];
+  conqueredBuildings: number[];
+  knights: { player: string; edge: number }[];
+  orientations: Record<string, 'slash' | 'backslash' | 'vertical'>;
+}
+
+const ORIENTATION_COLOR = { slash: '#7b3fa0', backslash: '#2e8b57', vertical: '#8a5a2b' } as const;
+
+/** A barbarian figure (grey raider with horns). */
+function SvgBarbarian({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`} className="tb-barbarian" aria-hidden="true">
+      <ellipse cy={13} rx={9} ry={3} fill="#10242c" opacity={0.35} />
+      <path d="M-7 13v-10q0-7 7-7t7 7v10Z" fill="#8a8f93" stroke="#2e2a24" strokeWidth={1.6} />
+      <circle cy={-9} r={5.5} fill="#9aa0a4" stroke="#2e2a24" strokeWidth={1.6} />
+      <path d="M-5-12l-4-5M5-12l4-5" stroke="#efe8d6" strokeWidth={2.2} strokeLinecap="round" />
+    </g>
+  );
+}
+
+/** A knight on an edge in the owner's colour. */
+function SvgKnight({ geometry, edge, color, label }: { geometry: BoardGeometry; edge: number; color: string; label: string }) {
+  const line = geometry.edges[edge];
+  if (!line) return null;
+  const x = (line.x1 + line.x2) / 2;
+  const y = (line.y1 + line.y2) / 2;
+  return (
+    <g transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`} className="tb-knight" data-testid={`tb-knight-${edge}`}>
+      <ellipse cy={12} rx={10} ry={3.5} fill="#10242c" opacity={0.4} />
+      <path d="M-8 12v-9q0-8 8-8t8 8v9Z" fill={color} stroke="#20180f" strokeWidth={2} />
+      <circle cy={-9} r={6} fill="#c9cdd0" stroke="#20180f" strokeWidth={1.8} />
+      <path d="M-4-9h8" stroke="#20180f" strokeWidth={1.6} />
+      <path d="M10-18v24M10-18l7 3-7 3" stroke="#20180f" strokeWidth={1.6} fill={color} />
+      <title>{label}</title>
+    </g>
+  );
+}
+
+function BarbarianLayer({ geometry, view, ba }: { geometry: BoardGeometry; view: GameView; ba: BarbariansView }) {
+  const t = useT();
+  const conquered = new Set(ba.conquered);
+  return (
+    <g className="tb-ba">
+      {ba.castleEdges.map((edge) => {
+        const line = geometry.edges[edge]!;
+        const orientation = ba.orientations[edge] ?? 'vertical';
+        return <circle key={`castle-${edge}`} cx={(line.x1 + line.x2) / 2} cy={(line.y1 + line.y2) / 2} r={5}
+          fill={ORIENTATION_COLOR[orientation]} stroke="#f7ecd0" strokeWidth={1.5} aria-hidden="true" />;
+      })}
+      {ba.coastal.map((hex) => {
+        const count = ba.barbarians[hex] ?? 0;
+        const center = geometry.hexes[hex]!;
+        return (
+          <g key={`barbarians-${hex}`} data-testid={`tb-barbarians-${hex}`} data-count={count}>
+            {conquered.has(hex) && <polygon points={center.points} fill="#1d1b1a" opacity={0.42} pointerEvents="none" />}
+            {Array.from({ length: count }, (_, index) => (
+              <SvgBarbarian key={index} x={center.cx - 44 + index * 17} y={center.cy - 40 + (index % 2) * 6} />
+            ))}
+            {count > 0 && <title>{t('tb.ba.barbarian', { count })}</title>}
+          </g>
+        );
+      })}
+      {ba.conqueredBuildings.map((vertex) => {
+        const point = geometry.vertices[vertex];
+        return point ? <g key={`conquered-${vertex}`} aria-hidden="true">
+          <circle cx={point.x} cy={point.y} r={18} fill="none" stroke="#1d1b1a" strokeWidth={4} opacity={0.8} />
+          <path d={`M${point.x - 12} ${point.y - 12}l24 24`} stroke="#1d1b1a" strokeWidth={4} opacity={0.8} />
+        </g> : null;
+      })}
+      {ba.knights.map((knight) => {
+        const owner = view.players.find((player) => player.id === knight.player);
+        return <SvgKnight key={`knight-${knight.edge}`} geometry={geometry} edge={knight.edge}
+          color={playerColorHex(owner?.color ?? 'white')} label={`${t('tb.ba.knight')} · ${owner?.nickname ?? knight.player}`} />;
+      })}
+    </g>
+  );
+}
+
 export function TbSvgOver({ geometry, view }: { geometry: BoardGeometry; view: GameView }) {
   const t = useT();
   const trains = tbPart<TrainsView>(view, 'tb-merchant-trains');
+  const ba = tbPart<BarbariansView>(view, 'tb-barbarian-attack');
+  if (ba) return <BarbarianLayer geometry={geometry} view={view} ba={ba} />;
   if (!trains) return null;
   const used = new Set(trains.wagons.map((wagon) => wagon.edge));
   return (

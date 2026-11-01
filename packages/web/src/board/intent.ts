@@ -21,6 +21,8 @@ export interface BoardIntent {
   extra?: Record<string, unknown>;
   /** Command field receiving the picked index (rules-module targets). */
   field?: string;
+  /** Module target list the targets came from (kept with the selection). */
+  targetsKey?: string;
 }
 
 /**
@@ -102,10 +104,11 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
       kind,
       commandType: armed,
       labelId: state.selection.labelId ?? armed,
-      targets: targetsFor(state, armed, selfId),
-      fromHints: armed.startsWith('build.') || moduleTargets(state, armed) !== null,
+      targets: state.selection.targetsKey ? moduleTargets(state, state.selection.targetsKey) ?? [] : targetsFor(state, armed, selfId),
+      fromHints: armed.startsWith('build.') || moduleTargets(state, state.selection.targetsKey ?? armed) !== null,
       ...(state.selection.extra ? { extra: state.selection.extra } : {}),
       ...(state.selection.field ? { field: state.selection.field } : {}),
+      ...(state.selection.targetsKey ? { targetsKey: state.selection.targetsKey } : {}),
     };
   }
 

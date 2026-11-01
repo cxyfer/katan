@@ -136,6 +136,7 @@ export function BoardView({ controller }: { controller: TableController }) {
       kind, index, commandType: intent.commandType, labelId: intent.labelId,
       ...(intent.extra ? { extra: intent.extra } : {}),
       ...(intent.field ? { field: intent.field } : {}),
+      ...(intent.targetsKey ? { targetsKey: intent.targetsKey } : {}),
     });
   }, [actions, intent]);
   const focusedRoll = animation.activeDice;

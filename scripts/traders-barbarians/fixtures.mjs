@@ -101,6 +101,30 @@ const SCENARIOS = {
       trains.supply = 22 - trains.wagons.length;
     },
   },
+  'tb-barbarian-attack': {
+    profileId: 'tb-barbarian-attack-2025',
+    seed: 24,
+    dress(state) {
+      const ba = tb(state)['tb-barbarian-attack'];
+      const topology = rules.getTopology(state.board.layout.topologyId);
+      // Barbarians on four coastal hexes, one of them conquered.
+      ba.coastal.slice(0, 4).forEach((hex, index) => { ba.barbarians[hex] = [3, 2, 1, 1][index]; });
+      ba.supply = 36 - Object.values(ba.barbarians).reduce((sum, count) => sum + count, 0);
+      const edgesOf = (hex) => topology.edges.map((info, edge) => (info.hexes.includes(hex) ? edge : -1)).filter((edge) => edge >= 0);
+      const castleEdges = edgesOf(ba.castle);
+      ba.knights = [
+        { player: 'p1', edge: castleEdges[0] },
+        { player: 'p1', edge: edgesOf(ba.coastal[1])[2] },
+        { player: 'p2', edge: edgesOf(ba.coastal[1])[4] },
+        { player: 'p3', edge: edgesOf(ba.coastal[3])[1] },
+      ];
+      ba.prisoners = { p1: 3, p2: 1, p3: 0, p4: 2 };
+      ba.deck = ba.deck.slice(4);
+      ba.discard = ['knighthood', 'capture', 'treason', 'knighthood'];
+      tb(state)['tb-coins'].gold = { p1: 5, p2: 3, p3: 0, p4: 6 };
+      tb(state)['tb-coins'].supply = 86;
+    },
+  },
 };
 
 const out = { profiles: rules.PROFILES.map(protocol.profileView), scenarios: {} };

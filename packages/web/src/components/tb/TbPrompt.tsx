@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import type { TableController } from '../../state/useTable.ts';
+import { BaStealChoice, KnightMovesChoice, TreasonChoice } from './BarbariansSection.tsx';
 import { FishSwapChoice } from './FishingSection.tsx';
 import { WagonBidChoice } from './TrainsSection.tsx';
 
@@ -7,6 +8,9 @@ import { WagonBidChoice } from './TrainsSection.tsx';
 const CHOICES: Readonly<Record<string, ComponentType<{ controller: TableController }>>> = {
   'tradersBarbarians.fishSwap': FishSwapChoice,
   'tradersBarbarians.wagonBid': WagonBidChoice,
+  'tradersBarbarians.baKnights': KnightMovesChoice,
+  'tradersBarbarians.baSteal': BaStealChoice,
+  'tradersBarbarians.baTreason': TreasonChoice,
 };
 
 /**

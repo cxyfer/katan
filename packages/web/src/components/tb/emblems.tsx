@@ -105,3 +105,38 @@ export function WagonEmblem({ size, color = '#9aa3a6' }: { size?: number; color?
     </Emblem>
   );
 }
+
+/** A barbarian raider. */
+export function BarbarianEmblem({ size }: { size?: number }) {
+  return (
+    <Emblem size={size}>
+      <circle cx="16" cy="9" r="5" fill="#8a8f93" stroke="#2e2a24" strokeWidth="1.2" />
+      <path d="M11 6l-3-3M21 6l3-3" stroke="#d8d2c2" strokeWidth="2" strokeLinecap="round" />
+      <path d="M9 29v-9q0-6 7-6t7 6v9Z" fill="#8a8f93" stroke="#2e2a24" strokeWidth="1.2" />
+      <path d="M23 18l5-6" stroke="#5b4630" strokeWidth="2" strokeLinecap="round" />
+    </Emblem>
+  );
+}
+
+/** A knight with a pennant in the player's colour. */
+export function KnightEmblem({ size, color = '#c0392b' }: { size?: number; color?: string }) {
+  return (
+    <Emblem size={size}>
+      <path d="M10 29v-8q0-7 6-7t6 7v8Z" fill={color} stroke="#2e2a24" strokeWidth="1.2" />
+      <circle cx="16" cy="10" r="5" fill="#c9cdd0" stroke="#2e2a24" strokeWidth="1.2" />
+      <path d="M13 10h6" stroke="#2e2a24" strokeWidth="1.2" />
+      <path d="M24 4v18M24 4l5 2-5 2" stroke="#2e2a24" strokeWidth="1.4" fill={color} />
+    </Emblem>
+  );
+}
+
+/** A castle gate. */
+export function CastleEmblem({ size }: { size?: number }) {
+  return (
+    <Emblem size={size}>
+      <path d="M4 29V12h4v3h4v-3h8v3h4v-3h4v17Z" fill="#b9b2a2" stroke="#2e2a24" strokeWidth="1.2" />
+      <path d="M13 29v-7q3-4 6 0v7Z" fill="#5a3d26" />
+      <path d="M8 12V6l2 2 2-2v6M20 12V6l2 2 2-2v6" fill="#b5523a" />
+    </Emblem>
+  );
+}
