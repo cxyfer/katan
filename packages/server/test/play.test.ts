@@ -19,9 +19,12 @@ beforeAll(async () => {
   staticDir = mkdtempSync(join(tmpdir(), 'catan-web-'));
   writeFileSync(
     join(staticDir, 'index.html'),
-    '<!doctype html><title>CATAN client</title><meta property="og:image" content="__PUBLIC_ORIGIN__/og-image.png" />',
+    '<!doctype html><title>CATAN client</title><link rel="canonical" href="__PUBLIC_ORIGIN__/" />'
+      + '<meta property="og:image" content="__PUBLIC_ORIGIN__/og-image.png" />',
   );
   writeFileSync(join(staticDir, 'app.js'), 'console.log("client");');
+  writeFileSync(join(staticDir, 'favicon.ico'), '');
+  writeFileSync(join(staticDir, 'site.webmanifest'), '{}');
   staticHarness = await startHarness({ webDistPath: staticDir });
 });
 
@@ -202,6 +205,13 @@ describe('static client delivery', () => {
     expect(asset.headers.get('content-type')).toContain('text/javascript');
   });
 
+  it('serves site icons and the web manifest with their own content types', async () => {
+    const icon = await fetch(`${staticHarness.base}/favicon.ico`);
+    expect(icon.headers.get('content-type')).toBe('image/x-icon');
+    const manifest = await fetch(`${staticHarness.base}/site.webmanifest`);
+    expect(manifest.headers.get('content-type')).toBe('application/manifest+json');
+  });
+
   it('falls back to the client entry point for unknown routes', async () => {
     const route = await fetch(`${staticHarness.base}/room/ABC12345`);
     expect(route.status).toBe(200);
@@ -212,7 +222,10 @@ describe('static client delivery', () => {
     const res = await fetch(`${staticHarness.base}/room/ABC12345`, {
       headers: { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'catan.example.com' },
     });
-    expect(await res.text()).toContain('content="https://catan.example.com/og-image.png"');
+    const html = await res.text();
+    expect(html).toContain('content="https://catan.example.com/og-image.png"');
+    // 房間網址也以站點根目錄為 canonical，避免邀請連結被當成獨立頁面
+    expect(html).toContain('href="https://catan.example.com/"');
   });
 
   it('rejects malformed forwarded hosts instead of injecting them', async () => {

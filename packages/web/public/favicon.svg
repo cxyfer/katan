@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100">
+  <!-- 與 GameArt.tsx 的 HexEmblem 同一徽記：黃銅六角框內的七格地形花窗 -->
+  <defs>
+    <linearGradient id="brass" x1="0" y1="-1" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6dca0" />
+      <stop offset=".55" stop-color="#d4a356" />
+      <stop offset="1" stop-color="#8f6630" />
+    </linearGradient>
+    <polygon id="tile" points="0,-9.4 8.14,-4.7 8.14,4.7 0,9.4 -8.14,4.7 -8.14,-4.7" />
+  </defs>
+  <polygon points="0,-47 40.7,-23.5 40.7,23.5 0,47 -40.7,23.5 -40.7,-23.5" fill="url(#brass)" />
+  <polygon points="0,-41 35.51,-20.5 35.51,20.5 0,41 -35.51,20.5 -35.51,-20.5" fill="#0f3440" />
+  <g stroke="#0f3440" stroke-width="1.2" transform="rotate(30)">
+    <use href="#tile" transform="rotate(-30)" fill="#e3c173" />
+    <use href="#tile" transform="translate(0 -17.3) rotate(-30)" fill="#9eaaa4" />
+    <use href="#tile" transform="translate(15 -8.66) rotate(-30)" fill="#d39a72" />
+    <use href="#tile" transform="translate(15 8.66) rotate(-30)" fill="#7f9a69" />
+    <use href="#tile" transform="translate(0 17.3) rotate(-30)" fill="#afc786" />
+    <use href="#tile" transform="translate(-15 8.66) rotate(-30)" fill="#d6bb72" />
+    <use href="#tile" transform="translate(-15 -8.66) rotate(-30)" fill="#6f8c5e" />
+  </g>
+  <path d="M-5 3.5v-4l5-4 5 4v4Z" fill="#c8553d" stroke="#3b2418" stroke-width="1.2" stroke-linejoin="round" />
+</svg>
