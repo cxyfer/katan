@@ -14,7 +14,9 @@ import type {
   RulesModule,
 } from '../types.ts';
 import './boards.ts';
+import { coinsPart } from './coins/index.ts';
 import { fishingPart } from './fishing/index.ts';
+import { riversPart } from './rivers/index.ts';
 import { TB, type TbPart } from './part.ts';
 import { friendlyRobberPart } from './variants/friendlyRobber.ts';
 import { harborsPart } from './variants/harbors.ts';
@@ -22,6 +24,7 @@ import { harborsPart } from './variants/harbors.ts';
 /** Scenario id → parts it runs, shared parts first. */
 const SCENARIO_PARTS: Readonly<Record<string, readonly TbPart[]>> = {
   'tb-fishing': [fishingPart],
+  'tb-rivers': [coinsPart, riversPart],
 };
 
 /** Variant id → part. */

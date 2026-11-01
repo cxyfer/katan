@@ -61,3 +61,20 @@ export const fishingBot: SimulationBot = {
     return out;
   },
 };
+
+/** Bridges when possible, buys with gold, sometimes sells for gold. */
+export const riversBot: SimulationBot = {
+  actions(state, actor, step) {
+    const out: Command[] = [];
+    const rivers = tb<{ bridgeSites: number[] }>(state, 'tb-rivers');
+    for (const edge of rivers.bridgeSites) out.push({ type: 'tb.buildBridge', edge } as unknown as Command);
+    const gold = tb<{ gold: Record<string, number> }>(state, 'tb-coins').gold[actor] ?? 0;
+    if (gold >= 2) out.push({ type: 'tb.buyResource', resource: poorest(state, actor) } as unknown as Command);
+    if (step % 4 === 0) {
+      const player = state.players.find((candidate) => candidate.id === actor)!;
+      const rich = RESOURCES.slice().sort((a, b) => player.resources[b] - player.resources[a])[0]!;
+      out.push({ type: 'tb.sellResources', resource: rich } as unknown as Command);
+    }
+    return out;
+  },
+};

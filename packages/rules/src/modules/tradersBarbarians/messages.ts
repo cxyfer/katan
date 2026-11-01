@@ -20,6 +20,12 @@ export const messages = {
     'tb.fishRoad',
     'tb.fishDevCard',
     'tb.bootGiven',
+    // Coins (Rivers, Barbarian Attack, Traders & Barbarians)
+    'tb.goldGained',
+    'tb.goldBought',
+    'tb.goldSold',
+    // Rivers of Catan
+    'tb.bridgeBuilt',
   ] as const,
   errorCodes: [
     // Fishing on Catan
@@ -28,5 +34,9 @@ export const messages = {
     'E_TB_NO_ROBBER',
     'E_TB_BOOT_NOT_HELD',
     'E_TB_BOOT_TARGET',
+    // Coins
+    'E_TB_PURCHASE_LIMIT',
+    'E_TB_GOLD_SHORT',
+    'E_TB_GOLD_SUPPLY_EMPTY',
   ] as const,
 };

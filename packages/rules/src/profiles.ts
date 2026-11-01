@@ -246,6 +246,12 @@ const TRADERS_BARBARIANS_PROFILES: readonly ProfileDefinition[] = [
     setupModes: ['variable'],
     enabled: true,
   }),
+  tbProfile('tb-rivers-2025', 'tb-rivers', [], 'pp. 11–12', {
+    layoutId: 'tb-rivers',
+    topologyId: 'tb-r2',
+    setupModes: ['variable'],
+    enabled: true,
+  }),
   tbProfile('tb-event-cards-2025', null, ['event-cards'], 'pp. 4–6', EVENT_DECK_CLOSED),
   tbProfile('tb-event-cards-friendly-robber-2025', null, ['event-cards', 'friendly-robber'], 'pp. 2, 4–6', EVENT_DECK_CLOSED),
   tbProfile('tb-event-cards-harbors-2025', null, ['event-cards', 'harbors'], 'pp. 2, 4–6', {
