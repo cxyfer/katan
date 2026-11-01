@@ -44,7 +44,7 @@ export function botLevelOf(member: { bot_level?: string | null }): BotLevel {
 
 /** Bot 策略只涵蓋基本規則（含 5–6 人 paired），不支援擴充模組。 */
 export function botsSupported(profile: ProfileDefinition): boolean {
-  return !profile.modules.seafarers && !profile.modules.citiesKnights;
+  return profile.ruleModules.length === 0;
 }
 
 /** Bot 席位永遠就緒。 */
