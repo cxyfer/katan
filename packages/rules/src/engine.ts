@@ -43,6 +43,7 @@ import {
   type CommandError,
   type CommandErrorCode,
   type CommandOutcome,
+  type DevCardType,
   type GameEvent,
   type GameState,
   type HarborType,
@@ -888,14 +889,20 @@ function canPlayDevCard(state: GameState, actorId: string): CommandOutcome | nul
   return null;
 }
 
+/**
+ * 只有先前回合持有的卡（`devCards`）可以打出；本回合新買的同類卡不影響舊卡。
+ * 手上只有新買的那張時回報 E_CARD_JUST_BOUGHT。
+ */
+function heldCardMissing(player: PlayerState, card: DevCardType): CommandOutcome {
+  if (player.newDevCards.includes(card)) return fail('E_CARD_JUST_BOUGHT', { card });
+  return fail('E_CARD_NOT_HELD', { card });
+}
+
 function playKnight(state: GameState, actorId: string, hex: number): CommandOutcome {
   const guard = canPlayDevCard(state, actorId);
   if (guard) return guard;
   const player = playerById(state, actorId)!;
-  if (!player.devCards.includes('knight')) {
-    if (player.newDevCards.includes('knight')) return fail('E_CARD_JUST_BOUGHT', { card: 'knight' });
-    return fail('E_CARD_NOT_HELD', { card: 'knight' });
-  }
+  if (!player.devCards.includes('knight')) return heldCardMissing(player, 'knight');
   const pool = player.devCards;
   const topo = topologyOf(state);
   if (!topo.hexes[hex]) return fail('E_ILLEGAL_TARGET', { hex });
@@ -936,8 +943,7 @@ function playRoadBuilding(state: GameState, actorId: string): CommandOutcome {
   const guard = canPlayDevCard(state, actorId);
   if (guard) return guard;
   const player = playerById(state, actorId)!;
-  if (!player.devCards.includes('roadBuilding')) return fail('E_CARD_NOT_HELD', { card: 'roadBuilding' });
-  if (player.newDevCards.includes('roadBuilding')) return fail('E_CARD_JUST_BOUGHT', { card: 'roadBuilding' });
+  if (!player.devCards.includes('roadBuilding')) return heldCardMissing(player, 'roadBuilding');
   player.devCards.splice(player.devCards.indexOf('roadBuilding'), 1);
   state.turn.devCardPlayed = true;
   playerStats(state, actorId).devCardsPlayed.roadBuilding += 1;
@@ -956,8 +962,7 @@ function playYearOfPlenty(state: GameState, actorId: string): CommandOutcome {
   const guard = canPlayDevCard(state, actorId);
   if (guard) return guard;
   const player = playerById(state, actorId)!;
-  if (!player.devCards.includes('yearOfPlenty')) return fail('E_CARD_NOT_HELD', { card: 'yearOfPlenty' });
-  if (player.newDevCards.includes('yearOfPlenty')) return fail('E_CARD_JUST_BOUGHT', { card: 'yearOfPlenty' });
+  if (!player.devCards.includes('yearOfPlenty')) return heldCardMissing(player, 'yearOfPlenty');
   // 銀行不足兩張時只給得出現有的張數；完全沒有時不能打出，卡片留在手上。
   const available = RESOURCES.reduce((sum, resource) => sum + state.bank[resource], 0);
   if (available <= 0) return fail('E_BANK_EMPTY', { card: 'yearOfPlenty' });
@@ -989,8 +994,7 @@ function playMonopoly(state: GameState, actorId: string, resource: Resource): Co
   if (guard) return guard;
   if (!RESOURCES.includes(resource)) return fail('E_INVALID_SELECTION');
   const player = playerById(state, actorId)!;
-  if (!player.devCards.includes('monopoly')) return fail('E_CARD_NOT_HELD', { card: 'monopoly' });
-  if (player.newDevCards.includes('monopoly')) return fail('E_CARD_JUST_BOUGHT', { card: 'monopoly' });
+  if (!player.devCards.includes('monopoly')) return heldCardMissing(player, 'monopoly');
   player.devCards.splice(player.devCards.indexOf('monopoly'), 1);
   state.turn.devCardPlayed = true;
   const stats = playerStats(state, actorId);

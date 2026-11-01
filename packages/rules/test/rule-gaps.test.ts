@@ -4,7 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { actionHints, legalRoadEdges } from '../src/engine.ts';
 import { getTopology } from '../src/topology-registry.ts';
 import type { GameState } from '../src/types.ts';
-import { act, expectRejected, placeBuilding, placeRoad, playableGame, setHand } from './helpers.ts';
+import {
+  act,
+  expectRejected,
+  placeBuilding,
+  placeRoad,
+  playableGame,
+  setHand,
+} from './helpers.ts';
 
 /** 清空盤面，回傳一個有三條邊的內部路口 B 與它的三個鄰點。 */
 function junction(state: GameState) {
@@ -107,4 +114,41 @@ describe('Year of Plenty with a short bank', () => {
     state.players[0]!.devCards = ['yearOfPlenty'];
     expectRejected(state, 'p1', { type: 'dev.playYearOfPlenty' }, 'E_BANK_EMPTY');
   });
+});
+
+describe('playing a card held from an earlier turn', () => {
+  for (const card of ['roadBuilding', 'yearOfPlenty', 'monopoly', 'knight'] as const) {
+    it(`allows an older ${card} after buying another this turn`, () => {
+      const { state } = playableGame({ players: 4 });
+      state.players[0]!.devCards = [card];
+      state.players[0]!.newDevCards = [card];
+      const hex = state.board.robber === 0 ? 1 : 0;
+      const command =
+        card === 'roadBuilding'
+          ? { type: 'dev.playRoadBuilding' as const }
+          : card === 'yearOfPlenty'
+            ? { type: 'dev.playYearOfPlenty' as const }
+            : card === 'monopoly'
+              ? { type: 'dev.playMonopoly' as const, resource: 'ore' as const }
+              : { type: 'dev.playKnight' as const, hex };
+      const played = act(state, 'p1', command).state;
+      expect(played.players[0]!.devCards).toEqual([]);
+      expect(played.players[0]!.newDevCards).toEqual([card]);
+    });
+
+    it(`still refuses a ${card} bought this turn when no older one is held`, () => {
+      const { state } = playableGame({ players: 4 });
+      state.players[0]!.devCards = [];
+      state.players[0]!.newDevCards = [card];
+      const command =
+        card === 'roadBuilding'
+          ? { type: 'dev.playRoadBuilding' as const }
+          : card === 'yearOfPlenty'
+            ? { type: 'dev.playYearOfPlenty' as const }
+            : card === 'monopoly'
+              ? { type: 'dev.playMonopoly' as const, resource: 'ore' as const }
+              : { type: 'dev.playKnight' as const, hex: state.board.robber === 0 ? 1 : 0 };
+      expectRejected(state, 'p1', command, 'E_CARD_JUST_BOUGHT');
+    });
+  }
 });
