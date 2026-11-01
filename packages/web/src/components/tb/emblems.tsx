@@ -140,3 +140,19 @@ export function CastleEmblem({ size }: { size?: number }) {
     </Emblem>
   );
 }
+
+const COMMODITY_TINT: Record<string, string> = { marble: '#f1eee6', sand: '#e6c27a', glass: '#6fb6d8', tools: '#8a8f93' };
+
+/** A commodity token: marble block, sand heap, glass pane or tools. */
+export function CommodityEmblem({ size, commodity }: { size?: number; commodity: string }) {
+  const tint = COMMODITY_TINT[commodity] ?? '#cccccc';
+  return (
+    <Emblem size={size}>
+      <rect x="1.5" y="1.5" width="29" height="29" rx="5" fill="#f2c94c" stroke="#8a6414" strokeWidth="1.5" />
+      {commodity === 'marble' && <path d="M7 22l4-9h12l3 9Z" fill={tint} stroke="#6b6458" strokeWidth="1.2" />}
+      {commodity === 'sand' && <path d="M5 24q11-16 22 0Z" fill={tint} stroke="#8a6a3a" strokeWidth="1.2" />}
+      {commodity === 'glass' && <><rect x="10" y="7" width="12" height="18" rx="5" fill={tint} stroke="#3d5a6a" strokeWidth="1.2" /><path d="M16 7v18M10 16h12" stroke="#3d5a6a" strokeWidth="1" /></>}
+      {commodity === 'tools' && <path d="M9 23l12-12M11 9l4 4-3 3-4-4ZM20 23l-8-8" stroke="#3a2a1c" strokeWidth="2.4" strokeLinecap="round" fill={tint} />}
+    </Emblem>
+  );
+}

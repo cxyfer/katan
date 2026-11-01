@@ -10,7 +10,7 @@ import { playerStats } from '../../../stats.ts';
 import { RESOURCES, type GameState, type ModulePending, type Resource } from '../../../types.ts';
 import type { ModuleCommand, ModuleContext } from '../../types.ts';
 import { grantGold } from '../coins/index.ts';
-import { frameKind, TB, type TbPart } from '../part.ts';
+import { frameKind, moduleFrame, TB, type TbPart } from '../part.ts';
 import { partState, requirePartState, setPartState } from '../state.ts';
 import { CASTLE, coastalHexes } from './board.ts';
 import { hexIndex } from '../boardHelpers.ts';
@@ -543,7 +543,7 @@ export const barbarianAttackPart: TbPart = {
   actionHints(state, playerId) {
     const slot = partState<BarbarianAttackState>(state, BARBARIAN_ATTACK);
     if (!slot) return null;
-    const pending = state.pending as ModulePending | null;
+    const pending = moduleFrame(state);
     const mine = !!pending && pending.responders[0] === playerId;
     const own = state.players[state.turn.seat]?.id === playerId && state.turn.phase === 'action' && !state.pending;
     let board: unknown = null;

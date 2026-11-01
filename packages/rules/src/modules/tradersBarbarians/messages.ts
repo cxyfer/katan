@@ -45,6 +45,19 @@ export const messages = {
     'tb.knightMoved',
     'tb.barbariansExpelled',
     'tb.knightsLost',
+    // Traders & Barbarians scenario
+    'tb.barbarianShifted',
+    'tb.barbarianRobbed',
+    'tb.knightPlayed',
+    'tb.swiftJourney',
+    'tb.wagonUpgraded',
+    'tb.commodityDelivered',
+    'tb.commodityLoaded',
+    'tb.wagonAgain',
+    'tb.wagonMoved',
+    'tb.wagonBoosted',
+    'tb.driveOff',
+    'tb.wagonStarted',
   ] as const,
   errorCodes: [
     // Fishing on Catan
@@ -60,5 +73,10 @@ export const messages = {
     // Barbarian Attack
     'E_TB_KNIGHT_RANGE',
     'E_TB_KNIGHT_MUST_MOVE',
+    // Traders & Barbarians scenario
+    'E_TB_WAGON_MAXED',
+    'E_TB_WAGON_MP',
+    'E_TB_WAGON_BOOSTED',
+    'E_TB_WAGON_LEVEL',
   ] as const,
 };

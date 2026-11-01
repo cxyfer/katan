@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import type { TableController } from '../../state/useTable.ts';
 import { BaStealChoice, KnightMovesChoice, TreasonChoice } from './BarbariansSection.tsx';
 import { FishSwapChoice } from './FishingSection.tsx';
+import { MoveBarbarianChoice, WagonMoveChoice } from './TradersSection.tsx';
 import { WagonBidChoice } from './TrainsSection.tsx';
 
 /** Choice UIs for T&B pending frames, by frame kind. */
@@ -11,6 +12,8 @@ const CHOICES: Readonly<Record<string, ComponentType<{ controller: TableControll
   'tradersBarbarians.baKnights': KnightMovesChoice,
   'tradersBarbarians.baSteal': BaStealChoice,
   'tradersBarbarians.baTreason': TreasonChoice,
+  'tradersBarbarians.tbBarbarian': MoveBarbarianChoice,
+  'tradersBarbarians.tbWagon': WagonMoveChoice,
 };
 
 /**

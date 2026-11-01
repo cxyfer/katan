@@ -270,6 +270,20 @@ const TRADERS_BARBARIANS_PROFILES: readonly ProfileDefinition[] = [
     pieces: { settlements: 5, cities: 4, roads: 15, ships: 0, knights: 6 },
     enabled: true,
   }),
+  tbProfile('tb-traders-barbarians-2025', 'tb-traders-barbarians', [], 'pp. 20–24', {
+    layoutId: 'tb-traders-barbarians',
+    topologyId: 'tb-traders-r2',
+    setupModes: ['variable'],
+    victoryTarget: 13,
+    // 16 Knight, 3 Road Building, 3 Swift Journey, 3 Victory Point (p. 20).
+    devDeck: [
+      ...Array<DevCardType>(16).fill('barbarianKnight'),
+      ...Array<DevCardType>(3).fill('roadBuilding'),
+      ...Array<DevCardType>(3).fill('swiftJourney'),
+      ...Array<DevCardType>(3).fill('victoryPoint'),
+    ],
+    enabled: true,
+  }),
   tbProfile('tb-event-cards-2025', null, ['event-cards'], 'pp. 4–6', EVENT_DECK_CLOSED),
   tbProfile('tb-event-cards-friendly-robber-2025', null, ['event-cards', 'friendly-robber'], 'pp. 2, 4–6', EVENT_DECK_CLOSED),
   tbProfile('tb-event-cards-harbors-2025', null, ['event-cards', 'harbors'], 'pp. 2, 4–6', {

@@ -18,6 +18,7 @@ import { barbarianAttackPart } from './barbarians/index.ts';
 import { coinsPart } from './coins/index.ts';
 import { fishingPart } from './fishing/index.ts';
 import { riversPart } from './rivers/index.ts';
+import { tradersPart } from './traders/index.ts';
 import { trainsPart } from './trains/index.ts';
 import { TB, type TbPart } from './part.ts';
 import { friendlyRobberPart } from './variants/friendlyRobber.ts';
@@ -29,6 +30,7 @@ const SCENARIO_PARTS: Readonly<Record<string, readonly TbPart[]>> = {
   'tb-rivers': [coinsPart, riversPart],
   'tb-merchant-trains': [trainsPart],
   'tb-barbarian-attack': [coinsPart, barbarianAttackPart],
+  'tb-traders-barbarians': [coinsPart, tradersPart],
 };
 
 /** Variant id → part. */

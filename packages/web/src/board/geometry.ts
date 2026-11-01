@@ -135,6 +135,7 @@ export function buildGeometry(topologyId: string, scale = 100, terrain?: readonl
 
 /** Edges on the shoreline: exactly one of their hexes is land. */
 export function isCoastEdge(geometry: Pick<BoardGeometry, 'topology' | 'land'>, edgeIndex: number): boolean {
+  if (geometry.topology.edges[edgeIndex]?.interior) return false;
   const hexes = geometry.topology.edges[edgeIndex]?.hexes ?? [];
   return hexes.filter((hex) => geometry.land[hex]).length === 1;
 }

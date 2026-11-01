@@ -28,3 +28,9 @@ export function frameKind(step: string): `${string}.${string}` {
 export function hasVariant(profile: ProfileDefinition, variant: string): boolean {
   return profile.variants.includes(variant);
 }
+
+/** The active frame when it is a rules-module frame (base frames have no responders). */
+export function moduleFrame(state: { pending: unknown }): import('../../types.ts').ModulePending | null {
+  const pending = state.pending as { module?: unknown } | null;
+  return pending && typeof pending.module === 'string' ? (pending as import('../../types.ts').ModulePending) : null;
+}

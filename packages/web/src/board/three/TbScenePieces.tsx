@@ -206,8 +206,47 @@ function barbarianFigures(b: ModelBuilder, context: TbPieceContext): boolean {
   return true;
 }
 
+const CARGO_TINT: Record<string, string> = { marble: '#f1eee6', sand: '#e6c27a', glass: '#6fb6d8', tools: '#8a8f93' };
+
+function tradersPieces(b: ModelBuilder, context: TbPieceContext): boolean {
+  const slot = part<{ sites: { plaza: number }[]; xEdges: number[]; barbarians: number[]; wagons: Record<string, { vertex: number; cargo: string | null }> }>(
+    context.modules, 'tb-traders-barbarians');
+  if (!slot) return false;
+  const { geometry } = context;
+  geometry.topology.edges.forEach((edge) => {
+    if (!edge.interior) return;
+    const [a, c] = edge.vertices;
+    plank(b, '#d9c08d', vertexWorld(geometry, a), vertexWorld(geometry, c), 0.12, 0.012, 0.008);
+  });
+  for (const site of slot.sites) {
+    const plaza = vertexWorld(geometry, site.plaza);
+    b.add(new CylinderGeometry(0.14, 0.15, 0.03, 16), '#efdcae', [plaza.x, 0.015, plaza.z]);
+  }
+  for (const edge of slot.xEdges) {
+    const at = edgeYaw(context, edge);
+    b.add(new BoxGeometry(0.16, 0.03, 0.035), '#9e1b1b', [at.x, 0.03, at.z], [1, 1, 1], [0, at.yaw + Math.PI / 4, 0]);
+    b.add(new BoxGeometry(0.16, 0.03, 0.035), '#9e1b1b', [at.x, 0.03, at.z], [1, 1, 1], [0, at.yaw - Math.PI / 4, 0]);
+  }
+  for (const edge of slot.barbarians) {
+    const at = edgeYaw(context, edge);
+    figure(b, at.x, at.z, '#8a8f93', '#9aa0a4', 1.6);
+    b.add(new ConeGeometry(0.012, 0.05, 5), '#efe8d6', [at.x - 0.04, 0.29, at.z], [1, 1, 1], [0, 0, 0.6]);
+    b.add(new ConeGeometry(0.012, 0.05, 5), '#efe8d6', [at.x + 0.04, 0.29, at.z], [1, 1, 1], [0, 0, -0.6]);
+  }
+  Object.entries(slot.wagons).forEach(([owner, wagon], index) => {
+    if (wagon.vertex < 0) return;
+    const at = vertexWorld(geometry, wagon.vertex);
+    const color = context.players.find((player) => player.id === owner)?.color ?? 'white';
+    const x = at.x + 0.18 + (index % 2) * 0.06;
+    const z = at.z + 0.14 + Math.floor(index / 2) * 0.06;
+    cart(b, x, z, 0.4, PLAYER_TINT[color] ?? '#888888', 1.3);
+    if (wagon.cargo) b.add(new BoxGeometry(0.07, 0.07, 0.07), CARGO_TINT[wagon.cargo] ?? '#cccccc', [x, 0.27, z]);
+  });
+  return true;
+}
+
 /** Builders per scenario part; each returns false when its part is absent. */
-const BUILDERS: readonly ((b: ModelBuilder, context: TbPieceContext) => boolean)[] = [fishingGrounds, rivers, bridges, trainWagons, barbarianFigures];
+const BUILDERS: readonly ((b: ModelBuilder, context: TbPieceContext) => boolean)[] = [fishingGrounds, rivers, bridges, trainWagons, barbarianFigures, tradersPieces];
 
 const IDENTITY: readonly InstanceTransform[] = [{ position: [0, 0, 0], rotationY: 0, scale: [1, 1, 1] }];
 

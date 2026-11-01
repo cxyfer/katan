@@ -7,7 +7,7 @@
 import { playerById, topologyOf } from '../../../analysis.ts';
 import type { GameState, ModulePending } from '../../../types.ts';
 import type { ModuleCommand, ModuleContext } from '../../types.ts';
-import { frameKind, TB, type TbPart } from '../part.ts';
+import { frameKind, moduleFrame, TB, type TbPart } from '../part.ts';
 import { partState, requirePartState, setPartState } from '../state.ts';
 import { trainStarts, type TrainStart } from './board.ts';
 
@@ -282,7 +282,7 @@ export const trainsPart: TbPart = {
   project(state) {
     const slot = partState<TrainsState>(state, TRAINS);
     if (!slot) return null;
-    const frame = state.pending as ModulePending | null;
+    const frame = moduleFrame(state);
     const vote = frame && [BID, ASSIGN, PLACE].includes(frame.kind) ? (frame.data as unknown as VoteData) : null;
     return {
       oasis: slot.oasis,
@@ -302,7 +302,7 @@ export const trainsPart: TbPart = {
   actionHints(state, playerId) {
     const slot = partState<TrainsState>(state, TRAINS);
     if (!slot) return null;
-    const frame = state.pending as ModulePending | null;
+    const frame = moduleFrame(state);
     const locations = [...wagonLocations(state).keys()];
     const mine = !!frame && frame.responders.includes(playerId);
     const board = mine && frame!.kind === PLACE

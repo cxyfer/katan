@@ -18,4 +18,19 @@ describe('R-TB-BD scenario frame', () => {
     const corners = frame.harborSlots.flatMap((edge) => frame.edges[edge]!.vertices);
     expect(new Set(corners).size).toBe(18);
   });
+
+  it('BD2: interior paths append plaza vertices and path edges after the regular indices and never join the coast', () => {
+    const traders = getTopology('tb-traders-r2');
+    const frame = getTopology('tb-r2');
+    expect(traders.vertices.slice(0, frame.vertices.length).map(({ hexes, x, y }) => ({ hexes, x, y })))
+      .toEqual(frame.vertices.map(({ hexes, x, y }) => ({ hexes, x, y })));
+    expect(traders.edges.slice(0, frame.edges.length)).toEqual(frame.edges);
+    expect(traders.vertices.length).toBe(frame.vertices.length + 3);
+    expect(traders.edges.length).toBe(frame.edges.length + 12);
+    expect(traders.coastalEdges).toEqual(frame.coastalEdges);
+    for (const edge of traders.edges.slice(frame.edges.length)) {
+      expect(edge.interior).toBe(true);
+      expect(traders.vertices[edge.vertices[1]]!.interior).toBe(true);
+    }
+  });
 });

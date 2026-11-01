@@ -9,7 +9,7 @@ import { RESOURCES, type GameState, type ModulePending, type Resource } from '..
 import { verticesOfHex } from '../../../topology.ts';
 import { playerStats } from '../../../stats.ts';
 import type { ModuleCommand, ModuleContext } from '../../types.ts';
-import { frameKind, TB, type TbPart } from '../part.ts';
+import { frameKind, moduleFrame, TB, type TbPart } from '../part.ts';
 import { partState, requirePartState, setPartState } from '../state.ts';
 import { groundGeometry, GROUND_NUMBERS, LAKE_NUMBERS, type GroundGeometry } from './board.ts';
 
@@ -394,7 +394,7 @@ export const fishingPart: TbPart = {
     const roads = own && fish >= FISH_COSTS.road && ctx.rules
       ? topologyOf(state).edges.map((_, edge) => edge).filter((edge) => ctx.rules!.canPlaceRoad(state, playerId, edge))
       : [];
-    const frame = state.pending as ModulePending | null;
+    const frame = moduleFrame(state);
     return {
       canSpend: !!own,
       fish,

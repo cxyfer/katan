@@ -6,6 +6,7 @@ import { BarbariansSection } from './BarbariansSection.tsx';
 import { CoinsSection } from './CoinsSection.tsx';
 import { FishingSection } from './FishingSection.tsx';
 import { RiversSection } from './RiversSection.tsx';
+import { TradersSection } from './TradersSection.tsx';
 import { TrainsSection } from './TrainsSection.tsx';
 import { HarborsSection } from './HarborsSection.tsx';
 import { tbView } from './model.ts';
@@ -17,6 +18,7 @@ const SECTIONS: readonly [string, ComponentType<{ controller: TableController }>
   ['tb-rivers', RiversSection],
   ['tb-merchant-trains', TrainsSection],
   ['tb-barbarian-attack', BarbariansSection],
+  ['tb-traders-barbarians', TradersSection],
   ['tb-coins', CoinsSection],
   ['harbors', HarborsSection],
 ];

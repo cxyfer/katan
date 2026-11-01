@@ -146,3 +146,35 @@ export const barbarianBot: SimulationBot = {
 function getTopologyOf(state: GameState) {
   return getTopology(state.board.layout.topologyId);
 }
+
+/** Moves barbarians, upgrades and drives the wagon toward the nearest useful plaza. */
+export const tradersBot: SimulationBot = {
+  pending(state, rng) {
+    const frame = state.pending as ModulePending | null;
+    if (!frame?.kind.startsWith('tradersBarbarians.tb')) return null;
+    const actor = frame.responders[0]!;
+    const slot = tb<{ barbarians: number[]; wagons: Record<string, { vertex: number; cargo: string | null }>; sites: { id: string; plaza: number }[] }>(state, 'tb-traders-barbarians');
+    if (frame.kind === 'tradersBarbarians.tbBarbarian') {
+      const from = slot.barbarians[0]!;
+      const to = state.board.roads.findIndex((road, edge) => !!road && road.player !== actor && !slot.barbarians.includes(edge));
+      return tryCommand(state, actor, { type: 'tb.moveBarbarian', from, to: to >= 0 ? to : (from + 7) % 72 === from ? 1 : (from + 7) % 72 }, rng);
+    }
+    const modules = actionHints(state, actor).modules as Record<string, Record<string, Record<string, unknown>>>;
+    const steps = (modules.tradersBarbarians!['tb-traders-barbarians']!.steps as number[]) ?? [];
+    if (steps.length === 0 || state.seq % 7 === 0) return tryCommand(state, actor, { type: 'tb.wagonStop' }, rng);
+    // Prefer a plaza, else wander deterministically.
+    const plaza = steps.find((vertex) => slot.sites.some((site) => site.plaza === vertex));
+    return tryCommand(state, actor, { type: 'tb.wagonStep', to: plaza ?? steps[state.seq % steps.length] }, rng);
+  },
+  actions(state, actor) {
+    const out: Command[] = [{ type: 'tb.upgradeWagon' } as unknown as Command];
+    const player = state.players.find((candidate) => candidate.id === actor)!;
+    const slot = tb<{ barbarians: number[] }>(state, 'tb-traders-barbarians');
+    if (player.devCards.includes('barbarianKnight')) {
+      const to = (slot.barbarians[0]! + 11) % 72;
+      if (!slot.barbarians.includes(to)) out.push({ type: 'tb.playKnight', from: slot.barbarians[0], to } as unknown as Command);
+    }
+    if (player.devCards.includes('swiftJourney')) out.push({ type: 'tb.playSwiftJourney' } as unknown as Command);
+    return out;
+  },
+};

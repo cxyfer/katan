@@ -125,6 +125,23 @@ const SCENARIOS = {
       tb(state)['tb-coins'].supply = 86;
     },
   },
+  'tb-traders-barbarians': {
+    profileId: 'tb-traders-barbarians-2025',
+    seed: 25,
+    dress(state) {
+      const slot = tb(state)['tb-traders-barbarians'];
+      const topology = rules.getTopology(state.board.layout.topologyId);
+      // Wagons on the way: p1 next to the quarry with tools, p2 on the castle plaza with marble.
+      const quarry = slot.sites.find((site) => site.id === 'quarry');
+      const castle = slot.sites.find((site) => site.id === 'castle');
+      const corner = topology.edges[topology.vertices[quarry.plaza].edges[1]].vertices.find((v) => v !== quarry.plaza);
+      slot.wagons.p1 = { ...slot.wagons.p1, vertex: corner, level: 3, cargo: 'tools', delivered: 2 };
+      slot.wagons.p2 = { ...slot.wagons.p2, vertex: castle.plaza, level: 2, cargo: 'marble', delivered: 1 };
+      slot.wagons.p3 = { ...slot.wagons.p3, cargo: 'glass' };
+      // A road on an interior path of the quarry.
+      state.board.roads[topology.vertices[quarry.plaza].edges[0]] = { player: 'p1', ship: false };
+    },
+  },
 };
 
 const out = { profiles: rules.PROFILES.map(protocol.profileView), scenarios: {} };

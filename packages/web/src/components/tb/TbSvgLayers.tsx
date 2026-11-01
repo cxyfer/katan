@@ -76,6 +76,42 @@ function FishingGround({ geometry, ground, waves }: { geometry: BoardGeometry; g
 
 interface RiversView { paths: { hexes: number[]; sites: number[] }[] }
 
+interface TradersSvgView {
+  sites: { id: string; hex: number; plaza: number }[];
+  xEdges: number[];
+  barbarians: number[];
+  wagons: Record<string, { vertex: number; level: number; cargo: string | null }>;
+}
+
+/** Interior dirt paths to each plaza and the X markers on the commodity hexes' frame sides. */
+function TradersPaths({ geometry, traders }: { geometry: BoardGeometry; traders: TradersSvgView }) {
+  const t = useT();
+  return (
+    <g className="tb-traders-paths" pointerEvents="none">
+      {geometry.topology.edges.map((edge, index) => edge.interior ? (
+        <line key={`path-${index}`} x1={geometry.edges[index]!.x1} y1={geometry.edges[index]!.y1} x2={geometry.edges[index]!.x2} y2={geometry.edges[index]!.y2}
+          stroke="#e8d3a6" strokeWidth={9} strokeLinecap="round" opacity={0.9} />
+      ) : null)}
+      {traders.sites.map((site) => {
+        const plaza = geometry.vertices[site.plaza]!;
+        return <g key={`plaza-${site.id}`} data-testid={`tb-plaza-${site.id}`}>
+          <circle cx={plaza.x} cy={plaza.y} r={14} fill="#f3e3bb" stroke="#8a6a3a" strokeWidth={2} />
+          <title>{`${t(`tb.term.${site.id}`)} · ${t('tb.traders.plaza')}`}</title>
+        </g>;
+      })}
+      {traders.xEdges.map((edge) => {
+        const line = geometry.edges[edge]!;
+        const x = (line.x1 + line.x2) / 2;
+        const y = (line.y1 + line.y2) / 2;
+        return <g key={`x-${edge}`} data-testid={`tb-x-${edge}`} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}>
+          <circle r={10} fill="#9e1b1b" stroke="#f3e3bb" strokeWidth={2} />
+          <path d="M-4.5-4.5l9 9M4.5-4.5l-9 9" stroke="#fff" strokeWidth={2.4} strokeLinecap="round" />
+        </g>;
+      })}
+    </g>
+  );
+}
+
 /** A river from its spring through each crossed edge to its mouth, bending around number tokens. */
 function River({ geometry, path }: { geometry: BoardGeometry; path: RiversView['paths'][number] }) {
   const t = useT();
@@ -121,9 +157,11 @@ export function TbSvgUnder({ geometry, view }: { geometry: BoardGeometry; view: 
   const fishing = tbPart<FishingView>(view, 'tb-fishing');
   const rivers = tbPart<RiversView>(view, 'tb-rivers');
   const extras = view.board.extraNumbers ?? [];
-  if (!fishing && !rivers && extras.length === 0) return null;
+  const traders = tbPart<TradersSvgView>(view, 'tb-traders-barbarians');
+  if (!fishing && !rivers && !traders && extras.length === 0) return null;
   return (
     <g className="tb-svg-under">
+      {traders && <TradersPaths geometry={geometry} traders={traders} />}
       {rivers?.paths.map((path) => <River key={path.hexes[0]} geometry={geometry} path={path} />)}
       {extras.map((extra) => {
         const hex = geometry.hexes[extra.hex];
@@ -251,11 +289,49 @@ function BarbarianLayer({ geometry, view, ba }: { geometry: BoardGeometry; view:
   );
 }
 
+const CARGO_TINT: Record<string, string> = { marble: '#f1eee6', sand: '#e6c27a', glass: '#6fb6d8', tools: '#8a8f93' };
+
+function TradersLayer({ geometry, view, traders }: { geometry: BoardGeometry; view: GameView; traders: TradersSvgView }) {
+  const t = useT();
+  const byVertex = new Map<number, string[]>();
+  for (const [id, wagon] of Object.entries(traders.wagons)) {
+    if (wagon.vertex >= 0) byVertex.set(wagon.vertex, [...(byVertex.get(wagon.vertex) ?? []), id]);
+  }
+  return (
+    <g className="tb-traders">
+      {traders.barbarians.map((edge) => {
+        const line = geometry.edges[edge];
+        return line ? <g key={`barbarian-${edge}`} data-testid={`tb-edge-barbarian-${edge}`}>
+          <SvgBarbarian x={(line.x1 + line.x2) / 2} y={(line.y1 + line.y2) / 2 - 6} />
+          <title>{t('tb.traders.barbarian', { edge })}</title>
+        </g> : null;
+      })}
+      {[...byVertex].map(([vertex, owners]) => owners.map((owner, index) => {
+        const point = geometry.vertices[vertex]!;
+        const player = view.players.find((candidate) => candidate.id === owner);
+        const wagon = traders.wagons[owner]!;
+        const x = point.x + 16 + index * 10;
+        const y = point.y + 14 + index * 6;
+        return <g key={`wagon-${owner}`} data-testid={`tb-player-wagon-${owner}`} transform={`translate(${x} ${y})`}>
+          <ellipse cy={10} rx={15} ry={4} fill="#10242c" opacity={0.35} />
+          <path d="M-13 3h26v-7q-13-9-26 0Z" fill={playerColorHex(player?.color ?? 'white')} stroke="#20180f" strokeWidth={1.8} />
+          <rect x={-14} y={2} width={28} height={5} rx={2} fill="#7b5230" stroke="#20180f" strokeWidth={1.4} />
+          <circle cx={-8} cy={9} r={3.6} fill="#3b2a1c" /><circle cx={8} cy={9} r={3.6} fill="#3b2a1c" />
+          {wagon.cargo && <rect x={-5} y={-12} width={10} height={9} rx={2} fill={CARGO_TINT[wagon.cargo] ?? '#ccc'} stroke="#20180f" strokeWidth={1.2} />}
+          <title>{`${t('tb.traders.title')} · ${player?.nickname ?? owner}`}</title>
+        </g>;
+      }))}
+    </g>
+  );
+}
+
 export function TbSvgOver({ geometry, view }: { geometry: BoardGeometry; view: GameView }) {
   const t = useT();
   const trains = tbPart<TrainsView>(view, 'tb-merchant-trains');
   const ba = tbPart<BarbariansView>(view, 'tb-barbarian-attack');
+  const traders = tbPart<TradersSvgView>(view, 'tb-traders-barbarians');
   if (ba) return <BarbarianLayer geometry={geometry} view={view} ba={ba} />;
+  if (traders) return <TradersLayer geometry={geometry} view={view} traders={traders} />;
   if (!trains) return null;
   const used = new Set(trains.wagons.map((wagon) => wagon.edge));
   return (
