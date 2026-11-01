@@ -1,0 +1,297 @@
+{
+  "base": "http://127.0.0.1:3022",
+  "fixtures": {
+    "topologyId": "sf-new-shores-4",
+    "coast": 48,
+    "shipNW": 61,
+    "shipNE": 65,
+    "branch": 63,
+    "goldVertex": 50,
+    "goldHex": 23,
+    "seaHex": 22,
+    "pirateSea": 15
+  },
+  "cases": [
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-new-shores-3",
+      "sha256": "0cbf7f26b4b95ddc726383923dd69ff8c8192c29c4499aecdf2b66522cf6786a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-new-shores-3",
+      "sha256": "eba09d3160955eb57e3b5b5f1e379cb30100a4973dd75af354070eb68798eb34",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-3p-svg-phone",
+      "status": "PASS",
+      "note": "sf-new-shores-3",
+      "sha256": "a13ba6572b17eb957ffaa34caf26869490b3e5e208fce2f0e32afd14ca54aecd",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "map-3p-r3f-phone",
+      "status": "PASS",
+      "note": "sf-new-shores-3",
+      "sha256": "3dac5fdec25b2ecd721aae464c3d51ed5c7ab90647b720f022300e8f21065927",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "map-6p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-new-shores-56",
+      "sha256": "03542c78655dc428c1378fc8a9bb7f595b12bf23730450b070db4e4f30064c91",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-6p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-new-shores-56",
+      "sha256": "81fcf68234c99cc5167dc72b38e18d543e50c90907a999061c71befa5a3835a1",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-6p-svg-phone",
+      "status": "PASS",
+      "note": "sf-new-shores-56",
+      "sha256": "8d259305d348498ff9bfd343a3260d25c0389a9cd270a2cf107dec6726144794",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "map-6p-r3f-phone",
+      "status": "PASS",
+      "note": "sf-new-shores-56",
+      "sha256": "0b22fbb52f028c7cb8fd5dbe33d011c994b11733ab889f042fa30dac4f2b718b",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "lobby-seafarers",
+      "status": "PASS",
+      "note": "lobby: Seafarers / Heading for New Shores with required boxes",
+      "sha256": "8ed9063dbcb1f4912156c187b60c45b5ea4d2779b56f2d71ffa9c68be177dff8",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-new-shores-4",
+      "sha256": "7342a665b013bb61443ee7cdd41a8cad5132f4399917d67963a69e86be190f21",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-new-shores-4",
+      "sha256": "0cf768ddd26fbbd6c58445b86e5949f291a5b5cbcd571dc1c79b756b76337648",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-4p-svg-phone",
+      "status": "PASS",
+      "note": "sf-new-shores-4",
+      "sha256": "9ecabbbdae0067e45d831004c57eb1073867422ad7a55989498fa0c6123b7384",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "map-4p-r3f-phone",
+      "status": "PASS",
+      "note": "sf-new-shores-4",
+      "sha256": "a9e8a84a9e8b64d922f8f90c597ec750cd89eb18eb1f5b1e640329a7168d2a97",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "live-setup-ship-choice-svg",
+      "status": "PASS",
+      "note": "coastal start: road or ship switch",
+      "sha256": "5b9983a611590fdfe7e5ff9632c8ccee4ae4ac4c5b9eeafd8217e384747d3c84",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-setup-ship-preview-svg",
+      "status": "PASS",
+      "note": "starting ship preview",
+      "sha256": "7b08e0ae992c0881635e208f63578ef8bfa363f51fcb270e628605e33d960fdf",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-ship-build-targets-svg",
+      "status": "PASS",
+      "note": "build ship: legal sea paths highlighted",
+      "sha256": "9ccc111ddb3a7437924cadc011a9d2a3c34651fb6543e3d37bb86b8b8f1cc9d8",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-ship-built-svg",
+      "status": "PASS",
+      "note": "ship built from the starting ship",
+      "sha256": "d3085424830d052367624b4fb6e7426d426a3b70180097b2048dbadd1777947c",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-ship-move-targets-svg",
+      "status": "PASS",
+      "note": "move ship: chosen ship and its new paths",
+      "sha256": "1431f63670249b931bccca69783f59a66f3c7d2c276a1b8f87a2bfb1663772ee",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-ship-moved-svg",
+      "status": "PASS",
+      "note": "ship moved to the branch path",
+      "sha256": "eeb1c9c5f101a3b309204a6c935aeccfbaa1d137cd02df15d1744bc8b5ab5d54",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-island-bonus-svg",
+      "status": "PASS",
+      "note": "first settlement on a small island: +2 tokens",
+      "sha256": "3f00dd4739228434ba8aa4c82eb43e0ec137f0bb369716489d00d5c9429d4b34",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-island-bonus-3d",
+      "status": "PASS",
+      "note": "ships, tokens and the pirate in 3D",
+      "sha256": "dfd5a79d3d3f5fa2a6b4189d2f28b49800fbd8e9d3fef69ae2115ffa18a5b97c",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-pirate-choice-svg",
+      "status": "PASS",
+      "note": "robber or pirate: land and sea hexes plus the frame",
+      "sha256": "19a22a8b2bae2da35193e82679bbfbe49332fcbb9879bd6666ea35f20af45174",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-pirate-moved-svg",
+      "status": "PASS",
+      "note": "pirate on the sea hex next to the ships",
+      "sha256": "d35d64a88e14aff070bb3bfbceb8e3c94068b1d84d08225760217e913abb0a47",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-pirate-moved-3d",
+      "status": "PASS",
+      "note": "pirate in 3D",
+      "sha256": "6450a642ba13c97b7e98757645fb9b42811639e3eb6d01b2e4888b930c4e2b9b",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-gold-picker-svg",
+      "status": "PASS",
+      "note": "gold: choose a resource from the bank",
+      "sha256": "648a5df01cbb488c3b392ae44e7c61ffd32068b005f0bafbe99687a93786ff0d",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-gold-chosen-svg",
+      "status": "PASS",
+      "note": "gold: ore selected; confirm fully visible",
+      "sha256": "d4dc90ad10d2ff5871b757dff30fcf068a3de06acc099b5c33063b04bc141e6f",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-after-gold-svg",
+      "status": "PASS",
+      "note": "gold paid; seat panel with island bonus",
+      "sha256": "7355db8cec4310ca8e3fde2e8d059bbb51fde54b19d4fda14a4c607512161547",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-board-3d",
+      "status": "PASS",
+      "note": "live board in 3D",
+      "sha256": "ec8dca9d29f74ccc0f964bc686a80717e1fb5fd8d62a32783826a718368090ff",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    }
+  ],
+  "errors": []
+}

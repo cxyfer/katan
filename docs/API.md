@@ -203,6 +203,29 @@ show this viewer. Expansion state, when a profile has rules modules, is in
 `GameView.modules[<id>]` and advisory targets in `hints.modules[<id>]`; base
 games have neither field.
 
+### Seafarers commands (`sf-new-shores-*`)
+
+| Command | Fields | When |
+|---|---|---|
+| `setup.placeShip` | `edge` | setup road step: a sea edge next to the settlement just placed (instead of `setup.placeRoad`) |
+| `build.ship` | `edge` | own action window (lumber + wool), or free inside a Road Building (`freeRoads`) effect |
+| `ship.move` | `from`, `to` | own action window, once per window; `from` must be an own open ship not built in this window and not next to the pirate |
+| `gold.choose` | `resources` (array) | `seafarers.gold` frame, by its first responder; exactly `min(owed, bank total)` resources the bank holds |
+| `pending.moveRobber` | `hex` (number or `null`) | a sea hex or `null` (the frame) moves the pirate, a land hex the robber |
+| `dev.playKnight` | `hex` (number or `null`) | as above, for a Knight |
+
+Pirate moves emit `pirate.moved`; a pirate theft is the base `steal` frame
+(`pirate: true`) and the `robber.stole` event with `pirate: true`.
+`board.pirate` is `null` while the pirate waits on the frame (where it
+starts). `GameView.modules.seafarers` is public: `islandBonus` (small-island
+ids per player), `islandClaims` (`{ player, island, vertex }`),
+`shipsBuiltThisTurn` and `shipMoved` for the current action window.
+`hints.modules.seafarers` lists `legalShips`, `setupShips`,
+`movableShips` (`{ edge, targets }`), `pirateTargets` (sea hexes, plus
+`null` when the frame is a legal move), `robberTargets` and
+`goldRequired`. The `seafarers.gold` frame projects `data.picks` (owed
+resources per remaining responder).
+
 ## WebSocket `/ws`
 
 The client sends the session cookie; the server answers `hello` on connect.
