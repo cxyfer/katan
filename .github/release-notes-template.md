@@ -23,8 +23,8 @@ editor soft-wrap it. The lint script rejects a draft that still has wrapped pros
 > One paragraph on what this release is and why it matters.
 >
 > What changes for an existing install: defaults that moved, anything the reader must do. Drop this paragraph when there is nothing to say.
->
-> Upgrade in place, or run this release directly:
+
+## Docker
 
 ```bash
 docker compose pull && docker compose up -d           # SQLite, persistent volume
@@ -51,7 +51,7 @@ docker run -d --name catan -p 3000:3000 -v catan-data:/data \
 ## Rules
 
 1. **Lead with the callout.** Most readers never scroll past it. Say what the release is, then say what breaks or changes for an existing install. Pre-releases say so and name the exact tag to pull.
-2. **Show the commands.** Put the install and upgrade commands in a `bash` block directly after the callout: `docker compose pull && docker compose up -d` for an in-place upgrade, and `docker run` with the release's exact tag for a direct run or for pinning the Compose `image:`. The block carries no `docker login` line, because the package is published publicly and an authentication step would be noise for a reader who does not need one. The block is the copy-paste path, so the callout's last paragraph points at it instead of repeating the commands in prose. Keep it outside the callout: the lint reads every blockquote line as prose, so a fence inside the callout is reported as hard-wrapped text.
+2. **Show the commands under their own heading.** Put the install and upgrade commands in a `bash` block under `## Docker`, directly after the callout: `docker compose pull && docker compose up -d` for an in-place upgrade, and `docker run` with the release's exact tag for a direct run or for pinning the Compose `image:`. The heading names the block, so the callout says what changed and leaves the commands to it. The block carries no `docker login` line, because the package is published publicly and an authentication step would be noise for a reader who does not need one. Keep the block outside the callout: the lint reads every blockquote line as prose, so a fence inside the callout is reported as hard-wrapped text.
 3. **Write the highlights for players and operators, not for the git history.** One bullet per area, a bold area name, then prose: what a person can now do in the game, or must now do differently when deploying. Group related commits into one bullet. Never paste commit subjects here.
 4. **Explain a changed default with the fix.** "The container now writes to `/data` and the old volume is ignored; mount `-v catan-data:/data`" beats "storage path changed".
 5. **`What's Changed` is generated.** Only edit it to fix a title that reads badly. It is built from the `(#N)` suffix in commit subjects, because this repository squashes and rewrites merges and GitHub's own generator drops those pull requests.
