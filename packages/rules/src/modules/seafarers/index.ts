@@ -54,6 +54,7 @@ export const seafarersModule: RulesModule = {
     const slot = seafarersView(state);
     return {
       islandBonus: Object.fromEntries(Object.entries(slot.islands).map(([id, islands]) => [id, islands.slice()])),
+      islandClaims: (slot.claims ?? []).map((claim) => ({ ...claim })),
       shipsBuiltThisTurn: slot.built.slice(),
       shipMoved: slot.moved,
     };

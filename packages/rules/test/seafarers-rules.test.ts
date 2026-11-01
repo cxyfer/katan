@@ -333,7 +333,7 @@ describe('privacy', () => {
       const view = projectGame(stolen.state, viewer, { events: [event] });
       expect(view.events[0]!.params).not.toHaveProperty('resource');
       expect(view.players.find((player) => player.id === 'p2')!.resources).toBeUndefined();
-      expect(Object.keys(view.modules!.seafarers as object).sort()).toEqual(['islandBonus', 'shipMoved', 'shipsBuiltThisTurn']);
+      expect(Object.keys(view.modules!.seafarers as object).sort()).toEqual(['islandBonus', 'islandClaims', 'shipMoved', 'shipsBuiltThisTurn']);
     }
     expect(projectGame(stolen.state, 'p2', { events: [event] }).events[0]!.params).toHaveProperty('resource');
   });

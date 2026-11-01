@@ -49,6 +49,7 @@ export function claimIslands(state: GameState, ctx: ModuleContext): void {
       const claimed = (slot.islands[building.player] ??= []);
       if (claimed.includes(island)) continue;
       claimed.push(island);
+      (slot.claims ??= []).push({ player: building.player, island, vertex });
       playerById(state, building.player)!.bonusPoints += ISLAND_BONUS;
       ctx.kit.emit(state, 'island.bonus', { playerId: building.player, island, vertex, points: ISLAND_BONUS });
     }

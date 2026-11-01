@@ -14,6 +14,14 @@ export interface SeafarersState {
   moved: boolean;
   /** Small islands each player has already received the +2 VP for. */
   islands: Record<string, number[]>;
+  /** Where each bonus was earned: the settlement that holds the VP tokens. */
+  claims: IslandClaim[];
+}
+
+export interface IslandClaim {
+  player: string;
+  island: number;
+  vertex: number;
 }
 
 export function initialSeafarersState(state: GameState): SeafarersState {
@@ -22,6 +30,7 @@ export function initialSeafarersState(state: GameState): SeafarersState {
     built: [],
     moved: false,
     islands: Object.fromEntries(state.players.map((player) => [player.id, []])),
+    claims: [],
   };
 }
 
