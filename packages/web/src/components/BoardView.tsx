@@ -132,8 +132,15 @@ export function BoardView({ controller }: { controller: TableController }) {
   const selectTarget = useCallback((kind: TargetKind, index: number) => {
     if (!intent || kind !== intent.kind || !intent.targets.includes(index)) return;
     setCluster(null); setPickerOpen(false);
-    actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
-  }, [actions, intent]);
+    // Moving a ship takes two choices: the ship, then its new path.
+    if (intent.commandType === 'ship.pick') {
+      actions.selectTarget({ kind: 'edge', index: null, commandType: 'ship.move', labelId: 'sf.move.target', params: { from: index }, field: 'to' });
+      return;
+    }
+    const carried = state.selection.commandType === intent.commandType ? state.selection : null;
+    actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId,
+      ...(carried?.params ? { params: carried.params } : {}), ...(carried?.field ? { field: carried.field } : {}) });
+  }, [actions, intent, state.selection]);
   const focusedRoll = animation.activeDice;
   // 骰子真的出現在畫面上才開始擲骰聲；點數揭曉與後果都以此為起點。
   const focusedRollId = focusedRoll?.id ?? null;

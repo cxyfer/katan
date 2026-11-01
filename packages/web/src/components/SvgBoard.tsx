@@ -9,6 +9,8 @@ import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrain
 import { confirmedPlacement } from '../board/effects.ts';
 import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
+import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
+import { isShipCommand, seafarersView } from '../board/seafarers.ts';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
@@ -136,6 +138,15 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             const player = view.players.find((candidate) => candidate.id === road.player);
             const color = playerColorHex(player?.color ?? 'white');
             const arriving = confirmedPlacement(active?.events ?? [], board, 'edge', edge.index);
+            if (road.ship) {
+              const mid = edgeMidpoint(edge);
+              return (
+                <g key={`ship-${edge.index}`} data-testid={`ship-${edge.index}`} className={arriving ? 'board__building-drop' : undefined}>
+                  <ShipPiece x={mid.x} y={mid.y} angle={edgeAngle(edge)} color={color} dash={seatDash(player?.seat ?? 0)} />
+                  <title>{`${t('sf.board.ship')} · ${nameResolver(road.player)}`}</title>
+                </g>
+              );
+            }
             const line = inset(edge);
             return (
               <g key={`road-${edge.index}`}>
@@ -175,6 +186,21 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             );
           })}
 
+          {seafarersView(view)?.islandClaims.map((claim) => {
+            const vertex = geometry.vertices[claim.vertex];
+            const owner = view.players.find((candidate) => candidate.id === claim.player);
+            if (!vertex) return null;
+            return <IslandBonusToken key={`island-${claim.player}-${claim.island}`} testId={`island-bonus-${claim.vertex}`}
+              x={vertex.x + 17} y={vertex.y + 16} color={playerColorHex(owner?.color ?? 'white')} />;
+          })}
+          {seafarersView(view) && (() => {
+            const hex = board.pirate === null ? null : geometry.hexes[board.pirate];
+            const spot = hex ? { x: hex.cx, y: hex.cy + 4 } : pirateFrameSpot(geometry);
+            return <g data-testid={hex ? 'pirate-hex' : 'pirate-frame'}>
+              <PirateShip x={spot.x} y={spot.y} />
+              <title>{hex ? t('sf.board.pirate') : t('sf.board.pirateFrame')}</title>
+            </g>;
+          })()}
           {geometry.hexes[board.robber] && (
             <g data-testid="robber" aria-hidden="true">
               <RobberPiece {...robberSpot(geometry.hexes[board.robber]!, board.numbers[board.robber] != null)} ids={ids} />
@@ -183,8 +209,12 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
           {selection.index !== null && intent && selection.kind === intent.kind && intent.targets.includes(selection.index) && (
             <g className="board__preview-ghost" data-testid="board-preview-ghost" aria-hidden="true" pointerEvents="none">
               {intent.kind === 'vertex' && geometry.vertices[selection.index] && <BoardBuilding x={geometry.vertices[selection.index]!.x} y={geometry.vertices[selection.index]!.y} city={intent.commandType === 'build.city'} color={selfColor} />}
-              {intent.kind === 'edge' && geometry.edges[selection.index] && <line {...inset(geometry.edges[selection.index]!)} stroke={selfColor} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />}
-              {intent.kind === 'hex' && geometry.hexes[selection.index] && <RobberPiece {...robberSpot(geometry.hexes[selection.index]!, board.numbers[selection.index] != null)} ids={ids} />}
+              {intent.kind === 'edge' && geometry.edges[selection.index] && (isShipCommand(intent.commandType)
+                ? <ShipPiece {...edgeMidpoint(geometry.edges[selection.index]!)} angle={edgeAngle(geometry.edges[selection.index]!)} color={selfColor} ghost />
+                : <line {...inset(geometry.edges[selection.index]!)} stroke={selfColor} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />)}
+              {intent.kind === 'hex' && geometry.hexes[selection.index] && (geometry.land[selection.index] === false
+                ? <PirateShip x={geometry.hexes[selection.index]!.cx} y={geometry.hexes[selection.index]!.cy + 4} ghost />
+                : <RobberPiece {...robberSpot(geometry.hexes[selection.index]!, board.numbers[selection.index] != null)} ids={ids} />)}
             </g>
           )}
         </g>

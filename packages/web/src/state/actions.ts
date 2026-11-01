@@ -13,6 +13,7 @@ import { COSTS, type Resource } from '@catan/rules';
 import type { GameSnapshot } from '@catan/protocol';
 import { awaitingProjection, type TableState } from './table.ts';
 import { blocksNewCommands } from './commands.ts';
+import { seafarersHints, SHIP_COST } from '../board/seafarers.ts';
 
 export interface ActionDescriptor {
   /** Stable id, also used as the DOM id suffix. */
@@ -33,7 +34,9 @@ export type ActionId =
   | 'build.road'
   | 'build.settlement'
   | 'build.city'
-  | 'build.devCard';
+  | 'build.devCard'
+  | 'build.ship'
+  | 'ship.move';
 
 function canAfford(
   resources: Partial<Record<Resource, number>> | undefined,
@@ -154,6 +157,27 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
   actions.push(
     build('build.city', 'play.build.city', 'build.city', COSTS.city, hints?.legalCities ?? []),
   );
+
+  // Seafarers: build a ship, and move one ship per action window.
+  const sea = seafarersHints(view);
+  if (sea) {
+    actions.push(build('build.ship', 'sf.build.ship', 'build.ship', SHIP_COST, sea.legalShips));
+    let moveReason: string | null = null;
+    if (!isTurnActor) moveReason = 'play.disabled.notYourTurn';
+    else if (view?.turn.phase !== 'action') moveReason = 'play.disabled.timing';
+    else if (pending) moveReason = 'play.disabled.pending';
+    else if (sea.shipMoved) moveReason = 'sf.disabled.shipMoved';
+    else if (sea.movableShips.length === 0) moveReason = 'sf.disabled.noShipMove';
+    actions.push({
+      id: 'ship.move',
+      labelId: 'sf.move.ship',
+      commandType: 'ship.pick',
+      enabled: moveReason === null && ready,
+      reasonId: reasonFor(input, moveReason),
+      cost: null,
+      targetCount: sea.movableShips.length,
+    });
+  }
 
   const deckEmpty = (view?.devDeckSize ?? 0) <= 0;
   let devReason: string | null = null;

@@ -8,6 +8,7 @@
  */
 
 import type { TableState } from '../state/table.ts';
+import { isShipCommand, seafarersHints } from './seafarers.ts';
 import type { TargetKind } from './targets.ts';
 
 export interface BoardIntent {
@@ -39,6 +40,13 @@ function allEdges(state: TableState): number[] {
 function robberHexes(state: TableState): number[] {
   const board = state.game?.view.board;
   if (!board) return [];
+  // Seafarers: land hexes move the robber, sea hexes the pirate (the frame is
+  // a separate control because it is not a hex).
+  const sea = seafarersHints(state.game?.view);
+  if (sea) {
+    const pirate = sea.pirateTargets.filter((hex): hex is number => hex !== null);
+    return [...sea.robberTargets, ...pirate].sort((a, b) => a - b);
+  }
   const out: number[] = [];
   for (let hex = 0; hex < board.terrain.length; hex++) {
     if (hex !== board.robber) out.push(hex);
@@ -59,13 +67,13 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
   const armed = state.selection.commandType;
   if (armed) {
     const kind: TargetKind =
-      state.selection.kind ?? (armed === 'build.road' || armed === 'setup.placeRoad' ? 'edge' : 'vertex');
+      state.selection.kind ?? (armed === 'build.road' || armed === 'setup.placeRoad' || isShipCommand(armed) ? 'edge' : 'vertex');
     return {
       kind,
       commandType: armed,
       labelId: state.selection.labelId ?? armed,
       targets: targetsFor(state, armed, selfId),
-      fromHints: armed.startsWith('build.'),
+      fromHints: armed.startsWith('build.') || isShipCommand(armed),
     };
   }
 
@@ -83,6 +91,10 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
       };
     }
     if (pending.kind === 'freeRoads') {
+      const sea = seafarersHints(view);
+      if (sea && (hints?.legalRoads.length ?? 0) === 0 && sea.legalShips.length > 0) {
+        return { kind: 'edge', commandType: 'build.ship', labelId: 'sf.build.ship', targets: sea.legalShips, fromHints: true };
+      }
       return {
         kind: 'edge',
         commandType: 'build.road',
@@ -105,7 +117,15 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
             targets: view.hints?.legalSettlements ?? allVertices(state),
             fromHints: !!view.hints,
           }
-        : {
+        : (view.hints?.legalRoads.length ?? 0) === 0 && (seafarersHints(view)?.setupShips.length ?? 0) > 0
+          ? {
+              kind: 'edge',
+              commandType: 'setup.placeShip',
+              labelId: 'sf.build.ship',
+              targets: seafarersHints(view)!.setupShips,
+              fromHints: true,
+            }
+          : {
             kind: 'edge',
             commandType: 'setup.placeRoad',
             labelId: 'play.build.road',
@@ -136,6 +156,16 @@ export function targetsFor(state: TableState, commandType: string, selfId: strin
     case 'pending.moveRobber':
     case 'dev.playKnight':
       return robberHexes(state);
+    case 'build.ship':
+      return seafarersHints(state.game?.view)?.legalShips ?? [];
+    case 'setup.placeShip':
+      return seafarersHints(state.game?.view)?.setupShips ?? [];
+    case 'ship.pick':
+      return seafarersHints(state.game?.view)?.movableShips.map((ship) => ship.edge) ?? [];
+    case 'ship.move': {
+      const from = state.selection.params?.from;
+      return seafarersHints(state.game?.view)?.movableShips.find((ship) => ship.edge === from)?.targets ?? [];
+    }
     default:
       return [];
   }
