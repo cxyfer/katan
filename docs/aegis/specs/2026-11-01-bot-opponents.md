@@ -227,6 +227,8 @@ ALTER TABLE guests ADD COLUMN bot_level TEXT;                      -- 只有 bot
 - `RoomMemberView`：`bot: boolean`、`botLevel?: BotLevel`。
 - `RoomSummaryView`：`botCount: number`。
 - `ResumableGameView.players[]`：`bot?: boolean`。
+- `ServerConfigView`：`bots: { enabled: boolean; levels: BotLevel[] }`；`BOTS_ENABLED=0` 時前端隱藏所有 Bot 選項。
+- `BotLevel` 在 protocol 與 `@catan/bots` 各自定義（線上詞彙與策略實作分離）；伺服器以型別檢查確保兩者一致。
 - 建房表單：「電腦對手」數量（0 至 capacity − 1）與難度。
 - 大廳：房主看到「加入電腦」（含難度選擇）與每個 Bot 的「移除」；Bot 座位顯示徽章「電腦・標準」或「電腦・簡單」，不顯示 ready 切換。
 - 遊戲中：玩家面板以房間成員的 `bot` 欄位顯示徽章（`GameView` 不改）。
