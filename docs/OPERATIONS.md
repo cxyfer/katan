@@ -39,7 +39,7 @@ disconnect grace `30–3600`. Invalid values are rejected with
 
 The Compose files run the published `ghcr.io/cxyfer/katan:latest` image;
 `docker compose pull` refreshes it. `latest` moves only on a stable release
-tag, so pin an exact version tag (`ghcr.io/cxyfer/katan:0.1.0`) or a
+tag, so pin an exact version tag (`ghcr.io/cxyfer/katan:v0.2.0`, or `0.1.0` for the first release) or a
 digest in the `image:` line when a deployment must be reproducible. While the
 repository is private the package is private too, so `docker login ghcr.io` with
 a token that has `read:packages` (or a public package) is required before the
