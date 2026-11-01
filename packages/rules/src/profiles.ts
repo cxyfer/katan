@@ -203,6 +203,8 @@ export const PROFILES: readonly ProfileDefinition[] = [
     enabled: true,
   }),
 
+  // SF25 Heading for New Shores, printed 3- and 4-player maps
+  // (`seafarers-boards.ts`); rules in `modules/seafarers/`.
   baseProfile('sf-new-shores-2025', [3, 4], {
     ruleVersion: 'sf-2025.1',
     expansions: ['seafarers'],
@@ -212,29 +214,37 @@ export const PROFILES: readonly ProfileDefinition[] = [
     victoryTarget: 14,
     setupModes: ['fixed'],
     layoutId: 'sf-new-shores',
+    topologyId: 'sf-new-shores-4',
     pieces: { ...BASE_PIECES, ships: 15 },
     hasPirate: true,
     longestRouteIncludesShips: true,
+    implemented: true,
     unavailableReasonKey: 'profile.unavailable.seafarers',
   }),
 
+  // SF56-25 Heading for New Shores: fixed small islands, a variable main
+  // island and random ports on the marked positions, so the only setup mode
+  // is `variable`. B56-25 supply and development deck.
   baseProfile('sf-new-shores-paired-2025', [5, 6], {
     ...PAIRED_BASE,
     ruleVersion: 'sf-2025.1',
     expansions: ['seafarers'],
     scenario: 'new-shores',
     sources: [
-      { id: 'B56-25', pages: 'p. 3' },
+      { id: 'B56-25', pages: 'pp. 3–4' },
       { id: 'SF25', pages: 'pp. 2–5' },
-      { id: 'SF56-25', pages: 'pp. 2–4' },
+      { id: 'SF56-25', pages: 'pp. 1–4' },
     ],
     requiredBoxes: ['base', 'base-5-6', 'seafarers', 'seafarers-5-6'],
     victoryTarget: 14,
-    setupModes: ['fixed'],
+    setupModes: ['variable'],
     layoutId: 'sf-new-shores',
+    topologyId: 'sf-new-shores-56',
+    devDeck: PAIRED_DEV_DECK,
     pieces: { ...BASE_PIECES, ships: 15 },
     hasPirate: true,
     longestRouteIncludesShips: true,
+    implemented: true,
     unavailableReasonKey: 'profile.unavailable.seafarers',
   }),
 

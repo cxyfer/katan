@@ -163,7 +163,7 @@ describe('ruleset registry', () => {
   it('refuses to create a game for an unimplemented profile', () => {
     expect(() =>
       createGame({
-        profileId: 'sf-new-shores-2025',
+        profileId: 'ck-2025',
         players: playerIds(4).map((id, index) => ({
           id,
           nickname: id,
