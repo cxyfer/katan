@@ -69,9 +69,8 @@ POSTGRES_PASSWORD='<secret>' docker compose -f docker-compose.postgres.yml \
   -f docker-compose.build.yml up --build -d
 ```
 
-While the repository is private the package is private too: before the first
-pull, run `docker login ghcr.io` with a token that has `read:packages`, or make
-the package public.
+The package is published publicly, so the Compose files pull it without a
+registry login.
 
 Open `http://localhost:3000`, enter a nickname, create a private room, share the
 invite code, and start once every seated player is ready and the ruleset's
