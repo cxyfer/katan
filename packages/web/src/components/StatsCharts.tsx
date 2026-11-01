@@ -1,5 +1,6 @@
 import { useId, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { GameStats, GameView } from '@catan/rules';
+import type { BotLevel } from '@catan/protocol';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
@@ -19,8 +20,15 @@ const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 const LABEL_GAP = 10;
 const pct = (value: number, total: number) => `${(value / total) * 100}%`;
 
-export function ScoreTimelineChart({ view, stats }: { view: GameView; stats: GameStats }) {
+export function ScoreTimelineChart({ view, stats, bots = new Map() }: {
+  view: GameView;
+  stats: GameStats;
+  /** 電腦座位；圖例、提示與資料表的名稱加上「（電腦）」。 */
+  bots?: ReadonlyMap<string, BotLevel | null>;
+}) {
   const t = useT();
+  const nameOf = (player: { id: string; nickname: string }) =>
+    bots.has(player.id) ? t('bot.playerName', { name: player.nickname }) : player.nickname;
   const locale = useLocale();
   const headingId = useId();
   const [focus, setFocus] = useState<number | null>(null);
@@ -88,7 +96,7 @@ export function ScoreTimelineChart({ view, stats }: { view: GameView; stats: Gam
             <svg width="24" height="10" aria-hidden="true">
               <line x1="1" y1="5" x2="23" y2="5" stroke={playerColorHex(player.color)} strokeWidth="2" strokeLinecap="round" strokeDasharray={seatDash(player.seat) || undefined} />
             </svg>
-            {player.nickname}
+            {nameOf(player)}
           </li>
         ))}
       </ul>
@@ -195,7 +203,7 @@ export function ScoreTimelineChart({ view, stats }: { view: GameView; stats: Gam
                   <svg width="14" height="8" aria-hidden="true">
                     <line x1="1" y1="4" x2="13" y2="4" stroke={playerColorHex(player.color)} strokeWidth="2" strokeLinecap="round" />
                   </svg>
-                  <strong>{formatNumber(locale, score)}</strong> <span>{player.nickname}</span>
+                  <strong>{formatNumber(locale, score)}</strong> <span>{nameOf(player)}</span>
                 </li>
               ))}
             </ul>
@@ -210,7 +218,7 @@ export function ScoreTimelineChart({ view, stats }: { view: GameView; stats: Gam
               <tr>
                 <th scope="col">{t('stats.timeline.axisRound')}</th>
                 {players.map((player) => (
-                  <th key={player.id} scope="col">{player.nickname}</th>
+                  <th key={player.id} scope="col">{nameOf(player)}</th>
                 ))}
               </tr>
             </thead>

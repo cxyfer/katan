@@ -3,7 +3,7 @@ import { RESOURCES, type Offer, type Resource } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatResourceMap } from '../i18n/format.ts';
 import { Dialog } from './Dialog.tsx';
-import { shownHand } from '../state/table.ts';
+import { nameOf as resolveName, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/trade.css';
 
@@ -99,8 +99,8 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
   const draftEmpty = Object.keys(give).length === 0 && Object.keys(want).length === 0;
   const offers = view.offers.filter((offer) => offer.status === 'open' || offer.status === 'agreed');
   const others = view.players.filter((player) => player.id !== selfId);
-  const nameOf = (playerId: string) =>
-    playerId === 'all' ? t('play.tradeToAll') : (view.players.find((p) => p.id === playerId)?.nickname ?? playerId);
+  const playerName = resolveName(state);
+  const nameOf = (playerId: string) => (playerId === 'all' ? t('play.tradeToAll') : playerName(playerId));
 
   const bump = (
     setter: (value: Terms) => void,
@@ -132,7 +132,7 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
             <option value="all">{t('play.tradeToAll')}</option>
             {others.map((player) => (
               <option key={player.id} value={player.id}>
-                {player.nickname}
+                {playerName(player.id)}
               </option>
             ))}
           </select>

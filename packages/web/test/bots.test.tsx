@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ClientMessage, PolicyProposalView } from '@catan/protocol';
+import { createGameStats, type GameView } from '@catan/rules';
+import { GameStatsPanel } from '../src/components/GameStats.tsx';
+import { LocaleProvider } from '../src/i18n/context.tsx';
 import { ApiClient, type CreateRoomBody, type FetchLike } from '../src/api/client.ts';
 import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
@@ -9,6 +12,7 @@ import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import {
   makeBotMember,
   makeConfig,
+  makeEvent,
   makeIdentity,
   makeMember,
   makePolicy,
@@ -366,5 +370,90 @@ describe('home lists', () => {
     await screen.findByTestId('create-room');
     fireEvent.click(screen.getByRole('tab', { name: /Resume/ }));
     expect(screen.getByTestId('resume-list').textContent).toContain('Alex、Ada (bot)');
+  });
+});
+
+describe('bots outside the expanded players panel', () => {
+  const tableRoom = (status: 'playing' | 'completed' = 'playing') =>
+    makeRoom({
+      status,
+      gameId: 'g1',
+      members: [
+        makeMember(),
+        makeMember({ playerId: 'p2', nickname: '小美', seat: 1, color: 'blue', host: false }),
+        makeBotMember({ playerId: 'p3', nickname: 'Bo', seat: 2, color: 'orange', botLevel: 'easy' }),
+      ],
+    });
+
+  async function openTable(view: GameView, status: 'playing' | 'completed' = 'playing', locale: 'en' | 'zh-Hant' = 'en') {
+    const api = createFakeApi({
+      identity: makeIdentity({ locale }),
+      room: tableRoom(status),
+      snapshot: makeSnapshot(view),
+    });
+    renderApp(api, [locale === 'en' ? 'en' : 'zh-TW']);
+    fireEvent.change(await screen.findByTestId('join-code'), { target: { value: 'ABC123' } });
+    fireEvent.click(screen.getByTestId('join-room'));
+  }
+
+  it('marks a bot seat in the collapsed players rail without widening it', async () => {
+    await openTable(makeView());
+    await screen.findByTestId('board-svg');
+    const botSeat = screen.getByTestId('seat-2');
+    expect(within(botSeat).getByTestId('seat-bot-mark-2')).toBeTruthy();
+    expect(within(botSeat).getByText('Bo (Bot · Easy)').className).toContain('visually-hidden');
+    expect(screen.queryByTestId('seat-bot-mark-1')).toBeNull();
+    // 展開後改由完整徽章標示，角落標記移除。
+    fireEvent.click(screen.getByTestId('players-toggle'));
+    expect(screen.queryByTestId('seat-bot-mark-2')).toBeNull();
+    expect(within(botSeat).getByTestId('seat-bot-2')).toBeTruthy();
+  });
+
+  it('names bots in the event log and in the waiting prompt', async () => {
+    await openTable(
+      makeView({
+        turnPlayerId: 'p3',
+        events: [makeEvent(11, 'turn.started', { playerId: 'p3', windowId: 1 })],
+      }),
+    );
+    await screen.findByTestId('board-svg');
+    await waitFor(() => expect(screen.getByTestId('event-list').textContent).toContain('Bo (bot)'));
+    for (const element of screen.getAllByTestId('turn-state')) expect(element.textContent).toContain('Bo (bot)');
+    expect(screen.getByTestId('event-list').textContent).not.toContain('小美 (bot)');
+  });
+
+  it('badges a bot winner and marks bots in the statistics', async () => {
+    const view = makeView({ result: { playerId: 'p3', reason: 'victory', score: 10 } });
+    view.stats = createGameStats(view.players.map((player) => ({ id: player.id }) as never), true);
+    view.stats.timeline = [
+      [2, 2, 2],
+      [3, 4, 10],
+    ];
+    await openTable(view, 'completed', 'zh-Hant');
+    const winner = await screen.findByTestId('result-winner');
+    expect(within(winner).getByTestId('result-winner-bot').textContent).toBe('電腦・簡單');
+    expect(screen.getByTestId('stats-bot-p3')).toBeTruthy();
+    expect(screen.queryByTestId('stats-bot-p2')).toBeNull();
+    fireEvent.click(screen.getByTestId('stats-tab-timeline'));
+    const legend = screen.getByTestId('stats-timeline').querySelector('.stats-chart__legend')!;
+    expect(legend.textContent).toContain('Bo（電腦）');
+    expect(legend.textContent).not.toContain('小美（電腦）');
+  });
+
+  it('keeps plain names while the room is not loaded', () => {
+    const view = makeView();
+    view.stats = createGameStats(view.players.map((player) => ({ id: player.id }) as never), true);
+    view.stats.timeline = [
+      [2, 2, 2],
+      [3, 4, 10],
+    ];
+    render(
+      <LocaleProvider locale="en">
+        <GameStatsPanel view={view} />
+      </LocaleProvider>,
+    );
+    expect(screen.queryByTestId('stats-bot-p3')).toBeNull();
+    fireEvent.click(screen.getByTestId('stats-tab-timeline'));
+    expect(screen.getByTestId('stats-timeline').textContent).not.toContain('(bot)');
   });
 });

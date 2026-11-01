@@ -14,7 +14,9 @@ import {
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatResourceMap } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
+import type { BotLevel } from '@catan/protocol';
 import { GameIcon } from './GameArt.tsx';
+import { BotBadge } from './BotBadge.tsx';
 import { DiceDistributionChart, ScoreTimelineChart } from './StatsCharts.tsx';
 import '../styles/game-stats.css';
 
@@ -238,7 +240,11 @@ function sectionsFor(tab: Exclude<TabId, 'timeline'>, t: (id: string) => string)
   }
 }
 
-export function GameStatsPanel({ view }: { view: GameView }) {
+/** `bots`：電腦座位的 playerId → 難度；省略時不標示（例如房間資料尚未載入）。 */
+export function GameStatsPanel({ view, bots = new Map() }: {
+  view: GameView;
+  bots?: ReadonlyMap<string, BotLevel | null>;
+}) {
   const t = useT();
   const stats = view.stats;
   const [tab, setTab] = useState<TabId>('overview');
@@ -304,11 +310,11 @@ export function GameStatsPanel({ view }: { view: GameView }) {
           {tab === id &&
             (id === 'timeline' ? (
               <div className="game-stats__charts">
-                <ScoreTimelineChart view={view} stats={stats} />
+                <ScoreTimelineChart view={view} stats={stats} bots={bots} />
                 <DiceDistributionChart dice={stats.dice} />
               </div>
             ) : (
-              sectionsFor(id, t).map((section) => <StatsTable key={section.id} section={section} rows={rows} />)
+              sectionsFor(id, t).map((section) => <StatsTable key={section.id} section={section} rows={rows} bots={bots} />)
             ))}
         </div>
       ))}
@@ -316,7 +322,11 @@ export function GameStatsPanel({ view }: { view: GameView }) {
   );
 }
 
-function StatsTable({ section, rows }: { section: Section; rows: StatsRow[] }) {
+function StatsTable({ section, rows, bots }: {
+  section: Section;
+  rows: StatsRow[];
+  bots: ReadonlyMap<string, BotLevel | null>;
+}) {
   const t = useT();
   const locale = useLocale();
   const headingId = useId();
@@ -370,6 +380,9 @@ function StatsTable({ section, rows }: { section: Section; rows: StatsRow[] }) {
                       }
                     />
                     <span className="game-stats__name">{row.player.nickname}</span>
+                    {bots.has(row.player.id) && (
+                      <BotBadge level={bots.get(row.player.id)} short testId={`stats-bot-${row.player.id}`} />
+                    )}
                     {row.winner && (
                       <span className="game-stats__crown" title={t('stats.winner')}>
                         <GameIcon name="crown" size={16} />

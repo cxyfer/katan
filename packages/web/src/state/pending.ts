@@ -6,7 +6,7 @@
  * how that is labelled and whether it is *our* obligation.
  */
 
-import { awaitingProjection, type TableState } from './table.ts';
+import { awaitingProjection, nameOf as resolveName, type TableState } from './table.ts';
 
 export interface RequiredAction {
   kind: 'setup' | 'roll' | 'rolling' | 'syncing' | 'discard' | 'moveRobber' | 'steal' | 'yearOfPlenty' | 'freeRoads' | 'turn';
@@ -31,8 +31,7 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
   const view = state.game?.view;
   if (!view) return null;
   const me = selfId(state);
-  const nameOf = (id: string) =>
-    view.players.find((player) => player.id === id)?.nickname ?? id;
+  const nameOf = resolveName(state);
 
   if (view.result) return null;
 

@@ -23,6 +23,7 @@ import type { RoomQuery } from '../api/client.ts';
 import { diceRollPresentations } from '../board/animation.ts';
 import type { SocketStatus } from '../api/socket.ts';
 import { chatReducer, initialChatState, type ChatEvent, type ChatState } from './chat.ts';
+import { t } from '../i18n/index.ts';
 import {
   commandReducer,
   type CommandEvent,
@@ -420,14 +421,18 @@ export function activeTurnKey(state: TableState): string | null {
   return `${game.gameId}:${game.view.windowId}:${setupStep}`;
 }
 
+/**
+ * 事件、提示與棋盤說明共用的名稱解析。電腦座位顯示為「Ada（電腦）」；房間資料
+ * 尚未載入時（例如離線恢復）無從得知是否為電腦，維持原名。
+ */
 export function nameOf(state: TableState): (playerId: string) => string {
   const players = state.game?.view.players ?? [];
   const room = state.room;
   return (playerId: string) => {
-    const player = players.find((candidate) => candidate.id === playerId);
-    if (player) return player.nickname;
     const member = room?.members.find((candidate) => candidate.playerId === playerId);
-    if (member) return member.nickname;
-    return playerId;
+    const player = players.find((candidate) => candidate.id === playerId);
+    const nickname = player?.nickname ?? member?.nickname;
+    if (nickname === undefined) return playerId;
+    return member?.bot ? t(state.locale, 'bot.playerName', { name: nickname }) : nickname;
   };
 }

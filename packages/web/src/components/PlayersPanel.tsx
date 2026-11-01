@@ -246,7 +246,14 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
               title={compactLabel}
             >
               <div className="seat__summary">
-                <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>{Array.from(player.nickname)[0]}</span>
+                <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>
+                  {Array.from(player.nickname)[0]}
+                  {/* 收合時名稱與徽章都隱藏，在頭像角落留一個電腦標記。 */}
+                  {isBot && !expanded && (
+                    <span className="seat__bot-mark" data-testid={`seat-bot-mark-${player.seat}`}><GameIcon name="bot" size={9} /></span>
+                  )}
+                </span>
+                {isBot && !expanded && <span className="visually-hidden">{`${player.nickname} (${botLabel})`}</span>}
                 <span className="seat__identity" hidden={!expanded}>
                   <span className="seat__name" title={player.nickname}>{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>
                   {isBot && <BotBadge level={bots.get(player.id)} short testId={`seat-bot-${player.seat}`} />}
