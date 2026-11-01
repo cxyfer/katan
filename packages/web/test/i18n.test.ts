@@ -146,3 +146,19 @@ describe('locale detection', () => {
     expect(asLocale(7)).toBeNull();
   });
 });
+
+describe('per-module catalogs', () => {
+  it('keep locale parity and never redefine a base key', async () => {
+    const { MODULE_CATALOGS, en, zhHant } = await import('../src/i18n/catalogs.ts');
+    expect(Object.keys(MODULE_CATALOGS).sort()).toEqual(['citiesKnights', 'explorersPirates', 'seafarers', 'tradersBarbarians']);
+    const seen = new Set<string>();
+    for (const [id, catalog] of Object.entries(MODULE_CATALOGS)) {
+      expect(Object.keys(catalog.en).sort(), id).toEqual(Object.keys(catalog['zh-Hant']).sort());
+      for (const key of Object.keys(catalog.en)) {
+        expect(key in en || key in zhHant, `${id} redefines ${key}`).toBe(false);
+        expect(seen.has(key), `${key} defined by two modules`).toBe(false);
+        seen.add(key);
+      }
+    }
+  });
+});
