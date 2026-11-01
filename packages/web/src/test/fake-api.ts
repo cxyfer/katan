@@ -6,6 +6,7 @@
 
 import type {
   ApiResult,
+  BotLevel,
   ChatMessageView,
   ChatPage,
   CommandReceipt,
@@ -24,6 +25,7 @@ import type {
 } from '@catan/protocol';
 import type { CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
 import {
+  makeBotMember,
   makeChatMessage,
   makeConfig,
   makeIdentity,
@@ -66,6 +68,27 @@ export interface FakeApi extends CatanApi {
 
 function ok<T>(data: T): ApiResult<T> {
   return { ok: true, data };
+}
+
+const SEAT_COLORS = ['red', 'blue', 'orange', 'white', 'green', 'brown'] as const;
+const BOT_NAMES = ['Ada', 'Bram', 'Cleo', 'Dax', 'Esme'] as const;
+
+/** 依伺服器規則把電腦放進最小空位與第一個未使用的顏色。 */
+function withBot(room: RoomView, level: BotLevel): RoomView {
+  const seats = new Set(room.members.map((member) => member.seat));
+  const colors = new Set(room.members.map((member) => member.color));
+  const names = new Set(room.members.map((member) => member.nickname));
+  let seat = 0;
+  while (seats.has(seat)) seat += 1;
+  const count = room.members.filter((member) => member.bot).length;
+  const bot = makeBotMember({
+    playerId: `bot${count + 1}`,
+    nickname: BOT_NAMES.find((name) => !names.has(name)) ?? `Bot ${count + 1}`,
+    seat,
+    color: SEAT_COLORS.find((color) => !colors.has(color)) ?? 'red',
+    botLevel: level,
+  });
+  return { ...room, members: [...room.members, bot] };
 }
 
 export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
@@ -135,6 +158,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     async createRoom(body: CreateRoomBody) {
       record('createRoom', body);
       room = makeRoom({ visibility: body.visibility, capacity: body.capacity, profileId: body.profileId });
+      if (body.bots && body.bots > 0) {
+        // 帶電腦建房時只有房主一位真人。
+        let created: RoomView = { ...room, members: room.members.filter((member) => member.host) };
+        for (let i = 0; i < body.bots; i++) created = withBot(created, body.botLevel ?? 'standard');
+        room = created;
+      }
       return ok(room);
     },
     async joinRoom(body: { code: string }) {
@@ -160,6 +189,24 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     async updateSettings(roomId: string, body: RoomSettingsBody) {
       record('updateSettings', roomId, body);
       return room ? ok(room) : { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
+    },
+    async addBot(roomId: string, level: BotLevel) {
+      record('addBot', roomId, level);
+      if (!room) return { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
+      if (room.members.length >= room.capacity) {
+        return { ok: false, error: { code: 'E_ROOM_FULL', messageId: 'error.E_ROOM_FULL', params: { capacity: room.capacity } } };
+      }
+      room = withBot(room, level);
+      return ok(room);
+    },
+    async removeBot(roomId: string, playerId: string) {
+      record('removeBot', roomId, playerId);
+      if (!room) return { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
+      if (!room.members.some((member) => member.playerId === playerId && member.bot)) {
+        return { ok: false, error: { code: 'E_NOT_A_BOT', messageId: 'error.E_NOT_A_BOT' } };
+      }
+      room = { ...room, members: room.members.filter((member) => member.playerId !== playerId) };
+      return ok(room);
     },
     async proposePolicy(roomId: string, policy: RoomPolicy) {
       record('proposePolicy', roomId, policy);

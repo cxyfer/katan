@@ -168,6 +168,7 @@ export function makeConfig(overrides: Partial<ServerConfigView> = {}): ServerCon
       chatRatePerMinute: 30,
       roomCapacityMax: 6,
     },
+    bots: { enabled: true, levels: ['easy', 'standard'] },
     ...overrides,
   };
 }
@@ -207,8 +208,25 @@ export function makeMember(overrides: Partial<RoomMemberView> = {}): RoomMemberV
     connected: true,
     host: true,
     joinedAt: '2026-01-01T00:00:00.000Z',
+    bot: false,
     ...overrides,
   };
+}
+
+/** 電腦座位：永遠已準備、已連線，不是房主。 */
+export function makeBotMember(overrides: Partial<RoomMemberView> = {}): RoomMemberView {
+  return makeMember({
+    playerId: 'bot1',
+    nickname: 'Ada',
+    seat: 1,
+    color: 'blue',
+    ready: true,
+    connected: true,
+    host: false,
+    bot: true,
+    botLevel: 'standard',
+    ...overrides,
+  });
 }
 
 export function makeRoom(overrides: Partial<RoomView> = {}): RoomView {
@@ -244,6 +262,7 @@ export function makeRoomSummary(overrides: Partial<RoomSummaryView> = {}): RoomS
     status: 'lobby',
     profileId: 'base-2025',
     playerCount: 2,
+    botCount: 0,
     capacity: 4,
     openSeats: 2,
     createdAt: '2026-01-01T00:00:00.000Z',

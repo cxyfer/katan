@@ -1,0 +1,30 @@
+/* 電腦座位：徽章沿用 .badge，但改用黃銅色調，與人類的準備／連線標籤區隔。 */
+.bot-badge { gap: .25rem; border-color: #b8925580; background: #e2b8661f; color: #f3d696; white-space: nowrap; }
+.bot-badge .game-icon { flex: 0 0 auto; }
+
+/* 大廳座位卡：頭像改為機器人圖示，狀態列放徽章與房主的移除按鈕。 */
+.lobby-seat--bot .lobby-seat__avatar svg { width: 26px; height: 26px; }
+.lobby-seat .lobby-seat__remove { min-height: 32px; padding: .2rem .6rem; font-size: .72rem; gap: .25rem; }
+
+/* 房主的「加入電腦」工具列：與空座位同樣的虛線框，提示它會填入空位。 */
+.lobby-bots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem .9rem;
+  margin: 0 0 clamp(.6rem, 1.6vh, 1rem);
+  padding: .65rem .9rem;
+  border: 1px dashed #d9b06a40;
+  border-radius: 8px;
+  background: #06202c55;
+}
+.lobby-bots__title { display: inline-flex; align-items: center; gap: .35rem; margin: 0; color: #f3d696; font-size: .85rem; }
+.lobby-bots .field { margin: 0; gap: .45rem; }
+.lobby-bots .field label { font-size: .78rem; }
+.lobby-bots .button { margin-left: auto; }
+.lobby-bots__full { flex-basis: 100%; margin: 0; font-size: .72rem; }
+
+@media (max-width: 560px) {
+  .lobby-bots { padding: .6rem .7rem; }
+  .lobby-bots .button { width: 100%; margin-left: 0; }
+}
