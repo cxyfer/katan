@@ -25,14 +25,16 @@ The fidelity reference is the selected official physical tabletop rules, includi
 - Keep the desktop experience primary while supporting usable tablet and mobile layouts and touch input.
 - Provide one Docker image and documented SQLite/PostgreSQL configuration.
 - Structure rules and board topology so the planned expansions do not require replacing the base game's core model.
+- Let a host fill open seats with built-in computer opponents, so a table can start without enough people (§4.9).
 
 ### Non-Goals for the first release
 
-- Ranked matchmaking, ratings, tournaments, voice/video chat, AI opponents, spectators, and public game replay sharing.
+- Ranked matchmaking, ratings, tournaments, voice/video chat, spectators, and public game replay sharing.
 - User accounts, social graph, cross-device identity recovery, and password reset.
 - Arbitrary community plugins or user-authored scenarios.
 - Multiple concurrently active game-service replicas or automatic horizontal scaling.
-- Automatic AI takeover of a disconnected player.
+- Silent or automatic AI takeover of a disconnected player. A later opt-in, disclosed takeover policy may be added under §4.9; it never replaces a connected person.
+- Computer opponents that use an LLM, a network service or another external decision source.
 - Every published scenario or every possible expansion combination. The room may enable only combinations explicitly listed as supported.
 - A companion app for physical-board play.
 - Downloadable/importable player saves, historical-state rollback, and cloned/forked games. Operator backup/restore remains separate from a player-facing save feature.
@@ -57,6 +59,7 @@ The fidelity reference is the selected official physical tabletop rules, includi
 | P-14 | Provide structured trading plus room text chat for negotiation, discussion, reminders, and social interaction. |
 | P-15 | Initially deploy one application instance; retain the executable rule versions required by unfinished games. |
 | P-16 | Provide Traditional Chinese and English in the first release, with the approved desktop/mobile/accessibility and seat-control behavior. |
+| P-17 | Provide built-in computer opponents that the host can add to a room's open seats. Bots decide locally from their own seat's projection, without an LLM, network call or external service (§4.9). |
 
 ## 4. User Flows
 
@@ -76,13 +79,14 @@ Clearing browser storage or changing devices can lose access to a guest identity
 - In the lobby, select a color, inspect settings, and mark ready.
 - Before start, only the host may change validated settings or start the game; settings changes clear readiness. The host may change the room capacity down to, but never below, the number of seated players. After start, immutable game rules stay locked, while room-policy changes follow the all-seat approval contract in §5.8.
 - A lobby may start with any player count its ruleset profile supports, up to the room capacity; it does not need to be full. Starting locks the rules, map/scenario, seats, and actual player count.
+- Before start, the host may add or remove computer-opponent (bot) seats in the lobby, or request bots when creating the room (§4.9). Bot seats count toward the capacity and the started player count; at least one seat is always a person.
 
 ### 4.3 Play, disconnect, and recover
 
 - The UI distinguishes the turn owner, the current action-window actor, and players with mandatory responses. Every player sees their own available actions, costs, disabled reasons, and required responses; a player with no current action sees whom the game is waiting for.
 - The server validates each action and publishes the resulting authorized view to each player.
 - On a temporary disconnect, retain the seat and show connection status. Rejoining with the same guest identity restores the seat, private player view, and any unresolved required choice.
-- A disconnected player is not silently replaced by an AI, skipped, or assigned a random discard. Apply the confirmed room policy and safeguards in §4.6/§5.8. A host cannot unilaterally change an active game's policy, and manually saving is not a withdrawal or a request to abandon.
+- A disconnected player is not silently replaced by an AI, skipped, or assigned a random discard. Bot seats (§4.9) are separate seats chosen before start, never a replacement for a person's seat. Apply the confirmed room policy and safeguards in §4.6/§5.8. A host cannot unilaterally change an active game's policy, and manually saving is not a withdrawal or a request to abandon.
 - On normal service/container restart, recover saved games and allow players to reconnect. If recovery is impossible or a save is corrupt, preserve the last recoverable data and show a clear failure rather than silently starting a new game.
 - The home/room screen offers “Resume game” for the current identity's unfinished seats. Recovery explains missed public actions, the current required action, and whether an outstanding command committed. It never asks the player to guess whether to repeat a purchase or trade.
 
@@ -147,6 +151,8 @@ D-03 is confirmed with configurable room policies and the fixed safeguards in §
 
 The abandonment confirmation names the absent player(s), explains that it terminates the saved game without a winner, and is separate from closing the page. A player can retract an explicit withdrawal before abandonment commits, invalidating the proposal. The confirmed default permits remaining connected players to end an interrupted table after prolonged absence, but the host can disable this option before play or propose a change requiring all-seat consent after start. Never treat a Save and leave request as explicit withdrawal; a player leaving alone still follows the room's disclosed absence policy unless the whole table has agreed to suspend. Interrupted games are not removed by stale-lobby cleanup; retention is an operator policy disclosed before deletion.
 
+Bot seats (§4.9) are never absent, never vote and never hold host authority. Host succession, pause/save consent, resume readiness, the abandonment absence condition and its voters, and post-start policy consent (§5.8) consider human seats only. When every other seat is a bot, the only human seat may end the game without an absence condition; the confirmation still states that the game ends without a winner.
+
 ### 4.7 Game completion and another game
 
 - Evaluate victory at every rule-required boundary, including the start of an eligible turn/window and after scoring effects. Persist one terminal result and reject further game mutations; cancel outstanding offers and stop action prompts.
@@ -167,6 +173,21 @@ Confirmed D-03 save mode: server-side automatic persistence plus an explicit sav
 - **Save discovery and lifecycle:** the home screen lists the identity's ongoing/suspended games, ruleset, participants, last activity/save time, and whether all seats are needed. Only original members can resume; knowing an invite/game ID is not enough. Completed/abandoned games are inspectable results, not resumable saves. Recovered private state and chat obey their original audience boundaries.
 
 R-SAVE acceptance: autosave plus save-and-leave in an ordinary turn and during a required choice; one person leaving versus a fully suspended table; host transfer when the host leaves after saving; all players offline across a restart; unanimous suspend/resume; save commit racing a trade or victory; acknowledgement loss and duplicate save requests; storage failure; same-identity seat restoration without replaying dice/cards; refusal of a historical-revision resume or unauthorized seat claim. A terminal result wins over a later suspend/save request; no save operation can resurrect an ended game.
+
+### 4.9 Computer opponents (bots)
+
+A bot seat is a seat played by the service's built-in strategy. The design and delivery plan are recorded in `docs/aegis/specs/2026-11-01-bot-opponents.md`; the requirements below are normative.
+
+- **Seats and labeling:** before start, the host adds bots to open seats or removes them; bot seats are ready by definition and are labeled as computer opponents, with their difficulty, wherever seats are shown. A bot has no login credential, cannot be host and does not chat. Bots cannot be added or removed after start.
+- **Information:** a bot decides only from its own seat's authorized projection (§8.3), public board topology and rules constants. It never reads authoritative hidden state, and no other seat gains information from it.
+- **Locality:** decisions run inside the service with no LLM, network call, model file or other external service, so a bot table works offline.
+- **Commands:** bots submit through the same validated command path as people, with stable command IDs; every §7.2 durability and receipt rule applies. A decision is deterministic for a given projection and seed.
+- **Pacing and presence:** bots wait a short, action-dependent delay so people can follow the table, including the dice presentation. They act only while at least one human seat has a live connection, so a table that everyone left does not play itself.
+- **Trading:** bots answer offers addressed to them and use bank/harbor rates. During their own action window they may propose a bounded number of domestic offers; they wait a collection window before choosing a partner and withdraw an offer nobody accepts within a timeout.
+- **Difficulty:** this release provides `easy` and `standard`. Difficulty changes strategy quality only, never information access.
+- **Safeguards:** a bot never blocks the table indefinitely. If its strategy produces a rejected command, it falls back to a minimal legal action; a persistent failure is logged and retried with backoff. A bot seat never replaces, takes over or acts for a human seat. Any future takeover requires an opt-in room policy approved under §5.8, visible labeling and immediate return of control on reconnection.
+
+R-BOT acceptance: bot moves are always legal and deterministic for a seed; bot-only simulated games terminate with a winner across every enabled profile and player count; two states that differ only in hidden information produce the same bot decision; bots pause without a connected person and continue on reconnection; restart recovery continues a bot table from the committed state; a person and a bot racing on one revision commit exactly once; host succession, pause, resume, abandonment and policy votes follow the human-seat rules in §4.6.
 
 ## 5. Room Settings and Rule Compatibility
 
@@ -277,7 +298,7 @@ The actual layout data must transcribe the source map's terrain, numbers, harbor
 
 ### 5.8 Room-policy settings and post-start approval
 
-Room policy is separate from the immutable game profile. The host may set validated policy values when creating a room and change them before start; changes clear readiness and show an updated human-readable summary. Once play begins, the host may **propose**, but not unilaterally apply, a policy change. Every original seated player, including the host, must consent to the exact proposal. A missing player cannot be skipped or represented by the host.
+Room policy is separate from the immutable game profile. The host may set validated policy values when creating a room and change them before start; changes clear readiness and show an updated human-readable summary. Once play begins, the host may **propose**, but not unilaterally apply, a policy change. Every original seated player, including the host, must consent to the exact proposal. A missing player cannot be skipped or represented by the host. Bot seats do not vote (§4.9).
 
 | Setting | Confirmed default and allowed v1 variation | Fixed safeguard |
 |---|---|---|
@@ -319,6 +340,7 @@ Single deployable application service (Node.js + TypeScript)
   ├─ HTTP/static web delivery and guest identity
   ├─ lobby/room lifecycle and public room listing
   ├─ authoritative game command handler and per-player projections
+  ├─ built-in bot driver and strategies (submit through the command handler from bot-seat projections)
   ├─ isolated rules engine and ruleset registry
   └─ persistence interface
        │
@@ -419,7 +441,7 @@ The server's player projection, event log, toasts, accessibility announcements, 
 | Room chat | Player-authored messages to the authorized room/game audience; distinguish them from engine-confirmed events. | Never append private state automatically. User-chosen disclosures are not an engine hand projection; old-game history is not exposed to new-game members or public discovery. |
 | Game over | Winner, terminal reason, final board, public score components and victory cards that must be revealed. | Other players' private cards and deck order are not automatically exposed. |
 
-For each enabled card/scenario, document any exception in that profile's fixture. Public room discovery receives only lobby metadata, not this seated-player projection. R-VIS tests compare at least three identities plus an outsider for initial join, every sensitive event, reconnect, and game over. Legitimate deduction from public play is not a security failure; direct transmission or derived leakage of protected fields is.
+For each enabled card/scenario, document any exception in that profile's fixture. Public room discovery receives only lobby metadata, not this seated-player projection. A bot strategy (§4.9) receives exactly its own seat's projection, the same payload a client in that seat would receive. R-VIS tests compare at least three identities plus an outsider for initial join, every sensitive event, reconnect, and game over. Legitimate deduction from public play is not a security failure; direct transmission or derived leakage of protected fields is.
 
 ### 8.4 Required actions, help, and recovery
 
