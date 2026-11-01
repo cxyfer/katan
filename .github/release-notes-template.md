@@ -6,7 +6,7 @@ Every GitHub Release uses this format. Do not write notes from scratch.
 ./scripts/release-notes.sh vX.Y.Z          # writes .tmp/release-notes-vX.Y.Z.md
 $EDITOR .tmp/release-notes-vX.Y.Z.md       # fill in the TODO markers
 ./scripts/release-notes-lint.sh .tmp/release-notes-vX.Y.Z.md
-gh release create vX.Y.Z --notes-file .tmp/release-notes-vX.Y.Z.md --verify-tag
+gh release create vX.Y.Z --title vX.Y.Z --notes-file .tmp/release-notes-vX.Y.Z.md --verify-tag
 ```
 
 The script fills in `What's Changed`, `New Contributors` and `Full Changelog` from the commits
