@@ -82,6 +82,25 @@ const SCENARIOS = {
       state.players[0].resources = { lumber: 2, brick: 2, wool: 4, grain: 1, ore: 0 };
     },
   },
+  'tb-merchant-trains': {
+    profileId: 'tb-merchant-trains-2025',
+    seed: 23,
+    dress(state) {
+      const trains = tb(state)['tb-merchant-trains'];
+      const topology = rules.getTopology(state.board.layout.topologyId);
+      // Two trains of three and two wagons running out from the watering hole.
+      for (const [train, length] of [[0, 3], [2, 2]]) {
+        let vertex = trains.starts[train].vertex;
+        let edge = trains.starts[train].edge;
+        for (let step = 0; step < length; step++) {
+          trains.wagons.push({ edge, train });
+          vertex = topology.edges[edge].vertices.find((v) => v !== vertex);
+          edge = topology.vertices[vertex].edges.find((e) => !trains.wagons.some((w) => w.edge === e));
+        }
+      }
+      trains.supply = 22 - trains.wagons.length;
+    },
+  },
 };
 
 const out = { profiles: rules.PROFILES.map(protocol.profileView), scenarios: {} };

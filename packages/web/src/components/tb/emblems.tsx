@@ -93,3 +93,15 @@ export function WealthEmblem({ size, poor = false }: { size?: number; poor?: boo
     </Emblem>
   );
 }
+
+/** A neutral trade wagon (Merchant Trains) or a player's wagon when coloured. */
+export function WagonEmblem({ size, color = '#9aa3a6' }: { size?: number; color?: string }) {
+  return (
+    <Emblem size={size}>
+      <path d="M5 18h22v-6q-11-7-22 0Z" fill={color} stroke="#2e2a24" strokeWidth="1.4" />
+      <rect x="4" y="17" width="24" height="5" rx="1.5" fill="#7b5230" stroke="#2e2a24" strokeWidth="1.2" />
+      <circle cx="10" cy="24" r="3.4" fill="#4c3626" stroke="#e6d3b0" strokeWidth="1" />
+      <circle cx="22" cy="24" r="3.4" fill="#4c3626" stroke="#e6d3b0" strokeWidth="1" />
+    </Emblem>
+  );
+}

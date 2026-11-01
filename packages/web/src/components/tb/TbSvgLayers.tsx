@@ -147,8 +147,50 @@ export function TbSvgUnder({ geometry, view }: { geometry: BoardGeometry; view: 
   );
 }
 
+interface TrainsView { starts: { vertex: number; edge: number }[]; wagons: { edge: number; train: number }[]; betweenWagons: number[] }
+
+/** A wagon centred on an edge, facing along it. */
+export function SvgWagon({ geometry, edge, color = '#9aa3a6', label }: { geometry: BoardGeometry; edge: number; color?: string; label?: string }) {
+  const line = geometry.edges[edge];
+  if (!line) return null;
+  const x = (line.x1 + line.x2) / 2;
+  const y = (line.y1 + line.y2) / 2;
+  const angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1) * 180 / Math.PI;
+  const upright = angle > 90 || angle < -90 ? angle + 180 : angle;
+  return (
+    <g transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${upright.toFixed(1)})`} className="tb-wagon">
+      <ellipse cy={9} rx={19} ry={5} fill="#10242c" opacity={0.35} />
+      <path d="M-16 2h32v-9q-16-11-32 0Z" fill={color} stroke="#2e2a24" strokeWidth={2} />
+      <rect x={-18} y={1} width={36} height={6} rx={2} fill="#7b5230" stroke="#2e2a24" strokeWidth={1.6} />
+      <circle cx={-10} cy={9} r={4.5} fill="#4c3626" stroke="#e6d3b0" strokeWidth={1.4} />
+      <circle cx={10} cy={9} r={4.5} fill="#4c3626" stroke="#e6d3b0" strokeWidth={1.4} />
+      {label && <title>{label}</title>}
+    </g>
+  );
+}
+
 export function TbSvgOver({ geometry, view }: { geometry: BoardGeometry; view: GameView }) {
-  void geometry;
-  void view;
-  return null;
+  const t = useT();
+  const trains = tbPart<TrainsView>(view, 'tb-merchant-trains');
+  if (!trains) return null;
+  const used = new Set(trains.wagons.map((wagon) => wagon.edge));
+  return (
+    <g className="tb-svg-over">
+      {trains.starts.filter((start) => !used.has(start.edge)).map((start) => {
+        const line = geometry.edges[start.edge]!;
+        const from = geometry.vertices[start.vertex]!;
+        const far = line.a === start.vertex ? { x: line.x2, y: line.y2 } : { x: line.x1, y: line.y1 };
+        const tip = { x: from.x + (far.x - from.x) * 0.55, y: from.y + (far.y - from.y) * 0.55 };
+        return <g key={start.edge} data-testid={`tb-train-start-${start.edge}`} aria-hidden="true">
+          <line x1={from.x} y1={from.y} x2={tip.x} y2={tip.y} stroke="#f7ecd0" strokeWidth={5} strokeDasharray="4 5" strokeLinecap="round" />
+          <circle cx={tip.x} cy={tip.y} r={5} fill="#f7ecd0" stroke="#5b4630" strokeWidth={1.5} />
+        </g>;
+      })}
+      {trains.betweenWagons.map((vertex) => {
+        const point = geometry.vertices[vertex];
+        return point ? <circle key={`between-${vertex}`} cx={point.x} cy={point.y} r={20} fill="none" stroke="#f2c94c" strokeWidth={3} strokeDasharray="4 4" aria-hidden="true" /> : null;
+      })}
+      {trains.wagons.map((wagon) => <SvgWagon key={wagon.edge} geometry={geometry} edge={wagon.edge} label={t('tb.trains.wagon')} />)}
+    </g>
+  );
 }

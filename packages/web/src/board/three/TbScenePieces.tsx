@@ -137,8 +137,41 @@ function bridges(b: ModelBuilder, context: TbPieceContext): boolean {
   return any;
 }
 
+/** A small cart centred at a point, its axle across `yaw`. */
+export function cart(b: ModelBuilder, x: number, z: number, yaw: number, color: string, scale = 1.6) {
+  const k = scale;
+  b.add(new BoxGeometry(0.22 * k, 0.05 * k, 0.12 * k), '#7b5230', [x, 0.07 * k, z], [1, 1, 1], [0, yaw, 0]);
+  // Canvas cover: a half cylinder along the cart.
+  b.add(new CylinderGeometry(0.065 * k, 0.065 * k, 0.2 * k, 10, 1, false, 0, Math.PI), color,
+    [x, 0.095 * k, z], [1, 1, 1], [Math.PI / 2, 0, yaw + Math.PI / 2]);
+  for (const side of [-1, 1]) {
+    for (const along of [-0.07, 0.07]) {
+      const wx = x + Math.cos(-yaw) * along * k - Math.sin(-yaw) * side * 0.07 * k;
+      const wz = z + Math.sin(-yaw) * along * k + Math.cos(-yaw) * side * 0.07 * k;
+      b.add(new CylinderGeometry(0.035 * k, 0.035 * k, 0.015 * k, 10), '#3b2a1c', [wx, 0.035 * k, wz], [1, 1, 1], [Math.PI / 2, yaw, 0]);
+    }
+  }
+}
+
+function edgeYaw(context: TbPieceContext, edge: number): { x: number; z: number; yaw: number } {
+  const [a, c] = context.geometry.topology.edges[edge]!.vertices;
+  const pa = vertexWorld(context.geometry, a);
+  const pc = vertexWorld(context.geometry, c);
+  return { x: (pa.x + pc.x) / 2, z: (pa.z + pc.z) / 2, yaw: -Math.atan2(pc.z - pa.z, pc.x - pa.x) };
+}
+
+function trainWagons(b: ModelBuilder, context: TbPieceContext): boolean {
+  const slot = part<{ wagons: { edge: number }[] }>(context.modules, 'tb-merchant-trains');
+  if (!slot || slot.wagons.length === 0) return false;
+  for (const wagon of slot.wagons) {
+    const at = edgeYaw(context, wagon.edge);
+    cart(b, at.x, at.z, at.yaw, '#d8d2c2');
+  }
+  return true;
+}
+
 /** Builders per scenario part; each returns false when its part is absent. */
-const BUILDERS: readonly ((b: ModelBuilder, context: TbPieceContext) => boolean)[] = [fishingGrounds, rivers, bridges];
+const BUILDERS: readonly ((b: ModelBuilder, context: TbPieceContext) => boolean)[] = [fishingGrounds, rivers, bridges, trainWagons];
 
 const IDENTITY: readonly InstanceTransform[] = [{ position: [0, 0, 0], rotationY: 0, scale: [1, 1, 1] }];
 

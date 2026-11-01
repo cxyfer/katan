@@ -1,10 +1,12 @@
 import type { ComponentType } from 'react';
 import type { TableController } from '../../state/useTable.ts';
 import { FishSwapChoice } from './FishingSection.tsx';
+import { WagonBidChoice } from './TrainsSection.tsx';
 
 /** Choice UIs for T&B pending frames, by frame kind. */
 const CHOICES: Readonly<Record<string, ComponentType<{ controller: TableController }>>> = {
   'tradersBarbarians.fishSwap': FishSwapChoice,
+  'tradersBarbarians.wagonBid': WagonBidChoice,
 };
 
 /**
