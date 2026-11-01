@@ -4,6 +4,7 @@ import { requiredActionFor } from '../state/pending.ts';
 import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { DiscardPicker } from './DiscardPicker.tsx';
+import { SeafarersPrompt } from './SeafarersPrompt.tsx';
 
 /**
  * Mandatory-response prompt (docs/SPEC.md §4.4/§8.4).
@@ -130,6 +131,8 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       {pending && pending.kind === 'freeRoads' && (
         <p className="muted">{t('play.pending.freeRoads', { remaining: pending.remaining })}</p>
       )}
+
+      <SeafarersPrompt controller={controller} />
 
       {/* Mandatory turn actions stay inside the prompt so a player never
           has to open a secondary tool surface to act (docs/SPEC.md §8.1/§8.4). */}
