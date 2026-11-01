@@ -51,14 +51,15 @@ frame, the lantern head, the wider hull and gunwale and the pennant tip. The
 test builds `createHarborModel(type)` for each harbour's own trade instead of
 only the generic model. With the point-in-hull tolerance temporarily reduced
 from 0.75 px to 0.01 px every visible vertex still passed, so the footprint does
-not rely on that slack.
+not rely on that slack. The browser matrix and review captures were re-run at
+the merge commit `a0c6f23` against the remodelled harbour.
 
 ## Verification
 
 - `pnpm typecheck`: all packages passed.
 - `pnpm verify`: passed. Rules 138, protocol 7, server 99 passed / 11 skipped
-  without PostgreSQL, web 533 passed in 51 files, build passed, smoke 13/13 and
-  the compiled development-runner test passed.
+  without PostgreSQL, web 542 passed in 53 files after merging `master`,
+  build passed, smoke 13/13 and the compiled development-runner test passed.
 - Browser matrix: 4/4 passed with production build and deterministic fixtures
   (`svg`/`r3f` at 1366×900 and 390×844). Desktop cases wait until the exact
   projected boat probe is exposed (no plaque fallback), hover it for all nine
