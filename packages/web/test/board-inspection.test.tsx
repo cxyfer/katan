@@ -1,13 +1,15 @@
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
-import { Matrix4, OrthographicCamera } from 'three';
+import { Matrix4, OrthographicCamera, Vector3 } from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App.tsx';
 import { BoardInspectionLayer, INSPECTION_DELAY_MS } from '../src/components/BoardInspection.tsx';
-import type { ProjectionSnapshot } from '../src/board/render-contract.ts';
+import type { BoardViewportState, ProjectionSnapshot, WorldPoint } from '../src/board/render-contract.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
+import { harborHitPoints, harborPlacement, harborProbePoint, screenConvexHull } from '../src/board/harbor.ts';
 import { inspectDescription, inspectionElements } from '../src/board/inspection.ts';
 import { sceneBounds } from '../src/board/three/bounds.ts';
 import { applySceneCamera, fitSceneCamera } from '../src/board/three/camera.ts';
+import { createHarborModel } from '../src/board/three/diorama-structures.ts';
 import { useBoardViewport } from '../src/board/useBoardViewport.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi } from '../src/test/fake-api.ts';
@@ -25,6 +27,29 @@ beforeEach(() => {
 
 const geometry = buildGeometry('hex-r2');
 afterEach(() => vi.useRealTimers());
+
+function segmentDistance(point: { x: number; y: number }, a: { x: number; y: number },
+  b: { x: number; y: number }): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length = dx * dx + dy * dy;
+  const t = length > 0 ? Math.max(0, Math.min(1,
+    ((point.x - a.x) * dx + (point.y - a.y) * dy) / length)) : 0;
+  return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy));
+}
+
+function polygonContains(polygon: readonly { x: number; y: number }[], point: { x: number; y: number },
+  tolerance = 0): boolean {
+  let contained = false;
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+    const a = polygon[index]!;
+    const b = polygon[previous]!;
+    if (tolerance > 0 && segmentDistance(point, a, b) <= tolerance) return true;
+    if ((a.y > point.y) !== (b.y > point.y) &&
+        point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) contained = !contained;
+  }
+  return contained;
+}
 
 describe('public map inspection', () => {
   it.each(['svg', 'r3f'] as const)('keeps fitted mobile %s tile centers clear of piece padding and retains keyboard access', (renderer) => {
@@ -80,6 +105,19 @@ describe('public map inspection', () => {
     expect(road.style.strokeWidth).toBe(road.getAttribute('stroke-width'));
     expect(building.getAttribute('tabindex')).toBe('0');
     expect(building.getAttribute('aria-label')).toContain('Public owner');
+    const harbor = screen.getByTestId(`inspect-harbor-${board.harbors[0]!.edge}`);
+    expect(harbor.tagName.toLowerCase()).toBe('rect');
+    expect(harbor.getAttribute('tabindex')).toBe('0');
+    if (renderer === 'r3f') {
+      const footprint = screen.getByTestId(`inspect-harbor-${board.harbors[0]!.edge}-footprint`);
+      expect(footprint.tagName.toLowerCase()).toBe('polygon');
+      expect(footprint.getAttribute('points')?.trim().split(/\s+/).length).toBeGreaterThanOrEqual(3);
+      expect(footprint.getAttribute('data-harbor-probe')).toMatch(/^-?[\d.]+,/);
+      expect(footprint.getAttribute('tabindex')).toBe('-1');
+      expect(footprint.getAttribute('aria-hidden')).toBe('true');
+    } else {
+      expect(screen.queryByTestId(`inspect-harbor-${board.harbors[0]!.edge}-footprint`)).toBeNull();
+    }
     act(() => result.current.setZoom(3));
     project();
     rendered.rerender(<div><BoardInspectionLayer {...props()} /></div>);
@@ -136,6 +174,109 @@ describe('public map inspection', () => {
     expect(elements.some((item) => item.kind === 'vertex' && item.index === vertex)).toBe(true);
     const dock = elements.find((item) => item.kind === 'harbor')!;
     expect(dock.world).not.toEqual(inspectionElements(geometry, board, 'svg').find((item) => item.kind === 'harbor')!.world);
+  });
+
+  it('covers the rendered 3D pier and boat for every fixed harbour and camera', () => {
+    const board = fixedBoard();
+    const harborEdge = board.harbors[0]!.edge;
+    const harborVertex = geometry.topology.edges[harborEdge]!.vertices[0]!;
+    board.roads[harborEdge] = { player: 'p2', ship: false };
+    board.buildings[harborVertex] = { player: 'p2', city: false };
+    const bounds = sceneBounds(geometry);
+    const rect = { left: 20, top: 50, width: 1100, height: 700 };
+    const viewport: BoardViewportState = {
+      center: { x: (bounds.min.x + bounds.max.x) / 2, z: (bounds.min.z + bounds.max.z) / 2 },
+      zoom: 1,
+      rect,
+    };
+    const r3fElements = inspectionElements(geometry, board, 'r3f');
+    // Each trade carries its own cargo, so test the model each harbour renders.
+    const harborModels = new Map(board.harbors.map((harbor) => [harbor.type, createHarborModel(harbor.type)]));
+    expect(harborModels.size).toBeGreaterThan(1);
+    for (const model of harborModels.values()) expect(model.getAttribute('position').count).toBeGreaterThan(100);
+
+    // Local +X/+Z follow the diorama instance: +Z is outward, +X carries the
+    // boat. The points below are real model heights, not a flat hit plane.
+    const modelPoint = (placement: ReturnType<typeof harborPlacement>, side: number, outward: number,
+      height: number): WorldPoint => ({
+      x: placement!.midpoint.x + Math.cos(placement!.rotationY) * side + Math.sin(placement!.rotationY) * outward,
+      y: height,
+      z: placement!.midpoint.z - Math.sin(placement!.rotationY) * side + Math.cos(placement!.rotationY) * outward,
+    });
+
+    for (const elevation of [25, 50, 60, 80]) {
+      for (const azimuth of [20, 110, 245]) {
+        for (const zoom of [1, 2]) {
+          const camera = new OrthographicCamera();
+          applySceneCamera(camera, fitSceneCamera(bounds, rect, azimuth, elevation), {
+            ...viewport, azimuthDeg: azimuth, elevationDeg: elevation, zoom });
+          const matrix = new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+          const project = (point: WorldPoint) => {
+            const projected = new Vector3(point.x, point.y, point.z).applyMatrix4(matrix);
+            return { x: rect.left + (projected.x + 1) * 0.5 * rect.width,
+              y: rect.top + (1 - projected.y) * 0.5 * rect.height };
+          };
+          for (const harbor of board.harbors) {
+            const footprint = r3fElements.find((item) => item.kind === 'harbor' &&
+              item.index === harbor.edge && item.pointerOnly)!;
+            const plaque = r3fElements.find((item) => item.kind === 'harbor' &&
+              item.index === harbor.edge && !item.pointerOnly)!;
+            expect(footprint.hull).toEqual(harborHitPoints(geometry, harbor.edge));
+            expect(footprint.probe).toEqual(harborProbePoint(geometry, harbor.edge));
+            expect(plaque.hull).toBeUndefined();
+            if (harbor.edge === harborEdge) {
+              const footprintIndex = r3fElements.indexOf(footprint);
+              const roadIndex = r3fElements.findIndex((item) => item.kind === 'edge' && item.index === harborEdge);
+              const buildingIndex = r3fElements.findIndex((item) => item.kind === 'vertex' && item.index === harborVertex);
+              expect(footprintIndex).toBeLessThan(roadIndex);
+              expect(footprintIndex).toBeLessThan(buildingIndex);
+              expect(r3fElements.indexOf(plaque)).toBeGreaterThan(buildingIndex);
+            }
+            const polygon = screenConvexHull(footprint.hull!.map(project));
+            expect(polygon.length).toBeGreaterThanOrEqual(3);
+            const placement = harborPlacement(geometry, harbor.edge)!;
+            // Interior samples of the real deck, hull, sail and mast. Points on
+            // the exact hull border are excluded because a half-open point test
+            // treats them as outside.
+            const points = [
+              modelPoint(placement, 0, 0.285, 0.204),
+              modelPoint(placement, -0.33, 0.28, 0.204),
+              modelPoint(placement, 0.33, 0.28, 0.204),
+              modelPoint(placement, 0.1, 0.58, 0.1),
+              modelPoint(placement, 0.32, 0.63, -0.252),
+              modelPoint(placement, 0.32, 0.63, -0.245),
+              modelPoint(placement, 0.32, 0.63, -0.285),
+              modelPoint(placement, 0.32, 0.63, -0.274),
+              modelPoint(placement, 0.32, 0.63, -0.243),
+              modelPoint(placement, 0.32, 0.63, -0.127),
+              modelPoint(placement, 0.32, 0.6, -0.27),
+              modelPoint(placement, 0.32, 0.8, -0.27),
+              modelPoint(placement, 0.32, 0.6, -0.12),
+              modelPoint(placement, 0.32, 0.6, 0.18),
+              modelPoint(placement, 0.32, 0.6, 0.22),
+              footprint.probe!,
+            ];
+            for (const [index, point] of points.entries()) {
+              expect(polygonContains(polygon, project(point)),
+                `${elevation}/${azimuth}/${zoom}/${harbor.edge}/${index}`).toBe(true);
+            }
+            const vertexPositions = harborModels.get(harbor.type)!.getAttribute('position');
+            const outside: string[] = [];
+            for (let vertex = 0; vertex < vertexPositions.count; vertex += 1) {
+              const localY = vertexPositions.getY(vertex);
+              // The opaque ocean clips the submerged part of the hull.
+              if (localY < -0.285) continue;
+              const world = modelPoint(placement, vertexPositions.getX(vertex), vertexPositions.getZ(vertex), localY);
+              if (!polygonContains(polygon, project(world), 0.75)) {
+                outside.push(`${vertex}@${localY.toFixed(3)}`);
+                if (outside.length === 5) break;
+              }
+            }
+            expect(outside, `${elevation}/${azimuth}/${zoom}/${harbor.edge}`).toEqual([]);
+          }
+        }
+      }
+    }
   });
 
   async function open() {

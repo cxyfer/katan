@@ -5,6 +5,9 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-01 | work | docs/aegis/work/2026-11-01-harbor-hover.md | Harbour hover covers the whole 3D port |
+| 2026-11-01 | artifact | scripts/harbor-hover/verify.py | Harbour footprint hover and tooltip verification |
+| 2026-11-01 | artifact | docs/aegis/work/2026-11-01-harbor-hover/report.json | Four-case harbour hover browser evidence |
 | 2026-10-31 | work | docs/aegis/work/2026-10-31-board-visual-polish.md | Shared coastline and sculpted 3D coast, terrain and tokens |
 | 2026-10-31 | artifact | scripts/board-polish/capture.py | Before/after SVG and 3D board capture harness |
 | 2026-10-31 | work | docs/aegis/work/2026-10-31-notice-auto-dismiss.md | Transient notice auto-dismissal and turn-boundary review |

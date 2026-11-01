@@ -44,12 +44,6 @@ export interface BuildingPart extends InstanceTransform {
   durationMs: number;
 }
 
-export interface HarborInstance {
-  edge: number;
-  type: string;
-  position: Vec3;
-  rotationY: number;
-}
 
 const TERRAIN_LAYOUTS: Readonly<Record<string, readonly { x: number; z: number; s?: number }[]>> = {
   forest: [{ x: -0.27, z: -0.2, s: 1 }, { x: -0.04, z: -0.29, s: 0.86 }, { x: 0.22, z: -0.17, s: 0.94 }],
@@ -203,41 +197,6 @@ export function buildingParts(
     }
   }
   return out;
-}
-
-export function harborInstances(geometry: BoardGeometry, board: PublicBoardView): HarborInstance[] {
-  return board.harbors.flatMap((harbor) => {
-    const edge = geometry.edges[harbor.edge];
-    if (!edge) return [];
-    const a = geometryToWorld(geometry, edge.x1, edge.y1);
-    const b = geometryToWorld(geometry, edge.x2, edge.y2);
-    const midpoint = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
-    const dx = b.x - a.x;
-    const dz = b.z - a.z;
-    const length = Math.hypot(dx, dz) || 1;
-    // The coastal edge has one adjacent hex; outward is away from that centre.
-    const adjacentHex = geometry.topology.edges[harbor.edge]?.hexes[0];
-    const hex = adjacentHex === undefined ? null : geometry.hexes[adjacentHex];
-    let normalX = dz / length;
-    let normalZ = -dx / length;
-    if (hex) {
-      const center = geometryToWorld(geometry, hex.cx, hex.cy);
-      if ((midpoint.x - center.x) * normalX + (midpoint.z - center.z) * normalZ < 0) {
-        normalX *= -1;
-        normalZ *= -1;
-      }
-    }
-    return [{
-      edge: harbor.edge,
-      type: harbor.type,
-      position: [
-        midpoint.x + normalX * 0.38,
-        0.045,
-        midpoint.z + normalZ * 0.38,
-      ],
-      rotationY: horizontalRotation(dx, dz),
-    }];
-  });
 }
 
 export function legalGhostSelection(intent: BoardIntent | null, selection: SceneSelection | null): SceneSelection | null {

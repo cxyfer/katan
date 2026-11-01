@@ -1,0 +1,559 @@
+{
+  "sourceHead": "a0c6f23c64a9765e5dfec5a54edb2e20a5517f58",
+  "sourceDigest": "37bf9f3204039fd3baddbe7800b014aff2f50cc9db800b0e5c76c3525276ff90",
+  "buildDigest": "0b9764421ddaadf7a9a91073ca850daf5efec39e2f0146e898a14d32ede08c86",
+  "assets": {
+    "assets/BoardScene3D-D_kgGHjB.js": {
+      "sha256": "3c00d7153527e6dc8dba9bd04765d2f37a1efb4781696607eaabe1542fb03f9f",
+      "bytes": 972925
+    },
+    "assets/BoardScene3D-D_kgGHjB.js.map": {
+      "sha256": "69972cf516ed5dd93cb37d6568e1877d116b06e07046591f8e1a1fa93e6f8727",
+      "bytes": 4444445
+    },
+    "assets/IslandPreview-6VpjSEr9.css": {
+      "sha256": "01320e60a675adf503f3e581c335f5ab3b634df087425e3ada59a6f899a8c1db",
+      "bytes": 7621
+    },
+    "assets/IslandPreview-CNTcDp4O.js": {
+      "sha256": "a550809bdde0ff00579766be51f97fc5edf1f467d1da679c7014090ce7a4869a",
+      "bytes": 8510
+    },
+    "assets/IslandPreview-CNTcDp4O.js.map": {
+      "sha256": "1d2913ed9ebb26b9bec7a9d7df795b363b3a695aa80b584bad0369ced3769a67",
+      "bytes": 20697
+    },
+    "assets/SoundPreview-D8iY6qYr.js": {
+      "sha256": "d44faf7760d5d626ffc66dcb4cfed4008056c976a360f7dd0e2cf560343bf599",
+      "bytes": 4760
+    },
+    "assets/SoundPreview-D8iY6qYr.js.map": {
+      "sha256": "c29c6d83405a0fc44ef552b80eb7fdd8edacf5dd79232db9c3d4cbc34765b8b1",
+      "bytes": 13070
+    },
+    "assets/SoundPreview-M4jn87NU.css": {
+      "sha256": "bf8377fbcfa4ea19888be16b24dd72dbae9292d2d98866337938d539b78d5102",
+      "bytes": 1137
+    },
+    "assets/board-atlas-CYx_3mJD.svg": {
+      "sha256": "a5feda529e3aa794fcbb270a87030a04547f46747da22b5ee54a44e300b00f18",
+      "bytes": 9652
+    },
+    "assets/coastline-BmTneMz-.js": {
+      "sha256": "d598f30236ad5f1eb3079482e40aa49c8f68828a2f74d57bc72b3b690ea76bda",
+      "bytes": 26264
+    },
+    "assets/coastline-BmTneMz-.js.map": {
+      "sha256": "f3f55d9249f0fae3b2d4ed5c80d0e25abd51f9d9889a6a99ed0711f593d37cc9",
+      "bytes": 185161
+    },
+    "assets/index-CKUMfX4M.js": {
+      "sha256": "cd5621f96b0f105b481e1c941b9ce453cdd497a23a5dd221285768828e4064d5",
+      "bytes": 560806
+    },
+    "assets/index-CKUMfX4M.js.map": {
+      "sha256": "215313c1b94c518c93c4210e533227533f1882d4412327a85d75f2361670c29f",
+      "bytes": 2058118
+    },
+    "assets/index-OV4zL3iP.css": {
+      "sha256": "33de76a08aea103d906c2bfc227473ef6aac02c746e4e7b2af8494f86bf8a39e",
+      "bytes": 150140
+    },
+    "assets/jsx-runtime-Wy9s6hX0.js": {
+      "sha256": "c826bfbd9bf765e2f383ccf768c783d76751c28663aee5ed3dabaa269880bde9",
+      "bytes": 8960
+    },
+    "assets/jsx-runtime-Wy9s6hX0.js.map": {
+      "sha256": "1c869bebd7341ed8be19860e112245f1acb86f95f77757cd384d8b817daf0337",
+      "bytes": 33033
+    },
+    "index.html": {
+      "sha256": "98a94b382efa36ad01547a07e9d0e756853f0a3070d37d5a54426a7d417301ef",
+      "bytes": 1611
+    },
+    "og-image.png": {
+      "sha256": "ce642e2b8d12c59528a45241cf4173665155fca1cba692cae118dc5db7192ff3",
+      "bytes": 371957
+    }
+  },
+  "fixture": "docs/aegis/work/2026-10-29-board-3d/evidence/fixtures-final.json",
+  "cases": [
+    {
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "checks": {
+        "harbours": [
+          {
+            "edge": 34,
+            "type": "generic",
+            "via": "token",
+            "point": [
+              320.6203308105469,
+              366.01031494140625
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 373.609375,
+              "y": 301.078125
+            }
+          },
+          {
+            "edge": 2,
+            "type": "grain",
+            "via": "token",
+            "point": [
+              435.0802307128906,
+              167.75994873046875
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 488.078125,
+              "y": 102.828125
+            }
+          },
+          {
+            "edge": 9,
+            "type": "generic",
+            "via": "token",
+            "point": [
+              702.1532592773438,
+              101.676513671875
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 755.140625,
+              "y": 36.75
+            }
+          },
+          {
+            "edge": 15,
+            "type": "ore",
+            "via": "token",
+            "point": [
+              892.9197387695312,
+              167.75994873046875
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 945.90625,
+              "y": 102.828125
+            }
+          },
+          {
+            "edge": 47,
+            "type": "wool",
+            "via": "token",
+            "point": [
+              1007.3796997070312,
+              366.01031494140625
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 1060.375,
+              "y": 301.078125
+            }
+          },
+          {
+            "edge": 59,
+            "type": "generic",
+            "via": "token",
+            "point": [
+              931.0730590820312,
+              630.3441162109375
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 984.0625,
+              "y": 565.421875
+            }
+          },
+          {
+            "edge": 70,
+            "type": "brick",
+            "via": "token",
+            "point": [
+              778.4598999023438,
+              762.510986328125
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 831.453125,
+              "y": 697.578125
+            }
+          },
+          {
+            "edge": 62,
+            "type": "lumber",
+            "via": "token",
+            "point": [
+              549.5401000976562,
+              762.510986328125
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 602.53125,
+              "y": 697.578125
+            }
+          },
+          {
+            "edge": 51,
+            "type": "generic",
+            "via": "token",
+            "point": [
+              358.7735900878906,
+              564.2606201171875
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 411.765625,
+              "y": 499.328125
+            }
+          }
+        ],
+        "mode": "hover",
+        "keyboard": "each plaque opens and Escape closes"
+      }
+    },
+    {
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "checks": {
+        "harbours": [
+          {
+            "edge": 34,
+            "type": "generic",
+            "via": "focus",
+            "tooltip": {
+              "x": 72.03125,
+              "y": 305.5
+            }
+          },
+          {
+            "edge": 2,
+            "type": "grain",
+            "via": "focus",
+            "tooltip": {
+              "x": 8,
+              "y": 332.265625
+            }
+          },
+          {
+            "edge": 9,
+            "type": "generic",
+            "via": "focus",
+            "tooltip": {
+              "x": 69.5,
+              "y": 302.296875
+            }
+          },
+          {
+            "edge": 15,
+            "type": "ore",
+            "via": "focus",
+            "tooltip": {
+              "x": 96.40625,
+              "y": 332.265625
+            }
+          },
+          {
+            "edge": 47,
+            "type": "wool",
+            "via": "focus",
+            "tooltip": {
+              "x": 32.359375,
+              "y": 305.5
+            }
+          },
+          {
+            "edge": 59,
+            "type": "generic",
+            "via": "focus",
+            "tooltip": {
+              "x": 96.40625,
+              "y": 542.046875
+            }
+          },
+          {
+            "edge": 70,
+            "type": "brick",
+            "via": "focus",
+            "tooltip": {
+              "x": 96.40625,
+              "y": 601.984375
+            }
+          },
+          {
+            "edge": 62,
+            "type": "lumber",
+            "via": "focus",
+            "tooltip": {
+              "x": 8,
+              "y": 601.984375
+            }
+          },
+          {
+            "edge": 51,
+            "type": "generic",
+            "via": "focus",
+            "tooltip": {
+              "x": 89.34375,
+              "y": 395.390625
+            }
+          }
+        ],
+        "mode": "focus",
+        "keyboard": "every plaque opens and Escape closes"
+      }
+    },
+    {
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "checks": {
+        "harbours": [
+          {
+            "edge": 34,
+            "type": "generic",
+            "via": "footprint",
+            "point": [
+              357.8961629151416,
+              312.6975213101736
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 435.1875,
+              "y": 229.4375
+            }
+          },
+          {
+            "edge": 2,
+            "type": "grain",
+            "via": "footprint",
+            "point": [
+              503.32507906683577,
+              246.37957693903087
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 582.109375,
+              "y": 135.140625
+            }
+          },
+          {
+            "edge": 9,
+            "type": "generic",
+            "via": "footprint",
+            "point": [
+              849.909243640625,
+              220.14973749581478
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 878.921875,
+              "y": 140.65625
+            }
+          },
+          {
+            "edge": 15,
+            "type": "ore",
+            "via": "footprint",
+            "point": [
+              1036.8610646635566,
+              350.8534614536349
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 1067.078125,
+              "y": 261.21875
+            }
+          },
+          {
+            "edge": 47,
+            "type": "wool",
+            "via": "footprint",
+            "point": [
+              1039.1201622584451,
+              480.4919917965329
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 1068.140625,
+              "y": 401
+            }
+          },
+          {
+            "edge": 59,
+            "type": "generic",
+            "via": "footprint",
+            "point": [
+              895.481279558496,
+              723.5356946637772
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 918.03125,
+              "y": 615.484375
+            }
+          },
+          {
+            "edge": 70,
+            "type": "brick",
+            "via": "footprint",
+            "point": [
+              654.2427393100114,
+              782.2102772147013
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 705.0625,
+              "y": 663.265625
+            }
+          },
+          {
+            "edge": 62,
+            "type": "lumber",
+            "via": "footprint",
+            "point": [
+              506.554795403169,
+              718.889714405543
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 529.109375,
+              "y": 610.828125
+            }
+          },
+          {
+            "edge": 51,
+            "type": "generic",
+            "via": "footprint",
+            "point": [
+              303.609433767246,
+              502.0758287424602
+            ],
+            "attempts": 1,
+            "tooltip": {
+              "x": 382.40625,
+              "y": 390.828125
+            }
+          }
+        ],
+        "mode": "hover",
+        "keyboard": "each plaque opens and Escape closes"
+      }
+    },
+    {
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "checks": {
+        "harbours": [
+          {
+            "edge": 34,
+            "type": "generic",
+            "via": "focus",
+            "tooltip": {
+              "x": 8,
+              "y": 378.296875
+            }
+          },
+          {
+            "edge": 2,
+            "type": "grain",
+            "via": "focus",
+            "tooltip": {
+              "x": 8,
+              "y": 331.9375
+            }
+          },
+          {
+            "edge": 9,
+            "type": "generic",
+            "via": "focus",
+            "tooltip": {
+              "x": 96.40625,
+              "y": 339.609375
+            }
+          },
+          {
+            "edge": 15,
+            "type": "ore",
+            "via": "focus",
+            "tooltip": {
+              "x": 14.3125,
+              "y": 279.921875
+            }
+          },
+          {
+            "edge": 47,
+            "type": "wool",
+            "via": "focus",
+            "tooltip": {
+              "x": 28.765625,
+              "y": 350.953125
+            }
+          },
+          {
+            "edge": 59,
+            "type": "generic",
+            "via": "focus",
+            "tooltip": {
+              "x": 96.40625,
+              "y": 557.578125
+            }
+          },
+          {
+            "edge": 70,
+            "type": "brick",
+            "via": "focus",
+            "tooltip": {
+              "x": 42.109375,
+              "y": 580.03125
+            }
+          },
+          {
+            "edge": 62,
+            "type": "lumber",
+            "via": "focus",
+            "tooltip": {
+              "x": 8,
+              "y": 555.359375
+            }
+          },
+          {
+            "edge": 51,
+            "type": "generic",
+            "via": "focus",
+            "tooltip": {
+              "x": 79.25,
+              "y": 341.046875
+            }
+          }
+        ],
+        "mode": "focus",
+        "keyboard": "every plaque opens and Escape closes"
+      }
+    }
+  ],
+  "limitations": [
+    "Chromium software WebGL; physical devices and screen readers not run.",
+    "Deterministic API/WebSocket fixtures, not a live game server.",
+    "The served index.html differs from dist by the OG-image origin placeholder; JS/CSS remain byte-identical."
+  ],
+  "browser": "145.0.7632.6",
+  "sourceDigestAfter": "37bf9f3204039fd3baddbe7800b014aff2f50cc9db800b0e5c76c3525276ff90"
+}

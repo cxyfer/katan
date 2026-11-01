@@ -5,6 +5,7 @@ import type { BoardGeometry } from '../board/geometry.ts';
 import type { BoardViewportControls } from '../board/useBoardViewport.ts';
 import type { ProjectedAnchor } from '../board/render-contract.ts';
 import { inspectDescription, inspectionElements, type BoardInspection as Inspection } from '../board/inspection.ts';
+import { screenConvexHull } from '../board/harbor.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
 import '../styles/board-inspection.css';
 
@@ -126,7 +127,7 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
   }, [controls.viewport, controls.gestureActive]);
 
   useEffect(() => {
-    if (!hovered) return;
+    if (!hovered || hovered.node.getAttribute('aria-hidden') === 'true') return;
     hovered.node.setAttribute('aria-describedby', tooltipId);
     return () => hovered.node.removeAttribute('aria-describedby');
   }, [hovered, tooltipId]);
@@ -171,7 +172,9 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
     {elements.map((element) => {
       const anchor = controls.projectPoint(element.world);
       const outline = element.outline?.map(controls.projectPoint);
-      if (!Number.isFinite(anchor.x) || !Number.isFinite(anchor.y) || (!anchor.visible && !outline?.some((point) => point.visible))) return null;
+      const hull = element.hull?.map(controls.projectPoint);
+      const projected = outline ?? hull;
+      if (!Number.isFinite(anchor.x) || !Number.isFinite(anchor.y) || (!anchor.visible && !projected?.some((point) => point.visible))) return null;
       // A square around a vertex must end before its incident road midpoints.
       // 0.6 leaves space even when a road runs diagonally across the square.
       const incidentLengths = element.kind === 'vertex' ? geometry.topology.vertices[element.index]!.edges.flatMap((index) => {
@@ -184,13 +187,28 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
       const pieceHitSize = incidentLengths.length ? Math.min(hitSize, Math.min(...incidentLengths) * 0.6) : hitSize;
       const halfHit = pieceHitSize / 2;
       const option = inspectDescription(context, element);
-      const shared = { role: 'img', tabIndex: 0, 'aria-label': `${option.title} ${option.detail}`,
+      const pointerOnly = element.pointerOnly === true;
+      const testId = `inspect-${element.kind}-${element.index}${pointerOnly ? '-footprint' : ''}`;
+      const probe = element.probe ? controls.projectPoint(element.probe) : null;
+      const probeAttribute = probe && Number.isFinite(probe.x) && Number.isFinite(probe.y)
+        ? `${probe.x},${probe.y}` : undefined;
+      const shared = {
         'data-inspection-kind': element.kind, 'data-inspection-index': element.index,
-        'data-hit-size': pieceHitSize, 'data-testid': `inspect-${element.kind}-${element.index}`,
-        onFocus: () => { focusedRef.current = `inspect-${element.kind}-${element.index}`; },
-        className: 'board-inspect-hit' };
-      if (element.kind === 'hex' && outline) return <polygon key={`hex-${element.index}`} {...shared}
-        points={outline.map((point) => `${point.x - rect.left},${point.y - rect.top}`).join(' ')} />;
+        'data-hit-size': pieceHitSize, 'data-testid': testId, className: 'board-inspect-hit',
+        ...(pointerOnly
+          ? { 'aria-hidden': 'true' as const, tabIndex: -1, 'data-harbor-probe': probeAttribute }
+          : { role: 'img', tabIndex: 0, 'aria-label': `${option.title} ${option.detail}`,
+              onFocus: () => { focusedRef.current = testId; } }),
+      };
+      const polygonTarget = (key: string, corners: readonly { x: number; y: number }[]) => (
+        <polygon key={key} {...shared}
+          points={corners.map((point) => `${point.x - rect.left},${point.y - rect.top}`).join(' ')} />
+      );
+      if (element.kind === 'harbor' && hull) {
+        const corners = screenConvexHull(hull);
+        return corners.length >= 3 ? polygonTarget(`harbor-${element.index}-footprint`, corners) : null;
+      }
+      if (element.kind === 'hex' && outline) return polygonTarget(`hex-${element.index}`, outline);
       if (element.kind === 'edge' && outline) return <line key={`edge-${element.index}`} {...shared}
         x1={outline[0]!.x - rect.left} y1={outline[0]!.y - rect.top}
         x2={outline[1]!.x - rect.left} y2={outline[1]!.y - rect.top} strokeWidth={hitSize} style={{ strokeWidth: hitSize }} />;

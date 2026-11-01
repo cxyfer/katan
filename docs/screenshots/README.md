@@ -21,6 +21,7 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`svg-board-polish/`](svg-board-polish/README.md) | Before/after SVG board (desktop fit, close-up, phone) and the shared terrain emblems on the entry island and hand cards | 2026-10-31 | [`scripts/svg-board-polish/capture.py`](../../scripts/svg-board-polish/capture.py) |
 | [`game-audio/`](game-audio/README.md) | Sound settings in lobby and table (desktop, mobile, both locales) and the offline-rendered sound palette | 2026-10-31 | [`scripts/audio/live.py`](../../scripts/audio/live.py), [`scripts/audio/verify.py`](../../scripts/audio/verify.py) |
 | [`board-polish/`](board-polish/README.md) | Before/after 3D board: desktop fit, close-up and phone, the standalone island preview, the 30-hex island and low quality | 2026-10-31 | [`scripts/board-polish/capture.py`](../../scripts/board-polish/capture.py) |
+| [`harbor-hover/`](harbor-hover/README.md) | Harbour tooltip over the far end of the 3D pier and boat, plus the SVG token, desktop and phone | 2026-11-01 | [`scripts/harbor-hover/verify.py`](../../scripts/harbor-hover/verify.py), see [work record](../aegis/work/2026-11-01-harbor-hover.md) |
 
 `current/` and `hand-cards/` reflect the table as it is now. The other sets are
 focused feature reviews kept with their work records; each was captured at the
