@@ -293,23 +293,23 @@ export function canPlaceBuilding(
     return countBuildings(state, playerId, 'settlement') < profile.pieces.settlements;
   }
   if (options.requireConnection === false) return true;
-  return vertexConnectsToNetwork(state, playerId, vertex);
+  return touchesOwnRoad(state, playerId, vertex);
 }
 
-function vertexConnectsToNetwork(state: GameState, playerId: string, vertex: number): boolean {
+function touchesOwnRoad(state: GameState, playerId: string, vertex: number): boolean {
   const topo = topologyOf(state);
+  return topo.vertices[vertex]!.edges.some((edge) => state.board.roads[edge]?.player === playerId);
+}
+
+/**
+ * 新道路能否從這個路口接上道路網：自己的建築一定可以；對手的建築會切斷
+ * 穿越該路口的延伸；空路口則需要有自己的道路接到這裡。判斷的是路口本身，
+ * 不是既有道路的另一端。
+ */
+function roadCanExtendFrom(state: GameState, playerId: string, vertex: number): boolean {
   const building = state.board.buildings[vertex];
-  if (building && building.player === playerId) return true;
-  for (const edge of topo.vertices[vertex]!.edges) {
-    const road = state.board.roads[edge];
-    if (!road || road.player !== playerId) continue;
-    const [a, b] = topo.edges[edge]!.vertices;
-    const other = a === vertex ? b : a;
-    const otherBuilding = state.board.buildings[other];
-    if (otherBuilding && otherBuilding.player !== playerId) continue;
-    return true;
-  }
-  return false;
+  if (building) return building.player === playerId;
+  return touchesOwnRoad(state, playerId, vertex);
 }
 
 export function legalRoadEdges(
@@ -339,7 +339,7 @@ export function canPlaceRoad(
     if (options.lastVertex === null || options.lastVertex === undefined) return false;
     return info.vertices.includes(options.lastVertex);
   }
-  return info.vertices.some((vertex) => vertexConnectsToNetwork(state, playerId, vertex));
+  return info.vertices.some((vertex) => roadCanExtendFrom(state, playerId, vertex));
 }
 
 // ---------------------------------------------------------------------------
