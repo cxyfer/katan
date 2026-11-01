@@ -1,0 +1,81 @@
+# Seafarers — Heading for New Shores (P1)
+
+Advisory work record for phase P1 of
+[the expansions roadmap](../plans/2026-11-01-expansions-roadmap.md). Branch
+`feat/seafarers`, stacked on `feat/expansion-platform` @ `161eb1a` (PR #57).
+
+## Sources (accessed 2026-11-01)
+
+| Id | Edition | Publication | File | SHA-256 | Pages used |
+|---|---|---|---|---|---|
+| SF25 | CATAN – Seafarers, 2025 (`v6.250401`) | CN3083 | `CN3083 CATAN–Seafarers Rulebook 2025 secured reduced.pdf` (20 pp.) | `a499abe2b613afd618dd3c806790400c7e84adebcc9b9ab19a24fb80dd04b099` | 1 (components), 2–3 (rules, setup), 4–5 (Heading for New Shores 3/4 maps, tables, variable setup) |
+| SF56-25 | CATAN – Seafarers 5–6, 2025 (`v6.250401`) | CN3084 | `CN3084 CATAN – Seafarers_ 5-6 Player_ Rulebook.pdf` (12 pp.) | `746ac86ef5262c666ac204ede77bbd2886960590a9e82c2bcdbe2533e78bb0fe` | 1 (components: extra 2:1 wool port), 2–3 (paired turn, turn summary), 4 (Heading for New Shores 5–6) |
+| B25 | CATAN – The Game, 2025 | CN3081 | `CN3081 CATAN–The Game Rulebook secure (1).pdf` | `0d81a40c1d4eb5eb438a62f80d71cdaab5f00404722c3cfa0b106d79b635ebc6` | 6 (resolve a 7: "move the robber to a new hex"), 11 (variable setup) |
+| B56-25 | CATAN – 5–6, 2025 | CN3082 | `CN3082 CATAN – 5-6 Rulebook 2025 reduced.pdf` | `7b7285e178689585ca39c2c72f78ce20a78c02608c40dd3be2cd9f97c8d95ea1` | 3 (paired turns), 4 (variable setup) |
+| SF-FAQ | catan.com/faq/seafarers (HTML) | — | `faq-seafarers.html` | `91d8ad897e2d94b0191f42320d368fe0a0817e13fbc9375b88ba956dcfc60d75` | entries 1–18; image `CATAN_ship_circle_closed.jpg` (`7de2dd7e…5be3`) |
+
+Downloads went to a fresh directory outside the repository; pages were
+rendered with PyMuPDF 1.24.14 (wheel verified by its PyPI blake2b path) and
+read as images. No code from the downloads was executed.
+
+## Rule clauses used (paraphrased)
+
+| Clause | Source | Implementation |
+|---|---|---|
+| Ships cost 1 lumber + 1 wool | SF25 p. 2 (building cost) | `seafarers` module `build.ship` |
+| Ships go on empty edges of sea hexes; a ship and a road never share a coastal edge | SF25 p. 2 | sea-aware placement |
+| The inner edge of the frame is buildable for ships, the outer edge never | SF-FAQ 15 | boundary edges of the topology count as sea edges |
+| A new ship connects to an own ship or building, not to a road; not past an opponent's building | SF25 p. 2 | ship connectivity |
+| No new ship on an edge of the pirate's hex (also during setup) | SF25 p. 2, SF-FAQ 5–6 | pirate restriction |
+| Move one ship per action phase: not one built this turn, only with an open end (end not next to an own ship or building), not part of a ship line linking two own buildings even if an opponent's building interrupts it, not to/from an edge of the pirate's hex; the new position obeys normal ship placement | SF25 p. 2, SF-FAQ 13–14 | `ship.move` |
+| Gold: a settlement takes 1 resource of choice, a city 2 in any combination | SF25 p. 2, SF-FAQ 2 | gold pending frames |
+| On a 7 (and with a Knight) choose robber or pirate; the pirate moves to the frame or to a new sea hex and steals from a player with a ship on that hex | SF25 pp. 2–3 | robber-or-pirate choice |
+| Coastal settlements are not robbed by the pirate | SF-FAQ 7 | theft only from adjacent ships |
+| Longest Route: 5+ continuous roads and/or ships; roads and ships join only at an own building | SF25 p. 2, SF-FAQ 16 | trade-route length |
+| Moving a ship does not lose the award if the route is not shorter afterwards | SF-FAQ 12 | awards recomputed only after the move |
+| Road Building: 2 roads, 2 ships or 1 + 1, one after another | SF25 p. 3, SF-FAQ 1 | free road/ship frame |
+| Starting pieces as in the CATAN variable setup; a coastal starting settlement may take an adjacent ship instead of its road | SF25 p. 3 | setup ship |
+| New Shores: start on the main island; +2 VP for a player's first settlement on each small island regardless of other players; 14 VP to win | SF25 p. 4 | island bonus, target 14 |
+| Robber starts on the 12 (3 players) / the desert (4 players); pirate "as shown" | SF25 pp. 4–5 | layouts |
+| 5–6: small islands as shown, main island by the CATAN 5–6 variable setup with random ports on the marked positions; pirate as shown; starting settlements as in Seafarers | SF56-25 p. 4 | `sf-new-shores-56` layout |
+| 5–6: Player 2 builds, trades with the supply, moves 1 ship and plays 1 development card, no domestic trade | SF56-25 pp. 2–3 | paired actor ship move |
+| Distance rule also across a narrow strait | SF-FAQ 11 | vertices joined by any edge are neighbours |
+
+## Map transcription
+
+The three printed maps were rendered at 130–600 dpi, a pointy-top axial
+lattice was fitted to the number discs and overlaid on the image, and every
+tile, disc, port token (flat side = port edge) and outline was read per cell.
+The result is `packages/rules/src/seafarers-boards.ts`.
+
+Frame: the outline of each board is a full hexagonal block (37 cells for 3
+players, 44 for 4, 58 for 5–6), but the corner frame pieces at both ends of
+the middle row carry a hex-shaped bump. Those two cells are frame, which
+reconciles the outlines with the component tables (35 = 13 sea + 22 land,
+42 = 14 + 28, 56 = 16 + 40). The pirate is printed on the right-hand bump,
+so it starts on the frame. Ports may lie on the frame (several tokens do).
+
+| Map | Cells | Land (terrain) | Discs | Ports | Robber | Pirate |
+|---|---|---|---|---|---|---|
+| 3 players (SF25 p. 4) | 35: rows 4-5-6-5-6-5-4 | 22: gold 2, hills 4, forest 3, pasture 5, fields 4, mountains 4, no desert | 2,3×2,4×3,5×3,6×2,8×3,9×2,10×3,11×2,12 | 5×2:1 (one per resource) + 3×3:1 | on the 12 hills | frame |
+| 4 players (SF25 p. 5) | 42: rows 5-6-7-6-7-6-5 | 28: gold 2, hills 5, forest 5, pasture 5, fields 5, mountains 5, desert 1 | 2×2,3×3,…,11×3,12 | 5×2:1 + 4×3:1 | desert | frame |
+| 5–6 players (SF56-25 p. 4) | 56: rows 7-8-9-8-9-8-7 | 10 fixed small-island hexes (gold 3, hills 2, mountains 2, forest, pasture, fields) + 30 random main-island hexes (B56 inventory) | small islands one of each 2–12; main island the 28 B56 discs | 11 marked positions, random tokens: 6×2:1 (extra wool) + 5×3:1 | first desert | frame |
+
+Small islands follow the dark-blue outlines. In the 5–6 map the `6`+`12`
+and `3`+`10` outlines each enclose two land hexes and the sea hex between
+them, so each pair is one small island for the bonus.
+
+## Open items found while reading
+
+- **"Open" ship, FAQ special cases.** SF25 p. 2 defines an open end as one
+  not next to an own ship or building. SF-FAQ 18 adds that a ship loop
+  returning to the same building has movable end ships and that a ship circle
+  without any building is entirely movable; under the SF25 wording none of
+  those ships has an open end. The engine follows SF25; the conflict is an
+  explicit open fixture (see FIDELITY).
+- **Robber on sea.** B25 says "move the robber to a new hex"; Seafarers moves
+  the pirate on sea hexes. The robber is limited to land hexes (any terrain,
+  including desert and gold).
+- **5–6 main-island discs.** B56-25 deals discs in their printed A–Z order
+  along a spiral; the engine's base 5–6 variable board shuffles them (FIDELITY
+  gap 3), and the New Shores main island uses that same procedure.
