@@ -33,6 +33,18 @@ export const messages = {
     'tb.wagonVotes',
     'tb.wagonPlaced',
     'tb.wagonVoteEnded',
+    // Barbarian Attack
+    'tb.barbariansLanded',
+    'tb.hexConquered',
+    'tb.hexLiberated',
+    'tb.baCardDrawn',
+    'tb.barbarianCaptured',
+    'tb.knightPlaced',
+    'tb.barbarianMoved',
+    'tb.baStole',
+    'tb.knightMoved',
+    'tb.barbariansExpelled',
+    'tb.knightsLost',
   ] as const,
   errorCodes: [
     // Fishing on Catan
@@ -45,5 +57,8 @@ export const messages = {
     'E_TB_PURCHASE_LIMIT',
     'E_TB_GOLD_SHORT',
     'E_TB_GOLD_SUPPLY_EMPTY',
+    // Barbarian Attack
+    'E_TB_KNIGHT_RANGE',
+    'E_TB_KNIGHT_MUST_MOVE',
   ] as const,
 };

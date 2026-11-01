@@ -1,4 +1,5 @@
 /** Simple scenario bots for simulated Traders & Barbarians games. */
+import { getTopology } from '../src/topology-registry.ts';
 
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
 import { moduleStateOf } from '../src/modules/state.ts';
@@ -100,4 +101,48 @@ export const trainsBot: SimulationBot = {
 function applyHints(state: GameState, playerId: string): Record<string, unknown> | null {
   const modules = actionHints(state, playerId).modules as Record<string, Record<string, Record<string, unknown>>> | undefined;
   return modules?.tradersBarbarians?.['tb-merchant-trains'] ?? null;
+}
+
+/** Builds scenario cards, answers every card frame and moves castle knights toward barbarians. */
+export const barbarianBot: SimulationBot = {
+  pending(state, rng) {
+    const frame = state.pending as ModulePending | null;
+    if (!frame?.kind.startsWith('tradersBarbarians.ba')) return null;
+    const actor = frame.responders[0]!;
+    const modules = actionHints(state, actor).modules as Record<string, Record<string, Record<string, unknown>>>;
+    const hints = modules.tradersBarbarians!['tb-barbarian-attack']!;
+    const board = hints.board as { commandType: string; targets: number[]; kind: string } | null;
+    if (board) {
+      const target = board.targets[state.seq % board.targets.length];
+      return tryCommand(state, actor, { type: board.commandType, [board.kind === 'hex' ? 'hex' : 'edge']: target }, rng);
+    }
+    if (frame.kind === 'tradersBarbarians.baSteal') {
+      return tryCommand(state, actor, { type: 'tb.baSteal', victim: (hints.stealVictims as string[])[0] }, rng);
+    }
+    if (frame.kind === 'tradersBarbarians.baTreason') {
+      const [from, to] = (hints.treasonMoves as [number, number][])[0]!;
+      return tryCommand(state, actor, { type: 'tb.baTreason', from, to }, rng);
+    }
+    if (frame.kind === 'tradersBarbarians.baKnights') {
+      const slot = tb<{ barbarians: Record<number, number>; coastal: number[] }>(state, 'tb-barbarian-attack');
+      const topology = getTopologyOf(state);
+      const wanted = new Set(slot.coastal.filter((hex) => (slot.barbarians[hex] ?? 0) > 0)
+        .flatMap((hex) => topology.edges.map((info, edge) => (info.hexes.includes(hex) ? edge : -1)).filter((edge) => edge >= 0)));
+      for (const move of hints.knightMoves as { from: number; targets: number[] }[]) {
+        const to = move.targets.find((edge) => wanted.has(edge)) ?? move.targets[0];
+        if (to === undefined) continue;
+        const next = tryCommand(state, actor, { type: 'tb.moveKnight', from: move.from, to }, rng);
+        if (next) return next;
+      }
+      return tryCommand(state, actor, { type: 'tb.endKnights' }, rng);
+    }
+    return null;
+  },
+  actions(_state, _actor, step) {
+    return step % 2 === 0 ? [{ type: 'tb.buildBaCard' } as unknown as Command] : [];
+  },
+};
+
+function getTopologyOf(state: GameState) {
+  return getTopology(state.board.layout.topologyId);
 }
