@@ -8,6 +8,8 @@ import { ExchangePanel } from './ExchangePanel.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { HelpPanel } from './HelpPanel.tsx';
 import { TradePanel } from './TradePanel.tsx';
+import { isTradersBarbarians } from './tb/model.ts';
+import { TbPanel } from './tb/TbPanel.tsx';
 
 const TOOLS = [
   { id: 'trade', label: 'drawer.trade', icon: 'trade' },
@@ -15,6 +17,8 @@ const TOOLS = [
   { id: 'chat', label: 'drawer.chat', icon: 'chat' },
   { id: 'log', label: 'play.events', icon: 'scroll' },
   { id: 'help', label: 'drawer.help', icon: 'book' },
+  // Scenario status and actions; only listed in Traders & Barbarians games.
+  { id: 'scenario', label: 'tb.panel.tab', icon: 'crown' },
 ] as const;
 type Tool = (typeof TOOLS)[number]['id'];
 
@@ -25,7 +29,9 @@ export function GameTools({ controller }: { controller: TableController }) {
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const { dispatch, state } = controller;
   const chatOpen = tool === 'chat';
-  const active = TOOLS.find((item) => item.id === tool);
+  const scenario = isTradersBarbarians(state.game?.view);
+  const tools = TOOLS.filter((item) => item.id !== 'scenario' || scenario);
+  const active = tools.find((item) => item.id === tool);
   const openOffers = state.game?.view.offers.filter((offer) => offer.status === 'open').length ?? 0;
   const close = useCallback(() => {
     setTool(null);
@@ -52,7 +58,7 @@ export function GameTools({ controller }: { controller: TableController }) {
   return (
     <section className="game-tools" aria-label={t('table.tools')} data-open={tool !== null ? 'true' : 'false'}>
       <nav className="game-tools__tabs" aria-label={t('table.tools')}>
-        {TOOLS.map((item, index) => (
+        {tools.map((item, index) => (
           <button
             key={item.id}
             id={`tool-${item.id}`}
@@ -70,13 +76,13 @@ export function GameTools({ controller }: { controller: TableController }) {
             }}
             onKeyDown={(event) => {
               let next = index;
-              if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % TOOLS.length;
-              else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index + TOOLS.length - 1) % TOOLS.length;
+              if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % tools.length;
+              else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index + tools.length - 1) % tools.length;
               else if (event.key === 'Home') next = 0;
-              else if (event.key === 'End') next = TOOLS.length - 1;
+              else if (event.key === 'End') next = tools.length - 1;
               else return;
               event.preventDefault();
-              const target = TOOLS[next]!;
+              const target = tools[next]!;
               event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`#tool-${target.id}`)?.focus();
             }}
           >
@@ -95,13 +101,14 @@ export function GameTools({ controller }: { controller: TableController }) {
             <span>{t('table.closePanel')}</span>
           </button>
         </header>
-        {TOOLS.map((item) => (
+        {tools.map((item) => (
           <section key={item.id} id={`tool-panel-${item.id}`} aria-labelledby={`tool-${item.id}`} hidden={tool !== item.id} className="game-tools__panel" data-testid={`tool-panel-${item.id}`}>
             {item.id === 'trade' && <TradePanel controller={controller} embedded />}
             {item.id === 'exchange' && <ExchangePanel controller={controller} />}
             {item.id === 'chat' && <ChatPanel controller={controller} />}
             {item.id === 'log' && <EventLog controller={controller} />}
             {item.id === 'help' && <HelpPanel controller={controller} />}
+            {item.id === 'scenario' && <TbPanel controller={controller} />}
           </section>
         ))}
       </div>

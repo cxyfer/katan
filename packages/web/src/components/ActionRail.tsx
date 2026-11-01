@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/context.tsx';
 import type { TableController } from '../state/useTable.ts';
 import { ActionBar } from './ActionBar.tsx';
-import { TbPanel } from './tb/TbPanel.tsx';
 import { GameIcon } from './GameArt.tsx';
 import '../styles/action-rail.css';
 
@@ -119,7 +118,6 @@ export function ActionRail({ controller, onExpand, collapseRequested = false }: 
           <GameIcon name="flag" size={15} />
         </div>
         <ActionBar controller={controller} />
-        <TbPanel controller={controller} />
       </div>
     </aside>
   );

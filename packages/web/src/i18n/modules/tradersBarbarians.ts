@@ -28,6 +28,7 @@ const en: Record<string, string> = {
 
   // Shared terms
   'tb.nobody': 'nobody',
+  'tb.panel.tab': 'Scenario',
 
   // Events
   'event.tb.strongestPorts': '{player} now holds Strongest Ports ({points} VP on ports).',
@@ -114,6 +115,7 @@ const zhHant: Record<string, string> = {
   'variant.event-cards': '事件卡',
 
   'tb.nobody': '無人',
+  'tb.panel.tab': '情境',
 
   'event.tb.strongestPorts': '{player} 取得最強港口（港口建築共 {points} 分）。',
 
