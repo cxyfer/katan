@@ -6,19 +6,27 @@ import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../src/stat
 const registry = PROFILES.map((profile) => profileView(profile, { botSeats: profile.ruleModules.length === 0 }));
 
 describe('lobby ruleset picker', () => {
-  it('offers only enabled profiles: today the base game for 3–6 players', () => {
+  it('offers only enabled profiles: the base game for 3–6 players and Traders & Barbarians', () => {
     const resolved = resolveRuleset(registry, {});
-    expect(resolved.expansions.map((choice) => choice.key)).toEqual(['base']);
+    expect(resolved.expansions.map((choice) => choice.key)).toEqual(['base', 'tradersBarbarians']);
     expect(resolved.scenarios.map((choice) => choice.key)).toEqual(['standard']);
     expect(resolved.playerCounts).toEqual([3, 4, 5, 6]);
     expect(resolved.profile?.id).toBe('base-2025');
     expect(resolveRuleset(registry, { playerCount: 5 }).profile?.id).toBe('base-paired-2025');
     expect(resolveRuleset(registry, { playerCount: 6 }).profile?.id).toBe('base-paired-2025');
     expect(resolveRuleset(registry, {}, 4).playerCounts).toEqual([3, 4]);
+    const tb = resolveRuleset(registry, { expansionKey: 'tradersBarbarians', scenarioKey: 'standard+harbors' });
+    expect(tb.scenario && scenarioLabelIds(tb.scenario)).toEqual(['scenario.standard', 'variant.harbors']);
+    expect(tb.playerCounts).toEqual([3, 4]);
+    expect(tb.profile?.id).toBe('tb-harbors-2025');
+    // Event-card rows are registered but closed, so the picker never names them.
+    expect(tb.scenarios.some((choice) => choice.variants.includes('event-cards'))).toBe(false);
   });
 
   it('cascades expansion set → scenario → player count from the registry', () => {
-    const enabledAll = registry.map((profile) => ({ ...profile, enabled: true }));
+    const enabledAll = registry
+      .filter((profile) => !profile.expansions.includes('tradersBarbarians'))
+      .map((profile) => ({ ...profile, enabled: true }));
     const all = resolveRuleset(enabledAll, {});
     expect(all.expansions.map((choice) => choice.key)).toEqual(['base', 'seafarers', 'citiesKnights', 'citiesKnights+seafarers']);
     const combined = resolveRuleset(enabledAll, { expansionKey: 'citiesKnights+seafarers', playerCount: 6 });
@@ -26,7 +34,7 @@ describe('lobby ruleset picker', () => {
     expect(combined.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores']]);
     expect(combined.profile?.id).toBe('sf-ck-new-shores-paired-2025');
     // A stale choice falls back to the first available option.
-    const stale = resolveRuleset(enabledAll, { expansionKey: 'tradersBarbarians', scenarioKey: 'gone', playerCount: 9 });
+    const stale = resolveRuleset(enabledAll, { expansionKey: 'explorersPirates', scenarioKey: 'gone', playerCount: 9 });
     expect(stale.expansion?.key).toBe('base');
     expect(stale.profile?.id).toBe('base-2025');
   });

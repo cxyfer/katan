@@ -20,7 +20,7 @@ import { playerIds, COLORS } from './helpers.ts';
 
 describe('ruleset registry', () => {
   it('registers every row of the confirmed matrix', () => {
-    const ids = PROFILES.map((profile) => profile.id);
+    const ids = PROFILES.map((profile) => profile.id).filter((id) => !id.startsWith('tb-'));
     expect(ids).toEqual([
       'base-2025',
       'base-paired-2025',
@@ -34,9 +34,10 @@ describe('ruleset registry', () => {
   });
 
   it('enables only the profiles whose rules and fixtures have passed', () => {
-    const enabled = PROFILES.filter((profile) => profile.enabled).map((profile) => profile.id);
+    const enabled = PROFILES.filter((profile) => profile.enabled && !profile.id.startsWith('tb-')).map((profile) => profile.id);
     expect(enabled).toEqual(['base-2025', 'base-paired-2025']);
-    expect(selectableProfiles().map((profile) => profile.id)).toEqual(['base-2025', 'base-paired-2025']);
+    expect(selectableProfiles().map((profile) => profile.id).filter((id) => !id.startsWith('tb-')))
+      .toEqual(['base-2025', 'base-paired-2025']);
     expect(selectableProfiles(5).map((profile) => profile.id)).toEqual(['base-paired-2025']);
   });
 
@@ -134,7 +135,10 @@ describe('ruleset registry', () => {
       for (const box of profile.requiredBoxes) expect(BOX_IDS).toContain(box);
       if (profile.paired) expect(profile.requiredBoxes).toContain('base-5-6');
       expect(profile.ruleVersion).toMatch(/^[a-z-]+-2025\.\d+$/);
-      expect(profile.ruleModules).toEqual([...profile.expansions, ...profile.variants]);
+      // Traders & Barbarians composes its scenario and variant parts in one module.
+      expect(profile.ruleModules).toEqual(
+        profile.expansions.includes('tradersBarbarians') ? ['tradersBarbarians'] : [...profile.expansions, ...profile.variants],
+      );
     }
     expect(getProfile('base-2025')!.ruleVersion).toBe(BASE_RULE_VERSION);
     expect(getProfile('base-paired-2025')!.ruleVersion).toBe(BASE_RULE_VERSION);

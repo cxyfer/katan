@@ -4,6 +4,9 @@
  */
 
 export const messages = {
-  eventTypes: [] as const,
+  eventTypes: [
+    // Harbors of Catan
+    'tb.strongestPorts',
+  ] as const,
   errorCodes: [] as const,
 };

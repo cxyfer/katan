@@ -117,7 +117,11 @@ export function simulateGame(
         break;
       }
     }
-    if (!advanced) state = attempt(state, actor.id, { type: 'turn.end' }, rng)!;
+    if (!advanced) {
+      const ended = applyCommand(state, actor.id, { type: 'turn.end' }, rng);
+      if (!ended.ok) throw new Error(`turn.end rejected: ${ended.error.code} ${JSON.stringify(state.pending)}`);
+      state = ended.state;
+    }
   }
   return state;
 }

@@ -788,12 +788,13 @@ export function useTable(options: UseTableOptions): TableController {
   const confirmSelection = useCallback(async (): Promise<void> => {
     const { selection } = stateRef.current;
     if (!selection.commandType || selection.index === null || !selection.kind) return;
-    const payload: CommandPayload =
-      selection.kind === 'vertex'
-        ? { type: selection.commandType, vertex: selection.index }
+    const payload: CommandPayload = selection.field
+      ? { type: selection.commandType, ...selection.extra, [selection.field]: selection.index }
+      : selection.kind === 'vertex'
+        ? { type: selection.commandType, ...selection.extra, vertex: selection.index }
         : selection.kind === 'edge'
-          ? { type: selection.commandType, edge: selection.index }
-          : { type: selection.commandType, hex: selection.index };
+          ? { type: selection.commandType, ...selection.extra, edge: selection.index }
+          : { type: selection.commandType, ...selection.extra, hex: selection.index };
     await submitCommand(payload, selection.labelId ?? selection.commandType);
   }, [submitCommand]);
 

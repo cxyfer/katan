@@ -56,6 +56,13 @@ export interface Selection {
   commandType: string | null;
   /** Message id describing the intended action, for the preview panel. */
   labelId: string | null;
+  /**
+   * Extra command fields a rules-module target needs besides the picked
+   * index (for example the knight being moved). Omitted for base commands.
+   */
+  extra?: Record<string, unknown>;
+  /** Command field that receives the picked index (default: by `kind`). */
+  field?: string;
 }
 
 export const EMPTY_SELECTION: Selection = {

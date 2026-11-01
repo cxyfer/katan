@@ -10,6 +10,7 @@ import type { Locale } from '@catan/protocol';
 import type { GameEvent } from '@catan/rules';
 import { t } from './index.ts';
 import { formatDice, formatGrantMap, formatResourceMap } from './format.ts';
+import { moduleEventParams } from './module-events.ts';
 
 export interface EventText {
   messageId: string;
@@ -189,8 +190,9 @@ export function eventParams(
         target: num(p.target),
       };
     default:
-      // An id we do not know how to parameterise still renders its own text.
-      return {};
+      // Rules-module events use canonical parameter names; anything else
+      // still renders its own text.
+      return event.type.includes('.') ? moduleEventParams(locale, event, nameOf) : {};
   }
 }
 

@@ -31,7 +31,15 @@ export type ExpansionId = (typeof EXPANSION_IDS)[number];
  * Scenario ids. A phase that registers a scenario appends it here and adds its
  * `scenario.<id>` message to both locales.
  */
-export const SCENARIO_IDS = ['new-shores'] as const;
+export const SCENARIO_IDS = [
+  'new-shores',
+  // Traders & Barbarians (TB25)
+  'tb-fishing',
+  'tb-rivers',
+  'tb-merchant-trains',
+  'tb-barbarian-attack',
+  'tb-traders-barbarians',
+] as const;
 export type ScenarioId = (typeof SCENARIO_IDS)[number];
 
 /**
@@ -39,11 +47,16 @@ export type ScenarioId = (typeof SCENARIO_IDS)[number];
  * Barbarians event cards). None is registered yet; ids are kebab-case and
  * owned by the rules module that implements them.
  */
-export const VARIANT_IDS: readonly string[] = [];
+export const VARIANT_IDS: readonly string[] = [
+  // Traders & Barbarians (TB25 pp. 4–6)
+  'friendly-robber',
+  'harbors',
+  'event-cards',
+];
 export type VariantId = string;
 
 /** Rulebook source ids from SPEC §5.3. Later phases append their own. */
-export const SOURCE_IDS = ['B25', 'B56-25', 'SF25', 'SF56-25', 'CK25', 'CK56-25', 'COMB'] as const;
+export const SOURCE_IDS = ['B25', 'B56-25', 'SF25', 'SF56-25', 'CK25', 'CK56-25', 'COMB', 'TB25'] as const;
 export type SourceId = (typeof SOURCE_IDS)[number];
 
 export interface ProfileSource {
@@ -190,6 +203,55 @@ const PAIRED_BASE = {
   bankPerResource: 24,
 } as const;
 
+/**
+ * Traders & Barbarians (TB25, CN3089) on the base board, 3–4 players. Every
+ * scenario/variant combination the phase supports is its own row; the module
+ * composes the selected parts (`modules/tradersBarbarians`).
+ */
+const TB_RULE_VERSION = 'tb-2025.1';
+
+function tbProfile(
+  id: string,
+  scenario: ScenarioId | null,
+  variants: readonly VariantId[],
+  pages: string,
+  overrides: ProfileOverrides = {},
+): ProfileDefinition {
+  return baseProfile(id, [3, 4], {
+    ruleVersion: TB_RULE_VERSION,
+    expansions: ['tradersBarbarians'],
+    scenario,
+    variants,
+    ruleModules: ['tradersBarbarians'],
+    sources: [{ id: 'B25', pages: 'entire rulebook' }, { id: 'TB25', pages }],
+    requiredBoxes: ['base', 'tradersBarbarians'],
+    implemented: true,
+    ...overrides,
+  });
+}
+
+/** Event-card rows stay closed: TB25 does not list the deck's cards (FIDELITY). */
+const EVENT_DECK_CLOSED = { implemented: false, enabled: false, unavailableReasonKey: 'profile.unavailable.tbEventDeck' } as const;
+
+const TRADERS_BARBARIANS_PROFILES: readonly ProfileDefinition[] = [
+  tbProfile('tb-friendly-robber-2025', null, ['friendly-robber'], 'p. 4', { enabled: true }),
+  tbProfile('tb-harbors-2025', null, ['harbors'], 'p. 4', { victoryTarget: 11, enabled: true }),
+  tbProfile('tb-friendly-robber-harbors-2025', null, ['friendly-robber', 'harbors'], 'pp. 2, 4', {
+    victoryTarget: 11,
+    enabled: true,
+  }),
+  tbProfile('tb-event-cards-2025', null, ['event-cards'], 'pp. 4–6', EVENT_DECK_CLOSED),
+  tbProfile('tb-event-cards-friendly-robber-2025', null, ['event-cards', 'friendly-robber'], 'pp. 2, 4–6', EVENT_DECK_CLOSED),
+  tbProfile('tb-event-cards-harbors-2025', null, ['event-cards', 'harbors'], 'pp. 2, 4–6', {
+    victoryTarget: 11,
+    ...EVENT_DECK_CLOSED,
+  }),
+  tbProfile('tb-event-cards-friendly-robber-harbors-2025', null, ['event-cards', 'friendly-robber', 'harbors'], 'pp. 2, 4–6', {
+    victoryTarget: 11,
+    ...EVENT_DECK_CLOSED,
+  }),
+];
+
 export const PROFILES: readonly ProfileDefinition[] = [
   baseProfile('base-2025', [3, 4], { implemented: true, enabled: true }),
 
@@ -311,6 +373,8 @@ export const PROFILES: readonly ProfileDefinition[] = [
     commodityBankPerType: 12,
     unavailableReasonKey: 'profile.unavailable.combined',
   }),
+
+  ...TRADERS_BARBARIANS_PROFILES,
 ];
 
 const byId = new Map(PROFILES.map((profile) => [profile.id, profile]));

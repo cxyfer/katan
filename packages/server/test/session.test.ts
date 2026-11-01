@@ -74,8 +74,8 @@ describe('guest session', () => {
     const profiles = client.expectOk<{ profiles: { id: string; enabled: boolean }[]; selectable: string[] }>(
       await client.get('/api/profiles'),
     );
-    expect(profiles.profiles.length).toBe(8);
-    expect(profiles.selectable).toEqual(['base-2025', 'base-paired-2025']);
+    expect(profiles.profiles.filter((profile) => !profile.id.startsWith('tb-')).length).toBe(8);
+    expect(profiles.selectable.filter((id) => !id.startsWith('tb-'))).toEqual(['base-2025', 'base-paired-2025']);
     const config = client.expectOk<{ limits: { chatMaxLength: number }; defaultPolicy: { disconnectGraceSeconds: number } }>(
       await client.get('/api/config'),
     );

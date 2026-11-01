@@ -132,7 +132,11 @@ export function BoardView({ controller }: { controller: TableController }) {
   const selectTarget = useCallback((kind: TargetKind, index: number) => {
     if (!intent || kind !== intent.kind || !intent.targets.includes(index)) return;
     setCluster(null); setPickerOpen(false);
-    actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
+    actions.selectTarget({
+      kind, index, commandType: intent.commandType, labelId: intent.labelId,
+      ...(intent.extra ? { extra: intent.extra } : {}),
+      ...(intent.field ? { field: intent.field } : {}),
+    });
   }, [actions, intent]);
   const focusedRoll = animation.activeDice;
   // 骰子真的出現在畫面上才開始擲骰聲；點數揭曉與後果都以此為起點。
