@@ -9,6 +9,11 @@ Entries are workspace records, not authoritative runtime decisions.
 | 2026-11-01 | artifact | scripts/bot-opponents/capture.py | Bot lobby, table, pause and resume browser capture |
 | 2026-11-01 | artifact | docs/screenshots/bot-opponents/report.json | Bot opponents browser check results |
 | 2026-11-01 | spec | docs/aegis/specs/2026-11-01-bot-opponents.md | Built-in computer opponents: contracts, server integration and delivery plan |
+| 2026-11-01 | plan | docs/aegis/plans/2026-11-01-expansions-roadmap.md | Expansion roadmap: Seafarers, Cities & Knights, Traders & Barbarians, Explorers & Pirates |
+| 2026-11-01 | work | docs/aegis/work/2026-11-01-expansion-platform.md | Expansion platform (P0): registry v2, pending queue, modules, generic boards |
+| 2026-11-01 | artifact | scripts/expansion-platform/capture.py | Base/archipelago SVG and 3D capture and before/after comparison harness |
+| 2026-11-01 | artifact | scripts/expansion-platform/fixtures.mjs | Registry ProfileViews and in-game archipelago fixture generator |
+| 2026-11-01 | artifact | docs/screenshots/expansion-platform/report.json | 18-case capture report with byte-identical base comparison |
 | 2026-11-01 | work | docs/aegis/work/2026-11-01-harbor-hover.md | Harbour hover covers the whole 3D port |
 | 2026-11-01 | artifact | scripts/harbor-hover/verify.py | Harbour footprint hover and tooltip verification |
 | 2026-11-01 | artifact | docs/aegis/work/2026-11-01-harbor-hover/report.json | Four-case harbour hover browser evidence |
