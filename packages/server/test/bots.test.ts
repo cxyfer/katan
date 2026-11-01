@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { RESOURCES, type Command, type GameState, type GameView, type Resource } from '@catan/rules';
-import { BOT_LEVELS as POLICY_BOT_LEVELS, fallbackPolicy, type BotPolicy } from '@catan/bots';
+import { BOT_LEVELS as POLICY_BOT_LEVELS, createBotPolicy, fallbackPolicy, type BotPolicy } from '@catan/bots';
 import { BOT_LEVELS } from '@catan/protocol';
 import { loadConfig, type BotSettings } from '../src/config.ts';
 import type { BotDriverDeps } from '../src/bot-driver.ts';
@@ -860,3 +860,54 @@ async function eventTimes(gameId: string): Promise<Record<string, number>> {
   for (const row of rows) out[row.type] = Date.parse(row.created_at);
   return out;
 }
+
+describe('B-GAME full table on the service', () => {
+  it('plays a whole game with the real strategy through the command path', async () => {
+    const { host, roomId, gameId, botIds } = await botGame(3, { capacity: 4 });
+    const disconnect = await liveSocket(harness.service, roomId, host.playerId!);
+    // 真人座位也交給同一套策略，透過 HTTP 送指令；Bot 座位由排程器推進。
+    const policy = createBotPolicy('standard');
+    const deadline = Date.now() + 90_000;
+    let humanCommands = 0;
+    let view: GameView | null = null;
+    while (Date.now() < deadline) {
+      const snapshot = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
+      view = snapshot.view;
+      if (view.result) break;
+      const command = policy.decide(view, {
+        selfId: host.playerId!,
+        level: 'standard',
+        seed: snapshot.revision,
+        offerPhases: {},
+      });
+      if (!command) {
+        await sleep(5);
+        continue;
+      }
+      const receipt = host.expectOk<Receipt>(
+        await host.post(`/api/games/${gameId}/commands`, {
+          commandId: id('human'),
+          expectedRevision: snapshot.revision,
+          command,
+        }),
+      );
+      // 與 Bot 同時送出時可能落後一個 revision，其他拒絕都代表策略或伺服器有誤。
+      if (receipt.outcome === 'rejected') expect(receipt.error?.messageId).toBe('error.E_STALE_REVISION');
+      else humanCommands += 1;
+    }
+    await disconnect();
+    expect(view?.result?.playerId).toBeTruthy();
+    expect(humanCommands).toBeGreaterThan(10);
+    const game = await state(gameId);
+    // 每個 Bot 都真的蓋了東西，而不是只靠保底策略擲骰與結束回合。
+    for (const botId of botIds) expect(botCounts(game, botId).buildings).toBeGreaterThanOrEqual(2);
+    expect((await harness.service.repo.findRoom(roomId))?.status).toBe('completed');
+    const rejectedBotReceipts = await harness.service.repo.db.all<{ error_json: string }>(
+      `SELECT error_json FROM command_receipts WHERE game_id = ? AND outcome = 'rejected' AND command_id LIKE 'bot:%'`,
+      [gameId],
+    );
+    expect(
+      rejectedBotReceipts.filter((row) => !row.error_json.includes('E_STALE_REVISION')),
+    ).toEqual([]);
+  }, 120_000);
+});
