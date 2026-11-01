@@ -62,3 +62,29 @@ describe('road connectivity at an opponent building', () => {
     expect(actionHints(played, 'p1').legalRoads).not.toContain(eC);
   });
 });
+
+describe('Road Building with few road pieces left', () => {
+  it('grants only the roads the player still has pieces for', () => {
+    const { state } = playableGame({ players: 4 });
+    const own = state.board.roads.filter((road) => road?.player === 'p1').length;
+    // 用掉道路棋子直到只剩一個（放在不影響合法邊的位置之外也無妨，只計數量）。
+    let placed = own;
+    for (let edge = 0; edge < state.board.roads.length && placed < 14; edge++) {
+      if (state.board.roads[edge]) continue;
+      if (legalRoadEdges(state, 'p1').length <= 1) break;
+      if (legalRoadEdges(state, 'p1').includes(edge)) continue;
+      placeRoad(state, 'p1', edge);
+      placed += 1;
+    }
+    expect(placed).toBe(14);
+    expect(legalRoadEdges(state, 'p1').length).toBeGreaterThan(0);
+    state.players[0]!.devCards = ['roadBuilding'];
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 1 });
+    const edge = legalRoadEdges(played, 'p1')[0]!;
+    const { state: after, events } = act(played, 'p1', { type: 'build.road', edge });
+    expect(after.pending).toBeNull();
+    expect(events.find((event) => event.type === 'dev.roadBuildingFinished')?.params.placed).toBe(1);
+  });
+});

@@ -112,11 +112,11 @@ describe('R-B05 development cards', () => {
     state.players[0]!.devCards = ['roadBuilding'];
     setHand(state, 'p1', {});
     const placed = act(state, 'p1', { type: 'dev.playRoadBuilding' }, scriptedRng([0])).state;
-    expect(placed.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 2 });
+    expect(placed.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 2, granted: 2 });
 
     const options = legalRoadEdges(placed, 'p1');
     let current = act(placed, 'p1', { type: 'build.road', edge: options[0]! }, scriptedRng([0])).state;
-    expect(current.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1 });
+    expect(current.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 2 });
     const next = legalRoadEdges(current, 'p1');
     current = act(current, 'p1', { type: 'build.road', edge: next[0]! }, scriptedRng([0])).state;
     expect(current.pending).toBeNull();

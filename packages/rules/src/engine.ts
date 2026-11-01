@@ -795,7 +795,10 @@ function buildRoad(state: GameState, actorId: string, edge: number): CommandOutc
   if (free) {
     free.remaining -= 1;
     if (free.remaining <= 0 || legalRoadEdges(state, actorId).length === 0) {
-      emit(state, 'dev.roadBuildingFinished', { playerId: actorId, placed: 2 - free.remaining });
+      emit(state, 'dev.roadBuildingFinished', {
+        playerId: actorId,
+        placed: (free.granted ?? 2) - free.remaining,
+      });
       state.pending = null;
     }
   }
@@ -939,10 +942,12 @@ function playRoadBuilding(state: GameState, actorId: string): CommandOutcome {
   state.turn.devCardPlayed = true;
   playerStats(state, actorId).devCardsPlayed.roadBuilding += 1;
   emit(state, 'dev.roadBuilding', { playerId: actorId });
+  // 免費道路數同時受合法邊與剩餘道路棋子限制，否則待決效果會無法完成。
   const available = legalRoadEdges(state, actorId).length;
-  const remaining = Math.min(2, available);
+  const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, actorId);
+  const remaining = Math.max(0, Math.min(2, available, pieces));
   if (remaining > 0) {
-    state.pending = { kind: 'freeRoads', actor: actorId, remaining };
+    state.pending = { kind: 'freeRoads', actor: actorId, remaining, granted: remaining };
   }
   return { ok: true, state, events: [] };
 }
