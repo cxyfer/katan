@@ -69,8 +69,7 @@ export function pickBotName(taken: Iterable<string>): string {
 
 /**
  * 在最小空位建立一個 Bot 席位（guest 列＋membership）並回傳新成員。呼叫端需
- * 持有 room lock，並自行檢查權限與容量。兩次寫入刻意不包在交易裡：交易情境是
- * 全程序共用的（見 `updateSettingsLocked`），中途失敗留下的 guest 由清理週期回收。
+ * 持有 room lock，並自行檢查權限與容量。guest 與 membership 在同一筆交易內寫入。
  */
 export async function insertBotSeat(
   repo: Repository,
@@ -99,17 +98,19 @@ export async function insertBotSeat(
     disconnected_at: null,
     connection_id: null,
   };
-  await repo.insertGuest({
-    id,
-    // 登入比對的是 64 字元 SHA-256，這個哨兵值永遠不會被比對到。
-    token_hash: `bot:${id}`,
-    nickname,
-    locale: 'en',
-    created_at: now,
-    updated_at: now,
-    kind: 'bot',
-    bot_level: level,
+  await repo.transaction(async () => {
+    await repo.insertGuest({
+      id,
+      // 登入比對的是 64 字元 SHA-256，這個哨兵值永遠不會被比對到。
+      token_hash: `bot:${id}`,
+      nickname,
+      locale: 'en',
+      created_at: now,
+      updated_at: now,
+      kind: 'bot',
+      bot_level: level,
+    });
+    await repo.insertMembership(membership);
   });
-  await repo.insertMembership(membership);
   return { ...membership, nickname, kind: 'bot', bot_level: level };
 }

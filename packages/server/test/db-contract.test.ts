@@ -392,6 +392,45 @@ for (const testCase of cases) {
       expect(await repo.findGuest(freshOrphan)).not.toBeNull();
     });
 
+    it('keeps overlapping transactions from different callers apart', async () => {
+      // 兩間房的指令會同時提交（Bot 計時器讓這更常見）；一筆回滾不能帶走另一筆。
+      const rolledBack = newId('player');
+      const committed = newId('player');
+      const now = new Date().toISOString();
+      const guest = (id: string): GuestRow => ({
+        id,
+        token_hash: `hash-${id}`,
+        nickname: 'Tx',
+        locale: 'en',
+        created_at: now,
+        updated_at: now,
+        kind: 'human',
+        bot_level: null,
+      });
+      let releaseFirst!: () => void;
+      const firstStarted = new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+      const first = repo.db
+        .transaction(async () => {
+          await repo.insertGuest(guest(rolledBack));
+          releaseFirst();
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          throw new Error('roll back the first transaction');
+        })
+        .catch(() => 'rolled back');
+      await firstStarted;
+      const second = repo.db.transaction(async () => {
+        await repo.insertGuest(guest(committed));
+        // 同一呼叫鏈內的巢狀交易照舊併入外層。
+        await repo.db.transaction(async () => repo.updateGuest(committed, { nickname: 'Nested' }));
+      });
+      expect(await first).toBe('rolled back');
+      await second;
+      expect(await repo.findGuest(rolledBack)).toBeNull();
+      expect((await repo.findGuest(committed))?.nickname).toBe('Nested');
+    });
+
     it('deletes a room together with its memberships', async () => {
       await repo.deleteRoom(roomId);
       expect(await repo.findRoom(roomId)).toBeNull();

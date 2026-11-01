@@ -6,6 +6,7 @@
  * rewritten to `$n` for PostgreSQL, so no statement is dialect-specific.
  */
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import type { GameEvent, GameState } from '@catan/rules';
 
@@ -50,7 +51,10 @@ export async function createSqliteDialect(filename: string): Promise<SqlDialect>
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('PRAGMA busy_timeout = 5000');
 
-  let depth = 0;
+  // 只有同一條呼叫鏈內的巢狀交易會併入外層；其他呼叫者的交易在單一連線上
+  // 依序排隊，避免一筆回滾帶走另一間房同時提交的寫入。
+  const scope = new AsyncLocalStorage<true>();
+  let tail: Promise<unknown> = Promise.resolve();
   const dialect: SqlDialect = {
     kind: 'sqlite',
     async all<T>(sql: string, params: unknown[] = []): Promise<T[]> {
@@ -60,19 +64,21 @@ export async function createSqliteDialect(filename: string): Promise<SqlDialect>
       db.prepare(sql).run(...params);
     },
     async transaction<T>(fn: () => Promise<T>): Promise<T> {
-      if (depth > 0) return fn();
-      depth += 1;
-      db.exec('BEGIN IMMEDIATE');
-      try {
-        const result = await fn();
-        db.exec('COMMIT');
-        return result;
-      } catch (error) {
-        db.exec('ROLLBACK');
-        throw error;
-      } finally {
-        depth -= 1;
-      }
+      if (scope.getStore()) return fn();
+      const run = async (): Promise<T> => {
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          const result = await scope.run(true, fn);
+          db.exec('COMMIT');
+          return result;
+        } catch (error) {
+          db.exec('ROLLBACK');
+          throw error;
+        }
+      };
+      const next = tail.then(run, run);
+      tail = next.catch(() => undefined);
+      return next;
     },
     async close(): Promise<void> {
       db.close();
@@ -120,33 +126,33 @@ export async function createPostgresDialect(
   } else {
     pool = new pg.Pool({ connectionString });
   }
-  let client: PgClient | null = null;
+  // 交易連線綁在呼叫鏈上：同一條鏈的查詢與巢狀交易走這條連線，其他房間同時
+  // 進行的查詢與交易各自使用連線池，不會混進別人的交易。
+  const scope = new AsyncLocalStorage<PgClient>();
 
   const dialect: SqlDialect = {
     kind: 'postgres',
     async all<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-      const runner = client ?? pool;
+      const runner = scope.getStore() ?? pool;
       const result = await runner.query(toPostgresPlaceholders(sql), params);
       return result.rows as T[];
     },
     async run(sql: string, params: unknown[] = []): Promise<void> {
-      const runner = client ?? pool;
+      const runner = scope.getStore() ?? pool;
       await runner.query(toPostgresPlaceholders(sql), params);
     },
     async transaction<T>(fn: () => Promise<T>): Promise<T> {
-      if (client) return fn();
+      if (scope.getStore()) return fn();
       const acquired = await pool.connect();
-      client = acquired;
       try {
         await acquired.query('BEGIN');
-        const result = await fn();
+        const result = await scope.run(acquired, fn);
         await acquired.query('COMMIT');
         return result;
       } catch (error) {
         await acquired.query('ROLLBACK');
         throw error;
       } finally {
-        client = null;
         acquired.release();
       }
     },

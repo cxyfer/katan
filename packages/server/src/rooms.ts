@@ -665,8 +665,7 @@ export class RoomService {
     // Keep every intermediate state valid without a shared DB transaction:
     // compacted seats still fit the old capacity, readiness is cleared before
     // the new settings become visible, and the room lock blocks concurrent
-    // joins/starts. The dialect's transaction context is process-wide, so a
-    // settings transaction here would overlap transactions for other rooms.
+    // joins/starts.
     if (capacity !== room.capacity) await this.compactSeats(roomId);
     await this.clearReadiness(roomId);
     await this.repo.updateRoom(roomId, {
@@ -864,7 +863,7 @@ export class RoomService {
       this.runtimes.delete(room.id);
       removed.push(room.id);
     }
-    // 中途失敗的新增流程可能留下沒有席位的 Bot guest。
+    // 回收已沒有任何席位的 Bot guest（例如房間刪除前的舊資料）。
     await this.repo.deleteOrphanBotGuests(new Date(now.getTime() - ORPHAN_BOT_GUEST_AGE_MS).toISOString());
     return removed;
   }
