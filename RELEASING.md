@@ -141,9 +141,13 @@ Generate the skeleton, then write the callout and the highlights:
 $EDITOR .tmp/release-notes-v0.2.0.md   # the callout and the ## Highlights list
 ./scripts/release-notes-lint.sh .tmp/release-notes-v0.2.0.md
 
-gh release create v0.2.0 --title "catan v0.2.0" \
+gh release create v0.2.0 --title "v0.2.0" \
   --notes-file .tmp/release-notes-v0.2.0.md --verify-tag
 ```
+
+The release title is the tag verbatim, so `v0.2.0` is published as `v0.2.0`. Do not prefix it with
+the project name: the tag already names the version, and the repository is where the project is
+identified.
 
 Write each callout paragraph and each highlight bullet on one line; the lint command fails the
 draft if the prose is still wrapped. Add `--prerelease` for a `-rc.N` tag. The shape is fixed by
