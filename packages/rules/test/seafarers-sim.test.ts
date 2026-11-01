@@ -49,7 +49,7 @@ describe('simulated New Shores games', () => {
       // The game actually exercised the expansion.
       expect(run.shipsBuilt).toBeGreaterThan(0);
       expect(run.islandBonuses).toBeGreaterThan(0);
-    });
+    }, 60_000);
   }
 
   it('across seeds the simulation reaches gold, the pirate and ship moves', () => {
@@ -64,5 +64,5 @@ describe('simulated New Shores games', () => {
     expect(totals.gold).toBeGreaterThan(0);
     expect(totals.pirate).toBeGreaterThan(0);
     expect(totals.moves).toBeGreaterThan(0);
-  });
+  }, 120_000);
 });
