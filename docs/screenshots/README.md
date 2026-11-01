@@ -9,15 +9,16 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 
 | Path | Contents | Captured from | Producer |
 |---|---|---|---|
-| [`current/`](current/) | Entry → home → lobby → setup → table → tools → post-game statistics, full three-player game, zh-Hant and en | `79c1039` (2026-10-31) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
-| [`hand-cards/`](hand-cards/) | Card faces from PR #27: collapsed/expanded hand fan, card inspect and development-card closeups (desktop, phone, landscape) | `79c1039` (2026-10-31) | [`scripts/hand-cards/capture.py`](../../scripts/hand-cards/capture.py) |
-| [`discard-prompt/`](discard-prompt/) | Discard picker from PR #33: card-based selection, per-resource caps, the waiting state for other players, and large discards at phone and short viewports | `79c1039` (2026-10-31) | [`scripts/discard-prompt/capture.py`](../../scripts/discard-prompt/capture.py) |
+| [`current/`](current/) | Entry → home → lobby → setup → table → tools → post-game statistics, full three-player game, zh-Hant and en | `e3cf207` (2026-11-01) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
+| [`hand-cards/`](hand-cards/) | Card faces from PR #27: collapsed/expanded hand fan, card inspect and development-card closeups (desktop, phone, landscape) | `e3cf207` (2026-11-01) | [`scripts/hand-cards/capture.py`](../../scripts/hand-cards/capture.py) |
+| [`discard-prompt/`](discard-prompt/) | Discard picker from PR #33: card-based selection, per-resource caps, the waiting state for other players, and large discards at phone and short viewports | `e3cf207` (2026-11-01) | [`scripts/discard-prompt/capture.py`](../../scripts/discard-prompt/capture.py) |
 | [`hover-details/`](hover-details/) | Map-detail tooltips and collapsed/expanded rails, desktop and mobile | 2026-10-30 | `scripts/side-rails/verify.py`, see [work record](../aegis/work/2026-10-30-hover-details.md) |
 | [`table-ui-polish/`](table-ui-polish/) | Dice focus, hand-gain feedback, trade surface (desktop and mobile) | 2026-10-30 | `scripts/table-ui-polish/verify.py`, see [work record](../aegis/work/2026-10-30-table-ui-polish.md) |
-| [`island-diorama/`](island-diorama/README.md) | Standalone 3D island preview at several camera angles and sizes, plus game-surface checks | 2026-10-29 | `scripts/board-3d/verify-diorama.py`, see [work record](../aegis/work/2026-10-29-island-diorama.md) |
+| [`island-diorama/`](island-diorama/README.md) | Standalone 3D island preview at several camera angles and sizes, plus game-surface checks. Captured before the #44 island remodel; see [`board-polish/`](board-polish/README.md) for the current island | 2026-10-29 | `scripts/board-3d/verify-diorama.py`, see [work record](../aegis/work/2026-10-29-island-diorama.md) |
 | [`lobby-capacity/`](lobby-capacity/README.md) | Four-seat base and six-seat paired lobbies below capacity, plus the lowered-capacity state, desktop/mobile and both locales | 2026-10-30 | [`scripts/lobby-capacity/capture.py`](../../scripts/lobby-capacity/capture.py) |
 | [`notice-dismiss/`](notice-dismiss/README.md) | Notice cards with the countdown ring around the close control: rejected receipt, hover hold, turn-change fade, network toast and the persistent unknown-outcome receipt | 2026-10-31 | [`scripts/notice-dismiss/capture.py`](../../scripts/notice-dismiss/capture.py) |
 | [`trade-offer-perspective/`](trade-offer-perspective/README.md) | The same open offer card as the proposer and as the recipient, card crops plus table viewport | 2026-10-31 | [`scripts/trade-offer-perspective/capture.py`](../../scripts/trade-offer-perspective/capture.py) |
+| [`landscape-ui/`](landscape-ui/README.md) | One-page landscape layout from PR #42 across six landscape viewports: entry, home, lobby, setup, table, trade, and result with the timeline tab; `before/` is the `6d1cb97` comparison | 2026-11-01 | [`scripts/landscape-ui/capture.py`](../../scripts/landscape-ui/capture.py) |
 | [`svg-board-polish/`](svg-board-polish/README.md) | Before/after SVG board (desktop fit, close-up, phone) and the shared terrain emblems on the entry island and hand cards | 2026-10-31 | [`scripts/svg-board-polish/capture.py`](../../scripts/svg-board-polish/capture.py) |
 | [`game-audio/`](game-audio/README.md) | Sound settings in lobby and table (desktop, mobile, both locales) and the offline-rendered sound palette | 2026-10-31 | [`scripts/audio/live.py`](../../scripts/audio/live.py), [`scripts/audio/verify.py`](../../scripts/audio/verify.py) |
 | [`board-polish/`](board-polish/README.md) | Before/after 3D board: desktop fit, close-up and phone, the standalone island preview, the 30-hex island and low quality | 2026-10-31 | [`scripts/board-polish/capture.py`](../../scripts/board-polish/capture.py) |
@@ -29,7 +30,7 @@ commit named in its record.
 
 ## `current/`
 
-Captured on 2026-10-31 from `79c1039` (the `pnpm build` output served with
+Captured on 2026-11-01 from `e3cf207` (the `pnpm build` output served with
 `WEB_DIST_PATH` set), with a real three-player game driven through the UI up to
 the table. The game is then finished through the same HTTP API the client uses,
 choosing legal moves from each player's own `hints`, so the result screen and
@@ -37,6 +38,11 @@ post-game statistics come from a completed game. Every capture is at device
 scale factor 1. The script makes no assertions; it fails on any browser runtime
 error. The two lobby captures are full page, because PR #29 added the room
 settings plaque and the lobby is now taller than one 1366×768 viewport.
+
+This set was refreshed after PR #38 to show the UI merged since then: the
+remodelled 3D island and its harbours and robber (#44), the SVG terrain emblems
+on the entry island (#43), the timeline end labels (#40) and the one-page
+landscape layout (#42).
 
 | File | Locale | Viewport | State |
 |---|---|---|---|
@@ -71,7 +77,7 @@ The script needs Python Playwright with a Chromium it can launch.
 
 ## `hand-cards/`
 
-Captured on 2026-10-31 from `79c1039` (the `pnpm build` output served with
+Captured on 2026-11-01 from `e3cf207` (the `pnpm build` output served with
 `WEB_DIST_PATH` set), with a real three-player game. The host keeps ending
 turns until its hand holds enough cards, then the fan is captured collapsed and
 expanded at desktop, phone and landscape sizes. The final group rewrites only
@@ -118,7 +124,7 @@ python3 scripts/hand-cards/capture.py docs/screenshots/hand-cards
 
 ## `discard-prompt/`
 
-Captured on 2026-10-31 from `79c1039` (the `pnpm build` output served with
+Captured on 2026-11-01 from `e3cf207` (the `pnpm build` output served with
 `WEB_DIST_PATH` set), with a real three-player game. Only dice and end-turn are
 driven until a 7 makes at least two players discard. The first player's picks
 are made in the UI, and the second player is still waiting to discard for the
