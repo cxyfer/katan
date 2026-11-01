@@ -1,6 +1,6 @@
 /** Simple scenario bots for simulated Traders & Barbarians games. */
 
-import { applyCommand, type Command } from '../src/engine.ts';
+import { actionHints, applyCommand, type Command } from '../src/engine.ts';
 import { moduleStateOf } from '../src/modules/state.ts';
 import type { seededRng } from '../src/rng.ts';
 import { RESOURCES, type GameState, type ModulePending, type Resource } from '../src/types.ts';
@@ -78,3 +78,26 @@ export const riversBot: SimulationBot = {
     return out;
   },
 };
+
+/** Bids a little, assigns and places on the first legal location. */
+export const trainsBot: SimulationBot = {
+  pending(state, rng) {
+    const frame = state.pending as ModulePending | null;
+    if (!frame?.kind.startsWith('tradersBarbarians.wagon')) return null;
+    const actor = frame.responders[0]!;
+    const hints = applyHints(state, actor);
+    const first = (hints?.locations as number[] | undefined)?.[(state.seq % 3)] ?? (hints?.locations as number[] | undefined)?.[0];
+    if (frame.kind === 'tradersBarbarians.wagonBid') {
+      const player = state.players.find((candidate) => candidate.id === actor)!;
+      const grain = state.seq % 2 === 0 && player.resources.grain > 0 ? 1 : 0;
+      return tryCommand(state, actor, { type: 'tb.bidWagon', wool: 0, grain }, rng);
+    }
+    if (frame.kind === 'tradersBarbarians.wagonAssign') return tryCommand(state, actor, { type: 'tb.assignWagon', edge: first }, rng);
+    return tryCommand(state, actor, { type: 'tb.placeWagon', edge: first }, rng);
+  },
+};
+
+function applyHints(state: GameState, playerId: string): Record<string, unknown> | null {
+  const modules = actionHints(state, playerId).modules as Record<string, Record<string, Record<string, unknown>>> | undefined;
+  return modules?.tradersBarbarians?.['tb-merchant-trains'] ?? null;
+}

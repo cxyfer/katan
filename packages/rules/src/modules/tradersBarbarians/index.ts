@@ -17,6 +17,7 @@ import './boards.ts';
 import { coinsPart } from './coins/index.ts';
 import { fishingPart } from './fishing/index.ts';
 import { riversPart } from './rivers/index.ts';
+import { trainsPart } from './trains/index.ts';
 import { TB, type TbPart } from './part.ts';
 import { friendlyRobberPart } from './variants/friendlyRobber.ts';
 import { harborsPart } from './variants/harbors.ts';
@@ -25,6 +26,7 @@ import { harborsPart } from './variants/harbors.ts';
 const SCENARIO_PARTS: Readonly<Record<string, readonly TbPart[]>> = {
   'tb-fishing': [fishingPart],
   'tb-rivers': [coinsPart, riversPart],
+  'tb-merchant-trains': [trainsPart],
 };
 
 /** Variant id → part. */

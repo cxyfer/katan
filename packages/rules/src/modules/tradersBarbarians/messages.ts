@@ -26,6 +26,13 @@ export const messages = {
     'tb.goldSold',
     // Rivers of Catan
     'tb.bridgeBuilt',
+    // Merchant Trains
+    'tb.wagonCollected',
+    'tb.wagonVoteStarted',
+    'tb.wagonBid',
+    'tb.wagonVotes',
+    'tb.wagonPlaced',
+    'tb.wagonVoteEnded',
   ] as const,
   errorCodes: [
     // Fishing on Catan

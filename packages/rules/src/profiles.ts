@@ -252,6 +252,13 @@ const TRADERS_BARBARIANS_PROFILES: readonly ProfileDefinition[] = [
     setupModes: ['variable'],
     enabled: true,
   }),
+  tbProfile('tb-merchant-trains-2025', 'tb-merchant-trains', [], 'pp. 13–14', {
+    layoutId: 'tb-merchant-trains',
+    topologyId: 'tb-r2',
+    setupModes: ['variable'],
+    victoryTarget: 12,
+    enabled: true,
+  }),
   tbProfile('tb-event-cards-2025', null, ['event-cards'], 'pp. 4–6', EVENT_DECK_CLOSED),
   tbProfile('tb-event-cards-friendly-robber-2025', null, ['event-cards', 'friendly-robber'], 'pp. 2, 4–6', EVENT_DECK_CLOSED),
   tbProfile('tb-event-cards-harbors-2025', null, ['event-cards', 'harbors'], 'pp. 2, 4–6', {
