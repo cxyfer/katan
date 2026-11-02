@@ -127,9 +127,10 @@ export class GameCoordinator {
       });
 
     const rng = secureRng();
+    const seated = orderForGame(ordered, room.order_mode, rng);
     const state = createGame({
       profileId: profile.id,
-      players: orderForGame(ordered, room.order_mode, rng),
+      players: seated,
       setupMode: room.setup_mode as 'fixed' | 'variable',
       rng,
     });
@@ -150,6 +151,14 @@ export class GameCoordinator {
         updated_at: now,
       });
       await this.repo.appendEvents(gameId, 1, state.log);
+      // 隨機順序會改變遊戲座位；聊天與房間檢視都讀 membership.seat，
+      // 因此把抽出的順序持久化，避免同一位玩家在兩個畫面顯示不同座位。
+      for (const [seat, player] of seated.entries()) {
+        const membership = memberships.find((candidate) => candidate.player_id === player.id);
+        if (membership && membership.seat !== seat) {
+          await this.repo.updateMembership(room.id, player.id, { seat });
+        }
+      }
     });
     return gameId;
   }

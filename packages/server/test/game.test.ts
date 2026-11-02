@@ -42,6 +42,7 @@ interface Snapshot {
     bank: Record<string, number>;
     players: {
       id: string;
+      seat: number;
       resources?: Record<string, number>;
       devCards?: string[];
       newDevCards?: string[];
@@ -85,13 +86,35 @@ describe('game start order', () => {
     // A single start could legitimately reproduce the join order; a broken
     // "random" that never shuffles fails every one of these independent draws.
     for (let attempt = 0; attempt < 8; attempt++) {
-      const { clients, gameId } = await startedGame(harness, 4, { orderMode: 'random' });
+      const { clients, roomId, gameId } = await startedGame(harness, 4, { orderMode: 'random' });
       const snapshot = clients[0]!.expectOk<Snapshot>(
         await clients[0]!.get(`/api/games/${gameId}`),
       );
       const drawn = snapshot.view.players.map((player) => player.id);
       expect([...drawn].sort()).toEqual([...joinOrder(clients)].sort());
-      if (drawn.join() !== joinOrder(clients).join()) return;
+      if (drawn.join() !== joinOrder(clients).join()) {
+        // 聊天與房間檢視讀的是 membership.seat，必須跟隨抽出的遊戲座位。
+        const roomView = clients[0]!.expectOk<{
+          members: { playerId: string; seat: number }[];
+        }>(await clients[0]!.get(`/api/rooms/${roomId}`));
+        const memberSeats = new Map(
+          roomView.members.map((member) => [member.playerId, member.seat]),
+        );
+        for (const player of snapshot.view.players) {
+          expect(memberSeats.get(player.id)).toBe(player.seat);
+        }
+        const sent = clients[0]!.expectOk<{ seat: number }>(
+          await clients[0]!.post(`/api/rooms/${roomId}/chat`, {
+            clientMessageId: `${gameId}-seat`,
+            text: 'seat check',
+          }),
+        );
+        const host = snapshot.view.players.find(
+          (player) => player.id === clients[0]!.playerId,
+        );
+        expect(sent.seat).toBe(host?.seat);
+        return;
+      }
     }
     throw new Error('random order never differed from join order across 8 starts');
   });
