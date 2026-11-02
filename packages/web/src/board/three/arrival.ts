@@ -54,7 +54,7 @@ export interface ArrivalShadow {
   opacity: number;
 }
 
-export const ARRIVAL_SHADOW_OPACITY = 0.42;
+export const ARRIVAL_SHADOW_OPACITY = 0.75;
 
 /** 落點的接觸陰影：棋子越接近地面越大越深，落地後淡出，交回棋子本身的投影。 */
 export function arrivalShadow(progress: number, options: ArrivalOptions): ArrivalShadow {
@@ -63,5 +63,5 @@ export function arrivalShadow(progress: number, options: ArrivalOptions): Arriva
   const { lift } = arrivalPose(p, options);
   const near = options.height > 0 ? 1 - Math.min(1, lift / options.height) : 1;
   const fade = p <= FALL_END ? 1 : 1 - (p - FALL_END) / (1 - FALL_END);
-  return { scale: 0.4 + 0.6 * near, opacity: ARRIVAL_SHADOW_OPACITY * (0.2 + 0.8 * near) * fade };
+  return { scale: 0.55 + 0.45 * near, opacity: ARRIVAL_SHADOW_OPACITY * (0.45 + 0.55 * near) * fade };
 }

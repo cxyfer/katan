@@ -35,10 +35,10 @@ interface PieceInstance extends InstanceTransform {
   footprint: readonly [number, number];
 }
 
-// 陰影邊緣柔化，輪廓略大於模型底座（村莊 0.25×0.22、城市 0.41×0.35、道路寬約 0.12）。
-const SETTLEMENT_FOOTPRINT = [0.36, 0.32] as const;
-const CITY_FOOTPRINT = [0.54, 0.46] as const;
-const ROAD_SHADOW_WIDTH = 0.2;
+// 柔化邊緣只剩約六成可見，輪廓需明顯大於模型底座（村莊 0.25×0.22、城市 0.41×0.35、道路寬約 0.12）。
+const SETTLEMENT_FOOTPRINT = [0.6, 0.54] as const;
+const CITY_FOOTPRINT = [0.8, 0.68] as const;
+const ROAD_SHADOW_WIDTH = 0.34;
 
 function AnimatedPieces({
   model, instances, material, quality, motionAllowed, duration, arrival,
@@ -117,7 +117,7 @@ export function DioramaRoads({ geometry, board, players, arrivals, ...props }: P
   const instances = useMemo<PieceInstance[]>(() => roadInstances(geometry, board, players, arrivals).map((road) => ({
     ...road,
     city: false,
-    footprint: [road.length + 0.04, ROAD_SHADOW_WIDTH] as const,
+    footprint: [road.length + 0.16, ROAD_SHADOW_WIDTH] as const,
     // Existing road specs shorten by .17; this miniature uses a .20 total setback.
     scale: [Math.max(0.01, road.length - 0.03), 1, 1],
   })), [board, geometry, players, arrivals]);

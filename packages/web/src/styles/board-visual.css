@@ -30,8 +30,8 @@
 .board__building-drop > g > ellipse:first-child { animation: drop-own-shadow 640ms linear both; }
 .board__road-drop > line:first-child { animation: drop-own-shadow 560ms linear both; }
 @keyframes drop-shadow {
-  0% { opacity: .1; transform: scale(.4); animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
-  52% { opacity: .5; transform: none; }
+  0% { opacity: .25; transform: scale(.55); animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+  52% { opacity: .72; transform: none; }
   100% { opacity: 0; transform: none; }
 }
 /* 不寫 100%：落地後回到元素自身的 opacity。 */

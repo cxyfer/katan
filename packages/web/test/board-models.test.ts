@@ -124,7 +124,8 @@ describe('modeled board pieces', () => {
   it('grows and darkens the landing shadow as the piece nears the ground, then hands off to the resting piece', () => {
     const options = { height: 1.4 };
     const shadows = Array.from({ length: 53 }, (_, step) => arrivalShadow(step / 100, options));
-    expect(shadows[0]!.scale).toBeCloseTo(0.4, 10);
+    expect(shadows[0]!.scale).toBeCloseTo(0.55, 10);
+    expect(shadows[0]!.opacity).toBeGreaterThan(ARRIVAL_SHADOW_OPACITY / 4);
     expect(shadows.every((shadow, index) => index === 0 ||
       (shadow.scale > shadows[index - 1]!.scale && shadow.opacity > shadows[index - 1]!.opacity))).toBe(true);
     expect(arrivalShadow(0.52, options)).toEqual({ scale: 1, opacity: ARRIVAL_SHADOW_OPACITY });

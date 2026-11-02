@@ -126,7 +126,7 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
               <g key={`road-${edge.index}`}>
               {/* 落點陰影留在地面，隨棋子接近而變大變深。 */}
               {arrival && <line key={arrival.id} className="board__drop-shadow board__drop-shadow--road" {...line} transform="translate(0 3)"
-                stroke="#10242c" strokeWidth={13} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
+                stroke="#10242c" strokeWidth={16} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
               <g key={arrival?.id ?? 'rest'} className={arrival ? 'board__road-drop' : undefined}>
               <line {...line} transform="translate(0 3)" stroke="#10242c" strokeWidth={13} strokeLinecap="round" opacity={.4} aria-hidden="true" />
               <line {...line} stroke="#20180f" strokeWidth={11} strokeLinecap="round" aria-hidden="true" />
@@ -157,9 +157,9 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
             const arrival = placementArrival(arrivals, board, 'vertex', vertex.index);
             return (
               <g key={`building-${vertex.index}`} data-testid={`building-${vertex.index}`}>
-                {/* 與 BoardBuilding 自帶陰影同位置（scale 1.12）。 */}
+                {/* 與 BoardBuilding 自帶陰影同中心（scale 1.12），略放大以便看出落點。 */}
                 {arrival && <ellipse key={arrival.id} className="board__drop-shadow" cx={vertex.x} cy={vertex.y + (building.city ? 12.3 : 11.2)}
-                  rx={building.city ? 25.8 : 17.9} ry={building.city ? 6.7 : 5.6} fill="#071d28" aria-hidden="true" pointerEvents="none" />}
+                  rx={building.city ? 31 : 22} ry={building.city ? 8.4 : 7} fill="#071d28" aria-hidden="true" pointerEvents="none" />}
                 <g key={arrival?.id ?? 'rest'} className={arrival ? 'board__building-drop' : undefined}>
                   <BoardBuilding x={vertex.x} y={vertex.y} city={building.city} color={color} />
                 </g>
