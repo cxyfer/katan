@@ -75,12 +75,12 @@ master's own engine at `0815c76`
 | R-56 | 30-hex/11-harbor B56 board, 24/resource bank, 34-card deck, setup order, partner = third seat to the left, five- and six-seat pair cycles, production only on Player 1, no domestic trade for Player 2, build/bank/card actions for Player 2, card carry between roles, either role may win | `packages/rules/test/paired.test.ts` (12 cases) and `packages/server/test/rooms.test.ts` | covered at engine and room lifecycle level |
 | R-COMPAT | registry v2 metadata; exact, order-insensitive expansion/scenario/variant matching with no transitive inference; full count × expansion × scenario matrix; profile id or `{ ruleset }` room requests; fixture profiles never resolvable | `packages/rules/test/profiles.test.ts`, `packages/server/test/rooms.test.ts`, `packages/web/test/rulesets.test.ts` | covered |
 | R-PLATFORM | pending queue order/responders/continuations and old snapshots without a queue; rules-module hooks (setup, roll, discard limit, production, board change, commands, score, projection, hints) through a fixture module; layout registry; generic topologies (sea frame, several islands, marked harbours); base digests unchanged | `packages/rules/test/platform.test.ts`, `topology-generic.test.ts`, `base-regression.test.ts`, `message-ids.test.ts` | covered at engine level; no real expansion module exists yet |
-| R-TB-FR / R-TB-HB | Friendly Robber (TB25 p. 4): protected 2-VP players, desert fallback, Knight; Harbors of Catan: Strongest Ports award, 11 VP | `packages/rules/test/tb-variants.test.ts` (8 fixtures + 6 simulated games) | covered |
-| R-TB-FI | Fishing on Catan (pp. 9–10): lake in the inner area, six grounds on the printed frame valleys, 29 tokens + boot, setup fish, production order, 7-token swap, refill, boot transfer and +1 VP, five fish actions, privacy | `packages/rules/test/tb-fishing.test.ts` (13 + 2 simulated games), `packages/web/test/tb-fishing.test.tsx` (5) | covered |
-| R-TB-RV | Rivers of Catan (pp. 11–12): fixed river tiles, 2 sharing the 12 hex, robber on a swamp, 7 bridge sites, setup/bridge gold, bridge limits, coins (buy/sell/trade), wealth tiles | `packages/rules/test/tb-rivers.test.ts` (8 + 2), `packages/web/test/tb-rivers.test.tsx` (3) | covered |
-| R-TB-MT | Merchant Trains (pp. 13–14): watering hole and starts, wagon collection, ordered public bids, majority / most-voted / top bidder / active player, no branching, merging, +1 VP between wagons, wagon road weight | `packages/rules/test/tb-trains.test.ts` (10 + 2), `packages/web/test/tb-trains.test.tsx` (2) | covered |
-| R-TB-BA | Barbarian Attack (pp. 15–19): printed numbers and areas, city setup, barbarian landing, conquest (production, building, VP, ports), 7 steal, four cards, knight moves, expel / prisoners / dice ties / knight losses | `packages/rules/test/tb-barbarians.test.ts` (12 + 2), `packages/web/test/tb-barbarians.test.tsx` (3) | covered |
-| R-TB-TR | Traders & Barbarians (pp. 20–24): interior paths, X sides, sites and stacks, 5 gold, wagon on the setup city, 2/12 reroll, 7 barbarian move and robbery, Knight / Swift Journey, upgrades, movement costs, deliveries, drive-off | `packages/rules/test/tb-traders.test.ts` (11 + 2), `packages/web/test/tb-traders.test.tsx` (4) | covered |
+| R-TB-FR / R-TB-HB | Friendly Robber (TB25 p. 4): protected 2-VP players, desert fallback, Knight; Harbors of Catan: Strongest Ports award, 11 VP | `packages/rules/test/tb-variants.test.ts` (10 fixtures + 6 simulated games) | covered |
+| R-TB-FI | Fishing on Catan (pp. 9–10): lake in the inner area, six grounds on the printed frame valleys, 29 tokens + boot, setup fish, production order, 7-token swap, refill, boot transfer and +1 VP, five fish actions, privacy | `packages/rules/test/tb-fishing.test.ts` (20 + 2 simulated games), `packages/web/test/tb-fishing.test.tsx` (5) | covered |
+| R-TB-RV | Rivers of Catan (pp. 11–12): fixed river tiles, 2 sharing the 12 hex, robber on a swamp, 7 bridge sites, setup/bridge gold, bridge limits, coins (buy/sell/trade), wealth tiles | `packages/rules/test/tb-rivers.test.ts` (18 + 2), `packages/web/test/tb-rivers.test.tsx` (3) | covered |
+| R-TB-MT | Merchant Trains (pp. 13–14): watering hole and starts, wagon collection, ordered public bids, majority / most-voted / top bidder / active player, no branching, merging, +1 VP between wagons, wagon road weight | `packages/rules/test/tb-trains.test.ts` (14 + 2), `packages/web/test/tb-trains.test.tsx` (2) | covered |
+| R-TB-BA | Barbarian Attack (pp. 15–19): printed numbers and areas, city setup, barbarian landing, conquest (production, building, VP, ports), 7 steal, four cards, knight moves, expel / prisoners / dice ties / knight losses | `packages/rules/test/tb-barbarians.test.ts` (22 + 2), `packages/web/test/tb-barbarians.test.tsx` (3) | covered |
+| R-TB-TR | Traders & Barbarians (pp. 20–24): interior paths, X sides, sites and stacks, 5 gold, wagon on the setup city, 2/12 reroll, 7 barbarian move and robbery, Knight / Swift Journey, upgrades, movement costs, deliveries, drive-off | `packages/rules/test/tb-traders.test.ts` (18 + 2), `packages/web/test/tb-traders.test.tsx` (4) | covered |
 | R-TB-SRV | ruleset resolution by parts, setup over the API for every scenario, module receipts, projection privacy | `packages/server/test/traders-barbarians.test.ts` (7) | covered (SQLite) |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
@@ -284,6 +284,36 @@ Deliberate interpretations (open to challenge, not house rules):
 - **Traders & Barbarians**: a wanted commodity is delivered automatically
   (delivering is never worse); commodity-hex corners reachable only by X edges
   are not settlement sites, since setup could not place their road.
+
+Clause fixtures: every clause transcribed in the work record has a fixture
+whose comment names the page (`// TB25 p.N: …`), its start state, window,
+command and expected result. The review-tb list was closed with
+`FI14`–`FI21` (Fishing), `RV9`–`RV19` (Rivers), `MT8`–`MT15` (Trains),
+`BA13`–`BA23` (Barbarian Attack), `TR11b`, `TR12`–`TR18` (Traders &
+Barbarians) and `FRHB1`–`FRHB2` (variants combined); existing fixtures cover
+the rest (robber staying on the desert `FR3`, harbour city and tile transfer
+`HB1`/`HB2`, Wealthiest tie `RV8`/`RV13`, Treason from the supply `BA8`/`BA17`,
+unneeded commodity kept `TR9`, non-active majority returning bids `MT3`,
+three-wagon junction `MT8`).
+
+Deliberately untested (no fixture; each is either a physical-component
+detail, a UI-only choice or already covered by the generic engine tests):
+
+- Wagon, knight and barbarian piece limits beyond the supplies the engine
+  counts (24 knights, 36 barbarians, 22 wagons): the physical box limits are
+  conserved by the simulated games' supply totals only.
+- The Barbarian Attack and Traders & Barbarians development card decks
+  reshuffle rules other than the BA discard shuffle (`BA22`).
+- Hiding Victory Point cards from players who could not win with them (p. 22):
+  the engine counts hidden cards for the owner's own check and never
+  serialises them to others (privacy test), but "reveal only if it wins" is
+  not a separate step.
+- Human-readable rule text and card art in both locales (catalog parity
+  tests check the keys, not the wording).
+
+Merchant Trains merging (p. 14, fig. 1 and 2) has fixtures `MT8`–`MT10`;
+the earlier behaviour (a front touched by any other wagon ended its train, so
+two meeting fronts never merged) was a defect found by review and fixed.
 
 Known T&B gaps:
 

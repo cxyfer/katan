@@ -432,7 +432,38 @@ describe('R-TB-BA clause fixtures (pp. 15–19)', () => {
     expect(ba(ended.state).prisoners.p1).toBe(2);
     expect(ended.state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
   });
+
+  it('BA22: TB25 p.17 — when the development card stack is empty the discard pile is shuffled into a new stack', () => {
+    const state = bare();
+    ba(state).deck = [];
+    ba(state).discard = ['knighthood', 'knighthood'];
+    setHand(state, 'p1', { wool: 1, grain: 1, ore: 1 });
+    const drawn = run(state, 'p1', { type: 'tb.buildBaCard' }, scriptedRng([0]));
+    expect(drawn.state.pending).toMatchObject({ kind: 'tradersBarbarians.baKnighthood' });
+    // The reshuffled stack held both cards; one was drawn and is discarded after play.
+    expect(ba(drawn.state).deck.length + ba(drawn.state).discard.length).toBe(2);
+  });
+
+  it('BA23: TB25 p.18 — tied dice among involved players are re-rolled; the others take 3 gold', () => {
+    // Start: p2, p3 and p4 each have one knight beside a single barbarian. Dice: p2 7, p3 7, p4 2; re-roll p2 4, p3 12.
+    const base = bare();
+    const hex = hexWith(base, 11);
+    const edges = edgesOf(base, hex);
+    const state = withKnights3(base, hex, edges);
+    ba(state).barbarians[hex] = 1;
+    const ended = run(state, 'p1', { type: 'turn.end' }, scriptedRng([2, 3, 3, 2, 0, 0, 1, 1, 5, 5, 0]));
+    const expelled = ended.events.find((event) => event.type === 'tb.barbariansExpelled')!;
+    expect(expelled.params).toMatchObject({ prisoners: { p3: 1 }, rolls: { p2: [7, 4], p3: [7, 12], p4: [2] } });
+    expect(coins(ended.state).gold.p2).toBeGreaterThanOrEqual(3);
+    expect(coins(ended.state).gold.p4).toBeGreaterThanOrEqual(3);
+    expect(ba(ended.state).prisoners.p3).toBe(1);
+  });
 });
+
+function withKnights3(state: GameState, _hex: number, edges: number[]): GameState {
+  ba(state).knights = [{ player: 'p2', edge: edges[0]! }, { player: 'p3', edge: edges[1]! }, { player: 'p4', edge: edges[2]! }];
+  return state;
+}
 
 describe('R-TB-BA simulated games', () => {
   for (const players of [3, 4]) {

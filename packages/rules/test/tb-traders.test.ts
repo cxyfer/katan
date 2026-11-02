@@ -294,6 +294,122 @@ describe('R-TB-TR wagon movement (pp. 22–23)', () => {
   });
 });
 
+describe('R-TB-TR clause fixtures (pp. 20–24)', () => {
+  /** A plaza corner next to the quarry and the quarry's plaza. */
+  function quarryCorner(state: GameState): { corner: number; plaza: number } {
+    const topology = topologyOf(state);
+    const quarry = site(state, 'quarry');
+    const corner = topology.edges[topology.vertices[quarry.plaza]!.edges[0]!]!.vertices.find((v) => v !== quarry.plaza)!;
+    return { corner, plaza: quarry.plaza };
+  }
+  const steps = (state: GameState, id: string) =>
+    (actionHints(state, id).modules?.['tradersBarbarians'] as Record<string, { steps: number[] }>)['tb-traders-barbarians']!.steps;
+
+  it('TR12: TB25 p.23 — without gold a wagon cannot enter an edge with another player\'s road', () => {
+    // Start: p1\'s wagon (4 MP) beside a p2 road, p1 holds 0 gold. Command: tb.wagonStep.
+    const state = bare();
+    const [next] = path(state, 22, 0);
+    const edge = edgeBetween(state, 22, next!);
+    placeRoad(state, 'p2', edge);
+    coins(state).gold.p1 = 0;
+    const open = moving(state, 22);
+    reject(open, 'p1', { type: 'tb.wagonStep', to: next }, 'E_TB_GOLD_SHORT');
+    expect(steps(open, 'p1')).not.toContain(next);
+    // With 1 gold the step is allowed and the gold goes to the road's owner.
+    coins(open).gold.p1 = 1;
+    const paid = run(open, 'p1', { type: 'tb.wagonStep', to: next }).state;
+    expect(coins(paid).gold).toMatchObject({ p1: 0, p2: 6 });
+    expect(paid.pending).toMatchObject({ data: { mp: 3 } });
+  });
+
+  it('TR13: TB25 p.21–22 — a barbarian moved onto your own road, or onto the road of an empty-handed owner, steals nothing (7 and Knight)', () => {
+    // Start: a barbarian is sent by a 7 / a Knight card to an edge with p1\'s own road, then to p3\'s road (p3 holds no cards).
+    const state = bare();
+    forceTurn(state, 0, 'preroll');
+    placeRoad(state, 'p1', 40);
+    placeRoad(state, 'p3', 41);
+    setHand(state, 'p1', { ore: 1 });
+    const seven = run(state, 'p1', { type: 'turn.roll' }, scriptedRng([2, 3])).state;
+    const [from] = tr(seven).barbarians;
+    const own = run(seven, 'p1', { type: 'tb.moveBarbarian', from, to: 40 }, scriptedRng([0]));
+    expect(own.events.map((event) => event.type)).not.toContain('tb.barbarianRobbed');
+    expect(own.state.players[0]!.resources.ore).toBe(1);
+    const empty = run(seven, 'p1', { type: 'tb.moveBarbarian', from, to: 41 }, scriptedRng([0]));
+    expect(empty.events.map((event) => event.type)).not.toContain('tb.barbarianRobbed');
+    expect(tr(empty.state).barbarians).toContain(41);
+    // The Knight card behaves the same way.
+    const knight = bare();
+    placeRoad(knight, 'p1', 40);
+    placeRoad(knight, 'p3', 41);
+    knight.players[0]!.devCards = ['barbarianKnight', 'barbarianKnight'];
+    const [start] = tr(knight).barbarians;
+    expect(run(knight, 'p1', { type: 'tb.playKnight', from: start, to: 40 }).events.map((event) => event.type)).not.toContain('tb.barbarianRobbed');
+    expect(run(knight, 'p1', { type: 'tb.playKnight', from: start, to: 41 }).events.map((event) => event.type)).not.toContain('tb.barbarianRobbed');
+  });
+
+  it('TR14: TB25 p.23 — an empty commodity stack loads nothing, while a wanted commodity is still delivered', () => {
+    const state = bare();
+    const { corner, plaza } = quarryCorner(state);
+    tr(state).stacks.quarry = [];
+    const arrived = run(moving(state, corner), 'p1', { type: 'tb.wagonStep', to: plaza });
+    expect(tr(arrived.state).wagons.p1!.cargo).toBeNull();
+    expect(arrived.events.map((event) => event.type)).not.toContain('tb.commodityLoaded');
+    const delivering = bare();
+    tr(delivering).stacks.quarry = [];
+    tr(delivering).wagons.p1!.cargo = 'tools';
+    const delivered = run(moving(delivering, corner), 'p1', { type: 'tb.wagonStep', to: plaza });
+    expect(tr(delivered.state).wagons.p1).toMatchObject({ cargo: null, delivered: 1 });
+    expect(delivered.events.map((event) => event.type)).toContain('tb.commodityDelivered');
+  });
+
+  it('TR15: TB25 p.23 — the 2-MP boost is once per turn even with Swift Journey; the second move action restores the MP', () => {
+    // Start: p1 played Swift Journey and holds 2 grain. Window: end of turn, two move actions.
+    const state = bare();
+    state.players[0]!.devCards = ['swiftJourney'];
+    const played = run(state, 'p1', { type: 'tb.playSwiftJourney' }).state;
+    setHand(played, 'p1', { grain: 2 });
+    let next = moving(played, 22);
+    next = run(next, 'p1', { type: 'tb.wagonBoost' }).state;
+    expect(next.pending).toMatchObject({ data: { mp: 6, boosted: true } });
+    next = run(next, 'p1', { type: 'tb.wagonStop' }).state;
+    expect(next.pending).toMatchObject({ kind: 'tradersBarbarians.tbWagon', data: { mp: 4, extra: 0 } });
+    reject(next, 'p1', { type: 'tb.wagonBoost' }, 'E_TB_WAGON_BOOSTED');
+    expect(next.players[0]!.resources.grain).toBe(1);
+  });
+
+  it('TR16: TB25 p.21 — a corner reachable only by X edges is not a settlement site', () => {
+    const state = tbCreate(PROFILE, { seed: 3 });
+    const topology = topologyOf(state);
+    const x = new Set(tr(state).xEdges);
+    const dead = topology.vertices.findIndex((vertex) => !vertex.interior && vertex.edges.length > 0 && vertex.edges.every((edge) => x.has(edge)));
+    expect(dead).toBeGreaterThanOrEqual(0);
+    expect(legalBuildingVertices(state, 'p1', { setup: true })).not.toContain(dead);
+    reject(state, 'p1', { type: 'setup.placeBuilding', vertex: dead }, 'E_ILLEGAL_TARGET');
+  });
+
+  it('TR17: TB25 p.24 — a Victory Point card brings the holder to 13 VP and wins when their turn comes', () => {
+    // Start: p1 has 12 public VP and one hidden Victory Point card; window: p4 ends their turn.
+    const state = bare();
+    state.players[0]!.bonusPoints = 12;
+    state.players[0]!.devCards = ['victoryPoint'];
+    forceTurn(state, 3, 'action');
+    tr(state).wagons.p4!.vertex = -1; // no wagon move for p4: the turn passes at once
+    expect(scoreOf(state, 'p1', { includeHidden: false })).toBe(12);
+    expect(run(state, 'p4', { type: 'turn.end' }).state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+    state.players[0]!.devCards = [];
+    expect(run(state, 'p4', { type: 'turn.end' }).state.result).toBeNull();
+  });
+
+  it('TR18: TB25 p.21 — a 2 or 12 is rerolled, and a 7 rolled after the rerolls still moves a barbarian', () => {
+    // Start: p1\'s pre-roll window; the dice show 2, then 12, then 7.
+    const state = bare();
+    forceTurn(state, 0, 'preroll');
+    const rolled = run(state, 'p1', { type: 'turn.roll' }, scriptedRng([0, 0, 5, 5, 2, 3])).state;
+    expect(rolled.turn.dice).toEqual([3, 4]);
+    expect(rolled.pending).toMatchObject({ kind: 'tradersBarbarians.tbBarbarian', responders: ['p1'] });
+  });
+});
+
 describe('R-TB-TR simulated games', () => {
   for (const players of [3, 4]) {
     it(`a ${players}-player game finishes and conserves resources, gold and commodities`, () => {
