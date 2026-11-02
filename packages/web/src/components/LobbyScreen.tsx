@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   GAME_ORDER_MODES,
   POLICY_BOUNDS,
+  type ApiError,
   type BotLevel,
   type GameOrderMode,
   type RoomPolicy,
@@ -9,6 +10,7 @@ import {
 import { useT } from '../i18n/context.tsx';
 import { botsEnabled, DEFAULT_BOT_LEVEL, offeredBotLevels, pickBotLevel } from '../state/bots.ts';
 import { BotBadge } from './BotBadge.tsx';
+import { Dialog } from './Dialog.tsx';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { SoundSettings } from './SoundSettings.tsx';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
@@ -25,7 +27,8 @@ const COLORS = ['red', 'blue', 'orange', 'white', 'green', 'brown'] as const;
  * - before start a policy change applies, after start it becomes a proposal
  *   that needs every seat's consent;
  * - host transfer is displayed from `RoomView.hostId`;
- * - 開局前房主可加入或移除電腦座位；電腦座位永遠已準備，不顯示準備與連線狀態。
+ * - 開局前房主可從空位加入電腦座位，逐一設定名稱與難度；電腦座位永遠已準備，
+ *   不顯示準備與連線狀態。
  */
 export function LobbyScreen({ controller }: ScreenProps) {
   const t = useT();
@@ -38,6 +41,14 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const [botLevel, setBotLevel] = useState<BotLevel>(DEFAULT_BOT_LEVEL);
   // 請求進行中停用按鈕，避免連點加入多個電腦。
   const [botBusy, setBotBusy] = useState(false);
+  const [botDialogOpen, setBotDialogOpen] = useState(false);
+  const [botName, setBotName] = useState('');
+  const [botError, setBotError] = useState<ApiError | null>(null);
+  // 穩定的 onClose：Dialog 會在 onClose 變動時重新接管焦點。
+  const closeBotDialog = useCallback(() => setBotDialogOpen(false), []);
+  const selfId = state.session?.id ?? null;
+  const canManageBots = room !== null && room.hostId === selfId && room.status === 'lobby';
+  const offerBots = canManageBots && botsEnabled(state.config);
   const profile = room ? state.profiles.find((item) => item.id === room.profileId) : undefined;
   const capacityLimit = state.config?.limits.roomCapacityMax ?? Infinity;
   // Only counts the ruleset and deployment allow, never below the seated players.
@@ -55,6 +66,13 @@ export function LobbyScreen({ controller }: ScreenProps) {
       setCapacityDraft(null);
     }
   }, [capacityDraft, capacityOptions]);
+  // 房間在對話框開著時坐滿或開局，就收起對話框，避免它之後又自己冒出來。
+  useEffect(() => {
+    if (botDialogOpen && !offerBots) {
+      setBotDialogOpen(false);
+      setBotError(null);
+    }
+  }, [botDialogOpen, offerBots]);
 
   if (!room) {
     return (
@@ -64,7 +82,6 @@ export function LobbyScreen({ controller }: ScreenProps) {
     );
   }
 
-  const selfId = state.session?.id ?? null;
   const isHost = room.hostId === selfId;
   const selfMember = room.members.find((member) => member.playerId === selfId) ?? null;
   const takenColors = new Set(room.members.map((member) => member.color));
@@ -88,13 +105,30 @@ export function LobbyScreen({ controller }: ScreenProps) {
     setPolicyDraft({ ...policy, [key]: value });
   };
 
-  const canManageBots = isHost && room.status === 'lobby';
   const botLevels = offeredBotLevels(state.config);
   const chosenBotLevel = pickBotLevel(botLevels, botLevel);
   const roomFull = room.members.length >= room.capacity;
-  const runBotAction = (work: () => Promise<void>) => {
+  const runBotAction = (work: () => Promise<unknown>) => {
     setBotBusy(true);
     void work().finally(() => setBotBusy(false));
+  };
+  const openBotDialog = () => {
+    setBotName('');
+    setBotError(null);
+    setBotDialogOpen(true);
+    // 對話框聚焦面板後，再把焦點移到名稱輸入，讓鍵盤使用者可直接輸入。
+    requestAnimationFrame(() => document.getElementById('bot-name')?.focus());
+  };
+  const submitBot = async () => {
+    setBotBusy(true);
+    const error = await actions.addBot(chosenBotLevel, botName);
+    setBotBusy(false);
+    if (error) {
+      setBotError(error);
+      return;
+    }
+    setBotDialogOpen(false);
+    setBotName('');
   };
 
   return (
@@ -193,7 +227,7 @@ export function LobbyScreen({ controller }: ScreenProps) {
               )}
             </div>
 
-            {canManageBots && botsEnabled(state.config) && (
+            {offerBots && (
               <div className="lobby-bots" role="group" aria-labelledby="lobby-bots-heading" data-testid="lobby-bots">
                 <h3 id="lobby-bots-heading" className="lobby-bots__title">
                   <GameIcon name="bot" size={16} />{t('lobby.bots.title')}
@@ -204,6 +238,7 @@ export function LobbyScreen({ controller }: ScreenProps) {
                     id="lobby-bot-level"
                     data-testid="lobby-bot-level"
                     value={chosenBotLevel}
+                    disabled={botBusy}
                     onChange={(event) => setBotLevel(event.target.value as BotLevel)}
                   >
                     {botLevels.map((level) => (
@@ -211,16 +246,29 @@ export function LobbyScreen({ controller }: ScreenProps) {
                     ))}
                   </select>
                 </div>
-                <button
-                  type="button"
-                  className="button"
-                  data-testid="add-bot"
-                  disabled={roomFull || botBusy}
-                  aria-describedby={roomFull ? 'lobby-bots-full' : undefined}
-                  onClick={() => runBotAction(() => actions.addBot(chosenBotLevel))}
-                >
-                  <GameIcon name="plus" />{t('lobby.bots.add')}
-                </button>
+                <div className="lobby-bots__actions">
+                  <button
+                    type="button"
+                    className="button"
+                    data-testid="add-bot"
+                    disabled={roomFull || botBusy}
+                    aria-describedby={roomFull ? 'lobby-bots-full' : undefined}
+                    onClick={() => runBotAction(() => actions.addBot(chosenBotLevel))}
+                  >
+                    <GameIcon name="plus" />{t('lobby.bots.add')}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost lobby-bots__name"
+                    data-testid="add-bot-named"
+                    aria-label={t('lobby.bots.customName')}
+                    title={t('lobby.bots.customName')}
+                    disabled={roomFull || botBusy}
+                    onClick={openBotDialog}
+                  >
+                    <GameIcon name="pencil" size={16} />
+                  </button>
+                </div>
                 {roomFull && <p id="lobby-bots-full" className="muted lobby-bots__full">{t('lobby.bots.full')}</p>}
               </div>
             )}
@@ -448,6 +496,48 @@ export function LobbyScreen({ controller }: ScreenProps) {
           </section>
         </div>
       </div>
+
+      {botDialogOpen && offerBots && (
+        <Dialog title={t('lobby.bots.addTitle')} onClose={closeBotDialog} testId="bot-dialog">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitBot();
+            }}
+          >
+            <div className="field">
+              <label htmlFor="bot-name">{t('lobby.bots.name')}</label>
+              <input
+                id="bot-name"
+                data-testid="bot-name"
+                value={botName}
+                maxLength={state.config?.limits.nicknameMaxLength ?? 24}
+                placeholder={t('lobby.bots.namePlaceholder')}
+                aria-describedby="bot-name-hint"
+                autoComplete="off"
+                onChange={(event) => {
+                  setBotName(event.target.value);
+                  setBotError(null);
+                }}
+              />
+              <p className="muted" id="bot-name-hint">{t('lobby.bots.nameHint')}</p>
+            </div>
+            {botError && (
+              <p className="error" role="alert" data-testid="bot-error">
+                {t(botError.messageId, botError.params)}
+              </p>
+            )}
+            <div className="form-actions">
+              <button type="submit" className="button button--primary" data-testid="confirm-add-bot" disabled={botBusy}>
+                <GameIcon name="bot" />{t('lobby.bots.add')}
+              </button>
+              <button type="button" className="button button--ghost" disabled={botBusy} onClick={closeBotDialog}>
+                {t('app.cancel')}
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
 
       {state.roomError && (
         <p className="error" role="alert">

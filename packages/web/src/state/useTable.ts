@@ -77,7 +77,8 @@ export interface TableActions {
   takeSeat(color: string): Promise<void>;
   setReady(ready: boolean): Promise<void>;
   updateSettings(body: RoomSettingsBody): Promise<void>;
-  addBot(level: BotLevel): Promise<void>;
+  /** 加入一個電腦席位；成功回傳 null，失敗回傳可顯示的錯誤。 */
+  addBot(level: BotLevel, name?: string): Promise<ApiError | null>;
   removeBot(playerId: string): Promise<void>;
   proposePolicy(policy: RoomPolicy): Promise<void>;
   respondPolicy(proposalId: string, approve: boolean): Promise<void>;
@@ -432,10 +433,16 @@ export function useTable(options: UseTableOptions): TableController {
   );
 
   const addBot = useCallback(
-    async (level: BotLevel): Promise<void> => {
+    async (level: BotLevel, name?: string): Promise<ApiError | null> => {
       const roomId = roomIdRef.current;
-      if (!roomId) return;
-      applyRoom(await api.addBot(roomId, level), 'bots');
+      if (!roomId) return null;
+      const trimmed = name?.trim();
+      const result = await api.addBot(roomId, {
+        level,
+        ...(trimmed ? { name: trimmed } : {}),
+      });
+      applyRoom(result, 'bots');
+      return result.ok ? null : result.error;
     },
     [api, applyRoom],
   );

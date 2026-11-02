@@ -80,7 +80,7 @@ Clearing browser storage or changing devices can lose access to a guest identity
 - Before start, only the host may change validated settings or start the game; settings changes clear readiness. The host may change the room capacity down to, but never below, the number of seated players. After start, immutable game rules stay locked, while room-policy changes follow the all-seat approval contract in §5.8.
 - A lobby may start with any player count its ruleset profile supports, up to the room capacity; it does not need to be full. Starting locks the rules, map/scenario, seats, and actual player count.
 - Before start, the host chooses how the game order is decided: `join` keeps the current seat/join order (default), while `random` draws a fresh complete order once at start with the server-side generator.
-- Before start, the host may add or remove computer-opponent (bot) seats in the lobby, or request bots when creating the room (§4.9). Bot seats count toward the capacity and the started player count; at least one seat is always a person.
+- Before start, the host sets the number of computer-opponent (bot) seats from inside the room (§4.9); creating a room never asks for bots. Bot seats count toward the capacity and the started player count; at least one seat is always a person.
 
 ### 4.3 Play, disconnect, and recover
 
@@ -179,7 +179,7 @@ R-SAVE acceptance: autosave plus save-and-leave in an ordinary turn and during a
 
 A bot seat is a seat played by the service's built-in strategy. The design and delivery plan are recorded in `docs/aegis/specs/2026-11-01-bot-opponents.md`; the requirements below are normative.
 
-- **Seats and labeling:** before start, the host adds bots to open seats or removes them; bot seats are ready by definition and are labeled as computer opponents, with their difficulty, wherever seats are shown. A bot has no login credential, cannot be host and does not chat. Bots cannot be added or removed after start.
+- **Seats and labeling:** before start, the host adds bots to open seats one at a time or removes them; each add may set a name and difficulty, defaulting to a free name when none is given. Bot seats are ready by definition and are labeled as computer opponents, with their difficulty, wherever seats are shown. A bot has no login credential, cannot be host and does not chat. Bots cannot be added or removed after start.
 - **Information:** a bot decides only from its own seat's authorized projection (§8.3), public board topology and rules constants. It never reads authoritative hidden state, and no other seat gains information from it.
 - **Locality:** decisions run inside the service with no LLM, network call, model file or other external service, so a bot table works offline.
 - **Commands:** bots submit through the same validated command path as people, with stable command IDs; every §7.2 durability and receipt rule applies. A decision is deterministic for a given projection and seed.

@@ -6,7 +6,7 @@
 .lobby-seat--bot .lobby-seat__avatar svg { width: 26px; height: 26px; }
 .lobby-seat .lobby-seat__remove { min-height: 32px; padding: .2rem .6rem; font-size: .72rem; gap: .25rem; }
 
-/* 房主的「加入電腦」工具列：與空座位同樣的虛線框，提示它會填入空位。 */
+/* 房主的電腦對手工具列：與空座位同樣的虛線框，提示它會填入空位。 */
 .lobby-bots {
   display: flex;
   flex-wrap: wrap;
@@ -20,13 +20,15 @@
 }
 .lobby-bots__title { display: inline-flex; align-items: center; gap: .35rem; margin: 0; color: #f3d696; font-size: .85rem; }
 .lobby-bots .field { margin: 0; gap: .45rem; }
-.lobby-bots .field label { font-size: .78rem; }
-.lobby-bots .button { margin-left: auto; }
+.lobby-bots .field label { font-size: .78rem; white-space: nowrap; }
+.lobby-bots__actions { display: inline-flex; align-items: center; gap: .4rem; margin-left: auto; }
+.lobby-bots__name { padding: .45rem .6rem; }
 .lobby-bots__full { flex-basis: 100%; margin: 0; font-size: .72rem; }
 
 @media (max-width: 560px) {
   .lobby-bots { padding: .6rem .7rem; }
-  .lobby-bots .button { width: 100%; margin-left: 0; }
+  .lobby-bots__actions { width: 100%; }
+  .lobby-bots__actions .button:first-child { flex: 1; }
 }
 
 /* 收合的玩家欄：頭像右下角的小電腦標記，留在頭像範圍內，不撐寬欄位也不蓋住分數。 */

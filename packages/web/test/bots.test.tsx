@@ -44,14 +44,6 @@ async function joinLobby(api: FakeApi, languages?: readonly string[]): Promise<v
   await screen.findByTestId('room-code');
 }
 
-function select(testId: string): HTMLSelectElement {
-  return screen.getByTestId(testId) as HTMLSelectElement;
-}
-
-function optionValues(element: HTMLSelectElement): string[] {
-  return [...element.options].map((option) => option.value);
-}
-
 const botRoom = () =>
   makeRoom({
     members: [makeMember(), makeBotMember({ playerId: 'bot1', nickname: 'Ada', seat: 1, color: 'blue' })],
@@ -65,59 +57,20 @@ describe('API client', () => {
       return { ok: true, status: 200, json: async () => ({ ok: true, data: makeRoom() }) };
     };
     const api = new ApiClient(fetchImpl);
-    await api.addBot('r1', 'easy');
+    await api.addBot('r1', { level: 'easy' });
+    await api.addBot('r1', { level: 'standard', name: 'Robo' });
     await api.removeBot('r1', 'bot/1');
     expect(calls).toEqual([
       { url: '/api/rooms/r1/bots', method: 'POST', body: { level: 'easy' } },
+      { url: '/api/rooms/r1/bots', method: 'POST', body: { level: 'standard', name: 'Robo' } },
       { url: '/api/rooms/r1/bots/bot%2F1', method: 'DELETE', body: undefined },
     ]);
   });
 });
 
-describe('create room with bots', () => {
-  it('offers zero to capacity − 1 bots and sends the chosen count and level', async () => {
+describe('create room', () => {
+  it('never asks for bot seats and lets the room set them', async () => {
     const api = createFakeApi();
-    renderApp(api);
-    await screen.findByTestId('create-room');
-
-    const bots = select('room-bots');
-    expect(optionValues(bots)).toEqual(['0', '1', '2']);
-    expect(bots.options[0]!.textContent).toBe('None');
-    // 沒有電腦時難度無意義，保持停用但不改變版面。
-    expect(select('room-bot-level').disabled).toBe(true);
-
-    fireEvent.change(bots, { target: { value: '2' } });
-    expect(select('room-bot-level').disabled).toBe(false);
-    fireEvent.change(select('room-bot-level'), { target: { value: 'easy' } });
-    expect(screen.getByText(/Bots take open seats/)).toBeTruthy();
-    fireEvent.click(screen.getByTestId('create-room'));
-
-    await waitFor(() => expect(api.callsOf('createRoom')).toHaveLength(1));
-    expect(api.callsOf('createRoom')[0]!.args[0]).toMatchObject({ capacity: 3, bots: 2, botLevel: 'easy' });
-    // 建房後直接進大廳，兩個電腦座位帶著所選難度。
-    await screen.findByTestId('room-code');
-    expect(screen.getByTestId('bot-badge-1').textContent).toBe('Bot · Easy');
-    expect(screen.getByTestId('bot-badge-2').textContent).toBe('Bot · Easy');
-  });
-
-  it('clamps the bot count when the capacity shrinks', async () => {
-    const api = createFakeApi();
-    renderApp(api);
-    await screen.findByTestId('create-room');
-
-    fireEvent.change(screen.getByLabelText('Capacity'), { target: { value: '4' } });
-    fireEvent.change(select('room-bots'), { target: { value: '3' } });
-    expect(select('room-bots').value).toBe('3');
-
-    fireEvent.change(screen.getByLabelText('Capacity'), { target: { value: '3' } });
-    expect(optionValues(select('room-bots'))).toEqual(['0', '1', '2']);
-    expect(select('room-bots').value).toBe('2');
-    fireEvent.change(screen.getByLabelText('Capacity'), { target: { value: '4' } });
-    expect(select('room-bots').value).toBe('2');
-  });
-
-  it('hides the bot fields and omits them from the request when the server disables bots', async () => {
-    const api = createFakeApi({ config: makeConfig({ bots: { enabled: false, levels: [] } }) });
     renderApp(api);
     await screen.findByTestId('create-room');
     expect(screen.queryByTestId('room-bots')).toBeNull();
@@ -128,14 +81,11 @@ describe('create room with bots', () => {
     const body = api.callsOf('createRoom')[0]!.args[0] as CreateRoomBody;
     expect('bots' in body).toBe(false);
     expect('botLevel' in body).toBe(false);
-  });
 
-  it('omits the bot fields when no bot is requested', async () => {
-    const api = createFakeApi();
-    renderApp(api);
-    fireEvent.click(await screen.findByTestId('create-room'));
-    await waitFor(() => expect(api.callsOf('createRoom')).toHaveLength(1));
-    expect('bots' in (api.callsOf('createRoom')[0]!.args[0] as CreateRoomBody)).toBe(false);
+    // 空位上的「新增電腦」按鈕才是加入電腦的地方，剛進房時沒有任何電腦座位。
+    await screen.findByTestId('room-code');
+    expect(screen.getByTestId('add-bot')).toBeTruthy();
+    expect(screen.queryByTestId('bot-badge-1')).toBeNull();
   });
 });
 
@@ -154,37 +104,69 @@ describe('lobby bot seats', () => {
     expect(screen.getByTestId('member-0').dataset.bot).toBeUndefined();
   });
 
-  it('lets the host add a bot at the chosen difficulty', async () => {
+  it('keeps the lobby toolbar and adds a bot with the default name', async () => {
     const api = createFakeApi({ room: makeRoom({ members: [makeMember()] }) });
     await joinLobby(api);
 
     const toolbar = screen.getByTestId('lobby-bots');
     expect(within(toolbar).getByRole('heading').textContent).toContain('Bot opponents');
-    fireEvent.change(select('lobby-bot-level'), { target: { value: 'easy' } });
-    fireEvent.click(screen.getByTestId('add-bot'));
+    fireEvent.change(within(toolbar).getByTestId('lobby-bot-level'), { target: { value: 'easy' } });
+    fireEvent.click(within(toolbar).getByTestId('add-bot'));
 
     await waitFor(() => expect(api.callsOf('addBot')).toHaveLength(1));
-    expect(api.callsOf('addBot')[0]!.args).toEqual(['r1', 'easy']);
+    expect(api.callsOf('addBot')[0]!.args).toEqual(['r1', { level: 'easy' }]);
     expect((await screen.findByTestId('bot-badge-1')).textContent).toBe('Bot · Easy');
-    expect(screen.getByTestId('lobby-seats').querySelectorAll('li')).toHaveLength(2);
   });
 
-  it('disables adding a bot when every seat is taken', async () => {
+  it('opens the name dialog from the small icon and adds with the custom name', async () => {
+    const api = createFakeApi({ room: makeRoom({ members: [makeMember()] }) });
+    await joinLobby(api);
+
+    fireEvent.click(screen.getByTestId('add-bot-named'));
+    const dialog = await screen.findByTestId('bot-dialog');
+    expect(within(dialog).getByRole('heading').textContent).toBe('Add a bot opponent');
+    expect((within(dialog).getByTestId('bot-name') as HTMLInputElement).placeholder).toBe('Leave blank for a default name');
+    fireEvent.change(within(dialog).getByTestId('bot-name'), { target: { value: 'Robo' } });
+    fireEvent.click(within(dialog).getByTestId('confirm-add-bot'));
+
+    await waitFor(() => expect(api.callsOf('addBot')).toHaveLength(1));
+    expect(api.callsOf('addBot')[0]!.args).toEqual(['r1', { level: 'standard', name: 'Robo' }]);
+    await waitFor(() => expect(screen.queryByTestId('bot-dialog')).toBeNull());
+    expect(screen.getByTestId('member-1').textContent).toContain('Robo');
+  });
+
+  it('keeps the dialog open and shows why a bot was rejected', async () => {
+    const api = createFakeApi({ room: makeRoom({ members: [makeMember()] }) });
+    api.addBot = async () => ({
+      ok: false,
+      error: { code: 'E_BOT_NAME_TAKEN', messageId: 'error.E_BOT_NAME_TAKEN', params: { name: 'Alex' } },
+    });
+    await joinLobby(api);
+
+    fireEvent.click(screen.getByTestId('add-bot-named'));
+    fireEvent.change(await screen.findByTestId('bot-name'), { target: { value: 'Alex' } });
+    fireEvent.click(screen.getByTestId('confirm-add-bot'));
+
+    expect((await screen.findByTestId('bot-error')).textContent).toContain(
+      'Another seat already uses the name Alex.',
+    );
+    expect(screen.getByTestId('bot-dialog')).toBeTruthy();
+  });
+
+  it('disables both add controls when people fill every seat', async () => {
     const api = createFakeApi({
       room: makeRoom({
         capacity: 3,
         members: [
           makeMember(),
-          makeBotMember({ playerId: 'bot1', seat: 1, color: 'blue' }),
-          makeBotMember({ playerId: 'bot2', nickname: 'Bram', seat: 2, color: 'orange' }),
+          makeMember({ playerId: 'p2', nickname: '小美', seat: 1, color: 'blue', host: false }),
+          makeMember({ playerId: 'p3', nickname: '小傑', seat: 2, color: 'orange', host: false }),
         ],
       }),
     });
     await joinLobby(api);
-
-    const add = screen.getByTestId('add-bot') as HTMLButtonElement;
-    expect(add.disabled).toBe(true);
-    expect(add.getAttribute('aria-describedby')).toBe('lobby-bots-full');
+    expect((screen.getByTestId('add-bot') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('add-bot-named') as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText('Every seat is taken.')).toBeTruthy();
   });
 
@@ -222,17 +204,17 @@ describe('lobby bot seats', () => {
     await joinLobby(api);
 
     expect(screen.getByTestId('bot-badge-2')).toBeTruthy();
-    expect(screen.queryByTestId('lobby-bots')).toBeNull();
+    expect(screen.queryByTestId('add-bot')).toBeNull();
     expect(screen.queryByTestId('remove-bot-bot1')).toBeNull();
   });
 
-  it('keeps removal available while adding is disabled by the server', async () => {
+  it('keeps removal available while the server disables bots', async () => {
     const api = createFakeApi({
       config: makeConfig({ bots: { enabled: false, levels: [] } }),
       room: botRoom(),
     });
     await joinLobby(api);
-    expect(screen.queryByTestId('lobby-bots')).toBeNull();
+    expect(screen.queryByTestId('add-bot')).toBeNull();
     expect(screen.getByTestId('remove-bot-bot1')).toBeTruthy();
   });
 
@@ -243,9 +225,15 @@ describe('lobby bot seats', () => {
       room: makeRoom({ members: [makeMember(), makeBotMember({ botLevel: 'easy' })] }),
     });
     await joinLobby(api, ['zh-TW']);
+    expect(screen.getByRole('heading', { name: '電腦對手' })).toBeTruthy();
+    expect(screen.getByLabelText('電腦難度')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '加入電腦' })).toBeTruthy();
     expect(screen.getByTestId('bot-badge-1').textContent).toBe('電腦・簡單');
-    expect(screen.getByTestId('add-bot').textContent).toContain('加入電腦');
     expect(screen.getByRole('button', { name: '移除電腦 Ada' })).toBeTruthy();
+    fireEvent.click(screen.getByTestId('add-bot-named'));
+    expect(screen.getByRole('heading', { name: '新增電腦對手' })).toBeTruthy();
+    expect(screen.getByLabelText('名稱')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '自訂名稱新增電腦' })).toBeTruthy();
   });
 });
 
