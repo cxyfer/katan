@@ -118,7 +118,9 @@ export function HandPanel({ controller }: { controller: TableController }) {
     draggingRef.current = phase === 'start';
     swipeStartRef.current = null;
     if (phase === 'start') { cancelClose(); return; }
+    // 只吃掉緊接著放開的那次點擊；觸控或取消時不會有點擊，下一個 tick 就清掉，避免吞掉之後的鍵盤操作。
     dragClickRef.current = true;
+    setTimeout(() => { dragClickRef.current = false; }, 0);
     // 打出後收起手牌，讓出棋盤（騎士選格）與上方的資源選擇器。
     if (phase === 'drop') collapse();
     else if (!hoverRef.current) scheduleClose();

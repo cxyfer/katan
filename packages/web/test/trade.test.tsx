@@ -7,7 +7,7 @@ import { App } from '../src/App.tsx';
 import { offerTermsForViewer, tradeShortfall } from '../src/components/TradePanel.tsx';
 import { autoDeclineTargets } from '../src/components/useAutoDeclineTrades.ts';
 import { memoryStorage, type StorageLike } from '../src/state/session.ts';
-import { initialTableState, type TableState } from '../src/state/table.ts';
+import { initialTableState, tableReducer, type TableState } from '../src/state/table.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
@@ -642,8 +642,8 @@ describe('development cards and pending effects', () => {
     const api = createFakeApi({ snapshot: makeSnapshot(view) });
     api.setCommandResult(ACCEPTED);
     await openGame(api);
-    const pointer = (element: Element, type: string, clientY: number) => {
-      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: 50, clientY, button: 0 });
+    const pointer = (element: Element, type: string, clientY: number, buttons = type === 'pointerup' ? 0 : 1) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: 50, clientY, button: 0, buttons });
       Object.defineProperties(event, { pointerId: { value: 1 }, pointerType: { value: 'mouse' }, isPrimary: { value: true } });
       fireEvent(element, event);
     };
@@ -661,6 +661,17 @@ describe('development cards and pending effects', () => {
     short();
     expect(screen.queryByTestId('card-drag')).toBeNull();
     expect(screen.queryByTestId('devcard-choice')).toBeNull();
+
+    // 判定線之上但只往上拖了一點（浮起的卡頂端本來就高過手牌）：不算打出。
+    drag(monopoly, -30);
+    expect(screen.getByTestId('card-drag').dataset.armed).toBeUndefined();
+    pointer(monopoly, 'pointerup', -30);
+    expect(screen.queryByTestId('devcard-choice')).toBeNull();
+
+    // 在卡外放開滑鼠時收不到 pointerup：之後沒按鍵的移動不能自己拖起來。
+    pointer(monopoly, 'pointerdown', 0);
+    pointer(monopoly, 'pointermove', -200, 0);
+    expect(screen.queryByTestId('card-drag')).toBeNull();
 
     // 先拖到桌面（已可使用）再拖回手牌放開，同樣取消。
     drag(monopoly, -200);
@@ -684,6 +695,45 @@ describe('development cards and pending effects', () => {
     drag(screen.getByRole('button', { name: /Inspect Road building/ }), -200)();
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
     expect(lastCommand(api)).toEqual({ type: 'dev.playRoadBuilding' });
+  });
+
+  it('keeps year of plenty out of play while the bank is empty', async () => {
+    const view = makeView({ hints: makeHints({ canEndTurn: false }), phase: 'preroll' });
+    view.players[0]!.devCards = ['yearOfPlenty', 'knight'];
+    view.bank = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
+    await openGame(createFakeApi({ snapshot: makeSnapshot(view) }));
+
+    expect((screen.getByTestId('play-yearOfPlenty-0') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: /Inspect Year of plenty/ }).closest('li')!.dataset.draggable).toBeUndefined();
+    expect(screen.getByRole('button', { name: /Inspect Knight/ }).closest('li')!.dataset.draggable).toBe('true');
+  });
+
+  it('stops the queued year of plenty picks when a take is rejected, leaving the picker usable', async () => {
+    const view = makeView({ hints: null, pending: { kind: 'yearOfPlenty', actor: 'p1', remaining: 1 } });
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult({
+      ok: true,
+      data: { commandId: 'c1', outcome: 'rejected', revision: 12, error: { messageId: 'error.E_BANK_EMPTY' }, events: [] },
+    });
+    await openGame(api);
+
+    fireEvent.click(screen.getByTestId('choice-add-grain'));
+    fireEvent.click(screen.getByTestId('choice-submit'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    await waitFor(() => expect((screen.getByTestId('choice-submit') as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.getByTestId('choice-submit').textContent).toBe('Take Grain');
+  });
+
+  it('drops an unfinished resource choice when the table switches games or leaves the room', () => {
+    const base: TableState = {
+      ...initialTableState('en'),
+      game: makeSnapshot(makeView()),
+      devCardChoice: { card: 'monopoly', queued: [] },
+    };
+    expect(tableReducer(base, { type: 'snapshot', snapshot: makeSnapshot(makeView(), 13) }).devCardChoice).not.toBeNull();
+    expect(tableReducer(base, { type: 'snapshot', snapshot: { ...makeSnapshot(makeView()), gameId: 'g2' } }).devCardChoice).toBeNull();
+    expect(tableReducer(base, { type: 'snapshot', snapshot: null }).devCardChoice).toBeNull();
+    expect(tableReducer(base, { type: 'room', room: null }).devCardChoice).toBeNull();
   });
 
   it('submits exactly the required discard count', async () => {

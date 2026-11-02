@@ -201,6 +201,12 @@ with sync_playwright() as p:
     expect(staged.get_by_test_id('card-drag')).to_have_count(0)
     expect(staged.get_by_test_id('devcard-choice')).to_have_count(0)
 
+    # 拖到右側面板上：雖然已離開手牌，但不在棋盤上，放開不算打出。
+    release = drag('knight', (1325, 330))
+    assert staged.get_by_test_id('card-drag').get_attribute('data-armed') is None
+    release()
+    expect(staged.get_by_test_id('card-drag')).to_have_count(0)
+
     # 拖到桌面中央：卡片放大發光、提示改為「放開以使用」，放開後在上方開啟壟斷的資源選擇器。
     release = drag('monopoly', (683, 330), 'drag-armed-monopoly-1366x768-zh-Hant')
     expect(staged.get_by_test_id('card-drag')).to_have_attribute('data-armed', 'true')

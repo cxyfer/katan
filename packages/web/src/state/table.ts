@@ -332,6 +332,7 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         ...state,
         room,
         roomError: null,
+        devCardChoice: room ? state.devCardChoice : null,
         screen: state.screen === 'entry' ? state.screen : nextScreen,
       };
     }
@@ -354,6 +355,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         ...state,
         ...holdForRoll(state, snapshot && current?.gameId === snapshot.gameId ? snapshot.view.events : []),
         game: snapshot,
+        // 換局或離開對局時，上一局未完成的發展卡資源選擇不能帶到下一局。
+        devCardChoice: snapshot && current?.gameId === snapshot.gameId ? state.devCardChoice : null,
         gameSync: { generation, cause: state.gameSyncPending ? state.gameSync.cause : (action.cause ?? 'snapshot') },
         gameSyncPending: false,
         screen: snapshot ? (terminal ? 'result' : 'game') : state.screen,

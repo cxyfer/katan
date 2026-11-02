@@ -7,7 +7,7 @@ import type { TableController } from '../state/useTable.ts';
 export function canPlayDevCard(state: TableState, card: string): boolean {
   const view = state.game?.view;
   const selfId = state.session?.id ?? null;
-  if (!view || !selfId || followUpsHeld(state)) return false;
+  if (!view || !selfId || followUpsHeld(state) || state.activeElsewhere) return false;
   const self = view.players.find((player) => player.id === selfId);
   return view.turn.playerId === selfId && !view.turn.devCardPlayed && view.pending === null &&
     !!self?.devCards?.includes(card as never);
@@ -49,6 +49,9 @@ export function useDevCardChoice(controller: TableController) {
         // 被拒絕（例如銀行剛好被拿光）就停下來，改由玩家在選擇器裡重新挑選。
         const queued = receipt?.outcome === 'accepted' ? (choice?.queued ?? []).slice(1) : [];
         actions.setDevCardChoice({ card: 'yearOfPlenty', queued });
-      }, () => { inFlight.current = false; });
+      }, () => {
+        inFlight.current = false;
+        actions.setDevCardChoice({ card: 'yearOfPlenty', queued: [] });
+      });
   }, [next, pending, busy, held, choice, actions]);
 }

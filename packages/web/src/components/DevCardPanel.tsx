@@ -14,6 +14,17 @@ const CARD_ICONS: Record<string, string> = { knight: 'shield', roadBuilding: 'ro
 const DRAG_THRESHOLD = 10;
 /** 卡片要拖離手牌上緣這麼遠才算放到桌面上。 */
 const DROP_MARGIN = 24;
+/**
+ * 至少要往上拖這麼遠才算打出：滑鼠移上去的卡會浮起、頂端已高過手牌上緣，
+ * 只靠判定線的話，按住卡片頂端稍微一動就會打出（道路建設會直接送出）。
+ */
+const MIN_LIFT = 60;
+
+/** 指標是否在棋盤上；兩側面板、狀態列、提示等 HUD 上放開不算打出。 */
+function overBoard(x: number, y: number): boolean {
+  if (typeof document === 'undefined' || typeof document.elementFromPoint !== 'function') return true;
+  return !!document.elementFromPoint(x, y)?.closest('.game__map');
+}
 
 interface DragTrack {
   id: string;
@@ -48,8 +59,12 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
   const view = state.game?.view ?? null;
   const self = view?.players.find((player) => player.id === selfId) ?? null;
   // 擲骰演出期間一律不可用，避免由是否待處理（七點）透露點數。
-  const playable = !!view && !followUpsHeld(state) && view.turn.playerId === selfId && !view.turn.devCardPlayed && view.pending === null;
+  const playable = !!view && !followUpsHeld(state) && !state.activeElsewhere && view.turn.playerId === selfId &&
+    !view.turn.devCardPlayed && view.pending === null;
   const draggable = playable && !blocksNewCommands(state.command);
+  // 銀行一張資源都沒有時豐收之年打不出去（伺服器回 E_BANK_EMPTY），乾脆不讓它出牌。
+  const bankEmpty = !!view && Object.values(view.bank).every((count) => count <= 0);
+  const usable = (card: string) => PLAYABLE.has(card) && !(card === 'yearOfPlenty' && bankEmpty);
   const held = self?.devCards ?? [];
   const fresh = self?.newDevCards ?? [];
 
@@ -70,8 +85,9 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
   const endDrag = (commit: boolean) => {
     const track = trackRef.current;
     trackRef.current = null;
-    if (!track?.active) return;
+    // 不論追蹤狀態如何都收掉拖曳中的卡，避免留下殘影。
     setDrag(null);
+    if (!track?.active) return;
     const dropped = commit && draggable;
     onCardDrag?.(dropped ? 'drop' : 'cancel');
     if (dropped) play(track.card);
@@ -91,6 +107,9 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
   // 拖到一半失去出牌資格（例如回合結束）時直接取消。
   useEffect(() => { if (!draggable && trackRef.current) endDrag(false); }, [draggable]);
 
+  const armedAt = (track: DragTrack, x: number, y: number) =>
+    y < track.dropLine && track.startY - y >= MIN_LIFT && overBoard(x, y);
+
   const dragHandlers = (id: string, card: string) => ({
     onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => {
       if (!event.isPrimary || event.button !== 0) return;
@@ -103,6 +122,11 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
       const track = trackRef.current;
       if (!track || track.pointerId !== event.pointerId) return;
       if (!track.active) {
+        // 滑鼠在卡外放開時收不到 pointerup：按鍵已放開就丟掉這次追蹤，免得之後移過卡片就自己拖起來。
+        if (track.pointerType !== 'touch' && (event.buttons & 1) === 0) {
+          trackRef.current = null;
+          return;
+        }
         const dx = event.clientX - track.startX;
         const dy = event.clientY - track.startY;
         if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
@@ -120,12 +144,12 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
         onCardDrag?.('start');
       }
       event.preventDefault();
-      setDrag({ id: track.id, card: track.card, x: event.clientX, y: event.clientY, armed: event.clientY < track.dropLine });
+      setDrag({ id: track.id, card: track.card, x: event.clientX, y: event.clientY, armed: armedAt(track, event.clientX, event.clientY) });
     },
     onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => {
       const track = trackRef.current;
       if (!track || track.pointerId !== event.pointerId) return;
-      endDrag(event.clientY < track.dropLine);
+      endDrag(armedAt(track, event.clientX, event.clientY));
     },
     onPointerCancel: () => endDrag(false),
     onLostPointerCapture: () => { if (trackRef.current?.active) endDrag(false); },
@@ -133,7 +157,8 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
 
   const cardView = (card: string, index: number, isNew: boolean) => {
     const id = `${isNew ? 'new' : 'held'}-${index}`;
-    const canDrag = embedded && draggable && !isNew && PLAYABLE.has(card);
+    const canDrag = embedded && draggable && !isNew && usable(card);
+    const hintId = `devcard-drag-hint-${id}`;
     // 牌面與資源牌同一套卡框：插畫、左上角徽記、名稱緞帶與效果說明；新購卡另加標籤。
     const face = <>
       <span className="development-card__art"><DevCardArt card={card} /></span>
@@ -142,17 +167,18 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
       <strong className="development-card__name">{t(`devCard.${card}`)}</strong>
       <span className="development-card__effect">{t(`devCard.effect.${card}`)}</span>
       <span className="development-card__state visually-hidden">{isNew ? t('play.newDevCards') : t('table.heldCards')}</span>
-      {canDrag && <span className="visually-hidden">{t('devCard.dragHint')}</span>}
+      {canDrag && <span id={hintId} className="visually-hidden">{t('devCard.dragHint')}</span>}
     </>;
     return <li onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInspected(null); }} key={`${card}-${index}`} style={handStyle?.(index + (isNew ? held.length : 0))}
       data-draggable={canDrag ? 'true' : undefined}
       className={`development-card development-card--${card}${embedded ? ' hand-fan__card' : ''}${isNew ? ' development-card--new' : ''}${inspected === id ? ' development-card--inspected' : ''}${drag?.id === id ? ' development-card--lifted' : ''}`}>
       {embedded ? <button type="button" className="development-card__inspect" aria-pressed={inspected === id}
         aria-label={`${t('table.inspectCard', { card: t(`devCard.${card}`) })} · ${isNew ? t('play.newDevCards') : t('table.heldCards')}`}
+        aria-describedby={canDrag ? hintId : undefined}
         onClick={() => setInspected((current) => current === id ? null : id)}
         {...(canDrag ? dragHandlers(id, card) : {})}>{face}</button> : face}
       {!isNew && PLAYABLE.has(card) && <button type="button" className="button development-card__play"
-        data-testid={`play-${card}-${index}`} disabled={!playable} onClick={() => play(card)}>
+        data-testid={`play-${card}-${index}`} disabled={!playable || !usable(card)} onClick={() => play(card)}>
         {t('play.playCard', { card: t(`devCard.${card}`) })}
       </button>}
     </li>;

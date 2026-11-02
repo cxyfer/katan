@@ -134,7 +134,7 @@ export function DevCardChoicePicker({ card, required, bank, busy, onSubmit, onCa
             onClick={() => setPicked(NONE)}>
             {t('play.pending.discardClear')}
           </button>}
-        <button type="button" className="button button--primary" data-testid="choice-submit" disabled={busy || selected !== required}
+        <button type="button" className="button button--primary" data-testid="choice-submit" disabled={busy || required <= 0 || selected !== required}
           onClick={() => onSubmit(picks)}>
           {busy
             ? t('devCard.choice.busy')
