@@ -302,6 +302,31 @@ recorded in the work record. Two further client-side choices:
   original emblem drawn by `SvgProgressArt.tsx`; the effect text is a
   paraphrase in both locales and no official artwork or wording is used.
 
+Interpretations and accepted disclosures for the progress cards:
+
+- **5–6 player 2 and Commercial Harbor (P3-4, open interpretation).** CK56-25
+  p. 3 says the paired Player 2 may not trade with other players, yet player 2
+  may play Commercial Harbor (CK25 p. 14), whose offers exchange a resource
+  for a commodity with other players. The engine treats the card as an
+  effect, not as a trade, and allows it; a stricter reading would forbid it
+  for player 2. No printed clause settles it, so this stays open.
+- **Commercial Harbor discloses commodity information (accepted).**
+  `ck.harborReturned` and `ck.harborExchanged`, and whether the answer frame
+  appears at all, reveal what the offered player holds (no commodity, one
+  kind, several kinds). This is accepted because it mirrors table talk, where
+  the offer and the reply are spoken aloud (CK25 p. 14); the resource and the
+  commodity given back are visible only to the two players.
+- **Encouragement and knights (interpretation).** Knights activated by
+  Encouragement (CK25 p. 15) cannot act on the turn they were activated. The
+  card says to activate all knights; CK25 p. 9 says an activated knight cannot
+  act in the turn it was activated, so the card is read as the Activate action
+  without the cost (P3-7). The pages do not say it outright.
+- **5–6 discard timing (interpretation).** During Player 1's roll in a paired
+  game, Player 2 is not on turn for that roll, so a Player 2 above four
+  progress cards discards at once as an off-turn player (CK25 p. 6), before
+  production. CK56-25 does not say whether Player 2 counts as on turn during
+  Player 1's part.
+
 Open fixtures for the progress cards:
 
 - No scripted multi-client browser run of the paired (5–6) responder prompts;
