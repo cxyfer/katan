@@ -165,10 +165,22 @@ describe('ruleset registry', () => {
     expect(() => registerFixtureProfile('base-2025', [3])).toThrow(/shadow/);
   });
 
+  it('implements the cities & knights core profiles while keeping them disabled', () => {
+    for (const id of ['ck-2025', 'ck-paired-2025']) {
+      const profile = getProfile(id)!;
+      expect(profile.implemented).toBe(true);
+      expect(profile.enabled).toBe(false);
+      expect(profile.unavailableReasonKey).toBe('profile.unavailable.citiesKnightsProgress');
+      expect(profile.devDeck).toEqual([]);
+    }
+    expect(getProfile('ck-2025')!.commodityBankPerType).toBe(12);
+    expect(getProfile('ck-paired-2025')!.commodityBankPerType).toBe(18);
+  });
+
   it('refuses to create a game for an unimplemented profile', () => {
     expect(() =>
       createGame({
-        profileId: 'ck-2025',
+        profileId: 'sf-ck-new-shores-2025',
         players: playerIds(4).map((id, index) => ({
           id,
           nickname: id,

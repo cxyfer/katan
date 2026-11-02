@@ -5,7 +5,7 @@
  */
 
 import type { Locale } from '@catan/protocol';
-import { RESOURCES, type Resource } from '@catan/rules';
+import { COMMODITIES, RESOURCES, type Resource } from '@catan/rules';
 import { t } from './index.ts';
 
 export function formatNumber(locale: Locale, value: number): string {
@@ -34,6 +34,11 @@ function isResource(value: string): value is Resource {
   return (RESOURCES as readonly string[]).includes(value);
 }
 
+/** Commodities (Cities & Knights) share the `resource.<id>` label namespace. */
+function isCommodity(value: string): boolean {
+  return (COMMODITIES as readonly string[]).includes(value);
+}
+
 /**
  * Renders a canonical resource map (`{ lumber: 2 }`) as localised text. Keys are
  * kept canonical; only the labels are translated.
@@ -47,7 +52,7 @@ export function formatResourceMap(
   for (const key of Object.keys(terms).sort()) {
     const amount = terms[key] ?? 0;
     if (!amount) continue;
-    const label = isResource(key) ? t(locale, `resource.${key}`) : key;
+    const label = isResource(key) || isCommodity(key) ? t(locale, `resource.${key}`) : key;
     parts.push(`${formatNumber(locale, amount)}×${label}`);
   }
   return parts.length > 0 ? parts.join('、') : '—';
