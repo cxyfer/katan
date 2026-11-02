@@ -4,7 +4,9 @@
  * Road Building with ships.
  */
 
+import { topologyOf } from '../src/analysis.ts';
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
+import { ckView } from '../src/modules/citiesKnights/state.ts';
 import type { Rng } from '../src/rng.ts';
 import { RESOURCES, type GameState, type ModulePending, type Resource } from '../src/types.ts';
 import { simulateCitiesKnights, type AnyCommand, type CkSimulation } from './ck-sim.ts';
@@ -13,6 +15,7 @@ import { sfckGame } from './sfck-helpers.ts';
 
 interface SeafarersHints {
   legalShips: number[];
+  pirateTargets: (number | null)[];
   setupShips: number[];
   movableShips: { edge: number; targets: number[] }[];
   goldRequired: number;
@@ -46,9 +49,31 @@ function bestShips(state: GameState, playerId: string, edges: readonly number[])
   return edges.slice().sort((a, b) => shipScore(state, playerId, a) - shipScore(state, playerId, b));
 }
 
+/** Sea hexes next to an active knight that can still act, so its owner may chase the pirate (COMB-6). */
+function pirateBait(state: GameState, targets: readonly (number | null)[]): number[] {
+  const topo = topologyOf(state);
+  const near = new Set(ckView(state).knights.filter((knight) => knight.active).flatMap((knight) => topo.vertices[knight.vertex]!.hexes));
+  return targets.filter((hex): hex is number => hex !== null && hex !== state.board.pirate && near.has(hex));
+}
+
 function pending(state: GameState, rng: Rng, step: number): GameState | null | undefined {
   const frame = state.pending;
   if (!frame) return undefined;
+  // A chased pirate goes to any other sea hex, or the frame.
+  if (frame.kind === 'moveRobber' && frame.pirate) {
+    const targets = sfHints(state, frame.actor).pirateTargets.filter((hex) => hex !== state.board.pirate);
+    for (const hex of [targets[step % Math.max(1, targets.length)], null]) {
+      if (hex === undefined) continue;
+      const next = attempt(state, frame.actor, { type: 'pending.moveRobber', hex }, rng);
+      if (next) return next;
+    }
+    return null;
+  }
+  // Half the 7s after the first attack send the pirate next to a knight.
+  if (frame.kind === 'moveRobber' && step % 2 === 0 && combinedHints(state, frame.actor).bandit === 'either') {
+    const bait = pirateBait(state, sfHints(state, frame.actor).pirateTargets);
+    if (bait[0] !== undefined) return attempt(state, frame.actor, { type: 'pending.moveRobber', hex: bait[step % bait.length]! }, rng) ?? undefined;
+  }
   if (frame.kind === 'freeRoads') {
     const roads = actionHints(state, frame.actor).legalRoads;
     const ships = bestShips(state, frame.actor, sfHints(state, frame.actor).legalShips);
@@ -88,7 +113,7 @@ function setup(state: GameState, rng: Rng, step: number): GameState | null | und
 function tries(state: GameState, actorId: string, step: number): AnyCommand[] {
   const out: AnyCommand[] = [];
   const chase = combinedHints(state, actorId).pirateChase;
-  if (chase[0] !== undefined && step % 4 === 0) out.push({ type: 'knight.chasePirate', vertex: chase[0] });
+  if (chase[0] !== undefined) out.push({ type: 'knight.chasePirate', vertex: chase[0] });
   // Head for the small islands even while the main island has room.
   if (actionHints(state, actorId).legalSettlements.length > 0 && step % 3 !== 0) return out;
   const sea = sfHints(state, actorId);

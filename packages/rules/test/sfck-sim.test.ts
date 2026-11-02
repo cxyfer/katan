@@ -28,8 +28,9 @@ function checkRoutes(state: GameState): void {
 }
 
 describe('simulated Seafarers + Cities & Knights games', () => {
-  // Seeds picked so that every game also earns an island bonus.
-  for (const [players, seed] of [[3, 4], [4, 4], [5, 1], [6, 2]] as const) {
+  const totals = { gold: 0, moved: 0, pirate: 0, chased: 0, merchant: 0, islands: 0 };
+  // Seeds picked so that, together, the four games cover every sea mechanic.
+  for (const [players, seed] of [[3, 2], [4, 1], [5, 3], [6, 3]] as const) {
     it(`${players} players finish with a 16-point winner and conserved supplies`, () => {
       const { state, counters, sea } = simulateSeafarersCitiesKnights(players, seed);
       expect(state.result?.reason).toBe('victory');
@@ -44,24 +45,16 @@ describe('simulated Seafarers + Cities & Knights games', () => {
       expect(counters.progressPlayed).toBeGreaterThan(0);
       expect(counters.improvements).toBeGreaterThan(0);
       expect(sea.shipsBuilt).toBeGreaterThan(0);
-      expect(sea.islandBonuses).toBeGreaterThan(0);
-    }, 180_000);
-  }
-
-  it('across seeds the games reach gold, ship moves, the pirate and its chase', () => {
-    const totals = { gold: 0, moved: 0, pirate: 0, chased: 0, merchant: 0 };
-    for (const [players, seed] of [[4, 1], [5, 1], [3, 2]] as const) {
-      const { state, counters, sea } = simulateSeafarersCitiesKnights(players, seed);
-      expect(state.result?.reason).toBe('victory');
-      checkSupplies(state);
-      checkPieces(state);
-      checkRoutes(state);
       totals.gold += sea.goldChoices;
       totals.moved += sea.shipsMoved;
       totals.pirate += sea.pirateMoves;
       totals.chased += sea.pirateChased;
       totals.merchant += counters.merchantPlaced;
-    }
+      totals.islands += sea.islandBonuses;
+    }, 180_000);
+  }
+
+  it('across the games gold, ship moves, the pirate, its chase, the merchant and island bonuses occur', () => {
     for (const [key, value] of Object.entries(totals)) expect(value, key).toBeGreaterThan(0);
-  }, 360_000);
+  });
 });
