@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { scoreOf, topologyOf } from '../src/analysis.ts';
 import { legalRobberHexes } from '../src/engine.ts';
 import { getProfile } from '../src/profiles.ts';
+import { moduleStateOf } from '../src/modules/state.ts';
 import { projectGame } from '../src/project.ts';
 import { seededRng } from '../src/rng.ts';
 import { verticesOfHex } from '../src/topology.ts';
@@ -44,6 +45,7 @@ function hexWithOwners(state: GameState, owners: string[]): number {
 describe('R-TB-FR The Friendly Robber (TB25 p. 4)', () => {
   it('FR1: keeps the robber off hexes of players with only 2 VP after setup', () => {
     // Start: setup done, every player has 2 VP; p1 resolves a 7.
+    // TB25 p.4: the robber may not be moved to a hex with a building of a player who only has 2 VP.
     const state = tbPlayable(FRIENDLY, { mode: 'fixed' });
     moveRobberPending(state);
     const guarded = hexOf(state, 'p2');
@@ -77,6 +79,8 @@ describe('R-TB-FR The Friendly Robber (TB25 p. 4)', () => {
   });
 
   it('FR3: with no valid hex the robber goes to the desert and robs only players above 2 VP', () => {
+    // TB25 p.4: with no valid hex the robber goes to the desert (it stays when already there) and
+    // may only rob players with more than 2 VP. Start: robber on the desert, p1 touches every other hex.
     const state = tbPlayable(FRIENDLY, { mode: 'fixed' });
     clearBoard(state);
     const topology = topologyOf(state);
@@ -138,6 +142,8 @@ function strongest(state: GameState): unknown {
 
 describe('R-TB-HB Harbors of Catan (TB25 p. 4)', () => {
   it('HB1: the first player with 3 VP on ports takes Strongest Ports (2 VP); victory needs 11', () => {
+    // TB25 p.4: Strongest Ports (2 VP) goes to the first player with 3 VP in buildings on ports; the
+    // target becomes 11 (10 + 1). Upgrading to a harbour city counts 2 VP; the win comes at exactly 11.
     expect(getProfile(HARBORS)!.victoryTarget).toBe(11);
     const state = tbPlayable(HARBORS, { mode: 'fixed' });
     clearBoard(state);
@@ -162,6 +168,7 @@ describe('R-TB-HB Harbors of Catan (TB25 p. 4)', () => {
   });
 
   it('HB2: a tie keeps the holder; strictly more ports VP takes the tile', () => {
+    // TB25 p.4: the tile moves only to a player with strictly more VP on ports than the holder.
     const state = tbPlayable(HARBORS, { mode: 'fixed' });
     clearBoard(state);
     const ports = harborVertices(state);
@@ -186,6 +193,57 @@ describe('R-TB-HB Harbors of Catan (TB25 p. 4)', () => {
   it('HB3: setup alone cannot reach 3 VP on ports', () => {
     const state = tbPlayable(HARBORS, { mode: 'variable', seed: 3 });
     expect(strongest(state)).toBeNull();
+  });
+});
+
+describe('R-TB-FR + R-TB-HB combined (TB25 p. 4)', () => {
+  const COMBINED = 'tb-friendly-robber-harbors-2025';
+
+  it('FRHB1: TB25 p.4 — the Strongest Ports tile counts as public VP, so its holder is not protected while a 1-VP player is', () => {
+    // Start: p2 holds a city and a settlement on ports (3 VP + the 2-VP tile = 5 public VP), p3 a lone
+    // settlement (1 VP). Window: a 7 resolved by p1; command: pending.moveRobber.
+    const state = tbPlayable(COMBINED, { mode: 'fixed' });
+    clearBoard(state);
+    for (const player of state.players) player.bonusPoints = 0;
+    const ports = harborVertices(state);
+    placeBuilding(state, 'p2', ports[0]![0]!, true);
+    placeBuilding(state, 'p2', ports[3]![0]!);
+    const topology = topologyOf(state);
+    const owned = (hex: number) => ownersOf(state, hex);
+    const quiet = state.board.layout.terrain.map((_, hex) => hex).filter((hex) => owned(hex).size === 0 && hex !== state.board.robber);
+    const lone = topology.vertices.findIndex((vertex, index) => !state.board.buildings[index] && vertex.hexes.some((hex) => quiet.includes(hex)) &&
+      vertex.hexes.every((hex) => !owned(hex).has('p2')));
+    placeBuilding(state, 'p3', lone);
+    state.players[1]!.bonusPoints = 0;
+    const slot = moduleStateOf<Record<string, { holder?: string | null }>>(state, 'tradersBarbarians')!;
+    slot['harbors']!.holder = 'p2';
+    expect(scoreOf(state, 'p2', { includeHidden: false })).toBe(5);
+    expect(scoreOf(state, 'p3', { includeHidden: false })).toBe(1);
+    moveRobberPending(state);
+    const p2Hex = state.board.layout.terrain.findIndex((_, hex) => hex !== state.board.robber && owned(hex).has('p2') && !owned(hex).has('p3'));
+    const p3Hex = state.board.layout.terrain.findIndex((_, hex) => hex !== state.board.robber && owned(hex).has('p3'));
+    expect(legalRobberHexes(state, 'p1')).toContain(p2Hex);
+    expect(legalRobberHexes(state, 'p1')).not.toContain(p3Hex);
+    setHand(state, 'p2', { ore: 1 });
+    const moved = act(state, 'p1', { type: 'pending.moveRobber', hex: p2Hex }).state;
+    expect(moved.pending).toMatchObject({ kind: 'steal', candidates: ['p2'] });
+  });
+
+  it('FRHB2: TB25 p.4 — the combined profile needs 11 VP and wins at exactly 11 including the tile', () => {
+    // Start: p1 holds Strongest Ports (city + settlement on ports) with 6 bonus VP = 11; window: end of turn.
+    const state = tbPlayable(COMBINED, { mode: 'fixed' });
+    clearBoard(state);
+    const ports = harborVertices(state);
+    placeBuilding(state, 'p1', ports[0]![0]!, true);
+    placeBuilding(state, 'p1', ports[3]![0]!);
+    moduleStateOf<Record<string, { holder?: string | null }>>(state, 'tradersBarbarians')!['harbors']!.holder = 'p1';
+    state.players[0]!.bonusPoints = 5;
+    expect(getProfile(COMBINED)!.victoryTarget).toBe(11);
+    // The win is detected when p1's turn comes up (the previous player ends theirs).
+    forceTurn(state, 3, 'action');
+    expect(act(state, 'p4', { type: 'turn.end' }).state.result).toBeNull();
+    state.players[0]!.bonusPoints = 6;
+    expect(act(state, 'p4', { type: 'turn.end' }).state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
   });
 });
 
