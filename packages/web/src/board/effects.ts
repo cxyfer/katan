@@ -1,5 +1,6 @@
 import type { GameEvent } from '@catan/protocol';
 import { RESOURCES, type PublicBoardView } from '@catan/rules';
+import type { BoardEffectGroup } from './animation.ts';
 
 export const MAX_FLIGHT_ICONS = 24;
 export type Grant = { playerId: string; resource: typeof RESOURCES[number]; amount: number };
@@ -37,4 +38,11 @@ export function confirmedPlacement(events: readonly GameEvent[], board: PublicBo
 export function neutralThefts(events: readonly GameEvent[]): { seq: number; playerId: string; victim: string }[] {
   return events.filter((event) => event.type === 'robber.stole' && typeof event.params.playerId === 'string' && typeof event.params.victim === 'string')
     .map(({ seq, params }) => ({ seq, playerId: params.playerId as string, victim: params.victim as string }));
+}
+
+/** 多組落下並行時，以最新確認該位置的一組為準；同一位置先建村莊再升級城市只播城市。 */
+export function placementArrival(
+  arrivals: readonly BoardEffectGroup[], board: PublicBoardView, kind: 'edge' | 'vertex', index: number,
+): BoardEffectGroup | null {
+  return arrivals.findLast((group) => confirmedPlacement(group.events, board, kind, index)) ?? null;
 }

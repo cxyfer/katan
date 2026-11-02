@@ -61,7 +61,7 @@ export default function IslandPreview() {
           data-center-x={controls.viewport.center.x} data-center-z={controls.viewport.center.z}
           {...controls.surfaceProps} style={{ ...controls.surfaceProps.style, position: 'absolute' }}>
           {!failure && <BoardScene3D key={`${topologyId}:${attempt}`} geometry={geometry} board={board}
-            players={ISLAND_PREVIEW_PLAYERS} intent={null} selection={null} active={null}
+            players={ISLAND_PREVIEW_PLAYERS} intent={null} selection={null} arrivals={[]}
             viewport={controls.viewport} quality={quality} motionAllowed={false}
             onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />}
           {!ready && !failure && <div className="island-preview__loading" role="status">正在佈置島嶼…</div>}

@@ -6,7 +6,7 @@ import type { BoardIntent } from '../board/intent.ts';
 import type { TableState } from '../state/table.ts';
 import { useT } from '../i18n/context.tsx';
 import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrainLetter, terrainSymbol } from '../board/terrain.ts';
-import { confirmedPlacement } from '../board/effects.ts';
+import { placementArrival } from '../board/effects.ts';
 import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
 
@@ -14,7 +14,7 @@ interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'
   svgRef: Ref<SVGSVGElement>;
   geometry: BoardGeometry;
   view: GameView;
-  active: BoardEffectGroup | null;
+  arrivals: readonly BoardEffectGroup[];
   selection: TableState['selection'];
   selfId: string | null;
   intent: BoardIntent | null;
@@ -87,7 +87,7 @@ const StaticTiles = memo(function StaticTiles({ geometry, terrain, numbers, ids 
   </>;
 });
 
-export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
+export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
   const t = useT();
   const prefix = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const ids = useMemo(() => boardArtIds(`board-art-${prefix}`), [prefix]);
@@ -120,11 +120,14 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             if (!road) return null;
             const player = view.players.find((candidate) => candidate.id === road.player);
             const color = playerColorHex(player?.color ?? 'white');
-            const arriving = confirmedPlacement(active?.events ?? [], board, 'edge', edge.index);
+            const arrival = placementArrival(arrivals, board, 'edge', edge.index);
             const line = inset(edge);
             return (
-              <g key={arriving ? `road-${edge.index}:${active!.id}` : `road-${edge.index}`}
-                className={arriving ? 'board__road-drop' : undefined}>
+              <g key={`road-${edge.index}`}>
+              {/* 落點陰影留在地面，隨棋子接近而變大變深。 */}
+              {arrival && <line key={arrival.id} className="board__drop-shadow board__drop-shadow--road" {...line} transform="translate(0 3)"
+                stroke="#10242c" strokeWidth={13} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
+              <g key={arrival?.id ?? 'rest'} className={arrival ? 'board__road-drop' : undefined}>
               <line {...line} transform="translate(0 3)" stroke="#10242c" strokeWidth={13} strokeLinecap="round" opacity={.4} aria-hidden="true" />
               <line {...line} stroke="#20180f" strokeWidth={11} strokeLinecap="round" aria-hidden="true" />
               <line
@@ -139,7 +142,8 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
               </line>
               <line {...line} transform="translate(0 -1.6)" stroke={shade(color, 0.6)} strokeWidth={1.6} strokeLinecap="round"
                 strokeDasharray={seatDash(player?.seat ?? 0)} opacity={.55} aria-hidden="true" pointerEvents="none" />
-              {arriving && <line key={active?.id} className="board__road-reveal" {...line} pathLength={1} stroke={color} strokeWidth={10} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
+              {arrival && <line className="board__road-reveal" {...line} pathLength={1} stroke={color} strokeWidth={10} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
+              </g>
               </g>
             );
           })}
@@ -150,10 +154,13 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             const player = view.players.find((candidate) => candidate.id === building.player);
             const color = playerColorHex(player?.color ?? 'white');
             const label = building.city ? t('board.city') : t('board.settlement');
-            const arriving = confirmedPlacement(active?.events ?? [], board, 'vertex', vertex.index);
+            const arrival = placementArrival(arrivals, board, 'vertex', vertex.index);
             return (
               <g key={`building-${vertex.index}`} data-testid={`building-${vertex.index}`}>
-                <g key={arriving ? active!.id : 'rest'} className={arriving ? 'board__building-drop' : undefined}>
+                {/* 與 BoardBuilding 自帶陰影同位置（scale 1.12）。 */}
+                {arrival && <ellipse key={arrival.id} className="board__drop-shadow" cx={vertex.x} cy={vertex.y + (building.city ? 12.3 : 11.2)}
+                  rx={building.city ? 25.8 : 17.9} ry={building.city ? 6.7 : 5.6} fill="#071d28" aria-hidden="true" pointerEvents="none" />}
+                <g key={arrival?.id ?? 'rest'} className={arrival ? 'board__building-drop' : undefined}>
                   <BoardBuilding x={vertex.x} y={vertex.y} city={building.city} color={color} />
                 </g>
                 <title>{`${label} · ${nameResolver(building.player)}`}</title>

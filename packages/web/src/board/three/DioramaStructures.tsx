@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import type { BufferGeometry, Material } from 'three';
-import { confirmedPlacement } from '../effects.ts';
+import { placementArrival } from '../effects.ts';
 import type { BoardSceneProps } from '../render-contract.ts';
 import { playerColorHex } from '../terrain.ts';
+import { ArrivalShadows } from './ArrivalShadows.tsx';
 import { geometryToWorld } from './bounds.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
 import {
@@ -22,41 +23,56 @@ import {
 } from './model-specs.ts';
 import type { InstanceTransform } from './transforms.ts';
 
-type PieceProps = Pick<BoardSceneProps, 'geometry' | 'board' | 'players' | 'active' | 'motionAllowed' | 'quality'> & {
+type PieceProps = Pick<BoardSceneProps, 'geometry' | 'board' | 'players' | 'arrivals' | 'motionAllowed' | 'quality'> & {
   material: Material;
 };
 
 interface PieceInstance extends InstanceTransform {
   playerId: string;
   city: boolean;
-  arriving: boolean;
+  arrivalKey: string | null;
+  /** 落點陰影的底面輪廓（世界單位）。 */
+  footprint: readonly [number, number];
 }
 
+// 陰影邊緣柔化，輪廓略大於模型底座（村莊 0.25×0.22、城市 0.41×0.35、道路寬約 0.12）。
+const SETTLEMENT_FOOTPRINT = [0.36, 0.32] as const;
+const CITY_FOOTPRINT = [0.54, 0.46] as const;
+const ROAD_SHADOW_WIDTH = 0.2;
+
 function AnimatedPieces({
-  model, instances, material, quality, active, motionAllowed, duration, arrival,
+  model, instances, material, quality, motionAllowed, duration, arrival,
 }: {
   model: BufferGeometry;
   instances: readonly PieceInstance[];
   material: Material;
   quality: BoardSceneProps['quality'];
-  active: BoardSceneProps['active'];
   motionAllowed: boolean;
   duration: number;
   arrival: ArrivalOptions;
 }) {
-  const groups = useMemo(() => [
-    { arriving: false, items: instances.filter((item) => !item.arriving) },
-    { arriving: true, items: instances.filter((item) => item.arriving) },
-  ], [instances]);
-  return groups.map(({ arriving, items }) => <InstancedPrimitive
-    key={String(arriving)} geometry={model} material={material} instances={items}
-    castShadow={quality === 'standard'} animationKey={arriving ? active?.id ?? null : null}
-    durationMs={duration} motionAllowed={motionAllowed} arrival={arrival} />);
+  // 靜止棋子一批；每組落下演出各自一批，才能依各自抵達時間起算。
+  const groups = useMemo(() => {
+    const grouped = new Map<string | null, PieceInstance[]>([[null, []]]);
+    for (const item of instances) {
+      const items = grouped.get(item.arrivalKey) ?? [];
+      items.push(item);
+      grouped.set(item.arrivalKey, items);
+    }
+    return [...grouped.entries()];
+  }, [instances]);
+  return groups.map(([key, items]) => <group key={key ?? 'rest'}>
+    <InstancedPrimitive geometry={model} material={material} instances={items}
+      castShadow={quality === 'standard'} animationKey={key}
+      durationMs={duration} motionAllowed={motionAllowed} arrival={arrival} />
+    {key !== null && <ArrivalShadows animationKey={key} durationMs={duration} arrival={arrival} motionAllowed={motionAllowed}
+      footprints={items.map((item) => ({ position: item.position, rotationY: item.rotationY ?? 0, size: item.footprint }))} />}
+  </group>);
 }
 
 function PlayerBuildings({
   color, city, seat, instances, ...props
-}: Omit<PieceProps, 'geometry' | 'board' | 'players'> & {
+}: Omit<PieceProps, 'geometry' | 'board' | 'players' | 'arrivals'> & {
   color: string;
   city: boolean;
   seat: number;
@@ -66,7 +82,7 @@ function PlayerBuildings({
   return <AnimatedPieces {...props} model={model} instances={instances} duration={BUILDING_ARRIVAL_TRANSFORM_MS} arrival={BUILDING_ARRIVAL} />;
 }
 
-export function DioramaBuildings({ geometry, board, players, ...props }: PieceProps) {
+export function DioramaBuildings({ geometry, board, players, arrivals, ...props }: PieceProps) {
   const instances = useMemo<PieceInstance[]>(() => geometry.vertices.flatMap((vertex) => {
     const building = board.buildings[vertex.index];
     if (!building) return [];
@@ -74,12 +90,13 @@ export function DioramaBuildings({ geometry, board, players, ...props }: PiecePr
     return [{
       playerId: building.player,
       city: building.city,
-      arriving: confirmedPlacement(props.active?.events ?? [], board, 'vertex', vertex.index),
+      arrivalKey: placementArrival(arrivals, board, 'vertex', vertex.index)?.id ?? null,
+      footprint: building.city ? CITY_FOOTPRINT : SETTLEMENT_FOOTPRINT,
       position: [point.x, 0.005, point.z],
       rotationY: ((vertex.index * 23) % 6) * (Math.PI / 6),
       scale: [1, 1, 1],
     }];
-  }), [board, geometry, props.active]);
+  }), [board, geometry, arrivals]);
   return players.flatMap((player) => [false, true].map((city) => {
     const items = instances.filter((item) => item.playerId === player.id && item.city === city);
     return items.length ? <PlayerBuildings {...props} key={`${player.id}:${city}`}
@@ -87,7 +104,7 @@ export function DioramaBuildings({ geometry, board, players, ...props }: PiecePr
   }));
 }
 
-function PlayerRoads({ color, seat, instances, ...props }: Omit<PieceProps, 'geometry' | 'board' | 'players'> & {
+function PlayerRoads({ color, seat, instances, ...props }: Omit<PieceProps, 'geometry' | 'board' | 'players' | 'arrivals'> & {
   color: string;
   seat: number;
   instances: readonly PieceInstance[];
@@ -96,13 +113,14 @@ function PlayerRoads({ color, seat, instances, ...props }: Omit<PieceProps, 'geo
   return <AnimatedPieces {...props} model={model} instances={instances} duration={ROAD_ARRIVAL_TRANSFORM_MS} arrival={ROAD_ARRIVAL} />;
 }
 
-export function DioramaRoads({ geometry, board, players, ...props }: PieceProps) {
-  const instances = useMemo<PieceInstance[]>(() => roadInstances(geometry, board, players, props.active).map((road) => ({
+export function DioramaRoads({ geometry, board, players, arrivals, ...props }: PieceProps) {
+  const instances = useMemo<PieceInstance[]>(() => roadInstances(geometry, board, players, arrivals).map((road) => ({
     ...road,
     city: false,
+    footprint: [road.length + 0.04, ROAD_SHADOW_WIDTH] as const,
     // Existing road specs shorten by .17; this miniature uses a .20 total setback.
     scale: [Math.max(0.01, road.length - 0.03), 1, 1],
-  })), [board, geometry, players, props.active]);
+  })), [board, geometry, players, arrivals]);
   return players.map((player) => {
     const items = instances.filter((item) => item.playerId === player.id);
     return items.length ? <PlayerRoads {...props} key={player.id} color={playerColorHex(player.color)}

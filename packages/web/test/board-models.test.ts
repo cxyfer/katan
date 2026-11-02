@@ -4,7 +4,7 @@ import { Box3, Color, type BufferGeometry } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { MAX_EFFECT_DURATION_MS } from '../src/board/animation.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
-import { arrivalPose, RESTING_POSE } from '../src/board/three/arrival.ts';
+import { ARRIVAL_SHADOW_OPACITY, arrivalPose, arrivalShadow, RESTING_POSE } from '../src/board/three/arrival.ts';
 import { harborPlacement } from '../src/board/harbor.ts';
 import { fixedBoard } from '../src/test/fixtures.ts';
 import { BOARD_MODEL_METRICS, geometryToWorld, sceneBounds } from '../src/board/three/bounds.ts';
@@ -121,10 +121,21 @@ describe('modeled board pieces', () => {
     expect(arrivalPose(0.6, { height: 1 }).spin).toBe(0);
   });
 
+  it('grows and darkens the landing shadow as the piece nears the ground, then hands off to the resting piece', () => {
+    const options = { height: 1.4 };
+    const shadows = Array.from({ length: 53 }, (_, step) => arrivalShadow(step / 100, options));
+    expect(shadows[0]!.scale).toBeCloseTo(0.4, 10);
+    expect(shadows.every((shadow, index) => index === 0 ||
+      (shadow.scale > shadows[index - 1]!.scale && shadow.opacity > shadows[index - 1]!.opacity))).toBe(true);
+    expect(arrivalShadow(0.52, options)).toEqual({ scale: 1, opacity: ARRIVAL_SHADOW_OPACITY });
+    expect(arrivalShadow(0.8, options).opacity).toBeLessThan(ARRIVAL_SHADOW_OPACITY / 2);
+    expect(arrivalShadow(1, options).opacity).toBe(0);
+  });
+
   it('V03 gives settlements and cities distinct closed wall and roof assemblies', () => {
     const geometry = buildGeometry('hex-r2', 100);
     const board = boardWith();
-    const parts = buildingParts(geometry, board, players, null);
+    const parts = buildingParts(geometry, board, players, []);
     const settlement = parts.filter((part) => part.vertex === 0);
     const city = parts.filter((part) => part.vertex === 1);
     expect(settlement.filter((part) => part.part === 'body')).toHaveLength(2);
@@ -159,7 +170,7 @@ describe('modeled board pieces', () => {
   it('V04/V05 locates roads on the shared IDs and uses the local atlas for number and harbor labels', () => {
     const geometry = buildGeometry('hex-r2', 100);
     const board = boardWith();
-    const roads = roadInstances(geometry, board, players, null);
+    const roads = roadInstances(geometry, board, players, []);
     expect(roads).toHaveLength(2);
     expect(roads.every((road) => road.durationMs === ROAD_ARRIVAL_TRANSFORM_MS)).toBe(true);
     expect(ROAD_ARRIVAL_TRANSFORM_MS).toBe(560);

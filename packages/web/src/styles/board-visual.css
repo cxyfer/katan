@@ -24,11 +24,24 @@
   75% { transform: translateY(-4px); animation-timing-function: ease-in; }
   84%, 100% { transform: none; }
 }
+/* 落點陰影：墜落時由小而淡變大變深，落地後淡出；棋子自帶的陰影則等落地才出現。 */
+.board__drop-shadow { transform-box: fill-box; transform-origin: center; animation: drop-shadow 640ms linear both; }
+.board__drop-shadow--road { animation-duration: 560ms; }
+.board__building-drop > g > ellipse:first-child { animation: drop-own-shadow 640ms linear both; }
+.board__road-drop > line:first-child { animation: drop-own-shadow 560ms linear both; }
+@keyframes drop-shadow {
+  0% { opacity: .1; transform: scale(.4); animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+  52% { opacity: .5; transform: none; }
+  100% { opacity: 0; transform: none; }
+}
+/* 不寫 100%：落地後回到元素自身的 opacity。 */
+@keyframes drop-own-shadow { 0%, 48% { opacity: 0; } }
 @keyframes edge-reveal { from { stroke-dashoffset: 1; opacity: .6; } to { stroke-dashoffset: 0; opacity: 0; } }
 /* 骰子只由中央單一事件播放；工具列永遠保留結果，不重複搖動。 */
 .dice-focus__panel { animation: board-dice-arrive 800ms ease-out both; }
 @keyframes board-dice-arrive { 0% { opacity: .3; transform: scale(.75) rotate(-5deg); } 18%,25% { opacity: 1; transform: none; } 40%,100% { opacity: 0; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .board__building-drop, .board__road-drop, .board__road-reveal, .dice-focus__panel { animation: none; }
-  .board__road-reveal { display: none; }
+  .board__building-drop, .board__road-drop, .board__road-reveal, .dice-focus__panel,
+  .board__building-drop > g > ellipse:first-child, .board__road-drop > line:first-child { animation: none; }
+  .board__road-reveal, .board__drop-shadow { display: none; }
 }

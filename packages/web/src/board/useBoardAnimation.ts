@@ -9,11 +9,13 @@ import {
   MAX_EFFECT_GROUPS,
   type DiceRollPresentation,
   enqueueBoardEffects,
-  isPlacementGroup,
+  MAX_EFFECT_DURATION_MS,
   placementEffectGroups,
   type BoardEffectGroup,
   type PresentationCursor,
 } from './animation.ts';
+
+const NO_ARRIVALS: readonly BoardEffectGroup[] = [];
 
 export function useBoardAnimation(
   snapshot: GameSnapshot | null,
@@ -35,6 +37,13 @@ export function useBoardAnimation(
   const reduced = useRef(false);
   const [queue, setQueue] = useState<BoardEffectGroup[]>([]);
   const [diceQueue, setDiceQueue] = useState<DiceRollPresentation[]>([]);
+  const [arrivals, setArrivals] = useState<BoardEffectGroup[]>([]);
+  const arrivalTimers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const clearArrivals = useCallback(() => {
+    arrivalTimers.current.forEach((id) => globalThis.clearTimeout(id));
+    arrivalTimers.current.clear();
+    setArrivals([]);
+  }, []);
   // 以 ref 同步追蹤骰子佇列，才能在同一個 effect 內立即回報是否仍在演出。
   const diceQueueRef = useRef<DiceRollPresentation[]>([]);
   const onDiceChangeRef = useRef(onDiceChange);
@@ -56,9 +65,10 @@ export function useBoardAnimation(
     diceTimer.current = null;
     cursor.current = decideBoardAnimation(null, latest.current.snapshot, latest.current.sync).cursor;
     setQueue([]);
+    clearArrivals();
     updateDice(() => []);
     mandatoryRollSeq.current = null;
-  }, [updateDice]);
+  }, [updateDice, clearArrivals]);
 
   useEffect(() => {
     const media = globalThis.matchMedia('(prefers-reduced-motion: reduce)');
@@ -75,6 +85,8 @@ export function useBoardAnimation(
       timer.current = null;
       if (diceTimer.current !== null) globalThis.clearTimeout(diceTimer.current);
       diceTimer.current = null;
+      arrivalTimers.current.forEach((id) => globalThis.clearTimeout(id));
+      arrivalTimers.current.clear();
       cursor.current = null;
       diceQueueRef.current = [];
       onDiceChangeRef.current?.(false);
@@ -90,15 +102,25 @@ export function useBoardAnimation(
     cursor.current = decision.cursor;
     if (decision.kind === 'baseline') {
       setQueue([]);
+      clearArrivals();
       updateDice(() => []);
       mandatoryRollSeq.current = null;
       return;
     }
+    // 建造落下自抵達起並行播放，不等特效佇列，也不因必要操作而略過；超出上限時直接靜止顯示。
+    const placements = snapshot ? placementEffectGroups(snapshot.gameId, decision.events) : [];
+    if (placements.length > 0 && arrivalTimers.current.size < MAX_EFFECT_GROUPS) {
+      const [group] = placements as [BoardEffectGroup];
+      const id = globalThis.setTimeout(() => {
+        arrivalTimers.current.delete(id);
+        setArrivals((current) => current.filter((item) => item !== group));
+      }, MAX_EFFECT_DURATION_MS);
+      arrivalTimers.current.add(id);
+      setArrivals((current) => [...current, group]);
+    }
     const rolls = snapshot ? diceRollPresentations(snapshot.gameId, decision.events) : [];
     if (mandatory) {
-      // 必要操作期間只保留建造落下演出；尚未播完的同類演出也不因後續投影而中斷。
-      const placements = snapshot ? placementEffectGroups(snapshot.gameId, decision.events) : [];
-      setQueue((current) => enqueueBoardEffects(current.filter(isPlacementGroup), placements));
+      setQueue([]);
       const pending = snapshot?.view.pending;
       // 擲骰事件先於投影抵達時，舊投影仍停在 preroll；這次擲骰本身就結束了 preroll，
       // 先保留骰子，等投影抵達再判斷是否讓位給必要操作（游標已消耗此事件，清掉就無法補播）。
@@ -134,7 +156,7 @@ export function useBoardAnimation(
     }
     // 沒有新擲骰時也回報一次，校正 reducer 對這筆更新的暫定判斷。
     updateDice((current) => current);
-  }, [snapshot, sync.generation, sync.cause, online, mandatory, updateDice]);
+  }, [snapshot, sync.generation, sync.cause, online, mandatory, updateDice, clearArrivals]);
 
   const active = queue[0] ?? null;
   const activeDice = diceQueue[0] ?? null;
@@ -173,7 +195,8 @@ export function useBoardAnimation(
   return {
     activeDice: canPresent && !diceHeld && (!mandatory || mandatoryRollSeq.current === snapshot?.view.seq) ? activeDice : null,
     pendingDiceCount: diceQueue.length,
-    active: canPresent && !effectHeld && active && (!mandatory || isPlacementGroup(active)) ? active : null,
+    active: canPresent && !mandatory && !effectHeld ? active : null,
+    arrivals: canPresent ? arrivals : NO_ARRIVALS,
     pendingCount: queue.length,
     resetPresentation,
   };

@@ -47,3 +47,21 @@ export function arrivalPose(progress: number, { height, spin = 0 }: ArrivalOptio
   const squash = SQUASH * pulse(p, FALL_END, SQUASH_END) + SETTLE_SQUASH * pulse(p, HOP_END, SETTLE_END);
   return { lift, scaleY: 1 - squash, scaleXZ: 1 + squash * 0.5, spin: turn };
 }
+
+export interface ArrivalShadow {
+  /** 相對棋子底面輪廓的縮放倍率。 */
+  scale: number;
+  opacity: number;
+}
+
+export const ARRIVAL_SHADOW_OPACITY = 0.42;
+
+/** 落點的接觸陰影：棋子越接近地面越大越深，落地後淡出，交回棋子本身的投影。 */
+export function arrivalShadow(progress: number, options: ArrivalOptions): ArrivalShadow {
+  const p = clamp01(progress);
+  if (p >= 1) return { scale: 1, opacity: 0 };
+  const { lift } = arrivalPose(p, options);
+  const near = options.height > 0 ? 1 - Math.min(1, lift / options.height) : 1;
+  const fade = p <= FALL_END ? 1 : 1 - (p - FALL_END) / (1 - FALL_END);
+  return { scale: 0.4 + 0.6 * near, opacity: ARRIVAL_SHADOW_OPACITY * (0.2 + 0.8 * near) * fade };
+}

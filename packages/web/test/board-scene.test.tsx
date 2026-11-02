@@ -36,7 +36,7 @@ function props(overrides: Partial<BoardSceneProps> = {}): BoardSceneProps {
     ],
     intent: null,
     selection: null,
-    active: null,
+    arrivals: [],
     viewport: {
       center: { x: 0, z: 0 },
       zoom: 1,
