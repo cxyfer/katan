@@ -47,3 +47,8 @@ export function banditTargets(
     pirate: bandit === 'robber' || !combined.pirateActive ? [] : pirate.slice(),
   };
 }
+
+/** The move-bandit prompt names the pirate when only the pirate may move. */
+export function moveBanditMessageId(view: Pick<GameView, 'hints'> | null | undefined): 'play.pending.moveRobber' | 'sfck.pending.movePirate' {
+  return seafarersCitiesKnightsHints(view)?.bandit === 'pirate' ? 'sfck.pending.movePirate' : 'play.pending.moveRobber';
+}

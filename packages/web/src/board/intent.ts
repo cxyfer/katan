@@ -9,7 +9,7 @@
 
 import type { TableState } from '../state/table.ts';
 import { isShipCommand, seafarersHints } from './seafarers.ts';
-import { banditTargets, seafarersCitiesKnightsHints } from './seafarersCitiesKnights.ts';
+import { banditTargets, moveBanditMessageId, seafarersCitiesKnightsHints } from './seafarersCitiesKnights.ts';
 import { citiesKnightsHints, citiesKnightsTargets, isCitiesKnightsVertexCommand } from './citiesKnights.ts';
 import type { TargetKind } from './targets.ts';
 
@@ -88,7 +88,7 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
       return {
         kind: 'hex',
         commandType: 'pending.moveRobber',
-        labelId: 'play.pending.moveRobber',
+        labelId: moveBanditMessageId(view),
         targets: robberHexes(state),
         fromHints: false,
       };

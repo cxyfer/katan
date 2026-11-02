@@ -20,6 +20,7 @@ import { LocaleProvider } from '../src/i18n/context.tsx';
 import { translateEvent } from '../src/i18n/events.ts';
 import { t } from '../src/i18n/index.ts';
 import { deriveActions } from '../src/state/actions.ts';
+import { requiredActionFor } from '../src/state/pending.ts';
 import { EMPTY_SELECTION, initialTableState, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeEvent, makeSnapshot } from '../src/test/fixtures.ts';
@@ -137,6 +138,7 @@ describe('seafarers + cities & knights client', () => {
     const robberView = view(state);
     const robberIntent = boardIntent(tableWith(robberView), 'p1')!;
     expect(robberIntent.commandType).toBe('pending.moveRobber');
+    expect(robberIntent.labelId).toBe('play.pending.moveRobber');
     expect(robberIntent.targets.length).toBeGreaterThan(0);
     expect(robberIntent.targets.every((hex) => !isSea(hex))).toBe(true);
     const { unmount } = render(<LocaleProvider locale="en"><SeafarersPrompt controller={controllerFor(robberView)} /></LocaleProvider>);
@@ -150,6 +152,9 @@ describe('seafarers + cities & knights client', () => {
     expect(pirateIntent.targets.length).toBeGreaterThan(0);
     expect(pirateIntent.targets.every(isSea)).toBe(true);
     expect(pirateIntent.targets).not.toContain(pirate);
+    // The prompt and the selection name the pirate.
+    expect(pirateIntent.labelId).toBe('sfck.pending.movePirate');
+    expect(requiredActionFor(tableWith(pirateView))?.messageId).toBe('sfck.pending.movePirate');
     render(<LocaleProvider locale="en"><SeafarersPrompt controller={controllerFor(pirateView)} /></LocaleProvider>);
     expect(screen.getByTestId('bandit-choice-text').textContent).toMatch(/chases the pirate/);
     expect(screen.getByTestId('pirate-to-frame')).not.toBeNull();

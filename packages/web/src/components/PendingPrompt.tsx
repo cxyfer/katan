@@ -7,6 +7,7 @@ import { DiscardPicker } from './DiscardPicker.tsx';
 import { SeafarersPrompt } from './SeafarersPrompt.tsx';
 import { CitiesKnightsPrompt } from './CitiesKnightsPrompt.tsx';
 import { citiesKnightsView } from '../board/citiesKnights.ts';
+import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
 
 /**
  * Mandatory-response prompt (docs/SPEC.md §4.4/§8.4).
@@ -130,7 +131,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       )}
 
       {pending && pending.kind === 'moveRobber' && (
-        <p className="muted">{t('play.pending.moveRobber')}</p>
+        <p className="muted">{t(moveBanditMessageId(view))}</p>
       )}
       {pending && pending.kind === 'freeRoads' && (
         <p className="muted">{t('play.pending.freeRoads', { remaining: pending.remaining })}</p>
