@@ -165,8 +165,8 @@ export interface RoadSearch {
 }
 
 /**
- * 以 BFS 計算自己的道路網延伸到各路口的成本。採標準規則的保守版本：不穿越
- * 對手建築所在的路口。
+ * 以 BFS 計算自己的道路網延伸到各路口的成本。與標準規則一致：對手建築會
+ * 切斷穿越的路口，但己方道路仍可從未被切斷的一端繼續延伸。
  */
 export function searchRoads(model: BoardModel, playerId: string, maxDepth: number): RoadSearch {
   const { topo } = model;
