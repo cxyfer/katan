@@ -243,8 +243,10 @@ describe('R-CK progress cards (CK25 pp. 6, 10)', () => {
     expect(player(rolled.state, 'p2').progressCards).toHaveLength(5);
     expect(hints(rolled.state, 'p2').progressExcess).toBe(1);
     expect(rejectCk(rolled.state, 'p2', { type: 'turn.end' })).toBe('E_PROGRESS_HAND_LIMIT');
+    expect(actionHints(rolled.state, 'p2').canEndTurn).toBe(false);
     const discarded = actCk(rolled.state, 'p2', { type: 'progress.discard', cards: ['mining'] });
     expect(rejectCk(discarded.state, 'p2', { type: 'progress.discard', cards: ['alchemy'] })).toBe('E_PROGRESS_WITHIN_LIMIT');
+    expect(actionHints(discarded.state, 'p2').canEndTurn).toBe(true);
     expect(actCk(discarded.state, 'p2', { type: 'turn.end' }).state.turn.seat).toBe(2);
   });
 
@@ -265,6 +267,11 @@ describe('R-CK science aqueduct (CK25 p. 8)', () => {
     const taken = actCk(rolled.state, 'p2', { type: 'science.take', resource: 'ore' });
     expect(player(taken.state, 'p2').resources.ore).toBe(1);
     expect(taken.state.pending).toBeNull();
+    // Only an explicit null declines; a missing resource is malformed.
+    expect(rejectCk(rolled.state, 'p2', { type: 'science.take' })).toBe('E_INVALID_SELECTION');
+    const declined = actCk(rolled.state, 'p2', { type: 'science.take', resource: null });
+    expect(player(declined.state, 'p2').resources.ore).toBe(0);
+    expect(declined.state.pending).toBeNull();
 
     const seven = emptyCkGame(4, 0, 'preroll');
     setImprovement(seven, 'p2', 'science', 3);

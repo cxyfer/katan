@@ -256,7 +256,11 @@ A roll carries `turn.dice` as `[yellow, red]`; the event die is in
 `.pillage` (`data.cities` per responder), `.displaced` (`data.player`,
 `level`, `active`, `from`, `options`), `.progressDiscard` (`data.required`),
 `.defenderDraw` (`data.decks`) and `.scienceBonus`. Ending the turn while
-above the progress-card limit is rejected.
+above the progress-card limit is rejected (`E_PROGRESS_HAND_LIMIT`), and
+`hints.canEndTurn` is `false` meanwhile. Choosing an empty progress deck is
+`E_PROGRESS_DECK_EMPTY` (the base `E_DECK_EMPTY` is the development deck). A
+`science.take` without a `resource` is `E_INVALID_SELECTION`; only `null` passes.
+`hints.legalCities` omits settlements while a toppled city waits to be rebuilt.
 
 `GameView.modules.citiesKnights` is public: `barbarian`
 (`position`, `length`, `attacks`), `barbarianStrength`, `defenderStrength`,

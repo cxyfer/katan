@@ -138,8 +138,10 @@ export function takeScienceBonus(state: GameState, actorId: string, command: Mod
   const pending = frame as ModulePending;
   if (!pending.responders.includes(actorId)) return kit.fail('E_NOT_ACTOR');
   if (pending.responders[0] !== actorId) return kit.fail('E_NOT_YOUR_TURN', { waitingFor: pending.responders[0] });
+  // Only an explicit `null` declines; a missing resource is a malformed command.
   const resource = command.resource as Resource | null | undefined;
-  if (resource !== null && resource !== undefined) {
+  if (resource === undefined) return kit.fail('E_INVALID_SELECTION', { resource });
+  if (resource !== null) {
     if (!RESOURCES.includes(resource)) return kit.fail('E_INVALID_SELECTION', { resource });
     if (state.bank[resource] <= 0) return kit.fail('E_BANK_EMPTY', { resource });
     const player = playerById(state, actorId)!;
