@@ -43,11 +43,13 @@ import {
   type CommandError,
   type CommandErrorCode,
   type CommandOutcome,
+  type DevCardType,
   type GameEvent,
   type GameState,
   type HarborType,
   type Offer,
   type OfferResponse,
+  type Pending,
   type PlayerColor,
   type PlayerState,
   type Resource,
@@ -293,23 +295,23 @@ export function canPlaceBuilding(
     return countBuildings(state, playerId, 'settlement') < profile.pieces.settlements;
   }
   if (options.requireConnection === false) return true;
-  return vertexConnectsToNetwork(state, playerId, vertex);
+  return touchesOwnRoad(state, playerId, vertex);
 }
 
-function vertexConnectsToNetwork(state: GameState, playerId: string, vertex: number): boolean {
+function touchesOwnRoad(state: GameState, playerId: string, vertex: number): boolean {
   const topo = topologyOf(state);
+  return topo.vertices[vertex]!.edges.some((edge) => state.board.roads[edge]?.player === playerId);
+}
+
+/**
+ * 新道路能否從這個路口接上道路網：自己的建築一定可以；對手的建築會切斷
+ * 穿越該路口的延伸；空路口則需要有自己的道路接到這裡。判斷的是路口本身，
+ * 不是既有道路的另一端。
+ */
+function roadCanExtendFrom(state: GameState, playerId: string, vertex: number): boolean {
   const building = state.board.buildings[vertex];
-  if (building && building.player === playerId) return true;
-  for (const edge of topo.vertices[vertex]!.edges) {
-    const road = state.board.roads[edge];
-    if (!road || road.player !== playerId) continue;
-    const [a, b] = topo.edges[edge]!.vertices;
-    const other = a === vertex ? b : a;
-    const otherBuilding = state.board.buildings[other];
-    if (otherBuilding && otherBuilding.player !== playerId) continue;
-    return true;
-  }
-  return false;
+  if (building) return building.player === playerId;
+  return touchesOwnRoad(state, playerId, vertex);
 }
 
 export function legalRoadEdges(
@@ -339,7 +341,7 @@ export function canPlaceRoad(
     if (options.lastVertex === null || options.lastVertex === undefined) return false;
     return info.vertices.includes(options.lastVertex);
   }
-  return info.vertices.some((vertex) => vertexConnectsToNetwork(state, playerId, vertex));
+  return info.vertices.some((vertex) => roadCanExtendFrom(state, playerId, vertex));
 }
 
 // ---------------------------------------------------------------------------
@@ -448,6 +450,28 @@ const PENDING_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>([
   'build.road',
 ]);
 
+/** 舊快照可能要求已耗盡的棋子或銀行資源；投影、提示與執行共用此判定。 */
+export function normalizedPending(state: GameState): Pending | null {
+  const pending = state.pending;
+  if (pending?.kind === 'freeRoads') {
+    const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, pending.actor);
+    const remaining = legalRoadEdges(state, pending.actor).length > 0
+      ? Math.max(0, Math.min(pending.remaining, pieces))
+      : 0;
+    if (remaining <= 0) return null;
+    if (remaining === pending.remaining) return pending;
+    const placed = (pending.granted ?? 2) - pending.remaining;
+    return { ...pending, remaining, granted: placed + remaining };
+  }
+  if (pending?.kind === 'yearOfPlenty') {
+    const available = RESOURCES.reduce((sum, resource) => sum + state.bank[resource], 0);
+    const remaining = Math.max(0, Math.min(pending.remaining, available));
+    if (remaining <= 0) return null;
+    return remaining === pending.remaining ? pending : { ...pending, remaining };
+  }
+  return pending;
+}
+
 export function applyCommand(
   state: GameState,
   actorId: string,
@@ -460,12 +484,19 @@ export function applyCommand(
   }
   if (state.result) return fail('E_GAME_OVER');
 
-  if (state.pending && !PENDING_COMMANDS.has(command.type)) {
-    return fail('E_PENDING_EFFECT', { pending: state.pending.kind });
-  }
-
   const next = clone(state);
   ensureStats(next);
+  const previousPending = next.pending;
+  next.pending = normalizedPending(next);
+  if (next.pending && !PENDING_COMMANDS.has(command.type)) {
+    return fail('E_PENDING_EFFECT', { pending: next.pending.kind });
+  }
+  if (previousPending?.kind === 'freeRoads' && !next.pending) {
+    emit(next, 'dev.roadBuildingFinished', {
+      playerId: previousPending.actor,
+      placed: (previousPending.granted ?? 2) - previousPending.remaining,
+    });
+  }
   const outcome = dispatch(next, actorId, command, rng);
   if (!outcome.ok) return outcome;
   trackPeakHands(next);
@@ -795,7 +826,10 @@ function buildRoad(state: GameState, actorId: string, edge: number): CommandOutc
   if (free) {
     free.remaining -= 1;
     if (free.remaining <= 0 || legalRoadEdges(state, actorId).length === 0) {
-      emit(state, 'dev.roadBuildingFinished', { playerId: actorId, placed: 2 - free.remaining });
+      emit(state, 'dev.roadBuildingFinished', {
+        playerId: actorId,
+        placed: (free.granted ?? 2) - free.remaining,
+      });
       state.pending = null;
     }
   }
@@ -885,14 +919,20 @@ function canPlayDevCard(state: GameState, actorId: string): CommandOutcome | nul
   return null;
 }
 
+/**
+ * 只有先前回合持有的卡（`devCards`）可以打出；本回合新買的同類卡不影響舊卡。
+ * 手上只有新買的那張時回報 E_CARD_JUST_BOUGHT。
+ */
+function heldCardMissing(player: PlayerState, card: DevCardType): CommandOutcome {
+  if (player.newDevCards.includes(card)) return fail('E_CARD_JUST_BOUGHT', { card });
+  return fail('E_CARD_NOT_HELD', { card });
+}
+
 function playKnight(state: GameState, actorId: string, hex: number): CommandOutcome {
   const guard = canPlayDevCard(state, actorId);
   if (guard) return guard;
   const player = playerById(state, actorId)!;
-  if (!player.devCards.includes('knight')) {
-    if (player.newDevCards.includes('knight')) return fail('E_CARD_JUST_BOUGHT', { card: 'knight' });
-    return fail('E_CARD_NOT_HELD', { card: 'knight' });
-  }
+  if (!player.devCards.includes('knight')) return heldCardMissing(player, 'knight');
   const pool = player.devCards;
   const topo = topologyOf(state);
   if (!topo.hexes[hex]) return fail('E_ILLEGAL_TARGET', { hex });
@@ -933,16 +973,17 @@ function playRoadBuilding(state: GameState, actorId: string): CommandOutcome {
   const guard = canPlayDevCard(state, actorId);
   if (guard) return guard;
   const player = playerById(state, actorId)!;
-  if (!player.devCards.includes('roadBuilding')) return fail('E_CARD_NOT_HELD', { card: 'roadBuilding' });
-  if (player.newDevCards.includes('roadBuilding')) return fail('E_CARD_JUST_BOUGHT', { card: 'roadBuilding' });
+  if (!player.devCards.includes('roadBuilding')) return heldCardMissing(player, 'roadBuilding');
   player.devCards.splice(player.devCards.indexOf('roadBuilding'), 1);
   state.turn.devCardPlayed = true;
   playerStats(state, actorId).devCardsPlayed.roadBuilding += 1;
   emit(state, 'dev.roadBuilding', { playerId: actorId });
+  // 免費道路數同時受合法邊與剩餘道路棋子限制，否則待決效果會無法完成。
   const available = legalRoadEdges(state, actorId).length;
-  const remaining = Math.min(2, available);
+  const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, actorId);
+  const remaining = Math.max(0, Math.min(2, available, pieces));
   if (remaining > 0) {
-    state.pending = { kind: 'freeRoads', actor: actorId, remaining };
+    state.pending = { kind: 'freeRoads', actor: actorId, remaining, granted: remaining };
   }
   return { ok: true, state, events: [] };
 }
@@ -951,12 +992,14 @@ function playYearOfPlenty(state: GameState, actorId: string): CommandOutcome {
   const guard = canPlayDevCard(state, actorId);
   if (guard) return guard;
   const player = playerById(state, actorId)!;
-  if (!player.devCards.includes('yearOfPlenty')) return fail('E_CARD_NOT_HELD', { card: 'yearOfPlenty' });
-  if (player.newDevCards.includes('yearOfPlenty')) return fail('E_CARD_JUST_BOUGHT', { card: 'yearOfPlenty' });
+  if (!player.devCards.includes('yearOfPlenty')) return heldCardMissing(player, 'yearOfPlenty');
+  // 銀行不足兩張時只給得出現有的張數；完全沒有時不能打出，卡片留在手上。
+  const available = RESOURCES.reduce((sum, resource) => sum + state.bank[resource], 0);
+  if (available <= 0) return fail('E_BANK_EMPTY', { card: 'yearOfPlenty' });
   player.devCards.splice(player.devCards.indexOf('yearOfPlenty'), 1);
   state.turn.devCardPlayed = true;
   playerStats(state, actorId).devCardsPlayed.yearOfPlenty += 1;
-  state.pending = { kind: 'yearOfPlenty', actor: actorId, remaining: 2 };
+  state.pending = { kind: 'yearOfPlenty', actor: actorId, remaining: Math.min(2, available) };
   emit(state, 'dev.yearOfPlenty', { playerId: actorId });
   return { ok: true, state, events: [] };
 }
@@ -981,8 +1024,7 @@ function playMonopoly(state: GameState, actorId: string, resource: Resource): Co
   if (guard) return guard;
   if (!RESOURCES.includes(resource)) return fail('E_INVALID_SELECTION');
   const player = playerById(state, actorId)!;
-  if (!player.devCards.includes('monopoly')) return fail('E_CARD_NOT_HELD', { card: 'monopoly' });
-  if (player.newDevCards.includes('monopoly')) return fail('E_CARD_JUST_BOUGHT', { card: 'monopoly' });
+  if (!player.devCards.includes('monopoly')) return heldCardMissing(player, 'monopoly');
   player.devCards.splice(player.devCards.indexOf('monopoly'), 1);
   state.turn.devCardPlayed = true;
   const stats = playerStats(state, actorId);
@@ -1349,15 +1391,16 @@ export interface ActionHints {
 
 /** Legal-action hints for the acting player's UI. Advisory only. */
 export function actionHints(state: GameState, playerId: string): ActionHints {
+  const pending = normalizedPending(state);
   const isTurn = currentPlayer(state).id === playerId;
-  const inAction = isTurn && state.turn.phase === 'action' && !state.pending;
-  const freeRoads = state.pending?.kind === 'freeRoads' && state.pending.actor === playerId;
+  const inAction = isTurn && state.turn.phase === 'action' && !pending;
+  const freeRoads = pending?.kind === 'freeRoads' && pending.actor === playerId;
   const setup = state.turn.setup;
   const setupIsMine = !!setup && state.players[setup.order[setup.index] ?? -1]?.id === playerId;
   const setupBuilding = setupIsMine && setup!.stage === 'building';
   const setupRoad = setupIsMine && setup!.stage === 'road';
   return {
-    canRoll: isTurn && state.turn.phase === 'preroll' && !state.pending,
+    canRoll: isTurn && state.turn.phase === 'preroll' && !pending,
     canEndTurn: inAction,
     legalRoads:
       inAction || freeRoads
@@ -1377,7 +1420,7 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
           .map(({ vertex }) => vertex)
       : [],
     bankRates: harborRates(state, playerId),
-    pendingKind: state.pending ? state.pending.kind : null,
+    pendingKind: pending ? pending.kind : null,
   };
 }
 

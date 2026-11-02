@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { GameState } from '@catan/rules';
+import { legalRoadEdges, requireProfile, type GameState, type GameView } from '@catan/rules';
 import type { ResumableGameView } from '@catan/protocol';
 import { startService } from '../src/main.ts';
 import {
@@ -35,7 +35,7 @@ interface Receipt {
 interface Snapshot {
   gameId: string;
   revision: number;
-  view: { seq: number; turn: { phase: string; playerId: string }; result: unknown; players: { id: string }[] };
+  view: GameView;
 }
 
 function id(prefix: string): string {
@@ -168,6 +168,63 @@ describe('R-SAVE all-seat suspension', () => {
 });
 
 describe('R-REC restart recovery', () => {
+  for (const kind of ['freeRoads', 'yearOfPlenty'] as const) {
+    for (const available of [0, 1]) {
+      it(`recovers a persisted legacy ${kind} effect with ${available} choices left`, async () => {
+        const { clients, gameId } = await startedGame(harness, 3);
+        await runSetupOverApi(clients, gameId);
+        const row = (await harness.service.repo.findGame(gameId))!;
+        const state = JSON.parse(row.state_json) as GameState;
+        const actorId = state.players[state.turn.seat]!.id;
+        const actor = clients.find((client) => client.playerId === actorId)!;
+        state.engineVersion = 'base-2025.2';
+        state.turn.phase = 'action';
+        if (kind === 'freeRoads') {
+          const target = requireProfile(state.profileId).pieces.roads - available;
+          let count = state.board.roads.filter((road) => road?.player === actorId).length;
+          for (let edge = 0; edge < state.board.roads.length && count < target; edge++) {
+            if (state.board.roads[edge] || legalRoadEdges(state, actorId).includes(edge)) continue;
+            state.board.roads[edge] = { player: actorId, ship: false };
+            count += 1;
+          }
+          expect(count).toBe(target);
+          expect(legalRoadEdges(state, actorId).length).toBeGreaterThan(0);
+          state.pending = { kind, actor: actorId, remaining: available === 0 ? 1 : 2 };
+        } else {
+          state.bank = { lumber: available, brick: 0, wool: 0, grain: 0, ore: 0 };
+          state.pending = { kind, actor: actorId, remaining: 2 };
+        }
+        await harness.service.repo.saveGame(gameId, state, row.revision, 'playing', null);
+        await harness.service.repo.db.run('UPDATE games SET engine_version = ? WHERE id = ?', [
+          'base-2025.2', gameId,
+        ]);
+        const saved = (await harness.service.repo.findGame(gameId))!;
+        const snapshot = actor.expectOk<Snapshot>(await actor.get(`/api/games/${gameId}`));
+        expect(snapshot.revision).toBe(row.revision);
+        expect(snapshot.view.pending).toEqual(available > 0 ? { kind, actor: actorId, remaining: 1 } : null);
+        expect((await harness.service.repo.findGame(gameId))!.state_json).toBe(saved.state_json);
+        const command = available === 0
+          ? { type: 'turn.end' }
+          : kind === 'freeRoads'
+            ? { type: 'build.road', edge: snapshot.view.hints!.legalRoads[0]! }
+            : { type: 'pending.takeResource', resource: 'lumber' };
+        const request = {
+          commandId: id('legacy-pending'),
+          expectedRevision: snapshot.revision,
+          command,
+        };
+        const receipt = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, request));
+        expect(receipt.outcome).toBe('accepted');
+        expect(receipt.revision).toBe(row.revision + 1);
+        const replay = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, request));
+        expect(replay).toEqual(receipt);
+        const restored = (await harness.service.repo.findGame(gameId))!;
+        expect(restored.revision).toBe(receipt.revision);
+        expect((JSON.parse(restored.state_json) as GameState).pending).toBeNull();
+      });
+    }
+  }
+
   it('restores the same revision, seat and receipts after a service restart', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'catan-restart-'));
     const sqlitePath = join(dir, 'restart.sqlite');

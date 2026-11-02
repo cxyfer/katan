@@ -198,6 +198,8 @@ export interface FreeRoadsPending {
   kind: 'freeRoads';
   actor: string;
   remaining: number;
+  /** 打出時實際給予的免費道路數；舊快照沒有此欄位，視為 2。 */
+  granted?: number;
 }
 
 export type Pending =
