@@ -205,6 +205,187 @@ describe('R-TB-RV coins and wealth (p. 12)', () => {
   });
 });
 
+describe('R-TB-RV clause fixtures (pp. 11–12)', () => {
+  /** A river vertex with an own road end, away from bridge sites: p1 may settle there. */
+  function riverSettlementSpot(state: GameState): { vertex: number; road: number } {
+    const topology = topologyOf(state);
+    const slot = rivers(state);
+    for (const vertex of slot.vertices) {
+      for (const road of topology.vertices[vertex]!.edges) {
+        if (slot.bridgeSites.includes(road) || slot.edges.includes(road)) continue;
+        const far = topology.edges[road]!.vertices.find((candidate) => candidate !== vertex)!;
+        if (!slot.vertices.includes(far) && !state.board.buildings[vertex]) return { vertex, road };
+      }
+    }
+    throw new Error('no spot');
+  }
+
+  /** A river-tile edge that is not a bridge site, with one of its ends. */
+  function riverRoadSpot(state: GameState): { vertex: number; edge: number } {
+    const topology = topologyOf(state);
+    const slot = rivers(state);
+    for (const edge of slot.edges) {
+      if (slot.bridgeSites.includes(edge) || topology.edges[edge]!.interior) continue;
+      return { vertex: topology.edges[edge]!.vertices[0]!, edge };
+    }
+    throw new Error('no spot');
+  }
+
+  it('RV9: TB25 p.11 — in the action phase a settlement on a river intersection earns 1 gold; a city upgrade earns none', () => {
+    // Start: p1 owns a road ending at a river corner and holds settlement resources; command: build.settlement, then build.city.
+    const state = bare();
+    const { vertex, road } = riverSettlementSpot(state);
+    placeRoad(state, 'p1', road);
+    setHand(state, 'p1', { lumber: 1, brick: 1, wool: 1, grain: 1 });
+    const built = run(state, 'p1', { type: 'build.settlement', vertex });
+    expect(coins(built.state).gold.p1).toBe(1);
+    expect(built.events.find((event) => event.type === 'tb.goldGained')!.params).toMatchObject({ playerId: 'p1', amount: 1, cause: 'riverSettlement' });
+    setHand(built.state, 'p1', { grain: 2, ore: 3 });
+    const city = run(built.state, 'p1', { type: 'build.city', vertex });
+    expect(coins(city.state).gold.p1).toBe(1);
+    expect(city.events.map((event) => event.type)).not.toContain('tb.goldGained');
+    expect(goldTotal(city.state)).toBe(100);
+  });
+
+  it('RV10: TB25 p.11 — a road on a river edge earns 1 gold, also when Road Building places it; other roads earn none', () => {
+    const state = bare();
+    const topology = topologyOf(state);
+    const { vertex, edge } = riverRoadSpot(state);
+    placeBuilding(state, 'p1', vertex);
+    setHand(state, 'p1', { lumber: 2, brick: 2 });
+    const paid = run(state, 'p1', { type: 'build.road', edge });
+    expect(coins(paid.state).gold.p1).toBe(1);
+    // Road Building: the free road on a river edge also pays.
+    const free = bare();
+    placeBuilding(free, 'p1', vertex);
+    free.pending = { kind: 'freeRoads', actor: 'p1', remaining: 2 };
+    const viaCard = run(free, 'p1', { type: 'build.road', edge });
+    expect(coins(viaCard.state).gold.p1).toBe(1);
+    // A road away from the rivers pays nothing.
+    const plain = bare();
+    const slot = rivers(plain);
+    const dry = topology.edges.findIndex((candidate, index) => !candidate.interior && !slot.edges.includes(index) && !slot.bridgeSites.includes(index) &&
+      candidate.vertices.every((end) => !slot.vertices.includes(end)));
+    placeBuilding(plain, 'p1', topology.edges[dry]!.vertices[0]!);
+    setHand(plain, 'p1', { lumber: 1, brick: 1 });
+    expect(coins(run(plain, 'p1', { type: 'build.road', edge: dry }).state).gold.p1).toBe(0);
+  });
+
+  it('RV11: TB25 p.12 — a bridge needs an own road or building at one end; an unconnected site is refused', () => {
+    // Start: p1 has resources but nothing near any bridge site. Command: tb.buildBridge.
+    const state = bare();
+    setHand(state, 'p1', { brick: 2, lumber: 1 });
+    for (const site of rivers(state).bridgeSites) reject(state, 'p1', { type: 'tb.buildBridge', edge: site }, 'E_ILLEGAL_TARGET');
+    expect(coins(state).gold.p1).toBe(0);
+  });
+
+  it('RV12: TB25 p.12 — an opponent\'s settlement at the far end does not stop a bridge connected at the near end', () => {
+    const state = bare();
+    const site = rivers(state).bridgeSites[0]!;
+    const [near, far] = topologyOf(state).edges[site]!.vertices;
+    placeBuilding(state, 'p1', near);
+    placeBuilding(state, 'p2', far);
+    setHand(state, 'p1', { brick: 2, lumber: 1 });
+    expect(run(state, 'p1', { type: 'tb.buildBridge', edge: site }).state.board.roads[site]).toMatchObject({ player: 'p1', bridge: true });
+  });
+
+  it('RV13: TB25 p.12 — Wealthiest ties give nobody the tile; Poor is returned once a player is no longer the poorest', () => {
+    const state = bare();
+    const gold = coins(state);
+    gold.gold = { p1: 3, p2: 3, p3: 0, p4: 1 };
+    expect([1, 2, 3, 4].map((seat) => scoreOf(state, `p${seat}`, { includeHidden: false }))).toEqual([0, 0, -2, 0]);
+    // p3 gains gold: p4 is now the only poorest; the tie of the top is unchanged.
+    gold.gold.p3 = 2;
+    expect([1, 2, 3, 4].map((seat) => scoreOf(state, `p${seat}`, { includeHidden: false }))).toEqual([0, 0, 0, -2]);
+    // Several poorest players all take a tile.
+    gold.gold = { p1: 3, p2: 1, p3: 1, p4: 2 };
+    expect([1, 2, 3, 4].map((seat) => scoreOf(state, `p${seat}`, { includeHidden: false }))).toEqual([1, -2, -2, 0]);
+  });
+
+  it('RV14: TB25 p.12 — gaining gold can win the game: a bridge that makes the builder the unique richest ends it', () => {
+    // Start: p1 has 9 VP and 0 gold (poorest: -2 included in score); the others hold 2 gold each. Command: tb.buildBridge (+3 gold).
+    const state = bare();
+    const site = rivers(state).bridgeSites[0]!;
+    placeBuilding(state, 'p1', topologyOf(state).edges[site]!.vertices[0]!);
+    state.players[0]!.bonusPoints = 9;
+    coins(state).gold = { p1: 0, p2: 2, p3: 2, p4: 2 };
+    coins(state).supply = 94;
+    setHand(state, 'p1', { brick: 2, lumber: 1 });
+    expect(scoreOf(state, 'p1', { includeHidden: true })).toBe(1 + 9 - 2);
+    const built = run(state, 'p1', { type: 'tb.buildBridge', edge: site }).state;
+    expect(built.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+  });
+
+  it('RV15: TB25 p.12 — the Poor tile can keep a player from winning until their gold rises (checked when their turn comes)', () => {
+    const state = bare();
+    state.players[0]!.bonusPoints = 11;
+    coins(state).gold = { p1: 0, p2: 2, p3: 2, p4: 2 };
+    forceTurn(state, 3, 'action');
+    expect(run(state, 'p4', { type: 'turn.end' }).state.result).toBeNull();
+    coins(state).gold = { p1: 2, p2: 2, p3: 2, p4: 2 };
+    coins(state).gold.p1 = 3;
+    forceTurn(state, 3, 'action');
+    expect(run(state, 'p4', { type: 'turn.end' }).state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+  });
+
+  it('RV16: TB25 p.12 — a 2:1 harbour sells two matching resources for 1 gold, a 3:1 harbour three', () => {
+    const state = bare();
+    const topology = topologyOf(state);
+    const special = state.board.layout.harbors.find((harbor) => harbor.type !== 'generic')!;
+    placeBuilding(state, 'p1', topology.edges[special.edge]!.vertices[0]!);
+    setHand(state, 'p1', { [special.type]: 3 });
+    const sold = run(state, 'p1', { type: 'tb.sellResources', resource: special.type });
+    expect(sold.state.players[0]!.resources[special.type as 'ore']).toBe(1);
+    expect(coins(sold.state).gold.p1).toBe(1);
+    expect(sold.events.find((event) => event.type === 'tb.goldSold')!.params).toMatchObject({ rate: 2 });
+    const generic = state.board.layout.harbors.find((harbor) => harbor.type === 'generic')!;
+    const other = bare();
+    placeBuilding(other, 'p1', topology.edges[generic.edge]!.vertices[0]!);
+    setHand(other, 'p1', { wool: 3 });
+    expect(run(other, 'p1', { type: 'tb.sellResources', resource: 'wool' }).state.players[0]!.resources.wool).toBe(0);
+  });
+
+  it('RV17: TB25 p.11 — when the gold supply is empty nothing can be sold, and a bridge pays only what is left', () => {
+    const state = bare();
+    coins(state).supply = 0;
+    coins(state).gold = { p1: 100, p2: 0, p3: 0, p4: 0 };
+    setHand(state, 'p1', { wool: 4 });
+    reject(state, 'p1', { type: 'tb.sellResources', resource: 'wool' }, 'E_TB_GOLD_SUPPLY_EMPTY');
+    const partial = bare();
+    const site = rivers(partial).bridgeSites[0]!;
+    placeBuilding(partial, 'p1', topologyOf(partial).edges[site]!.vertices[0]!);
+    coins(partial).supply = 2;
+    coins(partial).gold = { p1: 0, p2: 98, p3: 0, p4: 0 };
+    setHand(partial, 'p1', { brick: 2, lumber: 1 });
+    const built = run(partial, 'p1', { type: 'tb.buildBridge', edge: site }).state;
+    expect(coins(built).gold.p1).toBe(2);
+    expect(coins(built).supply).toBe(0);
+    expect(goldTotal(built)).toBe(100);
+  });
+
+  it('RV18: TB25 p.12 — Monopoly takes resource cards only, never gold', () => {
+    const state = bare();
+    coins(state).gold = { p1: 0, p2: 5, p3: 0, p4: 0 };
+    setHand(state, 'p2', { ore: 2 });
+    state.players[0]!.devCards = ['monopoly'];
+    const played = run(state, 'p1', { type: 'dev.playMonopoly', resource: 'ore' }).state;
+    expect(played.players[0]!.resources.ore).toBe(2);
+    expect(coins(played).gold).toEqual({ p1: 0, p2: 5, p3: 0, p4: 0 });
+  });
+
+  it('RV19: TB25 p.11 — the robber on the shared 2/12 hex blocks both numbers', () => {
+    const state = bare();
+    forceTurn(state, 0, 'preroll');
+    const twelve = state.board.layout.numbers.indexOf(12);
+    placeBuilding(state, 'p1', verticesOfHex(topologyOf(state), twelve)[0]!);
+    state.board.robber = twelve;
+    for (const dice of [[0, 0], [5, 5]]) {
+      const rolled = run(state, 'p1', { type: 'turn.roll' }, scriptedRng(dice)).state;
+      expect(rolled.players[0]!.resources[resourceOf(state, twelve)]).toBe(0);
+    }
+  });
+});
+
 describe('R-TB-RV simulated games', () => {
   for (const players of [3, 4]) {
     it(`a ${players}-player game finishes and conserves resources and gold`, () => {
