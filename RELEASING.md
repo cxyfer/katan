@@ -47,8 +47,10 @@ publishes to its own namespace.
    declared `0.1.0`, so there was nothing to bump. The subject carries the version and nothing else,
    e.g. `🔖 release: v0.3.0-rc.3`, and stays that way when the bump lands through a pull request:
    squash-merge it with a custom subject instead of the PR title, which GitHub would turn into
-   `🔖 release: v0.3.0-rc.3 (#83)`. Check `git log -1 --format=%s` on the merged commit before
-   tagging; the PR number remains on the PR page and the GitHub Release for traceability.
+   `🔖 release: v0.3.0-rc.3 (#83)`. Fetch the merged commit and check it before tagging
+   (`git fetch origin master && git log -1 --format=%s origin/master`), then tag that commit rather
+   than a local branch tip that may still predate the squash merge. The PR number remains on the PR
+   page and the GitHub Release for traceability.
 3. **Tag only merged commits.** The workflow file must exist on the tagged commit, so push `master`
    before the tag.
 4. **Never move or reuse a published tag.** The tag is the identity of an image. Publish a new patch
