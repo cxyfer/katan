@@ -7,7 +7,7 @@
 .board__die--red { color: #fff6dd; background: linear-gradient(140deg, #e05a48, #9c2a1e); border-color: #f2a093; }
 
 .ck-badge {
-  position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 3;
+  position: absolute; left: 12px; bottom: 64px; z-index: 3;
   display: inline-flex; align-items: center; gap: .4rem; padding: .2rem .55rem;
   background: #0b2534e6; border: 1px solid #46697790; border-radius: 999px; color: #f6efdc;
   font-size: .72rem; pointer-events: auto;
@@ -18,6 +18,10 @@
 .ck-badge__pip:last-child { border-radius: 2px; }
 .ck-badge__strength { font-variant-numeric: tabular-nums; font-weight: 700; display: inline-flex; gap: .2rem; align-items: center; }
 .ck-badge__strength small { opacity: .75; }
+/* Phones: the bottom edge holds the hand; sit under the camera controls instead. */
+@media (max-width: 720px) {
+  .ck-badge { top: 148px; bottom: auto; left: 8px; font-size: .66rem; padding: .15rem .45rem; }
+}
 
 .ck-panel { display: grid; gap: .7rem; }
 .ck-panel__section { display: grid; gap: .35rem; }

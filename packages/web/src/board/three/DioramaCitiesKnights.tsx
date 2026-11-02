@@ -4,7 +4,7 @@ import { TRACKS, type KnightLevel, type Track } from '../citiesKnights.ts';
 import type { BoardSceneProps } from '../render-contract.ts';
 import { playerColorHex } from '../terrain.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
-import { createKnightModel, createMetropolisModel, createWallModel, METROPOLIS_OFFSET, vertexTransform } from './diorama-knights.ts';
+import { createKnightModel, createMetropolisModel, createWallModel, KNIGHT_SCALE, METROPOLIS_OFFSET, vertexTransform } from './diorama-knights.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import type { InstanceTransform } from './transforms.ts';
 
@@ -32,7 +32,7 @@ export function DioramaCitiesKnights({ geometry, players, quality, citiesKnights
   const knights = useMemo(() => {
     const groups = new Map<string, { playerId: string; level: KnightLevel; active: boolean; items: InstanceTransform[] }>();
     for (const knight of ck?.knights ?? []) {
-      const transform = vertexTransform(geometry, knight.vertex);
+      const transform = vertexTransform(geometry, knight.vertex, [0, 0], KNIGHT_SCALE);
       if (!transform) continue;
       const key = `${knight.player}:${knight.level}:${knight.active}`;
       const group = groups.get(key) ?? { playerId: knight.player, level: knight.level, active: knight.active, items: [] };
@@ -75,7 +75,8 @@ export function KnightGhost({ geometry, vertex, level, active, wall, material }:
   geometry: Props['geometry']; vertex: number; level: KnightLevel; active: boolean; wall?: boolean; material: Material;
 }) {
   const model = useDioramaGeometry(() => wall ? createWallModel('#ffffff') : createKnightModel('#ffffff', level, active, 0), [wall, level, active]);
-  const transform = vertexTransform(geometry, vertex);
+  const transform = vertexTransform(geometry, vertex, [0, 0], wall ? 1 : KNIGHT_SCALE);
   if (!transform) return null;
-  return <mesh geometry={model} material={material} position={transform.position} rotation={[0, transform.rotationY, 0]} dispose={null} renderOrder={4} />;
+  return <mesh geometry={model} material={material} position={transform.position} rotation={[0, transform.rotationY, 0]}
+    scale={transform.scale} dispose={null} renderOrder={4} />;
 }

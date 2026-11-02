@@ -26,7 +26,7 @@ export function KnightPiece({ x, y, level, active, color, dash, ghost = false, t
   const face = active ? color : shade(color, -0.25);
   // Inactive knights are laid on their side, as on the physical table.
   const pose = active ? '' : ' rotate(-90) scale(.92)';
-  return <g transform={`translate(${x} ${y})`} data-testid={testId} data-level={level} data-active={active ? 'true' : 'false'} opacity={ghost ? 0.75 : 1}>
+  return <g transform={`translate(${x} ${y}) scale(1.15)`} data-testid={testId} data-level={level} data-active={active ? 'true' : 'false'} opacity={ghost ? 0.75 : 1}>
     {!ghost && <ellipse cy="12" rx={active ? 15 : 19} ry="5" fill="#071d28" opacity=".45" />}
     <g transform={`translate(0 ${active ? 0 : 4})${pose}`}>
       <circle r="14" fill={face} stroke={dark} strokeWidth="2" />

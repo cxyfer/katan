@@ -118,12 +118,15 @@ export interface KnightInstance extends InstanceTransform {
 }
 
 /** World transform of a piece on an intersection. */
-export function vertexTransform(geometry: BoardGeometry, vertexIndex: number, offset: [number, number] = [0, 0]): InstanceTransform | null {
+export function vertexTransform(geometry: BoardGeometry, vertexIndex: number, offset: [number, number] = [0, 0], scale = 1): InstanceTransform | null {
   const vertex = geometry.vertices[vertexIndex];
   if (!vertex) return null;
   const point = geometryToWorld(geometry, vertex.x, vertex.y);
-  return { position: [point.x + offset[0], 0.005, point.z + offset[1]], rotationY: ((vertexIndex * 23) % 6) * (Math.PI / 6), scale: [1, 1, 1] };
+  return { position: [point.x + offset[0], 0.005, point.z + offset[1]], rotationY: ((vertexIndex * 23) % 6) * (Math.PI / 6), scale: [scale, scale, scale] };
 }
+
+/** Knights read at board scale next to cities (their model is built at 1:1). */
+export const KNIGHT_SCALE = 1.5;
 
 /** The metropolis keep stands just behind its city (towards −z). */
 export const METROPOLIS_OFFSET: [number, number] = [0.2, -0.16];
