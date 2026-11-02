@@ -123,7 +123,11 @@ export async function startHarness(
 export async function startedGame(
   harness: TestHarness,
   count: number,
-  options: { profileId?: string; setupMode?: 'fixed' | 'variable' } = {},
+  options: {
+    profileId?: string;
+    setupMode?: 'fixed' | 'variable';
+    orderMode?: 'join' | 'random';
+  } = {},
 ): Promise<{ clients: TestClient[]; roomId: string; gameId: string }> {
   const clients: TestClient[] = [];
   for (let i = 0; i < count; i++) clients.push(await harness.client(`P${i + 1}`));
@@ -134,6 +138,7 @@ export async function startedGame(
       capacity: count,
       profileId: options.profileId ?? 'base-2025',
       setupMode: options.setupMode ?? 'fixed',
+      orderMode: options.orderMode ?? 'join',
     }),
   );
   const code = (room as unknown as { code: string }).code;

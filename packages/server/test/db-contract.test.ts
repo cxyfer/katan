@@ -93,6 +93,7 @@ for (const testCase of cases) {
         host_id: 'player_host',
         profile_id: 'base-2025',
         setup_mode: 'fixed',
+        order_mode: 'join',
         capacity: 4,
         policy_json: JSON.stringify({ turnClockSeconds: 0, disconnectGraceSeconds: 300 }),
         policy_revision: 1,
@@ -105,10 +106,12 @@ for (const testCase of cases) {
       expect((await repo.findRoomByCode(room.code))?.id).toBe(roomId);
       const publicRooms = await repo.listPublicRooms();
       expect(publicRooms.map((row) => row.id)).toContain(roomId);
-      await repo.updateRoom(roomId, { status: 'playing', policy_revision: 2 });
+      expect((await repo.findRoom(roomId))?.order_mode).toBe('join');
+      await repo.updateRoom(roomId, { status: 'playing', policy_revision: 2, order_mode: 'random' });
       const updated = await repo.findRoom(roomId);
       expect(updated?.status).toBe('playing');
       expect(updated?.policy_revision).toBe(2);
+      expect(updated?.order_mode).toBe('random');
     });
 
     it('enforces membership uniqueness and ordering by seat', async () => {
@@ -359,6 +362,7 @@ for (const testCase of cases) {
         host_id: humanId,
         profile_id: 'base-2025',
         setup_mode: 'fixed',
+        order_mode: 'join',
         capacity: 3,
         policy_json: '{}',
         policy_revision: 1,
@@ -477,7 +481,7 @@ for (const testCase of cases) {
 
 for (const testCase of cases) {
   describe.skipIf(testCase.skip)(`bot migration on existing data (${testCase.label})`, () => {
-    it('marks every existing guest as a person', async () => {
+    it('marks every existing guest as a person and keeps rooms on join order', async () => {
       const db =
         testCase.kind === 'postgres'
           ? await createDialect({
@@ -494,12 +498,19 @@ for (const testCase of cases) {
           'INSERT INTO guests (id, token_hash, nickname, locale, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
           ['player_old', 'hash-old', 'Old', 'en', 'then', 'then'],
         );
-        expect(await migrate(db)).toEqual(['0002_bots']);
+        await db.run(
+          `INSERT INTO rooms (id, code, visibility, status, host_id, profile_id, setup_mode, capacity,
+            policy_json, policy_revision, game_id, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ['room_old', 'OLDCODE1', 'private', 'lobby', 'player_old', 'base-2025', 'fixed', 3, '{}', 1, null, 'then', 'then'],
+        );
+        expect(await migrate(db)).toEqual(['0002_bots', '0003_room_order_mode']);
         const repo = new Repository(db);
         const old = await repo.findGuest('player_old');
         expect(old?.kind).toBe('human');
         expect(old?.bot_level).toBeNull();
         expect((await repo.findGuestByTokenHash('hash-old'))?.id).toBe('player_old');
+        expect((await repo.findRoom('room_old'))?.order_mode).toBe('join');
       } finally {
         await db.close();
       }

@@ -79,6 +79,35 @@ describe('lobby', () => {
     expect(api.callsOf('updateSettings')[0]!.args[1]).toEqual({ capacity: 3 });
   });
 
+  it('lets the host switch the game order to a random draw before start', async () => {
+    const api = createFakeApi({ room: makeRoom({ orderMode: 'join' }) });
+    await joinLobby(api);
+
+    const order = screen.getByTestId('lobby-order') as HTMLSelectElement;
+    expect(order.disabled).toBe(false);
+    expect(order.value).toBe('join');
+
+    fireEvent.change(order, { target: { value: 'random' } });
+    fireEvent.click(screen.getByTestId('save-settings'));
+    await waitFor(() => expect(api.callsOf('updateSettings')).toHaveLength(1));
+    expect(api.callsOf('updateSettings')[0]!.args[1]).toEqual({ orderMode: 'random' });
+    await waitFor(() => {
+      expect((screen.getByTestId('lobby-order') as HTMLSelectElement).value).toBe('random');
+    });
+  });
+
+  it('creates a room with the selected game order', async () => {
+    const api = createFakeApi({ room: null });
+    renderApp(api);
+
+    const order = (await screen.findByTestId('room-order')) as HTMLSelectElement;
+    expect(order.value).toBe('join');
+    fireEvent.change(order, { target: { value: 'random' } });
+    fireEvent.click(screen.getByTestId('create-room'));
+    await waitFor(() => expect(api.callsOf('createRoom')).toHaveLength(1));
+    expect(api.callsOf('createRoom')[0]!.args[0]).toMatchObject({ orderMode: 'random' });
+  });
+
   it('filters capacity options above the deployment maximum', async () => {
     const config = makeConfig();
     const api = createFakeApi({

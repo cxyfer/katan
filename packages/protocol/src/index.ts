@@ -40,6 +40,7 @@ export const SERVER_ERROR_IDS: readonly string[] = [
   'error.E_INVALID_COLOR',
   'error.E_INVALID_JSON',
   'error.E_INVALID_NICKNAME',
+  'error.E_INVALID_ORDER_MODE',
   'error.E_INVALID_POLICY',
   'error.E_INVALID_VISIBILITY',
   'error.E_MISSING_FIELD',
@@ -90,6 +91,13 @@ export { COMMAND_ERROR_CODES, RULE_EVENT_TYPES };
 
 export type Visibility = 'private' | 'public';
 export type RoomStatus = 'lobby' | 'playing' | 'suspended' | 'completed' | 'abandoned';
+/**
+ * How the host decides the game's seat/turn order when starting a lobby.
+ * `join` keeps the current seat order (join order); `random` shuffles it once
+ * at start.
+ */
+export type GameOrderMode = 'join' | 'random';
+export const GAME_ORDER_MODES: readonly GameOrderMode[] = ['join', 'random'];
 export type Locale = 'zh-Hant' | 'en';
 export const LOCALES: readonly Locale[] = ['zh-Hant', 'en'];
 
@@ -162,6 +170,7 @@ export interface RoomView {
   hostId: string;
   profileId: string;
   setupMode: 'fixed' | 'variable';
+  orderMode: GameOrderMode;
   capacity: number;
   policy: RoomPolicy;
   policyRevision: number;

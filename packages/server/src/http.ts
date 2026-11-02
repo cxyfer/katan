@@ -3,7 +3,7 @@
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { ApiResult, Locale } from '@catan/protocol';
+import type { ApiResult, GameOrderMode, Locale } from '@catan/protocol';
 import { BOT_LEVELS, LOCALES } from '@catan/protocol';
 import { selectableProfiles, PROFILES } from '@catan/rules';
 import type { ServerConfig } from './config.ts';
@@ -304,6 +304,7 @@ export function createHttpHandler(deps: HttpDeps) {
       capacity: requireNumber(body, 'capacity'),
       profileId: requireString(body, 'profileId'),
       setupMode: (optionalString(body, 'setupMode') ?? 'fixed') as 'fixed' | 'variable',
+      orderMode: (optionalString(body, 'orderMode') ?? 'join') as GameOrderMode,
       policy: (input.policy ?? {}) as never,
       // 數量的型別與範圍由 RoomService 驗證；非數字一律視為不合法的數量。
       ...(input.bots !== undefined ? { bots: typeof input.bots === 'number' ? input.bots : Number.NaN } : {}),
@@ -348,6 +349,9 @@ export function createHttpHandler(deps: HttpDeps) {
         ...(typeof input.profileId === 'string' ? { profileId: input.profileId } : {}),
         ...(input.setupMode === 'fixed' || input.setupMode === 'variable'
           ? { setupMode: input.setupMode }
+          : {}),
+        ...(typeof input.orderMode === 'string'
+          ? { orderMode: input.orderMode as GameOrderMode }
           : {}),
         ...(input.policy ? { policy: input.policy as never } : {}),
       }),

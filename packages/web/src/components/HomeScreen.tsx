@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { BotLevel } from '@catan/protocol';
+import { GAME_ORDER_MODES, type BotLevel, type GameOrderMode } from '@catan/protocol';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { SoundSettings } from './SoundSettings.tsx';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
@@ -26,6 +26,7 @@ export function HomeScreen({ controller }: ScreenProps) {
   const [capacity, setCapacity] = useState(3);
   const [profileId, setProfileId] = useState('');
   const [setupMode, setSetupMode] = useState<'fixed' | 'variable'>('fixed');
+  const [orderMode, setOrderMode] = useState<GameOrderMode>('join');
   const [botCount, setBotCount] = useState(0);
   const [botLevel, setBotLevel] = useState<BotLevel>(DEFAULT_BOT_LEVEL);
   const homePanes = ['table', 'resume', 'rooms', 'identity'] as const;
@@ -189,6 +190,20 @@ export function HomeScreen({ controller }: ScreenProps) {
                 ))}
               </select>
             </div>
+            <div className="field">
+              <label htmlFor="room-order">{t('lobby.orderMode')}</label>
+              <select
+                id="room-order"
+                data-testid="room-order"
+                value={orderMode}
+                onChange={(event) => setOrderMode(event.target.value as GameOrderMode)}
+              >
+                {GAME_ORDER_MODES.map((mode) => (
+                  <option key={mode} value={mode}>{t(`lobby.orderMode.${mode}`)}</option>
+                ))}
+              </select>
+              <p className="muted">{t('lobby.orderModeNote')}</p>
+            </div>
             {offerBots && (
               <>
                 <div className="field">
@@ -236,6 +251,7 @@ export function HomeScreen({ controller }: ScreenProps) {
                   capacity: effectiveCapacity,
                   profileId: chosenProfile?.id ?? '',
                   setupMode: effectiveSetup,
+                  orderMode,
                   ...(effectiveBots > 0 ? { bots: effectiveBots, botLevel: chosenBotLevel } : {}),
                 })
               }

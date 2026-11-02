@@ -1,6 +1,8 @@
 /** Game commands, receipts, revisions and per-player projections over HTTP. */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { seededRng } from '@catan/rules';
+import { orderForGame } from '../src/game.ts';
 import {
   runSetupOverApi,
   startHarness,
@@ -52,6 +54,48 @@ interface Snapshot {
 function commandId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
+
+describe('game start order', () => {
+  const seated = [{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }];
+
+  it('keeps the lobby order when the room uses join order', () => {
+    const ordered = orderForGame(seated, 'join', seededRng(7));
+    expect(ordered.map((player) => player.id)).toEqual(['p1', 'p2', 'p3', 'p4']);
+  });
+
+  it('draws a complete permutation when the room uses random order', () => {
+    const drawn = orderForGame(seated, 'random', seededRng(7)).map((player) => player.id);
+    expect([...drawn].sort()).toEqual(['p1', 'p2', 'p3', 'p4']);
+    expect(drawn).toEqual(['p2', 'p4', 'p3', 'p1']);
+  });
+
+  it('seats a join-order game the same way the lobby joined', async () => {
+    const { clients, gameId } = await startedGame(harness, 3);
+    const snapshot = clients[0]!.expectOk<Snapshot>(
+      await clients[0]!.get(`/api/games/${gameId}`),
+    );
+    expect(snapshot.view.players.map((player) => player.id)).toEqual(
+      clients.map((client) => client.playerId),
+    );
+  });
+
+  it('seats a random-order game in a different order at least once', async () => {
+    const joinOrder = (clients: { playerId: string | null }[]) =>
+      clients.map((client) => client.playerId);
+    // A single start could legitimately reproduce the join order; a broken
+    // "random" that never shuffles fails every one of these independent draws.
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const { clients, gameId } = await startedGame(harness, 4, { orderMode: 'random' });
+      const snapshot = clients[0]!.expectOk<Snapshot>(
+        await clients[0]!.get(`/api/games/${gameId}`),
+      );
+      const drawn = snapshot.view.players.map((player) => player.id);
+      expect([...drawn].sort()).toEqual([...joinOrder(clients)].sort());
+      if (drawn.join() !== joinOrder(clients).join()) return;
+    }
+    throw new Error('random order never differed from join order across 8 starts');
+  });
+});
 
 describe('game commands', () => {
   it('locks the ruleset at start and exposes it to every seat', async () => {

@@ -15,6 +15,7 @@ import type {
   ChatPage,
   CommandReceipt,
   CommandRequest,
+  GameOrderMode,
   GameEvent,
   GameSnapshot,
   Locale,
@@ -65,6 +66,7 @@ export interface CreateRoomBody {
   capacity: number;
   profileId: string;
   setupMode: 'fixed' | 'variable';
+  orderMode?: GameOrderMode;
   policy?: RoomPolicy;
   /** 建房時一併加入的電腦對手數量（0 至 capacity − 1）。 */
   bots?: number;
@@ -75,6 +77,7 @@ export interface RoomSettingsBody {
   capacity?: number;
   profileId?: string;
   setupMode?: 'fixed' | 'variable';
+  orderMode?: GameOrderMode;
   policy?: RoomPolicy;
 }
 

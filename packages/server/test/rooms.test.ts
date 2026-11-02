@@ -31,6 +31,7 @@ interface RoomShape {
   hostId: string;
   status: string;
   capacity: number;
+  orderMode: string;
   gameId: string | null;
   members: { playerId: string; seat: number; ready: boolean; connected: boolean; host: boolean; color: string }[];
   startBlockers: { messageId: string; params?: Record<string, unknown> }[];
@@ -54,6 +55,50 @@ describe('R-ROOM lobby', () => {
     expect(room.status).toBe('lobby');
     expect(room.members).toHaveLength(1);
     expect(room.members[0]!.host).toBe(true);
+  });
+
+  it('lets the host choose a random game order or keep join order', async () => {
+    const host = await harness.client('OrderHost');
+    const defaultRoom = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+      }),
+    );
+    expect(defaultRoom.orderMode).toBe('join');
+
+    const randomRoom = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+        orderMode: 'random',
+      }),
+    );
+    expect(randomRoom.orderMode).toBe('random');
+
+    host.expectError(
+      await host.post(`/api/rooms/${randomRoom.id}/settings`, { orderMode: 'shuffle' }),
+      'E_INVALID_ORDER_MODE',
+    );
+    const backToJoin = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${randomRoom.id}/settings`, { orderMode: 'join' }),
+    );
+    expect(backToJoin.orderMode).toBe('join');
+
+    host.expectError(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 3,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+        orderMode: 'shuffle',
+      }),
+      'E_INVALID_ORDER_MODE',
+    );
   });
 
   it('rejects unsupported combinations server-side', async () => {

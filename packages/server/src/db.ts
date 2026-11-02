@@ -359,6 +359,11 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
       `CREATE INDEX IF NOT EXISTS idx_guests_kind ON guests (kind)`,
     ],
   },
+  {
+    // 既有房間沿用目前的進房順序；新房可選擇開局時隨機。
+    id: '0003_room_order_mode',
+    statements: [`ALTER TABLE rooms ADD COLUMN order_mode TEXT NOT NULL DEFAULT 'join'`],
+  },
 ];
 
 export async function migrate(db: SqlDialect): Promise<string[]> {
@@ -405,6 +410,8 @@ export interface RoomRow {
   host_id: string;
   profile_id: string;
   setup_mode: string;
+  /** `'join'`（進房順序）或 `'random'`（開局時抽出）。 */
+  order_mode: string;
   capacity: number;
   policy_json: string;
   policy_revision: number;
@@ -579,8 +586,8 @@ export class Repository {
   async insertRoom(row: RoomRow): Promise<void> {
     await this.db.run(
       `INSERT INTO rooms (id, code, visibility, status, host_id, profile_id, setup_mode, capacity,
-        policy_json, policy_revision, game_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        order_mode, policy_json, policy_revision, game_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         row.id,
         row.code,
@@ -590,6 +597,7 @@ export class Repository {
         row.profile_id,
         row.setup_mode,
         row.capacity,
+        row.order_mode,
         row.policy_json,
         row.policy_revision,
         row.game_id,
@@ -626,6 +634,7 @@ export class Repository {
       'host_id',
       'profile_id',
       'setup_mode',
+      'order_mode',
       'capacity',
       'policy_json',
       'policy_revision',

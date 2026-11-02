@@ -238,6 +238,7 @@ export function makeRoom(overrides: Partial<RoomView> = {}): RoomView {
     hostId: 'p1',
     profileId: 'base-2025',
     setupMode: 'fixed',
+    orderMode: 'join',
     capacity: 4,
     policy: makePolicy(),
     policyRevision: 1,
