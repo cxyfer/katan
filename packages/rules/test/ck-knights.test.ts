@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { neighborsOfVertex, topologyOf } from '../src/analysis.ts';
-import { canPlaceBuilding, canPlaceRoad, routeLength } from '../src/engine.ts';
+import { canPlaceBuilding, canPlaceRoad, legalRoadEdges, routeLength } from '../src/engine.ts';
 import { ckState, ckView, knightAt } from '../src/modules/citiesKnights/state.ts';
 import type { GameState } from '../src/types.ts';
 import {
@@ -225,5 +225,34 @@ describe('R-CK knights on the routes (CK25 p. 9)', () => {
     // Nobody can settle on a knight.
     expect(canPlaceBuilding(state, 'p2', path[3]!)).toBe(false);
     expect(canPlaceBuilding(state, 'p1', path[3]!)).toBe(false);
+  });
+
+  it('R-CK-36 a knight closes an open road end like an opponent building, but never for its owner', () => {
+    // The base rule (#60): a road extends from an own building or an empty
+    // intersection an own road reaches; an opponent building closes it. An
+    // opponent knight closes the empty end the same way.
+    const { state, path } = network();
+    const end = path[5]!;
+    const beyond = edgeBetween(state, end, offPath(state, end, path));
+    expect(canPlaceRoad(state, 'p1', beyond)).toBe(true);
+
+    const blocked = network().state;
+    addKnight(blocked, { player: 'p2', vertex: end, level: 2, active: true });
+    expect(canPlaceRoad(blocked, 'p1', beyond)).toBe(false);
+    const atEnd = topologyOf(blocked).vertices[end]!.edges;
+    expect(legalRoadEdges(blocked, 'p1').filter((edge) => atEnd.includes(edge))).toEqual([]);
+    // The knight sits at the end of the route, so the route stays whole.
+    expect(routeLength(blocked, 'p1')).toBe(5);
+
+    const own = network().state;
+    addKnight(own, { player: 'p1', vertex: end, level: 1, active: false });
+    expect(canPlaceRoad(own, 'p1', beyond)).toBe(true);
+    addKnight(own, { player: 'p1', vertex: path[3]!, level: 1, active: false });
+    expect(routeLength(own, 'p1')).toBe(5);
+
+    // Same verdict as an opponent settlement on that end.
+    const settled = network().state;
+    setBuilding(settled, 'p2', end);
+    expect(canPlaceRoad(settled, 'p1', beyond)).toBe(false);
   });
 });

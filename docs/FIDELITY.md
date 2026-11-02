@@ -83,7 +83,7 @@ master's own engine at `0815c76`
 | R-SF games / VIS | simulated 3/4/5/6-player games finish with a 14-point winner, conserve the supply and keep pieces legal; module projection public only, pirate theft private | `seafarers-sim.test.ts` (5), `seafarers-rules.test.ts` privacy (1), `packages/server/test/seafarers.test.ts` (2) | covered |
 | R-CK dice / draws | setup settlement + city (city takes the start grant), no development cards or Largest Army, three dice with the event before production, city/settlement production chart, robber hex blocks commodities, commodity shortage, idle robber before the first attack, attack before a 7, gate draws in turn order, VP cards at once, empty decks, off-turn and on-turn hand limits, no play command, science level 3 | `packages/rules/test/ck-dice.test.ts` (R-CK-01…15) | covered |
 | R-CK barbarians | strength (metropolis city once), defenders win with ties, defender VP, tied defenders draw (and discard off turn before production), no reward without a defender, weakest group loses a city and its wall, choice of city, metropolis immunity, next group, toppled city, reset and robber entry | `packages/rules/test/ck-barbarians.test.ts` (R-CK-16…25, 51) | covered |
-| R-CK knights | recruit, action phase only, activate (cost, freshness), act/reactivate, promote (once per turn, politics 3, supply), move, displace and retreat or removal, chase the robber, knights block roads, sites and routes | `packages/rules/test/ck-knights.test.ts` (R-CK-26…36) | covered |
+| R-CK knights | recruit, action phase only, activate (cost, freshness), act/reactivate, promote (once per turn, politics 3, supply), move, displace and retreat or removal, chase the robber, knights block roads, sites and routes; an opponent knight closes an open road end like an opponent building (the base connectivity rule of #60), never for its owner | `packages/rules/test/ck-knights.test.ts` (R-CK-26…36) | covered |
 | R-CK cities | walls (cost, limit, +2 hand limit), improvement costs and limits, trade level 3 rates, metropolis award/transfer/permanence and free-site rule, commodity theft, domestic commodity trade, 13 VP, paired Player 2 builds and supply trade without domestic trade, 18-per-type paired commodity bank, progress-hand privacy | `packages/rules/test/ck-cities.test.ts` (R-CK-37…50) | covered |
 | R-CK games / VIS | simulated 3/4/5/6-player games finish with a 13-point winner; resources, commodities, the 54 progress cards and pieces are conserved; across seeds metropolises, walls, pillage and knight actions occur; profiles implemented but disabled | `packages/rules/test/ck-sim.test.ts`, `packages/rules/test/profiles.test.ts` | covered |
 | R-CK service | test-only start of a C&K room, `ck-2025.1` engine, idempotent module receipts, catalogued rejection of development cards, private progress hands; lobby refuses the profile | `packages/server/test/cities-knights.test.ts` | covered |
@@ -233,13 +233,6 @@ reviewer can challenge them rather than discover them by accident.
   a 7, and later players facing an empty supply are skipped (R-CK-15).
 - **Merchant piece.** CK25 p. 7 mentions the merchant's VP; the piece only
   enters through the Merchant progress card, so it is P3.
-- **Open fixture — road past an opponent building.** The base engine on this
-  stack still lets a road be built through an opponent's settlement. Master
-  fixes this in #60 (roads connect only at an own building or at an empty
-  vertex the road reaches), and the fix arrives when the stack is rebased.
-  Knights already block roads through `vertexBlocker` (R-CK-36). After the
-  rebase, `vertexBlocker` must build on #60's connectivity rule, not on a
-  base workaround.
 
 ## Known gaps and unresolved items
 

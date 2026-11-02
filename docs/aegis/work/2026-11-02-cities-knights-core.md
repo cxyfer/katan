@@ -197,9 +197,8 @@ fixtures": barbarian strength per CK25 (not the FAQ formula), event-die faces
 as a source gap (3 ships + 3 gates), no reward without a defender, metropolis
 site check only when it awards, draws before discards, the hand limit of 4 for
 5–6 (a correction to the roadmap draft, which said 5), the aqueduct scope, the
-merchant in P3, and the road past an opponent building, which is fixed on
-master by #60 and arrives with the rebase (`vertexBlocker` must then build on
-#60's connectivity).
+and the merchant in P3. The road past an opponent building is closed by #60
+since the rebase (below).
 
 ## Browser harness
 
@@ -232,12 +231,34 @@ the bot. Curated captures and the file table are in
   replay, no `TEST_POSTGRES_URL`); web 57 files / 571 tests; build; smoke
   13/13; dev runner passed.
 
+## Rebased onto the new P1
+
+The branch now sits on the rebased Seafarers branch (`feat/seafarers`), which
+sits on the platform branch rebased onto master `0815c76` (#58–#60, #64, #66).
+
+- Conflicts: `engine.ts` (connectivity, imports, `actionHints`), `project.ts`
+  (imports: `totalCards` next to `effectivePending`), `FIDELITY.md`,
+  `modules/README.md` and `INDEX.md` (both sides kept; the C&K scope gap is
+  now 14 after the Seafarers base item 13).
+- `vertexBlocker` now builds on #60's rule: `roadCanExtendFrom` returns the
+  owner check for a building, refuses an empty intersection held by another
+  player's knight, and otherwise needs an own road there. The old
+  `vertexConnectsToNetwork` workaround is gone, and the FIDELITY open fixture
+  about roads passing opponent buildings is removed.
+- New fixture (R-CK-36): an opponent knight on the open end of a road closes
+  it like an opponent settlement, the route stays whole, and the owner's own
+  knights neither close the end nor split the route.
+- Bots: C&K profiles have rules modules, so the server refuses bot seats for
+  them (platform rule).
+- Verification (`SMOKE_PORT=3431 pnpm verify`, exit 0): rules 29 files / 318
+  tests; protocol 8; bots 45; server 150 passed, 15 skipped (PostgreSQL, no
+  `TEST_POSTGRES_URL`); web 58 files / 599 tests; build; smoke 13/13;
+  test:dev 1/1.
+
 ## Limitations
 
 - Progress cards are drawn, held, discarded and scored (VP cards), but not
   playable; the merchant is not in play. Both are P3, so the profiles stay
   disabled and the browser evidence uses a test-only profile switch.
-- The stack is not yet rebased onto master (#58–#60, #64); the road past an
-  opponent building stays open until then.
 - No human playtest, physical device, Safari/Firefox or screen-reader check.
 - PostgreSQL repository tests were not run (no `TEST_POSTGRES_URL`).
