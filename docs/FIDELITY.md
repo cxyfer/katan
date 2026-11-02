@@ -71,13 +71,13 @@ master's own engine at `0815c76`
 | R-COMPAT | registry v2 metadata; exact, order-insensitive expansion/scenario/variant matching with no transitive inference; full count × expansion × scenario matrix; profile id or `{ ruleset }` room requests; fixture profiles never resolvable | `packages/rules/test/profiles.test.ts`, `packages/server/test/rooms.test.ts`, `packages/web/test/rulesets.test.ts` | covered |
 | R-PLATFORM | pending queue order/responders/continuations and old snapshots without a queue; rules-module hooks (setup, roll, discard limit, production, board change, commands, score, projection, hints) through a fixture module; layout registry; generic topologies (sea frame, several islands, marked harbours); base digests unchanged | `packages/rules/test/platform.test.ts`, `topology-generic.test.ts`, `base-regression.test.ts`, `message-ids.test.ts` | covered; the Seafarers module is the first real module |
 | R-SF setup | New Shores 3/4 maps against the SF25 p. 4/5 component tables (35/42 cells, terrain, discs, ports, islands, robber on the 12 / desert, pirate on the frame); 5–6 fixed small islands + B56 main-island inventory + 11 ports with the extra wool 2:1 (SF56-25 pp. 1, 4); 14 VP, 15 ships, B25/B56-25 bank and deck; starting settlements on the main island; coastal setup ship instead of the road (SF25 pp. 3–4) | `packages/rules/test/seafarers-layout.test.ts` (5), `seafarers-ships.test.ts` setup block (3) | covered |
-| R-SF ships | ships on sea edges and the frame's inner edge, never on land–land edges; roads never on sea–sea edges; a ship links to own ships/buildings, never to a road; no ship past an opponent building; one piece per coastal edge; lumber + wool and 15 pieces; no new ship next to the pirate (SF25 p. 2, SF-FAQ 5/6/15/17) | `seafarers-ships.test.ts` placement block (7) | covered |
-| R-SF moves | one move per action window; not a ship built this turn; open end only; closed route between own buildings immovable, also when an opponent building interrupts it; branch ship movable; no move from/to the pirate's hex; target must satisfy placement after lifting; awards and victory judged on the final board only (SF25 p. 2, SF-FAQ 12–14) | `seafarers-ships.test.ts` moves block (8) | covered; ship circles are an open fixture (below) |
-| R-SF pirate | 7/Knight choose robber (land) or pirate (sea hex or frame); pirate must change place; theft only from players with a ship on the hex, never a coastal settlement owner (SF25 pp. 2–3, SF-FAQ 4/7) | `seafarers-rules.test.ts` pirate block (4) | covered |
-| R-SF gold | settlement 1 / city 2 resources of choice, in turn order from the roller, supply shortage, robber blocks gold (SF25 p. 2, SF-FAQ 2) | `seafarers-rules.test.ts` gold block (4) | covered; ordering is a deliberate interpretation |
-| R-SF routes | Road Building with road + ship and with two ships; Longest Trade Route joins roads and ships only at an own building; opponent buildings interrupt; trails/cycles as for roads (SF25 pp. 2–3, SF-FAQ 1/16) | `seafarers-rules.test.ts` (5) | covered |
+| R-SF ships | ships on sea edges and the frame's inner edge, never on land–land edges; roads never on sea–sea edges; a ship links to own ships/buildings, never to a road; no ship past an opponent building; one piece per coastal edge; lumber + wool and 15 pieces; no new ship next to the pirate (SF25 p. 2, SF-FAQ 5/6/15/17) | `seafarers-ships.test.ts` placement block (7); `seafarers-clauses.test.ts`: separate road/ship supplies (3), no road or ship past an opponent building (2), distance rule across a strait (SF-FAQ 11) | covered |
+| R-SF moves | one move per action window; not a ship built this turn; open end only; closed route between own buildings immovable, also when an opponent building interrupts it; branch ship movable; no move from/to the pirate's hex; target must satisfy placement after lifting; awards and victory judged on the final board only (SF25 p. 2, SF-FAQ 12–14) | `seafarers-ships.test.ts` moves block (8); `seafarers-clauses.test.ts`: no move before the roll, loop back to one building | covered; ship circles and loops are open fixtures (below) |
+| R-SF pirate | 7/Knight choose robber (land) or pirate (sea hex or frame); pirate must change place; theft only from players with a ship on the hex, never a coastal settlement owner (SF25 pp. 2–3, SF-FAQ 4/7) | `seafarers-rules.test.ts` pirate block (4); `seafarers-clauses.test.ts`: Knight sends the pirate to the frame, no theft from own ships or an empty hand | covered |
+| R-SF gold | settlement 1 / city 2 resources of choice, in turn order from the roller, supply shortage, robber blocks gold (SF25 p. 2, SF-FAQ 2) | `seafarers-rules.test.ts` gold block (4); `seafarers-clauses.test.ts`: a 7 gives no gold, supply empty at creation, queued frame on an empty supply, 5–6 turn order from the roller | covered; ordering is a deliberate interpretation |
+| R-SF routes | Road Building with road + ship and with two ships; Longest Trade Route joins roads and ships only at an own building; opponent buildings interrupt; trails/cycles as for roads (SF25 pp. 2–3, SF-FAQ 1/16) | `seafarers-rules.test.ts` (5); `seafarers-clauses.test.ts`: Road Building before the roll with a ship, free ship not movable that turn, ship supply exhausted mid-effect, ship loop length, road and ship meeting at an opponent building | covered |
 | R-SF islands / victory | +2 per player per small island (also when others settled first), grouped 5–6 islands count once, no bonus for setup; 14 VP on the own turn (SF25 p. 4, SF56-25 p. 4) | `seafarers-rules.test.ts` (5) | covered |
-| R-SF paired | Player 2 builds and moves a ship in their own window, no domestic trade (SF56-25 pp. 2–3) | `seafarers-rules.test.ts` paired block (1) | covered |
+| R-SF paired | Player 2 builds and moves a ship in their own window, no domestic trade; Player 2 moves after Player 1 moved; not a ship built in their own window; Player 2 wins at 14 in their window; a Player 1 win ends the turn before Player 2 (SF56-25 pp. 2–3) | `seafarers-rules.test.ts` paired block (1), `seafarers-clauses.test.ts` (4) | covered |
 | R-SF games / VIS | simulated 3/4/5/6-player games finish with a 14-point winner, conserve the supply and keep pieces legal; module projection public only, pirate theft private | `seafarers-sim.test.ts` (5), `seafarers-rules.test.ts` privacy (1), `packages/server/test/seafarers.test.ts` (2) | covered |
 | R-SF client | ship actions, two-step ship move, pirate targets, gold picker, SVG ships/pirate/tokens, sea targets at the water plane, event text; browser run of a live game (setup ship, ship build, ship move, island bonus, pirate, gold) and the 3/4/6-player maps in SVG and 3D | `packages/web/test/seafarers.test.tsx` (7), `scripts/seafarers/capture.py`, [captures](screenshots/seafarers/README.md) | covered in headless Chromium; no human playtest |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
@@ -175,17 +175,30 @@ reviewer can challenge them rather than discover them by accident.
 - **5–6 island outlines.** The SF56-25 map outlines `6`+`12` and `3`+`10`
   with the sea hex between them as one area each; the bonus treats each area
   as one small island, as SF25 p. 4 defines small islands by their outline.
+  The VP token count agrees: SF56-25 supplies 48 tokens = 4 small islands × 6
+  players × 2, just as SF25's 18 (3 players) and 24 (4 players) are 3 small
+  islands × 3 or 4 players × 2.
 - **5–6 main island.** Built with the engine's CATAN 5–6 variable procedure
   (shuffled terrain, shuffled number discs on the non-desert hexes, robber on
   the first desert), the same simplification as gap 3 for the base board; the
   B56-25 A–Z disc order is not modelled. Ports are shuffled over the 11
-  marked positions.
+  marked positions. Because the discs are shuffled, the red 6 and 8 may land
+  on adjacent hexes; SF25 p. 5 forbids that only for its own variable setup,
+  and B56-25 avoids it through the A–Z spiral, which the engine does not use.
 - **Open fixture — ship circles (SF25 p. 2 vs SF-FAQ 18).** SF25 defines an
   open end as one not next to an own ship or building; SF-FAQ 18 calls every
   ship of a building-less circle open and lets the end ships of a loop back to
   one building move. The engine follows SF25 (no ship of a circle or loop
-  moves) and `seafarers-ships.test.ts` pins that; flipping it needs a
-  confirmed 2025 clarification.
+  moves). `seafarers-ships.test.ts` pins the circle and
+  `seafarers-clauses.test.ts` the loop back to one building (FAQ 18 special
+  case 1); flipping them needs a confirmed 2025 clarification.
+- **Roads and ships keep separate supplies.** 15 roads and 15 ships per
+  player; a ship never uses up a road piece or the reverse, also for Road
+  Building (`seafarers-clauses.test.ts`).
+- **A queued gold frame on an empty supply.** When a gold frame activates
+  behind another frame and the supply is already empty, every entitled player
+  is skipped with `gold.chosen` reporting the shortfall, exactly as when the
+  frame is created on an empty supply.
 
 ## Known gaps and unresolved items
 
@@ -256,3 +269,10 @@ These are recorded rather than hidden. None of them is presented as verified.
     only); the 5–6 board is always variable as SF56-25 prescribes. No human
     playtest of the expansion has been run (U-07/U-08), and the gold field
     keeps the platform's generic gold tile art.
+13. **Open base item: the Road Building grant is fixed at play time.** The
+    card grants `min(2, placements available when played)`. When only one
+    road (or ship) target exists at play time but placing it opens a second,
+    the player still gets one free piece; B25 promises two. This is base
+    behaviour since `base-2025.1` (PR #60 lists it as a follow-up), so
+    changing it is a base rule change that needs the maintainer's approval
+    and a new base rule version. Seafarers inherits it unchanged.

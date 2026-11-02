@@ -105,5 +105,46 @@ them, so each pair is one small island for the bonus.
 
 - No human playtest, physical device or screen-reader check of the expansion.
 - 3/4-player variable setup (SF25 p. 5) is not offered; other Seafarers scenarios are out of scope.
-- Open fixture: SF-FAQ 18 ship-circle cases vs SF25 p. 2 (SF25 implemented).
+- Open fixture: SF-FAQ 18 ship-circle and loop cases vs SF25 p. 2 (SF25 implemented).
+- Open base item: the Road Building grant is fixed at play time (FIDELITY gap 13).
 - PostgreSQL repository tests were not run (no `TEST_POSTGRES_URL`).
+
+## Rebased onto the new P0 and review fixes (2026-11-02)
+
+P0 was rebased onto master `0815c76` (bots, #60 base rule fixes, random game
+order); this branch was rebased onto it.
+
+- **#60 in the Seafarers paths.** Road connectivity now follows #60: a road
+  extends from an own building or from an empty vertex reached by an own
+  *road* (ships hand over to roads only at a building, SF25 p. 2); an opponent
+  building blocks both roads and ships. Road Building uses #60's cap: the
+  grant is `min(2, roads capped by road pieces + ship targets)`, the effect
+  ends after a placement when no road or ship target is left, and
+  `normalizedPending` caps a stalled effect to the road pieces (when a road
+  target exists) plus the ship targets. P1's own stall fix (road edges ignored
+  once the road supply is used up) was dropped for #60's. Base behaviour is
+  unchanged (the re-pinned base digests still match).
+- **review-sf 1 (HIGH): separate supplies.** `countRoads` counted ships, so 8
+  roads + 7 ships refused a 9th road and Road Building ended early. It now
+  counts roads only.
+- **review-sf 2 (HIGH): routes past an opponent building.** Fixed by #60;
+  fixtures for roads and ships.
+- **review-sf 3 (LOW): Road Building grant at play time.** Base behaviour;
+  left unchanged and recorded as FIDELITY gap 13 for maintainer approval.
+- **review-sf 4 (LOW): queued gold frame on an empty supply.** New module hook
+  `activatePending` runs when a queued frame with responders becomes active;
+  Seafarers skips every entitled player there when the supply is empty.
+- **FIDELITY:** 48 VP tokens = 4 small islands × 6 × 2 supports the 5–6 island
+  grouping; red 6/8 may be adjacent on the shuffled 5–6 main island; separate
+  supplies and the queued gold case; evidence rows for the new fixtures.
+- **Fixtures** (`packages/rules/test/seafarers-clauses.test.ts`, 22): the
+  untested R-SF clauses from the review, each citing SF25 / SF56-25 / SF-FAQ.
+- **Bots:** Seafarers profiles have rules modules, so `ProfileView.botSeats`
+  is false and rooms refuse bot seats (server test added).
+- **Browser:** the capture harness ran again (35 cases, no page errors); only
+  the lobby changed visually and was refreshed.
+
+`SMOKE_PORT=3421 pnpm verify` (exit 0): rules 24 files / 260 tests; protocol
+8; bots 45; server 148 passed, 15 skipped (PostgreSQL, no
+`TEST_POSTGRES_URL`); web 57 files / 589 tests; build; smoke 13/13; dev runner
+1/1.

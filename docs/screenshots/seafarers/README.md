@@ -9,7 +9,7 @@ sha256; this folder keeps a curated subset).
 
 | File | Renderer | Viewport | State |
 |---|---|---|---|
-| `lobby-seafarers.png` | – | 1366×900 | lobby: Seafarers → Heading for New Shores, ruleset and required boxes |
+| `lobby-seafarers.png` | – | 1366×900 | lobby: Seafarers → Heading for New Shores, game order, why bots are not offered, ruleset and required boxes |
 | `map-3p-svg-desktop.png` | SVG | 1366×900 | 3-player map (SF25 p. 4) during setup; pirate waiting on the frame |
 | `map-3p-r3f-desktop.png` | 3D | 1366×900 | the same in 3D |
 | `map-4p-svg-desktop.png` | SVG | 1366×900 | 4-player map (SF25 p. 5); setup targets only on the main island |
@@ -43,3 +43,10 @@ in-game base captures byte-identical to the P0 references
 
 Captures are review evidence, not accepted visual baselines; no physical
 device, screen reader or human playtest is claimed.
+
+After the rebase onto master `0815c76` the harness ran again against a fresh
+build (service on `127.0.0.1:3022`): 35 cases, no page errors. Only the lobby
+looked different (master's game-order field and the note that bots only play
+the base game), so `lobby-seafarers.png` was replaced (sha256 `5e4c72b6b2e11a67…`). The
+other captures differ only by game randomness (robber, dice, hands, the
+variable 5–6 main island) and were kept; `report.json` lists the first run.
