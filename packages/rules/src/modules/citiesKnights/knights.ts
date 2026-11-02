@@ -20,9 +20,10 @@
  *   them and their Longest Route is split there; knights block settlement
  *   sites. In C&K buildings block roads the same way (`vertexBlocker`).
  *
- * Routes are the player's road pieces; ships are included so the later
- * Seafarers + C&K profile can reuse this (CK25 p. 12), which this phase does
- * not enable.
+ * Routes are the player's road and ship pieces (ships only exist in the
+ * Seafarers + C&K profiles, CK25 p. 12). A knight is recruited onto a land
+ * intersection; only a move or a retreat can take it to an intersection
+ * between three sea hexes (COMB).
  */
 
 import { isLandVertex, playerById, topologyOf } from '../../analysis.ts';
@@ -52,14 +53,15 @@ export function vertexOccupant(state: GameState, vertex: number): string | null 
   return state.board.buildings[vertex]?.player ?? knightAt(state, vertex)?.player ?? null;
 }
 
-function ownRouteNeighbours(state: GameState, playerId: string, vertex: number): number[] {
+/** Own road and ship pieces at an intersection, with the intersection each one leads to. */
+function ownRouteSteps(state: GameState, playerId: string, vertex: number): { next: number; ship: boolean }[] {
   const topo = topologyOf(state);
-  const out: number[] = [];
+  const out: { next: number; ship: boolean }[] = [];
   for (const edge of topo.vertices[vertex]!.edges) {
     const road = state.board.roads[edge];
     if (!road || road.player !== playerId) continue;
     const [a, b] = topo.edges[edge]!.vertices;
-    out.push(a === vertex ? b : a);
+    out.push({ next: a === vertex ? b : a, ship: road.ship });
   }
   return out;
 }
@@ -68,29 +70,41 @@ function ownRouteNeighbours(state: GameState, playerId: string, vertex: number):
  * Where a knight of `playerId` standing on `start` can go along the player's
  * continuous routes: empty intersections (`moves`) and intersections holding
  * another player's knight (`knights`), never passing another player's piece.
+ *
+ * With ships (Seafarers + C&K) a route of roads and ships continues from a
+ * road to a ship, or back, only at one of the player's buildings, as for the
+ * Longest Trade Route (SF25 p. 2, CK25 p. 12); the knight's own intersection
+ * counts as part of both. Intersections between three sea hexes are reached
+ * along ships (COMB, CK25 p. 12). Without ships this is the plain C&K route.
  */
 export function knightReach(state: GameState, playerId: string, start: number): { moves: number[]; knights: number[] } {
-  const moves: number[] = [];
-  const knights: number[] = [];
-  const seen = new Set<number>([start]);
-  const queue = [start];
+  const moves = new Set<number>();
+  const knights = new Set<number>();
+  // Visited (intersection, arrived by ship?) states; the start allows both.
+  const seen = new Set<string>();
+  const queue: { vertex: number; ship: boolean | null }[] = [{ vertex: start, ship: null }];
   while (queue.length > 0) {
-    const vertex = queue.shift()!;
-    for (const next of ownRouteNeighbours(state, playerId, vertex)) {
-      if (seen.has(next)) continue;
-      seen.add(next);
+    const { vertex, ship } = queue.shift()!;
+    const junction = ship === null || state.board.buildings[vertex]?.player === playerId;
+    for (const step of ownRouteSteps(state, playerId, vertex)) {
+      if (!junction && step.ship !== ship) continue;
+      const next = step.next;
+      if (next === start) continue;
+      const key = `${next}:${step.ship ? 's' : 'r'}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
       const occupant = vertexOccupant(state, next);
       if (occupant === null) {
-        moves.push(next);
-        queue.push(next);
+        moves.add(next);
+        queue.push({ vertex: next, ship: step.ship });
       } else if (occupant === playerId) {
-        queue.push(next);
+        queue.push({ vertex: next, ship: step.ship });
       } else if (!state.board.buildings[next]) {
-        knights.push(next);
+        knights.add(next);
       }
     }
   }
-  return { moves: moves.sort((a, b) => a - b), knights: knights.sort((a, b) => a - b) };
+  return { moves: [...moves].sort((a, b) => a - b), knights: [...knights].sort((a, b) => a - b) };
 }
 
 export function knightsOf(state: GameState, playerId: string): Knight[] {
@@ -107,7 +121,7 @@ export function recruitSites(state: GameState, playerId: string): number[] {
   const out: number[] = [];
   for (let vertex = 0; vertex < topo.vertices.length; vertex++) {
     if (vertexOccupant(state, vertex) !== null || !isLandVertex(state, vertex)) continue;
-    if (ownRouteNeighbours(state, playerId, vertex).length > 0) out.push(vertex);
+    if (ownRouteSteps(state, playerId, vertex).length > 0) out.push(vertex);
   }
   return out;
 }
@@ -136,7 +150,7 @@ export function adjacentToRobber(state: GameState, knight: Knight): boolean {
 }
 
 /** Knight commands are action-phase actions of the player on turn. */
-function requireAction(state: GameState, actorId: string, ctx: ModuleContext): CommandOutcome | null {
+export function requireAction(state: GameState, actorId: string, ctx: ModuleContext): CommandOutcome | null {
   const { kit } = ctx;
   if (kit.currentPlayer(state).id !== actorId) return kit.fail('E_NOT_YOUR_TURN');
   if (state.turn.phase !== 'action') return kit.fail('E_WRONG_PHASE', { phase: state.turn.phase });
@@ -212,7 +226,8 @@ export function promoteKnight(state: GameState, actorId: string, command: Module
   return kit.accept(state);
 }
 
-function actingKnight(state: GameState, actorId: string, vertex: unknown, ctx: ModuleContext): Knight | CommandOutcome {
+/** The actor's knight at `vertex` if it may take an action now, else the rejection. */
+export function actingKnight(state: GameState, actorId: string, vertex: unknown, ctx: ModuleContext): Knight | CommandOutcome {
   const knight = ownKnight(state, actorId, vertex, ctx);
   if (isOutcome(knight)) return knight;
   if (!knight.active) return ctx.kit.fail('E_KNIGHT_INACTIVE', { vertex: knight.vertex });

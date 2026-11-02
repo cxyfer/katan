@@ -82,6 +82,11 @@ export interface RulesKit {
    * capped by the road pieces left, plus module pieces such as ships.
    */
   freeRouteTargets(state: GameState, playerId: string): number;
+  /**
+   * Edges where the player could place a ship now, supply included (the
+   * profile's modules' `legalShips`; empty without ships).
+   */
+  legalShips(state: GameState, playerId: string): number[];
 }
 
 export interface ModuleContext {
@@ -205,6 +210,22 @@ export interface RulesModule {
   moveBandit?(state: GameState, actorId: string, target: number | null, cause: 'seven' | 'knight', ctx: ModuleContext): BanditMove | undefined;
   /** Additional free Road Building placements available (for example ships). */
   freeRouteTargets?(state: GameState, playerId: string, ctx: ModuleViewContext): number;
+  /**
+   * Edges where the player could place a ship now, supply included (the
+   * Seafarers module). Lets another module re-place a ship, e.g. Cities &
+   * Knights' Diplomacy after removing an own ship.
+   */
+  legalShips?(state: GameState, playerId: string, ctx: ModuleViewContext): number[];
+  /**
+   * Extra veto on moving one of the player's ships (Seafarers + Cities &
+   * Knights: knights close shipping routes and must stay connected).
+   */
+  shipMoveBlocked?(state: GameState, playerId: string, edge: number, ctx: ModuleViewContext): boolean;
+  /**
+   * Extra veto on a hex for the Cities & Knights merchant (Seafarers + C&K:
+   * never on a gold field).
+   */
+  allowMerchant?(state: GameState, playerId: string, hex: number, ctx: ModuleViewContext): boolean;
   /** Runs after every board change (build, setup placement, robber move). */
   afterBoardChange?(state: GameState, ctx: ModuleContext): void;
   /**

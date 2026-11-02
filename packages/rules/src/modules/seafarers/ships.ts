@@ -12,10 +12,15 @@
  *   building). A ship inside a line linking two own buildings never has an
  *   open end, so it cannot move even if an opponent's building splits the
  *   line (SF25 p. 2, SF-FAQ 14).
+ * - Like roads, ships never pass an intersection another player's module
+ *   piece holds (`vertexBlocker`, the Cities & Knights knights), and other
+ *   modules may veto a ship move (`shipMoveBlocked`).
  */
 
-import { isSeaEdge, playerById, topologyOf } from '../../analysis.ts';
+import { isBlockedFor, isSeaEdge, playerById, topologyOf } from '../../analysis.ts';
+import { getProfile } from '../../profiles.ts';
 import type { CommandOutcome, GameState, Resource } from '../../types.ts';
+import { rulesModulesOf } from '../registry.ts';
 import type { ModuleCommand, ModuleContext } from '../types.ts';
 import { seafarersState, seafarersView } from './state.ts';
 
@@ -64,6 +69,7 @@ export function canPlaceShip(state: GameState, playerId: string, edge: number, o
   return info.vertices.some((vertex) => {
     const building = state.board.buildings[vertex];
     if (building) return building.player === playerId;
+    if (isBlockedFor(state, vertex, playerId)) return false;
     return ownShipAt(state, playerId, vertex, except);
   });
 }
@@ -81,14 +87,17 @@ export function buildableShipEdges(state: GameState, playerId: string, ships: nu
   return legalShipEdges(state, playerId);
 }
 
+/** True when this end of the ship touches neither another own ship nor an own building. */
+export function isOpenShipEnd(state: GameState, playerId: string, edge: number, vertex: number): boolean {
+  if (state.board.buildings[vertex]?.player === playerId) return false;
+  return !ownShipAt(state, playerId, vertex, [edge]);
+}
+
 /** An end of the ship with neither an own ship nor an own building. */
 export function hasOpenEnd(state: GameState, playerId: string, edge: number): boolean {
   const info = topologyOf(state).edges[edge];
   if (!info) return false;
-  return info.vertices.some((vertex) => {
-    if (state.board.buildings[vertex]?.player === playerId) return false;
-    return !ownShipAt(state, playerId, vertex, [edge]);
-  });
+  return info.vertices.some((vertex) => isOpenShipEnd(state, playerId, edge, vertex));
 }
 
 export type ShipMoveBlock =
@@ -107,7 +116,15 @@ export function shipMoveBlock(state: GameState, playerId: string, edge: number):
   if (slot.built.includes(edge)) return 'built-this-turn';
   if (touchesPirate(state, edge)) return 'pirate';
   if (!hasOpenEnd(state, playerId, edge)) return 'closed';
+  if (moduleShipMoveVeto(state, playerId, edge)) return 'closed';
   return null;
+}
+
+/** Another module of the profile forbids moving this ship. */
+function moduleShipMoveVeto(state: GameState, playerId: string, edge: number): boolean {
+  const profile = getProfile(state.profileId);
+  if (!profile) return false;
+  return rulesModulesOf(profile).some((module) => module.shipMoveBlocked?.(state, playerId, edge, { profile }) === true);
 }
 
 /** Where a movable ship may go (empty if it cannot move). */

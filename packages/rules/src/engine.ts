@@ -291,7 +291,16 @@ const KIT: RulesKit = {
   legalRoads: (state, playerId) => legalRoadEdges(state, playerId),
   placedFreeRoute: (state, playerId, rng) => placedFreeRoute(state, playerId, rng ?? null),
   freeRouteTargets: freeRouteTargetCount,
+  legalShips: moduleLegalShips,
 };
+
+/** Ship placements the profile's modules offer the player now. */
+function moduleLegalShips(state: GameState, playerId: string): number[] {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return [];
+  const ctx = viewContext(state);
+  return modules.flatMap((module) => module.legalShips?.(state, playerId, ctx) ?? []);
+}
 
 function moduleContext(profile: ProfileDefinition, rng: Rng | null): ModuleContext {
   return { profile, rng: rng ?? NO_RNG, kit: KIT };

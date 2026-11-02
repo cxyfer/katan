@@ -13,19 +13,27 @@
  */
 
 import { isLandHex, topologyOf } from '../../analysis.ts';
+import { getProfile } from '../../profiles.ts';
 import { verticesOfHex } from '../../topology.ts';
 import { TERRAIN_RESOURCE, type CardKind, type GameState, type Resource } from '../../types.ts';
+import { rulesModulesOf } from '../registry.ts';
 import { ckView } from './state.ts';
 
 export const MERCHANT_VP = 1;
 
-/** Land hexes next to one of the player's buildings. */
+/**
+ * Land hexes next to one of the player's buildings that no module of the
+ * profile rules out (`allowMerchant`; Seafarers + C&K: no gold field).
+ */
 export function merchantHexes(state: GameState, playerId: string): number[] {
   const topo = topologyOf(state);
+  const profile = getProfile(state.profileId)!;
+  const vetoes = rulesModulesOf(profile).filter((module) => module.allowMerchant);
   const out: number[] = [];
   for (let hex = 0; hex < topo.hexes.length; hex++) {
     if (!isLandHex(state, hex)) continue;
-    if (verticesOfHex(topo, hex).some((vertex) => state.board.buildings[vertex]?.player === playerId)) out.push(hex);
+    if (!verticesOfHex(topo, hex).some((vertex) => state.board.buildings[vertex]?.player === playerId)) continue;
+    if (vetoes.every((module) => module.allowMerchant!(state, playerId, hex, { profile }))) out.push(hex);
   }
   return out;
 }

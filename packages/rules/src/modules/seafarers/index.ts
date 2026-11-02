@@ -38,6 +38,10 @@ export const seafarersModule: RulesModule = {
     return buildableShipEdges(state, playerId, ctx.profile.pieces.ships).length;
   },
 
+  legalShips(state, playerId, ctx) {
+    return buildableShipEdges(state, playerId, ctx.profile.pieces.ships);
+  },
+
   afterBoardChange(state, ctx) {
     claimIslands(state, ctx);
   },

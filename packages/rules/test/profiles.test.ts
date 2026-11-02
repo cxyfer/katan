@@ -142,7 +142,9 @@ describe('ruleset registry', () => {
       for (const box of profile.requiredBoxes) expect(BOX_IDS).toContain(box);
       if (profile.paired) expect(profile.requiredBoxes).toContain('base-5-6');
       expect(profile.ruleVersion).toMatch(/^[a-z-]+-2025\.\d+$/);
-      expect(profile.ruleModules).toEqual([...profile.expansions, ...profile.variants]);
+      // The Seafarers + C&K combination layer runs before both expansions.
+      const combined = profile.expansions.includes('seafarers') && profile.expansions.includes('citiesKnights');
+      expect(profile.ruleModules).toEqual([...(combined ? ['seafarersCitiesKnights'] : []), ...profile.expansions, ...profile.variants]);
     }
     expect(getProfile('base-2025')!.ruleVersion).toBe(BASE_RULE_VERSION);
     expect(getProfile('base-paired-2025')!.ruleVersion).toBe(BASE_RULE_VERSION);
@@ -180,9 +182,10 @@ describe('ruleset registry', () => {
   });
 
   it('refuses to create a game for an unimplemented profile', () => {
+    registerFixtureProfile('fixture-unimplemented', [4], { implemented: false });
     expect(() =>
       createGame({
-        profileId: 'sf-ck-new-shores-2025',
+        profileId: 'fixture-unimplemented',
         players: playerIds(4).map((id, index) => ({
           id,
           nickname: id,
