@@ -320,6 +320,34 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     expect(api.callsOf('sendCommand')[0]!.args[1]).toMatchObject({ command: { type: 'build.road', edge: second.index } });
   });
 
+  it('dismisses the ambiguous picker from the empty board or Escape without reselecting or reopening', async () => {
+    const { api, svg } = await board();
+    fireEvent.click(screen.getByTestId(`target-edge-${first.index}`));
+    expect(screen.getByTestId('target-picker')).toBeTruthy();
+    pointer(svg, 'pointerdown', 1, 200, 400);
+    expect(screen.queryByTestId('target-picker')).toBeNull();
+    pointer(svg, 'pointerup', 1, 200, 400);
+    fireEvent.click(svg);
+
+    fireEvent.click(screen.getByTestId(`target-edge-${first.index}`));
+    expect(screen.getByTestId('target-picker')).toBeTruthy();
+    // 關閉用的那次點擊落在另一個合法目標上：不得選取或重新開啟。
+    const other = screen.getByTestId(`target-edge-${second.index}`);
+    pointer(other, 'pointerdown', 1, 20, 30);
+    expect(screen.queryByTestId('target-picker')).toBeNull();
+    pointer(other, 'pointerup', 1, 20, 30);
+    fireEvent.click(other);
+    expect(screen.queryByTestId('target-picker')).toBeNull();
+    expect(screen.queryByTestId('selection-preview')).toBeNull();
+
+    fireEvent.click(screen.getByTestId(`target-edge-${first.index}`));
+    expect(screen.getByTestId('target-picker')).toBeTruthy();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.queryByTestId('target-picker')).toBeNull();
+    expect(screen.queryByTestId('selection-preview')).toBeNull();
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
   it('remeasures after resize, preserves zoom, and keeps keyboard / cancel / fit behavior', async () => {
     const { api, svg } = await board();
     fireEvent.click(screen.getByTestId('zoom-in'));

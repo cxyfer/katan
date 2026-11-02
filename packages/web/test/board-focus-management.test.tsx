@@ -228,3 +228,64 @@ describe('board target focus management', () => {
     expect(document.activeElement).toBe(screen.getByTestId('target-edge-9'));
   });
 });
+
+describe('target picker dismissal', () => {
+  const firePointerDown = (element: Element) => fireEvent(element, new Event('pointerdown', { bubbles: true }));
+
+  function renderPicker(onCancel: () => void) {
+    const geometry = buildGeometry('hex-r2');
+    const view = makeView();
+    return render(<LocaleProvider locale="en">
+      <div data-testid="outside">outside</div>
+      <button type="button" data-testid="open-target-picker" data-target-picker-ignore="">toggle</button>
+      <TargetPicker geometry={geometry} board={view.board} topology={geometry.topology} kind="edge"
+        targets={[5]} nameOf={() => 'Alex'} onChoose={vi.fn()} onCancel={onCancel} />
+    </LocaleProvider>);
+  }
+
+  it('closes on an outside pointerdown but not inside the popover or on the ignored toggle', () => {
+    const onCancel = vi.fn();
+    renderPicker(onCancel);
+    firePointerDown(screen.getByTestId('picker-edge-5'));
+    firePointerDown(screen.getByRole('dialog'));
+    firePointerDown(screen.getByTestId('open-target-picker'));
+    expect(onCancel).not.toHaveBeenCalled();
+    firePointerDown(screen.getByTestId('outside'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes on Escape even when focus is outside the popover', () => {
+    const onCancel = vi.fn();
+    renderPicker(onCancel);
+    screen.getByTestId('outside').focus();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes from the close button', () => {
+    const onCancel = vi.fn();
+    renderPicker(onCancel);
+    fireEvent.click(screen.getByTestId('target-picker-close'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('swallows the click that follows an outside press on a board target', () => {
+    const onCancel = vi.fn();
+    const onTargetClick = vi.fn();
+    const geometry = buildGeometry('hex-r2');
+    const view = makeView();
+    render(<LocaleProvider locale="en">
+      <button type="button" className="board-target" data-testid="board-target" onClick={onTargetClick}>t</button>
+      <TargetPicker geometry={geometry} board={view.board} topology={geometry.topology} kind="edge"
+        targets={[5]} nameOf={() => 'Alex'} onChoose={vi.fn()} onCancel={onCancel} />
+    </LocaleProvider>);
+    const target = screen.getByTestId('board-target');
+    firePointerDown(target);
+    fireEvent.click(target);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onTargetClick).not.toHaveBeenCalled();
+    // 只吞一次：之後的刻意點擊照常作用。
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+});
