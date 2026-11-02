@@ -293,9 +293,6 @@ export class RoomService {
       setupMode: 'fixed' | 'variable';
       orderMode: GameOrderMode;
       policy?: Partial<RoomPolicy>;
-      /** 建房捷徑：一併加入的 Bot 數量。 */
-      bots?: number;
-      botLevel?: unknown;
     },
   ): Promise<RoomView> {
     const profile = requireProfile(input.profileId);
@@ -332,17 +329,6 @@ export class RoomService {
     if (!policyCheck.ok) {
       throw new ServiceError('E_INVALID_POLICY', 'error.E_INVALID_POLICY', { reason: policyCheck.reason });
     }
-    const botLevel = this.requireBotLevel(input.botLevel);
-    const bots = input.bots ?? 0;
-    // 至少保留一個真人席位給房主。
-    if (!Number.isInteger(bots) || bots < 0 || bots > input.capacity - 1) {
-      throw new ServiceError('E_INVALID_BOT', 'error.E_INVALID_BOT', {
-        reason: 'count',
-        max: input.capacity - 1,
-      });
-    }
-    if (bots > 0) this.requireBotsAllowed(profile.id);
-
     const now = new Date().toISOString();
     const room: RoomRow = {
       id: newId('room'),
@@ -374,10 +360,6 @@ export class RoomService {
       disconnected_at: null,
       connection_id: null,
     });
-    const members = await this.repo.listMembers(room.id);
-    for (let index = 0; index < bots; index++) {
-      members.push(await insertBotSeat(this.repo, room.id, members, botLevel, now));
-    }
     return this.view(room.id, playerId);
   }
 

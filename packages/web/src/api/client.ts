@@ -68,9 +68,6 @@ export interface CreateRoomBody {
   setupMode: 'fixed' | 'variable';
   orderMode?: GameOrderMode;
   policy?: RoomPolicy;
-  /** 建房時一併加入的電腦對手數量（0 至 capacity − 1）。 */
-  bots?: number;
-  botLevel?: BotLevel;
 }
 
 export interface RoomSettingsBody {

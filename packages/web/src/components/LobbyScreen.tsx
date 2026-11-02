@@ -25,7 +25,8 @@ const COLORS = ['red', 'blue', 'orange', 'white', 'green', 'brown'] as const;
  * - before start a policy change applies, after start it becomes a proposal
  *   that needs every seat's consent;
  * - host transfer is displayed from `RoomView.hostId`;
- * - 開局前房主可加入或移除電腦座位；電腦座位永遠已準備，不顯示準備與連線狀態。
+ * - 開局前房主在房間中設定電腦座位數量並可個別移除；電腦座位永遠已準備，
+ *   不顯示準備與連線狀態。
  */
 export function LobbyScreen({ controller }: ScreenProps) {
   const t = useT();
@@ -91,7 +92,9 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const canManageBots = isHost && room.status === 'lobby';
   const botLevels = offeredBotLevels(state.config);
   const chosenBotLevel = pickBotLevel(botLevels, botLevel);
-  const roomFull = room.members.length >= room.capacity;
+  const botCount = room.members.filter((member) => member.bot).length;
+  // 房主一定是真人，電腦最多只能佔滿真人以外的席位。
+  const maxBots = Math.max(0, room.capacity - (room.members.length - botCount));
   const runBotAction = (work: () => Promise<void>) => {
     setBotBusy(true);
     void work().finally(() => setBotBusy(false));
@@ -199,11 +202,30 @@ export function LobbyScreen({ controller }: ScreenProps) {
                   <GameIcon name="bot" size={16} />{t('lobby.bots.title')}
                 </h3>
                 <div className="field field--inline">
+                  <label htmlFor="lobby-bot-count">{t('lobby.bots.count')}</label>
+                  <select
+                    id="lobby-bot-count"
+                    data-testid="lobby-bot-count"
+                    value={botCount}
+                    disabled={botBusy || maxBots === 0}
+                    aria-describedby={maxBots === 0 ? 'lobby-bots-full' : undefined}
+                    onChange={(event) => {
+                      const count = Number(event.target.value);
+                      runBotAction(() => actions.setBotCount(count, chosenBotLevel));
+                    }}
+                  >
+                    {Array.from({ length: maxBots + 1 }, (_, count) => (
+                      <option key={count} value={count}>{count === 0 ? t('lobby.bots.none') : count}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field field--inline">
                   <label htmlFor="lobby-bot-level">{t('lobby.bots.level')}</label>
                   <select
                     id="lobby-bot-level"
                     data-testid="lobby-bot-level"
                     value={chosenBotLevel}
+                    disabled={botBusy}
                     onChange={(event) => setBotLevel(event.target.value as BotLevel)}
                   >
                     {botLevels.map((level) => (
@@ -211,17 +233,11 @@ export function LobbyScreen({ controller }: ScreenProps) {
                     ))}
                   </select>
                 </div>
-                <button
-                  type="button"
-                  className="button"
-                  data-testid="add-bot"
-                  disabled={roomFull || botBusy}
-                  aria-describedby={roomFull ? 'lobby-bots-full' : undefined}
-                  onClick={() => runBotAction(() => actions.addBot(chosenBotLevel))}
-                >
-                  <GameIcon name="plus" />{t('lobby.bots.add')}
-                </button>
-                {roomFull && <p id="lobby-bots-full" className="muted lobby-bots__full">{t('lobby.bots.full')}</p>}
+                {maxBots === 0 ? (
+                  <p id="lobby-bots-full" className="muted lobby-bots__note">{t('lobby.bots.full')}</p>
+                ) : (
+                  <p className="muted lobby-bots__note">{t('lobby.bots.hint')}</p>
+                )}
               </div>
             )}
 

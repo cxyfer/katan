@@ -77,7 +77,8 @@ export interface TableActions {
   takeSeat(color: string): Promise<void>;
   setReady(ready: boolean): Promise<void>;
   updateSettings(body: RoomSettingsBody): Promise<void>;
-  addBot(level: BotLevel): Promise<void>;
+  /** 把房內的電腦席位數調整到 `count`；差額以既有的加入／移除端點補齊。 */
+  setBotCount(count: number, level: BotLevel): Promise<void>;
   removeBot(playerId: string): Promise<void>;
   proposePolicy(policy: RoomPolicy): Promise<void>;
   respondPolicy(proposalId: string, approve: boolean): Promise<void>;
@@ -117,6 +118,11 @@ function noticeFrom(error: ApiError): Notice {
 
 function localNotice(messageId: string, params?: Record<string, unknown>): Notice {
   return { messageId, params };
+}
+
+/** 房內電腦席位數；只看成員上的 bot 標記，不推算任何遊戲狀態。 */
+function botCountOf(room: RoomView): number {
+  return room.members.filter((member) => member.bot).length;
 }
 
 /** Applies a receipt to state and, when accepted, refreshes the projection. */
@@ -431,11 +437,23 @@ export function useTable(options: UseTableOptions): TableController {
     [api, applyRoom, dispatch],
   );
 
-  const addBot = useCallback(
-    async (level: BotLevel): Promise<void> => {
+  const setBotCount = useCallback(
+    async (count: number, level: BotLevel): Promise<void> => {
       const roomId = roomIdRef.current;
-      if (!roomId) return;
-      applyRoom(await api.addBot(roomId, level), 'bots');
+      let room = stateRef.current.room;
+      if (!roomId || !room) return;
+      while (botCountOf(room) < count) {
+        const next = applyRoom(await api.addBot(roomId, level), 'bots');
+        if (!next) return;
+        room = next;
+      }
+      while (botCountOf(room) > count) {
+        const victim = room.members.filter((member) => member.bot).at(-1);
+        if (!victim) return;
+        const next = applyRoom(await api.removeBot(roomId, victim.playerId), 'bots');
+        if (!next) return;
+        room = next;
+      }
     },
     [api, applyRoom],
   );
@@ -833,7 +851,7 @@ export function useTable(options: UseTableOptions): TableController {
       takeSeat,
       setReady,
       updateSettings,
-      addBot,
+      setBotCount,
       removeBot,
       proposePolicy,
       respondPolicy,
@@ -870,7 +888,7 @@ export function useTable(options: UseTableOptions): TableController {
       takeSeat,
       setReady,
       updateSettings,
-      addBot,
+      setBotCount,
       removeBot,
       proposePolicy,
       respondPolicy,

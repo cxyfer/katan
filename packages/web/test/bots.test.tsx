@@ -74,50 +74,9 @@ describe('API client', () => {
   });
 });
 
-describe('create room with bots', () => {
-  it('offers zero to capacity − 1 bots and sends the chosen count and level', async () => {
+describe('create room', () => {
+  it('never asks for bot seats and lets the room set them', async () => {
     const api = createFakeApi();
-    renderApp(api);
-    await screen.findByTestId('create-room');
-
-    const bots = select('room-bots');
-    expect(optionValues(bots)).toEqual(['0', '1', '2']);
-    expect(bots.options[0]!.textContent).toBe('None');
-    // 沒有電腦時難度無意義，保持停用但不改變版面。
-    expect(select('room-bot-level').disabled).toBe(true);
-
-    fireEvent.change(bots, { target: { value: '2' } });
-    expect(select('room-bot-level').disabled).toBe(false);
-    fireEvent.change(select('room-bot-level'), { target: { value: 'easy' } });
-    expect(screen.getByText(/Bots take open seats/)).toBeTruthy();
-    fireEvent.click(screen.getByTestId('create-room'));
-
-    await waitFor(() => expect(api.callsOf('createRoom')).toHaveLength(1));
-    expect(api.callsOf('createRoom')[0]!.args[0]).toMatchObject({ capacity: 3, bots: 2, botLevel: 'easy' });
-    // 建房後直接進大廳，兩個電腦座位帶著所選難度。
-    await screen.findByTestId('room-code');
-    expect(screen.getByTestId('bot-badge-1').textContent).toBe('Bot · Easy');
-    expect(screen.getByTestId('bot-badge-2').textContent).toBe('Bot · Easy');
-  });
-
-  it('clamps the bot count when the capacity shrinks', async () => {
-    const api = createFakeApi();
-    renderApp(api);
-    await screen.findByTestId('create-room');
-
-    fireEvent.change(screen.getByLabelText('Capacity'), { target: { value: '4' } });
-    fireEvent.change(select('room-bots'), { target: { value: '3' } });
-    expect(select('room-bots').value).toBe('3');
-
-    fireEvent.change(screen.getByLabelText('Capacity'), { target: { value: '3' } });
-    expect(optionValues(select('room-bots'))).toEqual(['0', '1', '2']);
-    expect(select('room-bots').value).toBe('2');
-    fireEvent.change(screen.getByLabelText('Capacity'), { target: { value: '4' } });
-    expect(select('room-bots').value).toBe('2');
-  });
-
-  it('hides the bot fields and omits them from the request when the server disables bots', async () => {
-    const api = createFakeApi({ config: makeConfig({ bots: { enabled: false, levels: [] } }) });
     renderApp(api);
     await screen.findByTestId('create-room');
     expect(screen.queryByTestId('room-bots')).toBeNull();
@@ -128,14 +87,12 @@ describe('create room with bots', () => {
     const body = api.callsOf('createRoom')[0]!.args[0] as CreateRoomBody;
     expect('bots' in body).toBe(false);
     expect('botLevel' in body).toBe(false);
-  });
 
-  it('omits the bot fields when no bot is requested', async () => {
-    const api = createFakeApi();
-    renderApp(api);
-    fireEvent.click(await screen.findByTestId('create-room'));
-    await waitFor(() => expect(api.callsOf('createRoom')).toHaveLength(1));
-    expect('bots' in (api.callsOf('createRoom')[0]!.args[0] as CreateRoomBody)).toBe(false);
+    // 房間中的電腦面板才是決定數量的地方，剛進房時沒有任何電腦座位。
+    await screen.findByTestId('room-code');
+    expect(optionValues(select('lobby-bot-count'))).toEqual(['0', '1']);
+    expect(select('lobby-bot-count').value).toBe('0');
+    expect(screen.queryByTestId('bot-badge-1')).toBeNull();
   });
 });
 
@@ -154,22 +111,27 @@ describe('lobby bot seats', () => {
     expect(screen.getByTestId('member-0').dataset.bot).toBeUndefined();
   });
 
-  it('lets the host add a bot at the chosen difficulty', async () => {
+  it('lets the host set the bot count at the chosen difficulty', async () => {
     const api = createFakeApi({ room: makeRoom({ members: [makeMember()] }) });
     await joinLobby(api);
 
     const toolbar = screen.getByTestId('lobby-bots');
     expect(within(toolbar).getByRole('heading').textContent).toContain('Bot opponents');
-    fireEvent.change(select('lobby-bot-level'), { target: { value: 'easy' } });
-    fireEvent.click(screen.getByTestId('add-bot'));
+    const count = select('lobby-bot-count');
+    expect(optionValues(count)).toEqual(['0', '1', '2', '3']);
+    expect(count.options[0]!.textContent).toBe('None');
 
-    await waitFor(() => expect(api.callsOf('addBot')).toHaveLength(1));
-    expect(api.callsOf('addBot')[0]!.args).toEqual(['r1', 'easy']);
+    fireEvent.change(select('lobby-bot-level'), { target: { value: 'easy' } });
+    fireEvent.change(count, { target: { value: '2' } });
+
+    await waitFor(() => expect(api.callsOf('addBot')).toHaveLength(2));
+    expect(api.callsOf('addBot').map((call) => call.args)).toEqual([['r1', 'easy'], ['r1', 'easy']]);
     expect((await screen.findByTestId('bot-badge-1')).textContent).toBe('Bot · Easy');
-    expect(screen.getByTestId('lobby-seats').querySelectorAll('li')).toHaveLength(2);
+    expect(screen.getByTestId('bot-badge-2').textContent).toBe('Bot · Easy');
+    expect(select('lobby-bot-count').value).toBe('2');
   });
 
-  it('disables adding a bot when every seat is taken', async () => {
+  it('removes the extra bots when the host lowers the count', async () => {
     const api = createFakeApi({
       room: makeRoom({
         capacity: 3,
@@ -182,9 +144,33 @@ describe('lobby bot seats', () => {
     });
     await joinLobby(api);
 
-    const add = screen.getByTestId('add-bot') as HTMLButtonElement;
-    expect(add.disabled).toBe(true);
-    expect(add.getAttribute('aria-describedby')).toBe('lobby-bots-full');
+    expect(select('lobby-bot-count').value).toBe('2');
+    expect(optionValues(select('lobby-bot-count'))).toEqual(['0', '1', '2']);
+    fireEvent.change(select('lobby-bot-count'), { target: { value: '0' } });
+
+    await waitFor(() => expect(api.callsOf('removeBot')).toHaveLength(2));
+    expect(api.callsOf('removeBot').map((call) => call.args)).toEqual([['r1', 'bot2'], ['r1', 'bot1']]);
+    await waitFor(() => expect(screen.queryByTestId('bot-badge-1')).toBeNull());
+    expect(select('lobby-bot-count').value).toBe('0');
+  });
+
+  it('disables the count when people fill every seat', async () => {
+    const api = createFakeApi({
+      room: makeRoom({
+        capacity: 3,
+        members: [
+          makeMember(),
+          makeMember({ playerId: 'p2', nickname: '小美', seat: 1, color: 'blue', host: false }),
+          makeMember({ playerId: 'p3', nickname: '小傑', seat: 2, color: 'orange', host: false }),
+        ],
+      }),
+    });
+    await joinLobby(api);
+
+    const count = screen.getByTestId('lobby-bot-count') as HTMLSelectElement;
+    expect(count.disabled).toBe(true);
+    expect(count.getAttribute('aria-describedby')).toBe('lobby-bots-full');
+    expect(optionValues(count)).toEqual(['0']);
     expect(screen.getByText('Every seat is taken.')).toBeTruthy();
   });
 
@@ -226,7 +212,7 @@ describe('lobby bot seats', () => {
     expect(screen.queryByTestId('remove-bot-bot1')).toBeNull();
   });
 
-  it('keeps removal available while adding is disabled by the server', async () => {
+  it('keeps removal available while the server disables bots', async () => {
     const api = createFakeApi({
       config: makeConfig({ bots: { enabled: false, levels: [] } }),
       room: botRoom(),
@@ -244,7 +230,7 @@ describe('lobby bot seats', () => {
     });
     await joinLobby(api, ['zh-TW']);
     expect(screen.getByTestId('bot-badge-1').textContent).toBe('電腦・簡單');
-    expect(screen.getByTestId('add-bot').textContent).toContain('加入電腦');
+    expect(screen.getByLabelText('電腦數量')).toBeTruthy();
     expect(screen.getByRole('button', { name: '移除電腦 Ada' })).toBeTruthy();
   });
 });

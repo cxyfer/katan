@@ -4,9 +4,9 @@
 Starts the built service on a disposable SQLite database and drives one host
 through the real UI:
 
-* the create form with bot opponents, at the 1366x768 landscape fit from #42;
-* a lobby seated by the creation shortcut, then one bot added and one removed
-  from the lobby toolbar (both locales, plus a phone viewport);
+* the create form without any bot fields, at the 1366x768 landscape fit from #42;
+* a room where the host sets the bot count to two, then three with one removed
+  (both locales, plus a phone viewport);
 * a started table where the bots place, roll and play while the host's own
   moves are sent over the same browser session's API;
 * bots stop while no person has the table open and continue on return.
@@ -192,30 +192,33 @@ def capture(out: Path) -> dict:
             page.locator("form button[type=submit]").first.click()
             page.get_by_test_id("create-room").wait_for()
 
-            # 建房表單：4 人房預先加入 2 個電腦。
+            # 建房表單：4 人房，不詢問電腦數量。
             page.get_by_test_id("profile-select").select_option("base-2025")
             page.locator("#room-capacity").select_option("4")
-            page.get_by_test_id("room-bots").select_option("2")
-            page.get_by_test_id("room-bot-level").select_option("standard")
+            assert page.get_by_test_id("room-bots").count() == 0
+            assert page.get_by_test_id("room-bot-level").count() == 0
             create_box = page.get_by_test_id("create-room").bounding_box()
             result["checks"]["createButtonVisibleAt1366x768"] = bool(create_box) and create_box["y"] + create_box["height"] <= 768
             shot(page, out, result, "01-create-form-zh-Hant", 1366, 768)
             page.get_by_test_id("create-room").click()
             page.get_by_test_id("room-code").wait_for()
-            expect(page.locator("[data-bot=true]")).to_have_count(2)
+            expect(page.locator("[data-bot=true]")).to_have_count(0)
 
-            # 大廳：加入一個簡單電腦，再移除一個標準電腦。
+            # 房間：把電腦數量調到 2，再調到滿座的 3，並個別移除一個。
+            page.get_by_test_id("lobby-bot-level").select_option("standard")
+            page.get_by_test_id("lobby-bot-count").select_option("2")
+            expect(page.locator("[data-bot=true]")).to_have_count(2)
             page.get_by_test_id("lobby-bot-level").select_option("easy")
-            page.get_by_test_id("add-bot").click()
+            page.get_by_test_id("lobby-bot-count").select_option("3")
             expect(page.locator("[data-bot=true]")).to_have_count(3)
-            expect(page.get_by_test_id("add-bot")).to_be_disabled()
+            expect(page.get_by_test_id("lobby-bot-count")).to_have_value("3")
             shot(page, out, result, "02-lobby-full-zh-Hant", 1366, 768, full_page=True)
             shot(page, out, result, "03-lobby-full-phone-zh-Hant", 390, 844, full_page=True)
             page.set_viewport_size({"width": 1366, "height": 768})
             first_bot = page.locator("[data-testid^=remove-bot-]").first
             first_bot.click()
             expect(page.locator("[data-bot=true]")).to_have_count(2)
-            page.get_by_test_id("add-bot").click()
+            page.get_by_test_id("lobby-bot-count").select_option("3")
             expect(page.locator("[data-bot=true]")).to_have_count(3)
             page.get_by_test_id("locale-switch").select_option("en")
             shot(page, out, result, "04-lobby-full-en", 1366, 768, full_page=True)

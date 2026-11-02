@@ -29,7 +29,7 @@ Conventions:
 | PATCH | `/api/session` | `{ nickname?, locale? }` | `{ player }` |
 | GET | `/api/profiles` | – | `{ profiles: ProfileView[] }` |
 | GET | `/api/rooms` | query `playerCount?`, `profileId?`, `hasSeats?` | `{ rooms: RoomSummaryView[] }` |
-| POST | `/api/rooms` | `{ visibility, capacity, profileId, setupMode, orderMode?, policy?, bots?, botLevel? }` | `RoomView` |
+| POST | `/api/rooms` | `{ visibility, capacity, profileId, setupMode, orderMode?, policy? }` | `RoomView` |
 | POST | `/api/rooms/join` | `{ code }` | `RoomView` |
 | GET | `/api/rooms/:roomId` | – | `RoomView` |
 | POST | `/api/rooms/:roomId/leave` | – | `{ left: true, hostTransferredTo: string \| null }` |
@@ -85,8 +85,8 @@ bots and which levels exist.
 `ResumableGameView.allSeatsNeeded` is false for a game containing bot seats:
 only the original human players must reconnect and become ready to resume.
 
-- `POST /api/rooms` accepts `bots` (an integer from `0` to `capacity − 1`) and
-  `botLevel` to seat bots at creation. Anything else is `E_INVALID_BOT`.
+- Creating a room never seats bots: `POST /api/rooms` ignores bot fields, and
+  the host sets the count from inside the lobby instead.
 - `POST /api/rooms/:roomId/bots` and `DELETE /api/rooms/:roomId/bots/:playerId`
   are host-only and lobby-only (`E_NOT_HOST`, `E_ROOM_STARTED`). Adding to a
   full room is `E_ROOM_FULL`; removing a seat that is not a bot is

@@ -163,12 +163,6 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         profileId: body.profileId,
         orderMode: body.orderMode ?? 'join',
       });
-      if (body.bots && body.bots > 0) {
-        // 帶電腦建房時只有房主一位真人。
-        let created: RoomView = { ...room, members: room.members.filter((member) => member.host) };
-        for (let i = 0; i < body.bots; i++) created = withBot(created, body.botLevel ?? 'standard');
-        room = created;
-      }
       return ok(room);
     },
     async joinRoom(body: { code: string }) {

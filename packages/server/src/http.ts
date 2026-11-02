@@ -307,9 +307,6 @@ export function createHttpHandler(deps: HttpDeps) {
       // 有送出但型別錯誤的值也交給服務驗證，不能悄悄退回 join。
       orderMode: ('orderMode' in input ? input.orderMode : 'join') as GameOrderMode,
       policy: (input.policy ?? {}) as never,
-      // 數量的型別與範圍由 RoomService 驗證；非數字一律視為不合法的數量。
-      ...(input.bots !== undefined ? { bots: typeof input.bots === 'number' ? input.bots : Number.NaN } : {}),
-      ...(input.botLevel !== undefined ? { botLevel: input.botLevel } : {}),
     });
     return { data: view };
   });
