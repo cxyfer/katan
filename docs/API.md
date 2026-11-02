@@ -277,10 +277,15 @@ A roll carries `turn.dice` as `[yellow, red]`; the event die is in
 `.pillage` (`data.cities` per responder), `.displaced` (`data.player`,
 `level`, `active`, `from`, `options`), `.progressDiscard` (`data.required`),
 `.defenderDraw` (`data.decks`) and `.scienceBonus`; the progress cards add
-`.harborExchange` (`data.from`, `resource`), `.guildDues` (`data.victim`,
-`count`), `.espionage` (`data.victim`), `.sabotage` and `.wedding`
-(`data.actor`, `required`), `.treasonRemove`, `.treasonPlace` (`data.level`,
-`active`) and `.diplomacyRoad` (`data.edge`, `edges`). Ending the turn while
+`.harborExchange` (`data.from`; `resource` only for the two players), `.guildDues`
+(`data.victim`, `count`; `hand`, the victim's resource and commodity counts,
+only for the card's player), `.espionage` (`data.victim`, `count`; `cards`, the
+victim's progress cards, only for the spy), `.sabotage` and `.wedding`
+(`data.actor`, `required`: a map from each affected player id to the number of
+cards they must discard or give), `.treasonRemove` (`data.actor`, `knights`:
+the chosen player's knight vertices), `.treasonPlace` (`data.level`, `active`,
+`from`; `levels`, the knight levels the card's player may place, and `sites`,
+the vertices where one can go) and `.diplomacyRoad` (`data.edge`, `edges`). Ending the turn while
 above the progress-card limit is rejected (`E_PROGRESS_HAND_LIMIT`), and
 `hints.canEndTurn` is `false` meanwhile. Choosing an empty progress deck is
 `E_PROGRESS_DECK_EMPTY` (the base `E_DECK_EMPTY` is the development deck). A
