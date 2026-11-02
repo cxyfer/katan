@@ -48,7 +48,8 @@ Changed:
    catalogs.
 5. **Versioning**: each profile carries its own `ruleVersion`; the snapshot's
    `engineVersion` keeps meaning "the rules this game was created under".
-   Base stays `base-2025.2`, so existing saves are untouched.
+   Base keeps master's version (`base-2025.3` since PR #60), so existing
+   saves are untouched.
 6. **"Required boxes" is display metadata only** (lobby hint), not part of
    validation.
 7. **Scope cuts made explicit** (deferred, not dropped): Catan for Two and any
