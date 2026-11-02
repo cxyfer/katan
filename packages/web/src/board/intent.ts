@@ -9,6 +9,7 @@
 
 import type { TableState } from '../state/table.ts';
 import { isShipCommand, seafarersHints } from './seafarers.ts';
+import { banditTargets, seafarersCitiesKnightsHints } from './seafarersCitiesKnights.ts';
 import { citiesKnightsHints, citiesKnightsTargets, isCitiesKnightsVertexCommand } from './citiesKnights.ts';
 import type { TargetKind } from './targets.ts';
 
@@ -45,8 +46,9 @@ function robberHexes(state: TableState): number[] {
   // a separate control because it is not a hex).
   const sea = seafarersHints(state.game?.view);
   if (sea) {
-    const pirate = sea.pirateTargets.filter((hex): hex is number => hex !== null);
-    return [...sea.robberTargets, ...pirate].sort((a, b) => a - b);
+    const allowed = banditTargets(state.game?.view, sea.robberTargets, sea.pirateTargets);
+    const pirate = allowed.pirate.filter((hex): hex is number => hex !== null);
+    return [...allowed.robber, ...pirate].sort((a, b) => a - b);
   }
   const out: number[] = [];
   for (let hex = 0; hex < board.terrain.length; hex++) {
@@ -185,6 +187,8 @@ export function targetsFor(state: TableState, commandType: string, selfId: strin
       return seafarersHints(state.game?.view)?.setupShips ?? [];
     case 'ship.pick':
       return seafarersHints(state.game?.view)?.movableShips.map((ship) => ship.edge) ?? [];
+    case 'knight.chasePirate':
+      return seafarersCitiesKnightsHints(state.game?.view)?.pirateChase ?? [];
     case 'ship.move': {
       const from = state.selection.params?.from;
       return seafarersHints(state.game?.view)?.movableShips.find((ship) => ship.edge === from)?.targets ?? [];

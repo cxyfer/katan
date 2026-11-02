@@ -159,6 +159,7 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
     case 'ck.knightMoved':
     case 'ck.knightDisplaced':
     case 'ck.knightChasedRobber':
+    case 'sfck.knightChasedPirate':
       return 'knight.act';
     case 'ck.wallBuilt':
       return 'wall.build';

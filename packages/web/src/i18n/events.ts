@@ -199,9 +199,10 @@ export function eventParams(
 export function translateEvent(locale: Locale, event: GameEvent, nameOf: NameResolver): EventText {
   const params = eventParams(locale, event, nameOf);
   // Canonical id shape from `@catan/protocol`: `event.<engine event type>`.
-  // A pirate action reuses a robber event with `pirate: true` and its own text.
+  // A pirate action reuses a robber event with `pirate: true` and its own
+  // text; a ship reuses a road event with `ship: true` the same way.
   const base = `event.${event.type}`;
-  const variant = event.params?.pirate === true ? `${base}.pirate` : null;
+  const variant = event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null;
   const messageId = variant && t(locale, variant) !== variant ? variant : base;
   const text = t(locale, messageId, params);
   return {

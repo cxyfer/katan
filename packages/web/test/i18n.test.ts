@@ -150,7 +150,7 @@ describe('locale detection', () => {
 describe('per-module catalogs', () => {
   it('keep locale parity and never redefine a base key', async () => {
     const { MODULE_CATALOGS, en, zhHant } = await import('../src/i18n/catalogs.ts');
-    expect(Object.keys(MODULE_CATALOGS).sort()).toEqual(['citiesKnights', 'explorersPirates', 'seafarers', 'tradersBarbarians']);
+    expect(Object.keys(MODULE_CATALOGS).sort()).toEqual(['citiesKnights', 'explorersPirates', 'seafarers', 'seafarersCitiesKnights', 'tradersBarbarians']);
     const seen = new Set<string>();
     for (const [id, catalog] of Object.entries(MODULE_CATALOGS)) {
       expect(Object.keys(catalog.en).sort(), id).toEqual(Object.keys(catalog['zh-Hant']).sort());

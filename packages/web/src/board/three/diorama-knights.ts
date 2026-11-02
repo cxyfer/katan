@@ -13,6 +13,8 @@ import type { BoardGeometry } from '../geometry.ts';
 import { geometryToWorld } from './bounds.ts';
 import { ModelBuilder } from './diorama-geometry.ts';
 import { createSettlementModel } from './diorama-structures.ts';
+import { SHIP_SCALE } from './diorama-ships.ts';
+import { SEA_LEVEL } from '../sea.ts';
 import type { InstanceTransform, Vec3 } from './transforms.ts';
 
 const STEEL = '#c9ced3';
@@ -137,7 +139,21 @@ export function vertexTransform(geometry: BoardGeometry, vertexIndex: number, of
   const vertex = geometry.vertices[vertexIndex];
   if (!vertex) return null;
   const point = geometryToWorld(geometry, vertex.x, vertex.y);
-  return { position: [point.x + offset[0], 0.005, point.z + offset[1]], rotationY: ((vertexIndex * 23) % 6) * (Math.PI / 6), scale: [scale, scale, scale] };
+  return { position: [point.x + offset[0], vertexBaseY(geometry, vertexIndex), point.z + offset[1]], rotationY: ((vertexIndex * 23) % 6) * (Math.PI / 6), scale: [scale, scale, scale] };
+}
+
+/** Deck height of a player's ship above the water, at board scale. */
+export const SHIP_DECK_Y = SEA_LEVEL + 0.01 + 0.088 * SHIP_SCALE;
+
+/**
+ * Height a piece stands at on an intersection: the land, or — on an
+ * intersection between sea hexes only (Seafarers + C&K, COMB-3) — the deck of
+ * the ship that carries the knight.
+ */
+export function vertexBaseY(geometry: BoardGeometry, vertexIndex: number): number {
+  const hexes = geometry.topology.vertices[vertexIndex]?.hexes ?? [];
+  const atSea = hexes.length > 0 && hexes.every((hex) => geometry.land[hex] === false);
+  return atSea ? SHIP_DECK_Y : 0.005;
 }
 
 /** Knights read at board scale next to cities (their model is built at 1:1). */
