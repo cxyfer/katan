@@ -13,9 +13,9 @@ import type { DevCardType } from './types.ts';
  * base-2025.2: building and development-card costs return to the bank.
  * base-2025.3: roads stop at opponent buildings, Road Building and Year of
  * Plenty cannot stall, and an older card stays playable after buying another.
- * Running unfinished base-2025.1 and base-2025.2 games on this engine is a
- * proposed defect-fix exception requiring explicit maintainer approval before
- * merge or deployment (SPEC §7.3, FIDELITY gap 11).
+ * The maintainer explicitly approved running unfinished base-2025.1 and
+ * base-2025.2 games on this engine on 2026-11-02 as the PR #60 defect-fix
+ * exception (SPEC §7.3, FIDELITY gap 11).
  */
 export const ENGINE_VERSION = 'base-2025.3';
 

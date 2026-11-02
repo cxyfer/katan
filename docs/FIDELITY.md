@@ -183,11 +183,11 @@ These are recorded rather than hidden. None of them is presented as verified.
     reclaimed once its TTL elapses. No test waits out the real interval.
 11. **Rules-version dispatch is single-version.** The engine version is stored
     per game and unknown versions are refused at the schema level, but only one
-    engine implementation ships, so no old-version fixture exists yet. The
-    server does not yet compare `games.engine_version` before executing a
-    command. PR #60 proposes running unfinished `base-2025.1` and
-    `base-2025.2` games on `base-2025.3`; this exception still needs explicit
-    maintainer approval before merge or deployment (SPEC §7.3).
+    engine implementation ships; historical-version dispatch is not implemented.
+    The server does not yet compare `games.engine_version` before executing a
+    command. The maintainer explicitly approved running unfinished
+    `base-2025.1` and `base-2025.2` games on `base-2025.3` on 2026-11-02
+    as the PR #60 defect-fix exception (SPEC §7.3).
     Already-pending Road Building and Year of Plenty effects are capped to the
     remaining pieces or bank cards in projections, hints and execution;
     exhausted effects no longer block the next legal command.
