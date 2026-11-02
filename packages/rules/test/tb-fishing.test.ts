@@ -298,6 +298,122 @@ describe('R-TB-FI old boot and fish actions (p. 10)', () => {
   });
 });
 
+describe('R-TB-FI clause fixtures (pp. 9–10)', () => {
+  it('FI14: TB25 p.10 — fish actions and giving the boot are turn-time actions: rejected in the pre-roll window', () => {
+    // Start: p1's pre-roll window, holding 7 fish and the boot. Command: tb.spendFish / tb.giveBoot.
+    const state = bare();
+    fish(state).hands.p1 = [3, 3, 1];
+    fish(state).boot = 'p1';
+    fish(state).supply.boot = 0;
+    reject(state, 'p1', { type: 'tb.spendFish', action: 'takeResource', tokens: [3, 1], resource: 'ore' }, 'E_WRONG_PHASE');
+    reject(state, 'p1', { type: 'tb.giveBoot', to: 'p2' }, 'E_WRONG_PHASE');
+    // After the roll the same command is accepted.
+    const rolled = run(state, 'p1', { type: 'turn.roll' }, scriptedRng(dice(8))).state;
+    expect(rolled.turn.phase).toBe('action');
+    expect(run(rolled, 'p1', { type: 'tb.spendFish', action: 'takeResource', tokens: [3, 1], resource: 'ore' }).state.players[0]!.resources.ore).toBe(1);
+  });
+
+  it('FI15: TB25 p.10 — a removed robber re-enters the board by a Knight or by a 7', () => {
+    // Start: the robber stands on hex 4; p1 pays 2 fish to remove it, then plays a Knight; a second game rolls a 7.
+    const state = bare();
+    forceTurn(state, 0, 'action');
+    fish(state).hands.p1 = [2];
+    state.board.robber = 4;
+    state.players[0]!.devCards = ['knight'];
+    const removed = run(state, 'p1', { type: 'tb.spendFish', action: 'removeRobber', tokens: [2] }).state;
+    expect(removed.board.robber).toBe(-1);
+    const hex = state.board.layout.terrain.findIndex((terrain, index) => terrain !== 'lake' && index !== 4);
+    expect(run(removed, 'p1', { type: 'dev.playKnight', hex }).state.board.robber).toBe(hex);
+    // A 7 also brings it back.
+    const seven = bare();
+    seven.board.robber = -1;
+    const pending = run(seven, 'p1', { type: 'turn.roll' }, scriptedRng(dice(7))).state;
+    expect(pending.pending).toMatchObject({ kind: 'moveRobber' });
+    expect(run(pending, 'p1', { type: 'pending.moveRobber', hex }).state.board.robber).toBe(hex);
+  });
+
+  it('FI16: TB25 p.10 — giving the boot lowers the holder\'s own target, so the giver wins at once with 10 VP', () => {
+    // Start: p1 (boot, target 11) has 10 public VP; p2 also has 10. Window: p1's action phase; command: tb.giveBoot.
+    const state = bare();
+    forceTurn(state, 0, 'action');
+    fish(state).boot = 'p1';
+    fish(state).supply.boot = 0;
+    state.players[0]!.bonusPoints = 10;
+    state.players[1]!.bonusPoints = 10;
+    const given = run(state, 'p1', { type: 'tb.giveBoot', to: 'p2' });
+    expect(fish(given.state).boot).toBe('p2');
+    expect(given.state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+  });
+
+  it('FI17: TB25 p.10 — the replacement drawn by a swap may be the old boot (target +1, token not added)', () => {
+    // Start: p1 holds 7 fish and is paid on a ground; only the boot remains face down.
+    const state = bare();
+    const ground = fish(state).grounds[0]!;
+    placeBuilding(state, 'p1', ground.vertices[1]!);
+    fish(state).hands.p1 = [1, 1, 1, 2, 2, 3, 3];
+    fish(state).supply = { fish: [0, 0, 0], boot: 1 };
+    const rolled = run(state, 'p1', { type: 'turn.roll' }, scriptedRng(dice(ground.number))).state;
+    expect(rolled.pending).toMatchObject({ kind: 'tradersBarbarians.fishSwap' });
+    const swapped = run(rolled, 'p1', { type: 'tb.fishSwap', token: 3 }, scriptedRng([0]));
+    expect(swapped.events.map((event) => event.type)).toContain('tb.bootDrawn');
+    expect(fish(swapped.state).boot).toBe('p1');
+    expect(fish(swapped.state).hands.p1).toHaveLength(6);
+    expect(projectGame(swapped.state, 'p2').players[0]!.victoryTarget).toBe(11);
+  });
+
+  it('FI18: TB25 p.10 — drawing stops quietly when the supply and the discard pile are both empty', () => {
+    // Start: a city on a ground (2 tokens) with nothing left to draw; the boot is already held.
+    const state = bare();
+    const ground = fish(state).grounds[0]!;
+    placeBuilding(state, 'p1', ground.vertices[1]!, true);
+    fish(state).supply = { fish: [0, 0, 0], boot: 0 };
+    fish(state).boot = 'p4';
+    fish(state).discard = [0, 0, 0];
+    const rolled = run(state, 'p1', { type: 'turn.roll' }, scriptedRng(dice(ground.number)));
+    expect(fish(rolled.state).hands.p1).toEqual([]);
+    expect(rolled.events.map((event) => event.type)).not.toContain('tb.fishDrawn');
+    expect(rolled.state.pending).toBeNull();
+  });
+
+  it('FI19: TB25 p.10 — 7 fish cannot buy a development card from an empty deck; the tokens are kept', () => {
+    const state = bare();
+    forceTurn(state, 0, 'action');
+    fish(state).hands.p1 = [3, 3, 1];
+    state.devDeck = [];
+    reject(state, 'p1', { type: 'tb.spendFish', action: 'devCard', tokens: [3, 3, 1] }, 'E_DECK_EMPTY');
+    expect(fish(state).hands.p1).toEqual([3, 3, 1]);
+  });
+
+  it('FI20: TB25 p.10 — stealing needs a victim with cards: an empty hand and oneself are refused', () => {
+    const state = bare();
+    forceTurn(state, 0, 'action');
+    fish(state).hands.p1 = [3];
+    reject(state, 'p1', { type: 'tb.spendFish', action: 'steal', tokens: [3], victim: 'p4' }, 'E_NO_ELIGIBLE_VICTIM');
+    setHand(state, 'p1', { ore: 1 });
+    reject(state, 'p1', { type: 'tb.spendFish', action: 'steal', tokens: [3], victim: 'p1' }, 'E_ILLEGAL_TARGET');
+    expect(fish(state).hands.p1).toEqual([3]);
+  });
+
+  it('FI21: TB25 p.10 — a city that fills the hand to 7 mid-payout pauses for the swap, then drawing stops; later players still draw', () => {
+    // Start: p1 holds 6 fish and a city on a ground (2 tokens due), p2 a settlement. Command: roll, then tb.fishSwap.
+    const state = bare();
+    const ground = fish(state).grounds[0]!;
+    placeBuilding(state, 'p1', ground.vertices[1]!, true);
+    placeBuilding(state, 'p2', ground.vertices[2]!);
+    fish(state).hands.p1 = [1, 1, 1, 1, 1, 1];
+    fish(state).supply.fish[0] -= 6;
+    const rolled = run(state, 'p1', { type: 'turn.roll' }, scriptedRng([...dice(ground.number), 0]));
+    expect(fish(rolled.state).hands.p1).toHaveLength(7);
+    expect(rolled.state.pending).toMatchObject({ kind: 'tradersBarbarians.fishSwap', responders: ['p1'] });
+    expect(fish(rolled.state).hands.p2).toHaveLength(0);
+    const done = run(rolled.state, 'p1', { type: 'tb.fishSwap', token: null }, scriptedRng([0]));
+    // The second token is not drawn; p2 is paid.
+    expect(fish(done.state).hands.p1).toHaveLength(7);
+    expect(fish(done.state).hands.p2).toHaveLength(1);
+    expect(done.state.pending).toBeNull();
+  });
+});
+
 describe('R-TB-FI simulated games', () => {
   for (const players of [3, 4]) {
     it(`a ${players}-player game finishes and conserves resources and fish`, () => {
