@@ -34,9 +34,11 @@ import {
   readStoredLocale,
   readStoredMutes,
   readStoredNickname,
+  readStoredTradeAutoDecline,
   writeStoredLocale,
   writeStoredMutes,
   writeStoredNickname,
+  writeStoredTradeAutoDecline,
   type StorageLike,
 } from './session.ts';
 import { DICE_PRESENTATION_DURATION_MS } from '../board/animation.ts';
@@ -96,6 +98,7 @@ export interface TableActions {
   retryChat(clientMessageId: string): Promise<void>;
   setChatDraft(text: string): void;
   toggleMute(playerId: string): void;
+  setTradeAutoDecline(enabled: boolean): void;
   selectTarget(selection: Selection): void;
   cancelSelection(): void;
   confirmSelection(): Promise<void>;
@@ -332,6 +335,7 @@ export function useTable(options: UseTableOptions): TableController {
     });
     const mutes = readStoredMutes(storage);
     for (const playerId of mutes) dispatch({ type: 'chat', event: { kind: 'mute', playerId } });
+    dispatch({ type: 'trade-auto-decline', value: readStoredTradeAutoDecline(storage) });
   }, [api, dispatch, languages, storage]);
 
   useEffect(() => {
@@ -770,6 +774,14 @@ export function useTable(options: UseTableOptions): TableController {
     [dispatch, storage],
   );
 
+  const setTradeAutoDecline = useCallback(
+    (enabled: boolean): void => {
+      dispatch({ type: 'trade-auto-decline', value: enabled });
+      writeStoredTradeAutoDecline(storage, enabled);
+    },
+    [dispatch, storage],
+  );
+
   // ---------------------------------------------------------------------
   // selection
   // ---------------------------------------------------------------------
@@ -836,6 +848,7 @@ export function useTable(options: UseTableOptions): TableController {
       retryChat,
       setChatDraft,
       toggleMute,
+      setTradeAutoDecline,
       selectTarget,
       cancelSelection,
       confirmSelection,
@@ -872,6 +885,7 @@ export function useTable(options: UseTableOptions): TableController {
       retryChat,
       setChatDraft,
       toggleMute,
+      setTradeAutoDecline,
       selectTarget,
       cancelSelection,
       confirmSelection,

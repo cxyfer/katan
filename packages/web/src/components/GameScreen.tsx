@@ -16,6 +16,7 @@ import { SelectionPreview } from './SelectionPreview.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
 import { useFullscreen } from './useFullscreen.ts';
 import { useIsMobile } from './useIsMobile.ts';
+import { useAutoDeclineTrades } from './useAutoDeclineTrades.ts';
 
 /** 同一張遊戲桌涵蓋橫屏與直屏，切換尺寸不卸載手牌或工具草稿。 */
 export function GameScreen({ controller }: { controller: TableController }) {
@@ -29,6 +30,8 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const [activeRail, setActiveRail] = useState<'players' | 'actions' | null>(null);
   const openPlayers = useCallback(() => setActiveRail('players'), []);
   const openActions = useCallback(() => setActiveRail('actions'), []);
+  // 交易面板收起時（手機抽屜）仍要套用「自動拒絕」偏好。
+  useAutoDeclineTrades(controller);
 
   useEffect(() => {
     const next = requiredActionAnnouncement(action, t);

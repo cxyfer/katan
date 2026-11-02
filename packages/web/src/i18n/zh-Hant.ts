@@ -426,6 +426,7 @@ export const zhHant: Catalog = {
   'play.tradeOfferFrom': '來自 {player} 的提案',
   'play.tradeOfferTo': '給 {player}',
   'play.tradeNoOffers': '沒有進行中的提案。',
+  'play.tradeAutoDecline': '自動拒絕自己資源不足的提案',
   'play.tradeStatus.open': '進行中',
   'play.tradeStatus.agreed': '已同意',
   'play.tradeStatus.completed': '已完成',

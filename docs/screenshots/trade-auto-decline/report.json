@@ -1,0 +1,29 @@
+{
+  "base": "http://127.0.0.1:3112",
+  "gameId": "game_06ce95a7009144fb9916",
+  "results": [
+    {
+      "case": "auto-declines-unaffordable",
+      "offerId": "offer-20-1",
+      "seconds": 2.13
+    },
+    {
+      "case": "leaves-affordable-open",
+      "offerId": "offer-22-2"
+    },
+    {
+      "case": "checkbox-and-responses",
+      "checked": true
+    },
+    {
+      "case": "checkbox-persistence",
+      "stored": true
+    },
+    {
+      "case": "phone-layout",
+      "x": 31,
+      "width": 18
+    }
+  ],
+  "errors": []
+}

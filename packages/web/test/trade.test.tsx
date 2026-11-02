@@ -5,7 +5,9 @@ import type { Offer } from '@catan/rules';
 import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
 import { offerTermsForViewer, tradeShortfall } from '../src/components/TradePanel.tsx';
-import { memoryStorage } from '../src/state/session.ts';
+import { autoDeclineTargets } from '../src/components/useAutoDeclineTrades.ts';
+import { memoryStorage, type StorageLike } from '../src/state/session.ts';
+import { initialTableState, type TableState } from '../src/state/table.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
@@ -32,25 +34,25 @@ beforeEach(() => {
   });
 });
 
-function renderApp(api: FakeApi) {
+function renderApp(api: FakeApi, storage: StorageLike = memoryStorage()) {
   return render(
-    <App services={{ api, storage: memoryStorage(), languages: ['en'], connectSocket: false }} />,
+    <App services={{ api, storage, languages: ['en'], connectSocket: false }} />,
   );
 }
 
-async function openGame(api: FakeApi, tool?: 'trade' | 'exchange'): Promise<void> {
-  renderApp(api);
+async function openGame(api: FakeApi, tool?: 'trade' | 'exchange', storage?: StorageLike): Promise<void> {
+  renderApp(api, storage);
   fireEvent.click(await screen.findByTestId('resume-g1'));
   await screen.findByTestId('board-svg');
   if (tool) fireEvent.click(screen.getByTestId(`tool-tab-${tool}`));
 }
 
-async function openGameWithSocket(api: FakeApi, sockets: TestSocket[]): Promise<void> {
+async function openGameWithSocket(api: FakeApi, sockets: TestSocket[], storage?: StorageLike): Promise<void> {
   render(
     <App
       services={{
         api,
-        storage: memoryStorage(),
+        storage: storage ?? memoryStorage(),
         languages: ['en'],
         socketFactory: () => {
           const socket = new TestSocket();
@@ -322,6 +324,104 @@ describe('structured trading', () => {
     });
     await openGame(api, 'trade');
     expect(screen.queryByTestId('settle-offer-1')).toBeNull();
+  });
+});
+
+describe('automatic declines', () => {
+  const AUTO_DECLINE_KEY = 'catan.trade.autoDecline';
+  // p1 的手牌是每種 2 張，`want: { ore: 3 }` 必然付不出來。
+  const unaffordable: Offer = { ...openOffer, want: { ore: 3 } };
+
+  function stateWith(offers: Offer[], overrides: Partial<TableState> = {}): TableState {
+    return {
+      ...initialTableState('en'),
+      session: makeIdentity({ id: 'p1' }),
+      game: makeSnapshot(makeView({ hints: makeHints(), offers })),
+      tradeAutoDecline: true,
+      ...overrides,
+    };
+  }
+
+  it('declines an open offer the viewer cannot cover when the option is on', async () => {
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [unaffordable] })) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api, 'trade', memoryStorage({ [AUTO_DECLINE_KEY]: 'true' }));
+
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(lastCommand(api)).toEqual({ type: 'trade.respond', offerId: 'offer-1', response: 'declined' });
+    expect((screen.getByTestId('trade-auto-decline') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('leaves offers untouched while the option is off', async () => {
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [unaffordable] })) });
+    await openGame(api, 'trade');
+
+    expect((screen.getByTestId('trade-auto-decline') as HTMLInputElement).checked).toBe(false);
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
+  it('remembers the choice in browser storage', async () => {
+    const storage = memoryStorage();
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints() })) });
+    await openGame(api, 'trade', storage);
+
+    fireEvent.click(screen.getByTestId('trade-auto-decline'));
+
+    expect(storage.getItem(AUTO_DECLINE_KEY)).toBe('true');
+    expect((screen.getByTestId('trade-auto-decline') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('targets only unaffordable offers that are addressed to an unanswered viewer', () => {
+    const ids = (offers: Offer[], overrides: Partial<TableState> = {}) =>
+      autoDeclineTargets(stateWith(offers, overrides)).map((offer) => offer.id);
+
+    expect(ids([unaffordable])).toEqual(['offer-1']);
+    // 付得出來的提案留給玩家自己決定。
+    expect(ids([openOffer])).toEqual([]);
+    // 自己提出的提案只能撤回，不能拒絕。
+    expect(ids([{ ...unaffordable, from: 'p1' }])).toEqual([]);
+    // 直送別人的提案與我無關。
+    expect(ids([{ ...unaffordable, to: 'p2' }])).toEqual([]);
+    // 已經表達過意願的提案，以玩家的明確回應為準。
+    expect(ids([{ ...unaffordable, responses: { p1: 'interested' } }])).toEqual([]);
+    // 偏好關閉、看不見手牌，或現在不能送指令時都不動作。
+    expect(ids([unaffordable], { tradeAutoDecline: false })).toEqual([]);
+    expect(ids([unaffordable], { session: makeIdentity({ id: 'p9' }) })).toEqual([]);
+    expect(ids([unaffordable], { dicePresenting: true })).toEqual([]);
+    expect(ids([unaffordable], { activeElsewhere: true })).toEqual([]);
+    expect(ids([unaffordable], { connection: 'reconnecting' })).toEqual([]);
+    expect(ids([unaffordable], {
+      command: {
+        commandId: 'c1',
+        labelId: 'play.tradeDecline',
+        command: { type: 'trade.respond' },
+        status: 'submitting',
+        error: null,
+        baseRevision: 12,
+        revision: null,
+      },
+    })).toEqual([]);
+    // 上一輪視窗留下的提案不再代為回應。
+    expect(ids([{ ...unaffordable, windowId: 0 }])).toEqual([]);
+  });
+
+  it('declines again after the proposer revises the terms', async () => {
+    const sockets: TestSocket[] = [];
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [unaffordable] })) });
+    api.setCommandResult(ACCEPTED);
+    await openGameWithSocket(api, sockets, memoryStorage({ [AUTO_DECLINE_KEY]: 'true' }));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+
+    // 改版會清空回應，新的條款仍然付不出來 → 再拒絕一次。
+    const revised = makeSnapshot(
+      makeView({ hints: makeHints(), offers: [{ ...unaffordable, revision: 2, want: { grain: 3 } }] }),
+      13,
+    );
+    revised.view.seq = 13;
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: revised }));
+
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(2));
+    expect(lastCommand(api)).toEqual({ type: 'trade.respond', offerId: 'offer-1', response: 'declined' });
   });
 });
 
