@@ -10,6 +10,7 @@ import { SessionService } from './session.ts';
 import { RoomService } from './rooms.ts';
 import { GameCoordinator } from './game.ts';
 import { ChatService } from './chat.ts';
+import { BotDriver, defaultPolicyFor } from './bot-driver.ts';
 import { createHttpHandler } from './http.ts';
 import { createWebSocketServer } from './ws.ts';
 
@@ -39,6 +40,7 @@ export interface RunningService {
   rooms: RoomService;
   games: GameCoordinator;
   chat: ChatService;
+  bots: BotDriver;
   /** Stops accepting work, drains and closes the database. Idempotent. */
   close(): Promise<void>;
   /** Graceful shutdown for a received signal, with a hard-stop deadline. */
@@ -66,6 +68,8 @@ export async function startService(
 
   const sessions = new SessionService(repo, config.sessionCookieName, config.cookieSecure);
   const gamesRef: { current: GameCoordinator | null } = { current: null };
+  // Bot 排程器依賴房間與遊戲服務，兩者的回呼在組裝完成後才接上。
+  const botsRef: { current: BotDriver | null } = { current: null };
   const rooms = new RoomService({
     repo,
     config,
@@ -73,9 +77,35 @@ export async function startService(
       if (!gamesRef.current) throw new Error('game coordinator not ready');
       return gamesRef.current.startGame(room, playerIds);
     },
+    onGameStarted(_roomId, gameId) {
+      botsRef.current?.gameStarted(gameId);
+    },
+    onConnectionRegistered(roomId) {
+      botsRef.current?.kickRoom(roomId);
+    },
   });
-  const games = new GameCoordinator({ repo, rooms, config });
+  const games = new GameCoordinator({
+    repo,
+    rooms,
+    config,
+    onCommitted(notice) {
+      botsRef.current?.onCommitted(notice);
+    },
+    onLifecycle(gameId, change) {
+      botsRef.current?.onLifecycle(gameId, change);
+    },
+  });
   gamesRef.current = games;
+  const bots = new BotDriver({
+    repo,
+    rooms,
+    games,
+    config,
+    log,
+    policyFor: defaultPolicyFor(),
+    now: () => Date.now(),
+  });
+  botsRef.current = bots;
   const chat = new ChatService(repo, rooms, config);
 
   const handler = createHttpHandler({ repo, config, sessions, rooms, games, chat, version: VERSION });
@@ -125,6 +155,8 @@ export async function startService(
     closing ??= (async () => {
       clearInterval(sweepTimer);
       log('info', 'shutting down');
+      // 先停 Bot，確保關閉資料庫前不再有新的指令寫入。
+      await bots.close();
       await ws.close();
       await new Promise<void>((resolvePromise) => server.close(() => resolvePromise()));
       await db.close();
@@ -138,6 +170,7 @@ export async function startService(
     rooms,
     games,
     chat,
+    bots,
     close,
     async shutdown(reason: string): Promise<void> {
       log('info', 'received signal', { signal: reason });

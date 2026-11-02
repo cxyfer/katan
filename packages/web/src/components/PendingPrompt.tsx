@@ -1,7 +1,7 @@
 import { RESOURCES } from '@catan/rules';
 import { useT } from '../i18n/context.tsx';
 import { requiredActionFor } from '../state/pending.ts';
-import { followUpsHeld, shownHand } from '../state/table.ts';
+import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { DiscardPicker } from './DiscardPicker.tsx';
 
@@ -24,8 +24,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
   if (!view) return null;
   const pending = rolling ? null : view.pending;
 
-  const nameOf = (playerId: string) =>
-    view.players.find((player) => player.id === playerId)?.nickname ?? playerId;
+  const nameOf = resolveName(state);
 
   const discard = pending && pending.kind === 'discard' ? pending : null;
   // The engine keeps the original `required` set after a player submits; only

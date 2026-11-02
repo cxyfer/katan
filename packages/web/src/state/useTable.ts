@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, type Dispatch } fr
 import type {
   ApiError,
   ApiResult,
+  BotLevel,
   ChatMessageView,
   CommandReceipt,
   GameEvent,
@@ -74,6 +75,8 @@ export interface TableActions {
   takeSeat(color: string): Promise<void>;
   setReady(ready: boolean): Promise<void>;
   updateSettings(body: RoomSettingsBody): Promise<void>;
+  addBot(level: BotLevel): Promise<void>;
+  removeBot(playerId: string): Promise<void>;
   proposePolicy(policy: RoomPolicy): Promise<void>;
   respondPolicy(proposalId: string, approve: boolean): Promise<void>;
   startGame(): Promise<void>;
@@ -153,7 +156,9 @@ export function useTable(options: UseTableOptions): TableController {
   /** Late-bound so `joinRoom` can fetch history without a declaration cycle. */
   const loadChatRef = useRef<TableActions['loadChat'] | null>(null);
 
-  const currentRoomId = state.room?.id ?? null;
+  // 從首頁「繼續對局」進入時只有投影、還沒有房間資料；以投影的 roomId 訂閱，
+  // 伺服器才會登記這個連線並推送房間與投影（電腦對手也以此判斷有人在場）。
+  const currentRoomId = state.room?.id ?? state.game?.roomId ?? null;
   const currentGameId = state.game?.gameId ?? state.room?.gameId ?? null;
 
   // Refs mirror authoritative ids for use inside async callbacks. They are
@@ -306,6 +311,8 @@ export function useTable(options: UseTableOptions): TableController {
             chatRatePerMinute: 30,
             roomCapacityMax: 6,
           },
+          // 讀不到伺服器設定時不提供加入電腦，避免送出必然被拒的請求。
+          bots: { enabled: false, levels: [] },
         };
     const stored = readStoredLocale(storage);
     const session = knownSession;
@@ -418,6 +425,24 @@ export function useTable(options: UseTableOptions): TableController {
       }
     },
     [api, applyRoom, dispatch],
+  );
+
+  const addBot = useCallback(
+    async (level: BotLevel): Promise<void> => {
+      const roomId = roomIdRef.current;
+      if (!roomId) return;
+      applyRoom(await api.addBot(roomId, level), 'bots');
+    },
+    [api, applyRoom],
+  );
+
+  const removeBot = useCallback(
+    async (playerId: string): Promise<void> => {
+      const roomId = roomIdRef.current;
+      if (!roomId) return;
+      applyRoom(await api.removeBot(roomId, playerId), 'bots');
+    },
+    [api, applyRoom],
   );
 
   const proposePolicy = useCallback(
@@ -790,6 +815,8 @@ export function useTable(options: UseTableOptions): TableController {
       takeSeat,
       setReady,
       updateSettings,
+      addBot,
+      removeBot,
       proposePolicy,
       respondPolicy,
       startGame,
@@ -824,6 +851,8 @@ export function useTable(options: UseTableOptions): TableController {
       takeSeat,
       setReady,
       updateSettings,
+      addBot,
+      removeBot,
       proposePolicy,
       respondPolicy,
       startGame,

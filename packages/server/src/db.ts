@@ -6,6 +6,7 @@
  * rewritten to `$n` for PostgreSQL, so no statement is dialect-specific.
  */
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import type { GameEvent, GameState } from '@catan/rules';
 
@@ -50,35 +51,43 @@ export async function createSqliteDialect(filename: string): Promise<SqlDialect>
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('PRAGMA busy_timeout = 5000');
 
-  let depth = 0;
+  // 同一條交易呼叫鏈直接使用連線；其他呼叫者的讀寫與交易都排隊，
+  // 避免讀到未提交資料，或讓無關寫入被這筆交易的回滾一起撤銷。
+  const scope = new AsyncLocalStorage<true>();
+  let tail: Promise<unknown> = Promise.resolve();
+  async function schedule<T>(operation: () => T | Promise<T>): Promise<T> {
+    if (scope.getStore()) return operation();
+    const next = tail.then(operation, operation);
+    tail = next.catch(() => undefined);
+    return next;
+  }
   const dialect: SqlDialect = {
     kind: 'sqlite',
     async all<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-      return db.prepare(sql).all(...params) as T[];
+      return schedule(() => db.prepare(sql).all(...params) as T[]);
     },
     async run(sql: string, params: unknown[] = []): Promise<void> {
-      db.prepare(sql).run(...params);
+      await schedule(() => { db.prepare(sql).run(...params); });
     },
     async transaction<T>(fn: () => Promise<T>): Promise<T> {
-      if (depth > 0) return fn();
-      depth += 1;
-      db.exec('BEGIN IMMEDIATE');
-      try {
-        const result = await fn();
-        db.exec('COMMIT');
-        return result;
-      } catch (error) {
-        db.exec('ROLLBACK');
-        throw error;
-      } finally {
-        depth -= 1;
-      }
+      return schedule(async () => {
+        if (scope.getStore()) return fn();
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          const result = await scope.run(true, fn);
+          db.exec('COMMIT');
+          return result;
+        } catch (error) {
+          db.exec('ROLLBACK');
+          throw error;
+        }
+      });
     },
     async close(): Promise<void> {
-      db.close();
+      await schedule(() => db.close());
     },
     async ping(): Promise<boolean> {
-      db.prepare('SELECT 1 AS ok').all();
+      await dialect.all('SELECT 1 AS ok');
       return true;
     },
   };
@@ -120,33 +129,33 @@ export async function createPostgresDialect(
   } else {
     pool = new pg.Pool({ connectionString });
   }
-  let client: PgClient | null = null;
+  // 交易連線綁在呼叫鏈上：同一條鏈的查詢與巢狀交易走這條連線，其他房間同時
+  // 進行的查詢與交易各自使用連線池，不會混進別人的交易。
+  const scope = new AsyncLocalStorage<PgClient>();
 
   const dialect: SqlDialect = {
     kind: 'postgres',
     async all<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-      const runner = client ?? pool;
+      const runner = scope.getStore() ?? pool;
       const result = await runner.query(toPostgresPlaceholders(sql), params);
       return result.rows as T[];
     },
     async run(sql: string, params: unknown[] = []): Promise<void> {
-      const runner = client ?? pool;
+      const runner = scope.getStore() ?? pool;
       await runner.query(toPostgresPlaceholders(sql), params);
     },
     async transaction<T>(fn: () => Promise<T>): Promise<T> {
-      if (client) return fn();
+      if (scope.getStore()) return fn();
       const acquired = await pool.connect();
-      client = acquired;
       try {
         await acquired.query('BEGIN');
-        const result = await fn();
+        const result = await scope.run(acquired, fn);
         await acquired.query('COMMIT');
         return result;
       } catch (error) {
         await acquired.query('ROLLBACK');
         throw error;
       } finally {
-        client = null;
         acquired.release();
       }
     },
@@ -341,6 +350,15 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
       `CREATE INDEX IF NOT EXISTS idx_chat_room_seq ON chat_messages (room_id, seq)`,
     ],
   },
+  {
+    // 電腦對手是 guests 的一列；既有資料列都是真人。
+    id: '0002_bots',
+    statements: [
+      `ALTER TABLE guests ADD COLUMN kind TEXT NOT NULL DEFAULT 'human'`,
+      `ALTER TABLE guests ADD COLUMN bot_level TEXT`,
+      `CREATE INDEX IF NOT EXISTS idx_guests_kind ON guests (kind)`,
+    ],
+  },
 ];
 
 export async function migrate(db: SqlDialect): Promise<string[]> {
@@ -373,6 +391,10 @@ export interface GuestRow {
   locale: string;
   created_at: string;
   updated_at: string;
+  /** `'human'` 或 `'bot'`；是判斷 Bot 席位的唯一來源。 */
+  kind: string;
+  /** 只有 Bot 有值。 */
+  bot_level: string | null;
 }
 
 export interface RoomRow {
@@ -403,6 +425,13 @@ export interface MembershipRow {
   last_seen_at: string | null;
   disconnected_at: string | null;
   connection_id: string | null;
+}
+
+/** membership 加上席位擁有者的 guest 欄位（暱稱、種類、難度）。 */
+export interface MemberRow extends MembershipRow {
+  nickname: string | null;
+  kind: string | null;
+  bot_level: string | null;
 }
 
 export interface GameRow {
@@ -480,7 +509,11 @@ export class Repository {
 
   // -- guests --------------------------------------------------------------
   async findGuestByTokenHash(tokenHash: string): Promise<GuestRow | null> {
-    const rows = await this.db.all<GuestRow>('SELECT * FROM guests WHERE token_hash = ?', [tokenHash]);
+    // Bot 的 token_hash 是哨兵值，本來就比對不到；再以 kind 擋一次作為縱深防禦。
+    const rows = await this.db.all<GuestRow>(
+      `SELECT * FROM guests WHERE token_hash = ? AND kind = 'human'`,
+      [tokenHash],
+    );
     return rows[0] ?? null;
   }
 
@@ -491,9 +524,38 @@ export class Repository {
 
   async insertGuest(row: GuestRow): Promise<void> {
     await this.db.run(
-      'INSERT INTO guests (id, token_hash, nickname, locale, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [row.id, row.token_hash, row.nickname, row.locale, row.created_at, row.updated_at],
+      `INSERT INTO guests (id, token_hash, nickname, locale, created_at, updated_at, kind, bot_level)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        row.id,
+        row.token_hash,
+        row.nickname,
+        row.locale,
+        row.created_at,
+        row.updated_at,
+        row.kind,
+        row.bot_level,
+      ],
     );
+  }
+
+  /** 只刪除 Bot guest；真人身分永遠不經由這裡刪除。 */
+  async deleteBotGuest(id: string): Promise<void> {
+    await this.db.run(`DELETE FROM guests WHERE id = ? AND kind = 'bot'`, [id]);
+  }
+
+  /**
+   * 刪除早於 `createdBefore`、且已沒有任何席位的 Bot guest。年齡門檻避免與
+   * 「先建 guest、再建 membership」的新增流程競爭。
+   */
+  async deleteOrphanBotGuests(createdBefore: string): Promise<string[]> {
+    const rows = await this.db.all<{ id: string }>(
+      `SELECT id FROM guests WHERE kind = 'bot' AND created_at < ?
+       AND NOT EXISTS (SELECT 1 FROM memberships WHERE memberships.player_id = guests.id)`,
+      [createdBefore],
+    );
+    for (const row of rows) await this.deleteBotGuest(row.id);
+    return rows.map((row) => row.id);
   }
 
   async updateGuest(id: string, fields: { nickname?: string; locale?: string }): Promise<void> {
@@ -584,6 +646,12 @@ export class Repository {
 
   async deleteRoom(id: string): Promise<void> {
     await this.db.transaction(async () => {
+      // 每個 Bot guest 只屬於一間房，房間刪除時一併移除。
+      await this.db.run(
+        `DELETE FROM guests WHERE kind = 'bot'
+         AND id IN (SELECT player_id FROM memberships WHERE room_id = ?)`,
+        [id],
+      );
       await this.db.run('DELETE FROM memberships WHERE room_id = ?', [id]);
       await this.db.run('DELETE FROM rooms WHERE id = ?', [id]);
     });
@@ -614,6 +682,16 @@ export class Repository {
   async listMemberships(roomId: string): Promise<MembershipRow[]> {
     return this.db.all<MembershipRow>(
       'SELECT * FROM memberships WHERE room_id = ? ORDER BY seat ASC',
+      [roomId],
+    );
+  }
+
+  /** 依座位排序的成員，附帶 guest 的暱稱、種類與 Bot 難度。 */
+  async listMembers(roomId: string): Promise<MemberRow[]> {
+    return this.db.all<MemberRow>(
+      `SELECT memberships.*, guests.nickname AS nickname, guests.kind AS kind, guests.bot_level AS bot_level
+       FROM memberships LEFT JOIN guests ON guests.id = memberships.player_id
+       WHERE memberships.room_id = ? ORDER BY memberships.seat ASC`,
       [roomId],
     );
   }

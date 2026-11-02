@@ -26,6 +26,7 @@ export const SERVER_ERROR_IDS: readonly string[] = [
   'error.E_ABANDON_DISABLED',
   'error.E_BAD_REQUEST',
   'error.E_BODY_TOO_LARGE',
+  'error.E_BOTS_DISABLED',
   'error.E_CAPACITY_BELOW_SEATED',
   'error.E_CHAT_INVALID',
   'error.E_CHAT_RATE_LIMITED',
@@ -35,12 +36,14 @@ export const SERVER_ERROR_IDS: readonly string[] = [
   'error.E_GAME_NOT_FOUND',
   'error.E_GAME_SUSPENDED',
   'error.E_INTERNAL',
+  'error.E_INVALID_BOT',
   'error.E_INVALID_COLOR',
   'error.E_INVALID_JSON',
   'error.E_INVALID_NICKNAME',
   'error.E_INVALID_POLICY',
   'error.E_INVALID_VISIBILITY',
   'error.E_MISSING_FIELD',
+  'error.E_NOT_A_BOT',
   'error.E_NOT_A_MEMBER',
   'error.E_NOT_FOUND',
   'error.E_NOT_HOST',
@@ -125,15 +128,28 @@ export const POLICY_BOUNDS: PolicyBounds = {
   disconnectGraceSeconds: { min: 30, max: 3600 },
 };
 
+/**
+ * Computer-opponent difficulty (SPEC §4.9). Difficulty changes strategy
+ * quality only, never what the bot may see.
+ */
+export type BotLevel = 'easy' | 'standard';
+export const BOT_LEVELS: readonly BotLevel[] = ['easy', 'standard'];
+
 export interface RoomMemberView {
   playerId: string;
   nickname: string;
   seat: number;
   color: string;
+  /** Always true for a bot seat. */
   ready: boolean;
+  /** Always true for a bot seat. */
   connected: boolean;
   host: boolean;
   joinedAt: string;
+  /** True when the seat is played by the built-in strategy. */
+  bot: boolean;
+  /** Present for bot seats only. */
+  botLevel?: BotLevel;
   /** True when the member is the viewer (control decisions). */
   self?: boolean;
 }
@@ -175,6 +191,8 @@ export interface RoomSummaryView {
   status: RoomStatus;
   profileId: string;
   playerCount: number;
+  /** Seats of `playerCount` that are bots. */
+  botCount: number;
   capacity: number;
   openSeats: number;
   createdAt: string;
@@ -255,7 +273,7 @@ export interface ResumableGameView {
   roomCode: string;
   profileId: string;
   status: RoomStatus;
-  players: { playerId: string; nickname: string; color: string }[];
+  players: { playerId: string; nickname: string; color: string; bot?: boolean }[];
   lastSavedAt: string;
   revision: number;
   allSeatsNeeded: boolean;
@@ -300,6 +318,8 @@ export interface ServerConfigView {
     chatRatePerMinute: number;
     roomCapacityMax: number;
   };
+  /** Whether hosts may add computer opponents, and the levels offered. */
+  bots: { enabled: boolean; levels: BotLevel[] };
 }
 
 export type { GameEvent, GameView, Resource };

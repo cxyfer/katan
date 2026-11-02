@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom';
 import { useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
+import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { shownHandSize } from '../state/table.ts';
+import { BotBadge } from './BotBadge.tsx';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/scoreboard-hover.css';
@@ -124,6 +126,8 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
   const selfId = state.session?.id ?? null;
   const action = requiredActionFor(state);
   const players = [...view.players].sort((left, right) => left.seat - right.seat);
+  // 投影不含座位類型，電腦座位由房間成員判斷。
+  const bots = botLevelsOf(state.room);
   const headingId = `players-heading-${id}`;
   const detailsIdForSeat = (seat: number) => `players-details-${id}-${seat}`;
   const detailsIds = players.map((player) => detailsIdForSeat(player.seat)).join(' ');
@@ -223,7 +227,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           const hiddenVp = isSelf ? [...(player.devCards ?? []), ...(player.newDevCards ?? [])].filter((card) => card === 'victoryPoint').length : 0;
           const hiddenBonus = isSelf && player.ownScore !== undefined ? Math.max(0, player.ownScore - player.publicScore - hiddenVp) : 0;
           const scoreLabel = t(isSelf && player.ownScore !== undefined ? 'play.ownScore' : 'play.publicScore');
-          const compactLabel = `${player.nickname}${isTurn ? `, ${t('play.turnOwner')}` : ''}`;
+          const isBot = bots.has(player.id);
+          const botLabel = isBot ? botBadgeLabel(t, bots.get(player.id)) : null;
+          const compactLabel = `${player.nickname}${botLabel ? ` (${botLabel})` : ''}${isTurn ? `, ${t('play.turnOwner')}` : ''}`;
           const longestRoad = view.awards.longestRoad === player.id;
           const largestArmy = view.awards.largestArmy === player.id;
           const number = (value: number) => formatNumber(state.locale, value);
@@ -236,12 +242,21 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
               data-board-seat={player.id}
               data-turn={isTurn ? 'true' : 'false'}
               data-self={isSelf ? 'true' : 'false'}
+              data-bot={isBot ? 'true' : undefined}
               title={compactLabel}
             >
               <div className="seat__summary">
-                <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>{Array.from(player.nickname)[0]}</span>
+                <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>
+                  {Array.from(player.nickname)[0]}
+                  {/* 收合時名稱與徽章都隱藏，在頭像角落留一個電腦標記。 */}
+                  {isBot && !expanded && (
+                    <span className="seat__bot-mark" data-testid={`seat-bot-mark-${player.seat}`}><GameIcon name="bot" size={9} /></span>
+                  )}
+                </span>
+                {isBot && !expanded && <span className="visually-hidden">{`${player.nickname} (${botLabel})`}</span>}
                 <span className="seat__identity" hidden={!expanded}>
                   <span className="seat__name" title={player.nickname}>{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>
+                  {isBot && <BotBadge level={bots.get(player.id)} short testId={`seat-bot-${player.seat}`} />}
                 </span>
                 <span className={`seat__score${isSelf && player.ownScore !== undefined ? ' seat__own-score' : ''}`} title={scoreLabel}><GameIcon name="crown" size={15} /><span className="visually-hidden">{scoreLabel}: </span>{number(total)}</span>
               </div>

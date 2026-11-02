@@ -48,7 +48,7 @@ async function fixture() {
     await cp(join(root, file), join(directory, file));
   }
   await symlink(join(root, 'node_modules'), join(directory, 'node_modules'), 'dir');
-  for (const name of ['server', 'web', 'rules', 'protocol']) {
+  for (const name of ['server', 'web', 'rules', 'protocol', 'bots']) {
     const relative = `packages/${name}`;
     const target = join(directory, relative);
     await cp(join(root, relative, 'src'), join(target, 'src'), { recursive: true });
@@ -58,7 +58,7 @@ async function fixture() {
       if (entry === '@catan' || entry.startsWith('.')) continue;
       await symlink(join(root, relative, 'node_modules', entry), join(target, 'node_modules', entry), 'dir');
     }
-    for (const workspace of ['rules', 'protocol']) {
+    for (const workspace of ['rules', 'protocol', 'bots']) {
       await symlink(join(directory, 'packages', workspace), join(target, 'node_modules/@catan', workspace), 'dir');
     }
   }
@@ -143,7 +143,7 @@ test('compiled dev server proxies a live game, watches dependencies, recovers an
     assert.match(smokeLog, /PASS  a dice roll is accepted/);
 
     const readyCount = () => run.output().split('[dev] service ready at').length - 1;
-    for (const name of ['rules', 'protocol', 'server']) {
+    for (const name of ['rules', 'protocol', 'bots', 'server']) {
       const file = join(directory, `packages/${name}/src/${name === 'server' ? 'main' : 'index'}.ts`);
       const source = await readFile(file, 'utf8');
       const before = readyCount();

@@ -16,6 +16,7 @@ import {
   requireProfile,
   secureRng,
   type Command,
+  type GameEvent,
   type GameState,
 } from '@catan/rules';
 import type {
@@ -28,15 +29,44 @@ import type {
   SaveReceipt,
 } from '@catan/protocol';
 import type { ServerConfig } from './config.ts';
-import { digestPayload, newId, type GameRow, type Repository, type RoomRow } from './db.ts';
+import { digestPayload, newId, type GameRow, type MemberRow, type Repository, type RoomRow } from './db.ts';
 import { ServiceError, type RoomService } from './rooms.ts';
+import { humanMembers, isBotMember } from './bot-seats.ts';
 
 const RECEIPT_EVENT_LIMIT = 200;
+
+/** 一筆已提交指令的摘要，供 Bot 排程器喚醒與計時。 */
+export interface CommitNotice {
+  gameId: string;
+  roomId: string;
+  revision: number;
+  actorId: string;
+  commandId: string;
+  events: GameEvent[];
+  /** 這筆指令讓遊戲結束。 */
+  finished: boolean;
+}
+
+export type GameLifecycleChange = 'resumed' | 'suspended' | 'abandoned';
 
 export interface GameCoordinatorDeps {
   repo: Repository;
   rooms: RoomService;
   config: ServerConfig;
+  /** 指令提交並推送後同步呼叫；實作只能排程，不可等待任何遊戲鎖。 */
+  onCommitted?(notice: CommitNotice): void;
+  /** 暫停、恢復或放棄生效後同步呼叫。 */
+  onLifecycle?(gameId: string, change: GameLifecycleChange): void;
+}
+
+/**
+ * 放棄的缺席條件（SPEC §4.6）：只看真人席位；Bot 永遠不缺席。其他席位全是
+ * Bot 時，唯一的真人不需要缺席條件也能結束這局。
+ */
+function abandonmentEligible(members: readonly MemberRow[]): boolean {
+  const humans = humanMembers(members);
+  if (humans.length === 1) return true;
+  return humans.some((member) => member.connected !== 1 || member.withdrawn === 1);
 }
 
 export class GameCoordinator {
@@ -167,16 +197,13 @@ export class GameCoordinator {
       if (room.status === 'lobby' || room.status === 'completed' || room.status === 'abandoned') continue;
       const game = await this.repo.findGameByRoom(room.id);
       if (!game) continue;
-      const memberships = await this.repo.listMemberships(room.id);
-      const players = [];
-      for (const membership of memberships) {
-        const guest = await this.repo.findGuest(membership.player_id);
-        players.push({
-          playerId: membership.player_id,
-          nickname: guest?.nickname ?? 'player',
-          color: membership.color,
-        });
-      }
+      const memberships = await this.repo.listMembers(room.id);
+      const players = memberships.map((membership) => ({
+        playerId: membership.player_id,
+        nickname: membership.nickname ?? 'player',
+        color: membership.color,
+        ...(isBotMember(membership) ? { bot: true } : {}),
+      }));
       out.push({
         gameId: game.id,
         roomId: room.id,
@@ -186,7 +213,7 @@ export class GameCoordinator {
         players,
         lastSavedAt: game.updated_at,
         revision: game.revision,
-        allSeatsNeeded: true,
+        allSeatsNeeded: players.every((player) => !player.bot),
       });
     }
     return out;
@@ -264,6 +291,15 @@ export class GameCoordinator {
         await this.repo.updateRoom(game.room_id, { status: 'completed' });
       }
       this.publish(game.room_id, gameId, revision, events);
+      this.notifyCommitted({
+        gameId,
+        roomId: game.room_id,
+        revision,
+        actorId: playerId,
+        commandId: request.commandId,
+        events,
+        finished: !!outcome.state.result,
+      });
       return {
         commandId: request.commandId,
         outcome: 'accepted',
@@ -271,6 +307,23 @@ export class GameCoordinator {
         events,
       };
     });
+  }
+
+  /** 通知失敗不能影響已提交的指令與回應。 */
+  private notifyCommitted(notice: CommitNotice): void {
+    try {
+      this.deps.onCommitted?.(notice);
+    } catch {
+      // 排程器自行記錄錯誤；指令結果已持久化。
+    }
+  }
+
+  private notifyLifecycle(gameId: string, change: GameLifecycleChange): void {
+    try {
+      this.deps.onLifecycle?.(gameId, change);
+    } catch {
+      // 同上
+    }
   }
 
   private async recordRejection(
@@ -424,7 +477,8 @@ export class GameCoordinator {
   }
 
   private async tryApplySuspend(game: GameRow, proposalId: string): Promise<boolean> {
-    const memberships = await this.repo.listMemberships(game.room_id);
+    // Bot 席位視為同意，只需要真人一致同意（SPEC §4.6）。
+    const memberships = humanMembers(await this.repo.listMembers(game.room_id));
     const consents = new Set(await this.repo.listGameConsents(proposalId));
     if (!memberships.every((membership) => consents.has(membership.player_id))) return false;
     await this.repo.transaction(async () => {
@@ -440,6 +494,7 @@ export class GameCoordinator {
       await this.repo.clearGameReady(game.id);
     });
     this.deps.rooms.broadcastRoom(game.room_id);
+    this.notifyLifecycle(game.id, 'suspended');
     return true;
   }
 
@@ -453,7 +508,8 @@ export class GameCoordinator {
       const game = await this.requireGame(gameId);
       await this.requireSeat(game, playerId);
       await this.repo.setGameReady(gameId, playerId, ready);
-      const memberships = await this.repo.listMemberships(game.room_id);
+      // 只等真人；Bot 永遠在線且就緒。
+      const memberships = humanMembers(await this.repo.listMembers(game.room_id));
       const readiness = new Map(
         (await this.repo.listGameReady(gameId)).map((row) => [row.player_id, row.ready === 1]),
       );
@@ -473,6 +529,7 @@ export class GameCoordinator {
         await this.repo.clearGameReady(gameId);
       });
       this.deps.rooms.broadcastRoom(game.room_id);
+      this.notifyLifecycle(gameId, 'resumed');
       return { resumed: true, waitingFor: [] };
     });
   }
@@ -498,8 +555,8 @@ export class GameCoordinator {
       if (state.result) {
         throw new ServiceError('E_GAME_OVER', 'error.E_GAME_OVER', { gameId }, 409);
       }
-      const memberships = await this.repo.listMemberships(game.room_id);
-      if (!memberships.some((member) => member.connected !== 1 || member.withdrawn === 1)) {
+      const memberships = await this.repo.listMembers(game.room_id);
+      if (!abandonmentEligible(memberships)) {
         throw new ServiceError('E_NO_ABSENT_PLAYER', 'error.E_NO_ABSENT_PLAYER', {}, 409);
       }
       const existing = await this.repo.findOpenGameProposal(gameId, 'abandon');
@@ -548,13 +605,14 @@ export class GameCoordinator {
       await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
       return false;
     }
-    const memberships = await this.repo.listMemberships(game.room_id);
+    const memberships = await this.repo.listMembers(game.room_id);
     // Recheck the absence condition: a reconnection invalidates the vote.
-    if (!memberships.some((member) => member.connected !== 1 || member.withdrawn === 1)) {
+    if (!abandonmentEligible(memberships)) {
       await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
       return false;
     }
-    const voters = memberships.filter((member) => member.connected === 1);
+    // Bot 席位不投票。
+    const voters = humanMembers(memberships).filter((member) => member.connected === 1);
     const consents = new Set(await this.repo.listGameConsents(proposalId));
     if (!voters.every((voter) => consents.has(voter.player_id))) return false;
 
@@ -574,6 +632,7 @@ export class GameCoordinator {
       await this.repo.cancelOpenGameProposals(game.id);
     });
     this.deps.rooms.broadcastRoom(game.room_id);
+    this.notifyLifecycle(game.id, 'abandoned');
     return true;
   }
 
