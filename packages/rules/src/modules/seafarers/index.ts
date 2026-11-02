@@ -9,7 +9,7 @@
 
 import { topologyOf } from '../../analysis.ts';
 import type { RulesModule } from '../types.ts';
-import { afterProduction, chooseGold, goldRequired, GOLD_FRAME, projectGold } from './gold.ts';
+import { afterProduction, chooseGold, goldRequired, GOLD_FRAME, projectGold, skipEmptySupply } from './gold.ts';
 import { allowBuilding, claimIslands } from './islands.ts';
 import { moveBandit, pirateTargets } from './pirate.ts';
 import {
@@ -49,6 +49,10 @@ export const seafarersModule: RulesModule = {
     'gold.choose': chooseGold,
   },
   pendingCommands: ['build.ship', 'gold.choose'],
+
+  activatePending(state, frame, ctx) {
+    if (frame.kind === GOLD_FRAME) skipEmptySupply(state, frame, ctx);
+  },
 
   project(state) {
     const slot = seafarersView(state);

@@ -306,8 +306,11 @@ function completePending(state: GameState, rng: Rng | null): void {
   let next = advancePending(state);
   for (let guard = 0; next && next.kind.includes('.') && guard < 64; guard++) {
     const frame = next as Extract<typeof next, { module: string }>;
-    if (frame.responders.length > 0) return;
     const module = modulesOf(state).find((candidate) => candidate.id === frame.module);
+    if (frame.responders.length > 0) {
+      module?.activatePending?.(state, frame, moduleContext(requireProfile(state.profileId), rng));
+      return;
+    }
     if (!module?.resumePending) throw new Error(`no continuation for pending frame ${frame.kind}`);
     module.resumePending(state, frame, moduleContext(requireProfile(state.profileId), rng));
     if (state.pending !== frame) return;

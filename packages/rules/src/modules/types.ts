@@ -178,6 +178,13 @@ export interface RulesModule {
    * must not call `kit.completePending` for that frame itself.
    */
   resumePending?(state: GameState, frame: ModulePending, ctx: ModuleContext): void;
+  /**
+   * Runs when a queued frame of this module that still has responders becomes
+   * active (not when `enqueuePending` activates it directly). The hook may
+   * resolve the frame on the spot, for example when nobody can answer it any
+   * more, and then calls `kit.completePending` itself.
+   */
+  activatePending?(state: GameState, frame: ModulePending, ctx: ModuleContext): void;
 
   // -- scoring ---------------------------------------------------------------
   /** Victory points this module adds for a player. */

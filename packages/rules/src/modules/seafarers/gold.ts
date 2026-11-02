@@ -62,8 +62,11 @@ export function afterProduction(state: GameState, roll: RollResult, ctx: ModuleC
   if (state.pending === frame) skipEmptySupply(state, frame, ctx);
 }
 
-/** Players who face an empty supply receive nothing and are skipped. */
-function skipEmptySupply(state: GameState, frame: ModulePending, ctx: ModuleContext): void {
+/**
+ * Players who face an empty supply receive nothing and are skipped, both when
+ * the frame is created active and when it activates later from the queue.
+ */
+export function skipEmptySupply(state: GameState, frame: ModulePending, ctx: ModuleContext): void {
   while (frame.responders.length > 0 && bankTotal(state) === 0) {
     const playerId = frame.responders.shift()!;
     ctx.kit.emit(state, 'gold.chosen', { playerId, resources: [], shortBy: (frame.data as unknown as GoldData).picks[playerId] });
