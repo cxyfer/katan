@@ -18,7 +18,7 @@ import { projectGame } from '../src/project.ts';
 import { seededRng } from '../src/rng.ts';
 import { archipelagoLayout } from '../src/sample-boards.ts';
 import { getTopology } from '../src/topology-registry.ts';
-import type { GameState, ModulePending } from '../src/types.ts';
+import { RESOURCES, type GameState, type ModulePending } from '../src/types.ts';
 import {
   COLORS,
   act,
@@ -254,6 +254,27 @@ describe('pending queue', () => {
     const next = act(state, 'p1', { type: 'pending.takeResource', resource: 'ore' }).state;
     expect(next.pending).toEqual({ kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false });
     expect('pendingQueue' in next).toBe(false);
+  });
+
+  it('ends a stalled base frame from an old snapshot into the next queued one', () => {
+    const { state } = playableGame({ phase: 'action' });
+    for (const resource of RESOURCES) state.bank[resource] = 0;
+    enqueuePending(
+      state,
+      { kind: 'yearOfPlenty', actor: 'p1', remaining: 2 },
+      { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false },
+    );
+    // Projection and hints already show the frame the next command will see.
+    const view = projectGame(state, 'p1', { hints: actionHints(state, 'p1') });
+    expect(view.pending).toMatchObject({ kind: 'moveRobber', actor: 'p1' });
+    expect(view.pendingQueue).toEqual([]);
+    expect(view.hints!.pendingKind).toBe('moveRobber');
+    const hex = state.board.layout.terrain.findIndex(
+      (terrain, index) => terrain !== 'desert' && terrain !== 'sea' && index !== state.board.robber,
+    );
+    const next = act(state, 'p1', { type: 'pending.moveRobber', hex }).state;
+    expect(next.board.robber).toBe(hex);
+    expect(next.pending?.kind).not.toBe('yearOfPlenty');
   });
 
   it('loads snapshots written before the queue existed', () => {

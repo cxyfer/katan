@@ -53,7 +53,7 @@ behave exactly as on master.
 - smoke: 13/13 checks
 - test:dev: 1/1
 
-After the rebase onto `0815c76` (exit 0): rules 19 / 189; protocol 1 / 8;
+After the rebase onto `0815c76` (exit 0): rules 19 / 190; protocol 1 / 8;
 bots 7 / 45; server 11 / 145 passed, 15 skipped (PostgreSQL, no
 `TEST_POSTGRES_URL`); web 56 / 581; build; smoke 13/13; test:dev 1/1.
 
