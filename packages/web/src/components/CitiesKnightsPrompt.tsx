@@ -6,6 +6,7 @@ import { blocksNewCommands } from '../state/commands.ts';
 import { followUpsHeld } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ResourceIcon } from './GameArt.tsx';
+import { ProgressPrompt } from './CitiesKnightsProgress.tsx';
 import { ProgressCardArt, TrackEmblem } from './SvgCitiesKnights.tsx';
 import '../styles/cities-knights.css';
 
@@ -35,6 +36,7 @@ export function CitiesKnightsPrompt({ controller }: { controller: TableControlle
   const discard = frameRequired || ownTurnExcess;
 
   return <>
+    <ProgressPrompt controller={controller} />
     {ck.pillage.length > 0 && (
       <div className="prompt__body ck-choice" data-testid="ck-pillage">
         <p className="muted">{t('ck.prompt.pillageHint')}</p>

@@ -205,8 +205,7 @@ describe('cities & knights client', () => {
     const { controller, submitCommand, selectTarget } = controllerFor(view(state));
     render(<LocaleProvider locale="en"><CitiesKnightsPanel controller={controller} /></LocaleProvider>);
     expect(screen.getByTestId('ck-track-science').getAttribute('data-level')).toBe('3');
-    expect(screen.getByTestId('ck-progress-card-0').getAttribute('data-card')).toBe('crane');
-    expect(screen.getByText(/not available yet/)).toBeTruthy();
+    expect(screen.getByTestId('ck-card-crane').getAttribute('data-card')).toBe('crane');
     fireEvent.click(screen.getByTestId('ck-improve-trade'));
     expect(submitCommand).toHaveBeenCalledWith({ type: 'city.improve', track: 'trade' }, 'ck.panel.improve');
     fireEvent.click(screen.getByTestId('ck-improve-science'));

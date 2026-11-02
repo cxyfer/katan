@@ -56,8 +56,11 @@ export function ProgressHand({ controller }: { controller: TableController }) {
   const blocked = blocksNewCommands(state.command) || followUpsHeld(state);
   const n = (value: number) => formatNumber(locale, value);
   const nameOf = (id: string) => view.players.find((player) => player.id === id)?.nickname ?? id;
-  const cards = hints?.progress ?? [];
   const held = self?.progressCards ?? [];
+  // One row per held card kind; a card the hints do not list (stale projection) cannot be played.
+  const cards: ProgressCardHint[] = [...new Set(held)].sort().map((card) => hints?.progress.find((hint) => hint.card === card) ?? {
+    card, track: PROGRESS_TRACK[card] ?? 'science', count: held.filter((entry) => entry === card).length, playable: false, reason: 'pending', targets: {},
+  });
   const current = cards.find((hint) => hint.card === active && hint.playable) ?? null;
 
   const play = (fields: Record<string, unknown>, card: string) => {
