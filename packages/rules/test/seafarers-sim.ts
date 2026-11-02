@@ -32,7 +32,7 @@ function sorted(state: GameState, playerId: string, richestFirst: boolean): Reso
 }
 
 /** Squared distance from an edge to the nearest land hex the player has not settled. */
-function shipScore(state: GameState, playerId: string, edge: number): number {
+export function shipScore(state: GameState, playerId: string, edge: number): number {
   const topo = topologyOf(state);
   const info = topo.edges[edge]!;
   for (const vertex of info.vertices) {
