@@ -285,6 +285,7 @@ const KIT: RulesKit = {
   finishSetupStep,
   legalRoads: (state, playerId) => legalRoadEdges(state, playerId),
   placedFreeRoute: (state, playerId, rng) => placedFreeRoute(state, playerId, rng ?? null),
+  finishTurn,
 };
 
 function moduleContext(profile: ProfileDefinition, rng: Rng | null): ModuleContext {
@@ -392,6 +393,13 @@ function modulesAllowBuilding(state: GameState, playerId: string, vertex: number
   return modules.every((module) => module.allowBuilding?.(state, playerId, vertex, { setup }, ctx) ?? true);
 }
 
+function modulesAllowRoad(state: GameState, playerId: string, edge: number): boolean {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return true;
+  const ctx = viewContext(state);
+  return modules.every((module) => !module.roadAllowed || module.roadAllowed(state, playerId, edge, ctx));
+}
+
 /**
  * Whether one of the player's routes reaches the vertex. A settlement may
  * extend any route; `roadsOnly` ignores ships, because a ship hands over to a
@@ -440,6 +448,7 @@ export function canPlaceRoad(
   if (!info) return false;
   if (state.board.roads[edge]) return false;
   if (!isLandEdge(state, edge)) return false;
+  if (!modulesAllowRoad(state, playerId, edge)) return false;
   if (options.setup) {
     if (options.lastVertex === null || options.lastVertex === undefined) return false;
     return info.vertices.includes(options.lastVertex);
@@ -535,12 +544,18 @@ function checkVictory(state: GameState): void {
 }
 
 function afterBoardChange(state: GameState): void {
-  recomputeAwards(state, {
+  const modules = modulesOf(state);
+  let rules = {
     ...BASE_AWARD_RULES,
     longestRouteIncludesShips: requireProfile(state.profileId).longestRouteIncludesShips,
-  });
-  const modules = modulesOf(state);
-  if (modules.length === 0) return;
+  };
+  if (modules.length === 0) {
+    recomputeAwards(state, rules);
+    return;
+  }
+  const view = viewContext(state);
+  for (const module of modules) if (module.awardRules) rules = module.awardRules(state, rules, view);
+  recomputeAwards(state, rules);
   const ctx = moduleContext(requireProfile(state.profileId), null);
   for (const module of modules) module.afterBoardChange?.(state, ctx);
 }
@@ -625,11 +640,25 @@ export function applyCommand(
   if (next.pending && !PENDING_COMMANDS.has(command.type as CommandType) && !modulePendingCommand(next, command.type)) {
     return fail('E_PENDING_EFFECT', { pending: next.pending.kind });
   }
+  const veto = moduleVeto(next, actorId, command as ModuleCommand);
+  if (veto) return veto;
   const outcome = dispatch(next, actorId, command, rng);
   if (!outcome.ok) return outcome;
   trackPeakHands(next);
   const events = next.log.filter((event) => event.seq > state.seq);
   return { ok: true, state: next, events };
+}
+
+/** A module's refusal of a command before dispatch (base profiles: none). */
+function moduleVeto(state: GameState, actorId: string, command: ModuleCommand): CommandOutcome | undefined {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return undefined;
+  const ctx = viewContext(state);
+  for (const module of modules) {
+    const veto = module.vetoCommand?.(state, actorId, command, ctx);
+    if (veto) return veto;
+  }
+  return undefined;
 }
 
 function trackPeakHands(state: GameState): void {
@@ -658,7 +687,7 @@ function dispatch(
     case 'turn.roll':
       return rollDice(state, actorId, rng);
     case 'turn.end':
-      return endTurn(state, actorId);
+      return endTurn(state, actorId, rng);
     case 'build.road':
       return buildRoad(state, actorId, command.edge, rng);
     case 'build.settlement':
@@ -676,7 +705,7 @@ function dispatch(
     case 'dev.playMonopoly':
       return playMonopoly(state, actorId, command.resource);
     case 'pending.discard':
-      return submitDiscard(state, actorId, command.resources);
+      return submitDiscard(state, actorId, command.resources, rng);
     case 'pending.moveRobber':
       return moveRobber(state, actorId, command.hex, rng);
     case 'pending.steal':
@@ -860,7 +889,7 @@ function rollDice(state: GameState, actorId: string, rng: Rng): CommandOutcome {
 
 /** The 7 sequence or production, then the modules' after-production stages. */
 function resolveRollOutcome(state: GameState, roll: RollResult, rng: Rng | null): void {
-  if (roll.total === 7) resolveSeven(state);
+  if (roll.total === 7) resolveSeven(state, rng);
   else resolveProduction(state, roll, rng);
   const profile = requireProfile(state.profileId);
   const modules = rulesModulesOf(profile);
@@ -909,7 +938,7 @@ function resolveProduction(state: GameState, roll: RollResult, rng: Rng | null):
   emit(state, 'production.resolved', { total, grants: summary });
 }
 
-function resolveSeven(state: GameState): void {
+function resolveSeven(state: GameState, rng: Rng | null): void {
   const required: Record<string, number> = {};
   const modules = modulesOf(state);
   const ctx = viewContext(state);
@@ -923,6 +952,11 @@ function resolveSeven(state: GameState): void {
     enqueuePending(state, { kind: 'discard', required, submitted: {} });
     emit(state, 'discard.required', { required });
   } else {
+    const replaced = moduleSevenStep(state, rng);
+    if (replaced !== undefined) {
+      if (replaced) enqueuePending(state, replaced);
+      return;
+    }
     enqueuePending(state, {
       kind: 'moveRobber',
       actor: currentPlayer(state).id,
@@ -933,29 +967,58 @@ function resolveSeven(state: GameState): void {
   }
 }
 
-function endTurn(state: GameState, actorId: string): CommandOutcome {
+/** A module's replacement for the robber step of a 7 (`undefined`: base step). */
+function moduleSevenStep(state: GameState, rng: Rng | null): PendingFrame | null | undefined {
+  const profile = requireProfile(state.profileId);
+  const modules = rulesModulesOf(profile);
+  if (modules.length === 0) return undefined;
+  const ctx = moduleContext(profile, rng);
+  for (const module of modules) {
+    const frame = module.sevenRobberStep?.(state, currentPlayer(state).id, ctx);
+    if (frame !== undefined) return frame;
+  }
+  return undefined;
+}
+
+function endTurn(state: GameState, actorId: string, rng: Rng): CommandOutcome {
   const guard = requireTurnActor(state, actorId);
   if (guard) return guard;
   if (state.turn.phase !== 'action') return fail('E_WRONG_PHASE', { phase: state.turn.phase });
   if (state.pending) return fail('E_PENDING_EFFECT', { pending: state.pending.kind });
   const profile = requireProfile(state.profileId);
+  const modules = rulesModulesOf(profile);
+  if (modules.length > 0) {
+    const ctx = moduleContext(profile, rng);
+    for (const module of modules) {
+      // An end-of-turn phase owned by a module; it calls `kit.finishTurn`.
+      if (module.beforeEndTurn?.(state, actorId, ctx) === 'defer') return { ok: true, state, events: [] };
+    }
+  }
+  finishTurn(state);
+  return { ok: true, state, events: [] };
+}
+
+/** Closes the actor's window and opens the next one. */
+function finishTurn(state: GameState): void {
+  if (state.result) return;
+  const profile = requireProfile(state.profileId);
+  const actorId = currentPlayer(state).id;
   emit(state, 'turn.ended', { playerId: actorId, pairedActor: state.turn.pairedActor });
 
   if (profile.paired && state.turn.pairedActor === 1) {
     // Player 2 acts next, without another production roll (§5.5).
     openActorWindow(state, partnerSeat(state, state.turn.seat), 2, 'action');
-    return { ok: true, state, events: [] };
+    return;
   }
 
   if (profile.paired) {
     // Both markers advance to the next player to their left.
     state.turn.pairIndex += 1;
     beginTurn(state, state.turn.pairIndex % state.players.length);
-    return { ok: true, state, events: [] };
+    return;
   }
 
   beginTurn(state, (state.turn.seat + 1) % state.players.length);
-  return { ok: true, state, events: [] };
 }
 
 /** Paired Player 2 may not start or settle a domestic exchange. */
@@ -1303,7 +1366,7 @@ function playMonopoly(state: GameState, actorId: string, resource: Resource): Co
 // pending effects
 // ---------------------------------------------------------------------------
 
-function submitDiscard(state: GameState, actorId: string, resources: Resource[]): CommandOutcome {
+function submitDiscard(state: GameState, actorId: string, resources: Resource[], rng: Rng): CommandOutcome {
   const pending = state.pending;
   if (!pending || pending.kind !== 'discard') {
     return fail('E_PENDING_EFFECT', { pending: pending?.kind ?? 'none' });
@@ -1336,8 +1399,15 @@ function submitDiscard(state: GameState, actorId: string, resources: Resource[])
   const outstanding = Object.keys(pending.required).filter((id) => !pending.submitted[id]);
   if (outstanding.length === 0) {
     const roller = currentPlayer(state).id;
-    state.pending = { kind: 'moveRobber', actor: roller, cause: 'seven', pirate: false };
-    emit(state, 'robber.moveRequired', { playerId: roller, cause: 'seven' });
+    const replaced = moduleSevenStep(state, rng);
+    if (replaced === null) {
+      completePending(state, rng);
+    } else if (replaced) {
+      state.pending = replaced;
+    } else {
+      state.pending = { kind: 'moveRobber', actor: roller, cause: 'seven', pirate: false };
+      emit(state, 'robber.moveRequired', { playerId: roller, cause: 'seven' });
+    }
   }
   return { ok: true, state, events: [] };
 }
@@ -1414,7 +1484,7 @@ function bankTrade(state: GameState, actorId: string, give: Resource, receive: R
   if (!RESOURCES.includes(give) || !RESOURCES.includes(receive)) return fail('E_INVALID_SELECTION');
   if (give === receive) return fail('E_INVALID_SELECTION', { reason: 'same-resource' });
   if (state.bank[receive] <= 0) return fail('E_BANK_EMPTY', { resource: receive });
-  const rates = harborRates(state, actorId);
+  const rates = bankRates(state, actorId);
   const rate = rates[give];
   const player = playerById(state, actorId)!;
   if (player.resources[give] < rate) {
@@ -1430,6 +1500,18 @@ function bankTrade(state: GameState, actorId: string, give: Resource, receive: R
   addResource(stats.bankReceived, receive);
   emit(state, 'trade.bank', { playerId: actorId, give, receive, rate });
   return { ok: true, state, events: [] };
+}
+
+/** Harbour rates adjusted by the profile's modules (base: harbour rates). */
+function bankRates(state: GameState, playerId: string): Record<Resource, number> {
+  const rates = harborRates(state, playerId);
+  const modules = modulesOf(state).filter((module) => module.bankRate);
+  if (modules.length === 0) return rates;
+  const ctx = viewContext(state);
+  for (const resource of RESOURCES) {
+    for (const module of modules) rates[resource] = module.bankRate!(state, playerId, resource, rates[resource], ctx);
+  }
+  return rates;
 }
 
 function normalizeTerms(terms: Partial<Record<Resource, number>>): Partial<Record<Resource, number>> {
@@ -1686,7 +1768,7 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
           .filter(({ building }) => !!building && building.player === playerId && !building.city)
           .map(({ vertex }) => vertex)
       : [],
-    bankRates: harborRates(state, playerId),
+    bankRates: bankRates(state, playerId),
     pendingKind: pending ? pending.kind : null,
     ...moduleHints(state, playerId),
   };

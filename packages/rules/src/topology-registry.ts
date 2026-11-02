@@ -6,6 +6,7 @@
  */
 
 import { ARCHIPELAGO_TOPOLOGY } from './sample-boards.ts';
+import { EXPLORERS_PIRATES_TOPOLOGIES } from './explorers-pirates-boards.ts';
 import { NEW_SHORES_TOPOLOGIES } from './seafarers-boards.ts';
 import {
   buildPlayer56Topology,
@@ -19,6 +20,7 @@ const cache = new Map<string, BoardTopology>();
 const definitions = new Map<string, TopologyDefinition>([
   [ARCHIPELAGO_TOPOLOGY.id, ARCHIPELAGO_TOPOLOGY],
   ...NEW_SHORES_TOPOLOGIES.map((definition) => [definition.id, definition] as const),
+  ...EXPLORERS_PIRATES_TOPOLOGIES.map((definition) => [definition.id, definition] as const),
 ]);
 
 export function getTopology(id: string): BoardTopology {

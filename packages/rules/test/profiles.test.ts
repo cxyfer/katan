@@ -30,6 +30,11 @@ describe('ruleset registry', () => {
       'ck-paired-2025',
       'sf-ck-new-shores-2025',
       'sf-ck-new-shores-paired-2025',
+      'ep-land-ho-2025',
+      'ep-pirate-lairs-2025',
+      'ep-fish-2025',
+      'ep-spices-2025',
+      'ep-full-2025',
     ]);
   });
 

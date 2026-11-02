@@ -13,7 +13,7 @@
  * uses `ctx.rng` and stores every outcome in the state.
  */
 
-import type { ProductionResult, ScoreOptions } from '../analysis.ts';
+import type { AwardRules, ProductionResult, ScoreOptions } from '../analysis.ts';
 import type { CommandErrorCode } from '../messages.ts';
 import type { ProfileDefinition } from '../profiles.ts';
 import type { Rng } from '../rng.ts';
@@ -76,6 +76,12 @@ export interface RulesKit {
    * left to place.
    */
   placedFreeRoute(state: GameState, playerId: string, rng?: Rng): void;
+  /**
+   * Ends the current action window and opens the next one, without running
+   * `beforeEndTurn` again. A module that deferred the end of a turn calls this
+   * once its end-of-turn frames are resolved.
+   */
+  finishTurn(state: GameState): void;
 }
 
 export interface ModuleContext {
@@ -144,6 +150,12 @@ export interface RulesModule {
    * calls `kit.resolveRollOutcome` from a continuation frame.
    */
   beforeProduction?(state: GameState, roll: RollResult, ctx: ModuleContext): 'continue' | 'defer';
+  /**
+   * Replaces the robber step of a 7 (after any discards): a frame to make
+   * active, `null` for no robber step, or `undefined` to keep the base
+   * `moveRobber` frame.
+   */
+  sevenRobberStep?(state: GameState, actorId: string, ctx: ModuleContext): PendingFrame | null | undefined;
   /** Discard threshold for a player on a 7 (base: 7 cards). */
   discardLimit?(state: GameState, player: PlayerState, base: number, ctx: ModuleViewContext): number;
   /** Adjusts the production results before they are paid out. */
@@ -161,6 +173,22 @@ export interface RulesModule {
    * (for example a scenario that confines starting settlements to one island).
    */
   allowBuilding?(state: GameState, playerId: string, vertex: number, options: { setup: boolean }, ctx: ModuleViewContext): boolean;
+  /** Extra condition for a road on `edge` (setup and action phase). */
+  roadAllowed?(state: GameState, playerId: string, edge: number, ctx: ModuleViewContext): boolean;
+  /**
+   * Refuses a command before it is dispatched, for example base building and
+   * trading during a module-owned phase. Return a failed outcome to refuse.
+   */
+  vetoCommand?(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleViewContext): CommandOutcome | undefined;
+  /**
+   * Runs when the actor ends their action phase. Return `'defer'` after
+   * enqueueing end-of-turn frames; the module then calls `kit.finishTurn`.
+   */
+  beforeEndTurn?(state: GameState, actorId: string, ctx: ModuleContext): 'continue' | 'defer';
+  /** Bank (supply) trade rate for giving `card`; `rate` is the harbour rate. */
+  bankRate?(state: GameState, playerId: string, card: Resource, rate: number, ctx: ModuleViewContext): number;
+  /** Adjusts the award rules (minimums, route weights) before awards are recomputed. */
+  awardRules?(state: GameState, rules: AwardRules, ctx: ModuleViewContext): AwardRules;
   /**
    * Handles a robber target (7 or Knight) that belongs to another bandit,
    * such as the Seafarers pirate on a sea hex or the frame (`null`). Return

@@ -31,7 +31,7 @@ export type ExpansionId = (typeof EXPANSION_IDS)[number];
  * Scenario ids. A phase that registers a scenario appends it here and adds its
  * `scenario.<id>` message to both locales.
  */
-export const SCENARIO_IDS = ['new-shores'] as const;
+export const SCENARIO_IDS = ['new-shores', 'land-ho', 'pirate-lairs', 'fish', 'spices', 'explorers-pirates'] as const;
 export type ScenarioId = (typeof SCENARIO_IDS)[number];
 
 /**
@@ -43,7 +43,7 @@ export const VARIANT_IDS: readonly string[] = [];
 export type VariantId = string;
 
 /** Rulebook source ids from SPEC §5.3. Later phases append their own. */
-export const SOURCE_IDS = ['B25', 'B56-25', 'SF25', 'SF56-25', 'CK25', 'CK56-25', 'COMB'] as const;
+export const SOURCE_IDS = ['B25', 'B56-25', 'SF25', 'SF56-25', 'CK25', 'CK56-25', 'COMB', 'EP25', 'EP25-M'] as const;
 export type SourceId = (typeof SOURCE_IDS)[number];
 
 export interface ProfileSource {
@@ -190,6 +190,57 @@ const PAIRED_BASE = {
   bankPerResource: 24,
 } as const;
 
+/**
+ * Explorers & Pirates (EP25 / EP25-M, CN3085): one profile per mission set, in
+ * book order; rules in `modules/explorersPirates/`, maps in
+ * `explorers-pirates-boards.ts`. E&P is standalone: no development cards,
+ * cities, robber, ports, Longest Road or Largest Army (EP25-M p. 2), and it is
+ * never combined with Seafarers. Harbour settlements are base settlements
+ * the module marks, so the shared settlement count is 5 settlements + 4
+ * harbour settlements; the module keeps plain settlements at 5.
+ */
+function explorersPiratesProfile(
+  id: string,
+  scenario: ScenarioId,
+  victoryTarget: number,
+  setupModes: SetupMode[],
+  pages: string,
+  overrides: ProfileOverrides = {},
+): ProfileDefinition {
+  return baseProfile(id, [3, 4], {
+    ruleVersion: 'ep-2025.1',
+    expansions: ['explorersPirates'],
+    scenario,
+    sources: [
+      { id: 'B25', pages: 'entire rulebook' },
+      { id: 'EP25', pages: 'pp. 2–15' },
+      { id: 'EP25-M', pages },
+    ],
+    requiredBoxes: ['base', 'explorersPirates'],
+    victoryTarget,
+    setupModes,
+    layoutId: 'explorers-pirates',
+    topologyId: scenario === 'land-ho' ? 'ep-land-ho' : scenario === 'spices' ? 'ep-spices' : scenario === 'explorers-pirates' ? 'ep-full' : 'ep-pirate-lairs',
+    pieces: { settlements: 9, cities: 0, roads: 15, ships: 3, knights: 0 },
+    devDeck: [],
+    implemented: true,
+    unavailableReasonKey: 'profile.unavailable.explorersPirates',
+    ...overrides,
+  });
+}
+
+const EXPLORERS_PIRATES_PROFILES: readonly ProfileDefinition[] = [
+  explorersPiratesProfile('ep-land-ho-2025', 'land-ho', 8, ['fixed'], 'pp. 2–7'),
+  explorersPiratesProfile('ep-pirate-lairs-2025', 'pirate-lairs', 12, ['fixed'], 'pp. 2–13'),
+  explorersPiratesProfile('ep-fish-2025', 'fish', 15, ['variable'], 'pp. 2–15'),
+  explorersPiratesProfile('ep-spices-2025', 'spices', 15, ['variable'], 'pp. 2–18'),
+  explorersPiratesProfile('ep-full-2025', 'explorers-pirates', 17, ['variable'], 'pp. 2–3', { sources: [
+    { id: 'B25', pages: 'entire rulebook' },
+    { id: 'EP25', pages: 'pp. 2–15' },
+    { id: 'EP25-M', pages: 'pp. 2–3' },
+  ] }),
+];
+
 export const PROFILES: readonly ProfileDefinition[] = [
   baseProfile('base-2025', [3, 4], { implemented: true, enabled: true }),
 
@@ -323,6 +374,8 @@ export const PROFILES: readonly ProfileDefinition[] = [
     commodityBankPerType: 12,
     unavailableReasonKey: 'profile.unavailable.combined',
   }),
+
+  ...EXPLORERS_PIRATES_PROFILES,
 ];
 
 const byId = new Map(PROFILES.map((profile) => [profile.id, profile]));

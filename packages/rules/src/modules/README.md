@@ -17,8 +17,9 @@ modules/
   <id>/messages.ts    the module's event types and error codes
 ```
 
-`seafarers` (Heading for New Shores) is implemented; placeholders exist for
-`citiesKnights`, `tradersBarbarians` and `explorersPirates`, so a phase
+`seafarers` (Heading for New Shores) and `explorersPirates` (CN3085, one
+profile per mission set) are implemented; placeholders exist for
+`citiesKnights` and `tradersBarbarians`, so a phase
 normally edits only its own directory plus its profile rows, layout builder
 and i18n catalog file.
 
@@ -33,8 +34,14 @@ and i18n catalog file.
 | roll | `discardLimit` | per player on a 7 (base limit 7) |
 | roll | `modifyProduction` | on the production results before they are paid |
 | roll | `afterProduction` | after production or the 7 has been set up |
+| roll | `sevenRobberStep` | after the 7's discards: return a module frame instead of the base robber move, `null` for no robber step, `undefined` to leave it to the base (E&P: the pirate ship, none in Land Ho!) |
 | commands | `commands` / `pendingCommands` | module-owned command types; types accepted while a frame is pending |
 | board | `allowBuilding` | extra veto on a building intersection (setup and play), e.g. New Shores' main-island start |
+| board | `roadAllowed` | extra veto on a road edge (setup and play), e.g. E&P edges of unexplored hexes |
+| commands | `vetoCommand` | before any command is dispatched; return a failed outcome to refuse it (E&P: base setup commands, building and trading in the Movement phase) |
+| turn | `beforeEndTurn` | when the actor ends the action phase; `'defer'` after enqueueing frames, then the module calls `kit.finishTurn` |
+| trade | `bankRate` | per bank trade card, given the harbour rate |
+| awards | `awardRules` | adjusts the Longest Road / Largest Army rules before awards are recomputed (E&P turns both off) |
 | board | `afterBoardChange` | after every board change, after awards are recomputed; gets the kit (emit, …) but no randomness |
 | robber | `moveBandit` | on a robber target (7 or Knight) before the base robber; claims sea hexes / `null` (frame) for the pirate and returns theft candidates, or `undefined` to leave it to the robber |
 | cards | `freeRouteTargets` | extra free Road Building placements (ships), supply included; summed with the legal roads capped by the road pieces left |
@@ -46,7 +53,7 @@ and i18n catalog file.
 Hooks get a `ModuleContext` (`profile`, `rng`, `kit`). `kit` exposes the engine
 services a module needs (`emit`, `fail`, `accept`, `payBuild`,
 `afterBoardChange`, `checkVictory`, `enqueuePending`, `completePending`,
-`resolveRollOutcome`, `finishSetupStep`, `legalRoads`, `placedFreeRoute`, …)
+`resolveRollOutcome`, `finishSetupStep`, `finishTurn`, `legalRoads`, `placedFreeRoute`, …)
 so module files never import `engine.ts`.
 
 The base engine itself is sea-aware (P1): buildings need a land intersection,
