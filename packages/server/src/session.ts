@@ -91,6 +91,8 @@ export class SessionService {
       locale,
       created_at: now,
       updated_at: now,
+      kind: 'human',
+      bot_level: null,
     };
     await this.repo.insertGuest(row);
     return {

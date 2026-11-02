@@ -16,13 +16,16 @@ export function PolicyProposalPanel({ controller }: { controller: TableControlle
   if (!room || !proposal) return null;
 
   const approved = proposal.consents.length;
-  const total = room.members.length;
+  // 電腦座位不參與同意（SPEC §4.9、§5.8），分母只算人類座位。
+  const total = room.members.filter((member) => !member.bot).length;
+  const hasBots = total < room.members.length;
 
   return (
     <section className="card" aria-labelledby="proposal-heading" data-testid="policy-proposal">
       <h2 id="proposal-heading">{t('lobby.policyProposal')}</h2>
       <p className="muted" data-testid="policy-consent-count">
         {t('lobby.policyConsentCount', { approved, total })}
+        {hasBots && <> · {t('lobby.policyBotsExcluded')}</>}
       </p>
       <ul>
         <li>

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { RoomPolicy } from '@catan/protocol';
+import type { BotLevel, RoomPolicy } from '@catan/protocol';
 import { POLICY_BOUNDS } from '@catan/protocol';
 import { useT } from '../i18n/context.tsx';
+import { botsEnabled, DEFAULT_BOT_LEVEL, offeredBotLevels, pickBotLevel } from '../state/bots.ts';
+import { BotBadge } from './BotBadge.tsx';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { SoundSettings } from './SoundSettings.tsx';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
@@ -17,7 +19,8 @@ const COLORS = ['red', 'blue', 'orange', 'white', 'green', 'brown'] as const;
  *   server's own blockers rather than a client guess;
  * - before start a policy change applies, after start it becomes a proposal
  *   that needs every seat's consent;
- * - host transfer is displayed from `RoomView.hostId`.
+ * - host transfer is displayed from `RoomView.hostId`;
+ * - 開局前房主可加入或移除電腦座位；電腦座位永遠已準備，不顯示準備與連線狀態。
  */
 export function LobbyScreen({ controller }: ScreenProps) {
   const t = useT();
@@ -26,6 +29,9 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const [policyDraft, setPolicyDraft] = useState<RoomPolicy | null>(null);
   const [capacityDraft, setCapacityDraft] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [botLevel, setBotLevel] = useState<BotLevel>(DEFAULT_BOT_LEVEL);
+  // 請求進行中停用按鈕，避免連點加入多個電腦。
+  const [botBusy, setBotBusy] = useState(false);
   const profile = room ? state.profiles.find((item) => item.id === room.profileId) : undefined;
   const capacityLimit = state.config?.limits.roomCapacityMax ?? Infinity;
   // Only counts the ruleset and deployment allow, never below the seated players.
@@ -73,6 +79,15 @@ export function LobbyScreen({ controller }: ScreenProps) {
     setPolicyDraft({ ...policy, [key]: value });
   };
 
+  const canManageBots = isHost && room.status === 'lobby';
+  const botLevels = offeredBotLevels(state.config);
+  const chosenBotLevel = pickBotLevel(botLevels, botLevel);
+  const roomFull = room.members.length >= room.capacity;
+  const runBotAction = (work: () => Promise<void>) => {
+    setBotBusy(true);
+    void work().finally(() => setBotBusy(false));
+  };
+
   return (
     <main className="screen screen--lobby pregame" id="main">
       <PregameScene />
@@ -108,11 +123,14 @@ export function LobbyScreen({ controller }: ScreenProps) {
                 {room.members.map((member) => (
                   <li
                     key={member.playerId}
-                    className={`seat lobby-seat lobby-seat--${member.color}${member.ready ? ' lobby-seat--ready' : ''}${member.self ? ' lobby-seat--self' : ''}`}
+                    className={`seat lobby-seat lobby-seat--${member.color}${member.bot ? ' lobby-seat--bot' : member.ready ? ' lobby-seat--ready' : ''}${member.self ? ' lobby-seat--self' : ''}`}
                     data-testid={`member-${member.seat}`}
+                    data-bot={member.bot ? 'true' : undefined}
                   >
                     <span className="lobby-seat__avatar" aria-hidden="true">
-                      {Array.from(member.nickname.trim()).slice(0, 2).join('').toUpperCase()}
+                      {member.bot
+                        ? <GameIcon name="bot" size={26} />
+                        : Array.from(member.nickname.trim()).slice(0, 2).join('').toUpperCase()}
                     </span>
                     <p className="lobby-seat__number muted">{t('island.lobby.seatNumber', { number: member.seat + 1 })}</p>
                     <h3 className="seat__name lobby-seat__name">
@@ -122,15 +140,33 @@ export function LobbyScreen({ controller }: ScreenProps) {
                       {t('lobby.color.' + member.color)}
                       {member.host && <span className="lobby-seat__host"><GameIcon name="crown" size={16} />{t('app.host')}</span>}
                     </p>
-                    <div className="lobby-seat__status">
-                      <span className={`status-tag${member.ready ? ' status-tag--ready' : ''}`}>
-                        <GameIcon name={member.ready ? 'check' : 'compass'} size={15} />
-                        {member.ready ? t('lobby.ready') : t('lobby.notReady')}
-                      </span>
-                      <span className="lobby-seat__connection muted">
-                        {member.connected ? t('lobby.connected') : t('lobby.disconnected')}
-                      </span>
-                    </div>
+                    {member.bot ? (
+                      <div className="lobby-seat__status">
+                        <BotBadge level={member.botLevel} testId={`bot-badge-${member.seat}`} />
+                        {canManageBots && (
+                          <button
+                            type="button"
+                            className="button button--ghost button--small lobby-seat__remove"
+                            data-testid={`remove-bot-${member.playerId}`}
+                            aria-label={t('lobby.bots.removeLabel', { name: member.nickname })}
+                            disabled={botBusy}
+                            onClick={() => runBotAction(() => actions.removeBot(member.playerId))}
+                          >
+                            <GameIcon name="close" size={14} />{t('lobby.bots.remove')}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="lobby-seat__status">
+                        <span className={`status-tag${member.ready ? ' status-tag--ready' : ''}`}>
+                          <GameIcon name={member.ready ? 'check' : 'compass'} size={15} />
+                          {member.ready ? t('lobby.ready') : t('lobby.notReady')}
+                        </span>
+                        <span className="lobby-seat__connection muted">
+                          {member.connected ? t('lobby.connected') : t('lobby.disconnected')}
+                        </span>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -146,6 +182,38 @@ export function LobbyScreen({ controller }: ScreenProps) {
                 </ul>
               )}
             </div>
+
+            {canManageBots && botsEnabled(state.config) && (
+              <div className="lobby-bots" role="group" aria-labelledby="lobby-bots-heading" data-testid="lobby-bots">
+                <h3 id="lobby-bots-heading" className="lobby-bots__title">
+                  <GameIcon name="bot" size={16} />{t('lobby.bots.title')}
+                </h3>
+                <div className="field field--inline">
+                  <label htmlFor="lobby-bot-level">{t('lobby.bots.level')}</label>
+                  <select
+                    id="lobby-bot-level"
+                    data-testid="lobby-bot-level"
+                    value={chosenBotLevel}
+                    onChange={(event) => setBotLevel(event.target.value as BotLevel)}
+                  >
+                    {botLevels.map((level) => (
+                      <option key={level} value={level}>{t(`bot.level.${level}`)}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  className="button"
+                  data-testid="add-bot"
+                  disabled={roomFull || botBusy}
+                  aria-describedby={roomFull ? 'lobby-bots-full' : undefined}
+                  onClick={() => runBotAction(() => actions.addBot(chosenBotLevel))}
+                >
+                  <GameIcon name="plus" />{t('lobby.bots.add')}
+                </button>
+                {roomFull && <p id="lobby-bots-full" className="muted lobby-bots__full">{t('lobby.bots.full')}</p>}
+              </div>
+            )}
 
             {!selfMember && (
               <fieldset className="seat-picker">

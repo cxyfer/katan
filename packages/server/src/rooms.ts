@@ -11,6 +11,7 @@ import {
 } from '@catan/rules';
 import {
   DEFAULT_POLICY,
+  type BotLevel,
   type Notice,
   type PolicyProposalView,
   type RoomMemberView,
@@ -23,7 +24,26 @@ import {
 } from '@catan/protocol';
 import type { ServerConfig } from './config.ts';
 import { validatePolicy } from './config.ts';
-import { newId, newRoomCode, type MembershipRow, type Repository, type RoomRow } from './db.ts';
+import {
+  newId,
+  newRoomCode,
+  type MemberRow,
+  type MembershipRow,
+  type Repository,
+  type RoomRow,
+} from './db.ts';
+import {
+  botLevelOf,
+  botsSupported,
+  DEFAULT_BOT_LEVEL,
+  effectiveConnected,
+  effectiveReady,
+  humanMembers,
+  insertBotSeat,
+  isBotMember,
+  ORPHAN_BOT_GUEST_AGE_MS,
+  parseBotLevel,
+} from './bot-seats.ts';
 
 export class ServiceError extends Error {
   constructor(
@@ -53,6 +73,10 @@ export interface RoomServiceDeps {
   repo: Repository;
   config: ServerConfig;
   onRoomStarted(room: RoomRow, playerIds: string[]): Promise<string>;
+  /** 房間已標記為 playing 之後通知，讓 Bot 排程器開始推進。 */
+  onGameStarted?(roomId: string, gameId: string): void;
+  /** 真人 socket 註冊到房間之後通知，讓因無人在線而暫停的 Bot 繼續。 */
+  onConnectionRegistered?(roomId: string, playerId: string): void;
 }
 
 export class RoomService {
@@ -118,26 +142,31 @@ export class RoomService {
     }
   }
 
+  /** 成員的公開檢視；Bot 的 ready／connected 由種類推導，不讀 DB 旗標。 */
+  private memberView(room: RoomRow, member: MemberRow, viewerId: string | null): RoomMemberView {
+    const bot = isBotMember(member);
+    return {
+      playerId: member.player_id,
+      nickname: member.nickname ?? 'unknown',
+      seat: member.seat,
+      color: member.color,
+      ready: effectiveReady(member),
+      connected: effectiveConnected(member),
+      host: member.player_id === room.host_id,
+      joinedAt: member.joined_at,
+      bot,
+      ...(bot ? { botLevel: botLevelOf(member) } : {}),
+      self: member.player_id === viewerId,
+    };
+  }
+
   async view(roomId: string, viewerId: string | null): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
-    const memberships = await this.repo.listMemberships(roomId);
-    const guests = new Map<string, string>();
-    for (const membership of memberships) {
-      const guest = await this.repo.findGuest(membership.player_id);
-      guests.set(membership.player_id, guest?.nickname ?? 'unknown');
-    }
+    const memberships = await this.repo.listMembers(roomId);
     const proposal = await this.repo.findOpenProposal(roomId);
-    const members: RoomMemberView[] = memberships.map((membership) => ({
-      playerId: membership.player_id,
-      nickname: guests.get(membership.player_id) ?? 'unknown',
-      seat: membership.seat,
-      color: membership.color,
-      ready: membership.ready === 1,
-      connected: membership.connected === 1,
-      host: membership.player_id === room.host_id,
-      joinedAt: membership.joined_at,
-      self: membership.player_id === viewerId,
-    }));
+    const members: RoomMemberView[] = memberships.map((membership) =>
+      this.memberView(room, membership, viewerId),
+    );
 
     let pendingPolicy: PolicyProposalView | null = null;
     if (proposal) {
@@ -226,7 +255,7 @@ export class RoomService {
     for (const room of rooms) {
       if (filter.profileId && room.profile_id !== filter.profileId) continue;
       if (filter.playerCount && room.capacity !== filter.playerCount) continue;
-      const memberships = await this.repo.listMemberships(room.id);
+      const memberships = await this.repo.listMembers(room.id);
       if (memberships.length >= room.capacity && room.status === 'lobby') continue;
       out.push({
         id: room.id,
@@ -235,6 +264,7 @@ export class RoomService {
         status: room.status as RoomStatus,
         profileId: room.profile_id,
         playerCount: memberships.length,
+        botCount: memberships.filter(isBotMember).length,
         capacity: room.capacity,
         // A started room's unused seats are no longer joinable, even when the
         // game began below capacity.
@@ -255,6 +285,9 @@ export class RoomService {
       profileId: string;
       setupMode: 'fixed' | 'variable';
       policy?: Partial<RoomPolicy>;
+      /** 建房捷徑：一併加入的 Bot 數量。 */
+      bots?: number;
+      botLevel?: unknown;
     },
   ): Promise<RoomView> {
     const profile = requireProfile(input.profileId);
@@ -285,6 +318,16 @@ export class RoomService {
     if (!policyCheck.ok) {
       throw new ServiceError('E_INVALID_POLICY', 'error.E_INVALID_POLICY', { reason: policyCheck.reason });
     }
+    const botLevel = this.requireBotLevel(input.botLevel);
+    const bots = input.bots ?? 0;
+    // 至少保留一個真人席位給房主。
+    if (!Number.isInteger(bots) || bots < 0 || bots > input.capacity - 1) {
+      throw new ServiceError('E_INVALID_BOT', 'error.E_INVALID_BOT', {
+        reason: 'count',
+        max: input.capacity - 1,
+      });
+    }
+    if (bots > 0) this.requireBotsAllowed(profile.id);
 
     const now = new Date().toISOString();
     const room: RoomRow = {
@@ -316,7 +359,80 @@ export class RoomService {
       disconnected_at: null,
       connection_id: null,
     });
+    const members = await this.repo.listMembers(room.id);
+    for (let index = 0; index < bots; index++) {
+      members.push(await insertBotSeat(this.repo, room.id, members, botLevel, now));
+    }
     return this.view(room.id, playerId);
+  }
+
+  /** 未指定時使用預設難度；指定了不合法的值則拒絕。 */
+  private requireBotLevel(value: unknown): BotLevel {
+    if (value === undefined) return DEFAULT_BOT_LEVEL;
+    const level = parseBotLevel(value);
+    if (!level) throw new ServiceError('E_INVALID_BOT', 'error.E_INVALID_BOT', { reason: 'level' });
+    return level;
+  }
+
+  private requireBotsAllowed(profileId: string): void {
+    if (!this.deps.config.bots.enabled) {
+      throw new ServiceError('E_BOTS_DISABLED', 'error.E_BOTS_DISABLED', {}, 403);
+    }
+    if (!botsSupported(requireProfile(profileId))) {
+      throw new ServiceError('E_INVALID_BOT', 'error.E_INVALID_BOT', { reason: 'profile', profileId });
+    }
+  }
+
+  /** 房主在開局前加入一個 Bot 席位（SPEC §4.2、§4.9）。 */
+  async addBot(playerId: string, roomId: string, level?: unknown): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.addBotLocked(playerId, roomId, level));
+  }
+
+  private async addBotLocked(playerId: string, roomId: string, levelInput: unknown): Promise<RoomView> {
+    const room = await this.requireRoom(roomId);
+    if (room.host_id !== playerId) {
+      throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', {}, 403);
+    }
+    if (room.status !== 'lobby') {
+      throw new ServiceError('E_ROOM_STARTED', 'error.E_ROOM_STARTED', { status: room.status }, 409);
+    }
+    const level = this.requireBotLevel(levelInput);
+    this.requireBotsAllowed(room.profile_id);
+    const members = await this.repo.listMembers(roomId);
+    if (members.length >= room.capacity) {
+      throw new ServiceError('E_ROOM_FULL', 'error.E_ROOM_FULL', { capacity: room.capacity }, 409);
+    }
+    await insertBotSeat(this.repo, roomId, members, level, new Date().toISOString());
+    // 座位組成改變，與其他設定變更一樣需要真人重新確認就緒。
+    await this.clearReadiness(roomId);
+    await this.repo.updateRoom(roomId, { status: room.status });
+    this.broadcastRoom(roomId);
+    return this.view(roomId, playerId);
+  }
+
+  /** 房主在開局前移除一個 Bot 席位；真人席位不能用這個方式移除。 */
+  async removeBot(playerId: string, roomId: string, botId: string): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.removeBotLocked(playerId, roomId, botId));
+  }
+
+  private async removeBotLocked(playerId: string, roomId: string, botId: string): Promise<RoomView> {
+    const room = await this.requireRoom(roomId);
+    if (room.host_id !== playerId) {
+      throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', {}, 403);
+    }
+    if (room.status !== 'lobby') {
+      throw new ServiceError('E_ROOM_STARTED', 'error.E_ROOM_STARTED', { status: room.status }, 409);
+    }
+    const target = (await this.repo.listMembers(roomId)).find((member) => member.player_id === botId);
+    if (!target || !isBotMember(target)) {
+      throw new ServiceError('E_NOT_A_BOT', 'error.E_NOT_A_BOT', { playerId: botId }, 404);
+    }
+    await this.repo.deleteMembership(roomId, botId);
+    await this.repo.deleteBotGuest(botId);
+    await this.clearReadiness(roomId);
+    await this.repo.updateRoom(roomId, { status: room.status });
+    this.broadcastRoom(roomId);
+    return this.view(roomId, playerId);
   }
 
   async joinByCode(playerId: string, code: string): Promise<RoomView> {
@@ -381,8 +497,9 @@ export class RoomService {
 
     if (room.status === 'lobby') {
       await this.repo.deleteMembership(roomId, playerId);
-      const remaining = await this.repo.listMemberships(roomId);
-      if (remaining.length === 0) {
+      const remaining = await this.repo.listMembers(roomId);
+      // 只剩 Bot 的大廳沒有人能開局或管理，與空大廳一樣關閉。
+      if (humanMembers(remaining).length === 0) {
         await this.repo.deleteRoom(roomId);
         this.runtimes.delete(roomId);
         return { left: true, hostTransferredTo: null };
@@ -528,11 +645,14 @@ export class RoomService {
         playerCount: capacity,
       });
     }
-    const memberships = await this.repo.listMemberships(roomId);
+    const memberships = await this.repo.listMembers(roomId);
     if (capacity < memberships.length) {
       throw new ServiceError('E_CAPACITY_BELOW_SEATED', 'error.E_CAPACITY_BELOW_SEATED', {
         seated: memberships.length,
       });
+    }
+    if (memberships.some(isBotMember) && !botsSupported(profile)) {
+      throw new ServiceError('E_INVALID_BOT', 'error.E_INVALID_BOT', { reason: 'profile', profileId });
     }
     let policy = this.policyOf(room);
     if (input.policy) {
@@ -545,8 +665,7 @@ export class RoomService {
     // Keep every intermediate state valid without a shared DB transaction:
     // compacted seats still fit the old capacity, readiness is cleared before
     // the new settings become visible, and the room lock blocks concurrent
-    // joins/starts. The dialect's transaction context is process-wide, so a
-    // settings transaction here would overlap transactions for other rooms.
+    // joins/starts.
     if (capacity !== room.capacity) await this.compactSeats(roomId);
     await this.clearReadiness(roomId);
     await this.repo.updateRoom(roomId, {
@@ -648,9 +767,10 @@ export class RoomService {
   private async tryApplyPolicy(roomId: string, proposalId: string): Promise<void> {
     const proposal = await this.repo.findOpenProposal(roomId);
     if (!proposal || proposal.id !== proposalId) return;
-    const memberships = await this.repo.listMemberships(roomId);
+    // Bot 席位不投票（SPEC §5.8）。
+    const voters = humanMembers(await this.repo.listMembers(roomId));
     const consents = new Set(await this.repo.listPolicyConsents(proposalId));
-    const everyone = memberships.every((membership) => consents.has(membership.player_id));
+    const everyone = voters.every((membership) => consents.has(membership.player_id));
     if (!everyone) return;
     const room = await this.requireRoom(roomId);
     if (room.policy_revision !== proposal.base_revision) {
@@ -671,7 +791,8 @@ export class RoomService {
   }
 
   private async clearReadiness(roomId: string): Promise<void> {
-    for (const membership of await this.repo.listMemberships(roomId)) {
+    // Bot 永遠就緒，只清除真人的確認。
+    for (const membership of humanMembers(await this.repo.listMembers(roomId))) {
       if (membership.ready === 1) {
         await this.repo.updateMembership(roomId, membership.player_id, { ready: 0 });
       }
@@ -702,18 +823,12 @@ export class RoomService {
     if (room.status !== 'lobby') {
       throw new ServiceError('E_ROOM_STARTED', 'error.E_ROOM_STARTED', { status: room.status }, 409);
     }
-    const memberships = await this.repo.listMemberships(roomId);
+    const memberships = await this.repo.listMembers(roomId);
     const blockers = this.startBlockers(
       room,
       memberships.map((membership) => ({
-        playerId: membership.player_id,
+        ...this.memberView(room, membership, null),
         nickname: membership.player_id,
-        seat: membership.seat,
-        color: membership.color,
-        ready: membership.ready === 1,
-        connected: membership.connected === 1,
-        host: membership.player_id === room.host_id,
-        joinedAt: membership.joined_at,
       })),
     );
     if (blockers.length > 0) {
@@ -722,6 +837,7 @@ export class RoomService {
     const gameId = await this.deps.onRoomStarted(room, memberships.map((m) => m.player_id));
     await this.repo.updateRoom(roomId, { status: 'playing', game_id: gameId });
     this.broadcastRoom(roomId);
+    this.deps.onGameStarted?.(roomId, gameId);
     return { gameId };
   }
 
@@ -747,6 +863,8 @@ export class RoomService {
       this.runtimes.delete(room.id);
       removed.push(room.id);
     }
+    // 回收已沒有任何席位的 Bot guest（例如房間刪除前的舊資料）。
+    await this.repo.deleteOrphanBotGuests(new Date(now.getTime() - ORPHAN_BOT_GUEST_AGE_MS).toISOString());
     return removed;
   }
 
@@ -769,6 +887,7 @@ export class RoomService {
     }
     await this.markConnected(roomId, connection.playerId, connection.id);
     this.broadcastPresence(roomId);
+    this.deps.onConnectionRegistered?.(roomId, connection.playerId);
   }
 
   async unregisterConnection(connection: Connection): Promise<void> {
@@ -832,7 +951,8 @@ export class RoomService {
 
   /** Transfers administration to the earliest-joined connected member. */
   async transferHost(roomId: string): Promise<string | null> {
-    const memberships = await this.repo.listMemberships(roomId);
+    // Bot 不能成為房主。
+    const memberships = humanMembers(await this.repo.listMembers(roomId));
     const candidates = memberships
       .filter((membership) => membership.connected === 1)
       .sort((a, b) => a.joined_at.localeCompare(b.joined_at) || a.seat - b.seat);
@@ -917,6 +1037,11 @@ export class RoomService {
   connectionIdsFor(playerId: string, roomId: string): string[] {
     const runtime = this.runtimes.get(roomId);
     return [...(runtime?.connections.get(playerId) ?? [])].map((connection) => connection.id);
+  }
+
+  /** 房內是否有任何 live socket；Bot 沒有 socket，所以這代表有真人在線。 */
+  hasLiveConnection(roomId: string): boolean {
+    return (this.runtimes.get(roomId)?.connections.size ?? 0) > 0;
   }
 
   connectionsInRoom(roomId: string): Connection[] {

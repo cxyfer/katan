@@ -4,6 +4,8 @@ import { BoardView } from './BoardView.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
 import { GameIcon, IslandIllustration } from './GameArt.tsx';
 import { GameStatsPanel } from './GameStats.tsx';
+import { BotBadge } from './BotBadge.tsx';
+import { botLevelsOf } from '../state/bots.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/result-layout.css';
 
@@ -23,6 +25,8 @@ export function ResultScreen({ controller }: { controller: TableController }) {
   const winner = result?.playerId
     ? view?.players.find((player) => player.id === result.playerId) ?? null
     : null;
+  // 電腦座位由房間成員推得；房間尚未載入時不標示。
+  const bots = botLevelsOf(state.room);
 
   return (
     <div className="screen screen--result" id="main">
@@ -34,6 +38,7 @@ export function ResultScreen({ controller }: { controller: TableController }) {
         {result?.reason === 'victory' && winner ? (
           <p className="result__winner" data-testid="result-winner">
             {t('play.resultWinner', { player: winner.nickname })}
+            {bots.has(winner.id) && <> <BotBadge level={bots.get(winner.id)} testId="result-winner-bot" /></>}
           </p>
         ) : (
           <p className="result__winner" data-testid="result-no-winner">
@@ -64,7 +69,7 @@ export function ResultScreen({ controller }: { controller: TableController }) {
         <IslandIllustration />
       </section>
 
-      {view?.stats && <GameStatsPanel view={view} />}
+      {view?.stats && <GameStatsPanel view={view} bots={bots} />}
 
       <section aria-labelledby="final-board-heading" className="card result-board">
         <h2 id="final-board-heading">{t('play.resultFinalBoard')}</h2>

@@ -30,6 +30,16 @@ tested (SPEC §10).
 | `SHUTDOWN_TIMEOUT_MS` | `10000` | Hard stop after SIGTERM |
 | `PRESENCE_SWEEP_INTERVAL_MS` | `5000` | Presence sweep interval |
 | `LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` |
+| `BOTS_ENABLED` | `true` | Lets hosts add computer opponents; `0` stops new bot seats but bots already in a started game keep playing |
+| `BOT_DELAY_SCALE` | `1` | Multiplier for every bot think delay (`0`–`5`; `0` acts immediately) |
+| `BOT_OFFER_COLLECT_MS` | `6000` | How long a bot waits for answers before settling its own trade offer |
+| `BOT_OFFER_PATIENCE_MS` | `20000` | When a bot withdraws an offer nobody accepted |
+| `BOT_RETRY_MS` | `30000` | Back-off after a bot's fallback move is also rejected |
+
+Bots run inside the service process and call no external service. A bot acts
+only while at least one person in its room has a live socket, so a table that
+everyone left waits instead of playing itself. Rejected or failing bot moves are
+logged at `warn` with the game, seat, command type and message id.
 
 Policy bounds are enforced server-side (`POLICY_BOUNDS`): turn clock `0–3600`,
 disconnect grace `30–3600`. Invalid values are rejected with

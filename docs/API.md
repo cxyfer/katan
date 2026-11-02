@@ -29,7 +29,7 @@ Conventions:
 | PATCH | `/api/session` | `{ nickname?, locale? }` | `{ player }` |
 | GET | `/api/profiles` | – | `{ profiles: ProfileView[] }` |
 | GET | `/api/rooms` | query `playerCount?`, `profileId?`, `hasSeats?` | `{ rooms: RoomSummaryView[] }` |
-| POST | `/api/rooms` | `{ visibility, capacity, profileId, setupMode, policy? }` | `RoomView` |
+| POST | `/api/rooms` | `{ visibility, capacity, profileId, setupMode, policy?, bots?, botLevel? }` | `RoomView` |
 | POST | `/api/rooms/join` | `{ code }` | `RoomView` |
 | GET | `/api/rooms/:roomId` | – | `RoomView` |
 | POST | `/api/rooms/:roomId/leave` | – | `{ left: true, hostTransferredTo: string \| null }` |
@@ -40,6 +40,8 @@ Conventions:
 | POST | `/api/rooms/:roomId/policy/consent` | `{ proposalId, approve }` | `RoomView` |
 | POST | `/api/rooms/:roomId/start` | – | `{ gameId }` |
 | POST | `/api/rooms/:roomId/close` | – | `{ closed: true }` |
+| POST | `/api/rooms/:roomId/bots` | `{ level? }` | `RoomView` |
+| DELETE | `/api/rooms/:roomId/bots/:playerId` | – | `RoomView` |
 | GET | `/api/games` | – | `{ games: ResumableGameView[] }` |
 | GET | `/api/games/:gameId` | – | `GameSnapshot` |
 | GET | `/api/games/:gameId/events` | query `after?`, `limit?` | `{ events: GameEvent[], revision }` |
@@ -66,6 +68,32 @@ count the profile supports up to its capacity, so it does not need to be full;
 `blocker.seats` reports the profile minimum while below it, and
 `blocker.profilePlayerCount` reports a seated count the profile does not
 support.
+
+### Computer opponents (bots)
+
+Bot seats are part of the room (SPEC §4.9). `RoomMemberView.bot` marks them
+and `botLevel` (`'easy' | 'standard'`, default `'standard'`) is present only on
+bot seats; `RoomSummaryView.botCount` and `ResumableGameView.players[].bot`
+describe them in lists. `ServerConfigView.bots` reports whether hosts may add
+bots and which levels exist.
+`ResumableGameView.allSeatsNeeded` is false for a game containing bot seats:
+only the original human players must reconnect and become ready to resume.
+
+- `POST /api/rooms` accepts `bots` (an integer from `0` to `capacity − 1`) and
+  `botLevel` to seat bots at creation. Anything else is `E_INVALID_BOT`.
+- `POST /api/rooms/:roomId/bots` and `DELETE /api/rooms/:roomId/bots/:playerId`
+  are host-only and lobby-only (`E_NOT_HOST`, `E_ROOM_STARTED`). Adding to a
+  full room is `E_ROOM_FULL`; removing a seat that is not a bot is
+  `E_NOT_A_BOT`. Both clear every person's readiness, like other settings.
+- When the deployment sets `BOTS_ENABLED=0`, adding bots is `E_BOTS_DISABLED`.
+  Bots also require a base-rules profile (`E_INVALID_BOT`, reason `profile`).
+- Bot seats always report `ready` and `connected`, never become host, and do not
+  vote: pause/resume, abandonment and post-start policy changes count people
+  only. When every other seat is a bot, the one person may abandon without an
+  absent player.
+- Bots act through the ordinary command path with `commandId`s of the form
+  `bot:<revision>:<attempt>`, so their receipts follow the rules below. They
+  only act while at least one person in the room has a live socket.
 
 ### Command handling
 

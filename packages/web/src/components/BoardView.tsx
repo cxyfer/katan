@@ -151,7 +151,7 @@ export function BoardView({ controller }: { controller: TableController }) {
     <section className={`board__setup-guide${setupMine ? ' board__setup-guide--mine' : ''}`} data-testid="setup-guide" aria-live="polite">
       <div className="board__setup-title">
         <GameIcon name={setup.stage === 'building' ? 'home' : 'flag'} size={20} />
-        <strong>{setupMine ? t('board.setupPlace', { piece: setupPiece }) : t('board.setupWaiting', { player: setupActor?.nickname ?? '—', piece: setupPiece })}</strong>
+        <strong>{setupMine ? t('board.setupPlace', { piece: setupPiece }) : t('board.setupWaiting', { player: setupActor ? nameResolver(setupActor.id) : '—', piece: setupPiece })}</strong>
       </div>
       <span>{t('board.setupGuide', { round: setup.round })}</span>
       <span>{t('board.setupProgress', { remaining: setup.remaining })}</span>

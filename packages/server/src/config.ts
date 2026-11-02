@@ -11,6 +11,20 @@ export interface ServerLimits {
   roomIdleTtlMinutes: number;
 }
 
+/** 電腦對手設定（SPEC §4.9）。 */
+export interface BotSettings {
+  /** 是否允許房主新增 Bot；關閉後已開局的 Bot 席位仍會行動，避免整局卡住。 */
+  enabled: boolean;
+  /** 所有 Bot 思考延遲的倍率；0 表示不延遲（測試用），上限 5。 */
+  delayScale: number;
+  /** Bot 開價後至少等待回應的毫秒數（收集窗）。 */
+  offerCollectMs: number;
+  /** Bot 開價後無人同意即撤回的毫秒數（逾時）。 */
+  offerPatienceMs: number;
+  /** 保底策略也被拒絕後，重試前的等待毫秒數。 */
+  retryMs: number;
+}
+
 export interface ServerConfig {
   host: string;
   port: number;
@@ -29,12 +43,20 @@ export interface ServerConfig {
   shutdownTimeoutMs: number;
   presenceSweepIntervalMs: number;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
+  bots: BotSettings;
 }
 
 function int(value: string | undefined, fallback: number): number {
   if (value === undefined || value === '') return fallback;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** 解析有界的小數；無效或超出範圍時退回預設值。 */
+function bounded(value: string | undefined, fallback: number, min: number, max: number): number {
+  if (value === undefined || value === '') return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
 }
 
 function bool(value: string | undefined, fallback: boolean): boolean {
@@ -74,6 +96,13 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     shutdownTimeoutMs: int(env.SHUTDOWN_TIMEOUT_MS, 10_000),
     presenceSweepIntervalMs: int(env.PRESENCE_SWEEP_INTERVAL_MS, 5_000),
     logLevel: (env.LOG_LEVEL as ServerConfig['logLevel']) ?? 'info',
+    bots: {
+      enabled: bool(env.BOTS_ENABLED, true),
+      delayScale: bounded(env.BOT_DELAY_SCALE, 1, 0, 5),
+      offerCollectMs: Math.max(0, int(env.BOT_OFFER_COLLECT_MS, 6_000)),
+      offerPatienceMs: Math.max(0, int(env.BOT_OFFER_PATIENCE_MS, 20_000)),
+      retryMs: Math.max(0, int(env.BOT_RETRY_MS, 30_000)),
+    },
   };
 }
 
