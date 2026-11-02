@@ -201,6 +201,15 @@ hand limit 4 (also 4 for 5–6, corrected in P2), immediate VP cards, Alchemist 
 each card's targets/responses/privacy. Card visuals (original), i18n
 paraphrases, full simulated games. Enable `ck-*` if R-CK passes.
 
+As built (2026-11-02, `docs/aegis/work/2026-11-02-cities-knights-progress.md`):
+23 playable card types plus the two VP cards, the merchant (1 VP, 2:1 rate),
+original card faces, a hand with playable and unplayable states and reasons, a
+prompt for every responder frame, merchant pieces in SVG and 3D, four audio
+cues and both locales. `ck-2025` and `ck-paired-2025` are enabled; bot seats
+stay refused because `@catan/bots` has no C&K module (a later phase). Browser
+evidence: `scripts/cities-knights/progress.py` plays every card type through
+the UI in SVG and 3D, desktop and phone.
+
 ### P4 SF + C&K
 
 COMB guidance: target 16, gold gives resources only, merchant not on gold,

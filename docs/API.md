@@ -226,12 +226,12 @@ ids per player), `islandClaims` (`{ player, island, vertex }`),
 `goldRequired`. The `seafarers.gold` frame projects `data.picks` (owed
 resources per remaining responder).
 
-### Cities & Knights commands (`ck-*`, implemented, not yet enabled)
+### Cities & Knights commands (`ck-*`)
 
-The `ck-2025` / `ck-paired-2025` profiles are registered with
-`enabled: false` (`profile.unavailable.citiesKnightsProgress`) until the
-progress-card effects land, so the server rejects them for new rooms. The
-contract below is what the rules module accepts once a game runs on them.
+The `ck-2025` and `ck-paired-2025` profiles are enabled: the lobby offers
+them and a room created with either one runs the full module (knights,
+barbarians, improvements, commodities, the 23 playable progress cards and the
+merchant). Bot seats are still refused on these profiles (`botSeats: false` in the profile list; `blocker.botsUnsupported` on the start check).
 Base `build.devCard` and `dev.play*` are rejected (`E_INVALID_COMMAND`).
 
 | Command | Fields | When |
@@ -249,14 +249,40 @@ Base `build.devCard` and `dev.play*` are rejected (`E_INVALID_COMMAND`).
 | `barbarians.chooseDeck` | `track` | `citiesKnights.defenderDraw`, by its first responder |
 | `progress.discard` | `cards` (array) | `citiesKnights.progressDiscard` (exactly `data.required[self]` cards), or on the own turn while above the hand limit |
 | `science.take` | `resource` (or `null` to pass) | `citiesKnights.scienceBonus`, by its first responder |
+| `progress.play` | `card`, plus the card's fields (below) | the own turn; the card must be held and its `hints` entry `playable`. Alchemy only before the roll, every other card in the action window |
+| `progress.harborOffer` | `to`, `resource` | own action window while `modules.citiesKnights.harbor` is open (Commercial Harbor): offer one resource to a player in `hints.harborTargets` |
+| `progress.harborAnswer` | `commodity` | `citiesKnights.harborExchange`, by the offered player: give one commodity back (answered automatically when they hold one kind, or none) |
+| `progress.takeCards` | `cards` | `citiesKnights.guildDues`, by the card's player: take exactly `data.count` cards from the victim's hand |
+| `progress.takeProgress` | `card` (or `null`) | `citiesKnights.espionage`, by the card's player: take one of the seen progress cards |
+| `progress.sabotageDiscard` | `cards` | `citiesKnights.sabotage`, each responder discards exactly `data.required[self]` cards |
+| `progress.weddingGive` | `cards` | `citiesKnights.wedding`, each responder gives exactly `data.required[self]` cards to the card's player |
+| `progress.treasonRemove` | `vertex` | `citiesKnights.treasonRemove`, by the chosen player: remove one of their own knights |
+| `progress.treasonPlace` | `vertex` (or `null`), `level` | `citiesKnights.treasonPlace`, by the card's player: place an own knight of an allowed `level`, or decline |
+| `progress.diplomacyRoad` | `edge` (or `null`) | `citiesKnights.diplomacyRoad`, by the card's player: rebuild the removed own road for free, or decline |
+
+`progress.play` fields per card: `alchemy` → `dice` (`[yellow, red]`);
+`crane` → `track` (and `vertex` when several cities qualify);
+`engineering`, `medicine`, `intrigue` → `vertex`; `invention` → `hexes`
+(two); `smithing` → `vertices` (one or two own knights);
+`merchant`, `taxation` → `hex`; `diplomacy` → `edge`;
+`guildDues`, `espionage`, `treason` → `target` (a player id);
+`merchantFleet`, `resourceMonopoly`, `tradeMonopoly` → `kind`; the other
+cards (`irrigation`, `mining`, `roadBuilding`, `encouragement`, `sabotage`,
+`wedding`, `commercialHarbor`) take no field. Printing and Constitution are
+not playable: they score when drawn.
 
 A roll carries `turn.dice` as `[yellow, red]`; the event die is in
 `modules.citiesKnights.lastRoll`. Frames: `citiesKnights.resolveRoll`
 (a continuation with no responders that resumes production after the event),
 `.pillage` (`data.cities` per responder), `.displaced` (`data.player`,
 `level`, `active`, `from`, `options`), `.progressDiscard` (`data.required`),
-`.defenderDraw` (`data.decks`) and `.scienceBonus`. Ending the turn while
-above the progress-card limit is rejected.
+`.defenderDraw` (`data.decks`) and `.scienceBonus`; the progress cards add
+`.harborExchange` (`data.from`, `resource`), `.guildDues` (`data.victim`,
+`count`), `.espionage` (`data.victim`), `.sabotage` and `.wedding`
+(`data.actor`, `required`), `.treasonRemove`, `.treasonPlace` (`data.level`,
+`active`) and `.diplomacyRoad` (`data.edge`, `edges`). Ending the turn while
+above the progress-card limit is rejected. Playing a card with a pending
+frame is `E_PENDING_EFFECT`; Alchemy twice in one window is `E_ALCHEMY_SET`.
 
 `GameView.modules.citiesKnights` is public: `barbarian`
 (`position`, `length`, `attacks`), `barbarianStrength`, `defenderStrength`,
@@ -264,7 +290,9 @@ above the progress-card limit is rejected.
 `promoted`), `walls` (`vertex`, `player`), `metropolises` per track
 (`player`, `vertex` or `null`), `toppled`, `progressVp` per player,
 `progressCounts`, `decks` (card counts per track), `commodityBank`,
-`lastRoll` (`event`, `red`, `atSeq`), `lastAttack` and `handLimit`.
+`lastRoll` (`event`, `red`, `atSeq`), `lastAttack`, `handLimit`, `merchant`
+(`player`, `hex`, or `null`), and for the current window `alchemy` (`player`,
+`dice`), `fleets` (`player`, `kind`) and `harbor` (`player`, `offers`).
 Progress hands appear only in the owner's own player view (`progressCards`);
 deck order is never projected. Players carry `commodities`, `improvements`,
 `cityWalls` and `defenders`.
@@ -273,7 +301,10 @@ deck order is never projected. Players carry `commodities`, `improvements`,
 (`vertex`, `level`, `active`, `canActivate`, `canPromote`, `canAct`, `moves`,
 `displace`, `chase`), `wallSites`, `improvements` (`track`, `level`, `cost`,
 `commodity`, `metropolis`, `sites`, `blocked`), `commodityRates`, `costs`,
-`progressExcess`, `retreat`, `pillage`, `defenderDecks` and `scienceBonus`.
+`progressExcess`, `retreat`, `pillage`, `defenderDecks`, `scienceBonus`,
+`progress` (per held card kind: `card`, `track`, `count`, `playable`, a
+`reason` when not, and the legal `targets`), `harborTargets` and `twoForOne`
+(card kinds given at 2:1 this window).
 Events are `ck.*` (for example `ck.eventRolled`, `ck.barbariansAttack`,
 `ck.cityPillaged`, `ck.knightDisplaced`, `ck.progressDrawn`); a drawn or
 discarded card's face is sent only to its holder.

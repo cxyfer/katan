@@ -152,12 +152,14 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   the per-player small-island bonus, Longest Trade Route and a 14-point goal,
   in both the 3D and SVG boards.
 
-Not yet enabled: Cities & Knights and the Seafarers + Cities & Knights
-combination. Those profiles are registered in the ruleset registry but
-disabled; the server rejects them. The Cities & Knights core rules (event
-die, barbarians, knights, walls, commodities, city improvements and
-metropolises) are implemented and tested, with their board pieces and panel;
-the profiles stay disabled until the progress-card effects are in. See
+- **Cities & Knights** for 3–6 players (CK25/CK56-25 2025 editions): the
+  event die and barbarians, knights, walls, commodities, city improvements,
+  metropolises, the 54 progress cards (23 playable types, two scored when
+  drawn) and the merchant, with a 13-point goal, in both the 3D and SVG
+  boards. Computer opponents are not available in this mode yet.
+
+Not yet enabled: the Seafarers + Cities & Knights combination. That profile
+is registered in the ruleset registry but disabled; the server rejects it. See
 [`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
 including the device, accessibility and playtest evidence that has not been
 produced.
