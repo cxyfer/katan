@@ -978,10 +978,17 @@ function playRoadBuilding(state: GameState, actorId: string): CommandOutcome {
   state.turn.devCardPlayed = true;
   playerStats(state, actorId).devCardsPlayed.roadBuilding += 1;
   emit(state, 'dev.roadBuilding', { playerId: actorId });
-  // 免費道路數同時受合法邊與剩餘道路棋子限制，否則待決效果會無法完成。
+  // B25（CN3081, p.9）：打出時「建造 2 條道路」，僅受一般建造規則與 15 條棋子限制。
+  // 只要現在至少有一條合法邊就授予 min(2, 剩餘棋子)；第一條放下後若已無合法邊，
+  // buildRoad 會提前結束效果，因此不會卡桌。
+  // base-2025.3 之前開始的對局沿用舊算法（受打出時合法邊數量限制），不改動進行中的規則（SPEC §7.3）。
   const available = legalRoadEdges(state, actorId).length;
   const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, actorId);
-  const remaining = Math.max(0, Math.min(2, available, pieces));
+  const grant =
+    state.engineVersion === ENGINE_VERSION
+      ? available > 0 ? 2 : 0
+      : Math.min(2, available);
+  const remaining = Math.max(0, Math.min(grant, pieces));
   if (remaining > 0) {
     state.pending = { kind: 'freeRoads', actor: actorId, remaining, granted: remaining };
   }

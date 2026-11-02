@@ -16,8 +16,14 @@ import type { DevCardType } from './types.ts';
  * The maintainer explicitly approved running unfinished base-2025.1 and
  * base-2025.2 games on this engine on 2026-11-02 as the PR #60 defect-fix
  * exception (SPEC §7.3, FIDELITY gap 11).
+ * base-2025.4: Road Building grants both roads whenever one legal edge exists
+ * at play time (B25, CN3081 p.9), even if only the first road opens the
+ * second. The maintainer approved fixing the defect on 2026-11-03; running
+ * unfinished games on it is NOT approved, so a game stored under an older
+ * version keeps the old grant (the pending effect already in a save is kept as
+ * recorded). See SPEC §7.3 and FIDELITY gap 11.
  */
-export const ENGINE_VERSION = 'base-2025.3';
+export const ENGINE_VERSION = 'base-2025.4';
 
 export interface ProfilePieces {
   settlements: number;

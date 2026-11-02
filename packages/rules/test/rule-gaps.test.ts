@@ -8,6 +8,7 @@ import type { GameState } from '../src/types.ts';
 import {
   act,
   expectRejected,
+  handSize,
   placeBuilding,
   placeRoad,
   playableGame,
@@ -94,6 +95,105 @@ describe('Road Building with few road pieces left', () => {
     const { state: after, events } = act(played, 'p1', { type: 'build.road', edge });
     expect(after.pending).toBeNull();
     expect(events.find((event) => event.type === 'dev.roadBuildingFinished')?.params.placed).toBe(1);
+  });
+});
+
+/** 清空盤面；回傳一個只有兩條邊的外圍路口 v、邊 e1/e2 及 e1 的另一端 w。 */
+function corner(state: GameState) {
+  state.board.buildings = state.board.buildings.map(() => null);
+  state.board.roads = state.board.roads.map(() => null);
+  const topo = getTopology(state.board.layout.topologyId);
+  const v = topo.vertices.findIndex((vertex) => vertex.edges.length === 2);
+  const [e1, e2] = topo.vertices[v]!.edges as [number, number];
+  const w = topo.edges[e1]!.vertices.find((vertex) => vertex !== v)!;
+  return { topo, v, e1, e2, w };
+}
+
+const placedBy = (events: GameState['log'], type: string) =>
+  events.find((event) => event.type === type)?.params.placed;
+
+describe('Road Building grant at play time (B25, CN3081 p.9: "build 2 roads at no cost")', () => {
+  it('grants two roads when one legal edge exists and the first opens another', () => {
+    // 起始：p1 只有外圍路口 v 的聚落；v 的另一條邊 e2 被 p2 的道路占用，
+    // 打出時唯一合法邊是 e1，放下後 w 端才出現新的合法邊。
+    const { state } = playableGame({ players: 4 });
+    const { v, e1, e2 } = corner(state);
+    placeBuilding(state, 'p1', v);
+    placeRoad(state, 'p2', e2);
+    state.players[0]!.devCards = ['roadBuilding'];
+    setHand(state, 'p1', {});
+    expect(legalRoadEdges(state, 'p1')).toEqual([e1]);
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 2, granted: 2 });
+    const first = act(played, 'p1', { type: 'build.road', edge: e1 });
+    expect(first.state.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 2 });
+    const second = legalRoadEdges(first.state, 'p1')[0]!;
+    const done = act(first.state, 'p1', { type: 'build.road', edge: second });
+    expect(done.state.pending).toBeNull();
+    expect(placedBy(done.events, 'dev.roadBuildingFinished')).toBe(2);
+    expect(handSize(done.state, 'p1')).toBe(0);
+  });
+
+  it('keeps the old single-road grant for a game stored under an earlier version', () => {
+    const { state } = playableGame({ players: 4 });
+    const { v, e2 } = corner(state);
+    placeBuilding(state, 'p1', v);
+    placeRoad(state, 'p2', e2);
+    state.engineVersion = 'base-2025.3';
+    state.players[0]!.devCards = ['roadBuilding'];
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 1 });
+  });
+
+  it('grants nothing, and still consumes the card, when no legal edge exists', () => {
+    // 起始：v 的兩條邊都被 p2 的道路占用，p1 沒有任何合法邊。
+    const { state } = playableGame({ players: 4 });
+    const { v, e1, e2 } = corner(state);
+    placeBuilding(state, 'p1', v);
+    placeRoad(state, 'p2', e1);
+    placeRoad(state, 'p2', e2);
+    state.players[0]!.devCards = ['roadBuilding'];
+    expect(legalRoadEdges(state, 'p1')).toEqual([]);
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toBeNull();
+    expect(played.players[0]!.devCards).not.toContain('roadBuilding');
+    expect(played.turn.devCardPlayed).toBe(true);
+    expect(actionHints(played, 'p1').canEndTurn).toBe(true);
+  });
+
+  it('ends early with placed 1 when the first road leaves no legal edge', () => {
+    // 起始：e1 是唯一合法邊；e2 被 p2 道路占用，w 端有 p2 聚落，放下 e1 後無處可延伸。
+    const { state } = playableGame({ players: 4 });
+    const { v, e1, e2, w } = corner(state);
+    placeBuilding(state, 'p1', v);
+    placeRoad(state, 'p2', e2);
+    placeBuilding(state, 'p2', w);
+    state.players[0]!.devCards = ['roadBuilding'];
+    expect(legalRoadEdges(state, 'p1')).toEqual([e1]);
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 2, granted: 2 });
+    const { state: after, events } = act(played, 'p1', { type: 'build.road', edge: e1 });
+    expect(after.pending).toBeNull();
+    expect(placedBy(events, 'dev.roadBuildingFinished')).toBe(1);
+    expect(actionHints(after, 'p1').canEndTurn).toBe(true);
+  });
+
+  it('with one road piece left grants one road even if it opens more edges', () => {
+    // 起始：p1 已有 14 條道路，打出時有多條合法邊，只剩 1 個棋子。
+    const { state } = playableGame({ players: 4 });
+    let placed = state.board.roads.filter((road) => road?.player === 'p1').length;
+    for (let edge = 0; edge < state.board.roads.length && placed < 14; edge++) {
+      if (state.board.roads[edge] || legalRoadEdges(state, 'p1').includes(edge)) continue;
+      placeRoad(state, 'p1', edge);
+      placed += 1;
+    }
+    expect(placed).toBe(14);
+    state.players[0]!.devCards = ['roadBuilding'];
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 1 });
   });
 });
 

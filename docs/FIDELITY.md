@@ -45,7 +45,7 @@ The registry separates two questions:
 | R-B02 | two independent dice, settlement 1 / city 2, finite supply, robber block, bank shortage rule | `packages/rules/test/production.test.ts` (10 cases), `packages/rules/test/costs.test.ts` (spent cards return to the bank) | covered |
 | R-B03 | 7 → half rounded down, multi-responder discards, no trade before resolution, empty victim, no multiplied theft, desert, knight does not trigger discards | `packages/rules/test/seven.test.ts` (10 cases) | covered |
 | R-B04 | domestic exchange legality, bank 4:1/3:1/2:1, stale/expired offers, consent, revision invalidates consent, one settlement | `packages/rules/test/trade.test.ts` (13 cases) | covered |
-| R-B05 | cannot play a card the turn it is bought, one per turn, pre-roll knight, monopoly / year of plenty / road building, VP card victory, empty deck | `packages/rules/test/devcards.test.ts` (11 cases), `packages/rules/test/rule-gaps.test.ts` (older card after a same-type purchase; Road Building capped by road pieces; Year of Plenty capped by the bank) | covered |
+| R-B05 | cannot play a card the turn it is bought, one per turn, pre-roll knight, monopoly / year of plenty / road building, VP card victory, empty deck | `packages/rules/test/devcards.test.ts` (11 cases), `packages/rules/test/rule-gaps.test.ts` (older card after a same-type purchase; Road Building capped by road pieces; Year of Plenty capped by the bank; Road Building grants both roads when the first opens the second edge, none without a legal edge, and ends early after one road if none remains, B25 p.9) | covered |
 | R-B06 | Longest Road ≥ 5 along a trail, branches, loops, opponent cuts, incumbent tie retention, award reassignment, Largest Army transfer | `packages/rules/test/awards.test.ts` (10 cases), `packages/rules/test/rule-gaps.test.ts` (roads stop at an opponent building and continue from the player's own side) | covered; see the tie-break note below |
 | R-B07 | win at own turn start, no win from an outside-turn gain, several VP cards together, award loss before the next turn, terminal state rejects commands | `packages/rules/test/victory.test.ts` (7 cases) | covered |
 | R-VIS | per-player projection, hidden hands/cards/deck, private event parameters, room-discovery metadata | `packages/rules/test/privacy.test.ts` (7), `packages/server/test/game.test.ts` (HTTP) | covered |
@@ -193,3 +193,8 @@ These are recorded rather than hidden. None of them is presented as verified.
     exhausted effects no longer block the next legal command.
     `base-2025.1` banks stay short by the cards already lost, and a road a
     `base-2025.2` game let through an opponent's building stays on the board.
+    `base-2025.4` (Road Building grants both roads whenever a legal edge
+    exists, B25 CN3081 p.9) is a defect fix whose use on unfinished games is
+    **not yet approved**: a game stored under an earlier `engineVersion` keeps
+    the old grant (`min(2, legal edges at play time, pieces)`), and an already
+    pending effect keeps its recorded `remaining`/`granted`.
