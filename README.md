@@ -158,9 +158,15 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   drawn) and the merchant, with a 13-point goal, in both the 3D and SVG
   boards. Computer opponents are not available in this mode yet.
 
-Not yet enabled: the Seafarers + Cities & Knights combination. That profile
-is registered in the ruleset registry but disabled; the server rejects it. See
-[`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
+- **Seafarers + Cities & Knights — Heading for New Shores combined** for 3–6
+  players (COMB guidance and CK25 p. 12): the New Shores maps with the Cities
+  & Knights setup, progress decks, knights, barbarians and merchant, knights
+  carried along ships and onto the sea, the pirate waiting for the first
+  barbarian attack and chased by knights, gold without commodities and a
+  16-point goal, in both the 3D and SVG boards. Bot seats are not offered
+  for the expansions.
+
+See [`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
 including the device, accessibility and playtest evidence that has not been
 produced.
 
