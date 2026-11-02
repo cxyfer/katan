@@ -76,7 +76,7 @@ export function CitiesKnightsPrompt({ controller }: { controller: TableControlle
       </div>
     )}
     {discard > 0 && hand.length > 0 && (
-      <ProgressDiscard key={`${view.seq}`} required={discard} hand={hand} disabled={blocked}
+      <ProgressDiscard key={`${discard}:${hand.join(",")}`} required={discard} hand={hand} disabled={blocked}
         onSubmit={(cards) => void actions.submitCommand({ type: 'progress.discard', cards }, 'ck.prompt.progressDiscard')} />
     )}
     {ck.scienceBonus && (

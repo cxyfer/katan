@@ -195,6 +195,25 @@ describe('cities & knights client', () => {
     expect(deck.submitCommand).toHaveBeenCalledWith({ type: 'barbarians.chooseDeck', track: 'politics' }, 'ck.prompt.deck');
   });
 
+  it('keeps the picked progress cards when another responder changes the frame sequence', () => {
+    const { state } = knightTable();
+    state.players[0]!.progressCards = ['crane', 'wedding', 'mining', 'merchant', 'alchemy'];
+    state.pending = { kind: 'citiesKnights.progressDiscard', module: 'citiesKnights', responders: ['p1', 'p2'], data: { required: { p1: 1, p2: 1 } } } as GameState['pending'];
+    const first = view(state);
+    const { rerender } = render(<LocaleProvider locale="en"><CitiesKnightsPrompt controller={controllerFor(first).controller} /></LocaleProvider>);
+    fireEvent.click(screen.getByTestId('ck-progress-pick-1'));
+    expect(screen.getByTestId('ck-progress-pick-1').getAttribute('aria-pressed')).toBe('true');
+    // p2 discards: the sequence advances, p1's frame content stays the same.
+    const bumped = controllerFor({ ...first, seq: first.seq + 1 });
+    rerender(<LocaleProvider locale="en"><CitiesKnightsPrompt controller={bumped.controller} /></LocaleProvider>);
+    expect(screen.getByTestId('ck-progress-pick-1').getAttribute('aria-pressed')).toBe('true');
+    // A changed hand is a different choice and starts clean.
+    state.players[0]!.progressCards = ['crane', 'mining', 'merchant', 'alchemy', 'wedding'];
+    const changed = controllerFor({ ...view(state), seq: first.seq + 2 });
+    rerender(<LocaleProvider locale="en"><CitiesKnightsPrompt controller={changed.controller} /></LocaleProvider>);
+    expect(screen.getByTestId('ck-progress-pick-1').getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('shows the chart, buys an improvement and arms the board when a metropolis has several sites', () => {
     const { state, geometry, path } = knightTable();
     const other = route(geometry, 40, 1).vertices[0]!;
