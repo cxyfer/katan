@@ -146,6 +146,7 @@ export const zhHant: Catalog = {
   'home.resume': '繼續對局',
   'home.lastSavedAt': '上次保存：{time}',
   'home.allSeatsNeeded': '需要所有原座位到齊才能繼續。',
+  'home.humanSeatsNeeded': '需要所有原真人玩家到齊才能繼續。',
   'home.createRoom': '建立房間',
   'home.joinRoom': '用邀請碼加入',
   'home.publicRooms': '公開房間',

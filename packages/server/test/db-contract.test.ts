@@ -431,6 +431,42 @@ for (const testCase of cases) {
       expect((await repo.findGuest(committed))?.nickname).toBe('Nested');
     });
 
+    it('isolates ordinary reads and writes from another caller rollback', async () => {
+      const rolledBack = newId('player');
+      const committed = newId('player');
+      const now = new Date().toISOString();
+      const guest = (id: string): GuestRow => ({
+        id,
+        token_hash: `hash-${id}`,
+        nickname: 'Outside transaction',
+        locale: 'en',
+        created_at: now,
+        updated_at: now,
+        kind: 'human',
+        bot_level: null,
+      });
+      let started!: () => void;
+      let release!: () => void;
+      const firstStarted = new Promise<void>((resolve) => { started = resolve; });
+      const released = new Promise<void>((resolve) => { release = resolve; });
+      const first = repo.db.transaction(async () => {
+        await repo.insertGuest(guest(rolledBack));
+        started();
+        await released;
+        throw new Error('roll back the first transaction');
+      }).catch(() => 'rolled back');
+      await firstStarted;
+      // 不另開交易的呼叫者也不能讀到未提交資料，或被無關回滾一起撤銷。
+      const outsideRead = repo.findGuest(rolledBack);
+      const outsideWrite = repo.insertGuest(guest(committed));
+      release();
+      expect(await first).toBe('rolled back');
+      await outsideWrite;
+      expect(await outsideRead).toBeNull();
+      expect(await repo.findGuest(rolledBack)).toBeNull();
+      expect((await repo.findGuest(committed))?.nickname).toBe('Outside transaction');
+    });
+
     it('deletes a room together with its memberships', async () => {
       await repo.deleteRoom(roomId);
       expect(await repo.findRoom(roomId)).toBeNull();

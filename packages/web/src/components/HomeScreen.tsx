@@ -308,7 +308,11 @@ export function HomeScreen({ controller }: ScreenProps) {
                       .join('、')}
                   </p>
                   <p className="muted">{t('home.lastSavedAt', { time: formatDateTime(locale, game.lastSavedAt) })}</p>
-                  {game.allSeatsNeeded && <p className="muted">{t('home.allSeatsNeeded')}</p>}
+                  {game.allSeatsNeeded ? (
+                    <p className="muted">{t('home.allSeatsNeeded')}</p>
+                  ) : game.players.some((player) => player.bot) ? (
+                    <p className="muted">{t('home.humanSeatsNeeded')}</p>
+                  ) : null}
                 </div>
                 <button
                   type="button"

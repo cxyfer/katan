@@ -149,6 +149,7 @@ export const en: Catalog = {
   'home.resume': 'Resume game',
   'home.lastSavedAt': 'Last saved {time}',
   'home.allSeatsNeeded': 'All original seats are needed to resume.',
+  'home.humanSeatsNeeded': 'All original human players are needed to resume.',
   'home.createRoom': 'Create a room',
   'home.joinRoom': 'Join with an invite code',
   'home.publicRooms': 'Public rooms',

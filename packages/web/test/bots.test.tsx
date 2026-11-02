@@ -370,6 +370,37 @@ describe('home lists', () => {
     await screen.findByTestId('create-room');
     fireEvent.click(screen.getByRole('tab', { name: /Resume/ }));
     expect(screen.getByTestId('resume-list').textContent).toContain('Alex、Ada (bot)');
+    expect(screen.getByText('All original human players are needed to resume.')).toBeTruthy();
+    expect(screen.queryByText('All original seats are needed to resume.')).toBeNull();
+  });
+
+  it('explains the human-only resume quorum in Traditional Chinese', async () => {
+    const api = createFakeApi({
+      identity: makeIdentity({ locale: 'zh-Hant' }),
+      games: [
+        makeResumable({
+          players: [
+            { playerId: 'p1', nickname: 'Alex', color: 'red' },
+            { playerId: 'p2', nickname: 'Bo', color: 'orange' },
+            { playerId: 'bot1', nickname: 'Ada', color: 'blue', bot: true },
+          ],
+        }),
+      ],
+    });
+    renderApp(api, ['zh-Hant']);
+    await screen.findByTestId('create-room');
+    fireEvent.click(screen.getByRole('tab', { name: /繼續對局/ }));
+    expect(screen.getByText('需要所有原真人玩家到齊才能繼續。')).toBeTruthy();
+    expect(screen.queryByText('需要所有原座位到齊才能繼續。')).toBeNull();
+  });
+
+  it('keeps the all-seat resume notice for human-only games', async () => {
+    const api = createFakeApi({ games: [makeResumable({ allSeatsNeeded: true })] });
+    renderApp(api);
+    await screen.findByTestId('create-room');
+    fireEvent.click(screen.getByRole('tab', { name: /Resume/ }));
+    expect(screen.getByText('All original seats are needed to resume.')).toBeTruthy();
+    expect(screen.queryByText('All original human players are needed to resume.')).toBeNull();
   });
 });
 

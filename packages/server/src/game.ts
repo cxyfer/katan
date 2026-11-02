@@ -213,7 +213,7 @@ export class GameCoordinator {
         players,
         lastSavedAt: game.updated_at,
         revision: game.revision,
-        allSeatsNeeded: true,
+        allSeatsNeeded: players.every((player) => !player.bot),
       });
     }
     return out;

@@ -76,6 +76,8 @@ and `botLevel` (`'easy' | 'standard'`, default `'standard'`) is present only on
 bot seats; `RoomSummaryView.botCount` and `ResumableGameView.players[].bot`
 describe them in lists. `ServerConfigView.bots` reports whether hosts may add
 bots and which levels exist.
+`ResumableGameView.allSeatsNeeded` is false for a game containing bot seats:
+only the original human players must reconnect and become ready to resume.
 
 - `POST /api/rooms` accepts `bots` (an integer from `0` to `capacity − 1`) and
   `botLevel` to seat bots at creation. Anything else is `E_INVALID_BOT`.

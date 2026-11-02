@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { RESOURCES, type Command, type GameState, type GameView, type Resource } from '@catan/rules';
 import { BOT_LEVELS as POLICY_BOT_LEVELS, createBotPolicy, fallbackPolicy, type BotPolicy } from '@catan/bots';
-import { BOT_LEVELS } from '@catan/protocol';
+import { BOT_LEVELS, type ResumableGameView } from '@catan/protocol';
 import { loadConfig, type BotSettings } from '../src/config.ts';
 import type { BotDriverDeps } from '../src/bot-driver.ts';
 import type { Connection } from '../src/rooms.ts';
@@ -472,6 +472,10 @@ describe('B-LIFE bot scheduling', () => {
     await humanStep(host, gameId);
     host.expectOk(await host.post(`/api/games/${gameId}/suspend`, {}));
     expect((await harness.service.repo.findRoom(roomId))!.status).toBe('suspended');
+    const { games } = host.expectOk<{ games: ResumableGameView[] }>(await host.get('/api/games'));
+    const saved = games.find((game) => game.gameId === gameId)!;
+    expect(saved.allSeatsNeeded).toBe(false);
+    expect(saved.players.filter((player) => player.bot).map((player) => player.playerId)).toEqual(botIds);
 
     const drop = await liveSocket(harness.service, roomId, host.playerId!);
     try {

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { GameState } from '@catan/rules';
+import type { ResumableGameView } from '@catan/protocol';
 import { startService } from '../src/main.ts';
 import {
   createClient,
@@ -125,6 +126,8 @@ describe('R-SAVE all-seat suspension', () => {
     const proposal = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
     await second.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
     await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+    const { games } = host.expectOk<{ games: ResumableGameView[] }>(await host.get('/api/games'));
+    expect(games.find((game) => game.gameId === gameId)!.allSeatsNeeded).toBe(true);
 
     const snapshot = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
     const actor = clients.find((client) => client.playerId === snapshot.view.turn.playerId)!;

@@ -51,21 +51,27 @@ export async function createSqliteDialect(filename: string): Promise<SqlDialect>
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('PRAGMA busy_timeout = 5000');
 
-  // 只有同一條呼叫鏈內的巢狀交易會併入外層；其他呼叫者的交易在單一連線上
-  // 依序排隊，避免一筆回滾帶走另一間房同時提交的寫入。
+  // 同一條交易呼叫鏈直接使用連線；其他呼叫者的讀寫與交易都排隊，
+  // 避免讀到未提交資料，或讓無關寫入被這筆交易的回滾一起撤銷。
   const scope = new AsyncLocalStorage<true>();
   let tail: Promise<unknown> = Promise.resolve();
+  async function schedule<T>(operation: () => T | Promise<T>): Promise<T> {
+    if (scope.getStore()) return operation();
+    const next = tail.then(operation, operation);
+    tail = next.catch(() => undefined);
+    return next;
+  }
   const dialect: SqlDialect = {
     kind: 'sqlite',
     async all<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-      return db.prepare(sql).all(...params) as T[];
+      return schedule(() => db.prepare(sql).all(...params) as T[]);
     },
     async run(sql: string, params: unknown[] = []): Promise<void> {
-      db.prepare(sql).run(...params);
+      await schedule(() => { db.prepare(sql).run(...params); });
     },
     async transaction<T>(fn: () => Promise<T>): Promise<T> {
-      if (scope.getStore()) return fn();
-      const run = async (): Promise<T> => {
+      return schedule(async () => {
+        if (scope.getStore()) return fn();
         db.exec('BEGIN IMMEDIATE');
         try {
           const result = await scope.run(true, fn);
@@ -75,16 +81,13 @@ export async function createSqliteDialect(filename: string): Promise<SqlDialect>
           db.exec('ROLLBACK');
           throw error;
         }
-      };
-      const next = tail.then(run, run);
-      tail = next.catch(() => undefined);
-      return next;
+      });
     },
     async close(): Promise<void> {
-      db.close();
+      await schedule(() => db.close());
     },
     async ping(): Promise<boolean> {
-      db.prepare('SELECT 1 AS ok').all();
+      await dialect.all('SELECT 1 AS ok');
       return true;
     },
   };
