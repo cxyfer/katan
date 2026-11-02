@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { scoreOf, topologyOf } from '../src/analysis.ts';
-import { legalBuildingVertices, legalRoadEdges, type Command } from '../src/engine.ts';
+import { actionHints, legalBuildingVertices, legalRoadEdges, type Command } from '../src/engine.ts';
 import type { CoinsState } from '../src/modules/tradersBarbarians/coins/index.ts';
 import { TRADERS_RANDOM_TERRAIN } from '../src/modules/tradersBarbarians/traders/board.ts';
 import type { TradersState } from '../src/modules/tradersBarbarians/traders/index.ts';
@@ -272,6 +272,25 @@ describe('R-TB-TR wagon movement (pp. 22–23)', () => {
     reject(missed.state, 'p1', { type: 'tb.driveOff', barbarian, to: 5 }, 'E_ILLEGAL_TARGET');
     const hit = run(ready, 'p1', { type: 'tb.driveOff', barbarian, to: 5 }, scriptedRng([5]));
     expect(tr(hit.state).barbarians).toContain(5);
+  });
+
+  it('TR11b: TB25 p.23 — each barbarian is tried once per turn even after it moved to another edge at the same corner', () => {
+    // Start: p1's level-2 wagon stands at a corner touching a barbarian and a free edge; command: tb.driveOff twice.
+    const state = bare();
+    const topology = topologyOf(state);
+    const slot = tr(state);
+    const barbarian = slot.barbarians[0]!;
+    const vertex = topology.edges[barbarian]!.vertices[0]!;
+    const neighbour = topology.vertices[vertex]!.edges.find((edge) => edge !== barbarian && !slot.barbarians.includes(edge))!;
+    slot.wagons.p1!.level = 2;
+    const ready = moving(state, vertex);
+    const first = run(ready, 'p1', { type: 'tb.driveOff', barbarian, to: neighbour }, scriptedRng([5]));
+    expect(tr(first.state).barbarians[0]).toBe(neighbour);
+    // The same barbarian, now on the neighbouring edge, may not be tried again this turn.
+    reject(first.state, 'p1', { type: 'tb.driveOff', barbarian: neighbour, to: barbarian }, 'E_ILLEGAL_TARGET');
+    // The hint no longer offers the tried barbarian.
+    const hints = actionHints(first.state, 'p1').modules?.['tradersBarbarians'] as Record<string, { driveOff: number[] }>;
+    expect(hints['tb-traders-barbarians']!.driveOff).not.toContain(neighbour);
   });
 });
 

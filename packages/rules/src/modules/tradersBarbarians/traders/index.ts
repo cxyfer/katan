@@ -65,6 +65,7 @@ interface MoveData {
   boosted: boolean;
   /** Move actions still available after the current one (Swift Journey). */
   extra: number;
+  /** Barbarians already tried this turn, by index in `barbarians` (relocation keeps the index). */
   drivenOff: number[];
 }
 
@@ -280,11 +281,12 @@ function driveOff(state: GameState, actorId: string, command: ModuleCommand, ctx
   if (threshold === 0) return ctx.kit.fail('E_TB_WAGON_LEVEL');
   const from = command.barbarian;
   const topology = topologyOf(state);
-  if (typeof from !== 'number' || !topology.vertices[wagon.vertex]!.edges.includes(from) || data.drivenOff.includes(from) ||
+  const index = typeof from === 'number' ? traders(state).barbarians.indexOf(from) : -1;
+  if (typeof from !== 'number' || !topology.vertices[wagon.vertex]!.edges.includes(from) || index < 0 || data.drivenOff.includes(index) ||
     !validBarbarianMove(state, from, command.to)) {
     return ctx.kit.fail('E_ILLEGAL_TARGET', { barbarian: from, to: command.to });
   }
-  data.drivenOff.push(from);
+  data.drivenOff.push(index);
   const die = ctx.rng.int(6) + 1;
   const success = die >= threshold;
   ctx.kit.emit(state, 'tb.driveOff', { playerId: actorId, die, success });
@@ -430,7 +432,7 @@ export const tradersPart: TbPart = {
       board = { kind: 'vertex', commandType: 'tb.wagonStep', labelId: 'tb.traders.step', targets: steps, field: 'to' };
       const wagon = slot.wagons[playerId]!;
       driveOff = level(wagon).driveOff > 0
-        ? topologyOf(state).vertices[wagon.vertex]!.edges.filter((edge) => slot.barbarians.includes(edge) && !data.drivenOff.includes(edge))
+        ? topologyOf(state).vertices[wagon.vertex]!.edges.filter((edge) => slot.barbarians.includes(edge) && !data.drivenOff.includes(slot.barbarians.indexOf(edge)))
         : [];
     }
     const player = state.players.find((candidate) => candidate.id === playerId);
