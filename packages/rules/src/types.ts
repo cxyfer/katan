@@ -7,6 +7,8 @@ import type { GameStats } from './stats.ts';
  */
 
 export type Resource = 'lumber' | 'brick' | 'wool' | 'grain' | 'ore';
+/** A card a player can trade with the supply (Cities & Knights adds commodities). */
+export type CardKind = Resource;
 export const RESOURCES: readonly Resource[] = ['lumber', 'brick', 'wool', 'grain', 'ore'];
 
 export type Commodity = 'paper' | 'cloth' | 'coin';

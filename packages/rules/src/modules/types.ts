@@ -19,6 +19,7 @@ import type { ProfileDefinition } from '../profiles.ts';
 import type { Rng } from '../rng.ts';
 import type { BoardTopology } from '../topology.ts';
 import type {
+  CardKind,
   CommandOutcome,
   GameEvent,
   GameState,
@@ -151,7 +152,7 @@ export interface RulesModule {
    */
   beforeProduction?(state: GameState, roll: RollResult, ctx: ModuleContext): 'continue' | 'defer';
   /**
-   * Replaces the robber step of a 7 (after any discards): a frame to make
+   * Replaces the robber step of a 7 (after discards). Return a frame to make
    * active, `null` for no robber step, or `undefined` to keep the base
    * `moveRobber` frame.
    */
@@ -185,8 +186,11 @@ export interface RulesModule {
    * enqueueing end-of-turn frames; the module then calls `kit.finishTurn`.
    */
   beforeEndTurn?(state: GameState, actorId: string, ctx: ModuleContext): 'continue' | 'defer';
-  /** Bank (supply) trade rate for giving `card`; `rate` is the harbour rate. */
-  bankRate?(state: GameState, playerId: string, card: Resource, rate: number, ctx: ModuleViewContext): number;
+  /**
+   * Supply trade rate for giving `card`; receives the rate so far (ports, or
+   * 4:1 / 3:1 for commodities) and returns the adjusted rate.
+   */
+  bankRate?(state: GameState, playerId: string, card: CardKind, rate: number, ctx: ModuleViewContext): number;
   /** Adjusts the award rules (minimums, route weights) before awards are recomputed. */
   awardRules?(state: GameState, rules: AwardRules, ctx: ModuleViewContext): AwardRules;
   /**

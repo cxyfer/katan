@@ -55,6 +55,7 @@ import { verticesOfHex } from './topology.ts';
 import {
   RESOURCES,
   type BoardState,
+  type CardKind,
   type CommandError,
   type CommandOutcome,
   type DevCardType,
@@ -553,11 +554,11 @@ function afterBoardChange(state: GameState): void {
     recomputeAwards(state, rules);
     return;
   }
-  const view = viewContext(state);
-  for (const module of modules) if (module.awardRules) rules = module.awardRules(state, rules, view);
+  const ctx = viewContext(state);
+  for (const module of modules) if (module.awardRules) rules = module.awardRules(state, rules, ctx);
   recomputeAwards(state, rules);
-  const ctx = moduleContext(requireProfile(state.profileId), null);
-  for (const module of modules) module.afterBoardChange?.(state, ctx);
+  const moduleCtx = moduleContext(requireProfile(state.profileId), null);
+  for (const module of modules) module.afterBoardChange?.(state, moduleCtx);
 }
 
 // ---------------------------------------------------------------------------
@@ -1484,8 +1485,7 @@ function bankTrade(state: GameState, actorId: string, give: Resource, receive: R
   if (!RESOURCES.includes(give) || !RESOURCES.includes(receive)) return fail('E_INVALID_SELECTION');
   if (give === receive) return fail('E_INVALID_SELECTION', { reason: 'same-resource' });
   if (state.bank[receive] <= 0) return fail('E_BANK_EMPTY', { resource: receive });
-  const rates = bankRates(state, actorId);
-  const rate = rates[give];
+  const rate = bankRateFor(state, actorId, give);
   const player = playerById(state, actorId)!;
   if (player.resources[give] < rate) {
     return fail('E_INSUFFICIENT_RESOURCES', { resource: give, required: rate });
@@ -1502,16 +1502,26 @@ function bankTrade(state: GameState, actorId: string, give: Resource, receive: R
   return { ok: true, state, events: [] };
 }
 
-/** Harbour rates adjusted by the profile's modules (base: harbour rates). */
-function bankRates(state: GameState, playerId: string): Record<Resource, number> {
+/**
+ * Supply rate for giving one card kind: the port rate, adjusted last by the
+ * profile's modules (E&P: 3:1 from the supply).
+ */
+function bankRateFor(state: GameState, playerId: string, give: CardKind): number {
   const rates = harborRates(state, playerId);
-  const modules = modulesOf(state).filter((module) => module.bankRate);
-  if (modules.length === 0) return rates;
+  let rate = rates[give];
+  const modules = modulesOf(state);
+  if (modules.length === 0) return rate;
   const ctx = viewContext(state);
-  for (const resource of RESOURCES) {
-    for (const module of modules) rates[resource] = module.bankRate!(state, playerId, resource, rates[resource], ctx);
-  }
-  return rates;
+  for (const module of modules) if (module.bankRate) rate = module.bankRate(state, playerId, give, rate, ctx);
+  return rate;
+}
+
+/** Resource bank rates after module adjustments (base: the port rates). */
+function bankRatesFor(state: GameState, playerId: string): Record<Resource, number> {
+  if (modulesOf(state).length === 0) return harborRates(state, playerId);
+  const out = {} as Record<Resource, number>;
+  for (const resource of RESOURCES) out[resource] = bankRateFor(state, playerId, resource);
+  return out;
 }
 
 function normalizeTerms(terms: Partial<Record<Resource, number>>): Partial<Record<Resource, number>> {
@@ -1768,7 +1778,7 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
           .filter(({ building }) => !!building && building.player === playerId && !building.city)
           .map(({ vertex }) => vertex)
       : [],
-    bankRates: bankRates(state, playerId),
+    bankRates: bankRatesFor(state, playerId),
     pendingKind: pending ? pending.kind : null,
     ...moduleHints(state, playerId),
   };
