@@ -271,7 +271,7 @@ with the five scenarios (p. 2).
 | Profiles | `profiles.ts` (`TRADERS_BARBARIANS_PROFILES`) | 12 rows; 8 enabled |
 | Web | `packages/web/src/components/tb/`, `board/tb-rivers.ts`, `board/three/{tb-terrain.ts,TbScenePieces.tsx}`, `audio/tb-cues.ts`, `i18n/modules/tradersBarbarians.ts` | Scenario tool tab, prompt choices, SVG and 3D pieces, terrain emblems, five procedural cues, zh-Hant + en |
 | Generic web | `board/intent.ts`, `state/table.ts` (`Selection.extra/field/targetsKey`), `TradePanel.tsx` (goods steppers), `GameTools.tsx`, `coastline.ts` (interior paths) | module board targets and choices without per-scenario code in shared components |
-| Harness | `scripts/traders-barbarians/{fixtures.mjs,capture.py}` | engine-projected fixtures for every scenario (SVG/3D × desktop/phone, panel) and `--live` games against the production server |
+| Harness | `scripts/traders-barbarians/{fixtures.mjs,capture.py,patch.mjs,live.py}` | engine-projected fixtures for every scenario (SVG/3D × desktop/phone, panel); `capture.py --live` games to the first turn; `live.py` plays each enabled profile's own action through the UI in SVG and 3D against the built service (see Review fixes) |
 
 Interpretations and open items are listed in FIDELITY (Traders & Barbarians).
 
@@ -292,3 +292,56 @@ desktop/phone, 5 panels, 5 live games); curated in
 Base compatibility: `base-regression.test.ts` digests (topologies, layouts,
 created snapshots, five simulated base games) still match.
 
+## Review fixes
+
+Review `review-tb` (PR #62 @ `bcb4295`) found three defects and a list of
+untested clauses; the T&B live harness also had to go beyond the first turn.
+Head after the fixes: see the PR.
+
+1. **Merchant Trains merge** (`trains/index.ts`, TB25 p. 14, fig. 1 and 2).
+   `wagonLocations` ended a train whenever its front touched another wagon,
+   so two meeting fronts never merged. Now a front that touches another
+   train's body or tail has run into it and ends (fig. 1); two fronts meeting
+   at one intersection merge and the merged train continues along the
+   remaining free edge, which joins the lower-numbered train (fig. 2); a front
+   with no free edge left cannot be extended. Fixtures `MT8`–`MT10`;
+   FIDELITY states the interpretation.
+2. **Drive-off once per barbarian** (`traders/index.ts`, p. 23): `drivenOff`
+   now holds the barbarian's index in `slot.barbarians` (relocation keeps it)
+   instead of edge ids, so a barbarian driven to another edge cannot be tried
+   again. Fixture `TR11b`; the hint also lists untried barbarians only.
+3. **Simulations**: all T&B simulated-game tests run with
+   `SIMULATION_TIMEOUT` (30 s, `tb-helpers.ts`).
+4. **Clause fixtures**: every clause on the review list now has a fixture
+   with its page, start state, window, command and expected result
+   (`FI14`–`FI21`, `RV9`–`RV19`, `MT8`–`MT15`, `BA13`–`BA23`, `TR11b`,
+   `TR12`–`TR18`, `FRHB1`–`FRHB2`); clauses already covered by older fixtures
+   are named in FIDELITY. The new fixtures exposed one engine defect (the
+   train merge above) and no other. FIDELITY lists what stays untested.
+5. **Bots**: `traders-barbarians.test.ts` checks that every enabled `tb-*`
+   profile is listed without bot seats and refuses bots at room creation,
+   when adding a bot and when switching a bot room to the profile.
+6. **Live harness** (`scripts/traders-barbarians/live.py`, `patch.mjs`): for
+   each of the eight enabled profiles and for SVG and 3D, a fresh built
+   service on its own port, a real three-guest room whose setup is played over
+   the API, one test-only fixture patch of the persisted snapshot (computed by
+   `patch.mjs` from the rules package) and then the profile's action through
+   the UI only, asserted against the service's projection:
+   Friendly Robber — robber moves past guarded hexes (no target on a
+   protected hex); Harbors — city upgrade awards Strongest Ports; combined —
+   robbing the holder of Strongest Ports (protection lifted) incl. the steal
+   prompt; Fishing — spend 4 fish for a resource; Rivers — build a bridge
+   (+3 gold); Merchant Trains — end turn, pass the bid, place the wagon;
+   Barbarian Attack — build a card (Capture), then move the castle knight and
+   finish the turn; Traders & Barbarians — end turn and deliver a commodity.
+   16 live cases PASS (ports 3052–3059, Chromium with software WebGL), none
+   of the profiles had to be disabled: every action was reachable and worked
+   in both renderers.
+7. The curated captures are unchanged (no visual change).
+
+Verification after the fixes: `SMOKE_PORT=3451 PORT=3051 VITE_PORT=5251 pnpm
+verify` (exit 0): rules 26 files / 315 tests; protocol 8; bots 45; server 161
+passed, 15 skipped (PostgreSQL contract replay, no `TEST_POSTGRES_URL`); web
+61 files / 598; build; smoke 13/13; test:dev 1/1. Live harness: `python3
+scripts/traders-barbarians/live.py <new dir>` — 16 live cases and 44 captures
+PASS.

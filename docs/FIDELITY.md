@@ -324,5 +324,9 @@ Known T&B gaps:
    four scenarios and Harbors' "VP in buildings on ports" meets scenario VP
    (wagons, conquest) — these need explicit decisions first.
 3. No physical-table playtest; the rules were checked against the rulebook,
-   fixtures and simulated games, and the UI in headless Chromium.
+   fixtures and simulated games, and the UI in headless Chromium. Every enabled
+   profile's own action is played through the UI in SVG and 3D by
+   `scripts/traders-barbarians/live.py` (a test-only fixture patch reaches the
+   situation; the action itself runs through the UI against the built
+   service).
 
