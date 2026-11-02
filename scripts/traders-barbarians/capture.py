@@ -12,7 +12,9 @@ then scenario pieces), so every capture shows engine-projected data:
 
 ``--live`` additionally plays a short real game against the production
 server (three guest sessions over HTTP) and captures the scenario panel and
-board of that live game.
+board of that live game, up to the first turn. The scenario-specific actions
+(fishing, bridges, wagons, captures, robber rules, ...) are played through the
+UI by ``live.py`` for every enabled profile in SVG and 3D.
 """
 from __future__ import annotations
 
