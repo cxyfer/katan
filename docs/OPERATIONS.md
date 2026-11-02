@@ -47,11 +47,16 @@ disconnect grace `30–3600`. Invalid values are rejected with
 
 ## Deployment
 
-The Compose files run the published `ghcr.io/cxyfer/katan:latest` image;
-`docker compose pull` refreshes it. `latest` moves only on a stable release
-tag, so pin an exact version tag (`ghcr.io/cxyfer/katan:v0.2.0`, or `0.1.0` for the first release) or a
-digest in the `image:` line when a deployment must be reproducible. The
-package is published publicly, so a pull needs no login.
+The Compose files run the published `ghcr.io/cxyfer/katan:latest` image by
+default; `docker compose pull` refreshes it. Set `KATAN_IMAGE` to an exact image
+tag or digest when a deployment must be reproducible, for example:
+
+```bash
+KATAN_IMAGE=ghcr.io/cxyfer/katan:v0.2.0 docker compose up -d
+```
+
+This also lets a platform define the image explicitly instead of following
+`latest`. The package is published publicly, so a pull needs no login.
 
 ### SQLite (single instance)
 

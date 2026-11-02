@@ -2,7 +2,7 @@
 # add docker-compose.build.yml (see docs/OPERATIONS.md).
 services:
   catan:
-    image: ghcr.io/cxyfer/katan:latest
+    image: ${KATAN_IMAGE:-ghcr.io/cxyfer/katan:latest}
     restart: unless-stopped
     ports:
       - "3000:3000"
