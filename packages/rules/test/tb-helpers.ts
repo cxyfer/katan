@@ -33,3 +33,6 @@ export function clearBoard(state: GameState): void {
 export function resourceTotal(state: GameState, resource: 'lumber' | 'brick' | 'wool' | 'grain' | 'ore'): number {
   return state.bank[resource] + state.players.reduce((sum, player) => sum + player.resources[resource], 0);
 }
+
+/** Vitest timeout for whole simulated games (the 5 s default is too close under parallel load). */
+export const SIMULATION_TIMEOUT = 30_000;

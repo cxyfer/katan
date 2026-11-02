@@ -13,7 +13,7 @@ import { seededRng } from '../src/rng.ts';
 import { verticesOfHex } from '../src/topology.ts';
 import type { GameState } from '../src/types.ts';
 import { act, expectRejected, forceTurn, placeBuilding, setHand } from './helpers.ts';
-import { clearBoard, resourceTotal, tbPlayable } from './tb-helpers.ts';
+import { clearBoard, resourceTotal, SIMULATION_TIMEOUT, tbPlayable } from './tb-helpers.ts';
 import { simulateGame } from './simulate.ts';
 
 const FRIENDLY = 'tb-friendly-robber-2025';
@@ -200,7 +200,7 @@ describe('R-TB variant games', () => {
         for (const resource of ['lumber', 'brick', 'wool', 'grain', 'ore'] as const) {
           expect(resourceTotal(state, resource)).toBe(19);
         }
-      });
+      }, SIMULATION_TIMEOUT);
     }
   }
 });

@@ -15,7 +15,7 @@ import type { GameState } from '../src/types.ts';
 import { act, expectRejected, forceTurn, placeBuilding, placeRoad, scriptedRng, setHand } from './helpers.ts';
 import { simulateGame } from './simulate.ts';
 import { riversBot, tb } from './tb-bots.ts';
-import { clearBoard, resourceTotal, tbCreate, tbPlayable } from './tb-helpers.ts';
+import { clearBoard, resourceTotal, SIMULATION_TIMEOUT, tbCreate, tbPlayable } from './tb-helpers.ts';
 
 const PROFILE = 'tb-rivers-2025';
 const rivers = (state: GameState) => tb<RiversState>(state, 'tb-rivers');
@@ -214,6 +214,6 @@ describe('R-TB-RV simulated games', () => {
       for (const resource of ['lumber', 'brick', 'wool', 'grain', 'ore'] as const) expect(resourceTotal(state, resource)).toBe(19);
       expect(goldTotal(state)).toBe(100);
       for (const player of state.players) expect(state.board.roads.filter((road) => road?.player === player.id && road.bridge).length).toBeLessThanOrEqual(3);
-    });
+    }, SIMULATION_TIMEOUT);
   }
 });

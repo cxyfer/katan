@@ -12,7 +12,7 @@ import type { GameState } from '../src/types.ts';
 import { act, expectRejected, forceTurn, placeBuilding, placeRoad, setHand } from './helpers.ts';
 import { simulateGame } from './simulate.ts';
 import { tb, trainsBot } from './tb-bots.ts';
-import { clearBoard, resourceTotal, tbCreate, tbPlayable } from './tb-helpers.ts';
+import { clearBoard, resourceTotal, SIMULATION_TIMEOUT, tbCreate, tbPlayable } from './tb-helpers.ts';
 
 const PROFILE = 'tb-merchant-trains-2025';
 const trains = (state: GameState) => tb<TrainsState>(state, 'tb-merchant-trains');
@@ -312,6 +312,6 @@ describe('R-TB-MT simulated games', () => {
       const slot = trains(state);
       expect(slot.wagons.length + slot.supply).toBe(22);
       expect(new Set(slot.wagons.map((wagon) => wagon.edge)).size).toBe(slot.wagons.length);
-    });
+    }, SIMULATION_TIMEOUT);
   }
 });

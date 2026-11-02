@@ -17,7 +17,7 @@ import type { GameState, ModulePending } from '../src/types.ts';
 import { act, expectRejected, forceTurn, placeBuilding, placeRoad, scriptedRng, setHand } from './helpers.ts';
 import { simulateGame } from './simulate.ts';
 import { fishingBot, tb } from './tb-bots.ts';
-import { clearBoard, resourceTotal, tbCreate, tbPlayable } from './tb-helpers.ts';
+import { clearBoard, resourceTotal, SIMULATION_TIMEOUT, tbCreate, tbPlayable } from './tb-helpers.ts';
 
 const PROFILE = 'tb-fishing-2025';
 const fish = (state: GameState) => tb<FishingState>(state, 'tb-fishing');
@@ -309,7 +309,7 @@ describe('R-TB-FI simulated games', () => {
       for (const resource of ['lumber', 'brick', 'wool', 'grain', 'ore'] as const) expect(resourceTotal(state, resource)).toBe(19);
       expect(fishTotal(state)).toEqual([11, 10, 8, 1]);
       for (const hand of Object.values(fish(state).hands)) expect(hand.length).toBeLessThanOrEqual(7);
-    });
+    }, SIMULATION_TIMEOUT);
   }
 });
 

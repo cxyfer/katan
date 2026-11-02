@@ -13,7 +13,7 @@ import type { GameState } from '../src/types.ts';
 import { act, expectRejected, forceTurn, placeBuilding, placeRoad, runSetup, scriptedRng, setHand } from './helpers.ts';
 import { simulateGame } from './simulate.ts';
 import { barbarianBot, tb } from './tb-bots.ts';
-import { clearBoard, resourceTotal, tbCreate, tbPlayable } from './tb-helpers.ts';
+import { clearBoard, resourceTotal, SIMULATION_TIMEOUT, tbCreate, tbPlayable } from './tb-helpers.ts';
 
 const PROFILE = 'tb-barbarian-attack-2025';
 const ba = (state: GameState) => tb<BarbarianAttackState>(state, 'tb-barbarian-attack');
@@ -296,6 +296,6 @@ describe('R-TB-BA simulated games', () => {
       expect(slot.deck.length + slot.discard.length).toBe(26);
       const gold = coins(state);
       expect(gold.supply + Object.values(gold.gold).reduce((sum, amount) => sum + amount, 0)).toBe(100);
-    });
+    }, SIMULATION_TIMEOUT);
   }
 });

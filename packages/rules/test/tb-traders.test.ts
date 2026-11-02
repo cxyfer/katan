@@ -12,7 +12,7 @@ import type { GameState } from '../src/types.ts';
 import { act, expectRejected, forceTurn, placeBuilding, placeRoad, runSetup, scriptedRng, setHand } from './helpers.ts';
 import { simulateGame } from './simulate.ts';
 import { tb, tradersBot } from './tb-bots.ts';
-import { clearBoard, resourceTotal, tbCreate, tbPlayable } from './tb-helpers.ts';
+import { clearBoard, resourceTotal, SIMULATION_TIMEOUT, tbCreate, tbPlayable } from './tb-helpers.ts';
 
 const PROFILE = 'tb-traders-barbarians-2025';
 const tr = (state: GameState) => tb<TradersState>(state, 'tb-traders-barbarians');
@@ -308,6 +308,6 @@ describe('R-TB-TR simulated games', () => {
         Object.values(slot.wagons).reduce((sum, wagon) => sum + wagon.delivered + (wagon.cargo ? 1 : 0), 0);
       expect(tokens).toBe(36);
       expect(new Set(slot.barbarians).size).toBe(3);
-    });
+    }, SIMULATION_TIMEOUT);
   }
 });
