@@ -141,6 +141,23 @@ describe('R-ROOM lobby', () => {
     );
   });
 
+  it('resolves Seafarers + Cities & Knights on New Shores in either expansion order', async () => {
+    const cases = [
+      [['citiesKnights', 'seafarers'], 4, 'fixed', 'sf-ck-new-shores-2025'],
+      [['seafarers', 'citiesKnights'], 4, 'fixed', 'sf-ck-new-shores-2025'],
+      [['citiesKnights', 'seafarers'], 5, 'variable', 'sf-ck-new-shores-paired-2025'],
+      [['seafarers', 'citiesKnights'], 6, 'variable', 'sf-ck-new-shores-paired-2025'],
+    ] as const;
+    for (const [index, [expansions, capacity, setupMode, profileId]] of cases.entries()) {
+      const host = await harness.client(`CombinedHost${index}`);
+      const room = host.expectOk<RoomShape & { profileId: string }>(await host.post('/api/rooms', {
+        visibility: 'private', capacity, setupMode,
+        ruleset: { expansions: [...expansions], scenario: 'new-shores' },
+      }));
+      expect(room.profileId).toBe(profileId);
+    }
+  });
+
   it('resolves a ruleset named by its parts to exactly one enabled profile', async () => {
     const host = await harness.client('RulesetHost');
     const reason = (response: { body: { ok: boolean; error?: { params?: Record<string, unknown> } } }) =>
