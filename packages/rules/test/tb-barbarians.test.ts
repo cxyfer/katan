@@ -282,6 +282,158 @@ describe('R-TB-BA end of turn (pp. 17–18)', () => {
   });
 });
 
+describe('R-TB-BA clause fixtures (pp. 15–19)', () => {
+  const buyWith = (state: GameState, card: string, rng = scriptedRng([0, 0, 0])) => {
+    ba(state).deck = [card as never];
+    ba(state).discard = [];
+    setHand(state, 'p1', { wool: 1, grain: 1, ore: 1 });
+    return run(state, 'p1', { type: 'tb.buildBaCard' }, rng);
+  };
+  const score = (state: GameState, id: string) => scoreOf(state, id, { includeHidden: false });
+
+  it('BA13: TB25 p.16 — landing stops when the barbarian supply runs out', () => {
+    // Start: one barbarian left in the supply; p1 builds a settlement (rolls 3, 9, 8 available).
+    const state = bare();
+    ba(state).supply = 1;
+    placeRoad(state, 'p1', 0);
+    const vertex = topologyOf(state).edges[0]!.vertices[1]!;
+    setHand(state, 'p1', { lumber: 1, brick: 1, wool: 1, grain: 1 });
+    const built = run(state, 'p1', { type: 'build.settlement', vertex }, scriptedRng([...roll(3), ...roll(9), ...roll(8)]));
+    const landed = built.events.find((event) => event.type === 'tb.barbariansLanded')!;
+    expect(landed.params).toMatchObject({ rolls: [3], hexes: [hexWith(state, 3)] });
+    expect(ba(built.state).supply).toBe(0);
+    expect(ba(built.state).barbarians[hexWith(state, 9)]).toBe(0);
+  });
+
+  it('BA14: TB25 p.16 — a city upgrade also resolves a barbarian attack', () => {
+    const state = bare();
+    const vertex = topologyOf(state).edges[0]!.vertices[1]!;
+    placeBuilding(state, 'p1', vertex);
+    setHand(state, 'p1', { grain: 2, ore: 3 });
+    const built = run(state, 'p1', { type: 'build.city', vertex }, scriptedRng([...roll(4), ...roll(5), ...roll(6)]));
+    expect(built.events.find((event) => event.type === 'tb.barbariansLanded')!.params).toMatchObject({ rolls: [4, 5, 6] });
+  });
+
+  it('BA15: TB25 p.18 — a knight on an edge shared by two coastal hexes counts for both; hexes resolve in clockwise order', () => {
+    // Start: neighbouring coastal hexes A (earlier in the clockwise order) and B share an edge with a p2 knight;
+    // each hex also holds one more p2 knight and one barbarian. Window: p1 ends the turn.
+    const state = bare();
+    const slot = ba(state);
+    const topology = topologyOf(state);
+    let pair: [number, number, number] | null = null;
+    for (let index = 0; index < slot.coastal.length - 1 && !pair; index++) {
+      const [a, b] = [slot.coastal[index]!, slot.coastal[index + 1]!];
+      const shared = topology.edges.findIndex((info) => info.hexes.includes(a) && info.hexes.includes(b));
+      if (shared >= 0) pair = [a, b, shared];
+    }
+    const [a, b, shared] = pair!;
+    const own = (hex: number) => edgesOf(state, hex).find((edge) => edge !== shared && topology.edges[edge]!.hexes.length === 1)!;
+    slot.knights = [{ player: 'p2', edge: shared }, { player: 'p2', edge: own(a) }, { player: 'p2', edge: own(b) }];
+    slot.barbarians[a] = 1;
+    slot.barbarians[b] = 1;
+    // A knight-loss die of another orientation than the shared edge's keeps that knight for the second hex.
+    const safe = edgeOrientation(state, shared) === 'slash' ? 1 : 0;
+    const ended = run(state, 'p1', { type: 'turn.end' }, scriptedRng([safe, safe])).state;
+    expect(ba(ended).prisoners.p2).toBe(2);
+    expect(ba(ended).barbarians[a]).toBe(0);
+    expect(ba(ended).barbarians[b]).toBe(0);
+    const order = run(state, 'p1', { type: 'turn.end' }, scriptedRng([safe, safe])).events
+      .filter((event) => event.type === 'tb.barbariansExpelled').map((event) => event.params.hex);
+    expect(order).toEqual([a, b]);
+  });
+
+  it('BA16: TB25 p.17 — Capture on a conquered hex liberates it: its buildings count again and its port works', () => {
+    // Start: p1 has a settlement on a conquered coastal hex (0 VP, no port); command: draw Capture, then tb.baCapture.
+    const state = bare();
+    const topology = topologyOf(state);
+    const port = state.board.layout.harbors.flatMap((candidate) => topology.edges[candidate.edge]!.vertices)
+      .find((vertex) => topology.vertices[vertex]!.hexes.every((hex) => ba(state).coastal.includes(hex)))!;
+    placeBuilding(state, 'p1', port);
+    for (const around of topology.vertices[port]!.hexes) ba(state).barbarians[around] = 3;
+    expect(score(state, 'p1')).toBe(0);
+    expect(Object.values(harborRates(state, 'p1'))).toEqual([4, 4, 4, 4, 4]);
+    // Capture one barbarian at a time until every touching hex is liberated.
+    let next = state;
+    for (const around of topology.vertices[port]!.hexes) {
+      next = buyWith(next, 'capture').state;
+      next = run(next, 'p1', { type: 'tb.baCapture', hex: around }).state;
+      expect(ba(next).barbarians[around]).toBe(2);
+    }
+    expect(score(next, 'p1')).toBe(1);
+    expect(Object.values(harborRates(next, 'p1')).some((rate) => rate < 4)).toBe(true);
+  });
+
+  it('BA17: TB25 p.17 — Treason takes the second barbarian from the supply when only one stands on the coast', () => {
+    const state = bare();
+    const [a, b, c] = [hexWith(state, 2), hexWith(state, 3), hexWith(state, 4)];
+    ba(state).barbarians[a] = 1;
+    const drawn = buyWith(state, 'treason').state;
+    const first = run(drawn, 'p1', { type: 'tb.baTreason', from: a, to: b }).state;
+    // The only barbarian already moved: the next one comes from the supply.
+    reject(first, 'p1', { type: 'tb.baTreason', from: b, to: c }, 'E_ILLEGAL_TARGET');
+    const second = run(first, 'p1', { type: 'tb.baTreason', from: -1, to: c }).state;
+    expect(ba(second).supply).toBe(35);
+    expect(ba(second).barbarians).toMatchObject({ [a]: 0, [b]: 1, [c]: 1 });
+    expect(second.pending).toBeNull();
+  });
+
+  it('BA18: TB25 p.16 — a 7 with no player holding cards to steal opens no frame', () => {
+    const state = bare();
+    forceTurn(state, 0, 'preroll');
+    setHand(state, 'p1', { ore: 3 });
+    const rolled = run(state, 'p1', { type: 'turn.roll' }, scriptedRng(roll(7))).state;
+    expect(rolled.pending).toBeNull();
+    expect(rolled.turn.phase).toBe('action');
+  });
+
+  it('BA19: TB25 p.17 — Knighthood with a full castle or no knights left, and Swift Knight with no knights left, have no effect', () => {
+    const state = bare();
+    const castle = edgesOf(state, ba(state).castle);
+    ba(state).knights = castle.map((edge) => ({ player: 'p2', edge }));
+    const full = buyWith(state, 'knighthood');
+    expect(full.state.pending).toBeNull();
+    expect(full.events.find((event) => event.type === 'tb.baCardDrawn')!.params).toMatchObject({ card: 'knighthood', effect: 'none' });
+    expect(ba(full.state).discard).toEqual(['knighthood']);
+    const spent = bare();
+    ba(spent).knights = Array.from({ length: 6 }, (_, index) => ({ player: 'p1', edge: 20 + index }));
+    for (const card of ['knighthood', 'swiftKnight']) {
+      const drawn = buyWith(spent, card);
+      expect(drawn.state.pending).toBeNull();
+      expect(ba(drawn.state).knights).toHaveLength(6);
+    }
+  });
+
+  it('BA20: TB25 p.17 — a Swift Knight placed on a castle edge must leave it at the end of this turn', () => {
+    const state = bare();
+    const castle = edgesOf(state, ba(state).castle);
+    const placed = run(buyWith(state, 'swiftKnight').state, 'p1', { type: 'tb.baPlaceKnight', edge: castle[0] }).state;
+    const open = run(placed, 'p1', { type: 'turn.end' }).state;
+    expect(open.pending).toMatchObject({ kind: 'tradersBarbarians.baKnights' });
+    reject(open, 'p1', { type: 'tb.endKnights' }, 'E_TB_KNIGHT_MUST_MOVE');
+    const topology = topologyOf(open);
+    const away = topology.vertices[topology.edges[castle[0]!]!.vertices[0]!]!.edges.find((edge) => !castle.includes(edge))!;
+    const moved = run(open, 'p1', { type: 'tb.moveKnight', from: castle[0], to: away }).state;
+    expect(run(moved, 'p1', { type: 'tb.endKnights' }).state.turn.seat).toBe(1);
+  });
+
+  it('BA21: TB25 p.18 — the 2 prisoners of a drive-off that reach 12 VP end the game for the player ending the turn', () => {
+    // Start: p1 has 11 VP and three knights beside two barbarians; window: end of turn, knights stay put.
+    const state = bare();
+    const hex = hexWith(state, 9);
+    const castle = new Set(edgesOf(state, ba(state).castle));
+    ba(state).knights = edgesOf(state, hex).filter((edge) => !castle.has(edge)).slice(0, 3).map((edge) => ({ player: 'p1', edge }));
+    expect(ba(state).knights).toHaveLength(3);
+    ba(state).barbarians[hex] = 2;
+    state.players[0]!.bonusPoints = 11;
+    expect(score(state, 'p1')).toBe(11);
+    const open = run(state, 'p1', { type: 'turn.end' }).state;
+    expect(open.pending).toMatchObject({ kind: 'tradersBarbarians.baKnights' });
+    const ended = run(open, 'p1', { type: 'tb.endKnights' }, scriptedRng([0]));
+    expect(ba(ended.state).prisoners.p1).toBe(2);
+    expect(ended.state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+  });
+});
+
 describe('R-TB-BA simulated games', () => {
   for (const players of [3, 4]) {
     it(`a ${players}-player game finishes and conserves resources, gold and barbarians`, () => {
