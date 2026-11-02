@@ -141,14 +141,14 @@ def shot(page, name, note='', ms=700):
 def wait_renderer(page, renderer):
     page.wait_for_function(
         "(renderer) => document.querySelector('[data-testid=\"board\"]')?.dataset.effectiveRenderer === renderer",
-        arg=renderer, timeout=30000)
+        arg=renderer, timeout=60000)
     if renderer == 'r3f':
         page.wait_for_function(
-            "() => document.querySelector('[data-testid=\"board\"]')?.dataset.rendererStatus === 'ready'", timeout=30000)
+            "() => document.querySelector('[data-testid=\"board\"]')?.dataset.rendererStatus === 'ready'", timeout=60000)
 
 
 def open_game(page, game_id, renderer):
-    page.goto(f'{BASE}/?renderer={renderer}')
+    page.goto(f'{BASE}/?renderer={renderer}', timeout=90000)
     resume = page.get_by_test_id(f'resume-{game_id}')
     resume.wait_for(state='attached')
     if not resume.is_visible():
@@ -161,7 +161,7 @@ def new_player(browser, name, viewport=DESKTOP):
     context = browser.new_context(viewport=viewport, locale='zh-TW', reduced_motion='reduce', service_workers='block')
     page = context.new_page()
     page.on('pageerror', lambda error: ERRORS.append(f'{name}: {error}'))
-    page.set_default_timeout(20000)
+    page.set_default_timeout(45000)
     page.goto(BASE)
     page.get_by_test_id('nickname-input').fill(name)
     page.locator('form button[type=submit]').click()
@@ -192,7 +192,7 @@ def phone_context(browser, context):
                                 reduced_motion='reduce', service_workers='block', is_mobile=True, has_touch=True)
     page = phone.new_page()
     page.on('pageerror', lambda error: ERRORS.append(f'phone: {error}'))
-    page.set_default_timeout(20000)
+    page.set_default_timeout(45000)
     return phone, page
 
 
@@ -326,8 +326,18 @@ def ui_click_target(page, kind, index, confirm=True):
     collapse_rail(page)
     target = page.get_by_test_id(f'target-{kind}-{index}')
     expect(target).to_be_attached()
-    target.click(force=True)
-    page.wait_for_timeout(300)
+    for attempt in range(3):
+        target.click(force=True)
+        page.wait_for_timeout(300)
+        # A forced click lands on whatever covers the target; on a phone that can be the players panel
+        # toggle, which opens the drawer instead. Fold it and click again.
+        panel = page.get_by_test_id('players-panel')
+        if (page.get_by_test_id('confirm-selection').count() or page.get_by_test_id('target-picker').count()
+                or not panel.count()):
+            break
+        if panel.get_attribute('data-expanded') == 'true' or panel.get_attribute('aria-expanded') == 'true':
+            page.get_by_test_id('players-toggle').click()
+            page.wait_for_timeout(400)
     # Close targets on a small screen open a picker instead of selecting at once.
     if page.get_by_test_id('target-picker').count():
         page.get_by_test_id(f'picker-{kind}-{index}').dispatch_event('click')

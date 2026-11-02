@@ -12,13 +12,14 @@ test-only fixture (``Server.patch_game``, the service is stopped while it
 edits the persisted snapshot) writes hands, knights and score before each
 group of cards so the cards have something to act on.
 
-Pass 1 (SVG, desktop) plays all 23 playable card types: Alchemy before the
-roll, then the science, trade and politics decks (responder prompts for
-Commercial Harbor, Guild Dues, Espionage, Sabotage, Wedding, Treason, Intrigue
-and Diplomacy). Pass 2 plays the cards with a board target again in 3D on the
-desktop, passes 3 and 4 on a phone in SVG and 3D. The two victory cards are
-never played (CK25 p. 10); a fixture shows them revealed in the panel. After
-the cards, the merchant's 2:1 rate and point are checked through the API.
+Passes 1 and 2 (desktop) play all 23 playable card types in the SVG renderer
+and then again in 3D: Alchemy before the roll, then the science, trade and
+politics decks (responder prompts for Commercial Harbor, Guild Dues, Espionage,
+Sabotage, Wedding, Treason, Intrigue and Diplomacy, each in the page of the
+seat that owes the answer, in the pass's renderer). Passes 3 and 4 play the
+board-target cards on a phone in SVG and 3D. The two victory cards are never
+played (CK25 p. 10); a fixture shows them revealed in the panel. After the
+cards, the merchant's 2:1 rate and point are checked through the API.
 
 Each step asserts the DOM and the API state it captures. ``report.json`` lists
 every case with its sha256 and the cards played per pass.
@@ -41,6 +42,9 @@ POLITICS = ['diplomacy', 'encouragement', 'espionage', 'intrigue', 'sabotage', '
 ALL_CARDS = SCIENCE + TRADE + POLITICS
 BOARD_CARDS = ['merchant', 'taxation', 'engineering', 'medicine', 'treason', 'intrigue', 'diplomacy']
 PLAYED: dict = {}
+# Cards played per renderer; the renderer the pages are opened in is `CURRENT`.
+PLAYED_BY: dict = {}
+CURRENT = {'renderer': 'svg'}
 
 
 # ---------------------------------------------------------------------- fixtures
@@ -150,6 +154,8 @@ def played(table, pid, card, before):
         if hand_of(table, pid).count(card) == before - 1:
             PLAYED.setdefault(card, 0)
             PLAYED[card] += 1
+            PLAYED_BY.setdefault(CURRENT['renderer'], {}).setdefault(card, 0)
+            PLAYED_BY[CURRENT['renderer']][card] += 1
             return
         table.pages[0].wait_for_timeout(250)
     raise AssertionError(f'{card} was not played (hand {hand_of(table, pid)})')
@@ -216,7 +222,7 @@ def respond_picks(table, pages, prefix, shot_name, note):
             return
         for pid in list(pending['responders']):
             responder_page = pages[table.identity.index(pid)]
-            open_game(responder_page, table.game_id, 'svg')
+            open_game(responder_page, table.game_id, CURRENT['renderer'])
             wait_prompt(responder_page, f'ck-{prefix}')
             if first:
                 shot(responder_page, shot_name, note)
@@ -303,24 +309,24 @@ def alchemy_before_roll(table, p1, page):
     def fixture(state):
         give(state, p1, ['alchemy', 'crane', 'mining'])
     SERVER.patch_game(table.game_id, fixture)
-    open_game(page, table.game_id, 'svg')
+    open_game(page, table.game_id, CURRENT['renderer'])
     open_tool(page)
     # Cards that cannot be played before the roll say why.
     expect(page.get_by_test_id('ck-card-crane')).to_have_attribute('data-playable', 'false')
     expect(page.get_by_test_id('ck-card-crane')).to_have_attribute('data-reason', 'before-roll')
     expect(page.get_by_test_id('ck-card-alchemy')).to_have_attribute('data-playable', 'true')
-    hand_shot(page, 'progress-hand-preroll-svg', 'hand before the roll: Alchemy playable, the others say "after the roll"')
+    hand_shot(page, f'progress-hand-preroll-{CURRENT["renderer"]}', 'hand before the roll: Alchemy playable, the others say "after the roll"')
     before = start_card(table, page, p1, 'alchemy')
     page.get_by_test_id('ck-alchemy-yellow-2').click()
     page.get_by_test_id('ck-alchemy-red-4').click()
     expect(page.get_by_test_id('ck-alchemy-total')).to_contain_text('6')
-    shot(page, 'progress-alchemy-dice-svg', 'Alchemy: both production dice chosen before the roll')
+    shot(page, f'progress-alchemy-dice-{CURRENT["renderer"]}', 'Alchemy: both production dice chosen before the roll')
     page.get_by_test_id('ck-play-confirm').click()
     played(table, p1, 'alchemy', before)
     expect(page.get_by_test_id('ck-alchemy-set')).to_be_visible()
     # The set dice are public to the table.
     other = table.page_of[pick_other(table, p1)[0]]
-    open_game(other, table.game_id, 'svg')
+    open_game(other, table.game_id, CURRENT['renderer'])
     open_tool(other)
     expect(other.get_by_test_id('ck-alchemy-set')).to_be_visible()
     close_tool(other)
@@ -341,20 +347,21 @@ def alchemy_before_roll(table, p1, page):
 def science_pass(table, p1, pages):
     page = pages[0]
     p2, p3, p4 = standard_fixture(table, p1, ['crane', 'invention', 'irrigation', 'mining'])
-    open_game(page, table.game_id, 'svg')
+    open_game(page, table.game_id, CURRENT['renderer'])
     open_tool(page)
     expect(page.get_by_test_id('ck-progress-hand')).to_be_visible()
-    hand_shot(page, 'progress-hand-science-svg', 'science deck in hand: playable cards with a Play button')
+    hand_shot(page, f'progress-hand-science-{CURRENT["renderer"]}', 'science deck in hand: playable cards with a Play button')
 
     play_direct(table, page, p1, 'irrigation')
     play_direct(table, page, p1, 'mining')
 
     # Crane: pick the improvement.
+    level = table.me(p1)[0]['improvements']['science']
     before = start_card(table, page, p1, 'crane')
-    shot(page, 'progress-crane-choice-svg', 'Crane: improvements one commodity cheaper')
+    shot(page, f'progress-crane-choice-{CURRENT["renderer"]}', 'Crane: improvements one commodity cheaper')
     page.get_by_test_id('ck-crane-science').click()
     played(table, p1, 'crane', before)
-    assert table.me(p1)[0]['improvements']['science'] == 1
+    assert table.me(p1)[0]['improvements']['science'] == level + 1
 
     # Invention: two number tokens from the panel.
     hexes = hints_for(table, p1, 'invention')['targets']['hexes']
@@ -363,7 +370,7 @@ def science_pass(table, p1, pages):
     before = start_card(table, page, p1, 'invention')
     page.get_by_test_id(f'ck-invention-{hexes[0]}').click()
     page.get_by_test_id(f'ck-invention-{hexes[1]}').click()
-    shot(page, 'progress-invention-choice-svg', 'Invention: two number tokens chosen')
+    shot(page, f'progress-invention-choice-{CURRENT["renderer"]}', 'Invention: two number tokens chosen')
     page.get_by_test_id('ck-play-confirm').click()
     played(table, p1, 'invention', before)
     after = table.me(p1)[1]['board']['numbers']
@@ -371,7 +378,7 @@ def science_pass(table, p1, pages):
 
     # Smithing and Road Building (a second hand: the hand limit is four).
     standard_fixture(table, p1, ['roadBuilding', 'smithing'])
-    open_game(page, table.game_id, 'svg')
+    open_game(page, table.game_id, CURRENT['renderer'])
     knights = hints_for(table, p1, 'smithing')['targets']['vertices']
     before = start_card(table, page, p1, 'smithing')
     for vertex in knights[:2]:
@@ -389,21 +396,21 @@ def science_pass(table, p1, pages):
         edge = table.me(p1)[1]['hints']['legalRoads'][0]
         ui_click_target(page, 'edge', edge)
         if number == 0:
-            shot(page, 'progress-road-building-svg', 'Road Building: free roads placed on board targets')
+            shot(page, f'progress-road-building-{CURRENT["renderer"]}', 'Road Building: free roads placed on board targets')
         ui_confirm(page)
     no_pending(table)
 
     # Board cards, then the rest of the decks.
-    board_cards(table, p1, pages, 'svg', 'desktop', ['engineering', 'medicine'])
+    board_cards(table, p1, pages, CURRENT['renderer'], 'desktop', ['engineering', 'medicine'])
     return p2, p3, p4
 
 
 def trade_pass(table, p1, pages):
     page = pages[0]
     p2, p3, p4 = standard_fixture(table, p1, ['commercialHarbor', 'guildDues', 'merchantFleet', 'resourceMonopoly'])
-    open_game(page, table.game_id, 'svg')
+    open_game(page, table.game_id, CURRENT['renderer'])
     open_tool(page)
-    hand_shot(page, 'progress-hand-trade-svg', 'trade deck in hand')
+    hand_shot(page, f'progress-hand-trade-{CURRENT["renderer"]}', 'trade deck in hand')
 
     # Commercial Harbor: offers to p2 (must choose a commodity), p3 (one kind: automatic), p4 (none: returned).
     play_direct(table, page, p1, 'commercialHarbor')
@@ -411,7 +418,7 @@ def trade_pass(table, p1, pages):
     harbor = page.get_by_test_id('ck-harbor')
     expect(harbor).to_be_visible()
     page.get_by_test_id('ck-harbor-resource-lumber').click()
-    shot(page, 'progress-harbor-offers-svg', 'Commercial Harbor: one offer to each other player')
+    shot(page, f'progress-harbor-offers-{CURRENT["renderer"]}', 'Commercial Harbor: one offer to each other player')
     page.get_by_test_id(f'ck-harbor-offer-{p4}').click()
     page.wait_for_timeout(600)
     assert table.me(p4)[0]['resources']['lumber'] == 1, 'p4 has no commodity: the resource goes back'
@@ -420,21 +427,21 @@ def trade_pass(table, p1, pages):
     assert table.me(p3)[0]['commodities']['coin'] == 1, 'p3 holds one commodity kind: exchanged without a prompt'
     page.get_by_test_id(f'ck-harbor-offer-{p2}').click()
     p2_page = pages[table.identity.index(p2)]
-    open_game(p2_page, table.game_id, 'svg')
+    open_game(p2_page, table.game_id, CURRENT['renderer'])
     wait_prompt(p2_page, 'ck-harbor-answer')
-    shot(p2_page, 'progress-harbor-answer-svg', 'Commercial Harbor: the receiver chooses the commodity to give back')
+    shot(p2_page, f'progress-harbor-answer-{CURRENT["renderer"]}', 'Commercial Harbor: the receiver chooses the commodity to give back')
     p2_page.get_by_test_id('ck-harbor-give-paper').click()
     no_pending(table)
     assert table.me(p2)[0]['commodities']['paper'] == 1 and table.me(p2)[0]['resources']['lumber'] == 3
 
     # Guild Dues: take two cards from the richer p2.
     before = start_card(table, page, p1, 'guildDues')
-    shot(page, 'progress-guild-dues-target-svg', 'Guild Dues: only players with more points are targets')
+    shot(page, f'progress-guild-dues-target-{CURRENT["renderer"]}', 'Guild Dues: only players with more points are targets')
     page.get_by_test_id(f'ck-target-{p2}').click()
     wait_prompt(page, 'ck-guild-dues')
     played(table, p1, 'guildDues', before)
     close_tool(page)
-    shot(page, 'progress-guild-dues-pick-svg', 'Guild Dues: the cards of the chosen player, take any two')
+    shot(page, f'progress-guild-dues-pick-{CURRENT["renderer"]}', 'Guild Dues: the cards of the chosen player, take any two')
     answer_picker(page, 'ck-guild-pick', ['wool', 'cloth'])
     no_pending(table)
 
@@ -448,22 +455,22 @@ def trade_pass(table, p1, pages):
     page.get_by_test_id('ck-kind-lumber').click()
     played(table, p1, 'resourceMonopoly', before)
     standard_fixture(table, p1, ['tradeMonopoly'])
-    open_game(page, table.game_id, 'svg')
+    open_game(page, table.game_id, CURRENT['renderer'])
     coins = table.me(p1)[0]['commodities']['coin']
     givers = sum(1 for pid in (p2, p3, p4) if table.me(pid)[0]['commodities']['coin'] > 0)
     before = start_card(table, page, p1, 'tradeMonopoly')
     page.get_by_test_id('ck-kind-coin').click()
     played(table, p1, 'tradeMonopoly', before)
     assert table.me(p1)[0]['commodities']['coin'] == coins + givers, table.me(p1)[0]['commodities']
-    board_cards(table, p1, pages, 'svg', 'desktop', ['merchant'])
+    board_cards(table, p1, pages, CURRENT['renderer'], 'desktop', ['merchant'])
 
 
 def politics_pass(table, p1, pages):
     page = pages[0]
     p2, p3, p4 = standard_fixture(table, p1, ['encouragement', 'espionage', 'sabotage', 'wedding'])
-    open_game(page, table.game_id, 'svg')
+    open_game(page, table.game_id, CURRENT['renderer'])
     open_tool(page)
-    hand_shot(page, 'progress-hand-politics-svg', 'politics deck in hand')
+    hand_shot(page, f'progress-hand-politics-{CURRENT["renderer"]}', 'politics deck in hand')
     play_direct(table, page, p1, 'encouragement')
     assert all(k['active'] for k in table.me(p1)[1]['modules']['citiesKnights']['knights'] if k['player'] == p1)
 
@@ -473,10 +480,10 @@ def politics_pass(table, p1, pages):
     wait_prompt(page, 'ck-espionage')
     played(table, p1, 'espionage', before)
     close_tool(page)
-    shot(page, 'progress-espionage-peek-svg', 'Espionage: p2’s progress cards are visible to the player who played it')
+    shot(page, f'progress-espionage-peek-{CURRENT["renderer"]}', 'Espionage: p2’s progress cards are visible to the player who played it')
     other_pages = [pages[table.identity.index(pid)] for pid in (p3, p4)]
     for other in other_pages:
-        open_game(other, table.game_id, 'svg')
+        open_game(other, table.game_id, CURRENT['renderer'])
         expect(other.get_by_test_id('ck-espionage')).to_have_count(0)
     pending = table.snapshot(p3)['view']['pending']
     assert 'cards' not in (pending.get('data') or {}), pending
@@ -489,7 +496,7 @@ def politics_pass(table, p1, pages):
     before = start_card(table, page, p1, 'sabotage')
     played(table, p1, 'sabotage', before)
     close_tool(page)
-    respond_picks(table, pages, 'sabotage', 'progress-sabotage-prompt-svg', 'Sabotage: an affected player chooses the discards')
+    respond_picks(table, pages, 'sabotage', f'progress-sabotage-prompt-{CURRENT["renderer"]}', 'Sabotage: an affected player chooses the discards')
     no_pending(table)
 
     # Wedding: richer players give two cards (p2 and p3 lead).
@@ -497,9 +504,9 @@ def politics_pass(table, p1, pages):
     before = start_card(table, page, p1, 'wedding')
     played(table, p1, 'wedding', before)
     close_tool(page)
-    respond_picks(table, pages, 'wedding', 'progress-wedding-prompt-svg', 'Wedding: a richer player chooses the cards to give')
+    respond_picks(table, pages, 'wedding', f'progress-wedding-prompt-{CURRENT["renderer"]}', 'Wedding: a richer player chooses the cards to give')
     no_pending(table)
-    board_cards(table, p1, pages, 'svg', 'desktop', ['taxation', 'treason', 'intrigue', 'diplomacy'])
+    board_cards(table, p1, pages, CURRENT['renderer'], 'desktop', ['taxation', 'treason', 'intrigue', 'diplomacy'])
 
 
 def board_cards(table, p1, pages, renderer, viewport, which):
@@ -515,6 +522,7 @@ def board_cards_inner(table, p1, pages, renderer, viewport, which):
     page = pages[0]
     hands = list(which)
     p2, p3, p4 = standard_fixture(table, p1, hands)
+    CURRENT['renderer'] = renderer
     tag = f'{renderer}-{viewport}'
     open_game(page, table.game_id, renderer)
     open_tool(page)
@@ -569,7 +577,7 @@ def board_cards_inner(table, p1, pages, renderer, viewport, which):
             pending = table.snapshot()['view']['pending']
             if pending is not None and pending['kind'] == 'citiesKnights.treasonRemove':
                 victim_page = pages[table.identity.index(p2)]
-                open_game(victim_page, table.game_id, 'svg')
+                open_game(victim_page, table.game_id, renderer if viewport == 'desktop' else 'svg')
                 wait_prompt(victim_page, 'ck-treason-remove')
                 shot(victim_page, f'progress-treason-remove-{tag}', 'Treason: the chosen player removes one of their knights')
                 victim_page.locator('[data-testid^="ck-treason-remove-"]').first.click()
@@ -596,7 +604,7 @@ def victory_cards_shown(table, p1, page):
     def fixture(state):
         ck_state(state)['progressVp'][p1] = ['printing', 'constitution']
     SERVER.patch_game(table.game_id, fixture)
-    open_game(page, table.game_id, 'svg')
+    open_game(page, table.game_id, CURRENT['renderer'])
     open_tool(page)
     expect(page.get_by_test_id('ck-progress-vp')).to_be_visible()
     shot(page, 'progress-victory-cards-svg', 'Printing and Constitution are revealed when drawn and score at once')
@@ -633,24 +641,26 @@ def run():
         try:
             complete_setup(table)
             log('SETUP DONE')
-            stages = os.environ.get('CK_STAGES', 'alchemy,science,trade,politics,victory,r3f,phone').split(',')
-            # Pass 1: SVG, desktop. Alchemy is the first card, in the roll phase.
-            if 'alchemy' in stages:
-                alchemy_before_roll(table, p1, pages[0])
-            reach_action(table, p1)
-            if 'science' in stages:
-                science_pass(table, p1, pages)
-            if 'trade' in stages:
-                trade_pass(table, p1, pages)
-            if 'politics' in stages:
-                politics_pass(table, p1, pages)
-            if 'victory' in stages:
-                victory_cards_shown(table, p1, pages[0])
+            stages = os.environ.get('CK_STAGES', 'alchemy,science,trade,politics,victory,svg,r3f,phone').split(',')
+            # Passes 1 and 2: every card in SVG, then in 3D, on the desktop. Alchemy is the first card of
+            # each pass, in player 1's roll phase; the fillers between the passes run over the API.
+            for renderer in [r for r in ('svg', 'r3f') if r in stages]:
+                CURRENT['renderer'] = renderer
+                if renderer == 'r3f':
+                    play_until(table, lambda view: view['turn']['playerId'] == p1 and view['turn']['phase'] == 'preroll'
+                               and view['pending'] is None, lambda view: False)
+                if 'alchemy' in stages:
+                    alchemy_before_roll(table, p1, pages[0])
+                reach_action(table, p1)
+                if 'science' in stages:
+                    science_pass(table, p1, pages)
+                if 'trade' in stages:
+                    trade_pass(table, p1, pages)
+                if 'politics' in stages:
+                    politics_pass(table, p1, pages)
+                if 'victory' in stages:
+                    victory_cards_shown(table, p1, pages[0])
             ckkit.REPORT['pass-1'] = dict(PLAYED)
-            # Pass 2: the cards with a board target in 3D on the desktop.
-            if 'r3f' in stages:
-                board_cards(table, p1, pages, 'r3f', 'desktop', BOARD_CARDS[:4])
-                board_cards(table, p1, pages, 'r3f', 'desktop', BOARD_CARDS[4:])
             # Passes 3 and 4: a phone, SVG and 3D.
             if 'phone' in stages:
                 phone, phone_page = phone_context(browser, contexts[0])
@@ -660,16 +670,23 @@ def run():
                 phone.close()
         except Exception:
             for index, seat_page in enumerate(pages):
-                seat_page.screenshot(path=str(ckkit.OUT / f'failure-seat{index}.png'))
+                try:
+                    seat_page.screenshot(path=str(ckkit.OUT / f'failure-seat{index}.png'), timeout=30000)
+                except Exception as error:  # a crashed page must not hide the original failure
+                    log('NO FAILURE SCREENSHOT', index, error)
             raise
         finally:
             ckkit.REPORT['played'] = dict(PLAYED)
-        missing = [card for card in ALL_CARDS if card not in PLAYED] if 'CK_STAGES' not in os.environ else []
-        assert not missing, f'not played through the UI: {missing}'
+        if 'CK_STAGES' not in os.environ:
+            # Every playable card, in both renderers on the desktop (the phone covers the board-target cards).
+            for renderer in ('svg', 'r3f'):
+                missing = [card for card in ALL_CARDS if card not in PLAYED_BY.get(renderer, {})]
+                assert not missing, f'not played through the UI in {renderer}: {missing}'
         for context in contexts:
             context.close()
         browser.close()
 
+    ckkit.REPORT['played-by-renderer'] = PLAYED_BY
     ckkit.REPORT['errors'] = ERRORS
     (ckkit.OUT / 'report.json').write_text(json.dumps(ckkit.REPORT, ensure_ascii=False, indent=2), encoding='utf-8')
     log('PLAYED', len(PLAYED), 'cards;', 'CASES', len(ckkit.REPORT['cases']), 'ERRORS', len(ERRORS))

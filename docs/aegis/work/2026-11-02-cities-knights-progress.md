@@ -197,10 +197,53 @@ evidence is above and in FIDELITY, and a whole game plays in the browser.
 SQLite file, lobby room creation, bots for other seats, target and picker
 clicks, phone contexts). `capture.py` was moved onto it and no longer rewrites
 a profile. `progress.py` plays every playable card through the UI: Alchemy
-before the roll, the 23 types in the SVG desktop pass, the seven board-target
-cards in 3D desktop, four of them on a phone in both renderers; responder
-prompts are answered from the responder's page. It asserts the 23 types in its
+before the roll and the 23 types, once in the SVG renderer and once in the 3D
+renderer on the desktop, plus four board-target cards on a phone in both
+renderers; responder prompts are answered from the responder's page in the
+pass's renderer. It asserts the 23 types in its
 `PLAYED` set and writes `report.json`. Ports: service 3032, harness 3033+.
+
+### Card coverage (25 distinct cards, 54 copies)
+
+CK25 has 25 distinct progress cards: 10 science, 6 trade and 9 politics (the
+copy counts add up to 18 per deck). Every card is covered as follows. "UI"
+means player 1 plays it through the browser (hand button, board target or form,
+every response in the page of the seat that owes it) in `progress.py`; the
+run does it in the SVG renderer and again in the 3D renderer on the desktop,
+and the board-target cards also on a phone. Engine fixtures are in
+`packages/rules/test/ck-progress-*.test.ts`.
+
+| Card (copies) | How it enters play | UI, SVG | UI, 3D | Engine fixtures |
+|---|---|---|---|---|
+| Alchemy (2) | played by hand before the roll | yes | yes | PC-AL1…4 |
+| Crane (2) | played by hand | yes | yes | PC-CR1…3 |
+| Engineering (1) | played by hand, board target (vertex) | yes | yes, phone | PC-EN1…2 |
+| Invention (2) | played by hand, form (two discs) | yes | yes | PC-IN1…2 |
+| Irrigation (2) | played by hand | yes | yes | PC-IR1 |
+| Medicine (2) | played by hand, board target (vertex) | yes | yes | PC-ME1…2 |
+| Mining (2) | played by hand | yes | yes | PC-MI1 |
+| Printing (1) | automatic: revealed and scored when drawn, never in a hand | n/a (drawn, shown in the panel: `victory_cards_shown`) | n/a (same panel) | VIS-PC1, `ck-dice` |
+| Road Building (2) | played by hand, then board targets | yes | yes | PC-RB1…2 |
+| Smithing (2) | played by hand, form (knights) | yes | yes | PC-SM1…2 |
+| Commercial Harbor (2) | played by hand, then offers; the receiver answers | yes | yes | PC-CH1…2, VIS-PC4 |
+| Guild Dues (2) | played by hand, player target, card pick | yes | yes | PC-GD1…2, VIS-PC3 |
+| Merchant (6) | played by hand, board target (hex) | yes | yes, phone | PC-MC1…3 |
+| Merchant Fleet (2) | played by hand, kind picker | yes | yes | PC-MF1 |
+| Resource Monopoly (4) | played by hand, kind picker | yes | yes | PC-RM1…2 |
+| Trade Monopoly (2) | played by hand, kind picker | yes | yes | PC-TM1 |
+| Constitution (1) | automatic: revealed and scored when drawn | n/a (as Printing) | n/a | VIS-PC1, `ck-dice` |
+| Diplomacy (2) | played by hand, board target (edge), optional free road | yes | yes, phone | PC-DI1…3 |
+| Encouragement (2) | played by hand | yes | yes | PC-EC1 |
+| Espionage (3) | played by hand, player target; the spy takes or passes | yes | yes | PC-ES1…3, VIS-PC2 |
+| Intrigue (2) | played by hand, board target (vertex); the owner retreats | yes | yes | PC-IT1…2 |
+| Sabotage (2) | played by hand; each affected seat chooses | yes | yes | PC-SA1…2, VIS-PC5 |
+| Taxation (2) | played by hand, board target (hex) | yes | yes | PC-TX1…3 |
+| Treason (2) | played by hand, player target; the chosen seat removes, the player places | yes | yes, phone | PC-TR1…2 |
+| Wedding (2) | played by hand; each richer seat chooses | yes | yes | PC-WE1…2, VIS-PC5 |
+
+No card that a human must play is unreachable in either renderer. The two
+automatic VP cards have no play action to reach (CK25 p. 10); their reveal and
+the score are covered by the panel fixture and the rules tests.
 
 ### Verification
 
