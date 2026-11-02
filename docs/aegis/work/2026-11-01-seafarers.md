@@ -98,7 +98,8 @@ them, so each pair is one small island for the bonus.
 - Service: New Shores room by ruleset parts, 3-player game start, idempotent `setup.placeShip` receipt.
 - Web: 7 client tests (actions, intents, gold picker, SVG pieces, sea target heights, event text in both locales).
 - Browser: `scripts/seafarers/capture.py` (curated captures in `docs/screenshots/seafarers/`), and the P0 base harness comparing the base boards byte-for-byte with the P0 references (`2026-11-01-seafarers/base-compare-report.json`).
-- `pnpm verify` results are recorded in the PR.
+- `SMOKE_PORT=3421 pnpm verify` (exit 0): typecheck; rules 22 files / 217 tests; protocol 8; server 103 passed, 11 skipped (PostgreSQL contract replay, no `TEST_POSTGRES_URL`); web 56 files / 561 tests; build; smoke 13/13; dev runner 1/1.
+- `scripts/seafarers/capture.py`: 35 cases, 0 page errors (Chromium 145, software WebGL), including Road Building as road + ship and as two ships, a Knight moving the pirate (cards written into the persisted hand as a test-only fixture) and the 5-player map.
 
 ## Limitations
 
