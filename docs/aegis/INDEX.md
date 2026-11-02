@@ -6,6 +6,9 @@ Entries are workspace records, not authoritative runtime decisions.
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
 | 2026-11-02 | work | docs/aegis/work/2026-11-02-explorers-pirates.md | Explorers & Pirates (P6): CN3085 sources, mission maps, rules and evidence |
+| 2026-11-03 | artifact | scripts/explorers-pirates/capture.py | Live browser run of every E&P mission to its result, P1 commands through the UI in both renderers |
+| 2026-11-03 | artifact | scripts/explorers-pirates/bot.mjs | Fixture-bot decision server for the E&P capture harness |
+| 2026-11-03 | artifact | docs/screenshots/explorers-pirates/report.json | E&P capture report: per-mission command coverage and sha256 per image |
 | 2026-11-01 | work | docs/aegis/work/2026-11-01-bot-opponents.md | Bot seats on the server and web: verification and incidental fixes |
 | 2026-11-01 | artifact | scripts/bot-opponents/capture.py | Bot lobby, table, pause and resume browser capture |
 | 2026-11-01 | artifact | docs/screenshots/bot-opponents/report.json | Bot opponents browser check results |

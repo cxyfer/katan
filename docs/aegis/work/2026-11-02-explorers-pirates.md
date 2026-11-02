@@ -183,3 +183,79 @@ and 0 of `(1,-3)`, `(0,-2)`, `(-1,-1)`, `(-1,0)`, `(-2,1)`, `(-2,2)`,
     are paid only while the bank/coin supply holds them (148 coins).
 11. **Domestic trades with coins** are a limitation of the current trade UI:
     coins are not offered in player trades (see FIDELITY).
+
+## As built
+
+Rules (`packages/rules/src/modules/explorersPirates/`, `explorers-pirates-boards.ts`):
+
+- Five profiles, one per mission set in book order, all `ep-2025.1`, 3/4
+  players: `ep-land-ho-2025` (8 VP, fixed), `ep-pirate-lairs-2025` (12, fixed),
+  `ep-fish-2025` (15, variable), `ep-spices-2025` (15, variable),
+  `ep-full-2025` (17, variable). Bots refuse them (`botsSupported`).
+- The module owns 27 commands (`ep.*`, listed in `docs/API.md`) and one
+  pending frame (`explorersPirates.pirate`: place, then rob). Base
+  `build.settlement`, `build.road`, `trade.*`, `turn.roll` and `turn.end`
+  stay; cities, development cards, the robber and ports do not exist.
+- No hidden state: an unexplored hex is `sea` terrain plus a public
+  `fog` entry `{ hex, region }`. The tile, number disc, shoal number, spice
+  ability and lair number are drawn with the server's recorded randomness when
+  the hex is explored or the lair captured, from public remaining inventories.
+- Harbour settlements are base settlements the module marks (+1 VP); ships are
+  module state with cargo (two ships per edge); the Movement phase is a module
+  turn phase keyed by the action window.
+- New hooks on `RulesModule`: `sevenRobberStep`, `roadAllowed`,
+  `vetoCommand`, `beforeEndTurn`, `bankRate`, `awardRules`; the kit gained
+  `finishTurn` (see `packages/rules/src/modules/README.md`). Base and
+  Seafarers digests are unchanged.
+
+Client (`packages/web`):
+
+- `components/ExplorersPiratesPrompt.tsx` (setup steps, pirate victim, coin
+  trades, settler/crew holders with the `clear` option, ship rebuild, extra
+  moves, start movement, fish roll, per-ship Movement actions) under the
+  shared prompt; board targets for setup, harbour/ship builds, ship steps
+  (carrying the ship id), founding and the pirate work in both renderers.
+- SVG (`SvgExplorersPirates.tsx`) and 3D (`board/three/DioramaExplorersPirates.tsx`,
+  `diorama-explorers.ts`): fog banks with parrot/goose markers that lift when a
+  hex is explored, ships side by side with their cargo, harbour flags with
+  cargo, lairs, shoals (number; pips in 3D) and hauls, spice farms, crews, the
+  Council and the owner-marked pirate ship. All shapes are hand-made; the 3D
+  pieces are procedural.
+- Players panel: ships, gold, harbour and mission points; help section;
+  inspection describes an unexplored hex only by its region; two new
+  procedural cues (`explore.reveal`, `mission.advance`), the rest reuse the
+  sea cues. Strings in `i18n/modules/explorersPirates.ts` (en, zh-Hant).
+
+Browser harness (`scripts/explorers-pirates/`): `capture.py` plays every
+mission to its result on the built service; `bot.mjs` serves decisions from
+the fixture bot (`epBotStep` in `packages/rules/test/ep-sim.ts`). Player 1
+acts through the UI the first times each command type comes up (executed in
+one renderer, reached in the other); `report.json` lists per-mission command
+coverage. Curated captures: `docs/screenshots/explorers-pirates/`.
+
+Browser verification (run of 2026-11-03, `docs/screenshots/explorers-pirates/report.json`,
+32 cases, no page errors): Land Ho! 4p 309 steps (8 VP), Pirate Lairs 3p 697
+(12), Fish 3p 925 (15), Spices 4p 1139 (15), full 3p 727 (17). All 33 command
+types that came up (27 `ep.*`, roll, end, road, settlement, 3:1 bank trade,
+discard) were made through the UI in SVG and reached in 3D, 25 also made in
+3D; player 1 sent nothing through the API. `ep.sellForGold`, `ep.unload` and
+`ep.swap` are never chosen by the fixture bot, so the harness makes them from
+the prompt when offered.
+
+The harness found and fixed four client issues, three of them shared:
+
+- the tall E&P prompt covered the vertically centred action-rail toggle (the
+  rail now starts below the messages while an E&P prompt shows);
+- the target picker sat below the board inspection and target layers (z-index
+  20 < 43/44), so a picker row over a hex was not clickable in 3D;
+- the picker spanned the map under the toolbar and the prompt card (it now
+  sits clear of them; docked at the bottom on phones);
+- inspecting an unexplored hex showed its sea details (now only its region).
+
+Deviations and limits:
+
+- The result screen keeps the shared statistics table (cities, longest road,
+  knights); the E&P breakdown (harbours, mission points, gold) is in the
+  players panel during play.
+- No human playtest. The goose marker is faint in 3D.
+- 5–6 players (CN3086), the combination rules and 2-player play stay out.

@@ -226,6 +226,51 @@ ids per player), `islandClaims` (`{ player, island, vertex }`),
 `goldRequired`. The `seafarers.gold` frame projects `data.picks` (owed
 resources per remaining responder).
 
+### Explorers & Pirates commands (`ep-*-2025`)
+
+E&P never runs with the Seafarers commands above. A turn is `turn.roll`,
+the Action phase (base `build.settlement`, `build.road`, `trade.*` and the
+commands below), `ep.startMovement`, the Movement phase, then `turn.end`.
+There are no development cards, cities or robber.
+
+| Command | Fields | When |
+|---|---|---|
+| `ep.setupHarbor` / `ep.setupSettlement` | `vertex` | variable setup, rounds 1 and 2 (a marked harbour site, then the starting island) |
+| `ep.setupRoad` / `ep.setupShip` | `edge` | variable setup route step, either order (the ship carries a settler) |
+| `ep.buildHarbor` | `vertex` | Action phase: an own coastal settlement (2 grain + 2 ore) |
+| `ep.buildShip` | `edge`, `replace?` (ship id) | Action phase, next to an own harbour settlement (lumber + wool); `replace` when all 3 ships are on the board |
+| `ep.buildSettler` / `ep.buildCrew` | `harbor` (vertex) or `ship` (id), `clear?` | Action phase; `clear: true` returns a piece when every slot is full |
+| `ep.sellForGold` | `give` | Action phase: 3 of a kind → 1 gold |
+| `ep.buyResource` | `receive` | Action phase, twice: 2 gold → 1 resource |
+| `ep.fastGold` | `give` | Action phase, with the Fast Gold spice ability: 1 resource → 1 gold |
+| `ep.extraMove` | `ship` | own turn, once per ship: 1 wool → 2 more moves |
+| `ep.startMovement` | – | ends the Action phase |
+| `ep.moveShip` | `ship`, `edge` | Movement phase: one step along a sea edge |
+| `ep.load` / `ep.unload` | `ship`, `harbor`, `piece` | Movement phase, ship next to an own harbour settlement |
+| `ep.swap` | `ship`, `harbor` | as above: exchange all cargo |
+| `ep.found` | `ship`, `vertex` | Movement phase: a settler ship founds a settlement |
+| `ep.dropCrew` / `ep.pickCrew` | `ship`, `hex` | lair or spice farm next to the ship |
+| `ep.loadFish` / `ep.loadSpice` | `ship`, `hex` | a shoal's haul or a spice farm's sack |
+| `ep.deliver` | `ship` | ship at a Council anchor with fish or spice |
+| `ep.fishRoll` | – | Movement phase, once (fish missions) |
+| `ep.chase` | `ship` | an unmoved ship at the hex of an opponent's pirate ship |
+| `ep.placePirate` | `hex` | `explorersPirates.pirate` frame, stage `place` |
+| `ep.robPlayer` | `victim` | the same frame, stage `rob` |
+
+`GameView.modules.explorersPirates` is public: `scenario`, `setupStep`,
+`missions`, `fog` (`{ hex, region }` per unexplored hex — unexplored hexes are
+`sea` in `board.terrain` and their contents are drawn only when explored),
+`council`, `anchors`, `harborMarks`, `sites` (lairs, shoals, spice farms,
+Council), `ships` (`{ id, player, edge, cargo }`), `harbors`
+(`{ vertex, player, cargo }`), `goldSupply`, `fishSupply`, `pirate`, mission
+`tracks`, the current `turn` (phase, per-ship moves) and per player `gold`,
+`harborPoints`, `missionPoints`, `supply`, `abilities` and `chaseNumbers`.
+`hints.modules.explorersPirates` gives the phase, setup targets, build
+targets, coin-trade allowances, per-ship `steps`, `found`, cargo and crew
+options, `deliver`, `chase`, `stranded`, `fishRoll`, `pirateTargets` and
+`robCandidates`. A pirate theft's card is private to the thief and the victim.
+Bots cannot be seated in E&P rooms (`E_INVALID_BOT`, `blocker.botsUnsupported`).
+
 ## WebSocket `/ws`
 
 The client sends the session cookie; the server answers `hello` on connect.

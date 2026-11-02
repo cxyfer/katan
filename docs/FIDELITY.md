@@ -16,6 +16,8 @@ before its fixtures pass.
 | SF-FAQ | catan.com/faq/seafarers, accessed 2026-11-01, sha256 `91d8ad89…60d75` | clarifications compatible with SF25 (frame inner edge, Road Building order, pirate/coastal theft, moving keeps Longest Trade Route) |
 | CK25 / CK56-25 | Cities & Knights, CN3087/CN3088, 2025 | registered target profiles, disabled |
 | COMB | Seafarers + C&K guidance | registered target profile, disabled |
+| EP25 | CATAN – Explorers & Pirates, CN3085, 2025 rulebook (`v6.251001`), sha256 `3b337981…bc308dba` | turn phases, coins, harbour settlements, ships, cargo, movement, exploring, pirate ships, tribute, chase, lairs, fish, spices, victory (pp. 2–15) |
+| EP25-M | CATAN – Explorers & Pirates, CN3085, 2025 Mission Guide (`v6.251001`), sha256 `6414208f…52f746` | scenario list and targets, kept components, common setup, the four mission maps and their setups (pp. 2–18) |
 
 The rules are implemented from the specification's paraphrase and the
 publisher's rulebooks. No official artwork or card text is copied.
@@ -28,6 +30,11 @@ publisher's rulebooks. No official artwork or card text is copied.
 | `base-paired-2025` | 5, 6 | 10 | **enabled** |
 | `sf-new-shores-2025` | 3, 4 | 14 | **enabled** (printed SF25 maps, fixed setup) |
 | `sf-new-shores-paired-2025` | 5, 6 | 14 | **enabled** (SF56-25 map: fixed small islands, variable main island and ports) |
+| `ep-land-ho-2025` | 3, 4 | 8 | **enabled** (EP25-M Land Ho! printed start) |
+| `ep-pirate-lairs-2025` | 3, 4 | 12 | **enabled** (EP25-M Pirate Lairs printed start) |
+| `ep-fish-2025` | 3, 4 | 15 | **enabled** (EP25-M Fish for Catan map, variable setup) |
+| `ep-spices-2025` | 3, 4 | 15 | **enabled** (EP25-M Spices for Catan map, variable setup) |
+| `ep-full-2025` | 3, 4 | 17 | **enabled** (EP25 full map, variable setup) |
 
 Every other row of the §5.7 matrix is registered with `enabled: false` and a
 `unavailableReasonKey`; the lobby does not offer it and the server rejects a
@@ -39,7 +46,7 @@ The registry separates two questions:
   requires this, so fixtures can exercise a profile before it is advertised.
 - `enabled` — the lobby advertises it and the service accepts it.
 
-`base-paired-2025` is enabled after the B56-25 fixture set verifies the 30-hex topology, 11 harbors, 24/resource bank, 34-card development deck, setup order, and paired turns. The Heading for New Shores profiles are enabled after the R-SF fixtures below pass, the maps are transcribed from the printed SF25/SF56-25 pages (method and per-cell data in [the work record](aegis/work/2026-11-01-seafarers.md) and `packages/rules/src/seafarers-boards.ts`) and a whole game is playable from the browser in both renderers (`scripts/seafarers/capture.py`). Cities & Knights and the combined profiles remain closed.
+`base-paired-2025` is enabled after the B56-25 fixture set verifies the 30-hex topology, 11 harbors, 24/resource bank, 34-card development deck, setup order, and paired turns. The Heading for New Shores profiles are enabled after the R-SF fixtures below pass, the maps are transcribed from the printed SF25/SF56-25 pages (method and per-cell data in [the work record](aegis/work/2026-11-01-seafarers.md) and `packages/rules/src/seafarers-boards.ts`) and a whole game is playable from the browser in both renderers (`scripts/seafarers/capture.py`). The five Explorers & Pirates profiles are enabled one per mission set, in book order, after the R-EP fixtures below pass, the maps are transcribed from EP25/EP25-M (method, per-cell data and interpretations in [the work record](aegis/work/2026-11-02-explorers-pirates.md) and `packages/rules/src/explorers-pirates-boards.ts`) and each mission is played to its result in the browser with every command in play made through the UI in one renderer and reached in the other (`scripts/explorers-pirates/capture.py`, [captures](screenshots/explorers-pirates/README.md)). Explorers & Pirates is never combined with Seafarers; bots refuse E&P rooms. Cities & Knights and the combined profiles remain closed.
 
 Registry v2 (2026-11-01 expansion platform) adds per-profile `expansions`,
 `scenario`, `variants`, `ruleVersion`, `sources` and display-only
@@ -80,6 +87,15 @@ master's own engine at `0815c76`
 | R-SF paired | Player 2 builds and moves a ship in their own window, no domestic trade; Player 2 moves after Player 1 moved; not a ship built in their own window; Player 2 wins at 14 in their window; a Player 1 win ends the turn before Player 2 (SF56-25 pp. 2–3) | `seafarers-rules.test.ts` paired block (1), `seafarers-clauses.test.ts` (4) | covered |
 | R-SF games / VIS | simulated 3/4/5/6-player games finish with a 14-point winner, conserve the supply and keep pieces legal; module projection public only, pirate theft private | `seafarers-sim.test.ts` (5), `seafarers-rules.test.ts` privacy (1), `packages/server/test/seafarers.test.ts` (2) | covered |
 | R-SF client | ship actions, two-step ship move, pirate targets, gold picker, SVG ships/pirate/tokens, sea targets at the water plane, event text; browser run of a live game (setup ship, ship build, ship move, island bonus, pirate, gold) and the 3/4/6-player maps in SVG and 3D | `packages/web/test/seafarers.test.tsx` (7), `scripts/seafarers/capture.py`, [captures](screenshots/seafarers/README.md) | covered in headless Chromium; no human playtest |
+| R-EP layout | 50/57/57/64/71 cells per mission map, parrot/goose regions, number discs and targets per mission, printed starting-island terrain (Land Ho!, Pirate Lairs) or the 14 CATAN hexes, region inventories against the hex tables, 14 harbour marks for variable setup, printed start pieces per colour, 2 gold (EP25 pp. 3, 6–7; EP25-M pp. 4, 8, 14, 16) | `packages/rules/test/ep-layout.test.ts` (11) | covered |
+| R-EP turn / trade | production 1 per building, 1 gold for a player who received nothing; a 7 in Land Ho! is discards only; 3:1, 3 → 1 gold, 2 gold → 1 resource twice; no building or trading in the Movement phase (EP25 pp. 8–9, EP25-M pp. 3, 5) | `ep-rules.test.ts` R-EP-01…04 | covered |
+| R-EP building | harbour settlement on an own coastal settlement (+1 VP, max 4); ship next to an own harbour, never on an unexplored hex's edge, replacing one when none is left; settlers and crews onto an empty slot, with a piece returned when every slot is full (EP25 pp. 9–10) | R-EP-05…07 | covered |
+| R-EP movement / exploring | 4 MP, 6 with 1 wool; two ships per edge, passing but not stopping on a full edge; exploring flips the hex from its region's remaining inventory, pays 1 resource or 2 gold and ends that ship's move; land draws its disc; a settler ship founds a settlement and returns; victory on the own turn (EP25 pp. 10–12, 15) | R-EP-08…13 | covered |
+| R-EP setup | variable setup: harbour on a mark, settlement on the starting island, then road and settler ship in snake order, starting resources from the settlement (EP25 p. 7, EP25-M p. 9) | R-EP-14 | covered |
+| R-EP pirates | a 7 activates the roller's pirate ship (not next to the starting island, frame or Council), theft from a ship owner, gold from an empty hand; tribute once per ship per turn; chase on a 6 by an unmoved ship (EP25 pp. 8, 10–11; EP25-M pp. 9–10) | R-EP-15…18 | covered |
+| R-EP missions | lair capture by 3 crews (gold and track for each, hero roll-off, token sets the number); tracks with printed values and the bonus tile; fish roll, hauls, Council delivery, pirate scares a haul; spice farm crew, ability and one sack per player (EP25 pp. 13–14) | R-EP-19…24 | covered |
+| R-EP games / VIS | 10 simulated games (5 missions × 3/4 players) reach the target and conserve 19 per resource, 148 coins and 6 hauls; pieces within limits; projection public only (fog is public, unexplored contents are drawn at reveal), the pirate's stolen card private; receipts idempotent through the service; bots refused | `ep-sim.test.ts` (10), `ep-privacy.test.ts`, `packages/server/test/explorers-pirates.test.ts` (3) | covered |
+| R-EP client | E&P build actions, prompt (setup, pirate victim, coins, settler/crew holders, ship rebuild, extra move, per-ship Movement actions), ship moves carrying the ship id, fog, ships with cargo, harbours, sites and the pirate in SVG and 3D, setup labels, help, cues; browser run of every mission to its result (`report.json` lists the commands executed and reached per renderer) | `packages/web/test/explorers-pirates.test.tsx` (8), `scripts/explorers-pirates/capture.py` | covered in headless Chromium; no human playtest |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
 | U-01, U-02, U-05 | rendered layout, mouse/keyboard/touch selection, dense content | `packages/web/test/*.test.tsx` (jsdom), `docs/screenshots/`, and the P1B headless Chromium captures below | **partially covered** — captured layouts and DOM pointer/keyboard contracts; no physical touch, rotation or pointer-device acceptance |
@@ -199,6 +215,28 @@ reviewer can challenge them rather than discover them by accident.
   behind another frame and the supply is already empty, every entitled player
   is skipped with `gold.chosen` reporting the shortfall, exactly as when the
   frame is created on an empty supply.
+
+### Explorers & Pirates interpretations and open fixtures
+
+Each item is numbered as in [the work record](aegis/work/2026-11-02-explorers-pirates.md#contradictions-gaps-and-interpretations).
+
+1. **Open fixture — pirate lair numbers.** CN3085 never lists the six lair
+   numbers; the engine uses 2, 3, 5, 6, 8, 11 from a report of the previous
+   edition. Replace when the 2025 tokens are confirmed.
+2. **Fish for Catan Council.** The map omits it; it is placed at `(0,0)` as
+   in the Spices and full maps.
+3. **Spices parrot discs.** The component list (one 9) wins over the table's
+   "9: 2".
+4. **No gold compensation on a 7** (EP25 silent; a 7 produces nothing).
+5. **Gold from a gold field counts as receiving.**
+6. **Several unexplored hexes at once** are all flipped, in hex order.
+7. **No ship on an edge whose end touches an unexplored hex.**
+8. **Track overflow** past the last space is lost; the bonus tile needs a
+   marker off the start space.
+9. **Tribute without gold** blocks that step.
+10. **Empty supplies** pay nothing (resources, 148 coins, 6 hauls).
+11. **Open item — coins in player trades.** EP25 lets domestic trades include
+    coins; the trade UI and `trade.*` commands carry resources only.
 
 ## Known gaps and unresolved items
 
