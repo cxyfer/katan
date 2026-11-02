@@ -502,6 +502,30 @@ describe('R-COMB barbarians and score (COMB-1, COMB-7, CK12-3)', () => {
     const view = projectGame(state, 'p2');
     expect(view.players.find((entry) => entry.id === 'p1')!.publicScore).toBe(11);
   });
+
+  it('COMB-7 a VP progress card drawn on the roll wins at 16, not at 13 (CK25 pp. 6, 14, 16)', () => {
+    const setup = () => {
+      const state = emptySfckGame(4, 0, 'preroll');
+      state.progressDecks.science = ['printing', 'mining'];
+      settle(state, 'p1', V28);
+      setImprovement(state, 'p1', 'science', 1);
+      return state;
+    };
+    // At 15 (settlement 1 + 14 defender points) Printing makes 16: p1 wins at once.
+    const winning = setup();
+    player(winning, 'p1').defenders = 14;
+    expect(scoreOf(winning, 'p1', { includeHidden: true })).toBe(15);
+    const won = actCk(winning, 'p1', { type: 'turn.roll' }, rollRng(1, 1, SCIENCE));
+    expect(scoreOf(won.state, 'p1', { includeHidden: true })).toBe(16);
+    expect(won.state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+    expect(won.state.pending).toBeNull();
+    // At 12, the C&K target of 13 is not enough in the combined profile.
+    const short = setup();
+    player(short, 'p1').defenders = 11;
+    const drawn = actCk(short, 'p1', { type: 'turn.roll' }, rollRng(1, 1, SCIENCE));
+    expect(scoreOf(drawn.state, 'p1', { includeHidden: true })).toBe(13);
+    expect(drawn.state.result).toBeNull();
+  });
 });
 
 describe('R-COMB overlapping hooks (allowBuilding, bankRate, discardLimit)', () => {
