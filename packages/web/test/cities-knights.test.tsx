@@ -6,7 +6,8 @@ import { actionHints, createGame, projectGame, seededRng, type GameState, type G
 import { boardIntent } from '../src/board/intent.ts';
 import { buildGeometry, type BoardGeometry } from '../src/board/geometry.ts';
 import { citiesKnightsHints, citiesKnightsPoints, citiesKnightsView, knightFollowUp, knightGhost } from '../src/board/citiesKnights.ts';
-import { createKnightModel, createMetropolisModel, createWallModel } from '../src/board/three/diorama-knights.ts';
+import { createKnightModel, createMetropolisModel, createToppledCityModel, createWallModel } from '../src/board/three/diorama-knights.ts';
+import { createSettlementModel } from '../src/board/three/diorama-structures.ts';
 import { CitiesKnightsPanel } from '../src/components/CitiesKnightsPanel.tsx';
 import { CitiesKnightsPrompt } from '../src/components/CitiesKnightsPrompt.tsx';
 import { DiscardPicker } from '../src/components/DiscardPicker.tsx';
@@ -161,6 +162,14 @@ describe('cities & knights client', () => {
       }
     }
     expect(createWallModel('#3a6fb8').getAttribute('position').count).toBeGreaterThan(0);
+    // A toppled city lies on its side: wider than tall, resting on the ground.
+    const standing = createSettlementModel('#3a6fb8', true, 1);
+    standing.computeBoundingBox();
+    const toppled = createToppledCityModel('#3a6fb8', 1);
+    expect(toppled.getAttribute('position').count).toBe(standing.getAttribute('position').count);
+    expect(toppled.boundingBox!.min.y).toBeCloseTo(0, 5);
+    expect(toppled.boundingBox!.max.y).toBeLessThan(standing.boundingBox!.max.y);
+    expect(toppled.boundingBox!.max.x - toppled.boundingBox!.min.x).toBeGreaterThan(toppled.boundingBox!.max.y);
     for (const track of ['science', 'trade', 'politics'] as const) {
       expect(createMetropolisModel('#3a6fb8', track).boundingBox!.max.y).toBeGreaterThan(1);
     }

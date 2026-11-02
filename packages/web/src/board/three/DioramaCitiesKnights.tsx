@@ -4,11 +4,11 @@ import { TRACKS, type KnightLevel, type Track } from '../citiesKnights.ts';
 import type { BoardSceneProps } from '../render-contract.ts';
 import { playerColorHex } from '../terrain.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
-import { createKnightModel, createMetropolisModel, createWallModel, KNIGHT_SCALE, METROPOLIS_OFFSET, vertexTransform } from './diorama-knights.ts';
+import { createKnightModel, createMetropolisModel, createToppledCityModel, createWallModel, KNIGHT_SCALE, METROPOLIS_OFFSET, vertexTransform } from './diorama-knights.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import type { InstanceTransform } from './transforms.ts';
 
-type Props = Pick<BoardSceneProps, 'geometry' | 'players' | 'quality' | 'citiesKnights'> & { material: Material };
+type Props = Pick<BoardSceneProps, 'geometry' | 'board' | 'players' | 'quality' | 'citiesKnights'> & { material: Material };
 
 function KnightBatch({ color, seat, level, active, instances, material, quality }: Pick<Props, 'material' | 'quality'> & {
   color: string; seat: number; level: KnightLevel; active: boolean; instances: InstanceTransform[];
@@ -22,13 +22,20 @@ function WallBatch({ color, instances, material, quality }: Pick<Props, 'materia
   return <InstancedPrimitive geometry={model} material={material} instances={instances} castShadow={quality === 'standard'} />;
 }
 
+function ToppledBatch({ color, seat, instances, material, quality }: Pick<Props, 'material' | 'quality'> & {
+  color: string; seat: number; instances: InstanceTransform[];
+}) {
+  const model = useDioramaGeometry(() => createToppledCityModel(color, seat), [color, seat]);
+  return <InstancedPrimitive geometry={model} material={material} instances={instances} castShadow={quality === 'standard'} />;
+}
+
 function Metropolis({ color, track, transform, material, quality }: Pick<Props, 'material' | 'quality'> & { color: string; track: Track; transform: InstanceTransform }) {
   const model = useDioramaGeometry(() => createMetropolisModel(color, track), [color, track]);
   return <mesh geometry={model} material={material} position={transform.position} castShadow={quality === 'standard'} dispose={null} />;
 }
 
 /** Knights, walls and metropolis keeps; nothing for games without the module. */
-export function DioramaCitiesKnights({ geometry, players, quality, citiesKnights: ck, material }: Props) {
+export function DioramaCitiesKnights({ geometry, board, players, quality, citiesKnights: ck, material }: Props) {
   const knights = useMemo(() => {
     const groups = new Map<string, { playerId: string; level: KnightLevel; active: boolean; items: InstanceTransform[] }>();
     for (const knight of ck?.knights ?? []) {
@@ -50,6 +57,16 @@ export function DioramaCitiesKnights({ geometry, players, quality, citiesKnights
     }
     return [...byPlayer.entries()];
   }, [ck?.walls, geometry]);
+  const toppled = useMemo(() => {
+    const byPlayer = new Map<string, InstanceTransform[]>();
+    for (const vertex of ck?.toppled ?? []) {
+      const owner = board.buildings[vertex]?.player;
+      const transform = vertexTransform(geometry, vertex);
+      if (!owner || !transform) continue;
+      byPlayer.set(owner, [...(byPlayer.get(owner) ?? []), transform]);
+    }
+    return [...byPlayer.entries()];
+  }, [ck?.toppled, board, geometry]);
   if (!ck) return null;
   const colorOf = (playerId: string) => players.find((player) => player.id === playerId);
   return <>
@@ -60,6 +77,11 @@ export function DioramaCitiesKnights({ geometry, players, quality, citiesKnights
     })}
     {walls.map(([playerId, items]) => <WallBatch key={playerId} color={playerColorHex(colorOf(playerId)?.color ?? 'white')}
       instances={items} material={material} quality={quality} />)}
+    {toppled.map(([playerId, items]) => {
+      const owner = colorOf(playerId);
+      return <ToppledBatch key={playerId} color={playerColorHex(owner?.color ?? 'white')} seat={owner?.seat ?? 0}
+        instances={items} material={material} quality={quality} />;
+    })}
     {TRACKS.map((track) => {
       const site = ck.metropolises[track];
       const transform = site ? vertexTransform(geometry, site.vertex, METROPOLIS_OFFSET) : null;

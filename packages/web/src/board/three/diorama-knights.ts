@@ -12,6 +12,7 @@ import type { KnightLevel, Track } from '../citiesKnights.ts';
 import type { BoardGeometry } from '../geometry.ts';
 import { geometryToWorld } from './bounds.ts';
 import { ModelBuilder } from './diorama-geometry.ts';
+import { createSettlementModel } from './diorama-structures.ts';
 import type { InstanceTransform, Vec3 } from './transforms.ts';
 
 const STEEL = '#c9ced3';
@@ -90,6 +91,20 @@ export function createWallModel(color: string): BufferGeometry {
   }
   model.add(new TorusGeometry(radius, 0.012, 4, 28), color, [0, 0.072, 0], [1, 1, 1], [Math.PI / 2, 0, 0]);
   return model.build();
+}
+
+/**
+ * A toppled city (pillaged with no settlement piece left, CK25 p. 11): the city
+ * miniature rolled a quarter turn onto its side, resting on the ground, so the
+ * owner sees it must be rebuilt before another settlement is upgraded.
+ */
+export function createToppledCityModel(color: string, seat: number): BufferGeometry {
+  const model = createSettlementModel(color, true, seat);
+  model.rotateZ(-Math.PI / 2);
+  model.computeBoundingBox();
+  model.translate(0, -model.boundingBox!.min.y, 0);
+  model.computeBoundingBox();
+  return model;
 }
 
 /** A metropolis: a tall stone keep with the track banner on top. */

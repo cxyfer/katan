@@ -15,7 +15,7 @@ import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import { BUILDING_ARRIVAL_TRANSFORM_MS, ROAD_ARRIVAL_TRANSFORM_MS, roadInstances } from './model-specs.ts';
 import type { InstanceTransform } from './transforms.ts';
 
-type PieceProps = Pick<BoardSceneProps, 'geometry' | 'board' | 'players' | 'active' | 'motionAllowed' | 'quality'> & {
+type PieceProps = Pick<BoardSceneProps, 'geometry' | 'board' | 'players' | 'active' | 'motionAllowed' | 'quality' | 'citiesKnights'> & {
   material: Material;
 };
 
@@ -58,10 +58,11 @@ function PlayerBuildings({
   return <AnimatedPieces {...props} model={model} instances={instances} duration={BUILDING_ARRIVAL_TRANSFORM_MS} />;
 }
 
-export function DioramaBuildings({ geometry, board, players, ...props }: PieceProps) {
+export function DioramaBuildings({ geometry, board, players, citiesKnights, ...props }: PieceProps) {
   const instances = useMemo<PieceInstance[]>(() => geometry.vertices.flatMap((vertex) => {
     const building = board.buildings[vertex.index];
-    if (!building) return [];
+    // A toppled city lies on its side instead (DioramaCitiesKnights).
+    if (!building || citiesKnights?.toppled.includes(vertex.index)) return [];
     const point = geometryToWorld(geometry, vertex.x, vertex.y);
     return [{
       playerId: building.player,
@@ -71,7 +72,7 @@ export function DioramaBuildings({ geometry, board, players, ...props }: PiecePr
       rotationY: ((vertex.index * 23) % 6) * (Math.PI / 6),
       scale: [1, 1, 1],
     }];
-  }), [board, geometry, props.active]);
+  }), [board, geometry, props.active, citiesKnights?.toppled]);
   return players.flatMap((player) => [false, true].map((city) => {
     const items = instances.filter((item) => item.playerId === player.id && item.city === city);
     return items.length ? <PlayerBuildings {...props} key={`${player.id}:${city}`}
