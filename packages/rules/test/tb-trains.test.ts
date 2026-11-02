@@ -256,7 +256,7 @@ describe('R-TB-MT merging and ending (p. 14, fig. 1 and 2)', () => {
     expect(fronts.get(0)).not.toBe(meeting);
     expect(fronts.get(1)).toBe(meeting);
     expect([...wagonLocations(placed)].every(([edge]) => !topology.vertices[meeting]!.edges.includes(edge))).toBe(true);
-    // The two fronts that met are each between two wagons: a building there is worth +1 VP.
+    // TB25 p.14: a building between wagons is worth +1 VP, also at an intersection touched by three wagons.
     placeBuilding(placed, 'p2', meeting);
     expect(scoreOf(placed, 'p2', { includeHidden: false })).toBe(2);
   });
@@ -299,6 +299,104 @@ describe('R-TB-MT merging and ending (p. 14, fig. 1 and 2)', () => {
     for (const edge of free) expect(locations.has(edge)).toBe(false);
     // Train 1 is unaffected: it is still open at its own front.
     expect([...locations.values()]).toContain(1);
+  });
+});
+
+describe('R-TB-MT clause fixtures (pp. 13–14)', () => {
+  /** Opens the vote as if p1 had built this turn, with every bid answered by `bids` (seat order). */
+  function openVote(state: GameState): GameState {
+    trains(state).collectedWindow = state.windowId;
+    return run(state, 'p1', { type: 'turn.end' }).state;
+  }
+  const bidAll = (state: GameState): GameState => ['p1', 'p2', 'p3', 'p4'].reduce(
+    (next, id) => run(next, id, { type: 'tb.bidWagon', wool: 0, grain: 0 }).state, state);
+
+  it('MT11: TB25 p.14 — a start whose edge already carries a wagon cannot begin a train there', () => {
+    // Start: train 2 reached train 0's start edge from outside; command: (none) — the offered locations.
+    const state = bare();
+    const slot = trains(state);
+    const [s0, , s2] = slot.starts as [typeof slot.starts[0], typeof slot.starts[1], typeof slot.starts[2]];
+    const topology = topologyOf(state);
+    const out0 = topology.edges[s0.edge]!.vertices.find((vertex) => vertex !== s0.vertex)!;
+    const out2 = topology.edges[s2.edge]!.vertices.find((vertex) => vertex !== s2.vertex)!;
+    const path = pathBetween(state, out2, out0, new Set([...oasisEdgesOf(state), s0.edge, s2.edge]));
+    slot.wagons.push({ edge: s2.edge, train: 2 }, ...path.map((edge) => ({ edge, train: 2 })), { edge: s0.edge, train: 2 });
+    expect(trainHeads(state).get(2)).toBe(s0.vertex);
+    const locations = wagonLocations(state);
+    expect(locations.has(s0.edge)).toBe(false);
+    expect(new Set(slot.wagons.map((wagon) => wagon.edge)).size).toBe(slot.wagons.length);
+  });
+
+  it('MT12: TB25 p.14 — no vote opens when the supply is empty or no location is left', () => {
+    // Start: p1 collected a wagon this turn; window: end of turn.
+    const empty = bare();
+    trains(empty).supply = 0;
+    expect(openVote(empty).pending).toBeNull();
+    expect(openVote(empty).turn.seat).toBe(1);
+    const blocked = bare();
+    const slot = trains(blocked);
+    slot.wagons = topologyOf(blocked).edges.map((_, edge) => ({ edge, train: 0 }));
+    expect(wagonLocations(blocked).size).toBe(0);
+    const next = openVote(blocked);
+    expect(next.pending).toBeNull();
+    expect(next.turn.seat).toBe(1);
+    // The wagon is not carried over to the next turn.
+    expect(trains(next).collectedWindow).toBeNull();
+  });
+
+  it('MT13: TB25 p.13 — several buildings in one Action phase collect only one wagon and open one vote', () => {
+    const state = bare();
+    const topology = topologyOf(state);
+    const vertex = topology.vertices.findIndex((_, index) => index > 20 && topology.vertices[index]!.edges.every((edge) =>
+      topology.edges[edge]!.vertices.every((v) => !state.board.buildings[v])));
+    placeRoad(state, 'p1', topology.vertices[vertex]!.edges[0]!);
+    setHand(state, 'p1', { lumber: 1, brick: 1, wool: 1, grain: 1 });
+    const first = run(state, 'p1', { type: 'build.settlement', vertex });
+    setHand(first.state, 'p1', { grain: 2, ore: 3 });
+    const second = run(first.state, 'p1', { type: 'build.city', vertex });
+    expect(first.events.filter((event) => event.type === 'tb.wagonCollected')).toHaveLength(1);
+    expect(second.events.map((event) => event.type)).not.toContain('tb.wagonCollected');
+    const vote = run(second.state, 'p1', { type: 'turn.end' }).state;
+    expect(vote.pending).toMatchObject({ kind: 'tradersBarbarians.wagonBid' });
+    const placed = run(bidAll(vote), 'p1', { type: 'tb.placeWagon', edge: [...wagonLocations(vote).keys()][0]! }).state;
+    expect(trains(placed).wagons).toHaveLength(1);
+    expect(trains(placed).supply).toBe(21);
+  });
+
+  it('MT14: TB25 p.14 — a wagon placed by the vote that gives the active player 12 VP ends the game', () => {
+    // Start: p1 holds a settlement at the front of train 0 (1 VP) and 10 bonus VP; the vote's wagon extends the train.
+    const state = bare();
+    const slot = trains(state);
+    const topology = topologyOf(state);
+    slot.wagons.push({ edge: slot.starts[0]!.edge, train: 0 });
+    const head = trainHeads(state).get(0)!;
+    placeBuilding(state, 'p1', head);
+    state.players[0]!.bonusPoints = 10;
+    expect(scoreOf(state, 'p1', { includeHidden: true })).toBe(11);
+    const edge = topology.vertices[head]!.edges.find((candidate) => wagonLocations(state).has(candidate))!;
+    const placed = run(bidAll(openVote(state)), 'p1', { type: 'tb.placeWagon', edge }).state;
+    expect(scoreOf(placed, 'p1', { includeHidden: true })).toBe(12);
+    expect(placed.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+  });
+
+  it('MT15: TB25 p.14 — a wagon placed through the vote lengthens a road and moves Longest Route to its owner', () => {
+    // Start: p1 owns four connected roads (length 4, below the minimum 5); the wagon lands on one of them.
+    const state = bare();
+    const slot = trains(state);
+    const topology = topologyOf(state);
+    const chain = [slot.starts[0]!.edge];
+    let vertex = topology.edges[chain[0]!]!.vertices.find((end) => end !== slot.starts[0]!.vertex)!;
+    while (chain.length < 4) {
+      const edge = topology.vertices[vertex]!.edges.find((candidate) => !chain.includes(candidate) && !topology.edges[candidate]!.hexes.includes(slot.oasis))!;
+      chain.push(edge);
+      vertex = topology.edges[edge]!.vertices.find((end) => !topology.edges[chain.at(-2)!]!.vertices.includes(end))!;
+    }
+    for (const edge of chain) placeRoad(state, 'p1', edge);
+    const open = bidAll(openVote(state));
+    expect(open.awards.longestRoad).toBeNull();
+    const placed = run(open, 'p1', { type: 'tb.placeWagon', edge: slot.starts[0]!.edge }).state;
+    expect(placed.players[0]!.longestRoadLength).toBe(5);
+    expect(placed.awards.longestRoad).toBe('p1');
   });
 });
 
