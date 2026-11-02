@@ -88,8 +88,13 @@ function resolveAttack(state: GameState, ctx: ModuleContext): void {
     }
   } else {
     const best = Math.max(...Object.values(contributions));
-    const top = turnOrder(state).filter((id) => contributions[id] === best);
-    if (top.length === 1) {
+    // Only a player whose active knights took part can be rewarded; when no
+    // knight defended (e.g. no city yet), nobody is (explicit interpretation,
+    // docs/FIDELITY.md).
+    const top = best > 0 ? turnOrder(state).filter((id) => contributions[id] === best) : [];
+    if (top.length === 0) {
+      // No reward.
+    } else if (top.length === 1) {
       summary.defender = top[0]!;
       playerById(state, top[0]!)!.defenders += 1;
       ctx.kit.emit(state, 'ck.defenderOfCatan', { playerId: top[0]! });

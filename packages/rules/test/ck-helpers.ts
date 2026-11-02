@@ -1,6 +1,8 @@
 /** Fixtures for the Cities & Knights rules tests. */
 
-import { applyCommand, createGame } from '../src/engine.ts';
+import { neighborsOfVertex, topologyOf } from '../src/analysis.ts';
+import { actionHints, applyCommand, createGame } from '../src/engine.ts';
+import { verticesOfHex } from '../src/topology.ts';
 import type { ModuleCommand } from '../src/modules/types.ts';
 import { ckState, type Knight } from '../src/modules/citiesKnights/state.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
@@ -75,4 +77,92 @@ export const POLITICS = 5;
 export function moduleFrame(state: GameState): ModulePending | null {
   const frame = state.pending;
   return frame && 'module' in frame ? (frame as ModulePending) : null;
+}
+
+// --- board helpers -----------------------------------------------------------
+
+export function hexWith(state: GameState, terrain: string, number?: number): number {
+  const index = state.board.layout.terrain.findIndex((candidate, hex) => candidate === terrain && (number === undefined || state.board.layout.numbers[hex] === number));
+  if (index < 0) throw new Error(`no ${terrain} hex${number === undefined ? '' : ` with ${number}`}`);
+  return index;
+}
+
+export function cornersOf(state: GameState, hex: number): number[] {
+  return verticesOfHex(topologyOf(state), hex);
+}
+
+export function edgeBetween(state: GameState, a: number, b: number): number {
+  const topo = topologyOf(state);
+  const edge = topo.vertices[a]!.edges.find((candidate) => topo.edges[candidate]!.vertices.includes(b));
+  if (edge === undefined) throw new Error(`no edge between ${a} and ${b}`);
+  return edge;
+}
+
+/** A simple vertex path of `length` steps from `start`, avoiding `avoid`. */
+export function pathFrom(state: GameState, start: number, length: number, avoid: readonly number[] = []): number[] {
+  const topo = topologyOf(state);
+  const path = [start];
+  while (path.length <= length) {
+    const last = path.at(-1)!;
+    const next = neighborsOfVertex(topo, last).find((candidate) => !path.includes(candidate) && !avoid.includes(candidate));
+    if (next === undefined) throw new Error(`path from ${start} stuck at ${last}`);
+    path.push(next);
+  }
+  return path;
+}
+
+/** Lays the player's roads along a vertex path; returns the edges. */
+export function roadAlong(state: GameState, playerId: string, path: readonly number[]): number[] {
+  const edges: number[] = [];
+  for (let i = 1; i < path.length; i++) {
+    const edge = edgeBetween(state, path[i - 1]!, path[i]!);
+    state.board.roads[edge] = { player: playerId, ship: false };
+    edges.push(edge);
+  }
+  return edges;
+}
+
+export function setBuilding(state: GameState, playerId: string, vertex: number, city = false): void {
+  state.board.buildings[vertex] = { player: playerId, city };
+}
+
+export function setImprovement(state: GameState, playerId: string, track: 'science' | 'trade' | 'politics', level: number): void {
+  state.players.find((candidate) => candidate.id === playerId)!.improvements[track] = level;
+}
+
+export function player(state: GameState, playerId: string) {
+  return state.players.find((candidate) => candidate.id === playerId)!;
+}
+
+export function hints(state: GameState, playerId: string): any {
+  return actionHints(state, playerId).modules!.citiesKnights;
+}
+
+export function eventsOf(result: ActResult, type: string) {
+  return result.events.filter((event) => event.type === type);
+}
+
+/** `count` intersections obeying the distance rule, avoiding `avoid` and their neighbours. */
+export function spreadVertices(state: GameState, count: number, avoid: readonly number[] = []): number[] {
+  const topo = topologyOf(state);
+  const taken = new Set<number>();
+  for (const vertex of avoid) {
+    taken.add(vertex);
+    for (const neighbour of neighborsOfVertex(topo, vertex)) taken.add(neighbour);
+  }
+  for (let vertex = 0; vertex < topo.vertices.length; vertex++) {
+    if (state.board.buildings[vertex]) {
+      taken.add(vertex);
+      for (const neighbour of neighborsOfVertex(topo, vertex)) taken.add(neighbour);
+    }
+  }
+  const out: number[] = [];
+  for (let vertex = 0; vertex < topo.vertices.length && out.length < count; vertex++) {
+    if (taken.has(vertex)) continue;
+    out.push(vertex);
+    taken.add(vertex);
+    for (const neighbour of neighborsOfVertex(topo, vertex)) taken.add(neighbour);
+  }
+  if (out.length < count) throw new Error('board too crowded');
+  return out;
 }
