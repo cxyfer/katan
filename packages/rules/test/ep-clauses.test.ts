@@ -499,8 +499,16 @@ describe('R-EP pirates, lairs and gold fields (EP25 pp. 8–13, EP25-M pp. 9–1
     setHand(state, 'p1', { lumber: 2, brick: 2, wool: 1, grain: 1 });
     expect(actionHints(state, 'p1').legalSettlements).not.toContain(vertex);
     expect(actionHints(state, 'p1').legalRoads).not.toContain(road);
+    // A settler ship at that corner cannot found there either.
+    const seaEdge = topo.vertices[vertex]!.edges.find((edge) => isSeaRoute(state, edge))!;
+    expect(seaEdge).toBeDefined();
+    const ship = shipOf(state, 'p1');
+    ship.edge = seaEdge;
+    ship.cargo = ['settler'];
+    expect(foundTargets(state, ship)).not.toContain(vertex);
     site.captured = true;
     expect(actionHints(state, 'p1').legalSettlements).toContain(vertex);
+    expect(foundTargets(state, ship)).toContain(vertex);
   });
 
   it('R-EP-40 lair hero ties: the higher total wins, then more crews, then the tied reroll (EP25 p. 13; EP25-M p. 12)', () => {
@@ -646,13 +654,14 @@ describe('R-EP fish, spices, Council and victory (EP25 pp. 13–15, EP25-M pp. 1
       state.board.layout.terrain[hex] = 'desert';
       slot.sites.push({ hex, kind: 'spice', ability, bonus, crews: ['p1'], sacks: ['p2', 'p3'] });
     };
+    // One Swift Voyage farm: 5 MP; both (one per region): 6 MP.
     farm('swift');
+    expect(movesLeft(state, shipOf(state, 'p1'), viewTurn(state))).toBe(5);
     farm('swift');
-    farm('swift');
+    expect(movesLeft(state, shipOf(state, 'p1'), viewTurn(state))).toBe(6);
     farm('fastGold');
     farm('pirateBonus', 2);
-    expect(epView(state).players.p1!.abilities).toEqual({ swift: 3, fastGold: 1, pirateBonus: 1 });
-    expect(movesLeft(state, shipOf(state, 'p1'), viewTurn(state))).toBe(6);
+    expect(epView(state).players.p1!.abilities).toEqual({ swift: 2, fastGold: 1, pirateBonus: 1 });
     expect(epView(state).players.p1!.chaseNumbers).toEqual([2, 6]);
     farm('pirateBonus', 3);
     expect(epView(state).players.p1!.chaseNumbers).toEqual([4, 5, 6]);
@@ -744,6 +753,278 @@ describe('R-EP domestic trade with coins (EP25 p. 9, EP25-M p. 5)', () => {
     forceTurn(state, 0, 'action');
     setHand(state, 'p1', { lumber: 1 });
     expect(refused(state, 'p1', { type: 'trade.offer', to: 'p2', give: { lumber: 1 }, want: {}, wantGoods: { gold: 1 } })).toBe('E_INVALID_SELECTION');
+  });
+});
+
+/** Turns a fog hex into an uncaptured lair with `count` distinct sea edges free of fog and ships. */
+function lairWithEdges(state: GameState, count: number): { lair: number; edges: number[] } {
+  const slot = epState(state);
+  const topo = topologyOf(state);
+  for (const entry of slot.fog.slice()) {
+    const hex = entry.hex;
+    const saved = slot.fog;
+    slot.fog = slot.fog.filter((other) => other.hex !== hex);
+    state.board.layout.terrain[hex] = 'gold';
+    const edges = topo.edges.map((_, index) => index).filter((edge) => topo.edges[edge]!.hexes.includes(hex)
+      && isSeaRoute(state, edge) && fogAtEnds(state, edge).length === 0 && !slot.ships.some((ship) => ship.edge === edge));
+    if (edges.length >= count) {
+      slot.sites.push({ hex, kind: 'lair', crews: [], captured: false });
+      return { lair: hex, edges: edges.slice(0, count) };
+    }
+    slot.fog = saved;
+    state.board.layout.terrain[hex] = 'sea';
+  }
+  throw new Error('no lair site with enough free edges');
+}
+
+/** Ends the current turn and plays the next player's roll (dice 1 + 2) into their Movement phase. */
+function passTurn(state: GameState, endRng = scriptedRng([])): GameState {
+  const actor = state.players[state.turn.seat]!.id;
+  let next = run(state, actor, { type: 'turn.end' }, endRng).state;
+  const id = next.players[next.turn.seat]!.id;
+  next = run(next, id, { type: 'turn.roll' }, scriptedRng([0, 1])).state;
+  return run(next, id, { type: 'ep.startMovement' }).state;
+}
+
+describe('R-EP lairs through commands (EP25 p. 13, EP25-M pp. 11–13)', () => {
+  it('R-EP-53 one player with all three crews: capture, the cap, rewards and the number', () => {
+    let state = epPlayable('pirate-lairs', 3);
+    const { lair, edges } = lairWithEdges(state, 2);
+    const slot = epState(state);
+    const [a, b] = slot.ships.filter((ship) => ship.player === 'p1').length >= 2
+      ? slot.ships.filter((ship) => ship.player === 'p1')
+      : [shipOf(state, 'p1'), (() => { const extra: EpShip = { id: 'x1', player: 'p1', edge: edges[1]!, cargo: [] }; slot.ships.push(extra); return extra; })()];
+    a!.edge = edges[0]!;
+    b!.edge = edges[1]!;
+    a!.cargo = ['crew', 'crew'];
+    b!.cargo = ['crew', 'crew'];
+    state = moving(state);
+    state = run(state, 'p1', { type: 'ep.dropCrew', ship: a!.id, hex: lair }).state;
+    state = run(state, 'p1', { type: 'ep.dropCrew', ship: a!.id, hex: lair }).state;
+    const third = run(state, 'p1', { type: 'ep.dropCrew', ship: b!.id, hex: lair });
+    state = third.state;
+    expect(third.events.find((event) => event.type === 'ep.crewLanded')!.params).toMatchObject({ crews: 3 });
+    // The third crew fills the lair: no fourth.
+    expect(refused(state, 'p1', { type: 'ep.dropCrew', ship: b!.id, hex: lair })).toBe('E_EP_SITE_CLOSED');
+    const before = gold(state, 'p1');
+    // Resolution after the Movement phase: one die for the lone hero, then the lair token.
+    const ended = run(state, 'p1', { type: 'turn.end' }, scriptedRng([4, 0]));
+    const captured = ended.events.find((event) => event.type === 'ep.lairCaptured')!.params as { hero: string; involved: string[]; number: number };
+    expect(captured).toMatchObject({ hero: 'p1', involved: ['p1'] });
+    expect(gold(ended.state, 'p1')).toBe(before + 2);
+    // Involved +1, hero +1: two spaces; the hero takes one crew back.
+    expect(epState(ended.state).tracks.lairs!.positions.p1).toBe(2);
+    expect(epState(ended.state).sites.find((site) => site.hex === lair)).toMatchObject({ crews: ['p1', 'p1'], captured: true });
+    expect(ended.state.board.layout.numbers[lair]).toBe(captured.number);
+    expect(epState(ended.state).lairTokens).not.toContain(captured.number);
+  });
+
+  it('R-EP-54 crews from two players: rewards clockwise from the active player, a tie goes to more crews', () => {
+    let state = epPlayable('pirate-lairs', 3);
+    const { lair, edges } = lairWithEdges(state, 2);
+    const mine = shipOf(state, 'p1');
+    const theirs = shipOf(state, 'p2');
+    mine.edge = edges[0]!;
+    mine.cargo = ['crew'];
+    theirs.edge = edges[1]!;
+    theirs.cargo = ['crew', 'crew'];
+    state = moving(state);
+    state = run(state, 'p1', { type: 'ep.dropCrew', ship: mine.id, hex: lair }).state;
+    // p2's turn (p1 → p2): two crews make three.
+    state = passTurn(state);
+    expect(state.turn.seat).toBe(1);
+    state = run(state, 'p2', { type: 'ep.dropCrew', ship: theirs.id, hex: lair }).state;
+    state = run(state, 'p2', { type: 'ep.dropCrew', ship: theirs.id, hex: lair }).state;
+    // Rolls in clockwise order from p2: p2 3 + 2 crews = 5, p1 4 + 1 crew = 5 → p2 has more crews.
+    const ended = run(state, 'p2', { type: 'turn.end' }, scriptedRng([2, 3, 0]));
+    const captured = ended.events.find((event) => event.type === 'ep.lairCaptured')!.params as { hero: string; involved: string[]; rounds: { playerId: string; total: number }[][] };
+    expect(captured.involved).toEqual(['p2', 'p1']);
+    expect(captured.rounds).toHaveLength(1);
+    expect(captured.rounds[0]!.map((roll) => roll.total)).toEqual([5, 5]);
+    expect(captured.hero).toBe('p2');
+    expect(ended.events.filter((event) => event.type === 'ep.lairReward').map((event) => event.params.playerId)).toEqual(['p2', 'p1']);
+    expect(epState(ended.state).tracks.lairs!.positions).toMatchObject({ p1: 1, p2: 2 });
+    expect(epState(ended.state).sites.find((site) => site.hex === lair)).toMatchObject({ crews: ['p1', 'p2'] });
+  });
+
+  it('R-EP-55 crews from three players: an equal tie rerolls between the tied players only', () => {
+    let state = epPlayable('pirate-lairs', 3);
+    const { lair, edges } = lairWithEdges(state, 2);
+    // p1 and p3 share one edge (two ships per edge), p2 takes the other.
+    for (const [player, edge] of [['p1', edges[0]], ['p2', edges[1]], ['p3', edges[0]]] as const) {
+      const ship = shipOf(state, player);
+      ship.edge = edge!;
+      ship.cargo = ['crew'];
+    }
+    state = moving(state);
+    state = run(state, 'p1', { type: 'ep.dropCrew', ship: shipOf(state, 'p1').id, hex: lair }).state;
+    state = passTurn(state);
+    state = run(state, 'p2', { type: 'ep.dropCrew', ship: shipOf(state, 'p2').id, hex: lair }).state;
+    state = passTurn(state);
+    state = run(state, 'p3', { type: 'ep.dropCrew', ship: shipOf(state, 'p3').id, hex: lair }).state;
+    // Clockwise from p3: p3 6, p1 6, p2 1 → p3 and p1 reroll: p3 2, p1 5 → p1.
+    const ended = run(state, 'p3', { type: 'turn.end' }, scriptedRng([5, 5, 0, 1, 4, 0]));
+    const captured = ended.events.find((event) => event.type === 'ep.lairCaptured')!.params as { hero: string; involved: string[]; rounds: { playerId: string }[][] };
+    expect(captured.involved).toEqual(['p3', 'p1', 'p2']);
+    expect(captured.rounds.map((round) => round.map((roll) => roll.playerId))).toEqual([['p3', 'p1', 'p2'], ['p3', 'p1']]);
+    expect(captured.hero).toBe('p1');
+  });
+
+  it('R-EP-56 a lair capture that reaches the target wins as the turn ends (EP25 pp. 13, 15)', () => {
+    let state = epPlayable('pirate-lairs', 3);
+    const { lair, edges } = lairWithEdges(state, 1);
+    const ship = shipOf(state, 'p1');
+    ship.edge = edges[0]!;
+    ship.cargo = ['crew'];
+    (epState(state).sites.find((site) => site.hex === lair) as { crews: string[] }).crews.push('p2', 'p2');
+    // Find how many points the capture brings, then put p1 just below the target.
+    const probe = run(moving(JSON.parse(JSON.stringify(state)) as GameState), 'p1', { type: 'ep.dropCrew', ship: ship.id, hex: lair }).state;
+    const resolved = run(probe, 'p1', { type: 'turn.end' }, scriptedRng([5, 0, 0]));
+    const gain = scoreOf(resolved.state, 'p1', { includeHidden: true }) - scoreOf(state, 'p1', { includeHidden: true });
+    expect(gain).toBeGreaterThan(0);
+    const topo = topologyOf(state);
+    const spots = topo.vertices.map((_, index) => index).filter((index) => !state.board.buildings[index]
+      && topo.vertices[index]!.hexes.every((hex) => state.board.layout.terrain[hex] === 'sea')
+      && neighborsOfVertex(topo, index).every((neighbor) => !state.board.buildings[neighbor]));
+    for (const index of spots) {
+      if (scoreOf(state, 'p1', { includeHidden: true }) >= 12 - gain) break;
+      if (neighborsOfVertex(topo, index).some((neighbor) => state.board.buildings[neighbor])) continue;
+      state.board.buildings[index] = { player: 'p1', city: false };
+    }
+    expect(scoreOf(state, 'p1', { includeHidden: true })).toBe(12 - gain);
+    state = moving(state);
+    state = run(state, 'p1', { type: 'ep.dropCrew', ship: ship.id, hex: lair }).state;
+    expect(state.result).toBeNull();
+    const ended = run(state, 'p1', { type: 'turn.end' }, scriptedRng([5, 0, 0]));
+    expect(ended.state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+    expect(ended.events.map((event) => event.type)).not.toContain('turn.ended');
+  });
+});
+
+describe('R-EP cargo capacity, spice farms and delivery wins (EP25 pp. 9–15)', () => {
+  it('R-EP-51 ships and harbours hold 1 large or 2 small pieces, both ways (EP25 pp. 9, 11)', () => {
+    let state = epPlayable('fish', 3);
+    const { ship, harbor } = shipAtHarbor(state, 'p1');
+    const harborOf = () => epState(state).harbors.find((entry) => entry.vertex === harbor)!;
+    ship.cargo = [];
+    harborOf().cargo = ['crew', 'crew'];
+    state = moving(state);
+    state = run(state, 'p1', { type: 'ep.load', ship: ship.id, harbor, piece: 'crew' }).state;
+    state = run(state, 'p1', { type: 'ep.load', ship: ship.id, harbor, piece: 'crew' }).state;
+    expect(shipOf(state, 'p1').cargo).toEqual(['crew', 'crew']);
+    expect(harborOf().cargo).toEqual([]);
+    // A settler (large) does not fit beside a crew, in either holder.
+    harborOf().cargo = ['settler'];
+    shipOf(state, 'p1').cargo = ['crew'];
+    expect(refused(state, 'p1', { type: 'ep.load', ship: ship.id, harbor, piece: 'settler' })).toBe('E_EP_NO_ROOM');
+    expect(refused(state, 'p1', { type: 'ep.unload', ship: ship.id, harbor, piece: 'crew' })).toBe('E_EP_NO_ROOM');
+    // A fish haul is large too; a spice sack is small.
+    shipOf(state, 'p1').cargo = ['fish'];
+    harborOf().cargo = ['crew'];
+    expect(refused(state, 'p1', { type: 'ep.unload', ship: ship.id, harbor, piece: 'fish' })).toBe('E_EP_NO_ROOM');
+    shipOf(state, 'p1').cargo = ['spice'];
+    state = run(state, 'p1', { type: 'ep.unload', ship: ship.id, harbor, piece: 'spice' }).state;
+    expect(harborOf().cargo).toEqual(['crew', 'spice']);
+    // Loading something the harbour does not hold is refused.
+    expect(refused(state, 'p1', { type: 'ep.load', ship: ship.id, harbor, piece: 'settler' })).toBe('E_INVALID_SELECTION');
+  });
+
+  it('R-EP-52 no road or settlement at a spice farm until the player has a crew there (EP25 p. 14)', () => {
+    let state = epPlayable('spices', 3);
+    const slot = epState(state);
+    const topo = topologyOf(state);
+    const ship = shipOf(state, 'p1');
+    // A farm with a free corner next to explored sea, reachable by a ship edge.
+    let farm = -1;
+    let vertex = -1;
+    for (const entry of slot.fog.slice()) {
+      const hex = entry.hex;
+      slot.fog = slot.fog.filter((other) => other.hex !== hex);
+      state.board.layout.terrain[hex] = 'desert';
+      const corner = topo.vertices.findIndex((info, index) => info.hexes.includes(hex) && !vertexTouchesFog(state, index)
+        && !state.board.buildings[index] && neighborsOfVertex(topo, index).every((neighbor) => !state.board.buildings[neighbor])
+        && info.edges.some((edge) => isSeaRoute(state, edge) && topo.edges[edge]!.hexes.includes(hex)));
+      if (corner >= 0) { farm = hex; vertex = corner; break; }
+      slot.fog.push(entry);
+      state.board.layout.terrain[hex] = 'sea';
+    }
+    expect(farm).toBeGreaterThanOrEqual(0);
+    slot.sites.push({ hex: farm, kind: 'spice', ability: 'swift', bonus: null, crews: ['p2'], sacks: ['p1', 'p2', 'p3'] });
+    const edge = topo.vertices[vertex]!.edges.find((candidate) => isSeaRoute(state, candidate) && topo.edges[candidate]!.hexes.includes(farm))!;
+    const road = topo.vertices[vertex]!.edges.find((candidate) => candidate !== edge)!;
+    state.board.roads[road] = { player: 'p1', ship: false };
+    setHand(state, 'p1', { lumber: 2, brick: 2, wool: 1, grain: 1 });
+    expect(actionHints(state, 'p1').legalSettlements).not.toContain(vertex);
+    expect(refused(state, 'p1', { type: 'build.settlement', vertex })).toBe('E_ILLEGAL_TARGET');
+    // A settler ship cannot found there either.
+    ship.edge = edge;
+    ship.cargo = ['settler'];
+    expect(foundTargets(state, ship)).not.toContain(vertex);
+    // Another player's crew does not open it; the player's own crew does.
+    ship.cargo = ['crew'];
+    state = moving(state);
+    state = run(state, 'p1', { type: 'ep.dropCrew', ship: ship.id, hex: farm }).state;
+    expect(foundTargets(state, { ...shipOf(state, 'p1'), cargo: ['settler'] })).toContain(vertex);
+    const open = JSON.parse(JSON.stringify(state)) as GameState;
+    Object.assign(open.turn, { phase: 'action' });
+    epState(open).turn.phase = 'action';
+    expect(actionHints(open, 'p1').legalSettlements).toContain(vertex);
+  });
+
+  it('R-EP-57 a delivery that reaches the target wins at once, during the Movement phase (EP25 pp. 14–15)', () => {
+    let state = epPlayable('spices', 3);
+    const ship = shipOf(state, 'p1');
+    const anchor = councilAnchors(state, epState(state))[0]!;
+    ship.edge = topologyOf(state).vertices[anchor]!.edges.find((edge) => isSeaRoute(state, edge))!;
+    ship.cargo = ['spice', 'spice'];
+    const probe = run(moving(JSON.parse(JSON.stringify(state)) as GameState), 'p1', { type: 'ep.deliver', ship: ship.id }).state;
+    const gain = scoreOf(probe, 'p1', { includeHidden: true }) - scoreOf(state, 'p1', { includeHidden: true });
+    expect(gain).toBeGreaterThan(0);
+    const topo = topologyOf(state);
+    for (let index = 0; index < topo.vertices.length && scoreOf(state, 'p1', { includeHidden: true }) < 15 - gain; index++) {
+      if (state.board.buildings[index] || neighborsOfVertex(topo, index).some((neighbor) => state.board.buildings[neighbor])) continue;
+      state.board.buildings[index] = { player: 'p1', city: false };
+    }
+    expect(scoreOf(state, 'p1', { includeHidden: true })).toBe(15 - gain);
+    state = moving(state);
+    const outcome = run(state, 'p1', { type: 'ep.deliver', ship: ship.id });
+    expect(outcome.state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+  });
+});
+
+describe('R-EP chase details (EP25 pp. 11, 14)', () => {
+  /** p1's two ships at the hex of p2's pirate, in the Movement phase. */
+  function chaseSetup() {
+    const state = epPlayable('spices', 3);
+    const slot = epState(state);
+    const first = shipOf(state, 'p1');
+    const topo = topologyOf(state);
+    const pirateHex = topo.edges[first.edge]!.hexes.find((cell) => state.board.layout.terrain[cell] === 'sea' && cell !== slot.council)!;
+    slot.pirate = { hex: pirateHex, owner: 'p2' };
+    const other = topo.edges.findIndex((info, edge) => edge !== first.edge && info.hexes.includes(pirateHex)
+      && isSeaRoute(state, edge) && !slot.ships.some((ship) => ship.edge === edge));
+    const second: EpShip = { id: 'x2', player: 'p1', edge: other, cargo: [] };
+    slot.ships.push(second);
+    return { state: moving(state), first, second, pirateHex };
+  }
+
+  it('R-EP-58 each battle-ready ship chases once; a moved ship cannot; Pirate Bonus adds its number', () => {
+    let { state, first, second } = chaseSetup();
+    // Without the bonus, a 2 misses.
+    state = run(state, 'p1', { type: 'ep.chase', ship: first.id }, scriptedRng([1])).state;
+    expect(epState(state).pirate).not.toBeNull();
+    expect(refused(state, 'p1', { type: 'ep.chase', ship: first.id }, scriptedRng([5]))).toBe('E_EP_NOT_BATTLE_READY');
+    // The second ship is still battle-ready; after it moves it is not.
+    const moved = JSON.parse(JSON.stringify(state)) as GameState;
+    const step = epHints(moved, 'p1').ships.find((ship) => ship.id === second.id)!.steps.find((entry) => !entry.explores && !entry.full)!.edge;
+    const afterMove = run(moved, 'p1', { type: 'ep.moveShip', ship: second.id, edge: step }).state;
+    expect(refused(afterMove, 'p1', { type: 'ep.chase', ship: second.id }, scriptedRng([5]))).toBe('E_EP_NOT_BATTLE_READY');
+    // With a Pirate Bonus farm on 2, the second ship's 2 chases the pirate away.
+    epState(state).sites.push({ hex: -1, kind: 'spice', ability: 'pirateBonus', bonus: 2, crews: ['p1'], sacks: [] });
+    const chased = run(state, 'p1', { type: 'ep.chase', ship: second.id }, scriptedRng([1]));
+    expect(chased.events.find((event) => event.type === 'ep.chaseRolled')!.params).toMatchObject({ die: 2, success: true });
+    expect(epState(chased.state).pirate).toBeNull();
+    expect(chased.state.pending?.kind).toBe('explorersPirates.pirate');
   });
 });
 
