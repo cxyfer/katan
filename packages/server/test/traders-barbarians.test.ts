@@ -64,6 +64,33 @@ describe('Traders & Barbarians rooms', () => {
     });
   }
 
+  // Bots only play rulesets whose modules they know (`BOT_RULE_MODULES`); no T&B part is among them.
+  const tbProfiles = PROFILES.filter((profile) => profile.enabled && profile.id.startsWith('tb-'));
+
+  it('lists every enabled T&B profile without bot seats', async () => {
+    const host = await harness.client('TbBotList');
+    const { profiles } = host.expectOk<{ profiles: { id: string; botSeats: boolean }[] }>(await host.get('/api/profiles'));
+    for (const profile of tbProfiles) expect(profiles.find((entry) => entry.id === profile.id)?.botSeats, profile.id).toBe(false);
+  });
+
+  for (const profile of tbProfiles) {
+    it(`${profile.id}: refuses bot seats at creation, when adding a bot and when switching a bot room`, async () => {
+      const host = await harness.client(`TbBots${tbProfiles.indexOf(profile)}`);
+      const body = {
+        visibility: 'private', capacity: 3, profileId: profile.id,
+        setupMode: profile.setupModes.includes('variable') ? 'variable' : 'fixed',
+      };
+      host.expectError(await host.post('/api/rooms', { ...body, bots: 1 }), 'E_INVALID_BOT');
+      const room = host.expectOk<{ id: string }>(await host.post('/api/rooms', body));
+      host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
+      // A base room that already seats a bot cannot be switched to this profile.
+      const base = host.expectOk<{ id: string }>(await host.post('/api/rooms', {
+        visibility: 'private', capacity: 3, profileId: 'base-2025', setupMode: 'variable', bots: 1,
+      }));
+      host.expectError(await host.post(`/api/rooms/${base.id}/settings`, { profileId: profile.id, setupMode: body.setupMode }), 'E_INVALID_BOT');
+    });
+  }
+
   it('keeps fish token values private and replays a module command receipt', async () => {
     const { clients, gameId } = await startedGame(harness, 3, { profileId: 'tb-rivers-2025', setupMode: 'variable' });
     let { revision } = await runSetupOverApi(clients, gameId);
