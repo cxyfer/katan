@@ -1,0 +1,146 @@
+{
+  "base": "http://127.0.0.1:3042",
+  "cases": [
+    {
+      "name": "lobby-combined",
+      "status": "PASS",
+      "note": "lobby: Cities & Knights + Seafarers resolves to Heading for New Shores (16 VP)",
+      "sha256": "a25da483c90455b02bf86bb4279f480948b32cbf44a4fc6f8d0973c8f1e8a346",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "p4-svg-desktop-chase-pirate-knight",
+      "status": "PASS",
+      "note": "COMB-6: an active knight next to the pirate’s sea hex (on the ships) chases it",
+      "sha256": "88d446f462c338089549b06332094277cc76ea87180c31bab212aac14847153d",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "p4-svg-desktop-chase-pirate-target",
+      "status": "PASS",
+      "note": "COMB-6: the pirate moves to sea hexes (or the frame) only; land is not offered",
+      "sha256": "7251283e10dda8a42d4859108f258623dea83712fe99689f321c22f30baf528b",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "p4-svg-desktop-after-chase",
+      "status": "PASS",
+      "note": "ships, the lying knight on the sea intersection, pirate and robber together",
+      "sha256": "b427dd15526d5b255723c15d4e5d8ade6a16c536d4da4bae41394cb2ef27a593",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "p4-svg-phone-chase-robber",
+      "status": "PASS",
+      "note": "SFCK-4: a knight chasing the robber moves the robber only: land targets, no pirate frame",
+      "sha256": "5c98fe511306a908d5f18bc2509f052dd95133d974e3dce2570d0bbaab91865c",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "p4-3d-desktop-knight-across-ships",
+      "status": "PASS",
+      "note": "COMB-2: the knight’s targets reach across own roads and ships (junction at the own building)",
+      "sha256": "7769d2e546aee3220d1306f5359c8c0fa8871b25476038bcf6470790979b1a7c",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "p4-3d-desktop-board",
+      "status": "PASS",
+      "note": "3D: ships, knights on the sea intersection and the coast, pirate and robber",
+      "sha256": "db4851404458e9ebdd6ce2cebf0c3103b815a84de6f6648f41975d2b37244e6a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "p4-svg-desktop-score",
+      "status": "PASS",
+      "note": "score: island bonus, metropolis, defender, merchant and Longest Trade Route together",
+      "sha256": "7222c94b713fb6999393edec66e98567318489633d0708c3d3fde3fc332a06fc",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "p3-r3f-desktop-chase-pirate-knight",
+      "status": "PASS",
+      "note": "COMB-6: an active knight next to the pirate’s sea hex (on the ships) chases it",
+      "sha256": "6091457e3bd02c998210b1e86421b15fc39784e060e056eac976f760eff36fc3",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "p3-r3f-desktop-chase-pirate-target",
+      "status": "PASS",
+      "note": "COMB-6: the pirate moves to sea hexes (or the frame) only; land is not offered",
+      "sha256": "234f2cbd4cfc804b899901fc8cbd4cae471d817548c403847b55042162da464f",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "p3-svg-phone-board",
+      "status": "PASS",
+      "note": "phone board after the pirate chase",
+      "sha256": "b0ac6c5ea8575c732cd2b233af4c6f0f069e34b5a54f3a0b029b7e38b1cc1647",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "p6-3d-phone-chase-pirate-knight",
+      "status": "PASS",
+      "note": "COMB-6: an active knight next to the pirate’s sea hex (on the ships) chases it",
+      "sha256": "e0ef710c8a883ddf20cdb3aebd2568ec1639fc0788541438de1557df77be6f0f",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "p6-3d-phone-chase-pirate-target",
+      "status": "PASS",
+      "note": "COMB-6: the pirate moves to sea hexes (or the frame) only; land is not offered",
+      "sha256": "74bd8c5c757d2027775729be4c77171bd3688e3b52e3c2da6c61d6d6fba93eab",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "p6-svg-desktop-board",
+      "status": "PASS",
+      "note": "board after the pirate chase",
+      "sha256": "2a532ba528cb5d1d69355c054ed5da1ce7e45aea40d9fc8fd6f399aba9fe54ec",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    }
+  ],
+  "errors": []
+}

@@ -89,4 +89,45 @@ clauses above.
 
 ## Interpretations
 
-Recorded in `docs/FIDELITY.md` as they are implemented (SFCK-n).
+SFCK-1…7 are recorded in `docs/FIDELITY.md` ("Seafarers + Cities & Knights
+interpretations and open fixtures"):
+
+- SFCK-1: a knight's road/ship path joins only at an own building or at its
+  start vertex.
+- SFCK-2: recruiting and Treason's placement need a land vertex.
+- SFCK-3: knights close and pin ships; no ship move strands a knight.
+- SFCK-4: a robber chase moves the robber only; a pirate chase the pirate
+  only.
+- SFCK-5: gold is production for the aqueduct; the gold frame comes first.
+- SFCK-6: Diplomacy may remove an open ship; an own ship is re-placed as a
+  ship and is not "built this turn".
+- SFCK-7: both bandits start off the board; the first attack places the
+  robber, the pirate stays on the frame until moved.
+
+## Design
+
+The combined profiles list `['seafarersCitiesKnights', 'seafarers',
+'citiesKnights']`. Only rules that need both expansions live in
+`packages/rules/src/modules/seafarersCitiesKnights/` (≈200 lines):
+`moveBandit` vetoes, `knight.chasePirate`, `shipMoveBlocked`,
+`allowMerchant`, an `afterProduction` ordering note, projection and hints.
+Three hooks were added to the module interface (`legalShips`,
+`shipMoveBlocked`, `allowMerchant`); the C&K knight reach and Diplomacy use
+`kit.legalShips` and ship edges, so neither expansion module names the
+other. The web client adds `board/seafarersCitiesKnights.ts` (hints, target
+narrowing, prompt id) and a pirate-chase action; everything else is the
+Seafarers and C&K UI unchanged.
+
+## Evidence
+
+| Check | Command | Result |
+|---|---|---|
+| R-COMB fixtures | `pnpm --filter @catan/rules exec vitest run test/sfck-clauses.test.ts` | 37 passed |
+| Simulated games 3/4/5/6 | `pnpm --filter @catan/rules exec vitest run test/sfck-sim.test.ts` | 5 passed |
+| Service | `pnpm --filter @catan/server exec vitest run test/seafarers-cities-knights.test.ts` | 2 passed |
+| Client | `pnpm --filter @catan/web exec vitest run test/seafarers-cities-knights.test.tsx` | 8 passed |
+| Browser | `pnpm build && SFCK_PORT=3042 python3 scripts/seafarers-cities-knights/capture.py <new-dir>` | 14 cases, 0 page errors ([captures](../../screenshots/seafarers-cities-knights/README.md)) |
+
+The browser harness taps on phones (a mouse click there hovers the seats
+panel open) and pans/zooms the board when a panel covers a target, as a
+player would.
