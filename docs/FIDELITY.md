@@ -14,7 +14,9 @@ before its fixtures pass.
 | SF25 | CATAN – Seafarers, CN3083, 2025 (`v6.250401`), sha256 `a499abe2…b04b099` | ships, ship moves, pirate, gold, Longest Trade Route, Road Building/Knight changes (pp. 2–3); Heading for New Shores 3/4-player maps, tables, island bonus, 14 VP (pp. 4–5) |
 | SF56-25 | CATAN – Seafarers 5–6, CN3084, 2025 (`v6.250401`), sha256 `746ac86e…bb0fe` | paired turns and Player 2 ship move (pp. 2–3); 5–6 New Shores layout, tables and setup (p. 4); extra 2:1 wool port (p. 1) |
 | SF-FAQ | catan.com/faq/seafarers, accessed 2026-11-01, sha256 `91d8ad89…60d75` | clarifications compatible with SF25 (frame inner edge, Road Building order, pirate/coastal theft, moving keeps Longest Trade Route) |
-| CK25 / CK56-25 | Cities & Knights, CN3087/CN3088, 2025 | registered target profiles, disabled |
+| CK25 | CATAN – Cities & Knights, CN3087, 2025 (`v6.250401`), sha256 `dac9f01a…c9a540` | event die, progress draws, production chart, commodities, walls, improvements, metropolises, knights, barbarian attack, 13 VP (pp. 2–11); progress decks (pp. 13–16) |
+| CK56-25 | CATAN – Cities & Knights 5–6, CN3088, 2025 (`v6.250401`), sha256 `eab1b29e…36c9` | 18 extra commodities, paired turns (pp. 2–3) |
+| CK-FAQ | catan.com/faq/cities-knights, accessed 2026-11-02, sha256 `47f50c96…3122` | clarifications compatible with CK25 only (affected player picks the pillaged city, displaced-knight retreat, promotion limits, progress shortage) |
 | COMB | Seafarers + C&K guidance | registered target profile, disabled |
 
 The rules are implemented from the specification's paraphrase and the
@@ -39,7 +41,7 @@ The registry separates two questions:
   requires this, so fixtures can exercise a profile before it is advertised.
 - `enabled` — the lobby advertises it and the service accepts it.
 
-`base-paired-2025` is enabled after the B56-25 fixture set verifies the 30-hex topology, 11 harbors, 24/resource bank, 34-card development deck, setup order, and paired turns. The Heading for New Shores profiles are enabled after the R-SF fixtures below pass, the maps are transcribed from the printed SF25/SF56-25 pages (method and per-cell data in [the work record](aegis/work/2026-11-01-seafarers.md) and `packages/rules/src/seafarers-boards.ts`) and a whole game is playable from the browser in both renderers (`scripts/seafarers/capture.py`). Cities & Knights and the combined profiles remain closed.
+`base-paired-2025` is enabled after the B56-25 fixture set verifies the 30-hex topology, 11 harbors, 24/resource bank, 34-card development deck, setup order, and paired turns. The Heading for New Shores profiles are enabled after the R-SF fixtures below pass, the maps are transcribed from the printed SF25/SF56-25 pages (method and per-cell data in [the work record](aegis/work/2026-11-01-seafarers.md) and `packages/rules/src/seafarers-boards.ts`) and a whole game is playable from the browser in both renderers (`scripts/seafarers/capture.py`). Cities & Knights and the combined profiles remain closed: `ck-2025` and `ck-paired-2025` are `implemented: true` (the core rules below pass the R-CK fixtures and whole simulated games) but stay `enabled: false` with `profile.unavailable.citiesKnightsProgress` until the progress-card effects (P3) exist. Browser evidence uses a test-only path that rewrites a lobby room's profile in the repository before the start (`packages/server/test/cities-knights.test.ts`, `scripts/cities-knights/capture.py`); the lobby never lists them.
 
 Registry v2 (2026-11-01 expansion platform) adds per-profile `expansions`,
 `scenario`, `variants`, `ruleVersion`, `sources` and display-only
@@ -79,6 +81,13 @@ master's own engine at `0815c76`
 | R-SF islands / victory | +2 per player per small island (also when others settled first), grouped 5–6 islands count once, no bonus for setup; 14 VP on the own turn (SF25 p. 4, SF56-25 p. 4) | `seafarers-rules.test.ts` (5) | covered |
 | R-SF paired | Player 2 builds and moves a ship in their own window, no domestic trade; Player 2 moves after Player 1 moved; not a ship built in their own window; Player 2 wins at 14 in their window; a Player 1 win ends the turn before Player 2 (SF56-25 pp. 2–3) | `seafarers-rules.test.ts` paired block (1), `seafarers-clauses.test.ts` (4) | covered |
 | R-SF games / VIS | simulated 3/4/5/6-player games finish with a 14-point winner, conserve the supply and keep pieces legal; module projection public only, pirate theft private | `seafarers-sim.test.ts` (5), `seafarers-rules.test.ts` privacy (1), `packages/server/test/seafarers.test.ts` (2) | covered |
+| R-CK dice / draws | setup settlement + city (city takes the start grant), no development cards or Largest Army, three dice with the event before production, city/settlement production chart, robber hex blocks commodities, commodity shortage, idle robber before the first attack, attack before a 7, gate draws in turn order, VP cards at once, empty decks, off-turn and on-turn hand limits, no play command, science level 3 | `packages/rules/test/ck-dice.test.ts` (R-CK-01…15) | covered |
+| R-CK barbarians | strength (metropolis city once), defenders win with ties, defender VP, tied defenders draw (and discard off turn before production), no reward without a defender, weakest group loses a city and its wall, choice of city, metropolis immunity, next group, toppled city, reset and robber entry | `packages/rules/test/ck-barbarians.test.ts` (R-CK-16…25, 51) | covered |
+| R-CK knights | recruit, action phase only, activate (cost, freshness), act/reactivate, promote (once per turn, politics 3, supply), move, displace and retreat or removal, chase the robber, knights block roads, sites and routes | `packages/rules/test/ck-knights.test.ts` (R-CK-26…36) | covered |
+| R-CK cities | walls (cost, limit, +2 hand limit), improvement costs and limits, trade level 3 rates, metropolis award/transfer/permanence and free-site rule, commodity theft, domestic commodity trade, 13 VP, paired Player 2 builds and supply trade without domestic trade, 18-per-type paired commodity bank, progress-hand privacy | `packages/rules/test/ck-cities.test.ts` (R-CK-37…50) | covered |
+| R-CK games / VIS | simulated 3/4/5/6-player games finish with a 13-point winner; resources, commodities, the 54 progress cards and pieces are conserved; across seeds metropolises, walls, pillage and knight actions occur; profiles implemented but disabled | `packages/rules/test/ck-sim.test.ts`, `packages/rules/test/profiles.test.ts` | covered |
+| R-CK service | test-only start of a C&K room, `ck-2025.1` engine, idempotent module receipts, catalogued rejection of development cards, private progress hands; lobby refuses the profile | `packages/server/test/cities-knights.test.ts` | covered |
+| R-CK client | knight/wall actions, two-step knight move, pillage/retreat board arming, SVG knights/walls/metropolises/toppled cities and idle robber, 3D models, prompts (progress discard, aqueduct, defender deck), panel (chart, buy, metropolis site, progress hand shown), commodity discard, score points, every event in both locales, sound cues | `packages/web/test/cities-knights.test.tsx`; browser run `scripts/cities-knights/capture.py` ([captures](screenshots/cities-knights/README.md)) | covered (Chromium only) |
 | R-SF client | ship actions, two-step ship move, pirate targets, gold picker, SVG ships/pirate/tokens, sea targets at the water plane, event text; browser run of a live game (setup ship, ship build, ship move, island bonus, pirate, gold) and the 3/4/6-player maps in SVG and 3D | `packages/web/test/seafarers.test.tsx` (7), `scripts/seafarers/capture.py`, [captures](screenshots/seafarers/README.md) | covered in headless Chromium; no human playtest |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
@@ -200,6 +209,38 @@ reviewer can challenge them rather than discover them by accident.
   is skipped with `gold.chosen` reporting the shortfall, exactly as when the
   frame is created on an empty supply.
 
+### Cities & Knights interpretations and open fixtures
+
+- **Barbarian strength (CK25 p. 11 vs CK-FAQ).** The FAQ writes b = s + m
+  (cities plus metropolises); CK25 counts cities "including metropolis
+  cities" and its worked example counts a metropolis city once. The engine
+  follows CK25 (R-CK-16).
+- **Event die faces are a source gap.** CK25 shows the die but does not list
+  its faces; the engine uses the C&K component die (three ship faces, one
+  city gate per track) and records each roll in the snapshot.
+- **No reward without a defender.** When the defenders hold but no player
+  contributed an active knight (only possible with no city on the board), no
+  Defender of Catan is named and nobody draws (R-CK-19).
+- **Metropolis site check.** A level-4/5 purchase needs a free own city only
+  when it would award the metropolis; a later level 4 that awards nothing is
+  allowed without one (R-CK-43).
+- **Draws before discards.** On a city gate all entitled players draw in turn
+  order from the roller first; off-turn players then discard down to four
+  before production continues (R-CK-12, R-CK-51).
+- **Hand limit for 5–6.** CK56-25 does not change the progress hand limit, so
+  it stays at 4 (the roadmap draft assumed 5).
+- **Aqueduct.** "Receives no cards" includes commodities; it does not apply on
+  a 7, and later players facing an empty supply are skipped (R-CK-15).
+- **Merchant piece.** CK25 p. 7 mentions the merchant's VP; the piece only
+  enters through the Merchant progress card, so it is P3.
+- **Open fixture — road past an opponent building.** The base engine on this
+  stack still lets a road be built through an opponent's settlement. Master
+  fixes this in #60 (roads connect only at an own building or at an empty
+  vertex the road reaches), and the fix arrives when the stack is rebased.
+  Knights already block roads through `vertexBlocker` (R-CK-36). After the
+  rebase, `vertexBlocker` must build on #60's connectivity rule, not on a
+  base workaround.
+
 ## Known gaps and unresolved items
 
 These are recorded rather than hidden. None of them is presented as verified.
@@ -219,8 +260,9 @@ These are recorded rather than hidden. None of them is presented as verified.
    B25 procedure.
 4. **The base and paired-base rows are advertised.** 5–6 uses
    `base-paired-2025`, whose B56-25 setup, supply and deck contents are
-   transcribed and verified. Seafarers, Cities & Knights and their combination
-   remain `enabled: false` until R-SF/R-CK/R-COMB fixtures exist. The 5-player
+   transcribed and verified. Heading for New Shores is enabled; Cities &
+   Knights is implemented but disabled until its progress-card effects (P3)
+   exist; the combinations remain `enabled: false` until R-COMB fixtures exist. The 5-player
    pair cycle is derived from the specification's wording ("the third player to
    Player 1's left", "both markers move to the next player to their left")
    rather than transcribed page-by-page from B56-25.
@@ -276,3 +318,9 @@ These are recorded rather than hidden. None of them is presented as verified.
     behaviour since `base-2025.1` (PR #60 lists it as a follow-up), so
     changing it is a base rule change that needs the maintainer's approval
     and a new base rule version. Seafarers inherits it unchanged.
+14. **Cities & Knights scope.** The core rules (event die, commodities,
+    walls, improvements, metropolises, knights, barbarians) are implemented;
+    progress cards are drawn, held, revealed (VP) and discarded but cannot be
+    played (P3), so the profiles stay disabled. Browser evidence is Chromium
+    with software WebGL through a test-only profile path; no human playtest
+    (U-07/U-08).

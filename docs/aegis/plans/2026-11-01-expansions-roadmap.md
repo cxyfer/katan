@@ -188,10 +188,16 @@ no development cards / Largest Army. Assets: knights (3 levels × active),
 walls, metropolis per track, barbarian ship and track, event die, commodity
 emblems, improvement chart UI.
 
+As built (2026-11-02, `docs/aegis/work/2026-11-02-cities-knights-core.md`):
+P2 already draws progress cards (event die + red die + level), enforces the
+hand limit and reveals the VP cards at once; P3 adds the card effects and
+the merchant. Correction: the progress hand limit is 4 for 5–6 as well
+(CK25 p. 10; CK56-25 does not change it), not 5 as drafted below.
+
 ### P3 C&K progress cards
 
 All 54 cards (three 18-card decks), acquisition by event + red die and level,
-hand limit 4 (5 for 5–6), immediate VP cards, Alchemist pre-roll, merchant,
+hand limit 4 (also 4 for 5–6, corrected in P2), immediate VP cards, Alchemist pre-roll, merchant,
 each card's targets/responses/privacy. Card visuals (original), i18n
 paraphrases, full simulated games. Enable `ck-*` if R-CK passes.
 

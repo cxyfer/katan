@@ -157,3 +157,87 @@ empty.
   metropolis city once. CK25 wins; recorded in FIDELITY.
 - Card names (Bishop, Deserter, Spy, …) are the older edition's; the 2025
   names above are used.
+
+## What was built
+
+| Area | Files | Notes for later phases |
+|---|---|---|
+| Hooks | `modules/types.ts`, `modules/README.md`, `engine.ts`, `analysis.ts`, `pending.ts`, `project.ts` | `vertexBlocker`, `allowCity`, `robberInactive`, `bankRate`, `beforeEndTurn`, `disabledCommands`; `discardLimit`, `resumePending` and continuation frames; base digests unchanged |
+| State | `types.ts` | players gain `commodities`, `progressCards`, `improvements`, `cityWalls`, `defenders`; the game gains `commodityBank` and `progressDecks` (per track, top = index 0) |
+| Module | `modules/citiesKnights/` (`dice.ts`, `production.ts`, `barbarians.ts`, `knights.ts`, `cities.ts`, `progress.ts`, `state.ts`, `constants.ts`, `messages.ts`) | 13 commands, 6 frames, `ck.*` events; see below |
+| Profiles | `profiles.ts` | `ck-2025` (3–4) and `ck-paired-2025` (5–6): `implemented: true`, `enabled: false`, `profile.unavailable.citiesKnightsProgress`; `sf-ck-*` unchanged and disabled |
+| Web | `board/citiesKnights.ts`, `components/SvgCitiesKnights.tsx`, `board/three/diorama-knights.ts`, `board/three/DioramaCitiesKnights.tsx`, `components/CitiesKnightsPanel.tsx`, `CitiesKnightsPrompt.tsx`, `CitiesKnightsBadge.tsx`, `CardKindArt.tsx`, `styles/cities-knights.css`, `i18n/modules/citiesKnights*.ts`, `audio/` | original SVG and procedural 3D knights (3 levels × active), walls, metropolis keeps per track, barbarian ship and track, event die, commodity cards and emblems, toppled city; board actions and two-step knight targets; panel (track, chart, progress hand, supply, last attack); prompts for pillage, retreat, defender deck, progress discard, science bonus; commodities in hand, discard, bank and player trades; scoring marks and help; five cues |
+| Evidence | `packages/rules/test/ck-*.test.ts`, `packages/server/test/cities-knights.test.ts`, `packages/web/test/cities-knights.test.tsx`, `scripts/cities-knights/` | R-CK fixture map in `docs/FIDELITY.md` |
+
+## Phase 3 hooks and state shapes
+
+- `GameState.moduleState.citiesKnights` (`CitiesKnightsState` in
+  `state.ts`): `barbarian`, `attacks`, `knights[]` (`player`, `vertex`,
+  `level`, `active`, `activatedIn`, `promotedIn` as `windowId`s), `walls`
+  (city vertices), `metropolises` per track, `toppled`, `progressVp` per
+  player, `lastRoll`, `lastAttack`, `produced` (science ability).
+- Progress cards: `player.progressCards` (private hand),
+  `state.progressDecks[track]` (draw from the front; discards go under the
+  deck). `drawProgressCard(state, playerId, track, ctx, cause)` handles
+  draws, VP cards and empty decks; `queueProgressDiscards` and
+  `progressLimitVeto` handle the limit. P3 needs a `progress.play` command,
+  per-card frames (add them to `pendingCommands`), Alchemy before the roll
+  (`rollDice` already reads the module's dice) and the merchant piece
+  (`vertexBlocker` / production / `score`).
+- Frames: `citiesKnights.resolveRoll` (continuation), `.pillage`,
+  `.displaced`, `.progressDiscard`, `.defenderDraw`, `.scienceBonus`.
+- Knight helpers in `knights.ts` (`knightReach`, `displaceTargets`,
+  `retreatOptions`, `vertexOccupant`) are what Diplomacy/Intrigue/Treason
+  style cards will need; barbarian helpers in `barbarians.ts`.
+
+## Interpretations
+
+Recorded in `docs/FIDELITY.md`, "Cities & Knights interpretations and open
+fixtures": barbarian strength per CK25 (not the FAQ formula), event-die faces
+as a source gap (3 ships + 3 gates), no reward without a defender, metropolis
+site check only when it awards, draws before discards, the hand limit of 4 for
+5–6 (a correction to the roadmap draft, which said 5), the aqueduct scope, the
+merchant in P3, and the road past an opponent building, which is fixed on
+master by #60 and arrives with the rebase (`vertexBlocker` must then build on
+#60's connectivity).
+
+## Browser harness
+
+`scripts/cities-knights/capture.py` (port `CK_PORT`, default 3032) runs the
+built service on a private SQLite file. The profiles are disabled, so it
+switches a readied base room's `profile_id` while the service is stopped
+(test-only). `scripts/cities-knights/topology.mjs` prints edge endpoints for
+the bot. Curated captures and the file table are in
+`docs/screenshots/cities-knights/`.
+
+## Verification
+
+- Rules: R-CK fixtures in `ck-dice` (15), `ck-cities` (14), `ck-barbarians`
+  (11), `ck-knights` (11) and simulated 3/4/5/6-player games (`ck-sim`, 2);
+  base and Seafarers regression digests unchanged.
+- Service: a `ck-2025` game through `RoomService`/`GameCoordinator` on the
+  test-only path (three dice, idempotent receipts, base development cards
+  rejected), and the disabled profile still
+  rejected for new rooms.
+- Web: 10 client tests (actions, two-step knight move, pillage arming, SVG
+  pieces and hidden robber, 3D models, prompts, panel, commodity discard,
+  points, events and cues in both locales).
+- Browser: `scripts/cities-knights/capture.py`, 14 cases, 0 page errors
+  (Chromium 145, software WebGL). The P0 base harness compares the base boards
+  byte for byte with the P0 references
+  (`2026-11-02-cities-knights-core/base-compare-report.json`, 4 of 4
+  identical).
+- `SMOKE_PORT=3431 pnpm verify` (exit 0): typecheck; rules 27 files / 274
+  tests; protocol 8; server 105 passed, 11 skipped (PostgreSQL contract
+  replay, no `TEST_POSTGRES_URL`); web 57 files / 571 tests; build; smoke
+  13/13; dev runner passed.
+
+## Limitations
+
+- Progress cards are drawn, held, discarded and scored (VP cards), but not
+  playable; the merchant is not in play. Both are P3, so the profiles stay
+  disabled and the browser evidence uses a test-only profile switch.
+- The stack is not yet rebased onto master (#58–#60, #64); the road past an
+  opponent building stays open until then.
+- No human playtest, physical device, Safari/Firefox or screen-reader check.
+- PostgreSQL repository tests were not run (no `TEST_POSTGRES_URL`).

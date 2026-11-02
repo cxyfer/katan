@@ -154,7 +154,10 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
 
 Not yet enabled: Cities & Knights and the Seafarers + Cities & Knights
 combination. Those profiles are registered in the ruleset registry but
-disabled; the server rejects them. See
+disabled; the server rejects them. The Cities & Knights core rules (event
+die, barbarians, knights, walls, commodities, city improvements and
+metropolises) are implemented and tested, with their board pieces and panel;
+the profiles stay disabled until the progress-card effects are in. See
 [`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
 including the device, accessibility and playtest evidence that has not been
 produced.

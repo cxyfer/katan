@@ -17,8 +17,9 @@ modules/
   <id>/messages.ts    the module's event types and error codes
 ```
 
-`seafarers` (Heading for New Shores) is implemented; placeholders exist for
-`citiesKnights`, `tradersBarbarians` and `explorersPirates`, so a phase
+`seafarers` (Heading for New Shores) and the `citiesKnights` core rules are
+implemented; placeholders exist for `tradersBarbarians` and
+`explorersPirates`, so a phase
 normally edits only its own directory plus its profile rows, layout builder
 and i18n catalog file.
 
@@ -34,9 +35,15 @@ and i18n catalog file.
 | roll | `modifyProduction` | on the production results before they are paid |
 | roll | `afterProduction` | after production or the 7 has been set up |
 | commands | `commands` / `pendingCommands` | module-owned command types; types accepted while a frame is pending |
+| commands | `disabledCommands` | base command types the ruleset lacks (C&K: development cards); rejected |
+| commands | `beforeEndTurn` | veto on `turn.end` (C&K: progress hand limit by the end of the action phase) |
 | board | `allowBuilding` | extra veto on a building intersection (setup and play), e.g. New Shores' main-island start |
+| board | `allowCity` | extra veto on upgrading a settlement (C&K: a toppled city must be rebuilt first) |
+| board | `vertexBlocker` | owner of a module piece holding an intersection (C&K knights): opponents' roads cannot pass and their Longest Route splits there |
 | board | `afterBoardChange` | after every board change, after awards are recomputed; gets the kit (emit, …) but no randomness |
 | robber | `moveBandit` | on a robber target (7 or Knight) before the base robber; claims sea hexes / `null` (frame) for the pirate and returns theft candidates, or `undefined` to leave it to the robber |
+| robber | `robberInactive` | true while the robber is out of play (C&K before the first attack); a 7 still discards |
+| trade | `bankRate` | adjusts the supply rate for a given card (C&K: commodities, trade level 3 at 2:1) |
 | cards | `freeRouteTargets` | extra free Road Building placements (ships), supply included; summed with the legal roads capped by the road pieces left |
 | pending | `resumePending` | when a continuation frame (`responders: []`) of the module becomes active |
 | pending | `activatePending` | when a queued frame of the module that still has responders becomes active; may resolve it (Seafarers: an empty supply skips gold) |

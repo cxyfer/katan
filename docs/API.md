@@ -226,6 +226,58 @@ ids per player), `islandClaims` (`{ player, island, vertex }`),
 `goldRequired`. The `seafarers.gold` frame projects `data.picks` (owed
 resources per remaining responder).
 
+### Cities & Knights commands (`ck-*`, implemented, not yet enabled)
+
+The `ck-2025` / `ck-paired-2025` profiles are registered with
+`enabled: false` (`profile.unavailable.citiesKnightsProgress`) until the
+progress-card effects land, so the server rejects them for new rooms. The
+contract below is what the rules module accepts once a game runs on them.
+Base `build.devCard` and `dev.play*` are rejected (`E_INVALID_COMMAND`).
+
+| Command | Fields | When |
+|---|---|---|
+| `build.wall` | `vertex` | own action window, 2 brick; an own city without a wall, at most 3 walls |
+| `city.improve` | `track`, `vertex?` | own action window; next level costs *level* commodities of the track; `vertex` names the city that takes a metropolis (required only when several qualify) |
+| `knight.recruit` | `vertex` | 1 wool + 1 ore; a free intersection on an own route; enters inactive at strength 1 |
+| `knight.activate` | `vertex` | 1 grain; an own inactive knight |
+| `knight.promote` | `vertex` | 1 wool + 1 ore; once per knight and turn, a higher piece in supply, mighty needs politics level 3 |
+| `knight.move` | `from`, `to` | an own active knight not activated in this window; `to` reachable along own routes |
+| `knight.displace` | `from`, `to` | as a move, onto a weaker opponent knight; queues `citiesKnights.displaced` |
+| `knight.chaseRobber` | `vertex` | an own eligible knight next to the robber's hex after the first attack; queues `moveRobber` |
+| `knight.retreat` | `vertex` | `citiesKnights.displaced`, by the displaced knight's owner |
+| `barbarians.pillage` | `vertex` | `citiesKnights.pillage`, each responder names one of their cities |
+| `barbarians.chooseDeck` | `track` | `citiesKnights.defenderDraw`, by its first responder |
+| `progress.discard` | `cards` (array) | `citiesKnights.progressDiscard` (exactly `data.required[self]` cards), or on the own turn while above the hand limit |
+| `science.take` | `resource` (or `null` to pass) | `citiesKnights.scienceBonus`, by its first responder |
+
+A roll carries `turn.dice` as `[yellow, red]`; the event die is in
+`modules.citiesKnights.lastRoll`. Frames: `citiesKnights.resolveRoll`
+(a continuation with no responders that resumes production after the event),
+`.pillage` (`data.cities` per responder), `.displaced` (`data.player`,
+`level`, `active`, `from`, `options`), `.progressDiscard` (`data.required`),
+`.defenderDraw` (`data.decks`) and `.scienceBonus`. Ending the turn while
+above the progress-card limit is rejected.
+
+`GameView.modules.citiesKnights` is public: `barbarian`
+(`position`, `length`, `attacks`), `barbarianStrength`, `defenderStrength`,
+`robberActive`, `knights` (`player`, `vertex`, `level`, `active`, `fresh`,
+`promoted`), `walls` (`vertex`, `player`), `metropolises` per track
+(`player`, `vertex` or `null`), `toppled`, `progressVp` per player,
+`progressCounts`, `decks` (card counts per track), `commodityBank`,
+`lastRoll` (`event`, `red`, `atSeq`), `lastAttack` and `handLimit`.
+Progress hands appear only in the owner's own player view (`progressCards`);
+deck order is never projected. Players carry `commodities`, `improvements`,
+`cityWalls` and `defenders`.
+
+`hints.modules.citiesKnights` lists `recruitSites`, `knightSupply`, `knights`
+(`vertex`, `level`, `active`, `canActivate`, `canPromote`, `canAct`, `moves`,
+`displace`, `chase`), `wallSites`, `improvements` (`track`, `level`, `cost`,
+`commodity`, `metropolis`, `sites`, `blocked`), `commodityRates`, `costs`,
+`progressExcess`, `retreat`, `pillage`, `defenderDecks` and `scienceBonus`.
+Events are `ck.*` (for example `ck.eventRolled`, `ck.barbariansAttack`,
+`ck.cityPillaged`, `ck.knightDisplaced`, `ck.progressDrawn`); a drawn or
+discarded card's face is sent only to its holder.
+
 ## WebSocket `/ws`
 
 The client sends the session cookie; the server answers `hello` on connect.
