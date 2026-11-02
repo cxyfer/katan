@@ -154,4 +154,70 @@ production or blocking effect and no other way to leave the board.
 
 ## What was built
 
-(Filled in as the slices land.)
+### Rules (slices 1–3)
+
+`packages/rules/src/modules/citiesKnights/` gains `cards.ts` (the
+`progress.play` dispatcher, hints, frame projection), `card-common.ts`
+(`CardRule`, block reasons), `cards-science.ts`, `cards-trade.ts`,
+`cards-politics.ts`, `merchant.ts` (merchant hex, 2:1 kinds, VP) and `hand.ts`
+(commodity-aware card helpers). The module registers the commands listed in
+`docs/API.md`; the engine draws no randomness itself (Taxation's steal uses
+`ctx.rng`). No rules API changed beyond the module state and view fields
+(`merchant`, `alchemy`, `fleets`, `harbor`) and the hints (`progress`,
+`harborTargets`, `twoForOne`). 375 rules tests, base digests unchanged.
+
+### Web (slice 4)
+
+| Piece | Where |
+|---|---|
+| Hand with playable and unplayable cards and reasons; play forms for Alchemy (dice), Crane (track), Invention (two hexes), Smithing (knights); board targets for Engineering, Medicine, Intrigue, Merchant, Taxation, Diplomacy; player and kind pickers; Commercial Harbor offers; turn effects (Alchemy dice, 2:1 kinds, merchant) | `components/CitiesKnightsProgress.tsx`, mounted by `CitiesKnightsPanel.tsx` |
+| Responder prompts for every frame (harbor exchange, Guild Dues, Espionage, Sabotage, Wedding, Treason remove and place, Diplomacy road) | `ProgressPrompt` in the same file, rendered by `CitiesKnightsPrompt.tsx` |
+| Original card faces (25 glyphs in the three track colours) and the merchant piece | `components/SvgProgressArt.tsx`, `board/three/diorama-merchant.ts`, `DioramaCitiesKnights.tsx` |
+| Board targets and merchant ghost for both renderers | `board/citiesKnights.ts`, `board/intent.ts`, `SceneContent.tsx` |
+| Audio cues `progress.play`, `.alchemy`, `.merchant`, `.request` | `audio/progress-cues.ts`, `synth.ts`, `cues.ts`, `SoundPreview.tsx` |
+| About 100 new strings in zh-Hant and en: 32 events, errors, prompts, card names and effect paraphrases, help-panel summaries | `i18n/modules/citiesKnights.ts`, `citiesKnights-events.ts`, `HelpPanel.tsx` |
+
+Privacy: a prompt reads only the frame data projected to its responder; a
+non-responder sees no card face, hand or prompt (`cities-knights-progress.test.tsx`).
+
+### Enablement (slice 5)
+
+`ck-2025` and `ck-paired-2025` are `enabled: true`; the unavailable reason is
+removed. `@catan/bots` has no C&K rule module, so `botSeats` stays false and
+the lobby and the service refuse bot seats (`BOT_RULE_MODULES` unchanged).
+Enabled-profile lists were updated in rules (`profiles.test.ts`), server
+(`session.test.ts`, `rooms.test.ts`, `cities-knights.test.ts`) and web
+(`rulesets.test.ts`).
+Conditions: all R-CK fixtures pass (PC-* and VIS-PC1–5 included), the source
+evidence is above and in FIDELITY, and a whole game plays in the browser.
+
+### Browser harness (slice 6)
+
+`scripts/cities-knights/ckkit.py` holds the shared helpers (server on a private
+SQLite file, lobby room creation, bots for other seats, target and picker
+clicks, phone contexts). `capture.py` was moved onto it and no longer rewrites
+a profile. `progress.py` plays every playable card through the UI: Alchemy
+before the roll, the 23 types in the SVG desktop pass, the seven board-target
+cards in 3D desktop, four of them on a phone in both renderers; responder
+prompts are answered from the responder's page. It asserts the 23 types in its
+`PLAYED` set and writes `report.json`. Ports: service 3032, harness 3033+.
+
+### Verification
+
+See the PR body for the exact counts. Browser runs: `progress.py` full run,
+50 cases, 0 errors, 23 card types played; trade and politics stages re-run
+after the prompt stylesheet fix, 17 cases, 0 errors; `capture.py` 14 cases,
+0 errors. PostgreSQL repository tests are skipped without `TEST_POSTGRES_URL`.
+
+### Limitations
+
+- Headless Chromium with software WebGL only; no physical device, screen
+  reader, IME or human playtest (U-03/U-04/U-06/U-07/U-08 remain open).
+- Cards without a board target are driven through the SVG pass only; the hand
+  panel is shared by both renderers.
+- Responder prompts of paired (5–6) games are verified at engine level and in
+  jsdom, not in a scripted multi-client browser run.
+- Bots cannot play Cities & Knights; seats must be humans.
+- Seafarers + C&K (including Diplomacy on ships and the Knight/pirate
+  interactions) is P4.
+- The merchant has no animation beyond the placement cue.
