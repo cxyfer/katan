@@ -59,6 +59,8 @@ card) are reproducible with the script and not committed.
 | `progress-merchant-placed-svg-desktop.png` | SVG | 1366×900 | the merchant on its hex in the owner's colour |
 | `progress-merchant-placed-r3f-desktop.png` | 3D | 1366×900 | the merchant figure in the diorama |
 | `progress-treason-remove-svg-desktop.png` | SVG | 1366×900 | Treason: the chosen player removes one of their knights |
+| `progress-treason-place-ghost-svg-desktop.png` | SVG | 1366×900 | Treason: the knight ghost on the chosen site (the confirm card is hidden for the shot) |
+| `progress-treason-place-ghost-r3f-desktop.png` | 3D | 1366×900 | the same in 3D |
 | `progress-diplomacy-rebuild-svg-desktop.png` | SVG | 1366×900 | Diplomacy: the removed own road may be rebuilt for free |
 | `progress-diplomacy-rebuild-r3f-desktop.png` | 3D | 1366×900 | the same in 3D |
 | `progress-hand-board-svg-phone.png` | SVG | 390×844 | phone: the hand sheet with board-target cards |

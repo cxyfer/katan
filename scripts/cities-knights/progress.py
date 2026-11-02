@@ -580,7 +580,10 @@ def board_cards_inner(table, p1, pages, renderer, viewport, which):
                 open_game(victim_page, table.game_id, renderer if viewport == 'desktop' else 'svg')
                 wait_prompt(victim_page, 'ck-treason-remove')
                 shot(victim_page, f'progress-treason-remove-{tag}', 'Treason: the chosen player removes one of their knights')
-                victim_page.locator('[data-testid^="ck-treason-remove-"]').first.click()
+                # Give up the level-2 knight: player 1 has no basic knight left in the supply to place instead.
+                strong = next(k['vertex'] for k in table.me(p1)[1]['modules']['citiesKnights']['knights']
+                              if k['player'] == p2 and k['level'] == 2)
+                victim_page.get_by_test_id(f'ck-treason-remove-{strong}').click()
             for _ in range(40):
                 pending = table.snapshot()['view']['pending']
                 if pending is not None and pending['kind'] == 'citiesKnights.treasonPlace':
@@ -592,6 +595,14 @@ def board_cards_inner(table, p1, pages, renderer, viewport, which):
                 if pending['data']['sites'] and pending['data']['levels']:
                     page.get_by_test_id(f"ck-treason-level-{pending['data']['levels'][0]}").click()
                     ui_click_target(page, 'vertex', pending['data']['sites'][0])
+                    if renderer == 'svg':
+                        # The chosen site previews the knight that will be placed.
+                        expect(page.get_by_test_id('board-preview-ghost').locator('[data-level]')).to_have_count(1)
+                    # The confirm card sits over the middle of the board; hide it (not remove it) so the ghost shows.
+                    preview = page.get_by_test_id('selection-preview')
+                    preview.evaluate("element => { element.style.visibility = 'hidden'; }")
+                    shot(page, f'progress-treason-place-ghost-{tag}', 'Treason: the knight ghost on the chosen site before confirming', ms=2500 if renderer == 'r3f' else 700)
+                    preview.evaluate("element => { element.style.visibility = ''; }")
                     ui_confirm(page)
                 else:
                     page.get_by_test_id('ck-treason-skip').click()
@@ -660,6 +671,8 @@ def run():
                     politics_pass(table, p1, pages)
                 if 'victory' in stages:
                     victory_cards_shown(table, p1, pages[0])
+                if 'treason' in stages:  # only for a focused run: CK_STAGES=svg,r3f,treason
+                    board_cards(table, p1, pages, renderer, 'desktop', ['treason'])
             ckkit.REPORT['pass-1'] = dict(PLAYED)
             # Passes 3 and 4: a phone, SVG and 3D.
             if 'phone' in stages:
