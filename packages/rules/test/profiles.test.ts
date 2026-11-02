@@ -40,8 +40,8 @@ describe('ruleset registry', () => {
 
   it('enables only the profiles whose rules and fixtures have passed', () => {
     const enabled = PROFILES.filter((profile) => profile.enabled).map((profile) => profile.id);
-    expect(enabled).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025']);
-    expect(selectableProfiles().map((profile) => profile.id)).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025']);
+    expect(enabled).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025']);
+    expect(selectableProfiles().map((profile) => profile.id)).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025']);
     expect(selectableProfiles(5).map((profile) => profile.id)).toEqual(['base-paired-2025', 'sf-new-shores-paired-2025']);
   });
 

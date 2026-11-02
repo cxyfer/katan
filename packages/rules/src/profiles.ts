@@ -224,6 +224,8 @@ function explorersPiratesProfile(
     pieces: { settlements: 9, cities: 0, roads: 15, ships: 3, knights: 0 },
     devDeck: [],
     implemented: true,
+    // Enabled after the mission fixtures, evidence and browser harness passed (docs/FIDELITY.md).
+    enabled: true,
     unavailableReasonKey: 'profile.unavailable.explorersPirates',
     ...overrides,
   });

@@ -25,8 +25,12 @@ export interface EpSimulation {
   steps: number;
 }
 
+/** The last command the engine accepted, so a driver can replay the bot's choice elsewhere. */
+let lastAccepted: { actor: string; command: AnyCommand } | null = null;
+
 function attempt(state: GameState, actor: string, command: AnyCommand, rng: Rng): GameState | null {
   const outcome = applyCommand(state, actor, command as Command, rng);
+  if (outcome.ok) lastAccepted = { actor, command };
   return outcome.ok ? outcome.state : null;
 }
 
@@ -272,30 +276,43 @@ function movementMove(state: GameState, id: string, rng: Rng): GameState | null 
   return null;
 }
 
+/**
+ * One bot decision: the next accepted command for whoever owes one, with the
+ * state after it (applied with `rng`). `memo.turnNo` counts finished turns.
+ * The browser harness replays `actor`/`command` against the real service.
+ */
+export function epBotStep(state: GameState, rng: Rng, step: number, memo: { turnNo: number }):
+  { state: GameState; actor: string; command: AnyCommand } | null {
+  lastAccepted = null;
+  let next: GameState | null = null;
+  if (state.pending) next = resolvePending(state, rng);
+  else if (state.turn.phase === 'setup') next = setupMove(state, rng, step);
+  else {
+    const id = state.players[state.turn.seat]!.id;
+    if (state.turn.phase === 'preroll') next = attempt(state, id, { type: 'turn.roll' }, rng);
+    else {
+      const phase = epHints(state, id).phase;
+      if (phase === 'action') next = actionMove(state, id, rng, memo.turnNo) ?? attempt(state, id, { type: 'ep.startMovement' }, rng);
+      else next = movementMove(state, id, rng);
+      if (!next) {
+        next = attempt(state, id, { type: 'turn.end' }, rng);
+        memo.turnNo++;
+      }
+    }
+  }
+  const accepted = lastAccepted as { actor: string; command: AnyCommand } | null;
+  return next && accepted ? { state: next, ...accepted } : null;
+}
+
 export function simulateExplorersPirates(scenario: EpScenarioId, players: 3 | 4, seed: number, maxSteps = 40000): EpSimulation {
   const rng = seededRng(seed * 7919 + players);
   let { state } = epGame(scenario, players, seed);
   const events: Record<string, number> = {};
-  let turnNo = 0;
+  const memo = { turnNo: 0 };
   let steps = 0;
   for (; steps < maxSteps && !state.result; steps++) {
     const before = state.seq;
-    let next: GameState | null = null;
-    if (state.pending) next = resolvePending(state, rng);
-    else if (state.turn.phase === 'setup') next = setupMove(state, rng, steps);
-    else {
-      const id = state.players[state.turn.seat]!.id;
-      if (state.turn.phase === 'preroll') next = attempt(state, id, { type: 'turn.roll' }, rng);
-      else {
-        const phase = epHints(state, id).phase;
-        if (phase === 'action') next = actionMove(state, id, rng, turnNo) ?? attempt(state, id, { type: 'ep.startMovement' }, rng);
-        else next = movementMove(state, id, rng);
-        if (!next) {
-          next = attempt(state, id, { type: 'turn.end' }, rng);
-          turnNo++;
-        }
-      }
-    }
+    const next = epBotStep(state, rng, steps, memo)?.state ?? null;
     if (!next) {
       const id = state.players[state.turn.seat]!.id;
       const outcome = applyCommand(state, id, { type: 'turn.end' } as Command, rng);

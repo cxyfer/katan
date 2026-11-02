@@ -75,7 +75,7 @@ describe('guest session', () => {
       await client.get('/api/profiles'),
     );
     expect(profiles.profiles.length).toBe(13);
-    expect(profiles.selectable).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025']);
+    expect(profiles.selectable).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025']);
     const config = client.expectOk<{ limits: { chatMaxLength: number }; defaultPolicy: { disconnectGraceSeconds: number } }>(
       await client.get('/api/config'),
     );
