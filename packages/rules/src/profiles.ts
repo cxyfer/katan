@@ -290,7 +290,8 @@ export const PROFILES: readonly ProfileDefinition[] = [
   // rules, CK25 p. 12 and COMB for the combination). The combination layer
   // runs first so its vetoes (pirate before the first attack, knight chases,
   // ship moves next to knights) precede both expansions' hooks; Seafarers
-  // then queues gold before the C&K science bonus.
+  // then queues gold before the C&K science bonus. Enabled after the R-COMB
+  // fixtures, the simulated games and a browser game passed (docs/FIDELITY.md).
   baseProfile('sf-ck-new-shores-2025', [3, 4], {
     ruleVersion: 'sf-ck-2025.1',
     expansions: ['seafarers', 'citiesKnights'],
@@ -314,7 +315,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     longestRouteIncludesShips: true,
     commodityBankPerType: 12,
     implemented: true,
-    unavailableReasonKey: 'profile.unavailable.combined',
+    enabled: true,
   }),
 
   // SF56-25 map (fixed small islands, variable main island and ports) with
@@ -347,7 +348,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     // 36 + 18 commodity cards, 18 of each (CK25 p. 3, CK56-25 pp. 2–3).
     commodityBankPerType: 18,
     implemented: true,
-    unavailableReasonKey: 'profile.unavailable.combined',
+    enabled: true,
   }),
 ];
 

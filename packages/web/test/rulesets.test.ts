@@ -6,9 +6,9 @@ import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../src/stat
 const registry = PROFILES.map((profile) => profileView(profile, { botSeats: profile.ruleModules.length === 0 }));
 
 describe('lobby ruleset picker', () => {
-  it('offers only enabled profiles: the base game, Seafarers and Cities & Knights for 3–6 players', () => {
+  it('offers only enabled profiles: the base game, Seafarers, Cities & Knights and both combined for 3–6 players', () => {
     const resolved = resolveRuleset(registry, {});
-    expect(resolved.expansions.map((choice) => choice.key)).toEqual(['base', 'seafarers', 'citiesKnights']);
+    expect(resolved.expansions.map((choice) => choice.key)).toEqual(['base', 'seafarers', 'citiesKnights', 'citiesKnights+seafarers']);
     expect(resolved.scenarios.map((choice) => choice.key)).toEqual(['standard']);
     expect(resolved.playerCounts).toEqual([3, 4, 5, 6]);
     expect(resolved.profile?.id).toBe('base-2025');

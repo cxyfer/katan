@@ -35,10 +35,10 @@ describe('ruleset registry', () => {
 
   it('enables only the profiles whose rules and fixtures have passed', () => {
     const enabled = PROFILES.filter((profile) => profile.enabled).map((profile) => profile.id);
-    const all = ['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ck-2025', 'ck-paired-2025'];
+    const all = ['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ck-2025', 'ck-paired-2025', 'sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025'];
     expect(enabled).toEqual(all);
     expect(selectableProfiles().map((profile) => profile.id)).toEqual(all);
-    expect(selectableProfiles(5).map((profile) => profile.id)).toEqual(['base-paired-2025', 'sf-new-shores-paired-2025', 'ck-paired-2025']);
+    expect(selectableProfiles(5).map((profile) => profile.id)).toEqual(['base-paired-2025', 'sf-new-shores-paired-2025', 'ck-paired-2025', 'sf-ck-new-shores-paired-2025']);
   });
 
   it('keeps the confirmed victory targets and player counts', () => {
@@ -76,9 +76,9 @@ describe('ruleset registry', () => {
     const request = (expansions: string[], scenario: string | null = 'new-shores') => resolveCombination({
       expansions, scenario, variants: [], playerCount: 4, setupMode: 'fixed',
     });
-    // Both orders name the same (disabled) registered combination.
-    expect(request(['seafarers', 'citiesKnights'])).toEqual({ ok: false, reason: 'disabled' });
-    expect(request(['citiesKnights', 'seafarers'])).toEqual({ ok: false, reason: 'disabled' });
+    // Both orders name the same registered combination.
+    expect(request(['seafarers', 'citiesKnights'])).toMatchObject({ ok: true, profile: { id: 'sf-ck-new-shores-2025' } });
+    expect(request(['citiesKnights', 'seafarers'])).toMatchObject({ ok: true, profile: { id: 'sf-ck-new-shores-2025' } });
     // A scenario belongs to its expansion set; nothing is inferred.
     expect(request(['seafarers'], null)).toEqual({ ok: false, reason: 'unknown-profile' });
     expect(request(['citiesKnights'], 'new-shores')).toEqual({ ok: false, reason: 'unknown-profile' });
@@ -118,6 +118,8 @@ describe('ruleset registry', () => {
       'sf-new-shores-paired-2025:5:variable', 'sf-new-shores-paired-2025:6:variable',
       'ck-2025:3:fixed', 'ck-2025:3:variable', 'ck-2025:4:fixed', 'ck-2025:4:variable',
       'ck-paired-2025:5:fixed', 'ck-paired-2025:5:variable', 'ck-paired-2025:6:fixed', 'ck-paired-2025:6:variable',
+      'sf-ck-new-shores-2025:3:fixed', 'sf-ck-new-shores-2025:4:fixed',
+      'sf-ck-new-shores-paired-2025:5:variable', 'sf-ck-new-shores-paired-2025:6:variable',
     ]);
   });
 
@@ -199,7 +201,7 @@ describe('ruleset registry', () => {
 
   it('advertises the verified paired profile for six players', () => {
     expect(getProfile('base-paired-2025')!.implemented).toBe(true);
-    expect(selectableProfiles(6).map((profile) => profile.id)).toEqual(['base-paired-2025', 'sf-new-shores-paired-2025', 'ck-paired-2025']);
+    expect(selectableProfiles(6).map((profile) => profile.id)).toEqual(['base-paired-2025', 'sf-new-shores-paired-2025', 'ck-paired-2025', 'sf-ck-new-shores-paired-2025']);
     expect(resolveCombination({ expansions: [], scenario: null, variants: [], playerCount: 6, setupMode: 'fixed' }))
       .toMatchObject({ ok: true, profile: { id: 'base-paired-2025' } });
   });
