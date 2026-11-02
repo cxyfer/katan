@@ -13,7 +13,11 @@ export const FISH_HAULS = 6;
 export const START_GOLD = 2;
 export const BASE_MP = 4;
 export const EXTRA_MP = 2;
-/** Pirate lair numbers: not printed in CN3085 (open fixture, see FIDELITY). */
+/**
+ * Pirate lair numbers. CN3085 does not print them; this list comes from a
+ * 2013/2020-edition source and is provisional (maintainer decision
+ * 2026-11-03, see FIDELITY). A correction changes this line only.
+ */
 export const LAIR_TOKENS = [2, 3, 5, 6, 8, 11] as const;
 
 /** VP printed next to each track space after the start (EP25 pp. 4, 13–14). */

@@ -158,14 +158,17 @@ and 0 of `(1,-3)`, `(0,-2)`, `(-1,-1)`, `(-1,0)`, `(-2,1)`, `(-2,2)`,
 
 1. **Pirate lair numbers are not printed.** CN3085 shows the lair token backs
    and one face (`3`, EP25 p. 4) but never lists the six numbers. The engine
-   uses 2, 3, 5, 6, 8, 11 from a secondary report of the previous edition. Open
-   fixture; replace when the 2025 tokens are confirmed.
-2. **Fish for Catan omits the Council.** The map shows no Council hex although
+   uses 2, 3, 5, 6, 8, 11 from a secondary report of the 2013/2020 edition.
+   Provisional — maintainer decision 2026-11-03: the lair missions are enabled
+   with this list; a correction is a one-line change to `LAIR_TOKENS`
+   (`core.ts`, pinned by R-EP-42).
+2. **Fish for Catan omits the Council** (resolved source note). The map shows no Council hex although
    the mission delivers to it and the table lists one sea fewer than Pirate
    Lairs (19 vs 20). The Council is placed at `(0,0)` as in the Spices and
    full-game maps.
 3. **Spices parrot disc table** reads "9: 2" with a total of 6; the component
-   list (EP25 p. 3) has one 9. The component list wins.
+   list (EP25 p. 3) has one 9. The component list and the total win
+   (resolved source note).
 4. **Gold compensation on a 7.** EP25 is silent; the 2020 rulebook excludes
    the 7. A 7 produces nothing, so no compensation is paid.
 5. **Gold from a gold field counts as receiving** (no extra compensation gold).
@@ -225,6 +228,17 @@ Client (`packages/web`):
   inspection describes an unexplored hex only by its region; two new
   procedural cues (`explore.reveal`, `mission.advance`), the rest reuse the
   sea cues. Strings in `i18n/modules/explorersPirates.ts` (en, zh-Hant).
+
+Rule fixtures: every clause in "Rule clauses" maps to at least one R-EP
+fixture (the clause map is in FIDELITY). R-EP-01…24 are in `ep-rules.test.ts`
+and R-EP-25…47 in `ep-clauses.test.ts`. `ep-privacy.test.ts` (12) checks that
+each reveal pool equals the printed region list minus the draws named in
+public events, which is condition (a), and that the view only carries counts.
+It also checks that every draw is stored in the snapshot and its event and
+that a restored game draws nothing again, which is condition (b). Finally,
+no event names a hex's tile, disc, shoal, ability or bonus before its
+`ep.explored`. The one open clause is coins in player trades
+(interpretation 11). Rules tests: 341.
 
 Browser harness (`scripts/explorers-pirates/`): `capture.py` plays every
 mission to its result on the built service; `bot.mjs` serves decisions from
