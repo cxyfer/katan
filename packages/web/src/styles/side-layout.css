@@ -77,8 +77,3 @@
   .screen--game .players[data-expanded="false"] .players__obligation { display: none; }
   .screen--game .board--side-controls .board__toolbar--side { left: 84px; top: 6px; }
 }
-/* 候選清單避開左上工具列、左側玩家欄與右上提示卡，讓每個項目都點得到。 */
-.screen--game .target-picker { inset: 58px calc(min(260px, 100% - 70px) + 24px) auto 72px; max-height: calc(100% - 120px); }
-@media (max-width: 649px) {
-  .screen--game .target-picker { inset: auto 8px 8px 40px; max-height: 50%; }
-}
