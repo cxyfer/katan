@@ -184,8 +184,12 @@ and 0 of `(1,-3)`, `(0,-2)`, `(-1,-1)`, `(-1,0)`, `(-2,1)`, `(-2,2)`,
    step if its owner has no gold.
 10. **Empty supplies.** Exploration rewards, gold compensation and lair gold
     are paid only while the bank/coin supply holds them (148 coins).
-11. **Domestic trades with coins** are a limitation of the current trade UI:
-    coins are not offered in player trades (see FIDELITY).
+11. **Domestic trades with coins** use the `tradeGoods` hook shared with
+    Traders & Barbarians (offers carry `giveGoods` / `wantGoods`).
+12. **Making room** returns exactly one named piece; a settler needs an empty
+    holder (EP25 p. 10).
+13. **Extra move** is up to 6 edges (EP25 p. 10 text) although the tool card
+    reads "+1-2 extra spaces" (EP25 p. 2); it stacks with Swift Voyage (unsourced).
 
 ## As built
 
@@ -231,14 +235,15 @@ Client (`packages/web`):
 
 Rule fixtures: every clause in "Rule clauses" maps to at least one R-EP
 fixture (the clause map is in FIDELITY). R-EP-01…24 are in `ep-rules.test.ts`
-and R-EP-25…47 in `ep-clauses.test.ts`. `ep-privacy.test.ts` (12) checks that
-each reveal pool equals the printed region list minus the draws named in
-public events, which is condition (a), and that the view only carries counts.
-It also checks that every draw is stored in the snapshot and its event and
-that a restored game draws nothing again, which is condition (b). Finally,
-no event names a hex's tile, disc, shoal, ability or bonus before its
-`ep.explored`. The one open clause is coins in player trades
-(interpretation 11). Rules tests: 341.
+and R-EP-25…58 in `ep-clauses.test.ts`; lair captures (R-EP-53…56) run through
+`ep.dropCrew` and `turn.end`. `ep-privacy.test.ts` (12) checks that each
+reveal pool equals the printed region list minus the draws named in public
+events (condition a) and that the view only carries counts; that every draw is
+stored in the snapshot and its event and a restored game draws nothing again
+(condition b); and that no event names a hex's tile, disc, shoal, ability or
+bonus before its `ep.explored`. A server test restarts the service and finds
+the fog, pools and a pirate frame unchanged. No clause is open. Rules tests:
+352.
 
 Browser harness (`scripts/explorers-pirates/`): `capture.py` plays every
 mission to its result on the built service; `bot.mjs` serves decisions from
@@ -256,15 +261,19 @@ discard) were made through the UI in SVG and reached in 3D, 25 also made in
 `ep.swap` are never chosen by the fixture bot, so the harness makes them from
 the prompt when offered.
 
-The harness found and fixed four client issues, three of them shared:
+The harness found four client issues:
 
 - the tall E&P prompt covered the vertically centred action-rail toggle (the
-  rail now starts below the messages while an E&P prompt shows);
+  rail now starts below the messages while an E&P prompt shows; E&P only);
+- inspecting an unexplored hex showed its sea details (now only its region);
 - the target picker sat below the board inspection and target layers (z-index
   20 < 43/44), so a picker row over a hex was not clickable in 3D;
-- the picker spanned the map under the toolbar and the prompt card (it now
-  sits clear of them; docked at the bottom on phones);
-- inspecting an unexplored hex showed its sea details (now only its region).
+- the picker spanned the map under the toolbar and the prompt card.
+
+The two picker issues affect every game. They were fixed here at first, then
+reverted in favour of master PR #85, which turns the picker into a compact
+popover anchored to the click (z-index 46). The 3D picker clicks of the
+recorded run depend on that fix.
 
 Deviations and limits:
 

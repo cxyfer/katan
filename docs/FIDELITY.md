@@ -88,14 +88,14 @@ master's own engine at `0815c76`
 | R-SF games / VIS | simulated 3/4/5/6-player games finish with a 14-point winner, conserve the supply and keep pieces legal; module projection public only, pirate theft private | `seafarers-sim.test.ts` (5), `seafarers-rules.test.ts` privacy (1), `packages/server/test/seafarers.test.ts` (2) | covered |
 | R-SF client | ship actions, two-step ship move, pirate targets, gold picker, SVG ships/pirate/tokens, sea targets at the water plane, event text; browser run of a live game (setup ship, ship build, ship move, island bonus, pirate, gold) and the 3/4/6-player maps in SVG and 3D | `packages/web/test/seafarers.test.tsx` (7), `scripts/seafarers/capture.py`, [captures](screenshots/seafarers/README.md) | covered in headless Chromium; no human playtest |
 | R-EP layout | 50/57/57/64/71 cells per mission map, parrot/goose regions, number discs and targets per mission, printed starting-island terrain (Land Ho!, Pirate Lairs) or the 14 CATAN hexes, region inventories against the hex tables, 14 harbour marks for variable setup, printed start pieces per colour, 2 gold (EP25 pp. 3, 6–7; EP25-M pp. 4, 8, 14, 16) | `packages/rules/test/ep-layout.test.ts` (11) | covered |
-| R-EP turn / trade | production 1 per building, 1 gold for a player who received nothing; a 7 in Land Ho! is discards only; 3:1, 3 → 1 gold, 2 gold → 1 resource twice; no building or trading in the Movement phase (EP25 pp. 8–9, EP25-M pp. 3, 5) | `ep-rules.test.ts` R-EP-01…04 | covered; coins in player trades open (see below) |
-| R-EP building | harbour settlement on an own coastal settlement (+1 VP, max 4); ship next to an own harbour, never on an unexplored hex's edge, replacing one when none is left; settlers and crews onto an empty slot, with a piece returned when every slot is full; no road or settlement touching an unexplored hex (EP25 pp. 9–10) | R-EP-05…07; `ep-clauses.test.ts` R-EP-25…28 | covered |
-| R-EP movement / exploring | 4 MP, 6 with 1 wool; two ships per edge, passing but not stopping on a full edge; exploring flips the hex from its region's remaining inventory, pays 1 resource or 2 gold and ends that ship's move; land draws its disc; a settler ship founds a settlement and returns; victory on the own turn (EP25 pp. 10–12, 15) | R-EP-08…13; R-EP-29…35, R-EP-46 | covered |
+| R-EP turn / trade | production 1 per building, 1 gold for a player who received nothing; a 7 in Land Ho! is discards only; 3:1, 3 → 1 gold, 2 gold → 1 resource twice; coins in player trades; no building or trading in the Movement phase (EP25 pp. 8–9, EP25-M pp. 3, 5) | `ep-rules.test.ts` R-EP-01…04; `ep-clauses.test.ts` R-EP-49, R-EP-50 | covered |
+| R-EP building | harbour settlement on an own coastal settlement (+1 VP, max 4); ship next to an own harbour, never on an unexplored hex's edge, replacing one when none is left; settlers and crews onto an empty slot, with a piece returned when every slot is full; no road or settlement touching an unexplored hex (EP25 pp. 9–10) | R-EP-05…07; `ep-clauses.test.ts` R-EP-25…28, R-EP-48, R-EP-51 | covered |
+| R-EP movement / exploring | 4 MP, 6 with 1 wool; two ships per edge, passing but not stopping on a full edge; exploring flips the hex from its region's remaining inventory, pays 1 resource or 2 gold and ends that ship's move; land draws its disc; a settler ship founds a settlement and returns; victory on the own turn (EP25 pp. 10–12, 15) | R-EP-08…13; R-EP-29…35, R-EP-46, R-EP-57 | covered |
 | R-EP setup | variable setup: harbour on a mark, settlement on the starting island, then road and settler ship in snake order, starting resources from the settlement (EP25 p. 7, EP25-M p. 9) | R-EP-14 | covered |
-| R-EP pirates | a 7 activates the roller's pirate ship (not next to the starting island, frame or Council), theft from a ship owner, gold from an empty hand; tribute once per ship per turn; chase on a 6 by an unmoved ship (EP25 pp. 8, 10–11; EP25-M pp. 9–10) | R-EP-15…18; R-EP-36…38, R-EP-47 | covered |
-| R-EP missions | lair capture by 3 crews (gold and track for each, hero roll-off, token sets the number); tracks with printed values and the bonus tile; fish roll, hauls, Council delivery, pirate scares a haul; spice farm crew, ability and one sack per player (EP25 pp. 13–14) | R-EP-19…24; R-EP-39…45 | covered; lair numbers provisional (see below) |
-| R-EP games / VIS | 10 simulated games (5 missions × 3/4 players) reach the target and conserve 19 per resource, 148 coins and 6 hauls; pieces within limits; projection public only (fog is public, unexplored contents are drawn at reveal), the pirate's stolen card private; each reveal pool equals the printed region list minus the draws named in public events (the view shows counts only); every draw is stored in the snapshot and its event, and a restored game draws nothing again; no event names a hex's identity before its `ep.explored`; receipts idempotent through the service; bots refused | `ep-sim.test.ts` (10), `ep-privacy.test.ts` (12), `packages/server/test/explorers-pirates.test.ts` (3) | covered |
-| R-EP client | E&P build actions, prompt (setup, pirate victim, coins, settler/crew holders, ship rebuild, extra move, per-ship Movement actions), ship moves carrying the ship id, fog, ships with cargo, harbours, sites and the pirate in SVG and 3D, setup labels, help, cues; browser run of every mission to its result (`report.json` lists the commands executed and reached per renderer) | `packages/web/test/explorers-pirates.test.tsx` (8), `scripts/explorers-pirates/capture.py` | covered in headless Chromium; no human playtest |
+| R-EP pirates | a 7 activates the roller's pirate ship (not next to the starting island, frame or Council), theft from a ship owner, gold from an empty hand; tribute once per ship per turn; chase on a 6 by an unmoved ship (EP25 pp. 8, 10–11; EP25-M pp. 9–10) | R-EP-15…18; R-EP-36…38, R-EP-47, R-EP-58 | covered |
+| R-EP missions | lair capture by 3 crews (gold and track for each, hero roll-off, token sets the number); tracks with printed values and the bonus tile; fish roll, hauls, Council delivery, pirate scares a haul; spice farm crew, ability and one sack per player (EP25 pp. 13–14) | R-EP-19…24; R-EP-39…45, R-EP-52…56 | covered; lair numbers provisional (see below) |
+| R-EP games / VIS | 10 simulated games (5 missions × 3/4 players) reach the target and conserve 19 per resource, 148 coins and 6 hauls; pieces within limits; projection public only (fog is public, unexplored contents are drawn at reveal), the pirate's stolen card private; each reveal pool equals the printed region list minus the draws named in public events (the view shows counts only); every draw is stored in the snapshot and its event, and a restored game draws nothing again; no event names a hex's identity before its `ep.explored`; receipts idempotent through the service; bots refused | `ep-sim.test.ts` (10), `ep-privacy.test.ts` (12), `packages/server/test/explorers-pirates.test.ts` (4: also fog, pools and a pirate frame across a restart) | covered |
+| R-EP client | E&P build actions, prompt (setup, pirate victim, coins, settler/crew holders, ship rebuild, extra move, per-ship Movement actions), ship moves carrying the ship id, fog, ships with cargo, harbours, sites and the pirate in SVG and 3D, setup labels, help, cues; browser run of every mission to its result (`report.json` lists the commands executed and reached per renderer) | `packages/web/test/explorers-pirates.test.tsx` (10), `scripts/explorers-pirates/capture.py` | covered in headless Chromium; no human playtest |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
 | U-01, U-02, U-05 | rendered layout, mouse/keyboard/touch selection, dense content | `packages/web/test/*.test.tsx` (jsdom), `docs/screenshots/`, and the P1B headless Chromium captures below | **partially covered** — captured layouts and DOM pointer/keyboard contracts; no physical touch, rotation or pointer-device acceptance |
@@ -218,7 +218,7 @@ reviewer can challenge them rather than discover them by accident.
 
 ### Explorers & Pirates clause map
 
-Every clause of the transcription ([work record, "Rule clauses"](aegis/work/2026-11-02-explorers-pirates.md#rule-clauses-paraphrased)) maps to at least one fixture. R-EP-01…24 are in `packages/rules/test/ep-rules.test.ts`, R-EP-25…47 in `ep-clauses.test.ts`, layout in `ep-layout.test.ts` and VIS in `ep-privacy.test.ts`.
+Every clause of the transcription ([work record, "Rule clauses"](aegis/work/2026-11-02-explorers-pirates.md#rule-clauses-paraphrased)) maps to at least one fixture. R-EP-01…24 are in `packages/rules/test/ep-rules.test.ts`, R-EP-25…58 in `ep-clauses.test.ts`, layout in `ep-layout.test.ts` and VIS in `ep-privacy.test.ts`.
 
 | # | Clause | Source | Fixtures |
 |---|---|---|---|
@@ -227,28 +227,28 @@ Every clause of the transcription ([work record, "Rule clauses"](aegis/work/2026
 | 3 | 1 resource per building; 1 gold to a player who receives nothing | EP25-M p. 5, EP25 p. 8 | R-EP-01 |
 | 4 | 7: discards only; Land Ho! has no pirate and no theft | EP25-M p. 5 | R-EP-02 |
 | 5 | Supply 3:1, 3 → 1 gold, twice 2 gold → 1 resource | EP25-M p. 5, EP25 p. 9 | R-EP-03 |
-| 5a | Domestic trades may include coins | EP25-M p. 5 | **open** (interpretation 11) |
+| 5a | Domestic trades may include coins | EP25 p. 9, EP25-M p. 5 | R-EP-49, R-EP-50; web: coins in an offer |
 | 6 | No road or settlement touching an unexplored hex | EP25-M p. 5, EP25 p. 9 | R-EP-25 |
-| 7 | Harbour settlement: own coastal settlement, 2 VP, at most 4, 1 large or 2 small | EP25-M p. 6, EP25 p. 9 | R-EP-05, R-EP-26 |
+| 7 | Harbour settlement: own coastal settlement, 2 VP, at most 4, 1 large or 2 small | EP25-M p. 6, EP25 p. 9 | R-EP-05, R-EP-26, R-EP-48, R-EP-51 |
 | 8 | Ship: empty sea edge at an own harbour, not next to fog; none left → return one with its cargo | EP25-M p. 6, EP25 p. 9 | R-EP-06, R-EP-27 |
-| 9 | Settler and crew onto an empty slot; a piece returned only when every slot is full | EP25-M p. 6, EP25 p. 10 | R-EP-07, R-EP-28 |
+| 9 | Settler and crew onto an empty slot; a piece returned only when every slot is full | EP25-M p. 6, EP25 p. 10 | R-EP-07, R-EP-28, R-EP-48 |
 | 10 | 4 MP (6 with 1 wool); 2 ships per edge, passing allowed; finish one ship before the next | EP25-M p. 6, EP25 p. 10 | R-EP-08, R-EP-12, R-EP-29 |
-| 11 | Load, unload, swap: no MP, mid-move, own adjacent harbour; pieces to and from an explored hex | EP25-M p. 6, EP25 p. 11 | R-EP-30, R-EP-24, R-EP-41 |
+| 11 | Load, unload, swap: no MP, mid-move, own adjacent harbour; pieces to and from an explored hex | EP25-M p. 6, EP25 p. 11 | R-EP-30, R-EP-51, R-EP-24, R-EP-41 |
 | 12 | Exploring flips the hex, ends the move; disc, lair, sacks or nothing; 1 resource or 2 gold | EP25-M p. 7, EP25 p. 12 | R-EP-09, R-EP-10, R-EP-31…34 |
-| 13 | Settler ship founds a settlement, ship and settler return; distance rule | EP25-M p. 7, EP25 p. 12 | R-EP-11, R-EP-35 |
+| 13 | Settler ship founds a settlement, ship and settler return; distance rule | EP25-M p. 7, EP25 p. 12 | R-EP-11, R-EP-35, R-EP-39, R-EP-52 |
 | 14 | Pirate: place, move or replace; not next to the starting island, frame or Council; theft with a choice; gold from an empty hand; scares a haul | EP25 p. 8, EP25-M pp. 9–10, 15 | R-EP-15, R-EP-16, R-EP-23, R-EP-36, R-EP-37 |
 | 15 | Tribute 1 gold per ship once per turn; none for building | EP25 p. 10 | R-EP-17, R-EP-38 |
-| 16 | Chase by an unmoved ship; a 6 activates the roller's pirate; the ship may move afterwards | EP25 p. 11 | R-EP-18, R-EP-47 |
+| 16 | Chase by an unmoved ship; a 6 activates the roller's pirate; the ship may move afterwards | EP25 p. 11 | R-EP-18, R-EP-47, R-EP-58 |
 | 17 | Gold fields closed until captured, then 2 gold per building | EP25 pp. 8–9, 13 | R-EP-39, R-EP-19 |
-| 18 | Lairs: 3 crews, rewards clockwise, hero roll-off (crews, then reroll), token number | EP25 p. 13, EP25-M pp. 11–12 | R-EP-19, R-EP-40, R-EP-41, R-EP-42 |
+| 18 | Lairs: 3 crews, rewards clockwise, hero roll-off (crews, then reroll), token number | EP25 p. 13, EP25-M pp. 11–12 | R-EP-19, R-EP-40…42, R-EP-53…56 |
 | 19 | Fish roll once per Movement phase; no haul where one lies, at the pirate or from an empty supply; delivery | EP25 p. 14, EP25-M p. 15 | R-EP-21, R-EP-22, R-EP-23, R-EP-43, R-EP-44 |
-| 20 | Spice farms: crew stays, 1 sack per player, delivery +1 per sack, the three abilities | EP25 p. 14, EP25-M pp. 17–18 | R-EP-24, R-EP-44, R-EP-45 |
+| 20 | Spice farms: crew stays, 1 sack per player, delivery +1 per sack, the three abilities | EP25 p. 14, EP25-M pp. 17–18 | R-EP-24, R-EP-44, R-EP-45, R-EP-52, R-EP-57 |
 | 21 | Council of Catan: anchors top and bottom, no pirate | EP25 pp. 4, 7, EP25-M p. 17 | R-EP-22, R-EP-36, R-EP-44, layout |
 | 22 | Mission tracks: stacking, printed values, bonus tile, tie to the bottom marker | EP25 p. 13, EP25-M p. 9 | R-EP-20 |
 | 23 | Variable setup order and starting resources | EP25 p. 7, EP25-M p. 9 | R-EP-14, layout: harbour marks |
-| 24 | Victory: target on the own turn; reached on another's turn counts at the start of the own turn | EP25 p. 15 | R-EP-13, R-EP-46 |
+| 24 | Victory: target on the own turn; reached on another's turn counts at the start of the own turn | EP25 p. 15 | R-EP-13, R-EP-46, R-EP-56, R-EP-57 |
 
-Open clause: 5a (coins in player trades). Everything else above has a fixture.
+Every clause above has a fixture; none is open.
 
 ### Explorers & Pirates interpretations and source notes
 
@@ -280,8 +280,21 @@ Each item is numbered as in [the work record](aegis/work/2026-11-02-explorers-pi
    marker off the start space.
 9. **Tribute without gold** blocks that step.
 10. **Empty supplies** pay nothing (resources, 148 coins, 6 hauls).
-11. **Open item — coins in player trades.** EP25 lets domestic trades include
-    coins; the trade UI and `trade.*` commands carry resources only.
+11. **Coins in player trades** (EP25 p. 9: "any combination of resources and
+    coins") use the `tradeGoods` hook shared with Traders & Barbarians:
+    offers carry `giveGoods` / `wantGoods`, checked at settlement.
+12. **Making room returns exactly one piece** (EP25 p. 10). The player names
+    it. A settler needs an empty holder, so only a single large piece can
+    make room for it; two small pieces cannot. Removal is allowed only when
+    no holder has room for the new piece, and a piece must be in the supply
+    to be built (the limit is checked before the removal).
+13. **Extra move.** The tool card reads "+1-2 extra spaces" (EP25 p. 2,
+    component overview); the text says 1 wool lets a ship move "up to six
+    edges" (EP25 p. 10). The engine allows up to 6 (4 + 2), and the ship may
+    stop earlier.
+14. **Extra move with Swift Voyage.** EP25 gives no rule for combining
+    them; the bonuses add (4 + 2 wool + 2 with both farms = up to 8).
+    Unsourced; recorded as an interpretation.
 
 ## Known gaps and unresolved items
 
