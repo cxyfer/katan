@@ -19,6 +19,7 @@ import type { ProfileDefinition } from '../profiles.ts';
 import type { Rng } from '../rng.ts';
 import type { BoardTopology } from '../topology.ts';
 import type {
+  CardKind,
   CommandOutcome,
   GameEvent,
   GameState,
@@ -156,6 +157,35 @@ export interface RulesModule {
   commands?: Readonly<Record<string, ModuleCommandHandler>>;
   /** Command types accepted while a frame is pending (base gate otherwise). */
   pendingCommands?: readonly string[];
+  /**
+   * Base command types this ruleset does not have (for example Cities &
+   * Knights removes the development cards); the engine rejects them.
+   */
+  disabledCommands?: readonly string[];
+  /**
+   * Veto on `turn.end` for the acting player, e.g. a hand limit that must be
+   * met by the end of the action phase. Return a failed outcome to refuse.
+   */
+  beforeEndTurn?(state: GameState, actorId: string, ctx: ModuleContext): CommandOutcome | null;
+  /** Extra legality for upgrading one of the player's settlements to a city. */
+  allowCity?(state: GameState, playerId: string, vertex: number, ctx: ModuleViewContext): boolean;
+  /**
+   * The player whose module piece holds an intersection for route purposes
+   * (Cities & Knights knights). Opponents cannot extend a road through it and
+   * their Longest Route is split there, like at a building. A module may also
+   * report the intersection's building owner here.
+   */
+  vertexBlocker?(state: GameState, vertex: number, ctx: ModuleViewContext): string | null;
+  /**
+   * True while the robber is out of play (Cities & Knights before the first
+   * barbarian attack): a 7 still triggers discards, but nobody moves it.
+   */
+  robberInactive?(state: GameState, ctx: ModuleViewContext): boolean;
+  /**
+   * Supply trade rate for giving `card`; receives the rate so far (ports, or
+   * 4:1 / 3:1 for commodities) and returns the adjusted rate.
+   */
+  bankRate?(state: GameState, playerId: string, card: CardKind, rate: number, ctx: ModuleViewContext): number;
   /**
    * Extra legality for a building intersection; returning false vetoes it
    * (for example a scenario that confines starting settlements to one island).

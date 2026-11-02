@@ -49,6 +49,21 @@ export function enqueuePending(state: GameState, ...frames: PendingFrame[]): voi
 }
 
 /**
+ * Queues frames right behind the active one, ahead of everything already
+ * waiting (for example discards a module must collect before its own
+ * continuation runs). With nothing pending the first frame becomes active.
+ */
+export function insertPendingNext(state: GameState, ...frames: PendingFrame[]): void {
+  const queue = [...pendingQueueOf(state)];
+  const ahead: PendingFrame[] = [];
+  for (const frame of frames) {
+    if (!state.pending) state.pending = frame;
+    else ahead.push(frame);
+  }
+  setQueue(state, [...ahead, ...queue]);
+}
+
+/**
  * Finishes the active frame and activates the next queued one, if any.
  * Returns the newly active frame.
  */
