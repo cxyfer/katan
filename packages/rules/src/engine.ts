@@ -49,6 +49,7 @@ import {
   type HarborType,
   type Offer,
   type OfferResponse,
+  type Pending,
   type PlayerColor,
   type PlayerState,
   type Resource,
@@ -449,6 +450,28 @@ const PENDING_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>([
   'build.road',
 ]);
 
+/** 舊快照可能要求已耗盡的棋子或銀行資源；投影、提示與執行共用此判定。 */
+export function normalizedPending(state: GameState): Pending | null {
+  const pending = state.pending;
+  if (pending?.kind === 'freeRoads') {
+    const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, pending.actor);
+    const remaining = legalRoadEdges(state, pending.actor).length > 0
+      ? Math.max(0, Math.min(pending.remaining, pieces))
+      : 0;
+    if (remaining <= 0) return null;
+    if (remaining === pending.remaining) return pending;
+    const placed = (pending.granted ?? 2) - pending.remaining;
+    return { ...pending, remaining, granted: placed + remaining };
+  }
+  if (pending?.kind === 'yearOfPlenty') {
+    const available = RESOURCES.reduce((sum, resource) => sum + state.bank[resource], 0);
+    const remaining = Math.max(0, Math.min(pending.remaining, available));
+    if (remaining <= 0) return null;
+    return remaining === pending.remaining ? pending : { ...pending, remaining };
+  }
+  return pending;
+}
+
 export function applyCommand(
   state: GameState,
   actorId: string,
@@ -461,12 +484,19 @@ export function applyCommand(
   }
   if (state.result) return fail('E_GAME_OVER');
 
-  if (state.pending && !PENDING_COMMANDS.has(command.type)) {
-    return fail('E_PENDING_EFFECT', { pending: state.pending.kind });
-  }
-
   const next = clone(state);
   ensureStats(next);
+  const previousPending = next.pending;
+  next.pending = normalizedPending(next);
+  if (next.pending && !PENDING_COMMANDS.has(command.type)) {
+    return fail('E_PENDING_EFFECT', { pending: next.pending.kind });
+  }
+  if (previousPending?.kind === 'freeRoads' && !next.pending) {
+    emit(next, 'dev.roadBuildingFinished', {
+      playerId: previousPending.actor,
+      placed: (previousPending.granted ?? 2) - previousPending.remaining,
+    });
+  }
   const outcome = dispatch(next, actorId, command, rng);
   if (!outcome.ok) return outcome;
   trackPeakHands(next);
@@ -1361,15 +1391,16 @@ export interface ActionHints {
 
 /** Legal-action hints for the acting player's UI. Advisory only. */
 export function actionHints(state: GameState, playerId: string): ActionHints {
+  const pending = normalizedPending(state);
   const isTurn = currentPlayer(state).id === playerId;
-  const inAction = isTurn && state.turn.phase === 'action' && !state.pending;
-  const freeRoads = state.pending?.kind === 'freeRoads' && state.pending.actor === playerId;
+  const inAction = isTurn && state.turn.phase === 'action' && !pending;
+  const freeRoads = pending?.kind === 'freeRoads' && pending.actor === playerId;
   const setup = state.turn.setup;
   const setupIsMine = !!setup && state.players[setup.order[setup.index] ?? -1]?.id === playerId;
   const setupBuilding = setupIsMine && setup!.stage === 'building';
   const setupRoad = setupIsMine && setup!.stage === 'road';
   return {
-    canRoll: isTurn && state.turn.phase === 'preroll' && !state.pending,
+    canRoll: isTurn && state.turn.phase === 'preroll' && !pending,
     canEndTurn: inAction,
     legalRoads:
       inAction || freeRoads
@@ -1389,7 +1420,7 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
           .map(({ vertex }) => vertex)
       : [],
     bankRates: harborRates(state, playerId),
-    pendingKind: state.pending ? state.pending.kind : null,
+    pendingKind: pending ? pending.kind : null,
   };
 }
 

@@ -7,6 +7,7 @@
  */
 
 import { scoreOf, topologyOf, totalResources } from './analysis.ts';
+import { normalizedPending } from './engine.ts';
 import { requireProfile } from './profiles.ts';
 import { cloneGameStats, type GameStats } from './stats.ts';
 import type { GameEvent, GameState, PlayerState, Resource, Offer } from './types.ts';
@@ -143,7 +144,7 @@ function publicPlayerView(
 }
 
 function publicPending(state: GameState): PublicPendingView {
-  const pending = state.pending;
+  const pending = normalizedPending(state);
   if (!pending) return null;
   switch (pending.kind) {
     case 'discard':

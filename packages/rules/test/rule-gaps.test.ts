@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { actionHints, legalRoadEdges } from '../src/engine.ts';
+import { projectGame } from '../src/project.ts';
 import { getTopology } from '../src/topology-registry.ts';
 import type { GameState } from '../src/types.ts';
 import {
@@ -113,6 +114,87 @@ describe('Year of Plenty with a short bank', () => {
     state.bank = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
     state.players[0]!.devCards = ['yearOfPlenty'];
     expectRejected(state, 'p1', { type: 'dev.playYearOfPlenty' }, 'E_BANK_EMPTY');
+  });
+});
+
+describe('legacy snapshots with unfinished development-card effects', () => {
+  function roadSnapshot(roads: number, remaining: number): GameState {
+    const { state } = playableGame({ players: 4 });
+    state.engineVersion = 'base-2025.2';
+    let placed = state.board.roads.filter((road) => road?.player === 'p1').length;
+    for (let edge = 0; edge < state.board.roads.length && placed < roads; edge++) {
+      if (state.board.roads[edge] || legalRoadEdges(state, 'p1').includes(edge)) continue;
+      placeRoad(state, 'p1', edge);
+      placed += 1;
+    }
+    expect(placed).toBe(roads);
+    expect(legalRoadEdges(state, 'p1').length).toBeGreaterThan(0);
+    state.pending = { kind: 'freeRoads', actor: 'p1', remaining };
+    return JSON.parse(JSON.stringify(state)) as GameState;
+  }
+
+  it('caps an old free-road effect to its last piece in views and execution', () => {
+    const state = roadSnapshot(14, 2);
+    const before = JSON.stringify(state);
+    expect(projectGame(state, 'p1').pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1 });
+    const edge = actionHints(state, 'p1').legalRoads[0]!;
+    const built = act(state, 'p1', { type: 'build.road', edge });
+    expect(built.state.pending).toBeNull();
+    expect(built.events.find((event) => event.type === 'dev.roadBuildingFinished')?.params.placed).toBe(1);
+    expect(actionHints(built.state, 'p1').canEndTurn).toBe(true);
+    expect(JSON.stringify(state)).toBe(before);
+  });
+
+  it('clears an old free-road effect already stranded with no pieces', () => {
+    const state = roadSnapshot(15, 1);
+    const before = JSON.stringify(state);
+    expect(projectGame(state, 'p1').pending).toBeNull();
+    expect(actionHints(state, 'p1').pendingKind).toBeNull();
+    expect(actionHints(state, 'p1').canEndTurn).toBe(true);
+    const ended = act(state, 'p1', { type: 'turn.end' });
+    expect(ended.state.pending).toBeNull();
+    expect(ended.events.find((event) => event.type === 'dev.roadBuildingFinished')?.params.placed).toBe(1);
+    expect(JSON.stringify(state)).toBe(before);
+  });
+
+  it('keeps the already-placed count when an old grant is capped', () => {
+    const state = roadSnapshot(14, 1);
+    const built = act(state, 'p1', { type: 'build.road', edge: actionHints(state, 'p1').legalRoads[0]! });
+    expect(built.state.pending).toBeNull();
+    expect(built.events.find((event) => event.type === 'dev.roadBuildingFinished')?.params.placed).toBe(2);
+  });
+
+  for (const cards of [0, 1]) {
+    it(`recovers an old Year of Plenty effect with ${cards} bank cards`, () => {
+      const { state } = playableGame({ players: 4 });
+      state.engineVersion = 'base-2025.2';
+      state.bank = { lumber: cards, brick: 0, wool: 0, grain: 0, ore: 0 };
+      state.pending = { kind: 'yearOfPlenty', actor: 'p1', remaining: 2 };
+      const restored = JSON.parse(JSON.stringify(state)) as GameState;
+      const before = JSON.stringify(restored);
+      const view = projectGame(restored, 'p1');
+      if (cards > 0) {
+        expect(view.pending).toEqual({ kind: 'yearOfPlenty', actor: 'p1', remaining: 1 });
+        const picked = act(restored, 'p1', { type: 'pending.takeResource', resource: 'lumber' }).state;
+        expect(picked.pending).toBeNull();
+        expect(picked.bank.lumber).toBe(0);
+        expect(actionHints(picked, 'p1').canEndTurn).toBe(true);
+      } else {
+        expect(view.pending).toBeNull();
+        expect(actionHints(restored, 'p1').canEndTurn).toBe(true);
+        expect(act(restored, 'p1', { type: 'turn.end' }).state.pending).toBeNull();
+      }
+      expect(JSON.stringify(restored)).toBe(before);
+    });
+  }
+
+  it('keeps a valid two-pick effect mandatory', () => {
+    const { state } = playableGame({ players: 4 });
+    state.engineVersion = 'base-2025.2';
+    state.pending = { kind: 'yearOfPlenty', actor: 'p1', remaining: 2 };
+    expect(projectGame(state, 'p1').pending).toEqual(state.pending);
+    expect(actionHints(state, 'p1').canEndTurn).toBe(false);
+    expectRejected(state, 'p1', { type: 'turn.end' }, 'E_PENDING_EFFECT');
   });
 });
 

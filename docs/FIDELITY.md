@@ -185,7 +185,11 @@ These are recorded rather than hidden. None of them is presented as verified.
     per game and unknown versions are refused at the schema level, but only one
     engine implementation ships, so no old-version fixture exists yet. The
     server does not yet compare `games.engine_version` before executing a
-    command. Unfinished `base-2025.1` and `base-2025.2` games run on
-    `base-2025.3` under the approved defect-fix exceptions in SPEC §7.3.
+    command. PR #60 proposes running unfinished `base-2025.1` and
+    `base-2025.2` games on `base-2025.3`; this exception still needs explicit
+    maintainer approval before merge or deployment (SPEC §7.3).
+    Already-pending Road Building and Year of Plenty effects are capped to the
+    remaining pieces or bank cards in projections, hints and execution;
+    exhausted effects no longer block the next legal command.
     `base-2025.1` banks stay short by the cards already lost, and a road a
     `base-2025.2` game let through an opponent's building stays on the board.
