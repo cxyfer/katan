@@ -285,14 +285,15 @@ Deliberate interpretations (open to challenge, not house rules):
   (delivering is never worse); commodity-hex corners reachable only by X edges
   are not settlement sites, since setup could not place their road.
 
-Open source conflict (explicit open item, not a house rule):
+Source conflict resolved by maintainer decision:
 
 - **Swift Journey after entering a plaza.** TB25 p. 23 says a wagon that
   moves onto the center of a commodity hex "must end its movement for the
   turn"; the Swift Journey card says "After you take a 'Move your wagon'
-  action this turn, take that action again." The engine currently allows the
-  second move after a plaza stop. Resolve against an official clarification
-  before changing either way.
+  action this turn, take that action again." The maintainer decided on
+  2026-11-03 that the card text wins: a plaza stop ends the current move
+  action, and Swift Journey's second move action still follows (fixture
+  `TR10b`). No official clarification was found; revisit if one appears.
 
 Clause fixtures: every clause transcribed in the work record has a fixture
 whose comment names the page (`// TB25 p.N: …`), its start state, window,

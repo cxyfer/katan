@@ -257,6 +257,22 @@ describe('R-TB-TR wagon movement (pp. 22–23)', () => {
     expect(run(again, 'p1', { type: 'tb.wagonStop' }).state.pending).toBeNull();
   });
 
+  it('TR10b: TB25 p.23 vs the Swift Journey card — a plaza stop ends the first move, and the card still grants the second (maintainer decision 2026-11-03)', () => {
+    // Start: p1 played Swift Journey; the wagon sits next to the quarry plaza. Window: end of turn, first move action.
+    const state = bare();
+    state.players[0]!.devCards = ['swiftJourney'];
+    const quarry = site(state, 'quarry');
+    const topology = topologyOf(state);
+    const corner = topology.edges[topology.vertices[quarry.plaza]!.edges[0]!]!.vertices.find((v) => v !== quarry.plaza)!;
+    const played = run(state, 'p1', { type: 'tb.playSwiftJourney' }).state;
+    const open = moving(played, corner);
+    expect(open.pending).toMatchObject({ data: { extra: 1 } });
+    // Entering the plaza ends this move action; the card's second move action then opens.
+    const arrived = run(open, 'p1', { type: 'tb.wagonStep', to: quarry.plaza }, scriptedRng([0])).state;
+    expect(tr(arrived).wagons.p1!.vertex).toBe(quarry.plaza);
+    expect(arrived.pending).toMatchObject({ kind: 'tradersBarbarians.tbWagon', data: { extra: 0 } });
+  });
+
   it('TR11: an upgraded wagon may try once per barbarian to drive it off by a die roll', () => {
     const state = bare();
     const topology = topologyOf(state);
