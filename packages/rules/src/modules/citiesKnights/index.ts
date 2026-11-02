@@ -72,6 +72,10 @@ import {
   progressVpOf,
 } from './progress.ts';
 import { ckState, ckView, initialCitiesKnightsState, knightAt } from './state.ts';
+import { diplomacyRoad, sabotageDiscard, takeProgress, treasonPlace, treasonRemove, weddingAnswer } from './cards-politics.ts';
+import { harborAnswer, harborOffer, takeCards } from './cards-trade.ts';
+import { harborHint, playProgress, progressHints, projectCardFrame } from './cards.ts';
+import { merchantVp, twoForOneKinds } from './merchant.ts';
 
 export const citiesKnightsModule: RulesModule = {
   id: CITIES_KNIGHTS,
@@ -106,10 +110,12 @@ export const citiesKnightsModule: RulesModule = {
     return ckView(state).attacks === 0;
   },
 
-  // Trade level 3: any 2 identical commodities for 1 card (CK25 p. 8).
+  // Trade level 3: any 2 identical commodities for 1 card (CK25 p. 8); the
+  // merchant's resource and a Merchant Fleet's named kind at 2:1 (CK25 pp. 7, 15).
   bankRate(state, playerId, card, rate) {
     const commodity = (COMMODITIES as readonly string[]).includes(card);
     if (commodity && playerById(state, playerId)!.improvements.trade >= ABILITY_LEVEL) return Math.min(rate, 2);
+    if (twoForOneKinds(state, playerId).includes(card)) return Math.min(rate, 2);
     return rate;
   },
 
@@ -156,13 +162,37 @@ export const citiesKnightsModule: RulesModule = {
     'barbarians.chooseDeck': chooseDefenderDeck,
     'progress.discard': discardProgress,
     'science.take': takeScienceBonus,
+    'progress.play': playProgress,
+    'progress.harborOffer': harborOffer,
+    'progress.harborAnswer': harborAnswer,
+    'progress.takeCards': takeCards,
+    'progress.takeProgress': takeProgress,
+    'progress.sabotageDiscard': sabotageDiscard,
+    'progress.weddingGive': weddingAnswer,
+    'progress.treasonRemove': treasonRemove,
+    'progress.treasonPlace': treasonPlace,
+    'progress.diplomacyRoad': diplomacyRoad,
   },
-  pendingCommands: ['knight.retreat', 'barbarians.pillage', 'barbarians.chooseDeck', 'progress.discard', 'science.take'],
+  pendingCommands: [
+    'knight.retreat',
+    'barbarians.pillage',
+    'barbarians.chooseDeck',
+    'progress.discard',
+    'science.take',
+    'progress.harborAnswer',
+    'progress.takeCards',
+    'progress.takeProgress',
+    'progress.sabotageDiscard',
+    'progress.weddingGive',
+    'progress.treasonRemove',
+    'progress.treasonPlace',
+    'progress.diplomacyRoad',
+  ],
 
   score(state, playerId) {
     const view = ckView(state);
     const metropolises = TRACKS.filter((track) => view.metropolises[track]?.player === playerId).length;
-    return 2 * metropolises + (playerById(state, playerId)?.defenders ?? 0) + progressVpOf(state, playerId);
+    return 2 * metropolises + (playerById(state, playerId)?.defenders ?? 0) + progressVpOf(state, playerId) + merchantVp(state, playerId);
   },
 
   project(state) {
@@ -173,8 +203,8 @@ export const citiesKnightsModule: RulesModule = {
     return projectFrame(state, frame, viewerId, ctx);
   },
 
-  actionHints(state, playerId) {
-    return citiesKnightsHints(state, playerId);
+  actionHints(state, playerId, ctx) {
+    return citiesKnightsHints(state, playerId, ctx);
   },
 };
 
@@ -207,6 +237,11 @@ export function projectCitiesKnights(state: GameState) {
       ? { ...view.lastAttack, contributions: { ...view.lastAttack.contributions }, pillaged: view.lastAttack.pillaged.map((entry) => ({ ...entry })) }
       : null,
     handLimit: PROGRESS_HAND_LIMIT,
+    merchant: view.merchant ? { ...view.merchant } : null,
+    // Played cards are public: the Alchemy dice, the named fleet kinds, the open harbor offers.
+    alchemy: view.alchemy && view.alchemy.windowId === state.windowId ? { player: view.alchemy.player, dice: view.alchemy.dice.slice() } : null,
+    fleets: (view.fleets ?? []).filter((fleet) => fleet.windowId === state.windowId).map((fleet) => ({ player: fleet.player, kind: fleet.kind })),
+    harbor: view.harbor && view.harbor.windowId === state.windowId ? { player: view.harbor.player, offers: { ...view.harbor.offers } } : null,
   };
 }
 
@@ -225,12 +260,12 @@ function projectFrame(state: GameState, frame: ModulePending, _viewerId: string,
       return { ...base, data: { decks: TRACKS.filter((track) => state.progressDecks[track].length > 0) } };
     default:
       // The science bonus and the roll continuation carry no public data.
-      return { ...base, data: {} };
+      return { ...base, data: projectCardFrame(state, frame, _viewerId) ?? {} };
   }
 }
 
 /** Advisory targets for the viewer's own actions. */
-export function citiesKnightsHints(state: GameState, playerId: string) {
+export function citiesKnightsHints(state: GameState, playerId: string, ctx: ModuleViewContext) {
   const isTurn = state.players[state.turn.seat]?.id === playerId;
   const inAction = isTurn && state.turn.phase === 'action' && !state.pending;
   const view = ckView(state);
@@ -256,7 +291,7 @@ export function citiesKnightsHints(state: GameState, playerId: string) {
     knights,
     wallSites: inAction ? wallSites(state, playerId) : [],
     improvements: inAction ? improvementOptions(state, playerId) : [],
-    commodityRates: Object.fromEntries(COMMODITIES.map((commodity) => [commodity, commodityRate(state, playerId)])),
+    commodityRates: Object.fromEntries(COMMODITIES.map((commodity) => [commodity, twoForOneKinds(state, playerId).includes(commodity) ? 2 : commodityRate(state, playerId)])),
     costs: { wall: WALL_COST, knight: KNIGHT_COST, promote: PROMOTE_COST, activate: ACTIVATE_COST },
     progressExcess: Math.max(0, player.progressCards.length - PROGRESS_HAND_LIMIT),
     retreat: responding && frame!.kind === DISPLACED_FRAME ? retreatOptions(state, frame!) : [],
@@ -265,6 +300,9 @@ export function citiesKnightsHints(state: GameState, playerId: string) {
       ? TRACKS.filter((track) => state.progressDecks[track].length > 0)
       : [],
     scienceBonus: responding && frame!.kind === SCIENCE_FRAME && frame!.responders[0] === playerId,
+    progress: progressHints(state, playerId, ctx),
+    harborTargets: harborHint(state, playerId),
+    twoForOne: twoForOneKinds(state, playerId),
   };
 }
 

@@ -248,10 +248,12 @@ describe('R-CK progress cards (CK25 pp. 6, 10)', () => {
     expect(actCk(discarded.state, 'p2', { type: 'turn.end' }).state.turn.seat).toBe(2);
   });
 
-  it('R-CK-14 progress cards cannot be played in this phase (no play command exists)', () => {
+  it('R-CK-14 a card whose target is missing is refused and stays in the hand (P3-1; effects in ck-progress-*.test.ts)', () => {
     const state = emptyCkGame(4);
     player(state, 'p1').progressCards = ['crane'];
-    expect(rejectCk(state, 'p1', { type: 'progress.play', card: 'crane' })).toBe('E_INVALID_COMMAND');
+    // CK25 p. 8: improvements need a city.
+    expect(rejectCk(state, 'p1', { type: 'progress.play', card: 'crane', track: 'science' })).toBe('E_IMPROVEMENT_NEEDS_CITY');
+    expect(player(state, 'p1').progressCards).toEqual(['crane']);
   });
 });
 

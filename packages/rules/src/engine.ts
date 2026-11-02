@@ -290,6 +290,7 @@ const KIT: RulesKit = {
   finishSetupStep,
   legalRoads: (state, playerId) => legalRoadEdges(state, playerId),
   placedFreeRoute: (state, playerId, rng) => placedFreeRoute(state, playerId, rng ?? null),
+  freeRouteTargets: freeRouteTargetCount,
 };
 
 function moduleContext(profile: ProfileDefinition, rng: Rng | null): ModuleContext {

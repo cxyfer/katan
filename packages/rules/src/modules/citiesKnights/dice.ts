@@ -25,11 +25,15 @@ import { ckState } from './state.ts';
 export const RESOLVE_ROLL_FRAME = 'citiesKnights.resolveRoll' as const;
 
 export function rollDice(state: GameState, ctx: ModuleContext): RollResult {
-  const yellow = ctx.rng.int(6) + 1;
-  const red = ctx.rng.int(6) + 1;
+  const slot = ckState(state);
+  // Alchemy sets both production dice; the event die is still rolled (CK25 p. 13).
+  const alchemy = slot.alchemy && slot.alchemy.windowId === state.windowId ? slot.alchemy.dice : null;
+  const yellow = alchemy ? alchemy[0] : ctx.rng.int(6) + 1;
+  const red = alchemy ? alchemy[1] : ctx.rng.int(6) + 1;
   const event = EVENT_FACES[ctx.rng.int(EVENT_FACES.length)]!;
-  ckState(state).lastRoll = { event, red, atSeq: state.seq + 1 };
-  return { dice: [yellow, red], total: yellow + red, extra: { event, red } };
+  if (alchemy) slot.alchemy = null;
+  slot.lastRoll = { event, red, atSeq: state.seq + 1, ...(alchemy ? { alchemy: true } : {}) };
+  return { dice: [yellow, red], total: yellow + red, extra: alchemy ? { event, red, alchemy: true } : { event, red } };
 }
 
 export function eventOf(roll: RollResult): { event: EventFace; red: number } {

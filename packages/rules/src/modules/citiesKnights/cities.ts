@@ -71,11 +71,15 @@ export function buildWall(state: GameState, actorId: string, command: ModuleComm
   const player = playerById(state, actorId)!;
   if (!kit.canAfford(player, WALL_COST)) return kit.fail('E_INSUFFICIENT_RESOURCES', { cost: WALL_COST });
   kit.payBuild(state, player, WALL_COST);
-  const slot = ckState(state);
-  slot.walls.push(vertex);
-  player.cityWalls = wallsOf(state, actorId);
-  kit.emit(state, 'ck.wallBuilt', { playerId: actorId, vertex });
+  addWall(state, actorId, vertex, ctx, false);
   return kit.accept(state);
+}
+
+/** Puts a wall under a city (paid, or free with Engineering, CK25 p. 13). */
+export function addWall(state: GameState, actorId: string, vertex: number, ctx: ModuleContext, free: boolean): void {
+  ckState(state).walls.push(vertex);
+  playerById(state, actorId)!.cityWalls = wallsOf(state, actorId);
+  ctx.kit.emit(state, 'ck.wallBuilt', free ? { playerId: actorId, vertex, free: true } : { playerId: actorId, vertex });
 }
 
 /** Cities a metropolis could stand on: own cities without one. */
@@ -125,10 +129,36 @@ export function improvementOptions(state: GameState, playerId: string): Improvem
 
 /** `city.improve { track, vertex? }` — `vertex` places an awarded metropolis. */
 export function improveCity(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
-  const { kit } = ctx;
   const guard = requireAction(state, actorId, ctx);
   if (guard) return guard;
-  const track = command.track as Track;
+  const plan = planImprovement(state, actorId, command.track, command.vertex, 0, ctx);
+  if ('ok' in plan) return plan;
+  applyImprovement(state, actorId, plan, ctx);
+  return ctx.kit.accept(state);
+}
+
+export interface ImprovementPlan {
+  track: Track;
+  level: number;
+  cost: number;
+  /** Where an awarded metropolis goes, or null. */
+  vertex: number | null;
+}
+
+/**
+ * Validates buying the next level of a track for `discount` commodities less
+ * than normal (Crane, CK25 p. 13) and returns what to apply.
+ */
+export function planImprovement(
+  state: GameState,
+  actorId: string,
+  trackInput: unknown,
+  requested: unknown,
+  discount: number,
+  ctx: ModuleContext,
+): ImprovementPlan | CommandOutcome {
+  const { kit } = ctx;
+  const track = trackInput as Track;
   if (!TRACKS.includes(track)) return kit.fail('E_INVALID_SELECTION', { track });
   const option = improvementOptions(state, actorId).find((candidate) => candidate.track === track)!;
   if (option.blocked === 'max-level') return kit.fail('E_IMPROVEMENT_MAX', { track });
@@ -136,12 +166,12 @@ export function improveCity(state: GameState, actorId: string, command: ModuleCo
   if (option.blocked === 'no-site') return kit.fail('E_METROPOLIS_NO_CITY', { track });
   const player = playerById(state, actorId)!;
   const commodity = TRACK_COMMODITY[track];
-  if (player.commodities[commodity] < option.cost) {
-    return kit.fail('E_INSUFFICIENT_RESOURCES', { cost: { [commodity]: option.cost } });
+  const cost = Math.max(0, option.cost - discount);
+  if (player.commodities[commodity] < cost) {
+    return kit.fail('E_INSUFFICIENT_RESOURCES', { cost: { [commodity]: cost } });
   }
   let vertex: number | null = null;
   if (option.metropolis) {
-    const requested = command.vertex;
     if (typeof requested === 'number') {
       if (!option.sites.includes(requested)) return kit.fail('E_ILLEGAL_TARGET', { vertex: requested });
       vertex = requested;
@@ -151,25 +181,39 @@ export function improveCity(state: GameState, actorId: string, command: ModuleCo
       return kit.fail('E_INVALID_SELECTION', { reason: 'metropolis-site-required', sites: option.sites });
     }
   }
-  player.commodities[commodity] -= option.cost;
-  state.commodityBank[commodity] += option.cost;
-  player.improvements[track] = option.level;
-  kit.emit(state, 'ck.cityImproved', { playerId: actorId, track, level: option.level, commodity, cost: option.cost });
-  if (vertex !== null) {
+  return { track, level: option.level, cost, vertex };
+}
+
+export function applyImprovement(state: GameState, actorId: string, plan: ImprovementPlan, ctx: ModuleContext, discounted = false): void {
+  const { kit } = ctx;
+  const player = playerById(state, actorId)!;
+  const { track } = plan;
+  const commodity = TRACK_COMMODITY[track];
+  player.commodities[commodity] -= plan.cost;
+  state.commodityBank[commodity] += plan.cost;
+  player.improvements[track] = plan.level;
+  kit.emit(state, 'ck.cityImproved', {
+    playerId: actorId,
+    track,
+    level: plan.level,
+    commodity,
+    cost: plan.cost,
+    ...(discounted ? { crane: true } : {}),
+  });
+  if (plan.vertex !== null) {
     const slot = ckState(state);
     const previous = slot.metropolises[track];
-    slot.metropolises[track] = { player: actorId, vertex };
+    slot.metropolises[track] = { player: actorId, vertex: plan.vertex };
     kit.emit(state, 'ck.metropolisAwarded', {
       playerId: actorId,
       track,
-      vertex,
-      permanent: option.level >= PERMANENT_METROPOLIS_LEVEL,
+      vertex: plan.vertex,
+      permanent: plan.level >= PERMANENT_METROPOLIS_LEVEL,
       ...(previous ? { from: previous.player, fromVertex: previous.vertex } : {}),
     });
   }
   kit.afterBoardChange(state);
   kit.checkVictory(state);
-  return kit.accept(state);
 }
 
 /** A toppled city must be upgraded before any other settlement (CK25 p. 11). */

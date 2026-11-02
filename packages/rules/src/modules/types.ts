@@ -77,6 +77,11 @@ export interface RulesKit {
    * left to place.
    */
   placedFreeRoute(state: GameState, playerId: string, rng?: Rng): void;
+  /**
+   * Free Road Building placements available to a player now: legal roads
+   * capped by the road pieces left, plus module pieces such as ships.
+   */
+  freeRouteTargets(state: GameState, playerId: string): number;
 }
 
 export interface ModuleContext {
