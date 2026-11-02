@@ -1,13 +1,21 @@
-/** 針對個別窗口的決策：報價生命週期、開價限制、引擎卡死防護與棄牌。 */
+/** 針對個別窗口的決策：報價生命週期、開價限制、引擎修正採用與棄牌。 */
 
 import { describe, expect, it } from 'vitest';
-import { applyCommand, COSTS, seededRng, type GameState, type Offer, type Resource } from '@catan/rules';
-import { boardModel } from '../src/board.ts';
+import {
+  applyCommand,
+  COSTS,
+  getTopology,
+  seededRng,
+  type GameState,
+  type Offer,
+  type Resource,
+} from '@catan/rules';
+import { boardModel, searchRoads } from '../src/board.ts';
 import { economyOf } from '../src/economy.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';
 import { proposeOffer } from '../src/trade.ts';
 import type { BotContext, OfferPhase } from '../src/types.ts';
-import { botSeats, runBotGame, viewFor } from './harness.ts';
+import { botSeats, newBotGame, runBotGame, viewFor } from './harness.ts';
 
 const standard = heuristicPolicy('standard');
 
@@ -210,47 +218,119 @@ describe('proposing offers', () => {
   });
 });
 
-describe('engine soft-lock guards', () => {
+describe('rule fixes adopted by the policy', () => {
   const base = actionState(64);
   const actor = actorOf(base).id;
 
-  it('does not play Year of Plenty when the bank holds fewer than two cards', () => {
+  it('plays Year of Plenty when the bank holds one card and completes the effect', () => {
     const state = clone(base);
     const me = actorOf(state);
     me.devCards = ['yearOfPlenty'];
     me.newDevCards = [];
     state.turn.devCardPlayed = false;
-    setHand(state, actor, { lumber: 1, brick: 1, wool: 1 });
-    state.bank = { lumber: 1, brick: 0, wool: 0, grain: 0, ore: 0 };
-    expect(standard.decide(viewFor(state, actor), ctx(actor))?.type).not.toBe('dev.playYearOfPlenty');
+    // 拿滿城市與聚落，讓發展卡成為主要計畫；只缺一張 ore。
+    state.board.buildings = state.board.buildings.map(() => null);
+    for (let vertex = 0; vertex < 9; vertex++) {
+      state.board.buildings[vertex] = { player: actor, city: vertex < 4 };
+    }
+    state.awards.longestRoad = actor;
+    setHand(state, actor, { wool: 1, grain: 1 });
+    state.bank = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 1 };
+
+    const command = standard.decide(viewFor(state, actor), ctx(actor));
+    expect(command).toEqual({ type: 'dev.playYearOfPlenty' });
+    const played = applyCommand(state, actor, command!, seededRng(1));
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+    expect(played.state.pending).toEqual({ kind: 'yearOfPlenty', actor, remaining: 1 });
+
+    const pick = standard.decide(viewFor(played.state, actor), ctx(actor));
+    expect(pick).toEqual({ type: 'pending.takeResource', resource: 'ore' });
+    const finished = applyCommand(played.state, actor, pick!, seededRng(1));
+    expect(finished.ok).toBe(true);
+    if (finished.ok) expect(finished.state.pending).toBeNull();
   });
 
-  it('does not play Road Building with fewer than two road pieces left', () => {
+  it('plays Road Building with one road piece left and completes the effect', () => {
     const state = clone(base);
     const me = actorOf(state);
     me.devCards = ['roadBuilding'];
     me.newDevCards = [];
     state.turn.devCardPlayed = false;
-    // 把道路補到只剩一個棋子。
-    const owned = state.board.roads.filter((road) => road?.player === actor).length;
-    let missing = 14 - owned;
-    for (let edge = 0; edge < state.board.roads.length && missing > 0; edge++) {
-      if (!state.board.roads[edge]) {
-        state.board.roads[edge] = { player: actor, ship: false };
-        missing -= 1;
-      }
+    const settlement = state.board.buildings.findIndex((building) => building?.player === actor && !building.city);
+    const topo = getTopology(state.board.layout.topologyId);
+    const keepOpen = new Set(topo.vertices[settlement]!.edges);
+    state.board.roads = state.board.roads.map((_road, edge) =>
+      edge < 14 && !keepOpen.has(edge) ? { player: actor, ship: false } : null,
+    );
+    // 上面固定選前 14 條保留邊，可能不足 14 條，補足到只剩一個棋子。
+    for (let edge = 0; edge < state.board.roads.length; edge++) {
+      const owned = state.board.roads.filter((road) => road?.player === actor).length;
+      if (owned >= 14) break;
+      if (!state.board.roads[edge] && !keepOpen.has(edge)) state.board.roads[edge] = { player: actor, ship: false };
     }
-    expect(standard.decide(viewFor(state, actor), ctx(actor))?.type).not.toBe('dev.playRoadBuilding');
+    expect(state.board.roads.filter((road) => road?.player === actor)).toHaveLength(14);
+
+    const command = standard.decide(viewFor(state, actor), ctx(actor));
+    expect(command).toEqual({ type: 'dev.playRoadBuilding' });
+    const played = applyCommand(state, actor, command!, seededRng(1));
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+    expect(played.state.pending).toEqual({ kind: 'freeRoads', actor, remaining: 1, granted: 1 });
+
+    const road = standard.decide(viewFor(played.state, actor), ctx(actor));
+    expect(road?.type).toBe('build.road');
+    const finished = applyCommand(played.state, actor, road!, seededRng(1));
+    expect(finished.ok).toBe(true);
+    if (finished.ok) expect(finished.state.pending).toBeNull();
   });
 
-  it('does not play a progress card bought this turn when an older copy exists', () => {
+  it('plays an older progress card even when a copy was bought this turn', () => {
     const state = clone(base);
     const me = actorOf(state);
     me.devCards = ['monopoly'];
     me.newDevCards = ['monopoly'];
     state.turn.devCardPlayed = false;
+    for (const player of state.players) if (player.id !== actor) setHand(state, player.id, { wool: 10 });
+    const command = standard.decide(viewFor(state, actor), ctx(actor));
+    expect(command?.type).toBe('dev.playMonopoly');
+    const played = applyCommand(state, actor, command!, seededRng(1));
+    expect(played.ok).toBe(true);
+    if (played.ok) {
+      expect(played.state.players.find((player) => player.id === actor)?.devCards).toEqual([]);
+      expect(played.state.players.find((player) => player.id === actor)?.newDevCards).toEqual(['monopoly']);
+    }
+  });
+
+  it('does not play a progress card when only this turn\'s copy exists', () => {
+    const state = clone(base);
+    const me = actorOf(state);
+    me.devCards = [];
+    me.newDevCards = ['monopoly'];
+    state.turn.devCardPlayed = false;
     for (const player of state.players) if (player.id !== actor) setHand(state, player.id, { wool: 5 });
     expect(standard.decide(viewFor(state, actor), ctx(actor))?.type).not.toBe('dev.playMonopoly');
+  });
+
+  it('extends from the player side of an opponent cut when planning roads', () => {
+    const { state } = newBotGame(4, 71);
+    const owner = state.players[0]!.id;
+    const opponent = state.players[1]!.id;
+    state.board.buildings = state.board.buildings.map(() => null);
+    state.board.roads = state.board.roads.map(() => null);
+    const topo = getTopology(state.board.layout.topologyId);
+    const middle = topo.vertices.findIndex((vertex) => vertex.edges.length === 3);
+    const [fromEdge, nextEdge] = topo.vertices[middle]!.edges as [number, number, number];
+    const other = (edge: number) => topo.edges[edge]!.vertices.find((vertex) => vertex !== middle)!;
+    const blocked = other(fromEdge);
+    const next = other(nextEdge);
+    state.board.buildings[blocked] = { player: opponent, city: false };
+    state.board.roads[fromEdge] = { player: owner, ship: false };
+
+    const search = searchRoads(boardModel(viewFor(state, owner), owner), owner, 1);
+    expect(search.distance[blocked]).toBe(Infinity);
+    expect(search.distance[middle]).toBe(0);
+    expect(search.distance[next]).toBe(1);
   });
 });
 

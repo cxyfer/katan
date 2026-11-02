@@ -369,9 +369,9 @@ function respondToOffers(turn: Turn): Command | null {
 function canPlay(turn: Turn, card: DevCardType): boolean {
   const { me, view } = turn;
   if (view.turn.devCardPlayed) return false;
-  if (!(me.devCards ?? []).includes(card)) return false;
-  // 規則引擎在同類卡本回合剛買進時會拒絕打出舊卡（騎士除外）。
-  return card === 'knight' || !(me.newDevCards ?? []).includes(card);
+  // `devCards` 是先前回合持有的卡；本回合新買的同類卡在 `newDevCards`，
+  // 不影響舊卡是否可打出。
+  return (me.devCards ?? []).includes(card);
 }
 
 function prerollDecision(turn: Turn): Command | null {
@@ -463,8 +463,8 @@ function devCardDecision(turn: Turn): Command | null {
     const bankTotal = RESOURCES.reduce((sum, resource) => sum + view.bank[resource], 0);
     const missing = deficitOf(economy.hand, plan.nextCost);
     const need = RESOURCES.reduce((sum, resource) => sum + missing[resource], 0);
-    // 銀行總存量不足 2 張時，豐收之年的待決效果會無法完成。
-    if (bankTotal >= 2 && need >= 1 && need <= 2) return { type: 'dev.playYearOfPlenty' };
+    // base-2025.3 會依銀行現有張數完成效果；空銀行才拒絕並保留卡片。
+    if (bankTotal >= 1 && need >= 1 && need <= 2) return { type: 'dev.playYearOfPlenty' };
   }
 
   if (canPlay(turn, 'monopoly')) {
@@ -472,8 +472,8 @@ function devCardDecision(turn: Turn): Command | null {
     if (resource) return { type: 'dev.playMonopoly', resource };
   }
 
-  // 道路建設需要至少兩個道路棋子，否則免費道路的待決效果可能無法完成。
-  if (canPlay(turn, 'roadBuilding') && economy.left.roads >= 2 && usefulRoad(turn, false) !== null) {
+  // base-2025.3 可只授予最後一個道路棋子；仍需有合法道路才值得打出。
+  if (canPlay(turn, 'roadBuilding') && economy.left.roads >= 1 && usefulRoad(turn, true) !== null) {
     return { type: 'dev.playRoadBuilding' };
   }
   return null;
