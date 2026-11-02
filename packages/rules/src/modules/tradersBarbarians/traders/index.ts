@@ -370,7 +370,7 @@ export const tradersPart: TbPart = {
     // The Longest Road tile is not used (p. 21).
     return { ...rules, minLongestRoad: Number.POSITIVE_INFINITY };
   },
-  beforeEndTurn(state, actorId, ctx) {
+  onEndTurn(state, actorId, ctx) {
     const slot = traders(state);
     const wagon = slot.wagons[actorId]!;
     if (wagon.vertex < 0) return 'continue';

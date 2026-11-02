@@ -198,7 +198,7 @@ As built (2026-11-02, `feat/traders-barbarians`; details in
   `ruleModules: ['tradersBarbarians']`. New platform hooks (all additive):
   `sevenRobberStep`, `robberTargets`, `stealCandidates`, `hexProduces`,
   `productionAmount`, `roadAllowed`, `buildingAllowed`, `afterBuild`,
-  `beforeEndTurn` (+ `kit.finishTurn`), `harborAccess`, `awardRules` (route
+  `onEndTurn` (+ `kit.finishTurn`), `harborAccess`, `awardRules` (route
   weights), `tradeGoods` (gold in offers), `victoryTarget`; board data
   `BoardLayout.extraNumbers`, `RoadRef.bridge`, `TopologyDefinition.interiorPaths`,
   robber `-1` beside the board. Base digests are unchanged.

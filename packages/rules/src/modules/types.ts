@@ -70,7 +70,7 @@ export interface RulesKit {
   finishSetupStep(state: GameState): void;
   /**
    * Ends the current action window and opens the next one, without running
-   * `beforeEndTurn` again. A module that deferred the end of a turn calls this
+   * `onEndTurn` again. A module that deferred the end of a turn calls this
    * once its end-of-turn frames are resolved.
    */
   finishTurn(state: GameState): void;
@@ -198,7 +198,7 @@ export interface RulesModule {
    * Runs when the actor ends their action phase. Return `'defer'` after
    * enqueueing end-of-turn frames; the module then calls `kit.finishTurn`.
    */
-  beforeEndTurn?(state: GameState, actorId: string, ctx: ModuleContext): 'continue' | 'defer';
+  onEndTurn?(state: GameState, actorId: string, ctx: ModuleContext): 'continue' | 'defer';
   /** Legal robber hexes; `targets` is the base list (every hex but the current one). */
   robberTargets?(state: GameState, actorId: string, targets: number[], ctx: ModuleViewContext): number[];
   /** Filters the players the robber may steal from at `hex`. */

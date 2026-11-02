@@ -486,7 +486,7 @@ export const barbarianAttackPart: TbPart = {
     const victims = state.players.filter((player) => player.id !== actorId && totalResources(player) > 0);
     return victims.length > 0 ? frame(STEAL, actorId) : null;
   },
-  beforeEndTurn(state, actorId, ctx) {
+  onEndTurn(state, actorId, ctx) {
     const slot = ba(state);
     if (slot.knights.some((knight) => knight.player === actorId)) {
       ctx.kit.enqueuePending(state, frame(KNIGHTS, actorId, { moved: [] }));

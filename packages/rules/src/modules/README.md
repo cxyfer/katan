@@ -47,7 +47,7 @@ their state under one key of the module slot (`state.ts`).
 | production | `hexProduces` / `productionAmount` | block a hex, change one building's entitlement before the bank limit |
 | building | `roadAllowed` / `buildingAllowed` | extra placement conditions (setup and action phase, city upgrades) |
 | building | `afterBuild` | after a settlement, city or road is placed (setup included), with `ctx.rng` |
-| turn | `beforeEndTurn` | on `turn.end`; `'defer'` opens an end-of-turn phase that calls `kit.finishTurn` |
+| turn | `onEndTurn` | on `turn.end`; `'defer'` opens an end-of-turn phase that calls `kit.finishTurn` |
 | trade | `harborAccess` / `tradeGoods` | harbour use per building; non-resource goods in domestic offers |
 | awards | `awardRules` | adjust award minimums and route weights before awards are recomputed |
 | scoring | `score` | inside `scoreOf`, added to the base score |

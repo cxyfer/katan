@@ -140,8 +140,8 @@ export const tradersBarbariansModule: RulesModule = {
   afterBoardChange(state, ctx) {
     for (const part of parts(ctx)) part.afterBoardChange?.(state, ctx);
   },
-  beforeEndTurn(state, actorId, ctx) {
-    for (const part of parts(ctx)) if (part.beforeEndTurn?.(state, actorId, ctx) === 'defer') return 'defer';
+  onEndTurn(state, actorId, ctx) {
+    for (const part of parts(ctx)) if (part.onEndTurn?.(state, actorId, ctx) === 'defer') return 'defer';
     return 'continue';
   },
   robberTargets(state, actorId, targets, ctx) {

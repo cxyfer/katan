@@ -265,7 +265,7 @@ export const trainsPart: TbPart = {
     slot.collectedWindow = state.windowId;
     ctx.kit.emit(state, 'tb.wagonCollected', { playerId: build.playerId });
   },
-  beforeEndTurn(state, actorId, ctx) {
+  onEndTurn(state, actorId, ctx) {
     const slot = trains(state);
     if (slot.collectedWindow !== state.windowId) return 'continue';
     slot.collectedWindow = null;
