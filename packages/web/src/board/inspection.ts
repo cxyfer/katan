@@ -65,7 +65,11 @@ export function inspectDescription(context: TargetContext, target: BoardInspecti
   const lines: string[] = [];
   let title = option.label;
   let relatedHexes: number[] = [];
-  if (target.kind === 'hex') {
+  const fogRegion = target.kind === 'hex' ? context.fog?.get(target.index) : undefined;
+  if (fogRegion) {
+    // An unexplored hex: only its region is public.
+    lines.push(tr('ep.fog.title', { region: tr(`ep.region.${fogRegion}`) }));
+  } else if (target.kind === 'hex') {
     const terrain = board.terrain[target.index] ?? 'sea';
     const number = board.numbers[target.index];
     const pips = pipsFor(number);

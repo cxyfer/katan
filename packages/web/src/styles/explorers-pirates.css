@@ -1,5 +1,5 @@
 /* Explorers & Pirates: turn prompt, cargo chips and the fog lifting off an explored hex. */
-.screen--game .game__messages:has(.ep-prompt) { max-height: calc(100% - 70px); }
+/* The prompt keeps the shared messages height (scrolling inside) so the action rail stays reachable. */
 .ep-prompt { display: flex; flex-direction: column; gap: .4rem; }
 .ep-prompt__phase { display: flex; justify-content: space-between; align-items: baseline; gap: .4rem; margin: 0; font-size: .78rem; }
 .ep-prompt__group h3 { margin: .2rem 0; font-size: .72rem; font-weight: 600; }

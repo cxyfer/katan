@@ -5,7 +5,7 @@ import { useT } from '../i18n/context.tsx';
 import { buildGeometry } from '../board/geometry.ts';
 import { boardIntent } from '../board/intent.ts';
 import { seafarersView } from '../board/seafarers.ts';
-import { epView } from '../board/explorersPirates.ts';
+import { epView, fogRegions } from '../board/explorersPirates.ts';
 import type { TargetKind } from '../board/targets.ts';
 import { parseViewBox } from '../board/viewport.ts';
 import { useBoardAnimation } from '../board/useBoardAnimation.ts';
@@ -83,6 +83,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
   const seaView = useMemo(() => seafarersView(view), [view?.modules]);
   const epModule = useMemo(() => epView(view), [view?.modules]);
+  const epFog = useMemo(() => (epModule ? fogRegions(epModule) : undefined), [epModule]);
   const hexTargets = useMemo(() => controls.projectedTargets({ kind: 'hex', commandType: '', labelId: '', fromHints: false, targets: geometry.hexes.map((hex) => hex.index) }), [controls.projectedTargets, geometry]);
   const viewBox = useMemo(() => parseViewBox(geometry.viewBox), [geometry]);
   const viewBoxCenter = { x: viewBox.x + viewBox.width / 2, y: viewBox.y + viewBox.height / 2 };
@@ -294,7 +295,7 @@ export function BoardView({ controller }: { controller: TableController }) {
           pan={controls.pan} zoom={zoom} viewBoxCenter={viewBoxCenter} nameResolver={nameResolver} />}
         <BoardInspectionLayer key={`${state.game?.gameId}:${geometry.topologyId}:${effective}`}
           geometry={geometry} board={board} renderer={effective} controls={controls}
-          nameOf={nameResolver} fallbackFocusRef={surfaceRef} />
+          nameOf={nameResolver} fallbackFocusRef={surfaceRef} fog={epFog} />
         <BoardTargetOverlay targets={targets} rect={controls.viewport.rect} selection={selection} board={board} topology={topology} nameOf={nameResolver}
           renderer={effective} onSelect={selectTarget} consumeSuppressedClick={controls.consumeSuppressedClick}
           fallbackFocusRef={surfaceRef} onCancel={actions.cancelSelection}

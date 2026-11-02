@@ -4,10 +4,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { actionHints, applyCommand, createGame, projectGame, seededRng, type Command, type GameState, type GameView } from '@catan/rules';
 import { cueForEvent } from '../src/audio/cues.ts';
-import { epHints, epView, shipSlots } from '../src/board/explorersPirates.ts';
+import { epHints, epView, fogRegions, shipSlots } from '../src/board/explorersPirates.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { boardIntent } from '../src/board/intent.ts';
 import { epShipPlacements } from '../src/board/three/diorama-explorers.ts';
+import { inspectDescription } from '../src/board/inspection.ts';
 import { ExplorersPiratesPrompt } from '../src/components/ExplorersPiratesPrompt.tsx';
 import { HelpPanel } from '../src/components/HelpPanel.tsx';
 import { SvgBoard } from '../src/components/SvgBoard.tsx';
@@ -130,6 +131,16 @@ describe('explorers & pirates client', () => {
     expect(container.querySelectorAll('[data-testid^="ep-ship-"]').length).toBe(slot.ships.length);
     expect(container.querySelectorAll('[data-testid^="ep-harbor-"]').length).toBe(slot.harbors.length);
     expect(container.querySelector('[data-testid="robber"]')).toBeNull();
+  });
+
+  it('describes an unexplored hex only by its region when inspected', () => {
+    const view = viewOf(landHo());
+    const slot = epView(view)!;
+    const fogged = slot.fog[0]!;
+    const geometry = buildGeometry(view.board.topologyId, 100, view.board.terrain);
+    const description = inspectDescription({ locale: 'en', board: view.board, topology: geometry.topology, nameOf: (id) => id, fog: fogRegions(slot) },
+      { kind: 'hex', index: fogged.hex, world: { x: 0, y: 0, z: 0 } } as never);
+    expect(description.lines).toEqual([`Unexplored (${fogged.region} region)`]);
   });
 
   it('places two ships on one path side by side in both renderers', () => {
