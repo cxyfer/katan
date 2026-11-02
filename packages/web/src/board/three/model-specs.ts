@@ -7,8 +7,12 @@ import type { SceneSelection } from '../render-contract.ts';
 import { geometryToWorld } from './bounds.ts';
 import { horizontalRotation, type InstanceTransform, type Vec3 } from './transforms.ts';
 
-export const ROAD_ARRIVAL_TRANSFORM_MS = 240;
-export const BUILDING_ARRIVAL_TRANSFORM_MS = 290;
+// 從天而降需在單一特效組（MAX_EFFECT_DURATION_MS）內播完，否則落地前就會被截斷。
+export const ROAD_ARRIVAL_TRANSFORM_MS = 560;
+export const BUILDING_ARRIVAL_TRANSFORM_MS = 640;
+/** 墜落起點高度（世界單位，約兩個地塊邊長）；建築另帶四分之一圈旋轉。 */
+export const ROAD_ARRIVAL = { height: 1.1 } as const;
+export const BUILDING_ARRIVAL = { height: 1.4, spin: Math.PI / 2 } as const;
 
 export interface TileInstance extends InstanceTransform {
   index: number;

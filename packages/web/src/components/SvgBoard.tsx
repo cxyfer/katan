@@ -123,7 +123,8 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             const arriving = confirmedPlacement(active?.events ?? [], board, 'edge', edge.index);
             const line = inset(edge);
             return (
-              <g key={`road-${edge.index}`}>
+              <g key={arriving ? `road-${edge.index}:${active!.id}` : `road-${edge.index}`}
+                className={arriving ? 'board__road-drop' : undefined}>
               <line {...line} transform="translate(0 3)" stroke="#10242c" strokeWidth={13} strokeLinecap="round" opacity={.4} aria-hidden="true" />
               <line {...line} stroke="#20180f" strokeWidth={11} strokeLinecap="round" aria-hidden="true" />
               <line

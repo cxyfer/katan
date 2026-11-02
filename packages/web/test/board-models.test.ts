@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Box3, Color, type BufferGeometry } from 'three';
 import { describe, expect, it, vi } from 'vitest';
+import { MAX_EFFECT_DURATION_MS } from '../src/board/animation.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
+import { arrivalPose, RESTING_POSE } from '../src/board/three/arrival.ts';
 import { harborPlacement } from '../src/board/harbor.ts';
 import { fixedBoard } from '../src/test/fixtures.ts';
 import { BOARD_MODEL_METRICS, geometryToWorld, sceneBounds } from '../src/board/three/bounds.ts';
@@ -103,6 +105,22 @@ describe('modeled board pieces', () => {
     expect(first.every((piece) => piece.position[1] < BOARD_MODEL_METRICS.terrainHeight)).toBe(true);
   });
 
+  it('drops arriving pieces from the sky, squashes on impact and settles exactly at rest', () => {
+    const options = { height: 1.4, spin: Math.PI / 2 };
+    expect(arrivalPose(0, options)).toEqual({ lift: 1.4, scaleY: 1, scaleXZ: 1, spin: Math.PI / 2 });
+    expect(arrivalPose(1, options)).toEqual(RESTING_POSE);
+    expect(arrivalPose(2, options)).toEqual(RESTING_POSE);
+    const samples = Array.from({ length: 101 }, (_, step) => arrivalPose(step / 100, options));
+    // 墜落段單調下降且加速；落地後只剩小彈跳，不會再回到高處。
+    const fall = samples.slice(0, 52).map((pose) => pose.lift);
+    expect(fall.every((lift, index) => index === 0 || lift < fall[index - 1]!)).toBe(true);
+    expect(fall[0]! - fall[10]!).toBeLessThan(fall[41]! - fall[51]!);
+    expect(Math.max(...samples.slice(53).map((pose) => pose.lift))).toBeLessThan(0.15);
+    expect(Math.min(...samples.map((pose) => pose.scaleY))).toBeLessThan(0.8);
+    expect(samples.every((pose) => pose.lift >= 0 && pose.scaleY > 0 && pose.scaleXZ >= 1)).toBe(true);
+    expect(arrivalPose(0.6, { height: 1 }).spin).toBe(0);
+  });
+
   it('V03 gives settlements and cities distinct closed wall and roof assemblies', () => {
     const geometry = buildGeometry('hex-r2', 100);
     const board = boardWith();
@@ -115,7 +133,8 @@ describe('modeled board pieces', () => {
     expect(city.filter((part) => part.part === 'roof')).toHaveLength(2);
     expect(parts.every((part) => finiteTransform(part))).toBe(true);
     expect(parts.every((part) => part.durationMs === BUILDING_ARRIVAL_TRANSFORM_MS)).toBe(true);
-    expect(BUILDING_ARRIVAL_TRANSFORM_MS).toBe(290);
+    expect(BUILDING_ARRIVAL_TRANSFORM_MS).toBe(640);
+    expect(BUILDING_ARRIVAL_TRANSFORM_MS).toBeLessThanOrEqual(MAX_EFFECT_DURATION_MS);
 
     const roof = createGabledRoofGeometry();
     const wall = createUnitBoxGeometry();
@@ -143,7 +162,8 @@ describe('modeled board pieces', () => {
     const roads = roadInstances(geometry, board, players, null);
     expect(roads).toHaveLength(2);
     expect(roads.every((road) => road.durationMs === ROAD_ARRIVAL_TRANSFORM_MS)).toBe(true);
-    expect(ROAD_ARRIVAL_TRANSFORM_MS).toBe(240);
+    expect(ROAD_ARRIVAL_TRANSFORM_MS).toBe(560);
+    expect(ROAD_ARRIVAL_TRANSFORM_MS).toBeLessThanOrEqual(MAX_EFFECT_DURATION_MS);
     for (const road of roads) {
       const edge = geometry.edges[road.index]!;
       const expected = geometryToWorld(geometry, (edge.x1 + edge.x2) / 2, (edge.y1 + edge.y2) / 2);

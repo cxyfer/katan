@@ -119,6 +119,31 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     unmount();
   });
 
+  it('keeps placement drops during mandatory setup while dropping other board effects', () => {
+    const setup = (seq: number, events: ReturnType<typeof makeEvent>[]) => ({
+      ...props(seq), snapshot: makeSnapshot({ ...makeView({ events }), seq }, seq), mandatory: true,
+    });
+    const { result, rerender, unmount } = mount();
+    rerender(setup(14, [
+      makeEvent(13, 'production.resolved', { grants: { p1: { wood: 1 } } }),
+      makeEvent(14, 'setup.building', { playerId: 'p1', vertex: 0, round: 1 }),
+    ]));
+    const group = result.current.active;
+    expect(group?.events.map((event) => event.type)).toEqual(['setup.building']);
+    // 同 seq 的後續投影不得中斷正在播放的落下演出。
+    act(() => vi.advanceTimersByTime(400));
+    rerender({ ...setup(14, []), sync: { generation: 1, cause: 'snapshot' } });
+    expect(result.current.active).toBe(group);
+    act(() => vi.advanceTimersByTime(400));
+    expect(result.current.active).toBeNull();
+    rerender(setup(15, [makeEvent(15, 'setup.road', { playerId: 'p1', edge: 0 })]));
+    expect(result.current.active?.events[0]?.type).toBe('setup.road');
+    rerender({ ...setup(15, []), online: false });
+    expect(result.current.active).toBeNull();
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('cancels immediately for mandatory actions, offline / reconnect and event gaps', () => {
     const { result, rerender, unmount } = mount();
     rerender(props(13));

@@ -9,6 +9,8 @@ import {
   MAX_EFFECT_GROUPS,
   type DiceRollPresentation,
   enqueueBoardEffects,
+  isPlacementGroup,
+  placementEffectGroups,
   type BoardEffectGroup,
   type PresentationCursor,
 } from './animation.ts';
@@ -94,7 +96,9 @@ export function useBoardAnimation(
     }
     const rolls = snapshot ? diceRollPresentations(snapshot.gameId, decision.events) : [];
     if (mandatory) {
-      setQueue([]);
+      // 必要操作期間只保留建造落下演出；尚未播完的同類演出也不因後續投影而中斷。
+      const placements = snapshot ? placementEffectGroups(snapshot.gameId, decision.events) : [];
+      setQueue((current) => enqueueBoardEffects(current.filter(isPlacementGroup), placements));
       const pending = snapshot?.view.pending;
       // 擲骰事件先於投影抵達時，舊投影仍停在 preroll；這次擲骰本身就結束了 preroll，
       // 先保留骰子，等投影抵達再判斷是否讓位給必要操作（游標已消耗此事件，清掉就無法補播）。
@@ -169,7 +173,7 @@ export function useBoardAnimation(
   return {
     activeDice: canPresent && !diceHeld && (!mandatory || mandatoryRollSeq.current === snapshot?.view.seq) ? activeDice : null,
     pendingDiceCount: diceQueue.length,
-    active: canPresent && !mandatory && !effectHeld ? active : null,
+    active: canPresent && !effectHeld && active && (!mandatory || isPlacementGroup(active)) ? active : null,
     pendingCount: queue.length,
     resetPresentation,
   };

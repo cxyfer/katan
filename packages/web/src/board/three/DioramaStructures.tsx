@@ -12,7 +12,14 @@ import {
   dioramaHarborInstances,
 } from './diorama-structures.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
-import { BUILDING_ARRIVAL_TRANSFORM_MS, ROAD_ARRIVAL_TRANSFORM_MS, roadInstances } from './model-specs.ts';
+import type { ArrivalOptions } from './arrival.ts';
+import {
+  BUILDING_ARRIVAL,
+  BUILDING_ARRIVAL_TRANSFORM_MS,
+  ROAD_ARRIVAL,
+  ROAD_ARRIVAL_TRANSFORM_MS,
+  roadInstances,
+} from './model-specs.ts';
 import type { InstanceTransform } from './transforms.ts';
 
 type PieceProps = Pick<BoardSceneProps, 'geometry' | 'board' | 'players' | 'active' | 'motionAllowed' | 'quality'> & {
@@ -26,7 +33,7 @@ interface PieceInstance extends InstanceTransform {
 }
 
 function AnimatedPieces({
-  model, instances, material, quality, active, motionAllowed, duration,
+  model, instances, material, quality, active, motionAllowed, duration, arrival,
 }: {
   model: BufferGeometry;
   instances: readonly PieceInstance[];
@@ -35,6 +42,7 @@ function AnimatedPieces({
   active: BoardSceneProps['active'];
   motionAllowed: boolean;
   duration: number;
+  arrival: ArrivalOptions;
 }) {
   const groups = useMemo(() => [
     { arriving: false, items: instances.filter((item) => !item.arriving) },
@@ -43,7 +51,7 @@ function AnimatedPieces({
   return groups.map(({ arriving, items }) => <InstancedPrimitive
     key={String(arriving)} geometry={model} material={material} instances={items}
     castShadow={quality === 'standard'} animationKey={arriving ? active?.id ?? null : null}
-    durationMs={duration} motionAllowed={motionAllowed} />);
+    durationMs={duration} motionAllowed={motionAllowed} arrival={arrival} />);
 }
 
 function PlayerBuildings({
@@ -55,7 +63,7 @@ function PlayerBuildings({
   instances: readonly PieceInstance[];
 }) {
   const model = useDioramaGeometry(() => createSettlementModel(color, city, seat), [color, city, seat]);
-  return <AnimatedPieces {...props} model={model} instances={instances} duration={BUILDING_ARRIVAL_TRANSFORM_MS} />;
+  return <AnimatedPieces {...props} model={model} instances={instances} duration={BUILDING_ARRIVAL_TRANSFORM_MS} arrival={BUILDING_ARRIVAL} />;
 }
 
 export function DioramaBuildings({ geometry, board, players, ...props }: PieceProps) {
@@ -85,7 +93,7 @@ function PlayerRoads({ color, seat, instances, ...props }: Omit<PieceProps, 'geo
   instances: readonly PieceInstance[];
 }) {
   const model = useDioramaGeometry(() => createRoadModel(color, seat), [color, seat]);
-  return <AnimatedPieces {...props} model={model} instances={instances} duration={ROAD_ARRIVAL_TRANSFORM_MS} />;
+  return <AnimatedPieces {...props} model={model} instances={instances} duration={ROAD_ARRIVAL_TRANSFORM_MS} arrival={ROAD_ARRIVAL} />;
 }
 
 export function DioramaRoads({ geometry, board, players, ...props }: PieceProps) {
