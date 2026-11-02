@@ -74,21 +74,35 @@ export function trainHeads(state: GameState): Map<number, number> {
 
 /**
  * Where the next wagon may go: an unused start, or an empty edge at the front
- * of a train that has not met another train (or itself). Edge → train id.
+ * of a train that is still open. Edge → train id.
+ *
+ * Trains never branch (p. 14): a front that touches another train's body or
+ * tail has run into it and ends. Two fronts that meet at the same intersection
+ * merge (fig. 2); the merged train continues along the remaining free edge,
+ * which goes to the lower-numbered train. A front with no free edge left has
+ * run into a body (fig. 1).
  */
 export function wagonLocations(state: GameState): Map<number, number> {
   const slot = trains(state);
   const topology = topologyOf(state);
   const used = new Set(slot.wagons.map((wagon) => wagon.edge));
-  const degree = wagonDegree(state);
   const out = new Map<number, number>();
   const started = new Set(slot.wagons.map((wagon) => wagon.train));
   slot.starts.forEach((start, train) => {
     if (!started.has(train) && !used.has(start.edge)) out.set(start.edge, train);
   });
-  for (const [train, head] of trainHeads(state)) {
-    // A front touched by more than its own last wagon has merged: the train ends.
-    if ((degree.get(head) ?? 0) > 1) continue;
+  const heads = trainHeads(state);
+  const last = new Map<number, Wagon>();
+  for (const wagon of slot.wagons) last.set(wagon.train, wagon);
+  const touching = new Map<number, Wagon[]>();
+  for (const wagon of slot.wagons) {
+    for (const vertex of topology.edges[wagon.edge]!.vertices) touching.set(vertex, [...(touching.get(vertex) ?? []), wagon]);
+  }
+  for (const [train, head] of [...heads].sort((a, b) => a[0] - b[0])) {
+    // Only another train's front meeting this one at the same intersection merges.
+    const ended = (touching.get(head) ?? []).some((wagon) =>
+      wagon !== last.get(train) && !(wagon === last.get(wagon.train) && heads.get(wagon.train) === head));
+    if (ended) continue;
     for (const edge of topology.vertices[head]!.edges) {
       if (!used.has(edge) && !out.has(edge)) out.set(edge, train);
     }

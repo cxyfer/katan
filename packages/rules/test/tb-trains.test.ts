@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { scoreOf, topologyOf } from '../src/analysis.ts';
 import type { Command } from '../src/engine.ts';
 import { BASE_TERRAIN_MULTISET } from '../src/layout.ts';
-import { wagonLocations, type TrainsState } from '../src/modules/tradersBarbarians/trains/index.ts';
+import { trainHeads, wagonLocations, type TrainsState } from '../src/modules/tradersBarbarians/trains/index.ts';
 import { getProfile } from '../src/profiles.ts';
 import { projectGame } from '../src/project.ts';
 import { seededRng } from '../src/rng.ts';
@@ -141,7 +141,7 @@ describe('R-TB-MT voting round (p. 13)', () => {
 });
 
 describe('R-TB-MT trains (p. 14)', () => {
-  it('MT6: trains start at the watering hole, extend only at their front and end when they meet', () => {
+  it('MT6: trains start at the watering hole and extend only at their front (merging and ending: MT8–MT10)', () => {
     const state = bare();
     const slot = trains(state);
     const topology = topologyOf(state);
@@ -151,13 +151,6 @@ describe('R-TB-MT trains (p. 14)', () => {
     const fronts = [...wagonLocations(state)].filter(([, train]) => train === 0).map(([edge]) => edge);
     expect(fronts.length).toBeGreaterThan(0);
     for (const edge of fronts) expect(topology.edges[edge]!.vertices).toContain(head);
-    // A wagon from another train touching this train's front closes it.
-    const next = fronts[0]!;
-    const far = topology.edges[next]!.vertices.find((vertex) => vertex !== head)!;
-    slot.wagons.push({ edge: next, train: 0 });
-    const touching = topology.vertices[far]!.edges.find((edge) => edge !== next)!;
-    slot.wagons.push({ edge: touching, train: 1 });
-    expect([...wagonLocations(state)].some(([, train]) => train === 0)).toBe(false);
   });
 
   it('MT7: buildings between two wagons gain 1 VP; a wagon on a road adds 1 to its length', () => {
@@ -184,6 +177,128 @@ describe('R-TB-MT trains (p. 14)', () => {
     const built = run(state, 'p3', { type: 'build.road', edge: extra }).state;
     expect(built.players[2]!.longestRoadLength).toBe(6);
     expect(built.awards.longestRoad).toBe('p3');
+  });
+});
+
+/** Shortest edge path between two intersections that avoids the given edges. */
+function pathBetween(state: GameState, from: number, to: number, blocked: Set<number>): number[] {
+  const topology = topologyOf(state);
+  const via = new Map<number, { vertex: number; edge: number }>();
+  const queue = [from];
+  const seen = new Set([from]);
+  while (queue.length > 0) {
+    const vertex = queue.shift()!;
+    if (vertex === to) break;
+    for (const edge of topology.vertices[vertex]!.edges) {
+      if (blocked.has(edge)) continue;
+      const [a, b] = topology.edges[edge]!.vertices;
+      const next = a === vertex ? b : a;
+      if (seen.has(next)) continue;
+      seen.add(next);
+      via.set(next, { vertex, edge });
+      queue.push(next);
+    }
+  }
+  const path: number[] = [];
+  for (let cursor = to; cursor !== from; cursor = via.get(cursor)!.vertex) path.unshift(via.get(cursor)!.edge);
+  return path;
+}
+
+/** Edges on the watering hole's own border. */
+function oasisEdgesOf(state: GameState): Set<number> {
+  const oasis = trains(state).oasis;
+  return new Set(topologyOf(state).edges.flatMap((edge, index) => (edge.hexes.includes(oasis) ? [index] : [])));
+}
+
+/**
+ * Trains 0 and 1 laid out so that their fronts meet at one intersection: each
+ * grows from its start along half of the shortest outer path between their
+ * first wagons. Returns the meeting intersection.
+ */
+function meetingTrains(state: GameState): number {
+  const slot = trains(state);
+  const topology = topologyOf(state);
+  const [s0, s1] = [slot.starts[0]!, slot.starts[1]!];
+  const out0 = topology.edges[s0.edge]!.vertices.find((vertex) => vertex !== s0.vertex)!;
+  const out1 = topology.edges[s1.edge]!.vertices.find((vertex) => vertex !== s1.vertex)!;
+  const oasisEdges = oasisEdgesOf(state);
+  const blocked = new Set([...oasisEdges, s0.edge, s1.edge, slot.starts[2]!.edge]);
+  const path = pathBetween(state, out0, out1, blocked);
+  expect(path.length % 2).toBe(0);
+  const half = path.length / 2;
+  slot.wagons.push({ edge: s0.edge, train: 0 }, { edge: s1.edge, train: 1 });
+  for (const edge of path.slice(0, half)) slot.wagons.push({ edge, train: 0 });
+  for (const edge of path.slice(half).reverse()) slot.wagons.push({ edge, train: 1 });
+  return heads(state).get(0)!;
+}
+const heads = (state: GameState) => trainHeads(state);
+
+describe('R-TB-MT merging and ending (p. 14, fig. 1 and 2)', () => {
+  it('MT8: TB25 p.14 fig. 2 — two fronts meeting at an intersection merge and the train continues along the free edge', () => {
+    // Start: trains 0 and 1 each reach the same intersection; actor: the vote winner; command: tb.placeWagon.
+    const state = bare();
+    const slot = trains(state);
+    const topology = topologyOf(state);
+    const meeting = meetingTrains(state);
+    expect(heads(state).get(1)).toBe(meeting);
+    expect(slot.wagons.filter((wagon) => topology.edges[wagon.edge]!.vertices.includes(meeting))).toHaveLength(2);
+    // The merged train may still be extended: exactly the remaining free edge, owned by the lower train.
+    const free = topology.vertices[meeting]!.edges.filter((edge) => !slot.wagons.some((wagon) => wagon.edge === edge));
+    expect(free).toHaveLength(1);
+    expect(wagonLocations(state).get(free[0]!)).toBe(0);
+    // Placing it through the vote leaves a three-wagon intersection with nothing left to extend there.
+    const open = voting(state);
+    let next = open;
+    for (const id of ['p1', 'p2', 'p3', 'p4']) next = run(next, id, { type: 'tb.bidWagon', wool: 0, grain: 0 }).state;
+    const placed = run(next, 'p1', { type: 'tb.placeWagon', edge: free[0]! }).state;
+    expect(trains(placed).wagons.at(-1)).toEqual({ edge: free[0], train: 0 });
+    const fronts = trainHeads(placed);
+    expect(fronts.get(0)).not.toBe(meeting);
+    expect(fronts.get(1)).toBe(meeting);
+    expect([...wagonLocations(placed)].every(([edge]) => !topology.vertices[meeting]!.edges.includes(edge))).toBe(true);
+    // The two fronts that met are each between two wagons: a building there is worth +1 VP.
+    placeBuilding(placed, 'p2', meeting);
+    expect(scoreOf(placed, 'p2', { includeHidden: false })).toBe(2);
+  });
+
+  it('MT9: TB25 p.14 fig. 1 — a front that runs into another train\'s body ends; the other train keeps its front', () => {
+    // Start: train 1 passes through an intersection; train 0 arrives at it on the third edge.
+    const state = bare();
+    const slot = trains(state);
+    const topology = topologyOf(state);
+    const meeting = meetingTrains(state);
+    // Train 1 runs on through the meeting intersection instead of ending there: re-lay train 1 one wagon longer.
+    const free = topology.vertices[meeting]!.edges.find((edge) => !slot.wagons.some((wagon) => wagon.edge === edge))!;
+    slot.wagons.push({ edge: free, train: 1 });
+    const beyond = trainHeads(state).get(1)!;
+    expect(beyond).not.toBe(meeting);
+    // Train 1 is open at its new front; train 0 touches the body of train 1 and may not be extended.
+    const locations = wagonLocations(state);
+    expect([...locations.values()]).not.toContain(0);
+    expect([...locations.values()]).toContain(1);
+    for (const edge of topology.vertices[meeting]!.edges) expect(locations.has(edge)).toBe(false);
+  });
+
+  it('MT10: TB25 p.14 fig. 1 — a front meeting another train\'s tail ends even when an edge is free; the other train stays open', () => {
+    // Start: train 0 is walked around the watering hole onto the intersection where train 1 starts.
+    const state = bare();
+    const slot = trains(state);
+    const topology = topologyOf(state);
+    const [s0, s1] = [slot.starts[0]!, slot.starts[1]!];
+    // Walk train 0 from its start's outer end up to the oasis corner shared with train 1's start.
+    const out0 = topology.edges[s0.edge]!.vertices.find((vertex) => vertex !== s0.vertex)!;
+    const toCorner = pathBetween(state, out0, s1.vertex, new Set([s0.edge, s1.edge, slot.starts[2]!.edge]));
+    expect(toCorner.length).toBeGreaterThan(0);
+    slot.wagons.push({ edge: s0.edge, train: 0 }, { edge: s1.edge, train: 1 });
+    for (const edge of toCorner) slot.wagons.push({ edge, train: 0 });
+    expect(trainHeads(state).get(0)).toBe(s1.vertex);
+    const free = topology.vertices[s1.vertex]!.edges.filter((edge) => !slot.wagons.some((wagon) => wagon.edge === edge) && edge !== s1.edge);
+    expect(free.length).toBeGreaterThan(0);
+    // Train 0 touches train 1's start wagon (its tail): it ended, although an edge is free.
+    const locations = wagonLocations(state);
+    for (const edge of free) expect(locations.has(edge)).toBe(false);
+    // Train 1 is unaffected: it is still open at its own front.
+    expect([...locations.values()]).toContain(1);
   });
 });
 
