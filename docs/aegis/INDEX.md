@@ -5,6 +5,9 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-02 | work | docs/aegis/work/2026-11-02-trade-auto-decline.md | Opt-in automatic decline for unaffordable trade offers |
+| 2026-11-02 | artifact | scripts/trade-auto-decline/verify.py | Trade auto-decline browser verification |
+| 2026-11-02 | artifact | docs/screenshots/trade-auto-decline/report.json | Trade auto-decline browser check results |
 | 2026-11-01 | work | docs/aegis/work/2026-11-01-bot-opponents.md | Bot seats on the server and web: verification and incidental fixes |
 | 2026-11-01 | artifact | scripts/bot-opponents/capture.py | Bot lobby, table, pause and resume browser capture |
 | 2026-11-01 | artifact | docs/screenshots/bot-opponents/report.json | Bot opponents browser check results |

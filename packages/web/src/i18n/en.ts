@@ -435,6 +435,7 @@ export const en: Catalog = {
   'play.tradeOfferFrom': 'Offer from {player}',
   'play.tradeOfferTo': 'to {player}',
   'play.tradeNoOffers': 'No open offers.',
+  'play.tradeAutoDecline': 'Auto-decline offers I cannot afford',
   'play.tradeStatus.open': 'Open',
   'play.tradeStatus.agreed': 'Agreed',
   'play.tradeStatus.completed': 'Completed',

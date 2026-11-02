@@ -34,9 +34,11 @@ import {
   readStoredLocale,
   readStoredMutes,
   readStoredNickname,
+  readStoredTradeAutoDecline,
   writeStoredLocale,
   writeStoredMutes,
   writeStoredNickname,
+  writeStoredTradeAutoDecline,
   type StorageLike,
 } from './session.ts';
 import { DICE_PRESENTATION_DURATION_MS } from '../board/animation.ts';
@@ -84,7 +86,7 @@ export interface TableActions {
   closeRoom(): Promise<void>;
   openGame(gameId: string): Promise<void>;
   refreshSnapshot(): Promise<void>;
-  submitCommand(command: CommandPayload, labelId: string): Promise<void>;
+  submitCommand(command: CommandPayload, labelId: string): Promise<CommandReceipt | null>;
   resolveCommand(): Promise<void>;
   retryCommand(): Promise<void>;
   clearCommand(): void;
@@ -96,6 +98,7 @@ export interface TableActions {
   retryChat(clientMessageId: string): Promise<void>;
   setChatDraft(text: string): void;
   toggleMute(playerId: string): void;
+  setTradeAutoDecline(enabled: boolean): void;
   selectTarget(selection: Selection): void;
   cancelSelection(): void;
   confirmSelection(): Promise<void>;
@@ -332,6 +335,7 @@ export function useTable(options: UseTableOptions): TableController {
     });
     const mutes = readStoredMutes(storage);
     for (const playerId of mutes) dispatch({ type: 'chat', event: { kind: 'mute', playerId } });
+    dispatch({ type: 'trade-auto-decline', value: readStoredTradeAutoDecline(storage) });
   }, [api, dispatch, languages, storage]);
 
   useEffect(() => {
@@ -528,9 +532,13 @@ export function useTable(options: UseTableOptions): TableController {
   }, [refreshGame]);
 
   const runCommand = useCallback(
-    async (commandId: string, command: CommandPayload, expectedRevision: number): Promise<void> => {
+    async (
+      commandId: string,
+      command: CommandPayload,
+      expectedRevision: number,
+    ): Promise<CommandReceipt | null> => {
       const gameId = gameIdRef.current;
-      if (!gameId) return;
+      if (!gameId) return null;
       const result = await api.sendCommand(gameId, {
         commandId,
         expectedRevision,
@@ -554,6 +562,7 @@ export function useTable(options: UseTableOptions): TableController {
           dispatch({ type: 'selection', selection: EMPTY_SELECTION });
           await refreshAfterAccepted();
         }
+        return result.data;
       } else {
         dispatch({
           type: 'command',
@@ -561,30 +570,31 @@ export function useTable(options: UseTableOptions): TableController {
         });
         dispatch({ type: 'connection', connection: 'offline' });
         dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+        return null;
       }
     },
     [api, dispatch, refreshAfterAccepted],
   );
 
   const submitCommand = useCallback(
-    async (command: CommandPayload, labelId: string): Promise<void> => {
+    async (command: CommandPayload, labelId: string): Promise<CommandReceipt | null> => {
       const current = stateRef.current;
-      if (blocksNewCommands(current.command)) return;
+      if (blocksNewCommands(current.command)) return null;
       const snapshot: GameSnapshot | null = current.game;
-      if (!snapshot) return;
+      if (!snapshot) return null;
       // 所有指令入口（動作列、交易、兌換、發展卡、棋盤）共用：點數揭曉前、
       // 或投影尚未追上已知事件時，不依過時畫面送出後續指令。
       if (current.dicePresenting) {
         dispatch({ type: 'toast', notice: localNotice('play.disabled.rolling') });
-        return;
+        return null;
       }
       if (awaitingProjection(current)) {
         dispatch({ type: 'toast', notice: localNotice('play.disabled.syncing') });
-        return;
+        return null;
       }
       if (current.activeElsewhere) {
         dispatch({ type: 'toast', notice: localNotice('app.activeInAnotherTab') });
-        return;
+        return null;
       }
       const commandId = newCommandId();
       dispatch({
@@ -597,7 +607,7 @@ export function useTable(options: UseTableOptions): TableController {
           baseRevision: snapshot.revision,
         },
       });
-      await runCommand(commandId, command, snapshot.revision);
+      return runCommand(commandId, command, snapshot.revision);
     },
     [dispatch, runCommand],
   );
@@ -770,6 +780,14 @@ export function useTable(options: UseTableOptions): TableController {
     [dispatch, storage],
   );
 
+  const setTradeAutoDecline = useCallback(
+    (enabled: boolean): void => {
+      dispatch({ type: 'trade-auto-decline', value: enabled });
+      writeStoredTradeAutoDecline(storage, enabled);
+    },
+    [dispatch, storage],
+  );
+
   // ---------------------------------------------------------------------
   // selection
   // ---------------------------------------------------------------------
@@ -836,6 +854,7 @@ export function useTable(options: UseTableOptions): TableController {
       retryChat,
       setChatDraft,
       toggleMute,
+      setTradeAutoDecline,
       selectTarget,
       cancelSelection,
       confirmSelection,
@@ -872,6 +891,7 @@ export function useTable(options: UseTableOptions): TableController {
       retryChat,
       setChatDraft,
       toggleMute,
+      setTradeAutoDecline,
       selectTarget,
       cancelSelection,
       confirmSelection,

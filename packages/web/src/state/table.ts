@@ -107,6 +107,8 @@ export interface TableState {
   command: PendingCommand | null;
   save: SaveState;
   chat: ChatState;
+  /** 本地交易偏好：自己資源不足的提案由客戶端代為拒絕（docs/SPEC.md §4.5）。 */
+  tradeAutoDecline: boolean;
   drawer: DrawerPanel;
   selection: Selection;
   /** 擲骰演出進行中（含排隊中的骰子）；後續動作選項與資源演出等它結束才出現。 */
@@ -146,6 +148,7 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     command: null,
     save: { status: 'idle' },
     chat: initialChatState(),
+    tradeAutoDecline: false,
     drawer: 'none',
     selection: EMPTY_SELECTION,
     dicePresenting: false,
@@ -180,6 +183,7 @@ export type TableAction =
   | { type: 'command'; event: CommandEvent }
   | { type: 'save'; state: SaveState }
   | { type: 'chat'; event: ChatEvent }
+  | { type: 'trade-auto-decline'; value: boolean }
   | { type: 'drawer'; drawer: DrawerPanel }
   | { type: 'selection'; selection: Selection }
   | { type: 'dice-presenting'; value: boolean }
@@ -376,6 +380,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       return { ...state, save: action.state };
     case 'chat':
       return { ...state, chat: chatReducer(state.chat, action.event) };
+    case 'trade-auto-decline':
+      return state.tradeAutoDecline === action.value ? state : { ...state, tradeAutoDecline: action.value };
     case 'drawer':
       return {
         ...state,
