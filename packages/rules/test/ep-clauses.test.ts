@@ -491,6 +491,20 @@ describe('R-EP pirates, lairs and gold fields (EP25 pp. 8–13, EP25-M pp. 9–1
     expect(epState(state).sites.find((entry) => entry.hex === lair)).toMatchObject({ crews: ['p2'] });
   });
 
+  it('R-EP-47 a ship that chased (and missed) may still move with its full MP (EP25 p. 11)', () => {
+    let state = epPlayable('pirate-lairs', 3);
+    const ship = shipOf(state, 'p1');
+    const pirateHex = topologyOf(state).edges[ship.edge]!.hexes.find((cell) => state.board.layout.terrain[cell] === 'sea')!;
+    epState(state).pirate = { hex: pirateHex, owner: 'p2' };
+    state = moving(state);
+    const full = movesLeft(state, shipOf(state, 'p1'), viewTurn(state));
+    state = run(state, 'p1', { type: 'ep.chase', ship: ship.id }, scriptedRng([0])).state;
+    expect(movesLeft(state, shipOf(state, 'p1'), viewTurn(state))).toBe(full);
+    const step = epHints(state, 'p1').ships[0]!.steps.find((entry) => !entry.explores && !entry.full)!.edge;
+    state = run(state, 'p1', { type: 'ep.moveShip', ship: ship.id, edge: step }).state;
+    expect(shipOf(state, 'p1').edge).toBe(step);
+  });
+
   it('R-EP-42 the lair token pool is the single provisional constant 2, 3, 5, 6, 8, 11 (FIDELITY: provisional, maintainer decision 2026-11-03)', () => {
     expect([...LAIR_TOKENS]).toEqual([2, 3, 5, 6, 8, 11]);
     expect(epState(epPlayable('pirate-lairs', 3)).lairTokens).toEqual([2, 3, 5, 6, 8, 11]);
