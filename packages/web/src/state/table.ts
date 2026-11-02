@@ -23,6 +23,7 @@ import type { RoomQuery } from '../api/client.ts';
 import { diceRollPresentations } from '../board/animation.ts';
 import type { SocketStatus } from '../api/socket.ts';
 import { chatReducer, initialChatState, type ChatEvent, type ChatState } from './chat.ts';
+import { initialBootProgress, type BootProgress, type BootStepId, type BootStepStatus } from './boot.ts';
 import { t } from '../i18n/index.ts';
 import {
   commandReducer,
@@ -92,6 +93,8 @@ export interface TableState {
   screen: Screen;
   locale: Locale;
   bootstrapped: boolean;
+  /** 啟動期間各請求的進度，供啟動畫面顯示。 */
+  boot: BootProgress;
   /** Committed display name; `draftNickname` is the un-submitted entry draft. */
   nickname: string;
   draftNickname: string;
@@ -137,6 +140,7 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     screen: 'entry',
     locale,
     bootstrapped: false,
+    boot: initialBootProgress(),
     nickname,
     draftNickname: nickname,
     session: null,
@@ -173,6 +177,7 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
 
 export type TableAction =
   | { type: 'bootstrapped'; session: PlayerIdentity | null; config: ServerConfigView; profiles: ProfileView[]; games: ResumableGameView[]; locale: Locale; nickname: string }
+  | { type: 'boot-step'; step: BootStepId; status: BootStepStatus }
   | { type: 'locale'; locale: Locale }
   | { type: 'draft-nickname'; value: string }
   | { type: 'nickname'; value: string }
@@ -294,6 +299,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         draftNickname: state.draftNickname === '' ? action.nickname : state.draftNickname,
         screen: action.session ? 'home' : 'entry',
       };
+    case 'boot-step':
+      return { ...state, boot: { ...state.boot, [action.step]: action.status } };
     case 'locale':
       // Locale is display-only: drafts, selections and command ids survive.
       return { ...state, locale: action.locale };

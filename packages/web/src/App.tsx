@@ -9,6 +9,7 @@ import { useTable, type UseTableOptions } from './state/useTable.ts';
 import { useT } from './i18n/context.tsx';
 import { translateNotice } from './i18n/events.ts';
 import { useLocale } from './i18n/context.tsx';
+import { BootScreen } from './components/BootScreen.tsx';
 import { EntryScreen } from './components/EntryScreen.tsx';
 import { HomeScreen } from './components/HomeScreen.tsx';
 import { LobbyScreen } from './components/LobbyScreen.tsx';
@@ -59,7 +60,7 @@ function AppShell({ controller }: { controller: TableController }) {
         {t('app.skipToContent')}
       </a>
 
-      {!state.bootstrapped && <p className="muted">{t('app.loading')}</p>}
+      {!state.bootstrapped && <BootScreen boot={state.boot} />}
 
       {state.bootstrapped && state.screen === 'entry' && <EntryScreen controller={controller} />}
       {state.bootstrapped && state.screen === 'home' && <HomeScreen controller={controller} />}
