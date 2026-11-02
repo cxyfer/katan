@@ -3,7 +3,7 @@ import { PROFILES } from '@catan/rules';
 import { profileView } from '@catan/protocol';
 import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../src/state/rulesets.ts';
 
-const registry = PROFILES.map(profileView);
+const registry = PROFILES.map((profile) => profileView(profile, { botSeats: profile.ruleModules.length === 0 }));
 
 describe('lobby ruleset picker', () => {
   it('offers only enabled profiles: today the base game for 3–6 players', () => {

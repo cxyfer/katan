@@ -88,6 +88,7 @@ export const ROOM_NOTICE_IDS: readonly string[] = [
   'blocker.noHost',
   'blocker.profilePlayerCount',
   'blocker.capacity',
+  'blocker.botsUnsupported',
 ];
 
 /**
@@ -262,9 +263,14 @@ export interface ProfileView {
   setupModes: ('fixed' | 'variable')[];
   enabled: boolean;
   unavailableReasonKey?: string;
+  /**
+   * Whether hosts may seat computer opponents (SPEC §4.9). The service decides
+   * from the bot strategies' supported rules modules.
+   */
+  botSeats: boolean;
 }
 
-export function profileView(profile: ProfileDefinition): ProfileView {
+export function profileView(profile: ProfileDefinition, support: { botSeats: boolean }): ProfileView {
   return {
     id: profile.id,
     labelKey: profile.labelKey,
@@ -278,6 +284,7 @@ export function profileView(profile: ProfileDefinition): ProfileView {
     victoryTarget: profile.victoryTarget,
     setupModes: [...profile.setupModes],
     enabled: profile.enabled,
+    botSeats: support.botSeats,
     ...(profile.unavailableReasonKey ? { unavailableReasonKey: profile.unavailableReasonKey } : {}),
   };
 }

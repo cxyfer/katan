@@ -192,7 +192,7 @@ describe('R-ROOM lobby', () => {
     const data = guest.expectOk<{ profiles: Record<string, unknown>[]; selectable: string[] }>(await guest.get('/api/profiles'));
     expect(data.selectable).toEqual(['base-2025', 'base-paired-2025']);
     expect(data.profiles.find((profile) => profile.id === 'base-paired-2025')).toMatchObject({
-      expansions: [], scenario: null, variants: [], ruleVersion: 'base-2025.2',
+      expansions: [], scenario: null, variants: [], ruleVersion: 'base-2025.3',
       requiredBoxes: ['base', 'base-5-6'], playerCounts: [5, 6], enabled: true,
     });
     expect(data.profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')).toMatchObject({

@@ -90,15 +90,15 @@ describe('ruleset vocabulary', () => {
     const { PROFILES } = await import('@catan/rules');
     const { profileView, RULESET_MESSAGE_IDS, REQUIRED_MESSAGE_IDS } = await import('../src/index.ts');
     for (const profile of PROFILES) {
-      const view = profileView(profile);
+      const view = profileView(profile, { botSeats: profile.ruleModules.length === 0 });
       expect(JSON.parse(JSON.stringify(view))).toEqual(view);
       expect(view.expansions).toEqual([...profile.expansions]);
       expect(view.ruleVersion).toBe(profile.ruleVersion);
       expect(RULESET_MESSAGE_IDS).toContain(view.labelKey);
       if (view.unavailableReasonKey) expect(RULESET_MESSAGE_IDS).toContain(view.unavailableReasonKey);
     }
-    expect(profileView(PROFILES[0]!)).toMatchObject({
-      id: 'base-2025', expansions: [], scenario: null, variants: [], requiredBoxes: ['base'], ruleVersion: 'base-2025.2',
+    expect(profileView(PROFILES[0]!, { botSeats: true })).toMatchObject({
+      id: 'base-2025', expansions: [], scenario: null, variants: [], requiredBoxes: ['base'], ruleVersion: 'base-2025.3', botSeats: true,
     });
     for (const id of ['expansion.seafarers', 'scenario.new-shores', 'scenario.standard', 'box.base-5-6']) {
       expect(REQUIRED_MESSAGE_IDS).toContain(id);

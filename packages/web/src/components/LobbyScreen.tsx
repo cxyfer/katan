@@ -7,7 +7,7 @@ import {
   type RoomPolicy,
 } from '@catan/protocol';
 import { useT } from '../i18n/context.tsx';
-import { botsEnabled, DEFAULT_BOT_LEVEL, offeredBotLevels, pickBotLevel } from '../state/bots.ts';
+import { botsEnabled, DEFAULT_BOT_LEVEL, offeredBotLevels, pickBotLevel, profileAllowsBots } from '../state/bots.ts';
 import { BotBadge } from './BotBadge.tsx';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { SoundSettings } from './SoundSettings.tsx';
@@ -92,6 +92,8 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const botLevels = offeredBotLevels(state.config);
   const chosenBotLevel = pickBotLevel(botLevels, botLevel);
   const roomFull = room.members.length >= room.capacity;
+  const profileBots = profileAllowsBots(profile);
+  const addBotNote = !profileBots ? 'lobby-bots-unsupported' : roomFull ? 'lobby-bots-full' : undefined;
   const runBotAction = (work: () => Promise<void>) => {
     setBotBusy(true);
     void work().finally(() => setBotBusy(false));
@@ -215,13 +217,20 @@ export function LobbyScreen({ controller }: ScreenProps) {
                   type="button"
                   className="button"
                   data-testid="add-bot"
-                  disabled={roomFull || botBusy}
-                  aria-describedby={roomFull ? 'lobby-bots-full' : undefined}
+                  disabled={roomFull || botBusy || !profileBots}
+                  aria-describedby={addBotNote}
                   onClick={() => runBotAction(() => actions.addBot(chosenBotLevel))}
                 >
                   <GameIcon name="plus" />{t('lobby.bots.add')}
                 </button>
-                {roomFull && <p id="lobby-bots-full" className="muted lobby-bots__full">{t('lobby.bots.full')}</p>}
+                {!profileBots && (
+                  <p id="lobby-bots-unsupported" className="muted lobby-bots__full" data-testid="lobby-bots-unsupported">
+                    {t('lobby.bots.unsupported')}
+                  </p>
+                )}
+                {profileBots && roomFull && (
+                  <p id="lobby-bots-full" className="muted lobby-bots__full">{t('lobby.bots.full')}</p>
+                )}
               </div>
             )}
 

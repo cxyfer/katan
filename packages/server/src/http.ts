@@ -11,6 +11,7 @@ import { validateNickname } from './config.ts';
 import type { Repository } from './db.ts';
 import type { SessionService } from './session.ts';
 import { clearCookie } from './session.ts';
+import { botsSupported } from './bot-seats.ts';
 import { ServiceError, type RoomService, type RulesetRequest } from './rooms.ts';
 import type { GameCoordinator } from './game.ts';
 import type { ChatService } from './chat.ts';
@@ -284,7 +285,7 @@ export function createHttpHandler(deps: HttpDeps) {
   // -- profiles and rooms --------------------------------------------------
   route('GET', '/api/profiles', async () => ({
     data: {
-      profiles: PROFILES.map(profileView),
+      profiles: PROFILES.map((profile) => profileView(profile, { botSeats: botsSupported(profile) })),
       selectable: selectableProfiles().map((profile) => profile.id),
     },
   }));

@@ -252,6 +252,7 @@ export const zhHant: Catalog = {
   'lobby.bots.removeLabel': '移除電腦 {name}',
   'lobby.bots.full': '座位已滿。',
   'lobby.bots.seatNote': '自動行動，永遠已準備。',
+  'lobby.bots.unsupported': '電腦對手只會玩基本遊戲，無法加入使用擴充規則的組合。',
   'lobby.botCount': '含 {count} 位電腦',
   'lobby.policyBotsExcluded': '電腦座位不參與表決。',
 
@@ -750,6 +751,7 @@ export const zhHant: Catalog = {
   'blocker.seats': '需要至少 {min} 位玩家才能開始，目前入座 {seated} 位。',
   'blocker.notReady': '尚未準備：{players}',
   'blocker.disconnected': '尚未連線：{players}',
+  'blocker.botsUnsupported': '電腦對手無法進行這個規則組合，請先移除電腦再開局。',
   'blocker.noHost': '目前沒有已連線的房主。',
   'blocker.profilePlayerCount': '規則集 {profileId} 不支援 {playerCount} 人。',
   'blocker.capacity': '房間人數上限為 {capacity}，但已入座 {seated} 位。',

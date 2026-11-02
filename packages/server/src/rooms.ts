@@ -286,6 +286,11 @@ export class RoomService {
         params: { profileId: profile.id, playerCount: members.length },
       });
     }
+    // Bots only play the rules they know; a bot seat in any other profile can
+    // never start, even if it got there before the profile changed.
+    if (members.some((member) => member.bot) && !botsSupported(profile)) {
+      blockers.push({ messageId: 'blocker.botsUnsupported', params: { profileId: profile.id } });
+    }
     const notReady = members.filter((member) => !member.ready);
     if (notReady.length > 0) {
       blockers.push({ messageId: 'blocker.notReady', params: { players: notReady.map((m) => m.nickname) } });

@@ -16,6 +16,7 @@ import {
   makeIdentity,
   makeMember,
   makePolicy,
+  makeProfile,
   makeResumable,
   makeRoom,
   makeRoomSummary,
@@ -130,6 +131,27 @@ describe('create room with bots', () => {
     expect('botLevel' in body).toBe(false);
   });
 
+  it('explains why a ruleset with expansion rules offers no bots', async () => {
+    const seafarers = makeProfile({
+      id: 'sf-new-shores-2025',
+      labelKey: 'profile.sf-new-shores-2025',
+      expansions: ['seafarers'],
+      scenario: 'new-shores',
+      botSeats: false,
+    });
+    const api = createFakeApi({ profiles: [seafarers] });
+    renderApp(api);
+    await screen.findByTestId('create-room');
+    expect(screen.queryByTestId('room-bots')).toBeNull();
+    expect(screen.getByTestId('room-bots-unsupported').textContent).toBe(
+      'Bot opponents only play the base game; this ruleset uses expansion rules they do not know.',
+    );
+
+    fireEvent.click(screen.getByTestId('create-room'));
+    await waitFor(() => expect(api.callsOf('createRoom')).toHaveLength(1));
+    expect('bots' in (api.callsOf('createRoom')[0]!.args[0] as CreateRoomBody)).toBe(false);
+  });
+
   it('omits the bot fields when no bot is requested', async () => {
     const api = createFakeApi();
     renderApp(api);
@@ -186,6 +208,22 @@ describe('lobby bot seats', () => {
     expect(add.disabled).toBe(true);
     expect(add.getAttribute('aria-describedby')).toBe('lobby-bots-full');
     expect(screen.getByText('Every seat is taken.')).toBeTruthy();
+  });
+
+  it('disables adding a bot with a localized reason when the profile has expansion rules', async () => {
+    const api = createFakeApi({
+      profiles: [makeProfile({ id: 'sf-new-shores-2025', expansions: ['seafarers'], botSeats: false })],
+      room: makeRoom({ profileId: 'sf-new-shores-2025', members: [makeMember()] }),
+      identity: makeIdentity({ locale: 'zh-Hant' }),
+    });
+    await joinLobby(api, ['zh-TW']);
+
+    const add = screen.getByTestId('add-bot') as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+    expect(add.getAttribute('aria-describedby')).toBe('lobby-bots-unsupported');
+    expect(screen.getByTestId('lobby-bots-unsupported').textContent).toBe(
+      '電腦對手只會玩基本遊戲，無法加入使用擴充規則的組合。',
+    );
   });
 
   it('lets the host remove a bot by name', async () => {

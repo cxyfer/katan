@@ -255,6 +255,7 @@ export const en: Catalog = {
   'lobby.bots.removeLabel': 'Remove bot {name}',
   'lobby.bots.full': 'Every seat is taken.',
   'lobby.bots.seatNote': 'Plays on its own and is always ready.',
+  'lobby.bots.unsupported': 'Bot opponents only play the base game; this ruleset uses expansion rules they do not know.',
   'lobby.botCount': '{count} bot(s)',
   'lobby.policyBotsExcluded': 'Bot seats do not vote.',
 
@@ -757,6 +758,7 @@ export const en: Catalog = {
   'blocker.seats': 'Need at least {min} players to start; {seated} seated.',
   'blocker.notReady': 'Not ready: {players}',
   'blocker.disconnected': 'Not connected: {players}',
+  'blocker.botsUnsupported': 'Bot opponents cannot play this ruleset; remove them to start.',
   'blocker.noHost': 'No connected host is present.',
   'blocker.profilePlayerCount': 'The {profileId} ruleset does not support {playerCount} players.',
   'blocker.capacity': 'The room capacity is {capacity}, but {seated} players are seated.',

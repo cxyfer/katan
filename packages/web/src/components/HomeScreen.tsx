@@ -5,7 +5,7 @@ import { SoundSettings } from './SoundSettings.tsx';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatDateTime } from '../i18n/format.ts';
-import { botsEnabled, DEFAULT_BOT_LEVEL, offeredBotLevels, pickBotLevel } from '../state/bots.ts';
+import { botsEnabled, DEFAULT_BOT_LEVEL, offeredBotLevels, pickBotLevel, profileAllowsBots } from '../state/bots.ts';
 import type { ScreenProps } from './props.ts';
 import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../state/rulesets.ts';
 
@@ -47,7 +47,9 @@ export function HomeScreen({ controller }: ScreenProps) {
   const setupOptions = chosenProfile?.setupModes ?? ['fixed', 'variable'];
   const effectiveSetup = setupOptions.includes(setupMode) ? setupMode : (setupOptions[0] ?? 'fixed');
   // 至少保留一個座位給房主；人數上限變小時電腦數量跟著夾住。
-  const offerBots = botsEnabled(state.config);
+  const botsOn = botsEnabled(state.config);
+  const profileBots = profileAllowsBots(chosenProfile);
+  const offerBots = botsOn && profileBots;
   const maxBots = Math.max(0, effectiveCapacity - 1);
   const effectiveBots = offerBots ? Math.min(botCount, maxBots) : 0;
   const botLevels = offeredBotLevels(state.config);
@@ -250,6 +252,9 @@ export function HomeScreen({ controller }: ScreenProps) {
             )}
           </div>
           {effectiveBots > 0 && <p className="muted" id="room-bots-hint">{t('lobby.bots.hint')}</p>}
+          {botsOn && !profileBots && (
+            <p className="muted" data-testid="room-bots-unsupported">{t('lobby.bots.unsupported')}</p>
+          )}
           {chosenProfile && (
             <p className="muted" data-testid="resolved-profile">
               {t('lobby.resolvedProfile', { profile: t(chosenProfile.labelKey) })}

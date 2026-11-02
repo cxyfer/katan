@@ -63,7 +63,7 @@ Conventions:
 {
   "id": "base-paired-2025",
   "labelKey": "profile.base-paired-2025",
-  "ruleVersion": "base-2025.2",
+  "ruleVersion": "base-2025.3",
   "expansions": [],
   "scenario": null,
   "variants": [],
@@ -72,14 +72,16 @@ Conventions:
   "paired": true,
   "victoryTarget": 10,
   "setupModes": ["fixed", "variable"],
-  "enabled": true
+  "enabled": true,
+  "botSeats": true
 }
 ```
 
 `expansions` is a set of `seafarers`, `citiesKnights`, `tradersBarbarians`,
 `explorersPirates` (empty for the base game); `scenario` and `variants` are
 registry ids. `requiredBoxes` is display metadata only and never validated.
-Disabled entries carry `unavailableReasonKey`. Every `labelKey`, reason and
+Disabled entries carry `unavailableReasonKey`. `botSeats` says whether hosts
+may seat computer opponents in the profile (see bots below). Every `labelKey`, reason and
 `expansion.*` / `scenario.*` / `variant.*` / `box.*` name is in the protocol's
 `RULESET_MESSAGE_IDS`, so both locales must translate it.
 
@@ -112,7 +114,8 @@ before the game starts.
 count the profile supports up to its capacity, so it does not need to be full;
 `blocker.seats` reports the profile minimum while below it, and
 `blocker.profilePlayerCount` reports a seated count the profile does not
-support.
+support. `blocker.botsUnsupported` reports a bot seat in a profile bots cannot
+play.
 
 ### Computer opponents (bots)
 
@@ -131,7 +134,13 @@ only the original human players must reconnect and become ready to resume.
   full room is `E_ROOM_FULL`; removing a seat that is not a bot is
   `E_NOT_A_BOT`. Both clear every person's readiness, like other settings.
 - When the deployment sets `BOTS_ENABLED=0`, adding bots is `E_BOTS_DISABLED`.
-  Bots also require a base-rules profile (`E_INVALID_BOT`, reason `profile`).
+- Bots only play profiles whose every rules module (`ProfileDefinition.ruleModules`)
+  is listed in `BOT_RULE_MODULES` (`packages/bots/src/support.ts`); the list is
+  empty today, so only base profiles qualify and `ProfileView.botSeats` is false
+  for every expansion profile. Seating a bot at creation, adding one, or
+  changing a room with bot seats to such a profile is `E_INVALID_BOT`, reason
+  `profile`. A bot seat that still ends up in such a room (for example after a
+  registry change) adds `blocker.botsUnsupported`, so the game cannot start.
 - Bot seats always report `ready` and `connected`, never become host, and do not
   vote: pause/resume, abandonment and post-start policy changes count people
   only. When every other seat is a bot, the one person may abandon without an
