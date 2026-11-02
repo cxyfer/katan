@@ -47,9 +47,10 @@ export function beforeProduction(state: GameState, roll: RollResult, ctx: Module
     advanceBarbarians(state, ctx);
   } else {
     resolveProgressEvent(state, event, red, ctx);
-    queueProgressDiscards(state, ctx);
+    // A VP card drawn by the roller can end the game: no discards after that.
+    if (!state.result) queueProgressDiscards(state, ctx);
   }
-  // A Defender VP can end the game during the roll (CK25 p. 10).
+  // A Defender or Printing/Constitution VP can end the game during the roll (CK25 p. 10).
   if (state.result) return 'defer';
   if (!state.pending) return 'continue';
   const frame: ModulePending = { kind: RESOLVE_ROLL_FRAME, module: CITIES_KNIGHTS, responders: [], data: { roll } };
