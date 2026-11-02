@@ -131,19 +131,28 @@ describe('table interactions', { timeout: 15000 }, () => {
     act(() => vi.advanceTimersByTime(500));
     expect(hand.getAttribute('data-expanded')).toBe('false');
   });
-  it('preserves monopoly choice across collapse and never offers new or victory-point cards for play', async () => {
+  it('lets the monopoly choice be changed or cancelled and never offers new or victory-point cards for play', async () => {
     const view = makeView();
     view.players[0]!.devCards = ['monopoly', 'victoryPoint'];
     view.players[0]!.newDevCards = ['knight', 'roadBuilding'];
     const api = await open(view);
     fireEvent.focus(screen.getByTestId('hand-panel'));
-    fireEvent.change(screen.getByTestId('monopoly-resource'), { target: { value: 'ore' } });
-    fireEvent.keyDown(screen.getByTestId('hand-panel'), { key: 'Escape' });
-    fireEvent.focus(screen.getByTestId('hand-panel'));
-    expect((screen.getByTestId('monopoly-resource') as HTMLSelectElement).value).toBe('ore');
     expect(screen.getByTestId('new-devcards').querySelector('.development-card__play')).toBeNull();
     expect(screen.queryByTestId('play-victoryPoint-1')).toBeNull();
     fireEvent.click(screen.getByTestId('play-monopoly-0'));
+    fireEvent.click(screen.getByTestId('choice-add-grain'));
+    fireEvent.click(screen.getByTestId('choice-cancel'));
+    expect(screen.queryByTestId('devcard-choice')).toBeNull();
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+
+    fireEvent.click(screen.getByTestId('play-monopoly-0'));
+    expect((screen.getByTestId('choice-submit') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByTestId('choice-add-grain'));
+    // 壟斷只能選一種：點另一種直接替換。
+    fireEvent.click(screen.getByTestId('choice-add-ore'));
+    expect(screen.getByTestId('choice-add-grain').getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByTestId('choice-submit').textContent).toBe('Monopolize Ore');
+    fireEvent.click(screen.getByTestId('choice-submit'));
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
     expect(api.callsOf('sendCommand')[0]!.args[1]).toMatchObject({ command: { type: 'dev.playMonopoly', resource: 'ore' } });
   });

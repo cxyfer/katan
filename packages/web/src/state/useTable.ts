@@ -50,6 +50,7 @@ import {
   type DrawerPanel,
   type GameSyncBoundary,
   type GameSyncCause,
+  type DevCardChoice,
   type Selection,
   type TableAction,
   type TableState,
@@ -101,6 +102,7 @@ export interface TableActions {
   toggleMute(playerId: string): void;
   setTradeAutoDecline(enabled: boolean): void;
   selectTarget(selection: Selection): void;
+  setDevCardChoice(choice: DevCardChoice | null): void;
   cancelSelection(): void;
   confirmSelection(): Promise<void>;
   setDrawer(drawer: DrawerPanel): void;
@@ -806,6 +808,13 @@ export function useTable(options: UseTableOptions): TableController {
     [dispatch],
   );
 
+  const setDevCardChoice = useCallback(
+    (choice: DevCardChoice | null): void => {
+      dispatch({ type: 'dev-card-choice', choice });
+    },
+    [dispatch],
+  );
+
   const cancelSelection = useCallback((): void => {
     dispatch({ type: 'selection', selection: EMPTY_SELECTION });
   }, [dispatch]);
@@ -863,6 +872,7 @@ export function useTable(options: UseTableOptions): TableController {
       toggleMute,
       setTradeAutoDecline,
       selectTarget,
+      setDevCardChoice,
       cancelSelection,
       confirmSelection,
       setDrawer,
@@ -900,6 +910,7 @@ export function useTable(options: UseTableOptions): TableController {
       toggleMute,
       setTradeAutoDecline,
       selectTarget,
+      setDevCardChoice,
       cancelSelection,
       confirmSelection,
       setDrawer,

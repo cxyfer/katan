@@ -563,9 +563,10 @@ describe('development cards and pending effects', () => {
     api.setCommandResult(ACCEPTED);
     await openGame(api);
 
-    fireEvent.change(screen.getByTestId('monopoly-resource'), { target: { value: 'ore' } });
     fireEvent.focus(screen.getByTestId('hand-panel'));
     fireEvent.click(screen.getByTestId('play-monopoly-0'));
+    fireEvent.click(screen.getByTestId('choice-add-ore'));
+    fireEvent.click(screen.getByTestId('choice-submit'));
 
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
     expect(lastCommand(api)).toEqual({ type: 'dev.playMonopoly', resource: 'ore' });
@@ -581,6 +582,98 @@ describe('development cards and pending effects', () => {
     fireEvent.click(screen.getByTestId('play-knight-0'));
     const target = await screen.findByTestId('target-hex-0');
     expect(target.tagName).toBe('BUTTON');
+  });
+
+  it('plays year of plenty only after both resources are chosen, then takes them in order', async () => {
+    const view = makeView({ hints: makeHints({ canEndTurn: false }), phase: 'preroll' });
+    view.players[0]!.devCards = ['yearOfPlenty'];
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api);
+
+    fireEvent.focus(screen.getByTestId('hand-panel'));
+    fireEvent.click(screen.getByTestId('play-yearOfPlenty-0'));
+    expect(screen.getByTestId('required-action-prompt').dataset.choice).toBe('yearOfPlenty');
+    fireEvent.click(screen.getByTestId('choice-add-ore'));
+    fireEvent.click(screen.getByTestId('choice-add-ore'));
+    expect(screen.getByTestId('choice-add-wool').getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(screen.getByTestId('choice-return-ore'));
+    fireEvent.click(screen.getByTestId('choice-add-wool'));
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+
+    // 伺服器打出後進入領取步驟；客戶端依序送出已選好的兩張。
+    const played = structuredClone(view);
+    played.players[0]!.devCards = [];
+    played.turn.devCardPlayed = true;
+    played.pending = { kind: 'yearOfPlenty', actor: 'p1', remaining: 2 };
+    api.setSnapshot(makeSnapshot(played, 13));
+    fireEvent.click(screen.getByTestId('choice-submit'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(3));
+    const commands = api.callsOf('sendCommand').map((call) => (call.args[1] as CommandRequest).command);
+    expect(commands).toEqual([
+      { type: 'dev.playYearOfPlenty' },
+      { type: 'pending.takeResource', resource: 'wool' },
+      { type: 'pending.takeResource', resource: 'ore' },
+    ]);
+  });
+
+  it('offers a locked, bank-limited picker when year of plenty is already waiting', async () => {
+    const view = makeView({
+      hints: null,
+      pending: { kind: 'yearOfPlenty', actor: 'p1', remaining: 1 },
+    });
+    view.bank = { lumber: 0, brick: 0, wool: 0, grain: 1, ore: 0 };
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api);
+
+    expect(screen.queryByTestId('choice-cancel')).toBeNull();
+    expect(screen.getByTestId('choice-add-ore').getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByTestId('choice-bank-grain').textContent).toBe('1');
+    fireEvent.click(screen.getByTestId('choice-add-grain'));
+    fireEvent.click(screen.getByTestId('choice-submit'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(lastCommand(api)).toEqual({ type: 'pending.takeResource', resource: 'grain' });
+  });
+
+  it('plays a card dragged out of the hand onto the table, and returns it when dropped short', async () => {
+    const view = makeView({ hints: makeHints({ canEndTurn: false }), phase: 'preroll' });
+    view.players[0]!.devCards = ['roadBuilding', 'monopoly'];
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api);
+    const pointer = (element: Element, type: string, clientY: number) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: 50, clientY, button: 0 });
+      Object.defineProperties(event, { pointerId: { value: 1 }, pointerType: { value: 'mouse' }, isPrimary: { value: true } });
+      fireEvent(element, event);
+    };
+    const drag = (element: Element, to: number) => {
+      pointer(element, 'pointerdown', 0);
+      pointer(element, 'pointermove', -40);
+      pointer(element, 'pointermove', to);
+      return () => pointer(element, 'pointerup', to);
+    };
+
+    // 手牌上緣在 jsdom 為 0：只拖一點點（仍在手牌範圍）放開，卡片回到手上。
+    const monopoly = screen.getByRole('button', { name: /Inspect Monopoly/ });
+    const short = drag(monopoly, -10);
+    expect(screen.getByTestId('card-drag').dataset.armed).toBeUndefined();
+    short();
+    expect(screen.queryByTestId('card-drag')).toBeNull();
+    expect(screen.queryByTestId('devcard-choice')).toBeNull();
+
+    const release = drag(monopoly, -200);
+    expect(screen.getByTestId('card-drag').dataset.armed).toBe('true');
+    expect(screen.getByTestId('card-drop-zone').textContent).toBe('Release to play Monopoly');
+    release();
+    expect(screen.queryByTestId('card-drag')).toBeNull();
+    expect(screen.getByTestId('devcard-choice').dataset.card).toBe('monopoly');
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+    fireEvent.click(screen.getByTestId('choice-cancel'));
+
+    drag(screen.getByRole('button', { name: /Inspect Road building/ }), -200)();
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(lastCommand(api)).toEqual({ type: 'dev.playRoadBuilding' });
   });
 
   it('submits exactly the required discard count', async () => {

@@ -59,6 +59,8 @@ export function HandPanel({ controller }: { controller: TableController }) {
   const touchOpenRef = useRef(false);
   const suppressClickRef = useRef(false);
   const swipeStartRef = useRef<number | null>(null);
+  const draggingRef = useRef(false);
+  const dragClickRef = useRef(false);
   const focusedCardRef = useRef(0);
   const focusInsideRef = useRef(false);
   const tallyMemory = useRef<Record<string, { label: string; bumped: boolean }>>({});
@@ -101,7 +103,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
     cancelClose();
     closeTimer.current = setTimeout(() => {
       closeTimer.current = null;
-      if (!hoverRef.current && !touchOpenRef.current && !handRef.current?.contains(document.activeElement)) {
+      if (!hoverRef.current && !touchOpenRef.current && !draggingRef.current && !handRef.current?.contains(document.activeElement)) {
         setExpanded(false);
         setInspected(null);
       }
@@ -110,6 +112,17 @@ export function HandPanel({ controller }: { controller: TableController }) {
   useEffect(() => () => {
     if (closeTimer.current !== null) clearTimeout(closeTimer.current);
   }, []);
+  // 拖曳發展卡出牌：拖曳中扇形維持展開、不觸發左右滑動檢視；放開後吃掉隨之而來的點擊，
+  // 免得被當成「查看這張牌」。
+  const onCardDrag = (phase: 'start' | 'cancel' | 'drop') => {
+    draggingRef.current = phase === 'start';
+    swipeStartRef.current = null;
+    if (phase === 'start') { cancelClose(); return; }
+    dragClickRef.current = true;
+    // 打出後收起手牌，讓出棋盤（騎士選格）與上方的資源選擇器。
+    if (phase === 'drop') collapse();
+    else if (!hoverRef.current) scheduleClose();
+  };
   // 手牌中途清空（例如全部打出或丟棄）時，收合已展開的 deck 並清除殘留的互動狀態。
   useEffect(() => {
     if (canExpand) return;
@@ -161,6 +174,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
       }}
       onPointerLeave={() => { if (!canExpand) return; hoverRef.current = false; scheduleClose(); }}
       onPointerDownCapture={(event) => {
+        dragClickRef.current = false;
         if (!canExpand) {
           suppressClickRef.current = false;
           swipeStartRef.current = null;
@@ -187,6 +201,12 @@ export function HandPanel({ controller }: { controller: TableController }) {
       }}
       onPointerCancelCapture={() => { suppressClickRef.current = false; swipeStartRef.current = null; }}
       onClickCapture={(event) => {
+        if (dragClickRef.current) {
+          dragClickRef.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         if (!canExpand) return;
         if (suppressClickRef.current || !expanded) {
           suppressClickRef.current = false;
@@ -256,7 +276,8 @@ export function HandPanel({ controller }: { controller: TableController }) {
             );
           })}
         </ul>
-        <DevCardPanel controller={controller} embedded handExpanded={fanExpanded} handStyle={(index) => fanStyles[held.length + index] ?? {}} />
+        <DevCardPanel controller={controller} embedded handExpanded={fanExpanded} handStyle={(index) => fanStyles[held.length + index] ?? {}}
+          onCardDrag={onCardDrag} />
         {fanExpanded && <button type="button" className="hand-fan__close" onClick={collapse}
           aria-label={t('table.collapseHand')}>⌄</button>}
       </div>
