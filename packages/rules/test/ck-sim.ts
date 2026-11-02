@@ -1,6 +1,7 @@
 /**
  * A simple scripted player for whole Cities & Knights games (conservation
- * checks). Progress cards are drawn and discarded but never played (P3).
+ * checks). It plays every progress card it can, answers every card frame and
+ * uses Alchemy before some rolls.
  */
 
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
@@ -9,6 +10,8 @@ import { COMMODITIES, RESOURCES, type CardKind, type Commodity, type GameState, 
 import type { ImprovementOption } from '../src/modules/citiesKnights/cities.ts';
 import { TRACK_COMMODITY, type Track } from '../src/modules/citiesKnights/constants.ts';
 import { ckView } from '../src/modules/citiesKnights/state.ts';
+import type { ProgressCardHint } from '../src/modules/citiesKnights/cards.ts';
+import { projectGame } from '../src/project.ts';
 import { ckGame } from './ck-helpers.ts';
 
 interface KnightHint {
@@ -33,6 +36,8 @@ interface CkHints {
   pillage: number[];
   defenderDecks: Track[];
   scienceBonus: boolean;
+  progress: ProgressCardHint[];
+  harborTargets: string[];
 }
 
 type AnyCommand = Command | { type: string; [field: string]: unknown };
@@ -83,6 +88,13 @@ export interface CkCounters {
   progressDiscards: number;
   commodities: number;
   scienceBonus: number;
+  progressPlayed: number;
+  alchemy: number;
+  harborExchanges: number;
+  merchantPlaced: number;
+  cardFrames: number;
+  /** Distinct card types played. */
+  played: Set<string>;
 }
 
 const COUNTED: Record<string, keyof CkCounters> = {
@@ -105,7 +117,62 @@ const COUNTED: Record<string, keyof CkCounters> = {
   'ck.progressDiscarded': 'progressDiscards',
   'ck.commoditiesProduced': 'commodities',
   'ck.scienceBonusTaken': 'scienceBonus',
+  'ck.progressPlayed': 'progressPlayed',
+  'ck.alchemySet': 'alchemy',
+  'ck.harborExchanged': 'harborExchanges',
+  'ck.merchantPlaced': 'merchantPlaced',
 };
+
+/** The data of a module frame as its responder sees it. */
+function frameView(state: GameState, viewerId: string): Record<string, any> {
+  return ((projectGame(state, viewerId).pending as { data?: Record<string, any> } | null)?.data ?? {}) as Record<string, any>;
+}
+
+function pick<T>(list: readonly T[], step: number): T | undefined {
+  return list.length > 0 ? list[step % list.length] : undefined;
+}
+
+/** A `progress.play` command for a playable card, built from its advisory targets. */
+function cardCommand(state: GameState, actorId: string, hint: ProgressCardHint, step: number): AnyCommand | null {
+  const targets = hint.targets as Record<string, any[]>;
+  const play = (fields: Record<string, unknown> = {}): AnyCommand => ({ type: 'progress.play', card: hint.card, ...fields });
+  switch (hint.card) {
+    case 'alchemy':
+      return null;
+    case 'crane': {
+      const option = pick(targets.tracks!, step) as { track: Track; metropolis: boolean; sites: number[] };
+      return play({ track: option.track, ...(option.metropolis ? { vertex: option.sites[0] } : {}) });
+    }
+    case 'invention':
+      return play({ hexes: [targets.hexes![step % targets.hexes!.length], targets.hexes![(step + 1) % targets.hexes!.length]] });
+    case 'smithing':
+      return play({ vertices: targets.vertices!.slice(0, 2) });
+    case 'engineering':
+    case 'medicine':
+    case 'intrigue':
+      return targets.vertices!.length > 0 ? play({ vertex: pick(targets.vertices!, step) }) : null;
+    case 'merchant':
+    case 'taxation':
+      return targets.hexes!.length > 0 ? play({ hex: pick(targets.hexes!, step) }) : null;
+    case 'diplomacy':
+      return play({ edge: pick(targets.edges!, step) });
+    case 'merchantFleet':
+    case 'resourceMonopoly':
+    case 'tradeMonopoly': {
+      // Name what the others hold most of.
+      const kinds = targets.kinds as CardKind[];
+      const others = state.players.filter((player) => player.id !== actorId);
+      const held = (kind: CardKind) => others.reduce((sum, player) => sum + ((player.resources as Record<string, number>)[kind] ?? (player.commodities as Record<string, number>)[kind] ?? 0), 0);
+      return play({ kind: kinds.slice().sort((a, b) => held(b) - held(a))[0] });
+    }
+    case 'guildDues':
+    case 'espionage':
+    case 'treason':
+      return targets.players!.length > 0 ? play({ target: pick(targets.players!, step) }) : null;
+    default:
+      return play();
+  }
+}
 
 function resolvePending(state: GameState, rng: Rng, step: number): GameState | null {
   const pending = state.pending;
@@ -125,6 +192,13 @@ function resolvePending(state: GameState, rng: Rng, step: number): GameState | n
     }
     case 'steal':
       return attempt(state, pending.actor, { type: 'pending.steal', victim: pending.candidates[0]! }, rng);
+    case 'freeRoads': {
+      for (const edge of actionHints(state, pending.actor).legalRoads) {
+        const next = attempt(state, pending.actor, { type: 'build.road', edge }, rng);
+        if (next) return next;
+      }
+      return null;
+    }
     default: {
       const frame = pending as ModulePending;
       const id = frame.responders[0]!;
@@ -139,6 +213,35 @@ function resolvePending(state: GameState, rng: Rng, step: number): GameState | n
         case 'citiesKnights.progressDiscard': {
           const required = (frame.data.required as Record<string, number>)[id]!;
           return attempt(state, id, { type: 'progress.discard', cards: playerOf(state, id).progressCards.slice(0, required) }, rng);
+        }
+        case 'citiesKnights.harborExchange': {
+          const held = COMMODITIES.find((commodity) => playerOf(state, id).commodities[commodity] > 0)!;
+          return attempt(state, id, { type: 'progress.harborAnswer', commodity: held }, rng);
+        }
+        case 'citiesKnights.guildDues': {
+          const data = frameView(state, id);
+          return attempt(state, id, { type: 'progress.takeCards', cards: cardPool(state, data.victim).slice(0, data.count) }, rng);
+        }
+        case 'citiesKnights.espionage': {
+          const cards = frameView(state, id).cards as string[];
+          return attempt(state, id, { type: 'progress.takeProgress', card: step % 3 === 0 ? null : (cards[0] ?? null) }, rng);
+        }
+        case 'citiesKnights.sabotage':
+        case 'citiesKnights.wedding': {
+          const required = (frame.data.required as Record<string, number>)[id]!;
+          const type = frame.kind === 'citiesKnights.sabotage' ? 'progress.sabotageDiscard' : 'progress.weddingGive';
+          return attempt(state, id, { type, cards: cardPool(state, id).slice(0, required) }, rng);
+        }
+        case 'citiesKnights.treasonRemove':
+          return attempt(state, id, { type: 'progress.treasonRemove', vertex: frameView(state, id).knights[step % frameView(state, id).knights.length] }, rng);
+        case 'citiesKnights.treasonPlace': {
+          const data = frameView(state, id);
+          const vertex = pick(data.sites as number[], step) ?? null;
+          return attempt(state, id, { type: 'progress.treasonPlace', vertex, level: vertex === null ? null : data.levels[0] }, rng);
+        }
+        case 'citiesKnights.diplomacyRoad': {
+          const edges = frameView(state, id).edges as number[];
+          return attempt(state, id, { type: 'progress.diplomacyRoad', edge: step % 2 === 0 ? null : (pick(edges, step) ?? null) }, rng);
         }
         case 'citiesKnights.scienceBonus': {
           const want = resourcesBy(state, id, false).find((resource) => state.bank[resource] > 0) ?? null;
@@ -177,6 +280,15 @@ function actionTries(state: GameState, actorId: string, step: number): AnyComman
   if (ck.progressExcess > 0) {
     tries.push({ type: 'progress.discard', cards: player.progressCards.slice(0, ck.progressExcess) });
     return tries;
+  }
+  for (const hint of ck.progress) {
+    if (!hint.playable) continue;
+    const command = cardCommand(state, actorId, hint, step);
+    if (command) tries.push(command);
+  }
+  const offered = resourcesBy(state, actorId, true)[0]!;
+  for (const to of ck.harborTargets) {
+    if (player.resources[offered] > 0) tries.push({ type: 'progress.harborOffer', to, resource: offered });
   }
   for (const option of ck.improvements) {
     if (option.blocked === null) tries.push({ type: 'city.improve', track: option.track, ...(option.metropolis ? { vertex: option.sites[0] } : {}) });
@@ -225,12 +337,13 @@ export interface CkSimulation {
 export function simulateCitiesKnights(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 40000): CkSimulation {
   const rng = seededRng(seed * 7919 + players);
   let { state } = ckGame(players, seed);
-  const counters = Object.fromEntries(Object.values(COUNTED).map((key) => [key, 0])) as unknown as CkCounters;
+  const counters = { ...Object.fromEntries(Object.values(COUNTED).map((key) => [key, 0])), cardFrames: 0, played: new Set<string>() } as unknown as CkCounters;
   const count = (before: GameState, after: GameState) => {
     for (const event of after.log) {
       if (event.seq <= before.seq) continue;
       const key = COUNTED[event.type];
-      if (key) counters[key]++;
+      if (key) (counters[key] as number)++;
+      if (event.type === 'ck.progressPlayed') counters.played.add(event.params.card as string);
     }
   };
   for (let step = 0; step < maxSteps && !state.result; step++) {
@@ -241,6 +354,7 @@ export function simulateCitiesKnights(players: 3 | 4 | 5 | 6, seed: number, maxS
       continue;
     }
     if (state.pending) {
+      if (state.pending.kind.startsWith('citiesKnights.') && state.pending.kind !== 'citiesKnights.resolveRoll') counters.cardFrames++;
       const next = resolvePending(state, rng, step);
       if (!next) throw new Error(`stuck on pending ${JSON.stringify(state.pending)}`);
       state = next;
@@ -250,6 +364,16 @@ export function simulateCitiesKnights(players: 3 | 4 | 5 | 6, seed: number, maxS
     const actor = state.players[state.turn.seat]!;
     const hints = actionHints(state, actor.id);
     if (hints.canRoll) {
+      const alchemy = ckHints(state, actor.id).progress.find((hint) => hint.card === 'alchemy' && hint.playable);
+      if (alchemy && step % 2 === 0) {
+        const dice = [(step % 6) + 1, ((step >> 3) % 6) + 1];
+        const next = attempt(state, actor.id, { type: 'progress.play', card: 'alchemy', dice }, rng);
+        if (next) {
+          state = next;
+          count(before, state);
+          continue;
+        }
+      }
       state = attempt(state, actor.id, { type: 'turn.roll' }, rng)!;
       count(before, state);
       continue;
