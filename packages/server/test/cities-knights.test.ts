@@ -6,6 +6,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { GameState } from '@catan/rules';
 import { startHarness, runSetupOverApi, type TestClient, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;
@@ -103,5 +104,31 @@ describe('Cities & Knights over the API (test-only profile path)', () => {
     for (const player of theirs.view.players) {
       if (player.id !== other.playerId) expect(player.progressCards).toBeUndefined();
     }
+  });
+
+  it('replays a progress.play command id as the original receipt without applying it again', async () => {
+    const { clients, gameId } = await startCkGame(3);
+    const setup = await runSetupOverApi(clients, gameId);
+    const actor = clients.find((client) => client.playerId === setup.view.turn.playerId)!;
+    // Put the turn in its action phase with a Mining card in hand (a test-only fixture edit of the snapshot).
+    const row = (await harness.service.repo.findGame(gameId))!;
+    const state = JSON.parse(row.state_json) as GameState;
+    state.turn.phase = 'action';
+    state.players.find((player) => player.id === actor.playerId)!.progressCards = ['mining'];
+    await harness.service.repo.saveGame(gameId, state, row.revision, row.status, row.pause_reason);
+
+    const before = await snapshot(actor, gameId);
+    const body = { commandId: 'ck-mining', expectedRevision: before.revision, command: { type: 'progress.play', card: 'mining' } };
+    const played = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, body));
+    expect(played.outcome).toBe('accepted');
+    const afterFirst = await snapshot(actor, gameId);
+    const me = (view: CkView) => view.view.players.find((player) => player.id === actor.playerId)!;
+    expect(me(afterFirst).progressCards).toEqual([]);
+
+    const again = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, body));
+    expect(again).toEqual(played);
+    const afterSecond = await snapshot(actor, gameId);
+    expect(afterSecond.revision).toBe(afterFirst.revision);
+    expect(afterSecond.view).toEqual(afterFirst.view);
   });
 });
