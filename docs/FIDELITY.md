@@ -14,6 +14,7 @@ before its fixtures pass.
 | SF25 / SF56-25 | Seafarers, CN3083/CN3084, 2025 | registered target profiles, disabled |
 | CK25 / CK56-25 | Cities & Knights, CN3087/CN3088, 2025 | registered target profiles, disabled |
 | COMB | Seafarers + C&K guidance | registered target profile, disabled |
+| TB25 | CATAN – Traders & Barbarians, CN3089, 2025 (`v6.250701`) | variants and five scenarios on the base board, 3–4 players (see [Traders & Barbarians](#traders--barbarians-tb25)) |
 
 The rules are implemented from the specification's paraphrase and the
 publisher's rulebooks. No official artwork or card text is copied.
@@ -24,6 +25,14 @@ publisher's rulebooks. No official artwork or card text is copied.
 |---|---|---|---|
 | `base-2025` | 3, 4 | 10 | **enabled** |
 | `base-paired-2025` | 5, 6 | 10 | **enabled** |
+| `tb-friendly-robber-2025` | 3, 4 | 10 | **enabled** |
+| `tb-harbors-2025` | 3, 4 | 11 | **enabled** |
+| `tb-friendly-robber-harbors-2025` | 3, 4 | 11 | **enabled** |
+| `tb-fishing-2025` | 3, 4 | 10 (11 with the old boot) | **enabled** |
+| `tb-rivers-2025` | 3, 4 | 10 | **enabled** |
+| `tb-merchant-trains-2025` | 3, 4 | 12 | **enabled** |
+| `tb-barbarian-attack-2025` | 3, 4 | 12 | **enabled** |
+| `tb-traders-barbarians-2025` | 3, 4 | 13 | **enabled** |
 
 Every other row of the §5.7 matrix is registered with `enabled: false` and a
 `unavailableReasonKey`; the lobby does not offer it and the server rejects a
@@ -66,6 +75,13 @@ master's own engine at `0815c76`
 | R-56 | 30-hex/11-harbor B56 board, 24/resource bank, 34-card deck, setup order, partner = third seat to the left, five- and six-seat pair cycles, production only on Player 1, no domestic trade for Player 2, build/bank/card actions for Player 2, card carry between roles, either role may win | `packages/rules/test/paired.test.ts` (12 cases) and `packages/server/test/rooms.test.ts` | covered at engine and room lifecycle level |
 | R-COMPAT | registry v2 metadata; exact, order-insensitive expansion/scenario/variant matching with no transitive inference; full count × expansion × scenario matrix; profile id or `{ ruleset }` room requests; fixture profiles never resolvable | `packages/rules/test/profiles.test.ts`, `packages/server/test/rooms.test.ts`, `packages/web/test/rulesets.test.ts` | covered |
 | R-PLATFORM | pending queue order/responders/continuations and old snapshots without a queue; rules-module hooks (setup, roll, discard limit, production, board change, commands, score, projection, hints) through a fixture module; layout registry; generic topologies (sea frame, several islands, marked harbours); base digests unchanged | `packages/rules/test/platform.test.ts`, `topology-generic.test.ts`, `base-regression.test.ts`, `message-ids.test.ts` | covered at engine level; no real expansion module exists yet |
+| R-TB-FR / R-TB-HB | Friendly Robber (TB25 p. 4): protected 2-VP players, desert fallback, Knight; Harbors of Catan: Strongest Ports award, 11 VP | `packages/rules/test/tb-variants.test.ts` (8 fixtures + 6 simulated games) | covered |
+| R-TB-FI | Fishing on Catan (pp. 9–10): lake in the inner area, six grounds on the printed frame valleys, 29 tokens + boot, setup fish, production order, 7-token swap, refill, boot transfer and +1 VP, five fish actions, privacy | `packages/rules/test/tb-fishing.test.ts` (13 + 2 simulated games), `packages/web/test/tb-fishing.test.tsx` (5) | covered |
+| R-TB-RV | Rivers of Catan (pp. 11–12): fixed river tiles, 2 sharing the 12 hex, robber on a swamp, 7 bridge sites, setup/bridge gold, bridge limits, coins (buy/sell/trade), wealth tiles | `packages/rules/test/tb-rivers.test.ts` (8 + 2), `packages/web/test/tb-rivers.test.tsx` (3) | covered |
+| R-TB-MT | Merchant Trains (pp. 13–14): watering hole and starts, wagon collection, ordered public bids, majority / most-voted / top bidder / active player, no branching, merging, +1 VP between wagons, wagon road weight | `packages/rules/test/tb-trains.test.ts` (7 + 2), `packages/web/test/tb-trains.test.tsx` (2) | covered |
+| R-TB-BA | Barbarian Attack (pp. 15–19): printed numbers and areas, city setup, barbarian landing, conquest (production, building, VP, ports), 7 steal, four cards, knight moves, expel / prisoners / dice ties / knight losses | `packages/rules/test/tb-barbarians.test.ts` (12 + 2), `packages/web/test/tb-barbarians.test.tsx` (3) | covered |
+| R-TB-TR | Traders & Barbarians (pp. 20–24): interior paths, X sides, sites and stacks, 5 gold, wagon on the setup city, 2/12 reroll, 7 barbarian move and robbery, Knight / Swift Journey, upgrades, movement costs, deliveries, drive-off | `packages/rules/test/tb-traders.test.ts` (11 + 2), `packages/web/test/tb-traders.test.tsx` (4) | covered |
+| R-TB-SRV | ruleset resolution by parts, setup over the API for every scenario, module receipts, projection privacy | `packages/server/test/traders-barbarians.test.ts` (7) | covered (SQLite) |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
 | U-01, U-02, U-05 | rendered layout, mouse/keyboard/touch selection, dense content | `packages/web/test/*.test.tsx` (jsdom), `docs/screenshots/`, and the P1B headless Chromium captures below | **partially covered** — captured layouts and DOM pointer/keyboard contracts; no physical touch, rotation or pointer-device acceptance |
@@ -204,3 +220,74 @@ These are recorded rather than hidden. None of them is presented as verified.
     exhausted effects no longer block the next legal command.
     `base-2025.1` banks stay short by the cards already lost, and a road a
     `base-2025.2` game let through an opponent's building stays on the board.
+
+## Traders & Barbarians (TB25)
+
+Source: CATAN – Traders & Barbarians Expansion, 2025 English rulebook,
+CN3089, page footers `v6.250701`, 24 pages, 27,843,748 bytes, SHA-256
+`7c4938dc45480ed28fde1fccbeca450c815b36ee2f4ed57107650013313acaaf`,
+downloaded from catan.com (SPEC §15) on 2026-11-01. The transcription with
+page references is in
+[the P5 work record](aegis/work/2026-11-01-traders-barbarians.md). Rule texts
+in both locales are paraphrases; artwork is original (procedural SVG and
+three.js).
+
+Registered and enabled: the Friendly Robber and Harbors of Catan variants
+(alone and together) on the base board, and the five scenarios. The event-card
+rows (`tb-event-cards*`, alone and with the other variants) are registered
+with `implemented: false, enabled: false` and
+`profile.unavailable.tbEventDeck`: TB25 lists the thirteen events' effects but
+not how many cards carry each event nor the number disc printed on each card,
+so the deck cannot be transcribed from the source. Catan for Two, 5–6 players
+and every combination with Seafarers, Cities & Knights or between scenarios
+are out of scope (roadmap P5).
+
+Transcribed from printed maps (no rule text gives them):
+
+- Scenario frame (`tb-r2`): the nine harbours where the T&B maps draw their
+  piers — `(0,-2)` side 2, `(1,-2)` 1, `(2,-1)` 1, `(2,0)` 0, `(1,1)` 5,
+  `(-1,2)` 5, `(-2,2)` 4, `(-2,1)` 3, `(-1,-1)` 3. The base board's own
+  approximated slots (gap 1) would put three harbours on fishing grounds.
+  Harbour types are shuffled over these positions as in the base variable
+  setup.
+- Fishing grounds: the six coastal valleys between `(0,-2)|(1,-2)`,
+  `(2,-1)|(2,0)`, `(2,0)|(1,1)`, `(-2,2)|(-1,2)`, `(-2,1)|(-2,2)`,
+  `(-1,-1)|(0,-2)`; a ground touches its valley and the two neighbouring
+  corners.
+- River courses and bridge sites (river tile art), Barbarian Attack numbers,
+  the train starts at the watering hole, the T&B scenario's sites, paths and
+  barbarian edges (setup maps and diagrams).
+
+Deliberate interpretations (open to challenge, not house rules):
+
+- **Friendly Robber** uses public VP (hidden VP cards are invisible to the
+  robber's mover) and reads "only 2 VP" as at most 2; with no valid hex the
+  robber may stay on a desert it already occupies.
+- **Fish and old-boot actions** are action-phase actions: TB25 grants a
+  pre-roll window only to Catan for Two's trade tokens. Declining the 7-token
+  swap also uses that turn's swap (only one production happens per turn).
+- **Gold supply** is the 100 gold of the 40 coins; when it runs short a player
+  receives what is left (TB25 is silent).
+- **Rivers**: the setup draw chooses the robber's swamp ("either of the 2
+  swamps").
+- **Merchant Trains**: an edge at the front of two trains joins the train with
+  the lower start index; a train's front touched by another wagon has merged.
+- **Barbarian Attack**: barbarians land only for buildings placed in the
+  action phase (the rule sits under "Action phase updates"), city upgrades
+  included; Knighthood / Swift Knight without a knight or a free edge have no
+  effect; Treason destinations differ from both sources and from each other.
+- **Traders & Barbarians**: a wanted commodity is delivered automatically
+  (delivering is never worse); commodity-hex corners reachable only by X edges
+  are not settlement sites, since setup could not place their road.
+
+Known T&B gaps:
+
+1. Event cards: mechanics not implemented and rows closed until the card list
+   is transcribed from the physical deck.
+2. Combinations of a variant with a scenario are not registered, although
+   TB25 permits them (p. 2); the Friendly Robber's desert rule has no desert in
+   four scenarios and Harbors' "VP in buildings on ports" meets scenario VP
+   (wagons, conquest) — these need explicit decisions first.
+3. No physical-table playtest; the rules were checked against the rulebook,
+   fixtures and simulated games, and the UI in headless Chromium.
+

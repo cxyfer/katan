@@ -255,4 +255,22 @@ with the five scenarios (p. 2).
 
 ## Implementation notes
 
-(Filled in per slice.)
+| Area | Files | Notes |
+|---|---|---|
+| Platform hooks | `packages/rules/src/modules/types.ts`, `engine.ts`, `analysis.ts`, `topology.ts`, `project.ts` | additive hooks and board data listed in the roadmap's P5 note; `legalRobberHexes`, `victoryTargetOf`; base digests unchanged |
+| Base fix | `engine.ts` | Road Building with no road pieces left no longer leaves an unresolvable `freeRoads` frame (found by the T&B simulations) |
+| Composite module | `modules/tradersBarbarians/{index,part,state,messages}.ts` | parts per variant/scenario, frames `tradersBarbarians.<step>`, root hints `targets` / `board` / `robberHexes` |
+| Variants | `variants/friendlyRobber.ts`, `variants/harbors.ts` | `robberTargets` + `stealCandidates`; Strongest Ports award via `afterBuild` |
+| Boards | `frame.ts`, `boards.ts`, `*/board.ts` | printed frame `tb-r2`, scenario layouts, `tb-traders-r2` with interior paths |
+| Fishing | `fishing/` | grounds, lake, face-down token supply with refill, swap frame, boot, fish actions |
+| Coins | `coins/` | 100-gold supply, buy/sell, `tradeGoods` gold in offers (Rivers, BA, T&B) |
+| Rivers | `rivers/` | bridge sites, bridges (`RoadRef.bridge`), river gold, wealth tiles derived from gold |
+| Merchant Trains | `trains/` | wagon collection, end-of-turn voting frames (bid → assign → place), trains, route weights |
+| Barbarian Attack | `barbarians/` | landing rolls, conquest, cards played on build, knight moves, expel with dice |
+| Traders & Barbarians | `traders/` | sites/stacks, wagon board, end-of-turn wagon frame, drive-off, Knight / Swift Journey |
+| Profiles | `profiles.ts` (`TRADERS_BARBARIANS_PROFILES`) | 12 rows; 8 enabled |
+| Web | `packages/web/src/components/tb/`, `board/tb-rivers.ts`, `board/three/{tb-terrain.ts,TbScenePieces.tsx}`, `audio/tb-cues.ts`, `i18n/modules/tradersBarbarians.ts` | Scenario tool tab, prompt choices, SVG and 3D pieces, terrain emblems, five procedural cues, zh-Hant + en |
+| Generic web | `board/intent.ts`, `state/table.ts` (`Selection.extra/field/targetsKey`), `TradePanel.tsx` (goods steppers), `GameTools.tsx`, `coastline.ts` (interior paths) | module board targets and choices without per-scenario code in shared components |
+| Harness | `scripts/traders-barbarians/{fixtures.mjs,capture.py}` | engine-projected fixtures for every scenario (SVG/3D × desktop/phone, panel) and `--live` games against the production server |
+
+Interpretations and open items are listed in FIDELITY (Traders & Barbarians).

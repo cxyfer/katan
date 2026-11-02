@@ -17,9 +17,16 @@ modules/
   <id>/messages.ts    the module's event types and error codes
 ```
 
-Placeholders exist for `seafarers`, `citiesKnights`, `tradersBarbarians` and
-`explorersPirates`, so a phase normally edits only its own directory plus its
-profile rows, layout builder and i18n catalog file.
+Placeholders exist for `seafarers`, `citiesKnights` and `explorersPirates`,
+so a phase normally edits only its own directory plus its profile rows,
+layout builder and i18n catalog file.
+
+`tradersBarbarians` is a composite: the box is a set of independent variants
+and scenarios, each a *part* with the module hook shape
+(`tradersBarbarians/part.ts`). `tradersBarbarians/index.ts` maps a profile's
+scenario and variants to parts and runs their hooks in that order; frames are
+`tradersBarbarians.<step>` and each part names the frames it owns. Parts keep
+their state under one key of the module slot (`state.ts`).
 
 ## Hooks
 

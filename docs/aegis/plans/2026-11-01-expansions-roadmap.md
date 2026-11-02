@@ -184,6 +184,30 @@ Fishermen, Rivers, Caravans, Barbarian Attack, Traders & Barbarians; event
 cards and harbourmaster as `variants` on base profiles where the rules allow.
 Catan for Two and SF/CK combinations deferred.
 
+As built (2026-11-02, `feat/traders-barbarians`; details in
+`docs/aegis/work/2026-11-01-traders-barbarians.md`):
+
+- Source TB25 = CN3089 (2025, `v6.250701`). Its variants are the Friendly
+  Robber, Harbors of Catan (Strongest Ports, the old "harbourmaster"), Event
+  Cards and Catan for Two. Registered: Friendly Robber, Harbors and both
+  together on the base board (enabled); Event Cards alone and with the other
+  variants (registered, `implemented: false`: TB25 omits the deck's card list);
+  the five scenarios (enabled, variable setup).
+- One composite module `tradersBarbarians` composes per-part hook sets
+  (`modules/tradersBarbarians/<part>/`); profiles set
+  `ruleModules: ['tradersBarbarians']`. New platform hooks (all additive):
+  `sevenRobberStep`, `robberTargets`, `stealCandidates`, `hexProduces`,
+  `productionAmount`, `roadAllowed`, `buildingAllowed`, `afterBuild`,
+  `beforeEndTurn` (+ `kit.finishTurn`), `harborAccess`, `awardRules` (route
+  weights), `tradeGoods` (gold in offers), `victoryTarget`; board data
+  `BoardLayout.extraNumbers`, `RoadRef.bridge`, `TopologyDefinition.interiorPaths`,
+  robber `-1` beside the board. Base digests are unchanged.
+- Deferred (each needs its own sources and decisions): Event Cards (deck
+  transcription), variant × scenario pairings (TB25 permits them; the
+  Friendly Robber desert rule and Harbors port VP need decisions in four
+  scenarios), Catan for Two, the T&B 5–6 rulebook (CN3090), and the official
+  T&B combination guides with Seafarers / Cities & Knights.
+
 ### P6 Explorers & Pirates
 
 Standalone 3/4 players. Land Ho! first (free ship movement, cargo of

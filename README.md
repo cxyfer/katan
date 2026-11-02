@@ -133,6 +133,10 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
 
 - Base game (`base-2025`) for **3 and 4 players**, and paired base
   (`base-paired-2025`) for **5 and 6 players**, fixed or variable setup.
+- Traders & Barbarians (2025 rulebook) on the base board for **3 and 4
+  players**: the Friendly Robber and Harbors of Catan variants, and the
+  scenarios Fishing on Catan, Rivers of Catan, Merchant Trains, Barbarian
+  Attack and Traders & Barbarians, each its own profile.
 - Private rooms with invite codes and a public room list.
 - Guest identity via a secure browser cookie, with nickname changes.
 - Host-configured room policy before start; after start every seated player must
@@ -146,8 +150,9 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   Web Audio API (no audio files), with mute and separate effect/music volume in
   every screen. Listen to the whole palette at `/?preview=sounds`.
 
-Not yet enabled: Seafarers and Cities & Knights. Those profiles are registered
-in the ruleset registry but disabled; the server rejects them. See
+Not yet enabled: Seafarers, Cities & Knights and the Traders & Barbarians
+event-card variant (the 2025 rulebook does not list the deck). Those profiles
+are registered in the ruleset registry but disabled; the server rejects them. See
 [`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
 including the device, accessibility and playtest evidence that has not been
 produced.

@@ -199,7 +199,7 @@ Room configuration is validated as a complete ruleset, not as independent unchec
 
 - Visibility: private or public.
 - Player capacity: 3, 4, 5, or 6. The host may change it before start, but not below the seated players and only to a count the selected profile supports. A game starts with any supported seated count up to that capacity, so a four-seat base room may start with three and a six-seat paired room with five.
-- Expansion set: base rules are mandatory; the lobby offers only expansion sets that some enabled registry profile has (today: the base game only). Seafarers, Cities & Knights, Traders & Barbarians and Explorers & Pirates are registry vocabulary, not free toggles.
+- Expansion set: base rules are mandatory; the lobby offers only expansion sets that some enabled registry profile has (today: the base game and Traders & Barbarians). Seafarers, Cities & Knights, Traders & Barbarians and Explorers & Pirates are registry vocabulary, not free toggles.
 - Scenario/map: choices depend on the selected expansion set and player count. The host picks expansion set → scenario (with its variants) → player count, and that choice resolves to exactly one registry profile; the profile name and the boxes it needs are shown before the room is created.
 - Victory target: derived from the selected official scenario/rule profile by default; custom targets are not in the first-release scope unless separately approved.
 - Room policies: advisory turn clock off by default, disconnect grace five minutes, and the absence/pause/save behavior in §5.8. The host configures them before start; approved post-start changes require all seats. No setting enables AI or automatic strategic decisions.
@@ -224,6 +224,7 @@ Room configuration is validated as a complete ruleset, not as independent unchec
 | CK25 | CATAN – Cities & Knights, CN3087, 2025 | Replacement setup/production/cards, knights, events, city improvements, and victory. |
 | CK56-25 | CATAN – Cities & Knights 5–6, CN3088, 2025 | 5–6 player supplies, paired-player permissions, event sequence, and scoring. |
 | COMB | Official Seafarers/Cities & Knights combination guidance, reviewed 2026-10-26 | Scenario suitability and explicit interaction overrides. |
+| TB25 | CATAN – Traders & Barbarians, CN3089, 2025 (`v6.250701`) | Variants (p. 4–6) and the five scenarios (pp. 9–24): setup maps, components, rules and victory targets on the base board for 3–4 players. |
 
 Direct source links are in §15. Before enabling a profile, record the exact downloaded edition, publication identifier, content hash, relevant pages/sections, and date for HTML guidance in its implementation evidence. A changing download URL alone is not a version lock. Scenario-specific rules override expansion general rules; expansion rules override base rules. Compatible official clarifications resolve ambiguities. An old FAQ's special-building answer cannot override B56-25. Conflicting sources remain an explicit unresolved fixture until reconciled; do not invent a house rule.
 
@@ -297,6 +298,24 @@ Confirmed D-02 selects **Heading for New Shores** as the first Seafarers scenari
 Heading for New Shores starts on the main island. Its initial settlements/roads/ships follow the scenario's constraints; for C&K substitute the prescribed second city. Each player earns two additional special points for their first settlement on each small island, regardless of whether another player has already settled there. Implement the per-player/per-island claim once, not a global first-arrival bonus. SF25 pp.3–5 establish the three-/four-player layouts and 14-point target. SF56-25 pp.3–4 retain that scenario except for specified setup changes, with no target change; their common five-/six-player layout fixes the small islands but uses the prescribed variable main-island setup and random harbors at marked positions, not a fully fixed board. COMB adds two to that target.
 
 The actual layout data must transcribe the source map's terrain, numbers, harbors, island IDs, robber/pirate positions, and inventory into reviewed fixtures for each supported count; do not generate a merely similar-looking island. Variable setup follows the source's constraints and uses recorded server randomness. Fog/exploration scenarios and other Seafarers scenarios are deferred; do not implement or expose their mechanics solely because the engine can represent hidden hexes. A combined 5–6 row remains disabled until all applicable clauses and fixtures pass; if a contradiction remains, seek approval to revise the confirmed release target visibly rather than silently advertising the row.
+
+#### Traders & Barbarians profiles (P5)
+
+Each Traders & Barbarians scenario or variant set is its own profile on the base board for 3–4 players, `expansions: ['tradersBarbarians']`, rule version `tb-2025.1`, sources B25 + TB25 (pages per row), one composite rules module (`modules/tradersBarbarians`) that runs the selected scenario's and variants' parts.
+
+| Profile | Scenario / variants | Setup | Target | Status |
+|---|---|---|---|---|
+| `tb-friendly-robber-2025` | — / `friendly-robber` | fixed or variable | 10 | enabled |
+| `tb-harbors-2025` | — / `harbors` | fixed or variable | 11 | enabled |
+| `tb-friendly-robber-harbors-2025` | — / both | fixed or variable | 11 | enabled |
+| `tb-event-cards-2025` and its three variant combinations | — / `event-cards` (+ others) | fixed or variable | 10 / 11 | registered, not implemented: TB25 omits the deck's card list |
+| `tb-fishing-2025` | `tb-fishing` | variable | 10 (11 with the old boot) | enabled |
+| `tb-rivers-2025` | `tb-rivers` | variable | 10 | enabled |
+| `tb-merchant-trains-2025` | `tb-merchant-trains` | variable | 12 | enabled |
+| `tb-barbarian-attack-2025` | `tb-barbarian-attack` | variable | 12 | enabled |
+| `tb-traders-barbarians-2025` | `tb-traders-barbarians` | variable | 13 | enabled |
+
+Scenario maps use the frame as printed on the TB25 maps (topology `tb-r2`; the T&B scenario adds interior paths, `tb-traders-r2`). R-TB fixtures cover each row's setup, components with finite supplies, every new command and response, scoring and victory, privacy of hidden tokens and decks, and simulated three- and four-player games (FIDELITY §Traders & Barbarians). Variant-with-scenario pairings, Catan for Two, 5–6 players and combinations with Seafarers or Cities & Knights are not registered.
 
 ### 5.8 Room-policy settings and post-start approval
 
@@ -759,6 +778,7 @@ Operational values such as public rate limits, room caps, interrupted/finished-g
 - **CK25:** [Cities & Knights, CN3087 (2025)](https://www.catan.com/sites/default/files/2025-03/CN3087%20CATAN%E2%80%93Cities%26Knights_%20Rulebook.pdf).
 - **CK56-25:** [Cities & Knights 5–6, CN3088 (2025)](https://www.catan.com/sites/default/files/2025-03/CN3088%20CATAN%E2%80%93Cities%20%26%20Knights%205-6_%20Rulebook.pdf), pp.2–3 replacement components, player aid and paired rules.
 - **COMB:** [Seafarers — Rules for Cities and Knights with the Seafarer Expansion](https://www.catan.com/seafarers), reviewed 2026-10-26; mirrored context on [Cities & Knights](https://www.catan.com/cities-knights).
+- **TB25:** [Traders & Barbarians, CN3089 (2025)](https://www.catan.com/sites/default/files/2025-04/CN3089%20CATAN%20%E2%80%93%20T%26B%20Rulebook.pdf), SHA-256 `7c4938dc45480ed28fde1fccbeca450c815b36ee2f4ed57107650013313acaaf`, accessed 2026-11-01; overview and the out-of-scope 5–6 rulebook (CN3090) and combination guides on [Traders & Barbarians](https://www.catan.com/traders-barbarians).
 - Official clarifications: [Basegame FAQ](https://www.catan.com/faq/basegame), [Seafarers FAQ](https://www.catan.com/faq/seafarers), [Cities & Knights FAQ](https://www.catan.com/faq/cities-knights). Apply only entries compatible with the chosen edition; these pages also contain historical and variant rules.
 - Accessibility reference: [WCAG 2.2](https://www.w3.org/TR/WCAG22/) and [Target Size (Minimum), including exceptions and equivalent controls](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html).
 

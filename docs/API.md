@@ -203,6 +203,31 @@ show this viewer. Expansion state, when a profile has rules modules, is in
 `GameView.modules[<id>]` and advisory targets in `hints.modules[<id>]`; base
 games have neither field.
 
+### Rules-module wire additions
+
+All are absent for base games, so base payloads are unchanged.
+
+- Domestic offers may carry module goods: `trade.offer` / `trade.revise`
+  accept `giveGoods` / `wantGoods` (`{ gold: 3 }`) when the profile's module
+  declares that good; `Offer` and the `trade.*` events repeat them. Goods are
+  checked against holdings at settlement, like resources (Traders & Barbarians
+  gold).
+- `PublicPlayerView.victoryTarget` appears when a module changes a player's
+  target (the old boot); `PublicBoardView.extraNumbers` lists a hex's second
+  production number; road entries may carry `bridge: true`.
+- Traders & Barbarians state is in `GameView.modules.tradersBarbarians`, one
+  key per active part (`harbors`, `tb-fishing`, `tb-coins`, `tb-rivers`,
+  `tb-merchant-trains`, `tb-barbarian-attack`, `tb-traders-barbarians`). Hints
+  in `hints.modules.tradersBarbarians` hold per-part hints plus `targets`
+  (command type or keyed list → legal indices), `board` (a board choice the
+  viewer owes) and `robberHexes`.
+- Module command types (all `tb.*`): `spendFish`, `giveBoot`, `fishSwap`,
+  `buyResource`, `sellResources`, `buildBridge`, `bidWagon`, `assignWagon`,
+  `placeWagon`, `buildBaCard`, `baCapture`, `baPlaceKnight`, `baTreason`,
+  `baSteal`, `moveKnight`, `endKnights`, `moveBarbarian`, `playKnight`,
+  `playSwiftJourney`, `upgradeWagon`, `wagonStep`, `wagonBoost`, `driveOff`,
+  `wagonStop`. Frames are `tradersBarbarians.<step>`.
+
 ## WebSocket `/ws`
 
 The client sends the session cookie; the server answers `hello` on connect.
