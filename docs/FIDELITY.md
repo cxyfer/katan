@@ -194,7 +194,7 @@ These are recorded rather than hidden. None of them is presented as verified.
     `base-2025.1` banks stay short by the cards already lost, and a road a
     `base-2025.2` game let through an opponent's building stays on the board.
     `base-2025.4` (Road Building grants both roads whenever a legal edge
-    exists, B25 CN3081 p.9) is a defect fix whose use on unfinished games is
-    **not yet approved**: a game stored under an earlier `engineVersion` keeps
+    exists, B25 CN3081 p.9) is a defect fix that, by maintainer decision on
+    2026-11-03, does not migrate unfinished games: a game stored under an earlier `engineVersion` keeps
     the old grant (`min(2, legal edges at play time, pieces)`), and an already
     pending effect keeps its recorded `remaining`/`granted`.

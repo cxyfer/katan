@@ -158,8 +158,8 @@ Restore into an empty database, then start the service and verify `/readyz`.
    stall, including effects already pending in saved games; older cards stay
    playable). Other rules migrations still require separate approval.
    `base-2025.4` (Road Building grants both roads when one legal edge exists)
-   has no such approval yet: games stored under an earlier engine version keep
-   the old Road Building grant until the maintainer approves the migration.
+   does not migrate unfinished games (maintainer decision, 2026-11-03): games
+   stored under an earlier engine version keep the old Road Building grant.
    Cards already lost and roads already built are not changed.
 5. Rollback: pin the recorded digest in the Compose `image:` line
    (`ghcr.io/cxyfer/katan@sha256:<digest>`) and run `docker compose up -d`. If
