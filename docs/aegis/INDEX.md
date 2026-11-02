@@ -5,6 +5,7 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-01 | spec | docs/aegis/specs/2026-11-01-bot-opponents.md | Built-in computer opponents: contracts, server integration and delivery plan |
 | 2026-11-01 | work | docs/aegis/work/2026-11-01-harbor-hover.md | Harbour hover covers the whole 3D port |
 | 2026-11-01 | artifact | scripts/harbor-hover/verify.py | Harbour footprint hover and tooltip verification |
 | 2026-11-01 | artifact | docs/aegis/work/2026-11-01-harbor-hover/report.json | Four-case harbour hover browser evidence |
