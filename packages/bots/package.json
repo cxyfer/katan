@@ -9,7 +9,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p bench",
     "test": "vitest run",
-    "bench": "node bench/run.ts"
+    "bench": "node bench/run.mjs"
   },
   "dependencies": {
     "@catan/rules": "workspace:*"
