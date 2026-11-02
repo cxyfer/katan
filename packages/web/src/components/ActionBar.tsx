@@ -53,7 +53,7 @@ export function ActionBar({ controller }: { controller: TableController }) {
                   arm(action.commandType, action.labelId);
                 }}
               >
-                <span className="action-list__label"><GameIcon name={action.commandType === 'turn.roll' ? 'dice' : action.commandType === 'turn.end' ? 'flag' : action.id === 'build.devCard' ? 'cards' : action.id === 'build.road' ? 'trade' : action.id === 'build.city' ? 'crown' : action.id === 'build.ship' || action.id === 'ship.move' ? 'ship' : 'home'} size={18} />{t(action.labelId)}</span>
+                <span className="action-list__label"><GameIcon name={action.commandType === 'turn.roll' ? 'dice' : action.commandType === 'turn.end' ? 'flag' : action.id === 'build.devCard' ? 'cards' : action.id === 'build.road' ? 'trade' : action.id === 'build.city' ? 'crown' : action.id === 'build.ship' || action.id === 'ship.move' ? 'ship' : action.id.startsWith('knight.') ? 'shield' : action.id === 'build.wall' ? 'city' : 'home'} size={18} />{t(action.labelId)}</span>
                 {action.cost && (
                   <span className="action-list__cost" role="group" aria-label={t('play.cost', { cost: formatResourceMap(locale, action.cost) })}>
                     {RESOURCES.filter((resource) => (action.cost?.[resource] ?? 0) > 0).map((resource) => (

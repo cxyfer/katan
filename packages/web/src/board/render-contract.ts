@@ -4,6 +4,7 @@ import type { BoardIntent } from './intent.ts';
 import type { BoardEffectGroup } from './animation.ts';
 import type { TargetKind } from './targets.ts';
 import type { SeafarersModuleView } from './seafarers.ts';
+import type { CitiesKnightsModuleView } from './citiesKnights.ts';
 
 export type RendererMode = 'auto' | 'svg' | 'r3f';
 export type QualityMode = 'standard' | 'low';
@@ -43,7 +44,7 @@ export interface ProjectedTarget extends ProjectedAnchor {
   index: number;
   endpoints?: readonly [ProjectedAnchor, ProjectedAnchor];
 }
-export interface SceneSelection { kind: TargetKind; index: number; playerId: string }
+export interface SceneSelection { kind: TargetKind; index: number; playerId: string; params?: Record<string, unknown> }
 export interface BoardSceneInput {
   geometry: BoardGeometry;
   board: PublicBoardView;
@@ -56,6 +57,8 @@ export interface BoardSceneInput {
   motionAllowed: boolean;
   /** Seafarers module view (island claims); absent for base games. */
   seafarers?: SeafarersModuleView | null;
+  /** Cities & Knights module view (knights, walls, metropolises); absent for base games. */
+  citiesKnights?: CitiesKnightsModuleView | null;
 }
 export interface BoardSceneProps extends BoardSceneInput {
   onProjection: (projection: ProjectionSnapshot) => void;

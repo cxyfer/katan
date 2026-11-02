@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { RESOURCES } from '@catan/rules';
+import { CARD_KINDS, RESOURCES, type CardKind } from '@catan/rules';
+import { citiesKnightsView } from '../board/citiesKnights.ts';
+import { CardKindArt, CardKindGlyph } from './CardKindArt.tsx';
 import { useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
-import { GameIcon, ResourceGlyph } from './GameArt.tsx';
-import { ResourceCardArt } from './ResourceCardArt.tsx';
+import { GameIcon } from './GameArt.tsx';
 import { DevCardPanel } from './DevCardPanel.tsx';
 import { HandGainOverlay } from './HandGainOverlay.tsx';
 import { useHandGains } from './useHandGains.ts';
@@ -39,15 +40,18 @@ export function HandPanel({ controller }: { controller: TableController }) {
   const { state } = controller;
   const self = state.game?.view.players.find((player) => player.id === state.session?.id) ?? null;
   // 擲骰演出期間顯示擲骰前的數量，點數揭曉前不從手牌透露結果。
-  const resources = shownHand(state);
+  // Cities & Knights: commodities are hand cards next to the resources.
+  const commodities = citiesKnightsView(state.game?.view) ? self?.commodities : undefined;
+  const kinds: readonly CardKind[] = commodities ? CARD_KINDS : RESOURCES;
+  const resources: Partial<Record<CardKind, number>> | undefined = commodities ? { ...shownHand(state), ...commodities } : shownHand(state);
   const resourceCards = self ? shownHandSize(state, self) : 0;
   const totalHandCards = resourceCards + (self?.devCardCount ?? 0) + (self?.newDevCardCount ?? 0);
   // 沒有牌可看時，收合的 deck 不再提供展開入口，避免玩家誤以為展開後是一片空白。
   const canExpand = totalHandCards > 0;
   // 仿實體手牌：只列出持有的資源，每一張都是獨立的卡。
-  const held = RESOURCES.flatMap((resource) => Array.from({ length: resources?.[resource] ?? 0 }, (_, copy) => ({ resource, copy })));
+  const held = kinds.flatMap((resource) => Array.from({ length: resources?.[resource] ?? 0 }, (_, copy) => ({ resource, copy })));
   const heldDev = self?.devCards?.length ?? 0;
-  const fanStyles = handFanStyles([...RESOURCES.map((resource) => resources?.[resource] ?? 0), heldDev, self?.newDevCards?.length ?? 0]);
+  const fanStyles = handFanStyles([...kinds.map((resource) => resources?.[resource] ?? 0), heldDev, self?.newDevCards?.length ?? 0]);
   const [inspected, setInspected] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const fanExpanded = expanded && canExpand;
@@ -247,8 +251,8 @@ export function HandPanel({ controller }: { controller: TableController }) {
                   aria-label={t('table.resourceCard', { resource: t(`resource.${resource}`), index: formatNumber(state.locale, copy + 1), count: formatNumber(state.locale, resources?.[resource] ?? 0) })}
                   aria-pressed={isInspected} aria-describedby={`hand-card-use-${id}`}
                   onClick={() => setInspected((current) => current === id ? null : id)}>
-                  <span className="hand-card__art"><ResourceCardArt resource={resource} /></span>
-                  <span className="hand-card__pip"><ResourceGlyph resource={resource} size={17} /></span>
+                  <span className="hand-card__art"><CardKindArt card={resource} /></span>
+                  <span className="hand-card__pip"><CardKindGlyph card={resource} size={17} /></span>
                   <span className="hand-card__name">{t(`resource.${resource}`)}</span>
                   <span id={`hand-card-use-${id}`} className="hand-card__use">{t(`table.resourceUse.${resource}`)}</span>
                 </button>
@@ -262,13 +266,13 @@ export function HandPanel({ controller }: { controller: TableController }) {
       </div>
     </section>
       <ul className="resource-tally" ref={tallyRef} aria-label={t('table.resourceTally')} data-testid="resource-tally">
-        {RESOURCES.map((resource) => {
+        {kinds.map((resource) => {
           const count = resources?.[resource];
           const label = count === undefined ? '—' : formatNumber(state.locale, count);
           return (
             <li key={resource} className={`resource-tally__item resource-tally__item--${resource}${count ? '' : ' resource-tally__item--empty'}`}
               data-testid={`resource-${resource}`}>
-              <span className="resource-tally__icon"><ResourceGlyph resource={resource} size={16} /></span>
+              <span className="resource-tally__icon"><CardKindGlyph card={resource} size={16} /></span>
               <span className="visually-hidden">{t(`resource.${resource}`)}</span>
               {/* 以數量為 key，數字變動時重新掛載才會重播跳動提示。 */}
               <span key={label} className={`resource-tally__count${tallyBumped(resource, label) ? ' resource-tally__count--bump' : ''}`}>{label}</span>

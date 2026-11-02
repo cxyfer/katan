@@ -14,6 +14,7 @@ import type { GameSnapshot } from '@catan/protocol';
 import { awaitingProjection, type TableState } from './table.ts';
 import { blocksNewCommands } from './commands.ts';
 import { seafarersHints, SHIP_COST } from '../board/seafarers.ts';
+import { citiesKnightsHints, citiesKnightsTargets } from '../board/citiesKnights.ts';
 
 export interface ActionDescriptor {
   /** Stable id, also used as the DOM id suffix. */
@@ -36,7 +37,14 @@ export type ActionId =
   | 'build.city'
   | 'build.devCard'
   | 'build.ship'
-  | 'ship.move';
+  | 'ship.move'
+  | 'knight.recruit'
+  | 'knight.activate'
+  | 'knight.promote'
+  | 'knight.move'
+  | 'knight.displace'
+  | 'knight.chaseRobber'
+  | 'build.wall';
 
 function canAfford(
   resources: Partial<Record<Resource, number>> | undefined,
@@ -177,6 +185,20 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
       cost: null,
       targetCount: sea.movableShips.length,
     });
+  }
+
+  // Cities & Knights: knights and city walls; development cards do not exist.
+  const ck = citiesKnightsHints(view);
+  if (ck) {
+    const targets = (commandType: string) => citiesKnightsTargets(view, { commandType }) ?? [];
+    actions.push(build('knight.recruit', 'ck.action.recruit', 'knight.recruit', ck.costs.knight, targets('knight.recruit')));
+    actions.push(build('knight.activate', 'ck.action.activate', 'knight.activate', ck.costs.activate, targets('knight.activate')));
+    actions.push(build('knight.promote', 'ck.action.promote', 'knight.promote', ck.costs.promote, targets('knight.promote')));
+    actions.push(build('knight.move', 'ck.action.move', 'knight.pickMove', null, targets('knight.pickMove')));
+    actions.push(build('knight.displace', 'ck.action.displace', 'knight.pickDisplace', null, targets('knight.pickDisplace')));
+    actions.push(build('knight.chaseRobber', 'ck.action.chase', 'knight.chaseRobber', null, targets('knight.chaseRobber')));
+    actions.push(build('build.wall', 'ck.action.wall', 'build.wall', ck.costs.wall, targets('build.wall')));
+    return actions;
   }
 
   const deckEmpty = (view?.devDeckSize ?? 0) <= 0;

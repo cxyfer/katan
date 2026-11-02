@@ -468,6 +468,35 @@ const RECIPES: Record<SoundCue, Recipe> = {
     [67, 72, 76, 79].forEach((midi, index) => bell(s, at + index * 0.09, midi, 0.08, 1.0, { reverb: 0.4, pan: -0.3 + index * 0.2 }));
     brass(s, at + 0.36, 72, 0.06, 0.5, { reverb: 0.35 });
   },
+  // Cities & Knights: oars striking water as the barbarian ship comes closer.
+  'barbarians.advance': (s, at) => {
+    [0, 0.28].forEach((offset) => swish(s, at + offset, 400, 180, 0.25, 0.14, { pan: offset ? 0.25 : -0.25, reverb: 0.25 }));
+    tone(s, { at: at + 0.1, freq: 98, to: 82, glide: 0.4, decay: 0.5, gain: 0.22 });
+  },
+  // The attack: war drums under a low horn call.
+  'barbarians.attack': (s, at) => {
+    [0, 0.18, 0.36, 0.5].forEach((offset) => knock(s, at + offset, 90, 0.4, { reverb: 0.3 }));
+    brass(s, at + 0.3, 41, 0.12, 0.9, { reverb: 0.5 });
+    brass(s, at + 0.3, 48, 0.08, 0.9, { reverb: 0.5 });
+    noise(s, { at: at + 0.3, attack: 0.05, decay: 0.8, gain: 0.05, filter: { type: 'lowpass', freq: 900 } });
+  },
+  // A knight: a clink of armour and a short bugle.
+  'knight.act': (s, at) => {
+    coin(s, at, 2400, 0.05, { reverb: 0.2 });
+    coin(s, at + 0.05, 1900, 0.04, { reverb: 0.2 });
+    brass(s, at + 0.12, 67, 0.07, 0.25, { reverb: 0.3 });
+    brass(s, at + 0.3, 72, 0.08, 0.4, { reverb: 0.35 });
+  },
+  // A wall: stones set one on another.
+  'wall.build': (s, at) => {
+    [0, 0.14, 0.26].forEach((offset, index) => knock(s, at + offset, 180 - index * 20, 0.3, { reverb: 0.15 }));
+    noise(s, { at: at + 0.3, attack: 0.01, decay: 0.2, gain: 0.05, filter: { type: 'bandpass', freq: 1200, q: 0.8 } });
+  },
+  // A city improvement: a rising chime.
+  'city.improve': (s, at) => {
+    [72, 76, 79].forEach((midi, index) => marimba(s, at + index * 0.1, midi, 0.07, 0.6, { reverb: 0.35 }));
+    bell(s, at + 0.32, 84, 0.05, 0.9, { reverb: 0.45 });
+  },
   // 氣泡「啵」兩聲。
   'chat.message': (s, at) => {
     tone(s, { at, freq: 520, to: 1040, glide: 0.07, decay: 0.1, gain: 0.08 });
@@ -490,4 +519,5 @@ export const CUE_LENGTH_SECONDS: Record<SoundCue, number> = {
   'turn.yours': 1.6, 'turn.other': 0.5, 'game.victory': 2.6, 'game.over': 2.6,
   'ui.select': 0.1, 'ui.error': 0.3, 'chat.message': 0.25,
   'ship.build': 1.1, 'ship.move': 1.1, 'pirate.move': 1.0, 'gold.pick': 1.1, 'island.bonus': 1.4,
+  'barbarians.advance': 0.9, 'barbarians.attack': 1.6, 'knight.act': 0.8, 'wall.build': 0.6, 'city.improve': 1.2,
 };

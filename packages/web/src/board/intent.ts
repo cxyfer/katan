@@ -9,6 +9,7 @@
 
 import type { TableState } from '../state/table.ts';
 import { isShipCommand, seafarersHints } from './seafarers.ts';
+import { citiesKnightsHints, citiesKnightsTargets, isCitiesKnightsVertexCommand } from './citiesKnights.ts';
 import type { TargetKind } from './targets.ts';
 
 export interface BoardIntent {
@@ -73,7 +74,7 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
       commandType: armed,
       labelId: state.selection.labelId ?? armed,
       targets: targetsFor(state, armed, selfId),
-      fromHints: armed.startsWith('build.') || isShipCommand(armed),
+      fromHints: armed.startsWith('build.') || isShipCommand(armed) || isCitiesKnightsVertexCommand(armed),
     };
   }
 
@@ -102,6 +103,17 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
         targets: hints?.legalRoads ?? allEdges(state),
         fromHints: !!hints,
       };
+    }
+  }
+
+  // Cities & Knights: a pillaged city or a displaced knight is chosen on the board.
+  const ck = citiesKnightsHints(view);
+  if (ck && pending && 'module' in pending && pending.module === 'citiesKnights' && selfId && pending.responders.includes(selfId)) {
+    if (pending.kind === 'citiesKnights.pillage') {
+      return { kind: 'vertex', commandType: 'barbarians.pillage', labelId: 'play.pending.citiesKnights.pillage', targets: ck.pillage, fromHints: true };
+    }
+    if (pending.kind === 'citiesKnights.displaced') {
+      return { kind: 'vertex', commandType: 'knight.retreat', labelId: 'play.pending.citiesKnights.displaced', targets: ck.retreat, fromHints: true };
     }
   }
 
@@ -167,6 +179,6 @@ export function targetsFor(state: TableState, commandType: string, selfId: strin
       return seafarersHints(state.game?.view)?.movableShips.find((ship) => ship.edge === from)?.targets ?? [];
     }
     default:
-      return [];
+      return citiesKnightsTargets(state.game?.view, { commandType, params: state.selection.params }) ?? [];
   }
 }
