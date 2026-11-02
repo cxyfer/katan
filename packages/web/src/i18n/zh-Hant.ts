@@ -654,7 +654,6 @@ export const zhHant: Catalog = {
   'profile.sf-ck-new-shores-paired-2025': '航海家＋城市與騎士 — 新海岸，5–6 人（搭檔）',
   'profile.unavailable.paired': '本版本尚未啟用 5–6 人搭檔規則。',
   'profile.unavailable.seafarers': '本版本尚未啟用航海家擴充。',
-  'profile.unavailable.citiesKnightsProgress': '城市與騎士尚待完成進步卡效果，暫不開放。',
   'profile.unavailable.combined': '本版本尚未啟用此組合。',
   'expansion.none': '僅基本版',
   'expansion.seafarers': '航海家',

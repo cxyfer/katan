@@ -190,7 +190,7 @@ describe('R-ROOM lobby', () => {
   it('publishes registry v2 metadata for every profile', async () => {
     const guest = await harness.client('ProfileReader');
     const data = guest.expectOk<{ profiles: Record<string, unknown>[]; selectable: string[] }>(await guest.get('/api/profiles'));
-    expect(data.selectable).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025']);
+    expect(data.selectable).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ck-2025', 'ck-paired-2025']);
     expect(data.profiles.find((profile) => profile.id === 'base-paired-2025')).toMatchObject({
       expansions: [], scenario: null, variants: [], ruleVersion: 'base-2025.3',
       requiredBoxes: ['base', 'base-5-6'], playerCounts: [5, 6], enabled: true,
