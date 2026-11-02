@@ -201,8 +201,14 @@ describe('seafarers + cities & knights client', () => {
       }
       expect(translateEvent(locale, events[1]!, names).messageId).toBe('event.ck.roadRemoved.ship');
       expect(t(locale, 'error.E_PIRATE_INACTIVE')).not.toBe('error.E_PIRATE_INACTIVE');
+      expect(t(locale, 'error.E_SHIP_PINNED_BY_KNIGHT')).not.toBe('error.E_SHIP_PINNED_BY_KNIGHT');
     }
+    expect(translateEvent('en', events[0]!, names).text).toMatch(/from sea hex 8/);
     expect(translateEvent('en', events[1]!, names).text).toMatch(/open ship/);
+    // A missing hex never reads as "hex 0".
+    const missing = translateEvent('en', makeEvent(4, 'sfck.knightChasedPirate', { playerId: 'p1', vertex: 11 }), names).text;
+    expect(missing).not.toMatch(/hex 0/);
+    expect(missing).toMatch(/away/);
     expect(cueForEvent(events[0]!, 'p1')).toBe('knight.act');
   });
 });

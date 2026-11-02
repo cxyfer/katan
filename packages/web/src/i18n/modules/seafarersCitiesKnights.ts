@@ -16,12 +16,14 @@ export const seafarersCitiesKnights: ModuleCatalog = {
     'event.ck.diplomacyRoadBuilt.ship': '{player} placed the ship again on edge {edge} for free.',
     // --- errors --------------------------------------------------------------
     'error.E_PIRATE_INACTIVE': 'The pirate is not in play until the first barbarian attack.',
+    'error.E_SHIP_PINNED_BY_KNIGHT': 'A knight holds this ship: its route must stay connected, and ships next to another player’s knight cannot move.',
     // --- UI ------------------------------------------------------------------
     'sfck.action.chasePirate': 'Chase the pirate',
     'sfck.bandit.robber': 'Your knight chases the robber: move it to another land hex.',
     'sfck.bandit.pirate': 'Your knight chases the pirate: move it to another sea hex or off the board.',
     'sfck.pending.movePirate': 'Move the pirate to another sea hex.',
     'sfck.pirate.atHex': 'from sea hex {hex}',
+    'sfck.pirate.fromUnknown': 'away',
     'sfck.panel.pirateActive': 'the pirate is in play',
     'sfck.panel.pirateWaiting': 'the pirate waits for the first attack',
   },
@@ -32,12 +34,14 @@ export const seafarersCitiesKnights: ModuleCatalog = {
     'event.ck.diplomacyRoadBuilt.ship': '{player} 免費在邊 {edge} 重新放置了船隻。',
     // --- errors --------------------------------------------------------------
     'error.E_PIRATE_INACTIVE': '第一次蠻族來襲前海盜尚未登場。',
+    'error.E_SHIP_PINNED_BY_KNIGHT': '騎士卡住了這艘船：騎士的路線不能中斷，緊鄰其他玩家騎士的船也不能移動。',
     // --- UI ------------------------------------------------------------------
     'sfck.action.chasePirate': '驅趕海盜',
     'sfck.bandit.robber': '你的騎士驅趕強盜：把強盜移到另一個陸地格。',
     'sfck.bandit.pirate': '你的騎士驅趕海盜：把海盜移到另一個海洋格，或移出版圖。',
     'sfck.pending.movePirate': '將海盜移到其他海洋格。',
     'sfck.pirate.atHex': '原在海洋格 {hex}',
+    'sfck.pirate.fromUnknown': '離開原處',
     'sfck.panel.pirateActive': '海盜已登場',
     'sfck.panel.pirateWaiting': '海盜要等第一次蠻族來襲後才登場',
   },

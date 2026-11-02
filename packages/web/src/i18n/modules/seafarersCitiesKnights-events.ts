@@ -16,7 +16,11 @@ export function seafarersCitiesKnightsEventParams(locale: Locale, event: GameEve
       return {
         player: nameOf(str(p.playerId)),
         vertex: num(p.vertex),
-        from: t(locale, 'sfck.pirate.atHex', { hex: num(p.hex) }),
+        // A chase needs the pirate on a sea hex; fall back to neutral text
+        // rather than inventing hex 0 if the parameter is ever missing.
+        from: typeof p.hex === 'number' && Number.isInteger(p.hex)
+          ? t(locale, 'sfck.pirate.atHex', { hex: p.hex })
+          : t(locale, 'sfck.pirate.fromUnknown'),
       };
     default:
       return undefined;
