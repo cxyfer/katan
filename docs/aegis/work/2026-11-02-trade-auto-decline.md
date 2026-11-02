@@ -55,10 +55,11 @@ protocol, engine, persistence-schema or privacy boundary changed.
   [verify.py](../../../scripts/trade-auto-decline/verify.py) seats three
   players, starts the recipient with `catan.trade.autoDecline` already stored
   and the trade panel closed, and proposes five ore through the API. The
-  recipient's client answered `declined` without any input (2.13 s in the
+  recipient's client answered `declined` without any input (1.08 s in the
   recorded run); an affordable offer stayed unanswered; the checkbox read as
   checked, wrote `true`/`false` back to `localStorage`, and stayed inside the
-  390 px layout. No page errors. Report:
+  390 px layout. Captures cover the panel in zh-Hant and English at 1366×768
+  plus the phone width. No page errors. Report:
   [report.json](../../screenshots/trade-auto-decline/report.json).
 
 ## Limitations

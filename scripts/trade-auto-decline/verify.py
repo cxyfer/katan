@@ -230,7 +230,13 @@ with sync_playwright() as p:
     shot(recipient_page, 'trade-auto-decline-1366x768-zh-Hant')
     RESULTS.append({'case': 'checkbox-and-responses', 'checked': True})
 
-    # 4. Toggling writes the preference next to the other browser keys.
+    # 4. The same panel in English; the option and the recorded response are localized.
+    recipient_page.get_by_test_id('locale-switch-game').select_option('en')
+    expect(checkbox).to_be_checked()
+    expect(row.locator('.response-list')).to_contain_text('Declined')
+    shot(recipient_page, 'trade-auto-decline-1366x768-en')
+
+    # 5. Toggling writes the preference next to the other browser keys.
     checkbox.uncheck()
     assert recipient_page.evaluate(f"() => localStorage.getItem('{STORAGE_KEY}')") == 'false'
     checkbox.check()
@@ -238,7 +244,8 @@ with sync_playwright() as p:
     print('PASS checkbox persists through browser storage', flush=True)
     RESULTS.append({'case': 'checkbox-persistence', 'stored': True})
 
-    # 5. Phone width keeps the option inside the trade tool.
+    # 6. Phone width keeps the option inside the trade tool, back in zh-Hant.
+    recipient_page.get_by_test_id('locale-switch-game').select_option('zh-Hant')
     recipient_page.set_viewport_size({'width': 390, 'height': 844})
     expect(checkbox).to_be_visible()
     box = checkbox.bounding_box()

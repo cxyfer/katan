@@ -1,11 +1,11 @@
 {
   "base": "http://127.0.0.1:3112",
-  "gameId": "game_06ce95a7009144fb9916",
+  "gameId": "game_6da2a46fc5ab43a7bf40",
   "results": [
     {
       "case": "auto-declines-unaffordable",
       "offerId": "offer-20-1",
-      "seconds": 2.13
+      "seconds": 1.079
     },
     {
       "case": "leaves-affordable-open",
