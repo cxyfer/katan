@@ -158,17 +158,19 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
     </li>;
   };
 
-  // 拖曳中的卡與桌面中央的放置區掛在遊戲舞台上，才不會被手牌的 overflow 裁掉，全螢幕時也看得到。
+  // 拖曳中的卡掛在遊戲舞台上，才不會被手牌的 overflow 裁掉，全螢幕時也看得到。
+  // 仿殺戮尖塔：不畫放置框，離開手牌後卡片本身放大發光，提示只是貼在卡下方的小標籤。
   const stage = typeof document === 'undefined' ? null : document.querySelector('[data-board-stage]') ?? document.body;
   const dragLayer = drag && stage ? createPortal(<div className="card-drag" data-testid="card-drag" data-armed={drag.armed ? 'true' : undefined}>
-    <div className="card-drag__zone" data-testid="card-drop-zone" aria-hidden="true">
-      <GameIcon name={CARD_ICONS[drag.card] ?? 'book'} size={28} />
-      <span>{t(drag.armed ? 'devCard.dropRelease' : 'devCard.dropHere', { card: t(`devCard.${drag.card}`) })}</span>
-    </div>
-    <div className={`card-drag__ghost development-card--${drag.card}`} style={{ left: drag.x, top: drag.y }} aria-hidden="true">
-      <span className="card-drag__art"><DevCardArt card={drag.card} /></span>
-      <span className="card-drag__pip"><GameIcon name={CARD_ICONS[drag.card] ?? 'book'} size={14} /></span>
-      <strong className="card-drag__name">{t(`devCard.${drag.card}`)}</strong>
+    <div className="card-drag__held" style={{ left: drag.x, top: drag.y }} aria-hidden="true">
+      <div className={`card-drag__ghost development-card--${drag.card}`}>
+        <span className="card-drag__art"><DevCardArt card={drag.card} /></span>
+        <span className="card-drag__pip"><GameIcon name={CARD_ICONS[drag.card] ?? 'book'} size={14} /></span>
+        <strong className="card-drag__name">{t(`devCard.${drag.card}`)}</strong>
+      </div>
+      <span className="card-drag__hint" data-testid="card-drag-hint">
+        {t(drag.armed ? 'devCard.dropRelease' : 'devCard.dropHere', { card: t(`devCard.${drag.card}`) })}
+      </span>
     </div>
   </div>, stage) : null;
 

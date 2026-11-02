@@ -361,7 +361,7 @@ export const zhHant: Catalog = {
   'devCard.effect.yearOfPlenty': '從銀行拿取任意 2 張資源',
   'devCard.effect.monopoly': '指定一種資源，收走所有玩家的該資源',
   'devCard.dragHint': '拖到畫面中央即可使用；也可以點開卡片後按「使用」。',
-  'devCard.dropHere': '拖到這裡使用{card}',
+  'devCard.dropHere': '往上拖到桌面使用',
   'devCard.dropRelease': '放開以使用{card}',
   'devCard.choice.title.monopoly': '壟斷：選擇一種資源',
   'devCard.choice.title.yearOfPlenty': '豐收之年：從銀行選 {remaining} 張資源',

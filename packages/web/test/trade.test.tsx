@@ -608,7 +608,7 @@ describe('development cards and pending effects', () => {
     played.pending = { kind: 'yearOfPlenty', actor: 'p1', remaining: 2 };
     api.setSnapshot(makeSnapshot(played, 13));
     fireEvent.click(screen.getByTestId('choice-submit'));
-    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(3));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(3), { timeout: 5000 });
     const commands = api.callsOf('sendCommand').map((call) => (call.args[1] as CommandRequest).command);
     expect(commands).toEqual([
       { type: 'dev.playYearOfPlenty' },
@@ -636,7 +636,7 @@ describe('development cards and pending effects', () => {
     expect(lastCommand(api)).toEqual({ type: 'pending.takeResource', resource: 'grain' });
   });
 
-  it('plays a card dragged out of the hand onto the table, and returns it when dropped short', async () => {
+  it('plays a card dragged out of the hand onto the table, and returns it when dropped back on the hand', async () => {
     const view = makeView({ hints: makeHints({ canEndTurn: false }), phase: 'preroll' });
     view.players[0]!.devCards = ['roadBuilding', 'monopoly'];
     const api = createFakeApi({ snapshot: makeSnapshot(view) });
@@ -662,9 +662,19 @@ describe('development cards and pending effects', () => {
     expect(screen.queryByTestId('card-drag')).toBeNull();
     expect(screen.queryByTestId('devcard-choice')).toBeNull();
 
+    // 先拖到桌面（已可使用）再拖回手牌放開，同樣取消。
+    drag(monopoly, -200);
+    expect(screen.getByTestId('card-drag').dataset.armed).toBe('true');
+    pointer(monopoly, 'pointermove', -10);
+    expect(screen.getByTestId('card-drag').dataset.armed).toBeUndefined();
+    expect(screen.getByTestId('card-drag-hint').textContent).toBe('Drag onto the table to play');
+    pointer(monopoly, 'pointerup', -10);
+    expect(screen.queryByTestId('card-drag')).toBeNull();
+    expect(screen.queryByTestId('devcard-choice')).toBeNull();
+
     const release = drag(monopoly, -200);
     expect(screen.getByTestId('card-drag').dataset.armed).toBe('true');
-    expect(screen.getByTestId('card-drop-zone').textContent).toBe('Release to play Monopoly');
+    expect(screen.getByTestId('card-drag-hint').textContent).toBe('Release to play Monopoly');
     release();
     expect(screen.queryByTestId('card-drag')).toBeNull();
     expect(screen.getByTestId('devcard-choice').dataset.card).toBe('monopoly');

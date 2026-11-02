@@ -365,7 +365,7 @@ export const en: Catalog = {
   'devCard.effect.yearOfPlenty': 'Take any 2 resources from the bank',
   'devCard.effect.monopoly': 'Take every card of one resource from all players',
   'devCard.dragHint': 'Drag it to the middle of the table to play it, or open the card and press Play.',
-  'devCard.dropHere': 'Drop here to play {card}',
+  'devCard.dropHere': 'Drag onto the table to play',
   'devCard.dropRelease': 'Release to play {card}',
   'devCard.choice.title.monopoly': 'Monopoly: choose a resource',
   'devCard.choice.title.yearOfPlenty': 'Year of plenty: choose {remaining} resource(s) from the bank',

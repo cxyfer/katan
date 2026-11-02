@@ -1,35 +1,31 @@
-/* 拖曳發展卡出牌：桌面中央的放置區與跟著指標移動的卡片，掛在遊戲舞台上（不受手牌 overflow 影響）。 */
+/* 拖曳發展卡出牌（仿殺戮尖塔）：卡片跟著指標走，掛在遊戲舞台上（不受手牌 overflow 影響）。
+   不畫放置框；拖離手牌後卡片放大、轉正並發光，表示放開就會使用，拖回手牌則恢復原狀。 */
 .card-drag { position: fixed; inset: 0; z-index: 120; pointer-events: none; }
-.card-drag__zone {
-  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%);
-  display: grid; place-items: center;
-  width: min(420px, 72vw); height: min(230px, 38vh); padding: 16px; border-radius: 22px;
-  color: #f1e3bd; background: #0b262c99; border: 2px dashed #e3cf9a99;
-  box-shadow: 0 0 0 1px #00000040, inset 0 0 40px #00000040; backdrop-filter: blur(2px);
-  font-size: .9rem; font-weight: 650; letter-spacing: .02em; text-align: center;
-  transition: background 140ms, border-color 140ms, box-shadow 140ms, transform 140ms;
+.card-drag__held {
+  position: absolute; display: grid; justify-items: center; gap: 10px;
+  transform: translate(-50%, -60%);
 }
-.card-drag[data-armed] .card-drag__zone {
-  color: #fff3cf; background: #3d4a2ccc; border-style: solid; border-color: #f1d59c;
-  box-shadow: 0 0 0 4px #f1d59c40, 0 0 46px #f4d08366, inset 0 0 30px #f1d59c22;
-  transform: translate(-50%, -50%) scale(1.04);
-}
-/* 說明做成貼在放置區上緣的標籤，不會被跟著指標的卡片蓋住。 */
-.card-drag__zone > span {
-  position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); padding: 5px 14px; border-radius: 999px;
-  white-space: nowrap; background: #0d2c33f2; border: 1px solid #e3cf9a99; box-shadow: 0 4px 12px #0008;
-}
-.card-drag[data-armed] .card-drag__zone > span { color: #2d2618; background: linear-gradient(#fbf0cf, #e6d29f); border-color: #f6e7bd; }
 .card-drag__ghost {
   --dc: #6c7392; --dc-deep: #2c3350;
-  position: absolute; display: grid; grid-template-rows: minmax(0, 1fr) auto; width: 104px; height: 156px; padding: 5px;
-  transform: translate(-50%, -60%) rotate(-4deg); border-radius: 10px; color: #fff4d8;
+  position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; width: 104px; height: 156px; padding: 5px;
+  /* 以底邊為基準縮放，放大時往上長，不會蓋住下方的提示。 */
+  transform: rotate(-4deg) scale(.94); transform-origin: 50% 100%; border-radius: 10px; color: #fff4d8;
   border: 1px solid color-mix(in srgb, var(--dc) 45%, #fff3cf);
   background: linear-gradient(170deg, color-mix(in srgb, var(--dc) 82%, #fff6dc), var(--dc-deep));
   box-shadow: 0 0 0 1.5px #172a26, 0 18px 30px #00131ccc;
-  transition: transform 120ms ease-out;
+  transition: transform 140ms ease-out, box-shadow 140ms;
 }
-.card-drag[data-armed] .card-drag__ghost { transform: translate(-50%, -60%) rotate(0) scale(1.08); box-shadow: 0 0 0 2px #f1d59c, 0 0 24px #f4d08399, 0 18px 30px #00131ccc; }
+.card-drag[data-armed] .card-drag__ghost {
+  transform: scale(1.14);
+  box-shadow: 0 0 0 2.5px #f6dfa6, 0 0 22px 8px #f4d083b3, 0 0 56px 10px #f4d08366, 0 22px 34px #00131ccc;
+}
+/* 提示只是一行小字：還在手牌範圍時淡淡提示往上拖，離開手牌後轉為金色的「放開以使用」。 */
+.card-drag__hint {
+  padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  color: #e9e2cfcc; background: #0b232999; font-size: .68rem; font-weight: 600; letter-spacing: .02em;
+  text-shadow: 0 1px 2px #000a; transition: color 140ms, background 140ms;
+}
+.card-drag[data-armed] .card-drag__hint { color: #2d2618; background: #f1d59ce6; text-shadow: none; box-shadow: 0 2px 8px #0008; }
 .card-drag__ghost.development-card--knight { --dc: #6c7392; --dc-deep: #2c3350; }
 .card-drag__ghost.development-card--roadBuilding { --dc: #a57a50; --dc-deep: #533720; }
 .card-drag__ghost.development-card--yearOfPlenty { --dc: #6f9a52; --dc-deep: #2f4a22; }
@@ -46,7 +42,7 @@
   clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 50%, 100% 100%, 0 100%, 7px 50%);
 }
 @media (prefers-reduced-motion: reduce) {
-  .card-drag__zone, .card-drag__ghost { transition: none; }
+  .card-drag__ghost, .card-drag__hint { transition: none; }
 }
 
 /* 壟斷：選中的那一種資源高亮，其餘稍暗，一眼看出現在選的是哪種。 */

@@ -4,8 +4,8 @@
   UI_BASE_URL=http://127.0.0.1:3000 python3 scripts/dev-card-drag/capture.py <output-dir>
 
 開局放置經由 API 完成，輪到房主的第一個回合（擲骰前即可出發展卡）。發展卡只在瀏覽器端
-改寫本人投影（HTTP 與 WebSocket 快照）塞入，不送出任何出牌指令：拖曳、放置區與選擇器
-都是送出前的客戶端互動。斷言拖過手牌上緣時放置區轉為可放開、放開後開啟對應的選擇器，
+改寫本人投影（HTTP 與 WebSocket 快照）塞入，不送出任何出牌指令：拖曳與選擇器
+都是送出前的客戶端互動。斷言拖過手牌上緣時卡片轉為可放開、拖回手牌即取消、放開後開啟對應的選擇器，
 以及壟斷改選、豐收之年選兩張的狀態；規則本身由 packages/web/test 與 rules 的單元測試負責。
 """
 import json
@@ -183,7 +183,7 @@ with sync_playwright() as p:
     hover_hand()
     shot(staged, 'hand-expanded-1366x768-zh-Hant')
 
-    # 往上拖但仍停在手牌範圍：放置區只提示、不會打出；放開後卡片回到手上。
+    # 往上拖但仍停在手牌範圍：卡片不發光、只提示往上拖；放開後卡片回到手上。
     box = card_face('knight').bounding_box()
     release = drag('knight', (box['x'] + box['width'] / 2, box['y'] + 10), 'drag-not-armed-1366x768-zh-Hant')
     assert staged.get_by_test_id('card-drag').get_attribute('data-armed') is None
@@ -191,9 +191,20 @@ with sync_playwright() as p:
     expect(staged.get_by_test_id('card-drag')).to_have_count(0)
     expect(staged.get_by_test_id('devcard-choice')).to_have_count(0)
 
-    # 拖到桌面中央：放置區轉為可放開，放開後在上方開啟壟斷的資源選擇器。
+    # 拖到桌面後再拖回手牌：卡片恢復原狀，放開即取消。
+    box = card_face('roadBuilding').bounding_box()
+    release = drag('roadBuilding', (683, 330))
+    expect(staged.get_by_test_id('card-drag')).to_have_attribute('data-armed', 'true')
+    staged.mouse.move(box['x'] + box['width'] / 2, box['y'] + 20, steps=8)
+    assert staged.get_by_test_id('card-drag').get_attribute('data-armed') is None
+    release()
+    expect(staged.get_by_test_id('card-drag')).to_have_count(0)
+    expect(staged.get_by_test_id('devcard-choice')).to_have_count(0)
+
+    # 拖到桌面中央：卡片放大發光、提示改為「放開以使用」，放開後在上方開啟壟斷的資源選擇器。
     release = drag('monopoly', (683, 330), 'drag-armed-monopoly-1366x768-zh-Hant')
     expect(staged.get_by_test_id('card-drag')).to_have_attribute('data-armed', 'true')
+    expect(staged.get_by_test_id('card-drag-hint')).to_have_text('放開以使用壟斷')
     release()
     expect(staged.get_by_test_id('devcard-choice')).to_have_attribute('data-card', 'monopoly')
     shot(staged, 'monopoly-picker-empty-1366x768-zh-Hant')
