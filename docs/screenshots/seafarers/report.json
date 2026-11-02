@@ -1,5 +1,5 @@
 {
-  "base": "http://127.0.0.1:3022",
+  "base": "http://127.0.0.1:3023",
   "fixtures": {
     "topologyId": "sf-new-shores-4",
     "coast": 48,
@@ -26,7 +26,7 @@
       "name": "map-3p-r3f-desktop",
       "status": "PASS",
       "note": "sf-new-shores-3",
-      "sha256": "eba09d3160955eb57e3b5b5f1e379cb30100a4973dd75af354070eb68798eb34",
+      "sha256": "b2f7529cd43081c0385fc53a407ad8ac3ec0adab015dbe3e440a13f74b760298",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -46,17 +46,37 @@
       "name": "map-3p-r3f-phone",
       "status": "PASS",
       "note": "sf-new-shores-3",
-      "sha256": "3dac5fdec25b2ecd721aae464c3d51ed5c7ab90647b720f022300e8f21065927",
+      "sha256": "64ae9f68cdae67ab7543568170856182fcd91b634f43c2cf5bfbf8f9b119a11c",
       "viewport": {
         "width": 390,
         "height": 844
       }
     },
     {
+      "name": "map-5p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-new-shores-56",
+      "sha256": "dc1857d1dd03176d956b8171b1ed248079b09492de4d16177330ecf3ea1f74c5",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-5p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-new-shores-56",
+      "sha256": "7099903d988ab4e12476c76a286eb8549f1da442029c09a1b27cfff85ce58a59",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
       "name": "map-6p-svg-desktop",
       "status": "PASS",
       "note": "sf-new-shores-56",
-      "sha256": "03542c78655dc428c1378fc8a9bb7f595b12bf23730450b070db4e4f30064c91",
+      "sha256": "d37d44a16478334a07515cff6e91573ace2b86e4fb16e00370ce65ae4e1bf17f",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -66,7 +86,7 @@
       "name": "map-6p-r3f-desktop",
       "status": "PASS",
       "note": "sf-new-shores-56",
-      "sha256": "81fcf68234c99cc5167dc72b38e18d543e50c90907a999061c71befa5a3835a1",
+      "sha256": "12dd31192176d119e811e295f071af1aef08d28e13df755c6a1cd474f1b3dbe3",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -76,7 +96,7 @@
       "name": "map-6p-svg-phone",
       "status": "PASS",
       "note": "sf-new-shores-56",
-      "sha256": "8d259305d348498ff9bfd343a3260d25c0389a9cd270a2cf107dec6726144794",
+      "sha256": "6ad6ffa88324b6153798883d378a77c4e0a32da2bcc39a9c1182268ee929a386",
       "viewport": {
         "width": 390,
         "height": 844
@@ -86,7 +106,7 @@
       "name": "map-6p-r3f-phone",
       "status": "PASS",
       "note": "sf-new-shores-56",
-      "sha256": "0b22fbb52f028c7cb8fd5dbe33d011c994b11733ab889f042fa30dac4f2b718b",
+      "sha256": "855c179927d78243939886a75f9a59ae36feead287e204dc19496bba367d4347",
       "viewport": {
         "width": 390,
         "height": 844
@@ -166,7 +186,7 @@
       "name": "live-ship-build-targets-svg",
       "status": "PASS",
       "note": "build ship: legal sea paths highlighted",
-      "sha256": "9ccc111ddb3a7437924cadc011a9d2a3c34651fb6543e3d37bb86b8b8f1cc9d8",
+      "sha256": "28ca479db562c4ef8d2db87dbc419aab7735673fc672029d1b5ac39c3668e2b6",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -176,7 +196,7 @@
       "name": "live-ship-built-svg",
       "status": "PASS",
       "note": "ship built from the starting ship",
-      "sha256": "d3085424830d052367624b4fb6e7426d426a3b70180097b2048dbadd1777947c",
+      "sha256": "3300a29797db4011276062fb7de4209cdfb684c7be72af77f6345c407efdacdf",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -186,7 +206,7 @@
       "name": "live-ship-move-targets-svg",
       "status": "PASS",
       "note": "move ship: chosen ship and its new paths",
-      "sha256": "1431f63670249b931bccca69783f59a66f3c7d2c276a1b8f87a2bfb1663772ee",
+      "sha256": "50cb5d259c79461e2dd7db985b86aa4073eb44f3c58dd846d991e00746d3004e",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -196,7 +216,7 @@
       "name": "live-ship-moved-svg",
       "status": "PASS",
       "note": "ship moved to the branch path",
-      "sha256": "eeb1c9c5f101a3b309204a6c935aeccfbaa1d137cd02df15d1744bc8b5ab5d54",
+      "sha256": "3afd5646dc7770f3e0c7ccd9a66a6ab05db4418e52cf7100220e2650efbcf378",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -206,7 +226,7 @@
       "name": "live-island-bonus-svg",
       "status": "PASS",
       "note": "first settlement on a small island: +2 tokens",
-      "sha256": "3f00dd4739228434ba8aa4c82eb43e0ec137f0bb369716489d00d5c9429d4b34",
+      "sha256": "66344b4ba886adb5a123074cd49a80927e4f6c22f78a5865ed973db7e91cb0f4",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -216,7 +236,7 @@
       "name": "live-island-bonus-3d",
       "status": "PASS",
       "note": "ships, tokens and the pirate in 3D",
-      "sha256": "dfd5a79d3d3f5fa2a6b4189d2f28b49800fbd8e9d3fef69ae2115ffa18a5b97c",
+      "sha256": "76b57dd55e169ece5d870c88750b5f260dea16004c9727225bfab8ba3ab03917",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -226,7 +246,7 @@
       "name": "live-pirate-choice-svg",
       "status": "PASS",
       "note": "robber or pirate: land and sea hexes plus the frame",
-      "sha256": "19a22a8b2bae2da35193e82679bbfbe49332fcbb9879bd6666ea35f20af45174",
+      "sha256": "fac44bea8582bd7d83c831f66dcd9c1f8f50edc03eef77d21597d1289107f579",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -236,7 +256,7 @@
       "name": "live-pirate-moved-svg",
       "status": "PASS",
       "note": "pirate on the sea hex next to the ships",
-      "sha256": "d35d64a88e14aff070bb3bfbceb8e3c94068b1d84d08225760217e913abb0a47",
+      "sha256": "17a89fbdfb46a9bf56514a22e239806d137b01badff5b3feec6dd9bcbb79b3a4",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -246,7 +266,7 @@
       "name": "live-pirate-moved-3d",
       "status": "PASS",
       "note": "pirate in 3D",
-      "sha256": "6450a642ba13c97b7e98757645fb9b42811639e3eb6d01b2e4888b930c4e2b9b",
+      "sha256": "cf32c93acbbf2c79dc3b9bc014c0153cb2b0911ee79b60705124e9ab8ee6bfb4",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -256,7 +276,7 @@
       "name": "live-gold-picker-svg",
       "status": "PASS",
       "note": "gold: choose a resource from the bank",
-      "sha256": "648a5df01cbb488c3b392ae44e7c61ffd32068b005f0bafbe99687a93786ff0d",
+      "sha256": "afb1e347f46e8cf535fdaf5d4178c66b4403cc2badbaeb9703157533211a6ed3",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -266,7 +286,7 @@
       "name": "live-gold-chosen-svg",
       "status": "PASS",
       "note": "gold: ore selected; confirm fully visible",
-      "sha256": "d4dc90ad10d2ff5871b757dff30fcf068a3de06acc099b5c33063b04bc141e6f",
+      "sha256": "85f88622958548fbb235a508e68171019d1eadaea8aa1bdbbd6ab5907c40b43e",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -276,7 +296,7 @@
       "name": "live-after-gold-svg",
       "status": "PASS",
       "note": "gold paid; seat panel with island bonus",
-      "sha256": "7355db8cec4310ca8e3fde2e8d059bbb51fde54b19d4fda14a4c607512161547",
+      "sha256": "b57d9374e857b64949072af2be71abd76f563a98ede350abcd1de225ae563b75",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -286,7 +306,57 @@
       "name": "live-board-3d",
       "status": "PASS",
       "note": "live board in 3D",
-      "sha256": "ec8dca9d29f74ccc0f964bc686a80717e1fb5fd8d62a32783826a718368090ff",
+      "sha256": "959a6152324daa34c646b32935bd7162fdbe18986619eb68483afcfd3bc55ad3",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-road-building-start-svg",
+      "status": "PASS",
+      "note": "Road Building: road by default, ship switch offered",
+      "sha256": "857704abcf33107baecd1a1d5ab1fcd762f9dc26898dd9ffc1484f74904446c8",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-road-building-road-ship-svg",
+      "status": "PASS",
+      "note": "Road Building finished with one road and one ship",
+      "sha256": "d24b662fdf70ce702c3575ae32fbc95aed802d717fca79157253a3bee4efd5f2",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-road-building-two-ships-svg",
+      "status": "PASS",
+      "note": "Road Building finished with two ships",
+      "sha256": "9f7bb2165a6a4376088da680f64c4827da30f0217963252a03ab2bd339b3d42c",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-knight-pirate-choice-svg",
+      "status": "PASS",
+      "note": "Knight: robber on land or pirate at sea / to the frame",
+      "sha256": "e0b77178630bbe4e774359dd2ae5c72edba16687d1065b2b99e3cc7b9254912a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-knight-pirate-moved-3d",
+      "status": "PASS",
+      "note": "pirate moved by a Knight",
+      "sha256": "9b27b254dabf538f0bf05513db9ac83cf562d423c5c416a93fe2e6542644938d",
       "viewport": {
         "width": 1366,
         "height": 900
