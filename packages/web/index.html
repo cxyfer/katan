@@ -241,10 +241,14 @@
         slow.querySelector('button').addEventListener('click', function () { location.reload(); });
         // 與 BootScreen 相同，自開啟網頁起算 8 秒（BOOT_SLOW_MS）
         setTimeout(function () { showSlow(text['boot.slow']); }, Math.max(0, 8000 - performance.now()));
-        // 程式或樣式表下載失敗時 React 不會接手，直接在這裡告知並提供重新整理。
+        // 程式下載失敗時 React 不會接手，直接在這裡告知並提供重新整理；樣式表失敗時 React
+        // 仍可能掛載，因此把失敗記在 <html data-boot-failed>，讓 BootScreen 接手後停在失敗提示
+        // （src/state/boot.ts 的 bootAssetsFailed）。modulepreload 失敗時瀏覽器會在 import 時重抓，不算失敗。
         window.addEventListener('error', function (event) {
           var target = event.target;
-          if (!boot.isConnected || !target || (target.tagName !== 'SCRIPT' && target.tagName !== 'LINK')) return;
+          if (!target || !(target.tagName === 'SCRIPT' || (target.tagName === 'LINK' && target.rel === 'stylesheet'))) return;
+          document.documentElement.setAttribute('data-boot-failed', '');
+          if (!boot.isConnected) return;
           boot.setAttribute('data-failed', '');
           var step = boot.querySelector('[data-step="assets"]');
           step.setAttribute('data-status', 'failed');

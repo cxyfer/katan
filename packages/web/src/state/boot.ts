@@ -24,6 +24,14 @@ export function initialBootProgress(): BootProgress {
   return { assets: 'done', config: 'pending', session: 'pending', profiles: 'pending', games: 'pending' };
 }
 
+/**
+ * `index.html` 的內嵌腳本在程式或樣式表下載失敗時標記 `<html data-boot-failed>`。
+ * 樣式表失敗時 React 仍會掛載，但沒有樣式的牌桌無法使用，啟動畫面因此停在失敗提示。
+ */
+export function bootAssetsFailed(): boolean {
+  return globalThis.document?.documentElement.hasAttribute('data-boot-failed') ?? false;
+}
+
 /** 已結束（含失敗與略過）的步驟累計權重，0–100。 */
 export function bootPercent(progress: BootProgress): number {
   return BOOT_STEPS.reduce((sum, step) => sum + (progress[step] === 'pending' ? 0 : BOOT_WEIGHTS[step]), 0);

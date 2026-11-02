@@ -11,6 +11,7 @@ type StepView = BootStepStatus | 'active';
 /**
  * 啟動畫面：接續 `index.html` 的靜態啟動畫面（同一組 class，樣式內嵌於 index.html），
  * 顯示各啟動請求的狀態與加權進度；徽記的七格地形隨進度逐格點亮。
+ * 必要資源下載失敗時停在失敗提示（見 `bootAssetsFailed`）。
  */
 export function BootScreen({ boot }: { boot: BootProgress }) {
   const t = useT();
@@ -25,9 +26,11 @@ export function BootScreen({ boot }: { boot: BootProgress }) {
     return () => clearTimeout(timer);
   }, []);
 
-  const current = active ? t(`boot.step.${active}`) : t('boot.status.done');
+  const failed = boot.assets === 'failed';
+  const current = failed ? `${t('boot.step.assets')} · ${t('boot.status.failed')}`
+    : active ? t(`boot.step.${active}`) : t('boot.status.done');
   return (
-    <main className="boot" id="main" data-testid="boot-screen" aria-busy="true">
+    <main className="boot" id="main" data-testid="boot-screen" aria-busy={!failed} data-failed={failed ? '' : undefined}>
       <svg className="boot__emblem" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false">
         <defs>
           <linearGradient id="boot-brass" x1="0" y1="-1" x2="0" y2="1">
@@ -67,9 +70,9 @@ export function BootScreen({ boot }: { boot: BootProgress }) {
           );
         })}
       </ol>
-      {slow && (
-        <p className="boot__slow" role="status" data-testid="boot-slow">
-          {t('boot.slow')}
+      {(failed || slow) && (
+        <p className="boot__slow" role={failed ? 'alert' : 'status'} data-testid={failed ? 'boot-failed' : 'boot-slow'}>
+          {t(failed ? 'boot.assetsFailed' : 'boot.slow')}
           <button type="button" className="boot__reload" onClick={() => globalThis.location.reload()}>{t('app.refresh')}</button>
         </p>
       )}

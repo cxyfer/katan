@@ -21,6 +21,7 @@ function deferred<T>() {
 
 afterEach(() => {
   vi.useRealTimers();
+  document.documentElement.removeAttribute('data-boot-failed');
 });
 
 describe('static boot splash in index.html', () => {
@@ -40,6 +41,8 @@ describe('static boot splash in index.html', () => {
     expect(steps).toEqual([...BOOT_STEPS]);
     expect(indexHtml).toContain(`Math.round(${BOOT_WEIGHTS.assets} * `);
     expect(indexHtml).toContain(`Math.max(0, ${BOOT_SLOW_MS} - performance.now())`);
+    // bootAssetsFailed 讀的標記
+    expect(indexHtml).toContain(`document.documentElement.setAttribute('data-boot-failed', '')`);
   });
 });
 
@@ -95,6 +98,34 @@ describe('boot progress', () => {
 
     await act(async () => profiles.resolve(await fake.listProfiles()));
     await screen.findByTestId('nickname-input');
+  });
+
+  it('stays on the failure notice when a stylesheet failed before React mounted', async () => {
+    document.documentElement.setAttribute('data-boot-failed', '');
+    const api = createFakeApi({ identity: null });
+    render(<App services={{ api, storage: memoryStorage(), languages: ['en'], connectSocket: false }} />);
+
+    await waitFor(() => expect(screen.getByTestId('boot-step-profiles').dataset.status).toBe('done'));
+    await act(async () => {});
+    expect(screen.queryByTestId('nickname-input')).toBeNull();
+    expect(screen.getByTestId('boot-step-assets').dataset.status).toBe('failed');
+    expect(screen.getByTestId('boot-failed').textContent).toContain('could not be downloaded');
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeTruthy();
+    expect(screen.getByTestId('boot-screen').getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('stops before the first screen when a stylesheet fails during bootstrap', async () => {
+    const fake = createFakeApi({ identity: null });
+    const profiles = deferred<Awaited<ReturnType<typeof fake.listProfiles>>>();
+    const api = { ...fake, listProfiles: () => profiles.promise };
+    render(<App services={{ api, storage: memoryStorage(), languages: ['en'], connectSocket: false }} />);
+    await waitFor(() => expect(screen.getByTestId('boot-step-profiles').dataset.status).toBe('active'));
+    expect(screen.getByTestId('boot-step-assets').dataset.status).toBe('done');
+
+    document.documentElement.setAttribute('data-boot-failed', '');
+    await act(async () => profiles.resolve(await fake.listProfiles()));
+    await screen.findByTestId('boot-failed');
+    expect(screen.queryByTestId('nickname-input')).toBeNull();
   });
 
   it('offers a refresh once loading takes longer than usual', () => {

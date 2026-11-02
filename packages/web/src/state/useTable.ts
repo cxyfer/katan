@@ -28,7 +28,7 @@ import type {
 import type { CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
 import { SocketClient, type SocketFactory } from '../api/socket.ts';
 import { detectLocale } from '../i18n/index.ts';
-import type { BootStepId } from './boot.ts';
+import { bootAssetsFailed, type BootStepId } from './boot.ts';
 import { newChatId, newCommandId, newRequestId } from './ids.ts';
 import {
   browserStorage,
@@ -291,6 +291,10 @@ export function useTable(options: UseTableOptions): TableController {
     // `listGames` is an authenticated endpoint, so it is only requested once a
     // session is known to exist; otherwise a first visit would fire a
     // guaranteed 401 and log a spurious console error.
+    const checkAssets = () => {
+      if (bootAssetsFailed()) dispatch({ type: 'boot-step', step: 'assets', status: 'failed' });
+    };
+    checkAssets();
     // 每個請求各自結束時回報，啟動畫面才看得出卡在哪一步。
     const track = <T extends { ok: boolean }>(step: BootStepId, request: Promise<T>): Promise<T> =>
       request.then((result) => {
@@ -330,6 +334,8 @@ export function useTable(options: UseTableOptions): TableController {
           // 讀不到伺服器設定時不提供加入電腦，避免送出必然被拒的請求。
           bots: { enabled: false, levels: [] },
         };
+    // 樣式表可能在請求期間才失敗；進入牌桌前再確認一次。
+    checkAssets();
     const stored = readStoredLocale(storage);
     const session = knownSession;
     const locale = stored ?? session?.locale ?? detectLocale(languages);
