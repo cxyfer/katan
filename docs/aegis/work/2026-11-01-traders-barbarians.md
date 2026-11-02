@@ -274,3 +274,21 @@ with the five scenarios (p. 2).
 | Harness | `scripts/traders-barbarians/{fixtures.mjs,capture.py}` | engine-projected fixtures for every scenario (SVG/3D × desktop/phone, panel) and `--live` games against the production server |
 
 Interpretations and open items are listed in FIDELITY (Traders & Barbarians).
+
+## Verification
+
+`SMOKE_PORT=3451 PORT=3051 pnpm verify` (exit 0):
+
+- typecheck: all four packages
+- rules 25 files / 246 tests; protocol 1 / 8; server 11 / 108 passed, 11
+  skipped (PostgreSQL contract replay, no `TEST_POSTGRES_URL`); web 60 / 570
+- build: web + server bundles; smoke 13/13; test:dev 1/1
+
+Captures: `pnpm build && python3 scripts/traders-barbarians/capture.py --out
+test-results/tb-final-1 --live` — 30 cases PASS (5 scenarios × SVG/3D ×
+desktop/phone, 5 panels, 5 live games); curated in
+[`docs/screenshots/traders-barbarians`](../../screenshots/traders-barbarians/README.md).
+
+Base compatibility: `base-regression.test.ts` digests (topologies, layouts,
+created snapshots, five simulated base games) still match.
+

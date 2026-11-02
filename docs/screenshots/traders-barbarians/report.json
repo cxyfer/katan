@@ -1,0 +1,362 @@
+{
+  "sourceHead": "16983c475ca9486b16d9e6f6927521dea9ffd5f8",
+  "buildDigest": "c1fd212592d6a9b94aafc80be63fdc5bcb86d0f349f5d2ab46108dc1c7119978",
+  "cases": [
+    {
+      "name": "tb-fishing-svg-desktop",
+      "kind": "board",
+      "board": "tb-fishing",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "svgHexes": 19,
+      "fishingGrounds": 6,
+      "sha256": "3f1d781db485877504e875a8bc91c8b04c552f8f7ce85eaaf0bb6dc10170c055"
+    },
+    {
+      "name": "tb-fishing-svg-mobile",
+      "kind": "board",
+      "board": "tb-fishing",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "svgHexes": 19,
+      "fishingGrounds": 6,
+      "sha256": "df60d790b9da559619d8fdda74d79d1e608893fb3d9f357b93a3f7f526a55e3b"
+    },
+    {
+      "name": "tb-fishing-r3f-desktop",
+      "kind": "board",
+      "board": "tb-fishing",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "sha256": "895c015bed79ffeb91cd2eea438138a49ac96ae45b52ff0046b84089e7c16a76"
+    },
+    {
+      "name": "tb-fishing-r3f-mobile",
+      "kind": "board",
+      "board": "tb-fishing",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "sha256": "03fd1125ce989e9dc980367b3b9c3a19fdd4e75db6b0550cb271e4c07d586f98"
+    },
+    {
+      "name": "tb-fishing-panel-desktop",
+      "kind": "panel",
+      "board": "tb-fishing",
+      "status": "PASS",
+      "panelSha256": "5337a5aed1f44a1865daa0082c06614e68d9635860eca3e958617621f3ad2a05",
+      "sha256": "5137a3b98f4e781bbe76f0a251906169db9538a94d383c945eca5eb8651350ed"
+    },
+    {
+      "name": "tb-rivers-svg-desktop",
+      "kind": "board",
+      "board": "tb-rivers",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "svgHexes": 19,
+      "fishingGrounds": 0,
+      "sha256": "2febdbfdeb247dc9a52fd625f6911a27e8a8d0b76f074d6ae009a14f5fa66384"
+    },
+    {
+      "name": "tb-rivers-svg-mobile",
+      "kind": "board",
+      "board": "tb-rivers",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "svgHexes": 19,
+      "fishingGrounds": 0,
+      "sha256": "70999a77cdfed06ddda17d32d6c60176e5bef990f14c85c2ddda10e4433233a3"
+    },
+    {
+      "name": "tb-rivers-r3f-desktop",
+      "kind": "board",
+      "board": "tb-rivers",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "sha256": "f33600bc83978843f58fce89ffa902bbc9a3f8f24c2f3fa0fd59d8c17ab37127"
+    },
+    {
+      "name": "tb-rivers-r3f-mobile",
+      "kind": "board",
+      "board": "tb-rivers",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "sha256": "1760d3e4d59f47a3fcddfba2f202b54c73afbed58e4b9049fdb306e5a3a55a34"
+    },
+    {
+      "name": "tb-rivers-panel-desktop",
+      "kind": "panel",
+      "board": "tb-rivers",
+      "status": "PASS",
+      "panelSha256": "de86264a56ca8682210bd04478325c00f961903ab1c99e50b779f72bf77a919e",
+      "sha256": "2d4f6381891fefedea1183605c060c6191bebc67a0de2d898018519346575157"
+    },
+    {
+      "name": "tb-merchant-trains-svg-desktop",
+      "kind": "board",
+      "board": "tb-merchant-trains",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "svgHexes": 19,
+      "fishingGrounds": 0,
+      "sha256": "d7b93e1660c2e3aebc92ccc6ff7b7bd819000fd203c9930a07d226afb7ce2264"
+    },
+    {
+      "name": "tb-merchant-trains-svg-mobile",
+      "kind": "board",
+      "board": "tb-merchant-trains",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "svgHexes": 19,
+      "fishingGrounds": 0,
+      "sha256": "5f532ad70b72add1045c58bd702a15f73964abeca0c4caf8daf77784c20ff600"
+    },
+    {
+      "name": "tb-merchant-trains-r3f-desktop",
+      "kind": "board",
+      "board": "tb-merchant-trains",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "sha256": "b1249f4bd73594e9de9428e65570eb55a4f7d00eefaa1365af3583e34421f4f4"
+    },
+    {
+      "name": "tb-merchant-trains-r3f-mobile",
+      "kind": "board",
+      "board": "tb-merchant-trains",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "sha256": "66ca367f50b4f451fdee75add2643bf3d359e78a7575895631c9c5f975cb7e69"
+    },
+    {
+      "name": "tb-merchant-trains-panel-desktop",
+      "kind": "panel",
+      "board": "tb-merchant-trains",
+      "status": "PASS",
+      "panelSha256": "8d082b93a466bc49fdb84188e43025e6754e390695e8d83c6b46b7b005c00c44",
+      "sha256": "72e8d8940686f595079caf9969250e76f0502b521cd29efce37aac78bbca15e5"
+    },
+    {
+      "name": "tb-barbarian-attack-svg-desktop",
+      "kind": "board",
+      "board": "tb-barbarian-attack",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "svgHexes": 19,
+      "fishingGrounds": 0,
+      "sha256": "dbc5b4511f235d99a8add54cfbc06a056ae1657890fdc2a5e1f9a79d0e6323a2"
+    },
+    {
+      "name": "tb-barbarian-attack-svg-mobile",
+      "kind": "board",
+      "board": "tb-barbarian-attack",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "svgHexes": 19,
+      "fishingGrounds": 0,
+      "sha256": "e24f1726e8c4bcdb969fad2a3dcaca80339f7ca97bda248354c40b70d1309060"
+    },
+    {
+      "name": "tb-barbarian-attack-r3f-desktop",
+      "kind": "board",
+      "board": "tb-barbarian-attack",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "sha256": "96d1e3942cf40282d320da438989f78a837432d6906f922c063cb6a574844a59"
+    },
+    {
+      "name": "tb-barbarian-attack-r3f-mobile",
+      "kind": "board",
+      "board": "tb-barbarian-attack",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "sha256": "7cef733b298b3111230c4a68184acc7d645c93f26ed19ef525d63cccd2cbefb2"
+    },
+    {
+      "name": "tb-barbarian-attack-panel-desktop",
+      "kind": "panel",
+      "board": "tb-barbarian-attack",
+      "status": "PASS",
+      "panelSha256": "32af3c00ecbb0d4b4b1cc3b29ad1912d144c9d98381118f6c31d4308687a6e31",
+      "sha256": "11c5a464b0f7cbc08da9f94e2dba227a1d46e8defca9019a27e5870b0f7289a7"
+    },
+    {
+      "name": "tb-traders-barbarians-svg-desktop",
+      "kind": "board",
+      "board": "tb-traders-barbarians",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "svgHexes": 19,
+      "fishingGrounds": 0,
+      "sha256": "964191a1ce18beb8cc7c8d57335da35b3dacb21e25f0627275bc329072ced551"
+    },
+    {
+      "name": "tb-traders-barbarians-svg-mobile",
+      "kind": "board",
+      "board": "tb-traders-barbarians",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "svgHexes": 19,
+      "fishingGrounds": 0,
+      "sha256": "532691b05d122abc1769b6d913748a57c7624b4cc73b5b37e9ed4d3445a67edd"
+    },
+    {
+      "name": "tb-traders-barbarians-r3f-desktop",
+      "kind": "board",
+      "board": "tb-traders-barbarians",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "sha256": "8ec3a4046b95c21399de6be506ef4b213336d5b7d05df670d1bee00a102eac79"
+    },
+    {
+      "name": "tb-traders-barbarians-r3f-mobile",
+      "kind": "board",
+      "board": "tb-traders-barbarians",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "sha256": "7a70d610a766a6f79be66e851e3d66df10db3cb537e45006824cb646bf6a8644"
+    },
+    {
+      "name": "tb-traders-barbarians-panel-desktop",
+      "kind": "panel",
+      "board": "tb-traders-barbarians",
+      "status": "PASS",
+      "panelSha256": "3886f6f68cd676475237388ab6a890d6a8c523bd340a6b7df7b3ffbaf25b1361",
+      "sha256": "c624901a9d8b716bc7ecb41ae34459a05a5a1c4b6849affa0a14b136eb21b629"
+    },
+    {
+      "name": "tb-fishing-live",
+      "kind": "live",
+      "board": "tb-fishing",
+      "status": "PASS",
+      "pendingAfterRoll": null,
+      "sha256": "5bd7b24f5f21645aa48ce82efe968899528237c14f440856281cd100b787be41",
+      "panelSha256": "45860e14155c98cbbeda38f153b8915398878455d96864c10163a53a2ad16407",
+      "gameId": "game_fc9c3c56338d49908f75"
+    },
+    {
+      "name": "tb-rivers-live",
+      "kind": "live",
+      "board": "tb-rivers",
+      "status": "PASS",
+      "pendingAfterRoll": null,
+      "sha256": "98229ff343c98a53c84e956a2abad4493a070c9863b7ecb9bd7b45ea59646728",
+      "panelSha256": "9943f59695ca6fbc0ab9e4eeb9329c28438e49c5941cca365c04a7a5458aa623",
+      "gameId": "game_e7bfbba26eb542c5b4e1"
+    },
+    {
+      "name": "tb-merchant-trains-live",
+      "kind": "live",
+      "board": "tb-merchant-trains",
+      "status": "PASS",
+      "pendingAfterRoll": null,
+      "sha256": "93da75e95bc77fd2fa9f0adba7e1da5a116094fd3a58612e391b6b56a87df506",
+      "panelSha256": "b3135fd10748101a154f89f33c66ac6512dd82b783dcf0e6023a4a9a0896e1c4",
+      "gameId": "game_c642da4704284bca80dc"
+    },
+    {
+      "name": "tb-barbarian-attack-live",
+      "kind": "live",
+      "board": "tb-barbarian-attack",
+      "status": "PASS",
+      "pendingAfterRoll": null,
+      "sha256": "8452f137024649fa3fc4574058206209cf51aecafb79b6a51a89e1a2854581ed",
+      "panelSha256": "aec0367783e315e7f7ee3bb1f6dbf75fd58829b7639b4ca4659931e5abcd8c27",
+      "gameId": "game_d3363d446df14a0da3c5"
+    },
+    {
+      "name": "tb-traders-barbarians-live",
+      "kind": "live",
+      "board": "tb-traders-barbarians",
+      "status": "PASS",
+      "pendingAfterRoll": null,
+      "pending": "tradersBarbarians.tbWagon",
+      "sha256": "e28c20bd2b7c491bd41337e89e45283b98bf427cfcb2f8a7fe87f7ae1bb0e643",
+      "panelSha256": "a4063d4d546d69919a54c44fdd527165dac19c2d9676f8631da127b6c5515c82",
+      "gameId": "game_5e49a2f6d1544e188229"
+    }
+  ],
+  "limitations": [
+    "Chromium with software WebGL; physical devices, Safari/Firefox and screen readers not run.",
+    "Board/panel cases use deterministic API/WebSocket fixtures carrying rules-engine projections."
+  ],
+  "browser": "145.0.7632.6"
+}
