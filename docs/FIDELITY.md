@@ -217,7 +217,19 @@ reviewer can challenge them rather than discover them by accident.
 - **Barbarian strength (CK25 p. 11 vs CK-FAQ).** The FAQ writes b = s + m
   (cities plus metropolises); CK25 counts cities "including metropolis
   cities" and its worked example counts a metropolis city once. The engine
-  follows CK25 (R-CK-16).
+  follows CK25 (R-CK-16). CK25 p. 8 also says "each metropolis on the board
+  adds to the barbarians' strength"; this **resolved** as the metropolis city
+  being counted as a city, not as an extra point. The p. 11 example figure
+  shows blue 2 cities + 1 basic knight, red 2 cities + 1 basic knight, white
+  1 city carrying the green metropolis, and orange no city + 1 strong knight:
+  5 cities in all, matching the caption "total strength is 5 (5 cities)". An
+  extra +1 per metropolis would give 6. The engine is correct as is.
+- **Tied loss pillages only who can lose a city.** When the weakest group is
+  tied, only players who have a city that can be pillaged lose one; a player
+  with only settlements, or whose city is a protected metropolis, is skipped
+  (R-CK-22, R-CK-23).
+- **Promoting is once per knight per turn.** A knight promoted in this window
+  cannot be promoted again until the next one (R-CK-30; `E_KNIGHT_PROMOTED`).
 - **Event die faces are a source gap.** CK25 shows the die but does not list
   its faces; the engine uses the C&K component die (three ship faces, one
   city gate per track) and records each roll in the snapshot.

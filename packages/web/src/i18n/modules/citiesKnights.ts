@@ -50,6 +50,7 @@ export const citiesKnights: ModuleCatalog = {
     'error.E_ROBBER_INACTIVE': 'The robber is not in play until the first barbarian attack.',
     'error.E_PROGRESS_HAND_LIMIT': 'Discard down to {limit} progress cards before ending your turn (you hold {held}).',
     'error.E_PROGRESS_WITHIN_LIMIT': 'You are within the progress-card hand limit; nothing needs discarding.',
+    'error.E_PROGRESS_DECK_EMPTY': 'That progress-card deck is empty.',
     // --- pending -------------------------------------------------------------
     'play.pending.citiesKnights.resolveRoll': 'Finishing the roll…',
     'play.pending.citiesKnights.pillage': 'The barbarians won: choose a city to be pillaged.',
@@ -372,6 +373,7 @@ export const citiesKnights: ModuleCatalog = {
     'error.E_ROBBER_INACTIVE': '第一次蠻族來襲前強盜尚未登場。',
     'error.E_PROGRESS_HAND_LIMIT': '結束回合前請把進步卡棄到 {limit} 張（目前 {held} 張）。',
     'error.E_PROGRESS_WITHIN_LIMIT': '進步卡未超過手牌上限，不需要棄牌。',
+    'error.E_PROGRESS_DECK_EMPTY': '那個進步卡牌堆已空。',
     'play.pending.citiesKnights.resolveRoll': '正在完成擲骰結算…',
     'play.pending.citiesKnights.pillage': '蠻族獲勝：請選擇一座被劫掠的城市。',
     'play.pending.citiesKnights.displaced': '你的騎士被驅逐了：請沿自己的路線把它移到空的交點。',

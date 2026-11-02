@@ -1792,7 +1792,7 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
   const setupRoad = setupIsMine && setup!.stage === 'road';
   return {
     canRoll: isTurn && state.turn.phase === 'preroll' && !pending,
-    canEndTurn: inAction,
+    canEndTurn: inAction && !moduleEndTurnVeto(state, playerId),
     legalRoads:
       inAction || freeRoads
         ? legalRoadEdges(state, playerId)
@@ -1809,11 +1809,18 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
           .map((building, vertex) => ({ building, vertex }))
           .filter(({ building }) => !!building && building.player === playerId && !building.city)
           .map(({ vertex }) => vertex)
+          .filter((vertex) => modulesAllowCity(state, playerId, vertex))
       : [],
     bankRates: bankRatesFor(state, playerId),
     pendingKind: pending ? pending.kind : null,
     ...moduleHints(state, playerId),
   };
+}
+
+/** Whether a rules module would reject `turn.end` right now (advisory hint only). */
+function moduleEndTurnVeto(state: GameState, playerId: string): boolean {
+  const profile = requireProfile(state.profileId);
+  return rulesModulesOf(profile).some((module) => !!module.beforeEndTurn?.(state, playerId, moduleContext(profile, null)));
 }
 
 function moduleHints(state: GameState, playerId: string): { modules?: Record<string, unknown> } {

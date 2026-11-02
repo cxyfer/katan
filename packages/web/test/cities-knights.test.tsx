@@ -6,7 +6,8 @@ import { actionHints, createGame, projectGame, seededRng, type GameState, type G
 import { boardIntent } from '../src/board/intent.ts';
 import { buildGeometry, type BoardGeometry } from '../src/board/geometry.ts';
 import { citiesKnightsHints, citiesKnightsPoints, citiesKnightsView, knightFollowUp, knightGhost } from '../src/board/citiesKnights.ts';
-import { createKnightModel, createMetropolisModel, createWallModel } from '../src/board/three/diorama-knights.ts';
+import { createKnightModel, createMetropolisModel, createToppledCityModel, createWallModel } from '../src/board/three/diorama-knights.ts';
+import { createSettlementModel } from '../src/board/three/diorama-structures.ts';
 import { CitiesKnightsPanel } from '../src/components/CitiesKnightsPanel.tsx';
 import { CitiesKnightsPrompt } from '../src/components/CitiesKnightsPrompt.tsx';
 import { DiscardPicker } from '../src/components/DiscardPicker.tsx';
@@ -161,6 +162,14 @@ describe('cities & knights client', () => {
       }
     }
     expect(createWallModel('#3a6fb8').getAttribute('position').count).toBeGreaterThan(0);
+    // A toppled city lies on its side: wider than tall, resting on the ground.
+    const standing = createSettlementModel('#3a6fb8', true, 1);
+    standing.computeBoundingBox();
+    const toppled = createToppledCityModel('#3a6fb8', 1);
+    expect(toppled.getAttribute('position').count).toBe(standing.getAttribute('position').count);
+    expect(toppled.boundingBox!.min.y).toBeCloseTo(0, 5);
+    expect(toppled.boundingBox!.max.y).toBeLessThan(standing.boundingBox!.max.y);
+    expect(toppled.boundingBox!.max.x - toppled.boundingBox!.min.x).toBeGreaterThan(toppled.boundingBox!.max.y);
     for (const track of ['science', 'trade', 'politics'] as const) {
       expect(createMetropolisModel('#3a6fb8', track).boundingBox!.max.y).toBeGreaterThan(1);
     }
@@ -193,6 +202,25 @@ describe('cities & knights client', () => {
     render(<LocaleProvider locale="en"><CitiesKnightsPrompt controller={deck.controller} /></LocaleProvider>);
     fireEvent.click(screen.getByTestId('ck-deck-politics'));
     expect(deck.submitCommand).toHaveBeenCalledWith({ type: 'barbarians.chooseDeck', track: 'politics' }, 'ck.prompt.deck');
+  });
+
+  it('keeps the picked progress cards when another responder changes the frame sequence', () => {
+    const { state } = knightTable();
+    state.players[0]!.progressCards = ['crane', 'wedding', 'mining', 'merchant', 'alchemy'];
+    state.pending = { kind: 'citiesKnights.progressDiscard', module: 'citiesKnights', responders: ['p1', 'p2'], data: { required: { p1: 1, p2: 1 } } } as GameState['pending'];
+    const first = view(state);
+    const { rerender } = render(<LocaleProvider locale="en"><CitiesKnightsPrompt controller={controllerFor(first).controller} /></LocaleProvider>);
+    fireEvent.click(screen.getByTestId('ck-progress-pick-1'));
+    expect(screen.getByTestId('ck-progress-pick-1').getAttribute('aria-pressed')).toBe('true');
+    // p2 discards: the sequence advances, p1's frame content stays the same.
+    const bumped = controllerFor({ ...first, seq: first.seq + 1 });
+    rerender(<LocaleProvider locale="en"><CitiesKnightsPrompt controller={bumped.controller} /></LocaleProvider>);
+    expect(screen.getByTestId('ck-progress-pick-1').getAttribute('aria-pressed')).toBe('true');
+    // A changed hand is a different choice and starts clean.
+    state.players[0]!.progressCards = ['crane', 'mining', 'merchant', 'alchemy', 'wedding'];
+    const changed = controllerFor({ ...view(state), seq: first.seq + 2 });
+    rerender(<LocaleProvider locale="en"><CitiesKnightsPrompt controller={changed.controller} /></LocaleProvider>);
+    expect(screen.getByTestId('ck-progress-pick-1').getAttribute('aria-pressed')).toBe('false');
   });
 
   it('shows the chart, buys an improvement and arms the board when a metropolis has several sites', () => {

@@ -78,5 +78,6 @@ export const messages = {
     'E_PROGRESS_HAND_LIMIT',
     'E_PROGRESS_WITHIN_LIMIT',
     'E_ALCHEMY_SET',
+    'E_PROGRESS_DECK_EMPTY',
   ] as const,
 };

@@ -198,7 +198,7 @@ export function chooseDefenderDeck(state: GameState, actorId: string, command: M
   if (frame.responders[0] !== actorId) return kit.fail('E_NOT_YOUR_TURN', { waitingFor: frame.responders[0] });
   const track = command.track as Track;
   if (!TRACKS.includes(track)) return kit.fail('E_INVALID_SELECTION', { track });
-  if (state.progressDecks[track].length === 0) return kit.fail('E_DECK_EMPTY', { track });
+  if (state.progressDecks[track].length === 0) return kit.fail('E_PROGRESS_DECK_EMPTY', { track });
   drawProgressCard(state, actorId, track, ctx, 'defense');
   frame.responders.shift();
   kit.checkVictory(state);

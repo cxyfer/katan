@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { scoreOf } from '../src/analysis.ts';
+import { actionHints } from '../src/engine.ts';
 import { barbarianStrength } from '../src/modules/citiesKnights/barbarians.ts';
 import { ckState, ckView } from '../src/modules/citiesKnights/state.ts';
 import type { GameState } from '../src/types.ts';
@@ -81,7 +82,7 @@ describe('R-CK defenders win (CK25 p. 11)', () => {
     expect(rejectCk(rolled.state, 'p2', { type: 'barbarians.chooseDeck', track: 'trade' })).toBe('E_NOT_YOUR_TURN');
     const first = actCk(rolled.state, 'p4', { type: 'barbarians.chooseDeck', track: 'politics' });
     expect(player(first.state, 'p4').progressCards).toEqual(['wedding']);
-    expect(rejectCk(first.state, 'p2', { type: 'barbarians.chooseDeck', track: 'politics' })).toBe('E_DECK_EMPTY');
+    expect(rejectCk(first.state, 'p2', { type: 'barbarians.chooseDeck', track: 'politics' })).toBe('E_PROGRESS_DECK_EMPTY');
     const second = actCk(first.state, 'p2', { type: 'barbarians.chooseDeck', track: 'trade' });
     expect(player(second.state, 'p2').progressCards).toEqual(['merchant']);
     expect(second.state.pending).toBeNull();
@@ -202,6 +203,8 @@ describe('R-CK barbarians win (CK25 p. 11)', () => {
     const after = rolled.state;
     give(after, 'p1', { grain: 4, ore: 6 });
     expect(rejectCk(after, 'p1', { type: 'build.city', vertex: spots[1]! })).toBe('E_ILLEGAL_TARGET');
+    // The advisory hint lists only the toppled city, as the engine would accept.
+    expect(actionHints(after, 'p1').legalCities).toEqual([spots[0]!]);
     const rebuilt = actCk(after, 'p1', { type: 'build.city', vertex: spots[0]! });
     expect(ckView(rebuilt.state).toppled).toEqual([]);
     expect(actCk(rebuilt.state, 'p1', { type: 'build.city', vertex: spots[1]! }).state.board.buildings[spots[1]!]!.city).toBe(true);
