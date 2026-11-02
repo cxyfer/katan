@@ -120,6 +120,7 @@ describe('cities & knights client', () => {
     expect(move?.targets).toContain(path.vertices[3]);
     expect(knightGhost(citiesKnightsView(gameView), 'knight.move', path.vertices[3]!, { from: knight })).toEqual({ level: 2, active: false });
     expect(knightGhost(citiesKnightsView(gameView), 'knight.promote', knight)).toEqual({ level: 3, active: true });
+    expect(knightGhost(citiesKnightsView(gameView), 'progress.treasonPlace', path.vertices[3]!, { level: 2 })).toEqual({ level: 2, active: false });
   });
 
   it('arms the board for a pillage and a knight retreat', () => {

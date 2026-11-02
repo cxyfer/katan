@@ -39,7 +39,7 @@ import { createRobberModel } from './diorama-robber.ts';
 import { DioramaSeafarers, PirateGhost, ShipGhost } from './DioramaSeafarers.tsx';
 import { isShipCommand } from '../seafarers.ts';
 import { DioramaCitiesKnights, KnightGhost, Merchant } from './DioramaCitiesKnights.tsx';
-import { isCitiesKnightsVertexCommand, isKnightCommand, knightGhost, progressGhost } from '../citiesKnights.ts';
+import { isCitiesKnightsVertexCommand, knightGhost, progressGhost, showsKnightGhost } from '../citiesKnights.ts';
 import { atlasGeometryKey, boardSceneResources, type BoardSceneResources } from './resources.ts';
 
 type SceneProps = Pick<BoardSceneProps,
@@ -254,7 +254,7 @@ function SelectionGhost({ props, resources }: { props: SceneProps; resources: Bo
   if (selection.kind === 'vertex') {
     const vertex = props.geometry.vertices[selection.index];
     if (!vertex) return null;
-    if (isKnightCommand(props.intent.commandType) || props.intent.commandType === 'build.wall') {
+    if (showsKnightGhost(props.intent.commandType) || props.intent.commandType === 'build.wall') {
       const ghost = knightGhost(props.citiesKnights ?? null, props.intent.commandType, selection.index, selection.params);
       return <KnightGhost geometry={props.geometry} vertex={selection.index} {...ghost}
         wall={props.intent.commandType === 'build.wall'} material={material} />;

@@ -103,7 +103,7 @@ export function ProgressHand({ controller }: { controller: TableController }) {
           ))}
         </ul>}
     {current && hints && (
-      <ProgressPlayForm key={current.card} hint={current} view={view} hints={hints} disabled={blocked} nameOf={nameOf}
+      <ProgressPlayForm key={current.card} hint={current} view={view} disabled={blocked} nameOf={nameOf}
         onPlay={(fields) => play(fields, current.card)} onCancel={() => setActive(null)}
         onBoard={(selection) => { setActive(null); actions.selectTarget(selection); }} />
     )}
@@ -113,10 +113,9 @@ export function ProgressHand({ controller }: { controller: TableController }) {
 }
 
 /** Cards that need a choice in the panel: Alchemy, Crane, Invention, Smithing, players and kinds. */
-function ProgressPlayForm({ hint, view, hints, disabled, nameOf, onPlay, onCancel, onBoard }: {
+function ProgressPlayForm({ hint, view, disabled, nameOf, onPlay, onCancel, onBoard }: {
   hint: ProgressCardHint;
   view: GameView;
-  hints: CitiesKnightsHints;
   disabled: boolean;
   nameOf: (id: string) => string;
   onPlay: (fields: Record<string, unknown>) => void;
@@ -248,8 +247,6 @@ function ProgressPlayForm({ hint, view, hints, disabled, nameOf, onPlay, onCance
         )}
         <button type="button" className="button button--ghost" data-testid="ck-play-cancel" onClick={onCancel}>{t('app.cancel')}</button>
       </div>
-      {/* Keep the hint list in sync with the tracks the hints know about. */}
-      {hints.progress.length === 0 && null}
     </div>
   );
 }

@@ -200,6 +200,11 @@ export function isKnightCommand(commandType: string | null | undefined): boolean
   return !!commandType && KNIGHT_COMMANDS.has(commandType);
 }
 
+/** Commands whose board preview is a knight: the knight actions and Treason's placement. */
+export function showsKnightGhost(commandType: string | null | undefined): boolean {
+  return isKnightCommand(commandType) || commandType === 'progress.treasonPlace';
+}
+
 /** Vertex commands owned by the module (for previews and labels). */
 export function isCitiesKnightsVertexCommand(commandType: string | null | undefined): boolean {
   return isKnightCommand(commandType) || commandType === 'build.wall' || commandType === 'city.improve' || commandType === 'barbarians.pillage'
@@ -329,6 +334,7 @@ export function knightGhost(ck: CitiesKnightsModuleView | null, commandType: str
       return { level: knight?.level ?? 1, active: commandType === 'knight.retreat' ? (knight?.active ?? false) : false };
     }
     case 'knight.recruit': return { level: 1, active: false };
+    case 'progress.treasonPlace': return { level: (Number(params?.level) || 1) as KnightLevel, active: false };
     default: return { level: at(vertex)?.level ?? 1, active: at(vertex)?.active ?? false };
   }
 }

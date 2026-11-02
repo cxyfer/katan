@@ -11,7 +11,7 @@ import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarke
 import { TerrainEmblem } from './TerrainArt.tsx';
 import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
 import { isShipCommand, seafarersView } from '../board/seafarers.ts';
-import { citiesKnightsView, isCitiesKnightsVertexCommand, isKnightCommand, knightGhost, merchantSpot, progressGhost } from '../board/citiesKnights.ts';
+import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
 import { MerchantPiece } from './SvgProgressArt.tsx';
 import { KnightPiece, SvgCitiesKnightsPieces, SvgCitiesKnightsWalls, ToppledCity, WallRing } from './SvgCitiesKnights.tsx';
 
@@ -218,7 +218,7 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
           )}
           {selection.index !== null && intent && selection.kind === intent.kind && intent.targets.includes(selection.index) && (
             <g className="board__preview-ghost" data-testid="board-preview-ghost" aria-hidden="true" pointerEvents="none">
-              {intent.kind === 'vertex' && geometry.vertices[selection.index] && isKnightCommand(intent.commandType)
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && showsKnightGhost(intent.commandType)
                 && <KnightPiece {...geometry.vertices[selection.index]!} {...knightGhost(ck, intent.commandType, selection.index, selection.params)} color={selfColor} ghost />}
               {intent.kind === 'vertex' && geometry.vertices[selection.index] && intent.commandType === 'build.wall'
                 && <WallRing {...geometry.vertices[selection.index]!} color={selfColor} />}
