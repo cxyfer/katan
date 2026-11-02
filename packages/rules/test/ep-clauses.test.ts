@@ -11,6 +11,8 @@ import type { EpTile } from '../src/explorers-pirates-boards.ts';
 import { LAIR_TOKENS } from '../src/modules/explorersPirates/core.ts';
 import { councilAnchors, fogAtEnds, isSeaRoute, vertexTouchesFog } from '../src/modules/explorersPirates/geometry.ts';
 import { foundTargets, movesLeft } from '../src/modules/explorersPirates/movement.ts';
+import { pieceTargets } from '../src/modules/explorersPirates/economy.ts';
+import { piecesInPlay } from '../src/modules/explorersPirates/core.ts';
 import { pirateTargets } from '../src/modules/explorersPirates/pirate.ts';
 import { epState, viewTurn, type EpRegionPool, type EpShip } from '../src/modules/explorersPirates/state.ts';
 import { hexNeighbors, type BoardTopology } from '../src/topology.ts';
@@ -133,7 +135,7 @@ describe('R-EP building limits (EP25 p. 9, EP25-M pp. 5–6)', () => {
     setHand(state, 'p1', { grain: 2, ore: 2, wool: 4, lumber: 1, brick: 1 });
     expect(epHints(state, 'p1').harbors).toEqual([]);
     expect(refused(state, 'p1', { type: 'ep.buildHarbor', vertex: spare[3]! })).toBe('E_NO_PIECES');
-    // Capacity: two crews fill a harbour, then a settler needs the clear option.
+    // Capacity: two crews fill a harbour.
     const harbor = spare[0]!;
     state = run(state, 'p1', { type: 'ep.buildCrew', harbor }).state;
     state = run(state, 'p1', { type: 'ep.buildCrew', harbor }).state;
@@ -170,19 +172,84 @@ describe('R-EP building limits (EP25 p. 9, EP25-M pp. 5–6)', () => {
     expect(own.length).toBeGreaterThan(0);
   });
 
-  it('R-EP-28 a piece is returned to make room only when every holder is full (EP25 p. 10)', () => {
-    let state = epPlayable('pirate-lairs', 3);
+  it('R-EP-28 a full holder returns exactly one named piece, only when every holder is full (EP25 p. 10)', () => {
+    let state = epPlayable('fish', 3);
     const { ship, harbor } = shipAtHarbor(state, 'p1');
-    setHand(state, 'p1', { lumber: 2, brick: 2, wool: 2, grain: 2, ore: 2 });
-    // Ship: settler (full). Harbour: empty → building onto the ship with `clear` is refused.
-    expect(refused(state, 'p1', { type: 'ep.buildCrew', ship: ship.id, clear: true })).toBe('E_EP_ROOM_ELSEWHERE');
-    epState(state).harbors.find((entry) => entry.vertex === harbor)!.cargo = ['settler'];
-    // Every holder is full: the crew replaces the ship's settler.
-    const outcome = run(state, 'p1', { type: 'ep.buildCrew', ship: ship.id, clear: true });
+    const holders = pieceTargets(state, 'p1');
+    const harborOf = (s: GameState) => epState(s).harbors.find((entry) => entry.vertex === harbor)!;
+    setHand(state, 'p1', { lumber: 4, brick: 4, wool: 4, grain: 4, ore: 4 });
+    // Every other holder is full of crews; the ship holds its settler and this harbour is empty.
+    for (const holder of holders) {
+      if ('harbor' in holder && holder.harbor.vertex !== harbor) holder.harbor.cargo = ['crew', 'crew'];
+      if ('ship' in holder && holder.ship.id !== ship.id) holder.ship.cargo = ['crew', 'crew'];
+    }
+    harborOf(state).cargo = [];
+    expect(refused(state, 'p1', { type: 'ep.buildCrew', ship: ship.id })).toBe('E_EP_NO_ROOM');
+    expect(refused(state, 'p1', { type: 'ep.buildCrew', ship: ship.id, remove: 'settler' })).toBe('E_EP_ROOM_ELSEWHERE');
+    expect(refused(state, 'p1', { type: 'ep.buildCrew', harbor, remove: 'crew' })).toBe('E_INVALID_SELECTION');
+    // Now every slot is full: harbour [crew, spice], ship [settler].
+    harborOf(state).cargo = ['crew', 'spice'];
+    expect(refused(state, 'p1', { type: 'ep.buildCrew', harbor })).toBe('E_EP_NO_ROOM');
+    expect(refused(state, 'p1', { type: 'ep.buildCrew', harbor, remove: 'fish' })).toBe('E_INVALID_SELECTION');
+    expect(refused(state, 'p1', { type: 'ep.buildCrew', harbor, remove: 'anchor' })).toBe('E_INVALID_SELECTION');
+    // A crew replaces one small piece: the other one stays.
+    let outcome = run(state, 'p1', { type: 'ep.buildCrew', harbor, remove: 'spice' });
+    expect(harborOf(outcome.state).cargo).toEqual(['crew', 'crew']);
+    expect(outcome.events.find((event) => event.type === 'ep.crewBuilt')!.params).toMatchObject({ harbor, removed: ['spice'] });
+    // A crew replacing a crew keeps the count of crews on the board.
+    const crews = piecesInPlay(outcome.state, 'p1', 'crew');
+    outcome = run(outcome.state, 'p1', { type: 'ep.buildCrew', harbor, remove: 'crew' });
+    expect(harborOf(outcome.state).cargo).toEqual(['crew', 'crew']);
+    expect(piecesInPlay(outcome.state, 'p1', 'crew')).toBe(crews);
+    // A settler needs an empty holder: removing one of two small pieces is not enough.
     state = outcome.state;
-    expect(shipOf(state, 'p1').cargo).toEqual(['crew']);
-    expect(outcome.events.find((event) => event.type === 'ep.crewBuilt')!.params).toMatchObject({ removed: ['settler'] });
-    expect(epHints(state, 'p1').settlersLeft).toBe(1);
+    expect(refused(state, 'p1', { type: 'ep.buildSettler', harbor, remove: 'crew' })).toBe('E_EP_NO_ROOM');
+    // A large piece leaves the holder empty: a fish haul goes back to the fish supply.
+    shipOf(state, 'p1').cargo = ['fish'];
+    epState(state).fishSupply -= 1;
+    const fish = epState(state).fishSupply;
+    outcome = run(state, 'p1', { type: 'ep.buildSettler', ship: ship.id, remove: 'fish' });
+    expect(shipOf(outcome.state, 'p1').cargo).toEqual(['settler']);
+    expect(epState(outcome.state).fishSupply).toBe(fish + 1);
+    // A crew onto a holder with one large piece returns that piece.
+    outcome = run(outcome.state, 'p1', { type: 'ep.buildCrew', ship: ship.id, remove: 'settler' });
+    expect(shipOf(outcome.state, 'p1').cargo).toEqual(['crew']);
+  });
+
+  it('R-EP-48 piece limits: 2 settlers, 9 crews, 5 settlements and 4 harbour settlements (EP25 pp. 2, 9–10)', () => {
+    const state = epPlayable('fish', 3);
+    const { harbor } = shipAtHarbor(state, 'p1');
+    const slot = epState(state);
+    setHand(state, 'p1', { lumber: 4, brick: 4, wool: 4, grain: 4, ore: 4 });
+    // Settlers: the ship's settler plus one in the harbour make two.
+    slot.harbors.find((entry) => entry.vertex === harbor)!.cargo = ['settler'];
+    for (const holder of pieceTargets(state, 'p1')) if ('ship' in holder) holder.ship.cargo = [];
+    expect(piecesInPlay(state, 'p1', 'settler')).toBe(1);
+    const free = pieceTargets(state, 'p1').find((holder) => 'ship' in holder)!;
+    const first = run(state, 'p1', { type: 'ep.buildSettler', ship: (free as { ship: EpShip }).ship.id });
+    expect(piecesInPlay(first.state, 'p1', 'settler')).toBe(2);
+    // Both settlers are in play: no third, even by returning a piece.
+    expect(refused(first.state, 'p1', { type: 'ep.buildSettler', harbor, remove: 'settler' })).toBe('E_NO_PIECES');
+    // Crews: nine anywhere (here on lairs) leave none to build.
+    const crewState = JSON.parse(JSON.stringify(state)) as GameState;
+    epState(crewState).harbors.find((entry) => entry.vertex === harbor)!.cargo = [];
+    epState(crewState).sites.push({ hex: -1, kind: 'lair', crews: Array.from({ length: 9 }, () => 'p1'), captured: false });
+    expect(refused(crewState, 'p1', { type: 'ep.buildCrew', harbor })).toBe('E_NO_PIECES');
+    // Settlements: 5 plain settlements in play leave none for building or founding.
+    const topo = topologyOf(state);
+    const own = state.board.buildings.filter((building) => building?.player === 'p1').length;
+    const harbors = epState(state).harbors.filter((entry) => entry.player === 'p1').length;
+    const spots = topo.vertices.map((_, index) => index).filter((index) => !state.board.buildings[index]
+      && neighborsOfVertex(topo, index).every((neighbor) => !state.board.buildings[neighbor]));
+    const picked: number[] = [];
+    for (const index of spots) {
+      if (picked.length === 5 - (own - harbors)) break;
+      if (picked.some((other) => neighborsOfVertex(topo, other).includes(index))) continue;
+      picked.push(index);
+    }
+    for (const index of picked) state.board.buildings[index] = { player: 'p1', city: false };
+    expect(actionHints(state, 'p1').legalSettlements).toEqual([]);
+    expect(foundTargets(state, shipOf(state, 'p1'))).toEqual([]);
   });
 });
 

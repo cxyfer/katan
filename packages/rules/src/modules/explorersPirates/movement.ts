@@ -34,7 +34,7 @@ import {
   shipsOnEdge,
   vertexTouchesFog,
 } from './geometry.ts';
-import { epState, epTurn, hasRoom, shipTurn, siteAt, viewTurn, type Cargo, type EpShip, type EpTurn } from './state.ts';
+import { cargoPiece, epState, epTurn, hasRoom, shipTurn, siteAt, viewTurn, type Cargo, type EpShip, type EpTurn } from './state.ts';
 
 /** MP of a ship this turn: 4, 6 with the extra wool, +1/+2 with Swift Voyage. */
 export function shipAllowance(state: GameState, ship: EpShip, turn: EpTurn): number {
@@ -163,10 +163,6 @@ function ownHarborAtShip(state: GameState, ship: EpShip, vertex: unknown) {
   const harbor = harborAt(epState(state), vertex as number);
   if (!harbor || harbor.player !== ship.player) return undefined;
   return shipEnds(state, ship).includes(harbor.vertex) ? harbor : undefined;
-}
-
-function cargoPiece(value: unknown): Cargo | null {
-  return value === 'settler' || value === 'crew' || value === 'fish' || value === 'spice' ? value : null;
 }
 
 function removeOne(cargo: Cargo[], piece: Cargo): boolean {

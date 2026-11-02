@@ -148,6 +148,26 @@ export function hasRoom(cargo: readonly Cargo[], piece: Cargo): boolean {
   return cargoLoad(cargo) + CARGO_SIZE[piece] <= HOLD_CAPACITY;
 }
 
+/** A cargo piece named in a command, or null. */
+export function cargoPiece(value: unknown): Cargo | null {
+  return value === 'settler' || value === 'crew' || value === 'fish' || value === 'spice' ? value : null;
+}
+
+/**
+ * Pieces of a full holder whose removal makes room for `piece` (EP25 p. 10:
+ * "remove a piece … to create a spot"). One piece goes: a crew fits after any
+ * removal, a settler only where a single large piece leaves the holder empty.
+ */
+export function removableFor(cargo: readonly Cargo[], piece: Cargo): Cargo[] {
+  const out: Cargo[] = [];
+  for (const candidate of new Set(cargo)) {
+    const rest = cargo.slice();
+    rest.splice(rest.indexOf(candidate), 1);
+    if (hasRoom(rest, piece)) out.push(candidate);
+  }
+  return out;
+}
+
 export function isFog(slot: ExplorersPiratesState, hex: number): boolean {
   return slot.fog.some((entry) => entry.hex === hex);
 }

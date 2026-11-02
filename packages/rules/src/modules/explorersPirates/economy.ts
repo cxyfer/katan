@@ -19,7 +19,7 @@ import {
   requireTurn,
 } from './core.ts';
 import { cornersOf, harborAt, harborsAtShip, isCoastalVertex, isSeaRoute, shipsOnEdge, vertexTouchesFog } from './geometry.ts';
-import { epState, epTurn, hasRoom, shipTurn, type Cargo, type EpHarbor, type EpShip } from './state.ts';
+import { cargoPiece, epState, epTurn, hasRoom, removableFor, shipTurn, type Cargo, type EpHarbor, type EpShip } from './state.ts';
 
 // -- production --------------------------------------------------------------------
 
@@ -249,19 +249,25 @@ export function buildPiece(piece: 'settler' | 'crew') {
       'harbor' in holder ? holder.harbor.vertex === command.harbor : holder.ship.id === command.ship);
     if (!target) return ctx.kit.fail('E_ILLEGAL_TARGET');
     const cargo = holderCargo(target);
-    const clear = command.clear === true;
-    if (!hasRoom(cargo, piece)) {
-      // Only when every slot is taken may a piece be removed to make room.
-      if (!clear) return ctx.kit.fail('E_EP_NO_ROOM');
+    // The piece to return when every slot is full (EP25 p. 10): exactly one.
+    const remove = command.remove === undefined ? null : cargoPiece(command.remove);
+    if (command.remove !== undefined && !remove) return ctx.kit.fail('E_INVALID_SELECTION', { remove: command.remove });
+    if (hasRoom(cargo, piece)) {
+      if (remove) return ctx.kit.fail('E_INVALID_SELECTION', { remove });
+    } else {
+      if (!remove) return ctx.kit.fail('E_EP_NO_ROOM');
       if (targets.some((holder) => hasRoom(holderCargo(holder), piece))) return ctx.kit.fail('E_EP_ROOM_ELSEWHERE');
+      if (!cargo.includes(remove)) return ctx.kit.fail('E_INVALID_SELECTION', { remove });
+      if (!removableFor(cargo, piece).includes(remove)) return ctx.kit.fail('E_EP_NO_ROOM', { remove });
     }
     const player = ctx.kit.currentPlayer(state);
     const cost = piece === 'settler' ? COSTS.settler : COSTS.crew;
     if (!ctx.kit.canAfford(player, cost)) return ctx.kit.fail('E_INSUFFICIENT_RESOURCES', { cost });
     ctx.kit.payBuild(state, player, cost);
-    let removed: Cargo[] = [];
-    if (!hasRoom(cargo, piece)) {
-      removed = cargo.splice(0, cargo.length);
+    const removed: Cargo[] = [];
+    if (remove) {
+      cargo.splice(cargo.indexOf(remove), 1);
+      removed.push(remove);
       returnCargo(state, removed);
     }
     cargo.push(piece);

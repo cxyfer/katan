@@ -25,6 +25,15 @@ function hasRoom(cargo: readonly EpCargo[], piece: EpCargo): boolean {
   return cargo.reduce((sum, entry) => sum + SIZE[entry], 0) + SIZE[piece] <= 2;
 }
 
+/** Pieces of a full holder whose removal makes room for `piece` (one piece goes, EP25 p. 10). */
+function removableFor(cargo: readonly EpCargo[], piece: EpCargo): EpCargo[] {
+  return [...new Set(cargo)].filter((candidate) => {
+    const rest = cargo.slice();
+    rest.splice(rest.indexOf(candidate), 1);
+    return hasRoom(rest, piece);
+  });
+}
+
 type Submit = (payload: { type: string; [field: string]: unknown }, labelId: string) => void;
 
 /**
@@ -134,15 +143,32 @@ function ActionPhase({ controller, ep, slot, selfId, submit, arm, blocked }: Pha
           <ul className="ep-prompt__choices">
             {holders.map((holder) => {
               const room = hasRoom(holder.cargo, piece);
-              return <li key={holder.key}>
-                <button type="button" className="button button--chip" data-testid={`ep-build-${piece}-${holder.key}`}
-                  disabled={blocked || left <= 0 || !affordable || (!room && anyRoom)}
-                  onClick={() => submit({ type: piece === 'settler' ? 'ep.buildSettler' : 'ep.buildCrew', ...holder.field, ...(room ? {} : { clear: true }) },
-                    `ep.build.${piece}`)}>
+              const type = piece === 'settler' ? 'ep.buildSettler' : 'ep.buildCrew';
+              const disabled = blocked || left <= 0 || !affordable;
+              if (room || anyRoom) {
+                return <li key={holder.key}>
+                  <button type="button" className="button button--chip" data-testid={`ep-build-${piece}-${holder.key}`}
+                    disabled={disabled || !room} onClick={() => submit({ type, ...holder.field }, `ep.build.${piece}`)}>
+                    {holder.label}{holder.cargo.map((entry, index) => <CargoChip key={index} piece={entry} />)}
+                  </button>
+                </li>;
+              }
+              // Every holder is full: one button per piece that may go back to make room.
+              const removable = removableFor(holder.cargo, piece);
+              if (removable.length === 0) {
+                return <li key={holder.key}>
+                  <button type="button" className="button button--chip" data-testid={`ep-build-${piece}-${holder.key}`} disabled>
+                    {holder.label}{holder.cargo.map((entry, index) => <CargoChip key={index} piece={entry} />)}
+                  </button>
+                </li>;
+              }
+              return removable.map((remove) => <li key={`${holder.key}-${remove}`}>
+                <button type="button" className="button button--chip" data-testid={`ep-build-${piece}-${holder.key}-remove-${remove}`}
+                  disabled={disabled} onClick={() => submit({ type, ...holder.field, remove }, `ep.build.${piece}`)}>
                   {holder.label}{holder.cargo.map((entry, index) => <CargoChip key={index} piece={entry} />)}
-                  {!room && <span className="muted"> {t('ep.holder.replace')}</span>}
+                  <span className="muted"> {t('ep.holder.replace', { piece: t(`ep.piece.${remove}`) })}</span>
                 </button>
-              </li>;
+              </li>);
             })}
           </ul>
         )}

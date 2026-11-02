@@ -239,7 +239,7 @@ There are no development cards, cities or robber.
 | `ep.setupRoad` / `ep.setupShip` | `edge` | variable setup route step, either order (the ship carries a settler) |
 | `ep.buildHarbor` | `vertex` | Action phase: an own coastal settlement (2 grain + 2 ore) |
 | `ep.buildShip` | `edge`, `replace?` (ship id) | Action phase, next to an own harbour settlement (lumber + wool); `replace` when all 3 ships are on the board |
-| `ep.buildSettler` / `ep.buildCrew` | `harbor` (vertex) or `ship` (id), `clear?` | Action phase; `clear: true` returns a piece when every slot is full |
+| `ep.buildSettler` / `ep.buildCrew` | `harbor` (vertex) or `ship` (id), `remove?` (cargo piece) | Action phase; when every slot is full, `remove` names the one piece returned to make room (a settler needs the holder empty) |
 | `ep.sellForGold` | `give` | Action phase: 3 of a kind → 1 gold |
 | `ep.buyResource` | `receive` | Action phase, twice: 2 gold → 1 resource |
 | `ep.fastGold` | `give` | Action phase, with the Fast Gold spice ability: 1 resource → 1 gold |

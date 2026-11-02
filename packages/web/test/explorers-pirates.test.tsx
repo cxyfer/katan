@@ -176,4 +176,26 @@ describe('explorers & pirates client', () => {
     expect(cueForEvent(makeEvent(4, 'ep.shipMoved', { playerId: 'p2' }), 'p1')).toBe('ship.move');
     expect(cueForEvent(makeEvent(5, 'ep.pirateStole', { playerId: 'p2', victim: 'p1' }), 'p1')).toBe('robber.stolenFromYou');
   });
+
+  it('offers one remove choice per piece when every holder is full, and none a settler cannot use', () => {
+    const state = landHo();
+    state.players[0]!.resources = { lumber: 3, brick: 3, wool: 3, grain: 3, ore: 3 };
+    const view = viewOf(state);
+    const hints = epHints(view)!;
+    const slot = epView(view)!;
+    // Every holder full: harbours with two small pieces, ships with a fish haul.
+    for (const harbor of slot.harbors) if (harbor.player === 'p1') harbor.cargo = ['crew', 'spice'];
+    for (const ship of slot.ships) if (ship.player === 'p1') ship.cargo = ['fish'];
+    const { controller, submitCommand } = controllerFor(tableWith(view));
+    render(<LocaleProvider locale="en"><ExplorersPiratesPrompt controller={controller} /></LocaleProvider>);
+    const harbor = hints.pieceHarbors[0]!;
+    // A settler needs an empty holder: two small pieces cannot make room.
+    expect((screen.getByTestId(`ep-build-settler-h${harbor}`) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByTestId(`ep-build-settler-h${harbor}-remove-crew`)).toBeNull();
+    const ship = hints.pieceShips[0]!;
+    expect(ship).toBeDefined();
+    fireEvent.click(screen.getByTestId(`ep-build-settler-${ship}-remove-fish`));
+    expect(submitCommand).toHaveBeenLastCalledWith({ type: 'ep.buildSettler', ship, remove: 'fish' }, 'ep.build.settler');
+  });
 });
+
