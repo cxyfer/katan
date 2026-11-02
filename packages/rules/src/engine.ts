@@ -992,7 +992,7 @@ function endTurn(state: GameState, actorId: string, rng: Rng): CommandOutcome {
     const ctx = moduleContext(profile, rng);
     for (const module of modules) {
       // An end-of-turn phase owned by a module; it calls `kit.finishTurn`.
-      if (module.beforeEndTurn?.(state, actorId, ctx) === 'defer') return { ok: true, state, events: [] };
+      if (module.onEndTurn?.(state, actorId, ctx) === 'defer') return { ok: true, state, events: [] };
     }
   }
   finishTurn(state);

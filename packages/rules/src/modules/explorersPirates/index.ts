@@ -135,7 +135,7 @@ export const explorersPiratesModule: RulesModule = {
     return Math.min(rate, 3);
   },
 
-  beforeEndTurn(state, _actorId, ctx) {
+  onEndTurn(state, _actorId, ctx) {
     finishActiveShip(state);
     resolveCaptures(state, ctx);
     ctx.kit.checkVictory(state);

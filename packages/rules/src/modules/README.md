@@ -39,7 +39,7 @@ and i18n catalog file.
 | board | `allowBuilding` | extra veto on a building intersection (setup and play), e.g. New Shores' main-island start |
 | board | `roadAllowed` | extra veto on a road edge (setup and play), e.g. E&P edges of unexplored hexes |
 | commands | `vetoCommand` | before any command is dispatched; return a failed outcome to refuse it (E&P: base setup commands, building and trading in the Movement phase) |
-| turn | `beforeEndTurn` | when the actor ends the action phase; `'defer'` after enqueueing frames, then the module calls `kit.finishTurn` |
+| turn | `onEndTurn` | on `turn.end`; `'defer'` opens an end-of-turn phase that calls `kit.finishTurn` |
 | trade | `bankRate` | per bank trade card, given the harbour rate |
 | awards | `awardRules` | adjusts the Longest Road / Largest Army rules before awards are recomputed (E&P turns both off) |
 | board | `afterBoardChange` | after every board change, after awards are recomputed; gets the kit (emit, …) but no randomness |

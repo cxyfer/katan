@@ -207,7 +207,7 @@ Rules (`packages/rules/src/modules/explorersPirates/`, `explorers-pirates-boards
   module state with cargo (two ships per edge); the Movement phase is a module
   turn phase keyed by the action window.
 - New hooks on `RulesModule`: `sevenRobberStep`, `roadAllowed`,
-  `vetoCommand`, `beforeEndTurn`, `bankRate`, `awardRules`; the kit gained
+  `vetoCommand`, `onEndTurn`, `bankRate`, `awardRules`; the kit gained
   `finishTurn` (see `packages/rules/src/modules/README.md`). Base and
   Seafarers digests are unchanged.
 

@@ -234,7 +234,7 @@ details in `docs/aegis/work/2026-11-02-explorers-pirates.md`):
   are module state (two ships per edge).
 - New module hooks: `sevenRobberStep` (what follows the discards of a 7),
   `roadAllowed` (road veto), `vetoCommand` (refuse base commands by phase),
-  `beforeEndTurn` (finish moves, resolve captures, victory), `bankRate` (the
+  `onEndTurn` (finish moves, resolve captures, victory), `bankRate` (the
   supply trade rate, 3:1 in E&P), `awardRules` (turn off Longest Road / Largest
   Army); kit gained `finishTurn`.
 - Bots refuse E&P rooms. Deferred: CN3086 5–6 players, the C&K/T&B
