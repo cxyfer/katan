@@ -100,13 +100,13 @@ master's own engine at `0815c76`
 | R-COMB setup / victory | both combined profiles run `['seafarersCitiesKnights','seafarers','citiesKnights']`; 16 VP (COMB-7); the progress decks replace the development cards; 15 roads and 15 ships, 6 knights, 3 walls, 12/18 commodities and 19/24 resources per kind; settlement then city on the main island, the city takes one card per terrain (CK25 pp. 3, 5; SF25 pp. 2–5) | `packages/rules/test/sfck-clauses.test.ts` (SFCK-P1…P3) | covered |
 | R-COMB gold / merchant | a city at gold takes resources only (COMB-8); gold counts as production for the aqueduct and its choice precedes the bonus (SFCK-5); the merchant never stands on gold (COMB-9, CK12-4) | `sfck-clauses.test.ts` (COMB-8, SFCK-5 ×2, COMB-9) | covered |
 | R-COMB bandits | before the first attack a 7 moves neither bandit and discards still apply; nothing moves the pirate before then; the printed robber hex produces until the attack places the robber; afterwards a 7 moves the robber or the pirate (COMB-10, CK12-2, SFCK-7) | `sfck-clauses.test.ts` (COMB-10 ×3, SFCK-7 ×2) | covered |
-| R-COMB chases | a robber chase moves the robber only; an active knight next to the pirate's sea hex chases the pirate (also to the frame), which robs as usual; the chase needs a knight that can act; Taxation moves the robber only (CK25 pp. 9–10, COMB-6, CK-FAQ 63, SFCK-4) | `sfck-clauses.test.ts` (SFCK-4, COMB-6 ×3, CK-FAQ 63) | covered |
+| R-COMB chases | a robber chase moves the robber only; an active knight next to the pirate's sea hex chases the pirate (also to the frame), which robs as usual; a knight on a coastal intersection of that hex qualifies; the chase needs a knight that can act; Taxation moves the robber only (CK25 pp. 9–10, COMB-6, CK12-7/8, CK-FAQ 63, SFCK-4/8) | `sfck-clauses.test.ts` (SFCK-4, COMB-6 ×3, SFCK-8, CK-FAQ 63) | covered |
 | R-COMB knights on routes | a knight crosses the sea along own ships and may end between three sea hexes; roads and ships join only at an own building or the knight's start; recruiting stays on land; a displaced knight retreats along ships; Intrigue reaches a knight touching an own ship (COMB-0/2/3, CK12-5, SFCK-1/2) | `sfck-clauses.test.ts` (COMB-2, SFCK-1, SFCK-2, CK12-5, COMB-0) | covered |
-| R-COMB knights and ships | an opponent knight splits the Longest Trade Route and pins both ships; no ship past an opponent knight; an own knight at the last ship closes the route; Diplomacy removes an open ship and the owner re-places it as a ship; Road Building places ships (COMB-4/5, CK12-6, SF-FAQ 18, CK-FAQ 64–66, SFCK-3/6) | `sfck-clauses.test.ts` (COMB-5 ×2, COMB-4, CK-FAQ 64–66, COMB-0) | covered |
+| R-COMB knights and ships | an opponent knight splits the Longest Trade Route and pins both ships; no ship past an opponent knight; an own knight at the last ship closes the route; Diplomacy removes an open ship and the owner re-places it as a ship that counts as built this turn; knight-held ships report `E_SHIP_PINNED_BY_KNIGHT`, building-closed routes `E_SHIP_NOT_MOVABLE`; Road Building places ships (COMB-4/5, CK12-6/9, SF-FAQ 18, CK-FAQ 64–66, SFCK-3/6) | `sfck-clauses.test.ts` (COMB-5 ×2, COMB-4, CK-FAQ 64–66, COMB-0) | covered |
 | R-COMB barbarians / score / hooks | every city on every island counts, knights at sea defend (COMB-1, CK12-3); the score adds island bonus, metropolis, defender, merchant and Longest Trade Route (COMB-7); overlapping `allowBuilding`, `bankRate` and `discardLimit` compose | `sfck-clauses.test.ts` (COMB-1, COMB-7, 3 overlap cases) | covered |
 | R-COMB paired | Player 2 moves a ship, plays progress cards, trades with the supply only, has no Alchemy, and may chase the pirate (SF56-25 pp. 2–3, CK56-25 pp. 3–4) | `sfck-clauses.test.ts` paired block (2) | covered |
 | R-COMB games / VIS | simulated 3/4/5/6-player games reach 16 points and conserve resources, commodities, the 54 progress cards, buildings, knights, 15 roads and 15 ships, every knight touching an own road or ship; across the four games gold, ship moves, the pirate, its chase, the merchant and island bonuses occur; pirate theft private, progress hands hidden, gold public | `packages/rules/test/sfck-sim.test.ts` (5), `sfck-clauses.test.ts` (VIS-COMB1/2) | covered |
-| R-COMB service | lobby offers and resolves both profiles, bot seats refused; a game starts on `sf-ck-2025.1` with 16 VP and both bandits waiting; setup over the API; idempotent receipts; a catalogued, durable `E_PIRATE_INACTIVE`; private progress hands | `packages/server/test/seafarers-cities-knights.test.ts` (2), `rooms.test.ts`, `session.test.ts`, `packages/rules/test/profiles.test.ts` | covered |
+| R-COMB service | lobby offers and resolves both profiles (either expansion order), bot seats refused; a game starts on `sf-ck-2025.1` with 16 VP and both bandits waiting; setup over the API; idempotent receipts; a catalogued, durable `E_PIRATE_INACTIVE`; private progress hands | `packages/server/test/seafarers-cities-knights.test.ts` (2), `rooms.test.ts`, `session.test.ts`, `packages/rules/test/profiles.test.ts` | covered |
 | R-COMB client | pirate chase action and board arming, bandit targets narrowed to the chased bandit (prompt and selection name it), knight on a sea intersection in SVG and on the ship deck in 3D, pirate status in the C&K panel, score marks together, events and errors in both locales; browser run of a lobby-created game with the chase in SVG and 3D on desktop and phone (3, 4 and 6 players) | `packages/web/test/seafarers-cities-knights.test.tsx` (8), `scripts/seafarers-cities-knights/capture.py`, [captures](screenshots/seafarers-cities-knights/README.md) | covered in headless Chromium; no human playtest |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
@@ -354,8 +354,9 @@ Open fixtures for the progress cards:
 
 ### Seafarers + Cities & Knights interpretations and open fixtures
 
-The COMB clauses and CK25 p. 12 agree wherever they overlap; the points below
-are what they leave open.
+The COMB clauses and CK25 p. 12 (CK12-0…10 in the work record) agree
+wherever they overlap except for the pirate chase's wording (SFCK-8); the
+points below are what they leave open.
 
 - **SFCK-1 Road/ship junctions for knights.** A knight's move follows own
   roads and ships, and a road continues a ship only at an own building, as
@@ -378,15 +379,30 @@ are what they leave open.
   is queued before the aqueduct frame. A gold field under the robber yields
   nothing, so the aqueduct then applies.
 - **SFCK-6 Diplomacy and ships.** CK-FAQ 64–66: Diplomacy may remove an open
-  ship; when the player removes their own ship, they re-place it as a ship.
-  The re-placed ship is not "built this turn", so it may move later that
-  turn.
+  ship; when the player removes their own ship, they re-place it as a ship
+  (CK25 p. 12: "you may only then build a new ship"). The re-placed ship is
+  built, so it counts as built this turn and may not move until the next
+  turn (SF25 p. 2; `E_SHIP_BUILT_THIS_TURN`). C&K reports the placement
+  through `kit.shipPlaced`; Seafarers records it. (Until the #81 review the
+  re-placed ship could move again in the same turn.)
 - **SFCK-7 Bandit start.** Both bandits start off the board (robber `-1`,
   pirate on the frame) and the printed robber hex produces until the first
   attack; that attack puts the robber on the scenario's robber hex, while the
   pirate stays on the frame until a 7 or a chase moves it (COMB-10, CK12-2).
+- **SFCK-8 Who may chase the pirate.** COMB-6 (catan.com/seafarers): "If you
+  deactivate an active knight adjacent to the sea hex occupied by the pirate,
+  you may move the pirate." CK25 p. 12: "Knights on a sea hex intersection
+  may chase away the pirate just like knights on land chase away the robber."
+  The engine follows COMB-6, the clause written for the combination: any of
+  the six intersections of the pirate's hex qualifies, including a coastal
+  one that also touches land. Read with CK25's analogy, those intersections
+  are on a sea hex too, so the two agree for every vertex the engine accepts;
+  CK25 alone could be read more narrowly as all-sea intersections only.
+- **Knight-held ships report their own error.** A ship that is open but held
+  by a knight (COMB-4/5, SFCK-3) is refused with `E_SHIP_PINNED_BY_KNIGHT`;
+  a route closed by buildings keeps the Seafarers `E_SHIP_NOT_MOVABLE`.
 
-Open fixtures: every COMB-0…10 and CK12-1…6 clause has a fixture above.
+Open fixtures: every COMB-0…10 and CK12-1…10 clause has a fixture above.
 Not covered: Through the Desert, which COMB also lists as suitable, is not
 implemented, so no other scenario is combined with C&K; bots cannot take a
 combined seat; and no human has played a whole combined game (the browser

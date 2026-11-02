@@ -62,12 +62,18 @@ roads are also possible for ships."
 | CK12-4 | Gold fields produce resources only, never commodities; the merchant may not go on a gold field. |
 | CK12-5 | Knights move along the player's continuous routes of roads and ships and may end on an empty intersection of sea hexes. |
 | CK12-6 | Knights must always stay connected to a route of their colour; a ship move that would break that connection is not allowed. |
+| CK12-7 | Chase Away the Pirate: "Knights on a sea hex intersection may chase away the pirate just like knights on land chase away the robber." |
+| CK12-8 | Taxation may only move the robber, never the pirate. |
+| CK12-9 | Diplomacy: "if you use this card to remove one of your ships, you may only then build a new ship." |
+| CK12-10 | Winning: a Seafarers scenario's target rises by 2 VP. |
 | CK12-0 | Suitable scenarios: those without hidden areas or many small islands, e.g. Heading for New Shores. |
 
-CK25 p. 12 does not mention the victory-point change (COMB-7) or moving the
-pirate with a knight (COMB-6); neither contradicts it. The two sources agree
-everywhere they overlap, so no open source conflict is recorded for the
-clauses above.
+Correction (2026-11-02, review of #81): CK12-7…10 sit in the same p. 12
+block, after the frame's player aid (`PAGE 12` of the CN3087 text). The first
+transcription missed them and wrongly said that CK25 p. 12 does not mention
+the pirate chase or the VP change. CK12-8 agrees with CK-FAQ 63, CK12-9 with
+CK-FAQ 64–66 and CK12-10 with COMB-7. CK12-7 is worded differently from
+COMB-6; see SFCK-8 in `docs/FIDELITY.md`. Nothing else contradicts.
 
 ## Combined profile rules (SPEC §5.6 R-COMB, as transcribed)
 
@@ -100,9 +106,13 @@ interpretations and open fixtures"):
   only.
 - SFCK-5: gold is production for the aqueduct; the gold frame comes first.
 - SFCK-6: Diplomacy may remove an open ship; an own ship is re-placed as a
-  ship and is not "built this turn".
+  ship and counts as built this turn, so it cannot move until the next turn
+  (CK12-9, SF25 p. 2; changed in the #81 review).
 - SFCK-7: both bandits start off the board; the first attack places the
   robber, the pirate stays on the frame until moved.
+- SFCK-8: the pirate chase follows COMB-6 ("adjacent to the sea hex
+  occupied by the pirate"), so a knight on a coastal vertex of that hex may
+  chase it; CK12-7 names knights "on a sea hex intersection".
 
 ## Design
 

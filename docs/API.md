@@ -327,7 +327,7 @@ development cards, plus one command:
 
 | Command | Fields | When |
 |---|---|---|
-| `knight.chasePirate` | `vertex` | own action window after the first barbarian attack; an own active knight that may act, on an intersection of the pirate's sea hex; queues `moveRobber` with `pirate: true` |
+| `knight.chasePirate` | `vertex` | own action window after the first barbarian attack; an own active knight that may act, on any intersection of the pirate's sea hex (coastal ones included); queues `moveRobber` with `pirate: true` |
 
 Before the first attack the pirate cannot be moved by any command
 (`E_PIRATE_INACTIVE`) and the robber waits off the board (`board.robber`
@@ -336,9 +336,12 @@ Before the first attack the pirate cannot be moved by any command
 `knight.chaseRobber` (`cause: "knight"`, `pirate: false`) only a land hex;
 a 7 after the first attack either. Knights may stand on an intersection of
 three sea hexes next to an own ship; a ship next to an opponent's knight,
-or the last ship before an own knight, does not move. Diplomacy may name a
-ship: `ck.roadRemoved` and `ck.diplomacyRoadBuilt` then carry `ship: true`,
-as does the `citiesKnights.diplomacyRoad` frame's `data`.
+or the last ship before an own knight, does not move
+(`E_SHIP_PINNED_BY_KNIGHT`; a route closed by buildings stays
+`E_SHIP_NOT_MOVABLE`). Diplomacy may name a ship: `ck.roadRemoved` and
+`ck.diplomacyRoadBuilt` then carry `ship: true`, as does the
+`citiesKnights.diplomacyRoad` frame's `data`; a ship re-placed that way
+counts as built this turn (`shipsBuiltThisTurn`, `E_SHIP_BUILT_THIS_TURN`).
 
 `GameView.modules.seafarersCitiesKnights` is `{ pirateActive }`.
 `hints.modules.seafarersCitiesKnights` lists `pirateActive`, `pirateChase`
