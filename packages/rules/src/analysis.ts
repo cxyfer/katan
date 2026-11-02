@@ -45,7 +45,7 @@ export function countBuildings(state: GameState, playerId: string, kind: 'settle
 
 export function countRoads(state: GameState, playerId: string): number {
   let count = 0;
-  for (const road of state.board.roads) if (road && road.player === playerId) count++;
+  for (const road of state.board.roads) if (road && !road.ship && road.player === playerId) count++;
   return count;
 }
 
