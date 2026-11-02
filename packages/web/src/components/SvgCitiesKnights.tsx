@@ -9,11 +9,12 @@
 
 import type { ReactNode } from 'react';
 import type { GameView } from '@catan/rules';
-import { TRACKS, type CitiesKnightsModuleView, type Commodity, type EventFace, type KnightLevel, type Track } from '../board/citiesKnights.ts';
+import { merchantSpot, TRACKS, type CitiesKnightsModuleView, type Commodity, type EventFace, type KnightLevel, type Track } from '../board/citiesKnights.ts';
 import type { BoardGeometry } from '../board/geometry.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { useT } from '../i18n/context.tsx';
 import { CityPiece, shade } from './SvgBoardArt.tsx';
+import { MerchantPiece } from './SvgProgressArt.tsx';
 
 /** Track colours of the improvement chart: green science, yellow trade, blue politics. */
 export const TRACK_COLOR: Readonly<Record<Track, string>> = { science: '#3f9a4e', trade: '#d8a81f', politics: '#3a6fb8' };
@@ -242,5 +243,12 @@ export function SvgCitiesKnightsPieces({ geometry, view, ck, nameResolver }: Lay
         <title>{`${t('ck.board.metropolis', { track: t(`ck.track.${track}`) })} · ${nameResolver(site.player)}`}</title>
       </g>;
     })}
+    {ck.merchant && geometry.hexes[ck.merchant.hex] && (() => {
+      const { color, dash } = ownerColor(view, ck.merchant.player);
+      return <g data-testid="merchant" data-hex={ck.merchant.hex} data-player={ck.merchant.player}>
+        <MerchantPiece {...merchantSpot(geometry.hexes[ck.merchant.hex]!)} color={color} dash={dash} />
+        <title>{t('ck.board.merchant', { player: nameResolver(ck.merchant.player) })}</title>
+      </g>;
+    })()}
   </g>;
 }

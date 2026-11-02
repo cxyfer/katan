@@ -115,6 +115,17 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
     if (pending.kind === 'citiesKnights.displaced') {
       return { kind: 'vertex', commandType: 'knight.retreat', labelId: 'play.pending.citiesKnights.displaced', targets: ck.retreat, fromHints: true };
     }
+    // Progress-card answers on the board: the knight Treason removes, the road Diplomacy rebuilds.
+    if (pending.kind === 'citiesKnights.treasonRemove' || pending.kind === 'citiesKnights.diplomacyRoad') {
+      const commandType = pending.kind === 'citiesKnights.treasonRemove' ? 'progress.treasonRemove' : 'progress.diplomacyRoad';
+      return {
+        kind: commandType === 'progress.treasonRemove' ? 'vertex' : 'edge',
+        commandType,
+        labelId: `play.pending.${pending.kind}`,
+        targets: citiesKnightsTargets(view, { commandType }) ?? [],
+        fromHints: true,
+      };
+    }
   }
 
   const setup = view.turn.setup;

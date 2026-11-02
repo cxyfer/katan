@@ -502,6 +502,34 @@ const RECIPES: Record<SoundCue, Recipe> = {
     tone(s, { at, freq: 520, to: 1040, glide: 0.07, decay: 0.1, gain: 0.08 });
     tone(s, { at: at + 0.09, freq: 780, to: 1320, glide: 0.06, decay: 0.09, gain: 0.06 });
   },
+  // Cities & Knights progress cards (cue mapping in progress-cues.ts).
+  // A card laid on the table: a paper flick and a two-note chime.
+  'progress.play': (s, at) => {
+    noise(s, { at, attack: 0.005, decay: 0.07, gain: 0.14, filter: { type: 'bandpass', freq: 4200, q: 0.9 } });
+    swish(s, at + 0.02, 2400, 900, 0.12, 0.06, { reverb: 0.1 });
+    marimba(s, at + 0.12, 74, 0.08, 0.5, { reverb: 0.3 });
+    bell(s, at + 0.24, 81, 0.05, 0.8, { reverb: 0.4 });
+  },
+  // Alchemy: bubbles rising in a flask, then a shimmer.
+  'progress.alchemy': (s, at) => {
+    [0, 0.07, 0.13, 0.2, 0.26].forEach((offset, index) =>
+      tone(s, { at: at + offset, freq: 420 + index * 90, to: 900 + index * 140, glide: 0.05, decay: 0.07, gain: 0.05 }));
+    [86, 90, 93].forEach((midi, index) => bell(s, at + 0.34 + index * 0.06, midi, 0.04, 0.9, { reverb: 0.45 }));
+  },
+  // The merchant: two footsteps and a purse of coins.
+  'progress.merchant': (s, at) => {
+    knock(s, at, 160, 0.22, { pan: -0.2 });
+    knock(s, at + 0.16, 150, 0.2, { pan: 0.2 });
+    [0.3, 0.36, 0.41, 0.47].forEach((offset, index) => coin(s, at + offset, 2600 + index * 300, 0.06, { reverb: 0.2 }));
+    brass(s, at + 0.52, 67, 0.05, 0.25, { reverb: 0.3 });
+  },
+  // A card asks you to answer: a soft double knock and a rising call.
+  'progress.request': (s, at) => {
+    knock(s, at, 220, 0.18, { reverb: 0.2 });
+    knock(s, at + 0.14, 220, 0.18, { reverb: 0.2 });
+    marimba(s, at + 0.3, 69, 0.08, 0.5, { reverb: 0.3 });
+    marimba(s, at + 0.42, 76, 0.08, 0.7, { reverb: 0.35 });
+  },
 };
 
 /** 於 `at` 排程一個提示。`random` 只影響擲骰等帶自然隨機感的配方。 */
@@ -520,4 +548,5 @@ export const CUE_LENGTH_SECONDS: Record<SoundCue, number> = {
   'ui.select': 0.1, 'ui.error': 0.3, 'chat.message': 0.25,
   'ship.build': 1.1, 'ship.move': 1.1, 'pirate.move': 1.0, 'gold.pick': 1.1, 'island.bonus': 1.4,
   'barbarians.advance': 0.9, 'barbarians.attack': 1.6, 'knight.act': 0.8, 'wall.build': 0.6, 'city.improve': 1.2,
+  'progress.play': 1.0, 'progress.alchemy': 1.2, 'progress.merchant': 1.0, 'progress.request': 1.1,
 };

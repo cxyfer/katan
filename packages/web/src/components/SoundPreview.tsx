@@ -45,6 +45,10 @@ const DESCRIPTIONS: Record<SoundCue, string> = {
   'knight.act': '騎士行動 · Knight action',
   'wall.build': '建造城牆 · City wall',
   'city.improve': '城市改良 · City improvement',
+  'progress.play': '打出進步卡 · Progress card played',
+  'progress.alchemy': '煉金術定下骰點 · Alchemy sets the dice',
+  'progress.merchant': '商人登場 · Merchant placed',
+  'progress.request': '進步卡要求你回應 · A card asks for your answer',
 };
 
 function Waveform({ analysis }: { analysis: CueAnalysis | undefined }) {

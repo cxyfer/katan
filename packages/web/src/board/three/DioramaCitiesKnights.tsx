@@ -6,6 +6,7 @@ import { playerColorHex } from '../terrain.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
 import { createKnightModel, createMetropolisModel, createWallModel, KNIGHT_SCALE, METROPOLIS_OFFSET, vertexTransform } from './diorama-knights.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
+import { createMerchantModel, MERCHANT_SCALE, merchantPosition } from './diorama-merchant.ts';
 import type { InstanceTransform } from './transforms.ts';
 
 type Props = Pick<BoardSceneProps, 'geometry' | 'players' | 'quality' | 'citiesKnights'> & { material: Material };
@@ -27,7 +28,18 @@ function Metropolis({ color, track, transform, material, quality }: Pick<Props, 
   return <mesh geometry={model} material={material} position={transform.position} castShadow={quality === 'standard'} dispose={null} />;
 }
 
-/** Knights, walls and metropolis keeps; nothing for games without the module. */
+/** The merchant on its hex, in its owner's colour (or as a white ghost). */
+export function Merchant({ geometry, hex, color, seat, material, castShadow = false, ghost = false }: {
+  geometry: Props['geometry']; hex: number; color: string; seat: number; material: Material; castShadow?: boolean; ghost?: boolean;
+}) {
+  const model = useDioramaGeometry(() => createMerchantModel(color, seat), [color, seat]);
+  const position = merchantPosition(geometry, hex);
+  if (!position) return null;
+  return <mesh geometry={model} material={material} position={position} rotation={[0, 0.5, 0]}
+    scale={[MERCHANT_SCALE, MERCHANT_SCALE, MERCHANT_SCALE]} castShadow={castShadow} dispose={null} {...(ghost ? { renderOrder: 4 } : {})} />;
+}
+
+/** Knights, walls, metropolis keeps and the merchant; nothing for games without the module. */
 export function DioramaCitiesKnights({ geometry, players, quality, citiesKnights: ck, material }: Props) {
   const knights = useMemo(() => {
     const groups = new Map<string, { playerId: string; level: KnightLevel; active: boolean; items: InstanceTransform[] }>();
@@ -67,6 +79,8 @@ export function DioramaCitiesKnights({ geometry, players, quality, citiesKnights
       return <Metropolis key={track} track={track} color={playerColorHex(colorOf(site.player)?.color ?? 'white')}
         transform={transform} material={material} quality={quality} />;
     })}
+    {ck.merchant && <Merchant geometry={geometry} hex={ck.merchant.hex} color={playerColorHex(colorOf(ck.merchant.player)?.color ?? 'white')}
+      seat={colorOf(ck.merchant.player)?.seat ?? 0} material={material} castShadow={quality === 'standard'} />}
   </>;
 }
 
