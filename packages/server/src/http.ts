@@ -304,7 +304,8 @@ export function createHttpHandler(deps: HttpDeps) {
       capacity: requireNumber(body, 'capacity'),
       profileId: requireString(body, 'profileId'),
       setupMode: (optionalString(body, 'setupMode') ?? 'fixed') as 'fixed' | 'variable',
-      orderMode: (optionalString(body, 'orderMode') ?? 'join') as GameOrderMode,
+      // 有送出但型別錯誤的值也交給服務驗證，不能悄悄退回 join。
+      orderMode: ('orderMode' in input ? input.orderMode : 'join') as GameOrderMode,
       policy: (input.policy ?? {}) as never,
       // 數量的型別與範圍由 RoomService 驗證；非數字一律視為不合法的數量。
       ...(input.bots !== undefined ? { bots: typeof input.bots === 'number' ? input.bots : Number.NaN } : {}),
@@ -350,7 +351,7 @@ export function createHttpHandler(deps: HttpDeps) {
         ...(input.setupMode === 'fixed' || input.setupMode === 'variable'
           ? { setupMode: input.setupMode }
           : {}),
-        ...(typeof input.orderMode === 'string'
+        ...('orderMode' in input
           ? { orderMode: input.orderMode as GameOrderMode }
           : {}),
         ...(input.policy ? { policy: input.policy as never } : {}),

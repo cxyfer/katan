@@ -89,6 +89,24 @@ describe('R-ROOM lobby', () => {
     );
     expect(backToJoin.orderMode).toBe('join');
 
+    // 有送出但型別或值不合法的 orderMode 不能被當成「未指定」。
+    for (const invalid of [null, 1, true]) {
+      host.expectError(
+        await host.post(`/api/rooms/${randomRoom.id}/settings`, { orderMode: invalid }),
+        'E_INVALID_ORDER_MODE',
+      );
+      host.expectError(
+        await host.post('/api/rooms', {
+          visibility: 'private',
+          capacity: 3,
+          profileId: 'base-2025',
+          setupMode: 'fixed',
+          orderMode: invalid,
+        }),
+        'E_INVALID_ORDER_MODE',
+      );
+    }
+
     host.expectError(
       await host.post('/api/rooms', {
         visibility: 'private',
