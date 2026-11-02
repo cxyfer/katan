@@ -265,6 +265,45 @@ describe('B-ROOM bot seats', () => {
     expect(await harness.service.repo.findGuest(bot.playerId)).toBeNull();
   });
 
+  it('names a bot from the host input and falls back to a default name', async () => {
+    const host = await harness.client('NamedBotHost');
+    const room = await createRoom(host, { capacity: 4 });
+    const named = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${room.id}/bots`, { level: 'easy', name: '  Robo  ' }),
+    );
+    expect(named.members.find((member) => member.bot)).toMatchObject({
+      nickname: 'Robo',
+      botLevel: 'easy',
+    });
+
+    const blank = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${room.id}/bots`, { name: '   ' }),
+    );
+    const bots = blank.members.filter((member) => member.bot);
+    expect(bots).toHaveLength(2);
+    expect(bots[1]!.nickname).toMatch(/^(Ada|Bram|Cleo|Dax|Esme|Finn|Gus|Hana)$/);
+  });
+
+  it('rejects duplicate, overlong and control-character bot names', async () => {
+    const host = await harness.client('NamedBotRules');
+    const room = await createRoom(host, { capacity: 4 });
+    host.expectOk(await host.post(`/api/rooms/${room.id}/bots`, { name: 'Robo' }));
+
+    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, { name: 'robo' }), 'E_BOT_NAME_TAKEN');
+    host.expectError(
+      await host.post(`/api/rooms/${room.id}/bots`, { name: 'NamedBotRules' }),
+      'E_BOT_NAME_TAKEN',
+    );
+    host.expectError(
+      await host.post(`/api/rooms/${room.id}/bots`, { name: 'x'.repeat(25) }),
+      'E_INVALID_NICKNAME',
+    );
+    host.expectError(
+      await host.post(`/api/rooms/${room.id}/bots`, { name: 'bad\u0000name' }),
+      'E_INVALID_NICKNAME',
+    );
+  });
+
   it('keeps bots ready while people must confirm again', async () => {
     const host = await harness.client('ReadyHost');
     const room = await createRoom(host, { bots: 1 });

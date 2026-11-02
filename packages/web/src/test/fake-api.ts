@@ -23,7 +23,7 @@ import type {
   SaveReceipt,
   ServerConfigView,
 } from '@catan/protocol';
-import type { CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
+import type { AddBotBody, CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
 import {
   makeBotMember,
   makeChatMessage,
@@ -74,7 +74,7 @@ const SEAT_COLORS = ['red', 'blue', 'orange', 'white', 'green', 'brown'] as cons
 const BOT_NAMES = ['Ada', 'Bram', 'Cleo', 'Dax', 'Esme'] as const;
 
 /** 依伺服器規則把電腦放進最小空位與第一個未使用的顏色。 */
-function withBot(room: RoomView, level: BotLevel): RoomView {
+function withBot(room: RoomView, level: BotLevel, name?: string): RoomView {
   const seats = new Set(room.members.map((member) => member.seat));
   const colors = new Set(room.members.map((member) => member.color));
   const names = new Set(room.members.map((member) => member.nickname));
@@ -83,7 +83,7 @@ function withBot(room: RoomView, level: BotLevel): RoomView {
   const count = room.members.filter((member) => member.bot).length;
   const bot = makeBotMember({
     playerId: `bot${count + 1}`,
-    nickname: BOT_NAMES.find((name) => !names.has(name)) ?? `Bot ${count + 1}`,
+    nickname: name ?? BOT_NAMES.find((candidate) => !names.has(candidate)) ?? `Bot ${count + 1}`,
     seat,
     color: SEAT_COLORS.find((color) => !colors.has(color)) ?? 'red',
     botLevel: level,
@@ -200,13 +200,13 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       };
       return ok(room);
     },
-    async addBot(roomId: string, level: BotLevel) {
-      record('addBot', roomId, level);
+    async addBot(roomId: string, body: AddBotBody) {
+      record('addBot', roomId, body);
       if (!room) return { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
       if (room.members.length >= room.capacity) {
         return { ok: false, error: { code: 'E_ROOM_FULL', messageId: 'error.E_ROOM_FULL', params: { capacity: room.capacity } } };
       }
-      room = withBot(room, level);
+      room = withBot(room, body.level, body.name);
       return ok(room);
     },
     async removeBot(roomId: string, playerId: string) {

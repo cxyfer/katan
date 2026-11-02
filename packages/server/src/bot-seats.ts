@@ -77,6 +77,7 @@ export async function insertBotSeat(
   members: readonly MemberRow[],
   level: BotLevel,
   now: string,
+  name?: string,
 ): Promise<MemberRow> {
   const takenSeats = new Set(members.map((member) => member.seat));
   const takenColors = new Set(members.map((member) => member.color));
@@ -84,7 +85,8 @@ export async function insertBotSeat(
   while (takenSeats.has(seat)) seat += 1;
   const color = PLAYER_COLORS.find((candidate) => !takenColors.has(candidate)) ?? PLAYER_COLORS[0]!;
   const id = newId('bot');
-  const nickname = pickBotName(members.map((member) => member.nickname ?? ''));
+  // 房主指定的名稱優先；留空時才從名稱池挑一個同房不重複的預設名稱。
+  const nickname = name ?? pickBotName(members.map((member) => member.nickname ?? ''));
   const membership = {
     room_id: roomId,
     player_id: id,

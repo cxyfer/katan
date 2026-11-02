@@ -40,7 +40,7 @@ Conventions:
 | POST | `/api/rooms/:roomId/policy/consent` | `{ proposalId, approve }` | `RoomView` |
 | POST | `/api/rooms/:roomId/start` | – | `{ gameId }` |
 | POST | `/api/rooms/:roomId/close` | – | `{ closed: true }` |
-| POST | `/api/rooms/:roomId/bots` | `{ level? }` | `RoomView` |
+| POST | `/api/rooms/:roomId/bots` | `{ level?, name? }` | `RoomView` |
 | DELETE | `/api/rooms/:roomId/bots/:playerId` | – | `RoomView` |
 | GET | `/api/games` | – | `{ games: ResumableGameView[] }` |
 | GET | `/api/games/:gameId` | – | `GameSnapshot` |
@@ -86,11 +86,15 @@ bots and which levels exist.
 only the original human players must reconnect and become ready to resume.
 
 - Creating a room never seats bots: `POST /api/rooms` ignores bot fields, and
-  the host sets the count from inside the lobby instead.
+  the host adds them one at a time from the lobby's bot toolbar.
 - `POST /api/rooms/:roomId/bots` and `DELETE /api/rooms/:roomId/bots/:playerId`
   are host-only and lobby-only (`E_NOT_HOST`, `E_ROOM_STARTED`). Adding to a
   full room is `E_ROOM_FULL`; removing a seat that is not a bot is
   `E_NOT_A_BOT`. Both clear every person's readiness, like other settings.
+- `name` is optional. A blank or omitted name picks the next free default name;
+  a supplied name follows the session nickname rules (`E_INVALID_NICKNAME`) and
+  must differ from every seated member, case-insensitively
+  (`E_BOT_NAME_TAKEN`).
 - When the deployment sets `BOTS_ENABLED=0`, adding bots is `E_BOTS_DISABLED`.
   Bots also require a base-rules profile (`E_INVALID_BOT`, reason `profile`).
 - Bot seats always report `ready` and `connected`, never become host, and do not

@@ -21,10 +21,14 @@
 .lobby-bots__title { display: inline-flex; align-items: center; gap: .35rem; margin: 0; color: #f3d696; font-size: .85rem; }
 .lobby-bots .field { margin: 0; gap: .45rem; }
 .lobby-bots .field label { font-size: .78rem; white-space: nowrap; }
-.lobby-bots__note { flex-basis: 100%; margin: 0; font-size: .72rem; }
+.lobby-bots__actions { display: inline-flex; align-items: center; gap: .4rem; margin-left: auto; }
+.lobby-bots__name { padding: .45rem .6rem; }
+.lobby-bots__full { flex-basis: 100%; margin: 0; font-size: .72rem; }
 
 @media (max-width: 560px) {
   .lobby-bots { padding: .6rem .7rem; }
+  .lobby-bots__actions { width: 100%; }
+  .lobby-bots__actions .button:first-child { flex: 1; }
 }
 
 /* 收合的玩家欄：頭像右下角的小電腦標記，留在頭像範圍內，不撐寬欄位也不蓋住分數。 */

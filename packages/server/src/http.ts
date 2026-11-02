@@ -389,7 +389,8 @@ export function createHttpHandler(deps: HttpDeps) {
 
   route('POST', '/api/rooms/:roomId/bots', async ({ params, body, playerId }) => {
     requireSession(playerId);
-    return { data: await deps.rooms.addBot(playerId!, params.roomId!, asObject(body).level) };
+    const input = asObject(body);
+    return { data: await deps.rooms.addBot(playerId!, params.roomId!, input.level, input.name) };
   });
 
   route('DELETE', '/api/rooms/:roomId/bots/:playerId', async ({ params, playerId }) => {

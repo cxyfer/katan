@@ -1,4 +1,4 @@
-# 電腦對手：數量改在房間中調整
+# 電腦對手：改在房間中逐一新增
 
 日期：2026-11-02。規格：[`../specs/2026-11-01-bot-opponents.md`](../specs/2026-11-01-bot-opponents.md)（後續變更）、`docs/SPEC.md` §4.2／§4.9。
 
@@ -10,19 +10,20 @@
 
 - 建房表單：移除「電腦對手」數量與難度；建立房間一律只有真人房主。
 - 伺服器：`POST /api/rooms` 不再接受 `bots`／`botLevel`（未知欄位會被忽略），建房不再建立 Bot 席位；`POST`／`DELETE /api/rooms/:roomId/bots` 仍是唯一的席位入口。
-- 房間：「電腦對手」面板改為數量選擇（0 至真人以外的席位數）＋難度；前端以既有的加入／移除端點逐次補齊差額，因此每次席位變更仍由伺服器在 room lock 內驗證容量、權限與開局狀態。
-- 每個 Bot 席位保留個別「移除」；把數量調低時由最後入座的 Bot 先移除。
-- 語系：`lobby.bots.count` 改為「電腦數量」／`Bot count`，移除不再使用的 `lobby.bots.add`，提示文字改為說明調整數量會清除準備狀態。
-- 證據腳本：`scripts/bot-opponents/capture.py` 改走「建房 → 房間設定數量 → 個別移除」的實際流程。
+- 房間：沿用 v0.3.0-rc.1 的「電腦對手」工具列（難度選單＋加入電腦）。旁邊新增一支鉛筆小圖示，點開只設定名稱的對話框（留空使用預設名稱），確認後以目前難度加入一個席位；原本的加入電腦按鈕維持預設名稱。每個 Bot 仍可個別「移除」，座位已滿時兩個加入控制都會停用。
+- 伺服器：`POST /api/rooms/:roomId/bots` 接受選填 `name`；名稱比照暱稱驗證（`E_INVALID_NICKNAME`），且不可與房內既有席位重複（`E_BOT_NAME_TAKEN`）。
+- 語系：新增工具列標題、鉛筆圖示的無障礙名稱、名稱對話框與名稱重複錯誤；移除不再使用的數量選擇字串。
+- 證據腳本：`scripts/bot-opponents/capture.py` 改走「建房 → 工具列快速加入 → 鉛筆圖示自訂名稱 → 補滿座位 → 個別移除後補回」的實際流程。
 
 ## 驗證
 
-- `pnpm verify` 全綠（typecheck、各套件測試、production build、smoke、dev runner）。第一次平行執行時 `@catan/bots` 的 6 人 fallback 模擬與 `board-camera-controls` 各逾時一次（單檔與單一套件重跑皆通過），屬本機負載造成的既有 5 秒測試逾時，與本次變更無關。
-- Web 測試：建房請求不含 Bot 欄位；房間數量控制以 2 次加入補到 2 個席位、調回 0 時依序移除；真人坐滿時數量控制停用。
-- 伺服器測試：建房帶 `bots`／`botLevel` 只建立真人房主；Bot 席位改由房間端點建立，其餘席位、權限、容量與全 Bot 大廳行為不變。
-- 瀏覽器證據：`scripts/bot-opponents/capture.py`（production build、Chromium）全部檢查為 true、沒有頁面錯誤；`docs/screenshots/bot-opponents/` 已用新流程重拍（建房無 Bot 欄位、房間數量 0→2→3、個別移除後再補回 3）。
+- `pnpm typecheck`、`pnpm build`、`pnpm smoke`（13/13）、`pnpm test:dev` 全數通過。
+- 套件測試：rules、protocol、server 全數通過；web（565 個）與 bots（43 個）在平行執行時數次撞到既有的 5 秒單測逾時，改以 `--testTimeout=20000` 重跑全數通過。逾時的 `board-visual`、`trade` 與 6 人 fallback 模擬都與本次變更無關，屬本機負載造成的既有測試設定問題。
+- Web 測試：建房請求不含 Bot 欄位；工具列以目前難度快速加入、鉛筆圖示開啟名稱對話框並送出自訂名稱、留空預設名稱、伺服器拒絕時留在對話框顯示錯誤；真人坐滿時兩個加入控制停用，非房主看不到工具列。
+- 伺服器測試：建房帶 `bots`／`botLevel` 只建立真人房主；自訂名稱、留空預設名稱、重複名稱與不合法名稱的錯誤碼；其餘席位、權限、容量與全 Bot 大廳行為不變。
+- 瀏覽器證據：`scripts/bot-opponents/capture.py`（production build、Chromium）全部檢查為 true、沒有頁面錯誤；`docs/screenshots/bot-opponents/` 已用新流程重拍（建房無 Bot 欄位、工具列、名稱對話框、滿座、個別移除後再補回）。
 
 ## 取捨
 
-- 前端逐次呼叫加入／移除端點，換取沿用既有 API 與伺服器端逐次驗證；單次調整最多數個請求，介面在請求期間停用控制項。
-- 未提供「一次原子設定數量」的新端點，避免在 P1 合約外增加第三種席位變更入口。
+- 每次加入一個 Bot 都要再點一次「加入電腦」；自訂名稱要走鉛筆圖示的對話框，換來不佔用固定 UI 空間，且快速加入仍維持一鍵。
+- 名稱重複由伺服器擋下（大小寫不敏感），對話框留在原地顯示原因，避免座位與事件紀錄出現無法分辨的相同名稱。

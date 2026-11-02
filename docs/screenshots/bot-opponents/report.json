@@ -1,13 +1,15 @@
 {
   "screenshots": [
     "01-create-form-zh-Hant.png",
-    "02-lobby-full-zh-Hant.png",
-    "03-lobby-full-phone-zh-Hant.png",
-    "04-lobby-full-en.png",
-    "05-table-bot-turn-en.png",
-    "06-table-bot-turn-zh-Hant.png",
-    "07-table-bot-turn-phone-zh-Hant.png",
-    "08-home-resume-zh-Hant.png"
+    "02-add-bot-dialog-zh-Hant.png",
+    "03-lobby-bots-zh-Hant.png",
+    "04-lobby-full-zh-Hant.png",
+    "05-lobby-full-phone-zh-Hant.png",
+    "06-lobby-full-en.png",
+    "07-table-bot-turn-en.png",
+    "08-table-bot-turn-zh-Hant.png",
+    "09-table-bot-turn-phone-zh-Hant.png",
+    "10-home-resume-zh-Hant.png"
   ],
   "checks": {
     "createButtonVisibleAt1366x768": true,
@@ -16,6 +18,6 @@
     "botsPauseWithoutPeople": true,
     "botsContinueAfterResume": true,
     "pageErrors": [],
-    "roomId": "room_f70ce04b808d4e18a47b"
+    "roomId": "room_9a6ca5120dd04397820c"
   }
 }

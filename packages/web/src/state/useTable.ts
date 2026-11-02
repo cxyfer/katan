@@ -77,8 +77,8 @@ export interface TableActions {
   takeSeat(color: string): Promise<void>;
   setReady(ready: boolean): Promise<void>;
   updateSettings(body: RoomSettingsBody): Promise<void>;
-  /** 把房內的電腦席位數調整到 `count`；差額以既有的加入／移除端點補齊。 */
-  setBotCount(count: number, level: BotLevel): Promise<void>;
+  /** 加入一個電腦席位；成功回傳 null，失敗回傳可顯示的錯誤。 */
+  addBot(level: BotLevel, name?: string): Promise<ApiError | null>;
   removeBot(playerId: string): Promise<void>;
   proposePolicy(policy: RoomPolicy): Promise<void>;
   respondPolicy(proposalId: string, approve: boolean): Promise<void>;
@@ -118,11 +118,6 @@ function noticeFrom(error: ApiError): Notice {
 
 function localNotice(messageId: string, params?: Record<string, unknown>): Notice {
   return { messageId, params };
-}
-
-/** 房內電腦席位數；只看成員上的 bot 標記，不推算任何遊戲狀態。 */
-function botCountOf(room: RoomView): number {
-  return room.members.filter((member) => member.bot).length;
 }
 
 /** Applies a receipt to state and, when accepted, refreshes the projection. */
@@ -437,23 +432,17 @@ export function useTable(options: UseTableOptions): TableController {
     [api, applyRoom, dispatch],
   );
 
-  const setBotCount = useCallback(
-    async (count: number, level: BotLevel): Promise<void> => {
+  const addBot = useCallback(
+    async (level: BotLevel, name?: string): Promise<ApiError | null> => {
       const roomId = roomIdRef.current;
-      let room = stateRef.current.room;
-      if (!roomId || !room) return;
-      while (botCountOf(room) < count) {
-        const next = applyRoom(await api.addBot(roomId, level), 'bots');
-        if (!next) return;
-        room = next;
-      }
-      while (botCountOf(room) > count) {
-        const victim = room.members.filter((member) => member.bot).at(-1);
-        if (!victim) return;
-        const next = applyRoom(await api.removeBot(roomId, victim.playerId), 'bots');
-        if (!next) return;
-        room = next;
-      }
+      if (!roomId) return null;
+      const trimmed = name?.trim();
+      const result = await api.addBot(roomId, {
+        level,
+        ...(trimmed ? { name: trimmed } : {}),
+      });
+      applyRoom(result, 'bots');
+      return result.ok ? null : result.error;
     },
     [api, applyRoom],
   );
@@ -851,7 +840,7 @@ export function useTable(options: UseTableOptions): TableController {
       takeSeat,
       setReady,
       updateSettings,
-      setBotCount,
+      addBot,
       removeBot,
       proposePolicy,
       respondPolicy,
@@ -888,7 +877,7 @@ export function useTable(options: UseTableOptions): TableController {
       takeSeat,
       setReady,
       updateSettings,
-      setBotCount,
+      addBot,
       removeBot,
       proposePolicy,
       respondPolicy,

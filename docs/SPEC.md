@@ -179,7 +179,7 @@ R-SAVE acceptance: autosave plus save-and-leave in an ordinary turn and during a
 
 A bot seat is a seat played by the service's built-in strategy. The design and delivery plan are recorded in `docs/aegis/specs/2026-11-01-bot-opponents.md`; the requirements below are normative.
 
-- **Seats and labeling:** before start, the host adds bots to open seats or removes them; bot seats are ready by definition and are labeled as computer opponents, with their difficulty, wherever seats are shown. A bot has no login credential, cannot be host and does not chat. Bots cannot be added or removed after start.
+- **Seats and labeling:** before start, the host adds bots to open seats one at a time or removes them; each add may set a name and difficulty, defaulting to a free name when none is given. Bot seats are ready by definition and are labeled as computer opponents, with their difficulty, wherever seats are shown. A bot has no login credential, cannot be host and does not chat. Bots cannot be added or removed after start.
 - **Information:** a bot decides only from its own seat's authorized projection (§8.3), public board topology and rules constants. It never reads authoritative hidden state, and no other seat gains information from it.
 - **Locality:** decisions run inside the service with no LLM, network call, model file or other external service, so a bot table works offline.
 - **Commands:** bots submit through the same validated command path as people, with stable command IDs; every §7.2 durability and receipt rule applies. A decision is deterministic for a given projection and seed.

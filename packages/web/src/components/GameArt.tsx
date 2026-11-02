@@ -40,6 +40,7 @@ export function GameIcon({ name, size = 20, className = '' }: { name: string; si
     'sound-off': <path d="M3 9v6h4l5 4V5L7 9H3Zm13 0 6 6m0-6-6 6" />,
     anchor: <><circle cx="12" cy="5" r="3" /><path d="M12 8v14M3 13v3c0 8 18 8 18 0v-3M8 11h8M1 15l2-3 3 3m12 0 3-3 2 3" /></>,
     bot: <><rect x="4" y="8" width="16" height="12" rx="3" /><path d="M12 8V4m-2 0h4M9 13v1m6-1v1M9 17h6M2 13v3m20-3v3" /></>,
+    pencil: <><path d="M4 20h4L20 8a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13 5 6 6" /></>,
   };
   return <svg className={`game-icon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{paths[name] ?? paths.compass}</svg>;
 }
