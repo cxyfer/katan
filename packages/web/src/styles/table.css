@@ -605,8 +605,9 @@
   background: #163642;
   margin: .5rem;
 }
+/* 候選清單須高於檢視命中層（43）與目標層（44），否則清單項目會被棋盤格攔截。 */
 .screen--game .target-picker {
-  z-index: 20;
+  z-index: 45;
   background: #102c32f5;
   max-height: 80%;
   position: absolute;
