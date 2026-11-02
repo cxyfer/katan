@@ -10,12 +10,12 @@ Then:
 
     python3 scripts/trade-auto-decline/verify.py <new empty output directory>
 
-The script seats three players in a real room. The recipient's browser starts
-with `catan.trade.autoDecline` already stored and its trade panel closed. A
-table-wide offer nobody can cover is proposed through the API; the recipient's
-client must decline it without any pointer or keyboard input. A second,
-affordable offer must stay unanswered. Finally the checkbox is read, toggled
-and captured on desktop and phone widths.
+The script seats three players in a real room. Both recipients' browsers start
+with `catan.trade.autoDecline` already stored and their trade panels closed. A
+table-wide offer nobody can cover is proposed through the API; both clients must
+decline it without any pointer or keyboard input, so at least one has to recover
+from a stale-command receipt. A second, affordable offer must stay unanswered.
+Finally the checkbox is read, toggled and captured on desktop and phone widths.
 """
 
 import json
@@ -89,11 +89,33 @@ with sync_playwright() as p:
         browser.new_context(viewport={'width': 1366, 'height': 768}, locale='zh-TW', reduced_motion='reduce')
         for _ in range(3)
     ]
-    # The recipient already turned the option on in an earlier session.
+    # Both recipients already turned the option on in an earlier session.
     contexts[1].add_init_script(f"localStorage.setItem('{STORAGE_KEY}', 'true')")
+    contexts[2].add_init_script(f"localStorage.setItem('{STORAGE_KEY}', 'true')")
     pages = [context.new_page() for context in contexts]
     for page in pages:
         page.on('pageerror', lambda error: ERRORS.append(str(error)))
+    command_posts = [0, 0, 0]
+    command_log = [[], [], []]
+    def log_command(index, phase):
+        command_log[index].append((phase, round(time.monotonic(), 3)))
+
+    for index, page in enumerate(pages):
+        page.on(
+            'request',
+            lambda request, index=index: (
+                command_posts.__setitem__(index, command_posts[index] + 1),
+                log_command(index, 'request'),
+            ) if request.method == 'POST' and '/commands' in request.url else None,
+        )
+        page.on(
+            'response',
+            lambda response, index=index: (
+                log_command(index, f"response:{response.json()['data']['outcome']}"
+                                  f":{response.json()['data'].get('error', {}).get('messageId', '')}"
+                                  f":rev{response.json()['data']['revision']}"),
+            ) if response.request.method == 'POST' and '/commands' in response.url else None,
+        )
 
     for page, name in zip(pages, ['海岸領航員', '小美', '阿明']):
         page.goto(BASE)
@@ -170,8 +192,22 @@ with sync_playwright() as p:
         assert send(by_id[actor], game_id, revision, command), command
 
     proposer_index = identity.index(turn_actor)
-    recipient_index = next(index for index in range(3) if index != proposer_index)
+    recipient_indexes = [index for index in range(3) if index != proposer_index]
+    def hand_size(index):
+        seat = fetch(by_id[identity[index]], path)
+        player = next(player for player in seat['view']['players'] if player['id'] == identity[index])
+        return sum(player['resources'].values())
+
+    # The seat with cards can later prove that an affordable offer is left alone.
+    recipient_index = max(recipient_indexes, key=hand_size)
     recipient_id = identity[recipient_index]
+    other_index = next(index for index in recipient_indexes if index != recipient_index)
+    other_id = identity[other_index]
+
+    # The dice presentation blocks every follow-up command, so let it finish
+    # before measuring how fast the clients answer an offer.
+    for page in pages:
+        page.wait_for_selector('[data-testid="dice-focus"]', state='detached', timeout=20000)
 
     # 1. An offer nobody can cover: five ore this early is impossible.
     own = fetch(turn_context, path)
@@ -184,12 +220,40 @@ with sync_playwright() as p:
     snapshot = fetch(contexts[0], path)
     unaffordable_id = snapshot['view']['offers'][-1]['id']
     assert response_of(snapshot, unaffordable_id, recipient_id) is None
-    elapsed = wait_for(
-        lambda: response_of(fetch(contexts[0], path), unaffordable_id, recipient_id) == 'declined'
-    )
-    assert elapsed is not None, 'the recipient never auto-declined the unaffordable offer'
-    print(f'PASS auto-declined {unaffordable_id} after {elapsed:.2f}s with the trade panel closed', flush=True)
-    RESULTS.append({'case': 'auto-declines-unaffordable', 'offerId': unaffordable_id, 'seconds': round(elapsed, 3)})
+    assert response_of(snapshot, unaffordable_id, other_id) is None
+    timings = {}
+    started = time.monotonic()
+
+    def both_declined():
+        snapshot = fetch(contexts[0], path)
+        for player_id in (recipient_id, other_id):
+            if player_id not in timings and response_of(snapshot, unaffordable_id, player_id) == 'declined':
+                timings[player_id] = round(time.monotonic() - started, 3)
+        return len(timings) == 2
+
+    elapsed = wait_for(both_declined)
+    assert elapsed is not None, 'not every recipient auto-declined the unaffordable offer'
+    print(f'PASS both recipients auto-declined {unaffordable_id} after {elapsed:.2f}s: {timings}', flush=True)
+    print('COMMAND LOG', command_log, flush=True)
+    RESULTS.append({
+        'case': 'auto-declines-unaffordable',
+        'offerId': unaffordable_id,
+        'recipients': [recipient_id, other_id],
+        'harnessSeconds': round(elapsed, 3),
+        'perRecipientSeconds': timings,
+        'commandPosts': command_posts,
+        'commandLog': command_log,
+    })
+
+    # The concurrent declines above race on the same revision; at least one
+    # client had to retry after its stale receipt. Keep the second offer clean
+    # by turning the option off on the third seat first.
+    other_page = pages[other_index]
+    other_page.get_by_test_id('tool-tab-trade').click()
+    other_checkbox = other_page.get_by_test_id('trade-auto-decline')
+    expect(other_checkbox).to_be_checked()
+    expect(other_page.get_by_test_id(f'offer-{unaffordable_id}')).to_be_visible()
+    other_checkbox.uncheck()
 
     # 2. An offer the recipient can cover stays unanswered until they choose.
     own_recipient = fetch(by_id[recipient_id], path)
@@ -200,21 +264,26 @@ with sync_playwright() as p:
         (resource for resource in RESOURCES if recipient_player['resources'][resource] > 0),
         None,
     )
-    assert holding, own_recipient['view']['players']
-    own = fetch(turn_context, path)
-    assert send(
-        turn_context,
-        game_id,
-        own['revision'],
-        {'type': 'trade.offer', 'to': 'all', 'give': {'wool': 1}, 'want': {holding: 1}},
-    ), 'offer rejected'
-    snapshot = fetch(contexts[0], path)
-    affordable_id = snapshot['view']['offers'][-1]['id']
-    time.sleep(2.5)
-    snapshot = fetch(contexts[0], path)
-    assert response_of(snapshot, affordable_id, recipient_id) is None, 'an affordable offer was auto-declined'
-    print(f'PASS left affordable {affordable_id} unanswered', flush=True)
-    RESULTS.append({'case': 'leaves-affordable-open', 'offerId': affordable_id})
+    affordable_id = None
+    if not holding:
+        # Setup can leave the whole table without starting cards after a seven.
+        print('SKIP affordable offer: the recipients hold no resources', flush=True)
+        RESULTS.append({'case': 'leaves-affordable-open', 'skipped': 'no starting cards'})
+    else:
+        own = fetch(turn_context, path)
+        assert send(
+            turn_context,
+            game_id,
+            own['revision'],
+            {'type': 'trade.offer', 'to': 'all', 'give': {'wool': 1}, 'want': {holding: 1}},
+        ), 'offer rejected'
+        snapshot = fetch(contexts[0], path)
+        affordable_id = snapshot['view']['offers'][-1]['id']
+        time.sleep(2.5)
+        snapshot = fetch(contexts[0], path)
+        assert response_of(snapshot, affordable_id, recipient_id) is None, 'an affordable offer was auto-declined'
+        print(f'PASS left affordable {affordable_id} unanswered', flush=True)
+        RESULTS.append({'case': 'leaves-affordable-open', 'offerId': affordable_id})
 
     # 3. The stored preference shows up as a checked box in the trade panel.
     recipient_page = pages[recipient_index]
@@ -223,7 +292,8 @@ with sync_playwright() as p:
     expect(checkbox).to_be_checked()
     row = recipient_page.get_by_test_id(f'offer-{unaffordable_id}')
     expect(row.locator('.response-list')).to_contain_text('拒絕')
-    expect(recipient_page.get_by_test_id(f'consent-{affordable_id}')).to_be_visible()
+    if affordable_id:
+        expect(recipient_page.get_by_test_id(f'consent-{affordable_id}')).to_be_visible()
     # The tools panel scrolls; bring the answered card (and the checkbox above
     # it) into the capture instead of leaving both below the fold.
     row.scroll_into_view_if_needed()

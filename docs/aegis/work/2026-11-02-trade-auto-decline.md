@@ -28,6 +28,14 @@ protocol, engine, persistence-schema or privacy boundary changed.
   stale. A per-game/offer/revision set prevents resending while the projection
   catches up; a revision invalidates responses, so a revised offer is
   re-evaluated and declined again if it is still unaffordable.
+- `submitCommand` returns the receipt, so the client knows whether an attempt
+  was accepted. Only accepted declines keep the "already answered" marker: a
+  stale, rejected or never-sent attempt releases it and records the revision
+  the projection must reach before retrying, so a lost race (two recipients
+  answering the same table-wide offer) is retried instead of skipping that
+  offer revision forever. Retries never repeat on the same stale projection,
+  because the barrier comes from the receipt revision (stale) or from the next
+  revision (any other rejection).
 - While the hand is hidden (spectator), during the dice presentation, while
   the projection lags behind known events, while another tab holds the seat, or
   while a command is in flight, the target list is empty and the effect waits
@@ -37,29 +45,37 @@ protocol, engine, persistence-schema or privacy boundary changed.
 
 ## Verification
 
-- `packages/web/test/trade.test.tsx` adds five cases: an unaffordable offer is
+- `packages/web/test/trade.test.tsx` adds six cases: an unaffordable offer is
   declined when the stored preference is on, nothing is sent while it is off,
   toggling the checkbox writes `catan.trade.autoDecline`, the target selector
-  covers the exclusion and waiting rules, and revised terms are targeted
-  again.
-- `pnpm typecheck`, `pnpm -r --workspace-concurrency=1 test`, `pnpm build`,
-  `pnpm smoke` and `pnpm test:dev` passed: rules 158, bots 43, protocol 7,
-  server 136 (+15 skipped without PostgreSQL), web 571 in 54 files, smoke
-  13/13, compiled development runner green.
+  covers the exclusion and waiting rules, revised terms are targeted again, and
+  a stale receipt is retried once the projection catches up. Reverting the
+  retry handling makes that last case fail, which is the regression the review
+  asked for.
+- `pnpm typecheck`, the four package test suites, `pnpm build`, `pnpm smoke` and
+  `pnpm test:dev` passed: rules 158, protocol 7, server 136 (+15 skipped without
+  PostgreSQL), web 572 in 54 files, bots 43 in isolation, smoke 13/13, compiled
+  development runner green.
 - Plain `pnpm verify` ran the four package test suites concurrently on this
   6-core host and twice hit a different 5 s jsdom timeout in a board test
   (`board-visual`, then `board-3d-lifecycle`); each file passes alone and the
   serialized run above is green, so the timeouts are worker contention rather
   than a deterministic failure from this change.
+- The bots `fallback.test.ts` game simulations hit their 5 s timeout while the
+  host load average was above 5 on 6 cores; the same suite passed twice in a
+  row on its own (43/43) and is untouched by this change.
 - Browser check, production build + SQLite service, headless Chromium:
   [verify.py](../../../scripts/trade-auto-decline/verify.py) seats three
-  players, starts the recipient with `catan.trade.autoDecline` already stored
-  and the trade panel closed, and proposes five ore through the API. The
-  recipient's client answered `declined` without any input (1.08 s in the
-  recorded run); an affordable offer stayed unanswered; the checkbox read as
-  checked, wrote `true`/`false` back to `localStorage`, and stayed inside the
-  390 px layout. Captures cover the panel in zh-Hant and English at 1366×768
-  plus the phone width. No page errors. Report:
+  players, starts both recipients with `catan.trade.autoDecline` already
+  stored and the trade panel closed, and proposes five ore through the API.
+  Both recipients answered `declined` without any input, and the recorded
+  command log shows the race the review asked about: the first client sent one
+  command (accepted), the second sent one that came back
+  `error.E_STALE_REVISION` and then a retry that was accepted. An affordable
+  offer stayed unanswered; the checkbox read as checked, wrote `true`/`false`
+  back to `localStorage`, and stayed inside the 390 px layout. Captures cover
+  the panel in zh-Hant and English at 1366×768 plus the phone width. No page
+  errors. Report:
   [report.json](../../screenshots/trade-auto-decline/report.json).
 
 ## Limitations

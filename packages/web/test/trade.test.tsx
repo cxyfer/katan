@@ -423,6 +423,34 @@ describe('automatic declines', () => {
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(2));
     expect(lastCommand(api)).toEqual({ type: 'trade.respond', offerId: 'offer-1', response: 'declined' });
   });
+
+  it('retries after a stale receipt once the projection catches up', async () => {
+    const sockets: TestSocket[] = [];
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [unaffordable] })) });
+    // 另一位收件者同時拒絕了同一個桌級提案：伺服器以過期回絕這一筆。
+    api.setCommandResult({
+      ok: true,
+      data: {
+        commandId: 'c1',
+        outcome: 'rejected',
+        revision: 13,
+        error: { messageId: 'error.E_STALE_REVISION' },
+        events: [],
+      },
+    });
+    await openGameWithSocket(api, sockets, memoryStorage({ [AUTO_DECLINE_KEY]: 'true' }));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+
+    api.setCommandResult(ACCEPTED);
+    const fresh = makeSnapshot(makeView({ hints: makeHints(), offers: [unaffordable] }), 13);
+    fresh.view.seq = 13;
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: fresh }));
+
+    // 過期回執不能永久占位：投影更新後要再用新的 revision 重送。
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(2));
+    expect(lastCommand(api)).toEqual({ type: 'trade.respond', offerId: 'offer-1', response: 'declined' });
+    expect(api.callsOf('sendCommand')[1]!.args[1]).toMatchObject({ expectedRevision: 13 });
+  });
 });
 
 describe('bank and harbour exchange', () => {
