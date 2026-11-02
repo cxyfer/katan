@@ -47,6 +47,9 @@ export const SOUND_CUES = [
   'pirate.move',
   'gold.pick',
   'island.bonus',
+  // Explorers & Pirates
+  'explore.reveal',
+  'mission.advance',
 ] as const;
 
 export type SoundCue = (typeof SOUND_CUES)[number];
@@ -141,6 +144,34 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
       return 'gold.pick';
     case 'island.bonus':
       return 'island.bonus';
+    // Explorers & Pirates reuses the sea cues and adds the fog lifting and mission progress.
+    case 'ep.shipBuilt':
+    case 'ep.setupShip':
+      return 'ship.build';
+    case 'ep.shipMoved':
+      return 'ship.move';
+    case 'ep.pirateMoved':
+      return 'pirate.move';
+    case 'ep.pirateStole':
+      return selfId !== null && playerId(event, 'victim') === selfId ? 'robber.stolenFromYou' : 'robber.steal';
+    case 'ep.boughtResource':
+    case 'ep.soldForGold':
+    case 'ep.fastGold':
+    case 'ep.goldProduced':
+      return 'gold.pick';
+    case 'ep.explored':
+      return 'explore.reveal';
+    case 'ep.settlementFounded':
+    case 'ep.setupSettlement':
+    case 'ep.setupHarbor':
+    case 'ep.harborBuilt':
+      return 'build.settlement';
+    case 'ep.setupRoad':
+      return 'build.road';
+    case 'ep.lairCaptured':
+    case 'ep.delivered':
+    case 'ep.trackAdvanced':
+      return 'mission.advance';
     default:
       return null;
   }

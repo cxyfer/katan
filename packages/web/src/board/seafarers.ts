@@ -5,6 +5,7 @@
  */
 
 import type { GameView, Resource } from '@catan/rules';
+import { isEpShipCommand } from './explorersPirates.ts';
 
 export interface IslandClaimView {
   player: string;
@@ -38,7 +39,7 @@ export const ISLAND_BONUS_POINTS = 2;
 const SHIP_COMMANDS = new Set(['build.ship', 'setup.placeShip', 'ship.move', 'ship.pick']);
 
 export function isShipCommand(commandType: string | null | undefined): boolean {
-  return !!commandType && SHIP_COMMANDS.has(commandType);
+  return !!commandType && (SHIP_COMMANDS.has(commandType) || isEpShipCommand(commandType));
 }
 
 export function seafarersView(view: Pick<GameView, 'modules'> | null | undefined): SeafarersModuleView | null {

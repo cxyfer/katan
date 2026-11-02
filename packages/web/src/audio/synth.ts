@@ -468,6 +468,17 @@ const RECIPES: Record<SoundCue, Recipe> = {
     [67, 72, 76, 79].forEach((midi, index) => bell(s, at + index * 0.09, midi, 0.08, 1.0, { reverb: 0.4, pan: -0.3 + index * 0.2 }));
     brass(s, at + 0.36, 72, 0.06, 0.5, { reverb: 0.35 });
   },
+  // Explorers & Pirates: mist lifting off a hex — an airy rise ending on a soft chime.
+  'explore.reveal': (s, at) => {
+    noise(s, { at, attack: 0.25, decay: 0.6, gain: 0.08, filter: { type: 'bandpass', freq: 1200, to: 3200, q: 0.5 }, pan: 0.2 });
+    swish(s, at + 0.1, 400, 1800, 0.5, 0.08, { pan: -0.2, reverb: 0.35 });
+    bell(s, at + 0.5, 76, 0.06, 0.9, { reverb: 0.45 });
+  },
+  // A mission step: two bells and a short horn.
+  'mission.advance': (s, at) => {
+    [72, 79].forEach((midi, index) => bell(s, at + index * 0.11, midi, 0.07, 0.9, { reverb: 0.35, pan: -0.2 + index * 0.4 }));
+    brass(s, at + 0.25, 67, 0.06, 0.45, { reverb: 0.35 });
+  },
   // 氣泡「啵」兩聲。
   'chat.message': (s, at) => {
     tone(s, { at, freq: 520, to: 1040, glide: 0.07, decay: 0.1, gain: 0.08 });
@@ -490,4 +501,5 @@ export const CUE_LENGTH_SECONDS: Record<SoundCue, number> = {
   'turn.yours': 1.6, 'turn.other': 0.5, 'game.victory': 2.6, 'game.over': 2.6,
   'ui.select': 0.1, 'ui.error': 0.3, 'chat.message': 0.25,
   'ship.build': 1.1, 'ship.move': 1.1, 'pirate.move': 1.0, 'gold.pick': 1.1, 'island.bonus': 1.4,
+  'explore.reveal': 1.4, 'mission.advance': 1.2,
 };

@@ -1,0 +1,32 @@
+/* Explorers & Pirates: turn prompt, cargo chips and the fog lifting off an explored hex. */
+.screen--game .game__messages:has(.ep-prompt) { max-height: calc(100% - 70px); }
+.ep-prompt { display: flex; flex-direction: column; gap: .4rem; }
+.ep-prompt__phase { display: flex; justify-content: space-between; align-items: baseline; gap: .4rem; margin: 0; font-size: .78rem; }
+.ep-prompt__group h3 { margin: .2rem 0; font-size: .72rem; font-weight: 600; }
+.ep-prompt__choices, .ep-prompt__resources, .ep-prompt__ships { list-style: none; margin: 0; padding: 0; }
+.ep-prompt__choices { display: flex; flex-wrap: wrap; gap: .3rem; }
+.ep-prompt__resources { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .3rem; }
+.ep-prompt__resources .button { width: 100%; min-height: 34px; display: flex; justify-content: center; align-items: center; }
+.ep-prompt .button--chip { min-height: 32px; font-size: .7rem; display: inline-flex; align-items: center; gap: .2rem; }
+.ep-prompt__primary { width: 100%; min-height: 38px; }
+.ep-prompt__note { margin: 0; font-size: .66rem; }
+.ep-prompt__warning { margin: 0; padding: .3rem .45rem; border-radius: 6px; background: #fff1d6; color: #5a3505; font-size: .72rem; }
+.ep-prompt__ships { display: flex; flex-direction: column; gap: .35rem; }
+.ep-ship { padding: .35rem .45rem; border: 1px solid rgba(0, 0, 0, .14); border-radius: 8px; background: rgba(255, 255, 255, .55); }
+.ep-ship[data-done='true'] { opacity: .7; }
+.ep-ship__head { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; font-size: .72rem; }
+.ep-ship__cargo { display: inline-flex; gap: .2rem; flex: 1; }
+.ep-ship__actions { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; }
+.ep-cargo { display: inline-flex; align-items: center; gap: .15rem; font-size: .68rem; }
+.ep-cargo svg { flex: none; }
+
+/* The fog bank fades and drifts up when a hex is explored. */
+.ep-fog--lift { animation: ep-fog-lift 900ms ease-out both; }
+@keyframes ep-fog-lift { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-18px); } }
+@media (prefers-reduced-motion: reduce) {
+  .ep-fog--lift { animation: none; display: none; }
+}
+
+/* Score breakdown in the players panel. */
+.ep-score { display: flex; flex-wrap: wrap; gap: .15rem .5rem; margin: .15rem 0 0; padding: 0; list-style: none; font-size: .64rem; }
+.ep-score li { white-space: nowrap; }

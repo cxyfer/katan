@@ -37,6 +37,7 @@ import { createRoadModel, createSettlementModel, harborLabelInstances } from './
 import { useDioramaGeometry } from './diorama-geometry.ts';
 import { createRobberModel } from './diorama-robber.ts';
 import { DioramaSeafarers, PirateGhost, ShipGhost } from './DioramaSeafarers.tsx';
+import { DioramaExplorersPirates } from './DioramaExplorersPirates.tsx';
 import { isShipCommand } from '../seafarers.ts';
 import { atlasGeometryKey, boardSceneResources, type BoardSceneResources } from './resources.ts';
 
@@ -419,6 +420,7 @@ function AtlasLayerContent({ props }: { props: SceneProps }) {
       <DioramaRoads {...props} material={resources.materials.diorama} />
       <DioramaBuildings {...props} material={resources.materials.diorama} />
       <DioramaSeafarers {...props} material={resources.materials.diorama} />
+      <DioramaExplorersPirates {...props} material={resources.materials.diorama} />
       <Robber props={props} resources={resources} />
       <SelectionGhost props={props} resources={resources} />
       <ReadyBridge ready={texture !== null && props.viewport.rect.width > 0 && props.viewport.rect.height > 0}

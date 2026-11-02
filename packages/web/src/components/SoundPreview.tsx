@@ -40,6 +40,8 @@ const DESCRIPTIONS: Record<SoundCue, string> = {
   'pirate.move': '海盜出航 · Pirate moves',
   'gold.pick': '金礦地選資源 · Gold chosen',
   'island.bonus': '登上新小島 · New island bonus',
+  'explore.reveal': '探索未知海域 · Fog lifts off a hex',
+  'mission.advance': '任務推進 · Mission progress',
 };
 
 function Waveform({ analysis }: { analysis: CueAnalysis | undefined }) {

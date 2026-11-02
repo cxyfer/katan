@@ -5,6 +5,7 @@ import { useT } from '../i18n/context.tsx';
 import { buildGeometry } from '../board/geometry.ts';
 import { boardIntent } from '../board/intent.ts';
 import { seafarersView } from '../board/seafarers.ts';
+import { epView } from '../board/explorersPirates.ts';
 import type { TargetKind } from '../board/targets.ts';
 import { parseViewBox } from '../board/viewport.ts';
 import { useBoardAnimation } from '../board/useBoardAnimation.ts';
@@ -81,6 +82,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const intent = useMemo(() => followUpsHeld(state) && !state.selection.commandType ? null : boardIntent(state, selfId), [state, selfId]);
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
   const seaView = useMemo(() => seafarersView(view), [view?.modules]);
+  const epModule = useMemo(() => epView(view), [view?.modules]);
   const hexTargets = useMemo(() => controls.projectedTargets({ kind: 'hex', commandType: '', labelId: '', fromHints: false, targets: geometry.hexes.map((hex) => hex.index) }), [controls.projectedTargets, geometry]);
   const viewBox = useMemo(() => parseViewBox(geometry.viewBox), [geometry]);
   const viewBoxCenter = { x: viewBox.x + viewBox.width / 2, y: viewBox.y + viewBox.height / 2 };
@@ -140,8 +142,9 @@ export function BoardView({ controller }: { controller: TableController }) {
       return;
     }
     const carried = state.selection.commandType === intent.commandType ? state.selection : null;
+    const params = carried?.params ?? intent.params;
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId,
-      ...(carried?.params ? { params: carried.params } : {}), ...(carried?.field ? { field: carried.field } : {}) });
+      ...(params ? { params } : {}), ...(carried?.field ? { field: carried.field } : {}) });
   }, [actions, intent, state.selection]);
   const focusedRoll = animation.activeDice;
   // 骰子真的出現在畫面上才開始擲骰聲；點數揭曉與後果都以此為起點。
@@ -158,7 +161,8 @@ export function BoardView({ controller }: { controller: TableController }) {
   const topology = geometry.topology;
   const setup = view.turn.setup;
   const setupActor = setup ? view.players.find((player) => player.seat === setup.seat) : undefined;
-  const setupPiece = setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
+  const epStep = epView(view)?.setupStep ?? null;
+  const setupPiece = epStep ? t(`ep.setup.${epStep}`) : setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
   const setupMine = setupActor?.id === selfId;
   const selection = intent && state.connection === 'online' && selfId && state.selection.kind === intent.kind && state.selection.index !== null && intent.targets.includes(state.selection.index)
     ? { kind: intent.kind, index: state.selection.index, playerId: selfId } : null;
@@ -280,7 +284,7 @@ export function BoardView({ controller }: { controller: TableController }) {
         aria-label={t(effective === 'r3f' ? 'a11y.boardRegion3d' : 'a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>
         {requested !== 'svg' && !failure && <div className="board__scene" aria-hidden="true" style={{ opacity: effective === 'r3f' ? 1 : 0 }}>
           <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
-            <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView}
+            <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView} explorersPirates={epModule}
               intent={intent} selection={selection} active={animation.active} viewport={controls.viewport} quality={quality}
               motionAllowed={animation.active !== null} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />
           </Suspense></SceneBoundary>

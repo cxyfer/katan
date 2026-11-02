@@ -218,6 +218,8 @@ function projectState(state: GameState) {
   }
   return {
     scenario: slot.scenario,
+    /** Current step of the variable setup (public), or null. */
+    setupStep: setupStep(state),
     missions: scenario.missions.slice(),
     pirates: scenario.pirates,
     victoryTarget: scenario.victoryTarget,

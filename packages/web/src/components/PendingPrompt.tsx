@@ -5,6 +5,7 @@ import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.
 import type { TableController } from '../state/useTable.ts';
 import { DiscardPicker } from './DiscardPicker.tsx';
 import { SeafarersPrompt } from './SeafarersPrompt.tsx';
+import { ExplorersPiratesPrompt } from './ExplorersPiratesPrompt.tsx';
 
 /**
  * Mandatory-response prompt (docs/SPEC.md §4.4/§8.4).
@@ -133,6 +134,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       )}
 
       <SeafarersPrompt controller={controller} />
+      <ExplorersPiratesPrompt controller={controller} />
 
       {/* Mandatory turn actions stay inside the prompt so a player never
           has to open a secondary tool surface to act (docs/SPEC.md §8.1/§8.4). */}

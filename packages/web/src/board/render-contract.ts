@@ -4,6 +4,7 @@ import type { BoardIntent } from './intent.ts';
 import type { BoardEffectGroup } from './animation.ts';
 import type { TargetKind } from './targets.ts';
 import type { SeafarersModuleView } from './seafarers.ts';
+import type { EpView } from './explorersPirates.ts';
 
 export type RendererMode = 'auto' | 'svg' | 'r3f';
 export type QualityMode = 'standard' | 'low';
@@ -56,6 +57,8 @@ export interface BoardSceneInput {
   motionAllowed: boolean;
   /** Seafarers module view (island claims); absent for base games. */
   seafarers?: SeafarersModuleView | null;
+  /** Explorers & Pirates module view (fog, ships, sites); absent for other games. */
+  explorersPirates?: EpView | null;
 }
 export interface BoardSceneProps extends BoardSceneInput {
   onProjection: (projection: ProjectionSnapshot) => void;

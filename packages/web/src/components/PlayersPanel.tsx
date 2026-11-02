@@ -8,6 +8,7 @@ import { requiredActionFor } from '../state/pending.ts';
 import { shownHandSize } from '../state/table.ts';
 import { BotBadge } from './BotBadge.tsx';
 import { islandBonusPoints, seafarersView } from '../board/seafarers.ts';
+import { epView } from '../board/explorersPirates.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/scoreboard-hover.css';
@@ -238,6 +239,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           const ships = view.board.roads.filter((road) => road?.ship && road.player === player.id).length;
           const islandPoints = sea ? islandBonusPoints(view, player.id) : 0;
           const routeAward = t(sea ? 'sf.award.longestTradeRoute' : 'play.award.longestRoad');
+          // Explorers & Pirates: gold, ships, harbour settlements and mission points (no development cards or awards).
+          const ep = epView(view);
+          const epPlayer = ep?.players[player.id];
           const number = (value: number) => formatNumber(state.locale, value);
           return (
             <li
@@ -271,18 +275,28 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                   <ScoreMark icon="home" label={t('table.playersSettlements', { count: number(settlements) })} value={number(settlements)} />
                   <ScoreMark icon="city" label={t('table.playersCities', { count: number(cities) })} value={number(cities)} />
                   <ScoreMark icon="cards" label={t('play.handSize')} value={number(shownHandSize(state, player))} />
-                  <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />
+                  {!ep && <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />}
                   {sea && <ScoreMark icon="ship" label={t('sf.board.ship')} value={number(ships)} testId={`players-ships-${player.seat}`} />}
-                  <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
-                    value={number(player.longestRoadLength)} awarded={longestRoad} />
-                  <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
-                    value={number(player.playedKnights)} awarded={largestArmy} />
+                  {ep && epPlayer && <>
+                    <ScoreMark icon="ship" label={t('ep.piece.ship')} value={number(ep.ships.filter((ship) => ship.player === player.id).length)} testId={`players-ep-ships-${player.seat}`} />
+                    <ScoreMark icon="sparkles" label={t('ep.score.gold', { gold: number(epPlayer.gold) })} value={number(epPlayer.gold)} testId={`players-ep-gold-${player.seat}`} />
+                  </>}
+                  {!ep && <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
+                    value={number(player.longestRoadLength)} awarded={longestRoad} />}
+                  {!ep && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
+                    value={number(player.playedKnights)} awarded={largestArmy} />}
                 </div>
                 <div className="players__bonuses">
                   {isSelf && <ScoreMark icon="crown" label={t('table.playersHiddenVp')} value={number(hiddenVp)} testId="players-hidden-vp" />}
                   {islandPoints > 0 && <ScoreMark icon="compass" testId={`players-islands-${player.seat}`}
                     label={`${t('sf.score.islands')} · ${t('sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })}`}
                     value={number(islandPoints)} />}
+                  {epPlayer && epPlayer.harborPoints > 0 && <ScoreMark icon="anchor" testId={`players-ep-harbors-${player.seat}`}
+                    label={t('ep.score.harbors', { points: number(epPlayer.harborPoints) })} value={number(epPlayer.harborPoints)} />}
+                  {epPlayer && (['lairs', 'fish', 'spices'] as const).filter((mission) => ep!.missions.includes(mission)).map((mission) => (
+                    <ScoreMark key={mission} icon={mission === 'lairs' ? 'shield' : mission === 'fish' ? 'anchor' : 'scales'} testId={`players-ep-${mission}-${player.seat}`}
+                      label={t(`ep.score.${mission}`, { points: number(epPlayer.missionPoints[mission] ?? 0) })} value={number(epPlayer.missionPoints[mission] ?? 0)} />
+                  ))}
                   {player.bonusPoints - islandPoints > 0 && <ScoreMark icon="flag" label={t('table.playersBonus')} value={number(player.bonusPoints - islandPoints)} />}
                   {hiddenBonus > 0 && <ScoreMark icon="sparkles" label={t('table.playersHiddenBonus')} value={number(hiddenBonus)} />}
                 </div>

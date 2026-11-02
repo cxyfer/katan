@@ -11,6 +11,7 @@ import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarke
 import { TerrainEmblem } from './TerrainArt.tsx';
 import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
 import { isShipCommand, seafarersView } from '../board/seafarers.ts';
+import { SvgExplorersPiratesLayer } from './SvgExplorersPirates.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
@@ -186,6 +187,7 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             );
           })}
 
+          <SvgExplorersPiratesLayer geometry={geometry} view={view} active={active} nameResolver={nameResolver} />
           {seafarersView(view)?.islandClaims.map((claim) => {
             const vertex = geometry.vertices[claim.vertex];
             const owner = view.players.find((candidate) => candidate.id === claim.player);
