@@ -61,9 +61,10 @@ publishes to its own namespace.
    paragraph and highlight bullet on one source line — GitHub turns a newline inside a release body
    into a hard break — and run [`scripts/release-notes-lint.sh`](scripts/release-notes-lint.sh) on
    the draft.
-8. **GHCR visibility is a repository setting.** A private repository produces a private package.
-   Authenticate with `docker login ghcr.io` (token scope `read:packages`) or make the package
-   public.
+8. **GHCR visibility is a repository setting.** A private repository produces a private package, and
+   every pull then needs `docker login ghcr.io` (token scope `read:packages`). The package is
+   published publicly, so the documentation and the release notes carry no login step; if it goes
+   private again, they need the login back.
 
 ## Release checklist
 
@@ -114,8 +115,7 @@ The tag push starts the workflow.
 gh run list --workflow=docker-publish.yml --limit 5
 gh run watch <run-id>
 
-docker login ghcr.io      # only if the package is private
-docker buildx imagetools inspect ghcr.io/cxyfer/katan:v0.2.0
+docker buildx imagetools inspect ghcr.io/cxyfer/katan:v0.2.0   # public package: no login needed
 ```
 
 `imagetools inspect` must list both `linux/amd64` and `linux/arm64`. The workflow already asserts
@@ -141,9 +141,13 @@ Generate the skeleton, then write the callout and the highlights:
 $EDITOR .tmp/release-notes-v0.2.0.md   # the callout and the ## Highlights list
 ./scripts/release-notes-lint.sh .tmp/release-notes-v0.2.0.md
 
-gh release create v0.2.0 --title "catan v0.2.0" \
+gh release create v0.2.0 --title "v0.2.0" \
   --notes-file .tmp/release-notes-v0.2.0.md --verify-tag
 ```
+
+The release title is the tag verbatim, so `v0.2.0` is published as `v0.2.0`. Do not prefix it with
+the project name: the tag already names the version, and the repository is where the project is
+identified.
 
 Write each callout paragraph and each highlight bullet on one line; the lint command fails the
 draft if the prose is still wrapped. Add `--prerelease` for a `-rc.N` tag. The shape is fixed by

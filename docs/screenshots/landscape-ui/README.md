@@ -1,7 +1,7 @@
 # Landscape one-page layout
 
-Captured on 2026-10-31 from the `pnpm build` output served with
-`WEB_DIST_PATH` set, with a real three-player game. Entry, room creation,
+Captured on 2026-11-01 from `e3cf207` (the `pnpm build` output served with
+`WEB_DIST_PATH` set), with a real three-player game. Entry, room creation,
 joining, ready and start go through the UI; setup placements and later turns
 advance through the same HTTP API the client uses, choosing legal moves from
 each player's own `hints`, until it is the host's turn. The game is then

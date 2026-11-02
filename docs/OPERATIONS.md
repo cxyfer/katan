@@ -15,7 +15,7 @@ tested (SPEC §10).
 | `DATABASE_URL` | – | `postgres://…` selects PostgreSQL; `sqlite:/path` selects SQLite |
 | `SQLITE_PATH` | `./.data/catan.sqlite` | SQLite file when `DATABASE_URL` is unset |
 | `WEB_DIST_PATH` | – | Directory of the built client; unset serves API only |
-| `PUBLIC_URL` | – | Public origin (e.g. `https://catan.example.com`) used for the absolute `og:image` URL in link previews; unset derives it from `X-Forwarded-Proto`/`Host` |
+| `PUBLIC_URL` | – | Public origin (e.g. `https://catan.example.com`) used for the absolute `og:image`, `og:url` and canonical URLs in link previews; unset derives it from `X-Forwarded-Proto`/`Host` |
 | `SESSION_COOKIE_NAME` | `catan_session` | Guest identity cookie name |
 | `COOKIE_SECURE` | `true` when `NODE_ENV=production` | Adds `Secure` to the cookie |
 | `NICKNAME_MAX_LENGTH` | `24` | Nickname bound (code points) |
@@ -50,10 +50,8 @@ disconnect grace `30–3600`. Invalid values are rejected with
 The Compose files run the published `ghcr.io/cxyfer/katan:latest` image;
 `docker compose pull` refreshes it. `latest` moves only on a stable release
 tag, so pin an exact version tag (`ghcr.io/cxyfer/katan:v0.2.0`, or `0.1.0` for the first release) or a
-digest in the `image:` line when a deployment must be reproducible. While the
-repository is private the package is private too, so `docker login ghcr.io` with
-a token that has `read:packages` (or a public package) is required before the
-first pull.
+digest in the `image:` line when a deployment must be reproducible. The
+package is published publicly, so a pull needs no login.
 
 ### SQLite (single instance)
 
