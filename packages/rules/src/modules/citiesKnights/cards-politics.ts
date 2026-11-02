@@ -148,6 +148,7 @@ export function diplomacyRoad(state: GameState, actorId: string, command: Module
       if (countRoads(state, actorId) >= ctx.profile.pieces.roads) return kit.fail('E_NO_PIECES', { piece: 'road' });
     }
     state.board.roads[edge] = { player: actorId, ship };
+    if (ship) kit.shipPlaced(state, actorId, edge);
     playerStats(state, actorId).freeRoadsBuilt += 1;
     kit.emit(state, 'ck.diplomacyRoadBuilt', ship ? { playerId: actorId, edge, ship: true } : { playerId: actorId, edge });
   } else {

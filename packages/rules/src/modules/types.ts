@@ -87,6 +87,12 @@ export interface RulesKit {
    * profile's modules' `legalShips`; empty without ships).
    */
   legalShips(state: GameState, playerId: string): number[];
+  /**
+   * Tells the profile's modules that another module placed a ship for the
+   * player (the modules' `shipPlaced`), e.g. C&K Diplomacy re-placing an own
+   * ship, so Seafarers counts it as built in this action window.
+   */
+  shipPlaced(state: GameState, playerId: string, edge: number): void;
 }
 
 export interface ModuleContext {
@@ -216,6 +222,11 @@ export interface RulesModule {
    * Knights' Diplomacy after removing an own ship.
    */
   legalShips?(state: GameState, playerId: string, ctx: ModuleViewContext): number[];
+  /**
+   * A ship was placed by another module (`kit.shipPlaced`). Seafarers records
+   * it as built in this action window, so it may not move in it (SF25 p. 2).
+   */
+  shipPlaced?(state: GameState, playerId: string, edge: number, ctx: ModuleViewContext): void;
   /**
    * Extra veto on moving one of the player's ships (Seafarers + Cities &
    * Knights: knights close shipping routes and must stay connected).

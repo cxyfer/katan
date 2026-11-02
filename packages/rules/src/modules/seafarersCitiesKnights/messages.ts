@@ -6,5 +6,5 @@
 
 export const messages = {
   eventTypes: ['sfck.knightChasedPirate'] as const,
-  errorCodes: ['E_PIRATE_INACTIVE'] as const,
+  errorCodes: ['E_PIRATE_INACTIVE', 'E_SHIP_PINNED_BY_KNIGHT'] as const,
 };

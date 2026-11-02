@@ -238,7 +238,7 @@ describe('R-COMB bandits before and after the first attack (COMB-10, CK12-2, SFC
   });
 });
 
-describe('R-COMB chasing the robber or the pirate (CK25 pp. 9–10, COMB-6, SFCK-4)', () => {
+describe('R-COMB chasing the robber or the pirate (CK25 pp. 9–10, COMB-6, CK12-7/8, SFCK-4/8)', () => {
   it('SFCK-4 a knight chasing the robber moves the robber only', () => {
     const state = afterFirstAttack(shipLine());
     addKnight(state, { player: 'p1', vertex: V29, level: 1, active: true });
@@ -273,6 +273,22 @@ describe('R-COMB chasing the robber or the pirate (CK25 pp. 9–10, COMB-6, SFCK
     expect(player(stole.state, 'p1').resources.brick).toBe(1);
   });
 
+  it('SFCK-8 a knight on a coastal intersection of the pirate’s hex may chase it (COMB-6 wording)', () => {
+    const state = afterFirstAttack(shipLine());
+    const topo = topologyOf(state);
+    // V29 is on the main island's coast, reached by a road from the
+    // settlement at V28; one of its hexes is sea, the others land.
+    state.board.roads[edgeBetween(state, V28, V29)] = { player: 'p1', ship: false };
+    const terrain = state.board.layout.terrain;
+    expect(topo.vertices[V29]!.hexes.some((h) => terrain[h] !== 'sea')).toBe(true);
+    const seaHex = topo.vertices[V29]!.hexes.find((h) => terrain[h] === 'sea')!;
+    state.board.pirate = seaHex;
+    addKnight(state, { player: 'p1', vertex: V29, level: 1, active: true });
+    expect(sfck(state, 'p1').pirateChase).toContain(V29);
+    const chased = actCk(state, 'p1', { type: 'knight.chasePirate', vertex: V29 });
+    expect(chased.state.pending).toMatchObject({ kind: 'moveRobber', pirate: true });
+  });
+
   it('COMB-6 the chase may send the pirate to the frame', () => {
     const state = afterFirstAttack(shipLine());
     state.board.pirate = hex(state, 2, -2);
@@ -300,7 +316,7 @@ describe('R-COMB chasing the robber or the pirate (CK25 pp. 9–10, COMB-6, SFCK
     expect(rejectCk(state, 'p1', { type: 'knight.chasePirate', vertex: V11 })).toBe('E_WRONG_PHASE');
   });
 
-  it('CK-FAQ 63 Taxation moves the robber only, never to the sea', () => {
+  it('CK-FAQ 63, CK12-8 Taxation moves the robber only, never to the sea', () => {
     const state = afterFirstAttack(emptySfckGame(4));
     handCards(state, 'p1', ['taxation']);
     expect(rejectCard(state, 'p1', 'taxation', { hex: hex(state, 2, -2) })).toBe('E_ILLEGAL_TARGET');
@@ -377,7 +393,7 @@ describe('R-COMB knights and ships (COMB-4/5, CK12-6, SF-FAQ 18, SFCK-3)', () =>
     expect(routeLength(state, 'p1')).toBe(2);
     addKnight(state, { player: 'p2', vertex: V11, level: 1, active: false });
     expect(routeLength(state, 'p1')).toBe(1);
-    expect(rejectCk(state, 'p1', { type: 'ship.move', from: edgeBetween(state, V11, V10), to: edgeBetween(state, V10, V15) })).toBe('E_SHIP_NOT_MOVABLE');
+    expect(rejectCk(state, 'p1', { type: 'ship.move', from: edgeBetween(state, V11, V10), to: edgeBetween(state, V10, V15) })).toBe('E_SHIP_PINNED_BY_KNIGHT');
   });
 
   it('COMB-5 a ship may not be built past an opponent knight', () => {
@@ -387,7 +403,7 @@ describe('R-COMB knights and ships (COMB-4/5, CK12-6, SF-FAQ 18, SFCK-3)', () =>
     addKnight(state, { player: 'p2', vertex: V11, level: 1, active: true });
     give(state, 'p1', { lumber: 1, wool: 1 });
     expect(rejectCk(state, 'p1', { type: 'build.ship', edge: edgeBetween(state, V11, V10) })).toBe('E_ILLEGAL_TARGET');
-    expect(rejectCk(state, 'p1', { type: 'ship.move', from: edgeBetween(state, V28, V11), to: side(state, 2, -2, 4) })).toBe('E_SHIP_NOT_MOVABLE');
+    expect(rejectCk(state, 'p1', { type: 'ship.move', from: edgeBetween(state, V28, V11), to: side(state, 2, -2, 4) })).toBe('E_SHIP_PINNED_BY_KNIGHT');
   });
 
   it('COMB-4 an own knight at the last ship closes the route; without it the ship moves', () => {
@@ -396,19 +412,23 @@ describe('R-COMB knights and ships (COMB-4/5, CK12-6, SF-FAQ 18, SFCK-3)', () =>
     expect(moved.state.board.roads[edgeBetween(open, V11, V6)]).toEqual({ player: 'p1', ship: true });
     const closed = shipLine();
     addKnight(closed, { player: 'p1', vertex: V10, level: 1, active: true });
-    expect(rejectCk(closed, 'p1', { type: 'ship.move', from: edgeBetween(closed, V11, V10), to: edgeBetween(closed, V11, V6) })).toBe('E_SHIP_NOT_MOVABLE');
+    expect(rejectCk(closed, 'p1', { type: 'ship.move', from: edgeBetween(closed, V11, V10), to: edgeBetween(closed, V11, V6) })).toBe('E_SHIP_PINNED_BY_KNIGHT');
+    // A route closed by two own buildings keeps the Seafarers error.
+    const between = shipLine();
+    settle(between, 'p1', V10);
+    expect(rejectCk(between, 'p1', { type: 'ship.move', from: edgeBetween(between, V11, V10), to: edgeBetween(between, V11, V6) })).toBe('E_SHIP_NOT_MOVABLE');
     // A knight carried on a sea intersection holds the ship it stands on.
     const carried = shipLine();
     carried.board.roads[edgeBetween(carried, V11, V10)] = null;
     addKnight(carried, { player: 'p1', vertex: V11, level: 1, active: true });
-    expect(rejectCk(carried, 'p1', { type: 'ship.move', from: edgeBetween(carried, V28, V11), to: side(carried, 2, -2, 4) })).toBe('E_SHIP_NOT_MOVABLE');
+    expect(rejectCk(carried, 'p1', { type: 'ship.move', from: edgeBetween(carried, V28, V11), to: side(carried, 2, -2, 4) })).toBe('E_SHIP_PINNED_BY_KNIGHT');
     // A knight behind the open end does not: the move cannot cut it off.
     const behind = shipLine();
     addKnight(behind, { player: 'p1', vertex: V11, level: 1, active: true });
     expect(applyCommand(behind, 'p1', { type: 'ship.move', from: edgeBetween(behind, V11, V10), to: edgeBetween(behind, V11, V6) } as never, scriptedRng([0])).ok).toBe(true);
   });
 
-  it('CK-FAQ 64–66 Diplomacy removes an open ship; the owner re-places an own ship as a ship', () => {
+  it('CK-FAQ 64–66, CK12-9 Diplomacy removes an open ship; the owner re-places an own ship, built this turn', () => {
     const state = shipLine();
     state.board.pirate = hex(state, 2, -2); // the pirate does not protect it (CK-FAQ 65)
     const tip = edgeBetween(state, V11, V10);
@@ -432,9 +452,15 @@ describe('R-COMB knights and ships (COMB-4/5, CK12-6, SF-FAQ 18, SFCK-3)', () =>
     const rebuilt = actCk(own.state, 'p1', { type: 'progress.diplomacyRoad', edge: target });
     expect(rebuilt.state.board.roads[target]).toEqual({ player: 'p1', ship: true });
     expect(eventsOf(rebuilt, 'ck.diplomacyRoadBuilt')[0]!.params).toEqual({ playerId: 'p1', edge: target, ship: true });
-    // A relocated ship is not "built this turn" (SFCK-6); with the pirate
-    // gone it may still move this turn.
+    // The re-placed ship counts as built this turn (SFCK-6, CK25 p. 12 "only
+    // then build a new ship"; SF25 p. 2): even with the pirate gone it may
+    // not move until the next turn.
     rebuilt.state.board.pirate = null;
+    expect((projectGame(rebuilt.state, 'p1').modules!.seafarers as { shipsBuiltThisTurn: number[] }).shipsBuiltThisTurn).toEqual([target]);
+    expect(rejectCk(rebuilt.state, 'p1', { type: 'ship.move', from: target, to: edgeBetween(state, V11, V10) })).toBe('E_SHIP_BUILT_THIS_TURN');
+    expect((actionHints(rebuilt.state, 'p1').modules!.seafarers as { movableShips: { edge: number }[] }).movableShips.map((entry) => entry.edge)).not.toContain(target);
+    // In the player's next action window it moves again.
+    rebuilt.state.windowId += 1;
     expect(applyCommand(rebuilt.state, 'p1', { type: 'ship.move', from: target, to: edgeBetween(state, V11, V10) } as never, scriptedRng([0])).ok).toBe(true);
   });
 

@@ -34,7 +34,7 @@ import type { CommandOutcome, GameState } from '../../types.ts';
 import { actingKnight, canAct, requireAction } from '../citiesKnights/knights.ts';
 import { ckState, ckView, knightAt, type Knight } from '../citiesKnights/state.ts';
 import { goldEntitlements } from '../seafarers/gold.ts';
-import { isOpenShipEnd } from '../seafarers/ships.ts';
+import { actionWindowGuard, hasOpenEnd, isOpenShipEnd, moveShip, shipMoveBlock } from '../seafarers/ships.ts';
 import type { BanditMove, ModuleCommand, ModuleContext, RulesModule } from '../types.ts';
 
 export const SEAFARERS_CITIES_KNIGHTS = 'seafarersCitiesKnights';
@@ -124,6 +124,19 @@ function shipMoveBlocked(state: GameState, playerId: string, edge: number): bool
   return !ends.some((vertex) => isOpenShipEnd(state, playerId, edge, vertex) && !knightAt(state, vertex));
 }
 
+/**
+ * `ship.move` — the Seafarers move, with its own error when an open ship is
+ * held only by knights (COMB-4/5), so players can tell why it is stuck.
+ */
+function moveShipCombined(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
+  const from = command.from;
+  if (typeof from === 'number' && !actionWindowGuard(state, actorId, ctx) && shipMoveBlock(state, actorId, from) === 'closed'
+    && hasOpenEnd(state, actorId, from) && shipMoveBlocked(state, actorId, from)) {
+    return ctx.kit.fail('E_SHIP_PINNED_BY_KNIGHT', { edge: from });
+  }
+  return moveShip(state, actorId, command, ctx);
+}
+
 export const seafarersCitiesKnightsModule: RulesModule = {
   id: SEAFARERS_CITIES_KNIGHTS,
 
@@ -153,6 +166,7 @@ export const seafarersCitiesKnightsModule: RulesModule = {
 
   commands: {
     'knight.chasePirate': chasePirate,
+    'ship.move': moveShipCombined,
   },
 
   project(state) {

@@ -20,7 +20,7 @@ import {
   moveShip,
   setupShip,
 } from './ships.ts';
-import { SEAFARERS, initialSeafarersState, seafarersView } from './state.ts';
+import { SEAFARERS, initialSeafarersState, seafarersState, seafarersView } from './state.ts';
 import { setModuleState } from '../state.ts';
 
 export const seafarersModule: RulesModule = {
@@ -40,6 +40,12 @@ export const seafarersModule: RulesModule = {
 
   legalShips(state, playerId, ctx) {
     return buildableShipEdges(state, playerId, ctx.profile.pieces.ships);
+  },
+
+  // A ship another module placed (C&K Diplomacy) counts as built in this
+  // window: it may not move in it (SF25 p. 2; CK25 p. 12 "only then build").
+  shipPlaced(state, _playerId, edge) {
+    seafarersState(state).built.push(edge);
   },
 
   afterBoardChange(state, ctx) {

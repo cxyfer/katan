@@ -152,7 +152,7 @@ function edgeOf(command: ModuleCommand, field: string): number | null {
   return typeof value === 'number' && Number.isInteger(value) ? value : null;
 }
 
-function actionWindowGuard(state: GameState, actorId: string, ctx: ModuleContext): CommandOutcome | null {
+export function actionWindowGuard(state: GameState, actorId: string, ctx: ModuleContext): CommandOutcome | null {
   if (ctx.kit.currentPlayer(state).id !== actorId) return ctx.kit.fail('E_NOT_YOUR_TURN');
   if (state.turn.phase !== 'action') return ctx.kit.fail('E_WRONG_PHASE', { phase: state.turn.phase });
   return null;

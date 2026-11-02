@@ -292,6 +292,10 @@ const KIT: RulesKit = {
   placedFreeRoute: (state, playerId, rng) => placedFreeRoute(state, playerId, rng ?? null),
   freeRouteTargets: freeRouteTargetCount,
   legalShips: moduleLegalShips,
+  shipPlaced: (state, playerId, edge) => {
+    const ctx = viewContext(state);
+    for (const module of modulesOf(state)) module.shipPlaced?.(state, playerId, edge, ctx);
+  },
 };
 
 /** Ship placements the profile's modules offer the player now. */

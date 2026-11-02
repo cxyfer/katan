@@ -45,6 +45,7 @@ and i18n catalog file.
 | robber | `robberInactive` | true while the robber is out of play (C&K before the first attack); a 7 still discards |
 | trade | `bankRate` | adjusts the supply rate for a given card (C&K: commodities, trade level 3 at 2:1) |
 | board | `legalShips` | ship edges the player could place now, supply included (Seafarers); lets another module re-place a ship (C&K Diplomacy); `kit.legalShips` collects them |
+| board | `shipPlaced` | a ship another module placed (C&K Diplomacy, through `kit.shipPlaced`); Seafarers counts it as built in this window |
 | board | `shipMoveBlocked` | extra veto on moving an own ship (combination: knights close and pin shipping routes) |
 | board | `allowMerchant` | extra veto on a merchant hex (combination: never on gold) |
 | cards | `freeRouteTargets` | extra free Road Building placements (ships), supply included; summed with the legal roads capped by the road pieces left |
@@ -77,7 +78,8 @@ them in `ruleModules` order and combines their answers per hook:
   accepted while a frame is pending.
 - `allowBuilding`, `allowCity`, `allowMerchant`: every module must allow;
   `shipMoveBlocked`, `beforeEndTurn`: any module may veto.
-- `score`, `freeRouteTargets`: summed; `legalShips`: concatenated.
+- `score`, `freeRouteTargets`: summed; `legalShips`: concatenated;
+  `shipPlaced`: every module is told.
 - `initGame`, `afterProduction`, `afterBoardChange`: every module runs, in
   order; `beforeProduction` runs in order until one returns `'defer'`.
 
@@ -91,8 +93,9 @@ tests for the other. The combined Heading for New Shores profiles run
   pirate chase the pirate only) precede the Seafarers pirate, and its
   `afterProduction` lets the Seafarers gold frame queue before the C&K
   science bonus (gold is production). It also owns `knight.chasePirate`,
-  `shipMoveBlocked` (knights close and pin ships) and `allowMerchant` (no
-  merchant on gold).
+  `shipMoveBlocked` (knights close and pin ships), a `ship.move` wrapper that
+  reports a knight-held ship as `E_SHIP_PINNED_BY_KNIGHT`, and
+  `allowMerchant` (no merchant on gold).
 - `seafarers` before `citiesKnights`, so gold is queued before the
   aqueduct and the pirate's `moveBandit` before the robber's.
 
