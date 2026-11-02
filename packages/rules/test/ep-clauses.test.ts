@@ -19,7 +19,7 @@ import { hexNeighbors, type BoardTopology } from '../src/topology.ts';
 import type { GameState } from '../src/types.ts';
 import { edgeOfHex, exploringPair, gold, landHo, nextEdges, refused, run, shipOf } from './ep-helpers.ts';
 import { epHints, epPlayable, epView as projectEpView } from './ep-sim.ts';
-import { scriptedRng, setHand } from './helpers.ts';
+import { forceTurn, newGame, scriptedRng, setHand } from './helpers.ts';
 
 /** Intersections one edge away from `vertex`. */
 function neighborsOfVertex(topo: BoardTopology, vertex: number): number[] {
@@ -696,3 +696,54 @@ describe('R-EP fish, spices, Council and victory (EP25 pp. 13–15, EP25-M pp. 1
 function epView(state: GameState) {
   return projectEpView(state, 'p1') as unknown as { players: Record<string, { abilities: Record<string, number>; chaseNumbers: number[] }> };
 }
+
+describe('R-EP domestic trade with coins (EP25 p. 9, EP25-M p. 5)', () => {
+  it('R-EP-49 offers may carry gold on either side; settling moves the coins and checks both balances', () => {
+    let state = landHo();
+    setHand(state, 'p1', { lumber: 1 });
+    setHand(state, 'p2', { ore: 1 });
+    const slot = epState(state);
+    slot.gold.p1 = 3;
+    slot.gold.p2 = 1;
+    const supply = slot.goldSupply;
+    // Unknown goods and negative amounts are refused.
+    expect(refused(state, 'p1', { type: 'trade.offer', to: 'p2', give: { lumber: 1 }, want: {}, wantGoods: { fish: 1 } })).toBe('E_INVALID_SELECTION');
+    expect(refused(state, 'p1', { type: 'trade.offer', to: 'p2', give: {}, want: { ore: 1 }, giveGoods: { gold: -1 } })).toBe('E_INVALID_SELECTION');
+    // 2 gold for 1 ore: coins alone may make up one side.
+    let outcome = run(state, 'p1', { type: 'trade.offer', to: 'p2', give: {}, want: { ore: 1 }, giveGoods: { gold: 2 } });
+    expect(outcome.events.find((event) => event.type === 'trade.offered')!.params).toMatchObject({ giveGoods: { gold: 2 } });
+    state = outcome.state;
+    const offerId = state.offers[0]!.id;
+    expect(state.offers[0]).toMatchObject({ give: {}, want: { ore: 1 }, giveGoods: { gold: 2 } });
+    state = run(state, 'p2', { type: 'trade.respond', offerId, response: 'consented' }).state;
+    // The proposer must still hold the coins when settling.
+    const poor = JSON.parse(JSON.stringify(state)) as GameState;
+    epState(poor).gold.p1 = 1;
+    expect(refused(poor, 'p1', { type: 'trade.settle', offerId, counterparty: 'p2' })).toBe('E_INSUFFICIENT_RESOURCES');
+    outcome = run(state, 'p1', { type: 'trade.settle', offerId, counterparty: 'p2' });
+    state = outcome.state;
+    expect(epState(state).gold).toMatchObject({ p1: 1, p2: 3 });
+    expect(epState(state).goldSupply).toBe(supply);
+    expect(state.players[0]!.resources.ore).toBe(1);
+    expect(outcome.events.find((event) => event.type === 'trade.completed')?.params).toMatchObject({ giveGoods: { gold: 2 } });
+    // Asking for coins: the partner's balance is checked.
+    state = run(state, 'p1', { type: 'trade.offer', to: 'p2', give: { lumber: 1 }, want: {}, wantGoods: { gold: 4 } }).state;
+    const second = state.offers.at(-1)!.id;
+    state = run(state, 'p2', { type: 'trade.respond', offerId: second, response: 'consented' }).state;
+    expect(refused(state, 'p1', { type: 'trade.settle', offerId: second, counterparty: 'p2' })).toBe('E_INSUFFICIENT_RESOURCES');
+    // Revising to an affordable amount settles.
+    state = run(state, 'p1', { type: 'trade.revise', offerId: second, give: { lumber: 1 }, want: {}, wantGoods: { gold: 3 } }).state;
+    state = run(state, 'p2', { type: 'trade.respond', offerId: second, response: 'consented' }).state;
+    state = run(state, 'p1', { type: 'trade.settle', offerId: second, counterparty: 'p2' }).state;
+    expect(epState(state).gold).toMatchObject({ p1: 4, p2: 0 });
+    expect(state.players[1]!.resources.lumber).toBe(1);
+  });
+
+  it('R-EP-50 profiles without coins refuse goods in offers', () => {
+    const { state } = newGame({ players: 3 });
+    forceTurn(state, 0, 'action');
+    setHand(state, 'p1', { lumber: 1 });
+    expect(refused(state, 'p1', { type: 'trade.offer', to: 'p2', give: { lumber: 1 }, want: {}, wantGoods: { gold: 1 } })).toBe('E_INVALID_SELECTION');
+  });
+});
+

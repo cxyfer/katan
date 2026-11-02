@@ -249,6 +249,12 @@ export interface Offer {
   /** Resources the proposer receives. */
   want: Partial<Record<Resource, number>>;
   windowId: number;
+  /**
+   * Non-resource goods a rules module lets players trade (for example gold
+   * coins), keyed by good id. Omitted when the offer has none.
+   */
+  giveGoods?: Record<string, number>;
+  wantGoods?: Record<string, number>;
   status: OfferStatus;
   responses: Record<string, OfferResponse>;
   agreedWith: string | null;

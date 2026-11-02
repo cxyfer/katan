@@ -12,6 +12,7 @@ import { inspectDescription } from '../src/board/inspection.ts';
 import { ExplorersPiratesPrompt } from '../src/components/ExplorersPiratesPrompt.tsx';
 import { HelpPanel } from '../src/components/HelpPanel.tsx';
 import { SvgBoard } from '../src/components/SvgBoard.tsx';
+import { TradePanel } from '../src/components/TradePanel.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { translateEvent } from '../src/i18n/events.ts';
 import { deriveActions } from '../src/state/actions.ts';
@@ -196,6 +197,32 @@ describe('explorers & pirates client', () => {
     expect(ship).toBeDefined();
     fireEvent.click(screen.getByTestId(`ep-build-settler-${ship}-remove-fish`));
     expect(submitCommand).toHaveBeenLastCalledWith({ type: 'ep.buildSettler', ship, remove: 'fish' }, 'ep.build.settler');
+  });
+
+  it('adds coins to a domestic offer and shows them in the terms (EP25 p. 9)', () => {
+    const state = landHo();
+    state.players[1]!.resources.ore = 1;
+    const view = viewOf(state);
+    epView(view)!.players.p1!.gold = 2;
+    const { controller, submitCommand } = controllerFor(tableWith(view));
+    const panel = render(<LocaleProvider locale="en"><TradePanel controller={controller} /></LocaleProvider>);
+    fireEvent.click(screen.getByTestId('give-add-gold'));
+    fireEvent.click(screen.getByTestId('give-add-gold'));
+    expect(screen.getByTestId('give-add-gold')).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByTestId('want-add-ore'));
+    fireEvent.click(screen.getByTestId('create-offer'));
+    expect(submitCommand).toHaveBeenCalledWith(
+      { type: 'trade.offer', to: 'all', give: {}, want: { ore: 1 }, giveGoods: { gold: 2 } }, 'play.tradeNew');
+    panel.unmount();
+    // A recipient sees the coins on their receiving side.
+    const offered = applyCommand(state, 'p1', { type: 'trade.offer', to: 'all', give: {}, want: { ore: 1 }, giveGoods: { gold: 2 } } as unknown as Command, seededRng(1));
+    expect(offered.ok).toBe(true);
+    if (!offered.ok) return;
+    const theirs = projectGame(offered.state, 'p2', { hints: actionHints(offered.state, 'p2') });
+    const other = controllerFor({ ...tableWith(theirs), session: { id: 'p2', nickname: 'P2', locale: 'en', createdAt: '2026-01-01T00:00:00.000Z' } });
+    render(<LocaleProvider locale="en"><TradePanel controller={other.controller} /></LocaleProvider>);
+    const offerId = offered.state.offers[0]!.id;
+    expect(screen.getByTestId(`offer-terms-${offerId}`).textContent).toBe('You give: 1×Ore · You receive: — + 2 gold');
   });
 });
 

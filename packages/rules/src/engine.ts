@@ -716,11 +716,11 @@ function dispatch(
     case 'trade.bank':
       return bankTrade(state, actorId, command.give, command.receive);
     case 'trade.offer':
-      return createOffer(state, actorId, command);
+      return createOffer(state, actorId, command as OfferCommand);
     case 'trade.respond':
       return respondToOffer(state, actorId, command.offerId, command.response);
     case 'trade.revise':
-      return reviseOffer(state, actorId, command);
+      return reviseOffer(state, actorId, command as Omit<OfferCommand, 'to'> & { offerId: string });
     case 'trade.withdraw':
       return withdrawOffer(state, actorId, command.offerId);
     case 'trade.settle':
@@ -1537,10 +1537,50 @@ function termsTotal(terms: Partial<Record<Resource, number>>): number {
   return RESOURCES.reduce((sum, resource) => sum + (terms[resource] ?? 0), 0);
 }
 
+interface OfferCommand {
+  to: string | 'all';
+  give: Partial<Record<Resource, number>>;
+  want: Partial<Record<Resource, number>>;
+  /** Module goods (e.g. gold), only where the profile's modules allow them. */
+  giveGoods?: Record<string, number>;
+  wantGoods?: Record<string, number>;
+}
+
+/** The profile's tradeable goods module, if any. */
+function tradeGoodsOf(state: GameState): RulesModule['tradeGoods'] | undefined {
+  return modulesOf(state).find((module) => module.tradeGoods)?.tradeGoods;
+}
+
+/** Keeps positive whole amounts of goods the profile allows; `null` for an unknown good. */
+function normalizeGoods(state: GameState, goods: unknown): Record<string, number> | null {
+  if (goods === undefined || goods === null) return {};
+  if (typeof goods !== 'object' || Array.isArray(goods)) return null;
+  const allowed = tradeGoodsOf(state)?.ids(state) ?? [];
+  const out: Record<string, number> = {};
+  for (const [good, amount] of Object.entries(goods as Record<string, unknown>)) {
+    if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 0) return null;
+    if (amount === 0) continue;
+    if (!allowed.includes(good)) return null;
+    out[good] = amount;
+  }
+  return out;
+}
+
+function goodsTotal(goods: Record<string, number> | undefined): number {
+  return Object.values(goods ?? {}).reduce((sum, amount) => sum + amount, 0);
+}
+
+function setOfferGoods(offer: Offer, giveGoods: Record<string, number>, wantGoods: Record<string, number>): void {
+  if (goodsTotal(giveGoods) > 0) offer.giveGoods = giveGoods;
+  else delete offer.giveGoods;
+  if (goodsTotal(wantGoods) > 0) offer.wantGoods = wantGoods;
+  else delete offer.wantGoods;
+}
+
 function createOffer(
   state: GameState,
   actorId: string,
-  command: { to: string | 'all'; give: Partial<Record<Resource, number>>; want: Partial<Record<Resource, number>> },
+  command: OfferCommand,
 ): CommandOutcome {
   const guard = requireOpenWindow(state);
   if (guard) return guard;
@@ -1554,7 +1594,10 @@ function createOffer(
   }
   const give = normalizeTerms(command.give ?? {});
   const want = normalizeTerms(command.want ?? {});
-  if (termsTotal(give) === 0 || termsTotal(want) === 0) {
+  const giveGoods = normalizeGoods(state, command.giveGoods);
+  const wantGoods = normalizeGoods(state, command.wantGoods);
+  if (!giveGoods || !wantGoods) return fail('E_INVALID_SELECTION', { reason: 'goods' });
+  if (termsTotal(give) + goodsTotal(giveGoods) === 0 || termsTotal(want) + goodsTotal(wantGoods) === 0) {
     return fail('E_INVALID_SELECTION', { reason: 'empty-terms' });
   }
   if (command.to !== 'all') {
@@ -1574,8 +1617,17 @@ function createOffer(
     agreedWith: null,
     createdSeq: state.seq + 1,
   };
+  setOfferGoods(offer, giveGoods, wantGoods);
   state.offers.push(offer);
-  emit(state, 'trade.offered', { offerId: offer.id, from: actorId, to: offer.to, give, want });
+  emit(state, 'trade.offered', {
+    offerId: offer.id,
+    from: actorId,
+    to: offer.to,
+    give,
+    want,
+    ...(offer.giveGoods ? { giveGoods: offer.giveGoods } : {}),
+    ...(offer.wantGoods ? { wantGoods: offer.wantGoods } : {}),
+  });
   return { ok: true, state, events: [] };
 }
 
@@ -1603,7 +1655,7 @@ function respondToOffer(
 function reviseOffer(
   state: GameState,
   actorId: string,
-  command: { offerId: string; give: Partial<Record<Resource, number>>; want: Partial<Record<Resource, number>> },
+  command: Omit<OfferCommand, 'to'> & { offerId: string },
 ): CommandOutcome {
   const guard = requireOpenWindow(state);
   if (guard) return guard;
@@ -1613,15 +1665,26 @@ function reviseOffer(
   if (offer.status !== 'open') return fail('E_OFFER_CLOSED', { status: offer.status });
   const give = normalizeTerms(command.give ?? {});
   const want = normalizeTerms(command.want ?? {});
-  if (termsTotal(give) === 0 || termsTotal(want) === 0) {
+  const giveGoods = normalizeGoods(state, command.giveGoods);
+  const wantGoods = normalizeGoods(state, command.wantGoods);
+  if (!giveGoods || !wantGoods) return fail('E_INVALID_SELECTION', { reason: 'goods' });
+  if (termsTotal(give) + goodsTotal(giveGoods) === 0 || termsTotal(want) + goodsTotal(wantGoods) === 0) {
     return fail('E_INVALID_SELECTION', { reason: 'empty-terms' });
   }
   offer.give = give;
   offer.want = want;
+  setOfferGoods(offer, giveGoods, wantGoods);
   offer.revision += 1;
   offer.responses = {};
   offer.agreedWith = null;
-  emit(state, 'trade.revised', { offerId: offer.id, revision: offer.revision, give, want });
+  emit(state, 'trade.revised', {
+    offerId: offer.id,
+    revision: offer.revision,
+    give,
+    want,
+    ...(offer.giveGoods ? { giveGoods: offer.giveGoods } : {}),
+    ...(offer.wantGoods ? { wantGoods: offer.wantGoods } : {}),
+  });
   return { ok: true, state, events: [] };
 }
 
@@ -1684,6 +1747,16 @@ function settleOffer(
   if (!canAfford(partner, offer.want)) {
     return fail('E_INSUFFICIENT_RESOURCES', { playerId: partner.id });
   }
+  const goods = offer.giveGoods || offer.wantGoods ? tradeGoodsOf(state) : undefined;
+  if (offer.giveGoods || offer.wantGoods) {
+    if (!goods) return fail('E_INVALID_SELECTION', { reason: 'goods' });
+    for (const [good, amount] of Object.entries(offer.giveGoods ?? {})) {
+      if (goods.balance(state, proposer.id, good) < amount) return fail('E_INSUFFICIENT_RESOURCES', { playerId: proposer.id, good });
+    }
+    for (const [good, amount] of Object.entries(offer.wantGoods ?? {})) {
+      if (goods.balance(state, partner.id, good) < amount) return fail('E_INSUFFICIENT_RESOURCES', { playerId: partner.id, good });
+    }
+  }
   pay(proposer, offer.give);
   pay(partner, offer.want);
   for (const resource of RESOURCES) {
@@ -1691,6 +1764,10 @@ function settleOffer(
     const toProposer = offer.want[resource] ?? 0;
     if (toPartner > 0) grant(partner, resource, toPartner);
     if (toProposer > 0) grant(proposer, resource, toProposer);
+  }
+  if (goods) {
+    for (const [good, amount] of Object.entries(offer.giveGoods ?? {})) goods.transfer(state, proposer.id, partner.id, good, amount);
+    for (const [good, amount] of Object.entries(offer.wantGoods ?? {})) goods.transfer(state, partner.id, proposer.id, good, amount);
   }
   const proposerStats = playerStats(state, proposer.id);
   const partnerStats = playerStats(state, partner.id);
@@ -1709,6 +1786,8 @@ function settleOffer(
     to: other,
     give: offer.give,
     want: offer.want,
+    ...(offer.giveGoods ? { giveGoods: offer.giveGoods } : {}),
+    ...(offer.wantGoods ? { wantGoods: offer.wantGoods } : {}),
   });
   checkVictory(state);
   return { ok: true, state, events: [] };

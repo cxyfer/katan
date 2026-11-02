@@ -41,6 +41,7 @@ and i18n catalog file.
 | commands | `vetoCommand` | before any command is dispatched; return a failed outcome to refuse it (E&P: base setup commands, building and trading in the Movement phase) |
 | turn | `onEndTurn` | on `turn.end`; `'defer'` opens an end-of-turn phase that calls `kit.finishTurn` |
 | trade | `bankRate` | per bank trade card, given the harbour rate |
+| trade | `tradeGoods` | non-resource goods in domestic offers (E&P coins) |
 | awards | `awardRules` | adjusts the Longest Road / Largest Army rules before awards are recomputed (E&P turns both off) |
 | board | `afterBoardChange` | after every board change, after awards are recomputed; gets the kit (emit, …) but no randomness |
 | robber | `moveBandit` | on a robber target (7 or Knight) before the base robber; claims sea hexes / `null` (frame) for the pirate and returns theft candidates, or `undefined` to leave it to the robber |

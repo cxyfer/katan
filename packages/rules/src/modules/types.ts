@@ -109,6 +109,15 @@ export interface SetupStep {
   round: 1 | 2;
 }
 
+/** Non-resource goods a module lets players trade (e.g. gold coins). */
+export interface TradeGoods {
+  /** Good ids tradeable in this state. */
+  ids(state: GameState): readonly string[];
+  balance(state: GameState, playerId: string, good: string): number;
+  /** Moves goods between players; amounts were checked against `balance`. */
+  transfer(state: GameState, from: string, to: string, good: string, amount: number): void;
+}
+
 export type ModuleCommandHandler = (
   state: GameState,
   actorId: string,
@@ -193,6 +202,8 @@ export interface RulesModule {
   bankRate?(state: GameState, playerId: string, card: CardKind, rate: number, ctx: ModuleViewContext): number;
   /** Adjusts the award rules (minimums, route weights) before awards are recomputed. */
   awardRules?(state: GameState, rules: AwardRules, ctx: ModuleViewContext): AwardRules;
+  /** Goods besides resources that domestic offers may carry. */
+  tradeGoods?: TradeGoods;
   /**
    * Handles a robber target (7 or Knight) that belongs to another bandit,
    * such as the Seafarers pirate on a sea hex or the frame (`null`). Return

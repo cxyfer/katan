@@ -135,6 +135,18 @@ export const explorersPiratesModule: RulesModule = {
     return Math.min(rate, 3);
   },
 
+  // Domestic trades may include coins (EP25 p. 9, EP25-M p. 5).
+  tradeGoods: {
+    ids: () => ['gold'],
+    balance: (state, playerId, good) => (good === 'gold' ? goldOf(epState(state), playerId) : 0),
+    transfer: (state, from, to, good, amount) => {
+      if (good !== 'gold') return;
+      const slot = epState(state);
+      slot.gold[from] = goldOf(slot, from) - amount;
+      slot.gold[to] = goldOf(slot, to) + amount;
+    },
+  },
+
   onEndTurn(state, _actorId, ctx) {
     finishActiveShip(state);
     resolveCaptures(state, ctx);

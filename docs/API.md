@@ -232,6 +232,10 @@ E&P never runs with the Seafarers commands above. A turn is `turn.roll`,
 the Action phase (base `build.settlement`, `build.road`, `trade.*` and the
 commands below), `ep.startMovement`, the Movement phase, then `turn.end`.
 There are no development cards, cities or robber.
+Domestic offers may include coins: `trade.offer` / `trade.revise` accept
+`giveGoods` / `wantGoods` (`{ gold: 3 }`); `Offer` and the `trade.*` events
+repeat them, and both players' coins are checked at settlement (EP25 p. 9).
+Profiles without a coin module refuse goods (`E_INVALID_SELECTION`).
 
 | Command | Fields | When |
 |---|---|---|
@@ -243,7 +247,7 @@ There are no development cards, cities or robber.
 | `ep.sellForGold` | `give` | Action phase: 3 of a kind → 1 gold |
 | `ep.buyResource` | `receive` | Action phase, twice: 2 gold → 1 resource |
 | `ep.fastGold` | `give` | Action phase, with the Fast Gold spice ability: 1 resource → 1 gold |
-| `ep.extraMove` | `ship` | own turn, once per ship: 1 wool → 2 more moves |
+| `ep.extraMove` | `ship` | Movement phase, once per ship: 1 wool → 2 more moves |
 | `ep.startMovement` | – | ends the Action phase |
 | `ep.moveShip` | `ship`, `edge` | Movement phase: one step along a sea edge |
 | `ep.load` / `ep.unload` | `ship`, `harbor`, `piece` | Movement phase, ship next to an own harbour settlement |
@@ -253,7 +257,7 @@ There are no development cards, cities or robber.
 | `ep.loadFish` / `ep.loadSpice` | `ship`, `hex` | a shoal's haul or a spice farm's sack |
 | `ep.deliver` | `ship` | ship at a Council anchor with fish or spice |
 | `ep.fishRoll` | – | Movement phase, once (fish missions) |
-| `ep.chase` | `ship` | an unmoved ship at the hex of an opponent's pirate ship |
+| `ep.chase` | `ship` | Movement phase: an unmoved ship at the hex of an opponent's pirate ship |
 | `ep.placePirate` | `hex` | `explorersPirates.pirate` frame, stage `place` |
 | `ep.robPlayer` | `victim` | the same frame, stage `rob` |
 
