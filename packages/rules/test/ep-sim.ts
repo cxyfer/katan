@@ -203,7 +203,6 @@ function actionMove(state: GameState, id: string, rng: Rng, turnNo: number): Gam
     const give = RESOURCES.slice().sort((a, b) => hand[b] - hand[a])[0]!;
     if (hand[give] > 2) tries.push({ type: 'ep.fastGold', give });
   }
-  if (ships.length > 0 && turnNo % 5 === 0 && hand.wool > 1) tries.push({ type: 'ep.extraMove', ship: ships[0]!.id });
   // Gold and supply trades toward a settler or a harbour.
   const want = missing(state, id, { brick: 1, lumber: 1, wool: 1, grain: 1 }) ?? missing(state, id, { grain: 2, ore: 2 });
   if (want) {
@@ -246,6 +245,11 @@ function movementMove(state: GameState, id: string, rng: Rng): GameState | null 
     for (const hex of shipHint.loadSpice) tries.push({ type: 'ep.loadSpice', ship: ship.id, hex });
     for (const hex of shipHint.pickCrew) tries.push({ type: 'ep.pickCrew', ship: ship.id, hex });
     if (shipHint.chase) tries.push({ type: 'ep.chase', ship: ship.id });
+    // A spare wool buys the first ship two more edges (EP25 p. 10).
+    const wool = state.players.find((player) => player.id === id)!.resources.wool;
+    if (!shipHint.extra && !shipHint.done && shipHint.steps.length > 0 && wool > 2 && ship === slot.ships.find((candidate) => candidate.player === id)) {
+      tries.push({ type: 'ep.extraMove', ship: ship.id });
+    }
     for (const vertex of shipHint.harbors) {
       const harbor = slot.harbors.find((candidate) => candidate.vertex === vertex)!;
       for (const piece of harbor.cargo) tries.push({ type: 'ep.load', ship: ship.id, harbor: vertex, piece });

@@ -9,7 +9,7 @@
 import { topologyOf, totalResources } from '../../analysis.ts';
 import { RESOURCES, type CommandOutcome, type GameState, type ModulePending, type Resource } from '../../types.ts';
 import type { ModuleCommand, ModuleContext } from '../types.ts';
-import { gainGold, goldOf, payGold, requirePirates, requireTurn, scenarioOf } from './core.ts';
+import { gainGold, goldOf, payGold, requireMovement, requirePirates, scenarioOf } from './core.ts';
 import { ownShip } from './economy.ts';
 import { bordersStartIsland, cornersOf, isWater, shipEnds } from './geometry.ts';
 import { EXPLORERS_PIRATES, epState, epTurn, shipTurn, siteAt, type EpShip } from './state.ts';
@@ -171,7 +171,7 @@ export function canChase(state: GameState, ship: EpShip): boolean {
 }
 
 export function chasePirate(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
-  const refused = requireTurn(state, actorId, ctx.kit) ?? requirePirates(state, ctx.kit);
+  const refused = requireMovement(state, actorId, ctx.kit) ?? requirePirates(state, ctx.kit);
   if (refused) return refused;
   const ship = ownShip(state, actorId, command.ship);
   if (!ship) return ctx.kit.fail('E_EP_UNKNOWN_SHIP');

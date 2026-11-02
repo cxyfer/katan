@@ -56,7 +56,7 @@ describe('R-EP turn, production and trade', () => {
     expect(gold(state, 'p1')).toBe(3);
     expect(refused(state, 'p1', { type: 'ep.buyResource', receive: 'brick' })).toBe('E_EP_TURN_LIMIT');
     // No Longest Road / Largest Army and no development cards.
-    expect(refused(state, 'p1', { type: 'build.devCard' })).not.toBe('');
+    expect(refused(state, 'p1', { type: 'build.devCard' })).toBe('E_DECK_EMPTY');
   });
 
   it('R-EP-04 no trading or building in the Movement phase; no ship moves in the Action phase (EP25 p. 8)', () => {
@@ -91,7 +91,7 @@ describe('R-EP building', () => {
     expect(state.board.buildings[coastal]).toEqual({ player: 'p1', city: false });
     expect(scoreOf(state, 'p1', { includeHidden: true })).toBe(before + 1);
     expect(state.players[0]!.resources).toMatchObject({ grain: 0, ore: 0 });
-    expect(refused(state, 'p1', { type: 'ep.buildHarbor', vertex: inland })).not.toBe('');
+    expect(refused(state, 'p1', { type: 'ep.buildHarbor', vertex: inland })).toBe('E_ILLEGAL_TARGET');
   });
 
   it('R-EP-06 ship: lumber + wool on an empty sea edge next to an own harbour settlement, never next to fog (EP25 p. 9; interpretation 7)', () => {
@@ -131,9 +131,12 @@ describe('R-EP movement and exploring', () => {
     let state = landHo();
     setHand(state, 'p1', { wool: 1 });
     const ship = shipOf(state, 'p1');
+    // The extra move belongs to the Movement phase (EP25 p. 10).
+    expect(refused(state, 'p1', { type: 'ep.extraMove', ship: ship.id })).toBe('E_EP_ACTION_PHASE');
+    state = run(state, 'p1', { type: 'ep.startMovement' }).state;
     state = run(state, 'p1', { type: 'ep.extraMove', ship: ship.id }).state;
     expect(state.players[0]!.resources.wool).toBe(0);
-    state = run(state, 'p1', { type: 'ep.startMovement' }).state;
+    expect(refused(state, 'p1', { type: 'ep.extraMove', ship: ship.id })).toBe('E_EP_TURN_LIMIT');
     const moving = shipOf(state, 'p1');
     expect(movesLeft(state, moving, viewTurn(state))).toBe(6);
     // Shuttle between two edges away from the fog.
@@ -354,6 +357,8 @@ describe('R-EP pirates (Pirate Lairs on)', () => {
     const ship = shipOf(state, 'p1');
     const pirateHex = topologyOf(state).edges[ship.edge]!.hexes.find((cell) => state.board.layout.terrain[cell] === 'sea')!;
     epState(state).pirate = { hex: pirateHex, owner: 'p2' };
+    // Chasing belongs to the Movement phase (EP25 p. 11).
+    expect(refused(state, 'p1', { type: 'ep.chase', ship: ship.id })).toBe('E_EP_ACTION_PHASE');
     state = run(state, 'p1', { type: 'ep.startMovement' }).state;
     expect(epHints(state, 'p1').ships[0]!.chase).toBe(true);
     const missed = run(state, 'p1', { type: 'ep.chase', ship: ship.id }, scriptedRng([4])).state;
@@ -482,8 +487,10 @@ describe('R-EP fish and spices', () => {
     expect(movesLeft(state, shipOf(state, 'p1'), viewTurn(state))).toBe(before + 1);
     state = run(state, 'p1', { type: 'ep.loadSpice', ship: ship.id, hex: farm }).state;
     expect(shipOf(state, 'p1').cargo).toEqual(['spice']);
-    expect(refused(state, 'p1', { type: 'ep.loadSpice', ship: ship.id, hex: farm })).not.toBe('');
-    expect(refused(state, 'p1', { type: 'ep.dropCrew', ship: ship.id, hex: farm })).not.toBe('');
+    expect(refused(state, 'p1', { type: 'ep.loadSpice', ship: ship.id, hex: farm })).toBe('E_EP_SITE_CLOSED');
+    // One crew per player per farm: a second crew is refused even when the ship carries one.
+    shipOf(state, 'p1').cargo = ['crew'];
+    expect(refused(state, 'p1', { type: 'ep.dropCrew', ship: ship.id, hex: farm })).toBe('E_EP_SITE_CLOSED');
   });
 });
 

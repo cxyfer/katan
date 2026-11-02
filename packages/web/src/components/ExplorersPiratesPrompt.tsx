@@ -230,7 +230,6 @@ function ActionPhase({ controller, ep, slot, selfId, submit, arm, blocked }: Pha
         </ul>
       </section>
     )}
-    <ExtraMoves ep={ep} slot={slot} submit={submit} blocked={blocked} wool={have('wool')} />
     <button type="button" className="button button--primary ep-prompt__primary" data-testid="ep-start-movement"
       disabled={blocked || !ep.canStartMovement} onClick={() => submit({ type: 'ep.startMovement' }, 'ep.phase.start')}>
       {t('ep.phase.start')}

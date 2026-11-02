@@ -16,7 +16,7 @@ import {
   piecesInPlay,
   requireAction,
   requirePirates,
-  requireTurn,
+  requireMovement,
 } from './core.ts';
 import { cornersOf, harborAt, harborsAtShip, isCoastalVertex, isSeaRoute, shipsOnEdge, vertexTouchesFog } from './geometry.ts';
 import { cargoPiece, epState, epTurn, hasRoom, removableFor, shipTurn, type Cargo, type EpHarbor, type EpShip } from './state.ts';
@@ -280,7 +280,7 @@ export function buildPiece(piece: 'settler' | 'crew') {
 
 /** 1 wool: this ship moves up to 6 edges this turn (EP25 p. 10). */
 export function extraMove(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
-  const refused = requireTurn(state, actorId, ctx.kit);
+  const refused = requireMovement(state, actorId, ctx.kit);
   if (refused) return refused;
   const ship = ownShip(state, actorId, command.ship);
   if (!ship) return ctx.kit.fail('E_EP_UNKNOWN_SHIP');

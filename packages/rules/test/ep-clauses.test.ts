@@ -100,8 +100,8 @@ describe('R-EP building limits (EP25 p. 9, EP25-M pp. 5–6)', () => {
     const vertex = topo.edges[shared]!.vertices.find((corner) => neighborsOfVertex(topo, corner).every((neighbor) => !state.board.buildings[neighbor]))!;
     const road = topo.vertices[vertex]!.edges.find((edge) => edge !== shared && topo.edges[edge]!.hexes.includes(f))!;
     state.board.roads[road] = { player: 'p1', ship: false };
-    expect(refused(state, 'p1', { type: 'build.settlement', vertex })).not.toBe('');
-    expect(refused(state, 'p1', { type: 'build.road', edge: shared })).not.toBe('');
+    expect(refused(state, 'p1', { type: 'build.settlement', vertex })).toBe('E_ILLEGAL_TARGET');
+    expect(refused(state, 'p1', { type: 'build.road', edge: shared })).toBe('E_ILLEGAL_TARGET');
     // Control: the same moves are legal once G (and any other unexplored hex at that corner) is explored land.
     const open = JSON.parse(JSON.stringify(state)) as GameState;
     for (const hex of topo.vertices[vertex]!.hexes.filter((cell) => cell !== f)) {
