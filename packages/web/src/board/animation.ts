@@ -100,6 +100,18 @@ export function boardEffectGroup(gameId: string, events: readonly GameEvent[]): 
   };
 }
 
+const PLACEMENT_EVENTS: ReadonlySet<string> = new Set(['setup.building', 'setup.road', 'build.road', 'build.settlement', 'build.city']);
+
+/**
+ * 建造落下不排入特效佇列：權威盤面立即顯示新棋子，若排在前一組之後，
+ * 棋子會先靜止出現在落點、輪到時才跳上天。各組自抵達起並行播放，
+ * 也不遮擋操作，必要操作期間（開局擺放、待處理動作、擲骰前）照樣播放。
+ */
+export function placementEffectGroups(gameId: string, events: readonly GameEvent[]): BoardEffectGroup[] {
+  const placements = events.filter((event) => PLACEMENT_EVENTS.has(event.type));
+  return placements.length > 0 ? [boardEffectGroup(gameId, placements)] : [];
+}
+
 /** 同一 delta 若包含多次擲骰，每次保留一組演出與其後續授權事件。 */
 export function boardEffectGroups(gameId: string, events: readonly GameEvent[]): BoardEffectGroup[] {
   const groups: BoardEffectGroup[] = [];

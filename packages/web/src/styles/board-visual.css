@@ -2,14 +2,46 @@
 .board__tile-base { fill: #7d6242; stroke: #4c3a26; stroke-width: 3px; stroke-linejoin: round; }
 .board__tile-top { filter: drop-shadow(0 2px 1px #172c2a55); }
 .board__preview-ghost { opacity: .48; filter: drop-shadow(0 0 4px #fff0b1); }
-.board__building-drop { animation: building-drop 290ms cubic-bezier(.2,.7,.3,1) both; }
-.board__road-reveal { stroke-dasharray: 1; animation: edge-reveal 240ms ease-out both; }
-@keyframes building-drop { 0% { transform: translateY(-19px); } 75% { transform: translateY(2px); } 100% { transform: none; } }
+/* 建造從天而降：加速墜落、落地壓扁、小彈跳後回穩；時長對齊 3D 的 *_ARRIVAL_TRANSFORM_MS。 */
+.board__building-drop, .board__road-drop { transform-box: fill-box; transform-origin: 50% 100%; }
+.board__building-drop { animation: building-drop 640ms linear both; }
+.board__road-drop { animation: road-drop 560ms linear both; }
+.board__road-reveal { stroke-dasharray: 1; animation: edge-reveal 300ms ease-out 290ms both; }
+@keyframes building-drop {
+  0% { opacity: 0; transform: translateY(-84px) rotate(-14deg) scale(.94, 1.06); animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+  10% { opacity: 1; }
+  52% { transform: translateY(0) scale(1.12, .78); animation-timing-function: ease-out; }
+  66% { transform: translateY(0) scale(1, 1); animation-timing-function: ease-out; }
+  75% { transform: translateY(-6px); animation-timing-function: ease-in; }
+  84% { transform: translateY(0) scale(1.04, .93); animation-timing-function: ease-out; }
+  94%, 100% { transform: none; }
+}
+@keyframes road-drop {
+  0% { opacity: 0; transform: translateY(-66px) scale(.96, 1.04); animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+  10% { opacity: 1; }
+  52% { transform: translateY(0) scale(1.06, .82); animation-timing-function: ease-out; }
+  66% { transform: translateY(0) scale(1, 1); animation-timing-function: ease-out; }
+  75% { transform: translateY(-4px); animation-timing-function: ease-in; }
+  84%, 100% { transform: none; }
+}
+/* 落點陰影：墜落時由小而淡變大變深，落地後淡出；棋子自帶的陰影則等落地才出現。 */
+.board__drop-shadow { transform-box: fill-box; transform-origin: center; animation: drop-shadow 640ms linear both; }
+.board__drop-shadow--road { animation-duration: 560ms; }
+.board__building-drop > g > ellipse:first-child { animation: drop-own-shadow 640ms linear both; }
+.board__road-drop > line:first-child { animation: drop-own-shadow 560ms linear both; }
+@keyframes drop-shadow {
+  0% { opacity: .25; transform: scale(.55); animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+  52% { opacity: .72; transform: none; }
+  100% { opacity: 0; transform: none; }
+}
+/* 不寫 100%：落地後回到元素自身的 opacity。 */
+@keyframes drop-own-shadow { 0%, 48% { opacity: 0; } }
 @keyframes edge-reveal { from { stroke-dashoffset: 1; opacity: .6; } to { stroke-dashoffset: 0; opacity: 0; } }
 /* 骰子只由中央單一事件播放；工具列永遠保留結果，不重複搖動。 */
 .dice-focus__panel { animation: board-dice-arrive 800ms ease-out both; }
 @keyframes board-dice-arrive { 0% { opacity: .3; transform: scale(.75) rotate(-5deg); } 18%,25% { opacity: 1; transform: none; } 40%,100% { opacity: 0; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .board__building-drop, .board__road-reveal, .dice-focus__panel { animation: none; }
-  .board__road-reveal { display: none; }
+  .board__building-drop, .board__road-drop, .board__road-reveal, .dice-focus__panel,
+  .board__building-drop > g > ellipse:first-child, .board__road-drop > line:first-child { animation: none; }
+  .board__road-reveal, .board__drop-shadow { display: none; }
 }

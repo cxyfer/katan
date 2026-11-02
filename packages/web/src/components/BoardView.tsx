@@ -266,11 +266,11 @@ export function BoardView({ controller }: { controller: TableController }) {
         {requested !== 'svg' && !failure && <div className="board__scene" aria-hidden="true" style={{ opacity: effective === 'r3f' ? 1 : 0 }}>
           <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
             <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))}
-              intent={intent} selection={selection} active={animation.active} viewport={controls.viewport} quality={quality}
-              motionAllowed={animation.active !== null} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />
+              intent={intent} selection={selection} arrivals={animation.arrivals} viewport={controls.viewport} quality={quality}
+              motionAllowed={animation.arrivals.length > 0} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />
           </Suspense></SceneBoundary>
         </div>}
-        {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} active={animation.active}
+        {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} arrivals={animation.arrivals}
           selection={selection ? state.selection : { ...state.selection, index: null }} selfId={selfId} intent={intent}
           pan={controls.pan} zoom={zoom} viewBoxCenter={viewBoxCenter} nameResolver={nameResolver} />}
         <BoardInspectionLayer key={`${state.game?.gameId}:${geometry.topologyId}:${effective}`}
