@@ -12,6 +12,7 @@ import { HandPanel } from './HandPanel.tsx';
 import { PendingPrompt } from './PendingPrompt.tsx';
 import { PlayersPanel } from './PlayersPanel.tsx';
 import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
+import { RotatePrompt } from './RotatePrompt.tsx';
 import { SelectionPreview } from './SelectionPreview.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
 import { useFullscreen } from './useFullscreen.ts';
@@ -110,6 +111,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
         </section>
       </details>
       <p className="game__orientation"><GameIcon name="refresh" size={14} />{t('table.landscapeHint')}</p>
+      <RotatePrompt />
     </div>
   );
 }

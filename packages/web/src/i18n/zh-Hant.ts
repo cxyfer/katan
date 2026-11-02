@@ -141,6 +141,9 @@ export const zhHant: Catalog = {
   'table.fullscreenUnavailable': '目前瀏覽器不支援全螢幕',
   'table.fullscreenFailed': '無法進入全螢幕。請再次點擊按鈕，或使用瀏覽器的全螢幕功能。',
   'table.landscapeHint': '旋轉為橫向，展開完整牌桌',
+  'table.rotatePrompt.title': '請將裝置橫放',
+  'table.rotatePrompt.body': '橫向才能展開完整牌桌；轉向後這則提示會自動關閉。',
+  'table.rotatePrompt.continue': '以直向繼續',
 
   // --- entry ---------------------------------------------------------------
   'entry.heading': '進入牌桌',
