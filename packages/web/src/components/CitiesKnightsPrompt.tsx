@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { RESOURCES } from '@catan/rules';
 import { useT } from '../i18n/context.tsx';
-import { citiesKnightsHints, PROGRESS_TRACK, TRACKS } from '../board/citiesKnights.ts';
+import { citiesKnightsHints, TRACKS } from '../board/citiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
 import { followUpsHeld } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ResourceIcon } from './GameArt.tsx';
 import { ProgressPrompt } from './CitiesKnightsProgress.tsx';
-import { ProgressCardArt, TrackEmblem } from './SvgCitiesKnights.tsx';
+import { TrackEmblem } from './SvgCitiesKnights.tsx';
+import { ProgressCardFace } from './SvgProgressArt.tsx';
 import '../styles/cities-knights.css';
 
 const PROGRESS_FRAME = 'citiesKnights.progressDiscard';
@@ -117,11 +118,10 @@ function ProgressDiscard({ required, hand, disabled, onSubmit }: {
       <ul className="ck-progress-hand">
         {hand.map((card, index) => {
           const chosen = picked.includes(index);
-          const track = PROGRESS_TRACK[card] ?? 'science';
           return <li key={`${card}-${index}`}>
             <button type="button" className="ck-progress-card" aria-pressed={chosen} data-testid={`ck-progress-pick-${index}`}
               data-card={card} onClick={() => toggle(index)}>
-              <ProgressCardArt track={track} />
+              <ProgressCardFace card={card} />
               <span className="ck-progress-card__name">{t(`ck.progress.${card}`)}</span>
             </button>
           </li>;

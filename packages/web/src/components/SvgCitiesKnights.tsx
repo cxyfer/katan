@@ -175,17 +175,6 @@ export function CommodityCardArt({ commodity }: { commodity: Commodity }) {
   </svg>;
 }
 
-/** A progress card: track-coloured header and emblem; the text comes from the catalog. */
-export function ProgressCardArt({ track, victory = false }: { track: Track; victory?: boolean }) {
-  const tone = TRACK_COLOR[track];
-  return <svg viewBox="0 0 60 84" className="ck-card ck-card--progress" data-track={track} aria-hidden="true" focusable="false">
-    <rect x="1" y="1" width="58" height="82" rx="6" fill="#fbf4e2" stroke={shade(tone, -0.55)} strokeWidth="2" />
-    <rect x="1" y="1" width="58" height="22" rx="6" fill={tone} />
-    <g transform="translate(30 12)"><TrackEmblem track={track} size={13} /></g>
-    {victory && <g transform="translate(30 56)"><circle r="13" fill="#f2c94c" stroke="#6b4a10" strokeWidth="1.6" /><text y="5" textAnchor="middle" fontSize="13" fontWeight="700" fill="#5a3505">1</text></g>}
-  </svg>;
-}
-
 /** A city lying on its side: pillaged while no settlement piece was left. */
 export function ToppledCity({ x, y, color }: { x: number; y: number; color: string }) {
   return <g transform={`translate(${x} ${y + 4}) rotate(-90) scale(.9)`}>

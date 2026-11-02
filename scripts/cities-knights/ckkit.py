@@ -131,7 +131,7 @@ def settle(page, ms=700):
 def shot(page, name, note='', ms=700):
     settle(page, ms)
     path = OUT / f'{name}.png'
-    page.screenshot(path=str(path), animations='disabled')
+    page.screenshot(path=str(path), animations='disabled', timeout=60000)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     REPORT['cases'].append({'name': name, 'status': 'PASS', 'note': note, 'sha256': digest,
                             'viewport': page.viewport_size})
@@ -314,10 +314,23 @@ def complete_setup(table: Table):
 
 # ------------------------------------------------------------------------ UI steps
 
+def collapse_rail(page):
+    """A narrow table opens the action rail over the board; fold it before a board click."""
+    rail = page.get_by_test_id('action-rail')
+    if rail.count() and rail.get_attribute('data-expanded') == 'true':
+        page.get_by_test_id('action-rail-toggle').click()
+        page.wait_for_timeout(400)
+
+
 def ui_click_target(page, kind, index, confirm=True):
+    collapse_rail(page)
     target = page.get_by_test_id(f'target-{kind}-{index}')
     expect(target).to_be_attached()
     target.click(force=True)
+    page.wait_for_timeout(300)
+    # Close targets on a small screen open a picker instead of selecting at once.
+    if page.get_by_test_id('target-picker').count():
+        page.get_by_test_id(f'picker-{kind}-{index}').dispatch_event('click')
     if confirm:
         expect(page.get_by_test_id('confirm-selection')).to_be_visible()
 
