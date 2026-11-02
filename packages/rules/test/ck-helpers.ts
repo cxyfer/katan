@@ -220,3 +220,19 @@ export function totalHand(state: GameState, playerId: string): number {
   const p = player(state, playerId);
   return Object.values(p.resources).reduce((a, b) => a + b, 0) + Object.values(p.commodities).reduce((a, b) => a + b, 0);
 }
+
+/** A vertex path of `length` steps clear of `avoid` and its neighbours. */
+export function freePath(state: GameState, length: number, avoid: readonly number[] = []): number[] {
+  const topo = topologyOf(state);
+  const blocked = new Set<number>(avoid);
+  for (const vertex of avoid) for (const neighbour of neighborsOfVertex(topo, vertex)) blocked.add(neighbour);
+  for (let start = 0; start < topo.vertices.length; start++) {
+    if (blocked.has(start)) continue;
+    try {
+      return pathFrom(state, start, length, [...blocked]);
+    } catch {
+      // try the next start
+    }
+  }
+  throw new Error('no free path');
+}
