@@ -1,10 +1,15 @@
 /**
  * Base-game regression pins for the expansion platform.
  *
- * The digests below were recorded from the engine before the expansion
- * platform landed (master @ 7decd81). Topology indices, base layouts, freshly
- * created snapshots and whole simulated games must stay byte-identical so that
- * saved base games keep their meaning.
+ * The digests below were recorded from master's own engine (master @ 0815c76,
+ * base-2025.3), not from the expansion branch: a temporary detached worktree
+ * at master received only this file and the `simulate.ts` options it needs,
+ * and `RECORD_BASE_PINS=1 pnpm --filter @catan/rules exec vitest run
+ * test/base-regression.test.ts` printed each section. The expansion branch
+ * must then reproduce them unchanged. Topology indices, base layouts, freshly
+ * created snapshots and whole simulated games stay byte-identical so that saved
+ * base games keep their meaning. When master changes base behaviour, re-record
+ * the same way from the new master, never from this branch.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -26,6 +31,22 @@ function digest(value: unknown): string {
     hash = (hash * prime) & mask;
   }
   return hash.toString(16).padStart(16, '0');
+}
+
+// The rules package has no DOM or Node typings, so reach both through globalThis.
+const host = globalThis as unknown as {
+  process?: { env: Record<string, string | undefined> };
+  console: { log(message: string): void };
+};
+const RECORDING = !!host.process?.env.RECORD_BASE_PINS;
+
+/** Compares a section with its pins, or prints it when re-recording. */
+function expectPinned(section: keyof typeof PINNED, out: Record<string, string>): void {
+  if (RECORDING) {
+    host.console.log(`PIN ${section} ${JSON.stringify(out)}`);
+    return;
+  }
+  expect(out).toEqual(PINNED[section]);
 }
 
 function topologyShape(id: string) {
@@ -51,10 +72,10 @@ function created(profileId: string, players: number, mode: 'fixed' | 'variable',
 
 describe('base regression pins', () => {
   it('keeps the hex-r2 and hex-r56 indices', () => {
-    expect({
+    expectPinned('topologies', {
       'hex-r2': digest(topologyShape('hex-r2')),
       'hex-r56': digest(topologyShape('hex-r56')),
-    }).toEqual(PINNED.topologies);
+    });
   });
 
   it('keeps fixed and variable base layouts for the same seed', () => {
@@ -66,7 +87,7 @@ describe('base regression pins', () => {
         out[`${id}:variable:${seed}`] = digest(buildBaseLayout({ topology, mode: 'variable', rng: seededRng(seed) }));
       }
     }
-    expect(out).toEqual(PINNED.layouts);
+    expectPinned('layouts', out);
   });
 
   it('creates byte-identical base snapshots', () => {
@@ -78,7 +99,7 @@ describe('base regression pins', () => {
         }
       }
     }
-    expect(out).toEqual(PINNED.snapshots);
+    expectPinned('snapshots', out);
   });
 
   it('plays whole simulated base games to the same final state', () => {
@@ -86,7 +107,7 @@ describe('base regression pins', () => {
     for (const seed of [11, 29, 47]) out[`seed:${seed}`] = digest(simulateGame(seed));
     out['paired:6:variable:5'] = digest(simulateGame(5, 6000, { players: 6, profileId: 'base-paired-2025', mode: 'variable' }));
     out['base:3:variable:8'] = digest(simulateGame(8, 6000, { players: 3, mode: 'variable' }));
-    expect(out).toEqual(PINNED.games);
+    expectPinned('games', out);
   }, 30_000);
 });
 
@@ -110,20 +131,20 @@ const PINNED = {
     'hex-r56:variable:99': 'f9e1331703b9f7df',
   },
   snapshots: {
-    'base-2025:3:fixed': '6c270893930dab9a',
-    'base-2025:3:variable': 'b74a184b2b846016',
-    'base-2025:4:fixed': 'caeaa4a283dfde31',
-    'base-2025:4:variable': '098d28d78e0f6b77',
-    'base-paired-2025:5:fixed': '0dc69187a6fc5c8c',
-    'base-paired-2025:5:variable': 'c16b41c37ac180ba',
-    'base-paired-2025:6:fixed': '00f117d20df8b30a',
-    'base-paired-2025:6:variable': 'b71e5241ce4d59a4',
+    'base-2025:3:fixed': 'beb00353c3435a6d',
+    'base-2025:3:variable': '322ae9e409ba4ba3',
+    'base-2025:4:fixed': '6cc414be3b8e8cd4',
+    'base-2025:4:variable': '48fbe1c1ecd90cf8',
+    'base-paired-2025:5:fixed': '355ef6d38dcaa589',
+    'base-paired-2025:5:variable': 'fca1847668944417',
+    'base-paired-2025:6:fixed': '691d354c2d7efad9',
+    'base-paired-2025:6:variable': '2fe8f5e666fd8447',
   },
   games: {
-    'base:3:variable:8': '77ff7c84b1b130ab',
-    'paired:6:variable:5': '8b3021c0226af90e',
-    'seed:11': '1d6dc1f5bf1547c1',
-    'seed:29': 'ed751164f1db862d',
-    'seed:47': '8dfa41f69b1ae12e',
+    'base:3:variable:8': '1462427badb857c8',
+    'paired:6:variable:5': '3c00ff5d7781a65c',
+    'seed:11': '03c796714315a908',
+    'seed:29': 'a7584951a986ecc3',
+    'seed:47': '79a4f9601eaf9ec7',
   },
 };
