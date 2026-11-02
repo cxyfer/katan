@@ -29,13 +29,13 @@ Conventions:
 | PATCH | `/api/session` | `{ nickname?, locale? }` | `{ player }` |
 | GET | `/api/profiles` | – | `{ profiles: ProfileView[] }` |
 | GET | `/api/rooms` | query `playerCount?`, `profileId?`, `hasSeats?` | `{ rooms: RoomSummaryView[] }` |
-| POST | `/api/rooms` | `{ visibility, capacity, profileId, setupMode, policy?, bots?, botLevel? }` | `RoomView` |
+| POST | `/api/rooms` | `{ visibility, capacity, profileId, setupMode, orderMode?, policy?, bots?, botLevel? }` | `RoomView` |
 | POST | `/api/rooms/join` | `{ code }` | `RoomView` |
 | GET | `/api/rooms/:roomId` | – | `RoomView` |
 | POST | `/api/rooms/:roomId/leave` | – | `{ left: true, hostTransferredTo: string \| null }` |
 | POST | `/api/rooms/:roomId/seat` | `{ color }` | `RoomView` |
 | POST | `/api/rooms/:roomId/ready` | `{ ready }` | `RoomView` |
-| POST | `/api/rooms/:roomId/settings` | `{ capacity?, profileId?, setupMode?, policy? }` | `RoomView` |
+| POST | `/api/rooms/:roomId/settings` | `{ capacity?, profileId?, setupMode?, orderMode?, policy? }` | `RoomView` |
 | POST | `/api/rooms/:roomId/policy` | `{ policy }` | `RoomView` (pre-start applies, post-start proposes) |
 | POST | `/api/rooms/:roomId/policy/consent` | `{ proposalId, approve }` | `RoomView` |
 | POST | `/api/rooms/:roomId/start` | – | `{ gameId }` |
@@ -57,11 +57,17 @@ Conventions:
 ### Room settings and start
 
 `POST /api/rooms/:roomId/settings` is host-only before start and accepts any
-subset of `capacity`, `profileId`, `setupMode` and `policy`. A capacity above
+subset of `capacity`, `profileId`, `setupMode`, `orderMode` and `policy`. A capacity above
 the deployment's `roomCapacityMax` is `E_ROOM_CAPACITY`; a count outside the
 room's profile range is `E_UNSUPPORTED_COMBINATION`; an otherwise valid count
 below the seated players is `E_CAPACITY_BELOW_SEATED`. A change clears every
 seat's readiness.
+
+`orderMode` is `'join'` (default) or `'random'`. `join` seats the game in the
+lobby's current seat order; `random` draws a fresh permutation with the
+server-side generator when the host starts. An unknown value is
+`E_INVALID_ORDER_MODE`. The setting is part of `RoomView` and can only change
+before the game starts.
 
 `RoomView.startBlockers` is authoritative. A room may start with any seated
 count the profile supports up to its capacity, so it does not need to be full;

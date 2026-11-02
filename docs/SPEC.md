@@ -79,6 +79,7 @@ Clearing browser storage or changing devices can lose access to a guest identity
 - In the lobby, select a color, inspect settings, and mark ready.
 - Before start, only the host may change validated settings or start the game; settings changes clear readiness. The host may change the room capacity down to, but never below, the number of seated players. After start, immutable game rules stay locked, while room-policy changes follow the all-seat approval contract in §5.8.
 - A lobby may start with any player count its ruleset profile supports, up to the room capacity; it does not need to be full. Starting locks the rules, map/scenario, seats, and actual player count.
+- Before start, the host chooses how the game order is decided: `join` keeps the current seat/join order (default), while `random` draws a fresh complete order once at start with the server-side generator.
 - Before start, the host may add or remove computer-opponent (bot) seats in the lobby, or request bots when creating the room (§4.9). Bot seats count toward the capacity and the started player count; at least one seat is always a person.
 
 ### 4.3 Play, disconnect, and recover

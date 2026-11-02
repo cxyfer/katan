@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { BotLevel, RoomPolicy } from '@catan/protocol';
-import { POLICY_BOUNDS } from '@catan/protocol';
+import {
+  GAME_ORDER_MODES,
+  POLICY_BOUNDS,
+  type BotLevel,
+  type GameOrderMode,
+  type RoomPolicy,
+} from '@catan/protocol';
 import { useT } from '../i18n/context.tsx';
 import { botsEnabled, DEFAULT_BOT_LEVEL, offeredBotLevels, pickBotLevel } from '../state/bots.ts';
 import { BotBadge } from './BotBadge.tsx';
@@ -28,6 +33,7 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const room = state.room;
   const [policyDraft, setPolicyDraft] = useState<RoomPolicy | null>(null);
   const [capacityDraft, setCapacityDraft] = useState<number | null>(null);
+  const [orderDraft, setOrderDraft] = useState<GameOrderMode | null>(null);
   const [copied, setCopied] = useState(false);
   const [botLevel, setBotLevel] = useState<BotLevel>(DEFAULT_BOT_LEVEL);
   // 請求進行中停用按鈕，避免連點加入多個電腦。
@@ -74,6 +80,9 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const selectedCapacity = capacityOptions.includes(desiredCapacity)
     ? desiredCapacity
     : (capacityOptions[0] ?? room.capacity);
+  const selectedOrderMode = orderDraft ?? room.orderMode;
+  const settingsDirty =
+    selectedCapacity !== room.capacity || selectedOrderMode !== room.orderMode;
 
   const setPolicyField = <K extends keyof RoomPolicy>(key: K, value: RoomPolicy[K]) => {
     setPolicyDraft({ ...policy, [key]: value });
@@ -107,6 +116,7 @@ export function LobbyScreen({ controller }: ScreenProps) {
             <li><GameIcon name="book" size={15} />{t(`profile.${room.profileId}`)}</li>
             <li><GameIcon name="compass" size={15} />{t(`lobby.roomStatus.${room.status}`)}</li>
             <li><GameIcon name="mountain" size={15} />{t('lobby.setupMode.' + room.setupMode)}</li>
+            <li><GameIcon name="flag" size={15} />{t('lobby.orderModeSummary', { mode: t(`lobby.orderMode.${room.orderMode}`) })}</li>
             <li><GameIcon name={room.visibility === 'public' ? 'globe' : 'key'} size={15} />{t('lobby.visibility.' + room.visibility)}</li>
           </ul>
         </div>
@@ -346,15 +356,32 @@ export function LobbyScreen({ controller }: ScreenProps) {
                 </select>
                 <p className="muted">{t('lobby.capacityNote')}</p>
               </div>
+              <div className="field">
+                <label htmlFor="lobby-order">{t('lobby.orderMode')}</label>
+                <select
+                  id="lobby-order"
+                  data-testid="lobby-order"
+                  value={selectedOrderMode}
+                  disabled={!isHost}
+                  onChange={(event) => setOrderDraft(event.target.value as GameOrderMode)}
+                >
+                  {GAME_ORDER_MODES.map((mode) => (
+                    <option key={mode} value={mode}>{t(`lobby.orderMode.${mode}`)}</option>
+                  ))}
+                </select>
+                <p className="muted">{t('lobby.orderModeNote')}</p>
+              </div>
               <button
                 type="button"
                 className="button"
                 data-testid="save-settings"
-                disabled={!isHost || selectedCapacity === room.capacity}
+                disabled={!isHost || !settingsDirty}
                 onClick={() => {
-                  if (selectedCapacity !== room.capacity) {
-                    void actions.updateSettings({ capacity: selectedCapacity });
-                  }
+                  if (!settingsDirty) return;
+                  void actions.updateSettings({
+                    ...(selectedCapacity !== room.capacity ? { capacity: selectedCapacity } : {}),
+                    ...(selectedOrderMode !== room.orderMode ? { orderMode: selectedOrderMode } : {}),
+                  });
                 }}
               >
                 {t('lobby.settings.save')}

@@ -12,6 +12,7 @@ import {
 import {
   DEFAULT_POLICY,
   type BotLevel,
+  type GameOrderMode,
   type Notice,
   type PolicyProposalView,
   type RoomMemberView,
@@ -54,6 +55,11 @@ export class ServiceError extends Error {
   ) {
     super(`${code}: ${messageId}`);
   }
+}
+
+/** Rejects any value outside the stable wire enum before it reaches storage. */
+function parseOrderMode(value: unknown): GameOrderMode | null {
+  return value === 'join' || value === 'random' ? value : null;
 }
 
 export interface Connection {
@@ -190,6 +196,7 @@ export class RoomService {
       hostId: room.host_id,
       profileId: room.profile_id,
       setupMode: room.setup_mode as 'fixed' | 'variable',
+      orderMode: parseOrderMode(room.order_mode) ?? 'join',
       capacity: room.capacity,
       policy: this.policyOf(room),
       policyRevision: room.policy_revision,
@@ -284,6 +291,7 @@ export class RoomService {
       capacity: number;
       profileId: string;
       setupMode: 'fixed' | 'variable';
+      orderMode: GameOrderMode;
       policy?: Partial<RoomPolicy>;
       /** 建房捷徑：一併加入的 Bot 數量。 */
       bots?: number;
@@ -291,6 +299,12 @@ export class RoomService {
     },
   ): Promise<RoomView> {
     const profile = requireProfile(input.profileId);
+    const orderMode = parseOrderMode(input.orderMode);
+    if (!orderMode) {
+      throw new ServiceError('E_INVALID_ORDER_MODE', 'error.E_INVALID_ORDER_MODE', {
+        reason: 'orderMode',
+      });
+    }
     const combination = resolveCombination({
       playerCount: input.capacity,
       seafarers: profile.modules.seafarers,
@@ -338,6 +352,7 @@ export class RoomService {
       host_id: playerId,
       profile_id: input.profileId,
       setup_mode: input.setupMode,
+      order_mode: orderMode,
       capacity: input.capacity,
       policy_json: JSON.stringify(policyCheck.policy),
       policy_revision: 1,
@@ -599,6 +614,7 @@ export class RoomService {
       capacity?: number;
       profileId?: string;
       setupMode?: 'fixed' | 'variable';
+      orderMode?: GameOrderMode;
       policy?: Partial<RoomPolicy>;
     },
   ): Promise<RoomView> {
@@ -612,6 +628,7 @@ export class RoomService {
       capacity?: number;
       profileId?: string;
       setupMode?: 'fixed' | 'variable';
+      orderMode?: GameOrderMode;
       policy?: Partial<RoomPolicy>;
     },
   ): Promise<RoomView> {
@@ -624,6 +641,15 @@ export class RoomService {
     }
     const profileId = input.profileId ?? room.profile_id;
     const setupMode = input.setupMode ?? (room.setup_mode as 'fixed' | 'variable');
+    const orderMode =
+      input.orderMode === undefined
+        ? parseOrderMode(room.order_mode)
+        : parseOrderMode(input.orderMode);
+    if (!orderMode) {
+      throw new ServiceError('E_INVALID_ORDER_MODE', 'error.E_INVALID_ORDER_MODE', {
+        reason: 'orderMode',
+      });
+    }
     const capacity = input.capacity ?? room.capacity;
     if (capacity > this.deps.config.limits.roomCapacityMax) {
       throw new ServiceError('E_ROOM_CAPACITY', 'error.E_ROOM_CAPACITY', {
@@ -671,6 +697,7 @@ export class RoomService {
     await this.repo.updateRoom(roomId, {
       profile_id: profileId,
       setup_mode: setupMode,
+      order_mode: orderMode,
       capacity,
       policy_json: JSON.stringify(policy),
       policy_revision: room.policy_revision + 1,

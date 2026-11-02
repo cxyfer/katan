@@ -157,7 +157,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     },
     async createRoom(body: CreateRoomBody) {
       record('createRoom', body);
-      room = makeRoom({ visibility: body.visibility, capacity: body.capacity, profileId: body.profileId });
+      room = makeRoom({
+        visibility: body.visibility,
+        capacity: body.capacity,
+        profileId: body.profileId,
+        orderMode: body.orderMode ?? 'join',
+      });
       if (body.bots && body.bots > 0) {
         // 帶電腦建房時只有房主一位真人。
         let created: RoomView = { ...room, members: room.members.filter((member) => member.host) };
@@ -188,7 +193,18 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     },
     async updateSettings(roomId: string, body: RoomSettingsBody) {
       record('updateSettings', roomId, body);
-      return room ? ok(room) : { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
+      if (!room) {
+        return { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
+      }
+      room = {
+        ...room,
+        ...(body.capacity !== undefined ? { capacity: body.capacity } : {}),
+        ...(body.profileId !== undefined ? { profileId: body.profileId } : {}),
+        ...(body.setupMode !== undefined ? { setupMode: body.setupMode } : {}),
+        ...(body.orderMode !== undefined ? { orderMode: body.orderMode } : {}),
+        ...(body.policy !== undefined ? { policy: body.policy } : {}),
+      };
+      return ok(room);
     },
     async addBot(roomId: string, level: BotLevel) {
       record('addBot', roomId, level);

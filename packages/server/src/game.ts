@@ -15,9 +15,11 @@ import {
   projectGame,
   requireProfile,
   secureRng,
+  shuffle,
   type Command,
   type GameEvent,
   type GameState,
+  type Rng,
 } from '@catan/rules';
 import type {
   CommandReceipt,
@@ -34,6 +36,14 @@ import { ServiceError, type RoomService } from './rooms.ts';
 import { humanMembers, isBotMember } from './bot-seats.ts';
 
 const RECEIPT_EVENT_LIMIT = 200;
+
+/**
+ * Decides the in-game seat order. `random` draws once at start with the same
+ * server-side generator that builds the board; `join` keeps the lobby order.
+ */
+export function orderForGame<T>(players: readonly T[], orderMode: string, rng: Rng): T[] {
+  return orderMode === 'random' ? shuffle(players, rng) : players.slice();
+}
 
 /** 一筆已提交指令的摘要，供 Bot 排程器喚醒與計時。 */
 export interface CommitNotice {
@@ -116,11 +126,13 @@ export class GameCoordinator {
         };
       });
 
+    const rng = secureRng();
+    const seated = orderForGame(ordered, room.order_mode, rng);
     const state = createGame({
       profileId: profile.id,
-      players: ordered,
+      players: seated,
       setupMode: room.setup_mode as 'fixed' | 'variable',
-      rng: secureRng(),
+      rng,
     });
     const gameId = newId('game');
     const now = new Date().toISOString();
@@ -139,6 +151,14 @@ export class GameCoordinator {
         updated_at: now,
       });
       await this.repo.appendEvents(gameId, 1, state.log);
+      // 隨機順序會改變遊戲座位；聊天與房間檢視都讀 membership.seat，
+      // 因此把抽出的順序持久化，避免同一位玩家在兩個畫面顯示不同座位。
+      for (const [seat, player] of seated.entries()) {
+        const membership = memberships.find((candidate) => candidate.player_id === player.id);
+        if (membership && membership.seat !== seat) {
+          await this.repo.updateMembership(room.id, player.id, { seat });
+        }
+      }
     });
     return gameId;
   }
