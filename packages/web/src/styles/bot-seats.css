@@ -31,12 +31,12 @@
   .lobby-bots__actions .button:first-child { flex: 1; }
 }
 
-/* 收合的玩家欄：頭像右下角的小電腦標記，留在頭像範圍內，不撐寬欄位也不蓋住分數。 */
+/* 玩家欄（收合與展開）：小電腦標記貼在頭像右下角外側，不蓋住名字縮寫、不撐寬欄位、不增加行數也不蓋住分數。 */
 .players .seat__swatch { position: relative; }
 .seat__bot-mark {
   position: absolute;
-  right: 1px;
-  bottom: 1px;
+  right: -11px;
+  bottom: -2px;
   display: grid;
   place-items: center;
   width: 13px;

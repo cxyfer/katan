@@ -293,7 +293,8 @@ describe('bots at the table', () => {
     const botSeat = screen.getByTestId('seat-2');
     expect(botSeat.dataset.bot).toBe('true');
     expect(botSeat.getAttribute('title')).toContain('Bo (Bot · Easy)');
-    expect(within(botSeat).getByTestId('seat-bot-2').textContent).toBe('Bot');
+    expect(within(botSeat).getByTestId('seat-bot-2').textContent).toBe(' (Bot · Easy)');
+    expect(within(botSeat).getByTestId('seat-bot-2').className).toContain('visually-hidden');
     expect(screen.getByTestId('seat-1').dataset.bot).toBeUndefined();
     expect(screen.queryByTestId('seat-bot-1')).toBeNull();
   });
@@ -415,17 +416,18 @@ describe('bots outside the expanded players panel', () => {
     fireEvent.click(screen.getByTestId('join-room'));
   }
 
-  it('marks a bot seat in the collapsed players rail without widening it', async () => {
+  it('marks a bot seat on the avatar in both players rail states', async () => {
     await openTable(makeView());
     await screen.findByTestId('board-svg');
     const botSeat = screen.getByTestId('seat-2');
     expect(within(botSeat).getByTestId('seat-bot-mark-2')).toBeTruthy();
     expect(within(botSeat).getByText('Bo (Bot · Easy)').className).toContain('visually-hidden');
     expect(screen.queryByTestId('seat-bot-mark-1')).toBeNull();
-    // 展開後改由完整徽章標示，角落標記移除。
+    // 展開後仍沿用角落標記，不在名稱旁插入徽章，避免名稱列換行。
     fireEvent.click(screen.getByTestId('players-toggle'));
-    expect(screen.queryByTestId('seat-bot-mark-2')).toBeNull();
-    expect(within(botSeat).getByTestId('seat-bot-2')).toBeTruthy();
+    expect(within(botSeat).getByTestId('seat-bot-mark-2')).toBeTruthy();
+    expect(botSeat.querySelector('.seat__identity .bot-badge')).toBeNull();
+    expect(within(botSeat).getByTestId('seat-bot-2').className).toContain('visually-hidden');
   });
 
   it('names bots in the event log and in the waiting prompt', async () => {
