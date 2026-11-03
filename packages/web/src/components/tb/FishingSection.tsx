@@ -3,6 +3,7 @@ import { RESOURCES } from '@catan/rules';
 import { useT } from '../../i18n/context.tsx';
 import { nameOf } from '../../state/table.ts';
 import { blocksNewCommands } from '../../state/commands.ts';
+import { followUpsHeld, shownTradersBarbarians } from '../../state/table.ts';
 import type { TableController } from '../../state/useTable.ts';
 import { BootEmblem, FishEmblem } from './emblems.tsx';
 import { tbHints, tbPart } from './model.ts';
@@ -44,7 +45,7 @@ export function suggestPayment(hand: readonly number[], cost: number): number[] 
 export function FishingSection({ controller }: { controller: TableController }) {
   const t = useT();
   const { state, actions } = controller;
-  const view = state.game?.view;
+  const view = shownTradersBarbarians(state) ?? state.game?.view;
   const fishing = tbPart<FishingView>(view, 'tb-fishing');
   const hints = tbHints<FishingHints>(view, 'tb-fishing');
   const [action, setAction] = useState<FishAction | null>(null);
@@ -54,7 +55,7 @@ export function FishingSection({ controller }: { controller: TableController }) 
   const mine = useMemo(() => fishing?.mine ?? [], [fishing?.mine]);
   if (!view || !fishing) return null;
   const name = nameOf(state);
-  const busy = blocksNewCommands(state.command);
+  const busy = blocksNewCommands(state.command) || followUpsHeld(state);
   const selfId = state.session?.id ?? '';
   const cost = action ? fishing.costs[action] : 0;
   const sum = picked.reduce((total, index) => total + (mine[index] ?? 0), 0);
@@ -158,7 +159,7 @@ export function FishSwapChoice({ controller }: { controller: TableController }) 
   const t = useT();
   const { state, actions } = controller;
   const fishing = tbPart<FishingView>(state.game?.view, 'tb-fishing');
-  const busy = blocksNewCommands(state.command);
+  const busy = blocksNewCommands(state.command) || followUpsHeld(state);
   const mine = fishing?.mine ?? [];
   return (
     <div className="tb-actions" data-testid="tb-fish-swap">

@@ -9,6 +9,8 @@ import { CitiesKnightsPanel } from '../src/components/CitiesKnightsPanel.tsx';
 import { HandPanel } from '../src/components/HandPanel.tsx';
 import { PlayersPanel } from '../src/components/PlayersPanel.tsx';
 import { TradePanel } from '../src/components/TradePanel.tsx';
+import { TbPanel } from '../src/components/tb/TbPanel.tsx';
+import { tbController, tbSlot, tbState } from './tb-helpers.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { initialTableState, shownCitiesKnights, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
@@ -34,6 +36,42 @@ function rolledSnapshot(lumber: number) {
 }
 
 describe('roll hold in the table state', () => {
+  it.each(['snapshot', 'events'] as const)('holds fish, boot and scores until the dice settle (%s first)', (delivery) => {
+    const engine = tbState('tb-fishing-2025');
+    const fish = tbSlot<{ hands: Record<string, number[]>; boot: string | null }>(engine, 'tb-fishing');
+    fish.hands.p1 = [1];
+    const before = tbController(engine).state;
+    before.game!.view.seq = 12;
+    before.game!.view.events = [makeEvent(12, 'turn.started')];
+    const after = structuredClone(before.game!);
+    after.view.seq = after.revision = 15;
+    after.view.events.push(
+      makeEvent(13, 'turn.rolled', { dice: [3, 3], total: 6 }),
+      makeEvent(14, 'tb.fishDrawn', { playerId: 'p1', count: 1, tokens: [3] }),
+      makeEvent(15, 'tb.bootDrawn', { playerId: 'p1' }),
+    );
+    const nextFish = (after.view.modules!.tradersBarbarians as Record<string, Record<string, unknown>>)['tb-fishing']!;
+    nextFish.mine = [1, 3];
+    nextFish.boot = 'p1';
+    nextFish.tokenCounts = { p1: 2 };
+    after.view.players[0]!.ownScore = 5;
+    after.view.players[0]!.victoryTarget = 11;
+    let held = delivery === 'events' ? tableReducer(before, { type: 'events', events: after.view.events }) : before;
+    held = tableReducer(held, { type: 'snapshot', snapshot: after });
+    const display = (state: TableState) => {
+      const controller = { ...tbController(engine), state };
+      return <LocaleProvider locale="en"><TbPanel controller={controller} /><PlayersPanel controller={controller} /></LocaleProvider>;
+    };
+    const { rerender } = render(display(held));
+    expect(screen.queryByTestId('tb-fish-token-1')).toBeNull();
+    expect(screen.getByTestId('tb-fishing').textContent).toContain('still in the supply');
+    expect(screen.getByTestId('seat-0').querySelector('.seat__score')!.textContent).not.toContain('5');
+    rerender(display(tableReducer(held, { type: 'dice-presenting', value: false })));
+    expect(screen.getByTestId('tb-fish-token-1').textContent).toContain('3 fish');
+    expect(screen.getByTestId('tb-fishing').textContent).toContain('needs 1 more VP');
+    expect(screen.getByTestId('seat-0').querySelector('.seat__score')!.textContent).toContain('5');
+  });
+
   it('freezes the pre-roll hand from the first render of a rolled update until the dice settle', () => {
     let state = tableReducer(base(), { type: 'snapshot', snapshot: rolledSnapshot(9) });
     expect(state.dicePresenting).toBe(true);

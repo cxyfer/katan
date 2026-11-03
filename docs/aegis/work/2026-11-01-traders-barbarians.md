@@ -345,3 +345,90 @@ passed, 15 skipped (PostgreSQL contract replay, no `TEST_POSTGRES_URL`); web
 61 files / 598; build; smoke 13/13; test:dev 1/1. Live harness: `python3
 scripts/traders-barbarians/live.py <new dir>` — 16 live cases and 44 captures
 PASS.
+
+## 階段二整合 — 2026-11-03
+
+Parent scope: PR #62 against `release/v0.4.0`. T&B parent `524737c`, release parent `cbe0876`; shared pre-squash platform `202e4b8`. Goal: preserve both implementations, verify privacy/roll presentation, and retarget the PR. No PR merge, rebase, force push, tags or pr-assets publication.
+
+Checkpoint: merge commit `21207c2` recorded. Follow-up scope: T&B roll hold, lobby-only Bot fixtures, cross-module goods text tests, ordered T&B hooks and per-seat service privacy. Full `pnpm verify` passed (exit 0); browser captures remain local.
+
+### 衝突逐檔處理
+
+| 檔案 | 處理方式 |
+| --- | --- |
+| `README.md` | 聯集 T&B 與 release 的來源、規格、fixture、已知限制或索引；SF/C&K/SF+CK 與 T&B 已啟用，event cards 仍關閉。 |
+| `docs/API.md` | 聯集 T&B 與 release 的來源、規格、fixture、已知限制或索引；SF/C&K/SF+CK 與 T&B 已啟用，event cards 仍關閉。 |
+| `docs/FIDELITY.md` | 聯集 T&B 與 release 的來源、規格、fixture、已知限制或索引；SF/C&K/SF+CK 與 T&B 已啟用，event cards 仍關閉。 |
+| `docs/SPEC.md` | 聯集 T&B 與 release 的來源、規格、fixture、已知限制或索引；SF/C&K/SF+CK 與 T&B 已啟用，event cards 仍關閉。 |
+| `docs/aegis/INDEX.md` | 聯集 T&B 與 release 的來源、規格、fixture、已知限制或索引；SF/C&K/SF+CK 與 T&B 已啟用，event cards 仍關閉。 |
+| `docs/aegis/plans/2026-11-01-expansions-roadmap.md` | 聯集 T&B 與 release 的來源、規格、fixture、已知限制或索引；SF/C&K/SF+CK 與 T&B 已啟用，event cards 仍關閉。 |
+| `packages/rules/src/analysis.ts` | 合併 commodity/score/production；道路供應同時排除船與橋，DFS 保留海陸交接和 T&B edgeWeight。 |
+| `packages/rules/src/engine.ts` | 保留 release 逐 module beforeProduction 續接、sea-aware placement、robber 通知、commodity transfer、freeRouteCapacity／逐落路判斷；接回 T&B build/end-turn、goods、score/target hooks。 |
+| `packages/rules/src/index.ts` | 聯集 release 與 T&B registry、訊息清單或 exports，實際 hook 次序由 profile 控制。 |
+| `packages/rules/src/layout-registry.ts` | 保留 release 海陸 layout/topology，聯集 T&B frame、額外數字與 interior paths。 |
+| `packages/rules/src/messages.ts` | 聯集 release 與 T&B registry、訊息清單或 exports，實際 hook 次序由 profile 控制。 |
+| `packages/rules/src/modules/README.md` | 合併模組、hook 與 T&B composite parts 文件。 |
+| `packages/rules/src/modules/builtins.ts` | 聯集 release 與 T&B registry、訊息清單或 exports，實際 hook 次序由 profile 控制。 |
+| `packages/rules/src/modules/citiesKnights/index.ts` | 保留 release 完整實作／catalog，取代本分支 placeholder。 |
+| `packages/rules/src/modules/citiesKnights/messages.ts` | 保留 release 完整實作／catalog，取代本分支 placeholder。 |
+| `packages/rules/src/modules/messages.ts` | 聯集 release 與 T&B registry、訊息清單或 exports，實際 hook 次序由 profile 控制。 |
+| `packages/rules/src/modules/seafarers/index.ts` | 保留 release 完整實作／catalog，取代本分支 placeholder。 |
+| `packages/rules/src/modules/seafarers/messages.ts` | 保留 release 完整實作／catalog，取代本分支 placeholder。 |
+| `packages/rules/src/modules/tradersBarbarians/index.ts` | 保留 T&B 完整實作／雙語 catalog（release 在此是 placeholder）。 |
+| `packages/rules/src/modules/tradersBarbarians/messages.ts` | 保留 T&B 完整實作／雙語 catalog（release 在此是 placeholder）。 |
+| `packages/rules/src/modules/types.ts` | 聯集 release 船／bandit／veto 介面與 T&B build/end-turn/goods/score hooks。 |
+| `packages/rules/src/pending.ts` | 保留 release queue／continuation。 |
+| `packages/rules/src/profiles.ts` | 保留已啟用 SF、C&K、SF+CK，加入 T&B 獨立場景與 variants，未開放額外組合。 |
+| `packages/rules/src/project.ts` | 保留 release commodity/private-card 投影，合併 T&B extraNumbers、bridge 與 victoryTarget。 |
+| `packages/rules/src/topology-registry.ts` | 保留 release 海陸 layout/topology，聯集 T&B frame、額外數字與 interior paths。 |
+| `packages/rules/src/topology.ts` | 保留 release 海陸 layout/topology，聯集 T&B frame、額外數字與 interior paths。 |
+| `packages/rules/test/profiles.test.ts` | 聯集兩側測試，selectable rows 同時核對 release 與 T&B；保留 524737c 的交易事件與判勝證據。 |
+| `packages/rules/test/simulate.ts` | 聯集兩側測試，selectable rows 同時核對 release 與 T&B；保留 524737c 的交易事件與判勝證據。 |
+| `packages/server/src/game.ts` | 採 release actor projectEvent receipt；合併後相對 release 無差異。 |
+| `packages/server/src/rooms.ts` | 採 release lobby Bot 與 ruleset 行為；合併後相對 release 無差異。 |
+| `packages/server/test/rooms.test.ts` | 聯集兩側測試，selectable rows 同時核對 release 與 T&B；保留 524737c 的交易事件與判勝證據。 |
+| `packages/server/test/session.test.ts` | 聯集兩側測試，selectable rows 同時核對 release 與 T&B；保留 524737c 的交易事件與判勝證據。 |
+| `packages/web/src/audio/cues.ts` | 聯集 SF、C&K、T&B cues；按 module 判斷事件。 |
+| `packages/web/src/audio/synth.ts` | 聯集所有擴充 recipe 與 durations。 |
+| `packages/web/src/board/coastline.ts` | 保留 release 海陸 layout/topology，聯集 T&B frame、額外數字與 interior paths。 |
+| `packages/web/src/board/geometry.ts` | 保留 release 海陸 layout/topology，聯集 T&B frame、額外數字與 interior paths。 |
+| `packages/web/src/board/intent.ts` | 保留船／騎士多步選取與 bandit targets，接上 T&B keyed targets／extra fields。 |
+| `packages/web/src/board/render-contract.ts` | 聯集 arrivals、SF/C&K view 與 T&B modules props。 |
+| `packages/web/src/board/three/SceneContent.tsx` | 保留 arrivals，同時繪製 SF、C&K 與 T&B layers。 |
+| `packages/web/src/board/three/model-specs.ts` | 一般道路模型同時排除 ship 和 bridge，各由所屬 layer 繪製。 |
+| `packages/web/src/components/BoardView.tsx` | 保留 arrivals、target picker、船／騎士多步 follow-up，接上 T&B extra/field/targetsKey/modules。 |
+| `packages/web/src/components/GameTools.tsx` | C&K 與 T&B tabs 共存，依目前 module 過濾。 |
+| `packages/web/src/components/HelpPanel.tsx` | 並列各擴充規則說明。 |
+| `packages/web/src/components/HomeScreen.tsx` | 保留 release 建房與 lobby Bot 流程。 |
+| `packages/web/src/components/LobbyScreen.tsx` | 保留 release lobby Bot 控制及擴充選單。 |
+| `packages/web/src/components/PendingPrompt.tsx` | 保留 SF/C&K mandatory choices，加入 T&B choices，受骰子演出暫停。 |
+| `packages/web/src/components/SoundPreview.tsx` | 聯集各擴充 preview cues。 |
+| `packages/web/src/components/SvgBoard.tsx` | 保留 arrivals、船／騎士／商人；加入橋與 T&B under/over layers。 |
+| `packages/web/src/i18n/en.ts` | 聯集 release commodity 與 T&B 資源/UI 文案。 |
+| `packages/web/src/i18n/events.ts` | 保留 524737c goods formatter 及 release commodity labels；module events 走 release registry。 |
+| `packages/web/src/i18n/modules/citiesKnights.ts` | 保留 release 完整實作／catalog，取代本分支 placeholder。 |
+| `packages/web/src/i18n/modules/index.ts` | 聯集 release 與 T&B registry、訊息清單或 exports，實際 hook 次序由 profile 控制。 |
+| `packages/web/src/i18n/modules/seafarers.ts` | 保留 release 完整實作／catalog，取代本分支 placeholder。 |
+| `packages/web/src/i18n/modules/tradersBarbarians.ts` | 保留 T&B 完整實作／雙語 catalog（release 在此是 placeholder）。 |
+| `packages/web/src/i18n/zh-Hant.ts` | 聯集 release commodity 與 T&B 資源/UI 文案。 |
+| `packages/web/src/state/table.ts` | 保留 RollHold、CardKind、DevCardChoice，聯集 T&B selection extra/targetsKey；T&B hold 在後續修正 commit。 |
+| `packages/web/src/state/useTable.ts` | 保留 release selection params，接上 T&B extra fields。 |
+| `packages/web/test/archipelago-board.test.tsx` | 聯集兩側測試，selectable rows 同時核對 release 與 T&B；保留 524737c 的交易事件與判勝證據。 |
+| `packages/web/test/bots.test.tsx` | 聯集兩側測試，selectable rows 同時核對 release 與 T&B；保留 524737c 的交易事件與判勝證據。 |
+| `packages/web/test/i18n.test.ts` | 聯集兩側測試，selectable rows 同時核對 release 與 T&B；保留 524737c 的交易事件與判勝證據。 |
+| `packages/web/test/rulesets.test.ts` | 聯集兩側測試，selectable rows 同時核對 release 與 T&B；保留 524737c 的交易事件與判勝證據。 |
+
+五個 T&B SVG fixture 另從 `active={null}` 遷移為 `arrivals={[]}`；`i18n/modules/events.ts` 在 release registry 接上 T&B 專屬 formatter，避免覆蓋 SF/C&K 格式化。
+
+### 階段二驗證與邊界
+
+- `pnpm install --frozen-lockfile`: lockfile up to date, no dependency changes.
+- `pnpm verify`: exit 0. Typecheck passed; rules 611 / 47 files (including original base pins), bots 48 / 8 files, protocol 8 / 1 file, server 185 passed + 15 skipped / 17 files, web 719 / 67 files; production build passed, smoke 13/13, dev runner 1/1. Web passed on the first full-verify run; no timeout changes and no single-worker retry needed.
+- Initial integration diagnostics: message-id glob retained stale pre-merge module sources in Vitest's filesystem cache. `vitest --clearCache` cleared results and filesystem module cache; the unchanged test then passed (and passed again in full verify). No catalog entry was removed to accommodate this failure. The old T&B Bot fixtures were migrated to adding bots in the lobby rather than creating rooms with a bots field.
+- `tb-hooks.test.ts`: a fixture module defers before T&B, survives JSON restoration and then runs T&B before/after production exactly once; one production and one fish event, no pending residue. Seven and Knight robber moves each call T&B afterBoardChange exactly once, with no duplicate after theft. Profile/part ordering remains explicit, including the SF+CK combination layer.
+- `tb-privacy.test.ts`: non-actor fish draw, fish theft, fish development-card draw and limit-swap cover first/replayed actor receipts, per-seat HTTP snapshots, actual WS snapshots and events routes. Authorized players receive their result; other seats receive no token values/card face/theft resource; private envelope and opponents' hands are absent. `server/src/game.ts` remains byte-identical to release's actor receipt projection.
+- `dice-hold.test.tsx`: snapshot-first and events-first updates retain the old fish tokens, boot and player score until presentation ends. T&B display sections use one held projection and follow-up buttons honor followUpsHeld. Existing C&K hold tests also pass.
+- `i18n.test.ts`: offered/revised/completed events preserve paper, cloth and coin along with gold in both locales and both give/want sides. This is formatter coverage; no unregistered T&B+C&K ruleset is enabled.
+- Browser QA used existing engine-projected fixtures in Chromium/software WebGL: Fishing desktop/mobile SVG and 3D plus desktop panel, 5/5 cases passed; an additional Traditional Chinese mobile panel capture had no runtime, console or failed-response errors. Artifacts: `/tmp/tb-stage2-browser-88412449-1793697501/` (`report.json` and PNGs), not published or committed. Dynamic roll hold is covered by DOM tests, not claimed as browser-timing evidence. The existing harness's output-path validator was overridden only in the temporary runner to honor the task's /tmp-only artifact location; repository scripts were not modified.
+
+Reflection: retain release's canonical turn, receipt and free-route paths; add T&B-specific rendering hold instead of changing game scoring or private event payloads. Follow-up changes are recorded separately from merge commit `21207c2`. No base pins, timeouts, enabled combinations, persistent schemas or product rules changed. Confidence B: full local verification and bounded Chromium fixture evidence; physical devices and a multiplayer human playtest were not run.

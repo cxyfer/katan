@@ -1,6 +1,7 @@
 import { RESOURCES } from '@catan/rules';
 import { useT } from '../../i18n/context.tsx';
 import { blocksNewCommands } from '../../state/commands.ts';
+import { followUpsHeld, shownTradersBarbarians } from '../../state/table.ts';
 import type { TableController } from '../../state/useTable.ts';
 import { CoinEmblem } from './emblems.tsx';
 import { tbHints, tbPart } from './model.ts';
@@ -16,14 +17,14 @@ export interface CoinsView {
 export function CoinsSection({ controller }: { controller: TableController }) {
   const t = useT();
   const { state, actions } = controller;
-  const view = state.game?.view;
+  const view = shownTradersBarbarians(state) ?? state.game?.view;
   const coins = tbPart<CoinsView>(view, 'tb-coins');
   const hints = tbHints<{ canTrade: boolean; sellRates: Record<string, number> }>(view, 'tb-coins');
   if (!view || !coins) return null;
   const selfId = state.session?.id ?? '';
   const self = view.players.find((player) => player.id === selfId);
   const mine = coins.gold[selfId] ?? 0;
-  const busy = blocksNewCommands(state.command);
+  const busy = blocksNewCommands(state.command) || followUpsHeld(state);
   return (
     <section className="tb-section" data-testid="tb-coins" aria-labelledby="tb-coins-heading">
       <h3 id="tb-coins-heading"><CoinEmblem size={22} />{t('tb.coins.title')}</h3>

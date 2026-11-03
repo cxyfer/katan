@@ -41,6 +41,8 @@ export interface RollHold {
   handSizes: Readonly<Record<string, number>>;
   /** C&K 面板的擲骰前投影，含 module、進步手牌及玩家分數。 */
   citiesKnights: GameSnapshot['view'] | null;
+  /** T&B 擲骰前的投影，包含魚牌、舊靴子、金幣與分數。 */
+  tradersBarbarians?: GameSnapshot['view'] | null;
   /** 擲骰前已知的最後事件序號。 */
   eventSeq: number;
 }
@@ -241,6 +243,7 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
       hand: own?.resources ? { ...own.resources, ...own.commodities } : null,
       handSizes: Object.fromEntries(current.view.players.map((player) => [player.id, player.handSize])),
       citiesKnights: citiesKnightsView(current.view) ? current.view : null,
+      tradersBarbarians: current.view.modules?.tradersBarbarians ? current.view : null,
       eventSeq: lastSeq,
     },
   };
@@ -282,6 +285,14 @@ export function shownCitiesKnights(state: TableState): GameSnapshot['view'] | nu
   if (hold) return hold.citiesKnights;
   const view = state.game?.view ?? null;
   return citiesKnightsView(view) ? view : null;
+}
+
+/** T&B 狀態共用擲骰前投影，避免魚牌或舊靴子先洩漏骰子結果。 */
+export function shownTradersBarbarians(state: TableState): GameSnapshot['view'] | null {
+  const hold = activeHold(state);
+  if (hold) return hold.tradersBarbarians ?? null;
+  const view = state.game?.view ?? null;
+  return view?.modules?.tradersBarbarians ? view : null;
 }
 
 /** 事件紀錄：擲骰演出期間只列出擲骰前已知的事件，並隱藏最新點數。 */

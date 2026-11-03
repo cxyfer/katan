@@ -2,6 +2,7 @@ import { useT } from '../../i18n/context.tsx';
 import { playerColorHex } from '../../board/terrain.ts';
 import { nameOf } from '../../state/table.ts';
 import { blocksNewCommands } from '../../state/commands.ts';
+import { followUpsHeld, shownTradersBarbarians } from '../../state/table.ts';
 import type { TableController } from '../../state/useTable.ts';
 import { BarbarianEmblem, CastleEmblem, KnightEmblem } from './emblems.tsx';
 import { tbHints, tbPart } from './model.ts';
@@ -32,11 +33,11 @@ interface BarbariansHints {
 export function BarbariansSection({ controller }: { controller: TableController }) {
   const t = useT();
   const { state, actions } = controller;
-  const view = state.game?.view;
+  const view = shownTradersBarbarians(state) ?? state.game?.view;
   const ba = tbPart<BarbariansView>(view, 'tb-barbarian-attack');
   const hints = tbHints<BarbariansHints>(view, 'tb-barbarian-attack');
   if (!view || !ba) return null;
-  const busy = blocksNewCommands(state.command);
+  const busy = blocksNewCommands(state.command) || followUpsHeld(state);
   const onCoast = Object.values(ba.barbarians).reduce((sum, count) => sum + count, 0);
   return (
     <section className="tb-section" data-testid="tb-barbarians" aria-labelledby="tb-ba-heading">
@@ -67,7 +68,7 @@ export function KnightMovesChoice({ controller }: { controller: TableController 
   const t = useT();
   const { state, actions } = controller;
   const hints = tbHints<BarbariansHints>(state.game?.view, 'tb-barbarian-attack');
-  const busy = blocksNewCommands(state.command);
+  const busy = blocksNewCommands(state.command) || followUpsHeld(state);
   const arm = (from: number, boost: boolean) => actions.selectTarget({
     kind: 'edge', index: null, commandType: 'tb.moveKnight', labelId: boost ? 'tb.ba.moveFar' : 'tb.ba.move',
     extra: { from, boost }, field: 'to', targetsKey: `tb.moveKnight:${from}:${boost ? 1 : 0}`,
@@ -98,7 +99,7 @@ export function BaStealChoice({ controller }: { controller: TableController }) {
   return (
     <div className="tb-actions" data-testid="tb-ba-steal">
       {(hints?.stealVictims ?? []).map((id) => (
-        <button key={id} type="button" className="button" disabled={blocksNewCommands(state.command)} data-testid={`tb-ba-steal-${id}`}
+        <button key={id} type="button" className="button" disabled={blocksNewCommands(state.command) || followUpsHeld(state)} data-testid={`tb-ba-steal-${id}`}
           onClick={() => void actions.submitCommand({ type: 'tb.baSteal', victim: id }, 'tb.ba.stealFrom')}>
           {t('tb.ba.stealFrom', { player: name(id) })}
         </button>
@@ -111,14 +112,14 @@ export function BaStealChoice({ controller }: { controller: TableController }) {
 export function TreasonChoice({ controller }: { controller: TableController }) {
   const t = useT();
   const { state, actions } = controller;
-  const view = state.game?.view;
+  const view = shownTradersBarbarians(state) ?? state.game?.view;
   const hints = tbHints<BarbariansHints>(view, 'tb-barbarian-attack');
   const label = (hex: number) => hex < 0 ? t('tb.ba.fromSupply')
     : `${t(`terrain.${view?.board.terrain[hex] ?? 'sea'}`)} · ${t('tb.ba.hexLabel', { number: view?.board.numbers[hex] ?? '—' })}`;
   return (
     <div className="tb-actions" data-testid="tb-treason">
       {(hints?.treasonMoves ?? []).map(([from, to]) => (
-        <button key={`${from}-${to}`} type="button" className="button button--ghost" disabled={blocksNewCommands(state.command)}
+        <button key={`${from}-${to}`} type="button" className="button button--ghost" disabled={blocksNewCommands(state.command) || followUpsHeld(state)}
           data-testid={`tb-treason-${from}-${to}`}
           onClick={() => void actions.submitCommand({ type: 'tb.baTreason', from, to }, 'tb.ba.treasonMove')}>
           {label(from)} → {label(to)}

@@ -1,3 +1,4 @@
+import { shownTradersBarbarians } from '../../state/table.ts';
 import type { ComponentType } from 'react';
 import { getProfile } from '@catan/rules';
 import { useT } from '../../i18n/context.tsx';
@@ -26,7 +27,7 @@ const SECTIONS: readonly [string, ComponentType<{ controller: TableController }>
 /** Scenario/variant status and actions for Traders & Barbarians games. */
 export function TbPanel({ controller }: { controller: TableController }) {
   const t = useT();
-  const view = controller.state.game?.view;
+  const view = shownTradersBarbarians(controller.state) ?? controller.state.game?.view;
   const slot = tbView(view);
   if (!view || !slot) return null;
   const sections = SECTIONS.filter(([part]) => part in slot);
@@ -42,7 +43,7 @@ export function TbPanel({ controller }: { controller: TableController }) {
 /** Rule summaries for the help panel: the scenario first, then its variants. */
 export function TbHelp({ controller }: { controller: TableController }) {
   const t = useT();
-  const view = controller.state.game?.view;
+  const view = shownTradersBarbarians(controller.state) ?? controller.state.game?.view;
   const profile = view ? getProfile(view.profileId) : undefined;
   if (!view || !profile || !profile.expansions.includes('tradersBarbarians')) return null;
   const ids = [...(profile.scenario ? [profile.scenario] : []), ...profile.variants];

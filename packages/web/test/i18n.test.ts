@@ -134,6 +134,24 @@ describe('t()', () => {
     }
   });
 
+  it.each(['trade.offered', 'trade.revised', 'trade.completed'])('keeps C&K commodities and module goods in %s text', (type) => {
+    const event = makeEvent(12, type, {
+      from: 'p1', to: 'p2', revision: 2,
+      give: { paper: 1, cloth: 2 }, want: { coin: 3 },
+      giveGoods: { gold: 4 }, wantGoods: { gold: 5 },
+    });
+    for (const locale of ['en', 'zh-Hant'] as const) {
+      const translated = translateEvent(locale, event, (id) => id);
+      expect(translated.params.give).toContain(`1×${t(locale, 'resource.paper')}`);
+      expect(translated.params.give).toContain(`2×${t(locale, 'resource.cloth')}`);
+      expect(translated.params.give).toContain(`4×${t(locale, 'tb.trade.goodName.gold')}`);
+      expect(translated.params.want).toContain(`3×${t(locale, 'resource.coin')}`);
+      expect(translated.params.want).toContain(`5×${t(locale, 'tb.trade.goodName.gold')}`);
+      expect(translated.text).not.toContain('resource.');
+      expect(translated.text).not.toContain('tb.trade.');
+    }
+  });
+
   it('never leaks a raw message id for an unknown error code', () => {
     expect(translateNotice('en', { messageId: 'error.E_TOTALLY_NEW' })).toContain('E_TOTALLY_NEW');
     expect(translateNotice('en', { messageId: 'error.E_ILLEGAL_TARGET' })).toBe(

@@ -3,6 +3,7 @@ import { formatResourceMap } from '../../i18n/format.ts';
 import { useLocale } from '../../i18n/context.tsx';
 import { nameOf } from '../../state/table.ts';
 import { blocksNewCommands } from '../../state/commands.ts';
+import { followUpsHeld, shownTradersBarbarians } from '../../state/table.ts';
 import type { TableController } from '../../state/useTable.ts';
 import { BarbarianEmblem, CommodityEmblem, WagonEmblem } from './emblems.tsx';
 import { tbHints, tbPart } from './model.ts';
@@ -39,14 +40,14 @@ export function TradersSection({ controller }: { controller: TableController }) 
   const t = useT();
   const locale = useLocale();
   const { state, actions } = controller;
-  const view = state.game?.view;
+  const view = shownTradersBarbarians(state) ?? state.game?.view;
   const traders = tbPart<TradersView>(view, 'tb-traders-barbarians');
   const hints = tbHints<TradersHints>(view, 'tb-traders-barbarians');
   const arm = useBarbarianArm(controller);
   if (!view || !traders) return null;
   const selfId = state.session?.id ?? '';
   const wagon = traders.wagons[selfId];
-  const busy = blocksNewCommands(state.command);
+  const busy = blocksNewCommands(state.command) || followUpsHeld(state);
   const name = nameOf(state);
   const info = wagon ? traders.levels[wagon.level - 1]! : null;
   const cost = wagon ? traders.upgradeCosts[wagon.level - 1] : undefined;
@@ -124,7 +125,7 @@ export function WagonMoveChoice({ controller }: { controller: TableController })
   const pending = state.game?.view.pending;
   const hints = tbHints<TradersHints>(state.game?.view, 'tb-traders-barbarians');
   const arm = useBarbarianArm(controller);
-  const busy = blocksNewCommands(state.command);
+  const busy = blocksNewCommands(state.command) || followUpsHeld(state);
   const data = pending && 'data' in pending ? (pending.data as { mp?: number; boosted?: boolean }) : {};
   return (
     <div className="tb-actions" data-testid="tb-wagon-move">

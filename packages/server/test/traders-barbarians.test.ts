@@ -74,19 +74,19 @@ describe('Traders & Barbarians rooms', () => {
   });
 
   for (const profile of tbProfiles) {
-    it(`${profile.id}: refuses bot seats at creation, when adding a bot and when switching a bot room`, async () => {
+    it(`${profile.id}: refuses adding bot seats and switching a bot room to the profile`, async () => {
       const host = await harness.client(`TbBots${tbProfiles.indexOf(profile)}`);
       const body = {
         visibility: 'private', capacity: 3, profileId: profile.id,
         setupMode: profile.setupModes.includes('variable') ? 'variable' : 'fixed',
       };
-      host.expectError(await host.post('/api/rooms', { ...body, bots: 1 }), 'E_INVALID_BOT');
       const room = host.expectOk<{ id: string }>(await host.post('/api/rooms', body));
       host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
       // A base room that already seats a bot cannot be switched to this profile.
       const base = host.expectOk<{ id: string }>(await host.post('/api/rooms', {
-        visibility: 'private', capacity: 3, profileId: 'base-2025', setupMode: 'variable', bots: 1,
+        visibility: 'private', capacity: 3, profileId: 'base-2025', setupMode: 'variable',
       }));
+      host.expectOk(await host.post(`/api/rooms/${base.id}/bots`, {}));
       host.expectError(await host.post(`/api/rooms/${base.id}/settings`, { profileId: profile.id, setupMode: body.setupMode }), 'E_INVALID_BOT');
     });
   }

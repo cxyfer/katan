@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useT } from '../../i18n/context.tsx';
 import { blocksNewCommands } from '../../state/commands.ts';
+import { followUpsHeld, shownTradersBarbarians } from '../../state/table.ts';
 import type { TableController } from '../../state/useTable.ts';
 import { WagonEmblem } from './emblems.tsx';
 import { tbPart } from './model.ts';
@@ -19,7 +20,7 @@ export interface TrainsView {
 /** Wagon supply, the turn's collected wagon and the open vote (TB25 pp. 13–14). */
 export function TrainsSection({ controller }: { controller: TableController }) {
   const t = useT();
-  const view = controller.state.game?.view;
+  const view = shownTradersBarbarians(controller.state) ?? controller.state.game?.view;
   const trains = tbPart<TrainsView>(view, 'tb-merchant-trains');
   if (!view || !trains) return null;
   const isActive = view.turn.playerId === controller.state.session?.id;
@@ -49,7 +50,7 @@ export function WagonBidChoice({ controller }: { controller: TableController }) 
   const [grain, setGrain] = useState(0);
   const pending = state.game?.view.pending;
   if (!self || !pending || !('responders' in pending) || pending.responders[0] !== self.id) return null;
-  const busy = blocksNewCommands(state.command);
+  const busy = blocksNewCommands(state.command) || followUpsHeld(state);
   const stepper = (label: string, value: number, max: number, set: (next: number) => void, id: string) => (
     <span className="trade-term__controls" role="group" aria-label={label}>
       {label}

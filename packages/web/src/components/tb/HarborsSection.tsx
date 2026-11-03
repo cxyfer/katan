@@ -1,3 +1,4 @@
+import { shownTradersBarbarians } from '../../state/table.ts';
 import { useT } from '../../i18n/context.tsx';
 import { nameOf } from '../../state/table.ts';
 import type { TableController } from '../../state/useTable.ts';
@@ -7,7 +8,7 @@ import { StrongestPortsEmblem } from './emblems.tsx';
 /** Strongest Ports status: holder and each player's VP on harbours. */
 export function HarborsSection({ controller }: { controller: TableController }) {
   const t = useT();
-  const view = controller.state.game?.view;
+  const view = shownTradersBarbarians(controller.state) ?? controller.state.game?.view;
   const harbors = tbPart<HarborsView>(view, 'harbors');
   if (!view || !harbors) return null;
   const name = nameOf(controller.state);
