@@ -182,10 +182,11 @@ gh release create v0.2.0 --title "v0.2.0" \
   --notes-file .tmp/release-notes-v0.2.0.md --verify-tag
 ```
 
-For an rc tagged on `release/vX.Y.Z`, the previous tag is the latest tag on `master` —
-`v0.3.0-rc.3` at the time of writing. The release branch contains `master` and is only updated by
-merges, so `release-notes.sh` selects that tag automatically and the range covers the work added on
-the release branch since it, not the whole project.
+For an rc tagged on `release/vX.Y.Z`, the previous tag is the nearest tag in its history. The first
+rc uses the latest tag on `master` — `v0.3.0-rc.3` at the time of writing — while later rcs use the
+previous rc on the release branch. Because the branch contains `master` and is only updated by
+merges, `release-notes.sh` selects that tag automatically and the range covers only the work added
+since it, not the whole project.
 
 The release title is the tag verbatim, so `v0.2.0` is published as `v0.2.0`. Do not prefix it with
 the project name: the tag already names the version, and the repository is where the project is
