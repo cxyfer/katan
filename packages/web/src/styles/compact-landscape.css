@@ -1,0 +1,153 @@
+/*
+ * 手機橫屏（orientation: landscape、max-height: 520px、pointer: coarse）的牌桌版面。
+ * GameScreen 以 data-layout="compact-landscape" 啟用；桌機、平板與直屏不受影響。
+ * 上方狀態列與下方工具帶改為浮動 HUD，棋盤延伸到整個畫面高度（相機 fit 演算法不變）。
+ * 本檔不在 cascade layer 內，且在其他牌桌樣式之後載入。
+ */
+.screen--game[data-layout="compact-landscape"] {
+  --hud-gap: 6px;
+  --hud-size: 44px;
+  --hud-fill: #0d2c33b8;
+  --hud-edge: #a7b49666;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+/* ---------- 上方：狀態列改為右上角浮動控制 ---------- */
+.screen--game[data-layout="compact-landscape"] > .status-strip {
+  position: absolute; top: var(--hud-gap); right: 8px; left: auto; z-index: 66;
+  width: max-content; max-width: calc(100% - 16px); gap: 6px; padding: 0;
+  background: none; border: 0; box-shadow: none; pointer-events: none;
+  translate: calc(-1 * env(safe-area-inset-right, 0px)) env(safe-area-inset-top, 0px);
+}
+.screen--game[data-layout="compact-landscape"] > .status-strip > * { pointer-events: auto; }
+.screen--game[data-layout="compact-landscape"] .status-strip .game-brand,
+.screen--game[data-layout="compact-landscape"] .status-strip__spacer,
+.screen--game[data-layout="compact-landscape"] .status-strip__save,
+.screen--game[data-layout="compact-landscape"] .status-strip [data-testid="save-time"] { display: none; }
+/* 連線狀態保持可見（docs/SPEC.md §8.1/§8.4），縮成半透明小底的燈號加短文字。 */
+.screen--game[data-layout="compact-landscape"] .status-strip [data-testid="connection-state"] {
+  min-height: var(--hud-size); padding: 0 10px; font-size: .7rem; white-space: nowrap;
+  background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
+}
+.screen--game[data-layout="compact-landscape"] .status-strip .sound-settings__toggle {
+  width: var(--hud-size); min-width: var(--hud-size); height: var(--hud-size); min-height: var(--hud-size);
+  justify-content: center; padding: 0; background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
+}
+.screen--game[data-layout="compact-landscape"] .status-strip .sound-settings__summary-label { display: none; }
+.screen--game[data-layout="compact-landscape"] .status-strip .language-switch__label { display: none; }
+.screen--game[data-layout="compact-landscape"] .status-strip .language-switch select {
+  width: auto; max-width: 112px; min-height: var(--hud-size); height: var(--hud-size);
+  background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
+}
+.screen--game[data-layout="compact-landscape"] .status-strip .table-fullscreen {
+  display: grid; place-items: center; width: var(--hud-size); min-width: var(--hud-size);
+  height: var(--hud-size); min-height: var(--hud-size); padding: 0;
+  background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
+}
+.screen--game[data-layout="compact-landscape"] .status-strip .table-fullscreen > span { display: none; }
+.screen--game[data-layout="compact-landscape"] > .table-fullscreen-error { top: calc(var(--hud-gap) + var(--hud-size) + var(--hud-gap)); }
+
+/* ---------- 棋盤：延伸到整個畫面高度 ---------- */
+.screen--game[data-layout="compact-landscape"] .game__map { inset: 0; }
+.screen--game[data-layout="compact-landscape"] .board--side-controls .board__dice { bottom: 60px; }
+/* 目標清單沿用原本的位置與尺寸，只疊到滿寬手牌 dock（48）、側欄（49）與浮動 HUD 之上。 */
+.screen--game[data-layout="compact-landscape"] .target-picker { z-index: 67; }
+
+/*
+ * 右欄：提示面板與行動側欄改為同一欄由上而下排列（提示在上、側欄貼底），
+ * 內容多時側欄縮短並自行捲動，兩者不會互相蓋住；欄位讓出上方浮動控制與右下角選單鈕。
+ */
+.screen--game[data-layout="compact-landscape"] .game__playfield {
+  display: flex; flex-direction: column; align-items: flex-end; gap: var(--hud-gap);
+  padding: calc(var(--hud-gap) * 2 + var(--hud-size)) 8px calc(var(--hud-gap) * 2 + var(--hud-size)) 0;
+  pointer-events: none;
+}
+/*
+ * 欄位本身鋪滿畫面，只讓空白處穿透到下方的計分板與手牌；棋盤、提示、棄牌與發展卡選擇、
+ * 選取確認面板等子元素都要能點。側欄自己處理穿透（action-rail.css），維持 none。
+ */
+.screen--game[data-layout="compact-landscape"] .game__playfield > * { pointer-events: auto; }
+.screen--game[data-layout="compact-landscape"] .game__playfield > .action-rail { pointer-events: none; }
+.screen--game[data-layout="compact-landscape"] .game__messages:not(:has(.discard)) {
+  position: relative; inset: auto; flex: 0 0 auto; max-height: none;
+  width: min(260px, calc(100% - 70px));
+}
+.screen--game[data-layout="compact-landscape"] .game__messages .prompt > .button { min-height: var(--hud-size); }
+.screen--game[data-layout="compact-landscape"] .game__messages .command-status .button { min-height: 40px; }
+/* 棄牌是必要回應，維持置中的寬面板，只讓到浮動控制下方。 */
+.screen--game[data-layout="compact-landscape"] .game__messages:has(.discard) {
+  top: calc(var(--hud-gap) * 2 + var(--hud-size)); max-height: calc(100% - 130px); overflow: auto;
+}
+/* 窄橫屏的手牌 dock（z-index 48）滿寬，會延伸到右欄底下；側欄要疊在它上面才點得到。 */
+.screen--game[data-layout="compact-landscape"] .action-rail {
+  position: relative; inset: auto; flex: 0 1 auto; min-height: 0; max-height: none; margin-top: auto;
+  transform: none; z-index: 49;
+}
+/* side-layout.css 在窄畫面展開手牌時把側欄上移 302px（直屏用）；這裡側欄仍留在右欄底部。 */
+.screen--game[data-layout="compact-landscape"]:has(.hand.hand-fan[data-expanded="true"]) .action-rail {
+  inset: auto; max-height: none;
+}
+.screen--game[data-layout="compact-landscape"] .action-rail__toggle { flex-basis: var(--hud-size); min-height: var(--hud-size); }
+.screen--game[data-layout="compact-landscape"] .game__receipt { right: 62px; bottom: var(--hud-gap); }
+.screen--game[data-layout="compact-landscape"] .game-tools__close { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
+
+/* 左側計分板：四位玩家在 360px 高時完整排下，不需捲動。 */
+.screen--game[data-layout="compact-landscape"] .players .seat-list { grid-auto-rows: 54px; }
+.screen--game[data-layout="compact-landscape"] .players .seat,
+.screen--game[data-layout="compact-landscape"] .players[data-expanded="false"] .seat { height: 54px; padding-block: 2px; }
+
+/* ---------- 下方：工具帶改為浮動圖示鈕 ---------- */
+.screen--game[data-layout="compact-landscape"] .game-tools { bottom: var(--hud-gap); left: 8px; }
+.screen--game[data-layout="compact-landscape"] .game-tools__tabs { gap: 6px; }
+.screen--game[data-layout="compact-landscape"] .game-tools__tab,
+.screen--game[data-layout="compact-landscape"] .game__menu > summary {
+  display: grid; place-items: center; width: var(--hud-size); min-width: var(--hud-size);
+  height: var(--hud-size); min-height: var(--hud-size); padding: 0;
+  background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
+}
+.screen--game[data-layout="compact-landscape"] .game-tools__tab > span:not(.game-tools__unread),
+.screen--game[data-layout="compact-landscape"] .game__menu > summary > span { display: none; }
+.screen--game[data-layout="compact-landscape"] .game-tools__tab svg,
+.screen--game[data-layout="compact-landscape"] .game__menu > summary svg { width: 20px; height: 20px; }
+.screen--game[data-layout="compact-landscape"] .game-tools__tab--active { background: #3a4934; border-color: #d6bb7a; }
+.screen--game[data-layout="compact-landscape"] .game-tools__surface { bottom: calc(var(--hud-size) + var(--hud-gap) + 4px); max-height: calc(100dvh - 76px); }
+.screen--game[data-layout="compact-landscape"] .game-tools__header { padding-block: .35rem; }
+.screen--game[data-layout="compact-landscape"] .game-tools__panel:not([hidden]) { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.screen--game[data-layout="compact-landscape"] .game-tools__panel > .panel { flex: 1 1 auto; min-height: 0; padding: .55rem .9rem .7rem; }
+/* 聊天：紀錄可捲動，輸入框與送出鈕固定在底部並完整可見；重複的小標與欄位標籤只留給輔助科技。 */
+.screen--game[data-layout="compact-landscape"] .chat { display: flex; flex-direction: column; }
+.screen--game[data-layout="compact-landscape"] .chat > h2,
+.screen--game[data-layout="compact-landscape"] .chat__compose > label {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.screen--game[data-layout="compact-landscape"] .chat > p { margin: 0 0 .25rem; font-size: .68rem; }
+.screen--game[data-layout="compact-landscape"] .chat__log { flex: 1 1 auto; min-height: 48px; max-height: none; margin: 0; }
+.screen--game[data-layout="compact-landscape"] .chat__compose { flex: 0 0 auto; flex-direction: row; align-items: stretch; gap: .5rem; margin-top: .5rem; }
+.screen--game[data-layout="compact-landscape"] .chat__compose textarea { flex: 1 1 auto; width: auto; height: 48px; min-height: 48px; resize: none; }
+.screen--game[data-layout="compact-landscape"] .chat__compose .button { flex: 0 0 auto; min-height: 48px; }
+.screen--game[data-layout="compact-landscape"] .game__menu { bottom: var(--hud-gap); right: 8px; }
+.screen--game[data-layout="compact-landscape"] .persistence { bottom: calc(var(--hud-size) + 4px); max-height: calc(100dvh - 76px); }
+
+/* 窄橫屏（約 667px 寬）：相機工具列與右上控制改用 40px 圖示鈕並收緊間距，兩者才不會相撞。 */
+@media (max-width: 700px) {
+  .screen--game[data-layout="compact-landscape"] { --hud-size: 40px; }
+  .screen--game[data-layout="compact-landscape"] .board--side-controls .board__toolbar--side { gap: 3px; }
+  .screen--game[data-layout="compact-landscape"] .board--side-controls .board__toolbar--side > .button,
+  .screen--game[data-layout="compact-landscape"] .board--side-controls .board__display-settings > summary,
+  .screen--game[data-layout="compact-landscape"] .board--side-controls .board__toolbar--side > .legend > summary { min-width: 40px; height: 40px; min-height: 40px; }
+  .screen--game[data-layout="compact-landscape"] .board--side-controls .board__toolbar--side > .button,
+  .screen--game[data-layout="compact-landscape"] .board--side-controls .board__display-settings > summary { width: 40px; }
+  .screen--game[data-layout="compact-landscape"] .status-strip { gap: 4px; }
+  .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="connection-state"] { padding: 0 7px; font-size: .64rem; }
+  .screen--game[data-layout="compact-landscape"] .status-strip .language-switch select { max-width: 78px; padding-inline: 6px 2px; font-size: .64rem; }
+}
+
+/* 中等寬度：手牌展開時資源列會升到提示面板的高度，把它與骰子一起略微左移，避免右端被蓋住。 */
+@media (min-width: 701px) and (max-width: 860px) {
+  .screen--game[data-layout="compact-landscape"] .resource-tally { left: calc(50% - 40px); }
+  .screen--game[data-layout="compact-landscape"] .board--side-controls .board__dice { right: calc(50% + 224px); }
+}
+@media (min-width: 701px) and (max-width: 780px) {
+  .screen--game[data-layout="compact-landscape"] .game__messages:not(:has(.discard)) { width: min(232px, calc(100% - 70px)); }
+}
