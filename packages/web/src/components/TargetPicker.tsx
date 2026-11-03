@@ -13,26 +13,23 @@ const ANCHOR_OFFSET_PX = 14;
 /**
  * 外部點擊關閉後，吞掉緊接著的那一次 click，避免它落在棋盤目標按鈕上
  * 又觸發選取、重新開啟 picker 或誤送指令。獨立於元件生命週期，因為 picker 此時已卸載。
- * 拖曳（無 click）時於 pointerup 後的下一個工作階段自動移除。
+ * 觸控 click 可能在 pointerup 之後的另一個 task 才派發；直到 click、下一次 pointerdown
+ * 或一秒保底逾時才移除，避免漏掉關閉用的點擊，也不攔截下一次刻意操作。
  */
 function swallowNextClick() {
   const remove = () => {
     document.removeEventListener('click', onClick, true);
-    document.removeEventListener('pointerup', onEnd, true);
-    document.removeEventListener('pointercancel', onEnd, true);
+    document.removeEventListener('pointerdown', remove, true);
+    clearTimeout(timeout);
   };
   function onClick(event: Event) {
     event.stopPropagation();
     event.preventDefault();
     remove();
   }
-  function onEnd() {
-    // click 會在 pointerup 之後同步派發；等其落空才移除。
-    setTimeout(remove, 0);
-  }
+  const timeout = setTimeout(remove, 1000);
   document.addEventListener('click', onClick, true);
-  document.addEventListener('pointerup', onEnd, true);
-  document.addEventListener('pointercancel', onEnd, true);
+  document.addEventListener('pointerdown', remove, true);
 }
 
 /**
@@ -141,25 +138,25 @@ export function TargetPicker({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       event.preventDefault();
+      event.stopPropagation();
       onCancelRef.current?.();
     };
     document.addEventListener('pointerdown', onPointerDown, true);
-    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keydown', onKeyDown, true);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown, true);
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keydown', onKeyDown, true);
     };
   }, [hasCancel]);
 
-  // 依目標目前的投影定位並夾在父層可視範圍內，避開上方工具列；無錨點時使用 CSS 預設位置。
-  // 投影錨點改變時重新換算父層座標；父層或工具列尺寸變動時也重新夾限。
+  const anchorX = anchor?.x;
+  const anchorY = anchor?.y;
+  // 依目標目前的投影定位；無錨點時放在工具列下方左側。尺寸或投影變動時重新夾限。
   useLayoutEffect(() => {
     const element = pickerRef.current;
     const parent = element?.offsetParent;
-    if (!element || !parent || !anchor) return;
-    const initial = parent.getBoundingClientRect();
-    const x = anchor.x - initial.left;
-    const y = anchor.y - initial.top;
+    if (!element || !parent) return;
+    const anchored = anchorX !== undefined && anchorY !== undefined;
     const toolbar = parent.querySelector(TOOLBAR_SELECTOR);
     const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, Math.max(min, max)));
     const place = () => {
@@ -171,8 +168,12 @@ export function TargetPicker({
       const toolbarBottom = toolbar ? toolbar.getBoundingClientRect().bottom - bounds.top + TOOLBAR_GAP_PX : 0;
       const minTop = Math.max(EDGE_GAP_PX, toolbarBottom);
       // 預設放在點擊處右下；空間不足時改放左側／上方。
-      const left = x + ANCHOR_OFFSET_PX + width <= bounds.width - EDGE_GAP_PX ? x + ANCHOR_OFFSET_PX : x - ANCHOR_OFFSET_PX - width;
-      const top = y + ANCHOR_OFFSET_PX + height <= bounds.height - EDGE_GAP_PX ? y + ANCHOR_OFFSET_PX : y - ANCHOR_OFFSET_PX - height;
+      const x = anchored ? anchorX - bounds.left : 0;
+      const y = anchored ? anchorY - bounds.top : 0;
+      const left = !anchored ? EDGE_GAP_PX
+        : x + ANCHOR_OFFSET_PX + width <= bounds.width - EDGE_GAP_PX ? x + ANCHOR_OFFSET_PX : x - ANCHOR_OFFSET_PX - width;
+      const top = !anchored ? minTop
+        : y + ANCHOR_OFFSET_PX + height <= bounds.height - EDGE_GAP_PX ? y + ANCHOR_OFFSET_PX : y - ANCHOR_OFFSET_PX - height;
       element.style.left = `${clamp(left, EDGE_GAP_PX, bounds.width - width - EDGE_GAP_PX)}px`;
       element.style.top = `${clamp(top, minTop, bounds.height - height - EDGE_GAP_PX)}px`;
       element.style.right = 'auto';
@@ -181,12 +182,13 @@ export function TargetPicker({
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(place) : null;
     observer?.observe(parent);
     if (toolbar) observer?.observe(toolbar);
+    observer?.observe(element);
     window.addEventListener('resize', place);
     return () => {
       observer?.disconnect();
       window.removeEventListener('resize', place);
     };
-  }, [anchor, options.length]);
+  }, [anchorX, anchorY, options.length]);
 
   return (
     <div
@@ -199,12 +201,6 @@ export function TargetPicker({
       onFocusCapture={() => { focusInsideRef.current = true; }}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) focusInsideRef.current = false;
-      }}
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape' || !onCancel) return;
-        event.preventDefault();
-        event.stopPropagation();
-        cancel();
       }}
     >
       <div className="target-picker__header">

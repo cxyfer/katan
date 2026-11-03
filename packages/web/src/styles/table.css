@@ -602,17 +602,19 @@
   width: 530px;
 }
 .target-picker {
-  background: #163642;
+  --target-picker-background: #163642;
+  background: var(--target-picker-background);
   margin: .5rem;
 }
 .screen--game .target-picker {
+  --target-picker-background: #102c32;
   z-index: 46;
   box-sizing: border-box;
   width: min(280px, 100% - 16px);
   max-height: min(60%, 260px);
   margin: 0;
   padding: .5rem .6rem;
-  background: #102c32f5;
+  background: var(--target-picker-background);
   border-radius: 10px;
   font-size: .8rem;
   position: absolute;
@@ -621,6 +623,10 @@
   overscroll-behavior: contain;
 }
 .target-picker__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--target-picker-background);
   display: flex;
   gap: .4rem;
   align-items: baseline;
@@ -639,6 +645,12 @@
   min-height: 28px;
   padding: 0 .4rem;
   line-height: 1;
+}
+@media (pointer: coarse) {
+  .target-picker__close {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 .target-picker__note {
   margin: .25rem 0 0;

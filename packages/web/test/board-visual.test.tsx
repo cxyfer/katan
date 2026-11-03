@@ -383,6 +383,21 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     expect(api.callsOf('sendCommand')).toHaveLength(0);
   });
 
+  it('uses Escape on a board target to close the picker before cancelling the build intent', async () => {
+    const { api } = await board();
+    const target = screen.getByTestId(`target-edge-${first.index}`);
+    fireEvent.click(target);
+    expect(screen.getByTestId('target-picker')).toBeTruthy();
+    target.focus();
+    fireEvent.keyDown(target, { key: 'Escape' });
+    expect(screen.queryByTestId('target-picker')).toBeNull();
+    expect(screen.getByTestId(`target-edge-${first.index}`)).toBe(target);
+    expect(screen.queryByTestId('selection-preview')).toBeNull();
+    fireEvent.keyDown(target, { key: 'Escape' });
+    expect(screen.queryByTestId(`target-edge-${first.index}`)).toBeNull();
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
   it('remeasures after resize, preserves zoom, and keeps keyboard / cancel / fit behavior', async () => {
     const { api, svg } = await board();
     fireEvent.click(screen.getByTestId('zoom-in'));
