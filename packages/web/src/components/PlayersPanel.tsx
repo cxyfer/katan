@@ -6,10 +6,10 @@ import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { shownHandSize } from '../state/table.ts';
-import { BotBadge } from './BotBadge.tsx';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/scoreboard-hover.css';
+import '../styles/bot-seats.css';
 
 function ScoreMark({ icon, label, value, awarded = false, testId }: {
   icon: string; label: string; value: string; awarded?: boolean; testId?: string;
@@ -248,15 +248,15 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
               <div className="seat__summary">
                 <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>
                   {Array.from(player.nickname)[0]}
-                  {/* 收合時名稱與徽章都隱藏，在頭像角落留一個電腦標記。 */}
-                  {isBot && !expanded && (
+                  {/* 電腦標記固定放在頭像角落，避免徽章在展開時把名稱擠成兩行。 */}
+                  {isBot && (
                     <span className="seat__bot-mark" data-testid={`seat-bot-mark-${player.seat}`}><GameIcon name="bot" size={9} /></span>
                   )}
                 </span>
                 {isBot && !expanded && <span className="visually-hidden">{`${player.nickname} (${botLabel})`}</span>}
                 <span className="seat__identity" hidden={!expanded}>
                   <span className="seat__name" title={player.nickname}>{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>
-                  {isBot && <BotBadge level={bots.get(player.id)} short testId={`seat-bot-${player.seat}`} />}
+                  {isBot && <span className="visually-hidden" data-testid={`seat-bot-${player.seat}`}>{` (${botLabel})`}</span>}
                 </span>
                 <span className={`seat__score${isSelf && player.ownScore !== undefined ? ' seat__own-score' : ''}`} title={scoreLabel}><GameIcon name="crown" size={15} /><span className="visually-hidden">{scoreLabel}: </span>{number(total)}</span>
               </div>

@@ -29,17 +29,24 @@ RUN pnpm --filter @catan/web build \
  && mkdir -p /rootfs/data
 
 # --- runtime ----------------------------------------------------------------
+# Some platforms initialize persistent volumes by running `sh` inside the
+# application image. Copy the official BusyBox tool layer into the otherwise
+# shell-less distroless runtime.
+FROM gcr.io/distroless/cc-debian13:debug AS shell-tools
+
 # Distroless cc supplies glibc, libstdc++ and CA certificates but no shell or
 # package manager. The server bundle has no native modules, so the Node binary
 # is the only thing it needs; npm, corepack, yarn and headers stay behind.
 FROM gcr.io/distroless/cc-debian13 AS runtime
 ENV NODE_ENV=production
+ENV PATH=/busybox:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV PORT=3000
 ENV HOST=0.0.0.0
 ENV SQLITE_PATH=/data/catan.sqlite
 ENV WEB_DIST_PATH=/app/web
 WORKDIR /app
 
+COPY --from=shell-tools /busybox /busybox
 COPY --from=builder /usr/local/bin/node /usr/local/bin/node
 # The application is root-owned and read-only to the service; only /data is
 # writable. UID 10001 is kept so existing volumes stay accessible.
@@ -52,7 +59,8 @@ USER 10001:10001
 VOLUME ["/data"]
 EXPOSE 3000
 
-# Exec form: the image has no /bin/sh.
+# Exec form: the application does not depend on a shell. BusyBox is available
+# only for platform volume initialization.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 

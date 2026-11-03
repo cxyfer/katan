@@ -26,7 +26,7 @@ import {
   type Visibility,
 } from '@catan/protocol';
 import type { ServerConfig } from './config.ts';
-import { validatePolicy } from './config.ts';
+import { validateNickname, validatePolicy } from './config.ts';
 import {
   newId,
   newRoomCode,
@@ -346,9 +346,6 @@ export class RoomService {
       setupMode: 'fixed' | 'variable';
       orderMode: GameOrderMode;
       policy?: Partial<RoomPolicy>;
-      /** 建房捷徑：一併加入的 Bot 數量。 */
-      bots?: number;
-      botLevel?: unknown;
     },
   ): Promise<RoomView> {
     const profileId = resolveRoomProfile(input);
@@ -371,17 +368,6 @@ export class RoomService {
     if (!policyCheck.ok) {
       throw new ServiceError('E_INVALID_POLICY', 'error.E_INVALID_POLICY', { reason: policyCheck.reason });
     }
-    const botLevel = this.requireBotLevel(input.botLevel);
-    const bots = input.bots ?? 0;
-    // 至少保留一個真人席位給房主。
-    if (!Number.isInteger(bots) || bots < 0 || bots > input.capacity - 1) {
-      throw new ServiceError('E_INVALID_BOT', 'error.E_INVALID_BOT', {
-        reason: 'count',
-        max: input.capacity - 1,
-      });
-    }
-    if (bots > 0) this.requireBotsAllowed(profileId);
-
     const now = new Date().toISOString();
     const room: RoomRow = {
       id: newId('room'),
@@ -413,10 +399,6 @@ export class RoomService {
       disconnected_at: null,
       connection_id: null,
     });
-    const members = await this.repo.listMembers(room.id);
-    for (let index = 0; index < bots; index++) {
-      members.push(await insertBotSeat(this.repo, room.id, members, botLevel, now));
-    }
     return this.view(room.id, playerId);
   }
 
@@ -438,11 +420,16 @@ export class RoomService {
   }
 
   /** 房主在開局前加入一個 Bot 席位（SPEC §4.2、§4.9）。 */
-  async addBot(playerId: string, roomId: string, level?: unknown): Promise<RoomView> {
-    return this.withRoomLock(roomId, () => this.addBotLocked(playerId, roomId, level));
+  async addBot(playerId: string, roomId: string, level?: unknown, name?: unknown): Promise<RoomView> {
+    return this.withRoomLock(roomId, () => this.addBotLocked(playerId, roomId, level, name));
   }
 
-  private async addBotLocked(playerId: string, roomId: string, levelInput: unknown): Promise<RoomView> {
+  private async addBotLocked(
+    playerId: string,
+    roomId: string,
+    levelInput: unknown,
+    nameInput: unknown,
+  ): Promise<RoomView> {
     const room = await this.requireRoom(roomId);
     if (room.host_id !== playerId) {
       throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', {}, 403);
@@ -456,12 +443,39 @@ export class RoomService {
     if (members.length >= room.capacity) {
       throw new ServiceError('E_ROOM_FULL', 'error.E_ROOM_FULL', { capacity: room.capacity }, 409);
     }
-    await insertBotSeat(this.repo, roomId, members, level, new Date().toISOString());
+    const name = this.requireBotName(nameInput, members);
+    await insertBotSeat(this.repo, roomId, members, level, new Date().toISOString(), name);
     // 座位組成改變，與其他設定變更一樣需要真人重新確認就緒。
     await this.clearReadiness(roomId);
     await this.repo.updateRoom(roomId, { status: room.status });
     this.broadcastRoom(roomId);
     return this.view(roomId, playerId);
+  }
+
+  /**
+   * 房主可替 Bot 取名；留空沿用名稱池的預設名稱。名稱比照暱稱驗證，且不能
+   * 與房內既有席位重複，避免座位與事件紀錄無法分辨。
+   */
+  private requireBotName(value: unknown, members: readonly MemberRow[]): string | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value !== 'string') {
+      throw new ServiceError('E_INVALID_NICKNAME', 'error.E_INVALID_NICKNAME', { reason: 'name' });
+    }
+    if (value.trim().length === 0) return undefined;
+    const validated = validateNickname(value, this.deps.config.limits.nicknameMaxLength);
+    if (!validated.ok) {
+      throw new ServiceError('E_INVALID_NICKNAME', 'error.E_INVALID_NICKNAME', { reason: validated.reason });
+    }
+    const lowered = validated.nickname.toLowerCase();
+    if (members.some((member) => (member.nickname ?? '').toLowerCase() === lowered)) {
+      throw new ServiceError(
+        'E_BOT_NAME_TAKEN',
+        'error.E_BOT_NAME_TAKEN',
+        { name: validated.nickname },
+        409,
+      );
+    }
+    return validated.nickname;
   }
 
   /** 房主在開局前移除一個 Bot 席位；真人席位不能用這個方式移除。 */

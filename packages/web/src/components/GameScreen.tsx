@@ -12,10 +12,13 @@ import { HandPanel } from './HandPanel.tsx';
 import { PendingPrompt } from './PendingPrompt.tsx';
 import { PlayersPanel } from './PlayersPanel.tsx';
 import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
+import { RotatePrompt } from './RotatePrompt.tsx';
 import { SelectionPreview } from './SelectionPreview.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
 import { useFullscreen } from './useFullscreen.ts';
 import { useIsMobile } from './useIsMobile.ts';
+import { useAutoDeclineTrades } from './useAutoDeclineTrades.ts';
+import { useDevCardChoice } from './useDevCardChoice.ts';
 
 /** 同一張遊戲桌涵蓋橫屏與直屏，切換尺寸不卸載手牌或工具草稿。 */
 export function GameScreen({ controller }: { controller: TableController }) {
@@ -29,6 +32,10 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const [activeRail, setActiveRail] = useState<'players' | 'actions' | null>(null);
   const openPlayers = useCallback(() => setActiveRail('players'), []);
   const openActions = useCallback(() => setActiveRail('actions'), []);
+  // 交易面板收起時（手機抽屜）仍要套用「自動拒絕」偏好。
+  useAutoDeclineTrades(controller);
+  // 壟斷／豐收之年的資源選擇：失效時關閉，豐收之年確認後逐張領取。
+  useDevCardChoice(controller);
 
   useEffect(() => {
     const next = requiredActionAnnouncement(action, t);
@@ -104,6 +111,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
         </section>
       </details>
       <p className="game__orientation"><GameIcon name="refresh" size={14} />{t('table.landscapeHint')}</p>
+      <RotatePrompt />
     </div>
   );
 }

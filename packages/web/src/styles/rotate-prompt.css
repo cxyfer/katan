@@ -1,0 +1,28 @@
+/* 已安裝 App 直向開啟牌桌時的橫放提示（RotatePrompt）。 */
+.rotate-prompt {
+  position: fixed; inset: 0; z-index: 130;
+  display: grid; place-items: center;
+  padding: max(1.5rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+  background: #03141be6; backdrop-filter: blur(6px);
+}
+.rotate-prompt__card {
+  display: flex; flex-direction: column; align-items: center; gap: .75rem;
+  width: min(100%, 320px); padding: 1.6rem 1.4rem 1.3rem;
+  text-align: center; color: var(--text);
+  background: #102c30f5; border: 1px solid #b8a77770; border-radius: var(--radius);
+  box-shadow: 0 18px 50px #00151d99;
+}
+.rotate-prompt__card h2 { margin: 0; font-family: var(--font-display); font-size: 1.2rem; color: #f6e7c3; }
+.rotate-prompt__card p { margin: 0; color: var(--text-muted); font-size: .88rem; line-height: 1.55; }
+.rotate-prompt__card .button { margin-top: .35rem; min-height: 44px; }
+.rotate-prompt__device { color: var(--accent); }
+.rotate-prompt__phone { transform-origin: 36px 34px; animation: rotate-prompt-turn 2.4s ease-in-out infinite; }
+.rotate-prompt__arrow { opacity: .75; }
+@keyframes rotate-prompt-turn {
+  0%, 20% { transform: rotate(0deg); }
+  55%, 85% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rotate-prompt__phone { animation: none; transform: rotate(-90deg); }
+}
