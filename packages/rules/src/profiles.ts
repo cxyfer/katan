@@ -286,49 +286,69 @@ export const PROFILES: readonly ProfileDefinition[] = [
     enabled: true,
   }),
 
+  // Heading for New Shores with Cities & Knights (SF25 pp. 4–5 maps, CK25
+  // rules, CK25 p. 12 and COMB for the combination). The combination layer
+  // runs first so its vetoes (pirate before the first attack, knight chases,
+  // ship moves next to knights) precede both expansions' hooks; Seafarers
+  // then queues gold before the C&K science bonus. Enabled after the R-COMB
+  // fixtures, the simulated games and a browser game passed (docs/FIDELITY.md).
   baseProfile('sf-ck-new-shores-2025', [3, 4], {
     ruleVersion: 'sf-ck-2025.1',
     expansions: ['seafarers', 'citiesKnights'],
+    ruleModules: ['seafarersCitiesKnights', 'seafarers', 'citiesKnights'],
     scenario: 'new-shores',
     sources: [
+      { id: 'B25', pages: 'entire rulebook' },
       { id: 'SF25', pages: 'pp. 2–5' },
-      { id: 'CK25', pages: 'pp. 3–5' },
-      { id: 'COMB', pages: 'reviewed 2026-10-26' },
+      { id: 'CK25', pages: 'pp. 2–16' },
+      { id: 'COMB', pages: 'catan.com/seafarers, accessed 2026-11-02' },
     ],
     requiredBoxes: ['base', 'seafarers', 'citiesKnights'],
+    // New Shores' 14 + 2 (COMB).
     victoryTarget: 16,
     setupModes: ['fixed'],
     layoutId: 'sf-new-shores',
+    topologyId: 'sf-new-shores-4',
     devDeck: [],
     pieces: { ...BASE_PIECES, ships: 15, knights: 6 },
     hasPirate: true,
     longestRouteIncludesShips: true,
     commodityBankPerType: 12,
-    unavailableReasonKey: 'profile.unavailable.combined',
+    implemented: true,
+    enabled: true,
   }),
 
+  // SF56-25 map (fixed small islands, variable main island and ports) with
+  // CK56-25 supply; both 5–6 rulebooks' paired turns apply.
   baseProfile('sf-ck-new-shores-paired-2025', [5, 6], {
     ...PAIRED_BASE,
     ruleVersion: 'sf-ck-2025.1',
     expansions: ['seafarers', 'citiesKnights'],
+    ruleModules: ['seafarersCitiesKnights', 'seafarers', 'citiesKnights'],
     scenario: 'new-shores',
     sources: [
-      { id: 'SF56-25', pages: 'pp. 2–4' },
-      { id: 'CK56-25', pages: 'pp. 2–3' },
-      { id: 'COMB', pages: 'reviewed 2026-10-26' },
+      { id: 'B56-25', pages: 'pp. 3–4' },
+      { id: 'SF25', pages: 'pp. 2–5' },
+      { id: 'SF56-25', pages: 'pp. 1–4' },
+      { id: 'CK25', pages: 'pp. 2–16' },
+      { id: 'CK56-25', pages: 'pp. 2–4' },
+      { id: 'COMB', pages: 'catan.com/seafarers, accessed 2026-11-02' },
     ],
     requiredBoxes: [
       'base', 'base-5-6', 'seafarers', 'seafarers-5-6', 'citiesKnights', 'citiesKnights-5-6',
     ],
     victoryTarget: 16,
-    setupModes: ['fixed'],
+    setupModes: ['variable'],
     layoutId: 'sf-new-shores',
+    topologyId: 'sf-new-shores-56',
     devDeck: [],
     pieces: { ...BASE_PIECES, ships: 15, knights: 6 },
     hasPirate: true,
     longestRouteIncludesShips: true,
-    commodityBankPerType: 12,
-    unavailableReasonKey: 'profile.unavailable.combined',
+    // 36 + 18 commodity cards, 18 of each (CK25 p. 3, CK56-25 pp. 2–3).
+    commodityBankPerType: 18,
+    implemented: true,
+    enabled: true,
   }),
 ];
 

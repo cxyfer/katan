@@ -33,9 +33,13 @@ import { playerStats } from '../../stats.ts';
 
 // --- Diplomacy -----------------------------------------------------------------
 
-function ownRoadsAt(state: GameState, playerId: string, vertex: number, except: number): number[] {
+/** The player's pieces of one kind (roads or ships) at an intersection, except `except`. */
+function ownPiecesAt(state: GameState, playerId: string, vertex: number, except: number, ship: boolean): number[] {
   const topo = topologyOf(state);
-  return topo.vertices[vertex]!.edges.filter((edge) => edge !== except && state.board.roads[edge]?.player === playerId && !state.board.roads[edge]!.ship);
+  return topo.vertices[vertex]!.edges.filter((edge) => {
+    const piece = state.board.roads[edge];
+    return edge !== except && piece?.player === playerId && piece.ship === ship;
+  });
 }
 
 function isAnchor(state: GameState, playerId: string, vertex: number): boolean {
@@ -49,8 +53,8 @@ function heldByOther(state: GameState, playerId: string, vertex: number): boolea
   return !!knight && knight.player !== playerId;
 }
 
-/** Own buildings and knights reached from `start` along own roads, never crossing `except`. */
-function anchorsFrom(state: GameState, playerId: string, start: number, except: number): Set<number> {
+/** Own buildings and knights reached from `start` along own pieces of one kind, never crossing `except`. */
+function anchorsFrom(state: GameState, playerId: string, start: number, except: number, ship: boolean): Set<number> {
   const topo = topologyOf(state);
   const found = new Set<number>();
   const seen = new Set<number>([start]);
@@ -63,7 +67,7 @@ function anchorsFrom(state: GameState, playerId: string, start: number, except: 
     }
     // Another player's piece interrupts the route.
     if (heldByOther(state, playerId, vertex)) continue;
-    for (const edge of ownRoadsAt(state, playerId, vertex, except)) {
+    for (const edge of ownPiecesAt(state, playerId, vertex, except, ship)) {
       const [a, b] = topo.edges[edge]!.vertices;
       const next = a === vertex ? b : a;
       if (seen.has(next)) continue;
@@ -78,17 +82,19 @@ function anchorsFrom(state: GameState, playerId: string, start: number, except: 
  * An "open" road (CK25 p. 15): one of its ends touches neither another road
  * nor a building of its owner, and it is not part of a continuous route
  * joining two of the owner's buildings and/or knights. Another player's piece
- * at an end does not open it (CK-FAQ 89).
+ * at an end does not open it (CK-FAQ 89). With Seafarers a ship is open by
+ * the same rule applied to ships (CK25 p. 12, CK-FAQ 64–66 and 94, SF-FAQ 18);
+ * the pirate does not protect it (CK-FAQ 65).
  */
 export function isOpenRoad(state: GameState, edge: number): boolean {
   const road = state.board.roads[edge];
-  if (!road || road.ship) return false;
+  if (!road) return false;
   const owner = road.player;
   const [u, v] = topologyOf(state).edges[edge]!.vertices;
-  const closed = (vertex: number) => state.board.buildings[vertex]?.player === owner || ownRoadsAt(state, owner, vertex, edge).length > 0;
+  const closed = (vertex: number) => state.board.buildings[vertex]?.player === owner || ownPiecesAt(state, owner, vertex, edge, road.ship).length > 0;
   if (closed(u) && closed(v)) return false;
-  const left = anchorsFrom(state, owner, u, edge);
-  const right = anchorsFrom(state, owner, v, edge);
+  const left = anchorsFrom(state, owner, u, edge, road.ship);
+  const right = anchorsFrom(state, owner, v, edge, road.ship);
   const joins = [...left].some((a) => [...right].some((b) => a !== b));
   return !joins;
 }
@@ -105,19 +111,20 @@ const diplomacy: CardRule = {
   timing: 'action',
   targets: (state) => ({ edges: openRoads(state) }),
   blocked: (state) => (openRoads(state).length > 0 ? null : 'no-target'),
-  // Remove an open road; an own road may be rebuilt for free at once (CK25 p. 15, CK-FAQ 88, 92–93).
+  // Remove an open road or ship; an own piece may be rebuilt for free at once,
+  // as the same kind (CK25 p. 15, CK-FAQ 64, 88, 92–93).
   play(state, actorId, command, ctx, spend) {
     const { kit } = ctx;
     const edge = command.edge;
     if (typeof edge !== 'number' || !isOpenRoad(state, edge)) return kit.fail('E_ILLEGAL_TARGET', { edge });
     spend();
-    const owner = state.board.roads[edge]!.player;
+    const { player: owner, ship } = state.board.roads[edge]!;
     state.board.roads[edge] = null;
-    kit.emit(state, 'ck.roadRemoved', { playerId: actorId, owner, edge });
-    const edges = owner === actorId ? kit.legalRoads(state, actorId) : [];
+    kit.emit(state, 'ck.roadRemoved', ship ? { playerId: actorId, owner, edge, ship: true } : { playerId: actorId, owner, edge });
+    const edges = owner !== actorId ? [] : ship ? kit.legalShips(state, actorId) : kit.legalRoads(state, actorId);
     if (edges.length > 0) {
       // Longest Road is settled after the replacement (CK-FAQ 88).
-      kit.enqueuePending(state, moduleFrame(DIPLOMACY_FRAME, [actorId], { edge, edges }));
+      kit.enqueuePending(state, moduleFrame(DIPLOMACY_FRAME, [actorId], ship ? { edge, edges, ship: true } : { edge, edges }));
       return kit.accept(state);
     }
     kit.afterBoardChange(state);
@@ -126,18 +133,24 @@ const diplomacy: CardRule = {
   },
 };
 
-/** `progress.diplomacyRoad { edge | null }` — place the free road, or decline. */
+/** `progress.diplomacyRoad { edge | null }` — place the free road (or ship), or decline. */
 export function diplomacyRoad(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
   const { kit } = ctx;
   const frame = activeFrame(state, DIPLOMACY_FRAME, actorId, ctx);
   if (isOutcome(frame)) return frame;
+  const ship = frame.data.ship === true;
   const edge = command.edge;
   if (edge !== null) {
-    if (typeof edge !== 'number' || !kit.legalRoads(state, actorId).includes(edge)) return kit.fail('E_ILLEGAL_TARGET', { edge });
-    if (countRoads(state, actorId) >= ctx.profile.pieces.roads) return kit.fail('E_NO_PIECES', { piece: 'road' });
-    state.board.roads[edge] = { player: actorId, ship: false };
+    if (ship) {
+      if (typeof edge !== 'number' || !kit.legalShips(state, actorId).includes(edge)) return kit.fail('E_ILLEGAL_TARGET', { edge });
+    } else {
+      if (typeof edge !== 'number' || !kit.legalRoads(state, actorId).includes(edge)) return kit.fail('E_ILLEGAL_TARGET', { edge });
+      if (countRoads(state, actorId) >= ctx.profile.pieces.roads) return kit.fail('E_NO_PIECES', { piece: 'road' });
+    }
+    state.board.roads[edge] = { player: actorId, ship };
+    if (ship) kit.shipPlaced(state, actorId, edge);
     playerStats(state, actorId).freeRoadsBuilt += 1;
-    kit.emit(state, 'ck.diplomacyRoadBuilt', { playerId: actorId, edge });
+    kit.emit(state, 'ck.diplomacyRoadBuilt', ship ? { playerId: actorId, edge, ship: true } : { playerId: actorId, edge });
   } else {
     kit.emit(state, 'ck.diplomacyRoadSkipped', { playerId: actorId });
   }
@@ -507,7 +520,7 @@ export function projectPoliticsFrame(state: GameState, frame: ModulePending, vie
       return { level: data.level, active: data.active, from: data.from, levels: treasonLevels(state, actor, data.level), sites: recruitSites(state, actor) };
     }
     case DIPLOMACY_FRAME:
-      return { edge: frame.data.edge, edges: (frame.data.edges as number[]).slice() };
+      return { edge: frame.data.edge, edges: (frame.data.edges as number[]).slice(), ...(frame.data.ship === true ? { ship: true } : {}) };
     default:
       return null;
   }

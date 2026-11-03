@@ -216,6 +216,24 @@ COMB guidance: target 16, gold gives resources only, merchant not on gold,
 first-barbarian protection also applies to the pirate, knights on road/ship
 networks, Bishop stays robber-only, both 5–6 rulebooks for paired profiles.
 
+As built (2026-11-02, `feat/seafarers-cities-knights`; details in
+`docs/aegis/work/2026-11-02-seafarers-cities-knights.md`):
+
+- Both `sf-ck-new-shores-*` profiles are enabled (`sf-ck-2025.1`, 16 VP,
+  human seats only) and run `['seafarersCitiesKnights', 'seafarers',
+  'citiesKnights']`. The first is a small combination layer: pirate waits
+  for the first attack, `knight.chasePirate`, one bandit per chase, knights
+  closing and pinning ships, no merchant on gold, gold before the aqueduct.
+- New hooks: `legalShips` (also `kit.legalShips`), `shipMoveBlocked`,
+  `allowMerchant`; C&K knights travel along ships and Diplomacy, Intrigue
+  and Road Building treat ships as roads.
+- COMB was re-fetched on 2026-11-02 (catan.com/seafarers) and read with
+  CK25 p. 12; interpretations SFCK-1…7 are in `docs/FIDELITY.md`. The
+  Bishop is now Taxation in CK25 2025 and stays robber-only (CK-FAQ 63).
+- Web: pirate chase action and targets, bandit targets narrowed to the
+  chased bandit, knights on ship decks in 3D, pirate status in the C&K
+  panel, all score marks together.
+
 ### P5 Traders & Barbarians
 
 Sources: the current English T&B rulebook (and 5–6 only to the extent cited).

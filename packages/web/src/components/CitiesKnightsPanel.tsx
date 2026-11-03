@@ -4,6 +4,7 @@ import {
   citiesKnightsHints, citiesKnightsView, MAX_LEVEL, MAX_WALLS, TRACK_COMMODITY, TRACKS, VP_PROGRESS,
   type CitiesKnightsModuleView, type ImprovementOption,
 } from '../board/citiesKnights.ts';
+import { pirateActive } from '../board/seafarersCitiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
 import { shownCitiesKnights } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
@@ -52,6 +53,7 @@ export function CitiesKnightsPanel({ controller }: { controller: TableController
         <p className="muted">
           {t('ck.panel.trackPosition', { position: n(ck.barbarian.position), length: n(ck.barbarian.length) })}
           {' · '}{t(ck.robberActive ? 'ck.panel.robberActive' : 'ck.panel.robberWaiting')}
+          {pirateActive(view) !== null && <>{' · '}<span data-testid="sfck-pirate-status">{t(pirateActive(view) ? 'sfck.panel.pirateActive' : 'sfck.panel.pirateWaiting')}</span></>}
         </p>
         {ck.lastRoll && (
           <p className="ck-panel__roll" data-testid="ck-last-roll">

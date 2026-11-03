@@ -194,6 +194,8 @@ export function citiesKnightsHints(view: Pick<GameView, 'hints'> | null | undefi
 const KNIGHT_COMMANDS = new Set([
   'knight.recruit', 'knight.activate', 'knight.promote', 'knight.pickMove', 'knight.move',
   'knight.pickDisplace', 'knight.displace', 'knight.chaseRobber', 'knight.retreat',
+  // Seafarers + C&K: a knight next to the pirate's sea hex (COMB-6).
+  'knight.chasePirate',
 ]);
 
 export function isKnightCommand(commandType: string | null | undefined): boolean {

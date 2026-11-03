@@ -5,6 +5,10 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-02 | work | docs/aegis/work/2026-11-02-seafarers-cities-knights.md | Seafarers + Cities & Knights (P4): COMB and CK25 p. 12 transcription, R-COMB rules, interpretations and evidence |
+| 2026-11-02 | artifact | scripts/seafarers-cities-knights/capture.py | Combined New Shores browser run: lobby, pirate and robber chases, knight across ships, score breakdown on the 3/4/6-player maps |
+| 2026-11-02 | artifact | scripts/seafarers-cities-knights/topology.mjs | Edge/vertex/hex adjacency for the combined capture bot |
+| 2026-11-02 | artifact | docs/screenshots/seafarers-cities-knights/report.json | 14-case combined capture report with sha256 per image |
 | 2026-11-02 | work | docs/aegis/work/2026-11-02-cities-knights-progress.md | Cities & Knights progress cards (P3): card-by-card transcription, merchant, interpretations and evidence |
 | 2026-11-02 | work | docs/aegis/work/2026-11-02-cities-knights-core.md | Cities & Knights core (P2): CK25/CK56-25 sources, rule transcription, rules and evidence |
 | 2026-11-02 | artifact | scripts/cities-knights/capture.py | Live Cities & Knights browser run (test-only profile path): knights, walls, improvements, pillage, attack, 6-player map |

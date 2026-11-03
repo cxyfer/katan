@@ -290,8 +290,21 @@ const KIT: RulesKit = {
   finishSetupStep,
   legalRoads: (state, playerId) => legalRoadEdges(state, playerId),
   placedFreeRoute: (state, playerId, rng) => placedFreeRoute(state, playerId, rng ?? null),
-  freeRouteTargets: freeRouteTargetCount,
+  freeRouteTargets: freeRouteCapacity,
+  legalShips: moduleLegalShips,
+  shipPlaced: (state, playerId, edge) => {
+    const ctx = viewContext(state);
+    for (const module of modulesOf(state)) module.shipPlaced?.(state, playerId, edge, ctx);
+  },
 };
+
+/** Ship placements the profile's modules offer the player now. */
+function moduleLegalShips(state: GameState, playerId: string): number[] {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return [];
+  const ctx = viewContext(state);
+  return modules.flatMap((module) => module.legalShips?.(state, playerId, ctx) ?? []);
+}
 
 function moduleContext(profile: ProfileDefinition, rng: Rng | null, resumeAfter?: string): ModuleContext {
   const kit = resumeAfter === undefined ? KIT : {
@@ -576,10 +589,7 @@ const PENDING_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>([
 export function normalizedPending(state: GameState): Pending | null {
   const pending = state.pending;
   if (pending?.kind === 'freeRoads') {
-    const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, pending.actor);
-    const roads = legalRoadEdges(state, pending.actor).length > 0 ? pieces : 0;
-    // Module pieces (ships) can still take a free placement without roads.
-    const remaining = Math.max(0, Math.min(pending.remaining, roads + moduleFreeRouteTargets(state, pending.actor)));
+    const remaining = Math.max(0, Math.min(pending.remaining, freeRouteCapacity(state, pending.actor)));
     if (remaining <= 0) return null;
     if (remaining === pending.remaining) return pending;
     const placed = (pending.granted ?? 2) - pending.remaining;
@@ -1131,6 +1141,13 @@ function placedFreeRoute(state: GameState, actorId: string, rng: Rng | null): vo
 function freeRouteTargetCount(state: GameState, playerId: string): number {
   const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, playerId);
   const roads = Math.max(0, Math.min(legalRoadEdges(state, playerId).length, pieces));
+  return roads + moduleFreeRouteTargets(state, playerId);
+}
+
+/** C&K 授予與快照正規化共用容量；第一條道路可以打開後續地點。 */
+function freeRouteCapacity(state: GameState, playerId: string): number {
+  const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, playerId);
+  const roads = legalRoadEdges(state, playerId).length > 0 ? Math.max(0, pieces) : 0;
   return roads + moduleFreeRouteTargets(state, playerId);
 }
 

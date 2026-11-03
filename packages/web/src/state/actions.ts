@@ -15,6 +15,7 @@ import { awaitingProjection, type TableState } from './table.ts';
 import { blocksNewCommands } from './commands.ts';
 import { seafarersHints, SHIP_COST } from '../board/seafarers.ts';
 import { citiesKnightsHints, citiesKnightsTargets } from '../board/citiesKnights.ts';
+import { seafarersCitiesKnightsHints } from '../board/seafarersCitiesKnights.ts';
 
 export interface ActionDescriptor {
   /** Stable id, also used as the DOM id suffix. */
@@ -44,6 +45,7 @@ export type ActionId =
   | 'knight.move'
   | 'knight.displace'
   | 'knight.chaseRobber'
+  | 'knight.chasePirate'
   | 'build.wall';
 
 function canAfford(
@@ -197,6 +199,9 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
     actions.push(build('knight.move', 'ck.action.move', 'knight.pickMove', null, targets('knight.pickMove')));
     actions.push(build('knight.displace', 'ck.action.displace', 'knight.pickDisplace', null, targets('knight.pickDisplace')));
     actions.push(build('knight.chaseRobber', 'ck.action.chase', 'knight.chaseRobber', null, targets('knight.chaseRobber')));
+    // Seafarers + C&K: chase the pirate with a knight next to its sea hex (COMB-6).
+    const combined = seafarersCitiesKnightsHints(view);
+    if (combined) actions.push(build('knight.chasePirate', 'sfck.action.chasePirate', 'knight.chasePirate', null, combined.pirateChase));
     actions.push(build('build.wall', 'ck.action.wall', 'build.wall', ck.costs.wall, targets('build.wall')));
     return actions;
   }

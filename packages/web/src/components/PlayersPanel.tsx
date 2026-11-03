@@ -280,7 +280,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                     : <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />}
                   {sea && <ScoreMark icon="ship" label={t('sf.board.ship')} value={number(ships)} testId={`players-ships-${player.seat}`} />}
                   <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
-                    value={number(player.longestRoadLength)} awarded={longestRoad} />
+                    value={number(player.longestRoadLength)} awarded={longestRoad} testId={`players-route-${player.seat}`} />
                   {ck && <ScoreMark icon="shield" label={t('ck.score.knights')} value={number(activeStrength(ck, player.id))} testId={`players-knights-${player.seat}`} />}
                   {!ck && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
                     value={number(player.playedKnights)} awarded={largestArmy} />}

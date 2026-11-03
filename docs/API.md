@@ -323,6 +323,38 @@ Events are `ck.*` (for example `ck.eventRolled`, `ck.barbariansAttack`,
 `ck.cityPillaged`, `ck.knightDisplaced`, `ck.progressDrawn`); a drawn or
 discarded card's face is sent only to its holder.
 
+### Seafarers + Cities & Knights (`sf-ck-new-shores-*`)
+
+The combined profiles (engine `sf-ck-2025.1`, 16 VP, human seats only)
+accept every Seafarers and Cities & Knights command above, except the base
+development cards, plus one command:
+
+| Command | Fields | When |
+|---|---|---|
+| `knight.chasePirate` | `vertex` | own action window after the first barbarian attack; an own active knight that may act, on any intersection of the pirate's sea hex (coastal ones included); queues `moveRobber` with `pirate: true` |
+
+Before the first attack the pirate cannot be moved by any command
+(`E_PIRATE_INACTIVE`) and the robber waits off the board (`board.robber`
+`-1`); a 7 still triggers discards. A `moveRobber` frame with `pirate: true`
+(a pirate chase) accepts only a sea hex or `null`; one queued by
+`knight.chaseRobber` (`cause: "knight"`, `pirate: false`) only a land hex;
+a 7 after the first attack either. Knights may stand on an intersection of
+three sea hexes next to an own ship; a ship next to an opponent's knight,
+or the last ship before an own knight, does not move
+(`E_SHIP_PINNED_BY_KNIGHT`; a route closed by buildings stays
+`E_SHIP_NOT_MOVABLE`). Diplomacy may name a ship: `ck.roadRemoved` and
+`ck.diplomacyRoadBuilt` then carry `ship: true`, as does the
+`citiesKnights.diplomacyRoad` frame's `data`; a ship re-placed that way
+counts as built this turn (`shipsBuiltThisTurn`, `E_SHIP_BUILT_THIS_TURN`).
+
+`GameView.modules.seafarersCitiesKnights` is `{ pirateActive }`.
+`hints.modules.seafarersCitiesKnights` lists `pirateActive`, `pirateChase`
+(own knights that may chase the pirate now) and `bandit` (`robber`,
+`pirate`, `either` or `null`: which bandit the viewer's pending move may
+take). The chase emits `sfck.knightChasedPirate` (`playerId`, `vertex`,
+`hex` — the pirate's hex before the move), followed by the usual
+`pirate.moved` and, for a theft, `robber.stole` with `pirate: true`.
+
 ## WebSocket `/ws`
 
 The client sends the session cookie; the server answers `hello` on connect.

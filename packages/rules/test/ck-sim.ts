@@ -40,7 +40,20 @@ interface CkHints {
   harborTargets: string[];
 }
 
-type AnyCommand = Command | { type: string; [field: string]: unknown };
+export type AnyCommand = Command | { type: string; [field: string]: unknown };
+
+/**
+ * Extension points for combined profiles (Seafarers + C&K): another game
+ * factory, answers for frames this player does not know, setup moves and
+ * extra action tries (ships, the pirate). Each hook may return `null` /
+ * `undefined` to fall back to the C&K behaviour.
+ */
+export interface CkSimOptions {
+  game?: (players: 3 | 4 | 5 | 6, seed: number) => GameState;
+  pending?: (state: GameState, rng: Rng, step: number) => GameState | null | undefined;
+  setup?: (state: GameState, rng: Rng, step: number) => GameState | null | undefined;
+  tries?: (state: GameState, actorId: string, step: number) => AnyCommand[];
+}
 
 function attempt(state: GameState, actor: string, command: AnyCommand, rng: Rng): GameState | null {
   const outcome = applyCommand(state, actor, command as Command, rng);
@@ -271,7 +284,7 @@ function wantedCommodity(options: ImprovementOption[]): Commodity | null {
   return open[0] ? (TRACK_COMMODITY[open[0].track] as Commodity) : null;
 }
 
-function actionTries(state: GameState, actorId: string, step: number): AnyCommand[] {
+function actionTries(state: GameState, actorId: string, step: number, extra: AnyCommand[] = []): AnyCommand[] {
   const hints = actionHints(state, actorId);
   const ck = ckHints(state, actorId);
   const player = playerOf(state, actorId);
@@ -312,6 +325,7 @@ function actionTries(state: GameState, actorId: string, step: number): AnyComman
   }
   for (const knight of ck.knights) if (knight.canPromote && step % 4 === 0) tries.push({ type: 'knight.promote', vertex: knight.vertex });
   if (ck.wallSites[0] !== undefined && step % 5 === 0) tries.push({ type: 'build.wall', vertex: ck.wallSites[0] });
+  tries.push(...extra);
   if (hints.legalSettlements.length === 0 && hints.legalRoads.length > 0 && step % 2 === 0) {
     tries.push({ type: 'build.road', edge: hints.legalRoads[(step >> 1) % hints.legalRoads.length]! });
   }
@@ -334,9 +348,9 @@ export interface CkSimulation {
   counters: CkCounters;
 }
 
-export function simulateCitiesKnights(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 40000): CkSimulation {
+export function simulateCitiesKnights(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 40000, options: CkSimOptions = {}): CkSimulation {
   const rng = seededRng(seed * 7919 + players);
-  let { state } = ckGame(players, seed);
+  let state = options.game ? options.game(players, seed) : ckGame(players, seed).state;
   const counters = { ...Object.fromEntries(Object.values(COUNTED).map((key) => [key, 0])), cardFrames: 0, played: new Set<string>() } as unknown as CkCounters;
   const count = (before: GameState, after: GameState) => {
     for (const event of after.log) {
@@ -349,13 +363,13 @@ export function simulateCitiesKnights(players: 3 | 4 | 5 | 6, seed: number, maxS
   for (let step = 0; step < maxSteps && !state.result; step++) {
     const before = state;
     if (state.turn.phase === 'setup') {
-      state = setupStep(state, rng, step);
+      state = options.setup?.(state, rng, step) ?? setupStep(state, rng, step);
       count(before, state);
       continue;
     }
     if (state.pending) {
       if (state.pending.kind.startsWith('citiesKnights.') && state.pending.kind !== 'citiesKnights.resolveRoll') counters.cardFrames++;
-      const next = resolvePending(state, rng, step);
+      const next = options.pending?.(state, rng, step) ?? resolvePending(state, rng, step);
       if (!next) throw new Error(`stuck on pending ${JSON.stringify(state.pending)}`);
       state = next;
       count(before, state);
@@ -379,7 +393,7 @@ export function simulateCitiesKnights(players: 3 | 4 | 5 | 6, seed: number, maxS
       continue;
     }
     let advanced = false;
-    for (const command of actionTries(state, actor.id, step)) {
+    for (const command of actionTries(state, actor.id, step, options.tries?.(state, actor.id, step) ?? [])) {
       const next = attempt(state, actor.id, command, rng);
       if (next) {
         state = next;
