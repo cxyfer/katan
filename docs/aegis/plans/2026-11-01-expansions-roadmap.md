@@ -188,18 +188,51 @@ no development cards / Largest Army. Assets: knights (3 levels × active),
 walls, metropolis per track, barbarian ship and track, event die, commodity
 emblems, improvement chart UI.
 
+As built (2026-11-02, `docs/aegis/work/2026-11-02-cities-knights-core.md`):
+P2 already draws progress cards (event die + red die + level), enforces the
+hand limit and reveals the VP cards at once; P3 adds the card effects and
+the merchant. Correction: the progress hand limit is 4 for 5–6 as well
+(CK25 p. 10; CK56-25 does not change it), not 5 as drafted below.
+
 ### P3 C&K progress cards
 
 All 54 cards (three 18-card decks), acquisition by event + red die and level,
-hand limit 4 (5 for 5–6), immediate VP cards, Alchemist pre-roll, merchant,
+hand limit 4 (also 4 for 5–6, corrected in P2), immediate VP cards, Alchemist pre-roll, merchant,
 each card's targets/responses/privacy. Card visuals (original), i18n
 paraphrases, full simulated games. Enable `ck-*` if R-CK passes.
+
+As built (2026-11-02, `docs/aegis/work/2026-11-02-cities-knights-progress.md`):
+23 playable card types plus the two VP cards, the merchant (1 VP, 2:1 rate),
+original card faces, a hand with playable and unplayable states and reasons, a
+prompt for every responder frame, merchant pieces in SVG and 3D, four audio
+cues and both locales. `ck-2025` and `ck-paired-2025` are enabled; bot seats
+stay refused because `@catan/bots` has no C&K module (a later phase). Browser
+evidence: `scripts/cities-knights/progress.py` plays every card type through
+the UI in SVG and 3D, desktop and phone.
 
 ### P4 SF + C&K
 
 COMB guidance: target 16, gold gives resources only, merchant not on gold,
 first-barbarian protection also applies to the pirate, knights on road/ship
 networks, Bishop stays robber-only, both 5–6 rulebooks for paired profiles.
+
+As built (2026-11-02, `feat/seafarers-cities-knights`; details in
+`docs/aegis/work/2026-11-02-seafarers-cities-knights.md`):
+
+- Both `sf-ck-new-shores-*` profiles are enabled (`sf-ck-2025.1`, 16 VP,
+  human seats only) and run `['seafarersCitiesKnights', 'seafarers',
+  'citiesKnights']`. The first is a small combination layer: pirate waits
+  for the first attack, `knight.chasePirate`, one bandit per chase, knights
+  closing and pinning ships, no merchant on gold, gold before the aqueduct.
+- New hooks: `legalShips` (also `kit.legalShips`), `shipMoveBlocked`,
+  `allowMerchant`; C&K knights travel along ships and Diplomacy, Intrigue
+  and Road Building treat ships as roads.
+- COMB was re-fetched on 2026-11-02 (catan.com/seafarers) and read with
+  CK25 p. 12; interpretations SFCK-1…7 are in `docs/FIDELITY.md`. The
+  Bishop is now Taxation in CK25 2025 and stays robber-only (CK-FAQ 63).
+- Web: pirate chase action and targets, bandit targets narrowed to the
+  chased bandit, knights on ship decks in 3D, pirate status in the C&K
+  panel, all score marks together.
 
 ### P5 Traders & Barbarians
 
@@ -208,6 +241,30 @@ Each scenario/variant is its own profile on the base board (3/4 players):
 Fishermen, Rivers, Caravans, Barbarian Attack, Traders & Barbarians; event
 cards and harbourmaster as `variants` on base profiles where the rules allow.
 Catan for Two and SF/CK combinations deferred.
+
+As built (2026-11-02, `feat/traders-barbarians`; details in
+`docs/aegis/work/2026-11-01-traders-barbarians.md`):
+
+- Source TB25 = CN3089 (2025, `v6.250701`). Its variants are the Friendly
+  Robber, Harbors of Catan (Strongest Ports, the old "harbourmaster"), Event
+  Cards and Catan for Two. Registered: Friendly Robber, Harbors and both
+  together on the base board (enabled); Event Cards alone and with the other
+  variants (registered, `implemented: false`: TB25 omits the deck's card list);
+  the five scenarios (enabled, variable setup).
+- One composite module `tradersBarbarians` composes per-part hook sets
+  (`modules/tradersBarbarians/<part>/`); profiles set
+  `ruleModules: ['tradersBarbarians']`. New platform hooks (all additive):
+  `sevenRobberStep`, `robberTargets`, `stealCandidates`, `hexProduces`,
+  `productionAmount`, `roadAllowed`, `buildingAllowed`, `afterBuild`,
+  `onEndTurn` (+ `kit.finishTurn`), `harborAccess`, `awardRules` (route
+  weights), `tradeGoods` (gold in offers), `victoryTarget`; board data
+  `BoardLayout.extraNumbers`, `RoadRef.bridge`, `TopologyDefinition.interiorPaths`,
+  robber `-1` beside the board. Base digests are unchanged.
+- Deferred (each needs its own sources and decisions): Event Cards (deck
+  transcription), variant × scenario pairings (TB25 permits them; the
+  Friendly Robber desert rule and Harbors port VP need decisions in four
+  scenarios), Catan for Two, the T&B 5–6 rulebook (CN3090), and the official
+  T&B combination guides with Seafarers / Cities & Knights.
 
 ### P6 Explorers & Pirates
 

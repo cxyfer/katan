@@ -222,7 +222,7 @@ describe('explorers & pirates client', () => {
     const other = controllerFor({ ...tableWith(theirs), session: { id: 'p2', nickname: 'P2', locale: 'en', createdAt: '2026-01-01T00:00:00.000Z' } });
     render(<LocaleProvider locale="en"><TradePanel controller={other.controller} /></LocaleProvider>);
     const offerId = offered.state.offers[0]!.id;
-    expect(screen.getByTestId(`offer-terms-${offerId}`).textContent).toBe('You give: 1×Ore · You receive: — + 2 gold');
+    expect(screen.getByTestId(`offer-terms-${offerId}`).textContent).toBe('You give: 1×Ore · You receive: 2×Gold');
   });
 });
 

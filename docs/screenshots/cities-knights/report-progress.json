@@ -1,0 +1,253 @@
+{
+  "run": "scripts/cities-knights/progress.py",
+  "cases_total": 50,
+  "errors": [],
+  "played": [
+    "alchemy",
+    "alchemy.dice",
+    "commercialHarbor",
+    "crane",
+    "diplomacy",
+    "encouragement",
+    "engineering",
+    "espionage",
+    "guildDues",
+    "intrigue",
+    "invention",
+    "irrigation",
+    "medicine",
+    "merchant",
+    "merchantFleet",
+    "mining",
+    "resourceMonopoly",
+    "roadBuilding",
+    "sabotage",
+    "smithing",
+    "taxation",
+    "tradeMonopoly",
+    "treason",
+    "wedding"
+  ],
+  "curated": [
+    {
+      "name": "progress-hand-preroll-svg",
+      "status": "PASS",
+      "note": "hand before the roll: Alchemy playable, the others say \"after the roll\"",
+      "sha256": "3741a9989e47f55fab76258624c1395ff696e031dc25721ecb6aebbb64134448",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-alchemy-dice-svg",
+      "status": "PASS",
+      "note": "Alchemy: both production dice chosen before the roll",
+      "sha256": "dcfa6d2ee4dd8cfcb43582470d1a8d6f9793fa414e477c6490979119b3f8bbac",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-crane-choice-svg",
+      "status": "PASS",
+      "note": "Crane: improvements one commodity cheaper",
+      "sha256": "b9a12de37d967f306d099be4d5d61ba87b32f7eef4e39ec4a3cf83c065da3e58",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-invention-choice-svg",
+      "status": "PASS",
+      "note": "Invention: two number tokens chosen",
+      "sha256": "d39d6c68843e025a61e44bc5e85cd344eef07cfc5a08f9cc012b25577e2976d8",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-hand-trade-svg",
+      "status": "PASS",
+      "note": "trade deck in hand",
+      "sha256": "bcc13357f6f3fe4511989d047817486d386acdb966c7383525d82a277ca72875",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-harbor-offers-svg",
+      "status": "PASS",
+      "note": "Commercial Harbor: one offer to each other player",
+      "sha256": "97ca61a35df93f7a39618dd5f813d8676f56cc222d66a879d72786d6b096aa27",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-harbor-answer-svg",
+      "status": "PASS",
+      "note": "Commercial Harbor: the receiver chooses the commodity to give back",
+      "sha256": "4e81443c1a3d873797bd6c233c8d88f1fcc413ab0b3c42e9100bca073c80f623",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-guild-dues-pick-svg",
+      "status": "PASS",
+      "note": "Guild Dues: the cards of the chosen player, take any two",
+      "sha256": "a7fe47d633253dad9d8b9e9061813439fcdbb6ac930750fb5258c4e609125572",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-espionage-peek-svg",
+      "status": "PASS",
+      "note": "Espionage: p2’s progress cards are visible to the player who played it",
+      "sha256": "668085f6abc25b9946f8f0d7fa6ff9f90b6dc8b6b1f50a45bf6cab3ab00a6318",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-sabotage-prompt-svg",
+      "status": "PASS",
+      "note": "Sabotage: an affected player chooses the discards",
+      "sha256": "57bdfa313d088f53cf39cbc35070ea9b317a2b3c3d8ee989468556c19a7caf77",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-wedding-prompt-svg",
+      "status": "PASS",
+      "note": "Wedding: a richer player chooses the cards to give",
+      "sha256": "6e37658d611bc8ad29cfac0c3167ee4d59992fd8999fa53c4bd9bacb6dfd301b",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-victory-cards-svg",
+      "status": "PASS",
+      "note": "Printing and Constitution are revealed when drawn and score at once",
+      "sha256": "70ebb30c65285943d581cf6d09f84b7100dc8b53026ef802dea30e2fb88f300b",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-merchant-target-svg-desktop",
+      "status": "PASS",
+      "note": "merchant: board target selected",
+      "sha256": "4f8944c95fd62dfbee295401c54e7081b5c19de9525b95aca39dd1a77c78d4ba",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-merchant-placed-svg-desktop",
+      "status": "PASS",
+      "note": "the merchant on its hex with the owner’s colour",
+      "sha256": "4b7b1bd3be86ff2c1011a37ad7accac01b161ad2c718be46e00b1103d8c2538f",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-merchant-placed-r3f-desktop",
+      "status": "PASS",
+      "note": "the merchant on its hex with the owner’s colour",
+      "sha256": "897c513585a7d5869c4fee54ab3d3b74fab7d9783f988f1daae7d0a0fee440d7",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-treason-remove-svg-desktop",
+      "status": "PASS",
+      "note": "Treason: the chosen player removes one of their knights",
+      "sha256": "e45f935c829e3bdb2006d6ddc828f012ba96ffb8a161c6b42334cbb7303baf3b",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-diplomacy-rebuild-svg-desktop",
+      "status": "PASS",
+      "note": "Diplomacy: the removed own road may be rebuilt for free",
+      "sha256": "193c5a972e474d9b09689eb02620a9dd164b61e04fef5f6ccc9771c80374818e",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-diplomacy-rebuild-r3f-desktop",
+      "status": "PASS",
+      "note": "Diplomacy: the removed own road may be rebuilt for free",
+      "sha256": "946d6bb22a495e02b1fe1fa749f61c4b4beb52cf3d2c14764f8601abd82fe098",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "progress-hand-board-svg-phone",
+      "status": "PASS",
+      "note": "cards with a board target, svg-phone",
+      "sha256": "5121388ed7165124fa9d28b93741a6a0bce54e418b029accc1d79e431996d5be",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "progress-merchant-placed-svg-phone",
+      "status": "PASS",
+      "note": "the merchant on its hex with the owner’s colour",
+      "sha256": "98109daf2e1dfdcedddafa006acdfdb3b7bd2a793a5cac3ee7f3e9ea489a4c5c",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "progress-merchant-placed-r3f-phone",
+      "status": "PASS",
+      "note": "the merchant on its hex with the owner’s colour",
+      "sha256": "22f5db3b374f73d5d54da8916538ac825b65e6969bb04b1d7b26fc5cef5a5c04",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "progress-engineering-target-r3f-phone",
+      "status": "PASS",
+      "note": "engineering: board target selected",
+      "sha256": "c9430cbc3d227d12aeb68b966c413b9c2b7557418440a7f5f7587b6e06556a15",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    }
+  ]
+}

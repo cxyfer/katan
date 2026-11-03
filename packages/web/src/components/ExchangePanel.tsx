@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { RESOURCES, type Resource } from '@catan/rules';
+import { CARD_KINDS, RESOURCES, type CardKind } from '@catan/rules';
+import { citiesKnightsHints, isCommodityCard } from '../board/citiesKnights.ts';
 import { useT } from '../i18n/context.tsx';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/trade.css';
@@ -8,10 +9,14 @@ import '../styles/trade.css';
 export function ExchangePanel({ controller }: { controller: TableController }) {
   const t = useT();
   const { state, actions } = controller;
-  const [give, setGive] = useState<Resource>('lumber');
-  const [receive, setReceive] = useState<Resource>('brick');
+  const [give, setGive] = useState<CardKind>('lumber');
+  const [receive, setReceive] = useState<CardKind>('brick');
   const view = state.game?.view;
   if (!view) return null;
+  // Cities & Knights: commodities trade with the supply too (their rates come from the module hints).
+  const ck = citiesKnightsHints(view);
+  const kinds: readonly CardKind[] = ck ? CARD_KINDS : RESOURCES;
+  const rateOf = (card: CardKind) => isCommodityCard(card) ? ck?.commodityRates[card] ?? 4 : view.hints?.bankRates?.[card] ?? 4;
   const rates = view.hints?.bankRates;
   const sameResource = give === receive;
 
@@ -22,10 +27,10 @@ export function ExchangePanel({ controller }: { controller: TableController }) {
         <div className="field">
           <label htmlFor="bank-give">{t('play.bankTradeGive')}</label>
           <select id="bank-give" data-testid="bank-give" value={give}
-            onChange={(event) => setGive(event.target.value as Resource)}>
-            {RESOURCES.map((resource) => (
+            onChange={(event) => setGive(event.target.value as CardKind)}>
+            {kinds.map((resource) => (
               <option key={resource} value={resource}>
-                {t(`resource.${resource}`)} ({rates?.[resource] ?? 4}:1)
+                {t(`resource.${resource}`)} ({rateOf(resource)}:1)
               </option>
             ))}
           </select>
@@ -33,8 +38,8 @@ export function ExchangePanel({ controller }: { controller: TableController }) {
         <div className="field">
           <label htmlFor="bank-receive">{t('play.bankTradeReceive')}</label>
           <select id="bank-receive" data-testid="bank-receive" value={receive}
-            onChange={(event) => setReceive(event.target.value as Resource)}>
-            {RESOURCES.map((resource) => (
+            onChange={(event) => setReceive(event.target.value as CardKind)}>
+            {kinds.map((resource) => (
               <option key={resource} value={resource}>{t(`resource.${resource}`)}</option>
             ))}
           </select>
@@ -42,7 +47,7 @@ export function ExchangePanel({ controller }: { controller: TableController }) {
       </div>
       {rates && (
         <p className="muted" data-testid="bank-rate">
-          {t('play.bankTradeRate', { resource: t(`resource.${give}`), rate: rates[give] })}
+          {t('play.bankTradeRate', { resource: t(`resource.${give}`), rate: rateOf(give) })}
         </p>
       )}
       {sameResource && <p className="error" role="alert">{t('play.bankTradeSame')}</p>}

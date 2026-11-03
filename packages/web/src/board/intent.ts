@@ -10,6 +10,8 @@
 import type { TableState } from '../state/table.ts';
 import { EP_FRAME, epHints, epView } from './explorersPirates.ts';
 import { isShipCommand, seafarersHints } from './seafarers.ts';
+import { banditTargets, moveBanditMessageId, seafarersCitiesKnightsHints } from './seafarersCitiesKnights.ts';
+import { citiesKnightsHints, citiesKnightsTargets, isCitiesKnightsVertexCommand } from './citiesKnights.ts';
 import type { TargetKind } from './targets.ts';
 
 export interface BoardIntent {
@@ -21,6 +23,43 @@ export interface BoardIntent {
   fromHints: boolean;
   /** Extra command fields an automatic intent carries (e.g. the ship in motion). */
   params?: Record<string, unknown>;
+  /** Extra command fields (rules-module targets). */
+  extra?: Record<string, unknown>;
+  /** Command field receiving the picked index (rules-module targets). */
+  field?: string;
+  /** Module target list the targets came from (kept with the selection). */
+  targetsKey?: string;
+}
+
+/**
+ * Board hints a rules module publishes in `hints.modules[id]`: `targets`
+ * maps a command type to its legal indices, and `board` asks the board to arm
+ * itself for a pending choice of the viewer.
+ */
+interface ModuleBoardHints {
+  targets?: Record<string, number[]>;
+  board?: Omit<BoardIntent, 'fromHints'> | null;
+}
+
+function moduleHints(state: TableState): ModuleBoardHints[] {
+  const modules = state.game?.view.hints?.modules ?? {};
+  return Object.values(modules).filter((value): value is ModuleBoardHints => !!value && typeof value === 'object');
+}
+
+/** Legal indices a rules module publishes for one of its command types. */
+export function moduleTargets(state: TableState, commandType: string): number[] | null {
+  for (const hints of moduleHints(state)) {
+    const targets = hints.targets?.[commandType];
+    if (Array.isArray(targets)) return targets.slice();
+  }
+  return null;
+}
+
+function moduleBoardIntent(state: TableState): BoardIntent | null {
+  for (const hints of moduleHints(state)) {
+    if (hints.board) return { ...hints.board, targets: hints.board.targets.slice(), fromHints: true };
+  }
+  return null;
 }
 
 function allVertices(state: TableState): number[] {
@@ -43,12 +82,16 @@ function allEdges(state: TableState): number[] {
 function robberHexes(state: TableState): number[] {
   const board = state.game?.view.board;
   if (!board) return [];
+  // A rules module that narrows the robber's hexes publishes them as a hint.
+  const narrowed = (state.game?.view.hints?.modules?.tradersBarbarians as { robberHexes?: number[] } | undefined)?.robberHexes;
+  if (Array.isArray(narrowed)) return narrowed.slice();
   // Seafarers: land hexes move the robber, sea hexes the pirate (the frame is
   // a separate control because it is not a hex).
   const sea = seafarersHints(state.game?.view);
   if (sea) {
-    const pirate = sea.pirateTargets.filter((hex): hex is number => hex !== null);
-    return [...sea.robberTargets, ...pirate].sort((a, b) => a - b);
+    const allowed = banditTargets(state.game?.view, sea.robberTargets, sea.pirateTargets);
+    const pirate = allowed.pirate.filter((hex): hex is number => hex !== null);
+    return [...allowed.robber, ...pirate].sort((a, b) => a - b);
   }
   const out: number[] = [];
   for (let hex = 0; hex < board.terrain.length; hex++) {
@@ -75,10 +118,17 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
       kind,
       commandType: armed,
       labelId: state.selection.labelId ?? armed,
-      targets: targetsFor(state, armed, selfId),
-      fromHints: armed.startsWith('build.') || armed.startsWith('ep.') || isShipCommand(armed),
+      targets: state.selection.targetsKey ? moduleTargets(state, state.selection.targetsKey) ?? [] : targetsFor(state, armed, selfId),
+      fromHints: armed.startsWith('build.') || armed.startsWith('ep.') || moduleTargets(state, state.selection.targetsKey ?? armed) !== null || isShipCommand(armed) || isCitiesKnightsVertexCommand(armed),
+      ...(state.selection.extra ? { extra: state.selection.extra } : {}),
+      ...(state.selection.field ? { field: state.selection.field } : {}),
+      ...(state.selection.targetsKey ? { targetsKey: state.selection.targetsKey } : {}),
     };
   }
+
+  // A rules module's pending choice (or end-of-turn step) of this viewer.
+  const fromModule = moduleBoardIntent(state);
+  if (fromModule) return fromModule;
 
   // Explorers & Pirates owns its setup, its pirate frame and ship movement.
   if (epHints(view)) {
@@ -94,7 +144,7 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
       return {
         kind: 'hex',
         commandType: 'pending.moveRobber',
-        labelId: 'play.pending.moveRobber',
+        labelId: moveBanditMessageId(view),
         targets: robberHexes(state),
         fromHints: false,
       };
@@ -110,6 +160,28 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
         labelId: 'play.build.road',
         targets: hints?.legalRoads ?? allEdges(state),
         fromHints: !!hints,
+      };
+    }
+  }
+
+  // Cities & Knights: a pillaged city or a displaced knight is chosen on the board.
+  const ck = citiesKnightsHints(view);
+  if (ck && pending && 'module' in pending && pending.module === 'citiesKnights' && selfId && pending.responders.includes(selfId)) {
+    if (pending.kind === 'citiesKnights.pillage') {
+      return { kind: 'vertex', commandType: 'barbarians.pillage', labelId: 'play.pending.citiesKnights.pillage', targets: ck.pillage, fromHints: true };
+    }
+    if (pending.kind === 'citiesKnights.displaced') {
+      return { kind: 'vertex', commandType: 'knight.retreat', labelId: 'play.pending.citiesKnights.displaced', targets: ck.retreat, fromHints: true };
+    }
+    // Progress-card answers on the board: the knight Treason removes, the road Diplomacy rebuilds.
+    if (pending.kind === 'citiesKnights.treasonRemove' || pending.kind === 'citiesKnights.diplomacyRoad') {
+      const commandType = pending.kind === 'citiesKnights.treasonRemove' ? 'progress.treasonRemove' : 'progress.diplomacyRoad';
+      return {
+        kind: commandType === 'progress.treasonRemove' ? 'vertex' : 'edge',
+        commandType,
+        labelId: `play.pending.${pending.kind}`,
+        targets: citiesKnightsTargets(view, { commandType }) ?? [],
+        fromHints: true,
       };
     }
   }
@@ -233,11 +305,13 @@ export function targetsFor(state: TableState, commandType: string, selfId: strin
       return epShipHint(state)?.loadFish ?? [];
     case 'ep.loadSpice':
       return epShipHint(state)?.loadSpice ?? [];
+    case 'knight.chasePirate':
+      return seafarersCitiesKnightsHints(state.game?.view)?.pirateChase ?? [];
     case 'ship.move': {
       const from = state.selection.params?.from;
       return seafarersHints(state.game?.view)?.movableShips.find((ship) => ship.edge === from)?.targets ?? [];
     }
     default:
-      return [];
+      return citiesKnightsTargets(state.game?.view, { commandType, params: state.selection.params }) ?? moduleTargets(state, commandType) ?? [];
   }
 }

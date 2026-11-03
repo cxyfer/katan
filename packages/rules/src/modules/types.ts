@@ -62,13 +62,24 @@ export interface RulesKit {
    */
   completePending(state: GameState, rng?: Rng): void;
   /**
-   * Resolves the roll's base outcome: the 7 sequence or production, followed
-   * by the modules' `afterProduction` stages. A module that deferred the roll
-   * in `beforeProduction` calls this once its own frames are resolved.
+   * Resumes the remaining `beforeProduction` hooks after this module, then
+   * resolves the 7 sequence or production and the `afterProduction` stages.
+   * A deferring module calls this once from its own continuation or command.
+   * Later modules may defer again. Uses the context RNG unless one is passed.
    */
   resolveRollOutcome(state: GameState, roll: RollResult, rng?: Rng): void;
   /** Completes the current setup placement step (after its road/ship). */
   finishSetupStep(state: GameState): void;
+  /**
+   * Ends the current action window and opens the next one, without running
+   * `onEndTurn` again. A module that deferred the end of a turn calls this
+   * once its end-of-turn frames are resolved.
+   */
+  finishTurn(state: GameState): void;
+  /** Base road legality (connection, occupancy, module conditions) for a player. */
+  canPlaceRoad(state: GameState, playerId: string, edge: number): boolean;
+  /** Base settlement legality (distance rule, connection, module conditions). */
+  canPlaceBuilding(state: GameState, playerId: string, vertex: number, options?: { setup?: boolean }): boolean;
   /** Legal road edges for a player in the action phase (sea-aware). */
   legalRoads(state: GameState, playerId: string): number[];
   /**
@@ -78,11 +89,22 @@ export interface RulesKit {
    */
   placedFreeRoute(state: GameState, playerId: string, rng?: Rng): void;
   /**
-   * Ends the current action window and opens the next one, without running
-   * `onEndTurn` again. A module that deferred the end of a turn calls this
-   * once its end-of-turn frames are resolved.
+   * Free Road Building capacity, shared with pending normalization: road
+   * pieces left when a road has a legal start, plus module pieces such as
+   * ships. The first road may open the next site.
    */
-  finishTurn(state: GameState): void;
+  freeRouteTargets(state: GameState, playerId: string): number;
+  /**
+   * Edges where the player could place a ship now, supply included (the
+   * profile's modules' `legalShips`; empty without ships).
+   */
+  legalShips(state: GameState, playerId: string): number[];
+  /**
+   * Tells the profile's modules that another module placed a ship for the
+   * player (the modules' `shipPlaced`), e.g. C&K Diplomacy re-placing an own
+   * ship, so Seafarers counts it as built in this action window.
+   */
+  shipPlaced(state: GameState, playerId: string, edge: number): void;
 }
 
 export interface ModuleContext {
@@ -94,6 +116,11 @@ export interface ModuleContext {
 /** Hook context for read-only views (no randomness, no mutation). */
 export interface ModuleViewContext {
   profile: ProfileDefinition;
+  /**
+   * Read-only engine legality checks, present when the engine itself calls
+   * the hook (action hints, board conditions); absent in plain projections.
+   */
+  rules?: Pick<RulesKit, 'canPlaceRoad' | 'canPlaceBuilding'>;
 }
 
 export interface RollResult {
@@ -107,6 +134,18 @@ export interface RollResult {
 export interface SetupStep {
   playerId: string;
   round: 1 | 2;
+}
+
+/** A piece the engine just placed (setup or action phase). */
+export interface BuildEvent {
+  playerId: string;
+  piece: 'settlement' | 'city' | 'road';
+  vertex?: number;
+  edge?: number;
+  /** Placed during initial setup. */
+  setup: boolean;
+  /** Placed without paying (Road Building). */
+  free: boolean;
 }
 
 /** Non-resource goods a module lets players trade (e.g. gold coins). */
@@ -178,32 +217,73 @@ export interface RulesModule {
   commands?: Readonly<Record<string, ModuleCommandHandler>>;
   /** Command types accepted while a frame is pending (base gate otherwise). */
   pendingCommands?: readonly string[];
-  /**
-   * Extra legality for a building intersection; returning false vetoes it
-   * (for example a scenario that confines starting settlements to one island).
-   */
-  allowBuilding?(state: GameState, playerId: string, vertex: number, options: { setup: boolean }, ctx: ModuleViewContext): boolean;
+  /** Veto a command before dispatch (for scenario phase and action boundaries). */
+  vetoCommand?(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleViewContext): CommandOutcome | undefined;
   /** Extra condition for a road on `edge` (setup and action phase). */
   roadAllowed?(state: GameState, playerId: string, edge: number, ctx: ModuleViewContext): boolean;
-  /**
-   * Refuses a command before it is dispatched, for example base building and
-   * trading during a module-owned phase. Return a failed outcome to refuse.
-   */
-  vetoCommand?(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleViewContext): CommandOutcome | undefined;
+  /** Extra condition for a settlement or city on `vertex` (setup and action phase). */
+  buildingAllowed?(
+    state: GameState,
+    playerId: string,
+    vertex: number,
+    kind: 'settlement' | 'city',
+    ctx: ModuleViewContext,
+  ): boolean;
+  /** Runs after a settlement, city or road was placed (setup included). */
+  afterBuild?(state: GameState, build: BuildEvent, ctx: ModuleContext): void;
   /**
    * Runs when the actor ends their action phase. Return `'defer'` after
    * enqueueing end-of-turn frames; the module then calls `kit.finishTurn`.
    */
   onEndTurn?(state: GameState, actorId: string, ctx: ModuleContext): 'continue' | 'defer';
+  /** Legal robber hexes; `targets` is the base list (every hex but the current one). */
+  robberTargets?(state: GameState, actorId: string, targets: number[], ctx: ModuleViewContext): number[];
+  /** Filters the players the robber may steal from at `hex`. */
+  stealCandidates?(state: GameState, hex: number, actorId: string, candidates: string[], ctx: ModuleViewContext): string[];
+  /** False when a hex yields nothing this roll (counted as blocked). */
+  hexProduces?(state: GameState, hex: number, ctx: ModuleViewContext): boolean;
+  /** Adjusts one building's entitlement on a producing hex, before the bank limit. */
+  productionAmount?(state: GameState, hex: number, vertex: number, amount: number, ctx: ModuleViewContext): number;
+  /** Whether a player's building at `vertex` may use the harbour there. */
+  harborAccess?(state: GameState, playerId: string, vertex: number, ctx: ModuleViewContext): boolean;
+  /** Adjusts the award rules (minimums, route weights) before awards are recomputed. */
+  awardRules?(state: GameState, rules: AwardRules, ctx: ModuleViewContext): AwardRules;
+  /** Goods besides resources that domestic offers may carry. */
+  tradeGoods?: TradeGoods;
+  /**
+   * Base command types this ruleset does not have (for example Cities &
+   * Knights removes the development cards); the engine rejects them.
+   */
+  disabledCommands?: readonly string[];
+  /**
+   * Veto on `turn.end` for the acting player, e.g. a hand limit that must be
+   * met by the end of the action phase. Return a failed outcome to refuse.
+   */
+  beforeEndTurn?(state: GameState, actorId: string, ctx: ModuleContext): CommandOutcome | null;
+  /** Extra legality for upgrading one of the player's settlements to a city. */
+  allowCity?(state: GameState, playerId: string, vertex: number, ctx: ModuleViewContext): boolean;
+  /**
+   * The player whose module piece holds an intersection for route purposes
+   * (Cities & Knights knights). Opponents cannot extend a road through it and
+   * their Longest Route is split there, like at a building. A module may also
+   * report the intersection's building owner here.
+   */
+  vertexBlocker?(state: GameState, vertex: number, ctx: ModuleViewContext): string | null;
+  /**
+   * True while the robber is out of play (Cities & Knights before the first
+   * barbarian attack): a 7 still triggers discards, but nobody moves it.
+   */
+  robberInactive?(state: GameState, ctx: ModuleViewContext): boolean;
   /**
    * Supply trade rate for giving `card`; receives the rate so far (ports, or
    * 4:1 / 3:1 for commodities) and returns the adjusted rate.
    */
   bankRate?(state: GameState, playerId: string, card: CardKind, rate: number, ctx: ModuleViewContext): number;
-  /** Adjusts the award rules (minimums, route weights) before awards are recomputed. */
-  awardRules?(state: GameState, rules: AwardRules, ctx: ModuleViewContext): AwardRules;
-  /** Goods besides resources that domestic offers may carry. */
-  tradeGoods?: TradeGoods;
+  /**
+   * Extra legality for a building intersection; returning false vetoes it
+   * (for example a scenario that confines starting settlements to one island).
+   */
+  allowBuilding?(state: GameState, playerId: string, vertex: number, options: { setup: boolean }, ctx: ModuleViewContext): boolean;
   /**
    * Handles a robber target (7 or Knight) that belongs to another bandit,
    * such as the Seafarers pirate on a sea hex or the frame (`null`). Return
@@ -213,6 +293,27 @@ export interface RulesModule {
   moveBandit?(state: GameState, actorId: string, target: number | null, cause: 'seven' | 'knight', ctx: ModuleContext): BanditMove | undefined;
   /** Additional free Road Building placements available (for example ships). */
   freeRouteTargets?(state: GameState, playerId: string, ctx: ModuleViewContext): number;
+  /**
+   * Edges where the player could place a ship now, supply included (the
+   * Seafarers module). Lets another module re-place a ship, e.g. Cities &
+   * Knights' Diplomacy after removing an own ship.
+   */
+  legalShips?(state: GameState, playerId: string, ctx: ModuleViewContext): number[];
+  /**
+   * A ship was placed by another module (`kit.shipPlaced`). Seafarers records
+   * it as built in this action window, so it may not move in it (SF25 p. 2).
+   */
+  shipPlaced?(state: GameState, playerId: string, edge: number, ctx: ModuleViewContext): void;
+  /**
+   * Extra veto on moving one of the player's ships (Seafarers + Cities &
+   * Knights: knights close shipping routes and must stay connected).
+   */
+  shipMoveBlocked?(state: GameState, playerId: string, edge: number, ctx: ModuleViewContext): boolean;
+  /**
+   * Extra veto on a hex for the Cities & Knights merchant (Seafarers + C&K:
+   * never on a gold field).
+   */
+  allowMerchant?(state: GameState, playerId: string, hex: number, ctx: ModuleViewContext): boolean;
   /** Runs after every board change (build, setup placement, robber move). */
   afterBoardChange?(state: GameState, ctx: ModuleContext): void;
   /**
@@ -232,6 +333,8 @@ export interface RulesModule {
   // -- scoring ---------------------------------------------------------------
   /** Victory points this module adds for a player. */
   score?(state: GameState, playerId: string, options: ScoreOptions, ctx: ModuleViewContext): number;
+  /** The points a player needs to win; `base` is the profile target. */
+  victoryTarget?(state: GameState, playerId: string, base: number, ctx: ModuleViewContext): number;
 
   // -- projection ------------------------------------------------------------
   /** Viewer-filtered module state, published as `GameView.modules[id]`. */

@@ -54,15 +54,23 @@ function resolvePending(state: GameState, rng: ReturnType<typeof seededRng>): Ga
   }
 }
 
+/** Scenario-specific moves for a simulated game (rules-module frames and actions). */
+export interface SimulationBot {
+  /** Resolves a module frame; null when there is none to resolve. */
+  pending?(state: GameState, rng: ReturnType<typeof seededRng>): GameState | null;
+  /** Extra commands the acting player tries, before buying a development card. */
+  actions?(state: GameState, actorId: string, step: number): Command[];
+}
+
 export function simulateGame(
   seed: number,
   maxSteps = 6000,
-  options: { players?: number; profileId?: string; mode?: 'fixed' | 'variable' } = {},
+  options: { players?: number; profileId?: string; mode?: 'fixed' | 'variable'; bot?: SimulationBot } = {},
 ): GameState {
   const rng = seededRng(seed);
   let state = runSetup(newGame({ players: options.players ?? 4, seed, ...(options.profileId ? { profileId: options.profileId } : {}), ...(options.mode ? { mode: options.mode } : {}) }).state, rng);
   for (let step = 0; step < maxSteps && !state.result; step++) {
-    const pendingNext = resolvePending(state, rng);
+    const pendingNext = resolvePending(state, rng) ?? options.bot?.pending?.(state, rng) ?? null;
     if (pendingNext) {
       state = pendingNext;
       continue;
@@ -85,6 +93,7 @@ export function simulateGame(
         if (card === 'roadBuilding') tries.push({ type: 'dev.playRoadBuilding' });
       }
     }
+    if (options.bot?.actions) tries.push(...options.bot.actions(state, actor.id, step));
     tries.push({ type: 'build.devCard' });
     if (hints.legalSettlements.length === 0 && hints.legalRoads[0] !== undefined) {
       tries.push({ type: 'build.road', edge: hints.legalRoads[0] });
@@ -117,7 +126,11 @@ export function simulateGame(
         break;
       }
     }
-    if (!advanced) state = attempt(state, actor.id, { type: 'turn.end' }, rng)!;
+    if (!advanced) {
+      const ended = applyCommand(state, actor.id, { type: 'turn.end' }, rng);
+      if (!ended.ok) throw new Error(`turn.end rejected: ${ended.error.code} ${JSON.stringify(state.pending)}`);
+      state = ended.state;
+    }
   }
   return state;
 }

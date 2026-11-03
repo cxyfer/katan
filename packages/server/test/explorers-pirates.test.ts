@@ -65,14 +65,12 @@ describe('Explorers & Pirates over the API', () => {
 
   it('refuses bot seats in every mission', async () => {
     const host = await harness.client('EpBots');
-    const created = await host.post('/api/rooms', {
-      visibility: 'private', capacity: 3, profileId: 'ep-fish-2025', setupMode: 'variable', bots: 1,
-    });
-    expect(created.status).toBeGreaterThanOrEqual(400);
-    const room = host.expectOk<{ id: string }>(await host.post('/api/rooms', {
-      visibility: 'private', capacity: 3, profileId: 'ep-land-ho-2025', setupMode: 'fixed', bots: 0,
-    }));
-    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
+    for (const [, profileId, setupMode] of MISSIONS) {
+      const room = host.expectOk<{ id: string }>(await host.post('/api/rooms', {
+        visibility: 'private', capacity: 3, profileId, setupMode,
+      }));
+      host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
+    }
   });
 
   it('starts a variable-setup mission and accepts an idempotent harbour placement', async () => {

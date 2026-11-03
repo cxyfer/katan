@@ -11,6 +11,8 @@
 
 import type { GameEvent } from '@catan/protocol';
 import { boardEffectGroups } from '../board/animation.ts';
+import { TB_SOUND_CUES, tbCueForEvent } from './tb-cues.ts';
+import { PROGRESS_CUES, progressCueForEvent } from './progress-cues.ts';
 
 export const SOUND_CUES = [
   'dice.roll',
@@ -41,6 +43,7 @@ export const SOUND_CUES = [
   'ui.select',
   'ui.error',
   'chat.message',
+  ...TB_SOUND_CUES,
   // Seafarers
   'ship.build',
   'ship.move',
@@ -50,6 +53,13 @@ export const SOUND_CUES = [
   // Explorers & Pirates
   'explore.reveal',
   'mission.advance',
+  // Cities & Knights
+  'barbarians.advance',
+  'barbarians.attack',
+  'knight.act',
+  'wall.build',
+  'city.improve',
+  ...PROGRESS_CUES,
 ] as const;
 
 export type SoundCue = (typeof SOUND_CUES)[number];
@@ -172,8 +182,26 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
     case 'ep.delivered':
     case 'ep.trackAdvanced':
       return 'mission.advance';
+    case 'ck.barbariansAdvanced':
+      return 'barbarians.advance';
+    case 'ck.barbariansAttack':
+      return 'barbarians.attack';
+    case 'ck.knightRecruited':
+    case 'ck.knightActivated':
+    case 'ck.knightPromoted':
+    case 'ck.knightMoved':
+    case 'ck.knightDisplaced':
+    case 'ck.knightChasedRobber':
+    case 'sfck.knightChasedPirate':
+      return 'knight.act';
+    case 'ck.wallBuilt':
+      return 'wall.build';
+    case 'ck.cityImproved':
+    case 'ck.metropolisAwarded':
+      return 'city.improve';
     default:
-      return null;
+      // Cities & Knights progress cards (audio/progress-cues.ts).
+      return tbCueForEvent(event) ?? progressCueForEvent(event, selfId) ?? null;
   }
 }
 
@@ -183,6 +211,7 @@ const PRIORITY: Partial<Record<SoundCue, number>> = {
   'game.over': 9,
   'robber.stolenFromYou': 7,
   'robber.alert': 6,
+  'barbarians.attack': 6,
   'turn.yours': 5,
   'production.self': 4,
 };

@@ -12,6 +12,7 @@ import {
   Vector3,
 } from 'three';
 import { ModelBuilder, outwardFace, PaintedMesh, sceneryRandom } from './diorama-geometry.ts';
+import { tbTerrainModel } from './tb-terrain.ts';
 import type { Vec3 } from './transforms.ts';
 
 const TAU = Math.PI * 2;
@@ -794,7 +795,7 @@ export function createTerrainModel(terrain: string, variant = 0): BufferGeometry
     case 'fields': fields(builder, random, normalized); break;
     case 'pasture': pasture(builder, random, normalized); break;
     case 'desert': desert(builder, random, normalized); break;
-    default: sea(builder, normalized); break;
+    default: if (!tbTerrainModel(builder, terrain)) sea(builder, normalized); break;
   }
   return builder.build();
 }

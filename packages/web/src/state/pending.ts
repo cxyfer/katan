@@ -7,6 +7,7 @@
  */
 
 import { epView } from '../board/explorersPirates.ts';
+import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
 import { awaitingProjection, nameOf as resolveName, type TableState } from './table.ts';
 
 export interface RequiredAction {
@@ -67,7 +68,7 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
       case 'moveRobber':
         return {
           kind: 'moveRobber',
-          messageId: 'play.pending.moveRobber',
+          messageId: moveBanditMessageId(view),
           params: {},
           mine: pending.actor === me,
           waitingFor: pending.actor === me ? [] : [pending.actor],

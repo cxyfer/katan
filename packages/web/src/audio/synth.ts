@@ -7,6 +7,7 @@
  */
 
 import type { SoundCue } from './cues.ts';
+import { TB_CUE_LENGTH_SECONDS, type TbSoundCue } from './tb-cues.ts';
 
 export interface SynthTarget {
   ctx: BaseAudioContext;
@@ -267,6 +268,38 @@ type Recipe = (target: SynthTarget, at: number, random: Random) => void;
 
 const range = (random: Random, low: number, high: number) => low + random() * (high - low);
 
+/** Traders & Barbarians cues (see `tb-cues.ts`). */
+const TB_RECIPES: Record<TbSoundCue, (s: SynthTarget, at: number, random: Random) => void> = {
+  // A splash and two rising bubbles.
+  'tb.fish': (s, at) => {
+    noise(s, { at, attack: 0.01, decay: 0.25, gain: 0.16, filter: { type: 'bandpass', freq: 900, q: 0.9 } });
+    tone(s, { at: at + 0.12, freq: 380, to: 900, glide: 0.08, decay: 0.09, gain: 0.07 });
+    tone(s, { at: at + 0.24, freq: 520, to: 1250, glide: 0.07, decay: 0.08, gain: 0.06 });
+    marimba(s, at + 0.34, 72, 0.06, 0.5, { reverb: 0.25 });
+  },
+  // Coins dropped onto a table.
+  'tb.coins': (s, at, random) => {
+    [0, 0.06, 0.11, 0.19].forEach((offset, index) => coin(s, at + offset, 2600 + index * 210 + random() * 120, 0.07, { pan: -0.3 + index * 0.2, reverb: 0.15 }));
+  },
+  // Low war drums and a horn: barbarians land or attack.
+  'tb.barbarians': (s, at) => {
+    [0, 0.22, 0.44].forEach((offset, index) => {
+      tone(s, { at: at + offset, freq: 70 - index * 4, to: 45, glide: 0.25, decay: 0.32, gain: 0.42 });
+      noise(s, { at: at + offset, decay: 0.12, gain: 0.18, filter: { type: 'lowpass', freq: 400 } });
+    });
+    brass(s, at + 0.5, 45, 0.1, 0.5, { reverb: 0.35 });
+  },
+  // Creaking wheels and a few hoof knocks.
+  'tb.wagon': (s, at) => {
+    swish(s, at, 600, 300, 0.4, 0.08);
+    [0.05, 0.2, 0.35, 0.5].forEach((offset, index) => knock(s, at + offset, index % 2 ? 330 : 280, 0.18, { reverb: 0.1 }));
+  },
+  // A scenario award (wealth, prisoners, deliveries).
+  'tb.victory': (s, at) => {
+    [67, 72, 76].forEach((midi, index) => bell(s, at + index * 0.09, midi, 0.08, 1, { reverb: 0.35 }));
+  },
+};
+
 const RECIPES: Record<SoundCue, Recipe> = {
   // 骰子在木杯中搖晃，再拋到桌上彈跳；落定的聲音由 dice.land 在點數揭曉時補上。
   'dice.roll': (s, at, random) => {
@@ -479,10 +512,68 @@ const RECIPES: Record<SoundCue, Recipe> = {
     [72, 79].forEach((midi, index) => bell(s, at + index * 0.11, midi, 0.07, 0.9, { reverb: 0.35, pan: -0.2 + index * 0.4 }));
     brass(s, at + 0.25, 67, 0.06, 0.45, { reverb: 0.35 });
   },
+  // Cities & Knights: oars striking water as the barbarian ship comes closer.
+  'barbarians.advance': (s, at) => {
+    [0, 0.28].forEach((offset) => swish(s, at + offset, 400, 180, 0.25, 0.14, { pan: offset ? 0.25 : -0.25, reverb: 0.25 }));
+    tone(s, { at: at + 0.1, freq: 98, to: 82, glide: 0.4, decay: 0.5, gain: 0.22 });
+  },
+  // The attack: war drums under a low horn call.
+  'barbarians.attack': (s, at) => {
+    [0, 0.18, 0.36, 0.5].forEach((offset) => knock(s, at + offset, 90, 0.4, { reverb: 0.3 }));
+    brass(s, at + 0.3, 41, 0.12, 0.9, { reverb: 0.5 });
+    brass(s, at + 0.3, 48, 0.08, 0.9, { reverb: 0.5 });
+    noise(s, { at: at + 0.3, attack: 0.05, decay: 0.8, gain: 0.05, filter: { type: 'lowpass', freq: 900 } });
+  },
+  // A knight: a clink of armour and a short bugle.
+  'knight.act': (s, at) => {
+    coin(s, at, 2400, 0.05, { reverb: 0.2 });
+    coin(s, at + 0.05, 1900, 0.04, { reverb: 0.2 });
+    brass(s, at + 0.12, 67, 0.07, 0.25, { reverb: 0.3 });
+    brass(s, at + 0.3, 72, 0.08, 0.4, { reverb: 0.35 });
+  },
+  // A wall: stones set one on another.
+  'wall.build': (s, at) => {
+    [0, 0.14, 0.26].forEach((offset, index) => knock(s, at + offset, 180 - index * 20, 0.3, { reverb: 0.15 }));
+    noise(s, { at: at + 0.3, attack: 0.01, decay: 0.2, gain: 0.05, filter: { type: 'bandpass', freq: 1200, q: 0.8 } });
+  },
+  // A city improvement: a rising chime.
+  'city.improve': (s, at) => {
+    [72, 76, 79].forEach((midi, index) => marimba(s, at + index * 0.1, midi, 0.07, 0.6, { reverb: 0.35 }));
+    bell(s, at + 0.32, 84, 0.05, 0.9, { reverb: 0.45 });
+  },
   // 氣泡「啵」兩聲。
   'chat.message': (s, at) => {
     tone(s, { at, freq: 520, to: 1040, glide: 0.07, decay: 0.1, gain: 0.08 });
     tone(s, { at: at + 0.09, freq: 780, to: 1320, glide: 0.06, decay: 0.09, gain: 0.06 });
+  },
+  ...TB_RECIPES,
+  // Cities & Knights progress cards (cue mapping in progress-cues.ts).
+  // A card laid on the table: a paper flick and a two-note chime.
+  'progress.play': (s, at) => {
+    noise(s, { at, attack: 0.005, decay: 0.07, gain: 0.14, filter: { type: 'bandpass', freq: 4200, q: 0.9 } });
+    swish(s, at + 0.02, 2400, 900, 0.12, 0.06, { reverb: 0.1 });
+    marimba(s, at + 0.12, 74, 0.08, 0.5, { reverb: 0.3 });
+    bell(s, at + 0.24, 81, 0.05, 0.8, { reverb: 0.4 });
+  },
+  // Alchemy: bubbles rising in a flask, then a shimmer.
+  'progress.alchemy': (s, at) => {
+    [0, 0.07, 0.13, 0.2, 0.26].forEach((offset, index) =>
+      tone(s, { at: at + offset, freq: 420 + index * 90, to: 900 + index * 140, glide: 0.05, decay: 0.07, gain: 0.05 }));
+    [86, 90, 93].forEach((midi, index) => bell(s, at + 0.34 + index * 0.06, midi, 0.04, 0.9, { reverb: 0.45 }));
+  },
+  // The merchant: two footsteps and a purse of coins.
+  'progress.merchant': (s, at) => {
+    knock(s, at, 160, 0.22, { pan: -0.2 });
+    knock(s, at + 0.16, 150, 0.2, { pan: 0.2 });
+    [0.3, 0.36, 0.41, 0.47].forEach((offset, index) => coin(s, at + offset, 2600 + index * 300, 0.06, { reverb: 0.2 }));
+    brass(s, at + 0.52, 67, 0.05, 0.25, { reverb: 0.3 });
+  },
+  // A card asks you to answer: a soft double knock and a rising call.
+  'progress.request': (s, at) => {
+    knock(s, at, 220, 0.18, { reverb: 0.2 });
+    knock(s, at + 0.14, 220, 0.18, { reverb: 0.2 });
+    marimba(s, at + 0.3, 69, 0.08, 0.5, { reverb: 0.3 });
+    marimba(s, at + 0.42, 76, 0.08, 0.7, { reverb: 0.35 });
   },
 };
 
@@ -500,6 +591,9 @@ export const CUE_LENGTH_SECONDS: Record<SoundCue, number> = {
   'trade.offer': 1.8, 'trade.complete': 1.2, 'trade.bank': 0.8, 'trade.cancel': 0.8,
   'turn.yours': 1.6, 'turn.other': 0.5, 'game.victory': 2.6, 'game.over': 2.6,
   'ui.select': 0.1, 'ui.error': 0.3, 'chat.message': 0.25,
-  'ship.build': 1.1, 'ship.move': 1.1, 'pirate.move': 1.0, 'gold.pick': 1.1, 'island.bonus': 1.4,
   'explore.reveal': 1.4, 'mission.advance': 1.2,
+  ...TB_CUE_LENGTH_SECONDS,
+  'ship.build': 1.1, 'ship.move': 1.1, 'pirate.move': 1.0, 'gold.pick': 1.1, 'island.bonus': 1.4,
+  'barbarians.advance': 0.9, 'barbarians.attack': 1.6, 'knight.act': 0.8, 'wall.build': 0.6, 'city.improve': 1.2,
+  'progress.play': 1.0, 'progress.alchemy': 1.2, 'progress.merchant': 1.0, 'progress.request': 1.1,
 };

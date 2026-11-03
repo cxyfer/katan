@@ -6,7 +6,7 @@
  * order) are never serialised into another player's payload.
  */
 
-import { scoreOf, topologyOf, totalResources } from './analysis.ts';
+import { scoreOf, topologyOf, totalCards, victoryTargetOf } from './analysis.ts';
 import { effectivePending } from './engine.ts';
 import { rulesModulesOf } from './modules/registry.ts';
 import type { PublicModulePendingView } from './modules/types.ts';
@@ -39,6 +39,8 @@ export interface PublicPlayerView {
   newProgressCards?: string[];
   /** Own total score including hidden cards. */
   ownScore?: number;
+  /** This player's target when a rules module changes it (e.g. the old boot). */
+  victoryTarget?: number;
 }
 
 export interface PublicBoardView {
@@ -50,7 +52,9 @@ export interface PublicBoardView {
   robber: number;
   pirate: number | null;
   buildings: ({ player: string; city: boolean } | null)[];
-  roads: ({ player: string; ship: boolean } | null)[];
+  roads: ({ player: string; ship: boolean; bridge?: boolean } | null)[];
+  /** Extra production numbers on hexes (omitted when none). */
+  extraNumbers?: { hex: number; number: number }[];
 }
 
 export interface ActionHintsView {
@@ -129,7 +133,7 @@ function publicPlayerView(
     nickname: player.nickname,
     seat: player.seat,
     color: player.color,
-    handSize: totalResources(player),
+    handSize: totalCards(player),
     devCardCount: player.devCards.length,
     newDevCardCount: player.newDevCards.length,
     playedKnights: player.playedKnights,
@@ -140,6 +144,8 @@ function publicPlayerView(
     defenders: player.defenders,
     improvements: { ...player.improvements },
   };
+  const target = victoryTargetOf(state, player.id);
+  if (target !== requireProfile(state.profileId).victoryTarget) view.victoryTarget = target;
   if (isSelf) {
     view.resources = { ...player.resources };
     view.commodities = { ...player.commodities };
@@ -238,7 +244,10 @@ export function projectGame(
       buildings: state.board.buildings.map((building) =>
         building ? { player: building.player, city: building.city } : null,
       ),
-      roads: state.board.roads.map((road) => (road ? { player: road.player, ship: road.ship } : null)),
+      roads: state.board.roads.map((road) =>
+        road ? (road.bridge ? { player: road.player, ship: road.ship, bridge: true } : { player: road.player, ship: road.ship }) : null,
+      ),
+      ...(state.board.layout.extraNumbers?.length ? { extraNumbers: state.board.layout.extraNumbers.map((extra) => ({ ...extra })) } : {}),
     },
     bank: { ...state.bank },
     devDeckSize: state.devDeck.length,

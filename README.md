@@ -133,6 +133,10 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
 
 - Base game (`base-2025`) for **3 and 4 players**, and paired base
   (`base-paired-2025`) for **5 and 6 players**, fixed or variable setup.
+- Traders & Barbarians (2025 rulebook) on the base board for **3 and 4
+  players**: the Friendly Robber and Harbors of Catan variants, and the
+  scenarios Fishing on Catan, Rivers of Catan, Merchant Trains, Barbarian
+  Attack and Traders & Barbarians, each its own profile.
 - Private rooms with invite codes and a public room list.
 - Guest identity via a secure browser cookie, with nickname changes.
 - Host-configured room policy before start; after start every seated player must
@@ -158,10 +162,23 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   ships, lairs, the Council of Catan and mission tracks, in both boards.
   Never combined with Seafarers; human seats only.
 
-Not yet enabled: Cities & Knights and the Seafarers + Cities & Knights
-combination. Those profiles are registered in the ruleset registry but
-disabled; the server rejects them. See
-[`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
+- **Cities & Knights** for 3–6 players (CK25/CK56-25 2025 editions): the
+  event die and barbarians, knights, walls, commodities, city improvements,
+  metropolises, the 54 progress cards (23 playable types, two scored when
+  drawn) and the merchant, with a 13-point goal, in both the 3D and SVG
+  boards. Computer opponents are not available in this mode yet.
+
+- **Seafarers + Cities & Knights — Heading for New Shores combined** for 3–6
+  players (COMB guidance and CK25 p. 12): the New Shores maps with the Cities
+  & Knights setup, progress decks, knights, barbarians and merchant, knights
+  carried along ships and onto the sea, the pirate waiting for the first
+  barbarian attack and chased by knights, gold without commodities and a
+  16-point goal, in both the 3D and SVG boards. Bot seats are not offered
+  for the expansions.
+
+The Traders & Barbarians event-card variant remains disabled because the 2025 rulebook omits the deck list.
+
+See [`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
 including the device, accessibility and playtest evidence that has not been
 produced.
 

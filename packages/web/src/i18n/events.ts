@@ -9,7 +9,7 @@
 import type { Locale } from '@catan/protocol';
 import type { GameEvent } from '@catan/rules';
 import { t } from './index.ts';
-import { formatDice, formatGrantMap, formatResourceMap } from './format.ts';
+import { formatDice, formatGrantMap, formatResourceMap, formatTradeMap } from './format.ts';
 import { moduleEventParams } from './modules/events.ts';
 
 export interface EventText {
@@ -149,8 +149,8 @@ export function eventParams(
       return {
         from: nameOf(str(p.from, '')),
         to: p.to === 'all' ? t(locale, 'play.tradeToAll') : nameOf(str(p.to, '')),
-        give: formatResourceMap(locale, p.give as Record<string, number>),
-        want: formatResourceMap(locale, p.want as Record<string, number>),
+        give: formatTradeMap(locale, p.give as Record<string, number>, p.giveGoods as Record<string, number>),
+        want: formatTradeMap(locale, p.want as Record<string, number>, p.wantGoods as Record<string, number>),
       };
     case 'trade.responded':
       return {
@@ -160,8 +160,8 @@ export function eventParams(
     case 'trade.revised':
       return {
         revision: num(p.revision),
-        give: formatResourceMap(locale, p.give as Record<string, number>),
-        want: formatResourceMap(locale, p.want as Record<string, number>),
+        give: formatTradeMap(locale, p.give as Record<string, number>, p.giveGoods as Record<string, number>),
+        want: formatTradeMap(locale, p.want as Record<string, number>, p.wantGoods as Record<string, number>),
       };
     case 'trade.withdrawn':
       return {};
@@ -178,8 +178,8 @@ export function eventParams(
       return {
         from: nameOf(str(p.from, '')),
         to: nameOf(str(p.to, '')),
-        give: formatResourceMap(locale, p.give as Record<string, number>),
-        want: formatResourceMap(locale, p.want as Record<string, number>),
+        give: formatTradeMap(locale, p.give as Record<string, number>, p.giveGoods as Record<string, number>),
+        want: formatTradeMap(locale, p.want as Record<string, number>, p.wantGoods as Record<string, number>),
       };
     case 'game.abandoned':
       return { reason: t(locale, `play.resultReason.${str(p.reason, 'abandoned')}`) };
@@ -199,9 +199,10 @@ export function eventParams(
 export function translateEvent(locale: Locale, event: GameEvent, nameOf: NameResolver): EventText {
   const params = eventParams(locale, event, nameOf);
   // Canonical id shape from `@catan/protocol`: `event.<engine event type>`.
-  // A pirate action reuses a robber event with `pirate: true` and its own text.
+  // A pirate action reuses a robber event with `pirate: true` and its own
+  // text; a ship reuses a road event with `ship: true` the same way.
   const base = `event.${event.type}`;
-  const variant = event.params?.pirate === true ? `${base}.pirate` : null;
+  const variant = event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null;
   const messageId = variant && t(locale, variant) !== variant ? variant : base;
   const text = t(locale, messageId, params);
   return {

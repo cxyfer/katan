@@ -1,14 +1,18 @@
 import type { PublicBoardView } from '@catan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import type { BoardIntent } from '../intent.ts';
-import { confirmedPlacement } from '../effects.ts';
+import { placementArrival } from '../effects.ts';
 import type { BoardEffectGroup } from '../animation.ts';
 import type { SceneSelection } from '../render-contract.ts';
 import { geometryToWorld } from './bounds.ts';
 import { horizontalRotation, type InstanceTransform, type Vec3 } from './transforms.ts';
 
-export const ROAD_ARRIVAL_TRANSFORM_MS = 240;
-export const BUILDING_ARRIVAL_TRANSFORM_MS = 290;
+// 從天而降需在單一特效組（MAX_EFFECT_DURATION_MS）內播完，否則落地前就會被截斷。
+export const ROAD_ARRIVAL_TRANSFORM_MS = 560;
+export const BUILDING_ARRIVAL_TRANSFORM_MS = 640;
+/** 墜落起點高度（世界單位，約兩個地塊邊長）；建築另帶四分之一圈旋轉。 */
+export const ROAD_ARRIVAL = { height: 1.1 } as const;
+export const BUILDING_ARRIVAL = { height: 1.4, spin: Math.PI / 2 } as const;
 
 export interface TileInstance extends InstanceTransform {
   index: number;
@@ -30,7 +34,8 @@ export interface RoadInstance extends InstanceTransform {
   index: number;
   playerId: string;
   seat: number;
-  arriving: boolean;
+  /** 正在落下時為其演出組 id，否則為 null。 */
+  arrivalKey: string | null;
   durationMs: number;
   length: number;
 }
@@ -40,7 +45,7 @@ export interface BuildingPart extends InstanceTransform {
   playerId: string;
   material: 'player' | 'roof' | 'trim';
   part: 'body' | 'roof' | 'tower' | 'door' | 'seat-mark';
-  arriving: boolean;
+  arrivalKey: string | null;
   durationMs: number;
 }
 
@@ -122,11 +127,13 @@ export function roadInstances(
   geometry: BoardGeometry,
   board: PublicBoardView,
   players: readonly { id: string; seat: number }[],
-  active: BoardEffectGroup | null,
+  arrivals: readonly BoardEffectGroup[],
 ): RoadInstance[] {
   const out: RoadInstance[] = [];
   for (const edge of geometry.edges) {
     const road = board.roads[edge.index];
+    // Bridges (Traders & Barbarians) are drawn as their own arched piece.
+    if (!road || road.bridge) continue;
     // Ships are drawn by `DioramaSeafarers`, floating at sea level.
     if (!road || road.ship) continue;
     const from = geometryToWorld(geometry, edge.x1, edge.y1);
@@ -141,7 +148,7 @@ export function roadInstances(
       index: edge.index,
       playerId: road.player,
       seat,
-      arriving: confirmedPlacement(active?.events ?? [], board, 'edge', edge.index),
+      arrivalKey: placementArrival(arrivals, board, 'edge', edge.index)?.id ?? null,
       durationMs: ROAD_ARRIVAL_TRANSFORM_MS,
       length,
       // Equal-end setbacks keep the local +X centre at the topology midpoint.
@@ -157,7 +164,7 @@ export function buildingParts(
   geometry: BoardGeometry,
   board: PublicBoardView,
   players: readonly { id: string; seat: number }[],
-  active: BoardEffectGroup | null,
+  arrivals: readonly BoardEffectGroup[],
 ): BuildingPart[] {
   const out: BuildingPart[] = [];
   for (const vertex of geometry.vertices) {
@@ -165,7 +172,7 @@ export function buildingParts(
     if (!building) continue;
     const seat = players.find((player) => player.id === building.player)?.seat ?? 0;
     const point = geometryToWorld(geometry, vertex.x, vertex.y);
-    const arriving = confirmedPlacement(active?.events ?? [], board, 'vertex', vertex.index);
+    const arrivalKey = placementArrival(arrivals, board, 'vertex', vertex.index)?.id ?? null;
     const base = [point.x, 0.005, point.z] as const;
     const rotationY = ((vertex.index * 23) % 6) * (Math.PI / 6);
     const push = (part: BuildingPart['part'], material: BuildingPart['material'], offset: Vec3, scale: Vec3) => {
@@ -174,7 +181,7 @@ export function buildingParts(
         playerId: building.player,
         material,
         part,
-        arriving,
+        arrivalKey,
         durationMs: BUILDING_ARRIVAL_TRANSFORM_MS,
         position: [base[0] + offset[0], base[1] + offset[1], base[2] + offset[2]],
         rotationY,

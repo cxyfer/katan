@@ -3,6 +3,7 @@ import { RESOURCES, type Resource } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
 import { seafarersHints } from '../board/seafarers.ts';
+import { banditTargets, seafarersCitiesKnightsHints } from '../board/seafarersCitiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
 import { followUpsHeld } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
@@ -28,7 +29,10 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
 
   const robberMine = pending?.kind === 'moveRobber' && pending.actor === selfId;
   const knightArmed = armed === 'dev.playKnight';
-  const frameOpen = sea.pirateTargets.includes(null);
+  const frameOpen = banditTargets(view, sea.robberTargets, sea.pirateTargets).pirate.includes(null);
+  // With Cities & Knights a knight chases one bandit only (COMB-6).
+  const bandit = seafarersCitiesKnightsHints(view)?.bandit ?? null;
+  const banditText = knightArmed ? 'sf.bandit.knight' : bandit === 'robber' ? 'sfck.bandit.robber' : bandit === 'pirate' ? 'sfck.bandit.pirate' : 'sf.bandit.choose';
 
   const setup = view.turn.setup;
   const setupMine = !!setup && setup.stage === 'road' && view.turn.playerId === selfId;
@@ -44,7 +48,7 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
     )}
     {(robberMine || knightArmed) && (
       <div className="prompt__body bandit-choice" data-testid="bandit-choice">
-        <p className="muted">{t(knightArmed ? 'sf.bandit.knight' : 'sf.bandit.choose')}</p>
+        <p className="muted" data-testid="bandit-choice-text">{t(banditText)}</p>
         {frameOpen && (
           <button type="button" className="button" data-testid="pirate-to-frame" disabled={blocked}
             onClick={() => void actions.submitCommand(knightArmed ? { type: 'dev.playKnight', hex: null } : { type: 'pending.moveRobber', hex: null }, 'sf.pirate.frame')}>

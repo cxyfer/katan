@@ -5,6 +5,7 @@
 @import './styles/board-visual.css' layer(table);
 @import './styles/board-targets.css';
 @import './styles/board-3d-effects.css';
+@import './styles/safe-area.css';
 
 @layer table {
   .board__surface { position: relative; width: 100%; height: clamp(300px, 60vh, 620px); min-height: 104px; touch-action: none; overflow: hidden; }

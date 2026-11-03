@@ -738,8 +738,7 @@ describe('R-EP domestic trade with coins (EP25 p. 9, EP25-M p. 5)', () => {
     // Asking for coins: the partner's balance is checked.
     state = run(state, 'p1', { type: 'trade.offer', to: 'p2', give: { lumber: 1 }, want: {}, wantGoods: { gold: 4 } }).state;
     const second = state.offers.at(-1)!.id;
-    state = run(state, 'p2', { type: 'trade.respond', offerId: second, response: 'consented' }).state;
-    expect(refused(state, 'p1', { type: 'trade.settle', offerId: second, counterparty: 'p2' })).toBe('E_INSUFFICIENT_RESOURCES');
+    expect(refused(state, 'p2', { type: 'trade.respond', offerId: second, response: 'consented' })).toBe('E_INSUFFICIENT_RESOURCES');
     // Revising to an affordable amount settles.
     state = run(state, 'p1', { type: 'trade.revise', offerId: second, give: { lumber: 1 }, want: {}, wantGoods: { gold: 3 } }).state;
     state = run(state, 'p2', { type: 'trade.respond', offerId: second, response: 'consented' }).state;

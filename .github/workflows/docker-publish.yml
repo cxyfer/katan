@@ -141,6 +141,19 @@ jobs:
           docker logs catan-smoke >&2
           exit 1
 
+      - name: Volume initialization tools
+        run: |
+          set -euo pipefail
+          docker exec catan-smoke sh -c '
+            test "$(id -u)" = 10001
+            for tool in sh cp chown find stat; do
+              command -v "$tool" >/dev/null || {
+                echo "missing volume initialization tool: $tool" >&2
+                exit 1
+              }
+            done
+          '
+
       - name: Readiness probe
         run: |
           set -euo pipefail

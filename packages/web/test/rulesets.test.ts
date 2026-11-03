@@ -6,15 +6,21 @@ import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../src/stat
 const registry = PROFILES.map((profile) => profileView(profile, { botSeats: profile.ruleModules.length === 0 }));
 
 describe('lobby ruleset picker', () => {
-  it('offers only enabled profiles: the base game and Seafarers for 3–6 players, Explorers & Pirates for 3–4', () => {
+  it('offers only enabled profiles: the base game, Seafarers, Cities & Knights and both combined for 3–6 players, and Traders & Barbarians', () => {
     const resolved = resolveRuleset(registry, {});
-    expect(resolved.expansions.map((choice) => choice.key)).toEqual(['base', 'seafarers', 'explorersPirates']);
+    expect(resolved.expansions.map((choice) => choice.key)).toEqual(['base', 'seafarers', 'citiesKnights', 'citiesKnights+seafarers', 'explorersPirates', 'tradersBarbarians']);
     expect(resolved.scenarios.map((choice) => choice.key)).toEqual(['standard']);
     expect(resolved.playerCounts).toEqual([3, 4, 5, 6]);
     expect(resolved.profile?.id).toBe('base-2025');
     expect(resolveRuleset(registry, { playerCount: 5 }).profile?.id).toBe('base-paired-2025');
     expect(resolveRuleset(registry, { playerCount: 6 }).profile?.id).toBe('base-paired-2025');
     expect(resolveRuleset(registry, {}, 4).playerCounts).toEqual([3, 4]);
+    const tb = resolveRuleset(registry, { expansionKey: 'tradersBarbarians', scenarioKey: 'standard+harbors' });
+    expect(tb.scenario && scenarioLabelIds(tb.scenario)).toEqual(['scenario.standard', 'variant.harbors']);
+    expect(tb.playerCounts).toEqual([3, 4]);
+    expect(tb.profile?.id).toBe('tb-harbors-2025');
+    // Event-card rows are registered but closed, so the picker never names them.
+    expect(tb.scenarios.some((choice) => choice.variants.includes('event-cards'))).toBe(false);
     const sea = resolveRuleset(registry, { expansionKey: 'seafarers', playerCount: 6 });
     expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores']]);
     expect(sea.profile?.id).toBe('sf-new-shores-paired-2025');
@@ -23,10 +29,14 @@ describe('lobby ruleset picker', () => {
     expect(ep.scenarios).toHaveLength(5);
     expect(ep.playerCounts).toEqual([3, 4]);
     expect(ep.profile?.id).toBe('ep-land-ho-2025');
+    expect(resolveRuleset(registry, { expansionKey: 'citiesKnights', playerCount: 4 }).profile?.id).toBe('ck-2025');
+    expect(resolveRuleset(registry, { expansionKey: 'citiesKnights', playerCount: 5 }).profile?.id).toBe('ck-paired-2025');
   });
 
   it('cascades expansion set → scenario → player count from the registry', () => {
-    const enabledAll = registry.map((profile) => ({ ...profile, enabled: true }));
+    const enabledAll = registry
+      .filter((profile) => !profile.expansions.includes('tradersBarbarians'))
+      .map((profile) => ({ ...profile, enabled: true }));
     const all = resolveRuleset(enabledAll, {});
     expect(all.expansions.map((choice) => choice.key)).toEqual(['base', 'seafarers', 'citiesKnights', 'citiesKnights+seafarers', 'explorersPirates']);
     const combined = resolveRuleset(enabledAll, { expansionKey: 'citiesKnights+seafarers', playerCount: 6 });

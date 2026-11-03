@@ -111,23 +111,25 @@ describe('held card fan', () => {
     touch(face);
     expect(face.getAttribute('aria-pressed')).toBe('true');
     expect(api.callsOf('sendCommand')).toHaveLength(0);
-    fireEvent.change(screen.getByTestId('monopoly-resource'), { target: { value: 'grain' } });
+    // 「使用」按鈕不直接送出壟斷，而是先在上方開啟資源選擇器。
     fireEvent.click(screen.getByTestId('play-monopoly-0'));
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+    fireEvent.click(screen.getByTestId('choice-add-grain'));
+    fireEvent.click(screen.getByTestId('choice-submit'));
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
     expect(api.callsOf('sendCommand')[0]!.args[1]).toMatchObject({ command: { type: 'dev.playMonopoly', resource: 'grain' } });
   });
 
-  it('gathers cards with the touch close control or an outside tap and preserves the resource choice', async () => {
+  it('gathers cards with the touch close control or an outside tap', async () => {
     const view = makeView();
     view.players[0]!.devCards = ['monopoly'];
     const api = await open(view);
     const hand = screen.getByTestId('hand-panel');
     touch(screen.getByTestId('resource-card-lumber-0').querySelector('button')!);
-    fireEvent.change(screen.getByTestId('monopoly-resource'), { target: { value: 'ore' } });
     fireEvent.click(screen.getByRole('button', { name: 'Collapse hand' }));
     expect(hand.dataset.expanded).toBe('false');
     touch(screen.getByTestId('resource-card-lumber-0').querySelector('button')!);
-    expect((screen.getByTestId('monopoly-resource') as HTMLSelectElement).value).toBe('ore');
+    expect(hand.dataset.expanded).toBe('true');
     fireEvent.pointerDown(screen.getByTestId('board-svg'));
     expect(hand.dataset.expanded).toBe('false');
     expect(api.callsOf('sendCommand')).toHaveLength(0);
@@ -167,7 +169,7 @@ describe('held card fan', () => {
     expect(screen.getByTestId('new-devcards').querySelector('.development-card__inspect')).toBeTruthy();
   });
 
-  it('swipes through a dense hand without commands and leaves resource selectors to native touch handling', async () => {
+  it('swipes through a dense hand without commands', async () => {
     const view = makeView();
     view.players[0]!.devCards = Array.from({ length: 20 }, (_, index) => index === 0 ? 'monopoly' : 'knight');
     const api = await open(view);
@@ -187,10 +189,12 @@ describe('held card fan', () => {
     swipe(nextLumber);
     const brick = screen.getByTestId('resource-card-brick-0').querySelector('button');
     expect(document.activeElement).toBe(brick);
-    swipe(screen.getByTestId('monopoly-resource'));
-    expect(document.activeElement).toBe(brick);
-    fireEvent.change(screen.getByTestId('monopoly-resource'), { target: { value: 'ore' } });
-    expect((screen.getByTestId('monopoly-resource') as HTMLSelectElement).value).toBe('ore');
+    // 在發展卡上左右滑動仍是逐張檢視，不會被當成拖曳出牌。
+    const monopoly = screen.getByRole('button', { name: /Inspect Monopoly/ });
+    act(() => monopoly.focus());
+    swipe(monopoly);
+    expect(screen.queryByTestId('card-drag')).toBeNull();
+    expect(screen.queryByTestId('devcard-choice')).toBeNull();
     expect(api.callsOf('sendCommand')).toHaveLength(0);
   });
   it('preserves the pending-action guard when the full hand is revealed', async () => {

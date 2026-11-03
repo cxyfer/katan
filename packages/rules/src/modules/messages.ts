@@ -6,6 +6,7 @@
 import { messages as citiesKnights } from './citiesKnights/messages.ts';
 import { messages as explorersPirates } from './explorersPirates/messages.ts';
 import { messages as seafarers } from './seafarers/messages.ts';
+import { messages as seafarersCitiesKnights } from './seafarersCitiesKnights/messages.ts';
 import { messages as tradersBarbarians } from './tradersBarbarians/messages.ts';
 
 export interface ModuleMessages {
@@ -18,4 +19,5 @@ export const MODULE_MESSAGES = {
   citiesKnights,
   tradersBarbarians,
   explorersPirates,
+  seafarersCitiesKnights,
 } as const satisfies Record<string, ModuleMessages>;

@@ -5,7 +5,7 @@
  * ship on an edge of that hex. Coastal buildings are never robbed by it.
  */
 
-import { isLandHex, playerById, topologyOf, totalResources } from '../../analysis.ts';
+import { isLandHex, playerById, topologyOf, totalCards } from '../../analysis.ts';
 import type { GameState } from '../../types.ts';
 import type { BanditMove, ModuleContext } from '../types.ts';
 
@@ -29,7 +29,7 @@ export function pirateVictims(state: GameState, hex: number, actorId: string): s
     const road = state.board.roads[index];
     if (!road?.ship || road.player === actorId) return;
     const owner = playerById(state, road.player);
-    if (owner && totalResources(owner) > 0) out.add(road.player);
+    if (owner && totalCards(owner) > 0) out.add(road.player);
   });
   return [...out].sort((a, b) => playerById(state, a)!.seat - playerById(state, b)!.seat);
 }

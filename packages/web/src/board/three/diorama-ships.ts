@@ -8,7 +8,7 @@
 
 import { BoxGeometry, BufferGeometry, Color, CylinderGeometry, ExtrudeGeometry, Shape } from 'three';
 import type { PublicBoardView } from '@catan/rules';
-import { confirmedPlacement } from '../effects.ts';
+import { placementArrival } from '../effects.ts';
 import type { BoardEffectGroup } from '../animation.ts';
 import type { BoardGeometry } from '../geometry.ts';
 import { SEA_LEVEL } from '../sea.ts';
@@ -92,7 +92,7 @@ export const SHIP_SCALE = 1.5;
 export interface ShipInstance extends InstanceTransform {
   index: number;
   playerId: string;
-  arriving: boolean;
+  arrivalKey: string | null;
 }
 
 /**
@@ -123,7 +123,7 @@ export function shipTransform(geometry: BoardGeometry, edgeIndex: number): { pos
   };
 }
 
-export function shipInstances(geometry: BoardGeometry, board: PublicBoardView, active: BoardEffectGroup | null): ShipInstance[] {
+export function shipInstances(geometry: BoardGeometry, board: PublicBoardView, arrivals: readonly BoardEffectGroup[]): ShipInstance[] {
   const out: ShipInstance[] = [];
   board.roads.forEach((road, index) => {
     if (!road?.ship) return;
@@ -132,7 +132,7 @@ export function shipInstances(geometry: BoardGeometry, board: PublicBoardView, a
     out.push({
       index,
       playerId: road.player,
-      arriving: confirmedPlacement(active?.events ?? [], board, 'edge', index),
+      arrivalKey: placementArrival(arrivals, board, 'edge', index)?.id ?? null,
       position: transform.position,
       rotationY: transform.rotationY,
       scale: [SHIP_SCALE, SHIP_SCALE, SHIP_SCALE],

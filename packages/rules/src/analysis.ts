@@ -9,6 +9,7 @@ import { getProfile } from './profiles.ts';
 import { getTopology } from './topology-registry.ts';
 import { verticesOfHex, type BoardTopology } from './topology.ts';
 import {
+  COMMODITIES,
   RESOURCES,
   TERRAIN_RESOURCE,
   type GameState,
@@ -45,7 +46,7 @@ export function countBuildings(state: GameState, playerId: string, kind: 'settle
 
 export function countRoads(state: GameState, playerId: string): number {
   let count = 0;
-  for (const road of state.board.roads) if (road && !road.ship && road.player === playerId) count++;
+  for (const road of state.board.roads) if (road && !road.ship && !road.bridge && road.player === playerId) count++;
   return count;
 }
 
@@ -86,7 +87,23 @@ export function isSeaEdge(state: GameState, edge: number): boolean {
 
 export function isBlockedFor(state: GameState, vertex: number, playerId: string): boolean {
   const building = state.board.buildings[vertex];
-  return !!building && building.player !== playerId;
+  if (building) return building.player !== playerId;
+  const blocker = moduleVertexBlocker(state, vertex);
+  return blocker !== null && blocker !== playerId;
+}
+
+/**
+ * The owner of a rules-module piece holding `vertex` for route purposes
+ * (Cities & Knights knights), or null. Base profiles have no modules.
+ */
+export function moduleVertexBlocker(state: GameState, vertex: number): string | null {
+  const profile = getProfile(state.profileId);
+  if (!profile || profile.ruleModules.length === 0) return null;
+  for (const module of rulesModulesOf(profile)) {
+    const owner = module.vertexBlocker?.(state, vertex, { profile });
+    if (owner) return owner;
+  }
+  return null;
 }
 
 /**
@@ -95,7 +112,12 @@ export function isBlockedFor(state: GameState, vertex: number, playerId: string)
  * (Seafarers' Longest Trade Route) a road and a ship only continue each
  * other at one of the player's own buildings (SF25 p. 2).
  */
-export function longestRouteLength(state: GameState, playerId: string, includeShips = false): number {
+export function longestRouteLength(
+  state: GameState,
+  playerId: string,
+  includeShips = false,
+  edgeWeight?: (edge: number) => number,
+): number {
   const topo = topologyOf(state);
   const incident = new Map<number, number[]>();
   const usable: number[] = [];
@@ -129,7 +151,7 @@ export function longestRouteLength(state: GameState, playerId: string, includeSh
       const [a, b] = topo.edges[edge]!.vertices;
       const next = a === vertex ? b : a;
       used.add(edge);
-      const length = 1 + (blocked.has(next) ? 0 : walk(next, ship));
+      const length = (edgeWeight ? edgeWeight(edge) : 1) + (blocked.has(next) ? 0 : walk(next, ship));
       used.delete(edge);
       if (length > best) best = length;
     }
@@ -150,6 +172,8 @@ export interface AwardRules {
   minLargestArmy: number;
   longestRouteIncludesShips: boolean;
   retainLargestArmy: boolean;
+  /** Route length a player's piece on `edge` adds (default 1), e.g. a road under a wagon. */
+  edgeWeight?: (edge: number, playerId: string) => number;
 }
 
 export const BASE_AWARD_RULES: AwardRules = {
@@ -167,10 +191,12 @@ export const BASE_AWARD_RULES: AwardRules = {
  */
 export function recomputeAwards(state: GameState, rules: AwardRules = BASE_AWARD_RULES): void {
   for (const player of state.players) {
+    const weight = rules.edgeWeight;
     player.longestRoadLength = longestRouteLength(
       state,
       player.id,
       rules.longestRouteIncludesShips,
+      weight ? (edge) => weight(edge, player.id) : undefined,
     );
   }
 
@@ -252,6 +278,17 @@ export function scoreOf(state: GameState, playerId: string, options: ScoreOption
   return score;
 }
 
+/** The points a player needs to win: the profile target, adjusted by modules. */
+export function victoryTargetOf(state: GameState, playerId: string): number {
+  const profile = getProfile(state.profileId);
+  if (!profile) return Infinity;
+  let target = profile.victoryTarget;
+  for (const module of rulesModulesOf(profile)) {
+    if (module.victoryTarget) target = module.victoryTarget(state, playerId, target, { profile });
+  }
+  return target;
+}
+
 /** Harbor trade rates available to a player, keyed by resource. */
 export function harborRates(state: GameState, playerId: string): Record<Resource, number> {
   const topo = topologyOf(state);
@@ -267,7 +304,7 @@ export function harborRates(state: GameState, playerId: string): Record<Resource
     if (!edge) continue;
     const owned = edge.vertices.some((vertex) => {
       const building = state.board.buildings[vertex];
-      return !!building && building.player === playerId;
+      return !!building && building.player === playerId && harborAccess(state, playerId, vertex);
     });
     if (!owned) continue;
     if (harbor.type === 'generic') {
@@ -279,8 +316,24 @@ export function harborRates(state: GameState, playerId: string): Record<Resource
   return rates;
 }
 
+function harborAccess(state: GameState, playerId: string, vertex: number): boolean {
+  const profile = getProfile(state.profileId);
+  if (!profile) return true;
+  return rulesModulesOf(profile).every(
+    (module) => !module.harborAccess || module.harborAccess(state, playerId, vertex, { profile }),
+  );
+}
+
 export function totalResources(player: PlayerState): number {
   return RESOURCES.reduce((sum, resource) => sum + player.resources[resource], 0);
+}
+
+/**
+ * Cards in a player's hand: resources plus Cities & Knights commodities
+ * (always zero outside C&K). This is the hand a 7 or a robber looks at.
+ */
+export function totalCards(player: PlayerState): number {
+  return totalResources(player) + COMMODITIES.reduce((sum, commodity) => sum + (player.commodities?.[commodity] ?? 0), 0);
 }
 
 export interface ProductionShare {
@@ -331,15 +384,24 @@ function rawProductionForHex(
   if (!terrain) return null;
   const resource = TERRAIN_RESOURCE[terrain] ?? null;
   if (!resource) return null;
-  if (layout.numbers[hex] !== diceTotal) return null;
+  if (layout.numbers[hex] !== diceTotal && !layout.extraNumbers?.some((extra) => extra.hex === hex && extra.number === diceTotal)) {
+    return null;
+  }
   const topo = topologyOf(state);
+  const profile = getProfile(state.profileId);
+  const modules = profile ? rulesModulesOf(profile) : [];
   const entitlements: ProductionShare[] = [];
   for (const vertex of verticesOfHexIndex(topo, hex)) {
     const building = state.board.buildings[vertex];
     if (!building) continue;
-    entitlements.push({ playerId: building.player, amount: building.city ? 2 : 1, vertex });
+    let amount = building.city ? 2 : 1;
+    for (const module of modules) {
+      if (module.productionAmount) amount = module.productionAmount(state, hex, vertex, amount, { profile: profile! });
+    }
+    if (amount > 0) entitlements.push({ playerId: building.player, amount, vertex });
   }
-  if (state.board.robber === hex) {
+  const produces = modules.every((module) => !module.hexProduces || module.hexProduces(state, hex, { profile: profile! }));
+  if (state.board.robber === hex || !produces) {
     return { terrain, resource, hex, entitlements: [], granted: [], starved: false, blocked: entitlements };
   }
   return { terrain, resource, hex, entitlements, granted: [], starved: false, blocked: [] };
@@ -349,7 +411,7 @@ function rawProductionForHex(
  * 對同一資源的所有地形格一次套用銀行不足規則：合計需求超過庫存時，
  * 多名玩家則全部不發；僅一名玩家則依序發到庫存用完為止。
  */
-function applyBankLimit(results: ProductionResult[], available: number): ProductionResult[] {
+export function applyBankLimit(results: ProductionResult[], available: number): ProductionResult[] {
   const all = results.flatMap((result) => result.entitlements);
   const demand = all.reduce((sum, share) => sum + share.amount, 0);
   if (demand <= available) {

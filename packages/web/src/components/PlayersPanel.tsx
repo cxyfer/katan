@@ -5,13 +5,14 @@ import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
-import { shownHandSize } from '../state/table.ts';
-import { BotBadge } from './BotBadge.tsx';
-import { islandBonusPoints, seafarersView } from '../board/seafarers.ts';
 import { epView } from '../board/explorersPirates.ts';
+import { shownCitiesKnights, shownExplorersPirates, shownTradersBarbarians, shownHandSize } from '../state/table.ts';
+import { islandBonusPoints, seafarersView } from '../board/seafarers.ts';
+import { activeStrength, citiesKnightsPoints, citiesKnightsView } from '../board/citiesKnights.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/scoreboard-hover.css';
+import '../styles/bot-seats.css';
 
 function ScoreMark({ icon, label, value, awarded = false, testId }: {
   icon: string; label: string; value: string; awarded?: boolean; testId?: string;
@@ -72,7 +73,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
 }) {
   const t = useT();
   const { state } = controller;
-  const view = state.game?.view;
+  const view = shownCitiesKnights(state) ?? shownTradersBarbarians(state) ?? shownExplorersPirates(state) ?? state.game?.view;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const expanded = pinned || previewOpen;
@@ -243,6 +244,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           const ep = epView(view);
           const epPlayer = ep?.players[player.id];
           const number = (value: number) => formatNumber(state.locale, value);
+          // Cities & Knights: no development cards or Largest Army; metropolises, defender points and knights instead.
+          const ck = citiesKnightsView(view);
+          const ckPoints = ck ? citiesKnightsPoints(view, player.id) : null;
           return (
             <li
               key={player.id}
@@ -258,15 +262,15 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
               <div className="seat__summary">
                 <span className="seat__swatch" aria-hidden="true" style={{ backgroundColor: playerColorHex(player.color), borderStyle: seatDash(player.seat) ? 'dashed' : 'solid' }}>
                   {Array.from(player.nickname)[0]}
-                  {/* 收合時名稱與徽章都隱藏，在頭像角落留一個電腦標記。 */}
-                  {isBot && !expanded && (
+                  {/* 電腦標記固定放在頭像角落，避免徽章在展開時把名稱擠成兩行。 */}
+                  {isBot && (
                     <span className="seat__bot-mark" data-testid={`seat-bot-mark-${player.seat}`}><GameIcon name="bot" size={9} /></span>
                   )}
                 </span>
                 {isBot && !expanded && <span className="visually-hidden">{`${player.nickname} (${botLabel})`}</span>}
                 <span className="seat__identity" hidden={!expanded}>
                   <span className="seat__name" title={player.nickname}>{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>
-                  {isBot && <BotBadge level={bots.get(player.id)} short testId={`seat-bot-${player.seat}`} />}
+                  {isBot && <span className="visually-hidden" data-testid={`seat-bot-${player.seat}`}>{` (${botLabel})`}</span>}
                 </span>
                 <span className={`seat__score${isSelf && player.ownScore !== undefined ? ' seat__own-score' : ''}`} title={scoreLabel}><GameIcon name="crown" size={15} /><span className="visually-hidden">{scoreLabel}: </span>{number(total)}</span>
               </div>
@@ -275,15 +279,18 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                   <ScoreMark icon="home" label={t('table.playersSettlements', { count: number(settlements) })} value={number(settlements)} />
                   <ScoreMark icon="city" label={t('table.playersCities', { count: number(cities) })} value={number(cities)} />
                   <ScoreMark icon="cards" label={t('play.handSize')} value={number(shownHandSize(state, player))} />
-                  {!ep && <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />}
+                  {ck
+                    ? <ScoreMark icon="scroll" label={t('ck.score.progress')} value={number(ck.progressCounts[player.id] ?? 0)} testId={`players-progress-${player.seat}`} />
+                    : !ep && <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />}
                   {sea && <ScoreMark icon="ship" label={t('sf.board.ship')} value={number(ships)} testId={`players-ships-${player.seat}`} />}
                   {ep && epPlayer && <>
                     <ScoreMark icon="ship" label={t('ep.piece.ship')} value={number(ep.ships.filter((ship) => ship.player === player.id).length)} testId={`players-ep-ships-${player.seat}`} />
                     <ScoreMark icon="sparkles" label={t('ep.score.gold', { gold: number(epPlayer.gold) })} value={number(epPlayer.gold)} testId={`players-ep-gold-${player.seat}`} />
                   </>}
                   {!ep && <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
-                    value={number(player.longestRoadLength)} awarded={longestRoad} />}
-                  {!ep && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
+                    value={number(player.longestRoadLength)} awarded={longestRoad} testId={`players-route-${player.seat}`} />}
+                  {ck && <ScoreMark icon="shield" label={t('ck.score.knights')} value={number(activeStrength(ck, player.id))} testId={`players-knights-${player.seat}`} />}
+                  {!ck && !ep && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
                     value={number(player.playedKnights)} awarded={largestArmy} />}
                 </div>
                 <div className="players__bonuses">
@@ -298,6 +305,14 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                       label={t(`ep.score.${mission}`, { points: number(epPlayer.missionPoints[mission] ?? 0) })} value={number(epPlayer.missionPoints[mission] ?? 0)} />
                   ))}
                   {player.bonusPoints - islandPoints > 0 && <ScoreMark icon="flag" label={t('table.playersBonus')} value={number(player.bonusPoints - islandPoints)} />}
+                  {ckPoints && ckPoints.metropolises > 0 && <ScoreMark icon="city" testId={`players-metropolis-${player.seat}`}
+                    label={t('ck.score.metropolises', { points: number(ckPoints.metropolises) })} value={number(ckPoints.metropolises)} />}
+                  {ckPoints && ckPoints.defenders > 0 && <ScoreMark icon="shield" testId={`players-defender-${player.seat}`}
+                    label={t('ck.score.defender', { points: number(ckPoints.defenders) })} value={number(ckPoints.defenders)} />}
+                  {ckPoints && ckPoints.progress > 0 && <ScoreMark icon="scroll" testId={`players-progress-vp-${player.seat}`}
+                    label={t('ck.score.progressVp', { points: number(ckPoints.progress) })} value={number(ckPoints.progress)} />}
+                  {ckPoints?.merchant && <ScoreMark icon="trade" testId={`players-merchant-${player.seat}`}
+                    label={t('ck.score.merchant', { points: number(ckPoints.merchant) })} value={number(ckPoints.merchant)} />}
                   {hiddenBonus > 0 && <ScoreMark icon="sparkles" label={t('table.playersHiddenBonus')} value={number(hiddenBonus)} />}
                 </div>
               </div>

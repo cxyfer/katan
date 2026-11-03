@@ -31,7 +31,16 @@ export type ExpansionId = (typeof EXPANSION_IDS)[number];
  * Scenario ids. A phase that registers a scenario appends it here and adds its
  * `scenario.<id>` message to both locales.
  */
-export const SCENARIO_IDS = ['new-shores', 'land-ho', 'pirate-lairs', 'fish', 'spices', 'explorers-pirates'] as const;
+export const SCENARIO_IDS = [
+  'new-shores',
+  // Traders & Barbarians (TB25)
+  'tb-fishing',
+  'tb-rivers',
+  'tb-merchant-trains',
+  'tb-barbarian-attack',
+  'tb-traders-barbarians',
+  'land-ho', 'pirate-lairs', 'fish', 'spices', 'explorers-pirates',
+] as const;
 export type ScenarioId = (typeof SCENARIO_IDS)[number];
 
 /**
@@ -39,11 +48,16 @@ export type ScenarioId = (typeof SCENARIO_IDS)[number];
  * Barbarians event cards). None is registered yet; ids are kebab-case and
  * owned by the rules module that implements them.
  */
-export const VARIANT_IDS: readonly string[] = [];
+export const VARIANT_IDS: readonly string[] = [
+  // Traders & Barbarians (TB25 pp. 4–6)
+  'friendly-robber',
+  'harbors',
+  'event-cards',
+];
 export type VariantId = string;
 
 /** Rulebook source ids from SPEC §5.3. Later phases append their own. */
-export const SOURCE_IDS = ['B25', 'B56-25', 'SF25', 'SF56-25', 'CK25', 'CK56-25', 'COMB', 'EP25', 'EP25-M'] as const;
+export const SOURCE_IDS = ['B25', 'B56-25', 'SF25', 'SF56-25', 'CK25', 'CK56-25', 'COMB', 'TB25', 'EP25', 'EP25-M'] as const;
 export type SourceId = (typeof SOURCE_IDS)[number];
 
 export interface ProfileSource {
@@ -191,14 +205,32 @@ const PAIRED_BASE = {
 } as const;
 
 /**
- * Explorers & Pirates (EP25 / EP25-M, CN3085): one profile per mission set, in
- * book order; rules in `modules/explorersPirates/`, maps in
- * `explorers-pirates-boards.ts`. E&P is standalone: no development cards,
- * cities, robber, ports, Longest Road or Largest Army (EP25-M p. 2), and it is
- * never combined with Seafarers. Harbour settlements are base settlements
- * the module marks, so the shared settlement count is 5 settlements + 4
- * harbour settlements; the module keeps plain settlements at 5.
+ * Traders & Barbarians (TB25, CN3089) on the base board, 3–4 players. Every
+ * scenario/variant combination the phase supports is its own row; the module
+ * composes the selected parts (`modules/tradersBarbarians`).
  */
+const TB_RULE_VERSION = 'tb-2025.1';
+
+function tbProfile(
+  id: string,
+  scenario: ScenarioId | null,
+  variants: readonly VariantId[],
+  pages: string,
+  overrides: ProfileOverrides = {},
+): ProfileDefinition {
+  return baseProfile(id, [3, 4], {
+    ruleVersion: TB_RULE_VERSION,
+    expansions: ['tradersBarbarians'],
+    scenario,
+    variants,
+    ruleModules: ['tradersBarbarians'],
+    sources: [{ id: 'B25', pages: 'entire rulebook' }, { id: 'TB25', pages }],
+    requiredBoxes: ['base', 'tradersBarbarians'],
+    implemented: true,
+    ...overrides,
+  });
+}
+
 function explorersPiratesProfile(
   id: string,
   scenario: ScenarioId,
@@ -224,7 +256,6 @@ function explorersPiratesProfile(
     pieces: { settlements: 9, cities: 0, roads: 15, ships: 3, knights: 0 },
     devDeck: [],
     implemented: true,
-    // Enabled after the mission fixtures, evidence and browser harness passed (docs/FIDELITY.md).
     enabled: true,
     unavailableReasonKey: 'profile.unavailable.explorersPirates',
     ...overrides,
@@ -241,6 +272,72 @@ const EXPLORERS_PIRATES_PROFILES: readonly ProfileDefinition[] = [
     { id: 'EP25', pages: 'pp. 2–15' },
     { id: 'EP25-M', pages: 'pp. 2–3' },
   ] }),
+];
+
+/** Event-card rows stay closed: TB25 does not list the deck's cards (FIDELITY). */
+const EVENT_DECK_CLOSED = { implemented: false, enabled: false, unavailableReasonKey: 'profile.unavailable.tbEventDeck' } as const;
+
+const TRADERS_BARBARIANS_PROFILES: readonly ProfileDefinition[] = [
+  tbProfile('tb-friendly-robber-2025', null, ['friendly-robber'], 'p. 4', { enabled: true }),
+  tbProfile('tb-harbors-2025', null, ['harbors'], 'p. 4', { victoryTarget: 11, enabled: true }),
+  tbProfile('tb-friendly-robber-harbors-2025', null, ['friendly-robber', 'harbors'], 'pp. 2, 4', {
+    victoryTarget: 11,
+    enabled: true,
+  }),
+  tbProfile('tb-fishing-2025', 'tb-fishing', [], 'pp. 9–10', {
+    layoutId: 'tb-fishing',
+    topologyId: 'tb-r2',
+    setupModes: ['variable'],
+    enabled: true,
+  }),
+  tbProfile('tb-rivers-2025', 'tb-rivers', [], 'pp. 11–12', {
+    layoutId: 'tb-rivers',
+    topologyId: 'tb-r2',
+    setupModes: ['variable'],
+    enabled: true,
+  }),
+  tbProfile('tb-merchant-trains-2025', 'tb-merchant-trains', [], 'pp. 13–14', {
+    layoutId: 'tb-merchant-trains',
+    topologyId: 'tb-r2',
+    setupModes: ['variable'],
+    victoryTarget: 12,
+    enabled: true,
+  }),
+  tbProfile('tb-barbarian-attack-2025', 'tb-barbarian-attack', [], 'pp. 15–19', {
+    layoutId: 'tb-barbarian-attack',
+    topologyId: 'tb-r2',
+    setupModes: ['variable'],
+    victoryTarget: 12,
+    // The scenario's own cards replace the base deck; no Largest Army.
+    devDeck: [],
+    retainLargestArmy: false,
+    pieces: { settlements: 5, cities: 4, roads: 15, ships: 0, knights: 6 },
+    enabled: true,
+  }),
+  tbProfile('tb-traders-barbarians-2025', 'tb-traders-barbarians', [], 'pp. 20–24', {
+    layoutId: 'tb-traders-barbarians',
+    topologyId: 'tb-traders-r2',
+    setupModes: ['variable'],
+    victoryTarget: 13,
+    // 16 Knight, 3 Road Building, 3 Swift Journey, 3 Victory Point (p. 20).
+    devDeck: [
+      ...Array<DevCardType>(16).fill('barbarianKnight'),
+      ...Array<DevCardType>(3).fill('roadBuilding'),
+      ...Array<DevCardType>(3).fill('swiftJourney'),
+      ...Array<DevCardType>(3).fill('victoryPoint'),
+    ],
+    enabled: true,
+  }),
+  tbProfile('tb-event-cards-2025', null, ['event-cards'], 'pp. 4–6', EVENT_DECK_CLOSED),
+  tbProfile('tb-event-cards-friendly-robber-2025', null, ['event-cards', 'friendly-robber'], 'pp. 2, 4–6', EVENT_DECK_CLOSED),
+  tbProfile('tb-event-cards-harbors-2025', null, ['event-cards', 'harbors'], 'pp. 2, 4–6', {
+    victoryTarget: 11,
+    ...EVENT_DECK_CLOSED,
+  }),
+  tbProfile('tb-event-cards-friendly-robber-harbors-2025', null, ['event-cards', 'friendly-robber', 'harbors'], 'pp. 2, 4–6', {
+    victoryTarget: 11,
+    ...EVENT_DECK_CLOSED,
+  }),
 ];
 
 export const PROFILES: readonly ProfileDefinition[] = [
@@ -303,16 +400,21 @@ export const PROFILES: readonly ProfileDefinition[] = [
     enabled: true,
   }),
 
+  // CK25 in `modules/citiesKnights/`: the core rules (P2) and the 54 progress
+  // cards with the merchant (P3). Enabled after the R-CK fixtures and a full
+  // browser game passed (docs/FIDELITY.md).
   baseProfile('ck-2025', [3, 4], {
     ruleVersion: 'ck-2025.1',
     expansions: ['citiesKnights'],
-    sources: [{ id: 'B25', pages: 'entire rulebook' }, { id: 'CK25', pages: 'pp. 3–5' }],
+    sources: [{ id: 'B25', pages: 'entire rulebook' }, { id: 'CK25', pages: 'pp. 2–11, 13–16' }],
     requiredBoxes: ['base', 'citiesKnights'],
     victoryTarget: 13,
     devDeck: [],
     pieces: { ...BASE_PIECES, knights: 6 },
+    // 36 commodity cards, 12 of each (CK25 p. 3).
     commodityBankPerType: 12,
-    unavailableReasonKey: 'profile.unavailable.citiesKnights',
+    implemented: true,
+    enabled: true,
   }),
 
   baseProfile('ck-paired-2025', [5, 6], {
@@ -320,64 +422,87 @@ export const PROFILES: readonly ProfileDefinition[] = [
     ruleVersion: 'ck-2025.1',
     expansions: ['citiesKnights'],
     sources: [
-      { id: 'B56-25', pages: 'p. 3' },
-      { id: 'CK25', pages: 'pp. 3–5' },
-      { id: 'CK56-25', pages: 'pp. 2–3' },
+      { id: 'B56-25', pages: 'pp. 3–4' },
+      { id: 'CK25', pages: 'pp. 2–11, 13–16' },
+      { id: 'CK56-25', pages: 'pp. 2–4' },
     ],
     requiredBoxes: ['base', 'base-5-6', 'citiesKnights', 'citiesKnights-5-6'],
     victoryTarget: 13,
     devDeck: [],
     pieces: { ...BASE_PIECES, knights: 6 },
-    commodityBankPerType: 12,
-    unavailableReasonKey: 'profile.unavailable.citiesKnights',
+    // 36 + 18 commodity cards, 18 of each (CK25 p. 3, CK56-25 pp. 2–3).
+    commodityBankPerType: 18,
+    implemented: true,
+    enabled: true,
   }),
 
+  // Heading for New Shores with Cities & Knights (SF25 pp. 4–5 maps, CK25
+  // rules, CK25 p. 12 and COMB for the combination). The combination layer
+  // runs first so its vetoes (pirate before the first attack, knight chases,
+  // ship moves next to knights) precede both expansions' hooks; Seafarers
+  // then queues gold before the C&K science bonus. Enabled after the R-COMB
+  // fixtures, the simulated games and a browser game passed (docs/FIDELITY.md).
   baseProfile('sf-ck-new-shores-2025', [3, 4], {
     ruleVersion: 'sf-ck-2025.1',
     expansions: ['seafarers', 'citiesKnights'],
+    ruleModules: ['seafarersCitiesKnights', 'seafarers', 'citiesKnights'],
     scenario: 'new-shores',
     sources: [
+      { id: 'B25', pages: 'entire rulebook' },
       { id: 'SF25', pages: 'pp. 2–5' },
-      { id: 'CK25', pages: 'pp. 3–5' },
-      { id: 'COMB', pages: 'reviewed 2026-10-26' },
+      { id: 'CK25', pages: 'pp. 2–16' },
+      { id: 'COMB', pages: 'catan.com/seafarers, accessed 2026-11-02' },
     ],
     requiredBoxes: ['base', 'seafarers', 'citiesKnights'],
+    // New Shores' 14 + 2 (COMB).
     victoryTarget: 16,
     setupModes: ['fixed'],
     layoutId: 'sf-new-shores',
+    topologyId: 'sf-new-shores-4',
     devDeck: [],
     pieces: { ...BASE_PIECES, ships: 15, knights: 6 },
     hasPirate: true,
     longestRouteIncludesShips: true,
     commodityBankPerType: 12,
-    unavailableReasonKey: 'profile.unavailable.combined',
+    implemented: true,
+    enabled: true,
   }),
 
+  // SF56-25 map (fixed small islands, variable main island and ports) with
+  // CK56-25 supply; both 5–6 rulebooks' paired turns apply.
   baseProfile('sf-ck-new-shores-paired-2025', [5, 6], {
     ...PAIRED_BASE,
     ruleVersion: 'sf-ck-2025.1',
     expansions: ['seafarers', 'citiesKnights'],
+    ruleModules: ['seafarersCitiesKnights', 'seafarers', 'citiesKnights'],
     scenario: 'new-shores',
     sources: [
-      { id: 'SF56-25', pages: 'pp. 2–4' },
-      { id: 'CK56-25', pages: 'pp. 2–3' },
-      { id: 'COMB', pages: 'reviewed 2026-10-26' },
+      { id: 'B56-25', pages: 'pp. 3–4' },
+      { id: 'SF25', pages: 'pp. 2–5' },
+      { id: 'SF56-25', pages: 'pp. 1–4' },
+      { id: 'CK25', pages: 'pp. 2–16' },
+      { id: 'CK56-25', pages: 'pp. 2–4' },
+      { id: 'COMB', pages: 'catan.com/seafarers, accessed 2026-11-02' },
     ],
     requiredBoxes: [
       'base', 'base-5-6', 'seafarers', 'seafarers-5-6', 'citiesKnights', 'citiesKnights-5-6',
     ],
     victoryTarget: 16,
-    setupModes: ['fixed'],
+    setupModes: ['variable'],
     layoutId: 'sf-new-shores',
+    topologyId: 'sf-new-shores-56',
     devDeck: [],
     pieces: { ...BASE_PIECES, ships: 15, knights: 6 },
     hasPirate: true,
     longestRouteIncludesShips: true,
-    commodityBankPerType: 12,
-    unavailableReasonKey: 'profile.unavailable.combined',
+    // 36 + 18 commodity cards, 18 of each (CK25 p. 3, CK56-25 pp. 2–3).
+    commodityBankPerType: 18,
+    implemented: true,
+    enabled: true,
   }),
 
   ...EXPLORERS_PIRATES_PROFILES,
+  ...TRADERS_BARBARIANS_PROFILES,
 ];
 
 const byId = new Map(PROFILES.map((profile) => [profile.id, profile]));
