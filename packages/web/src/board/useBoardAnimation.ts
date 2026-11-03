@@ -26,6 +26,8 @@ export function useBoardAnimation(
   onDiceChange?: (presenting: boolean) => void,
   /** 骰子佇列內容（演出 id，依序）每次更新時同步通知；音效依此跟著實際演出。 */
   onDiceQueue?: (ids: readonly string[]) => void,
+  /** 棋盤停在擲骰前投影：新落下的棋子還不在盤面上，延到放行時才開始播放。 */
+  holdArrivals = false,
 ) {
   const cursor = useRef<PresentationCursor | null>(null);
   const latest = useRef({ snapshot, sync });
@@ -39,10 +41,23 @@ export function useBoardAnimation(
   const [diceQueue, setDiceQueue] = useState<DiceRollPresentation[]>([]);
   const [arrivals, setArrivals] = useState<BoardEffectGroup[]>([]);
   const arrivalTimers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const deferredArrivals = useRef<BoardEffectGroup[]>([]);
+  const holdArrivalsRef = useRef(holdArrivals);
+  holdArrivalsRef.current = holdArrivals;
   const clearArrivals = useCallback(() => {
     arrivalTimers.current.forEach((id) => globalThis.clearTimeout(id));
     arrivalTimers.current.clear();
+    deferredArrivals.current = [];
     setArrivals([]);
+  }, []);
+  const startArrival = useCallback((group: BoardEffectGroup) => {
+    if (arrivalTimers.current.size >= MAX_EFFECT_GROUPS) return;
+    const id = globalThis.setTimeout(() => {
+      arrivalTimers.current.delete(id);
+      setArrivals((current) => current.filter((item) => item !== group));
+    }, MAX_EFFECT_DURATION_MS);
+    arrivalTimers.current.add(id);
+    setArrivals((current) => [...current, group]);
   }, []);
   // 以 ref 同步追蹤骰子佇列，才能在同一個 effect 內立即回報是否仍在演出。
   const diceQueueRef = useRef<DiceRollPresentation[]>([]);
@@ -109,14 +124,10 @@ export function useBoardAnimation(
     }
     // 建造落下自抵達起並行播放，不等特效佇列，也不因必要操作而略過；超出上限時直接靜止顯示。
     const placements = snapshot ? placementEffectGroups(snapshot.gameId, decision.events) : [];
-    if (placements.length > 0 && arrivalTimers.current.size < MAX_EFFECT_GROUPS) {
+    if (placements.length > 0) {
       const [group] = placements as [BoardEffectGroup];
-      const id = globalThis.setTimeout(() => {
-        arrivalTimers.current.delete(id);
-        setArrivals((current) => current.filter((item) => item !== group));
-      }, MAX_EFFECT_DURATION_MS);
-      arrivalTimers.current.add(id);
-      setArrivals((current) => [...current, group]);
+      if (!holdArrivalsRef.current) startArrival(group);
+      else if (deferredArrivals.current.length < MAX_EFFECT_GROUPS) deferredArrivals.current.push(group);
     }
     const rolls = snapshot ? diceRollPresentations(snapshot.gameId, decision.events) : [];
     if (mandatory) {
@@ -156,7 +167,15 @@ export function useBoardAnimation(
     }
     // 沒有新擲骰時也回報一次，校正 reducer 對這筆更新的暫定判斷。
     updateDice((current) => current);
-  }, [snapshot, sync.generation, sync.cause, online, mandatory, updateDice, clearArrivals]);
+  }, [snapshot, sync.generation, sync.cause, online, mandatory, updateDice, clearArrivals, startArrival]);
+
+  // 盤面放行的同一次繪製前開始延後的落下，棋子不會先靜止出現一幀；重設時已清空，不補播。
+  useLayoutEffect(() => {
+    if (holdArrivals || deferredArrivals.current.length === 0) return;
+    const groups = deferredArrivals.current;
+    deferredArrivals.current = [];
+    groups.forEach(startArrival);
+  }, [holdArrivals, startArrival]);
 
   const active = queue[0] ?? null;
   const activeDice = diceQueue[0] ?? null;

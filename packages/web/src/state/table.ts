@@ -45,6 +45,8 @@ export interface RollHold {
   tradersBarbarians?: GameSnapshot['view'] | null;
   /** E&P 擲骰前的公開狀態，包括金幣與分數。 */
   explorersPirates?: GameSnapshot['view'] | null;
+  /** 擲骰會當場改變盤面時（C&K 蠻族攻擊）的擲骰前投影；其他規則為 null。 */
+  board?: GameSnapshot['view'] | null;
   /** 擲骰前已知的最後事件序號。 */
   eventSeq: number;
 }
@@ -247,9 +249,18 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
       citiesKnights: citiesKnightsView(current.view) ? current.view : null,
       tradersBarbarians: current.view.modules?.tradersBarbarians ? current.view : null,
       explorersPirates: current.view.modules?.explorersPirates ? current.view : null,
+      board: rollChangesBoard(current.view) ? current.view : null,
       eventSeq: lastSeq,
     },
   };
+}
+
+/**
+ * C&K 的事件骰在擲骰當下結算蠻族攻擊：騎士全數翻倒、首次攻擊時強盜進入沙漠、
+ * 城市遭掠奪降為村莊或倒下並失去城牆。其他規則擲骰時盤面不變，不需凍結。
+ */
+function rollChangesBoard(view: GameSnapshot['view']): boolean {
+  return citiesKnightsView(view) !== null;
 }
 
 function activeHold(state: TableState): RollHold | null {
@@ -304,6 +315,16 @@ export function shownExplorersPirates(state: TableState): GameSnapshot['view'] |
   if (hold) return hold.explorersPirates ?? null;
   const view = state.game?.view ?? null;
   return view?.modules?.explorersPirates ? view : null;
+}
+
+/** 棋盤（SVG 與 3D）顯示的投影：擲骰會改變盤面時，演出期間用擲骰前投影。 */
+export function shownBoardView(state: TableState): GameSnapshot['view'] | null {
+  return activeHold(state)?.board ?? state.game?.view ?? null;
+}
+
+/** 棋盤是否正停在擲骰前投影；期間新落下的棋子要等盤面放行才播放。 */
+export function boardHeld(state: TableState): boolean {
+  return !!activeHold(state)?.board;
 }
 
 /** 事件紀錄：擲骰演出期間只列出擲骰前已知的事件，並隱藏最新點數。 */
@@ -404,12 +425,14 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       if (snapshot && current?.gameId === snapshot.gameId &&
           (snapshot.revision < current.revision || snapshot.view.seq < current.view.seq)) return state;
       const terminal = snapshot?.view.result != null;
+      const sameGame = !!snapshot && current?.gameId === snapshot.gameId;
       return {
         ...state,
-        ...holdForRoll(state, snapshot && current?.gameId === snapshot.gameId ? snapshot.view.events : []),
+        // 換局時上一局的擲骰前投影不能套到新棋盤上。
+        ...(sameGame ? holdForRoll(state, snapshot.view.events) : { dicePresenting: false, rollHold: null }),
         game: snapshot,
         // 換局或離開對局時，上一局未完成的發展卡資源選擇不能帶到下一局。
-        devCardChoice: snapshot && current?.gameId === snapshot.gameId ? state.devCardChoice : null,
+        devCardChoice: sameGame ? state.devCardChoice : null,
         gameSync: { generation, cause: state.gameSyncPending ? state.gameSync.cause : (action.cause ?? 'snapshot') },
         gameSyncPending: false,
         screen: snapshot ? (terminal ? 'result' : 'game') : state.screen,
