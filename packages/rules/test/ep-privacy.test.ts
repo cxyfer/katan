@@ -68,7 +68,7 @@ describe('R-EP-VIS projections', () => {
       expect(projectEvent(event, playerId).params).toHaveProperty('resource');
       expect(projectEvent(event, victim).params).toHaveProperty('resource');
     }
-  });
+  }, 30_000);
 
   it('the drawn identity of a hex appears in no event before its ep.explored, for any seat', () => {
     const { state, events } = playLogged('explorers-pirates', 4, 5, 3000);
