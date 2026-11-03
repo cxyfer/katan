@@ -1,9 +1,12 @@
 {
+  "id": "/",
   "name": "卡坦桌遊桌 · Catan Table",
   "short_name": "Catan Table",
   "lang": "zh-Hant",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "landscape",
   "background_color": "#0c1d27",
   "theme_color": "#0c1d27",
   "icons": [

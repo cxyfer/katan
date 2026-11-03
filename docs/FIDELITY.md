@@ -50,6 +50,15 @@ and five whole simulated base/paired games are pinned by digests recorded from
 master's own engine at `0815c76`
 (`packages/rules/test/base-regression.test.ts`).
 
+Registry v2 (2026-11-01 expansion platform) adds per-profile `expansions`,
+`scenario`, `variants`, `ruleVersion`, `sources` and display-only
+`requiredBoxes`. Both base profiles use master's `ruleVersion` `base-2025.3`
+(PR #60), so base snapshots keep their `engineVersion`. The platform adds no
+rule: base topology indices, fixed/variable layouts, freshly created snapshots
+and five whole simulated base/paired games are pinned by digests recorded from
+master's own engine at `0815c76`
+(`packages/rules/test/base-regression.test.ts`).
+
 ## Fixture → evidence map
 
 | Fixture | Contract | Automated evidence | Status |

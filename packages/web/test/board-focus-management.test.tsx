@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import type { BoardTopology, PublicBoardView } from '@catan/rules';
@@ -226,5 +226,331 @@ describe('board target focus management', () => {
       <SelectionPreview controller={{ ...second, state: initialTableState('en') }} onCancel={onCancel} />
     </LocaleProvider>);
     expect(document.activeElement).toBe(screen.getByTestId('target-edge-9'));
+  });
+});
+
+describe('target picker dismissal', () => {
+  const firePointerDown = (element: Element) => fireEvent(element, new Event('pointerdown', { bubbles: true }));
+
+  afterEach(() => vi.useRealTimers());
+
+  function targetDismissal() {
+    const onTargetClick = vi.fn();
+    const geometry = buildGeometry('hex-r2');
+    const view = makeView();
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return <LocaleProvider locale="en">
+        <button type="button" className="board-target" data-testid="board-target" onClick={onTargetClick}>target</button>
+        {open && <TargetPicker geometry={geometry} board={view.board} topology={geometry.topology} kind="edge"
+          targets={[5]} nameOf={() => 'Alex'} onChoose={vi.fn()} onCancel={() => setOpen(false)} />}
+      </LocaleProvider>;
+    }
+    render(<Harness />);
+    return { target: screen.getByTestId('board-target'), onTargetClick };
+  }
+
+  function renderPicker(onCancel: () => void) {
+    const geometry = buildGeometry('hex-r2');
+    const view = makeView();
+    return render(<LocaleProvider locale="en">
+      <div data-testid="outside">outside</div>
+      <button type="button" data-testid="open-target-picker" data-target-picker-ignore="">toggle</button>
+      <TargetPicker geometry={geometry} board={view.board} topology={geometry.topology} kind="edge"
+        targets={[5]} nameOf={() => 'Alex'} onChoose={vi.fn()} onCancel={onCancel} />
+    </LocaleProvider>);
+  }
+
+  it('closes on an outside pointerdown but not inside the popover or on the ignored toggle', () => {
+    const onCancel = vi.fn();
+    renderPicker(onCancel);
+    firePointerDown(screen.getByTestId('picker-edge-5'));
+    firePointerDown(screen.getByRole('dialog'));
+    firePointerDown(screen.getByTestId('open-target-picker'));
+    expect(onCancel).not.toHaveBeenCalled();
+    firePointerDown(screen.getByTestId('outside'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes on Escape even when focus is outside the popover', () => {
+    const onCancel = vi.fn();
+    renderPicker(onCancel);
+    screen.getByTestId('outside').focus();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes from the close button', () => {
+    const onCancel = vi.fn();
+    renderPicker(onCancel);
+    fireEvent.click(screen.getByTestId('target-picker-close'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('swallows the click that follows an outside press on a board target', () => {
+    const onCancel = vi.fn();
+    const onTargetClick = vi.fn();
+    const geometry = buildGeometry('hex-r2');
+    const view = makeView();
+    render(<LocaleProvider locale="en">
+      <button type="button" className="board-target" data-testid="board-target" onClick={onTargetClick}>t</button>
+      <TargetPicker geometry={geometry} board={view.board} topology={geometry.topology} kind="edge"
+        targets={[5]} nameOf={() => 'Alex'} onChoose={vi.fn()} onCancel={onCancel} />
+    </LocaleProvider>);
+    const target = screen.getByTestId('board-target');
+    firePointerDown(target);
+    fireEvent.click(target);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onTargetClick).not.toHaveBeenCalled();
+    // 只吞一次：之後的刻意點擊照常作用。
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('swallows a touch click delivered in a later task after pointerup and picker unmount', async () => {
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    expect(screen.queryByTestId('target-picker')).toBeNull();
+    fireEvent(target, new Event('pointerup', { bubbles: true }));
+    // 觸控 click 可在另一個 task 派發，不能在 pointerup 後以零延遲計時器移除攔截。
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.click(target);
+    expect(onTargetClick).not.toHaveBeenCalled();
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the next pointer gesture through when the dismissed gesture never clicks', () => {
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    firePointerDown(target);
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('swallows the release click after a press lasting more than one second', () => {
+    vi.useFakeTimers();
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    vi.advanceTimersByTime(1200);
+    fireEvent(target, new Event('pointerup', { bubbles: true }));
+    fireEvent.click(target);
+    expect(onTargetClick).not.toHaveBeenCalled();
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['pointerup', 'pointercancel'])('expires suppression one second after %s without a click', (type) => {
+    vi.useFakeTimers();
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    vi.advanceTimersByTime(1200);
+    fireEvent(target, new Event(type, { bubbles: true }));
+    vi.advanceTimersByTime(1001);
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['Enter', ' '])('allows a keyboard %s click after a drag that produced no pointer click', (key) => {
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    fireEvent(target, new Event('pointerup', { bubbles: true }));
+    fireEvent.keyDown(target, { key });
+    fireEvent.click(target, { detail: 0 });
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ...['Shift', 'Control', 'Alt', 'Meta'].map((key) => ({ key, repeat: false })),
+    ...['Shift', 'Enter', ' ', 'a'].map((key) => ({ key, repeat: true })),
+  ])('keeps the dismiss click guarded for key=$key repeat=$repeat', ({ key, repeat }) => {
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    fireEvent.keyDown(target, { key, repeat });
+    fireEvent(target, new Event('pointerup', { bubbles: true }));
+    fireEvent.click(target);
+    expect(onTargetClick).not.toHaveBeenCalled();
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('expires click suppression even when pointerup never arrives', () => {
+    vi.useFakeTimers();
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    vi.advanceTimersByTime(10001);
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    <input aria-label="chat" />,
+    <textarea aria-label="chat" />,
+    <select aria-label="chat"><option>option</option></select>,
+    <div contentEditable suppressContentEditableWarning><span>editable child</span></div>,
+    <div role="dialog" aria-modal="true"><button type="button">modal action</button></div>,
+    <dialog open><button type="button">dialog action</button></dialog>,
+  ])('leaves Escape from an editable field or another dialog to its owner (%#)', (field) => {
+    const onCancel = vi.fn();
+    const onEscape = vi.fn();
+    renderPicker(onCancel);
+    const other = render(<div onKeyDown={onEscape}>{field}</div>);
+    const target = other.container.querySelector('input, textarea, select, span, button')!;
+    fireEvent.keyDown(target, { key: 'Escape' });
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(onEscape).toHaveBeenCalledTimes(1);
+    expect(onEscape.mock.calls[0]![0].defaultPrevented).toBe(false);
+    expect(screen.getByTestId('target-picker')).toBeTruthy();
+  });
+});
+
+describe('target picker positioning', () => {
+  const rect = (left: number, top: number, width: number, height: number) =>
+    ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
+
+  type FakeObserver = { callback: () => void; observed: Element[]; disconnect: Mock };
+  let observers: FakeObserver[] = [];
+  const originalObserver = globalThis.ResizeObserver;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    globalThis.ResizeObserver = originalObserver;
+    observers = [];
+  });
+
+  const picker = () => screen.getByTestId('target-picker');
+
+  /** jsdom 沒有版面：以假的 offsetParent、尺寸與矩形模擬 640x400 棋盤與高度可變的工具列。 */
+  function setup(toolbar: number) {
+    const toolbarHeight = { value: toolbar };
+    const boardSize = { width: 640, height: 400 };
+    const pickerSize = { width: 200, height: 120 };
+    const forPicker = (element: HTMLElement) => element.classList.contains('target-picker');
+    vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (this: HTMLElement) {
+      return forPicker(this) ? this.parentElement : null;
+    });
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      return forPicker(this) ? pickerSize.width : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return forPicker(this) ? pickerSize.height : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.dataset['testid'] === 'board-parent') return rect(0, 0, boardSize.width, boardSize.height);
+      if (this.dataset['testid'] === 'toolbar') return rect(4, 6, 140, toolbarHeight.value);
+      return rect(0, 0, 0, 0);
+    });
+    globalThis.ResizeObserver = class {
+      readonly entry: FakeObserver = { callback: () => undefined, observed: [], disconnect: vi.fn() };
+      constructor(callback: () => void) {
+        this.entry.callback = callback;
+        observers.push(this.entry);
+      }
+      observe(element: Element) { this.entry.observed.push(element); }
+      unobserve() { /* no-op */ }
+      disconnect() { this.entry.disconnect(); }
+    } as unknown as typeof ResizeObserver;
+    const geometry = buildGeometry('hex-r2');
+    const view = makeView();
+    const ui = (anchor?: { x: number; y: number }) => <LocaleProvider locale="en">
+      <div data-testid="board-parent">
+        <div className="board__toolbar--side" data-testid="toolbar">toolbar</div>
+        <TargetPicker geometry={geometry} board={view.board} topology={geometry.topology} kind="edge"
+          targets={[5]} nameOf={() => 'Alex'} onChoose={vi.fn()} {...(anchor ? { anchor } : {})} />
+      </div>
+    </LocaleProvider>;
+    const rendered = render(ui());
+    return { toolbarHeight, boardSize, pickerSize, ui, ...rendered };
+  }
+
+  it('keeps the popover below the actual toolbar bottom instead of a fixed height', () => {
+    const { ui, rerender } = setup(40);
+    // 錨點靠上：未夾限時 top = 10 + 14 = 24，會落在工具列內。
+    rerender(ui({ x: 100, y: 10 }));
+    expect(picker().style.top).toBe('50px'); // 6 + 40 + 4
+  });
+
+  it('clears a toolbar that wrapped to several rows', () => {
+    const { ui, rerender } = setup(140);
+    rerender(ui({ x: 100, y: 10 }));
+    expect(picker().style.top).toBe('150px'); // 6 + 140 + 4
+  });
+
+  it('repositions when the parent or toolbar resizes and disconnects on unmount', () => {
+    const { ui, rerender, toolbarHeight, boardSize, unmount } = setup(40);
+    rerender(ui({ x: 100, y: 10 }));
+    expect(picker().style.top).toBe('50px');
+    const observer = observers[observers.length - 1]!;
+    expect(observer.observed.map((element) => (element as HTMLElement).dataset['testid'])).toEqual(['board-parent', 'toolbar', 'target-picker']);
+    // 視窗變窄，工具列換成三列。
+    toolbarHeight.value = 140;
+    boardSize.width = 360;
+    observer.callback();
+    expect(picker().style.top).toBe('150px');
+    expect(Number.parseFloat(picker().style.left)).toBeLessThanOrEqual(360 - 200 - 8);
+    expect(observer.disconnect).not.toHaveBeenCalled();
+    unmount();
+    expect(observer.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('also reacts to window resize and stops listening after unmount', () => {
+    const { ui, rerender, toolbarHeight, unmount } = setup(40);
+    rerender(ui({ x: 100, y: 10 }));
+    toolbarHeight.value = 100;
+    fireEvent(window, new Event('resize'));
+    expect(picker().style.top).toBe('110px');
+    const removed = vi.spyOn(window, 'removeEventListener');
+    unmount();
+    expect(removed).toHaveBeenCalledWith('resize', expect.any(Function));
+  });
+
+  it('returns below the toolbar when the anchor goes away and keeps observing', () => {
+    const { ui, rerender } = setup(40);
+    rerender(ui({ x: 100, y: 200 }));
+    const observer = observers[observers.length - 1]!;
+    rerender(ui());
+    expect(observer.disconnect).toHaveBeenCalledTimes(1);
+    expect(picker().style.top).toBe('50px');
+    expect(picker().style.left).toBe('8px');
+    expect(observers[observers.length - 1]!.observed).toContain(picker());
+  });
+
+  it('positions an unanchored picker below a wrapped toolbar on mount and resize', () => {
+    const { toolbarHeight, boardSize } = setup(140);
+    expect(picker().style.top).toBe('150px');
+    expect(picker().style.left).toBe('8px');
+    toolbarHeight.value = 180;
+    boardSize.width = 360;
+    observers[observers.length - 1]!.callback();
+    expect(picker().style.top).toBe('190px');
+    toolbarHeight.value = 100;
+    fireEvent(window, new Event('resize'));
+    expect(picker().style.top).toBe('110px');
+  });
+
+  it('retains its observer for equal anchor coordinates and repositions when the picker grows', () => {
+    const { ui, rerender, pickerSize } = setup(40);
+    rerender(ui({ x: 300, y: 200 }));
+    const observer = observers[observers.length - 1]!;
+    const count = observers.length;
+    rerender(ui({ x: 300, y: 200 }));
+    expect(observers).toHaveLength(count);
+    expect(observer.disconnect).not.toHaveBeenCalled();
+    expect(observer.observed).toContain(picker());
+    expect(picker().style.left).toBe('314px');
+    pickerSize.width = 400;
+    observer.callback();
+    expect(picker().style.left).toBe('8px');
+  });
+
+  it('positions without an anchor and tolerates a missing ResizeObserver', () => {
+    const { ui, rerender } = setup(40);
+    rerender(ui());
+    expect(picker().style.top).toBe('50px');
+    expect(picker().style.left).toBe('8px');
+    // @ts-expect-error 模擬沒有 ResizeObserver 的環境
+    delete globalThis.ResizeObserver;
+    rerender(ui({ x: 100, y: 10 }));
+    expect(picker().style.top).toBe('50px');
   });
 });

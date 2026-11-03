@@ -9,18 +9,26 @@ import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import { SEA_LEVEL } from '../sea.ts';
 import { ROAD_ARRIVAL_TRANSFORM_MS } from './model-specs.ts';
 
-type Props = Pick<BoardSceneProps, 'geometry' | 'board' | 'players' | 'active' | 'motionAllowed' | 'quality' | 'seafarers'> & {
+type Props = Pick<BoardSceneProps, 'geometry' | 'board' | 'players' | 'arrivals' | 'motionAllowed' | 'quality' | 'seafarers'> & {
   material: Material;
 };
 
-function PlayerShips({ color, seat, items, material, quality, active, motionAllowed }: Omit<Props, 'geometry' | 'board' | 'players' | 'seafarers'> & {
+function PlayerShips({ color, seat, items, material, quality, motionAllowed }: Omit<Props, 'geometry' | 'board' | 'players' | 'seafarers'> & {
   color: string; seat: number; items: ReturnType<typeof shipInstances>;
 }) {
   const model = useDioramaGeometry(() => createShipModel(color, seat), [color, seat]);
-  const groups = useMemo(() => [items.filter((item) => !item.arriving), items.filter((item) => item.arriving)], [items]);
-  return groups.map((group, arriving) => group.length ? <InstancedPrimitive key={arriving} geometry={model} material={material}
-    instances={group} castShadow={quality === 'standard'} animationKey={arriving ? active?.id ?? null : null}
-    durationMs={ROAD_ARRIVAL_TRANSFORM_MS} motionAllowed={motionAllowed} /> : null);
+  const groups = useMemo(() => {
+    const grouped = new Map<string | null, typeof items>();
+    for (const item of items) {
+      const group = grouped.get(item.arrivalKey) ?? [];
+      group.push(item);
+      grouped.set(item.arrivalKey, group);
+    }
+    return [...grouped.entries()];
+  }, [items]);
+  return groups.map(([key, group]) => <InstancedPrimitive key={key ?? 'rest'} geometry={model} material={material}
+    instances={group} castShadow={quality === 'standard'} animationKey={key}
+    durationMs={ROAD_ARRIVAL_TRANSFORM_MS} motionAllowed={motionAllowed} />);
 }
 
 function IslandTokens({ color, vertices, geometry, material }: Pick<Props, 'geometry' | 'material'> & { color: string; vertices: number[] }) {
@@ -37,7 +45,7 @@ function IslandTokens({ color, vertices, geometry, material }: Pick<Props, 'geom
 /** Ships, the pirate and island-bonus tokens; nothing for base games. */
 export function DioramaSeafarers(props: Props) {
   const { geometry, board, players, seafarers, material, quality } = props;
-  const ships = useMemo(() => shipInstances(geometry, board, props.active), [geometry, board, props.active]);
+  const ships = useMemo(() => shipInstances(geometry, board, props.arrivals), [geometry, board, props.arrivals]);
   const pirateModel = useDioramaGeometry(createPirateModel, []);
   if (!seafarers) return null;
   const pirate = pirateTransform(geometry, board);

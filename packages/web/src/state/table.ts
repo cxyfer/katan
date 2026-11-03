@@ -23,6 +23,7 @@ import type { RoomQuery } from '../api/client.ts';
 import { diceRollPresentations } from '../board/animation.ts';
 import type { SocketStatus } from '../api/socket.ts';
 import { chatReducer, initialChatState, type ChatEvent, type ChatState } from './chat.ts';
+import { initialBootProgress, type BootProgress, type BootStepId, type BootStepStatus } from './boot.ts';
 import { t } from '../i18n/index.ts';
 import {
   commandReducer,
@@ -62,6 +63,15 @@ export interface Selection {
   field?: string;
 }
 
+/**
+ * 需要先選資源的發展卡（壟斷、豐收之年）：拖到桌面中央後先在上方選資源，確認才真正打出。
+ * `queued` 是豐收之年已確認、等伺服器開啟領取步驟後依序送出的資源。
+ */
+export interface DevCardChoice {
+  card: 'monopoly' | 'yearOfPlenty';
+  queued: Resource[];
+}
+
 export const EMPTY_SELECTION: Selection = {
   kind: null,
   index: null,
@@ -87,6 +97,8 @@ export interface TableState {
   screen: Screen;
   locale: Locale;
   bootstrapped: boolean;
+  /** 啟動期間各請求的進度，供啟動畫面顯示。 */
+  boot: BootProgress;
   /** Committed display name; `draftNickname` is the un-submitted entry draft. */
   nickname: string;
   draftNickname: string;
@@ -111,8 +123,11 @@ export interface TableState {
   command: PendingCommand | null;
   save: SaveState;
   chat: ChatState;
+  /** 本地交易偏好：自己資源不足的提案由客戶端代為拒絕（docs/SPEC.md §4.5）。 */
+  tradeAutoDecline: boolean;
   drawer: DrawerPanel;
   selection: Selection;
+  devCardChoice: DevCardChoice | null;
   /** 擲骰演出進行中（含排隊中的骰子）；後續動作選項與資源演出等它結束才出現。 */
   dicePresenting: boolean;
   /** 擲骰演出期間凍結的擲骰前狀態，點數揭曉前不從手牌、玩家列表或紀錄透露結果。 */
@@ -129,6 +144,7 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     screen: 'entry',
     locale,
     bootstrapped: false,
+    boot: initialBootProgress(),
     nickname,
     draftNickname: nickname,
     session: null,
@@ -150,8 +166,10 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     command: null,
     save: { status: 'idle' },
     chat: initialChatState(),
+    tradeAutoDecline: false,
     drawer: 'none',
     selection: EMPTY_SELECTION,
+    devCardChoice: null,
     dicePresenting: false,
     rollHold: null,
     toast: null,
@@ -163,6 +181,7 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
 
 export type TableAction =
   | { type: 'bootstrapped'; session: PlayerIdentity | null; config: ServerConfigView; profiles: ProfileView[]; games: ResumableGameView[]; locale: Locale; nickname: string }
+  | { type: 'boot-step'; step: BootStepId; status: BootStepStatus }
   | { type: 'locale'; locale: Locale }
   | { type: 'draft-nickname'; value: string }
   | { type: 'nickname'; value: string }
@@ -184,8 +203,10 @@ export type TableAction =
   | { type: 'command'; event: CommandEvent }
   | { type: 'save'; state: SaveState }
   | { type: 'chat'; event: ChatEvent }
+  | { type: 'trade-auto-decline'; value: boolean }
   | { type: 'drawer'; drawer: DrawerPanel }
   | { type: 'selection'; selection: Selection }
+  | { type: 'dev-card-choice'; choice: DevCardChoice | null }
   | { type: 'dice-presenting'; value: boolean }
   | { type: 'toast'; notice: Notice | null }
   | { type: 'announce'; announcement: Announcement | null }
@@ -282,6 +303,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         draftNickname: state.draftNickname === '' ? action.nickname : state.draftNickname,
         screen: action.session ? 'home' : 'entry',
       };
+    case 'boot-step':
+      return { ...state, boot: { ...state.boot, [action.step]: action.status } };
     case 'locale':
       // Locale is display-only: drafts, selections and command ids survive.
       return { ...state, locale: action.locale };
@@ -320,6 +343,7 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         ...state,
         room,
         roomError: null,
+        devCardChoice: room ? state.devCardChoice : null,
         screen: state.screen === 'entry' ? state.screen : nextScreen,
       };
     }
@@ -342,6 +366,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         ...state,
         ...holdForRoll(state, snapshot && current?.gameId === snapshot.gameId ? snapshot.view.events : []),
         game: snapshot,
+        // 換局或離開對局時，上一局未完成的發展卡資源選擇不能帶到下一局。
+        devCardChoice: snapshot && current?.gameId === snapshot.gameId ? state.devCardChoice : null,
         gameSync: { generation, cause: state.gameSyncPending ? state.gameSync.cause : (action.cause ?? 'snapshot') },
         gameSyncPending: false,
         screen: snapshot ? (terminal ? 'result' : 'game') : state.screen,
@@ -380,6 +406,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       return { ...state, save: action.state };
     case 'chat':
       return { ...state, chat: chatReducer(state.chat, action.event) };
+    case 'trade-auto-decline':
+      return state.tradeAutoDecline === action.value ? state : { ...state, tradeAutoDecline: action.value };
     case 'drawer':
       return {
         ...state,
@@ -388,6 +416,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       };
     case 'selection':
       return { ...state, selection: action.selection };
+    case 'dev-card-choice':
+      return { ...state, devCardChoice: action.choice };
     case 'dice-presenting':
       if (state.dicePresenting === action.value) return state;
       return action.value ? { ...state, dicePresenting: true } : { ...state, dicePresenting: false, rollHold: null };

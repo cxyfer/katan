@@ -41,7 +41,8 @@ describe('fallback policy', () => {
         const supply = players >= 5 ? 24 * 5 : 19 * 5;
         expect(total + bank).toBe(supply);
       }
-    });
+    // 每個人數連跑三個種子、各 800 步；沿用完整遊戲回歸的時間預算。
+    }, 30_000);
   }
 
   it('leaves seats without a duty alone', () => {
