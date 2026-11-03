@@ -286,7 +286,7 @@ endpoint instead of the removed create-room bot count.
   until the replacement, retaining the existing award boundary.
 - Service tests exercise brick-only and cloth-only pirate victims through
   real move and steal commands, first/replayed HTTP receipts, durable state,
-  per-seat HTTP projections, actual WS snapshots/events and the HTTP events
+  per-seat HTTP projections, actual WS snapshots and the HTTP events
   route. Nonrecipients receive no private payload or stolen-card identity;
   participants retain the result. Replaying the command does not steal again.
 - Client tests deliver the first-attack roll both snapshot-first and
@@ -318,3 +318,62 @@ The server's 15 skips are the existing PostgreSQL contract/migration cases
 without `TEST_POSTGRES_URL`. Web did not time out; the requested fallback
 rerun was unnecessary. Build emitted the existing large-chunk advisory;
 the build succeeded and no size or test-timeout limits were changed.
+
+## Review of bc5af84 — Road Building and privacy assertions (2026-11-03)
+
+### H1 — semantic conflict in the free-route grant
+
+The stage-two text-preservation check did not prove semantic compatibility.
+Release's C&K Road Building fix allowed a first road to open a second
+site, but counted road pieces only. Consequently the combined game granted
+zero placements with no legal land edge or no road pieces, and only one
+placement with one road piece, even when ships remained available.
+
+The correction makes `RulesKit.freeRouteTargets` and `normalizedPending`
+share `freeRouteCapacity`: remaining road pieces when at least one road
+can start, plus the profile modules' free pieces. The Seafarers hook caps
+its contribution by both legal ship edges and remaining ship pieces.
+`placedFreeRoute` already checks roads and module pieces after every
+placement. The base development-card grant retains its existing
+target-count behavior; pure C&K retains the first-road-opens-second-site
+behavior and has no ship contribution. No state format or new compatibility
+branch is introduced.
+
+Five added COMB-0 cases in `sfck-clauses.test.ts` cover:
+
+- No legal land edges, all 15 road pieces used, or one road piece left:
+  each grants two routes, survives JSON restoration before both placements,
+  and completes two placements through the existing combined simulator's
+  forced-action selector.
+- Zero or one ship piece left: grants are capped accordingly, the final
+  ship completes the effect, and an overlarge restored pending grant is
+  normalized to one in both execution and projection.
+
+SF+CK bot seats remain disabled. The automated-choice coverage exercises
+the combined simulator's existing pending handler, including its ship
+fallback, rather than enabling unsupported production bot profiles.
+The original failing cases were reproduced before the source correction.
+The focused rules checks (COMB-0, pure C&K PC-RB1–6, base rule gaps and
+Seafarers routes) passed: 4 files, 122 tests.
+
+### L1 — nonempty privacy assertions on real delivery paths
+
+Removed the unused WS `events` message collection: this coordinator pushes
+snapshots. HTTP and actual WS snapshots must each contain exactly one
+`robber.stole` with the correct public actor/victim/pirate parameters for
+every seat. The bystander's concrete event must omit `resource`, while
+both participants see the stolen card. The first and replayed actor
+receipts are still checked. The HTTP events route explicitly omits the
+private event for the bystander and returns it to each participant.
+
+The service test name and the stage-two description above now refer to WS
+snapshots. Both brick and cloth cases pass with the stronger assertions;
+the combined service file passed all 4 tests.
+
+### H1/L1 verification
+
+`pnpm verify` passed on the first full run with exit status 0: workspace
+typecheck; rules 480, protocol 8, bots 48, server 163, web 694 tests passed;
+web/server builds; smoke 13/13; development runner 1/1. The server retained
+the same 15 PostgreSQL skips without `TEST_POSTGRES_URL`. Web did not time
+out, so the fallback rerun was unnecessary. No timeout was changed.

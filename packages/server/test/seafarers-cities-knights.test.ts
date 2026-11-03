@@ -45,7 +45,7 @@ async function snapshot(client: TestClient, gameId: string): Promise<CombinedVie
 }
 
 describe('Seafarers + Cities & Knights over the API', () => {
-  it.each(['brick', 'cloth'] as const)('keeps a pirate-stolen %s private through receipts, snapshots, WS and events', async (card) => {
+  it.each(['brick', 'cloth'] as const)('keeps a pirate-stolen %s private in receipts, HTTP/WS snapshots and event history', async (card) => {
     const clients = await Promise.all([1, 2, 3].map((index) => harness.client(`PiratePrivacy${index}`)));
     const host = clients[0]!;
     const room = host.expectOk<{ id: string; code: string }>(await host.post('/api/rooms', {
@@ -106,18 +106,24 @@ describe('Seafarers + Cities & Knights over the API', () => {
         const http = feed.client.expectOk<GameSnapshot>(await feed.client.get(`/api/games/${gameId}`));
         const ws = feed.messages.findLast((message) => message.type === 'snapshot') as Extract<ServerMessage, { type: 'snapshot' }>;
         const events = feed.client.expectOk<{ events: CommandReceipt['events'] }>(await feed.client.get(`/api/games/${gameId}/events?after=0`));
-        const wsEvents = feed.messages.flatMap((message) => message.type === 'events' ? message.payload.events : []);
-        for (const batch of [receipt.events, http.view.events, ws.payload.view.events, events.events, wsEvents]) {
-          if (batch === receipt.events && feed.client !== actor) continue;
+        const batches = [http.view.events, ws.payload.view.events];
+        if (feed.client === actor) batches.push(receipt.events);
+        for (const batch of batches) {
           expect(batch.every((event) => event.private === undefined)).toBe(true);
           const thefts = batch.filter((event) => event.type === 'robber.stole');
+          expect(thefts).toHaveLength(1);
+          expect(thefts[0]!.params).toMatchObject({ playerId: actor.playerId, victim: victim.playerId, pirate: true });
           if (feed.client === bystander) {
-            for (const theft of thefts) expect(theft.params).not.toHaveProperty('resource');
-          } else if (batch !== wsEvents) {
-            expect(thefts).toHaveLength(1);
+            expect(thefts[0]!.params).not.toHaveProperty('resource');
+          } else {
             expect(thefts[0]!.params).toMatchObject({ resource: card });
           }
         }
+        // events 路由會省略非收件人的 private event；snapshot 保留遮蔽後的公開事件。
+        expect(events.events.every((event) => event.private === undefined)).toBe(true);
+        const historyThefts = events.events.filter((event) => event.type === 'robber.stole');
+        expect(historyThefts).toHaveLength(feed.client === bystander ? 0 : 1);
+        if (feed.client !== bystander) expect(historyThefts[0]!.params).toMatchObject({ resource: card });
         for (const snapshot of [http, ws.payload]) {
           for (const player of snapshot.view.players) {
             if (player.id === feed.client.playerId) continue;
