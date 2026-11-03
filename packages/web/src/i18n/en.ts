@@ -144,6 +144,9 @@ export const en: Catalog = {
   'table.fullscreenUnavailable': 'Fullscreen is unavailable in this browser',
   'table.fullscreenFailed': 'Fullscreen could not open. Try the button again or use your browser’s fullscreen control.',
   'table.landscapeHint': 'Rotate to landscape for the full table',
+  'table.rotatePrompt.title': 'Turn your device sideways',
+  'table.rotatePrompt.body': 'Landscape shows the full table. This message closes once you rotate.',
+  'table.rotatePrompt.continue': 'Continue in portrait',
 
   // --- entry ---------------------------------------------------------------
   'entry.heading': 'Enter the table',
