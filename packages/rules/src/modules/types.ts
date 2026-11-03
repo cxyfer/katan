@@ -61,9 +61,10 @@ export interface RulesKit {
    */
   completePending(state: GameState, rng?: Rng): void;
   /**
-   * Resolves the roll's base outcome: the 7 sequence or production, followed
-   * by the modules' `afterProduction` stages. A module that deferred the roll
-   * in `beforeProduction` calls this once its own frames are resolved.
+   * Resumes the remaining `beforeProduction` hooks after this module, then
+   * resolves the 7 sequence or production and the `afterProduction` stages.
+   * A deferring module calls this once from its own continuation or command.
+   * Later modules may defer again. Uses the context RNG unless one is passed.
    */
   resolveRollOutcome(state: GameState, roll: RollResult, rng?: Rng): void;
   /** Completes the current setup placement step (after its road/ship). */
