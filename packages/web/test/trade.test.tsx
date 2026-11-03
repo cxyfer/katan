@@ -193,6 +193,9 @@ describe('structured trading', () => {
 
     // Settlement is irreversible, so it is confirmed against the exact terms.
     const dialog = await screen.findByTestId('settle-dialog');
+    // 對話框必須脫離工具面板，否則 fixed backdrop 會被 translate/overflow 祖先裁切。
+    expect(dialog.closest('.trade-panel')).toBeNull();
+    expect(dialog.closest('.game-tools__surface')).toBeNull();
     expect(dialog.getAttribute('aria-modal')).toBe('true');
     expect(screen.getByTestId('settle-dialog-terms').textContent).toContain('Wool');
     expect(api.callsOf('sendCommand')).toHaveLength(0);
