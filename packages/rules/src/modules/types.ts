@@ -79,8 +79,9 @@ export interface RulesKit {
    */
   placedFreeRoute(state: GameState, playerId: string, rng?: Rng): void;
   /**
-   * Free Road Building placements available to a player now: legal roads
-   * capped by the road pieces left, plus module pieces such as ships.
+   * Free Road Building capacity, shared with pending normalization: road
+   * pieces left when a road has a legal start, plus module pieces such as
+   * ships. The first road may open the next site.
    */
   freeRouteTargets(state: GameState, playerId: string): number;
   /**

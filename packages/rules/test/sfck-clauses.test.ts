@@ -14,8 +14,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { isLandHex, scoreOf, topologyOf } from '../src/analysis.ts';
-import { actionHints, applyCommand, partnerSeat, routeLength } from '../src/engine.ts';
+import { countRoads, isLandEdge, isLandHex, isSeaEdge, scoreOf, topologyOf } from '../src/analysis.ts';
+import { actionHints, applyCommand, legalRoadEdges, normalizedPending, partnerSeat, routeLength } from '../src/engine.ts';
 import { getProfile } from '../src/profiles.ts';
 import { projectEvent, projectGame } from '../src/project.ts';
 import { edgesOfHex, verticesOfHex } from '../src/topology.ts';
@@ -46,6 +46,7 @@ import {
 import { forceTurn, give, scriptedRng, setHand } from './helpers.ts';
 import { corner, hex, settle, ship, side } from './seafarers-helpers.ts';
 import { afterFirstAttack, emptySfckGame, sfckGame } from './sfck-helpers.ts';
+import { pending as resolveSfckPending } from './sfck-sim.ts';
 
 const V28 = 28;
 const V11 = 11;
@@ -474,6 +475,84 @@ describe('R-COMB knights and ships (COMB-4/5, CK12-6, SF-FAQ 18, SFCK-3)', () =>
     const second = actCk(first.state, 'p1', { type: 'build.road', edge: edgeBetween(state, V28, V29) });
     expect(second.state.board.roads[edgeBetween(state, V10, V15)]).toEqual({ player: 'p1', ship: true });
     expect(second.state.pending).toBeNull();
+  });
+
+  function shipOnlyRoadBuilding(roadsUsed: number): GameState {
+    const state = emptySfckGame(4);
+    settle(state, 'p1', V28);
+    ship(state, 'p1', edgeBetween(state, V28, V11));
+    const topo = topologyOf(state);
+    if (roadsUsed === 0) {
+      for (const edge of topo.vertices[V28]!.edges) {
+        if (!state.board.roads[edge]) road(state, 'p2', edge);
+      }
+    } else {
+      const roads = topo.edges.map((_, edge) => edge).filter((edge) =>
+        isLandEdge(state, edge) && !topo.edges[edge]!.vertices.includes(V28));
+      expect(roads.length).toBeGreaterThanOrEqual(roadsUsed);
+      for (const edge of roads.slice(0, roadsUsed)) road(state, 'p1', edge);
+    }
+    handCards(state, 'p1', ['roadBuilding']);
+    return state;
+  }
+
+  it.each([
+    ['no land edges, only ships', 0],
+    ['all road pieces used, only ships', 15],
+    ['one road piece plus ships', 14],
+  ] as const)('COMB-0 grants two routes with %s, survives snapshots and finishes automatically', (_scenario, roadsUsed) => {
+    const state = shipOnlyRoadBuilding(roadsUsed);
+    expect(countRoads(state, 'p1')).toBe(roadsUsed);
+    expect(legalRoadEdges(state, 'p1').length > 0).toBe(roadsUsed > 0);
+    expect((actionHints(state, 'p1').modules!.seafarers as { legalShips: number[] }).legalShips.length).toBeGreaterThanOrEqual(2);
+    const played = playCard(state, 'p1', 'roadBuilding');
+    expect(eventsOf(played, 'ck.freeRoads')[0]!.params.roads).toBe(2);
+    expect(played.state.pending).toMatchObject({ kind: 'freeRoads', remaining: 2, granted: 2 });
+    const restored = JSON.parse(JSON.stringify(played.state)) as GameState;
+    expect(normalizedPending(restored)).toMatchObject({ remaining: 2 });
+    expect(projectGame(restored, 'p1').pending).toMatchObject({ remaining: 2 });
+    // 模擬器沿用正式 hints 選強制動作；只剩船時不能回傳 null 卡住。
+    const first = resolveSfckPending(restored, scriptedRng([]), 1)!;
+    expect(first).toBeTruthy();
+    expect(first.pending).toMatchObject({ remaining: 1 });
+    expect(first.log.at(-1)!.type).toBe(roadsUsed === 14 ? 'build.road' : 'ship.built');
+    const resumed = JSON.parse(JSON.stringify(first)) as GameState;
+    const second = resolveSfckPending(resumed, scriptedRng([]), 0)!;
+    expect(second).toBeTruthy();
+    expect(second.pending).toBeNull();
+    expect(second.log.findLast((event) => event.type === 'dev.roadBuildingFinished')!.params.placed).toBe(2);
+    expect(countRoads(second, 'p1')).toBe(roadsUsed + (roadsUsed === 14 ? 1 : 0));
+    expect(actionHints(second, 'p1').canEndTurn).toBe(true);
+  });
+
+  it.each([0, 1])('COMB-0 caps free ships at %i remaining pieces and completes after the last one', (remainingShips) => {
+    const state = shipOnlyRoadBuilding(15);
+    const keep = new Set([
+      edgeBetween(state, V11, V10),
+      edgeBetween(state, V11, V6),
+    ]);
+    const filler = topologyOf(state).edges.map((_, edge) => edge)
+      .filter((edge) => isSeaEdge(state, edge) && !state.board.roads[edge] && !keep.has(edge));
+    for (const edge of filler.slice(0, 14 - remainingShips)) ship(state, 'p1', edge);
+    if (remainingShips === 1) {
+      expect((actionHints(state, 'p1').modules!.seafarers as { legalShips: number[] }).legalShips.length).toBeGreaterThan(1);
+      const legacy = JSON.parse(JSON.stringify(state)) as GameState;
+      legacy.pending = { kind: 'freeRoads', actor: 'p1', remaining: 2, granted: 2 };
+      expect(normalizedPending(legacy)).toMatchObject({ remaining: 1, granted: 1 });
+      expect(projectGame(legacy, 'p1').pending).toMatchObject({ remaining: 1 });
+    }
+    const played = playCard(state, 'p1', 'roadBuilding');
+    expect(eventsOf(played, 'ck.freeRoads')[0]!.params.roads).toBe(remainingShips);
+    if (remainingShips === 0) {
+      expect(played.state.pending).toBeNull();
+    } else {
+      const restored = JSON.parse(JSON.stringify(played.state)) as GameState;
+      expect(normalizedPending(restored)).toMatchObject({ remaining: 1 });
+      const completed = resolveSfckPending(restored, scriptedRng([]), 0)!;
+      expect(completed).toBeTruthy();
+      expect(completed.pending).toBeNull();
+      expect(completed.log.findLast((event) => event.type === 'dev.roadBuildingFinished')!.params.placed).toBe(1);
+    }
   });
 });
 

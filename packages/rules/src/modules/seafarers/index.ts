@@ -15,6 +15,7 @@ import { moveBandit, pirateTargets } from './pirate.ts';
 import {
   buildShip,
   buildableShipEdges,
+  countShips,
   legalShipEdges,
   movableShips,
   moveShip,
@@ -35,7 +36,8 @@ export const seafarersModule: RulesModule = {
   allowBuilding,
 
   freeRouteTargets(state, playerId, ctx) {
-    return buildableShipEdges(state, playerId, ctx.profile.pieces.ships).length;
+    const pieces = Math.max(0, ctx.profile.pieces.ships - countShips(state, playerId));
+    return Math.min(buildableShipEdges(state, playerId, ctx.profile.pieces.ships).length, pieces);
   },
 
   legalShips(state, playerId, ctx) {

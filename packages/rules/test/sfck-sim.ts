@@ -56,7 +56,7 @@ function pirateBait(state: GameState, targets: readonly (number | null)[]): numb
   return targets.filter((hex): hex is number => hex !== null && hex !== state.board.pirate && near.has(hex));
 }
 
-function pending(state: GameState, rng: Rng, step: number): GameState | null | undefined {
+export function pending(state: GameState, rng: Rng, step: number): GameState | null | undefined {
   const frame = state.pending;
   if (!frame) return undefined;
   // A chased pirate goes to any other sea hex, or the frame.
