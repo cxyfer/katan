@@ -6,7 +6,7 @@
  * order) are never serialised into another player's payload.
  */
 
-import { scoreOf, topologyOf, totalResources } from './analysis.ts';
+import { scoreOf, topologyOf, totalCards } from './analysis.ts';
 import { effectivePending } from './engine.ts';
 import { rulesModulesOf } from './modules/registry.ts';
 import type { PublicModulePendingView } from './modules/types.ts';
@@ -129,7 +129,7 @@ function publicPlayerView(
     nickname: player.nickname,
     seat: player.seat,
     color: player.color,
-    handSize: totalResources(player),
+    handSize: totalCards(player),
     devCardCount: player.devCards.length,
     newDevCardCount: player.newDevCards.length,
     playedKnights: player.playedKnights,

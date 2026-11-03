@@ -18,9 +18,10 @@ import type {
   RoomView,
   ServerConfigView,
 } from '@catan/protocol';
-import type { Resource } from '@catan/rules';
+import type { CardKind, Resource } from '@catan/rules';
 import type { RoomQuery } from '../api/client.ts';
 import { diceRollPresentations } from '../board/animation.ts';
+import { citiesKnightsView } from '../board/citiesKnights.ts';
 import type { SocketStatus } from '../api/socket.ts';
 import { chatReducer, initialChatState, type ChatEvent, type ChatState } from './chat.ts';
 import { initialBootProgress, type BootProgress, type BootStepId, type BootStepStatus } from './boot.ts';
@@ -34,10 +35,12 @@ import {
 export type Screen = 'entry' | 'home' | 'lobby' | 'game' | 'result';
 
 export interface RollHold {
-  /** 擲骰前的本人手牌；手牌不可見時為 null。 */
-  hand: Partial<Record<Resource, number>> | null;
+  /** 擲骰前的本人資源與商品手牌；手牌不可見時為 null。 */
+  hand: Partial<Record<CardKind, number>> | null;
   /** 擲骰前各玩家公開的手牌張數。 */
   handSizes: Readonly<Record<string, number>>;
+  /** C&K 面板的擲骰前投影，含 module、進步手牌及玩家分數。 */
+  citiesKnights: GameSnapshot['view'] | null;
   /** 擲骰前已知的最後事件序號。 */
   eventSeq: number;
 }
@@ -223,12 +226,13 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
   const fresh = events.filter((event) => event.seq > lastSeq);
   if (diceRollPresentations(current.gameId, fresh).length === 0) return {};
   if (state.dicePresenting) return {};
-  const own = current.view.players.find((player) => player.id === state.session?.id)?.resources;
+  const own = current.view.players.find((player) => player.id === state.session?.id);
   return {
     dicePresenting: true,
     rollHold: {
-      hand: own ? { ...own } : null,
+      hand: own?.resources ? { ...own.resources, ...own.commodities } : null,
       handSizes: Object.fromEntries(current.view.players.map((player) => [player.id, player.handSize])),
+      citiesKnights: citiesKnightsView(current.view) ? current.view : null,
       eventSeq: lastSeq,
     },
   };
@@ -252,16 +256,24 @@ export function followUpsHeld(state: TableState): boolean {
   return state.dicePresenting || awaitingProjection(state);
 }
 
-/** 畫面上顯示的本人手牌：擲骰演出期間用擲骰前的數量。手牌不可見時為 undefined。 */
-export function shownHand(state: TableState): Partial<Record<Resource, number>> | undefined {
-  const own = state.game?.view.players.find((player) => player.id === state.session?.id)?.resources;
-  const held = activeHold(state)?.hand;
-  return own && held ? held : own;
+/** 畫面上顯示的本人資源與商品：擲骰演出期間用擲骰前的數量。手牌不可見時為 undefined。 */
+export function shownHand(state: TableState): Partial<Record<CardKind, number>> | undefined {
+  const own = state.game?.view.players.find((player) => player.id === state.session?.id);
+  if (!own?.resources) return undefined;
+  return activeHold(state)?.hand ?? { ...own.resources, ...own.commodities };
 }
 
 /** 玩家公開的手牌張數：擲骰演出期間用擲骰前的張數。 */
 export function shownHandSize(state: TableState, player: { id: string; handSize: number }): number {
   return activeHold(state)?.handSizes[player.id] ?? player.handSize;
+}
+
+/** C&K 狀態顯示共用擲骰前投影；手牌與 defender 分數也在 players，不能只凍結 module。 */
+export function shownCitiesKnights(state: TableState): GameSnapshot['view'] | null {
+  const hold = activeHold(state);
+  if (hold) return hold.citiesKnights;
+  const view = state.game?.view ?? null;
+  return citiesKnightsView(view) ? view : null;
 }
 
 /** 事件紀錄：擲骰演出期間只列出擲骰前已知的事件，並隱藏最新點數。 */

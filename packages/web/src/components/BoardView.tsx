@@ -5,13 +5,15 @@ import { useT } from '../i18n/context.tsx';
 import { buildGeometry } from '../board/geometry.ts';
 import { boardIntent } from '../board/intent.ts';
 import { seafarersView } from '../board/seafarers.ts';
+import { citiesKnightsView, knightFollowUp } from '../board/citiesKnights.ts';
+import { CitiesKnightsBadge } from './CitiesKnightsBadge.tsx';
 import type { TargetKind } from '../board/targets.ts';
 import { parseViewBox } from '../board/viewport.ts';
 import { useBoardAnimation } from '../board/useBoardAnimation.ts';
 import { MAX_CAMERA_ELEVATION, MIN_CAMERA_ELEVATION, useBoardViewport } from '../board/useBoardViewport.ts';
 import { rendererMode, qualityMode, type RendererMode, type ProjectionSnapshot, type BoardEffectAnchors, type CssRect } from '../board/render-contract.ts';
 import { sceneBounds } from '../board/three/bounds.ts';
-import { followUpsHeld, nameOf } from '../state/table.ts';
+import { followUpsHeld, nameOf, shownCitiesKnights } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
 import { BoardTargetOverlay } from './BoardTargetOverlay.tsx';
@@ -82,6 +84,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const intent = useMemo(() => followUpsHeld(state) && !state.selection.commandType ? null : boardIntent(state, selfId), [state, selfId]);
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
   const seaView = useMemo(() => seafarersView(view), [view?.modules]);
+  const ckView = useMemo(() => citiesKnightsView(view), [view?.modules]);
   const pickerAnchor = useMemo(() => pickerTarget
     ? targets.find((target) => target.kind === pickerTarget.kind && target.index === pickerTarget.index) ?? null
     : null, [pickerTarget, targets]);
@@ -143,6 +146,12 @@ export function BoardView({ controller }: { controller: TableController }) {
       actions.selectTarget({ kind: 'edge', index: null, commandType: 'ship.move', labelId: 'sf.move.target', params: { from: index }, field: 'to' });
       return;
     }
+    // Moving or displacing a knight: the knight first, then where it goes.
+    const followUp = knightFollowUp(intent.commandType, index);
+    if (followUp) {
+      actions.selectTarget(followUp);
+      return;
+    }
     const carried = state.selection.commandType === intent.commandType ? state.selection : null;
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId,
       ...(carried?.params ? { params: carried.params } : {}), ...(carried?.field ? { field: carried.field } : {}) });
@@ -165,7 +174,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const setupPiece = setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
   const setupMine = setupActor?.id === selfId;
   const selection = intent && state.connection === 'online' && selfId && state.selection.kind === intent.kind && state.selection.index !== null && intent.targets.includes(state.selection.index)
-    ? { kind: intent.kind, index: state.selection.index, playerId: selfId } : null;
+    ? { kind: intent.kind, index: state.selection.index, playerId: selfId, params: state.selection.params } : null;
   const setupGuide = setup && (
     <section className={`board__setup-guide${setupMine ? ' board__setup-guide--mine' : ''}`} data-testid="setup-guide" aria-live="polite">
       <div className="board__setup-title">
@@ -273,10 +282,12 @@ export function BoardView({ controller }: { controller: TableController }) {
 
       {view.turn.dice && (
         <span className="board__dice" data-presenting={hideStaticDice ? 'true' : undefined} aria-hidden={hideStaticDice ? true : undefined} role="img" aria-label={`${t('play.dice')}: ${view.turn.dice.join(' + ')}`} data-testid="dice-roll-animation">
-          {view.turn.dice.map((value, index) => <DieFace className="board__die" key={index} value={value} />)}
+          {view.turn.dice.map((value, index) => <DieFace className={`board__die${ckView && index === 1 ? ' board__die--red' : ''}`} key={index} value={value} />)}
           <span className="visually-hidden">{t('play.diceResult', { first: view.turn.dice[0], second: view.turn.dice[1], total: view.turn.dice[0] + view.turn.dice[1] })}</span>
         </span>
       )}
+
+      <CitiesKnightsBadge ck={citiesKnightsView(shownCitiesKnights(state))} />
 
       {focusedRoll && createPortal(
         <DicePresentation key={focusedRoll.id} dice={focusedRoll.dice} mandatory={!!view.pending} />,
@@ -286,7 +297,7 @@ export function BoardView({ controller }: { controller: TableController }) {
         aria-label={t(effective === 'r3f' ? 'a11y.boardRegion3d' : 'a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>
         {requested !== 'svg' && !failure && <div className="board__scene" aria-hidden="true" style={{ opacity: effective === 'r3f' ? 1 : 0 }}>
           <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
-            <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView}
+            <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView} citiesKnights={ckView}
               intent={intent} selection={selection} arrivals={animation.arrivals} viewport={controls.viewport} quality={quality}
               motionAllowed={animation.arrivals.length > 0} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />
           </Suspense></SceneBoundary>

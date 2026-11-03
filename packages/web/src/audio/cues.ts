@@ -47,6 +47,12 @@ export const SOUND_CUES = [
   'pirate.move',
   'gold.pick',
   'island.bonus',
+  // Cities & Knights
+  'barbarians.advance',
+  'barbarians.attack',
+  'knight.act',
+  'wall.build',
+  'city.improve',
 ] as const;
 
 export type SoundCue = (typeof SOUND_CUES)[number];
@@ -141,6 +147,22 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
       return 'gold.pick';
     case 'island.bonus':
       return 'island.bonus';
+    case 'ck.barbariansAdvanced':
+      return 'barbarians.advance';
+    case 'ck.barbariansAttack':
+      return 'barbarians.attack';
+    case 'ck.knightRecruited':
+    case 'ck.knightActivated':
+    case 'ck.knightPromoted':
+    case 'ck.knightMoved':
+    case 'ck.knightDisplaced':
+    case 'ck.knightChasedRobber':
+      return 'knight.act';
+    case 'ck.wallBuilt':
+      return 'wall.build';
+    case 'ck.cityImproved':
+    case 'ck.metropolisAwarded':
+      return 'city.improve';
     default:
       return null;
   }
@@ -152,6 +174,7 @@ const PRIORITY: Partial<Record<SoundCue, number>> = {
   'game.over': 9,
   'robber.stolenFromYou': 7,
   'robber.alert': 6,
+  'barbarians.attack': 6,
   'turn.yours': 5,
   'production.self': 4,
 };

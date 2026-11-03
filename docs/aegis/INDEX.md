@@ -5,6 +5,11 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-02 | work | docs/aegis/work/2026-11-02-cities-knights-core.md | Cities & Knights core (P2): CK25/CK56-25 sources, rule transcription, rules and evidence |
+| 2026-11-02 | artifact | scripts/cities-knights/capture.py | Live Cities & Knights browser run (test-only profile path): knights, walls, improvements, pillage, attack, 6-player map |
+| 2026-11-02 | artifact | scripts/cities-knights/topology.mjs | Edge endpoints for the Cities & Knights capture bot |
+| 2026-11-02 | artifact | docs/screenshots/cities-knights/report.json | 14-case Cities & Knights capture report with sha256 per image |
+| 2026-11-02 | artifact | docs/aegis/work/2026-11-02-cities-knights-core/base-compare-report.json | Base boards byte-identical to the P0 references |
 | 2026-11-02 | work | docs/aegis/work/2026-11-02-trade-auto-decline.md | Opt-in automatic decline for unaffordable trade offers |
 | 2026-11-02 | artifact | scripts/trade-auto-decline/verify.py | Trade auto-decline browser verification |
 | 2026-11-02 | artifact | docs/screenshots/trade-auto-decline/report.json | Trade auto-decline browser check results |

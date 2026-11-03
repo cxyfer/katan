@@ -250,16 +250,21 @@ export const PROFILES: readonly ProfileDefinition[] = [
     enabled: true,
   }),
 
+  // CK25 core rules in `modules/citiesKnights/` (P2). Implemented so fixtures
+  // and the browser harness can run it; enabled only once the progress-card
+  // effects (P3) exist.
   baseProfile('ck-2025', [3, 4], {
     ruleVersion: 'ck-2025.1',
     expansions: ['citiesKnights'],
-    sources: [{ id: 'B25', pages: 'entire rulebook' }, { id: 'CK25', pages: 'pp. 3–5' }],
+    sources: [{ id: 'B25', pages: 'entire rulebook' }, { id: 'CK25', pages: 'pp. 2–11, 13–16' }],
     requiredBoxes: ['base', 'citiesKnights'],
     victoryTarget: 13,
     devDeck: [],
     pieces: { ...BASE_PIECES, knights: 6 },
+    // 36 commodity cards, 12 of each (CK25 p. 3).
     commodityBankPerType: 12,
-    unavailableReasonKey: 'profile.unavailable.citiesKnights',
+    implemented: true,
+    unavailableReasonKey: 'profile.unavailable.citiesKnightsProgress',
   }),
 
   baseProfile('ck-paired-2025', [5, 6], {
@@ -267,16 +272,18 @@ export const PROFILES: readonly ProfileDefinition[] = [
     ruleVersion: 'ck-2025.1',
     expansions: ['citiesKnights'],
     sources: [
-      { id: 'B56-25', pages: 'p. 3' },
-      { id: 'CK25', pages: 'pp. 3–5' },
-      { id: 'CK56-25', pages: 'pp. 2–3' },
+      { id: 'B56-25', pages: 'pp. 3–4' },
+      { id: 'CK25', pages: 'pp. 2–11, 13–16' },
+      { id: 'CK56-25', pages: 'pp. 2–4' },
     ],
     requiredBoxes: ['base', 'base-5-6', 'citiesKnights', 'citiesKnights-5-6'],
     victoryTarget: 13,
     devDeck: [],
     pieces: { ...BASE_PIECES, knights: 6 },
-    commodityBankPerType: 12,
-    unavailableReasonKey: 'profile.unavailable.citiesKnights',
+    // 36 + 18 commodity cards, 18 of each (CK25 p. 3, CK56-25 pp. 2–3).
+    commodityBankPerType: 18,
+    implemented: true,
+    unavailableReasonKey: 'profile.unavailable.citiesKnightsProgress',
   }),
 
   baseProfile('sf-ck-new-shores-2025', [3, 4], {

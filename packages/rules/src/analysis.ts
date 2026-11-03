@@ -9,6 +9,7 @@ import { getProfile } from './profiles.ts';
 import { getTopology } from './topology-registry.ts';
 import { verticesOfHex, type BoardTopology } from './topology.ts';
 import {
+  COMMODITIES,
   RESOURCES,
   TERRAIN_RESOURCE,
   type GameState,
@@ -86,7 +87,23 @@ export function isSeaEdge(state: GameState, edge: number): boolean {
 
 export function isBlockedFor(state: GameState, vertex: number, playerId: string): boolean {
   const building = state.board.buildings[vertex];
-  return !!building && building.player !== playerId;
+  if (building) return building.player !== playerId;
+  const blocker = moduleVertexBlocker(state, vertex);
+  return blocker !== null && blocker !== playerId;
+}
+
+/**
+ * The owner of a rules-module piece holding `vertex` for route purposes
+ * (Cities & Knights knights), or null. Base profiles have no modules.
+ */
+export function moduleVertexBlocker(state: GameState, vertex: number): string | null {
+  const profile = getProfile(state.profileId);
+  if (!profile || profile.ruleModules.length === 0) return null;
+  for (const module of rulesModulesOf(profile)) {
+    const owner = module.vertexBlocker?.(state, vertex, { profile });
+    if (owner) return owner;
+  }
+  return null;
 }
 
 /**
@@ -283,6 +300,14 @@ export function totalResources(player: PlayerState): number {
   return RESOURCES.reduce((sum, resource) => sum + player.resources[resource], 0);
 }
 
+/**
+ * Cards in a player's hand: resources plus Cities & Knights commodities
+ * (always zero outside C&K). This is the hand a 7 or a robber looks at.
+ */
+export function totalCards(player: PlayerState): number {
+  return totalResources(player) + COMMODITIES.reduce((sum, commodity) => sum + (player.commodities?.[commodity] ?? 0), 0);
+}
+
 export interface ProductionShare {
   playerId: string;
   amount: number;
@@ -349,7 +374,7 @@ function rawProductionForHex(
  * 對同一資源的所有地形格一次套用銀行不足規則：合計需求超過庫存時，
  * 多名玩家則全部不發；僅一名玩家則依序發到庫存用完為止。
  */
-function applyBankLimit(results: ProductionResult[], available: number): ProductionResult[] {
+export function applyBankLimit(results: ProductionResult[], available: number): ProductionResult[] {
   const all = results.flatMap((result) => result.entitlements);
   const demand = all.reduce((sum, share) => sum + share.amount, 0);
   if (demand <= available) {

@@ -40,6 +40,11 @@ const DESCRIPTIONS: Record<SoundCue, string> = {
   'pirate.move': '海盜出航 · Pirate moves',
   'gold.pick': '金礦地選資源 · Gold chosen',
   'island.bonus': '登上新小島 · New island bonus',
+  'barbarians.advance': '蠻族船隻前進 · Barbarians sail closer',
+  'barbarians.attack': '蠻族來襲 · Barbarian attack',
+  'knight.act': '騎士行動 · Knight action',
+  'wall.build': '建造城牆 · City wall',
+  'city.improve': '城市改良 · City improvement',
 };
 
 function Waveform({ analysis }: { analysis: CueAnalysis | undefined }) {

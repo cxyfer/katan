@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { RESOURCES, type Offer, type Resource } from '@catan/rules';
+import { CARD_KINDS, RESOURCES, type CardKind, type Offer } from '@catan/rules';
+import { citiesKnightsView } from '../board/citiesKnights.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatResourceMap } from '../i18n/format.ts';
 import { Dialog } from './Dialog.tsx';
@@ -7,7 +8,7 @@ import { nameOf as resolveName, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/trade.css';
 
-type Terms = Partial<Record<Resource, number>>;
+type Terms = Partial<Record<CardKind, number>>;
 
 function emptyTerms(): Terms {
   return {};
@@ -16,10 +17,10 @@ function emptyTerms(): Terms {
 const TRADE_HINT_MS = 4000;
 
 /** 依目前手牌算出條件還缺多少；手牌不可見（例如旁觀）時不做本地檢查。 */
-export function tradeShortfall(owned: Partial<Record<Resource, number>> | undefined, needed: Terms): Terms | null {
+export function tradeShortfall(owned: Partial<Record<CardKind, number>> | undefined, needed: Terms): Terms | null {
   if (!owned) return null;
   const missing: Terms = {};
-  for (const resource of RESOURCES) {
+  for (const resource of CARD_KINDS) {
     const gap = (needed[resource] ?? 0) - (owned[resource] ?? 0);
     if (gap > 0) missing[resource] = gap;
   }
@@ -91,6 +92,9 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
 
   if (!view) return null;
   // 與手牌顯示一致：擲骰演出期間以擲骰前的數量檢查，不提前透露產出。
+  // Cities & Knights: commodities are hand cards and can be offered too.
+  const ckGame = citiesKnightsView(view) !== null;
+  const kinds: readonly CardKind[] = ckGame ? CARD_KINDS : RESOURCES;
   const owned = shownHand(state);
   const showHint = (scope: string, text: string) => setHint((current) => ({ id: (current?.id ?? 0) + 1, scope, text }));
   const hintFor = (scope: string) => hint?.scope === scope
@@ -105,7 +109,7 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
   const bump = (
     setter: (value: Terms) => void,
     terms: Terms,
-    resource: Resource,
+    resource: CardKind,
     delta: number,
   ) => {
     const next = { ...terms };
@@ -146,7 +150,7 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
               <fieldset key={side} className="trade-terms__side" data-testid={`trade-terms-${side}`}>
                 <legend>{t(side === 'give' ? 'play.tradeGive' : 'play.tradeWant')}</legend>
                 <ul className="term-list">
-                  {RESOURCES.map((resource) => {
+                  {kinds.map((resource) => {
                     const amount = terms[resource] ?? 0;
                     const have = side === 'give' ? owned?.[resource] : undefined;
                     // 付出不可超過手牌；按鈕保持可按，用提示說明原因而非無聲停用。

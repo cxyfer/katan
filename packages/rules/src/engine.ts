@@ -19,13 +19,14 @@ import {
   isLandHex,
   isLandVertex,
   longestRouteLength,
+  moduleVertexBlocker,
   neighborsOfVertex,
   playerById,
   productionForRoll,
   recomputeAwards,
   scoreOf,
   topologyOf,
-  totalResources,
+  totalCards,
 } from './analysis.ts';
 import { buildProfileLayout } from './layout-registry.ts';
 import type { CommandErrorCode } from './messages.ts';
@@ -53,8 +54,12 @@ import {
 import { getTopology } from './topology-registry.ts';
 import { verticesOfHex } from './topology.ts';
 import {
+  CARD_KINDS,
+  COMMODITIES,
   RESOURCES,
   type BoardState,
+  type CardKind,
+  type Commodity,
   type CommandError,
   type CommandOutcome,
   type DevCardType,
@@ -83,23 +88,23 @@ export type Command =
   | { type: 'dev.playRoadBuilding' }
   | { type: 'dev.playYearOfPlenty' }
   | { type: 'dev.playMonopoly'; resource: Resource }
-  | { type: 'pending.discard'; resources: Resource[] }
+  | { type: 'pending.discard'; resources: CardKind[] }
   | { type: 'pending.moveRobber'; hex: number | null }
   | { type: 'pending.steal'; victim: string }
   | { type: 'pending.takeResource'; resource: Resource }
-  | { type: 'trade.bank'; give: Resource; receive: Resource }
+  | { type: 'trade.bank'; give: CardKind; receive: CardKind }
   | {
       type: 'trade.offer';
       to: string | 'all';
-      give: Partial<Record<Resource, number>>;
-      want: Partial<Record<Resource, number>>;
+      give: Partial<Record<CardKind, number>>;
+      want: Partial<Record<CardKind, number>>;
     }
   | { type: 'trade.respond'; offerId: string; response: OfferResponse }
   | {
       type: 'trade.revise';
       offerId: string;
-      give: Partial<Record<Resource, number>>;
-      want: Partial<Record<Resource, number>>;
+      give: Partial<Record<CardKind, number>>;
+      want: Partial<Record<CardKind, number>>;
     }
   | { type: 'trade.withdraw'; offerId: string }
   | { type: 'trade.settle'; offerId: string; counterparty?: string };
@@ -419,6 +424,9 @@ function touchesOwnRoad(state: GameState, playerId: string, vertex: number, road
 function roadCanExtendFrom(state: GameState, playerId: string, vertex: number): boolean {
   const building = state.board.buildings[vertex];
   if (building) return building.player === playerId;
+  // A module piece (C&K knight) of another player closes the intersection too.
+  const blocker = moduleVertexBlocker(state, vertex);
+  if (blocker !== null && blocker !== playerId) return false;
   return touchesOwnRoad(state, playerId, vertex, true);
 }
 
@@ -608,6 +616,7 @@ export function applyCommand(
     return fail('E_INVALID_COMMAND', { reason: 'unknown-actor' });
   }
   if (state.result) return fail('E_GAME_OVER');
+  if (moduleDisabledCommand(state, command.type)) return fail('E_INVALID_COMMAND', { reason: 'not-in-ruleset' });
 
   const next = clone(state);
   normalizePending(next);
@@ -641,12 +650,71 @@ export function applyCommand(
 function trackPeakHands(state: GameState): void {
   for (const player of state.players) {
     const stats = playerStats(state, player.id);
-    stats.peakHand = Math.max(stats.peakHand, totalResources(player));
+    stats.peakHand = Math.max(stats.peakHand, totalCards(player));
   }
 }
 
 function modulePendingCommand(state: GameState, type: string): boolean {
   return modulesOf(state).some((module) => module.pendingCommands?.includes(type));
+}
+
+function moduleDisabledCommand(state: GameState, type: string): boolean {
+  return modulesOf(state).some((module) => module.disabledCommands?.includes(type));
+}
+
+/** Cities & Knights hands and trades include commodities. */
+function hasCommodities(state: GameState): boolean {
+  return requireProfile(state.profileId).commodityBankPerType > 0;
+}
+
+/** The card kinds a hand, a trade or a discard may use in this game. */
+function cardKindsOf(state: GameState): readonly CardKind[] {
+  return hasCommodities(state) ? CARD_KINDS : RESOURCES;
+}
+
+function isCommodity(card: CardKind): card is Commodity {
+  return (COMMODITIES as readonly string[]).includes(card);
+}
+
+function cardCount(player: PlayerState, card: CardKind): number {
+  return isCommodity(card) ? player.commodities[card] : player.resources[card];
+}
+
+/** Moves cards between a hand and the matching supply (negative = to the supply). */
+function moveCards(state: GameState, player: PlayerState, card: CardKind, amount: number): void {
+  if (isCommodity(card)) {
+    player.commodities[card] += amount;
+    state.commodityBank[card] -= amount;
+  } else {
+    player.resources[card] += amount;
+    state.bank[card] -= amount;
+  }
+}
+
+function supplyOf(state: GameState, card: CardKind): number {
+  return isCommodity(card) ? state.commodityBank[card] : state.bank[card];
+}
+
+function canAffordCards(player: PlayerState, cost: Partial<Record<CardKind, number>>): boolean {
+  return CARD_KINDS.every((card) => cardCount(player, card) >= (cost[card] ?? 0));
+}
+
+function transferCards(from: PlayerState, to: PlayerState, card: CardKind, amount: number): void {
+  if (isCommodity(card)) {
+    from.commodities[card] -= amount;
+    to.commodities[card] += amount;
+  } else {
+    from.resources[card] -= amount;
+    to.resources[card] += amount;
+  }
+}
+
+/** True while a module keeps the robber out of play (C&K before the first attack). */
+function robberInactive(state: GameState): boolean {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return false;
+  const ctx = viewContext(state);
+  return modules.some((module) => module.robberInactive?.(state, ctx) === true);
 }
 
 function dispatch(
@@ -682,7 +750,7 @@ function dispatch(
     case 'dev.playMonopoly':
       return playMonopoly(state, actorId, command.resource);
     case 'pending.discard':
-      return submitDiscard(state, actorId, command.resources);
+      return submitDiscard(state, actorId, command.resources, rng);
     case 'pending.moveRobber':
       return moveRobber(state, actorId, command.hex, rng);
     case 'pending.steal':
@@ -928,7 +996,7 @@ function resolveSeven(state: GameState): void {
   const modules = modulesOf(state);
   const ctx = viewContext(state);
   for (const player of state.players) {
-    const hand = totalResources(player);
+    const hand = totalCards(player);
     let limit = 7;
     for (const module of modules) if (module.discardLimit) limit = module.discardLimit(state, player, limit, ctx);
     if (hand > limit) required[player.id] = Math.floor(hand / 2);
@@ -936,7 +1004,7 @@ function resolveSeven(state: GameState): void {
   if (Object.keys(required).length > 0) {
     enqueuePending(state, { kind: 'discard', required, submitted: {} });
     emit(state, 'discard.required', { required });
-  } else {
+  } else if (!robberInactive(state)) {
     enqueuePending(state, {
       kind: 'moveRobber',
       actor: currentPlayer(state).id,
@@ -953,6 +1021,10 @@ function endTurn(state: GameState, actorId: string): CommandOutcome {
   if (state.turn.phase !== 'action') return fail('E_WRONG_PHASE', { phase: state.turn.phase });
   if (state.pending) return fail('E_PENDING_EFFECT', { pending: state.pending.kind });
   const profile = requireProfile(state.profileId);
+  for (const module of rulesModulesOf(profile)) {
+    const veto = module.beforeEndTurn?.(state, actorId, moduleContext(profile, null));
+    if (veto) return veto;
+  }
   emit(state, 'turn.ended', { playerId: actorId, pairedActor: state.turn.pairedActor });
 
   if (profile.paired && state.turn.pairedActor === 1) {
@@ -1097,7 +1169,7 @@ function buildCity(state: GameState, actorId: string, vertex: number): CommandOu
   const guard = requireActionPhase(state, actorId);
   if (guard) return guard;
   const building = state.board.buildings[vertex];
-  if (!building || building.player !== actorId || building.city) {
+  if (!building || building.player !== actorId || building.city || !modulesAllowCity(state, actorId, vertex)) {
     return fail('E_ILLEGAL_TARGET', { vertex });
   }
   const profile = requireProfile(state.profileId);
@@ -1114,6 +1186,13 @@ function buildCity(state: GameState, actorId: string, vertex: number): CommandOu
   afterBoardChange(state);
   checkVictory(state);
   return { ok: true, state, events: [] };
+}
+
+function modulesAllowCity(state: GameState, playerId: string, vertex: number): boolean {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return true;
+  const ctx = viewContext(state);
+  return modules.every((module) => module.allowCity?.(state, playerId, vertex, ctx) ?? true);
 }
 
 function buyDevCard(state: GameState, actorId: string, rng: Rng): CommandOutcome {
@@ -1234,7 +1313,7 @@ function stealCandidates(state: GameState, hex: number, actorId: string): string
     const building = state.board.buildings[vertex];
     if (!building || building.player === actorId) continue;
     const player = playerById(state, building.player);
-    if (player && totalResources(player) > 0) out.add(building.player);
+    if (player && totalCards(player) > 0) out.add(building.player);
   }
   return [...out];
 }
@@ -1317,7 +1396,7 @@ function playMonopoly(state: GameState, actorId: string, resource: Resource): Co
 // pending effects
 // ---------------------------------------------------------------------------
 
-function submitDiscard(state: GameState, actorId: string, resources: Resource[]): CommandOutcome {
+function submitDiscard(state: GameState, actorId: string, resources: CardKind[], rng: Rng): CommandOutcome {
   const pending = state.pending;
   if (!pending || pending.kind !== 'discard') {
     return fail('E_PENDING_EFFECT', { pending: pending?.kind ?? 'none' });
@@ -1329,26 +1408,32 @@ function submitDiscard(state: GameState, actorId: string, resources: Resource[])
     return fail('E_INVALID_DISCARD_COUNT', { required });
   }
   const player = playerById(state, actorId)!;
-  const counts: Partial<Record<Resource, number>> = {};
+  const kinds = cardKindsOf(state);
+  const counts: Partial<Record<CardKind, number>> = {};
   for (const resource of resources) {
-    if (!RESOURCES.includes(resource)) return fail('E_INVALID_SELECTION', { resource });
+    if (!kinds.includes(resource)) return fail('E_INVALID_SELECTION', { resource });
     counts[resource] = (counts[resource] ?? 0) + 1;
   }
-  for (const [resource, amount] of Object.entries(counts) as [Resource, number][]) {
-    if (player.resources[resource] < amount) {
-      return fail('E_INVALID_SELECTION', { resource, available: player.resources[resource] });
+  for (const [resource, amount] of Object.entries(counts) as [CardKind, number][]) {
+    if (cardCount(player, resource) < amount) {
+      return fail('E_INVALID_SELECTION', { resource, available: cardCount(player, resource) });
     }
   }
-  for (const [resource, amount] of Object.entries(counts) as [Resource, number][]) {
-    player.resources[resource] -= amount;
-    state.bank[resource] += amount;
+  const discardedResources: Partial<Record<Resource, number>> = {};
+  for (const [resource, amount] of Object.entries(counts) as [CardKind, number][]) {
+    moveCards(state, player, resource, -amount);
+    if (!isCommodity(resource)) discardedResources[resource] = amount;
   }
-  addResources(playerStats(state, actorId).discarded, counts);
+  addResources(playerStats(state, actorId).discarded, discardedResources);
   pending.submitted[actorId] = resources.slice();
   emit(state, 'discard.submitted', { playerId: actorId, count: resources.length });
 
   const outstanding = Object.keys(pending.required).filter((id) => !pending.submitted[id]);
   if (outstanding.length === 0) {
+    if (robberInactive(state)) {
+      completePending(state, rng);
+      return { ok: true, state, events: [] };
+    }
     const roller = currentPlayer(state).id;
     state.pending = { kind: 'moveRobber', actor: roller, cause: 'seven', pirate: false };
     emit(state, 'robber.moveRequired', { playerId: roller, cause: 'seven' });
@@ -1399,16 +1484,19 @@ function stealFrom(state: GameState, actorId: string, victim: string, rng: Rng):
   if (!pending.candidates.includes(victim)) return fail('E_NO_ELIGIBLE_VICTIM', { victim });
   const victimPlayer = playerById(state, victim);
   if (!victimPlayer) return fail('E_ILLEGAL_TARGET', { victim });
-  const pool: Resource[] = [];
-  for (const resource of RESOURCES) {
-    for (let i = 0; i < victimPlayer.resources[resource]; i++) pool.push(resource);
+  // Resources first, then commodities (always none outside C&K), so a base
+  // hand draws exactly as before.
+  const pool: CardKind[] = [];
+  for (const card of CARD_KINDS) {
+    for (let i = 0; i < cardCount(victimPlayer, card); i++) pool.push(card);
   }
   if (pool.length === 0) return fail('E_NO_ELIGIBLE_VICTIM', { victim });
   const resource = pool[rng.int(pool.length)]!;
-  victimPlayer.resources[resource] -= 1;
-  grant(playerById(state, actorId)!, resource, 1);
-  addResource(playerStats(state, actorId).stolen, resource);
-  addResource(playerStats(state, victim).robbed, resource);
+  transferCards(victimPlayer, playerById(state, actorId)!, resource, 1);
+  if (!isCommodity(resource)) {
+    addResource(playerStats(state, actorId).stolen, resource);
+    addResource(playerStats(state, victim).robbed, resource);
+  }
   completePending(state, rng);
   emit(
     state,
@@ -1423,47 +1511,75 @@ function stealFrom(state: GameState, actorId: string, victim: string, rng: Rng):
 // trading
 // ---------------------------------------------------------------------------
 
-function bankTrade(state: GameState, actorId: string, give: Resource, receive: Resource): CommandOutcome {
+function bankTrade(state: GameState, actorId: string, give: CardKind, receive: CardKind): CommandOutcome {
   const guard = requireActionPhase(state, actorId);
   if (guard) return guard;
-  if (!RESOURCES.includes(give) || !RESOURCES.includes(receive)) return fail('E_INVALID_SELECTION');
+  const kinds = cardKindsOf(state);
+  if (!kinds.includes(give) || !kinds.includes(receive)) return fail('E_INVALID_SELECTION');
   if (give === receive) return fail('E_INVALID_SELECTION', { reason: 'same-resource' });
-  if (state.bank[receive] <= 0) return fail('E_BANK_EMPTY', { resource: receive });
-  const rates = harborRates(state, actorId);
-  const rate = rates[give];
+  if (supplyOf(state, receive) <= 0) return fail('E_BANK_EMPTY', { resource: receive });
+  const rate = bankRateFor(state, actorId, give);
   const player = playerById(state, actorId)!;
-  if (player.resources[give] < rate) {
+  if (cardCount(player, give) < rate) {
     return fail('E_INSUFFICIENT_RESOURCES', { resource: give, required: rate });
   }
-  player.resources[give] -= rate;
-  state.bank[give] += rate;
-  player.resources[receive] += 1;
-  state.bank[receive] -= 1;
+  moveCards(state, player, give, -rate);
+  moveCards(state, player, receive, 1);
   const stats = playerStats(state, actorId);
   stats.bankTrades += 1;
-  addResource(stats.bankGiven, give, rate);
-  addResource(stats.bankReceived, receive);
+  if (!isCommodity(give)) addResource(stats.bankGiven, give, rate);
+  if (!isCommodity(receive)) addResource(stats.bankReceived, receive);
   emit(state, 'trade.bank', { playerId: actorId, give, receive, rate });
   return { ok: true, state, events: [] };
 }
 
-function normalizeTerms(terms: Partial<Record<Resource, number>>): Partial<Record<Resource, number>> {
-  const out: Partial<Record<Resource, number>> = {};
-  for (const resource of RESOURCES) {
+/**
+ * Supply rate for giving one card kind: the port rate for a resource; a
+ * commodity (C&K p. 7) only at 4:1 or a 3:1 port. Modules adjust it last
+ * (C&K trade level 3 lowers commodities to 2:1).
+ */
+function bankRateFor(state: GameState, playerId: string, give: CardKind): number {
+  const rates = harborRates(state, playerId);
+  let rate = isCommodity(give) ? (ownsGenericHarbor(state, playerId) ? 3 : 4) : rates[give];
+  const modules = modulesOf(state);
+  if (modules.length === 0) return rate;
+  const ctx = viewContext(state);
+  for (const module of modules) if (module.bankRate) rate = module.bankRate(state, playerId, give, rate, ctx);
+  return rate;
+}
+
+function ownsGenericHarbor(state: GameState, playerId: string): boolean {
+  const topo = topologyOf(state);
+  return state.board.layout.harbors.some((harbor) =>
+    harbor.type === 'generic' &&
+    (topo.edges[harbor.edge]?.vertices.some((vertex) => state.board.buildings[vertex]?.player === playerId) ?? false));
+}
+
+/** Resource bank rates after module adjustments (base: the port rates). */
+function bankRatesFor(state: GameState, playerId: string): Record<Resource, number> {
+  if (modulesOf(state).length === 0) return harborRates(state, playerId);
+  const out = {} as Record<Resource, number>;
+  for (const resource of RESOURCES) out[resource] = bankRateFor(state, playerId, resource);
+  return out;
+}
+
+function normalizeTerms(state: GameState, terms: Partial<Record<CardKind, number>>): Partial<Record<CardKind, number>> {
+  const out: Partial<Record<CardKind, number>> = {};
+  for (const resource of cardKindsOf(state)) {
     const amount = terms[resource] ?? 0;
     if (amount > 0) out[resource] = amount;
   }
   return out;
 }
 
-function termsTotal(terms: Partial<Record<Resource, number>>): number {
-  return RESOURCES.reduce((sum, resource) => sum + (terms[resource] ?? 0), 0);
+function termsTotal(terms: Partial<Record<CardKind, number>>): number {
+  return CARD_KINDS.reduce((sum, resource) => sum + (terms[resource] ?? 0), 0);
 }
 
 function createOffer(
   state: GameState,
   actorId: string,
-  command: { to: string | 'all'; give: Partial<Record<Resource, number>>; want: Partial<Record<Resource, number>> },
+  command: { to: string | 'all'; give: Partial<Record<CardKind, number>>; want: Partial<Record<CardKind, number>> },
 ): CommandOutcome {
   const guard = requireOpenWindow(state);
   if (guard) return guard;
@@ -1475,8 +1591,8 @@ function createOffer(
   if (actorId !== turnActor && command.to !== turnActor) {
     return fail('E_NOT_YOUR_TURN', { counterofferTo: turnActor });
   }
-  const give = normalizeTerms(command.give ?? {});
-  const want = normalizeTerms(command.want ?? {});
+  const give = normalizeTerms(state, command.give ?? {});
+  const want = normalizeTerms(state, command.want ?? {});
   if (termsTotal(give) === 0 || termsTotal(want) === 0) {
     return fail('E_INVALID_SELECTION', { reason: 'empty-terms' });
   }
@@ -1526,7 +1642,7 @@ function respondToOffer(
 function reviseOffer(
   state: GameState,
   actorId: string,
-  command: { offerId: string; give: Partial<Record<Resource, number>>; want: Partial<Record<Resource, number>> },
+  command: { offerId: string; give: Partial<Record<CardKind, number>>; want: Partial<Record<CardKind, number>> },
 ): CommandOutcome {
   const guard = requireOpenWindow(state);
   if (guard) return guard;
@@ -1534,8 +1650,8 @@ function reviseOffer(
   if (!offer) return fail('E_UNKNOWN_OFFER', { offerId: command.offerId });
   if (offer.from !== actorId) return fail('E_NOT_ACTOR');
   if (offer.status !== 'open') return fail('E_OFFER_CLOSED', { status: offer.status });
-  const give = normalizeTerms(command.give ?? {});
-  const want = normalizeTerms(command.want ?? {});
+  const give = normalizeTerms(state, command.give ?? {});
+  const want = normalizeTerms(state, command.want ?? {});
   if (termsTotal(give) === 0 || termsTotal(want) === 0) {
     return fail('E_INVALID_SELECTION', { reason: 'empty-terms' });
   }
@@ -1601,28 +1717,28 @@ function settleOffer(
   const proposer = playerById(state, offer.from)!;
   const partnerId = offer.to === 'all' ? other : offer.to;
   const partner = playerById(state, partnerId)!;
-  if (!canAfford(proposer, offer.give)) {
+  if (!canAffordCards(proposer, offer.give)) {
     return fail('E_INSUFFICIENT_RESOURCES', { playerId: proposer.id });
   }
-  if (!canAfford(partner, offer.want)) {
+  if (!canAffordCards(partner, offer.want)) {
     return fail('E_INSUFFICIENT_RESOURCES', { playerId: partner.id });
   }
-  pay(proposer, offer.give);
-  pay(partner, offer.want);
-  for (const resource of RESOURCES) {
-    const toPartner = offer.give[resource] ?? 0;
-    const toProposer = offer.want[resource] ?? 0;
-    if (toPartner > 0) grant(partner, resource, toPartner);
-    if (toProposer > 0) grant(proposer, resource, toProposer);
+  for (const card of CARD_KINDS) {
+    const toPartner = offer.give[card] ?? 0;
+    const toProposer = offer.want[card] ?? 0;
+    if (toPartner > 0) transferCards(proposer, partner, card, toPartner);
+    if (toProposer > 0) transferCards(partner, proposer, card, toProposer);
   }
   const proposerStats = playerStats(state, proposer.id);
   const partnerStats = playerStats(state, partner.id);
   proposerStats.playerTrades += 1;
   partnerStats.playerTrades += 1;
-  addResources(proposerStats.tradeGiven, offer.give);
-  addResources(proposerStats.tradeReceived, offer.want);
-  addResources(partnerStats.tradeGiven, offer.want);
-  addResources(partnerStats.tradeReceived, offer.give);
+  const give = resourceTerms(offer.give);
+  const want = resourceTerms(offer.want);
+  addResources(proposerStats.tradeGiven, give);
+  addResources(proposerStats.tradeReceived, want);
+  addResources(partnerStats.tradeGiven, want);
+  addResources(partnerStats.tradeReceived, give);
   offer.status = 'completed';
   offer.agreedWith = other;
   emit(state, 'trade.completed', {
@@ -1635,6 +1751,13 @@ function settleOffer(
   });
   checkVictory(state);
   return { ok: true, state, events: [] };
+}
+
+/** The resource part of trade terms (statistics count resources only). */
+function resourceTerms(terms: Partial<Record<CardKind, number>>): Partial<Record<Resource, number>> {
+  const out: Partial<Record<Resource, number>> = {};
+  for (const resource of RESOURCES) if (terms[resource]) out[resource] = terms[resource];
+  return out;
 }
 
 /**
@@ -1683,7 +1806,7 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
   const setupRoad = setupIsMine && setup!.stage === 'road';
   return {
     canRoll: isTurn && state.turn.phase === 'preroll' && !pending,
-    canEndTurn: inAction,
+    canEndTurn: inAction && !moduleEndTurnVeto(state, playerId),
     legalRoads:
       inAction || freeRoads
         ? legalRoadEdges(state, playerId)
@@ -1700,11 +1823,18 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
           .map((building, vertex) => ({ building, vertex }))
           .filter(({ building }) => !!building && building.player === playerId && !building.city)
           .map(({ vertex }) => vertex)
+          .filter((vertex) => modulesAllowCity(state, playerId, vertex))
       : [],
-    bankRates: harborRates(state, playerId),
+    bankRates: bankRatesFor(state, playerId),
     pendingKind: pending ? pending.kind : null,
     ...moduleHints(state, playerId),
   };
+}
+
+/** Whether a rules module would reject `turn.end` right now (advisory hint only). */
+function moduleEndTurnVeto(state: GameState, playerId: string): boolean {
+  const profile = requireProfile(state.profileId);
+  return rulesModulesOf(profile).some((module) => !!module.beforeEndTurn?.(state, playerId, moduleContext(profile, null)));
 }
 
 function moduleHints(state: GameState, playerId: string): { modules?: Record<string, unknown> } {

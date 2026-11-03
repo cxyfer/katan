@@ -1,4 +1,4 @@
-import type { Resource } from '@catan/rules';
+import { CARD_KINDS, type Resource } from '@catan/rules';
 import { useT } from '../i18n/context.tsx';
 import { blocksNewCommands } from '../state/commands.ts';
 import { requiredActionFor } from '../state/pending.ts';
@@ -7,6 +7,8 @@ import type { TableController } from '../state/useTable.ts';
 import { DevCardChoicePicker } from './DevCardChoicePicker.tsx';
 import { DiscardPicker } from './DiscardPicker.tsx';
 import { SeafarersPrompt } from './SeafarersPrompt.tsx';
+import { CitiesKnightsPrompt } from './CitiesKnightsPrompt.tsx';
+import { citiesKnightsView } from '../board/citiesKnights.ts';
 import { canPlayDevCard, ownYearOfPlenty } from './useDevCardChoice.ts';
 
 /**
@@ -106,7 +108,9 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
         <div className="prompt__body">
           <DiscardPicker
             required={required}
+            // Cities & Knights: commodities count towards the 7 and may be discarded.
             hand={shownHand(state)}
+            kinds={citiesKnightsView(view) ? CARD_KINDS : undefined}
             onSubmit={(resources) =>
               void actions.submitCommand({ type: 'pending.discard', resources }, 'play.pending.discardSubmit')
             }
@@ -153,6 +157,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       )}
 
       <SeafarersPrompt controller={controller} />
+      <CitiesKnightsPrompt controller={controller} />
 
       {/* Mandatory turn actions stay inside the prompt so a player never
           has to open a secondary tool surface to act (docs/SPEC.md §8.1/§8.4). */}

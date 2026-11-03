@@ -11,6 +11,8 @@ import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarke
 import { TerrainEmblem } from './TerrainArt.tsx';
 import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
 import { isShipCommand, seafarersView } from '../board/seafarers.ts';
+import { citiesKnightsView, isCitiesKnightsVertexCommand, isKnightCommand, knightGhost } from '../board/citiesKnights.ts';
+import { KnightPiece, SvgCitiesKnightsPieces, SvgCitiesKnightsWalls, ToppledCity, WallRing } from './SvgCitiesKnights.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
@@ -110,6 +112,7 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
   const ids = useMemo(() => boardArtIds(`board-art-${prefix}`), [prefix]);
   const board = view.board;
   const selfColor = playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white');
+  const ck = citiesKnightsView(view);
   return (
     <svg {...svgProps} ref={svgRef} className="board__svg" data-testid="board-svg" role="img" aria-label={t('a11y.boardRegion')} viewBox={geometry.viewBox} preserveAspectRatio="xMidYMid meet">
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
@@ -174,6 +177,8 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
             );
           })}
 
+          {ck && <SvgCitiesKnightsWalls geometry={geometry} view={view} ck={ck} nameResolver={nameResolver} />}
+
           {geometry.vertices.map((vertex) => {
             const building = board.buildings[vertex.index];
             if (!building) return null;
@@ -187,12 +192,16 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
                 {arrival && <ellipse key={arrival.id} className="board__drop-shadow" cx={vertex.x} cy={vertex.y + (building.city ? 12.3 : 11.2)}
                   rx={building.city ? 31 : 22} ry={building.city ? 8.4 : 7} fill="#071d28" aria-hidden="true" pointerEvents="none" />}
                 <g key={arrival?.id ?? 'rest'} className={arrival ? 'board__building-drop' : undefined}>
-                  <BoardBuilding x={vertex.x} y={vertex.y} city={building.city} color={color} />
+                  {ck?.toppled.includes(vertex.index)
+                    ? <ToppledCity x={vertex.x} y={vertex.y} color={color} />
+                    : <BoardBuilding x={vertex.x} y={vertex.y} city={building.city} color={color} />}
                 </g>
                 <title>{`${label} · ${nameResolver(building.player)}`}</title>
               </g>
             );
           })}
+
+          {ck && <SvgCitiesKnightsPieces geometry={geometry} view={view} ck={ck} nameResolver={nameResolver} />}
 
           {seafarersView(view)?.islandClaims.map((claim) => {
             const vertex = geometry.vertices[claim.vertex];
@@ -209,14 +218,18 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
               <title>{hex ? t('sf.board.pirate') : t('sf.board.pirateFrame')}</title>
             </g>;
           })()}
-          {geometry.hexes[board.robber] && (
+          {geometry.hexes[board.robber] && ck?.robberActive !== false && (
             <g data-testid="robber" aria-hidden="true">
               <RobberPiece {...robberSpot(geometry.hexes[board.robber]!, board.numbers[board.robber] != null)} ids={ids} />
             </g>
           )}
           {selection.index !== null && intent && selection.kind === intent.kind && intent.targets.includes(selection.index) && (
             <g className="board__preview-ghost" data-testid="board-preview-ghost" aria-hidden="true" pointerEvents="none">
-              {intent.kind === 'vertex' && geometry.vertices[selection.index] && <BoardBuilding x={geometry.vertices[selection.index]!.x} y={geometry.vertices[selection.index]!.y} city={intent.commandType === 'build.city'} color={selfColor} />}
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && isKnightCommand(intent.commandType)
+                && <KnightPiece {...geometry.vertices[selection.index]!} {...knightGhost(ck, intent.commandType, selection.index, selection.params)} color={selfColor} ghost />}
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && intent.commandType === 'build.wall'
+                && <WallRing {...geometry.vertices[selection.index]!} color={selfColor} />}
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && !isCitiesKnightsVertexCommand(intent.commandType) && <BoardBuilding x={geometry.vertices[selection.index]!.x} y={geometry.vertices[selection.index]!.y} city={intent.commandType === 'build.city'} color={selfColor} />}
               {intent.kind === 'edge' && geometry.edges[selection.index] && (isShipCommand(intent.commandType)
                 ? <ShipPiece {...edgeMidpoint(geometry.edges[selection.index]!)} angle={edgeAngle(geometry.edges[selection.index]!)} color={selfColor} ghost />
                 : <line {...inset(geometry.edges[selection.index]!)} stroke={selfColor} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />)}

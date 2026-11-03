@@ -80,7 +80,7 @@ describe('own resource cards descending into the hand', () => {
     const controller = (input: Input, dicePresenting: boolean): TableController => ({
       state: {
         ...initialTableState('en', ''), game: input.snapshot, gameSync: input.sync, session: makeIdentity(), dicePresenting,
-        rollHold: dicePresenting ? { hand: { lumber: 2, brick: 2, wool: 2, grain: 2, ore: 2 }, handSizes: {}, eventSeq: 12 } : null,
+        rollHold: dicePresenting ? { hand: { lumber: 2, brick: 2, wool: 2, grain: 2, ore: 2 }, handSizes: {}, citiesKnights: null, eventSeq: 12 } : null,
       },
       actions: {} as TableController['actions'], dispatch: vi.fn(),
     });
