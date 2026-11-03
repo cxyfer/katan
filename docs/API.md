@@ -29,7 +29,7 @@ Conventions:
 | PATCH | `/api/session` | `{ nickname?, locale? }` | `{ player }` |
 | GET | `/api/profiles` | – | `{ profiles: ProfileView[], selectable: string[] }` |
 | GET | `/api/rooms` | query `playerCount?`, `profileId?`, `hasSeats?` | `{ rooms: RoomSummaryView[] }` |
-| POST | `/api/rooms` | `{ visibility, capacity, profileId?, ruleset?, setupMode, orderMode?, policy?, bots?, botLevel? }` | `RoomView` |
+| POST | `/api/rooms` | `{ visibility, capacity, profileId?, ruleset?, setupMode, orderMode?, policy? }` | `RoomView` |
 | POST | `/api/rooms/join` | `{ code }` | `RoomView` |
 | GET | `/api/rooms/:roomId` | – | `RoomView` |
 | POST | `/api/rooms/:roomId/leave` | – | `{ left: true, hostTransferredTo: string \| null }` |
@@ -40,7 +40,7 @@ Conventions:
 | POST | `/api/rooms/:roomId/policy/consent` | `{ proposalId, approve }` | `RoomView` |
 | POST | `/api/rooms/:roomId/start` | – | `{ gameId }` |
 | POST | `/api/rooms/:roomId/close` | – | `{ closed: true }` |
-| POST | `/api/rooms/:roomId/bots` | `{ level? }` | `RoomView` |
+| POST | `/api/rooms/:roomId/bots` | `{ level?, name? }` | `RoomView` |
 | DELETE | `/api/rooms/:roomId/bots/:playerId` | – | `RoomView` |
 | GET | `/api/games` | – | `{ games: ResumableGameView[] }` |
 | GET | `/api/games/:gameId` | – | `GameSnapshot` |
@@ -127,17 +127,21 @@ bots and which levels exist.
 `ResumableGameView.allSeatsNeeded` is false for a game containing bot seats:
 only the original human players must reconnect and become ready to resume.
 
-- `POST /api/rooms` accepts `bots` (an integer from `0` to `capacity − 1`) and
-  `botLevel` to seat bots at creation. Anything else is `E_INVALID_BOT`.
+- Creating a room never seats bots: `POST /api/rooms` ignores bot fields, and
+  the host adds them one at a time from the lobby's bot toolbar.
 - `POST /api/rooms/:roomId/bots` and `DELETE /api/rooms/:roomId/bots/:playerId`
   are host-only and lobby-only (`E_NOT_HOST`, `E_ROOM_STARTED`). Adding to a
   full room is `E_ROOM_FULL`; removing a seat that is not a bot is
   `E_NOT_A_BOT`. Both clear every person's readiness, like other settings.
+- `name` is optional. A blank or omitted name picks the next free default name;
+  a supplied name follows the session nickname rules (`E_INVALID_NICKNAME`) and
+  must differ from every seated member, case-insensitively
+  (`E_BOT_NAME_TAKEN`).
 - When the deployment sets `BOTS_ENABLED=0`, adding bots is `E_BOTS_DISABLED`.
 - Bots only play profiles whose every rules module (`ProfileDefinition.ruleModules`)
   is listed in `BOT_RULE_MODULES` (`packages/bots/src/support.ts`); the list is
   empty today, so only base profiles qualify and `ProfileView.botSeats` is false
-  for every expansion profile. Seating a bot at creation, adding one, or
+  for every expansion profile. Adding a bot or
   changing a room with bot seats to such a profile is `E_INVALID_BOT`, reason
   `profile`. A bot seat that still ends up in such a room (for example after a
   registry change) adds `blocker.botsUnsupported`, so the game cannot start.

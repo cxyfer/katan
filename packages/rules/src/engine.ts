@@ -292,8 +292,14 @@ const KIT: RulesKit = {
   placedFreeRoute: (state, playerId, rng) => placedFreeRoute(state, playerId, rng ?? null),
 };
 
-function moduleContext(profile: ProfileDefinition, rng: Rng | null): ModuleContext {
-  return { profile, rng: rng ?? NO_RNG, kit: KIT };
+function moduleContext(profile: ProfileDefinition, rng: Rng | null, resumeAfter?: string): ModuleContext {
+  const kit = resumeAfter === undefined ? KIT : {
+    ...KIT,
+    resolveRollOutcome: (state: GameState, roll: RollResult, continuationRng?: Rng) =>
+      runBeforeProduction(state, roll, continuationRng ?? rng,
+        rulesModulesOf(profile).findIndex((module) => module.id === resumeAfter) + 1),
+  };
+  return { profile, rng: rng ?? NO_RNG, kit };
 }
 
 /** Stand-in for transitions that must not draw (a draw would be a bug). */
@@ -317,7 +323,7 @@ function completePending(state: GameState, rng: Rng | null): void {
       return;
     }
     if (!module?.resumePending) throw new Error(`no continuation for pending frame ${frame.kind}`);
-    module.resumePending(state, frame, moduleContext(requireProfile(state.profileId), rng));
+    module.resumePending(state, frame, moduleContext(requireProfile(state.profileId), rng, module.id));
     if (state.pending !== frame) return;
     next = advancePending(state);
   }
@@ -777,7 +783,7 @@ function dispatchModuleCommand(
   const profile = requireProfile(state.profileId);
   for (const module of rulesModulesOf(profile)) {
     const handler = module.commands?.[command.type];
-    if (handler) return handler(state, actorId, command, moduleContext(profile, rng));
+    if (handler) return handler(state, actorId, command, moduleContext(profile, rng, module.id));
   }
   return fail('E_INVALID_COMMAND');
 }
@@ -919,11 +925,19 @@ function rollDice(state: GameState, actorId: string, rng: Rng): CommandOutcome {
     ...(roll.extra ? { extra: roll.extra } : {}),
   });
 
-  for (const module of modules) {
-    if (module.beforeProduction?.(state, roll, ctx) === 'defer') return { ok: true, state, events: [] };
+  runBeforeProduction(state, roll, rng);
+  return { ok: true, state, events: [] };
+}
+
+/** 續接模組後方的 hooks；frame 的 module 身分讓快照復原後仍能找到順序。 */
+function runBeforeProduction(state: GameState, roll: RollResult, rng: Rng | null, start = 0): void {
+  const profile = requireProfile(state.profileId);
+  const modules = rulesModulesOf(profile);
+  for (let index = start; index < modules.length; index++) {
+    const module = modules[index]!;
+    if (module.beforeProduction?.(state, roll, moduleContext(profile, rng, module.id)) === 'defer') return;
   }
   resolveRollOutcome(state, roll, rng);
-  return { ok: true, state, events: [] };
 }
 
 /** The 7 sequence or production, then the modules' after-production stages. */
@@ -1450,6 +1464,7 @@ function moveRobber(state: GameState, actorId: string, hex: number | null, rng: 
   state.board.robber = hex;
   playerStats(state, actorId).robberMoves += 1;
   emit(state, 'robber.moved', { playerId: actorId, hex, cause: pending.cause });
+  afterBoardChange(state);
 
   const candidates = stealCandidates(state, hex, actorId);
   if (candidates.length > 0) {

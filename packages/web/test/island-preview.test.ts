@@ -23,7 +23,7 @@ describe('public island model display', () => {
         expect(topology.vertices[index]!.hexes).toHaveLength(3);
         expect(topology.vertices[index]!.edges.some((edge) => board.roads[edge]?.player === piece.player)).toBe(true);
       });
-      const roads = roadInstances(buildGeometry(topologyId), board, ISLAND_PREVIEW_PLAYERS, null);
+      const roads = roadInstances(buildGeometry(topologyId), board, ISLAND_PREVIEW_PLAYERS, []);
       expect(roads.length).toBeGreaterThanOrEqual(8);
       roads.forEach((road) => {
         expect(Number.isFinite(road.rotationY)).toBe(true);

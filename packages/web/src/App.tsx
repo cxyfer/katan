@@ -9,6 +9,7 @@ import { useTable, type UseTableOptions } from './state/useTable.ts';
 import { useT } from './i18n/context.tsx';
 import { translateNotice } from './i18n/events.ts';
 import { useLocale } from './i18n/context.tsx';
+import { BootScreen } from './components/BootScreen.tsx';
 import { EntryScreen } from './components/EntryScreen.tsx';
 import { HomeScreen } from './components/HomeScreen.tsx';
 import { LobbyScreen } from './components/LobbyScreen.tsx';
@@ -52,20 +53,25 @@ function AppShell({ controller }: { controller: TableController }) {
   const locale = useLocale();
   const { state } = controller;
   useGameSounds(state, useAudio());
+  // 必要資源下載失敗時沒有樣式可用，停在啟動畫面的失敗提示。
+  const ready = state.bootstrapped && state.boot.assets !== 'failed';
 
   return (
     <>
-      <a className="skip-link" href="#main">
-        {t('app.skipToContent')}
-      </a>
+      {/* 啟動畫面沒有可略過的內容；樣式表失敗時這個連結也沒有隱藏樣式。 */}
+      {ready && (
+        <a className="skip-link" href="#main">
+          {t('app.skipToContent')}
+        </a>
+      )}
 
-      {!state.bootstrapped && <p className="muted">{t('app.loading')}</p>}
+      {!ready && <BootScreen boot={state.boot} />}
 
-      {state.bootstrapped && state.screen === 'entry' && <EntryScreen controller={controller} />}
-      {state.bootstrapped && state.screen === 'home' && <HomeScreen controller={controller} />}
-      {state.bootstrapped && state.screen === 'lobby' && <LobbyScreen controller={controller} />}
-      {state.bootstrapped && state.screen === 'game' && <GameScreen controller={controller} />}
-      {state.bootstrapped && state.screen === 'result' && <ResultScreen controller={controller} />}
+      {ready && state.screen === 'entry' && <EntryScreen controller={controller} />}
+      {ready && state.screen === 'home' && <HomeScreen controller={controller} />}
+      {ready && state.screen === 'lobby' && <LobbyScreen controller={controller} />}
+      {ready && state.screen === 'game' && <GameScreen controller={controller} />}
+      {ready && state.screen === 'result' && <ResultScreen controller={controller} />}
 
       {state.fatal && (
         <div className="notice notice--error" role="alert" data-testid="recovery-blocked">

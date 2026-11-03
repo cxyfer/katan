@@ -248,6 +248,18 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
       </div>
 
       <div className="offer-list" data-testid="offer-list">
+        {owned && (
+          <div className="field field--checkbox trade-auto-decline">
+            <input
+              id="trade-auto-decline"
+              data-testid="trade-auto-decline"
+              type="checkbox"
+              checked={state.tradeAutoDecline}
+              onChange={(event) => actions.setTradeAutoDecline(event.target.checked)}
+            />
+            <label htmlFor="trade-auto-decline">{t('play.tradeAutoDecline')}</label>
+          </div>
+        )}
         {offers.length === 0 && <p className="muted">{t('play.tradeNoOffers')}</p>}
         {offers.map((offer) => (
           <OfferRow

@@ -5,7 +5,9 @@ import type { Offer } from '@catan/rules';
 import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
 import { offerTermsForViewer, tradeShortfall } from '../src/components/TradePanel.tsx';
-import { memoryStorage } from '../src/state/session.ts';
+import { autoDeclineTargets } from '../src/components/useAutoDeclineTrades.ts';
+import { memoryStorage, type StorageLike } from '../src/state/session.ts';
+import { initialTableState, tableReducer, type TableState } from '../src/state/table.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
@@ -32,25 +34,25 @@ beforeEach(() => {
   });
 });
 
-function renderApp(api: FakeApi) {
+function renderApp(api: FakeApi, storage: StorageLike = memoryStorage()) {
   return render(
-    <App services={{ api, storage: memoryStorage(), languages: ['en'], connectSocket: false }} />,
+    <App services={{ api, storage, languages: ['en'], connectSocket: false }} />,
   );
 }
 
-async function openGame(api: FakeApi, tool?: 'trade' | 'exchange'): Promise<void> {
-  renderApp(api);
+async function openGame(api: FakeApi, tool?: 'trade' | 'exchange', storage?: StorageLike): Promise<void> {
+  renderApp(api, storage);
   fireEvent.click(await screen.findByTestId('resume-g1'));
   await screen.findByTestId('board-svg');
   if (tool) fireEvent.click(screen.getByTestId(`tool-tab-${tool}`));
 }
 
-async function openGameWithSocket(api: FakeApi, sockets: TestSocket[]): Promise<void> {
+async function openGameWithSocket(api: FakeApi, sockets: TestSocket[], storage?: StorageLike): Promise<void> {
   render(
     <App
       services={{
         api,
-        storage: memoryStorage(),
+        storage: storage ?? memoryStorage(),
         languages: ['en'],
         socketFactory: () => {
           const socket = new TestSocket();
@@ -325,6 +327,132 @@ describe('structured trading', () => {
   });
 });
 
+describe('automatic declines', () => {
+  const AUTO_DECLINE_KEY = 'catan.trade.autoDecline';
+  // p1 的手牌是每種 2 張，`want: { ore: 3 }` 必然付不出來。
+  const unaffordable: Offer = { ...openOffer, want: { ore: 3 } };
+
+  function stateWith(offers: Offer[], overrides: Partial<TableState> = {}): TableState {
+    return {
+      ...initialTableState('en'),
+      session: makeIdentity({ id: 'p1' }),
+      game: makeSnapshot(makeView({ hints: makeHints(), offers })),
+      tradeAutoDecline: true,
+      ...overrides,
+    };
+  }
+
+  it('declines an open offer the viewer cannot cover when the option is on', async () => {
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [unaffordable] })) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api, 'trade', memoryStorage({ [AUTO_DECLINE_KEY]: 'true' }));
+
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(lastCommand(api)).toEqual({ type: 'trade.respond', offerId: 'offer-1', response: 'declined' });
+    expect((screen.getByTestId('trade-auto-decline') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('leaves offers untouched while the option is off', async () => {
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [unaffordable] })) });
+    await openGame(api, 'trade');
+
+    expect((screen.getByTestId('trade-auto-decline') as HTMLInputElement).checked).toBe(false);
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
+  it('remembers the choice in browser storage', async () => {
+    const storage = memoryStorage();
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints() })) });
+    await openGame(api, 'trade', storage);
+
+    fireEvent.click(screen.getByTestId('trade-auto-decline'));
+
+    expect(storage.getItem(AUTO_DECLINE_KEY)).toBe('true');
+    expect((screen.getByTestId('trade-auto-decline') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('targets only unaffordable offers that are addressed to an unanswered viewer', () => {
+    const ids = (offers: Offer[], overrides: Partial<TableState> = {}) =>
+      autoDeclineTargets(stateWith(offers, overrides)).map((offer) => offer.id);
+
+    expect(ids([unaffordable])).toEqual(['offer-1']);
+    // 付得出來的提案留給玩家自己決定。
+    expect(ids([openOffer])).toEqual([]);
+    // 自己提出的提案只能撤回，不能拒絕。
+    expect(ids([{ ...unaffordable, from: 'p1' }])).toEqual([]);
+    // 直送別人的提案與我無關。
+    expect(ids([{ ...unaffordable, to: 'p2' }])).toEqual([]);
+    // 已經表達過意願的提案，以玩家的明確回應為準。
+    expect(ids([{ ...unaffordable, responses: { p1: 'interested' } }])).toEqual([]);
+    // 偏好關閉、看不見手牌，或現在不能送指令時都不動作。
+    expect(ids([unaffordable], { tradeAutoDecline: false })).toEqual([]);
+    expect(ids([unaffordable], { session: makeIdentity({ id: 'p9' }) })).toEqual([]);
+    expect(ids([unaffordable], { dicePresenting: true })).toEqual([]);
+    expect(ids([unaffordable], { activeElsewhere: true })).toEqual([]);
+    expect(ids([unaffordable], { connection: 'reconnecting' })).toEqual([]);
+    expect(ids([unaffordable], {
+      command: {
+        commandId: 'c1',
+        labelId: 'play.tradeDecline',
+        command: { type: 'trade.respond' },
+        status: 'submitting',
+        error: null,
+        baseRevision: 12,
+        revision: null,
+      },
+    })).toEqual([]);
+    // 上一輪視窗留下的提案不再代為回應。
+    expect(ids([{ ...unaffordable, windowId: 0 }])).toEqual([]);
+  });
+
+  it('declines again after the proposer revises the terms', async () => {
+    const sockets: TestSocket[] = [];
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [unaffordable] })) });
+    api.setCommandResult(ACCEPTED);
+    await openGameWithSocket(api, sockets, memoryStorage({ [AUTO_DECLINE_KEY]: 'true' }));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+
+    // 改版會清空回應，新的條款仍然付不出來 → 再拒絕一次。
+    const revised = makeSnapshot(
+      makeView({ hints: makeHints(), offers: [{ ...unaffordable, revision: 2, want: { grain: 3 } }] }),
+      13,
+    );
+    revised.view.seq = 13;
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: revised }));
+
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(2));
+    expect(lastCommand(api)).toEqual({ type: 'trade.respond', offerId: 'offer-1', response: 'declined' });
+  });
+
+  it('retries after a stale receipt once the projection catches up', async () => {
+    const sockets: TestSocket[] = [];
+    const api = createFakeApi({ snapshot: makeSnapshot(makeView({ hints: makeHints(), offers: [unaffordable] })) });
+    // 另一位收件者同時拒絕了同一個桌級提案：伺服器以過期回絕這一筆。
+    api.setCommandResult({
+      ok: true,
+      data: {
+        commandId: 'c1',
+        outcome: 'rejected',
+        revision: 13,
+        error: { messageId: 'error.E_STALE_REVISION' },
+        events: [],
+      },
+    });
+    await openGameWithSocket(api, sockets, memoryStorage({ [AUTO_DECLINE_KEY]: 'true' }));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+
+    api.setCommandResult(ACCEPTED);
+    const fresh = makeSnapshot(makeView({ hints: makeHints(), offers: [unaffordable] }), 13);
+    fresh.view.seq = 13;
+    act(() => sockets[0]!.deliver({ type: 'snapshot', payload: fresh }));
+
+    // 過期回執不能永久占位：投影更新後要再用新的 revision 重送。
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(2));
+    expect(lastCommand(api)).toEqual({ type: 'trade.respond', offerId: 'offer-1', response: 'declined' });
+    expect(api.callsOf('sendCommand')[1]!.args[1]).toMatchObject({ expectedRevision: 13 });
+  });
+});
+
 describe('bank and harbour exchange', () => {
   it('shows the viewer’s own rate and submits the exchange', async () => {
     const api = createFakeApi({
@@ -435,9 +563,10 @@ describe('development cards and pending effects', () => {
     api.setCommandResult(ACCEPTED);
     await openGame(api);
 
-    fireEvent.change(screen.getByTestId('monopoly-resource'), { target: { value: 'ore' } });
     fireEvent.focus(screen.getByTestId('hand-panel'));
     fireEvent.click(screen.getByTestId('play-monopoly-0'));
+    fireEvent.click(screen.getByTestId('choice-add-ore'));
+    fireEvent.click(screen.getByTestId('choice-submit'));
 
     await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
     expect(lastCommand(api)).toEqual({ type: 'dev.playMonopoly', resource: 'ore' });
@@ -453,6 +582,158 @@ describe('development cards and pending effects', () => {
     fireEvent.click(screen.getByTestId('play-knight-0'));
     const target = await screen.findByTestId('target-hex-0');
     expect(target.tagName).toBe('BUTTON');
+  });
+
+  it('plays year of plenty only after both resources are chosen, then takes them in order', async () => {
+    const view = makeView({ hints: makeHints({ canEndTurn: false }), phase: 'preroll' });
+    view.players[0]!.devCards = ['yearOfPlenty'];
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api);
+
+    fireEvent.focus(screen.getByTestId('hand-panel'));
+    fireEvent.click(screen.getByTestId('play-yearOfPlenty-0'));
+    expect(screen.getByTestId('required-action-prompt').dataset.choice).toBe('yearOfPlenty');
+    fireEvent.click(screen.getByTestId('choice-add-ore'));
+    fireEvent.click(screen.getByTestId('choice-add-ore'));
+    expect(screen.getByTestId('choice-add-wool').getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(screen.getByTestId('choice-return-ore'));
+    fireEvent.click(screen.getByTestId('choice-add-wool'));
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+
+    // 伺服器打出後進入領取步驟；客戶端依序送出已選好的兩張。
+    const played = structuredClone(view);
+    played.players[0]!.devCards = [];
+    played.turn.devCardPlayed = true;
+    played.pending = { kind: 'yearOfPlenty', actor: 'p1', remaining: 2 };
+    api.setSnapshot(makeSnapshot(played, 13));
+    fireEvent.click(screen.getByTestId('choice-submit'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(3), { timeout: 5000 });
+    const commands = api.callsOf('sendCommand').map((call) => (call.args[1] as CommandRequest).command);
+    expect(commands).toEqual([
+      { type: 'dev.playYearOfPlenty' },
+      { type: 'pending.takeResource', resource: 'wool' },
+      { type: 'pending.takeResource', resource: 'ore' },
+    ]);
+  });
+
+  it('offers a locked, bank-limited picker when year of plenty is already waiting', async () => {
+    const view = makeView({
+      hints: null,
+      pending: { kind: 'yearOfPlenty', actor: 'p1', remaining: 1 },
+    });
+    view.bank = { lumber: 0, brick: 0, wool: 0, grain: 1, ore: 0 };
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api);
+
+    expect(screen.queryByTestId('choice-cancel')).toBeNull();
+    expect(screen.getByTestId('choice-add-ore').getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByTestId('choice-bank-grain').textContent).toBe('1');
+    fireEvent.click(screen.getByTestId('choice-add-grain'));
+    fireEvent.click(screen.getByTestId('choice-submit'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(lastCommand(api)).toEqual({ type: 'pending.takeResource', resource: 'grain' });
+  });
+
+  it('plays a card dragged out of the hand onto the table, and returns it when dropped back on the hand', async () => {
+    const view = makeView({ hints: makeHints({ canEndTurn: false }), phase: 'preroll' });
+    view.players[0]!.devCards = ['roadBuilding', 'monopoly'];
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult(ACCEPTED);
+    await openGame(api);
+    const pointer = (element: Element, type: string, clientY: number, buttons = type === 'pointerup' ? 0 : 1) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: 50, clientY, button: 0, buttons });
+      Object.defineProperties(event, { pointerId: { value: 1 }, pointerType: { value: 'mouse' }, isPrimary: { value: true } });
+      fireEvent(element, event);
+    };
+    const drag = (element: Element, to: number) => {
+      pointer(element, 'pointerdown', 0);
+      pointer(element, 'pointermove', -40);
+      pointer(element, 'pointermove', to);
+      return () => pointer(element, 'pointerup', to);
+    };
+
+    // 手牌上緣在 jsdom 為 0：只拖一點點（仍在手牌範圍）放開，卡片回到手上。
+    const monopoly = screen.getByRole('button', { name: /Inspect Monopoly/ });
+    const short = drag(monopoly, -10);
+    expect(screen.getByTestId('card-drag').dataset.armed).toBeUndefined();
+    short();
+    expect(screen.queryByTestId('card-drag')).toBeNull();
+    expect(screen.queryByTestId('devcard-choice')).toBeNull();
+
+    // 判定線之上但只往上拖了一點（浮起的卡頂端本來就高過手牌）：不算打出。
+    drag(monopoly, -30);
+    expect(screen.getByTestId('card-drag').dataset.armed).toBeUndefined();
+    pointer(monopoly, 'pointerup', -30);
+    expect(screen.queryByTestId('devcard-choice')).toBeNull();
+
+    // 在卡外放開滑鼠時收不到 pointerup：之後沒按鍵的移動不能自己拖起來。
+    pointer(monopoly, 'pointerdown', 0);
+    pointer(monopoly, 'pointermove', -200, 0);
+    expect(screen.queryByTestId('card-drag')).toBeNull();
+
+    // 先拖到桌面（已可使用）再拖回手牌放開，同樣取消。
+    drag(monopoly, -200);
+    expect(screen.getByTestId('card-drag').dataset.armed).toBe('true');
+    pointer(monopoly, 'pointermove', -10);
+    expect(screen.getByTestId('card-drag').dataset.armed).toBeUndefined();
+    expect(screen.getByTestId('card-drag-hint').textContent).toBe('Drag onto the table to play');
+    pointer(monopoly, 'pointerup', -10);
+    expect(screen.queryByTestId('card-drag')).toBeNull();
+    expect(screen.queryByTestId('devcard-choice')).toBeNull();
+
+    const release = drag(monopoly, -200);
+    expect(screen.getByTestId('card-drag').dataset.armed).toBe('true');
+    expect(screen.getByTestId('card-drag-hint').textContent).toBe('Release to play Monopoly');
+    release();
+    expect(screen.queryByTestId('card-drag')).toBeNull();
+    expect(screen.getByTestId('devcard-choice').dataset.card).toBe('monopoly');
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+    fireEvent.click(screen.getByTestId('choice-cancel'));
+
+    drag(screen.getByRole('button', { name: /Inspect Road building/ }), -200)();
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(lastCommand(api)).toEqual({ type: 'dev.playRoadBuilding' });
+  });
+
+  it('keeps year of plenty out of play while the bank is empty', async () => {
+    const view = makeView({ hints: makeHints({ canEndTurn: false }), phase: 'preroll' });
+    view.players[0]!.devCards = ['yearOfPlenty', 'knight'];
+    view.bank = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
+    await openGame(createFakeApi({ snapshot: makeSnapshot(view) }));
+
+    expect((screen.getByTestId('play-yearOfPlenty-0') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: /Inspect Year of plenty/ }).closest('li')!.dataset.draggable).toBeUndefined();
+    expect(screen.getByRole('button', { name: /Inspect Knight/ }).closest('li')!.dataset.draggable).toBe('true');
+  });
+
+  it('stops the queued year of plenty picks when a take is rejected, leaving the picker usable', async () => {
+    const view = makeView({ hints: null, pending: { kind: 'yearOfPlenty', actor: 'p1', remaining: 1 } });
+    const api = createFakeApi({ snapshot: makeSnapshot(view) });
+    api.setCommandResult({
+      ok: true,
+      data: { commandId: 'c1', outcome: 'rejected', revision: 12, error: { messageId: 'error.E_BANK_EMPTY' }, events: [] },
+    });
+    await openGame(api);
+
+    fireEvent.click(screen.getByTestId('choice-add-grain'));
+    fireEvent.click(screen.getByTestId('choice-submit'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    await waitFor(() => expect((screen.getByTestId('choice-submit') as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.getByTestId('choice-submit').textContent).toBe('Take Grain');
+  });
+
+  it('drops an unfinished resource choice when the table switches games or leaves the room', () => {
+    const base: TableState = {
+      ...initialTableState('en'),
+      game: makeSnapshot(makeView()),
+      devCardChoice: { card: 'monopoly', queued: [] },
+    };
+    expect(tableReducer(base, { type: 'snapshot', snapshot: makeSnapshot(makeView(), 13) }).devCardChoice).not.toBeNull();
+    expect(tableReducer(base, { type: 'snapshot', snapshot: { ...makeSnapshot(makeView()), gameId: 'g2' } }).devCardChoice).toBeNull();
+    expect(tableReducer(base, { type: 'snapshot', snapshot: null }).devCardChoice).toBeNull();
+    expect(tableReducer(base, { type: 'room', room: null }).devCardChoice).toBeNull();
   });
 
   it('submits exactly the required discard count', async () => {

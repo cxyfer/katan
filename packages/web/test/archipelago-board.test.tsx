@@ -76,7 +76,7 @@ describe('archipelago board', () => {
   it('draws sea hexes as addressable water cells in the SVG board', () => {
     const [vx, vy, vw, vh] = geometry.viewBox.split(' ').map(Number) as [number, number, number, number];
     const { container } = render(<LocaleProvider locale="en">
-      <SvgBoard svgRef={null} geometry={geometry} view={makeView({ board })} active={null}
+      <SvgBoard svgRef={null} geometry={geometry} view={makeView({ board })} arrivals={[]}
         selection={EMPTY_SELECTION} selfId="p1" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
         viewBoxCenter={{ x: vx + vw / 2, y: vy + vh / 2 }} nameResolver={(id) => id} />
     </LocaleProvider>);

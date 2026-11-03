@@ -68,9 +68,6 @@ export interface CreateRoomBody {
   setupMode: 'fixed' | 'variable';
   orderMode?: GameOrderMode;
   policy?: RoomPolicy;
-  /** 建房時一併加入的電腦對手數量（0 至 capacity − 1）。 */
-  bots?: number;
-  botLevel?: BotLevel;
 }
 
 export interface RoomSettingsBody {
@@ -79,6 +76,12 @@ export interface RoomSettingsBody {
   setupMode?: 'fixed' | 'variable';
   orderMode?: GameOrderMode;
   policy?: RoomPolicy;
+}
+
+export interface AddBotBody {
+  level: BotLevel;
+  /** 留空時由伺服器從預設名稱池挑一個同房不重複的名稱。 */
+  name?: string;
 }
 
 /** The full surface the UI depends on. Faked wholesale in tests. */
@@ -96,7 +99,7 @@ export interface CatanApi {
   takeSeat(roomId: string, color: string): Promise<ApiResult<RoomView>>;
   setReady(roomId: string, ready: boolean): Promise<ApiResult<RoomView>>;
   updateSettings(roomId: string, body: RoomSettingsBody): Promise<ApiResult<RoomView>>;
-  addBot(roomId: string, level: BotLevel): Promise<ApiResult<RoomView>>;
+  addBot(roomId: string, body: AddBotBody): Promise<ApiResult<RoomView>>;
   removeBot(roomId: string, playerId: string): Promise<ApiResult<RoomView>>;
   proposePolicy(roomId: string, policy: RoomPolicy): Promise<ApiResult<RoomView>>;
   respondPolicy(
@@ -241,8 +244,8 @@ export class ApiClient implements CatanApi {
   updateSettings(roomId: string, body: RoomSettingsBody) {
     return this.#request<RoomView>('POST', `/api/rooms/${encodeURIComponent(roomId)}/settings`, body);
   }
-  addBot(roomId: string, level: BotLevel) {
-    return this.#request<RoomView>('POST', `/api/rooms/${encodeURIComponent(roomId)}/bots`, { level });
+  addBot(roomId: string, body: AddBotBody) {
+    return this.#request<RoomView>('POST', `/api/rooms/${encodeURIComponent(roomId)}/bots`, body);
   }
   removeBot(roomId: string, playerId: string) {
     return this.#request<RoomView>(
