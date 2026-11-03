@@ -14,14 +14,14 @@ const ANCHOR_OFFSET_PX = 14;
  * 外部點擊關閉後，吞掉緊接著的那一次 click，避免它落在棋盤目標按鈕上
  * 又觸發選取、重新開啟 picker 或誤送指令。獨立於元件生命週期，因為 picker 此時已卸載。
  * 觸控 click 可能延後派發；放開／取消後保留一秒，按住時最多保留十秒。
- * 下一次 pointerdown 或 keydown 也會解除，避免攔截下一次刻意操作。
+ * 下一次 pointerdown 或新的非修飾按鍵也會解除，避免攔截下一次刻意操作。
  */
 function swallowNextClick() {
   let releaseTimeout: ReturnType<typeof setTimeout> | undefined;
   const remove = () => {
     document.removeEventListener('click', onClick, true);
     document.removeEventListener('pointerdown', remove, true);
-    document.removeEventListener('keydown', remove, true);
+    document.removeEventListener('keydown', onKeyDown, true);
     document.removeEventListener('pointerup', onEnd, true);
     document.removeEventListener('pointercancel', onEnd, true);
     clearTimeout(releaseTimeout);
@@ -32,6 +32,10 @@ function swallowNextClick() {
     event.preventDefault();
     remove();
   }
+  function onKeyDown(event: KeyboardEvent) {
+    if (event.repeat || ['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) return;
+    remove();
+  }
   function onEnd() {
     clearTimeout(releaseTimeout);
     releaseTimeout = setTimeout(remove, 1000);
@@ -39,7 +43,7 @@ function swallowNextClick() {
   const maxTimeout = setTimeout(remove, 10000);
   document.addEventListener('click', onClick, true);
   document.addEventListener('pointerdown', remove, true);
-  document.addEventListener('keydown', remove, true);
+  document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('pointerup', onEnd, true);
   document.addEventListener('pointercancel', onEnd, true);
 }

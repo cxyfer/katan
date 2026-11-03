@@ -360,6 +360,20 @@ describe('target picker dismissal', () => {
     expect(onTargetClick).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ...['Shift', 'Control', 'Alt', 'Meta'].map((key) => ({ key, repeat: false })),
+    ...['Shift', 'Enter', ' ', 'a'].map((key) => ({ key, repeat: true })),
+  ])('keeps the dismiss click guarded for key=$key repeat=$repeat', ({ key, repeat }) => {
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    fireEvent.keyDown(target, { key, repeat });
+    fireEvent(target, new Event('pointerup', { bubbles: true }));
+    fireEvent.click(target);
+    expect(onTargetClick).not.toHaveBeenCalled();
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
   it('expires click suppression even when pointerup never arrives', () => {
     vi.useFakeTimers();
     const { target, onTargetClick } = targetDismissal();
