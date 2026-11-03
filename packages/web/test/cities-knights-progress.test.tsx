@@ -225,7 +225,7 @@ describe('progress cards in the client', () => {
     ck.merchant = { player: 'p1', hex: 3 };
     const gameView = view(state, 'p2');
     const { container } = render(<LocaleProvider locale="en"><SvgBoard svgRef={() => undefined} geometry={geometry} view={gameView}
-      active={null} selection={EMPTY_SELECTION} selfId="p2" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
+      arrivals={[]} selection={EMPTY_SELECTION} selfId="p2" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
       viewBoxCenter={{ x: 0, y: 0 }} nameResolver={(id) => id} /></LocaleProvider>);
     const merchant = container.querySelector('[data-testid="merchant"]');
     expect(merchant?.getAttribute('data-hex')).toBe('3');

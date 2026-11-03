@@ -122,7 +122,7 @@ describe('Cities & Knights over the API (test-only profile path)', () => {
     const { profiles, selectable } = host.expectOk<{ profiles: { id: string; botSeats: boolean }[]; selectable: string[] }>(await host.get('/api/profiles'));
     expect(selectable).toEqual(expect.arrayContaining(['ck-2025', 'ck-paired-2025']));
     expect(profiles.filter((profile) => profile.id.startsWith('ck-')).map((profile) => profile.botSeats)).toEqual([false, false]);
-    const room = host.expectOk<{ profileId: string; capacity: number }>(await host.post('/api/rooms', {
+    const room = host.expectOk<{ id: string; profileId: string; capacity: number }>(await host.post('/api/rooms', {
       visibility: 'private', capacity: 4, setupMode: 'fixed', ruleset: { expansions: ['citiesKnights'] },
     }));
     expect(room.profileId).toBe('ck-2025');
@@ -130,9 +130,7 @@ describe('Cities & Knights over the API (test-only profile path)', () => {
       visibility: 'private', capacity: 5, setupMode: 'variable', ruleset: { expansions: ['citiesKnights'] },
     }));
     expect(paired.profileId).toBe('ck-paired-2025');
-    host.expectError(await host.post('/api/rooms', {
-      visibility: 'private', capacity: 3, profileId: 'ck-2025', setupMode: 'fixed', bots: 1,
-    }), 'E_INVALID_BOT');
+    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
   });
 
   it('starts a C&K game, rolls three dice and keeps module receipts idempotent', async () => {

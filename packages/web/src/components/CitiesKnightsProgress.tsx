@@ -16,7 +16,7 @@ import {
   type CitiesKnightsHints, type CraneOption, type ProgressCardHint,
 } from '../board/citiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
-import { followUpsHeld, shownHand } from '../state/table.ts';
+import { followUpsHeld, shownCitiesKnights, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { CardKindArt } from './CardKindArt.tsx';
 import { CommodityEmblem, PipDieFace, TRACK_COLOR } from './SvgCitiesKnights.tsx';
@@ -35,10 +35,7 @@ function selfOf(view: GameView, selfId: string | null) {
 
 /** The viewer's resources and commodities as one card-count map. */
 function ownCards(controller: TableController): Partial<Record<CardKind, number>> {
-  const { state } = controller;
-  const view = state.game?.view;
-  const self = view ? selfOf(view, state.session?.id ?? null) : undefined;
-  return { ...shownHand(state), ...(self?.commodities ?? {}) } as Partial<Record<CardKind, number>>;
+  return shownHand(controller.state) ?? {};
 }
 
 /** The progress hand and the card play flows (inside the C&K panel). */
@@ -46,7 +43,7 @@ export function ProgressHand({ controller }: { controller: TableController }) {
   const t = useT();
   const locale = useLocale();
   const { state, actions } = controller;
-  const view = state.game?.view ?? null;
+  const view = shownCitiesKnights(state);
   const ck = citiesKnightsView(view);
   const hints = citiesKnightsHints(view);
   const [active, setActive] = useState<string | null>(null);
