@@ -10,6 +10,7 @@ import { ckState, ckView } from '../src/modules/citiesKnights/state.ts';
 import type { GameState } from '../src/types.ts';
 import {
   SHIP,
+  SCIENCE,
   actCk,
   addKnight,
   emptyCkGame,
@@ -19,6 +20,7 @@ import {
   rejectCk,
   rollRng,
   setBuilding,
+  setImprovement,
   spreadVertices,
 } from './ck-helpers.ts';
 import { give } from './helpers.ts';
@@ -212,6 +214,24 @@ describe('R-CK barbarians win (CK25 p. 11)', () => {
 });
 
 describe('R-CK after the attack (CK25 pp. 6, 11)', () => {
+  it.each([[2, true], [3, false]] as const)('retains improvement-based progress draws after losing the last city (red %s, CK25 pp. 6, 8)', (red, draws) => {
+    const state = eve();
+    const [city] = spreadVertices(state, 1);
+    setBuilding(state, 'p1', city!, true);
+    setImprovement(state, 'p1', 'science', 1);
+    state.progressDecks.science = ['alchemy'];
+
+    const pillaged = attack(state);
+    expect(eventsOf(pillaged, 'ck.cityPillaged')).toHaveLength(1);
+    expect(pillaged.state.board.buildings.some((building) => building?.player === 'p1' && building.city)).toBe(false);
+    expect(player(pillaged.state, 'p1').improvements.science).toBe(1);
+
+    const next = actCk(pillaged.state, 'p1', { type: 'turn.end' });
+    const rolled = actCk(next.state, 'p2', { type: 'turn.roll' }, rollRng(2, red, SCIENCE));
+    expect(player(rolled.state, 'p1').progressCards).toEqual(draws ? ['alchemy'] : []);
+    expect(eventsOf(rolled, 'ck.progressDrawn').map((event) => event.params.playerId)).toEqual(draws ? ['p1'] : []);
+  });
+
   it('R-CK-25 the ship returns to start, every knight lies down, and the first attack brings the robber in', () => {
     const state = eve();
     const [k1, k2] = spreadVertices(state, 2);

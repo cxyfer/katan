@@ -40,10 +40,8 @@ export function HandPanel({ controller }: { controller: TableController }) {
   const { state } = controller;
   const self = state.game?.view.players.find((player) => player.id === state.session?.id) ?? null;
   // 擲骰演出期間顯示擲骰前的數量，點數揭曉前不從手牌透露結果。
-  // Cities & Knights: commodities are hand cards next to the resources.
-  const commodities = citiesKnightsView(state.game?.view) ? self?.commodities : undefined;
-  const kinds: readonly CardKind[] = commodities ? CARD_KINDS : RESOURCES;
-  const resources: Partial<Record<CardKind, number>> | undefined = commodities ? { ...shownHand(state), ...commodities } : shownHand(state);
+  const kinds: readonly CardKind[] = citiesKnightsView(state.game?.view) ? CARD_KINDS : RESOURCES;
+  const resources = shownHand(state);
   const resourceCards = self ? shownHandSize(state, self) : 0;
   const totalHandCards = resourceCards + (self?.devCardCount ?? 0) + (self?.newDevCardCount ?? 0);
   // 沒有牌可看時，收合的 deck 不再提供展開入口，避免玩家誤以為展開後是一片空白。

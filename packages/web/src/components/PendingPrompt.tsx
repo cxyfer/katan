@@ -71,7 +71,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
           <DiscardPicker
             required={required}
             // Cities & Knights: commodities count towards the 7 and may be discarded.
-            hand={citiesKnightsView(view) ? { ...shownHand(state), ...view.players.find((player) => player.id === selfId)?.commodities } : shownHand(state)}
+            hand={shownHand(state)}
             kinds={citiesKnightsView(view) ? CARD_KINDS : undefined}
             onSubmit={(resources) =>
               void actions.submitCommand({ type: 'pending.discard', resources }, 'play.pending.discardSubmit')
