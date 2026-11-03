@@ -6,6 +6,7 @@ import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.
 import type { TableController } from '../state/useTable.ts';
 import { DevCardChoicePicker } from './DevCardChoicePicker.tsx';
 import { DiscardPicker } from './DiscardPicker.tsx';
+import { TbPrompt } from './tb/TbPrompt.tsx';
 import { SeafarersPrompt } from './SeafarersPrompt.tsx';
 import { CitiesKnightsPrompt } from './CitiesKnightsPrompt.tsx';
 import { citiesKnightsView } from '../board/citiesKnights.ts';
@@ -87,6 +88,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       <h2 id="prompt-heading">
         {action ? t(action.messageId, action.params) : t('play.waitingFor', { player: '—' })}
       </h2>
+      {!rolling && <TbPrompt controller={controller} />}
       {action && !action.mine && action.waitingFor.length > 0 && (
         <p className="muted" data-testid="prompt-waiting">
           {t('play.waitingForPlayers', {

@@ -2,6 +2,7 @@ import { COSTS, RESOURCES } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
 import { Legend } from './Legend.tsx';
+import { TbHelp } from './tb/TbPanel.tsx';
 import type { TableController } from '../state/useTable.ts';
 import { seafarersView, SHIP_COST } from '../board/seafarers.ts';
 import { ACTIVATE_COST, citiesKnightsView, KNIGHT_COST, PROMOTE_COST, WALL_COST } from '../board/citiesKnights.ts';
@@ -29,6 +30,7 @@ export function HelpPanel({ controller }: { controller: TableController }) {
         {t(`profile.${profileId}`)} · {t('play.resultTarget', { target: controller.state.game?.view.victoryTarget ?? 10 })}
       </p>
       {paired && <p className="muted">{t('lobby.pairedNote')}</p>}
+      <TbHelp controller={controller} />
       {seafarersView(controller.state.game?.view) && (
         <section data-testid="help-seafarers">
           <h3>{t('sf.help.title')}</h3>

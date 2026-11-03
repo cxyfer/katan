@@ -132,6 +132,8 @@ export function roadInstances(
   const out: RoadInstance[] = [];
   for (const edge of geometry.edges) {
     const road = board.roads[edge.index];
+    // Bridges (Traders & Barbarians) are drawn as their own arched piece.
+    if (!road || road.bridge) continue;
     // Ships are drawn by `DioramaSeafarers`, floating at sea level.
     if (!road || road.ship) continue;
     const from = geometryToWorld(geometry, edge.x1, edge.y1);

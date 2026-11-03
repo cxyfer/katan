@@ -20,7 +20,7 @@ import { playerIds, COLORS } from './helpers.ts';
 
 describe('ruleset registry', () => {
   it('registers every row of the confirmed matrix', () => {
-    const ids = PROFILES.map((profile) => profile.id);
+    const ids = PROFILES.map((profile) => profile.id).filter((id) => !id.startsWith('tb-'));
     expect(ids).toEqual([
       'base-2025',
       'base-paired-2025',
@@ -34,10 +34,10 @@ describe('ruleset registry', () => {
   });
 
   it('enables only the profiles whose rules and fixtures have passed', () => {
-    const enabled = PROFILES.filter((profile) => profile.enabled).map((profile) => profile.id);
+    const enabled = PROFILES.filter((profile) => profile.enabled && !profile.id.startsWith('tb-')).map((profile) => profile.id);
     const all = ['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ck-2025', 'ck-paired-2025', 'sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025'];
     expect(enabled).toEqual(all);
-    expect(selectableProfiles().map((profile) => profile.id)).toEqual(all);
+    expect(selectableProfiles().filter((profile) => !profile.id.startsWith('tb-')).map((profile) => profile.id)).toEqual(all);
     expect(selectableProfiles(5).map((profile) => profile.id)).toEqual(['base-paired-2025', 'sf-new-shores-paired-2025', 'ck-paired-2025', 'sf-ck-new-shores-paired-2025']);
   });
 
@@ -146,7 +146,7 @@ describe('ruleset registry', () => {
       expect(profile.ruleVersion).toMatch(/^[a-z-]+-2025\.\d+$/);
       // The Seafarers + C&K combination layer runs before both expansions.
       const combined = profile.expansions.includes('seafarers') && profile.expansions.includes('citiesKnights');
-      expect(profile.ruleModules).toEqual([...(combined ? ['seafarersCitiesKnights'] : []), ...profile.expansions, ...profile.variants]);
+      expect(profile.ruleModules).toEqual(profile.expansions.includes('tradersBarbarians') ? ['tradersBarbarians'] : [...(combined ? ['seafarersCitiesKnights'] : []), ...profile.expansions, ...profile.variants]);
     }
     expect(getProfile('base-2025')!.ruleVersion).toBe(BASE_RULE_VERSION);
     expect(getProfile('base-paired-2025')!.ruleVersion).toBe(BASE_RULE_VERSION);

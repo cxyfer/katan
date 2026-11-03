@@ -839,7 +839,7 @@ export function useTable(options: UseTableOptions): TableController {
     const { selection } = stateRef.current;
     if (!selection.commandType || selection.index === null || !selection.kind) return;
     const field = selection.field ?? (selection.kind === 'vertex' ? 'vertex' : selection.kind === 'edge' ? 'edge' : 'hex');
-    const payload: CommandPayload = { ...selection.params, type: selection.commandType, [field]: selection.index };
+    const payload: CommandPayload = { ...selection.extra, ...selection.params, type: selection.commandType, [field]: selection.index };
     await submitCommand(payload, selection.labelId ?? selection.commandType);
   }, [submitCommand]);
 

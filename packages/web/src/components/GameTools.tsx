@@ -8,6 +8,8 @@ import { ExchangePanel } from './ExchangePanel.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { HelpPanel } from './HelpPanel.tsx';
 import { TradePanel } from './TradePanel.tsx';
+import { isTradersBarbarians } from './tb/model.ts';
+import { TbPanel } from './tb/TbPanel.tsx';
 import { CitiesKnightsPanel } from './CitiesKnightsPanel.tsx';
 import { citiesKnightsView } from '../board/citiesKnights.ts';
 
@@ -17,6 +19,8 @@ const TOOLS = [
   { id: 'chat', label: 'drawer.chat', icon: 'chat' },
   { id: 'log', label: 'play.events', icon: 'scroll' },
   { id: 'help', label: 'drawer.help', icon: 'book' },
+  // Scenario status and actions; only listed in Traders & Barbarians games.
+  { id: 'scenario', label: 'tb.panel.tab', icon: 'crown' },
 ] as const;
 /** Cities & Knights adds its chart and track panel (only in those games). */
 const CK_TOOL = { id: 'citiesKnights', label: 'ck.panel.title', icon: 'shield' } as const;
@@ -29,7 +33,7 @@ export function GameTools({ controller }: { controller: TableController }) {
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const { dispatch, state } = controller;
   const tools: readonly { id: Tool; label: string; icon: (typeof TOOLS)[number]['icon'] | typeof CK_TOOL.icon }[] =
-    citiesKnightsView(state.game?.view) ? [CK_TOOL, ...TOOLS] : TOOLS;
+    (citiesKnightsView(state.game?.view) ? [CK_TOOL, ...TOOLS] : TOOLS).filter((item) => item.id !== 'scenario' || isTradersBarbarians(state.game?.view));
   const chatOpen = tool === 'chat';
   const active = tools.find((item) => item.id === tool);
   const openOffers = state.game?.view.offers.filter((offer) => offer.status === 'open').length ?? 0;
@@ -108,6 +112,7 @@ export function GameTools({ controller }: { controller: TableController }) {
             {item.id === 'chat' && <ChatPanel controller={controller} />}
             {item.id === 'log' && <EventLog controller={controller} />}
             {item.id === 'help' && <HelpPanel controller={controller} />}
+            {item.id === 'scenario' && <TbPanel controller={controller} />}
             {item.id === 'citiesKnights' && <CitiesKnightsPanel controller={controller} />}
           </section>
         ))}

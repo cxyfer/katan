@@ -23,6 +23,14 @@ export const DIORAMA_TERRAIN_COLORS: Readonly<Record<string, string>> = {
   desert: '#e0c690',
   gold: '#ac995b',
   sea: '#559fa5',
+  // Traders & Barbarians hexes
+  lake: '#6f9f63',
+  swamp: '#8a8752',
+  oasis: '#dcc28c',
+  castle: '#7ea85f',
+  quarry: '#c58a62',
+  glassworks: '#5f8c4f',
+  keep: '#86ad66',
 };
 
 /** Shadow, mid and highlight tones blended by noise on each tile top. */
@@ -35,12 +43,20 @@ const GROUND_PAINT: Readonly<Record<string, readonly [string, string, string]>> 
   desert: ['#ccad77', '#e0c690', '#f0deb2'],
   gold: ['#8f7b43', '#ac995b', '#cdb46a'],
   sea: ['#3f8a92', '#559fa5', '#7cbcbc'],
+  lake: ['#557f4a', '#6f9f63', '#93bd7e'],
+  swamp: ['#6b6a3c', '#8a8752', '#a9a56b'],
+  oasis: ['#c9ad78', '#dcc28c', '#efdcae'],
+  castle: ['#628a49', '#7ea85f', '#9fc47c'],
+  quarry: ['#a56c48', '#c58a62', '#dcaa84'],
+  glassworks: ['#4a7240', '#5f8c4f', '#7fa86a'],
+  keep: ['#6a9050', '#86ad66', '#a7c784'],
 };
 
 /** Packed dirt around the number token, tinted per terrain. */
 const WELL_PAINT: Readonly<Record<string, string>> = {
   forest: '#8a8a5e', hills: '#d6a47c', pasture: '#c4c88c', fields: '#e2c98a',
   mountains: '#b4b2a0', desert: '#efe0b8', gold: '#c8b67c', sea: '#8cc6c2',
+  lake: '#a7c38f', swamp: '#b0aa75', oasis: '#efe0b8', castle: '#c8c2a8', quarry: '#e3d6c4', glassworks: '#b8a77e', keep: '#c8c2a8',
 };
 
 const TILE_TOP_RADIUS = 0.982;

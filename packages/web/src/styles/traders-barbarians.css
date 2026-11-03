@@ -1,0 +1,71 @@
+/* Traders & Barbarians panels, emblems and prompts. */
+.tb-panel {
+  display: grid;
+  gap: 0.6rem;
+}
+.tb-panel h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+.tb-section {
+  border-top: 1px solid rgba(120, 100, 70, 0.25);
+  padding-top: 0.45rem;
+  display: grid;
+  gap: 0.35rem;
+}
+.tb-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.92rem;
+  margin: 0;
+}
+.tb-section p {
+  margin: 0;
+}
+.tb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+.tb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.tb-actions .button {
+  min-height: 44px;
+}
+.tb-emblem {
+  flex: none;
+  vertical-align: middle;
+}
+.tb-help p {
+  margin: 0.25rem 0;
+}
+.tb-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+.tb-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 0.4rem;
+  padding: 0.1rem 0.35rem;
+  background: rgba(29, 94, 122, 0.12);
+  font-size: 0.85rem;
+}
+.tb-token[aria-pressed='true'] {
+  outline: 2px solid #1d5e7a;
+  background: rgba(29, 94, 122, 0.28);
+}
+.tb-ground__number {
+  font: 700 17px/1 var(--font-display, Georgia, serif);
+  fill: #12465a;
+}

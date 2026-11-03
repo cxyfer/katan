@@ -20,6 +20,43 @@ export interface BoardIntent {
   targets: number[];
   /** True when the target list came from server-provided action hints. */
   fromHints: boolean;
+  /** Extra command fields (rules-module targets). */
+  extra?: Record<string, unknown>;
+  /** Command field receiving the picked index (rules-module targets). */
+  field?: string;
+  /** Module target list the targets came from (kept with the selection). */
+  targetsKey?: string;
+}
+
+/**
+ * Board hints a rules module publishes in `hints.modules[id]`: `targets`
+ * maps a command type to its legal indices, and `board` asks the board to arm
+ * itself for a pending choice of the viewer.
+ */
+interface ModuleBoardHints {
+  targets?: Record<string, number[]>;
+  board?: Omit<BoardIntent, 'fromHints'> | null;
+}
+
+function moduleHints(state: TableState): ModuleBoardHints[] {
+  const modules = state.game?.view.hints?.modules ?? {};
+  return Object.values(modules).filter((value): value is ModuleBoardHints => !!value && typeof value === 'object');
+}
+
+/** Legal indices a rules module publishes for one of its command types. */
+export function moduleTargets(state: TableState, commandType: string): number[] | null {
+  for (const hints of moduleHints(state)) {
+    const targets = hints.targets?.[commandType];
+    if (Array.isArray(targets)) return targets.slice();
+  }
+  return null;
+}
+
+function moduleBoardIntent(state: TableState): BoardIntent | null {
+  for (const hints of moduleHints(state)) {
+    if (hints.board) return { ...hints.board, targets: hints.board.targets.slice(), fromHints: true };
+  }
+  return null;
 }
 
 function allVertices(state: TableState): number[] {
@@ -42,6 +79,9 @@ function allEdges(state: TableState): number[] {
 function robberHexes(state: TableState): number[] {
   const board = state.game?.view.board;
   if (!board) return [];
+  // A rules module that narrows the robber's hexes publishes them as a hint.
+  const narrowed = (state.game?.view.hints?.modules?.tradersBarbarians as { robberHexes?: number[] } | undefined)?.robberHexes;
+  if (Array.isArray(narrowed)) return narrowed.slice();
   // Seafarers: land hexes move the robber, sea hexes the pirate (the frame is
   // a separate control because it is not a hex).
   const sea = seafarersHints(state.game?.view);
@@ -75,10 +115,17 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
       kind,
       commandType: armed,
       labelId: state.selection.labelId ?? armed,
-      targets: targetsFor(state, armed, selfId),
-      fromHints: armed.startsWith('build.') || isShipCommand(armed) || isCitiesKnightsVertexCommand(armed),
+      targets: state.selection.targetsKey ? moduleTargets(state, state.selection.targetsKey) ?? [] : targetsFor(state, armed, selfId),
+      fromHints: armed.startsWith('build.') || moduleTargets(state, state.selection.targetsKey ?? armed) !== null || isShipCommand(armed) || isCitiesKnightsVertexCommand(armed),
+      ...(state.selection.extra ? { extra: state.selection.extra } : {}),
+      ...(state.selection.field ? { field: state.selection.field } : {}),
+      ...(state.selection.targetsKey ? { targetsKey: state.selection.targetsKey } : {}),
     };
   }
+
+  // A rules module's pending choice (or end-of-turn step) of this viewer.
+  const fromModule = moduleBoardIntent(state);
+  if (fromModule) return fromModule;
 
   const pending = view.pending;
   // `discard` is the one pending effect with no single actor and no board
@@ -194,6 +241,6 @@ export function targetsFor(state: TableState, commandType: string, selfId: strin
       return seafarersHints(state.game?.view)?.movableShips.find((ship) => ship.edge === from)?.targets ?? [];
     }
     default:
-      return citiesKnightsTargets(state.game?.view, { commandType, params: state.selection.params }) ?? [];
+      return citiesKnightsTargets(state.game?.view, { commandType, params: state.selection.params }) ?? moduleTargets(state, commandType) ?? [];
   }
 }

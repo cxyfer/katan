@@ -5,6 +5,7 @@
 
 import type { Locale } from '@catan/protocol';
 import type { GameEvent } from '@catan/rules';
+import { moduleEventParams as tradersBarbariansEventParams } from '../module-events.ts';
 import { citiesKnightsEventParams } from './citiesKnights-events.ts';
 import { seafarersEventParams } from './seafarers-events.ts';
 import { seafarersCitiesKnightsEventParams } from './seafarersCitiesKnights-events.ts';
@@ -18,5 +19,5 @@ export function moduleEventParams(locale: Locale, event: GameEvent, nameOf: (pla
     const params = build(locale, event, nameOf);
     if (params) return params;
   }
-  return undefined;
+  return event.type.startsWith('tb.') ? tradersBarbariansEventParams(locale, event, nameOf) : undefined;
 }

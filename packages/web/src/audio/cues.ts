@@ -11,6 +11,7 @@
 
 import type { GameEvent } from '@catan/protocol';
 import { boardEffectGroups } from '../board/animation.ts';
+import { TB_SOUND_CUES, tbCueForEvent } from './tb-cues.ts';
 import { PROGRESS_CUES, progressCueForEvent } from './progress-cues.ts';
 
 export const SOUND_CUES = [
@@ -42,6 +43,7 @@ export const SOUND_CUES = [
   'ui.select',
   'ui.error',
   'chat.message',
+  ...TB_SOUND_CUES,
   // Seafarers
   'ship.build',
   'ship.move',
@@ -168,7 +170,7 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
       return 'city.improve';
     default:
       // Cities & Knights progress cards (audio/progress-cues.ts).
-      return progressCueForEvent(event, selfId) ?? null;
+      return tbCueForEvent(event) ?? progressCueForEvent(event, selfId) ?? null;
   }
 }
 

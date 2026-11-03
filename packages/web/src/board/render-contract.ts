@@ -56,6 +56,8 @@ export interface BoardSceneInput {
   viewport: BoardViewportState;
   quality: QualityMode;
   motionAllowed: boolean;
+  /** Rules-module board state (`GameView.modules`) for scenario pieces; absent for base games. */
+  modules?: Record<string, unknown>;
   /** Seafarers module view (island claims); absent for base games. */
   seafarers?: SeafarersModuleView | null;
   /** Cities & Knights module view (knights, walls, metropolises); absent for base games. */

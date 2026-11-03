@@ -20,7 +20,9 @@ export const DEV_CARD_TYPES: readonly DevCardType[] = [
   'monopoly',
 ];
 
-export type PlayableDevCardType = Exclude<DevCardType, 'victoryPoint'>;
+/** Base-game card types; expansion cards are counted only once seen. */
+export type BaseDevCardType = 'knight' | 'victoryPoint' | 'roadBuilding' | 'yearOfPlenty' | 'monopoly';
+export type PlayableDevCardType = Exclude<BaseDevCardType, 'victoryPoint'>;
 
 export interface PlayerStats {
   /** Action windows opened for this player. */
@@ -48,8 +50,8 @@ export interface PlayerStats {
   freeRoadsBuilt: number;
   settlementsBuilt: number;
   citiesBuilt: number;
-  devCardsBought: Record<DevCardType, number>;
-  devCardsPlayed: Record<PlayableDevCardType, number>;
+  devCardsBought: Record<BaseDevCardType, number> & Partial<Record<DevCardType, number>>;
+  devCardsPlayed: Record<PlayableDevCardType, number> & Partial<Record<Exclude<DevCardType, 'victoryPoint'>, number>>;
   bankTrades: number;
   bankGiven: ResourceCounts;
   bankReceived: ResourceCounts;
@@ -90,7 +92,7 @@ export function zeroResources(): ResourceCounts {
   return { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
 }
 
-function zeroDevCards(): Record<DevCardType, number> {
+function zeroDevCards(): Record<BaseDevCardType, number> {
   return { knight: 0, victoryPoint: 0, roadBuilding: 0, yearOfPlenty: 0, monopoly: 0 };
 }
 

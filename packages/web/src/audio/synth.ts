@@ -7,6 +7,7 @@
  */
 
 import type { SoundCue } from './cues.ts';
+import { TB_CUE_LENGTH_SECONDS, type TbSoundCue } from './tb-cues.ts';
 
 export interface SynthTarget {
   ctx: BaseAudioContext;
@@ -267,6 +268,38 @@ type Recipe = (target: SynthTarget, at: number, random: Random) => void;
 
 const range = (random: Random, low: number, high: number) => low + random() * (high - low);
 
+/** Traders & Barbarians cues (see `tb-cues.ts`). */
+const TB_RECIPES: Record<TbSoundCue, (s: SynthTarget, at: number, random: Random) => void> = {
+  // A splash and two rising bubbles.
+  'tb.fish': (s, at) => {
+    noise(s, { at, attack: 0.01, decay: 0.25, gain: 0.16, filter: { type: 'bandpass', freq: 900, q: 0.9 } });
+    tone(s, { at: at + 0.12, freq: 380, to: 900, glide: 0.08, decay: 0.09, gain: 0.07 });
+    tone(s, { at: at + 0.24, freq: 520, to: 1250, glide: 0.07, decay: 0.08, gain: 0.06 });
+    marimba(s, at + 0.34, 72, 0.06, 0.5, { reverb: 0.25 });
+  },
+  // Coins dropped onto a table.
+  'tb.coins': (s, at, random) => {
+    [0, 0.06, 0.11, 0.19].forEach((offset, index) => coin(s, at + offset, 2600 + index * 210 + random() * 120, 0.07, { pan: -0.3 + index * 0.2, reverb: 0.15 }));
+  },
+  // Low war drums and a horn: barbarians land or attack.
+  'tb.barbarians': (s, at) => {
+    [0, 0.22, 0.44].forEach((offset, index) => {
+      tone(s, { at: at + offset, freq: 70 - index * 4, to: 45, glide: 0.25, decay: 0.32, gain: 0.42 });
+      noise(s, { at: at + offset, decay: 0.12, gain: 0.18, filter: { type: 'lowpass', freq: 400 } });
+    });
+    brass(s, at + 0.5, 45, 0.1, 0.5, { reverb: 0.35 });
+  },
+  // Creaking wheels and a few hoof knocks.
+  'tb.wagon': (s, at) => {
+    swish(s, at, 600, 300, 0.4, 0.08);
+    [0.05, 0.2, 0.35, 0.5].forEach((offset, index) => knock(s, at + offset, index % 2 ? 330 : 280, 0.18, { reverb: 0.1 }));
+  },
+  // A scenario award (wealth, prisoners, deliveries).
+  'tb.victory': (s, at) => {
+    [67, 72, 76].forEach((midi, index) => bell(s, at + index * 0.09, midi, 0.08, 1, { reverb: 0.35 }));
+  },
+};
+
 const RECIPES: Record<SoundCue, Recipe> = {
   // 骰子在木杯中搖晃，再拋到桌上彈跳；落定的聲音由 dice.land 在點數揭曉時補上。
   'dice.roll': (s, at, random) => {
@@ -502,6 +535,7 @@ const RECIPES: Record<SoundCue, Recipe> = {
     tone(s, { at, freq: 520, to: 1040, glide: 0.07, decay: 0.1, gain: 0.08 });
     tone(s, { at: at + 0.09, freq: 780, to: 1320, glide: 0.06, decay: 0.09, gain: 0.06 });
   },
+  ...TB_RECIPES,
   // Cities & Knights progress cards (cue mapping in progress-cues.ts).
   // A card laid on the table: a paper flick and a two-note chime.
   'progress.play': (s, at) => {
@@ -546,6 +580,7 @@ export const CUE_LENGTH_SECONDS: Record<SoundCue, number> = {
   'trade.offer': 1.8, 'trade.complete': 1.2, 'trade.bank': 0.8, 'trade.cancel': 0.8,
   'turn.yours': 1.6, 'turn.other': 0.5, 'game.victory': 2.6, 'game.over': 2.6,
   'ui.select': 0.1, 'ui.error': 0.3, 'chat.message': 0.25,
+  ...TB_CUE_LENGTH_SECONDS,
   'ship.build': 1.1, 'ship.move': 1.1, 'pirate.move': 1.0, 'gold.pick': 1.1, 'island.bonus': 1.4,
   'barbarians.advance': 0.9, 'barbarians.attack': 1.6, 'knight.act': 0.8, 'wall.build': 0.6, 'city.improve': 1.2,
   'progress.play': 1.0, 'progress.alchemy': 1.2, 'progress.merchant': 1.0, 'progress.request': 1.1,

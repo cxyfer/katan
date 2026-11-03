@@ -32,7 +32,8 @@ export function coastLoops(topology: BoardTopology, land?: readonly boolean[]): 
   const isLand = (hex: number) => land?.[hex] ?? true;
   const boundary = topology.edges
     .map((edge, index) => ({ edge, index }))
-    .filter(({ edge }) => edge.hexes.filter(isLand).length === 1);
+    // Interior paths (Traders & Barbarians plazas) lie inside a hex, not on the shore.
+    .filter(({ edge }) => !edge.interior && edge.hexes.filter(isLand).length === 1);
   const byVertex = new Map<number, number[]>();
   for (const { edge, index } of boundary) {
     for (const vertex of edge.vertices) {

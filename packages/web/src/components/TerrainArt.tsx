@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { tbTerrainArt } from './tb/TbTerrainArt.tsx';
 
 /**
  * 地形圖示：棋盤、首頁島嶼插畫、資源卡與資源小圖示共用的原創向量圖。
@@ -224,7 +225,9 @@ export function TerrainEmblem({ terrain, x, y }: { terrain: string; x: number; y
       </>;
       break;
     default:
-      art = <path d="M-40-10q10-8 20 0t20 0 20 0 20 0M-40 10q10-8 20 0t20 0 20 0 20 0" fill="none" stroke="#bfe6df" strokeWidth="2.5" />;
+      // Scenario hexes (Traders & Barbarians) bring their own emblems.
+      art = tbTerrainArt(terrain) ??
+        <path d="M-40-10q10-8 20 0t20 0 20 0 20 0M-40 10q10-8 20 0t20 0 20 0 20 0" fill="none" stroke="#bfe6df" strokeWidth="2.5" />;
   }
   return <g transform={`translate(${x} ${y})`} className="terrain-emblem" aria-hidden="true" pointerEvents="none">{art}</g>;
 }

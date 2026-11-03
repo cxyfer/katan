@@ -9,6 +9,7 @@ import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrain
 import { placementArrival } from '../board/effects.ts';
 import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
+import { TbBridge, TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
 import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
 import { isShipCommand, seafarersView } from '../board/seafarers.ts';
 import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
@@ -118,6 +119,7 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
     <svg {...svgProps} ref={svgRef} className="board__svg" data-testid="board-svg" role="img" aria-label={t('a11y.boardRegion')} viewBox={geometry.viewBox} preserveAspectRatio="xMidYMid meet">
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
           <StaticTiles geometry={geometry} terrain={board.terrain} numbers={board.numbers} ids={ids} />
+          <TbSvgUnder geometry={geometry} view={view} />
 
           {board.harbors.map((harbor) => {
             const edge = geometry.edges[harbor.edge];
@@ -150,6 +152,12 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
                   <title>{`${t('sf.board.ship')} · ${nameResolver(road.player)}`}</title>
                 </g>
               );
+            }
+            if (road.bridge) {
+              return <g key={`road-${edge.index}`} data-testid={`road-${edge.index}`} data-bridge="true">
+                <TbBridge {...edge} color={color} />
+                <title>{`${t('tb.rivers.bridge')} · ${nameResolver(road.player)}`}</title>
+              </g>;
             }
             const line = inset(edge);
             return (
@@ -202,6 +210,7 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
             );
           })}
 
+          <TbSvgOver geometry={geometry} view={view} />
           {ck && <SvgCitiesKnightsPieces geometry={geometry} view={view} ck={ck} nameResolver={nameResolver} />}
 
           {seafarersView(view)?.islandClaims.map((claim) => {

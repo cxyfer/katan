@@ -16,6 +16,14 @@ export const TERRAIN_LETTER: Readonly<Record<string, string>> = {
   desert: 'D',
   gold: 'Au',
   sea: 'S',
+  // Traders & Barbarians hexes
+  lake: 'Lk',
+  swamp: 'Sw',
+  oasis: 'O',
+  castle: 'C',
+  quarry: 'Q',
+  glassworks: 'Gw',
+  keep: 'K',
 };
 
 export const TERRAIN_SYMBOL: Readonly<Record<string, string>> = {
@@ -27,6 +35,13 @@ export const TERRAIN_SYMBOL: Readonly<Record<string, string>> = {
   desert: '∅',
   gold: '★',
   sea: '≈',
+  lake: '◎',
+  swamp: '≀',
+  oasis: '☼',
+  castle: '♜',
+  quarry: '◇',
+  glassworks: '◈',
+  keep: '♖',
 };
 
 export const TERRAIN_FILL: Readonly<Record<string, string>> = {
@@ -38,6 +53,13 @@ export const TERRAIN_FILL: Readonly<Record<string, string>> = {
   desert: '#e0cfa9',
   gold: '#c9a227',
   sea: '#2b5f8a',
+  lake: '#7fae6c',
+  swamp: '#8d8a52',
+  oasis: '#dcc28c',
+  castle: '#86b06a',
+  quarry: '#c58a62',
+  glassworks: '#6f9a5c',
+  keep: '#8cb46e',
 };
 
 export const ALL_TERRAIN: readonly string[] = [

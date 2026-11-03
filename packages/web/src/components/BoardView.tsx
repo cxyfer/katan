@@ -154,6 +154,7 @@ export function BoardView({ controller }: { controller: TableController }) {
     }
     const carried = state.selection.commandType === intent.commandType ? state.selection : null;
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId,
+      ...(intent.extra ? { extra: intent.extra } : {}), ...(intent.targetsKey ? { targetsKey: intent.targetsKey } : {}), ...(intent.field ? { field: intent.field } : {}),
       ...(carried?.params ? { params: carried.params } : {}), ...(carried?.field ? { field: carried.field } : {}) });
   }, [actions, intent, state.selection]);
   const focusedRoll = animation.activeDice;
@@ -299,7 +300,7 @@ export function BoardView({ controller }: { controller: TableController }) {
           <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
             <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView} citiesKnights={ckView}
               intent={intent} selection={selection} arrivals={animation.arrivals} viewport={controls.viewport} quality={quality}
-              motionAllowed={animation.arrivals.length > 0} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />
+              motionAllowed={animation.arrivals.length > 0} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} {...(view.modules ? { modules: view.modules } : {})} />
           </Suspense></SceneBoundary>
         </div>}
         {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} arrivals={animation.arrivals}

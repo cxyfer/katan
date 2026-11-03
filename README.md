@@ -133,6 +133,10 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
 
 - Base game (`base-2025`) for **3 and 4 players**, and paired base
   (`base-paired-2025`) for **5 and 6 players**, fixed or variable setup.
+- Traders & Barbarians (2025 rulebook) on the base board for **3 and 4
+  players**: the Friendly Robber and Harbors of Catan variants, and the
+  scenarios Fishing on Catan, Rivers of Catan, Merchant Trains, Barbarian
+  Attack and Traders & Barbarians, each its own profile.
 - Private rooms with invite codes and a public room list.
 - Guest identity via a secure browser cookie, with nickname changes.
 - Host-configured room policy before start; after start every seated player must
@@ -165,6 +169,8 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   barbarian attack and chased by knights, gold without commodities and a
   16-point goal, in both the 3D and SVG boards. Bot seats are not offered
   for the expansions.
+
+The Traders & Barbarians event-card variant remains disabled because the 2025 rulebook omits the deck list.
 
 See [`docs/FIDELITY.md`](docs/FIDELITY.md) for the full list of gaps,
 including the device, accessibility and playtest evidence that has not been

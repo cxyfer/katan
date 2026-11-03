@@ -117,6 +117,41 @@ describe('t()', () => {
     expect(translateEvent('zh-Hant', event, (id) => id).text).toBe('擲出 6：銀行的礦石不足，六角格 4 本次不發放。');
   });
 
+  it.each([
+    ['trade.offered', { from: 'p1', to: 'p2', give: {}, want: { ore: 1 }, giveGoods: { gold: 2 } }],
+    ['trade.revised', { revision: 2, give: { lumber: 1 }, want: {}, giveGoods: { gold: 2 } }],
+    ['trade.completed', { from: 'p1', to: 'p2', give: { lumber: 1 }, want: {}, giveGoods: { gold: 2 } }],
+  ] as const)('includes module goods in %s events in both locales', (type, params) => {
+    const event = makeEvent(11, type, params);
+    const en = translateEvent('en', event, (id) => id);
+    const zh = translateEvent('zh-Hant', event, (id) => id);
+
+    expect(en.text).toContain('2×Gold');
+    expect(zh.text).toContain('2×金幣');
+    if (type !== 'trade.offered') {
+      expect(en.text).toContain('1×Lumber');
+      expect(zh.text).toContain('1×木材');
+    }
+  });
+
+  it.each(['trade.offered', 'trade.revised', 'trade.completed'])('keeps C&K commodities and module goods in %s text', (type) => {
+    const event = makeEvent(12, type, {
+      from: 'p1', to: 'p2', revision: 2,
+      give: { paper: 1, cloth: 2 }, want: { coin: 3 },
+      giveGoods: { gold: 4 }, wantGoods: { gold: 5 },
+    });
+    for (const locale of ['en', 'zh-Hant'] as const) {
+      const translated = translateEvent(locale, event, (id) => id);
+      expect(translated.params.give).toContain(`1×${t(locale, 'resource.paper')}`);
+      expect(translated.params.give).toContain(`2×${t(locale, 'resource.cloth')}`);
+      expect(translated.params.give).toContain(`4×${t(locale, 'tb.trade.goodName.gold')}`);
+      expect(translated.params.want).toContain(`3×${t(locale, 'resource.coin')}`);
+      expect(translated.params.want).toContain(`5×${t(locale, 'tb.trade.goodName.gold')}`);
+      expect(translated.text).not.toContain('resource.');
+      expect(translated.text).not.toContain('tb.trade.');
+    }
+  });
+
   it('never leaks a raw message id for an unknown error code', () => {
     expect(translateNotice('en', { messageId: 'error.E_TOTALLY_NEW' })).toContain('E_TOTALLY_NEW');
     expect(translateNotice('en', { messageId: 'error.E_ILLEGAL_TARGET' })).toBe(
