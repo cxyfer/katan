@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GAME_ORDER_MODES, type BotLevel, type GameOrderMode } from '@catan/protocol';
+import { GAME_ORDER_MODES, type GameOrderMode } from '@catan/protocol';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { SoundSettings } from './SoundSettings.tsx';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatDateTime } from '../i18n/format.ts';
-import { botsEnabled, DEFAULT_BOT_LEVEL, offeredBotLevels, pickBotLevel, profileAllowsBots } from '../state/bots.ts';
 import type { ScreenProps } from './props.ts';
 import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../state/rulesets.ts';
 
@@ -29,8 +28,6 @@ export function HomeScreen({ controller }: ScreenProps) {
   const [scenarioKey, setScenarioKey] = useState('');
   const [setupMode, setSetupMode] = useState<'fixed' | 'variable'>('fixed');
   const [orderMode, setOrderMode] = useState<GameOrderMode>('join');
-  const [botCount, setBotCount] = useState(0);
-  const [botLevel, setBotLevel] = useState<BotLevel>(DEFAULT_BOT_LEVEL);
   const homePanes = ['table', 'resume', 'rooms', 'identity'] as const;
   const homeTabRef = useRef<HTMLButtonElement | null>(null);
 
@@ -46,14 +43,6 @@ export function HomeScreen({ controller }: ScreenProps) {
   const joinLabels = (ids: string[]) => ids.map((id) => t(id)).join(' + ');
   const setupOptions = chosenProfile?.setupModes ?? ['fixed', 'variable'];
   const effectiveSetup = setupOptions.includes(setupMode) ? setupMode : (setupOptions[0] ?? 'fixed');
-  // 至少保留一個座位給房主；人數上限變小時電腦數量跟著夾住。
-  const botsOn = botsEnabled(state.config);
-  const profileBots = profileAllowsBots(chosenProfile);
-  const offerBots = botsOn && profileBots;
-  const maxBots = Math.max(0, effectiveCapacity - 1);
-  const effectiveBots = offerBots ? Math.min(botCount, maxBots) : 0;
-  const botLevels = offeredBotLevels(state.config);
-  const chosenBotLevel = pickBotLevel(botLevels, botLevel);
 
   const paneIcon: Record<HomePane, string> = { table: 'flag', resume: 'anchor', rooms: 'globe', identity: 'settings' };
   const paneCount: Partial<Record<HomePane, number>> = { resume: state.games.length, rooms: state.rooms.length };
@@ -181,11 +170,7 @@ export function HomeScreen({ controller }: ScreenProps) {
               <select
                 id="room-capacity"
                 value={effectiveCapacity}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  setCapacity(next);
-                  setBotCount((count) => Math.min(count, Math.max(0, next - 1)));
-                }}
+                onChange={(event) => setCapacity(Number(event.target.value))}
               >
                 {capacityOptions.map((count) => (
                   <option key={count} value={count}>{count}</option>
@@ -218,43 +203,7 @@ export function HomeScreen({ controller }: ScreenProps) {
               </select>
               <p className="muted">{t('lobby.orderModeNote')}</p>
             </div>
-            {offerBots && (
-              <>
-                <div className="field">
-                  <label htmlFor="room-bots">{t('lobby.bots.count')}</label>
-                  <select
-                    id="room-bots"
-                    data-testid="room-bots"
-                    value={effectiveBots}
-                    aria-describedby={effectiveBots > 0 ? 'room-bots-hint' : undefined}
-                    onChange={(event) => setBotCount(Number(event.target.value))}
-                  >
-                    {Array.from({ length: maxBots + 1 }, (_, count) => (
-                      <option key={count} value={count}>{count === 0 ? t('lobby.bots.none') : count}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="room-bot-level">{t('lobby.bots.level')}</label>
-                  <select
-                    id="room-bot-level"
-                    data-testid="room-bot-level"
-                    value={chosenBotLevel}
-                    disabled={effectiveBots === 0}
-                    onChange={(event) => setBotLevel(event.target.value as BotLevel)}
-                  >
-                    {botLevels.map((level) => (
-                      <option key={level} value={level}>{t(`bot.level.${level}`)}</option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
           </div>
-          {effectiveBots > 0 && <p className="muted" id="room-bots-hint">{t('lobby.bots.hint')}</p>}
-          {botsOn && !profileBots && (
-            <p className="muted" data-testid="room-bots-unsupported">{t('lobby.bots.unsupported')}</p>
-          )}
           {chosenProfile && (
             <p className="muted" data-testid="resolved-profile">
               {t('lobby.resolvedProfile', { profile: t(chosenProfile.labelKey) })}
@@ -276,7 +225,6 @@ export function HomeScreen({ controller }: ScreenProps) {
                   profileId: chosenProfile?.id ?? '',
                   setupMode: effectiveSetup,
                   orderMode,
-                  ...(effectiveBots > 0 ? { bots: effectiveBots, botLevel: chosenBotLevel } : {}),
                 })
               }
             >

@@ -53,6 +53,10 @@ tag, so pin an exact version tag (`ghcr.io/cxyfer/katan:v0.2.0`, or `0.1.0` for 
 digest in the `image:` line when a deployment must be reproducible. The
 package is published publicly, so a pull needs no login.
 
+The runtime image includes a minimal BusyBox tool layer for platforms that
+initialize persistent volumes by running `sh` inside the application image.
+The service still runs as UID `10001` and starts through its Node command.
+
 ### SQLite (single instance)
 
 ```bash

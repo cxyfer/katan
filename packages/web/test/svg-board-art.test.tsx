@@ -10,7 +10,7 @@ const geometry = buildGeometry('hex-r2');
 const [vx, vy, vw, vh] = geometry.viewBox.split(' ').map(Number) as [number, number, number, number];
 
 function board(layout = fixedBoard(), zoom = 1) {
-  return <SvgBoard svgRef={null} geometry={geometry} view={makeView({ board: layout })} active={null}
+  return <SvgBoard svgRef={null} geometry={geometry} view={makeView({ board: layout })} arrivals={[]}
     selection={EMPTY_SELECTION} selfId="p1" intent={null} pan={{ x: 0, y: 0 }} zoom={zoom}
     viewBoxCenter={{ x: vx + vw / 2, y: vy + vh / 2 }} nameResolver={(id) => id} />;
 }

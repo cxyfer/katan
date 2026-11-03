@@ -6,6 +6,7 @@ import {
 } from '../board/citiesKnights.ts';
 import { pirateActive } from '../board/seafarersCitiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
+import { shownCitiesKnights } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ProgressHand } from './CitiesKnightsProgress.tsx';
 import { BarbarianTrack, CommodityEmblem, EventDieFace, PipDieFace, TRACK_COLOR, TrackEmblem } from './SvgCitiesKnights.tsx';
@@ -20,7 +21,7 @@ export function CitiesKnightsPanel({ controller }: { controller: TableController
   const t = useT();
   const locale = useLocale();
   const { state, actions } = controller;
-  const view = state.game?.view ?? null;
+  const view = shownCitiesKnights(state);
   const ck = citiesKnightsView(view);
   if (!view || !ck) return null;
   const hints = citiesKnightsHints(view);

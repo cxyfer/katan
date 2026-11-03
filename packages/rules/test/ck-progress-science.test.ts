@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { scoreOf, topologyOf } from '../src/analysis.ts';
+import { actionHints, legalRoadEdges } from '../src/engine.ts';
 import { ckState, ckView } from '../src/modules/citiesKnights/state.ts';
 import type { GameState } from '../src/types.ts';
 import {
@@ -262,6 +263,20 @@ describe('R-CK Medicine (CK25 p. 13; CK-FAQ 108)', () => {
 });
 
 describe('R-CK Road Building (CK25 p. 14)', () => {
+  /** 外圍路口只有 e1 可蓋；放下後才會打開 w 端的新地點。 */
+  function singleSite() {
+    const state = emptyCkGame(4);
+    const topo = topologyOf(state);
+    const v = topo.vertices.findIndex((vertex) => vertex.edges.length === 2);
+    const [e1, e2] = topo.vertices[v]!.edges as [number, number];
+    const w = topo.edges[e1]!.vertices.find((vertex) => vertex !== v)!;
+    setBuilding(state, 'p1', v, false);
+    state.board.roads[e2] = { player: 'p2', ship: false };
+    handCards(state, 'p1', ['roadBuilding']);
+    expect(legalRoadEdges(state, 'p1')).toEqual([e1]);
+    return { state, e1, w };
+  }
+
   it('PC-RB1 opens the free-road effect for two roads', () => {
     const state = emptyCkGame(4);
     const path = pathFrom(state, spreadVertices(state, 1)[0]!, 3);
@@ -282,6 +297,71 @@ describe('R-CK Road Building (CK25 p. 14)', () => {
     const played = playCard(state, 'p1', 'roadBuilding');
     expect(played.state.pending).toBeNull();
     expect(eventsOf(played, 'ck.freeRoads')[0]!.params).toMatchObject({ roads: 0 });
+  });
+
+  it('PC-RB3 grants the second road when the first opens its site, including after snapshot restore', () => {
+    const { state, e1 } = singleSite();
+    const played = playCard(state, 'p1', 'roadBuilding');
+    expect(played.state.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 2, granted: 2 });
+    expect(eventsOf(played, 'ck.freeRoads')[0]!.params.roads).toBe(2);
+    const restored = JSON.parse(JSON.stringify(played.state)) as GameState;
+    const first = actCk(restored, 'p1', { type: 'build.road', edge: e1 });
+    expect(first.state.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 2 });
+    const resumed = JSON.parse(JSON.stringify(first.state)) as GameState;
+    const targets = actionHints(resumed, 'p1').legalRoads;
+    expect(targets.length).toBeGreaterThan(0);
+    expect(targets).not.toContain(e1);
+    const second = actCk(resumed, 'p1', { type: 'build.road', edge: targets[0]! });
+    expect(second.state.pending).toBeNull();
+    expect(eventsOf(second, 'dev.roadBuildingFinished')[0]!.params.placed).toBe(2);
+    expect(player(second.state, 'p1').resources).toEqual(player(state, 'p1').resources);
+    expect(bottomOf(second.state, 'science')).toBe('roadBuilding');
+    expect(actionHints(second.state, 'p1').canEndTurn).toBe(true);
+  });
+
+  it('PC-RB4 ends after the first road if no legal edge remains', () => {
+    const { state, e1, w } = singleSite();
+    setBuilding(state, 'p2', w, false);
+    const played = playCard(state, 'p1', 'roadBuilding');
+    expect(played.state.pending).toMatchObject({ remaining: 2, granted: 2 });
+    const first = actCk(played.state, 'p1', { type: 'build.road', edge: e1 });
+    expect(first.state.pending).toBeNull();
+    expect(eventsOf(first, 'dev.roadBuildingFinished')[0]!.params.placed).toBe(1);
+    expect(actionHints(first.state, 'p1').canEndTurn).toBe(true);
+  });
+
+  it.each([14, 15])('PC-RB5 caps the grant with %i road pieces already used', (used) => {
+    const state = emptyCkGame(4);
+    const topo = topologyOf(state);
+    const v = topo.vertices.findIndex((vertex) => vertex.edges.length === 2);
+    setBuilding(state, 'p1', v, false);
+    const keepOpen = new Set(topo.vertices[v]!.edges);
+    const occupied = state.board.roads.map((_road, edge) => edge).filter((edge) => !keepOpen.has(edge)).slice(0, used);
+    for (const edge of occupied) state.board.roads[edge] = { player: 'p1', ship: false };
+    handCards(state, 'p1', ['roadBuilding']);
+    const played = playCard(state, 'p1', 'roadBuilding');
+    expect(eventsOf(played, 'ck.freeRoads')[0]!.params.roads).toBe(15 - used);
+    if (used === 15) {
+      expect(played.state.pending).toBeNull();
+      expect(actionHints(played.state, 'p1').canEndTurn).toBe(true);
+    } else {
+      expect(played.state.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 1 });
+      const done = actCk(played.state, 'p1', { type: 'build.road', edge: [...keepOpen][0]! });
+      expect(done.state.pending).toBeNull();
+      expect(eventsOf(done, 'dev.roadBuildingFinished')[0]!.params.placed).toBe(1);
+    }
+    expect(bottomOf(played.state, 'science')).toBe('roadBuilding');
+  });
+
+  it('PC-RB6 preserves a recorded single-road grant in an existing snapshot', () => {
+    const { state, e1 } = singleSite();
+    const played = playCard(state, 'p1', 'roadBuilding');
+    played.state.pending = { kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 1 };
+    const restored = JSON.parse(JSON.stringify(played.state)) as GameState;
+    const done = actCk(restored, 'p1', { type: 'build.road', edge: e1 });
+    expect(legalRoadEdges(done.state, 'p1').length).toBeGreaterThan(0);
+    expect(done.state.pending).toBeNull();
+    expect(eventsOf(done, 'dev.roadBuildingFinished')[0]!.params.placed).toBe(1);
   });
 });
 

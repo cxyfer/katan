@@ -4,10 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DICE_PRESENTATION_DURATION_MS, MAX_EFFECT_DURATION_MS } from '../src/board/animation.ts';
 import { useBoardAnimation } from '../src/board/useBoardAnimation.ts';
 import { EventLog } from '../src/components/EventLog.tsx';
+import { BoardView } from '../src/components/BoardView.tsx';
+import { CitiesKnightsPanel } from '../src/components/CitiesKnightsPanel.tsx';
+import { HandPanel } from '../src/components/HandPanel.tsx';
 import { PlayersPanel } from '../src/components/PlayersPanel.tsx';
 import { TradePanel } from '../src/components/TradePanel.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
-import { initialTableState, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
+import { initialTableState, shownCitiesKnights, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import type { GameView } from '@catan/rules';
 import { makeEvent, makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -87,6 +90,126 @@ describe('roll hold in the table state', () => {
     const controller: TableController = { state, dispatch: vi.fn(), actions: {} as TableController['actions'] };
     render(<TradePanel controller={controller} />);
     expect(screen.getByTestId('give-owned-lumber').textContent).toBe('持有 2');
+  });
+
+  it.each(['snapshot', 'events'] as const)('holds commodity cards, tallies and trade counts when the roll arrives as %s', (delivery) => {
+    const before = base();
+    const module = { citiesKnights: { barbarian: { position: 0, length: 7, attacks: 0 } } };
+    before.game!.view.modules = module;
+    before.game!.view.players[0]!.commodities = { paper: 1, cloth: 0, coin: 0 };
+    before.game!.view.players[0]!.handSize = 11;
+    const after = rolledSnapshot(9);
+    after.view.modules = module;
+    after.view.players[0]!.commodities = { paper: 3, cloth: 1, coin: 2 };
+    after.view.players[0]!.handSize = 23;
+    after.view.events.push(makeEvent(15, 'ck.commoditiesProduced', { total: 6, grants: { p1: { paper: 2, cloth: 1, coin: 2 } } }));
+    after.view.seq = after.revision = 15;
+
+    let presenting = delivery === 'events'
+      ? tableReducer(before, { type: 'events', events: after.view.events }) : before;
+    presenting = tableReducer(presenting, { type: 'snapshot', snapshot: after });
+    const view = (state: TableState) => {
+      const controller = { state, dispatch: vi.fn(), actions: {} as TableController['actions'] };
+      return <LocaleProvider locale="en"><HandPanel controller={controller} /><TradePanel controller={controller} /></LocaleProvider>;
+    };
+    const count = (kind: string) => screen.getByTestId(`resource-${kind}`).querySelector('.resource-tally__count')!.textContent;
+    const total = () => screen.getByTestId('resource-tally-total').querySelector('.resource-tally__count')!.textContent;
+    const { rerender } = render(view(presenting));
+    expect(shownHand(presenting)?.paper).toBe(1);
+    expect(count('paper')).toBe('1');
+    expect(count('cloth')).toBe('0');
+    expect(count('coin')).toBe('0');
+    expect(total()).toBe('12'); // 11 資源與商品 + 1 發展卡。
+    expect(screen.queryAllByTestId(/^resource-card-paper-/)).toHaveLength(1);
+    expect(screen.queryByTestId('resource-card-cloth-0')).toBeNull();
+    expect(screen.queryByTestId('resource-card-coin-0')).toBeNull();
+    expect(screen.getByTestId('give-owned-paper').textContent).toBe('Have 1');
+    expect(screen.getByTestId('give-owned-cloth').textContent).toBe('Have 0');
+
+    rerender(view(tableReducer(presenting, { type: 'dice-presenting', value: false })));
+    expect(count('paper')).toBe('3');
+    expect(count('cloth')).toBe('1');
+    expect(count('coin')).toBe('2');
+    expect(total()).toBe('24');
+    expect(screen.queryAllByTestId(/^resource-card-paper-/)).toHaveLength(3);
+    expect(screen.queryAllByTestId(/^resource-card-cloth-/)).toHaveLength(1);
+    expect(screen.queryAllByTestId(/^resource-card-coin-/)).toHaveLength(2);
+    expect(screen.getByTestId('give-owned-paper').textContent).toBe('Have 3');
+    expect(screen.getByTestId('give-owned-cloth').textContent).toBe('Have 1');
+  });
+
+  it.each(['snapshot', 'events'] as const)('holds C&K badge, panel and scores when the roll arrives as %s', (delivery) => {
+    const before = base();
+    const previous = {
+      barbarian: { position: 6, length: 7, attacks: 0 },
+      barbarianStrength: 3, defenderStrength: 2,
+      lastRoll: { event: 'science', red: 2, atSeq: 11 },
+      knights: [{ player: 'p1', vertex: 0, level: 2, active: true }],
+      progressCounts: { p1: 1 }, progressVp: { p1: [] as string[] },
+      decks: { science: 18, trade: 18, politics: 18 },
+      commodityBank: { paper: 12, cloth: 12, coin: 12 },
+    };
+    before.game!.view.modules = { citiesKnights: previous };
+    before.game!.view.players[0]!.progressCards = ['alchemy'];
+    before.game!.view.players[0]!.ownScore = 2;
+    const after = rolledSnapshot(9);
+    after.view.modules = { citiesKnights: {
+      ...previous,
+      barbarian: { position: 0, length: 7, attacks: 1 },
+      defenderStrength: 0, robberActive: true,
+      lastRoll: { event: 'ship', red: 6, atSeq: 13 },
+      knights: [{ player: 'p1', vertex: 0, level: 2, active: false }],
+      progressCounts: { p1: 2 }, progressVp: { p1: ['printing'] },
+      decks: { science: 16, trade: 18, politics: 18 },
+      commodityBank: { paper: 11, cloth: 12, coin: 12 },
+    } };
+    after.view.players[0]!.progressCards = ['alchemy', 'crane'];
+    after.view.players[0]!.defenders = 1;
+    after.view.players[0]!.publicScore = after.view.players[0]!.ownScore = 4;
+    let presenting = delivery === 'events' ? tableReducer(before, { type: 'events', events: after.view.events }) : before;
+    presenting = tableReducer(presenting, { type: 'snapshot', snapshot: after });
+    // 後續投影也不得取代擲骰前的 C&K baseline。
+    const later = { ...after, revision: 15, view: { ...after.view, seq: 15 } };
+    presenting = tableReducer(presenting, { type: 'snapshot', snapshot: later });
+    expect(shownCitiesKnights(presenting)).toBe(before.game!.view);
+    const view = (state: TableState) => {
+      const controller = { state, dispatch: vi.fn(), actions: {} as TableController['actions'] };
+      return <LocaleProvider locale="en"><BoardView controller={controller} /><CitiesKnightsPanel controller={controller} /><PlayersPanel controller={controller} /></LocaleProvider>;
+    };
+    const mark = (id: string) => screen.getByTestId(id).querySelector('.score-mark__value')!.textContent;
+    const { rerender } = render(view(presenting));
+    expect(screen.getByTestId('ck-badge').getAttribute('data-position')).toBe('6');
+    expect(screen.getByTestId('ck-badge-event').getAttribute('data-face')).toBe('science');
+    expect(screen.getByTestId('ck-barbarian-track').getAttribute('data-position')).toBe('6');
+    expect(screen.getByTestId('ck-red-die').getAttribute('data-value')).toBe('2');
+    expect(screen.getByTestId('ck-event-die').getAttribute('data-face')).toBe('science');
+    expect(screen.queryByTestId('ck-card-crane')).toBeNull();
+    expect(screen.getByTestId('ck-card-alchemy').getAttribute('data-card')).toBe('alchemy');
+    expect(screen.queryByTestId('ck-progress-vp')).toBeNull();
+    expect(screen.getByTestId('ck-supply-paper').querySelector('strong')!.textContent).toBe('12');
+    expect(mark('players-progress-0')).toBe('1');
+    expect(mark('players-knights-0')).toBe('2');
+    expect(screen.queryByTestId('players-defender-0')).toBeNull();
+    expect(screen.queryByTestId('players-progress-vp-0')).toBeNull();
+    expect(screen.getByTestId('seat-0').querySelector('.seat__score')!.textContent).toContain('2');
+
+    const revealed = tableReducer(presenting, { type: 'dice-presenting', value: false });
+    expect(revealed.rollHold).toBeNull();
+    expect(shownCitiesKnights(revealed)).toBe(later.view);
+    rerender(view(revealed));
+    expect(screen.getByTestId('ck-badge').getAttribute('data-position')).toBe('0');
+    expect(screen.getByTestId('ck-badge-event').getAttribute('data-face')).toBe('ship');
+    expect(screen.getByTestId('ck-barbarian-track').getAttribute('data-position')).toBe('0');
+    expect(screen.getByTestId('ck-red-die').getAttribute('data-value')).toBe('6');
+    expect(screen.getByTestId('ck-event-die').getAttribute('data-face')).toBe('ship');
+    expect(screen.getByTestId('ck-card-crane').getAttribute('data-card')).toBe('crane');
+    expect(screen.getByTestId('ck-progress-vp').textContent).toContain('Printing');
+    expect(screen.getByTestId('ck-supply-paper').querySelector('strong')!.textContent).toBe('11');
+    expect(mark('players-progress-0')).toBe('2');
+    expect(mark('players-knights-0')).toBe('0');
+    expect(mark('players-defender-0')).toBe('1');
+    expect(mark('players-progress-vp-0')).toBe('1');
+    expect(screen.getByTestId('seat-0').querySelector('.seat__score')!.textContent).toContain('4');
   });
 });
 

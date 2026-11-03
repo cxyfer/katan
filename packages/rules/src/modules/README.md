@@ -54,6 +54,12 @@ and i18n catalog file.
 | scoring | `score` | inside `scoreOf`, added to the base score |
 | projection | `project` / `projectPending` / `actionHints` | `GameView.modules[id]`, module frames, `ActionHints.modules[id]` |
 
+A deferring module calls `ctx.kit.resolveRollOutcome` once from its continuation
+or command after its choices finish. This resumes `beforeProduction` with the
+next module in the profile, which may defer again; base production (or the 7)
+and `afterProduction` run only after every pre-production hook has completed.
+The frame's module identity preserves this position across snapshot recovery.
+
 Hooks get a `ModuleContext` (`profile`, `rng`, `kit`). `kit` exposes the engine
 services a module needs (`emit`, `fail`, `accept`, `payBuild`,
 `afterBoardChange`, `checkVictory`, `enqueuePending`, `completePending`,

@@ -284,7 +284,7 @@ card type (`ck-sim.test.ts`).
 | Science | Invention (2) | PC-IN1 swap, PC-IN2 forbidden numbers |
 | Science | Irrigation (2), Mining (2) | PC-IR1, PC-MI1 |
 | Science | Medicine (2) | PC-ME1, PC-ME2 |
-| Science | Road Building (2) | PC-RB1, PC-RB2 |
+| Science | Road Building (2) | PC-RB1 two roads, PC-RB2 no target, PC-RB3 newly opened second site and snapshot restore, PC-RB4 early completion, PC-RB5 piece supply, PC-RB6 recorded grant preserved |
 | Science | Smithing (2) | PC-SM1, PC-SM2 |
 | Science | Printing (1) | VIS-PC1 / `ck-dice` (revealed when drawn, off turn too, outside the hand limit) |
 | Trade | Commercial Harbor (2) | PC-CH1, PC-CH2, VIS-PC4 |
@@ -483,6 +483,10 @@ These are recorded rather than hidden. None of them is presented as verified.
     behaviour since `base-2025.1` (PR #60 lists it as a follow-up), so
     changing it is a base rule change that needs the maintainer's approval
     and a new base rule version. Seafarers inherits it unchanged.
+    The separate C&K progress card grants two roads when at least one legal
+    road exists, capped by road pieces left; after each placement the shared
+    effect checks the updated legal edges (CK25 p. 14, PC-RB3–6). Recorded
+    pending grants are preserved on snapshot restore.
 14. **Cities & Knights scope.** The core rules and all 54 progress cards
     (23 playable types plus the two scored when drawn) and the merchant are
     implemented and the profiles are enabled. Bot seats are refused (no

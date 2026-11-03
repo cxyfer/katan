@@ -95,8 +95,7 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
   // Cities & Knights: commodities are hand cards and can be offered too.
   const ckGame = citiesKnightsView(view) !== null;
   const kinds: readonly CardKind[] = ckGame ? CARD_KINDS : RESOURCES;
-  const ownCommodities = view.players.find((player) => player.id === selfId)?.commodities;
-  const owned: Partial<Record<CardKind, number>> | undefined = ckGame && ownCommodities ? { ...shownHand(state), ...ownCommodities } : shownHand(state);
+  const owned = shownHand(state);
   const showHint = (scope: string, text: string) => setHint((current) => ({ id: (current?.id ?? 0) + 1, scope, text }));
   const hintFor = (scope: string) => hint?.scope === scope
     ? <p key={hint.id} ref={hintRef} className="notice notice--warning trade-hint" role="alert" data-testid={`trade-hint-${scope}`}>{hint.text}</p>
@@ -249,6 +248,18 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
       </div>
 
       <div className="offer-list" data-testid="offer-list">
+        {owned && (
+          <div className="field field--checkbox trade-auto-decline">
+            <input
+              id="trade-auto-decline"
+              data-testid="trade-auto-decline"
+              type="checkbox"
+              checked={state.tradeAutoDecline}
+              onChange={(event) => actions.setTradeAutoDecline(event.target.checked)}
+            />
+            <label htmlFor="trade-auto-decline">{t('play.tradeAutoDecline')}</label>
+          </div>
+        )}
         {offers.length === 0 && <p className="muted">{t('play.tradeNoOffers')}</p>}
         {offers.map((offer) => (
           <OfferRow

@@ -4,9 +4,10 @@
 Starts the built service on a disposable SQLite database and drives one host
 through the real UI:
 
-* the create form with bot opponents, at the 1366x768 landscape fit from #42;
-* a lobby seated by the creation shortcut, then one bot added and one removed
-  from the lobby toolbar (both locales, plus a phone viewport);
+* the create form without any bot fields, at the 1366x768 landscape fit from #42;
+* a room where the host adds bots from the RC toolbar, names one through the
+  pencil-icon dialog, then removes one and adds it back (both locales, plus a
+  phone viewport);
 * a started table where the bots place, roll and play while the host's own
   moves are sent over the same browser session's API;
 * bots stop while no person has the table open and continue on return.
@@ -192,33 +193,46 @@ def capture(out: Path) -> dict:
             page.locator("form button[type=submit]").first.click()
             page.get_by_test_id("create-room").wait_for()
 
-            # 建房表單：4 人房預先加入 2 個電腦。
+            # 建房表單：4 人房，不詢問電腦數量。
             page.get_by_test_id("profile-select").select_option("base-2025")
             page.locator("#room-capacity").select_option("4")
-            page.get_by_test_id("room-bots").select_option("2")
-            page.get_by_test_id("room-bot-level").select_option("standard")
+            assert page.get_by_test_id("room-bots").count() == 0
+            assert page.get_by_test_id("room-bot-level").count() == 0
             create_box = page.get_by_test_id("create-room").bounding_box()
             result["checks"]["createButtonVisibleAt1366x768"] = bool(create_box) and create_box["y"] + create_box["height"] <= 768
             shot(page, out, result, "01-create-form-zh-Hant", 1366, 768)
             page.get_by_test_id("create-room").click()
             page.get_by_test_id("room-code").wait_for()
-            expect(page.locator("[data-bot=true]")).to_have_count(2)
+            expect(page.locator("[data-bot=true]")).to_have_count(0)
 
-            # 大廳：加入一個簡單電腦，再移除一個標準電腦。
-            page.get_by_test_id("lobby-bot-level").select_option("easy")
+            # RC 工具列：快速加入一個使用預設名稱的電腦。
+            page.get_by_test_id("lobby-bot-level").select_option("standard")
+            page.get_by_test_id("add-bot").click()
+            expect(page.locator("[data-bot=true]")).to_have_count(1)
+
+            # 小鉛筆圖示：新增前自訂名稱。
+            page.get_by_test_id("add-bot-named").click()
+            page.get_by_test_id("bot-name").fill("Robo")
+            shot(page, out, result, "02-add-bot-dialog-zh-Hant", 1366, 768)
+            page.get_by_test_id("confirm-add-bot").click()
+            expect(page.locator("[data-bot=true]")).to_have_count(2)
+            shot(page, out, result, "03-lobby-bots-zh-Hant", 1366, 768, full_page=True)
+
+            # 第三個留空使用預設名稱，補滿四個座位。
             page.get_by_test_id("add-bot").click()
             expect(page.locator("[data-bot=true]")).to_have_count(3)
-            expect(page.get_by_test_id("add-bot")).to_be_disabled()
-            shot(page, out, result, "02-lobby-full-zh-Hant", 1366, 768, full_page=True)
-            shot(page, out, result, "03-lobby-full-phone-zh-Hant", 390, 844, full_page=True)
+            shot(page, out, result, "04-lobby-full-zh-Hant", 1366, 768, full_page=True)
+            shot(page, out, result, "05-lobby-full-phone-zh-Hant", 390, 844, full_page=True)
             page.set_viewport_size({"width": 1366, "height": 768})
             first_bot = page.locator("[data-testid^=remove-bot-]").first
             first_bot.click()
             expect(page.locator("[data-bot=true]")).to_have_count(2)
-            page.get_by_test_id("add-bot").click()
+            page.get_by_test_id("add-bot-named").click()
+            page.get_by_test_id("bot-name").fill("Cleo")
+            page.get_by_test_id("confirm-add-bot").click()
             expect(page.locator("[data-bot=true]")).to_have_count(3)
             page.get_by_test_id("locale-switch").select_option("en")
-            shot(page, out, result, "04-lobby-full-en", 1366, 768, full_page=True)
+            shot(page, out, result, "06-lobby-full-en", 1366, 768, full_page=True)
 
             session = api(context, "GET", "/api/session")
             me = session["player"]["id"] if "player" in session else session["id"]
@@ -241,14 +255,14 @@ def capture(out: Path) -> dict:
                 sum(1 for b in snapshot["view"]["board"]["buildings"] if b and b["player"] == p["id"]) >= 2
                 for p in snapshot["view"]["players"]
             )
-            shot(page, out, result, "05-table-bot-turn-en", 1366, 768)
+            shot(page, out, result, "07-table-bot-turn-en", 1366, 768)
             page.get_by_test_id("locale-switch-game").select_option("zh-Hant")
             snapshot = play_host_until(
                 context, game_id, me,
                 lambda view: view["turn"]["playerId"] != me and view["turn"]["phase"] == "action",
             )
-            shot(page, out, result, "06-table-bot-turn-zh-Hant", 1366, 768)
-            shot(page, out, result, "07-table-bot-turn-phone-zh-Hant", 390, 844)
+            shot(page, out, result, "08-table-bot-turn-zh-Hant", 1366, 768)
+            shot(page, out, result, "09-table-bot-turn-phone-zh-Hant", 390, 844)
 
             # 關掉頁面：沒有真人在線，Bot 不再推進。
             page.close()
@@ -264,7 +278,7 @@ def capture(out: Path) -> dict:
             page.set_viewport_size({"width": 1366, "height": 768})
             page.locator("#home-tab-resume").click()
             expect(page.get_by_test_id("resume-list")).to_contain_text("（電腦）")
-            shot(page, out, result, "08-home-resume-zh-Hant", 1366, 768, full_page=True)
+            shot(page, out, result, "10-home-resume-zh-Hant", 1366, 768, full_page=True)
             page.get_by_test_id(f"resume-{game_id}").click()
             resumed_from = api(context, "GET", f"/api/games/{game_id}")["revision"]
             play_host_until(

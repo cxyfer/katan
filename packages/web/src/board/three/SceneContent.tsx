@@ -43,7 +43,7 @@ import { isCitiesKnightsVertexCommand, knightGhost, progressGhost, showsKnightGh
 import { atlasGeometryKey, boardSceneResources, type BoardSceneResources } from './resources.ts';
 
 type SceneProps = Pick<BoardSceneProps,
-  'geometry' | 'board' | 'players' | 'intent' | 'selection' | 'active' | 'viewport' | 'quality' |
+  'geometry' | 'board' | 'players' | 'intent' | 'selection' | 'arrivals' | 'viewport' | 'quality' |
   'motionAllowed' | 'onProjection' | 'onReady' | 'onUnavailable' | 'citiesKnights'>;
 
 function useLeasedResources(): BoardSceneResources {
@@ -281,7 +281,7 @@ function SelectionGhost({ props, resources }: { props: SceneProps; resources: Bo
     const road = roadInstances(props.geometry, {
       ...props.board,
       roads: props.board.roads.map((item, index) => index === selection.index ? { player: selection.playerId, ship: false } : item),
-    }, props.players, null).find((candidate) => candidate.index === selection.index);
+    }, props.players, []).find((candidate) => candidate.index === selection.index);
     if (!road) return null;
     return <RoadGhost position={road.position} rotationY={road.rotationY} length={road.length} material={material} />;
   }
