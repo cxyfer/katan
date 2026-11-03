@@ -51,6 +51,10 @@
 /* ---------- 棋盤：延伸到整個畫面高度 ---------- */
 .screen--game[data-layout="compact-landscape"] .game__map { inset: 0; }
 .screen--game[data-layout="compact-landscape"] .board--side-controls .board__dice { bottom: 60px; }
+/* 目標太密時的清單要蓋過棋盤目標層（z-index 44）與浮動 HUD，否則選項會被目標按鈕或右欄擋住。 */
+.screen--game[data-layout="compact-landscape"] .target-picker {
+  z-index: 70; inset: var(--hud-gap) 8px auto; max-height: calc(100% - var(--hud-gap) * 2);
+}
 
 /*
  * 右欄：提示面板與行動側欄改為同一欄由上而下排列（提示在上、側欄貼底），
@@ -61,10 +65,15 @@
   padding: calc(var(--hud-gap) * 2 + var(--hud-size)) 8px calc(var(--hud-gap) * 2 + var(--hud-size)) 0;
   pointer-events: none;
 }
-.screen--game[data-layout="compact-landscape"] .game__playfield > .game__map { pointer-events: auto; }
+/*
+ * 欄位本身鋪滿畫面，只讓空白處穿透到下方的計分板與手牌；棋盤、提示、棄牌與發展卡選擇、
+ * 選取確認面板等子元素都要能點。側欄自己處理穿透（action-rail.css），維持 none。
+ */
+.screen--game[data-layout="compact-landscape"] .game__playfield > * { pointer-events: auto; }
+.screen--game[data-layout="compact-landscape"] .game__playfield > .action-rail { pointer-events: none; }
 .screen--game[data-layout="compact-landscape"] .game__messages:not(:has(.discard)) {
   position: relative; inset: auto; flex: 0 0 auto; max-height: none;
-  width: min(260px, calc(100% - 70px)); pointer-events: auto;
+  width: min(260px, calc(100% - 70px));
 }
 .screen--game[data-layout="compact-landscape"] .game__messages .prompt > .button { min-height: var(--hud-size); }
 .screen--game[data-layout="compact-landscape"] .game__messages .command-status .button { min-height: 40px; }
@@ -72,9 +81,14 @@
 .screen--game[data-layout="compact-landscape"] .game__messages:has(.discard) {
   top: calc(var(--hud-gap) * 2 + var(--hud-size)); max-height: calc(100% - 130px); overflow: auto;
 }
+/* 窄橫屏的手牌 dock（z-index 48）滿寬，會延伸到右欄底下；側欄要疊在它上面才點得到。 */
 .screen--game[data-layout="compact-landscape"] .action-rail {
   position: relative; inset: auto; flex: 0 1 auto; min-height: 0; max-height: none; margin-top: auto;
-  transform: none; z-index: 47;
+  transform: none; z-index: 49;
+}
+/* side-layout.css 在窄畫面展開手牌時把側欄上移 302px（直屏用）；這裡側欄仍留在右欄底部。 */
+.screen--game[data-layout="compact-landscape"]:has(.hand.hand-fan[data-expanded="true"]) .action-rail {
+  inset: auto; max-height: none;
 }
 .screen--game[data-layout="compact-landscape"] .action-rail__toggle { flex-basis: var(--hud-size); min-height: var(--hud-size); }
 .screen--game[data-layout="compact-landscape"] .game__receipt { right: 62px; bottom: var(--hud-gap); }
