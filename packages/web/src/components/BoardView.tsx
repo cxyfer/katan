@@ -46,6 +46,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const [messageHost, setMessageHost] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [cluster, setCluster] = useState<number[] | null>(null);
+  const [pickerTarget, setPickerTarget] = useState<{ kind: TargetKind; index: number } | null>(null);
   const [requested, setRequested] = useState<RendererMode>(() => {
     const query = new URLSearchParams(globalThis.location.search);
     return rendererMode(query.get('renderer'));
@@ -73,6 +74,9 @@ export function BoardView({ controller }: { controller: TableController }) {
   // 擲骰演出期間不開放由擲骰帶出的棋盤目標（例如七點後移動強盜）；玩家已選取中的建造不受影響。
   const intent = useMemo(() => followUpsHeld(state) && !state.selection.commandType ? null : boardIntent(state, selfId), [state, selfId]);
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
+  const pickerAnchor = useMemo(() => pickerTarget
+    ? targets.find((target) => target.kind === pickerTarget.kind && target.index === pickerTarget.index) ?? null
+    : null, [pickerTarget, targets]);
   const hexTargets = useMemo(() => controls.projectedTargets({ kind: 'hex', commandType: '', labelId: '', fromHints: false, targets: geometry.hexes.map((hex) => hex.index) }), [controls.projectedTargets, geometry]);
   const viewBox = useMemo(() => parseViewBox(geometry.viewBox), [geometry]);
   const viewBoxCenter = { x: viewBox.x + viewBox.width / 2, y: viewBox.y + viewBox.height / 2 };
@@ -125,7 +129,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   };
   const selectTarget = useCallback((kind: TargetKind, index: number) => {
     if (!intent || kind !== intent.kind || !intent.targets.includes(index)) return;
-    setCluster(null); setPickerOpen(false);
+    setCluster(null); setPickerOpen(false); setPickerTarget(null);
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
   }, [actions, intent]);
   const focusedRoll = animation.activeDice;
@@ -136,7 +140,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   }, [focusedRollId, rolls]);
   // 佇列中仍有骰子（例如後一次擲骰排在前一組特效之後）時，靜態點數也先隱藏。
   const hideStaticDice = focusedRoll !== null || state.dicePresenting;
-  useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);
+  useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); setPickerTarget(null); } }, [intent]);
 
   if (!view) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
   const board = view.board;
@@ -210,11 +214,13 @@ export function BoardView({ controller }: { controller: TableController }) {
             type="button"
             className="button board__target-picker-toggle"
             data-testid="open-target-picker"
+            data-target-picker-ignore=""
             aria-label={t('board.listTargets')}
             title={t('board.listTargets')}
             aria-expanded={pickerOpen}
             onClick={() => {
               setCluster(null);
+              setPickerTarget(null);
               setPickerOpen((open) => !open);
             }}
           >
@@ -279,12 +285,16 @@ export function BoardView({ controller }: { controller: TableController }) {
         <BoardTargetOverlay targets={targets} rect={controls.viewport.rect} selection={selection} board={board} topology={topology} nameOf={nameResolver}
           renderer={effective} onSelect={selectTarget} consumeSuppressedClick={controls.consumeSuppressedClick}
           fallbackFocusRef={surfaceRef} onCancel={actions.cancelSelection}
-          onAmbiguous={(_kind, _index, candidates) => { setCluster([...candidates]); setPickerOpen(true); }} />
+          onAmbiguous={(kind, index, candidates) => {
+            setPickerTarget({ kind, index });
+            setCluster([...candidates]); setPickerOpen(true);
+          }} />
       </div>
       {stage && animation.active && anchors && createPortal(<BoardEffects group={animation.active} geometry={geometry} view={view} anchors={anchors} />, stage)}
       {pickerOpen && intent && <TargetPicker geometry={geometry} board={board} topology={topology} kind={intent.kind}
         targets={intent.targets} nameOf={nameResolver} {...(cluster ? { ambiguousOnly: cluster } : {})}
-        onCancel={() => { setPickerOpen(false); setCluster(null); }}
+        {...(pickerAnchor ? { anchor: pickerAnchor } : {})}
+        onCancel={() => { setPickerOpen(false); setCluster(null); setPickerTarget(null); }}
         onChoose={(index) => selectTarget(intent.kind, index)} />}
     </div>
   );
