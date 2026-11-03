@@ -65,7 +65,7 @@ export function TargetPicker({
   onCancel?: () => void;
   ambiguousOnly?: number[];
   minDistance?: number;
-  /** 觸發消歧的點擊位置（視窗 CSS 像素）；有值時 popover 貼近該點。 */
+  /** 觸發消歧目標的目前投影位置（視窗 CSS 像素）；有值時 popover 貼近該點。 */
   anchor?: Point;
 }) {
   const t = useT();
@@ -151,9 +151,8 @@ export function TargetPicker({
     };
   }, [hasCancel]);
 
-  // 依點擊位置定位並夾在父層可視範圍內，避開上方工具列；無錨點時使用 CSS 預設位置。
-  // 錨點只在開啟（或改變）時換算成父層座標一次；父層或工具列尺寸變動（視窗縮放、旋轉、工具列換行）
-  // 時以同一個相對錨點重新夾限，不會殘留舊的 inline left/top。
+  // 依目標目前的投影定位並夾在父層可視範圍內，避開上方工具列；無錨點時使用 CSS 預設位置。
+  // 投影錨點改變時重新換算父層座標；父層或工具列尺寸變動時也重新夾限。
   useLayoutEffect(() => {
     const element = pickerRef.current;
     const parent = element?.offsetParent;

@@ -320,6 +320,41 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     expect(api.callsOf('sendCommand')[0]!.args[1]).toMatchObject({ command: { type: 'build.road', edge: second.index } });
   });
 
+  it('keeps the open picker anchored to the clicked target after its projection changes on resize', async () => {
+    const { api, svg } = await board();
+    const parent = screen.getByTestId('board');
+    let surfaceRect = { x: 10, y: 20, left: 10, top: 20, width: 300, height: 800, right: 310, bottom: 820, toJSON() {} };
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this === svg) return surfaceRect;
+      if (this === parent) return { x: 0, y: 0, left: 0, top: 0, width: 1200, height: 1000, right: 1200, bottom: 1000, toJSON() {} };
+      return { x: 0, y: 0, left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0, toJSON() {} };
+    });
+    // jsdom 沒有版面：給 popover 固定尺寸與真正的定位父層，投影仍走實際 viewport hook。
+    vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('target-picker') ? parent : null;
+    });
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(100);
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(80);
+    const target = screen.getByTestId(`target-edge-${first.index}`);
+    const position = () => ({ x: Number.parseFloat(target.style.left), y: Number.parseFloat(target.style.top) });
+    const before = position();
+    fireEvent.click(target);
+    const picker = screen.getByTestId('target-picker');
+    expect(Number.parseFloat(picker.style.left)).toBeCloseTo(before.x + 10 + 14);
+    expect(Number.parseFloat(picker.style.top)).toBeCloseTo(before.y + 20 + 14);
+
+    surfaceRect = {
+      x: 210, y: 120, left: 210, top: 120, width: 600, height: 800, right: 810, bottom: 920, toJSON() {},
+    };
+    fireEvent(window, new Event('resize'));
+    const after = position();
+    expect(after).not.toEqual(before);
+    expect(screen.getByTestId('target-picker')).toBe(picker);
+    expect(Number.parseFloat(picker.style.left)).toBeCloseTo(after.x + 210 + 14);
+    expect(Number.parseFloat(picker.style.top)).toBeCloseTo(after.y + 120 + 14);
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
   it('dismisses the ambiguous picker from the empty board or Escape without reselecting or reopening', async () => {
     const { api, svg } = await board();
     fireEvent.click(screen.getByTestId(`target-edge-${first.index}`));
