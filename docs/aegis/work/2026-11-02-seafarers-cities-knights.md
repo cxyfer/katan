@@ -334,10 +334,14 @@ share `freeRouteCapacity`: remaining road pieces when at least one road
 can start, plus the profile modules' free pieces. The Seafarers hook caps
 its contribution by both legal ship edges and remaining ship pieces.
 `placedFreeRoute` already checks roads and module pieces after every
-placement. The base development-card grant retains its existing
-target-count behavior; pure C&K retains the first-road-opens-second-site
-behavior and has no ship contribution. No state format or new compatibility
-branch is introduced.
+placement. The development-card grant retains its existing target-count
+behavior only for the module-free base game. Standalone Seafarers also
+uses the capped ship hook: with one ship piece left and no legal road,
+its development-card grant is now 1 rather than 2. The number of ships
+actually placeable is unchanged, and old pending snapshots are normalized
+to the same remaining-piece cap. Pure C&K retains the
+first-road-opens-second-site behavior and has no ship contribution.
+No state format or new compatibility branch is introduced.
 
 Five added COMB-0 cases in `sfck-clauses.test.ts` cover:
 
