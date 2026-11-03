@@ -1244,6 +1244,11 @@ function freeRouteCapacity(state: GameState, playerId: string): number {
   return roads + moduleFreeRouteTargets(state, playerId);
 }
 
+/** Profiles approved for the Road Building grant introduced by base-2025.4. */
+function grantsBothRoads(engineVersion: string): boolean {
+  return ['base-2025.4', 'sf-2025.2', 'tb-2025.2'].includes(engineVersion);
+}
+
 /** Free placements the profile's modules offer (ships), supply included. */
 function moduleFreeRouteTargets(state: GameState, playerId: string): number {
   const modules = modulesOf(state);
@@ -1463,8 +1468,11 @@ function playRoadBuilding(state: GameState, actorId: string): CommandOutcome {
   state.turn.devCardPlayed = true;
   playerStats(state, actorId).devCardsPlayed.roadBuilding += 1;
   emit(state, 'dev.roadBuilding', { playerId: actorId });
-  // 免費道路數同時受合法邊與剩餘道路棋子限制，否則待決效果會無法完成。
-  const remaining = Math.min(2, freeRouteTargetCount(state, actorId));
+  // 新版只要求打出時至少有一條合法道路，之後每次放置再檢查目標。
+  const capacity = grantsBothRoads(state.engineVersion)
+    ? freeRouteCapacity(state, actorId)
+    : freeRouteTargetCount(state, actorId);
+  const remaining = Math.min(2, capacity);
   if (remaining > 0) {
     enqueuePending(state, { kind: 'freeRoads', actor: actorId, remaining, granted: remaining });
   }

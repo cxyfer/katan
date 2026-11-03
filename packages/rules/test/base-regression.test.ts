@@ -1,15 +1,15 @@
 /**
  * Base-game regression pins for the expansion platform.
  *
- * The digests below were recorded from master's own engine (master @ 0815c76,
- * base-2025.3), not from the expansion branch: a temporary detached worktree
- * at master received only this file and the `simulate.ts` options it needs,
- * and `RECORD_BASE_PINS=1 pnpm --filter @catan/rules exec vitest run
- * test/base-regression.test.ts` printed each section. The expansion branch
- * must then reproduce them unchanged. Topology indices, base layouts, freshly
- * created snapshots and whole simulated games stay byte-identical so that saved
- * base games keep their meaning. When master changes base behaviour, re-record
- * the same way from the new master, never from this branch.
+ * The original topology/layout digests and prior rule behavior were recorded
+ * from master's own engine (master @ 0815c76, base-2025.3), not from the
+ * expansion branch. Snapshot and game pins below track base-2025.4: the new
+ * engineVersion changes fresh snapshots, and the approved Road Building grant
+ * changes simulated games that play that card. Topology indices and base
+ * layouts remain pinned to the original baseline; fresh snapshots and whole
+ * games are pinned to the active base rule version. Re-record those sections
+ * with `RECORD_BASE_PINS=1 pnpm --filter @catan/rules exec vitest run
+ * test/base-regression.test.ts --silent=false` after an approved base change.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -131,20 +131,20 @@ const PINNED = {
     'hex-r56:variable:99': 'f9e1331703b9f7df',
   },
   snapshots: {
-    'base-2025:3:fixed': 'beb00353c3435a6d',
-    'base-2025:3:variable': '322ae9e409ba4ba3',
-    'base-2025:4:fixed': '6cc414be3b8e8cd4',
-    'base-2025:4:variable': '48fbe1c1ecd90cf8',
-    'base-paired-2025:5:fixed': '355ef6d38dcaa589',
-    'base-paired-2025:5:variable': 'fca1847668944417',
-    'base-paired-2025:6:fixed': '691d354c2d7efad9',
-    'base-paired-2025:6:variable': '2fe8f5e666fd8447',
+    'base-2025:3:fixed': 'f9a941f05d6a63f4',
+    'base-2025:3:variable': '16a276371148f9fc',
+    'base-2025:4:fixed': '99a152fcb65fc023',
+    'base-2025:4:variable': 'f69e05015aff983d',
+    'base-paired-2025:5:fixed': '17ebba04a767dd8e',
+    'base-paired-2025:5:variable': '341d92d0f9660064',
+    'base-paired-2025:6:fixed': 'd92c33ef5f685a70',
+    'base-paired-2025:6:variable': '66f270d1a61cf7da',
   },
   games: {
-    'base:3:variable:8': '1462427badb857c8',
-    'paired:6:variable:5': '3c00ff5d7781a65c',
-    'seed:11': '03c796714315a908',
-    'seed:29': 'a7584951a986ecc3',
-    'seed:47': '79a4f9601eaf9ec7',
+    'base:3:variable:8': '33c256753d9e12bf',
+    'paired:6:variable:5': '0b1c153ea2fc8a37',
+    'seed:11': '22733e2f11b36e87',
+    'seed:29': '37124e1c969c3926',
+    'seed:47': 'ac4f8cbf399720de',
   },
 };

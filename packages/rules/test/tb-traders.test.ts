@@ -106,6 +106,27 @@ describe('R-TB-TR setup (pp. 20–21)', () => {
   });
 });
 
+describe('Road Building version compatibility', () => {
+  it('keeps the old single-road grant for a tb-2025.1 saved game', () => {
+    const state = bare();
+    const topo = topologyOf(state);
+    const vertex = topo.vertices.findIndex((candidate) => candidate.edges.length === 2);
+    const [open, blocked] = topo.vertices[vertex]!.edges as [number, number];
+    placeBuilding(state, 'p1', vertex);
+    placeRoad(state, 'p2', blocked);
+    state.engineVersion = 'tb-2025.1';
+    state.players[0]!.devCards = ['roadBuilding'];
+    expect(legalRoadEdges(state, 'p1')).toEqual([open]);
+
+    const played = run(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 1 });
+
+    state.engineVersion = 'tb-2025.2';
+    const upgraded = run(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(upgraded.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 2, granted: 2 });
+  });
+});
+
 describe('R-TB-TR rolls, 7s and roads (p. 21)', () => {
   it('TR3: a 2 or 12 is rerolled', () => {
     const state = bare();

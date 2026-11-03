@@ -103,7 +103,7 @@ describe('Heading for New Shores layouts', () => {
       expect(profile.pieces.ships).toBe(15);
       expect(state.bank.ore).toBe(bank);
       expect(state.devDeck).toHaveLength(deck);
-      expect(state.engineVersion).toBe('sf-2025.1');
+      expect(state.engineVersion).toBe('sf-2025.2');
     }
   });
 });

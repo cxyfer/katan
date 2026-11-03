@@ -188,7 +188,7 @@ export function makeProfile(overrides: Partial<ProfileView> = {}): ProfileView {
   return {
     id: 'base-2025',
     labelKey: 'profile.base-2025',
-    ruleVersion: 'base-2025.3',
+    ruleVersion: 'base-2025.4',
     expansions: [],
     scenario: null,
     variants: [],

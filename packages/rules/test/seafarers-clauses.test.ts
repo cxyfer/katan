@@ -8,8 +8,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { countRoads, isLandHex, scoreOf, topologyOf } from '../src/analysis.ts';
-import { actionHints, canPlaceBuilding, partnerSeat, routeLength } from '../src/engine.ts';
+import { countRoads, isLandEdge, isLandHex, scoreOf, topologyOf } from '../src/analysis.ts';
+import { actionHints, canPlaceBuilding, legalRoadEdges, partnerSeat, routeLength } from '../src/engine.ts';
 import { countShips } from '../src/modules/seafarers/ships.ts';
 import { enqueuePending } from '../src/pending.ts';
 import type { GameEvent, GameState } from '../src/types.ts';
@@ -189,6 +189,37 @@ describe('ships and the pirate (SF25 pp. 2–3, SF-FAQ 11, 18)', () => {
 });
 
 describe('Road Building with ships (SF25 p. 3, SF-FAQ 1)', () => {
+  it('keeps the old single-route grant for an sf-2025.1 saved game', () => {
+    const state = emptySeafarersGame();
+    state.board.buildings = state.board.buildings.map(() => null);
+    state.board.roads = state.board.roads.map(() => null);
+    const topo = topologyOf(state);
+    const vertex = topo.vertices.findIndex((candidate) => candidate.edges.length === 2 && candidate.edges.every((edge) => isLandEdge(state, edge)));
+    const [open, blocked] = topo.vertices[vertex]!.edges as [number, number];
+    const other = topo.edges[open]!.vertices.find((candidate) => candidate !== vertex)!;
+    settle(state, 'p1', vertex);
+    road(state, 'p2', blocked);
+    // Exhaust ships so the only available free route at play time is the open road.
+    let ships = 0;
+    for (let edge = 0; edge < state.board.roads.length && ships < 15; edge++) {
+      if (edge === open || edge === blocked || topo.edges[edge]!.vertices.includes(vertex) || topo.edges[edge]!.vertices.includes(other)) continue;
+      if (state.board.roads[edge]) continue;
+      ship(state, 'p1', edge);
+      ships += 1;
+    }
+    expect(ships).toBe(15);
+    expect(legalRoadEdges(state, 'p1')).toEqual([open]);
+    state.engineVersion = 'sf-2025.1';
+    state.players[0]!.devCards = ['roadBuilding'];
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toMatchObject({ kind: 'freeRoads', remaining: 1, granted: 1 });
+
+    state.engineVersion = 'sf-2025.2';
+    const upgraded = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(upgraded.pending).toMatchObject({ kind: 'freeRoads', remaining: 2, granted: 2 });
+  });
+
   it('may be played before the roll and place a ship; the free ship cannot move this turn', () => {
     const state = emptySeafarersGame(4, 0, 'preroll');
     const r = ring(state);

@@ -69,11 +69,13 @@ The five Explorers & Pirates profiles are enabled one per mission set, in book o
 
 Registry v2 (2026-11-01 expansion platform) adds per-profile `expansions`,
 `scenario`, `variants`, `ruleVersion`, `sources` and display-only
-`requiredBoxes`. Both base profiles use master's `ruleVersion` `base-2025.3`
-(PR #60), so base snapshots keep their `engineVersion`. The platform adds no
-rule: base topology indices, fixed/variable layouts, freshly created snapshots
-and five whole simulated base/paired games are pinned by digests recorded from
-master's own engine at `0815c76`
+`requiredBoxes`. Both base profiles use `ruleVersion` `base-2025.4`, and new
+Seafarers and Traders & Barbarians games use `sf-2025.2` and `tb-2025.2` for
+the Road Building grant fix. Existing games keep their recorded versions and
+are not migrated. The platform adds no rule: base topology indices and
+fixed/variable layouts retain their baseline pins, while fresh snapshots and
+five whole simulated base/paired games are pinned against the active
+`base-2025.4` engine in `packages/rules/test/base-regression.test.ts`.
 (`packages/rules/test/base-regression.test.ts`).
 
 ## Fixture → evidence map
@@ -579,6 +581,9 @@ These are recorded rather than hidden. None of them is presented as verified.
     command. The maintainer explicitly approved running unfinished
     `base-2025.1` and `base-2025.2` games on `base-2025.3` on 2026-11-02
     as the PR #60 defect-fix exception (SPEC §7.3).
+    New Road Building grant behavior is versioned separately: new base,
+    Seafarers and Traders & Barbarians games use `base-2025.4`, `sf-2025.2`
+    and `tb-2025.2`; saved games at earlier versions are not migrated.
     Already-pending Road Building and Year of Plenty effects are capped to the
     remaining pieces or bank cards in projections, hints and execution;
     exhausted effects no longer block the next legal command.
@@ -589,17 +594,18 @@ These are recorded rather than hidden. None of them is presented as verified.
     only); the 5–6 board is always variable as SF56-25 prescribes. No human
     playtest of the expansion has been run (U-07/U-08), and the gold field
     keeps the platform's generic gold tile art.
-13. **Open base item: the Road Building grant is fixed at play time.** The
-    card grants `min(2, placements available when played)`. When only one
-    road (or ship) target exists at play time but placing it opens a second,
-    the player still gets one free piece; B25 promises two. This is base
-    behaviour since `base-2025.1` (PR #60 lists it as a follow-up), so
-    changing it is a base rule change that needs the maintainer's approval
-    and a new base rule version. Seafarers inherits it unchanged.
-    The separate C&K progress card grants two roads when at least one legal
-    road exists, capped by road pieces left; after each placement the shared
-    effect checks the updated legal edges (CK25 p. 14, PC-RB3–6). Recorded
-    pending grants are preserved on snapshot restore.
+13. **Road Building grant at play time (fixed).** Since `base-2025.4`,
+    `sf-2025.2` and `tb-2025.2`, the development card grants up to two free
+    pieces when at least one legal route is available, capped by remaining
+    pieces; after each placement the effect checks the updated legal targets.
+    In Seafarers this includes the available ship supply. New games on those
+    versions therefore receive the second piece when the first placement
+    opens another site. Existing `base-2025.1`–`base-2025.3`, `sf-2025.1`
+    and `tb-2025.1` games are not migrated and retain the grant behavior
+    associated with their stored version. The separate C&K progress card
+    already grants two roads when at least one legal road exists, capped by
+    road pieces left (CK25 p. 14, PC-RB3–6). Recorded pending grants are
+    preserved on snapshot restore.
 14. **Cities & Knights scope.** The core rules and all 54 progress cards
     (23 playable types plus the two scored when drawn) and the merchant are
     implemented and the profiles are enabled. Bot seats are refused (no
