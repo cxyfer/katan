@@ -141,3 +141,42 @@ Seafarers and C&K UI unchanged.
 The browser harness taps on phones (a mouse click there hovers the seats
 panel open) and pans/zooms the board when a panel covers a target, as a
 player would.
+
+## Review #81 — commodity-only pirate victims (2026-11-03)
+
+Thread `PRRT_kwDOVZksZc6yx2SF` reproduced: after moving the pirate next to
+a ship whose owner has only paper, cloth or coin, no theft prompt was
+created. `pirateVictims()` counted only resources, while the shared
+`stealFrom()` pool already contained all eight resource/commodity kinds.
+The robber's `stealCandidates()` already used `totalCards()` correctly.
+
+Rule basis: CK25 p. 7 explicitly includes resources and commodities in the
+hand stolen from; [CK-FAQ 34](https://www.catan.com/faq/cities-knights)
+confirms that commodities may be stolen (rechecked 2026-11-03). SF25 p. 2
+defines the pirate's theft from a ship owner, and CK25 p. 12 / COMB supplies
+the combined-game changes without excluding commodities from pirate theft.
+The combined game therefore uses the same resource/commodity hand for
+both bandits, while retaining their different board eligibility rules.
+
+The repair reuses `totalCards()` in `pirateVictims()`. No additional random
+draw, compatibility path, state format or projection field is introduced.
+The resource-only eligibility check is replaced rather than retained.
+
+Fourteen regression cases in `sfck-clauses.test.ts` cover both bandits:
+each commodity-only hand on the four- and six-player combined maps; a mixed
+hand with one brick, two paper and one coin at every draw index; one draw
+only; victim deduplication and exclusion of own ships, empty hands and
+coastal-building-only owners for the pirate; private theft events; JSON
+snapshot restoration before and after theft, rejecting another steal and
+continuing without a redraw. The original commodity-only pirate cases
+failed before the source repair; the robber and mixed-hand cases passed.
+
+| Stage-one check | Result |
+|---|---|
+| `pnpm typecheck` | passed across all workspace packages |
+| `pnpm --filter @catan/rules exec vitest run test/sfck-clauses.test.ts` | 53 passed |
+| `VITEST_MAX_WORKERS=1 pnpm --filter @catan/rules test` | 35 files, 435 tests passed |
+| `VITEST_MAX_WORKERS=1 pnpm --filter @catan/server exec vitest run test/seafarers-cities-knights.test.ts test/seafarers.test.ts` | 2 files, 4 tests passed |
+
+Full `pnpm verify` and integration into `release/v0.4.0` are deferred to
+stage two. No test timeout was changed.

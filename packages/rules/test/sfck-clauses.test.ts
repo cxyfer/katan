@@ -14,10 +14,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { scoreOf, topologyOf } from '../src/analysis.ts';
+import { isLandHex, scoreOf, topologyOf } from '../src/analysis.ts';
 import { actionHints, applyCommand, partnerSeat, routeLength } from '../src/engine.ts';
 import { getProfile } from '../src/profiles.ts';
 import { projectEvent, projectGame } from '../src/project.ts';
+import { edgesOfHex, verticesOfHex } from '../src/topology.ts';
 import { recruitSites } from '../src/modules/citiesKnights/knights.ts';
 import { merchantHexes } from '../src/modules/citiesKnights/merchant.ts';
 import { openRoads } from '../src/modules/citiesKnights/cards-politics.ts';
@@ -599,6 +600,79 @@ describe('R-COMB paired 5–6 turns (SF56-25 pp. 2–3, CK56-25 pp. 3–4)', () 
     expect(sfck(next, p2).pirateChase).toEqual([corner(next, 2, 3, 3)]);
     const chased = actCk(next, p2, { type: 'knight.chasePirate', vertex: corner(next, 2, 3, 3) });
     expect(chased.state.pending).toMatchObject({ kind: 'moveRobber', actor: p2, pirate: true });
+  });
+});
+
+describe.each(['pirate', 'robber'] as const)('R-COMB %s theft (SF25 p. 2, CK25 p. 7, CK-FAQ 34)', (bandit) => {
+  function theftState(players: 4 | 6 = 4): { state: GameState; target: number } {
+    const state = afterFirstAttack(emptySfckGame(players));
+    const topo = topologyOf(state);
+    const target = bandit === 'pirate'
+      ? topo.hexes.findIndex((_, hex) => !isLandHex(state, hex) && verticesOfHex(topo, hex).some((vertex) => topo.vertices[vertex]!.hexes.some((cell) => isLandHex(state, cell))))
+      : topo.hexes.findIndex((_, hex) => isLandHex(state, hex) && hex !== state.board.robber);
+    const edges = edgesOfHex(topo, target);
+    if (bandit === 'pirate') {
+      // 只有 p2 有可偷的牌；排除自己、空手船主，以及只有沿岸建築的玩家。
+      ship(state, 'p1', edges[0]!);
+      ship(state, 'p2', edges[1]!);
+      ship(state, 'p2', edges[2]!);
+      ship(state, 'p3', edges[3]!);
+      const coast = verticesOfHex(topo, target).find((vertex) => topo.vertices[vertex]!.hexes.some((hex) => isLandHex(state, hex)))!;
+      settle(state, 'p4', coast);
+    } else {
+      settle(state, 'p2', verticesOfHex(topo, target)[0]!);
+    }
+    giveCommodities(state, 'p1', { coin: 1 });
+    giveCommodities(state, 'p4', { paper: 1 });
+    state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false };
+    return { state, target };
+  }
+
+  it.each(['paper', 'cloth', 'coin'] as const)('steals from a %s-only hand and preserves the result across snapshots', (commodity) => {
+    for (const players of [4, 6] as const) {
+      const { state, target } = theftState(players);
+      giveCommodities(state, 'p2', { [commodity]: 1 });
+      const moved = actCk(state, 'p1', { type: 'pending.moveRobber', hex: target }, scriptedRng([]));
+      expect(moved.state.pending).toMatchObject({ kind: 'steal', candidates: ['p2'], pirate: bandit === 'pirate' });
+      const before = JSON.stringify(moved.state);
+      const stolen = actCk(moved.state, 'p1', { type: 'pending.steal', victim: 'p2' }, scriptedRng([0]));
+      expect(JSON.stringify(moved.state)).toBe(before);
+      expect(player(stolen.state, 'p1').commodities[commodity]).toBe(player(state, 'p1').commodities[commodity] + 1);
+      expect(player(stolen.state, 'p2').commodities[commodity]).toBe(0);
+      expect(stolen.state.commodityBank).toEqual(state.commodityBank);
+      expect(stolen.state.pending).toBeNull();
+      const theft = eventsOf(stolen, 'robber.stole')[0]!;
+      expect(projectEvent(theft, 'p1').params).toMatchObject({ resource: commodity });
+      expect(projectEvent(theft, 'p2').params).toMatchObject({ resource: commodity });
+      expect(projectEvent(theft, 'p3').params).not.toHaveProperty('resource');
+      expect(projectGame(stolen.state, 'p3').players.find((entry) => entry.id === 'p2')!.commodities).toBeUndefined();
+
+      // 以服務保存 state 的 JSON 格式還原；續局與重送偷牌皆不得再使用 RNG。
+      const restored = JSON.parse(JSON.stringify(stolen.state)) as GameState;
+      expect(restored).toEqual(stolen.state);
+      expect(rejectCk(restored, 'p1', { type: 'pending.steal', victim: 'p2' }, scriptedRng([]))).toBe('E_PENDING_EFFECT');
+      const continued = actCk(restored, 'p1', { type: 'turn.end' }, scriptedRng([]));
+      expect(continued.state.players.map((entry) => entry.commodities)).toEqual(stolen.state.players.map((entry) => entry.commodities));
+      expect(eventsOf(continued, 'robber.stole')).toEqual([]);
+    }
+  });
+
+  it.each([0, 1, 2, 3])('draws index %i from the full resource/commodity hand, weighted by card count', (index) => {
+    const { state, target } = theftState();
+    give(state, 'p2', { brick: 1 });
+    giveCommodities(state, 'p2', { paper: 2, coin: 1 });
+    const moved = actCk(state, 'p1', { type: 'pending.moveRobber', hex: target }, scriptedRng([]));
+    const restored = JSON.parse(JSON.stringify(moved.state)) as GameState;
+    let draws = 0;
+    const stolen = actCk(restored, 'p1', { type: 'pending.steal', victim: 'p2' }, {
+      int(max) {
+        expect(max).toBe(4);
+        draws += 1;
+        return index;
+      },
+    });
+    expect(draws).toBe(1);
+    expect(projectEvent(eventsOf(stolen, 'robber.stole')[0]!, 'p1').params).toMatchObject({ resource: ['brick', 'paper', 'paper', 'coin'][index] });
   });
 });
 
