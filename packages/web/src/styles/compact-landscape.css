@@ -51,10 +51,8 @@
 /* ---------- 棋盤：延伸到整個畫面高度 ---------- */
 .screen--game[data-layout="compact-landscape"] .game__map { inset: 0; }
 .screen--game[data-layout="compact-landscape"] .board--side-controls .board__dice { bottom: 60px; }
-/* 目標太密時的清單要蓋過棋盤目標層（z-index 44）與浮動 HUD，否則選項會被目標按鈕或右欄擋住。 */
-.screen--game[data-layout="compact-landscape"] .target-picker {
-  z-index: 70; inset: var(--hud-gap) 8px auto; max-height: calc(100% - var(--hud-gap) * 2);
-}
+/* 目標清單沿用原本的位置與尺寸，只疊到滿寬手牌 dock（48）、側欄（49）與浮動 HUD 之上。 */
+.screen--game[data-layout="compact-landscape"] .target-picker { z-index: 67; }
 
 /*
  * 右欄：提示面板與行動側欄改為同一欄由上而下排列（提示在上、側欄貼底），
