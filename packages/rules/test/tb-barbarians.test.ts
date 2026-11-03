@@ -433,6 +433,22 @@ describe('R-TB-BA clause fixtures (pp. 15–19)', () => {
     expect(ended.state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
   });
 
+  it('checks an off-turn prisoner award when that player starts their own turn', () => {
+    const state = bare();
+    const hex = hexWith(state, 9);
+    const castle = new Set(edgesOf(state, ba(state).castle));
+    ba(state).knights = edgesOf(state, hex).filter((edge) => !castle.has(edge)).slice(0, 3).map((edge) => ({ player: 'p1', edge }));
+    ba(state).barbarians[hex] = 2;
+    state.players[0]!.bonusPoints = 11;
+    forceTurn(state, 3, 'action');
+
+    const ended = run(state, 'p4', { type: 'turn.end' }, scriptedRng([0]));
+
+    expect(ba(ended.state).prisoners.p1).toBe(2);
+    expect(ended.state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+    expect(ended.state.turn.phase).toBe('gameOver');
+  });
+
   it('BA22: TB25 p.17 — when the development card stack is empty the discard pile is shuffled into a new stack', () => {
     const state = bare();
     ba(state).deck = [];

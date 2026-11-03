@@ -117,6 +117,23 @@ describe('t()', () => {
     expect(translateEvent('zh-Hant', event, (id) => id).text).toBe('擲出 6：銀行的礦石不足，六角格 4 本次不發放。');
   });
 
+  it.each([
+    ['trade.offered', { from: 'p1', to: 'p2', give: {}, want: { ore: 1 }, giveGoods: { gold: 2 } }],
+    ['trade.revised', { revision: 2, give: { lumber: 1 }, want: {}, giveGoods: { gold: 2 } }],
+    ['trade.completed', { from: 'p1', to: 'p2', give: { lumber: 1 }, want: {}, giveGoods: { gold: 2 } }],
+  ] as const)('includes module goods in %s events in both locales', (type, params) => {
+    const event = makeEvent(11, type, params);
+    const en = translateEvent('en', event, (id) => id);
+    const zh = translateEvent('zh-Hant', event, (id) => id);
+
+    expect(en.text).toContain('2×Gold');
+    expect(zh.text).toContain('2×金幣');
+    if (type !== 'trade.offered') {
+      expect(en.text).toContain('1×Lumber');
+      expect(zh.text).toContain('1×木材');
+    }
+  });
+
   it('never leaks a raw message id for an unknown error code', () => {
     expect(translateNotice('en', { messageId: 'error.E_TOTALLY_NEW' })).toContain('E_TOTALLY_NEW');
     expect(translateNotice('en', { messageId: 'error.E_ILLEGAL_TARGET' })).toBe(
