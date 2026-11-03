@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 
+/** 手機橫屏（短高度、觸控）：牌桌改用浮動 HUD 以讓出棋盤高度。 */
+export const COMPACT_LANDSCAPE_QUERY = '(orientation: landscape) and (max-height: 520px) and (pointer: coarse)';
+
 /**
  * Viewport classification. The layout itself is CSS-driven; this hook only
  * decides *where a panel is rendered*, which matters because the mobile drawer
