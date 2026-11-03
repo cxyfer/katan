@@ -21,7 +21,7 @@ import { translateEvent } from '../src/i18n/events.ts';
 import { t } from '../src/i18n/index.ts';
 import { deriveActions } from '../src/state/actions.ts';
 import { requiredActionFor } from '../src/state/pending.ts';
-import { EMPTY_SELECTION, initialTableState, type TableState } from '../src/state/table.ts';
+import { EMPTY_SELECTION, initialTableState, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeEvent, makeSnapshot } from '../src/test/fixtures.ts';
 
@@ -84,11 +84,31 @@ function controllerFor(gameView: GameView): TableController {
 
 function renderBoard(geometry: BoardGeometry, gameView: GameView) {
   return render(<LocaleProvider locale="en"><SvgBoard svgRef={() => undefined} geometry={geometry} view={gameView}
-    active={null} selection={EMPTY_SELECTION} selfId="p1" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
+    arrivals={[]} selection={EMPTY_SELECTION} selfId="p1" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
     viewBoxCenter={{ x: 0, y: 0 }} nameResolver={(id) => id} /></LocaleProvider>);
 }
 
 describe('seafarers + cities & knights client', () => {
+  it.each(['snapshot', 'events'] as const)('holds pirate activation until the first attack roll settles (%s first)', (delivery) => {
+    const { state } = combined();
+    state.seq = 12;
+    state.log = [makeEvent(12, 'turn.started')];
+    const before = tableWith(view(state));
+    slot(state).attacks = 1;
+    state.seq = 14;
+    state.log = [makeEvent(13, 'turn.rolled', { dice: [3, 4], total: 7 }), makeEvent(14, 'ck.barbariansAttack')];
+    const after = makeSnapshot(view(state), 14);
+    after.view.events = state.log;
+    let held = delivery === 'events' ? tableReducer(before, { type: 'events', events: after.view.events }) : before;
+    held = tableReducer(held, { type: 'snapshot', snapshot: after });
+    expect(held.dicePresenting).toBe(true);
+    const panel = (table: TableState) => <LocaleProvider locale="en"><CitiesKnightsPanel controller={{ ...controllerFor(after.view), state: table }} /></LocaleProvider>;
+    const { rerender } = render(panel(held));
+    expect(screen.getByTestId('sfck-pirate-status').textContent).toBe('the pirate waits for the first attack');
+    rerender(panel(tableReducer(held, { type: 'dice-presenting', value: false })));
+    expect(screen.getByTestId('sfck-pirate-status').textContent).toBe(t('en', 'sfck.panel.pirateActive'));
+  });
+
   it('keeps both bandits off the board until the first attack', () => {
     const { state, geometry } = combined();
     const gameView = view(state);

@@ -180,3 +180,141 @@ failed before the source repair; the robber and mixed-hand cases passed.
 
 Full `pnpm verify` and integration into `release/v0.4.0` are deferred to
 stage two. No test timeout was changed.
+
+
+## Stage-two release integration (2026-11-03)
+
+Merged `origin/release/v0.4.0` at `757b0ec3e650bc51cdd9eb5032e83ff16cdbb6c1`
+into `feat/seafarers-cities-knights` with merge commit `e2f4e93`. No rebase
+or history rewriting. Stage-one commit `3e4f367` remains an ancestor.
+
+The actual Git merge base predates the four squashed PRs. To resolve the
+resulting content and add/add conflicts, the original P3 snapshot `abec183`
+was used to identify which content came from release and which was #81.
+Before committing, the complete binary diff of the resolved tree against
+release was compared with `abec183..3e4f367`, ignoring only hunk offsets and
+blob IDs: they matched exactly. This proves all original #81 changes were
+retained without reverting release changes. The server coordinator, rooms,
+RollHold, ProgressHand, Road Building, hook tests and scene animation files
+were also checked byte-for-byte against release where #81 had no changes.
+
+### Conflict resolution by file
+
+`#81 delta` means the release file was unchanged from the original P3
+snapshot; `release` means #81 had not changed that file since P3. `combined`
+means both independent changes were retained. The two overlapping edits
+were resolved explicitly as described below.
+
+| Conflict file | Resolution |
+|---|---|
+| `README.md` | #81 delta (release unchanged from P3) |
+| `docs/API.md` | combined independent changes |
+| `docs/FIDELITY.md` | combined independent changes |
+| `docs/aegis/INDEX.md` | combined independent changes |
+| `docs/aegis/plans/2026-11-01-expansions-roadmap.md` | #81 delta (release unchanged from P3) |
+| `packages/rules/src/engine.ts` | retain #81 ship kit/helpers and release module-aware beforeProduction continuation |
+| `packages/rules/src/messages.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/src/modules/README.md` | combined independent changes |
+| `packages/rules/src/modules/builtins.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/src/modules/citiesKnights/cards-politics.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/src/modules/citiesKnights/cards-science.ts` | release (#81 unchanged from P3) |
+| `packages/rules/src/modules/citiesKnights/knights.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/src/modules/citiesKnights/merchant.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/src/modules/messages.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/src/modules/seafarers/index.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/src/modules/seafarers/pirate.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/src/modules/seafarers/ships.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/src/modules/types.ts` | combined independent changes |
+| `packages/rules/src/profiles.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/test/ck-barbarians.test.ts` | release (#81 unchanged from P3) |
+| `packages/rules/test/ck-progress-science.test.ts` | release (#81 unchanged from P3) |
+| `packages/rules/test/ck-sim.test.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/test/ck-sim.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/test/profiles.test.ts` | #81 delta (release unchanged from P3) |
+| `packages/rules/test/seafarers-sim.ts` | #81 delta (release unchanged from P3) |
+| `packages/server/src/game.ts` | release (#81 unchanged from P3) |
+| `packages/server/src/rooms.ts` | release (#81 unchanged from P3) |
+| `packages/server/test/cities-knights.test.ts` | release (#81 unchanged from P3) |
+| `packages/server/test/rooms.test.ts` | #81 delta (release unchanged from P3) |
+| `packages/server/test/session.test.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/src/audio/cues.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/src/board/citiesKnights.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/src/board/intent.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/src/board/three/DioramaSeafarers.tsx` | release (#81 unchanged from P3) |
+| `packages/web/src/board/three/DioramaStructures.tsx` | release (#81 unchanged from P3) |
+| `packages/web/src/board/three/SceneContent.tsx` | release (#81 unchanged from P3) |
+| `packages/web/src/board/three/diorama-knights.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/src/board/three/diorama-ships.ts` | release (#81 unchanged from P3) |
+| `packages/web/src/components/BoardView.tsx` | release (#81 unchanged from P3) |
+| `packages/web/src/components/CitiesKnightsPanel.tsx` | combined independent changes |
+| `packages/web/src/components/CitiesKnightsProgress.tsx` | release (#81 unchanged from P3) |
+| `packages/web/src/components/HandPanel.tsx` | release (#81 unchanged from P3) |
+| `packages/web/src/components/HomeScreen.tsx` | release (#81 unchanged from P3) |
+| `packages/web/src/components/LobbyScreen.tsx` | release (#81 unchanged from P3) |
+| `packages/web/src/components/PendingPrompt.tsx` | retain #81 bandit prompt helper and release development-card picker helpers |
+| `packages/web/src/components/PlayersPanel.tsx` | combined independent changes |
+| `packages/web/src/components/SeafarersPrompt.tsx` | #81 delta (release unchanged from P3) |
+| `packages/web/src/components/SvgBoard.tsx` | release (#81 unchanged from P3) |
+| `packages/web/src/components/TradePanel.tsx` | release (#81 unchanged from P3) |
+| `packages/web/src/i18n/en.ts` | combined independent changes |
+| `packages/web/src/i18n/events.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/src/i18n/modules/events.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/src/i18n/modules/index.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/src/i18n/zh-Hant.ts` | combined independent changes |
+| `packages/web/src/state/actions.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/src/state/table.ts` | release (#81 unchanged from P3) |
+| `packages/web/test/archipelago-board.test.tsx` | release (#81 unchanged from P3) |
+| `packages/web/test/bots.test.tsx` | release (#81 unchanged from P3) |
+| `packages/web/test/cities-knights-progress.test.tsx` | release (#81 unchanged from P3) |
+| `packages/web/test/cities-knights.test.tsx` | release (#81 unchanged from P3) |
+| `packages/web/test/i18n.test.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/test/rulesets.test.ts` | #81 delta (release unchanged from P3) |
+| `packages/web/test/seafarers.test.tsx` | release (#81 unchanged from P3) |
+
+### Additional integration verification
+
+Post-merge changes are tests and this record only; no product code needed
+additional repair. The existing #81 SVG fixture now uses release's
+`arrivals` prop, and the Bot refusal test uses the current lobby `/bots`
+endpoint instead of the removed create-room bot count.
+
+- `sfck-hooks.test.ts`: six cases count ordered before/after-production
+  hooks across all three modules, with and without a progress discard;
+  restore a barbarian pillage into a seven then move the pirate, robber or
+  pirate to the frame; count paid/free ship builds, ship moves and a
+  Diplomacy replacement. An own Diplomacy removal defers board settlement
+  until the replacement, retaining the existing award boundary.
+- Service tests exercise brick-only and cloth-only pirate victims through
+  real move and steal commands, first/replayed HTTP receipts, durable state,
+  per-seat HTTP projections, actual WS snapshots/events and the HTTP events
+  route. Nonrecipients receive no private payload or stolen-card identity;
+  participants retain the result. Replaying the command does not steal again.
+- Client tests deliver the first-attack roll both snapshot-first and
+  events-first. The combined pirate status remains at its pre-roll value
+  through `shownCitiesKnights` until the dice settle. Existing `shownHand`,
+  ProgressHand and board holds remain from release.
+
+Targeted checks before the full gate: workspace typecheck passed;
+SF+CK hook cases 6 passed; combined service cases 4 passed; combined client
+cases 10 passed. No timeout was changed.
+
+### Full stage-two gate
+
+`pnpm verify` completed with exit status 0 on its first full run:
+
+| Check | Result |
+|---|---|
+| Workspace typecheck | passed |
+| Rules | 39 files, 475 passed |
+| Protocol | 1 file, 8 passed |
+| Bots | 8 files, 48 passed |
+| Server | 15 files, 163 passed, 15 skipped |
+| Web | 62 files, 694 passed |
+| Web and server builds | passed |
+| Smoke | 13/13 passed |
+| Development runner | 1 passed |
+
+The server's 15 skips are the existing PostgreSQL contract/migration cases
+without `TEST_POSTGRES_URL`. Web did not time out; the requested fallback
+rerun was unnecessary. Build emitted the existing large-chunk advisory;
+the build succeeded and no size or test-timeout limits were changed.
