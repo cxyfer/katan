@@ -45,7 +45,7 @@ export function countBuildings(state: GameState, playerId: string, kind: 'settle
 
 export function countRoads(state: GameState, playerId: string): number {
   let count = 0;
-  for (const road of state.board.roads) if (road && road.player === playerId) count++;
+  for (const road of state.board.roads) if (road && !road.ship && road.player === playerId) count++;
   return count;
 }
 
@@ -57,6 +57,33 @@ export function neighborsOfVertex(topo: BoardTopology, vertex: number): number[]
   });
 }
 
+/** True for every terrain hex (desert and gold included), false for sea. */
+export function isLandHex(state: GameState, hex: number): boolean {
+  const terrain = state.board.layout.terrain[hex];
+  return terrain !== undefined && terrain !== 'sea';
+}
+
+/** Buildings need land: an intersection touching at least one terrain hex. */
+export function isLandVertex(state: GameState, vertex: number): boolean {
+  const info = topologyOf(state).vertices[vertex];
+  return !!info && info.hexes.some((hex) => isLandHex(state, hex));
+}
+
+/** Roads need land on at least one side (inland paths and coasts). */
+export function isLandEdge(state: GameState, edge: number): boolean {
+  const info = topologyOf(state).edges[edge];
+  return !!info && info.hexes.some((hex) => isLandHex(state, hex));
+}
+
+/**
+ * Ships use edges of sea hexes. The topology's boundary edges are the inner
+ * edge of the frame, which is sea as well (Seafarers FAQ, frame pieces).
+ */
+export function isSeaEdge(state: GameState, edge: number): boolean {
+  const info = topologyOf(state).edges[edge];
+  return !!info && (info.hexes.length === 1 || info.hexes.some((hex) => !isLandHex(state, hex)));
+}
+
 export function isBlockedFor(state: GameState, vertex: number, playerId: string): boolean {
   const building = state.board.buildings[vertex];
   return !!building && building.player !== playerId;
@@ -64,7 +91,9 @@ export function isBlockedFor(state: GameState, vertex: number, playerId: string)
 
 /**
  * Longest route length for a player. Opponent buildings interrupt a route;
- * the route may not reuse a road, and cycles do not add length.
+ * the route may not reuse a road, and cycles do not add length. With ships
+ * (Seafarers' Longest Trade Route) a road and a ship only continue each
+ * other at one of the player's own buildings (SF25 p. 2).
  */
 export function longestRouteLength(state: GameState, playerId: string, includeShips = false): number {
   const topo = topologyOf(state);
@@ -90,14 +119,17 @@ export function longestRouteLength(state: GameState, playerId: string, includeSh
   }
 
   const used = new Set<number>();
-  const walk = (vertex: number): number => {
+  const ownBuilding = (vertex: number) => state.board.buildings[vertex]?.player === playerId;
+  const walk = (vertex: number, arrivedByShip: boolean | null): number => {
     let best = 0;
     for (const edge of incident.get(vertex) ?? []) {
       if (used.has(edge)) continue;
+      const ship = state.board.roads[edge]!.ship;
+      if (arrivedByShip !== null && ship !== arrivedByShip && !ownBuilding(vertex)) continue;
       const [a, b] = topo.edges[edge]!.vertices;
       const next = a === vertex ? b : a;
       used.add(edge);
-      const length = 1 + (blocked.has(next) ? 0 : walk(next));
+      const length = 1 + (blocked.has(next) ? 0 : walk(next, ship));
       used.delete(edge);
       if (length > best) best = length;
     }
@@ -107,7 +139,7 @@ export function longestRouteLength(state: GameState, playerId: string, includeSh
   let longest = 0;
   for (const vertex of incident.keys()) {
     if (blocked.has(vertex)) continue;
-    const length = walk(vertex);
+    const length = walk(vertex, null);
     if (length > longest) longest = length;
   }
   return longest;

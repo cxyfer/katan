@@ -838,12 +838,8 @@ export function useTable(options: UseTableOptions): TableController {
   const confirmSelection = useCallback(async (): Promise<void> => {
     const { selection } = stateRef.current;
     if (!selection.commandType || selection.index === null || !selection.kind) return;
-    const payload: CommandPayload =
-      selection.kind === 'vertex'
-        ? { type: selection.commandType, vertex: selection.index }
-        : selection.kind === 'edge'
-          ? { type: selection.commandType, edge: selection.index }
-          : { type: selection.commandType, hex: selection.index };
+    const field = selection.field ?? (selection.kind === 'vertex' ? 'vertex' : selection.kind === 'edge' ? 'edge' : 'hex');
+    const payload: CommandPayload = { ...selection.params, type: selection.commandType, [field]: selection.index };
     await submitCommand(payload, selection.labelId ?? selection.commandType);
   }, [submitCommand]);
 

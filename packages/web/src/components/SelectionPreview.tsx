@@ -14,6 +14,9 @@ const COST_BY_COMMAND: Record<string, Partial<Record<string, number>> | null> = 
   'setup.placeRoad': null,
   'pending.moveRobber': null,
   'dev.playKnight': null,
+  'build.ship': { lumber: 1, wool: 1 },
+  'setup.placeShip': null,
+  'ship.move': null,
 };
 
 /**

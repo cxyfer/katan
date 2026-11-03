@@ -35,9 +35,9 @@ describe('ruleset registry', () => {
 
   it('enables only the profiles whose rules and fixtures have passed', () => {
     const enabled = PROFILES.filter((profile) => profile.enabled).map((profile) => profile.id);
-    expect(enabled).toEqual(['base-2025', 'base-paired-2025']);
-    expect(selectableProfiles().map((profile) => profile.id)).toEqual(['base-2025', 'base-paired-2025']);
-    expect(selectableProfiles(5).map((profile) => profile.id)).toEqual(['base-paired-2025']);
+    expect(enabled).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025']);
+    expect(selectableProfiles().map((profile) => profile.id)).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025']);
+    expect(selectableProfiles(5).map((profile) => profile.id)).toEqual(['base-paired-2025', 'sf-new-shores-paired-2025']);
   });
 
   it('keeps the confirmed victory targets and player counts', () => {
@@ -65,7 +65,10 @@ describe('ruleset registry', () => {
       .toEqual({ ok: false, reason: 'bad-player-count' });
     expect(resolveCombination({
       expansions: ['seafarers'], scenario: 'new-shores', variants: [], playerCount: 4, setupMode: 'fixed',
-    })).toEqual({ ok: false, reason: 'disabled' });
+    })).toMatchObject({ ok: true, profile: { id: 'sf-new-shores-2025' } });
+    expect(resolveCombination({
+      expansions: ['seafarers'], scenario: 'new-shores', variants: [], playerCount: 4, setupMode: 'variable',
+    })).toEqual({ ok: false, reason: 'bad-setup-mode' });
   });
 
   it('matches expansion sets exactly and order-insensitively', () => {
@@ -110,6 +113,8 @@ describe('ruleset registry', () => {
       'base-2025:3:fixed', 'base-2025:3:variable', 'base-2025:4:fixed', 'base-2025:4:variable',
       'base-paired-2025:5:fixed', 'base-paired-2025:5:variable',
       'base-paired-2025:6:fixed', 'base-paired-2025:6:variable',
+      'sf-new-shores-2025:3:fixed', 'sf-new-shores-2025:4:fixed',
+      'sf-new-shores-paired-2025:5:variable', 'sf-new-shores-paired-2025:6:variable',
     ]);
   });
 
@@ -163,7 +168,7 @@ describe('ruleset registry', () => {
   it('refuses to create a game for an unimplemented profile', () => {
     expect(() =>
       createGame({
-        profileId: 'sf-new-shores-2025',
+        profileId: 'ck-2025',
         players: playerIds(4).map((id, index) => ({
           id,
           nickname: id,
@@ -177,7 +182,7 @@ describe('ruleset registry', () => {
 
   it('advertises the verified paired profile for six players', () => {
     expect(getProfile('base-paired-2025')!.implemented).toBe(true);
-    expect(selectableProfiles(6).map((profile) => profile.id)).toEqual(['base-paired-2025']);
+    expect(selectableProfiles(6).map((profile) => profile.id)).toEqual(['base-paired-2025', 'sf-new-shores-paired-2025']);
     expect(resolveCombination({ expansions: [], scenario: null, variants: [], playerCount: 6, setupMode: 'fixed' }))
       .toMatchObject({ ok: true, profile: { id: 'base-paired-2025' } });
   });

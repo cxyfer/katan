@@ -69,6 +69,14 @@ export interface RulesKit {
   resolveRollOutcome(state: GameState, roll: RollResult, rng?: Rng): void;
   /** Completes the current setup placement step (after its road/ship). */
   finishSetupStep(state: GameState): void;
+  /** Legal road edges for a player in the action phase (sea-aware). */
+  legalRoads(state: GameState, playerId: string): number[];
+  /**
+   * Books one free piece of an active Road Building effect (a road or a
+   * module piece such as a ship) and finishes the effect when nothing is
+   * left to place.
+   */
+  placedFreeRoute(state: GameState, playerId: string, rng?: Rng): void;
 }
 
 export interface ModuleContext {
@@ -101,6 +109,14 @@ export type ModuleCommandHandler = (
   command: ModuleCommand,
   ctx: ModuleContext,
 ) => CommandOutcome;
+
+/**
+ * Result of moving a bandit other than the robber (the Seafarers pirate).
+ * `candidates` are the players the actor may rob afterwards.
+ */
+export type BanditMove =
+  | { ok: true; hex: number | null; candidates: string[] }
+  | { ok: false; error: CommandOutcome };
 
 /** The public, viewer-filtered form of a module frame. */
 export interface PublicModulePendingView {
@@ -141,14 +157,35 @@ export interface RulesModule {
   commands?: Readonly<Record<string, ModuleCommandHandler>>;
   /** Command types accepted while a frame is pending (base gate otherwise). */
   pendingCommands?: readonly string[];
+  /**
+   * Extra legality for a building intersection; returning false vetoes it
+   * (for example a scenario that confines starting settlements to one island).
+   */
+  allowBuilding?(state: GameState, playerId: string, vertex: number, options: { setup: boolean }, ctx: ModuleViewContext): boolean;
+  /**
+   * Handles a robber target (7 or Knight) that belongs to another bandit,
+   * such as the Seafarers pirate on a sea hex or the frame (`null`). Return
+   * `undefined` to leave the target to the base robber. The hook validates
+   * before it mutates anything.
+   */
+  moveBandit?(state: GameState, actorId: string, target: number | null, cause: 'seven' | 'knight', ctx: ModuleContext): BanditMove | undefined;
+  /** Additional free Road Building placements available (for example ships). */
+  freeRouteTargets?(state: GameState, playerId: string, ctx: ModuleViewContext): number;
   /** Runs after every board change (build, setup placement, robber move). */
-  afterBoardChange?(state: GameState, ctx: ModuleViewContext): void;
+  afterBoardChange?(state: GameState, ctx: ModuleContext): void;
   /**
    * Resolves a continuation frame (`responders: []`) of this module when it
    * becomes active. The engine advances the queue afterwards, so the hook
    * must not call `kit.completePending` for that frame itself.
    */
   resumePending?(state: GameState, frame: ModulePending, ctx: ModuleContext): void;
+  /**
+   * Runs when a queued frame of this module that still has responders becomes
+   * active (not when `enqueuePending` activates it directly). The hook may
+   * resolve the frame on the spot, for example when nobody can answer it any
+   * more, and then calls `kit.completePending` itself.
+   */
+  activatePending?(state: GameState, frame: ModulePending, ctx: ModuleContext): void;
 
   // -- scoring ---------------------------------------------------------------
   /** Victory points this module adds for a player. */

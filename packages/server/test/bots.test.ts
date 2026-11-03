@@ -263,9 +263,21 @@ describe('B-ROOM bot seats', () => {
     expect(profiles.some((profile) => !profile.botSeats)).toBe(true);
   });
 
+  it('refuses adding bot seats to Seafarers rooms and switching a room with bots to Seafarers', async () => {
+    const host = await harness.client('SeafarersBots');
+    const sea = await createRoom(host, { profileId: 'sf-new-shores-2025' });
+    host.expectError(await host.post(`/api/rooms/${sea.id}/bots`, {}), 'E_INVALID_BOT');
+
+    const other = await harness.client('SeafarersSwitch');
+    const base = await createRoom(other, { bots: 1 });
+    other.expectError(
+      await other.post(`/api/rooms/${base.id}/settings`, { profileId: 'sf-new-shores-2025' }),
+      'E_INVALID_BOT',
+    );
+  });
+
   it('blocks start and further bots once the profile runs modules bots cannot play', async () => {
-    // Only fixture profiles can reach this state in this phase: no enabled
-    // profile has rules modules yet, and rooms only accept enabled profiles.
+    // Rooms refuse bot seats in such profiles, so the state is forced here.
     const fixture = registerFixtureProfile('fixture-bots-modules', [3, 4], { expansions: ['seafarers'] });
     const host = await harness.client('ModuleBots');
     const room = await createRoom(host, { bots: 1 });

@@ -132,7 +132,8 @@ export function roadInstances(
   const out: RoadInstance[] = [];
   for (const edge of geometry.edges) {
     const road = board.roads[edge.index];
-    if (!road) continue;
+    // Ships are drawn by `DioramaSeafarers`, floating at sea level.
+    if (!road || road.ship) continue;
     const from = geometryToWorld(geometry, edge.x1, edge.y1);
     const to = geometryToWorld(geometry, edge.x2, edge.y2);
     const dx = to.x - from.x;

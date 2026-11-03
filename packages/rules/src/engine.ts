@@ -15,6 +15,9 @@ import {
   countBuildings,
   countRoads,
   harborRates,
+  isLandEdge,
+  isLandHex,
+  isLandVertex,
   longestRouteLength,
   neighborsOfVertex,
   playerById,
@@ -28,6 +31,7 @@ import { buildProfileLayout } from './layout-registry.ts';
 import type { CommandErrorCode } from './messages.ts';
 import { moduleCommandTypes, rulesModulesOf } from './modules/registry.ts';
 import type {
+  BanditMove,
   ModuleCommand,
   ModuleContext,
   ModuleViewContext,
@@ -75,12 +79,12 @@ export type Command =
   | { type: 'build.settlement'; vertex: number }
   | { type: 'build.city'; vertex: number }
   | { type: 'build.devCard' }
-  | { type: 'dev.playKnight'; hex: number }
+  | { type: 'dev.playKnight'; hex: number | null }
   | { type: 'dev.playRoadBuilding' }
   | { type: 'dev.playYearOfPlenty' }
   | { type: 'dev.playMonopoly'; resource: Resource }
   | { type: 'pending.discard'; resources: Resource[] }
-  | { type: 'pending.moveRobber'; hex: number }
+  | { type: 'pending.moveRobber'; hex: number | null }
   | { type: 'pending.steal'; victim: string }
   | { type: 'pending.takeResource'; resource: Resource }
   | { type: 'trade.bank'; give: Resource; receive: Resource }
@@ -279,6 +283,8 @@ const KIT: RulesKit = {
   completePending: (state, rng) => completePending(state, rng ?? null),
   resolveRollOutcome: (state, roll, rng) => resolveRollOutcome(state, roll, rng ?? null),
   finishSetupStep,
+  legalRoads: (state, playerId) => legalRoadEdges(state, playerId),
+  placedFreeRoute: (state, playerId, rng) => placedFreeRoute(state, playerId, rng ?? null),
 };
 
 function moduleContext(profile: ProfileDefinition, rng: Rng | null, resumeAfter?: string): ModuleContext {
@@ -306,8 +312,11 @@ function completePending(state: GameState, rng: Rng | null): void {
   let next = advancePending(state);
   for (let guard = 0; next && next.kind.includes('.') && guard < 64; guard++) {
     const frame = next as Extract<typeof next, { module: string }>;
-    if (frame.responders.length > 0) return;
     const module = modulesOf(state).find((candidate) => candidate.id === frame.module);
+    if (frame.responders.length > 0) {
+      module?.activatePending?.(state, frame, moduleContext(requireProfile(state.profileId), rng));
+      return;
+    }
     if (!module?.resumePending) throw new Error(`no continuation for pending frame ${frame.kind}`);
     module.resumePending(state, frame, moduleContext(requireProfile(state.profileId), rng, module.id));
     if (state.pending !== frame) return;
@@ -369,9 +378,11 @@ export function canPlaceBuilding(
   const topo = topologyOf(state);
   if (!topo.vertices[vertex]) return false;
   if (state.board.buildings[vertex]) return false;
+  if (!isLandVertex(state, vertex)) return false;
   for (const neighbor of neighborsOfVertex(topo, vertex)) {
     if (state.board.buildings[neighbor]) return false;
   }
+  if (!modulesAllowBuilding(state, playerId, vertex, !!options.setup)) return false;
   if (options.setup) {
     const profile = requireProfile(state.profileId);
     return countBuildings(state, playerId, 'settlement') < profile.pieces.settlements;
@@ -380,9 +391,24 @@ export function canPlaceBuilding(
   return touchesOwnRoad(state, playerId, vertex);
 }
 
-function touchesOwnRoad(state: GameState, playerId: string, vertex: number): boolean {
+function modulesAllowBuilding(state: GameState, playerId: string, vertex: number, setup: boolean): boolean {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return true;
+  const ctx = viewContext(state);
+  return modules.every((module) => module.allowBuilding?.(state, playerId, vertex, { setup }, ctx) ?? true);
+}
+
+/**
+ * Whether one of the player's routes reaches the vertex. A settlement may
+ * extend any route; `roadsOnly` ignores ships, because a ship hands over to a
+ * road only at the player's building (SF25 p. 2).
+ */
+function touchesOwnRoad(state: GameState, playerId: string, vertex: number, roadsOnly = false): boolean {
   const topo = topologyOf(state);
-  return topo.vertices[vertex]!.edges.some((edge) => state.board.roads[edge]?.player === playerId);
+  return topo.vertices[vertex]!.edges.some((edge) => {
+    const road = state.board.roads[edge];
+    return !!road && road.player === playerId && !(roadsOnly && road.ship);
+  });
 }
 
 /**
@@ -393,7 +419,7 @@ function touchesOwnRoad(state: GameState, playerId: string, vertex: number): boo
 function roadCanExtendFrom(state: GameState, playerId: string, vertex: number): boolean {
   const building = state.board.buildings[vertex];
   if (building) return building.player === playerId;
-  return touchesOwnRoad(state, playerId, vertex);
+  return touchesOwnRoad(state, playerId, vertex, true);
 }
 
 export function legalRoadEdges(
@@ -419,6 +445,7 @@ export function canPlaceRoad(
   const info = topo.edges[edge];
   if (!info) return false;
   if (state.board.roads[edge]) return false;
+  if (!isLandEdge(state, edge)) return false;
   if (options.setup) {
     if (options.lastVertex === null || options.lastVertex === undefined) return false;
     return info.vertices.includes(options.lastVertex);
@@ -520,7 +547,7 @@ function afterBoardChange(state: GameState): void {
   });
   const modules = modulesOf(state);
   if (modules.length === 0) return;
-  const ctx = viewContext(state);
+  const ctx = moduleContext(requireProfile(state.profileId), null);
   for (const module of modules) module.afterBoardChange?.(state, ctx);
 }
 
@@ -541,9 +568,9 @@ export function normalizedPending(state: GameState): Pending | null {
   const pending = state.pending;
   if (pending?.kind === 'freeRoads') {
     const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, pending.actor);
-    const remaining = legalRoadEdges(state, pending.actor).length > 0
-      ? Math.max(0, Math.min(pending.remaining, pieces))
-      : 0;
+    const roads = legalRoadEdges(state, pending.actor).length > 0 ? pieces : 0;
+    // Module pieces (ships) can still take a free placement without roads.
+    const remaining = Math.max(0, Math.min(pending.remaining, roads + moduleFreeRouteTargets(state, pending.actor)));
     if (remaining <= 0) return null;
     if (remaining === pending.remaining) return pending;
     const placed = (pending.granted ?? 2) - pending.remaining;
@@ -647,7 +674,7 @@ function dispatch(
     case 'build.devCard':
       return buyDevCard(state, actorId, rng);
     case 'dev.playKnight':
-      return playKnight(state, actorId, command.hex);
+      return playKnight(state, actorId, command.hex, rng);
     case 'dev.playRoadBuilding':
       return playRoadBuilding(state, actorId);
     case 'dev.playYearOfPlenty':
@@ -1003,18 +1030,45 @@ function buildRoad(state: GameState, actorId: string, edge: number, rng: Rng): C
   emit(state, 'build.road', { playerId: actorId, edge, free: !!free });
   afterBoardChange(state);
 
-  if (free) {
-    free.remaining -= 1;
-    if (free.remaining <= 0 || legalRoadEdges(state, actorId).length === 0) {
-      emit(state, 'dev.roadBuildingFinished', {
-        playerId: actorId,
-        placed: (free.granted ?? 2) - free.remaining,
-      });
-      completePending(state, rng);
-    }
-  }
+  if (free) placedFreeRoute(state, actorId, rng);
   checkVictory(state);
   return { ok: true, state, events: [] };
+}
+
+/** Books one free Road Building piece and ends the effect when done. */
+function placedFreeRoute(state: GameState, actorId: string, rng: Rng | null): void {
+  const free = state.pending?.kind === 'freeRoads' && state.pending.actor === actorId ? state.pending : null;
+  if (!free) return;
+  free.remaining -= 1;
+  // As in base-2025.3 the effect ends here only when no target is left; a
+  // spent piece supply is capped by `normalizedPending` on the next command.
+  if (free.remaining <= 0 || legalRoadEdges(state, actorId).length + moduleFreeRouteTargets(state, actorId) === 0) {
+    emit(state, 'dev.roadBuildingFinished', {
+      playerId: actorId,
+      placed: (free.granted ?? 2) - free.remaining,
+    });
+    completePending(state, rng);
+  }
+}
+
+/**
+ * Free Road Building placements available now: legal roads capped by the road
+ * pieces left (PR #60), plus module pieces such as ships.
+ */
+function freeRouteTargetCount(state: GameState, playerId: string): number {
+  const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, playerId);
+  const roads = Math.max(0, Math.min(legalRoadEdges(state, playerId).length, pieces));
+  return roads + moduleFreeRouteTargets(state, playerId);
+}
+
+/** Free placements the profile's modules offer (ships), supply included. */
+function moduleFreeRouteTargets(state: GameState, playerId: string): number {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return 0;
+  const ctx = viewContext(state);
+  let count = 0;
+  for (const module of modules) count += module.freeRouteTargets?.(state, playerId, ctx) ?? 0;
+  return count;
 }
 
 function buildSettlement(state: GameState, actorId: string, vertex: number): CommandOutcome {
@@ -1108,33 +1162,69 @@ function heldCardMissing(player: PlayerState, card: DevCardType): CommandOutcome
   return fail('E_CARD_NOT_HELD', { card });
 }
 
-function playKnight(state: GameState, actorId: string, hex: number): CommandOutcome {
+function playKnight(state: GameState, actorId: string, hex: number | null, rng: Rng): CommandOutcome {
   const guard = canPlayDevCard(state, actorId);
   if (guard) return guard;
   const player = playerById(state, actorId)!;
   if (!player.devCards.includes('knight')) return heldCardMissing(player, 'knight');
   const pool = player.devCards;
-  const topo = topologyOf(state);
-  if (!topo.hexes[hex]) return fail('E_ILLEGAL_TARGET', { hex });
-  if (hex === state.board.robber) return fail('E_ROBBER_SAME_HEX', { hex });
+  const bandit = moduleBanditMove(state, actorId, hex, 'knight', rng);
+  if (bandit && !bandit.ok) return bandit.error;
+  if (!bandit) {
+    const robberCheck = robberTargetError(state, hex);
+    if (robberCheck) return robberCheck;
+  }
 
   const index = pool.indexOf('knight');
   pool.splice(index, 1);
   player.playedKnights += 1;
   state.turn.devCardPlayed = true;
-  state.board.robber = hex;
   const stats = playerStats(state, actorId);
   stats.devCardsPlayed.knight += 1;
   stats.robberMoves += 1;
+  if (bandit) {
+    emit(state, 'dev.knight', { playerId: actorId, hex, playedKnights: player.playedKnights, pirate: true });
+    afterBoardChange(state);
+    if (bandit.candidates.length > 0 && bandit.hex !== null) {
+      enqueuePending(state, { kind: 'steal', actor: actorId, hex: bandit.hex, candidates: bandit.candidates, pirate: true });
+    }
+    checkVictory(state);
+    return { ok: true, state, events: [] };
+  }
+  state.board.robber = hex as number;
   emit(state, 'dev.knight', { playerId: actorId, hex, playedKnights: player.playedKnights });
   afterBoardChange(state);
 
-  const candidates = stealCandidates(state, hex, actorId);
+  const candidates = stealCandidates(state, hex as number, actorId);
   if (candidates.length > 0) {
-    enqueuePending(state, { kind: 'steal', actor: actorId, hex, candidates, pirate: false });
+    enqueuePending(state, { kind: 'steal', actor: actorId, hex: hex as number, candidates, pirate: false });
   }
   checkVictory(state);
   return { ok: true, state, events: [] };
+}
+
+/** Lets a module claim a robber target for another bandit (the pirate). */
+function moduleBanditMove(
+  state: GameState,
+  actorId: string,
+  target: number | null,
+  cause: 'seven' | 'knight',
+  rng: Rng,
+): BanditMove | undefined {
+  const profile = requireProfile(state.profileId);
+  for (const module of rulesModulesOf(profile)) {
+    const move = module.moveBandit?.(state, actorId, target, cause, moduleContext(profile, rng));
+    if (move) return move;
+  }
+  return undefined;
+}
+
+/** The robber moves to a different terrain hex; it never goes to sea. */
+function robberTargetError(state: GameState, hex: number | null): CommandOutcome | null {
+  const topo = topologyOf(state);
+  if (typeof hex !== 'number' || !topo.hexes[hex] || !isLandHex(state, hex)) return fail('E_ILLEGAL_TARGET', { hex });
+  if (hex === state.board.robber) return fail('E_ROBBER_SAME_HEX', { hex });
+  return null;
 }
 
 function stealCandidates(state: GameState, hex: number, actorId: string): string[] {
@@ -1159,9 +1249,7 @@ function playRoadBuilding(state: GameState, actorId: string): CommandOutcome {
   playerStats(state, actorId).devCardsPlayed.roadBuilding += 1;
   emit(state, 'dev.roadBuilding', { playerId: actorId });
   // 免費道路數同時受合法邊與剩餘道路棋子限制，否則待決效果會無法完成。
-  const available = legalRoadEdges(state, actorId).length;
-  const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, actorId);
-  const remaining = Math.max(0, Math.min(2, available, pieces));
+  const remaining = Math.min(2, freeRouteTargetCount(state, actorId));
   if (remaining > 0) {
     enqueuePending(state, { kind: 'freeRoads', actor: actorId, remaining, granted: remaining });
   }
@@ -1268,15 +1356,26 @@ function submitDiscard(state: GameState, actorId: string, resources: Resource[])
   return { ok: true, state, events: [] };
 }
 
-function moveRobber(state: GameState, actorId: string, hex: number, rng: Rng): CommandOutcome {
+function moveRobber(state: GameState, actorId: string, hex: number | null, rng: Rng): CommandOutcome {
   const pending = state.pending;
   if (!pending || pending.kind !== 'moveRobber') {
     return fail('E_PENDING_EFFECT', { pending: pending?.kind ?? 'none' });
   }
   if (pending.actor !== actorId) return fail('E_NOT_ACTOR');
-  const topo = topologyOf(state);
-  if (!topo.hexes[hex]) return fail('E_ILLEGAL_TARGET', { hex });
-  if (hex === state.board.robber) return fail('E_ROBBER_SAME_HEX', { hex });
+  const bandit = moduleBanditMove(state, actorId, hex, pending.cause, rng);
+  if (bandit) {
+    if (!bandit.ok) return bandit.error;
+    afterBoardChange(state);
+    if (bandit.candidates.length > 0 && bandit.hex !== null) {
+      state.pending = { kind: 'steal', actor: actorId, hex: bandit.hex, candidates: bandit.candidates, pirate: true };
+    } else {
+      completePending(state, rng);
+    }
+    return { ok: true, state, events: [] };
+  }
+  const robberCheck = robberTargetError(state, hex);
+  if (robberCheck) return robberCheck;
+  if (hex === null) return fail('E_ILLEGAL_TARGET', { hex });
   state.board.robber = hex;
   playerStats(state, actorId).robberMoves += 1;
   emit(state, 'robber.moved', { playerId: actorId, hex, cause: pending.cause });
@@ -1314,7 +1413,7 @@ function stealFrom(state: GameState, actorId: string, victim: string, rng: Rng):
   emit(
     state,
     'robber.stole',
-    { playerId: actorId, victim },
+    pending.pirate ? { playerId: actorId, victim, pirate: true } : { playerId: actorId, victim },
     { to: [actorId, victim], params: { resource } },
   );
   return { ok: true, state, events: [] };

@@ -3,6 +3,7 @@ import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
 import { Legend } from './Legend.tsx';
 import type { TableController } from '../state/useTable.ts';
+import { seafarersView, SHIP_COST } from '../board/seafarers.ts';
 
 /** In-game help: costs, legend and the profile summary (docs/SPEC.md §8.4). */
 export function HelpPanel({ controller }: { controller: TableController }) {
@@ -27,6 +28,16 @@ export function HelpPanel({ controller }: { controller: TableController }) {
         {t(`profile.${profileId}`)} · {t('play.resultTarget', { target: controller.state.game?.view.victoryTarget ?? 10 })}
       </p>
       {paired && <p className="muted">{t('lobby.pairedNote')}</p>}
+      {seafarersView(controller.state.game?.view) && (
+        <section data-testid="help-seafarers">
+          <h3>{t('sf.help.title')}</h3>
+          <ul className="help-rules">
+            <li>{t('sf.build.ship')}: {formatResourceMap(locale, SHIP_COST)}</li>
+            {(['setup', 'ships', 'move', 'pirate', 'gold', 'route', 'islands'] as const).map((key) => <li key={key}>{t(`sf.help.${key}`)}</li>)}
+            {paired && <li>{t('sf.help.paired')}</li>}
+          </ul>
+        </section>
+      )}
       <h3>{t('play.helpLegend')}</h3>
       <Legend />
       <h3>{t('play.awards')}</h3>

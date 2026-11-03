@@ -134,7 +134,7 @@ describe('R-ROOM lobby', () => {
       await host.post('/api/rooms', {
         visibility: 'private',
         capacity: 4,
-        profileId: 'sf-new-shores-2025',
+        profileId: 'sf-ck-new-shores-2025',
         setupMode: 'fixed',
       }),
       'E_UNSUPPORTED_COMBINATION',
@@ -159,7 +159,7 @@ describe('R-ROOM lobby', () => {
     expect(base.profileId).toBe('base-2025');
 
     const cases: [Record<string, unknown>, string][] = [
-      [{ capacity: 4, ruleset: { expansions: ['seafarers'], scenario: 'new-shores' } }, 'disabled'],
+      [{ capacity: 4, setupMode: 'variable', ruleset: { expansions: ['seafarers'], scenario: 'new-shores' } }, 'bad-setup-mode'],
       [{ capacity: 4, ruleset: { expansions: ['citiesKnights', 'seafarers'], scenario: 'new-shores' } }, 'disabled'],
       [{ capacity: 4, ruleset: { expansions: ['seafarers', 'citiesKnights', 'tradersBarbarians'], scenario: 'new-shores' } }, 'unknown-profile'],
       [{ capacity: 4, ruleset: { expansions: ['seafarers', 'seafarers'], scenario: 'new-shores' } }, 'invalid-request'],
@@ -190,7 +190,7 @@ describe('R-ROOM lobby', () => {
   it('publishes registry v2 metadata for every profile', async () => {
     const guest = await harness.client('ProfileReader');
     const data = guest.expectOk<{ profiles: Record<string, unknown>[]; selectable: string[] }>(await guest.get('/api/profiles'));
-    expect(data.selectable).toEqual(['base-2025', 'base-paired-2025']);
+    expect(data.selectable).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025']);
     expect(data.profiles.find((profile) => profile.id === 'base-paired-2025')).toMatchObject({
       expansions: [], scenario: null, variants: [], ruleVersion: 'base-2025.3',
       requiredBoxes: ['base', 'base-5-6'], playerCounts: [5, 6], enabled: true,

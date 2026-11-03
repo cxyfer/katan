@@ -4,6 +4,7 @@ import { useAudio } from '../audio/context.tsx';
 import { useT } from '../i18n/context.tsx';
 import { buildGeometry } from '../board/geometry.ts';
 import { boardIntent } from '../board/intent.ts';
+import { seafarersView } from '../board/seafarers.ts';
 import type { TargetKind } from '../board/targets.ts';
 import { parseViewBox } from '../board/viewport.ts';
 import { useBoardAnimation } from '../board/useBoardAnimation.ts';
@@ -80,6 +81,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   // 擲骰演出期間不開放由擲骰帶出的棋盤目標（例如七點後移動強盜）；玩家已選取中的建造不受影響。
   const intent = useMemo(() => followUpsHeld(state) && !state.selection.commandType ? null : boardIntent(state, selfId), [state, selfId]);
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
+  const seaView = useMemo(() => seafarersView(view), [view?.modules]);
   const pickerAnchor = useMemo(() => pickerTarget
     ? targets.find((target) => target.kind === pickerTarget.kind && target.index === pickerTarget.index) ?? null
     : null, [pickerTarget, targets]);
@@ -136,8 +138,15 @@ export function BoardView({ controller }: { controller: TableController }) {
   const selectTarget = useCallback((kind: TargetKind, index: number) => {
     if (!intent || kind !== intent.kind || !intent.targets.includes(index)) return;
     setCluster(null); setPickerOpen(false); setPickerTarget(null);
-    actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId });
-  }, [actions, intent]);
+    // Moving a ship takes two choices: the ship, then its new path.
+    if (intent.commandType === 'ship.pick') {
+      actions.selectTarget({ kind: 'edge', index: null, commandType: 'ship.move', labelId: 'sf.move.target', params: { from: index }, field: 'to' });
+      return;
+    }
+    const carried = state.selection.commandType === intent.commandType ? state.selection : null;
+    actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId,
+      ...(carried?.params ? { params: carried.params } : {}), ...(carried?.field ? { field: carried.field } : {}) });
+  }, [actions, intent, state.selection]);
   const focusedRoll = animation.activeDice;
   // 骰子真的出現在畫面上才開始擲骰聲；點數揭曉與後果都以此為起點。
   const focusedRollId = focusedRoll?.id ?? null;
@@ -277,7 +286,7 @@ export function BoardView({ controller }: { controller: TableController }) {
         aria-label={t(effective === 'r3f' ? 'a11y.boardRegion3d' : 'a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>
         {requested !== 'svg' && !failure && <div className="board__scene" aria-hidden="true" style={{ opacity: effective === 'r3f' ? 1 : 0 }}>
           <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
-            <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))}
+            <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView}
               intent={intent} selection={selection} arrivals={animation.arrivals} viewport={controls.viewport} quality={quality}
               motionAllowed={animation.arrivals.length > 0} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />
           </Suspense></SceneBoundary>

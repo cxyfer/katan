@@ -13,8 +13,9 @@ import { coastLoops, distanceToLoop, insideLoop, offsetLoop, smoothLoop } from '
 import { ModelBuilder, PaintedMesh, sceneryRandom, valueNoise } from './diorama-geometry.ts';
 import type { Vec3 } from './transforms.ts';
 
-/** The water plane height; the beach dips just below it so the waterline is clean. */
-export const SEA_LEVEL = -0.285;
+import { SEA_LEVEL } from '../sea.ts';
+
+export { SEA_LEVEL };
 
 /**
  * Beach profile from inside the tile rim down below the waterline:

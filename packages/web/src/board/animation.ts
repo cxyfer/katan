@@ -100,7 +100,10 @@ export function boardEffectGroup(gameId: string, events: readonly GameEvent[]): 
   };
 }
 
-const PLACEMENT_EVENTS: ReadonlySet<string> = new Set(['setup.building', 'setup.road', 'build.road', 'build.settlement', 'build.city']);
+const PLACEMENT_EVENTS: ReadonlySet<string> = new Set([
+  'setup.building', 'setup.road', 'build.road', 'build.settlement', 'build.city',
+  'setup.ship', 'ship.built', 'ship.moved',
+]);
 
 /**
  * 建造落下不排入特效佇列：權威盤面立即顯示新棋子，若排在前一組之後，

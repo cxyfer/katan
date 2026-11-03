@@ -57,6 +57,10 @@ export interface Selection {
   commandType: string | null;
   /** Message id describing the intended action, for the preview panel. */
   labelId: string | null;
+  /** Extra command fields chosen in an earlier step (e.g. the ship to move). */
+  params?: Record<string, unknown>;
+  /** Command field that receives `index` (default: `vertex` / `edge` / `hex`). */
+  field?: string;
 }
 
 /**

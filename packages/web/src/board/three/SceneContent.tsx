@@ -36,6 +36,8 @@ import { DioramaBuildings, DioramaRoads, DioramaHarbors } from './DioramaStructu
 import { createRoadModel, createSettlementModel, harborLabelInstances } from './diorama-structures.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
 import { createRobberModel } from './diorama-robber.ts';
+import { DioramaSeafarers, PirateGhost, ShipGhost } from './DioramaSeafarers.tsx';
+import { isShipCommand } from '../seafarers.ts';
 import { atlasGeometryKey, boardSceneResources, type BoardSceneResources } from './resources.ts';
 
 type SceneProps = Pick<BoardSceneProps,
@@ -254,6 +256,12 @@ function SelectionGhost({ props, resources }: { props: SceneProps; resources: Bo
       position={[vertex.x / props.geometry.scale, 0.005, vertex.y / props.geometry.scale]}
       rotationY={((vertex.index * 23) % 6) * (Math.PI / 6)} />;
   }
+  if (selection.kind === 'edge' && isShipCommand(props.intent.commandType)) {
+    return <ShipGhost geometry={props.geometry} edge={selection.index} material={material} />;
+  }
+  if (selection.kind === 'hex' && props.geometry.land[selection.index] === false) {
+    return <PirateGhost geometry={props.geometry} hex={selection.index} material={material} />;
+  }
   if (selection.kind === 'edge') {
     const edge = props.geometry.edges[selection.index];
     if (!edge) return null;
@@ -410,6 +418,7 @@ function AtlasLayerContent({ props }: { props: SceneProps }) {
       <HarborLabels props={props} resources={resources} texture={texture} />
       <DioramaRoads {...props} material={resources.materials.diorama} />
       <DioramaBuildings {...props} material={resources.materials.diorama} />
+      <DioramaSeafarers {...props} material={resources.materials.diorama} />
       <Robber props={props} resources={resources} />
       <SelectionGhost props={props} resources={resources} />
       <ReadyBridge ready={texture !== null && props.viewport.rect.width > 0 && props.viewport.rect.height > 0}

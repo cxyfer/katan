@@ -8,6 +8,7 @@ import type {
 } from './render-contract.ts';
 import type { TargetKind } from './targets.ts';
 import { boardViewport, parseViewBox } from './viewport.ts';
+import { targetHeight } from './sea.ts';
 
 export interface ProjectionTarget {
   kind: TargetKind;
@@ -135,26 +136,29 @@ export function targetsFromGeometry(
   indices: readonly number[],
 ): ProjectionTarget[] {
   const out: ProjectionTarget[] = [];
+  // Sea targets (pirate hexes, ship paths out at sea) sit on the water plane.
+  const lift = (point: WorldPoint, height: number): WorldPoint => (height === 0 ? point : { ...point, y: height });
   for (const index of indices) {
     if (kind === 'vertex') {
       const vertex = geometry.vertices[index];
-      if (vertex) out.push({ kind, index, world: geometryPointToWorld(geometry, vertex) });
+      if (vertex) out.push({ kind, index, world: lift(geometryPointToWorld(geometry, vertex), targetHeight(geometry, kind, index)) });
     } else if (kind === 'edge') {
       const edge = geometry.edges[index];
       if (edge) {
+        const height = targetHeight(geometry, kind, index);
         out.push({
           kind,
           index,
-          world: geometryPointToWorld(geometry, { x: (edge.x1 + edge.x2) / 2, y: (edge.y1 + edge.y2) / 2 }),
+          world: lift(geometryPointToWorld(geometry, { x: (edge.x1 + edge.x2) / 2, y: (edge.y1 + edge.y2) / 2 }), height),
           endpoints: [
-            geometryPointToWorld(geometry, { x: edge.x1, y: edge.y1 }),
-            geometryPointToWorld(geometry, { x: edge.x2, y: edge.y2 }),
+            lift(geometryPointToWorld(geometry, { x: edge.x1, y: edge.y1 }), height),
+            lift(geometryPointToWorld(geometry, { x: edge.x2, y: edge.y2 }), height),
           ],
         });
       }
     } else {
       const hex = geometry.hexes[index];
-      if (hex) out.push({ kind, index, world: geometryPointToWorld(geometry, { x: hex.cx, y: hex.cy }) });
+      if (hex) out.push({ kind, index, world: lift(geometryPointToWorld(geometry, { x: hex.cx, y: hex.cy }), targetHeight(geometry, kind, index)) });
     }
   }
   return out;

@@ -28,7 +28,15 @@ export function productionGrants(events: readonly GameEvent[]): Grant[] {
 
 export function confirmedPlacement(events: readonly GameEvent[], board: PublicBoardView, kind: 'edge' | 'vertex', index: number): boolean {
   return events.some(({ type, params }) => {
-    if (kind === 'edge') return ['build.road', 'setup.road'].includes(type) && params.edge === index && board.roads[index]?.player === params.playerId;
+    if (kind === 'edge') {
+      const piece = board.roads[index];
+      if (!piece || piece.player !== params.playerId) return false;
+      if (piece.ship) {
+        return (['ship.built', 'setup.ship'].includes(type) && params.edge === index) ||
+          (type === 'ship.moved' && params.to === index);
+      }
+      return ['build.road', 'setup.road'].includes(type) && params.edge === index;
+    }
     const building = board.buildings[index];
     return !!building && ['build.city', 'build.settlement', 'setup.building'].includes(type) && params.vertex === index &&
       building.player === params.playerId && building.city === (type === 'build.city');

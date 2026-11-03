@@ -3,6 +3,7 @@ import type { BoardGeometry } from './geometry.ts';
 import type { BoardIntent } from './intent.ts';
 import type { BoardEffectGroup } from './animation.ts';
 import type { TargetKind } from './targets.ts';
+import type { SeafarersModuleView } from './seafarers.ts';
 
 export type RendererMode = 'auto' | 'svg' | 'r3f';
 export type QualityMode = 'standard' | 'low';
@@ -54,6 +55,8 @@ export interface BoardSceneInput {
   viewport: BoardViewportState;
   quality: QualityMode;
   motionAllowed: boolean;
+  /** Seafarers module view (island claims); absent for base games. */
+  seafarers?: SeafarersModuleView | null;
 }
 export interface BoardSceneProps extends BoardSceneInput {
   onProjection: (projection: ProjectionSnapshot) => void;

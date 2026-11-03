@@ -6,6 +6,7 @@ import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { shownHandSize } from '../state/table.ts';
+import { islandBonusPoints, seafarersView } from '../board/seafarers.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/scoreboard-hover.css';
@@ -232,6 +233,11 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           const compactLabel = `${player.nickname}${botLabel ? ` (${botLabel})` : ''}${isTurn ? `, ${t('play.turnOwner')}` : ''}`;
           const longestRoad = view.awards.longestRoad === player.id;
           const largestArmy = view.awards.largestArmy === player.id;
+          // Seafarers: ships, Longest Trade Route and the per-island bonus.
+          const sea = seafarersView(view);
+          const ships = view.board.roads.filter((road) => road?.ship && road.player === player.id).length;
+          const islandPoints = sea ? islandBonusPoints(view, player.id) : 0;
+          const routeAward = t(sea ? 'sf.award.longestTradeRoute' : 'play.award.longestRoad');
           const number = (value: number) => formatNumber(state.locale, value);
           return (
             <li
@@ -266,14 +272,18 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                   <ScoreMark icon="city" label={t('table.playersCities', { count: number(cities) })} value={number(cities)} />
                   <ScoreMark icon="cards" label={t('play.handSize')} value={number(shownHandSize(state, player))} />
                   <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />
-                  <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${t('play.award.longestRoad')} (+2)` : ''}`}
+                  {sea && <ScoreMark icon="ship" label={t('sf.board.ship')} value={number(ships)} testId={`players-ships-${player.seat}`} />}
+                  <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
                     value={number(player.longestRoadLength)} awarded={longestRoad} />
                   <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
                     value={number(player.playedKnights)} awarded={largestArmy} />
                 </div>
                 <div className="players__bonuses">
                   {isSelf && <ScoreMark icon="crown" label={t('table.playersHiddenVp')} value={number(hiddenVp)} testId="players-hidden-vp" />}
-                  {player.bonusPoints > 0 && <ScoreMark icon="flag" label={t('table.playersBonus')} value={number(player.bonusPoints)} />}
+                  {islandPoints > 0 && <ScoreMark icon="compass" testId={`players-islands-${player.seat}`}
+                    label={`${t('sf.score.islands')} · ${t('sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })}`}
+                    value={number(islandPoints)} />}
+                  {player.bonusPoints - islandPoints > 0 && <ScoreMark icon="flag" label={t('table.playersBonus')} value={number(player.bonusPoints - islandPoints)} />}
                   {hiddenBonus > 0 && <ScoreMark icon="sparkles" label={t('table.playersHiddenBonus')} value={number(hiddenBonus)} />}
                 </div>
               </div>

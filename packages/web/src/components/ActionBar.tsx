@@ -6,6 +6,7 @@ import { blocksNewCommands } from '../state/commands.ts';
 import type { TableController } from '../state/useTable.ts';
 import type { Selection } from '../state/table.ts';
 import { GameIcon, ResourceIcon } from './GameArt.tsx';
+import { isShipCommand } from '../board/seafarers.ts';
 
 /**
  * Action bar. Every disabled control shows *why* it is disabled, using the
@@ -21,8 +22,8 @@ export function ActionBar({ controller }: { controller: TableController }) {
 
   const arm = (commandType: string | null, labelId: string) => {
     if (!commandType) return;
-    const kind: Selection['kind'] = commandType.includes('road') ? 'edge' : 'vertex';
-    actions.selectTarget({ kind, index: null, commandType, labelId });
+    const kind: Selection['kind'] = commandType.includes('road') || isShipCommand(commandType) ? 'edge' : 'vertex';
+    actions.selectTarget({ kind, index: null, commandType, labelId: commandType === 'ship.pick' ? 'sf.move.pick' : labelId });
   };
 
   return (
@@ -52,7 +53,7 @@ export function ActionBar({ controller }: { controller: TableController }) {
                   arm(action.commandType, action.labelId);
                 }}
               >
-                <span className="action-list__label"><GameIcon name={action.commandType === 'turn.roll' ? 'dice' : action.commandType === 'turn.end' ? 'flag' : action.id === 'build.devCard' ? 'cards' : action.id === 'build.road' ? 'trade' : action.id === 'build.city' ? 'crown' : 'home'} size={18} />{t(action.labelId)}</span>
+                <span className="action-list__label"><GameIcon name={action.commandType === 'turn.roll' ? 'dice' : action.commandType === 'turn.end' ? 'flag' : action.id === 'build.devCard' ? 'cards' : action.id === 'build.road' ? 'trade' : action.id === 'build.city' ? 'crown' : action.id === 'build.ship' || action.id === 'ship.move' ? 'ship' : 'home'} size={18} />{t(action.labelId)}</span>
                 {action.cost && (
                   <span className="action-list__cost" role="group" aria-label={t('play.cost', { cost: formatResourceMap(locale, action.cost) })}>
                     {RESOURCES.filter((resource) => (action.cost?.[resource] ?? 0) > 0).map((resource) => (

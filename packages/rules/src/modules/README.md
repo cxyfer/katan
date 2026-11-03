@@ -17,9 +17,10 @@ modules/
   <id>/messages.ts    the module's event types and error codes
 ```
 
-Placeholders exist for `seafarers`, `citiesKnights`, `tradersBarbarians` and
-`explorersPirates`, so a phase normally edits only its own directory plus its
-profile rows, layout builder and i18n catalog file.
+`seafarers` (Heading for New Shores) is implemented; placeholders exist for
+`citiesKnights`, `tradersBarbarians` and `explorersPirates`, so a phase
+normally edits only its own directory plus its profile rows, layout builder
+and i18n catalog file.
 
 ## Hooks
 
@@ -33,8 +34,12 @@ profile rows, layout builder and i18n catalog file.
 | roll | `modifyProduction` | on the production results before they are paid |
 | roll | `afterProduction` | after production or the 7 has been set up |
 | commands | `commands` / `pendingCommands` | module-owned command types; types accepted while a frame is pending |
-| board | `afterBoardChange` | after every board change, after awards are recomputed |
+| board | `allowBuilding` | extra veto on a building intersection (setup and play), e.g. New Shores' main-island start |
+| board | `afterBoardChange` | after every board change, after awards are recomputed; gets the kit (emit, …) but no randomness |
+| robber | `moveBandit` | on a robber target (7 or Knight) before the base robber; claims sea hexes / `null` (frame) for the pirate and returns theft candidates, or `undefined` to leave it to the robber |
+| cards | `freeRouteTargets` | extra free Road Building placements (ships), supply included; summed with the legal roads capped by the road pieces left |
 | pending | `resumePending` | when a continuation frame (`responders: []`) of the module becomes active |
+| pending | `activatePending` | when a queued frame of the module that still has responders becomes active; may resolve it (Seafarers: an empty supply skips gold) |
 | scoring | `score` | inside `scoreOf`, added to the base score |
 | projection | `project` / `projectPending` / `actionHints` | `GameView.modules[id]`, module frames, `ActionHints.modules[id]` |
 
@@ -47,8 +52,15 @@ The frame's module identity preserves this position across snapshot recovery.
 Hooks get a `ModuleContext` (`profile`, `rng`, `kit`). `kit` exposes the engine
 services a module needs (`emit`, `fail`, `accept`, `payBuild`,
 `afterBoardChange`, `checkVictory`, `enqueuePending`, `completePending`,
-`resolveRollOutcome`, `finishSetupStep`, …) so module files never import
-`engine.ts`. Module files must not call engine or analysis helpers at module
+`resolveRollOutcome`, `finishSetupStep`, `legalRoads`, `placedFreeRoute`, …)
+so module files never import `engine.ts`.
+
+The base engine itself is sea-aware (P1): buildings need a land intersection,
+roads a land edge (`isLandVertex` / `isLandEdge` in `analysis.ts`), only roads
+extend roads, the robber stays on land, and with
+`longestRouteIncludesShips` a road and a ship continue each other only at the
+owner's building. Ships are module pieces (`RoadRef.ship`); `isSeaEdge`
+treats the topology's boundary edges as the frame's inner edge. Module files must not call engine or analysis helpers at module
 top level (imports are cyclic through `registry.ts`).
 
 ## Pending frames
