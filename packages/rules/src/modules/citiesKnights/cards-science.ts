@@ -4,7 +4,7 @@
  * Printing is a VP card and is revealed when drawn (`progress.ts`).
  */
 
-import { countBuildings, playerById, topologyOf } from '../../analysis.ts';
+import { countBuildings, countRoads, playerById, topologyOf } from '../../analysis.ts';
 import { verticesOfHex } from '../../topology.ts';
 import type { CommandOutcome, GameState, Resource, Terrain } from '../../types.ts';
 import type { ModuleContext, ModuleViewContext } from '../types.ts';
@@ -224,7 +224,11 @@ export const SCIENCE_RULES = {
     // Two free roads through the base free-road effect (CK25 p. 14).
     play(state, actorId, _command, ctx, spend) {
       spend();
-      const remaining = Math.min(2, ctx.kit.freeRouteTargets(state, actorId));
+      // CK25 p.14：第一條路可能才打開第二個地點，不以打牌時的合法邊數限制額度。
+      // 每次落路後仍由 placedFreeRoute 判斷有無後續地點，避免效果卡住。
+      const available = ctx.kit.legalRoads(state, actorId).length;
+      const pieces = ctx.profile.pieces.roads - countRoads(state, actorId);
+      const remaining = Math.max(0, Math.min(available > 0 ? 2 : 0, pieces));
       ctx.kit.emit(state, 'ck.freeRoads', { playerId: actorId, roads: remaining });
       if (remaining > 0) ctx.kit.enqueuePending(state, { kind: 'freeRoads', actor: actorId, remaining, granted: remaining });
       return ctx.kit.accept(state);
