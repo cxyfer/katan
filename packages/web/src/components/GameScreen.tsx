@@ -16,9 +16,10 @@ import { RotatePrompt } from './RotatePrompt.tsx';
 import { SelectionPreview } from './SelectionPreview.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
 import { useFullscreen } from './useFullscreen.ts';
-import { useIsMobile } from './useIsMobile.ts';
+import { COMPACT_LANDSCAPE_QUERY, useIsMobile } from './useIsMobile.ts';
 import { useAutoDeclineTrades } from './useAutoDeclineTrades.ts';
 import { useDevCardChoice } from './useDevCardChoice.ts';
+import '../styles/compact-landscape.css';
 
 /** 同一張遊戲桌涵蓋橫屏與直屏，切換尺寸不卸載手牌或工具草稿。 */
 export function GameScreen({ controller }: { controller: TableController }) {
@@ -29,6 +30,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const action = requiredActionFor(state);
   const [announcement, setAnnouncement] = useState('');
   const narrow = useIsMobile('(max-width: 649px)');
+  const compactLandscape = useIsMobile(COMPACT_LANDSCAPE_QUERY);
   const [activeRail, setActiveRail] = useState<'players' | 'actions' | null>(null);
   const openPlayers = useCallback(() => setActiveRail('players'), []);
   const openActions = useCallback(() => setActiveRail('actions'), []);
@@ -49,7 +51,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const interrupted = state.room?.status === 'playing' && state.connection !== 'online';
 
   return (
-    <div className="screen screen--game" id="main" data-testid="game-stage" data-board-stage="" ref={stageRef}>
+    <div className="screen screen--game" id="main" data-testid="game-stage" data-board-stage="" data-layout={compactLandscape ? 'compact-landscape' : undefined} ref={stageRef}>
       <div className="table-atmosphere" aria-hidden="true">
         <svg className="table-atmosphere__coast" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" focusable="false">
           <path d="M0 110 100 165 130 230 70 300 145 380 100 455 0 510Z" fill="#082d32" />
