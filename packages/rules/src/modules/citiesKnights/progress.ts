@@ -56,6 +56,8 @@ export function drawProgressCard(state: GameState, playerId: string, track: Trac
     const slot = ckState(state);
     slot.progressVp[playerId] = [...(slot.progressVp[playerId] ?? []), card];
     ctx.kit.emit(state, 'ck.progressVictoryPoint', { playerId, track, card, cause });
+    // The point counts at once: 13 on one's own turn wins (CK25 pp. 6, 14, 16). Off turn it waits.
+    ctx.kit.checkVictory(state);
     return true;
   }
   player.progressCards.push(card);
@@ -69,6 +71,7 @@ export function resolveProgressEvent(state: GameState, track: Track, red: number
     const level = playerById(state, playerId)!.improvements[track];
     if (red > drawThreshold(level)) continue;
     if (!drawProgressCard(state, playerId, track, ctx, 'event')) break;
+    if (state.result) break;
   }
 }
 

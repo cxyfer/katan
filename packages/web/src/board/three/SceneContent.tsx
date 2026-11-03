@@ -38,8 +38,8 @@ import { useDioramaGeometry } from './diorama-geometry.ts';
 import { createRobberModel } from './diorama-robber.ts';
 import { DioramaSeafarers, PirateGhost, ShipGhost } from './DioramaSeafarers.tsx';
 import { isShipCommand } from '../seafarers.ts';
-import { DioramaCitiesKnights, KnightGhost } from './DioramaCitiesKnights.tsx';
-import { isCitiesKnightsVertexCommand, isKnightCommand, knightGhost } from '../citiesKnights.ts';
+import { DioramaCitiesKnights, KnightGhost, Merchant } from './DioramaCitiesKnights.tsx';
+import { isCitiesKnightsVertexCommand, knightGhost, progressGhost, showsKnightGhost } from '../citiesKnights.ts';
 import { atlasGeometryKey, boardSceneResources, type BoardSceneResources } from './resources.ts';
 
 type SceneProps = Pick<BoardSceneProps,
@@ -254,7 +254,7 @@ function SelectionGhost({ props, resources }: { props: SceneProps; resources: Bo
   if (selection.kind === 'vertex') {
     const vertex = props.geometry.vertices[selection.index];
     if (!vertex) return null;
-    if (isKnightCommand(props.intent.commandType) || props.intent.commandType === 'build.wall') {
+    if (showsKnightGhost(props.intent.commandType) || props.intent.commandType === 'build.wall') {
       const ghost = knightGhost(props.citiesKnights ?? null, props.intent.commandType, selection.index, selection.params);
       return <KnightGhost geometry={props.geometry} vertex={selection.index} {...ghost}
         wall={props.intent.commandType === 'build.wall'} material={material} />;
@@ -265,6 +265,10 @@ function SelectionGhost({ props, resources }: { props: SceneProps; resources: Bo
       position={[vertex.x / props.geometry.scale, 0.005, vertex.y / props.geometry.scale]}
       rotationY={((vertex.index * 23) % 6) * (Math.PI / 6)} />;
   }
+  // Progress cards: the merchant on its hex; nothing on a road Diplomacy removes.
+  const progress = progressGhost(props.intent.commandType, selection.params);
+  if (progress === 'merchant') return <Merchant geometry={props.geometry} hex={selection.index} color="#ffffff" seat={player?.seat ?? 0} material={material} ghost />;
+  if (progress === 'none') return null;
   if (selection.kind === 'edge' && isShipCommand(props.intent.commandType)) {
     return <ShipGhost geometry={props.geometry} edge={selection.index} material={material} />;
   }

@@ -1,6 +1,6 @@
 /** Cities & Knights module state (`GameState.moduleState.citiesKnights`). */
 
-import type { GameState, ProgressCardType } from '../../types.ts';
+import type { CardKind, GameState, ProgressCardType } from '../../types.ts';
 import { moduleStateOf, setModuleState } from '../state.ts';
 import { CITIES_KNIGHTS, type EventFace, type KnightLevel, type Track } from './constants.ts';
 
@@ -30,6 +30,8 @@ export interface EventRoll {
   red: number;
   /** `GameState.seq` of the roll. */
   atSeq: number;
+  /** The production dice were set by Alchemy. */
+  alchemy?: boolean;
 }
 
 /** Public outcome of the last barbarian attack. */
@@ -74,6 +76,23 @@ export interface CitiesKnightsState {
    * the science level-3 ability (cleared once it is resolved).
    */
   produced?: string[];
+  /** The merchant piece (CK25 pp. 7, 14); absent until the first Merchant card. */
+  merchant?: MerchantPiece | null;
+  /** Production dice set by Alchemy for the coming roll (CK25 p. 13). */
+  alchemy?: { player: string; windowId: number; dice: [number, number] } | null;
+  /** Card kinds named by Merchant Fleet, valid in their action window (CK25 p. 15). */
+  fleets?: { player: string; windowId: number; kind: CardKind }[];
+  /**
+   * Commercial Harbor offers still open in the current window: the player who
+   * played it and how many offers each other player may still receive
+   * (CK25 p. 14).
+   */
+  harbor?: { player: string; windowId: number; offers: Record<string, number> } | null;
+}
+
+export interface MerchantPiece {
+  player: string;
+  hex: number;
 }
 
 export function initialCitiesKnightsState(state: GameState): CitiesKnightsState {

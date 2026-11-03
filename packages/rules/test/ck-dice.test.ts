@@ -202,6 +202,31 @@ describe('R-CK progress cards (CK25 pp. 6, 10)', () => {
     expect(eventsOf(rolled, 'ck.progressVictoryPoint')[0]!.params).toMatchObject({ playerId: 'p3', card: 'printing' });
   });
 
+  it('R-CK-10a a roller at 12 points who draws Printing wins at once (CK25 pp. 6, 14, 16)', () => {
+    const state = emptyCkGame(4, 0, 'preroll');
+    state.progressDecks.science = ['printing', 'mining'];
+    setBuilding(state, 'p1', cornersOf(state, hexWith(state, 'hills'))[0]!, false);
+    player(state, 'p1').defenders = 11; // 11 + 1 settlement = 12
+    setImprovement(state, 'p1', 'science', 1);
+    expect(scoreOf(state, 'p1', { includeHidden: true })).toBe(12);
+    const rolled = actCk(state, 'p1', { type: 'turn.roll' }, rollRng(1, 1, SCIENCE));
+    expect(scoreOf(rolled.state, 'p1', { includeHidden: true })).toBe(13);
+    expect(rolled.state.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+    expect(rolled.state.pending).toBeNull();
+  });
+
+  it('R-CK-10b a draw that reaches 13 off turn does not win until that player’s own turn', () => {
+    const state = drawGame();
+    state.progressDecks.science = ['printing', 'mining'];
+    setBuilding(state, 'p3', cornersOf(state, hexWith(state, 'hills'))[0]!, false);
+    player(state, 'p3').defenders = 11;
+    setImprovement(state, 'p3', 'science', 1);
+    const rolled = actCk(state, 'p2', { type: 'turn.roll' }, rollRng(1, 1, SCIENCE));
+    expect(scoreOf(rolled.state, 'p3', { includeHidden: true })).toBe(13);
+    expect(rolled.state.result).toBeNull();
+    expect(rolled.state.turn.phase).not.toBe('gameOver');
+  });
+
   it('R-CK-11 an empty deck stops the draws (CK-FAQ shortage)', () => {
     const state = drawGame();
     state.progressDecks.trade = ['merchant'];
@@ -250,10 +275,12 @@ describe('R-CK progress cards (CK25 pp. 6, 10)', () => {
     expect(actCk(discarded.state, 'p2', { type: 'turn.end' }).state.turn.seat).toBe(2);
   });
 
-  it('R-CK-14 progress cards cannot be played in this phase (no play command exists)', () => {
+  it('R-CK-14 a card whose target is missing is refused and stays in the hand (P3-1; effects in ck-progress-*.test.ts)', () => {
     const state = emptyCkGame(4);
     player(state, 'p1').progressCards = ['crane'];
-    expect(rejectCk(state, 'p1', { type: 'progress.play', card: 'crane' })).toBe('E_INVALID_COMMAND');
+    // CK25 p. 8: improvements need a city.
+    expect(rejectCk(state, 'p1', { type: 'progress.play', card: 'crane', track: 'science' })).toBe('E_IMPROVEMENT_NEEDS_CITY');
+    expect(player(state, 'p1').progressCards).toEqual(['crane']);
   });
 });
 

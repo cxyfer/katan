@@ -120,6 +120,7 @@ describe('cities & knights client', () => {
     expect(move?.targets).toContain(path.vertices[3]);
     expect(knightGhost(citiesKnightsView(gameView), 'knight.move', path.vertices[3]!, { from: knight })).toEqual({ level: 2, active: false });
     expect(knightGhost(citiesKnightsView(gameView), 'knight.promote', knight)).toEqual({ level: 3, active: true });
+    expect(knightGhost(citiesKnightsView(gameView), 'progress.treasonPlace', path.vertices[3]!, { level: 2 })).toEqual({ level: 2, active: false });
   });
 
   it('arms the board for a pillage and a knight retreat', () => {
@@ -233,8 +234,7 @@ describe('cities & knights client', () => {
     const { controller, submitCommand, selectTarget } = controllerFor(view(state));
     render(<LocaleProvider locale="en"><CitiesKnightsPanel controller={controller} /></LocaleProvider>);
     expect(screen.getByTestId('ck-track-science').getAttribute('data-level')).toBe('3');
-    expect(screen.getByTestId('ck-progress-card-0').getAttribute('data-card')).toBe('crane');
-    expect(screen.getByText(/not available yet/)).toBeTruthy();
+    expect(screen.getByTestId('ck-card-crane').getAttribute('data-card')).toBe('crane');
     fireEvent.click(screen.getByTestId('ck-improve-trade'));
     expect(submitCommand).toHaveBeenCalledWith({ type: 'city.improve', track: 'trade' }, 'ck.panel.improve');
     fireEvent.click(screen.getByTestId('ck-improve-science'));

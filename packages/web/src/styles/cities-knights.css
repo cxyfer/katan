@@ -75,4 +75,33 @@ button.ck-progress-card[aria-pressed='true'] { outline: 3px solid #f2c94c; backg
 .ck-track-button--trade { border-color: #d8a81f; }
 .ck-track-button--politics { border-color: #3a6fb8; }
 .ck-progress-discard .button { width: 100%; min-height: 34px; margin-top: .4rem; }
-.screen--game .game__messages:has(.ck-progress-discard) { max-height: calc(100% - 70px); }
+.screen--game .game__messages:has(.ck-progress-discard), .screen--game .game__messages:has(.ck-choice .ck-progress-hand), .screen--game .game__messages:has(.ck-card-picker) { max-height: calc(100% - 70px); }
+.ck-choice .ck-progress-hand { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+
+/* Progress cards: playable and blocked states, the play forms and the card pickers. */
+.ck-progress-card[data-playable='false'] { opacity: .82; }
+.ck-progress-card[data-playable='true'] { border-color: #f2c94c99; background: #f2c94c14; }
+.ck-progress-card__play { width: 100%; min-height: 30px; font-size: .72rem; padding: .1rem .3rem; }
+.ck-progress-card__reason { font-size: .62rem; line-height: 1.25; }
+.ck-card[data-dimmed='true'] { filter: saturate(.6); }
+
+.ck-play-form, .ck-harbor, .ck-card-picker {
+  display: grid; gap: .35rem; margin-top: .5rem; padding: .5rem; border-radius: 8px; border: 1px solid #46697770;
+}
+.ck-play-form { border: 2px solid #f2c94c; background: #f2c94c14; }
+.ck-play-form h4, .ck-harbor h4 { margin: 0; font-size: .8rem; }
+.ck-play-form .resource-picker, .ck-harbor .resource-picker, .ck-card-picker .resource-picker {
+  display: flex; flex-wrap: wrap; gap: .3rem; margin: .2rem 0; padding: 0; list-style: none;
+}
+.ck-play-form .button, .ck-harbor .button, .ck-card-picker .button {
+  min-height: 34px; font-size: .74rem; display: inline-flex; align-items: center; gap: .3rem;
+}
+.ck-play-form__actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+.ck-dice-row { display: flex; align-items: center; gap: .25rem; margin: 0; padding: 0; border: 0; }
+.ck-dice-row legend { float: left; margin-right: .4rem; font-size: .72rem; padding: 0; }
+.ck-die-button { padding: 2px; line-height: 0; border: 2px solid transparent; border-radius: 6px; background: none; cursor: pointer; }
+.ck-die-button[aria-pressed='true'] { border-color: #f2c94c; background: #f2c94c26; }
+.ck-chip-art { display: inline-grid; width: 18px; height: 18px; }
+.ck-chip-art svg { width: 100%; height: 100%; }
+.ck-effect { margin: .35rem 0 0; font-size: .74rem; font-weight: 600; }
+.ck-choice .ck-progress-hand { margin: .4rem 0; }

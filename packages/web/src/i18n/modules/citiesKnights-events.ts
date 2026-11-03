@@ -3,7 +3,7 @@
 import type { Locale } from '@catan/protocol';
 import type { GameEvent } from '@catan/rules';
 import { t } from '../index.ts';
-import { formatGrantMap, formatNumber } from '../format.ts';
+import { formatGrantMap, formatNumber, formatResourceMap } from '../format.ts';
 
 type NameResolver = (playerId: string) => string;
 
@@ -18,6 +18,13 @@ function perPlayer(locale: Locale, values: unknown, nameOf: NameResolver): strin
   const map = (values ?? {}) as Record<string, number>;
   const parts = Object.keys(map).map((id) => `${nameOf(id)} ${formatNumber(locale, map[id] ?? 0)}`);
   return parts.length > 0 ? parts.join('、') : '—';
+}
+
+/** A list of card kinds as "2×Wool、1×Cloth" (counts per kind). */
+function formatCardList(locale: Locale, cards: unknown[]): string {
+  const counts: Record<string, number> = {};
+  for (const entry of cards) counts[String(entry)] = (counts[String(entry)] ?? 0) + 1;
+  return formatResourceMap(locale, counts);
 }
 
 export function citiesKnightsEventParams(locale: Locale, event: GameEvent, nameOf: NameResolver): Record<string, unknown> | undefined {
@@ -96,6 +103,90 @@ export function citiesKnightsEventParams(locale: Locale, event: GameEvent, nameO
         fromSuffix: p.from ? t(locale, 'ck.fromSuffix', { player: nameOf(str(p.from)) }) : '',
         permanentSuffix: p.permanent ? t(locale, 'ck.permanentSuffix') : '',
       };
+    // --- progress cards and the merchant -----------------------------------
+    case 'ck.progressPlayed':
+      return { player, card: card(p.card), track: track() };
+    case 'ck.alchemySet': {
+      const dice = Array.isArray(p.dice) ? p.dice : [];
+      return { player, yellow: num(dice[0]), red: num(dice[1]), total: num(p.total) };
+    }
+    case 'ck.numbersSwapped': {
+      const hexes = Array.isArray(p.hexes) ? p.hexes : [];
+      const numbers = Array.isArray(p.numbers) ? p.numbers : [];
+      return { player, a: num(hexes[0]), b: num(hexes[1]), x: num(numbers[0]), y: num(numbers[1]) };
+    }
+    case 'ck.harvest':
+      return { player, card: card(p.card), amount: num(p.amount), hexes: num(p.hexes), resource: t(locale, `resource.${str(p.resource) || 'grain'}`) };
+    case 'ck.medicineCity':
+    case 'ck.treasonPlaced':
+      return { player, vertex: num(p.vertex), level: level(p.level) };
+    case 'ck.freeRoads':
+      return { player, roads: num(p.roads) };
+    case 'ck.harborOpened':
+    case 'ck.diplomacyRoadSkipped':
+    case 'ck.treasonNoPlace':
+      return { player };
+    case 'ck.harborOffered':
+    case 'ck.harborReturned':
+      // The offered resource is only present in the two players' copies.
+      return { player, to: nameOf(str(p.to)), resourceSuffix: p.resource ? t(locale, 'ck.cardSuffix', { card: t(locale, `resource.${str(p.resource)}`) }) : '' };
+    case 'ck.harborExchanged':
+      return {
+        player,
+        to: nameOf(str(p.to)),
+        resource: p.resource ? t(locale, `resource.${str(p.resource)}`) : '—',
+        commodity: p.commodity ? t(locale, `resource.${str(p.commodity)}`) : '—',
+      };
+    case 'ck.guildDuesTaken':
+    case 'ck.weddingGift':
+      return {
+        player,
+        other: nameOf(str(p.victim) || str(p.to)),
+        count: num(p.count),
+        cardSuffix: Array.isArray(p.cards) ? t(locale, 'ck.cardSuffix', { card: formatCardList(locale, p.cards) }) : '',
+      };
+    case 'ck.sabotageDiscarded':
+      return { player, count: num(p.count), cardSuffix: Array.isArray(p.cards) ? t(locale, 'ck.cardSuffix', { card: formatCardList(locale, p.cards) }) : '' };
+    case 'ck.merchantPlaced':
+      return {
+        player,
+        hex: num(p.hex),
+        fromSuffix: p.from ? t(locale, 'ck.fromSuffix', { player: nameOf(str(p.from)) }) : '',
+      };
+    case 'ck.fleetNamed':
+      return { player, kind: t(locale, `resource.${str(p.kind) || 'lumber'}`) };
+    case 'ck.monopolyTaken': {
+      const taken = (p.taken ?? {}) as Record<string, number>;
+      const total = Object.values(taken).reduce((sum, value) => sum + value, 0);
+      return { player, card: card(p.card), kind: t(locale, `resource.${str(p.kind) || 'lumber'}`), total, from: perPlayer(locale, taken, nameOf) };
+    }
+    case 'ck.roadRemoved':
+      return { player, owner: nameOf(str(p.owner)), edge: num(p.edge) };
+    case 'ck.diplomacyRoadBuilt':
+      return { player, edge: num(p.edge) };
+    case 'ck.knightsEncouraged':
+      return { player, count: Array.isArray(p.vertices) ? p.vertices.length : 0 };
+    case 'ck.espionageLooked':
+      return { player, victim: nameOf(str(p.victim)), count: num(p.count) };
+    case 'ck.espionageTaken':
+      return {
+        player,
+        victim: nameOf(str(p.victim)),
+        outcome: p.took ? t(locale, 'ck.espionage.took', { card: p.card ? card(p.card) : t(locale, 'ck.espionage.aCard') }) : t(locale, 'ck.espionage.none'),
+      };
+    case 'ck.knightIntrigued':
+      return { player, victim: nameOf(str(p.victim)), vertex: num(p.vertex), level: level(p.level) };
+    case 'ck.sabotageRequired':
+    case 'ck.weddingRequired':
+      return { player, required: perPlayer(locale, p.required, nameOf) };
+    case 'ck.taxationMoved':
+      return { player, hex: num(p.hex) };
+    case 'ck.taxationStole':
+      return { player, victim: nameOf(str(p.victim)), cardSuffix: p.card ? t(locale, 'ck.cardSuffix', { card: t(locale, `resource.${str(p.card)}`) }) : '' };
+    case 'ck.treasonChosen':
+      return { player, victim: nameOf(str(p.victim)) };
+    case 'ck.treasonRemoved':
+      return { player, vertex: num(p.vertex), level: level(p.level) };
     default:
       return undefined;
   }

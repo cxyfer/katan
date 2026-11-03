@@ -166,3 +166,73 @@ export function spreadVertices(state: GameState, count: number, avoid: readonly 
   if (out.length < count) throw new Error('board too crowded');
   return out;
 }
+
+// --- progress cards ------------------------------------------------------------
+
+/** `progress.play` for a card put into the hand first. */
+export function playCard(state: GameState, actorId: string, card: string, params: Record<string, unknown> = {}, rng?: Rng): ActResult {
+  return actCk(state, actorId, { type: 'progress.play', card, ...params }, rng);
+}
+
+export function rejectCard(state: GameState, actorId: string, card: string, params: Record<string, unknown> = {}): string {
+  return rejectCk(state, actorId, { type: 'progress.play', card, ...params });
+}
+
+/** Puts cards into a hand, taking them out of their decks to keep the 54 cards. */
+export function handCards(state: GameState, playerId: string, cards: string[]): void {
+  const hand = player(state, playerId).progressCards;
+  for (const card of cards) {
+    for (const track of ['science', 'trade', 'politics'] as const) {
+      const index = state.progressDecks[track].indexOf(card as never);
+      if (index >= 0) {
+        state.progressDecks[track].splice(index, 1);
+        break;
+      }
+    }
+    hand.push(card as never);
+  }
+}
+
+export function bottomOf(state: GameState, track: 'science' | 'trade' | 'politics'): string | undefined {
+  return state.progressDecks[track].at(-1);
+}
+
+/** Any rng that must not be drawn from. */
+export const NO_DRAW: Rng = {
+  int() {
+    throw new Error('unexpected draw');
+  },
+};
+
+export function scripted(values: number[]): Rng {
+  let cursor = 0;
+  return {
+    int(max: number): number {
+      const value = values[cursor++];
+      if (value === undefined) throw new Error('script exhausted');
+      if (value < 0 || value >= max) throw new Error(`scripted ${value} out of range for ${max}`);
+      return value;
+    },
+  };
+}
+
+export function totalHand(state: GameState, playerId: string): number {
+  const p = player(state, playerId);
+  return Object.values(p.resources).reduce((a, b) => a + b, 0) + Object.values(p.commodities).reduce((a, b) => a + b, 0);
+}
+
+/** A vertex path of `length` steps clear of `avoid` and its neighbours. */
+export function freePath(state: GameState, length: number, avoid: readonly number[] = []): number[] {
+  const topo = topologyOf(state);
+  const blocked = new Set<number>(avoid);
+  for (const vertex of avoid) for (const neighbour of neighborsOfVertex(topo, vertex)) blocked.add(neighbour);
+  for (let start = 0; start < topo.vertices.length; start++) {
+    if (blocked.has(start)) continue;
+    try {
+      return pathFrom(state, start, length, [...blocked]);
+    } catch {
+      // try the next start
+    }
+  }
+  throw new Error('no free path');
+}

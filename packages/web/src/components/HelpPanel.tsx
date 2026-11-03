@@ -47,7 +47,7 @@ export function HelpPanel({ controller }: { controller: TableController }) {
             <li>{t('ck.action.recruit')}: {formatResourceMap(locale, KNIGHT_COST)}</li>
             <li>{t('ck.action.promote')}: {formatResourceMap(locale, PROMOTE_COST)}</li>
             <li>{t('ck.action.activate')}: {formatResourceMap(locale, ACTIVATE_COST)}</li>
-            {(['dice', 'commodities', 'barbarians', 'knights', 'improvements', 'metropolis', 'progress', 'victory'] as const).map((key) => <li key={key}>{t(`ck.help.${key}`)}</li>)}
+            {(['dice', 'commodities', 'barbarians', 'knights', 'improvements', 'metropolis', 'progress', 'cards', 'science', 'trade', 'politics', 'merchant', 'victory'] as const).map((key) => <li key={key}>{t(`ck.help.${key}`)}</li>)}
             {paired && <li>{t('ck.help.paired')}</li>}
           </ul>
         </section>

@@ -30,8 +30,10 @@ publisher's rulebooks. No official artwork or card text is copied.
 | `base-paired-2025` | 5, 6 | 10 | **enabled** |
 | `sf-new-shores-2025` | 3, 4 | 14 | **enabled** (printed SF25 maps, fixed setup) |
 | `sf-new-shores-paired-2025` | 5, 6 | 14 | **enabled** (SF56-25 map: fixed small islands, variable main island and ports) |
+| `ck-2025` | 3, 4 | 13 | **enabled** (core rules, the 23 playable progress cards and the merchant; no bot seats) |
+| `ck-paired-2025` | 5, 6 | 13 | **enabled** (as above, CK56-25 paired turns; no bot seats) |
 
-Every other row of the §5.7 matrix is registered with `enabled: false` and a
+Every other row of the §5.7 matrix (the Seafarers + C&K combinations) is registered with `enabled: false` and a
 `unavailableReasonKey`; the lobby does not offer it and the server rejects a
 modified client that requests it (`resolveCombination` → `disabled`).
 
@@ -41,7 +43,7 @@ The registry separates two questions:
   requires this, so fixtures can exercise a profile before it is advertised.
 - `enabled` — the lobby advertises it and the service accepts it.
 
-`base-paired-2025` is enabled after the B56-25 fixture set verifies the 30-hex topology, 11 harbors, 24/resource bank, 34-card development deck, setup order, and paired turns. The Heading for New Shores profiles are enabled after the R-SF fixtures below pass, the maps are transcribed from the printed SF25/SF56-25 pages (method and per-cell data in [the work record](aegis/work/2026-11-01-seafarers.md) and `packages/rules/src/seafarers-boards.ts`) and a whole game is playable from the browser in both renderers (`scripts/seafarers/capture.py`). Cities & Knights and the combined profiles remain closed: `ck-2025` and `ck-paired-2025` are `implemented: true` (the core rules below pass the R-CK fixtures and whole simulated games) but stay `enabled: false` with `profile.unavailable.citiesKnightsProgress` until the progress-card effects (P3) exist. Browser evidence uses a test-only path that rewrites a lobby room's profile in the repository before the start (`packages/server/test/cities-knights.test.ts`, `scripts/cities-knights/capture.py`); the lobby never lists them.
+`base-paired-2025` is enabled after the B56-25 fixture set verifies the 30-hex topology, 11 harbors, 24/resource bank, 34-card development deck, setup order, and paired turns. The Heading for New Shores profiles are enabled after the R-SF fixtures below pass, the maps are transcribed from the printed SF25/SF56-25 pages (method and per-cell data in [the work record](aegis/work/2026-11-01-seafarers.md) and `packages/rules/src/seafarers-boards.ts`) and a whole game is playable from the browser in both renderers (`scripts/seafarers/capture.py`). Cities & Knights is enabled after the R-CK fixtures below (including every progress-card fixture PC-* and VIS-PC1–5) pass, the card transcription is recorded page by page in [the work record](aegis/work/2026-11-02-cities-knights-progress.md), and a whole game is playable from the browser: both profiles are created through the lobby, and `scripts/cities-knights/progress.py` plays all 23 playable card types through the UI in the SVG and 3D renderers on desktop and phone ([captures](screenshots/cities-knights/README.md)). The combined Seafarers + C&K profiles stay `enabled: false` (P4). Bot seats stay refused: `@catan/bots` has no rule module for C&K (`BOT_RULE_MODULES` is unchanged), so `botSeats` is false for both profiles.
 
 Registry v2 (2026-11-01 expansion platform) adds per-profile `expansions`,
 `scenario`, `variants`, `ruleVersion`, `sources` and display-only
@@ -85,9 +87,10 @@ master's own engine at `0815c76`
 | R-CK barbarians | strength (metropolis city once), defenders win with ties, defender VP, tied defenders draw (and discard off turn before production), no reward without a defender, weakest group loses a city and its wall, choice of city, metropolis immunity, next group, toppled city, reset and robber entry | `packages/rules/test/ck-barbarians.test.ts` (R-CK-16…25, 51) | covered |
 | R-CK knights | recruit, action phase only, activate (cost, freshness), act/reactivate, promote (once per turn, politics 3, supply), move, displace and retreat or removal, chase the robber, knights block roads, sites and routes; an opponent knight closes an open road end like an opponent building (the base connectivity rule of #60), never for its owner | `packages/rules/test/ck-knights.test.ts` (R-CK-26…36) | covered |
 | R-CK cities | walls (cost, limit, +2 hand limit), improvement costs and limits, trade level 3 rates, metropolis award/transfer/permanence and free-site rule, commodity theft, domestic commodity trade, 13 VP, paired Player 2 builds and supply trade without domestic trade, 18-per-type paired commodity bank, progress-hand privacy | `packages/rules/test/ck-cities.test.ts` (R-CK-37…50) | covered |
-| R-CK games / VIS | simulated 3/4/5/6-player games finish with a 13-point winner; resources, commodities, the 54 progress cards and pieces are conserved; across seeds metropolises, walls, pillage and knight actions occur; profiles implemented but disabled | `packages/rules/test/ck-sim.test.ts`, `packages/rules/test/profiles.test.ts` | covered |
-| R-CK service | test-only start of a C&K room, `ck-2025.1` engine, idempotent module receipts, catalogued rejection of development cards, private progress hands; lobby refuses the profile | `packages/server/test/cities-knights.test.ts` | covered |
-| R-CK client | knight/wall actions, two-step knight move, pillage/retreat board arming, SVG knights/walls/metropolises/toppled cities and idle robber, 3D models, prompts (progress discard, aqueduct, defender deck), panel (chart, buy, metropolis site, progress hand shown), commodity discard, score points, every event in both locales, sound cues | `packages/web/test/cities-knights.test.tsx`; browser run `scripts/cities-knights/capture.py` ([captures](screenshots/cities-knights/README.md)) | covered (Chromium only) |
+| R-CK games / VIS | simulated 3/4/5/6-player games finish with a 13-point winner; resources, commodities, the 54 progress cards and pieces are conserved; across seeds metropolises, walls, pillage and knight actions occur; every playable progress card is played in the simulated games; profiles implemented and enabled | `packages/rules/test/ck-sim.test.ts`, `packages/rules/test/profiles.test.ts` | covered |
+| R-CK progress cards | see the card-by-card map below | `packages/rules/test/ck-progress-{science,trade,politics,privacy}.test.ts` | covered |
+| R-CK service | test-only start of a C&K room, `ck-2025.1` engine, idempotent module receipts, catalogued rejection of development cards, private progress hands; the lobby offers both profiles and the room starts through it; bot seats refused | `packages/server/test/cities-knights.test.ts` | covered |
+| R-CK client | knight/wall actions, two-step knight move, pillage/retreat board arming, SVG knights/walls/metropolises/toppled cities and idle robber, 3D models, prompts (progress discard, aqueduct, defender deck), panel (chart, buy, metropolis site), commodity discard, score points, every event in both locales, sound cues; progress hand (playable, unplayable with reason, direct / target / form plays), the Alchemy, Invention, Crane and Smithing forms, every responder prompt and its privacy, board intents, the merchant piece in SVG and 3D, card faces and strings in both locales | `packages/web/test/cities-knights.test.tsx`, `packages/web/test/cities-knights-progress.test.tsx`; browser runs `scripts/cities-knights/capture.py` and `scripts/cities-knights/progress.py` ([captures](screenshots/cities-knights/README.md)) | covered in headless Chromium; no human playtest |
 | R-SF client | ship actions, two-step ship move, pirate targets, gold picker, SVG ships/pirate/tokens, sea targets at the water plane, event text; browser run of a live game (setup ship, ship build, ship move, island bonus, pirate, gold) and the 3/4/6-player maps in SVG and 3D | `packages/web/test/seafarers.test.tsx` (7), `scripts/seafarers/capture.py`, [captures](screenshots/seafarers/README.md) | covered in headless Chromium; no human playtest |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
@@ -243,8 +246,95 @@ reviewer can challenge them rather than discover them by accident.
   it stays at 4 (the roadmap draft assumed 5).
 - **Aqueduct.** "Receives no cards" includes commodities; it does not apply on
   a 7, and later players facing an empty supply are skipped (R-CK-15).
-- **Merchant piece.** CK25 p. 7 mentions the merchant's VP; the piece only
-  enters through the Merchant progress card, so it is P3.
+- **Merchant piece.** CK25 p. 7 mentions the merchant's VP; the piece enters
+  only through the Merchant progress card (P3, below).
+
+#### Progress cards and the merchant (P3)
+
+Card text is paraphrased from CK25 pp. 6–7 and 10–16 (names follow CK25;
+the older FAQ names Bishop, Deserter and Diplomat map to Taxation, Treason and
+Diplomacy). Page numbers, FAQ entries used and unused are in
+[the work record](aegis/work/2026-11-02-cities-knights-progress.md). The
+fixtures are in `packages/rules/test/ck-progress-science.test.ts` (science),
+`-trade.test.ts` (trade), `-politics.test.ts` (politics, timing) and
+`-privacy.test.ts` (VIS-PC); the 3/4/5/6-player simulated games play every
+card type (`ck-sim.test.ts`).
+
+| Deck | Card (copies) | Fixtures |
+|---|---|---|
+| Science | Alchemy (2) | PC-AL1 dice and event die, PC-AL2 red die drives the draws, PC-AL3 timing and validation, PC-AL4 no Alchemy for paired player 2 |
+| Science | Crane (2) | PC-CR1 one commodity less, PC-CR2 refusals, PC-CR3 metropolis |
+| Science | Engineering (1) | PC-EN1, PC-EN2 |
+| Science | Invention (2) | PC-IN1 swap, PC-IN2 forbidden numbers |
+| Science | Irrigation (2), Mining (2) | PC-IR1, PC-MI1 |
+| Science | Medicine (2) | PC-ME1, PC-ME2 |
+| Science | Road Building (2) | PC-RB1 two roads, PC-RB2 no target, PC-RB3 newly opened second site and snapshot restore, PC-RB4 early completion, PC-RB5 piece supply, PC-RB6 recorded grant preserved |
+| Science | Smithing (2) | PC-SM1, PC-SM2 |
+| Science | Printing (1) | VIS-PC1 / `ck-dice` (revealed when drawn, off turn too, outside the hand limit) |
+| Trade | Commercial Harbor (2) | PC-CH1, PC-CH2, VIS-PC4 |
+| Trade | Guild Dues (2) | PC-GD1, PC-GD2, VIS-PC3 |
+| Trade | Merchant (6) | PC-MC1 placement, rate and VP, PC-MC2 control and robber, PC-MC3 desert and victory |
+| Trade | Merchant Fleet (2) | PC-MF1 |
+| Trade | Resource Monopoly (4), Trade Monopoly (2) | PC-RM1, PC-RM2, PC-TM1 |
+| Politics | Constitution (1) | VIS-PC1 / `ck-dice` (as Printing) |
+| Politics | Diplomacy (2) | PC-DI1 opponent road, PC-DI2 open roads, PC-DI3 own road rebuilt |
+| Politics | Encouragement (2) | PC-EC1 |
+| Politics | Espionage (3) | PC-ES1, PC-ES2, PC-ES3, VIS-PC2 |
+| Politics | Intrigue (2) | PC-IT1, PC-IT2 |
+| Politics | Sabotage (2) | PC-SA1, PC-SA2, VIS-PC5 |
+| Politics | Taxation (2) | PC-TX1 after the first attack, PC-TX2 steal, PC-TX3 empty hex |
+| Politics | Treason (2) | PC-TR1, PC-TR2 |
+| Politics | Wedding (2) | PC-WE1, PC-WE2, VIS-PC5 |
+| Timing (all) | – | PC-TI1 own action phase with nothing pending, PC-TI2 paired player 2, PC-TI3 a card drawn this turn |
+
+Interpretations P3-1…P3-9 (targets needed only where the effect names one;
+forced answers without a prompt; Commercial Harbor as a turn-long ability;
+paired player 2 and Commercial Harbor; any land hex for the merchant; Irrigation
+and Mining not production; Encouragement does not let the knight act; Diplomacy
+rebuild optional; public scores for Guild Dues, Sabotage and Wedding) are
+recorded in the work record. Two further client-side choices:
+
+- **Hand shows every held card.** The hand lists each held kind with a reason
+  when it cannot be played now (`not-your-turn`, `pending`, `before-roll`,
+  `after-roll`, `no-target`, `cost`, `robber-inactive`, `alchemy-set`). The
+  server's `hints` are advisory; the engine re-checks every play.
+- **Card faces are original.** Each card has a track-coloured face with an
+  original emblem drawn by `SvgProgressArt.tsx`; the effect text is a
+  paraphrase in both locales and no official artwork or wording is used.
+
+Interpretations and accepted disclosures for the progress cards:
+
+- **5–6 player 2 and Commercial Harbor (P3-4, open interpretation).** CK56-25
+  p. 3 says the paired Player 2 may not trade with other players, yet player 2
+  may play Commercial Harbor (CK25 p. 14), whose offers exchange a resource
+  for a commodity with other players. The engine treats the card as an
+  effect, not as a trade, and allows it; a stricter reading would forbid it
+  for player 2. No printed clause settles it, so this stays open.
+- **Commercial Harbor discloses commodity information (accepted).**
+  `ck.harborReturned` and `ck.harborExchanged`, and whether the answer frame
+  appears at all, reveal what the offered player holds (no commodity, one
+  kind, several kinds). This is accepted because it mirrors table talk, where
+  the offer and the reply are spoken aloud (CK25 p. 14); the resource and the
+  commodity given back are visible only to the two players.
+- **Encouragement and knights (interpretation).** Knights activated by
+  Encouragement (CK25 p. 15) cannot act on the turn they were activated. The
+  card says to activate all knights; CK25 p. 9 says an activated knight cannot
+  act in the turn it was activated, so the card is read as the Activate action
+  without the cost (P3-7). The pages do not say it outright.
+- **5–6 discard timing (interpretation).** During Player 1's roll in a paired
+  game, Player 2 is not on turn for that roll, so a Player 2 above four
+  progress cards discards at once as an off-turn player (CK25 p. 6), before
+  production. CK56-25 does not say whether Player 2 counts as on turn during
+  Player 1's part.
+
+Open fixtures for the progress cards:
+
+- No scripted multi-client browser run of the paired (5–6) responder prompts;
+  paired turns are covered at engine level (PC-TI2, PC-AL4) and in simulation.
+- Diplomacy on ships, Knight/pirate card interactions and the SF + C&K
+  combinations are P4 (R-COMB).
+- Sound cues, card faces and prompts have jsdom and headless-Chromium evidence
+  only; no screen-reader, touch-device or human playtest.
 
 ## Known gaps and unresolved items
 
@@ -265,9 +355,7 @@ These are recorded rather than hidden. None of them is presented as verified.
    B25 procedure.
 4. **The base and paired-base rows are advertised.** 5–6 uses
    `base-paired-2025`, whose B56-25 setup, supply and deck contents are
-   transcribed and verified. Heading for New Shores is enabled; Cities &
-   Knights is implemented but disabled until its progress-card effects (P3)
-   exist; the combinations remain `enabled: false` until R-COMB fixtures exist. The 5-player
+   transcribed and verified. Heading for New Shores and Cities & Knights are enabled; the Seafarers + C&K combinations remain `enabled: false` until R-COMB fixtures exist. The 5-player
    pair cycle is derived from the specification's wording ("the third player to
    Player 1's left", "both markers move to the next player to their left")
    rather than transcribed page-by-page from B56-25.
@@ -323,9 +411,14 @@ These are recorded rather than hidden. None of them is presented as verified.
     behaviour since `base-2025.1` (PR #60 lists it as a follow-up), so
     changing it is a base rule change that needs the maintainer's approval
     and a new base rule version. Seafarers inherits it unchanged.
-14. **Cities & Knights scope.** The core rules (event die, commodities,
-    walls, improvements, metropolises, knights, barbarians) are implemented;
-    progress cards are drawn, held, revealed (VP) and discarded but cannot be
-    played (P3), so the profiles stay disabled. Browser evidence is Chromium
-    with software WebGL through a test-only profile path; no human playtest
-    (U-07/U-08).
+    The separate C&K progress card grants two roads when at least one legal
+    road exists, capped by road pieces left; after each placement the shared
+    effect checks the updated legal edges (CK25 p. 14, PC-RB3–6). Recorded
+    pending grants are preserved on snapshot restore.
+14. **Cities & Knights scope.** The core rules and all 54 progress cards
+    (23 playable types plus the two scored when drawn) and the merchant are
+    implemented and the profiles are enabled. Bot seats are refused (no
+    `@catan/bots` rule module). Browser evidence is Chromium with software
+    WebGL; the lobby creates the rooms, the fixtures that put particular
+    cards in hands are written into a private SQLite file while the service is
+    stopped. No human playtest (U-07/U-08).

@@ -250,9 +250,9 @@ export const PROFILES: readonly ProfileDefinition[] = [
     enabled: true,
   }),
 
-  // CK25 core rules in `modules/citiesKnights/` (P2). Implemented so fixtures
-  // and the browser harness can run it; enabled only once the progress-card
-  // effects (P3) exist.
+  // CK25 in `modules/citiesKnights/`: the core rules (P2) and the 54 progress
+  // cards with the merchant (P3). Enabled after the R-CK fixtures and a full
+  // browser game passed (docs/FIDELITY.md).
   baseProfile('ck-2025', [3, 4], {
     ruleVersion: 'ck-2025.1',
     expansions: ['citiesKnights'],
@@ -264,7 +264,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     // 36 commodity cards, 12 of each (CK25 p. 3).
     commodityBankPerType: 12,
     implemented: true,
-    unavailableReasonKey: 'profile.unavailable.citiesKnightsProgress',
+    enabled: true,
   }),
 
   baseProfile('ck-paired-2025', [5, 6], {
@@ -283,7 +283,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     // 36 + 18 commodity cards, 18 of each (CK25 p. 3, CK56-25 pp. 2–3).
     commodityBankPerType: 18,
     implemented: true,
-    unavailableReasonKey: 'profile.unavailable.citiesKnightsProgress',
+    enabled: true,
   }),
 
   baseProfile('sf-ck-new-shores-2025', [3, 4], {

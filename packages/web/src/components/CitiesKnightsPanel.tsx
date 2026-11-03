@@ -1,20 +1,20 @@
 import { useT, useLocale } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import {
-  citiesKnightsHints, citiesKnightsView, MAX_LEVEL, MAX_WALLS, PROGRESS_TRACK, TRACK_COMMODITY, TRACKS, VP_PROGRESS,
-  type CitiesKnightsModuleView, type ImprovementOption, type Track,
+  citiesKnightsHints, citiesKnightsView, MAX_LEVEL, MAX_WALLS, TRACK_COMMODITY, TRACKS, VP_PROGRESS,
+  type CitiesKnightsModuleView, type ImprovementOption,
 } from '../board/citiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
 import { shownCitiesKnights } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
-import { BarbarianTrack, CommodityEmblem, EventDieFace, PipDieFace, ProgressCardArt, TRACK_COLOR, TrackEmblem } from './SvgCitiesKnights.tsx';
+import { ProgressHand } from './CitiesKnightsProgress.tsx';
+import { BarbarianTrack, CommodityEmblem, EventDieFace, PipDieFace, TRACK_COLOR, TrackEmblem } from './SvgCitiesKnights.tsx';
 import '../styles/cities-knights.css';
 
 /**
  * The Cities & Knights tool panel: barbarian track and strengths, the last
  * event roll, the improvement chart with each level's ability and the buy
- * buttons, the viewer's progress hand (shown; playing cards is not offered
- * yet), the commodity supply and the last barbarian attack.
+ * buttons, the viewer's progress hand (played from `ProgressHand`), the commodity supply and the last barbarian attack.
  */
 export function CitiesKnightsPanel({ controller }: { controller: TableController }) {
   const t = useT();
@@ -111,19 +111,7 @@ export function CitiesKnightsPanel({ controller }: { controller: TableController
 
       <section className="ck-panel__section" aria-labelledby="ck-progress-heading" data-testid="ck-progress">
         <h3 id="ck-progress-heading">{t('ck.panel.progress', { count: n(self?.progressCards?.length ?? 0), limit: n(ck.handLimit) })}</h3>
-        <p className="muted">{t('ck.panel.progressPending')}</p>
-        {(self?.progressCards?.length ?? 0) === 0
-          ? <p className="muted">{t('ck.panel.progressEmpty')}</p>
-          : <ul className="ck-progress-hand">
-              {self!.progressCards!.map((card, index) => {
-                const track: Track = PROGRESS_TRACK[card] ?? 'science';
-                return <li key={`${card}-${index}`} className="ck-progress-card" data-testid={`ck-progress-card-${index}`} data-card={card}>
-                  <ProgressCardArt track={track} />
-                  <span className="ck-progress-card__name">{t(`ck.progress.${card}`)}</span>
-                  <span className="ck-progress-card__text">{t(`ck.progressText.${card}`)}</span>
-                </li>;
-              })}
-            </ul>}
+        <ProgressHand controller={controller} />
         {(ck.progressVp[selfId ?? '']?.length ?? 0) > 0 && (
           <p className="muted" data-testid="ck-progress-vp">
             {t('ck.panel.progressVp', { cards: ck.progressVp[selfId!]!.filter((card) => VP_PROGRESS.has(card)).map((card) => t(`ck.progress.${card}`)) })}

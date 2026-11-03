@@ -11,6 +11,7 @@
 
 import type { GameEvent } from '@catan/protocol';
 import { boardEffectGroups } from '../board/animation.ts';
+import { PROGRESS_CUES, progressCueForEvent } from './progress-cues.ts';
 
 export const SOUND_CUES = [
   'dice.roll',
@@ -53,6 +54,7 @@ export const SOUND_CUES = [
   'knight.act',
   'wall.build',
   'city.improve',
+  ...PROGRESS_CUES,
 ] as const;
 
 export type SoundCue = (typeof SOUND_CUES)[number];
@@ -164,7 +166,8 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
     case 'ck.metropolisAwarded':
       return 'city.improve';
     default:
-      return null;
+      // Cities & Knights progress cards (audio/progress-cues.ts).
+      return progressCueForEvent(event, selfId) ?? null;
   }
 }
 

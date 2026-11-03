@@ -297,6 +297,8 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                     label={t('ck.score.defender', { points: number(ckPoints.defenders) })} value={number(ckPoints.defenders)} />}
                   {ckPoints && ckPoints.progress > 0 && <ScoreMark icon="scroll" testId={`players-progress-vp-${player.seat}`}
                     label={t('ck.score.progressVp', { points: number(ckPoints.progress) })} value={number(ckPoints.progress)} />}
+                  {ckPoints?.merchant && <ScoreMark icon="trade" testId={`players-merchant-${player.seat}`}
+                    label={t('ck.score.merchant', { points: number(ckPoints.merchant) })} value={number(ckPoints.merchant)} />}
                   {hiddenBonus > 0 && <ScoreMark icon="sparkles" label={t('table.playersHiddenBonus')} value={number(hiddenBonus)} />}
                 </div>
               </div>

@@ -699,7 +699,6 @@ export const en: Catalog = {
     'Seafarers + Cities & Knights — New Shores, 5–6 players (paired)',
   'profile.unavailable.paired': 'Paired 5–6 player rules are not enabled in this release.',
   'profile.unavailable.seafarers': 'Seafarers is not enabled in this release.',
-  'profile.unavailable.citiesKnightsProgress': 'Cities & Knights is waiting for its progress-card effects.',
   'profile.unavailable.combined': 'This combination is not enabled in this release.',
   'expansion.none': 'Base game only',
   'expansion.seafarers': 'Seafarers',

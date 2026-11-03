@@ -1,13 +1,13 @@
 /**
- * Cities & Knights through the service. The profiles are implemented but not
- * enabled, so the lobby refuses them; this test-only path patches a lobby
- * room's profile in the repository before the start, as the browser harness
- * does. Module commands keep durable, idempotent receipts and the progress
+ * Cities & Knights through the service: rooms are created through the lobby
+ * (profiles `ck-2025` and `ck-paired-2025` are enabled), bot seats are
+ * refused, module commands keep durable, idempotent receipts and the progress
  * hands stay private.
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as rules from '@catan/rules';
+import type { GameState } from '@catan/rules';
 import type { CommandReceipt } from '@catan/protocol';
 import { startHarness, runSetupOverApi, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
@@ -48,12 +48,10 @@ async function startCkGame(count: number): Promise<{ clients: TestClient[]; game
   for (let i = 0; i < count; i++) clients.push(await harness.client(`CK${i + 1}`));
   const host = clients[0]!;
   const room = host.expectOk(await host.post<{ id: string; code: string }>('/api/rooms', {
-    visibility: 'private', capacity: count, profileId: 'base-2025', setupMode: 'fixed',
+    visibility: 'private', capacity: count, profileId: 'ck-2025', setupMode: 'fixed',
   }));
   for (const client of clients.slice(1)) client.expectOk(await client.post('/api/rooms/join', { code: room.code }));
   for (const client of clients) client.expectOk(await client.post(`/api/rooms/${room.id}/ready`, { ready: true }));
-  // Test-only: the lobby never offers a disabled profile.
-  await harness.service.repo.updateRoom(room.id, { profile_id: 'ck-2025' });
   const started = host.expectOk(await host.post<{ gameId: string }>(`/api/rooms/${room.id}/start`));
   return { clients, gameId: started.gameId };
 }
@@ -119,12 +117,20 @@ describe('Cities & Knights over the API (test-only profile path)', () => {
     expect(event.private).toBeUndefined();
   });
 
-  it('keeps the profiles out of the lobby', async () => {
+  it('offers both profiles in the lobby and refuses bot seats', async () => {
     const host = await harness.client('CkLobby');
-    const refused = await host.post('/api/rooms', {
+    const { profiles, selectable } = host.expectOk<{ profiles: { id: string; botSeats: boolean }[]; selectable: string[] }>(await host.get('/api/profiles'));
+    expect(selectable).toEqual(expect.arrayContaining(['ck-2025', 'ck-paired-2025']));
+    expect(profiles.filter((profile) => profile.id.startsWith('ck-')).map((profile) => profile.botSeats)).toEqual([false, false]);
+    const room = host.expectOk<{ id: string; profileId: string; capacity: number }>(await host.post('/api/rooms', {
       visibility: 'private', capacity: 4, setupMode: 'fixed', ruleset: { expansions: ['citiesKnights'] },
-    });
-    expect(refused.status).toBeGreaterThanOrEqual(400);
+    }));
+    expect(room.profileId).toBe('ck-2025');
+    const paired = host.expectOk<{ profileId: string }>(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 5, setupMode: 'variable', ruleset: { expansions: ['citiesKnights'] },
+    }));
+    expect(paired.profileId).toBe('ck-paired-2025');
+    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
   });
 
   it('starts a C&K game, rolls three dice and keeps module receipts idempotent', async () => {
@@ -158,5 +164,31 @@ describe('Cities & Knights over the API (test-only profile path)', () => {
     for (const player of theirs.view.players) {
       if (player.id !== other.playerId) expect(player.progressCards).toBeUndefined();
     }
+  });
+
+  it('replays a progress.play command id as the original receipt without applying it again', async () => {
+    const { clients, gameId } = await startCkGame(3);
+    const setup = await runSetupOverApi(clients, gameId);
+    const actor = clients.find((client) => client.playerId === setup.view.turn.playerId)!;
+    // Put the turn in its action phase with a Mining card in hand (a test-only fixture edit of the snapshot).
+    const row = (await harness.service.repo.findGame(gameId))!;
+    const state = JSON.parse(row.state_json) as GameState;
+    state.turn.phase = 'action';
+    state.players.find((player) => player.id === actor.playerId)!.progressCards = ['mining'];
+    await harness.service.repo.saveGame(gameId, state, row.revision, row.status, row.pause_reason);
+
+    const before = await snapshot(actor, gameId);
+    const body = { commandId: 'ck-mining', expectedRevision: before.revision, command: { type: 'progress.play', card: 'mining' } };
+    const played = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, body));
+    expect(played.outcome).toBe('accepted');
+    const afterFirst = await snapshot(actor, gameId);
+    const me = (view: CkView) => view.view.players.find((player) => player.id === actor.playerId)!;
+    expect(me(afterFirst).progressCards).toEqual([]);
+
+    const again = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, body));
+    expect(again).toEqual(played);
+    const afterSecond = await snapshot(actor, gameId);
+    expect(afterSecond.revision).toBe(afterFirst.revision);
+    expect(afterSecond.view).toEqual(afterFirst.view);
   });
 });

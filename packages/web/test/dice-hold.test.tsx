@@ -183,7 +183,8 @@ describe('roll hold in the table state', () => {
     expect(screen.getByTestId('ck-barbarian-track').getAttribute('data-position')).toBe('6');
     expect(screen.getByTestId('ck-red-die').getAttribute('data-value')).toBe('2');
     expect(screen.getByTestId('ck-event-die').getAttribute('data-face')).toBe('science');
-    expect(screen.queryByTestId('ck-progress-card-1')).toBeNull();
+    expect(screen.queryByTestId('ck-card-crane')).toBeNull();
+    expect(screen.getByTestId('ck-card-alchemy').getAttribute('data-card')).toBe('alchemy');
     expect(screen.queryByTestId('ck-progress-vp')).toBeNull();
     expect(screen.getByTestId('ck-supply-paper').querySelector('strong')!.textContent).toBe('12');
     expect(mark('players-progress-0')).toBe('1');
@@ -201,7 +202,7 @@ describe('roll hold in the table state', () => {
     expect(screen.getByTestId('ck-barbarian-track').getAttribute('data-position')).toBe('0');
     expect(screen.getByTestId('ck-red-die').getAttribute('data-value')).toBe('6');
     expect(screen.getByTestId('ck-event-die').getAttribute('data-face')).toBe('ship');
-    expect(screen.getByTestId('ck-progress-card-1').getAttribute('data-card')).toBe('crane');
+    expect(screen.getByTestId('ck-card-crane').getAttribute('data-card')).toBe('crane');
     expect(screen.getByTestId('ck-progress-vp').textContent).toContain('Printing');
     expect(screen.getByTestId('ck-supply-paper').querySelector('strong')!.textContent).toBe('11');
     expect(mark('players-progress-0')).toBe('2');

@@ -6,9 +6,9 @@ import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../src/stat
 const registry = PROFILES.map((profile) => profileView(profile, { botSeats: profile.ruleModules.length === 0 }));
 
 describe('lobby ruleset picker', () => {
-  it('offers only enabled profiles: the base game and Seafarers for 3–6 players', () => {
+  it('offers only enabled profiles: the base game, Seafarers and Cities & Knights for 3–6 players', () => {
     const resolved = resolveRuleset(registry, {});
-    expect(resolved.expansions.map((choice) => choice.key)).toEqual(['base', 'seafarers']);
+    expect(resolved.expansions.map((choice) => choice.key)).toEqual(['base', 'seafarers', 'citiesKnights']);
     expect(resolved.scenarios.map((choice) => choice.key)).toEqual(['standard']);
     expect(resolved.playerCounts).toEqual([3, 4, 5, 6]);
     expect(resolved.profile?.id).toBe('base-2025');
@@ -19,6 +19,8 @@ describe('lobby ruleset picker', () => {
     expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores']]);
     expect(sea.profile?.id).toBe('sf-new-shores-paired-2025');
     expect(resolveRuleset(registry, { expansionKey: 'seafarers', playerCount: 3 }).profile?.id).toBe('sf-new-shores-2025');
+    expect(resolveRuleset(registry, { expansionKey: 'citiesKnights', playerCount: 4 }).profile?.id).toBe('ck-2025');
+    expect(resolveRuleset(registry, { expansionKey: 'citiesKnights', playerCount: 5 }).profile?.id).toBe('ck-paired-2025');
   });
 
   it('cascades expansion set → scenario → player count from the registry', () => {

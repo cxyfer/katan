@@ -11,7 +11,8 @@ import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarke
 import { TerrainEmblem } from './TerrainArt.tsx';
 import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
 import { isShipCommand, seafarersView } from '../board/seafarers.ts';
-import { citiesKnightsView, isCitiesKnightsVertexCommand, isKnightCommand, knightGhost } from '../board/citiesKnights.ts';
+import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
+import { MerchantPiece } from './SvgProgressArt.tsx';
 import { KnightPiece, SvgCitiesKnightsPieces, SvgCitiesKnightsWalls, ToppledCity, WallRing } from './SvgCitiesKnights.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
@@ -225,15 +226,17 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
           )}
           {selection.index !== null && intent && selection.kind === intent.kind && intent.targets.includes(selection.index) && (
             <g className="board__preview-ghost" data-testid="board-preview-ghost" aria-hidden="true" pointerEvents="none">
-              {intent.kind === 'vertex' && geometry.vertices[selection.index] && isKnightCommand(intent.commandType)
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && showsKnightGhost(intent.commandType)
                 && <KnightPiece {...geometry.vertices[selection.index]!} {...knightGhost(ck, intent.commandType, selection.index, selection.params)} color={selfColor} ghost />}
               {intent.kind === 'vertex' && geometry.vertices[selection.index] && intent.commandType === 'build.wall'
                 && <WallRing {...geometry.vertices[selection.index]!} color={selfColor} />}
               {intent.kind === 'vertex' && geometry.vertices[selection.index] && !isCitiesKnightsVertexCommand(intent.commandType) && <BoardBuilding x={geometry.vertices[selection.index]!.x} y={geometry.vertices[selection.index]!.y} city={intent.commandType === 'build.city'} color={selfColor} />}
-              {intent.kind === 'edge' && geometry.edges[selection.index] && (isShipCommand(intent.commandType)
+              {intent.kind === 'edge' && geometry.edges[selection.index] && progressGhost(intent.commandType, selection.params) !== 'none' && (isShipCommand(intent.commandType)
                 ? <ShipPiece {...edgeMidpoint(geometry.edges[selection.index]!)} angle={edgeAngle(geometry.edges[selection.index]!)} color={selfColor} ghost />
                 : <line {...inset(geometry.edges[selection.index]!)} stroke={selfColor} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />)}
-              {intent.kind === 'hex' && geometry.hexes[selection.index] && (geometry.land[selection.index] === false
+              {intent.kind === 'hex' && geometry.hexes[selection.index] && progressGhost(intent.commandType, selection.params) === 'merchant'
+                && <MerchantPiece {...merchantSpot(geometry.hexes[selection.index]!)} color={selfColor} ghost />}
+              {intent.kind === 'hex' && geometry.hexes[selection.index] && progressGhost(intent.commandType, selection.params) === 'default' && (geometry.land[selection.index] === false
                 ? <PirateShip x={geometry.hexes[selection.index]!.cx} y={geometry.hexes[selection.index]!.cy + 4} ghost />
                 : <RobberPiece {...robberSpot(geometry.hexes[selection.index]!, board.numbers[selection.index] != null)} ids={ids} />)}
             </g>
