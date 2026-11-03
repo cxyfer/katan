@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import type { BoardTopology, PublicBoardView } from '@catan/rules';
@@ -287,5 +287,128 @@ describe('target picker dismissal', () => {
     // 只吞一次：之後的刻意點擊照常作用。
     fireEvent.click(target);
     expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('target picker positioning', () => {
+  const rect = (left: number, top: number, width: number, height: number) =>
+    ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
+
+  type FakeObserver = { callback: () => void; observed: Element[]; disconnect: Mock };
+  let observers: FakeObserver[] = [];
+  const originalObserver = globalThis.ResizeObserver;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    globalThis.ResizeObserver = originalObserver;
+    observers = [];
+  });
+
+  const picker = () => screen.getByTestId('target-picker');
+
+  /** jsdom 沒有版面：以假的 offsetParent、尺寸與矩形模擬 640x400 棋盤與高度可變的工具列。 */
+  function setup(toolbar: number) {
+    const toolbarHeight = { value: toolbar };
+    const boardSize = { width: 640, height: 400 };
+    const parentRef: { current: HTMLElement | null } = { current: null };
+    const forPicker = (element: HTMLElement) => element.classList.contains('target-picker');
+    vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (this: HTMLElement) {
+      return forPicker(this) ? parentRef.current : null;
+    });
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      return forPicker(this) ? 200 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return forPicker(this) ? 120 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.dataset['testid'] === 'board-parent') return rect(0, 0, boardSize.width, boardSize.height);
+      if (this.dataset['testid'] === 'toolbar') return rect(4, 6, 140, toolbarHeight.value);
+      return rect(0, 0, 0, 0);
+    });
+    globalThis.ResizeObserver = class {
+      readonly entry: FakeObserver = { callback: () => undefined, observed: [], disconnect: vi.fn() };
+      constructor(callback: () => void) {
+        this.entry.callback = callback;
+        observers.push(this.entry);
+      }
+      observe(element: Element) { this.entry.observed.push(element); }
+      unobserve() { /* no-op */ }
+      disconnect() { this.entry.disconnect(); }
+    } as unknown as typeof ResizeObserver;
+    const geometry = buildGeometry('hex-r2');
+    const view = makeView();
+    // ref callback 必須穩定，否則 rerender 時會先清成 null 再掛回，子層 layout effect 取不到父層。
+    const attachParent = (node: HTMLElement | null) => { parentRef.current = node; };
+    const ui = (anchor?: { x: number; y: number }) => <LocaleProvider locale="en">
+      <div data-testid="board-parent" ref={attachParent}>
+        <div className="board__toolbar--side" data-testid="toolbar">toolbar</div>
+        <TargetPicker geometry={geometry} board={view.board} topology={geometry.topology} kind="edge"
+          targets={[5]} nameOf={() => 'Alex'} onChoose={vi.fn()} {...(anchor ? { anchor } : {})} />
+      </div>
+    </LocaleProvider>;
+    // 第一次渲染才有父層節點；再以 rerender 帶入錨點觸發定位（BoardView 的錨點同樣在 picker 開啟後才存在）。
+    const rendered = render(ui());
+    return { toolbarHeight, boardSize, ui, ...rendered };
+  }
+
+  it('keeps the popover below the actual toolbar bottom instead of a fixed height', () => {
+    const { ui, rerender } = setup(40);
+    // 錨點靠上：未夾限時 top = 10 + 14 = 24，會落在工具列內。
+    rerender(ui({ x: 100, y: 10 }));
+    expect(picker().style.top).toBe('50px'); // 6 + 40 + 4
+  });
+
+  it('clears a toolbar that wrapped to several rows', () => {
+    const { ui, rerender } = setup(140);
+    rerender(ui({ x: 100, y: 10 }));
+    expect(picker().style.top).toBe('150px'); // 6 + 140 + 4
+  });
+
+  it('repositions when the parent or toolbar resizes and disconnects on unmount', () => {
+    const { ui, rerender, toolbarHeight, boardSize, unmount } = setup(40);
+    rerender(ui({ x: 100, y: 10 }));
+    expect(picker().style.top).toBe('50px');
+    const observer = observers[observers.length - 1]!;
+    expect(observer.observed.map((element) => (element as HTMLElement).dataset['testid'])).toEqual(['board-parent', 'toolbar']);
+    // 視窗變窄，工具列換成三列。
+    toolbarHeight.value = 140;
+    boardSize.width = 360;
+    observer.callback();
+    expect(picker().style.top).toBe('150px');
+    expect(Number.parseFloat(picker().style.left)).toBeLessThanOrEqual(360 - 200 - 8);
+    expect(observer.disconnect).not.toHaveBeenCalled();
+    unmount();
+    expect(observer.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('also reacts to window resize and stops listening after unmount', () => {
+    const { ui, rerender, toolbarHeight, unmount } = setup(40);
+    rerender(ui({ x: 100, y: 10 }));
+    toolbarHeight.value = 100;
+    fireEvent(window, new Event('resize'));
+    expect(picker().style.top).toBe('110px');
+    const removed = vi.spyOn(window, 'removeEventListener');
+    unmount();
+    expect(removed).toHaveBeenCalledWith('resize', expect.any(Function));
+  });
+
+  it('stops observing when the anchor goes away', () => {
+    const { ui, rerender } = setup(40);
+    rerender(ui({ x: 100, y: 10 }));
+    const observer = observers[observers.length - 1]!;
+    rerender(ui());
+    expect(observer.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves inline position alone without an anchor and tolerates a missing ResizeObserver', () => {
+    const { ui, rerender } = setup(40);
+    rerender(ui());
+    expect(picker().style.top).toBe('');
+    expect(picker().style.left).toBe('');
+    // @ts-expect-error 模擬沒有 ResizeObserver 的環境
+    delete globalThis.ResizeObserver;
+    rerender(ui({ x: 100, y: 10 }));
+    expect(picker().style.top).toBe('50px');
   });
 });

@@ -4,8 +4,9 @@ import { useLocale, useT } from '../i18n/context.tsx';
 import { ambiguousWith, describeTarget, type TargetKind, type TargetOption } from '../board/targets.ts';
 import type { BoardGeometry, Point } from '../board/geometry.ts';
 
-/** 工具列（相機按鈕）下緣與浮層邊界的保留空間，避免 popover 蓋住工具列。 */
-const TOP_RESERVED_PX = 52;
+/** 工具列（相機按鈕）下緣與 popover 之間的間距；工具列高度改由實際矩形量測。 */
+const TOOLBAR_GAP_PX = 4;
+const TOOLBAR_SELECTOR = '.board__toolbar--side';
 const EDGE_GAP_PX = 8;
 const ANCHOR_OFFSET_PX = 14;
 
@@ -151,23 +152,41 @@ export function TargetPicker({
   }, [hasCancel]);
 
   // 依點擊位置定位並夾在父層可視範圍內，避開上方工具列；無錨點時使用 CSS 預設位置。
+  // 錨點只在開啟（或改變）時換算成父層座標一次；父層或工具列尺寸變動（視窗縮放、旋轉、工具列換行）
+  // 時以同一個相對錨點重新夾限，不會殘留舊的 inline left/top。
   useLayoutEffect(() => {
     const element = pickerRef.current;
     const parent = element?.offsetParent;
     if (!element || !parent || !anchor) return;
-    const bounds = parent.getBoundingClientRect();
-    const width = element.offsetWidth;
-    const height = element.offsetHeight;
-    if (bounds.width === 0 || bounds.height === 0) return;
+    const initial = parent.getBoundingClientRect();
+    const x = anchor.x - initial.left;
+    const y = anchor.y - initial.top;
+    const toolbar = parent.querySelector(TOOLBAR_SELECTOR);
     const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, Math.max(min, max)));
-    const x = anchor.x - bounds.left;
-    const y = anchor.y - bounds.top;
-    // 預設放在點擊處右下；空間不足時改放左側／上方。
-    const left = x + ANCHOR_OFFSET_PX + width <= bounds.width - EDGE_GAP_PX ? x + ANCHOR_OFFSET_PX : x - ANCHOR_OFFSET_PX - width;
-    const top = y + ANCHOR_OFFSET_PX + height <= bounds.height - EDGE_GAP_PX ? y + ANCHOR_OFFSET_PX : y - ANCHOR_OFFSET_PX - height;
-    element.style.left = `${clamp(left, EDGE_GAP_PX, bounds.width - width - EDGE_GAP_PX)}px`;
-    element.style.top = `${clamp(top, TOP_RESERVED_PX, bounds.height - height - EDGE_GAP_PX)}px`;
-    element.style.right = 'auto';
+    const place = () => {
+      const bounds = parent.getBoundingClientRect();
+      const width = element.offsetWidth;
+      const height = element.offsetHeight;
+      if (bounds.width === 0 || bounds.height === 0) return;
+      // 頂端下限取工具列實際下緣（窄螢幕會換成 2–3 列），而非固定常數；找不到工具列時只留邊距。
+      const toolbarBottom = toolbar ? toolbar.getBoundingClientRect().bottom - bounds.top + TOOLBAR_GAP_PX : 0;
+      const minTop = Math.max(EDGE_GAP_PX, toolbarBottom);
+      // 預設放在點擊處右下；空間不足時改放左側／上方。
+      const left = x + ANCHOR_OFFSET_PX + width <= bounds.width - EDGE_GAP_PX ? x + ANCHOR_OFFSET_PX : x - ANCHOR_OFFSET_PX - width;
+      const top = y + ANCHOR_OFFSET_PX + height <= bounds.height - EDGE_GAP_PX ? y + ANCHOR_OFFSET_PX : y - ANCHOR_OFFSET_PX - height;
+      element.style.left = `${clamp(left, EDGE_GAP_PX, bounds.width - width - EDGE_GAP_PX)}px`;
+      element.style.top = `${clamp(top, minTop, bounds.height - height - EDGE_GAP_PX)}px`;
+      element.style.right = 'auto';
+    };
+    place();
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(place) : null;
+    observer?.observe(parent);
+    if (toolbar) observer?.observe(toolbar);
+    window.addEventListener('resize', place);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', place);
+    };
   }, [anchor, options.length]);
 
   return (
