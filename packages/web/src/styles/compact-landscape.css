@@ -23,8 +23,15 @@
 .screen--game[data-layout="compact-landscape"] > .status-strip > * { pointer-events: auto; }
 .screen--game[data-layout="compact-landscape"] .status-strip .game-brand,
 .screen--game[data-layout="compact-landscape"] .status-strip__spacer,
-.screen--game[data-layout="compact-landscape"] .status-strip__save,
 .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="save-time"] { display: none; }
+/*
+ * 儲存中與失敗必須保持可見：設定選單關閉後，失敗訊息只剩在收合的 <details> 裡。只隱藏不需行動的狀態。
+ * table.css 的 (width <= 1100px) 會把 .status-strip__save 整個隱藏，因此這裡必須明確把 pending／failed 開回來。
+ */
+.screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="idle"],
+.screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="saved"] { display: none; }
+.screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="pending"],
+.screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="failed"] { display: inline-flex; }
 /* 連線狀態保持可見（docs/SPEC.md §8.1/§8.4），縮成半透明小底的燈號加短文字。 */
 .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="connection-state"] {
   min-height: var(--hud-size); padding: 0 10px; font-size: .7rem; white-space: nowrap;
