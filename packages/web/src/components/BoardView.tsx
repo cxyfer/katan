@@ -14,7 +14,7 @@ import { useBoardAnimation } from '../board/useBoardAnimation.ts';
 import { MAX_CAMERA_ELEVATION, MIN_CAMERA_ELEVATION, useBoardViewport } from '../board/useBoardViewport.ts';
 import { rendererMode, qualityMode, type RendererMode, type ProjectionSnapshot, type BoardEffectAnchors, type CssRect } from '../board/render-contract.ts';
 import { sceneBounds } from '../board/three/bounds.ts';
-import { followUpsHeld, nameOf, shownCitiesKnights } from '../state/table.ts';
+import { boardHeld, followUpsHeld, nameOf, shownBoardView, shownCitiesKnights } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
 import { BoardTargetOverlay } from './BoardTargetOverlay.tsx';
@@ -44,6 +44,9 @@ export function BoardView({ controller }: { controller: TableController }) {
   const t = useT();
   const { state, actions } = controller;
   const view = state.game?.view ?? null;
+  // 盤面上的棋子與強盜：擲骰演出期間不能先顯示擲骰後的結算（C&K 蠻族攻擊）；
+  // 目標、提示與待處理動作仍依即時投影。
+  const boardView = shownBoardView(state);
   const boardRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -67,7 +70,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const { rolls } = useAudio();
   const onDiceQueue = useCallback((ids: readonly string[]) => rolls.setQueue(ids), [rolls]);
   const animation = useBoardAnimation(state.game, state.gameSync, state.connection === 'online',
-    !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll', onDiceChange, onDiceQueue);
+    !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll', onDiceChange, onDiceQueue, boardHeld(state));
   // Only which hexes are sea shapes the geometry; a stable key keeps it from
   // rebuilding (and re-creating the 3D scene) on every snapshot.
   const seaKey = view?.board.terrain.map((terrain) => (terrain === 'sea' ? 's' : 'l')).join('') ?? '';
@@ -84,10 +87,10 @@ export function BoardView({ controller }: { controller: TableController }) {
   // 擲骰演出期間不開放由擲骰帶出的棋盤目標（例如七點後移動強盜）；玩家已選取中的建造不受影響。
   const intent = useMemo(() => followUpsHeld(state) && !state.selection.commandType ? null : boardIntent(state, selfId), [state, selfId]);
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
-  const seaView = useMemo(() => seafarersView(view), [view?.modules]);
-  const epModule = useMemo(() => epView(view), [view?.modules]);
+  const seaView = useMemo(() => seafarersView(boardView), [boardView?.modules]);
+  const epModule = useMemo(() => epView(boardView), [boardView?.modules]);
   const epFog = useMemo(() => (epModule ? fogRegions(epModule) : undefined), [epModule]);
-  const ckView = useMemo(() => citiesKnightsView(view), [view?.modules]);
+  const ckView = useMemo(() => citiesKnightsView(boardView), [boardView?.modules]);
   const pickerAnchor = useMemo(() => pickerTarget
     ? targets.find((target) => target.kind === pickerTarget.kind && target.index === pickerTarget.index) ?? null
     : null, [pickerTarget, targets]);
@@ -171,8 +174,9 @@ export function BoardView({ controller }: { controller: TableController }) {
   const hideStaticDice = focusedRoll !== null || state.dicePresenting;
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); setPickerTarget(null); } }, [intent]);
 
-  if (!view) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
+  if (!view || !boardView) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
   const board = view.board;
+  const shownBoard = boardView.board;
   const topology = geometry.topology;
   const setup = view.turn.setup;
   const setupActor = setup ? view.players.find((player) => player.seat === setup.seat) : undefined;
@@ -303,16 +307,16 @@ export function BoardView({ controller }: { controller: TableController }) {
         aria-label={t(effective === 'r3f' ? 'a11y.boardRegion3d' : 'a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>
         {requested !== 'svg' && !failure && <div className="board__scene" aria-hidden="true" style={{ opacity: effective === 'r3f' ? 1 : 0 }}>
           <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
-            <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView} citiesKnights={ckView} explorersPirates={epModule}
+            <Scene geometry={geometry} board={shownBoard} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView} citiesKnights={ckView} explorersPirates={epModule}
               intent={intent} selection={selection} arrivals={animation.arrivals} active={animation.active} viewport={controls.viewport} quality={quality}
-              motionAllowed={animation.arrivals.length > 0 || animation.active !== null} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} {...(view.modules ? { modules: view.modules } : {})} />
+              motionAllowed={animation.arrivals.length > 0 || animation.active !== null} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} {...(boardView.modules ? { modules: boardView.modules } : {})} />
           </Suspense></SceneBoundary>
         </div>}
-        {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} arrivals={animation.arrivals} active={animation.active}
+        {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={boardView} arrivals={animation.arrivals} active={animation.active}
           selection={selection ? state.selection : { ...state.selection, index: null }} selfId={selfId} intent={intent}
           pan={controls.pan} zoom={zoom} viewBoxCenter={viewBoxCenter} nameResolver={nameResolver} />}
         <BoardInspectionLayer key={`${state.game?.gameId}:${geometry.topologyId}:${effective}`}
-          geometry={geometry} board={board} renderer={effective} controls={controls}
+          geometry={geometry} board={shownBoard} renderer={effective} controls={controls}
           nameOf={nameResolver} fallbackFocusRef={surfaceRef} fog={epFog} />
         <BoardTargetOverlay targets={targets} rect={controls.viewport.rect} selection={selection} board={board} topology={topology} nameOf={nameResolver}
           renderer={effective} onSelect={selectTarget} consumeSuppressedClick={controls.consumeSuppressedClick}
