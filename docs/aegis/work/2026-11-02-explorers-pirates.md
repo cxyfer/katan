@@ -1498,3 +1498,47 @@ Verification of the review follow-up:
   invocation was uninterrupted green, and both timeout failures are retained
   above as evidence of host-load sensitivity outside the one authorized
   timeout change.
+
+## Reveal-pool simulation timing follow-up (2026-11-03)
+
+Before changing any additional timeout, each of the four pool-composition
+simulations was run alone in a separate Vitest invocation:
+`pnpm --filter @catan/rules exec vitest run test/ep-privacy.test.ts -t '<scenario>: each pool equals' --reporter=json --outputFile=<temporary report>`.
+The durations below are the individual test durations from those JSON reports,
+excluding process startup. Every baseline test passed with its original timeout.
+
+| Scenario | First isolated measurement | Initial timeout decision |
+|---|---:|---|
+| `pirate-lairs` | 1.876 s | none |
+| `fish` | 1.623 s | none |
+| `spices` | 1.848 s | none |
+| `explorers-pirates` | 2.596 s | default 5 s → explicit 30 s |
+
+Only the full E&P pool case initially exceeded approximately two seconds, so
+it was changed first. The default-parallel rules run then passed 710 tests
+but timed out in the other three pool cases: Pirate Lairs 5.150 seconds,
+Fish 6.476 seconds and Spices 5.821 seconds, each against its unchanged
+5-second timeout.
+
+This new evidence prompted a second isolated measurement of those three cases,
+still before changing their timeouts. Each was again run once by itself with
+the same command and passed:
+
+| Scenario | Second isolated measurement | Final timeout change |
+|---|---:|---|
+| `pirate-lairs` | 2.154 s | default 5 s → explicit 30 s |
+| `fish` | 2.199 s | default 5 s → explicit 30 s |
+| `spices` | 2.357 s | default 5 s → explicit 30 s |
+| `explorers-pirates` | not repeated; initial 2.596 s | default 5 s → explicit 30 s |
+
+All four pool cases have now individually measured above approximately two
+seconds. Each records up to 4,000 commands and then checks the public draw
+history against each remaining pool. Only these four long cases receive
+30 seconds of scheduling headroom. The already approved identity-check timeout,
+other tests and the existing web drag-and-drop test are unchanged. Web tests
+are not rerun for this follow-up.
+
+With all four qualified pool cases at 30 seconds,
+`pnpm --filter @catan/rules test` passed using default parallelism:
+54/54 files and 713/713 tests, no timeouts, 94.58 seconds.
+No worker limit or global timeout override was set. `git diff --check` passed.

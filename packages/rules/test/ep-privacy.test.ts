@@ -161,7 +161,7 @@ describe('R-EP-VIS reveal pools (condition a: public composition; condition b: r
       expect(view.lairTokensLeft).toBe(lairs.length);
       expect(view).not.toHaveProperty('pools');
       expect(view).not.toHaveProperty('lairTokens');
-    });
+    }, 30_000);
   }
 
   it('every reveal is stored in the snapshot and its event; a restored game never draws again', () => {
