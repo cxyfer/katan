@@ -328,13 +328,65 @@ describe('target picker dismissal', () => {
     expect(onTargetClick).toHaveBeenCalledTimes(1);
   });
 
+  it('swallows the release click after a press lasting more than one second', () => {
+    vi.useFakeTimers();
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    vi.advanceTimersByTime(1200);
+    fireEvent(target, new Event('pointerup', { bubbles: true }));
+    fireEvent.click(target);
+    expect(onTargetClick).not.toHaveBeenCalled();
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['pointerup', 'pointercancel'])('expires suppression one second after %s without a click', (type) => {
+    vi.useFakeTimers();
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    vi.advanceTimersByTime(1200);
+    fireEvent(target, new Event(type, { bubbles: true }));
+    vi.advanceTimersByTime(1001);
+    fireEvent.click(target);
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['Enter', ' '])('allows a keyboard %s click after a drag that produced no pointer click', (key) => {
+    const { target, onTargetClick } = targetDismissal();
+    firePointerDown(target);
+    fireEvent(target, new Event('pointerup', { bubbles: true }));
+    fireEvent.keyDown(target, { key });
+    fireEvent.click(target, { detail: 0 });
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
   it('expires click suppression even when pointerup never arrives', () => {
     vi.useFakeTimers();
     const { target, onTargetClick } = targetDismissal();
     firePointerDown(target);
-    vi.advanceTimersByTime(1001);
+    vi.advanceTimersByTime(10001);
     fireEvent.click(target);
     expect(onTargetClick).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    <input aria-label="chat" />,
+    <textarea aria-label="chat" />,
+    <select aria-label="chat"><option>option</option></select>,
+    <div contentEditable suppressContentEditableWarning><span>editable child</span></div>,
+    <div role="dialog" aria-modal="true"><button type="button">modal action</button></div>,
+    <dialog open><button type="button">dialog action</button></dialog>,
+  ])('leaves Escape from an editable field or another dialog to its owner (%#)', (field) => {
+    const onCancel = vi.fn();
+    const onEscape = vi.fn();
+    renderPicker(onCancel);
+    const other = render(<div onKeyDown={onEscape}>{field}</div>);
+    const target = other.container.querySelector('input, textarea, select, span, button')!;
+    fireEvent.keyDown(target, { key: 'Escape' });
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(onEscape).toHaveBeenCalledTimes(1);
+    expect(onEscape.mock.calls[0]![0].defaultPrevented).toBe(false);
+    expect(screen.getByTestId('target-picker')).toBeTruthy();
   });
 });
 

@@ -624,7 +624,9 @@
 }
 .target-picker__header {
   position: sticky;
-  top: 0;
+  top: -.5rem;
+  margin-top: -.5rem;
+  padding-top: .5rem;
   z-index: 1;
   background: var(--target-picker-background);
   display: flex;

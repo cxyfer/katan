@@ -13,23 +13,35 @@ const ANCHOR_OFFSET_PX = 14;
 /**
  * 外部點擊關閉後，吞掉緊接著的那一次 click，避免它落在棋盤目標按鈕上
  * 又觸發選取、重新開啟 picker 或誤送指令。獨立於元件生命週期，因為 picker 此時已卸載。
- * 觸控 click 可能在 pointerup 之後的另一個 task 才派發；直到 click、下一次 pointerdown
- * 或一秒保底逾時才移除，避免漏掉關閉用的點擊，也不攔截下一次刻意操作。
+ * 觸控 click 可能延後派發；放開／取消後保留一秒，按住時最多保留十秒。
+ * 下一次 pointerdown 或 keydown 也會解除，避免攔截下一次刻意操作。
  */
 function swallowNextClick() {
+  let releaseTimeout: ReturnType<typeof setTimeout> | undefined;
   const remove = () => {
     document.removeEventListener('click', onClick, true);
     document.removeEventListener('pointerdown', remove, true);
-    clearTimeout(timeout);
+    document.removeEventListener('keydown', remove, true);
+    document.removeEventListener('pointerup', onEnd, true);
+    document.removeEventListener('pointercancel', onEnd, true);
+    clearTimeout(releaseTimeout);
+    clearTimeout(maxTimeout);
   };
   function onClick(event: Event) {
     event.stopPropagation();
     event.preventDefault();
     remove();
   }
-  const timeout = setTimeout(remove, 1000);
+  function onEnd() {
+    clearTimeout(releaseTimeout);
+    releaseTimeout = setTimeout(remove, 1000);
+  }
+  const maxTimeout = setTimeout(remove, 10000);
   document.addEventListener('click', onClick, true);
   document.addEventListener('pointerdown', remove, true);
+  document.addEventListener('keydown', remove, true);
+  document.addEventListener('pointerup', onEnd, true);
+  document.addEventListener('pointercancel', onEnd, true);
 }
 
 /**
@@ -137,6 +149,11 @@ export function TargetPicker({
     // 焦點不在 popover 內（例如在棋盤上）時，Escape 仍可關閉。
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (event.target instanceof Element) {
+        const dialog = event.target.closest('[role="dialog"], dialog');
+        if (dialog && dialog !== pickerRef.current) return;
+        if (event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+      }
       event.preventDefault();
       event.stopPropagation();
       onCancelRef.current?.();
