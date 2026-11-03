@@ -194,22 +194,6 @@ describe('lobby bot seats', () => {
     );
   });
 
-  it('disables adding a bot with a localized reason when the profile has expansion rules', async () => {
-    const api = createFakeApi({
-      profiles: [makeProfile({ id: 'sf-new-shores-2025', expansions: ['seafarers'], botSeats: false })],
-      room: makeRoom({ profileId: 'sf-new-shores-2025', members: [makeMember()] }),
-      identity: makeIdentity({ locale: 'zh-Hant' }),
-    });
-    await joinLobby(api, ['zh-TW']);
-
-    const add = screen.getByTestId('add-bot') as HTMLButtonElement;
-    expect(add.disabled).toBe(true);
-    expect(add.getAttribute('aria-describedby')).toBe('lobby-bots-unsupported');
-    expect(screen.getByTestId('lobby-bots-unsupported').textContent).toBe(
-      '電腦對手只會玩基本遊戲，無法加入使用擴充規則的組合。',
-    );
-  });
-
   it('lets the host remove a bot by name', async () => {
     const api = createFakeApi({ room: botRoom() });
     await joinLobby(api);

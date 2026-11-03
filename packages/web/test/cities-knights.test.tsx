@@ -138,7 +138,7 @@ describe('cities & knights client', () => {
     state.board.buildings[path.vertices[3]!] = { player: 'p1', city: false };
     ck.toppled.push(path.vertices[3]!);
     const renderBoard = (gameView: GameView) => render(<LocaleProvider locale="en"><SvgBoard svgRef={() => undefined} geometry={geometry} view={gameView}
-      active={null} selection={EMPTY_SELECTION} selfId="p1" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
+      arrivals={[]} selection={EMPTY_SELECTION} selfId="p1" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
       viewBoxCenter={{ x: 0, y: 0 }} nameResolver={(id) => id} /></LocaleProvider>);
     const { container, unmount } = renderBoard(view(state));
     const knight = container.querySelector(`[data-testid="knight-${path.vertices[2]}"]`);
