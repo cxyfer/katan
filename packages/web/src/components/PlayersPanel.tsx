@@ -5,7 +5,7 @@ import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
-import { shownHandSize } from '../state/table.ts';
+import { shownCitiesKnights, shownHandSize } from '../state/table.ts';
 import { islandBonusPoints, seafarersView } from '../board/seafarers.ts';
 import { activeStrength, citiesKnightsPoints, citiesKnightsView } from '../board/citiesKnights.ts';
 import { GameIcon } from './GameArt.tsx';
@@ -72,7 +72,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
 }) {
   const t = useT();
   const { state } = controller;
-  const view = state.game?.view;
+  const view = shownCitiesKnights(state) ?? state.game?.view;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const expanded = pinned || previewOpen;

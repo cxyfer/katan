@@ -21,6 +21,7 @@ import type {
 import type { CardKind, Resource } from '@catan/rules';
 import type { RoomQuery } from '../api/client.ts';
 import { diceRollPresentations } from '../board/animation.ts';
+import { citiesKnightsView } from '../board/citiesKnights.ts';
 import type { SocketStatus } from '../api/socket.ts';
 import { chatReducer, initialChatState, type ChatEvent, type ChatState } from './chat.ts';
 import { initialBootProgress, type BootProgress, type BootStepId, type BootStepStatus } from './boot.ts';
@@ -38,6 +39,8 @@ export interface RollHold {
   hand: Partial<Record<CardKind, number>> | null;
   /** 擲骰前各玩家公開的手牌張數。 */
   handSizes: Readonly<Record<string, number>>;
+  /** C&K 面板的擲骰前投影，含 module、進步手牌及玩家分數。 */
+  citiesKnights: GameSnapshot['view'] | null;
   /** 擲骰前已知的最後事件序號。 */
   eventSeq: number;
 }
@@ -229,6 +232,7 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
     rollHold: {
       hand: own?.resources ? { ...own.resources, ...own.commodities } : null,
       handSizes: Object.fromEntries(current.view.players.map((player) => [player.id, player.handSize])),
+      citiesKnights: citiesKnightsView(current.view) ? current.view : null,
       eventSeq: lastSeq,
     },
   };
@@ -262,6 +266,14 @@ export function shownHand(state: TableState): Partial<Record<CardKind, number>> 
 /** 玩家公開的手牌張數：擲骰演出期間用擲骰前的張數。 */
 export function shownHandSize(state: TableState, player: { id: string; handSize: number }): number {
   return activeHold(state)?.handSizes[player.id] ?? player.handSize;
+}
+
+/** C&K 狀態顯示共用擲骰前投影；手牌與 defender 分數也在 players，不能只凍結 module。 */
+export function shownCitiesKnights(state: TableState): GameSnapshot['view'] | null {
+  const hold = activeHold(state);
+  if (hold) return hold.citiesKnights;
+  const view = state.game?.view ?? null;
+  return citiesKnightsView(view) ? view : null;
 }
 
 /** 事件紀錄：擲骰演出期間只列出擲骰前已知的事件，並隱藏最新點數。 */

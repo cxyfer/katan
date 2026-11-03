@@ -13,7 +13,7 @@ import { useBoardAnimation } from '../board/useBoardAnimation.ts';
 import { MAX_CAMERA_ELEVATION, MIN_CAMERA_ELEVATION, useBoardViewport } from '../board/useBoardViewport.ts';
 import { rendererMode, qualityMode, type RendererMode, type ProjectionSnapshot, type BoardEffectAnchors, type CssRect } from '../board/render-contract.ts';
 import { sceneBounds } from '../board/three/bounds.ts';
-import { followUpsHeld, nameOf } from '../state/table.ts';
+import { followUpsHeld, nameOf, shownCitiesKnights } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
 import { BoardTargetOverlay } from './BoardTargetOverlay.tsx';
@@ -287,7 +287,7 @@ export function BoardView({ controller }: { controller: TableController }) {
         </span>
       )}
 
-      <CitiesKnightsBadge ck={ckView} />
+      <CitiesKnightsBadge ck={citiesKnightsView(shownCitiesKnights(state))} />
 
       {focusedRoll && createPortal(
         <DicePresentation key={focusedRoll.id} dice={focusedRoll.dice} mandatory={!!view.pending} />,

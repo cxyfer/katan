@@ -5,6 +5,7 @@ import {
   type CitiesKnightsModuleView, type ImprovementOption, type Track,
 } from '../board/citiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
+import { shownCitiesKnights } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { BarbarianTrack, CommodityEmblem, EventDieFace, PipDieFace, ProgressCardArt, TRACK_COLOR, TrackEmblem } from './SvgCitiesKnights.tsx';
 import '../styles/cities-knights.css';
@@ -19,7 +20,7 @@ export function CitiesKnightsPanel({ controller }: { controller: TableController
   const t = useT();
   const locale = useLocale();
   const { state, actions } = controller;
-  const view = state.game?.view ?? null;
+  const view = shownCitiesKnights(state);
   const ck = citiesKnightsView(view);
   if (!view || !ck) return null;
   const hints = citiesKnightsHints(view);
