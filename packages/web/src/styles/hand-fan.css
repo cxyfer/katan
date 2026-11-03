@@ -106,7 +106,6 @@
   box-shadow: 0 2px 4px #0005;
 }
 .screen--game .hand.hand-fan .development-card__play:disabled { opacity: .5; cursor: not-allowed; }
-.screen--game .hand.hand-fan .development-card__choice { flex: none; width: 100%; min-height: 28px; margin: 0; padding: 2px; font-size: .62rem; }
 .screen--game .hand.hand-fan .development-card:hover,
 .screen--game .hand.hand-fan .development-card:focus-within,
 .screen--game .hand.hand-fan .development-card--inspected {
@@ -123,8 +122,11 @@
   border: 1px solid #b9a87588; cursor: pointer; font-size: 1.25rem;
 }
 .screen--game .hand.hand-fan[data-expanded="true"] .hand-fan__close { display: block; }
-.screen--game .hand.hand-fan[data-expanded="false"] .development-card__play,
-.screen--game .hand.hand-fan[data-expanded="false"] .development-card__choice { visibility: hidden; }
+.screen--game .hand.hand-fan[data-expanded="false"] .development-card__play { visibility: hidden; }
+/* 出牌主要靠拖曳：「使用」按鈕只在點開放大檢視時出現，作為鍵盤與輔助科技的替代方式。 */
+.screen--game .hand.hand-fan .development-card:not(.development-card--inspected) .development-card__play { display: none; }
+.screen--game .hand.hand-fan .development-card[data-draggable] .development-card__inspect { cursor: grab; touch-action: none; }
+.screen--game .hand.hand-fan .development-card--lifted { opacity: .35; filter: saturate(.4); }
 /* 資源牌牌面：全幅風景、左上角資源徽記、名稱緞帶；數量改由上方的數量列呈現。 */
 .hand-card {
   --rc: #6f8e68; --rc-deep: #2c4733;

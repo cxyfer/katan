@@ -75,7 +75,7 @@ describe('guest session', () => {
       await client.get('/api/profiles'),
     );
     expect(profiles.profiles.filter((profile) => !profile.id.startsWith('tb-')).length).toBe(8);
-    expect(profiles.selectable.filter((id) => !id.startsWith('tb-'))).toEqual(['base-2025', 'base-paired-2025']);
+    expect(profiles.selectable.filter((id) => !id.startsWith('tb-'))).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ck-2025', 'ck-paired-2025', 'sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025']);
     const config = client.expectOk<{ limits: { chatMaxLength: number }; defaultPolicy: { disconnectGraceSeconds: number } }>(
       await client.get('/api/config'),
     );

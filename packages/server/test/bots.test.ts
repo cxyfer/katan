@@ -111,16 +111,25 @@ async function liveSocket(service: RunningService, roomId: string, playerId: str
   return () => service.rooms.unregisterConnection(connection);
 }
 
+/**
+ * 建房後再依序加入 Bot 席位。建房本身已不詢問 Bot 數量，測試沿用同一個
+ * 入口，讓每個案例都走實際的房間流程。
+ */
 async function createRoom(client: TestClient, body: Record<string, unknown> = {}): Promise<RoomShape> {
-  return client.expectOk<RoomShape>(
+  const { bots, botLevel, ...roomBody } = body;
+  let room = client.expectOk<RoomShape>(
     await client.post('/api/rooms', {
       visibility: 'private',
       capacity: 3,
       profileId: 'base-2025',
       setupMode: 'fixed',
-      ...body,
+      ...roomBody,
     }),
   );
+  for (let index = 0; index < Number(bots ?? 0); index++) {
+    room = client.expectOk<RoomShape>(await client.post(`/api/rooms/${room.id}/bots`, { level: botLevel }));
+  }
+  return room;
 }
 
 /** 一位真人房主加上 `bots` 個 Bot 並開局。 */
@@ -204,9 +213,26 @@ describe('B-ROOM bot seats', () => {
     expect([...BOT_LEVELS]).toEqual([...POLICY_BOT_LEVELS]);
   });
 
-  it('creates a room with bot seats from the creation shortcut', async () => {
-    const host = await harness.client('ShortcutHost');
-    const room = await createRoom(host, { capacity: 4, bots: 3, botLevel: 'easy' });
+  it('creates an empty room and seats bots in the room instead', async () => {
+    const host = await harness.client('RoomBotHost');
+    // 舊版建房捷徑已不再詢問數量；帶了也不會建立席位。
+    let room = host.expectOk<RoomShape>(
+      await host.post('/api/rooms', {
+        visibility: 'private',
+        capacity: 4,
+        profileId: 'base-2025',
+        setupMode: 'fixed',
+        bots: 3,
+        botLevel: 'easy',
+      }),
+    );
+    expect(room.members).toHaveLength(1);
+    expect(room.members[0]).toMatchObject({ playerId: host.playerId, seat: 0, host: true, bot: false });
+
+    // 房間中的加入端點才是 Bot 席位的入口。
+    for (let index = 0; index < 3; index++) {
+      room = host.expectOk<RoomShape>(await host.post(`/api/rooms/${room.id}/bots`, { level: 'easy' }));
+    }
     expect(room.members).toHaveLength(4);
     const [human, ...bots] = room.members;
     expect(human).toMatchObject({ playerId: host.playerId, seat: 0, host: true, bot: false });
@@ -223,27 +249,45 @@ describe('B-ROOM bot seats', () => {
     expect(ready.startBlockers).toEqual([]);
   });
 
-  it('rejects invalid bot counts and levels', async () => {
-    const host = await harness.client('InvalidBots');
-    for (const body of [
-      { bots: 3 },
-      { bots: -1 },
-      { bots: 1.5 },
-      { bots: '2' },
-      { bots: 1, botLevel: 'hard' },
-      { botLevel: 7 },
-    ]) {
-      host.expectError(
-        await host.post('/api/rooms', {
-          visibility: 'private',
-          capacity: 3,
-          profileId: 'base-2025',
-          setupMode: 'fixed',
-          ...body,
-        }),
-        'E_INVALID_BOT',
-      );
+  it('offers bot seats only for profiles whose rules modules bots can play', async () => {
+    const host = await harness.client('ProfileBots');
+    const { profiles } = host.expectOk<{
+      profiles: { id: string; expansions: string[]; variants: string[]; botSeats: boolean }[];
+    }>(await host.get('/api/profiles'));
+    expect(profiles.find((profile) => profile.id === 'base-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'base-paired-2025')?.botSeats).toBe(true);
+    for (const profile of profiles) {
+      const modules = [...profile.expansions, ...profile.variants];
+      expect(profile.botSeats).toBe(modules.every((module) => BOT_RULE_MODULES.includes(module)));
     }
+    expect(profiles.some((profile) => !profile.botSeats)).toBe(true);
+  });
+
+  it('refuses adding bot seats to Seafarers rooms and switching a room with bots to Seafarers', async () => {
+    const host = await harness.client('SeafarersBots');
+    const sea = await createRoom(host, { profileId: 'sf-new-shores-2025' });
+    host.expectError(await host.post(`/api/rooms/${sea.id}/bots`, {}), 'E_INVALID_BOT');
+
+    const other = await harness.client('SeafarersSwitch');
+    const base = await createRoom(other, { bots: 1 });
+    other.expectError(
+      await other.post(`/api/rooms/${base.id}/settings`, { profileId: 'sf-new-shores-2025' }),
+      'E_INVALID_BOT',
+    );
+  });
+
+  it('blocks start and further bots once the profile runs modules bots cannot play', async () => {
+    // Rooms refuse bot seats in such profiles, so the state is forced here.
+    const fixture = registerFixtureProfile('fixture-bots-modules', [3, 4], { expansions: ['seafarers'] });
+    const host = await harness.client('ModuleBots');
+    const room = await createRoom(host, { bots: 1 });
+    host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    await harness.service.repo.updateRoom(room.id, { profile_id: fixture.id });
+
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.startBlockers.map((blocker) => blocker.messageId)).toContain('blocker.botsUnsupported');
+    host.expectError(await host.post(`/api/rooms/${room.id}/start`), 'E_START_BLOCKED');
+    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
   });
 
   it('offers bot seats only for profiles whose rules modules bots can play', async () => {
@@ -302,6 +346,45 @@ describe('B-ROOM bot seats', () => {
     );
     expect(removed.members.some((member) => member.bot)).toBe(false);
     expect(await harness.service.repo.findGuest(bot.playerId)).toBeNull();
+  });
+
+  it('names a bot from the host input and falls back to a default name', async () => {
+    const host = await harness.client('NamedBotHost');
+    const room = await createRoom(host, { capacity: 4 });
+    const named = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${room.id}/bots`, { level: 'easy', name: '  Robo  ' }),
+    );
+    expect(named.members.find((member) => member.bot)).toMatchObject({
+      nickname: 'Robo',
+      botLevel: 'easy',
+    });
+
+    const blank = host.expectOk<RoomShape>(
+      await host.post(`/api/rooms/${room.id}/bots`, { name: '   ' }),
+    );
+    const bots = blank.members.filter((member) => member.bot);
+    expect(bots).toHaveLength(2);
+    expect(bots[1]!.nickname).toMatch(/^(Ada|Bram|Cleo|Dax|Esme|Finn|Gus|Hana)$/);
+  });
+
+  it('rejects duplicate, overlong and control-character bot names', async () => {
+    const host = await harness.client('NamedBotRules');
+    const room = await createRoom(host, { capacity: 4 });
+    host.expectOk(await host.post(`/api/rooms/${room.id}/bots`, { name: 'Robo' }));
+
+    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, { name: 'robo' }), 'E_BOT_NAME_TAKEN');
+    host.expectError(
+      await host.post(`/api/rooms/${room.id}/bots`, { name: 'NamedBotRules' }),
+      'E_BOT_NAME_TAKEN',
+    );
+    host.expectError(
+      await host.post(`/api/rooms/${room.id}/bots`, { name: 'x'.repeat(25) }),
+      'E_INVALID_NICKNAME',
+    );
+    host.expectError(
+      await host.post(`/api/rooms/${room.id}/bots`, { name: 'bad\u0000name' }),
+      'E_INVALID_NICKNAME',
+    );
   });
 
   it('keeps bots ready while people must confirm again', async () => {
@@ -420,23 +503,12 @@ describe('B-ROOM disabled deployment', () => {
       const host = await disabled.client('NoBots');
       const config = host.expectOk<{ bots: { enabled: boolean; levels: string[] } }>(await host.get('/api/config'));
       expect(config.bots).toEqual({ enabled: false, levels: ['easy', 'standard'] });
-      host.expectError(
-        await host.post('/api/rooms', {
-          visibility: 'private',
-          capacity: 3,
-          profileId: 'base-2025',
-          setupMode: 'fixed',
-          bots: 1,
-        }),
-        'E_BOTS_DISABLED',
-      );
       const room = host.expectOk<RoomShape>(
         await host.post('/api/rooms', {
           visibility: 'private',
           capacity: 3,
           profileId: 'base-2025',
           setupMode: 'fixed',
-          bots: 0,
         }),
       );
       host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_BOTS_DISABLED');

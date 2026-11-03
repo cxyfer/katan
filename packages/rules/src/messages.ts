@@ -88,6 +88,7 @@ export const COMMAND_ERROR_CODES = [
   ...MODULE_MESSAGES.citiesKnights.errorCodes,
   ...MODULE_MESSAGES.tradersBarbarians.errorCodes,
   ...MODULE_MESSAGES.explorersPirates.errorCodes,
+  ...MODULE_MESSAGES.seafarersCitiesKnights.errorCodes,
 ] as const;
 
 export type CommandErrorCode = (typeof COMMAND_ERROR_CODES)[number];
@@ -98,6 +99,7 @@ export const RULE_EVENT_TYPES = [
   ...MODULE_MESSAGES.citiesKnights.eventTypes,
   ...MODULE_MESSAGES.tradersBarbarians.eventTypes,
   ...MODULE_MESSAGES.explorersPirates.eventTypes,
+  ...MODULE_MESSAGES.seafarersCitiesKnights.eventTypes,
 ] as const;
 
 export type RuleEventType = (typeof RULE_EVENT_TYPES)[number];

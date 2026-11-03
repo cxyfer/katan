@@ -10,7 +10,7 @@ import type { Locale } from '@catan/protocol';
 import type { GameEvent } from '@catan/rules';
 import { t } from './index.ts';
 import { formatDice, formatGrantMap, formatNumber, formatResourceMap } from './format.ts';
-import { moduleEventParams } from './module-events.ts';
+import { moduleEventParams } from './modules/events.ts';
 
 export interface EventText {
   messageId: string;
@@ -204,16 +204,20 @@ export function eventParams(
         target: num(p.target),
       };
     default:
-      // Rules-module events use canonical parameter names; anything else
-      // still renders its own text.
-      return event.type.includes('.') ? moduleEventParams(locale, event, nameOf) : {};
+      // Module events format their own parameters; an id nobody knows how to
+      // parameterise still renders its own text.
+      return moduleEventParams(locale, event, nameOf) ?? {};
   }
 }
 
 export function translateEvent(locale: Locale, event: GameEvent, nameOf: NameResolver): EventText {
   const params = eventParams(locale, event, nameOf);
   // Canonical id shape from `@catan/protocol`: `event.<engine event type>`.
-  const messageId = `event.${event.type}`;
+  // A pirate action reuses a robber event with `pirate: true` and its own
+  // text; a ship reuses a road event with `ship: true` the same way.
+  const base = `event.${event.type}`;
+  const variant = event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null;
+  const messageId = variant && t(locale, variant) !== variant ? variant : base;
   const text = t(locale, messageId, params);
   return {
     messageId,

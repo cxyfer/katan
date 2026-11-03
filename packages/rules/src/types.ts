@@ -66,31 +66,43 @@ export type DevCardType =
   | 'barbarianKnight'
   | 'swiftJourney';
 
+/**
+ * Cities & Knights progress cards, 2025 names (CK25 pp. 13–16). `printing`
+ * and `constitution` are the victory-point cards.
+ */
 export type ProgressCardType =
-  | 'alchemist'
+  // science
+  | 'alchemy'
   | 'crane'
-  | 'engineer'
+  | 'engineering'
+  | 'invention'
   | 'irrigation'
+  | 'medicine'
   | 'mining'
+  | 'printing'
   | 'roadBuilding'
-  | 'smith'
-  | 'tradeMonopoly'
+  | 'smithing'
+  // trade
   | 'commercialHarbor'
-  | 'masterMerchant'
+  | 'guildDues'
+  | 'merchant'
   | 'merchantFleet'
   | 'resourceMonopoly'
-  | 'bishop'
+  | 'tradeMonopoly'
+  // politics
   | 'constitution'
-  | 'deserter'
-  | 'diplomat'
+  | 'diplomacy'
+  | 'encouragement'
+  | 'espionage'
   | 'intrigue'
-  | 'saboteur'
-  | 'spy'
-  | 'warlord'
-  | 'wedding'
-  | 'medicine'
-  | 'printing'
-  | 'science';
+  | 'sabotage'
+  | 'taxation'
+  | 'treason'
+  | 'wedding';
+
+/** A card in a player's hand: a resource or (Cities & Knights) a commodity. */
+export type CardKind = Resource | Commodity;
+export const CARD_KINDS: readonly CardKind[] = [...RESOURCES, ...COMMODITIES];
 
 export interface Harbor {
   edge: number;
@@ -154,9 +166,11 @@ export interface PlayerState {
   progressCards: ProgressCardType[];
   newProgressCards: ProgressCardType[];
   playedKnights: number;
-  /** Metropolis level per city-improvement track, 0..3 (Cities & Knights). */
+  /** City-improvement level per track, 0..5 (Cities & Knights, CK25 p. 3). */
   improvements: Record<'trade' | 'politics' | 'science', number>;
+  /** City walls on the board (Cities & Knights). */
   cityWalls: number;
+  /** Defender of Catan VP tokens (Cities & Knights). */
   defenders: number;
   /** VP tokens from expansion effects that are public. */
   bonusPoints: number;
@@ -194,7 +208,7 @@ export interface TurnState {
 export interface DiscardPending {
   kind: 'discard';
   required: Record<string, number>;
-  submitted: Record<string, Resource[]>;
+  submitted: Record<string, CardKind[]>;
 }
 
 export interface MoveRobberPending {
@@ -266,10 +280,10 @@ export interface Offer {
   revision: number;
   from: string;
   to: string | 'all';
-  /** Resources the proposer gives, from the proposer's perspective. */
-  give: Partial<Record<Resource, number>>;
-  /** Resources the proposer receives. */
-  want: Partial<Record<Resource, number>>;
+  /** Cards the proposer gives, from the proposer's perspective (commodities only in Cities & Knights). */
+  give: Partial<Record<CardKind, number>>;
+  /** Cards the proposer receives. */
+  want: Partial<Record<CardKind, number>>;
   windowId: number;
   /**
    * Non-resource goods a rules module lets players trade (for example gold

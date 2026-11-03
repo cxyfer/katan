@@ -9,6 +9,7 @@ import type { Locale } from '@catan/protocol';
 import { citiesKnights } from './citiesKnights.ts';
 import { explorersPirates } from './explorersPirates.ts';
 import { seafarers } from './seafarers.ts';
+import { seafarersCitiesKnights } from './seafarersCitiesKnights.ts';
 import { tradersBarbarians } from './tradersBarbarians.ts';
 
 export type ModuleCatalog = Readonly<Record<Locale, Readonly<Record<string, string>>>>;
@@ -16,6 +17,7 @@ export type ModuleCatalog = Readonly<Record<Locale, Readonly<Record<string, stri
 export const MODULE_CATALOGS: Readonly<Record<string, ModuleCatalog>> = {
   seafarers,
   citiesKnights,
+  seafarersCitiesKnights,
   tradersBarbarians,
   explorersPirates,
 };

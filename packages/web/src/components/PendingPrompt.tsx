@@ -1,10 +1,17 @@
-import { RESOURCES } from '@catan/rules';
+import { CARD_KINDS, type Resource } from '@catan/rules';
 import { useT } from '../i18n/context.tsx';
+import { blocksNewCommands } from '../state/commands.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
+import { DevCardChoicePicker } from './DevCardChoicePicker.tsx';
 import { DiscardPicker } from './DiscardPicker.tsx';
 import { TbPrompt } from './tb/TbPrompt.tsx';
+import { SeafarersPrompt } from './SeafarersPrompt.tsx';
+import { CitiesKnightsPrompt } from './CitiesKnightsPrompt.tsx';
+import { citiesKnightsView } from '../board/citiesKnights.ts';
+import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
+import { canPlayDevCard, ownYearOfPlenty } from './useDevCardChoice.ts';
 
 /**
  * Mandatory-response prompt (docs/SPEC.md §4.4/§8.4).
@@ -34,6 +41,41 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
   // while the table waits for the remaining players.
   const discardMine = discard !== null && action?.kind === 'discard' && action.mine;
   const required = discardMine ? (discard.required[selfId ?? ''] ?? 0) : 0;
+
+  // 發展卡資源選擇：拖出壟斷／豐收之年後先在這裡選資源，確認才真正打出；
+  // 豐收之年已打出（例如重新整理後）則直接選要領取的資源，不能再取消。
+  const choice = state.devCardChoice;
+  const plenty = rolling ? null : ownYearOfPlenty(state);
+  const choiceBusy = blocksNewCommands(state.command) || (choice?.card === 'yearOfPlenty' && choice.queued.length > 0);
+  // 已打出或失去出牌資格時不再顯示（useDevCardChoice 隨後清掉狀態），避免閃現一幀。
+  const preplay = choice !== null && !plenty && !rolling && (choiceBusy || canPlayDevCard(state, choice.card));
+  const bankTotal = Object.values(view.bank).reduce((sum, count) => sum + count, 0);
+  const playMonopoly = async (resource: Resource) => {
+    const receipt = await actions.submitCommand({ type: 'dev.playMonopoly', resource }, 'devCard.monopoly');
+    if (receipt?.outcome === 'accepted') actions.setDevCardChoice(null);
+  };
+  const playYearOfPlenty = async (resources: Resource[]) => {
+    // 先排好要領的資源，伺服器開啟領取步驟後由 useDevCardChoice 逐張送出。
+    actions.setDevCardChoice({ card: 'yearOfPlenty', queued: resources });
+    if (plenty) return;
+    const receipt = await actions.submitCommand({ type: 'dev.playYearOfPlenty' }, 'devCard.yearOfPlenty');
+    if (receipt?.outcome !== 'accepted') actions.setDevCardChoice({ card: 'yearOfPlenty', queued: [] });
+  };
+
+  if (preplay) {
+    return (
+      <section className="prompt prompt--mine" data-testid="required-action-prompt" data-mine="true"
+        data-choice={choice.card} aria-labelledby="prompt-heading">
+        <h2 id="prompt-heading">{t(`devCard.choice.title.${choice.card}`, { remaining: Math.min(2, bankTotal) })}</h2>
+        <div className="prompt__body">
+          <DevCardChoicePicker key={choice.card} card={choice.card} required={choice.card === 'monopoly' ? 1 : Math.min(2, bankTotal)}
+            bank={view.bank} busy={choiceBusy}
+            onCancel={() => actions.setDevCardChoice(null)}
+            onSubmit={(resources) => void (choice.card === 'monopoly' ? playMonopoly(resources[0]!) : playYearOfPlenty(resources))} />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -69,7 +111,9 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
         <div className="prompt__body">
           <DiscardPicker
             required={required}
+            // Cities & Knights: commodities count towards the 7 and may be discarded.
             hand={shownHand(state)}
+            kinds={citiesKnightsView(view) ? CARD_KINDS : undefined}
             onSubmit={(resources) =>
               void actions.submitCommand({ type: 'pending.discard', resources }, 'play.pending.discardSubmit')
             }
@@ -101,37 +145,22 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
         </div>
       )}
 
-      {pending && pending.kind === 'yearOfPlenty' && pending.actor === selfId && (
+      {plenty && (
         <div className="prompt__body">
-          <p>{t('play.pending.remaining', { remaining: pending.remaining })}</p>
-          <ul className="resource-picker" data-testid="year-of-plenty">
-            {RESOURCES.map((resource) => (
-              <li key={resource}>
-                <button
-                  type="button"
-                  className="button button--chip"
-                  data-testid={`take-${resource}`}
-                  onClick={() =>
-                    void actions.submitCommand(
-                      { type: 'pending.takeResource', resource },
-                      'devCard.yearOfPlenty',
-                    )
-                  }
-                >
-                  {t(`resource.${resource}`)}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <DevCardChoicePicker key={plenty.remaining} card="yearOfPlenty" required={plenty.remaining} bank={view.bank} busy={choiceBusy}
+            onSubmit={(resources) => void playYearOfPlenty(resources)} />
         </div>
       )}
 
       {pending && pending.kind === 'moveRobber' && (
-        <p className="muted">{t('play.pending.moveRobber')}</p>
+        <p className="muted">{t(moveBanditMessageId(view))}</p>
       )}
       {pending && pending.kind === 'freeRoads' && (
         <p className="muted">{t('play.pending.freeRoads', { remaining: pending.remaining })}</p>
       )}
+
+      <SeafarersPrompt controller={controller} />
+      <CitiesKnightsPrompt controller={controller} />
 
       {/* Mandatory turn actions stay inside the prompt so a player never
           has to open a secondary tool surface to act (docs/SPEC.md §8.1/§8.4). */}

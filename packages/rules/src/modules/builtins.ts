@@ -6,6 +6,7 @@
 import { citiesKnightsModule } from './citiesKnights/index.ts';
 import { explorersPiratesModule } from './explorersPirates/index.ts';
 import { seafarersModule } from './seafarers/index.ts';
+import { seafarersCitiesKnightsModule } from './seafarersCitiesKnights/index.ts';
 import { tradersBarbariansModule } from './tradersBarbarians/index.ts';
 import type { RulesModule } from './types.ts';
 
@@ -14,5 +15,6 @@ export const BUILT_IN_MODULES: readonly RulesModule[] = [
   citiesKnightsModule,
   tradersBarbariansModule,
   explorersPiratesModule,
+  seafarersCitiesKnightsModule,
 ];
 

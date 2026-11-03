@@ -12,6 +12,7 @@
 import { buildBaseLayout } from './layout.ts';
 import type { ProfileDefinition, SetupMode } from './profiles.ts';
 import type { Rng } from './rng.ts';
+import { newShoresLayout } from './seafarers-boards.ts';
 import { getTopology } from './topology-registry.ts';
 import type { BoardTopology } from './topology.ts';
 import type { BoardLayout } from './types.ts';
@@ -30,6 +31,8 @@ export type LayoutBuilder = (context: LayoutContext) => BoardLayout;
 const builders = new Map<string, LayoutBuilder>([
   // B25 / B56-25 fixed and variable boards, unchanged.
   ['base', ({ topology, mode, rng }) => buildBaseLayout({ topology, mode, rng })],
+  // SF25 pp. 4–5 / SF56-25 p. 4 Heading for New Shores maps.
+  ['sf-new-shores', (context) => newShoresLayout(context, getTopology)],
 ]);
 
 export function registerLayoutBuilder(id: string, builder: LayoutBuilder): void {

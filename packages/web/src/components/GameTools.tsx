@@ -10,6 +10,8 @@ import { HelpPanel } from './HelpPanel.tsx';
 import { TradePanel } from './TradePanel.tsx';
 import { isTradersBarbarians } from './tb/model.ts';
 import { TbPanel } from './tb/TbPanel.tsx';
+import { CitiesKnightsPanel } from './CitiesKnightsPanel.tsx';
+import { citiesKnightsView } from '../board/citiesKnights.ts';
 
 const TOOLS = [
   { id: 'trade', label: 'drawer.trade', icon: 'trade' },
@@ -20,7 +22,9 @@ const TOOLS = [
   // Scenario status and actions; only listed in Traders & Barbarians games.
   { id: 'scenario', label: 'tb.panel.tab', icon: 'crown' },
 ] as const;
-type Tool = (typeof TOOLS)[number]['id'];
+/** Cities & Knights adds its chart and track panel (only in those games). */
+const CK_TOOL = { id: 'citiesKnights', label: 'ck.panel.title', icon: 'shield' } as const;
+type Tool = (typeof TOOLS)[number]['id'] | typeof CK_TOOL.id;
 
 /** 次要面板保留掛載，開關與切換都不丟失交易表單等區域草稿。 */
 export function GameTools({ controller }: { controller: TableController }) {
@@ -28,9 +32,9 @@ export function GameTools({ controller }: { controller: TableController }) {
   const [tool, setTool] = useState<Tool | null>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const { dispatch, state } = controller;
+  const tools: readonly { id: Tool; label: string; icon: (typeof TOOLS)[number]['icon'] | typeof CK_TOOL.icon }[] =
+    (citiesKnightsView(state.game?.view) ? [CK_TOOL, ...TOOLS] : TOOLS).filter((item) => item.id !== 'scenario' || isTradersBarbarians(state.game?.view));
   const chatOpen = tool === 'chat';
-  const scenario = isTradersBarbarians(state.game?.view);
-  const tools = TOOLS.filter((item) => item.id !== 'scenario' || scenario);
   const active = tools.find((item) => item.id === tool);
   const openOffers = state.game?.view.offers.filter((offer) => offer.status === 'open').length ?? 0;
   const close = useCallback(() => {
@@ -109,6 +113,7 @@ export function GameTools({ controller }: { controller: TableController }) {
             {item.id === 'log' && <EventLog controller={controller} />}
             {item.id === 'help' && <HelpPanel controller={controller} />}
             {item.id === 'scenario' && <TbPanel controller={controller} />}
+            {item.id === 'citiesKnights' && <CitiesKnightsPanel controller={controller} />}
           </section>
         ))}
       </div>

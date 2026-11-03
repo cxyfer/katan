@@ -6,16 +6,21 @@ import type { BoardIntent } from '../board/intent.ts';
 import type { TableState } from '../state/table.ts';
 import { useT } from '../i18n/context.tsx';
 import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrainLetter, terrainSymbol } from '../board/terrain.ts';
-import { confirmedPlacement } from '../board/effects.ts';
+import { placementArrival } from '../board/effects.ts';
 import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
 import { TbBridge, TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
+import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
+import { isShipCommand, seafarersView } from '../board/seafarers.ts';
+import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
+import { MerchantPiece } from './SvgProgressArt.tsx';
+import { KnightPiece, SvgCitiesKnightsPieces, SvgCitiesKnightsWalls, ToppledCity, WallRing } from './SvgCitiesKnights.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
   geometry: BoardGeometry;
   view: GameView;
-  active: BoardEffectGroup | null;
+  arrivals: readonly BoardEffectGroup[];
   selection: TableState['selection'];
   selfId: string | null;
   intent: BoardIntent | null;
@@ -103,12 +108,13 @@ function SeaHex({ hex, number, ids }: { hex: BoardGeometry['hexes'][number]; num
   </g>;
 }
 
-export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
+export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
   const t = useT();
   const prefix = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const ids = useMemo(() => boardArtIds(`board-art-${prefix}`), [prefix]);
   const board = view.board;
   const selfColor = playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white');
+  const ck = citiesKnightsView(view);
   return (
     <svg {...svgProps} ref={svgRef} className="board__svg" data-testid="board-svg" role="img" aria-label={t('a11y.boardRegion')} viewBox={geometry.viewBox} preserveAspectRatio="xMidYMid meet">
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
@@ -137,7 +143,16 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             if (!road) return null;
             const player = view.players.find((candidate) => candidate.id === road.player);
             const color = playerColorHex(player?.color ?? 'white');
-            const arriving = confirmedPlacement(active?.events ?? [], board, 'edge', edge.index);
+            const arrival = placementArrival(arrivals, board, 'edge', edge.index);
+            if (road.ship) {
+              const mid = edgeMidpoint(edge);
+              return (
+                <g key={arrival?.id ?? `ship-${edge.index}`} data-testid={`ship-${edge.index}`} className={arrival ? 'board__building-drop' : undefined}>
+                  <ShipPiece x={mid.x} y={mid.y} angle={edgeAngle(edge)} color={color} dash={seatDash(player?.seat ?? 0)} />
+                  <title>{`${t('sf.board.ship')} · ${nameResolver(road.player)}`}</title>
+                </g>
+              );
+            }
             if (road.bridge) {
               return <g key={`road-${edge.index}`} data-testid={`road-${edge.index}`} data-bridge="true">
                 <TbBridge {...edge} color={color} />
@@ -147,6 +162,10 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             const line = inset(edge);
             return (
               <g key={`road-${edge.index}`}>
+              {/* 落點陰影留在地面，隨棋子接近而變大變深。 */}
+              {arrival && <line key={arrival.id} className="board__drop-shadow board__drop-shadow--road" {...line} transform="translate(0 3)"
+                stroke="#10242c" strokeWidth={16} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
+              <g key={arrival?.id ?? 'rest'} className={arrival ? 'board__road-drop' : undefined}>
               <line {...line} transform="translate(0 3)" stroke="#10242c" strokeWidth={13} strokeLinecap="round" opacity={.4} aria-hidden="true" />
               <line {...line} stroke="#20180f" strokeWidth={11} strokeLinecap="round" aria-hidden="true" />
               <line
@@ -161,10 +180,13 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
               </line>
               <line {...line} transform="translate(0 -1.6)" stroke={shade(color, 0.6)} strokeWidth={1.6} strokeLinecap="round"
                 strokeDasharray={seatDash(player?.seat ?? 0)} opacity={.55} aria-hidden="true" pointerEvents="none" />
-              {arriving && <line key={active?.id} className="board__road-reveal" {...line} pathLength={1} stroke={color} strokeWidth={10} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
+              {arrival && <line className="board__road-reveal" {...line} pathLength={1} stroke={color} strokeWidth={10} strokeLinecap="round" aria-hidden="true" pointerEvents="none" />}
+              </g>
               </g>
             );
           })}
+
+          {ck && <SvgCitiesKnightsWalls geometry={geometry} view={view} ck={ck} nameResolver={nameResolver} />}
 
           {geometry.vertices.map((vertex) => {
             const building = board.buildings[vertex.index];
@@ -172,11 +194,16 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
             const player = view.players.find((candidate) => candidate.id === building.player);
             const color = playerColorHex(player?.color ?? 'white');
             const label = building.city ? t('board.city') : t('board.settlement');
-            const arriving = confirmedPlacement(active?.events ?? [], board, 'vertex', vertex.index);
+            const arrival = placementArrival(arrivals, board, 'vertex', vertex.index);
             return (
               <g key={`building-${vertex.index}`} data-testid={`building-${vertex.index}`}>
-                <g key={arriving ? active!.id : 'rest'} className={arriving ? 'board__building-drop' : undefined}>
-                  <BoardBuilding x={vertex.x} y={vertex.y} city={building.city} color={color} />
+                {/* 與 BoardBuilding 自帶陰影同中心（scale 1.12），略放大以便看出落點。 */}
+                {arrival && <ellipse key={arrival.id} className="board__drop-shadow" cx={vertex.x} cy={vertex.y + (building.city ? 12.3 : 11.2)}
+                  rx={building.city ? 31 : 22} ry={building.city ? 8.4 : 7} fill="#071d28" aria-hidden="true" pointerEvents="none" />}
+                <g key={arrival?.id ?? 'rest'} className={arrival ? 'board__building-drop' : undefined}>
+                  {ck?.toppled.includes(vertex.index)
+                    ? <ToppledCity x={vertex.x} y={vertex.y} color={color} />
+                    : <BoardBuilding x={vertex.x} y={vertex.y} city={building.city} color={color} />}
                 </g>
                 <title>{`${label} · ${nameResolver(building.player)}`}</title>
               </g>
@@ -184,16 +211,43 @@ export function SvgBoard({ svgRef, geometry, view, active, selection, selfId, in
           })}
 
           <TbSvgOver geometry={geometry} view={view} />
-          {geometry.hexes[board.robber] && (
+          {ck && <SvgCitiesKnightsPieces geometry={geometry} view={view} ck={ck} nameResolver={nameResolver} />}
+
+          {seafarersView(view)?.islandClaims.map((claim) => {
+            const vertex = geometry.vertices[claim.vertex];
+            const owner = view.players.find((candidate) => candidate.id === claim.player);
+            if (!vertex) return null;
+            return <IslandBonusToken key={`island-${claim.player}-${claim.island}`} testId={`island-bonus-${claim.vertex}`}
+              x={vertex.x + 17} y={vertex.y + 16} color={playerColorHex(owner?.color ?? 'white')} />;
+          })}
+          {seafarersView(view) && (() => {
+            const hex = board.pirate === null ? null : geometry.hexes[board.pirate];
+            const spot = hex ? { x: hex.cx, y: hex.cy + 4 } : pirateFrameSpot(geometry);
+            return <g data-testid={hex ? 'pirate-hex' : 'pirate-frame'}>
+              <PirateShip x={spot.x} y={spot.y} />
+              <title>{hex ? t('sf.board.pirate') : t('sf.board.pirateFrame')}</title>
+            </g>;
+          })()}
+          {geometry.hexes[board.robber] && ck?.robberActive !== false && (
             <g data-testid="robber" aria-hidden="true">
               <RobberPiece {...robberSpot(geometry.hexes[board.robber]!, board.numbers[board.robber] != null)} ids={ids} />
             </g>
           )}
           {selection.index !== null && intent && selection.kind === intent.kind && intent.targets.includes(selection.index) && (
             <g className="board__preview-ghost" data-testid="board-preview-ghost" aria-hidden="true" pointerEvents="none">
-              {intent.kind === 'vertex' && geometry.vertices[selection.index] && <BoardBuilding x={geometry.vertices[selection.index]!.x} y={geometry.vertices[selection.index]!.y} city={intent.commandType === 'build.city'} color={selfColor} />}
-              {intent.kind === 'edge' && geometry.edges[selection.index] && <line {...inset(geometry.edges[selection.index]!)} stroke={selfColor} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />}
-              {intent.kind === 'hex' && geometry.hexes[selection.index] && <RobberPiece {...robberSpot(geometry.hexes[selection.index]!, board.numbers[selection.index] != null)} ids={ids} />}
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && showsKnightGhost(intent.commandType)
+                && <KnightPiece {...geometry.vertices[selection.index]!} {...knightGhost(ck, intent.commandType, selection.index, selection.params)} color={selfColor} ghost />}
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && intent.commandType === 'build.wall'
+                && <WallRing {...geometry.vertices[selection.index]!} color={selfColor} />}
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && !isCitiesKnightsVertexCommand(intent.commandType) && <BoardBuilding x={geometry.vertices[selection.index]!.x} y={geometry.vertices[selection.index]!.y} city={intent.commandType === 'build.city'} color={selfColor} />}
+              {intent.kind === 'edge' && geometry.edges[selection.index] && progressGhost(intent.commandType, selection.params) !== 'none' && (isShipCommand(intent.commandType)
+                ? <ShipPiece {...edgeMidpoint(geometry.edges[selection.index]!)} angle={edgeAngle(geometry.edges[selection.index]!)} color={selfColor} ghost />
+                : <line {...inset(geometry.edges[selection.index]!)} stroke={selfColor} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />)}
+              {intent.kind === 'hex' && geometry.hexes[selection.index] && progressGhost(intent.commandType, selection.params) === 'merchant'
+                && <MerchantPiece {...merchantSpot(geometry.hexes[selection.index]!)} color={selfColor} ghost />}
+              {intent.kind === 'hex' && geometry.hexes[selection.index] && progressGhost(intent.commandType, selection.params) === 'default' && (geometry.land[selection.index] === false
+                ? <PirateShip x={geometry.hexes[selection.index]!.cx} y={geometry.hexes[selection.index]!.cy + 4} ghost />
+                : <RobberPiece {...robberSpot(geometry.hexes[selection.index]!, board.numbers[selection.index] != null)} ids={ids} />)}
             </g>
           )}
         </g>

@@ -471,12 +471,99 @@ const RECIPES: Record<SoundCue, Recipe> = {
       tone(s, { at: at + offset, type: 'square', freq: 150, decay: 0.09, gain: 0.05, filter: { type: 'lowpass', freq: 700 } });
     }
   },
+  // Seafarers: a hull settling into water, then a creak of rope.
+  'ship.build': (s, at) => {
+    swish(s, at, 900, 260, 0.35, 0.2, { pan: -0.15, reverb: 0.2 });
+    knock(s, at + 0.12, 150, 0.32, { reverb: 0.15 });
+    tone(s, { at: at + 0.28, type: 'triangle', freq: 330, to: 300, glide: 0.2, decay: 0.3, gain: 0.05, reverb: 0.25 });
+    marimba(s, at + 0.45, 69, 0.08, 0.6, { reverb: 0.3 });
+  },
+  // A sail filling with wind as the ship glides to its new path.
+  'ship.move': (s, at) => {
+    noise(s, { at, attack: 0.18, decay: 0.45, gain: 0.12, filter: { type: 'bandpass', freq: 700, to: 1600, q: 0.7 }, pan: -0.3 });
+    swish(s, at + 0.1, 500, 1400, 0.4, 0.12, { pan: 0.3, reverb: 0.25 });
+    pluck(s, at + 0.45, 67, 0.07, 0.6, { reverb: 0.3 });
+  },
+  // The pirate: a low horn under a rolling drum.
+  'pirate.move': (s, at) => {
+    tone(s, { at, freq: 73, to: 55, glide: 0.5, decay: 0.7, gain: 0.4 });
+    [0, 0.12, 0.22].forEach((offset) => knock(s, at + offset, 120, 0.22, { reverb: 0.2 }));
+    brass(s, at + 0.25, 46, 0.09, 0.4, { reverb: 0.4 });
+    brass(s, at + 0.25, 53, 0.06, 0.4, { reverb: 0.4 });
+  },
+  // Gold: a short glittering run of coins.
+  'gold.pick': (s, at) => {
+    [0, 0.06, 0.12].forEach((offset, index) => coin(s, at + offset, 3200 + index * 400, 0.06, { reverb: 0.25 }));
+    bell(s, at + 0.18, 88, 0.06, 0.9, { reverb: 0.4 });
+  },
+  // A new island: a rising fanfare of bells.
+  'island.bonus': (s, at) => {
+    [67, 72, 76, 79].forEach((midi, index) => bell(s, at + index * 0.09, midi, 0.08, 1.0, { reverb: 0.4, pan: -0.3 + index * 0.2 }));
+    brass(s, at + 0.36, 72, 0.06, 0.5, { reverb: 0.35 });
+  },
+  // Cities & Knights: oars striking water as the barbarian ship comes closer.
+  'barbarians.advance': (s, at) => {
+    [0, 0.28].forEach((offset) => swish(s, at + offset, 400, 180, 0.25, 0.14, { pan: offset ? 0.25 : -0.25, reverb: 0.25 }));
+    tone(s, { at: at + 0.1, freq: 98, to: 82, glide: 0.4, decay: 0.5, gain: 0.22 });
+  },
+  // The attack: war drums under a low horn call.
+  'barbarians.attack': (s, at) => {
+    [0, 0.18, 0.36, 0.5].forEach((offset) => knock(s, at + offset, 90, 0.4, { reverb: 0.3 }));
+    brass(s, at + 0.3, 41, 0.12, 0.9, { reverb: 0.5 });
+    brass(s, at + 0.3, 48, 0.08, 0.9, { reverb: 0.5 });
+    noise(s, { at: at + 0.3, attack: 0.05, decay: 0.8, gain: 0.05, filter: { type: 'lowpass', freq: 900 } });
+  },
+  // A knight: a clink of armour and a short bugle.
+  'knight.act': (s, at) => {
+    coin(s, at, 2400, 0.05, { reverb: 0.2 });
+    coin(s, at + 0.05, 1900, 0.04, { reverb: 0.2 });
+    brass(s, at + 0.12, 67, 0.07, 0.25, { reverb: 0.3 });
+    brass(s, at + 0.3, 72, 0.08, 0.4, { reverb: 0.35 });
+  },
+  // A wall: stones set one on another.
+  'wall.build': (s, at) => {
+    [0, 0.14, 0.26].forEach((offset, index) => knock(s, at + offset, 180 - index * 20, 0.3, { reverb: 0.15 }));
+    noise(s, { at: at + 0.3, attack: 0.01, decay: 0.2, gain: 0.05, filter: { type: 'bandpass', freq: 1200, q: 0.8 } });
+  },
+  // A city improvement: a rising chime.
+  'city.improve': (s, at) => {
+    [72, 76, 79].forEach((midi, index) => marimba(s, at + index * 0.1, midi, 0.07, 0.6, { reverb: 0.35 }));
+    bell(s, at + 0.32, 84, 0.05, 0.9, { reverb: 0.45 });
+  },
   // 氣泡「啵」兩聲。
   'chat.message': (s, at) => {
     tone(s, { at, freq: 520, to: 1040, glide: 0.07, decay: 0.1, gain: 0.08 });
     tone(s, { at: at + 0.09, freq: 780, to: 1320, glide: 0.06, decay: 0.09, gain: 0.06 });
   },
   ...TB_RECIPES,
+  // Cities & Knights progress cards (cue mapping in progress-cues.ts).
+  // A card laid on the table: a paper flick and a two-note chime.
+  'progress.play': (s, at) => {
+    noise(s, { at, attack: 0.005, decay: 0.07, gain: 0.14, filter: { type: 'bandpass', freq: 4200, q: 0.9 } });
+    swish(s, at + 0.02, 2400, 900, 0.12, 0.06, { reverb: 0.1 });
+    marimba(s, at + 0.12, 74, 0.08, 0.5, { reverb: 0.3 });
+    bell(s, at + 0.24, 81, 0.05, 0.8, { reverb: 0.4 });
+  },
+  // Alchemy: bubbles rising in a flask, then a shimmer.
+  'progress.alchemy': (s, at) => {
+    [0, 0.07, 0.13, 0.2, 0.26].forEach((offset, index) =>
+      tone(s, { at: at + offset, freq: 420 + index * 90, to: 900 + index * 140, glide: 0.05, decay: 0.07, gain: 0.05 }));
+    [86, 90, 93].forEach((midi, index) => bell(s, at + 0.34 + index * 0.06, midi, 0.04, 0.9, { reverb: 0.45 }));
+  },
+  // The merchant: two footsteps and a purse of coins.
+  'progress.merchant': (s, at) => {
+    knock(s, at, 160, 0.22, { pan: -0.2 });
+    knock(s, at + 0.16, 150, 0.2, { pan: 0.2 });
+    [0.3, 0.36, 0.41, 0.47].forEach((offset, index) => coin(s, at + offset, 2600 + index * 300, 0.06, { reverb: 0.2 }));
+    brass(s, at + 0.52, 67, 0.05, 0.25, { reverb: 0.3 });
+  },
+  // A card asks you to answer: a soft double knock and a rising call.
+  'progress.request': (s, at) => {
+    knock(s, at, 220, 0.18, { reverb: 0.2 });
+    knock(s, at + 0.14, 220, 0.18, { reverb: 0.2 });
+    marimba(s, at + 0.3, 69, 0.08, 0.5, { reverb: 0.3 });
+    marimba(s, at + 0.42, 76, 0.08, 0.7, { reverb: 0.35 });
+  },
 };
 
 /** 於 `at` 排程一個提示。`random` 只影響擲骰等帶自然隨機感的配方。 */
@@ -494,4 +581,7 @@ export const CUE_LENGTH_SECONDS: Record<SoundCue, number> = {
   'turn.yours': 1.6, 'turn.other': 0.5, 'game.victory': 2.6, 'game.over': 2.6,
   'ui.select': 0.1, 'ui.error': 0.3, 'chat.message': 0.25,
   ...TB_CUE_LENGTH_SECONDS,
+  'ship.build': 1.1, 'ship.move': 1.1, 'pirate.move': 1.0, 'gold.pick': 1.1, 'island.bonus': 1.4,
+  'barbarians.advance': 0.9, 'barbarians.attack': 1.6, 'knight.act': 0.8, 'wall.build': 0.6, 'city.improve': 1.2,
+  'progress.play': 1.0, 'progress.alchemy': 1.2, 'progress.merchant': 1.0, 'progress.request': 1.1,
 };

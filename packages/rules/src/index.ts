@@ -7,6 +7,7 @@ export * from './rng.ts';
 export * from './layout.ts';
 export * from './layout-registry.ts';
 export * from './sample-boards.ts';
+export * from './seafarers-boards.ts';
 export * from './modules/index.ts';
 export * from './analysis.ts';
 export * from './profiles.ts';

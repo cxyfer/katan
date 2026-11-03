@@ -152,6 +152,31 @@ Longest Trade Route, Road Building with ships, paired actor ship move. Maps
 transcribed per count. Assets: ship (per colour), pirate ship, island-bonus
 marker, gold/sea polish, ship build/move targets, cues.
 
+As built (2026-11-01, `feat/seafarers`; details in
+`docs/aegis/work/2026-11-01-seafarers.md`):
+
+- Both `sf-new-shores-*` profiles are enabled (`sf-2025.1`). The 3/4 maps are
+  transcribed per cell into `packages/rules/src/seafarers-boards.ts`
+  (topologies `sf-new-shores-3/-4/-56`, layout builder `sf-new-shores`); the
+  5–6 profile's only setup mode is `variable` (fixed small islands, random
+  main island and ports). The middle-row end cells of each outline are frame,
+  and the pirate starts there (`board.pirate = null`).
+- The base engine became sea-aware (land vertices/edges, roads extend only
+  roads, robber on land, road/ship junction only at an own building for the
+  trade route). New module hooks for later phases: `allowBuilding` (building
+  veto, e.g. scenario start islands), `moveBandit` (claims robber targets for
+  another bandit — C&K/SF+CK must keep the Bishop on the robber),
+  `freeRouteTargets` (extra Road Building pieces), `afterBoardChange` now gets
+  the kit; kit gained `legalRoads` and `placedFreeRoute`.
+- Ships are `RoadRef.ship` pieces owned by the `seafarers` module
+  (`build.ship`, `ship.move`, `setup.placeShip`); gold is the
+  `seafarers.gold` pending frame (`gold.choose`); module state tracks the
+  current window's built ships/move and the island claims.
+- Deviations: gold shortage ordering is an explicit interpretation (turn
+  order from the roller); SF-FAQ 18 ship-circle special cases conflict with
+  SF25 p. 2 and stay an open fixture (SF25 wording implemented); the 3/4
+  variable setup (SF25 p. 5) is not offered.
+
 ### P2 C&K core
 
 CK25/CK56-25. City-on-second-placement setup, three dice and event order
@@ -163,18 +188,51 @@ no development cards / Largest Army. Assets: knights (3 levels × active),
 walls, metropolis per track, barbarian ship and track, event die, commodity
 emblems, improvement chart UI.
 
+As built (2026-11-02, `docs/aegis/work/2026-11-02-cities-knights-core.md`):
+P2 already draws progress cards (event die + red die + level), enforces the
+hand limit and reveals the VP cards at once; P3 adds the card effects and
+the merchant. Correction: the progress hand limit is 4 for 5–6 as well
+(CK25 p. 10; CK56-25 does not change it), not 5 as drafted below.
+
 ### P3 C&K progress cards
 
 All 54 cards (three 18-card decks), acquisition by event + red die and level,
-hand limit 4 (5 for 5–6), immediate VP cards, Alchemist pre-roll, merchant,
+hand limit 4 (also 4 for 5–6, corrected in P2), immediate VP cards, Alchemist pre-roll, merchant,
 each card's targets/responses/privacy. Card visuals (original), i18n
 paraphrases, full simulated games. Enable `ck-*` if R-CK passes.
+
+As built (2026-11-02, `docs/aegis/work/2026-11-02-cities-knights-progress.md`):
+23 playable card types plus the two VP cards, the merchant (1 VP, 2:1 rate),
+original card faces, a hand with playable and unplayable states and reasons, a
+prompt for every responder frame, merchant pieces in SVG and 3D, four audio
+cues and both locales. `ck-2025` and `ck-paired-2025` are enabled; bot seats
+stay refused because `@catan/bots` has no C&K module (a later phase). Browser
+evidence: `scripts/cities-knights/progress.py` plays every card type through
+the UI in SVG and 3D, desktop and phone.
 
 ### P4 SF + C&K
 
 COMB guidance: target 16, gold gives resources only, merchant not on gold,
 first-barbarian protection also applies to the pirate, knights on road/ship
 networks, Bishop stays robber-only, both 5–6 rulebooks for paired profiles.
+
+As built (2026-11-02, `feat/seafarers-cities-knights`; details in
+`docs/aegis/work/2026-11-02-seafarers-cities-knights.md`):
+
+- Both `sf-ck-new-shores-*` profiles are enabled (`sf-ck-2025.1`, 16 VP,
+  human seats only) and run `['seafarersCitiesKnights', 'seafarers',
+  'citiesKnights']`. The first is a small combination layer: pirate waits
+  for the first attack, `knight.chasePirate`, one bandit per chase, knights
+  closing and pinning ships, no merchant on gold, gold before the aqueduct.
+- New hooks: `legalShips` (also `kit.legalShips`), `shipMoveBlocked`,
+  `allowMerchant`; C&K knights travel along ships and Diplomacy, Intrigue
+  and Road Building treat ships as roads.
+- COMB was re-fetched on 2026-11-02 (catan.com/seafarers) and read with
+  CK25 p. 12; interpretations SFCK-1…7 are in `docs/FIDELITY.md`. The
+  Bishop is now Taxation in CK25 2025 and stays robber-only (CK-FAQ 63).
+- Web: pirate chase action and targets, bandit targets narrowed to the
+  chased bandit, knights on ship decks in 3D, pirate status in the C&K
+  panel, all score marks together.
 
 ### P5 Traders & Barbarians
 

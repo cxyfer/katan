@@ -1,7 +1,7 @@
 /**
- * Browser-local persistence: the explicit locale choice, the last nickname and
- * the personal mute list (docs/SPEC.md §8.7). Injected so tests never touch a
- * real `localStorage`.
+ * Browser-local persistence: the explicit locale choice, the last nickname, the
+ * personal mute list and the trade auto-decline preference (docs/SPEC.md §8.7).
+ * Injected so tests never touch a real `localStorage`.
  */
 
 import type { Locale } from '@catan/protocol';
@@ -16,6 +16,7 @@ export interface StorageLike {
 export const LOCALE_KEY = 'catan.locale';
 export const NICKNAME_KEY = 'catan.nickname';
 export const MUTE_KEY = 'catan.mute';
+export const TRADE_AUTO_DECLINE_KEY = 'catan.trade.autoDecline';
 
 export function readStoredLocale(storage: StorageLike): Locale | null {
   try {
@@ -64,6 +65,23 @@ export function readStoredMutes(storage: StorageLike): string[] {
 export function writeStoredMutes(storage: StorageLike, muted: readonly string[]): void {
   try {
     storage.setItem(MUTE_KEY, JSON.stringify(muted));
+  } catch {
+    // ignored on purpose
+  }
+}
+
+/** 交易偏好：自己資源不足的提案是否由客戶端代為拒絕。讀不到時一律視為關閉。 */
+export function readStoredTradeAutoDecline(storage: StorageLike): boolean {
+  try {
+    return storage.getItem(TRADE_AUTO_DECLINE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function writeStoredTradeAutoDecline(storage: StorageLike, enabled: boolean): void {
+  try {
+    storage.setItem(TRADE_AUTO_DECLINE_KEY, enabled ? 'true' : 'false');
   } catch {
     // ignored on purpose
   }

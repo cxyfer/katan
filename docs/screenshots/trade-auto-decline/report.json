@@ -1,0 +1,73 @@
+{
+  "base": "http://127.0.0.1:3112",
+  "gameId": "game_fd7ccb71ada942b4adc5",
+  "results": [
+    {
+      "case": "auto-declines-unaffordable",
+      "offerId": "offer-20-1",
+      "recipients": [
+        "player_a9a0438973e7485ea26f",
+        "player_ab9a03b08b2f43acb457"
+      ],
+      "harnessSeconds": 0.234,
+      "perRecipientSeconds": {
+        "player_ab9a03b08b2f43acb457": 0.022,
+        "player_a9a0438973e7485ea26f": 0.234
+      },
+      "commandPosts": [
+        0,
+        1,
+        2
+      ],
+      "commandLog": [
+        [],
+        [
+          [
+            "request",
+            174258.979
+          ],
+          [
+            "response:accepted::rev16",
+            174259.008
+          ]
+        ],
+        [
+          [
+            "request",
+            174258.981
+          ],
+          [
+            "request",
+            174258.982
+          ],
+          [
+            "response:rejected:error.E_STALE_REVISION:rev16",
+            174259.016
+          ],
+          [
+            "response:accepted::rev17",
+            174259.016
+          ]
+        ]
+      ]
+    },
+    {
+      "case": "leaves-affordable-open",
+      "offerId": "offer-23-2"
+    },
+    {
+      "case": "checkbox-and-responses",
+      "checked": true
+    },
+    {
+      "case": "checkbox-persistence",
+      "stored": true
+    },
+    {
+      "case": "phone-layout",
+      "x": 31,
+      "width": 18
+    }
+  ],
+  "errors": []
+}

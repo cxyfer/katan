@@ -20,7 +20,7 @@ describe('Barbarian Attack UI', () => {
     const view = tbController(state).state.game!.view;
     const geometry = buildGeometry(view.board.topologyId, 100, view.board.terrain);
     const { container } = render(<LocaleProvider locale="en">
-      <SvgBoard svgRef={() => {}} geometry={geometry} view={view} active={null} selection={EMPTY_SELECTION} selfId="p1"
+      <SvgBoard svgRef={() => {}} geometry={geometry} view={view} arrivals={[]} selection={EMPTY_SELECTION} selfId="p1"
         intent={null} pan={{ x: 0, y: 0 }} zoom={1} viewBoxCenter={{ x: 0, y: 0 }} nameResolver={(id) => id} />
     </LocaleProvider>);
     // Two from setup (on the 2 and the 12) plus three on the conquered hex.

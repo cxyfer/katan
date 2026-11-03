@@ -8,6 +8,9 @@
  */
 
 import type { TableState } from '../state/table.ts';
+import { isShipCommand, seafarersHints } from './seafarers.ts';
+import { banditTargets, moveBanditMessageId, seafarersCitiesKnightsHints } from './seafarersCitiesKnights.ts';
+import { citiesKnightsHints, citiesKnightsTargets, isCitiesKnightsVertexCommand } from './citiesKnights.ts';
 import type { TargetKind } from './targets.ts';
 
 export interface BoardIntent {
@@ -79,6 +82,14 @@ function robberHexes(state: TableState): number[] {
   // A rules module that narrows the robber's hexes publishes them as a hint.
   const narrowed = (state.game?.view.hints?.modules?.tradersBarbarians as { robberHexes?: number[] } | undefined)?.robberHexes;
   if (Array.isArray(narrowed)) return narrowed.slice();
+  // Seafarers: land hexes move the robber, sea hexes the pirate (the frame is
+  // a separate control because it is not a hex).
+  const sea = seafarersHints(state.game?.view);
+  if (sea) {
+    const allowed = banditTargets(state.game?.view, sea.robberTargets, sea.pirateTargets);
+    const pirate = allowed.pirate.filter((hex): hex is number => hex !== null);
+    return [...allowed.robber, ...pirate].sort((a, b) => a - b);
+  }
   const out: number[] = [];
   for (let hex = 0; hex < board.terrain.length; hex++) {
     if (hex !== board.robber) out.push(hex);
@@ -99,13 +110,13 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
   const armed = state.selection.commandType;
   if (armed) {
     const kind: TargetKind =
-      state.selection.kind ?? (armed === 'build.road' || armed === 'setup.placeRoad' ? 'edge' : 'vertex');
+      state.selection.kind ?? (armed === 'build.road' || armed === 'setup.placeRoad' || isShipCommand(armed) ? 'edge' : 'vertex');
     return {
       kind,
       commandType: armed,
       labelId: state.selection.labelId ?? armed,
       targets: state.selection.targetsKey ? moduleTargets(state, state.selection.targetsKey) ?? [] : targetsFor(state, armed, selfId),
-      fromHints: armed.startsWith('build.') || moduleTargets(state, state.selection.targetsKey ?? armed) !== null,
+      fromHints: armed.startsWith('build.') || moduleTargets(state, state.selection.targetsKey ?? armed) !== null || isShipCommand(armed) || isCitiesKnightsVertexCommand(armed),
       ...(state.selection.extra ? { extra: state.selection.extra } : {}),
       ...(state.selection.field ? { field: state.selection.field } : {}),
       ...(state.selection.targetsKey ? { targetsKey: state.selection.targetsKey } : {}),
@@ -124,18 +135,44 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
       return {
         kind: 'hex',
         commandType: 'pending.moveRobber',
-        labelId: 'play.pending.moveRobber',
+        labelId: moveBanditMessageId(view),
         targets: robberHexes(state),
         fromHints: false,
       };
     }
     if (pending.kind === 'freeRoads') {
+      const sea = seafarersHints(view);
+      if (sea && (hints?.legalRoads.length ?? 0) === 0 && sea.legalShips.length > 0) {
+        return { kind: 'edge', commandType: 'build.ship', labelId: 'sf.build.ship', targets: sea.legalShips, fromHints: true };
+      }
       return {
         kind: 'edge',
         commandType: 'build.road',
         labelId: 'play.build.road',
         targets: hints?.legalRoads ?? allEdges(state),
         fromHints: !!hints,
+      };
+    }
+  }
+
+  // Cities & Knights: a pillaged city or a displaced knight is chosen on the board.
+  const ck = citiesKnightsHints(view);
+  if (ck && pending && 'module' in pending && pending.module === 'citiesKnights' && selfId && pending.responders.includes(selfId)) {
+    if (pending.kind === 'citiesKnights.pillage') {
+      return { kind: 'vertex', commandType: 'barbarians.pillage', labelId: 'play.pending.citiesKnights.pillage', targets: ck.pillage, fromHints: true };
+    }
+    if (pending.kind === 'citiesKnights.displaced') {
+      return { kind: 'vertex', commandType: 'knight.retreat', labelId: 'play.pending.citiesKnights.displaced', targets: ck.retreat, fromHints: true };
+    }
+    // Progress-card answers on the board: the knight Treason removes, the road Diplomacy rebuilds.
+    if (pending.kind === 'citiesKnights.treasonRemove' || pending.kind === 'citiesKnights.diplomacyRoad') {
+      const commandType = pending.kind === 'citiesKnights.treasonRemove' ? 'progress.treasonRemove' : 'progress.diplomacyRoad';
+      return {
+        kind: commandType === 'progress.treasonRemove' ? 'vertex' : 'edge',
+        commandType,
+        labelId: `play.pending.${pending.kind}`,
+        targets: citiesKnightsTargets(view, { commandType }) ?? [],
+        fromHints: true,
       };
     }
   }
@@ -152,7 +189,15 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
             targets: view.hints?.legalSettlements ?? allVertices(state),
             fromHints: !!view.hints,
           }
-        : {
+        : (view.hints?.legalRoads.length ?? 0) === 0 && (seafarersHints(view)?.setupShips.length ?? 0) > 0
+          ? {
+              kind: 'edge',
+              commandType: 'setup.placeShip',
+              labelId: 'sf.build.ship',
+              targets: seafarersHints(view)!.setupShips,
+              fromHints: true,
+            }
+          : {
             kind: 'edge',
             commandType: 'setup.placeRoad',
             labelId: 'play.build.road',
@@ -183,7 +228,19 @@ export function targetsFor(state: TableState, commandType: string, selfId: strin
     case 'pending.moveRobber':
     case 'dev.playKnight':
       return robberHexes(state);
+    case 'build.ship':
+      return seafarersHints(state.game?.view)?.legalShips ?? [];
+    case 'setup.placeShip':
+      return seafarersHints(state.game?.view)?.setupShips ?? [];
+    case 'ship.pick':
+      return seafarersHints(state.game?.view)?.movableShips.map((ship) => ship.edge) ?? [];
+    case 'knight.chasePirate':
+      return seafarersCitiesKnightsHints(state.game?.view)?.pirateChase ?? [];
+    case 'ship.move': {
+      const from = state.selection.params?.from;
+      return seafarersHints(state.game?.view)?.movableShips.find((ship) => ship.edge === from)?.targets ?? [];
+    }
     default:
-      return moduleTargets(state, commandType) ?? [];
+      return citiesKnightsTargets(state.game?.view, { commandType, params: state.selection.params }) ?? moduleTargets(state, commandType) ?? [];
   }
 }

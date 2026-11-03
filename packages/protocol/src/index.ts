@@ -44,6 +44,7 @@ export const SERVER_ERROR_IDS: readonly string[] = [
   'error.E_BAD_REQUEST',
   'error.E_BODY_TOO_LARGE',
   'error.E_BOTS_DISABLED',
+  'error.E_BOT_NAME_TAKEN',
   'error.E_CAPACITY_BELOW_SEATED',
   'error.E_CHAT_INVALID',
   'error.E_CHAT_RATE_LIMITED',

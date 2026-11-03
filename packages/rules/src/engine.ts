@@ -15,21 +15,26 @@ import {
   countBuildings,
   countRoads,
   harborRates,
+  isLandEdge,
+  isLandHex,
+  isLandVertex,
   longestRouteLength,
+  moduleVertexBlocker,
   neighborsOfVertex,
   playerById,
   productionForRoll,
   recomputeAwards,
   scoreOf,
   topologyOf,
-  totalResources,
   victoryTargetOf,
+  totalCards,
 } from './analysis.ts';
 import { buildProfileLayout } from './layout-registry.ts';
 import type { CommandErrorCode } from './messages.ts';
 import { moduleCommandTypes, rulesModulesOf } from './modules/registry.ts';
 import type {
   BuildEvent,
+  BanditMove,
   ModuleCommand,
   ModuleContext,
   ModuleViewContext,
@@ -51,8 +56,12 @@ import {
 import { getTopology } from './topology-registry.ts';
 import { verticesOfHex } from './topology.ts';
 import {
+  CARD_KINDS,
+  COMMODITIES,
   RESOURCES,
   type BoardState,
+  type CardKind,
+  type Commodity,
   type CommandError,
   type CommandOutcome,
   type DevCardType,
@@ -77,27 +86,27 @@ export type Command =
   | { type: 'build.settlement'; vertex: number }
   | { type: 'build.city'; vertex: number }
   | { type: 'build.devCard' }
-  | { type: 'dev.playKnight'; hex: number }
+  | { type: 'dev.playKnight'; hex: number | null }
   | { type: 'dev.playRoadBuilding' }
   | { type: 'dev.playYearOfPlenty' }
   | { type: 'dev.playMonopoly'; resource: Resource }
-  | { type: 'pending.discard'; resources: Resource[] }
-  | { type: 'pending.moveRobber'; hex: number }
+  | { type: 'pending.discard'; resources: CardKind[] }
+  | { type: 'pending.moveRobber'; hex: number | null }
   | { type: 'pending.steal'; victim: string }
   | { type: 'pending.takeResource'; resource: Resource }
-  | { type: 'trade.bank'; give: Resource; receive: Resource }
+  | { type: 'trade.bank'; give: CardKind; receive: CardKind }
   | {
       type: 'trade.offer';
       to: string | 'all';
-      give: Partial<Record<Resource, number>>;
-      want: Partial<Record<Resource, number>>;
+      give: Partial<Record<CardKind, number>>;
+      want: Partial<Record<CardKind, number>>;
     }
   | { type: 'trade.respond'; offerId: string; response: OfferResponse }
   | {
       type: 'trade.revise';
       offerId: string;
-      give: Partial<Record<Resource, number>>;
-      want: Partial<Record<Resource, number>>;
+      give: Partial<Record<CardKind, number>>;
+      want: Partial<Record<CardKind, number>>;
     }
   | { type: 'trade.withdraw'; offerId: string }
   | { type: 'trade.settle'; offerId: string; counterparty?: string };
@@ -289,10 +298,32 @@ const KIT: RulesKit = {
   finishTurn,
   canPlaceRoad: (state, playerId, edge) => canPlaceRoad(state, playerId, edge),
   canPlaceBuilding: (state, playerId, vertex, options) => canPlaceBuilding(state, playerId, vertex, options ?? {}),
+  legalRoads: (state, playerId) => legalRoadEdges(state, playerId),
+  placedFreeRoute: (state, playerId, rng) => placedFreeRoute(state, playerId, rng ?? null),
+  freeRouteTargets: freeRouteCapacity,
+  legalShips: moduleLegalShips,
+  shipPlaced: (state, playerId, edge) => {
+    const ctx = viewContext(state);
+    for (const module of modulesOf(state)) module.shipPlaced?.(state, playerId, edge, ctx);
+  },
 };
 
-function moduleContext(profile: ProfileDefinition, rng: Rng | null): ModuleContext {
-  return { profile, rng: rng ?? NO_RNG, kit: KIT };
+/** Ship placements the profile's modules offer the player now. */
+function moduleLegalShips(state: GameState, playerId: string): number[] {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return [];
+  const ctx = viewContext(state);
+  return modules.flatMap((module) => module.legalShips?.(state, playerId, ctx) ?? []);
+}
+
+function moduleContext(profile: ProfileDefinition, rng: Rng | null, resumeAfter?: string): ModuleContext {
+  const kit = resumeAfter === undefined ? KIT : {
+    ...KIT,
+    resolveRollOutcome: (state: GameState, roll: RollResult, continuationRng?: Rng) =>
+      runBeforeProduction(state, roll, continuationRng ?? rng,
+        rulesModulesOf(profile).findIndex((module) => module.id === resumeAfter) + 1),
+  };
+  return { profile, rng: rng ?? NO_RNG, kit };
 }
 
 /** Stand-in for transitions that must not draw (a draw would be a bug). */
@@ -310,10 +341,13 @@ function completePending(state: GameState, rng: Rng | null): void {
   let next = advancePending(state);
   for (let guard = 0; next && next.kind.includes('.') && guard < 64; guard++) {
     const frame = next as Extract<typeof next, { module: string }>;
-    if (frame.responders.length > 0) return;
     const module = modulesOf(state).find((candidate) => candidate.id === frame.module);
+    if (frame.responders.length > 0) {
+      module?.activatePending?.(state, frame, moduleContext(requireProfile(state.profileId), rng));
+      return;
+    }
     if (!module?.resumePending) throw new Error(`no continuation for pending frame ${frame.kind}`);
-    module.resumePending(state, frame, moduleContext(requireProfile(state.profileId), rng));
+    module.resumePending(state, frame, moduleContext(requireProfile(state.profileId), rng, module.id));
     if (state.pending !== frame) return;
     next = advancePending(state);
   }
@@ -373,10 +407,12 @@ export function canPlaceBuilding(
   const topo = topologyOf(state);
   if (!topo.vertices[vertex]) return false;
   if (state.board.buildings[vertex]) return false;
+  if (!isLandVertex(state, vertex)) return false;
   for (const neighbor of neighborsOfVertex(topo, vertex)) {
     if (state.board.buildings[neighbor]) return false;
   }
-  if (!modulesAllowBuilding(state, playerId, vertex, 'settlement')) return false;
+  if (!modulesAllowBuilding(state, playerId, vertex, !!options.setup)) return false;
+  if (!modulesAllowScenarioBuilding(state, playerId, vertex, 'settlement')) return false;
   if (options.setup) {
     const profile = requireProfile(state.profileId);
     return countBuildings(state, playerId, 'settlement') < profile.pieces.settlements;
@@ -385,7 +421,7 @@ export function canPlaceBuilding(
   return touchesOwnRoad(state, playerId, vertex);
 }
 
-function modulesAllowBuilding(state: GameState, playerId: string, vertex: number, kind: 'settlement' | 'city'): boolean {
+function modulesAllowScenarioBuilding(state: GameState, playerId: string, vertex: number, kind: 'settlement' | 'city'): boolean {
   const modules = modulesOf(state);
   if (modules.length === 0) return true;
   const ctx = viewContext(state);
@@ -408,9 +444,24 @@ function afterBuild(state: GameState, build: BuildEvent, rng: Rng | null): void 
   for (const module of modules) module.afterBuild?.(state, build, ctx);
 }
 
-function touchesOwnRoad(state: GameState, playerId: string, vertex: number): boolean {
+function modulesAllowBuilding(state: GameState, playerId: string, vertex: number, setup: boolean): boolean {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return true;
+  const ctx = viewContext(state);
+  return modules.every((module) => module.allowBuilding?.(state, playerId, vertex, { setup }, ctx) ?? true);
+}
+
+/**
+ * Whether one of the player's routes reaches the vertex. A settlement may
+ * extend any route; `roadsOnly` ignores ships, because a ship hands over to a
+ * road only at the player's building (SF25 p. 2).
+ */
+function touchesOwnRoad(state: GameState, playerId: string, vertex: number, roadsOnly = false): boolean {
   const topo = topologyOf(state);
-  return topo.vertices[vertex]!.edges.some((edge) => state.board.roads[edge]?.player === playerId);
+  return topo.vertices[vertex]!.edges.some((edge) => {
+    const road = state.board.roads[edge];
+    return !!road && road.player === playerId && !(roadsOnly && road.ship);
+  });
 }
 
 /**
@@ -421,7 +472,10 @@ function touchesOwnRoad(state: GameState, playerId: string, vertex: number): boo
 function roadCanExtendFrom(state: GameState, playerId: string, vertex: number): boolean {
   const building = state.board.buildings[vertex];
   if (building) return building.player === playerId;
-  return touchesOwnRoad(state, playerId, vertex);
+  // A module piece (C&K knight) of another player closes the intersection too.
+  const blocker = moduleVertexBlocker(state, vertex);
+  if (blocker !== null && blocker !== playerId) return false;
+  return touchesOwnRoad(state, playerId, vertex, true);
 }
 
 export function legalRoadEdges(
@@ -448,6 +502,7 @@ export function canPlaceRoad(
   if (!info) return false;
   if (state.board.roads[edge]) return false;
   if (!modulesAllowRoad(state, playerId, edge)) return false;
+  if (!isLandEdge(state, edge)) return false;
   if (options.setup) {
     if (options.lastVertex === null || options.lastVertex === undefined) return false;
     return info.vertices.includes(options.lastVertex);
@@ -552,7 +607,7 @@ function afterBoardChange(state: GameState): void {
     recomputeAwards(state, rules);
     return;
   }
-  const ctx = viewContext(state);
+  const ctx = moduleContext(requireProfile(state.profileId), null);
   for (const module of modules) if (module.awardRules) rules = module.awardRules(state, rules, ctx);
   recomputeAwards(state, rules);
   for (const module of modules) module.afterBoardChange?.(state, ctx);
@@ -574,10 +629,7 @@ const PENDING_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>([
 export function normalizedPending(state: GameState): Pending | null {
   const pending = state.pending;
   if (pending?.kind === 'freeRoads') {
-    const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, pending.actor);
-    const remaining = legalRoadEdges(state, pending.actor).length > 0
-      ? Math.max(0, Math.min(pending.remaining, pieces))
-      : 0;
+    const remaining = Math.max(0, Math.min(pending.remaining, freeRouteCapacity(state, pending.actor)));
     if (remaining <= 0) return null;
     if (remaining === pending.remaining) return pending;
     const placed = (pending.granted ?? 2) - pending.remaining;
@@ -615,6 +667,7 @@ export function applyCommand(
     return fail('E_INVALID_COMMAND', { reason: 'unknown-actor' });
   }
   if (state.result) return fail('E_GAME_OVER');
+  if (moduleDisabledCommand(state, command.type)) return fail('E_INVALID_COMMAND', { reason: 'not-in-ruleset' });
 
   const next = clone(state);
   normalizePending(next);
@@ -648,12 +701,71 @@ export function applyCommand(
 function trackPeakHands(state: GameState): void {
   for (const player of state.players) {
     const stats = playerStats(state, player.id);
-    stats.peakHand = Math.max(stats.peakHand, totalResources(player));
+    stats.peakHand = Math.max(stats.peakHand, totalCards(player));
   }
 }
 
 function modulePendingCommand(state: GameState, type: string): boolean {
   return modulesOf(state).some((module) => module.pendingCommands?.includes(type));
+}
+
+function moduleDisabledCommand(state: GameState, type: string): boolean {
+  return modulesOf(state).some((module) => module.disabledCommands?.includes(type));
+}
+
+/** Cities & Knights hands and trades include commodities. */
+function hasCommodities(state: GameState): boolean {
+  return requireProfile(state.profileId).commodityBankPerType > 0;
+}
+
+/** The card kinds a hand, a trade or a discard may use in this game. */
+function cardKindsOf(state: GameState): readonly CardKind[] {
+  return hasCommodities(state) ? CARD_KINDS : RESOURCES;
+}
+
+function isCommodity(card: CardKind): card is Commodity {
+  return (COMMODITIES as readonly string[]).includes(card);
+}
+
+function cardCount(player: PlayerState, card: CardKind): number {
+  return isCommodity(card) ? player.commodities[card] : player.resources[card];
+}
+
+/** Moves cards between a hand and the matching supply (negative = to the supply). */
+function moveCards(state: GameState, player: PlayerState, card: CardKind, amount: number): void {
+  if (isCommodity(card)) {
+    player.commodities[card] += amount;
+    state.commodityBank[card] -= amount;
+  } else {
+    player.resources[card] += amount;
+    state.bank[card] -= amount;
+  }
+}
+
+function supplyOf(state: GameState, card: CardKind): number {
+  return isCommodity(card) ? state.commodityBank[card] : state.bank[card];
+}
+
+function canAffordCards(player: PlayerState, cost: Partial<Record<CardKind, number>>): boolean {
+  return CARD_KINDS.every((card) => cardCount(player, card) >= (cost[card] ?? 0));
+}
+
+function transferCards(from: PlayerState, to: PlayerState, card: CardKind, amount: number): void {
+  if (isCommodity(card)) {
+    from.commodities[card] -= amount;
+    to.commodities[card] += amount;
+  } else {
+    from.resources[card] -= amount;
+    to.resources[card] += amount;
+  }
+}
+
+/** True while a module keeps the robber out of play (C&K before the first attack). */
+function robberInactive(state: GameState): boolean {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return false;
+  const ctx = viewContext(state);
+  return modules.some((module) => module.robberInactive?.(state, ctx) === true);
 }
 
 function dispatch(
@@ -681,7 +793,7 @@ function dispatch(
     case 'build.devCard':
       return buyDevCard(state, actorId, rng);
     case 'dev.playKnight':
-      return playKnight(state, actorId, command.hex);
+      return playKnight(state, actorId, command.hex, rng);
     case 'dev.playRoadBuilding':
       return playRoadBuilding(state, actorId);
     case 'dev.playYearOfPlenty':
@@ -722,7 +834,7 @@ function dispatchModuleCommand(
   const profile = requireProfile(state.profileId);
   for (const module of rulesModulesOf(profile)) {
     const handler = module.commands?.[command.type];
-    if (handler) return handler(state, actorId, command, moduleContext(profile, rng));
+    if (handler) return handler(state, actorId, command, moduleContext(profile, rng, module.id));
   }
   return fail('E_INVALID_COMMAND');
 }
@@ -867,11 +979,19 @@ function rollDice(state: GameState, actorId: string, rng: Rng): CommandOutcome {
     ...(roll.extra ? { extra: roll.extra } : {}),
   });
 
-  for (const module of modules) {
-    if (module.beforeProduction?.(state, roll, ctx) === 'defer') return { ok: true, state, events: [] };
+  runBeforeProduction(state, roll, rng);
+  return { ok: true, state, events: [] };
+}
+
+/** 續接模組後方的 hooks；frame 的 module 身分讓快照復原後仍能找到順序。 */
+function runBeforeProduction(state: GameState, roll: RollResult, rng: Rng | null, start = 0): void {
+  const profile = requireProfile(state.profileId);
+  const modules = rulesModulesOf(profile);
+  for (let index = start; index < modules.length; index++) {
+    const module = modules[index]!;
+    if (module.beforeProduction?.(state, roll, moduleContext(profile, rng, module.id)) === 'defer') return;
   }
   resolveRollOutcome(state, roll, rng);
-  return { ok: true, state, events: [] };
 }
 
 /** The 7 sequence or production, then the modules' after-production stages. */
@@ -930,7 +1050,7 @@ function resolveSeven(state: GameState, rng: Rng | null): void {
   const modules = modulesOf(state);
   const ctx = viewContext(state);
   for (const player of state.players) {
-    const hand = totalResources(player);
+    const hand = totalCards(player);
     let limit = 7;
     for (const module of modules) if (module.discardLimit) limit = module.discardLimit(state, player, limit, ctx);
     if (hand > limit) required[player.id] = Math.floor(hand / 2);
@@ -944,6 +1064,7 @@ function resolveSeven(state: GameState, rng: Rng | null): void {
       if (replaced) enqueuePending(state, replaced);
       return;
     }
+    if (robberInactive(state)) return;
     enqueuePending(state, {
       kind: 'moveRobber',
       actor: currentPlayer(state).id,
@@ -973,6 +1094,10 @@ function endTurn(state: GameState, actorId: string, rng: Rng): CommandOutcome {
   if (state.turn.phase !== 'action') return fail('E_WRONG_PHASE', { phase: state.turn.phase });
   if (state.pending) return fail('E_PENDING_EFFECT', { pending: state.pending.kind });
   const profile = requireProfile(state.profileId);
+  for (const module of rulesModulesOf(profile)) {
+    const veto = module.beforeEndTurn?.(state, actorId, moduleContext(profile, null));
+    if (veto) return veto;
+  }
   const modules = rulesModulesOf(profile);
   if (modules.length > 0) {
     const ctx = moduleContext(profile, rng);
@@ -1067,18 +1192,52 @@ function buildRoad(state: GameState, actorId: string, edge: number, rng: Rng): C
   afterBoardChange(state);
   afterBuild(state, { playerId: actorId, piece: 'road', edge, setup: false, free: !!free }, rng);
 
-  if (free) {
-    free.remaining -= 1;
-    if (free.remaining <= 0 || legalRoadEdges(state, actorId).length === 0) {
-      emit(state, 'dev.roadBuildingFinished', {
-        playerId: actorId,
-        placed: (free.granted ?? 2) - free.remaining,
-      });
-      completePending(state, rng);
-    }
-  }
+  if (free) placedFreeRoute(state, actorId, rng);
   checkVictory(state);
   return { ok: true, state, events: [] };
+}
+
+/** Books one free Road Building piece and ends the effect when done. */
+function placedFreeRoute(state: GameState, actorId: string, rng: Rng | null): void {
+  const free = state.pending?.kind === 'freeRoads' && state.pending.actor === actorId ? state.pending : null;
+  if (!free) return;
+  free.remaining -= 1;
+  // As in base-2025.3 the effect ends here only when no target is left; a
+  // spent piece supply is capped by `normalizedPending` on the next command.
+  if (free.remaining <= 0 || legalRoadEdges(state, actorId).length + moduleFreeRouteTargets(state, actorId) === 0) {
+    emit(state, 'dev.roadBuildingFinished', {
+      playerId: actorId,
+      placed: (free.granted ?? 2) - free.remaining,
+    });
+    completePending(state, rng);
+  }
+}
+
+/**
+ * Free Road Building placements available now: legal roads capped by the road
+ * pieces left (PR #60), plus module pieces such as ships.
+ */
+function freeRouteTargetCount(state: GameState, playerId: string): number {
+  const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, playerId);
+  const roads = Math.max(0, Math.min(legalRoadEdges(state, playerId).length, pieces));
+  return roads + moduleFreeRouteTargets(state, playerId);
+}
+
+/** C&K 授予與快照正規化共用容量；第一條道路可以打開後續地點。 */
+function freeRouteCapacity(state: GameState, playerId: string): number {
+  const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, playerId);
+  const roads = legalRoadEdges(state, playerId).length > 0 ? Math.max(0, pieces) : 0;
+  return roads + moduleFreeRouteTargets(state, playerId);
+}
+
+/** Free placements the profile's modules offer (ships), supply included. */
+function moduleFreeRouteTargets(state: GameState, playerId: string): number {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return 0;
+  const ctx = viewContext(state);
+  let count = 0;
+  for (const module of modules) count += module.freeRouteTargets?.(state, playerId, ctx) ?? 0;
+  return count;
 }
 
 function buildSettlement(state: GameState, actorId: string, vertex: number, rng: Rng): CommandOutcome {
@@ -1108,10 +1267,10 @@ function buildCity(state: GameState, actorId: string, vertex: number, rng: Rng):
   const guard = requireActionPhase(state, actorId);
   if (guard) return guard;
   const building = state.board.buildings[vertex];
-  if (!building || building.player !== actorId || building.city) {
+  if (!building || building.player !== actorId || building.city || !modulesAllowCity(state, actorId, vertex)) {
     return fail('E_ILLEGAL_TARGET', { vertex });
   }
-  if (!modulesAllowBuilding(state, actorId, vertex, 'city')) return fail('E_ILLEGAL_TARGET', { vertex });
+  if (!modulesAllowScenarioBuilding(state, actorId, vertex, 'city')) return fail('E_ILLEGAL_TARGET', { vertex });
   const profile = requireProfile(state.profileId);
   if (countBuildings(state, actorId, 'city') >= profile.pieces.cities) {
     return fail('E_NO_PIECES', { piece: 'city' });
@@ -1127,6 +1286,13 @@ function buildCity(state: GameState, actorId: string, vertex: number, rng: Rng):
   afterBuild(state, { playerId: actorId, piece: 'city', vertex, setup: false, free: false }, rng);
   checkVictory(state);
   return { ok: true, state, events: [] };
+}
+
+function modulesAllowCity(state: GameState, playerId: string, vertex: number): boolean {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return true;
+  const ctx = viewContext(state);
+  return modules.every((module) => module.allowCity?.(state, playerId, vertex, ctx) ?? true);
 }
 
 function buyDevCard(state: GameState, actorId: string, rng: Rng): CommandOutcome {
@@ -1175,32 +1341,61 @@ function heldCardMissing(player: PlayerState, card: DevCardType): CommandOutcome
   return fail('E_CARD_NOT_HELD', { card });
 }
 
-function playKnight(state: GameState, actorId: string, hex: number): CommandOutcome {
+function playKnight(state: GameState, actorId: string, hex: number | null, rng: Rng): CommandOutcome {
   const guard = canPlayDevCard(state, actorId);
   if (guard) return guard;
   const player = playerById(state, actorId)!;
   if (!player.devCards.includes('knight')) return heldCardMissing(player, 'knight');
   const pool = player.devCards;
-  const targetError = robberTargetError(state, actorId, hex);
-  if (targetError) return targetError;
+  const bandit = moduleBanditMove(state, actorId, hex, 'knight', rng);
+  if (bandit && !bandit.ok) return bandit.error;
+  if (!bandit) {
+    const robberCheck = robberTargetError(state, actorId, hex);
+    if (robberCheck) return robberCheck;
+  }
 
   const index = pool.indexOf('knight');
   pool.splice(index, 1);
   player.playedKnights += 1;
   state.turn.devCardPlayed = true;
-  state.board.robber = hex;
   const stats = playerStats(state, actorId);
   stats.devCardsPlayed.knight += 1;
   stats.robberMoves += 1;
+  if (bandit) {
+    emit(state, 'dev.knight', { playerId: actorId, hex, playedKnights: player.playedKnights, pirate: true });
+    afterBoardChange(state);
+    if (bandit.candidates.length > 0 && bandit.hex !== null) {
+      enqueuePending(state, { kind: 'steal', actor: actorId, hex: bandit.hex, candidates: bandit.candidates, pirate: true });
+    }
+    checkVictory(state);
+    return { ok: true, state, events: [] };
+  }
+  state.board.robber = hex as number;
   emit(state, 'dev.knight', { playerId: actorId, hex, playedKnights: player.playedKnights });
   afterBoardChange(state);
 
-  const candidates = stealCandidates(state, hex, actorId);
+  const candidates = stealCandidates(state, hex as number, actorId);
   if (candidates.length > 0) {
-    enqueuePending(state, { kind: 'steal', actor: actorId, hex, candidates, pirate: false });
+    enqueuePending(state, { kind: 'steal', actor: actorId, hex: hex as number, candidates, pirate: false });
   }
   checkVictory(state);
   return { ok: true, state, events: [] };
+}
+
+/** Lets a module claim a robber target for another bandit (the pirate). */
+function moduleBanditMove(
+  state: GameState,
+  actorId: string,
+  target: number | null,
+  cause: 'seven' | 'knight',
+  rng: Rng,
+): BanditMove | undefined {
+  const profile = requireProfile(state.profileId);
+  for (const module of rulesModulesOf(profile)) {
+    const move = module.moveBandit?.(state, actorId, target, cause, moduleContext(profile, rng));
+    if (move) return move;
+  }
+  return undefined;
 }
 
 function stealCandidates(state: GameState, hex: number, actorId: string): string[] {
@@ -1210,7 +1405,7 @@ function stealCandidates(state: GameState, hex: number, actorId: string): string
     const building = state.board.buildings[vertex];
     if (!building || building.player === actorId) continue;
     const player = playerById(state, building.player);
-    if (player && totalResources(player) > 0) out.add(building.player);
+    if (player && totalCards(player) > 0) out.add(building.player);
   }
   let candidates = [...out];
   const modules = modulesOf(state);
@@ -1225,7 +1420,7 @@ function stealCandidates(state: GameState, hex: number, actorId: string): string
 /** Hexes the robber may move to: any other hex, narrowed by the profile's modules. */
 export function legalRobberHexes(state: GameState, actorId: string): number[] {
   const topo = topologyOf(state);
-  let targets = topo.hexes.map((_, hex) => hex).filter((hex) => hex !== state.board.robber);
+  let targets = topo.hexes.map((_, hex) => hex).filter((hex) => hex !== state.board.robber && isLandHex(state, hex));
   const modules = modulesOf(state);
   if (modules.length === 0) return targets;
   const ctx = viewContext(state);
@@ -1235,9 +1430,9 @@ export function legalRobberHexes(state: GameState, actorId: string): number[] {
   return targets;
 }
 
-function robberTargetError(state: GameState, actorId: string, hex: number): CommandOutcome | null {
+function robberTargetError(state: GameState, actorId: string, hex: number | null): CommandOutcome | null {
   const topo = topologyOf(state);
-  if (!topo.hexes[hex]) return fail('E_ILLEGAL_TARGET', { hex });
+  if (typeof hex !== 'number' || !topo.hexes[hex] || !isLandHex(state, hex)) return fail('E_ILLEGAL_TARGET', { hex });
   if (modulesOf(state).length === 0) {
     return hex === state.board.robber ? fail('E_ROBBER_SAME_HEX', { hex }) : null;
   }
@@ -1255,9 +1450,7 @@ function playRoadBuilding(state: GameState, actorId: string): CommandOutcome {
   playerStats(state, actorId).devCardsPlayed.roadBuilding += 1;
   emit(state, 'dev.roadBuilding', { playerId: actorId });
   // 免費道路數同時受合法邊與剩餘道路棋子限制，否則待決效果會無法完成。
-  const available = legalRoadEdges(state, actorId).length;
-  const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, actorId);
-  const remaining = Math.max(0, Math.min(2, available, pieces));
+  const remaining = Math.min(2, freeRouteTargetCount(state, actorId));
   if (remaining > 0) {
     enqueuePending(state, { kind: 'freeRoads', actor: actorId, remaining, granted: remaining });
   }
@@ -1325,7 +1518,7 @@ function playMonopoly(state: GameState, actorId: string, resource: Resource): Co
 // pending effects
 // ---------------------------------------------------------------------------
 
-function submitDiscard(state: GameState, actorId: string, resources: Resource[], rng: Rng): CommandOutcome {
+function submitDiscard(state: GameState, actorId: string, resources: CardKind[], rng: Rng): CommandOutcome {
   const pending = state.pending;
   if (!pending || pending.kind !== 'discard') {
     return fail('E_PENDING_EFFECT', { pending: pending?.kind ?? 'none' });
@@ -1337,26 +1530,32 @@ function submitDiscard(state: GameState, actorId: string, resources: Resource[],
     return fail('E_INVALID_DISCARD_COUNT', { required });
   }
   const player = playerById(state, actorId)!;
-  const counts: Partial<Record<Resource, number>> = {};
+  const kinds = cardKindsOf(state);
+  const counts: Partial<Record<CardKind, number>> = {};
   for (const resource of resources) {
-    if (!RESOURCES.includes(resource)) return fail('E_INVALID_SELECTION', { resource });
+    if (!kinds.includes(resource)) return fail('E_INVALID_SELECTION', { resource });
     counts[resource] = (counts[resource] ?? 0) + 1;
   }
-  for (const [resource, amount] of Object.entries(counts) as [Resource, number][]) {
-    if (player.resources[resource] < amount) {
-      return fail('E_INVALID_SELECTION', { resource, available: player.resources[resource] });
+  for (const [resource, amount] of Object.entries(counts) as [CardKind, number][]) {
+    if (cardCount(player, resource) < amount) {
+      return fail('E_INVALID_SELECTION', { resource, available: cardCount(player, resource) });
     }
   }
-  for (const [resource, amount] of Object.entries(counts) as [Resource, number][]) {
-    player.resources[resource] -= amount;
-    state.bank[resource] += amount;
+  const discardedResources: Partial<Record<Resource, number>> = {};
+  for (const [resource, amount] of Object.entries(counts) as [CardKind, number][]) {
+    moveCards(state, player, resource, -amount);
+    if (!isCommodity(resource)) discardedResources[resource] = amount;
   }
-  addResources(playerStats(state, actorId).discarded, counts);
+  addResources(playerStats(state, actorId).discarded, discardedResources);
   pending.submitted[actorId] = resources.slice();
   emit(state, 'discard.submitted', { playerId: actorId, count: resources.length });
 
   const outstanding = Object.keys(pending.required).filter((id) => !pending.submitted[id]);
   if (outstanding.length === 0) {
+    if (robberInactive(state)) {
+      completePending(state, rng);
+      return { ok: true, state, events: [] };
+    }
     const roller = currentPlayer(state).id;
     const replaced = moduleSevenStep(state, rng);
     if (replaced === null) {
@@ -1371,17 +1570,30 @@ function submitDiscard(state: GameState, actorId: string, resources: Resource[],
   return { ok: true, state, events: [] };
 }
 
-function moveRobber(state: GameState, actorId: string, hex: number, rng: Rng): CommandOutcome {
+function moveRobber(state: GameState, actorId: string, hex: number | null, rng: Rng): CommandOutcome {
   const pending = state.pending;
   if (!pending || pending.kind !== 'moveRobber') {
     return fail('E_PENDING_EFFECT', { pending: pending?.kind ?? 'none' });
   }
   if (pending.actor !== actorId) return fail('E_NOT_ACTOR');
-  const targetError = robberTargetError(state, actorId, hex);
-  if (targetError) return targetError;
+  const bandit = moduleBanditMove(state, actorId, hex, pending.cause, rng);
+  if (bandit) {
+    if (!bandit.ok) return bandit.error;
+    afterBoardChange(state);
+    if (bandit.candidates.length > 0 && bandit.hex !== null) {
+      state.pending = { kind: 'steal', actor: actorId, hex: bandit.hex, candidates: bandit.candidates, pirate: true };
+    } else {
+      completePending(state, rng);
+    }
+    return { ok: true, state, events: [] };
+  }
+  const robberCheck = robberTargetError(state, actorId, hex);
+  if (robberCheck) return robberCheck;
+  if (hex === null) return fail('E_ILLEGAL_TARGET', { hex });
   state.board.robber = hex;
   playerStats(state, actorId).robberMoves += 1;
   emit(state, 'robber.moved', { playerId: actorId, hex, cause: pending.cause });
+  afterBoardChange(state);
 
   const candidates = stealCandidates(state, hex, actorId);
   if (candidates.length > 0) {
@@ -1401,21 +1613,24 @@ function stealFrom(state: GameState, actorId: string, victim: string, rng: Rng):
   if (!pending.candidates.includes(victim)) return fail('E_NO_ELIGIBLE_VICTIM', { victim });
   const victimPlayer = playerById(state, victim);
   if (!victimPlayer) return fail('E_ILLEGAL_TARGET', { victim });
-  const pool: Resource[] = [];
-  for (const resource of RESOURCES) {
-    for (let i = 0; i < victimPlayer.resources[resource]; i++) pool.push(resource);
+  // Resources first, then commodities (always none outside C&K), so a base
+  // hand draws exactly as before.
+  const pool: CardKind[] = [];
+  for (const card of CARD_KINDS) {
+    for (let i = 0; i < cardCount(victimPlayer, card); i++) pool.push(card);
   }
   if (pool.length === 0) return fail('E_NO_ELIGIBLE_VICTIM', { victim });
   const resource = pool[rng.int(pool.length)]!;
-  victimPlayer.resources[resource] -= 1;
-  grant(playerById(state, actorId)!, resource, 1);
-  addResource(playerStats(state, actorId).stolen, resource);
-  addResource(playerStats(state, victim).robbed, resource);
+  transferCards(victimPlayer, playerById(state, actorId)!, resource, 1);
+  if (!isCommodity(resource)) {
+    addResource(playerStats(state, actorId).stolen, resource);
+    addResource(playerStats(state, victim).robbed, resource);
+  }
   completePending(state, rng);
   emit(
     state,
     'robber.stole',
-    { playerId: actorId, victim },
+    pending.pirate ? { playerId: actorId, victim, pirate: true } : { playerId: actorId, victim },
     { to: [actorId, victim], params: { resource } },
   );
   return { ok: true, state, events: [] };
@@ -1425,47 +1640,75 @@ function stealFrom(state: GameState, actorId: string, victim: string, rng: Rng):
 // trading
 // ---------------------------------------------------------------------------
 
-function bankTrade(state: GameState, actorId: string, give: Resource, receive: Resource): CommandOutcome {
+function bankTrade(state: GameState, actorId: string, give: CardKind, receive: CardKind): CommandOutcome {
   const guard = requireActionPhase(state, actorId);
   if (guard) return guard;
-  if (!RESOURCES.includes(give) || !RESOURCES.includes(receive)) return fail('E_INVALID_SELECTION');
+  const kinds = cardKindsOf(state);
+  if (!kinds.includes(give) || !kinds.includes(receive)) return fail('E_INVALID_SELECTION');
   if (give === receive) return fail('E_INVALID_SELECTION', { reason: 'same-resource' });
-  if (state.bank[receive] <= 0) return fail('E_BANK_EMPTY', { resource: receive });
-  const rates = harborRates(state, actorId);
-  const rate = rates[give];
+  if (supplyOf(state, receive) <= 0) return fail('E_BANK_EMPTY', { resource: receive });
+  const rate = bankRateFor(state, actorId, give);
   const player = playerById(state, actorId)!;
-  if (player.resources[give] < rate) {
+  if (cardCount(player, give) < rate) {
     return fail('E_INSUFFICIENT_RESOURCES', { resource: give, required: rate });
   }
-  player.resources[give] -= rate;
-  state.bank[give] += rate;
-  player.resources[receive] += 1;
-  state.bank[receive] -= 1;
+  moveCards(state, player, give, -rate);
+  moveCards(state, player, receive, 1);
   const stats = playerStats(state, actorId);
   stats.bankTrades += 1;
-  addResource(stats.bankGiven, give, rate);
-  addResource(stats.bankReceived, receive);
+  if (!isCommodity(give)) addResource(stats.bankGiven, give, rate);
+  if (!isCommodity(receive)) addResource(stats.bankReceived, receive);
   emit(state, 'trade.bank', { playerId: actorId, give, receive, rate });
   return { ok: true, state, events: [] };
 }
 
-function normalizeTerms(terms: Partial<Record<Resource, number>>): Partial<Record<Resource, number>> {
-  const out: Partial<Record<Resource, number>> = {};
-  for (const resource of RESOURCES) {
+/**
+ * Supply rate for giving one card kind: the port rate for a resource; a
+ * commodity (C&K p. 7) only at 4:1 or a 3:1 port. Modules adjust it last
+ * (C&K trade level 3 lowers commodities to 2:1).
+ */
+function bankRateFor(state: GameState, playerId: string, give: CardKind): number {
+  const rates = harborRates(state, playerId);
+  let rate = isCommodity(give) ? (ownsGenericHarbor(state, playerId) ? 3 : 4) : rates[give];
+  const modules = modulesOf(state);
+  if (modules.length === 0) return rate;
+  const ctx = viewContext(state);
+  for (const module of modules) if (module.bankRate) rate = module.bankRate(state, playerId, give, rate, ctx);
+  return rate;
+}
+
+function ownsGenericHarbor(state: GameState, playerId: string): boolean {
+  const topo = topologyOf(state);
+  return state.board.layout.harbors.some((harbor) =>
+    harbor.type === 'generic' &&
+    (topo.edges[harbor.edge]?.vertices.some((vertex) => state.board.buildings[vertex]?.player === playerId) ?? false));
+}
+
+/** Resource bank rates after module adjustments (base: the port rates). */
+function bankRatesFor(state: GameState, playerId: string): Record<Resource, number> {
+  if (modulesOf(state).length === 0) return harborRates(state, playerId);
+  const out = {} as Record<Resource, number>;
+  for (const resource of RESOURCES) out[resource] = bankRateFor(state, playerId, resource);
+  return out;
+}
+
+function normalizeTerms(state: GameState, terms: Partial<Record<CardKind, number>>): Partial<Record<CardKind, number>> {
+  const out: Partial<Record<CardKind, number>> = {};
+  for (const resource of cardKindsOf(state)) {
     const amount = terms[resource] ?? 0;
     if (amount > 0) out[resource] = amount;
   }
   return out;
 }
 
-function termsTotal(terms: Partial<Record<Resource, number>>): number {
-  return RESOURCES.reduce((sum, resource) => sum + (terms[resource] ?? 0), 0);
+function termsTotal(terms: Partial<Record<CardKind, number>>): number {
+  return CARD_KINDS.reduce((sum, resource) => sum + (terms[resource] ?? 0), 0);
 }
 
 interface OfferCommand {
   to: string | 'all';
-  give: Partial<Record<Resource, number>>;
-  want: Partial<Record<Resource, number>>;
+  give: Partial<Record<CardKind, number>>;
+  want: Partial<Record<CardKind, number>>;
   /** Module goods (e.g. gold), only where the profile's modules allow them. */
   giveGoods?: Record<string, number>;
   wantGoods?: Record<string, number>;
@@ -1517,8 +1760,8 @@ function createOffer(
   if (actorId !== turnActor && command.to !== turnActor) {
     return fail('E_NOT_YOUR_TURN', { counterofferTo: turnActor });
   }
-  const give = normalizeTerms(command.give ?? {});
-  const want = normalizeTerms(command.want ?? {});
+  const give = normalizeTerms(state, command.give ?? {});
+  const want = normalizeTerms(state, command.want ?? {});
   const giveGoods = normalizeGoods(state, command.giveGoods);
   const wantGoods = normalizeGoods(state, command.wantGoods);
   if (!giveGoods || !wantGoods) return fail('E_INVALID_SELECTION', { reason: 'goods' });
@@ -1588,8 +1831,8 @@ function reviseOffer(
   if (!offer) return fail('E_UNKNOWN_OFFER', { offerId: command.offerId });
   if (offer.from !== actorId) return fail('E_NOT_ACTOR');
   if (offer.status !== 'open') return fail('E_OFFER_CLOSED', { status: offer.status });
-  const give = normalizeTerms(command.give ?? {});
-  const want = normalizeTerms(command.want ?? {});
+  const give = normalizeTerms(state, command.give ?? {});
+  const want = normalizeTerms(state, command.want ?? {});
   const giveGoods = normalizeGoods(state, command.giveGoods);
   const wantGoods = normalizeGoods(state, command.wantGoods);
   if (!giveGoods || !wantGoods) return fail('E_INVALID_SELECTION', { reason: 'goods' });
@@ -1666,10 +1909,10 @@ function settleOffer(
   const proposer = playerById(state, offer.from)!;
   const partnerId = offer.to === 'all' ? other : offer.to;
   const partner = playerById(state, partnerId)!;
-  if (!canAfford(proposer, offer.give)) {
+  if (!canAffordCards(proposer, offer.give)) {
     return fail('E_INSUFFICIENT_RESOURCES', { playerId: proposer.id });
   }
-  if (!canAfford(partner, offer.want)) {
+  if (!canAffordCards(partner, offer.want)) {
     return fail('E_INSUFFICIENT_RESOURCES', { playerId: partner.id });
   }
   const goods = offer.giveGoods || offer.wantGoods ? tradeGoodsOf(state) : undefined;
@@ -1682,13 +1925,11 @@ function settleOffer(
       if (goods.balance(state, partner.id, good) < amount) return fail('E_INSUFFICIENT_RESOURCES', { playerId: partner.id, good });
     }
   }
-  pay(proposer, offer.give);
-  pay(partner, offer.want);
-  for (const resource of RESOURCES) {
-    const toPartner = offer.give[resource] ?? 0;
-    const toProposer = offer.want[resource] ?? 0;
-    if (toPartner > 0) grant(partner, resource, toPartner);
-    if (toProposer > 0) grant(proposer, resource, toProposer);
+  for (const card of CARD_KINDS) {
+    const toPartner = offer.give[card] ?? 0;
+    const toProposer = offer.want[card] ?? 0;
+    if (toPartner > 0) transferCards(proposer, partner, card, toPartner);
+    if (toProposer > 0) transferCards(partner, proposer, card, toProposer);
   }
   if (goods) {
     for (const [good, amount] of Object.entries(offer.giveGoods ?? {})) goods.transfer(state, proposer.id, partner.id, good, amount);
@@ -1698,10 +1939,12 @@ function settleOffer(
   const partnerStats = playerStats(state, partner.id);
   proposerStats.playerTrades += 1;
   partnerStats.playerTrades += 1;
-  addResources(proposerStats.tradeGiven, offer.give);
-  addResources(proposerStats.tradeReceived, offer.want);
-  addResources(partnerStats.tradeGiven, offer.want);
-  addResources(partnerStats.tradeReceived, offer.give);
+  const give = resourceTerms(offer.give);
+  const want = resourceTerms(offer.want);
+  addResources(proposerStats.tradeGiven, give);
+  addResources(proposerStats.tradeReceived, want);
+  addResources(partnerStats.tradeGiven, want);
+  addResources(partnerStats.tradeReceived, give);
   offer.status = 'completed';
   offer.agreedWith = other;
   emit(state, 'trade.completed', {
@@ -1716,6 +1959,13 @@ function settleOffer(
   });
   checkVictory(state);
   return { ok: true, state, events: [] };
+}
+
+/** The resource part of trade terms (statistics count resources only). */
+function resourceTerms(terms: Partial<Record<CardKind, number>>): Partial<Record<Resource, number>> {
+  const out: Partial<Record<Resource, number>> = {};
+  for (const resource of RESOURCES) if (terms[resource]) out[resource] = terms[resource];
+  return out;
 }
 
 /**
@@ -1764,7 +2014,7 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
   const setupRoad = setupIsMine && setup!.stage === 'road';
   return {
     canRoll: isTurn && state.turn.phase === 'preroll' && !pending,
-    canEndTurn: inAction,
+    canEndTurn: inAction && !moduleEndTurnVeto(state, playerId),
     legalRoads:
       inAction || freeRoads
         ? legalRoadEdges(state, playerId)
@@ -1781,12 +2031,19 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
           .map((building, vertex) => ({ building, vertex }))
           .filter(({ building }) => !!building && building.player === playerId && !building.city)
           .map(({ vertex }) => vertex)
-          .filter((vertex) => modulesAllowBuilding(state, playerId, vertex, 'city'))
+          .filter((vertex) => modulesAllowCity(state, playerId, vertex))
+          .filter((vertex) => modulesAllowScenarioBuilding(state, playerId, vertex, 'city'))
       : [],
-    bankRates: harborRates(state, playerId),
+    bankRates: bankRatesFor(state, playerId),
     pendingKind: pending ? pending.kind : null,
     ...moduleHints(state, playerId),
   };
+}
+
+/** Whether a rules module would reject `turn.end` right now (advisory hint only). */
+function moduleEndTurnVeto(state: GameState, playerId: string): boolean {
+  const profile = requireProfile(state.profileId);
+  return rulesModulesOf(profile).some((module) => !!module.beforeEndTurn?.(state, playerId, moduleContext(profile, null)));
 }
 
 function moduleHints(state: GameState, playerId: string): { modules?: Record<string, unknown> } {

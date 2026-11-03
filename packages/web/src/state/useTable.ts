@@ -28,15 +28,18 @@ import type {
 import type { CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
 import { SocketClient, type SocketFactory } from '../api/socket.ts';
 import { detectLocale } from '../i18n/index.ts';
+import { bootAssetsFailed, type BootStepId } from './boot.ts';
 import { newChatId, newCommandId, newRequestId } from './ids.ts';
 import {
   browserStorage,
   readStoredLocale,
   readStoredMutes,
   readStoredNickname,
+  readStoredTradeAutoDecline,
   writeStoredLocale,
   writeStoredMutes,
   writeStoredNickname,
+  writeStoredTradeAutoDecline,
   type StorageLike,
 } from './session.ts';
 import { DICE_PRESENTATION_DURATION_MS } from '../board/animation.ts';
@@ -48,6 +51,7 @@ import {
   type DrawerPanel,
   type GameSyncBoundary,
   type GameSyncCause,
+  type DevCardChoice,
   type Selection,
   type TableAction,
   type TableState,
@@ -75,7 +79,8 @@ export interface TableActions {
   takeSeat(color: string): Promise<void>;
   setReady(ready: boolean): Promise<void>;
   updateSettings(body: RoomSettingsBody): Promise<void>;
-  addBot(level: BotLevel): Promise<void>;
+  /** 加入一個電腦席位；成功回傳 null，失敗回傳可顯示的錯誤。 */
+  addBot(level: BotLevel, name?: string): Promise<ApiError | null>;
   removeBot(playerId: string): Promise<void>;
   proposePolicy(policy: RoomPolicy): Promise<void>;
   respondPolicy(proposalId: string, approve: boolean): Promise<void>;
@@ -84,7 +89,7 @@ export interface TableActions {
   closeRoom(): Promise<void>;
   openGame(gameId: string): Promise<void>;
   refreshSnapshot(): Promise<void>;
-  submitCommand(command: CommandPayload, labelId: string): Promise<void>;
+  submitCommand(command: CommandPayload, labelId: string): Promise<CommandReceipt | null>;
   resolveCommand(): Promise<void>;
   retryCommand(): Promise<void>;
   clearCommand(): void;
@@ -96,7 +101,9 @@ export interface TableActions {
   retryChat(clientMessageId: string): Promise<void>;
   setChatDraft(text: string): void;
   toggleMute(playerId: string): void;
+  setTradeAutoDecline(enabled: boolean): void;
   selectTarget(selection: Selection): void;
+  setDevCardChoice(choice: DevCardChoice | null): void;
   cancelSelection(): void;
   confirmSelection(): Promise<void>;
   setDrawer(drawer: DrawerPanel): void;
@@ -284,13 +291,26 @@ export function useTable(options: UseTableOptions): TableController {
     // `listGames` is an authenticated endpoint, so it is only requested once a
     // session is known to exist; otherwise a first visit would fire a
     // guaranteed 401 and log a spurious console error.
+    const checkAssets = () => {
+      if (bootAssetsFailed()) dispatch({ type: 'boot-step', step: 'assets', status: 'failed' });
+    };
+    checkAssets();
+    // 每個請求各自結束時回報，啟動畫面才看得出卡在哪一步。
+    const track = <T extends { ok: boolean }>(step: BootStepId, request: Promise<T>): Promise<T> =>
+      request.then((result) => {
+        dispatch({ type: 'boot-step', step, status: result.ok ? 'done' : 'failed' });
+        return result;
+      });
     const [configResult, sessionResult, profilesResult] = await Promise.all([
-      api.getConfig(),
-      api.getSession(),
-      api.listProfiles(),
+      track('config', api.getConfig()),
+      track('session', api.getSession()).then((result) => {
+        if (!(result.ok && result.data.player)) dispatch({ type: 'boot-step', step: 'games', status: 'skipped' });
+        return result;
+      }),
+      track('profiles', api.listProfiles()),
     ]);
     const knownSession = sessionResult.ok ? sessionResult.data.player : null;
-    const gamesResult = knownSession ? await api.listGames() : null;
+    const gamesResult = knownSession ? await track('games', api.listGames()) : null;
     const config: ServerConfigView = configResult.ok
       ? configResult.data
       : {
@@ -314,6 +334,8 @@ export function useTable(options: UseTableOptions): TableController {
           // 讀不到伺服器設定時不提供加入電腦，避免送出必然被拒的請求。
           bots: { enabled: false, levels: [] },
         };
+    // 樣式表可能在請求期間才失敗；進入牌桌前再確認一次。
+    checkAssets();
     const stored = readStoredLocale(storage);
     const session = knownSession;
     const locale = stored ?? session?.locale ?? detectLocale(languages);
@@ -332,6 +354,7 @@ export function useTable(options: UseTableOptions): TableController {
     });
     const mutes = readStoredMutes(storage);
     for (const playerId of mutes) dispatch({ type: 'chat', event: { kind: 'mute', playerId } });
+    dispatch({ type: 'trade-auto-decline', value: readStoredTradeAutoDecline(storage) });
   }, [api, dispatch, languages, storage]);
 
   useEffect(() => {
@@ -428,10 +451,16 @@ export function useTable(options: UseTableOptions): TableController {
   );
 
   const addBot = useCallback(
-    async (level: BotLevel): Promise<void> => {
+    async (level: BotLevel, name?: string): Promise<ApiError | null> => {
       const roomId = roomIdRef.current;
-      if (!roomId) return;
-      applyRoom(await api.addBot(roomId, level), 'bots');
+      if (!roomId) return null;
+      const trimmed = name?.trim();
+      const result = await api.addBot(roomId, {
+        level,
+        ...(trimmed ? { name: trimmed } : {}),
+      });
+      applyRoom(result, 'bots');
+      return result.ok ? null : result.error;
     },
     [api, applyRoom],
   );
@@ -528,9 +557,13 @@ export function useTable(options: UseTableOptions): TableController {
   }, [refreshGame]);
 
   const runCommand = useCallback(
-    async (commandId: string, command: CommandPayload, expectedRevision: number): Promise<void> => {
+    async (
+      commandId: string,
+      command: CommandPayload,
+      expectedRevision: number,
+    ): Promise<CommandReceipt | null> => {
       const gameId = gameIdRef.current;
-      if (!gameId) return;
+      if (!gameId) return null;
       const result = await api.sendCommand(gameId, {
         commandId,
         expectedRevision,
@@ -554,6 +587,7 @@ export function useTable(options: UseTableOptions): TableController {
           dispatch({ type: 'selection', selection: EMPTY_SELECTION });
           await refreshAfterAccepted();
         }
+        return result.data;
       } else {
         dispatch({
           type: 'command',
@@ -561,30 +595,31 @@ export function useTable(options: UseTableOptions): TableController {
         });
         dispatch({ type: 'connection', connection: 'offline' });
         dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+        return null;
       }
     },
     [api, dispatch, refreshAfterAccepted],
   );
 
   const submitCommand = useCallback(
-    async (command: CommandPayload, labelId: string): Promise<void> => {
+    async (command: CommandPayload, labelId: string): Promise<CommandReceipt | null> => {
       const current = stateRef.current;
-      if (blocksNewCommands(current.command)) return;
+      if (blocksNewCommands(current.command)) return null;
       const snapshot: GameSnapshot | null = current.game;
-      if (!snapshot) return;
+      if (!snapshot) return null;
       // 所有指令入口（動作列、交易、兌換、發展卡、棋盤）共用：點數揭曉前、
       // 或投影尚未追上已知事件時，不依過時畫面送出後續指令。
       if (current.dicePresenting) {
         dispatch({ type: 'toast', notice: localNotice('play.disabled.rolling') });
-        return;
+        return null;
       }
       if (awaitingProjection(current)) {
         dispatch({ type: 'toast', notice: localNotice('play.disabled.syncing') });
-        return;
+        return null;
       }
       if (current.activeElsewhere) {
         dispatch({ type: 'toast', notice: localNotice('app.activeInAnotherTab') });
-        return;
+        return null;
       }
       const commandId = newCommandId();
       dispatch({
@@ -597,7 +632,7 @@ export function useTable(options: UseTableOptions): TableController {
           baseRevision: snapshot.revision,
         },
       });
-      await runCommand(commandId, command, snapshot.revision);
+      return runCommand(commandId, command, snapshot.revision);
     },
     [dispatch, runCommand],
   );
@@ -770,6 +805,14 @@ export function useTable(options: UseTableOptions): TableController {
     [dispatch, storage],
   );
 
+  const setTradeAutoDecline = useCallback(
+    (enabled: boolean): void => {
+      dispatch({ type: 'trade-auto-decline', value: enabled });
+      writeStoredTradeAutoDecline(storage, enabled);
+    },
+    [dispatch, storage],
+  );
+
   // ---------------------------------------------------------------------
   // selection
   // ---------------------------------------------------------------------
@@ -781,6 +824,13 @@ export function useTable(options: UseTableOptions): TableController {
     [dispatch],
   );
 
+  const setDevCardChoice = useCallback(
+    (choice: DevCardChoice | null): void => {
+      dispatch({ type: 'dev-card-choice', choice });
+    },
+    [dispatch],
+  );
+
   const cancelSelection = useCallback((): void => {
     dispatch({ type: 'selection', selection: EMPTY_SELECTION });
   }, [dispatch]);
@@ -788,13 +838,8 @@ export function useTable(options: UseTableOptions): TableController {
   const confirmSelection = useCallback(async (): Promise<void> => {
     const { selection } = stateRef.current;
     if (!selection.commandType || selection.index === null || !selection.kind) return;
-    const payload: CommandPayload = selection.field
-      ? { type: selection.commandType, ...selection.extra, [selection.field]: selection.index }
-      : selection.kind === 'vertex'
-        ? { type: selection.commandType, ...selection.extra, vertex: selection.index }
-        : selection.kind === 'edge'
-          ? { type: selection.commandType, ...selection.extra, edge: selection.index }
-          : { type: selection.commandType, ...selection.extra, hex: selection.index };
+    const field = selection.field ?? (selection.kind === 'vertex' ? 'vertex' : selection.kind === 'edge' ? 'edge' : 'hex');
+    const payload: CommandPayload = { ...selection.extra, ...selection.params, type: selection.commandType, [field]: selection.index };
     await submitCommand(payload, selection.labelId ?? selection.commandType);
   }, [submitCommand]);
 
@@ -837,7 +882,9 @@ export function useTable(options: UseTableOptions): TableController {
       retryChat,
       setChatDraft,
       toggleMute,
+      setTradeAutoDecline,
       selectTarget,
+      setDevCardChoice,
       cancelSelection,
       confirmSelection,
       setDrawer,
@@ -873,7 +920,9 @@ export function useTable(options: UseTableOptions): TableController {
       retryChat,
       setChatDraft,
       toggleMute,
+      setTradeAutoDecline,
       selectTarget,
+      setDevCardChoice,
       cancelSelection,
       confirmSelection,
       setDrawer,

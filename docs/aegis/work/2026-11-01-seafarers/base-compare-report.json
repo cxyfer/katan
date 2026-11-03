@@ -1,0 +1,216 @@
+{
+  "sourceHead": "5d331240cda493ec01fa25cefcf63706997f08e2",
+  "buildDigest": "937f7bd8bcba7c3f165fed1966ba3671ecce5a38acb5fb600f3f308b206fc3f1",
+  "cases": [
+    {
+      "name": "game-hex-r2-svg-desktop",
+      "kind": "game",
+      "board": "hex-r2",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "effective": "svg",
+      "svgHexes": 19,
+      "sha256": "d7bc0903516596d60dc0b8ee6e5ac9196280b445ed36a23885faa16a832d1e7d",
+      "unmappedApi": []
+    },
+    {
+      "name": "game-hex-r2-svg-mobile",
+      "kind": "game",
+      "board": "hex-r2",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "effective": "svg",
+      "svgHexes": 19,
+      "sha256": "5cb8e8c5901b60df14fceb0704bfcc04e6958883c514095c9a26723217f60546",
+      "unmappedApi": []
+    },
+    {
+      "name": "game-hex-r2-r3f-desktop",
+      "kind": "game",
+      "board": "hex-r2",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "effective": "r3f",
+      "sha256": "b6e56c5d2deedb843f20674c59cddb41c846fe1eb425bdd142a1eaced57107f9",
+      "unmappedApi": []
+    },
+    {
+      "name": "game-hex-r2-r3f-mobile",
+      "kind": "game",
+      "board": "hex-r2",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "effective": "r3f",
+      "sha256": "2db3e8d7f23a4e94926ebb7553b30174f163da2dbd52d22499f249ec9309f59b",
+      "unmappedApi": []
+    },
+    {
+      "name": "game-hex-r56-svg-desktop",
+      "kind": "game",
+      "board": "hex-r56",
+      "renderer": "svg",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "effective": "svg",
+      "svgHexes": 30,
+      "sha256": "5df6282603e6dad603bea846743d721a52b4779d7351489a4384add17ceb57be",
+      "unmappedApi": []
+    },
+    {
+      "name": "game-hex-r56-svg-mobile",
+      "kind": "game",
+      "board": "hex-r56",
+      "renderer": "svg",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "effective": "svg",
+      "svgHexes": 30,
+      "sha256": "e4b13902eb62933d56072e9e9ad1a11a263778e2438a5b9966e5b234e99fb2e3",
+      "unmappedApi": []
+    },
+    {
+      "name": "game-hex-r56-r3f-desktop",
+      "kind": "game",
+      "board": "hex-r56",
+      "renderer": "r3f",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "effective": "r3f",
+      "sha256": "2549bbc2d869f00d15fd9aba1d0c328904ac36633727ff895ea7a912ce05b18f",
+      "unmappedApi": []
+    },
+    {
+      "name": "game-hex-r56-r3f-mobile",
+      "kind": "game",
+      "board": "hex-r56",
+      "renderer": "r3f",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "effective": "r3f",
+      "sha256": "b6be4148d48ff666ebb46d296d5262dfa815dc2f00aa7c8c0514180fb735a71b",
+      "unmappedApi": []
+    },
+    {
+      "name": "preview-island-default-desktop",
+      "kind": "preview",
+      "preview": "island",
+      "topology": null,
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "rendererStatus": "ready",
+      "previewTopology": "hex-r2",
+      "sha256": "3a04e32e4c01f68dd92b0a3df0a7e85d655873357e26653730848335da68ff03"
+    },
+    {
+      "name": "preview-island-default-mobile",
+      "kind": "preview",
+      "preview": "island",
+      "topology": null,
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "rendererStatus": "ready",
+      "previewTopology": "hex-r2",
+      "sha256": "98da4f82cca4ca05e4ccbf5256197c09acfa1015214c1f0351573dd1797ce497"
+    },
+    {
+      "name": "preview-island-hex-r56-desktop",
+      "kind": "preview",
+      "preview": "island",
+      "topology": "hex-r56",
+      "viewport": [
+        1366,
+        900
+      ],
+      "status": "PASS",
+      "rendererStatus": "ready",
+      "previewTopology": "hex-r56",
+      "sha256": "580c318340954806d06f9de3cd0ac8725d7185e209e136e8344182d714b78005"
+    },
+    {
+      "name": "preview-island-hex-r56-mobile",
+      "kind": "preview",
+      "preview": "island",
+      "topology": "hex-r56",
+      "viewport": [
+        390,
+        844
+      ],
+      "status": "PASS",
+      "rendererStatus": "ready",
+      "previewTopology": "hex-r56",
+      "sha256": "e4943dbd5cc4db0649ac79b61aa241cf3d84f6bca866c7efa8538e4b362915d8"
+    }
+  ],
+  "limitations": [
+    "Chromium with software WebGL; physical devices, Safari/Firefox and screen readers not run.",
+    "Deterministic API/WebSocket fixtures (board-3d fixtures-final.json plus fixtures.mjs), not a live game."
+  ],
+  "browser": "145.0.7632.6",
+  "comparison": {
+    "before": "/home/usaya/workspace/github/katan/.worktrees/seafarers/docs/screenshots/expansion-platform",
+    "images": [
+      {
+        "image": "game-hex-r2-r3f-desktop.png",
+        "identicalBytes": true,
+        "changedPixels": 0,
+        "totalPixels": 1229400,
+        "maxChannelDelta": 0
+      },
+      {
+        "image": "game-hex-r2-svg-desktop.png",
+        "identicalBytes": true,
+        "changedPixels": 0,
+        "totalPixels": 1229400,
+        "maxChannelDelta": 0
+      },
+      {
+        "image": "game-hex-r56-r3f-desktop.png",
+        "identicalBytes": true,
+        "changedPixels": 0,
+        "totalPixels": 1229400,
+        "maxChannelDelta": 0
+      },
+      {
+        "image": "game-hex-r56-svg-mobile.png",
+        "identicalBytes": true,
+        "changedPixels": 0,
+        "totalPixels": 329160,
+        "maxChannelDelta": 0
+      }
+    ]
+  }
+}

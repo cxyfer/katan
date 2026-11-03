@@ -37,11 +37,15 @@ import { createRoadModel, createSettlementModel, harborLabelInstances } from './
 import { useDioramaGeometry } from './diorama-geometry.ts';
 import { createRobberModel } from './diorama-robber.ts';
 import { TbScenePieces, tbNumberTokens } from './TbScenePieces.tsx';
+import { DioramaSeafarers, PirateGhost, ShipGhost } from './DioramaSeafarers.tsx';
+import { isShipCommand } from '../seafarers.ts';
+import { DioramaCitiesKnights, KnightGhost, Merchant } from './DioramaCitiesKnights.tsx';
+import { isCitiesKnightsVertexCommand, knightGhost, progressGhost, showsKnightGhost } from '../citiesKnights.ts';
 import { atlasGeometryKey, boardSceneResources, type BoardSceneResources } from './resources.ts';
 
 type SceneProps = Pick<BoardSceneProps,
-  'geometry' | 'board' | 'players' | 'intent' | 'selection' | 'active' | 'viewport' | 'quality' | 'modules' |
-  'motionAllowed' | 'onProjection' | 'onReady' | 'onUnavailable'>;
+  'modules' | 'geometry' | 'board' | 'players' | 'intent' | 'selection' | 'arrivals' | 'viewport' | 'quality' |
+  'motionAllowed' | 'onProjection' | 'onReady' | 'onUnavailable' | 'citiesKnights'>;
 
 function useLeasedResources(): BoardSceneResources {
   const resources = boardSceneResources();
@@ -217,7 +221,8 @@ function HarborLabels({ props, resources, texture }: { props: SceneProps; resour
 function Robber({ props, resources }: { props: SceneProps; resources: BoardSceneResources }) {
   const model = useDioramaGeometry(createRobberModel, []);
   const hex = props.geometry.hexes[props.board.robber];
-  if (!hex) return null;
+  // C&K: the robber stays off the island until the first barbarian attack.
+  if (!hex || props.citiesKnights?.robberActive === false) return null;
   const x = hex.cx / props.geometry.scale;
   const z = hex.cy / props.geometry.scale;
   const castShadow = props.quality === 'standard';
@@ -251,10 +256,26 @@ function SelectionGhost({ props, resources }: { props: SceneProps; resources: Bo
   if (selection.kind === 'vertex') {
     const vertex = props.geometry.vertices[selection.index];
     if (!vertex) return null;
+    if (showsKnightGhost(props.intent.commandType) || props.intent.commandType === 'build.wall') {
+      const ghost = knightGhost(props.citiesKnights ?? null, props.intent.commandType, selection.index, selection.params);
+      return <KnightGhost geometry={props.geometry} vertex={selection.index} {...ghost}
+        wall={props.intent.commandType === 'build.wall'} material={material} />;
+    }
+    if (isCitiesKnightsVertexCommand(props.intent.commandType)) return null;
     const city = props.intent.commandType === 'build.city';
     return <BuildingGhost city={city} seat={player?.seat ?? 0} material={material}
       position={[vertex.x / props.geometry.scale, 0.005, vertex.y / props.geometry.scale]}
       rotationY={((vertex.index * 23) % 6) * (Math.PI / 6)} />;
+  }
+  // Progress cards: the merchant on its hex; nothing on a road Diplomacy removes.
+  const progress = progressGhost(props.intent.commandType, selection.params);
+  if (progress === 'merchant') return <Merchant geometry={props.geometry} hex={selection.index} color="#ffffff" seat={player?.seat ?? 0} material={material} ghost />;
+  if (progress === 'none') return null;
+  if (selection.kind === 'edge' && isShipCommand(props.intent.commandType)) {
+    return <ShipGhost geometry={props.geometry} edge={selection.index} material={material} />;
+  }
+  if (selection.kind === 'hex' && props.geometry.land[selection.index] === false) {
+    return <PirateGhost geometry={props.geometry} hex={selection.index} material={material} />;
   }
   if (selection.kind === 'edge') {
     const edge = props.geometry.edges[selection.index];
@@ -262,7 +283,7 @@ function SelectionGhost({ props, resources }: { props: SceneProps; resources: Bo
     const road = roadInstances(props.geometry, {
       ...props.board,
       roads: props.board.roads.map((item, index) => index === selection.index ? { player: selection.playerId, ship: false } : item),
-    }, props.players, null).find((candidate) => candidate.index === selection.index);
+    }, props.players, []).find((candidate) => candidate.index === selection.index);
     if (!road) return null;
     return <RoadGhost position={road.position} rotationY={road.rotationY} length={road.length} material={material} />;
   }
@@ -414,6 +435,8 @@ function AtlasLayerContent({ props }: { props: SceneProps }) {
       <DioramaBuildings {...props} material={resources.materials.diorama} />
       <TbScenePieces geometry={props.geometry} board={props.board} players={props.players} modules={props.modules}
         quality={props.quality} material={resources.materials.diorama} />
+      <DioramaSeafarers {...props} material={resources.materials.diorama} />
+      <DioramaCitiesKnights {...props} material={resources.materials.diorama} />
       <Robber props={props} resources={resources} />
       <SelectionGhost props={props} resources={resources} />
       <ReadyBridge ready={texture !== null && props.viewport.rect.width > 0 && props.viewport.rect.height > 0}
