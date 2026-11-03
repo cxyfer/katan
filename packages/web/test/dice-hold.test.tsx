@@ -12,7 +12,7 @@ import { TradePanel } from '../src/components/TradePanel.tsx';
 import { TbPanel } from '../src/components/tb/TbPanel.tsx';
 import { tbController, tbSlot, tbState } from './tb-helpers.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
-import { initialTableState, shownCitiesKnights, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
+import { initialTableState, shownCitiesKnights, shownExplorersPirates, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import type { GameView } from '@catan/rules';
 import { makeEvent, makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -36,6 +36,18 @@ function rolledSnapshot(lumber: number) {
 }
 
 describe('roll hold in the table state', () => {
+  it.each(['snapshot', 'events'] as const)('holds E&P gold until dice settle (%s first)', (delivery) => {
+    const before = base();
+    before.game!.view.modules = { explorersPirates: { players: { p1: { gold: 1 } } } };
+    const after = rolledSnapshot(9);
+    after.view.modules = { explorersPirates: { players: { p1: { gold: 3 } } } };
+    let state = delivery === 'events' ? tableReducer(before, { type: 'events', events: after.view.events }) : before;
+    state = tableReducer(state, { type: 'snapshot', snapshot: after });
+    expect(shownExplorersPirates(state)?.modules?.explorersPirates).toEqual({ players: { p1: { gold: 1 } } });
+    state = tableReducer(state, { type: 'dice-presenting', value: false });
+    expect(shownExplorersPirates(state)?.modules?.explorersPirates).toEqual({ players: { p1: { gold: 3 } } });
+  });
+
   it.each(['snapshot', 'events'] as const)('holds fish, boot and scores until the dice settle (%s first)', (delivery) => {
     const engine = tbState('tb-fishing-2025');
     const fish = tbSlot<{ hands: Record<string, number[]>; boot: string | null }>(engine, 'tb-fishing');

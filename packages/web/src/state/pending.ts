@@ -6,6 +6,7 @@
  * how that is labelled and whether it is *our* obligation.
  */
 
+import { epView } from '../board/explorersPirates.ts';
 import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
 import { awaitingProjection, nameOf as resolveName, type TableState } from './table.ts';
 
@@ -117,9 +118,11 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
     const actorSeat = setup.seat;
     const actor = view.players.find((player) => player.seat === actorSeat);
     const actorId = actor?.id ?? null;
+    const epStep = epView(view)?.setupStep ?? null;
     return {
       kind: 'setup',
-      messageId: setup.stage === 'building' ? 'play.build.settlement' : 'play.build.road',
+      // E&P's variable setup has its own three steps (harbour, settlement, route).
+      messageId: epStep ? `ep.setup.${epStep}` : setup.stage === 'building' ? 'play.build.settlement' : 'play.build.road',
       params: { remaining: setup.remaining },
       mine: actorId === me,
       waitingFor: actorId && actorId !== me ? [actorId] : [],

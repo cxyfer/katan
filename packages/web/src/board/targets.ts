@@ -36,6 +36,8 @@ export interface TargetContext {
   nameOf: (playerId: string) => string;
   /** True when the viewer owns the piece at the target. */
   isSelf?: (playerId: string) => boolean;
+  /** Explorers & Pirates: unexplored hexes and their region (their contents are not known yet). */
+  fog?: ReadonlyMap<number, 'parrot' | 'goose'>;
 }
 
 function harborText(context: TargetContext, edge: number): string | null {

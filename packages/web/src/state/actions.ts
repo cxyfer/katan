@@ -14,6 +14,7 @@ import type { GameSnapshot } from '@catan/protocol';
 import { awaitingProjection, type TableState } from './table.ts';
 import { blocksNewCommands } from './commands.ts';
 import { seafarersHints, SHIP_COST } from '../board/seafarers.ts';
+import { EP_HARBOR_COST, EP_SHIP_COST, epHints } from '../board/explorersPirates.ts';
 import { citiesKnightsHints, citiesKnightsTargets } from '../board/citiesKnights.ts';
 import { seafarersCitiesKnightsHints } from '../board/seafarersCitiesKnights.ts';
 
@@ -39,6 +40,8 @@ export type ActionId =
   | 'build.devCard'
   | 'build.ship'
   | 'ship.move'
+  | 'ep.buildHarbor'
+  | 'ep.buildShip'
   | 'knight.recruit'
   | 'knight.activate'
   | 'knight.promote'
@@ -189,6 +192,28 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
     });
   }
 
+  // Explorers & Pirates: harbour settlements and ships; no cities and no
+  // development cards; building ends with the Movement phase.
+  const ep = epHints(view);
+  if (ep) {
+    actions.push(build('ep.buildHarbor', 'ep.build.harbor', 'ep.buildHarbor', EP_HARBOR_COST, ep.harbors));
+    const ship = build('ep.buildShip', 'ep.build.ship', 'ep.buildShip', EP_SHIP_COST, ep.shipEdges);
+    if (ship.enabled && ep.shipReplace) {
+      ship.enabled = false;
+      ship.reasonId = 'ep.disabled.replaceShip';
+    }
+    actions.push(ship);
+    const kept = actions.filter((action) => action.id !== 'build.city');
+    if (ep.phase === 'movement') {
+      for (const action of kept) {
+        if (action.id.startsWith('build.') || action.id.startsWith('ep.')) {
+          action.enabled = false;
+          action.reasonId = reasonFor(input, 'ep.disabled.movement');
+        }
+      }
+    }
+    return kept;
+  }
   // Cities & Knights: knights and city walls; development cards do not exist.
   const ck = citiesKnightsHints(view);
   if (ck) {

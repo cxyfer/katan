@@ -6,8 +6,9 @@ import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.
 import type { TableController } from '../state/useTable.ts';
 import { DevCardChoicePicker } from './DevCardChoicePicker.tsx';
 import { DiscardPicker } from './DiscardPicker.tsx';
-import { TbPrompt } from './tb/TbPrompt.tsx';
 import { SeafarersPrompt } from './SeafarersPrompt.tsx';
+import { ExplorersPiratesPrompt } from './ExplorersPiratesPrompt.tsx';
+import { TbPrompt } from './tb/TbPrompt.tsx';
 import { CitiesKnightsPrompt } from './CitiesKnightsPrompt.tsx';
 import { citiesKnightsView } from '../board/citiesKnights.ts';
 import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
@@ -160,6 +161,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       )}
 
       <SeafarersPrompt controller={controller} />
+      <ExplorersPiratesPrompt controller={controller} />
       <CitiesKnightsPrompt controller={controller} />
 
       {/* Mandatory turn actions stay inside the prompt so a player never

@@ -273,3 +273,26 @@ settlers/crew, fog revealed by server randomness and never projected early,
 harbour settlements), then Pirate Lairs, Fish for Catan, Spices for Catan and
 the full Explorers & Pirates campaign. Never combinable with Seafarers;
 C&K/T&B combinations deferred.
+
+As built (2026-11-02, `feat/explorers-pirates`, stacked on `feat/seafarers`;
+details in `docs/aegis/work/2026-11-02-explorers-pirates.md`):
+
+- Five profiles, one per mission set in book order, all enabled
+  (`ep-2025.1`, 3/4 players): `ep-land-ho-2025` (8 VP), `ep-pirate-lairs-2025`
+  (12), `ep-fish-2025` (15), `ep-spices-2025` (15), `ep-full-2025` (17). Land
+  Ho! and Pirate Lairs use their printed start (`fixed`); the others the EP25
+  p. 7 variable setup. Maps in `packages/rules/src/explorers-pirates-boards.ts`
+  (topologies `ep-land-ho`, `ep-pirate-lairs`, `ep-spices`, `ep-full`).
+- Rules in the `explorersPirates` module; nothing from the Seafarers module.
+  Fog is public (`sea` terrain plus `{ hex, region }`); tiles, discs, shoal
+  numbers, spice abilities and lair numbers are drawn with the server's
+  recorded randomness at reveal/capture from public remaining inventories.
+  Harbour settlements are base settlements the module marks; ships and cargo
+  are module state (two ships per edge).
+- New module hooks: `sevenRobberStep` (what follows the discards of a 7),
+  `roadAllowed` (road veto), `vetoCommand` (refuse base commands by phase),
+  `onEndTurn` (finish moves, resolve captures, victory), `bankRate` (the
+  supply trade rate, 3:1 in E&P), `awardRules` (turn off Longest Road / Largest
+  Army); kit gained `finishTurn`.
+- Bots refuse E&P rooms. Deferred: CN3086 5–6 players, the C&K/T&B
+  combination PDFs, the 2-player variants, and coins in player trades.

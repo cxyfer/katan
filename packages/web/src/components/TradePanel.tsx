@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CARD_KINDS, RESOURCES, type CardKind, type Offer } from '@catan/rules';
 import { citiesKnightsView } from '../board/citiesKnights.ts';
+import { epView } from '../board/explorersPirates.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatTradeMap } from '../i18n/format.ts';
 import { GoodsStepper, goodsBalance, goodsTotal, tradeGoodsOf, viewerGoods, type Goods } from './tb/TradeGoods.tsx';
 import { Dialog } from './Dialog.tsx';
-import { nameOf as resolveName, shownHand, shownTradersBarbarians } from '../state/table.ts';
+import { nameOf as resolveName, shownExplorersPirates, shownHand, shownTradersBarbarians } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/trade.css';
 
@@ -76,7 +77,7 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
   const selfId = state.session?.id ?? null;
   const [give, setGive] = useState<Terms>(emptyTerms());
   const [want, setWant] = useState<Terms>(emptyTerms());
-  // Module goods (Traders & Barbarians gold) on each side of a new offer.
+  // Module goods on each side of a new offer.
   const [giveGoods, setGiveGoods] = useState<Goods>({});
   const [wantGoods, setWantGoods] = useState<Goods>({});
   const [hint, setHint] = useState<TradeHint | null>(null);
@@ -112,7 +113,7 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
   const draftEmpty = Object.keys(give).length === 0 && Object.keys(want).length === 0 &&
     goodsTotal(giveGoods) === 0 && goodsTotal(wantGoods) === 0;
   const goods = tradeGoodsOf(view);
-  const goodsView = shownTradersBarbarians(state) ?? view;
+  const goodsView = shownTradersBarbarians(state) ?? shownExplorersPirates(state) ?? view;
   const offerShortfall = (needed: Terms, neededGoods?: Goods): OfferShortfall | null => {
     const resources = tradeShortfall(owned, needed);
     const missingGoods: Goods = {};
@@ -230,6 +231,7 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
                 </ul>
                 <GoodsStepper side={side} goods={goods} value={side === 'give' ? giveGoods : wantGoods}
                   onChange={side === 'give' ? setGiveGoods : setWantGoods}
+                  prefix={epView(view) ? 'ep' : 'tb'}
                   available={(good) => goodsBalance(goodsView, selfId, good)} />
               </fieldset>
             );

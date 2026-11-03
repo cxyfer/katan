@@ -8,6 +8,7 @@
  */
 
 import type { TableState } from '../state/table.ts';
+import { EP_FRAME, epHints, epView } from './explorersPirates.ts';
 import { isShipCommand, seafarersHints } from './seafarers.ts';
 import { banditTargets, moveBanditMessageId, seafarersCitiesKnightsHints } from './seafarersCitiesKnights.ts';
 import { citiesKnightsHints, citiesKnightsTargets, isCitiesKnightsVertexCommand } from './citiesKnights.ts';
@@ -20,6 +21,8 @@ export interface BoardIntent {
   targets: number[];
   /** True when the target list came from server-provided action hints. */
   fromHints: boolean;
+  /** Extra command fields an automatic intent carries (e.g. the ship in motion). */
+  params?: Record<string, unknown>;
   /** Extra command fields (rules-module targets). */
   extra?: Record<string, unknown>;
   /** Command field receiving the picked index (rules-module targets). */
@@ -116,7 +119,7 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
       commandType: armed,
       labelId: state.selection.labelId ?? armed,
       targets: state.selection.targetsKey ? moduleTargets(state, state.selection.targetsKey) ?? [] : targetsFor(state, armed, selfId),
-      fromHints: armed.startsWith('build.') || moduleTargets(state, state.selection.targetsKey ?? armed) !== null || isShipCommand(armed) || isCitiesKnightsVertexCommand(armed),
+      fromHints: armed.startsWith('build.') || armed.startsWith('ep.') || moduleTargets(state, state.selection.targetsKey ?? armed) !== null || isShipCommand(armed) || isCitiesKnightsVertexCommand(armed),
       ...(state.selection.extra ? { extra: state.selection.extra } : {}),
       ...(state.selection.field ? { field: state.selection.field } : {}),
       ...(state.selection.targetsKey ? { targetsKey: state.selection.targetsKey } : {}),
@@ -126,6 +129,12 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
   // A rules module's pending choice (or end-of-turn step) of this viewer.
   const fromModule = moduleBoardIntent(state);
   if (fromModule) return fromModule;
+
+  // Explorers & Pirates owns its setup, its pirate frame and ship movement.
+  if (epHints(view)) {
+    const ep = explorersPiratesIntent(state, selfId);
+    if (ep || view.turn.setup) return ep;
+  }
 
   const pending = view.pending;
   // `discard` is the one pending effect with no single actor and no board
@@ -210,6 +219,42 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
   return null;
 }
 
+/** The board choice an Explorers & Pirates player owes right now, if any. */
+function explorersPiratesIntent(state: TableState, selfId: string | null): BoardIntent | null {
+  const view = state.game?.view;
+  const ep = epHints(view);
+  if (!view || !ep || !selfId) return null;
+  const pending = view.pending;
+  if (pending?.kind === EP_FRAME) {
+    return ep.pirateTargets.length > 0
+      ? { kind: 'hex', commandType: 'ep.placePirate', labelId: 'ep.pirate.place', targets: ep.pirateTargets, fromHints: true }
+      : null;
+  }
+  const setup = ep.setup;
+  if (setup) {
+    if (setup.step === 'harbor') return { kind: 'vertex', commandType: 'ep.setupHarbor', labelId: 'ep.setup.harbor', targets: setup.harbor, fromHints: true };
+    if (setup.step === 'settlement') return { kind: 'vertex', commandType: 'ep.setupSettlement', labelId: 'ep.setup.settlement', targets: setup.settlement, fromHints: true };
+    return setup.ship.length > 0
+      ? { kind: 'edge', commandType: 'ep.setupShip', labelId: 'ep.setup.ship', targets: setup.ship, fromHints: true }
+      : { kind: 'edge', commandType: 'ep.setupRoad', labelId: 'ep.setup.road', targets: setup.road, fromHints: true };
+  }
+  // The ship in motion keeps the board armed until it stops.
+  const active = epView(view)?.turn.active ?? null;
+  const ship = active ? ep.ships.find((candidate) => candidate.id === active) : undefined;
+  if (ep.phase === 'movement' && ship && !ship.done && ship.steps.length > 0) {
+    return {
+      kind: 'edge', commandType: 'ep.moveShip', labelId: ep.stranded ? 'ep.move.stranded' : 'ep.move.step',
+      targets: ship.steps.map((step) => step.edge), fromHints: true, params: { ship: ship.id },
+    };
+  }
+  return null;
+}
+
+function epShipHint(state: TableState) {
+  const id = state.selection.params?.ship;
+  return epHints(state.game?.view)?.ships.find((ship) => ship.id === id);
+}
+
 /** Resolves the advisory target list for one command type. */
 export function targetsFor(state: TableState, commandType: string, selfId: string | null): number[] {
   void selfId;
@@ -234,6 +279,32 @@ export function targetsFor(state: TableState, commandType: string, selfId: strin
       return seafarersHints(state.game?.view)?.setupShips ?? [];
     case 'ship.pick':
       return seafarersHints(state.game?.view)?.movableShips.map((ship) => ship.edge) ?? [];
+    case 'ep.setupHarbor':
+      return epHints(state.game?.view)?.setup?.harbor ?? [];
+    case 'ep.setupSettlement':
+      return epHints(state.game?.view)?.setup?.settlement ?? [];
+    case 'ep.setupRoad':
+      return epHints(state.game?.view)?.setup?.road ?? [];
+    case 'ep.setupShip':
+      return epHints(state.game?.view)?.setup?.ship ?? [];
+    case 'ep.buildHarbor':
+      return epHints(state.game?.view)?.harbors ?? [];
+    case 'ep.buildShip':
+      return epHints(state.game?.view)?.shipEdges ?? [];
+    case 'ep.placePirate':
+      return epHints(state.game?.view)?.pirateTargets ?? [];
+    case 'ep.moveShip':
+      return epShipHint(state)?.steps.map((step) => step.edge) ?? [];
+    case 'ep.found':
+      return epShipHint(state)?.found ?? [];
+    case 'ep.dropCrew':
+      return epShipHint(state)?.dropCrew ?? [];
+    case 'ep.pickCrew':
+      return epShipHint(state)?.pickCrew ?? [];
+    case 'ep.loadFish':
+      return epShipHint(state)?.loadFish ?? [];
+    case 'ep.loadSpice':
+      return epShipHint(state)?.loadSpice ?? [];
     case 'knight.chasePirate':
       return seafarersCitiesKnightsHints(state.game?.view)?.pirateChase ?? [];
     case 'ship.move': {

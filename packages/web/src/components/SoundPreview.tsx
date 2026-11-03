@@ -42,6 +42,8 @@ const DESCRIPTIONS: Record<SoundCue, string> = {
   'pirate.move': '海盜出航 · Pirate moves',
   'gold.pick': '金礦地選資源 · Gold chosen',
   'island.bonus': '登上新小島 · New island bonus',
+  'explore.reveal': '探索未知海域 · Fog lifts off a hex',
+  'mission.advance': '任務推進 · Mission progress',
   'barbarians.advance': '蠻族船隻前進 · Barbarians sail closer',
   'barbarians.attack': '蠻族來襲 · Barbarian attack',
   'knight.act': '騎士行動 · Knight action',

@@ -12,6 +12,7 @@ import { TerrainEmblem } from './TerrainArt.tsx';
 import { TbBridge, TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
 import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
 import { isShipCommand, seafarersView } from '../board/seafarers.ts';
+import { SvgExplorersPiratesLayer } from './SvgExplorersPirates.tsx';
 import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
 import { MerchantPiece } from './SvgProgressArt.tsx';
 import { KnightPiece, SvgCitiesKnightsPieces, SvgCitiesKnightsWalls, ToppledCity, WallRing } from './SvgCitiesKnights.tsx';
@@ -20,7 +21,8 @@ interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'
   svgRef: Ref<SVGSVGElement>;
   geometry: BoardGeometry;
   view: GameView;
-  arrivals: readonly BoardEffectGroup[];
+  arrivals?: readonly BoardEffectGroup[];
+  active?: BoardEffectGroup | null;
   selection: TableState['selection'];
   selfId: string | null;
   intent: BoardIntent | null;
@@ -108,7 +110,7 @@ function SeaHex({ hex, number, ids }: { hex: BoardGeometry['hexes'][number]; num
   </g>;
 }
 
-export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
+export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
   const t = useT();
   const prefix = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const ids = useMemo(() => boardArtIds(`board-art-${prefix}`), [prefix]);
@@ -210,9 +212,9 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
             );
           })}
 
+          <SvgExplorersPiratesLayer geometry={geometry} view={view} active={active} nameResolver={nameResolver} />
           <TbSvgOver geometry={geometry} view={view} />
           {ck && <SvgCitiesKnightsPieces geometry={geometry} view={view} ck={ck} nameResolver={nameResolver} />}
-
           {seafarersView(view)?.islandClaims.map((claim) => {
             const vertex = geometry.vertices[claim.vertex];
             const owner = view.players.find((candidate) => candidate.id === claim.player);

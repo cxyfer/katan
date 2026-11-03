@@ -5,6 +5,7 @@ import { useT } from '../i18n/context.tsx';
 import { buildGeometry } from '../board/geometry.ts';
 import { boardIntent } from '../board/intent.ts';
 import { seafarersView } from '../board/seafarers.ts';
+import { epView, fogRegions } from '../board/explorersPirates.ts';
 import { citiesKnightsView, knightFollowUp } from '../board/citiesKnights.ts';
 import { CitiesKnightsBadge } from './CitiesKnightsBadge.tsx';
 import type { TargetKind } from '../board/targets.ts';
@@ -84,6 +85,8 @@ export function BoardView({ controller }: { controller: TableController }) {
   const intent = useMemo(() => followUpsHeld(state) && !state.selection.commandType ? null : boardIntent(state, selfId), [state, selfId]);
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
   const seaView = useMemo(() => seafarersView(view), [view?.modules]);
+  const epModule = useMemo(() => epView(view), [view?.modules]);
+  const epFog = useMemo(() => (epModule ? fogRegions(epModule) : undefined), [epModule]);
   const ckView = useMemo(() => citiesKnightsView(view), [view?.modules]);
   const pickerAnchor = useMemo(() => pickerTarget
     ? targets.find((target) => target.kind === pickerTarget.kind && target.index === pickerTarget.index) ?? null
@@ -153,9 +156,10 @@ export function BoardView({ controller }: { controller: TableController }) {
       return;
     }
     const carried = state.selection.commandType === intent.commandType ? state.selection : null;
+    const params = carried?.params ?? intent.params;
     actions.selectTarget({ kind, index, commandType: intent.commandType, labelId: intent.labelId,
       ...(intent.extra ? { extra: intent.extra } : {}), ...(intent.targetsKey ? { targetsKey: intent.targetsKey } : {}), ...(intent.field ? { field: intent.field } : {}),
-      ...(carried?.params ? { params: carried.params } : {}), ...(carried?.field ? { field: carried.field } : {}) });
+      ...(params ? { params } : {}), ...(carried?.field ? { field: carried.field } : {}) });
   }, [actions, intent, state.selection]);
   const focusedRoll = animation.activeDice;
   // 骰子真的出現在畫面上才開始擲骰聲；點數揭曉與後果都以此為起點。
@@ -172,7 +176,8 @@ export function BoardView({ controller }: { controller: TableController }) {
   const topology = geometry.topology;
   const setup = view.turn.setup;
   const setupActor = setup ? view.players.find((player) => player.seat === setup.seat) : undefined;
-  const setupPiece = setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
+  const epStep = epView(view)?.setupStep ?? null;
+  const setupPiece = epStep ? t(`ep.setup.${epStep}`) : setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
   const setupMine = setupActor?.id === selfId;
   const selection = intent && state.connection === 'online' && selfId && state.selection.kind === intent.kind && state.selection.index !== null && intent.targets.includes(state.selection.index)
     ? { kind: intent.kind, index: state.selection.index, playerId: selfId, params: state.selection.params } : null;
@@ -298,17 +303,17 @@ export function BoardView({ controller }: { controller: TableController }) {
         aria-label={t(effective === 'r3f' ? 'a11y.boardRegion3d' : 'a11y.boardRegion')} tabIndex={0} {...controls.surfaceProps}>
         {requested !== 'svg' && !failure && <div className="board__scene" aria-hidden="true" style={{ opacity: effective === 'r3f' ? 1 : 0 }}>
           <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
-            <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView} citiesKnights={ckView}
-              intent={intent} selection={selection} arrivals={animation.arrivals} viewport={controls.viewport} quality={quality}
-              motionAllowed={animation.arrivals.length > 0} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} {...(view.modules ? { modules: view.modules } : {})} />
+            <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView} citiesKnights={ckView} explorersPirates={epModule}
+              intent={intent} selection={selection} arrivals={animation.arrivals} active={animation.active} viewport={controls.viewport} quality={quality}
+              motionAllowed={animation.arrivals.length > 0 || animation.active !== null} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} {...(view.modules ? { modules: view.modules } : {})} />
           </Suspense></SceneBoundary>
         </div>}
-        {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} arrivals={animation.arrivals}
+        {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} arrivals={animation.arrivals} active={animation.active}
           selection={selection ? state.selection : { ...state.selection, index: null }} selfId={selfId} intent={intent}
           pan={controls.pan} zoom={zoom} viewBoxCenter={viewBoxCenter} nameResolver={nameResolver} />}
         <BoardInspectionLayer key={`${state.game?.gameId}:${geometry.topologyId}:${effective}`}
           geometry={geometry} board={board} renderer={effective} controls={controls}
-          nameOf={nameResolver} fallbackFocusRef={surfaceRef} />
+          nameOf={nameResolver} fallbackFocusRef={surfaceRef} fog={epFog} />
         <BoardTargetOverlay targets={targets} rect={controls.viewport.rect} selection={selection} board={board} topology={topology} nameOf={nameResolver}
           renderer={effective} onSelect={selectTarget} consumeSuppressedClick={controls.consumeSuppressedClick}
           fallbackFocusRef={surfaceRef} onCancel={actions.cancelSelection}

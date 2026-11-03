@@ -16,6 +16,8 @@ interface Props {
   controls: BoardViewportControls;
   nameOf: (id: string) => string;
   fallbackFocusRef: RefObject<HTMLElement | null>;
+  /** Explorers & Pirates fog (hex → region), if any. */
+  fog?: ReadonlyMap<number, 'parrot' | 'goose'>;
 }
 
 export const INSPECTION_DELAY_MS = 1000;
@@ -32,11 +34,11 @@ export function inspectionHitSize(outlines: readonly (readonly ProjectedAnchor[]
 }
 
 /** Inspection sits below legal targets; both use the same camera projection. */
-export function BoardInspectionLayer({ geometry, board, renderer, controls, nameOf, fallbackFocusRef }: Props) {
+export function BoardInspectionLayer({ geometry, board, renderer, controls, nameOf, fallbackFocusRef, fog }: Props) {
   const locale = useLocale();
   const t = useT();
   const elements = useMemo(() => inspectionElements(geometry, board, renderer), [geometry, board, renderer]);
-  const context = { locale, board, topology: geometry.topology, nameOf };
+  const context = { locale, board, topology: geometry.topology, nameOf, fog };
   const rect = controls.viewport.rect;
   const hitSize = inspectionHitSize(elements.filter((element) => element.kind === 'hex')
     .map((element) => element.outline!.map(controls.projectPoint)));

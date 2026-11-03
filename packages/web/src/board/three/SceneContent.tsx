@@ -36,6 +36,7 @@ import { DioramaBuildings, DioramaRoads, DioramaHarbors } from './DioramaStructu
 import { createRoadModel, createSettlementModel, harborLabelInstances } from './diorama-structures.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
 import { createRobberModel } from './diorama-robber.ts';
+import { DioramaExplorersPirates } from './DioramaExplorersPirates.tsx';
 import { TbScenePieces, tbNumberTokens } from './TbScenePieces.tsx';
 import { DioramaSeafarers, PirateGhost, ShipGhost } from './DioramaSeafarers.tsx';
 import { isShipCommand } from '../seafarers.ts';
@@ -44,8 +45,8 @@ import { isCitiesKnightsVertexCommand, knightGhost, progressGhost, showsKnightGh
 import { atlasGeometryKey, boardSceneResources, type BoardSceneResources } from './resources.ts';
 
 type SceneProps = Pick<BoardSceneProps,
-  'modules' | 'geometry' | 'board' | 'players' | 'intent' | 'selection' | 'arrivals' | 'viewport' | 'quality' |
-  'motionAllowed' | 'onProjection' | 'onReady' | 'onUnavailable' | 'citiesKnights'>;
+  'modules' | 'geometry' | 'board' | 'players' | 'intent' | 'selection' | 'arrivals' | 'active' | 'viewport' | 'quality' |
+  'motionAllowed' | 'onProjection' | 'onReady' | 'onUnavailable' | 'seafarers' | 'citiesKnights' | 'explorersPirates'>;
 
 function useLeasedResources(): BoardSceneResources {
   const resources = boardSceneResources();
@@ -433,6 +434,7 @@ function AtlasLayerContent({ props }: { props: SceneProps }) {
       <HarborLabels props={props} resources={resources} texture={texture} />
       <DioramaRoads {...props} material={resources.materials.diorama} />
       <DioramaBuildings {...props} material={resources.materials.diorama} />
+      <DioramaExplorersPirates {...props} material={resources.materials.diorama} />
       <TbScenePieces geometry={props.geometry} board={props.board} players={props.players} modules={props.modules}
         quality={props.quality} material={resources.materials.diorama} />
       <DioramaSeafarers {...props} material={resources.materials.diorama} />

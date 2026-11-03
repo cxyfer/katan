@@ -501,6 +501,17 @@ const RECIPES: Record<SoundCue, Recipe> = {
     [67, 72, 76, 79].forEach((midi, index) => bell(s, at + index * 0.09, midi, 0.08, 1.0, { reverb: 0.4, pan: -0.3 + index * 0.2 }));
     brass(s, at + 0.36, 72, 0.06, 0.5, { reverb: 0.35 });
   },
+  // Explorers & Pirates: mist lifting off a hex — an airy rise ending on a soft chime.
+  'explore.reveal': (s, at) => {
+    noise(s, { at, attack: 0.25, decay: 0.6, gain: 0.08, filter: { type: 'bandpass', freq: 1200, to: 3200, q: 0.5 }, pan: 0.2 });
+    swish(s, at + 0.1, 400, 1800, 0.5, 0.08, { pan: -0.2, reverb: 0.35 });
+    bell(s, at + 0.5, 76, 0.06, 0.9, { reverb: 0.45 });
+  },
+  // A mission step: two bells and a short horn.
+  'mission.advance': (s, at) => {
+    [72, 79].forEach((midi, index) => bell(s, at + index * 0.11, midi, 0.07, 0.9, { reverb: 0.35, pan: -0.2 + index * 0.4 }));
+    brass(s, at + 0.25, 67, 0.06, 0.45, { reverb: 0.35 });
+  },
   // Cities & Knights: oars striking water as the barbarian ship comes closer.
   'barbarians.advance': (s, at) => {
     [0, 0.28].forEach((offset) => swish(s, at + offset, 400, 180, 0.25, 0.14, { pan: offset ? 0.25 : -0.25, reverb: 0.25 }));
@@ -580,6 +591,7 @@ export const CUE_LENGTH_SECONDS: Record<SoundCue, number> = {
   'trade.offer': 1.8, 'trade.complete': 1.2, 'trade.bank': 0.8, 'trade.cancel': 0.8,
   'turn.yours': 1.6, 'turn.other': 0.5, 'game.victory': 2.6, 'game.over': 2.6,
   'ui.select': 0.1, 'ui.error': 0.3, 'chat.message': 0.25,
+  'explore.reveal': 1.4, 'mission.advance': 1.2,
   ...TB_CUE_LENGTH_SECONDS,
   'ship.build': 1.1, 'ship.move': 1.1, 'pirate.move': 1.0, 'gold.pick': 1.1, 'island.bonus': 1.4,
   'barbarians.advance': 0.9, 'barbarians.attack': 1.6, 'knight.act': 0.8, 'wall.build': 0.6, 'city.improve': 1.2,

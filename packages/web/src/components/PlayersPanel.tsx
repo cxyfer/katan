@@ -5,7 +5,8 @@ import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
-import { shownCitiesKnights, shownTradersBarbarians, shownHandSize } from '../state/table.ts';
+import { epView } from '../board/explorersPirates.ts';
+import { shownCitiesKnights, shownExplorersPirates, shownTradersBarbarians, shownHandSize } from '../state/table.ts';
 import { islandBonusPoints, seafarersView } from '../board/seafarers.ts';
 import { activeStrength, citiesKnightsPoints, citiesKnightsView } from '../board/citiesKnights.ts';
 import { GameIcon } from './GameArt.tsx';
@@ -72,7 +73,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
 }) {
   const t = useT();
   const { state } = controller;
-  const view = shownCitiesKnights(state) ?? shownTradersBarbarians(state) ?? state.game?.view;
+  const view = shownCitiesKnights(state) ?? shownTradersBarbarians(state) ?? shownExplorersPirates(state) ?? state.game?.view;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const expanded = pinned || previewOpen;
@@ -239,6 +240,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           const ships = view.board.roads.filter((road) => road?.ship && road.player === player.id).length;
           const islandPoints = sea ? islandBonusPoints(view, player.id) : 0;
           const routeAward = t(sea ? 'sf.award.longestTradeRoute' : 'play.award.longestRoad');
+          // Explorers & Pirates: gold, ships, harbour settlements and mission points (no development cards or awards).
+          const ep = epView(view);
+          const epPlayer = ep?.players[player.id];
           const number = (value: number) => formatNumber(state.locale, value);
           // Cities & Knights: no development cards or Largest Army; metropolises, defender points and knights instead.
           const ck = citiesKnightsView(view);
@@ -277,12 +281,16 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                   <ScoreMark icon="cards" label={t('play.handSize')} value={number(shownHandSize(state, player))} />
                   {ck
                     ? <ScoreMark icon="scroll" label={t('ck.score.progress')} value={number(ck.progressCounts[player.id] ?? 0)} testId={`players-progress-${player.seat}`} />
-                    : <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />}
+                    : !ep && <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />}
                   {sea && <ScoreMark icon="ship" label={t('sf.board.ship')} value={number(ships)} testId={`players-ships-${player.seat}`} />}
-                  <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
-                    value={number(player.longestRoadLength)} awarded={longestRoad} testId={`players-route-${player.seat}`} />
+                  {ep && epPlayer && <>
+                    <ScoreMark icon="ship" label={t('ep.piece.ship')} value={number(ep.ships.filter((ship) => ship.player === player.id).length)} testId={`players-ep-ships-${player.seat}`} />
+                    <ScoreMark icon="sparkles" label={t('ep.score.gold', { gold: number(epPlayer.gold) })} value={number(epPlayer.gold)} testId={`players-ep-gold-${player.seat}`} />
+                  </>}
+                  {!ep && <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
+                    value={number(player.longestRoadLength)} awarded={longestRoad} testId={`players-route-${player.seat}`} />}
                   {ck && <ScoreMark icon="shield" label={t('ck.score.knights')} value={number(activeStrength(ck, player.id))} testId={`players-knights-${player.seat}`} />}
-                  {!ck && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
+                  {!ck && !ep && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
                     value={number(player.playedKnights)} awarded={largestArmy} />}
                 </div>
                 <div className="players__bonuses">
@@ -290,6 +298,12 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                   {islandPoints > 0 && <ScoreMark icon="compass" testId={`players-islands-${player.seat}`}
                     label={`${t('sf.score.islands')} · ${t('sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })}`}
                     value={number(islandPoints)} />}
+                  {epPlayer && epPlayer.harborPoints > 0 && <ScoreMark icon="anchor" testId={`players-ep-harbors-${player.seat}`}
+                    label={t('ep.score.harbors', { points: number(epPlayer.harborPoints) })} value={number(epPlayer.harborPoints)} />}
+                  {epPlayer && (['lairs', 'fish', 'spices'] as const).filter((mission) => ep!.missions.includes(mission)).map((mission) => (
+                    <ScoreMark key={mission} icon={mission === 'lairs' ? 'shield' : mission === 'fish' ? 'anchor' : 'scales'} testId={`players-ep-${mission}-${player.seat}`}
+                      label={t(`ep.score.${mission}`, { points: number(epPlayer.missionPoints[mission] ?? 0) })} value={number(epPlayer.missionPoints[mission] ?? 0)} />
+                  ))}
                   {player.bonusPoints - islandPoints > 0 && <ScoreMark icon="flag" label={t('table.playersBonus')} value={number(player.bonusPoints - islandPoints)} />}
                   {ckPoints && ckPoints.metropolises > 0 && <ScoreMark icon="city" testId={`players-metropolis-${player.seat}`}
                     label={t('ck.score.metropolises', { points: number(ckPoints.metropolises) })} value={number(ckPoints.metropolises)} />}

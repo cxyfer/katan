@@ -691,11 +691,25 @@ export function applyCommand(
   if (next.pending && !PENDING_COMMANDS.has(command.type as CommandType) && !modulePendingCommand(next, command.type)) {
     return fail('E_PENDING_EFFECT', { pending: next.pending.kind });
   }
+  const veto = moduleVeto(next, actorId, command as ModuleCommand);
+  if (veto) return veto;
   const outcome = dispatch(next, actorId, command, rng);
   if (!outcome.ok) return outcome;
   trackPeakHands(next);
   const events = next.log.filter((event) => event.seq > state.seq);
   return { ok: true, state: next, events };
+}
+
+/** A module's refusal of a command before dispatch (base profiles: none). */
+function moduleVeto(state: GameState, actorId: string, command: ModuleCommand): CommandOutcome | undefined {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return undefined;
+  const ctx = viewContext(state);
+  for (const module of modules) {
+    const veto = module.vetoCommand?.(state, actorId, command, ctx);
+    if (veto) return veto;
+  }
+  return undefined;
 }
 
 function trackPeakHands(state: GameState): void {

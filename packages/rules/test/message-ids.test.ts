@@ -14,6 +14,7 @@ import {
 import { BUILT_IN_MODULES } from '../src/modules/builtins.ts';
 import { MODULE_MESSAGES } from '../src/modules/messages.ts';
 
+// Include each module's nested implementation files as well as its entry point.
 const moduleSources = import.meta.glob<string>('../src/modules/*/**/*.ts', {
   query: '?raw',
   import: 'default',

@@ -43,6 +43,8 @@ export interface RollHold {
   citiesKnights: GameSnapshot['view'] | null;
   /** T&B 擲骰前的投影，包含魚牌、舊靴子、金幣與分數。 */
   tradersBarbarians?: GameSnapshot['view'] | null;
+  /** E&P 擲骰前的公開狀態，包括金幣與分數。 */
+  explorersPirates?: GameSnapshot['view'] | null;
   /** 擲骰前已知的最後事件序號。 */
   eventSeq: number;
 }
@@ -244,6 +246,7 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
       handSizes: Object.fromEntries(current.view.players.map((player) => [player.id, player.handSize])),
       citiesKnights: citiesKnightsView(current.view) ? current.view : null,
       tradersBarbarians: current.view.modules?.tradersBarbarians ? current.view : null,
+      explorersPirates: current.view.modules?.explorersPirates ? current.view : null,
       eventSeq: lastSeq,
     },
   };
@@ -293,6 +296,14 @@ export function shownTradersBarbarians(state: TableState): GameSnapshot['view'] 
   if (hold) return hold.tradersBarbarians ?? null;
   const view = state.game?.view ?? null;
   return view?.modules?.tradersBarbarians ? view : null;
+}
+
+/** E&P 金幣與任務面板在擲骰演出期間使用擲骰前投影。 */
+export function shownExplorersPirates(state: TableState): GameSnapshot['view'] | null {
+  const hold = activeHold(state);
+  if (hold) return hold.explorersPirates ?? null;
+  const view = state.game?.view ?? null;
+  return view?.modules?.explorersPirates ? view : null;
 }
 
 /** 事件紀錄：擲骰演出期間只列出擲骰前已知的事件，並隱藏最新點數。 */

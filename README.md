@@ -155,6 +155,12 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   main island, ships (build, move, Road Building), the pirate, gold fields,
   the per-player small-island bonus, Longest Trade Route and a 14-point goal,
   in both the 3D and SVG boards.
+- **Explorers & Pirates** for 3–4 players (CN3085 2025 edition), one profile
+  per mission set in book order — Land Ho!, Pirate Lairs, Fish for Catan,
+  Spices for Catan and the full game: fog over unexplored hexes, harbour
+  settlements, ships carrying settlers, crews, fish and spice, coins, pirate
+  ships, lairs, the Council of Catan and mission tracks, in both boards.
+  Never combined with Seafarers; human seats only.
 
 - **Cities & Knights** for 3–6 players (CK25/CK56-25 2025 editions): the
   event die and barbarians, knights, walls, commodities, city improvements,

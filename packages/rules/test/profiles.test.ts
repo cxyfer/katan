@@ -30,12 +30,17 @@ describe('ruleset registry', () => {
       'ck-paired-2025',
       'sf-ck-new-shores-2025',
       'sf-ck-new-shores-paired-2025',
+      'ep-land-ho-2025',
+      'ep-pirate-lairs-2025',
+      'ep-fish-2025',
+      'ep-spices-2025',
+      'ep-full-2025',
     ]);
   });
 
   it('enables only the profiles whose rules and fixtures have passed', () => {
     const enabled = PROFILES.filter((profile) => profile.enabled && !profile.id.startsWith('tb-')).map((profile) => profile.id);
-    const all = ['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ck-2025', 'ck-paired-2025', 'sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025'];
+    const all = ['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ck-2025', 'ck-paired-2025', 'sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025', 'ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025'];
     expect(enabled).toEqual(all);
     expect(selectableProfiles().filter((profile) => !profile.id.startsWith('tb-')).map((profile) => profile.id)).toEqual(all);
     expect(selectableProfiles(5).map((profile) => profile.id)).toEqual(['base-paired-2025', 'sf-new-shores-paired-2025', 'ck-paired-2025', 'sf-ck-new-shores-paired-2025']);

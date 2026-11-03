@@ -9,6 +9,7 @@
  * passed `Rng`, and the resulting layout is stored in the snapshot.
  */
 
+import { explorersPiratesLayout } from './explorers-pirates-boards.ts';
 import { buildBaseLayout } from './layout.ts';
 import type { ProfileDefinition, SetupMode } from './profiles.ts';
 import type { Rng } from './rng.ts';
@@ -33,6 +34,8 @@ const builders = new Map<string, LayoutBuilder>([
   ['base', ({ topology, mode, rng }) => buildBaseLayout({ topology, mode, rng })],
   // SF25 pp. 4–5 / SF56-25 p. 4 Heading for New Shores maps.
   ['sf-new-shores', (context) => newShoresLayout(context, getTopology)],
+  // EP25 pp. 6–7 / EP25-M pp. 4–16 Explorers & Pirates mission maps.
+  ['explorers-pirates', (context) => explorersPiratesLayout(context, getTopology)],
 ]);
 
 export function registerLayoutBuilder(id: string, builder: LayoutBuilder): void {
