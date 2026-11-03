@@ -90,6 +90,7 @@ export function placePirate(state: GameState, actorId: string, command: ModuleCo
     slot.fishSupply += 1;
     ctx.kit.emit(state, 'ep.fishScared', { playerId: actorId, hex });
   }
+  ctx.kit.afterBoardChange(state);
   const candidates = victimsAt(state, hex, actorId).filter((id) => canRob(state, id));
   if (candidates.length === 0) {
     ctx.kit.completePending(state, ctx.rng);
@@ -185,6 +186,7 @@ export function chasePirate(state: GameState, actorId: string, command: ModuleCo
     ctx.kit.emit(state, 'ep.pirateReturned', { playerId: slot.pirate!.owner, hex: slot.pirate!.hex });
     const from = slot.pirate!.hex;
     slot.pirate = null;
+    ctx.kit.afterBoardChange(state);
     // Activating the chaser's pirate: a different sea hex than the chased one.
     ctx.kit.enqueuePending(state, { ...pirateFrame(actorId, 'chase'), data: { stage: 'place', cause: 'chase', from } });
   }

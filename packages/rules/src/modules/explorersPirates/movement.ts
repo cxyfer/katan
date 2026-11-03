@@ -144,8 +144,8 @@ export function moveShip(state: GameState, actorId: string, command: ModuleComma
     // Exploring ends this ship's movement (EP25 p. 12).
     record.done = true;
     turn.active = null;
-    ctx.kit.afterBoardChange(state);
   }
+  ctx.kit.afterBoardChange(state);
   return ctx.kit.accept(state);
 }
 
