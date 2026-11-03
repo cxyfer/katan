@@ -6,8 +6,10 @@
  * hands stay private.
  */
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { startHarness, runSetupOverApi, type TestClient, type TestHarness } from './helpers.ts';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import * as rules from '@catan/rules';
+import type { CommandReceipt } from '@catan/protocol';
+import { startHarness, runSetupOverApi, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;
 
@@ -57,6 +59,66 @@ async function startCkGame(count: number): Promise<{ clients: TestClient[]; game
 }
 
 describe('Cities & Knights over the API (test-only profile path)', () => {
+  it('projects another seat’s progress draw out of first and replayed roll receipts', async () => {
+    const { clients, gameId } = await startCkGame(3);
+    await runSetupOverApi(clients, gameId);
+    const row = (await harness.service.repo.findGame(gameId))!;
+    const state = JSON.parse(row.state_json) as rules.GameState;
+    const actorId = state.players[state.turn.seat]!.id;
+    const recipient = state.players.find((player) => player.id !== actorId)!;
+    recipient.improvements.science = 1;
+    state.progressDecks.science = ['crane'];
+    await harness.service.repo.saveGame(gameId, state, row.revision, 'playing', null);
+    const actor = clients.find((client) => client.playerId === actorId)!;
+    const body = { commandId: 'private-progress-roll', expectedRevision: row.revision, command: { type: 'turn.roll' } };
+    const draws = [0, 0, 3]; // 黃骰 1、紅骰 1、科學城門。
+    const rng = vi.spyOn(rules, 'secureRng').mockReturnValue({ int: () => draws.shift() ?? 0 });
+    try {
+      const first = actor.expectOk<CommandReceipt>(await actor.post(`/api/games/${gameId}/commands`, body));
+      expect(first.outcome).toBe('accepted');
+      expect(first.events.find((event) => event.type === 'ck.progressDrawn')).toMatchObject({ params: { playerId: recipient.id } });
+      const replay = actor.expectOk<CommandReceipt>(await actor.post(`/api/games/${gameId}/commands`, body));
+      expect(replay).toEqual(first);
+      for (const receipt of [first, replay]) {
+        expect(receipt.events.every((event) => event.private === undefined)).toBe(true);
+        expect(receipt.events.every((event) => event.params.card === undefined)).toBe(true);
+        expect(JSON.stringify(receipt)).not.toContain('crane');
+      }
+      const own = await snapshot(clients.find((client) => client.playerId === recipient.id)!, gameId);
+      expect(own.view.players.find((player) => player.id === recipient.id)!.progressCards).toEqual(['crane']);
+      const persisted = (await harness.service.repo.findGame(gameId))!;
+      expect((JSON.parse(persisted.state_json) as rules.GameState).players.find((player) => player.id === recipient.id)!.progressCards).toEqual(['crane']);
+    } finally {
+      rng.mockRestore();
+    }
+  });
+
+  it.each(['buy', 'steal'] as const)('preserves the actor’s private %s result in first and replayed base receipts', async (kind) => {
+    const { clients, gameId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const row = (await harness.service.repo.findGame(gameId))!;
+    const state = JSON.parse(row.state_json) as rules.GameState;
+    const actorId = state.players[state.turn.seat]!.id;
+    const actor = clients.find((client) => client.playerId === actorId)!;
+    state.turn.phase = 'action';
+    const self = state.players.find((player) => player.id === actorId)!;
+    self.resources = { lumber: 0, brick: 0, wool: 1, grain: 1, ore: 1 };
+    const victim = state.players.find((player) => player.id !== actorId)!;
+    victim.resources = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 1 };
+    state.devDeck = ['monopoly'];
+    if (kind === 'steal') state.pending = { kind: 'steal', actor: actorId, hex: 0, candidates: [victim.id], pirate: false };
+    await harness.service.repo.saveGame(gameId, state, row.revision, 'playing', null);
+    const command = kind === 'buy' ? { type: 'build.devCard' } : { type: 'pending.steal', victim: victim.id };
+    const body = { commandId: `private-base-${kind}`, expectedRevision: row.revision, command };
+    const first = actor.expectOk<CommandReceipt>(await actor.post(`/api/games/${gameId}/commands`, body));
+    expect(first.outcome).toBe('accepted');
+    const replay = actor.expectOk<CommandReceipt>(await actor.post(`/api/games/${gameId}/commands`, body));
+    expect(replay).toEqual(first);
+    const event = first.events.find((event) => event.type === (kind === 'buy' ? 'build.devCard' : 'robber.stole'))!;
+    expect(event.params).toMatchObject(kind === 'buy' ? { card: 'monopoly' } : { resource: 'ore' });
+    expect(event.private).toBeUndefined();
+  });
+
   it('keeps the profiles out of the lobby', async () => {
     const host = await harness.client('CkLobby');
     const refused = await host.post('/api/rooms', {
