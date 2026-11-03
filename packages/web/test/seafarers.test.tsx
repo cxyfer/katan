@@ -8,7 +8,8 @@ import { buildGeometry } from '../src/board/geometry.ts';
 import { targetsFromGeometry } from '../src/board/projection.ts';
 import { SEA_LEVEL } from '../src/board/sea.ts';
 import { seafarersHints } from '../src/board/seafarers.ts';
-import { shipTransform } from '../src/board/three/diorama-ships.ts';
+import { shipInstances, shipTransform } from '../src/board/three/diorama-ships.ts';
+import { placementEffectGroups } from '../src/board/animation.ts';
 import { SeafarersPrompt } from '../src/components/SeafarersPrompt.tsx';
 import { SvgBoard } from '../src/components/SvgBoard.tsx';
 import { translateEvent } from '../src/i18n/events.ts';
@@ -118,7 +119,7 @@ describe('seafarers client', () => {
     });
     const geometry = buildGeometry(view.board.topologyId, 100, view.board.terrain);
     const { container } = render(<LocaleProvider locale="en"><SvgBoard svgRef={() => undefined} geometry={geometry} view={view}
-      active={null} selection={EMPTY_SELECTION} selfId="p1" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
+      arrivals={[]} selection={EMPTY_SELECTION} selfId="p1" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
       viewBoxCenter={{ x: 0, y: 0 }} nameResolver={(id) => id} /></LocaleProvider>);
     expect(container.querySelector(`[data-testid="ship-${NE}"]`)).not.toBeNull();
     expect(container.querySelector(`[data-testid="road-${NE}"]`)).toBeNull();
@@ -142,6 +143,31 @@ describe('seafarers client', () => {
     });
     const transform = shipTransform(geometry, coastEdge)!;
     expect(transform.position[1]).toBeCloseTo(SEA_LEVEL + 0.01);
+  });
+
+  it.each(['setup.ship', 'ship.built', 'ship.moved'])('keeps separate arrivals for ships after %s', (eventType) => {
+    const view = seaView((state) => {
+      state.board.roads[NW] = { player: 'p1', ship: true };
+      state.board.roads[NE] = { player: 'p1', ship: true };
+    });
+    const geometry = buildGeometry(view.board.topologyId, 100, view.board.terrain);
+    const event = (seq: number, edge: number) => makeEvent(seq, eventType,
+      eventType === 'ship.moved' ? { playerId: 'p1', from: 0, to: edge } : { playerId: 'p1', edge });
+    const first = placementEffectGroups('sf-game', [event(1, NW)]);
+    const second = placementEffectGroups('sf-game', [event(2, NE)]);
+    expect(first).toHaveLength(1);
+    expect(second).toHaveLength(1);
+    const arrivals = [...first, ...second];
+    const ships = shipInstances(geometry, view.board, arrivals);
+    expect(ships.find((ship) => ship.index === NW)?.arrivalKey).toBe(first[0]!.id);
+    expect(ships.find((ship) => ship.index === NE)?.arrivalKey).toBe(second[0]!.id);
+    expect(shipInstances(geometry, view.board, second).find((ship) => ship.index === NW)?.arrivalKey).toBeNull();
+
+    const { container } = render(<LocaleProvider locale="en"><SvgBoard svgRef={null} geometry={geometry} view={view}
+      arrivals={arrivals} selection={EMPTY_SELECTION} selfId="p1" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
+      viewBoxCenter={{ x: 0, y: 0 }} nameResolver={(id) => id} /></LocaleProvider>);
+    expect(container.querySelector(`[data-testid="ship-${NW}"]`)?.classList.contains('board__building-drop')).toBe(true);
+    expect(container.querySelector(`[data-testid="ship-${NE}"]`)?.classList.contains('board__building-drop')).toBe(true);
   });
 
   it('renders the seafarers events in both locales', () => {

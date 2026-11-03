@@ -40,23 +40,28 @@ export function GameIcon({ name, size = 20, className = '' }: { name: string; si
     'sound-off': <path d="M3 9v6h4l5 4V5L7 9H3Zm13 0 6 6m0-6-6 6" />,
     anchor: <><circle cx="12" cy="5" r="3" /><path d="M12 8v14M3 13v3c0 8 18 8 18 0v-3M8 11h8M1 15l2-3 3 3m12 0 3-3 2 3" /></>,
     bot: <><rect x="4" y="8" width="16" height="12" rx="3" /><path d="M12 8V4m-2 0h4M9 13v1m6-1v1M9 17h6M2 13v3m20-3v3" /></>,
+    pencil: <><path d="M4 20h4L20 8a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13 5 6 6" /></>,
   };
   return <svg className={`game-icon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{paths[name] ?? paths.compass}</svg>;
 }
 
+/** 徽記六角格的頂點；`r` 為外接圓半徑。 */
+export const emblemCell = (r: number) => `0,${-r} ${r * .866},${-r / 2} ${r * .866},${r / 2} 0,${r} ${-r * .866},${r / 2} ${-r * .866},${-r / 2}`;
+
+/** 徽記中央七格地形：中心先、外圈依順時針。 */
+export const EMBLEM_TILES = [
+  { x: 0, y: 0, fill: '#e3c173' },
+  { x: 0, y: -17.3, fill: '#9eaaa4' },
+  { x: 15, y: -8.66, fill: '#d39a72' },
+  { x: 15, y: 8.66, fill: '#7f9a69' },
+  { x: 0, y: 17.3, fill: '#afc786' },
+  { x: -15, y: 8.66, fill: '#d6bb72' },
+  { x: -15, y: -8.66, fill: '#6f8c5e' },
+] as const;
+
 /** 遊戲徽記：黃銅六角框內的七格地形花窗，對應棋盤的六角地形語彙。 */
 export function HexEmblem({ size = 40, className = '' }: { size?: number; className?: string }) {
   const brassId = `hex-emblem-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
-  const cell = (r: number) => `0,${-r} ${r * .866},${-r / 2} ${r * .866},${r / 2} 0,${r} ${-r * .866},${r / 2} ${-r * .866},${-r / 2}`;
-  const tiles = [
-    { x: 0, y: 0, fill: '#e3c173' },
-    { x: 0, y: -17.3, fill: '#9eaaa4' },
-    { x: 15, y: -8.66, fill: '#d39a72' },
-    { x: 15, y: 8.66, fill: '#7f9a69' },
-    { x: 0, y: 17.3, fill: '#afc786' },
-    { x: -15, y: 8.66, fill: '#d6bb72' },
-    { x: -15, y: -8.66, fill: '#6f8c5e' },
-  ];
   return <svg className={`hex-emblem ${className}`} width={size} height={size} viewBox="-50 -50 100 100" aria-hidden="true" focusable="false">
     <defs>
       <linearGradient id={brassId} x1="0" y1="-1" x2="0" y2="1">
@@ -65,10 +70,10 @@ export function HexEmblem({ size = 40, className = '' }: { size?: number; classN
         <stop offset="1" stopColor="#8f6630" />
       </linearGradient>
     </defs>
-    <polygon points={cell(47)} fill={`url(#${brassId})`} />
-    <polygon points={cell(41)} fill="#0f3440" />
+    <polygon points={emblemCell(47)} fill={`url(#${brassId})`} />
+    <polygon points={emblemCell(41)} fill="#0f3440" />
     <g transform="rotate(30)">
-      {tiles.map((tile) => <polygon key={`${tile.x}:${tile.y}`} points={cell(9.4)} transform={`translate(${tile.x} ${tile.y}) rotate(-30)`} fill={tile.fill} stroke="#0f3440" strokeWidth="1.2" />)}
+      {EMBLEM_TILES.map((tile) => <polygon key={`${tile.x}:${tile.y}`} points={emblemCell(9.4)} transform={`translate(${tile.x} ${tile.y}) rotate(-30)`} fill={tile.fill} stroke="#0f3440" strokeWidth="1.2" />)}
     </g>
     <path d="M-5 3.5v-4l5-4 5 4v4Z" fill="#c8553d" stroke="#3b2418" strokeWidth="1.2" strokeLinejoin="round" />
   </svg>;

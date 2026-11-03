@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { Matrix4, Quaternion, Vector3, type BufferGeometry, type Material } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
+import { arrivalPose, type ArrivalOptions } from './arrival.ts';
 import { disposeWhenReleased, instanceMatrix, type InstanceTransform } from './transforms.ts';
+
+const Y_AXIS = new Vector3(0, 1, 0);
+const DEFAULT_ARRIVAL: ArrivalOptions = { height: 0.13 };
 
 export function InstancedPrimitive({
   geometry,
@@ -13,6 +17,7 @@ export function InstancedPrimitive({
   animationKey = null,
   durationMs = 0,
   motionAllowed = true,
+  arrival = DEFAULT_ARRIVAL,
 }: {
   geometry: BufferGeometry;
   material: Material | Material[];
@@ -23,6 +28,7 @@ export function InstancedPrimitive({
   animationKey?: string | null;
   durationMs?: number;
   motionAllowed?: boolean;
+  arrival?: ArrivalOptions;
 }) {
   const meshRef = useRef<import('three').InstancedMesh | null>(null);
   const startRef = useRef(0);
@@ -30,6 +36,7 @@ export function InstancedPrimitive({
   const scratchQuaternion = useRef(new Quaternion());
   const scratchScale = useRef(new Vector3());
   const scratchMatrix = useRef(new Matrix4());
+  const scratchSpin = useRef(new Quaternion());
   const { invalidate } = useThree();
   const baseMatrices = useMemo(() => instances.map(instanceMatrix), [instances]);
   const assignMesh = useCallback((mesh: import('three').InstancedMesh | null) => {
@@ -42,16 +49,17 @@ export function InstancedPrimitive({
   const write = (progress: number) => {
     const mesh = meshRef.current;
     if (!mesh) return;
-    const eased = 1 - Math.pow(1 - Math.max(0, Math.min(1, progress)), 3);
+    const pose = animationKey && progress < 1 ? arrivalPose(progress, arrival) : null;
     for (let index = 0; index < instances.length; index += 1) {
       const matrix = scratchMatrix.current.copy(baseMatrices[index]!);
-      if (animationKey && progress < 1) {
+      if (pose) {
         const position = scratchPosition.current;
         const quaternion = scratchQuaternion.current;
         const scale = scratchScale.current;
         matrix.decompose(position, quaternion, scale);
-        position.y += (1 - eased) * 0.13;
-        scale.y *= 0.82 + eased * 0.18;
+        position.y += pose.lift;
+        scale.set(scale.x * pose.scaleXZ, scale.y * pose.scaleY, scale.z * pose.scaleXZ);
+        if (pose.spin) quaternion.premultiply(scratchSpin.current.setFromAxisAngle(Y_AXIS, pose.spin));
         matrix.compose(position, quaternion, scale);
       }
       mesh.setMatrixAt(index, matrix);
@@ -60,24 +68,22 @@ export function InstancedPrimitive({
     mesh.computeBoundingSphere();
   };
 
-  useLayoutEffect(() => {
-    write(1);
-    invalidate();
-  }, [baseMatrices, instances, invalidate]);
+  const animating = !!animationKey && motionAllowed;
+  const progressNow = () => animating && durationMs > 0 ? (performance.now() - startRef.current) / durationMs : 1;
 
-  useEffect(() => {
-    if (!animationKey || !motionAllowed) {
-      write(1);
-      invalidate();
-      return;
-    }
-    startRef.current = performance.now();
+  // 在繪製前寫入起始姿態，避免新棋子先在落點閃現一幀才飛上天。
+  useLayoutEffect(() => {
+    if (animating) startRef.current = performance.now();
+  }, [animationKey, animating]);
+
+  useLayoutEffect(() => {
+    write(progressNow());
     invalidate();
-  }, [animationKey, invalidate, motionAllowed]);
+  }, [baseMatrices, instances, invalidate, animationKey, animating]);
 
   useFrame(() => {
-    if (!animationKey || !motionAllowed) return;
-    const progress = durationMs > 0 ? (performance.now() - startRef.current) / durationMs : 1;
+    if (!animating) return;
+    const progress = progressNow();
     write(progress);
     if (progress < 1) invalidate();
   });

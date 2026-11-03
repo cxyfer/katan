@@ -1,0 +1,52 @@
+/* 拖曳發展卡出牌（仿殺戮尖塔）：卡片跟著指標走，掛在遊戲舞台上（不受手牌 overflow 影響）。
+   不畫放置框；拖離手牌後卡片放大、轉正並發光，表示放開就會使用，拖回手牌則恢復原狀。 */
+.card-drag { position: fixed; inset: 0; z-index: 120; pointer-events: none; }
+.card-drag__held {
+  position: absolute; display: grid; justify-items: center; gap: 10px;
+  transform: translate(-50%, -60%);
+}
+.card-drag__ghost {
+  --dc: #6c7392; --dc-deep: #2c3350;
+  position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; width: 104px; height: 156px; padding: 5px;
+  /* 以底邊為基準縮放，放大時往上長，不會蓋住下方的提示。 */
+  transform: rotate(-4deg) scale(.94); transform-origin: 50% 100%; border-radius: 10px; color: #fff4d8;
+  border: 1px solid color-mix(in srgb, var(--dc) 45%, #fff3cf);
+  background: linear-gradient(170deg, color-mix(in srgb, var(--dc) 82%, #fff6dc), var(--dc-deep));
+  box-shadow: 0 0 0 1.5px #172a26, 0 18px 30px #00131ccc;
+  transition: transform 140ms ease-out, box-shadow 140ms;
+}
+.card-drag[data-armed] .card-drag__ghost {
+  transform: scale(1.14);
+  box-shadow: 0 0 0 2.5px #f6dfa6, 0 0 22px 8px #f4d083b3, 0 0 56px 10px #f4d08366, 0 22px 34px #00131ccc;
+}
+/* 提示只是一行小字：還在手牌範圍時淡淡提示往上拖，離開手牌後轉為金色的「放開以使用」。 */
+.card-drag__hint {
+  padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  color: #e9e2cfcc; background: #0b232999; font-size: .68rem; font-weight: 600; letter-spacing: .02em;
+  text-shadow: 0 1px 2px #000a; transition: color 140ms, background 140ms;
+}
+.card-drag[data-armed] .card-drag__hint { color: #2d2618; background: #f1d59ce6; text-shadow: none; box-shadow: 0 2px 8px #0008; }
+.card-drag__ghost.development-card--knight { --dc: #6c7392; --dc-deep: #2c3350; }
+.card-drag__ghost.development-card--roadBuilding { --dc: #a57a50; --dc-deep: #533720; }
+.card-drag__ghost.development-card--yearOfPlenty { --dc: #6f9a52; --dc-deep: #2f4a22; }
+.card-drag__ghost.development-card--monopoly { --dc: #93638c; --dc-deep: #442442; }
+.card-drag__art { display: block; min-height: 0; overflow: hidden; border-radius: 6px; border: 1.5px solid #f6e7bd; background: var(--dc); }
+.card-drag__art .dev-card-art { display: block; width: 100%; height: 100%; }
+.card-drag__pip {
+  position: absolute; top: 4px; left: 4px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  color: #fff6dc; background: var(--dc-deep); border: 1.5px solid #f6e7bd;
+}
+.card-drag__name {
+  justify-self: center; margin-top: -11px; padding: 3px 11px 4px; color: #2d2618; background: linear-gradient(#fbf0cf, #e6d29f);
+  font-family: var(--font-display); font-size: .72rem; font-weight: 750; line-height: 1.1;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 50%, 100% 100%, 0 100%, 7px 50%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-drag__ghost, .card-drag__hint { transition: none; }
+}
+
+/* 壟斷：選中的那一種資源高亮，其餘稍暗，一眼看出現在選的是哪種。 */
+.devcard-choice[data-card="monopoly"][data-full] .discard-card:not([data-chosen]) .discard-card__face { opacity: .6; }
+.devcard-choice .discard-card[data-chosen] .discard-card__face {
+  transform: translateY(-4px); box-shadow: 0 0 0 2px #f1d59c, 0 0 18px #f4d08366, 0 8px 14px #00131c80;
+}

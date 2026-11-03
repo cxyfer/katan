@@ -51,7 +51,8 @@ export interface BoardSceneInput {
   players: readonly { id: string; seat: number; color: PublicPlayerView['color'] }[];
   intent: BoardIntent | null;
   selection: SceneSelection | null;
-  active: BoardEffectGroup | null;
+  /** 正在落下的建造演出（可多組並行）。 */
+  arrivals: readonly BoardEffectGroup[];
   viewport: BoardViewportState;
   quality: QualityMode;
   motionAllowed: boolean;

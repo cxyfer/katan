@@ -13,7 +13,7 @@ import { useBoardAnimation } from '../board/useBoardAnimation.ts';
 import { MAX_CAMERA_ELEVATION, MIN_CAMERA_ELEVATION, useBoardViewport } from '../board/useBoardViewport.ts';
 import { rendererMode, qualityMode, type RendererMode, type ProjectionSnapshot, type BoardEffectAnchors, type CssRect } from '../board/render-contract.ts';
 import { sceneBounds } from '../board/three/bounds.ts';
-import { followUpsHeld, nameOf } from '../state/table.ts';
+import { followUpsHeld, nameOf, shownCitiesKnights } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { TargetPicker } from './TargetPicker.tsx';
 import { BoardTargetOverlay } from './BoardTargetOverlay.tsx';
@@ -49,6 +49,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const [messageHost, setMessageHost] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [cluster, setCluster] = useState<number[] | null>(null);
+  const [pickerTarget, setPickerTarget] = useState<{ kind: TargetKind; index: number } | null>(null);
   const [requested, setRequested] = useState<RendererMode>(() => {
     const query = new URLSearchParams(globalThis.location.search);
     return rendererMode(query.get('renderer'));
@@ -84,6 +85,9 @@ export function BoardView({ controller }: { controller: TableController }) {
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
   const seaView = useMemo(() => seafarersView(view), [view?.modules]);
   const ckView = useMemo(() => citiesKnightsView(view), [view?.modules]);
+  const pickerAnchor = useMemo(() => pickerTarget
+    ? targets.find((target) => target.kind === pickerTarget.kind && target.index === pickerTarget.index) ?? null
+    : null, [pickerTarget, targets]);
   const hexTargets = useMemo(() => controls.projectedTargets({ kind: 'hex', commandType: '', labelId: '', fromHints: false, targets: geometry.hexes.map((hex) => hex.index) }), [controls.projectedTargets, geometry]);
   const viewBox = useMemo(() => parseViewBox(geometry.viewBox), [geometry]);
   const viewBoxCenter = { x: viewBox.x + viewBox.width / 2, y: viewBox.y + viewBox.height / 2 };
@@ -136,7 +140,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   };
   const selectTarget = useCallback((kind: TargetKind, index: number) => {
     if (!intent || kind !== intent.kind || !intent.targets.includes(index)) return;
-    setCluster(null); setPickerOpen(false);
+    setCluster(null); setPickerOpen(false); setPickerTarget(null);
     // Moving a ship takes two choices: the ship, then its new path.
     if (intent.commandType === 'ship.pick') {
       actions.selectTarget({ kind: 'edge', index: null, commandType: 'ship.move', labelId: 'sf.move.target', params: { from: index }, field: 'to' });
@@ -160,7 +164,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   }, [focusedRollId, rolls]);
   // 佇列中仍有骰子（例如後一次擲骰排在前一組特效之後）時，靜態點數也先隱藏。
   const hideStaticDice = focusedRoll !== null || state.dicePresenting;
-  useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); } }, [intent]);
+  useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); setPickerTarget(null); } }, [intent]);
 
   if (!view) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
   const board = view.board;
@@ -234,11 +238,13 @@ export function BoardView({ controller }: { controller: TableController }) {
             type="button"
             className="button board__target-picker-toggle"
             data-testid="open-target-picker"
+            data-target-picker-ignore=""
             aria-label={t('board.listTargets')}
             title={t('board.listTargets')}
             aria-expanded={pickerOpen}
             onClick={() => {
               setCluster(null);
+              setPickerTarget(null);
               setPickerOpen((open) => !open);
             }}
           >
@@ -281,7 +287,7 @@ export function BoardView({ controller }: { controller: TableController }) {
         </span>
       )}
 
-      <CitiesKnightsBadge ck={ckView} />
+      <CitiesKnightsBadge ck={citiesKnightsView(shownCitiesKnights(state))} />
 
       {focusedRoll && createPortal(
         <DicePresentation key={focusedRoll.id} dice={focusedRoll.dice} mandatory={!!view.pending} />,
@@ -292,11 +298,11 @@ export function BoardView({ controller }: { controller: TableController }) {
         {requested !== 'svg' && !failure && <div className="board__scene" aria-hidden="true" style={{ opacity: effective === 'r3f' ? 1 : 0 }}>
           <SceneBoundary key={attempt} onUnavailable={unavailable}><Suspense fallback={null}>
             <Scene geometry={geometry} board={board} players={view.players.map(({ id, seat, color }) => ({ id, seat, color }))} seafarers={seaView} citiesKnights={ckView}
-              intent={intent} selection={selection} active={animation.active} viewport={controls.viewport} quality={quality}
-              motionAllowed={animation.active !== null} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />
+              intent={intent} selection={selection} arrivals={animation.arrivals} viewport={controls.viewport} quality={quality}
+              motionAllowed={animation.arrivals.length > 0} onProjection={setProjection} onReady={sceneReady} onUnavailable={unavailable} />
           </Suspense></SceneBoundary>
         </div>}
-        {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} active={animation.active}
+        {effective === 'svg' && <SvgBoard svgRef={svgRef} geometry={geometry} view={view} arrivals={animation.arrivals}
           selection={selection ? state.selection : { ...state.selection, index: null }} selfId={selfId} intent={intent}
           pan={controls.pan} zoom={zoom} viewBoxCenter={viewBoxCenter} nameResolver={nameResolver} />}
         <BoardInspectionLayer key={`${state.game?.gameId}:${geometry.topologyId}:${effective}`}
@@ -305,12 +311,16 @@ export function BoardView({ controller }: { controller: TableController }) {
         <BoardTargetOverlay targets={targets} rect={controls.viewport.rect} selection={selection} board={board} topology={topology} nameOf={nameResolver}
           renderer={effective} onSelect={selectTarget} consumeSuppressedClick={controls.consumeSuppressedClick}
           fallbackFocusRef={surfaceRef} onCancel={actions.cancelSelection}
-          onAmbiguous={(_kind, _index, candidates) => { setCluster([...candidates]); setPickerOpen(true); }} />
+          onAmbiguous={(kind, index, candidates) => {
+            setPickerTarget({ kind, index });
+            setCluster([...candidates]); setPickerOpen(true);
+          }} />
       </div>
       {stage && animation.active && anchors && createPortal(<BoardEffects group={animation.active} geometry={geometry} view={view} anchors={anchors} />, stage)}
       {pickerOpen && intent && <TargetPicker geometry={geometry} board={board} topology={topology} kind={intent.kind}
         targets={intent.targets} nameOf={nameResolver} {...(cluster ? { ambiguousOnly: cluster } : {})}
-        onCancel={() => { setPickerOpen(false); setCluster(null); }}
+        {...(pickerAnchor ? { anchor: pickerAnchor } : {})}
+        onCancel={() => { setPickerOpen(false); setCluster(null); setPickerTarget(null); }}
         onChoose={(index) => selectTarget(intent.kind, index)} />}
     </div>
   );

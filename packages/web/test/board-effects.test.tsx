@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { confirmedPlacement, MAX_FLIGHT_ICONS, neutralThefts, productionGrants } from '../src/board/effects.ts';
+import { confirmedPlacement, MAX_FLIGHT_ICONS, placementArrival, neutralThefts, productionGrants } from '../src/board/effects.ts';
 import { boardEffectGroup } from '../src/board/animation.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
 import type { BoardEffectAnchors } from '../src/board/render-contract.ts';
@@ -30,6 +30,19 @@ describe('authorized aggregate presentation', () => {
     expect(confirmedPlacement([makeEvent(1, 'build.settlement', { playerId: 'p1', vertex: 0 })], board, 'vertex', 0)).toBe(false);
     expect(confirmedPlacement([makeEvent(1, 'build.road', { playerId: 'p2', edge: 0 })], board, 'edge', 0)).toBe(false);
     expect(confirmedPlacement([], board, 'vertex', 0)).toBe(false);
+  });
+
+  it('picks the newest concurrent drop that confirms each placement', () => {
+    const board = makeView().board;
+    board.buildings[0] = { player: 'p1', city: true };
+    board.roads[0] = { player: 'p1', ship: false };
+    const settlement = boardEffectGroup('g', [makeEvent(1, 'build.settlement', { playerId: 'p1', vertex: 0 })]);
+    const road = boardEffectGroup('g', [makeEvent(2, 'build.road', { playerId: 'p1', edge: 0 })]);
+    const city = boardEffectGroup('g', [makeEvent(3, 'build.city', { playerId: 'p1', vertex: 0 })]);
+    expect(placementArrival([settlement, road, city], board, 'vertex', 0)).toBe(city);
+    expect(placementArrival([settlement, road, city], board, 'edge', 0)).toBe(road);
+    expect(placementArrival([settlement], board, 'vertex', 0)).toBeNull();
+    expect(placementArrival([], board, 'edge', 0)).toBeNull();
   });
 
   function effectAnchors(players: readonly { id: string }[]): BoardEffectAnchors {

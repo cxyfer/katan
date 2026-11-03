@@ -119,6 +119,41 @@ describe('board animation lifecycle (E07–E09, A01)', () => {
     unmount();
   });
 
+  it('drops placements immediately and concurrently, even during mandatory setup', () => {
+    const setup = (seq: number, events: ReturnType<typeof makeEvent>[], mandatory = true) => ({
+      ...props(seq), snapshot: makeSnapshot({ ...makeView({ events }), seq }, seq), mandatory,
+    });
+    const { result, rerender, unmount } = mount();
+    rerender(setup(14, [
+      makeEvent(13, 'production.resolved', { grants: { p1: { wood: 1 } } }),
+      makeEvent(14, 'setup.building', { playerId: 'p1', vertex: 0, round: 1 }),
+    ]));
+    // 必要操作期間只播建造落下，產出等其他特效照舊略過。
+    expect(result.current.active).toBeNull();
+    const building = result.current.arrivals[0];
+    expect(result.current.arrivals.map((group) => group.events.map((event) => event.type))).toEqual([['setup.building']]);
+    // 同 seq 的後續投影不得中斷正在播放的落下演出。
+    act(() => vi.advanceTimersByTime(300));
+    rerender({ ...setup(14, []), sync: { generation: 1, cause: 'snapshot' } });
+    expect(result.current.arrivals).toEqual([building]);
+    // 前一組尚未播完就確認道路：道路立即開始落下，不排在村莊之後（否則會先靜止出現再跳上天）。
+    rerender(setup(15, [makeEvent(15, 'setup.road', { playerId: 'p1', edge: 0 })]));
+    expect(result.current.arrivals.map((group) => group.events[0]?.type)).toEqual(['setup.building', 'setup.road']);
+    act(() => vi.advanceTimersByTime(500));
+    expect(result.current.arrivals.map((group) => group.events[0]?.type)).toEqual(['setup.road']);
+    // 一般階段的建造也不等擲骰與產出特效。
+    rerender(setup(17, [
+      makeEvent(16, 'turn.rolled', { dice: [3, 4] }),
+      makeEvent(17, 'build.road', { playerId: 'p1', edge: 1 }),
+    ], false));
+    expect(result.current.activeDice?.seq).toBe(16);
+    expect(result.current.arrivals.at(-1)?.events.map((event) => event.type)).toEqual(['build.road']);
+    rerender({ ...setup(17, [], false), online: false });
+    expect(result.current.arrivals).toEqual([]);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('cancels immediately for mandatory actions, offline / reconnect and event gaps', () => {
     const { result, rerender, unmount } = mount();
     rerender(props(13));

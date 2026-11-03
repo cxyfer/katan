@@ -36,6 +36,12 @@
     margin-bottom: 0;
   }
 
+  /* 交易偏好：勾選後由客戶端代為拒絕自己資源不足的提案。 */
+  .trade-auto-decline {
+    margin-bottom: .6rem;
+    font-size: .82rem;
+  }
+
   .trade-terms,
   .exchange-terms {
     display: grid;

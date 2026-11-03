@@ -10,7 +10,7 @@
 
 P1 範圍內：
 
-- 建房時可預先加入 N 個 Bot（捷徑）；大廳中房主可「加入電腦」與「移除電腦」。
+- 房間中房主從「電腦對手」工具列逐一新增電腦對手，可用鉛筆圖示設定名稱（留空使用預設）並選擇難度，也可個別移除；建房時不詢問 Bot 數量（2026-11-02 變更）。
 - 兩種難度：`easy`、`standard`（預設）。
 - Bot 自動完成初始放置、擲骰、建造、買／打發展卡、棄牌、移動強盜、偷牌、豐收之年、免費道路、銀行／港口交易、回應報價、主動提出國內報價（附收集窗與逾時）、結束回合。
 - 支援目前啟用的 profile：`base-2025`（3–4 人）與 `base-paired-2025`（5–6 人；Player 2 不擲骰、不可發起或結算國內交易）。
@@ -25,7 +25,7 @@ P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房�
 | D1 | 實作位置 | 伺服器內建；Bot 只透過 `GameCoordinator.submit` 送指令 | 冪等收據、交易式存檔、重啟恢復、推送全部沿用 |
 | D2 | 資訊 | 只看自己座位的 `GameView`（含 hints）＋公開拓樸與規則常數 | 公平；不破 SPEC §8.3 |
 | D3 | 外部依賴 | 無；`packages/bots` 只依賴 `@catan/rules` | 使用者要求 |
-| D4 | 加入方式 | 大廳增減＋建房捷徑 | 調低容量、讓位給朋友都能在大廳處理 |
+| D4 | 加入方式 | 只在房間中逐一新增（2026-11-02 移除建房捷徑） | 建房流程保持單純；每個 Bot 可各自設定名稱與難度 |
 | D5 | 國內交易 | 回應報價＋銀行／港口＋主動開價（收集窗＋逾時） | 使用者選擇；讓真人有可交易的對手 |
 | D6 | 難度 | `easy`＋`standard` | hard 需要自建推演模擬器，延後 |
 | D7 | 節奏 | 伺服器預設、依動作調整；`BOT_DELAY_SCALE` 整體縮放 | 不新增房間設定 |
@@ -172,8 +172,8 @@ ALTER TABLE guests ADD COLUMN bot_level TEXT;                      -- 只有 bot
 
 | 方法 | 路徑 | 請求 | 回應 | 錯誤 |
 |---|---|---|---|---|
-| POST | `/api/rooms` | 既有欄位＋`bots?: number`、`botLevel?: BotLevel` | `RoomView` | `E_INVALID_BOT`（非整數、小於 0、大於 capacity − 1、等級不明）、`E_BOTS_DISABLED` |
-| POST | `/api/rooms/:roomId/bots` | `{ level?: BotLevel }` | `RoomView` | `E_NOT_HOST`、`E_ROOM_STARTED`、`E_ROOM_FULL`、`E_INVALID_BOT`、`E_BOTS_DISABLED` |
+| POST | `/api/rooms` | 既有欄位 | `RoomView` | —（建房捷徑已於 2026-11-02 移除，Bot 欄位會被忽略） |
+| POST | `/api/rooms/:roomId/bots` | `{ level?: BotLevel, name?: string }` | `RoomView` | `E_NOT_HOST`、`E_ROOM_STARTED`、`E_ROOM_FULL`、`E_INVALID_BOT`、`E_INVALID_NICKNAME`、`E_BOT_NAME_TAKEN`、`E_BOTS_DISABLED` |
 | DELETE | `/api/rooms/:roomId/bots/:playerId` | – | `RoomView` | `E_NOT_HOST`、`E_ROOM_STARTED`、`E_NOT_A_BOT` |
 
 - 全部在 room lock 內執行；增減 Bot 會清除真人 ready（與其他設定變更一致）並廣播。
@@ -229,8 +229,8 @@ ALTER TABLE guests ADD COLUMN bot_level TEXT;                      -- 只有 bot
 - `ResumableGameView.players[]`：`bot?: boolean`。
 - `ServerConfigView`：`bots: { enabled: boolean; levels: BotLevel[] }`；`BOTS_ENABLED=0` 時前端隱藏所有 Bot 選項。
 - `BotLevel` 在 protocol 與 `@catan/bots` 各自定義（線上詞彙與策略實作分離）；伺服器以型別檢查確保兩者一致。
-- 建房表單：「電腦對手」數量（0 至 capacity − 1）與難度。
-- 大廳：房主看到「加入電腦」（含難度選擇）與每個 Bot 的「移除」；Bot 座位顯示徽章「電腦・標準」或「電腦・簡單」，不顯示 ready 切換。
+- 建房表單：不詢問 Bot 數量或難度。
+- 房間：沿用「電腦對手」工具列（難度選單＋加入電腦）；旁邊多一支鉛筆小圖示，點開可設定名稱（留空自動取名），確認後以目前難度加入一個席位。每個 Bot 仍可個別「移除」，座位顯示徽章「電腦・標準」或「電腦・簡單」，不顯示 ready 切換。
 - 遊戲中：玩家面板以房間成員的 `bot` 欄位顯示徽章（`GameView` 不改）。
 - i18n：`zh-Hant` 與 `en` 同步新增，parity 測試須通過。
 
@@ -250,10 +250,10 @@ ALTER TABLE guests ADD COLUMN bot_level TEXT;                      -- 只有 bot
 | B-FAIR | bots | 兩個只差在隱藏資訊（對手手牌組成、牌庫順序）的狀態投影相同 → 決策相同 |
 | B-GUARD | bots | 原始碼掃描：只匯入 `@catan/rules` 與相對路徑；沒有 `node:`、`fetch`、`process`、`Date`、`Math.random` |
 | B-BENCH | bots | `pnpm --filter @catan/bots bench`：勝率、平均回合數、平均決策耗時（不進 CI） |
-| B-ROOM | server | 建房帶 Bot、大廳增減、容量／權限／錯誤碼、Bot 不當房主、全 Bot 大廳刪房、清除 ready 不影響 Bot |
+| B-ROOM | server | 房間中設定 Bot 數量、容量／權限／錯誤碼、Bot 不當房主、全 Bot 大廳刪房、清除 ready 不影響 Bot |
 | B-LIFE | server | 開局後 Bot 自動推進；無真人 socket 時暫停；真人重連後續行；暫停／恢復；重啟後續玩；放棄（含單人規則）；關閉時清除計時器 |
 | B-RACE | server | 真人與 Bot 在同一 revision 送出：只有一個 accepted，另一個 stale，且不重複套用 |
-| B-WEB | web | 建房表單、大廳按鈕與徽章、i18n parity |
+| B-WEB | web | 建房不含 Bot 欄位、空位新增電腦對話框與徽章、i18n parity |
 
 完成閘門：`pnpm verify` 全綠；B-GAME 涵蓋 3、4、5、6 人各至少 10 個種子；Docker 依賴層可以建置。
 
@@ -292,7 +292,7 @@ ALTER TABLE guests ADD COLUMN bot_level TEXT;                      -- 只有 bot
 | D | 單人對 Bot 時無法放棄（`E_NO_ABSENT_PLAYER`） | 「其他席位全是 Bot」時可直接放棄（§7.3） |
 | E | `clearReadiness` 會清掉 Bot 的 ready；開局後 policy 同意漏列 | ready／connected 由 `kind` 推導；policy 只需真人同意 |
 | F | 大廳房主離開後只剩 Bot，房主會被轉給 Bot | 只剩 Bot 即刪房；房主只轉給真人 |
-| G | 只在建房時指定 Bot 數會與容量調整、朋友加入衝突 | 大廳增減＋建房捷徑（D4） |
+| G | 只在建房時指定 Bot 數會與容量調整、朋友加入衝突 | 只在房間中逐一新增（D4，2026-11-02 移除建房捷徑） |
 | H | 喚醒點不只有指令寫入；DB `connected` 在重啟後可能是舊值 | `kick` 多來源；閘門看 live socket |
 | I | `pending.takeResource` 對應 `yearOfPlenty`；hints 不檢查資源；hard 推演成本高 | 合約規則 5；hard 延後 |
 | J | 托管欄位不需要預留 | D10 |
@@ -300,3 +300,13 @@ ALTER TABLE guests ADD COLUMN bot_level TEXT;                      -- 只有 bot
 | L | `rules/test/simulate.ts` 已有自動對局骨架 | bots 測試沿用其做法 |
 | M | `Dockerfile` 逐一 COPY 各套件 `package.json` | PR 1 加入 `packages/bots` |
 | N | `base-paired-2025`（5–6 人）目前啟用 | 策略支援 paired 規則，測試涵蓋 5、6 人 |
+
+## 後續變更：Bot 改在房間中逐一新增（2026-11-02）
+
+使用者要求建房時不再詢問 Bot 數量，改成在房間的空位區逐一新增：
+
+- 建房表單移除「電腦對手」數量與難度；`POST /api/rooms` 不再接受 `bots`／`botLevel`，帶了也會被忽略。
+- 沿用 RC 的「電腦對手」工具列；「加入電腦」以目前難度快速加入預設名稱的席位，旁邊的鉛筆圖示開啟名稱對話框（留空使用預設名稱），確認後同樣呼叫 `POST /api/rooms/:roomId/bots`，因此每次變更仍由伺服器在房間鎖內驗證容量、權限、名稱與開局狀態。
+- 名稱比照暱稱驗證（`E_INVALID_NICKNAME`），且不可與房內既有席位重複（`E_BOT_NAME_TAKEN`）。
+- 每個 Bot 席位保留個別「移除」；好處是每個 Bot 可各自設定難度，也不必佔用固定工具列空間。
+- 相關紀錄：`docs/aegis/work/2026-11-02-bot-count-in-room.md`。

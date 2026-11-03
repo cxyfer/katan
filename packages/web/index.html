@@ -31,9 +31,233 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="卡坦桌遊桌：一座由六角地塊組成的島嶼" />
     <meta name="twitter:card" content="summary_large_image" />
+    <!--
+      啟動畫面的 critical CSS：主樣式表下載完成前就要能繪製。React 接手後的
+      BootScreen（src/components/BootScreen.tsx）沿用同一組 class。
+    -->
+    <style>
+      html { background: #0c1d27; color-scheme: dark; }
+      .boot { box-sizing: border-box; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .9rem; padding: 2rem 1.25rem; color: #f2eddf; font-family: 'Avenir Next', 'Segoe UI', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif; line-height: 1.5; }
+      .boot * { box-sizing: border-box; }
+      .boot__emblem { width: 88px; height: 88px; filter: drop-shadow(0 10px 24px #03121b80); }
+      .boot__tile { fill: #1d3d47; stroke: #0f3440; stroke-width: 1.2; transition: fill .45s ease; }
+      .boot__tile[data-lit] { fill: var(--tile); }
+      .boot__title { margin: 0; font-family: 'Iowan Old Style', 'Palatino Linotype', 'Noto Serif TC', 'Songti TC', Georgia, serif; font-size: 1.35rem; font-weight: 600; letter-spacing: .04em; }
+      .boot__bar { position: relative; width: min(320px, 100%); height: 8px; overflow: hidden; border-radius: 999px; background: #1b3944; box-shadow: inset 0 0 0 1px #35505a; }
+      .boot__fill { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit; background: linear-gradient(90deg, #d9ae65, #f6dca0); transition: width .35s ease; }
+      .boot__fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, #ffffff55, transparent); animation: boot-sheen 1.4s linear infinite; }
+      .boot__meta { display: flex; gap: .6rem; justify-content: space-between; width: min(320px, 100%); margin: -.35rem 0 0; color: #afc1c3; font-size: .85rem; }
+      .boot__percent { color: #e3bd79; font-variant-numeric: tabular-nums; }
+      .boot__current { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .boot__steps { display: grid; gap: .3rem; width: min(320px, 100%); margin: .25rem 0 0; padding: 0; list-style: none; font-size: .85rem; }
+      .boot__step { display: grid; grid-template-columns: 1rem 1fr auto; gap: .55rem; align-items: center; color: #afc1c3; }
+      .boot__mark { width: .7rem; height: .7rem; justify-self: center; border: 1.5px solid #35505a; border-radius: 50%; }
+      .boot__state { font-size: .75rem; opacity: .75; }
+      .boot__step[data-status='active'] { color: #f2eddf; }
+      .boot__step[data-status='active'] .boot__mark { border-color: #e3bd79; border-top-color: transparent; animation: boot-spin .8s linear infinite; }
+      .boot__step[data-status='done'] .boot__mark { border-color: #a4d4b2; background: #a4d4b2; }
+      .boot__step[data-status='failed'] { color: #ffaaa0; }
+      .boot__step[data-status='failed'] .boot__mark { border-color: #ffaaa0; background: #ffaaa0; }
+      .boot__step[data-status='skipped'] .boot__mark { border-style: dashed; }
+      .boot__step[data-status='skipped'] .boot__label { text-decoration: line-through; text-decoration-color: #afc1c380; }
+      .boot__detail, .boot__slow { width: min(320px, 100%); margin: 0; color: #afc1c3; font-size: .8rem; text-align: center; }
+      .boot__slow { color: #f2ce89; }
+      .boot[data-failed] .boot__slow { color: #ffaaa0; }
+      .boot__reload { margin-left: .5rem; padding: .2rem .7rem; border: 1px solid #e3bd79; border-radius: 6px; background: transparent; color: #e3bd79; font: inherit; cursor: pointer; }
+      .boot__reload:focus-visible { outline: 3px solid #ffe0a1; outline-offset: 2px; }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @keyframes boot-sheen { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+      @media (prefers-reduced-motion: reduce) {
+        .boot__tile, .boot__fill { transition: none; }
+        .boot__fill::after { animation: none; }
+        .boot__step[data-status='active'] .boot__mark { animation: none; border-top-color: #e3bd79; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- React 掛載時會整個換成 BootScreen；之前這段靜態畫面負責「下載遊戲程式」一步。 -->
+      <main class="boot" id="boot" aria-busy="true">
+        <svg class="boot__emblem" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="boot-brass" x1="0" y1="-1" x2="0" y2="1">
+              <stop offset="0" stop-color="#f6dca0" />
+              <stop offset=".55" stop-color="#d4a356" />
+              <stop offset="1" stop-color="#8f6630" />
+            </linearGradient>
+          </defs>
+          <polygon points="0,-47 40.702,-23.5 40.702,23.5 0,47 -40.702,23.5 -40.702,-23.5" fill="url(#boot-brass)" />
+          <polygon points="0,-41 35.506,-20.5 35.506,20.5 0,41 -35.506,20.5 -35.506,-20.5" fill="#0f3440" />
+          <g transform="rotate(30)">
+            <polygon class="boot__tile" style="--tile: #e3c173" points="0,-9.4 8.14,-4.7 8.14,4.7 0,9.4 -8.14,4.7 -8.14,-4.7" transform="translate(0 0) rotate(-30)" />
+            <polygon class="boot__tile" style="--tile: #9eaaa4" points="0,-9.4 8.14,-4.7 8.14,4.7 0,9.4 -8.14,4.7 -8.14,-4.7" transform="translate(0 -17.3) rotate(-30)" />
+            <polygon class="boot__tile" style="--tile: #d39a72" points="0,-9.4 8.14,-4.7 8.14,4.7 0,9.4 -8.14,4.7 -8.14,-4.7" transform="translate(15 -8.66) rotate(-30)" />
+            <polygon class="boot__tile" style="--tile: #7f9a69" points="0,-9.4 8.14,-4.7 8.14,4.7 0,9.4 -8.14,4.7 -8.14,-4.7" transform="translate(15 8.66) rotate(-30)" />
+            <polygon class="boot__tile" style="--tile: #afc786" points="0,-9.4 8.14,-4.7 8.14,4.7 0,9.4 -8.14,4.7 -8.14,-4.7" transform="translate(0 17.3) rotate(-30)" />
+            <polygon class="boot__tile" style="--tile: #d6bb72" points="0,-9.4 8.14,-4.7 8.14,4.7 0,9.4 -8.14,4.7 -8.14,-4.7" transform="translate(-15 8.66) rotate(-30)" />
+            <polygon class="boot__tile" style="--tile: #6f8c5e" points="0,-9.4 8.14,-4.7 8.14,4.7 0,9.4 -8.14,4.7 -8.14,-4.7" transform="translate(-15 -8.66) rotate(-30)" />
+          </g>
+        </svg>
+        <h1 class="boot__title" data-i18n="boot.title">正在佈置牌桌</h1>
+        <div class="boot__bar" role="progressbar" aria-label="啟動進度" data-i18n-label="boot.progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="boot__fill"></span>
+        </div>
+        <p class="boot__meta">
+          <span class="boot__percent">0%</span>
+          <span class="boot__current" aria-live="polite" data-i18n="boot.step.assets">下載遊戲程式</span>
+        </p>
+        <ol class="boot__steps">
+          <li class="boot__step" data-step="assets" data-status="active">
+            <span class="boot__mark" aria-hidden="true"></span>
+            <span class="boot__label" data-i18n="boot.step.assets">下載遊戲程式</span>
+            <span class="boot__state" data-i18n="boot.status.active">進行中</span>
+          </li>
+          <li class="boot__step" data-step="config" data-status="pending">
+            <span class="boot__mark" aria-hidden="true"></span>
+            <span class="boot__label" data-i18n="boot.step.config">連線伺服器</span>
+            <span class="boot__state" data-i18n="boot.status.pending">等待中</span>
+          </li>
+          <li class="boot__step" data-step="session" data-status="pending">
+            <span class="boot__mark" aria-hidden="true"></span>
+            <span class="boot__label" data-i18n="boot.step.session">確認玩家身分</span>
+            <span class="boot__state" data-i18n="boot.status.pending">等待中</span>
+          </li>
+          <li class="boot__step" data-step="profiles" data-status="pending">
+            <span class="boot__mark" aria-hidden="true"></span>
+            <span class="boot__label" data-i18n="boot.step.profiles">載入規則集</span>
+            <span class="boot__state" data-i18n="boot.status.pending">等待中</span>
+          </li>
+          <li class="boot__step" data-step="games" data-status="pending">
+            <span class="boot__mark" aria-hidden="true"></span>
+            <span class="boot__label" data-i18n="boot.step.games">尋找進行中的對局</span>
+            <span class="boot__state" data-i18n="boot.status.pending">等待中</span>
+          </li>
+        </ol>
+        <p class="boot__detail" hidden></p>
+        <p class="boot__slow" role="status" hidden><span></span><button type="button" class="boot__reload" data-i18n="app.refresh">重新整理</button></p>
+      </main>
+    </div>
+    <!-- 靜態啟動畫面的文字；test/boot-screen.test.tsx 檢查它與 i18n 目錄一致。 -->
+    <script type="application/json" id="boot-i18n">
+      {
+        "zh-Hant": {
+          "boot.title": "正在佈置牌桌",
+          "boot.progress": "啟動進度",
+          "boot.step.assets": "下載遊戲程式",
+          "boot.step.config": "連線伺服器",
+          "boot.step.session": "確認玩家身分",
+          "boot.step.profiles": "載入規則集",
+          "boot.step.games": "尋找進行中的對局",
+          "boot.status.active": "進行中",
+          "boot.status.pending": "等待中",
+          "boot.status.failed": "失敗",
+          "boot.assetsDetail": "已下載 {files} 個檔案 · {size}",
+          "boot.slow": "比平常久，仍在等待回應…",
+          "boot.assetsFailed": "遊戲程式下載失敗，請確認網路連線後重新整理。",
+          "app.refresh": "重新整理"
+        },
+        "en": {
+          "boot.title": "Setting up the table",
+          "boot.progress": "Startup progress",
+          "boot.step.assets": "Downloading the game",
+          "boot.step.config": "Contacting the server",
+          "boot.step.session": "Checking your session",
+          "boot.step.profiles": "Loading rulesets",
+          "boot.step.games": "Looking for your games",
+          "boot.status.active": "In progress",
+          "boot.status.pending": "Waiting",
+          "boot.status.failed": "Failed",
+          "boot.assetsDetail": "Downloaded {files} files · {size}",
+          "boot.slow": "This is taking longer than usual; still waiting…",
+          "boot.assetsFailed": "The game could not be downloaded. Check your connection and refresh.",
+          "app.refresh": "Refresh"
+        }
+      }
+    </script>
+    <script>
+      (function () {
+        var boot = document.getElementById('boot');
+        if (!boot) return;
+        var catalogs = JSON.parse(document.getElementById('boot-i18n').textContent);
+        // 與 src/state/session.ts 的 readStoredLocale、src/i18n/index.ts 的 detectLocale 相同的判斷
+        var locale = null;
+        try { locale = localStorage.getItem('catan.locale'); } catch (e) {}
+        if (locale !== 'en' && locale !== 'zh-Hant') {
+          locale = 'zh-Hant';
+          var languages = navigator.languages || [navigator.language || ''];
+          for (var i = 0; i < languages.length; i++) {
+            var tag = String(languages[i]).trim().toLowerCase();
+            if (tag === 'en' || tag.indexOf('en-') === 0) { locale = 'en'; break; }
+            if (tag === 'zh' || tag.indexOf('zh-') === 0) break;
+          }
+        }
+        var text = catalogs[locale];
+        boot.querySelectorAll('[data-i18n]').forEach(function (node) { node.textContent = text[node.getAttribute('data-i18n')]; });
+        boot.querySelectorAll('[data-i18n-label]').forEach(function (node) { node.setAttribute('aria-label', text[node.getAttribute('data-i18n-label')]); });
+
+        var bar = boot.querySelector('.boot__bar');
+        var fill = boot.querySelector('.boot__fill');
+        var percent = boot.querySelector('.boot__percent');
+        var detail = boot.querySelector('.boot__detail');
+        var tiles = boot.querySelectorAll('.boot__tile');
+        var slow = boot.querySelector('.boot__slow');
+        var seen = {};
+        var files = 0;
+        var bytes = 0;
+        // 下載這一步占整條進度的 40%，與 src/state/boot.ts 的 BOOT_WEIGHTS.assets 一致。
+        function render() {
+          var expected = document.querySelectorAll('script[type="module"][src], link[rel="stylesheet"][href], link[rel="modulepreload"][href]');
+          var loaded = 0;
+          expected.forEach(function (node) { if (seen[node.src || node.href]) loaded++; });
+          var value = Math.round(40 * (expected.length ? loaded / expected.length : 0));
+          fill.style.width = value + '%';
+          percent.textContent = value + '%';
+          bar.setAttribute('aria-valuenow', String(value));
+          tiles.forEach(function (tile, index) { if (index < Math.floor(value / 100 * tiles.length)) tile.setAttribute('data-lit', ''); });
+          if (files) {
+            var size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+            detail.textContent = text['boot.assetsDetail'].replace('{files}', String(files)).replace('{size}', size);
+            detail.hidden = false;
+          }
+        }
+        function record(entry) {
+          if (seen[entry.name] || entry.name.indexOf(location.origin) !== 0 || entry.name.indexOf('/api/') !== -1) return;
+          // 下載失敗的請求也會留下計時紀錄；有回應碼可判斷時不把它算成已下載
+          if (typeof entry.responseStatus === 'number' && (entry.responseStatus === 0 || entry.responseStatus >= 400)) return;
+          seen[entry.name] = true;
+          files++;
+          bytes += entry.encodedBodySize || entry.transferSize || 0;
+        }
+        if (window.PerformanceObserver) {
+          try {
+            new PerformanceObserver(function (list) { list.getEntries().forEach(record); render(); }).observe({ type: 'resource', buffered: true });
+          } catch (e) {}
+        }
+        function showSlow(message) {
+          if (!boot.isConnected) return;
+          slow.firstChild.textContent = message;
+          slow.hidden = false;
+        }
+        slow.querySelector('button').addEventListener('click', function () { location.reload(); });
+        // 與 BootScreen 相同，自開啟網頁起算 8 秒（BOOT_SLOW_MS）
+        setTimeout(function () { showSlow(text['boot.slow']); }, Math.max(0, 8000 - performance.now()));
+        // 程式下載失敗時 React 不會接手，直接在這裡告知並提供重新整理；樣式表失敗時 React
+        // 仍可能掛載，因此把失敗記在 <html data-boot-failed>，讓 BootScreen 接手後停在失敗提示
+        // （src/state/boot.ts 的 bootAssetsFailed）。modulepreload 失敗時瀏覽器會在 import 時重抓，不算失敗。
+        window.addEventListener('error', function (event) {
+          var target = event.target;
+          if (!target || !(target.tagName === 'SCRIPT' || (target.tagName === 'LINK' && target.rel === 'stylesheet'))) return;
+          document.documentElement.setAttribute('data-boot-failed', '');
+          if (!boot.isConnected) return;
+          boot.setAttribute('data-failed', '');
+          var step = boot.querySelector('[data-step="assets"]');
+          step.setAttribute('data-status', 'failed');
+          step.querySelector('.boot__state').textContent = text['boot.status.failed'];
+          showSlow(text['boot.assetsFailed']);
+        }, true);
+        render();
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
