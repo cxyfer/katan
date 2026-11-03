@@ -48,6 +48,49 @@ describe('rotate prompt', () => {
     expect(screen.queryByTestId('rotate-prompt')).toBeNull();
   });
 
+  it('returns focus to the element that had it before the dialog appeared', () => {
+    mockMedia(installedPortraitPhone);
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    try {
+      trigger.focus();
+      expect(document.activeElement).toBe(trigger);
+      renderPrompt();
+      expect(document.activeElement).toBe(screen.getByTestId('rotate-prompt-continue'));
+
+      fireEvent.click(screen.getByTestId('rotate-prompt-continue'));
+      expect(screen.queryByTestId('rotate-prompt')).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    } finally {
+      trigger.remove();
+    }
+  });
+
+  it('returns focus when the dialog disappears because the phone was rotated', () => {
+    let portrait = true;
+    const listeners = new Set<(event: MediaQueryListEvent) => void>();
+    vi.spyOn(globalThis, 'matchMedia').mockImplementation((query: string) => ({
+      get matches() { return query.includes('display-mode: standalone') || (query.includes('orientation: portrait') && portrait); },
+      media: query,
+      addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => { if (query.includes('orientation: portrait')) listeners.add(listener); },
+      removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => { listeners.delete(listener); },
+    }) as unknown as MediaQueryList);
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    try {
+      trigger.focus();
+      renderPrompt();
+      expect(document.activeElement).toBe(screen.getByTestId('rotate-prompt-continue'));
+
+      portrait = false;
+      act(() => listeners.forEach((listener) => listener({ matches: false } as MediaQueryListEvent)));
+      expect(screen.queryByTestId('rotate-prompt')).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    } finally {
+      trigger.remove();
+    }
+  });
+
   it('stays hidden in a browser tab, in landscape, and on a non-touch window', () => {
     mockMedia((query) => query.includes('orientation: portrait'));
     const tab = renderPrompt();

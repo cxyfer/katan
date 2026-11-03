@@ -16,6 +16,7 @@
 
 /* 入口、首頁、大廳：與 pregame.css 的 .pregame 內距取較大者 */
 .screen.pregame {
+  padding-top: env(safe-area-inset-top, 0px);
   padding-right: max(clamp(1rem, 4vw, 3.5rem), env(safe-area-inset-right, 0px));
   padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
   padding-left: max(clamp(1rem, 4vw, 3.5rem), env(safe-area-inset-left, 0px));

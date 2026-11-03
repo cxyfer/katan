@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/context.tsx';
 import { useIsMobile } from './useIsMobile.ts';
 import '../styles/rotate-prompt.css';
@@ -11,7 +11,6 @@ const DISMISSED_KEY = 'catan.rotatePromptDismissed';
  * 直向版面仍可遊玩，因此可選擇以直向繼續，本次瀏覽期間不再顯示。
  */
 export function RotatePrompt() {
-  const t = useT();
   const installed = useIsMobile('(display-mode: standalone), (display-mode: fullscreen)') || iosStandalone();
   const portrait = useIsMobile('(orientation: portrait) and (max-width: 649px) and (pointer: coarse)');
   const [dismissed, setDismissed] = useState(readDismissed);
@@ -27,8 +26,29 @@ export function RotatePrompt() {
     }
   };
 
+  return <RotateDialog onDismiss={dismiss} />;
+}
+
+/** 只在對話框顯示期間掛載，卸載（按鈕關閉或轉向）時把焦點還給顯示前的元素。 */
+function RotateDialog({ onDismiss }: { onDismiss: () => void }) {
+  const t = useT();
+  // autoFocus 在 commit 階段就會搶走焦點，早於 effect，所以在 render 階段記錄顯示前的焦點元素
+  const previous = useRef<HTMLElement | null>(null);
+  if (previous.current === null) previous.current = document.activeElement as HTMLElement | null;
+
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const target = previous.current;
+    const node = root.current;
+    return () => {
+      // StrictMode 開發模式會模擬卸載；此時對話框仍在 DOM 內，不應搶回焦點
+      if (!node?.isConnected && target?.isConnected) target.focus();
+    };
+  }, []);
+
   return (
-    <div className="rotate-prompt" role="dialog" aria-modal="true" aria-labelledby="rotate-prompt-title" aria-describedby="rotate-prompt-body" data-testid="rotate-prompt">
+    <div ref={root} className="rotate-prompt" role="dialog" aria-modal="true" aria-labelledby="rotate-prompt-title" aria-describedby="rotate-prompt-body" data-testid="rotate-prompt">
       <div className="rotate-prompt__card">
         <svg className="rotate-prompt__device" width="72" height="72" viewBox="0 0 72 72" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
           <g className="rotate-prompt__phone">
@@ -39,7 +59,7 @@ export function RotatePrompt() {
         </svg>
         <h2 id="rotate-prompt-title">{t('table.rotatePrompt.title')}</h2>
         <p id="rotate-prompt-body">{t('table.rotatePrompt.body')}</p>
-        <button type="button" className="button button--ghost" data-testid="rotate-prompt-continue" autoFocus onClick={dismiss}>
+        <button type="button" className="button button--ghost" data-testid="rotate-prompt-continue" autoFocus onClick={onDismiss}>
           {t('table.rotatePrompt.continue')}
         </button>
       </div>
