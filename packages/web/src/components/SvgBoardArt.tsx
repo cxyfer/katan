@@ -84,7 +84,7 @@ export function BoardArtDefs({ ids }: { ids: BoardArtIds }) {
 
 /** Bathymetric shallows, surf and a sand rim drawn from the topology's coastline. */
 export function IslandShore({ geometry, ids }: { geometry: BoardGeometry; ids: BoardArtIds }) {
-  const paths = useMemo(() => coastLoops(geometry.topology).map((loop) => {
+  const paths = useMemo(() => coastLoops(geometry.topology, geometry.land).map((loop) => {
     const ring = (offset: number) => loopPath(smoothLoop(offsetLoop(loop, offset), 3), geometry.scale);
     return {
       shallows: [ring(1.05), ring(0.82), ring(0.6)],

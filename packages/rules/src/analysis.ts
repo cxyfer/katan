@@ -4,6 +4,8 @@
  * the rules engine and the server's projections share one source of truth.
  */
 
+import { rulesModulesOf } from './modules/registry.ts';
+import { getProfile } from './profiles.ts';
 import { getTopology } from './topology-registry.ts';
 import { verticesOfHex, type BoardTopology } from './topology.ts';
 import {
@@ -208,6 +210,12 @@ export function scoreOf(state: GameState, playerId: string, options: ScoreOption
     score += player.devCards.filter((card) => card === 'victoryPoint').length;
     score += player.newDevCards.filter((card) => card === 'victoryPoint').length;
     score += player.hiddenBonusPoints;
+  }
+  const profile = getProfile(state.profileId);
+  if (profile) {
+    for (const module of rulesModulesOf(profile)) {
+      if (module.score) score += module.score(state, playerId, options, { profile });
+    }
   }
   return score;
 }

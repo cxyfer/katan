@@ -6,8 +6,25 @@
  * id plus typed parameters (§8.7).
  */
 
-import { COMMAND_ERROR_CODES, RULE_EVENT_TYPES } from '@catan/rules';
-import type { GameEvent, GameView, Resource } from '@catan/rules';
+import {
+  BOX_IDS,
+  COMMAND_ERROR_CODES,
+  EXPANSION_IDS,
+  PROFILES,
+  RULE_EVENT_TYPES,
+  SCENARIO_IDS,
+  VARIANT_IDS,
+} from '@catan/rules';
+import type {
+  BoxId,
+  ExpansionId,
+  GameEvent,
+  GameView,
+  ProfileDefinition,
+  Resource,
+  ScenarioId,
+  VariantId,
+} from '@catan/rules';
 
 /**
  * Stable message ids a client must be able to render. Both lists come from the
@@ -72,6 +89,26 @@ export const ROOM_NOTICE_IDS: readonly string[] = [
   'blocker.noHost',
   'blocker.profilePlayerCount',
   'blocker.capacity',
+  'blocker.botsUnsupported',
+];
+
+/**
+ * Ruleset vocabulary the lobby renders: every registered profile's name and
+ * unavailability reason, plus the expansion, scenario, variant and box names
+ * the registry can describe. Derived from the registry, so registering a new
+ * profile or scenario requires both locales to name it.
+ */
+export const RULESET_MESSAGE_IDS: readonly string[] = [
+  ...new Set([
+    ...PROFILES.map((profile) => profile.labelKey),
+    ...PROFILES.flatMap((profile) => (profile.unavailableReasonKey ? [profile.unavailableReasonKey] : [])),
+    'expansion.none',
+    ...EXPANSION_IDS.map((id) => `expansion.${id}`),
+    'scenario.standard',
+    ...SCENARIO_IDS.map((id) => `scenario.${id}`),
+    ...VARIANT_IDS.map((id) => `variant.${id}`),
+    ...BOX_IDS.map((id) => `box.${id}`),
+  ]),
 ];
 
 /**
@@ -85,6 +122,7 @@ export const REQUIRED_MESSAGE_IDS: readonly string[] = [
     ...EVENT_MESSAGE_IDS,
     ...SERVER_ERROR_IDS,
     ...ROOM_NOTICE_IDS,
+    ...RULESET_MESSAGE_IDS,
   ]),
 ];
 
@@ -208,17 +246,48 @@ export interface RoomSummaryView {
   createdAt: string;
 }
 
+/** Public registry entry (`GET /api/profiles`). */
 export interface ProfileView {
   id: string;
   labelKey: string;
+  /** Rules version new games of this profile are created under. */
+  ruleVersion: string;
+  /** Expansion set on top of the base rules; empty for the base game. */
+  expansions: ExpansionId[];
+  scenario: ScenarioId | null;
+  variants: VariantId[];
+  /** Boxes the table needs; display only, never validated. */
+  requiredBoxes: BoxId[];
   playerCounts: number[];
   paired: boolean;
-  modules: { seafarers: boolean; citiesKnights: boolean };
-  scenario: string | null;
   victoryTarget: number;
   setupModes: ('fixed' | 'variable')[];
   enabled: boolean;
   unavailableReasonKey?: string;
+  /**
+   * Whether hosts may seat computer opponents (SPEC §4.9). The service decides
+   * from the bot strategies' supported rules modules.
+   */
+  botSeats: boolean;
+}
+
+export function profileView(profile: ProfileDefinition, support: { botSeats: boolean }): ProfileView {
+  return {
+    id: profile.id,
+    labelKey: profile.labelKey,
+    ruleVersion: profile.ruleVersion,
+    expansions: [...profile.expansions],
+    scenario: profile.scenario,
+    variants: [...profile.variants],
+    requiredBoxes: [...profile.requiredBoxes],
+    playerCounts: [...profile.playerCounts],
+    paired: profile.paired,
+    victoryTarget: profile.victoryTarget,
+    setupModes: [...profile.setupModes],
+    enabled: profile.enabled,
+    botSeats: support.botSeats,
+    ...(profile.unavailableReasonKey ? { unavailableReasonKey: profile.unavailableReasonKey } : {}),
+  };
 }
 
 /** A localisable notice: message id plus canonical parameters. */
@@ -332,4 +401,4 @@ export interface ServerConfigView {
   bots: { enabled: boolean; levels: BotLevel[] };
 }
 
-export type { GameEvent, GameView, Resource };
+export type { BoxId, ExpansionId, GameEvent, GameView, Resource, ScenarioId, VariantId };

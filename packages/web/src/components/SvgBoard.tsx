@@ -1,7 +1,7 @@
 import { memo, useId, useMemo, type ComponentProps, type Ref } from 'react';
 import type { GameView } from '@catan/rules';
 import type { BoardEffectGroup } from '../board/animation.ts';
-import type { BoardGeometry, Point } from '../board/geometry.ts';
+import { landHexOfEdge, type BoardGeometry, type Point } from '../board/geometry.ts';
 import type { BoardIntent } from '../board/intent.ts';
 import type { TableState } from '../state/table.ts';
 import { useT } from '../i18n/context.tsx';
@@ -49,12 +49,16 @@ const StaticTiles = memo(function StaticTiles({ geometry, terrain, numbers, ids 
   numbers: GameView['board']['numbers'];
   ids: BoardArtIds;
 }) {
+  const land = geometry.hexes.filter((hex) => geometry.land[hex.index] !== false);
+  const sea = geometry.hexes.filter((hex) => geometry.land[hex.index] === false);
   return <>
+    {/* Sea hexes of a scenario map are open water under the shoreline. */}
+    {sea.map((hex) => <SeaHex key={`hex-${hex.index}`} hex={hex} number={numbers[hex.index]} ids={ids} />)}
     <IslandShore geometry={geometry} ids={ids} />
     <g aria-hidden="true" pointerEvents="none">
-      {geometry.hexes.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 9)" />)}
+      {land.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 9)" />)}
     </g>
-    {geometry.hexes.map((hex) => {
+    {land.map((hex) => {
       const kind = terrain[hex.index] ?? 'sea';
       const number = numbers[hex.index];
       const fill = terrainFill(kind);
@@ -87,6 +91,17 @@ const StaticTiles = memo(function StaticTiles({ geometry, terrain, numbers, ids 
   </>;
 });
 
+/** A sea hex: a faint water cell that keeps the hex addressable on the board. */
+function SeaHex({ hex, number, ids }: { hex: BoardGeometry['hexes'][number]; number: number | null | undefined; ids: BoardArtIds }) {
+  return <g>
+    <polygon className="board__tile-sea" data-testid={`hex-${hex.index}`} points={hex.points}
+      fill="#9fd9d4" fillOpacity={0.12} stroke="#e8fbf6" strokeOpacity={0.35} strokeWidth={2} strokeDasharray="6 8" strokeLinejoin="round" />
+    {number !== null && number !== undefined && (
+      <NumberToken x={hex.cx} y={hex.cy + TOKEN_DROP} number={number} pips={pipsFor(number)} ids={ids} />
+    )}
+  </g>;
+}
+
 export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
   const t = useT();
   const prefix = useId().replace(/[^a-zA-Z0-9_-]/g, '');
@@ -100,7 +115,7 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
 
           {board.harbors.map((harbor) => {
             const edge = geometry.edges[harbor.edge];
-            const land = geometry.topology.edges[harbor.edge]?.hexes[0];
+            const land = landHexOfEdge(geometry, harbor.edge);
             const hex = land === undefined ? undefined : geometry.hexes[land];
             if (!edge || !hex) return null;
             const label = harbor.type === 'generic' ? '3:1' : '2:1';

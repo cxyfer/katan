@@ -1,4 +1,4 @@
-import type { BoardGeometry } from './geometry.ts';
+import { landHexOfEdge, type BoardGeometry } from './geometry.ts';
 import type { WorldPoint } from './render-contract.ts';
 import { geometryPointToWorld } from './projection.ts';
 
@@ -32,7 +32,8 @@ export interface HarborPlacement {
 
 /**
  * Places a harbour from its public coastal edge. The edge has one adjacent
- * land hex; outward is away from that hex's centre.
+ * land hex (its other side is sea or off the board); outward is away from
+ * that hex's centre.
  */
 export function harborPlacement(geometry: BoardGeometry, edgeIndex: number): HarborPlacement | null {
   const edge = geometry.edges[edgeIndex];
@@ -47,7 +48,8 @@ export function harborPlacement(geometry: BoardGeometry, edgeIndex: number): Har
   const length = Math.hypot(dx, dz) || 1;
   let normalX = dz / length;
   let normalZ = -dx / length;
-  const adjacentHex = topologyEdge.hexes[0];
+  // Outward points away from the land hex, toward the sea (or off the board).
+  const adjacentHex = landHexOfEdge(geometry, edgeIndex);
   const hex = adjacentHex === undefined ? null : geometry.hexes[adjacentHex];
   if (hex) {
     const center = geometryPointToWorld(geometry, { x: hex.cx, y: hex.cy });

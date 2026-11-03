@@ -61,8 +61,9 @@ const TERRAIN_LAYOUTS: Readonly<Record<string, readonly { x: number; z: number; 
   sea: [{ x: -0.3, z: -0.2 }, { x: 0.12, z: -0.27 }],
 };
 
+/** Raised land tiles; sea hexes stay open water so the ocean shows through. */
 export function tileInstances(geometry: BoardGeometry, board: PublicBoardView): TileInstance[] {
-  return geometry.hexes.map((hex) => {
+  return geometry.hexes.filter((hex) => geometry.land[hex.index] !== false).map((hex) => {
     const point = geometryToWorld(geometry, hex.cx, hex.cy);
     return {
       index: hex.index,

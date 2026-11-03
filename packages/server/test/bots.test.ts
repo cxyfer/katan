@@ -6,8 +6,21 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
-import { RESOURCES, type Command, type GameState, type GameView, type Resource } from '@catan/rules';
-import { BOT_LEVELS as POLICY_BOT_LEVELS, createBotPolicy, fallbackPolicy, type BotPolicy } from '@catan/bots';
+import {
+  RESOURCES,
+  registerFixtureProfile,
+  type Command,
+  type GameState,
+  type GameView,
+  type Resource,
+} from '@catan/rules';
+import {
+  BOT_LEVELS as POLICY_BOT_LEVELS,
+  BOT_RULE_MODULES,
+  createBotPolicy,
+  fallbackPolicy,
+  type BotPolicy,
+} from '@catan/bots';
 import { BOT_LEVELS, type ResumableGameView } from '@catan/protocol';
 import { loadConfig, type BotSettings } from '../src/config.ts';
 import type { BotDriverDeps } from '../src/bot-driver.ts';
@@ -234,6 +247,35 @@ describe('B-ROOM bot seats', () => {
     expect(room.startBlockers.map((blocker) => blocker.messageId)).toEqual(['blocker.notReady']);
     const ready = host.expectOk<RoomShape>(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
     expect(ready.startBlockers).toEqual([]);
+  });
+
+  it('offers bot seats only for profiles whose rules modules bots can play', async () => {
+    const host = await harness.client('ProfileBots');
+    const { profiles } = host.expectOk<{
+      profiles: { id: string; expansions: string[]; variants: string[]; botSeats: boolean }[];
+    }>(await host.get('/api/profiles'));
+    expect(profiles.find((profile) => profile.id === 'base-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'base-paired-2025')?.botSeats).toBe(true);
+    for (const profile of profiles) {
+      const modules = [...profile.expansions, ...profile.variants];
+      expect(profile.botSeats).toBe(modules.every((module) => BOT_RULE_MODULES.includes(module)));
+    }
+    expect(profiles.some((profile) => !profile.botSeats)).toBe(true);
+  });
+
+  it('blocks start and further bots once the profile runs modules bots cannot play', async () => {
+    // Only fixture profiles can reach this state in this phase: no enabled
+    // profile has rules modules yet, and rooms only accept enabled profiles.
+    const fixture = registerFixtureProfile('fixture-bots-modules', [3, 4], { expansions: ['seafarers'] });
+    const host = await harness.client('ModuleBots');
+    const room = await createRoom(host, { bots: 1 });
+    host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    await harness.service.repo.updateRoom(room.id, { profile_id: fixture.id });
+
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.startBlockers.map((blocker) => blocker.messageId)).toContain('blocker.botsUnsupported');
+    host.expectError(await host.post(`/api/rooms/${room.id}/start`), 'E_START_BLOCKED');
+    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
   });
 
   it('lets only the host add and remove bots before start', async () => {

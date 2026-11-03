@@ -9,7 +9,7 @@
 import { awaitingProjection, nameOf as resolveName, type TableState } from './table.ts';
 
 export interface RequiredAction {
-  kind: 'setup' | 'roll' | 'rolling' | 'syncing' | 'discard' | 'moveRobber' | 'steal' | 'yearOfPlenty' | 'freeRoads' | 'turn';
+  kind: 'setup' | 'roll' | 'rolling' | 'syncing' | 'discard' | 'moveRobber' | 'steal' | 'yearOfPlenty' | 'freeRoads' | 'module' | 'turn';
   /** Message id for the prompt headline. */
   messageId: string;
   params: Record<string, unknown>;
@@ -95,8 +95,19 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
           mine: pending.actor === me,
           waitingFor: pending.actor === me ? [] : [pending.actor],
         };
-      default:
-        return null;
+      default: {
+        // Rules-module frames name their responders explicitly; the module's
+        // own catalog file provides `play.pending.<module>.<step>`.
+        if (!('responders' in pending)) return null;
+        const mine = me !== null && pending.responders.includes(me);
+        return {
+          kind: 'module',
+          messageId: `play.pending.${pending.kind}`,
+          params: { ...pending.data },
+          mine,
+          waitingFor: pending.responders.filter((id) => id !== me),
+        };
+      }
     }
   }
 

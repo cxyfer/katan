@@ -52,6 +52,13 @@ export interface BoardGeometry {
   hexes: HexGeometry[];
   vertices: VertexGeometry[];
   edges: EdgeGeometry[];
+  /**
+   * Land per hex index. Scenario maps include sea hexes in the topology (a
+   * sea frame, water between islands); those are not land, so the shoreline
+   * runs between land and sea rather than around the topology's boundary.
+   * Boards without sea terrain are land everywhere.
+   */
+  land: boolean[];
 }
 
 const CORNER_ANGLES = [30, 90, 150, 210, 270, 330].map((degrees) => (degrees * Math.PI) / 180);
@@ -69,8 +76,9 @@ function hexCorners(cx: number, cy: number, scale: number): Point[] {
  * Projects a topology into SVG user units. All output coordinates are already
  * scaled, so a consumer can render directly inside `viewBox`.
  */
-export function buildGeometry(topologyId: string, scale = 100): BoardGeometry {
+export function buildGeometry(topologyId: string, scale = 100, terrain?: readonly string[]): BoardGeometry {
   const topology = getTopology(topologyId);
+  const land = topology.hexes.map((_, index) => (terrain?.[index] ?? 'land') !== 'sea');
   const hexes: HexGeometry[] = topology.hexes.map((hex, index) => {
     const corners = hexCorners(hex.x, hex.y, scale);
     return {
@@ -121,7 +129,20 @@ export function buildGeometry(topologyId: string, scale = 100): BoardGeometry {
     hexes,
     vertices,
     edges,
+    land,
   };
+}
+
+/** Edges on the shoreline: exactly one of their hexes is land. */
+export function isCoastEdge(geometry: Pick<BoardGeometry, 'topology' | 'land'>, edgeIndex: number): boolean {
+  const hexes = geometry.topology.edges[edgeIndex]?.hexes ?? [];
+  return hexes.filter((hex) => geometry.land[hex]).length === 1;
+}
+
+/** The land hex of a coastal edge (the first hex for a land-only edge). */
+export function landHexOfEdge(geometry: Pick<BoardGeometry, 'topology' | 'land'>, edgeIndex: number): number | undefined {
+  const hexes = geometry.topology.edges[edgeIndex]?.hexes ?? [];
+  return hexes.find((hex) => geometry.land[hex]) ?? hexes[0];
 }
 
 /** Distance between two projected points; used for ambiguity detection. */

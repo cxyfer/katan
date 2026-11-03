@@ -7,7 +7,7 @@
 
 import { PLAYER_COLORS, type ProfileDefinition } from '@catan/rules';
 import { BOT_LEVELS, type BotLevel } from '@catan/protocol';
-import type { BotLevel as PolicyBotLevel } from '@catan/bots';
+import { botsCanPlay, type BotLevel as PolicyBotLevel } from '@catan/bots';
 import { newId, type MemberRow, type Repository } from './db.ts';
 
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -42,9 +42,12 @@ export function botLevelOf(member: { bot_level?: string | null }): BotLevel {
   return parseBotLevel(member.bot_level) ?? DEFAULT_BOT_LEVEL;
 }
 
-/** Bot 策略只涵蓋基本規則（含 5–6 人 paired），不支援擴充模組。 */
+/**
+ * Bot 策略只涵蓋基本規則（含 5–6 人 paired）；設定檔的每個規則模組都必須在
+ * `@catan/bots` 的 `BOT_RULE_MODULES` 之中才可加入 Bot。
+ */
 export function botsSupported(profile: ProfileDefinition): boolean {
-  return !profile.modules.seafarers && !profile.modules.citiesKnights;
+  return botsCanPlay(profile);
 }
 
 /** Bot 席位永遠就緒。 */

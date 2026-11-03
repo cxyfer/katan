@@ -159,6 +159,9 @@ function pendingDecision(turn: Turn): Command | null {
       const edge = usefulRoad(turn, true);
       return edge === null ? null : { type: 'build.road', edge };
     }
+    default:
+      // Rules-module frames: bots are only seated in base profiles.
+      return null;
   }
 }
 

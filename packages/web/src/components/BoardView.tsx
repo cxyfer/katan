@@ -64,7 +64,13 @@ export function BoardView({ controller }: { controller: TableController }) {
   const onDiceQueue = useCallback((ids: readonly string[]) => rolls.setQueue(ids), [rolls]);
   const animation = useBoardAnimation(state.game, state.gameSync, state.connection === 'online',
     !!view?.pending || !!view?.turn.setup || view?.turn.phase === 'preroll', onDiceChange, onDiceQueue);
-  const geometry = useMemo(() => buildGeometry(view?.board.topologyId ?? 'hex-r2'), [view?.board.topologyId]);
+  // Only which hexes are sea shapes the geometry; a stable key keeps it from
+  // rebuilding (and re-creating the 3D scene) on every snapshot.
+  const seaKey = view?.board.terrain.map((terrain) => (terrain === 'sea' ? 's' : 'l')).join('') ?? '';
+  const geometry = useMemo(
+    () => buildGeometry(view?.board.topologyId ?? 'hex-r2', 100, seaKey ? [...seaKey].map((kind) => (kind === 's' ? 'sea' : 'land')) : undefined),
+    [view?.board.topologyId, seaKey],
+  );
   const bounds = useMemo(() => sceneBounds(geometry), [geometry]);
   const controls = useBoardViewport({ geometry, surfaceRef, bounds, projection, renderer: effective,
     sceneKey: `${state.game?.gameId ?? 'none'}:${!!view}` });

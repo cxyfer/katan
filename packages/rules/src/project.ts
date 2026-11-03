@@ -7,10 +7,12 @@
  */
 
 import { scoreOf, topologyOf, totalResources } from './analysis.ts';
-import { normalizedPending } from './engine.ts';
-import { requireProfile } from './profiles.ts';
+import { effectivePending } from './engine.ts';
+import { rulesModulesOf } from './modules/registry.ts';
+import type { PublicModulePendingView } from './modules/types.ts';
+import { requireProfile, type ProfileDefinition } from './profiles.ts';
 import { cloneGameStats, type GameStats } from './stats.ts';
-import type { GameEvent, GameState, PlayerState, Resource, Offer } from './types.ts';
+import type { GameEvent, GameState, PendingFrame, PlayerState, Resource, Offer } from './types.ts';
 import { RESOURCES } from './types.ts';
 
 export interface PublicPlayerView {
@@ -59,6 +61,7 @@ export interface ActionHintsView {
   legalCities: number[];
   bankRates: Record<Resource, number>;
   pendingKind: string | null;
+  modules?: Record<string, unknown>;
 }
 
 export interface GameView {
@@ -78,7 +81,10 @@ export interface GameView {
     setup: { seat: number; stage: 'building' | 'road'; round: 1 | 2; remaining: number } | null;
     pairedActor: 1 | 2;
   };
+  /** The active mandatory choice. */
   pending: PublicPendingView;
+  /** Choices queued behind `pending`, in resolution order (public parts only). */
+  pendingQueue: NonNullable<PublicPendingView>[];
   offers: Offer[];
   windowId: number;
   seq: number;
@@ -86,6 +92,8 @@ export interface GameView {
   awards: { longestRoad: string | null; largestArmy: string | null };
   events: GameEvent[];
   hints?: ActionHintsView;
+  /** Viewer-filtered rules-module state keyed by module id (absent for base games). */
+  modules?: Record<string, unknown>;
   /**
    * Post-game statistics. Only present once the game has a result: several
    * counters (drawn card types, stolen resources, hidden points) would leak
@@ -100,6 +108,7 @@ export type PublicPendingView =
   | { kind: 'steal'; actor: string; hex: number; candidates: string[] }
   | { kind: 'yearOfPlenty'; actor: string; remaining: number }
   | { kind: 'freeRoads'; actor: string; remaining: number }
+  | PublicModulePendingView
   | null;
 
 export interface ProjectionOptions {
@@ -143,8 +152,12 @@ function publicPlayerView(
   return view;
 }
 
-function publicPending(state: GameState): PublicPendingView {
-  const pending = normalizedPending(state);
+function publicPending(
+  state: GameState,
+  pending: PendingFrame | null,
+  viewerId: string,
+  profile: ProfileDefinition,
+): PublicPendingView {
   if (!pending) return null;
   switch (pending.kind) {
     case 'discard':
@@ -161,9 +174,19 @@ function publicPending(state: GameState): PublicPendingView {
       return { kind: 'yearOfPlenty', actor: pending.actor, remaining: pending.remaining };
     case 'freeRoads':
       return { kind: 'freeRoads', actor: pending.actor, remaining: pending.remaining };
-    default:
-      return null;
+    default: {
+      // Module data is server-only unless the owning module projects it.
+      const module = rulesModulesOf(profile).find((candidate) => candidate.id === pending.module);
+      if (module?.projectPending) return module.projectPending(state, pending, viewerId, { profile });
+      return { kind: pending.kind, module: pending.module, responders: pending.responders.slice(), data: {} };
+    }
   }
+}
+
+function moduleProjections(state: GameState, viewerId: string, profile: ProfileDefinition): Record<string, unknown> | null {
+  const modules = rulesModulesOf(profile).filter((module) => module.project);
+  if (modules.length === 0) return null;
+  return Object.fromEntries(modules.map((module) => [module.id, module.project!(state, viewerId, { profile })]));
 }
 
 /**
@@ -185,6 +208,7 @@ export function projectGame(
   options: ProjectionOptions = {},
 ): GameView {
   const profile = requireProfile(state.profileId);
+  const pending = effectivePending(state);
   const viewer = state.players.find((player) => player.id === viewerId);
   const setup = state.turn.setup;
   const result = state.result
@@ -234,7 +258,8 @@ export function projectGame(
         : null,
       pairedActor: state.turn.pairedActor,
     },
-    pending: publicPending(state),
+    pending: publicPending(state, pending.pending, viewerId, profile),
+    pendingQueue: pending.queue.map((frame) => publicPending(state, frame, viewerId, profile)!),
     offers: state.offers.map((offer) => ({ ...offer, responses: { ...offer.responses } })),
     windowId: state.windowId,
     seq: state.seq,
@@ -243,6 +268,8 @@ export function projectGame(
     events: (options.events ?? []).map((event) => projectEvent(event, viewerId)),
   };
   if (options.hints && viewer) view.hints = options.hints;
+  const modules = moduleProjections(state, viewerId, profile);
+  if (modules) view.modules = modules;
   if (state.result && state.stats) view.stats = cloneGameStats(state.stats);
   return view;
 }

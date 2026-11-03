@@ -141,6 +141,66 @@ describe('R-ROOM lobby', () => {
     );
   });
 
+  it('resolves a ruleset named by its parts to exactly one enabled profile', async () => {
+    const host = await harness.client('RulesetHost');
+    const reason = (response: { body: { ok: boolean; error?: { params?: Record<string, unknown> } } }) =>
+      response.body.ok ? 'ok' : response.body.error?.params?.reason;
+
+    const paired = host.expectOk<RoomShape & { profileId: string }>(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 5, setupMode: 'variable',
+      ruleset: { expansions: [], scenario: null, variants: [] },
+    }));
+    expect(paired.profileId).toBe('base-paired-2025');
+
+    const base = host.expectOk<RoomShape & { profileId: string }>(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 4, setupMode: 'fixed', profileId: 'base-2025',
+      ruleset: { expansions: [], scenario: null },
+    }));
+    expect(base.profileId).toBe('base-2025');
+
+    const cases: [Record<string, unknown>, string][] = [
+      [{ capacity: 4, ruleset: { expansions: ['seafarers'], scenario: 'new-shores' } }, 'disabled'],
+      [{ capacity: 4, ruleset: { expansions: ['citiesKnights', 'seafarers'], scenario: 'new-shores' } }, 'disabled'],
+      [{ capacity: 4, ruleset: { expansions: ['seafarers', 'citiesKnights', 'tradersBarbarians'], scenario: 'new-shores' } }, 'unknown-profile'],
+      [{ capacity: 4, ruleset: { expansions: ['seafarers', 'seafarers'], scenario: 'new-shores' } }, 'invalid-request'],
+      [{ capacity: 4, ruleset: { expansions: [], scenario: null, variants: ['tb-event-cards'] } }, 'unknown-profile'],
+      [{ capacity: 7, ruleset: { expansions: [], scenario: null } }, 'bad-player-count'],
+      [{ capacity: 3, profileId: 'base-paired-2025', ruleset: { expansions: [], scenario: null } }, 'profile-mismatch'],
+      [{ capacity: 3, profileId: 'no-such-profile' }, 'unknown-profile'],
+    ];
+    for (const [body, expected] of cases) {
+      const response = await host.post('/api/rooms', { visibility: 'private', setupMode: 'fixed', ...body });
+      host.expectError(response, 'E_UNSUPPORTED_COMBINATION');
+      expect(reason(response), JSON.stringify(body)).toBe(expected);
+    }
+    const missing = await host.post('/api/rooms', { visibility: 'private', capacity: 3, setupMode: 'fixed' });
+    host.expectError(missing, 'E_BAD_REQUEST');
+    expect(missing.body.ok ? null : missing.body.error.messageId).toBe('error.E_MISSING_FIELD');
+    host.expectError(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 3, setupMode: 'fixed', ruleset: { expansions: 'seafarers' },
+    }), 'E_BAD_REQUEST');
+
+    // Settings may switch rulesets by parts as well.
+    const switched = host.expectOk<RoomShape & { profileId: string }>(await host.post(`/api/rooms/${paired.id}/settings`, {
+      capacity: 6, ruleset: { expansions: [], scenario: null },
+    }));
+    expect(switched.profileId).toBe('base-paired-2025');
+  });
+
+  it('publishes registry v2 metadata for every profile', async () => {
+    const guest = await harness.client('ProfileReader');
+    const data = guest.expectOk<{ profiles: Record<string, unknown>[]; selectable: string[] }>(await guest.get('/api/profiles'));
+    expect(data.selectable).toEqual(['base-2025', 'base-paired-2025']);
+    expect(data.profiles.find((profile) => profile.id === 'base-paired-2025')).toMatchObject({
+      expansions: [], scenario: null, variants: [], ruleVersion: 'base-2025.3',
+      requiredBoxes: ['base', 'base-5-6'], playerCounts: [5, 6], enabled: true,
+    });
+    expect(data.profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')).toMatchObject({
+      expansions: ['seafarers', 'citiesKnights'], scenario: 'new-shores', enabled: false,
+    });
+    for (const profile of data.profiles) expect(profile).not.toHaveProperty('modules');
+  });
+
   it('rejects profile and capacity mismatches during lobby settings updates', async () => {
     const host = await harness.client('SettingsGuard');
     const baseRoom = host.expectOk<RoomShape>(await host.post('/api/rooms', {
