@@ -24,16 +24,6 @@ export function goodsTotal(goods: Goods): number {
   return Object.values(goods).reduce((sum, amount) => sum + amount, 0);
 }
 
-/** " + 3 gold" style suffix for offer terms (empty without goods). */
-export function useGoodsSuffix(): (goods: Goods | undefined) => string {
-  const t = useT();
-  return (goods) => {
-    const parts = Object.entries(goods ?? {}).filter(([, amount]) => amount > 0)
-      .map(([good, amount]) => t(`tb.trade.${good}`, { amount }));
-    return parts.length ? ` + ${parts.join(' + ')}` : '';
-  };
-}
-
 /** The offer's goods from the viewer's side (recipients see them swapped). */
 export function viewerGoods(offer: Pick<Offer, 'from' | 'to' | 'giveGoods' | 'wantGoods'>, selfId: string | null): { give?: Goods; want?: Goods } {
   if (selfId && offer.from !== selfId && (offer.to === 'all' || offer.to === selfId)) return { give: offer.wantGoods, want: offer.giveGoods };

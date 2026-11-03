@@ -58,6 +58,21 @@ export function formatResourceMap(
   return parts.length > 0 ? parts.join('、') : '—';
 }
 
+/** 資源、C&K 商品與 module goods 共用的交易條款文字。 */
+export function formatTradeMap(
+  locale: Locale,
+  resources: Record<string, number> | undefined,
+  goods: Record<string, number> | undefined,
+): string {
+  const parts: string[] = [];
+  const resourceText = formatResourceMap(locale, resources);
+  if (resourceText !== '—') parts.push(resourceText);
+  for (const [good, amount] of Object.entries(goods ?? {}).sort(([a], [b]) => a.localeCompare(b))) {
+    if (amount > 0) parts.push(`${formatNumber(locale, amount)}×${t(locale, `tb.trade.goodName.${good}`)}`);
+  }
+  return parts.length > 0 ? parts.join(t(locale, 'tb.trade.separator')) : '—';
+}
+
 /** Renders a per-player production/transfer summary (`{ p1: { wool: 2 } }`). */
 export function formatGrantMap(
   locale: Locale,

@@ -176,11 +176,8 @@ describe('R-TB-RV coins and wealth (p. 12)', () => {
     const settled = run(consented, 'p1', { type: 'trade.settle', offerId: offer.id }).state;
     expect(coins(settled).gold).toMatchObject({ p1: 1, p2: 3 });
     expect(settled.players[0]!.resources.ore).toBe(1);
-    // Like resources, gold is checked when the exchange settles.
-    const big = run(state, 'p1', { type: 'trade.offer', to: 'p2', give: {}, want: { ore: 1 }, giveGoods: { gold: 9 } }).state;
-    const bigOffer = big.offers.at(-1)!.id;
-    const agreed = run(big, 'p2', { type: 'trade.respond', offerId: bigOffer, response: 'consented' }).state;
-    reject(agreed, 'p1', { type: 'trade.settle', offerId: bigOffer }, 'E_INSUFFICIENT_RESOURCES');
+    // Gold is public: proposals cannot promise more than the proposer holds.
+    reject(state, 'p1', { type: 'trade.offer', to: 'p2', give: {}, want: { ore: 1 }, giveGoods: { gold: 9 } }, 'E_INSUFFICIENT_RESOURCES');
     reject(state, 'p1', { type: 'trade.offer', to: 'p2', give: {}, want: { ore: 1 }, giveGoods: { fish: 1 } }, 'E_INVALID_SELECTION');
     // Gold alone in both directions is still a gift-free exchange; zero terms are refused.
     reject(state, 'p1', { type: 'trade.offer', to: 'p2', give: {}, want: { ore: 1 } }, 'E_INVALID_SELECTION');
@@ -189,6 +186,52 @@ describe('R-TB-RV coins and wealth (p. 12)', () => {
     setHand(state, 'p2', { wool: 7 });
     forceTurn(state, 0, 'preroll');
     expect(run(state, 'p1', { type: 'turn.roll' }, scriptedRng([2, 3])).state.pending).toMatchObject({ kind: 'moveRobber' });
+  });
+
+  it('checks the proposer’s goods on creation/revision and preserves a rejected revision', () => {
+    const state = bare();
+    coins(state).gold.p1 = 2;
+    const offered = run(state, 'p1', { type: 'trade.offer', to: 'all', give: {}, giveGoods: { gold: 2 }, want: { ore: 1 } }).state;
+    const offer = offered.offers.at(-1)!;
+    const original = JSON.parse(JSON.stringify(offered));
+    reject(offered, 'p1', { type: 'trade.revise', offerId: offer.id, give: {}, giveGoods: { gold: 3 }, want: { wool: 1 } }, 'E_INSUFFICIENT_RESOURCES');
+    expect(offered).toEqual(original);
+    const revised = run(offered, 'p1', { type: 'trade.revise', offerId: offer.id, give: { ore: 1 }, want: {}, wantGoods: { gold: 2 } }).state;
+    expect(revised.offers.at(-1)).toMatchObject({ give: { ore: 1 }, want: {}, wantGoods: { gold: 2 } });
+    expect(revised.offers.at(-1)).not.toHaveProperty('giveGoods');
+  });
+
+  it('checks both parties’ goods on consent while leaving interest and decline available', () => {
+    const state = bare();
+    coins(state).gold.p1 = 2;
+    coins(state).gold.p2 = 1;
+    const offered = run(state, 'p1', {
+      type: 'trade.offer', to: 'p2', give: { wool: 1 }, giveGoods: { gold: 2 }, want: {}, wantGoods: { gold: 2 },
+    }).state;
+    const offerId = offered.offers.at(-1)!.id;
+    reject(offered, 'p2', { type: 'trade.respond', offerId, response: 'consented' }, 'E_INSUFFICIENT_RESOURCES');
+    expect(run(offered, 'p2', { type: 'trade.respond', offerId, response: 'interested' }).state.offers.at(-1)!.responses.p2).toBe('interested');
+    expect(run(offered, 'p2', { type: 'trade.respond', offerId, response: 'declined' }).state.offers.at(-1)!.responses.p2).toBe('declined');
+    coins(offered).gold.p2 = 2;
+    coins(offered).gold.p1 = 1;
+    reject(offered, 'p2', { type: 'trade.respond', offerId, response: 'consented' }, 'E_INSUFFICIENT_RESOURCES');
+  });
+
+  it.each(['p1', 'p2'])('rechecks %s goods at settlement after consent without partially transferring anything', (playerId) => {
+    const state = bare();
+    coins(state).gold.p1 = 3;
+    coins(state).gold.p2 = 3;
+    setHand(state, 'p1', { wool: 1 });
+    setHand(state, 'p2', { ore: 1 });
+    const offered = run(state, 'p1', {
+      type: 'trade.offer', to: 'p2', give: { wool: 1 }, giveGoods: { gold: 2 }, want: { ore: 1 }, wantGoods: { gold: 2 },
+    }).state;
+    const offerId = offered.offers.at(-1)!.id;
+    const consented = run(offered, 'p2', { type: 'trade.respond', offerId, response: 'consented' }).state;
+    coins(consented).gold[playerId] = 1;
+    const original = JSON.parse(JSON.stringify(consented));
+    reject(consented, 'p1', { type: 'trade.settle', offerId }, 'E_INSUFFICIENT_RESOURCES');
+    expect(consented).toEqual(original);
   });
 
   it('RV8: Wealthiest goes to the unique richest (+1), Poor to every poorest (-2), immediately', () => {

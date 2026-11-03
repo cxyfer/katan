@@ -1745,6 +1745,17 @@ function setOfferGoods(offer: Offer, giveGoods: Record<string, number>, wantGood
   else delete offer.wantGoods;
 }
 
+/** 公開的 module goods 不可承諾超過持有量；結算時仍須重查，不預留庫存。 */
+function requireTradeGoods(state: GameState, playerId: string, terms: Record<string, number> | undefined): CommandOutcome | null {
+  if (goodsTotal(terms) === 0) return null;
+  const goods = tradeGoodsOf(state);
+  if (!goods) return fail('E_INVALID_SELECTION', { reason: 'goods' });
+  for (const [good, amount] of Object.entries(terms ?? {})) {
+    if (goods.balance(state, playerId, good) < amount) return fail('E_INSUFFICIENT_RESOURCES', { playerId, good });
+  }
+  return null;
+}
+
 function createOffer(
   state: GameState,
   actorId: string,
@@ -1772,6 +1783,8 @@ function createOffer(
     if (command.to === actorId) return fail('E_INVALID_SELECTION', { reason: 'self-offer' });
     if (!playerById(state, command.to)) return fail('E_ILLEGAL_TARGET', { to: command.to });
   }
+  const goodsError = requireTradeGoods(state, actorId, giveGoods);
+  if (goodsError) return goodsError;
   const offer: Offer = {
     id: `offer-${state.seq + 1}-${state.offers.length + 1}`,
     revision: 1,
@@ -1815,6 +1828,10 @@ function respondToOffer(
   if (response !== 'declined' && response !== 'interested' && response !== 'consented') {
     return fail('E_INVALID_SELECTION', { response });
   }
+  if (response === 'consented') {
+    const goodsError = requireTradeGoods(state, offer.from, offer.giveGoods) ?? requireTradeGoods(state, actorId, offer.wantGoods);
+    if (goodsError) return goodsError;
+  }
   offer.responses[actorId] = response;
   emit(state, 'trade.responded', { offerId, playerId: actorId, response });
   return { ok: true, state, events: [] };
@@ -1839,6 +1856,8 @@ function reviseOffer(
   if (termsTotal(give) + goodsTotal(giveGoods) === 0 || termsTotal(want) + goodsTotal(wantGoods) === 0) {
     return fail('E_INVALID_SELECTION', { reason: 'empty-terms' });
   }
+  const goodsError = requireTradeGoods(state, actorId, giveGoods);
+  if (goodsError) return goodsError;
   offer.give = give;
   offer.want = want;
   setOfferGoods(offer, giveGoods, wantGoods);
@@ -1916,15 +1935,8 @@ function settleOffer(
     return fail('E_INSUFFICIENT_RESOURCES', { playerId: partner.id });
   }
   const goods = offer.giveGoods || offer.wantGoods ? tradeGoodsOf(state) : undefined;
-  if (offer.giveGoods || offer.wantGoods) {
-    if (!goods) return fail('E_INVALID_SELECTION', { reason: 'goods' });
-    for (const [good, amount] of Object.entries(offer.giveGoods ?? {})) {
-      if (goods.balance(state, proposer.id, good) < amount) return fail('E_INSUFFICIENT_RESOURCES', { playerId: proposer.id, good });
-    }
-    for (const [good, amount] of Object.entries(offer.wantGoods ?? {})) {
-      if (goods.balance(state, partner.id, good) < amount) return fail('E_INSUFFICIENT_RESOURCES', { playerId: partner.id, good });
-    }
-  }
+  const goodsError = requireTradeGoods(state, proposer.id, offer.giveGoods) ?? requireTradeGoods(state, partner.id, offer.wantGoods);
+  if (goodsError) return goodsError;
   for (const card of CARD_KINDS) {
     const toPartner = offer.give[card] ?? 0;
     const toProposer = offer.want[card] ?? 0;
