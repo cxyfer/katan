@@ -1231,3 +1231,199 @@ snapshots and event history for actor, victim and bystander. It also checks
 that internal pools and lair-token arrays do not appear in the module view.
 Existing `ep-privacy.test.ts` covers fog identities before exploration and
 recovery of draws. The generic actor-projected receipt is retained from release.
+
+### Post-merge changed lines
+
+The merge comparison above is based on `b0a52c6`. The following complete follow-up patch is the additional difference in `6c95dd5`: movement and pirate changes notify the shared hook, while the three new test files cover hook counts, trade checks and transport privacy. These are the only post-merge product and test changes.
+
+```diff
+diff --git a/packages/rules/src/modules/explorersPirates/movement.ts b/packages/rules/src/modules/explorersPirates/movement.ts
+index 21fe757..b1ce3e0 100644
+--- a/packages/rules/src/modules/explorersPirates/movement.ts
++++ b/packages/rules/src/modules/explorersPirates/movement.ts
+@@ -147 +146,0 @@ export function moveShip(state: GameState, actorId: string, command: ModuleComma
+-    ctx.kit.afterBoardChange(state);
+@@ -148,0 +148 @@ export function moveShip(state: GameState, actorId: string, command: ModuleComma
++  ctx.kit.afterBoardChange(state);
+diff --git a/packages/rules/src/modules/explorersPirates/pirate.ts b/packages/rules/src/modules/explorersPirates/pirate.ts
+index 2ba7d20..9adff19 100644
+--- a/packages/rules/src/modules/explorersPirates/pirate.ts
++++ b/packages/rules/src/modules/explorersPirates/pirate.ts
+@@ -92,0 +93 @@ export function placePirate(state: GameState, actorId: string, command: ModuleCo
++  ctx.kit.afterBoardChange(state);
+@@ -187,0 +189 @@ export function chasePirate(state: GameState, actorId: string, command: ModuleCo
++    ctx.kit.afterBoardChange(state);
+diff --git a/packages/rules/test/ep-hooks.test.ts b/packages/rules/test/ep-hooks.test.ts
+new file mode 100644
+index 0000000..8cc3c5b
+--- /dev/null
++++ b/packages/rules/test/ep-hooks.test.ts
+@@ -0,0 +1,69 @@
++import { describe, expect, it } from 'vitest';
++import { topologyOf } from '../src/analysis.ts';
++import { registerRulesModule } from '../src/modules/registry.ts';
++import { fogAtEnds } from '../src/modules/explorersPirates/geometry.ts';
++import { epState } from '../src/modules/explorersPirates/state.ts';
++import { registerFixtureProfile, requireProfile } from '../src/profiles.ts';
++import { epHints, epPlayable } from './ep-sim.ts';
++import { exploringPair, run, shipOf } from './ep-helpers.ts';
++import { scriptedRng } from './helpers.ts';
++
++const observed: (number | null)[] = [];
++registerRulesModule({ id: 'ep-observer', afterBoardChange(state) { observed.push(epState(state).pirate?.hex ?? null); } });
++const profile = requireProfile('ep-pirate-lairs-2025');
++registerFixtureProfile('fixture-ep-hooks', [3, 4], { ...profile, id: 'fixture-ep-hooks', ruleModules: ['explorersPirates', 'ep-observer'] });
++
++describe('E&P board-change hooks', () => {
++  it('notifies once when a captured lair receives its number', () => {
++    const state = epPlayable('pirate-lairs', 3);
++    state.profileId = 'fixture-ep-hooks';
++    const slot = epState(state);
++    const hex = slot.fog.shift()!.hex;
++    state.board.layout.terrain[hex] = 'gold';
++    slot.sites.push({ hex, kind: 'lair', crews: ['p1', 'p2', 'p3'], captured: false });
++    slot.captures.push(hex);
++    observed.length = 0;
++    const result = run(state, 'p1', { type: 'turn.end' }, scriptedRng([5, 0, 0, 0]));
++    expect(observed).toEqual([null]);
++    expect(result.state.board.layout.numbers[hex]).not.toBeNull();
++  });
++
++  it('observes one notification per ship move, including exploration', () => {
++    let state = epPlayable('pirate-lairs', 3);
++    state.profileId = 'fixture-ep-hooks';
++    const ship = shipOf(state, 'p1');
++    const { from, to } = exploringPair(state);
++    ship.edge = from;
++    state = run(state, 'p1', { type: 'ep.startMovement' }).state;
++    const plain = epHints(state, 'p1').ships.find((entry) => entry.id === ship.id)!.steps.find((step) => !step.explores && !step.full);
++    expect(plain).toBeDefined();
++    observed.length = 0;
++    const moved = run(state, 'p1', { type: 'ep.moveShip', ship: ship.id, edge: plain!.edge }).state;
++    expect(observed).toEqual([null]);
++    expect(fogAtEnds(state, to)).toHaveLength(1);
++    observed.length = 0;
++    const explored = run(state, 'p1', { type: 'ep.moveShip', ship: ship.id, edge: to }, scriptedRng([0, 0, 0])).state;
++    expect(observed).toEqual([null]);
++    expect(epState(explored).fog.length).toBeLessThan(epState(state).fog.length);
++    expect(epState(moved).ships.find((entry) => entry.id === ship.id)?.edge).toBe(plain!.edge);
++  });
++
++  it('observes successful chase and placement once each, before continuation', () => {
++    let state = epPlayable('pirate-lairs', 3);
++    state.profileId = 'fixture-ep-hooks';
++    const ship = shipOf(state, 'p1');
++    const hex = topologyOf(state).edges[ship.edge]!.hexes.find((cell) => state.board.layout.terrain[cell] === 'sea')!;
++    epState(state).pirate = { hex, owner: 'p2' };
++    state = run(state, 'p1', { type: 'ep.startMovement' }).state;
++    observed.length = 0;
++    const missed = run(state, 'p1', { type: 'ep.chase', ship: ship.id }, scriptedRng([4]));
++    expect(observed).toEqual([]);
++    expect(epState(missed.state).pirate?.hex).toBe(hex);
++    state = run(state, 'p1', { type: 'ep.chase', ship: ship.id }, scriptedRng([5])).state;
++    expect(observed).toEqual([null]);
++    const target = epHints(state, 'p1').pirateTargets[0]!;
++    state = run(state, 'p1', { type: 'ep.placePirate', hex: target }).state;
++    expect(observed).toEqual([null, target]);
++    expect(epState(state).pirate?.hex).toBe(target);
++  });
++});
+diff --git a/packages/rules/test/ep-trade-integration.test.ts b/packages/rules/test/ep-trade-integration.test.ts
+new file mode 100644
+index 0000000..20d40e3
+--- /dev/null
++++ b/packages/rules/test/ep-trade-integration.test.ts
+@@ -0,0 +1,22 @@
++import { describe, expect, it } from 'vitest';
++import { epState, landHo, refused, run } from './ep-helpers.ts';
++import { setHand } from './helpers.ts';
++
++describe('E&P goods trade integration', () => {
++  it('checks the proposer at offer and revision and both parties at consent', () => {
++    let state = landHo();
++    setHand(state, 'p1', { lumber: 2 });
++    setHand(state, 'p2', { ore: 1 });
++    epState(state).gold.p1 = 1;
++    epState(state).gold.p2 = 1;
++    expect(refused(state, 'p1', { type: 'trade.offer', to: 'p2', give: {}, giveGoods: { gold: 2 }, want: { ore: 1 } })).toBe('E_INSUFFICIENT_RESOURCES');
++    state = run(state, 'p1', { type: 'trade.offer', to: 'p2', give: {}, giveGoods: { gold: 1 }, want: { ore: 1 } }).state;
++    const offerId = state.offers.at(-1)!.id;
++    expect(refused(state, 'p1', { type: 'trade.revise', offerId, give: {}, giveGoods: { gold: 2 }, want: { ore: 1 } })).toBe('E_INSUFFICIENT_RESOURCES');
++    state = run(state, 'p1', { type: 'trade.revise', offerId, give: { lumber: 1 }, want: {}, wantGoods: { gold: 2 } }).state;
++    expect(refused(state, 'p2', { type: 'trade.respond', offerId, response: 'consented' })).toBe('E_INSUFFICIENT_RESOURCES');
++    state = run(state, 'p1', { type: 'trade.revise', offerId, give: {}, giveGoods: { gold: 1 }, want: { ore: 1 } }).state;
++    epState(state).gold.p1 = 0;
++    expect(refused(state, 'p2', { type: 'trade.respond', offerId, response: 'consented' })).toBe('E_INSUFFICIENT_RESOURCES');
++  });
++});
+diff --git a/packages/server/test/ep-transport-privacy.test.ts b/packages/server/test/ep-transport-privacy.test.ts
+new file mode 100644
+index 0000000..9dad70a
+--- /dev/null
++++ b/packages/server/test/ep-transport-privacy.test.ts
+@@ -0,0 +1,64 @@
++import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
++import { WebSocket } from 'ws';
++import type { GameState } from '@catan/rules';
++import type { CommandReceipt, GameSnapshot, ServerMessage } from '@catan/protocol';
++import { startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
++
++let harness: TestHarness;
++beforeAll(async () => { harness = await startHarness(); });
++afterAll(async () => { await harness.close(); });
++
++async function subscribe(client: TestClient, roomId: string) {
++  const socket = new WebSocket(`${harness.base.replace('http', 'ws')}/ws`, { headers: { cookie: client.cookie! } });
++  const snapshots: GameSnapshot[] = [];
++  socket.on('message', (data) => {
++    const message = JSON.parse(data.toString()) as ServerMessage;
++    if (message.type === 'snapshot') snapshots.push(message.payload);
++  });
++  await new Promise<void>((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); });
++  socket.send(JSON.stringify({ type: 'subscribe', payload: { roomId } }));
++  await vi.waitFor(() => expect(snapshots.length).toBeGreaterThan(0));
++  return { socket, snapshots };
++}
++
++describe('E&P transport privacy', () => {
++  it('projects pirate theft privately in receipts, snapshots, websocket and event history', async () => {
++    const { clients, roomId, gameId } = await startedGame(harness, 3, { profileId: 'ep-pirate-lairs-2025' });
++    const row = (await harness.service.repo.findGame(gameId))!;
++    const state = JSON.parse(row.state_json) as GameState;
++    const actor = clients.find((client) => client.playerId === state.players[state.turn.seat]!.id)!;
++    const victim = clients.find((client) => client !== actor)!;
++    const outsider = clients.find((client) => client !== actor && client !== victim)!;
++    state.turn.phase = 'action';
++    state.turn.setup = null;
++    for (const player of state.players) for (const resource of Object.keys(player.resources) as (keyof typeof player.resources)[]) player.resources[resource] = 0;
++    state.players.find((player) => player.id === victim.playerId)!.resources.ore = 1;
++    state.pending = { kind: 'explorersPirates.pirate', module: 'explorersPirates', responders: [actor.playerId!], data: { stage: 'rob', cause: 'seven', candidates: [victim.playerId!] } };
++    await harness.service.repo.saveGame(gameId, state, row.revision, 'playing', null);
++    const feeds = await Promise.all(clients.map((client) => subscribe(client, roomId)));
++    try {
++      const body = { commandId: 'ep-private-theft', expectedRevision: row.revision, command: { type: 'ep.robPlayer', victim: victim.playerId } };
++      const receipt = actor.expectOk<CommandReceipt>(await actor.post(`/api/games/${gameId}/commands`, body));
++      expect(receipt.outcome).toBe('accepted');
++      expect(receipt.events.find((event) => event.type === 'ep.pirateStole')?.params.resource).toBe('ore');
++      expect(receipt.events.every((event) => event.private === undefined)).toBe(true);
++      expect(actor.expectOk<CommandReceipt>(await actor.post(`/api/games/${gameId}/commands`, body))).toEqual(receipt);
++      await vi.waitFor(() => { for (const feed of feeds) expect(feed.snapshots.at(-1)?.revision).toBe(receipt.revision); });
++      for (const client of clients) {
++        const http = client.expectOk<GameSnapshot>(await client.get(`/api/games/${gameId}`));
++        const ws = feeds[clients.indexOf(client)]!.snapshots.at(-1)!;
++        for (const snapshot of [http, ws]) {
++          const event = snapshot.view.events.find((entry) => entry.type === 'ep.pirateStole')!;
++          if (client === outsider) expect(event.params).not.toHaveProperty('resource');
++          else expect(event.params.resource).toBe('ore');
++          expect(snapshot.view.modules?.explorersPirates).not.toHaveProperty('pools');
++          expect(snapshot.view.modules?.explorersPirates).not.toHaveProperty('lairTokens');
++        }
++        const history = client.expectOk<{ events: CommandReceipt['events'] }>(await client.get(`/api/games/${gameId}/events?after=0`));
++        const event = history.events.find((entry) => entry.type === 'ep.pirateStole');
++        if (client === outsider) expect(event).toBeUndefined();
++        else expect(event?.params.resource).toBe('ore');
++      }
++    } finally { for (const feed of feeds) feed.socket.close(); }
++  });
++});
+```
