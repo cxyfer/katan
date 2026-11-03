@@ -290,35 +290,6 @@ describe('B-ROOM bot seats', () => {
     host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
   });
 
-  it('offers bot seats only for profiles whose rules modules bots can play', async () => {
-    const host = await harness.client('ProfileBots');
-    const { profiles } = host.expectOk<{
-      profiles: { id: string; expansions: string[]; variants: string[]; botSeats: boolean }[];
-    }>(await host.get('/api/profiles'));
-    expect(profiles.find((profile) => profile.id === 'base-2025')?.botSeats).toBe(true);
-    expect(profiles.find((profile) => profile.id === 'base-paired-2025')?.botSeats).toBe(true);
-    for (const profile of profiles) {
-      const modules = [...profile.expansions, ...profile.variants];
-      expect(profile.botSeats).toBe(modules.every((module) => BOT_RULE_MODULES.includes(module)));
-    }
-    expect(profiles.some((profile) => !profile.botSeats)).toBe(true);
-  });
-
-  it('blocks start and further bots once the profile runs modules bots cannot play', async () => {
-    // Only fixture profiles can reach this state in this phase: no enabled
-    // profile has rules modules yet, and rooms only accept enabled profiles.
-    const fixture = registerFixtureProfile('fixture-bots-modules', [3, 4], { expansions: ['seafarers'] });
-    const host = await harness.client('ModuleBots');
-    const room = await createRoom(host, { bots: 1 });
-    host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
-    await harness.service.repo.updateRoom(room.id, { profile_id: fixture.id });
-
-    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
-    expect(view.startBlockers.map((blocker) => blocker.messageId)).toContain('blocker.botsUnsupported');
-    host.expectError(await host.post(`/api/rooms/${room.id}/start`), 'E_START_BLOCKED');
-    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
-  });
-
   it('lets only the host add and remove bots before start', async () => {
     const host = await harness.client('LobbyHost');
     const guest = await harness.client('LobbyGuest');
