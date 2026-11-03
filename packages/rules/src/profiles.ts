@@ -231,6 +231,15 @@ function tbProfile(
   });
 }
 
+/**
+ * Explorers & Pirates (EP25 / EP25-M, CN3085): one profile per mission set, in
+ * book order; rules in `modules/explorersPirates/`, maps in
+ * `explorers-pirates-boards.ts`. E&P is standalone: no development cards,
+ * cities, robber, ports, Longest Road or Largest Army (EP25-M p. 2), and it is
+ * never combined with Seafarers. Harbour settlements are base settlements
+ * the module marks, so settlements 9 = 5 plain + 4 harbour settlements;
+ * the module keeps plain settlements at 5.
+ */
 function explorersPiratesProfile(
   id: string,
   scenario: ScenarioId,

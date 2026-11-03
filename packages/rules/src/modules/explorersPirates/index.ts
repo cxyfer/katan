@@ -91,14 +91,10 @@ function fail(code: string): CommandOutcome {
   return { ok: false, error: { code, params: {} } } as CommandOutcome;
 }
 
-function vetoCommand(state: GameState, actorId: string, command: ModuleCommand): CommandOutcome | undefined {
+function vetoCommand(state: GameState, _actorId: string, command: ModuleCommand): CommandOutcome | undefined {
   if (BASE_SETUP.has(command.type)) return fail('E_INVALID_COMMAND');
   if (state.turn.phase !== 'action') return undefined;
   if (viewTurn(state).phase === 'movement' && ACTION_ONLY.has(command.type)) return fail('E_EP_MOVEMENT_PHASE');
-  // The ship in motion may not stay on an edge already holding two ships.
-  if (command.type === 'turn.end' && state.players[state.turn.seat]?.id === actorId && activeShipStranded(state)) {
-    return fail('E_EP_EDGE_FULL');
-  }
   return undefined;
 }
 
@@ -109,6 +105,11 @@ export const explorersPiratesModule: RulesModule = {
   modifyProduction,
   sevenRobberStep,
   vetoCommand,
+
+  beforeEndTurn(state) {
+    // 提示和實際結束回合共用同一個檢查。
+    return activeShipStranded(state) ? fail('E_EP_EDGE_FULL') : null;
+  },
 
   allowBuilding(state, playerId, vertex, options) {
     // The module places every setup piece itself.

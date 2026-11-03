@@ -219,9 +219,11 @@ describe('R-EP movement and exploring', () => {
     expect(step.full).toBe(true);
     state = run(state, 'p1', { type: 'ep.moveShip', ship: mine.id, edge: full }).state;
     expect(epHints(state, 'p1').stranded).toBe(true);
+    expect(actionHints(state, 'p1').canEndTurn).toBe(false);
     expect(refused(state, 'p1', { type: 'turn.end' })).toBe('E_EP_EDGE_FULL');
     const onward = epHints(state, 'p1').ships[0]!.steps.find((candidate) => !candidate.full)!.edge;
     state = run(state, 'p1', { type: 'ep.moveShip', ship: mine.id, edge: onward }).state;
+    expect(actionHints(state, 'p1').canEndTurn).toBe(true);
     expect(run(state, 'p1', { type: 'turn.end' }).state.turn.seat).toBe(1);
   });
 

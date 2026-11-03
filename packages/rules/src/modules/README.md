@@ -17,11 +17,11 @@ modules/
   <id>/messages.ts    the module's event types and error codes
 ```
 
-`seafarers` (Heading for New Shores), `citiesKnights` and the
-`seafarersCitiesKnights` combination layer are implemented; `tradersBarbarians` is implemented; a placeholder exists for
-`explorersPirates`, so a phase
-normally edits only its own directory plus its profile rows, layout builder
-and i18n catalog file.
+`seafarers` (Heading for New Shores), `citiesKnights`, the
+`seafarersCitiesKnights` combination layer, `tradersBarbarians` and
+`explorersPirates` (CN3085, one profile per mission set) are implemented.
+A phase normally edits only its own directory plus its profile rows,
+layout builder and i18n catalog file.
 
 `tradersBarbarians` is a composite: the box is a set of independent variants
 and scenarios, each a *part* with the module hook shape
@@ -43,7 +43,8 @@ their state under one key of the module slot (`state.ts`).
 | roll | `afterProduction` | after production or the 7 has been set up |
 | commands | `commands` / `pendingCommands` | module-owned command types; types accepted while a frame is pending |
 | commands | `disabledCommands` | base command types the ruleset lacks (C&K: development cards); rejected |
-| commands | `beforeEndTurn` | veto on `turn.end` (C&K: progress hand limit by the end of the action phase) |
+| commands | `vetoCommand` | before dispatch; return a failed outcome to refuse a command (E&P: base setup commands, building and trading in the Movement phase) |
+| commands | `beforeEndTurn` | veto on `turn.end`, also used by `canEndTurn` (C&K: progress hand limit; E&P: a ship must sail on from a full edge) |
 | board | `allowBuilding` | extra veto on a building intersection (setup and play), e.g. New Shores' main-island start |
 | board | `allowCity` | extra veto on upgrading a settlement (C&K: a toppled city must be rebuilt first) |
 | board | `vertexBlocker` | owner of a module piece holding an intersection (C&K knights): opponents' roads cannot pass and their Longest Route splits there |

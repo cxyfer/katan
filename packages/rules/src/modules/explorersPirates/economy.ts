@@ -209,6 +209,7 @@ export function buildShip(state: GameState, actorId: string, command: ModuleComm
   const id = `s${slot.nextShip++}`;
   slot.ships.push({ id, player: actorId, edge, cargo: [] });
   ctx.kit.emit(state, 'ep.shipBuilt', { playerId: actorId, edge, ship: id });
+  ctx.kit.afterBoardChange(state);
   return ctx.kit.accept(state);
 }
 

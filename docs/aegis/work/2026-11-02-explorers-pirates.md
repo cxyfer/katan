@@ -626,7 +626,10 @@ Most old platform additions are already provided by release, with later fixes to
 
 #### `packages/rules/src/modules/README.md`
 
-The platform hook descriptions introduced by the old E&P stack are already present in release.
+Most shared hook descriptions introduced by the old E&P stack were already
+present in release. The merge omitted E&P's `vetoCommand` row and left E&P
+listed as a placeholder; both documentation gaps are corrected in the
+pre-squash review follow-up below.
 
 ```diff
 # original only
@@ -1427,3 +1430,71 @@ index 0000000..9dad70a
 +  });
 +});
 ```
+
+## Pre-squash review follow-up (2026-11-03)
+
+Review of `74415a4` identified five Low items. The follow-up keeps the shared
+platform interfaces and E&P's existing phase rules:
+
+- L1: `ep.buildShip` now notifies `afterBoardChange` once after placing the new
+  ship, for both building from supply and replacing an existing ship.
+  `ep-hooks.test.ts` covers both cases.
+- L2: the hook observer now records the pirate hex, active pending kind and
+  p2's resource-card count. Pirate placement has exactly one victim with one
+  ore, so the observation must precede theft; a successful chase is observed
+  before the pirate frame is enqueued. Moving the chase notification after
+  `enqueuePending` and the placement notification after theft each made the
+  strengthened test fail; both mutations were then reverted.
+- L3: the stranded ship guard moved from `vetoCommand` to `beforeEndTurn`.
+  `actionHints.canEndTurn` and `turn.end` now use the same check, retaining
+  `E_EP_EDGE_FULL`. R-EP-12 verifies the false hint while stranded and the true
+  hint after sailing on. The web regression uses a real engine projection to
+  check the disabled action-bar button, no submitted command on click and no
+  end-turn prompt. `vetoCommand` stays for E&P's base setup and Movement-phase
+  restrictions on trading and building.
+- L4: module documentation now lists E&P as implemented, includes `vetoCommand`
+  and describes the shared end-turn hint check. The profile helper again
+  explains standalone E&P and the settlement pool (9 = 5 plain + 4 harbour).
+  The earlier merge comparison's claim that every hook description was already
+  supplied by release is corrected above.
+- L5: delete the unused `components/ep/TradeGoods.tsx` implementation and the
+  English and Traditional Chinese `ep.trade.gold` strings used only by its
+  suffix formatter. Active E&P trades keep using the shared goods stepper and
+  `formatTradeMap`; source search finds no remaining retired imports or keys.
+
+Only the `ep-privacy.test.ts` simulation checking that a hex identity never
+appears before `ep.explored` receives an explicit `30_000` ms timeout. This
+single 3,000-step/event-projection simulation was measured by review at
+3.1–4.7 seconds under parallel load. The 30-second allowance follows the
+existing base-regression/fallback long-test convention and leaves scheduling
+headroom; the 120-second whole-game suite allowance is unnecessary here.
+No other timeout changed.
+
+Verification of the review follow-up:
+
+- Focused rules tests reproduced the missing build/replacement notifications
+  (0 calls rather than 1) and the incorrect `canEndTurn: true`; the web test
+  reproduced an enabled End Turn button. After the fixes, the two rules files
+  passed 30 tests and the E&P web file passed 11 tests.
+- The first unthrottled `pnpm verify` passed typecheck but stopped in rules:
+  712 tests passed, one timed out. The unchanged full-mission reveal-pool
+  simulation at `ep-privacy.test.ts:116` took 6.738 seconds against its unchanged
+  5-second timeout. The explicitly allowed 30-second identity test passed.
+  Subsequent workspace tests/build/smoke/dev were not reached in that run.
+- To test the host-load hypothesis without increasing another timeout, the
+  complete command is rerun with `VITEST_MAX_WORKERS=1`.
+- The single-worker full run passed typecheck, rules 713/713, bots 48/48,
+  protocol 8/8 and server 188 passed/15 skipped. Web had 740 passed and one
+  unchanged drag-and-drop test (`trade.test.tsx:639`) exceed 5 seconds
+  (5.562 seconds measured). Build/smoke/dev were not reached. Web is therefore
+  rerun alone with `VITEST_MAX_WORKERS=1`, with the same timeout.
+- The isolated web rerun passed all 68 files and 741 tests in 230.22 seconds,
+  including the previously timed-out drag-and-drop case and the E&P disabled
+  end-turn regression. No timeout was changed for that rerun.
+- After the passing web retry, `pnpm build`, `pnpm smoke` (13/13) and
+  `pnpm test:dev` (1/1) all passed. `git diff --check` is clean. The full rules
+  and web runs include message-id/catalog completeness and localization checks.
+  All verification stages passed across these runs; neither full `pnpm verify`
+  invocation was uninterrupted green, and both timeout failures are retained
+  above as evidence of host-load sensitivity outside the one authorized
+  timeout change.

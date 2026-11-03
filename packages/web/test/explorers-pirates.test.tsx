@@ -10,7 +10,9 @@ import { boardIntent } from '../src/board/intent.ts';
 import { epShipPlacements } from '../src/board/three/diorama-explorers.ts';
 import { inspectDescription } from '../src/board/inspection.ts';
 import { ExplorersPiratesPrompt } from '../src/components/ExplorersPiratesPrompt.tsx';
+import { ActionBar } from '../src/components/ActionBar.tsx';
 import { HelpPanel } from '../src/components/HelpPanel.tsx';
+import { PendingPrompt } from '../src/components/PendingPrompt.tsx';
 import { SvgBoard } from '../src/components/SvgBoard.tsx';
 import { TradePanel } from '../src/components/TradePanel.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
@@ -99,6 +101,32 @@ describe('explorers & pirates client', () => {
       selection: { ...EMPTY_SELECTION, kind: 'edge', commandType: 'ep.moveShip', labelId: 'ep.move.step', params: { ship: ship.id } },
     }), 'p1');
     expect(armed?.targets).toEqual(ship.steps.map((step) => step.edge));
+  });
+
+  it('disables End Turn while a ship must sail on from a full edge', () => {
+    let state = run(landHo(), { type: 'ep.startMovement' });
+    const hints = epHints(viewOf(state))!;
+    const ship = hints.ships.find((entry) => entry.steps.some((step) => !step.explores && !step.full))!;
+    const full = ship.steps.find((step) => !step.explores && !step.full)!.edge;
+    const slot = state.moduleState!.explorersPirates as {
+      ships: { id: string; player: string; edge: number; cargo: string[] }[];
+    };
+    // The active ship may pass through a path with two ships, but cannot end here.
+    slot.ships = [
+      slot.ships.find((entry) => entry.id === ship.id)!,
+      { id: 'blocking-1', player: 'p2', edge: full, cargo: [] },
+      { id: 'blocking-2', player: 'p3', edge: full, cargo: [] },
+    ];
+    state = run(state, { type: 'ep.moveShip', ship: ship.id, edge: full });
+    const view = viewOf(state);
+    expect(epHints(view)?.stranded).toBe(true);
+    const { controller, submitCommand } = controllerFor(tableWith(view));
+    render(<LocaleProvider locale="en"><ActionBar controller={controller} /><PendingPrompt controller={controller} /></LocaleProvider>);
+    const endTurn = screen.getByTestId('action-endTurn');
+    expect(endTurn).toHaveProperty('disabled', true);
+    fireEvent.click(endTurn);
+    expect(submitCommand).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('prompt-end-turn')).toBeNull();
   });
 
   it('offers piece building on a harbour and coin trades in the Action phase', () => {

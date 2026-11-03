@@ -92,7 +92,7 @@ describe('R-EP-VIS projections', () => {
     }
     // Fog still on the board was never named by any event.
     for (const entry of epState(state).fog) expect(exploredAt.has(entry.hex)).toBe(false);
-  });
+  }, 30_000);
 });
 
 /** A multiset as a sorted list, for order-free comparison. */
