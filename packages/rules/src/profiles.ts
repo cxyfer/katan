@@ -15,11 +15,14 @@ import type { DevCardType } from './types.ts';
  * base-2025.2: building and development-card costs return to the bank.
  * base-2025.3: roads stop at opponent buildings, Road Building and Year of
  * Plenty cannot stall, and an older card stays playable after buying another.
+ * base-2025.4: Road Building grants two pieces when any legal road is
+ * available, capped by the road supply. Saved older-version games keep their
+ * recorded grant behavior and are not migrated.
  * The maintainer explicitly approved running unfinished base-2025.1 and
  * base-2025.2 games on this engine on 2026-11-02 as the PR #60 defect-fix
  * exception (SPEC §7.3, FIDELITY gap 11).
  */
-export const BASE_RULE_VERSION = 'base-2025.3';
+export const BASE_RULE_VERSION = 'base-2025.4';
 /** @deprecated Kept for callers that predate per-profile rule versions. */
 export const ENGINE_VERSION = BASE_RULE_VERSION;
 
@@ -209,7 +212,7 @@ const PAIRED_BASE = {
  * scenario/variant combination the phase supports is its own row; the module
  * composes the selected parts (`modules/tradersBarbarians`).
  */
-const TB_RULE_VERSION = 'tb-2025.1';
+const TB_RULE_VERSION = 'tb-2025.2';
 
 function tbProfile(
   id: string,
@@ -365,7 +368,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
   // SF25 Heading for New Shores, printed 3- and 4-player maps
   // (`seafarers-boards.ts`); rules in `modules/seafarers/`.
   baseProfile('sf-new-shores-2025', [3, 4], {
-    ruleVersion: 'sf-2025.1',
+    ruleVersion: 'sf-2025.2',
     expansions: ['seafarers'],
     scenario: 'new-shores',
     sources: [{ id: 'B25', pages: 'entire rulebook' }, { id: 'SF25', pages: 'pp. 2–5' }],
@@ -387,7 +390,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
   // is `variable`. B56-25 supply and development deck.
   baseProfile('sf-new-shores-paired-2025', [5, 6], {
     ...PAIRED_BASE,
-    ruleVersion: 'sf-2025.1',
+    ruleVersion: 'sf-2025.2',
     expansions: ['seafarers'],
     scenario: 'new-shores',
     sources: [

@@ -60,7 +60,7 @@ describe('Heading for New Shores over the API', () => {
     const host = clients[0]!;
     let state = await snapshot(host, gameId);
     expect(state.view.board.topologyId).toBe('sf-new-shores-3');
-    expect(state.view.engineVersion).toBe('sf-2025.1');
+    expect(state.view.engineVersion).toBe('sf-2025.2');
     expect(state.view.victoryTarget).toBe(14);
     expect(state.view.board.pirate).toBeNull();
     expect(state.view.modules?.seafarers?.islandBonus).toBeDefined();

@@ -123,6 +123,12 @@ export interface ModuleViewContext {
   rules?: Pick<RulesKit, 'canPlaceRoad' | 'canPlaceBuilding'>;
 }
 
+/** Selects the Road Building capacity semantics for module pieces. */
+export interface FreeRouteTargetOptions {
+  /** Grant the remaining module supply when at least one target exists. */
+  grantAllAvailable?: boolean;
+}
+
 export interface RollResult {
   /** The two production dice. */
   dice: [number, number];
@@ -292,7 +298,12 @@ export interface RulesModule {
    */
   moveBandit?(state: GameState, actorId: string, target: number | null, cause: 'seven' | 'knight', ctx: ModuleContext): BanditMove | undefined;
   /** Additional free Road Building placements available (for example ships). */
-  freeRouteTargets?(state: GameState, playerId: string, ctx: ModuleViewContext): number;
+  freeRouteTargets?(
+    state: GameState,
+    playerId: string,
+    ctx: ModuleViewContext,
+    options?: FreeRouteTargetOptions,
+  ): number;
   /**
    * Edges where the player could place a ship now, supply included (the
    * Seafarers module). Lets another module re-place a ship, e.g. Cities &

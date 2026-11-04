@@ -63,7 +63,7 @@ Conventions:
 {
   "id": "base-paired-2025",
   "labelKey": "profile.base-paired-2025",
-  "ruleVersion": "base-2025.3",
+  "ruleVersion": "base-2025.4",
   "expansions": [],
   "scenario": null,
   "variants": [],

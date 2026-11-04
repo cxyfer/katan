@@ -98,7 +98,7 @@ describe('ruleset vocabulary', () => {
       if (view.unavailableReasonKey) expect(RULESET_MESSAGE_IDS).toContain(view.unavailableReasonKey);
     }
     expect(profileView(PROFILES[0]!, { botSeats: true })).toMatchObject({
-      id: 'base-2025', expansions: [], scenario: null, variants: [], requiredBoxes: ['base'], ruleVersion: 'base-2025.3', botSeats: true,
+      id: 'base-2025', expansions: [], scenario: null, variants: [], requiredBoxes: ['base'], ruleVersion: 'base-2025.4', botSeats: true,
     });
     for (const id of ['expansion.seafarers', 'scenario.new-shores', 'scenario.standard', 'box.base-5-6']) {
       expect(REQUIRED_MESSAGE_IDS).toContain(id);

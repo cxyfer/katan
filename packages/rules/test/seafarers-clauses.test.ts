@@ -8,9 +8,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { countRoads, isLandHex, scoreOf, topologyOf } from '../src/analysis.ts';
-import { actionHints, canPlaceBuilding, partnerSeat, routeLength } from '../src/engine.ts';
-import { countShips } from '../src/modules/seafarers/ships.ts';
+import { countRoads, isLandEdge, isLandHex, isSeaEdge, scoreOf, topologyOf } from '../src/analysis.ts';
+import { actionHints, canPlaceBuilding, legalRoadEdges, normalizedPending, partnerSeat, routeLength } from '../src/engine.ts';
+import { countShips, legalShipEdges } from '../src/modules/seafarers/ships.ts';
 import { enqueuePending } from '../src/pending.ts';
 import type { GameEvent, GameState } from '../src/types.ts';
 import { act, expectRejected, scriptedRng, setHand } from './helpers.ts';
@@ -46,6 +46,45 @@ function fill(state: GameState, playerId: string, count: number, kind: 'road' | 
     .map(({ edge }) => edge);
   expect(edges.length).toBeGreaterThanOrEqual(count);
   for (const edge of edges.slice(0, count)) state.board.roads[edge] = { player: playerId, ship: kind === 'ship' };
+}
+
+/** Builds a ship chain with one legal first edge and a second edge beyond it. */
+function singleShipBranch(state: GameState): { vertex: number; first: number; road: number } {
+  state.board.buildings = state.board.buildings.map(() => null);
+  state.board.roads = state.board.roads.map(() => null);
+  const topo = topologyOf(state);
+  for (const [vertex, info] of topo.vertices.entries()) {
+    const seaEdges = info.edges.filter((edge) => isSeaEdge(state, edge));
+    const road = info.edges.find((edge) => !isSeaEdge(state, edge));
+    if (road === undefined) continue;
+    for (const first of seaEdges) {
+      const far = topo.edges[first]!.vertices.find((candidate) => candidate !== vertex)!;
+      if (!topo.vertices[far]!.edges.some((edge) => edge !== first && isSeaEdge(state, edge))) continue;
+      state.board.buildings[vertex] = { player: 'p1', city: false };
+      for (const edge of info.edges) {
+        if (edge === first) continue;
+        state.board.roads[edge] = { player: 'p2', ship: isSeaEdge(state, edge) };
+      }
+      if (legalShipEdges(state, 'p1').length === 1 && legalShipEdges(state, 'p1')[0] === first) {
+        return { vertex, first, road };
+      }
+      state.board.buildings[vertex] = null;
+      for (const edge of info.edges) if (edge !== first) state.board.roads[edge] = null;
+    }
+  }
+  throw new Error('no single ship branch found');
+}
+
+function exhaustRoadSupply(state: GameState, vertex: number): void {
+  const topo = topologyOf(state);
+  let roads = countRoads(state, 'p1');
+  for (let edge = 0; edge < topo.edges.length && roads < 15; edge++) {
+    if (state.board.roads[edge] || !isLandEdge(state, edge)) continue;
+    if (topo.edges[edge]!.vertices.includes(vertex)) continue;
+    state.board.roads[edge] = { player: 'p1', ship: false };
+    roads += 1;
+  }
+  expect(roads).toBe(15);
 }
 
 function eventsOf(events: readonly GameEvent[], type: string) {
@@ -189,6 +228,104 @@ describe('ships and the pirate (SF25 pp. 2–3, SF-FAQ 11, 18)', () => {
 });
 
 describe('Road Building with ships (SF25 p. 3, SF-FAQ 1)', () => {
+  it.each([
+    ['sf-2025.2', 2, 2],
+    ['sf-2025.1', 1, 1],
+  ] as const)('uses the %s ship grant when one ship opens a second edge', (engineVersion, granted, placed) => {
+    const state = emptySeafarersGame();
+    const { vertex, first } = singleShipBranch(state);
+    exhaustRoadSupply(state, vertex);
+    state.engineVersion = engineVersion;
+    state.players[0]!.devCards = ['roadBuilding'];
+    expect(legalShipEdges(state, 'p1')).toEqual([first]);
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toMatchObject({ kind: 'freeRoads', remaining: granted, granted });
+    expect(legalShipEdges(played, 'p1')).toContain(first);
+    const firstBuilt = act(played, 'p1', { type: 'build.ship', edge: first } as never);
+    if (placed === 1) {
+      expect(firstBuilt.state.pending).toBeNull();
+      expect(actionHints(firstBuilt.state, 'p1').canEndTurn).toBe(true);
+    } else {
+      expect(firstBuilt.state.pending).toMatchObject({ kind: 'freeRoads', remaining: 1, granted: 2 });
+      const restored = JSON.parse(JSON.stringify(firstBuilt.state)) as GameState;
+      expect(normalizedPending(restored)).toMatchObject({ kind: 'freeRoads', remaining: 1, granted: 2 });
+      const second = legalShipEdges(restored, 'p1')[0]!;
+      const done = act(restored, 'p1', { type: 'build.ship', edge: second } as never);
+      expect(done.state.pending).toBeNull();
+      expect(eventsOf(done.events, 'dev.roadBuildingFinished')).toEqual([{ playerId: 'p1', placed: 2 }]);
+      expect(actionHints(done.state, 'p1').canEndTurn).toBe(true);
+    }
+    expect(eventsOf(firstBuilt.events, 'dev.roadBuildingFinished')).toEqual(
+      placed === 1 ? [{ playerId: 'p1', placed: 1 }] : [],
+    );
+  });
+
+  it('combines a legal road and ship under sf-2025.2', () => {
+    const state = emptySeafarersGame();
+    const { first, road } = singleShipBranch(state);
+    state.engineVersion = 'sf-2025.2';
+    // The branch's first ship is the only initial ship target; add an inland
+    // road from the same building so both route types are available.
+    const roadEdge = road;
+    state.board.roads[roadEdge] = null;
+    state.players[0]!.devCards = ['roadBuilding'];
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toMatchObject({ kind: 'freeRoads', remaining: 2, granted: 2 });
+    const afterRoad = act(played, 'p1', { type: 'build.road', edge: roadEdge! });
+    expect(afterRoad.state.pending).toMatchObject({ kind: 'freeRoads', remaining: 1, granted: 2 });
+    const done = act(afterRoad.state, 'p1', { type: 'build.ship', edge: first } as never);
+    expect(done.state.board.roads[first]).toEqual({ player: 'p1', ship: true });
+    expect(done.state.pending).toBeNull();
+    expect(eventsOf(done.events, 'dev.roadBuildingFinished')).toEqual([{ playerId: 'p1', placed: 2 }]);
+  });
+
+  it('caps a new Seafarers grant to one remaining ship', () => {
+    const state = emptySeafarersGame();
+    const { vertex, first } = singleShipBranch(state);
+    exhaustRoadSupply(state, vertex);
+    const topo = topologyOf(state);
+    for (let edge = 0; edge < topo.edges.length && countShips(state, 'p1') < 14; edge++) {
+      if (state.board.roads[edge] || !isSeaEdge(state, edge) || edge === first) continue;
+      state.board.roads[edge] = { player: 'p1', ship: true };
+    }
+    state.engineVersion = 'sf-2025.2';
+    state.players[0]!.devCards = ['roadBuilding'];
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toMatchObject({ kind: 'freeRoads', remaining: 1, granted: 1 });
+  });
+
+  it('keeps the old single-route grant for an sf-2025.1 saved game', () => {
+    const state = emptySeafarersGame();
+    state.board.buildings = state.board.buildings.map(() => null);
+    state.board.roads = state.board.roads.map(() => null);
+    const topo = topologyOf(state);
+    const vertex = topo.vertices.findIndex((candidate) => candidate.edges.length === 2 && candidate.edges.every((edge) => isLandEdge(state, edge)));
+    const [open, blocked] = topo.vertices[vertex]!.edges as [number, number];
+    const other = topo.edges[open]!.vertices.find((candidate) => candidate !== vertex)!;
+    settle(state, 'p1', vertex);
+    road(state, 'p2', blocked);
+    // Exhaust ships so the only available free route at play time is the open road.
+    let ships = 0;
+    for (let edge = 0; edge < state.board.roads.length && ships < 15; edge++) {
+      if (edge === open || edge === blocked || topo.edges[edge]!.vertices.includes(vertex) || topo.edges[edge]!.vertices.includes(other)) continue;
+      if (state.board.roads[edge]) continue;
+      ship(state, 'p1', edge);
+      ships += 1;
+    }
+    expect(ships).toBe(15);
+    expect(legalRoadEdges(state, 'p1')).toEqual([open]);
+    state.engineVersion = 'sf-2025.1';
+    state.players[0]!.devCards = ['roadBuilding'];
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toMatchObject({ kind: 'freeRoads', remaining: 1, granted: 1 });
+
+    state.engineVersion = 'sf-2025.2';
+    const upgraded = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(upgraded.pending).toMatchObject({ kind: 'freeRoads', remaining: 2, granted: 2 });
+  });
+
   it('may be played before the roll and place a ship; the free ship cannot move this turn', () => {
     const state = emptySeafarersGame(4, 0, 'preroll');
     const r = ring(state);

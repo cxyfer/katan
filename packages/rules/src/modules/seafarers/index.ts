@@ -35,9 +35,10 @@ export const seafarersModule: RulesModule = {
   moveBandit,
   allowBuilding,
 
-  freeRouteTargets(state, playerId, ctx) {
+  freeRouteTargets(state, playerId, ctx, options) {
     const pieces = Math.max(0, ctx.profile.pieces.ships - countShips(state, playerId));
-    return Math.min(buildableShipEdges(state, playerId, ctx.profile.pieces.ships).length, pieces);
+    const targets = buildableShipEdges(state, playerId, ctx.profile.pieces.ships);
+    return options?.grantAllAvailable && targets.length > 0 ? pieces : Math.min(targets.length, pieces);
   },
 
   legalShips(state, playerId, ctx) {

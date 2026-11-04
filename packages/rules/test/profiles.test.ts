@@ -155,8 +155,16 @@ describe('ruleset registry', () => {
     }
     expect(getProfile('base-2025')!.ruleVersion).toBe(BASE_RULE_VERSION);
     expect(getProfile('base-paired-2025')!.ruleVersion).toBe(BASE_RULE_VERSION);
+    for (const id of ['sf-new-shores-2025', 'sf-new-shores-paired-2025']) {
+      expect(getProfile(id)!.ruleVersion).toBe('sf-2025.2');
+    }
+    expect(getProfile('tb-traders-barbarians-2025')!.ruleVersion).toBe('tb-2025.2');
     expect(getProfile('base-2025')!.expansions).toEqual([]);
     expect(getProfile('sf-ck-new-shores-2025')!.expansions).toEqual(['seafarers', 'citiesKnights']);
+    for (const id of ['sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025']) {
+      expect(getProfile(id)!.devDeck).toEqual([]);
+      expect(getProfile(id)!.ruleVersion).toBe('sf-ck-2025.1');
+    }
   });
 
   it('stores the profile rule version in new snapshots', () => {
@@ -166,7 +174,7 @@ describe('ruleset registry', () => {
       setupMode: 'variable',
       rng: seededRng(3),
     });
-    expect(state.engineVersion).toBe('base-2025.3');
+    expect(state.engineVersion).toBe('base-2025.4');
   });
 
   it('keeps fixture profiles out of the lobby and the resolver', () => {
