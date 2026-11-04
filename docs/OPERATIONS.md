@@ -156,7 +156,10 @@ Restore into an empty database, then start the service and verify `/readyz`.
    `base-2025.1` and `base-2025.2` games continue on `base-2025.3`
    (roads stop at opponent buildings; Road Building and Year of Plenty cannot
    stall, including effects already pending in saved games; older cards stay
-   playable). Other rules migrations still require separate approval.
+   playable). The approved Road Building grant change applies to new
+   `base-2025.4`, `sf-2025.2` and `tb-2025.2` games; saved games on
+   `base-2025.1`–`base-2025.3`, `sf-2025.1` and `tb-2025.1` are not migrated.
+   Other rules migrations still require separate approval.
    Cards already lost and roads already built are not changed.
 5. Rollback: pin the recorded digest in the Compose `image:` line
    (`ghcr.io/cxyfer/katan@sha256:<digest>`) and run `docker compose up -d`. If

@@ -1,4 +1,4 @@
-import type { Resource } from '@catan/rules';
+import { CARD_KINDS, type Resource } from '@catan/rules';
 import { useT } from '../i18n/context.tsx';
 import { blocksNewCommands } from '../state/commands.ts';
 import { requiredActionFor } from '../state/pending.ts';
@@ -6,6 +6,12 @@ import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.
 import type { TableController } from '../state/useTable.ts';
 import { DevCardChoicePicker } from './DevCardChoicePicker.tsx';
 import { DiscardPicker } from './DiscardPicker.tsx';
+import { SeafarersPrompt } from './SeafarersPrompt.tsx';
+import { ExplorersPiratesPrompt } from './ExplorersPiratesPrompt.tsx';
+import { TbPrompt } from './tb/TbPrompt.tsx';
+import { CitiesKnightsPrompt } from './CitiesKnightsPrompt.tsx';
+import { citiesKnightsView } from '../board/citiesKnights.ts';
+import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
 import { canPlayDevCard, ownYearOfPlenty } from './useDevCardChoice.ts';
 
 /**
@@ -83,6 +89,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       <h2 id="prompt-heading">
         {action ? t(action.messageId, action.params) : t('play.waitingFor', { player: '—' })}
       </h2>
+      {!rolling && <TbPrompt controller={controller} />}
       {action && !action.mine && action.waitingFor.length > 0 && (
         <p className="muted" data-testid="prompt-waiting">
           {t('play.waitingForPlayers', {
@@ -105,7 +112,9 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
         <div className="prompt__body">
           <DiscardPicker
             required={required}
+            // Cities & Knights: commodities count towards the 7 and may be discarded.
             hand={shownHand(state)}
+            kinds={citiesKnightsView(view) ? CARD_KINDS : undefined}
             onSubmit={(resources) =>
               void actions.submitCommand({ type: 'pending.discard', resources }, 'play.pending.discardSubmit')
             }
@@ -145,11 +154,15 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
       )}
 
       {pending && pending.kind === 'moveRobber' && (
-        <p className="muted">{t('play.pending.moveRobber')}</p>
+        <p className="muted">{t(moveBanditMessageId(view))}</p>
       )}
       {pending && pending.kind === 'freeRoads' && (
         <p className="muted">{t('play.pending.freeRoads', { remaining: pending.remaining })}</p>
       )}
+
+      <SeafarersPrompt controller={controller} />
+      <ExplorersPiratesPrompt controller={controller} />
+      <CitiesKnightsPrompt controller={controller} />
 
       {/* Mandatory turn actions stay inside the prompt so a player never
           has to open a secondary tool surface to act (docs/SPEC.md §8.1/§8.4). */}

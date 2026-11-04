@@ -3,6 +3,9 @@ import type { BoardGeometry } from './geometry.ts';
 import type { BoardIntent } from './intent.ts';
 import type { BoardEffectGroup } from './animation.ts';
 import type { TargetKind } from './targets.ts';
+import type { SeafarersModuleView } from './seafarers.ts';
+import type { EpView } from './explorersPirates.ts';
+import type { CitiesKnightsModuleView } from './citiesKnights.ts';
 
 export type RendererMode = 'auto' | 'svg' | 'r3f';
 export type QualityMode = 'standard' | 'low';
@@ -42,7 +45,7 @@ export interface ProjectedTarget extends ProjectedAnchor {
   index: number;
   endpoints?: readonly [ProjectedAnchor, ProjectedAnchor];
 }
-export interface SceneSelection { kind: TargetKind; index: number; playerId: string }
+export interface SceneSelection { kind: TargetKind; index: number; playerId: string; params?: Record<string, unknown> }
 export interface BoardSceneInput {
   geometry: BoardGeometry;
   board: PublicBoardView;
@@ -51,9 +54,19 @@ export interface BoardSceneInput {
   selection: SceneSelection | null;
   /** 正在落下的建造演出（可多組並行）。 */
   arrivals: readonly BoardEffectGroup[];
+  /** Current effect group for scenario-specific event presentation. */
+  active?: BoardEffectGroup | null;
   viewport: BoardViewportState;
   quality: QualityMode;
   motionAllowed: boolean;
+  /** Explorers & Pirates module view (fog, ships, sites); absent for other games. */
+  explorersPirates?: EpView | null;
+  /** Rules-module board state (`GameView.modules`) for scenario pieces; absent for base games. */
+  modules?: Record<string, unknown>;
+  /** Seafarers module view (island claims); absent for base games. */
+  seafarers?: SeafarersModuleView | null;
+  /** Cities & Knights module view (knights, walls, metropolises); absent for base games. */
+  citiesKnights?: CitiesKnightsModuleView | null;
 }
 export interface BoardSceneProps extends BoardSceneInput {
   onProjection: (projection: ProjectionSnapshot) => void;

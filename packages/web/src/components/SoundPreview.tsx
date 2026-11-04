@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SOUND_CUES, type SoundCue } from '../audio/cues.ts';
+import { TB_CUE_DESCRIPTIONS } from '../audio/tb-cues.ts';
 import { createAudioEngine, type MusicScene } from '../audio/engine.ts';
 import { renderCueOffline, type CueAnalysis } from '../audio/offline.ts';
 import { DEFAULT_AUDIO_PREFERENCES } from '../audio/preferences.ts';
@@ -35,6 +36,23 @@ const DESCRIPTIONS: Record<SoundCue, string> = {
   'ui.select': '選擇目標 · Target selected',
   'ui.error': '操作被拒 · Action rejected',
   'chat.message': '收到聊天訊息 · Chat message',
+  ...TB_CUE_DESCRIPTIONS,
+  'ship.build': '建造船隻 · Ship launched',
+  'ship.move': '移動船隻 · Ship sails to a new path',
+  'pirate.move': '海盜出航 · Pirate moves',
+  'gold.pick': '金礦地選資源 · Gold chosen',
+  'island.bonus': '登上新小島 · New island bonus',
+  'explore.reveal': '探索未知海域 · Fog lifts off a hex',
+  'mission.advance': '任務推進 · Mission progress',
+  'barbarians.advance': '蠻族船隻前進 · Barbarians sail closer',
+  'barbarians.attack': '蠻族來襲 · Barbarian attack',
+  'knight.act': '騎士行動 · Knight action',
+  'wall.build': '建造城牆 · City wall',
+  'city.improve': '城市改良 · City improvement',
+  'progress.play': '打出進步卡 · Progress card played',
+  'progress.alchemy': '煉金術定下骰點 · Alchemy sets the dice',
+  'progress.merchant': '商人登場 · Merchant placed',
+  'progress.request': '進步卡要求你回應 · A card asks for your answer',
 };
 
 function Waveform({ analysis }: { analysis: CueAnalysis | undefined }) {

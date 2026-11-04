@@ -4,14 +4,15 @@ import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ApiResult, GameOrderMode, Locale } from '@catan/protocol';
-import { BOT_LEVELS, LOCALES } from '@catan/protocol';
+import { BOT_LEVELS, LOCALES, profileView } from '@catan/protocol';
 import { selectableProfiles, PROFILES } from '@catan/rules';
 import type { ServerConfig } from './config.ts';
 import { validateNickname } from './config.ts';
 import type { Repository } from './db.ts';
 import type { SessionService } from './session.ts';
 import { clearCookie } from './session.ts';
-import { ServiceError, type RoomService } from './rooms.ts';
+import { botsSupported } from './bot-seats.ts';
+import { ServiceError, type RoomService, type RulesetRequest } from './rooms.ts';
 import type { GameCoordinator } from './game.ts';
 import type { ChatService } from './chat.ts';
 
@@ -105,6 +106,24 @@ function optionalString(body: unknown, key: string): string | undefined {
   if (typeof body !== 'object' || body === null) return undefined;
   const value = (body as Record<string, unknown>)[key];
   return typeof value === 'string' ? value : undefined;
+}
+
+/** `{ ruleset: { expansions, scenario, variants? } }`, validated by the resolver. */
+function optionalRuleset(body: unknown): RulesetRequest | undefined {
+  const raw = asObject(body).ruleset;
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw badRequest('error.E_BAD_REQUEST', { field: 'ruleset' });
+  const value = raw as Record<string, unknown>;
+  const scenario = value.scenario ?? null;
+  if (!Array.isArray(value.expansions) || (scenario !== null && typeof scenario !== 'string') ||
+      (value.variants !== undefined && !Array.isArray(value.variants))) {
+    throw badRequest('error.E_BAD_REQUEST', { field: 'ruleset' });
+  }
+  return {
+    expansions: value.expansions as string[],
+    scenario: scenario as string | null,
+    ...(value.variants !== undefined ? { variants: value.variants as string[] } : {}),
+  };
 }
 
 function requireNumber(body: unknown, key: string): number {
@@ -266,18 +285,7 @@ export function createHttpHandler(deps: HttpDeps) {
   // -- profiles and rooms --------------------------------------------------
   route('GET', '/api/profiles', async () => ({
     data: {
-      profiles: PROFILES.map((profile) => ({
-        id: profile.id,
-        labelKey: profile.labelKey,
-        playerCounts: profile.playerCounts,
-        paired: profile.paired,
-        modules: { seafarers: profile.modules.seafarers, citiesKnights: profile.modules.citiesKnights },
-        scenario: profile.scenario,
-        victoryTarget: profile.victoryTarget,
-        setupModes: profile.setupModes,
-        enabled: profile.enabled,
-        ...(profile.unavailableReasonKey ? { unavailableReasonKey: profile.unavailableReasonKey } : {}),
-      })),
+      profiles: PROFILES.map((profile) => profileView(profile, { botSeats: botsSupported(profile) })),
       selectable: selectableProfiles().map((profile) => profile.id),
     },
   }));
@@ -299,10 +307,14 @@ export function createHttpHandler(deps: HttpDeps) {
       throw badRequest('error.E_INVALID_VISIBILITY');
     }
     const input = asObject(body);
+    const ruleset = optionalRuleset(body);
+    const profileId = optionalString(body, 'profileId');
+    if (!ruleset && profileId === undefined) throw badRequest('error.E_MISSING_FIELD', { field: 'profileId' });
     const view = await deps.rooms.createRoom(playerId!, {
       visibility,
       capacity: requireNumber(body, 'capacity'),
-      profileId: requireString(body, 'profileId'),
+      ...(profileId !== undefined ? { profileId } : {}),
+      ...(ruleset ? { ruleset } : {}),
       setupMode: (optionalString(body, 'setupMode') ?? 'fixed') as 'fixed' | 'variable',
       // 有送出但型別錯誤的值也交給服務驗證，不能悄悄退回 join。
       orderMode: ('orderMode' in input ? input.orderMode : 'join') as GameOrderMode,
@@ -345,6 +357,7 @@ export function createHttpHandler(deps: HttpDeps) {
       data: await deps.rooms.updateSettings(playerId!, params.roomId!, {
         ...(typeof input.capacity === 'number' ? { capacity: input.capacity } : {}),
         ...(typeof input.profileId === 'string' ? { profileId: input.profileId } : {}),
+        ...(optionalRuleset(body) ? { ruleset: optionalRuleset(body)! } : {}),
         ...(input.setupMode === 'fixed' || input.setupMode === 'variable'
           ? { setupMode: input.setupMode }
           : {}),

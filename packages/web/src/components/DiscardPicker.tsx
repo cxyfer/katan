@@ -1,35 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
-import { RESOURCES, type Resource } from '@catan/rules';
+import { RESOURCES, type CardKind } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
-import { ResourceGlyph } from './GameArt.tsx';
-import { ResourceCardArt } from './ResourceCardArt.tsx';
+import { CardKindArt, CardKindGlyph } from './CardKindArt.tsx';
 import '../styles/discard-picker.css';
 
-type Counts = Record<Resource, number>;
-const NONE: Counts = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
+type Counts = Partial<Record<CardKind, number>>;
+const NONE: Counts = {};
 
 /**
  * 棄牌選擇器（docs/SPEC.md §4.4）：仿實體操作，從「手牌」點一張移到「棄牌區」，
  * 點棄牌區的牌放回手牌。五種資源一律列出（沒有的變暗）；棄牌區依資源疊成最多
  * 五疊，上方分段進度條的格數就是要棄的張數，因此要棄十幾張時高度也不會增加。
  */
-export function DiscardPicker({ required, hand, onSubmit }: {
+export function DiscardPicker({ required, hand, onSubmit, kinds = RESOURCES }: {
   required: number;
-  hand: Partial<Record<Resource, number>> | undefined;
-  onSubmit(resources: Resource[]): void;
+  hand: Partial<Record<CardKind, number>> | undefined;
+  onSubmit(resources: CardKind[]): void;
+  /** Card kinds that can be discarded (Cities & Knights adds commodities). */
+  kinds?: readonly CardKind[];
 }) {
   const t = useT();
   const locale = useLocale();
   const [picked, setPicked] = useState<Counts>(NONE);
   const rootRef = useRef<HTMLDivElement>(null);
   // 一疊放回最後一張時按鈕會消失；重繪後把焦點移到下一疊，沒有就回到該資源的手牌。
-  const refocus = useRef<Resource | null>(null);
+  const refocus = useRef<CardKind | null>(null);
+  const count = (card: CardKind) => picked[card] ?? 0;
 
-  const picks = RESOURCES.flatMap((resource) => Array.from({ length: picked[resource] }, () => resource));
+  const picks = kinds.flatMap((resource) => Array.from({ length: count(resource) }, () => resource));
   const selected = picks.length;
   const full = selected >= required;
-  const handTotal = RESOURCES.reduce((sum, resource) => sum + (hand?.[resource] ?? 0), 0);
+  const handTotal = kinds.reduce((sum, resource) => sum + (hand?.[resource] ?? 0), 0);
   const n = (value: number) => formatNumber(locale, value);
 
   useEffect(() => {
@@ -37,20 +39,20 @@ export function DiscardPicker({ required, hand, onSubmit }: {
     if (!target) return;
     refocus.current = null;
     const root = rootRef.current;
-    if (picked[target] > 0) return;
-    const stacks = RESOURCES.filter((resource) => picked[resource] > 0);
-    const next = stacks.find((resource) => RESOURCES.indexOf(resource) > RESOURCES.indexOf(target)) ?? stacks.at(-1);
+    if (count(target) > 0) return;
+    const stacks = kinds.filter((resource) => count(resource) > 0);
+    const next = stacks.find((resource) => kinds.indexOf(resource) > kinds.indexOf(target)) ?? stacks.at(-1);
     const selector = next ? `[data-testid="discard-return-${next}"]` : `[data-testid="discard-add-${target}"]`;
     root?.querySelector<HTMLButtonElement>(selector)?.focus();
   }, [picked]);
 
-  const take = (resource: Resource) => {
-    if (full || picked[resource] >= (hand?.[resource] ?? 0)) return;
-    setPicked((current) => ({ ...current, [resource]: current[resource] + 1 }));
+  const take = (resource: CardKind) => {
+    if (full || count(resource) >= (hand?.[resource] ?? 0)) return;
+    setPicked((current) => ({ ...current, [resource]: (current[resource] ?? 0) + 1 }));
   };
-  const giveBack = (resource: Resource) => {
+  const giveBack = (resource: CardKind) => {
     refocus.current = resource;
-    setPicked((current) => ({ ...current, [resource]: Math.max(0, current[resource] - 1) }));
+    setPicked((current) => ({ ...current, [resource]: Math.max(0, (current[resource] ?? 0) - 1) }));
   };
 
   return (
@@ -65,9 +67,9 @@ export function DiscardPicker({ required, hand, onSubmit }: {
           </span>
         </h3>
         <ul className="discard__hand">
-          {RESOURCES.map((resource) => {
+          {kinds.map((resource) => {
             const have = hand?.[resource] ?? 0;
-            const left = have - picked[resource];
+            const left = have - count(resource);
             const unavailable = left <= 0 || full;
             const name = t(`resource.${resource}`);
             return (
@@ -78,8 +80,8 @@ export function DiscardPicker({ required, hand, onSubmit }: {
                   aria-disabled={unavailable} aria-describedby="discard-progress"
                   aria-label={t('play.pending.discardTake', { resource: name, left: n(left) })}
                   onClick={() => take(resource)}>
-                  <span className="hand-card__art"><ResourceCardArt resource={resource} /></span>
-                  <span className="hand-card__pip"><ResourceGlyph resource={resource} size={14} /></span>
+                  <span className="hand-card__art"><CardKindArt card={resource} /></span>
+                  <span className="hand-card__pip"><CardKindGlyph card={resource} size={14} /></span>
                   <span className="hand-card__name">{name}</span>
                 </button>
                 <span className="discard-card__count" data-testid={`discard-left-${resource}`} aria-hidden="true">
@@ -106,18 +108,18 @@ export function DiscardPicker({ required, hand, onSubmit }: {
         </div>
         <ul className="discard__pile">
           {selected === 0 && <li className="discard__pile-empty">{t('play.pending.discardPileEmpty')}</li>}
-          {RESOURCES.filter((resource) => picked[resource] > 0).map((resource) => (
+          {kinds.filter((resource) => count(resource) > 0).map((resource) => (
             <li key={resource} className={`discard-stack hand-card--${resource}`} data-resource={resource}
-              data-depth={Math.min(picked[resource], 3)}>
+              data-depth={Math.min(count(resource), 3)}>
               <button type="button" className="discard-stack__card" data-testid={`discard-return-${resource}`}
-                aria-label={t('play.pending.discardReturn', { resource: t(`resource.${resource}`), count: n(picked[resource]) })}
+                aria-label={t('play.pending.discardReturn', { resource: t(`resource.${resource}`), count: n(count(resource)) })}
                 onClick={() => giveBack(resource)}>
-                <ResourceCardArt resource={resource} />
-                <span className="discard-stack__pip"><ResourceGlyph resource={resource} size={12} /></span>
+                <CardKindArt card={resource} />
+                <span className="discard-stack__pip"><CardKindGlyph card={resource} size={12} /></span>
                 <span className="discard-stack__undo" aria-hidden="true">↩</span>
               </button>
               <span className="discard-stack__count" data-testid={`discard-picked-${resource}`} aria-hidden="true">
-                ×{n(picked[resource])}
+                ×{n(count(resource))}
               </span>
             </li>
           ))}

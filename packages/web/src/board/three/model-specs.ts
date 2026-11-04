@@ -61,8 +61,9 @@ const TERRAIN_LAYOUTS: Readonly<Record<string, readonly { x: number; z: number; 
   sea: [{ x: -0.3, z: -0.2 }, { x: 0.12, z: -0.27 }],
 };
 
+/** Raised land tiles; sea hexes stay open water so the ocean shows through. */
 export function tileInstances(geometry: BoardGeometry, board: PublicBoardView): TileInstance[] {
-  return geometry.hexes.map((hex) => {
+  return geometry.hexes.filter((hex) => geometry.land[hex.index] !== false).map((hex) => {
     const point = geometryToWorld(geometry, hex.cx, hex.cy);
     return {
       index: hex.index,
@@ -131,7 +132,10 @@ export function roadInstances(
   const out: RoadInstance[] = [];
   for (const edge of geometry.edges) {
     const road = board.roads[edge.index];
-    if (!road) continue;
+    // Bridges (Traders & Barbarians) are drawn as their own arched piece.
+    if (!road || road.bridge) continue;
+    // Ships are drawn by `DioramaSeafarers`, floating at sea level.
+    if (!road || road.ship) continue;
     const from = geometryToWorld(geometry, edge.x1, edge.y1);
     const to = geometryToWorld(geometry, edge.x2, edge.y2);
     const dx = to.x - from.x;

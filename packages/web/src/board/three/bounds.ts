@@ -1,5 +1,5 @@
 import type { PublicBoardView } from '@catan/rules';
-import type { BoardGeometry } from '../geometry.ts';
+import { isCoastEdge, landHexOfEdge, type BoardGeometry } from '../geometry.ts';
 import type { SceneBounds, WorldPoint } from '../render-contract.ts';
 import { HARBOR_STRUCTURE } from '../harbor.ts';
 
@@ -98,9 +98,8 @@ export function sceneBounds(geometry: BoardGeometry, _board?: PublicBoardView): 
   // Fit actual coastal models instead of the SVG viewBox's label padding.
   // A pier is .85 long seaward, with .43 reserved on either side of its axis.
   for (const edge of geometry.edges) {
-    const topologyEdge = geometry.topology.edges[edge.index];
-    if (!topologyEdge || topologyEdge.hexes.length !== 1) continue;
-    const hex = geometry.hexes[topologyEdge.hexes[0]!]!;
+    if (!isCoastEdge(geometry, edge.index)) continue;
+    const hex = geometry.hexes[landHexOfEdge(geometry, edge.index)!]!;
     const a = geometryToWorld(geometry, edge.x1, edge.y1);
     const b = geometryToWorld(geometry, edge.x2, edge.y2);
     const center = geometryToWorld(geometry, hex.cx, hex.cy);

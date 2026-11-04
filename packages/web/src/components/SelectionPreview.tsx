@@ -5,6 +5,7 @@ import { formatResourceMap } from '../i18n/format.ts';
 import { describeTarget } from '../board/targets.ts';
 import { nameOf } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
+import { EP_HARBOR_COST, EP_SHIP_COST } from '../board/explorersPirates.ts';
 
 const COST_BY_COMMAND: Record<string, Partial<Record<string, number>> | null> = {
   'build.road': COSTS.road,
@@ -14,6 +15,11 @@ const COST_BY_COMMAND: Record<string, Partial<Record<string, number>> | null> = 
   'setup.placeRoad': null,
   'pending.moveRobber': null,
   'dev.playKnight': null,
+  'build.ship': { lumber: 1, wool: 1 },
+  'setup.placeShip': null,
+  'ship.move': null,
+  'ep.buildHarbor': EP_HARBOR_COST,
+  'ep.buildShip': EP_SHIP_COST,
 };
 
 /**

@@ -6,6 +6,7 @@ import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatDateTime } from '../i18n/format.ts';
 import type { ScreenProps } from './props.ts';
+import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../state/rulesets.ts';
 
 /**
  * Home: resume list, create/join, public room browser (docs/SPEC.md §4.2, §4.8).
@@ -23,22 +24,23 @@ export function HomeScreen({ controller }: ScreenProps) {
   const [code, setCode] = useState('');
   const [visibility, setVisibility] = useState<'private' | 'public'>('private');
   const [capacity, setCapacity] = useState(3);
-  const [profileId, setProfileId] = useState('');
+  const [expansionKey, setExpansionKey] = useState('');
+  const [scenarioKey, setScenarioKey] = useState('');
   const [setupMode, setSetupMode] = useState<'fixed' | 'variable'>('fixed');
   const [orderMode, setOrderMode] = useState<GameOrderMode>('join');
   const homePanes = ['table', 'resume', 'rooms', 'identity'] as const;
   const homeTabRef = useRef<HTMLButtonElement | null>(null);
 
-  const profiles = state.profiles.filter((profile) => profile.enabled);
-  const chosenProfile = useMemo(
-    () => profiles.find((profile) => profile.id === profileId) ?? profiles[0] ?? null,
-    [profiles, profileId],
-  );
   const capacityLimit = state.config?.limits.roomCapacityMax ?? Infinity;
-  const capacityOptions = (chosenProfile?.playerCounts ?? [3, 4]).filter(
-    (count) => count <= capacityLimit,
+  // Expansion set → scenario → player count, all derived from the registry.
+  const ruleset = useMemo(
+    () => resolveRuleset(state.profiles, { expansionKey, scenarioKey, playerCount: capacity }, capacityLimit),
+    [state.profiles, expansionKey, scenarioKey, capacity, capacityLimit],
   );
-  const effectiveCapacity = capacityOptions.includes(capacity) ? capacity : (capacityOptions[0] ?? 4);
+  const chosenProfile = ruleset.profile;
+  const capacityOptions = ruleset.playerCounts;
+  const effectiveCapacity = ruleset.playerCount ?? capacityOptions[0] ?? 4;
+  const joinLabels = (ids: string[]) => ids.map((id) => t(id)).join(' + ');
   const setupOptions = chosenProfile?.setupModes ?? ['fixed', 'variable'];
   const effectiveSetup = setupOptions.includes(setupMode) ? setupMode : (setupOptions[0] ?? 'fixed');
 
@@ -135,23 +137,33 @@ export function HomeScreen({ controller }: ScreenProps) {
               </select>
             </div>
             <div className="field">
-              <label htmlFor="room-profile">{t('lobby.profile')}</label>
+              <label htmlFor="room-expansions">{t('lobby.expansions')}</label>
               <select
-                id="room-profile"
-                data-testid="profile-select"
-                value={chosenProfile?.id ?? ''}
-                onChange={(event) => setProfileId(event.target.value)}
+                id="room-expansions"
+                data-testid="expansion-select"
+                value={ruleset.expansion?.key ?? ''}
+                onChange={(event) => setExpansionKey(event.target.value)}
               >
-                {profiles.length === 0 && <option value="">{t('app.none')}</option>}
-                {profiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {t(profile.labelKey)}
-                  </option>
+                {ruleset.expansions.length === 0 && <option value="">{t('app.none')}</option>}
+                {ruleset.expansions.map((choice) => (
+                  <option key={choice.key} value={choice.key}>{joinLabels(expansionLabelIds(choice))}</option>
                 ))}
               </select>
-              {chosenProfile && !chosenProfile.enabled && chosenProfile.unavailableReasonKey && (
-                <p className="muted">{t(chosenProfile.unavailableReasonKey)}</p>
-              )}
+            </div>
+            <div className="field">
+              <label htmlFor="room-scenario">{t('lobby.scenario')}</label>
+              <select
+                id="room-scenario"
+                data-testid="scenario-select"
+                value={ruleset.scenario?.key ?? ''}
+                disabled={ruleset.scenarios.length <= 1}
+                onChange={(event) => setScenarioKey(event.target.value)}
+              >
+                {ruleset.scenarios.length === 0 && <option value="">{t('app.none')}</option>}
+                {ruleset.scenarios.map((choice) => (
+                  <option key={choice.key} value={choice.key}>{joinLabels(scenarioLabelIds(choice))}</option>
+                ))}
+              </select>
             </div>
             <div className="field">
               <label htmlFor="room-capacity">{t('lobby.capacity')}</label>
@@ -192,6 +204,13 @@ export function HomeScreen({ controller }: ScreenProps) {
               <p className="muted">{t('lobby.orderModeNote')}</p>
             </div>
           </div>
+          {chosenProfile && (
+            <p className="muted" data-testid="resolved-profile">
+              {t('lobby.resolvedProfile', { profile: t(chosenProfile.labelKey) })}
+              {' · '}
+              {t('lobby.requiredBoxes', { boxes: chosenProfile.requiredBoxes.map((box) => t(`box.${box}`)) })}
+            </p>
+          )}
           {chosenProfile?.paired && <p className="muted">{t('lobby.pairedNote')}</p>}
           <div className="form-actions">
             <button

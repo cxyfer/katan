@@ -27,15 +27,15 @@ Conventions:
 | GET | `/api/session` | – | `{ player: PlayerIdentity \| null }` |
 | POST | `/api/session` | `{ nickname, locale? }` | `{ player }` (sets cookie) |
 | PATCH | `/api/session` | `{ nickname?, locale? }` | `{ player }` |
-| GET | `/api/profiles` | – | `{ profiles: ProfileView[] }` |
+| GET | `/api/profiles` | – | `{ profiles: ProfileView[], selectable: string[] }` |
 | GET | `/api/rooms` | query `playerCount?`, `profileId?`, `hasSeats?` | `{ rooms: RoomSummaryView[] }` |
-| POST | `/api/rooms` | `{ visibility, capacity, profileId, setupMode, orderMode?, policy? }` | `RoomView` |
+| POST | `/api/rooms` | `{ visibility, capacity, profileId?, ruleset?, setupMode, orderMode?, policy? }` | `RoomView` |
 | POST | `/api/rooms/join` | `{ code }` | `RoomView` |
 | GET | `/api/rooms/:roomId` | – | `RoomView` |
 | POST | `/api/rooms/:roomId/leave` | – | `{ left: true, hostTransferredTo: string \| null }` |
 | POST | `/api/rooms/:roomId/seat` | `{ color }` | `RoomView` |
 | POST | `/api/rooms/:roomId/ready` | `{ ready }` | `RoomView` |
-| POST | `/api/rooms/:roomId/settings` | `{ capacity?, profileId?, setupMode?, orderMode?, policy? }` | `RoomView` |
+| POST | `/api/rooms/:roomId/settings` | `{ capacity?, profileId?, ruleset?, setupMode?, orderMode?, policy? }` | `RoomView` |
 | POST | `/api/rooms/:roomId/policy` | `{ policy }` | `RoomView` (pre-start applies, post-start proposes) |
 | POST | `/api/rooms/:roomId/policy/consent` | `{ proposalId, approve }` | `RoomView` |
 | POST | `/api/rooms/:roomId/start` | – | `{ gameId }` |
@@ -53,6 +53,47 @@ Conventions:
 | POST | `/api/games/:gameId/resume` | `{ ready }` | `RoomView` |
 | GET | `/api/rooms/:roomId/chat` | query `after?`, `limit?` | `ChatPage` |
 | POST | `/api/rooms/:roomId/chat` | `{ clientMessageId, text }` | `ChatMessageView` |
+
+### Ruleset registry
+
+`GET /api/profiles` lists every registry entry (SPEC §5.2), enabled or not;
+`selectable` names the enabled ones. A `ProfileView` is:
+
+```json
+{
+  "id": "base-paired-2025",
+  "labelKey": "profile.base-paired-2025",
+  "ruleVersion": "base-2025.4",
+  "expansions": [],
+  "scenario": null,
+  "variants": [],
+  "requiredBoxes": ["base", "base-5-6"],
+  "playerCounts": [5, 6],
+  "paired": true,
+  "victoryTarget": 10,
+  "setupModes": ["fixed", "variable"],
+  "enabled": true,
+  "botSeats": true
+}
+```
+
+`expansions` is a set of `seafarers`, `citiesKnights`, `tradersBarbarians`,
+`explorersPirates` (empty for the base game); `scenario` and `variants` are
+registry ids. `requiredBoxes` is display metadata only and never validated.
+Disabled entries carry `unavailableReasonKey`. `botSeats` says whether hosts
+may seat computer opponents in the profile (see bots below). Every `labelKey`, reason and
+`expansion.*` / `scenario.*` / `variant.*` / `box.*` name is in the protocol's
+`RULESET_MESSAGE_IDS`, so both locales must translate it.
+
+A room names its ruleset either by `profileId` or by its parts,
+`ruleset: { expansions, scenario, variants? }`. The parts must equal one
+registered profile's exactly (order-insensitive set equality; nothing is
+inferred from pairwise compatibility), and that profile must support the
+capacity. When both are sent they must name the same profile. Failures are
+`E_UNSUPPORTED_COMBINATION` with `params.reason` one of `invalid-request`,
+`unknown-profile`, `disabled`, `bad-player-count`, `bad-setup-mode` or
+`profile-mismatch`. The started game stores the profile's `ruleVersion` as
+the snapshot's `engineVersion`.
 
 ### Room settings and start
 
@@ -73,7 +114,8 @@ before the game starts.
 count the profile supports up to its capacity, so it does not need to be full;
 `blocker.seats` reports the profile minimum while below it, and
 `blocker.profilePlayerCount` reports a seated count the profile does not
-support.
+support. `blocker.botsUnsupported` reports a bot seat in a profile bots cannot
+play.
 
 ### Computer opponents (bots)
 
@@ -96,7 +138,13 @@ only the original human players must reconnect and become ready to resume.
   must differ from every seated member, case-insensitively
   (`E_BOT_NAME_TAKEN`).
 - When the deployment sets `BOTS_ENABLED=0`, adding bots is `E_BOTS_DISABLED`.
-  Bots also require a base-rules profile (`E_INVALID_BOT`, reason `profile`).
+- Bots only play profiles whose every rules module (`ProfileDefinition.ruleModules`)
+  is listed in `BOT_RULE_MODULES` (`packages/bots/src/support.ts`); the list is
+  empty today, so only base profiles qualify and `ProfileView.botSeats` is false
+  for every expansion profile. Adding a bot or
+  changing a room with bot seats to such a profile is `E_INVALID_BOT`, reason
+  `profile`. A bot seat that still ends up in such a room (for example after a
+  registry change) adds `blocker.botsUnsupported`, so the game cannot start.
 - Bot seats always report `ready` and `connected`, never become host, and do not
   vote: pause/resume, abandonment and post-start policy changes count people
   only. When every other seat is a bot, the one person may abandon without an
@@ -144,6 +192,242 @@ Rules:
 - `expectedRevision` older than the current revision is rejected with
   `error.E_STALE_REVISION` unless the receipt already exists.
 - The acting player always comes from the session cookie.
+- Command types beyond the base set are accepted only when the game's profile
+  lists a rules module that handles them; otherwise `error.E_INVALID_COMMAND`.
+
+### Pending choices
+
+`GameView.pending` is the active mandatory choice and `GameView.pendingQueue`
+the choices queued behind it, in resolution order (always present, usually
+empty). Base frames keep their kinds (`discard`, `moveRobber`, `steal`,
+`yearOfPlenty`, `freeRoads`). A rules-module frame is
+`{ kind: "<module>.<step>", module, responders, data }`: `responders` are the
+players who still owe an answer and `data` holds only what the module chose to
+show this viewer. Expansion state, when a profile has rules modules, is in
+`GameView.modules[<id>]` and advisory targets in `hints.modules[<id>]`; base
+games have neither field.
+
+### Rules-module wire additions
+
+All are absent for base games, so base payloads are unchanged.
+
+- Domestic offers may carry module goods: `trade.offer` / `trade.revise`
+  accept `giveGoods` / `wantGoods` (`{ gold: 3 }`) when the profile's module
+  declares that good; `Offer` and the `trade.*` events repeat them. Goods are
+  validated against the declaring module and current holdings when proposed,
+  revised, consented to and settled. E&P gold uses the same contract as T&B
+  gold.
+- `PublicPlayerView.victoryTarget` appears when a module changes a player's
+  target (the old boot); `PublicBoardView.extraNumbers` lists a hex's second
+  production number; road entries may carry `bridge: true`.
+- Traders & Barbarians state is in `GameView.modules.tradersBarbarians`, one
+  key per active part (`harbors`, `tb-fishing`, `tb-coins`, `tb-rivers`,
+  `tb-merchant-trains`, `tb-barbarian-attack`, `tb-traders-barbarians`). Hints
+  in `hints.modules.tradersBarbarians` hold per-part hints plus `targets`
+  (command type or keyed list → legal indices), `board` (a board choice the
+  viewer owes) and `robberHexes`.
+- Module command types (all `tb.*`): `spendFish`, `giveBoot`, `fishSwap`,
+  `buyResource`, `sellResources`, `buildBridge`, `bidWagon`, `assignWagon`,
+  `placeWagon`, `buildBaCard`, `baCapture`, `baPlaceKnight`, `baTreason`,
+  `baSteal`, `moveKnight`, `endKnights`, `moveBarbarian`, `playKnight`,
+  `playSwiftJourney`, `upgradeWagon`, `wagonStep`, `wagonBoost`, `driveOff`,
+  `wagonStop`. Frames are `tradersBarbarians.<step>`.
+### Seafarers commands (`sf-new-shores-*`)
+
+| Command | Fields | When |
+|---|---|---|
+| `setup.placeShip` | `edge` | setup road step: a sea edge next to the settlement just placed (instead of `setup.placeRoad`) |
+| `build.ship` | `edge` | own action window (lumber + wool), or free inside a Road Building (`freeRoads`) effect |
+| `ship.move` | `from`, `to` | own action window, once per window; `from` must be an own open ship not built in this window and not next to the pirate |
+| `gold.choose` | `resources` (array) | `seafarers.gold` frame, by its first responder; exactly `min(owed, bank total)` resources the bank holds |
+| `pending.moveRobber` | `hex` (number or `null`) | a sea hex or `null` (the frame) moves the pirate, a land hex the robber |
+| `dev.playKnight` | `hex` (number or `null`) | as above, for a Knight |
+
+Pirate moves emit `pirate.moved`; a pirate theft is the base `steal` frame
+(`pirate: true`) and the `robber.stole` event with `pirate: true`.
+`board.pirate` is `null` while the pirate waits on the frame (where it
+starts). `GameView.modules.seafarers` is public: `islandBonus` (small-island
+ids per player), `islandClaims` (`{ player, island, vertex }`),
+`shipsBuiltThisTurn` and `shipMoved` for the current action window.
+`hints.modules.seafarers` lists `legalShips`, `setupShips`,
+`movableShips` (`{ edge, targets }`), `pirateTargets` (sea hexes, plus
+`null` when the frame is a legal move), `robberTargets` and
+`goldRequired`. The `seafarers.gold` frame projects `data.picks` (owed
+resources per remaining responder).
+
+### Explorers & Pirates commands (`ep-*-2025`)
+
+E&P never runs with the Seafarers commands above. A turn is `turn.roll`,
+the Action phase (base `build.settlement`, `build.road`, `trade.*` and the
+commands below), `ep.startMovement`, the Movement phase, then `turn.end`.
+There are no development cards, cities or robber.
+Domestic offers may include coins: `trade.offer` / `trade.revise` accept
+`giveGoods` / `wantGoods` (`{ gold: 3 }`); `Offer` and the `trade.*` events
+repeat them. Amounts and holdings are validated at proposal, revision,
+consent and settlement (EP25 p. 9).
+Profiles without a coin module refuse goods (`E_INVALID_SELECTION`).
+
+| Command | Fields | When |
+|---|---|---|
+| `ep.setupHarbor` / `ep.setupSettlement` | `vertex` | variable setup, rounds 1 and 2 (a marked harbour site, then the starting island) |
+| `ep.setupRoad` / `ep.setupShip` | `edge` | variable setup route step, either order (the ship carries a settler) |
+| `ep.buildHarbor` | `vertex` | Action phase: an own coastal settlement (2 grain + 2 ore) |
+| `ep.buildShip` | `edge`, `replace?` (ship id) | Action phase, next to an own harbour settlement (lumber + wool); `replace` when all 3 ships are on the board |
+| `ep.buildSettler` / `ep.buildCrew` | `harbor` (vertex) or `ship` (id), `remove?` (cargo piece) | Action phase; when every slot is full, `remove` names the one piece returned to make room (a settler needs the holder empty) |
+| `ep.sellForGold` | `give` | Action phase: 3 of a kind → 1 gold |
+| `ep.buyResource` | `receive` | Action phase, twice: 2 gold → 1 resource |
+| `ep.fastGold` | `give` | Action phase, with the Fast Gold spice ability: 1 resource → 1 gold |
+| `ep.extraMove` | `ship` | Movement phase, once per ship: 1 wool → 2 more moves |
+| `ep.startMovement` | – | ends the Action phase |
+| `ep.moveShip` | `ship`, `edge` | Movement phase: one step along a sea edge |
+| `ep.load` / `ep.unload` | `ship`, `harbor`, `piece` | Movement phase, ship next to an own harbour settlement |
+| `ep.swap` | `ship`, `harbor` | as above: exchange all cargo |
+| `ep.found` | `ship`, `vertex` | Movement phase: a settler ship founds a settlement |
+| `ep.dropCrew` / `ep.pickCrew` | `ship`, `hex` | lair or spice farm next to the ship |
+| `ep.loadFish` / `ep.loadSpice` | `ship`, `hex` | a shoal's haul or a spice farm's sack |
+| `ep.deliver` | `ship` | ship at a Council anchor with fish or spice |
+| `ep.fishRoll` | – | Movement phase, once (fish missions) |
+| `ep.chase` | `ship` | Movement phase: an unmoved ship at the hex of an opponent's pirate ship |
+| `ep.placePirate` | `hex` | `explorersPirates.pirate` frame, stage `place` |
+| `ep.robPlayer` | `victim` | the same frame, stage `rob` |
+
+`GameView.modules.explorersPirates` is public: `scenario`, `setupStep`,
+`missions`, `fog` (`{ hex, region }` per unexplored hex — unexplored hexes are
+`sea` in `board.terrain` and their contents are drawn only when explored),
+`council`, `anchors`, `harborMarks`, `sites` (lairs, shoals, spice farms,
+Council), `ships` (`{ id, player, edge, cargo }`), `harbors`
+(`{ vertex, player, cargo }`), `goldSupply`, `fishSupply`, `pirate`, mission
+`tracks`, the current `turn` (phase, per-ship moves) and per player `gold`,
+`harborPoints`, `missionPoints`, `supply`, `abilities` and `chaseNumbers`.
+`hints.modules.explorersPirates` gives the phase, setup targets, build
+targets, coin-trade allowances, per-ship `steps`, `found`, cargo and crew
+options, `deliver`, `chase`, `stranded`, `fishRoll`, `pirateTargets` and
+`robCandidates`. A pirate theft's card is private to the thief and the victim.
+Bots cannot be seated in E&P rooms (`E_INVALID_BOT`, `blocker.botsUnsupported`).
+### Cities & Knights commands (`ck-*`)
+
+The `ck-2025` and `ck-paired-2025` profiles are enabled: the lobby offers
+them and a room created with either one runs the full module (knights,
+barbarians, improvements, commodities, the 23 playable progress cards and the
+merchant). Bot seats are still refused on these profiles (`botSeats: false` in the profile list; `blocker.botsUnsupported` on the start check).
+Base `build.devCard` and `dev.play*` are rejected (`E_INVALID_COMMAND`).
+
+| Command | Fields | When |
+|---|---|---|
+| `build.wall` | `vertex` | own action window, 2 brick; an own city without a wall, at most 3 walls |
+| `city.improve` | `track`, `vertex?` | own action window; next level costs *level* commodities of the track; `vertex` names the city that takes a metropolis (required only when several qualify) |
+| `knight.recruit` | `vertex` | 1 wool + 1 ore; a free intersection on an own route; enters inactive at strength 1 |
+| `knight.activate` | `vertex` | 1 grain; an own inactive knight |
+| `knight.promote` | `vertex` | 1 wool + 1 ore; once per knight and turn, a higher piece in supply, mighty needs politics level 3 |
+| `knight.move` | `from`, `to` | an own active knight not activated in this window; `to` reachable along own routes |
+| `knight.displace` | `from`, `to` | as a move, onto a weaker opponent knight; queues `citiesKnights.displaced` |
+| `knight.chaseRobber` | `vertex` | an own eligible knight next to the robber's hex after the first attack; queues `moveRobber` |
+| `knight.retreat` | `vertex` | `citiesKnights.displaced`, by the displaced knight's owner |
+| `barbarians.pillage` | `vertex` | `citiesKnights.pillage`, each responder names one of their cities |
+| `barbarians.chooseDeck` | `track` | `citiesKnights.defenderDraw`, by its first responder |
+| `progress.discard` | `cards` (array) | `citiesKnights.progressDiscard` (exactly `data.required[self]` cards), or on the own turn while above the hand limit |
+| `science.take` | `resource` (or `null` to pass) | `citiesKnights.scienceBonus`, by its first responder |
+| `progress.play` | `card`, plus the card's fields (below) | the own turn; the card must be held and its `hints` entry `playable`. Alchemy only before the roll, every other card in the action window |
+| `progress.harborOffer` | `to`, `resource` | own action window while `modules.citiesKnights.harbor` is open (Commercial Harbor): offer one resource to a player in `hints.harborTargets` |
+| `progress.harborAnswer` | `commodity` | `citiesKnights.harborExchange`, by the offered player: give one commodity back (answered automatically when they hold one kind, or none) |
+| `progress.takeCards` | `cards` | `citiesKnights.guildDues`, by the card's player: take exactly `data.count` cards from the victim's hand |
+| `progress.takeProgress` | `card` (or `null`) | `citiesKnights.espionage`, by the card's player: take one of the seen progress cards |
+| `progress.sabotageDiscard` | `cards` | `citiesKnights.sabotage`, each responder discards exactly `data.required[self]` cards |
+| `progress.weddingGive` | `cards` | `citiesKnights.wedding`, each responder gives exactly `data.required[self]` cards to the card's player |
+| `progress.treasonRemove` | `vertex` | `citiesKnights.treasonRemove`, by the chosen player: remove one of their own knights |
+| `progress.treasonPlace` | `vertex` (or `null`), `level` | `citiesKnights.treasonPlace`, by the card's player: place an own knight of an allowed `level`, or decline |
+| `progress.diplomacyRoad` | `edge` (or `null`) | `citiesKnights.diplomacyRoad`, by the card's player: rebuild the removed own road for free, or decline |
+
+`progress.play` fields per card: `alchemy` → `dice` (`[yellow, red]`);
+`crane` → `track` (and `vertex` when several cities qualify);
+`engineering`, `medicine`, `intrigue` → `vertex`; `invention` → `hexes`
+(two); `smithing` → `vertices` (one or two own knights);
+`merchant`, `taxation` → `hex`; `diplomacy` → `edge`;
+`guildDues`, `espionage`, `treason` → `target` (a player id);
+`merchantFleet`, `resourceMonopoly`, `tradeMonopoly` → `kind`; the other
+cards (`irrigation`, `mining`, `roadBuilding`, `encouragement`, `sabotage`,
+`wedding`, `commercialHarbor`) take no field. Printing and Constitution are
+not playable: they score when drawn.
+
+A roll carries `turn.dice` as `[yellow, red]`; the event die is in
+`modules.citiesKnights.lastRoll`. Frames: `citiesKnights.resolveRoll`
+(a continuation with no responders that resumes production after the event),
+`.pillage` (`data.cities` per responder), `.displaced` (`data.player`,
+`level`, `active`, `from`, `options`), `.progressDiscard` (`data.required`),
+`.defenderDraw` (`data.decks`) and `.scienceBonus`; the progress cards add
+`.harborExchange` (`data.from`; `resource` only for the two players), `.guildDues`
+(`data.victim`, `count`; `hand`, the victim's resource and commodity counts,
+only for the card's player), `.espionage` (`data.victim`, `count`; `cards`, the
+victim's progress cards, only for the spy), `.sabotage` and `.wedding`
+(`data.actor`, `required`: a map from each affected player id to the number of
+cards they must discard or give), `.treasonRemove` (`data.actor`, `knights`:
+the chosen player's knight vertices), `.treasonPlace` (`data.level`, `active`,
+`from`; `levels`, the knight levels the card's player may place, and `sites`,
+the vertices where one can go) and `.diplomacyRoad` (`data.edge`, `edges`). Ending the turn while
+above the progress-card limit is rejected (`E_PROGRESS_HAND_LIMIT`), and
+`hints.canEndTurn` is `false` meanwhile. Choosing an empty progress deck is
+`E_PROGRESS_DECK_EMPTY` (the base `E_DECK_EMPTY` is the development deck). A
+`science.take` without a `resource` is `E_INVALID_SELECTION`; only `null` passes.
+`hints.legalCities` omits settlements while a toppled city waits to be rebuilt.
+Playing a card with a pending frame is `E_PENDING_EFFECT`; Alchemy twice in one
+window is `E_ALCHEMY_SET`.
+
+`GameView.modules.citiesKnights` is public: `barbarian`
+(`position`, `length`, `attacks`), `barbarianStrength`, `defenderStrength`,
+`robberActive`, `knights` (`player`, `vertex`, `level`, `active`, `fresh`,
+`promoted`), `walls` (`vertex`, `player`), `metropolises` per track
+(`player`, `vertex` or `null`), `toppled`, `progressVp` per player,
+`progressCounts`, `decks` (card counts per track), `commodityBank`,
+`lastRoll` (`event`, `red`, `atSeq`), `lastAttack`, `handLimit`, `merchant`
+(`player`, `hex`, or `null`), and for the current window `alchemy` (`player`,
+`dice`), `fleets` (`player`, `kind`) and `harbor` (`player`, `offers`).
+Progress hands appear only in the owner's own player view (`progressCards`);
+deck order is never projected. Players carry `commodities`, `improvements`,
+`cityWalls` and `defenders`.
+
+`hints.modules.citiesKnights` lists `recruitSites`, `knightSupply`, `knights`
+(`vertex`, `level`, `active`, `canActivate`, `canPromote`, `canAct`, `moves`,
+`displace`, `chase`), `wallSites`, `improvements` (`track`, `level`, `cost`,
+`commodity`, `metropolis`, `sites`, `blocked`), `commodityRates`, `costs`,
+`progressExcess`, `retreat`, `pillage`, `defenderDecks`, `scienceBonus`,
+`progress` (per held card kind: `card`, `track`, `count`, `playable`, a
+`reason` when not, and the legal `targets`), `harborTargets` and `twoForOne`
+(card kinds given at 2:1 this window).
+Events are `ck.*` (for example `ck.eventRolled`, `ck.barbariansAttack`,
+`ck.cityPillaged`, `ck.knightDisplaced`, `ck.progressDrawn`); a drawn or
+discarded card's face is sent only to its holder.
+
+### Seafarers + Cities & Knights (`sf-ck-new-shores-*`)
+
+The combined profiles (engine `sf-ck-2025.1`, 16 VP, human seats only)
+accept every Seafarers and Cities & Knights command above, except the base
+development cards, plus one command:
+
+| Command | Fields | When |
+|---|---|---|
+| `knight.chasePirate` | `vertex` | own action window after the first barbarian attack; an own active knight that may act, on any intersection of the pirate's sea hex (coastal ones included); queues `moveRobber` with `pirate: true` |
+
+Before the first attack the pirate cannot be moved by any command
+(`E_PIRATE_INACTIVE`) and the robber waits off the board (`board.robber`
+`-1`); a 7 still triggers discards. A `moveRobber` frame with `pirate: true`
+(a pirate chase) accepts only a sea hex or `null`; one queued by
+`knight.chaseRobber` (`cause: "knight"`, `pirate: false`) only a land hex;
+a 7 after the first attack either. Knights may stand on an intersection of
+three sea hexes next to an own ship; a ship next to an opponent's knight,
+or the last ship before an own knight, does not move
+(`E_SHIP_PINNED_BY_KNIGHT`; a route closed by buildings stays
+`E_SHIP_NOT_MOVABLE`). Diplomacy may name a ship: `ck.roadRemoved` and
+`ck.diplomacyRoadBuilt` then carry `ship: true`, as does the
+`citiesKnights.diplomacyRoad` frame's `data`; a ship re-placed that way
+counts as built this turn (`shipsBuiltThisTurn`, `E_SHIP_BUILT_THIS_TURN`).
+
+`GameView.modules.seafarersCitiesKnights` is `{ pirateActive }`.
+`hints.modules.seafarersCitiesKnights` lists `pirateActive`, `pirateChase`
+(own knights that may chase the pirate now) and `bandit` (`robber`,
+`pirate`, `either` or `null`: which bandit the viewer's pending move may
+take). The chase emits `sfck.knightChasedPirate` (`playerId`, `vertex`,
+`hex` — the pirate's hex before the move), followed by the usual
+`pirate.moved` and, for a theft, `robber.stole` with `pirate: true`.
 
 ## WebSocket `/ws`
 

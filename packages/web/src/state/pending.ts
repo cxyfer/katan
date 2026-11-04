@@ -6,10 +6,12 @@
  * how that is labelled and whether it is *our* obligation.
  */
 
+import { epView } from '../board/explorersPirates.ts';
+import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
 import { awaitingProjection, nameOf as resolveName, type TableState } from './table.ts';
 
 export interface RequiredAction {
-  kind: 'setup' | 'roll' | 'rolling' | 'syncing' | 'discard' | 'moveRobber' | 'steal' | 'yearOfPlenty' | 'freeRoads' | 'turn';
+  kind: 'setup' | 'roll' | 'rolling' | 'syncing' | 'discard' | 'moveRobber' | 'steal' | 'yearOfPlenty' | 'freeRoads' | 'module' | 'turn';
   /** Message id for the prompt headline. */
   messageId: string;
   params: Record<string, unknown>;
@@ -66,7 +68,7 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
       case 'moveRobber':
         return {
           kind: 'moveRobber',
-          messageId: 'play.pending.moveRobber',
+          messageId: moveBanditMessageId(view),
           params: {},
           mine: pending.actor === me,
           waitingFor: pending.actor === me ? [] : [pending.actor],
@@ -95,8 +97,19 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
           mine: pending.actor === me,
           waitingFor: pending.actor === me ? [] : [pending.actor],
         };
-      default:
-        return null;
+      default: {
+        // Rules-module frames name their responders explicitly; the module's
+        // own catalog file provides `play.pending.<module>.<step>`.
+        if (!('responders' in pending)) return null;
+        const mine = me !== null && pending.responders.includes(me);
+        return {
+          kind: 'module',
+          messageId: `play.pending.${pending.kind}`,
+          params: { ...pending.data },
+          mine,
+          waitingFor: pending.responders.filter((id) => id !== me),
+        };
+      }
     }
   }
 
@@ -105,9 +118,11 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
     const actorSeat = setup.seat;
     const actor = view.players.find((player) => player.seat === actorSeat);
     const actorId = actor?.id ?? null;
+    const epStep = epView(view)?.setupStep ?? null;
     return {
       kind: 'setup',
-      messageId: setup.stage === 'building' ? 'play.build.settlement' : 'play.build.road',
+      // E&P's variable setup has its own three steps (harbour, settlement, route).
+      messageId: epStep ? `ep.setup.${epStep}` : setup.stage === 'building' ? 'play.build.settlement' : 'play.build.road',
       params: { remaining: setup.remaining },
       mine: actorId === me,
       waitingFor: actorId && actorId !== me ? [actorId] : [],

@@ -25,6 +25,17 @@ function junction(state: GameState) {
   return { topo, b, eA, eC, eX, a: other(eA), c: other(eC) };
 }
 
+/** 清空盤面，建立只有一條合法邊的外圍路口。 */
+function singleRoadCorner(state: GameState) {
+  state.board.buildings = state.board.buildings.map(() => null);
+  state.board.roads = state.board.roads.map(() => null);
+  const topo = getTopology(state.board.layout.topologyId);
+  const v = topo.vertices.findIndex((vertex) => vertex.edges.length === 2);
+  const [e1, e2] = topo.vertices[v]!.edges as [number, number];
+  const w = topo.edges[e1]!.vertices.find((vertex) => vertex !== v)!;
+  return { v, e1, e2, w };
+}
+
 describe('road connectivity at an opponent building', () => {
   it('does not let a road pass through an opponent settlement', () => {
     const { state } = playableGame({ players: 4 });
@@ -90,10 +101,74 @@ describe('Road Building with few road pieces left', () => {
 
     const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
     expect(played.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 1 });
+    expect(projectGame(played, 'p1').pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1 });
     const edge = legalRoadEdges(played, 'p1')[0]!;
     const { state: after, events } = act(played, 'p1', { type: 'build.road', edge });
     expect(after.pending).toBeNull();
     expect(events.find((event) => event.type === 'dev.roadBuildingFinished')?.params.placed).toBe(1);
+  });
+});
+
+describe('Road Building grant at play time (B25 p. 9)', () => {
+  it.each(['base-2025.1', 'base-2025.2', 'base-2025.3'])('keeps the old grant for a %s saved game', (engineVersion) => {
+    const { state } = playableGame({ players: 4 });
+    const { v, e2 } = singleRoadCorner(state);
+    placeBuilding(state, 'p1', v);
+    placeRoad(state, 'p2', e2);
+    state.engineVersion = engineVersion;
+    state.players[0]!.devCards = ['roadBuilding'];
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 1 });
+  });
+
+  it('grants two roads when the first of one legal edge opens another', () => {
+    const { state } = playableGame({ players: 4 });
+    const { v, e1, e2 } = singleRoadCorner(state);
+    placeBuilding(state, 'p1', v);
+    placeRoad(state, 'p2', e2);
+    state.players[0]!.devCards = ['roadBuilding'];
+    expect(legalRoadEdges(state, 'p1')).toEqual([e1]);
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 2, granted: 2 });
+    expect(projectGame(played, 'p1').pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 2 });
+    const first = act(played, 'p1', { type: 'build.road', edge: e1 });
+    expect(first.state.pending).toEqual({ kind: 'freeRoads', actor: 'p1', remaining: 1, granted: 2 });
+    const second = legalRoadEdges(first.state, 'p1')[0]!;
+    const done = act(first.state, 'p1', { type: 'build.road', edge: second });
+    expect(done.state.pending).toBeNull();
+    expect(done.events.find((event) => event.type === 'dev.roadBuildingFinished')?.params.placed).toBe(2);
+  });
+
+  it('consumes the card without granting a road when no legal edge exists', () => {
+    const { state } = playableGame({ players: 4 });
+    const { v, e1, e2 } = singleRoadCorner(state);
+    placeBuilding(state, 'p1', v);
+    placeRoad(state, 'p2', e1);
+    placeRoad(state, 'p2', e2);
+    state.players[0]!.devCards = ['roadBuilding'];
+    expect(legalRoadEdges(state, 'p1')).toEqual([]);
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    expect(played.pending).toBeNull();
+    expect(played.players[0]!.devCards).not.toContain('roadBuilding');
+    expect(played.turn.devCardPlayed).toBe(true);
+  });
+
+  it('finishes after one placement when it leaves no legal edge', () => {
+    const { state } = playableGame({ players: 4 });
+    const { v, e1, e2, w } = singleRoadCorner(state);
+    placeBuilding(state, 'p1', v);
+    placeRoad(state, 'p2', e2);
+    placeBuilding(state, 'p2', w);
+    state.players[0]!.devCards = ['roadBuilding'];
+    expect(legalRoadEdges(state, 'p1')).toEqual([e1]);
+
+    const played = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    const done = act(played, 'p1', { type: 'build.road', edge: e1 });
+    expect(done.state.pending).toBeNull();
+    expect(done.events.find((event) => event.type === 'dev.roadBuildingFinished')?.params.placed).toBe(1);
   });
 });
 

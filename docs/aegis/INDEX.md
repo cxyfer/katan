@@ -5,6 +5,23 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-02 | work | docs/aegis/work/2026-11-02-explorers-pirates.md | Explorers & Pirates (P6): CN3085 sources, mission maps, rules and evidence |
+| 2026-11-03 | artifact | scripts/explorers-pirates/capture.py | Live browser run of every E&P mission to its result, P1 commands through the UI in both renderers |
+| 2026-11-03 | artifact | scripts/explorers-pirates/bot.mjs | Fixture-bot decision server for the E&P capture harness |
+| 2026-11-03 | artifact | docs/screenshots/explorers-pirates/report.json | E&P capture report: per-mission command coverage and sha256 per image |
+| 2026-11-02 | work | docs/aegis/work/2026-11-02-seafarers-cities-knights.md | Seafarers + Cities & Knights (P4): COMB and CK25 p. 12 transcription, R-COMB rules, interpretations and evidence |
+| 2026-11-02 | artifact | scripts/seafarers-cities-knights/capture.py | Combined New Shores browser run: lobby, pirate and robber chases, knight across ships, score breakdown on the 3/4/6-player maps |
+| 2026-11-02 | artifact | scripts/seafarers-cities-knights/topology.mjs | Edge/vertex/hex adjacency for the combined capture bot |
+| 2026-11-02 | artifact | docs/screenshots/seafarers-cities-knights/report.json | 14-case combined capture report with sha256 per image |
+| 2026-11-02 | work | docs/aegis/work/2026-11-02-cities-knights-progress.md | Cities & Knights progress cards (P3): card-by-card transcription, merchant, interpretations and evidence |
+| 2026-11-02 | work | docs/aegis/work/2026-11-02-cities-knights-core.md | Cities & Knights core (P2): CK25/CK56-25 sources, rule transcription, rules and evidence |
+| 2026-11-02 | artifact | scripts/cities-knights/capture.py | Live Cities & Knights browser run (test-only profile path): knights, walls, improvements, pillage, attack, 6-player map |
+| 2026-11-02 | artifact | scripts/cities-knights/topology.mjs | Edge endpoints for the Cities & Knights capture bot |
+| 2026-11-02 | artifact | scripts/cities-knights/ckkit.py | Shared Cities & Knights browser helpers: lobby room creation, fixtures, target clicks, phone contexts |
+| 2026-11-02 | artifact | scripts/cities-knights/progress.py | Live browser run that plays every progress card through the UI in SVG and 3D, desktop and phone |
+| 2026-11-02 | artifact | docs/screenshots/cities-knights/report-progress.json | Curated progress-card captures with sha256 and the played card list |
+| 2026-11-02 | artifact | docs/screenshots/cities-knights/report.json | 14-case Cities & Knights capture report with sha256 per image |
+| 2026-11-02 | artifact | docs/aegis/work/2026-11-02-cities-knights-core/base-compare-report.json | Base boards byte-identical to the P0 references |
 | 2026-11-02 | work | docs/aegis/work/2026-11-02-trade-auto-decline.md | Opt-in automatic decline for unaffordable trade offers |
 | 2026-11-02 | artifact | scripts/trade-auto-decline/verify.py | Trade auto-decline browser verification |
 | 2026-11-02 | artifact | docs/screenshots/trade-auto-decline/report.json | Trade auto-decline browser check results |
@@ -13,6 +30,20 @@ Entries are workspace records, not authoritative runtime decisions.
 | 2026-11-01 | artifact | scripts/bot-opponents/capture.py | Bot lobby, table, pause and resume browser capture |
 | 2026-11-01 | artifact | docs/screenshots/bot-opponents/report.json | Bot opponents browser check results |
 | 2026-11-01 | spec | docs/aegis/specs/2026-11-01-bot-opponents.md | Built-in computer opponents: contracts, server integration and delivery plan |
+| 2026-11-01 | plan | docs/aegis/plans/2026-11-01-expansions-roadmap.md | Expansion roadmap: Seafarers, Cities & Knights, Traders & Barbarians, Explorers & Pirates |
+| 2026-11-02 | artifact | scripts/traders-barbarians/capture.py | Traders & Barbarians SVG/3D board, panel and live-game capture harness |
+| 2026-11-02 | artifact | scripts/traders-barbarians/fixtures.mjs | Engine-projected Traders & Barbarians scenario fixtures |
+| 2026-11-02 | artifact | docs/screenshots/traders-barbarians/report.json | 30-case Traders & Barbarians capture report |
+| 2026-11-01 | work | docs/aegis/work/2026-11-01-traders-barbarians.md | Traders & Barbarians (P5): TB25 transcription, variants and five scenarios |
+| 2026-11-01 | work | docs/aegis/work/2026-11-01-seafarers.md | Seafarers (P1): Heading for New Shores sources, transcription, rules and evidence |
+| 2026-11-01 | artifact | scripts/seafarers/capture.py | Live New Shores browser run: lobby, 3/4/6-player maps, ship build/move, pirate, gold |
+| 2026-11-01 | artifact | scripts/seafarers/fixtures.mjs | Board indices for the Seafarers capture harness |
+| 2026-11-01 | artifact | docs/screenshots/seafarers/report.json | 28-case Seafarers capture report with sha256 per image |
+| 2026-11-01 | artifact | docs/aegis/work/2026-11-01-seafarers/base-compare-report.json | Base boards byte-identical to the P0 references |
+| 2026-11-01 | work | docs/aegis/work/2026-11-01-expansion-platform.md | Expansion platform (P0): registry v2, pending queue, modules, generic boards |
+| 2026-11-01 | artifact | scripts/expansion-platform/capture.py | Base/archipelago SVG and 3D capture and before/after comparison harness |
+| 2026-11-01 | artifact | scripts/expansion-platform/fixtures.mjs | Registry ProfileViews and in-game archipelago fixture generator |
+| 2026-11-01 | artifact | docs/screenshots/expansion-platform/report.json | 18-case capture report with byte-identical base comparison |
 | 2026-11-01 | work | docs/aegis/work/2026-11-01-harbor-hover.md | Harbour hover covers the whole 3D port |
 | 2026-11-01 | artifact | scripts/harbor-hover/verify.py | Harbour footprint hover and tooltip verification |
 | 2026-11-01 | artifact | docs/aegis/work/2026-11-01-harbor-hover/report.json | Four-case harbour hover browser evidence |

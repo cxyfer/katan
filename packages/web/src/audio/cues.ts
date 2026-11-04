@@ -11,6 +11,8 @@
 
 import type { GameEvent } from '@catan/protocol';
 import { boardEffectGroups } from '../board/animation.ts';
+import { TB_SOUND_CUES, tbCueForEvent } from './tb-cues.ts';
+import { PROGRESS_CUES, progressCueForEvent } from './progress-cues.ts';
 
 export const SOUND_CUES = [
   'dice.roll',
@@ -41,6 +43,23 @@ export const SOUND_CUES = [
   'ui.select',
   'ui.error',
   'chat.message',
+  ...TB_SOUND_CUES,
+  // Seafarers
+  'ship.build',
+  'ship.move',
+  'pirate.move',
+  'gold.pick',
+  'island.bonus',
+  // Explorers & Pirates
+  'explore.reveal',
+  'mission.advance',
+  // Cities & Knights
+  'barbarians.advance',
+  'barbarians.attack',
+  'knight.act',
+  'wall.build',
+  'city.improve',
+  ...PROGRESS_CUES,
 ] as const;
 
 export type SoundCue = (typeof SOUND_CUES)[number];
@@ -124,8 +143,65 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
       return mine ? 'game.victory' : 'game.over';
     case 'game.abandoned':
       return 'game.over';
+    case 'ship.built':
+    case 'setup.ship':
+      return 'ship.build';
+    case 'ship.moved':
+      return 'ship.move';
+    case 'pirate.moved':
+      return 'pirate.move';
+    case 'gold.chosen':
+      return 'gold.pick';
+    case 'island.bonus':
+      return 'island.bonus';
+    // Explorers & Pirates reuses the sea cues and adds the fog lifting and mission progress.
+    case 'ep.shipBuilt':
+    case 'ep.setupShip':
+      return 'ship.build';
+    case 'ep.shipMoved':
+      return 'ship.move';
+    case 'ep.pirateMoved':
+      return 'pirate.move';
+    case 'ep.pirateStole':
+      return selfId !== null && playerId(event, 'victim') === selfId ? 'robber.stolenFromYou' : 'robber.steal';
+    case 'ep.boughtResource':
+    case 'ep.soldForGold':
+    case 'ep.fastGold':
+    case 'ep.goldProduced':
+      return 'gold.pick';
+    case 'ep.explored':
+      return 'explore.reveal';
+    case 'ep.settlementFounded':
+    case 'ep.setupSettlement':
+    case 'ep.setupHarbor':
+    case 'ep.harborBuilt':
+      return 'build.settlement';
+    case 'ep.setupRoad':
+      return 'build.road';
+    case 'ep.lairCaptured':
+    case 'ep.delivered':
+    case 'ep.trackAdvanced':
+      return 'mission.advance';
+    case 'ck.barbariansAdvanced':
+      return 'barbarians.advance';
+    case 'ck.barbariansAttack':
+      return 'barbarians.attack';
+    case 'ck.knightRecruited':
+    case 'ck.knightActivated':
+    case 'ck.knightPromoted':
+    case 'ck.knightMoved':
+    case 'ck.knightDisplaced':
+    case 'ck.knightChasedRobber':
+    case 'sfck.knightChasedPirate':
+      return 'knight.act';
+    case 'ck.wallBuilt':
+      return 'wall.build';
+    case 'ck.cityImproved':
+    case 'ck.metropolisAwarded':
+      return 'city.improve';
     default:
-      return null;
+      // Cities & Knights progress cards (audio/progress-cues.ts).
+      return tbCueForEvent(event) ?? progressCueForEvent(event, selfId) ?? null;
   }
 }
 
@@ -135,6 +211,7 @@ const PRIORITY: Partial<Record<SoundCue, number>> = {
   'game.over': 9,
   'robber.stolenFromYou': 7,
   'robber.alert': 6,
+  'barbarians.attack': 6,
   'turn.yours': 5,
   'production.self': 4,
 };

@@ -1,6 +1,6 @@
 /** 電腦對手（SPEC §4.9）的前端選擇器：只讀房間成員與伺服器設定，不推算任何遊戲資訊。 */
 
-import { BOT_LEVELS, type BotLevel, type RoomView, type ServerConfigView } from '@catan/protocol';
+import { BOT_LEVELS, type BotLevel, type ProfileView, type RoomView, type ServerConfigView } from '@catan/protocol';
 
 export const DEFAULT_BOT_LEVEL: BotLevel = 'standard';
 
@@ -9,6 +9,14 @@ type Translate = (id: string, params?: Record<string, unknown>) => string;
 /** 伺服器是否允許房主加入電腦；舊版伺服器沒有這個欄位時視為不允許。 */
 export function botsEnabled(config: ServerConfigView | null | undefined): boolean {
   return config?.bots?.enabled === true;
+}
+
+/**
+ * 這個規則組合能否加入電腦：Bot 只會玩它認得的規則模組（目前只有基本規則）。
+ * 舊版伺服器沒有 `botSeats` 欄位時不擋，最終仍由伺服器驗證。
+ */
+export function profileAllowsBots(profile: ProfileView | null | undefined): boolean {
+  return profile?.botSeats !== false;
 }
 
 /** 伺服器提供的難度，只保留前端認得的值；沒有提供時沿用協定清單。 */

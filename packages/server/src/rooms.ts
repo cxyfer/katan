@@ -5,6 +5,8 @@
 
 import {
   PLAYER_COLORS,
+  combinationOf,
+  getProfile,
   requireProfile,
   resolveCombination,
   type PlayerColor,
@@ -45,6 +47,51 @@ import {
   ORPHAN_BOT_GUEST_AGE_MS,
   parseBotLevel,
 } from './bot-seats.ts';
+
+/** A ruleset named by its parts instead of a profile id (§5.2). */
+export interface RulesetRequest {
+  expansions: readonly string[];
+  scenario: string | null;
+  variants?: readonly string[];
+}
+
+/**
+ * Resolves the requested ruleset to exactly one enabled registry profile. A
+ * profile id is re-validated through its own combination; a ruleset is
+ * matched exactly, and when both are given they must name the same profile.
+ */
+export function resolveRoomProfile(input: {
+  profileId?: string;
+  ruleset?: RulesetRequest;
+  capacity: number;
+  setupMode: 'fixed' | 'variable';
+}): string {
+  const reject = (reason: string): never => {
+    throw new ServiceError('E_UNSUPPORTED_COMBINATION', 'error.E_UNSUPPORTED_COMBINATION', {
+      reason,
+      ...(input.profileId ? { profileId: input.profileId } : {}),
+      playerCount: input.capacity,
+    });
+  };
+  if (input.ruleset) {
+    const check = resolveCombination({
+      expansions: input.ruleset.expansions,
+      scenario: input.ruleset.scenario ?? null,
+      variants: input.ruleset.variants ?? [],
+      playerCount: input.capacity,
+      setupMode: input.setupMode,
+    });
+    if (!check.ok) return reject(check.reason);
+    if (input.profileId !== undefined && input.profileId !== check.profile.id) return reject('profile-mismatch');
+    return check.profile.id;
+  }
+  const profile = input.profileId === undefined ? undefined : getProfile(input.profileId);
+  if (!profile) return reject('unknown-profile');
+  const check = resolveCombination(combinationOf(profile, input.capacity, input.setupMode));
+  if (!check.ok) return reject(check.reason);
+  if (check.profile.id !== profile.id) return reject('profile-mismatch');
+  return profile.id;
+}
 
 export class ServiceError extends Error {
   constructor(
@@ -239,6 +286,11 @@ export class RoomService {
         params: { profileId: profile.id, playerCount: members.length },
       });
     }
+    // Bots only play the rules they know; a bot seat in any other profile can
+    // never start, even if it got there before the profile changed.
+    if (members.some((member) => member.bot) && !botsSupported(profile)) {
+      blockers.push({ messageId: 'blocker.botsUnsupported', params: { profileId: profile.id } });
+    }
     const notReady = members.filter((member) => !member.ready);
     if (notReady.length > 0) {
       blockers.push({ messageId: 'blocker.notReady', params: { players: notReady.map((m) => m.nickname) } });
@@ -289,31 +341,18 @@ export class RoomService {
     input: {
       visibility: Visibility;
       capacity: number;
-      profileId: string;
+      profileId?: string;
+      ruleset?: RulesetRequest;
       setupMode: 'fixed' | 'variable';
       orderMode: GameOrderMode;
       policy?: Partial<RoomPolicy>;
     },
   ): Promise<RoomView> {
-    const profile = requireProfile(input.profileId);
+    const profileId = resolveRoomProfile(input);
     const orderMode = parseOrderMode(input.orderMode);
     if (!orderMode) {
       throw new ServiceError('E_INVALID_ORDER_MODE', 'error.E_INVALID_ORDER_MODE', {
         reason: 'orderMode',
-      });
-    }
-    const combination = resolveCombination({
-      playerCount: input.capacity,
-      seafarers: profile.modules.seafarers,
-      citiesKnights: profile.modules.citiesKnights,
-      scenario: profile.scenario,
-      setupMode: input.setupMode,
-    });
-    if (!combination.ok || combination.profile.id !== profile.id) {
-      throw new ServiceError('E_UNSUPPORTED_COMBINATION', 'error.E_UNSUPPORTED_COMBINATION', {
-        reason: combination.ok ? 'profile-mismatch' : combination.reason,
-        profileId: input.profileId,
-        playerCount: input.capacity,
       });
     }
     if (input.capacity > this.deps.config.limits.roomCapacityMax) {
@@ -336,7 +375,7 @@ export class RoomService {
       visibility: input.visibility,
       status: 'lobby',
       host_id: playerId,
-      profile_id: input.profileId,
+      profile_id: profileId,
       setup_mode: input.setupMode,
       order_mode: orderMode,
       capacity: input.capacity,
@@ -627,6 +666,7 @@ export class RoomService {
     input: {
       capacity?: number;
       profileId?: string;
+      ruleset?: RulesetRequest;
       setupMode?: 'fixed' | 'variable';
       orderMode?: GameOrderMode;
       policy?: Partial<RoomPolicy>;
@@ -641,6 +681,7 @@ export class RoomService {
     input: {
       capacity?: number;
       profileId?: string;
+      ruleset?: RulesetRequest;
       setupMode?: 'fixed' | 'variable';
       orderMode?: GameOrderMode;
       policy?: Partial<RoomPolicy>;
@@ -653,7 +694,6 @@ export class RoomService {
     if (room.status !== 'lobby') {
       throw new ServiceError('E_ROOM_STARTED', 'error.E_ROOM_STARTED', {}, 409);
     }
-    const profileId = input.profileId ?? room.profile_id;
     const setupMode = input.setupMode ?? (room.setup_mode as 'fixed' | 'variable');
     const orderMode =
       input.orderMode === undefined
@@ -670,28 +710,19 @@ export class RoomService {
         max: this.deps.config.limits.roomCapacityMax,
       });
     }
-    const profile = requireProfile(profileId);
-    const combination = resolveCombination({
-      playerCount: capacity,
-      seafarers: profile.modules.seafarers,
-      citiesKnights: profile.modules.citiesKnights,
-      scenario: profile.scenario,
+    const profileId = resolveRoomProfile({
+      ...(input.ruleset ? { ruleset: input.ruleset } : { profileId: input.profileId ?? room.profile_id }),
+      ...(input.ruleset && input.profileId !== undefined ? { profileId: input.profileId } : {}),
+      capacity,
       setupMode,
     });
-    if (!combination.ok || combination.profile.id !== profile.id) {
-      throw new ServiceError('E_UNSUPPORTED_COMBINATION', 'error.E_UNSUPPORTED_COMBINATION', {
-        reason: combination.ok ? 'profile-mismatch' : combination.reason,
-        profileId,
-        playerCount: capacity,
-      });
-    }
     const memberships = await this.repo.listMembers(roomId);
     if (capacity < memberships.length) {
       throw new ServiceError('E_CAPACITY_BELOW_SEATED', 'error.E_CAPACITY_BELOW_SEATED', {
         seated: memberships.length,
       });
     }
-    if (memberships.some(isBotMember) && !botsSupported(profile)) {
+    if (memberships.some(isBotMember) && !botsSupported(requireProfile(profileId))) {
       throw new ServiceError('E_INVALID_BOT', 'error.E_INVALID_BOT', { reason: 'profile', profileId });
     }
     let policy = this.policyOf(room);

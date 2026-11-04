@@ -18,16 +18,22 @@ import {
   SERVER_ERROR_IDS as PROTOCOL_SERVER_ERROR_IDS,
 } from '@catan/protocol';
 import { en } from './en.ts';
+import { MODULE_CATALOGS } from './modules/index.ts';
 import { zhHant } from './zh-Hant.ts';
 
 /** A catalog maps a stable message id to a template with `{param}` slots. */
 export type Catalog = Readonly<Record<string, string>>;
 
-export { en, zhHant };
+export { en, zhHant, MODULE_CATALOGS };
 
+function withModules(locale: Locale, base: Catalog): Catalog {
+  return Object.assign({}, base, ...Object.values(MODULE_CATALOGS).map((catalog) => catalog[locale]));
+}
+
+/** Base catalogs with every rules module's own catalog merged in. */
 export const catalogs: Readonly<Record<Locale, Catalog>> = {
-  'zh-Hant': zhHant,
-  en,
+  'zh-Hant': withModules('zh-Hant', zhHant),
+  en: withModules('en', en),
 };
 
 export const SUPPORTED_LOCALES: readonly Locale[] = ['zh-Hant', 'en'];

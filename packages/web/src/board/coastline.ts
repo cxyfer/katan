@@ -23,11 +23,17 @@ function normalize(x: number, y: number): Point {
   return { x: x / length, y: y / length };
 }
 
-/** Walk every boundary edge into closed loops; an archipelago yields several. */
-export function coastLoops(topology: BoardTopology): CoastLoop[] {
+/**
+ * Walk every shoreline edge into closed loops; an archipelago yields several.
+ * A shoreline edge has exactly one land hex. Without a land mask every hex is
+ * land, so the shoreline is the topology's own boundary (the base islands).
+ */
+export function coastLoops(topology: BoardTopology, land?: readonly boolean[]): CoastLoop[] {
+  const isLand = (hex: number) => land?.[hex] ?? true;
   const boundary = topology.edges
     .map((edge, index) => ({ edge, index }))
-    .filter(({ edge }) => edge.hexes.length === 1);
+    // Interior paths (Traders & Barbarians plazas) lie inside a hex, not on the shore.
+    .filter(({ edge }) => !edge.interior && edge.hexes.filter(isLand).length === 1);
   const byVertex = new Map<number, number[]>();
   for (const { edge, index } of boundary) {
     for (const vertex of edge.vertices) {

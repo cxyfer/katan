@@ -1,7 +1,7 @@
 import { memo, useId, useMemo, type ComponentProps, type Ref } from 'react';
 import type { GameView } from '@catan/rules';
 import type { BoardEffectGroup } from '../board/animation.ts';
-import type { BoardGeometry, Point } from '../board/geometry.ts';
+import { landHexOfEdge, type BoardGeometry, type Point } from '../board/geometry.ts';
 import type { BoardIntent } from '../board/intent.ts';
 import type { TableState } from '../state/table.ts';
 import { useT } from '../i18n/context.tsx';
@@ -9,12 +9,20 @@ import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrain
 import { placementArrival } from '../board/effects.ts';
 import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
+import { TbBridge, TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
+import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
+import { isShipCommand, seafarersView } from '../board/seafarers.ts';
+import { SvgExplorersPiratesLayer } from './SvgExplorersPirates.tsx';
+import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
+import { MerchantPiece } from './SvgProgressArt.tsx';
+import { KnightPiece, SvgCitiesKnightsPieces, SvgCitiesKnightsWalls, ToppledCity, WallRing } from './SvgCitiesKnights.tsx';
 
 interface SvgBoardProps extends Omit<ComponentProps<'svg'>, 'viewBox' | 'points'> {
   svgRef: Ref<SVGSVGElement>;
   geometry: BoardGeometry;
   view: GameView;
-  arrivals: readonly BoardEffectGroup[];
+  arrivals?: readonly BoardEffectGroup[];
+  active?: BoardEffectGroup | null;
   selection: TableState['selection'];
   selfId: string | null;
   intent: BoardIntent | null;
@@ -49,12 +57,16 @@ const StaticTiles = memo(function StaticTiles({ geometry, terrain, numbers, ids 
   numbers: GameView['board']['numbers'];
   ids: BoardArtIds;
 }) {
+  const land = geometry.hexes.filter((hex) => geometry.land[hex.index] !== false);
+  const sea = geometry.hexes.filter((hex) => geometry.land[hex.index] === false);
   return <>
+    {/* Sea hexes of a scenario map are open water under the shoreline. */}
+    {sea.map((hex) => <SeaHex key={`hex-${hex.index}`} hex={hex} number={numbers[hex.index]} ids={ids} />)}
     <IslandShore geometry={geometry} ids={ids} />
     <g aria-hidden="true" pointerEvents="none">
-      {geometry.hexes.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 9)" />)}
+      {land.map((hex) => <polygon key={hex.index} points={hex.points} className="board__tile-base" transform="translate(0 9)" />)}
     </g>
-    {geometry.hexes.map((hex) => {
+    {land.map((hex) => {
       const kind = terrain[hex.index] ?? 'sea';
       const number = numbers[hex.index];
       const fill = terrainFill(kind);
@@ -87,20 +99,33 @@ const StaticTiles = memo(function StaticTiles({ geometry, terrain, numbers, ids 
   </>;
 });
 
-export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
+/** A sea hex: a faint water cell that keeps the hex addressable on the board. */
+function SeaHex({ hex, number, ids }: { hex: BoardGeometry['hexes'][number]; number: number | null | undefined; ids: BoardArtIds }) {
+  return <g>
+    <polygon className="board__tile-sea" data-testid={`hex-${hex.index}`} points={hex.points}
+      fill="#9fd9d4" fillOpacity={0.12} stroke="#e8fbf6" strokeOpacity={0.35} strokeWidth={2} strokeDasharray="6 8" strokeLinejoin="round" />
+    {number !== null && number !== undefined && (
+      <NumberToken x={hex.cx} y={hex.cy + TOKEN_DROP} number={number} pips={pipsFor(number)} ids={ids} />
+    )}
+  </g>;
+}
+
+export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null, selection, selfId, intent, pan, zoom, viewBoxCenter, nameResolver, ...svgProps }: SvgBoardProps) {
   const t = useT();
   const prefix = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const ids = useMemo(() => boardArtIds(`board-art-${prefix}`), [prefix]);
   const board = view.board;
   const selfColor = playerColorHex(view.players.find((player) => player.id === selfId)?.color ?? 'white');
+  const ck = citiesKnightsView(view);
   return (
     <svg {...svgProps} ref={svgRef} className="board__svg" data-testid="board-svg" role="img" aria-label={t('a11y.boardRegion')} viewBox={geometry.viewBox} preserveAspectRatio="xMidYMid meet">
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
           <StaticTiles geometry={geometry} terrain={board.terrain} numbers={board.numbers} ids={ids} />
+          <TbSvgUnder geometry={geometry} view={view} />
 
           {board.harbors.map((harbor) => {
             const edge = geometry.edges[harbor.edge];
-            const land = geometry.topology.edges[harbor.edge]?.hexes[0];
+            const land = landHexOfEdge(geometry, harbor.edge);
             const hex = land === undefined ? undefined : geometry.hexes[land];
             if (!edge || !hex) return null;
             const label = harbor.type === 'generic' ? '3:1' : '2:1';
@@ -121,6 +146,21 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
             const player = view.players.find((candidate) => candidate.id === road.player);
             const color = playerColorHex(player?.color ?? 'white');
             const arrival = placementArrival(arrivals, board, 'edge', edge.index);
+            if (road.ship) {
+              const mid = edgeMidpoint(edge);
+              return (
+                <g key={arrival?.id ?? `ship-${edge.index}`} data-testid={`ship-${edge.index}`} className={arrival ? 'board__building-drop' : undefined}>
+                  <ShipPiece x={mid.x} y={mid.y} angle={edgeAngle(edge)} color={color} dash={seatDash(player?.seat ?? 0)} />
+                  <title>{`${t('sf.board.ship')} · ${nameResolver(road.player)}`}</title>
+                </g>
+              );
+            }
+            if (road.bridge) {
+              return <g key={`road-${edge.index}`} data-testid={`road-${edge.index}`} data-bridge="true">
+                <TbBridge {...edge} color={color} />
+                <title>{`${t('tb.rivers.bridge')} · ${nameResolver(road.player)}`}</title>
+              </g>;
+            }
             const line = inset(edge);
             return (
               <g key={`road-${edge.index}`}>
@@ -148,6 +188,8 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
             );
           })}
 
+          {ck && <SvgCitiesKnightsWalls geometry={geometry} view={view} ck={ck} nameResolver={nameResolver} />}
+
           {geometry.vertices.map((vertex) => {
             const building = board.buildings[vertex.index];
             if (!building) return null;
@@ -161,23 +203,53 @@ export function SvgBoard({ svgRef, geometry, view, arrivals, selection, selfId, 
                 {arrival && <ellipse key={arrival.id} className="board__drop-shadow" cx={vertex.x} cy={vertex.y + (building.city ? 12.3 : 11.2)}
                   rx={building.city ? 31 : 22} ry={building.city ? 8.4 : 7} fill="#071d28" aria-hidden="true" pointerEvents="none" />}
                 <g key={arrival?.id ?? 'rest'} className={arrival ? 'board__building-drop' : undefined}>
-                  <BoardBuilding x={vertex.x} y={vertex.y} city={building.city} color={color} />
+                  {ck?.toppled.includes(vertex.index)
+                    ? <ToppledCity x={vertex.x} y={vertex.y} color={color} />
+                    : <BoardBuilding x={vertex.x} y={vertex.y} city={building.city} color={color} />}
                 </g>
                 <title>{`${label} · ${nameResolver(building.player)}`}</title>
               </g>
             );
           })}
 
-          {geometry.hexes[board.robber] && (
+          <SvgExplorersPiratesLayer geometry={geometry} view={view} active={active} nameResolver={nameResolver} />
+          <TbSvgOver geometry={geometry} view={view} />
+          {ck && <SvgCitiesKnightsPieces geometry={geometry} view={view} ck={ck} nameResolver={nameResolver} />}
+          {seafarersView(view)?.islandClaims.map((claim) => {
+            const vertex = geometry.vertices[claim.vertex];
+            const owner = view.players.find((candidate) => candidate.id === claim.player);
+            if (!vertex) return null;
+            return <IslandBonusToken key={`island-${claim.player}-${claim.island}`} testId={`island-bonus-${claim.vertex}`}
+              x={vertex.x + 17} y={vertex.y + 16} color={playerColorHex(owner?.color ?? 'white')} />;
+          })}
+          {seafarersView(view) && (() => {
+            const hex = board.pirate === null ? null : geometry.hexes[board.pirate];
+            const spot = hex ? { x: hex.cx, y: hex.cy + 4 } : pirateFrameSpot(geometry);
+            return <g data-testid={hex ? 'pirate-hex' : 'pirate-frame'}>
+              <PirateShip x={spot.x} y={spot.y} />
+              <title>{hex ? t('sf.board.pirate') : t('sf.board.pirateFrame')}</title>
+            </g>;
+          })()}
+          {geometry.hexes[board.robber] && ck?.robberActive !== false && (
             <g data-testid="robber" aria-hidden="true">
               <RobberPiece {...robberSpot(geometry.hexes[board.robber]!, board.numbers[board.robber] != null)} ids={ids} />
             </g>
           )}
           {selection.index !== null && intent && selection.kind === intent.kind && intent.targets.includes(selection.index) && (
             <g className="board__preview-ghost" data-testid="board-preview-ghost" aria-hidden="true" pointerEvents="none">
-              {intent.kind === 'vertex' && geometry.vertices[selection.index] && <BoardBuilding x={geometry.vertices[selection.index]!.x} y={geometry.vertices[selection.index]!.y} city={intent.commandType === 'build.city'} color={selfColor} />}
-              {intent.kind === 'edge' && geometry.edges[selection.index] && <line {...inset(geometry.edges[selection.index]!)} stroke={selfColor} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />}
-              {intent.kind === 'hex' && geometry.hexes[selection.index] && <RobberPiece {...robberSpot(geometry.hexes[selection.index]!, board.numbers[selection.index] != null)} ids={ids} />}
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && showsKnightGhost(intent.commandType)
+                && <KnightPiece {...geometry.vertices[selection.index]!} {...knightGhost(ck, intent.commandType, selection.index, selection.params)} color={selfColor} ghost />}
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && intent.commandType === 'build.wall'
+                && <WallRing {...geometry.vertices[selection.index]!} color={selfColor} />}
+              {intent.kind === 'vertex' && geometry.vertices[selection.index] && !isCitiesKnightsVertexCommand(intent.commandType) && <BoardBuilding x={geometry.vertices[selection.index]!.x} y={geometry.vertices[selection.index]!.y} city={intent.commandType === 'build.city'} color={selfColor} />}
+              {intent.kind === 'edge' && geometry.edges[selection.index] && progressGhost(intent.commandType, selection.params) !== 'none' && (isShipCommand(intent.commandType)
+                ? <ShipPiece {...edgeMidpoint(geometry.edges[selection.index]!)} angle={edgeAngle(geometry.edges[selection.index]!)} color={selfColor} ghost />
+                : <line {...inset(geometry.edges[selection.index]!)} stroke={selfColor} strokeWidth={10} strokeDasharray="8 5" strokeLinecap="round" />)}
+              {intent.kind === 'hex' && geometry.hexes[selection.index] && progressGhost(intent.commandType, selection.params) === 'merchant'
+                && <MerchantPiece {...merchantSpot(geometry.hexes[selection.index]!)} color={selfColor} ghost />}
+              {intent.kind === 'hex' && geometry.hexes[selection.index] && progressGhost(intent.commandType, selection.params) === 'default' && (geometry.land[selection.index] === false
+                ? <PirateShip x={geometry.hexes[selection.index]!.cx} y={geometry.hexes[selection.index]!.cy + 4} ghost />
+                : <RobberPiece {...robberSpot(geometry.hexes[selection.index]!, board.numbers[selection.index] != null)} ids={ids} />)}
             </g>
           )}
         </g>

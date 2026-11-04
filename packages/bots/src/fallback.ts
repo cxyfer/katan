@@ -38,6 +38,9 @@ export function pendingDuty(view: GameView, selfId: string): Command | null {
       const edge = view.hints?.legalRoads[0];
       return edge === undefined ? null : { type: 'build.road', edge };
     }
+    default:
+      // Rules-module frames: bots are only seated in base profiles.
+      return null;
   }
 }
 

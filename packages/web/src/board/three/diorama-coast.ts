@@ -13,8 +13,9 @@ import { coastLoops, distanceToLoop, insideLoop, offsetLoop, smoothLoop } from '
 import { ModelBuilder, PaintedMesh, sceneryRandom, valueNoise } from './diorama-geometry.ts';
 import type { Vec3 } from './transforms.ts';
 
-/** The water plane height; the beach dips just below it so the waterline is clean. */
-export const SEA_LEVEL = -0.285;
+import { SEA_LEVEL } from '../sea.ts';
+
+export { SEA_LEVEL };
 
 /**
  * Beach profile from inside the tile rim down below the waterline:
@@ -46,7 +47,7 @@ function beachHeight(offset: number): number {
 export function createBeachModel(geometry: BoardGeometry): BufferGeometry {
   const builder = new ModelBuilder();
   const noise = valueNoise(1931);
-  for (const loop of coastLoops(geometry.topology)) {
+  for (const loop of coastLoops(geometry.topology, geometry.land)) {
     const rings = BEACH_PROFILE.map(([offset, y, paint]) => ({
       points: smoothLoop(offsetLoop(loop, offset), 2), y, paint: new Color(paint),
     }));
@@ -86,7 +87,7 @@ function rock(builder: ModelBuilder, random: () => number, point: Point, offset:
 export function createShoreScatterModel(geometry: BoardGeometry): BufferGeometry {
   const builder = new ModelBuilder();
   const random = sceneryRandom(84621);
-  for (const loop of coastLoops(geometry.topology)) {
+  for (const loop of coastLoops(geometry.topology, geometry.land)) {
     const count = loop.points.length;
     for (let index = 0; index < count; index++) {
       const a = loop.points[index]!;
@@ -142,7 +143,7 @@ export interface ShoreField {
  * shallows, a surf line and deep water without per-fragment polygon math.
  */
 export function createShoreField(geometry: BoardGeometry, resolution = 160): ShoreField {
-  const loops = coastLoops(geometry.topology).map((loop) => smoothLoop(offsetLoop(loop, WATERLINE_OFFSET), 2));
+  const loops = coastLoops(geometry.topology, geometry.land).map((loop) => smoothLoop(offsetLoop(loop, WATERLINE_OFFSET), 2));
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;

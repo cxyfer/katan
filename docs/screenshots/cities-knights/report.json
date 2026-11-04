@@ -1,0 +1,141 @@
+{
+  "base": "http://127.0.0.1:3039",
+  "cases": [
+    {
+      "name": "lobby-no-cities-knights",
+      "status": "PASS",
+      "note": "expansions offered: ['base', 'seafarers']"
+    },
+    {
+      "name": "live-knight-recruit-svg",
+      "status": "PASS",
+      "note": "recruit: free intersections on the own routes, knight preview",
+      "sha256": "82bdc542b8e3e8e910d7a9f80bd9ce69f589fa3586e3aa3dc6fa2d00059b1f7a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-wall-target-svg",
+      "status": "PASS",
+      "note": "city wall: own cities without a wall",
+      "sha256": "89c4db54f26af0fbb253383cce5397a30d22b0c8cc4628fb47b64880fb787092",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-panel-svg",
+      "status": "PASS",
+      "note": "panel: barbarian track, event roll, improvement chart, progress hand (not playable)",
+      "sha256": "aef2e1253b593217349e2f2bfb6ebecbde17b471840cc00cfe37736040a46478",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-knight-move-targets-svg",
+      "status": "PASS",
+      "note": "move knight: second step, reachable intersections",
+      "sha256": "1796732728932f86e1e509de72123db82cf74f1c96e19bac656d0a1076db2d40",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-board-3d",
+      "status": "PASS",
+      "note": "knight, wall and city in 3D",
+      "sha256": "7b2150b8cb4b856d8dd13dff805e4247fe878db4229adc68e21a701d423753e1",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-board-svg-phone",
+      "status": "PASS",
+      "note": "phone table with the C&K badge",
+      "sha256": "fd9320cb1f4231c5051f62130612674711ffb54a1ec43fbca79b2b43a27df269",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "live-board-r3f-phone",
+      "status": "PASS",
+      "note": "phone table with the C&K badge",
+      "sha256": "5514686f5ead686af55acffe5fa8f795a0e586dd07005c702e7ff2ede64bbf6e",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "live-panel-phone",
+      "status": "PASS",
+      "note": "phone: C&K panel",
+      "sha256": "292574246c93bac67642710065c9f2757e931f6e77456a4f4804b83bff8f1fc7",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "live-pillage-prompt-svg",
+      "status": "PASS",
+      "note": "barbarians won: the weakest defender picks a city to pillage",
+      "sha256": "ec26331ac500d9117154a9d3fa232484d44cd91f979ea1212eef27b50b94c673",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-attack-svg",
+      "status": "PASS",
+      "note": "barbarian attack: 5 vs 1 (barbarians)",
+      "sha256": "9c113255dfbea5f29b9725b38852432c4627085a507e80fb41d7bb13ad3274f2",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-after-attack-3d",
+      "status": "PASS",
+      "note": "after the attack: the robber is on the island",
+      "sha256": "0808a2ef8a643f4819623691d133bbcf978d341c3d6ce3ca8e81dc46063bd10b",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-6p-svg-desktop",
+      "status": "PASS",
+      "note": "ck-paired-2025 setup board",
+      "sha256": "34304399567ebfa3c4a24193f9c816895d9067717440ae34991210bd868be272",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-6p-r3f-desktop",
+      "status": "PASS",
+      "note": "ck-paired-2025 setup board",
+      "sha256": "1cbb27a35f2c8701008c80bd921b77fab35f62af130e3276b3d583c2da2a1832",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    }
+  ],
+  "errors": []
+}

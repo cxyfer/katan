@@ -133,12 +133,92 @@ describe('R-ROOM lobby', () => {
     host.expectError(
       await host.post('/api/rooms', {
         visibility: 'private',
-        capacity: 4,
-        profileId: 'sf-new-shores-2025',
+        capacity: 5,
+        profileId: 'sf-ck-new-shores-2025',
         setupMode: 'fixed',
       }),
       'E_UNSUPPORTED_COMBINATION',
     );
+  });
+
+  it('resolves Seafarers + Cities & Knights on New Shores in either expansion order', async () => {
+    const cases = [
+      [['citiesKnights', 'seafarers'], 4, 'fixed', 'sf-ck-new-shores-2025'],
+      [['seafarers', 'citiesKnights'], 4, 'fixed', 'sf-ck-new-shores-2025'],
+      [['citiesKnights', 'seafarers'], 5, 'variable', 'sf-ck-new-shores-paired-2025'],
+      [['seafarers', 'citiesKnights'], 6, 'variable', 'sf-ck-new-shores-paired-2025'],
+    ] as const;
+    for (const [index, [expansions, capacity, setupMode, profileId]] of cases.entries()) {
+      const host = await harness.client(`CombinedHost${index}`);
+      const room = host.expectOk<RoomShape & { profileId: string }>(await host.post('/api/rooms', {
+        visibility: 'private', capacity, setupMode,
+        ruleset: { expansions: [...expansions], scenario: 'new-shores' },
+      }));
+      expect(room.profileId).toBe(profileId);
+    }
+  });
+  it('resolves a ruleset named by its parts to exactly one enabled profile', async () => {
+    const host = await harness.client('RulesetHost');
+    const reason = (response: { body: { ok: boolean; error?: { params?: Record<string, unknown> } } }) =>
+      response.body.ok ? 'ok' : response.body.error?.params?.reason;
+
+    const paired = host.expectOk<RoomShape & { profileId: string }>(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 5, setupMode: 'variable',
+      ruleset: { expansions: [], scenario: null, variants: [] },
+    }));
+    expect(paired.profileId).toBe('base-paired-2025');
+
+    const base = host.expectOk<RoomShape & { profileId: string }>(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 4, setupMode: 'fixed', profileId: 'base-2025',
+      ruleset: { expansions: [], scenario: null },
+    }));
+    expect(base.profileId).toBe('base-2025');
+
+    const cases: [Record<string, unknown>, string][] = [
+      [{ capacity: 4, setupMode: 'variable', ruleset: { expansions: ['seafarers'], scenario: 'new-shores' } }, 'bad-setup-mode'],
+      [{ capacity: 4, ruleset: { expansions: ['citiesKnights', 'seafarers'], scenario: null } }, 'unknown-profile'],
+      [{ capacity: 4, ruleset: { expansions: ['seafarers', 'citiesKnights', 'tradersBarbarians'], scenario: 'new-shores' } }, 'unknown-profile'],
+      [{ capacity: 4, ruleset: { expansions: ['seafarers', 'seafarers'], scenario: 'new-shores' } }, 'invalid-request'],
+      [{ capacity: 4, ruleset: { expansions: [], scenario: null, variants: ['tb-event-cards'] } }, 'unknown-profile'],
+      [{ capacity: 7, ruleset: { expansions: [], scenario: null } }, 'bad-player-count'],
+      [{ capacity: 3, profileId: 'base-paired-2025', ruleset: { expansions: [], scenario: null } }, 'profile-mismatch'],
+      [{ capacity: 3, profileId: 'no-such-profile' }, 'unknown-profile'],
+    ];
+    for (const [body, expected] of cases) {
+      const response = await host.post('/api/rooms', { visibility: 'private', setupMode: 'fixed', ...body });
+      host.expectError(response, 'E_UNSUPPORTED_COMBINATION');
+      expect(reason(response), JSON.stringify(body)).toBe(expected);
+    }
+    const missing = await host.post('/api/rooms', { visibility: 'private', capacity: 3, setupMode: 'fixed' });
+    host.expectError(missing, 'E_BAD_REQUEST');
+    expect(missing.body.ok ? null : missing.body.error.messageId).toBe('error.E_MISSING_FIELD');
+    host.expectError(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 3, setupMode: 'fixed', ruleset: { expansions: 'seafarers' },
+    }), 'E_BAD_REQUEST');
+
+    // Settings may switch rulesets by parts as well.
+    const switched = host.expectOk<RoomShape & { profileId: string }>(await host.post(`/api/rooms/${paired.id}/settings`, {
+      capacity: 6, ruleset: { expansions: [], scenario: null },
+    }));
+    expect(switched.profileId).toBe('base-paired-2025');
+  });
+
+  it('publishes registry v2 metadata for every profile', async () => {
+    const guest = await harness.client('ProfileReader');
+    const data = guest.expectOk<{ profiles: Record<string, unknown>[]; selectable: string[] }>(await guest.get('/api/profiles'));
+    expect(data.selectable.filter((id) => !id.startsWith('tb-'))).toEqual(['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ck-2025', 'ck-paired-2025', 'sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025', 'ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025']);
+    expect(data.profiles.find((profile) => profile.id === 'tb-harbors-2025')).toMatchObject({
+      expansions: ['tradersBarbarians'], scenario: null, variants: ['harbors'], ruleVersion: 'tb-2025.2',
+      requiredBoxes: ['base', 'tradersBarbarians'], victoryTarget: 11, enabled: true,
+    });
+    expect(data.profiles.find((profile) => profile.id === 'base-paired-2025')).toMatchObject({
+      expansions: [], scenario: null, variants: [], ruleVersion: 'base-2025.4',
+      requiredBoxes: ['base', 'base-5-6'], playerCounts: [5, 6], enabled: true,
+    });
+    expect(data.profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')).toMatchObject({
+      expansions: ['seafarers', 'citiesKnights'], scenario: 'new-shores', enabled: true, botSeats: false,
+    });
+    for (const profile of data.profiles) expect(profile).not.toHaveProperty('modules');
   });
 
   it('rejects profile and capacity mismatches during lobby settings updates', async () => {

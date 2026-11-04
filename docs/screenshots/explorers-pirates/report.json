@@ -1,0 +1,967 @@
+{
+  "base": "http://127.0.0.1:3064",
+  "browser": "headless Chromium 145 (chrome-headless-shell, SwiftShader WebGL)",
+  "missions": {
+    "land-ho": {
+      "profile": "ep-land-ho-2025",
+      "players": 4,
+      "steps": 309,
+      "result": {
+        "playerId": "player_fe18e0d1e6164c33ab2e",
+        "reason": "victory",
+        "score": 8
+      },
+      "commands": {
+        "turn.roll": 22,
+        "ep.buyResource": 21,
+        "ep.buildShip": 14,
+        "ep.startMovement": 21,
+        "ep.unload": 1,
+        "ep.swap": 1,
+        "ep.moveShip": 175,
+        "ep.found": 10,
+        "turn.end": 21,
+        "ep.extraMove": 3,
+        "ep.buildSettler": 8,
+        "ep.load": 6,
+        "ep.buildHarbor": 2,
+        "trade.bank": 1,
+        "build.road": 1,
+        "pending.discard": 2
+      },
+      "ui": {
+        "svg": {
+          "executed": [
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.found",
+            "ep.load",
+            "ep.moveShip",
+            "ep.startMovement",
+            "ep.swap",
+            "ep.unload",
+            "pending.discard",
+            "turn.end",
+            "turn.roll"
+          ],
+          "reached": []
+        },
+        "r3f": {
+          "executed": [
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.found",
+            "ep.load",
+            "ep.moveShip",
+            "ep.startMovement",
+            "turn.end",
+            "turn.roll"
+          ],
+          "reached": [
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.found",
+            "ep.load",
+            "ep.moveShip",
+            "ep.startMovement",
+            "ep.swap",
+            "ep.unload",
+            "pending.discard",
+            "turn.end",
+            "turn.roll"
+          ]
+        }
+      },
+      "p1ApiOnly": {},
+      "uiNotReached": [
+        "build.road",
+        "ep.buildHarbor",
+        "ep.extraMove",
+        "trade.bank"
+      ]
+    },
+    "pirate-lairs": {
+      "profile": "ep-pirate-lairs-2025",
+      "players": 3,
+      "steps": 697,
+      "result": {
+        "playerId": "player_fe5d595400fa4115854a",
+        "reason": "victory",
+        "score": 12
+      },
+      "commands": {
+        "ep.setupHarbor": 3,
+        "ep.setupSettlement": 3,
+        "ep.setupShip": 3,
+        "ep.setupRoad": 3,
+        "turn.roll": 80,
+        "ep.extraMove": 7,
+        "ep.buyResource": 49,
+        "ep.buildShip": 16,
+        "ep.startMovement": 79,
+        "ep.unload": 1,
+        "ep.swap": 1,
+        "ep.moveShip": 242,
+        "ep.found": 10,
+        "turn.end": 79,
+        "ep.placePirate": 24,
+        "ep.chase": 31,
+        "trade.bank": 17,
+        "ep.buildCrew": 5,
+        "ep.dropCrew": 9,
+        "ep.buildSettler": 10,
+        "ep.pickCrew": 6,
+        "ep.load": 4,
+        "ep.buildHarbor": 5,
+        "pending.discard": 7,
+        "ep.robPlayer": 3
+      },
+      "ui": {
+        "svg": {
+          "executed": [
+            "ep.buildCrew",
+            "ep.buildHarbor",
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.dropCrew",
+            "ep.extraMove",
+            "ep.found",
+            "ep.moveShip",
+            "ep.pickCrew",
+            "ep.placePirate",
+            "ep.robPlayer",
+            "ep.setupHarbor",
+            "ep.setupRoad",
+            "ep.setupSettlement",
+            "ep.setupShip",
+            "ep.startMovement",
+            "ep.swap",
+            "ep.unload",
+            "pending.discard",
+            "trade.bank",
+            "turn.end",
+            "turn.roll"
+          ],
+          "reached": []
+        },
+        "r3f": {
+          "executed": [
+            "ep.buildCrew",
+            "ep.buildHarbor",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.dropCrew",
+            "ep.extraMove",
+            "ep.moveShip",
+            "ep.placePirate",
+            "ep.startMovement",
+            "pending.discard",
+            "trade.bank",
+            "turn.end",
+            "turn.roll"
+          ],
+          "reached": [
+            "ep.buildCrew",
+            "ep.buildHarbor",
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.dropCrew",
+            "ep.extraMove",
+            "ep.found",
+            "ep.moveShip",
+            "ep.pickCrew",
+            "ep.placePirate",
+            "ep.robPlayer",
+            "ep.setupHarbor",
+            "ep.setupRoad",
+            "ep.setupSettlement",
+            "ep.setupShip",
+            "ep.startMovement",
+            "ep.swap",
+            "ep.unload",
+            "pending.discard",
+            "trade.bank",
+            "turn.end",
+            "turn.roll"
+          ]
+        }
+      },
+      "p1ApiOnly": {},
+      "uiNotReached": [
+        "ep.load"
+      ]
+    },
+    "fish": {
+      "profile": "ep-fish-2025",
+      "players": 3,
+      "steps": 925,
+      "result": {
+        "playerId": "player_aae1e1b27fa64c17a423",
+        "reason": "victory",
+        "score": 15
+      },
+      "commands": {
+        "ep.setupHarbor": 3,
+        "ep.setupSettlement": 3,
+        "ep.setupShip": 3,
+        "ep.setupRoad": 3,
+        "turn.roll": 74,
+        "ep.buyResource": 48,
+        "ep.startMovement": 73,
+        "ep.unload": 1,
+        "ep.swap": 1,
+        "ep.fishRoll": 73,
+        "ep.moveShip": 389,
+        "ep.found": 10,
+        "turn.end": 73,
+        "ep.buildShip": 15,
+        "trade.bank": 23,
+        "ep.buildSettler": 10,
+        "ep.loadFish": 20,
+        "ep.extraMove": 5,
+        "ep.deliver": 19,
+        "ep.placePirate": 16,
+        "ep.load": 5,
+        "ep.chase": 22,
+        "ep.buildCrew": 7,
+        "ep.dropCrew": 10,
+        "ep.buildHarbor": 6,
+        "pending.discard": 8,
+        "ep.pickCrew": 5
+      },
+      "ui": {
+        "svg": {
+          "executed": [
+            "ep.buildCrew",
+            "ep.buildHarbor",
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.deliver",
+            "ep.dropCrew",
+            "ep.extraMove",
+            "ep.fishRoll",
+            "ep.found",
+            "ep.load",
+            "ep.loadFish",
+            "ep.moveShip",
+            "ep.pickCrew",
+            "ep.placePirate",
+            "ep.setupHarbor",
+            "ep.setupRoad",
+            "ep.setupSettlement",
+            "ep.setupShip",
+            "ep.startMovement",
+            "ep.swap",
+            "ep.unload",
+            "pending.discard",
+            "trade.bank",
+            "turn.end",
+            "turn.roll"
+          ],
+          "reached": []
+        },
+        "r3f": {
+          "executed": [
+            "ep.buildCrew",
+            "ep.buildHarbor",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.deliver",
+            "ep.dropCrew",
+            "ep.fishRoll",
+            "ep.loadFish",
+            "ep.moveShip",
+            "ep.placePirate",
+            "ep.startMovement",
+            "pending.discard",
+            "turn.end",
+            "turn.roll"
+          ],
+          "reached": [
+            "ep.buildCrew",
+            "ep.buildHarbor",
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.deliver",
+            "ep.dropCrew",
+            "ep.extraMove",
+            "ep.fishRoll",
+            "ep.found",
+            "ep.load",
+            "ep.loadFish",
+            "ep.moveShip",
+            "ep.pickCrew",
+            "ep.placePirate",
+            "ep.setupHarbor",
+            "ep.setupRoad",
+            "ep.setupSettlement",
+            "ep.setupShip",
+            "ep.startMovement",
+            "ep.swap",
+            "ep.unload",
+            "pending.discard",
+            "trade.bank",
+            "turn.end",
+            "turn.roll"
+          ]
+        }
+      },
+      "p1ApiOnly": {},
+      "uiNotReached": []
+    },
+    "spices": {
+      "profile": "ep-spices-2025",
+      "players": 4,
+      "steps": 1139,
+      "result": {
+        "playerId": "player_450ef10b35b148fd9260",
+        "reason": "victory",
+        "score": 15
+      },
+      "commands": {
+        "ep.setupHarbor": 4,
+        "ep.setupSettlement": 4,
+        "ep.setupShip": 4,
+        "ep.setupRoad": 4,
+        "turn.roll": 85,
+        "ep.buyResource": 71,
+        "ep.buildShip": 23,
+        "ep.startMovement": 84,
+        "ep.unload": 1,
+        "ep.swap": 1,
+        "ep.fishRoll": 84,
+        "ep.moveShip": 473,
+        "ep.found": 15,
+        "turn.end": 84,
+        "ep.placePirate": 23,
+        "ep.buildCrew": 11,
+        "ep.chase": 24,
+        "ep.buildHarbor": 7,
+        "ep.buildSettler": 16,
+        "trade.bank": 12,
+        "ep.extraMove": 4,
+        "ep.dropCrew": 11,
+        "ep.loadSpice": 11,
+        "ep.deliver": 17,
+        "ep.load": 4,
+        "ep.fastGold": 31,
+        "pending.discard": 11,
+        "ep.robPlayer": 7,
+        "ep.loadFish": 11,
+        "build.road": 2
+      },
+      "ui": {
+        "svg": {
+          "executed": [
+            "build.road",
+            "ep.buildCrew",
+            "ep.buildHarbor",
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.deliver",
+            "ep.dropCrew",
+            "ep.fastGold",
+            "ep.fishRoll",
+            "ep.found",
+            "ep.load",
+            "ep.loadFish",
+            "ep.loadSpice",
+            "ep.moveShip",
+            "ep.placePirate",
+            "ep.robPlayer",
+            "ep.setupHarbor",
+            "ep.setupRoad",
+            "ep.setupSettlement",
+            "ep.setupShip",
+            "ep.startMovement",
+            "ep.swap",
+            "ep.unload",
+            "pending.discard",
+            "trade.bank",
+            "turn.end",
+            "turn.roll"
+          ],
+          "reached": []
+        },
+        "r3f": {
+          "executed": [
+            "build.road",
+            "ep.buildCrew",
+            "ep.buildHarbor",
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.deliver",
+            "ep.dropCrew",
+            "ep.fastGold",
+            "ep.fishRoll",
+            "ep.found",
+            "ep.load",
+            "ep.loadFish",
+            "ep.loadSpice",
+            "ep.moveShip",
+            "ep.placePirate",
+            "ep.robPlayer",
+            "ep.startMovement",
+            "turn.end",
+            "turn.roll"
+          ],
+          "reached": [
+            "build.road",
+            "ep.buildCrew",
+            "ep.buildHarbor",
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.deliver",
+            "ep.dropCrew",
+            "ep.fastGold",
+            "ep.fishRoll",
+            "ep.found",
+            "ep.load",
+            "ep.loadFish",
+            "ep.loadSpice",
+            "ep.moveShip",
+            "ep.placePirate",
+            "ep.robPlayer",
+            "ep.setupHarbor",
+            "ep.setupRoad",
+            "ep.setupSettlement",
+            "ep.setupShip",
+            "ep.startMovement",
+            "ep.swap",
+            "ep.unload",
+            "pending.discard",
+            "trade.bank",
+            "turn.end",
+            "turn.roll"
+          ]
+        }
+      },
+      "p1ApiOnly": {},
+      "uiNotReached": [
+        "ep.extraMove"
+      ]
+    },
+    "explorers-pirates": {
+      "profile": "ep-full-2025",
+      "players": 3,
+      "steps": 727,
+      "result": {
+        "playerId": "player_e22290bccf1649edb5ac",
+        "reason": "victory",
+        "score": 17
+      },
+      "commands": {
+        "ep.setupHarbor": 3,
+        "ep.setupSettlement": 3,
+        "ep.setupShip": 3,
+        "ep.setupRoad": 3,
+        "turn.roll": 53,
+        "ep.placePirate": 8,
+        "ep.buyResource": 50,
+        "ep.startMovement": 53,
+        "ep.unload": 1,
+        "ep.swap": 1,
+        "ep.fishRoll": 53,
+        "ep.moveShip": 326,
+        "ep.found": 8,
+        "turn.end": 52,
+        "ep.buildShip": 14,
+        "ep.sellForGold": 1,
+        "ep.buildSettler": 7,
+        "ep.extraMove": 3,
+        "ep.buildCrew": 10,
+        "ep.loadFish": 12,
+        "ep.deliver": 14,
+        "trade.bank": 4,
+        "ep.dropCrew": 13,
+        "ep.loadSpice": 4,
+        "ep.load": 1,
+        "build.road": 5,
+        "ep.buildHarbor": 4,
+        "ep.chase": 10,
+        "build.settlement": 2,
+        "ep.pickCrew": 4,
+        "pending.discard": 1,
+        "ep.fastGold": 1
+      },
+      "ui": {
+        "svg": {
+          "executed": [
+            "build.road",
+            "build.settlement",
+            "ep.buildCrew",
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.dropCrew",
+            "ep.fishRoll",
+            "ep.found",
+            "ep.loadSpice",
+            "ep.moveShip",
+            "ep.pickCrew",
+            "ep.placePirate",
+            "ep.sellForGold",
+            "ep.setupHarbor",
+            "ep.setupRoad",
+            "ep.setupSettlement",
+            "ep.setupShip",
+            "ep.startMovement",
+            "ep.swap",
+            "ep.unload",
+            "trade.bank",
+            "turn.end",
+            "turn.roll"
+          ],
+          "reached": []
+        },
+        "r3f": {
+          "executed": [
+            "build.road",
+            "build.settlement",
+            "ep.buildCrew",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.dropCrew",
+            "ep.fishRoll",
+            "ep.moveShip",
+            "ep.placePirate",
+            "ep.startMovement",
+            "trade.bank",
+            "turn.end",
+            "turn.roll"
+          ],
+          "reached": [
+            "build.road",
+            "build.settlement",
+            "ep.buildCrew",
+            "ep.buildSettler",
+            "ep.buildShip",
+            "ep.buyResource",
+            "ep.chase",
+            "ep.dropCrew",
+            "ep.fishRoll",
+            "ep.found",
+            "ep.loadSpice",
+            "ep.moveShip",
+            "ep.pickCrew",
+            "ep.placePirate",
+            "ep.sellForGold",
+            "ep.setupHarbor",
+            "ep.setupRoad",
+            "ep.setupSettlement",
+            "ep.setupShip",
+            "ep.startMovement",
+            "ep.swap",
+            "ep.unload",
+            "trade.bank",
+            "turn.end",
+            "turn.roll"
+          ]
+        }
+      },
+      "p1ApiOnly": {},
+      "uiNotReached": [
+        "ep.buildHarbor",
+        "ep.deliver",
+        "ep.extraMove",
+        "ep.fastGold",
+        "ep.load",
+        "ep.loadFish",
+        "pending.discard"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "land-ho-lobby",
+      "status": "PASS",
+      "note": "lobby: Explorers & Pirates / land-ho",
+      "sha256": "7c2a9fba41b47763f6031f7c282407611767a9742cbb088a94c38c0115d2dfde",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "land-ho"
+    },
+    {
+      "name": "land-ho-start-svg",
+      "status": "PASS",
+      "note": "land-ho: board at the start",
+      "sha256": "e2bae8aa147e8507054bff6e9489594c06dd0963dae3578996ee9421202b86f9",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "land-ho"
+    },
+    {
+      "name": "land-ho-start-r3f",
+      "status": "PASS",
+      "note": "land-ho: board at the start",
+      "sha256": "aaf055491d30af6e4b7f751bb4a54498f8f66f94dc29df3a71be11f5483dab2c",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "land-ho"
+    },
+    {
+      "name": "land-ho-movement-svg",
+      "status": "PASS",
+      "note": "Movement phase: per-ship actions in the prompt",
+      "sha256": "c0e9f3c872e147fd7278fa80cb4ddb50462f501390e3323bc1d9abf5e2968755",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "land-ho"
+    },
+    {
+      "name": "land-ho-final-svg",
+      "status": "PASS",
+      "note": "land-ho: result with the final board",
+      "sha256": "365918d709c47f210a4368bc0b64bd87c0053452b9efcea244e0e2b43634b7e0",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "land-ho"
+    },
+    {
+      "name": "land-ho-final-r3f",
+      "status": "PASS",
+      "note": "land-ho: result with the final board",
+      "sha256": "9b480248aebc1f933cd37e4d672c7f7d0e57091ba9e1a34e59d5e0bbec6bc73d",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "land-ho"
+    },
+    {
+      "name": "pirate-lairs-lobby",
+      "status": "PASS",
+      "note": "lobby: Explorers & Pirates / pirate-lairs",
+      "sha256": "b384e37da6737bfef4bd3ec99f3219e2f355b6e2d011063b7be45503012ce373",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "pirate-lairs"
+    },
+    {
+      "name": "pirate-lairs-start-svg",
+      "status": "PASS",
+      "note": "pirate-lairs: board at the start",
+      "sha256": "b986a878ed44f3a1f3f5fc0ce56a4e21e645cd8f6eda53eed748bb64262a2c34",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "pirate-lairs"
+    },
+    {
+      "name": "pirate-lairs-start-r3f",
+      "status": "PASS",
+      "note": "pirate-lairs: board at the start",
+      "sha256": "e1cb22ab3c477e3ac81d0cc6b728b530b14b58d8cc18b2d737ce513864838e9a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "pirate-lairs"
+    },
+    {
+      "name": "pirate-lairs-movement-svg",
+      "status": "PASS",
+      "note": "Movement phase: per-ship actions in the prompt",
+      "sha256": "51ba1dde1b65d1c4d6ae786e5800b2f5b7f10dbf912362800b8bbe2c3e47b0ae",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "pirate-lairs"
+    },
+    {
+      "name": "pirate-lairs-final-svg",
+      "status": "PASS",
+      "note": "pirate-lairs: result with the final board",
+      "sha256": "24a3a7f5ea386b0f50ca43867beb3e1119ff3e2d1011b164306080266dcf0ee2",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "pirate-lairs"
+    },
+    {
+      "name": "pirate-lairs-final-r3f",
+      "status": "PASS",
+      "note": "pirate-lairs: result with the final board",
+      "sha256": "264503bc368172a836a7639a2a81d0e678a5e12b9f7bcb022661661eea6e6290",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "pirate-lairs"
+    },
+    {
+      "name": "fish-lobby",
+      "status": "PASS",
+      "note": "lobby: Explorers & Pirates / fish",
+      "sha256": "737994298bffddc7d346a1eea08ae0776d87ad7a5303a786e1b7a5b0ebb3cead",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "fish"
+    },
+    {
+      "name": "fish-start-svg",
+      "status": "PASS",
+      "note": "fish: board at the start",
+      "sha256": "53af3c15935414b6d2978d46e0b2ffd9d108f3c26d40dda5b7f9217124eb3e00",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "fish"
+    },
+    {
+      "name": "fish-start-r3f",
+      "status": "PASS",
+      "note": "fish: board at the start",
+      "sha256": "703944731e8f7edd162887d444bc1ee19a1294cfb4258de6de0c3187af49c69c",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "fish"
+    },
+    {
+      "name": "fish-start-svg-phone",
+      "status": "PASS",
+      "note": "phone layout",
+      "sha256": "4f06ed5ed83a99c590d2911b719531e8e7814c38bd88c6033a72ac4e3e72b062",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "mission": "fish"
+    },
+    {
+      "name": "fish-start-r3f-phone",
+      "status": "PASS",
+      "note": "phone layout",
+      "sha256": "b8b6570888cc15abf08b6cdcd7dda6f976ada48c827d36304d97a4e44991d86f",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "mission": "fish"
+    },
+    {
+      "name": "fish-movement-svg",
+      "status": "PASS",
+      "note": "Movement phase: per-ship actions in the prompt",
+      "sha256": "979521b9d153a43646c8ab60166b935807e4152d9866312ffb1dde20baa18631",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "fish"
+    },
+    {
+      "name": "fish-final-svg",
+      "status": "PASS",
+      "note": "fish: result with the final board",
+      "sha256": "2d89972ce56764281826ef5b59f2d8fbe99c62fde79f2be3a70fb561029e3f55",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "fish"
+    },
+    {
+      "name": "fish-final-r3f",
+      "status": "PASS",
+      "note": "fish: result with the final board",
+      "sha256": "8f338acf7a41a11e599f6eed81f5356b70b8c34a7c12a2deee43d87bcd61836f",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "fish"
+    },
+    {
+      "name": "spices-lobby",
+      "status": "PASS",
+      "note": "lobby: Explorers & Pirates / spices",
+      "sha256": "4267b7e6e2df6d0a7675f5068d1af5ebea7e5cb53b6e7f2b44ef4f6ee8089074",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "spices"
+    },
+    {
+      "name": "spices-start-svg",
+      "status": "PASS",
+      "note": "spices: board at the start",
+      "sha256": "61b35abdf181c99ef26f983cb6f53889ff0d15dda9fa492c8ad797eae6604791",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "spices"
+    },
+    {
+      "name": "spices-start-r3f",
+      "status": "PASS",
+      "note": "spices: board at the start",
+      "sha256": "20353c1c6ed10c012adb0e3e912d81584a9639285b43de03aada162b9984e349",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "spices"
+    },
+    {
+      "name": "spices-movement-svg",
+      "status": "PASS",
+      "note": "Movement phase: per-ship actions in the prompt",
+      "sha256": "0a3e1d655b25835bc78c01230660ae9e0f2d74ca7e162a279737da20e36f9f55",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "spices"
+    },
+    {
+      "name": "spices-final-svg",
+      "status": "PASS",
+      "note": "spices: result with the final board",
+      "sha256": "ae34edc0fac34e3cc8a47049d7d611037c545336e5a4f3d5e7485da0c08bf432",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "spices"
+    },
+    {
+      "name": "spices-final-r3f",
+      "status": "PASS",
+      "note": "spices: result with the final board",
+      "sha256": "06c1b45d007f10ac73713d1a87e888415b6812b2c71da4a1e1b9a541328f8e60",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "spices"
+    },
+    {
+      "name": "explorers-pirates-lobby",
+      "status": "PASS",
+      "note": "lobby: Explorers & Pirates / explorers-pirates",
+      "sha256": "c40187c424e3ae17e5942416216db1af355ae129e8430459898c17ff038f3ea8",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "explorers-pirates"
+    },
+    {
+      "name": "explorers-pirates-start-svg",
+      "status": "PASS",
+      "note": "explorers-pirates: board at the start",
+      "sha256": "ae8b75320f38e1779d4fbfe390bd2d97b33ff3f9463e1be763b2dc337a2acdee",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "explorers-pirates"
+    },
+    {
+      "name": "explorers-pirates-start-r3f",
+      "status": "PASS",
+      "note": "explorers-pirates: board at the start",
+      "sha256": "4f04f6ddb8e18ead9ade826804c64377013c5557fa83ec69dd6d24136680faa7",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "explorers-pirates"
+    },
+    {
+      "name": "explorers-pirates-movement-svg",
+      "status": "PASS",
+      "note": "Movement phase: per-ship actions in the prompt",
+      "sha256": "87374bc725bbbf776ee38c11bbe17327336e7c07b3bdd34e863673876e853968",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "explorers-pirates"
+    },
+    {
+      "name": "explorers-pirates-final-svg",
+      "status": "PASS",
+      "note": "explorers-pirates: result with the final board",
+      "sha256": "c2bfa094d7e7fbaaf5cda3390b0b98ff3772a891e5d43d7a8791ae8f175a7a19",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "explorers-pirates"
+    },
+    {
+      "name": "explorers-pirates-final-r3f",
+      "status": "PASS",
+      "note": "explorers-pirates: result with the final board",
+      "sha256": "79072b792fbe478a30f4c3f668c0b6d718f187b3defdfdf6133c8720560ea6dc",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "mission": "explorers-pirates"
+    }
+  ],
+  "errors": [],
+  "curated": [
+    "land-ho-lobby.png",
+    "land-ho-start-svg.png",
+    "land-ho-start-r3f.png",
+    "land-ho-movement-svg.png",
+    "land-ho-final-svg.png",
+    "pirate-lairs-start-svg.png",
+    "pirate-lairs-start-r3f.png",
+    "fish-start-svg.png",
+    "fish-start-svg-phone.png",
+    "fish-start-r3f-phone.png",
+    "spices-start-svg.png",
+    "explorers-pirates-start-svg.png",
+    "explorers-pirates-start-r3f.png",
+    "explorers-pirates-movement-svg.png",
+    "explorers-pirates-final-r3f.png"
+  ]
+}

@@ -1,3 +1,4 @@
+import type { CommandErrorCode } from './messages.ts';
 import type { GameStats } from './stats.ts';
 
 /**
@@ -19,7 +20,15 @@ export type Terrain =
   | 'mountains'
   | 'desert'
   | 'gold'
-  | 'sea';
+  | 'sea'
+  // Traders & Barbarians scenario hexes; none of them produces resources.
+  | 'lake'
+  | 'swamp'
+  | 'oasis'
+  | 'castle'
+  | 'quarry'
+  | 'glassworks'
+  | 'keep';
 
 export const TERRAIN_RESOURCE: Partial<Record<Terrain, Resource>> = {
   forest: 'lumber',
@@ -47,33 +56,53 @@ export const PLAYER_COLORS: readonly PlayerColor[] = [
   'brown',
 ];
 
-export type DevCardType = 'knight' | 'victoryPoint' | 'roadBuilding' | 'yearOfPlenty' | 'monopoly';
-
-export type ProgressCardType =
-  | 'alchemist'
-  | 'crane'
-  | 'engineer'
-  | 'irrigation'
-  | 'mining'
+export type DevCardType =
+  | 'knight'
+  | 'victoryPoint'
   | 'roadBuilding'
-  | 'smith'
-  | 'tradeMonopoly'
+  | 'yearOfPlenty'
+  | 'monopoly'
+  // Traders & Barbarians scenario deck.
+  | 'barbarianKnight'
+  | 'swiftJourney';
+
+/**
+ * Cities & Knights progress cards, 2025 names (CK25 pp. 13–16). `printing`
+ * and `constitution` are the victory-point cards.
+ */
+export type ProgressCardType =
+  // science
+  | 'alchemy'
+  | 'crane'
+  | 'engineering'
+  | 'invention'
+  | 'irrigation'
+  | 'medicine'
+  | 'mining'
+  | 'printing'
+  | 'roadBuilding'
+  | 'smithing'
+  // trade
   | 'commercialHarbor'
-  | 'masterMerchant'
+  | 'guildDues'
+  | 'merchant'
   | 'merchantFleet'
   | 'resourceMonopoly'
-  | 'bishop'
+  | 'tradeMonopoly'
+  // politics
   | 'constitution'
-  | 'deserter'
-  | 'diplomat'
+  | 'diplomacy'
+  | 'encouragement'
+  | 'espionage'
   | 'intrigue'
-  | 'saboteur'
-  | 'spy'
-  | 'warlord'
-  | 'wedding'
-  | 'medicine'
-  | 'printing'
-  | 'science';
+  | 'sabotage'
+  | 'taxation'
+  | 'treason'
+  | 'wedding';
+
+/** A card in a player's hand: a resource or (Cities & Knights) a commodity. */
+export type CardKind = Resource | Commodity;
+export const CARD_KINDS: readonly CardKind[] = [...RESOURCES, ...COMMODITIES];
 
 export interface Harbor {
   edge: number;
@@ -89,10 +118,16 @@ export interface BoardLayout {
   harbors: Harbor[];
   /** Island id per hex index (Seafarers). */
   islands: number[];
-  /** Hex index of the robber at setup. */
+  /** Hex index of the robber at setup; -1 when it starts beside the board. */
   robber: number;
   /** Hex index of the pirate, when the profile has one. */
   pirate: number | null;
+  /**
+   * Extra production numbers per hex (a hex that also produces on another
+   * total, e.g. a Traders & Barbarians river hex holding both 2 and 12).
+   * Omitted when no hex has one.
+   */
+  extraNumbers?: { hex: number; number: number }[];
 }
 
 export interface BuildingRef {
@@ -103,6 +138,8 @@ export interface BuildingRef {
 export interface RoadRef {
   player: string;
   ship: boolean;
+  /** A bridge on a river bridge site (Traders & Barbarians); a road for routes, not for piece limits. */
+  bridge?: boolean;
 }
 
 export interface BoardState {
@@ -129,9 +166,11 @@ export interface PlayerState {
   progressCards: ProgressCardType[];
   newProgressCards: ProgressCardType[];
   playedKnights: number;
-  /** Metropolis level per city-improvement track, 0..3 (Cities & Knights). */
+  /** City-improvement level per track, 0..5 (Cities & Knights, CK25 p. 3). */
   improvements: Record<'trade' | 'politics' | 'science', number>;
+  /** City walls on the board (Cities & Knights). */
   cityWalls: number;
+  /** Defender of Catan VP tokens (Cities & Knights). */
   defenders: number;
   /** VP tokens from expansion effects that are public. */
   bonusPoints: number;
@@ -169,7 +208,7 @@ export interface TurnState {
 export interface DiscardPending {
   kind: 'discard';
   required: Record<string, number>;
-  submitted: Record<string, Resource[]>;
+  submitted: Record<string, CardKind[]>;
 }
 
 export interface MoveRobberPending {
@@ -202,13 +241,36 @@ export interface FreeRoadsPending {
   granted?: number;
 }
 
-export type Pending =
+/**
+ * A mandatory choice owned by a rules module (`modules/<id>`). `kind` is
+ * namespaced as `<module>.<step>` so it never collides with a base kind.
+ * `data` is server-only: it reaches clients solely through the module's
+ * `projectPending` hook, so hidden values can live there safely.
+ */
+export interface ModulePending {
+  kind: `${string}.${string}`;
+  module: string;
+  /**
+   * Players who still have to answer. The owning module decides whether they
+   * answer simultaneously or in the listed order. An empty list is a
+   * continuation step that the module resolves as soon as it becomes the
+   * active frame (for example "now resolve production").
+   */
+  responders: string[];
+  data: Record<string, unknown>;
+}
+
+/** One mandatory choice the table has to resolve before play continues. */
+export type PendingFrame =
   | DiscardPending
   | MoveRobberPending
   | StealPending
   | YearOfPlentyPending
   | FreeRoadsPending
-  | null;
+  | ModulePending;
+
+/** The active frame, if any. Later frames wait in `GameState.pendingQueue`. */
+export type Pending = PendingFrame | null;
 
 export type OfferStatus = 'open' | 'agreed' | 'completed' | 'withdrawn' | 'expired';
 export type OfferResponse = 'declined' | 'interested' | 'consented';
@@ -218,11 +280,17 @@ export interface Offer {
   revision: number;
   from: string;
   to: string | 'all';
-  /** Resources the proposer gives, from the proposer's perspective. */
-  give: Partial<Record<Resource, number>>;
-  /** Resources the proposer receives. */
-  want: Partial<Record<Resource, number>>;
+  /** Cards the proposer gives, from the proposer's perspective (commodities only in Cities & Knights). */
+  give: Partial<Record<CardKind, number>>;
+  /** Cards the proposer receives. */
+  want: Partial<Record<CardKind, number>>;
   windowId: number;
+  /**
+   * Non-resource goods a rules module lets players trade (for example gold
+   * coins), keyed by good id. Omitted when the offer has none.
+   */
+  giveGoods?: Record<string, number>;
+  wantGoods?: Record<string, number>;
   status: OfferStatus;
   responses: Record<string, OfferResponse>;
   agreedWith: string | null;
@@ -264,7 +332,14 @@ export interface GameState {
   devDeck: DevCardType[];
   progressDecks: Record<'trade' | 'politics' | 'science', ProgressCardType[]>;
   turn: TurnState;
+  /** The active mandatory choice (head of the pending queue). */
   pending: Pending;
+  /**
+   * Frames waiting behind `pending`, in resolution order. Omitted while empty
+   * so base snapshots keep their exact shape; snapshots written before the
+   * queue existed have no such field and load as an empty queue.
+   */
+  pendingQueue?: PendingFrame[];
   offers: Offer[];
   /** Monotonic action-window counter; offers expire when it changes. */
   windowId: number;
@@ -273,87 +348,16 @@ export interface GameState {
   /** Public log kept inside the snapshot for deterministic recovery. */
   log: GameEvent[];
   /**
+   * Server-only state owned by rules modules, keyed by module id. Absent for
+   * base games; it reaches clients only through each module's `project` hook.
+   */
+  moduleState?: Record<string, unknown>;
+  /**
    * Post-game statistics. Absent from snapshots written before statistics
    * existed; the engine then initialises them on the next transition.
    */
   stats?: GameStats;
 }
-
-/**
- * Every rejection the engine can actually produce. This array is the single
- * source of truth: the union type is derived from it so clients can assert
- * that their localisation catalogs cover all of them. A test keeps it exactly
- * in step with the `fail(...)` calls in `engine.ts`.
- */
-export const COMMAND_ERROR_CODES = [
-  'E_NOT_YOUR_TURN',
-  'E_NOT_ACTOR',
-  'E_WRONG_PHASE',
-  'E_PENDING_EFFECT',
-  'E_NO_PIECES',
-  'E_INSUFFICIENT_RESOURCES',
-  'E_BANK_EMPTY',
-  'E_DECK_EMPTY',
-  'E_ILLEGAL_TARGET',
-  'E_CARD_NOT_HELD',
-  'E_CARD_JUST_BOUGHT',
-  'E_CARD_ALREADY_PLAYED',
-  'E_PAIRED_NO_DOMESTIC_TRADE',
-  'E_NO_ELIGIBLE_VICTIM',
-  'E_ROBBER_SAME_HEX',
-  'E_INVALID_DISCARD_COUNT',
-  'E_INVALID_SELECTION',
-  'E_UNKNOWN_OFFER',
-  'E_OFFER_CLOSED',
-  'E_NOT_RECIPIENT',
-  'E_NOT_CONSENTED',
-  'E_GAME_OVER',
-  'E_INVALID_COMMAND',
-] as const;
-
-export type CommandErrorCode = (typeof COMMAND_ERROR_CODES)[number];
-
-/**
- * Every event the engine emits. Kept in step with `emit(...)` by a test that
- * scans the engine source, so a new event cannot ship without a message id.
- */
-export const RULE_EVENT_TYPES = [
-  'game.created',
-  'game.finished',
-  'game.abandoned',
-  'setup.building',
-  'setup.road',
-  'setup.startingResources',
-  'turn.started',
-  'turn.ended',
-  'turn.rolled',
-  'production.resolved',
-  'production.starved',
-  'discard.required',
-  'discard.submitted',
-  'robber.moveRequired',
-  'robber.moved',
-  'robber.stole',
-  'build.road',
-  'build.settlement',
-  'build.city',
-  'build.devCard',
-  'dev.knight',
-  'dev.roadBuilding',
-  'dev.roadBuildingFinished',
-  'dev.yearOfPlenty',
-  'dev.yearOfPlentyPick',
-  'dev.monopoly',
-  'trade.offered',
-  'trade.responded',
-  'trade.revised',
-  'trade.withdrawn',
-  'trade.expired',
-  'trade.bank',
-  'trade.completed',
-] as const;
-
-export type RuleEventType = (typeof RULE_EVENT_TYPES)[number];
 
 export interface CommandError {
   code: CommandErrorCode;

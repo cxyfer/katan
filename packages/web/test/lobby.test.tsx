@@ -215,3 +215,31 @@ describe('lobby', () => {
     expect(alert.textContent).toContain('does not exist');
   });
 });
+
+describe('room creation picker', () => {
+  it('picks expansion set → scenario → player count from the registry and sends the resolved profile', async () => {
+    const api = createFakeApi({
+      profiles: [
+        makeProfile(),
+        makeProfile({ id: 'base-paired-2025', labelKey: 'profile.base-paired-2025', playerCounts: [5, 6], paired: true, requiredBoxes: ['base', 'base-5-6'] }),
+        makeProfile({ id: 'sf-new-shores-2025', labelKey: 'profile.sf-new-shores-2025', expansions: ['seafarers'], scenario: 'new-shores', enabled: false }),
+      ],
+    });
+    renderApp(api);
+    const expansions = await screen.findByTestId('expansion-select') as HTMLSelectElement;
+    // Disabled profiles never appear; today only the base game is offered.
+    expect([...expansions.options].map((option) => option.textContent)).toEqual(['Base game only']);
+    const scenario = screen.getByTestId('scenario-select') as HTMLSelectElement;
+    expect([...scenario.options].map((option) => option.textContent)).toEqual(['Standard board']);
+    const capacity = document.getElementById('room-capacity') as HTMLSelectElement;
+    expect([...capacity.options].map((option) => option.value)).toEqual(['3', '4', '5', '6']);
+    expect(screen.getByTestId('resolved-profile').textContent).toContain('Base game, 3–4 players');
+
+    fireEvent.change(capacity, { target: { value: '6' } });
+    expect(screen.getByTestId('resolved-profile').textContent).toContain('Base game, 5–6 players (paired)');
+    expect(screen.getByTestId('resolved-profile').textContent).toContain('CATAN 5–6 player extension');
+    fireEvent.click(screen.getByTestId('create-room'));
+    await waitFor(() => expect(api.callsOf('createRoom')).toHaveLength(1));
+    expect(api.callsOf('createRoom')[0]!.args[0]).toMatchObject({ capacity: 6, profileId: 'base-paired-2025' });
+  });
+});

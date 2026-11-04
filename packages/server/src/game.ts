@@ -11,7 +11,7 @@ import {
   actionHints,
   applyCommand,
   createGame,
-  ENGINE_VERSION,
+  projectEvent,
   projectGame,
   requireProfile,
   secureRng,
@@ -141,7 +141,7 @@ export class GameCoordinator {
         id: gameId,
         room_id: room.id,
         profile_id: profile.id,
-        engine_version: ENGINE_VERSION,
+        engine_version: state.engineVersion,
         state_json: JSON.stringify(state),
         revision: 1,
         status: 'playing',
@@ -254,7 +254,7 @@ export class GameCoordinator {
             commandId: request.commandId,
           });
         }
-        return this.receiptFromRow(existing);
+        return this.receiptFromRow(existing, playerId);
       }
 
       const room = await this.repo.findRoom(game.room_id);
@@ -324,7 +324,7 @@ export class GameCoordinator {
         commandId: request.commandId,
         outcome: 'accepted',
         revision,
-        events,
+        events: events.slice(-RECEIPT_EVENT_LIMIT).map((event) => projectEvent(event, playerId)),
       };
     });
   }
@@ -379,12 +379,12 @@ export class GameCoordinator {
     error_json: string | null;
     events_json: string;
     command_id: string;
-  }): CommandReceipt {
+  }, playerId: string): CommandReceipt {
     const receipt: CommandReceipt = {
       commandId: row.command_id,
       outcome: row.outcome as 'accepted' | 'rejected',
       revision: row.revision,
-      events: JSON.parse(row.events_json) as CommandReceipt['events'],
+      events: (JSON.parse(row.events_json) as GameEvent[]).map((event) => projectEvent(event, playerId)),
     };
     if (row.error_json) receipt.error = JSON.parse(row.error_json) as Notice;
     return receipt;
