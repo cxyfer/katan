@@ -1,0 +1,91 @@
+{
+  "screenshots": [
+    "svg-settlement-drop-t120ms-1366x768-zh-Hant.png",
+    "svg-settlement-drop-t280ms-1366x768-zh-Hant.png",
+    "svg-settlement-drop-t340ms-1366x768-zh-Hant.png",
+    "svg-settlement-settled-1366x768-zh-Hant.png",
+    "svg-road-drop-t100ms-1366x768-zh-Hant.png",
+    "svg-road-drop-t300ms-1366x768-zh-Hant.png",
+    "r3f-settlement-drop-t120ms-1366x768-zh-Hant.png",
+    "r3f-settlement-drop-t340ms-1366x768-zh-Hant.png",
+    "r3f-road-drop-t100ms-1366x768-zh-Hant.png",
+    "r3f-road-drop-t300ms-1366x768-zh-Hant.png",
+    "svg-roll-hold-rolling-1366x768-en.png",
+    "svg-roll-hold-released-1366x768-en.png",
+    "r3f-roll-hold-rolling-1366x768-en.png",
+    "r3f-roll-hold-released-1366x768-en.png"
+  ],
+  "renderers": {
+    "svg": {
+      "effective": "svg",
+      "status": "idle",
+      "fallbackReason": null
+    },
+    "r3f": {
+      "effective": "r3f",
+      "status": "ready",
+      "fallbackReason": null
+    }
+  },
+  "checks": {
+    "svg-drop": {
+      "vertex": 14,
+      "edge": 16,
+      "zoom": "2.44140625",
+      "buildingClip": {
+        "x": 482,
+        "y": 138,
+        "width": 480,
+        "height": 400
+      },
+      "roadClip": {
+        "x": 404,
+        "y": 192,
+        "width": 480,
+        "height": 400
+      },
+      "consoleErrors": []
+    },
+    "r3f-drop": {
+      "vertex": 14,
+      "edge": 16,
+      "zoom": "2.44140625",
+      "buildingClip": {
+        "x": 486,
+        "y": 132,
+        "width": 480,
+        "height": 400
+      },
+      "roadClip": {
+        "x": 400,
+        "y": 198,
+        "width": 480,
+        "height": 400
+      },
+      "consoleErrors": []
+    },
+    "svg-roll-hold": {
+      "dicePhase": "rolling",
+      "held": {
+        "knight": "true",
+        "walledCity": "City · 小美航海家與群島探索隊長",
+        "wall": 1,
+        "plainCity": "City · Alex",
+        "robber": 0
+      },
+      "released": {
+        "knight": "false",
+        "walledCity": "Settlement · 小美航海家與群島探索隊長",
+        "wall": 0,
+        "plainCity": "Settlement · Alex",
+        "robber": 1
+      }
+    },
+    "r3f-roll-hold": {
+      "dicePhase": "rolling",
+      "held": {},
+      "released": {}
+    }
+  },
+  "fixture": "docs/aegis/work/2026-10-29-board-3d/evidence/fixtures-final.json"
+}
