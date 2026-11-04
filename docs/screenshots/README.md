@@ -9,9 +9,9 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 
 | Path | Contents | Captured from | Producer |
 |---|---|---|---|
-| [`current/`](current/) | Entry → home → lobby → setup → table → tools → post-game statistics, full three-player game, zh-Hant and en | `e3cf207` (2026-11-01) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
-| [`hand-cards/`](hand-cards/) | Card faces from PR #27: collapsed/expanded hand fan, card inspect and development-card closeups (desktop, phone, landscape) | `e3cf207` (2026-11-01) | [`scripts/hand-cards/capture.py`](../../scripts/hand-cards/capture.py) |
-| [`discard-prompt/`](discard-prompt/) | Discard picker from PR #33: card-based selection, per-resource caps, the waiting state for other players, and large discards at phone and short viewports | `e3cf207` (2026-11-01) | [`scripts/discard-prompt/capture.py`](../../scripts/discard-prompt/capture.py) |
+| [`current/`](current/) | Entry → home → lobby → setup → table → tools → post-game statistics, full three-player game, zh-Hant and en | `a200840` (2026-11-04) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
+| [`hand-cards/`](hand-cards/) | Card faces from PR #27: collapsed/expanded hand fan, card inspect and development-card closeups (desktop, phone, landscape) | `a200840` (2026-11-04) | [`scripts/hand-cards/capture.py`](../../scripts/hand-cards/capture.py) |
+| [`discard-prompt/`](discard-prompt/) | Discard picker from PR #33: card-based selection, per-resource caps, the waiting state for other players, and large discards at phone and short viewports | `a200840` (2026-11-04) | [`scripts/discard-prompt/capture.py`](../../scripts/discard-prompt/capture.py) |
 | [`hover-details/`](hover-details/) | Map-detail tooltips and collapsed/expanded rails, desktop and mobile | 2026-10-30 | `scripts/side-rails/verify.py`, see [work record](../aegis/work/2026-10-30-hover-details.md) |
 | [`table-ui-polish/`](table-ui-polish/) | Dice focus, hand-gain feedback, trade surface (desktop and mobile) | 2026-10-30 | `scripts/table-ui-polish/verify.py`, see [work record](../aegis/work/2026-10-30-table-ui-polish.md) |
 | [`island-diorama/`](island-diorama/README.md) | Standalone 3D island preview at several camera angles and sizes, plus game-surface checks. Captured before the #44 island remodel; see [`board-polish/`](board-polish/README.md) for the current island | 2026-10-29 | `scripts/board-3d/verify-diorama.py`, see [work record](../aegis/work/2026-10-29-island-diorama.md) |
@@ -31,7 +31,7 @@ commit named in its record.
 
 ## `current/`
 
-Captured on 2026-11-01 from `e3cf207` (the `pnpm build` output served with
+Captured on 2026-11-04 from `a200840` (the `pnpm build` output served with
 `WEB_DIST_PATH` set), with a real three-player game driven through the UI up to
 the table. The game is then finished through the same HTTP API the client uses,
 choosing legal moves from each player's own `hints`, so the result screen and
@@ -40,10 +40,29 @@ scale factor 1. The script makes no assertions; it fails on any browser runtime
 error. The two lobby captures are full page, because PR #29 added the room
 settings plaque and the lobby is now taller than one 1366×768 viewport.
 
-This set was refreshed after PR #38 to show the UI merged since then: the
-remodelled 3D island and its harbours and robber (#44), the SVG terrain emblems
-on the entry island (#43), the timeline end labels (#40) and the one-page
-landscape layout (#42).
+This set is the refresh after PR #49 (which followed #38). What changed on
+screen since #49 is:
+
+- Home (`02-home`): the create-room form has separate expansion ("擴充") and
+  scenario ("劇本") selectors, a game-order selector ("遊戲順序", join order by
+  default) with a note that a random order is drawn when the game starts, and a
+  rules line under the selectors naming the rule set, player range and required
+  product (#57, #66).
+- Lobby (`03-lobby-waiting`, `03-lobby-ready`): a computer-opponent toolbar in
+  the seats panel with a difficulty selector, an add-computer button and a
+  pencil button, which reads "座位已滿。" once the seats are full (#59, #67); a
+  game-order chip in the badge row and a game-order selector in the room
+  settings plaque (#66).
+- Trade tool (`09-trade`): a checkbox to auto-decline offers the player cannot
+  afford (#68).
+
+The other changes merged since #49 do not show in these still captures: the
+development-card drag (#71) is not captured, the bot mark in the players rail
+(#78), the startup progress (#79) and the target picker (#85) need states this
+script does not drive, and the table captures otherwise look much as they did.
+The phone-landscape table (`08-table-844x390`) is captured with a desktop
+pointer, so the floating HUD of #89, which only applies to coarse pointers, is
+not in it.
 
 | File | Locale | Viewport | State |
 |---|---|---|---|
@@ -78,7 +97,7 @@ The script needs Python Playwright with a Chromium it can launch.
 
 ## `hand-cards/`
 
-Captured on 2026-11-01 from `e3cf207` (the `pnpm build` output served with
+Captured on 2026-11-04 from `a200840` (the `pnpm build` output served with
 `WEB_DIST_PATH` set), with a real three-player game. The host keeps ending
 turns until its hand holds enough cards, then the fan is captured collapsed and
 expanded at desktop, phone and landscape sizes. The final group rewrites only
@@ -89,6 +108,13 @@ capture is at device scale factor 1.
 This set covers the card faces PR #27 introduced: full-bleed art with a corner
 glyph, a name ribbon and a use caption, shared by resource and development
 cards, plus the resource tally above the hand.
+
+Since PR #71 a development card's play button shows only once the card is opened
+(clicked, or Enter on the focused card); focus alone no longer shows it. The
+development-card closeups and the focused-card captures therefore open each
+card with Enter, and the monopoly face no longer carries a resource selector on
+the card. This set does not drive the drag or the resource picker that #71
+added.
 
 PR #34 keeps the hand dock collapsed when the player holds no cards. That state
 is in `current/04-setup-1366x768-zh-Hant.png` ("沒有資源卡。"), taken in the
@@ -107,13 +133,13 @@ first opening round, before any resources are dealt.
 | `09-hand-dense-collapsed-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | dense hand (17 resources, 5 development cards) collapsed |
 | `10-hand-dense-expanded-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | dense hand expanded, resource kinds grouped with a gap between them |
 | `11-hand-dense-inspect-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | one resource card inspected, lifted out of the fan |
-| `12-devcard-knight.png` | zh-Hant | card crop | knight face |
-| `13-devcard-roadBuilding.png` | zh-Hant | card crop | road building face |
-| `14-devcard-yearOfPlenty.png` | zh-Hant | card crop | year of plenty face |
-| `15-devcard-monopoly.png` | zh-Hant | card crop | monopoly face, with its resource choice |
+| `12-devcard-knight.png` | zh-Hant | card crop | knight face with its play button |
+| `13-devcard-roadBuilding.png` | zh-Hant | card crop | road building face with its play button |
+| `14-devcard-yearOfPlenty.png` | zh-Hant | card crop | year of plenty face with its play button |
+| `15-devcard-monopoly.png` | zh-Hant | card crop | monopoly face with its play button |
 | `16-devcard-victoryPoint.png` | zh-Hant | card crop | victory point face with the "New" tag |
-| `17-hand-dense-devcard-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | monopoly focused, with its play button and resource choice |
-| `18-hand-dense-devcard-1366x768-en.png` | en | 1366×768 | the same focused monopoly card in English |
+| `17-hand-dense-devcard-1366x768-zh-Hant.png` | zh-Hant | 1366×768 | monopoly opened, with its play button |
+| `18-hand-dense-devcard-1366x768-en.png` | en | 1366×768 | the same opened monopoly card in English |
 | `19-hand-dense-expanded-390x844-zh-Hant.png` | zh-Hant | 390×844 | dense hand expanded on a phone |
 
 Regenerate into a new, empty directory after `pnpm build`, with the service
@@ -125,7 +151,7 @@ python3 scripts/hand-cards/capture.py docs/screenshots/hand-cards
 
 ## `discard-prompt/`
 
-Captured on 2026-11-01 from `e3cf207` (the `pnpm build` output served with
+Captured on 2026-11-04 from `a200840` (the `pnpm build` output served with
 `WEB_DIST_PATH` set), with a real three-player game. Only dice and end-turn are
 driven until a 7 makes at least two players discard. The first player's picks
 are made in the UI, and the second player is still waiting to discard for the
