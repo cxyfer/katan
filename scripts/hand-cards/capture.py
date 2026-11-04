@@ -232,10 +232,11 @@ with sync_playwright() as p:
     shot(staged, 'hand-dense-inspect-1366x768-zh-Hant')
     for kind in ['knight', 'roadBuilding', 'yearOfPlenty', 'monopoly', 'victoryPoint']:
         card = staged.locator(f'.development-card--{kind}').first
-        card.locator('.development-card__inspect').focus()
+        # #71 之後「使用」按鈕只在點開檢視時出現，單純聚焦不會顯示，因此以 Enter 開啟檢視
+        card.locator('.development-card__inspect').press('Enter')
         staged.wait_for_timeout(400)
         element_shot(card, f'devcard-{kind}')
-    staged.locator('.development-card--monopoly .development-card__inspect').focus()
+    staged.locator('.development-card--monopoly .development-card__inspect').press('Enter')
     shot(staged, 'hand-dense-devcard-1366x768-zh-Hant')
     staged.locator('[data-testid=locale-switch-game]').select_option('en')
     shot(staged, 'hand-dense-devcard-1366x768-en')
