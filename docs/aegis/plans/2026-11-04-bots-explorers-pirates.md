@@ -166,7 +166,7 @@ Movement 的語意：改移另一艘船時，會自動結束目前的 active 船
 | 接受報價 | 門檻提高（`acceptMargin` 1.6） |
 | 必須保留（P9） | 遠征加 harbour 升級的主線；Fish、Spices、Full 的任務主線（§1 硬約束） |
 
-### 4.5 擱淺死結（R7、D5）
+### 4.5 擱淺死結（R7、D5；#97）
 
 1. **Bot 的規避規則**（E1 的 `route.ts` 實作，E2 起使用）
    - 路徑的終點一定是非滿格邊。BFS 狀態是（邊、剩餘 MP、是否已付過路費、金幣），轉移完全比照 `stepTargets`（movement.ts:87-97）：進入滿格邊前要剩 ≥ 2 MP，且那一步不會探索。
@@ -176,7 +176,7 @@ Movement 的語意：改移另一艘船時，會自動結束目前的 active 船
    - B-GAME 每步不變式：(a) 死結 0 次，定義為 `H.stranded` 為 true 且 active 船的 `steps` 為空；(b) `H.stranded` 為 true 時，Bot 的下一個指令必須是 active 船的 `ep.moveShip`。
    - 固定盤面（沿用 strand 構造的 A、B、C 三條滿格邊）：MP 不足時規劃器拒絕 A → B；MP 足夠穿越時接受；有羊毛時保底的脫困序列全部被接受。
    - fuzz：在中局狀態注入對手的船，讓部分邊各有 2 艘，跑完整個 Movement，斷言 (a) 與 (b)。
-3. **rules 修正（`ep-2025.2`）**：Bugfixer 修正、Fix Verifier 驗證，PR 指向 master。
+3. **rules 修正（`ep-2025.2`，#97）**：Bugfixer 修正、Fix Verifier 驗證，PR 指向 master。
    - Bot 不依 `engineVersion` 分支，只讀 `steps`、`stranded` 與 `canEndTurn`，兩種修法都不必改 Bot。**預防式**：`stepTargets` 不再列出之後沒有出口的滿格步，Bot 的規避變成多一層保險。**解套式**：沒有出口時允許 `turn.end`，保底先看 `canEndTurn`，會自動改送 `turn.end`。
    - 只調整測試：「保底無解回 null」的固定盤面固定 `engineVersion: 'ep-2025.1'`，另加一個 `ep-2025.2` 的對照案例；`server/test/explorers-pirates.test.ts:78` 的版本斷言由 R 自行更新。
    - 舊存檔維持舊行為（比照 base-2025.4，engine.ts:652、1252），所以保底無解那一列與 server 診斷都要保留。
@@ -244,7 +244,7 @@ PR 一律指向 `release/v0.4.5`，以 squash merge 合併。分支為 `feat/bot
 | E4b Spices 與 Full | `feat/bots-ep-e4b-spices`／`bots-ep-e4b` | 香料農場 crew、sack、交付；三種能力（Swift 的 MP、Fast Gold、Pirate Bonus 的追逐數字）；Full 的任務優先序。開放 spices 部件 | `EP/missions/spices.ts`；`bots/test/ep-spices.test.ts`、`ep-full.test.ts`；部件清單與快照在 E4a 合併後才交給 E4b | 230／130 | E3；開發可與 E4a 並行，合併排在 E4a 之後 | `pnpm --filter @catan/bots exec vitest run test/ep-spices.test.ts test/ep-full.test.ts test/support.test.ts` |
 | E5a server | `feat/bots-ep-e5a-server`／`bots-ep-e5a` | 「拒絕 Bot 席位」改為依 `botsCanPlay` 判斷。§4.7-5 四類案例：經 HTTP 打完一局 Land Ho!；保底接手海盜 frame；7 之後真人與 Bot 同時棄牌（多 responder）；海盜 frame 進行到 `rob` 時重啟後恢復。E&P 牌桌上限 80、`ep.*` 有節奏值 | `server/test/explorers-pirates.test.ts`（只改 66-74）；`server/test/explorers-pirates-bots.test.ts`（新檔） | 0／200 | E3；與 E4a、E4b 並行 | `pnpm --filter @catan/server exec vitest run test/explorers-pirates.test.ts test/explorers-pirates-bots.test.ts test/bots.test.ts` |
 | E5b bench 與文件 | `feat/bots-ep-e5b-bench-docs`／`bots-ep-e5b` | bench 的 E&P 設定與指標（§6.3）；§7 的文件清單；工作紀錄；INDEX | `bots/bench/**`、`docs/**`、`README.md` | 150／0（另有文件約 120 行） | E4b、E5a | `pnpm --filter @catan/bots typecheck`；`pnpm --filter @catan/bots bench 50 --profile ep-full-2025`；`BOTS_SEEDS=10 pnpm verify` |
-| R rules 修正 | `fix/rules-ep-strand`／`rules-ep-strand`（PR 指向 master） | `ep-2025.2`：修正擱淺死結並處理存檔相容（§4.5-3） | `rules/src/modules/explorersPirates/{movement,index}.ts`、`rules/src/profiles.ts:255`、rules 測試、`server/test/explorers-pirates.test.ts:78`、FIDELITY、SPEC:274 | 由 Bugfixer 估計 | 無；rc 前合併到 master | `pnpm --filter @catan/rules exec vitest run test/ep-*.test.ts` |
+| R rules 修正 | `fix/rules-ep-strand`／`rules-ep-strand`（PR 指向 master） | `ep-2025.2`：修正擱淺死結並處理存檔相容（§4.5-3、#97） | `rules/src/modules/explorersPirates/{movement,index}.ts`、`rules/src/profiles.ts:255`、rules 測試、`server/test/explorers-pirates.test.ts:78`、FIDELITY、SPEC:274 | 由 Bugfixer 估計 | 無；rc 前合併到 master | `pnpm --filter @catan/rules exec vitest run test/ep-*.test.ts` |
 
 合計 src 約 2,110 行、test 約 1,260 行（R 另計）。PR subject 範例：`✨ feat(bots): sail settlers and explore in land ho (#N)`、`✨ feat(bots): place pirates and capture lairs (#N)`。
 
@@ -386,7 +386,7 @@ E0 → E1 → E2 → E3 ┬→ E4a ──→ E4b（合併）┬→ E5b → rc
 | E4 | 金幣估值與回應（§4.7） | 1 金估為 0.4 張資源；保留 1 枚；不主動提出含金幣的報價（D6） |
 | E5 | SPEC:274 的「Land Ho! and Pirate Lairs use their printed start (fixed setup)」 | 在 E5b 澄清為「Pirate Lairs：印刷盤面、變動式放置」（C8）。這只是文件修正，不改規則 |
 | E6 | rules 修正是否為 0.4.5 的硬依賴 | 照整體策略在 rc 前合併，但不擋 Bot 發布（§11 D-3） |
-| E7 | rules 修正的方式 | 建議用預防式，較貼近 EP25 p. 10「may not end its movement there」；Bot 端兩種修法都相容 |
+| E7 | rules 修正的方式 | 建議用預防式，較貼近 EP25 p. 10「may not end its movement there」；Bot 端兩種修法都相容。各修正選項，以及已卡住存檔的處理方式，見 #97 |
 | E8 | MVP 延後的項目 | 延到之後的 patch：harbour 中轉（unload、swap）、主動提出含金幣的報價、海盜阻擋戰術、hero 最佳化、聰明換船 |
 
 ## 11. 與整體策略的差異

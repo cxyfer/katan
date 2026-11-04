@@ -43,7 +43,7 @@
    - Q3：強度，由 bench 量測並附在發布 PR。
 7. **不改 rules 的規則行為。**
    - I3 改寫為「規則行為不變」，只允許新增型別與常數匯出。
-   - 唯一例外是 E&P 的擱淺死結。這是真人也會遇到的規則缺陷，因此另開 rules 修正並升 `ep-2025.2`，不併進 Bot 工作。
+   - 唯一例外是 E&P 的擱淺死結。這是真人也會遇到的規則缺陷，因此另開 rules 修正（#97）並升 `ep-2025.2`，不併進 Bot 工作。
 8. **平台工作分兩階段落地。**
    - 合約、組合骨架、測試基礎建設與伺服器掛鉤在 0.4.1 一次做完。
    - 各擴充特有的能力延到第一個需要它的版本：海路模型隨 SF、commodity 經濟隨 C&K、goods 交易隨 T&B、子階段接管隨 E&P。
@@ -70,7 +70,7 @@
 
 - 沿用 bot 規格 §1 的範圍外清單：`hard` 難度、Bot 聊天、斷線托管、反報價、從事件紀錄推算對手手牌。
 - 4 個 `tb-event-cards*` profile：目前 `implemented: false`，日後另行規劃。在那之前，gating 必須擋下它們（§4.4）。
-- 修改 rules 的規則行為、`GameState`、事件或錯誤碼。E&P 擱淺死結的修正另案處理（§9 R7）。
+- 修改 rules 的規則行為、`GameState`、事件或錯誤碼。E&P 擱淺死結的修正另案處理（#97，§9 R7）。
 - 為 Bot 新增 hints 欄位。各研究都確認，判斷合法性所需的資訊已能從 view 與 hints 推出。選配的 hints（例如 E&P 的 `ships[].reach`）要另案決定。
 - 協定與前端邏輯的修改。前端只改一句大廳文案（§4.4）。
 
@@ -421,7 +421,7 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
    - 在 master 建立 `🔖 release: v0.4.N`，打 tag，發 GitHub Release。
    - 打 tag 前先跑 `BOTS_SEEDS=10 pnpm verify`。
 6. **跨版本重疊**：下一版的功能分支可以先從上一版的 release 分支切出。上一版以 merge commit 進入 master 後 commit SHA 不變，因此可以直接對新的 release 分支開 PR，不必 rebase。
-7. **E&P 擱淺死結的修正**：走一般的修正 PR，可以搭任何一版發布。
+7. **E&P 擱淺死結的修正**（#97）：走一般的修正 PR，可以搭任何一版發布。
 
 ## 8. Paseo 分工
 
@@ -456,7 +456,7 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
 | R4 | 每視窗的指令上限與節奏：E&P 單一座位每回合 15–30 個指令；C&K 逐 Bot 最多 16 個 | 依 profile 設定上限；模組自帶 `pacing`；bench 監測最大值 |
 | R5 | 測試時間增長，高負載下逾時 | 擴充 profile 預設 3 個種子、發布閘門 10 個；拆檔並行；timeout 120 s；在乾淨的機器上重新量測 |
 | R6 | rules 的 view 形狀漂移，或 gating 誤判 | rules 匯出型別並加形狀測試；可玩 profile 快照；未知的 part 一律不開放 |
-| R7 | E&P 擱淺死結：船擱淺在滿格邊、沒有出口，又沒有羊毛或 settler 時，`turn.end` 會被 `E_EP_EDGE_FULL` 拒絕，真人也會卡住 | 另開 rules 修正（`fix/rules-ep-strand`，指向 master），升 `ep-2025.2` 並處理存檔相容，建議在 0.4.5 的 rc 之前合併。這不是 Bot 發布的硬依賴：擱淺只會由行動者自己的移動造成，Bot 以路線規劃避開。現行保底遇到擱淺時回 null，整桌會無聲停住，所以 E&P 的保底與規劃都必須涵蓋這個情況 |
+| R7 | E&P 擱淺死結：船擱淺在滿格邊、沒有出口，又沒有羊毛或 settler 時，`turn.end` 會被 `E_EP_EDGE_FULL` 拒絕，真人也會卡住 | 另開 rules 修正（#97；分支 `fix/rules-ep-strand`，指向 master），升 `ep-2025.2` 並處理存檔相容，建議在 0.4.5 的 rc 之前合併。這不是 Bot 發布的硬依賴：擱淺只會由行動者自己的移動造成，Bot 以路線規劃避開。現行保底遇到擱淺時回 null，整桌會無聲停住，所以 E&P 的保底與規劃都必須涵蓋這個情況 |
 | R8 | E&P 或 Traders 出現死循環與長局（fixture full 3 人、種子 5 無法終局） | 進度看門狗；供應感知；依 profile 設定步數上限 |
 | R9 | 真人用含 goods 的報價佔 Bot 便宜 | 合約規則 9；各版補上估值 |
 | R10 | paired 5–6 人時 Player 2 的限制 | B-GAME 涵蓋 5、6 人；Bot 依 hints 行事 |
@@ -471,7 +471,7 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
 | D2 | 開放粒度 | 細到 profile：「模組已支援」加上 `supports(profile)`，並依 §4.4 修訂 SPEC §4.9 |
 | D3 | I3 與 rules 匯出 | 依 P8 改寫 I3，允許新增型別與常數匯出，包括抽出具名函式 |
 | D4 | 品質門檻 | Q1 與 Q2 作為發布閘門，Q3 只報告、不擋發布；Q2 的數值由各擴充計畫提出，再由使用者確認 |
-| D5 | E&P 擱淺死結 | 另開 rules 修正（`ep-2025.2`），建議在 0.4.5 的 rc 之前合併，但不擋 Bot 發布；Bot 同時以規劃避開 |
+| D5 | E&P 擱淺死結 | 另開 rules 修正（#97，`ep-2025.2`），建議在 0.4.5 的 rc 之前合併，但不擋 Bot 發布；Bot 同時以規劃避開 |
 | D6 | 含 goods 的國內交易 | MVP 只負責正確估值與回應，不主動提出；無法估值就拒絕 |
 | D7 | 測試預算 | base 維持 10 個種子；擴充 profile 預設 3 個，發布閘門 10 個；在 `RELEASING.md` 的 pre-flight 加一行 `BOTS_SEEDS=10` |
 | D8 | 節奏與上限 | 採用 §4.7 的節奏表；E&P 的每視窗上限放寬到 80 |

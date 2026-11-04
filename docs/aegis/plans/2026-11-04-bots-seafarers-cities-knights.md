@@ -31,7 +31,7 @@
 | 規則 | `ruleModules` 為 `['seafarersCitiesKnights','seafarers','citiesKnights']`（`:460`、`:489`）；`sf-ck-2025.1`；16 VP |
 | 同版交付 | SFCK-X、SFCK-P、SFCK-1、SFCK-2、SFCK-3、SFCK-G。若 CK-C 延到本版，也一併交付（§5.2） |
 | 目標 | 兩個 profile 的 3–6 人都能加入 easy 與 standard，並通過 Q1 與 Q2。兩種難度都會造船登島、招募並啟動騎士、改良城市；standard 會追擊海盜。每個 frame 與強制動作都有保底 |
-| 非目標 | 策略 §1.3 全部；SF 與 C&K 各自已規劃的內容（只引用，不重寫）；`sfck-sim.ts` 計數問題（§10 D-SC10）；海盜騷擾、騎士封鎖航線等進階戰術（延到 0.4.x 調參） |
+| 非目標 | 策略 §1.3 全部；SF 與 C&K 各自已規劃的內容（只引用，不重寫）；`sfck-sim.ts` 計數問題（#98，§10 D-SC10）；海盜騷擾、騎士封鎖航線等進階戰術（延到 0.4.x 調參） |
 
 ## 2. 現況與落差
 
@@ -407,7 +407,7 @@ mixed 每局 0.6–1.0 s（load 0.5–1.2）。預設 3 種子是 12 局 B-GAME�
 | D-SC7 | easy | 造船、防禦、改良；`either` 時只移強盜；不追擊、不移船；套用小島空點罰分 |
 | D-SC8 | 節奏與上限 | `knight.chasePirate` 900 ms；上限維持 40 |
 | D-SC9 | rules 匯出（SFCK-X） | 同意（P8） |
-| D-SC10 | `packages/rules/test/sfck-sim.ts:144-151` 從 `result.state.log` 計數，受 200 筆上限影響（`engine.ts:123`、`:251`），長局會少算 | 另開 issue，走一般 rules 測試修正（例如 `fix/rules-sfck-sim-counters`），**不併入本版切片**；Bot 的 `mechanics` 本來就逐步累計 `events` |
+| D-SC10 | `packages/rules/test/sfck-sim.ts:144-151` 從 `result.state.log` 計數，受 200 筆上限影響（`engine.ts:123`、`:251`），長局會少算 | 已提報為 #98，走一般 rules 測試修正（例如 `fix/rules-sfck-sim-counters`），**不併入本版切片**；Bot 的 `mechanics` 本來就逐步累計 `events` |
 | D-SC11 | CK-C 的處理 | 依 C&K 計畫 D-CK7 的判定點。移到本版時，依 §5.2 並行；再延誤就不帶它發布 |
 | D-SC12 | `moveRobber` 投影補 pirate 旗標 | 不補，只依賴 `bandit` hint（P8） |
 
