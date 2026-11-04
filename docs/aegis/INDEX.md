@@ -5,6 +5,19 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-04 | plan | docs/aegis/plans/2026-11-04-expansion-bots-roadmap.md | Expansion bots roadmap: BotModule platform, per-profile gating, quality gates and the 0.4.1–0.4.5 release plan |
+| 2026-11-04 | plan | docs/aegis/plans/2026-11-04-bots-seafarers.md | Seafarers bots (v0.4.1): sea model, ship duties, island plans, gold and bandit answers |
+| 2026-11-04 | plan | docs/aegis/plans/2026-11-04-bots-cities-knights.md | Cities & Knights bots (v0.4.2): commodity economy, frame duties, city improvements, knights and progress cards |
+| 2026-11-04 | plan | docs/aegis/plans/2026-11-04-bots-seafarers-cities-knights.md | Seafarers + Cities & Knights bots (v0.4.3): bandit target fold, rescore hook, pirate chase and combined setup |
+| 2026-11-04 | plan | docs/aegis/plans/2026-11-04-bots-traders-barbarians.md | Traders & Barbarians bots (v0.4.4): part-based gating, frame duties, gold trades and per-scenario strategies |
+| 2026-11-04 | plan | docs/aegis/plans/2026-11-04-bots-explorers-pirates.md | Explorers & Pirates bots (v0.4.5): variable setup, movement sub-phase, missions, pirate frame and strand avoidance |
+| 2026-11-04 | work | docs/aegis/work/2026-11-04-bots-platform-research.md | Expansion bots research, round 1: shared platform hooks, per-profile gating, test harness and server changes |
+| 2026-11-04 | work | docs/aegis/work/2026-11-04-bots-seafarers-research.md | Seafarers bots research, round 1: base bot on New Shores, sea model and fallback fixtures |
+| 2026-11-04 | work | docs/aegis/work/2026-11-04-bots-cities-knights-research.md | Cities & Knights bots research, round 1: frame stalls, commodity economy and the naive prototype |
+| 2026-11-04 | work | docs/aegis/work/2026-11-04-bots-seafarers-cities-knights-research.md | Seafarers + Cities & Knights bots research, round 1: robber or pirate, knight blocking and setup conflicts |
+| 2026-11-04 | work | docs/aegis/work/2026-11-04-bots-traders-barbarians-research.md | Traders & Barbarians bots research, round 1: per-part interfaces, fallback table and prototype runs |
+| 2026-11-04 | work | docs/aegis/work/2026-11-04-bots-explorers-pirates-research.md | Explorers & Pirates bots research, round 1: variable setup, movement commands and the stranded-ship deadlock |
+| 2026-11-04 | work | docs/aegis/work/2026-11-04-bots-plans-review.md | Expansion bots plans review: cross-document consistency and 48 code-reference checks |
 | 2026-11-02 | work | docs/aegis/work/2026-11-02-explorers-pirates.md | Explorers & Pirates (P6): CN3085 sources, mission maps, rules and evidence |
 | 2026-11-03 | artifact | scripts/explorers-pirates/capture.py | Live browser run of every E&P mission to its result, P1 commands through the UI in both renderers |
 | 2026-11-03 | artifact | scripts/explorers-pirates/bot.mjs | Fixture-bot decision server for the E&P capture harness |
