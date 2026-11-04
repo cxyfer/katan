@@ -24,10 +24,26 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`board-polish/`](board-polish/README.md) | Before/after 3D board: desktop fit, close-up and phone, the standalone island preview, the 30-hex island and low quality | 2026-10-31 | [`scripts/board-polish/capture.py`](../../scripts/board-polish/capture.py) |
 | [`harbor-hover/`](harbor-hover/README.md) | Harbour tooltip over the far end of the 3D pier and boat, plus the SVG token, desktop and phone | 2026-11-01 | [`scripts/harbor-hover/verify.py`](../../scripts/harbor-hover/verify.py), see [work record](../aegis/work/2026-11-01-harbor-hover.md) |
 | [`expansion-platform/`](expansion-platform/README.md) | Base 19/30-hex boards (byte-identical before/after) and the sample archipelago in SVG and 3D, desktop and phone, plus `?preview=archipelago` | 2026-11-01 | [`scripts/expansion-platform/capture.py`](../../scripts/expansion-platform/capture.py), see [work record](../aegis/work/2026-11-01-expansion-platform.md) |
+| [`bot-opponents/`](bot-opponents/) | Computer opponents from PRs #59 and #67: create form, add-bot dialog, lobby with bots and full seats, a bot turn at the table, desktop and phone, both locales | 2026-11-02 | [`scripts/bot-opponents/capture.py`](../../scripts/bot-opponents/capture.py) |
+| [`trade-auto-decline/`](trade-auto-decline/) | Auto-decline for unaffordable offers from PR #68, desktop and phone | 2026-11-02 | [`scripts/trade-auto-decline/verify.py`](../../scripts/trade-auto-decline/verify.py) |
+| [`seafarers/`](seafarers/README.md) | Seafarers, Heading for New Shores (PR #63): ships, pirate, gold fields and island bonus | 2026-11-03 | [`scripts/seafarers/capture.py`](../../scripts/seafarers/capture.py) |
+| [`cities-knights/`](cities-knights/README.md) | Cities & Knights (PRs #69, #76): knights, barbarians, commodities, city improvements and progress cards | 2026-11-03 | [`scripts/cities-knights/capture.py`](../../scripts/cities-knights/capture.py) |
+| [`seafarers-cities-knights/`](seafarers-cities-knights/README.md) | Seafarers and Cities & Knights combined (PR #81) | 2026-11-03 | [`scripts/seafarers-cities-knights/capture.py`](../../scripts/seafarers-cities-knights/capture.py) |
+| [`traders-barbarians/`](traders-barbarians/README.md) | Traders & Barbarians scenarios and base variants (PR #62) | 2026-11-03 | [`scripts/traders-barbarians/capture.py`](../../scripts/traders-barbarians/capture.py) |
+| [`explorers-pirates/`](explorers-pirates/README.md) | Explorers & Pirates missions (PR #87) | 2026-11-03 | [`scripts/explorers-pirates/capture.py`](../../scripts/explorers-pirates/capture.py) |
+| [`lobby-order-bots/`](lobby-order-bots/README.md) | Random game order from PR #66 (create form, lobby before the draw, order saved) and the bot mark beside the avatar in the players rail from PR #78, desktop and phone | `a200840` (2026-11-04) | [`scripts/lobby-order-bots/capture.py`](../../scripts/lobby-order-bots/capture.py) |
+| [`dev-card-drag/`](dev-card-drag/README.md) | Development cards dragged onto the table from PR #71, and the monopoly and year-of-plenty pickers, desktop, phone and landscape | `a200840` (2026-11-04) | [`scripts/dev-card-drag/capture.py`](../../scripts/dev-card-drag/capture.py) |
+| [`boot-progress/`](boot-progress/README.md) | Step-by-step startup progress from PR #79: each pending step, the slow hint and the failed states, desktop and phone | `a200840` (2026-11-04) | [`scripts/boot-progress/capture.py`](../../scripts/boot-progress/capture.py) |
+| [`board-motion/`](board-motion/README.md) | Key frames of roads and buildings dropping from the sky (PR #80) and the board held during the roll presentation (PR #91), SVG and 3D | `a200840` (2026-11-04) | [`scripts/board-motion/capture.py`](../../scripts/board-motion/capture.py) |
+| [`target-picker/`](target-picker/README.md) | Compact target picker from PR #85: target list, picker for overlapping targets and dismissal by an outside click, desktop and phone | `a200840` (2026-11-04) | [`scripts/target-picker/capture.py`](../../scripts/target-picker/capture.py) |
+| [`compact-hud/`](compact-hud/README.md) | Floating HUD on short landscape phones from PR #89 (844×390, 740×360, 568×320, touch) and the save state kept visible in that layout from PR #90 | `a200840` (2026-11-04) | [`scripts/compact-hud/capture.py`](../../scripts/compact-hud/capture.py) |
+| [`dialog-portal/`](dialog-portal/README.md) | Trade settle dialog rendered through a portal instead of clipped by the table panel (PR #92), desktop and short landscape | `a200840` (2026-11-04) | [`scripts/dialog-portal/capture.py`](../../scripts/dialog-portal/capture.py) |
 
-`current/` and `hand-cards/` reflect the table as it is now. The other sets are
-focused feature reviews kept with their work records; each was captured at the
-commit named in its record.
+`current/`, `hand-cards/` and `discard-prompt/` reflect the table as it is
+now. The other sets are focused feature reviews kept with their work records;
+each was captured at the commit named in its record. The sets captured from
+`a200840` cover UI merged after the #49 refresh that had no checked-in
+captures.
 
 ## `current/`
 
