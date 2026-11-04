@@ -374,6 +374,11 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
 
 - **替代 A：T&B 移到 C&K 之前。** 6 個 T&B profile 成本很低，能較早擴大覆蓋；代價是 SF+CK 與 C&K 之間的距離被拉開。
 - **替代 B：0.4.1 一併附上 T&B 的 FR、H、FR+H。** 這三個 profile 幾乎零成本，只需要讀 `robberHexes` 並加上 Strongest Ports 估值，還能提早驗證 part 判定；但會違反「一版一個擴充」。
+- **A 與 B 的共同前提：`robberTargets` 的 fold 要跟著提前。**
+  - T&B 計畫假設 fold 已由 0.4.3 的 SFCK-P 交付（T&B 計畫 §4.3、§11-2）。
+  - 沒有 fold 時，Bot 的強盜候選沿用 base 預設：不看保護，也會排除目前所在格（`packages/bots/src/heuristic.ts:195-200`、`packages/bots/src/fallback.ts:19-25`）。FR 在其他陸地格都受保護（碰到公開分數不超過 2 的玩家的建築）時，會把強盜送到沙漠，即使它已經在那裡；強盜已在沙漠時，唯一的合法格就是目前所在格，Bot 會沒有合法目標。
+  - 採用 A 時，fold 改由 T&B 的 S1 實作。採用 B 時，fold 改由 0.4.1 的 PL-1 實作，T&B 計畫 S1 的 B-POLICY 放寬也要一起提前。
+  - 提前的 fold 直接採用 §4.2 的最終形式（元素為 `number | null`、初值為盜賊預設）。SFCK-P 改為只確認它涵蓋海盜目標，§4.9 與 §5 的對應列一併調整。
 - **退路**：每一版都可以只放出已通過 Q1 與 Q2 的 profile 子集。
   - C&K：CK-C（互動進度卡）若在 rc.1 就緒時還沒通過審查，就移到 0.4.3 與 SF+CK 一起發布，因為兩者共用進度卡策略。
   - T&B：BA 或 Traders 可以晚一版開放。

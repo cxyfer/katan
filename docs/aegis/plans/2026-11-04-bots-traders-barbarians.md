@@ -190,7 +190,7 @@ supports(profile) {
 | 讀取 `economy.awards`，`longestRoad:false` 時不再推動最長道路計畫 | `B/economy.ts:259-281` |
 | `hexPips` 加上 `extraNumbers`；道路存量不算橋 | `B/board.ts:89,139-141` |
 | 依 `trade.goods` 與 `goodValue` 做 goods 估值；補上規則 9 對提議者 gold 的檢查 | `B/trade.ts:38-57` |
-| `robberTargets` 的 fold 已由 0.4.3 的 SFCK-P 實作；S1 只確認 FR 回傳目前所在格時，策略與保底都能用（§11-2） | `B/heuristic.ts:195-200`、`B/fallback.ts:19-25` |
+| `robberTargets` 的 fold 已由 0.4.3 的 SFCK-P 實作；S1 只確認 FR 回傳目前所在格時，策略與保底都能用（§11-2）。若採用策略 §5.2 的替代方案 A 或 B，fold 要提前到更早的版本，依策略 §4.2 的最終形式實作（A 由 S1 實作，B 由 0.4.1 的 PL-1 實作） | `B/heuristic.ts:195-200`、`B/fallback.ts:19-25` |
 | B-POLICY 的「不放自己的格」改為只在還有其他合法格時才檢查 | `packages/bots/test/policy.test.ts:57-60` |
 
 S1 的驗收是 golden replay：base 3–6 人、每個人數 10 個種子，指令序列與改動前逐一相同（沿用策略 PL-1 的作法）。
