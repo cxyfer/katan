@@ -3,11 +3,12 @@
  *
  * The original topology/layout digests and prior rule behavior were recorded
  * from master's own engine (master @ 0815c76, base-2025.3), not from the
- * expansion branch. Snapshot and game pins below track base-2025.4: the new
- * engineVersion changes fresh snapshots, and the approved Road Building grant
- * changes simulated games that play that card. Topology indices and base
- * layouts remain pinned to the original baseline; fresh snapshots and whole
- * games are pinned to the active base rule version. Re-record those sections
+ * expansion branch. Snapshot and the five original game pins below track the
+ * base-2025.4 engineVersion string; those five simulations do not play a
+ * Road Building card. The additional 3-player variable seed 7 simulation
+ * plays the card and pins the approved grant behavior. Topology indices and
+ * base layouts remain pinned to the original baseline; fresh snapshots and
+ * whole games are pinned to the active base rule version. Re-record those
  * with `RECORD_BASE_PINS=1 pnpm --filter @catan/rules exec vitest run
  * test/base-regression.test.ts --silent=false` after an approved base change.
  */
@@ -107,6 +108,7 @@ describe('base regression pins', () => {
     for (const seed of [11, 29, 47]) out[`seed:${seed}`] = digest(simulateGame(seed));
     out['paired:6:variable:5'] = digest(simulateGame(5, 6000, { players: 6, profileId: 'base-paired-2025', mode: 'variable' }));
     out['base:3:variable:8'] = digest(simulateGame(8, 6000, { players: 3, mode: 'variable' }));
+    out['base:3:variable:7'] = digest(simulateGame(7, 6000, { players: 3, mode: 'variable' }));
     expectPinned('games', out);
   }, 30_000);
 });
@@ -142,6 +144,7 @@ const PINNED = {
   },
   games: {
     'base:3:variable:8': '33c256753d9e12bf',
+    'base:3:variable:7': 'd529040165f6c97b',
     'paired:6:variable:5': '0b1c153ea2fc8a37',
     'seed:11': '22733e2f11b36e87',
     'seed:29': '37124e1c969c3926',

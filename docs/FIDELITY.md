@@ -76,7 +76,6 @@ are not migrated. The platform adds no rule: base topology indices and
 fixed/variable layouts retain their baseline pins, while fresh snapshots and
 five whole simulated base/paired games are pinned against the active
 `base-2025.4` engine in `packages/rules/test/base-regression.test.ts`.
-(`packages/rules/test/base-regression.test.ts`).
 
 ## Fixture → evidence map
 
@@ -86,7 +85,7 @@ five whole simulated base/paired games are pinned against the active
 | R-B02 | two independent dice, settlement 1 / city 2, finite supply, robber block, bank shortage rule | `packages/rules/test/production.test.ts` (10 cases), `packages/rules/test/costs.test.ts` (spent cards return to the bank) | covered |
 | R-B03 | 7 → half rounded down, multi-responder discards, no trade before resolution, empty victim, no multiplied theft, desert, knight does not trigger discards | `packages/rules/test/seven.test.ts` (10 cases) | covered |
 | R-B04 | domestic exchange legality, bank 4:1/3:1/2:1, stale/expired offers, consent, revision invalidates consent, one settlement | `packages/rules/test/trade.test.ts` (13 cases) | covered |
-| R-B05 | cannot play a card the turn it is bought, one per turn, pre-roll knight, monopoly / year of plenty / road building, VP card victory, empty deck | `packages/rules/test/devcards.test.ts` (11 cases), `packages/rules/test/rule-gaps.test.ts` (older card after a same-type purchase; Road Building capped by road pieces; Year of Plenty capped by the bank) | covered |
+| R-B05 | cannot play a card the turn it is bought, one per turn, pre-roll knight, monopoly / year of plenty / road building, VP card victory, empty deck | `packages/rules/test/devcards.test.ts` (11 cases), `packages/rules/test/rule-gaps.test.ts` (older card after a same-type purchase; Road Building grants both roads when the first opens a second edge, has no grant without a legal edge, ends early when no edge remains, and is capped by road pieces; Year of Plenty capped by the bank) | covered |
 | R-B06 | Longest Road ≥ 5 along a trail, branches, loops, opponent cuts, incumbent tie retention, award reassignment, Largest Army transfer | `packages/rules/test/awards.test.ts` (10 cases), `packages/rules/test/rule-gaps.test.ts` (roads stop at an opponent building and continue from the player's own side) | covered; see the tie-break note below |
 | R-B07 | win at own turn start, no win from an outside-turn gain, several VP cards together, award loss before the next turn, terminal state rejects commands | `packages/rules/test/victory.test.ts` (7 cases) | covered |
 | R-VIS | per-player projection, hidden hands/cards/deck, private event parameters, room-discovery metadata | `packages/rules/test/privacy.test.ts` (7), `packages/server/test/game.test.ts` (HTTP) | covered |
@@ -112,7 +111,7 @@ five whole simulated base/paired games are pinned against the active
 | R-EP missions | lair capture by 3 crews (gold and track for each, hero roll-off, token sets the number); tracks with printed values and the bonus tile; fish roll, hauls, Council delivery, pirate scares a haul; spice farm crew, ability and one sack per player (EP25 pp. 13–14) | R-EP-19…24; R-EP-39…45, R-EP-52…56 | covered; lair numbers provisional (see below) |
 | R-EP games / VIS | 10 simulated games (5 missions × 3/4 players) reach the target and conserve 19 per resource, 148 coins and 6 hauls; pieces within limits; projection public only (fog is public, unexplored contents are drawn at reveal), the pirate's stolen card private; each reveal pool equals the printed region list minus the draws named in public events (the view shows counts only); every draw is stored in the snapshot and its event, and a restored game draws nothing again; no event names a hex's identity before its `ep.explored`; receipts idempotent through the service; bots refused | `ep-sim.test.ts` (10), `ep-privacy.test.ts` (12), `packages/server/test/explorers-pirates.test.ts` (4: also fog, pools and a pirate frame across a restart) | covered |
 | R-EP client | E&P build actions, prompt (setup, pirate victim, coins, settler/crew holders, ship rebuild, extra move, per-ship Movement actions), ship moves carrying the ship id, fog, ships with cargo, harbours, sites and the pirate in SVG and 3D, setup labels, help, cues; browser run of every mission to its result (`report.json` lists the commands executed and reached per renderer) | `packages/web/test/explorers-pirates.test.tsx` (10), `scripts/explorers-pirates/capture.py` | covered in headless Chromium; no human playtest |
-| R-SF routes | Road Building with road + ship and with two ships; its ship contribution is capped by remaining ship pieces, including the standalone Seafarers development card: with one ship piece and no legal road, the grant is now 1 rather than 2; actual placements are unchanged and old pending snapshots are normalized to the same cap; Longest Trade Route joins roads and ships only at an own building; opponent buildings interrupt; trails/cycles as for roads (SF25 pp. 2–3, SF-FAQ 1/16) | `seafarers-rules.test.ts` (5); `seafarers-clauses.test.ts`: Road Building before the roll with a ship, free ship not movable that turn, ship supply exhausted mid-effect, ship loop length, road and ship meeting at an opponent building | covered |
+| R-SF routes | Road Building with road + ship and with two ships; in `sf-2025.2`, a legal ship target grants up to two remaining ships even when the first ship opens the second target, while `sf-2025.1` keeps the single-target grant; mixed routes and one remaining ship are capped, and pending snapshots use the same versioned capacity; Longest Trade Route joins roads and ships only at an own building; opponent buildings interrupt; trails/cycles as for roads (SF25 pp. 2–3, SF-FAQ 1/16) | `seafarers-rules.test.ts` (5); `seafarers-clauses.test.ts`: standalone ship grant across `sf-2025.1`/`.2`, mixed road + ship, one ship remaining, Road Building before the roll, free ship not movable that turn, ship supply exhausted mid-effect, ship loop length, road and ship meeting at an opponent building | covered |
 | R-SF islands / victory | +2 per player per small island (also when others settled first), grouped 5–6 islands count once, no bonus for setup; 14 VP on the own turn (SF25 p. 4, SF56-25 p. 4) | `seafarers-rules.test.ts` (5) | covered |
 | R-SF paired | Player 2 builds and moves a ship in their own window, no domestic trade; Player 2 moves after Player 1 moved; not a ship built in their own window; Player 2 wins at 14 in their window; a Player 1 win ends the turn before Player 2 (SF56-25 pp. 2–3) | `seafarers-rules.test.ts` paired block (1), `seafarers-clauses.test.ts` (4) | covered |
 | R-SF games / VIS | simulated 3/4/5/6-player games finish with a 14-point winner, conserve the supply and keep pieces legal; module projection public only, pirate theft private | `seafarers-sim.test.ts` (5), `seafarers-rules.test.ts` privacy (1), `packages/server/test/seafarers.test.ts` (2) | covered |
@@ -574,9 +573,10 @@ These are recorded rather than hidden. None of them is presented as verified.
     at least once a minute and removes idle pre-game lobbies only; presence is
     decided by live sockets, so a lobby whose members never opened a socket is
     reclaimed once its TTL elapses. No test waits out the real interval.
-11. **Rules-version dispatch is single-version.** The engine version is stored
-    per game and unknown versions are refused at the schema level, but only one
-    engine implementation ships; historical-version dispatch is not implemented.
+11. **Rules-version dispatch remains single implementation.** The engine version
+    is stored per game and unknown versions are refused at the schema level; the
+    shipped engine still has one implementation, while the Road Building grant
+    is explicitly dispatched by the stored version.
     The server does not yet compare `games.engine_version` before executing a
     command. The maintainer explicitly approved running unfinished
     `base-2025.1` and `base-2025.2` games on `base-2025.3` on 2026-11-02
@@ -594,13 +594,13 @@ These are recorded rather than hidden. None of them is presented as verified.
     only); the 5–6 board is always variable as SF56-25 prescribes. No human
     playtest of the expansion has been run (U-07/U-08), and the gold field
     keeps the platform's generic gold tile art.
-13. **Road Building grant at play time (fixed).** Since `base-2025.4`,
+13. **Road Building grant at play time (versioned).** Since `base-2025.4`,
     `sf-2025.2` and `tb-2025.2`, the development card grants up to two free
     pieces when at least one legal route is available, capped by remaining
     pieces; after each placement the effect checks the updated legal targets.
-    In Seafarers this includes the available ship supply. New games on those
-    versions therefore receive the second piece when the first placement
-    opens another site. Existing `base-2025.1`–`base-2025.3`, `sf-2025.1`
+    In Seafarers this includes the available ship supply, so `sf-2025.2` new
+    games receive the second piece when the first placement opens another site.
+    Existing `base-2025.1`–`base-2025.3`, `sf-2025.1`
     and `tb-2025.1` games are not migrated and retain the grant behavior
     associated with their stored version. The separate C&K progress card
     already grants two roads when at least one legal road exists, capped by

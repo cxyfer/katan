@@ -629,7 +629,8 @@ const PENDING_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>([
 export function normalizedPending(state: GameState): Pending | null {
   const pending = state.pending;
   if (pending?.kind === 'freeRoads') {
-    const remaining = Math.max(0, Math.min(pending.remaining, freeRouteCapacity(state, pending.actor)));
+    const capacity = pendingRouteCapacity(state, pending.actor);
+    const remaining = Math.max(0, Math.min(pending.remaining, capacity));
     if (remaining <= 0) return null;
     if (remaining === pending.remaining) return pending;
     const placed = (pending.granted ?? 2) - pending.remaining;
@@ -642,6 +643,15 @@ export function normalizedPending(state: GameState): Pending | null {
     return remaining === pending.remaining ? pending : { ...pending, remaining };
   }
   return pending;
+}
+
+/** Pending grants use the matching card owner: C&K progress cards retain their
+ * existing shared capacity, while base/SF/T&B development cards dispatch by
+ * the stored Road Building version. */
+function pendingRouteCapacity(state: GameState, playerId: string): number {
+  if (grantsBothRoads(state.engineVersion)) return roadBuildingGrantCapacity(state, playerId);
+  if (modulesOf(state).some((module) => module.id === 'citiesKnights')) return freeRouteCapacity(state, playerId);
+  return freeRouteTargetCount(state, playerId);
 }
 
 /**
@@ -1237,6 +1247,14 @@ function freeRouteTargetCount(state: GameState, playerId: string): number {
   return roads + moduleFreeRouteTargets(state, playerId);
 }
 
+/** Road Building's versioned grant: a legal route grants up to two pieces. */
+function roadBuildingGrantCapacity(state: GameState, playerId: string): number {
+  if (!grantsBothRoads(state.engineVersion)) return freeRouteTargetCount(state, playerId);
+  const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, playerId);
+  const roads = legalRoadEdges(state, playerId).length > 0 ? Math.max(0, pieces) : 0;
+  return roads + moduleFreeRouteTargets(state, playerId, { grantAllAvailable: true });
+}
+
 /** C&K 授予與快照正規化共用容量；第一條道路可以打開後續地點。 */
 function freeRouteCapacity(state: GameState, playerId: string): number {
   const pieces = requireProfile(state.profileId).pieces.roads - countRoads(state, playerId);
@@ -1244,18 +1262,22 @@ function freeRouteCapacity(state: GameState, playerId: string): number {
   return roads + moduleFreeRouteTargets(state, playerId);
 }
 
-/** Profiles approved for the Road Building grant introduced by base-2025.4. */
+/** Engine versions approved for the Road Building grant introduced by PR #82. */
 function grantsBothRoads(engineVersion: string): boolean {
   return ['base-2025.4', 'sf-2025.2', 'tb-2025.2'].includes(engineVersion);
 }
 
 /** Free placements the profile's modules offer (ships), supply included. */
-function moduleFreeRouteTargets(state: GameState, playerId: string): number {
+function moduleFreeRouteTargets(
+  state: GameState,
+  playerId: string,
+  options?: { grantAllAvailable?: boolean },
+): number {
   const modules = modulesOf(state);
   if (modules.length === 0) return 0;
   const ctx = viewContext(state);
   let count = 0;
-  for (const module of modules) count += module.freeRouteTargets?.(state, playerId, ctx) ?? 0;
+  for (const module of modules) count += module.freeRouteTargets?.(state, playerId, ctx, options) ?? 0;
   return count;
 }
 
@@ -1469,9 +1491,7 @@ function playRoadBuilding(state: GameState, actorId: string): CommandOutcome {
   playerStats(state, actorId).devCardsPlayed.roadBuilding += 1;
   emit(state, 'dev.roadBuilding', { playerId: actorId });
   // 新版只要求打出時至少有一條合法道路，之後每次放置再檢查目標。
-  const capacity = grantsBothRoads(state.engineVersion)
-    ? freeRouteCapacity(state, actorId)
-    : freeRouteTargetCount(state, actorId);
+  const capacity = roadBuildingGrantCapacity(state, actorId);
   const remaining = Math.min(2, capacity);
   if (remaining > 0) {
     enqueuePending(state, { kind: 'freeRoads', actor: actorId, remaining, granted: remaining });
