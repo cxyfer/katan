@@ -74,7 +74,7 @@ Seafarers and Traders & Barbarians games use `sf-2025.2` and `tb-2025.2` for
 the Road Building grant fix. Existing games keep their recorded versions and
 are not migrated. The platform adds no rule: base topology indices and
 fixed/variable layouts retain their baseline pins, while fresh snapshots and
-five whole simulated base/paired games are pinned against the active
+six whole simulated base/paired games are pinned against the active
 `base-2025.4` engine in `packages/rules/test/base-regression.test.ts`.
 
 ## Fixture → evidence map
