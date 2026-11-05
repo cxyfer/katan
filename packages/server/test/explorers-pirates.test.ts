@@ -155,6 +155,8 @@ describe('Explorers & Pirates over the API', () => {
   });
 
   // #97：未完成的 ep-2025.1 卡死存檔在重啟後以 ep-2025.2 的行為救援，不重做事件。
+  // 此案例以 `repo.db.run` 直接改寫 SQLite 的 engine_version，並在同一個 SQLite 檔上重啟，
+  // 因此只跑 SQLite；PostgreSQL 尚未覆蓋，與上一個重啟案例的 skipIf 理由相同。
   it.skipIf(!!process.env.TEST_POSTGRES_URL)('rescues a persisted ep-2025.1 stranded ship across restarts (#97)', async () => {
     const local = await startHarness();
     const sqlitePath = join(local.dataDir, 'test.sqlite');
@@ -204,8 +206,15 @@ describe('Explorers & Pirates over the API', () => {
       let base = `http://127.0.0.1:${running.port}`;
       const resumed = () => Object.assign(createClient(base), { cookie: actor.cookie, playerId: actor.playerId });
       type StrandView = EpSnapshot & {
-        view: { seq: number; hints: { canEndTurn: boolean; modules: { explorersPirates: { stranded: boolean } } } };
+        view: {
+          seq: number;
+          hints: { canEndTurn: boolean; modules: { explorersPirates: { stranded: boolean } } };
+          modules: { explorersPirates: { ships: { id: string; edge: number }[] } };
+        };
       };
+      // 公開投影中，救援後的滿格邊上有幾艘船。
+      const shipsAtStrand = (snapshot: StrandView) =>
+        snapshot.view.modules.explorersPirates.ships.filter((entry) => entry.edge === ship.edge).map((entry) => entry.id).sort();
       const before = resumed().expectOk<StrandView>(await resumed().get(`/api/games/${gameId}`));
       expect(before.revision).toBe(moving.revision);
       expect(before.view.engineVersion).toBe('ep-2025.1');
@@ -227,6 +236,8 @@ describe('Explorers & Pirates over the API', () => {
       expect(afterSlot.ships.filter((entry) => entry.edge === ship.edge)).toHaveLength(3);
       const events = await running.repo.listEvents(gameId, 0, 10_000);
       const view = resumed().expectOk<StrandView>(await resumed().get(`/api/games/${gameId}`));
+      expect(shipsAtStrand(view)).toHaveLength(3);
+      expect(shipsAtStrand(view)).toContain(ship.id);
       await running.close();
       running = null;
 
@@ -236,6 +247,7 @@ describe('Explorers & Pirates over the API', () => {
       const again = resumed().expectOk<StrandView>(await resumed().get(`/api/games/${gameId}`));
       expect(again.revision).toBe(ended.revision);
       expect(again.view.seq).toBe(view.view.seq);
+      expect(shipsAtStrand(again)).toEqual(shipsAtStrand(view));
       expect(resumed().expectOk<Receipt>(await resumed().post(`/api/games/${gameId}/commands`, endRequest))).toEqual(ended);
       expect((await running.repo.findGame(gameId))!.state_json).toBe(rescued.state_json);
       expect(await running.repo.listEvents(gameId, 0, 10_000)).toEqual(events);
