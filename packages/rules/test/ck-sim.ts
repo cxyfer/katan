@@ -46,8 +46,10 @@ export type AnyCommand = Command | { type: string; [field: string]: unknown };
  * Extension points for combined profiles (Seafarers + C&K): another game
  * factory, answers for frames this player does not know, setup moves and
  * extra action tries (ships, the pirate). Each hook may return `null` /
- * `undefined` to fall back to the C&K behaviour. `onEvent` sees every event
- * of every accepted step, because the stored log keeps only the last 200.
+ * `undefined` to fall back to the C&K behaviour. `onEvent` sees the events
+ * each accepted step adds, so a counter need not read the stored log at the
+ * end (it keeps only the last 200). Like `count`, it reads them from the new
+ * state's log, so it assumes one step adds fewer than 200 events.
  */
 export interface CkSimOptions {
   game?: (players: 3 | 4 | 5 | 6, seed: number) => GameState;
