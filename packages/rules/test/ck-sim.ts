@@ -6,7 +6,7 @@
 
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
-import { COMMODITIES, RESOURCES, type CardKind, type Commodity, type GameState, type ModulePending, type Resource } from '../src/types.ts';
+import { COMMODITIES, RESOURCES, type CardKind, type Commodity, type GameEvent, type GameState, type ModulePending, type Resource } from '../src/types.ts';
 import type { ImprovementOption } from '../src/modules/citiesKnights/cities.ts';
 import { TRACK_COMMODITY, type Track } from '../src/modules/citiesKnights/constants.ts';
 import { ckView } from '../src/modules/citiesKnights/state.ts';
@@ -46,13 +46,15 @@ export type AnyCommand = Command | { type: string; [field: string]: unknown };
  * Extension points for combined profiles (Seafarers + C&K): another game
  * factory, answers for frames this player does not know, setup moves and
  * extra action tries (ships, the pirate). Each hook may return `null` /
- * `undefined` to fall back to the C&K behaviour.
+ * `undefined` to fall back to the C&K behaviour. `onEvent` sees every event
+ * of every accepted step, because the stored log keeps only the last 200.
  */
 export interface CkSimOptions {
   game?: (players: 3 | 4 | 5 | 6, seed: number) => GameState;
   pending?: (state: GameState, rng: Rng, step: number) => GameState | null | undefined;
   setup?: (state: GameState, rng: Rng, step: number) => GameState | null | undefined;
   tries?: (state: GameState, actorId: string, step: number) => AnyCommand[];
+  onEvent?: (event: GameEvent) => void;
 }
 
 function attempt(state: GameState, actor: string, command: AnyCommand, rng: Rng): GameState | null {
@@ -355,6 +357,7 @@ export function simulateCitiesKnights(players: 3 | 4 | 5 | 6, seed: number, maxS
   const count = (before: GameState, after: GameState) => {
     for (const event of after.log) {
       if (event.seq <= before.seq) continue;
+      options.onEvent?.(event);
       const key = COUNTED[event.type];
       if (key) (counters[key] as number)++;
       if (event.type === 'ck.progressPlayed') counters.played.add(event.params.card as string);
