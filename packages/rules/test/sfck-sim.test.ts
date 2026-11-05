@@ -45,6 +45,9 @@ describe('simulated Seafarers + Cities & Knights games', () => {
       expect(counters.progressPlayed).toBeGreaterThan(0);
       expect(counters.improvements).toBeGreaterThan(0);
       expect(sea.shipsBuilt).toBeGreaterThan(0);
+      // The counters cover the whole game, not just the last 200 events the log keeps:
+      // every ship on the board at the end was built.
+      expect(sea.shipsBuilt).toBeGreaterThanOrEqual(state.players.reduce((sum, player) => sum + countShips(state, player.id), 0));
       totals.gold += sea.goldChoices;
       totals.moved += sea.shipsMoved;
       totals.pirate += sea.pirateMoves;
