@@ -47,8 +47,9 @@ Conventions:
 | GET | `/api/games/:gameId/events` | query `after?`, `limit?` | `{ events: GameEvent[], revision }` |
 | POST | `/api/games/:gameId/commands` | `CommandRequest` | `CommandReceipt` |
 | POST | `/api/games/:gameId/save` | `{ requestId }` | `SaveReceipt` |
-| POST | `/api/games/:gameId/abandon` | `{}` or `{ proposalId, approve }` | `{ proposalId }` or `{ abandoned }` |
-| POST | `/api/rooms/:roomId/withdraw` | `{ withdrawn }` | `RoomView` |
+| POST | `/api/games/:gameId/abandon` | `{}` or `{ proposalId, approve }` | `AbandonProposeResult` (`{ proposalId, abandoned }`) or `AbandonConsentResult` (`{ abandoned }`) |
+| POST | `/api/games/:gameId/withdraw` | `{ withdrawn }` | `WithdrawResult` (`{ withdrawn, abandoned }`) |
+| POST | `/api/rooms/:roomId/withdraw` | `{ withdrawn }` | `RoomView` (compatibility alias of the game route) |
 | POST | `/api/games/:gameId/suspend` | `{ proposalId? }` | `RoomView` |
 | POST | `/api/games/:gameId/resume` | `{ ready }` | `RoomView` |
 | GET | `/api/rooms/:roomId/chat` | query `after?`, `limit?` | `ChatPage` |
@@ -153,6 +154,50 @@ only the original human players must reconnect and become ready to resume.
   `bot:<revision>:<attempt>`, so their receipts follow the rules below. They
   only act while at least one person in the room has a live socket.
 
+### Withdrawal and ending a game
+
+Leaving a started game has three distinct meanings (SPEC §4.6, §4.8); none of
+them removes the seat.
+
+- **Save and leave** — `POST /api/games/:gameId/save`, then
+  `POST /api/rooms/:roomId/leave`. The game stays resumable and the seat is not
+  withdrawn.
+- **Withdraw** — `POST /api/games/:gameId/withdraw` with `{ withdrawn: boolean }`
+  records or retracts an explicit withdrawal and answers
+  `WithdrawResult { withdrawn, abandoned }`. It runs under the same per-game
+  lock as commands, so the first terminal transition wins: a game that already
+  has a result (`completed` or `abandoned`) answers `E_GAME_OVER`. Repeating the
+  current state is a no-op. Any change cancels the game's open *abandon*
+  proposal (a pending suspend proposal is left alone). While withdrawn, the
+  seat's commands are refused with `E_SEAT_WITHDRAWN` (a replayed receipt is
+  still returned) until the player retracts with `{ withdrawn: false }`. A
+  reconnection never clears the flag. When every person has withdrawn and the
+  room policy allows abandonment, the same call ends the game with no winner
+  (`abandoned: true`); when the policy disables it the game is kept. Bots never
+  withdraw. `POST /api/rooms/:roomId/withdraw` is kept as an alias that
+  forwards to the game route and still answers `RoomView`; a room without a
+  game answers `E_GAME_NOT_STARTED` (409).
+- **End the game** — `POST /api/games/:gameId/abandon` with `{}` proposes
+  abandonment and answers `AbandonProposeResult { proposalId, abandoned }`. The
+  proposal counts as the proposer's consent, and proposing while a proposal is
+  already open consents to it (same `proposalId`). Voters are the connected,
+  non-withdrawn people; a withdrawn seat counts as consenting and need not
+  vote. `abandoned: true` means the last voter just agreed — for a sole person
+  against bots that is immediate (the policy check still applies,
+  `E_ABANDON_DISABLED`). Further votes use `{ proposalId, approve }` and answer
+  `{ abandoned }`. `E_NO_ABSENT_PLAYER` still applies when several people are
+  present and nobody is absent or withdrawn. A reconnecting seat cancels the
+  open vote, except a withdrawn seat, whose return changes nothing.
+
+`RoomMemberView.withdrawn` (bots: always `false`) and `RoomView.pendingAbandon`
+carry the state to clients. `pendingAbandon` is `null` when nothing is open;
+otherwise `{ id, proposedBy, consents, absent, createdAt }`, where `consents`
+are the people who agreed and `absent` the people currently offline or
+withdrawn, for the confirmation dialog to name. `ResumableGameView.withdrawn` is
+true when the viewer's own seat is withdrawn; the game stays listed so the seat
+can be taken back. All three fields are optional in the types, but the server
+always fills them.
+
 ### Command handling
 
 `POST /api/games/:gameId/commands`
@@ -189,6 +234,8 @@ Rules:
 - A repeated `commandId` returns the stored receipt unchanged (no second
   effect), even if the payload differs — a differing payload is rejected with
   `error.E_COMMAND_ID_REUSED`.
+- A seat that has withdrawn (see "Withdrawal and ending a game") gets
+  `E_SEAT_WITHDRAWN` for a new command until it retracts the withdrawal.
 - `expectedRevision` older than the current revision is rejected with
   `error.E_STALE_REVISION` unless the receipt already exists.
 - The acting player always comes from the session cookie.
