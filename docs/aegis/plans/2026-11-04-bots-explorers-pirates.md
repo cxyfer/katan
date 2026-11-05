@@ -177,6 +177,7 @@ Movement 的語意：改移另一艘船時，會自動結束目前的 active 船
    - 固定盤面（沿用 strand 構造的 A、B、C 三條滿格邊）：MP 不足時規劃器拒絕 A → B；MP 足夠穿越時接受；有羊毛時保底的脫困序列全部被接受。
    - fuzz：在中局狀態注入對手的船，讓部分邊各有 2 艘，跑完整個 Movement，斷言 (a) 與 (b)。
 3. **rules 修正（`ep-2025.2`，#97）**：Bugfixer 修正、Fix Verifier 驗證，PR 指向 master。
+   - 已被 #97 的維護者決策取代（2026-11-05）：未完成的 ep-2025.1 遊戲直接使用 ep-2025.2 行為，不依 engineVersion 分支
    - Bot 不依 `engineVersion` 分支，只讀 `steps`、`stranded` 與 `canEndTurn`，兩種修法都不必改 Bot。**預防式**：`stepTargets` 不再列出之後沒有出口的滿格步，Bot 的規避變成多一層保險。**解套式**：沒有出口時允許 `turn.end`，保底先看 `canEndTurn`，會自動改送 `turn.end`。
    - 只調整測試：「保底無解回 null」的固定盤面固定 `engineVersion: 'ep-2025.1'`，另加一個 `ep-2025.2` 的對照案例；`server/test/explorers-pirates.test.ts:78` 的版本斷言由 R 自行更新。
    - 舊存檔維持舊行為（比照 base-2025.4，engine.ts:652、1252），所以保底無解那一列與 server 診斷都要保留。

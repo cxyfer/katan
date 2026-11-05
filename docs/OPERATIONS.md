@@ -159,6 +159,11 @@ Restore into an empty database, then start the service and verify `/readyz`.
    playable). The approved Road Building grant change applies to new
    `base-2025.4`, `sf-2025.2` and `tb-2025.2` games; saved games on
    `base-2025.1`–`base-2025.3`, `sf-2025.1` and `tb-2025.1` are not migrated.
+   On 2026-11-05, the maintainer explicitly approved the #97 exception:
+   unfinished `ep-2025.1` Explorers & Pirates games continue on `ep-2025.2`
+   behavior (a ship may enter a full edge only if it can still reach a legal
+   stop; a stranded ship with no way out ends its movement there, leaving three
+   ships on that edge, which also frees games already stuck this way).
    Other rules migrations still require separate approval.
    Cards already lost and roads already built are not changed.
 5. Rollback: pin the recorded digest in the Compose `image:` line
