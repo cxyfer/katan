@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { GAME_ORDER_MODES, type GameOrderMode } from '@catan/protocol';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { SoundSettings } from './SoundSettings.tsx';
+import { NewsBoard } from './NewsBoard.tsx';
+import { LATEST_PLAYER_NOTE, PLAYER_NOTES } from '../news/player-notes.ts';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatDateTime } from '../i18n/format.ts';
@@ -14,7 +16,7 @@ import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../state/ru
  * The public room list is built only from `RoomSummaryView`, which carries
  * lobby metadata and never seated-player state (docs/SPEC.md §8.3).
  */
-type HomePane = 'table' | 'resume' | 'rooms' | 'identity';
+type HomePane = 'table' | 'resume' | 'rooms' | 'news' | 'identity';
 
 export function HomeScreen({ controller }: ScreenProps) {
   const t = useT();
@@ -28,7 +30,7 @@ export function HomeScreen({ controller }: ScreenProps) {
   const [scenarioKey, setScenarioKey] = useState('');
   const [setupMode, setSetupMode] = useState<'fixed' | 'variable'>('fixed');
   const [orderMode, setOrderMode] = useState<GameOrderMode>('join');
-  const homePanes = ['table', 'resume', 'rooms', 'identity'] as const;
+  const homePanes = ['table', 'resume', 'rooms', 'news', 'identity'] as const;
   const homeTabRef = useRef<HTMLButtonElement | null>(null);
 
   const capacityLimit = state.config?.limits.roomCapacityMax ?? Infinity;
@@ -44,8 +46,18 @@ export function HomeScreen({ controller }: ScreenProps) {
   const setupOptions = chosenProfile?.setupModes ?? ['fixed', 'variable'];
   const effectiveSetup = setupOptions.includes(setupMode) ? setupMode : (setupOptions[0] ?? 'fixed');
 
-  const paneIcon: Record<HomePane, string> = { table: 'flag', resume: 'anchor', rooms: 'globe', identity: 'settings' };
+  const paneIcon: Record<HomePane, string> = { table: 'flag', resume: 'anchor', rooms: 'globe', news: 'sparkles', identity: 'settings' };
   const paneCount: Partial<Record<HomePane, number>> = { resume: state.games.length, rooms: state.rooms.length };
+  // 公告牌：最新一則還沒在這個瀏覽器看過時，在分頁上標示「新」。
+  const latestNote = LATEST_PLAYER_NOTE;
+  const newsUnread = latestNote !== null && state.newsSeen !== latestNote.version;
+  const paneHint = (pane: HomePane) =>
+    pane === 'news' && latestNote ? `v${latestNote.version} · ${latestNote.title[locale]}` : t(`home.paneHint.${pane}`);
+
+  // 開啟公告牌即視為已讀；離開首頁再回來也不會重複標示。
+  useEffect(() => {
+    if (homePane === 'news' && newsUnread && latestNote) actions.markNewsSeen(latestNote.version);
+  }, [homePane, newsUnread, latestNote, actions.markNewsSeen]);
 
   // The room browser renders a live `GET /api/rooms` result, so opening the
   // pane must fetch it instead of waiting for the refresh button. Re-running
@@ -106,9 +118,12 @@ export function HomeScreen({ controller }: ScreenProps) {
                 <span className="home__nav-icon"><GameIcon name={paneIcon[pane]} size={20} /></span>
                 <span className="home__nav-copy">
                   <span className="home__nav-label">{t(`home.pane.${pane}`)}</span>
-                  <span className="home__nav-hint">{t(`home.paneHint.${pane}`)}</span>
+                  <span className="home__nav-hint">{paneHint(pane)}</span>
                 </span>
                 {(paneCount[pane] ?? 0) > 0 && <span className="home__nav-count">{paneCount[pane]}</span>}
+                {pane === 'news' && newsUnread && (
+                  <span className="home__nav-count home__nav-count--new" data-testid="news-unread">{t('home.news.new')}</span>
+                )}
               </button>
             ))}
           </nav>
@@ -412,6 +427,10 @@ export function HomeScreen({ controller }: ScreenProps) {
             </table>
           </div>
         )}
+      </section>
+
+      <section id="home-pane-news" role="tabpanel" aria-labelledby="home-tab-news" hidden={homePane !== 'news'} className="home-pane home__news">
+        <NewsBoard notes={PLAYER_NOTES} version={__CATAN_VERSION__} />
       </section>
 
       <section id="home-pane-identity" role="tabpanel" aria-labelledby="home-tab-identity" hidden={homePane !== 'identity'} className="home-pane home__identity">
