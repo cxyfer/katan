@@ -179,19 +179,48 @@ class Shots:
         print("CAPTURE", name, flush=True)
 
 
+# 清單是否需要捲動，以及每一列中心點最上層的元素是否仍在選擇器內（未被資源列等 HUD 蓋住，#103）。
+LIST_FACTS = """() => {
+  const picker = document.querySelector('.target-picker');
+  const list = picker.querySelector('.target-picker__list');
+  const view = list.getBoundingClientRect();
+  const rows = Array.from(list.querySelectorAll('button')).map((button) => {
+    const box = button.getBoundingClientRect();
+    const top = Math.max(box.top, view.top), bottom = Math.min(box.bottom, view.bottom);
+    if (bottom - top < 4) return { visible: false, covered: false };
+    const hit = document.elementFromPoint(box.left + box.width / 2, (top + bottom) / 2);
+    return { visible: bottom - top >= box.height - 1, covered: !hit || !picker.contains(hit) };
+  });
+  return {
+    scrolls: list.scrollHeight > list.clientHeight + 1,
+    scrollCue: picker.hasAttribute('data-more-below'),
+    fullyVisibleRows: rows.filter((row) => row.visible).length,
+    coveredRows: rows.filter((row) => row.covered).length,
+  };
+}"""
+
+
 def picker_facts(page) -> dict:
-    """Geometry of the open picker, asserted to be compact and fully on screen."""
+    """Geometry of the open picker, asserted to be compact, fully on screen and not covered."""
     picker = page.locator(".target-picker")
     picker.wait_for()
+    settle(page, 200)
     box = picker.bounding_box()
     viewport = page.viewport_size
+    listing = page.evaluate(LIST_FACTS)
+    options = page.locator(".target-picker__list button").count()
     facts = {
         "box": {key: round(value, 1) for key, value in box.items()},
-        "options": page.locator(".target-picker__list button").count(),
+        "options": options,
         "hasCloseButton": page.get_by_test_id("target-picker-close").count() == 1,
         "insideViewport": box["x"] >= 0 and box["y"] >= 0
         and box["x"] + box["width"] <= viewport["width"] + 0.5 and box["y"] + box["height"] <= viewport["height"] + 0.5,
-        "compact": box["width"] <= 281 and box["height"] <= 261,
+        # 寬度不變；高度上限 400px（約四列目標），只有更長的清單才在選擇器內捲動。
+        "compact": box["width"] <= 281 and box["height"] <= 401,
+        "list": listing,
+        "shortListFits": options > 4 or not listing["scrolls"],
+        "scrollCueWhenClipped": listing["scrolls"] == listing["scrollCue"],
+        "notCoveredByHud": listing["coveredRows"] == 0,
     }
     assert facts["insideViewport"], f"picker leaves the viewport: {facts}"
     assert facts["compact"], f"picker is not compact: {facts}"

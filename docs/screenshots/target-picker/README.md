@@ -26,9 +26,12 @@ zoom) and touch-emulated phones.
 | `05-ambiguous-picker-844x390-en.png` | en | 844×390 | Four-target picker on a touch-emulated short landscape phone |
 | `06-ambiguous-picker-390x844-zh-Hant.png` | zh-Hant | 390×844 | Four-target picker on a touch-emulated portrait phone |
 
-The script asserts the picker stays inside the viewport, is at most 281×261 CSS
-px, has a close button, and that an outside click closes it without selecting a
-target or forwarding the click.
+The script asserts the picker stays inside the viewport, has a close button, and
+that an outside click closes it without selecting a target or forwarding the
+click. Since the #103 fix it also asserts the picker is at most 281×401 CSS px,
+that a list of up to four targets fits without scrolling, that a clipped list
+shows the scroll cue, and that no row is covered by the resource strip or other
+HUD layers. The captures above predate that fix (they were taken at 281×261).
 
 ## Reproduce
 

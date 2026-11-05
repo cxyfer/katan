@@ -606,12 +606,20 @@
   background: var(--target-picker-background);
   margin: .5rem;
 }
+/*
+ * 高度上限放得下約四列目標；實際可用高度（工具列下緣到棋盤或下緣 HUD）由 TargetPicker
+ * 量測後寫入 --target-picker-room。標題與說明固定，只有清單在超出時捲動。
+ * z-index 高於手牌 dock（48）、側欄（47／49）、浮動工具（60）、選單（61）與提示面板（65、66），
+ * 開啟中的選擇器不會被任何 HUD 蓋住。
+ */
 .screen--game .target-picker {
   --target-picker-background: #102c32;
-  z-index: 46;
+  z-index: 67;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   width: min(280px, 100% - 16px);
-  max-height: min(60%, 260px);
+  max-height: min(var(--target-picker-room, 100% - 16px), 400px);
   margin: 0;
   padding: .5rem .6rem;
   background: var(--target-picker-background);
@@ -619,19 +627,16 @@
   font-size: .8rem;
   position: absolute;
   inset: 52px auto auto 8px;
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
 }
 .target-picker__header {
-  position: sticky;
-  top: -.5rem;
-  margin-top: -.5rem;
-  padding-top: .5rem;
+  flex: none;
+  position: relative;
   z-index: 1;
-  background: var(--target-picker-background);
   display: flex;
   gap: .4rem;
   align-items: baseline;
+  background: var(--target-picker-background);
 }
 .target-picker__header h3 {
   margin: 0;
@@ -655,6 +660,7 @@
   }
 }
 .target-picker__note {
+  flex: none;
   margin: .25rem 0 0;
   font-size: .72rem;
   line-height: 1.3;
@@ -664,6 +670,53 @@
   margin-top: .4rem;
   display: grid;
   grid-template-columns: 1fr;
+  align-content: start;
+}
+.screen--game .target-picker__list {
+  flex: 0 1 auto;
+  min-height: 0;
+  padding-top: .3rem;
+  margin-top: .1rem;
+  border-top: 1px solid transparent;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #a78c5a transparent;
+}
+/* 矮螢幕（橫放手機）把高度留給清單；說明文字只保留給輔助技術。 */
+@media (max-height: 420px) {
+  .screen--game .target-picker__note {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+/* 清單被截斷時：上緣加分隔線、下緣淡出並標示還有更多目標可以捲動。 */
+.screen--game .target-picker[data-more-above] .target-picker__list {
+  border-top-color: #a78c5a66;
+}
+.screen--game .target-picker[data-more-below]::after {
+  content: '▾';
+  content: '▾' / '';
+  position: absolute;
+  right: .6rem;
+  bottom: .5rem;
+  left: .6rem;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 2.2rem;
+  color: var(--accent);
+  font-size: 1.1rem;
+  line-height: 1;
+  text-shadow: 0 1px 3px #000;
+  pointer-events: none;
+  background: linear-gradient(transparent, var(--target-picker-background) 80%);
+  border-radius: 0 0 6px 6px;
 }
 .target-picker__list .button {
   text-align: left;
@@ -1940,24 +1993,6 @@
   .game__menu > summary > span {
     display: none;
   }
-  .game__orientation {
-    color: #94aa9b;
-    pointer-events: none;
-    justify-content: center;
-    align-items: center;
-    gap: .25rem;
-    margin: 0;
-    font-size: .48rem;
-    display: flex;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-  }
-  .game__orientation > svg {
-    width: 10px;
-    height: 10px;
-  }
   .game__preview {
     max-height: 85%;
     top: 43%;
@@ -1979,6 +2014,27 @@
   }
   .result-hero .island-illustration {
     max-height: 230px;
+  }
+}
+/* 「轉為橫向」提示只在直屏顯示；窄於 650px 的橫屏（例如 568×320 手機）已是橫向，不該再提示。 */
+@media (width <= 649px) and (orientation: portrait) {
+  .game__orientation {
+    color: #94aa9b;
+    pointer-events: none;
+    justify-content: center;
+    align-items: center;
+    gap: .25rem;
+    margin: 0;
+    font-size: .48rem;
+    display: flex;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  .game__orientation > svg {
+    width: 10px;
+    height: 10px;
   }
 }
 .board__zoom-readout {

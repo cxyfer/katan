@@ -320,10 +320,20 @@
 .lobby__config .lobby-policy > .field:not(.field--checkbox) { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem; align-items: center; gap: .6rem; }
 .lobby__config .lobby-policy > .field:not(.field--checkbox) label { margin: 0; line-height: 1.35; }
 .lobby__config .lobby-policy > .field input { text-align: right; }
-.lobby__config .lobby-settings__form .field { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem; align-items: center; gap: .3rem .6rem; }
+/* 兩個選單共用同一欄，欄寬取最寬選項的內容寬度（「依進房順序」、"Random draw"），
+   不再固定 6.5rem 而截斷選取值；欄位本身以 contents 攤平到表單格線上。 */
+.lobby__config .lobby-settings__form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .45rem .6rem; }
+.lobby__config .lobby-settings__form .field { display: contents; }
 .lobby__config .lobby-settings__form .field label { margin: 0; }
-.lobby__config .lobby-settings__form .field p { grid-column: 1 / -1; }
-.lobby__config .lobby-settings__form .button { margin-left: auto; }
+.lobby__config .lobby-settings__form .field select { width: 100%; min-width: 4.5rem; }
+.lobby__config .lobby-settings__form .field p { grid-column: 1 / -1; margin: -.15rem 0 .2rem; }
+.lobby__config .lobby-settings__form .button { grid-column: 1 / -1; justify-self: end; margin: 0; }
+/* 設定欄太窄、標籤與選單排不進同一列時（矮橫屏手機、1024 寬的三欄），標籤改放在選單上方，選單佔滿整列。 */
+.lobby__config .lobby-settings { container: lobby-settings / inline-size; }
+@container lobby-settings (width < 16rem) {
+  .lobby__config .lobby-settings__form { grid-template-columns: minmax(0, 1fr); row-gap: .3rem; }
+  .lobby__config .lobby-settings__form .field select { margin-bottom: .2rem; }
+}
 .lobby__seat-count { padding: .2rem .65rem; border-radius: 999px; background: #e2b86626; color: #f3d696; font-size: .85rem; font-weight: 700; }
 .lobby__seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: .6rem; margin: 0 0 clamp(.6rem, 1.6vh, 1rem); }
 .lobby__occupied, .lobby__empty { display: contents; }
@@ -433,8 +443,9 @@
   .pregame-scene__island { display: none; }
   .pregame-scene::after { background: linear-gradient(180deg, #06202c66 0%, #06202c99 100%); }
 }
-/* 大廳的直屏後備不分寬度：直立的大平板（例如 1024×1366）也改成單欄捲動。 */
-@media (orientation: portrait), (max-width: 599px) {
+/* 大廳的直屏後備不分寬度：直立的大平板（例如 1024×1366）也改成單欄捲動。
+   窄於 820px 的橫屏（多數手機橫放）三欄只剩約 90–160px，座位名字與「Random draw」選單都排不下，同樣改單欄。 */
+@media (orientation: portrait), (max-width: 819px) {
   .screen--lobby { height: auto; min-height: 100dvh; overflow: visible; padding-bottom: 1.5rem; }
   .lobby__layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "head" "main" "aside" "config"; }
   .lobby__main, .lobby__config, .lobby__aside { overflow: visible; }
@@ -444,10 +455,9 @@
 @media (min-height: 900px) and (orientation: landscape) {
   .lobby__layout { grid-template-rows: auto auto; align-content: center; padding-bottom: 6vh; }
 }
-/* 中等寬度橫屏：三欄變窄，政策欄位改單欄。 */
+/* 中等寬度橫屏：三欄變窄，政策欄位的輸入框縮窄；房間設定的選單維持內容寬度。 */
 @media (max-width: 900px) and (orientation: landscape) {
-  .lobby__config .lobby-policy > .field:not(.field--checkbox),
-  .lobby__config .lobby-settings__form .field { grid-template-columns: minmax(0, 1fr) 4.5rem; }
+  .lobby__config .lobby-policy > .field:not(.field--checkbox) { grid-template-columns: minmax(0, 1fr) 4.5rem; }
 }
 @media (max-width: 1100px) and (orientation: landscape) {
   .lobby-policy { grid-template-columns: minmax(0, 1fr); }
