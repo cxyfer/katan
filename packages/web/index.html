@@ -151,7 +151,8 @@
           "boot.status.active": "進行中",
           "boot.status.pending": "等待中",
           "boot.status.failed": "失敗",
-          "boot.assetsDetail": "已下載 {files} 個檔案 · {size}",
+          "boot.assetsDetail.one": "已下載 {files} 個檔案 · {size}",
+          "boot.assetsDetail.other": "已下載 {files} 個檔案 · {size}",
           "boot.slow": "比平常久，仍在等待回應…",
           "boot.assetsFailed": "遊戲程式下載失敗，請確認網路連線後重新整理。",
           "app.refresh": "重新整理"
@@ -167,7 +168,8 @@
           "boot.status.active": "In progress",
           "boot.status.pending": "Waiting",
           "boot.status.failed": "Failed",
-          "boot.assetsDetail": "Downloaded {files} files · {size}",
+          "boot.assetsDetail.one": "Downloaded {files} file · {size}",
+          "boot.assetsDetail.other": "Downloaded {files} files · {size}",
           "boot.slow": "This is taking longer than usual; still waiting…",
           "boot.assetsFailed": "The game could not be downloaded. Check your connection and refresh.",
           "app.refresh": "Refresh"
@@ -216,7 +218,9 @@
           tiles.forEach(function (tile, index) { if (index < Math.floor(value / 100 * tiles.length)) tile.setAttribute('data-lit', ''); });
           if (files) {
             var size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
-            detail.textContent = text['boot.assetsDetail'].replace('{files}', String(files)).replace('{size}', size);
+            // 單數與複數分開定義：英文 "1 file"，其餘語系沿用同一句
+            var plural = files === 1 ? 'one' : 'other';
+            detail.textContent = text['boot.assetsDetail.' + plural].replace('{files}', String(files)).replace('{size}', size);
             detail.hidden = false;
           }
         }

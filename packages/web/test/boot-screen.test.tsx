@@ -46,6 +46,14 @@ describe('static boot splash in index.html', () => {
   });
 });
 
+describe('static boot splash plural', () => {
+  it('uses a singular asset message for one file', () => {
+    expect(catalogs.en['boot.assetsDetail.one']).toBe('Downloaded {files} file · {size}');
+    expect(catalogs.en['boot.assetsDetail.other']).toBe('Downloaded {files} files · {size}');
+    expect(indexHtml).toContain(`files === 1 ? 'one' : 'other'`);
+  });
+});
+
 describe('boot progress', () => {
   it('weights settled steps, counting failures and skips as settled', () => {
     expect(Object.values(BOOT_WEIGHTS).reduce((sum, value) => sum + value, 0)).toBe(100);
