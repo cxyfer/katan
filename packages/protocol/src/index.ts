@@ -399,6 +399,11 @@ export interface ServerConfigView {
   };
   /** Whether hosts may add computer opponents, and the levels offered. */
   bots: { enabled: boolean; levels: BotLevel[] };
+  /**
+   * Operator retention policy (SPEC §4.6). Unfinished games idle for more than
+   * `gameRetentionDays` days are ended without a winner; `0` means disabled.
+   */
+  retention?: { gameRetentionDays: number };
 }
 
 export type { BoxId, ExpansionId, GameEvent, GameView, Resource, ScenarioId, VariantId };

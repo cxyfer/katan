@@ -542,6 +542,7 @@ export const zhHant: Catalog = {
   'play.resultTarget': '勝利目標：{target}',
   'play.resultReason.victory': '勝利點數',
   'play.resultReason.abandoned': '經全桌同意放棄',
+  'play.resultReason.expired': '因長時間無人活動而結束',
   'play.resultBackToLobby': '回到大廳',
   'play.resultFinalBoard': '最終棋盤',
 

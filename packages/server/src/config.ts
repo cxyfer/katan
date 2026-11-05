@@ -42,6 +42,13 @@ export interface ServerConfig {
   limits: ServerLimits;
   shutdownTimeoutMs: number;
   presenceSweepIntervalMs: number;
+  /**
+   * 未結束對局的保留天數（營運者政策，SPEC §4.6）；`0` 停用。超過此天數沒有
+   * 任何活動的對局會被無勝者終止。
+   */
+  gameRetentionDays: number;
+  /** 保留掃描的間隔（毫秒）。 */
+  gameRetentionSweepIntervalMs: number;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   bots: BotSettings;
 }
@@ -57,6 +64,15 @@ function bounded(value: string | undefined, fallback: number, min: number, max: 
   if (value === undefined || value === '') return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+
+/**
+ * 保留天數：只接受 1–3650 的整數，`0`、空值與其他任何值都視為停用。誤設成
+ * 小數或負數時寧可不回收，也不要提早終止玩家的對局。
+ */
+function retentionDays(value: string | undefined): number {
+  const parsed = bounded(value, 0, 0, 3650);
+  return Number.isInteger(parsed) ? parsed : 0;
 }
 
 function bool(value: string | undefined, fallback: boolean): boolean {
@@ -95,6 +111,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     },
     shutdownTimeoutMs: int(env.SHUTDOWN_TIMEOUT_MS, 10_000),
     presenceSweepIntervalMs: int(env.PRESENCE_SWEEP_INTERVAL_MS, 5_000),
+    gameRetentionDays: retentionDays(env.GAME_RETENTION_DAYS),
+    gameRetentionSweepIntervalMs: Math.max(1_000, int(env.GAME_RETENTION_SWEEP_INTERVAL_MS, 600_000)),
     logLevel: (env.LOG_LEVEL as ServerConfig['logLevel']) ?? 'info',
     bots: {
       enabled: bool(env.BOTS_ENABLED, true),

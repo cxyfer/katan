@@ -455,6 +455,18 @@ export interface GameRow {
   updated_at: string;
 }
 
+/** 保留掃描的候選對局：三個活動時間戳都早於門檻。 */
+export interface IdleGameRow {
+  id: string;
+  room_id: string;
+  /** 最後一次寫入對局（指令、存檔、暫停、恢復）。 */
+  updated_at: string;
+  /** 房間最後一次異動（狀態、房主、政策）。 */
+  room_updated_at: string;
+  /** 任何成員最後一次連線或斷線；沒有紀錄時為 null。 */
+  last_seen_at: string | null;
+}
+
 export interface ReceiptRow {
   game_id: string;
   player_id: string;
@@ -789,6 +801,34 @@ export class Repository {
       [roomId],
     );
     return rows[0] ?? null;
+  }
+
+  /**
+   * 未結束且沒有任何活動的對局，最舊的優先。「活動」是三個時間戳的最新者：
+   * 對局寫入（`games.updated_at`）、房間異動（`rooms.updated_at`）與成員連線
+   * （`memberships.last_seen_at`）。時間戳皆為同格式的 ISO 字串，可直接以字串
+   * 比較；不使用 `GREATEST`/多參數 `MAX`，兩種資料庫共用同一條查詢。
+   * `gameId` 供取得鎖之後重新確認單一對局。
+   */
+  async listIdleGames(cutoff: string, limit: number, gameId?: string): Promise<IdleGameRow[]> {
+    const params: unknown[] = [cutoff, cutoff, cutoff];
+    if (gameId !== undefined) params.push(gameId);
+    params.push(limit);
+    return this.db.all<IdleGameRow>(
+      `SELECT games.id AS id, games.room_id AS room_id, games.updated_at AS updated_at,
+              rooms.updated_at AS room_updated_at,
+              (SELECT MAX(memberships.last_seen_at) FROM memberships
+                WHERE memberships.room_id = games.room_id) AS last_seen_at
+       FROM games JOIN rooms ON rooms.id = games.room_id
+       WHERE games.status NOT IN ('completed', 'abandoned')
+         AND rooms.status IN ('playing', 'suspended')
+         AND games.updated_at < ? AND rooms.updated_at < ?
+         AND NOT EXISTS (SELECT 1 FROM memberships
+                          WHERE memberships.room_id = games.room_id AND memberships.last_seen_at >= ?)
+         ${gameId === undefined ? '' : 'AND games.id = ?'}
+       ORDER BY games.updated_at ASC LIMIT ?`,
+      params,
+    );
   }
 
   async saveGame(

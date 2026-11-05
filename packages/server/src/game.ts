@@ -36,6 +36,9 @@ import { ServiceError, type RoomService } from './rooms.ts';
 import { humanMembers, isBotMember } from './bot-seats.ts';
 
 const RECEIPT_EVENT_LIMIT = 200;
+const DAY_MS = 86_400_000;
+/** 保留掃描每一批最多處理的對局數；積壓時由排程器短延遲後接續下一批。 */
+export const RETENTION_BATCH_SIZE = 100;
 
 /**
  * Decides the in-game seat order. `random` draws once at start with the same
@@ -67,6 +70,18 @@ export interface GameCoordinatorDeps {
   onCommitted?(notice: CommitNotice): void;
   /** 暫停、恢復或放棄生效後同步呼叫。 */
   onLifecycle?(gameId: string, change: GameLifecycleChange): void;
+  /** 保留掃描的日誌輸出；未提供時不記錄。 */
+  log?(level: 'info' | 'warn', message: string, meta?: unknown): void;
+}
+
+/** 一批保留掃描的結果。 */
+export interface RetentionSweepResult {
+  /** 本批終止的對局 id。 */
+  expired: string[];
+  /** 本批單筆失敗（已記 warn）的對局 id。 */
+  failed: string[];
+  /** 本批候選數量達到上限，可能還有積壓。 */
+  full: boolean;
 }
 
 /**
@@ -654,6 +669,65 @@ export class GameCoordinator {
     this.deps.rooms.broadcastRoom(game.room_id);
     this.notifyLifecycle(game.id, 'abandoned');
     return true;
+  }
+
+  // -- operator retention --------------------------------------------------
+
+  /**
+   * §4.6 營運者保留機制：終止超過 `gameRetentionDays` 天沒有活動的未結束對局
+   * （進行中、interrupted、suspended 皆是）。每次最多處理 `limit` 筆最舊的
+   * 候選；單筆失敗只記 warn，不中斷整批。停用（0 天）時什麼都不做。
+   */
+  async expireIdleGames(
+    now: Date = new Date(),
+    limit: number = RETENTION_BATCH_SIZE,
+  ): Promise<RetentionSweepResult> {
+    const result: RetentionSweepResult = { expired: [], failed: [], full: false };
+    const days = this.deps.config.gameRetentionDays;
+    if (days <= 0) return result;
+    const cutoff = new Date(now.getTime() - days * DAY_MS).toISOString();
+    const candidates = await this.repo.listIdleGames(cutoff, limit);
+    result.full = candidates.length >= limit;
+    for (const candidate of candidates) {
+      try {
+        if (await this.expireIdleGame(candidate.id, cutoff)) result.expired.push(candidate.id);
+      } catch (error) {
+        result.failed.push(candidate.id);
+        this.deps.log?.('warn', 'game retention failed', { gameId: candidate.id, error: String(error) });
+      }
+    }
+    return result;
+  }
+
+  /** 與一般指令共用每局的鎖：取得鎖之後重新確認仍閒置、仍未結束，勝利優先。 */
+  private expireIdleGame(gameId: string, cutoff: string): Promise<boolean> {
+    return this.withLock(gameId, async () => {
+      // 排隊期間可能已有指令、連線或終局；任何活動都讓這局保留。
+      const [idle] = await this.repo.listIdleGames(cutoff, 1, gameId);
+      if (!idle) return false;
+      const fresh = await this.requireGame(gameId);
+      const current = JSON.parse(fresh.state_json) as GameState;
+      if (current.result) return false;
+      const abandoned = abandonGame(current, 'expired');
+      await this.repo.transaction(async () => {
+        await this.repo.saveGame(gameId, abandoned, fresh.revision + 1, 'abandoned', null);
+        await this.repo.appendEvents(gameId, fresh.revision + 1, abandoned.log.slice(-1));
+        await this.repo.updateRoom(fresh.room_id, { status: 'abandoned' });
+        await this.repo.cancelOpenGameProposals(gameId);
+      });
+      this.deps.rooms.broadcastRoom(fresh.room_id);
+      // 仍連線的客戶端要拿到帶有 `expired` 原因的終局投影，而不只是房間狀態。
+      this.publish(fresh.room_id, gameId, fresh.revision + 1, abandoned.log.slice(-1));
+      this.notifyLifecycle(gameId, 'abandoned');
+      const lastActivity = [idle.updated_at, idle.room_updated_at, idle.last_seen_at ?? ''].sort().pop();
+      this.deps.log?.('info', 'game expired by retention policy', {
+        gameId,
+        roomId: fresh.room_id,
+        lastActivityAt: lastActivity,
+        retentionDays: this.deps.config.gameRetentionDays,
+      });
+      return true;
+    });
   }
 
   private policyOfRoom(policyJson: string): { allowAbandonment: boolean } {

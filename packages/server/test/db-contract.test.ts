@@ -471,6 +471,83 @@ for (const testCase of cases) {
       expect((await repo.findGuest(committed))?.nickname).toBe('Outside transaction');
     });
 
+    it('lists unfinished games idle since the cutoff, oldest first', async () => {
+      const cutoff = '2026-03-01T00:00:00.000Z';
+      const old = '2026-01-01T00:00:00.000Z';
+      const fresh = '2026-04-01T00:00:00.000Z';
+      // 共用的 PostgreSQL 測試庫可能留有先前執行的資料列；只檢查這個案例播種的對局。
+      const seeded = new Set<string>();
+      const seed = async (
+        label: string,
+        fields: { game: string; room: string; seen: string | null; gameStatus?: string; roomStatus?: string },
+      ): Promise<string> => {
+        const room = newId('room');
+        const game = newId('game');
+        await repo.insertRoom({
+          id: room,
+          code: newRoomCode(),
+          visibility: 'private',
+          status: fields.roomStatus ?? 'playing',
+          host_id: `host_${label}`,
+          profile_id: 'base-2025',
+          setup_mode: 'fixed',
+          order_mode: 'join',
+          capacity: 3,
+          policy_json: '{}',
+          policy_revision: 1,
+          game_id: game,
+          created_at: old,
+          updated_at: fields.room,
+        });
+        await repo.insertGame({
+          id: game,
+          room_id: room,
+          profile_id: 'base-2025',
+          engine_version: 'test',
+          state_json: '{}',
+          revision: 1,
+          status: fields.gameStatus ?? 'playing',
+          pause_reason: null,
+          result_json: null,
+          created_at: old,
+          updated_at: fields.game,
+        });
+        await repo.insertMembership({
+          room_id: room,
+          player_id: `player_${label}`,
+          seat: 0,
+          color: 'red',
+          ready: 1,
+          connected: 0,
+          withdrawn: 0,
+          joined_at: old,
+          last_seen_at: fields.seen,
+          disconnected_at: null,
+          connection_id: null,
+        });
+        seeded.add(game);
+        return game;
+      };
+
+      const oldest = await seed('a', { game: '2025-12-01T00:00:00.000Z', room: old, seen: old });
+      const older = await seed('b', { game: old, room: old, seen: null, roomStatus: 'suspended' });
+      await seed('recent-write', { game: fresh, room: old, seen: old });
+      await seed('recent-room', { game: old, room: fresh, seen: old });
+      await seed('recent-visit', { game: old, room: old, seen: fresh });
+      await seed('completed', { game: old, room: old, seen: old, gameStatus: 'completed', roomStatus: 'completed' });
+      await seed('abandoned', { game: old, room: old, seen: old, gameStatus: 'abandoned', roomStatus: 'abandoned' });
+      await seed('lobby', { game: old, room: old, seen: old, roomStatus: 'lobby' });
+
+      const ours = (await repo.listIdleGames(cutoff, 100_000)).filter((row) => seeded.has(row.id));
+      expect(ours.map((row) => row.id)).toEqual([oldest, older]);
+      expect(ours[0]).toMatchObject({ updated_at: '2025-12-01T00:00:00.000Z', room_updated_at: old, last_seen_at: old });
+      expect(ours[1]?.last_seen_at).toBeNull();
+
+      expect(await repo.listIdleGames(cutoff, 1)).toHaveLength(1);
+      expect((await repo.listIdleGames(cutoff, 100, older)).map((row) => row.id)).toEqual([older]);
+      expect(await repo.listIdleGames(cutoff, 100, 'game_missing')).toEqual([]);
+    });
+
     it('deletes a room together with its memberships', async () => {
       await repo.deleteRoom(roomId);
       expect(await repo.findRoom(roomId)).toBeNull();
