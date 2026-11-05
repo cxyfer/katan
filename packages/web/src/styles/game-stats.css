@@ -74,14 +74,55 @@
     font-size: .9rem;
     font-weight: 600;
   }
+  /* 捲動提示疊在捲動容器外層，才不會跟著表格一起捲走。 */
+  .game-stats__scroll-frame {
+    position: relative;
+  }
   /* relative：讓儲存格內的 visually-hidden 文字以捲動容器為定位基準，不撐寬頁面。 */
   .game-stats__scroll {
     position: relative;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #6f6a4f transparent;
   }
+  .game-stats__scroll:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* 右側還有被裁掉的欄位時，淡出最後一欄並顯示箭頭，明示可以往右捲動。 */
+  .game-stats__scroll-frame::after {
+    content: '›';
+    content: '›' / '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 3.25rem;
+    padding-right: .2rem;
+    color: var(--accent);
+    font-size: 1.6rem;
+    line-height: 1;
+    text-shadow: 0 1px 4px #000c;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, var(--stats-surface) 75%);
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .game-stats__scroll-frame[data-overflow-end]::after {
+    opacity: 1;
+  }
+  /* 往右捲過之後，固定的玩家欄右緣加上陰影，看得出有欄位捲到它底下。 */
+  .game-stats__scroll-frame[data-overflow-start] .game-stats__player-col {
+    box-shadow: 8px 0 8px -6px #000a;
+  }
+  /* 不設 max-content 下限：表格比面板寬時，欄位標題可以依字詞換行，盡量讓欄位排進面板。 */
   .game-stats__table {
-    min-width: max-content;
     font-size: .85rem;
     font-variant-numeric: tabular-nums;
   }
@@ -91,9 +132,11 @@
     overflow-wrap: normal;
     white-space: nowrap;
   }
+  /* 英文標題可在空格處換行；keep-all 讓中文標題不在字與字之間斷開（「最終分／數」）。 */
   .game-stats__table thead th {
     vertical-align: bottom;
     white-space: normal;
+    word-break: keep-all;
     min-width: 4.5rem;
     max-width: 8rem;
   }
@@ -310,9 +353,18 @@
       grid-template-columns: minmax(0, 1fr);
     }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .game-stats__scroll-frame::after {
+      transition: none;
+    }
+  }
   @media (forced-colors: active) {
     .game-stats__cell--best {
       text-decoration: underline;
+    }
+    .game-stats__scroll-frame::after {
+      background: none;
+      color: CanvasText;
     }
   }
 }

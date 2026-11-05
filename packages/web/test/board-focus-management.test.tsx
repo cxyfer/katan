@@ -421,7 +421,7 @@ describe('target picker positioning', () => {
   const picker = () => screen.getByTestId('target-picker');
 
   /** jsdom 沒有版面：以假的 offsetParent、尺寸與矩形模擬 640x400 棋盤與高度可變的工具列。 */
-  function setup(toolbar: number) {
+  function setup(toolbar: number, hud?: DOMRect) {
     const toolbarHeight = { value: toolbar };
     const boardSize = { width: 640, height: 400 };
     const pickerSize = { width: 200, height: 120 };
@@ -438,6 +438,7 @@ describe('target picker positioning', () => {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
       if (this.dataset['testid'] === 'board-parent') return rect(0, 0, boardSize.width, boardSize.height);
       if (this.dataset['testid'] === 'toolbar') return rect(4, 6, 140, toolbarHeight.value);
+      if (this.dataset['testid'] === 'hud' && hud) return hud;
       return rect(0, 0, 0, 0);
     });
     globalThis.ResizeObserver = class {
@@ -453,10 +454,14 @@ describe('target picker positioning', () => {
     const geometry = buildGeometry('hex-r2');
     const view = makeView();
     const ui = (anchor?: { x: number; y: number }) => <LocaleProvider locale="en">
-      <div data-testid="board-parent">
-        <div className="board__toolbar--side" data-testid="toolbar">toolbar</div>
-        <TargetPicker geometry={geometry} board={view.board} topology={geometry.topology} kind="edge"
-          targets={[5]} nameOf={() => 'Alex'} onChoose={vi.fn()} {...(anchor ? { anchor } : {})} />
+      <div data-board-stage="">
+        <div data-testid="board-parent">
+          <div className="board__toolbar--side" data-testid="toolbar">toolbar</div>
+          <TargetPicker geometry={geometry} board={view.board} topology={geometry.topology} kind="edge"
+            targets={[5]} nameOf={() => 'Alex'} onChoose={vi.fn()} {...(anchor ? { anchor } : {})} />
+        </div>
+        {/* 棋盤下緣的資源列（#103）：位置由 hud 矩形決定。 */}
+        <div className="game__dock"><div className="resource-tally" data-testid="hud" /></div>
       </div>
     </LocaleProvider>;
     const rendered = render(ui());
@@ -541,6 +546,58 @@ describe('target picker positioning', () => {
     pickerSize.width = 400;
     observer.callback();
     expect(picker().style.left).toBe('8px');
+  });
+
+  it('limits its height to the room between the toolbar and the board bottom', () => {
+    setup(40);
+    // 400 - 8（下緣邊距）- 50（工具列下緣 6 + 40 + 4）
+    expect(picker().style.getPropertyValue('--target-picker-room')).toBe('342px');
+  });
+
+  it('starts at the top edge when it sits beside the toolbar instead of under it', () => {
+    const { ui, rerender } = setup(40);
+    // 工具列只到 x = 144；popover 從 314 開始，不必讓到工具列下方。
+    rerender(ui({ x: 300, y: 10 }));
+    expect(picker().style.left).toBe('314px');
+    expect(picker().style.top).toBe('24px');
+    expect(picker().style.getPropertyValue('--target-picker-room')).toBe('384px');
+  });
+
+  it('flips above the click instead of running under the resource strip', () => {
+    const { ui, rerender } = setup(40, rect(100, 330, 300, 40));
+    // 下方需要 214 + 120 = 334，超過資源列上緣 330 - 8；上方 200 - 14 - 120 = 66 放得下。
+    rerender(ui({ x: 100, y: 200 }));
+    expect(picker().style.top).toBe('66px');
+  });
+
+  it('stays beside the click and covers the strip when neither side fits', () => {
+    const { ui, rerender, pickerSize } = setup(40, rect(100, 330, 300, 40));
+    pickerSize.height = 200;
+    // 下方 134 + 200 碰到資源列、上方不足工具列下緣：仍放在點擊處下方，疊在資源列上。
+    rerender(ui({ x: 100, y: 120 }));
+    expect(picker().style.top).toBe('134px');
+  });
+
+  it('ignores a strip that does not share its column', () => {
+    const { ui, rerender } = setup(40, rect(400, 330, 200, 40));
+    rerender(ui({ x: 100, y: 200 }));
+    expect(picker().style.top).toBe('214px');
+  });
+
+  it('marks a clipped list so the overflow cue shows on the hidden side', () => {
+    setup(40);
+    const list = picker().querySelector('.target-picker__list')!;
+    let scrollTop = 0;
+    Object.defineProperty(list, 'scrollHeight', { configurable: true, get: () => 300 });
+    Object.defineProperty(list, 'clientHeight', { configurable: true, get: () => 100 });
+    Object.defineProperty(list, 'scrollTop', { configurable: true, get: () => scrollTop });
+    fireEvent.scroll(list);
+    expect(picker().hasAttribute('data-more-below')).toBe(true);
+    expect(picker().hasAttribute('data-more-above')).toBe(false);
+    scrollTop = 200;
+    fireEvent.scroll(list);
+    expect(picker().hasAttribute('data-more-below')).toBe(false);
+    expect(picker().hasAttribute('data-more-above')).toBe(true);
   });
 
   it('positions without an anchor and tolerates a missing ResizeObserver', () => {

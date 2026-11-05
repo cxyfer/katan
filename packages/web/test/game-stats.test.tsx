@@ -122,6 +122,29 @@ describe('post-game statistics', () => {
     expect(screen.getByRole('heading', { name: /賽後數據/ })).toBeTruthy();
   });
 
+  it('shows a scroll cue and becomes a focusable region only while columns are clipped', () => {
+    renderPanel();
+    const table = screen.getByTestId('stats-table-overview');
+    const scroller = table.parentElement!;
+    const frame = scroller.parentElement!;
+    // jsdom 沒有版面：表格不比容器寬時沒有提示，也不多出 tab 停駐點。
+    expect(frame.hasAttribute('data-overflow-end')).toBe(false);
+    expect(scroller.hasAttribute('tabindex')).toBe(false);
+    let scrollLeft = 0;
+    Object.defineProperty(scroller, 'scrollWidth', { configurable: true, get: () => 1100 });
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, get: () => 800 });
+    Object.defineProperty(scroller, 'scrollLeft', { configurable: true, get: () => scrollLeft });
+    fireEvent.scroll(scroller);
+    expect(frame.hasAttribute('data-overflow-end')).toBe(true);
+    expect(frame.hasAttribute('data-overflow-start')).toBe(false);
+    expect(screen.getByRole('region', { name: 'Overview' })).toBe(scroller);
+    expect(scroller.tabIndex).toBe(0);
+    scrollLeft = 300;
+    fireEvent.scroll(scroller);
+    expect(frame.hasAttribute('data-overflow-end')).toBe(false);
+    expect(frame.hasAttribute('data-overflow-start')).toBe(true);
+  });
+
   it('weights dice totals like two six-sided dice', () => {
     expect([2, 7, 12].map(diceWays)).toEqual([1, 6, 1]);
   });

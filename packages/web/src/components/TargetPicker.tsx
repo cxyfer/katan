@@ -9,6 +9,13 @@ const TOOLBAR_GAP_PX = 4;
 const TOOLBAR_SELECTOR = '.board__toolbar--side';
 const EDGE_GAP_PX = 8;
 const ANCHOR_OFFSET_PX = 14;
+/**
+ * 疊在棋盤下緣的 HUD：資源列、手牌扇形與浮動工具鈕。popover 放得下時停在它們上方，
+ * 放不下才疊上去（z-index 高於 HUD，不會被蓋住）。
+ */
+const BOTTOM_HUD_SELECTOR = '.game__dock .resource-tally, .game__dock .hand, .game-tools';
+/** 清單可捲動時，捲動位置距離邊界 1px 以內視為已到底，避免次像素誤差讓提示閃爍。 */
+const SCROLL_EDGE_PX = 1;
 
 /**
  * 外部點擊關閉後，吞掉緊接著的那一次 click，避免它落在棋盤目標按鈕上
@@ -179,25 +186,60 @@ export function TargetPicker({
     if (!element || !parent) return;
     const anchored = anchorX !== undefined && anchorY !== undefined;
     const toolbar = parent.querySelector(TOOLBAR_SELECTOR);
+    const list = element.querySelector<HTMLElement>('.target-picker__list');
     const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, Math.max(min, max)));
+    // 清單超出可用高度時只捲動清單本身，並在被截斷的一側顯示提示。
+    const updateScrollCue = () => {
+      if (!list) return;
+      const hidden = list.scrollHeight - list.clientHeight;
+      element.toggleAttribute('data-more-above', list.scrollTop > SCROLL_EDGE_PX);
+      element.toggleAttribute('data-more-below', hidden - list.scrollTop > SCROLL_EDGE_PX);
+    };
     const place = () => {
       const bounds = parent.getBoundingClientRect();
       const width = element.offsetWidth;
-      const height = element.offsetHeight;
       if (bounds.width === 0 || bounds.height === 0) return;
-      // 頂端下限取工具列實際下緣（窄螢幕會換成 2–3 列），而非固定常數；找不到工具列時只留邊距。
-      const toolbarBottom = toolbar ? toolbar.getBoundingClientRect().bottom - bounds.top + TOOLBAR_GAP_PX : 0;
-      const minTop = Math.max(EDGE_GAP_PX, toolbarBottom);
       // 預設放在點擊處右下；空間不足時改放左側／上方。
       const x = anchored ? anchorX - bounds.left : 0;
       const y = anchored ? anchorY - bounds.top : 0;
-      const left = !anchored ? EDGE_GAP_PX
-        : x + ANCHOR_OFFSET_PX + width <= bounds.width - EDGE_GAP_PX ? x + ANCHOR_OFFSET_PX : x - ANCHOR_OFFSET_PX - width;
+      const left = clamp(
+        !anchored ? EDGE_GAP_PX
+          : x + ANCHOR_OFFSET_PX + width <= bounds.width - EDGE_GAP_PX ? x + ANCHOR_OFFSET_PX : x - ANCHOR_OFFSET_PX - width,
+        EDGE_GAP_PX,
+        bounds.width - width - EDGE_GAP_PX,
+      );
+      const overlapsColumn = (rect: DOMRect) =>
+        rect.width > 0 && rect.height > 0 && rect.left - bounds.left < left + width && rect.right - bounds.left > left;
+      // 頂端下限取工具列實際下緣（窄螢幕會換成 2–3 列），而非固定常數；與工具列水平不重疊時只留邊距。
+      const toolbarRect = toolbar?.getBoundingClientRect();
+      const minTop = toolbarRect && overlapsColumn(toolbarRect)
+        ? Math.max(EDGE_GAP_PX, toolbarRect.bottom - bounds.top + TOOLBAR_GAP_PX)
+        : EDGE_GAP_PX;
+      const parentBottom = bounds.height - EDGE_GAP_PX;
+      // 先以整段可用高度量出 popover 的自然高度（仍受 CSS 上限約束）。
+      element.style.setProperty('--target-picker-room', `${Math.max(0, parentBottom - minTop)}px`);
+      const height = element.offsetHeight;
+      // 同一欄位下緣若有 HUD（資源列、手牌、浮動工具），優先停在它上方。
+      const stage = parent.closest('[data-board-stage]');
+      const hudBottom = Math.min(
+        parentBottom,
+        ...Array.from(stage?.querySelectorAll(BOTTOM_HUD_SELECTOR) ?? [], (hud) => hud.getBoundingClientRect())
+          .filter((rect) => overlapsColumn(rect) && rect.bottom - bounds.top > minTop)
+          .map((rect) => rect.top - bounds.top - EDGE_GAP_PX),
+      );
+      // 無錨點時貼在工具列下方（高度已由 --target-picker-room 限制在可用範圍內）。有錨點時依序嘗試：
+      // 點擊處下方且不碰 HUD、點擊處上方、點擊處下方疊在 HUD 上（HUD 不會蓋住 popover）；
+      // 都放不下時夾在可用範圍內，清單自行捲動。
+      const below = Math.max(minTop, y + ANCHOR_OFFSET_PX);
+      const above = y - ANCHOR_OFFSET_PX - height;
       const top = !anchored ? minTop
-        : y + ANCHOR_OFFSET_PX + height <= bounds.height - EDGE_GAP_PX ? y + ANCHOR_OFFSET_PX : y - ANCHOR_OFFSET_PX - height;
-      element.style.left = `${clamp(left, EDGE_GAP_PX, bounds.width - width - EDGE_GAP_PX)}px`;
-      element.style.top = `${clamp(top, minTop, bounds.height - height - EDGE_GAP_PX)}px`;
+        : below + height <= hudBottom ? below
+        : above >= minTop ? above
+        : clamp(below, minTop, parentBottom - height);
+      element.style.left = `${left}px`;
+      element.style.top = `${top}px`;
       element.style.right = 'auto';
+      updateScrollCue();
     };
     place();
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(place) : null;
@@ -205,9 +247,11 @@ export function TargetPicker({
     if (toolbar) observer?.observe(toolbar);
     observer?.observe(element);
     window.addEventListener('resize', place);
+    list?.addEventListener('scroll', updateScrollCue, { passive: true });
     return () => {
       observer?.disconnect();
       window.removeEventListener('resize', place);
+      list?.removeEventListener('scroll', updateScrollCue);
     };
   }, [anchorX, anchorY, options.length]);
 

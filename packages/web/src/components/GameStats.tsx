@@ -18,6 +18,7 @@ import type { BotLevel } from '@catan/protocol';
 import { GameIcon } from './GameArt.tsx';
 import { BotBadge } from './BotBadge.tsx';
 import { DiceDistributionChart, ScoreTimelineChart } from './StatsCharts.tsx';
+import { StatsScroll } from './StatsScroll.tsx';
 import '../styles/game-stats.css';
 
 /**
@@ -314,7 +315,9 @@ export function GameStatsPanel({ view, bots = new Map() }: {
                 <DiceDistributionChart dice={stats.dice} />
               </div>
             ) : (
-              sectionsFor(id, t).map((section) => <StatsTable key={section.id} section={section} rows={rows} bots={bots} />)
+              sectionsFor(id, t).map((section) => (
+                <StatsTable key={section.id} section={section} rows={rows} bots={bots} label={section.title ?? t(`stats.tab.${id}`)} />
+              ))
             ))}
         </div>
       ))}
@@ -322,10 +325,12 @@ export function GameStatsPanel({ view, bots = new Map() }: {
   );
 }
 
-function StatsTable({ section, rows, bots }: {
+function StatsTable({ section, rows, bots, label }: {
   section: Section;
   rows: StatsRow[];
   bots: ReadonlyMap<string, BotLevel | null>;
+  /** 表格溢出成為可捲動區域時的名稱：有小標題用小標題，否則用分頁名稱。 */
+  label: string;
 }) {
   const t = useT();
   const locale = useLocale();
@@ -343,7 +348,7 @@ function StatsTable({ section, rows, bots }: {
           {section.title}
         </h3>
       )}
-      <div className="game-stats__scroll">
+      <StatsScroll label={label}>
         <table
           className="table game-stats__table"
           aria-labelledby={section.title ? headingId : undefined}
@@ -411,7 +416,7 @@ function StatsTable({ section, rows, bots }: {
             ))}
           </tbody>
         </table>
-      </div>
+      </StatsScroll>
     </div>
   );
 }
