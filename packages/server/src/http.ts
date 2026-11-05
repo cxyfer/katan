@@ -102,6 +102,12 @@ function requireString(body: unknown, key: string): string {
   return value;
 }
 
+function requireBoolean(body: unknown, key: string): boolean {
+  const value = typeof body === 'object' && body !== null ? (body as Record<string, unknown>)[key] : undefined;
+  if (typeof value !== 'boolean') throw badRequest('error.E_MISSING_FIELD', { field: key });
+  return value;
+}
+
 function optionalString(body: unknown, key: string): string | undefined {
   if (typeof body !== 'object' || body === null) return undefined;
   const value = (body as Record<string, unknown>)[key];
@@ -461,11 +467,22 @@ export function createHttpHandler(deps: HttpDeps) {
     return { data: await deps.games.proposeAbandon(playerId!, params.gameId!) };
   });
 
+  route('POST', '/api/games/:gameId/withdraw', async ({ params, body, playerId }) => {
+    requireSession(playerId);
+    return { data: await deps.games.setWithdrawn(playerId!, params.gameId!, requireBoolean(body, 'withdrawn')) };
+  });
+
+  // 舊路由：保留相容，改由對局鎖處理，回傳仍是 RoomView。
   route('POST', '/api/rooms/:roomId/withdraw', async ({ params, body, playerId }) => {
     requireSession(playerId);
-    const withdrawn = asObject(body).withdrawn;
-    if (typeof withdrawn !== 'boolean') throw badRequest('error.E_MISSING_FIELD', { field: 'withdrawn' });
-    return { data: await deps.rooms.setWithdrawn(playerId!, params.roomId!, withdrawn) };
+    const withdrawn = requireBoolean(body, 'withdrawn');
+    await deps.rooms.requireMembership(params.roomId!, playerId!);
+    const room = await deps.rooms.requireRoom(params.roomId!);
+    if (!room.game_id) {
+      throw new ServiceError('E_GAME_NOT_STARTED', 'error.E_GAME_NOT_STARTED', { roomId: room.id }, 409);
+    }
+    await deps.games.setWithdrawn(playerId!, room.game_id, withdrawn);
+    return { data: await deps.rooms.view(room.id, playerId!) };
   });
 
   route('POST', '/api/games/:gameId/save', async ({ params, body, playerId }) => {

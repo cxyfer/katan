@@ -13,6 +13,7 @@ import {
 } from '@catan/rules';
 import {
   DEFAULT_POLICY,
+  type AbandonProposalView,
   type BotLevel,
   type GameOrderMode,
   type Notice,
@@ -210,6 +211,7 @@ export class RoomService {
       bot,
       ...(bot ? { botLevel: botLevelOf(member) } : {}),
       self: member.player_id === viewerId,
+      withdrawn: !bot && member.withdrawn === 1,
     };
   }
 
@@ -235,6 +237,23 @@ export class RoomService {
       };
     }
 
+    let pendingAbandon: AbandonProposalView | null = null;
+    if (room.game_id) {
+      const abandon = await this.repo.findOpenGameProposal(room.game_id, 'abandon');
+      if (abandon) {
+        pendingAbandon = {
+          id: abandon.id,
+          proposedBy: abandon.proposed_by,
+          consents: await this.repo.listGameConsents(abandon.id),
+          // 缺席或已退出的真人；Bot 不缺席。
+          absent: humanMembers(memberships)
+            .filter((member) => member.connected !== 1 || member.withdrawn === 1)
+            .map((member) => member.player_id),
+          createdAt: abandon.created_at,
+        };
+      }
+    }
+
     return {
       id: room.id,
       code: room.code,
@@ -253,6 +272,7 @@ export class RoomService {
       updatedAt: room.updated_at,
       startBlockers: this.startBlockers(room, members),
       pendingPolicy,
+      pendingAbandon,
     };
   }
 
@@ -626,21 +646,6 @@ export class RoomService {
     return this.view(roomId, playerId);
   }
 
-  /**
-   * Records or retracts an explicit withdrawal. A withdrawal is separate from
-   * Save and leave and never removes the seat (§4.6).
-   */
-  async setWithdrawn(playerId: string, roomId: string, withdrawn: boolean): Promise<RoomView> {
-    await this.requireMembership(roomId, playerId);
-    await this.repo.updateMembership(roomId, playerId, { withdrawn: withdrawn ? 1 : 0 });
-    if (withdrawn) {
-      // A withdrawal invalidates a pending abandonment vote.
-      await this.cancelPendingProposals(roomId);
-    }
-    this.broadcastRoom(roomId);
-    return this.view(roomId, playerId);
-  }
-
   /** Cancels any open vote when the eligibility of the voters changes. */
   async invalidateGameVotes(gameId: string): Promise<void> {
     await this.repo.cancelOpenGameProposals(gameId);
@@ -946,8 +951,12 @@ export class RoomService {
     const roomId = connection.roomId;
     if (!roomId) return;
     // A returning connection invalidates a vote it did not participate in.
+    // 已退出的席位回來不改變缺席條件，因此不取消投票；退出只能明確撤回。
     const room = await this.repo.findRoom(roomId);
-    if (room?.game_id) await this.invalidateGameVotes(room.game_id);
+    if (room?.game_id) {
+      const returning = await this.repo.findMembership(roomId, connection.playerId);
+      if (returning?.withdrawn !== 1) await this.invalidateGameVotes(room.game_id);
+    }
     const runtime = this.runtime(roomId);
     const set = runtime.connections.get(connection.playerId) ?? new Set<Connection>();
     set.add(connection);

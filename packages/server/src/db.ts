@@ -982,15 +982,23 @@ export class Repository {
   async findOpenGameProposal(
     gameId: string,
     kind: string,
-  ): Promise<{ id: string; game_id: string; kind: string; proposed_by: string; status: string } | null> {
+  ): Promise<{
+    id: string;
+    game_id: string;
+    kind: string;
+    proposed_by: string;
+    status: string;
+    created_at: string;
+  } | null> {
     const rows = await this.db.all<{
       id: string;
       game_id: string;
       kind: string;
       proposed_by: string;
       status: string;
+      created_at: string;
     }>(
-      `SELECT id, game_id, kind, proposed_by, status FROM game_proposals
+      `SELECT id, game_id, kind, proposed_by, status, created_at FROM game_proposals
        WHERE game_id = ? AND kind = ? AND status = 'open' ORDER BY created_at DESC LIMIT 1`,
       [gameId, kind],
     );
@@ -1005,6 +1013,14 @@ export class Repository {
     await this.db.run(
       `UPDATE game_proposals SET status = 'cancelled' WHERE game_id = ? AND status = 'open'`,
       [gameId],
+    );
+  }
+
+  /** 只取消指定種類的 open 提案（例如退出只影響放棄投票，不動暫停提案）。 */
+  async cancelOpenGameProposalsOfKind(gameId: string, kind: string): Promise<void> {
+    await this.db.run(
+      `UPDATE game_proposals SET status = 'cancelled' WHERE game_id = ? AND kind = ? AND status = 'open'`,
+      [gameId, kind],
     );
   }
 

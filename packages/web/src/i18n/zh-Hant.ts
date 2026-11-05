@@ -802,6 +802,7 @@ export const zhHant: Catalog = {
   'error.E_CHAT_INVALID': '訊息含有不允許的字元。',
   'error.E_COLOR_TAKEN': '顏色 {color} 已被其他玩家選用。',
   'error.E_GAME_NOT_FOUND': '找不到該對局。',
+  'error.E_GAME_NOT_STARTED': '這個房間尚未開始對局。',
   'error.E_GAME_SUSPENDED': '此對局已暫停，需全體座位就緒才能恢復。',
   'error.E_INTERNAL': '伺服器發生內部錯誤，請重試。',
   'error.E_INVALID_BOT': '電腦對手的難度或規則集不支援。',
@@ -823,6 +824,7 @@ export const zhHant: Catalog = {
   'error.E_ROOM_CAPACITY': '人數上限不可超過 {max}。',
   'error.E_ROOM_STARTED': '對局已開始，房間設定已鎖定。',
   'error.E_SAVE_FAILED': '存檔失敗；先前的自動存檔仍然保留。',
+  'error.E_SEAT_WITHDRAWN': '你已退出這場對局；撤回退出後才能行動。',
   'error.E_START_BLOCKED': '仍有條件阻擋開始，請見下方清單。',
   'error.E_UNSUPPORTED_COMBINATION': '這個規則集、人數與劇本組合不受支援。',
 };

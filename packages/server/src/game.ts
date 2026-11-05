@@ -22,6 +22,8 @@ import {
   type Rng,
 } from '@catan/rules';
 import type {
+  AbandonConsentResult,
+  AbandonProposeResult,
   CommandReceipt,
   CommandRequest,
   GameSnapshot,
@@ -29,9 +31,18 @@ import type {
   ResumableGameView,
   RoomStatus,
   SaveReceipt,
+  WithdrawResult,
 } from '@catan/protocol';
 import type { ServerConfig } from './config.ts';
-import { digestPayload, newId, type GameRow, type MemberRow, type Repository, type RoomRow } from './db.ts';
+import {
+  digestPayload,
+  newId,
+  type GameRow,
+  type MemberRow,
+  type MembershipRow,
+  type Repository,
+  type RoomRow,
+} from './db.ts';
 import { ServiceError, type RoomService } from './rooms.ts';
 import { humanMembers, isBotMember } from './bot-seats.ts';
 
@@ -77,6 +88,13 @@ function abandonmentEligible(members: readonly MemberRow[]): boolean {
   const humans = humanMembers(members);
   if (humans.length === 1) return true;
   return humans.some((member) => member.connected !== 1 || member.withdrawn === 1);
+}
+
+/**
+ * 放棄的投票者：連線中且未退出的真人。退出視同同意，不需要再投票；Bot 不投票。
+ */
+function abandonmentVoters<T extends MemberRow>(members: readonly T[]): T[] {
+  return humanMembers(members).filter((member) => member.connected === 1 && member.withdrawn !== 1);
 }
 
 export class GameCoordinator {
@@ -172,11 +190,12 @@ export class GameCoordinator {
   }
 
   /** A player may only read games they hold a seat in. */
-  async requireSeat(game: GameRow, playerId: string): Promise<void> {
+  async requireSeat(game: GameRow, playerId: string): Promise<MembershipRow> {
     const membership = await this.repo.findMembership(game.room_id, playerId);
     if (!membership) {
       throw new ServiceError('E_NOT_SEATED', 'error.E_NOT_SEATED', { gameId: game.id }, 403);
     }
+    return membership;
   }
 
   async snapshot(gameId: string, playerId: string): Promise<GameSnapshot> {
@@ -234,6 +253,7 @@ export class GameCoordinator {
         lastSavedAt: game.updated_at,
         revision: game.revision,
         allSeatsNeeded: players.every((player) => !player.bot),
+        withdrawn: memberships.some((membership) => membership.player_id === playerId && membership.withdrawn === 1),
       });
     }
     return out;
@@ -244,7 +264,7 @@ export class GameCoordinator {
   async submit(playerId: string, gameId: string, request: CommandRequest): Promise<CommandReceipt> {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
-      await this.requireSeat(game, playerId);
+      const membership = await this.requireSeat(game, playerId);
 
       const digest = digestPayload({ command: request.command, expectedRevision: request.expectedRevision });
       const existing = await this.repo.findReceipt(gameId, playerId, request.commandId);
@@ -263,6 +283,10 @@ export class GameCoordinator {
       }
       if (room?.status === 'completed' || room?.status === 'abandoned') {
         throw new ServiceError('E_GAME_OVER', 'error.E_GAME_OVER', { gameId }, 409);
+      }
+      // 退出的席位必須先撤回才能行動（§4.6）；已存在的 receipt 仍照常回放。
+      if (membership.withdrawn === 1) {
+        throw new ServiceError('E_SEAT_WITHDRAWN', 'error.E_SEAT_WITHDRAWN', { gameId }, 409);
       }
 
       if (request.expectedRevision !== game.revision) {
@@ -558,10 +582,12 @@ export class GameCoordinator {
 
   /**
    * §4.6: any connected seated player may propose abandonment once the policy
-   * allows it and at least one seat is absent or has withdrawn. Every currently
-   * connected seated player must confirm the same proposal.
+   * allows it and at least one seat is absent or has withdrawn. Every connected,
+   * non-withdrawn seated player must confirm the same proposal; the proposal
+   * itself counts as the proposer's consent. A sole human at a bot table ends
+   * the game at once.
    */
-  async proposeAbandon(playerId: string, gameId: string): Promise<{ proposalId: string }> {
+  async proposeAbandon(playerId: string, gameId: string): Promise<AbandonProposeResult> {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
       await this.requireSeat(game, playerId);
@@ -580,19 +606,22 @@ export class GameCoordinator {
         throw new ServiceError('E_NO_ABSENT_PLAYER', 'error.E_NO_ABSENT_PLAYER', {}, 409);
       }
       const existing = await this.repo.findOpenGameProposal(gameId, 'abandon');
-      if (existing) return { proposalId: existing.id };
-      const proposalId = newId('abandon');
-      await this.repo.insertGameProposal({
-        id: proposalId,
-        game_id: gameId,
-        kind: 'abandon',
-        proposed_by: playerId,
-        status: 'open',
-        created_at: new Date().toISOString(),
-      });
-      await this.repo.insertGameConsent(proposalId, playerId);
-      await this.tryApplyAbandon(game, proposalId);
-      return { proposalId };
+      let proposalId: string;
+      if (existing) {
+        proposalId = existing.id;
+      } else {
+        proposalId = newId('abandon');
+        await this.repo.insertGameProposal({
+          id: proposalId,
+          game_id: gameId,
+          kind: 'abandon',
+          proposed_by: playerId,
+          status: 'open',
+          created_at: new Date().toISOString(),
+        });
+      }
+      await this.recordConsent(proposalId, playerId);
+      return { proposalId, abandoned: await this.tryApplyAbandon(game, proposalId) };
     });
   }
 
@@ -601,7 +630,7 @@ export class GameCoordinator {
     gameId: string,
     proposalId: string,
     approve: boolean,
-  ): Promise<{ abandoned: boolean }> {
+  ): Promise<AbandonConsentResult> {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
       await this.requireSeat(game, playerId);
@@ -613,8 +642,54 @@ export class GameCoordinator {
         await this.repo.updateGameProposalStatus(proposalId, 'rejected');
         return { abandoned: false };
       }
-      await this.repo.insertGameConsent(proposalId, playerId);
+      await this.recordConsent(proposalId, playerId);
       return { abandoned: await this.tryApplyAbandon(game, proposalId) };
+    });
+  }
+
+  /** 同一位玩家重複表態不是錯誤（提案即同意，之後再按同意也成立）。 */
+  private async recordConsent(proposalId: string, playerId: string): Promise<void> {
+    const consents = await this.repo.listGameConsents(proposalId);
+    if (!consents.includes(playerId)) await this.repo.insertGameConsent(proposalId, playerId);
+  }
+
+  /**
+   * 明確退出或撤回（§4.6）。與所有指令一樣在對局鎖內序列化，因此「先提交的終局
+   * 為準」：勝利先提交就拒絕退出，退出先把整桌結束就拒絕之後的指令。
+   */
+  async setWithdrawn(playerId: string, gameId: string, withdrawn: boolean): Promise<WithdrawResult> {
+    return this.withLock(gameId, async () => {
+      const game = await this.requireGame(gameId);
+      await this.requireSeat(game, playerId);
+      const room = await this.repo.findRoom(game.room_id);
+      if (!room) throw new ServiceError('E_ROOM_NOT_FOUND', 'error.E_ROOM_NOT_FOUND', {}, 404);
+      const state = JSON.parse(game.state_json) as GameState;
+      if (room.status === 'completed' || room.status === 'abandoned' || state.result) {
+        throw new ServiceError('E_GAME_OVER', 'error.E_GAME_OVER', { gameId }, 409);
+      }
+      const members = await this.repo.listMembers(game.room_id);
+      const self = members.find((member) => member.player_id === playerId);
+      // Bot 沒有憑證也不會退出；人類席位才有退出狀態。
+      if (!self || isBotMember(self)) {
+        throw new ServiceError('E_NOT_SEATED', 'error.E_NOT_SEATED', { gameId }, 403);
+      }
+      if ((self.withdrawn === 1) === withdrawn) return { withdrawn, abandoned: false };
+
+      // 資格改變即取消放棄投票；只動 abandon，不碰暫停提案。
+      await this.repo.transaction(async () => {
+        await this.repo.updateMembership(game.room_id, playerId, { withdrawn: withdrawn ? 1 : 0 });
+        await this.repo.cancelOpenGameProposalsOfKind(gameId, 'abandon');
+      });
+
+      if (withdrawn && this.policyOfRoom(room.policy_json).allowAbandonment) {
+        const humans = humanMembers(await this.repo.listMembers(game.room_id));
+        if (humans.every((member) => member.withdrawn === 1)) {
+          const ended = await this.commitAbandoned(game.id, game.room_id, null);
+          return { withdrawn, abandoned: ended };
+        }
+      }
+      this.deps.rooms.broadcastRoom(game.room_id);
+      return { withdrawn, abandoned: false };
     });
   }
 
@@ -631,28 +706,35 @@ export class GameCoordinator {
       await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
       return false;
     }
-    // Bot 席位不投票。
-    const voters = humanMembers(memberships).filter((member) => member.connected === 1);
+    // Bot 席位不投票；退出者視同同意。
+    const voters = abandonmentVoters(memberships);
     const consents = new Set(await this.repo.listGameConsents(proposalId));
     if (!voters.every((voter) => consents.has(voter.player_id))) return false;
+    return this.commitAbandoned(game.id, game.room_id, proposalId);
+  }
 
-    const fresh = await this.requireGame(game.id);
+  /**
+   * 以無勝者的 `abandoned` 終局。呼叫端必須持有該局的鎖；重讀最新狀態，已有結果
+   * （例如勝利先提交）就不動，先 commit 的終局為準。
+   */
+  private async commitAbandoned(gameId: string, roomId: string, proposalId: string | null): Promise<boolean> {
+    const fresh = await this.requireGame(gameId);
     const current = JSON.parse(fresh.state_json) as GameState;
     if (current.result) {
       // A committed victory outranks a later abandonment request.
-      await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
+      if (proposalId) await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
       return false;
     }
     const abandoned = abandonGame(current);
     await this.repo.transaction(async () => {
-      await this.repo.saveGame(game.id, abandoned, fresh.revision + 1, 'abandoned', null);
-      await this.repo.appendEvents(game.id, fresh.revision + 1, abandoned.log.slice(-1));
-      await this.repo.updateGameProposalStatus(proposalId, 'applied');
-      await this.repo.updateRoom(game.room_id, { status: 'abandoned' });
-      await this.repo.cancelOpenGameProposals(game.id);
+      await this.repo.saveGame(gameId, abandoned, fresh.revision + 1, 'abandoned', null);
+      await this.repo.appendEvents(gameId, fresh.revision + 1, abandoned.log.slice(-1));
+      if (proposalId) await this.repo.updateGameProposalStatus(proposalId, 'applied');
+      await this.repo.updateRoom(roomId, { status: 'abandoned' });
+      await this.repo.cancelOpenGameProposals(gameId);
     });
-    this.deps.rooms.broadcastRoom(game.room_id);
-    this.notifyLifecycle(game.id, 'abandoned');
+    this.deps.rooms.broadcastRoom(roomId);
+    this.notifyLifecycle(gameId, 'abandoned');
     return true;
   }
 

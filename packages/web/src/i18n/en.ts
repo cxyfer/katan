@@ -809,6 +809,7 @@ export const en: Catalog = {
   'error.E_CHAT_INVALID': 'The message contains characters that are not allowed.',
   'error.E_COLOR_TAKEN': 'Colour {color} is already taken.',
   'error.E_GAME_NOT_FOUND': 'That game could not be found.',
+  'error.E_GAME_NOT_STARTED': 'This room has not started a game yet.',
   'error.E_GAME_SUSPENDED': 'This game is suspended; every seat must be ready to resume.',
   'error.E_INTERNAL': 'The server hit an internal error. Please retry.',
   'error.E_INVALID_BOT': 'That bot difficulty or ruleset is not supported.',
@@ -830,6 +831,7 @@ export const en: Catalog = {
   'error.E_ROOM_CAPACITY': 'Capacity cannot exceed {max}.',
   'error.E_ROOM_STARTED': 'The game has started, so room settings are locked.',
   'error.E_SAVE_FAILED': 'Saving failed; earlier autosaves are still intact.',
+  'error.E_SEAT_WITHDRAWN': 'You have withdrawn from this game; take your withdrawal back before acting.',
   'error.E_START_BLOCKED': 'Some conditions still block the start; see the list below.',
   'error.E_UNSUPPORTED_COMBINATION': 'That ruleset, player count and scenario combination is not supported.',
 };

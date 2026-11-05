@@ -52,6 +52,7 @@ export const SERVER_ERROR_IDS: readonly string[] = [
   'error.E_COLOR_TAKEN',
   'error.E_COMMAND_ID_REUSED',
   'error.E_GAME_NOT_FOUND',
+  'error.E_GAME_NOT_STARTED',
   'error.E_GAME_SUSPENDED',
   'error.E_INTERNAL',
   'error.E_INVALID_BOT',
@@ -75,6 +76,7 @@ export const SERVER_ERROR_IDS: readonly string[] = [
   'error.E_ROOM_NOT_FOUND',
   'error.E_ROOM_STARTED',
   'error.E_SAVE_FAILED',
+  'error.E_SEAT_WITHDRAWN',
   'error.E_STALE_REVISION',
   'error.E_START_BLOCKED',
   'error.E_UNSUPPORTED',
@@ -199,6 +201,8 @@ export interface RoomMemberView {
   botLevel?: BotLevel;
   /** True when the member is the viewer (control decisions). */
   self?: boolean;
+  /** 席位已明確退出（§4.6）；需撤回才能再行動。Bot 恆為 false。 */
+  withdrawn?: boolean;
 }
 
 export interface RoomView {
@@ -220,6 +224,39 @@ export interface RoomView {
   /** Viewer-specific start blockers, as message ids with parameters. */
   startBlockers: Notice[];
   pendingPolicy: PolicyProposalView | null;
+  /** 進行中對局的 open 放棄提案；沒有提案或沒有對局時為 null。 */
+  pendingAbandon?: AbandonProposalView | null;
+}
+
+/** 放棄（無勝者終局）提案：同意者與缺席者，供確認畫面點名（§4.6）。 */
+export interface AbandonProposalView {
+  id: string;
+  proposedBy: string;
+  /** 已同意的真人 playerId。 */
+  consents: string[];
+  /** 目前缺席或已退出的真人 playerId。 */
+  absent: string[];
+  createdAt: string;
+}
+
+/** `POST /api/games/:gameId/abandon`（提案）的回應。 */
+export interface AbandonProposeResult {
+  proposalId: string;
+  /** 提案即同意；唯一真人或同意者已齊時為 true，對局已以無勝者終局。 */
+  abandoned: boolean;
+}
+
+/** `POST /api/games/:gameId/abandon`（附 proposalId 表態）的回應。 */
+export interface AbandonConsentResult {
+  abandoned: boolean;
+}
+
+/** `POST /api/games/:gameId/withdraw` 的回應。 */
+export interface WithdrawResult {
+  /** 套用後該席位是否處於退出狀態。 */
+  withdrawn: boolean;
+  /** 這次退出讓所有真人都已退出，對局因此以無勝者終局。 */
+  abandoned: boolean;
 }
 
 export interface PolicyProposalView {
@@ -356,6 +393,8 @@ export interface ResumableGameView {
   lastSavedAt: string;
   revision: number;
   allSeatsNeeded: boolean;
+  /** 檢視者自己的席位已退出時為 true；對局仍可恢復，因為可以撤回。 */
+  withdrawn?: boolean;
 }
 
 // ---------------------------------------------------------------------------
