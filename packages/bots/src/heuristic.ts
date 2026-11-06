@@ -424,6 +424,8 @@ function buildDecision(turn: TurnContext): BotCommand | null {
 /**
  * 完全相同的指令只留一個：分數取最高，位置取第一次出現的。模組的候選可能與 base 的立即建造是同一個
  * 指令（例如帶小島加分的聚落），不去重會在 easy 的 topK 裡多佔名額。
+ * 限制：鍵只排序頂層欄位，巢狀物件的 key 順序不同時會視為不同指令（漏去重，不會誤合併）。目前會
+ * 重複的指令都只有平面欄位；第一個帶巢狀 payload 的模組候選接入時，要改成遞迴正規化並補測試。
  */
 export function dedupeCandidates(candidates: readonly Scored<BotCommand>[]): Scored<BotCommand>[] {
   const keyOf = (command: BotCommand): string =>
