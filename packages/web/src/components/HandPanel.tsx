@@ -114,6 +114,17 @@ export function HandPanel({ controller }: { controller: TableController }) {
   useEffect(() => () => {
     if (closeTimer.current !== null) clearTimeout(closeTimer.current);
   }, []);
+  // 手機版的數量列兼任手牌把手（只有 mobile-hand.css 開放點擊）：點一下展開，展開時再點收合。
+  const toggleFromTally = () => {
+    if (!canExpand) return;
+    if (fanExpanded) {
+      collapse();
+      return;
+    }
+    cancelClose();
+    touchOpenRef.current = true;
+    setExpanded(true);
+  };
   // 拖曳發展卡出牌：拖曳中扇形維持展開、不觸發左右滑動檢視；放開後吃掉隨之而來的點擊，
   // 免得被當成「查看這張牌」。
   const onCardDrag = (phase: 'start' | 'cancel' | 'drop') => {
@@ -155,7 +166,8 @@ export function HandPanel({ controller }: { controller: TableController }) {
   useEffect(() => {
     if (!fanExpanded) return;
     const outside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !handRef.current?.contains(event.target)) {
+      // 數量列在手機上是收合開關，交給它自己的點擊處理。
+      if (event.target instanceof Node && !handRef.current?.contains(event.target) && !tallyRef.current?.contains(event.target)) {
         touchOpenRef.current = false;
         setExpanded(false);
         setInspected(null);
@@ -286,7 +298,7 @@ export function HandPanel({ controller }: { controller: TableController }) {
           aria-label={t('table.collapseHand')}>⌄</button>}
       </div>
     </section>
-      <ul className="resource-tally" ref={tallyRef} aria-label={t('table.resourceTally')} data-testid="resource-tally">
+      <ul className="resource-tally" ref={tallyRef} aria-label={t('table.resourceTally')} data-testid="resource-tally" onClick={toggleFromTally}>
         {kinds.map((resource) => {
           const count = resources?.[resource];
           const label = count === undefined ? '—' : formatNumber(state.locale, count);

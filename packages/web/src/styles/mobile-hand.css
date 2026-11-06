@@ -1,0 +1,84 @@
+/*
+ * 手機牌桌的手牌把手。GameScreen 在窄螢幕（< 650px）與手機橫屏（compact-landscape）
+ * 標上 data-hand-dock="tally"；桌機與平板不受影響。
+ *
+ * 桌機收合時露出一排牌背、上方浮著資源數量列，展開時數量列跟著升到扇形上緣；
+ * 在小螢幕上它們蓋住棋盤底排與中央的板塊、數字與頂點（橫屏時數量列就落在棋盤正中）。
+ * 這裡改成：數量列固定在底部 HUD，收合與展開都不移動，本身就是開關（HandPanel 的
+ * toggleFromTally）；收合時不露牌背，展開時扇形從數量列上方升起。
+ *
+ * 本檔不在 cascade layer 內，於 compact-landscape.css 之後載入。
+ */
+
+/* ---------- 數量列：較小的圖示；放不下一行時換行，不超出畫面兩側（城市與騎士有八種牌） ---------- */
+.screen--game[data-hand-dock="tally"] .resource-tally {
+  width: max-content; max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: center;
+  gap: 2px 1px; padding: 3px;
+}
+.screen--game[data-hand-dock="tally"] .resource-tally__item { gap: 3px; padding: 1px 6px 1px 1px; }
+.screen--game[data-hand-dock="tally"] .resource-tally__icon { width: 21px; height: 21px; }
+.screen--game[data-hand-dock="tally"] .resource-tally__count { font-size: .82rem; }
+
+/* ---------- 數量列固定在底部，疊在扇形之上，可點 ---------- */
+.screen--game[data-hand-dock="tally"] .game__dock > .resource-tally {
+  left: 50%; bottom: 6px; z-index: 102; transform: translateX(-50%);
+  border-radius: 18px; pointer-events: auto; cursor: pointer;
+}
+.screen--game[data-hand-dock="tally"] .game__dock:has(> .hand-fan[data-empty]) > .resource-tally { cursor: default; }
+/* 箭頭提示可展開（⌃）或收合（⌄）；空手牌無法展開，不顯示。 */
+.screen--game[data-hand-dock="tally"] .game__dock:has(> .hand-fan:not([data-empty])) > .resource-tally::after {
+  content: ''; flex: none; align-self: center; width: 6px; height: 6px; margin: 3px 5px 0 1px;
+  border-top: 2px solid #ead6a6; border-left: 2px solid #ead6a6; opacity: .85; transform: rotate(45deg);
+}
+.screen--game[data-hand-dock="tally"] .game__dock:has(> .hand-fan[data-expanded="true"]) > .resource-tally::after {
+  margin: 0 5px 3px 1px; transform: rotate(225deg);
+}
+
+/* ---------- 收合：不露牌背，透明的手牌區塊不攔截棋盤點擊 ---------- */
+.screen--game[data-hand-dock="tally"] .game__dock > .hand.hand-fan[data-expanded="false"] { pointer-events: none; }
+/* 牌整張移出裁切範圍；仍可聚焦（Tab 進來即展開）。 */
+.screen--game[data-hand-dock="tally"] .hand.hand-fan[data-expanded="false"] .hand-fan__card {
+  transform: translateY(calc(var(--fan-card-height) + 96px));
+}
+/* 空手牌時數量列已全為 0，文字提示只留給輔助科技。 */
+.screen--game[data-hand-dock="tally"] .hand.hand-fan[data-expanded="false"] .hand__empty {
+  position: absolute; inset: auto; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); transform: none; white-space: nowrap;
+}
+
+/* ---------- 展開：再點數量列即可收合；收合鈕會與底部的數量列重疊，只在鍵盤聚焦時移到右上角顯示 ---------- */
+.screen--game[data-hand-dock="tally"] .hand.hand-fan .hand-fan__close:not(:focus-visible) {
+  width: 1px; height: 1px; padding: 0; overflow: hidden; border: 0; clip-path: inset(50%);
+}
+.screen--game[data-hand-dock="tally"] .hand.hand-fan .hand-fan__close:focus-visible { top: 4px; right: 8px; bottom: auto; }
+
+/* ---------- 直屏：dock 在底部工具列上方（hand-fan.css 的 bottom: 50px），數量列貼著 dock 底 ---------- */
+/* 骰子原本貼在棋盤右下角，與數量列同高；上移到數量列上方（城市與騎士換成兩行時也不重疊）。 */
+.screen--game[data-hand-dock="tally"]:not([data-layout="compact-landscape"]) .board--side-controls .board__dice { bottom: 74px; }
+
+/* ---------- 手機橫屏：數量列夾在左下工具鈕與右下選單鈕之間，與浮動 HUD 同一列 ---------- */
+.screen--game[data-layout="compact-landscape"] { --hud-tool-count: 5; }
+.screen--game[data-layout="compact-landscape"]:has(.game-tools__tabs > :nth-child(6)) { --hud-tool-count: 6; }
+.screen--game[data-layout="compact-landscape"]:has(.game-tools__tabs > :nth-child(7)) { --hud-tool-count: 7; }
+.screen--game[data-hand-dock="tally"][data-layout="compact-landscape"] .game__dock:has(> .hand-fan) {
+  /* dock 貼齊畫面底部（568px 寬時 hand-fan.css 的窄螢幕規則會抬高 50px），左右內縮固定。 */
+  --dock-inset: 54px;
+  /* 工具鈕從左側 8px 起、每顆 --hud-size 寬、間距 6px；選單鈕距右側 8px。兩側各再留 4px。 */
+  --dock-start: calc(12px + var(--hud-tool-count) * var(--hud-size) + (var(--hud-tool-count) - 1) * 6px);
+  --dock-end: calc(12px + var(--hud-size));
+  left: var(--dock-inset); right: var(--dock-inset); bottom: 0;
+}
+.screen--game[data-hand-dock="tally"][data-layout="compact-landscape"] .game__dock > .resource-tally {
+  /* 以 dock 為基準換算到工具鈕與選單鈕之間的中點；單行高 31px，與 HUD 按鈕垂直置中，換行時往上長。 */
+  left: calc((100% + var(--dock-start) - var(--dock-end)) / 2);
+  bottom: calc(var(--hud-gap) + (var(--hud-size) - 31px) / 2);
+  max-width: calc(100% + 2 * var(--dock-inset) - var(--dock-start) - var(--dock-end));
+}
+/* 窄橫屏（約 568–700px 寬）：工具鈕與選單鈕之間只剩約 280px，收緊每格的右側內距，五種資源與總數才排得進一行。 */
+@media (max-width: 700px) {
+  .screen--game[data-hand-dock="tally"][data-layout="compact-landscape"] .resource-tally__item { padding-right: 4px; }
+}
+/* 窄於 650px 時骰子在右下、選單鈕上方（board-camera-controls.css）；城市與騎士的數量列換成兩行時會長到骰子的高度，骰子再上移。 */
+@media (max-width: 649px) {
+  .screen--game[data-hand-dock="tally"][data-layout="compact-landscape"]:has(.resource-tally__item--coin) .board--side-controls .board__dice { bottom: 76px; }
+}
