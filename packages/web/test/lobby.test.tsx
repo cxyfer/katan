@@ -96,16 +96,34 @@ describe('lobby', () => {
     });
   });
 
-  it('creates a room with the selected game order', async () => {
+  it('lets the host switch the setup mode to a variable board before start', async () => {
+    const api = createFakeApi({ room: makeRoom({ setupMode: 'fixed' }) });
+    await joinLobby(api);
+
+    const setup = screen.getByTestId('lobby-setup') as HTMLSelectElement;
+    expect(setup.disabled).toBe(false);
+    expect([...setup.options].map((option) => option.value)).toEqual(['fixed', 'variable']);
+
+    fireEvent.change(setup, { target: { value: 'variable' } });
+    fireEvent.click(screen.getByTestId('save-settings'));
+    await waitFor(() => expect(api.callsOf('updateSettings')).toHaveLength(1));
+    expect(api.callsOf('updateSettings')[0]!.args[1]).toEqual({ setupMode: 'variable' });
+    await waitFor(() => {
+      expect((screen.getByTestId('lobby-setup') as HTMLSelectElement).value).toBe('variable');
+    });
+  });
+
+  it('leaves setup mode and game order out of the create form', async () => {
     const api = createFakeApi({ room: null });
     renderApp(api);
 
-    const order = (await screen.findByTestId('room-order')) as HTMLSelectElement;
-    expect(order.value).toBe('join');
-    fireEvent.change(order, { target: { value: 'random' } });
-    fireEvent.click(screen.getByTestId('create-room'));
+    fireEvent.click(await screen.findByTestId('create-room'));
+    expect(document.getElementById('room-setup')).toBeNull();
+    expect(screen.queryByTestId('room-order')).toBeNull();
     await waitFor(() => expect(api.callsOf('createRoom')).toHaveLength(1));
-    expect(api.callsOf('createRoom')[0]!.args[0]).toMatchObject({ orderMode: 'random' });
+    const body = api.callsOf('createRoom')[0]!.args[0] as Record<string, unknown>;
+    expect(body.setupMode).toBe('fixed');
+    expect(body).not.toHaveProperty('orderMode');
   });
 
   it('filters capacity options above the deployment maximum', async () => {
