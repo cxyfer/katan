@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GAME_ORDER_MODES, type GameOrderMode } from '@catan/protocol';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { SoundSettings } from './SoundSettings.tsx';
 import { NewsBoard } from './NewsBoard.tsx';
@@ -31,8 +30,6 @@ export function HomeScreen({ controller }: ScreenProps) {
   const [capacity, setCapacity] = useState(3);
   const [expansionKey, setExpansionKey] = useState('');
   const [scenarioKey, setScenarioKey] = useState('');
-  const [setupMode, setSetupMode] = useState<'fixed' | 'variable'>('fixed');
-  const [orderMode, setOrderMode] = useState<GameOrderMode>('join');
   const homePanes = ['table', 'resume', 'rooms', 'news', 'identity'] as const;
   const homeTabRef = useRef<HTMLButtonElement | null>(null);
 
@@ -46,8 +43,9 @@ export function HomeScreen({ controller }: ScreenProps) {
   const capacityOptions = ruleset.playerCounts;
   const effectiveCapacity = ruleset.playerCount ?? capacityOptions[0] ?? 4;
   const joinLabels = (ids: string[]) => ids.map((id) => t(id)).join(' + ');
+  // 佈局模式與遊戲順序改在房間設定中調整；建房時先用規則集允許的預設值。
   const setupOptions = chosenProfile?.setupModes ?? ['fixed', 'variable'];
-  const effectiveSetup = setupOptions.includes(setupMode) ? setupMode : (setupOptions[0] ?? 'fixed');
+  const effectiveSetup = setupOptions.includes('fixed') ? 'fixed' : (setupOptions[0] ?? 'fixed');
 
   const paneIcon: Record<HomePane, string> = { table: 'flag', resume: 'anchor', rooms: 'globe', news: 'sparkles', identity: 'settings' };
   const paneCount: Partial<Record<HomePane, number>> = { resume: state.games.length, rooms: state.rooms.length };
@@ -195,32 +193,6 @@ export function HomeScreen({ controller }: ScreenProps) {
                 ))}
               </select>
             </div>
-            <div className="field">
-              <label htmlFor="room-setup">{t('lobby.setupMode')}</label>
-              <select
-                id="room-setup"
-                value={effectiveSetup}
-                onChange={(event) => setSetupMode(event.target.value as 'fixed' | 'variable')}
-              >
-                {setupOptions.map((mode) => (
-                  <option key={mode} value={mode}>{t(`lobby.setupMode.${mode}`)}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="room-order">{t('lobby.orderMode')}</label>
-              <select
-                id="room-order"
-                data-testid="room-order"
-                value={orderMode}
-                onChange={(event) => setOrderMode(event.target.value as GameOrderMode)}
-              >
-                {GAME_ORDER_MODES.map((mode) => (
-                  <option key={mode} value={mode}>{t(`lobby.orderMode.${mode}`)}</option>
-                ))}
-              </select>
-              <p className="muted">{t('lobby.orderModeNote')}</p>
-            </div>
           </div>
           {chosenProfile && (
             <p className="muted" data-testid="resolved-profile">
@@ -242,7 +214,6 @@ export function HomeScreen({ controller }: ScreenProps) {
                   capacity: effectiveCapacity,
                   profileId: chosenProfile?.id ?? '',
                   setupMode: effectiveSetup,
-                  orderMode,
                 })
               }
             >

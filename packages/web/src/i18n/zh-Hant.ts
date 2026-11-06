@@ -195,7 +195,7 @@ export const zhHant: Catalog = {
   'lobby.visibility.public': '公開（列出）',
   'lobby.capacity': '人數上限',
   'lobby.settingsTitle': '房間設定',
-  'lobby.settings.help': '開始前可調整人數上限與遊戲順序；人數不可低於目前已入座的人數。',
+  'lobby.settings.help': '開始前可調整人數上限、佈局模式與遊戲順序；人數不可低於目前已入座的人數。',
   'lobby.settings.save': '保存設定',
   'lobby.profile': '規則集／劇本',
   'lobby.setupMode': '佈局模式',

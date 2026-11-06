@@ -21,6 +21,11 @@ import type { DevCardType } from './types.ts';
  * The maintainer explicitly approved running unfinished base-2025.1 and
  * base-2025.2 games on this engine on 2026-11-02 as the PR #60 defect-fix
  * exception (SPEC §7.3, FIDELITY gap 11).
+ * ep-2025.2 (Explorers & Pirates, `EP_RULE_VERSION`): a ship may enter a full
+ * edge only if it can still reach a legal stop, and a stranded ship with no
+ * way out ends its movement there (#97). The maintainer explicitly approved
+ * running unfinished ep-2025.1 games on this engine on 2026-11-05 as the #97
+ * defect-fix exception (SPEC §7.3, FIDELITY gap 11).
  */
 export const BASE_RULE_VERSION = 'base-2025.4';
 /** @deprecated Kept for callers that predate per-profile rule versions. */
@@ -235,6 +240,12 @@ function tbProfile(
 }
 
 /**
+ * 五個 E&P profile 共用的規則版本。ep-2025.2 修正 #97 的擱淺死結；未完成的
+ * ep-2025.1 遊戲經維護者核准（2026-11-05）直接改走這一版的行為，不依版本分支。
+ */
+const EP_RULE_VERSION = 'ep-2025.2';
+
+/**
  * Explorers & Pirates (EP25 / EP25-M, CN3085): one profile per mission set, in
  * book order; rules in `modules/explorersPirates/`, maps in
  * `explorers-pirates-boards.ts`. E&P is standalone: no development cards,
@@ -252,7 +263,7 @@ function explorersPiratesProfile(
   overrides: ProfileOverrides = {},
 ): ProfileDefinition {
   return baseProfile(id, [3, 4], {
-    ruleVersion: 'ep-2025.1',
+    ruleVersion: EP_RULE_VERSION,
     expansions: ['explorersPirates'],
     scenario,
     sources: [

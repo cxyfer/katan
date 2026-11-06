@@ -279,7 +279,7 @@ Profiles without a coin module refuse goods (`E_INVALID_SELECTION`).
 | `ep.fastGold` | `give` | Action phase, with the Fast Gold spice ability: 1 resource → 1 gold |
 | `ep.extraMove` | `ship` | Movement phase, once per ship: 1 wool → 2 more moves |
 | `ep.startMovement` | – | ends the Action phase |
-| `ep.moveShip` | `ship`, `edge` | Movement phase: one step along a sea edge |
+| `ep.moveShip` | `ship`, `edge` | Movement phase: one step along a sea edge; onto an edge with two other ships only to pass, when a legal stop is still reachable (`E_EP_EDGE_FULL`; `E_EP_TRIBUTE` when tribute is due and the owner has no coin) |
 | `ep.load` / `ep.unload` | `ship`, `harbor`, `piece` | Movement phase, ship next to an own harbour settlement |
 | `ep.swap` | `ship`, `harbor` | as above: exchange all cargo |
 | `ep.found` | `ship`, `vertex` | Movement phase: a settler ship founds a settlement |
@@ -303,6 +303,18 @@ Council), `ships` (`{ id, player, edge, cargo }`), `harbors`
 targets, coin-trade allowances, per-ship `steps`, `found`, cargo and crew
 options, `deliver`, `chase`, `stranded`, `fishRoll`, `pirateTargets` and
 `robCandidates`. A pirate theft's card is private to the thief and the victim.
+Since `ep-2025.2` (#97), `steps` lists a full edge (`full: true`, two other
+ships) only if a legal stop — a non-full edge, or founding with the settler
+aboard — can still be reached from it with the MP the ship already has; an
+extra move not yet bought does not count. `stranded` means the ship in motion
+is on an edge with two other ships and must sail on: it still has a step, a
+founding site, or a step that `ep.extraMove` would open. While it is true,
+`turn.end`, moving another ship and `ep.fishRoll` are refused
+(`E_EP_EDGE_FULL`), so `canEndTurn` and `fishRoll` are false and the other
+ships' `steps` are empty. A stranded ship with no way out is not `stranded`:
+`turn.end`, another ship's move or the fish roll ends its movement there, and
+the edge holds three ships until they sail on. Unfinished `ep-2025.1` games
+behave the same way (SPEC §7.3).
 Bots cannot be seated in E&P rooms (`E_INVALID_BOT`, `blocker.botsUnsupported`).
 ### Cities & Knights commands (`ck-*`)
 

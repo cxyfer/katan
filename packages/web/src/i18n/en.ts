@@ -198,7 +198,7 @@ export const en: Catalog = {
   'lobby.visibility.public': 'Public (listed)',
   'lobby.capacity': 'Capacity',
   'lobby.settingsTitle': 'Room settings',
-  'lobby.settings.help': 'Adjust the capacity and game order before starting. Capacity cannot go below the players already seated.',
+  'lobby.settings.help': 'Adjust the capacity, setup mode and game order before starting. Capacity cannot go below the players already seated.',
   'lobby.settings.save': 'Save settings',
   'lobby.profile': 'Ruleset / scenario',
   'lobby.setupMode': 'Setup mode',

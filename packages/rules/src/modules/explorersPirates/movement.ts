@@ -11,6 +11,7 @@ import type { ModuleCommand, ModuleContext } from '../types.ts';
 import {
   advanceTrack,
   BASE_MP,
+  COSTS,
   EP_PIECES,
   EXTRA_MP,
   goldOf,
@@ -48,13 +49,36 @@ export function movesLeft(state: GameState, ship: EpShip, turn: EpTurn): number 
   return Math.max(0, shipAllowance(state, ship, turn) - (record?.used ?? 0));
 }
 
-/** The active ship sits on an edge with two other ships and may not stop there. */
+/** 作用中的船停在另有兩艘船的邊上（只描述事實；是否必須繼續航行見 `activeShipMustMove`）。 */
 export function activeShipStranded(state: GameState): boolean {
   const slot = epState(state);
   const turn = viewTurn(state);
   if (!turn.active) return false;
   const ship = slot.ships.find((candidate) => candidate.id === turn.active);
   return !!ship && shipsOnEdge(slot, ship.edge).length > 2;
+}
+
+/**
+ * 作用中的船擱淺且仍有出口，必須先走出去，才能結束回合、換船或擲漁獲骰。
+ * 出口：還有可走的步；船上 settler 有合法定居點；或尚未買過 extra move、
+ * 付得起 1 羊毛，且買了之後會有可走的步。全都沒有時，船就地結束移動，
+ * 該邊暫時有三艘船（#97，FIDELITY E&P interpretation 15）。
+ */
+export function activeShipMustMove(state: GameState): boolean {
+  if (!activeShipStranded(state)) return false;
+  const turn = viewTurn(state);
+  const ship = epState(state).ships.find((candidate) => candidate.id === turn.active)!;
+  if (stepTargets(state, ship).length > 0) return true;
+  if (foundTargets(state, ship).length > 0) return true;
+  const record = turn.ships[ship.id];
+  const owner = state.players.find((player) => player.id === ship.player);
+  if (record?.extra || record?.done || !owner) return false;
+  const affordable = Object.entries(COSTS.extraMove)
+    .every(([resource, amount]) => owner.resources[resource as keyof typeof owner.resources] >= amount);
+  if (!affordable) return false;
+  // 假設已買 extra move：MP 上限多 EXTRA_MP。
+  const left = Math.max(0, shipAllowance(state, ship, turn) + EXTRA_MP - (record?.used ?? 0));
+  return stepsWith(state, ship, left).length > 0;
 }
 
 function pirateTouches(state: GameState, edge: number, playerId: string): boolean {
@@ -73,31 +97,78 @@ export interface StepTarget {
   explores: boolean;
 }
 
-/** Edges the ship can move to next (one MP each). */
-export function stepTargets(state: GameState, ship: EpShip): StepTarget[] {
-  const slot = epState(state);
-  const turn = viewTurn(state);
-  const left = movesLeft(state, ship, turn);
+/** `edge` 上 `ship` 以外的船數：移動中的船已離開原位，不算自己。 */
+function othersOn(state: GameState, edge: number, ship: EpShip): number {
+  return epState(state).ships.filter((other) => other.edge === edge && other.id !== ship.id).length;
+}
+
+/**
+ * 從 `from` 以 `left` MP 走一步（各 1 MP）的候選；`paid`＝這艘船本回合已付過路費，
+ * `gold`＝船主金幣（只在尚未付過時需要）。進入滿格邊需要至少再留 1 MP，且不得探索。
+ * 這裡只看一步；往後的可達性由 `stepsWith` 檢查。
+ */
+function stepsFrom(state: GameState, ship: EpShip, from: number, left: number, paid: boolean, gold: number): StepTarget[] {
   if (left <= 0) return [];
   const topo = topologyOf(state);
-  const paid = turn.ships[ship.id]?.tribute ?? false;
-  const gold = goldOf(slot, ship.player);
   const out: StepTarget[] = [];
   const seen = new Set<number>();
-  for (const vertex of topo.edges[ship.edge]!.vertices) {
+  for (const vertex of topo.edges[from]!.vertices) {
     for (const edge of topo.vertices[vertex]!.edges) {
-      if (edge === ship.edge || seen.has(edge) || !isSeaRoute(state, edge)) continue;
+      if (edge === from || seen.has(edge) || !isSeaRoute(state, edge)) continue;
       seen.add(edge);
-      const tribute = !paid && (pirateTouches(state, ship.edge, ship.player) || pirateTouches(state, edge, ship.player));
+      const tribute = !paid && (pirateTouches(state, from, ship.player) || pirateTouches(state, edge, ship.player));
       if (tribute && gold < 1) continue;
-      const others = shipsOnEdge(slot, edge).length;
       const explores = fogAtEnds(state, edge).length > 0;
-      const full = others >= 2;
+      const full = othersOn(state, edge, ship) >= 2;
       if (full && (left <= 1 || explores)) continue;
       out.push({ edge, tribute, full, explores });
     }
   }
-  return out.sort((a, b) => a.edge - b.edge);
+  return out;
+}
+
+/**
+ * 船停在滿格邊 `edge`、剩 `left` MP 時，是否還能合法結束移動（EP25 p. 10：
+ * 移動必須結束在至多另有 1 艘船的邊）：抵達一條非滿格的邊（探索步的目標必定
+ * 非滿格，且探索會結束移動），或以船上的 settler 在該處定居。只計船目前已有的
+ * MP，尚未購買的 extra move 不算（FIDELITY E&P interpretation 15）。
+ * 搜尋狀態為（邊、剩餘 MP、本回合是否已付路費），每步 MP 減 1，故深度至多 8
+ * （4 + 2 羊毛 + 2 Swift Voyage）。搜尋期間海盜與其他船視為不動。
+ */
+export function canStopFrom(
+  state: GameState,
+  ship: EpShip,
+  edge: number,
+  left: number,
+  paid: boolean,
+  gold: number,
+  memo = new Map<string, boolean>(),
+): boolean {
+  const key = `${edge}:${left}:${paid}`;
+  const known = memo.get(key);
+  if (known !== undefined) return known;
+  let result = foundTargets(state, { ...ship, edge }).length > 0;
+  if (!result) {
+    result = stepsFrom(state, ship, edge, left, paid, gold).some((step) => !step.full
+      || canStopFrom(state, ship, step.edge, left - 1, paid || step.tribute, gold, memo));
+  }
+  memo.set(key, result);
+  return result;
+}
+
+/** 以 `left` MP 可走的步：滿格邊只在之後仍能抵達合法停靠點時才列入（#97）。 */
+function stepsWith(state: GameState, ship: EpShip, left: number): StepTarget[] {
+  const paid = viewTurn(state).ships[ship.id]?.tribute ?? false;
+  const gold = goldOf(epState(state), ship.player);
+  const memo = new Map<string, boolean>();
+  return stepsFrom(state, ship, ship.edge, left, paid, gold)
+    .filter((step) => !step.full || canStopFrom(state, ship, step.edge, left - 1, paid || step.tribute, gold, memo))
+    .sort((a, b) => a.edge - b.edge);
+}
+
+/** 船下一步可走的邊（各 1 MP）；提示與 `ep.moveShip` 共用同一個檢查。 */
+export function stepTargets(state: GameState, ship: EpShip): StepTarget[] {
+  return stepsWith(state, ship, movesLeft(state, ship, viewTurn(state)));
 }
 
 /** One edge of movement (EP25 p. 10). */
@@ -109,8 +180,8 @@ export function moveShip(state: GameState, actorId: string, command: ModuleComma
   if (!ship) return ctx.kit.fail('E_EP_UNKNOWN_SHIP');
   const turn = epTurn(state);
   if (turn.active && turn.active !== ship.id) {
-    // Finish the previous ship first; it may not stay on a full edge.
-    if (activeShipStranded(state)) return ctx.kit.fail('E_EP_EDGE_FULL');
+    // 先結束上一艘船；它停在滿格邊且仍有出口時不得留下。
+    if (activeShipMustMove(state)) return ctx.kit.fail('E_EP_EDGE_FULL');
     shipTurn(turn, turn.active).done = true;
     turn.active = null;
   }
@@ -122,7 +193,8 @@ export function moveShip(state: GameState, actorId: string, command: ModuleComma
   if (!target) {
     const reachable = topologyOf(state).edges[ship.edge]!.vertices.some((vertex) =>
       topologyOf(state).vertices[vertex]!.edges.includes(edge)) && isSeaRoute(state, edge) && edge !== ship.edge;
-    if (reachable && !record.tribute && (pirateTouches(state, ship.edge, actorId) || pirateTouches(state, edge, actorId))) {
+    if (reachable && !record.tribute && goldOf(slot, actorId) < 1
+      && (pirateTouches(state, ship.edge, actorId) || pirateTouches(state, edge, actorId))) {
       return ctx.kit.fail('E_EP_TRIBUTE');
     }
     if (reachable && shipsOnEdge(slot, edge).length >= 2) return ctx.kit.fail('E_EP_EDGE_FULL');
@@ -372,7 +444,7 @@ export function fishRoll(state: GameState, actorId: string, _command: ModuleComm
   if (!hasMission(state, 'fish')) return ctx.kit.fail('E_EP_NOT_IN_SCENARIO');
   const turn = epTurn(state);
   if (turn.fishRolled) return ctx.kit.fail('E_EP_TURN_LIMIT', { limit: 1 });
-  if (activeShipStranded(state)) return ctx.kit.fail('E_EP_EDGE_FULL');
+  if (activeShipMustMove(state)) return ctx.kit.fail('E_EP_EDGE_FULL');
   finishActiveShip(state);
   turn.fishRolled = true;
   const slot = epState(state);
