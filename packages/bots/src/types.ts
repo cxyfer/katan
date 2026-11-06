@@ -5,7 +5,10 @@
  * `GameState`，所以無法讀取其他座位的隱藏資訊（§8.3）。
  */
 
-import type { Command, GameView } from '@catan/rules';
+import type { Command, GameView, ModuleCommand } from '@catan/rules';
+
+/** Bot 可送出的指令；協定的 command 本來就是開放型別（protocol/src/index.ts:299-303）。 */
+export type BotCommand = Command | ModuleCommand;
 
 export type BotLevel = 'easy' | 'standard';
 export const BOT_LEVELS: readonly BotLevel[] = ['easy', 'standard'];
@@ -36,5 +39,5 @@ export interface BotPolicy {
    * 回傳 `selfId` 此刻該送出的指令；此刻無事可做時回傳 null。必須是純函式：
    * 不讀時間與環境、不保留跨呼叫狀態，隨機性只來自 `ctx.seed`。
    */
-  decide(view: GameView, ctx: BotContext): Command | null;
+  decide(view: GameView, ctx: BotContext): BotCommand | null;
 }

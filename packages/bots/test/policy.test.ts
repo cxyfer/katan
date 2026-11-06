@@ -4,12 +4,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getTopology, requireProfile, type Command, type GameState } from '@catan/rules';
+import { getTopology, requireProfile, type GameState } from '@catan/rules';
 import { fallbackPolicy } from '../src/fallback.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { MAX_OFFERS_PER_WINDOW } from '../src/trade.ts';
-import type { BotLevel, BotPolicy } from '../src/types.ts';
+import type { BotCommand, BotLevel, BotPolicy } from '../src/types.ts';
 import { botSeats, runBotGame, supplyTotal, type BotSeat, type Decision } from './harness.ts';
 
 // 整局模擬在忙碌的機器上可能超過預設的 5 秒。
@@ -63,8 +63,8 @@ function contractChecks(seats: readonly BotSeat[]) {
   return { violations, check };
 }
 
-function robberTarget(command: Command): number | null {
-  if (command.type === 'pending.moveRobber' || command.type === 'dev.playKnight') return command.hex;
+function robberTarget(command: BotCommand): number | null {
+  if (command.type === 'pending.moveRobber' || command.type === 'dev.playKnight') return command.hex as number;
   return null;
 }
 

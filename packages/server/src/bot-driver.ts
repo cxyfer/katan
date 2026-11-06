@@ -5,12 +5,13 @@
  * 不保存任何決策狀態：重啟後從已提交的遊戲狀態繼續，報價計時則從頭算起。
  */
 
-import { actionHints, projectGame, type Command, type GameState, type GameView } from '@catan/rules';
+import { actionHints, projectGame, type GameState, type GameView } from '@catan/rules';
 import {
   botActingOrder,
   botSeed,
   createBotPolicy,
   fallbackPolicy,
+  type BotCommand,
   type BotContext,
   type BotLevel,
   type BotPolicy,
@@ -71,7 +72,7 @@ const MAX_BOT_COMMANDS_PER_WINDOW = 40;
 
 interface Decision {
   botId: string;
-  command: Command;
+  command: BotCommand;
   revision: number;
   attempt: number;
   /** 由保底策略產生。 */
@@ -310,7 +311,7 @@ export class BotDriver {
         runtime.attempts.fallbackBots.add(botId);
       }
       const forced = looping || runtime.attempts.fallbackBots.has(botId);
-      let command: Command | null = null;
+      let command: BotCommand | null = null;
       if (!forced) {
         try {
           command = this.deps.policyFor(context.level).decide(viewFor(botId), context);
@@ -425,7 +426,7 @@ export class BotDriver {
 
   // -- 計時與報價階段 ---------------------------------------------------------
 
-  private delayFor(command: Command, runtime: GameRuntime): number {
+  private delayFor(command: BotCommand, runtime: GameRuntime): number {
     const scale = this.deps.config.bots.delayScale;
     const now = this.deps.now();
     let due = runtime.changedAt + (THINK_MS[command.type] ?? DEFAULT_THINK_MS) * scale;

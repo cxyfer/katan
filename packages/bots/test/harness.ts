@@ -8,14 +8,13 @@ import {
   projectGame,
   RESOURCES,
   seededRng,
-  type Command,
   type GameState,
   type GameView,
   type Rng,
 } from '@catan/rules';
 import { botActingOrder } from '../src/order.ts';
 import { botSeed } from '../src/seed.ts';
-import type { BotLevel, BotPolicy, OfferPhase } from '../src/types.ts';
+import type { BotCommand, BotLevel, BotPolicy, OfferPhase } from '../src/types.ts';
 
 // 本套件不載入 Node 型別（src 不得使用 Node API）；計時只需要這個全域。
 declare const performance: { now(): number };
@@ -56,7 +55,7 @@ export function viewFor(state: GameState, playerId: string): GameView {
 
 export interface Decision {
   actor: string;
-  command: Command;
+  command: BotCommand;
 }
 
 export type OfferPhases = (botId: string, state: GameState) => Readonly<Record<string, OfferPhase>>;
@@ -114,7 +113,7 @@ export function createOfferClock(): { phases: OfferPhases; tick(state: GameState
 
 export interface StepFailure {
   actor: string;
-  command: Command;
+  command: BotCommand;
   code: string;
   params: Record<string, unknown> | undefined;
 }
