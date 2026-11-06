@@ -28,7 +28,7 @@ import { roadDirectionScore } from '../src/base/roads.ts';
 import { setupSpotScore } from '../src/base/setup.ts';
 import { boardModel } from '../src/board.ts';
 import { heuristicPolicy, turnContext } from '../src/heuristic.ts';
-import { seafarersBanditCandidates, seafarersPreroll } from '../src/modules/seafarers/bandit.ts';
+import { pirateOptions, seafarersBanditCandidates, seafarersPreroll } from '../src/modules/seafarers/bandit.ts';
 import { seafarersAnswerFrame } from '../src/modules/seafarers/frames.ts';
 import { ISLAND_VP_VALUE, islandSetupBonus, islandSites, setupShipScore, shipDiscount } from '../src/modules/seafarers/setup.ts';
 import type { TurnContext } from '../src/modules/types.ts';
@@ -373,19 +373,57 @@ describe('preroll: the knight moves a pirate that blocks the planned route', () 
     expect(seafarersBanditCandidates(spent, 'knight').map((candidate) => candidate.item)).not.toContain(null);
   });
 
-  it('never picks a hex that still blocks the route, even when it pays the most', () => {
-    // 海盜在 (2,-1)，擋住直達的航線。p2 領先，船的開放端在 (2,0) 的 NE 邊：偷牌與封鎖前線都讓 (2,0)
-    // 的分數最高，但放過去仍然擋住 p1，所以不能選；外框才是解除封鎖的移法。
+  it('a hex that still blocks the route frees nothing, however much it pays', () => {
+    // 海盜在 (2,-1)，擋住直達的航線。p2 領先，船的開放端在 (2,0) 的 NE 邊：偷牌與封鎖前線讓 (2,0) 的
+    // 分數最高，但放過去仍然擋住 p1（relief 幾乎為 0）；外框與不擋路的海格才有完整的 relief。
     const { state, sea } = blockedRoute();
     state.board.pirate = hex(state, 2, -1);
     ship(state, 'p2', side(state, 2, 0, 1));
     giveHand(state, 'p2', { lumber: 3, brick: 3, wool: 2 });
     state.players[1]!.bonusPoints = 5;
-    const view = viewOf(state, 'p1');
-    const scores = seafarersBanditCandidates(turnContext(view, ctxFor('p1'), 'standard'), 'knight');
-    const top = scores.reduce((a, b) => (b.score > a.score ? b : a));
-    expect(top.item).toBe(sea);
-    expect(heuristicPolicy('standard').decide(view, ctxFor('p1'))).toEqual({ type: 'dev.playKnight', hex: null });
+    const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
+    const options = pirateOptions(turn);
+    const top = options.reduce((a, b) => (b.score > a.score ? b : a));
+    expect(top.target).toBe(sea);
+    const frame = options.find((option) => option.target === null)!;
+    expect(frame.relief).toBeGreaterThan(5);
+    expect(top.relief).toBeLessThan(2);
+    // 不擋路的海格（(2,1)）與外框的 relief 相同。
+    expect(options.find((option) => option.target === hex(state, 2, 1))!.relief).toBe(frame.relief);
+  });
+
+  it('does not spend the knight when leaving the pirate hex releases a bigger front', () => {
+    // 同一個盤面：海盜在 (2,-1) 正封鎖領先的 p2（它的前線邊鄰接 (2,-1)）。外框能解除 p1 的航線（relief > 5），
+    // 但離開 (2,-1) 就放開 p2 的前線，淨值低於門檻，所以不打騎士。
+    const { state } = blockedRoute();
+    state.board.pirate = hex(state, 2, -1);
+    ship(state, 'p2', side(state, 2, 0, 1));
+    giveHand(state, 'p2', { lumber: 3, brick: 3, wool: 2 });
+    state.players[1]!.bonusPoints = 5;
+    const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
+    const frame = pirateOptions(turn).find((option) => option.target === null)!;
+    expect(frame.relief).toBeGreaterThanOrEqual(5);
+    expect(frame.net).toBeLessThan(5);
+    expect(seafarersPreroll(turn)).toEqual([]);
+    expect(decide(state, 'p1', 'standard')).toEqual({ type: 'turn.roll' });
+    // 對照：沒有 p2 的前線可放開時，同樣的 relief 會打騎士。
+    const alone = blockedRoute();
+    alone.state.board.pirate = hex(alone.state, 2, -1);
+    expect(decide(alone.state, 'p1', 'standard')).toEqual({ type: 'dev.playKnight', hex: null });
+  });
+
+  it('does not spend the knight just to raid or block a rival when nothing of mine is in the way', () => {
+    // 海盜不在盤面上，p2 領先、船端旁的前線很值錢（淨值夠大），但這張騎士解除不了 p1 的任何封鎖。
+    const { state } = blockedRoute('preroll', 'frame');
+    ship(state, 'p2', side(state, 2, 0, 0));
+    giveHand(state, 'p2', { lumber: 3, brick: 3, wool: 2 });
+    state.players[1]!.bonusPoints = 5;
+    const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
+    const rich = pirateOptions(turn).filter((option) => option.net >= 5);
+    expect(rich.length).toBeGreaterThan(0);
+    for (const option of rich) expect(option.relief).toBeLessThanOrEqual(0);
+    expect(seafarersPreroll(turn)).toEqual([]);
+    expect(decide(state, 'p1', 'standard')).toEqual({ type: 'turn.roll' });
   });
 
   it('plays the knight on the robber, not the pirate, when the robber presses my city', () => {
@@ -660,6 +698,45 @@ describe('pirate scoring: raids, fronts, lead and the status quo', () => {
     const north = hex(emptySeafarersGame(4), 2, -1);
     expect(withShip.get(sea)).toBe(bare.get(sea));
     expect(withShip.get(north)).toBeGreaterThan(bare.get(north)!);
+  });
+
+  it('the steal bonus of the hex the robber sits on is not part of the status quo', () => {
+    // 強盜在 (4,-2)（山脈 2 號，1 點），p2 的聚落（7 張牌）在旁邊，p3（1 張牌）的聚落在 (-2,0) 一帶。
+    // 強盜留在原處偷不到牌，所以最佳的強盜移動是去偷 p3，而不是把海盜移到一個沒有作用的海格。
+    const state = quiet((s) => {
+      settle(s, 'p2', 18);
+      settle(s, 'p3', 38);
+      giveHand(s, 'p2', { lumber: 2, brick: 2, wool: 1, grain: 1, ore: 1 });
+      giveHand(s, 'p3', { lumber: 1 });
+      s.board.robber = 10;
+    });
+    const view = viewOf(state, 'p1');
+    const model = boardModel(view, 'p1');
+    expect(model.hexVertices[10]).toContain(18);
+    expect(model.hexVertices[18]).toContain(38);
+    const command = heuristicPolicy('standard').decide(view, ctxFor('p1')) as { type: string; hex: number | null };
+    expect(command.type).toBe('pending.moveRobber');
+    expect(isSea(view, command.hex)).toBe(false);
+    expect(command.hex).toBe(18);
+    const outcome = applyCommand(state, 'p1', command as Command, seededRng(1));
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok) expect(outcome.state.pending).toMatchObject({ kind: 'steal', candidates: ['p3'] });
+  });
+
+  it('the middle of a ship chain is not a front', () => {
+    // 兩艘船在一個全是海的路口 M 相連；M 還有第三條空的海邊（(2,-2)｜(2,-3)），但它不是船的開放端。
+    const chain = (extra: boolean) =>
+      scoresOf(
+        quiet((s) => {
+          ship(s, 'p2', side(s, 1, -2, 0));
+          if (extra) ship(s, 'p2', side(s, 1, -2, 1));
+          s.players[1]!.bonusPoints = 2;
+        }),
+      ).get(hex(emptySeafarersGame(4), 2, -2))!;
+    const single = chain(false); // 只有一艘：M 是開放端，第三條邊是前線
+    const linked = chain(true); // 兩艘：M 被自己的船接住，不再是前線
+    expect(linked).toBeGreaterThan(0);
+    expect(linked).toBeLessThan(single);
   });
 
   it('weighs a rival front by how far ahead the rival is', () => {
@@ -1048,7 +1125,7 @@ describe('I9 fixed boards F1–F7 (standard and easy)', () => {
       }
     });
 
-    it('easy does not chase the army and never sends anything to sea', () => {
+    it('easy does not play the knight when only the army race favours it', () => {
       const state = armyGame();
       for (const seed of [1, 2, 3]) {
         const command = decide(state, 'p1', 'easy', seed);
