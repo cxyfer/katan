@@ -52,6 +52,11 @@
 }
 .screen--game[data-hand-dock="tally"] .hand.hand-fan .hand-fan__close:focus-visible { top: 4px; right: 8px; bottom: auto; }
 
+/* ---------- 數量列換行變高時，展開的扇形等量上抬，維持與單行時相同的重疊（--tally-height 由 HandPanel 量測） ---------- */
+.screen--game[data-hand-dock="tally"] .hand.hand-fan .hand-fan__card:is(.hand-card, .development-card) {
+  bottom: calc(45px + max(0px, var(--tally-height, 31px) - 32px));
+}
+
 /* ---------- 直屏：dock 在底部工具列上方（hand-fan.css 的 bottom: 50px），數量列貼著 dock 底 ---------- */
 /* 骰子原本貼在棋盤右下角，與數量列同高；上移到數量列上方（城市與騎士換成兩行時也不重疊）。 */
 .screen--game[data-hand-dock="tally"]:not([data-layout="compact-landscape"]) .board--side-controls .board__dice { bottom: 74px; }

@@ -114,6 +114,18 @@ export function HandPanel({ controller }: { controller: TableController }) {
   useEffect(() => () => {
     if (closeTimer.current !== null) clearTimeout(closeTimer.current);
   }, []);
+  // 手機版數量列放不下一行時會換行變高（城市與騎士）；把實際高度交給 CSS，扇形才能同步上抬、不被多蓋住。
+  useLayoutEffect(() => {
+    const tally = tallyRef.current;
+    const hand = handRef.current;
+    if (!tally || !hand) return undefined;
+    const measure = () => hand.style.setProperty('--tally-height', `${tally.offsetHeight}px`);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(tally);
+    return () => observer.disconnect();
+  }, []);
   // 手機版的數量列兼任手牌把手（只有 mobile-hand.css 開放點擊）：點一下展開，展開時再點收合。
   const toggleFromTally = () => {
     if (!canExpand) return;

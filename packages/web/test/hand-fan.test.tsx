@@ -150,6 +150,21 @@ describe('held card fan', () => {
     expect(api.callsOf('sendCommand')).toHaveLength(0);
   });
 
+  it('reports the wrapped tally height so the fan can lift with it', async () => {
+    let observed: (() => void) | undefined;
+    const original = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class { constructor(callback: () => void) { observed = callback; } observe() {} disconnect() {} unobserve() {} } as unknown as typeof ResizeObserver;
+    try {
+      await open();
+      const tally = screen.getByTestId('resource-tally');
+      Object.defineProperty(tally, 'offsetHeight', { configurable: true, value: 62 });
+      act(() => observed?.());
+      expect(screen.getByTestId('hand-panel').style.getPropertyValue('--tally-height')).toBe('62px');
+    } finally {
+      globalThis.ResizeObserver = original;
+    }
+  });
+
   it('keeps an empty hand collapsed when the resource tally is tapped', async () => {
     await open(emptyHandView());
     fireEvent.click(screen.getByTestId('resource-tally'));
