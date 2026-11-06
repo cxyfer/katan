@@ -2027,16 +2027,17 @@ function resourceTerms(terms: Partial<Record<CardKind, number>>): Partial<Record
  *
  * This is a lifecycle transition, not a rule: it produces no winner, cancels
  * outstanding negotiation and rejects every later strategic command (§4.6).
+ * `expired` marks a table the operator retention process closed (§4.6).
  */
-export function abandonGame(state: GameState): GameState {
+export function abandonGame(state: GameState, reason: 'abandoned' | 'expired' = 'abandoned'): GameState {
   if (state.result) return state;
   const next = clone(state);
-  next.result = { playerId: null, reason: 'abandoned', atSeq: next.seq };
+  next.result = { playerId: null, reason, atSeq: next.seq };
   next.turn.phase = 'gameOver';
   clearPending(next);
   expireOffers(next, 'gameOver');
   sampleTimeline(next);
-  emit(next, 'game.abandoned', { reason: 'abandoned' });
+  emit(next, 'game.abandoned', { reason });
   return next;
 }
 

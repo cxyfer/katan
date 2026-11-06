@@ -234,6 +234,7 @@ export function createHttpHandler(deps: HttpDeps) {
         roomCapacityMax: deps.config.limits.roomCapacityMax,
       },
       bots: { enabled: deps.config.bots.enabled, levels: [...BOT_LEVELS] },
+      retention: { gameRetentionDays: deps.config.gameRetentionDays },
     },
   }));
 

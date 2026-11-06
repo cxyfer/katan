@@ -123,7 +123,9 @@ Bot seats are part of the room (SPEC §4.9). `RoomMemberView.bot` marks them
 and `botLevel` (`'easy' | 'standard'`, default `'standard'`) is present only on
 bot seats; `RoomSummaryView.botCount` and `ResumableGameView.players[].bot`
 describe them in lists. `ServerConfigView.bots` reports whether hosts may add
-bots and which levels exist.
+bots and which levels exist. `ServerConfigView.retention.gameRetentionDays` is the
+operator's unfinished-game retention window in days (`0` = disabled): a game idle
+for longer is ended without a winner, with result reason `expired` (SPEC §4.6).
 `ResumableGameView.allSeatsNeeded` is false for a game containing bot seats:
 only the original human players must reconnect and become ready to resume.
 

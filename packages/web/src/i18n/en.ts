@@ -553,6 +553,7 @@ export const en: Catalog = {
   'play.resultTarget': 'Victory target: {target}',
   'play.resultReason.victory': 'Victory points',
   'play.resultReason.abandoned': 'Abandoned by table agreement',
+  'play.resultReason.expired': 'Closed after a long period of inactivity',
   'play.resultBackToLobby': 'Back to lobby',
   'play.resultFinalBoard': 'Final board',
 

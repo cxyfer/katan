@@ -24,6 +24,8 @@ tested (SPEC §10).
 | `CHAT_HISTORY_PAGE_SIZE` | `50` | Chat page size cap |
 | `ROOM_CAPACITY_MAX` | `6` | Room capacity cap |
 | `ROOM_IDLE_TTL_MINUTES` | `720` | Stale-lobby sweep horizon (never applied to resumable/suspended games) |
+| `GAME_RETENTION_DAYS` | `0` | Ends unfinished games (in progress, interrupted or suspended) with no activity for this many days; `0` disables. Decimal whole numbers `1`–`3650` only (surrounding whitespace is ignored); anything else, including `1e1`, `0x10`, `7.0`, `+7`, negatives and text, disables. See [Unfinished-game retention](#unfinished-game-retention-game_retention_days) |
+| `GAME_RETENTION_SWEEP_INTERVAL_MS` | `600000` | How often the retention sweep runs (minimum `1000`; ignored while retention is disabled) |
 | `DEFAULT_TURN_CLOCK_SECONDS` | `0` | Advisory clock default (`0` = off) |
 | `DEFAULT_DISCONNECT_GRACE_SECONDS` | `300` | Disconnect grace default |
 | `DEFAULT_ALLOW_ABANDONMENT` | `true` | Default for the abandonment option |
@@ -178,9 +180,70 @@ Documented defaults, to be reviewed before public deployment:
 - Lobby rooms are swept after `ROOM_IDLE_TTL_MINUTES` of inactivity.
 - Running, suspended and interrupted games are **never** swept as stale
   lobbies; they persist until the operator's retention process removes them.
+  That process is `GAME_RETENTION_DAYS`, below, and it is **off by default**
+  (`0`), so upgrading never ends an existing game.
 - Chat history is bound to the room/game membership epoch; a new game in the
   same room cannot read the previous game's history.
 - Personal mutes never delete shared history.
+
+### Unfinished-game retention (`GAME_RETENTION_DAYS`)
+
+Set `GAME_RETENTION_DAYS` to a whole number of days to end unfinished games
+nobody has touched for that long. It is the "operator retention process" of
+SPEC §4.6: the only thing that can retire a saved or suspended game.
+
+**Tell players before you turn it on.** Ending a game is not reversible from the
+app (see *Recovery* below). `GET /api/config` returns the window as
+`retention.gameRetentionDays` (`0` = disabled) so a client or a site notice can
+disclose it; the bundled web UI does not display it yet, so publish it in your
+own notice.
+
+- **What counts as activity.** The newest of: the last write to the game (any
+  accepted command, save, suspend, resume), the last change to the room (status,
+  host, policy) and the last time any seated person connected or disconnected.
+  A player who merely opens a suspended table to check on it keeps it alive. A
+  socket that stays open without any of those events does not. A game is
+  retired only when *all three* are older than the window.
+- **Which games.** In-progress, interrupted (players absent) and suspended games.
+  Lobbies (`ROOM_IDLE_TTL_MINUTES` governs those) and finished games
+  (`completed`, `abandoned`) are never selected, and nothing is deleted from the
+  database.
+- **What happens.** The game takes the same terminal path as a table-agreed
+  abandonment, serialized with player commands: status `abandoned`, no winner,
+  result reason `expired` (shown as "Closed after a long period of inactivity").
+  It leaves every player's resume list and rejects further commands with
+  `E_GAME_OVER`, and a finished game cannot be suspended or resumed again. A
+  command or a victory committed first wins: the sweep takes the per-game lock
+  and skips a game that finished, then rechecks idleness in the same database
+  transaction as the terminal write, so a game that became active in between
+  is kept. Connections, disconnections and room changes do not take the
+  per-game lock, so the transaction serializes against them in the database:
+  SQLite queues every other writer behind it, and PostgreSQL locks the game's
+  room, membership and game rows (`SELECT … FOR UPDATE`) before the recheck, so
+  those writes wait for the terminal commit instead of slipping in between.
+  Activity that arrives after the lock is taken counts as happening after the
+  game ended. Connected clients receive the room and a final snapshot.
+- **When.** At startup, then every `GAME_RETENTION_SWEEP_INTERVAL_MS`. A pass
+  walks the eligible games in pages of 100, ordered by the game's last write
+  (`games.updated_at`, oldest first, ties by game id; the room and connection
+  times only decide whether a game is eligible, not its place in the queue). It
+  stops once it has ended 100 games; a full pass that made progress is followed
+  by another after one second, so a backlog clears without one long burst.
+- **Failures.** One game failing (for example a corrupt snapshot) is logged at
+  `warn` (`game retention failed`, with the game id) and does not stop the
+  others; the pass moves on to the next page, so games that keep failing cannot
+  hold back newer ones. A failed game is skipped for 10 minutes, doubling after
+  each repeated failure up to 24 hours (kept in memory, so a restart tries
+  again), which keeps a permanently broken game from logging on every pass. At
+  most 1,000 failing games are tracked; if more fail, the ones with the
+  longest backoff stay tracked and only the overflow is retried each pass.
+  Each ended game logs at `info` (`game expired by retention policy`) with
+  `gameId`, `roomId`, `lastActivityAt` and `retentionDays`.
+- **Downtime counts.** Time the service is stopped is not excluded, and the first
+  sweep runs at startup. Keep the window comfortably longer than any planned
+  outage and take a backup first when enabling it on an existing deployment.
+- **Recovery.** An ended game cannot be resumed. The only way back is restoring
+  a database backup taken before the sweep (see *Backup and restore*).
 
 ## Abuse controls
 

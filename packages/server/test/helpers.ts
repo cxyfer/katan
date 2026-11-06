@@ -3,7 +3,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startService, type RunningService } from '../src/main.ts';
+import { startService, type Logger, type RunningService } from '../src/main.ts';
 import type { ServerConfig } from '../src/config.ts';
 
 export interface ApiResponse<T = unknown> {
@@ -75,7 +75,7 @@ export function createClient(base: string): TestClient {
 
 export async function startHarness(
   overrides: Partial<ServerConfig> = {},
-  options: { postgresUrl?: string } = {},
+  options: { postgresUrl?: string; log?: Logger } = {},
 ): Promise<TestHarness> {
   const dataDir = mkdtempSync(join(tmpdir(), 'catan-test-'));
   // The whole service suite can be replayed against PostgreSQL by exporting
@@ -93,7 +93,7 @@ export async function startHarness(
       ...(schema ? { databaseSchema: schema } : {}),
       ...overrides,
     },
-    () => undefined,
+    options.log ?? (() => undefined),
   );
   const base = `http://127.0.0.1:${service.port}`;
   return {
