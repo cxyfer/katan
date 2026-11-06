@@ -70,6 +70,21 @@ describe('compact landscape layout', () => {
     expect(stage.hasAttribute('data-layout')).toBe(false);
   });
 
+  it('docks the collapsed hand as the resource tally on phones only', async () => {
+    const narrow = (query: string) => query === '(max-width: 649px)';
+    const media = mockMedia(narrow);
+    const stage = await openStage();
+    expect(stage.getAttribute('data-hand-dock')).toBe('tally');
+    expect(stage.hasAttribute('data-layout')).toBe(false);
+    // 手機轉橫：窄螢幕查詢不再成立，改由 compact-landscape 標記。
+    act(() => media.update((query) => query === COMPACT_LANDSCAPE_QUERY));
+    expect(stage.getAttribute('data-layout')).toBe('compact-landscape');
+    expect(stage.getAttribute('data-hand-dock')).toBe('tally');
+    // 桌機與平板維持露出牌背的收合手牌。
+    act(() => media.update(() => false));
+    expect(stage.hasAttribute('data-hand-dock')).toBe(false);
+  });
+
   it('keeps the connection state in the DOM in both layouts', async () => {
     const media = mockMedia((query) => query === COMPACT_LANDSCAPE_QUERY);
     const stage = await openStage();
