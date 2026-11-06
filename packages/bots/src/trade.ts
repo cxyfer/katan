@@ -2,7 +2,7 @@
  * 交易：手牌效用、報價評估、自己報價的生命週期、銀行交易與開價條件。
  */
 
-import { RESOURCES, type Command, type GameView, type Offer, type Resource } from '@catan/rules';
+import { RESOURCES, type CardKind, type Command, type GameView, type Offer, type Resource } from '@catan/rules';
 import {
   canAfford,
   deficitOf,
@@ -47,6 +47,19 @@ function addHand(hand: Hand, cost: Cost): Hand {
   const out = { ...hand };
   for (const resource of RESOURCES) out[resource] += cost[resource] ?? 0;
   return out;
+}
+
+/**
+ * 規則 9：報價只含 Bot 估得了價的東西。含非資源卡種，或任何 goods 的報價無法估值，
+ * 一律拒絕（不接受、不結算）。base 的報價必定通過：引擎只保留正數的卡種，goods 總數為 0
+ * 時會刪掉該欄位。
+ */
+export function offerTermsKnown(offer: Offer): boolean {
+  const known = (terms: Partial<Record<CardKind, number>>): boolean =>
+    Object.entries(terms).every(([kind, amount]) => !(amount! > 0) || (RESOURCES as readonly string[]).includes(kind));
+  const noGoods = (goods?: Record<string, number>): boolean =>
+    !goods || Object.values(goods).every((amount) => !(amount > 0));
+  return known(offer.give) && known(offer.want) && noGoods(offer.giveGoods) && noGoods(offer.wantGoods);
 }
 
 /** 對手接近勝利時不幫他；領先越多，要求的好處越大。 */

@@ -9,7 +9,6 @@ import { WebSocket } from 'ws';
 import {
   RESOURCES,
   registerFixtureProfile,
-  type Command,
   type GameState,
   type GameView,
   type Resource,
@@ -19,6 +18,7 @@ import {
   BOT_RULE_MODULES,
   createBotPolicy,
   fallbackPolicy,
+  type BotCommand,
   type BotPolicy,
 } from '@catan/bots';
 import { BOT_LEVELS, type ResumableGameView } from '@catan/protocol';
@@ -163,7 +163,7 @@ function actorOf(game: GameState): string {
 }
 
 /** 真人座位用保底策略走一步：放置、擲骰、處理強盜或結束回合。 */
-async function humanStep(client: TestClient, gameId: string): Promise<Command | null> {
+async function humanStep(client: TestClient, gameId: string): Promise<BotCommand | null> {
   const snapshot = client.expectOk<Snapshot>(await client.get(`/api/games/${gameId}`));
   const command = fallbackPolicy.decide(snapshot.view, {
     selfId: client.playerId!,

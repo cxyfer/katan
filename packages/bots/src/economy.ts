@@ -18,6 +18,8 @@ import {
   type RoadSearch,
   type Yield,
 } from './board.ts';
+import type { BotModule } from './modules/types.ts';
+import type { BotLevel } from './types.ts';
 
 export type Hand = Record<Resource, number>;
 export type Cost = Partial<Record<Resource, number>>;
@@ -89,7 +91,9 @@ export function weightedPips(value: Yield, weights: Record<Resource, number>): n
   return RESOURCES.reduce((sum, resource) => sum + value[resource] * weights[resource], 0);
 }
 
-export type PlanKind = 'city' | 'settlement' | 'devCard' | 'longestRoad';
+export type BasePlanKind = 'city' | 'settlement' | 'devCard' | 'longestRoad';
+/** base 的四種計畫，加上模組計畫（kind 為 `<module id>.<名稱>`）。 */
+export type PlanKind = BasePlanKind | `${string}.${string}`;
 
 export interface Plan {
   kind: PlanKind;
@@ -106,12 +110,22 @@ export interface Plan {
   /** 估計還要幾輪才能湊齊資源。 */
   eta: number;
   score: number;
+  /** 下一步完成就得分（主動開價的條件）；省略時：city，或 roads 為空的 settlement。 */
+  immediate?: boolean;
+}
+
+/** 計畫完成後是否立即得分（見 `Plan.immediate`）。 */
+export function isImmediate(plan: Plan): boolean {
+  return plan.immediate ?? (plan.kind === 'city' || (plan.kind === 'settlement' && plan.roads.length === 0));
 }
 
 export interface Economy {
   readonly model: BoardModel;
   readonly hand: Hand;
-  readonly left: PieceCounts;
+  /** 剩餘棋子；模組可加上自己的鍵（例如 ships），也可覆寫 base 的鍵。 */
+  readonly left: Readonly<PieceCounts> & Readonly<Record<string, number>>;
+  /** base 的四種成本，加上模組的具名成本。 */
+  readonly costs: Readonly<Record<string, Cost>>;
   readonly weights: Record<Resource, number>;
   /** 自己目前（排除強盜格）的點數產能。 */
   readonly yield: Yield;
@@ -173,10 +187,46 @@ export function etaRounds(
   return rounds;
 }
 
-export function economyOf(model: BoardModel): Economy {
+/** 依序合併；同一個鍵先出現的值優先。 */
+function mergeFirstWins<T>(layers: readonly Readonly<Record<string, T>>[]): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const layer of layers) {
+    for (const [key, value] of Object.entries(layer)) {
+      if (!Object.hasOwn(out, key)) out[key] = value;
+    }
+  }
+  return out;
+}
+
+/**
+ * 經濟評估：base 加上各模組的 economy 鉤子。模組清單為空時，結果與只有 base 完全相同。
+ * 模組計畫同分時排在 base 種類之後。
+ */
+export function economyOf(
+  model: BoardModel,
+  modules: readonly BotModule[] = [],
+  level: BotLevel = 'standard',
+): Economy {
+  const base = baseEconomyOf(model, modules);
+  // 不遞迴：scoreExtras 拿不到 TurnContext，只看 base 經濟。
+  const extras: Plan[] = [];
+  for (const module of modules) extras.push(...(module.economy?.scoreExtras?.({ model, level, base }) ?? []));
+  if (extras.length === 0) return base;
+  return { ...base, plans: [...base.plans, ...extras].sort(comparePlans) };
+}
+
+function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Economy {
   const { view, selfId } = model;
   const hand = handOf(model);
-  const left = piecesLeft(model, selfId);
+  const left = {
+    ...piecesLeft(model, selfId),
+    ...mergeFirstWins(modules.map((module) => module.economy?.piecesLeft?.(model) ?? {})),
+  };
+  // base 的鍵不可覆寫：base 計畫直接讀 COSTS。
+  const costs = {
+    ...mergeFirstWins(modules.map((module) => module.economy?.costs?.(model) ?? {})),
+    ...COSTS,
+  };
   const weights = resourceWeights(model);
   const mine = playerYield(model, selfId);
   const longTerm = playerYield(model, selfId, true);
@@ -279,12 +329,25 @@ export function economyOf(model: BoardModel): Economy {
     }
   }
 
-  plans.sort((a, b) => b.score - a.score || planOrder(a) - planOrder(b));
-  return { model, hand, left, weights, yield: mine, rates, search, myRoute, plans };
+  plans.sort(comparePlans);
+  return { model, hand, left, costs, weights, yield: mine, rates, search, myRoute, plans };
 }
 
+function comparePlans(a: Plan, b: Plan): number {
+  return b.score - a.score || planOrder(a) - planOrder(b);
+}
+
+const BASE_KIND_ORDER: readonly string[] = ['city', 'settlement', 'longestRoad', 'devCard'];
+
+/**
+ * base 種類依序為 0–3，再以路口編號打破同分（路口數最多 174，間距 1000 不會重疊）。模組計畫一律
+ * 排在後面，而且共用同一個鍵、不加路口編號：同分時靠穩定排序保留串接順序，也就是先依模組順序、
+ * 再依模組內的順序；若以路口編號排序，後面模組的計畫可能插到前面模組的計畫之前。
+ */
 function planOrder(plan: Plan): number {
-  return ['city', 'settlement', 'longestRoad', 'devCard'].indexOf(plan.kind) * 1000 + (plan.vertex ?? 0);
+  const rank = BASE_KIND_ORDER.indexOf(plan.kind);
+  if (rank < 0) return BASE_KIND_ORDER.length * 1000;
+  return rank * 1000 + (plan.vertex ?? 0);
 }
 
 /** 能讓自己最長道路變長的合法道路；沒有則回傳 null。 */

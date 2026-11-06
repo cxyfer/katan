@@ -1,6 +1,6 @@
 # 電腦對手支援擴充包：整體策略與版本計畫（v0.4.1–v0.4.5）
 
-日期：2026-11-04；2026-11-06 開工前依程式現況核對並刷新（§12）。狀態：**使用者已於 2026-11-05 確認 §10 的 D1–D4、D7–D11 採用建議；D5、D6 未列入，留待相關版本開工前決定。**
+日期：2026-11-04；2026-11-06 開工前依程式現況核對並刷新（§12），同日併入 PL-1 的介面定案（§13）。狀態：**使用者已於 2026-11-05 確認 §10 的 D1–D4、D7–D11 採用建議；D5、D6 未列入，留待相關版本開工前決定。**
 
 本文件是 Aegis 工作紀錄，不是權威的執行期決策；權威需求仍以 `docs/SPEC.md` §4.9 為準。每個版本開放 profile 時，要同步修訂 SPEC、FIDELITY 與 bot 規格。
 
@@ -143,68 +143,118 @@
 ### 4.1 BotModule 介面
 
 ```ts
-// packages/bots/src/modules/types.ts（草案）
-export type BotCommand = Command | ModuleCommand;
+// packages/bots/src/modules/types.ts（PL-1 定案，摘要；以原始檔為準）
+export type BotCommand = Command | ModuleCommand;          // 定義在 src/types.ts
+export interface Scored<T> { readonly item: T; readonly score: number }
+export type RobberCause = MoveRobberPending['cause'];      // 'seven' | 'knight'
+export type BanditTarget = number | null;                  // hex index；null 是外框（SF 海盜離場）
+
+export interface TurnContext {                             // 單次決策共用；只增欄位
+  readonly view: GameView;
+  readonly ctx: BotContext;
+  readonly level: BotLevel;                                // 建立策略時的難度，params 由它決定；不一定等於 ctx.level
+  readonly params: LevelParams;
+  readonly me: PublicPlayerView;
+  readonly model: BoardModel;
+  readonly rng: Rng;                                       // 回傳候選的鉤子不應消耗它
+  readonly economy: Economy;                               // base 加上各模組 economy 鉤子，第一次讀取時計算
+  readonly pairedSecond: boolean;
+  readonly modules: readonly BotModule[];                  // 依 profile.ruleModules 順序
+  pick<T>(candidates: readonly Scored<T>[]): T | null;     // 空清單回 null、不消耗亂數
+  choose<T>(candidates: readonly Scored<T>[]): Scored<T> | null; // 同 pick，但回傳候選本身；item 可能是 null 時用它
+}
+
+export interface PlanInput {                               // scoreExtras 的輸入；只增欄位
+  readonly model: BoardModel;
+  readonly level: BotLevel;
+  readonly base: Economy;                                  // 已合併 costs 與 piecesLeft；plans 只有 base 計畫
+}
+
+export interface BotEconomyHooks {
+  costs?(model: BoardModel): Readonly<Record<string, Cost>>;        // 具名成本，例如 { ship }；不得用 base 的四個鍵
+  piecesLeft?(model: BoardModel): Readonly<Record<string, number>>; // 例如 { ships: 12 }；可覆寫 base 的鍵，先出現的模組優先
+  scoreExtras?(input: PlanInput): readonly Plan[];                  // kind 為 `<module id>.<名稱>`；不得呼叫 economyOf
+  // 以下只保留型別，是暫定簽章，由第一個實作的版本定稿
+  awards?(model: BoardModel): { readonly longestRoad?: boolean };                                   // 0.4.4
+  cardKinds?(model: BoardModel): readonly CardKind[];                                                // 0.4.2
+  rates?(model: BoardModel): Readonly<Partial<Record<CardKind, number>>>;                            // 0.4.2
+  weights?(model: BoardModel): Readonly<Partial<Record<CardKind, number>>>;                          // 0.4.2
+  hexYield?(model: BoardModel, hex: number, vertex: number): Readonly<Partial<Record<CardKind, number>>> | undefined; // 0.4.2
+  vertexBlocker?(model: BoardModel, vertex: number): string | null;                                  // 0.4.2
+  siteBlocked?(model: BoardModel, vertex: number): boolean;                                           // 0.4.2
+  routeEdge?(model: BoardModel, edge: number): boolean | undefined;                                   // 延後（SF 計畫 §11-6）
+}
+
+export interface BotTradeHooks {                           // 只保留型別（0.4.4、0.4.5）
+  goods?(view: GameView, playerId: string): Readonly<Record<string, number>>;  // 公開持有量
+  goodValue?(turn: TurnContext, good: string, amount: number): number | null;  // null = 無法估值，拒絕
+}
 
 export interface BotModule {
-  readonly id: string;                                    // 與 rules module id 相同
-  supports?(profile: ProfileDefinition): boolean;          // T&B part、E&P mission；預設 true
+  readonly id: string;                                     // 與 rules module id 相同
+  supports?(profile: ProfileDefinition): boolean;          // T&B part、E&P mission；只影響 botsCanPlay，省略視為 true
 
-  duty?(view: GameView, selfId: string): BotCommand | null | undefined;  // 保底（I9）
+  duty?(view: GameView, selfId: string): BotCommand | null | undefined;  // 保底（I9）；不得 throw
   answerFrame?(turn: TurnContext, frame: PublicModulePendingView): BotCommand | null | undefined;
   setup?(turn: TurnContext): BotCommand | null | undefined;
-  phase?(turn: TurnContext): BotCommand | null | undefined;     // 接管子階段，例如 E&P movement
-  endWindow?(turn: TurnContext): BotCommand | null | undefined; // 例如 ep.startMovement
-
-  preroll?(turn: TurnContext): Scored<BotCommand>[];
-  actions?(turn: TurnContext): Scored<BotCommand>[];
-  banditCandidates?(turn: TurnContext, cause: RobberCause): Scored<number | null>[]; // 強盜以外的評分候選，例如 SF 海盜的海格與外框（null）；合法性由 robberTargets 決定
-  robberTargets?(view: GameView, selfId: string, targets: readonly (number | null)[]): readonly (number | null)[]; // 依模組順序 fold，結果是完整的合法盜賊目標；例如 T&B Friendly Robber、SF+CK 依 bandit 收窄
-  freeRouteCandidates?(turn: TurnContext): Scored<BotCommand>[];
+  preroll?(turn: TurnContext): readonly Scored<BotCommand>[];
+  actions?(turn: TurnContext): readonly Scored<BotCommand>[];
+  freeRouteCandidates?(turn: TurnContext): readonly Scored<BotCommand>[];
+  banditCandidates?(turn: TurnContext, cause: RobberCause): readonly Scored<BanditTarget>[]; // 強盜以外的評分候選，例如 SF 海盜的海格與外框（null）；合法性由 robberTargets 決定
   planStep?(turn: TurnContext, plan: Plan): BotCommand | null | undefined; // 模組計畫種類的下一步，例如 SF 的島嶼聚落
-  rescore?(turn: TurnContext, command: BotCommand): number;  // 分數差值；只調整 actions 候選，不新增、不移除
-
-  economy?: { awards?; cardKinds?; costs?; rates?; weights?; piecesLeft?; hexYield?; routeEdge?; vertexBlocker?; siteBlocked?; scoreExtras? };
-  trade?: { goods?; goodValue? };
-
+  readonly economy?: BotEconomyHooks;
   readonly pacing?: Readonly<Record<string, number>>;
   readonly maxCommandsPerWindow?: number;
   readonly responseCommands?: readonly string[];
+
+  // 以下只保留型別，骨架不呼叫
+  phase?(turn: TurnContext): BotCommand | null | undefined;     // 0.4.5：接管子階段，例如 E&P movement
+  endWindow?(turn: TurnContext): BotCommand | null | undefined; // 0.4.5：例如 ep.startMovement
+  robberTargets?(view: GameView, selfId: string, targets: readonly BanditTarget[]): readonly BanditTarget[]; // 0.4.3：依模組順序 fold，結果是完整的合法盜賊目標；例如 T&B Friendly Robber、SF+CK 依 bandit 收窄
+  rescore?(turn: TurnContext, command: BotCommand): number;     // 0.4.3：分數差值；只調整 actions 候選，不新增、不移除
+  readonly trade?: BotTradeHooks;                                // 0.4.4、0.4.5
 }
 ```
+
+- **回傳值語意**（所有回傳指令的鉤子通用）：`undefined` 表示不歸我管，交給下一個模組，最後交給 base；`null` 表示歸我管，但這次不送指令。策略鉤子回 `null` 時，骨架改走保底；`duty` 回 `null` 時，保底不再送 base 預設（`turn.roll`／`turn.end`），交給 server 診斷。
 
 - `heuristic.ts` 改成流程骨架，現有的 base 邏輯成為預設處理器。決策依序如下：
   1. 已有對局結果時，不動作。
   2. 有 pending：
-     - 模組 frame：依序詢問各模組的 `answerFrame`，再詢問 `duty`。
-     - base frame：套用模組提供的調整。
-  3. setup。
+     - 模組 frame：自己不在 `responders` 時不動作；否則依序詢問各模組的 `answerFrame`，都沒有回答時走保底。
+     - base frame：沿用 base 的處理器，另有兩處併入模組。`moveRobber` 把 `banditCandidates` 接在 base 強盜候選之後一起挑選；`freeRoads` 在模組的 `freeRouteCandidates` 非空時改用它們。回 null 時走保底。
+  3. setup：先依序詢問模組的 `setup`，都沒有回答時用 base 的 setup。
   4. 非行動者：回應報價。
-  5. preroll。
+  5. preroll：base 先決定是否打騎士；不打時才從模組的 `preroll` 候選中挑選。
   6. action：
-     - 先看是否有模組以 `phase` 接管。
-     - 否則把 base 與模組的候選放在一起評分，接著交易，最後走 `endWindow` 或 `turn.end`。
+     - 先看是否有模組以 `phase` 接管（0.4.5）。
+     - 否則依序處理報價、發展卡與建造。建造時，base 的立即得分建造與模組的 `actions` 一起評分；接著走計畫的下一步，模組計畫種類交給 `planStep`。之後是主動開價與換牌，最後走 `endWindow`（0.4.5）或保底的 `turn.end`。
 - `fallbackPolicy` 的順序：
-  1. pending 與 setup：先跑 base 的處理器（pending 用 `pendingDuty`，套用 `cardKinds` 與 `robberTargets`；setup 取 hints 的第一項），回 null 時才詢問模組的 `duty`。例如 SF 的 setup road 只剩船位時，由模組送 `setup.placeShip`（SF 計畫 F5）。
+  1. pending 與 setup：先跑 base 的處理器（pending 用 `pendingDuty`，套用 `cardKinds` 與 `robberTargets`；setup 取 hints 的第一項），回 null 時才詢問模組的 `duty`。模組 frame 中，自己不是 `responders[0]` 時不動作，也不詢問 `duty`（P3）。例如 SF 的 setup road 只剩船位時，由模組送 `setup.placeShip`（SF 計畫 F5）。
   2. preroll 與 action：先詢問模組的 `duty`，再送 `turn.roll` 或 `turn.end`。
+- `fallbackPolicy` 的模組清單預設依 `view.profileId` 推導，所以 server 直接呼叫的 `fallbackPolicy` 也會用到已註冊模組的 `duty`。查不到 profile 時用空清單，不 throw，因為 server 的保底呼叫不在 try 裡（`packages/server/src/bot-driver.ts:332`）。同樣的理由，模組的 `duty` 不得 throw。
 - 介面先保留全部鉤子的位置，0.4.1 只實作 SF 用到的鉤子，其餘到第一個用到它的版本才實作（§4.9）：
   - **0.4.1 實作組合**：`supports`、`duty`、`answerFrame`、`setup`、`preroll`、`actions`、`freeRouteCandidates`、`banditCandidates`、`planStep`、`economy.costs`、`economy.piecesLeft`、`economy.scoreExtras`、`pacing`、`maxCommandsPerWindow`、`responseCommands`。
   - **只保留型別，骨架不呼叫**：`phase`、`endWindow`（0.4.5）；`robberTargets` fold、`rescore`（0.4.3）；`economy.awards`（0.4.4）；`economy.cardKinds`、`rates`、`weights`、`hexYield`、`vertexBlocker`、`siteBlocked`（0.4.2、0.4.3）；`economy.routeEdge`（延後，SF 計畫 §11-6）；`trade.goods`、`trade.goodValue`（0.4.4、0.4.5）。`support.test` 斷言已註冊的模組沒有定義這些鉤子，以免誤以為已經生效。
 
 ### 4.2 組合規則
 
-`botModulesOf(profile)` 依 `profile.ruleModules` 的順序取出 `BOT_MODULES[id]`，順序與 rules 一致。以 SF+CK 為例，順序是 `seafarersCitiesKnights` → `seafarers` → `citiesKnights`，組合模組排在第一位，因此可以先攔截。未註冊的模組直接略過，例如 `packages/bots/test/ck-road-building.test.ts` 以 C&K 盤面跑 base 策略。這裡也不檢查 `supports`：gating 只由 `botsCanPlay` 判定，所以 SF-3 能在 SF-4 翻轉 gating 之前跑 B-GAME。
+`botModulesOf(profile)` 依 `profile.ruleModules` 的順序取出 `BOT_MODULES.get(id)`，順序與 rules 一致。`BOT_MODULES` 是 `Map`，避免 `constructor` 這類原型鍵被當成已註冊的模組。以 SF+CK 為例，順序是 `seafarersCitiesKnights` → `seafarers` → `citiesKnights`，組合模組排在第一位，因此可以先攔截。未註冊的模組直接略過，例如 `packages/bots/test/ck-road-building.test.ts` 以 C&K 盤面跑 base 策略。這裡也不檢查 `supports`：gating 只由 `botsCanPlay` 判定，所以 SF-3 能在 SF-4 翻轉 gating 之前跑 B-GAME。
 
 | 鉤子 | 組合方式 |
 |---|---|
 | `answerFrame`、`duty`、`setup`、`planStep`、`phase`、`endWindow` | 依序詢問，第一個回傳非 `undefined` 的模組勝出。若兩個以上的部件模組都會回答同一個 setup 階段（例如 SF+CK 的第 2 輪城市），由組合模組攔截並合成；它可以 import 部件匯出的純評分函式，不另設鉤子 |
-| `preroll`、`actions`、`freeRouteCandidates`、`scoreExtras`、`banditCandidates` | 接在 base 的候選之後統一評分，維持穩定排序；分數尺度為「勝利分當量 ÷ (1 + eta)」。`banditCandidates` 的挑選結果要能區分「沒有候選」與「選中 `null`（外框）」 |
+| `preroll` | base 先決定是否打騎士（`knightDecision`）；不打時才從各模組串接的候選中挑一個，沒有候選就走保底 |
+| `actions` | 與 base 的立即得分建造（`buildDecision` 的第一步）串接後一起挑選，模組候選接在 base 之後，維持穩定排序。分數尺度與 base 的立即建造相同，都是勝利分當量：base 城市與聚落為 `1 + PIP_VALUE × 點數`。非空時就會搶在計畫步驟之前，所以只放「現在就該做」的行動；有成本的目標走 `scoreExtras` 加 `planStep` |
+| `freeRouteCandidates` | 各模組的候選串接後非空時，取代 base 的選路（`freeRoadDecision`），所以模組要自行納入道路選項；為空時走 base。Road Building 的打出條件見 §4.10 合約 12 |
+| `scoreExtras` | 模組計畫併入 base 計畫，以同一個比較式排序；分數尺度與 base 計畫相同，為「勝利分當量 ÷ (1 + eta)」。同分時排在 base 種類之後（`planOrder`），模組計畫之間依模組順序，再依模組內的順序 |
+| `banditCandidates` | 接在 base 強盜候選（`robberCandidates`）之後一起挑選（`banditChoice`）。分數尺度與強盜候選相同：點數 × 城市倍率 × 領先係數，加上偷牌加分，不是勝利分當量。挑選結果要能區分「沒有候選」（`null`）與「選中外框」（`{ target: null }`） |
 | `robberTargets` | 依 `profile.ruleModules` 的順序 fold，與 rules 的 `legalRobberHexes` 相同（`packages/rules/src/engine.ts:1462-1471`），元素為 `number \| null`。初值是「盜賊預設」：陸地且不是目前強盜所在格；海格且不是目前海盜所在格；海盜在場時再加上 `null`（外框）。base 沒有海格、海盜為 null，所以初值與 rules 相同。每個模組收到目前候選並回傳下一組，可以縮小、替換或擴大，例如 FR 在沒有合法格時回傳沙漠格，即使強盜就在沙漠（`packages/rules/src/modules/tradersBarbarians/variants/friendlyRobber.ts:34-40`），SF+CK 依 `bandit` hint 收窄。結果是本次 `pending.moveRobber` 的完整合法集合：保底取第一項；base 的強盜候選與 `banditCandidates` 先以它過濾再評分，過濾後沒有候選時取第一項。`banditCandidates` 負責評分，fold 負責合法性 |
 | `rescore` | 各模組的差值相加；只調整分數，不新增、不移除候選，也不得當作合法性過濾 |
 | `vertexBlocker`、`siteBlocked` | 任一模組阻擋就算阻擋（OR）；`vertexBlocker` 的回傳值取第一個非 null |
 | `hexYield` | 逐 hex 依序詢問，第一個非 `undefined` 者勝；都沒有回答時用 base。模組只對自己定義產出的地形回值，例如 C&K 只回答森林、牧場、山脈上的城市，金礦交給 SF |
 | `awards` | 任一模組設為 false 就關閉；例如 `longestRoad: false` 時不再規劃最長道路（T&B 的 Traders、E&P） |
-| `costs`、`piecesLeft`、`cardKinds`、`pacing`、`responseCommands` | 合併 |
+| `costs`、`piecesLeft`、`cardKinds`、`pacing`、`responseCommands` | 合併；重複的鍵以先出現的模組為準。`costs` 不得覆寫 base 的四個鍵，因為 base 計畫直接讀 `COSTS`；`piecesLeft` 可以覆寫，例如 E&P 的聚落上限 |
 | `maxCommandsPerWindow` | 取最大值 |
 
 ### 4.3 型別
@@ -222,10 +272,10 @@ export interface BotModule {
 ### 4.4 開放判定（gating）
 
 ```ts
-// packages/bots/src/support.ts（草案）
+// packages/bots/src/support.ts（PL-1 定案）
 export function botsCanPlay(profile: ProfileDefinition): boolean {
   return profile.ruleModules.every((id) => {
-    const module = BOT_MODULES[id];
+    const module = BOT_MODULES.get(id);
     return module !== undefined && (module.supports?.(profile) ?? true);
   });
 }
@@ -350,32 +400,32 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
 
 | 切片 | 分支／worktree | 內容 | 檔案所有權 | 驗收 |
 |---|---|---|---|---|
-| PL-1 合約與骨架 | `feat/bots-platform-contract`／`.worktrees/bots-platform-contract/` | `modules/types.ts`、registry；`heuristic.ts` 與 `fallback.ts` 改為組合骨架；`BotCommand`；下方的合約清單；`support.ts` 的 `supports` 與快照（`BOT_RULE_MODULES` 保留為 deprecated，§4.4）；B-GUARD 放寬；規則 9；bot 規格的合約條文；golden replay | `packages/bots/src/**`；`packages/bots/test/{support,guard}.test.ts`；新增的 `packages/bots/test/golden-base.test.ts` 與 `packages/bots/test/golden/**`；只改型別註記：`packages/bots/test/harness.ts`、`packages/bots/test/policy.test.ts`、`packages/server/src/bot-driver.ts`、`packages/server/test/bots.test.ts`（§4.3）；bot 規格的 I3（`:42`）、§5 程式碼區塊（`:76-98`）、規則 3 與 4（`:104-105`），以及規則 7 表格之後新增的規則 8、9 | **golden replay**（見下）與改動前逐一相同，而且 PR 的第一個 commit 只新增 golden 檔、不動 `src`；`pnpm --filter @catan/bots exec vitest run`；`pnpm typecheck`（整個 repo）；`pnpm --filter @catan/server exec vitest run test/bots.test.ts`；server 的 diff 只有型別 |
+| PL-1 合約與骨架 | `feat/bots-platform-contract`／`.worktrees/bots-platform-contract/` | `modules/types.ts`、registry；`heuristic.ts` 與 `fallback.ts` 改為組合骨架；`BotCommand`；下方的合約清單；`support.ts` 的 `supports` 與快照（`BOT_RULE_MODULES` 保留為 deprecated，§4.4）；B-GUARD 放寬；規則 9；bot 規格的合約條文；golden replay | `packages/bots/src/**`；`packages/bots/test/{support,guard}.test.ts`；新增的 `packages/bots/test/golden-base.test.ts`、`packages/bots/test/golden/**` 與 `packages/bots/test/skeleton.test.ts`（組合骨架與規則 9 的單元測試，不依賴 harness）；只改型別註記：`packages/bots/test/harness.ts`、`packages/bots/test/policy.test.ts`、`packages/server/src/bot-driver.ts`、`packages/server/test/bots.test.ts`（§4.3）；bot 規格的 I3（`:42`）、§5 程式碼區塊（`:76-98`）、規則 3 與 4（`:104-105`），以及規則 7 表格之後新增的規則 8、9 | **golden replay**（見下）與改動前逐一相同，而且 PR 的第一個 commit 只新增 golden 檔、不動 `src`；`pnpm --filter @catan/bots exec vitest run`；`pnpm typecheck`（整個 repo）；`pnpm --filter @catan/server exec vitest run test/bots.test.ts`；server 的 diff 只有型別 |
 | PL-2 測試基礎建設 | `feat/bots-platform-harness`／`.worktrees/bots-platform-harness/` | harness 泛化、`BOT_TEST_MATRIX` 與 family 測試檔的覆蓋守門測試、保底席與全保底有界局、模組測試工具、仿 BotDriver 模式、看門狗、`BOTS_SEEDS`、timeout、bench `--profile` | 明列如下：`packages/bots/test/harness.ts`；既有的 `packages/bots/test/{policy,fair,fuzz,fallback,decisions,ck-road-building}.test.ts`；新增的 `packages/bots/test/modules/types.ts`、family 註冊檔 `packages/bots/test/families.ts`、覆蓋守門測試 `packages/bots/test/matrix.test.ts`、看門狗與仿 BotDriver 的反例測試；`packages/bots/bench/**`；`RELEASING.md` 的 pre-flight（D7）；bot 規格 `:258` 的完成閘門。不得改 `test/golden*`、`test/sf-*`、`support.test.ts`、`guard.test.ts`；`viewFor(state, playerId)` 的簽章不變 | base 矩陣行為不變：新 harness 的仿 BotDriver 模式跑 base，步數、勝者與雜湊都與 golden 相同；看門狗與仿 BotDriver 模式都有反例測試，故意卡住的假模組必須被抓到；`BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run`；`pnpm --filter @catan/bots bench 10` 與 `bench 10 --profile base-2025` |
 | PL-3 伺服器 | `feat/bots-platform-server`／`.worktrees/bots-platform-server/` | 依 `BOT_PACING` 查表；依 profile 的上限（測試可經 `BotDriverDeps.commandLimitFor` 注入）；診斷與重試；修正 `bots.test.ts` 的支援推算與「不支援」範例。`Decision` 的型別已由 PL-1 修改 | `packages/server/src/bot-driver.ts`；`packages/server/test/bots.test.ts`（`:252-264` 改用 `botsCanPlay`、`:279-291` 改用含未知模組的 fixture、新增診斷與上限測試）；可選：`docs/OPERATIONS.md:41-42` 補上診斷的說明 | `pnpm --filter @catan/server exec vitest run`；`pnpm --filter @catan/server typecheck`；診斷路徑有測試 |
 
-- **PL-1 對下游的合約**：下表列出具名匯出，最終簽章由 Architect 在 PL-1 的介面審查定案。
+- **PL-1 對下游的合約**：下表列出具名匯出，簽章已在 PL-1 的介面審查定案（型別見 §4.1）。「現況」欄是 v0.4.0 的位置。
 
   | # | 匯出 | 現況 | 下游 |
   |---|---|---|---|
   | 1 | `BotCommand = Command \| ModuleCommand`；`BotPolicy.decide(view, ctx): BotCommand \| null` | `packages/bots/src/types.ts:39` | 全部 |
-  | 2 | `Scored<T>`、`TurnContext`（view、ctx、params、me、model、rng、economy、pairedSecond、modules、`pick`），以及給單元測試用的 `turnContext(view, ctx, level, modules?)` | `heuristic.ts:68-110`，未匯出 | SF-1、SF-2a、SF-2b |
+  | 2 | `Scored<T>`、`TurnContext`（view、ctx、level、params、me、model、rng、economy、pairedSecond、modules、`pick`、`choose`），以及給單元測試用的 `turnContext(view, ctx, level, modules?)`（`heuristic.ts`；省略 `modules` 時依 profile 推導） | `heuristic.ts:68-110`，未匯出 | SF-1、SF-2a、SF-2b |
   | 3 | `RobberCause = 'seven' \| 'knight'` | 只有 rules 的 `packages/rules/src/types.ts:217`；view 的 `cause` 是 `string` | SF-2b |
-  | 4 | `BotModule`：§4.1 的全部鉤子位置；economy 鉤子採不遞迴的簽章，例如 `scoreExtras(model, baseEconomy): Plan[]` | — | SF-*、PL-2（假模組） |
+  | 4 | `BotModule`：§4.1 的全部鉤子位置；economy 鉤子採不遞迴的簽章：`scoreExtras(input: PlanInput): readonly Plan[]`，`PlanInput` 是 `{ model, level, base }`，之後只增欄位 | — | SF-*、PL-2（假模組） |
   | 5 | `BOT_MODULES`、`botModulesOf(profile)`（§4.2）；`botsCanPlay(profile)`；deprecated 的 `BOT_RULE_MODULES` | `support.ts:12-17` | PL-2、PL-3、SF-1、SF-4 |
   | 6 | `BOT_PACING`（合併各模組的 `pacing`）；`botCommandLimit(profile, base)`（`base` 與各模組 `maxCommandsPerWindow` 的最大值）；`botResponseCommands(profile)`（base 加上各模組的 `responseCommands`） | `bot-driver.ts:40-64,70`；`policy.test.ts:18-25` | PL-2、PL-3、SF-3 |
   | 7 | `botOwesAction(view, selfId)`：回傳 `'frame' \| 'pending' \| 'setup' \| 'preroll' \| 'action' \| null` | — | PL-2（區分卡死與閒置）、PL-3（診斷） |
-  | 8 | `createBotPolicy(level, { modules? })`、`createFallbackPolicy(modules?)`；`fallbackPolicy` 不變；`modules: []` 就是 naive 座位 | `policy.ts:8-10`、`fallback.ts:84` | PL-2、SF-3 |
+  | 8 | `createBotPolicy(level, { modules? })`、`createFallbackPolicy(modules?)`；省略 `modules` 時依 `view.profileId` 推導，`modules: []` 就是 naive 座位。`fallbackPolicy` 改為 `createFallbackPolicy()`：名稱、型別與 base 行為不變，但會依 profile 帶入已註冊模組的 `duty`（§4.1） | `policy.ts:8-10`、`fallback.ts:84` | PL-2、SF-3 |
   | 9 | base 評分函式的具名匯出：`setupSpotScore`、`roadDirectionScore`、`robberCandidates`（從 `robberHex` 拆出）、`plentyPick(turn, hand?, bank?)`（可重複選，供 gold 使用）、`usefulRoad`、`canPlay`。放在 `src/base/*.ts`，避免 `heuristic.ts` 與模組循環 import | `heuristic.ts:195-275,322,372`，都未匯出 | SF-2a、SF-2b |
-  | 10 | 強盜組合：`robberCandidates` 與 `banditCandidates(turn, cause)` 串接後挑選，結果要區分「沒有候選」與「選中 `null`」；`pending.moveRobber` 取 `pending.cause`，騎士固定為 `'knight'` | `heuristic.ts:142-146,407` | SF-2b |
-  | 11 | `economyOf(model, modules)` 組合 `costs`、`piecesLeft`、`scoreExtras`；模組計畫同分時排在 base 種類之後 | `economy.ts:176-288`；`planOrder`（`:286-288`）遇到未知種類回 `-1000`，同分時會排到最前 | SF-2a |
-  | 12 | `heuristic.ts` 的通用掛點，讓 SF-2a 不必修改 `heuristic.ts`：`planStep` 在 default 分支交給模組（`:570-599`）；「可立即得分」的判斷可由模組擴充（`:445`）；Road Building 的條件納入模組的 `freeRouteCandidates`（`:479`） | — | SF-2a |
+  | 10 | 強盜組合 `banditChoice(turn, cause)`（`src/base/robber.ts`）：`robberCandidates` 與 `banditCandidates(turn, cause)` 串接後以 `turn.choose` 挑選；回傳 `null` 表示沒有候選，`{ target: null }` 表示選中外框。`pending.moveRobber` 取 `robberCauseOf(pending.cause)`，騎士固定為 `'knight'` | `heuristic.ts:142-146,407` | SF-2b |
+  | 11 | `economyOf(model, modules?, level?)` 組合 `costs`、`piecesLeft`、`scoreExtras`；`Economy.costs` 與帶索引簽章的 `Economy.left`；模組計畫同分時排在 base 種類之後 | `economy.ts:176-288`；`planOrder`（`:286-288`）遇到未知種類回 `-1000`，同分時會排到最前 | SF-2a |
+  | 12 | `heuristic.ts` 的通用掛點，讓 SF-2a 不必修改 `heuristic.ts`：`planStep` 在 default 分支交給模組（`:570-599`）；「可立即得分」改由 `isImmediate(plan)` 判斷，模組計畫以 `Plan.immediate` 標示，例如船已鋪完的島嶼聚落（`:445`）；Road Building 的條件改為「base 道路有存量且有用」或「任一模組的 `freeRouteCandidates` 非空」，base 運算元先求值，與 v0.4.0 相同（`:479`） | — | SF-2a |
   | 13 | 合約規則 9：拒絕含非資源卡種或任何 goods 的報價，用在 `respondToOffers`（`:353-366`）與行動者處理報價的分支（`:422-431`） | — | — |
   | 14 | B-GUARD 放寬（`packages/bots/test/guard.test.ts:20`） | — | SF-1 |
 
-- **骨架的硬性規則**（golden replay 成立的前提）：模組清單為空時，每個組合點的呼叫順序都與 v0.4.0 相同，包括 `turn.pick` 消耗亂數的次數；模組候選一律接在 base 候選之後；保底的順序見 §4.1。
+- **骨架的硬性規則**（golden replay 成立的前提）：模組清單為空時，每個組合點的呼叫順序都與 v0.4.0 相同，包括 `turn.pick` 消耗亂數的次數；與 base 串接的模組候選一律接在 base 候選之後（`freeRouteCandidates` 是取代，不是串接，§4.2）；保底的順序見 §4.1。
 - **golden replay**：
-  - PR 的第一個 commit 只新增 golden 檔、不動 `src`：凍結 v0.4.0 harness 邏輯的 `test/golden/driver.ts`、錄製腳本 `test/golden/record.ts`、fixture `test/golden/base-v040.json` 與比對測試 `test/golden-base.test.ts`。driver 凍結在 PL-1，之後 PL-2 改動 harness 也不會影響它。
+  - PR 的第一個 commit 只新增 golden 檔、不動 `src`：凍結 v0.4.0 harness 邏輯的 `test/golden/driver.ts`、錄製腳本 `test/golden/record.ts`、fixture `test/golden/base-v040.json` 與比對測試 `test/golden-base.test.ts`。driver 凍結在 PL-1，之後 PL-2 改動 harness 也不會影響它。driver 的 `Decision.command` 宣告為 `PolicyCommand = NonNullable<ReturnType<BotPolicy['decide']>>`，型別跟著 `BotPolicy.decide` 走，所以 PL-1 把回傳型別放寬為 `BotCommand` 時不必修改 driver；這項型別修正在 `src` 改動之前就併入第一個 commit，fixture 不必重錄。
   - driver 照搬 v0.4.0 harness 的設定：遊戲亂數 `seededRng(seed)`；決策種子 `botSeed('test', id, state.seq)`（`packages/bots/test/harness.ts:82`）；報價時鐘 `createOfferClock`（`:95-110`）；投影只帶 hints、不帶 events（`viewFor`，`:53-55`）；座位等級 `mixedLevels(players, seed)`（`packages/bots/test/policy.test.ts:27-29`）；對局迴圈與 `runBotGame({ seats, seed, maxSteps, onDecision })` 相同（`policy.test.ts:85-87`）。
   - 涵蓋 48 局：
     - B-GAME 的 3–6 人 × 種子 1–10（`base-2025`／`base-paired-2025`、`variable`、`mixedLevels`、5000 步）；
@@ -579,3 +629,19 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
 | S11 | RX 缺少 gold pending 型別與 hints 對照型別 | RX 定義 gold pending 介面，並匯出 `ModuleHintsMap` | SF 計畫 §4.5、§5 |
 
 `docs/aegis/work/2026-11-04-bots-plans-review.md` 指出的問題都已修正，沒有殘留。D5、D6 都不是 0.4.1 的前提：PL-1 的規則 9 只需要拒絕含非資源卡種或任何 goods 的報價。
+
+## 13. PL-1 介面定案（2026-11-06）
+
+PL-1 開工前，由 Architect 以唯讀方式做介面審查。審查在 `git archive` 產生的副本上編輯並執行 tsc，結果已併入 §4.1、§4.2、§4.10 與 SF 計畫 §4.1、§4.2、§4.5、§5。A7 是 PR #119 的 Reviewer 提出的修正。與原計畫不同的地方如下：
+
+| # | 原計畫 | 定案 | 理由 |
+|---|---|---|---|
+| A1 | `scoreExtras(model, baseEconomy)` | `scoreExtras(input: PlanInput)`，`PlanInput` 是 `{ model, level, base }` | SF 的船路徑上限依難度而定（easy ≤3、standard ≤4）；物件參數之後只增欄位 |
+| A2 | `TurnContext` 只有 `pick` | 新增 `level` 與 `choose` | `banditCandidates` 的目標可能是 `null`（外框），需要回傳候選本身；`choose` 與 `pick` 共用實作，亂數消耗必然相同，不必改動 base 的 7 個 `pick` 呼叫點 |
+| A3 | `fallbackPolicy` 不變 | `fallbackPolicy = createFallbackPolicy()`，依 `view.profileId` 推導模組 | server 直接呼叫 `fallbackPolicy.decide`（`bot-driver.ts:332`），而且 PL-3 不改這條路徑；推導後 SF-1 一註冊，server 就自動拿到 SF 的 `duty` |
+| A4 | `preroll`、`actions`、`freeRouteCandidates`、`banditCandidates` 都「接在 base 的候選之後統一評分」 | 各自的組合方式見 §4.2 | base 只有在立即得分建造與強盜兩處有評分清單 |
+| A5 | 「可立即得分」由模組擴充 | `Plan.immediate` 加上 `isImmediate(plan)`，不新增鉤子 | 改動最小；模組清單為空時是 no-op |
+| A6 | golden driver 在 0.4.1 內不得修改 | 錄製後、`src` 改動前，把 `Decision.command` 改成跟著 `BotPolicy.decide` 走的 `PolicyCommand` 型別，併入第一個 commit | `decide` 放寬為 `BotCommand` 後，原本的 `Command` 註記會讓 typecheck 失敗；只改型別，fixture 不必重錄 |
+| A7 | 保底以 `responders.includes(self)` 判斷模組 frame 的資格（介面定案的初稿） | 保底只在 `responders[0] === self` 時回應模組 frame，也只在這時詢問模組的 `duty`；策略的 `answerFrame` 仍以 `includes` 過濾，依序 frame 由模組自行檢查 `responders[0]` | 與 P3「保底一律採保守的 `responders[0]`」及 `botOwesAction` 一致；依序 frame 只接受第一位作答，非第一位送出會被拒（`E_NOT_YOUR_TURN`），例如 SF 的 gold（`packages/rules/src/modules/seafarers/gold.ts:94`）、C&K 的 science（`citiesKnights/production.ts:140`）與防守者選牌堆（`citiesKnights/barbarians.ts:198`）。PR #119 審查時發現 |
+
+後續計畫引用的 v0.4.0 行號會因 PL-1 移動，例如 T&B §4.3 的 `heuristic.ts:195-200,214`，PL-1 之後在 `src/base/robber.ts`；`fallback.ts:19-25` 在 `src/base/duty.ts`；C&K §4.6 的 `fallback.ts:47-57` 也在 `src/base/duty.ts`。這些行號由 Planner 在各版開工前刷新。

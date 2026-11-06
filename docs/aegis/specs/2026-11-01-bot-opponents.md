@@ -39,7 +39,7 @@ P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房�
 |---|---|---|
 | I1 | Bot 只能經 `GameCoordinator.submit` 改變遊戲 | 程式結構；B-RACE |
 | I2 | 策略輸入只有 `projectGame(state, botId, { hints })` 的結果與 `BotContext`，型別上拿不到 `GameState` | `BotPolicy` 介面；B-FAIR |
-| I3 | `packages/rules` 的規則、`GameState`、事件與錯誤碼不變 | 既有 rules 測試全綠 |
+| I3 | `packages/rules` 的規則判定、`GameState`、事件與錯誤碼不變；允許只新增型別與常數的匯出，包括把模組內的投影與 hints 函式抽成具名函式 | 既有 rules 測試全綠 |
 | I4 | Bot 無可用登入憑證、不能成為房主、沒有 socket | `token_hash` 哨兵值；B-ROOM |
 | I5 | 每局同一時間最多一個 Bot 指令在飛 | BotDriver `inFlight`；B-LIFE |
 | I6 | 決策決定性：同一 view＋context → 同一指令 | 種子由 `gameId:botId:revision:attempt` 推導；B-POLICY |
@@ -77,6 +77,9 @@ BotDriver ──────┘          │
 export type BotLevel = 'easy' | 'standard';
 export const BOT_LEVELS: readonly BotLevel[];
 
+/** Bot 可送出的指令；協定的 command 本來就是開放型別，模組指令也走同一條路。 */
+export type BotCommand = Command | ModuleCommand;
+
 /** 排程器觀察到的、Bot 自己開出且仍 open 的報價階段。 */
 export type OfferPhase = 'collecting' | 'ready' | 'expired';
 
@@ -89,23 +92,52 @@ export interface BotContext {
 
 export interface BotPolicy {
   /** 回傳 selfId 此刻該送的指令；此刻無事可做回傳 null。 */
-  decide(view: GameView, ctx: BotContext): Command | null;
+  decide(view: GameView, ctx: BotContext): BotCommand | null;
 }
 
-export function createBotPolicy(level: BotLevel): BotPolicy;
-export const fallbackPolicy: BotPolicy;
+export interface BotPolicyOptions {
+  /** 省略時依 view.profileId 取 botModulesOf；[] = 只有 base。 */
+  readonly modules?: readonly BotModule[];
+}
+
+export function createBotPolicy(level: BotLevel, options?: BotPolicyOptions): BotPolicy;
+export function createFallbackPolicy(modules?: readonly BotModule[]): BotPolicy; // 省略時依 view.profileId 推導；查不到 profile 時只有 base，不得拋出
+export const fallbackPolicy: BotPolicy;                                          // = createFallbackPolicy()
+export function fallbackDecision(view: GameView, selfId: string, modules: readonly BotModule[]): BotCommand | null;
 export function botSeed(...parts: (string | number)[]): number;
+
+/** 此刻是否欠一個動作（待決效果、模組 frame、初始放置、擲骰前、行動階段）。 */
+export type OwedAction = 'frame' | 'pending' | 'setup' | 'preroll' | 'action';
+export function botOwesAction(view: GameView, selfId: string): OwedAction | null;
+
+/**
+ * Bot 模組：每個 rules module 可以註冊一個。鉤子、回傳值語意（undefined = 不歸我管，
+ * null = 歸我管但這次不送指令）與組合規則見 packages/bots/src/modules/types.ts。
+ */
+export interface BotModule { readonly id: string; /* … */ }
+export const BOT_MODULES: ReadonlyMap<string, BotModule>;
+export function botModulesOf(profile: Pick<ProfileDefinition, 'ruleModules'>): readonly BotModule[];
+
+/** profile 的每個 rules module 都有已註冊、且 supports 該 profile 的 Bot 模組。 */
+export function botsCanPlay(profile: ProfileDefinition): boolean;
+/** @deprecated 0.4.1 起不再使用（保持為空）；改用 botsCanPlay。 */
+export const BOT_RULE_MODULES: readonly string[];
+
+export const BOT_PACING: Readonly<Record<string, number>>;       // 合併各模組的 pacing
+export function botCommandLimit(profile: Pick<ProfileDefinition, 'ruleModules'>, base: number): number;
+export const BASE_RESPONSE_COMMANDS: ReadonlySet<string>;        // 非行動者可送的 base 指令
+export function botResponseCommands(profile: Pick<ProfileDefinition, 'ruleModules'>): ReadonlySet<string>;
 ```
 
 規則：
 
 1. `decide` 是純函式：不讀時間與環境、不持有跨呼叫狀態；隨機性只來自 `seededRng(ctx.seed)`。排程器仍會攔截例外，但策略不應拋出。
 2. 可用資訊：`view`、`getTopology(view.board.topologyId)`、`requireProfile(view.profileId)`、`COSTS`、`RESOURCES` 等常數。不得接收或建構 `GameState` 來取得隱藏資訊。
-3. 非行動者（`selfId !== view.turn.playerId`）只在兩種情況回傳指令：自己欠的待決效果（棄牌等）；收件人包含自己、仍 open、且自己尚未回應的報價。
-4. 行動者在 `action` 階段無事可做時必須回傳 `turn.end`。唯一允許回傳 `null` 的情況是自己仍有 open 報價在等回應。排程器把「行動者沒有 open 報價卻回傳 null」視為策略失敗。
+3. 非行動者（`selfId !== view.turn.playerId`）只在兩種情況回傳指令：自己欠的待決效果（base 的棄牌，以及自己有資格回應的模組 frame：同時作答的 frame 只要 `responders` 包含自己，依序作答的 frame 只有 `responders[0]` 可以回應；保底一律只在自己是 `responders[0]` 時回應）；收件人包含自己、仍 open、且自己尚未回應的報價。
+4. 行動者在 `action` 階段無事可做時，回傳結束行動窗口的指令：模組有 `endWindow` 就用它，否則用 `turn.end`（`endWindow` 自 0.4.5 起實作，在那之前一律是 `turn.end`；模組的 `duty` 可以在 `turn.end` 之前接手）。唯一允許回傳 `null` 的情況是自己仍有 open 報價在等回應。排程器把「行動者沒有 open 報價卻回傳 null」視為策略失敗。
 5. `hints.legalSettlements`／`legalRoads` 只代表位置合法，不代表付得起；策略要用 `COSTS` 與自己的 `resources` 檢查，也要檢查剩餘棋子數（以盤面計數對照 profile 的 pieces）。
 6. 報價回應只用 `consented` 或 `declined`；回應過的報價（`responses[selfId]` 有值）不再回應，報價被 revise 後才重新評估。
-7. 保底策略 `fallbackPolicy` 只做必定合法的最小動作，非強制的事一律不做（回傳 null）：
+7. 保底策略 `fallbackPolicy` 只做必定合法的最小動作，非強制的事一律不做（回傳 null）。保底表由各模組擴充，內容寫在各擴充計畫的保底一節；下表是 base 的部分：
 
 | 情況 | 保底動作 |
 |---|---|
@@ -117,6 +149,9 @@ export function botSeed(...parts: (string | number)[]): number;
 | 初始放置 | `hints.legalSettlements[0]`／`hints.legalRoads[0]` |
 | `preroll` | `turn.roll` |
 | `action` | `turn.end` |
+
+8. 策略不得讀 `view.events`：BotDriver 投影時帶最近 40 筆事件，測試 harness 不帶，讀了會讓兩邊結果不一致（決定性，I6）。
+9. 報價包含 Bot 無法估值的卡種或 goods（`giveGoods`、`wantGoods`）時一律拒絕（不同意、不結算）；對方要求的數量超過自己持有量，或提議者公開的 goods 付不起 `giveGoods` 時，也一律拒絕（引擎在同意時會檢查雙方）。
 
 報價階段由排程器以真實時間推導，策略只看階段：
 
