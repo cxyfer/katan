@@ -27,7 +27,7 @@ import type {
   ServerConfigView,
 } from '@catan/protocol';
 import type { CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
-import { SocketClient, type SocketFactory } from '../api/socket.ts';
+import { FORCED_CLOSE_WAIT_MS, SocketClient, type SocketFactory } from '../api/socket.ts';
 import { detectLocale } from '../i18n/index.ts';
 import { bootAssetsFailed, type BootStepId } from './boot.ts';
 import { newChatId, newCommandId, newRequestId } from './ids.ts';
@@ -73,6 +73,8 @@ export interface UseTableOptions {
   leaveTimeoutMs?: number;
   /** 等待伺服器確認取消訂閱的上限（毫秒），預設 `UNSUBSCRIBE_ACK_TIMEOUT_MS`；測試注入較短的值。 */
   unsubscribeTimeoutMs?: number;
+  /** 取消訂閱逾時而強制關閉連線後，等它關閉的上限（毫秒），預設 `FORCED_CLOSE_WAIT_MS`；測試注入較短的值。 */
+  closeWaitMs?: number;
 }
 
 /** `/leave` 久久沒有回應時放棄等待，離開流程改走失敗路徑，使用者才不會永遠卡在處理中。 */
@@ -548,6 +550,8 @@ export function useTable(options: UseTableOptions): TableController {
     }
   }, [api, applyRoom, dispatch, openGame]);
 
+  const closeWaitMs = options.closeWaitMs ?? FORCED_CLOSE_WAIT_MS;
+
   /** 目前牌桌的房間與對局 id（離開流程用來記錄與還原）。 */
   const currentTableIds = useCallback((): { roomId: string | null; gameId: string | null } => {
     const current = stateRef.current;
@@ -566,6 +570,13 @@ export function useTable(options: UseTableOptions): TableController {
    * 回傳先前的標記（供失敗時還原），以及要帶進 `/leave` 的進房世代 `entryEpoch`：優先用確認裡的值
    * （取消訂閱之後的目前世代）；沒有確認（逾時、未連線、本來沒訂閱）時退回開始離開前房間檢視的
    * `viewerEntryEpoch`；兩者都沒有就不帶（`undefined`）。
+   *
+   * 取消訂閱逾時時，伺服器可能根本還沒處理它（很慢，或連線半斷而伺服器沒有心跳察覺），連線會一直
+   * 被當成在線：`SocketClient` 已強制關閉那條 transport 讓伺服器的 close handler 取消登記（既有的
+   * 重連會另開新連線，不會再訂閱）。這裡再最多等 `closeWaitMs` 讓它關閉，`/leave` 才不會搶在 close
+   * 之前到而被當成 `present`；等不到（半斷的連線）就照常送。`/leave` 帶著 `entryEpoch`，所以即使
+   * 與伺服器處理 close 的時序交錯也不會誤改狀態；最壞是回 `present`，這次刻意離開的房主移轉就退化成
+   * 斷線後由寬限計時器處理，不自動重試。
    */
   const beginDeparture = useCallback(
     async (ids: { roomId: string | null; gameId: string | null }) => {
@@ -573,12 +584,14 @@ export function useTable(options: UseTableOptions): TableController {
       // 先記下，之後該房的推送都會被忽略。
       const viewerEntryEpoch = stateRef.current.room?.viewerEntryEpoch;
       departedRef.current = ids;
-      const unsubscribed = await socketRef.current?.unsubscribe();
+      const client = socketRef.current;
+      const unsubscribed = await client?.unsubscribe();
+      if (unsubscribed?.outcome === 'timeout') await client?.whenTransportDropped(closeWaitMs);
       const ackEpoch = unsubscribed?.outcome === 'acked' ? unsubscribed.ack.entryEpoch : null;
       const entryEpoch: number | undefined = ackEpoch ?? viewerEntryEpoch;
       return { previous, entryEpoch };
     },
-    [],
+    [closeWaitMs],
   );
 
   /** `/leave` 失敗、逾時或被忽略（`left: false`）且要留在原畫面：移除標記並重新訂閱原房間，伺服器會再推送最新狀態。 */

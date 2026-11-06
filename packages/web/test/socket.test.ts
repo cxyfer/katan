@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { parseServerMessage, SocketClient, UNSUBSCRIBE_ACK_TIMEOUT_MS, type SocketLike } from '../src/api/socket.ts';
+import {
+  FORCED_CLOSE_WAIT_MS,
+  parseServerMessage,
+  SocketClient,
+  UNSUBSCRIBE_ACK_TIMEOUT_MS,
+  type SocketLike,
+} from '../src/api/socket.ts';
 import type { ClientMessage, ServerMessage } from '@catan/protocol';
 
 class FakeSocket implements SocketLike {
@@ -266,20 +272,149 @@ describe('SocketClient.unsubscribe', () => {
   it('a late acknowledgement after the timeout does nothing', async () => {
     vi.useFakeTimers();
     try {
-      const { client, sockets } = connected({ unsubscribeTimeoutMs: 50 });
+      const { client, sockets, scheduled } = connected({ unsubscribeTimeoutMs: 50 });
       client.subscribe({ roomId: 'r1' });
       const pending = client.unsubscribe();
       await vi.advanceTimersByTimeAsync(50);
       expect(await pending).toEqual({ outcome: 'timeout' });
+      // 舊連線在關閉交握完成前還可能送來遲到的確認：不影響任何東西。
       sockets[0]!.simulateMessage(ack());
-      // 之後可以再次訂閱並再次取消。
+      sockets[0]!.simulateClose();
+      // 重連後的新連線可以再次訂閱並再次取消。
+      scheduled[0]!();
+      sockets[1]!.simulateOpen();
       client.subscribe({ roomId: 'r1' });
       const again = client.unsubscribe();
-      sockets[0]!.simulateMessage(ack());
+      sockets[1]!.simulateMessage(ack());
       expect(await again).toEqual({ outcome: 'acked', ack: { roomId: 'r1' } });
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  describe('when the acknowledgement never arrives', () => {
+    async function timedOut(options: { unsubscribeTimeoutMs?: number } = { unsubscribeTimeoutMs: 100 }) {
+      const context = connected(options);
+      context.client.subscribe({ roomId: 'r1', gameId: 'g1' });
+      const pending = context.client.unsubscribe();
+      await vi.advanceTimersByTimeAsync(options.unsubscribeTimeoutMs ?? UNSUBSCRIBE_ACK_TIMEOUT_MS);
+      expect(await pending).toEqual({ outcome: 'timeout' });
+      return context;
+    }
+
+    it('force-closes the old transport and reconnects without subscribing again', async () => {
+      vi.useFakeTimers();
+      try {
+        const { sockets, scheduled } = await timedOut();
+        // 伺服器可能根本沒處理取消訂閱：強制關閉，讓它的 close handler 取消登記。
+        expect(sockets[0]!.closed).toBe(true);
+        // 沒設 closedByCaller：onClose 之後照常排程重連，開出新連線。
+        expect(sockets).toHaveLength(1);
+        sockets[0]!.simulateClose();
+        expect(scheduled).toHaveLength(1);
+        scheduled[0]!();
+        expect(sockets).toHaveLength(2);
+        sockets[1]!.simulateOpen();
+        // 訂閱早已清掉，新連線開啟後不會再訂回去。
+        expect(sockets[1]!.sent).toEqual([]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('waits for the transport to close, up to a cap', async () => {
+      vi.useFakeTimers();
+      try {
+        const { client, sockets } = await timedOut();
+        let closedWait = false;
+        void client.whenTransportDropped(5_000).then(() => { closedWait = true; });
+        await vi.advanceTimersByTimeAsync(4_000);
+        expect(closedWait).toBe(false);
+        sockets[0]!.simulateClose();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(closedWait).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('gives up waiting when the transport never finishes closing', async () => {
+      vi.useFakeTimers();
+      try {
+        const { client } = await timedOut();
+        let waited = false;
+        void client.whenTransportDropped(300).then(() => { waited = true; });
+        await vi.advanceTimersByTimeAsync(299);
+        expect(waited).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(waited).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('defaults to a one second wait for the close', () => {
+      expect(FORCED_CLOSE_WAIT_MS).toBe(1000);
+    });
+
+    it('resolves the wait straight away once the transport has closed', async () => {
+      vi.useFakeTimers();
+      try {
+        const { client, sockets } = await timedOut();
+        sockets[0]!.simulateClose();
+        await expect(client.whenTransportDropped(10_000)).resolves.toBeUndefined();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('replays a subscription made while the old transport is still closing on the new connection', async () => {
+      vi.useFakeTimers();
+      try {
+        const { client, sockets, scheduled } = await timedOut();
+        client.subscribe({ roomId: 'r2' });
+        sockets[0]!.simulateClose();
+        scheduled[0]!();
+        sockets[1]!.simulateOpen();
+        expect(sentOf(sockets[1]!)).toEqual([{ type: 'subscribe', payload: { roomId: 'r2' } }]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('stops reconnecting when the caller closes the client afterwards', async () => {
+      vi.useFakeTimers();
+      try {
+        const { client, sockets, scheduled } = await timedOut();
+        client.close();
+        await expect(client.whenTransportDropped(10_000)).resolves.toBeUndefined();
+        sockets[0]!.simulateClose();
+        scheduled.forEach((run) => run());
+        expect(sockets).toHaveLength(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it('does not close the transport when the acknowledgement arrives, the socket is idle or already closed', async () => {
+    const acked = connected();
+    acked.client.subscribe({ roomId: 'r1' });
+    const pending = acked.client.unsubscribe();
+    acked.sockets[0]!.simulateMessage(ack());
+    await pending;
+    await expect(acked.client.whenTransportDropped(10)).resolves.toBeUndefined();
+    expect(acked.sockets[0]!.closed).toBe(false);
+
+    const idle = connected();
+    await idle.client.unsubscribe();
+    expect(idle.sockets[0]!.closed).toBe(false);
+
+    const gone = connected();
+    gone.client.subscribe({ roomId: 'r1' });
+    gone.sockets[0]!.simulateClose();
+    expect(await gone.client.unsubscribe()).toEqual({ outcome: 'disconnected' });
+    expect(gone.sockets[0]!.closed).toBe(false);
   });
 
   it('is idle, and stays silent, when nothing is subscribed', async () => {

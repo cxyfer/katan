@@ -23,15 +23,29 @@ beforeEach(() => {
 /**
  * 記錄送出的訊息，並能模擬伺服器推送。收到取消訂閱（空的 subscribe）時預設自動回 `unsubscribed`，
  * 與伺服器一致；測試可關掉 `autoAck`，改由 `ack()` 手動確認。
+ *
+ * `autoAck` 關掉代表伺服器「沒收到或還沒處理」這次取消訂閱：本地記著的房間（伺服器端的登記）不能清掉，
+ * 只有確認送出、或連線 `close()` 時才清。`close()` 預設馬上走完關閉交握（非同步觸發 `onClose`）；
+ * 把 `autoClose` 關掉可模擬交握還沒走完，再用 `finishClose()` 完成。
  */
 class PushSocket implements SocketLike {
   sent: ClientMessage[] = [];
   autoAck = true;
+  autoClose = true;
   /** 確認裡帶回的進房世代；null 代表伺服器沒有可用的世代。 */
   epoch: number | null = 1;
+  /** 被呼叫 `close()` 的次數。 */
+  closeCount = 0;
+  /** 呼叫 `close()` 當下，伺服器端仍登記的房間（證明取消訂閱沒有被偷偷當成已處理）。 */
+  roomAtClose: string | null | undefined = undefined;
+  /** 與其他事件（例如 `/leave`）共用的順序記錄。 */
+  events: string[] = [];
   #room: string | null = null;
   #open: (() => void) | null = null;
+  #close: ((info: { code: number; reason: string }) => void) | null = null;
   #message: ((data: string) => void) | null = null;
+  /** 伺服器端目前登記的房間。 */
+  get registeredRoom() { return this.#room; }
   send(data: string) {
     const message = JSON.parse(data) as ClientMessage;
     this.sent.push(message);
@@ -40,18 +54,29 @@ class PushSocket implements SocketLike {
       this.#room = message.payload.roomId;
       return;
     }
+    if (!this.autoAck) return;
     const previous = this.#room;
     this.#room = null;
-    if (this.autoAck) setTimeout(() => this.ack(previous), 0);
+    setTimeout(() => this.ack(previous), 0);
   }
-  close() {}
+  close() {
+    this.closeCount += 1;
+    this.roomAtClose = this.#room;
+    // 伺服器的 close handler 取消登記。
+    this.#room = null;
+    this.events.push('close');
+    if (this.autoClose) setTimeout(() => this.finishClose(), 0);
+  }
+  /** 關閉交握走完，瀏覽器端的 `onclose` 觸發。 */
+  finishClose() { this.#close?.({ code: 1000, reason: '' }); }
   onOpen(handler: () => void) { this.#open = handler; }
-  onClose() {}
+  onClose(handler: (info: { code: number; reason: string }) => void) { this.#close = handler; }
   onMessage(handler: (data: string) => void) { this.#message = handler; }
   onError() {}
   open() { this.#open?.(); }
   push(message: ServerMessage) { this.#message?.(JSON.stringify(message)); }
   ack(roomId: string | null = 'r1', entryEpoch: number | null = this.epoch) {
+    this.#room = null;
     this.push({ type: 'unsubscribed', payload: { roomId, entryEpoch } });
   }
   subscribes() { return this.sent.filter((message) => message.type === 'subscribe'); }
@@ -101,6 +126,44 @@ async function enterTable(
   await screen.findByTestId('board-svg', {}, { timeout: 8000 });
   await waitFor(() => expect(socket.subscribes()).toContainEqual({ type: 'subscribe', payload: { roomId: 'r1', gameId: 'g1' } }));
   return socket;
+}
+
+/** 每次連線都開出新的 socket（真實的重連），並讓 `/leave` 與 socket 事件寫進同一份順序記錄。 */
+async function enterReconnectingTable(
+  api: FakeApi,
+  options: { unsubscribeTimeoutMs: number; closeWaitMs?: number; configure?: (socket: PushSocket) => void },
+): Promise<{ sockets: PushSocket[]; events: string[] }> {
+  const sockets: PushSocket[] = [];
+  const events: string[] = [];
+  const original = api.leaveRoom.bind(api);
+  api.leaveRoom = async (roomId: string, body) => {
+    events.push('leave');
+    return original(roomId, body);
+  };
+  render(
+    <App
+      services={{
+        api,
+        storage: memoryStorage(),
+        languages: ['en'],
+        socketFactory: () => {
+          const socket = new PushSocket();
+          socket.events = events;
+          options.configure?.(socket);
+          sockets.push(socket);
+          return socket;
+        },
+        unsubscribeTimeoutMs: options.unsubscribeTimeoutMs,
+        ...(options.closeWaitMs === undefined ? {} : { closeWaitMs: options.closeWaitMs }),
+      }}
+    />,
+  );
+  act(() => sockets[0]!.open());
+  fireEvent.change(await screen.findByTestId('join-code'), { target: { value: 'ABC123' } });
+  fireEvent.click(screen.getByTestId('join-room'));
+  await screen.findByTestId('board-svg', {}, { timeout: 8000 });
+  await waitFor(() => expect(sockets[0]!.subscribes()).toContainEqual({ type: 'subscribe', payload: { roomId: 'r1', gameId: 'g1' } }));
+  return { sockets, events };
 }
 
 /** 伺服器在取消訂閱生效前仍推送同一房與同一局的訊息。 */
@@ -565,6 +628,111 @@ describe('leaving the table', () => {
       fireEvent.click(screen.getByTestId('leave-keep'));
       await screen.findByTestId('resume-list');
       expect(api.callsOf('leaveRoom')).toHaveLength(1);
+    });
+  });
+
+  describe('when the server never processes the unsubscribe', () => {
+    const keepAndLeave = () => {
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-keep'));
+    };
+    const silent = (socket: PushSocket) => { socket.autoAck = false; };
+
+    it('drops the connection, then still leaves, and later pushes stay ignored', async () => {
+      const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+      const { sockets, events } = await enterReconnectingTable(api, { unsubscribeTimeoutMs: 60, configure: silent });
+      keepAndLeave();
+      await screen.findByTestId('resume-list');
+      const [first] = sockets;
+      // 伺服器端仍登記著這個房間（取消訂閱沒被處理），所以靠強制關閉讓它取消登記。
+      expect(first!.roomAtClose).toBe('r1');
+      expect(first!.registeredRoom).toBeNull();
+      expect(first!.closeCount).toBe(1);
+      // `/leave` 在舊連線關閉之後才送，照常送出一次。
+      expect(api.callsOf('leaveRoom')).toHaveLength(1);
+      expect(events).toEqual(['close', 'leave']);
+      // 舊連線在交握期間仍可能送來推送：一律忽略。
+      await pushLate(first!, soloRoom());
+      expectHome();
+    });
+
+    it('reconnects with a new socket that does not subscribe again', async () => {
+      const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+      const { sockets } = await enterReconnectingTable(api, { unsubscribeTimeoutMs: 60, configure: silent });
+      keepAndLeave();
+      await screen.findByTestId('resume-list');
+      // 既有的重連照常開新連線（不是被呼叫端關閉）。
+      await waitFor(() => expect(sockets).toHaveLength(2));
+      act(() => sockets[1]!.open());
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
+      expect(sockets[1]!.subscribes()).toEqual([]);
+      await pushLate(sockets[1]!, soloRoom());
+      expectHome();
+    });
+
+    it('waits for the old connection to finish closing before the leave request', async () => {
+      const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+      const { sockets, events } = await enterReconnectingTable(api, {
+        unsubscribeTimeoutMs: 60,
+        closeWaitMs: 10_000,
+        configure: (socket) => { socket.autoAck = false; socket.autoClose = false; },
+      });
+      keepAndLeave();
+      await waitFor(() => expect(sockets[0]!.closeCount).toBe(1));
+      // 交握還沒走完：`/leave` 還沒送，畫面也還在牌桌上。
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 150)); });
+      expect(api.callsOf('leaveRoom')).toHaveLength(0);
+      expect(screen.getByTestId('board-svg')).toBeTruthy();
+      await act(async () => { sockets[0]!.finishClose(); });
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+      expect(events).toEqual(['close', 'leave']);
+      await screen.findByTestId('resume-list');
+    });
+
+    it('stops waiting for a close that never finishes and leaves anyway', async () => {
+      const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+      const { sockets } = await enterReconnectingTable(api, {
+        unsubscribeTimeoutMs: 60,
+        closeWaitMs: 100,
+        configure: (socket) => { socket.autoAck = false; socket.autoClose = false; },
+      });
+      keepAndLeave();
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+      expect(sockets[0]!.closeCount).toBe(1);
+      await screen.findByTestId('resume-list');
+    });
+
+    it('does not drop the connection when the server acknowledges in time', async () => {
+      const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+      const { sockets } = await enterReconnectingTable(api, { unsubscribeTimeoutMs: 60 });
+      keepAndLeave();
+      await screen.findByTestId('resume-list');
+      expect(api.callsOf('leaveRoom')).toHaveLength(1);
+      expect(sockets).toHaveLength(1);
+      expect(sockets[0]!.closeCount).toBe(0);
+    });
+
+    it('a failed leave afterwards resubscribes on the new connection', async () => {
+      const api = createFakeApi({
+        room: duoRoom({ status: 'abandoned' }),
+        snapshot: makeSnapshot(makeView({ result: { playerId: null, reason: 'abandoned' } }), 13),
+      });
+      api.leaveRoom = async () => NETWORK_FAILURE;
+      const { sockets } = await enterReconnectingTable(api, { unsubscribeTimeoutMs: 60, configure: silent });
+      fireEvent.click(await screen.findByTestId('back-to-lobby'));
+      expect((await screen.findByTestId('toast')).textContent).toBeTruthy();
+      expect(screen.getByTestId('result-screen')).toBeTruthy();
+      expect(sockets[0]!.closeCount).toBe(1);
+      // 重連後的新連線帶著還原的訂閱，伺服器會再推送最新狀態。
+      await waitFor(() => expect(sockets).toHaveLength(2));
+      act(() => sockets[1]!.open());
+      expect(sockets[1]!.subscribes()).toEqual([{ type: 'subscribe', payload: { roomId: 'r1', gameId: 'g1' } }]);
+      // 重連會順便補抓一次對局投影，等它落定後再驗證標記已移除：推送恢復生效，房間回到 lobby 狀態。
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 60)); });
+      await act(async () => {
+        sockets[1]!.push({ type: 'room', payload: duoRoom({ status: 'lobby', gameId: null }) });
+      });
+      expect(await screen.findByTestId('room-code')).toBeTruthy();
     });
   });
 
