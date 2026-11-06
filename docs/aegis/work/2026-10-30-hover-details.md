@@ -80,9 +80,9 @@ screen-reader acceptance or a live production deployment. Confidence: B.
 
 ## Review images
 
-- [Desktop collapsed](../../screenshots/hover-details/desktop-collapsed.png),
-  [expanded](../../screenshots/hover-details/desktop-expanded.png),
-  [tooltip](../../screenshots/hover-details/desktop-tooltip.png).
-- [Mobile collapsed](../../screenshots/hover-details/mobile-collapsed.png),
-  [expanded](../../screenshots/hover-details/mobile-expanded.png),
-  [tooltip](../../screenshots/hover-details/mobile-tooltip.png).
+- [Desktop collapsed](https://github.com/cxyfer/katan/blob/b8d0d1febc37534e7019b3599f5af7ba6afd26ec/docs/screenshots/hover-details/desktop-collapsed.png),
+  [expanded](https://github.com/cxyfer/katan/blob/b8d0d1febc37534e7019b3599f5af7ba6afd26ec/docs/screenshots/hover-details/desktop-expanded.png),
+  [tooltip](https://github.com/cxyfer/katan/blob/b8d0d1febc37534e7019b3599f5af7ba6afd26ec/docs/screenshots/hover-details/desktop-tooltip.png).
+- [Mobile collapsed](https://github.com/cxyfer/katan/blob/b8d0d1febc37534e7019b3599f5af7ba6afd26ec/docs/screenshots/hover-details/mobile-collapsed.png),
+  [expanded](https://github.com/cxyfer/katan/blob/b8d0d1febc37534e7019b3599f5af7ba6afd26ec/docs/screenshots/hover-details/mobile-expanded.png),
+  [tooltip](https://github.com/cxyfer/katan/blob/b8d0d1febc37534e7019b3599f5af7ba6afd26ec/docs/screenshots/hover-details/mobile-tooltip.png).
