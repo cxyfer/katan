@@ -23,6 +23,7 @@ import { botModulesOf, botsCanPlay } from '../src/index.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';
 import type { BotPolicy } from '../src/types.ts';
 import { baseProfileFor, naivePolicy, runBotGame, type BotSeat } from '../test/harness.ts';
+import { seafarersKit } from '../test/modules/seafarers.ts';
 import { kitsOf, type ModuleTestKit } from '../test/modules/types.ts';
 import { BENCH_USAGE, BenchArgError, parseBenchArgs } from './args.ts';
 
@@ -41,7 +42,7 @@ interface Config {
  * 模組測試工具（`test/modules/<id>.ts`）：有擴充的 profile 才有機制計數。擴充的測試切片把自己的 kit
  * 加在這裡；目前沒有任何模組。
  */
-const BENCH_KITS: readonly ModuleTestKit[] = [];
+const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit];
 
 /**
  * 與 rules 腳本模擬（確定性的腳本座位）對照的平均回合數：`profile id → 人數 → 回合數`。沒有腳本模擬的
