@@ -6,36 +6,30 @@
 import {
   COSTS,
   RESOURCES,
-  seededRng,
   type Command,
-  type DevCardType,
   type GameView,
-  type PublicPlayerView,
   type Resource,
-  type Rng,
 } from '@catan/rules';
+import { playerYield, vertexYield } from './board.ts';
+import { banditChoice, robberCauseOf } from './base/robber.ts';
+import { canPlay, plentyPick } from './base/cards.ts';
+import { pendingDuty } from './base/duty.ts';
+import { freeRoadDecision, roadDirectionScore, usefulRoad } from './base/roads.ts';
+import { setupSpotScore } from './base/setup.ts';
 import {
-  boardModel,
-  isFreeSpot,
-  playerYield,
-  vertexYield,
-  type BoardModel,
-} from './board.ts';
-import {
-  bestRouteEdge,
   canAfford,
   deficitOf,
-  economyOf,
   handSize,
   PIP_VALUE,
-  resourceWeights,
   settlementSpotValue,
   weightedPips,
   type Cost,
   type Economy,
   type Plan,
 } from './economy.ts';
-import { pendingDuty } from './fallback.ts';
+import { LEVEL_PARAMS, type LevelParams } from './level.ts';
+import type { Scored, TurnContext } from './modules/types.ts';
+import { Turn } from './turn.ts';
 import {
   acceptMargin,
   bankTradeToward,
@@ -47,73 +41,11 @@ import {
 } from './trade.ts';
 import type { BotContext, BotLevel, BotPolicy } from './types.ts';
 
-export interface LevelParams {
-  /** 從前幾名候選中隨機挑選；1 代表永遠選最佳。 */
-  readonly topK: number;
-  /** 是否主動對全桌開價。 */
-  readonly proposeOffers: boolean;
-  /** 是否為了最大騎士團主動打騎士（否則只在強盜壓到自己時打）。 */
-  readonly eagerKnights: boolean;
-  /** 接受報價需要的最低效用增益。 */
-  readonly acceptMargin: number;
-  /** 壟斷至少預期拿到幾張才打。 */
-  readonly monopolyMin: number;
-}
-
-export const LEVEL_PARAMS: Readonly<Record<BotLevel, LevelParams>> = {
-  standard: { topK: 1, proposeOffers: true, eagerKnights: true, acceptMargin: 0.6, monopolyMin: 3 },
-  easy: { topK: 3, proposeOffers: false, eagerKnights: false, acceptMargin: 1.6, monopolyMin: 4 },
-};
-
-interface Scored<T> {
-  item: T;
-  score: number;
-}
-
-/** 決策時共用的資料；`economy` 延遲計算，非行動者多半用不到。 */
-class Turn {
-  private cachedEconomy: Economy | null = null;
-  readonly view: GameView;
-  readonly ctx: BotContext;
-  readonly params: LevelParams;
-  readonly me: PublicPlayerView;
-  readonly model: BoardModel;
-  readonly rng: Rng;
-
-  // 不用 parameter properties：bench 以 Node 的 strip-only 模式執行。
-  constructor(view: GameView, ctx: BotContext, params: LevelParams, me: PublicPlayerView) {
-    this.view = view;
-    this.ctx = ctx;
-    this.params = params;
-    this.me = me;
-    this.model = boardModel(view, ctx.selfId);
-    this.rng = seededRng(ctx.seed);
-  }
-
-  get economy(): Economy {
-    this.cachedEconomy ??= economyOf(this.model);
-    return this.cachedEconomy;
-  }
-
-  /** paired Player 2 不可發起或結算國內交易。 */
-  get pairedSecond(): boolean {
-    return this.model.profile.paired && this.view.turn.pairedActor === 2;
-  }
-
-  pick<T>(candidates: readonly Scored<T>[]): T | null {
-    if (candidates.length === 0) return null;
-    // 穩定排序：同分時保留原本（索引）順序，standard 因此完全決定。
-    const sorted = candidates.slice().sort((a, b) => b.score - a.score);
-    const k = Math.min(this.params.topK, sorted.length);
-    return sorted[k <= 1 ? 0 : this.rng.int(k)]!.item;
-  }
-}
-
-function decide(view: GameView, ctx: BotContext, params: LevelParams): Command | null {
+function decide(view: GameView, ctx: BotContext, level: BotLevel, params: LevelParams): Command | null {
   if (view.result) return null;
   const me = view.players.find((player) => player.id === ctx.selfId);
   if (!me || !view.hints) return null;
-  const turn = new Turn(view, ctx, params, me);
+  const turn = new Turn(view, ctx, level, params, me, []);
   if (view.pending) return pendingDecision(turn) ?? pendingDuty(view, ctx.selfId);
   if (view.turn.phase === 'setup') return view.turn.playerId === ctx.selfId ? setupDecision(turn) : null;
   if (view.turn.playerId !== ctx.selfId) return respondToOffers(turn);
@@ -124,14 +56,14 @@ function decide(view: GameView, ctx: BotContext, params: LevelParams): Command |
 
 export function heuristicPolicy(level: BotLevel): BotPolicy {
   const params = LEVEL_PARAMS[level] ?? LEVEL_PARAMS.standard;
-  return { decide: (view, ctx) => decide(view, ctx, params) };
+  return { decide: (view, ctx) => decide(view, ctx, level, params) };
 }
 
 // ---------------------------------------------------------------------------
 // 待決效果
 // ---------------------------------------------------------------------------
 
-function pendingDecision(turn: Turn): Command | null {
+function pendingDecision(turn: TurnContext): Command | null {
   const { view, ctx } = turn;
   const pending = view.pending!;
   switch (pending.kind) {
@@ -141,8 +73,8 @@ function pendingDecision(turn: Turn): Command | null {
     }
     case 'moveRobber': {
       if (pending.actor !== ctx.selfId) return null;
-      const hex = robberHex(turn);
-      return hex === null ? null : { type: 'pending.moveRobber', hex };
+      const choice = banditChoice(turn, robberCauseOf(pending.cause));
+      return choice === null ? null : { type: 'pending.moveRobber', hex: choice.target };
     }
     case 'steal': {
       if (pending.actor !== ctx.selfId) return null;
@@ -156,8 +88,7 @@ function pendingDecision(turn: Turn): Command | null {
     }
     case 'freeRoads': {
       if (pending.actor !== ctx.selfId) return null;
-      const edge = usefulRoad(turn, true);
-      return edge === null ? null : { type: 'build.road', edge };
+      return freeRoadDecision(turn);
     }
     default:
       // Rules-module frames: bots are only seated in base profiles.
@@ -166,7 +97,7 @@ function pendingDecision(turn: Turn): Command | null {
 }
 
 /** 保留最接近目標的組合，先丟過剩、再丟價值低的資源。 */
-function discardDecision(turn: Turn, count: number): Command | null {
+function discardDecision(turn: TurnContext, count: number): Command | null {
   const economy = turn.economy;
   const keep: Cost = economy.plans[0]?.cost ?? {};
   const hand = { ...economy.hand };
@@ -191,37 +122,7 @@ function discardDecision(turn: Turn, count: number): Command | null {
   return { type: 'pending.discard', resources: out };
 }
 
-/** 強盜：壓領先者的高產能格、避開自己的建築，並優先有牌可偷的格子。 */
-function robberHex(turn: Turn): number | null {
-  const { view, model, ctx, me } = turn;
-  const candidates: Scored<number>[] = [];
-  view.board.terrain.forEach((terrain, hex) => {
-    if (hex === view.board.robber || terrain === 'sea') return;
-    const pips = model.hexPips[hex]!;
-    let score = 0;
-    let stealable = 0;
-    for (const vertex of model.hexVertices[hex]!) {
-      const building = view.board.buildings[vertex];
-      if (!building) continue;
-      const factor = building.city ? 2 : 1;
-      if (building.player === ctx.selfId) {
-        score -= pips * factor * 3;
-        continue;
-      }
-      const owner = view.players.find((player) => player.id === building.player)!;
-      const lead =
-        1 + 0.35 * Math.max(0, owner.publicScore - me.publicScore) +
-        (owner.publicScore >= view.victoryTarget - 3 ? 0.8 : 0);
-      score += pips * factor * lead;
-      if (owner.handSize > 0) stealable = Math.max(stealable, owner.handSize);
-    }
-    if (stealable > 0) score += 1.5 + 0.25 * Math.min(stealable, 8);
-    candidates.push({ item: hex, score });
-  });
-  return turn.pick(candidates);
-}
-
-function stealVictim(turn: Turn, candidates: readonly string[]): string | null {
+function stealVictim(turn: TurnContext, candidates: readonly string[]): string | null {
   const scored = candidates.map((id) => {
     const player = turn.view.players.find((candidate) => candidate.id === id);
     return { item: id, score: (player?.handSize ?? 0) * 10 + (player?.publicScore ?? 0) };
@@ -229,82 +130,11 @@ function stealVictim(turn: Turn, candidates: readonly string[]): string | null {
   return turn.pick(scored);
 }
 
-function plentyPick(turn: Turn): Resource | null {
-  const economy = turn.economy;
-  const plan = economy.plans[0];
-  // 先補下一步（例如通往聚落的道路），再補整個計畫。
-  const next = deficitOf(economy.hand, plan?.nextCost ?? {});
-  const missing = deficitOf(economy.hand, plan?.cost ?? {});
-  const scored: Scored<Resource>[] = [];
-  for (const resource of RESOURCES) {
-    if (turn.view.bank[resource] <= 0) continue;
-    const score =
-      (next[resource] > 0 ? 20 : 0) +
-      (missing[resource] > 0 ? 10 + missing[resource] : 0) +
-      economy.weights[resource] +
-      (economy.yield[resource] === 0 ? 1 : 0);
-    scored.push({ item: resource, score });
-  }
-  // 豐收之年拿的是確定需要的牌，不加隨機。
-  scored.sort((a, b) => b.score - a.score);
-  return scored[0]?.item ?? null;
-}
-
-/**
- * 最有用的合法道路：先朝主要聚落目標，再延長最長道路，最後朝附近最好的空點。
- * `anyEdge` 為 true 時（免費道路）至少回傳一條合法道路。
- */
-function usefulRoad(turn: Turn, anyEdge: boolean): number | null {
-  const { view, model } = turn;
-  const legal = view.hints?.legalRoads ?? [];
-  if (legal.length === 0) return null;
-  const economy = turn.economy;
-  for (const plan of economy.plans) {
-    if ((plan.kind === 'settlement' || plan.kind === 'longestRoad') && plan.roads.length > 0) {
-      if (legal.includes(plan.roads[0]!)) return plan.roads[0]!;
-    }
-  }
-  const longer = bestRouteEdge(model, legal, economy.myRoute);
-  if (longer !== null) return longer;
-  if (!anyEdge) return null;
-  const scored = legal.map((edge) => ({ item: edge, score: roadDirectionScore(turn, edge) }));
-  return turn.pick(scored);
-}
-
-/** 道路遠端一到兩步內最好的空點價值。 */
-function roadDirectionScore(turn: Turn, edge: number): number {
-  const { model, ctx } = turn;
-  const weights = resourceWeights(model);
-  const mine = playerYield(model, ctx.selfId, true);
-  const [a, b] = model.topo.edges[edge]!.vertices;
-  const ownA = model.view.board.buildings[a]?.player === ctx.selfId || touchesOwnRoad(turn, a, edge);
-  const far = ownA ? b : a;
-  let best = 0;
-  const visit = (vertex: number, factor: number): void => {
-    if (isFreeSpot(model, vertex)) {
-      best = Math.max(best, settlementSpotValue(model, vertex, weights, mine) * factor);
-    }
-  };
-  visit(far, 1);
-  for (const next of model.neighbors[far]!) {
-    if (next === a || next === b) continue;
-    visit(next, 0.75);
-  }
-  return best;
-}
-
-function touchesOwnRoad(turn: Turn, vertex: number, except: number): boolean {
-  const { model, ctx } = turn;
-  return model.topo.vertices[vertex]!.edges.some(
-    (edge) => edge !== except && model.view.board.roads[edge]?.player === ctx.selfId,
-  );
-}
-
 // ---------------------------------------------------------------------------
 // 初始放置
 // ---------------------------------------------------------------------------
 
-function setupDecision(turn: Turn): Command | null {
+function setupDecision(turn: TurnContext): Command | null {
   const { view } = turn;
   const hints = view.hints!;
   const stage = view.turn.setup?.stage;
@@ -319,38 +149,11 @@ function setupDecision(turn: Turn): Command | null {
   return null;
 }
 
-function setupSpotScore(turn: Turn, vertex: number): number {
-  const { model, ctx, view } = turn;
-  const weights = resourceWeights(model);
-  const mine = playerYield(model, ctx.selfId, true);
-  const spot = vertexYield(model, vertex);
-  let score = weightedPips(spot, weights);
-  for (const resource of RESOURCES) {
-    if (spot[resource] > 0 && mine[resource] === 0) score += 2;
-  }
-  const harbor = model.harborAt[vertex];
-  if (harbor === 'generic') score += 1;
-  else if (harbor) score += mine[harbor as Resource] + spot[harbor as Resource] >= 5 ? 2.5 : 0.5;
-  if (view.turn.setup?.round === 2) {
-    // 第二座聚落要讓開局能鋪路、能蓋聚落。
-    const combined = { ...mine };
-    for (const resource of RESOURCES) combined[resource] += spot[resource];
-    if (combined.lumber === 0) score -= 3;
-    if (combined.brick === 0) score -= 3;
-    if (combined.grain === 0) score -= 1.5;
-    if (combined.wool === 0) score -= 1;
-    if (combined.ore === 0) score -= 1;
-    // 第二座聚落立即給起始資源。
-    for (const hex of model.topo.vertices[vertex]!.hexes) if (model.hexResource[hex]) score += 0.3;
-  }
-  return score;
-}
-
 // ---------------------------------------------------------------------------
 // 回應報價（非行動者）
 // ---------------------------------------------------------------------------
 
-function respondToOffers(turn: Turn): Command | null {
+function respondToOffers(turn: TurnContext): Command | null {
   const { view, ctx, params } = turn;
   if (view.turn.phase !== 'action') return null;
   for (const offer of offersAwaitingMe(view, ctx.selfId)) {
@@ -369,22 +172,14 @@ function respondToOffers(turn: Turn): Command | null {
 // 擲骰前與行動階段
 // ---------------------------------------------------------------------------
 
-function canPlay(turn: Turn, card: DevCardType): boolean {
-  const { me, view } = turn;
-  if (view.turn.devCardPlayed) return false;
-  // `devCards` 是先前回合持有的卡；本回合新買的同類卡在 `newDevCards`，
-  // 不影響舊卡是否可打出。
-  return (me.devCards ?? []).includes(card);
-}
-
-function prerollDecision(turn: Turn): Command | null {
+function prerollDecision(turn: TurnContext): Command | null {
   const knight = knightDecision(turn);
   if (knight) return knight;
   return turn.view.hints!.canRoll ? { type: 'turn.roll' } : null;
 }
 
 /** 自己被強盜擋住的點數（城市加倍）。 */
-function blockedPips(turn: Turn): number {
+function blockedPips(turn: TurnContext): number {
   const { view, model, ctx } = turn;
   const hex = view.board.robber;
   let blocked = 0;
@@ -395,7 +190,7 @@ function blockedPips(turn: Turn): number {
   return blocked;
 }
 
-function knightDecision(turn: Turn): Command | null {
+function knightDecision(turn: TurnContext): Command | null {
   if (!canPlay(turn, 'knight')) return null;
   const { view, me, params } = turn;
   const holder = view.awards.largestArmy;
@@ -404,11 +199,11 @@ function knightDecision(turn: Turn): Command | null {
   const wins = takesArmy && (me.ownScore ?? me.publicScore) + 2 >= view.victoryTarget;
   const unblock = blockedPips(turn) >= 3;
   if (!unblock && !wins && !(params.eagerKnights && takesArmy)) return null;
-  const hex = robberHex(turn);
-  return hex === null ? null : { type: 'dev.playKnight', hex };
+  const choice = banditChoice(turn, 'knight');
+  return choice === null ? null : { type: 'dev.playKnight', hex: choice.target };
 }
 
-function actionDecision(turn: Turn): Command | null {
+function actionDecision(turn: TurnContext): Command | null {
   const { view, ctx, params } = turn;
   const hints = view.hints!;
 
@@ -455,7 +250,7 @@ function actionDecision(turn: Turn): Command | null {
   return hints.canEndTurn ? { type: 'turn.end' } : null;
 }
 
-function devCardDecision(turn: Turn): Command | null {
+function devCardDecision(turn: TurnContext): Command | null {
   const { view } = turn;
   const knight = knightDecision(turn);
   if (knight) return knight;
@@ -483,7 +278,7 @@ function devCardDecision(turn: Turn): Command | null {
 }
 
 /** 依對手的公開產能估計他們手上各資源的張數。 */
-function monopolyChoice(turn: Turn): Resource | null {
+function monopolyChoice(turn: TurnContext): Resource | null {
   const { view, model, ctx, params } = turn;
   const economy = turn.economy;
   const plan = economy.plans[0];
@@ -516,7 +311,7 @@ function hurts(economy: Economy, primary: Cost, spend: Cost): boolean {
   );
 }
 
-function buildDecision(turn: Turn): Command | null {
+function buildDecision(turn: TurnContext): Command | null {
   const { view, model, ctx } = turn;
   const hints = view.hints!;
   const economy = turn.economy;
@@ -568,7 +363,7 @@ function buildDecision(turn: Turn): Command | null {
 }
 
 /** 計畫的下一步；付不起或已不合法時回傳 null。 */
-function planStep(turn: Turn, plan: Plan): Command | null {
+function planStep(turn: TurnContext, plan: Plan): Command | null {
   const { view } = turn;
   const hints = view.hints!;
   const economy = turn.economy;
@@ -599,7 +394,7 @@ function planStep(turn: Turn, plan: Plan): Command | null {
 }
 
 /** 手牌 8 張以上時：先買發展卡、再鋪有用的路，最後把過剩資源換成需要的。 */
-function handRelief(turn: Turn): Command | null {
+function handRelief(turn: TurnContext): Command | null {
   const { view } = turn;
   const economy = turn.economy;
   const hand = economy.hand;

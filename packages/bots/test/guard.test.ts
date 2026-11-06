@@ -37,6 +37,32 @@ describe('B-GUARD source boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('keeps base and module code free of the skeleton files', () => {
+    // 骨架（組合點與 registry）在上層；base/** 與 modules/** 只能被它們呼叫，不得反向依賴，
+    // 否則模組一註冊就會形成循環。對 turn.ts 只允許型別 import。
+    const skeleton = ['heuristic', 'fallback', 'policy', 'support', 'index', 'modules/registry'].map(
+      (name) => `../src/${name}.ts`,
+    );
+    const importPattern = /^\s*(?:import|export)\s+(type\s+)?(?:\{[^}]*\}|\*(?:\s+as\s+\w+)?|\w+)\s+from\s+'([^']+)'/gm;
+    const scanned = Object.entries(sources).filter(
+      ([file]) => file.startsWith('../src/base/') || file.startsWith('../src/modules/'),
+    );
+    expect(scanned.length).toBeGreaterThan(0);
+    const offenders: string[] = [];
+    for (const [file, text] of scanned) {
+      for (const match of text.matchAll(importPattern)) {
+        const specifier = match[2]!;
+        if (!specifier.startsWith('.')) continue;
+        const target = resolveSpecifier(file, specifier);
+        const typeOnly = match[1] !== undefined;
+        if (skeleton.includes(target) || (target === '../src/turn.ts' && !typeOnly)) {
+          offenders.push(`${file}: ${specifier}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('never reaches the network, clock, environment or Math.random', () => {
     const forbidden: [string, RegExp][] = [
       ['node builtin', /['"]node:/],
