@@ -132,7 +132,11 @@ git status --short          # must be empty
 
 pnpm install --frozen-lockfile
 pnpm verify                 # typecheck + tests + build + post-build smoke
+BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run   # bot gate: 10 seeds per expansion profile
 ```
+
+`pnpm verify` runs the expansion profiles' bot games with 3 seeds per player count; the
+`BOTS_SEEDS=10` line is the release gate. Base always runs 10 seeds.
 
 For a stable release, check that [Player notes](#player-notes) already has the entry for this
 version; `pnpm verify` fails after the bump if it is missing.
