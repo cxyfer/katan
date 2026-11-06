@@ -4,7 +4,7 @@ import type { CommandRequest } from '@catan/protocol';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
-import { fixedBoard, makeHints, makeSnapshot, makeView } from '../src/test/fixtures.ts';
+import { fixedBoard, makeHints, makeSnapshot, makeView, placeLabel } from '../src/test/fixtures.ts';
 
 beforeEach(() => {
   const original = HTMLElement.prototype.getBoundingClientRect;
@@ -181,7 +181,7 @@ describe('action hints in the UI', () => {
 
     fireEvent.click(screen.getByTestId('open-target-picker'));
     const picker = await screen.findByTestId('target-picker');
-    expect(picker.textContent).toContain('Path 5');
+    expect(picker.textContent).toContain(placeLabel('edge', 5));
     expect(screen.getByTestId('picker-edge-9')).toBeTruthy();
   });
 });
@@ -197,13 +197,13 @@ describe('keyboard target selection', () => {
     const target = await screen.findByTestId('target-edge-5');
     expect((target as HTMLButtonElement).tabIndex).toBe(0);
     expect(target.tagName).toBe('BUTTON');
-    expect(target.getAttribute('aria-label')).toContain('Path 5');
+    expect(target.getAttribute('aria-label')).toContain(placeLabel('edge', 5));
 
     target.focus();
     fireEvent.keyDown(target, { key: 'Enter' });
 
     const preview = await screen.findByTestId('selection-preview');
-    expect(preview.textContent).toContain('Path 5');
+    expect(preview.textContent).toContain(placeLabel('edge', 5));
 
     api.setCommandResult(ACCEPTED);
     fireEvent.click(screen.getByTestId('confirm-selection'));

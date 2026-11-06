@@ -30,6 +30,7 @@ import type {
   RoomView,
   ServerConfigView,
 } from '@catan/protocol';
+import { boardReference, type ReferenceKind } from '../board/references.ts';
 
 export const TOPOLOGY_ID = 'hex-r2';
 
@@ -47,6 +48,11 @@ export function fixedBoard(): PublicBoardView {
     buildings: topology.vertices.map(() => null),
     roads: topology.edges.map(() => null),
   };
+}
+
+/** English board reference shown for a target, e.g. "Between Ore (10) and Wool (2)" on the fixed board. */
+export function placeLabel(kind: ReferenceKind, index: number, board: PublicBoardView = fixedBoard()): string {
+  return boardReference({ locale: 'en', topology: getTopology(board.topologyId), board }, kind, index);
 }
 
 export function makePlayer(overrides: Partial<PublicPlayerView> = {}): PublicPlayerView {

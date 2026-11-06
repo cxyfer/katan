@@ -12,8 +12,8 @@ showed no tooltip. The captures hover the far end of the rendered footprint.
 | `r3f-mobile-detail.png` | 3D | 390×844 | phone crop with harbour 34 and tooltip |
 | `svg-mobile-detail.png` | SVG | 390×844 | phone crop with harbour 34 and tooltip |
 
-Captured on 2026-11-01 from `fix/harbor-hover-info` at the merge commit
-`a0c6f23` (after the #44 harbour remodel) using the
+Captured on 2026-11-07 from `feat/resource-dice-target-hint` at commit
+`3002f91` (after the #44 harbour remodel) using the
 production build and deterministic API/WebSocket fixtures. Desktop captures
 hover the projected boat hull for all nine harbours. Mobile captures focus
 every plaque; all cases check the one-second delay, tooltip title, viewport

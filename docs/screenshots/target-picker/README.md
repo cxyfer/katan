@@ -1,7 +1,7 @@
 # Compact target picker
 
 Review captures for the compact target picker (#85). They were rendered from
-commit `a200840` on 2026-11-04.
+commit `3002f91` on 2026-11-07.
 
 Captured from the production build (`pnpm build`) in headless Chromium at device
 scale factor 1 with reduced motion. The script starts a disposable service on a
@@ -31,7 +31,8 @@ that an outside click closes it without selecting a target or forwarding the
 click. Since the #103 fix it also asserts the picker is at most 281×401 CSS px,
 that a list of up to four targets fits without scrolling, that a clipped list
 shows the scroll cue, and that no row is covered by the resource strip or other
-HUD layers. The captures above predate that fix (they were taken at 281×261).
+HUD layers. The captures above were taken after that fix; the tallest picker in
+them is 280×400 CSS px (the 54-target list).
 
 ## Reproduce
 

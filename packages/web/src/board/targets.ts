@@ -3,16 +3,17 @@
  *
  * Two jobs:
  * 1. turn a raw vertex/edge/hex index into a *textual* board reference that a
- *    screen reader or a keyboard user can act on;
+ *    screen reader or a keyboard user can act on. The reference names the
+ *    surrounding tiles by resource and dice number (see `references.ts`),
+ *    never by the internal map index players cannot see;
  * 2. detect when several legal targets sit so close together that a click or a
  *    touch would be ambiguous, and hand back the cluster so the UI can show a
  *    magnified view or a candidate list instead of guessing.
  */
 
-import type { Locale } from '@catan/protocol';
-import type { BoardTopology, PublicBoardView } from '@catan/rules';
 import { t } from '../i18n/index.ts';
 import { distance, type Point } from './geometry.ts';
+import { edgeReference, hexReference, vertexReference, type ReferenceContext } from './references.ts';
 import { pipsFor, terrainLetter, terrainSymbol } from './terrain.ts';
 
 export type TargetKind = 'vertex' | 'edge' | 'hex';
@@ -20,24 +21,16 @@ export type TargetKind = 'vertex' | 'edge' | 'hex';
 export interface TargetOption {
   kind: TargetKind;
   index: number;
-  /** Message id for the short label. */
-  labelId: string;
-  labelParams: Record<string, unknown>;
-  /** Fully rendered short label, e.g. "Intersection 12". */
+  /** Textual board reference in resource (dice) form, e.g. "Lumber (6), Brick (8), Grain (5)". */
   label: string;
-  /** Textual board reference, e.g. "between hexes 4, 5, 6 · on a 2:1 wool harbour". */
+  /** Harbour, occupancy and production notes, e.g. "2:1 Wool · Empty". */
   detail: string;
 }
 
-export interface TargetContext {
-  locale: Locale;
-  topology: BoardTopology;
-  board: PublicBoardView;
+export interface TargetContext extends ReferenceContext {
   nameOf: (playerId: string) => string;
   /** True when the viewer owns the piece at the target. */
   isSelf?: (playerId: string) => boolean;
-  /** Explorers & Pirates: unexplored hexes and their region (their contents are not known yet). */
-  fog?: ReadonlyMap<number, 'parrot' | 'goose'>;
 }
 
 function harborText(context: TargetContext, edge: number): string | null {
@@ -49,26 +42,20 @@ function harborText(context: TargetContext, edge: number): string | null {
   });
 }
 
-function hexList(context: TargetContext, hexes: readonly number[]): string {
-  return t(context.locale, 'board.betweenHexes', { hexes: hexes.join(', ') });
+function terrainLabel(context: TargetContext, hex: number): string {
+  if (context.fog?.has(hex)) return t(context.locale, 'board.tileUnexplored');
+  const terrain = context.board.terrain[hex] ?? 'sea';
+  return `${t(context.locale, `terrain.${terrain}`)} ${terrainSymbol(terrain)}${terrainLetter(terrain)}`;
 }
 
-function terrainLabel(context: TargetContext, hex: number): string {
-  const terrain = context.board.terrain[hex] ?? 'sea';
-  const number = context.board.numbers[hex];
-  const symbol = terrainSymbol(terrain);
-  const letter = terrainLetter(terrain);
-  const name = t(context.locale, `terrain.${terrain}`);
-  return number ? `${name} ${symbol}${letter} · ${number}` : `${name} ${symbol}${letter}`;
+function option(kind: TargetKind, index: number, label: string, parts: string[]): TargetOption {
+  return { kind, index, label, detail: parts.join(' · ') };
 }
 
 export function describeVertex(context: TargetContext, index: number): TargetOption {
   const vertex = context.topology.vertices[index];
-  const hexes = vertex?.hexes ?? [];
   const parts: string[] = [];
-  if (hexes.length > 0) parts.push(hexList(context, hexes));
-  const edges = vertex?.edges ?? [];
-  for (const edge of edges) {
+  for (const edge of vertex?.edges ?? []) {
     const harbor = harborText(context, edge);
     if (harbor) parts.push(harbor);
   }
@@ -83,25 +70,11 @@ export function describeVertex(context: TargetContext, index: number): TargetOpt
   } else {
     parts.push(t(context.locale, 'board.emptyTarget'));
   }
-  return {
-    kind: 'vertex',
-    index,
-    labelId: 'board.vertex',
-    labelParams: { index },
-    label: t(context.locale, 'board.vertex', { index }),
-    detail: parts.join(' · '),
-  };
+  return option('vertex', index, vertexReference(context, index), parts);
 }
 
 export function describeEdge(context: TargetContext, index: number): TargetOption {
-  const edge = context.topology.edges[index];
-  const hexes = edge?.hexes ?? [];
   const parts: string[] = [];
-  if (hexes.length === 1) {
-    parts.push(`${t(context.locale, 'board.hex', { index: hexes[0] ?? 0 })}`);
-  } else if (hexes.length > 1) {
-    parts.push(hexList(context, hexes));
-  }
   const harbor = harborText(context, index);
   if (harbor) parts.push(harbor);
   const road = context.board.roads[index];
@@ -113,29 +86,16 @@ export function describeEdge(context: TargetContext, index: number): TargetOptio
   } else {
     parts.push(t(context.locale, 'board.emptyTarget'));
   }
-  return {
-    kind: 'edge',
-    index,
-    labelId: 'board.edge',
-    labelParams: { index },
-    label: t(context.locale, 'board.edge', { index }),
-    detail: parts.join(' · '),
-  };
+  return option('edge', index, edgeReference(context, index), parts);
 }
 
 export function describeHex(context: TargetContext, index: number): TargetOption {
   const parts = [terrainLabel(context, index)];
-  const pips = pipsFor(context.board.numbers[index] ?? null);
+  const pips = context.fog?.has(index) ? 0 : pipsFor(context.board.numbers[index] ?? null);
   if (pips > 0) parts.push(t(context.locale, 'board.productionPips', { count: pips }));
   if (context.board.robber === index) parts.push(t(context.locale, 'board.robber'));
-  return {
-    kind: 'hex',
-    index,
-    labelId: 'board.hex',
-    labelParams: { index },
-    label: t(context.locale, 'board.hex', { index }),
-    detail: parts.join(' · '),
-  };
+  if (context.board.pirate === index) parts.push(t(context.locale, 'board.pirate'));
+  return option('hex', index, hexReference(context, index), parts);
 }
 
 export function describeTarget(

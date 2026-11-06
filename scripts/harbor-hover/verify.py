@@ -102,8 +102,11 @@ def settle_harbours(page):
         page.wait_for_timeout(120)
 
 
-def harbour_title(edge, language):
-    return (f"路徑 {edge} 上的港口" if language == "zh-Hant" else f"Harbour at path {edge}")
+def harbour_title_ok(title, language):
+    # 港口以沿岸地塊的資源與點數命名（例如「羊毛（2）沿岸的港口」），不再顯示路徑編號。
+    if language == "zh-Hant":
+        return title.endswith("的港口") and "路徑" not in title
+    return title.startswith("Harbour on ") and " path " not in title
 
 
 def assert_tooltip(page, edge, language, plaque):
@@ -111,7 +114,7 @@ def assert_tooltip(page, edge, language, plaque):
     require(popup.count() == 1, f"harbour {edge} tooltip missing")
     text = popup.inner_text().strip()
     require(text, f"harbour {edge} empty tooltip")
-    require(harbour_title(edge, language) in text,
+    require(harbour_title_ok(text.splitlines()[0].strip(), language),
             f"harbour {edge} tooltip title missing: {text[:120]}")
     require(plaque.get_attribute("aria-label"), f"harbour {edge} plaque lacks its accessible name")
     bounded(page, rect(popup), f"harbour {edge} tooltip")

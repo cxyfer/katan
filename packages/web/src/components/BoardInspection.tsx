@@ -226,7 +226,6 @@ export function BoardInspectionLayer({ geometry, board, renderer, controls, name
         <h3>{description.title}</h3>
         <p>{description.detail}</p>
         <ul>{description.lines.map((line, index) => <li key={index}>{line}</li>)}</ul>
-        {description.relatedHexes.length > 0 && <p>{t('board.inspectRelated')}: {description.relatedHexes.map((index) => t('board.hex', { index })).join(', ')}</p>}
       </div>, document.fullscreenElement ?? document.body,
     )}
   </>;

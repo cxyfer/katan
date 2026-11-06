@@ -4,6 +4,7 @@ import type { WorldPoint } from './render-contract.ts';
 import { geometryPointToWorld, targetsFromGeometry } from './projection.ts';
 import type { TargetContext, TargetKind } from './targets.ts';
 import { describeTarget } from './targets.ts';
+import { vertexReference } from './references.ts';
 import { t } from '../i18n/index.ts';
 import { pipsFor, resourceOfTerrain } from './terrain.ts';
 import { harborHitPoints, harborLabelPoint, harborPlacement, harborProbePoint } from './harbor.ts';
@@ -64,7 +65,6 @@ export function inspectDescription(context: TargetContext, target: BoardInspecti
   const option = describeTarget(context, kind, target.index);
   const lines: string[] = [];
   let title = option.label;
-  let relatedHexes: number[] = [];
   const fogRegion = target.kind === 'hex' ? context.fog?.get(target.index) : undefined;
   if (fogRegion) {
     // An unexplored hex: only its region is public.
@@ -86,7 +86,6 @@ export function inspectDescription(context: TargetContext, target: BoardInspecti
     }
   } else if (target.kind === 'vertex') {
     const building = board.buildings[target.index];
-    relatedHexes = topology.vertices[target.index]?.hexes ?? [];
     if (building) {
       title = `${tr(building.city ? 'board.city' : 'board.settlement')} · ${option.label}`;
       lines.push(tr('board.inspectOwner', { player: context.nameOf(building.player) }));
@@ -94,7 +93,6 @@ export function inspectDescription(context: TargetContext, target: BoardInspecti
       lines.push(tr('board.inspectYield', { count: building.city ? 2 : 1 }));
     }
   } else {
-    relatedHexes = topology.edges[target.index]?.hexes ?? [];
     const road = board.roads[target.index];
     if (road) {
       title = `${tr('board.road')} · ${option.label}`;
@@ -102,11 +100,14 @@ export function inspectDescription(context: TargetContext, target: BoardInspecti
     }
     const harbor = board.harbors.find((item) => item.edge === target.index);
     if (harbor) {
-      if (target.kind === 'harbor') title = tr('board.harbor', { edge: target.index });
+      if (target.kind === 'harbor') title = tr('board.harbor', { place: option.label });
       lines.push(harbor.type === 'generic' ? tr('board.harborGeneric') : tr('board.harborResource', { resource: tr(`resource.${harbor.type}`) }));
       lines.push(tr('board.inspectHarborAccess'));
-      lines.push(tr('board.inspectEndpoints', { vertices: topology.edges[target.index]?.vertices.join(', ') ?? '—' }));
+      const endpoints = topology.edges[target.index]?.vertices ?? [];
+      lines.push(tr('board.inspectEndpoints', {
+        vertices: endpoints.length > 0 ? endpoints.map((vertex) => vertexReference(context, vertex)).join(tr('board.referenceSeparator')) : '—',
+      }));
     }
   }
-  return { title, detail: option.detail, lines, relatedHexes };
+  return { title, detail: option.detail, lines };
 }

@@ -57,6 +57,19 @@ SOURCE_PATHS = (
     ROOT / "tsconfig.base.json",
 )
 
+# 2026-10-29 的 fixture 早於 profile 改版；補上 ProfileView 現行必填欄位。
+PROFILE_DEFAULTS = {
+    "ruleVersion": "2025",
+    "expansions": [],
+    "variants": [],
+    "requiredBoxes": ["base"],
+    "botSeats": True,
+}
+
+
+def fixture_profiles(fixture: dict) -> list[dict]:
+    return [{**PROFILE_DEFAULTS, **profile} for profile in fixture["profiles"]]
+
 
 def load_legacy():
     path = ROOT / "scripts/board-visual/verify.py"
@@ -403,7 +416,7 @@ class Scenario:
         elif path == "/api/session":
             data = {"player": self.fixture["identity"]}
         elif path == "/api/profiles":
-            data = {"profiles": self.fixture["profiles"]}
+            data = {"profiles": fixture_profiles(self.fixture)}
         elif path == "/api/rooms":
             data = {"rooms": []}
         elif path == "/api/games":
