@@ -10,6 +10,13 @@
  *
  * `matrix.test.ts` 的守門測試會檢查：`BOT_TEST_MATRIX` 的每個 profile 至少登記在一個 family，
  * 登記的測試檔存在，而且檔案內容真的提到這些 profile（或使用通用矩陣）。
+ *
+ * 守門的限制（它讀的是原始碼文字，不是執行結果）：
+ * - profile id 必須以**單引號字面值**出現在**非註解處**（`'sf-new-shores-2025'`）；只在 `//` 或
+ *   `/* *\/` 註解裡提到不算涵蓋。用變數或模板字串組出 id 的檔案，要另外寫出字面值。
+ * - 只檢查 profile，不檢查人數：檔案是否跑完 `playerCounts` 的每個人數，要靠測試本身。
+ * - 只讀 `test/` 底下一層的 `*.test.ts`（`matrix.test.ts` 的 `import.meta.glob('./*.test.ts')`），
+ *   不遞迴子目錄；family 的測試檔必須放在 `test/` 根目錄。
  */
 
 export interface BotTestFamily {
@@ -48,9 +55,46 @@ export function dedicatedProfileIds(families: readonly BotTestFamily[] = BOT_FAM
  * 登記檔的一致性檢查：回傳問題清單，空陣列表示通過。純函式，`sources` 是測試檔名到原始碼文字的對照。
  *
  * - `profileIds` 的每個 profile 至少登記在一個 family，而且該 family 有一個真實存在的測試檔涵蓋它：
- *   檔案內容提到 profile id，或（`generic` family）提到 `GENERIC_MATRIX`。
+ *   檔案內容（去掉註解後）提到 profile id，或（`generic` family）提到 `GENERIC_MATRIX`。
  * - family 登記的 profile 與測試檔都必須存在，避免登記了卻沒有測。
  */
+/**
+ * 去掉 `//` 與 `/* *\/` 註解，字串與模板字串（含其中的 `//`）原樣保留。只用在守門測試的文字比對，
+ * 不是完整的 TypeScript 詞法分析：模板字串裡 `${}` 內的註解不處理。
+ */
+export function stripComments(source: string): string {
+  let out = '';
+  let quote: string | null = null;
+  for (let index = 0; index < source.length; index++) {
+    const char = source[index]!;
+    const next = source[index + 1];
+    if (quote) {
+      out += char;
+      if (char === '\\') {
+        out += next ?? '';
+        index += 1;
+      } else if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (char === '/' && next === '/') {
+      while (index < source.length && source[index] !== '\n') index += 1;
+      out += '\n';
+      continue;
+    }
+    if (char === '/' && next === '*') {
+      const end = source.indexOf('*/', index + 2);
+      index = end < 0 ? source.length : end + 1;
+      out += ' ';
+      continue;
+    }
+    if (char === "'" || char === '"' || char === '`') quote = char;
+    out += char;
+  }
+  return out;
+}
+
 export function familyCoverageProblems(
   profileIds: readonly string[],
   families: readonly BotTestFamily[],
@@ -59,8 +103,9 @@ export function familyCoverageProblems(
 ): string[] {
   const problems: string[] = [];
   const covers = (family: BotTestFamily, file: string, profileId: string): boolean => {
-    const text = sources[file];
-    if (text === undefined) return false;
+    const raw = sources[file];
+    if (raw === undefined) return false;
+    const text = stripComments(raw);
     return text.includes(`'${profileId}'`) || (family.generic === true && text.includes('GENERIC_MATRIX'));
   };
   for (const family of families) {

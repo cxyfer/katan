@@ -8,6 +8,11 @@
  * - 進度看門狗：連續 N 次 `turn.roll` 都沒有任何玩家的分數創新高就判為失敗。
  * - 模組的守恆檢查、擾動與機制計數都經 `modules/types.ts` 的 `ModuleTestKit`；沒有 kit 時
  *   行為與 base 完全相同。
+ *
+ * 仿 BotDriver 模式的範圍：它只模擬「策略回 null 時改問保底」與報價時鐘，**不**模擬 server 的強制
+ * 保底路徑（行動視窗達指令上限、策略丟例外、指令被規則引擎拒絕後改走保底）。這些路徑在測試裡都是
+ * 失敗：例外直接往外丟，被拒就停止並回報 `failure`，視窗指令數則回報 `maxWindowCommands` 讓測試
+ * 斷言沒有逼近上限。所以 B-GAME 通過，代表真實 server 不會需要走這些路徑。
  */
 
 import {
@@ -42,6 +47,8 @@ import {
 import type { BotModule } from '../src/modules/types.ts';
 import type { BotCommand, BotLevel, BotPolicy, OfferPhase } from '../src/types.ts';
 import { dedicatedProfileIds } from './families.ts';
+import baseV040 from './golden/base-v040.json';
+import { canonicalJson, createFnv64, type GoldenRecord } from './golden/driver.ts';
 import type { MechanicsTally, ModuleTestKit } from './modules/types.ts';
 
 // 本套件不載入 Node 型別（src 不得使用 Node API）；計時與環境變數只需要這兩個全域。
@@ -142,9 +149,9 @@ function isBaseProfile(profile: Pick<ProfileDefinition, 'ruleModules'>): boolean
 export function extensionSeedCount(): number {
   const raw = process.env.BOTS_SEEDS;
   if (raw === undefined || raw === '') return EXTENSION_SEED_COUNT;
-  const count = Number(raw);
-  if (!Number.isInteger(count) || count < 1) throw new Error(`BOTS_SEEDS must be a positive integer, got "${raw}"`);
-  return count;
+  // 只收十進位正整數：Number() 會接受 '1e1'、' 3'、'0x3'，那些都不是使用者想要的種子數。
+  if (!/^[1-9]\d*$/.test(raw)) throw new Error(`BOTS_SEEDS must be a positive integer, got "${raw}"`);
+  return Number(raw);
 }
 
 /** B-GAME 的種子（1 起算）：base 固定 10 個，擴充 profile 預設 3 個、可由 `BOTS_SEEDS` 覆寫。 */
@@ -154,8 +161,12 @@ export function seedsFor(profile: Pick<ProfileDefinition, 'ruleModules'>): numbe
 }
 
 /**
- * 每個行動視窗內單一座位最多送幾個指令；超過後 BotDriver 只走保底（`bot-driver.ts` 的
- * `MAX_BOT_COMMANDS_PER_WINDOW`）。測試以 `botCommandLimit(profile, BOT_WINDOW_COMMAND_LIMIT)` 斷言。
+ * 每個行動視窗內單一座位最多送幾個指令；超過後 BotDriver 只走保底。測試以
+ * `botCommandLimit(profile, BOT_WINDOW_COMMAND_LIMIT)` 斷言。
+ *
+ * **必須與 server 的基礎上限一致**：`packages/server/src/bot-driver.ts` 目前叫
+ * `MAX_BOT_COMMANDS_PER_WINDOW`，PL-3 改名為 `BASE_COMMANDS_PER_WINDOW`。改任何一邊時兩邊一起改，
+ * 否則測試斷言的上限與 server 實際強制保底的上限就對不上。
  */
 export const BOT_WINDOW_COMMAND_LIMIT = 40;
 
@@ -538,6 +549,8 @@ export function runBotGame(options: RunOptions): RunResult {
       options.onStep?.(step);
     }
 
+    // 以指令型別判斷擲骰。前提：所有 profile／模組都經 `turn.roll` 擲骰（`packages/rules/src/engine.ts`
+    // 的 `applyCommand` 只有這一條路徑呼叫 `rollDice`）；若將來有模組另開擲骰指令，要改看 `turn.rolled` event。
     if (watchdog && decision.command.type === 'turn.roll') {
       const scores = state.players.map((player) => scoreOf(state, player.id, { includeHidden: true }));
       if (watchdog.roll(scores)) {
@@ -721,4 +734,76 @@ export function perturbState(state: GameState, rng: Rng, kits: readonly ModuleTe
   if (rng.int(2) === 0) next.turn.devCardPlayed = false;
   for (const kit of kits) kit.perturb?.(next, rng);
   return next;
+}
+
+// ---------------------------------------------------------------------------
+// 與 v0.4.0 golden 比對（base 的決策序列不得因平台化而改變）
+// ---------------------------------------------------------------------------
+
+const GOLDEN: readonly GoldenRecord[] = baseV040 as unknown as readonly GoldenRecord[];
+
+/** fixture 的全部記錄（48 局）。 */
+export const GOLDEN_RECORDS: readonly GoldenRecord[] = GOLDEN;
+
+/** 有 golden 記錄的 profile（base）。 */
+const GOLDEN_PROFILE_IDS: ReadonlySet<string> = new Set(GOLDEN.map((record) => record.profileId));
+
+export const goldenId = {
+  bGame: (players: number, seed: number): string => `b-game/${players}p/seed${seed}`,
+  fallbackSeat: (players: number, seed: number): string => `fallback-seat/${players}p/seed${seed}`,
+  wrapped: (players: number, seed: number): string => `wrapped/${players}p/seed${seed}`,
+  allFallback: (players: number, seed: number): string => `all-fallback/${players}p/seed${seed}`,
+};
+
+/** 保底席的種子：4 人沿用 golden 的 21–23，其餘人數各 1 個（每個 profile × 人數至少一局）。 */
+export function fallbackSeatSeeds(players: number): number[] {
+  return players === 4 ? [21, 22, 23] : [21];
+}
+/** 經過 `createBotPolicy` 的那一局（4 人）。 */
+export const WRAPPED_SEED = 31;
+/** 全保底有界局：每個人數跑這些種子、每局這麼多步；只有種子 1 有 golden 記錄。 */
+export const ALL_FALLBACK_SEEDS: readonly number[] = [1, 2, 3];
+export const ALL_FALLBACK_STEPS = 800;
+
+/**
+ * 這個矩陣項目必須與 golden 逐局相同的記錄 id；非 base 的 profile 沒有記錄，回傳空陣列。
+ * 通用測試以它決定要比對哪些局，`matrix.test.ts` 再斷言所有項目合起來剛好是 fixture 的 48 局，
+ * 所以矩陣少了 base 項目時，比對不會默默消失。
+ */
+export function goldenIdsFor({ profile, players }: MatrixEntry): string[] {
+  if (!GOLDEN_PROFILE_IDS.has(profile.id)) return [];
+  return [
+    ...seedsFor(profile).map((seed) => goldenId.bGame(players, seed)),
+    ...(players === 4
+      ? [...fallbackSeatSeeds(players).map((seed) => goldenId.fallbackSeat(players, seed)), goldenId.wrapped(players, WRAPPED_SEED)]
+      : []),
+    goldenId.allFallback(players, 1),
+  ];
+}
+
+/** 決策序列的雜湊，算法與 golden 相同（鍵排序的 JSON，FNV-1a 64）。 */
+export function createDecisionHasher(): { onDecision(state: GameState, decision: Decision): void; digest(): string } {
+  const hasher = createFnv64();
+  return {
+    onDecision: (_state, decision) => {
+      hasher.update(`${canonicalJson({ actor: decision.actor, command: decision.command })}\n`);
+    },
+    digest: () => hasher.digest(),
+  };
+}
+
+/** 一局與 golden 記錄的差異（步數、seq、勝者、結束原因、雜湊）；空陣列表示逐項相同。 */
+export function goldenMismatches(id: string, run: Pick<RunResult, 'steps' | 'state'>, hash: string): string[] {
+  const record = GOLDEN.find((candidate) => candidate.id === id);
+  if (!record) return [`${id}: missing from the golden fixture`];
+  const actual = {
+    steps: run.steps,
+    seq: run.state.seq,
+    winner: run.state.result?.playerId ?? null,
+    reason: run.state.result?.reason ?? null,
+    hash,
+  };
+  return (['steps', 'seq', 'winner', 'reason', 'hash'] as const)
+    .filter((key) => actual[key] !== record[key])
+    .map((key) => `${id}: ${key} expected ${String(record[key])}, got ${String(actual[key])}`);
 }

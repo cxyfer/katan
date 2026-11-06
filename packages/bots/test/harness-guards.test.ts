@@ -22,6 +22,7 @@ import {
   mixedLevels,
   naiveModule,
   newBotGame,
+  nextDecision,
   perturbState,
   responseCommandDrift,
   runBotGame,
@@ -30,7 +31,7 @@ import {
   type BotSeat,
 } from './harness.ts';
 import { kitsOf, type ModuleTestKit } from './modules/types.ts';
-import { requireProfile, RESOURCES, seededRng } from '@catan/rules';
+import { requireProfile, RESOURCES, seededRng, type GameState } from '@catan/rules';
 
 
 const fallbackSeats = (players: number): BotSeat[] =>
@@ -80,7 +81,7 @@ describe('progress watchdog', () => {
     expect(unguarded.watchdog).toBeNull();
     expect(unguarded.steps).toBe(400);
     expect(unguarded.longestStagnation).toBe(0);
-  });
+  }, GAME_TIMEOUT);
 
   it('trips when every seat idles and the fallback only rolls and ends', () => {
     // 假策略一直閒置，BotDriver 改用保底：整桌卡在無進度的回合循環。
@@ -90,7 +91,7 @@ describe('progress watchdog', () => {
     expect(run.state.result).toBeNull();
     // 同時被仿 BotDriver 模式標出來：這些指令全都是保底送的。
     expect(run.idleFallbacks.length).toBe(run.steps);
-  });
+  }, GAME_TIMEOUT);
 
   it('does not trip on a healthy game, and records the longest stagnation', () => {
     const seats = botSeats(mixedLevels(3, 8), (level) => createBotPolicy(level));
@@ -99,7 +100,7 @@ describe('progress watchdog', () => {
     expect(run.state.result?.reason).toBe('victory');
     expect(run.longestStagnation).toBeGreaterThan(0);
     expect(run.longestStagnation).toBeLessThan(limitsFor('base-2025').watchdogRolls);
-  });
+  }, GAME_TIMEOUT);
 
   it('takes the step cap and N from the profile', () => {
     expect(limitsFor('base-2025')).toEqual(DEFAULT_LIMITS);
@@ -119,7 +120,7 @@ describe('BotDriver mode', () => {
     // 每一筆都記下當時的欠動作判斷（botOwesAction），和保底的判定一致。
     for (const idle of run.idleFallbacks) expect(idle.owed, `${idle.actor} ${idle.command}`).not.toBeNull();
     expect(run.idleFallbacks[0]).toMatchObject({ seq: expect.any(Number), actor: 'bot1', command: 'setup.placeBuilding' });
-  });
+  }, GAME_TIMEOUT);
 
   it('without BotDriver mode the same idle policy just stalls (the old harness behaviour)', () => {
     const seats = botSeats(['standard', 'standard', 'standard'], () => idlePolicy);
@@ -127,7 +128,7 @@ describe('BotDriver mode', () => {
     expect(run.steps).toBe(0);
     expect(run.stalled).toBe(true);
     expect(run.idleFallbacks).toEqual([]);
-  });
+  }, GAME_TIMEOUT);
 
   it('reports both-idle as stuck, with the seat that owes an action', () => {
     // 假模組：duty 回 null 表示「歸我管、但這次不送」，保底不再替 base 送 turn.roll。
@@ -145,10 +146,11 @@ describe('BotDriver mode', () => {
     // 開局放置都由保底完成（策略一直閒置），所以閒置保底的次數等於已套用的步數。
     expect(run.idleFallbacks.length).toBe(run.steps);
     expect(run.state.result).toBeNull();
-  });
+  }, GAME_TIMEOUT);
 
-  it('does not call the fallback while the actor waits on its own open offer', () => {
-    let captured: ReturnType<typeof cloneState> | null = null;
+  /** 跑一局真實對局，取第一個有 open 報價的狀態（報價的提出者就是行動者）。 */
+  const stateWithOpenOffer = (): GameState => {
+    let captured: GameState | null = null;
     const seats = botSeats(mixedLevels(4, 2), (level) => createBotPolicy(level));
     runBotGame({
       seats,
@@ -158,18 +160,59 @@ describe('BotDriver mode', () => {
         if (!captured && state.offers.some((offer) => offer.status === 'open')) captured = cloneState(state);
       },
     });
-    const state = captured as unknown as ReturnType<typeof cloneState> | null;
-    expect(state, 'a game with an open offer within 500 steps').not.toBeNull();
-    const offer = state!.offers.find((candidate) => candidate.status === 'open')!;
+    expect(captured, 'a game with an open offer within 500 steps').not.toBeNull();
+    return captured!;
+  };
+
+  it('knows when the actor still waits on its own open offer', () => {
+    const state = stateWithOpenOffer();
+    const offer = state.offers.find((candidate) => candidate.status === 'open')!;
     const phases = (phase: 'collecting' | 'ready' | 'expired') => ({ [offer.id]: phase });
-    expect(waitingOnOwnOffers(state!, offer.from, phases('collecting'))).toBe(true);
-    expect(waitingOnOwnOffers(state!, offer.from, phases('ready'))).toBe(true);
-    expect(waitingOnOwnOffers(state!, offer.from, phases('expired'))).toBe(false);
+    expect(waitingOnOwnOffers(state, offer.from, phases('collecting'))).toBe(true);
+    expect(waitingOnOwnOffers(state, offer.from, phases('ready'))).toBe(true);
+    expect(waitingOnOwnOffers(state, offer.from, phases('expired'))).toBe(false);
     // 缺漏的 offerId 視為 expired（BotContext 的語意）。
-    expect(waitingOnOwnOffers(state!, offer.from, {})).toBe(false);
-    const other = state!.players.find((player) => player.id !== offer.from)!.id;
-    expect(waitingOnOwnOffers(state!, other, phases('collecting'))).toBe(false);
-  });
+    expect(waitingOnOwnOffers(state, offer.from, {})).toBe(false);
+    const other = state.players.find((player) => player.id !== offer.from)!.id;
+    expect(waitingOnOwnOffers(state, other, phases('collecting'))).toBe(false);
+  }, GAME_TIMEOUT);
+
+  it('does not ask the fallback while the actor waits on its own open offer', () => {
+    // 直接對 nextDecision 斷言：拿掉它裡面的豁免，這個測試就會失敗。
+    const state = stateWithOpenOffer();
+    const offer = state.offers.find((candidate) => candidate.status === 'open')!;
+    const actor = offer.from;
+    const seats = botSeats(
+      state.players.map(() => 'standard' as const),
+      () => idlePolicy,
+    );
+    const asked: string[] = [];
+    const spy: BotPolicy = {
+      decide: (_view, ctx) => {
+        asked.push(ctx.selfId);
+        return ctx.selfId === actor ? { type: 'turn.end' } : null;
+      },
+    };
+    const phasesOf = (phase: 'collecting' | 'ready' | 'expired') => (botId: string) =>
+      botId === actor ? { [offer.id]: phase } : {};
+
+    // 報價還在收集：行動者策略閒置是正常的，保底不能替它代勞；其他座位照常問保底。
+    expect(nextDecision(state, seats, phasesOf('collecting'), undefined, spy)).toBeNull();
+    expect(asked).not.toContain(actor);
+    expect(asked.sort()).toEqual(state.players.map((player) => player.id).filter((id) => id !== actor).sort());
+
+    // 報價已過期：行動者欠動作，保底代為送出（source 標示為 fallback）。
+    asked.length = 0;
+    expect(nextDecision(state, seats, phasesOf('expired'), undefined, spy)).toEqual({
+      actor,
+      command: { type: 'turn.end' },
+      source: 'fallback',
+    });
+    expect(asked).toContain(actor);
+
+    // 沒有保底（driverMode: false 的語意）時，永遠不問保底。
+    expect(nextDecision(state, seats, phasesOf('expired'))).toBeNull();
+  }, GAME_TIMEOUT);
 
   it('stops at the first rejected command and counts it', () => {
     const bad: BotPolicy = { decide: (view, ctx) => (view.turn.playerId === ctx.selfId ? { type: 'turn.end' } : null) };
@@ -177,7 +220,57 @@ describe('BotDriver mode', () => {
     expect(run.rejections).toBe(1);
     expect(run.failure).toMatchObject({ actor: 'bot1', command: { type: 'turn.end' } });
     expect(run.steps).toBe(0);
-  });
+  }, GAME_TIMEOUT);
+});
+
+describe('fake modules through the real policy skeleton', () => {
+  // 行動階段 duty 回 null：「歸我管、但這次不送」，所以骨架與保底都不再送 turn.end。
+  const silentInAction: BotModule = {
+    id: 'fake.silent-action',
+    duty: (view) => (view.turn.phase === 'action' ? null : undefined),
+  };
+  const actorOf = (state: GameState): string => state.players[state.turn.seat]!.id;
+
+  it('reports stuck, owing an action, when the module is given to both the policy and the fallback', () => {
+    const seats = botSeats(mixedLevels(3, 1), (level) => createBotPolicy(level, { modules: [silentInAction] }));
+    const run = runBotGame({
+      seats,
+      seed: 1,
+      watchdogRolls: null,
+      fallback: createFallbackPolicy([silentInAction]),
+    });
+    expect(run.stuck).not.toBeNull();
+    expect(run.stalled).toBe(true);
+    expect(run.stuck!.phase).toBe('action');
+    expect(run.stuck!.owed).toEqual([{ id: actorOf(run.state), action: 'action' }]);
+    expect(run.failure).toBeNull();
+    expect(run.state.result).toBeNull();
+  }, GAME_TIMEOUT);
+
+  it('flags idle fallbacks when only the policy has the module and the fallback uses the registry', () => {
+    const seats = botSeats(mixedLevels(3, 1), (level) => createBotPolicy(level, { modules: [silentInAction] }));
+    const run = runBotGame({ seats, seed: 1, watchdogRolls: null, maxSteps: 300 });
+    // 策略在行動階段閒置，保底（registry 沒有這個模組）補上 turn.end：BotDriver 會悄悄這樣做。
+    expect(run.idleFallbacks.length).toBeGreaterThan(0);
+    expect(run.idleFallbacks[0]).toMatchObject({ command: 'turn.end', owed: 'action' });
+    expect(run.idleFallbacks.every((idle) => idle.command === 'turn.end')).toBe(true);
+    expect(run.stuck).toBeNull();
+    expect(run.failure).toBeNull();
+    expect(run.steps).toBe(300);
+  }, GAME_TIMEOUT);
+
+  it('trips the watchdog on a module whose actions always pick turn.end', () => {
+    // 每個行動階段都只結束回合，永遠不建造：沒有任何玩家創新高。
+    const spin: BotModule = { id: 'fake.spin', actions: () => [{ item: { type: 'turn.end' }, score: 1e9 }] };
+    const seats = botSeats(mixedLevels(4, 1), (level) => createBotPolicy(level, { modules: [spin] }));
+    const run = runBotGame({ seats, seed: 1 });
+    expect(run.watchdog).not.toBeNull();
+    expect(run.watchdog!.rolls).toBe(limitsFor('base-2025').watchdogRolls);
+    expect(run.state.result).toBeNull();
+    expect(run.stuck).toBeNull();
+    expect(run.failure).toBeNull();
+    expect(run.steps).toBeLessThan(2000);
+  }, GAME_TIMEOUT);
 });
 
 describe('module test kits', () => {
@@ -200,7 +293,7 @@ describe('module test kits', () => {
     expect(conservationProblems(state, [kit])).toEqual(['fake: ships 16 > 15']);
     const run = runBotGame({ seats: fallbackSeats(3), seed: 1, watchdogRolls: null, maxSteps: 30, kits: [kit] });
     expect(run.conservation).toEqual(['fake: ships 16 > 15']);
-  });
+  }, GAME_TIMEOUT);
 
   it('runs hideDifferently and perturb of every kit, after the base ones', () => {
     const { state } = newBotGame({ profileId: 'base-2025', players: 3, seed: 1 });
@@ -258,7 +351,7 @@ describe('module test kits', () => {
     expect(run.mechanics['fake.standard.fallback']).toBeGreaterThan(0);
     expect(run.mechanics['fake.easy.fallback']).toBeGreaterThan(0);
     expect(Object.keys(run.mechanics).some((key) => key.endsWith('.policy'))).toBe(false);
-  });
+  }, GAME_TIMEOUT);
 
   it('merges response commands and reports kits that drift from the registered module', () => {
     const profile = requireProfile('base-2025');

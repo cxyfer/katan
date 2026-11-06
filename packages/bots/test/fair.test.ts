@@ -39,7 +39,7 @@ function snapshots(profileId: string, players: number, seed: number, every: numb
   return out;
 }
 
-// 4 人（沒有 4 人的 profile 由自己的 family 測試檔涵蓋）。
+// 只取有 4 人的 profile：通用矩陣裡 base-2025 有 4 人，base-paired-2025（5、6 人）沒有，所以不跑。
 for (const { profile, players } of GENERIC_MATRIX.filter((entry) => entry.players === 4)) {
   describe(`B-FAIR hidden information (${profile.id}, ${players} players)`, () => {
     const states = [...snapshots(profile.id, players, 51, 9), ...snapshots(profile.id, players, 52, 13)];

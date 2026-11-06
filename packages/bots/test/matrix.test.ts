@@ -11,6 +11,7 @@ import {
   dedicatedProfileIds,
   familyCoverageProblems,
   GENERIC_MATRIX_FILES,
+  stripComments,
   type BotTestFamily,
 } from './families.ts';
 import {
@@ -20,6 +21,8 @@ import {
   EXTENSION_SEED_COUNT,
   extensionSeedCount,
   GENERIC_MATRIX,
+  GOLDEN_RECORDS,
+  goldenIdsFor,
   newBotGame,
   seedsFor,
 } from './harness.ts';
@@ -35,13 +38,36 @@ const knownProfiles = new Set(PROFILES.map((profile) => profile.id));
 const matrixProfileIds = [...new Set(BOT_TEST_MATRIX.map((entry) => entry.profile.id))];
 
 describe('BOT_TEST_MATRIX', () => {
-  it('lists every enabled profile the bots can play, once per player count', () => {
-    const expected = PROFILES.filter((profile) => profile.enabled && botsCanPlay(profile)).flatMap((profile) =>
-      profile.playerCounts.map((players) => `${profile.id}:${players}`),
-    );
-    expect(BOT_TEST_MATRIX.map((entry) => `${entry.profile.id}:${entry.players}`)).toEqual(expected);
-    // 0.4.1 開放的只有 base（3–6 人）。
-    expect(BOT_TEST_MATRIX.map((entry) => entry.players)).toEqual(expect.arrayContaining([3, 4, 5, 6]));
+  it('lists the base profiles once per player count', () => {
+    // 明列目前的 base 四項。開放新 profile 時矩陣會多出項目，那些由 family 測試檔涵蓋，不必改這裡。
+    const base = BOT_TEST_MATRIX.filter((entry) => entry.profile.ruleModules.length === 0);
+    expect(base.map((entry) => `${entry.profile.id}:${entry.players}`)).toEqual([
+      'base-2025:3',
+      'base-2025:4',
+      'base-paired-2025:5',
+      'base-paired-2025:6',
+    ]);
+  });
+
+  it('only contains enabled profiles the bots can play', () => {
+    for (const entry of BOT_TEST_MATRIX) {
+      expect(entry.profile.enabled, entry.profile.id).toBe(true);
+      expect(botsCanPlay(entry.profile), entry.profile.id).toBe(true);
+      expect(entry.profile.playerCounts, entry.profile.id).toContain(entry.players);
+    }
+    // 反過來：開放且 Bot 玩得動的 profile 不會漏掉。
+    const listed = new Set(BOT_TEST_MATRIX.map((entry) => entry.profile.id));
+    for (const profile of PROFILES.filter((candidate) => candidate.enabled && botsCanPlay(candidate))) {
+      expect(listed.has(profile.id), profile.id).toBe(true);
+    }
+  });
+
+  it('reaches all 48 golden records through the generic matrix', () => {
+    // 通用測試以 goldenIdsFor 決定要比對哪些局；矩陣少了 base 項目時，比對不能默默消失。
+    const planned = GENERIC_MATRIX.flatMap((entry) => goldenIdsFor(entry)).sort();
+    expect(planned).toEqual(GOLDEN_RECORDS.map((record) => record.id).sort());
+    expect(GOLDEN_RECORDS).toHaveLength(48);
+    expect(planned.filter((id) => id.startsWith('b-game/'))).toHaveLength(40);
   });
 
   it('is covered by at least one test file per profile', () => {
@@ -94,6 +120,32 @@ describe('family coverage guard', () => {
     ]);
   });
 
+  it('does not count a profile id that only appears in a comment', () => {
+    const known2 = new Set(['sf-new-shores-2025']);
+    const families = [sfFamily];
+    const commented = [
+      "// TODO cover 'sf-new-shores-2025'\nconst x = 1;",
+      "/* 'sf-new-shores-2025' */ const x = 1;",
+      "/**\n * profiles: 'sf-new-shores-2025'\n */\nconst x = 1;",
+    ];
+    for (const text of commented) {
+      expect(familyCoverageProblems(['sf-new-shores-2025'], families, { 'sf-games.test.ts': text }, known2), text).toEqual([
+        expect.stringContaining('no test file covers it'),
+      ]);
+    }
+    // 註解旁邊的真實字面值仍然算，字串裡的 `//` 不是註解。
+    const real = "// note\nconst url = 'http://example.test'; const id = 'sf-new-shores-2025'; /* tail */";
+    expect(familyCoverageProblems(['sf-new-shores-2025'], families, { 'sf-games.test.ts': real }, known2)).toEqual([]);
+  });
+
+  it('does not count GENERIC_MATRIX that only appears in a comment either', () => {
+    const generic: BotTestFamily = { id: 'base', profiles: ['base-2025'], files: ['g.test.ts'], generic: true };
+    const known2 = new Set(['base-2025']);
+    expect(familyCoverageProblems(['base-2025'], [generic], { 'g.test.ts': '// uses GENERIC_MATRIX' }, known2)).toEqual([
+      expect.stringContaining('no test file covers it'),
+    ]);
+  });
+
   it('lets a generic family cover through the generic matrix', () => {
     const generic: BotTestFamily = { id: 'base', profiles: ['base-2025'], files: ['g.test.ts'], generic: true };
     expect(familyCoverageProblems(['base-2025'], [generic], { 'g.test.ts': 'for (e of GENERIC_MATRIX)' }, new Set(['base-2025']))).toEqual([]);
@@ -101,6 +153,15 @@ describe('family coverage guard', () => {
     expect(
       familyCoverageProblems(['base-2025'], [{ ...generic, generic: undefined as never }], { 'g.test.ts': 'GENERIC_MATRIX' }, new Set(['base-2025'])),
     ).toEqual([expect.stringContaining('no test file covers it')]);
+  });
+});
+
+describe('stripComments', () => {
+  it('removes line and block comments and keeps strings intact', () => {
+    expect(stripComments("a // b\nc /* d */ e")).toBe('a \nc   e');
+    expect(stripComments("const s = '// not a comment'; // real")).toBe("const s = '// not a comment'; \n");
+    expect(stripComments('const t = `/* kept */`; /* gone')).toBe('const t = `/* kept */`;  ');
+    expect(stripComments("const q = 'it\\'s'; // x")).toBe("const q = 'it\\'s'; \n");
   });
 });
 
@@ -160,7 +221,8 @@ describe('seed counts', () => {
   });
 
   it('rejects a BOTS_SEEDS that is not a positive integer instead of silently running fewer games', () => {
-    for (const bad of ['0', '-1', '2.5', 'ten']) {
+    // Number() 會接受 '1e1'、' 3'、'0x3'、'3 '；這些都不是十進位正整數。
+    for (const bad of ['0', '-1', '2.5', 'ten', '1e1', ' 3', '3 ', '0x3', '+3', '03']) {
       withSeeds(bad, () => expect(() => extensionSeedCount(), bad).toThrow(/BOTS_SEEDS/));
     }
     withSeeds('', () => expect(extensionSeedCount()).toBe(EXTENSION_SEED_COUNT));

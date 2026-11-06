@@ -4,7 +4,9 @@
  *
  * 對局走通用矩陣（`GENERIC_MATRIX`：每個開放且 Bot 玩得動的 profile × 人數；已有 family 測試檔的
  * profile 由該檔涵蓋），以仿 BotDriver 模式進行：策略閒置、但保底有動作，與卡死、看門狗逾限一樣算失敗。
- * base 另外與 v0.4.0 的 golden 逐局比對，證明平台化沒有改變 base 的任何一個決策。
+ * base 另外與 v0.4.0 的 golden 逐局比對（B-GAME 40 局、保底席 3 局、wrapped 1 局；全保底 4 局在
+ * `fallback.test.ts`），證明平台化沒有改變 base 的任何一個決策。要比對哪些局由 `goldenIdsFor` 決定，
+ * `matrix.test.ts` 斷言它們合起來剛好是 fixture 的 48 局。
  */
 
 import { describe, expect, it } from 'vitest';
@@ -14,18 +16,22 @@ import { heuristicPolicy } from '../src/heuristic.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { MAX_OFFERS_PER_WINDOW } from '../src/trade.ts';
 import type { BotCommand, BotLevel, BotPolicy } from '../src/types.ts';
-import baseV040 from './golden/base-v040.json';
-import { canonicalJson, createFnv64, type GoldenRecord } from './golden/driver.ts';
 import {
   allowedResponseCommands,
   BOT_WINDOW_COMMAND_LIMIT,
   botSeats,
+  createDecisionHasher,
+  fallbackSeatSeeds,
   GAME_TIMEOUT,
   GENERIC_MATRIX,
+  goldenId,
+  goldenIdsFor,
+  goldenMismatches,
   mixedLevels,
   responseCommandDrift,
   runBotGame,
   seedsFor,
+  WRAPPED_SEED,
   withFallbackSeat,
   type BotSeat,
   type Decision,
@@ -94,27 +100,27 @@ function topologyHexes(state: GameState, vertex: number): number[] {
 /** 一局：合約檢查加上決策序列的雜湊（與 golden 相同的算法）。 */
 function playGame(seats: BotSeat[], seed: number, profile: ProfileDefinition) {
   const contract = contractChecks(seats, profile);
-  const hasher = createFnv64();
+  const hasher = createDecisionHasher();
   const run = runBotGame({
     seats,
     seed,
     profileId: profile.id,
     onDecision: (state, decision) => {
       contract.check(state, decision);
-      hasher.update(`${canonicalJson({ actor: decision.actor, command: decision.command })}\n`);
+      hasher.onDecision(state, decision);
     },
   });
   return { run, violations: contract.violations, hash: hasher.digest() };
 }
 
-const goldenFixture = baseV040 as unknown as readonly GoldenRecord[];
-const goldenProfiles = new Set(goldenFixture.map((record) => record.profileId));
-
 describe('B-GAME bot-only games', () => {
-  for (const { profile, players } of GENERIC_MATRIX) {
+  for (const entry of GENERIC_MATRIX) {
+    const { profile, players } = entry;
     const seeds = seedsFor(profile);
+    const golden = new Set(goldenIdsFor(entry));
     it(`finishes with a winner and zero rejections (${profile.id}, ${players} players, ${seeds.length} seeds)`, () => {
       const limit = botCommandLimit(profile, BOT_WINDOW_COMMAND_LIMIT);
+      let compared = 0;
       for (const seed of seeds) {
         const seats = botSeats(mixedLevels(players, seed), (level) => createBotPolicy(level));
         const { run, violations, hash } = playGame(seats, seed, profile);
@@ -130,56 +136,67 @@ describe('B-GAME bot-only games', () => {
         expect(run.maxWindowCommands, `${label}: commands in one window`).toBeLessThanOrEqual(limit);
         expect(violations, label).toEqual([]);
 
-        // base 與 v0.4.0 逐局相同：步數、勝者與決策雜湊（golden-base.test.ts 以凍結的 driver 驗證同一批）。
-        const golden = goldenFixture.find((record) => record.id === `b-game/${players}p/seed${seed}`);
-        if (goldenProfiles.has(profile.id)) {
-          expect(golden, `${label}: missing from the golden fixture`).toBeDefined();
-          expect(golden!.profileId, label).toBe(profile.id);
-          expect(
-            { steps: run.steps, seq: run.state.seq, winner: run.state.result?.playerId ?? null, hash },
-            `${label}: differs from the v0.4.0 golden`,
-          ).toEqual({ steps: golden!.steps, seq: golden!.seq, winner: golden!.winner, hash: golden!.hash });
+        // base 與 v0.4.0 逐局相同：步數、seq、勝者、結束原因與決策雜湊。
+        const id = goldenId.bGame(players, seed);
+        if (golden.has(id)) {
+          expect(goldenMismatches(id, run, hash), `${label}: differs from the v0.4.0 golden`).toEqual([]);
+          compared += 1;
         }
       }
+      // 有 golden 的 profile，每個種子都必須真的比對到。
+      expect(compared, `${profile.id} ${players}p: golden comparisons`).toBe(golden.size === 0 ? 0 : seeds.length);
     }, GAME_TIMEOUT);
   }
 
   // 每個（profile, 人數）至少 1 個種子讓 1 席只走保底，其餘座位用策略。
-  for (const { profile, players } of GENERIC_MATRIX) {
-    const seeds = players === 4 ? [21, 22, 23] : [21];
+  for (const entry of GENERIC_MATRIX) {
+    const { profile, players } = entry;
+    const golden = new Set(goldenIdsFor(entry));
     it(`lets the fallback seat stay silent while offers time out (${profile.id}, ${players} players)`, () => {
       // 保底座位從不回應報價，報價必須經過 ready／expired 才撤回或結算。
       const levels: BotLevel[] = Array.from({ length: players }, (_, index) => (index === 1 ? 'easy' : 'standard'));
-      for (const seed of seeds) {
+      const limit = botCommandLimit(profile, BOT_WINDOW_COMMAND_LIMIT);
+      for (const seed of fallbackSeatSeeds(players)) {
         const seats = withFallbackSeat(botSeats(levels, (level) => createBotPolicy(level)), 1);
-        const { run, violations } = playGame(seats, seed, profile);
+        const { run, violations, hash } = playGame(seats, seed, profile);
         const label = `${profile.id} ${players}p seed ${seed}`;
         expect(run.failure, `${label}: ${JSON.stringify(run.failure)}`).toBeNull();
         expect(run.stuck, label).toBeNull();
         expect(run.watchdog, label).toBeNull();
         expect(run.idleFallbacks, label).toEqual([]);
         expect(run.state.result?.reason, label).toBe('victory');
+        expect(run.state.pending, label).toBeNull();
         expect(run.conservation, label).toEqual([]);
+        expect(run.maxWindowCommands, `${label}: commands in one window`).toBeLessThanOrEqual(limit);
         expect(violations, label).toEqual([]);
         const offers = run.state.offers.filter((offer) => offer.from !== 'bot2');
         expect(offers.length, label).toBeGreaterThan(0);
         expect(offers.every((offer) => offer.status !== 'open'), label).toBe(true);
+        const id = goldenId.fallbackSeat(players, seed);
+        if (golden.has(id)) expect(goldenMismatches(id, run, hash), `${label}: differs from the v0.4.0 golden`).toEqual([]);
       }
     }, GAME_TIMEOUT);
   }
 
-  it('runs through the wrapped policy the service uses', () => {
-    const seats = botSeats(['standard', 'easy', 'easy', 'standard'], (level) => createBotPolicy(level));
-    const { run, violations } = playGame(seats, 31, requireProfile('base-2025'));
-    expect(run.failure).toBeNull();
-    expect(run.idleFallbacks).toEqual([]);
-    expect(run.state.result?.reason).toBe('victory');
-    expect(violations).toEqual([]);
-  }, GAME_TIMEOUT);
+  // 經過 `createBotPolicy` 的一局（server 用的包裝），4 人。
+  for (const entry of GENERIC_MATRIX.filter((candidate) => candidate.players === 4)) {
+    const { profile } = entry;
+    const golden = new Set(goldenIdsFor(entry));
+    it(`runs through the wrapped policy the service uses (${profile.id})`, () => {
+      const seats = botSeats(['standard', 'easy', 'easy', 'standard'], (level) => createBotPolicy(level));
+      const { run, violations, hash } = playGame(seats, WRAPPED_SEED, profile);
+      expect(run.failure).toBeNull();
+      expect(run.idleFallbacks).toEqual([]);
+      expect(run.state.result?.reason).toBe('victory');
+      expect(violations).toEqual([]);
+      const id = goldenId.wrapped(4, WRAPPED_SEED);
+      if (golden.has(id)) expect(goldenMismatches(id, run, hash), 'differs from the v0.4.0 golden').toEqual([]);
+    }, GAME_TIMEOUT);
+  }
 });
 
 describe('B-POLICY determinism', () => {
-  // 4 人（沒有 4 人的 profile 由自己的 family 測試檔涵蓋）。
+  // 只取有 4 人的 profile：通用矩陣裡 base-2025 有 4 人，base-paired-2025（5、6 人）沒有，所以不跑。
   for (const { profile, players } of GENERIC_MATRIX.filter((entry) => entry.players === 4)) {
     const transcript = (policyFor: (level: BotLevel) => BotPolicy, seed: number): string[] => {
       const seats = botSeats(mixedLevels(players, seed), policyFor);

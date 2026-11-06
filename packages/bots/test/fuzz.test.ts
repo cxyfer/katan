@@ -31,7 +31,7 @@ function sample(profileId: string, players: number, seed: number, every: number)
 }
 
 describe('B-POLICY perturbed states', () => {
-  // 4 人與 6 人（沒有的人數由 family 測試檔涵蓋）。
+  // 4 人與 6 人：通用矩陣裡 base-2025 有 4 人，base-paired-2025 有 6 人。
   for (const { profile, players } of GENERIC_MATRIX.filter((entry) => entry.players === 4 || entry.players === 6)) {
     it(`issues only accepted commands from perturbed ${players}-player states (${profile.id})`, () => {
       const states = [...sample(profile.id, players, 71, 5), ...sample(profile.id, players, 72, 7)];
