@@ -133,7 +133,7 @@ export function botResponseCommands(profile: Pick<ProfileDefinition, 'ruleModule
 
 1. `decide` 是純函式：不讀時間與環境、不持有跨呼叫狀態；隨機性只來自 `seededRng(ctx.seed)`。排程器仍會攔截例外，但策略不應拋出。
 2. 可用資訊：`view`、`getTopology(view.board.topologyId)`、`requireProfile(view.profileId)`、`COSTS`、`RESOURCES` 等常數。不得接收或建構 `GameState` 來取得隱藏資訊。
-3. 非行動者（`selfId !== view.turn.playerId`）只在兩種情況回傳指令：自己欠的待決效果（base 的棄牌，以及 `responders` 包含自己的模組 frame）；收件人包含自己、仍 open、且自己尚未回應的報價。
+3. 非行動者（`selfId !== view.turn.playerId`）只在兩種情況回傳指令：自己欠的待決效果（base 的棄牌，以及自己有資格回應的模組 frame：同時作答的 frame 只要 `responders` 包含自己，依序作答的 frame 只有 `responders[0]` 可以回應；保底一律只在自己是 `responders[0]` 時回應）；收件人包含自己、仍 open、且自己尚未回應的報價。
 4. 行動者在 `action` 階段無事可做時，回傳結束行動窗口的指令：模組有 `endWindow` 就用它，否則用 `turn.end`（`endWindow` 自 0.4.5 起實作，在那之前一律是 `turn.end`；模組的 `duty` 可以在 `turn.end` 之前接手）。唯一允許回傳 `null` 的情況是自己仍有 open 報價在等回應。排程器把「行動者沒有 open 報價卻回傳 null」視為策略失敗。
 5. `hints.legalSettlements`／`legalRoads` 只代表位置合法，不代表付得起；策略要用 `COSTS` 與自己的 `resources` 檢查，也要檢查剩餘棋子數（以盤面計數對照 profile 的 pieces）。
 6. 報價回應只用 `consented` 或 `declined`；回應過的報價（`responses[selfId]` 有值）不再回應，報價被 revise 後才重新評估。
