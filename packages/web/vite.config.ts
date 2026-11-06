@@ -1,5 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { readFileSync } from 'node:fs';
+
+// 版本號只寫在根目錄 package.json；和伺服器一樣在建置時注入，公告牌據此顯示目前版本。
+const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string };
 
 const backendHost = process.env.HOST ?? '127.0.0.1';
 const connectHost = ['0.0.0.0', '::'].includes(backendHost) ? '127.0.0.1' : backendHost;
@@ -13,6 +17,7 @@ const backend = `http://${connectHost.includes(':') ? `[${connectHost}]` : conne
  */
 export default defineConfig({
   plugins: [react()],
+  define: { __CATAN_VERSION__: JSON.stringify(version) },
   server: {
     host: process.env.VITE_HOST ?? '127.0.0.1',
     port: Number(process.env.VITE_PORT ?? 5173),

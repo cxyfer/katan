@@ -35,14 +35,17 @@ import {
   readStoredLocale,
   readStoredMutes,
   readStoredNickname,
+  readStoredNewsSeen,
   readStoredTradeAutoDecline,
   writeStoredLocale,
   writeStoredMutes,
   writeStoredNickname,
+  writeStoredNewsSeen,
   writeStoredTradeAutoDecline,
   type StorageLike,
 } from './session.ts';
 import { DICE_PRESENTATION_DURATION_MS } from '../board/animation.ts';
+import { newerSeenVersion } from '../news/player-notes.ts';
 import {
   awaitingProjection,
   EMPTY_SELECTION,
@@ -102,6 +105,8 @@ export interface TableActions {
   setChatDraft(text: string): void;
   toggleMute(playerId: string): void;
   setTradeAutoDecline(enabled: boolean): void;
+  /** 記住這個瀏覽器已看過指定版號的公告。 */
+  markNewsSeen(version: string): void;
   selectTarget(selection: Selection): void;
   setDevCardChoice(choice: DevCardChoice | null): void;
   cancelSelection(): void;
@@ -355,6 +360,7 @@ export function useTable(options: UseTableOptions): TableController {
     const mutes = readStoredMutes(storage);
     for (const playerId of mutes) dispatch({ type: 'chat', event: { kind: 'mute', playerId } });
     dispatch({ type: 'trade-auto-decline', value: readStoredTradeAutoDecline(storage) });
+    dispatch({ type: 'news-seen', version: readStoredNewsSeen(storage) });
   }, [api, dispatch, languages, storage]);
 
   useEffect(() => {
@@ -813,6 +819,17 @@ export function useTable(options: UseTableOptions): TableController {
     [dispatch, storage],
   );
 
+  const markNewsSeen = useCallback(
+    (version: string): void => {
+      // 其他分頁可能已寫入更新的版號；以 storage 現值比較，已讀版號不倒退。
+      const stored = readStoredNewsSeen(storage);
+      const next = newerSeenVersion(stored, version);
+      dispatch({ type: 'news-seen', version: next });
+      if (next !== stored) writeStoredNewsSeen(storage, next);
+    },
+    [dispatch, storage],
+  );
+
   // ---------------------------------------------------------------------
   // selection
   // ---------------------------------------------------------------------
@@ -883,6 +900,7 @@ export function useTable(options: UseTableOptions): TableController {
       setChatDraft,
       toggleMute,
       setTradeAutoDecline,
+      markNewsSeen,
       selectTarget,
       setDevCardChoice,
       cancelSelection,
@@ -921,6 +939,7 @@ export function useTable(options: UseTableOptions): TableController {
       setChatDraft,
       toggleMute,
       setTradeAutoDecline,
+      markNewsSeen,
       selectTarget,
       setDevCardChoice,
       cancelSelection,

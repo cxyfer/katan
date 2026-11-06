@@ -234,6 +234,18 @@
 .home__create .form-actions .button { width: 100%; }
 .home__identity form { display: flex; flex-wrap: wrap; gap: .65rem; align-items: flex-end; margin-bottom: 1rem; }
 .home__identity .field { flex: 1 1 16rem; margin: 0; }
+.home__nav-count--new { background: linear-gradient(160deg, #f3d696, #b98a45); color: #2c2414; letter-spacing: .04em; }
+/* 公告牌：最新一則以黃銅邊框強調，較早的版本依序列在下方。 */
+.news-list { display: flex; flex-direction: column; gap: .9rem; margin: .4rem 0 0; padding: 0; list-style: none; }
+.news-entry { padding: .9rem 1.1rem; border: 1px solid #d9b06a2e; border-radius: 10px; background: #ffffff08; }
+.news-entry--latest { border-color: #d9b06a80; background: linear-gradient(180deg, #3b322040, #ffffff08); }
+.news-entry__header { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; }
+.news-entry__version { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: .8rem; font-weight: 700; color: #f3d696; }
+.news-entry__date { font-size: .78rem; }
+.news-entry__tag { padding: .05rem .5rem; border-radius: 999px; background: #e2b86630; color: #f3d696; font-size: .7rem; font-weight: 700; }
+.news-entry__title { margin: .35rem 0 .5rem; font-family: var(--font-display); font-size: 1.05rem; color: #f6e7c3; }
+.news-entry__items { display: flex; flex-direction: column; gap: .35rem; margin: 0; padding-left: 1.1rem; color: #d7e0da; font-size: .86rem; line-height: 1.55; }
+.news-entry__items li::marker { color: var(--brass, #d9b06a); }
 .resume-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: .7rem; }
 .resume-card { display: flex; gap: .9rem; align-items: center; padding: .9rem 1rem; border: 1px solid #d9b06a33; border-radius: 6px; background: #ffffff08; }
 .resume-card p { margin: .2rem 0 0; font-size: .76rem; }

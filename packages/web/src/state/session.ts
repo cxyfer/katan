@@ -17,6 +17,7 @@ export const LOCALE_KEY = 'catan.locale';
 export const NICKNAME_KEY = 'catan.nickname';
 export const MUTE_KEY = 'catan.mute';
 export const TRADE_AUTO_DECLINE_KEY = 'catan.trade.autoDecline';
+export const NEWS_SEEN_KEY = 'catan.news.seen';
 
 export function readStoredLocale(storage: StorageLike): Locale | null {
   try {
@@ -82,6 +83,23 @@ export function readStoredTradeAutoDecline(storage: StorageLike): boolean {
 export function writeStoredTradeAutoDecline(storage: StorageLike, enabled: boolean): void {
   try {
     storage.setItem(TRADE_AUTO_DECLINE_KEY, enabled ? 'true' : 'false');
+  } catch {
+    // ignored on purpose
+  }
+}
+
+/** 公告牌：這個瀏覽器最後看過的公告版號；從未看過或讀不到時為 `null`。 */
+export function readStoredNewsSeen(storage: StorageLike): string | null {
+  try {
+    return storage.getItem(NEWS_SEEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredNewsSeen(storage: StorageLike, version: string): void {
+  try {
+    storage.setItem(NEWS_SEEN_KEY, version);
   } catch {
     // ignored on purpose
   }

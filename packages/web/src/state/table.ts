@@ -142,6 +142,8 @@ export interface TableState {
   chat: ChatState;
   /** 本地交易偏好：自己資源不足的提案由客戶端代為拒絕（docs/SPEC.md §4.5）。 */
   tradeAutoDecline: boolean;
+  /** 首頁公告牌最後看過的版號，用來判斷是否顯示「新」標記。 */
+  newsSeen: string | null;
   drawer: DrawerPanel;
   selection: Selection;
   devCardChoice: DevCardChoice | null;
@@ -184,6 +186,7 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     save: { status: 'idle' },
     chat: initialChatState(),
     tradeAutoDecline: false,
+    newsSeen: null,
     drawer: 'none',
     selection: EMPTY_SELECTION,
     devCardChoice: null,
@@ -221,6 +224,7 @@ export type TableAction =
   | { type: 'save'; state: SaveState }
   | { type: 'chat'; event: ChatEvent }
   | { type: 'trade-auto-decline'; value: boolean }
+  | { type: 'news-seen'; version: string | null }
   | { type: 'drawer'; drawer: DrawerPanel }
   | { type: 'selection'; selection: Selection }
   | { type: 'dev-card-choice'; choice: DevCardChoice | null }
@@ -473,6 +477,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
       return { ...state, chat: chatReducer(state.chat, action.event) };
     case 'trade-auto-decline':
       return state.tradeAutoDecline === action.value ? state : { ...state, tradeAutoDecline: action.value };
+    case 'news-seen':
+      return state.newsSeen === action.version ? state : { ...state, newsSeen: action.version };
     case 'drawer':
       return {
         ...state,

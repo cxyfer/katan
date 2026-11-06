@@ -97,7 +97,28 @@ squash the integration PR. Publish the stable `vX.Y.Z` from `master` afterwards 
    published publicly, so the documentation and the release notes carry no login step; if it goes
    private again, they need the login back.
 
-## Release checklist
+## Player notes
+
+The home screen's notice board renders
+[`packages/web/src/news/player-notes.ts`](packages/web/src/news/player-notes.ts), a player-facing
+release record kept separately from the GitHub Release. The GitHub Release speaks to whoever deploys
+the image; the player notes speak to whoever sits at the table, so they cover new ways to play, rules
+changes and table or layout improvements, and leave out images, migrations, environment variables,
+refactors and tests.
+
+- Add one entry per stable version, newest first, with the bare version (`0.4.0`) and the release
+  date (`YYYY-MM-DD`).
+- Write the title and every item in both locales, one change per item.
+- Land the entry before the release commit, through a `📝 docs(news): add player notes for vX.Y.Z`
+  pull request into `master`, or into `release/vX.Y.Z`. An entry may be ahead of `package.json`:
+  the board hides entries newer than the version being built, so the entry stays hidden on
+  `master` until the bump and already shows on `vX.Y.Z-rc.N` builds.
+- `packages/web/test/news.test.tsx` fails when `package.json` holds a stable version without a
+  matching entry, so `pnpm verify` blocks a stable bump that forgot its notes.
+
+Players who have not opened the board since the newest entry see a **New** badge on its tab; the last
+version they read is stored in `localStorage` under `catan.news.seen`.
+
 
 ### 1. Pre-flight
 
@@ -112,6 +133,9 @@ git status --short          # must be empty
 pnpm install --frozen-lockfile
 pnpm verify                 # typecheck + tests + build + post-build smoke
 ```
+
+For a stable release, check that [Player notes](#player-notes) already has the entry for this
+version; `pnpm verify` fails after the bump if it is missing.
 
 ### 2. Bump the version
 
