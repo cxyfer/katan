@@ -493,8 +493,23 @@ Client → server:
 
 ```json
 { "type": "subscribe", "payload": { "roomId": "..." } }
+{ "type": "subscribe", "payload": {} }
 { "type": "ping" }
 ```
+
+`subscribe` with a `roomId` joins that room's live feed (`room`, `presence`,
+`snapshot`, `events`, `chat`). `subscribe` **without** a `roomId` unsubscribes:
+the socket leaves its room, stops receiving those pushes, and — when it was the
+person's last socket there — the seat is marked disconnected and the room no
+longer counts as having a live person (bots only act while someone does). It is
+idempotent and the socket stays open for a later subscribe. Messages on one
+socket are handled in order, so an unsubscribe followed at once by a subscribe
+ends up subscribed. Closing the socket unsubscribes implicitly.
+
+Save and leave from a client is therefore: `POST /api/games/:gameId/save`, then
+unsubscribe over the socket, then `POST /api/rooms/:roomId/leave`. Without the
+unsubscribe the socket keeps the seat online, keeps bots playing and keeps
+pushing the room back to the leaving client.
 
 Server → client: `ServerMessage` union from `@catan/protocol`
 (`hello`, `room`, `snapshot`, `events`, `chat`, `presence`, `notice`, `error`, `pong`).
