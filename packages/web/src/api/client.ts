@@ -20,6 +20,7 @@ import type {
   GameOrderMode,
   GameEvent,
   GameSnapshot,
+  LeaveRoomResult,
   Locale,
   PlayerIdentity,
   ProfileView,
@@ -98,7 +99,7 @@ export interface CatanApi {
   createRoom(body: CreateRoomBody): Promise<ApiResult<RoomView>>;
   joinRoom(body: { code: string }): Promise<ApiResult<RoomView>>;
   getRoom(roomId: string): Promise<ApiResult<RoomView>>;
-  leaveRoom(roomId: string): Promise<ApiResult<{ left: true; hostTransferredTo: string | null }>>;
+  leaveRoom(roomId: string): Promise<ApiResult<LeaveRoomResult>>;
   takeSeat(roomId: string, color: string): Promise<ApiResult<RoomView>>;
   setReady(roomId: string, ready: boolean): Promise<ApiResult<RoomView>>;
   updateSettings(roomId: string, body: RoomSettingsBody): Promise<ApiResult<RoomView>>;
@@ -238,7 +239,7 @@ export class ApiClient implements CatanApi {
     return this.#request<RoomView>('GET', `/api/rooms/${encodeURIComponent(roomId)}`);
   }
   leaveRoom(roomId: string) {
-    return this.#request<{ left: true; hostTransferredTo: string | null }>(
+    return this.#request<LeaveRoomResult>(
       'POST',
       `/api/rooms/${encodeURIComponent(roomId)}/leave`,
     );

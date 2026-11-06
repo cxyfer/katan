@@ -193,7 +193,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     },
     async leaveRoom(roomId: string) {
       record('leaveRoom', roomId);
-      return ok({ left: true as const, hostTransferredTo: null });
+      return ok({ left: true, hostTransferredTo: null });
     },
     async takeSeat(roomId: string, color: string) {
       record('takeSeat', roomId, color);

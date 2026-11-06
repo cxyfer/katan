@@ -654,6 +654,8 @@ export const en: Catalog = {
   'play.leave.working': 'Working… please keep this window open.',
   'play.leave.timeoutHome': 'The server is slow to confirm that you left. Your seat is kept.',
   'play.leave.timeoutRoom': 'Leaving the room timed out. You are still in it; please try again.',
+  'play.leave.stillPresentRoom': 'The server still sees you in this room (maybe in another tab), so you have not left yet.',
+  'play.leave.stillPresentHome': 'Your seat is still in use by another connection (maybe another tab), so it was not marked as left.',
   'play.abandon.cancelled': 'The vote to end the game was cancelled.',
   'play.abandon.vote.title': 'Vote: end the game?',
   'play.abandon.vote.body': '{proposer} proposed ending this saved game with no winner. Absent or withdrawn: {players}.',

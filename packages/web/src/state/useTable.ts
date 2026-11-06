@@ -19,6 +19,7 @@ import type {
   CommandReceipt,
   GameEvent,
   GameSnapshot,
+  LeaveRoomResult,
   Locale,
   Notice,
   RoomPolicy,
@@ -70,6 +71,8 @@ export interface UseTableOptions {
   connectSocket?: boolean;
   /** 等待 `/leave` 的上限（毫秒），預設 `LEAVE_TIMEOUT_MS`；測試注入較短的值。 */
   leaveTimeoutMs?: number;
+  /** 等待伺服器確認取消訂閱的上限（毫秒），預設 `UNSUBSCRIBE_ACK_TIMEOUT_MS`；測試注入較短的值。 */
+  unsubscribeTimeoutMs?: number;
 }
 
 /** `/leave` 久久沒有回應時放棄等待，離開流程改走失敗路徑，使用者才不會永遠卡在處理中。 */
@@ -555,21 +558,22 @@ export function useTable(options: UseTableOptions): TableController {
   }, []);
 
   /**
-   * 離開流程的第一步：記下已離開的房與局（之後的推送一律忽略），並立刻取消訂閱。
-   * 畫面與本地狀態先不動：必須等伺服器處理完 `/leave`，使用者才可能從首頁重新進入，
-   * 否則遲到的 `/leave` 會把剛重新連線的座位又標成離線（SPEC §4.6）。回傳先前的標記供失敗時還原。
+   * 離開流程的第一步：記下已離開的房與局（之後的推送一律忽略），取消訂閱並等伺服器確認。
+   * 畫面與本地狀態先不動：必須等伺服器處理完 `/leave`，使用者才可能從首頁重新進入（SPEC §4.6）。
+   * 一定要等到取消訂閱的確認（或逾時）才送 `/leave`：連線還在房內時伺服器會把 `/leave` 當成遲到或
+   * 重複的請求而忽略（`left: false`）。標記在第一個 await 之前同步設好；回傳先前的標記供失敗時還原。
    */
   const beginDeparture = useCallback(
-    (ids: { roomId: string | null; gameId: string | null }) => {
+    async (ids: { roomId: string | null; gameId: string | null }) => {
       const previous = departedRef.current;
       departedRef.current = ids;
-      socketRef.current?.unsubscribe();
+      await socketRef.current?.unsubscribe();
       return previous;
     },
     [],
   );
 
-  /** `/leave` 失敗且要留在原畫面：移除標記並重新訂閱原房間，伺服器會再推送最新狀態。 */
+  /** `/leave` 失敗、逾時或被忽略（`left: false`）且要留在原畫面：移除標記並重新訂閱原房間，伺服器會再推送最新狀態。 */
   const abortDeparture = useCallback(
     (previous: { roomId: string | null; gameId: string | null } | null): void => {
       departedRef.current = previous;
@@ -619,11 +623,12 @@ export function useTable(options: UseTableOptions): TableController {
 
   const leaveTimeoutMs = options.leaveTimeoutMs ?? LEAVE_TIMEOUT_MS;
   /**
-   * 送出 `/leave` 並最多等 `leaveTimeoutMs`；逾時回傳 `'timeout'`。逾時後才抵達的回應不會被任何
-   * 流程處理（沒有人在等它），所以不可能改動畫面——使用者可能已經重新進入同一局。
+   * 送出 `/leave` 並最多等 `leaveTimeoutMs`；逾時回傳 `'timeout'`。逾時後才抵達的回應沒有任何流程在等它，
+   * 所以不會改動畫面。逾時後這個請求仍可能稍後才在伺服器執行，但那時使用者可能已重新進入而重新訂閱，
+   * 伺服器看到連線還在房內就會忽略它（`left: false`），不會動到已重新進入的座位或房主。
    */
   const requestLeave = useCallback(
-    async (roomId: string): Promise<ApiResult<{ left: true; hostTransferredTo: string | null }> | 'timeout'> => {
+    async (roomId: string): Promise<ApiResult<LeaveRoomResult> | 'timeout'> => {
       let timer: ReturnType<typeof setTimeout> | undefined;
       const timeout = new Promise<'timeout'>((resolve) => {
         timer = globalThis.setTimeout(() => resolve('timeout'), leaveTimeoutMs);
@@ -641,36 +646,41 @@ export function useTable(options: UseTableOptions): TableController {
     const roomId = roomIdRef.current;
     if (!roomId) return Promise.resolve();
     return singleFlightLeave(async () => {
-      const previous = beginDeparture(currentTableIds());
+      const previous = await beginDeparture(currentTableIds());
       const result = await requestLeave(roomId);
-      if (result !== 'timeout' && result.ok) {
+      if (result !== 'timeout' && result.ok && result.data.left) {
         announceHostTransfer(result.data.hostTransferredTo);
         clearTable();
         await refreshResumable();
         return;
       }
-      // 還沒離開成功（失敗或逾時）：留在原畫面，恢復訂閱，讓使用者可以重試。
+      // 還沒離開成功（失敗、逾時，或伺服器仍看到你在房內而忽略）：留在原畫面，恢復訂閱，讓使用者可以重試。
       abortDeparture(previous);
-      const notice = result === 'timeout' ? localNotice('play.leave.timeoutRoom') : noticeFrom(result.error);
+      const notice = result === 'timeout'
+        ? localNotice('play.leave.timeoutRoom')
+        : result.ok
+          ? localNotice('play.leave.stillPresentRoom')
+          : noticeFrom(result.error);
       dispatch({ type: 'toast', notice });
     });
   }, [dispatch, singleFlightLeave, announceHostTransfer, beginDeparture, abortDeparture, clearTable, currentTableIds, refreshResumable, requestLeave]);
 
   /**
-   * 保存並離開、退出之後回首頁（SPEC §4.6：刻意離開，座位保留）。先取消訂閱並忽略該房的推送，
-   * 等 `/leave` 完成（不論成敗或逾時，存檔或退出都已成功）才清掉牌桌回首頁，所以使用者不可能在
-   * `/leave` 完成前從首頁重新進入；失敗或逾時只以 toast 提示。
+   * 保存並離開、退出之後回首頁（SPEC §4.6：刻意離開，座位保留）。先記錄、取消訂閱並等確認，再等 `/leave`
+   * 完成（不論成敗、逾時或被忽略，存檔或退出都已成功）才清掉牌桌回首頁，所以使用者不可能在 `/leave`
+   * 完成前從首頁重新進入；失敗、逾時或座位仍由其他連線使用中只以 toast 提示。
    */
   const leaveToHome = useCallback(
     (): Promise<void> =>
       singleFlightLeave(async () => {
         const ids = currentTableIds();
-        beginDeparture(ids);
+        await beginDeparture(ids);
         if (ids.roomId) {
           const result = await requestLeave(ids.roomId);
           if (result === 'timeout') dispatch({ type: 'toast', notice: localNotice('play.leave.timeoutHome') });
-          else if (result.ok) announceHostTransfer(result.data.hostTransferredTo);
-          else dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+          else if (!result.ok) dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+          else if (!result.data.left) dispatch({ type: 'toast', notice: localNotice('play.leave.stillPresentHome') });
+          else announceHostTransfer(result.data.hostTransferredTo);
         }
         clearTable();
         await refreshResumable();
@@ -1164,6 +1174,7 @@ export function useTable(options: UseTableOptions): TableController {
     const client = new SocketClient({
       url: socketUrl,
       ...(options.socketFactory ? { factory: options.socketFactory } : {}),
+      ...(options.unsubscribeTimeoutMs === undefined ? {} : { unsubscribeTimeoutMs: options.unsubscribeTimeoutMs }),
       onStatus: (status) => {
         dispatch({ type: 'socket-status', status });
         if (status === 'open') dispatch({ type: 'connection', connection: 'online' });
@@ -1237,7 +1248,7 @@ export function useTable(options: UseTableOptions): TableController {
       client.close();
       socketRef.current = null;
     };
-  }, [options.connectSocket, options.socketFactory, refreshGame, receiveSnapshot, socketUrl, dispatch]);
+  }, [options.connectSocket, options.socketFactory, options.unsubscribeTimeoutMs, refreshGame, receiveSnapshot, socketUrl, dispatch]);
 
   useEffect(() => {
     const client = socketRef.current;
@@ -1249,7 +1260,8 @@ export function useTable(options: UseTableOptions): TableController {
       });
     } else {
       // 回到首頁的任何路徑（保存並離開、退出、離開房間）都取消訂閱，伺服器才會把這條連線視為離線。
-      client.unsubscribe();
+      // 離開流程已先取消並等過確認，這裡通常是 `idle`（沒送任何訊息）；進行中的取消訂閱會被共用。
+      void client.unsubscribe();
     }
   }, [currentRoomId, currentGameId]);
 

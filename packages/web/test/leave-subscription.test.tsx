@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ApiResult, ClientMessage, RoomView, ServerMessage } from '@catan/protocol';
+import { act, configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ApiResult, ClientMessage, LeaveRoomResult, RoomView, ServerMessage } from '@catan/protocol';
 import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
@@ -8,6 +8,9 @@ import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeBotMember, makeMember, makeRoom, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
 /** 離開牌桌之後不能再被推送拉回牌桌（SPEC §4.6、§4.8）。 */
+
+// 完整牌桌在高負載下渲染很慢，放寬 findBy／waitFor 的預設等待，避免偶發逾時。
+configure({ asyncUtilTimeout: 5000 });
 
 beforeEach(() => {
   const original = HTMLElement.prototype.getBoundingClientRect;
@@ -17,12 +20,28 @@ beforeEach(() => {
   });
 });
 
-/** 記錄送出的訊息，並能模擬伺服器推送。 */
+/**
+ * 記錄送出的訊息，並能模擬伺服器推送。收到取消訂閱（空的 subscribe）時預設自動回 `unsubscribed`，
+ * 與伺服器一致；測試可關掉 `autoAck`，改由 `ack()` 手動確認。
+ */
 class PushSocket implements SocketLike {
   sent: ClientMessage[] = [];
+  autoAck = true;
+  #room: string | null = null;
   #open: (() => void) | null = null;
   #message: ((data: string) => void) | null = null;
-  send(data: string) { this.sent.push(JSON.parse(data) as ClientMessage); }
+  send(data: string) {
+    const message = JSON.parse(data) as ClientMessage;
+    this.sent.push(message);
+    if (message.type !== 'subscribe') return;
+    if (message.payload.roomId) {
+      this.#room = message.payload.roomId;
+      return;
+    }
+    const previous = this.#room;
+    this.#room = null;
+    if (this.autoAck) setTimeout(() => this.ack(previous), 0);
+  }
   close() {}
   onOpen(handler: () => void) { this.#open = handler; }
   onClose() {}
@@ -30,6 +49,8 @@ class PushSocket implements SocketLike {
   onError() {}
   open() { this.#open?.(); }
   push(message: ServerMessage) { this.#message?.(JSON.stringify(message)); }
+  // 確認內容多帶進房世代，與伺服器之後的欄位一致；以斷言略過協定型別的欄位差異。
+  ack(roomId: string | null = 'r1') { this.push({ type: 'unsubscribed', payload: { roomId, entryEpoch: 1 } } as ServerMessage); }
   subscribes() { return this.sent.filter((message) => message.type === 'subscribe'); }
 }
 
@@ -51,8 +72,14 @@ function duoRoom(overrides: Partial<RoomView> = {}): RoomView {
   });
 }
 
-async function enterTable(api: FakeApi, leaveTimeoutMs?: number): Promise<PushSocket> {
+async function enterTable(
+  api: FakeApi,
+  leaveTimeoutMs?: number,
+  configure: (socket: PushSocket) => void = () => {},
+  unsubscribeTimeoutMs?: number,
+): Promise<PushSocket> {
   const socket = new PushSocket();
+  configure(socket);
   render(
     <App
       services={{
@@ -61,6 +88,7 @@ async function enterTable(api: FakeApi, leaveTimeoutMs?: number): Promise<PushSo
         languages: ['en'],
         socketFactory: () => socket,
         ...(leaveTimeoutMs === undefined ? {} : { leaveTimeoutMs }),
+        ...(unsubscribeTimeoutMs === undefined ? {} : { unsubscribeTimeoutMs }),
       }}
     />,
   );
@@ -90,7 +118,7 @@ function expectHome() {
 
 const lastSubscribe = (socket: PushSocket) => socket.subscribes().at(-1);
 
-type LeaveResult = ApiResult<{ left: true; hostTransferredTo: string | null }>;
+type LeaveResult = ApiResult<LeaveRoomResult>;
 
 /** 讓 `/leave` 的回應等到 `release()` 才回來，可選擇回傳指定結果。 */
 function holdLeave(api: FakeApi, result?: LeaveResult): () => void {
@@ -444,6 +472,182 @@ describe('leaving the table', () => {
     release();
     await screen.findByTestId('create-room');
     expect(api.callsOf('leaveRoom')).toHaveLength(1);
+  });
+
+  describe('waiting for the unsubscribe acknowledgement', () => {
+    const sleep = (ms = 40) => act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); });
+
+    it('save and leave sends the leave request only after the acknowledgement', async () => {
+      const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+      const socket = await enterTable(api, undefined, (pushSocket) => { pushSocket.autoAck = false; });
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-keep'));
+      await waitFor(() => expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: {} }));
+      await sleep();
+      // 取消訂閱已送出，確認還沒到：API 不會被呼叫，畫面也還在牌桌。
+      expect(api.callsOf('leaveRoom')).toHaveLength(0);
+      expectStillAtTable();
+      act(() => socket.ack('r1'));
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+      await screen.findByTestId('resume-list');
+    });
+
+    it('withdrawing sends the leave request only after the acknowledgement', async () => {
+      const api = createFakeApi({ room: duoRoom(), snapshot: makeSnapshot(makeView()) });
+      const socket = await enterTable(api, undefined, (pushSocket) => { pushSocket.autoAck = false; });
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-withdraw'));
+      fireEvent.click(screen.getByTestId('leave-withdraw-confirm'));
+      await waitFor(() => expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: {} }));
+      await sleep();
+      expect(api.callsOf('withdrawGame')).toHaveLength(1);
+      expect(api.callsOf('leaveRoom')).toHaveLength(0);
+      act(() => socket.ack('r1'));
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+      await screen.findByTestId('resume-list');
+    });
+
+    it('leaving from the result screen sends the leave request only after the acknowledgement', async () => {
+      const api = createFakeApi({
+        room: duoRoom({ status: 'abandoned' }),
+        snapshot: makeSnapshot(makeView({ result: { playerId: null, reason: 'abandoned' } }), 13),
+      });
+      const socket = await enterTable(api, undefined, (pushSocket) => { pushSocket.autoAck = false; });
+      fireEvent.click(await screen.findByTestId('back-to-lobby'));
+      await waitFor(() => expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: {} }));
+      await sleep();
+      expect(api.callsOf('leaveRoom')).toHaveLength(0);
+      expect(screen.getByTestId('result-screen')).toBeTruthy();
+      act(() => socket.ack('r1'));
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+      await screen.findByTestId('create-room');
+    });
+
+    it('leaving a lobby sends the leave request only after the acknowledgement', async () => {
+      const api = createFakeApi({ room: makeRoom() });
+      const socket = new PushSocket();
+      socket.autoAck = false;
+      render(<App services={{ api, storage: memoryStorage(), languages: ['en'], socketFactory: () => socket }} />);
+      act(() => socket.open());
+      fireEvent.change(await screen.findByTestId('join-code'), { target: { value: 'ABC123' } });
+      fireEvent.click(screen.getByTestId('join-room'));
+      await screen.findByTestId('room-code');
+      await waitFor(() => expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: { roomId: 'r1' } }));
+      fireEvent.click(screen.getByTestId('leave-room'));
+      await waitFor(() => expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: {} }));
+      await sleep();
+      expect(api.callsOf('leaveRoom')).toHaveLength(0);
+      act(() => socket.ack('r1'));
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+      await screen.findByTestId('create-room');
+    });
+
+    it('still sends the leave request when the acknowledgement times out', async () => {
+      const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+      const socket = await enterTable(api, undefined, (pushSocket) => { pushSocket.autoAck = false; }, 60);
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-keep'));
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+      expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: {} });
+      await screen.findByTestId('resume-list');
+    });
+
+    it('sends the leave request straight away when there is no socket connection', async () => {
+      const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+      render(<App services={{ api, storage: memoryStorage(), languages: ['en'], connectSocket: false }} />);
+      fireEvent.change(await screen.findByTestId('join-code'), { target: { value: 'ABC123' } });
+      fireEvent.click(screen.getByTestId('join-room'));
+      await screen.findByTestId('board-svg', {}, { timeout: 8000 });
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-keep'));
+      await screen.findByTestId('resume-list');
+      expect(api.callsOf('leaveRoom')).toHaveLength(1);
+    });
+  });
+
+  describe('when the server still sees the player in the room (left: false)', () => {
+    const IGNORED: LeaveResult = { ok: true, data: { left: false, hostTransferredTo: null } };
+
+    it('a room leave stays put, restores the subscription and explains why', async () => {
+      const api = createFakeApi({
+        room: duoRoom({ status: 'abandoned' }),
+        snapshot: makeSnapshot(makeView({ result: { playerId: null, reason: 'abandoned' } }), 13),
+      });
+      api.leaveRoom = async (roomId: string) => {
+        api.calls.push({ method: 'leaveRoom', args: [roomId] });
+        return IGNORED;
+      };
+      const socket = await enterTable(api);
+      fireEvent.click(await screen.findByTestId('back-to-lobby'));
+      expect((await screen.findByTestId('toast')).textContent).toContain('still sees you in this room');
+      expect(screen.getByTestId('result-screen')).toBeTruthy();
+      expect(screen.queryByTestId('create-room')).toBeNull();
+      expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: { roomId: 'r1', gameId: 'g1' } });
+      // 標記已移除：伺服器的推送再次生效。
+      await act(async () => {
+        socket.push({ type: 'room', payload: duoRoom({ status: 'lobby', gameId: null }) });
+      });
+      expect(await screen.findByTestId('room-code')).toBeTruthy();
+    });
+
+    it('a lobby leave stays in the lobby', async () => {
+      const api = createFakeApi({ room: makeRoom() });
+      api.leaveRoom = async (roomId: string) => {
+        api.calls.push({ method: 'leaveRoom', args: [roomId] });
+        return IGNORED;
+      };
+      const socket = new PushSocket();
+      render(<App services={{ api, storage: memoryStorage(), languages: ['en'], socketFactory: () => socket }} />);
+      act(() => socket.open());
+      fireEvent.change(await screen.findByTestId('join-code'), { target: { value: 'ABC123' } });
+      fireEvent.click(screen.getByTestId('join-room'));
+      await screen.findByTestId('room-code');
+      fireEvent.click(screen.getByTestId('leave-room'));
+      expect((await screen.findByTestId('toast')).textContent).toContain('still sees you in this room');
+      expect(screen.getByTestId('room-code')).toBeTruthy();
+      await waitFor(() => expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: { roomId: 'r1' } }));
+    });
+
+    it('save and leave still goes home, with a toast that another connection is using the seat', async () => {
+      const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+      api.leaveRoom = async (roomId: string) => {
+        api.calls.push({ method: 'leaveRoom', args: [roomId] });
+        return IGNORED;
+      };
+      const socket = await enterTable(api);
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-keep'));
+      await screen.findByTestId('resume-list');
+      expect(screen.getByTestId('toast').textContent).toContain('still in use by another connection');
+      expect(api.callsOf('saveGame')).toHaveLength(1);
+      expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: {} });
+      await pushLate(socket, soloRoom());
+      expectHome();
+    });
+
+    it('withdrawing still goes home with the same toast', async () => {
+      const api = createFakeApi({ room: duoRoom(), snapshot: makeSnapshot(makeView()) });
+      api.leaveRoom = async (roomId: string) => {
+        api.calls.push({ method: 'leaveRoom', args: [roomId] });
+        return IGNORED;
+      };
+      await enterTable(api);
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-withdraw'));
+      fireEvent.click(screen.getByTestId('leave-withdraw-confirm'));
+      await screen.findByTestId('resume-list');
+      expect(screen.getByTestId('toast').textContent).toContain('still in use by another connection');
+    });
+
+    it('does not announce a host transfer for an ignored leave', async () => {
+      const api = createFakeApi({ room: duoRoom(), snapshot: makeSnapshot(makeView()) });
+      api.leaveRoom = async () => ({ ok: true, data: { left: false, hostTransferredTo: '小美' } });
+      await enterTable(api);
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-keep'));
+      await screen.findByTestId('resume-list');
+      expect(screen.queryByText(/Host role transferred/)).toBeNull();
+    });
   });
 
   it('does not unsubscribe while the table is still open', async () => {
