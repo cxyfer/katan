@@ -9,12 +9,16 @@
  *   「海盜在這個 hex」與「沒有海盜」的最佳航線價值差，所以繞得過去的海盜不扣分。
  * - 海盜現在擋住我時（差 > 0），移走它本身就有收益：每個不再擋住我的候選都加上這個差（`relief`），
  *   外框 `null` 只有這個收益加上微小的偏好，所以只在「擋住我、而且沒有更好的目標」時才會勝出。
+ * - 基準是現況：base 的強盜候選分數是「把強盜放在那裡的好壞」，並不含「把強盜移離目前的格子」的收益，
+ *   所以移海盜（強盜留在原處）要扣掉強盜目前壓在我身上的損失（base 評分套用在強盜所在的格子上），
+ *   以及海盜離開 P 之後放開的對手前線。否則強盜與海盜同時擋住我時，海盜會因為多了一項收益而佔便宜。
  *
  * 這裡的「航線」是自己用海域模型算的，沒有讀 SF-2a 的計畫（兩個切片並行開發）；兩者若日後漂移，
  * 以 SF-3 的 bench 為準再調。決定性：不讀事件、不消耗亂數；同分取候選順序在前者（hex 由小到大，null 最後）。
  */
 
 import { canPlay } from '../../base/cards.ts';
+import { robberCandidates } from '../../base/robber.ts';
 import type { BoardModel } from '../../board.ts';
 import { searchShips, shipEdgesOf, shipsLeft } from '../../sea.ts';
 import type { BanditTarget, BotModule, Scored, TurnContext } from '../types.ts';
@@ -43,6 +47,17 @@ function leadFactor(turn: TurnContext, ownerScore: number): number {
   return (
     1 + 0.35 * Math.max(0, ownerScore - turn.me.publicScore) + (ownerScore >= turn.view.victoryTarget - 3 ? 0.8 : 0)
   );
+}
+
+/**
+ * base 強盜評分套用在強盜目前所在的格子上的分數（base 的候選會跳過這一格）：負值代表強盜壓著自己的建築，
+ * 移走它有收益；正值代表它正壓著對手。以同一個公式計算，只是把強盜暫時看成不在任何格子上。
+ */
+function robberScoreHere(turn: TurnContext): number {
+  const { view } = turn;
+  const here = view.board.robber;
+  const away = Object.create(turn, { view: { value: { ...view, board: { ...view.board, robber: -1 } } } }) as TurnContext;
+  return robberCandidates(away).find((candidate) => candidate.item === here)?.score ?? 0;
 }
 
 /** 海盜移到 `hex`（null 是外框）的盤面；其餘不變。 */
@@ -113,21 +128,28 @@ function pirateOptions(turn: TurnContext): PirateOption[] {
     .filter((player) => player.id !== ctx.selfId)
     .map((player) => ({ lead: leadFactor(turn, player.publicScore), edges: frontier(free, player.id) }))
     .filter((front) => front.edges.size > 0);
+  const frontValue = (hex: number): number => {
+    let value = 0;
+    for (const front of fronts) {
+      let touching = 0;
+      for (const edge of front.edges) if (model.topo.edges[edge]!.hexes.includes(hex)) touching += 1;
+      value += FRONT_VALUE * Math.min(touching, FRONT_CAP) * front.lead;
+    }
+    return value;
+  };
+  // 現況的基準（見檔頭）：強盜留在原處，海盜離開 P 放開 P 封鎖的對手前線。
+  const pirateHere = view.board.pirate;
+  const baseline = robberScoreHere(turn) - (pirateHere === null ? 0 : frontValue(pirateHere));
   const options: PirateOption[] = [];
   for (const target of targets) {
     if (target === null) {
-      if (unblock > 0) options.push({ target, score: unblock + NULL_BONUS, relief: unblock });
+      if (unblock > 0) options.push({ target, score: unblock + NULL_BONUS + baseline, relief: unblock });
       continue;
     }
     const stealable = stealableHand(turn, target);
-    let score = stealable > 0 ? 1.5 + 0.25 * Math.min(stealable, 8) : 0;
-    for (const front of fronts) {
-      let touching = 0;
-      for (const edge of front.edges) if (model.topo.edges[edge]!.hexes.includes(target)) touching += 1;
-      score += FRONT_VALUE * Math.min(touching, FRONT_CAP) * front.lead;
-    }
+    const raid = stealable > 0 ? 1.5 + 0.25 * Math.min(stealable, 8) : 0;
     const loss = best - routeValue(withPirate(model, target), sites, depth);
-    options.push({ target, score: score - loss + unblock, relief: unblock - loss });
+    options.push({ target, score: raid + frontValue(target) - loss + unblock + baseline, relief: unblock - loss });
   }
   return options;
 }
@@ -141,6 +163,7 @@ export const seafarersBanditCandidates: NonNullable<BotModule['banditCandidates'
 /**
  * 海盜擋住我的航線，而且有一個移法能解除它時，打騎士把海盜移走（base 的騎士條件不成立時才會被挑）。
  * 目標只在海盜的選擇裡挑（強盜解決不了這個問題），取分數最高者，同分取前面的。easy 同 base。
+ * 強盜壓著自己的建築時由 base 的騎士條件先決定（被擋 ≥3 點），而且它的目標評分已含上述基準，所以這裡不另外比較。
  */
 export const seafarersPreroll: NonNullable<BotModule['preroll']> = (turn) => {
   if (turn.level === 'easy' || !canPlay(turn, 'knight')) return [];
