@@ -185,3 +185,29 @@ export const PLAYER_NOTES: readonly PlayerNote[] = [
 
 /** 最新一則公告；紀錄為空時為 `null`。 */
 export const LATEST_PLAYER_NOTE: PlayerNote | null = PLAYER_NOTES[0] ?? null;
+
+function parseStableVersion(version: string): [number, number, number] | null {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+}
+
+/** 比較兩個 `X.Y.Z` 版號，回傳正負號；任一方無法解析時回傳 `null`。 */
+export function compareStableVersions(a: string, b: string): number | null {
+  const [x, y] = [parseStableVersion(a), parseStableVersion(b)];
+  if (!x || !y) return null;
+  for (let i = 0; i < 3; i += 1) if (x[i] !== y[i]) return x[i]! - y[i]!;
+  return 0;
+}
+
+/**
+ * 公告是否比這個瀏覽器看過的版號更新。
+ *
+ * 已讀版號只往前推：站台回滾到較舊的版本時，看過更新公告的玩家不會再看到
+ * 「新」，也不會把已讀版號寫回舊版，重新部署新版時不會再次標示。
+ * 讀不到或無法解析的已讀紀錄視為從未看過。
+ */
+export function isNoteUnread(note: PlayerNote, seen: string | null): boolean {
+  if (seen === null) return true;
+  const order = compareStableVersions(note.version, seen);
+  return order === null || order > 0;
+}

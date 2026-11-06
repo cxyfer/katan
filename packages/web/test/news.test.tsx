@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { App } from '../src/App.tsx';
 import { SUPPORTED_LOCALES } from '../src/i18n/index.ts';
-import { LATEST_PLAYER_NOTE, PLAYER_NOTES } from '../src/news/player-notes.ts';
+import { compareStableVersions, isNoteUnread, LATEST_PLAYER_NOTE, PLAYER_NOTES, type PlayerNote } from '../src/news/player-notes.ts';
 import { memoryStorage, NEWS_SEEN_KEY, type StorageLike } from '../src/state/session.ts';
 import { createFakeApi } from '../src/test/fake-api.ts';
 
@@ -58,6 +58,27 @@ describe('player notes contract', () => {
   });
 });
 
+describe('seen-version watermark', () => {
+  const note = (version: string): PlayerNote => ({ version, date: '2026-01-01', title: { en: 'x', 'zh-Hant': 'x' }, items: [] });
+
+  it('compares stable versions numerically and rejects anything else', () => {
+    expect(compareStableVersions('0.10.0', '0.9.9')).toBeGreaterThan(0);
+    expect(compareStableVersions('0.4.0', '0.4.0')).toBe(0);
+    expect(compareStableVersions('0.4.0', '1.0.0')).toBeLessThan(0);
+    expect(compareStableVersions('0.5.0-rc.1', '0.4.0')).toBeNull();
+    expect(compareStableVersions('garbage', '0.4.0')).toBeNull();
+  });
+
+  it('flags only a note newer than the stored version', () => {
+    expect(isNoteUnread(note('0.4.0'), null)).toBe(true);
+    expect(isNoteUnread(note('0.4.0'), '0.3.0')).toBe(true);
+    expect(isNoteUnread(note('0.4.0'), '0.4.0')).toBe(false);
+    // 站台回滾：看過 0.5.0 的玩家不會把 0.4.0 當成新公告。
+    expect(isNoteUnread(note('0.4.0'), '0.5.0')).toBe(false);
+    expect(isNoteUnread(note('0.4.0'), 'corrupt')).toBe(true);
+  });
+});
+
 function renderHome(storage: StorageLike) {
   return render(
     <App services={{ api: createFakeApi(), storage, languages: ['en'], connectSocket: false }} />,
@@ -87,6 +108,17 @@ describe('home notice board', () => {
     renderHome(memoryStorage({ [NEWS_SEEN_KEY]: LATEST_PLAYER_NOTE!.version }));
     await screen.findByRole('tab', { name: /notice board/i });
     expect(screen.queryByTestId('news-unread')).toBeNull();
+  });
+
+  it('keeps a newer seen version after a rollback instead of rewinding it', async () => {
+    const [major, minor] = LATEST_PLAYER_NOTE!.version.split('.').map(Number);
+    const future = `${major}.${minor! + 1}.0`;
+    const storage = memoryStorage({ [NEWS_SEEN_KEY]: future });
+    renderHome(storage);
+    fireEvent.click(await screen.findByRole('tab', { name: /notice board/i }));
+    await screen.findByRole('tabpanel', { name: /notice board/i });
+    expect(screen.queryByTestId('news-unread')).toBeNull();
+    expect(storage.getItem(NEWS_SEEN_KEY)).toBe(future);
   });
 
   it('renders the notes in Traditional Chinese', async () => {

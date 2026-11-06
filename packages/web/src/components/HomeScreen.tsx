@@ -3,7 +3,7 @@ import { GAME_ORDER_MODES, type GameOrderMode } from '@catan/protocol';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { SoundSettings } from './SoundSettings.tsx';
 import { NewsBoard } from './NewsBoard.tsx';
-import { LATEST_PLAYER_NOTE, PLAYER_NOTES } from '../news/player-notes.ts';
+import { isNoteUnread, LATEST_PLAYER_NOTE, PLAYER_NOTES } from '../news/player-notes.ts';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatDateTime } from '../i18n/format.ts';
@@ -48,13 +48,13 @@ export function HomeScreen({ controller }: ScreenProps) {
 
   const paneIcon: Record<HomePane, string> = { table: 'flag', resume: 'anchor', rooms: 'globe', news: 'sparkles', identity: 'settings' };
   const paneCount: Partial<Record<HomePane, number>> = { resume: state.games.length, rooms: state.rooms.length };
-  // 公告牌：最新一則還沒在這個瀏覽器看過時，在分頁上標示「新」。
+  // 公告牌：最新一則比這個瀏覽器看過的版號更新時，在分頁上標示「新」。
   const latestNote = LATEST_PLAYER_NOTE;
-  const newsUnread = latestNote !== null && state.newsSeen !== latestNote.version;
+  const newsUnread = latestNote !== null && isNoteUnread(latestNote, state.newsSeen);
   const paneHint = (pane: HomePane) =>
     pane === 'news' && latestNote ? `v${latestNote.version} · ${latestNote.title[locale]}` : t(`home.paneHint.${pane}`);
 
-  // 開啟公告牌即視為已讀；離開首頁再回來也不會重複標示。
+  // 開啟公告牌即視為已讀；只在未讀時寫入，已讀版號因此不會倒退。
   useEffect(() => {
     if (homePane === 'news' && newsUnread && latestNote) actions.markNewsSeen(latestNote.version);
   }, [homePane, newsUnread, latestNote, actions.markNewsSeen]);
