@@ -52,6 +52,7 @@ import {
   type GameSyncBoundary,
   type GameSyncCause,
   type DevCardChoice,
+  type SaveState,
   type Selection,
   type TableAction,
   type TableState,
@@ -539,21 +540,52 @@ export function useTable(options: UseTableOptions): TableController {
     }
   }, [api, applyRoom, dispatch, openGame]);
 
-  /**
-   * 離開牌桌的本地清理：記下已離開的房與局、清空 id 與畫面狀態並回首頁。
-   * room 與 snapshot 都歸零後，訂閱 effect 會取消 WebSocket 訂閱；回傳離開的房間 id。
-   */
-  const clearTable = useCallback((): string | null => {
+  /** 目前牌桌的房間與對局 id（離開流程用來記錄與還原）。 */
+  const currentTableIds = useCallback((): { roomId: string | null; gameId: string | null } => {
     const current = stateRef.current;
-    const roomId = roomIdRef.current ?? current.room?.id ?? current.game?.roomId ?? null;
-    const gameId = gameIdRef.current ?? current.game?.gameId ?? current.room?.gameId ?? null;
-    departedRef.current = { roomId, gameId };
+    return {
+      roomId: roomIdRef.current ?? current.room?.id ?? current.game?.roomId ?? null,
+      gameId: gameIdRef.current ?? current.game?.gameId ?? current.room?.gameId ?? null,
+    };
+  }, []);
+
+  /**
+   * 離開流程的第一步：記下已離開的房與局（之後的推送一律忽略），並立刻取消訂閱。
+   * 畫面與本地狀態先不動：必須等伺服器處理完 `/leave`，使用者才可能從首頁重新進入，
+   * 否則遲到的 `/leave` 會把剛重新連線的座位又標成離線（SPEC §4.6）。回傳先前的標記供失敗時還原。
+   */
+  const beginDeparture = useCallback(
+    (ids: { roomId: string | null; gameId: string | null }) => {
+      const previous = departedRef.current;
+      departedRef.current = ids;
+      socketRef.current?.unsubscribe();
+      return previous;
+    },
+    [],
+  );
+
+  /** `/leave` 失敗且要留在原畫面：移除標記並重新訂閱原房間，伺服器會再推送最新狀態。 */
+  const abortDeparture = useCallback(
+    (previous: { roomId: string | null; gameId: string | null } | null): void => {
+      departedRef.current = previous;
+      const { roomId, gameId } = currentTableIds();
+      if (roomId || gameId) {
+        socketRef.current?.subscribe({
+          ...(roomId ? { roomId } : {}),
+          ...(gameId ? { gameId } : {}),
+        });
+      }
+    },
+    [currentTableIds],
+  );
+
+  /** 離開牌桌的本地清理：清空 id 與畫面狀態並回首頁（訂閱 effect 隨之確認已取消訂閱）。 */
+  const clearTable = useCallback((): void => {
     roomIdRef.current = null;
     gameIdRef.current = null;
     dispatch({ type: 'room', room: null });
     dispatch({ type: 'snapshot', snapshot: null });
     dispatch({ type: 'screen', screen: 'home' });
-    return roomId;
   }, [dispatch]);
 
   const announceHostTransfer = useCallback(
@@ -564,34 +596,54 @@ export function useTable(options: UseTableOptions): TableController {
     [dispatch],
   );
 
+  const refreshResumable = useCallback(async (): Promise<void> => {
+    const games = await api.listGames();
+    if (games.ok) dispatch({ type: 'games', games: games.data.games });
+  }, [api, dispatch]);
+
   const leaveRoom = useCallback(async (): Promise<void> => {
     const roomId = roomIdRef.current;
     if (!roomId) return;
+    const previous = beginDeparture(currentTableIds());
     const result = await api.leaveRoom(roomId);
     if (result.ok) {
       announceHostTransfer(result.data.hostTransferredTo);
       clearTable();
-      const games = await api.listGames();
-      if (games.ok) dispatch({ type: 'games', games: games.data.games });
+      await refreshResumable();
     } else {
+      // 還沒離開成功：留在原畫面，恢復訂閱，讓使用者可以重試。
+      abortDeparture(previous);
       dispatch({ type: 'toast', notice: noticeFrom(result.error) });
     }
-  }, [api, dispatch, announceHostTransfer, clearTable]);
+  }, [api, dispatch, announceHostTransfer, beginDeparture, abortDeparture, clearTable, currentTableIds, refreshResumable]);
+
+  /** 進行中的「保存並離開／退出」離開流程；重複觸發時共用同一個。 */
+  const leavingRef = useRef<Promise<void> | null>(null);
 
   /**
-   * 保存並離開、退出之後回首頁（SPEC §4.6：刻意離開，座位保留）。先清本地狀態讓訂閱取消、
-   * 遲到的推送不會把畫面拉回牌桌，再請伺服器標記離線並在需要時移轉房主。
+   * 保存並離開、退出之後回首頁（SPEC §4.6：刻意離開，座位保留）。先取消訂閱並忽略該房的推送，
+   * 等 `/leave` 完成（不論成敗，存檔或退出都已成功）才清掉牌桌回首頁，所以使用者不可能在
+   * `/leave` 完成前從首頁重新進入；失敗只以 toast 提示。
    */
-  const leaveToHome = useCallback(async (): Promise<void> => {
-    const roomId = clearTable();
-    if (roomId) {
-      const result = await api.leaveRoom(roomId);
-      if (result.ok) announceHostTransfer(result.data.hostTransferredTo);
-      else dispatch({ type: 'toast', notice: noticeFrom(result.error) });
-    }
-    const games = await api.listGames();
-    if (games.ok) dispatch({ type: 'games', games: games.data.games });
-  }, [api, dispatch, announceHostTransfer, clearTable]);
+  const leaveToHome = useCallback((): Promise<void> => {
+    if (leavingRef.current) return leavingRef.current;
+    const run = async (): Promise<void> => {
+      const ids = currentTableIds();
+      beginDeparture(ids);
+      if (ids.roomId) {
+        const result = await api.leaveRoom(ids.roomId);
+        if (result.ok) announceHostTransfer(result.data.hostTransferredTo);
+        else dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+      }
+      clearTable();
+      await refreshResumable();
+    };
+    const pending = run().finally(() => {
+      leavingRef.current = null;
+    });
+    leavingRef.current = pending;
+    return pending;
+  }, [api, dispatch, announceHostTransfer, beginDeparture, clearTable, currentTableIds, refreshResumable]);
 
   const closeRoom = useCallback(async (): Promise<void> => {
     const roomId = roomIdRef.current;
@@ -723,21 +775,20 @@ export function useTable(options: UseTableOptions): TableController {
 
   const saveGame = useCallback(async (): Promise<void> => {
     const gameId = gameIdRef.current;
-    if (!gameId) return;
+    if (!gameId || leavingRef.current) return;
     const requestId = newRequestId();
     dispatch({ type: 'save', state: { status: 'pending', requestId } });
     const result = await api.saveGame(gameId, requestId);
     if (result.ok && result.data.outcome === 'saved') {
-      dispatch({
-        type: 'save',
-        state: {
-          status: 'saved',
-          requestId,
-          savedAt: result.data.savedAt,
-          revision: result.data.revision,
-        },
-      });
+      const saved: SaveState = {
+        status: 'saved',
+        requestId,
+        savedAt: result.data.savedAt,
+        revision: result.data.revision,
+      };
+      // 存檔已確認，但離開要等 `/leave` 完成；這段期間維持「保存中」，按鈕保持停用。
       await leaveToHome();
+      dispatch({ type: 'save', state: saved });
     } else {
       const error = result.ok ? (result.data.error ?? null) : noticeFrom(result.error);
       dispatch({ type: 'save', state: { status: 'failed', requestId, error } });
@@ -808,7 +859,7 @@ export function useTable(options: UseTableOptions): TableController {
   const setWithdrawn = useCallback(
     async (withdrawn: boolean): Promise<boolean> => {
       const gameId = gameIdRef.current;
-      if (!gameId) return false;
+      if (!gameId || leavingRef.current) return false;
       const result = await api.withdrawGame(gameId, withdrawn);
       if (!result.ok) {
         dispatch({ type: 'toast', notice: noticeFrom(result.error) });

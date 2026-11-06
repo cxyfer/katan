@@ -1,4 +1,5 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import type { AbandonProposalView, RoomView } from '@catan/protocol';
 import { useLocale, useT } from '../i18n/context.tsx';
 import {
   abandonmentAllowed,
@@ -63,38 +64,8 @@ export function AbandonPanel({ controller, onPropose }: {
         </section>
       )}
 
-      {proposal && (() => {
-        const voting = mustVote(room, proposal, selfId);
-        const waiting = awaitingConsent(room, proposal);
-        const youAgreed = selfId !== null && proposal.consents.includes(selfId);
-        const absentNames = joinNames(locale, proposal.absent.map((playerId) => nicknameOf(room, playerId)));
-        return (
-          <section className={`prompt abandon-panel${voting ? ' prompt--mine' : ''}`} aria-labelledby={`${id}-vote`} data-testid="abandon-proposal">
-            <h2 id={`${id}-vote`}>{t('play.abandon.vote.title')}</h2>
-            <p data-testid="abandon-summary">
-              {t('play.abandon.vote.body', { proposer: nicknameOf(room, proposal.proposedBy), players: absentNames })}
-            </p>
-            <p className="muted">{t('play.abandon.vote.note')}</p>
-            {voting ? (
-              <div className="abandon-panel__actions">
-                <button type="button" className="button button--primary" data-testid="abandon-approve" disabled={busy}
-                  onClick={() => void guard(() => actions.respondAbandon(proposal.id, true))}>
-                  {t('play.abandon.approve')}
-                </button>
-                <button type="button" className="button" data-testid="abandon-reject" disabled={busy}
-                  onClick={() => void guard(() => actions.respondAbandon(proposal.id, false))}>
-                  {t('play.abandon.reject')}
-                </button>
-              </div>
-            ) : (youAgreed || waiting.length > 0) && (
-              <p className="muted" data-testid="abandon-waiting">
-                {youAgreed && <>{t('play.abandon.youAgreed')} </>}
-                {waiting.length > 0 && t('play.abandon.waiting', { players: joinNames(locale, waiting.map((member) => member.nickname)) })}
-              </p>
-            )}
-          </section>
-        );
-      })()}
+      {/* 換了一個提案就重新開始：不帶著上一個提案的確認狀態。 */}
+      {proposal && <VoteBanner key={proposal.id} controller={controller} room={room} proposal={proposal} />}
 
       {showHint && (
         <section className="prompt abandon-panel" aria-labelledby={`${id}-hint`} data-testid="withdrawn-hint">
@@ -106,5 +77,111 @@ export function AbandonPanel({ controller, onPropose }: {
         </section>
       )}
     </>
+  );
+}
+
+/**
+ * 進行中的結束對局投票。「同意」可能是最後一票、一按就永久結束對局，所以和自己發起結束時一樣
+ * 要再確認一次（行內，不開對話框）；「拒絕」只會取消提案，維持一步。
+ */
+function VoteBanner({ controller, room, proposal }: {
+  controller: TableController;
+  room: RoomView;
+  proposal: AbandonProposalView;
+}) {
+  const t = useT();
+  const locale = useLocale();
+  const id = useId();
+  const { state, actions } = controller;
+  const selfId = state.session?.id ?? null;
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const approveRef = useRef<HTMLButtonElement>(null);
+  // 只有確認步驟「開啟之後」才移動焦點，初次渲染不搶焦點。
+  const wasConfirming = useRef(false);
+
+  const voting = mustVote(room, proposal, selfId);
+  const waiting = awaitingConsent(room, proposal);
+  const youAgreed = selfId !== null && proposal.consents.includes(selfId);
+  // 還沒同意的人只剩自己：這一票會立刻結束對局。
+  const lastVote = waiting.length === 1 && waiting[0]!.playerId === selfId;
+  const absentNames = joinNames(locale, proposal.absent.map((playerId) => nicknameOf(room, playerId)));
+  const showConfirm = confirming && voting;
+
+  useEffect(() => {
+    if (showConfirm) {
+      confirmRef.current?.focus();
+      wasConfirming.current = true;
+    } else if (wasConfirming.current) {
+      wasConfirming.current = false;
+      approveRef.current?.focus();
+    }
+  }, [showConfirm]);
+
+  const send = async (approve: boolean) => {
+    setBusy(true);
+    try {
+      await actions.respondAbandon(proposal.id, approve);
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <section className={`prompt abandon-panel${voting ? ' prompt--mine' : ''}`} aria-labelledby={`${id}-vote`} data-testid="abandon-proposal">
+      <h2 id={`${id}-vote`}>{t('play.abandon.vote.title')}</h2>
+      <p data-testid="abandon-summary">
+        {t('play.abandon.vote.body', { proposer: nicknameOf(room, proposal.proposedBy), players: absentNames })}
+      </p>
+      <p className="muted">{t('play.abandon.vote.note')}</p>
+      {showConfirm ? (
+        <div
+          className="abandon-panel__confirm"
+          ref={confirmRef}
+          tabIndex={-1}
+          role="group"
+          aria-label={t('play.abandon.confirm.title')}
+          data-testid="abandon-approve-step"
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return;
+            // 只收起確認步驟，不讓 Escape 傳到牌桌的其他處理器。
+            event.stopPropagation();
+            setConfirming(false);
+          }}
+        >
+          <p data-testid="abandon-approve-warning">
+            {t(lastVote ? 'play.abandon.confirm.last' : 'play.abandon.confirm.others')}
+          </p>
+          <div className="abandon-panel__actions">
+            <button type="button" className="button button--primary leave-danger" data-testid="abandon-approve-confirm" disabled={busy}
+              onClick={() => void send(true)}>
+              {t('play.abandon.confirm.submit')}
+            </button>
+            <button type="button" className="button" data-testid="abandon-approve-back" disabled={busy}
+              onClick={() => setConfirming(false)}>
+              {t('app.back')}
+            </button>
+          </div>
+        </div>
+      ) : voting ? (
+        <div className="abandon-panel__actions">
+          <button type="button" className="button button--primary" data-testid="abandon-approve" ref={approveRef} disabled={busy}
+            onClick={() => setConfirming(true)}>
+            {t('play.abandon.approve')}
+          </button>
+          <button type="button" className="button" data-testid="abandon-reject" disabled={busy}
+            onClick={() => void send(false)}>
+            {t('play.abandon.reject')}
+          </button>
+        </div>
+      ) : (youAgreed || waiting.length > 0) && (
+        <p className="muted" data-testid="abandon-waiting">
+          {youAgreed && <>{t('play.abandon.youAgreed')} </>}
+          {waiting.length > 0 && t('play.abandon.waiting', { players: joinNames(locale, waiting.map((member) => member.nickname)) })}
+        </p>
+      )}
+    </section>
   );
 }

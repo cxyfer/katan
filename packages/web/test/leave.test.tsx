@@ -76,6 +76,22 @@ function trioRoom(overrides: Partial<RoomView> = {}): RoomView {
   });
 }
 
+/** 四位真人：自己、p2 與 p4（在線）、p3（離線，缺席）；自己不是最後一票。 */
+function quadRoom(overrides: Partial<RoomView> = {}): RoomView {
+  const base = trioRoom();
+  return makeRoom({
+    ...base,
+    members: [...base.members, makeMember({ playerId: 'p4', nickname: 'Cy', seat: 3, color: 'white', ...HUMAN })],
+    ...overrides,
+  });
+}
+
+/** 按「同意結束」只會進入行內確認；回傳確認區塊。 */
+function startApprove(): HTMLElement {
+  fireEvent.click(screen.getByTestId('abandon-approve'));
+  return screen.getByTestId('abandon-approve-step');
+}
+
 function renderApp(api: FakeApi, languages: readonly string[] = ['en']) {
   return render(<App services={{ api, storage: memoryStorage(), languages, connectSocket: false }} />);
 }
@@ -396,15 +412,61 @@ describe('leaving a table with other people', () => {
 });
 
 describe('abandonment vote banner', () => {
-  it('lets a voter approve, naming the proposer and the absent players', async () => {
+  it('names the proposer and the absent players, and approving only asks for confirmation first', async () => {
     const api = createFakeApi({ room: trioRoom({ pendingAbandon: pendingAbandon() }), snapshot: makeSnapshot(makeView()) });
     await enterTable(api);
     const banner = screen.getByTestId('abandon-proposal');
     expect(within(banner).getByTestId('abandon-summary').textContent).toContain('小美 proposed ending this saved game with no winner');
     expect(within(banner).getByTestId('abandon-summary').textContent).toContain('Absent or withdrawn: Bo');
-    fireEvent.click(screen.getByTestId('abandon-approve'));
+    const step = startApprove();
+    // 第一下不送出，投票按鈕換成確認區塊。
+    expect(api.callsOf('abandonGame')).toHaveLength(0);
+    expect(screen.queryByTestId('abandon-approve')).toBeNull();
+    expect(screen.queryByTestId('abandon-reject')).toBeNull();
+    expect(document.activeElement).toBe(step);
+    fireEvent.click(screen.getByTestId('abandon-approve-confirm'));
     await waitFor(() => expect(api.callsOf('abandonGame')).toHaveLength(1));
     expect(api.callsOf('abandonGame')[0]!.args).toEqual(['g1', { proposalId: 'ab1', approve: true }]);
+  });
+
+  it('warns that the viewer’s agreement ends the game at once when it is the last vote', async () => {
+    const api = createFakeApi({ room: trioRoom({ pendingAbandon: pendingAbandon() }), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    startApprove();
+    const warning = screen.getByTestId('abandon-approve-warning').textContent!;
+    expect(warning).toContain('Your agreement ends the game at once');
+    expect(warning).toContain('no winner');
+    expect(warning).toContain('cannot be continued');
+  });
+
+  it('explains the conditional ending when others have not agreed yet', async () => {
+    const api = createFakeApi({ room: quadRoom({ pendingAbandon: pendingAbandon() }), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    startApprove();
+    const warning = screen.getByTestId('abandon-approve-warning').textContent!;
+    expect(warning).toContain('If everyone else has agreed too, the game ends at once with no winner');
+    expect(warning).not.toContain('Your agreement ends the game at once');
+  });
+
+  it('goes back from the confirmation without sending and restores focus to the approve button', async () => {
+    const api = createFakeApi({ room: trioRoom({ pendingAbandon: pendingAbandon() }), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    startApprove();
+    fireEvent.click(screen.getByTestId('abandon-approve-back'));
+    expect(api.callsOf('abandonGame')).toHaveLength(0);
+    expect(screen.queryByTestId('abandon-approve-step')).toBeNull();
+    expect(screen.getByTestId('abandon-reject')).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId('abandon-approve')));
+  });
+
+  it('closes the confirmation with Escape without sending', async () => {
+    const api = createFakeApi({ room: trioRoom({ pendingAbandon: pendingAbandon() }), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    const step = startApprove();
+    fireEvent.keyDown(step, { key: 'Escape' });
+    expect(screen.queryByTestId('abandon-approve-step')).toBeNull();
+    expect(api.callsOf('abandonGame')).toHaveLength(0);
+    expect(screen.getByTestId('abandon-approve')).toBeTruthy();
   });
 
   it('lets a voter decline', async () => {
@@ -424,7 +486,8 @@ describe('abandonment vote banner', () => {
     await enterTable(api);
     api.setRoom(trioRoom({ status: 'abandoned' }));
     api.setSnapshot(abandonedSnapshot());
-    fireEvent.click(screen.getByTestId('abandon-approve'));
+    startApprove();
+    fireEvent.click(screen.getByTestId('abandon-approve-confirm'));
     expect(await screen.findByTestId('result-no-winner')).toBeTruthy();
   });
 
@@ -438,7 +501,8 @@ describe('abandonment vote banner', () => {
     const roomFetches = api.callsOf('getRoom').length;
     // 提案在伺服器端已被取消（例如有人撤回退出）。
     api.setRoom(trioRoom());
-    fireEvent.click(screen.getByTestId('abandon-approve'));
+    startApprove();
+    fireEvent.click(screen.getByTestId('abandon-approve-confirm'));
     expect((await screen.findByTestId('toast')).textContent).toContain('The vote to end the game was cancelled.');
     await waitFor(() => expect(screen.queryByTestId('abandon-proposal')).toBeNull());
     expect(api.callsOf('getRoom').length).toBeGreaterThan(roomFetches);
@@ -481,6 +545,9 @@ describe('abandonment vote banner', () => {
     expect(screen.getByTestId('abandon-approve').textContent).toBe('同意結束');
     expect(screen.getByTestId('abandon-reject').textContent).toBe('拒絕');
     expect(screen.getByTestId('abandon-summary').textContent).toContain('缺席或已退出：Bo');
+    startApprove();
+    expect(screen.getByTestId('abandon-approve-warning').textContent).toContain('你的同意會立即結束對局');
+    expect(screen.getByTestId('abandon-approve-confirm').textContent).toBe('確認結束');
   });
 });
 

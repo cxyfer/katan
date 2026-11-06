@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocale, useT } from '../i18n/context.tsx';
 import {
   abandonmentAllowed,
@@ -60,12 +60,20 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
     stepRef.current?.focus();
   }, [step]);
 
+  // 保存並離開、退出要等伺服器處理完離開才會換畫面；這段期間不能關掉對話框或再按其他選項。
+  const busyRef = useRef(false);
   const run = async (action: () => Promise<boolean>) => {
     setBusy(true);
+    busyRef.current = true;
     const succeeded = await action();
+    busyRef.current = false;
     setBusy(false);
     if (succeeded) onClose();
   };
+  const guardedClose = useCallback(() => {
+    if (!busyRef.current) onClose();
+  }, [onClose]);
+  const working = busy || saving;
 
   const cancel = (
     <button type="button" className="button button--ghost" data-testid="leave-cancel" disabled={busy} onClick={onClose}>
@@ -77,13 +85,17 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
       {t('app.back')}
     </button>
   );
+  const workingNote = working && (
+    <p className="muted" role="status" data-testid="leave-working">{t('play.leave.working')}</p>
+  );
   const saveFailed = state.save.status === 'failed' && (
     <p className="error" role="alert" data-testid="leave-save-failed">{t('play.saveFailed')}</p>
   );
   const keepButton = (label: string, help: string, primary = true) => (
     <div className="leave-option">
       <button type="button" className={primary ? 'button button--primary' : 'button'} data-testid="leave-keep"
-        aria-describedby="leave-keep-help" disabled={busy || saving} onClick={() => void actions.saveGame()}>
+        aria-describedby="leave-keep-help" disabled={working}
+        onClick={() => void run(async () => { await actions.saveGame(); return false; })}>
         <GameIcon name="anchor" />{saving ? t('play.savePending') : label}
       </button>
       <p className="muted" id="leave-keep-help">{help}</p>
@@ -96,6 +108,7 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
       <div className="leave-step" ref={stepRef} tabIndex={-1} data-testid="leave-confirm-end" aria-labelledby="leave-end-heading">
         <h3 id="leave-end-heading">{t('play.leave.confirmEnd.heading')}</h3>
         <p>{solo ? t('play.leave.confirmEnd.solo') : t('play.leave.confirmEnd.multi', { players: absentNames })}</p>
+        {workingNote}
         <div className="form-actions">
           <button type="button" className="button button--primary leave-danger" data-testid="leave-end-confirm" disabled={busy}
             onClick={() => void run(() => actions.endGame())}>
@@ -111,6 +124,7 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
         <h3 id="leave-withdraw-heading">{t('play.leave.confirmWithdraw.heading')}</h3>
         <p>{t('play.leave.confirmWithdraw.body')}</p>
         {allowed && <p className="muted">{t('play.leave.withdrawEndsWhenAll')}</p>}
+        {workingNote}
         <div className="form-actions">
           <button type="button" className="button button--primary leave-danger" data-testid="leave-withdraw-confirm" disabled={busy}
             onClick={() => void run(() => actions.withdrawGame())}>
@@ -134,6 +148,7 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
             {allowed ? t('play.leave.endSoloHelp') : t('play.leave.endDisabled')}
           </p>
         </div>
+        {workingNote}
         {saveFailed}
         <div className="form-actions">{cancel}</div>
       </div>
@@ -150,6 +165,7 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
           <p className="muted" id="leave-return-help">{t('play.leave.returnHelp')}</p>
         </div>
         {keepButton(t('play.saveAndLeave'), t('play.leave.keepMultiHelp'), false)}
+        {workingNote}
         {saveFailed}
         <div className="form-actions">{cancel}</div>
       </div>
@@ -177,6 +193,7 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
             <p className="muted" id="leave-propose-help">{t('play.leave.proposeEndHelp', { players: absentNames })}</p>
           </div>
         )}
+        {workingNote}
         {saveFailed}
         <div className="form-actions">{cancel}</div>
       </div>
@@ -184,7 +201,7 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
   }
 
   return (
-    <Dialog title={t('play.leave.title')} onClose={onClose} testId="leave-dialog">
+    <Dialog title={t('play.leave.title')} onClose={guardedClose} testId="leave-dialog">
       {body}
     </Dialog>
   );
