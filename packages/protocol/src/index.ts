@@ -226,6 +226,11 @@ export interface RoomView {
   pendingPolicy: PolicyProposalView | null;
   /** 進行中對局的 open 放棄提案；沒有提案或沒有對局時為 null。 */
   pendingAbandon?: AbandonProposalView | null;
+  /**
+   * 檢視者在這個房間目前的進房世代（每次 HTTP join 或 socket 訂閱都會變大）。
+   * 沒有 `unsubscribed` 確認可用時，離開請求以它當備援。只在有檢視者時出現。
+   */
+  viewerEntryEpoch?: number;
 }
 
 /** 放棄（無勝者終局）提案：同意者與缺席者，供確認畫面點名（§4.6）。 */
@@ -258,6 +263,17 @@ export interface AbandonConsentResult {
 export interface LeaveRoomResult {
   left: boolean;
   hostTransferredTo: string | null;
+  /**
+   * 只在 `left: false` 時出現：`present` 同一身分在該房仍有 live 訂閱連線；
+   * `stale` 請求帶的 `entryEpoch` 比目前的進房世代舊（離開之後又重新進入）。
+   */
+  reason?: 'present' | 'stale';
+}
+
+/** `POST /api/rooms/:roomId/leave` 的選用 body。 */
+export interface LeaveRoomRequest {
+  /** 取自 `unsubscribed` 確認或 `RoomView.viewerEntryEpoch`；比目前世代舊就不離開。 */
+  entryEpoch?: number;
 }
 
 /** `POST /api/games/:gameId/withdraw` 的回應。 */
@@ -420,8 +436,12 @@ export type ServerMessage =
   | { type: 'notice'; payload: Notice }
   | { type: 'error'; payload: Notice & { code: string } }
   | { type: 'pong'; payload: { at: string } }
-  /** 取消訂閱（`subscribe` 不帶 `roomId`）處理完成後的確認；未訂閱時 `roomId` 為 null。 */
-  | { type: 'unsubscribed'; payload: { roomId: string | null } };
+  /**
+   * 取消訂閱（`subscribe` 不帶 `roomId`）處理完成後的確認；未訂閱時 `roomId` 與
+   * `entryEpoch` 都是 null。`entryEpoch` 是這個身分在該房「目前」的進房世代，
+   * 離開時帶回 `POST /api/rooms/:roomId/leave` 的 body。
+   */
+  | { type: 'unsubscribed'; payload: { roomId: string | null; entryEpoch: number | null } };
 
 export type ClientMessage =
   | { type: 'ping' }

@@ -32,7 +32,7 @@ Conventions:
 | POST | `/api/rooms` | `{ visibility, capacity, profileId?, ruleset?, setupMode, orderMode?, policy? }` | `RoomView` |
 | POST | `/api/rooms/join` | `{ code }` | `RoomView` |
 | GET | `/api/rooms/:roomId` | – | `RoomView` |
-| POST | `/api/rooms/:roomId/leave` | – | `LeaveRoomResult` (`{ left: boolean, hostTransferredTo: string \| null }`) |
+| POST | `/api/rooms/:roomId/leave` | `{ entryEpoch? }` | `LeaveRoomResult` (`{ left: boolean, hostTransferredTo: string \| null, reason? }`) |
 | POST | `/api/rooms/:roomId/seat` | `{ color }` | `RoomView` |
 | POST | `/api/rooms/:roomId/ready` | `{ ready }` | `RoomView` |
 | POST | `/api/rooms/:roomId/settings` | `{ capacity?, profileId?, ruleset?, setupMode?, orderMode?, policy? }` | `RoomView` |
@@ -508,12 +508,20 @@ socket are handled in order, so an unsubscribe followed at once by a subscribe
 ends up subscribed. Closing the socket unsubscribes implicitly.
 
 Once the unsubscribe has been processed the server answers
-`{ "type": "unsubscribed", "payload": { "roomId": "..." | null } }`.
+`{ "type": "unsubscribed", "payload": { "roomId": "..." | null, "entryEpoch": 1762400000000 | null } }`.
 `roomId` is the room the socket just left, or `null` when it was not
 subscribed (the acknowledgement is sent either way, so a client can always wait
-for it). It is sent only after the connection is out of the room and the seat
-has been marked disconnected, so a request sent after it no longer races the
-socket.
+for it). `entryEpoch` is the person's current entry epoch in that room (see
+"Leaving a room"), read after the connection was removed; it is `null` exactly
+when `roomId` is. The acknowledgement is sent only after the connection is out
+of the room and the seat has been marked disconnected, so a request sent after
+it no longer races the socket.
+
+A `subscribe` the service refuses (the room was closed or the person is not a
+member, including when that changes while the request waits for the room's
+lock) is answered with an `error` message carrying the service's own code, for
+example `E_ROOM_NOT_FOUND` or `E_NOT_A_MEMBER`, and leaves no connection behind.
+Only unclassified failures use `E_WS_HANDLER`.
 
 Save and leave from a client is therefore: `POST /api/games/:gameId/save`, then
 unsubscribe over the socket and wait for `unsubscribed`, then
@@ -527,32 +535,50 @@ Server → client: `ServerMessage` union from `@catan/protocol`
 
 ### Leaving a room
 
-`POST /api/rooms/:roomId/leave` answers `LeaveRoomResult { left, hostTransferredTo }`.
+`POST /api/rooms/:roomId/leave` takes an optional body `{ entryEpoch?: number }`
+and answers `LeaveRoomResult { left, hostTransferredTo, reason? }`.
 
 - `left: true` — the leave took effect. In a lobby the membership is removed
   (the room closes when no person remains, and the host role moves on); in a
   started game the seat is kept and only marked disconnected, and the host role
   moves on if the leaver held it. A caller with no membership also gets
   `left: true` (nothing to do).
-- `left: false, hostTransferredTo: null` — **ignored, nothing changed**: the same
-  person still has a live subscribed socket in that room. This catches a late or
-  repeated request (for example a `/leave` the client gave up waiting for that
-  reaches the server after the player re-entered the room), which would
-  otherwise disconnect the seat, move the host role or remove a lobby
-  membership under a player who is back. It applies in lobbies and started
-  games alike, and nothing is persisted, cancelled or broadcast.
-- With several tabs of the same person open, a leave from one tab is ignored
-  while any other tab is still subscribed to the room; it takes effect once
-  every tab has unsubscribed. A caller with no socket at all (plain HTTP) is
-  not affected.
-- The check and every connection registration or removal share the room's lock,
-  so a connection cannot slip in between the check and the change.
+- `left: false` — **ignored, nothing changed** (nothing is persisted, cancelled
+  or broadcast), with `hostTransferredTo: null` and a `reason`:
+  - `present`: the same person still has a live subscribed socket in that room.
+    With several tabs open, a leave from one tab is ignored while any other tab
+    is still subscribed; it takes effect once every tab has unsubscribed.
+  - `stale`: the request carried an `entryEpoch` older than the person's current
+    entry epoch in that room, i.e. they entered the room again after the
+    request's basis.
+  Both apply in lobbies and started games alike. The `present` check comes
+  first. A caller with no socket and no `entryEpoch` (plain HTTP, older
+  clients) is only subject to the first rule.
+- A malformed `entryEpoch` (not a finite number) is `E_BAD_REQUEST`.
+
+**Entry epoch.** Each room remembers, per person, a number that grows every time
+that person enters the room: an HTTP join (including re-entering with an
+existing membership) and a socket subscribe each bump it. It comes from one
+process-wide counter seeded from the clock, so it only increases, and values
+issued after a restart are larger than values issued before it. A client learns
+its current epoch from the `unsubscribed` acknowledgement (`entryEpoch`) or, when
+there is no socket to acknowledge, from `RoomView.viewerEntryEpoch` (present on
+every room view that has a viewer, including the answer to a join). A request
+that raced a re-entry — for example a `/leave` the client stopped waiting for,
+arriving after the person joined again by invite code but before the socket
+subscribed — carries the older epoch and is answered `stale`. The service
+forgets epochs on restart (the current epoch reads as 0), so a request carrying
+an older epoch still goes through then, unless the person has entered the room
+again since the restart, which issues a larger epoch from the clock.
+
+Connection registration and removal, joins, leaves and the host-grace expiry all
+take the room's lock, so a connection or a re-join cannot slip in between a
+leave's check and its change, and a host who reconnects while the grace timer is
+waiting for the lock keeps the role.
 
 A deliberate leave from the web client is therefore: unsubscribe → wait for
-`unsubscribed` → `POST /api/rooms/:roomId/leave`.
-
-Ordering guarantee: `events` are delivered in ascending `seq`; after any gap the
-client refetches `GET /api/games/:gameId` and replaces its state.
+`unsubscribed` → `POST /api/rooms/:roomId/leave` with the `entryEpoch` from the
+acknowledgement (or `viewerEntryEpoch` when there was no socket).
 
 ## Chat
 

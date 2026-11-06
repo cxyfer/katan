@@ -339,9 +339,14 @@ export function createHttpHandler(deps: HttpDeps) {
     data: await deps.rooms.view(params.roomId!, playerId),
   }));
 
-  route('POST', '/api/rooms/:roomId/leave', async ({ params, playerId }) => {
+  route('POST', '/api/rooms/:roomId/leave', async ({ params, body, playerId }) => {
     requireSession(playerId);
-    return { data: await deps.rooms.leave(playerId!, params.roomId!) };
+    // 選用的 entryEpoch：比目前進房世代舊就不離開（遲到的請求）。
+    const entryEpoch = asObject(body).entryEpoch;
+    if (entryEpoch !== undefined && (typeof entryEpoch !== 'number' || !Number.isFinite(entryEpoch))) {
+      throw badRequest('error.E_BAD_REQUEST', { field: 'entryEpoch' });
+    }
+    return { data: await deps.rooms.leave(playerId!, params.roomId!, entryEpoch as number | undefined) };
   });
 
   route('POST', '/api/rooms/:roomId/seat', async ({ params, body, playerId }) => {
