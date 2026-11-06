@@ -68,7 +68,12 @@ export interface UseTableOptions {
   languages?: readonly string[];
   /** Connect the WebSocket. Tests pass `false`. */
   connectSocket?: boolean;
+  /** 等待 `/leave` 的上限（毫秒），預設 `LEAVE_TIMEOUT_MS`；測試注入較短的值。 */
+  leaveTimeoutMs?: number;
 }
+
+/** `/leave` 久久沒有回應時放棄等待，離開流程改走失敗路徑，使用者才不會永遠卡在處理中。 */
+export const LEAVE_TIMEOUT_MS = 10_000;
 
 export interface TableActions {
   bootstrap(): Promise<void>;
@@ -601,49 +606,77 @@ export function useTable(options: UseTableOptions): TableController {
     if (games.ok) dispatch({ type: 'games', games: games.data.games });
   }, [api, dispatch]);
 
-  const leaveRoom = useCallback(async (): Promise<void> => {
-    const roomId = roomIdRef.current;
-    if (!roomId) return;
-    const previous = beginDeparture(currentTableIds());
-    const result = await api.leaveRoom(roomId);
-    if (result.ok) {
-      announceHostTransfer(result.data.hostTransferredTo);
-      clearTable();
-      await refreshResumable();
-    } else {
-      // 還沒離開成功：留在原畫面，恢復訂閱，讓使用者可以重試。
-      abortDeparture(previous);
-      dispatch({ type: 'toast', notice: noticeFrom(result.error) });
-    }
-  }, [api, dispatch, announceHostTransfer, beginDeparture, abortDeparture, clearTable, currentTableIds, refreshResumable]);
-
-  /** 進行中的「保存並離開／退出」離開流程；重複觸發時共用同一個。 */
+  /** 進行中的離開流程（`leaveRoom`、保存並離開、退出共用）；重複觸發時共用同一次，不重送 `/leave`。 */
   const leavingRef = useRef<Promise<void> | null>(null);
-
-  /**
-   * 保存並離開、退出之後回首頁（SPEC §4.6：刻意離開，座位保留）。先取消訂閱並忽略該房的推送，
-   * 等 `/leave` 完成（不論成敗，存檔或退出都已成功）才清掉牌桌回首頁，所以使用者不可能在
-   * `/leave` 完成前從首頁重新進入；失敗只以 toast 提示。
-   */
-  const leaveToHome = useCallback((): Promise<void> => {
+  const singleFlightLeave = useCallback((run: () => Promise<void>): Promise<void> => {
     if (leavingRef.current) return leavingRef.current;
-    const run = async (): Promise<void> => {
-      const ids = currentTableIds();
-      beginDeparture(ids);
-      if (ids.roomId) {
-        const result = await api.leaveRoom(ids.roomId);
-        if (result.ok) announceHostTransfer(result.data.hostTransferredTo);
-        else dispatch({ type: 'toast', notice: noticeFrom(result.error) });
-      }
-      clearTable();
-      await refreshResumable();
-    };
     const pending = run().finally(() => {
       leavingRef.current = null;
     });
     leavingRef.current = pending;
     return pending;
-  }, [api, dispatch, announceHostTransfer, beginDeparture, clearTable, currentTableIds, refreshResumable]);
+  }, []);
+
+  const leaveTimeoutMs = options.leaveTimeoutMs ?? LEAVE_TIMEOUT_MS;
+  /**
+   * 送出 `/leave` 並最多等 `leaveTimeoutMs`；逾時回傳 `'timeout'`。逾時後才抵達的回應不會被任何
+   * 流程處理（沒有人在等它），所以不可能改動畫面——使用者可能已經重新進入同一局。
+   */
+  const requestLeave = useCallback(
+    async (roomId: string): Promise<ApiResult<{ left: true; hostTransferredTo: string | null }> | 'timeout'> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<'timeout'>((resolve) => {
+        timer = globalThis.setTimeout(() => resolve('timeout'), leaveTimeoutMs);
+      });
+      try {
+        return await Promise.race([api.leaveRoom(roomId), timeout]);
+      } finally {
+        globalThis.clearTimeout(timer);
+      }
+    },
+    [api, leaveTimeoutMs],
+  );
+
+  const leaveRoom = useCallback((): Promise<void> => {
+    const roomId = roomIdRef.current;
+    if (!roomId) return Promise.resolve();
+    return singleFlightLeave(async () => {
+      const previous = beginDeparture(currentTableIds());
+      const result = await requestLeave(roomId);
+      if (result !== 'timeout' && result.ok) {
+        announceHostTransfer(result.data.hostTransferredTo);
+        clearTable();
+        await refreshResumable();
+        return;
+      }
+      // 還沒離開成功（失敗或逾時）：留在原畫面，恢復訂閱，讓使用者可以重試。
+      abortDeparture(previous);
+      const notice = result === 'timeout' ? localNotice('play.leave.timeoutRoom') : noticeFrom(result.error);
+      dispatch({ type: 'toast', notice });
+    });
+  }, [dispatch, singleFlightLeave, announceHostTransfer, beginDeparture, abortDeparture, clearTable, currentTableIds, refreshResumable, requestLeave]);
+
+  /**
+   * 保存並離開、退出之後回首頁（SPEC §4.6：刻意離開，座位保留）。先取消訂閱並忽略該房的推送，
+   * 等 `/leave` 完成（不論成敗或逾時，存檔或退出都已成功）才清掉牌桌回首頁，所以使用者不可能在
+   * `/leave` 完成前從首頁重新進入；失敗或逾時只以 toast 提示。
+   */
+  const leaveToHome = useCallback(
+    (): Promise<void> =>
+      singleFlightLeave(async () => {
+        const ids = currentTableIds();
+        beginDeparture(ids);
+        if (ids.roomId) {
+          const result = await requestLeave(ids.roomId);
+          if (result === 'timeout') dispatch({ type: 'toast', notice: localNotice('play.leave.timeoutHome') });
+          else if (result.ok) announceHostTransfer(result.data.hostTransferredTo);
+          else dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+        }
+        clearTable();
+        await refreshResumable();
+      }),
+    [dispatch, singleFlightLeave, announceHostTransfer, beginDeparture, clearTable, currentTableIds, refreshResumable, requestLeave],
+  );
 
   const closeRoom = useCallback(async (): Promise<void> => {
     const roomId = roomIdRef.current;

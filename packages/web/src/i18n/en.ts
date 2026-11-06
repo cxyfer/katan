@@ -652,6 +652,8 @@ export const en: Catalog = {
   'play.leave.confirmWithdraw.body': 'You will not be able to act until you come back and take your withdrawal back. The game waits for you on your turn, and other players who are online can agree to end it with no winner.',
   'play.leave.confirmWithdraw.submit': 'Withdraw',
   'play.leave.working': 'Working… please keep this window open.',
+  'play.leave.timeoutHome': 'The server is slow to confirm that you left. Your seat is kept.',
+  'play.leave.timeoutRoom': 'Leaving the room timed out. You are still in it; please try again.',
   'play.abandon.cancelled': 'The vote to end the game was cancelled.',
   'play.abandon.vote.title': 'Vote: end the game?',
   'play.abandon.vote.body': '{proposer} proposed ending this saved game with no winner. Absent or withdrawn: {players}.',

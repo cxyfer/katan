@@ -648,6 +648,8 @@ export const zhHant: Catalog = {
   'play.leave.confirmWithdraw.body': '退出後不能行動，除非你回來撤回退出。輪到你時對局會等你，其他在線的玩家也可以同意以無勝者結束。',
   'play.leave.confirmWithdraw.submit': '退出',
   'play.leave.working': '處理中…請保持此視窗開啟。',
+  'play.leave.timeoutHome': '伺服器遲遲沒有確認你已離開，你的座位仍然保留。',
+  'play.leave.timeoutRoom': '離開房間逾時，你仍在房間內，請再試一次。',
   'play.abandon.cancelled': '結束對局的投票已取消。',
   'play.abandon.vote.title': '投票：結束對局？',
   'play.abandon.vote.body': '{proposer} 提議以無勝者結束這場已保存的對局。缺席或已退出：{players}。',
