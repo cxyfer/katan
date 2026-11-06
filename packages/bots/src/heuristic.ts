@@ -13,7 +13,7 @@ import {
   type PublicPendingView,
   type Resource,
 } from '@catan/rules';
-import { playerYield, vertexYield } from './board.ts';
+import { playerYield } from './board.ts';
 import { banditChoice, robberCauseOf } from './base/robber.ts';
 import { canPlay, plentyPick } from './base/cards.ts';
 import { freeRoadDecision, roadDirectionScore, usefulRoad } from './base/roads.ts';
@@ -24,8 +24,8 @@ import {
   handSize,
   isImmediate,
   PIP_VALUE,
+  productionValue,
   settlementSpotValue,
-  weightedPips,
   type Cost,
   type Economy,
   type Plan,
@@ -379,7 +379,7 @@ function buildDecision(turn: TurnContext): BotCommand | null {
   const scoring: Scored<BotCommand>[] = [];
   if (left.cities > 0 && canAfford(hand, COSTS.city)) {
     for (const vertex of hints.legalCities) {
-      const value = 1 + PIP_VALUE * weightedPips(vertexYield(model, vertex), weights);
+      const value = 1 + PIP_VALUE * productionValue(model, vertex, weights);
       scoring.push({ item: { type: 'build.city', vertex }, score: value });
     }
   }
@@ -391,7 +391,8 @@ function buildDecision(turn: TurnContext): BotCommand | null {
     }
   }
   // 模組的「現在就該做」候選接在 base 之後，一起評分。
-  const scoringPick = turn.pick([...scoring, ...collectScored(turn.modules, (module) => module.actions?.(turn))]);
+  const extra = collectScored(turn.modules, (module) => module.actions?.(turn));
+  const scoringPick = turn.pick(extra.length === 0 ? scoring : dedupeCandidates([...scoring, ...extra]));
   if (scoringPick) return scoringPick;
 
   // b) 主要計畫：付得起就做下一步，否則看銀行交易能否在這回合補齊。
@@ -418,6 +419,31 @@ function buildDecision(turn: TurnContext): BotCommand | null {
     if (edge !== null) return { type: 'build.road', edge };
   }
   return null;
+}
+
+/**
+ * 完全相同的指令只留一個：分數取最高，位置取第一次出現的。模組的候選可能與 base 的立即建造是同一個
+ * 指令（例如帶小島加分的聚落），不去重會在 easy 的 topK 裡多佔名額。
+ * 限制：鍵只排序頂層欄位，巢狀物件的 key 順序不同時會視為不同指令（漏去重，不會誤合併）。目前會
+ * 重複的指令都只有平面欄位；第一個帶巢狀 payload 的模組候選接入時，要改成遞迴正規化並補測試。
+ */
+export function dedupeCandidates(candidates: readonly Scored<BotCommand>[]): Scored<BotCommand>[] {
+  const keyOf = (command: BotCommand): string =>
+    JSON.stringify(Object.entries(command).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  const seen = new Map<string, { item: BotCommand; score: number }>();
+  const out: { item: BotCommand; score: number }[] = [];
+  for (const candidate of candidates) {
+    const key = keyOf(candidate.item);
+    const first = seen.get(key);
+    if (!first) {
+      const entry = { item: candidate.item, score: candidate.score };
+      seen.set(key, entry);
+      out.push(entry);
+    } else if (candidate.score > first.score) {
+      first.score = candidate.score;
+    }
+  }
+  return out;
 }
 
 /** 計畫的下一步；付不起或已不合法時回傳 null。 */
