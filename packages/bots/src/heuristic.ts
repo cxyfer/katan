@@ -5,21 +5,24 @@
 
 import {
   COSTS,
+  requireProfile,
   RESOURCES,
   type Command,
   type GameView,
+  type PublicModulePendingView,
+  type PublicPendingView,
   type Resource,
 } from '@catan/rules';
 import { playerYield, vertexYield } from './board.ts';
 import { banditChoice, robberCauseOf } from './base/robber.ts';
 import { canPlay, plentyPick } from './base/cards.ts';
-import { pendingDuty } from './base/duty.ts';
 import { freeRoadDecision, roadDirectionScore, usefulRoad } from './base/roads.ts';
 import { setupSpotScore } from './base/setup.ts';
 import {
   canAfford,
   deficitOf,
   handSize,
+  isImmediate,
   PIP_VALUE,
   settlementSpotValue,
   weightedPips,
@@ -28,7 +31,10 @@ import {
   type Plan,
 } from './economy.ts';
 import { LEVEL_PARAMS, type LevelParams } from './level.ts';
-import type { Scored, TurnContext } from './modules/types.ts';
+import { fallbackDecision } from './fallback.ts';
+import { collectScored, firstAnswer, isModuleFrame } from './modules/compose.ts';
+import { botModulesOf } from './modules/registry.ts';
+import type { BotModule, Scored, TurnContext } from './modules/types.ts';
 import { Turn } from './turn.ts';
 import {
   acceptMargin,
@@ -39,33 +45,75 @@ import {
   ownOpenOffers,
   proposeOffer,
 } from './trade.ts';
-import type { BotContext, BotLevel, BotPolicy } from './types.ts';
+import type { BotCommand, BotContext, BotLevel, BotPolicy } from './types.ts';
 
-function decide(view: GameView, ctx: BotContext, level: BotLevel, params: LevelParams): Command | null {
+/** 模組清單省略時，依 profile 的 ruleModules 取得已註冊的模組。 */
+function modulesFor(view: GameView, modules: readonly BotModule[] | undefined): readonly BotModule[] {
+  return modules ?? botModulesOf(requireProfile(view.profileId));
+}
+
+function decide(
+  view: GameView,
+  ctx: BotContext,
+  level: BotLevel,
+  params: LevelParams,
+  modules?: readonly BotModule[],
+): BotCommand | null {
   if (view.result) return null;
   const me = view.players.find((player) => player.id === ctx.selfId);
   if (!me || !view.hints) return null;
-  const turn = new Turn(view, ctx, level, params, me, []);
-  if (view.pending) return pendingDecision(turn) ?? pendingDuty(view, ctx.selfId);
-  if (view.turn.phase === 'setup') return view.turn.playerId === ctx.selfId ? setupDecision(turn) : null;
+  const turn = new Turn(view, ctx, level, params, me, modulesFor(view, modules));
+  // 沒有策略可答時退回保底；保底回 null（例如 duty 回 null）時就是真的沒有事可做。
+  const duty = (): BotCommand | null => fallbackDecision(view, ctx.selfId, turn.modules);
+  const pending = view.pending;
+  if (pending) {
+    if (isModuleFrame(pending)) {
+      if (!pending.responders.includes(ctx.selfId)) return null;
+      return firstAnswer(turn.modules, (module) => module.answerFrame?.(turn, pending)) ?? duty();
+    }
+    return basePendingDecision(turn, pending) ?? duty();
+  }
+  if (view.turn.phase === 'setup') {
+    if (view.turn.playerId !== ctx.selfId) return null;
+    const answer = firstAnswer(turn.modules, (module) => module.setup?.(turn));
+    return (answer !== undefined ? answer : setupDecision(turn)) ?? duty();
+  }
+  // 非行動者在待決效果與初始放置之外，只回應報價。
   if (view.turn.playerId !== ctx.selfId) return respondToOffers(turn);
-  if (view.turn.phase === 'preroll') return prerollDecision(turn);
-  if (view.turn.phase === 'action') return actionDecision(turn);
+  if (view.turn.phase === 'preroll') return prerollDecision(turn) ?? duty();
+  if (view.turn.phase === 'action') return actionDecision(turn, duty);
   return null;
 }
 
-export function heuristicPolicy(level: BotLevel): BotPolicy {
+export function heuristicPolicy(level: BotLevel, modules?: readonly BotModule[]): BotPolicy {
   const params = LEVEL_PARAMS[level] ?? LEVEL_PARAMS.standard;
-  return { decide: (view, ctx) => decide(view, ctx, level, params) };
+  return { decide: (view, ctx) => decide(view, ctx, level, params, modules) };
+}
+
+/**
+ * 測試用：建立與策略內部相同的單次決策資料。找不到 `selfId` 時 throw；hints 可以缺。
+ * 模組清單省略時依 profile 推導，`[]` 代表只有 base。
+ */
+export function turnContext(
+  view: GameView,
+  ctx: BotContext,
+  level: BotLevel,
+  modules?: readonly BotModule[],
+): TurnContext {
+  const me = view.players.find((player) => player.id === ctx.selfId);
+  if (!me) throw new Error(`turnContext: no seat ${ctx.selfId} in the view`);
+  const params = LEVEL_PARAMS[level] ?? LEVEL_PARAMS.standard;
+  return new Turn(view, ctx, level, params, me, modulesFor(view, modules));
 }
 
 // ---------------------------------------------------------------------------
 // 待決效果
 // ---------------------------------------------------------------------------
 
-function pendingDecision(turn: TurnContext): Command | null {
-  const { view, ctx } = turn;
-  const pending = view.pending!;
+type BasePending = Exclude<NonNullable<PublicPendingView>, PublicModulePendingView>;
+
+function basePendingDecision(turn: TurnContext, pending: BasePending): BotCommand | null {
+  const { ctx } = turn;
   switch (pending.kind) {
     case 'discard': {
       if (!pending.waitingFor.includes(ctx.selfId)) return null;
@@ -88,11 +136,11 @@ function pendingDecision(turn: TurnContext): Command | null {
     }
     case 'freeRoads': {
       if (pending.actor !== ctx.selfId) return null;
+      // 模組提供免費道路的候選時，取代 base 選路（模組要自行納入道路選項）。
+      const extra = collectScored(turn.modules, (module) => module.freeRouteCandidates?.(turn));
+      if (extra.length > 0) return turn.pick(extra);
       return freeRoadDecision(turn);
     }
-    default:
-      // Rules-module frames: bots are only seated in base profiles.
-      return null;
   }
 }
 
@@ -172,10 +220,11 @@ function respondToOffers(turn: TurnContext): Command | null {
 // 擲骰前與行動階段
 // ---------------------------------------------------------------------------
 
-function prerollDecision(turn: TurnContext): Command | null {
+/** 擲骰前：base 的騎士先決定；模組候選只在 base 不打騎士時才挑。擲骰交給保底義務。 */
+function prerollDecision(turn: TurnContext): BotCommand | null {
   const knight = knightDecision(turn);
   if (knight) return knight;
-  return turn.view.hints!.canRoll ? { type: 'turn.roll' } : null;
+  return turn.pick(collectScored(turn.modules, (module) => module.preroll?.(turn)));
 }
 
 /** 自己被強盜擋住的點數（城市加倍）。 */
@@ -203,9 +252,8 @@ function knightDecision(turn: TurnContext): Command | null {
   return choice === null ? null : { type: 'dev.playKnight', hex: choice.target };
 }
 
-function actionDecision(turn: TurnContext): Command | null {
+function actionDecision(turn: TurnContext, duty: () => BotCommand | null): BotCommand | null {
   const { view, ctx, params } = turn;
-  const hints = view.hints!;
 
   // 1. 自己的報價：結算、撤回或等待。等待期間不做別的事，避免手牌變動。
   const own = ownOpenOffers(view, ctx.selfId)[0];
@@ -237,7 +285,7 @@ function actionDecision(turn: TurnContext): Command | null {
   if (params.proposeOffers && !turn.pairedSecond) {
     const plan = turn.economy.plans[0];
     // 只為了立即得分的建造開價，避免每回合都拿小事打擾其他玩家。
-    if (plan && (plan.kind === 'city' || (plan.kind === 'settlement' && plan.roads.length === 0))) {
+    if (plan && isImmediate(plan)) {
       const offer = proposeOffer(view, turn.economy, ctx.selfId, plan.nextCost, 1);
       if (offer) return offer;
     }
@@ -247,7 +295,8 @@ function actionDecision(turn: TurnContext): Command | null {
   const relief = handRelief(turn);
   if (relief) return relief;
 
-  return hints.canEndTurn ? { type: 'turn.end' } : null;
+  // 7. 沒有事可做：交給保底義務（模組 duty 優先，否則結束回合）。
+  return duty();
 }
 
 function devCardDecision(turn: TurnContext): Command | null {
@@ -271,7 +320,12 @@ function devCardDecision(turn: TurnContext): Command | null {
   }
 
   // base-2025.3 可只授予最後一個道路棋子；仍需有合法道路才值得打出。
-  if (canPlay(turn, 'roadBuilding') && economy.left.roads >= 1 && usefulRoad(turn, true) !== null) {
+  // base 的條件先求值（`usefulRoad` 在 easy 下會消耗亂數），模組只在 base 條件不成立時補充。
+  if (
+    canPlay(turn, 'roadBuilding') &&
+    ((economy.left.roads >= 1 && usefulRoad(turn, true) !== null) ||
+      collectScored(turn.modules, (module) => module.freeRouteCandidates?.(turn)).length > 0)
+  ) {
     return { type: 'dev.playRoadBuilding' };
   }
   return null;
@@ -311,7 +365,7 @@ function hurts(economy: Economy, primary: Cost, spend: Cost): boolean {
   );
 }
 
-function buildDecision(turn: TurnContext): Command | null {
+function buildDecision(turn: TurnContext): BotCommand | null {
   const { view, model, ctx } = turn;
   const hints = view.hints!;
   const economy = turn.economy;
@@ -319,7 +373,7 @@ function buildDecision(turn: TurnContext): Command | null {
   const { left, weights } = economy;
 
   // a) 付得起的城市與聚落：立即得分，優先於其他計畫。
-  const scoring: Scored<Command>[] = [];
+  const scoring: Scored<BotCommand>[] = [];
   if (left.cities > 0 && canAfford(hand, COSTS.city)) {
     for (const vertex of hints.legalCities) {
       const value = 1 + PIP_VALUE * weightedPips(vertexYield(model, vertex), weights);
@@ -333,7 +387,8 @@ function buildDecision(turn: TurnContext): Command | null {
       scoring.push({ item: { type: 'build.settlement', vertex }, score: value });
     }
   }
-  const scoringPick = turn.pick(scoring);
+  // 模組的「現在就該做」候選接在 base 之後，一起評分。
+  const scoringPick = turn.pick([...scoring, ...collectScored(turn.modules, (module) => module.actions?.(turn))]);
   if (scoringPick) return scoringPick;
 
   // b) 主要計畫：付得起就做下一步，否則看銀行交易能否在這回合補齊。
@@ -363,7 +418,7 @@ function buildDecision(turn: TurnContext): Command | null {
 }
 
 /** 計畫的下一步；付不起或已不合法時回傳 null。 */
-function planStep(turn: TurnContext, plan: Plan): Command | null {
+function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
   const { view } = turn;
   const hints = view.hints!;
   const economy = turn.economy;
@@ -390,6 +445,9 @@ function planStep(turn: TurnContext, plan: Plan): Command | null {
     }
     case 'devCard':
       return view.devDeckSize > 0 ? { type: 'build.devCard' } : null;
+    default:
+      // 只有模組計畫會走到這裡；模組對不屬於自己的 kind 必須回 undefined。
+      return firstAnswer(turn.modules, (module) => module.planStep?.(turn, plan)) ?? null;
   }
 }
 

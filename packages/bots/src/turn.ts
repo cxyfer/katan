@@ -39,7 +39,7 @@ export class Turn implements TurnContext {
   }
 
   get economy(): Economy {
-    this.cachedEconomy ??= economyOf(this.model);
+    this.cachedEconomy ??= economyOf(this.model, this.modules, this.level);
     return this.cachedEconomy;
   }
 
