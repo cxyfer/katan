@@ -160,6 +160,16 @@ export class SocketClient {
     this.#rawSend({ type: 'subscribe', payload: this.#subscription });
   }
 
+  /**
+   * 取消目前的訂閱（SPEC §4.6：保存並離開、退出等刻意離開）。不帶 roomId 的 `subscribe`
+   * 會讓伺服器取消登記這條連線；同時清掉記住的訂閱，重連時才不會自動訂回去。
+   */
+  unsubscribe(): void {
+    if (this.#subscription === null) return;
+    this.#subscription = null;
+    this.#rawSend({ type: 'subscribe', payload: {} });
+  }
+
   ping(): void {
     this.#rawSend({ type: 'ping' });
   }

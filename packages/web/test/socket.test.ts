@@ -136,3 +136,49 @@ describe('SocketClient', () => {
     expect(delays).toHaveLength(before);
   });
 });
+
+describe('SocketClient.unsubscribe', () => {
+  it('sends an empty subscribe and does not replay the old subscription after a reconnect', () => {
+    const sockets: FakeSocket[] = [];
+    const scheduled: Array<() => void> = [];
+    const client = new SocketClient({
+      url: 'ws://example/ws',
+      factory: () => {
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket;
+      },
+      schedule: (handler) => void scheduled.push(handler),
+      onMessage: () => undefined,
+    });
+    client.connect();
+    sockets[0]!.simulateOpen();
+    client.subscribe({ roomId: 'r1', gameId: 'g1' });
+    client.unsubscribe();
+    expect(sockets[0]!.sent.map((raw) => JSON.parse(raw))).toEqual([
+      { type: 'subscribe', payload: { roomId: 'r1', gameId: 'g1' } },
+      { type: 'subscribe', payload: {} },
+    ]);
+
+    sockets[0]!.simulateClose();
+    scheduled[0]!();
+    sockets[1]!.simulateOpen();
+    expect(sockets[1]!.sent).toEqual([]);
+  });
+
+  it('stays silent when nothing is subscribed', () => {
+    const socket = new FakeSocket();
+    const client = new SocketClient({ url: 'ws://example/ws', factory: () => socket, onMessage: () => undefined });
+    client.connect();
+    socket.simulateOpen();
+    client.unsubscribe();
+    expect(socket.sent).toEqual([]);
+    client.subscribe({ roomId: 'r1' });
+    client.unsubscribe();
+    client.unsubscribe();
+    expect(socket.sent.map((raw) => JSON.parse(raw))).toEqual([
+      { type: 'subscribe', payload: { roomId: 'r1' } },
+      { type: 'subscribe', payload: {} },
+    ]);
+  });
+});
