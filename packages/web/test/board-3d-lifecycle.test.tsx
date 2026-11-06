@@ -180,14 +180,30 @@ describe('renderer lifecycle and presentation cursor', () => {
       query === TOUCH_POINTER_QUERY ? { ...stub(query), matches: true } : stub(query));
     const api = createFakeApi({ snapshot: rolled(12) });
     await openGame(api);
-    const cameraButtons = ['zoom-in', 'zoom-out', 'rotate-left', 'rotate-right'];
-    for (const testId of cameraButtons) expect(screen.queryByTestId(testId)).toBeNull();
-    expect(screen.getByTestId('reset-view')).toBeTruthy();
+    const toolbar = screen.getByRole('group', { name: 'Board' });
+    const panel = toolbar.querySelector('.board__display-settings-panel')!;
+    // 工具列本身只留重設視角與設定；縮放按鈕移入設定面板，作為雙指縮放的單點替代操作。
+    const inToolbar = (testId: string) => [...toolbar.children].some((child) => child.getAttribute('data-testid') === testId);
+    for (const testId of ['zoom-in', 'zoom-out']) {
+      expect(inToolbar(testId)).toBe(false);
+      expect(panel.contains(screen.getByTestId(testId))).toBe(true);
+    }
+    expect(screen.queryByTestId('rotate-left')).toBeNull();
+    expect(inToolbar('reset-view')).toBe(true);
     expect(screen.getByTestId('board-display-settings')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('zoom-in'));
+    expect(screen.getByTestId('board').getAttribute('data-zoom')).toBe('1.25');
 
     fireEvent.change(screen.getByTestId('renderer-select'), { target: { value: 'r3f' } });
     await waitFor(() => expect(screen.getByTestId('board').getAttribute('data-effective-renderer')).toBe('r3f'));
-    for (const testId of cameraButtons) expect(screen.queryByTestId(testId)).toBeNull();
+    for (const testId of ['zoom-in', 'zoom-out', 'rotate-left', 'rotate-right']) {
+      expect(inToolbar(testId)).toBe(false);
+      expect(panel.contains(screen.getByTestId(testId))).toBe(true);
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Rotate right' }));
+    expect(sceneMock.props!.viewport.azimuthDeg).toBe(50);
+    fireEvent.click(screen.getByTestId('reset-view'));
+    expect(sceneMock.props!.viewport.azimuthDeg).toBe(20);
     fireEvent.click(screen.getByTestId('action-build.road'));
     expect(await screen.findByTestId('open-target-picker')).toBeTruthy();
     expect(screen.getByTestId('camera-gesture-hint').textContent).toBe('Drag one finger to rotate and tilt · Pinch to zoom · Drag two fingers to pan');

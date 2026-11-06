@@ -310,6 +310,7 @@ export const en: Catalog = {
   'board.zoomOut': 'Zoom out',
   'board.rotateLeft': 'Rotate left',
   'board.rotateRight': 'Rotate right',
+  'board.rotateView': 'Rotate view',
   'board.rotateLeftHint': 'Rotate camera left 30° ([ on the board)',
   'board.rotateRightHint': 'Rotate camera right 30° (] on the board)',
   'board.viewingAngle': 'Viewing angle',

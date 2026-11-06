@@ -83,7 +83,8 @@ export function BoardView({ controller }: { controller: TableController }) {
   const controls = useBoardViewport({ geometry, surfaceRef, bounds, projection, renderer: effective,
     sceneKey: `${state.game?.gameId ?? 'none'}:${!!view}` });
   const { zoom } = controls.viewport;
-  // 觸控裝置以單指旋轉／俯仰、雙指縮放與平移操作視角；工具列只留重設視角、目標清單、設定與圖例。
+  // 觸控裝置以單指旋轉／俯仰、雙指縮放與平移操作視角；工具列只留重設視角、目標清單、設定與圖例，
+  // 縮放與旋轉按鈕改放在設定面板。
   const touch = useIsMobile(TOUCH_POINTER_QUERY);
   const selfId = state.session?.id ?? null;
   const nameResolver = useMemo(() => nameOf(state), [state]);
@@ -200,6 +201,31 @@ export function BoardView({ controller }: { controller: TableController }) {
     </section>
   );
 
+  // 視角按鈕：桌機放在工具列；觸控裝置移入顯示設定面板，作為雙指縮放與拖曳旋轉的單點替代操作。
+  const zoomReadout = <span className="board__zoom-readout" data-testid="zoom-readout">{t('board.zoomLevel', { percent: Math.round(zoom * 100) })}</span>;
+  const zoomIn = (
+    <button type="button" className="button button--ghost" data-testid="zoom-in"
+      aria-label={t('board.zoomIn')} title={t('board.zoomIn')} onClick={() => controls.setZoom(zoom * 1.25)}>
+      <GameIcon name="plus" size={18} />
+    </button>
+  );
+  const zoomOut = (
+    <button type="button" className="button button--ghost" data-testid="zoom-out"
+      aria-label={t('board.zoomOut')} title={t('board.zoomOut')} onClick={() => controls.setZoom(zoom / 1.25)}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true" focusable="false"><path d="M4 12h16" /></svg>
+    </button>
+  );
+  const rotateLeft = (
+    <button type="button" className="button button--ghost" data-testid="rotate-left"
+      aria-label={t('board.rotateLeft')} aria-keyshortcuts="[" title={t('board.rotateLeftHint')} disabled={controls.gestureActive}
+      onClick={() => controls.rotate(-30)}><GameIcon name="refresh" className="board__rotate-left" size={18} /></button>
+  );
+  const rotateRight = (
+    <button type="button" className="button button--ghost" data-testid="rotate-right"
+      aria-label={t('board.rotateRight')} aria-keyshortcuts="]" title={t('board.rotateRightHint')} disabled={controls.gestureActive}
+      onClick={() => controls.rotate(30)}><GameIcon name="refresh" size={18} /></button>
+  );
+
   return (
     <div className="board board--side-controls" data-testid="board" data-zoom={zoom} data-camera-azimuth={controls.viewport.azimuthDeg}
       data-camera-elevation={controls.viewport.elevationDeg} ref={boardRef}
@@ -208,36 +234,8 @@ export function BoardView({ controller }: { controller: TableController }) {
       {setupGuide && (messageHost ? createPortal(setupGuide, messageHost) : setupGuide)}
       <div className="board__toolbar board__toolbar--side" role="group" aria-label={t('board.heading')}>
         <span className="visually-hidden" data-board-aggregate="">{t('board.heading')}</span>
-        {!touch && <>
-          <button
-            type="button"
-            className="button button--ghost"
-            data-testid="zoom-in"
-            aria-label={t('board.zoomIn')}
-            title={t('board.zoomIn')}
-            onClick={() => controls.setZoom(zoom * 1.25)}
-          >
-            <GameIcon name="plus" size={18} />
-          </button>
-          <button
-            type="button"
-            className="button button--ghost"
-            data-testid="zoom-out"
-            aria-label={t('board.zoomOut')}
-            title={t('board.zoomOut')}
-            onClick={() => controls.setZoom(zoom / 1.25)}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true" focusable="false"><path d="M4 12h16" /></svg>
-          </button>
-        </>}
-        {effective === 'r3f' && !touch && <>
-          <button type="button" className="button button--ghost" data-testid="rotate-left"
-            aria-label={t('board.rotateLeft')} aria-keyshortcuts="[" title={t('board.rotateLeftHint')} disabled={controls.gestureActive}
-            onClick={() => controls.rotate(-30)}><GameIcon name="refresh" className="board__rotate-left" size={18} /></button>
-          <button type="button" className="button button--ghost" data-testid="rotate-right"
-            aria-label={t('board.rotateRight')} aria-keyshortcuts="]" title={t('board.rotateRightHint')} disabled={controls.gestureActive}
-            onClick={() => controls.rotate(30)}><GameIcon name="refresh" size={18} /></button>
-        </>}
+        {!touch && <>{zoomIn}{zoomOut}</>}
+        {effective === 'r3f' && !touch && <>{rotateLeft}{rotateRight}</>}
         <button
           type="button"
           className="button button--ghost"
@@ -270,7 +268,12 @@ export function BoardView({ controller }: { controller: TableController }) {
           <summary data-testid="board-display-settings" aria-label={t('board.rendererSettings')} title={t('board.rendererSettings')}><GameIcon name="settings" size={18} /></summary>
           <div className="board__display-settings-panel">
             <strong>{t('board.rendererSettings')}</strong>
-            <span className="board__zoom-readout" data-testid="zoom-readout">{t('board.zoomLevel', { percent: Math.round(zoom * 100) })}</span>
+            {touch
+              ? <div className="board__settings-step">{zoomReadout}{zoomOut}{zoomIn}</div>
+              : zoomReadout}
+            {touch && effective === 'r3f' && <div className="board__settings-step" role="group" aria-label={t('board.rotateView')}>
+              <span>{t('board.rotateView')}</span>{rotateLeft}{rotateRight}
+            </div>}
             {effective === 'r3f' && <>
               <label className="board-camera-angle">
                 <span>{t('board.viewingAngle')}</span>

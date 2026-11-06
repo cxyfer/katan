@@ -307,6 +307,7 @@ export const zhHant: Catalog = {
   'board.zoomOut': '縮小',
   'board.rotateLeft': '向左旋轉',
   'board.rotateRight': '向右旋轉',
+  'board.rotateView': '旋轉視角',
   'board.rotateLeftHint': '鏡頭向左旋轉 30°（棋盤快捷鍵 [）',
   'board.rotateRightHint': '鏡頭向右旋轉 30°（棋盤快捷鍵 ]）',
   'board.viewingAngle': '觀看角度',
