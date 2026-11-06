@@ -199,6 +199,9 @@ Rules (`packages/rules/src/modules/explorersPirates/`, `explorers-pirates-boards
   players: `ep-land-ho-2025` (8 VP, fixed), `ep-pirate-lairs-2025` (12, fixed),
   `ep-fish-2025` (15, variable), `ep-spices-2025` (15, variable),
   `ep-full-2025` (17, variable). Bots refuse them (`botsSupported`).
+  Later note (#97, 2026-11-05): the five profiles moved to `ep-2025.2` for the
+  stranded-ship fix, and unfinished `ep-2025.1` games run it too (SPEC §7.3,
+  FIDELITY E&P interpretation 15).
 - The module owns 27 commands (`ep.*`, listed in `docs/API.md`) and one
   pending frame (`explorersPirates.pirate`: place, then rob). Base
   `build.settlement`, `build.road`, `trade.*`, `turn.roll` and `turn.end`

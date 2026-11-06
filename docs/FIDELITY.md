@@ -72,7 +72,9 @@ Registry v2 (2026-11-01 expansion platform) adds per-profile `expansions`,
 `requiredBoxes`. Both base profiles use `ruleVersion` `base-2025.4`, and new
 Seafarers and Traders & Barbarians games use `sf-2025.2` and `tb-2025.2` for
 the Road Building grant fix. Existing games keep their recorded versions and
-are not migrated. The platform adds no rule: base topology indices and
+are not migrated. The five Explorers & Pirates profiles use `ep-2025.2` for
+the #97 stranded-ship fix; unfinished `ep-2025.1` games run it too, under the
+approved defect-fix exception (SPEC §7.3). The platform adds no rule: base topology indices and
 fixed/variable layouts retain their baseline pins, while fresh snapshots and
 six whole simulated base/paired games are pinned against the active
 `base-2025.4` engine in `packages/rules/test/base-regression.test.ts`.
@@ -105,11 +107,11 @@ six whole simulated base/paired games are pinned against the active
 | R-EP layout | 50/57/57/64/71 cells per mission map, parrot/goose regions, number discs and targets per mission, printed starting-island terrain (Land Ho!, Pirate Lairs) or the 14 CATAN hexes, region inventories against the hex tables, 14 harbour marks for variable setup, printed start pieces per colour, 2 gold (EP25 pp. 3, 6–7; EP25-M pp. 4, 8, 14, 16) | `packages/rules/test/ep-layout.test.ts` (11) | covered |
 | R-EP turn / trade | production 1 per building, 1 gold for a player who received nothing; a 7 in Land Ho! is discards only; 3:1, 3 → 1 gold, 2 gold → 1 resource twice; coins in player trades; no building or trading in the Movement phase (EP25 pp. 8–9, EP25-M pp. 3, 5) | `ep-rules.test.ts` R-EP-01…04; `ep-clauses.test.ts` R-EP-49, R-EP-50 | covered |
 | R-EP building | harbour settlement on an own coastal settlement (+1 VP, max 4); ship next to an own harbour, never on an unexplored hex's edge, replacing one when none is left; settlers and crews onto an empty slot, with a piece returned when every slot is full; no road or settlement touching an unexplored hex (EP25 pp. 9–10) | R-EP-05…07; `ep-clauses.test.ts` R-EP-25…28, R-EP-48, R-EP-51 | covered |
-| R-EP movement / exploring | 4 MP, 6 with 1 wool; two ships per edge, passing but not stopping on a full edge; exploring flips the hex from its region's remaining inventory, pays 1 resource or 2 gold and ends that ship's move; land draws its disc; a settler ship founds a settlement and returns; victory on the own turn (EP25 pp. 10–12, 15) | R-EP-08…13; R-EP-29…35, R-EP-46, R-EP-57 | covered |
+| R-EP movement / exploring | 4 MP, 6 with 1 wool; two ships per edge, passing but not stopping on a full edge, and a full edge only when a legal stop is still reachable with the MP the ship has; a stranded ship with no way out ends its movement there (interpretation 15); exploring flips the hex from its region's remaining inventory, pays 1 resource or 2 gold and ends that ship's move; land draws its disc; a settler ship founds a settlement and returns; victory on the own turn (EP25 pp. 10–12, 15) | R-EP-08…13; R-EP-29…35, R-EP-46, R-EP-57; `ep-strand.test.ts` (#97, every profile) | covered; stranded-ship rule is interpretation 15 |
 | R-EP setup | variable setup: harbour on a mark, settlement on the starting island, then road and settler ship in snake order, starting resources from the settlement (EP25 p. 7, EP25-M p. 9) | R-EP-14 | covered |
 | R-EP pirates | a 7 activates the roller's pirate ship (not next to the starting island, frame or Council), theft from a ship owner, gold from an empty hand; tribute once per ship per turn; chase on a 6 by an unmoved ship (EP25 pp. 8, 10–11; EP25-M pp. 9–10) | R-EP-15…18; R-EP-36…38, R-EP-47, R-EP-58 | covered |
 | R-EP missions | lair capture by 3 crews (gold and track for each, hero roll-off, token sets the number); tracks with printed values and the bonus tile; fish roll, hauls, Council delivery, pirate scares a haul; spice farm crew, ability and one sack per player (EP25 pp. 13–14) | R-EP-19…24; R-EP-39…45, R-EP-52…56 | covered; lair numbers provisional (see below) |
-| R-EP games / VIS | 10 simulated games (5 missions × 3/4 players) reach the target and conserve 19 per resource, 148 coins and 6 hauls; pieces within limits; projection public only (fog is public, unexplored contents are drawn at reveal), the pirate's stolen card private; each reveal pool equals the printed region list minus the draws named in public events (the view shows counts only); every draw is stored in the snapshot and its event, and a restored game draws nothing again; no event names a hex's identity before its `ep.explored`; receipts idempotent through the service; bots refused | `ep-sim.test.ts` (10), `ep-privacy.test.ts` (12), `packages/server/test/explorers-pirates.test.ts` (4: also fog, pools and a pirate frame across a restart) | covered |
+| R-EP games / VIS | 10 simulated games (5 missions × 3/4 players) reach the target and conserve 19 per resource, 148 coins and 6 hauls; pieces within limits; projection public only (fog is public, unexplored contents are drawn at reveal), the pirate's stolen card private; each reveal pool equals the printed region list minus the draws named in public events (the view shows counts only); every draw is stored in the snapshot and its event, and a restored game draws nothing again; no event names a hex's identity before its `ep.explored`; receipts idempotent through the service; bots refused | `ep-sim.test.ts` (10), `ep-privacy.test.ts` (12), `packages/server/test/explorers-pirates.test.ts` (5: also fog, pools and a pirate frame across a restart, and a stranded `ep-2025.1` save rescued across restarts) | covered |
 | R-EP client | E&P build actions, prompt (setup, pirate victim, coins, settler/crew holders, ship rebuild, extra move, per-ship Movement actions), ship moves carrying the ship id, fog, ships with cargo, harbours, sites and the pirate in SVG and 3D, setup labels, help, cues; browser run of every mission to its result (`report.json` lists the commands executed and reached per renderer) | `packages/web/test/explorers-pirates.test.tsx` (10), `scripts/explorers-pirates/capture.py` | covered in headless Chromium; no human playtest |
 | R-SF routes | Road Building with road + ship and with two ships; in `sf-2025.2`, a legal ship target grants up to two remaining ships even when the first ship opens the second target, while `sf-2025.1` keeps the single-target grant; mixed routes and one remaining ship are capped, and pending snapshots use the same versioned capacity; Longest Trade Route joins roads and ships only at an own building; opponent buildings interrupt; trails/cycles as for roads (SF25 pp. 2–3, SF-FAQ 1/16) | `seafarers-rules.test.ts` (5); `seafarers-clauses.test.ts`: standalone ship grant across `sf-2025.1`/`.2`, mixed road + ship, one ship remaining, Road Building before the roll, free ship not movable that turn, ship supply exhausted mid-effect, ship loop length, road and ship meeting at an opponent building | covered |
 | R-SF islands / victory | +2 per player per small island (also when others settled first), grouped 5–6 islands count once, no bonus for setup; 14 VP on the own turn (SF25 p. 4, SF56-25 p. 4) | `seafarers-rules.test.ts` (5) | covered |
@@ -278,7 +280,7 @@ Every clause of the transcription ([work record, "Rule clauses"](aegis/work/2026
 | 7 | Harbour settlement: own coastal settlement, 2 VP, at most 4, 1 large or 2 small | EP25-M p. 6, EP25 p. 9 | R-EP-05, R-EP-26, R-EP-48, R-EP-51 |
 | 8 | Ship: empty sea edge at an own harbour, not next to fog; none left → return one with its cargo | EP25-M p. 6, EP25 p. 9 | R-EP-06, R-EP-27 |
 | 9 | Settler and crew onto an empty slot; a piece returned only when every slot is full | EP25-M p. 6, EP25 p. 10 | R-EP-07, R-EP-28, R-EP-48 |
-| 10 | 4 MP (6 with 1 wool); 2 ships per edge, passing allowed; finish one ship before the next | EP25-M p. 6, EP25 p. 10 | R-EP-08, R-EP-12, R-EP-29 |
+| 10 | 4 MP (6 with 1 wool); 2 ships per edge, passing allowed, and the movement must be able to end on a legal edge (interpretation 15); finish one ship before the next | EP25-M p. 6, EP25 p. 10 | R-EP-08, R-EP-12, R-EP-29, `ep-strand.test.ts` |
 | 11 | Load, unload, swap: no MP, mid-move, own adjacent harbour; pieces to and from an explored hex | EP25-M p. 6, EP25 p. 11 | R-EP-30, R-EP-51, R-EP-24, R-EP-41 |
 | 12 | Exploring flips the hex, ends the move; disc, lair, sacks or nothing; 1 resource or 2 gold | EP25-M p. 7, EP25 p. 12 | R-EP-09, R-EP-10, R-EP-31…34 |
 | 13 | Settler ship founds a settlement, ship and settler return; distance rule | EP25-M p. 7, EP25 p. 12 | R-EP-11, R-EP-35, R-EP-39, R-EP-52 |
@@ -342,6 +344,48 @@ Each item is numbered as in [the work record](aegis/work/2026-11-02-explorers-pi
 14. **Extra move with Swift Voyage.** EP25 gives no rule for combining
     them; the bonuses add (4 + 2 wool + 2 with both farms = up to 8).
     Unsourced; recorded as an interpretation.
+15. **A movement must be able to end legally; a ship with no way out stops
+    on the full edge** ([#97](https://github.com/cxyfer/katan/issues/97),
+    `ep-2025.2`; unsourced interpretation, maintainer decision 2026-11-05).
+    EP25 p. 10 lets a ship pass ships but end only on an edge with at most one
+    other ship; it does not say what happens when a ship with MP left cannot
+    reach such an edge. `ep-2025.1` checked one step ahead only, so a ship
+    could sail onto a full edge with no step left, and `turn.end`, the ship
+    switch and the fish roll were refused for good.
+    - A step onto a full edge is offered and accepted only if, from there,
+      the ship can still reach a legal stop with the MP it already has: a
+      non-full edge (an exploring step always targets one and ends the move),
+      or a site where its settler aboard can found (founding removes the
+      ship). The search models fullness (the moving ship is not counted),
+      tribute once per ship and turn (1 coin while unpaid) and the pirate's
+      current hex. Otherwise `ep.moveShip` returns `E_EP_EDGE_FULL`;
+      `E_EP_TRIBUTE` only when the step needs tribute the owner cannot pay.
+    - An extra move not yet bought does not count as MP: to sail a longer
+      route through full edges, buy the wool first. A settler that could still
+      be loaded from a harbour on the way does not count either; only one
+      already aboard does.
+    - The ship in motion on an edge with two other ships must sail on while
+      it has a way out: a step, a founding site, or a step that buying the
+      extra move (1 wool, affordable and not yet bought) would open. The
+      `stranded` hint means exactly this. With none of these, `turn.end`, a
+      ship switch or the fish roll ends its movement where it is, leaving three
+      ships on that edge. There is no deadline for the third ship to leave;
+      other ships may pass that edge but not stop there, and the ships on it
+      sail off normally in later turns.
+    - The rescue is not only for old saves: a later legal command can also
+      take the last exit away. Example (Land Ho!, issue map): p1 has four plain
+      settlements and no wool; ship x with a settler sails 58 → 33 → 34 (full)
+      → 2 (full), allowed because x can found at intersection 3; ship y with a
+      settler on edge 83 then founds at 64, reaching the five-settlement
+      limit, so x has no founding site left and may stop on edge 2 with three
+      ships there. No new limit on `ep.found` is added for this.
+    - Why: an unended movement must not freeze the table. Taking the ship back
+      to its last legal stop would mirror the table, but a saved game does not
+      record where the ship came from, so it could not free games already
+      stuck. Unfinished `ep-2025.1` games run this behavior (SPEC §7.3).
+      Pinned by `packages/rules/test/ep-strand.test.ts` (every profile) and the
+      restart case in `packages/server/test/explorers-pirates.test.ts`.
+
 ### Cities & Knights interpretations and open fixtures
 
 - **Barbarian strength (CK25 p. 11 vs CK-FAQ).** The FAQ writes b = s + m
@@ -584,6 +628,10 @@ These are recorded rather than hidden. None of them is presented as verified.
     New Road Building grant behavior is versioned separately: new base,
     Seafarers and Traders & Barbarians games use `base-2025.4`, `sf-2025.2`
     and `tb-2025.2`; saved games at earlier versions are not migrated.
+    New Explorers & Pirates games use `ep-2025.2`; the maintainer explicitly
+    approved running unfinished `ep-2025.1` games on the same behavior on
+    2026-11-05 as the #97 defect-fix exception (SPEC §7.3), so the engine does
+    not branch on the two E&P versions (E&P interpretation 15).
     Already-pending Road Building and Year of Plenty effects are capped to the
     remaining pieces or bank cards in projections, hints and execution;
     exhausted effects no longer block the next legal command.
