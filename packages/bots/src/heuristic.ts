@@ -41,6 +41,7 @@ import {
   bankTradeToward,
   offerGain,
   offersAwaitingMe,
+  offerTermsKnown,
   ownOfferStep,
   ownOpenOffers,
   proposeOffer,
@@ -205,7 +206,8 @@ function respondToOffers(turn: TurnContext): Command | null {
   const { view, ctx, params } = turn;
   if (view.turn.phase !== 'action') return null;
   for (const offer of offersAwaitingMe(view, ctx.selfId)) {
-    const gain = offerGain(turn.economy, offer);
+    // 規則 9：無法估值的報價視為不划算，下面的比較自然得到 declined。
+    const gain = offerTermsKnown(offer) ? offerGain(turn.economy, offer) : -Infinity;
     const margin = acceptMargin(view, ctx.selfId, offer.from, params.acceptMargin);
     return {
       type: 'trade.respond',
@@ -263,7 +265,8 @@ function actionDecision(turn: TurnContext, duty: () => BotCommand | null): BotCo
 
   // 2. 別人直接對我（行動者）提出的反報價：划算就結算，否則拒絕。
   for (const offer of offersAwaitingMe(view, ctx.selfId)) {
-    const gain = offerGain(turn.economy, offer);
+    // 規則 9：無法估值的報價視為不划算，下面的比較自然得到 declined。
+    const gain = offerTermsKnown(offer) ? offerGain(turn.economy, offer) : -Infinity;
     const margin = acceptMargin(view, ctx.selfId, offer.from, params.acceptMargin);
     const proposer = view.players.find((player) => player.id === offer.from);
     const proposerCanPay = (proposer?.handSize ?? 0) >= RESOURCES.reduce((sum, r) => sum + (offer.give[r] ?? 0), 0);
