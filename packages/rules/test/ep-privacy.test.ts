@@ -58,8 +58,8 @@ describe('R-EP-VIS projections', () => {
   }
 
   it('the stolen card is private to the thief and the victim', () => {
-    const { state } = simulateExplorersPirates('pirate-lairs', 4, 4, 2000);
-    const thefts = state.log.filter((event) => event.type === 'ep.pirateStole' && event.params.card === true);
+    const { state, events } = playLogged('pirate-lairs', 4, 4, 2000);
+    const thefts = events.filter((event) => event.type === 'ep.pirateStole' && event.params.card === true);
     expect(thefts.length).toBeGreaterThan(0);
     for (const event of thefts) {
       const { playerId, victim } = event.params as { playerId: string; victim: string };

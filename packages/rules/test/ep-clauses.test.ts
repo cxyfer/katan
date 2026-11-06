@@ -278,7 +278,9 @@ describe('R-EP movement and cargo (EP25 pp. 10–12, EP25-M pp. 6–7)', () => {
     epState(full).ships.push({ id: 'y1', player: 'p2', edge: crowded, cargo: [] }, { id: 'y2', player: 'p3', edge: crowded, cargo: [] });
     full = moving(full);
     full = run(full, 'p1', { type: 'ep.moveShip', ship: mine.id, edge: crowded }).state;
-    const other = epHints(full, 'p1').ships.find((ship) => ship.id === 'x8')!.steps[0]!.edge;
+    // The hints offer the other ship no step while the first must move on (#97).
+    expect(epHints(full, 'p1').ships.find((ship) => ship.id === 'x8')!.steps).toEqual([]);
+    const other = nextEdges(full, extra.edge).find((edge) => fogAtEnds(full, edge).length === 0)!;
     expect(refused(full, 'p1', { type: 'ep.moveShip', ship: 'x8', edge: other })).toBe('E_EP_EDGE_FULL');
   });
 

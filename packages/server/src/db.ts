@@ -455,6 +455,24 @@ export interface GameRow {
   updated_at: string;
 }
 
+/** 保留掃描的候選對局：三個活動時間戳都早於門檻。 */
+export interface IdleGameRow {
+  id: string;
+  room_id: string;
+  /** 最後一次寫入對局（指令、存檔、暫停、恢復）。 */
+  updated_at: string;
+  /** 房間最後一次異動（狀態、房主、政策）。 */
+  room_updated_at: string;
+  /** 任何成員最後一次連線或斷線；沒有紀錄時為 null。 */
+  last_seen_at: string | null;
+}
+
+/** `listIdleGames` 的 keyset 游標：排序鍵 `(games.updated_at, games.id)`。 */
+export interface IdleCursor {
+  updated_at: string;
+  id: string;
+}
+
 export interface ReceiptRow {
   game_id: string;
   player_id: string;
@@ -789,6 +807,70 @@ export class Repository {
       [roomId],
     );
     return rows[0] ?? null;
+  }
+
+  /**
+   * 未結束且沒有任何活動的對局，依 `games.updated_at` 由舊到新（房間與連線
+   * 時間只決定是否符合資格，不影響順序）。「活動」是三個時間戳的最新者：
+   * 對局寫入（`games.updated_at`）、房間異動（`rooms.updated_at`）與成員連線
+   * （`memberships.last_seen_at`）。時間戳皆為同格式的 ISO 字串，可直接以字串
+   * 比較；不使用 `GREATEST`/多參數 `MAX`，兩種資料庫共用同一條查詢。
+   * `gameId` 供取得鎖之後重新確認單一對局；`after` 是 keyset 游標，從排序鍵嚴格
+   * 大於它的下一頁繼續，讓持續失敗的對局不會一直占住第一頁。
+   */
+  async listIdleGames(
+    cutoff: string,
+    limit: number,
+    options: { gameId?: string; after?: IdleCursor } = {},
+  ): Promise<IdleGameRow[]> {
+    const params: unknown[] = [cutoff, cutoff, cutoff];
+    let extra = '';
+    if (options.gameId !== undefined) {
+      extra += ' AND games.id = ?';
+      params.push(options.gameId);
+    }
+    if (options.after) {
+      extra += ' AND (games.updated_at > ? OR (games.updated_at = ? AND games.id > ?))';
+      params.push(options.after.updated_at, options.after.updated_at, options.after.id);
+    }
+    params.push(limit);
+    return this.db.all<IdleGameRow>(
+      `SELECT games.id AS id, games.room_id AS room_id, games.updated_at AS updated_at,
+              rooms.updated_at AS room_updated_at,
+              (SELECT MAX(memberships.last_seen_at) FROM memberships
+                WHERE memberships.room_id = games.room_id) AS last_seen_at
+       FROM games JOIN rooms ON rooms.id = games.room_id
+       WHERE games.status NOT IN ('completed', 'abandoned')
+         AND rooms.status IN ('playing', 'suspended')
+         AND games.updated_at < ? AND rooms.updated_at < ?
+         AND NOT EXISTS (SELECT 1 FROM memberships
+                          WHERE memberships.room_id = games.room_id AND memberships.last_seen_at >= ?)
+         ${extra}
+       ORDER BY games.updated_at ASC, games.id ASC LIMIT ?`,
+      params,
+    );
+  }
+
+  /**
+   * 必須在交易內呼叫。PostgreSQL 預設 READ COMMITTED，單純的 SELECT 不會擋住
+   * 之後才 commit 的寫入，所以終止一局之前先以 `FOR UPDATE` 鎖住它的成員列、
+   * 房間列與對局列：重連（`last_seen_at`）、房間異動等更新這些時間戳的寫入會
+   * 等到這個交易結束才執行，鎖到手之後再做的閒置確認讀到的就是最新已提交資料。
+   * 鎖定順序（memberships → rooms → games）與 `deleteRoom` 一致。SQLite 的交易
+   * 本身就讓其他呼叫者排隊，不需要列鎖。
+   */
+  async lockGameActivity(gameId: string): Promise<void> {
+    if (this.db.kind !== 'postgres') return;
+    await this.db.all(
+      `SELECT 1 AS locked FROM memberships
+       WHERE room_id = (SELECT room_id FROM games WHERE id = ?) ORDER BY player_id FOR UPDATE`,
+      [gameId],
+    );
+    await this.db.all(
+      `SELECT 1 AS locked FROM rooms WHERE id = (SELECT room_id FROM games WHERE id = ?) FOR UPDATE`,
+      [gameId],
+    );
+    await this.db.all('SELECT 1 AS locked FROM games WHERE id = ? FOR UPDATE', [gameId]);
   }
 
   async saveGame(

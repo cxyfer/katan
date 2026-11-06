@@ -19,6 +19,8 @@ import type { ScreenProps } from './props.ts';
 
 const COLORS = ['red', 'blue', 'orange', 'white', 'green', 'brown'] as const;
 
+type SetupMode = 'fixed' | 'variable';
+
 /**
  * Lobby (docs/SPEC.md §4.2, §5.8).
  *
@@ -36,6 +38,7 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const room = state.room;
   const [policyDraft, setPolicyDraft] = useState<RoomPolicy | null>(null);
   const [capacityDraft, setCapacityDraft] = useState<number | null>(null);
+  const [setupDraft, setSetupDraft] = useState<SetupMode | null>(null);
   const [orderDraft, setOrderDraft] = useState<GameOrderMode | null>(null);
   const [copied, setCopied] = useState(false);
   const [botLevel, setBotLevel] = useState<BotLevel>(DEFAULT_BOT_LEVEL);
@@ -97,9 +100,14 @@ export function LobbyScreen({ controller }: ScreenProps) {
   const selectedCapacity = capacityOptions.includes(desiredCapacity)
     ? desiredCapacity
     : (capacityOptions[0] ?? room.capacity);
+  // 只列出規則集允許的佈局模式，並保留房間目前的值。
+  const setupOptions = Array.from(new Set<SetupMode>([...(profile?.setupModes ?? ['fixed', 'variable']), room.setupMode]));
+  const selectedSetupMode = setupDraft !== null && setupOptions.includes(setupDraft) ? setupDraft : room.setupMode;
   const selectedOrderMode = orderDraft ?? room.orderMode;
   const settingsDirty =
-    selectedCapacity !== room.capacity || selectedOrderMode !== room.orderMode;
+    selectedCapacity !== room.capacity ||
+    selectedSetupMode !== room.setupMode ||
+    selectedOrderMode !== room.orderMode;
 
   const setPolicyField = <K extends keyof RoomPolicy>(key: K, value: RoomPolicy[K]) => {
     setPolicyDraft({ ...policy, [key]: value });
@@ -413,6 +421,20 @@ export function LobbyScreen({ controller }: ScreenProps) {
                 <p className="muted">{t('lobby.capacityNote')}</p>
               </div>
               <div className="field">
+                <label htmlFor="lobby-setup">{t('lobby.setupMode')}</label>
+                <select
+                  id="lobby-setup"
+                  data-testid="lobby-setup"
+                  value={selectedSetupMode}
+                  disabled={!isHost || setupOptions.length <= 1}
+                  onChange={(event) => setSetupDraft(event.target.value as SetupMode)}
+                >
+                  {setupOptions.map((mode) => (
+                    <option key={mode} value={mode}>{t(`lobby.setupMode.${mode}`)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
                 <label htmlFor="lobby-order">{t('lobby.orderMode')}</label>
                 <select
                   id="lobby-order"
@@ -436,6 +458,7 @@ export function LobbyScreen({ controller }: ScreenProps) {
                   if (!settingsDirty) return;
                   void actions.updateSettings({
                     ...(selectedCapacity !== room.capacity ? { capacity: selectedCapacity } : {}),
+                    ...(selectedSetupMode !== room.setupMode ? { setupMode: selectedSetupMode } : {}),
                     ...(selectedOrderMode !== room.orderMode ? { orderMode: selectedOrderMode } : {}),
                   });
                 }}

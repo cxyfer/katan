@@ -134,20 +134,21 @@ export interface SfckCounters {
 }
 
 export function simulateSeafarersCitiesKnights(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 60000): CkSimulation & { sea: SfckCounters } {
+  const sea: SfckCounters = { shipsBuilt: 0, shipsMoved: 0, goldChoices: 0, islandBonuses: 0, pirateMoves: 0, pirateChased: 0 };
+  // Counted as each step lands: state.log keeps only the last 200 events.
   const result = simulateCitiesKnights(players, seed, maxSteps, {
     game: (count, gameSeed) => sfckGame(count, gameSeed).state,
     pending,
     setup,
     tries,
+    onEvent: (event) => {
+      if (event.type === 'ship.built' || event.type === 'setup.ship') sea.shipsBuilt++;
+      if (event.type === 'ship.moved') sea.shipsMoved++;
+      if (event.type === 'gold.chosen') sea.goldChoices++;
+      if (event.type === 'island.bonus') sea.islandBonuses++;
+      if (event.type === 'pirate.moved') sea.pirateMoves++;
+      if (event.type === 'sfck.knightChasedPirate') sea.pirateChased++;
+    },
   });
-  const sea: SfckCounters = { shipsBuilt: 0, shipsMoved: 0, goldChoices: 0, islandBonuses: 0, pirateMoves: 0, pirateChased: 0 };
-  for (const event of result.state.log) {
-    if (event.type === 'ship.built' || event.type === 'setup.ship') sea.shipsBuilt++;
-    if (event.type === 'ship.moved') sea.shipsMoved++;
-    if (event.type === 'gold.chosen') sea.goldChoices++;
-    if (event.type === 'island.bonus') sea.islandBonuses++;
-    if (event.type === 'pirate.moved') sea.pirateMoves++;
-    if (event.type === 'sfck.knightChasedPirate') sea.pirateChased++;
-  }
   return { ...result, sea };
 }

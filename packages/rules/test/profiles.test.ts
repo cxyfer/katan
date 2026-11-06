@@ -159,6 +159,9 @@ describe('ruleset registry', () => {
       expect(getProfile(id)!.ruleVersion).toBe('sf-2025.2');
     }
     expect(getProfile('tb-traders-barbarians-2025')!.ruleVersion).toBe('tb-2025.2');
+    for (const id of ['ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025']) {
+      expect(getProfile(id)!.ruleVersion).toBe('ep-2025.2');
+    }
     expect(getProfile('base-2025')!.expansions).toEqual([]);
     expect(getProfile('sf-ck-new-shores-2025')!.expansions).toEqual(['seafarers', 'citiesKnights']);
     for (const id of ['sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025']) {
