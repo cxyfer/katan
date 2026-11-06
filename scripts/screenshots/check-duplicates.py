@@ -18,8 +18,14 @@ from PIL import Image
 
 
 def pngs(roots):
+    # 根目錄可能互相包含（例如新拍攝目錄位於 docs/screenshots 之下），以實際路徑去重
+    seen = set()
     for root in roots:
-        yield from sorted(Path(root).rglob("*.png"))
+        for path in sorted(Path(root).rglob("*.png")):
+            real = path.resolve()
+            if real not in seen:
+                seen.add(real)
+                yield path
 
 
 def groups(paths, key):
