@@ -13,8 +13,10 @@ import {
 } from '@catan/rules';
 import {
   DEFAULT_POLICY,
+  type AbandonProposalView,
   type BotLevel,
   type GameOrderMode,
+  type LeaveRoomResult,
   type Notice,
   type PolicyProposalView,
   type RoomMemberView,
@@ -120,6 +122,11 @@ export interface Connection {
 interface RoomRuntime {
   connections: Map<string, Set<Connection>>;
   hostTransferTimers: Map<string, ReturnType<typeof setTimeout>>;
+  /**
+   * 每個身分最近一次進入這個房間的世代（HTTP join 或 socket 訂閱）。重啟後 runtime
+   * 清空，目前世代視為 0，帶舊世代的 leave 照常生效。
+   */
+  entryEpochs: Map<string, number>;
 }
 
 export interface RoomServiceDeps {
@@ -135,6 +142,17 @@ export interface RoomServiceDeps {
 export class RoomService {
   private readonly runtimes = new Map<string, RoomRuntime>();
   private readonly roomLocks = new Map<string, Promise<unknown>>();
+  /**
+   * 進房世代計數器，以微秒起算（`Date.now() * 1000`，約 1.8e15，低於
+   * `Number.MAX_SAFE_INTEGER` 的 9e15，JSON 往返不損失精度）。
+   *
+   * 同一個 process 內嚴格遞增：每次取 `max(時鐘, 上次 + 1)`，時鐘回調也不會變小。
+   * 跨重啟只是盡力而為：新 process 從目前時鐘起算，通常大於舊 process 發出的值，
+   * 讓「遲到 leave 跨越重啟、使用者在重啟後重新進入」多半仍判為過期（`stale`）；
+   * 但時鐘回調，或舊 process 持續每毫秒超過 1000 次進房而超前時鐘時，不保證。
+   * 不持久化：要觸發必須有一個 `/leave` 撐過重啟並在使用者重新進入之後才抵達。
+   */
+  private entryEpochCounter = Date.now() * 1000;
 
   constructor(private readonly deps: RoomServiceDeps) {}
 
@@ -142,10 +160,22 @@ export class RoomService {
     return this.deps.repo;
   }
 
+  /** 在 room lock 內呼叫：記下這個身分剛進入房間，回傳新的世代。 */
+  private bumpEntryEpoch(roomId: string, playerId: string): number {
+    this.entryEpochCounter = Math.max(Date.now() * 1000, this.entryEpochCounter + 1);
+    this.runtime(roomId).entryEpochs.set(playerId, this.entryEpochCounter);
+    return this.entryEpochCounter;
+  }
+
+  /** 這個身分在該房目前的進房世代；沒有紀錄（例如重啟後）為 0。 */
+  entryEpochOf(roomId: string, playerId: string): number {
+    return this.runtimes.get(roomId)?.entryEpochs.get(playerId) ?? 0;
+  }
+
   private runtime(roomId: string): RoomRuntime {
     let runtime = this.runtimes.get(roomId);
     if (!runtime) {
-      runtime = { connections: new Map(), hostTransferTimers: new Map() };
+      runtime = { connections: new Map(), hostTransferTimers: new Map(), entryEpochs: new Map() };
       this.runtimes.set(roomId, runtime);
     }
     return runtime;
@@ -210,6 +240,7 @@ export class RoomService {
       bot,
       ...(bot ? { botLevel: botLevelOf(member) } : {}),
       self: member.player_id === viewerId,
+      withdrawn: !bot && member.withdrawn === 1,
     };
   }
 
@@ -235,6 +266,23 @@ export class RoomService {
       };
     }
 
+    let pendingAbandon: AbandonProposalView | null = null;
+    if (room.game_id) {
+      const abandon = await this.repo.findOpenGameProposal(room.game_id, 'abandon');
+      if (abandon) {
+        pendingAbandon = {
+          id: abandon.id,
+          proposedBy: abandon.proposed_by,
+          consents: await this.repo.listGameConsents(abandon.id),
+          // 缺席或已退出的真人；Bot 不缺席。
+          absent: humanMembers(memberships)
+            .filter((member) => member.connected !== 1 || member.withdrawn === 1)
+            .map((member) => member.player_id),
+          createdAt: abandon.created_at,
+        };
+      }
+    }
+
     return {
       id: room.id,
       code: room.code,
@@ -253,6 +301,8 @@ export class RoomService {
       updatedAt: room.updated_at,
       startBlockers: this.startBlockers(room, members),
       pendingPolicy,
+      pendingAbandon,
+      ...(viewerId ? { viewerEntryEpoch: this.entryEpochOf(roomId, viewerId) } : {}),
     };
   }
 
@@ -518,6 +568,8 @@ export class RoomService {
     const existing = await this.repo.findMembership(roomId, playerId);
     if (existing) {
       await this.markConnected(roomId, playerId, null);
+      // 重新進入也算：先前逾時的 leave 之後才到，要能判出它已過期。
+      this.bumpEntryEpoch(roomId, playerId);
       return this.view(roomId, playerId);
     }
     if (room.status !== 'lobby') {
@@ -548,20 +600,31 @@ export class RoomService {
       connection_id: null,
     });
     await this.repo.updateRoom(roomId, { status: room.status });
+    this.bumpEntryEpoch(roomId, playerId);
     return this.view(roomId, playerId);
   }
 
-  async leave(playerId: string, roomId: string): Promise<{ left: true; hostTransferredTo: string | null }> {
-    return this.withRoomLock(roomId, () => this.leaveLocked(playerId, roomId));
+  async leave(playerId: string, roomId: string, entryEpoch?: number): Promise<LeaveRoomResult> {
+    return this.withRoomLock(roomId, () => this.leaveLocked(playerId, roomId, entryEpoch));
   }
 
-  private async leaveLocked(
-    playerId: string,
-    roomId: string,
-  ): Promise<{ left: true; hostTransferredTo: string | null }> {
+  private async leaveLocked(playerId: string, roomId: string, entryEpoch?: number): Promise<LeaveRoomResult> {
     const room = await this.requireRoom(roomId);
     const membership = await this.repo.findMembership(roomId, playerId);
     if (!membership) return { left: true, hostTransferredTo: null };
+
+    // 同一身分在這個房間仍有 live 訂閱連線：這是遲到或重複的離開（例如 client 逾時後
+    // 才執行的請求，而玩家已經重新進入），或同一人另一個分頁還在房內。不做任何變更。
+    // 刻意離開的 client 會先取消訂閱並等 `unsubscribed`，到這裡時已沒有連線。
+    // register／unregister 與這裡共用 room lock，檢查之後不會有連線插隊。
+    if (this.runtimes.get(roomId)?.connections.has(playerId)) {
+      return { left: false, hostTransferredTo: null, reason: 'present' };
+    }
+    // 沒有連線，但這個身分在請求所依據的世代之後又進入過房間（例如 HTTP join 之後、
+    // socket 訂閱之前）：請求已過期。沒帶世代的呼叫者（純 HTTP、舊 client）不受影響。
+    if (entryEpoch !== undefined && this.entryEpochOf(roomId, playerId) > entryEpoch) {
+      return { left: false, hostTransferredTo: null, reason: 'stale' };
+    }
 
     if (room.status === 'lobby') {
       await this.repo.deleteMembership(roomId, playerId);
@@ -573,7 +636,7 @@ export class RoomService {
         return { left: true, hostTransferredTo: null };
       }
       let transferred: string | null = null;
-      if (room.host_id === playerId) transferred = await this.transferHost(roomId);
+      if (room.host_id === playerId) transferred = await this.transferHostLocked(roomId);
       await this.cancelPendingProposals(roomId);
       this.broadcastRoom(roomId);
       return { left: true, hostTransferredTo: transferred };
@@ -582,7 +645,7 @@ export class RoomService {
     // A seat in a running or saved game is never removed by leaving.
     await this.markDisconnected(roomId, playerId, 'leave');
     let transferred: string | null = null;
-    if (room.host_id === playerId) transferred = await this.transferHost(roomId);
+    if (room.host_id === playerId) transferred = await this.transferHostLocked(roomId);
     await this.cancelPendingProposals(roomId);
     this.broadcastRoom(roomId);
     return { left: true, hostTransferredTo: transferred };
@@ -626,24 +689,9 @@ export class RoomService {
     return this.view(roomId, playerId);
   }
 
-  /**
-   * Records or retracts an explicit withdrawal. A withdrawal is separate from
-   * Save and leave and never removes the seat (§4.6).
-   */
-  async setWithdrawn(playerId: string, roomId: string, withdrawn: boolean): Promise<RoomView> {
-    await this.requireMembership(roomId, playerId);
-    await this.repo.updateMembership(roomId, playerId, { withdrawn: withdrawn ? 1 : 0 });
-    if (withdrawn) {
-      // A withdrawal invalidates a pending abandonment vote.
-      await this.cancelPendingProposals(roomId);
-    }
-    this.broadcastRoom(roomId);
-    return this.view(roomId, playerId);
-  }
-
-  /** Cancels any open vote when the eligibility of the voters changes. */
-  async invalidateGameVotes(gameId: string): Promise<void> {
-    await this.repo.cancelOpenGameProposals(gameId);
+  /** Cancels any open vote when the eligibility of the voters changes; returns how many were cancelled. */
+  async invalidateGameVotes(gameId: string): Promise<number> {
+    return this.repo.cancelOpenGameProposals(gameId);
   }
 
   async setReady(playerId: string, roomId: string, ready: boolean): Promise<RoomView> {
@@ -942,22 +990,45 @@ export class RoomService {
 
   // -- presence ------------------------------------------------------------
 
+  /**
+   * 連線登記與離開同一把 room lock（`leave` 也在其中），讓「leave 確認沒有連線後、
+   * 變更前」不會被新連線插隊。注意鎖不可重入：鎖內的方法不得再呼叫它。
+   */
   async registerConnection(connection: Connection): Promise<void> {
     const roomId = connection.roomId;
     if (!roomId) return;
-    // A returning connection invalidates a vote it did not participate in.
-    const room = await this.repo.findRoom(roomId);
-    if (room?.game_id) await this.invalidateGameVotes(room.game_id);
+    return this.withRoomLock(roomId, () => this.registerConnectionLocked(connection, roomId));
+  }
+
+  private async registerConnectionLocked(connection: Connection, roomId: string): Promise<void> {
+    // 呼叫端（ws.ts）在鎖外檢查過成員資格；等鎖的期間房間可能已被關閉或成員已離開，
+    // 所以在鎖內重新驗證，否則會留下沒人清理的 runtime 連線。
+    await this.requireRoom(roomId);
+    await this.requireMembership(roomId, connection.playerId);
     const runtime = this.runtime(roomId);
     const set = runtime.connections.get(connection.playerId) ?? new Set<Connection>();
     set.add(connection);
     runtime.connections.set(connection.playerId, set);
+    this.bumpEntryEpoch(roomId, connection.playerId);
     const timer = runtime.hostTransferTimers.get(connection.playerId);
     if (timer) {
       clearTimeout(timer);
       runtime.hostTransferTimers.delete(connection.playerId);
     }
     await this.markConnected(roomId, connection.playerId, connection.id);
+    // A returning connection invalidates a vote it did not participate in. 必須
+    // 先標記為已連線再取消：反過來的話，取消與標記之間成立的新提案仍把這位玩家
+    // 當成缺席，之後就不會再被取消。tryApplyAbandon 在提交時重讀 membership 重查資格。
+    // 已退出的席位回來不改變缺席條件，因此不取消投票；退出只能明確撤回。
+    const room = await this.repo.findRoom(roomId);
+    if (room?.game_id) {
+      const returning = await this.repo.findMembership(roomId, connection.playerId);
+      // 是否廣播取決於這次 UPDATE 真的取消了幾筆，而不是事先讀到什麼：先讀後取消
+      // 之間若有新提案成立又被取消，其他客戶端仍需要知道它消失了。
+      if (returning?.withdrawn !== 1 && (await this.invalidateGameVotes(room.game_id)) > 0) {
+        this.broadcastRoom(roomId);
+      }
+    }
     this.broadcastPresence(roomId);
     this.deps.onConnectionRegistered?.(roomId, connection.playerId);
   }
@@ -965,6 +1036,10 @@ export class RoomService {
   async unregisterConnection(connection: Connection): Promise<void> {
     const roomId = connection.roomId;
     if (!roomId) return;
+    return this.withRoomLock(roomId, () => this.unregisterConnectionLocked(connection, roomId));
+  }
+
+  private async unregisterConnectionLocked(connection: Connection, roomId: string): Promise<void> {
     const runtime = this.runtimes.get(roomId);
     if (!runtime) return;
     const set = runtime.connections.get(connection.playerId);
@@ -978,26 +1053,37 @@ export class RoomService {
     if (!room) return;
     await this.markDisconnected(roomId, connection.playerId, 'transport');
     this.broadcastPresence(roomId);
+    // presence 不含 pendingAbandon；有 open 提案時推送完整檢視，讓缺席名單保持最新。
+    if (room.game_id && (await this.repo.findOpenGameProposal(room.game_id, 'abandon'))) {
+      this.broadcastRoom(roomId);
+    }
 
     // After the grace period an unexpectedly disconnected host loses the role.
     if (room.host_id === connection.playerId && room.status !== 'lobby') {
       const graceMs = this.policyOf(room).disconnectGraceSeconds * 1000;
       const timer = setTimeout(() => {
-        void this.expireHostGrace(roomId, connection.playerId);
+        void this.expireHostGrace(roomId, connection.playerId).catch(() => undefined);
       }, graceMs);
       timer.unref?.();
       runtime.hostTransferTimers.set(connection.playerId, timer);
     }
   }
 
+  /** 寬限期結束：與連線登記、離開同一把 room lock，鎖內重新檢查才決定要不要移轉。 */
   private async expireHostGrace(roomId: string, playerId: string): Promise<void> {
+    return this.withRoomLock(roomId, () => this.expireHostGraceLocked(roomId, playerId));
+  }
+
+  private async expireHostGraceLocked(roomId: string, playerId: string): Promise<void> {
     const runtime = this.runtimes.get(roomId);
     runtime?.hostTransferTimers.delete(playerId);
     const room = await this.repo.findRoom(roomId);
     if (!room || room.host_id !== playerId) return;
+    // 計時器觸發到取得鎖之間，房主可能已經重連：以鎖內的現況為準。
+    if (runtime?.connections.has(playerId)) return;
     const membership = await this.repo.findMembership(roomId, playerId);
     if (membership?.connected === 1) return;
-    await this.transferHost(roomId);
+    await this.transferHostLocked(roomId);
     this.broadcastRoom(roomId);
   }
 
@@ -1023,6 +1109,11 @@ export class RoomService {
 
   /** Transfers administration to the earliest-joined connected member. */
   async transferHost(roomId: string): Promise<string | null> {
+    return this.withRoomLock(roomId, () => this.transferHostLocked(roomId));
+  }
+
+  /** 呼叫端必須已持有該房的 room lock（鎖不可重入）。 */
+  private async transferHostLocked(roomId: string): Promise<string | null> {
     // Bot 不能成為房主。
     const memberships = humanMembers(await this.repo.listMembers(roomId));
     const candidates = memberships
@@ -1037,12 +1128,14 @@ export class RoomService {
 
   /** Elects a host when members return and no connected host exists. */
   async ensureHost(roomId: string): Promise<string | null> {
-    const room = await this.repo.findRoom(roomId);
-    if (!room) return null;
-    const memberships = await this.repo.listMemberships(roomId);
-    const hostPresent = memberships.some((membership) => membership.player_id === room.host_id);
-    if (hostPresent) return room.host_id;
-    return this.transferHost(roomId);
+    return this.withRoomLock(roomId, async () => {
+      const room = await this.repo.findRoom(roomId);
+      if (!room) return null;
+      const memberships = await this.repo.listMemberships(roomId);
+      const hostPresent = memberships.some((membership) => membership.player_id === room.host_id);
+      if (hostPresent) return room.host_id;
+      return this.transferHostLocked(roomId);
+    });
   }
 
   async seatControl(roomId: string, playerId: string, connectionId: string): Promise<boolean> {

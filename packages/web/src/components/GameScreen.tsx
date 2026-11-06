@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/context.tsx';
 import { requiredActionAnnouncement, requiredActionFor } from '../state/pending.ts';
 import type { TableController } from '../state/useTable.ts';
+import { AbandonPanel } from './AbandonPanel.tsx';
 import { ActionRail } from './ActionRail.tsx';
 import '../styles/side-layout.css';
 import { BoardView } from './BoardView.tsx';
@@ -9,6 +10,7 @@ import { GameTools } from './GameTools.tsx';
 import { GameIcon } from './GameArt.tsx';
 import { CommandStatus } from './CommandStatus.tsx';
 import { HandPanel } from './HandPanel.tsx';
+import { LeaveDialog, type LeaveStep } from './LeaveDialog.tsx';
 import { PendingPrompt } from './PendingPrompt.tsx';
 import { PlayersPanel } from './PlayersPanel.tsx';
 import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
@@ -34,6 +36,11 @@ export function GameScreen({ controller }: { controller: TableController }) {
   const [activeRail, setActiveRail] = useState<'players' | 'actions' | null>(null);
   const openPlayers = useCallback(() => setActiveRail('players'), []);
   const openActions = useCallback(() => setActiveRail('actions'), []);
+  // 離開對話框：null 為關閉；橫幅的「提議結束」直接停在確認步驟。
+  const [leaveStep, setLeaveStep] = useState<LeaveStep | null>(null);
+  const openLeave = useCallback(() => setLeaveStep('choose'), []);
+  const proposeEnd = useCallback(() => setLeaveStep('end'), []);
+  const closeLeave = useCallback(() => setLeaveStep(null), []);
   // 交易面板收起時（手機抽屜）仍要套用「自動拒絕」偏好。
   useAutoDeclineTrades(controller);
   // 壟斷／豐收之年的資源選擇：失效時關閉，豐收之年確認後逐張領取。
@@ -68,7 +75,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
         <div className="table-atmosphere__compass"><GameIcon name="compass" size={150} /></div>
       </div>
 
-      <StatusStrip controller={controller} fullscreen={fullscreen} />
+      <StatusStrip controller={controller} fullscreen={fullscreen} onLeave={openLeave} />
       <div aria-live="polite" role="status" className="visually-hidden" data-testid="live-region">{announcement}</div>
       {fullscreen.failed && <p className="table-fullscreen-error notice" role="alert">{t('table.fullscreenFailed')}</p>}
 
@@ -85,6 +92,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
             </div>}
             {state.command?.status !== 'accepted' && <CommandStatus controller={controller} />}
             <PolicyProposalPanel controller={controller} />
+            <AbandonPanel controller={controller} onPropose={proposeEnd} />
           </div>
           <div className="game__map"><BoardView controller={controller} /></div>
           <div className="game__preview"><SelectionPreview controller={controller} /></div>
@@ -112,6 +120,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
           {state.save.status === 'failed' && <p className="error" role="alert" data-testid="save-failed">{t('play.saveFailed')}</p>}
         </section>
       </details>
+      {leaveStep && <LeaveDialog controller={controller} initialStep={leaveStep} onClose={closeLeave} />}
       <p className="game__orientation"><GameIcon name="refresh" size={14} />{t('table.landscapeHint')}</p>
       <RotatePrompt />
     </div>

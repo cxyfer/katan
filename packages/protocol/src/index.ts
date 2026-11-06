@@ -52,6 +52,7 @@ export const SERVER_ERROR_IDS: readonly string[] = [
   'error.E_COLOR_TAKEN',
   'error.E_COMMAND_ID_REUSED',
   'error.E_GAME_NOT_FOUND',
+  'error.E_GAME_NOT_STARTED',
   'error.E_GAME_SUSPENDED',
   'error.E_INTERNAL',
   'error.E_INVALID_BOT',
@@ -75,6 +76,7 @@ export const SERVER_ERROR_IDS: readonly string[] = [
   'error.E_ROOM_NOT_FOUND',
   'error.E_ROOM_STARTED',
   'error.E_SAVE_FAILED',
+  'error.E_SEAT_WITHDRAWN',
   'error.E_STALE_REVISION',
   'error.E_START_BLOCKED',
   'error.E_UNSUPPORTED',
@@ -199,6 +201,8 @@ export interface RoomMemberView {
   botLevel?: BotLevel;
   /** True when the member is the viewer (control decisions). */
   self?: boolean;
+  /** 席位已明確退出（§4.6）；需撤回才能再行動。Bot 恆為 false。 */
+  withdrawn?: boolean;
 }
 
 export interface RoomView {
@@ -220,6 +224,64 @@ export interface RoomView {
   /** Viewer-specific start blockers, as message ids with parameters. */
   startBlockers: Notice[];
   pendingPolicy: PolicyProposalView | null;
+  /** 進行中對局的 open 放棄提案；沒有提案或沒有對局時為 null。 */
+  pendingAbandon?: AbandonProposalView | null;
+  /**
+   * 檢視者在這個房間目前的進房世代（每次 HTTP join 或 socket 訂閱都會變大）。
+   * 沒有 `unsubscribed` 確認可用時，離開請求以它當備援。只在有檢視者時出現。
+   */
+  viewerEntryEpoch?: number;
+}
+
+/** 放棄（無勝者終局）提案：同意者與缺席者，供確認畫面點名（§4.6）。 */
+export interface AbandonProposalView {
+  id: string;
+  proposedBy: string;
+  /** 已同意的真人 playerId。 */
+  consents: string[];
+  /** 目前缺席或已退出的真人 playerId。 */
+  absent: string[];
+  createdAt: string;
+}
+
+/** `POST /api/games/:gameId/abandon`（提案）的回應。 */
+export interface AbandonProposeResult {
+  proposalId: string;
+  /** 提案即同意；唯一真人或同意者已齊時為 true，對局已以無勝者終局。 */
+  abandoned: boolean;
+}
+
+/** `POST /api/games/:gameId/abandon`（附 proposalId 表態）的回應。 */
+export interface AbandonConsentResult {
+  abandoned: boolean;
+}
+
+/**
+ * `POST /api/rooms/:roomId/leave` 的回應。`left: false` 表示這次離開被忽略
+ * （同一身分在該房仍有 live 訂閱連線，多半是遲到或重複的請求），沒有任何變更。
+ */
+export interface LeaveRoomResult {
+  left: boolean;
+  hostTransferredTo: string | null;
+  /**
+   * 只在 `left: false` 時出現：`present` 同一身分在該房仍有 live 訂閱連線；
+   * `stale` 請求帶的 `entryEpoch` 比目前的進房世代舊（離開之後又重新進入）。
+   */
+  reason?: 'present' | 'stale';
+}
+
+/** `POST /api/rooms/:roomId/leave` 的選用 body。 */
+export interface LeaveRoomRequest {
+  /** 取自 `unsubscribed` 確認或 `RoomView.viewerEntryEpoch`；比目前世代舊就不離開。 */
+  entryEpoch?: number;
+}
+
+/** `POST /api/games/:gameId/withdraw` 的回應。 */
+export interface WithdrawResult {
+  /** 套用後該席位是否處於退出狀態。 */
+  withdrawn: boolean;
+  /** 這次退出讓所有真人都已退出，對局因此以無勝者終局。 */
+  abandoned: boolean;
 }
 
 export interface PolicyProposalView {
@@ -356,6 +418,8 @@ export interface ResumableGameView {
   lastSavedAt: string;
   revision: number;
   allSeatsNeeded: boolean;
+  /** 檢視者自己的席位已退出時為 true；對局仍可恢復，因為可以撤回。 */
+  withdrawn?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -371,7 +435,13 @@ export type ServerMessage =
   | { type: 'presence'; payload: { roomId: string; members: RoomMemberView[] } }
   | { type: 'notice'; payload: Notice }
   | { type: 'error'; payload: Notice & { code: string } }
-  | { type: 'pong'; payload: { at: string } };
+  | { type: 'pong'; payload: { at: string } }
+  /**
+   * 取消訂閱（`subscribe` 不帶 `roomId`）處理完成後的確認；未訂閱時 `roomId` 與
+   * `entryEpoch` 都是 null。`entryEpoch` 是這個身分在該房「目前」的進房世代，
+   * 離開時帶回 `POST /api/rooms/:roomId/leave` 的 body。
+   */
+  | { type: 'unsubscribed'; payload: { roomId: string | null; entryEpoch: number | null } };
 
 export type ClientMessage =
   | { type: 'ping' }
@@ -399,6 +469,11 @@ export interface ServerConfigView {
   };
   /** Whether hosts may add computer opponents, and the levels offered. */
   bots: { enabled: boolean; levels: BotLevel[] };
+  /**
+   * Operator retention policy (SPEC §4.6). Unfinished games idle for more than
+   * `gameRetentionDays` days are ended without a winner; `0` means disabled.
+   */
+  retention?: { gameRetentionDays: number };
 }
 
 export type { BoxId, ExpansionId, GameEvent, GameView, Resource, ScenarioId, VariantId };

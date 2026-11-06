@@ -103,6 +103,17 @@ describe('result screen', () => {
     expect(await screen.findByTestId('result-no-winner')).toBeTruthy();
     expect(screen.queryByTestId('result-winner')).toBeNull();
   });
+
+  it('explains a game the operator retention policy closed', async () => {
+    const api = createFakeApi({
+      snapshot: makeSnapshot(makeView({ result: { playerId: null, reason: 'expired' } })),
+    });
+    await openGame(api);
+    const summary = await screen.findByTestId('result-no-winner');
+    expect(summary).toBeTruthy();
+    expect(screen.queryByTestId('result-winner')).toBeNull();
+    expect(screen.getByText(/long period of inactivity/)).toBeTruthy();
+  });
 });
 
 describe('state-level resilience', () => {

@@ -311,7 +311,7 @@ export interface GameEvent {
 
 export interface GameResult {
   playerId: string | null;
-  reason: 'victory' | 'abandoned';
+  reason: 'victory' | 'abandoned' | 'expired';
   atSeq: number;
 }
 

@@ -76,7 +76,7 @@ describe('Explorers & Pirates over the API', () => {
   it('starts a variable-setup mission and accepts an idempotent harbour placement', async () => {
     const { clients, gameId } = await startedGame(harness, 3, { profileId: 'ep-fish-2025', setupMode: 'variable' });
     const first = clients[0]!.expectOk<EpSnapshot>(await clients[0]!.get(`/api/games/${gameId}`));
-    expect(first.view.engineVersion).toBe('ep-2025.1');
+    expect(first.view.engineVersion).toBe('ep-2025.2');
     expect(first.view.victoryTarget).toBe(15);
     expect(first.view.modules?.explorersPirates?.fog.length).toBeGreaterThan(0);
     expect(first.view.modules?.explorersPirates?.setupStep).toBe('harbor');
@@ -149,6 +149,110 @@ describe('Explorers & Pirates over the API', () => {
       expect(receipt.outcome).toBe('accepted');
     } finally {
       if (restarted) await restarted.close();
+      else await local.service.close().catch(() => undefined);
+      rmSync(local.dataDir, { recursive: true, force: true });
+    }
+  });
+
+  // #97：未完成的 ep-2025.1 卡死存檔在重啟後以 ep-2025.2 的行為救援，不重做事件。
+  // 此案例以 `repo.db.run` 直接改寫 SQLite 的 engine_version，並在同一個 SQLite 檔上重啟，
+  // 因此只跑 SQLite；PostgreSQL 尚未覆蓋，與上一個重啟案例的 skipIf 理由相同。
+  it.skipIf(!!process.env.TEST_POSTGRES_URL)('rescues a persisted ep-2025.1 stranded ship across restarts (#97)', async () => {
+    const local = await startHarness();
+    const sqlitePath = join(local.dataDir, 'test.sqlite');
+    let running: Awaited<ReturnType<typeof startService>> | null = null;
+    try {
+      const { clients, gameId } = await startedGame(local, 3, { profileId: 'ep-land-ho-2025', setupMode: 'fixed' });
+      // 以固定骰點擲骰（5，無 7 的棄牌），直接寫回存檔。
+      const row = (await local.service.repo.findGame(gameId))!;
+      const state = JSON.parse(row.state_json) as GameState;
+      expect(state.turn.phase).toBe('preroll');
+      const dice = [3, 2];
+      const rolled = applyCommand(state, state.players[state.turn.seat]!.id, { type: 'turn.roll' } as Command, { int: () => dice.shift()! });
+      expect(rolled.ok).toBe(true);
+      if (!rolled.ok) return;
+      await local.service.repo.saveGame(gameId, rolled.state, row.revision, 'playing', null);
+      const actorId = rolled.state.players[rolled.state.turn.seat]!.id;
+      const actor = clients.find((client) => client.playerId === actorId)!;
+      const movementRequest = { commandId: 'strand-movement', expectedRevision: row.revision, command: { type: 'ep.startMovement' } };
+      const movement = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, movementRequest));
+      expect(movement.outcome).toBe('accepted');
+
+      // 卡死局：作用中的船在滿格邊、剩 1 MP；每條邊都另有兩艘船，沒有羊毛也沒有 settler。
+      const moving = (await local.service.repo.findGame(gameId))!;
+      const stuck = JSON.parse(moving.state_json) as GameState;
+      const slot = stuck.moduleState!.explorersPirates as {
+        ships: { id: string; player: string; edge: number; cargo: string[] }[];
+        turn: { active: string | null; ships: Record<string, unknown> };
+      };
+      const ship = { ...slot.ships.find((entry) => entry.player === actorId)!, cargo: [] };
+      const others = stuck.players.map((player) => player.id).filter((id) => id !== actorId);
+      const edges = stuck.board.roads.length;
+      slot.ships = [ship, ...Array.from({ length: edges * 2 }, (_, index) => ({
+        id: `blocker-${index}`, player: others[index % others.length]!, edge: Math.floor(index / 2), cargo: [],
+      }))];
+      slot.turn.active = ship.id;
+      slot.turn.ships = { [ship.id]: { used: 3, extra: false, done: false, tribute: false, chased: false } };
+      const player = stuck.players.find((entry) => entry.id === actorId)!;
+      stuck.bank.wool += player.resources.wool;
+      player.resources.wool = 0;
+      stuck.engineVersion = 'ep-2025.1';
+      await local.service.repo.saveGame(gameId, stuck, moving.revision, 'playing', null);
+      await local.service.repo.db.run('UPDATE games SET engine_version = ? WHERE id = ?', ['ep-2025.1', gameId]);
+      const saved = (await local.service.repo.findGame(gameId))!.state_json;
+      await local.service.close();
+
+      running = await startService({ port: 0, host: '127.0.0.1', sqlitePath }, () => undefined);
+      let base = `http://127.0.0.1:${running.port}`;
+      const resumed = () => Object.assign(createClient(base), { cookie: actor.cookie, playerId: actor.playerId });
+      type StrandView = EpSnapshot & {
+        view: {
+          seq: number;
+          hints: { canEndTurn: boolean; modules: { explorersPirates: { stranded: boolean } } };
+          modules: { explorersPirates: { ships: { id: string; edge: number }[] } };
+        };
+      };
+      // 公開投影中，救援後的滿格邊上有幾艘船。
+      const shipsAtStrand = (snapshot: StrandView) =>
+        snapshot.view.modules.explorersPirates.ships.filter((entry) => entry.edge === ship.edge).map((entry) => entry.id).sort();
+      const before = resumed().expectOk<StrandView>(await resumed().get(`/api/games/${gameId}`));
+      expect(before.revision).toBe(moving.revision);
+      expect(before.view.engineVersion).toBe('ep-2025.1');
+      expect(before.view.hints.canEndTurn).toBe(true);
+      expect(before.view.hints.modules.explorersPirates.stranded).toBe(false);
+      // 讀取不改動儲存；舊 receipt 原樣重播。
+      expect((await running.repo.findGame(gameId))!.state_json).toBe(saved);
+      expect(resumed().expectOk<Receipt>(await resumed().post(`/api/games/${gameId}/commands`, movementRequest))).toEqual(movement);
+
+      const endRequest = { commandId: 'strand-rescue', expectedRevision: before.revision, command: { type: 'turn.end' } };
+      const ended = resumed().expectOk<Receipt>(await resumed().post(`/api/games/${gameId}/commands`, endRequest));
+      expect(ended.outcome).toBe('accepted');
+      expect(ended.revision).toBe(before.revision + 1);
+      const rescued = (await running.repo.findGame(gameId))!;
+      const after = JSON.parse(rescued.state_json) as GameState;
+      expect(after.engineVersion).toBe('ep-2025.1');
+      expect(after.turn.seat).not.toBe(stuck.turn.seat);
+      const afterSlot = after.moduleState!.explorersPirates as typeof slot;
+      expect(afterSlot.ships.filter((entry) => entry.edge === ship.edge)).toHaveLength(3);
+      const events = await running.repo.listEvents(gameId, 0, 10_000);
+      const view = resumed().expectOk<StrandView>(await resumed().get(`/api/games/${gameId}`));
+      expect(shipsAtStrand(view)).toHaveLength(3);
+      expect(shipsAtStrand(view)).toContain(ship.id);
+      await running.close();
+      running = null;
+
+      // 再次重啟：版本、事件與 receipt 不變，救援不會重做。
+      running = await startService({ port: 0, host: '127.0.0.1', sqlitePath }, () => undefined);
+      base = `http://127.0.0.1:${running.port}`;
+      const again = resumed().expectOk<StrandView>(await resumed().get(`/api/games/${gameId}`));
+      expect(again.revision).toBe(ended.revision);
+      expect(again.view.seq).toBe(view.view.seq);
+      expect(shipsAtStrand(again)).toEqual(shipsAtStrand(view));
+      expect(resumed().expectOk<Receipt>(await resumed().post(`/api/games/${gameId}/commands`, endRequest))).toEqual(ended);
+      expect((await running.repo.findGame(gameId))!.state_json).toBe(rescued.state_json);
+      expect(await running.repo.listEvents(gameId, 0, 10_000)).toEqual(events);
+    } finally {
+      if (running) await running.close();
       else await local.service.close().catch(() => undefined);
       rmSync(local.dataDir, { recursive: true, force: true });
     }

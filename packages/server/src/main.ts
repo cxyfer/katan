@@ -88,6 +88,7 @@ export async function startService(
     repo,
     rooms,
     config,
+    log,
     onCommitted(notice) {
       botsRef.current?.onCommitted(notice);
     },
@@ -150,11 +151,45 @@ export async function startService(
   }, Math.max(config.presenceSweepIntervalMs, 60_000));
   sweepTimer.unref?.();
 
+  // 營運者保留掃描：啟動時先跑一次，之後依間隔執行；停用（0 天）時完全不排程。
+  // 用 setTimeout 串接而非 setInterval，避免前一批尚未結束就重疊；候選數量
+  // 達到批次上限時短延遲後接續下一批，積壓才會在合理時間內清完。
+  let retentionTimer: ReturnType<typeof setTimeout> | null = null;
+  let retentionRun: Promise<void> = Promise.resolve();
+  let retentionStopped = false;
+  const runRetention = (): void => {
+    retentionTimer = null;
+    retentionRun = (async () => {
+      let backlog = false;
+      try {
+        const swept = await games.expireIdleGames();
+        // 只有本批確實有進展才立刻接續；整批都失敗時等下個間隔，避免每秒重試洗版。
+        backlog = swept.full && swept.expired.length > 0;
+      } catch (error) {
+        log('warn', 'game retention sweep failed', { error: String(error) });
+      }
+      if (retentionStopped) return;
+      retentionTimer = setTimeout(runRetention, backlog ? 1_000 : config.gameRetentionSweepIntervalMs);
+      retentionTimer.unref?.();
+    })();
+  };
+  if (config.gameRetentionDays > 0) {
+    log('info', 'game retention enabled', {
+      days: config.gameRetentionDays,
+      intervalMs: config.gameRetentionSweepIntervalMs,
+    });
+    runRetention();
+  }
+
   let closing: Promise<void> | null = null;
   const close = (): Promise<void> => {
     closing ??= (async () => {
       clearInterval(sweepTimer);
+      retentionStopped = true;
+      if (retentionTimer) clearTimeout(retentionTimer);
       log('info', 'shutting down');
+      // 等進行中的保留批次寫完，關閉資料庫前不再有新的終止寫入。
+      await retentionRun;
       // 先停 Bot，確保關閉資料庫前不再有新的指令寫入。
       await bots.close();
       await ws.close();

@@ -13,6 +13,7 @@ import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/scoreboard-hover.css';
 import '../styles/bot-seats.css';
+import '../styles/leave.css';
 
 function ScoreMark({ icon, label, value, awarded = false, testId }: {
   icon: string; label: string; value: string; awarded?: boolean; testId?: string;
@@ -131,6 +132,10 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
   const players = [...view.players].sort((left, right) => left.seat - right.seat);
   // 投影不含座位類型，電腦座位由房間成員判斷。
   const bots = botLevelsOf(state.room);
+  // 已明確退出的真人（SPEC §4.6）；電腦恆不退出。
+  const withdrawnIds = new Set(
+    (state.room?.members ?? []).filter((member) => member.withdrawn === true && !member.bot).map((member) => member.playerId),
+  );
   const headingId = `players-heading-${id}`;
   const detailsIdForSeat = (seat: number) => `players-details-${id}-${seat}`;
   const detailsIds = players.map((player) => detailsIdForSeat(player.seat)).join(' ');
@@ -232,7 +237,8 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           const scoreLabel = t(isSelf && player.ownScore !== undefined ? 'play.ownScore' : 'play.publicScore');
           const isBot = bots.has(player.id);
           const botLabel = isBot ? botBadgeLabel(t, bots.get(player.id)) : null;
-          const compactLabel = `${player.nickname}${botLabel ? ` (${botLabel})` : ''}${isTurn ? `, ${t('play.turnOwner')}` : ''}`;
+          const isWithdrawn = withdrawnIds.has(player.id);
+          const compactLabel = `${player.nickname}${botLabel ? ` (${botLabel})` : ''}${isWithdrawn ? ` (${t('play.withdrawn')})` : ''}${isTurn ? `, ${t('play.turnOwner')}` : ''}`;
           const longestRoad = view.awards.longestRoad === player.id;
           const largestArmy = view.awards.largestArmy === player.id;
           // Seafarers: ships, Longest Trade Route and the per-island bonus.
@@ -257,6 +263,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
               data-turn={isTurn ? 'true' : 'false'}
               data-self={isSelf ? 'true' : 'false'}
               data-bot={isBot ? 'true' : undefined}
+              data-withdrawn={isWithdrawn ? 'true' : undefined}
               title={compactLabel}
             >
               <div className="seat__summary">
@@ -266,8 +273,12 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                   {isBot && (
                     <span className="seat__bot-mark" data-testid={`seat-bot-mark-${player.seat}`}><GameIcon name="bot" size={9} /></span>
                   )}
+                  {isWithdrawn && (
+                    <span className="seat__withdrawn-mark" data-testid={`seat-withdrawn-mark-${player.seat}`}><GameIcon name="exit" size={9} /></span>
+                  )}
                 </span>
                 {isBot && !expanded && <span className="visually-hidden">{`${player.nickname} (${botLabel})`}</span>}
+                {isWithdrawn && !expanded && <span className="visually-hidden">{`${player.nickname} (${t('play.withdrawn')})`}</span>}
                 <span className="seat__identity" hidden={!expanded}>
                   <span className="seat__name" title={player.nickname}>{player.nickname}{isSelf ? ` (${t('app.you')})` : ''}</span>
                   {isBot && <span className="visually-hidden" data-testid={`seat-bot-${player.seat}`}>{` (${botLabel})`}</span>}
@@ -275,6 +286,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                 <span className={`seat__score${isSelf && player.ownScore !== undefined ? ' seat__own-score' : ''}`} title={scoreLabel}><GameIcon name="crown" size={15} /><span className="visually-hidden">{scoreLabel}: </span>{number(total)}</span>
               </div>
               <div className="players__details" id={detailsIdForSeat(player.seat)} hidden={!expanded}>
+                {isWithdrawn && <p className="badge seat__withdrawn" data-testid={`seat-withdrawn-${player.seat}`}>
+                  <GameIcon name="exit" size={12} />{t('play.withdrawn')}
+                </p>}
                 <div className="players__stats" role="group" aria-label={t('table.playersBreakdown')}>
                   <ScoreMark icon="home" label={t('table.playersSettlements', { count: number(settlements) })} value={number(settlements)} />
                   <ScoreMark icon="city" label={t('table.playersCities', { count: number(cities) })} value={number(cities)} />

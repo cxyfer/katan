@@ -32,7 +32,7 @@ import {
 import { closedSite, councilAnchors, harborsAtShip, hexesAtShip, vertexTouchesFog } from './geometry.ts';
 import { resolveCaptures } from './lairs.ts';
 import {
-  activeShipStranded,
+  activeShipMustMove,
   atCouncil,
   deliver,
   dropCrew,
@@ -107,8 +107,8 @@ export const explorersPiratesModule: RulesModule = {
   vetoCommand,
 
   beforeEndTurn(state) {
-    // 提示和實際結束回合共用同一個檢查。
-    return activeShipStranded(state) ? fail('E_EP_EDGE_FULL') : null;
+    // 提示和實際結束回合共用同一個檢查；無出口的擱淺船可就地結束（#97）。
+    return activeShipMustMove(state) ? fail('E_EP_EDGE_FULL') : null;
   },
 
   allowBuilding(state, playerId, vertex, options) {
@@ -286,7 +286,8 @@ export type ExplorersPiratesView = ReturnType<typeof projectState>;
 
 // -- hints ---------------------------------------------------------------------------
 
-function shipHints(state: GameState, ship: EpShip, movement: boolean) {
+/** `blocked`：另一艘船必須繼續航行，這艘船不能開始移動（與 `ep.moveShip` 換船檢查一致）。 */
+function shipHints(state: GameState, ship: EpShip, movement: boolean, blocked: boolean) {
   const slot = epState(state);
   const turn = viewTurn(state);
   const record = turn.ships[ship.id];
@@ -295,7 +296,7 @@ function shipHints(state: GameState, ship: EpShip, movement: boolean) {
   return {
     id: ship.id,
     movesLeft: movement ? movesLeft(state, ship, turn) : 0,
-    steps: movement ? stepTargets(state, ship) : [],
+    steps: movement && !blocked ? stepTargets(state, ship) : [],
     done: !!record?.done,
     extra: !!record?.extra,
     found: movement ? foundTargets(state, ship) : [],
@@ -335,6 +336,7 @@ function hintsFor(state: GameState, playerId: string) {
   const scenario = scenarioOf(state);
   const ownShips = slot.ships.filter((ship) => ship.player === playerId);
   const targets = action ? pieceTargets(state, playerId) : [];
+  const mustMove = movement && activeShipMustMove(state);
   return {
     phase: playing ? turn.phase : null,
     setup: setupMine && step
@@ -356,10 +358,13 @@ function hintsFor(state: GameState, playerId: string) {
     goldBuysLeft: action ? Math.max(0, 2 - turn.goldBuys) : 0,
     fastGoldLeft: action ? Math.max(0, abilityCount(state, playerId, 'fastGold') - turn.fastGold) : 0,
     canStartMovement: action,
-    fishRoll: movement && scenario.missions.includes('fish') && !turn.fishRolled,
-    /** The ship in motion is on an edge with two other ships and must move on. */
-    stranded: movement && activeShipStranded(state),
-    ships: playing ? ownShips.map((ship) => shipHints(state, ship, movement)) : [],
+    fishRoll: movement && scenario.missions.includes('fish') && !turn.fishRolled && !mustMove,
+    /**
+     * 移動中的船停在另有兩艘船的邊上，且仍有出口（步、定居或買 extra move 後的步），
+     * 必須繼續航行；無出口時為 false，可就地結束移動（#97）。
+     */
+    stranded: mustMove,
+    ships: playing ? ownShips.map((ship) => shipHints(state, ship, movement, mustMove && ship.id !== turn.active)) : [],
     pirateTargets: myPirate?.stage === 'place' ? pirateTargets(state, framePirateFrom(state, myPirate)) : [],
     robCandidates: myPirate?.stage === 'rob' ? (myPirate.candidates ?? []).slice() : [],
   };

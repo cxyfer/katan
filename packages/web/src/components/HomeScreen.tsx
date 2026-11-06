@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GAME_ORDER_MODES, type GameOrderMode } from '@catan/protocol';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { SoundSettings } from './SoundSettings.tsx';
+import { NewsBoard } from './NewsBoard.tsx';
+import { isNoteUnread, notesForVersion } from '../news/player-notes.ts';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatDateTime } from '../i18n/format.ts';
@@ -14,7 +15,10 @@ import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../state/ru
  * The public room list is built only from `RoomSummaryView`, which carries
  * lobby metadata and never seated-player state (docs/SPEC.md §8.3).
  */
-type HomePane = 'table' | 'resume' | 'rooms' | 'identity';
+/** 公告牌只顯示不超過這個 bundle 版號的紀錄。 */
+const SHOWN_NOTES = notesForVersion(__CATAN_VERSION__);
+
+type HomePane = 'table' | 'resume' | 'rooms' | 'news' | 'identity';
 
 export function HomeScreen({ controller }: ScreenProps) {
   const t = useT();
@@ -26,9 +30,7 @@ export function HomeScreen({ controller }: ScreenProps) {
   const [capacity, setCapacity] = useState(3);
   const [expansionKey, setExpansionKey] = useState('');
   const [scenarioKey, setScenarioKey] = useState('');
-  const [setupMode, setSetupMode] = useState<'fixed' | 'variable'>('fixed');
-  const [orderMode, setOrderMode] = useState<GameOrderMode>('join');
-  const homePanes = ['table', 'resume', 'rooms', 'identity'] as const;
+  const homePanes = ['table', 'resume', 'rooms', 'news', 'identity'] as const;
   const homeTabRef = useRef<HTMLButtonElement | null>(null);
 
   const capacityLimit = state.config?.limits.roomCapacityMax ?? Infinity;
@@ -41,11 +43,22 @@ export function HomeScreen({ controller }: ScreenProps) {
   const capacityOptions = ruleset.playerCounts;
   const effectiveCapacity = ruleset.playerCount ?? capacityOptions[0] ?? 4;
   const joinLabels = (ids: string[]) => ids.map((id) => t(id)).join(' + ');
+  // 佈局模式與遊戲順序改在房間設定中調整；建房時先用規則集允許的預設值。
   const setupOptions = chosenProfile?.setupModes ?? ['fixed', 'variable'];
-  const effectiveSetup = setupOptions.includes(setupMode) ? setupMode : (setupOptions[0] ?? 'fixed');
+  const effectiveSetup = setupOptions.includes('fixed') ? 'fixed' : (setupOptions[0] ?? 'fixed');
 
-  const paneIcon: Record<HomePane, string> = { table: 'flag', resume: 'anchor', rooms: 'globe', identity: 'settings' };
+  const paneIcon: Record<HomePane, string> = { table: 'flag', resume: 'anchor', rooms: 'globe', news: 'sparkles', identity: 'settings' };
   const paneCount: Partial<Record<HomePane, number>> = { resume: state.games.length, rooms: state.rooms.length };
+  // 公告牌：最新一則比這個瀏覽器看過的版號更新時，在分頁上標示「新」。
+  const latestNote = SHOWN_NOTES[0] ?? null;
+  const newsUnread = latestNote !== null && isNoteUnread(latestNote, state.newsSeen);
+  const paneHint = (pane: HomePane) =>
+    pane === 'news' && latestNote ? `v${latestNote.version} · ${latestNote.title[locale]}` : t(`home.paneHint.${pane}`);
+
+  // 開啟公告牌即視為已讀；只在未讀時寫入，已讀版號因此不會倒退。
+  useEffect(() => {
+    if (homePane === 'news' && newsUnread && latestNote) actions.markNewsSeen(latestNote.version);
+  }, [homePane, newsUnread, latestNote, actions.markNewsSeen]);
 
   // The room browser renders a live `GET /api/rooms` result, so opening the
   // pane must fetch it instead of waiting for the refresh button. Re-running
@@ -106,9 +119,12 @@ export function HomeScreen({ controller }: ScreenProps) {
                 <span className="home__nav-icon"><GameIcon name={paneIcon[pane]} size={20} /></span>
                 <span className="home__nav-copy">
                   <span className="home__nav-label">{t(`home.pane.${pane}`)}</span>
-                  <span className="home__nav-hint">{t(`home.paneHint.${pane}`)}</span>
+                  <span className="home__nav-hint">{paneHint(pane)}</span>
                 </span>
                 {(paneCount[pane] ?? 0) > 0 && <span className="home__nav-count">{paneCount[pane]}</span>}
+                {pane === 'news' && newsUnread && (
+                  <span className="home__nav-count home__nav-count--new" data-testid="news-unread">{t('home.news.new')}</span>
+                )}
               </button>
             ))}
           </nav>
@@ -177,32 +193,6 @@ export function HomeScreen({ controller }: ScreenProps) {
                 ))}
               </select>
             </div>
-            <div className="field">
-              <label htmlFor="room-setup">{t('lobby.setupMode')}</label>
-              <select
-                id="room-setup"
-                value={effectiveSetup}
-                onChange={(event) => setSetupMode(event.target.value as 'fixed' | 'variable')}
-              >
-                {setupOptions.map((mode) => (
-                  <option key={mode} value={mode}>{t(`lobby.setupMode.${mode}`)}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="room-order">{t('lobby.orderMode')}</label>
-              <select
-                id="room-order"
-                data-testid="room-order"
-                value={orderMode}
-                onChange={(event) => setOrderMode(event.target.value as GameOrderMode)}
-              >
-                {GAME_ORDER_MODES.map((mode) => (
-                  <option key={mode} value={mode}>{t(`lobby.orderMode.${mode}`)}</option>
-                ))}
-              </select>
-              <p className="muted">{t('lobby.orderModeNote')}</p>
-            </div>
           </div>
           {chosenProfile && (
             <p className="muted" data-testid="resolved-profile">
@@ -224,7 +214,6 @@ export function HomeScreen({ controller }: ScreenProps) {
                   capacity: effectiveCapacity,
                   profileId: chosenProfile?.id ?? '',
                   setupMode: effectiveSetup,
-                  orderMode,
                 })
               }
             >
@@ -296,6 +285,9 @@ export function HomeScreen({ controller }: ScreenProps) {
                       .join('、')}
                   </p>
                   <p className="muted">{t('home.lastSavedAt', { time: formatDateTime(locale, game.lastSavedAt) })}</p>
+                  {game.withdrawn && (
+                    <p><span className="badge" data-testid={`resume-withdrawn-${game.gameId}`}>{t('home.withdrawn')}</span></p>
+                  )}
                   {game.allSeatsNeeded ? (
                     <p className="muted">{t('home.allSeatsNeeded')}</p>
                   ) : game.players.some((player) => player.bot) ? (
@@ -412,6 +404,10 @@ export function HomeScreen({ controller }: ScreenProps) {
             </table>
           </div>
         )}
+      </section>
+
+      <section id="home-pane-news" role="tabpanel" aria-labelledby="home-tab-news" hidden={homePane !== 'news'} className="home-pane home__news">
+        <NewsBoard notes={SHOWN_NOTES} version={__CATAN_VERSION__} />
       </section>
 
       <section id="home-pane-identity" role="tabpanel" aria-labelledby="home-tab-identity" hidden={homePane !== 'identity'} className="home-pane home__identity">

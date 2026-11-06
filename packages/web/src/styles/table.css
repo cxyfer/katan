@@ -145,7 +145,8 @@
   padding: .35rem .5rem;
   font-size: .7rem;
 }
-.table-fullscreen {
+.table-fullscreen,
+.table-leave {
   white-space: nowrap;
   background: #233b3b;
   border-color: #b0a17466;
@@ -1467,7 +1468,8 @@
     height: 27px;
   }
   .status-strip .language-switch select,
-  .table-fullscreen {
+  .table-fullscreen,
+  .table-leave {
     min-height: 32px;
   }
   .players {
@@ -1720,12 +1722,14 @@
   .status-strip__spacer {
     display: none;
   }
-  .table-fullscreen {
+  .table-fullscreen,
+  .table-leave {
     min-width: 32px;
     min-height: 32px;
     padding: .35rem;
   }
-  .table-fullscreen span {
+  .table-fullscreen span,
+  .table-leave span {
     display: none;
   }
   .game__table {

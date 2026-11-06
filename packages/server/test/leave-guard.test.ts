@@ -1,0 +1,702 @@
+/**
+ * 遲到的 `/leave` 不得變更已重新進入的房間：同一身分在房內仍有 live 訂閱連線時，
+ * `leave` 回 `left: false` 且不做任何變更；刻意離開的 client 先取消訂閱並等
+ * `unsubscribed` 確認，再送 HTTP `/leave`。
+ */
+
+import { randomUUID } from 'node:crypto';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { WebSocket } from 'ws';
+import type { LeaveRoomResult, RoomView, ServerMessage } from '@catan/protocol';
+import type { Connection } from '../src/rooms.ts';
+import { runSetupOverApi, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
+
+let harness: TestHarness;
+
+beforeAll(async () => {
+  harness = await startHarness();
+});
+
+afterAll(async () => {
+  await harness.close();
+});
+
+interface Tab {
+  messages: ServerMessage[];
+  subscribe(roomId: string): Promise<void>;
+  /** 送出取消訂閱並等到 `unsubscribed`，回傳它的 roomId。 */
+  unsubscribe(): Promise<string | null>;
+  /** 同上，回傳完整的確認內容（含 entryEpoch）。 */
+  unsubscribeAck(): Promise<{ roomId: string | null; entryEpoch: number | null }>;
+  sendRaw(message: unknown): void;
+  close(): Promise<void>;
+}
+
+const unsubscribedCount = (tab: Tab): number => tab.messages.filter((m) => m.type === 'unsubscribed').length;
+
+/** 一個瀏覽器分頁：一條真實 socket。 */
+async function openTab(client: TestClient): Promise<Tab> {
+  const socket = new WebSocket(`${harness.base.replace('http', 'ws')}/ws`, { headers: { cookie: client.cookie! } });
+  const messages: ServerMessage[] = [];
+  socket.on('message', (data) => messages.push(JSON.parse(data.toString()) as ServerMessage));
+  await new Promise<void>((resolve, reject) => {
+    socket.once('open', resolve);
+    socket.once('error', reject);
+  });
+  let closing: Promise<void> | null = null;
+  const tab: Tab = {
+    messages,
+    async subscribe(roomId) {
+      const rooms = () => messages.filter((m) => m.type === 'room').length;
+      const before = rooms();
+      socket.send(JSON.stringify({ type: 'subscribe', payload: { roomId } }));
+      await vi.waitFor(() => expect(rooms()).toBeGreaterThan(before));
+    },
+    async unsubscribeAck() {
+      const before = unsubscribedCount(tab);
+      socket.send(JSON.stringify({ type: 'subscribe', payload: {} }));
+      await vi.waitFor(() => expect(unsubscribedCount(tab)).toBeGreaterThan(before));
+      const ack = messages.filter((m) => m.type === 'unsubscribed').at(-1);
+      return ack?.type === 'unsubscribed' ? ack.payload : { roomId: null, entryEpoch: null };
+    },
+    async unsubscribe() {
+      return (await tab.unsubscribeAck()).roomId;
+    },
+    /** 原始訊息，測試用（例如訂閱已關閉的房間）。 */
+    sendRaw(message: unknown) {
+      socket.send(JSON.stringify(message));
+    },
+    close: () =>
+      (closing ??= new Promise<void>((resolve) => {
+        socket.once('close', () => resolve());
+        socket.close();
+      })),
+  };
+  return tab;
+}
+
+const leave = async (client: TestClient, roomId: string): Promise<LeaveRoomResult> =>
+  client.expectOk<LeaveRoomResult>(await client.post(`/api/rooms/${roomId}/leave`));
+
+const leaveWith = async (client: TestClient, roomId: string, entryEpoch: number): Promise<LeaveRoomResult> =>
+  client.expectOk<LeaveRoomResult>(await client.post(`/api/rooms/${roomId}/leave`, { entryEpoch }));
+
+async function lobby(): Promise<{ host: TestClient; guest: TestClient; roomId: string; code: string }> {
+  const host = await harness.client('LobbyHost');
+  const guest = await harness.client('LobbyGuest');
+  const room = host.expectOk<RoomView>(
+    await host.post('/api/rooms', { visibility: 'private', capacity: 3, profileId: 'base-2025', setupMode: 'fixed' }),
+  );
+  guest.expectOk(await guest.post('/api/rooms/join', { code: room.code }));
+  return { host, guest, roomId: room.id, code: room.code };
+}
+
+async function playing(): Promise<{ clients: TestClient[]; roomId: string }> {
+  const game = await startedGame(harness, 3);
+  await runSetupOverApi(game.clients, game.gameId);
+  return { clients: game.clients, roomId: game.roomId };
+}
+
+const membership = (roomId: string, playerId: string) => harness.service.repo.findMembership(roomId, playerId);
+const hostOf = async (roomId: string): Promise<string> => (await harness.service.repo.findRoom(roomId))!.host_id;
+
+describe('leave while the player is still subscribed', () => {
+  it('ignores the leave in a lobby', async () => {
+    const { host, guest, roomId } = await lobby();
+    const tab = await openTab(guest);
+    try {
+      await tab.subscribe(roomId);
+      expect(await leave(guest, roomId)).toEqual({ left: false, hostTransferredTo: null, reason: 'present' });
+      expect(await membership(roomId, guest.playerId!)).not.toBeNull();
+      expect((await host.get<RoomView>(`/api/rooms/${roomId}`)).body.ok).toBe(true);
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('ignores the leave in a game: still connected, host kept', async () => {
+    const { clients, roomId } = await playing();
+    const host = clients[0]!;
+    const tab = await openTab(host);
+    try {
+      await tab.subscribe(roomId);
+      expect(await leave(host, roomId)).toEqual({ left: false, hostTransferredTo: null, reason: 'present' });
+      expect((await membership(roomId, host.playerId!))?.connected).toBe(1);
+      expect(await hostOf(roomId)).toBe(host.playerId);
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('takes effect for a plain HTTP caller with no socket', async () => {
+    const { clients, roomId } = await playing();
+    expect(await leave(clients[2]!, roomId)).toEqual({ left: true, hostTransferredTo: null });
+    expect((await membership(roomId, clients[2]!.playerId!))?.connected).toBe(0);
+  });
+});
+
+describe('leave after unsubscribing and receiving the ack', () => {
+  it('removes the lobby membership', async () => {
+    const { guest, roomId } = await lobby();
+    const tab = await openTab(guest);
+    try {
+      await tab.subscribe(roomId);
+      expect(await tab.unsubscribe()).toBe(roomId);
+      expect(await leave(guest, roomId)).toEqual({ left: true, hostTransferredTo: null });
+      expect(await membership(roomId, guest.playerId!)).toBeNull();
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('marks the player offline in a game and hands the host role on', async () => {
+    const { clients, roomId } = await playing();
+    const [host, second] = clients as [TestClient, TestClient];
+    const tab = await openTab(host);
+    try {
+      await tab.subscribe(roomId);
+      expect(await tab.unsubscribe()).toBe(roomId);
+      const result = await leave(host, roomId);
+      expect(result.left).toBe(true);
+      expect(result.hostTransferredTo).toBe(second.playerId);
+      expect(await hostOf(roomId)).toBe(second.playerId);
+      expect((await membership(roomId, host.playerId!))?.connected).toBe(0);
+    } finally {
+      await tab.close();
+    }
+  });
+});
+
+describe('a late leave after the player came back', () => {
+  it('changes nothing in a lobby', async () => {
+    const { host, guest, roomId } = await lobby();
+    const tab = await openTab(host);
+    try {
+      await tab.subscribe(roomId);
+      await tab.unsubscribe();
+      // 之後 client 重新進入同一房間；此時遲到的 /leave 才到 server。
+      await tab.subscribe(roomId);
+      expect(await leave(host, roomId)).toEqual({ left: false, hostTransferredTo: null, reason: 'present' });
+      expect(await membership(roomId, host.playerId!)).not.toBeNull();
+      expect(await membership(roomId, guest.playerId!)).not.toBeNull();
+      expect(await hostOf(roomId)).toBe(host.playerId);
+      expect((await harness.service.repo.findRoom(roomId))?.status).toBe('lobby');
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('changes nothing in a game', async () => {
+    const { clients, roomId } = await playing();
+    const host = clients[0]!;
+    const tab = await openTab(host);
+    try {
+      await tab.subscribe(roomId);
+      await tab.unsubscribe();
+      await tab.subscribe(roomId);
+      expect(await leave(host, roomId)).toEqual({ left: false, hostTransferredTo: null, reason: 'present' });
+      expect((await membership(roomId, host.playerId!))?.connected).toBe(1);
+      expect(await hostOf(roomId)).toBe(host.playerId);
+    } finally {
+      await tab.close();
+    }
+  });
+});
+
+describe('several tabs of one person', () => {
+  it('only counts once every tab has left the room', async () => {
+    const { clients, roomId } = await playing();
+    const host = clients[0]!;
+    const first = await openTab(host);
+    const second = await openTab(host);
+    try {
+      await first.subscribe(roomId);
+      await second.subscribe(roomId);
+      await first.unsubscribe();
+      expect(await leave(host, roomId)).toEqual({ left: false, hostTransferredTo: null, reason: 'present' });
+      expect((await membership(roomId, host.playerId!))?.connected).toBe(1);
+
+      await second.unsubscribe();
+      const result = await leave(host, roomId);
+      expect(result.left).toBe(true);
+      expect((await membership(roomId, host.playerId!))?.connected).toBe(0);
+    } finally {
+      await first.close();
+      await second.close();
+    }
+  });
+});
+
+describe('unsubscribed acknowledgement', () => {
+  it('answers with a null roomId when nothing was subscribed, and is repeatable', async () => {
+    const { clients } = await playing();
+    const tab = await openTab(clients[1]!);
+    try {
+      expect(await tab.unsubscribe()).toBeNull();
+      expect(await tab.unsubscribe()).toBeNull();
+      expect(tab.messages.some((message) => message.type === 'error')).toBe(false);
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('names the room that was left, then null for the repeat', async () => {
+    const { clients, roomId } = await playing();
+    const tab = await openTab(clients[1]!);
+    try {
+      await tab.subscribe(roomId);
+      expect(await tab.unsubscribe()).toBe(roomId);
+      expect(await tab.unsubscribe()).toBeNull();
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('arrives only after the connection has left the room', async () => {
+    const { clients, roomId } = await playing();
+    const tab = await openTab(clients[1]!);
+    try {
+      await tab.subscribe(roomId);
+      expect(harness.service.rooms.hasLiveConnection(roomId)).toBe(true);
+      await tab.unsubscribe();
+      // 收到確認的那一刻，連線已移出房間、座位已標離線。
+      expect(harness.service.rooms.hasLiveConnection(roomId)).toBe(false);
+      expect((await membership(roomId, clients[1]!.playerId!))?.connected).toBe(0);
+    } finally {
+      await tab.close();
+    }
+  });
+});
+
+describe('leave is serialised with connection registration', () => {
+  it('queues a registering connection behind a leave that is already changing state', async () => {
+    const { clients, roomId } = await playing();
+    const guest = clients[2]!;
+
+    // 讓 leave 在「已確認沒有連線、正要標離線」時停住，再讓新連線進來。
+    const repo = harness.service.repo;
+    const original = repo.updateMembership.bind(repo);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let entered!: () => void;
+    const reached = new Promise<void>((resolve) => (entered = resolve));
+    const spy = vi.spyOn(repo, 'updateMembership').mockImplementation(async (room, player, patch) => {
+      if (player === guest.playerId && patch.connected === 0) {
+        entered();
+        await gate;
+      }
+      return original(room, player, patch);
+    });
+    const connection: Connection = { id: randomUUID(), playerId: guest.playerId!, roomId, send() {}, close() {} };
+    try {
+      const leaving = guest.post<LeaveRoomResult>(`/api/rooms/${roomId}/leave`);
+      await reached;
+
+      const registering = harness.service.rooms.registerConnection(connection);
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      // 同一把鎖：leave 還沒做完，新連線不能已經登記。
+      expect(harness.service.rooms.hasLiveConnection(roomId)).toBe(false);
+
+      release();
+      const response = await leaving;
+      expect(guest.expectOk(response)).toEqual({ left: true, hostTransferredTo: null });
+      await registering;
+      // leave 先完成，之後連線才登記並把座位標回在線；不會被 leave 的離線標記蓋掉。
+      expect(harness.service.rooms.hasLiveConnection(roomId)).toBe(true);
+      expect((await membership(roomId, guest.playerId!))?.connected).toBe(1);
+    } finally {
+      release();
+      spy.mockRestore();
+      await harness.service.rooms.unregisterConnection(connection);
+    }
+  });
+
+  it('queues a leave behind a connection that is registering', async () => {
+    const { clients, roomId } = await playing();
+    const guest = clients[2]!;
+    const repo = harness.service.repo;
+    const original = repo.updateMembership.bind(repo);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let entered!: () => void;
+    const reached = new Promise<void>((resolve) => (entered = resolve));
+    const spy = vi.spyOn(repo, 'updateMembership').mockImplementation(async (room, player, patch) => {
+      if (player === guest.playerId && patch.connected === 1) {
+        entered();
+        await gate;
+      }
+      return original(room, player, patch);
+    });
+    const connection: Connection = { id: randomUUID(), playerId: guest.playerId!, roomId, send() {}, close() {} };
+    try {
+      const registering = harness.service.rooms.registerConnection(connection);
+      await reached;
+      const leaving = guest.post<LeaveRoomResult>(`/api/rooms/${roomId}/leave`);
+      let answered = false;
+      void leaving.then(() => (answered = true));
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      // 登記還沒做完時，leave 要排在同一把鎖後面，不能先回答。
+      expect(answered).toBe(false);
+      release();
+      await registering;
+      expect(guest.expectOk(await leaving)).toEqual({ left: false, hostTransferredTo: null, reason: 'present' });
+      expect((await membership(roomId, guest.playerId!))?.connected).toBe(1);
+    } finally {
+      release();
+      spy.mockRestore();
+      await harness.service.rooms.unregisterConnection(connection);
+    }
+  });
+});
+
+describe('entry epoch: a leave that predates the latest entry is stale', () => {
+  it('gives the ack and the room view the same current epoch', async () => {
+    const { guest, roomId } = await lobby();
+    const startedAt = Date.now();
+    const tab = await openTab(guest);
+    try {
+      expect((await tab.unsubscribeAck()).entryEpoch).toBeNull();
+      await tab.subscribe(roomId);
+      const ack = await tab.unsubscribeAck();
+      expect(ack.roomId).toBe(roomId);
+      expect(ack.entryEpoch).toBe(harness.service.rooms.entryEpochOf(roomId, guest.playerId!));
+      // 以微秒起算，且是可安全 JSON 往返的整數。
+      expect(ack.entryEpoch!).toBeGreaterThanOrEqual(startedAt * 1000);
+      expect(Number.isSafeInteger(ack.entryEpoch!)).toBe(true);
+      expect(JSON.parse(JSON.stringify(ack.entryEpoch))).toBe(ack.entryEpoch);
+      const view = guest.expectOk<RoomView>(await guest.get(`/api/rooms/${roomId}`));
+      expect(view.viewerEntryEpoch).toBe(ack.entryEpoch);
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('strictly increases within the process, even when the clock steps back or a burst is fast', async () => {
+    const { guest, roomId } = await lobby();
+    const rooms = harness.service.rooms as unknown as {
+      bumpEntryEpoch(room: string, player: string): number;
+    };
+    const bump = (): number => rooms.bumpEntryEpoch(roomId, guest.playerId!);
+    const first = bump();
+
+    // 時鐘回調：計數器仍然往前走，不會發出較小或相同的世代。
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(0);
+    let second: number;
+    let third: number;
+    try {
+      second = bump();
+      third = bump();
+    } finally {
+      clock.mockRestore();
+    }
+    expect(second).toBe(first + 1);
+    expect(third).toBe(second + 1);
+
+    // 同一毫秒內的一波進房（< 1000 次）也不會超前時鐘：微秒起算留有餘裕。
+    let last = third;
+    for (let index = 0; index < 500; index += 1) {
+      const next = bump();
+      expect(next).toBeGreaterThan(last);
+      last = next;
+    }
+    expect(last).toBeLessThan((Date.now() + 1) * 1000);
+  });
+
+  it('refuses a late lobby leave once the player has joined again over HTTP', async () => {
+    const { guest, roomId, code } = await lobby();
+    const tab = await openTab(guest);
+    let old: number;
+    try {
+      await tab.subscribe(roomId);
+      old = (await tab.unsubscribeAck()).entryEpoch!;
+    } finally {
+      await tab.close();
+    }
+    // 逾時後以邀請碼重新進入：membership 還在、connected=1，但 socket 還沒訂閱。
+    const rejoined = guest.expectOk<RoomView>(await guest.post('/api/rooms/join', { code }));
+    expect(rejoined.viewerEntryEpoch!).toBeGreaterThan(old);
+    expect(harness.service.rooms.hasLiveConnection(roomId)).toBe(false);
+
+    expect(await leaveWith(guest, roomId, old)).toEqual({ left: false, hostTransferredTo: null, reason: 'stale' });
+    expect(await membership(roomId, guest.playerId!)).not.toBeNull();
+    expect((await membership(roomId, guest.playerId!))?.connected).toBe(1);
+
+    // 用重新進入之後的世代（join 回應的備援值）離開，則照常生效。
+    expect(await leaveWith(guest, roomId, rejoined.viewerEntryEpoch!)).toEqual({
+      left: true,
+      hostTransferredTo: null,
+    });
+    expect(await membership(roomId, guest.playerId!)).toBeNull();
+  });
+
+  it('refuses a late game leave once the player has joined again over HTTP', async () => {
+    const { clients, roomId } = await playing();
+    const host = clients[0]!;
+    const code = (await harness.service.repo.findRoom(roomId))!.code;
+    const tab = await openTab(host);
+    let old: number;
+    try {
+      await tab.subscribe(roomId);
+      old = (await tab.unsubscribeAck()).entryEpoch!;
+    } finally {
+      await tab.close();
+    }
+    host.expectOk(await host.post('/api/rooms/join', { code }));
+    await vi.waitFor(async () => expect((await membership(roomId, host.playerId!))?.connected).toBe(1));
+
+    expect(await leaveWith(host, roomId, old)).toEqual({ left: false, hostTransferredTo: null, reason: 'stale' });
+    expect((await membership(roomId, host.playerId!))?.connected).toBe(1);
+    expect(await hostOf(roomId)).toBe(host.playerId);
+  });
+
+  it('lets the normal order through: subscribe, unsubscribe, ack, leave with the ack epoch', async () => {
+    const { guest, roomId } = await lobby();
+    const tab = await openTab(guest);
+    try {
+      await tab.subscribe(roomId);
+      const ack = await tab.unsubscribeAck();
+      expect(await leaveWith(guest, roomId, ack.entryEpoch!)).toEqual({ left: true, hostTransferredTo: null });
+      expect(await membership(roomId, guest.playerId!)).toBeNull();
+    } finally {
+      await tab.close();
+    }
+
+    const game = await playing();
+    const host = game.clients[0]!;
+    const second = game.clients[1]!;
+    const gameTab = await openTab(host);
+    try {
+      await gameTab.subscribe(game.roomId);
+      const ack = await gameTab.unsubscribeAck();
+      const result = await leaveWith(host, game.roomId, ack.entryEpoch!);
+      expect(result).toEqual({ left: true, hostTransferredTo: second.playerId });
+      expect((await membership(game.roomId, host.playerId!))?.connected).toBe(0);
+    } finally {
+      await gameTab.close();
+    }
+  });
+
+  it('judges a request after a resubscribe by the newest epoch', async () => {
+    const { clients, roomId } = await playing();
+    const guest = clients[2]!;
+    const tab = await openTab(guest);
+    try {
+      await tab.subscribe(roomId);
+      const first = (await tab.unsubscribeAck()).entryEpoch!;
+      await tab.subscribe(roomId);
+      // 重新訂閱後仍有 live 連線：present 優先。
+      expect(await leaveWith(guest, roomId, first)).toEqual({
+        left: false,
+        hostTransferredTo: null,
+        reason: 'present',
+      });
+      const second = (await tab.unsubscribeAck()).entryEpoch!;
+      expect(second).toBeGreaterThan(first);
+      // 連線又離開之後，舊世代的請求是過期的，新世代的才生效。
+      expect(await leaveWith(guest, roomId, first)).toEqual({ left: false, hostTransferredTo: null, reason: 'stale' });
+      expect((await membership(roomId, guest.playerId!))?.connected).toBe(0);
+      expect(await leaveWith(guest, roomId, second)).toEqual({ left: true, hostTransferredTo: null });
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('uses the current epoch in each tab ack, so a sibling tab does not block the leave', async () => {
+    const { clients, roomId } = await playing();
+    const host = clients[0]!;
+    const first = await openTab(host);
+    const second = await openTab(host);
+    try {
+      await first.subscribe(roomId);
+      await second.subscribe(roomId);
+      await second.unsubscribeAck();
+      // tab1 的確認回的是目前世代（tab2 訂閱之後的值），不是它自己訂閱時的舊值。
+      const ack = await first.unsubscribeAck();
+      expect(ack.entryEpoch).toBe(harness.service.rooms.entryEpochOf(roomId, host.playerId!));
+      const result = await leaveWith(host, roomId, ack.entryEpoch!);
+      expect(result.left).toBe(true);
+      expect((await membership(roomId, host.playerId!))?.connected).toBe(0);
+    } finally {
+      await first.close();
+      await second.close();
+    }
+  });
+
+  it('leaves behaviour unchanged for a caller without an epoch', async () => {
+    const { guest, roomId, code } = await lobby();
+    guest.expectOk(await guest.post('/api/rooms/join', { code }));
+    // 重新進入之後、沒帶世代：不判過期，照常離開。
+    expect(await leave(guest, roomId)).toEqual({ left: true, hostTransferredTo: null });
+    expect(await membership(roomId, guest.playerId!)).toBeNull();
+  });
+
+  it('treats a missing runtime record (a restart) as epoch zero', async () => {
+    const { guest, roomId } = await lobby();
+    const stale = guest.expectOk<RoomView>(await guest.get(`/api/rooms/${roomId}`)).viewerEntryEpoch!;
+    expect(stale).toBeGreaterThan(0);
+    (harness.service.rooms as unknown as { runtimes: Map<string, unknown> }).runtimes.delete(roomId);
+    expect(harness.service.rooms.entryEpochOf(roomId, guest.playerId!)).toBe(0);
+    expect(await leaveWith(guest, roomId, stale)).toEqual({ left: true, hostTransferredTo: null });
+  });
+
+  it('rejects a malformed epoch', async () => {
+    const { guest, roomId } = await lobby();
+    guest.expectError(await guest.post(`/api/rooms/${roomId}/leave`, { entryEpoch: 'soon' }), 'E_BAD_REQUEST');
+    expect(await membership(roomId, guest.playerId!)).not.toBeNull();
+  });
+});
+
+describe('host grace expiry shares the room lock', () => {
+  const grace = (roomId: string, playerId: string): Promise<void> =>
+    (
+      harness.service.rooms as unknown as { expireHostGrace(room: string, player: string): Promise<void> }
+    ).expireHostGrace(roomId, playerId);
+
+  async function disconnectedHost(): Promise<{ clients: TestClient[]; roomId: string; host: TestClient }> {
+    const { clients, roomId } = await playing();
+    const host = clients[0]!;
+    const connection: Connection = { id: randomUUID(), playerId: host.playerId!, roomId, send() {}, close() {} };
+    await harness.service.rooms.registerConnection(connection);
+    await harness.service.rooms.unregisterConnection(connection);
+    expect((await membership(roomId, host.playerId!))?.connected).toBe(0);
+    return { clients, roomId, host };
+  }
+
+  it('hands the host role on when the host is still gone', async () => {
+    const { clients, roomId, host } = await disconnectedHost();
+    await grace(roomId, host.playerId!);
+    expect(await hostOf(roomId)).toBe(clients[1]!.playerId);
+  });
+
+  it('keeps the host when it reconnected while the expiry was waiting for the lock', async () => {
+    const { roomId, host } = await disconnectedHost();
+    const repo = harness.service.repo;
+    const original = repo.updateMembership.bind(repo);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let entered!: () => void;
+    const reached = new Promise<void>((resolve) => (entered = resolve));
+    const spy = vi.spyOn(repo, 'updateMembership').mockImplementation(async (room, player, patch) => {
+      if (player === host.playerId && patch.connected === 1) {
+        entered();
+        await gate;
+      }
+      return original(room, player, patch);
+    });
+    const connection: Connection = { id: randomUUID(), playerId: host.playerId!, roomId, send() {}, close() {} };
+    try {
+      const registering = harness.service.rooms.registerConnection(connection);
+      await reached;
+      // 計時器此時到期：它必須排在連線登記之後，而不是搶在 markConnected 之前讀到離線。
+      let settled = false;
+      const expiring = grace(roomId, host.playerId!).then(() => (settled = true));
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(settled).toBe(false);
+      release();
+      await registering;
+      await expiring;
+      expect(await hostOf(roomId)).toBe(host.playerId);
+    } finally {
+      release();
+      spy.mockRestore();
+      await harness.service.rooms.unregisterConnection(connection);
+    }
+  });
+
+  it('makes the public host helpers take the lock too', async () => {
+    const { clients, roomId } = await playing();
+    const repo = harness.service.repo;
+    const original = repo.updateRoom.bind(repo);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let entered!: () => void;
+    const reached = new Promise<void>((resolve) => (entered = resolve));
+    const spy = vi.spyOn(repo, 'updateRoom').mockImplementation(async (id, patch) => {
+      if (id === roomId && 'host_id' in patch) {
+        entered();
+        await gate;
+      }
+      return original(id, patch);
+    });
+    try {
+      const transferring = harness.service.rooms.transferHost(roomId);
+      await reached;
+      let settled = false;
+      const electing = harness.service.rooms.ensureHost(roomId).then(() => (settled = true));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(settled).toBe(false);
+      release();
+      await transferring;
+      await electing;
+      expect(await hostOf(roomId)).toBe(clients[0]!.playerId);
+    } finally {
+      release();
+      spy.mockRestore();
+    }
+  });
+});
+
+describe('subscribing races a room that closes or a non-member', () => {
+  it('leaves no live connection when the room is closed while the subscribe waits for the lock', async () => {
+    const { host, guest, roomId } = await lobby();
+    const tab = await openTab(guest);
+    const repo = harness.service.repo;
+    const original = repo.deleteRoom.bind(repo);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let entered!: () => void;
+    const reached = new Promise<void>((resolve) => (entered = resolve));
+    const spy = vi.spyOn(repo, 'deleteRoom').mockImplementation(async (id) => {
+      entered();
+      await gate;
+      return original(id);
+    });
+    try {
+      // 房主關房正持有 room lock；訪客的成員檢查（鎖外）仍通過，之後排在鎖後面。
+      const closing = host.post(`/api/rooms/${roomId}/close`);
+      await reached;
+      tab.sendRaw({ type: 'subscribe', payload: { roomId } });
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      release();
+      expect(host.expectOk(await closing)).toEqual({ closed: true });
+
+      await vi.waitFor(() =>
+        expect(tab.messages.some((message) => message.type === 'error')).toBe(true),
+      );
+      const failure = tab.messages.find((message) => message.type === 'error');
+      expect(failure?.type === 'error' ? failure.payload.code : null).toBe('E_ROOM_NOT_FOUND');
+      expect(harness.service.rooms.hasLiveConnection(roomId)).toBe(false);
+      expect(harness.service.rooms.connectionsInRoom(roomId)).toEqual([]);
+      expect((harness.service.rooms as unknown as { runtimes: Map<string, unknown> }).runtimes.has(roomId)).toBe(false);
+    } finally {
+      release();
+      spy.mockRestore();
+      await tab.close();
+    }
+  });
+
+  it('answers a non-member with E_NOT_A_MEMBER instead of the generic handler error', async () => {
+    const { roomId } = await lobby();
+    const stranger = await harness.client('SubscribeStranger');
+    const tab = await openTab(stranger);
+    try {
+      tab.sendRaw({ type: 'subscribe', payload: { roomId } });
+      await vi.waitFor(() => expect(tab.messages.some((message) => message.type === 'error')).toBe(true));
+      const failure = tab.messages.find((message) => message.type === 'error');
+      expect(failure?.type === 'error' ? failure.payload.code : null).toBe('E_NOT_A_MEMBER');
+      expect(harness.service.rooms.hasLiveConnection(roomId)).toBe(false);
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('refuses to register a connection for a player that holds no membership', async () => {
+    const { roomId } = await lobby();
+    const stranger = await harness.client('RegisterStranger');
+    const connection: Connection = { id: randomUUID(), playerId: stranger.playerId!, roomId, send() {}, close() {} };
+    await expect(harness.service.rooms.registerConnection(connection)).rejects.toMatchObject({
+      code: 'E_NOT_A_MEMBER',
+    });
+    expect(harness.service.rooms.hasLiveConnection(roomId)).toBe(false);
+  });
+});
