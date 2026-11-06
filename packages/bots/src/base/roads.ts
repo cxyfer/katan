@@ -1,7 +1,7 @@
 /** base 的道路選擇：免費道路、最長道路與開局的路向評分。 */
 
 import type { Command } from '@catan/rules';
-import { isFreeSpot, playerYield } from '../board.ts';
+import { isFreeSpot, playerYield, roadStockLeft } from '../board.ts';
 import { bestRouteEdge, resourceWeights, settlementSpotValue } from '../economy.ts';
 import type { TurnContext } from '../modules/types.ts';
 
@@ -26,8 +26,12 @@ export function usefulRoad(turn: TurnContext, anyEdge: boolean): number | null {
   return turn.pick(scored);
 }
 
-/** 免費道路（Road Building）的 base 決策；SF-1 在這裡加存量檢查。 */
+/**
+ * 免費道路（Road Building）的 base 決策。道路存量用完時回 null（`legalRoads` 不扣存量，送出
+ * 會得到 E_NO_PIECES），由保底改走模組的 duty（造船）；base 的 frame 在存量為 0 時不會被投影。
+ */
 export function freeRoadDecision(turn: TurnContext): Command | null {
+  if (roadStockLeft(turn.view, turn.ctx.selfId) <= 0) return null;
   const edge = usefulRoad(turn, true);
   return edge === null ? null : { type: 'build.road', edge };
 }

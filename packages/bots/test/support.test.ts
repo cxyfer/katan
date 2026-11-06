@@ -11,6 +11,7 @@ import {
   botsCanPlay,
   type BotModule,
 } from '../src/index.ts';
+import { SEAFARERS_PACING } from '../src/modules/seafarers/index.ts';
 
 /** 以 base-2025 為底、加上指定規則模組的 fixture profile。 */
 function profileWith(ruleModules: readonly string[]): ProfileDefinition {
@@ -87,8 +88,8 @@ describe('bot module registry', () => {
   });
 
   it('merges pacing, command limits and response commands from the registered modules', () => {
-    // 0.4.1 沒有註冊任何模組：合併結果就是 base。
-    expect(BOT_PACING).toEqual({});
+    // 0.4.1 只註冊了 Seafarers：節奏就是它的四個值，其他 profile 沒有模組。
+    expect(BOT_PACING).toEqual(SEAFARERS_PACING);
     expect(botCommandLimit(profileWith([]), 40)).toBe(40);
     expect(botCommandLimit(profileWith(['seafarers']), 40)).toBe(40);
     expect(botResponseCommands(profileWith([]))).toEqual(BASE_RESPONSE_COMMANDS);

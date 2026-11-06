@@ -829,7 +829,9 @@ describe('registry and support with modules', () => {
       { id: 'b', pacing: { 'fx.shared': 2, 'fx.other': 700 } },
       { id: 'c' },
     ]);
-    expect(support.BOT_PACING).toEqual({ 'fx.move': 500, 'fx.shared': 1, 'fx.other': 700 });
+    // 真正註冊的模組（Seafarers）的節奏也在裡面：只看假模組的鍵。
+    const fixture = Object.fromEntries(Object.entries(support.BOT_PACING).filter(([type]) => type.startsWith('fx.')));
+    expect(fixture).toEqual({ 'fx.move': 500, 'fx.shared': 1, 'fx.other': 700 });
   });
 
   it('takes the largest command limit among the profile modules, never below the base', async () => {
