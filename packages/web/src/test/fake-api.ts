@@ -5,6 +5,8 @@
  */
 
 import type {
+  AbandonConsentResult,
+  AbandonProposeResult,
   ApiResult,
   BotLevel,
   ChatMessageView,
@@ -22,6 +24,7 @@ import type {
   RoomView,
   SaveReceipt,
   ServerConfigView,
+  WithdrawResult,
 } from '@catan/protocol';
 import type { AddBotBody, CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
 import {
@@ -53,6 +56,10 @@ export interface FakeApiOptions {
   commandResult?: ApiResult<CommandReceipt>;
   chatSendResult?: ApiResult<ChatMessageView>;
   saveResult?: ApiResult<SaveReceipt>;
+  /** 預設：提案回 `{ proposalId: 'ab1', abandoned: false }`，表態回 `{ abandoned: false }`。 */
+  abandonResult?: ApiResult<AbandonProposeResult | AbandonConsentResult>;
+  /** 預設：回 `{ withdrawn: <請求值>, abandoned: false }`。 */
+  withdrawResult?: ApiResult<WithdrawResult>;
   sessionResult?: ApiResult<{ player: PlayerIdentity }>;
 }
 
@@ -63,6 +70,8 @@ export interface FakeApi extends CatanApi {
   setCommandResult(result: ApiResult<CommandReceipt>): void;
   setChatSendResult(result: ApiResult<ChatMessageView>): void;
   setSessionResult(result: ApiResult<{ player: PlayerIdentity }>): void;
+  setAbandonResult(result: ApiResult<AbandonProposeResult | AbandonConsentResult> | undefined): void;
+  setWithdrawResult(result: ApiResult<WithdrawResult> | undefined): void;
   callsOf(method: string): RecordedCall[];
 }
 
@@ -106,6 +115,9 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   let sessionResult: ApiResult<{ player: PlayerIdentity }> =
     options.sessionResult ?? ok({ player: options.identity ?? makeIdentity() });
 
+  let abandonResult = options.abandonResult;
+  let withdrawResult = options.withdrawResult;
+
   const record = (method: string, ...args: unknown[]) => {
     calls.push({ method, args });
   };
@@ -129,6 +141,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     },
     setSessionResult(result) {
       sessionResult = result;
+    },
+    setAbandonResult(result) {
+      abandonResult = result;
+    },
+    setWithdrawResult(result) {
+      withdrawResult = result;
     },
 
     async getConfig() {
@@ -269,6 +287,14 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     async suspendGame(gameId: string, proposalId?: string) {
       record('suspendGame', gameId, proposalId);
       return room ? ok(room) : { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
+    },
+    async abandonGame(gameId: string, body?: { proposalId: string; approve: boolean }) {
+      record('abandonGame', gameId, body);
+      return abandonResult ?? ok(body ? { abandoned: false } : { proposalId: 'ab1', abandoned: false });
+    },
+    async withdrawGame(gameId: string, withdrawn: boolean) {
+      record('withdrawGame', gameId, withdrawn);
+      return withdrawResult ?? ok({ withdrawn, abandoned: false });
     },
     async resumeGame(gameId: string, ready: boolean) {
       record('resumeGame', gameId, ready);

@@ -95,6 +95,14 @@ export interface TableActions {
   clearCommand(): void;
   saveGame(): Promise<void>;
   suspendGame(): Promise<void>;
+  /** 提議（單人桌即直接）以無勝者結束對局；成功回傳 true，失敗已以 toast 回報。 */
+  endGame(): Promise<boolean>;
+  /** 對既有的結束對局提案表態；提案已失效時重新抓房間並提示。 */
+  respondAbandon(proposalId: string, approve: boolean): Promise<void>;
+  /** 明確退出（投降）；成功回傳 true，失敗已以 toast 回報。 */
+  withdrawGame(): Promise<boolean>;
+  /** 撤回退出，回到對局。 */
+  retractWithdrawal(): Promise<boolean>;
   resumeTable(ready: boolean): Promise<void>;
   loadChat(roomId?: string, before?: number): Promise<void>;
   sendChat(text: string): Promise<void>;
@@ -696,6 +704,85 @@ export function useTable(options: UseTableOptions): TableController {
     else dispatch({ type: 'toast', notice: noticeFrom(result.error) });
   }, [api, applyRoom, dispatch]);
 
+  // ---------------------------------------------------------------------
+  // withdraw / end the game (SPEC §4.6)
+  // ---------------------------------------------------------------------
+
+  /** 提案、表態或退出後房間狀態會變；回應不含 RoomView，所以重新抓取（失敗時靜默，WebSocket 仍會推送）。 */
+  const refreshRoom = useCallback(async (): Promise<void> => {
+    const roomId = roomIdRef.current;
+    if (!roomId) return;
+    const result = await api.getRoom(roomId);
+    if (result.ok) dispatch({ type: 'room', room: result.data });
+  }, [api, dispatch]);
+
+  /** 對局已結束：以權威的房間與投影切到結果畫面，並刷新已不再可恢復的清單。 */
+  const showEndedGame = useCallback(async (): Promise<void> => {
+    await refreshRoom();
+    await refreshGame('command');
+    const games = await api.listGames();
+    if (games.ok) dispatch({ type: 'games', games: games.data.games });
+  }, [api, dispatch, refreshRoom, refreshGame]);
+
+  const endGame = useCallback(async (): Promise<boolean> => {
+    const gameId = gameIdRef.current;
+    if (!gameId) return false;
+    const result = await api.abandonGame(gameId);
+    if (!result.ok) {
+      dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+      return false;
+    }
+    if (result.data.abandoned) await showEndedGame();
+    else await refreshRoom();
+    return true;
+  }, [api, dispatch, refreshRoom, showEndedGame]);
+
+  const respondAbandon = useCallback(
+    async (proposalId: string, approve: boolean): Promise<void> => {
+      const gameId = gameIdRef.current;
+      if (!gameId) return;
+      const result = await api.abandonGame(gameId, { proposalId, approve });
+      if (result.ok) {
+        if (result.data.abandoned) await showEndedGame();
+        else await refreshRoom();
+      } else if (result.error.code === 'E_NO_PROPOSAL') {
+        // 有人撤回退出或重新連線會讓提案失效：視為投票已取消。
+        dispatch({ type: 'toast', notice: localNotice('play.abandon.cancelled') });
+        await refreshRoom();
+      } else {
+        dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+      }
+    },
+    [api, dispatch, refreshRoom, showEndedGame],
+  );
+
+  const setWithdrawn = useCallback(
+    async (withdrawn: boolean): Promise<boolean> => {
+      const gameId = gameIdRef.current;
+      if (!gameId) return false;
+      const result = await api.withdrawGame(gameId, withdrawn);
+      if (!result.ok) {
+        dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+        return false;
+      }
+      if (result.data.abandoned) {
+        await showEndedGame();
+      } else if (withdrawn) {
+        // 比照 saveGame：座位保留，回首頁並刷新可恢復清單。
+        dispatch({ type: 'screen', screen: 'home' });
+        const games = await api.listGames();
+        if (games.ok) dispatch({ type: 'games', games: games.data.games });
+      } else {
+        await refreshRoom();
+      }
+      return true;
+    },
+    [api, dispatch, refreshRoom, showEndedGame],
+  );
+
+  const withdrawGame = useCallback(() => setWithdrawn(true), [setWithdrawn]);
+  const retractWithdrawal = useCallback(() => setWithdrawn(false), [setWithdrawn]);
+
   const resumeTable = useCallback(
     async (ready: boolean): Promise<void> => {
       const gameId = gameIdRef.current;
@@ -876,6 +963,10 @@ export function useTable(options: UseTableOptions): TableController {
       clearCommand,
       saveGame,
       suspendGame,
+      endGame,
+      respondAbandon,
+      withdrawGame,
+      retractWithdrawal,
       resumeTable,
       loadChat,
       sendChat,
@@ -914,6 +1005,10 @@ export function useTable(options: UseTableOptions): TableController {
       clearCommand,
       saveGame,
       suspendGame,
+      endGame,
+      respondAbandon,
+      withdrawGame,
+      retractWithdrawal,
       resumeTable,
       loadChat,
       sendChat,
