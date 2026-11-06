@@ -101,6 +101,11 @@ export interface Plan {
   vertex: number | null;
   /** 需要先建的道路，依建造順序排列。 */
   roads: number[];
+  /**
+   * 需要先造的船（edge index），依建造順序排列；base 計畫恆為 `[]`。模組計畫（例如 Seafarers 的
+   * 島嶼聚落）才會有值。省略時視為 `[]`：已有的模組計畫字面值不必逐一補上。
+   */
+  ships?: number[];
   /** 整個計畫的總成本（含道路）。 */
   cost: Cost;
   /** 下一步的成本：道路未完成時為一條道路，否則為目標本身。 */
@@ -257,6 +262,7 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
         kind: 'city',
         vertex: best,
         roads: [],
+        ships: [],
         cost: COSTS.city,
         nextCost: COSTS.city,
         value: 1 + PIP_VALUE * bestValue,
@@ -283,6 +289,7 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
         kind: 'settlement',
         vertex,
         roads,
+        ships: [],
         cost,
         nextCost: roads.length > 0 ? COSTS.road : COSTS.settlement,
         value,
@@ -303,7 +310,7 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
     if (holder !== selfId && myKnights + 2 >= Math.max(3, holderKnights + 1)) value += 0.25;
     // 沒有聚落點也沒有城市可蓋時，發展卡是剩下的得分路線。
     if (!plans.some((plan) => plan.kind === 'settlement' || plan.kind === 'city')) value += 0.3;
-    push({ kind: 'devCard', vertex: null, roads: [], cost: COSTS.devCard, nextCost: COSTS.devCard, value });
+    push({ kind: 'devCard', vertex: null, roads: [], ships: [], cost: COSTS.devCard, nextCost: COSTS.devCard, value });
   }
 
   // 最長道路：差一兩條就能拿到時才值得專門投資。
@@ -320,6 +327,7 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
             kind: 'longestRoad',
             vertex: null,
             roads: [edge],
+            ships: [],
             cost: scaleCost(COSTS.road, needed),
             nextCost: COSTS.road,
             value: needed === 1 ? 1.8 : 1.4,

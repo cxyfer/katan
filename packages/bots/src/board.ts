@@ -4,6 +4,7 @@
  */
 
 import {
+  getProfile,
   getTopology,
   RESOURCES,
   requireProfile,
@@ -42,6 +43,10 @@ export interface BoardModel {
   readonly hexVertices: readonly (readonly number[])[];
   readonly hexPips: readonly number[];
   readonly hexResource: readonly (Resource | null)[];
+  /** 陸地格（沙漠與金礦也算）；海格為 false。base 沒有海格，全部為 true。 */
+  readonly hexLand: readonly boolean[];
+  /** 金礦格（Seafarers）：任何一張資源，不在 `hexResource` 內。base 全部為 false。 */
+  readonly hexGold: readonly boolean[];
   readonly harborAt: readonly (HarborType | null)[];
 }
 
@@ -88,14 +93,37 @@ export function boardModel(view: GameView, selfId: string): BoardModel {
     hexVertices: tables.hexVertices,
     hexPips: view.board.numbers.map((number) => pipsOf(number)),
     hexResource: view.board.terrain.map((terrain) => TERRAIN_RESOURCE[terrain as Terrain] ?? null),
+    hexLand: view.board.terrain.map((terrain) => terrain !== 'sea'),
+    hexGold: view.board.terrain.map((terrain) => terrain === 'gold'),
     harborAt,
   };
 }
 
-/** 空點且相鄰路口都沒有建築（距離規則）。 */
+export function isLandHex(model: BoardModel, hex: number): boolean {
+  return model.hexLand[hex] === true;
+}
+
+/** 路口至少鄰接一個陸地格（建築需要陸地）。base 的每個路口都成立。 */
+export function isLandVertex(model: BoardModel, vertex: number): boolean {
+  return model.topo.vertices[vertex]!.hexes.some((hex) => model.hexLand[hex]);
+}
+
+/** 道路需要陸地：任一側是陸地格的邊。base 的每條邊都成立。 */
+export function isLandEdge(model: BoardModel, edge: number): boolean {
+  return model.topo.edges[edge]!.hexes.some((hex) => model.hexLand[hex]);
+}
+
+/** 船只走海邊：外框邊（只有一側有格子），或任一側是海格；與 rules 的 `isSeaEdge` 相同。 */
+export function isSeaEdge(model: BoardModel, edge: number): boolean {
+  const { hexes } = model.topo.edges[edge]!;
+  return hexes.length === 1 || hexes.some((hex) => !model.hexLand[hex]);
+}
+
+/** 陸地上的空點且相鄰路口都沒有建築（距離規則）。 */
 export function isFreeSpot(model: BoardModel, vertex: number): boolean {
   const buildings = model.view.board.buildings;
   if (buildings[vertex]) return false;
+  if (!isLandVertex(model, vertex)) return false;
   return model.neighbors[vertex]!.every((neighbor) => !buildings[neighbor]);
 }
 
@@ -151,6 +179,21 @@ export function piecesLeft(model: BoardModel, playerId: string): PieceCounts {
   };
 }
 
+/**
+ * 自己還能放幾條道路：profile 的道路數減去盤面上自己的非船道路（橋也不算，與規則引擎的
+ * `countRoads` 相同）。`legalRoads` 不扣存量，保底與策略要自行檢查。查不到 profile 時不設上限，
+ * 不得 throw：保底路徑不在 try 裡。
+ */
+export function roadStockLeft(view: GameView, playerId: string): number {
+  const profile = getProfile(view.profileId);
+  if (!profile) return Infinity;
+  let used = 0;
+  for (const road of view.board.roads) {
+    if (road && road.player === playerId && !road.ship && !road.bridge) used += 1;
+  }
+  return profile.pieces.roads - used;
+}
+
 function opponentAt(model: BoardModel, vertex: number, playerId: string): boolean {
   const building = model.view.board.buildings[vertex];
   return !!building && building.player !== playerId;
@@ -166,7 +209,8 @@ export interface RoadSearch {
 
 /**
  * 以 BFS 計算自己的道路網延伸到各路口的成本。與標準規則一致：對手建築會
- * 切斷穿越的路口，但己方道路仍可從未被切斷的一端繼續延伸。
+ * 切斷穿越的路口，但己方道路仍可從未被切斷的一端繼續延伸。只走陸地邊，也只從建築與
+ * 非船道路的端點出發：船只在自己的建築處與道路相接（Seafarers）。
  */
 export function searchRoads(model: BoardModel, playerId: string, maxDepth: number): RoadSearch {
   const { topo } = model;
@@ -184,7 +228,7 @@ export function searchRoads(model: BoardModel, playerId: string, maxDepth: numbe
     if (building && building.player === playerId) start(vertex);
   });
   roads.forEach((road, edge) => {
-    if (!road || road.player !== playerId) return;
+    if (!road || road.player !== playerId || road.ship) return;
     for (const vertex of topo.edges[edge]!.vertices) start(vertex);
   });
   for (let head = 0; head < queue.length; head++) {
@@ -192,7 +236,7 @@ export function searchRoads(model: BoardModel, playerId: string, maxDepth: numbe
     const depth = distance[vertex]!;
     if (depth >= maxDepth) continue;
     for (const edge of topo.vertices[vertex]!.edges) {
-      if (roads[edge]) continue;
+      if (roads[edge] || !isLandEdge(model, edge)) continue;
       const [a, b] = topo.edges[edge]!.vertices;
       const next = a === vertex ? b : a;
       if (distance[next] !== Infinity || opponentAt(model, next, playerId)) continue;
@@ -217,11 +261,20 @@ export function roadPath(search: RoadSearch, vertex: number): number[] {
 }
 
 /**
- * 玩家的最長道路長度（可額外假設幾條新道路）。對手建築會切斷路線，與規則
- * 引擎的計算方式一致。
+ * 玩家的最長道路長度（可額外假設幾條新道路或新船）。對手建築會切斷路線，與規則
+ * 引擎的 `longestRouteLength` 相同。只有 `profile.longestRouteIncludesShips` 時才計入船
+ * （Seafarers 的最長貿易路線）：道路與船只在自己的建築處相接。
  */
-export function routeLength(model: BoardModel, playerId: string, extraEdges: readonly number[] = []): number {
+export function routeLength(
+  model: BoardModel,
+  playerId: string,
+  extraEdges: readonly number[] = [],
+  extraShips: readonly number[] = [],
+): number {
   const { topo } = model;
+  const { buildings, roads } = model.view.board;
+  const withShips = model.profile.longestRouteIncludesShips;
+  const shipEdges = new Set<number>();
   const incident = new Map<number, number[]>();
   const add = (edge: number): void => {
     for (const vertex of topo.edges[edge]!.vertices) {
@@ -230,20 +283,34 @@ export function routeLength(model: BoardModel, playerId: string, extraEdges: rea
       incident.set(vertex, list);
     }
   };
-  model.view.board.roads.forEach((road, edge) => {
-    if (road && road.player === playerId && !road.ship) add(edge);
+  roads.forEach((road, edge) => {
+    if (!road || road.player !== playerId) return;
+    if (road.ship) {
+      if (!withShips) return;
+      shipEdges.add(edge);
+    }
+    add(edge);
   });
   for (const edge of extraEdges) add(edge);
+  if (withShips) {
+    for (const edge of extraShips) {
+      shipEdges.add(edge);
+      add(edge);
+    }
+  }
   if (incident.size === 0) return 0;
   const used = new Set<number>();
-  const walk = (vertex: number): number => {
+  const walk = (vertex: number, arrivedByShip: boolean | null): number => {
     let best = 0;
     for (const edge of incident.get(vertex) ?? []) {
       if (used.has(edge)) continue;
+      const ship = shipEdges.has(edge);
+      // 道路與船只在自己的建築處相接。
+      if (arrivedByShip !== null && ship !== arrivedByShip && buildings[vertex]?.player !== playerId) continue;
       const [a, b] = topo.edges[edge]!.vertices;
       const next = a === vertex ? b : a;
       used.add(edge);
-      const length = 1 + (opponentAt(model, next, playerId) ? 0 : walk(next));
+      const length = 1 + (opponentAt(model, next, playerId) ? 0 : walk(next, ship));
       used.delete(edge);
       if (length > best) best = length;
     }
@@ -252,7 +319,7 @@ export function routeLength(model: BoardModel, playerId: string, extraEdges: rea
   let longest = 0;
   for (const vertex of incident.keys()) {
     if (opponentAt(model, vertex, playerId)) continue;
-    longest = Math.max(longest, walk(vertex));
+    longest = Math.max(longest, walk(vertex, null));
   }
   return longest;
 }
