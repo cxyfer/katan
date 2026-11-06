@@ -229,7 +229,9 @@ own notice.
   others; the pass moves on to the next page, so games that keep failing cannot
   hold back newer ones. A failed game is skipped for 10 minutes, doubling after
   each repeated failure up to 24 hours (kept in memory, so a restart tries
-  again), which keeps a permanently broken game from logging on every pass.
+  again), which keeps a permanently broken game from logging on every pass. At
+  most 1,000 failing games are tracked; if more fail, the ones with the
+  longest backoff stay tracked and only the overflow is retried each pass.
   Each ended game logs at `info` (`game expired by retention policy`) with
   `gameId`, `roomId`, `lastActivityAt` and `retentionDays`.
 - **Downtime counts.** Time the service is stopped is not excluded, and the first

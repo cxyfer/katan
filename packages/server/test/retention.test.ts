@@ -10,7 +10,7 @@ import { WebSocket } from 'ws';
 import type { GameState } from '@catan/rules';
 import type { GameSnapshot, RoomView, ServerMessage } from '@catan/protocol';
 import { loadConfig } from '../src/config.ts';
-import { createDialect, type SqlDialect } from '../src/db.ts';
+import { createDialect, newId, newRoomCode, type SqlDialect } from '../src/db.ts';
 import { startService, type Logger } from '../src/main.ts';
 import { runSetupOverApi, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
@@ -408,6 +408,49 @@ describe('retention enabled (7 days)', () => {
     const warning = logs.find((log) => log.message === 'game retention failed');
     expect(warning?.level).toBe('warn');
     expect(warning?.meta).toMatchObject({ gameId: broken.gameId });
+  });
+
+  it('keeps most backoff timestamps when more games fail than the tracker holds', async () => {
+    const trackLimit = 1_000;
+    const total = trackLimit + 100;
+    const repo = harness.service.repo;
+    const stamp = daysAgo(30);
+    // 直接寫入狀態損毀的對局（不經 HTTP），讓超過追蹤表上限的對局持續失敗。
+    for (let index = 0; index < total; index++) {
+      const roomId = newId('room');
+      const gameId = newId('game');
+      await repo.insertRoom({
+        id: roomId, code: newRoomCode(), visibility: 'private', status: 'playing', host_id: `host_${index}`,
+        profile_id: 'base-2025', setup_mode: 'fixed', order_mode: 'join', capacity: 3, policy_json: '{}',
+        policy_revision: 1, game_id: gameId, created_at: stamp, updated_at: stamp,
+      });
+      await repo.insertGame({
+        id: gameId, room_id: roomId, profile_id: 'base-2025', engine_version: 'test', state_json: 'not json',
+        revision: 1, status: 'playing', pause_reason: null, result_json: null, created_at: stamp, updated_at: stamp,
+      });
+      await repo.insertMembership({
+        room_id: roomId, player_id: `player_${index}`, seat: 0, color: 'red', ready: 1, connected: 0,
+        withdrawn: 0, joined_at: stamp, last_seen_at: stamp, disconnected_at: null, connection_id: null,
+      });
+    }
+    const games = harness.service.games as unknown as { retentionFailures: Map<string, unknown> };
+    // 先前的案例可能在追蹤表留下退避很久的項目，會佔掉名額；從空表開始。
+    games.retentionFailures.clear();
+    try {
+      const now = new Date();
+      const first = await harness.service.games.expireIdleGames(now, 100);
+      expect(first.expired).toEqual([]);
+      expect(first.failed).toHaveLength(total);
+      expect(games.retentionFailures.size).toBe(trackLimit);
+
+      // 下一輪：只有放不進追蹤表的那 100 筆重試，其餘 1000 筆仍在退避。
+      // （整表清空的做法會讓這一輪重試 1000 筆。）
+      const second = await harness.service.games.expireIdleGames(now, 100);
+      expect(second.failed).toHaveLength(total - trackLimit);
+      expect(games.retentionFailures.size).toBe(trackLimit);
+    } finally {
+      games.retentionFailures.clear();
+    }
   });
 
   it('tells a connected client the game ended and why', async () => {

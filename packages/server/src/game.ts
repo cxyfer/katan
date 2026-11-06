@@ -51,7 +51,7 @@ export const RETENTION_BATCH_SIZE = 100;
 /** 保留終止持續失敗的對局，先等這麼久再重試；每次失敗加倍，上限一天。 */
 const RETENTION_RETRY_BASE_MS = 10 * 60_000;
 const RETENTION_RETRY_MAX_MS = 24 * 3_600_000;
-/** 記憶體內追蹤的失敗對局上限，超過就整批清掉重來，避免無限成長。 */
+/** 記憶體內追蹤的失敗對局上限；滿了以後只保留退避最晚到期的這麼多筆。 */
 const RETENTION_FAILURE_TRACK_LIMIT = 1_000;
 
 /**
@@ -750,13 +750,31 @@ export class GameCoordinator {
     }
   }
 
+  /**
+   * 記下一次失敗並設定下次可重試的時間。追蹤表有上限：滿了以後只保留退避最晚
+   * 到期的那些，新項目要比表中最早到期的一筆更晚才取代它，否則不追蹤（下一輪
+   * 會再試一次，之後再有機會進表）。這樣超過上限的失敗對局只有放不進表的那幾
+   * 筆會重試，其餘的退避時間不受影響；不能整表清空，也不能依插入順序淘汰——
+   * 後者會淘汰還沒掃到的項目，讓它們在同一輪被重試而連鎖失效。
+   */
   private recordRetentionFailure(gameId: string, now: Date): void {
-    const failures = (this.retentionFailures.get(gameId)?.failures ?? 0) + 1;
-    if (!this.retentionFailures.has(gameId) && this.retentionFailures.size >= RETENTION_FAILURE_TRACK_LIMIT) {
-      this.retentionFailures.clear();
-    }
+    const previous = this.retentionFailures.get(gameId);
+    const failures = (previous?.failures ?? 0) + 1;
     const delay = Math.min(RETENTION_RETRY_BASE_MS * 2 ** (failures - 1), RETENTION_RETRY_MAX_MS);
-    this.retentionFailures.set(gameId, { failures, retryAt: now.getTime() + delay });
+    const entry = { failures, retryAt: now.getTime() + delay };
+    if (!previous && this.retentionFailures.size >= RETENTION_FAILURE_TRACK_LIMIT) {
+      let soonestId: string | undefined;
+      let soonestAt = Number.POSITIVE_INFINITY;
+      for (const [id, tracked] of this.retentionFailures) {
+        if (tracked.retryAt < soonestAt) {
+          soonestId = id;
+          soonestAt = tracked.retryAt;
+        }
+      }
+      if (soonestId === undefined || soonestAt >= entry.retryAt) return;
+      this.retentionFailures.delete(soonestId);
+    }
+    this.retentionFailures.set(gameId, entry);
   }
 
   /** 與一般指令共用每局的鎖：取得鎖之後重新確認仍閒置、仍未結束，勝利優先。 */
