@@ -1009,19 +1009,25 @@ export class Repository {
     await this.db.run('UPDATE game_proposals SET status = ? WHERE id = ?', [status, id]);
   }
 
-  async cancelOpenGameProposals(gameId: string): Promise<void> {
-    await this.db.run(
-      `UPDATE game_proposals SET status = 'cancelled' WHERE game_id = ? AND status = 'open'`,
+  /**
+   * 取消該局所有 open 提案，回傳實際取消的筆數。用 `RETURNING` 取得筆數：
+   * SQLite（≥ 3.35）與 PostgreSQL 都支援，不必讓 `run` 回傳驅動專屬的 changes／rowCount。
+   */
+  async cancelOpenGameProposals(gameId: string): Promise<number> {
+    const rows = await this.db.all(
+      `UPDATE game_proposals SET status = 'cancelled' WHERE game_id = ? AND status = 'open' RETURNING id`,
       [gameId],
     );
+    return rows.length;
   }
 
-  /** 只取消指定種類的 open 提案（例如退出只影響放棄投票，不動暫停提案）。 */
-  async cancelOpenGameProposalsOfKind(gameId: string, kind: string): Promise<void> {
-    await this.db.run(
-      `UPDATE game_proposals SET status = 'cancelled' WHERE game_id = ? AND kind = ? AND status = 'open'`,
+  /** 只取消指定種類的 open 提案（例如退出只影響放棄投票，不動暫停提案）；回傳取消的筆數。 */
+  async cancelOpenGameProposalsOfKind(gameId: string, kind: string): Promise<number> {
+    const rows = await this.db.all(
+      `UPDATE game_proposals SET status = 'cancelled' WHERE game_id = ? AND kind = ? AND status = 'open' RETURNING id`,
       [gameId, kind],
     );
+    return rows.length;
   }
 
   async insertGameConsent(proposalId: string, playerId: string): Promise<void> {

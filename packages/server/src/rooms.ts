@@ -646,9 +646,9 @@ export class RoomService {
     return this.view(roomId, playerId);
   }
 
-  /** Cancels any open vote when the eligibility of the voters changes. */
-  async invalidateGameVotes(gameId: string): Promise<void> {
-    await this.repo.cancelOpenGameProposals(gameId);
+  /** Cancels any open vote when the eligibility of the voters changes; returns how many were cancelled. */
+  async invalidateGameVotes(gameId: string): Promise<number> {
+    return this.repo.cancelOpenGameProposals(gameId);
   }
 
   async setReady(playerId: string, roomId: string, ready: boolean): Promise<RoomView> {
@@ -967,10 +967,10 @@ export class RoomService {
     const room = await this.repo.findRoom(roomId);
     if (room?.game_id) {
       const returning = await this.repo.findMembership(roomId, connection.playerId);
-      if (returning?.withdrawn !== 1) {
-        const open = await this.repo.findOpenGameProposal(room.game_id, 'abandon');
-        await this.invalidateGameVotes(room.game_id);
-        if (open) this.broadcastRoom(roomId);
+      // 是否廣播取決於這次 UPDATE 真的取消了幾筆，而不是事先讀到什麼：先讀後取消
+      // 之間若有新提案成立又被取消，其他客戶端仍需要知道它消失了。
+      if (returning?.withdrawn !== 1 && (await this.invalidateGameVotes(room.game_id)) > 0) {
+        this.broadcastRoom(roomId);
       }
     }
     this.broadcastPresence(roomId);

@@ -11,6 +11,7 @@ import type {
   ServerMessage,
   WithdrawResult,
 } from '@catan/protocol';
+import { newId } from '../src/db.ts';
 import type { Connection } from '../src/rooms.ts';
 import {
   runSetupOverApi,
@@ -451,7 +452,7 @@ describe('reconnection of withdrawn and absent seats', () => {
     const seen: (number | undefined)[] = [];
     const spy = vi.spyOn(harness.service.rooms, 'invalidateGameVotes').mockImplementation(async (id) => {
       seen.push((await harness.service.repo.findMembership(roomId, third.playerId!))?.connected);
-      await original(id);
+      return original(id);
     });
     const drop = await reconnect(roomId, third.playerId!);
     try {
@@ -622,6 +623,65 @@ describe('pendingAbandon is pushed to the other people at the table', () => {
     } finally {
       await hostFeed.close();
       await secondFeed.close();
+    }
+  });
+
+  it('broadcasts when the reconnect cancels a proposal that appeared after any earlier read', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, , third] = clients as [TestClient, TestClient, TestClient];
+    await setOffline(roomId, third.playerId!, true);
+    const feed = await subscribeRoom(host, roomId);
+
+    // 競態：重連流程這時還沒看到任何提案；就在取消之前，另一個 request 建立了
+    // abandon 提案。取消到它時就必須廣播，其他客戶端才知道它已消失。
+    const original = harness.service.rooms.invalidateGameVotes.bind(harness.service.rooms);
+    const spy = vi.spyOn(harness.service.rooms, 'invalidateGameVotes').mockImplementation(async (id) => {
+      await harness.service.repo.insertGameProposal({
+        id: newId('abandon'),
+        game_id: id,
+        kind: 'abandon',
+        proposed_by: host.playerId!,
+        status: 'open',
+        created_at: new Date().toISOString(),
+      });
+      const cancelled = await original(id);
+      expect(cancelled).toBe(1);
+      return cancelled;
+    });
+    try {
+      const before = feed.rooms.length;
+      const drop = await reconnect(roomId, third.playerId!);
+      try {
+        await vi.waitFor(() => expect(feed.rooms.length).toBeGreaterThan(before));
+        expect(feed.rooms.at(-1)?.pendingAbandon).toBeNull();
+        expect(await harness.service.repo.findOpenGameProposal(gameId, 'abandon')).toBeNull();
+      } finally {
+        await drop();
+      }
+    } finally {
+      spy.mockRestore();
+      await feed.close();
+    }
+  });
+
+  it('does not push a room message when a reconnect cancels nothing', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, , third] = clients as [TestClient, TestClient, TestClient];
+    await setOffline(roomId, third.playerId!, true);
+    const feed = await subscribeRoom(host, roomId);
+    try {
+      const before = feed.rooms.length;
+      const drop = await reconnect(roomId, third.playerId!);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        expect(feed.rooms.length).toBe(before);
+      } finally {
+        await drop();
+      }
+    } finally {
+      await feed.close();
     }
   });
 });
