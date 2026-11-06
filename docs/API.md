@@ -559,17 +559,26 @@ and answers `LeaveRoomResult { left, hostTransferredTo, reason? }`.
 **Entry epoch.** Each room remembers, per person, a number that grows every time
 that person enters the room: an HTTP join (including re-entering with an
 existing membership) and a socket subscribe each bump it. It comes from one
-process-wide counter seeded from the clock, so it only increases, and values
-issued after a restart are larger than values issued before it. A client learns
+process-wide counter counted in microseconds since the Unix epoch
+(`Date.now() * 1000`, about 1.8e15, safely below 2^53, so it survives a JSON
+round trip). Within one process it strictly increases, even if the clock steps
+back. A client learns
 its current epoch from the `unsubscribed` acknowledgement (`entryEpoch`) or, when
 there is no socket to acknowledge, from `RoomView.viewerEntryEpoch` (present on
 every room view that has a viewer, including the answer to a join). A request
 that raced a re-entry — for example a `/leave` the client stopped waiting for,
 arriving after the person joined again by invite code but before the socket
-subscribed — carries the older epoch and is answered `stale`. The service
-forgets epochs on restart (the current epoch reads as 0), so a request carrying
-an older epoch still goes through then, unless the person has entered the room
-again since the restart, which issues a larger epoch from the clock.
+subscribed — carries the older epoch and is answered `stale`.
+
+Epochs are not persisted. After a restart the service has forgotten them (the
+current epoch reads as 0), so a request carrying an older epoch goes through
+unless the person has entered the room again since the restart. A new process
+starts counting from the clock, which is normally above every value the old one
+issued, so such a late request is usually still judged `stale`; that is
+best-effort across a restart, not a guarantee. It does not hold if the clock
+stepped back, or if the old process had run ahead of the clock by issuing more
+than 1000 entries per millisecond. Within a single process the ordering is
+strict.
 
 Connection registration and removal, joins, leaves and the host-grace expiry all
 take the room's lock, so a connection or a re-join cannot slip in between a

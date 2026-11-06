@@ -360,13 +360,46 @@ describe('entry epoch: a leave that predates the latest entry is stale', () => {
       const ack = await tab.unsubscribeAck();
       expect(ack.roomId).toBe(roomId);
       expect(ack.entryEpoch).toBe(harness.service.rooms.entryEpochOf(roomId, guest.playerId!));
-      // 時間起算：重啟後發出的值仍大於重啟前的值。
-      expect(ack.entryEpoch!).toBeGreaterThanOrEqual(startedAt);
+      // 以微秒起算，且是可安全 JSON 往返的整數。
+      expect(ack.entryEpoch!).toBeGreaterThanOrEqual(startedAt * 1000);
+      expect(Number.isSafeInteger(ack.entryEpoch!)).toBe(true);
+      expect(JSON.parse(JSON.stringify(ack.entryEpoch))).toBe(ack.entryEpoch);
       const view = guest.expectOk<RoomView>(await guest.get(`/api/rooms/${roomId}`));
       expect(view.viewerEntryEpoch).toBe(ack.entryEpoch);
     } finally {
       await tab.close();
     }
+  });
+
+  it('strictly increases within the process, even when the clock steps back or a burst is fast', async () => {
+    const { guest, roomId } = await lobby();
+    const rooms = harness.service.rooms as unknown as {
+      bumpEntryEpoch(room: string, player: string): number;
+    };
+    const bump = (): number => rooms.bumpEntryEpoch(roomId, guest.playerId!);
+    const first = bump();
+
+    // 時鐘回調：計數器仍然往前走，不會發出較小或相同的世代。
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(0);
+    let second: number;
+    let third: number;
+    try {
+      second = bump();
+      third = bump();
+    } finally {
+      clock.mockRestore();
+    }
+    expect(second).toBe(first + 1);
+    expect(third).toBe(second + 1);
+
+    // 同一毫秒內的一波進房（< 1000 次）也不會超前時鐘：微秒起算留有餘裕。
+    let last = third;
+    for (let index = 0; index < 500; index += 1) {
+      const next = bump();
+      expect(next).toBeGreaterThan(last);
+      last = next;
+    }
+    expect(last).toBeLessThan((Date.now() + 1) * 1000);
   });
 
   it('refuses a late lobby leave once the player has joined again over HTTP', async () => {

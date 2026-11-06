@@ -143,10 +143,16 @@ export class RoomService {
   private readonly runtimes = new Map<string, RoomRuntime>();
   private readonly roomLocks = new Map<string, Promise<unknown>>();
   /**
-   * 全行程單調遞增的進房世代計數器，以時間起算：重啟後的值仍大於重啟前發出的值，
-   * 所以「遲到 leave 跨越重啟、使用者在重啟後重新進入」仍會判為過期（`stale`）。
+   * 進房世代計數器，以微秒起算（`Date.now() * 1000`，約 1.8e15，低於
+   * `Number.MAX_SAFE_INTEGER` 的 9e15，JSON 往返不損失精度）。
+   *
+   * 同一個 process 內嚴格遞增：每次取 `max(時鐘, 上次 + 1)`，時鐘回調也不會變小。
+   * 跨重啟只是盡力而為：新 process 從目前時鐘起算，通常大於舊 process 發出的值，
+   * 讓「遲到 leave 跨越重啟、使用者在重啟後重新進入」多半仍判為過期（`stale`）；
+   * 但時鐘回調，或舊 process 持續每毫秒超過 1000 次進房而超前時鐘時，不保證。
+   * 不持久化：要觸發必須有一個 `/leave` 撐過重啟並在使用者重新進入之後才抵達。
    */
-  private entryEpochCounter = Date.now();
+  private entryEpochCounter = Date.now() * 1000;
 
   constructor(private readonly deps: RoomServiceDeps) {}
 
@@ -156,7 +162,7 @@ export class RoomService {
 
   /** 在 room lock 內呼叫：記下這個身分剛進入房間，回傳新的世代。 */
   private bumpEntryEpoch(roomId: string, playerId: string): number {
-    this.entryEpochCounter = Math.max(Date.now(), this.entryEpochCounter + 1);
+    this.entryEpochCounter = Math.max(Date.now() * 1000, this.entryEpochCounter + 1);
     this.runtime(roomId).entryEpochs.set(playerId, this.entryEpochCounter);
     return this.entryEpochCounter;
   }
