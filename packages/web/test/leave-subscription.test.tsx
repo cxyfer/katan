@@ -27,6 +27,8 @@ beforeEach(() => {
 class PushSocket implements SocketLike {
   sent: ClientMessage[] = [];
   autoAck = true;
+  /** 確認裡帶回的進房世代；null 代表伺服器沒有可用的世代。 */
+  epoch: number | null = 1;
   #room: string | null = null;
   #open: (() => void) | null = null;
   #message: ((data: string) => void) | null = null;
@@ -49,8 +51,9 @@ class PushSocket implements SocketLike {
   onError() {}
   open() { this.#open?.(); }
   push(message: ServerMessage) { this.#message?.(JSON.stringify(message)); }
-  // 確認內容多帶進房世代，與伺服器之後的欄位一致；以斷言略過協定型別的欄位差異。
-  ack(roomId: string | null = 'r1') { this.push({ type: 'unsubscribed', payload: { roomId, entryEpoch: 1 } } as ServerMessage); }
+  ack(roomId: string | null = 'r1', entryEpoch: number | null = this.epoch) {
+    this.push({ type: 'unsubscribed', payload: { roomId, entryEpoch } });
+  }
   subscribes() { return this.sent.filter((message) => message.type === 'subscribe'); }
 }
 
@@ -150,7 +153,7 @@ describe('leaving the table', () => {
 
     expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: {} });
     await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
-    expect(api.callsOf('leaveRoom')[0]!.args).toEqual(['r1']);
+    expect(api.callsOf('leaveRoom')[0]!.args).toEqual(['r1', { entryEpoch: 1 }]);
 
     await pushLate(socket, soloRoom());
     expectHome();
@@ -169,7 +172,7 @@ describe('leaving the table', () => {
     expect(api.callsOf('withdrawGame')[0]!.args).toEqual(['g1', true]);
     expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: {} });
     await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
-    expect(api.callsOf('leaveRoom')[0]!.args).toEqual(['r1']);
+    expect(api.callsOf('leaveRoom')[0]!.args).toEqual(['r1', { entryEpoch: 1 }]);
 
     await pushLate(socket, duoRoom({ members: [makeMember({ withdrawn: true }), makeMember({ playerId: 'p2', nickname: '小美', seat: 1, color: 'blue', host: false })] }));
     expectHome();
@@ -313,7 +316,7 @@ describe('leaving the table', () => {
     fireEvent.click(await screen.findByTestId('back-to-lobby'));
     await screen.findByTestId('create-room');
     expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: {} });
-    expect(api.callsOf('leaveRoom')[0]!.args).toEqual(['r1']);
+    expect(api.callsOf('leaveRoom')[0]!.args).toEqual(['r1', { entryEpoch: 1 }]);
 
     await pushLate(socket, duoRoom({ status: 'abandoned' }));
     expect(screen.queryByTestId('result-screen')).toBeNull();
@@ -565,6 +568,104 @@ describe('leaving the table', () => {
     });
   });
 
+  describe('the entry epoch sent with the leave request', () => {
+    const leaveBody = (api: FakeApi) => api.callsOf('leaveRoom')[0]!.args[1];
+
+    async function leaveByKeeping(api: FakeApi) {
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-keep'));
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+    }
+
+    it('uses the epoch from the acknowledgement', async () => {
+      const api = createFakeApi({ room: soloRoom({ viewerEntryEpoch: 3 }), snapshot: makeSnapshot(makeView()) });
+      await enterTable(api, undefined, (socket) => { socket.epoch = 7; });
+      await leaveByKeeping(api);
+      expect(leaveBody(api)).toEqual({ entryEpoch: 7 });
+    });
+
+    it('also sends it when withdrawing and when leaving from the result screen or a lobby', async () => {
+      const duo = createFakeApi({ room: duoRoom(), snapshot: makeSnapshot(makeView()) });
+      await enterTable(duo, undefined, (socket) => { socket.epoch = 4; });
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-withdraw'));
+      fireEvent.click(screen.getByTestId('leave-withdraw-confirm'));
+      await waitFor(() => expect(duo.callsOf('leaveRoom')).toHaveLength(1));
+      expect(leaveBody(duo)).toEqual({ entryEpoch: 4 });
+    });
+
+    it('sends the epoch from the result screen leave', async () => {
+      const api = createFakeApi({
+        room: duoRoom({ status: 'abandoned' }),
+        snapshot: makeSnapshot(makeView({ result: { playerId: null, reason: 'abandoned' } }), 13),
+      });
+      await enterTable(api, undefined, (socket) => { socket.epoch = 9; });
+      fireEvent.click(await screen.findByTestId('back-to-lobby'));
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+      expect(leaveBody(api)).toEqual({ entryEpoch: 9 });
+    });
+
+    it('sends the epoch from the lobby leave', async () => {
+      const api = createFakeApi({ room: makeRoom() });
+      const socket = new PushSocket();
+      socket.epoch = 2;
+      render(<App services={{ api, storage: memoryStorage(), languages: ['en'], socketFactory: () => socket }} />);
+      act(() => socket.open());
+      fireEvent.change(await screen.findByTestId('join-code'), { target: { value: 'ABC123' } });
+      fireEvent.click(screen.getByTestId('join-room'));
+      await screen.findByTestId('room-code');
+      await waitFor(() => expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: { roomId: 'r1' } }));
+      fireEvent.click(screen.getByTestId('leave-room'));
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+      expect(leaveBody(api)).toEqual({ entryEpoch: 2 });
+    });
+
+    it('falls back to the room view epoch when the acknowledgement times out', async () => {
+      const api = createFakeApi({ room: soloRoom({ viewerEntryEpoch: 5 }), snapshot: makeSnapshot(makeView()) });
+      await enterTable(api, undefined, (socket) => { socket.autoAck = false; }, 60);
+      await leaveByKeeping(api);
+      expect(leaveBody(api)).toEqual({ entryEpoch: 5 });
+    });
+
+    it('falls back to the room view epoch when there is no socket connection', async () => {
+      const api = createFakeApi({ room: soloRoom({ viewerEntryEpoch: 6 }), snapshot: makeSnapshot(makeView()) });
+      render(<App services={{ api, storage: memoryStorage(), languages: ['en'], connectSocket: false }} />);
+      fireEvent.change(await screen.findByTestId('join-code'), { target: { value: 'ABC123' } });
+      fireEvent.click(screen.getByTestId('join-room'));
+      await screen.findByTestId('board-svg', {}, { timeout: 8000 });
+      await leaveByKeeping(api);
+      expect(leaveBody(api)).toEqual({ entryEpoch: 6 });
+    });
+
+    it('falls back to the room view epoch when the acknowledgement carries none', async () => {
+      const api = createFakeApi({ room: soloRoom({ viewerEntryEpoch: 8 }), snapshot: makeSnapshot(makeView()) });
+      await enterTable(api, undefined, (socket) => { socket.epoch = null; });
+      await leaveByKeeping(api);
+      expect(leaveBody(api)).toEqual({ entryEpoch: 8 });
+    });
+
+    it('sends no body when neither an acknowledgement epoch nor a room view epoch is known', async () => {
+      const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+      await enterTable(api, undefined, (socket) => { socket.epoch = null; });
+      await leaveByKeeping(api);
+      expect(api.callsOf('leaveRoom')[0]!.args).toEqual(['r1', undefined]);
+    });
+
+    it('uses the epoch the room view had before the departure began, not a later push', async () => {
+      const api = createFakeApi({ room: soloRoom({ viewerEntryEpoch: 5 }), snapshot: makeSnapshot(makeView()) });
+      const socket = await enterTable(api, undefined, (pushSocket) => { pushSocket.autoAck = false; }, 80);
+      fireEvent.click(screen.getByTestId('leave-game'));
+      fireEvent.click(screen.getByTestId('leave-keep'));
+      await waitFor(() => expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: {} }));
+      // 離開開始之後的推送被忽略，也不會改寫備援世代。
+      await act(async () => {
+        socket.push({ type: 'room', payload: soloRoom({ viewerEntryEpoch: 99 }) });
+      });
+      await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
+      expect(leaveBody(api)).toEqual({ entryEpoch: 5 });
+    });
+  });
+
   describe('when the server still sees the player in the room (left: false)', () => {
     const IGNORED: LeaveResult = { ok: true, data: { left: false, hostTransferredTo: null } };
 
@@ -647,6 +748,65 @@ describe('leaving the table', () => {
       fireEvent.click(screen.getByTestId('leave-keep'));
       await screen.findByTestId('resume-list');
       expect(screen.queryByText(/Host role transferred/)).toBeNull();
+    });
+
+    describe('reason: stale (the room was re-entered in between)', () => {
+      const STALE: LeaveResult = { ok: true, data: { left: false, hostTransferredTo: null, reason: 'stale' } };
+      const PRESENT: LeaveResult = { ok: true, data: { left: false, hostTransferredTo: null, reason: 'present' } };
+
+      it.each([
+        ['present', PRESENT],
+        ['stale', STALE],
+      ])('a room leave treats %s the same way: stays put, resubscribes, explains, does not retry', async (_name, result) => {
+        const api = createFakeApi({
+          room: duoRoom({ status: 'abandoned' }),
+          snapshot: makeSnapshot(makeView({ result: { playerId: null, reason: 'abandoned' } }), 13),
+        });
+        api.leaveRoom = async (roomId: string, body) => {
+          api.calls.push({ method: 'leaveRoom', args: [roomId, body] });
+          return result;
+        };
+        const socket = await enterTable(api);
+        fireEvent.click(await screen.findByTestId('back-to-lobby'));
+        expect((await screen.findByTestId('toast')).textContent).toContain('still sees you in this room');
+        expect(screen.getByTestId('result-screen')).toBeTruthy();
+        expect(screen.queryByTestId('create-room')).toBeNull();
+        expect(lastSubscribe(socket)).toEqual({ type: 'subscribe', payload: { roomId: 'r1', gameId: 'g1' } });
+        await act(async () => { await new Promise((resolve) => setTimeout(resolve, 40)); });
+        expect(api.callsOf('leaveRoom')).toHaveLength(1);
+      });
+
+      it.each([
+        ['present', PRESENT],
+        ['stale', STALE],
+      ])('save and leave treats %s the same way: still goes home with the toast, no retry', async (_name, result) => {
+        const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
+        api.leaveRoom = async (roomId: string, body) => {
+          api.calls.push({ method: 'leaveRoom', args: [roomId, body] });
+          return result;
+        };
+        await enterTable(api);
+        fireEvent.click(screen.getByTestId('leave-game'));
+        fireEvent.click(screen.getByTestId('leave-keep'));
+        await screen.findByTestId('resume-list');
+        expect(screen.getByTestId('toast').textContent).toContain('still in use by another connection');
+        await act(async () => { await new Promise((resolve) => setTimeout(resolve, 40)); });
+        expect(api.callsOf('leaveRoom')).toHaveLength(1);
+      });
+
+      it('withdrawing treats stale like present too', async () => {
+        const api = createFakeApi({ room: duoRoom(), snapshot: makeSnapshot(makeView()) });
+        api.leaveRoom = async (roomId: string, body) => {
+          api.calls.push({ method: 'leaveRoom', args: [roomId, body] });
+          return STALE;
+        };
+        await enterTable(api);
+        fireEvent.click(screen.getByTestId('leave-game'));
+        fireEvent.click(screen.getByTestId('leave-withdraw'));
+        fireEvent.click(screen.getByTestId('leave-withdraw-confirm'));
+        await screen.findByTestId('resume-list');
+        expect(screen.getByTestId('toast').textContent).toContain('still in use by another connection');
+      });
     });
   });
 

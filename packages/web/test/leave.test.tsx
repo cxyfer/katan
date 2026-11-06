@@ -132,6 +132,21 @@ describe('API client', () => {
       { url: '/api/games/g1/withdraw', method: 'POST', body: { withdrawn: false } },
     ]);
   });
+
+  it('sends the entry epoch in the leave body only when one is given', async () => {
+    const calls: { url: string; method: string; body: unknown }[] = [];
+    const fetchImpl: FetchLike = async (url, init) => {
+      calls.push({ url, method: init?.method ?? 'GET', body: init?.body === undefined ? undefined : JSON.parse(init.body) });
+      return { ok: true, status: 200, json: async () => ({ ok: true, data: { left: true, hostTransferredTo: null } }) };
+    };
+    const api = new ApiClient(fetchImpl);
+    await api.leaveRoom('r/1');
+    await api.leaveRoom('r1', { entryEpoch: 4 });
+    expect(calls).toEqual([
+      { url: '/api/rooms/r%2F1/leave', method: 'POST', body: undefined },
+      { url: '/api/rooms/r1/leave', method: 'POST', body: { entryEpoch: 4 } },
+    ]);
+  });
 });
 
 describe('leave entry', () => {

@@ -561,14 +561,22 @@ export function useTable(options: UseTableOptions): TableController {
    * 離開流程的第一步：記下已離開的房與局（之後的推送一律忽略），取消訂閱並等伺服器確認。
    * 畫面與本地狀態先不動：必須等伺服器處理完 `/leave`，使用者才可能從首頁重新進入（SPEC §4.6）。
    * 一定要等到取消訂閱的確認（或逾時）才送 `/leave`：連線還在房內時伺服器會把 `/leave` 當成遲到或
-   * 重複的請求而忽略（`left: false`）。標記在第一個 await 之前同步設好；回傳先前的標記供失敗時還原。
+   * 重複的請求而忽略（`left: false`）。標記在第一個 await 之前同步設好。
+   *
+   * 回傳先前的標記（供失敗時還原），以及要帶進 `/leave` 的進房世代 `entryEpoch`：優先用確認裡的值
+   * （取消訂閱之後的目前世代）；沒有確認（逾時、未連線、本來沒訂閱）時退回開始離開前房間檢視的
+   * `viewerEntryEpoch`；兩者都沒有就不帶（`undefined`）。
    */
   const beginDeparture = useCallback(
     async (ids: { roomId: string | null; gameId: string | null }) => {
       const previous = departedRef.current;
+      // 先記下，之後該房的推送都會被忽略。
+      const viewerEntryEpoch = stateRef.current.room?.viewerEntryEpoch;
       departedRef.current = ids;
-      await socketRef.current?.unsubscribe();
-      return previous;
+      const unsubscribed = await socketRef.current?.unsubscribe();
+      const ackEpoch = unsubscribed?.outcome === 'acked' ? unsubscribed.ack.entryEpoch : null;
+      const entryEpoch: number | undefined = ackEpoch ?? viewerEntryEpoch;
+      return { previous, entryEpoch };
     },
     [],
   );
@@ -623,18 +631,20 @@ export function useTable(options: UseTableOptions): TableController {
 
   const leaveTimeoutMs = options.leaveTimeoutMs ?? LEAVE_TIMEOUT_MS;
   /**
-   * 送出 `/leave` 並最多等 `leaveTimeoutMs`；逾時回傳 `'timeout'`。逾時後才抵達的回應沒有任何流程在等它，
-   * 所以不會改動畫面。逾時後這個請求仍可能稍後才在伺服器執行，但那時使用者可能已重新進入而重新訂閱，
-   * 伺服器看到連線還在房內就會忽略它（`left: false`），不會動到已重新進入的座位或房主。
+   * 送出 `/leave`（有進房世代就帶上）並最多等 `leaveTimeoutMs`；逾時回傳 `'timeout'`。逾時後才抵達的回應
+   * 沒有任何流程在等它，所以不會改動畫面。逾時後這個請求仍可能稍後才在伺服器執行，但那時使用者可能已重新
+   * 進入：連線還在房內伺服器會忽略它（`reason: 'present'`），離開之後又重新進入過則因世代較舊而忽略
+   * （`reason: 'stale'`），都不會動到已重新進入的座位或房主。
    */
   const requestLeave = useCallback(
-    async (roomId: string): Promise<ApiResult<LeaveRoomResult> | 'timeout'> => {
+    async (roomId: string, entryEpoch: number | undefined): Promise<ApiResult<LeaveRoomResult> | 'timeout'> => {
       let timer: ReturnType<typeof setTimeout> | undefined;
       const timeout = new Promise<'timeout'>((resolve) => {
         timer = globalThis.setTimeout(() => resolve('timeout'), leaveTimeoutMs);
       });
       try {
-        return await Promise.race([api.leaveRoom(roomId), timeout]);
+        const request = api.leaveRoom(roomId, entryEpoch === undefined ? undefined : { entryEpoch });
+        return await Promise.race([request, timeout]);
       } finally {
         globalThis.clearTimeout(timer);
       }
@@ -646,15 +656,16 @@ export function useTable(options: UseTableOptions): TableController {
     const roomId = roomIdRef.current;
     if (!roomId) return Promise.resolve();
     return singleFlightLeave(async () => {
-      const previous = await beginDeparture(currentTableIds());
-      const result = await requestLeave(roomId);
+      const { previous, entryEpoch } = await beginDeparture(currentTableIds());
+      const result = await requestLeave(roomId, entryEpoch);
       if (result !== 'timeout' && result.ok && result.data.left) {
         announceHostTransfer(result.data.hostTransferredTo);
         clearTable();
         await refreshResumable();
         return;
       }
-      // 還沒離開成功（失敗、逾時，或伺服器仍看到你在房內而忽略）：留在原畫面，恢復訂閱，讓使用者可以重試。
+      // 還沒離開成功（失敗、逾時，或伺服器忽略了這次離開：`present` 仍有連線在房內、`stale` 期間有過重新進入）：
+      // 留在原畫面，恢復訂閱，讓使用者自己決定是否重試。不自動重試：重試可能刪掉另一個分頁剛建立的 membership。
       abortDeparture(previous);
       const notice = result === 'timeout'
         ? localNotice('play.leave.timeoutRoom')
@@ -668,15 +679,16 @@ export function useTable(options: UseTableOptions): TableController {
   /**
    * 保存並離開、退出之後回首頁（SPEC §4.6：刻意離開，座位保留）。先記錄、取消訂閱並等確認，再等 `/leave`
    * 完成（不論成敗、逾時或被忽略，存檔或退出都已成功）才清掉牌桌回首頁，所以使用者不可能在 `/leave`
-   * 完成前從首頁重新進入；失敗、逾時或座位仍由其他連線使用中只以 toast 提示。
+   * 完成前從首頁重新進入；失敗、逾時，或伺服器忽略離開（座位仍由其他連線使用中，或期間另一個分頁重新進入過）
+   * 只以 toast 提示，不自動重試。
    */
   const leaveToHome = useCallback(
     (): Promise<void> =>
       singleFlightLeave(async () => {
         const ids = currentTableIds();
-        await beginDeparture(ids);
+        const { entryEpoch } = await beginDeparture(ids);
         if (ids.roomId) {
-          const result = await requestLeave(ids.roomId);
+          const result = await requestLeave(ids.roomId, entryEpoch);
           if (result === 'timeout') dispatch({ type: 'toast', notice: localNotice('play.leave.timeoutHome') });
           else if (!result.ok) dispatch({ type: 'toast', notice: noticeFrom(result.error) });
           else if (!result.data.left) dispatch({ type: 'toast', notice: localNotice('play.leave.stillPresentHome') });

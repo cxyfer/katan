@@ -15,6 +15,7 @@ import type {
   CommandRequest,
   GameEvent,
   GameSnapshot,
+  LeaveRoomRequest,
   Locale,
   PlayerIdentity,
   ProfileView,
@@ -191,8 +192,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       record('getRoom', roomId);
       return room ? ok(room) : { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
     },
-    async leaveRoom(roomId: string) {
-      record('leaveRoom', roomId);
+    async leaveRoom(roomId: string, body?: LeaveRoomRequest) {
+      record('leaveRoom', roomId, body);
       return ok({ left: true, hostTransferredTo: null });
     },
     async takeSeat(roomId: string, color: string) {
