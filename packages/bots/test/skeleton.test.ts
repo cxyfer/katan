@@ -524,6 +524,73 @@ describe('strategy hooks', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 模組 duty 在骨架尾端的收尾
+// ---------------------------------------------------------------------------
+
+describe('module duties behind the policy skeleton', () => {
+  const policyOf = (modules: readonly BotModule[]) => createBotPolicy('standard', { modules });
+  const duty = cmd('fx.duty');
+
+  /** 第一位玩家放好聚落，輪到鋪路。 */
+  function roadStagePosition(): Position {
+    const { state, rng } = newGame(1);
+    const id = actorOf(state);
+    const placed = applyCommand(state, id, { type: 'setup.placeBuilding', vertex: viewOf(state, id).hints!.legalSettlements[0]! }, rng);
+    if (!placed.ok) throw new Error(`placement rejected: ${placed.error.code}`);
+    return positionOf(placed.state);
+  }
+
+  it('asks the duty at the end of preroll, and null keeps turn.roll from being sent', () => {
+    const { id, view } = prerollPosition();
+    expect(policyOf([]).decide(view, ctxFor(id))?.type).toBe('turn.roll');
+    expect(policyOf([{ id: 'fx', duty: () => duty }]).decide(view, ctxFor(id))).toBe(duty);
+    expect(policyOf([{ id: 'fx', duty: () => null }]).decide(view, ctxFor(id))).toBeNull();
+    expect(policyOf([{ id: 'fx', duty: () => undefined }]).decide(view, ctxFor(id))?.type).toBe('turn.roll');
+  });
+
+  it('asks the duty when the action phase has nothing left to do, and null keeps turn.end from being sent', () => {
+    const { id, view } = actionPosition();
+    // 手牌是空的：沒有可建造、可交易、可開價的事。
+    const idle = noScoringBuilds(withHand(view, id, { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 }));
+    expect(policyOf([]).decide(idle, ctxFor(id))?.type).toBe('turn.end');
+    expect(policyOf([{ id: 'fx', duty: () => duty }]).decide(idle, ctxFor(id))).toBe(duty);
+    expect(policyOf([{ id: 'fx', duty: () => null }]).decide(idle, ctxFor(id))).toBeNull();
+    expect(policyOf([{ id: 'fx', duty: () => undefined }]).decide(idle, ctxFor(id))?.type).toBe('turn.end');
+  });
+
+  it('asks the duty when setup has no move, and not when base can place', () => {
+    const { id, view } = roadStagePosition();
+    expect(view.turn.setup?.stage).toBe('road');
+    const stuck = withHints(view, { legalRoads: [] });
+    expect(policyOf([]).decide(stuck, ctxFor(id))).toBeNull();
+    expect(policyOf([{ id: 'fx', setup: () => undefined, duty: () => duty }]).decide(stuck, ctxFor(id))).toBe(duty);
+    expect(policyOf([{ id: 'fx', setup: () => undefined, duty: () => null }]).decide(stuck, ctxFor(id))).toBeNull();
+    let asked = 0;
+    const idleDuty: BotModule = { id: 'fx', duty: () => (asked++, duty) };
+    expect(policyOf([idleDuty]).decide(view, ctxFor(id))?.type).toBe('setup.placeRoad');
+    expect(asked).toBe(0);
+  });
+
+  it('never asks the duty while waiting for the answers to its own offer', () => {
+    const { id, view } = actionPosition();
+    const own = offerOf({ id: 'own1', give: { lumber: 1 }, want: { ore: 1 } }, id, view.windowId);
+    const waiting = withHand({ ...view, offers: [own] }, id, RICH);
+    let asked = 0;
+    const policy = policyOf([{ id: 'fx', duty: () => (asked++, duty) }]);
+    const phase = (offerPhase: 'collecting' | 'ready' | 'expired'): BotContext => ({
+      ...ctxFor(id),
+      offerPhases: { own1: offerPhase },
+    });
+    // 收集期間沒有人回應：等待（null），不是「沒事做」。
+    expect(policy.decide(waiting, phase('collecting'))).toBeNull();
+    expect(asked).toBe(0);
+    // 逾時才撤回；撤回是策略的決定，同樣不經過 duty。
+    expect(policy.decide(waiting, phase('expired'))).toEqual({ type: 'trade.withdraw', offerId: 'own1' });
+    expect(asked).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // TurnContext
 // ---------------------------------------------------------------------------
 
