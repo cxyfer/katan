@@ -18,7 +18,7 @@ export function moduleView<K extends keyof ModuleViewMap>(
   view: Pick<GameView, 'modules'>,
   id: K,
 ): ModuleViewMap[K] | undefined {
-  return entryOf(view.modules, id) as ModuleViewMap[K] | undefined;
+  return entryOf(view?.modules, id) as ModuleViewMap[K] | undefined;
 }
 
 /** `view.hints.modules[id]`，型別依 `ModuleHintsMap`；傳入 `view.hints`。 */

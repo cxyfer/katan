@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import {
   actionHints,
   applyCommand,
+  countRoads,
   isLandHex,
   projectGame,
   RESOURCES,
@@ -26,7 +27,9 @@ import {
 } from '@catan/rules';
 import { act, scriptedRng } from '../../rules/test/helpers.ts';
 import { corner, emptySeafarersGame, road, seafarersGame, settle, side } from '../../rules/test/seafarers-helpers.ts';
+import { roadStockLeft } from '../src/board.ts';
 import { fallbackDecision, fallbackPolicy, botOwesAction } from '../src/fallback.ts';
+import { moduleHints, moduleView } from '../src/modules/view.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import {
   BASE_RESPONSE_COMMANDS,
@@ -414,6 +417,10 @@ describe('the duty never throws', () => {
     add('no bank', false, (v) => void delete loose(v).bank);
     add('negative bank', false, (v) => void (v.bank = { lumber: -1, brick: NaN, wool: 2.5, grain: 0, ore: 1 }));
     add('no board roads', false, (v) => void (v.board.roads = []));
+    add('board without roads', false, (v) => void delete loose(v.board).roads);
+    add('roads is null', false, (v) => void (loose(v.board).roads = null));
+    add('roads is not an array', false, (v) => void (loose(v.board).roads = { 0: null }));
+    add('no board', false, (v) => void delete loose(v).board);
     add('unknown phase', false, (v) => void (v.turn.phase = 'nonsense'));
     add('setup road stage', false, (v) => void (v.turn = { ...v.turn, phase: 'setup', setup: { seat: 0, stage: 'road', round: 1, remaining: 1 } }));
     if (view.pending && 'responders' in view.pending) {
@@ -467,6 +474,76 @@ describe('the duty never throws', () => {
     expect(seafarersDuty(view, 'p2')).toBeUndefined();
     const over = { ...clone(view), result: { playerId: 'p1', reason: 'victory' } } as GameView;
     expect(seafarersDuty(over, 'p1')).toBeUndefined();
+  });
+});
+
+describe('free roads on a view with missing board data', () => {
+  /** 真的 freeRoads frame：p1 的聚落在 k3、道路存量充足、`legalRoads` 非空。 */
+  function freeRoads() {
+    const state = playRoadBuilding(roadBuildingGame(false));
+    const view = viewOf(state, 'p1');
+    expect(view.pending).toMatchObject({ kind: 'freeRoads', actor: 'p1' });
+    expect(view.hints!.legalRoads.length).toBeGreaterThan(0);
+    return { state, view, edge: view.hints!.legalRoads[0]! };
+  }
+
+  const breakers: readonly (readonly [string, (view: GameView) => void])[] = [
+    ['board.roads deleted', (v) => void delete (v.board as unknown as Record<string, unknown>).roads],
+    ['board.roads null', (v) => void ((v.board as unknown as Record<string, unknown>).roads = null)],
+    ['board.roads not an array', (v) => void ((v.board as unknown as Record<string, unknown>).roads = { length: 3 })],
+    ['board deleted', (v) => void delete (v as unknown as Record<string, unknown>).board],
+  ];
+
+  it.each(breakers)('the duty and the fallback do not throw when %s', (_name, breakIt) => {
+    const { view, edge } = freeRoads();
+    const broken = clone(view);
+    breakIt(broken);
+    expect(() => seafarersDuty(broken, 'p1')).not.toThrow();
+    expect(() => fallbackPolicy.decide(broken, ctxFor('p1'))).not.toThrow();
+    expect(() => fallbackDecision(broken, 'p1', botModulesOf(getProfile(broken.profileId)!))).not.toThrow();
+    // 沒有盤面資料就是沒有任何已放的道路：存量充足，照常蓋第一條合法的路。
+    expect(seafarersDuty(broken, 'p1')).toEqual({ type: 'build.road', edge });
+    expect(fallbackPolicy.decide(broken, ctxFor('p1'))).toEqual({ type: 'build.road', edge });
+  });
+
+  it('with ships only, a view missing the roads still builds the ship', () => {
+    const state = playRoadBuilding(roadBuildingGame(true));
+    const view = clone(viewOf(state, 'p1'));
+    expect(view.hints!.legalRoads).toEqual([]);
+    delete (view.board as unknown as Record<string, unknown>).roads;
+    const ship = (view.hints!.modules!.seafarers as { legalShips: number[] }).legalShips[0];
+    expect(seafarersDuty(view, 'p1')).toEqual({ type: 'build.ship', edge: ship });
+    expect(fallbackPolicy.decide(view, ctxFor('p1'))).toEqual({ type: 'build.ship', edge: ship });
+  });
+
+  it('roadStockLeft counts own roads like the rules engine and survives missing data', () => {
+    const state = roadBuildingGame(false);
+    const e = k3Edges(state);
+    expect(roadStockLeft(viewOf(state, 'p1'), 'p1')).toBe(15);
+    fillPieces(state, 'p1', 6, 'road');
+    fillPieces(state, 'p1', 4, 'ship'); // 船不占道路存量
+    road(state, 'p2', e.W); // 別人的道路也不算
+    state.board.roads[e.E1] = { player: 'p1', ship: false, bridge: true }; // 橋不算（與 countRoads 相同）
+    const view = viewOf(state, 'p1');
+    expect(countRoads(state, 'p1')).toBe(6);
+    expect(roadStockLeft(view, 'p1')).toBe(15 - countRoads(state, 'p1'));
+    expect(roadStockLeft(view, 'p2')).toBe(14);
+    // 陣列中的空洞與缺漏：略過；查不到 profile：不設上限。
+    const holes = clone(view);
+    holes.board.roads[0] = null;
+    expect(roadStockLeft(holes, 'p1')).toBe(9);
+    expect(roadStockLeft({ ...view, profileId: 'no-such-profile' }, 'p1')).toBe(Infinity);
+    expect(roadStockLeft({ ...view, board: undefined } as unknown as GameView, 'p1')).toBe(15);
+    expect(roadStockLeft({ ...view, board: { ...view.board, roads: undefined } } as unknown as GameView, 'p1')).toBe(15);
+  });
+
+  it('the module accessors survive a missing view or hints', () => {
+    const view = viewOf(roadBuildingGame(false), 'p1');
+    expect(() => moduleView(undefined as unknown as GameView, 'seafarers')).not.toThrow();
+    expect(moduleView(undefined as unknown as GameView, 'seafarers')).toBeUndefined();
+    expect(moduleHints(undefined, 'seafarers')).toBeUndefined();
+    expect(moduleHints({ ...view.hints!, modules: undefined }, 'seafarers')).toBeUndefined();
+    expect(moduleHints({ ...view.hints!, modules: 7 as unknown as Record<string, unknown> }, 'seafarers')).toBeUndefined();
   });
 });
 

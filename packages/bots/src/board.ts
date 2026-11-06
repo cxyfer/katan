@@ -181,15 +181,18 @@ export function piecesLeft(model: BoardModel, playerId: string): PieceCounts {
 
 /**
  * 自己還能放幾條道路：profile 的道路數減去盤面上自己的非船道路（橋也不算，與規則引擎的
- * `countRoads` 相同）。`legalRoads` 不扣存量，保底與策略要自行檢查。查不到 profile 時不設上限，
- * 不得 throw：保底路徑不在 try 裡。
+ * `countRoads` 相同）。`legalRoads` 不扣存量，保底與策略要自行檢查。查不到 profile 時不設上限；
+ * 盤面缺漏（沒有 `board` 或 `roads`）視為沒有任何道路。不得 throw：保底路徑不在 try 裡。
  */
 export function roadStockLeft(view: GameView, playerId: string): number {
   const profile = getProfile(view.profileId);
   if (!profile) return Infinity;
+  const roads: unknown = view.board?.roads;
   let used = 0;
-  for (const road of view.board.roads) {
-    if (road && road.player === playerId && !road.ship && !road.bridge) used += 1;
+  if (Array.isArray(roads)) {
+    for (const road of roads as GameView['board']['roads']) {
+      if (road && road.player === playerId && !road.ship && !road.bridge) used += 1;
+    }
   }
   return profile.pieces.roads - used;
 }
