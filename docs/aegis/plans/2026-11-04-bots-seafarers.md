@@ -182,7 +182,7 @@ PR 一律指向 `release/v0.4.1`，以 squash merge 合併（策略 §7）。wor
 |---|---|---|---|
 | A | PL-1 ∥ RX | RX、PL-1（不分先後） | RX 只動 rules；PL-1 動 bots，以及 server 的型別註記與 bot 規格（策略 §4.10）。兩者互不重疊 |
 | B | PL-2 ∥ PL-3 ∥ SF-1 | PL-2、PL-3，然後 SF-1 | SF-1 不用 harness（固定盤面直接用 `rules/test/seafarers-helpers.ts`），檔案也與 PL-2、PL-3 不重疊（§11-2）；PL-2 的所有權明列檔案，不含 `test/sf-*`（策略 §4.10） |
-| C | SF-2a ∥ SF-2b ∥ SF-3 | SF-2a、SF-2b，然後 SF-3 | stub 讓 2a 與 2b 各改各的檔案；SF-3 只改新的測試檔 |
+| C | SF-2a ∥ SF-2b ∥ SF-3 | SF-2a、SF-2b，然後 SF-3 | stub 讓 2a 與 2b 各改各的檔案；SF-3 修改新的 SF 測試檔，並在 `packages/bots/test/families.ts` 加上一筆 SF 登記 |
 | D | SF-4 | — | SPEC、文案與 gating 都放在這一個 PR |
 | E | 發布 QA、Browser QA、rc | — | §7 |
 
