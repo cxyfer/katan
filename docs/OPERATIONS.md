@@ -24,7 +24,7 @@ tested (SPEC §10).
 | `CHAT_HISTORY_PAGE_SIZE` | `50` | Chat page size cap |
 | `ROOM_CAPACITY_MAX` | `6` | Room capacity cap |
 | `ROOM_IDLE_TTL_MINUTES` | `720` | Stale-lobby sweep horizon (never applied to resumable/suspended games) |
-| `GAME_RETENTION_DAYS` | `0` | Ends unfinished games (in progress, interrupted or suspended) with no activity for this many days; `0` disables. Decimal whole numbers `1`–`3650` only (surrounding whitespace is ignored); anything else, including `1e1`, `0x10`, `7.0`, `+7`, negatives and text, disables. See [Retention](#retention) |
+| `GAME_RETENTION_DAYS` | `0` | Ends unfinished games (in progress, interrupted or suspended) with no activity for this many days; `0` disables. Decimal whole numbers `1`–`3650` only (surrounding whitespace is ignored); anything else, including `1e1`, `0x10`, `7.0`, `+7`, negatives and text, disables. See [Unfinished-game retention](#unfinished-game-retention-game_retention_days) |
 | `GAME_RETENTION_SWEEP_INTERVAL_MS` | `600000` | How often the retention sweep runs (minimum `1000`; ignored while retention is disabled) |
 | `DEFAULT_TURN_CLOCK_SECONDS` | `0` | Advisory clock default (`0` = off) |
 | `DEFAULT_DISCONNECT_GRACE_SECONDS` | `300` | Disconnect grace default |
