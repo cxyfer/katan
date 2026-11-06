@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
 import {
   RESOURCES,
@@ -218,6 +218,20 @@ function grant(game: GameState, playerId: string, resource: Resource, amount: nu
 function driverDeps(service: RunningService = harness.service): BotDriverDeps {
   return (service.bots as unknown as { deps: BotDriverDeps }).deps;
 }
+
+describe('BOT_RETRY_MS parsing', () => {
+  it('keeps the retry interval at one second or more', () => {
+    expect(loadConfig({}).bots.retryMs).toBe(30_000);
+    expect(loadConfig({ BOT_RETRY_MS: '' }).bots.retryMs).toBe(30_000);
+    expect(loadConfig({ BOT_RETRY_MS: 'abc' }).bots.retryMs).toBe(30_000);
+    // 0 會讓狀態不變時的重試變成零延遲迴圈，低於下限一律提高到 1000。
+    expect(loadConfig({ BOT_RETRY_MS: '0' }).bots.retryMs).toBe(1_000);
+    expect(loadConfig({ BOT_RETRY_MS: '250' }).bots.retryMs).toBe(1_000);
+    expect(loadConfig({ BOT_RETRY_MS: '-5' }).bots.retryMs).toBe(1_000);
+    expect(loadConfig({ BOT_RETRY_MS: '1000' }).bots.retryMs).toBe(1_000);
+    expect(loadConfig({ BOT_RETRY_MS: '45000' }).bots.retryMs).toBe(45_000);
+  });
+});
 
 describe('B-ROOM bot seats', () => {
   it('keeps the wire and strategy difficulty vocabularies identical', () => {
@@ -910,6 +924,91 @@ describe('B-LIFE owed action without an answer', () => {
       const settled = logs.entries.filter(isIdleDutyWarn).length;
       await sleep(400);
       expect(logs.entries.filter(isIdleDutyWarn).length).toBe(settled);
+    } finally {
+      Object.assign(config, saved);
+      logs.restore();
+      await drop();
+    }
+  });
+
+  it('logs at most one warning per interval however often the game is woken', async () => {
+    const deps = driverDeps();
+    const config = harness.service.config.bots;
+    const saved = { ...config };
+    const savedNow = deps.now;
+    // 凍結時鐘：warn 的頻率限制只看 `deps.now()`，所以喚醒再多次也不會多記。
+    let clock = 5_000_000;
+    deps.now = () => clock;
+    config.retryMs = 120;
+    const logs = captureLogs(deps);
+    const findGame = vi.spyOn(deps.repo, 'findGame');
+    const evaluations = (gameId: string) => findGame.mock.calls.filter(([candidate]) => candidate === gameId).length;
+    const { host, roomId, gameId, botIds } = await botGame(2);
+    const drop = await liveSocket(harness.service, roomId, host.playerId!);
+    try {
+      await openFrame(gameId, [botIds[0]!]);
+      harness.service.bots.kick(gameId);
+      await waitFor(async () => logs.entries.filter(isIdleDutyWarn).length === 1, 'the first diagnostic warning');
+
+      // 重複 subscribe／重連：每次都立即重新評估，但仍在同一個間隔內。
+      const before = evaluations(gameId);
+      for (let index = 0; index < 10; index++) {
+        if (index % 2 === 0) harness.service.bots.kick(gameId);
+        else harness.service.bots.kickRoom(roomId);
+        await sleep(15);
+      }
+      expect(evaluations(gameId) - before).toBeGreaterThanOrEqual(10);
+      expect(logs.entries.filter(isIdleDutyWarn)).toHaveLength(1);
+
+      // 重試計時器仍在跑（只是被頻率限制擋下），間隔過了就會再記一筆。
+      const timerBefore = evaluations(gameId);
+      await sleep(300);
+      expect(evaluations(gameId)).toBeGreaterThan(timerBefore);
+      expect(logs.entries.filter(isIdleDutyWarn)).toHaveLength(1);
+      clock += 120;
+      harness.service.bots.kick(gameId);
+      await waitFor(async () => logs.entries.filter(isIdleDutyWarn).length === 2, 'the next diagnostic warning');
+      await sleep(300);
+      expect(logs.entries.filter(isIdleDutyWarn)).toHaveLength(2);
+    } finally {
+      findGame.mockRestore();
+      Object.assign(config, saved);
+      deps.now = savedNow;
+      logs.restore();
+      await drop();
+    }
+  });
+
+  it('retries on its own after the wake-ups stop', async () => {
+    const deps = driverDeps();
+    const config = harness.service.config.bots;
+    const saved = { ...config };
+    config.retryMs = 250;
+    const logs = captureLogs(deps);
+    const { host, roomId, gameId, botIds } = await botGame(2);
+    const drop = await liveSocket(harness.service, roomId, host.playerId!);
+    try {
+      await openFrame(gameId, [botIds[0]!]);
+      harness.service.bots.kick(gameId);
+      await waitFor(async () => logs.entries.filter(isIdleDutyWarn).length >= 1, 'the first diagnostic warning');
+      const first = logs.entries.find(isIdleDutyWarn)!.at;
+
+      // 每次喚醒都會清掉並重排重試計時器；停止喚醒後計時器必須還在。
+      for (let index = 0; index < 6; index++) {
+        harness.service.bots.kick(gameId);
+        harness.service.bots.kickRoom(roomId);
+        await sleep(10);
+      }
+      // 這段期間最多只能多出「經過幾個完整間隔」那麼多筆。
+      const allowed = 1 + Math.floor((Date.now() - first) / 250);
+      expect(logs.entries.filter(isIdleDutyWarn).length).toBeLessThanOrEqual(allowed);
+
+      await waitFor(async () => logs.entries.filter(isIdleDutyWarn).length >= 2, 'the retry after the wake-ups stopped');
+      const warns = logs.entries.filter(isIdleDutyWarn);
+      const gaps = warns.slice(1).map((warn, index) => warn.at - warns[index]!.at);
+      // 相隔至少一個間隔（容許計時器取整的 5 ms）。
+      expect(Math.min(...gaps)).toBeGreaterThanOrEqual(245);
+      expect(warns.every((warn) => warn.meta.botId === botIds[0])).toBe(true);
     } finally {
       Object.assign(config, saved);
       logs.restore();

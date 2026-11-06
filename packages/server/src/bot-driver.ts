@@ -116,6 +116,8 @@ interface GameRuntime {
   attempts: { revision: number; next: number; fallbackBots: Set<string> };
   /** 目前行動視窗內每個 Bot 已提交的指令數。 */
   window: { id: number; commands: Map<string, number> };
+  /** 每個卡住的 Bot 最近一次「欠動作卻沒有動作」warn 的 revision 與時間，用來限制 warn 頻率。 */
+  idleWarned: Map<string, { revision: number; at: number }>;
 }
 
 /** 目前待決效果的回應者：模組 frame 與 base 各自的欄位。 */
@@ -267,7 +269,7 @@ export class BotDriver {
       }
     } catch (error) {
       this.deps.log('warn', 'bot evaluation failed', { gameId, error: String(error) });
-      this.schedule(gameId, runtime, this.deps.config.bots.retryMs, () => this.kick(gameId));
+      this.schedule(gameId, runtime, this.retryDelay(), () => this.kick(gameId));
     } finally {
       runtime.busy = false;
     }
@@ -315,18 +317,29 @@ export class BotDriver {
     const boundary = this.nextOfferBoundary(state, bots, runtime);
     if (boundary !== null) wakeAfter.push(boundary - this.deps.now());
     // 有 Bot 欠著動作卻沒有動作：記錄後以固定間隔重試，與指令被拒（`rejected`）走同一條路徑。
-    // 重試只由計時器觸發、每次至少相隔 `retryMs`，狀態沒變時也不會立刻再評估，所以不會熱迴圈。
+    // 計時器只會在 `retryDelay()` 之後才再評估，所以狀態不變時不會熱迴圈。外部喚醒（真人重連、
+    // 提交）仍會立即重新評估並重排計時器，但同一個 Bot 在同一個 revision 的 warn 每個間隔最多
+    // 一筆；喚醒停止後，計時器仍會在一個間隔後再評估、再記一筆。
     if (idle.length > 0) {
+      const interval = this.retryDelay();
+      const now = this.deps.now();
       for (const duty of idle) {
+        const last = runtime.idleWarned.get(duty.botId);
+        if (last && last.revision === game.revision && now >= last.at && now - last.at < interval) continue;
+        runtime.idleWarned.set(duty.botId, { revision: game.revision, at: now });
         this.deps.log('warn', 'bot owes an action but strategy and fallback are idle; retrying later', {
           gameId,
           revision: game.revision,
           windowId: state.windowId,
-          retryMs: this.deps.config.bots.retryMs,
+          retryMs: interval,
           ...duty,
         });
       }
-      wakeAfter.push(this.deps.config.bots.retryMs);
+      wakeAfter.push(interval);
+    }
+    // 不再卡住的 Bot 不保留紀錄，下次卡住時照常記錄。
+    for (const botId of [...runtime.idleWarned.keys()]) {
+      if (!idle.some((duty) => duty.botId === botId)) runtime.idleWarned.delete(botId);
     }
     if (wakeAfter.length > 0) this.schedule(gameId, runtime, Math.min(...wakeAfter), () => this.kick(gameId));
   }
@@ -416,6 +429,11 @@ export class BotDriver {
     return null;
   }
 
+  /** 所有重試的固定間隔；下限由設定解析保證（`MIN_BOT_RETRY_MS`），這裡不另外加。 */
+  private retryDelay(): number {
+    return this.deps.config.bots.retryMs;
+  }
+
   /** 這個 profile 的單一視窗指令上限：測試注入優先，否則 base 與各模組上限的最大值。 */
   private commandLimit(profileId: string): number {
     const injected = this.deps.commandLimitFor?.(profileId);
@@ -432,7 +450,7 @@ export class BotDriver {
       await this.submitDecision(gameId, runtime, decision);
     } catch (error) {
       this.deps.log('warn', 'bot submission failed', { gameId, error: String(error) });
-      this.schedule(gameId, runtime, this.deps.config.bots.retryMs, () => this.kick(gameId));
+      this.schedule(gameId, runtime, this.retryDelay(), () => this.kick(gameId));
     } finally {
       runtime.busy = false;
     }
@@ -500,7 +518,7 @@ export class BotDriver {
     // 保底也被拒：記錄後退避，重試時再給策略一次機會。
     this.deps.log('warn', 'bot fallback rejected; retrying later', meta);
     runtime.attempts.fallbackBots.clear();
-    this.schedule(gameId, runtime, this.deps.config.bots.retryMs, () => this.kick(gameId));
+    this.schedule(gameId, runtime, this.retryDelay(), () => this.kick(gameId));
   }
 
   // -- 計時與報價階段 ---------------------------------------------------------
@@ -576,6 +594,7 @@ export class BotDriver {
         offerOpenedAt: new Map(),
         attempts: { revision: -1, next: 0, fallbackBots: new Set() },
         window: { id: -1, commands: new Map() },
+        idleWarned: new Map(),
       };
       this.runtimes.set(gameId, runtime);
     }

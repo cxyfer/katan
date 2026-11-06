@@ -21,7 +21,10 @@ export interface BotSettings {
   offerCollectMs: number;
   /** Bot 開價後無人同意即撤回的毫秒數（逾時）。 */
   offerPatienceMs: number;
-  /** 保底策略也被拒絕後，重試前的等待毫秒數。 */
+  /**
+   * Bot 的固定重試間隔（毫秒）：保底策略也被拒絕、評估失敗，或 Bot 欠著動作卻沒有動作時，
+   * 重試前的等待時間。解析時不低於 `MIN_BOT_RETRY_MS`。
+   */
   retryMs: number;
 }
 
@@ -52,6 +55,9 @@ export interface ServerConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   bots: BotSettings;
 }
+
+/** `BOT_RETRY_MS` 的下限：0 會讓狀態不變時的重試變成零延遲迴圈。 */
+export const MIN_BOT_RETRY_MS = 1_000;
 
 function int(value: string | undefined, fallback: number): number {
   if (value === undefined || value === '') return fallback;
@@ -122,7 +128,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       delayScale: bounded(env.BOT_DELAY_SCALE, 1, 0, 5),
       offerCollectMs: Math.max(0, int(env.BOT_OFFER_COLLECT_MS, 6_000)),
       offerPatienceMs: Math.max(0, int(env.BOT_OFFER_PATIENCE_MS, 20_000)),
-      retryMs: Math.max(0, int(env.BOT_RETRY_MS, 30_000)),
+      retryMs: Math.max(MIN_BOT_RETRY_MS, int(env.BOT_RETRY_MS, 30_000)),
     },
   };
 }
