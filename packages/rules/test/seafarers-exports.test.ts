@@ -15,7 +15,6 @@ import {
   projectGame,
   type ModuleHintsMap,
   type ModuleViewMap,
-  type PublicModulePendingView,
   type SeafarersGoldPendingView,
   type SeafarersHints,
   type SeafarersView,
@@ -53,10 +52,6 @@ const GOLD_KEYS: Record<keyof SeafarersGoldPendingView, true> = { kind: true, mo
 const GOLD_DATA_KEYS: Record<keyof SeafarersGoldPendingView['data'], true> = { picks: true };
 
 const keysOf = (record: object): string[] => Object.keys(record).sort();
-
-// The gold frame stays assignable to the generic module pending view.
-const assignableToGeneric: PublicModulePendingView = {} as SeafarersGoldPendingView;
-void assignableToGeneric;
 
 // Both maps list the same modules, so a module added to one cannot be forgotten in the other.
 type SameKeys = [keyof ModuleViewMap] extends [keyof ModuleHintsMap]

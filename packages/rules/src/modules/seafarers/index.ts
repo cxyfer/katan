@@ -21,12 +21,9 @@ import {
   movableShips,
   moveShip,
   setupShip,
-  SHIP_COST,
 } from './ships.ts';
 import { SEAFARERS, initialSeafarersState, seafarersState, seafarersView } from './state.ts';
 import { setModuleState } from '../state.ts';
-
-export { GOLD_FRAME, SHIP_COST };
 
 /**
  * The `seafarers.gold` pending frame as a viewer sees it (`projectGold`): the
