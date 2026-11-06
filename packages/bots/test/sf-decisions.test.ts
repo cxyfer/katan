@@ -43,7 +43,7 @@ import {
   type Plan,
 } from '../src/economy.ts';
 import { fallbackPolicy } from '../src/fallback.ts';
-import { turnContext } from '../src/heuristic.ts';
+import { dedupeCandidates, turnContext } from '../src/heuristic.ts';
 import { seafarersActions, seafarersFreeRouteCandidates } from '../src/modules/seafarers/actions.ts';
 import {
   EASY_MAX_PLAN_SHIPS,
@@ -135,6 +135,15 @@ function fillRoads(state: GameState, playerId: string, count: number): void {
   });
   expect(edges.length).toBeGreaterThanOrEqual(count);
   for (const edge of edges.slice(0, count)) state.board.roads[edge] = { player: playerId, ship: false };
+}
+
+/** ship.move 的 from／to 必須落在當下 hints.movableShips 內（精確的可移集合留給 rules 的測試）。 */
+function expectMoveWithinHints(state: GameState, label: string, command: BotCommand | null | undefined): void {
+  if (command?.type !== 'ship.move') return;
+  const move = command as unknown as { from: number; to: number };
+  const entry = modulesHintsOf(state).movableShips.find((candidate) => candidate.edge === move.from);
+  expect(entry, `${label}: from ${move.from} is in movableShips`).toBeDefined();
+  expect(entry!.targets, `${label}: to ${move.to} is one of its targets`).toContain(move.to);
 }
 
 const POLICIES: readonly (readonly [string, BotPolicy, BotLevel, number])[] = [
@@ -389,18 +398,18 @@ describe('ship.move', () => {
     const state = deadEndGame();
     const r = ring(state);
     const sea = modulesHintsOf(state);
-    expect(sea.movableShips).toEqual([{ edge: r.NE, targets: expect.arrayContaining([sea.legalShips[0]!]) }]);
+    expect(sea.movableShips.map((entry) => entry.edge)).toContain(r.NE);
     const plan = islandPlans(turnOf(state)).find((candidate) => (candidate.ships?.length ?? 0) > 0)!;
     expect(plan).toBeDefined();
     const candidates = seafarersActions(turnOf(state));
-    expect(candidates).toHaveLength(1);
-    expect(candidates[0]!.item).toEqual({ type: 'ship.move', from: r.NE, to: plan.ships![0] });
+    expect(candidates.map((candidate) => candidate.item)).toEqual([{ type: 'ship.move', from: r.NE, to: plan.ships![0] }]);
     // from 與 to 只取自 hints.movableShips。
     const movable = sea.movableShips.find((entry) => entry.edge === r.NE)!;
     expect(movable.targets).toContain(plan.ships![0]);
 
     const command = decideAccepted(state);
     expect(command).toEqual({ type: 'ship.move', from: r.NE, to: plan.ships![0] });
+    expectMoveWithinHints(state, 'standard', command);
     // 移完之後，同一個目標少一艘船。
     const moved = act(state, 'p1', command as Command).state;
     const after = islandPlans(turnOf(moved)).find((candidate) => candidate.vertex === plan.vertex)!;
@@ -425,7 +434,7 @@ describe('ship.move', () => {
     ship(state, 'p1', r.NW);
     ship(state, 'p1', r.NE);
     // NE 是尖端、也可以移動，但最近的計畫就是從它的尖端接下去。
-    expect(modulesHintsOf(state).movableShips.map((entry) => entry.edge)).toEqual([r.NE]);
+    expect(modulesHintsOf(state).movableShips.map((entry) => entry.edge)).toContain(r.NE);
     expect(seafarersActions(turnOf(state))).toEqual([]);
     expect(decideAccepted(state).type).not.toBe('ship.move');
   });
@@ -433,44 +442,35 @@ describe('ship.move', () => {
   it('does not move a ship built this window', () => {
     const state = k3Game({ lumber: 3, wool: 3, brick: 1, grain: 1 });
     const built = act(state, 'p1', decideAccepted(state) as Command).state;
-    expect(modulesHintsOf(built).movableShips).toEqual([]);
+    // 這個視窗新造的船不能移（rules 的限制）：hints 沒有列它，策略也就沒有可移的船。
+    const justBuilt = (built.board.roads as ({ ship: boolean } | null)[]).flatMap((entry, edge) => (entry?.ship ? [edge] : []));
+    expect(modulesHintsOf(built).movableShips.map((entry) => entry.edge).filter((edge) => justBuilt.includes(edge))).toEqual([]);
     expect(seafarersActions(turnOf(built))).toEqual([]);
   });
 
   it('ship circles: any ship.move stays inside hints.movableShips (D-SF6, SF-FAQ 18)', () => {
-    // 沒有建築的船圈：SF25 p. 2 下沒有任何船有開放端，movableShips 為空，所以策略不能送 ship.move。
+    // 只驗證策略送出的 from／to 落在「當下」的 hints 內；哪些船圈的船可以動由 rules 的測試決定，
+    // 日後 rules 依 SF-FAQ 18 改判時，只有 hints 會變，這個測試不必改。
+    // 沒有建築的船圈。
     const circle = emptySeafarersGame(4, 0, 'action');
     const r = ring(circle);
     for (const edge of [r.NW, r.NE, r.E, r.SE, r.SW, r.W]) ship(circle, 'p1', edge);
     setHand(circle, 'p1', { lumber: 2, wool: 2, brick: 1, grain: 1 });
-    expect(modulesHintsOf(circle).movableShips).toEqual([]);
-    for (const [name, policy, level, seed] of POLICIES) {
-      const command = policy.decide(viewOf(circle, 'p1'), ctxFor('p1', level, seed));
-      expect(command?.type, name).not.toBe('ship.move');
-      if (command) expectAccepted(circle, 'p1', command);
-    }
-
-    // 兩端各有自己建築的船路加上一條分支（rules 的 SF-FAQ 14 盤面）：只有分支能動。
+    // 兩端各有自己建築的船路加上一條分支（rules 的 SF-FAQ 14 盤面）。
     const closed = emptySeafarersGame(4, 0, 'action');
     const c = ring(closed);
     settle(closed, 'p1', c.k3);
     settle(closed, 'p1', c.k1);
     for (const edge of [c.NW, c.NE, c.E, c.SE]) ship(closed, 'p1', edge);
     settle(closed, 'p2', c.k5);
-    const branch = side(closed, 2, -1, 0);
-    ship(closed, 'p1', branch);
+    ship(closed, 'p1', side(closed, 2, -1, 0));
     setHand(closed, 'p1', { lumber: 2, wool: 2, brick: 1, grain: 1 });
-    const sea = modulesHintsOf(closed);
-    expect(sea.movableShips.map((entry) => entry.edge)).toEqual([branch]);
-    for (const [name, policy, level, seed] of POLICIES) {
-      const command = policy.decide(viewOf(closed, 'p1'), ctxFor('p1', level, seed));
-      expect(command, name).not.toBeNull();
-      expectAccepted(closed, 'p1', command);
-      if (command?.type === 'ship.move') {
-        const move = command as unknown as { from: number; to: number };
-        const entry = sea.movableShips.find((candidate) => candidate.edge === move.from);
-        expect(entry, `${name}: from ${move.from} is movable`).toBeDefined();
-        expect(entry!.targets, `${name}: to ${move.to} is a target`).toContain(move.to);
+    for (const [label, state] of [['circle', circle], ['closed route', closed]] as const) {
+      for (const [name, policy, level, seed] of POLICIES) {
+        const command = policy.decide(viewOf(state, 'p1'), ctxFor('p1', level, seed));
+        expect(command, `${label}/${name}`).not.toBeNull();
+        expectAccepted(state, 'p1', command);
+        expectMoveWithinHints(state, `${label}/${name}`, command);
       }
     }
   });
@@ -633,6 +633,212 @@ describe('F9: Road Building with ships once the road supply ran out', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 立即建造：金礦城市與小島聚落
+// ---------------------------------------------------------------------------
+
+describe('immediate builds', () => {
+  it('upgrades the gold settlement first: gold counts in the city choice, not only in the plan', () => {
+    const state = emptySeafarersGame(4, 0, 'action');
+    const gold = corner(state, 3, 0, 0); // 只鄰接金礦 (3,0)（10 點）與海
+    const plain = corner(state, -2, 0, 3); // 主島西北岸，只鄰接 12 點的田地
+    settle(state, 'p1', gold);
+    settle(state, 'p1', plain);
+    setHand(state, 'p1', { grain: 2, ore: 3 }); // 只付得起一座城市
+    const turn = turnOf(state);
+    const weights = turn.economy.weights;
+    // 一般點數看起來 plain 較高（金礦算 0），含金礦的估值則是 gold 較高。
+    expect(weightedPips(vertexYield(turn.model, gold), weights)).toBe(0);
+    expect(weightedPips(vertexYield(turn.model, plain), weights)).toBeGreaterThan(0);
+    expect(productionValue(turn.model, gold, weights)).toBeGreaterThan(productionValue(turn.model, plain, weights));
+    expect(turn.economy.plans.find((plan) => plan.kind === 'city')!.vertex).toBe(gold);
+    // 實際送出的城市也在金礦那一點（不是只有計畫選對）。
+    expect(viewOf(state, 'p1').hints!.legalCities).toEqual(expect.arrayContaining([gold, plain]));
+    expect(decideAccepted(state)).toEqual({ type: 'build.city', vertex: gold });
+    expect(decideAccepted(state, 'easy', 'p1', 1).type).toBe('build.city');
+  });
+
+  // 4 人地圖：22 是主島北岸的海岸路口；船 30、0 通到西北小島的路口 0（小島 2，點數較低）；
+  // 道路 32、54 通到主島的路口 41（產能高很多）。
+  const ISLAND_SPOT = 0;
+  const MAIN_SPOT = 41;
+
+  function twoSpotsGame(): GameState {
+    const state = emptySeafarersGame(4, 0, 'action');
+    settle(state, 'p1', 22);
+    ship(state, 'p1', 30);
+    ship(state, 'p1', 0);
+    road(state, 'p1', 32);
+    road(state, 'p1', 54);
+    setHand(state, 'p1', { lumber: 1, brick: 1, wool: 1, grain: 1 });
+    return state;
+  }
+
+  it('settles the small island spot with the +2 VP although another spot produces more', () => {
+    const state = twoSpotsGame();
+    const turn = turnOf(state);
+    const hints = viewOf(state, 'p1').hints!;
+    expect(hints.legalSettlements).toEqual(expect.arrayContaining([ISLAND_SPOT, MAIN_SPOT]));
+    const mine = playerYield(turn.model, 'p1', true);
+    const weights = turn.economy.weights;
+    const island = settlementSpotValue(turn.model, ISLAND_SPOT, weights, mine);
+    const main = settlementSpotValue(turn.model, MAIN_SPOT, weights, mine);
+    expect(main).toBeGreaterThan(island);
+
+    // 沒有小島加分時（只看產能）會選主島；base 的立即評分就是這樣。
+    expect(createBotPolicy('standard', { modules: [] }).decide(viewOf(state, 'p1'), ctxFor('p1'))).toEqual({
+      type: 'build.settlement',
+      vertex: MAIN_SPOT,
+    });
+    // SF 的候選與 base 同單位：1 + PIP_VALUE × 點數價值，再加上小島加分。
+    const candidates = seafarersActions(turn);
+    expect(candidates.map((candidate) => candidate.item)).toEqual([{ type: 'build.settlement', vertex: ISLAND_SPOT }]);
+    expect(candidates[0]!.score).toBeCloseTo(1 + PIP_VALUE * island + ISLAND_BONUS_VP, 10);
+    expect(candidates[0]!.score).toBeGreaterThan(1 + PIP_VALUE * main);
+    expect(decideAccepted(state)).toEqual({ type: 'build.settlement', vertex: ISLAND_SPOT });
+
+    // 這座島的加分領過了：沒有加分就回到只看產能，選主島。
+    const islandId = state.board.layout.islands[
+      getTopology(state.board.layout.topologyId).vertices[ISLAND_SPOT]!.hexes.find((hex) => isLandHex(state, hex))!
+    ]!;
+    expect(islandId).toBeGreaterThan(1);
+    claimIsland(state, 'p1', islandId);
+    expect(seafarersActions(turnOf(state))).toEqual([]);
+    expect(decideAccepted(state)).toEqual({ type: 'build.settlement', vertex: MAIN_SPOT });
+  });
+
+  it('offers no settlement candidate when the settlement is not affordable or none is left', () => {
+    const poor = twoSpotsGame();
+    setHand(poor, 'p1', { lumber: 1, brick: 1, wool: 1 });
+    expect(seafarersActions(turnOf(poor))).toEqual([]);
+    const spent = twoSpotsGame();
+    for (const vertex of [corner(spent, -3, 3, 2), corner(spent, -3, 1, 2), corner(spent, -2, 3, 2), corner(spent, -1, 3, 2)]) {
+      settle(spent, 'p1', vertex);
+    }
+    expect(viewOf(spent, 'p1').hints!.legalSettlements).toContain(ISLAND_SPOT);
+    expect(seafarersActions(turnOf(spent))).toEqual([]);
+  });
+
+  it('easy sees each command once: two distinct spots share the topK pick about evenly', () => {
+    const state = twoSpotsGame();
+    const picks = new Map<number, number>();
+    for (let seed = 1; seed <= 100; seed++) {
+      const command = decideAccepted(state, 'easy', 'p1', seed) as unknown as { type: string; vertex: number };
+      expect(command.type).toBe('build.settlement');
+      picks.set(command.vertex, (picks.get(command.vertex) ?? 0) + 1);
+    }
+    expect([...picks.keys()].sort((a, b) => a - b)).toEqual([ISLAND_SPOT, MAIN_SPOT]);
+    // 兩個不同的指令各約一半（固定種子下是 49／51）。若同一個小島聚落在候選裡出現兩次（沒有去重），
+    // 它會佔 topK 的兩個名額，主島那一點只剩約三分之一（33／100）。
+    expect(picks.get(MAIN_SPOT)).toBeGreaterThanOrEqual(40);
+    expect(picks.get(MAIN_SPOT)).toBeLessThanOrEqual(60);
+  });
+
+  it('dedupeCandidates keeps the highest score at the first position', () => {
+    const settle1 = { type: 'build.settlement', vertex: 3 } as const;
+    const settle2 = { type: 'build.settlement', vertex: 7 } as const;
+    const city = { type: 'build.city', vertex: 3 } as const;
+    expect(
+      dedupeCandidates([
+        { item: settle1, score: 1.5 },
+        { item: city, score: 1.2 },
+        { item: settle2, score: 1.6 },
+        { item: { vertex: 3, type: 'build.settlement' }, score: 3.5 },
+        { item: settle2, score: 0.1 },
+      ]),
+    ).toEqual([
+      { item: settle1, score: 3.5 },
+      { item: city, score: 1.2 },
+      { item: settle2, score: 1.6 },
+    ]);
+    const unique = [{ item: settle1, score: 1 }, { item: city, score: 2 }];
+    expect(dedupeCandidates(unique)).toEqual(unique);
+    expect(dedupeCandidates([])).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 船全部在盤面上時的移船
+// ---------------------------------------------------------------------------
+
+describe('ship.move with the whole ship supply on the board', () => {
+  /** 死路盤面再沿 legalShips 往最西邊合法造到 15 艘：存量 0，只剩 NE（65）可以移。 */
+  function fullSupplyGame(): GameState {
+    let state = deadEndGame();
+    setHand(state, 'p1', { lumber: 15, wool: 15 });
+    const topo = getTopology(state.board.layout.topologyId);
+    for (let i = 0; i < 13; i++) {
+      const edge = modulesHintsOf(state)
+        .legalShips.slice()
+        .sort((a, b) => topo.edges[a]!.x - topo.edges[b]!.x || a - b)[0]!;
+      state = act(state, 'p1', { type: 'build.ship', edge } as unknown as Command).state;
+    }
+    return state;
+  }
+
+  /** 同一個玩家的下一個行動視窗（規則的視窗代號加一，這個視窗的造船與移船紀錄歸零）。 */
+  function nextWindow(state: GameState): GameState {
+    const next = act(state, 'p1', { type: 'turn.end' }).state;
+    next.turn.seat = 0;
+    next.turn.phase = 'action';
+    next.turn.pairedActor = 1;
+    next.pending = null;
+    next.windowId += 1;
+    return next;
+  }
+
+  it('still moves a ship onto the plan path when no ship can be paid for', () => {
+    const state = fullSupplyGame();
+    const r = ring(state);
+    const turn = turnOf(state);
+    expect(turn.economy.left['ships']).toBe(0);
+    // 付費造船沒有任何計畫（船路徑的容量是 0）……
+    expect(islandPlans(turn)).toEqual([]);
+    // ……但 hints 仍允許一次免費的移船，它把計畫推進到只差聚落。
+    const move = modulesHintsOf(state).movableShips.find((entry) => entry.edge === r.NE);
+    expect(move).toBeDefined();
+    const command = decideAccepted(state) as unknown as { type: string; from: number; to: number };
+    expect(command.type).toBe('ship.move');
+    expect(command.from).toBe(r.NE);
+    expect(move!.targets).toContain(command.to);
+    expectMoveWithinHints(state, 'standard', command as BotCommand);
+    const moved = act(state, 'p1', command as unknown as Command).state;
+    expect(turnOf(moved).economy.left['ships']).toBe(0);
+    // 移完之後，有一個島嶼目標只差聚落（船已經在那裡）。
+    expect(islandPlans(turnOf(moved)).some((plan) => plan.ships!.length === 0 && plan.immediate)).toBe(true);
+    // easy 不移船：存量 0 時也一樣。
+    expect(seafarersActions(turnOf(state, 'easy'))).toEqual([]);
+    expect(decideAccepted(state, 'easy').type).not.toBe('ship.move');
+  });
+
+  it('does not shuffle ships back and forth in the following windows', () => {
+    let state = fullSupplyGame();
+    const r = ring(state);
+    const moves: { window: number; from: number; to: number }[] = [];
+    const WINDOWS = 6;
+    for (let window = 0; window < WINDOWS; window++) {
+      for (let step = 0; step < 30; step++) {
+        const command = decideAccepted(state);
+        if (command.type === 'turn.end') break;
+        if (command.type === 'ship.move') moves.push({ window, ...(command as unknown as { from: number; to: number }) });
+        state = act(state, 'p1', command as Command).state;
+      }
+      state = nextWindow(state);
+    }
+    // 第一個視窗把 NE 移上計畫路徑。
+    expect(moves[0]).toMatchObject({ window: 0, from: r.NE });
+    // 一個視窗最多一次；移過去的位置不會再被搬回（沒有任何一步移進先前離開的邊）。
+    expect(new Set(moves.map((move) => move.window)).size).toBe(moves.length);
+    const left = new Set<number>();
+    for (const move of moves) {
+      expect(left.has(move.to), `window ${move.window}: ${move.from} → ${move.to} returns to an edge left earlier`).toBe(false);
+      left.add(move.from);
+    }
+    // 沒有外部變化（沒有收入、沒有對手動作）時，可以移的船用完就停：最後一個視窗不再移。
+    expect(moves.some((move) => move.window === WINDOWS - 1)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 交易
 // ---------------------------------------------------------------------------
 
@@ -700,10 +906,11 @@ describe('F8: paired Player 2 (6 players)', () => {
       (hex) => !getTopology(state.board.layout.topologyId).edges[98]!.hexes.includes(hex),
     )!;
     const sea = modulesHintsOf(state);
-    expect(sea.movableShips).toEqual([{ edge: 98, targets: [125] }]);
+    expect(sea.movableShips.find((entry) => entry.edge === 98)?.targets).toContain(125);
     const commands = everyPolicy(state, 'p1');
     expect(commands[0]).toEqual({ type: 'turn.end' });
     expect(commands[1]).toEqual({ type: 'ship.move', from: 98, to: 125 });
+    expectMoveWithinHints(state, 'standard', commands[1]);
     // easy 不移船，改造船。
     expect(commands[2]!.type).toBe('build.ship');
     expect(commands[3]!.type).toBe('build.ship');
