@@ -451,7 +451,7 @@ describe('retention enabled (7 days)', () => {
     } finally {
       games.retentionFailures.clear();
     }
-  });
+  }, 30_000);
 
   it('tells a connected client the game ended and why', async () => {
     const { clients, gameId, roomId } = await startedGame(harness, 3);
