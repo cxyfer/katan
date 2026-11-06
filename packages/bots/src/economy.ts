@@ -91,6 +91,33 @@ export function weightedPips(value: Yield, weights: Record<Resource, number>): n
   return RESOURCES.reduce((sum, resource) => sum + value[resource] * weights[resource], 0);
 }
 
+/**
+ * 路口鄰接的金礦點數總和（Seafarers）。金礦的資源由擲出時的玩家任選，不在 `hexResource` 內，所以
+ * `vertexYield` 看不到它。沒有金礦的盤面（base）恆為 0，下面所有依它加分的估值都不會變動。
+ */
+export function goldPipsAt(model: BoardModel, vertex: number): number {
+  let pips = 0;
+  for (const hex of model.topo.vertices[vertex]!.hexes) {
+    if (model.hexGold[hex]) pips += model.hexPips[hex]!;
+  }
+  return pips;
+}
+
+/** 一張萬用資源的權重：可以挑目前最缺的資源，所以取各資源權重的最大值。 */
+export function wildcardWeight(weights: Record<Resource, number>): number {
+  return Math.max(...RESOURCES.map((resource) => weights[resource]));
+}
+
+/**
+ * 一座建築的點數產能價值（加權後）。金礦以一張萬用資源計價：聚落一張、城市兩張，所以升級城市時
+ * 多得的就是這一張。沒有金礦時與 `weightedPips(vertexYield(...))` 完全相同。
+ */
+export function productionValue(model: BoardModel, vertex: number, weights: Record<Resource, number>): number {
+  const value = weightedPips(vertexYield(model, vertex), weights);
+  const gold = goldPipsAt(model, vertex);
+  return gold > 0 ? value + gold * wildcardWeight(weights) : value;
+}
+
 export type BasePlanKind = 'city' | 'settlement' | 'devCard' | 'longestRoad';
 /** base 的四種計畫，加上模組計畫（kind 為 `<module id>.<名稱>`）。 */
 export type PlanKind = BasePlanKind | `${string}.${string}`;
@@ -147,6 +174,12 @@ export function settlementSpotValue(model: BoardModel, vertex: number, weights: 
   let value = weightedPips(spot, weights);
   for (const resource of RESOURCES) {
     if (spot[resource] > 0 && mine[resource] === 0) value += 2.5;
+  }
+  // 金礦：點數以萬用資源計價；它也能補上任何一種還沒有產能的資源（只算一次）。
+  const gold = goldPipsAt(model, vertex);
+  if (gold > 0) {
+    value += gold * wildcardWeight(weights);
+    if (RESOURCES.some((resource) => spot[resource] === 0 && mine[resource] === 0)) value += 2.5;
   }
   const harbor = model.harborAt[vertex];
   if (harbor === 'generic') value += 1.5;
@@ -251,7 +284,7 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
     let bestValue = -Infinity;
     view.board.buildings.forEach((building, vertex) => {
       if (!building || building.player !== selfId || building.city) return;
-      const value = weightedPips(vertexYield(model, vertex), weights);
+      const value = productionValue(model, vertex, weights);
       if (value > bestValue) {
         bestValue = value;
         best = vertex;
