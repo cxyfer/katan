@@ -529,6 +529,11 @@ for (const testCase of cases) {
         return game;
       };
 
+      // 兩局對局時間相同：順序與游標要以 id 打破平手。
+      const tie = [
+        await seed('tie-a', { game: '2025-11-15T00:00:00.000Z', room: old, seen: old }),
+        await seed('tie-b', { game: '2025-11-15T00:00:00.000Z', room: old, seen: old }),
+      ].sort();
       const oldest = await seed('a', { game: '2025-12-01T00:00:00.000Z', room: old, seen: old });
       const older = await seed('b', { game: old, room: old, seen: null, roomStatus: 'suspended' });
       await seed('recent-write', { game: fresh, room: old, seen: old });
@@ -539,13 +544,28 @@ for (const testCase of cases) {
       await seed('lobby', { game: old, room: old, seen: old, roomStatus: 'lobby' });
 
       const ours = (await repo.listIdleGames(cutoff, 100_000)).filter((row) => seeded.has(row.id));
-      expect(ours.map((row) => row.id)).toEqual([oldest, older]);
-      expect(ours[0]).toMatchObject({ updated_at: '2025-12-01T00:00:00.000Z', room_updated_at: old, last_seen_at: old });
-      expect(ours[1]?.last_seen_at).toBeNull();
+      expect(ours.map((row) => row.id)).toEqual([...tie, oldest, older]);
+      expect(ours[2]).toMatchObject({ updated_at: '2025-12-01T00:00:00.000Z', room_updated_at: old, last_seen_at: old });
+      expect(ours[3]?.last_seen_at).toBeNull();
 
       expect(await repo.listIdleGames(cutoff, 1)).toHaveLength(1);
-      expect((await repo.listIdleGames(cutoff, 100, older)).map((row) => row.id)).toEqual([older]);
-      expect(await repo.listIdleGames(cutoff, 100, 'game_missing')).toEqual([]);
+      expect((await repo.listIdleGames(cutoff, 100, { gameId: older })).map((row) => row.id)).toEqual([older]);
+      expect(await repo.listIdleGames(cutoff, 100, { gameId: 'game_missing' })).toEqual([]);
+
+      // keyset 游標：從嚴格大於游標的下一筆繼續，平手以 id 決定，不重複也不遺漏。
+      const cursorAfter = async (index: number) => ({ updated_at: ours[index]!.updated_at, id: ours[index]!.id });
+      const rest = async (index: number) =>
+        (await repo.listIdleGames(cutoff, 100_000, { after: await cursorAfter(index) }))
+          .filter((row) => seeded.has(row.id))
+          .map((row) => row.id);
+      expect(await rest(0)).toEqual([tie[1], oldest, older]);
+      expect(await rest(1)).toEqual([oldest, older]);
+      expect(await rest(3)).toEqual([]);
+      // 游標與其他條件可以同時使用。
+      expect(
+        await repo.listIdleGames(cutoff, 100, { gameId: older, after: await cursorAfter(0) }),
+      ).toHaveLength(1);
+      expect(await repo.listIdleGames(cutoff, 100, { gameId: tie[0]!, after: await cursorAfter(0) })).toEqual([]);
     });
 
     it('deletes a room together with its memberships', async () => {

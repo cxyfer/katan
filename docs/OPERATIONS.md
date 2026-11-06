@@ -211,17 +211,25 @@ own notice.
   command or a victory committed first wins: the sweep takes the per-game lock
   and skips a game that finished, then rechecks idleness in the same database
   transaction as the terminal write, so a game that became active in between
-  is kept. SQLite serializes that transaction against other writers, which
-  closes the window; PostgreSQL (read committed) only narrows it, so a player
-  who connects within the last few milliseconds before the commit can still
-  find the game ended. Connected clients receive the room and a final snapshot.
-- **When.** At startup, then every `GAME_RETENTION_SWEEP_INTERVAL_MS`. Each pass
-  handles at most 100 games, ordered by the game's last write
-  (`games.updated_at`, oldest first; the room and connection times only decide
-  whether a game is eligible, not its place in the queue); a full pass that made progress is
-  followed by another after one second, so a backlog clears without one long
-  transaction burst. One game failing is logged at `warn`
-  (`game retention failed`, with the game id) and does not stop the others.
+  is kept. Connections, disconnections and room changes do not take the
+  per-game lock, so the transaction serializes against them in the database:
+  SQLite queues every other writer behind it, and PostgreSQL locks the game's
+  room, membership and game rows (`SELECT … FOR UPDATE`) before the recheck, so
+  those writes wait for the terminal commit instead of slipping in between.
+  Activity that arrives after the lock is taken counts as happening after the
+  game ended. Connected clients receive the room and a final snapshot.
+- **When.** At startup, then every `GAME_RETENTION_SWEEP_INTERVAL_MS`. A pass
+  walks the eligible games in pages of 100, ordered by the game's last write
+  (`games.updated_at`, oldest first, ties by game id; the room and connection
+  times only decide whether a game is eligible, not its place in the queue). It
+  stops once it has ended 100 games; a full pass that made progress is followed
+  by another after one second, so a backlog clears without one long burst.
+- **Failures.** One game failing (for example a corrupt snapshot) is logged at
+  `warn` (`game retention failed`, with the game id) and does not stop the
+  others; the pass moves on to the next page, so games that keep failing cannot
+  hold back newer ones. A failed game is skipped for 10 minutes, doubling after
+  each repeated failure up to 24 hours (kept in memory, so a restart tries
+  again), which keeps a permanently broken game from logging on every pass.
   Each ended game logs at `info` (`game expired by retention policy`) with
   `gameId`, `roomId`, `lastActivityAt` and `retentionDays`.
 - **Downtime counts.** Time the service is stopped is not excluded, and the first

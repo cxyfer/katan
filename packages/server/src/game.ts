@@ -35,6 +35,7 @@ import {
   digestPayload,
   newId,
   type GameRow,
+  type IdleCursor,
   type IdleGameRow,
   type MemberRow,
   type Repository,
@@ -47,6 +48,11 @@ const RECEIPT_EVENT_LIMIT = 200;
 const DAY_MS = 86_400_000;
 /** 保留掃描每一批最多處理的對局數；積壓時由排程器短延遲後接續下一批。 */
 export const RETENTION_BATCH_SIZE = 100;
+/** 保留終止持續失敗的對局，先等這麼久再重試；每次失敗加倍，上限一天。 */
+const RETENTION_RETRY_BASE_MS = 10 * 60_000;
+const RETENTION_RETRY_MAX_MS = 24 * 3_600_000;
+/** 記憶體內追蹤的失敗對局上限，超過就整批清掉重來，避免無限成長。 */
+const RETENTION_FAILURE_TRACK_LIMIT = 1_000;
 
 /**
  * Decides the in-game seat order. `random` draws once at start with the same
@@ -104,6 +110,8 @@ function abandonmentEligible(members: readonly MemberRow[]): boolean {
 
 export class GameCoordinator {
   private readonly locks = new Map<string, Promise<unknown>>();
+  /** 保留終止失敗的對局與下次可重試的時間（只存在記憶體，重啟後重新計算）。 */
+  private readonly retentionFailures = new Map<string, { failures: number; retryAt: number }>();
 
   constructor(private readonly deps: GameCoordinatorDeps) {}
 
@@ -701,8 +709,11 @@ export class GameCoordinator {
 
   /**
    * §4.6 營運者保留機制：終止超過 `gameRetentionDays` 天沒有活動的未結束對局
-   * （進行中、interrupted、suspended 皆是）。每次最多處理 `limit` 筆（依對局最後
-   * 寫入時間由舊到新）候選；單筆失敗只記 warn，不中斷整批。停用（0 天）時什麼都不做。
+   * （進行中、interrupted、suspended 皆是）。依對局最後寫入時間由舊到新，以
+   * keyset 游標逐頁掃描，每頁 `limit` 筆；成功終止滿 `limit` 筆就停止並標記
+   * `full`（可能還有積壓）。單筆失敗只記 warn、不中斷整批，而且游標會越過它，
+   * 所以隊首持續失敗的對局不會擋住後面的對局；失敗的對局另外依指數退避暫時
+   * 跳過，避免每一輪都重試並洗版。停用（0 天）時什麼都不做。
    */
   async expireIdleGames(
     now: Date = new Date(),
@@ -711,18 +722,41 @@ export class GameCoordinator {
     const result: RetentionSweepResult = { expired: [], failed: [], full: false };
     const days = this.deps.config.gameRetentionDays;
     if (days <= 0) return result;
+    const batch = Math.max(1, Math.floor(limit));
     const cutoff = new Date(now.getTime() - days * DAY_MS).toISOString();
-    const candidates = await this.repo.listIdleGames(cutoff, limit);
-    result.full = candidates.length >= limit;
-    for (const candidate of candidates) {
-      try {
-        if (await this.expireIdleGame(candidate.id, cutoff)) result.expired.push(candidate.id);
-      } catch (error) {
-        result.failed.push(candidate.id);
-        this.deps.log?.('warn', 'game retention failed', { gameId: candidate.id, error: String(error) });
+    let cursor: IdleCursor | undefined;
+    for (;;) {
+      const page = await this.repo.listIdleGames(cutoff, batch, cursor ? { after: cursor } : {});
+      for (const candidate of page) {
+        cursor = { updated_at: candidate.updated_at, id: candidate.id };
+        const tracked = this.retentionFailures.get(candidate.id);
+        if (tracked && tracked.retryAt > now.getTime()) continue;
+        try {
+          const expired = await this.expireIdleGame(candidate.id, cutoff);
+          this.retentionFailures.delete(candidate.id);
+          if (!expired) continue;
+          result.expired.push(candidate.id);
+          if (result.expired.length >= batch) {
+            result.full = true;
+            return result;
+          }
+        } catch (error) {
+          result.failed.push(candidate.id);
+          this.recordRetentionFailure(candidate.id, now);
+          this.deps.log?.('warn', 'game retention failed', { gameId: candidate.id, error: String(error) });
+        }
       }
+      if (page.length < batch) return result;
     }
-    return result;
+  }
+
+  private recordRetentionFailure(gameId: string, now: Date): void {
+    const failures = (this.retentionFailures.get(gameId)?.failures ?? 0) + 1;
+    if (!this.retentionFailures.has(gameId) && this.retentionFailures.size >= RETENTION_FAILURE_TRACK_LIMIT) {
+      this.retentionFailures.clear();
+    }
+    const delay = Math.min(RETENTION_RETRY_BASE_MS * 2 ** (failures - 1), RETENTION_RETRY_MAX_MS);
+    this.retentionFailures.set(gameId, { failures, retryAt: now.getTime() + delay });
   }
 
   /** 與一般指令共用每局的鎖：取得鎖之後重新確認仍閒置、仍未結束，勝利優先。 */
@@ -735,9 +769,11 @@ export class GameCoordinator {
       const abandoned = abandonGame(current, 'expired');
       const idle = await this.repo.transaction<IdleGameRow | null>(async () => {
         // 閒置確認與終止寫入放在同一個交易：連線、房主轉移等不經每局鎖的活動
-        // 不會在兩者之間插入。SQLite 的交易會讓其他呼叫者排隊，視窗完全關閉；
-        // PostgreSQL 為 READ COMMITTED，只能縮小視窗，無法完全消除。
-        const [row] = await this.repo.listIdleGames(cutoff, 1, gameId);
+        // 不會在兩者之間插入。SQLite 的交易會讓其他呼叫者排隊；PostgreSQL 先以
+        // `FOR UPDATE` 鎖住成員列、房間列與對局列，這些時間戳的寫入會等到交易
+        // 結束，鎖到手之後再確認閒置，讀到的就是最新已提交資料。
+        await this.repo.lockGameActivity(gameId);
+        const [row] = await this.repo.listIdleGames(cutoff, 1, { gameId });
         if (!row) return null;
         await this.repo.saveGame(gameId, abandoned, fresh.revision + 1, 'abandoned', null);
         await this.repo.appendEvents(gameId, fresh.revision + 1, abandoned.log.slice(-1));

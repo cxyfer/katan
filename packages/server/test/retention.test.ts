@@ -10,6 +10,7 @@ import { WebSocket } from 'ws';
 import type { GameState } from '@catan/rules';
 import type { GameSnapshot, RoomView, ServerMessage } from '@catan/protocol';
 import { loadConfig } from '../src/config.ts';
+import { createDialect, type SqlDialect } from '../src/db.ts';
 import { startService, type Logger } from '../src/main.ts';
 import { runSetupOverApi, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
@@ -353,6 +354,41 @@ describe('retention enabled (7 days)', () => {
     expect(second.full).toBe(false);
   });
 
+  it('keeps sweeping past games that keep failing, and backs off retrying them', async () => {
+    const corrupt: string[] = [];
+    const healthy: string[] = [];
+    // 最舊的三局狀態損毀（持續失敗），比批次上限 2 還多；後面兩局健康。
+    for (const age of [40, 39, 38]) {
+      const table = await startedGame(harness, 3);
+      await backdate(harness, table.roomId, table.gameId, age);
+      await harness.service.repo.db.run('UPDATE games SET state_json = ? WHERE id = ?', ['not json', table.gameId]);
+      corrupt.push(table.gameId);
+    }
+    for (const age of [20, 10]) {
+      const table = await startedGame(harness, 3);
+      await backdate(harness, table.roomId, table.gameId, age);
+      healthy.push(table.gameId);
+    }
+    const warnings = () => logs.filter((log) => log.message === 'game retention failed').length;
+
+    const first = await harness.service.games.expireIdleGames(new Date(), 2);
+    expect(first.failed).toEqual(corrupt);
+    expect(first.expired).toEqual(healthy);
+    expect(first.full).toBe(true);
+    expect(warnings()).toBe(3);
+    for (const gameId of healthy) expect((await harness.service.repo.findGame(gameId))?.status).toBe('abandoned');
+
+    // 退避期間不再重試損毀的對局：沒有新的失敗，也沒有新的 warn。
+    const second = await harness.service.games.expireIdleGames(new Date(), 2);
+    expect(second).toEqual({ expired: [], failed: [], full: false });
+    expect(warnings()).toBe(3);
+
+    // 退避時間過後才會再試（仍然失敗，但沒有擋住任何人）。
+    const later = await harness.service.games.expireIdleGames(new Date(Date.now() + 48 * 3_600_000), 2);
+    expect(later.failed).toEqual(corrupt);
+    expect(warnings()).toBe(6);
+  });
+
   it('logs a failing game and keeps sweeping the rest', async () => {
     const broken = await startedGame(harness, 3);
     const healthy = await startedGame(harness, 3);
@@ -410,6 +446,8 @@ describe('retention enabled (7 days)', () => {
       });
     } finally {
       socket.close();
+      // 等伺服器處理完斷線寫入再收尾，否則關閉資料庫後才寫入會變成未處理的 rejection。
+      await vi.waitFor(() => expect(harness.service.rooms.hasLiveConnection(roomId)).toBe(false));
     }
   });
 });
@@ -507,6 +545,64 @@ describe('finished games cannot be suspended or resumed again', () => {
     }
     expect(resumed).toBe(true);
     expect((await harness.service.repo.findRoom(roomId))?.status).toBe('playing');
+  });
+});
+
+// 重現 PostgreSQL（READ COMMITTED）下的競態需要第二條資料庫連線，只在提供
+// TEST_POSTGRES_URL 時執行；SQLite 的交易本身就讓其他寫入排隊，由上面的案例覆蓋。
+describe.skipIf(!process.env.TEST_POSTGRES_URL)('retention serialization on PostgreSQL', () => {
+  let harness: TestHarness;
+  let other: SqlDialect;
+
+  beforeAll(async () => {
+    harness = await startHarness({ gameRetentionDays: 7 });
+    // 同一個 schema 的獨立連線池：它的寫入不屬於 sweep 的交易，行為等同另一個請求。
+    other = await createDialect({
+      databaseUrl: process.env.TEST_POSTGRES_URL!,
+      schema: harness.service.config.databaseSchema!,
+    });
+  });
+
+  afterAll(async () => {
+    await other.close();
+    await harness.close();
+  });
+
+  it.each([
+    ['a player reconnects', 'UPDATE memberships SET last_seen_at = ? WHERE room_id = ?'],
+    ['the room changes', 'UPDATE rooms SET updated_at = ? WHERE id = ?'],
+  ] as const)('holds back activity until the terminal write commits when %s', async (_label, sql) => {
+    const { gameId, roomId } = await startedGame(harness, 3);
+    await backdate(harness, roomId, gameId, 30);
+    const repo = harness.service.repo;
+
+    // 在終止交易內、確認閒置之後的第一個寫入前，從另一條連線送出一筆活動並給它
+    // 足夠的時間 commit。沒有列鎖時它會立刻 commit（對局卻仍被終止）；有列鎖時它
+    // 必須等到終止交易結束。
+    const original = repo.saveGame.bind(repo);
+    let activity: Promise<void> | null = null;
+    let committedDuringTerminalWrite: boolean | null = null;
+    repo.saveGame = (async (...args: Parameters<typeof original>) => {
+      if (!activity) {
+        let done = false;
+        activity = other.run(sql, [new Date().toISOString(), roomId]).then(() => {
+          done = true;
+        });
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        committedDuringTerminalWrite = done;
+      }
+      return original(...args);
+    }) as typeof repo.saveGame;
+    try {
+      const result = await harness.service.games.expireIdleGames();
+      expect(result.expired).toEqual([gameId]);
+      expect(committedDuringTerminalWrite).toBe(false);
+      // 活動在終止之後才生效：沒有被吞掉，也沒有發生在終止之前。
+      await activity;
+      expect((await repo.findRoom(roomId))?.status).toBe('abandoned');
+    } finally {
+      repo.saveGame = original;
+    }
   });
 });
 
