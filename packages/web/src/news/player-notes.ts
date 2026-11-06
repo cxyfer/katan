@@ -9,6 +9,7 @@
  * - 每個穩定版本一則，最新的放最前面；`version` 不含 `v`。
  * - 每則的標題與每個條目都要同時提供兩種語系，一句話說完一件事。
  * - 根目錄 `package.json` 為穩定版本時，必須已有同版號的紀錄，測試會擋下遺漏。
+ * - 下一版的紀錄可以在版號 bump 前先合入；超前的紀錄在公告牌上先隱藏（`notesForVersion`）。
  */
 
 import type { Locale } from '@catan/protocol';
@@ -183,9 +184,6 @@ export const PLAYER_NOTES: readonly PlayerNote[] = [
   },
 ];
 
-/** 最新一則公告；紀錄為空時為 `null`。 */
-export const LATEST_PLAYER_NOTE: PlayerNote | null = PLAYER_NOTES[0] ?? null;
-
 function parseStableVersion(version: string): [number, number, number] | null {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
   return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
@@ -197,6 +195,19 @@ export function compareStableVersions(a: string, b: string): number | null {
   if (!x || !y) return null;
   for (let i = 0; i < 3; i += 1) if (x[i] !== y[i]) return x[i]! - y[i]!;
   return 0;
+}
+
+/**
+ * 這個版本的公告牌要顯示的紀錄，新到舊。
+ *
+ * 下一版的紀錄會在版號 bump 之前先合入，所以紀錄可以超前 `package.json`：
+ * 超過目前基礎版號的紀錄先隱藏，`0.5.0-rc.1` 以 `0.5.0` 為準，會顯示即將
+ * 發布的那一則。版號無法解析時（例如本機開發的非標準版號）全部顯示。
+ */
+export function notesForVersion(version: string, notes: readonly PlayerNote[] = PLAYER_NOTES): readonly PlayerNote[] {
+  const base = version.replace(/-.*$/, '');
+  if (!parseStableVersion(base)) return notes;
+  return notes.filter((note) => (compareStableVersions(note.version, base) ?? 1) <= 0);
 }
 
 /**

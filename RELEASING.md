@@ -110,10 +110,11 @@ refactors and tests.
   date (`YYYY-MM-DD`).
 - Write the title and every item in both locales, one change per item.
 - Land the entry before the release commit, through a `📝 docs(news): add player notes for vX.Y.Z`
-  pull request into `master`, or into `release/vX.Y.Z` so its rc builds already show it.
+  pull request into `master`, or into `release/vX.Y.Z`. An entry may be ahead of `package.json`:
+  the board hides entries newer than the version being built, so the entry stays hidden on
+  `master` until the bump and already shows on `vX.Y.Z-rc.N` builds.
 - `packages/web/test/news.test.tsx` fails when `package.json` holds a stable version without a
-  matching entry, or when an entry is ahead of the version being built, so `pnpm verify` blocks a
-  stable bump that forgot its notes.
+  matching entry, so `pnpm verify` blocks a stable bump that forgot its notes.
 
 Players who have not opened the board since the newest entry see a **New** badge on its tab; the last
 version they read is stored in `localStorage` under `catan.news.seen`.

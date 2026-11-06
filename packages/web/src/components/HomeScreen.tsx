@@ -3,7 +3,7 @@ import { GAME_ORDER_MODES, type GameOrderMode } from '@catan/protocol';
 import { LanguageSwitch } from './LanguageSwitch.tsx';
 import { SoundSettings } from './SoundSettings.tsx';
 import { NewsBoard } from './NewsBoard.tsx';
-import { isNoteUnread, LATEST_PLAYER_NOTE, PLAYER_NOTES } from '../news/player-notes.ts';
+import { isNoteUnread, notesForVersion } from '../news/player-notes.ts';
 import { GameBrand, GameIcon, PregameScene } from './GameArt.tsx';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatDateTime } from '../i18n/format.ts';
@@ -16,6 +16,9 @@ import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../state/ru
  * The public room list is built only from `RoomSummaryView`, which carries
  * lobby metadata and never seated-player state (docs/SPEC.md §8.3).
  */
+/** 公告牌只顯示不超過這個 bundle 版號的紀錄。 */
+const SHOWN_NOTES = notesForVersion(__CATAN_VERSION__);
+
 type HomePane = 'table' | 'resume' | 'rooms' | 'news' | 'identity';
 
 export function HomeScreen({ controller }: ScreenProps) {
@@ -49,7 +52,7 @@ export function HomeScreen({ controller }: ScreenProps) {
   const paneIcon: Record<HomePane, string> = { table: 'flag', resume: 'anchor', rooms: 'globe', news: 'sparkles', identity: 'settings' };
   const paneCount: Partial<Record<HomePane, number>> = { resume: state.games.length, rooms: state.rooms.length };
   // 公告牌：最新一則比這個瀏覽器看過的版號更新時，在分頁上標示「新」。
-  const latestNote = LATEST_PLAYER_NOTE;
+  const latestNote = SHOWN_NOTES[0] ?? null;
   const newsUnread = latestNote !== null && isNoteUnread(latestNote, state.newsSeen);
   const paneHint = (pane: HomePane) =>
     pane === 'news' && latestNote ? `v${latestNote.version} · ${latestNote.title[locale]}` : t(`home.paneHint.${pane}`);
@@ -430,7 +433,7 @@ export function HomeScreen({ controller }: ScreenProps) {
       </section>
 
       <section id="home-pane-news" role="tabpanel" aria-labelledby="home-tab-news" hidden={homePane !== 'news'} className="home-pane home__news">
-        <NewsBoard notes={PLAYER_NOTES} version={__CATAN_VERSION__} />
+        <NewsBoard notes={SHOWN_NOTES} version={__CATAN_VERSION__} />
       </section>
 
       <section id="home-pane-identity" role="tabpanel" aria-labelledby="home-tab-identity" hidden={homePane !== 'identity'} className="home-pane home__identity">

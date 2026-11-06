@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { App } from '../src/App.tsx';
 import { SUPPORTED_LOCALES } from '../src/i18n/index.ts';
-import { compareStableVersions, isNoteUnread, LATEST_PLAYER_NOTE, PLAYER_NOTES, type PlayerNote } from '../src/news/player-notes.ts';
+import { compareStableVersions, isNoteUnread, notesForVersion, PLAYER_NOTES, type PlayerNote } from '../src/news/player-notes.ts';
 import { memoryStorage, NEWS_SEEN_KEY, type StorageLike } from '../src/state/session.ts';
 import { createFakeApi } from '../src/test/fake-api.ts';
 
 // vite.config.ts 從根目錄 package.json 注入，和 /healthz 回報的是同一個版號。
 const rootVersion = __CATAN_VERSION__;
+// 首頁實際顯示的紀錄與最新一則。
+const SHOWN = notesForVersion(rootVersion);
+const LATEST_PLAYER_NOTE = SHOWN[0];
 
 function parseStable(version: string): [number, number, number] {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
@@ -34,7 +37,6 @@ describe('player notes contract', () => {
       expect(compare(newer.version, older.version), `${newer.version} before ${older.version}`).toBeGreaterThan(0);
       expect(newer.date >= older.date).toBe(true);
     }
-    expect(LATEST_PLAYER_NOTE).toBe(PLAYER_NOTES[0]);
   });
 
   it('writes every title and item in every locale', () => {
@@ -48,18 +50,39 @@ describe('player notes contract', () => {
     }
   });
 
-  it('has a note for the stable version in package.json and none ahead of it', () => {
-    // 預發布版本（-rc.N）可以先帶著即將發布的那一則，但不能超過它的基礎版號。
-    const base = rootVersion.replace(/-.*$/, '');
-    expect(compare(LATEST_PLAYER_NOTE!.version, base)).toBeLessThanOrEqual(0);
-    if (base === rootVersion) {
+  it('has a note for the stable version in package.json', () => {
+    // 下一版的紀錄可以先合入（超前的會被隱藏），但正式版號 bump 時必須已有自己的那一則。
+    if (/^\d+\.\d+\.\d+$/.test(rootVersion)) {
       expect(PLAYER_NOTES.map((note) => note.version), `add a player note for ${rootVersion}`).toContain(rootVersion);
+      expect(LATEST_PLAYER_NOTE!.version).toBe(rootVersion);
     }
+    expect(SHOWN.length).toBeGreaterThan(0);
+  });
+
+});
+
+const note = (version: string): PlayerNote => ({ version, date: '2026-01-01', title: { en: 'x', 'zh-Hant': 'x' }, items: [] });
+
+describe('notes shown for a version', () => {
+  const notes = [note('0.5.0'), note('0.4.0'), note('0.3.0')];
+  const versions = (shown: readonly PlayerNote[]) => shown.map((entry) => entry.version);
+
+  it('hides a note that landed ahead of the version bump', () => {
+    // 0.5.0 的紀錄已合入 master，但 package.json 仍是 0.4.0。
+    expect(versions(notesForVersion('0.4.0', notes))).toEqual(['0.4.0', '0.3.0']);
+  });
+
+  it('shows the upcoming note on its release candidates and after the bump', () => {
+    expect(versions(notesForVersion('0.5.0-rc.1', notes))).toEqual(['0.5.0', '0.4.0', '0.3.0']);
+    expect(versions(notesForVersion('0.5.0', notes))).toEqual(['0.5.0', '0.4.0', '0.3.0']);
+  });
+
+  it('shows every note when the version cannot be parsed', () => {
+    expect(versions(notesForVersion('dev', notes))).toEqual(['0.5.0', '0.4.0', '0.3.0']);
   });
 });
 
 describe('seen-version watermark', () => {
-  const note = (version: string): PlayerNote => ({ version, date: '2026-01-01', title: { en: 'x', 'zh-Hant': 'x' }, items: [] });
 
   it('compares stable versions numerically and rejects anything else', () => {
     expect(compareStableVersions('0.10.0', '0.9.9')).toBeGreaterThan(0);
@@ -97,7 +120,7 @@ describe('home notice board', () => {
     const panel = await screen.findByRole('tabpanel', { name: /notice board/i });
     expect(within(panel).getByTestId('news-version').textContent).toBe(`You are playing v${__CATAN_VERSION__}`);
     const entries = within(panel).getAllByRole('article');
-    expect(entries).toHaveLength(PLAYER_NOTES.length);
+    expect(entries).toHaveLength(SHOWN.length);
     expect(within(entries[0]!).getByRole('heading', { level: 3 }).textContent).toBe(LATEST_PLAYER_NOTE!.title.en);
 
     expect(screen.queryByTestId('news-unread')).toBeNull();
@@ -127,7 +150,8 @@ describe('home notice board', () => {
     fireEvent.change(screen.getByTestId('locale-switch'), { target: { value: 'zh-Hant' } });
     fireEvent.click(await screen.findByRole('tab', { name: /公告牌/ }));
     const panel = await screen.findByRole('tabpanel', { name: /公告牌/ });
-    expect(within(panel).getByText(LATEST_PLAYER_NOTE!.title['zh-Hant'])).toBeTruthy();
-    expect(within(panel).getByText(LATEST_PLAYER_NOTE!.items[0]!['zh-Hant'])).toBeTruthy();
+    const latest = within(panel).getAllByRole('article')[0]!;
+    expect(within(latest).getByRole('heading', { level: 3 }).textContent).toBe(LATEST_PLAYER_NOTE!.title['zh-Hant']);
+    expect(within(latest).getAllByRole('listitem')[0]!.textContent).toBe(LATEST_PLAYER_NOTE!.items[0]!['zh-Hant']);
   });
 });
