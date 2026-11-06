@@ -3,7 +3,7 @@ import type { BotModule } from './modules/types.ts';
 import type { BotLevel, BotPolicy } from './types.ts';
 
 export interface BotPolicyOptions {
-  /** 省略時依 `view.profileId` 取 `botModulesOf`；`[]` = 只有 base（naive 座位）。 */
+  /** 省略時依 `view.profileId` 取 `botModulesOf`；`[]` 是純 base 策略（遇到模組 frame 只能靠保底）。naive 座位另見 `test/harness.ts` 的 `naiveModule`：只保留模組的 `duty`。 */
   readonly modules?: readonly BotModule[];
 }
 
