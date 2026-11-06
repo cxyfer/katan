@@ -186,8 +186,17 @@ them removes the seat.
   against bots that is immediate (the policy check still applies,
   `E_ABANDON_DISABLED`). Further votes use `{ proposalId, approve }` and answer
   `{ abandoned }`. `E_NO_ABSENT_PLAYER` still applies when several people are
-  present and nobody is absent or withdrawn. A reconnecting seat cancels the
-  open vote, except a withdrawn seat, whose return changes nothing.
+  present and nobody is absent or withdrawn. A withdrawn seat cannot propose,
+  consent or reject (`E_SEAT_WITHDRAWN`): its withdrawal already counts as
+  consent and its return never cancels the vote, so a veto would be a new
+  power. A person who is merely offline (no live socket) but has not
+  withdrawn may still answer over HTTP; that is equivalent to reconnecting,
+  which cancels the vote anyway (their consent is not counted, a rejection
+  ends it), so it adds no power. A reconnecting seat cancels the open vote
+  (after being marked connected), except a withdrawn seat, whose return changes
+  nothing. Creating, consenting to, rejecting or cancelling the vote, and a
+  person dropping out of it, push a fresh `room` message with
+  `pendingAbandon` to everyone connected.
 
 `RoomMemberView.withdrawn` (bots: always `false`) and `RoomView.pendingAbandon`
 carry the state to clients. `pendingAbandon` is `null` when nothing is open;

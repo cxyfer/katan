@@ -1,12 +1,14 @@
 /** R-ROOM / R-POLICY: explicit withdrawal, solo end and Save and leave (§4.6, §4.8). */
 
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { WebSocket } from 'ws';
 import type { GameState, GameView } from '@catan/rules';
 import type {
   AbandonProposeResult,
   ResumableGameView,
   RoomView,
+  ServerMessage,
   WithdrawResult,
 } from '@catan/protocol';
 import type { Connection } from '../src/rooms.ts';
@@ -413,6 +415,213 @@ describe('reconnection of withdrawn and absent seats', () => {
       expect((await roomOf(host, roomId)).pendingAbandon).toBeNull();
     } finally {
       await drop();
+    }
+  });
+
+  it('cannot end the game with a stale consent after the absent seat returned', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await setOffline(roomId, third.playerId!, true);
+    const proposal = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+
+    const drop = await reconnect(roomId, third.playerId!);
+    try {
+      second.expectError(
+        await second.post(`/api/games/${gameId}/abandon`, { proposalId: proposal.proposalId, approve: true }),
+        'E_NO_PROPOSAL',
+      );
+      expect((await roomOf(host, roomId)).status).toBe('playing');
+      expect((await stateOf(gameId)).result).toBeNull();
+    } finally {
+      await drop();
+    }
+  });
+
+  it('marks the returning seat connected before it cancels the vote', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, , third] = clients as [TestClient, TestClient, TestClient];
+    await setOffline(roomId, third.playerId!, true);
+    host.expectOk(await host.post(`/api/games/${gameId}/abandon`, {}));
+
+    // 取消投票的那一刻，重連者必須已經是 connected；否則取消前後之間成立的新提案
+    // 仍會把他當成缺席，之後不會再被取消。
+    const original = harness.service.rooms.invalidateGameVotes.bind(harness.service.rooms);
+    const seen: (number | undefined)[] = [];
+    const spy = vi.spyOn(harness.service.rooms, 'invalidateGameVotes').mockImplementation(async (id) => {
+      seen.push((await harness.service.repo.findMembership(roomId, third.playerId!))?.connected);
+      await original(id);
+    });
+    const drop = await reconnect(roomId, third.playerId!);
+    try {
+      expect(seen).toEqual([1]);
+    } finally {
+      spy.mockRestore();
+      await drop();
+    }
+  });
+});
+
+describe('withdrawn seats cannot propose or vote', () => {
+  it('refuses propose, approve and reject without touching the proposal', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 4);
+    await runSetupOverApi(clients, gameId);
+    const [host, , , fourth] = clients as [TestClient, TestClient, TestClient, TestClient];
+    await withdraw(fourth, gameId, true);
+
+    // 還沒有提案時，退出者不能開提案。
+    fourth.expectError(await fourth.post(`/api/games/${gameId}/abandon`, {}), 'E_SEAT_WITHDRAWN');
+    expect((await roomOf(host, roomId)).pendingAbandon).toBeNull();
+
+    const proposal = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+    const before = (await roomOf(host, roomId)).pendingAbandon;
+    expect(before?.id).toBe(proposal.proposalId);
+
+    fourth.expectError(await fourth.post(`/api/games/${gameId}/abandon`, {}), 'E_SEAT_WITHDRAWN');
+    fourth.expectError(
+      await fourth.post(`/api/games/${gameId}/abandon`, { proposalId: proposal.proposalId, approve: true }),
+      'E_SEAT_WITHDRAWN',
+    );
+    fourth.expectError(
+      await fourth.post(`/api/games/${gameId}/abandon`, { proposalId: proposal.proposalId, approve: false }),
+      'E_SEAT_WITHDRAWN',
+    );
+
+    // 提案仍是 open，同意者不變，其他人還能照常完成它。
+    expect((await roomOf(host, roomId)).pendingAbandon).toEqual(before);
+    expect((await harness.service.repo.findOpenGameProposal(gameId, 'abandon'))?.id).toBe(proposal.proposalId);
+  });
+
+  it('lets the seat vote again once it retracts the withdrawal', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, , third] = clients as [TestClient, TestClient, TestClient];
+    await setOffline(roomId, host.playerId!, true);
+    await withdraw(third, gameId, true);
+    third.expectError(await third.post(`/api/games/${gameId}/abandon`, {}), 'E_SEAT_WITHDRAWN');
+    await withdraw(third, gameId, false);
+    // 撤回後恢復一般成員身分：離線的房主讓放棄成立資格，第三位可以提案。
+    const proposal = third.expectOk<AbandonProposeResult>(await third.post(`/api/games/${gameId}/abandon`, {}));
+    expect(proposal.proposalId).toBeTruthy();
+  });
+});
+
+interface RoomFeed {
+  rooms: RoomView[];
+  close(): Promise<void>;
+}
+
+/** 以真實 WebSocket 訂閱房間，收集推送的 room 訊息。 */
+async function subscribeRoom(client: TestClient, roomId: string): Promise<RoomFeed> {
+  const socket = new WebSocket(`${harness.base.replace('http', 'ws')}/ws`, { headers: { cookie: client.cookie! } });
+  const rooms: RoomView[] = [];
+  socket.on('message', (data) => {
+    const message = JSON.parse(data.toString()) as ServerMessage;
+    if (message.type === 'room') rooms.push(message.payload);
+  });
+  await new Promise<void>((resolve, reject) => {
+    socket.once('open', resolve);
+    socket.once('error', reject);
+  });
+  socket.send(JSON.stringify({ type: 'subscribe', payload: { roomId } }));
+  await vi.waitFor(() => expect(rooms.length).toBeGreaterThan(0));
+  // 冪等：測試中途關掉的 socket，在 finally 再關一次也要立刻回來。
+  let closing: Promise<void> | null = null;
+  return {
+    rooms,
+    close: () =>
+      (closing ??= new Promise<void>((resolve) => {
+        socket.once('close', () => resolve());
+        socket.close();
+      })),
+  };
+}
+
+describe('pendingAbandon is pushed to the other people at the table', () => {
+  it('broadcasts the proposal, each consent and a rejection', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 4);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third, fourth] = clients as [TestClient, TestClient, TestClient, TestClient];
+    await withdraw(fourth, gameId, true);
+    const feed = await subscribeRoom(third, roomId);
+    try {
+      const latest = (): RoomView => feed.rooms[feed.rooms.length - 1]!;
+      const proposal = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+      await vi.waitFor(() => expect(latest().pendingAbandon?.id).toBe(proposal.proposalId));
+      expect(latest().pendingAbandon?.consents).toEqual([host.playerId]);
+      expect(latest().pendingAbandon?.absent).toEqual([fourth.playerId]);
+
+      second.expectOk(
+        await second.post(`/api/games/${gameId}/abandon`, { proposalId: proposal.proposalId, approve: true }),
+      );
+      await vi.waitFor(() =>
+        expect([...(latest().pendingAbandon?.consents ?? [])].sort()).toEqual(
+          [host.playerId, second.playerId].sort(),
+        ),
+      );
+
+      // 再次提出（已有 open 提案）等同同意，同樣要推送。
+      const again = third.expectOk<AbandonProposeResult>(await third.post(`/api/games/${gameId}/abandon`, {}));
+      expect(again.proposalId).toBe(proposal.proposalId);
+      expect(again.abandoned).toBe(true);
+      await vi.waitFor(() => expect(latest().status).toBe('abandoned'));
+      expect(latest().pendingAbandon).toBeNull();
+    } finally {
+      await feed.close();
+    }
+  });
+
+  it('broadcasts the cancellation when someone votes no', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 4);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third, fourth] = clients as [TestClient, TestClient, TestClient, TestClient];
+    await withdraw(fourth, gameId, true);
+    const feed = await subscribeRoom(third, roomId);
+    try {
+      const latest = (): RoomView => feed.rooms[feed.rooms.length - 1]!;
+      const proposal = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+      await vi.waitFor(() => expect(latest().pendingAbandon?.id).toBe(proposal.proposalId));
+      second.expectOk(
+        await second.post(`/api/games/${gameId}/abandon`, { proposalId: proposal.proposalId, approve: false }),
+      );
+      await vi.waitFor(() => expect(latest().pendingAbandon).toBeNull());
+    } finally {
+      await feed.close();
+    }
+  });
+
+  it('broadcasts when a returning seat cancels the vote and when a seat drops out of it', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await setOffline(roomId, third.playerId!, true);
+    const hostFeed = await subscribeRoom(host, roomId);
+    const secondFeed = await subscribeRoom(second, roomId);
+    try {
+      const latest = (): RoomView => hostFeed.rooms[hostFeed.rooms.length - 1]!;
+      const proposal = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+      await vi.waitFor(() => expect(latest().pendingAbandon?.id).toBe(proposal.proposalId));
+      expect(latest().pendingAbandon?.absent).toEqual([third.playerId]);
+
+      // 另一位在線者斷線：缺席名單必須更新（presence 訊息不含 pendingAbandon）。
+      await secondFeed.close();
+      await vi.waitFor(() =>
+        expect([...(latest().pendingAbandon?.absent ?? [])].sort()).toEqual(
+          [second.playerId, third.playerId].sort(),
+        ),
+      );
+
+      // 缺席者回來：提案被取消，並推送給仍在線的人。
+      const drop = await reconnect(roomId, third.playerId!);
+      try {
+        await vi.waitFor(() => expect(latest().pendingAbandon).toBeNull());
+      } finally {
+        await drop();
+      }
+    } finally {
+      await hostFeed.close();
+      await secondFeed.close();
     }
   });
 });

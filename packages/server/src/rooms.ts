@@ -950,13 +950,6 @@ export class RoomService {
   async registerConnection(connection: Connection): Promise<void> {
     const roomId = connection.roomId;
     if (!roomId) return;
-    // A returning connection invalidates a vote it did not participate in.
-    // 已退出的席位回來不改變缺席條件，因此不取消投票；退出只能明確撤回。
-    const room = await this.repo.findRoom(roomId);
-    if (room?.game_id) {
-      const returning = await this.repo.findMembership(roomId, connection.playerId);
-      if (returning?.withdrawn !== 1) await this.invalidateGameVotes(room.game_id);
-    }
     const runtime = this.runtime(roomId);
     const set = runtime.connections.get(connection.playerId) ?? new Set<Connection>();
     set.add(connection);
@@ -967,6 +960,19 @@ export class RoomService {
       runtime.hostTransferTimers.delete(connection.playerId);
     }
     await this.markConnected(roomId, connection.playerId, connection.id);
+    // A returning connection invalidates a vote it did not participate in. 必須
+    // 先標記為已連線再取消：反過來的話，取消與標記之間成立的新提案仍把這位玩家
+    // 當成缺席，之後就不會再被取消。tryApplyAbandon 在提交時重讀 membership 重查資格。
+    // 已退出的席位回來不改變缺席條件，因此不取消投票；退出只能明確撤回。
+    const room = await this.repo.findRoom(roomId);
+    if (room?.game_id) {
+      const returning = await this.repo.findMembership(roomId, connection.playerId);
+      if (returning?.withdrawn !== 1) {
+        const open = await this.repo.findOpenGameProposal(room.game_id, 'abandon');
+        await this.invalidateGameVotes(room.game_id);
+        if (open) this.broadcastRoom(roomId);
+      }
+    }
     this.broadcastPresence(roomId);
     this.deps.onConnectionRegistered?.(roomId, connection.playerId);
   }
@@ -987,6 +993,10 @@ export class RoomService {
     if (!room) return;
     await this.markDisconnected(roomId, connection.playerId, 'transport');
     this.broadcastPresence(roomId);
+    // presence 不含 pendingAbandon；有 open 提案時推送完整檢視，讓缺席名單保持最新。
+    if (room.game_id && (await this.repo.findOpenGameProposal(room.game_id, 'abandon'))) {
+      this.broadcastRoom(roomId);
+    }
 
     // After the grace period an unexpectedly disconnected host loses the role.
     if (room.host_id === connection.playerId && room.status !== 'lobby') {

@@ -590,7 +590,7 @@ export class GameCoordinator {
   async proposeAbandon(playerId: string, gameId: string): Promise<AbandonProposeResult> {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
-      await this.requireSeat(game, playerId);
+      await this.requireAbandonParticipant(game, playerId);
       const room = await this.repo.findRoom(game.room_id);
       if (!room) throw new ServiceError('E_ROOM_NOT_FOUND', 'error.E_ROOM_NOT_FOUND', {}, 404);
       const policy = this.policyOfRoom(room.policy_json);
@@ -621,7 +621,10 @@ export class GameCoordinator {
         });
       }
       await this.recordConsent(proposalId, playerId);
-      return { proposalId, abandoned: await this.tryApplyAbandon(game, proposalId) };
+      const abandoned = await this.tryApplyAbandon(game, proposalId);
+      // 終局已由 commitAbandoned 廣播；否則提案（或其取消）是新的公開狀態。
+      if (!abandoned) this.deps.rooms.broadcastRoom(game.room_id);
+      return { proposalId, abandoned };
     });
   }
 
@@ -633,18 +636,39 @@ export class GameCoordinator {
   ): Promise<AbandonConsentResult> {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
-      await this.requireSeat(game, playerId);
+      await this.requireAbandonParticipant(game, playerId);
       const proposal = await this.repo.findOpenGameProposal(gameId, 'abandon');
       if (!proposal || proposal.id !== proposalId) {
         throw new ServiceError('E_NO_PROPOSAL', 'error.E_NO_PROPOSAL', { proposalId }, 404);
       }
       if (!approve) {
         await this.repo.updateGameProposalStatus(proposalId, 'rejected');
+        this.deps.rooms.broadcastRoom(game.room_id);
         return { abandoned: false };
       }
       await this.recordConsent(proposalId, playerId);
-      return { abandoned: await this.tryApplyAbandon(game, proposalId) };
+      const abandoned = await this.tryApplyAbandon(game, proposalId);
+      if (!abandoned) this.deps.rooms.broadcastRoom(game.room_id);
+      return { abandoned };
     });
+  }
+
+  /**
+   * 放棄提案與表態（含否決）只開放給未退出的真人。退出視同同意，且退出者重連
+   * 不會取消投票；若退出者還能提案或否決，就多出一個新的否決權。
+   *
+   * 離線（socket 斷線）但未退出的真人透過 HTTP 表態則不擋：他的效果等同重連，
+   * 而重連本來就會取消投票（同意不計入投票者，否決與取消等價），沒有新增權力。
+   */
+  private async requireAbandonParticipant(game: GameRow, playerId: string): Promise<void> {
+    await this.requireSeat(game, playerId);
+    const self = (await this.repo.listMembers(game.room_id)).find((member) => member.player_id === playerId);
+    if (!self || isBotMember(self)) {
+      throw new ServiceError('E_NOT_SEATED', 'error.E_NOT_SEATED', { gameId: game.id }, 403);
+    }
+    if (self.withdrawn === 1) {
+      throw new ServiceError('E_SEAT_WITHDRAWN', 'error.E_SEAT_WITHDRAWN', { gameId: game.id }, 409);
+    }
   }
 
   /** 同一位玩家重複表態不是錯誤（提案即同意，之後再按同意也成立）。 */
@@ -684,8 +708,8 @@ export class GameCoordinator {
       if (withdrawn && this.policyOfRoom(room.policy_json).allowAbandonment) {
         const humans = humanMembers(await this.repo.listMembers(game.room_id));
         if (humans.every((member) => member.withdrawn === 1)) {
-          const ended = await this.commitAbandoned(game.id, game.room_id, null);
-          return { withdrawn, abandoned: ended };
+          // 終局時 commitAbandoned 已廣播；沒終局（已有結果）就落到下面的廣播。
+          if (await this.commitAbandoned(game.id, game.room_id, null)) return { withdrawn, abandoned: true };
         }
       }
       this.deps.rooms.broadcastRoom(game.room_id);
