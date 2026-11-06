@@ -1,7 +1,8 @@
 /** 棋盤位置以「資源（骰子）」描述，取代玩家看不到的地圖編號。 */
 
 import { describe, expect, it } from 'vitest';
-import { getTopology, type PublicBoardView } from '@catan/rules';
+import { createGame, getTopology, projectGame, seededRng, type PublicBoardView } from '@catan/rules';
+import { epView, fogRegions } from '../src/board/explorersPirates.ts';
 import { createIslandPreviewBoard } from '../src/board/island-preview.ts';
 import { boardReference, tileRef, type ReferenceContext, type ReferenceKind } from '../src/board/references.ts';
 import { describeHex, describeVertex } from '../src/board/targets.ts';
@@ -85,6 +86,41 @@ describe('board references', () => {
       for (let index = 0; index < countOf(context, kind); index += 1) {
         expect(boardReference(context, kind, index)).not.toContain('Ore (10)');
       }
+    }
+  });
+
+  it.each(['sf-new-shores-2025', 'ep-land-ho-2025', 'ep-pirate-lairs-2025'])(
+    'never gives two positions the same name on the %s board',
+    (profileId) => {
+      const players = Array.from({ length: 4 }, (_, seat) => ({
+        id: `p${seat}`, nickname: `P${seat}`, color: (['red', 'blue', 'orange', 'white'] as const)[seat]!,
+      }));
+      const state = createGame({ profileId, players, setupMode: 'fixed', rng: seededRng(4) });
+      const view = projectGame(state, 'p0');
+      const fog = fogRegions(epView(view));
+      for (const locale of ['en', 'zh-Hant'] as const) {
+        const context = contextFor(view.board, locale, fog.size > 0 ? fog : undefined);
+        for (const kind of KINDS) {
+          const labels = Array.from({ length: countOf(context, kind) }, (_, index) => boardReference(context, kind, index));
+          const repeated = labels.filter((label, index) => labels.indexOf(label) !== index);
+          expect(repeated, `${profileId} ${locale} ${kind}`).toEqual([]);
+        }
+      }
+    },
+  );
+
+  it('orders positions that still look alike from top to bottom, then left to right', () => {
+    const context = contextFor(createIslandPreviewBoard('sample-archipelago'));
+    const labels = Array.from({ length: context.topology.edges.length }, (_, index) => boardReference(context, 'edge', index));
+    const alike = labels.map((label, index) => ({ label, index })).filter(({ label }) => /#\d+ of \d+ alike/.test(label));
+    expect(alike.length).toBeGreaterThan(0);
+    for (const { label, index } of alike) {
+      const [, n, total] = label.match(/#(\d+) of (\d+) alike/)!.map(Number);
+      const group = alike.filter((other) => other.label.replace(/ \(#\d+ of \d+ alike\)$/, '') === label.replace(/ \(#\d+ of \d+ alike\)$/, ''));
+      expect(group).toHaveLength(total!);
+      const ordered = [...group].sort((a, b) => context.topology.edges[a.index]!.y - context.topology.edges[b.index]!.y
+        || context.topology.edges[a.index]!.x - context.topology.edges[b.index]!.x);
+      expect(ordered[n! - 1]!.index).toBe(index);
     }
   });
 });

@@ -346,6 +346,7 @@ export const zhHant: Catalog = {
   'board.edgeCoast': '{tile}沿岸',
   'board.openSea': '外海',
   'board.nearTiles': '{place}，靠近{tiles}',
+  'board.sameKind': '{place}（同類第 {n} 個，共 {total} 個）',
   'board.referenceSeparator': '；',
   'board.harbor': '{place}的港口',
   'board.harborGeneric': '任意資源 3:1',

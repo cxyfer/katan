@@ -350,6 +350,7 @@ export const en: Catalog = {
   'board.edgeCoast': '{tile} coast',
   'board.openSea': 'Open sea',
   'board.nearTiles': '{place} · near {tiles}',
+  'board.sameKind': '{place} (#{n} of {total} alike)',
   'board.referenceSeparator': '; ',
   'board.harbor': 'Harbour on {place}',
   'board.harborGeneric': '3:1 any resource',

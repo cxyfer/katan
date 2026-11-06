@@ -167,41 +167,73 @@ function itemCount(topology: BoardTopology, kind: ReferenceKind): number {
   return topology.hexes.length;
 }
 
-const baseCountCache = new WeakMap<PublicBoardView, Map<string, Map<string, number>>>();
-
-/** 同一種位置在整張地圖上，各個描述出現的次數；只依公開棋盤計算，故以棋盤物件快取。 */
-function baseCounts(context: ReferenceContext, kind: ReferenceKind): Map<string, number> {
-  let byKey = baseCountCache.get(context.board);
-  if (!byKey) {
-    byKey = new Map();
-    baseCountCache.set(context.board, byKey);
-  }
-  const fogKey = context.fog ? [...context.fog.keys()].sort((a, b) => a - b).join(',') : '';
-  const key = `${context.locale}|${context.topology.id}|${kind}|${fogKey}`;
-  let counts = byKey.get(key);
-  if (!counts) {
-    counts = new Map();
-    for (let index = 0; index < itemCount(context.topology, kind); index += 1) {
-      const base = baseReference(context, kind, index);
-      if (base !== null) counts.set(base, (counts.get(base) ?? 0) + 1);
-    }
-    byKey.set(key, counts);
-  }
-  return counts;
-}
-
-/**
- * 棋盤位置的文字參照。描述在整張地圖上不唯一、或位置沒有相鄰陸地時，
- * 補上最近的其他地塊作為區分。
- */
-export function boardReference(context: ReferenceContext, kind: ReferenceKind, index: number): string {
+/** 單一位置補完區分提示後的描述（尚未保證全盤唯一）。 */
+function hintedReference(context: ReferenceContext, kind: ReferenceKind, index: number, counts: Map<string, number>): string {
   const base = baseReference(context, kind, index);
-  const needsHint = base === null || (baseCounts(context, kind).get(base) ?? 0) > 1;
+  const needsHint = base === null || (counts.get(base) ?? 0) > 1;
   const place = base ?? (kind === 'hex' ? tileRef(context, index) : t(context.locale, 'board.openSea'));
   if (!needsHint) return place;
   const nearby = nearbyTiles(context, anchorOf(context, kind, index));
   if (nearby.length === 0) return place;
   return t(context.locale, 'board.nearTiles', { place, tiles: nearby.map((hex) => tileRef(context, hex)) });
+}
+
+function coordinate(topology: BoardTopology, kind: ReferenceKind, index: number): { x: number; y: number } {
+  const item = kind === 'vertex' ? topology.vertices[index] : kind === 'edge' ? topology.edges[index] : topology.hexes[index];
+  return { x: item?.x ?? 0, y: item?.y ?? 0 };
+}
+
+/**
+ * 整張地圖同一種位置的描述。先以地塊描述，重複者補最近的其他地塊；
+ * 補完仍重複（對稱的沿岸位置、遠離陸地的外海、未探索區）時，
+ * 在該組內依座標由上到下、由左到右補「同類第 n 個」，確保沒有兩個位置共用名稱。
+ */
+function referenceTable(context: ReferenceContext, kind: ReferenceKind): string[] {
+  const count = itemCount(context.topology, kind);
+  const baseCounts = new Map<string, number>();
+  for (let index = 0; index < count; index += 1) {
+    const base = baseReference(context, kind, index);
+    if (base !== null) baseCounts.set(base, (baseCounts.get(base) ?? 0) + 1);
+  }
+  const labels = Array.from({ length: count }, (_, index) => hintedReference(context, kind, index, baseCounts));
+  const groups = new Map<string, number[]>();
+  labels.forEach((label, index) => groups.set(label, [...(groups.get(label) ?? []), index]));
+  for (const members of groups.values()) {
+    if (members.length < 2) continue;
+    const ordered = [...members].sort((a, b) => {
+      const pa = coordinate(context.topology, kind, a);
+      const pb = coordinate(context.topology, kind, b);
+      return pa.y - pb.y || pa.x - pb.x || a - b;
+    });
+    ordered.forEach((index, order) => {
+      labels[index] = t(context.locale, 'board.sameKind', { place: labels[index], n: order + 1, total: ordered.length });
+    });
+  }
+  return labels;
+}
+
+const tableCache = new WeakMap<PublicBoardView, Map<string, string[]>>();
+
+/** 描述只依公開棋盤與未探索地塊計算，故以棋盤物件快取。 */
+function cachedTable(context: ReferenceContext, kind: ReferenceKind): string[] {
+  let byKey = tableCache.get(context.board);
+  if (!byKey) {
+    byKey = new Map();
+    tableCache.set(context.board, byKey);
+  }
+  const fogKey = context.fog ? [...context.fog.keys()].sort((a, b) => a - b).join(',') : '';
+  const key = `${context.locale}|${context.topology.id}|${kind}|${fogKey}`;
+  let table = byKey.get(key);
+  if (!table) {
+    table = referenceTable(context, kind);
+    byKey.set(key, table);
+  }
+  return table;
+}
+
+/** 棋盤位置的文字參照；同一種位置在整張地圖上的名稱彼此不同。 */
+export function boardReference(context: ReferenceContext, kind: ReferenceKind, index: number): string {
+  return cachedTable(context, kind)[index] ?? '';
 }
 
 export function vertexReference(context: ReferenceContext, index: number): string {
