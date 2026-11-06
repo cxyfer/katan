@@ -76,7 +76,7 @@ protocol, engine, persistence-schema or privacy boundary changed.
   back to `localStorage`, and stayed inside the 390 px layout. Captures cover
   the panel in zh-Hant and English at 1366×768 plus the phone width. No page
   errors. Report:
-  [report.json](../../screenshots/trade-auto-decline/report.json).
+  [report.json](https://github.com/cxyfer/katan/blob/b8d0d1febc37534e7019b3599f5af7ba6afd26ec/docs/screenshots/trade-auto-decline/report.json).
 
 ## Limitations
 
