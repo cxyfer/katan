@@ -270,7 +270,7 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
 - **測試矩陣**
   - `BOT_TEST_MATRIX = PROFILES.filter(p => p.enabled && botsCanPlay(p))` 乘上各自的 `playerCounts`。開放新 profile 時，B-GAME 會自動納入。
   - 各擴充的 family 測試檔明列自己的 profile，不依賴 `BOT_TEST_MATRIX`，所以在 gating 翻轉前就能跑 B-GAME。B-GAME、B-POLICY 與 Q2 計數共用同一批對局。
-  - 通用矩陣跳過已由 family 測試檔涵蓋的 profile，避免重跑；另加守門測試，斷言 `BOT_TEST_MATRIX` 的每個 profile 至少被一個測試檔涵蓋。
+  - 通用矩陣跳過已由 family 測試檔涵蓋的 profile，避免重跑；另加守門測試，斷言 `BOT_TEST_MATRIX` 的每個 profile 至少被一個測試檔涵蓋。各 family 涵蓋哪些 profile，登記在 `packages/bots/test/families.ts`（PL-2 建立，各擴充的測試切片各加一筆）；守門測試放在 `packages/bots/test/matrix.test.ts`。
 - **保底席**
   - 每個（profile, 人數）至少 1 個種子讓 1 席只走保底，其餘座位用策略。
   - 另跑「全部座位只走保底」的有界局：只要求 0 拒絕且每一步都有動作，不要求終局。保底從不建造，實測 T&B 的 BA 只走保底時 0/10 局終局。
@@ -351,7 +351,7 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
 | 切片 | 分支／worktree | 內容 | 檔案所有權 | 驗收 |
 |---|---|---|---|---|
 | PL-1 合約與骨架 | `feat/bots-platform-contract`／`.worktrees/bots-platform-contract/` | `modules/types.ts`、registry；`heuristic.ts` 與 `fallback.ts` 改為組合骨架；`BotCommand`；下方的合約清單；`support.ts` 的 `supports` 與快照（`BOT_RULE_MODULES` 保留為 deprecated，§4.4）；B-GUARD 放寬；規則 9；bot 規格的合約條文；golden replay | `packages/bots/src/**`；`packages/bots/test/{support,guard}.test.ts`；新增的 `packages/bots/test/golden-base.test.ts` 與 `packages/bots/test/golden/**`；只改型別註記：`packages/bots/test/harness.ts`、`packages/bots/test/policy.test.ts`、`packages/server/src/bot-driver.ts`、`packages/server/test/bots.test.ts`（§4.3）；bot 規格的 I3（`:42`）、§5 程式碼區塊（`:76-98`）、規則 3 與 4（`:104-105`），以及規則 7 表格之後新增的規則 8、9 | **golden replay**（見下）與改動前逐一相同，而且 PR 的第一個 commit 只新增 golden 檔、不動 `src`；`pnpm --filter @catan/bots exec vitest run`；`pnpm typecheck`（整個 repo）；`pnpm --filter @catan/server exec vitest run test/bots.test.ts`；server 的 diff 只有型別 |
-| PL-2 測試基礎建設 | `feat/bots-platform-harness`／`.worktrees/bots-platform-harness/` | harness 泛化、`BOT_TEST_MATRIX` 與 family 測試檔的覆蓋守門測試、保底席與全保底有界局、模組測試工具、仿 BotDriver 模式、看門狗、`BOTS_SEEDS`、timeout、bench `--profile` | 明列如下：`packages/bots/test/harness.ts`；既有的 `packages/bots/test/{policy,fair,fuzz,fallback,decisions,ck-road-building}.test.ts`；新增的 `packages/bots/test/modules/types.ts`、family 註冊與覆蓋守門測試、看門狗與仿 BotDriver 的反例測試；`packages/bots/bench/**`；`RELEASING.md` 的 pre-flight（D7）；bot 規格 `:258` 的完成閘門。不得改 `test/golden*`、`test/sf-*`、`support.test.ts`、`guard.test.ts`；`viewFor(state, playerId)` 的簽章不變 | base 矩陣行為不變：新 harness 的仿 BotDriver 模式跑 base，步數、勝者與雜湊都與 golden 相同；看門狗與仿 BotDriver 模式都有反例測試，故意卡住的假模組必須被抓到；`BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run`；`pnpm --filter @catan/bots bench 10` 與 `bench 10 --profile base-2025` |
+| PL-2 測試基礎建設 | `feat/bots-platform-harness`／`.worktrees/bots-platform-harness/` | harness 泛化、`BOT_TEST_MATRIX` 與 family 測試檔的覆蓋守門測試、保底席與全保底有界局、模組測試工具、仿 BotDriver 模式、看門狗、`BOTS_SEEDS`、timeout、bench `--profile` | 明列如下：`packages/bots/test/harness.ts`；既有的 `packages/bots/test/{policy,fair,fuzz,fallback,decisions,ck-road-building}.test.ts`；新增的 `packages/bots/test/modules/types.ts`、family 註冊檔 `packages/bots/test/families.ts`、覆蓋守門測試 `packages/bots/test/matrix.test.ts`、看門狗與仿 BotDriver 的反例測試；`packages/bots/bench/**`；`RELEASING.md` 的 pre-flight（D7）；bot 規格 `:258` 的完成閘門。不得改 `test/golden*`、`test/sf-*`、`support.test.ts`、`guard.test.ts`；`viewFor(state, playerId)` 的簽章不變 | base 矩陣行為不變：新 harness 的仿 BotDriver 模式跑 base，步數、勝者與雜湊都與 golden 相同；看門狗與仿 BotDriver 模式都有反例測試，故意卡住的假模組必須被抓到；`BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run`；`pnpm --filter @catan/bots bench 10` 與 `bench 10 --profile base-2025` |
 | PL-3 伺服器 | `feat/bots-platform-server`／`.worktrees/bots-platform-server/` | 依 `BOT_PACING` 查表；依 profile 的上限（測試可經 `BotDriverDeps.commandLimitFor` 注入）；診斷與重試；修正 `bots.test.ts` 的支援推算與「不支援」範例。`Decision` 的型別已由 PL-1 修改 | `packages/server/src/bot-driver.ts`；`packages/server/test/bots.test.ts`（`:252-264` 改用 `botsCanPlay`、`:279-291` 改用含未知模組的 fixture、新增診斷與上限測試）；可選：`docs/OPERATIONS.md:41-42` 補上診斷的說明 | `pnpm --filter @catan/server exec vitest run`；`pnpm --filter @catan/server typecheck`；診斷路徑有測試 |
 
 - **PL-1 對下游的合約**：下表列出具名匯出，最終簽章由 Architect 在 PL-1 的介面審查定案。
@@ -376,6 +376,7 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
 - **骨架的硬性規則**（golden replay 成立的前提）：模組清單為空時，每個組合點的呼叫順序都與 v0.4.0 相同，包括 `turn.pick` 消耗亂數的次數；模組候選一律接在 base 候選之後；保底的順序見 §4.1。
 - **golden replay**：
   - PR 的第一個 commit 只新增 golden 檔、不動 `src`：凍結 v0.4.0 harness 邏輯的 `test/golden/driver.ts`、錄製腳本 `test/golden/record.ts`、fixture `test/golden/base-v040.json` 與比對測試 `test/golden-base.test.ts`。driver 凍結在 PL-1，之後 PL-2 改動 harness 也不會影響它。
+  - driver 照搬 v0.4.0 harness 的設定：遊戲亂數 `seededRng(seed)`；決策種子 `botSeed('test', id, state.seq)`（`packages/bots/test/harness.ts:82`）；報價時鐘 `createOfferClock`（`:95-110`）；投影只帶 hints、不帶 events（`viewFor`，`:53-55`）；座位等級 `mixedLevels(players, seed)`（`packages/bots/test/policy.test.ts:27-29`）；對局迴圈與 `runBotGame({ seats, seed, maxSteps, onDecision })` 相同（`policy.test.ts:85-87`）。
   - 涵蓋 48 局：
     - B-GAME 的 3–6 人 × 種子 1–10（`base-2025`／`base-paired-2025`、`variable`、`mixedLevels`、5000 步）；
     - 保底席：4 人，種子 21–23，`bot2` 只走保底；
