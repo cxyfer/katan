@@ -26,10 +26,12 @@ import { act, scriptedRng } from '../../rules/test/helpers.ts';
 import { corner, emptySeafarersGame, hex, road, seafarersGame, settle, ship, side } from '../../rules/test/seafarers-helpers.ts';
 import { roadDirectionScore } from '../src/base/roads.ts';
 import { setupSpotScore } from '../src/base/setup.ts';
-import { boardModel } from '../src/board.ts';
+import { boardModel, playerYield, type BoardModel } from '../src/board.ts';
+import { PIP_VALUE, goldPipsAt, resourceWeights, settlementSpotValue, wildcardWeight } from '../src/economy.ts';
 import { heuristicPolicy, turnContext } from '../src/heuristic.ts';
 import { pirateOptions, seafarersBanditCandidates, seafarersPreroll } from '../src/modules/seafarers/bandit.ts';
 import { seafarersAnswerFrame } from '../src/modules/seafarers/frames.ts';
+import { ISLAND_SETTLEMENT, islandSettlementPlans } from '../src/modules/seafarers/plan.ts';
 import { ISLAND_VP_VALUE, islandSetupBonus, islandSites, setupShipScore, shipDiscount } from '../src/modules/seafarers/setup.ts';
 import type { TurnContext } from '../src/modules/types.ts';
 import { moduleHints } from '../src/modules/view.ts';
@@ -179,6 +181,8 @@ function blockedRoute(phase: 'preroll' | 'action' = 'preroll', pirate: 'blocking
   settle(state, 'p1', a);
   state.board.pirate = pirate === 'blocking' ? hex(state, 2, 0) : null;
   state.players[0]!.devCards = ['knight'];
+  // 航線的價值取決於 ETA（SF-2a 的計畫）：要有一副可以造船的手牌，海盜擋路才有代價。
+  giveHand(state, 'p1', { lumber: 3, wool: 2, brick: 1, grain: 1 });
   return { state, a, s, sea: hex(state, 2, 0) };
 }
 
@@ -192,23 +196,43 @@ function shipsToSite(state: GameState, s: number): number {
 // ===========================================================================
 
 describe('answerFrame: seafarers.gold', () => {
-  /** p2 的城市在金礦上（欠 2 張），擲骰者 p1；p2 的計畫是把聚落升城市，缺 3 張礦。 */
-  function goldForCityPlan() {
+  /**
+   * p2 的城市在金礦上（欠 2 張），擲骰者 p1；p2 手上有 2 穀物 1 礦，沒有發展卡可買，所以最好的計畫
+   * 是把聚落升城市，缺 2 張礦。
+   */
+  function goldForCityPlan(hand: Partial<Record<Resource, number>> = { grain: 2, ore: 1 }) {
     return goldRoll('p1', (state) => {
       settle(state, 'p2', gold(state, 0), true);
       settle(state, 'p2', corner(state, 0, 0, 0)); // 一座聚落：下一個計畫是升城市
-      giveHand(state, 'p2', { grain: 2 });
+      giveHand(state, 'p2', hand);
+      state.devDeck = [];
     });
   }
 
+  /** p2 目前最好的計畫種類。 */
+  const bestPlanOf = (state: GameState): string =>
+    turnContext(viewOf(state, 'p2'), ctxFor('p2'), 'standard').economy.plans[0]!.kind;
+
   it('picks what the best plan misses, as many as goldRequired', () => {
     const state = goldForCityPlan();
+    expect(bestPlanOf(state)).toBe('city');
     const view = viewOf(state, 'p2');
     expect(view.pending).toMatchObject({ kind: 'seafarers.gold', responders: ['p2'] });
     expect(moduleHints(view.hints, 'seafarers')?.goldRequired).toBe(2);
     for (const [name, level, seed] of RUNS) {
       const command = decide(state, 'p2', level, seed);
       expect(command, name).toEqual({ type: 'gold.choose', resources: ['ore', 'ore'] });
+      expectAccepted(state, 'p2', command);
+    }
+  });
+
+  it('follows the island plan: the ships it needs come first', () => {
+    // 手上只有 2 穀物：最好的計畫是島嶼聚落（SF-2a），下一步是一艘船（木頭＋羊毛）。金礦補船的缺口。
+    const state = goldForCityPlan({ grain: 2 });
+    expect(bestPlanOf(state)).toBe('seafarers.islandSettlement');
+    for (const [name, level, seed] of RUNS) {
+      const command = decide(state, 'p2', level, seed);
+      expect(command, name).toEqual({ type: 'gold.choose', resources: ['lumber', 'wool'] });
       expectAccepted(state, 'p2', command);
     }
   });
@@ -235,12 +259,8 @@ describe('answerFrame: seafarers.gold', () => {
 
   it('re-checks what the plan misses after every pick', () => {
     // 升城市的計畫缺 1 張穀物與 1 張礦：第一張補其中一種之後，缺口隨之縮小，第二張要補另一種。
-    const state = goldRoll('p1', (s) => {
-      settle(s, 'p2', gold(s, 0), true);
-      settle(s, 'p2', corner(s, 0, 0, 0));
-      giveHand(s, 'p2', { grain: 1, ore: 2 });
-      s.devDeck = []; // 沒有發展卡可買：最近的計畫就是升城市
-    });
+    const state = goldForCityPlan({ grain: 1, ore: 2 });
+    expect(bestPlanOf(state)).toBe('city');
     expect(moduleHints(viewOf(state, 'p2').hints, 'seafarers')?.goldRequired).toBe(2);
     for (const [name, level, seed] of RUNS) {
       const command = decide(state, 'p2', level, seed);
@@ -363,9 +383,11 @@ describe('preroll: the knight moves a pirate that blocks the planned route', () 
 
   it('without ships left there is no route for the pirate to block', () => {
     const { state } = blockedRoute();
-    const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
-    expect(seafarersPreroll(turn)).toHaveLength(1);
+    const view = viewOf(state, 'p1');
+    expect(seafarersPreroll(turnContext(view, ctxFor('p1'), 'standard'))).toHaveLength(1);
     // 同一個盤面，但這個座位的船已經用完（profile 的船數設成 0）：沒有船可造，海盜擋不住什麼。
+    // 另建一個 turn：經濟（含剩餘的船）在第一次讀取時才算並快取。
+    const turn = turnContext(view, ctxFor('p1'), 'standard');
     const spent = Object.create(turn, {
       model: { value: { ...turn.model, profile: { ...turn.model.profile, pieces: { ...turn.model.profile.pieces, ships: 0 } } } },
     }) as TurnContext;
@@ -380,7 +402,7 @@ describe('preroll: the knight moves a pirate that blocks the planned route', () 
     state.board.pirate = hex(state, 2, -1);
     ship(state, 'p2', side(state, 2, 0, 1));
     giveHand(state, 'p2', { lumber: 3, brick: 3, wool: 2 });
-    state.players[1]!.bonusPoints = 5;
+    state.players[1]!.bonusPoints = 9;
     const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
     const options = pirateOptions(turn);
     const top = options.reduce((a, b) => (b.score > a.score ? b : a));
@@ -399,7 +421,7 @@ describe('preroll: the knight moves a pirate that blocks the planned route', () 
     state.board.pirate = hex(state, 2, -1);
     ship(state, 'p2', side(state, 2, 0, 1));
     giveHand(state, 'p2', { lumber: 3, brick: 3, wool: 2 });
-    state.players[1]!.bonusPoints = 5;
+    state.players[1]!.bonusPoints = 9;
     const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
     const frame = pirateOptions(turn).find((option) => option.target === null)!;
     expect(frame.relief).toBeGreaterThanOrEqual(5);
@@ -768,6 +790,87 @@ describe('pirate scoring: raids, fronts, lead and the status quo', () => {
   });
 });
 
+describe('pirate route: the island plan the bot would follow', () => {
+  const withPirate = (model: BoardModel, hexIndex: number | null): BoardModel => ({
+    ...model,
+    view: { ...model.view, board: { ...model.view.board, pirate: hexIndex } },
+  });
+  /** SF-2a 的島嶼聚落計畫（bot 實際在走的那一份）最好的一個。 */
+  const bestIslandPlan = (turn: TurnContext, model: BoardModel) =>
+    islandSettlementPlans({ model, level: turn.level, base: turn.economy })[0];
+  const planScore = (turn: TurnContext, model: BoardModel): number => (bestIslandPlan(turn, model)?.score ?? 0) / PIP_VALUE;
+
+  it('the frame frees exactly the drop of the best island plan, in weighted pips', () => {
+    const { state } = blockedRoute();
+    const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
+    const free = bestIslandPlan(turn, withPirate(turn.model, null))!;
+    const now = bestIslandPlan(turn, turn.model)!;
+    expect(free.kind).toBe(ISLAND_SETTLEMENT);
+    // 海盜把計畫逼到另一個目標與更長的航線。
+    expect(now.vertex).not.toBe(free.vertex);
+    expect(now.ships!.length).toBeGreaterThan(free.ships!.length);
+    const drop = (free.score - now.score) / PIP_VALUE;
+    expect(drop).toBeGreaterThan(5);
+    const frame = pirateOptions(turn).find((option) => option.target === null)!;
+    expect(frame.relief).toBeCloseTo(drop, 9);
+  });
+
+  it('every hex frees what the plan gains by moving the pirate there', () => {
+    const { state } = blockedRoute();
+    const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
+    const options = pirateOptions(turn).filter((option) => option.target !== null);
+    expect(options.length).toBeGreaterThan(5);
+    const now = planScore(turn, turn.model);
+    let blocking = 0;
+    for (const option of options) {
+      const there = planScore(turn, withPirate(turn.model, option.target));
+      expect(option.relief, `hex ${option.target}`).toBeCloseTo(there - now, 9);
+      if (there <= now + 1e-9) blocking += 1;
+    }
+    // 其中有仍然擋路（或更糟）的海格，也有完全解除的。
+    expect(blocking).toBeGreaterThan(0);
+    expect(options.some((option) => option.relief > 5)).toBe(true);
+  });
+
+  it('uses the bot ship limit: a four-ship detour still counts as a route', () => {
+    const probe = blockedRoute();
+    const t0 = turnContext(viewOf(probe.state, 'p1'), ctxFor('p1'), 'standard');
+    const plans = islandSettlementPlans({ model: t0.model, level: 'standard', base: t0.economy });
+    // 海盜擋著時：一個三艘船的目標，加上兩個要四艘船的（它們是前者的延伸）。
+    expect(plans.slice(0, 3).map((plan) => plan.ships!.length)).toEqual([3, 4, 4]);
+    // 另一個四艘船的目標被 p2 占走，它與三艘船的目標相鄰（距離規則）：只剩下要四艘船的繞路。
+    const { state } = blockedRoute();
+    settle(state, 'p2', plans[2]!.vertex!);
+    const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
+    const now = bestIslandPlan(turn, turn.model)!;
+    const free = bestIslandPlan(turn, withPirate(turn.model, null))!;
+    expect(now.vertex).toBe(plans[1]!.vertex);
+    expect(now.ships).toHaveLength(4);
+    expect(free.ships!.length).toBeLessThan(4);
+    const frame = pirateOptions(turn).find((option) => option.target === null)!;
+    expect(frame.relief).toBeGreaterThan(5);
+    expect(frame.relief).toBeCloseTo((free.score - now.score) / PIP_VALUE, 9);
+  });
+
+  it('what the pirate costs depends on whether the plan can be paid for (ETA, by design)', () => {
+    const rich = blockedRoute().state;
+    const poor = blockedRoute().state;
+    giveHand(poor, 'p1', {});
+    const reliefOf = (state: GameState) => {
+      const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
+      return { turn, frame: pirateOptions(turn).find((option) => option.target === null)! };
+    };
+    const a = reliefOf(rich);
+    const b = reliefOf(poor);
+    expect(a.frame.relief).toBeGreaterThan(5);
+    // 湊不出船的手牌：限制你的不是海盜（ETA 很長，計畫分數趨近 0），所以不值得為它動用騎士。
+    expect(b.frame.relief).toBeLessThan(1);
+    expect(b.frame.relief).toBeCloseTo(planScore(b.turn, withPirate(b.turn.model, null)) - planScore(b.turn, b.turn.model), 9);
+    expect(seafarersPreroll(a.turn)).toHaveLength(1);
+    expect(seafarersPreroll(b.turn)).toEqual([]);
+  });
+});
+
 // ===========================================================================
 // setup：登島加權與「路或船」
 // ===========================================================================
@@ -804,13 +907,13 @@ describe('setup: islands and ships', () => {
 
     it('islandSites follows the claimed islands even on a model it has already seen', () => {
       const turn = turnContext(setupView(), ctxFor('p1'), 'standard');
-      const open = islandSites(turn.model, []);
-      const taken = islandSites(turn.model, [2, 3, 4]);
+      const open = islandSites(turn.model, new Set<number>());
+      const taken = islandSites(turn.model, new Set([2, 3, 4]));
       expect(taken.map((site) => site.vertex)).toEqual(open.map((site) => site.vertex));
       expect(open.length).toBeGreaterThan(10);
       open.forEach((site, index) => expect(site.value - taken[index]!.value).toBeCloseTo(ISLAND_VP_VALUE, 9));
       // 只領取其中一座島：只有那座島的點不再有 +2 VP。
-      islandSites(turn.model, [3]).forEach((site, index) => {
+      islandSites(turn.model, new Set([3])).forEach((site, index) => {
         expect(open[index]!.value - site.value).toBeCloseTo(site.island === 3 ? ISLAND_VP_VALUE : 0, 9);
       });
     });
@@ -818,8 +921,35 @@ describe('setup: islands and ships', () => {
     it('the +2 VP only counts under the New Shores island rules', () => {
       const turn = turnContext(setupView(), ctxFor('p1'), 'standard');
       const plain = { ...turn.model, profile: { ...turn.model.profile, scenario: null } };
-      const withRules = islandSites(turn.model, []);
-      islandSites(plain, []).forEach((site, index) => expect(withRules[index]!.value - site.value).toBeCloseTo(ISLAND_VP_VALUE, 9));
+      const withRules = islandSites(turn.model, new Set<number>());
+      islandSites(plain, new Set<number>()).forEach((site, index) => expect(withRules[index]!.value - site.value).toBeCloseTo(ISLAND_VP_VALUE, 9));
+    });
+
+    it('S5: gold is counted once — a gold site is worth the plain site plus one gold value', () => {
+      const turn = turnContext(setupView(), ctxFor('p1'), 'standard');
+      const { model } = turn;
+      // 全部領取：只比點數與金礦，不含 +2 VP。
+      const claimed = new Set([2, 3, 4]);
+      const sites = islandSites(model, claimed);
+      const goldSites = sites.filter((site) => goldPipsAt(model, site.vertex) > 0);
+      expect(goldSites.length).toBeGreaterThan(1);
+      // 同一個盤面、同樣的點數，只是金礦格不再是金礦：非金礦的對照點。
+      const plainModel: BoardModel = { ...model, hexGold: model.hexGold.map(() => false) };
+      const plain = new Map(islandSites(plainModel, claimed).map((site) => [site.vertex, site.value]));
+      const weights = resourceWeights(model);
+      const mine = playerYield(model, model.selfId, true);
+      for (const site of goldSites) {
+        // 價值就是 settlementSpotValue：金礦已經在裡面，這裡不能再加一次。
+        expect(site.value).toBeCloseTo(settlementSpotValue(model, site.vertex, weights, mine), 9);
+        // 與對照點的差額＝一次金礦價值：點數 × 萬用資源權重，加上補缺資源的加成（開局沒有任何產能，必有缺口）。
+        const extra = goldPipsAt(model, site.vertex) * wildcardWeight(weights) + 2.5;
+        expect(extra).toBeGreaterThan(0);
+        expect(site.value - plain.get(site.vertex)!).toBeCloseTo(extra, 9);
+      }
+      // 不鄰接金礦的點不受影響。
+      const others = sites.filter((site) => goldPipsAt(model, site.vertex) === 0);
+      expect(others.length).toBeGreaterThan(1);
+      for (const site of others) expect(site.value).toBeCloseTo(plain.get(site.vertex)!, 9);
     });
 
     it('is pure: the same inputs give the same answer, and the rng is untouched', () => {
