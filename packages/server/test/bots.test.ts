@@ -8,14 +8,16 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import {
   RESOURCES,
+  getProfile,
   registerFixtureProfile,
+  registerRulesModule,
   type GameState,
   type GameView,
   type Resource,
 } from '@catan/rules';
 import {
   BOT_LEVELS as POLICY_BOT_LEVELS,
-  BOT_RULE_MODULES,
+  botsCanPlay,
   createBotPolicy,
   fallbackPolicy,
   type BotCommand,
@@ -36,6 +38,15 @@ const FAST_BOTS: BotSettings = {
   offerPatienceMs: 150,
   retryMs: 50,
 };
+
+/**
+ * Bot 模組不認得的 rules module。用它造出「Bot 不能玩」的 profile，以及「沒有任何 Bot 模組
+ * 回答」的模組 frame；兩者都不依賴某個真實擴充的 Bot 支援進度。
+ */
+const UNKNOWN_MODULE = 'fixture-bots-unknown';
+const UNKNOWN_SUBPHASE = 'choosing';
+registerRulesModule({ id: UNKNOWN_MODULE, actionHints: () => ({ phase: UNKNOWN_SUBPHASE }) });
+const UNKNOWN_PROFILE = registerFixtureProfile('fixture-bots-modules', [3, 4], { ruleModules: [UNKNOWN_MODULE] });
 
 let harness: TestHarness;
 
@@ -257,8 +268,7 @@ describe('B-ROOM bot seats', () => {
     expect(profiles.find((profile) => profile.id === 'base-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'base-paired-2025')?.botSeats).toBe(true);
     for (const profile of profiles) {
-      const modules = [...profile.expansions, ...profile.variants];
-      expect(profile.botSeats).toBe(modules.every((module) => BOT_RULE_MODULES.includes(module)));
+      expect(profile.botSeats).toBe(botsCanPlay(getProfile(profile.id)!));
     }
     expect(profiles.some((profile) => !profile.botSeats)).toBe(true);
   });
@@ -278,11 +288,11 @@ describe('B-ROOM bot seats', () => {
 
   it('blocks start and further bots once the profile runs modules bots cannot play', async () => {
     // Rooms refuse bot seats in such profiles, so the state is forced here.
-    const fixture = registerFixtureProfile('fixture-bots-modules', [3, 4], { expansions: ['seafarers'] });
+    expect(botsCanPlay(UNKNOWN_PROFILE)).toBe(false);
     const host = await harness.client('ModuleBots');
     const room = await createRoom(host, { bots: 1 });
     host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
-    await harness.service.repo.updateRoom(room.id, { profile_id: fixture.id });
+    await harness.service.repo.updateRoom(room.id, { profile_id: UNKNOWN_PROFILE.id });
 
     const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
     expect(view.startBlockers.map((blocker) => blocker.messageId)).toContain('blocker.botsUnsupported');
@@ -687,47 +697,57 @@ describe('B-LIFE bot scheduling', () => {
     const deps = driverDeps();
     const original = deps.policyFor;
     // 規則允許重複回應同一報價，這個策略因此會無限迴圈。
-    const chatty: BotPolicy = {
-      decide(view, ctx) {
-        const offer = view.offers.find((candidate) => candidate.status === 'open' && candidate.from !== ctx.selfId);
-        return offer ? { type: 'trade.respond', offerId: offer.id, response: 'declined' } : fallbackPolicy.decide(view, ctx);
-      },
-    };
-    deps.policyFor = () => chatty;
-    const { host, roomId, gameId, botIds } = await botGame(2);
-    await rewrite(gameId, (game) => {
-      game.turn.phase = 'action';
-      game.turn.setup = null;
-      game.turn.seat = 0;
-      grant(game, host.playerId!, 'wool', 1);
-    });
-    host.expectOk(
-      await host.post(`/api/games/${gameId}/commands`, {
-        commandId: id('offer'),
-        expectedRevision: await revision(gameId),
-        command: { type: 'trade.offer', to: 'all', give: { wool: 1 }, want: { ore: 1 } },
-      }),
-    );
+    deps.policyFor = () => chattyPolicy;
+    const { host, roomId, gameId, botIds } = await chattyTable();
     const drop = await liveSocket(harness.service, roomId, host.playerId!);
     try {
-      const count = async (botId: string) =>
-        (
-          await harness.service.repo.db.all<{ total: number }>(
-            `SELECT COUNT(*) AS total FROM command_receipts WHERE game_id = ? AND player_id = ? AND outcome = 'accepted'`,
-            [gameId, botId],
-          )
-        )[0]!.total;
       await waitFor(
-        async () => (await count(botIds[0]!)) >= 40 && (await count(botIds[1]!)) >= 40,
+        async () => (await acceptedCount(gameId, botIds[0]!)) >= 40 && (await acceptedCount(gameId, botIds[1]!)) >= 40,
         'both bots to reach the per-window limit',
       );
       const settled = await revision(gameId);
       await sleep(150);
       expect(await revision(gameId)).toBe(settled);
-      expect(Number(await count(botIds[0]!))).toBe(40);
-      expect(Number(await count(botIds[1]!))).toBe(40);
+      expect(await acceptedCount(gameId, botIds[0]!)).toBe(40);
+      expect(await acceptedCount(gameId, botIds[1]!)).toBe(40);
     } finally {
       deps.policyFor = original;
+      await drop();
+    }
+  });
+
+  it('asks the injected limit hook for the profile of the game', async () => {
+    const deps = driverDeps();
+    const original = { policyFor: deps.policyFor, commandLimitFor: deps.commandLimitFor };
+    const asked = new Set<string>();
+    deps.policyFor = () => chattyPolicy;
+    deps.commandLimitFor = (profileId) => {
+      asked.add(profileId);
+      return 6;
+    };
+    const logs = captureLogs(deps);
+    const { host, roomId, gameId, botIds } = await chattyTable();
+    const drop = await liveSocket(harness.service, roomId, host.playerId!);
+    try {
+      await waitFor(
+        async () => (await acceptedCount(gameId, botIds[0]!)) >= 6 && (await acceptedCount(gameId, botIds[1]!)) >= 6,
+        'both bots to reach the injected limit',
+      );
+      const settled = await revision(gameId);
+      await sleep(150);
+      // 超過上限後只走保底策略，保底對這個報價沒有動作，所以不再提交任何指令。
+      expect(await revision(gameId)).toBe(settled);
+      expect(await acceptedCount(gameId, botIds[0]!)).toBe(6);
+      expect(await acceptedCount(gameId, botIds[1]!)).toBe(6);
+      expect([...asked]).toEqual(['base-2025']);
+      const reached = logs.entries.filter((entry) => entry.message.startsWith('bot command limit reached'));
+      // 每次 revision 變動都會再記一筆，所以只比對有哪些 Bot 達到上限。
+      expect(new Set(reached.map((entry) => entry.meta.botId))).toEqual(new Set(botIds));
+      // 非行動者達到上限並不欠動作，所以不會被當成卡住。
+      expect(logs.entries.filter(isIdleDutyWarn)).toEqual([]);
+    } finally {
+      logs.restore();
+      Object.assign(deps, original);
       await drop();
     }
   });
@@ -740,6 +760,7 @@ describe('B-LIFE bot scheduling', () => {
     config.offerCollectMs = 300;
     config.offerPatienceMs = 3000;
     deps.policyFor = () => traderPolicy;
+    const logs = captureLogs(deps);
     const { host, roomId, gameId, botIds } = await botGame(2);
     await traderTable(gameId, host.playerId!, botIds[0]!);
     const drop = await liveSocket(harness.service, roomId, host.playerId!);
@@ -761,8 +782,11 @@ describe('B-LIFE bot scheduling', () => {
       const human = (await state(gameId)).players.find((player) => player.id === host.playerId)!;
       expect(human.resources.lumber).toBe(1);
       expect(human.resources.brick).toBe(1);
+      // 收集窗內行動的 Bot 在等自己報價的回應：策略沒有動作，但不算欠動作。
+      expect(logs.entries.filter(isIdleDutyWarn)).toEqual([]);
     } finally {
       Object.assign(config, saved);
+      logs.restore();
       deps.policyFor = original;
       await drop();
     }
@@ -787,6 +811,131 @@ describe('B-LIFE bot scheduling', () => {
       await waitFor(async () => actorOf(await state(gameId)) !== botIds[0], 'the bot to end its turn');
     } finally {
       deps.policyFor = original;
+      await drop();
+    }
+  });
+});
+
+describe('B-LIFE pacing', () => {
+  it('delays each command by its pacing entry, scaled, and uses the default for unknown types', () => {
+    const deps = driverDeps();
+    const config = harness.service.config.bots;
+    const saved = { ...config };
+    const savedNow = deps.now;
+    const now = 1_000_000;
+    deps.now = () => now;
+    config.delayScale = 2;
+    const driver = harness.service.bots as unknown as {
+      delayFor(command: BotCommand, runtime: { changedAt: number; rolledAt: number | null }): number;
+    };
+    try {
+      const runtime = { changedAt: now, rolledAt: null };
+      // base 的節奏不因合併 BOT_PACING 而改變（目前沒有任何模組宣告 pacing）。
+      expect(driver.delayFor({ type: 'setup.placeRoad' }, runtime)).toBe(1200);
+      expect(driver.delayFor({ type: 'trade.offer' }, runtime)).toBe(2400);
+      expect(driver.delayFor({ type: 'dev.playKnight' }, runtime)).toBe(2200);
+      expect(driver.delayFor({ type: 'unknown.module.command' }, runtime)).toBe(1800);
+      // 擲骰演出期間，任何指令都至少等到演出結束。
+      expect(driver.delayFor({ type: 'trade.withdraw' }, { changedAt: now, rolledAt: now })).toBe(5600);
+    } finally {
+      Object.assign(config, saved);
+      deps.now = savedNow;
+    }
+  });
+});
+
+describe('B-LIFE owed action without an answer', () => {
+  const frameKind = `${UNKNOWN_MODULE}.choose`;
+
+  /** 把局面改成 fixture profile 的模組 frame；`responders` 的第一位就是欠動作的人。 */
+  async function openFrame(gameId: string, responders: string[]): Promise<number> {
+    return rewrite(gameId, (game) => {
+      game.profileId = UNKNOWN_PROFILE.id;
+      game.turn.phase = 'action';
+      game.turn.setup = null;
+      game.turn.seat = 0;
+      game.pending = { kind: frameKind, module: UNKNOWN_MODULE, responders, data: {} };
+    });
+  }
+
+  it('warns and retries at the fixed interval while no bot module answers a frame', async () => {
+    const deps = driverDeps();
+    const config = harness.service.config.bots;
+    const saved = { ...config };
+    config.retryMs = 120;
+    const logs = captureLogs(deps);
+    const { host, roomId, gameId, botIds } = await botGame(2);
+    const [botId] = botIds as [string, string];
+    const drop = await liveSocket(harness.service, roomId, host.playerId!);
+    try {
+      const stuck = await openFrame(gameId, [botId]);
+      harness.service.bots.kick(gameId);
+      await waitFor(async () => logs.entries.filter(isIdleDutyWarn).length >= 3, 'three diagnostic warnings');
+
+      // 每筆 warn 都說明卡在哪裡：誰欠動作、什麼 frame、回應者與模組子階段。
+      const warns = logs.entries.filter(isIdleDutyWarn);
+      for (const warn of warns) {
+        expect(warn.meta).toMatchObject({
+          gameId,
+          botId,
+          owed: 'frame',
+          revision: stuck,
+          turnPhase: 'action',
+          pendingKind: frameKind,
+          responders: [botId],
+          retryMs: 120,
+        });
+        expect(warn.meta.modulePhases).toEqual({ [UNKNOWN_MODULE]: UNKNOWN_SUBPHASE });
+      }
+      // 只報告欠動作的那一位；另一個 Bot 不是第一位回應者。
+      expect(new Set(warns.map((warn) => warn.meta.botId))).toEqual(new Set([botId]));
+
+      // 重試由計時器固定間隔觸發：狀態沒變時相鄰兩次至少相隔 retryMs，而不是連續評估。
+      const gaps = warns.slice(1).map((warn, index) => warn.at - warns[index]!.at);
+      expect(Math.min(...gaps)).toBeGreaterThanOrEqual(100);
+      const before = warns.length;
+      await sleep(500);
+      // 500 ms 內最多再重試 5 次；熱迴圈會在這段時間產生數百筆。
+      expect(logs.entries.filter(isIdleDutyWarn).length - before).toBeLessThanOrEqual(6);
+      // 卡住期間沒有送出任何指令，狀態也沒有變。
+      expect(await revision(gameId)).toBe(stuck);
+      expect(await acceptedCount(gameId, botId)).toBe(0);
+
+      // 狀態改變後，下一次重試就能接手：這裡直接改寫快照，不經過提交通知。
+      const resolved = await rewrite(gameId, (game) => {
+        game.pending = null;
+        game.turn.seat = game.players.findIndex((player) => player.id === botId);
+      });
+      await waitFor(async () => (await revision(gameId)) > resolved, 'the retry to resume the bot');
+      const settled = logs.entries.filter(isIdleDutyWarn).length;
+      await sleep(400);
+      expect(logs.entries.filter(isIdleDutyWarn).length).toBe(settled);
+    } finally {
+      Object.assign(config, saved);
+      logs.restore();
+      await drop();
+    }
+  });
+
+  it('stays quiet while a person is the first responder of the frame', async () => {
+    const deps = driverDeps();
+    const config = harness.service.config.bots;
+    const saved = { ...config };
+    config.retryMs = 60;
+    const logs = captureLogs(deps);
+    const { host, roomId, gameId, botIds } = await botGame(2);
+    const drop = await liveSocket(harness.service, roomId, host.playerId!);
+    try {
+      const frozen = await openFrame(gameId, [host.playerId!, botIds[0]!]);
+      harness.service.bots.kick(gameId);
+      await sleep(400);
+      // 輪不到 Bot 回答的 frame 不是 Bot 欠的動作：不記 warn，也不改變狀態。
+      expect(logs.entries.filter(isIdleDutyWarn)).toEqual([]);
+      expect(await revision(gameId)).toBe(frozen);
+      expect(harness.service.bots.stats().timers).toBe(0);
+    } finally {
+      Object.assign(config, saved);
+      logs.restore();
       await drop();
     }
   });
@@ -924,6 +1073,70 @@ describe('B-LIFE restart and shutdown', () => {
   });
 });
 
+/** 規則允許重複回應同一報價，這個策略因此會無限迴圈。 */
+const chattyPolicy: BotPolicy = {
+  decide(view, ctx) {
+    const offer = view.offers.find((candidate) => candidate.status === 'open' && candidate.from !== ctx.selfId);
+    return offer ? { type: 'trade.respond', offerId: offer.id, response: 'declined' } : fallbackPolicy.decide(view, ctx);
+  },
+};
+
+/** 真人在行動階段開一張全桌報價，兩個 Bot 都是只能回應的非行動者。 */
+async function chattyTable(): Promise<{ host: TestClient; roomId: string; gameId: string; botIds: string[] }> {
+  const table = await botGame(2);
+  await rewrite(table.gameId, (game) => {
+    game.turn.phase = 'action';
+    game.turn.setup = null;
+    game.turn.seat = 0;
+    grant(game, table.host.playerId!, 'wool', 1);
+  });
+  table.host.expectOk(
+    await table.host.post(`/api/games/${table.gameId}/commands`, {
+      commandId: id('offer'),
+      expectedRevision: await revision(table.gameId),
+      command: { type: 'trade.offer', to: 'all', give: { wool: 1 }, want: { ore: 1 } },
+    }),
+  );
+  return table;
+}
+
+async function acceptedCount(gameId: string, playerId: string): Promise<number> {
+  const rows = await harness.service.repo.db.all<{ total: number }>(
+    `SELECT COUNT(*) AS total FROM command_receipts WHERE game_id = ? AND player_id = ? AND outcome = 'accepted'`,
+    [gameId, playerId],
+  );
+  return Number(rows[0]!.total);
+}
+
+interface LogEntry {
+  level: string;
+  message: string;
+  meta: Record<string, unknown>;
+  /** 記錄當下的時間（毫秒）。 */
+  at: number;
+}
+
+/** 攔截排程器的記錄（仍轉交原本的 logger）；測試結束要呼叫 `restore`。 */
+function captureLogs(deps: BotDriverDeps): { entries: LogEntry[]; restore(): void } {
+  const original = deps.log;
+  const entries: LogEntry[] = [];
+  deps.log = (level, message, meta) => {
+    entries.push({ level, message, meta: (meta ?? {}) as Record<string, unknown>, at: Date.now() });
+    original(level, message, meta);
+  };
+  return {
+    entries,
+    restore() {
+      deps.log = original;
+    },
+  };
+}
+
+/** 「欠動作卻沒有動作」的診斷 warn。 */
+function isIdleDutyWarn(entry: LogEntry): boolean {
+  return entry.level === 'warn' && entry.message.startsWith('bot owes an action');
+}
+
 /** 測試用策略：行動者開一次全桌報價，收集窗後與同意者結算，逾時則撤回。 */
 const traderPolicy: BotPolicy = {
   decide(view, ctx) {
@@ -985,6 +1198,7 @@ async function eventTimes(gameId: string): Promise<Record<string, number>> {
 
 describe('B-GAME full table on the service', () => {
   it('plays a whole game with the real strategy through the command path', async () => {
+    const logs = captureLogs(driverDeps());
     const { host, roomId, gameId, botIds } = await botGame(3, { capacity: 4 });
     const disconnect = await liveSocket(harness.service, roomId, host.playerId!);
     // 真人座位也交給同一套策略，透過 HTTP 送指令；Bot 座位由排程器推進。
@@ -1018,6 +1232,9 @@ describe('B-GAME full table on the service', () => {
       else humanCommands += 1;
     }
     await disconnect();
+    logs.restore();
+    // 正常對局中策略或保底總有動作，診斷不應該出現。
+    expect(logs.entries.filter(isIdleDutyWarn)).toEqual([]);
     expect(view?.result?.playerId).toBeTruthy();
     expect(humanCommands).toBeGreaterThan(10);
     const game = await state(gameId);
