@@ -313,7 +313,7 @@ describe('rule fixes adopted by the policy', () => {
   });
 
   it('extends from the player side of an opponent cut when planning roads', () => {
-    const { state } = newBotGame(4, 71);
+    const { state } = newBotGame({ profileId: 'base-2025', players: 4, seed: 71 });
     const owner = state.players[0]!.id;
     const opponent = state.players[1]!.id;
     state.board.buildings = state.board.buildings.map(() => null);
