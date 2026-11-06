@@ -804,7 +804,8 @@ export class Repository {
   }
 
   /**
-   * 未結束且沒有任何活動的對局，最舊的優先。「活動」是三個時間戳的最新者：
+   * 未結束且沒有任何活動的對局，依 `games.updated_at` 由舊到新（房間與連線
+   * 時間只決定是否符合資格，不影響順序）。「活動」是三個時間戳的最新者：
    * 對局寫入（`games.updated_at`）、房間異動（`rooms.updated_at`）與成員連線
    * （`memberships.last_seen_at`）。時間戳皆為同格式的 ISO 字串，可直接以字串
    * 比較；不使用 `GREATEST`/多參數 `MAX`，兩種資料庫共用同一條查詢。

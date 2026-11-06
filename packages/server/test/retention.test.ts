@@ -11,7 +11,7 @@ import type { GameState } from '@catan/rules';
 import type { GameSnapshot, RoomView, ServerMessage } from '@catan/protocol';
 import { loadConfig } from '../src/config.ts';
 import { startService, type Logger } from '../src/main.ts';
-import { runSetupOverApi, startHarness, startedGame, type TestHarness } from './helpers.ts';
+import { runSetupOverApi, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
 const DAY_MS = 86_400_000;
 const daysAgo = (days: number): string => new Date(Date.now() - days * DAY_MS).toISOString();
@@ -65,9 +65,17 @@ describe('GAME_RETENTION_DAYS parsing', () => {
     expect(loadConfig({ GAME_RETENTION_DAYS: '0' }).gameRetentionDays).toBe(0);
     expect(loadConfig({ GAME_RETENTION_DAYS: '30' }).gameRetentionDays).toBe(30);
     expect(loadConfig({ GAME_RETENTION_DAYS: '3650' }).gameRetentionDays).toBe(3650);
-    // 非法值一律停用，不會因為誤設而提早終止對局。
-    for (const bad of ['-1', '1.5', '0.5', 'abc', '7d', '3651', 'NaN', 'Infinity']) {
-      expect(loadConfig({ GAME_RETENTION_DAYS: bad }).gameRetentionDays, bad).toBe(0);
+    // 前後空白會被忽略；只接受十進位數字。
+    expect(loadConfig({ GAME_RETENTION_DAYS: ' 7 ' }).gameRetentionDays).toBe(7);
+    expect(loadConfig({ GAME_RETENTION_DAYS: '\t30\n' }).gameRetentionDays).toBe(30);
+    expect(loadConfig({ GAME_RETENTION_DAYS: '007' }).gameRetentionDays).toBe(7);
+    // 其他寫法一律停用，不會因為誤設而提早終止對局。
+    const bad = [
+      '-1', '1.5', '0.5', 'abc', '7d', '3651', 'NaN', 'Infinity',
+      '1e1', '1E1', '0x10', '0b11', '7.0', '3650.0', '+7', '7_0', '٧', '0', '00', '10000', '999999999999999999999',
+    ];
+    for (const value of bad) {
+      expect(loadConfig({ GAME_RETENTION_DAYS: value }).gameRetentionDays, value).toBe(0);
     }
   });
 
@@ -286,6 +294,46 @@ describe('retention enabled (7 days)', () => {
     expect((await harness.service.repo.findGame(gameId))?.status).toBe('playing');
   });
 
+  it.each([
+    ['a player reconnects', 'seen'],
+    ['the room changes', 'room'],
+  ] as const)('keeps a game when %s just before the terminal write', async (_label, signal) => {
+    const { gameId, roomId, clients } = await startedGame(harness, 3);
+    await backdate(harness, roomId, gameId, 30);
+    const repo = harness.service.repo;
+    // 在重新確認之後、終止交易開始之前插入一筆活動：確認與寫入必須在同一個交易內，
+    // 否則這局會被誤終止。
+    const original = repo.transaction.bind(repo);
+    let injected = false;
+    repo.transaction = (async (fn: () => Promise<unknown>) => {
+      if (!injected) {
+        injected = true;
+        if (signal === 'seen') {
+          await repo.updateMembership(roomId, clients[0]!.playerId!, {
+            connected: 1,
+            last_seen_at: new Date().toISOString(),
+          });
+        } else {
+          await repo.updateRoom(roomId, { status: 'playing' });
+        }
+      }
+      return original(fn);
+    }) as typeof repo.transaction;
+    try {
+      const before = (await repo.findGame(gameId))!;
+      const result = await harness.service.games.expireIdleGames();
+      expect(injected).toBe(true);
+      expect(result.expired).toEqual([]);
+      expect(result.failed).toEqual([]);
+      const after = (await repo.findGame(gameId))!;
+      expect(after.status).toBe('playing');
+      expect(after.revision).toBe(before.revision);
+      expect((await repo.findRoom(roomId))?.status).toBe('playing');
+    } finally {
+      repo.transaction = original;
+    }
+  });
+
   it('processes a bounded batch, oldest first', async () => {
     const tables: { gameId: string; roomId: string; age: number }[] = [];
     for (const age of [10, 30, 20]) {
@@ -363,6 +411,102 @@ describe('retention enabled (7 days)', () => {
     } finally {
       socket.close();
     }
+  });
+});
+
+describe('finished games cannot be suspended or resumed again', () => {
+  let harness: TestHarness;
+
+  beforeAll(async () => {
+    harness = await startHarness({ gameRetentionDays: 7 });
+  });
+
+  afterAll(async () => {
+    await harness.close();
+  });
+
+  type Ending = 'completed' | 'abandoned by agreement' | 'expired';
+
+  /** 讓一局以指定方式結束，結束前先留下一個尚未成立的暫停提案。 */
+  async function endGame(ending: Ending) {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const open = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    const repo = harness.service.repo;
+    if (ending === 'completed') {
+      // 勝利已提交：直接寫入終局狀態（與一般指令取得勝利後的資料相同）。
+      const row = (await repo.findGame(gameId))!;
+      const state = JSON.parse(row.state_json) as GameState;
+      state.result = { playerId: state.players[0]!.id, reason: 'victory', atSeq: state.seq };
+      await repo.db.run('UPDATE games SET state_json = ?, status = ? WHERE id = ?', [
+        JSON.stringify(state),
+        'completed',
+        gameId,
+      ]);
+      await repo.updateRoom(roomId, { status: 'completed' });
+    } else if (ending === 'abandoned by agreement') {
+      await repo.updateMembership(roomId, third.playerId!, { connected: 0, disconnected_at: daysAgo(0) });
+      const abandon = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/abandon`, {}));
+      const applied = second.expectOk<{ abandoned: boolean }>(
+        await second.post(`/api/games/${gameId}/abandon`, { proposalId: abandon.proposalId, approve: true }),
+      );
+      expect(applied.abandoned).toBe(true);
+      // 離線的席位回來，之後所有人都在線，才能走完暫停／恢復的同意流程。
+      await repo.updateMembership(roomId, third.playerId!, { connected: 1, disconnected_at: null });
+    } else {
+      await backdate(harness, roomId, gameId, 30);
+      expect((await harness.service.games.expireIdleGames()).expired).toEqual([gameId]);
+    }
+    return { clients, gameId, roomId, proposalId: open.proposalId, status: ending === 'completed' ? 'completed' : 'abandoned' };
+  }
+
+  it.each(['completed', 'abandoned by agreement', 'expired'] as const)(
+    'rejects suspend, consent and resume after the game is %s',
+    async (ending) => {
+      const { clients, gameId, roomId, proposalId, status } = await endGame(ending);
+      const [host, second] = clients as [TestClient, TestClient];
+      const repo = harness.service.repo;
+      const snapshotBefore = await repo.findGame(gameId);
+
+      host.expectError(await host.post(`/api/games/${gameId}/suspend`, {}), 'E_GAME_OVER');
+      second.expectError(
+        await second.post(`/api/games/${gameId}/suspend`, { proposalId, approve: true }),
+        'E_GAME_OVER',
+      );
+      for (const client of clients) {
+        client.expectError(await client.post(`/api/games/${gameId}/resume`, { ready: true }), 'E_GAME_OVER');
+      }
+
+      expect((await repo.findRoom(roomId))?.status).toBe(status);
+      const after = (await repo.findGame(gameId))!;
+      expect(after.status).toBe(status);
+      expect(after.revision).toBe(snapshotBefore!.revision);
+      expect(after.state_json).toBe(snapshotBefore!.state_json);
+      // 被拒絕的恢復不留下任何就緒紀錄。
+      expect(await repo.listGameReady(gameId)).toEqual([]);
+      const resumable = host.expectOk<{ games: { gameId: string }[] }>(await host.get('/api/games'));
+      expect(resumable.games.map((game) => game.gameId)).not.toContain(gameId);
+    },
+  );
+
+  it('still lets an unfinished table suspend and resume', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    const [host, ...others] = clients as [TestClient, TestClient, TestClient];
+    const proposal = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    for (const client of others) {
+      await client.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+    }
+    expect((await harness.service.repo.findRoom(roomId))?.status).toBe('suspended');
+    let resumed = false;
+    for (const client of clients) {
+      const result = client.expectOk<{ resumed: boolean }>(
+        await client.post(`/api/games/${gameId}/resume`, { ready: true }),
+      );
+      resumed = result.resumed;
+    }
+    expect(resumed).toBe(true);
+    expect((await harness.service.repo.findRoom(roomId))?.status).toBe('playing');
   });
 });
 

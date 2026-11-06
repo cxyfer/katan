@@ -31,7 +31,15 @@ import type {
   SaveReceipt,
 } from '@catan/protocol';
 import type { ServerConfig } from './config.ts';
-import { digestPayload, newId, type GameRow, type MemberRow, type Repository, type RoomRow } from './db.ts';
+import {
+  digestPayload,
+  newId,
+  type GameRow,
+  type IdleGameRow,
+  type MemberRow,
+  type Repository,
+  type RoomRow,
+} from './db.ts';
 import { ServiceError, type RoomService } from './rooms.ts';
 import { humanMembers, isBotMember } from './bot-seats.ts';
 
@@ -467,11 +475,27 @@ export class GameCoordinator {
     });
   }
 
+  /**
+   * 終局的對局（completed／abandoned，或規則狀態已有結果）不可再暫停或恢復，
+   * 否則已結束的桌子會被存檔流程改回 suspended／playing（§4.6：第一個有效的
+   * 終局轉換勝出）。
+   */
+  private assertNotTerminal(game: GameRow): void {
+    const finished =
+      game.status === 'completed' ||
+      game.status === 'abandoned' ||
+      !!(JSON.parse(game.state_json) as GameState).result;
+    if (finished) {
+      throw new ServiceError('E_GAME_OVER', 'error.E_GAME_OVER', { gameId: game.id }, 409);
+    }
+  }
+
   /** All-seat save/suspend proposal; the table freezes once everyone consents. */
   async proposeSuspend(playerId: string, gameId: string): Promise<{ proposalId: string }> {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
       await this.requireSeat(game, playerId);
+      this.assertNotTerminal(game);
       const existing = await this.repo.findOpenGameProposal(gameId, 'suspend');
       if (existing) return { proposalId: existing.id };
       const proposalId = newId('suspend');
@@ -498,6 +522,7 @@ export class GameCoordinator {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
       await this.requireSeat(game, playerId);
+      this.assertNotTerminal(game);
       const proposal = await this.repo.findOpenGameProposal(gameId, 'suspend');
       if (!proposal || proposal.id !== proposalId) {
         throw new ServiceError('E_NO_PROPOSAL', 'error.E_NO_PROPOSAL', { proposalId }, 404);
@@ -542,6 +567,7 @@ export class GameCoordinator {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
       await this.requireSeat(game, playerId);
+      this.assertNotTerminal(game);
       await this.repo.setGameReady(gameId, playerId, ready);
       // 只等真人；Bot 永遠在線且就緒。
       const memberships = humanMembers(await this.repo.listMembers(game.room_id));
@@ -675,8 +701,8 @@ export class GameCoordinator {
 
   /**
    * §4.6 營運者保留機制：終止超過 `gameRetentionDays` 天沒有活動的未結束對局
-   * （進行中、interrupted、suspended 皆是）。每次最多處理 `limit` 筆最舊的
-   * 候選；單筆失敗只記 warn，不中斷整批。停用（0 天）時什麼都不做。
+   * （進行中、interrupted、suspended 皆是）。每次最多處理 `limit` 筆（依對局最後
+   * 寫入時間由舊到新）候選；單筆失敗只記 warn，不中斷整批。停用（0 天）時什麼都不做。
    */
   async expireIdleGames(
     now: Date = new Date(),
@@ -702,19 +728,25 @@ export class GameCoordinator {
   /** 與一般指令共用每局的鎖：取得鎖之後重新確認仍閒置、仍未結束，勝利優先。 */
   private expireIdleGame(gameId: string, cutoff: string): Promise<boolean> {
     return this.withLock(gameId, async () => {
-      // 排隊期間可能已有指令、連線或終局；任何活動都讓這局保留。
-      const [idle] = await this.repo.listIdleGames(cutoff, 1, gameId);
-      if (!idle) return false;
       const fresh = await this.requireGame(gameId);
       const current = JSON.parse(fresh.state_json) as GameState;
+      // 排隊期間可能已有終局（勝利優先）。
       if (current.result) return false;
       const abandoned = abandonGame(current, 'expired');
-      await this.repo.transaction(async () => {
+      const idle = await this.repo.transaction<IdleGameRow | null>(async () => {
+        // 閒置確認與終止寫入放在同一個交易：連線、房主轉移等不經每局鎖的活動
+        // 不會在兩者之間插入。SQLite 的交易會讓其他呼叫者排隊，視窗完全關閉；
+        // PostgreSQL 為 READ COMMITTED，只能縮小視窗，無法完全消除。
+        const [row] = await this.repo.listIdleGames(cutoff, 1, gameId);
+        if (!row) return null;
         await this.repo.saveGame(gameId, abandoned, fresh.revision + 1, 'abandoned', null);
         await this.repo.appendEvents(gameId, fresh.revision + 1, abandoned.log.slice(-1));
         await this.repo.updateRoom(fresh.room_id, { status: 'abandoned' });
         await this.repo.cancelOpenGameProposals(gameId);
+        return row;
       });
+      // 期間出現了新活動，這局保留。
+      if (!idle) return false;
       this.deps.rooms.broadcastRoom(fresh.room_id);
       // 仍連線的客戶端要拿到帶有 `expired` 原因的終局投影，而不只是房間狀態。
       this.publish(fresh.room_id, gameId, fresh.revision + 1, abandoned.log.slice(-1));

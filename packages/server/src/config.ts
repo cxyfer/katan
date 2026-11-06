@@ -67,12 +67,15 @@ function bounded(value: string | undefined, fallback: number, min: number, max: 
 }
 
 /**
- * 保留天數：只接受 1–3650 的整數，`0`、空值與其他任何值都視為停用。誤設成
- * 小數或負數時寧可不回收，也不要提早終止玩家的對局。
+ * 保留天數：只接受 1–3650 的十進位整數字串（允許前後空白）；`0`、空值與其他任何
+ * 寫法（`1e1`、`0x10`、`7.0`、`+7`、`7d`、負數、小數）都視為停用。誤設時寧可
+ * 不回收，也不要提早終止玩家的對局。
  */
 function retentionDays(value: string | undefined): number {
-  const parsed = bounded(value, 0, 0, 3650);
-  return Number.isInteger(parsed) ? parsed : 0;
+  const text = value?.trim() ?? '';
+  if (!/^[0-9]{1,4}$/.test(text)) return 0;
+  const parsed = Number(text);
+  return parsed >= 1 && parsed <= 3650 ? parsed : 0;
 }
 
 function bool(value: string | undefined, fallback: boolean): boolean {

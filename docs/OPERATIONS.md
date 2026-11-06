@@ -24,7 +24,7 @@ tested (SPEC §10).
 | `CHAT_HISTORY_PAGE_SIZE` | `50` | Chat page size cap |
 | `ROOM_CAPACITY_MAX` | `6` | Room capacity cap |
 | `ROOM_IDLE_TTL_MINUTES` | `720` | Stale-lobby sweep horizon (never applied to resumable/suspended games) |
-| `GAME_RETENTION_DAYS` | `0` | Ends unfinished games (in progress, interrupted or suspended) with no activity for this many days; `0` disables. Whole numbers `1`–`3650` only: any other value disables. See [Retention](#retention) |
+| `GAME_RETENTION_DAYS` | `0` | Ends unfinished games (in progress, interrupted or suspended) with no activity for this many days; `0` disables. Decimal whole numbers `1`–`3650` only (surrounding whitespace is ignored); anything else, including `1e1`, `0x10`, `7.0`, `+7`, negatives and text, disables. See [Retention](#retention) |
 | `GAME_RETENTION_SWEEP_INTERVAL_MS` | `600000` | How often the retention sweep runs (minimum `1000`; ignored while retention is disabled) |
 | `DEFAULT_TURN_CLOCK_SECONDS` | `0` | Advisory clock default (`0` = off) |
 | `DEFAULT_DISCONNECT_GRACE_SECONDS` | `300` | Disconnect grace default |
@@ -207,11 +207,18 @@ own notice.
   abandonment, serialized with player commands: status `abandoned`, no winner,
   result reason `expired` (shown as "Closed after a long period of inactivity").
   It leaves every player's resume list and rejects further commands with
-  `E_GAME_OVER`. A command or a victory committed first wins: the sweep
-  rechecks under the per-game lock and skips a game that became active or
-  finished. Connected clients receive the room and a final snapshot.
+  `E_GAME_OVER`, and a finished game cannot be suspended or resumed again. A
+  command or a victory committed first wins: the sweep takes the per-game lock
+  and skips a game that finished, then rechecks idleness in the same database
+  transaction as the terminal write, so a game that became active in between
+  is kept. SQLite serializes that transaction against other writers, which
+  closes the window; PostgreSQL (read committed) only narrows it, so a player
+  who connects within the last few milliseconds before the commit can still
+  find the game ended. Connected clients receive the room and a final snapshot.
 - **When.** At startup, then every `GAME_RETENTION_SWEEP_INTERVAL_MS`. Each pass
-  handles at most 100 games, oldest first; a full pass that made progress is
+  handles at most 100 games, ordered by the game's last write
+  (`games.updated_at`, oldest first; the room and connection times only decide
+  whether a game is eligible, not its place in the queue); a full pass that made progress is
   followed by another after one second, so a backlog clears without one long
   transaction burst. One game failing is logged at `warn`
   (`game retention failed`, with the game id) and does not stop the others.
