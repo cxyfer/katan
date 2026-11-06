@@ -145,12 +145,9 @@ describe('SocketClient', () => {
     sockets[2]!.simulateClose();
     expect(delays).toHaveLength(before);
   });
-});
 
-describe('SocketClient.unsubscribe', () => {
-  function connected(options: { unsubscribeTimeoutMs?: number } = {}) {
+  it('does not send before the transport is open, and replays the subscription when it opens', () => {
     const sockets: FakeSocket[] = [];
-    const scheduled: Array<() => void> = [];
     const client = new SocketClient({
       url: 'ws://example/ws',
       factory: () => {
@@ -158,13 +155,42 @@ describe('SocketClient.unsubscribe', () => {
         sockets.push(socket);
         return socket;
       },
-      schedule: (handler) => void scheduled.push(handler),
       onMessage: () => undefined,
+    });
+    client.connect();
+    client.subscribe({ roomId: 'r1' });
+    client.ping();
+    expect(sockets[0]!.sent).toEqual([]);
+    sockets[0]!.simulateOpen();
+    expect(sockets[0]!.sent.map((raw) => JSON.parse(raw))).toEqual([{ type: 'subscribe', payload: { roomId: 'r1' } }]);
+  });
+});
+
+describe('SocketClient.unsubscribe', () => {
+  function connected(options: { unsubscribeTimeoutMs?: number; closeWaitMs?: number } = {}) {
+    const sockets: FakeSocket[] = [];
+    const scheduled: Array<() => void> = [];
+    const delays: number[] = [];
+    const statuses: string[] = [];
+    const received: ServerMessage[] = [];
+    const client = new SocketClient({
+      url: 'ws://example/ws',
+      factory: () => {
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket;
+      },
+      schedule: (handler, delay) => {
+        delays.push(delay);
+        scheduled.push(handler);
+      },
+      onMessage: (message) => void received.push(message),
+      onStatus: (status) => void statuses.push(status),
       ...options,
     });
     client.connect();
     sockets[0]!.simulateOpen();
-    return { client, sockets, scheduled };
+    return { client, sockets, scheduled, delays, statuses, received };
   }
   const ack = (roomId: string | null = 'r1') => JSON.stringify({ type: 'unsubscribed', payload: { roomId } });
   const sentOf = (socket: FakeSocket) => socket.sent.map((raw) => JSON.parse(raw));
@@ -293,7 +319,7 @@ describe('SocketClient.unsubscribe', () => {
   });
 
   describe('when the acknowledgement never arrives', () => {
-    async function timedOut(options: { unsubscribeTimeoutMs?: number } = { unsubscribeTimeoutMs: 100 }) {
+    async function timedOut(options: { unsubscribeTimeoutMs?: number; closeWaitMs?: number } = { unsubscribeTimeoutMs: 100 }) {
       const context = connected(options);
       context.client.subscribe({ roomId: 'r1', gameId: 'g1' });
       const pending = context.client.unsubscribe();
@@ -325,7 +351,7 @@ describe('SocketClient.unsubscribe', () => {
     it('waits for the transport to close, up to a cap', async () => {
       vi.useFakeTimers();
       try {
-        const { client, sockets } = await timedOut();
+        const { client, sockets } = await timedOut({ unsubscribeTimeoutMs: 100, closeWaitMs: 60_000 });
         let closedWait = false;
         void client.whenTransportDropped(5_000).then(() => { closedWait = true; });
         await vi.advanceTimersByTimeAsync(4_000);
@@ -338,19 +364,141 @@ describe('SocketClient.unsubscribe', () => {
       }
     });
 
-    it('gives up waiting when the transport never finishes closing', async () => {
-      vi.useFakeTimers();
-      try {
-        const { client } = await timedOut();
-        let waited = false;
-        void client.whenTransportDropped(300).then(() => { waited = true; });
-        await vi.advanceTimersByTimeAsync(299);
-        expect(waited).toBe(false);
-        await vi.advanceTimersByTimeAsync(1);
-        expect(waited).toBe(true);
-      } finally {
-        vi.useRealTimers();
-      }
+    describe('a transport that never reports its close (half-open)', () => {
+      it('is abandoned once the wait is up: the waiter returns and a new connection opens at once', async () => {
+        vi.useFakeTimers();
+        try {
+          const { client, sockets, scheduled, statuses } = await timedOut({ unsubscribeTimeoutMs: 100, closeWaitMs: 60_000 });
+          let waited = false;
+          void client.whenTransportDropped(300).then(() => { waited = true; });
+          await vi.advanceTimersByTimeAsync(299);
+          expect(waited).toBe(false);
+          expect(sockets).toHaveLength(1);
+          await vi.advanceTimersByTimeAsync(1);
+          expect(waited).toBe(true);
+          // 立即另開新連線，不經退避排程。
+          expect(sockets).toHaveLength(2);
+          expect(scheduled).toHaveLength(0);
+          expect(statuses.slice(-2)).toEqual(['closed', 'connecting']);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('is abandoned by the client itself even when nobody is waiting', async () => {
+        vi.useFakeTimers();
+        try {
+          const { sockets } = await timedOut({ unsubscribeTimeoutMs: 100, closeWaitMs: 400 });
+          await vi.advanceTimersByTimeAsync(399);
+          expect(sockets).toHaveLength(1);
+          await vi.advanceTimersByTimeAsync(1);
+          expect(sockets).toHaveLength(2);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('defaults the abandon wait to one second', async () => {
+        vi.useFakeTimers();
+        try {
+          const { sockets } = await timedOut();
+          await vi.advanceTimersByTimeAsync(FORCED_CLOSE_WAIT_MS - 1);
+          expect(sockets).toHaveLength(1);
+          await vi.advanceTimersByTimeAsync(1);
+          expect(sockets).toHaveLength(2);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('replays the remembered subscription only once the new socket opens, never on the old one', async () => {
+        vi.useFakeTimers();
+        try {
+          const { client, sockets } = await timedOut({ unsubscribeTimeoutMs: 100, closeWaitMs: 400 });
+          const sentToOld = sockets[0]!.sent.length;
+          // 還在等舊連線關閉時，只記住訂閱，不送進舊 transport。
+          client.subscribe({ roomId: 'r2', gameId: 'g2' });
+          await vi.advanceTimersByTimeAsync(400);
+          expect(sockets).toHaveLength(2);
+          // 新連線尚未 open：什麼都不送。
+          client.subscribe({ roomId: 'r2', gameId: 'g2' });
+          expect(sockets[1]!.sent).toEqual([]);
+          sockets[1]!.simulateOpen();
+          expect(sentOf(sockets[1]!)).toEqual([{ type: 'subscribe', payload: { roomId: 'r2', gameId: 'g2' } }]);
+          // 舊 transport 從頭到尾沒有再收到任何 send。
+          expect(sockets[0]!.sent).toHaveLength(sentToOld);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('ignores a late close, open or message from the abandoned transport', async () => {
+        vi.useFakeTimers();
+        try {
+          const { client, sockets, scheduled, statuses, received } = await timedOut({ unsubscribeTimeoutMs: 100, closeWaitMs: 400 });
+          await vi.advanceTimersByTimeAsync(400);
+          expect(sockets).toHaveLength(2);
+          sockets[1]!.simulateOpen();
+          const statusCount = statuses.length;
+          sockets[0]!.simulateClose();
+          sockets[0]!.simulateOpen();
+          sockets[0]!.simulateMessage(JSON.stringify({ type: 'pong', payload: { at: 'x' } }));
+          // 沒有第二次重連、沒有第三條連線，也沒有狀態或訊息被改動。
+          expect(scheduled).toHaveLength(0);
+          expect(sockets).toHaveLength(2);
+          expect(statuses).toHaveLength(statusCount);
+          expect(received).toEqual([]);
+          // 新連線不受影響，仍然可用。
+          client.subscribe({ roomId: 'r3' });
+          expect(sentOf(sockets[1]!)).toEqual([{ type: 'subscribe', payload: { roomId: 'r3' } }]);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('keeps backing off if the new connection also fails, instead of storming', async () => {
+        vi.useFakeTimers();
+        try {
+          const { sockets, scheduled, delays } = await timedOut({ unsubscribeTimeoutMs: 100, closeWaitMs: 400 });
+          await vi.advanceTimersByTimeAsync(400);
+          sockets[1]!.simulateClose();
+          scheduled[0]!();
+          sockets[2]!.simulateClose();
+          expect(delays).toEqual([1000, 2000]);
+          expect(sockets).toHaveLength(3);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('does nothing more once the caller closed the client', async () => {
+        vi.useFakeTimers();
+        try {
+          const { client, sockets, scheduled } = await timedOut({ unsubscribeTimeoutMs: 100, closeWaitMs: 400 });
+          client.close();
+          await vi.advanceTimersByTimeAsync(10_000);
+          expect(sockets).toHaveLength(1);
+          expect(scheduled).toHaveLength(0);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('is not abandoned when the close arrives in time', async () => {
+        vi.useFakeTimers();
+        try {
+          const { sockets, scheduled } = await timedOut({ unsubscribeTimeoutMs: 100, closeWaitMs: 400 });
+          sockets[0]!.simulateClose();
+          await vi.advanceTimersByTimeAsync(10_000);
+          // 走既有的重連（一次），沒有重複另開連線。
+          expect(scheduled).toHaveLength(1);
+          expect(sockets).toHaveLength(1);
+          scheduled[0]!();
+          expect(sockets).toHaveLength(2);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
     });
 
     it('defaults to a one second wait for the close', () => {

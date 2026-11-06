@@ -699,8 +699,44 @@ describe('leaving the table', () => {
       keepAndLeave();
       await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
       expect(sockets[0]!.closeCount).toBe(1);
+      // 等不到關閉就放棄舊連線並另開新的。
+      await waitFor(() => expect(sockets).toHaveLength(2));
       await screen.findByTestId('resume-list');
     });
+
+    it('reopens the socket when the close stalls, and a failed leave resubscribes only on the new one', async () => {
+      const api = createFakeApi({
+        room: duoRoom({ status: 'abandoned' }),
+        snapshot: makeSnapshot(makeView({ result: { playerId: null, reason: 'abandoned' } }), 13),
+      });
+      api.leaveRoom = async () => NETWORK_FAILURE;
+      const { sockets } = await enterReconnectingTable(api, {
+        unsubscribeTimeoutMs: 60,
+        closeWaitMs: 100,
+        configure: (socket) => { socket.autoAck = false; socket.autoClose = false; },
+      });
+      fireEvent.click(await screen.findByTestId('back-to-lobby'));
+      expect((await screen.findByTestId('toast')).textContent).toBeTruthy();
+      expect(screen.getByTestId('result-screen')).toBeTruthy();
+      // 舊 transport 的 close 一直沒完成：被放棄，立即另開新 socket。
+      await waitFor(() => expect(sockets).toHaveLength(2));
+      const [stalled, fresh] = sockets as [PushSocket, PushSocket];
+      // 新 socket 還沒 open 之前，訂閱只被記住，沒有送給任何一條連線；舊 transport 也沒有收到還原的訂閱。
+      expect(fresh.sent).toEqual([]);
+      expect(stalled.subscribes()).toEqual([
+        { type: 'subscribe', payload: { roomId: 'r1', gameId: 'g1' } },
+        { type: 'subscribe', payload: {} },
+      ]);
+      act(() => fresh.open());
+      expect(fresh.subscribes()).toEqual([{ type: 'subscribe', payload: { roomId: 'r1', gameId: 'g1' } }]);
+      expect(stalled.subscribes()).toHaveLength(2);
+      // 舊 transport 事後才報告關閉：不會再觸發重連，也不會冒出第三條連線。
+      await act(async () => {
+        stalled.finishClose();
+        await new Promise((resolve) => setTimeout(resolve, 1300));
+      });
+      expect(sockets).toHaveLength(2);
+    }, 15_000);
 
     it('does not drop the connection when the server acknowledges in time', async () => {
       const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });

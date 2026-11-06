@@ -107,6 +107,11 @@ export interface SocketClientOptions {
   maxBackoffMs?: number;
   /** 等待 `unsubscribed` 確認的上限；預設 `UNSUBSCRIBE_ACK_TIMEOUT_MS`。 */
   unsubscribeTimeoutMs?: number;
+  /**
+   * 強制關閉的 transport 最多可以多久不回報 `onClose`，超過就放棄它並另開新連線；預設 `FORCED_CLOSE_WAIT_MS`。
+   * 半斷的連線可能永遠等不到 `onClose`。
+   */
+  closeWaitMs?: number;
 }
 
 /**
@@ -126,7 +131,9 @@ export class SocketClient {
   /** 進行中的取消訂閱；重複呼叫共用同一個，不重送訊息。 */
   #unsubscribing: { promise: Promise<UnsubscribeResult>; settle: (result: UnsubscribeResult) => void } | null = null;
   /** 取消訂閱逾時而強制關閉、但 `onClose` 還沒到的 transport。 */
-  #dropping: { socket: SocketLike; closed: Promise<void>; markClosed: () => void } | null = null;
+  #dropping: { socket: SocketLike; closed: Promise<void>; markClosed: () => void; watchdog: ReturnType<typeof setTimeout> } | null = null;
+  /** 已放棄的舊 transport：它之後遲到的事件一律忽略，不能再觸發重連或改動目前連線的狀態。 */
+  readonly #abandoned = new WeakSet<SocketLike>();
 
   constructor(options: SocketClientOptions) {
     this.#options = options;
@@ -149,6 +156,7 @@ export class SocketClient {
     const socket = this.#factory(this.#options.url);
     this.#socket = socket;
     socket.onOpen(() => {
+      if (this.#abandoned.has(socket)) return;
       this.#isOpen = true;
       this.#attempt = 0;
       this.#options.onStatus?.('open');
@@ -157,6 +165,7 @@ export class SocketClient {
       }
     });
     socket.onMessage((data) => {
+      if (this.#abandoned.has(socket)) return;
       const message = parseServerMessage(data);
       if (!message) return;
       if (message.type === 'unsubscribed') this.#unsubscribing?.settle({ outcome: 'acked', ack: message.payload });
@@ -166,6 +175,8 @@ export class SocketClient {
       // `onClose` always follows; nothing to do beyond surfacing the state.
     });
     socket.onClose(() => {
+      // 已放棄的舊 transport 遲到的 close：連線早已另開，不能再清掉新連線或排第二次重連。
+      if (this.#abandoned.has(socket)) return;
       this.#socket = null;
       this.#isOpen = false;
       this.#markDropped(socket);
@@ -181,7 +192,8 @@ export class SocketClient {
   }
 
   #rawSend(message: ClientMessage): void {
-    if (!this.#socket) return;
+    // transport 還沒 open（連線中、關閉中或已關閉）時不送：訂閱已記住，新連線 `onOpen` 會重送。
+    if (!this.#socket || !this.#isOpen) return;
     try {
       this.#socket.send(JSON.stringify(message));
     } catch {
@@ -237,7 +249,7 @@ export class SocketClient {
     return promise;
   }
 
-  /** 強制關閉 transport（不設 `closedByCaller`）；`onClose` 到時走既有的重連。 */
+  /** 強制關閉 transport（不設 `closedByCaller`）；`onClose` 到時走既有的重連，等不到就放棄它（見 `#abandon`）。 */
   #drop(socket: SocketLike): void {
     // 已經不是目前的連線（先一步關閉或被取代），沒有東西要關。
     if (this.#socket !== socket || this.#dropping) return;
@@ -245,7 +257,11 @@ export class SocketClient {
     const closed = new Promise<void>((resolve) => {
       markClosed = resolve;
     });
-    this.#dropping = { socket, closed, markClosed };
+    const watchdog = globalThis.setTimeout(
+      () => this.#abandon(socket),
+      this.#options.closeWaitMs ?? FORCED_CLOSE_WAIT_MS,
+    );
+    this.#dropping = { socket, closed, markClosed, watchdog };
     // 關閉交握完成前不再視為可用，但保留 `#socket`，讓 `onClose` 的重連邏輯接手。
     this.#isOpen = false;
     try {
@@ -257,16 +273,38 @@ export class SocketClient {
 
   #markDropped(socket: SocketLike): void {
     if (this.#dropping?.socket !== socket) return;
+    globalThis.clearTimeout(this.#dropping.watchdog);
     this.#dropping.markClosed();
     this.#dropping = null;
   }
 
   /**
-   * 取消訂閱逾時後，等被強制關閉的舊 transport 真的關閉（`onClose`），最多等 `maxMs`。沒有待關閉的
-   * transport 就立刻 resolve。關閉交握走完，伺服器已處理這條連線的 close，之後送的 `/leave` 才不會
-   * 看到它還在線；超過上限就放棄等待（半斷的連線等不到），由呼叫端照常送 `/leave`。
+   * 強制關閉的 transport 一直等不到 `onClose`（半斷的連線）：放棄它。之後它遲到的任何事件都被忽略，
+   * 不會再觸發第二次重連；清掉 `#socket` 並立即另開一條新連線（走既有的 `#open()`），`#attempt` 照常
+   * 加一，新連線若也連不上，後續的重連退避會跟著拉長，不會形成重連風暴。呼叫端已經 `close()` 就什麼都不做。
    */
-  async whenTransportDropped(maxMs: number = FORCED_CLOSE_WAIT_MS): Promise<void> {
+  #abandon(socket: SocketLike): void {
+    const dropping = this.#dropping;
+    if (!dropping || dropping.socket !== socket || this.#socket !== socket) return;
+    globalThis.clearTimeout(dropping.watchdog);
+    this.#abandoned.add(socket);
+    this.#dropping = null;
+    this.#socket = null;
+    this.#isOpen = false;
+    dropping.markClosed();
+    this.#options.onStatus?.('closed');
+    if (this.#closedByCaller) return;
+    this.#attempt += 1;
+    this.#open();
+  }
+
+  /**
+   * 取消訂閱逾時後，等被強制關閉的舊 transport 真的關閉（`onClose`），最多等 `maxMs`（預設 `closeWaitMs`）。
+   * 沒有待關閉的 transport 就立刻 resolve。關閉交握走完，伺服器已處理這條連線的 close，之後送的 `/leave`
+   * 才不會看到它還在線。到上限仍沒關閉就放棄那條 transport 並另開新連線（半斷的連線等不到 `onClose`），
+   * 之後的訂閱走新連線；呼叫端照常送 `/leave`。
+   */
+  async whenTransportDropped(maxMs: number = this.#options.closeWaitMs ?? FORCED_CLOSE_WAIT_MS): Promise<void> {
     const dropping = this.#dropping;
     if (!dropping) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -278,6 +316,7 @@ export class SocketClient {
     } finally {
       globalThis.clearTimeout(timer);
     }
+    this.#abandon(dropping.socket);
   }
 
   ping(): void {
@@ -287,8 +326,11 @@ export class SocketClient {
   close(): void {
     this.#closedByCaller = true;
     this.#unsubscribing?.settle({ outcome: 'disconnected' });
-    this.#dropping?.markClosed();
-    this.#dropping = null;
+    if (this.#dropping) {
+      globalThis.clearTimeout(this.#dropping.watchdog);
+      this.#dropping.markClosed();
+      this.#dropping = null;
+    }
     this.#socket?.close();
     this.#socket = null;
     this.#isOpen = false;

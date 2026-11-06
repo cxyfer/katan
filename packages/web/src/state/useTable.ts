@@ -1200,6 +1200,7 @@ export function useTable(options: UseTableOptions): TableController {
       url: socketUrl,
       ...(options.socketFactory ? { factory: options.socketFactory } : {}),
       ...(options.unsubscribeTimeoutMs === undefined ? {} : { unsubscribeTimeoutMs: options.unsubscribeTimeoutMs }),
+      ...(options.closeWaitMs === undefined ? {} : { closeWaitMs: options.closeWaitMs }),
       onStatus: (status) => {
         dispatch({ type: 'socket-status', status });
         if (status === 'open') dispatch({ type: 'connection', connection: 'online' });
@@ -1273,7 +1274,7 @@ export function useTable(options: UseTableOptions): TableController {
       client.close();
       socketRef.current = null;
     };
-  }, [options.connectSocket, options.socketFactory, options.unsubscribeTimeoutMs, refreshGame, receiveSnapshot, socketUrl, dispatch]);
+  }, [options.connectSocket, options.socketFactory, options.unsubscribeTimeoutMs, options.closeWaitMs, refreshGame, receiveSnapshot, socketUrl, dispatch]);
 
   useEffect(() => {
     const client = socketRef.current;
