@@ -47,12 +47,14 @@
   width: auto; max-width: 112px; min-height: var(--hud-size); height: var(--hud-size);
   background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
 }
-.screen--game[data-layout="compact-landscape"] .status-strip .table-fullscreen {
+.screen--game[data-layout="compact-landscape"] .status-strip .table-fullscreen,
+.screen--game[data-layout="compact-landscape"] .status-strip .table-leave {
   display: grid; place-items: center; width: var(--hud-size); min-width: var(--hud-size);
   height: var(--hud-size); min-height: var(--hud-size); padding: 0;
   background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
 }
-.screen--game[data-layout="compact-landscape"] .status-strip .table-fullscreen > span { display: none; }
+.screen--game[data-layout="compact-landscape"] .status-strip .table-fullscreen > span,
+.screen--game[data-layout="compact-landscape"] .status-strip .table-leave > span { display: none; }
 .screen--game[data-layout="compact-landscape"] > .table-fullscreen-error { top: calc(var(--hud-gap) + var(--hud-size) + var(--hud-gap)); }
 
 /* ---------- 棋盤：延伸到整個畫面高度 ---------- */

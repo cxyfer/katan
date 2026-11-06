@@ -19,6 +19,7 @@ import type {
   CommandReceipt,
   GameEvent,
   GameSnapshot,
+  LeaveRoomResult,
   Locale,
   Notice,
   RoomPolicy,
@@ -26,7 +27,7 @@ import type {
   ServerConfigView,
 } from '@catan/protocol';
 import type { CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
-import { SocketClient, type SocketFactory } from '../api/socket.ts';
+import { FORCED_CLOSE_WAIT_MS, SocketClient, type SocketFactory } from '../api/socket.ts';
 import { detectLocale } from '../i18n/index.ts';
 import { bootAssetsFailed, type BootStepId } from './boot.ts';
 import { newChatId, newCommandId, newRequestId } from './ids.ts';
@@ -55,6 +56,7 @@ import {
   type GameSyncBoundary,
   type GameSyncCause,
   type DevCardChoice,
+  type SaveState,
   type Selection,
   type TableAction,
   type TableState,
@@ -70,7 +72,16 @@ export interface UseTableOptions {
   languages?: readonly string[];
   /** Connect the WebSocket. Tests pass `false`. */
   connectSocket?: boolean;
+  /** 等待 `/leave` 的上限（毫秒），預設 `LEAVE_TIMEOUT_MS`；測試注入較短的值。 */
+  leaveTimeoutMs?: number;
+  /** 等待伺服器確認取消訂閱的上限（毫秒），預設 `UNSUBSCRIBE_ACK_TIMEOUT_MS`；測試注入較短的值。 */
+  unsubscribeTimeoutMs?: number;
+  /** 取消訂閱逾時而強制關閉連線後，等它關閉的上限（毫秒），預設 `FORCED_CLOSE_WAIT_MS`；測試注入較短的值。 */
+  closeWaitMs?: number;
 }
+
+/** `/leave` 久久沒有回應時放棄等待，離開流程改走失敗路徑，使用者才不會永遠卡在處理中。 */
+export const LEAVE_TIMEOUT_MS = 10_000;
 
 export interface TableActions {
   bootstrap(): Promise<void>;
@@ -98,6 +109,14 @@ export interface TableActions {
   clearCommand(): void;
   saveGame(): Promise<void>;
   suspendGame(): Promise<void>;
+  /** 提議（單人桌即直接）以無勝者結束對局；成功回傳 true，失敗已以 toast 回報。 */
+  endGame(): Promise<boolean>;
+  /** 對既有的結束對局提案表態；提案已失效時重新抓房間並提示。 */
+  respondAbandon(proposalId: string, approve: boolean): Promise<void>;
+  /** 明確退出（投降）；成功回傳 true，失敗已以 toast 回報。 */
+  withdrawGame(): Promise<boolean>;
+  /** 撤回退出，回到對局。 */
+  retractWithdrawal(): Promise<boolean>;
   resumeTable(ready: boolean): Promise<void>;
   loadChat(roomId?: string, before?: number): Promise<void>;
   sendChat(text: string): Promise<void>;
@@ -134,6 +153,16 @@ function receiptNotice(receipt: CommandReceipt): Notice | null {
   return receipt.error ?? localNotice('command.rejected', { reason: '—' });
 }
 
+/** 訊息所屬的房間或對局是否為已離開的那一個。 */
+function isDeparted(
+  departed: { roomId: string | null; gameId: string | null } | null,
+  ids: { roomId?: string | null; gameId?: string | null },
+): boolean {
+  if (!departed) return false;
+  return (ids.roomId != null && ids.roomId === departed.roomId)
+    || (ids.gameId != null && ids.gameId === departed.gameId);
+}
+
 export function useTable(options: UseTableOptions): TableController {
   const { api } = options;
   const storage = useMemo(() => options.storage ?? browserStorage(), [options.storage]);
@@ -165,6 +194,11 @@ export function useTable(options: UseTableOptions): TableController {
   const syncGenerationRef = useRef(0);
   /** A newer room-list request invalidates every response still in flight. */
   const roomListRequestRef = useRef(0);
+  /**
+   * 刻意離開（保存並離開、退出、離開房間）後，伺服器處理取消訂閱前仍可能推送該房或該局的訊息；
+   * 這些訊息一律忽略，直到使用者重新進入（resume、再加入同一房）才清除。
+   */
+  const departedRef = useRef<{ roomId: string | null; gameId: string | null } | null>(null);
   /** Late-bound so `joinRoom` can fetch history without a declaration cycle. */
   const loadChatRef = useRef<TableActions['loadChat'] | null>(null);
 
@@ -254,6 +288,8 @@ export function useTable(options: UseTableOptions): TableController {
 
   const openGame = useCallback(
     async (gameId: string): Promise<void> => {
+      // 從首頁 resume：重新進入這一局，之後的推送要正常接收。
+      if (departedRef.current?.gameId === gameId) departedRef.current = null;
       gameIdRef.current = gameId;
       const generation = beginGameSync('open');
       const result = await api.getGame(gameId);
@@ -262,6 +298,7 @@ export function useTable(options: UseTableOptions): TableController {
         receiveSnapshot(result.data, generation, 'refresh');
         if (result.data.roomId) {
           roomIdRef.current = result.data.roomId;
+          if (departedRef.current?.roomId === result.data.roomId) departedRef.current = null;
           // Resume/reconnect: recover authorized recent chat history.
           void loadChatRef.current?.(result.data.roomId);
         }
@@ -414,6 +451,7 @@ export function useTable(options: UseTableOptions): TableController {
       const result = await api.joinRoom({ code: code.trim() });
       if (result.ok) {
         roomIdRef.current = result.data.id;
+        if (departedRef.current?.roomId === result.data.id) departedRef.current = null;
         applyRoom(result, 'join');
         void loadChatRef.current?.(result.data.id);
       } else {
@@ -518,28 +556,168 @@ export function useTable(options: UseTableOptions): TableController {
     }
   }, [api, applyRoom, dispatch, openGame]);
 
-  const leaveRoom = useCallback(async (): Promise<void> => {
-    const roomId = roomIdRef.current;
-    if (!roomId) return;
-    const result = await api.leaveRoom(roomId);
-    if (result.ok) {
-      if (result.data.hostTransferredTo) {
-        dispatch({
-          type: 'toast',
-          notice: localNotice('lobby.hostTransferredTo', { player: result.data.hostTransferredTo }),
+  const closeWaitMs = options.closeWaitMs ?? FORCED_CLOSE_WAIT_MS;
+
+  /** 目前牌桌的房間與對局 id（離開流程用來記錄與還原）。 */
+  const currentTableIds = useCallback((): { roomId: string | null; gameId: string | null } => {
+    const current = stateRef.current;
+    return {
+      roomId: roomIdRef.current ?? current.room?.id ?? current.game?.roomId ?? null,
+      gameId: gameIdRef.current ?? current.game?.gameId ?? current.room?.gameId ?? null,
+    };
+  }, []);
+
+  /**
+   * 離開流程的第一步：記下已離開的房與局（之後的推送一律忽略），取消訂閱並等伺服器確認。
+   * 畫面與本地狀態先不動：必須等伺服器處理完 `/leave`，使用者才可能從首頁重新進入（SPEC §4.6）。
+   * 一定要等到取消訂閱的確認（或逾時）才送 `/leave`：連線還在房內時伺服器會把 `/leave` 當成遲到或
+   * 重複的請求而忽略（`left: false`）。標記在第一個 await 之前同步設好。
+   *
+   * 回傳先前的標記（供失敗時還原），以及要帶進 `/leave` 的進房世代 `entryEpoch`：優先用確認裡的值
+   * （取消訂閱之後的目前世代）；沒有確認（逾時、未連線、本來沒訂閱）時退回開始離開前房間檢視的
+   * `viewerEntryEpoch`；兩者都沒有就不帶（`undefined`）。
+   *
+   * 取消訂閱逾時時，伺服器可能根本還沒處理它（很慢，或連線半斷而伺服器沒有心跳察覺），連線會一直
+   * 被當成在線：`SocketClient` 已強制關閉那條 transport 讓伺服器的 close handler 取消登記（既有的
+   * 重連會另開新連線，不會再訂閱）。這裡再最多等 `closeWaitMs` 讓它關閉，`/leave` 才不會搶在 close
+   * 之前到而被當成 `present`；等不到（半斷的連線）就照常送。`/leave` 帶著 `entryEpoch`，所以即使
+   * 與伺服器處理 close 的時序交錯也不會誤改狀態；最壞是回 `present`，這次刻意離開的房主移轉就退化成
+   * 斷線後由寬限計時器處理，不自動重試。
+   */
+  const beginDeparture = useCallback(
+    async (ids: { roomId: string | null; gameId: string | null }) => {
+      const previous = departedRef.current;
+      // 先記下，之後該房的推送都會被忽略。
+      const viewerEntryEpoch = stateRef.current.room?.viewerEntryEpoch;
+      departedRef.current = ids;
+      const client = socketRef.current;
+      const unsubscribed = await client?.unsubscribe();
+      if (unsubscribed?.outcome === 'timeout') await client?.whenTransportDropped(closeWaitMs);
+      const ackEpoch = unsubscribed?.outcome === 'acked' ? unsubscribed.ack.entryEpoch : null;
+      const entryEpoch: number | undefined = ackEpoch ?? viewerEntryEpoch;
+      return { previous, entryEpoch };
+    },
+    [closeWaitMs],
+  );
+
+  /** `/leave` 失敗、逾時或被忽略（`left: false`）且要留在原畫面：移除標記並重新訂閱原房間，伺服器會再推送最新狀態。 */
+  const abortDeparture = useCallback(
+    (previous: { roomId: string | null; gameId: string | null } | null): void => {
+      departedRef.current = previous;
+      const { roomId, gameId } = currentTableIds();
+      if (roomId || gameId) {
+        socketRef.current?.subscribe({
+          ...(roomId ? { roomId } : {}),
+          ...(gameId ? { gameId } : {}),
         });
       }
-      roomIdRef.current = null;
-      gameIdRef.current = null;
-      dispatch({ type: 'room', room: null });
-      dispatch({ type: 'snapshot', snapshot: null });
-      dispatch({ type: 'screen', screen: 'home' });
-      const games = await api.listGames();
-      if (games.ok) dispatch({ type: 'games', games: games.data.games });
-    } else {
-      dispatch({ type: 'toast', notice: noticeFrom(result.error) });
-    }
+    },
+    [currentTableIds],
+  );
+
+  /** 離開牌桌的本地清理：清空 id 與畫面狀態並回首頁（訂閱 effect 隨之確認已取消訂閱）。 */
+  const clearTable = useCallback((): void => {
+    roomIdRef.current = null;
+    gameIdRef.current = null;
+    dispatch({ type: 'room', room: null });
+    dispatch({ type: 'snapshot', snapshot: null });
+    dispatch({ type: 'screen', screen: 'home' });
+  }, [dispatch]);
+
+  const announceHostTransfer = useCallback(
+    (hostTransferredTo: string | null): void => {
+      if (!hostTransferredTo) return;
+      dispatch({ type: 'toast', notice: localNotice('lobby.hostTransferredTo', { player: hostTransferredTo }) });
+    },
+    [dispatch],
+  );
+
+  const refreshResumable = useCallback(async (): Promise<void> => {
+    const games = await api.listGames();
+    if (games.ok) dispatch({ type: 'games', games: games.data.games });
   }, [api, dispatch]);
+
+  /** 進行中的離開流程（`leaveRoom`、保存並離開、退出共用）；重複觸發時共用同一次，不重送 `/leave`。 */
+  const leavingRef = useRef<Promise<void> | null>(null);
+  const singleFlightLeave = useCallback((run: () => Promise<void>): Promise<void> => {
+    if (leavingRef.current) return leavingRef.current;
+    const pending = run().finally(() => {
+      leavingRef.current = null;
+    });
+    leavingRef.current = pending;
+    return pending;
+  }, []);
+
+  const leaveTimeoutMs = options.leaveTimeoutMs ?? LEAVE_TIMEOUT_MS;
+  /**
+   * 送出 `/leave`（有進房世代就帶上）並最多等 `leaveTimeoutMs`；逾時回傳 `'timeout'`。逾時後才抵達的回應
+   * 沒有任何流程在等它，所以不會改動畫面。逾時後這個請求仍可能稍後才在伺服器執行，但那時使用者可能已重新
+   * 進入：連線還在房內伺服器會忽略它（`reason: 'present'`），離開之後又重新進入過則因世代較舊而忽略
+   * （`reason: 'stale'`），都不會動到已重新進入的座位或房主。
+   */
+  const requestLeave = useCallback(
+    async (roomId: string, entryEpoch: number | undefined): Promise<ApiResult<LeaveRoomResult> | 'timeout'> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<'timeout'>((resolve) => {
+        timer = globalThis.setTimeout(() => resolve('timeout'), leaveTimeoutMs);
+      });
+      try {
+        const request = api.leaveRoom(roomId, entryEpoch === undefined ? undefined : { entryEpoch });
+        return await Promise.race([request, timeout]);
+      } finally {
+        globalThis.clearTimeout(timer);
+      }
+    },
+    [api, leaveTimeoutMs],
+  );
+
+  const leaveRoom = useCallback((): Promise<void> => {
+    const roomId = roomIdRef.current;
+    if (!roomId) return Promise.resolve();
+    return singleFlightLeave(async () => {
+      const { previous, entryEpoch } = await beginDeparture(currentTableIds());
+      const result = await requestLeave(roomId, entryEpoch);
+      if (result !== 'timeout' && result.ok && result.data.left) {
+        announceHostTransfer(result.data.hostTransferredTo);
+        clearTable();
+        await refreshResumable();
+        return;
+      }
+      // 還沒離開成功（失敗、逾時，或伺服器忽略了這次離開：`present` 仍有連線在房內、`stale` 期間有過重新進入）：
+      // 留在原畫面，恢復訂閱，讓使用者自己決定是否重試。不自動重試：重試可能刪掉另一個分頁剛建立的 membership。
+      abortDeparture(previous);
+      const notice = result === 'timeout'
+        ? localNotice('play.leave.timeoutRoom')
+        : result.ok
+          ? localNotice('play.leave.stillPresentRoom')
+          : noticeFrom(result.error);
+      dispatch({ type: 'toast', notice });
+    });
+  }, [dispatch, singleFlightLeave, announceHostTransfer, beginDeparture, abortDeparture, clearTable, currentTableIds, refreshResumable, requestLeave]);
+
+  /**
+   * 保存並離開、退出之後回首頁（SPEC §4.6：刻意離開，座位保留）。先記錄、取消訂閱並等確認，再等 `/leave`
+   * 完成（不論成敗、逾時或被忽略，存檔或退出都已成功）才清掉牌桌回首頁，所以使用者不可能在 `/leave`
+   * 完成前從首頁重新進入；失敗、逾時，或伺服器忽略離開（座位仍由其他連線使用中，或期間另一個分頁重新進入過）
+   * 只以 toast 提示，不自動重試。
+   */
+  const leaveToHome = useCallback(
+    (): Promise<void> =>
+      singleFlightLeave(async () => {
+        const ids = currentTableIds();
+        const { entryEpoch } = await beginDeparture(ids);
+        if (ids.roomId) {
+          const result = await requestLeave(ids.roomId, entryEpoch);
+          if (result === 'timeout') dispatch({ type: 'toast', notice: localNotice('play.leave.timeoutHome') });
+          else if (!result.ok) dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+          else if (!result.data.left) dispatch({ type: 'toast', notice: localNotice('play.leave.stillPresentHome') });
+          else announceHostTransfer(result.data.hostTransferredTo);
+        }
+        clearTable();
+        await refreshResumable();
+      }),
+    [dispatch, singleFlightLeave, announceHostTransfer, beginDeparture, clearTable, currentTableIds, refreshResumable, requestLeave],
+  );
 
   const closeRoom = useCallback(async (): Promise<void> => {
     const roomId = roomIdRef.current;
@@ -671,28 +849,25 @@ export function useTable(options: UseTableOptions): TableController {
 
   const saveGame = useCallback(async (): Promise<void> => {
     const gameId = gameIdRef.current;
-    if (!gameId) return;
+    if (!gameId || leavingRef.current) return;
     const requestId = newRequestId();
     dispatch({ type: 'save', state: { status: 'pending', requestId } });
     const result = await api.saveGame(gameId, requestId);
     if (result.ok && result.data.outcome === 'saved') {
-      dispatch({
-        type: 'save',
-        state: {
-          status: 'saved',
-          requestId,
-          savedAt: result.data.savedAt,
-          revision: result.data.revision,
-        },
-      });
-      dispatch({ type: 'screen', screen: 'home' });
-      const games = await api.listGames();
-      if (games.ok) dispatch({ type: 'games', games: games.data.games });
+      const saved: SaveState = {
+        status: 'saved',
+        requestId,
+        savedAt: result.data.savedAt,
+        revision: result.data.revision,
+      };
+      // 存檔已確認，但離開要等 `/leave` 完成；這段期間維持「保存中」，按鈕保持停用。
+      await leaveToHome();
+      dispatch({ type: 'save', state: saved });
     } else {
       const error = result.ok ? (result.data.error ?? null) : noticeFrom(result.error);
       dispatch({ type: 'save', state: { status: 'failed', requestId, error } });
     }
-  }, [api, dispatch]);
+  }, [api, dispatch, leaveToHome]);
 
   const suspendGame = useCallback(async (): Promise<void> => {
     const gameId = gameIdRef.current;
@@ -701,6 +876,84 @@ export function useTable(options: UseTableOptions): TableController {
     if (result.ok) applyRoom(result, 'suspend');
     else dispatch({ type: 'toast', notice: noticeFrom(result.error) });
   }, [api, applyRoom, dispatch]);
+
+  // ---------------------------------------------------------------------
+  // withdraw / end the game (SPEC §4.6)
+  // ---------------------------------------------------------------------
+
+  /** 提案、表態或退出後房間狀態會變；回應不含 RoomView，所以重新抓取（失敗時靜默，WebSocket 仍會推送）。 */
+  const refreshRoom = useCallback(async (): Promise<void> => {
+    const roomId = roomIdRef.current;
+    if (!roomId) return;
+    const result = await api.getRoom(roomId);
+    // 回應回來前已離開這個房間（保存並離開、退出）就不要再把它拉回來。
+    if (result.ok && roomIdRef.current === roomId) dispatch({ type: 'room', room: result.data });
+  }, [api, dispatch]);
+
+  /** 對局已結束：以權威的房間與投影切到結果畫面，並刷新已不再可恢復的清單。 */
+  const showEndedGame = useCallback(async (): Promise<void> => {
+    await refreshRoom();
+    await refreshGame('command');
+    const games = await api.listGames();
+    if (games.ok) dispatch({ type: 'games', games: games.data.games });
+  }, [api, dispatch, refreshRoom, refreshGame]);
+
+  const endGame = useCallback(async (): Promise<boolean> => {
+    const gameId = gameIdRef.current;
+    if (!gameId) return false;
+    const result = await api.abandonGame(gameId);
+    if (!result.ok) {
+      dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+      return false;
+    }
+    if (result.data.abandoned) await showEndedGame();
+    else await refreshRoom();
+    return true;
+  }, [api, dispatch, refreshRoom, showEndedGame]);
+
+  const respondAbandon = useCallback(
+    async (proposalId: string, approve: boolean): Promise<void> => {
+      const gameId = gameIdRef.current;
+      if (!gameId) return;
+      const result = await api.abandonGame(gameId, { proposalId, approve });
+      if (result.ok) {
+        if (result.data.abandoned) await showEndedGame();
+        else await refreshRoom();
+      } else if (result.error.code === 'E_NO_PROPOSAL') {
+        // 有人撤回退出或重新連線會讓提案失效：視為投票已取消。
+        dispatch({ type: 'toast', notice: localNotice('play.abandon.cancelled') });
+        await refreshRoom();
+      } else {
+        dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+      }
+    },
+    [api, dispatch, refreshRoom, showEndedGame],
+  );
+
+  const setWithdrawn = useCallback(
+    async (withdrawn: boolean): Promise<boolean> => {
+      const gameId = gameIdRef.current;
+      if (!gameId || leavingRef.current) return false;
+      const result = await api.withdrawGame(gameId, withdrawn);
+      if (!result.ok) {
+        dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+        return false;
+      }
+      if (result.data.abandoned) {
+        await showEndedGame();
+      } else if (withdrawn) {
+        // 比照 saveGame：座位保留，離開牌桌回首頁並刷新可恢復清單。
+        await leaveToHome();
+      } else {
+        await refreshRoom();
+      }
+      return true;
+    },
+    [api, dispatch, refreshRoom, showEndedGame, leaveToHome],
+  );
+
+  const withdrawGame = useCallback(() => setWithdrawn(true), [setWithdrawn]);
+  const retractWithdrawal = useCallback(() => setWithdrawn(false), [setWithdrawn]);
 
   const resumeTable = useCallback(
     async (ready: boolean): Promise<void> => {
@@ -893,6 +1146,10 @@ export function useTable(options: UseTableOptions): TableController {
       clearCommand,
       saveGame,
       suspendGame,
+      endGame,
+      respondAbandon,
+      withdrawGame,
+      retractWithdrawal,
       resumeTable,
       loadChat,
       sendChat,
@@ -932,6 +1189,10 @@ export function useTable(options: UseTableOptions): TableController {
       clearCommand,
       saveGame,
       suspendGame,
+      endGame,
+      respondAbandon,
+      withdrawGame,
+      retractWithdrawal,
       resumeTable,
       loadChat,
       sendChat,
@@ -957,6 +1218,8 @@ export function useTable(options: UseTableOptions): TableController {
     const client = new SocketClient({
       url: socketUrl,
       ...(options.socketFactory ? { factory: options.socketFactory } : {}),
+      ...(options.unsubscribeTimeoutMs === undefined ? {} : { unsubscribeTimeoutMs: options.unsubscribeTimeoutMs }),
+      ...(options.closeWaitMs === undefined ? {} : { closeWaitMs: options.closeWaitMs }),
       onStatus: (status) => {
         dispatch({ type: 'socket-status', status });
         if (status === 'open') dispatch({ type: 'connection', connection: 'online' });
@@ -966,13 +1229,16 @@ export function useTable(options: UseTableOptions): TableController {
       onMessage: (message) => {
         switch (message.type) {
           case 'room':
+            if (isDeparted(departedRef.current, { roomId: message.payload.id, gameId: message.payload.gameId })) break;
             dispatch({ type: 'room', room: message.payload });
             break;
           case 'snapshot':
+            if (isDeparted(departedRef.current, { roomId: message.payload.roomId, gameId: message.payload.gameId })) break;
             receiveSnapshot(message.payload, syncGenerationRef.current, 'snapshot');
             break;
           case 'events': {
             const payload = message.payload as { gameId: string; revision: number; events: GameEvent[] };
+            if (isDeparted(departedRef.current, { gameId: payload.gameId })) break;
             const current = stateRef.current.game;
             if (!current || current.gameId !== payload.gameId) break;
             const lastSeq = Math.max(current.view.seq, ...current.view.events.map((event) => event.seq));
@@ -999,6 +1265,7 @@ export function useTable(options: UseTableOptions): TableController {
             break;
           }
           case 'presence':
+            if (isDeparted(departedRef.current, { roomId: message.payload.roomId })) break;
             if (stateRef.current.room) {
               dispatch({
                 type: 'room',
@@ -1026,7 +1293,7 @@ export function useTable(options: UseTableOptions): TableController {
       client.close();
       socketRef.current = null;
     };
-  }, [options.connectSocket, options.socketFactory, refreshGame, receiveSnapshot, socketUrl, dispatch]);
+  }, [options.connectSocket, options.socketFactory, options.unsubscribeTimeoutMs, options.closeWaitMs, refreshGame, receiveSnapshot, socketUrl, dispatch]);
 
   useEffect(() => {
     const client = socketRef.current;
@@ -1036,6 +1303,10 @@ export function useTable(options: UseTableOptions): TableController {
         ...(currentRoomId ? { roomId: currentRoomId } : {}),
         ...(currentGameId ? { gameId: currentGameId } : {}),
       });
+    } else {
+      // 回到首頁的任何路徑（保存並離開、退出、離開房間）都取消訂閱，伺服器才會把這條連線視為離線。
+      // 離開流程已先取消並等過確認，這裡通常是 `idle`（沒送任何訊息）；進行中的取消訂閱會被共用。
+      void client.unsubscribe();
     }
   }, [currentRoomId, currentGameId]);
 

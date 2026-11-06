@@ -320,6 +320,32 @@ for (const testCase of cases) {
       expect(await repo.listGameReady(gameId)).toHaveLength(0);
     });
 
+    it('reports how many open game proposals a cancel actually hit', async () => {
+      const game = newId('game');
+      const add = async (id: string, kind: string, status: string): Promise<void> =>
+        repo.insertGameProposal({
+          id,
+          game_id: game,
+          kind,
+          proposed_by: 'player_a',
+          status,
+          created_at: new Date().toISOString(),
+        });
+      expect(await repo.cancelOpenGameProposals(game)).toBe(0);
+      expect(await repo.cancelOpenGameProposalsOfKind(game, 'abandon')).toBe(0);
+
+      await add(newId('abandon'), 'abandon', 'open');
+      await add(newId('suspend'), 'suspend', 'open');
+      await add(newId('abandon'), 'abandon', 'applied');
+      // 只算 open 的、指定種類的：已套用的與其他種類的不受影響。
+      expect(await repo.cancelOpenGameProposalsOfKind(game, 'abandon')).toBe(1);
+      expect(await repo.findOpenGameProposal(game, 'abandon')).toBeNull();
+      expect(await repo.findOpenGameProposal(game, 'suspend')).not.toBeNull();
+      expect(await repo.cancelOpenGameProposalsOfKind(game, 'abandon')).toBe(0);
+      expect(await repo.cancelOpenGameProposals(game)).toBe(1);
+      expect(await repo.cancelOpenGameProposals(game)).toBe(0);
+    });
+
     it('keeps bot guests out of sign-in and removes them with their room', async () => {
       const now = new Date().toISOString();
       const botRoom = newId('room');

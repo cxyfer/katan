@@ -1,0 +1,54 @@
+/* 離開對話框、退出／結束對局橫幅與玩家欄的「已退出」標記（SPEC §4.6）。 */
+
+/* 狀態列的離開鈕：尺寸沿用全螢幕鈕（table.css、compact-landscape.css），這裡只補暖色邊框提示它會離開牌桌。 */
+.status-strip .table-leave { border-color: #c9856a80; }
+.status-strip .table-leave:hover:not(:disabled) { border-color: #e9a487; }
+
+.leave-step { display: flex; flex-direction: column; gap: .9rem; margin-top: .6rem; outline: none; }
+.leave-step > p { margin: 0; }
+.leave-step h3 { margin: 0; font-size: 1.05rem; }
+.leave-step .form-actions { margin-top: .2rem; }
+.leave-option { display: flex; flex-direction: column; gap: .35rem; }
+.leave-option > .button { width: 100%; justify-content: flex-start; text-align: left; }
+.leave-option > p { margin: 0; font-size: .82rem; }
+
+/* 不可逆的選項：暖紅邊框；主要按鈕改用暖紅底，與一般的金色主要按鈕區分。 */
+.leave-danger { border-color: #d98f78; }
+.leave-danger.button--primary {
+  background: linear-gradient(135deg, #f0b3a0, #d3715a);
+  border-color: #f0b3a0;
+  color: #2a1c18;
+  box-shadow: 0 3px 0 #7d3a2c, 0 7px 18px #0002;
+}
+.leave-danger.button--primary:hover:not(:disabled) { color: #221613; background: linear-gradient(135deg, #f7c6b6, #e08a73); border-color: #f7c6b6; }
+
+/* 牌桌訊息欄的橫幅：沿用 .prompt 的密度，按鈕並排時各占一半。 */
+.screen--game .game__messages .abandon-panel { margin-bottom: 8px; }
+.screen--game .game__messages .abandon-panel:last-child { margin-bottom: 0; }
+.screen--game .game__messages .abandon-panel .muted { margin: 4px 0 0; }
+/* 投票與「撤回退出」的按鈕不能被訊息欄預設的 26–28% 高度上限裁在捲動區外；橫屏 HUD 已不限高（compact-landscape.css）。 */
+.screen--game .game__messages:has(.abandon-panel) { max-height: min(62%, 420px); }
+.abandon-panel__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.screen--game .game__messages .abandon-panel__actions .button { flex: 1 1 auto; min-height: 36px; padding: .2rem .65rem; font-size: .76rem; }
+.screen--game[data-layout="compact-landscape"] .game__messages .abandon-panel__actions .button { min-height: 40px; }
+
+/* 玩家欄：已退出的真人。小標記貼在頭像右下角，與電腦標記同位置（電腦不會退出，不會重疊）。 */
+.seat__withdrawn-mark {
+  position: absolute;
+  right: -11px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #0b2530;
+  color: #f1a58f;
+  box-shadow: 0 0 0 1px #d98f78aa;
+  pointer-events: none;
+}
+.seat__withdrawn { margin: 0 0 .35rem; border-color: #d98f7899; background: #d98f7822; color: #f6c5b5; }
+
+/* 投票橫幅內的同意確認：與動作列同寬，焦點移入時不顯示預設外框（容器本身不可操作）。 */
+.abandon-panel__confirm { outline: none; }
+.abandon-panel__confirm > p { margin: 0; }

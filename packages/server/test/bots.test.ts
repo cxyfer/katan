@@ -551,6 +551,39 @@ describe('B-LIFE bot scheduling', () => {
     await waitFor(async () => !harness.service.rooms.hasLiveConnection(roomId), 'the socket to unregister');
   });
 
+  it('stops the bots when the person unsubscribes their socket, and resumes on resubscribe', async () => {
+    const { host, roomId, gameId, botIds } = await botGame(2);
+    const socket = new WebSocket(`${harness.base.replace('http', 'ws')}/ws`, {
+      headers: { cookie: host.cookie! },
+    });
+    await new Promise<void>((resolve, reject) => {
+      socket.once('open', () => resolve());
+      socket.once('error', reject);
+    });
+    try {
+      socket.send(JSON.stringify({ type: 'subscribe', payload: { roomId } }));
+      await waitFor(async () => harness.service.rooms.hasLiveConnection(roomId), 'the socket to register');
+      // 「保存並離開」之後 client 取消訂閱：房裡沒有 live socket，Bot 不再行動。
+      socket.send(JSON.stringify({ type: 'subscribe', payload: {} }));
+      await waitFor(async () => !harness.service.rooms.hasLiveConnection(roomId), 'the socket to unsubscribe');
+      expect((await harness.service.repo.findMembership(roomId, host.playerId!))?.connected).toBe(0);
+
+      await humanStep(host, gameId);
+      await humanStep(host, gameId);
+      const frozen = await revision(gameId);
+      await sleep(150);
+      expect(await revision(gameId)).toBe(frozen);
+      expect(actorOf(await state(gameId))).toBe(botIds[0]);
+
+      socket.send(JSON.stringify({ type: 'subscribe', payload: { roomId } }));
+      await waitFor(async () => actorOf(await state(gameId)) === host.playerId, 'bots to move after resubscribing');
+      for (const botId of botIds) expect(botCounts(await state(gameId), botId).buildings).toBe(2);
+    } finally {
+      socket.close();
+    }
+    await waitFor(async () => !harness.service.rooms.hasLiveConnection(roomId), 'the socket to unregister');
+  });
+
   it('suspends and resumes with only the person voting', async () => {
     const { host, roomId, gameId, botIds } = await botGame(2);
     await humanStep(host, gameId);

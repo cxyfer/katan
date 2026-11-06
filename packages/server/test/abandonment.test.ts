@@ -150,12 +150,13 @@ describe('abandonment of an interrupted table', () => {
     const proposal = host.expectOk<{ proposalId: string }>(
       await host.post(`/api/games/${gameId}/abandon`, {}),
     );
-    // Retracting the withdrawal invalidates the vote before it commits.
+    // Retracting the withdrawal cancels the vote before it commits, so a late
+    // confirmation finds no open proposal.
     third.expectOk(await third.post(`/api/rooms/${roomId}/withdraw`, { withdrawn: false }));
-    const after = second.expectOk<{ abandoned: boolean }>(
+    second.expectError(
       await second.post(`/api/games/${gameId}/abandon`, { proposalId: proposal.proposalId, approve: true }),
+      'E_NO_PROPOSAL',
     );
-    expect(after.abandoned).toBe(false);
     const room = host.expectOk<{ status: string }>(await host.get(`/api/rooms/${roomId}`));
     expect(room.status).toBe('playing');
   });

@@ -8,6 +8,8 @@
  */
 
 import type {
+  AbandonConsentResult,
+  AbandonProposeResult,
   ApiError,
   ApiResult,
   BotLevel,
@@ -18,6 +20,8 @@ import type {
   GameOrderMode,
   GameEvent,
   GameSnapshot,
+  LeaveRoomRequest,
+  LeaveRoomResult,
   Locale,
   PlayerIdentity,
   ProfileView,
@@ -27,6 +31,7 @@ import type {
   RoomView,
   SaveReceipt,
   ServerConfigView,
+  WithdrawResult,
 } from '@catan/protocol';
 
 export type { ApiError, ApiResult };
@@ -95,7 +100,7 @@ export interface CatanApi {
   createRoom(body: CreateRoomBody): Promise<ApiResult<RoomView>>;
   joinRoom(body: { code: string }): Promise<ApiResult<RoomView>>;
   getRoom(roomId: string): Promise<ApiResult<RoomView>>;
-  leaveRoom(roomId: string): Promise<ApiResult<{ left: true; hostTransferredTo: string | null }>>;
+  leaveRoom(roomId: string, body?: LeaveRoomRequest): Promise<ApiResult<LeaveRoomResult>>;
   takeSeat(roomId: string, color: string): Promise<ApiResult<RoomView>>;
   setReady(roomId: string, ready: boolean): Promise<ApiResult<RoomView>>;
   updateSettings(roomId: string, body: RoomSettingsBody): Promise<ApiResult<RoomView>>;
@@ -117,6 +122,11 @@ export interface CatanApi {
   sendCommand(gameId: string, request: CommandRequest): Promise<ApiResult<CommandReceipt>>;
   saveGame(gameId: string, requestId: string): Promise<ApiResult<SaveReceipt>>;
   suspendGame(gameId: string, proposalId?: string): Promise<ApiResult<RoomView>>;
+  abandonGame(
+    gameId: string,
+    body?: { proposalId: string; approve: boolean },
+  ): Promise<ApiResult<AbandonProposeResult | AbandonConsentResult>>;
+  withdrawGame(gameId: string, withdrawn: boolean): Promise<ApiResult<WithdrawResult>>;
   resumeGame(gameId: string, ready: boolean): Promise<ApiResult<RoomView>>;
   getChat(roomId: string, query?: { after?: number; limit?: number }): Promise<ApiResult<ChatPage>>;
   sendChat(
@@ -229,10 +239,11 @@ export class ApiClient implements CatanApi {
   getRoom(roomId: string) {
     return this.#request<RoomView>('GET', `/api/rooms/${encodeURIComponent(roomId)}`);
   }
-  leaveRoom(roomId: string) {
-    return this.#request<{ left: true; hostTransferredTo: string | null }>(
+  leaveRoom(roomId: string, body?: LeaveRoomRequest) {
+    return this.#request<LeaveRoomResult>(
       'POST',
       `/api/rooms/${encodeURIComponent(roomId)}/leave`,
+      body,
     );
   }
   takeSeat(roomId: string, color: string) {
@@ -298,6 +309,18 @@ export class ApiClient implements CatanApi {
   suspendGame(gameId: string, proposalId?: string) {
     return this.#request<RoomView>('POST', `/api/games/${encodeURIComponent(gameId)}/suspend`, {
       proposalId,
+    });
+  }
+  abandonGame(gameId: string, body?: { proposalId: string; approve: boolean }) {
+    return this.#request<AbandonProposeResult | AbandonConsentResult>(
+      'POST',
+      `/api/games/${encodeURIComponent(gameId)}/abandon`,
+      body ?? {},
+    );
+  }
+  withdrawGame(gameId: string, withdrawn: boolean) {
+    return this.#request<WithdrawResult>('POST', `/api/games/${encodeURIComponent(gameId)}/withdraw`, {
+      withdrawn,
     });
   }
   resumeGame(gameId: string, ready: boolean) {

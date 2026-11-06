@@ -32,7 +32,7 @@ Conventions:
 | POST | `/api/rooms` | `{ visibility, capacity, profileId?, ruleset?, setupMode, orderMode?, policy? }` | `RoomView` |
 | POST | `/api/rooms/join` | `{ code }` | `RoomView` |
 | GET | `/api/rooms/:roomId` | – | `RoomView` |
-| POST | `/api/rooms/:roomId/leave` | – | `{ left: true, hostTransferredTo: string \| null }` |
+| POST | `/api/rooms/:roomId/leave` | `{ entryEpoch? }` | `LeaveRoomResult` (`{ left: boolean, hostTransferredTo: string \| null, reason? }`) |
 | POST | `/api/rooms/:roomId/seat` | `{ color }` | `RoomView` |
 | POST | `/api/rooms/:roomId/ready` | `{ ready }` | `RoomView` |
 | POST | `/api/rooms/:roomId/settings` | `{ capacity?, profileId?, ruleset?, setupMode?, orderMode?, policy? }` | `RoomView` |
@@ -47,8 +47,9 @@ Conventions:
 | GET | `/api/games/:gameId/events` | query `after?`, `limit?` | `{ events: GameEvent[], revision }` |
 | POST | `/api/games/:gameId/commands` | `CommandRequest` | `CommandReceipt` |
 | POST | `/api/games/:gameId/save` | `{ requestId }` | `SaveReceipt` |
-| POST | `/api/games/:gameId/abandon` | `{}` or `{ proposalId, approve }` | `{ proposalId }` or `{ abandoned }` |
-| POST | `/api/rooms/:roomId/withdraw` | `{ withdrawn }` | `RoomView` |
+| POST | `/api/games/:gameId/abandon` | `{}` or `{ proposalId, approve }` | `AbandonProposeResult` (`{ proposalId, abandoned }`) or `AbandonConsentResult` (`{ abandoned }`) |
+| POST | `/api/games/:gameId/withdraw` | `{ withdrawn }` | `WithdrawResult` (`{ withdrawn, abandoned }`) |
+| POST | `/api/rooms/:roomId/withdraw` | `{ withdrawn }` | `RoomView` (compatibility alias of the game route) |
 | POST | `/api/games/:gameId/suspend` | `{ proposalId? }` | `RoomView` |
 | POST | `/api/games/:gameId/resume` | `{ ready }` | `RoomView` |
 | GET | `/api/rooms/:roomId/chat` | query `after?`, `limit?` | `ChatPage` |
@@ -155,6 +156,60 @@ only the original human players must reconnect and become ready to resume.
   `bot:<revision>:<attempt>`, so their receipts follow the rules below. They
   only act while at least one person in the room has a live socket.
 
+### Withdrawal and ending a game
+
+Leaving a started game has three distinct meanings (SPEC §4.6, §4.8); none of
+them removes the seat.
+
+- **Save and leave** — `POST /api/games/:gameId/save`, then unsubscribe over the
+  socket and wait for `unsubscribed`, then `POST /api/rooms/:roomId/leave`
+  (see "Leaving a room" below). The game stays resumable and the seat is not
+  withdrawn.
+- **Withdraw** — `POST /api/games/:gameId/withdraw` with `{ withdrawn: boolean }`
+  records or retracts an explicit withdrawal and answers
+  `WithdrawResult { withdrawn, abandoned }`. It runs under the same per-game
+  lock as commands, so the first terminal transition wins: a game that already
+  has a result (`completed` or `abandoned`) answers `E_GAME_OVER`. Repeating the
+  current state is a no-op. Any change cancels the game's open *abandon*
+  proposal (a pending suspend proposal is left alone). While withdrawn, the
+  seat's commands are refused with `E_SEAT_WITHDRAWN` (a replayed receipt is
+  still returned) until the player retracts with `{ withdrawn: false }`. A
+  reconnection never clears the flag. When every person has withdrawn and the
+  room policy allows abandonment, the same call ends the game with no winner
+  (`abandoned: true`); when the policy disables it the game is kept. Bots never
+  withdraw. `POST /api/rooms/:roomId/withdraw` is kept as an alias that
+  forwards to the game route and still answers `RoomView`; a room without a
+  game answers `E_GAME_NOT_STARTED` (409).
+- **End the game** — `POST /api/games/:gameId/abandon` with `{}` proposes
+  abandonment and answers `AbandonProposeResult { proposalId, abandoned }`. The
+  proposal counts as the proposer's consent, and proposing while a proposal is
+  already open consents to it (same `proposalId`). Voters are the connected,
+  non-withdrawn people; a withdrawn seat counts as consenting and need not
+  vote. `abandoned: true` means the last voter just agreed — for a sole person
+  against bots that is immediate (the policy check still applies,
+  `E_ABANDON_DISABLED`). Further votes use `{ proposalId, approve }` and answer
+  `{ abandoned }`. `E_NO_ABSENT_PLAYER` still applies when several people are
+  present and nobody is absent or withdrawn. A withdrawn seat cannot propose,
+  consent or reject (`E_SEAT_WITHDRAWN`): its withdrawal already counts as
+  consent and its return never cancels the vote, so a veto would be a new
+  power. A person who is merely offline (no live socket) but has not
+  withdrawn may still answer over HTTP; that is equivalent to reconnecting,
+  which cancels the vote anyway (their consent is not counted, a rejection
+  ends it), so it adds no power. A reconnecting seat cancels the open vote
+  (after being marked connected), except a withdrawn seat, whose return changes
+  nothing. Creating, consenting to, rejecting or cancelling the vote, and a
+  person dropping out of it, push a fresh `room` message with
+  `pendingAbandon` to everyone connected.
+
+`RoomMemberView.withdrawn` (bots: always `false`) and `RoomView.pendingAbandon`
+carry the state to clients. `pendingAbandon` is `null` when nothing is open;
+otherwise `{ id, proposedBy, consents, absent, createdAt }`, where `consents`
+are the people who agreed and `absent` the people currently offline or
+withdrawn, for the confirmation dialog to name. `ResumableGameView.withdrawn` is
+true when the viewer's own seat is withdrawn; the game stays listed so the seat
+can be taken back. All three fields are optional in the types, but the server
+always fills them.
+
 ### Command handling
 
 `POST /api/games/:gameId/commands`
@@ -191,6 +246,8 @@ Rules:
 - A repeated `commandId` returns the stored receipt unchanged (no second
   effect), even if the payload differs — a differing payload is rejected with
   `error.E_COMMAND_ID_REUSED`.
+- A seat that has withdrawn (see "Withdrawal and ending a game") gets
+  `E_SEAT_WITHDRAWN` for a new command until it retracts the withdrawal.
 - `expectedRevision` older than the current revision is rejected with
   `error.E_STALE_REVISION` unless the receipt already exists.
 - The acting player always comes from the session cookie.
@@ -451,14 +508,100 @@ Client → server:
 
 ```json
 { "type": "subscribe", "payload": { "roomId": "..." } }
+{ "type": "subscribe", "payload": {} }
 { "type": "ping" }
 ```
 
-Server → client: `ServerMessage` union from `@catan/protocol`
-(`hello`, `room`, `snapshot`, `events`, `chat`, `presence`, `notice`, `error`, `pong`).
+`subscribe` with a `roomId` joins that room's live feed (`room`, `presence`,
+`snapshot`, `events`, `chat`). `subscribe` **without** a `roomId` unsubscribes:
+the socket leaves its room, stops receiving those pushes, and — when it was the
+person's last socket there — the seat is marked disconnected and the room no
+longer counts as having a live person (bots only act while someone does). It is
+idempotent and the socket stays open for a later subscribe. Messages on one
+socket are handled in order, so an unsubscribe followed at once by a subscribe
+ends up subscribed. Closing the socket unsubscribes implicitly.
 
-Ordering guarantee: `events` are delivered in ascending `seq`; after any gap the
-client refetches `GET /api/games/:gameId` and replaces its state.
+Once the unsubscribe has been processed the server answers
+`{ "type": "unsubscribed", "payload": { "roomId": "..." | null, "entryEpoch": 1762400000000 | null } }`.
+`roomId` is the room the socket just left, or `null` when it was not
+subscribed (the acknowledgement is sent either way, so a client can always wait
+for it). `entryEpoch` is the person's current entry epoch in that room (see
+"Leaving a room"), read after the connection was removed; it is `null` exactly
+when `roomId` is. The acknowledgement is sent only after the connection is out
+of the room and the seat has been marked disconnected, so a request sent after
+it no longer races the socket.
+
+A `subscribe` the service refuses (the room was closed or the person is not a
+member, including when that changes while the request waits for the room's
+lock) is answered with an `error` message carrying the service's own code, for
+example `E_ROOM_NOT_FOUND` or `E_NOT_A_MEMBER`, and leaves no connection behind.
+Only unclassified failures use `E_WS_HANDLER`.
+
+Save and leave from a client is therefore: `POST /api/games/:gameId/save`, then
+unsubscribe over the socket and wait for `unsubscribed`, then
+`POST /api/rooms/:roomId/leave`. Without the unsubscribe the socket keeps the
+seat online, keeps bots playing and keeps pushing the room back to the leaving
+client.
+
+Server → client: `ServerMessage` union from `@catan/protocol`
+(`hello`, `room`, `snapshot`, `events`, `chat`, `presence`, `notice`, `error`, `pong`,
+`unsubscribed`).
+
+### Leaving a room
+
+`POST /api/rooms/:roomId/leave` takes an optional body `{ entryEpoch?: number }`
+and answers `LeaveRoomResult { left, hostTransferredTo, reason? }`.
+
+- `left: true` — the leave took effect. In a lobby the membership is removed
+  (the room closes when no person remains, and the host role moves on); in a
+  started game the seat is kept and only marked disconnected, and the host role
+  moves on if the leaver held it. A caller with no membership also gets
+  `left: true` (nothing to do).
+- `left: false` — **ignored, nothing changed** (nothing is persisted, cancelled
+  or broadcast), with `hostTransferredTo: null` and a `reason`:
+  - `present`: the same person still has a live subscribed socket in that room.
+    With several tabs open, a leave from one tab is ignored while any other tab
+    is still subscribed; it takes effect once every tab has unsubscribed.
+  - `stale`: the request carried an `entryEpoch` older than the person's current
+    entry epoch in that room, i.e. they entered the room again after the
+    request's basis.
+  Both apply in lobbies and started games alike. The `present` check comes
+  first. A caller with no socket and no `entryEpoch` (plain HTTP, older
+  clients) is only subject to the first rule.
+- A malformed `entryEpoch` (not a finite number) is `E_BAD_REQUEST`.
+
+**Entry epoch.** Each room remembers, per person, a number that grows every time
+that person enters the room: an HTTP join (including re-entering with an
+existing membership) and a socket subscribe each bump it. It comes from one
+process-wide counter counted in microseconds since the Unix epoch
+(`Date.now() * 1000`, about 1.8e15, safely below 2^53, so it survives a JSON
+round trip). Within one process it strictly increases, even if the clock steps
+back. A client learns
+its current epoch from the `unsubscribed` acknowledgement (`entryEpoch`) or, when
+there is no socket to acknowledge, from `RoomView.viewerEntryEpoch` (present on
+every room view that has a viewer, including the answer to a join). A request
+that raced a re-entry — for example a `/leave` the client stopped waiting for,
+arriving after the person joined again by invite code but before the socket
+subscribed — carries the older epoch and is answered `stale`.
+
+Epochs are not persisted. After a restart the service has forgotten them (the
+current epoch reads as 0), so a request carrying an older epoch goes through
+unless the person has entered the room again since the restart. A new process
+starts counting from the clock, which is normally above every value the old one
+issued, so such a late request is usually still judged `stale`; that is
+best-effort across a restart, not a guarantee. It does not hold if the clock
+stepped back, or if the old process had run ahead of the clock by issuing more
+than 1000 entries per millisecond. Within a single process the ordering is
+strict.
+
+Connection registration and removal, joins, leaves and the host-grace expiry all
+take the room's lock, so a connection or a re-join cannot slip in between a
+leave's check and its change, and a host who reconnects while the grace timer is
+waiting for the lock keeps the role.
+
+A deliberate leave from the web client is therefore: unsubscribe → wait for
+`unsubscribed` → `POST /api/rooms/:roomId/leave` with the `entryEpoch` from the
+acknowledgement (or `viewerEntryEpoch` when there was no socket).
 
 ## Chat
 

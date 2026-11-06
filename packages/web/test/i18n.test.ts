@@ -106,7 +106,7 @@ describe('t()', () => {
   it('renders the newly added game.abandoned event without a raw parameter', () => {
     const translated = translateEvent('en', makeEvent(9, 'game.abandoned', { reason: 'abandoned' }), (id) => id);
     expect(translated.unknown).toBe(false);
-    expect(translated.text).toBe('The game was abandoned: Abandoned by table agreement.');
+    expect(translated.text).toBe('The game was abandoned: Ended without a winner.');
   });
 
   it('renders a bank shortage with the dice total, not as a shortfall amount', () => {
