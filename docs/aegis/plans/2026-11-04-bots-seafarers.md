@@ -1,6 +1,6 @@
 # Seafarers 電腦對手：實作計畫（v0.4.1）
 
-日期：2026-11-04；2026-11-06 開工前依程式現況核對並刷新（策略 §12）。狀態：**使用者已於 2026-11-05 確認 §10 的 D-SF1–D-SF9 採用建議。**
+日期：2026-11-04；2026-11-06 開工前依程式現況核對並刷新（策略 §12），同日併入 PL-1 的介面定案（策略 §13）。狀態：**使用者已於 2026-11-05 確認 §10 的 D-SF1–D-SF9 採用建議。**
 
 本文件是 Aegis 工作紀錄，不是權威的執行期決策；權威需求以 `docs/SPEC.md` §4.9 為準。
 
@@ -79,7 +79,7 @@ pending 與 setup 先跑 base 的處理器，回 null 時才詢問模組的 `dut
 | `seafarers.gold`（**I9 風險 3**） | 只有 `responders[0] === self` 時才行動：依 `RESOURCES` 順序，每種資源取 `min(view.bank[r], 剩餘)`，湊滿 `goldRequired` 張 | `goldRequired ≤ 銀行總數`（`gold.ts:84`），而且每種都不超過該種存量，所以不會觸發 `E_BANK_EMPTY` | F3：欠 2、銀行 1 → `["ore"] ok`；F3b：欠 3、wool 與 ore 各 1 → `["wool","ore"] ok`；F4：第一位 responder 是非行動者 `→ ok`，行動者回 null |
 | 其他模組 frame | `undefined`（不歸 SF 管），由平台記錄診斷（策略 §4.7-4） | — | — |
 
-保底**不會**在 freeRoads 以外造船，也不會移船。base 的 freeRoads 處理器（`fallback.ts:36-40`、`heuristic.ts:157-161`；PL-1 合併後以它所在的檔案為準）在 SF-1 補上道路存量檢查。base 不受影響：`base-2025.4` 的容量經 `pendingRouteCapacity`（`engine.ts:651-655`）交給 `roadBuildingGrantCapacity`（`:1251-1256`），在 `:1254` 依道路存量截斷，存量為 0 的 frame 不會被投影出來。golden replay 驗證這一點。
+保底**不會**在 freeRoads 以外造船，也不會移船。base 的 freeRoads 處理器在 SF-1 補上道路存量檢查：v0.4.0 的位置是 `fallback.ts:36-40` 與 `heuristic.ts:157-161`，PL-1 之後是 `src/base/duty.ts` 的 `pendingDuty`（保底）與 `src/base/roads.ts` 的 `freeRoadDecision`（策略）。base 不受影響：`base-2025.4` 的容量經 `pendingRouteCapacity`（`engine.ts:651-655`）交給 `roadBuildingGrantCapacity`（`:1251-1256`），在 `:1254` 依道路存量截斷，存量為 0 的 frame 不會被投影出來。golden replay 驗證這一點。
 
 ### 4.2 standard 與 easy
 
@@ -89,11 +89,11 @@ pending 與 setup 先跑 base 的處理器，回 null 時才詢問模組的 `dut
 | setup road | 比較最佳道路方向與最佳船方向（船 BFS 的第一步），取分數高者 | 只放路；`legalRoads` 為空時改用保底 | `setup` |
 | preroll 騎士 | base 條件之外，海盜擋住我計畫航線的邊時，也打騎士把海盜移走 | 同 base | `preroll` |
 | moveRobber／騎士目標 | 強盜候選（base 評分）與海盜候選放在一起評分。海盜分數＝可偷的對手＋封鎖對手 open-end 船的前線－封鎖我自己的航線；`null` 只在「海盜擋住我、又沒有更好目標」時使用 | 只移強盜 | **`banditCandidates`（新增，§11-1）** |
-| freeRoads | 計畫路徑的下一步在 `legalShips` 中就造船；是路、而且道路存量 > 0、在 `legalRoads` 中就造路；否則挑延伸最佳計畫的一步 | 同 standard，取前 3 名 | `freeRouteCandidates` |
+| freeRoads | 計畫路徑的下一步在 `legalShips` 中就造船；是路、而且道路存量 > 0、在 `legalRoads` 中就造路；否則挑延伸最佳計畫的一步。候選非空時會取代 base 的選路，所以道路選項也由 SF 提供 | 同 standard，取前 3 名 | `freeRouteCandidates` |
 | `seafarers.gold` | 只在 `responders[0] === self` 時行動：重複 `goldRequired` 次 `plentyPick` 式選擇（計畫成本含船），每種資源都不超過 `view.bank[r]` | 同 standard（決定性選擇） | `answerFrame` |
 | action：計畫 | 新增計畫種類「島嶼聚落」：船路徑 ≤4 艘，成本為 `SHIP_COST × n + COSTS.settlement`，`nextCost` 為 `SHIP_COST`；分數含 +2 VP（島 id 不在 `islandBonus[self]` 時）與金礦萬用點數；城市計畫中，金礦上的城市以 2 張萬用資源計價、聚落 1 張（`packages/rules/src/modules/seafarers/gold.ts:38`；SF+CK 計畫 A5）；最長路線改用含船的長度 | 同 standard，船路徑 ≤3 艘，topK 3 | `economy.costs`、`piecesLeft`、`scoreExtras`、`actions` |
 | action：移船 | 有不在任何計畫路徑上的葉端船，而且它的 `targets` 含計畫的下一條邊時，送 `ship.move`；只從 `hints.movableShips` 取值 | 不移船 | `actions` |
-| action：Road Building | 條件改為「道路有存量且有用」**或**「`legalShips` 非空」 | 同 standard | `actions` |
+| action：Road Building | 條件改為「道路有存量且有用」**或**「`legalShips` 非空」。前半由 base 判斷；後半由 PL-1 骨架的「任一模組的 `freeRouteCandidates` 非空」承接，所以 SF 的 `freeRouteCandidates` 在行動階段也要在 `legalShips` 非空時回傳候選 | 同 standard | `freeRouteCandidates` |
 | 交易 | 沿用；`bankTradeToward` 以 `SHIP_COST` 為目標；距登島只差聚落的計畫視為「立即得分」，可以開價 | 不主動開價（同 base） | — |
 | paired P2 | 與一般 window 相同，可以造船、移船；`pairedSecond` 禁止國內交易 | 同 standard | — |
 
@@ -124,9 +124,9 @@ pending 與 setup 先跑 base 的處理器，回 null 時才詢問模組的 `dut
 | 需求 | 提供者 | 使用的 SF 切片 |
 |---|---|---|
 | `BotCommand`、BotModule 型別、registry、`duty`／`answerFrame`／`setup`／`preroll`／`actions`／`freeRouteCandidates`／`planStep` 的組合；`Scored`、`TurnContext` 與測試用的 `turnContext()`；`RobberCause` | PL-1 | SF-1、SF-2a、SF-2b |
-| **`banditCandidates?(turn, cause): Scored<number \| null>[]`**，接在 base 強盜候選之後統一評分（§11-1）；挑選結果要區分「沒有候選」與「選中 `null`（外框）」 | PL-1 | SF-2b |
+| **`banditCandidates?(turn, cause): readonly Scored<BanditTarget>[]`**，接在 base 強盜候選之後一起挑選（`banditChoice`，§11-1）；分數尺度與 base 強盜候選相同，不是勝利分當量；挑選結果區分「沒有候選」（`null`）與「選中外框」（`{ target: null }`） | PL-1 | SF-2b |
 | base 評分函式改為具名匯出：`setupSpotScore`、`roadDirectionScore`、`robberCandidates`（從 `robberHex` 拆出）、`plentyPick(turn, hand?, bank?)`（可重複選，供 gold 使用）、`usefulRoad`、`canPlay`；放在 `src/base/*.ts`，避免與模組循環 import | PL-1 | SF-2a、SF-2b |
-| `economyOf(model, modules)` 組合 `costs`、`piecesLeft`、`scoreExtras`；`heuristic.ts` 的通用掛點：`planStep`、「可立即得分」的判斷、Road Building 條件納入模組的 `freeRouteCandidates`（策略 §4.10 合約 11、12） | PL-1 | SF-2a |
+| `economyOf(model, modules?, level?)` 組合 `costs`、`piecesLeft`、`scoreExtras(input: PlanInput)`；`heuristic.ts` 的通用掛點：`planStep`、「可立即得分」的判斷（`Plan.immediate`）、Road Building 條件納入模組的 `freeRouteCandidates`（策略 §4.10 合約 11、12） | PL-1 | SF-2a |
 | 可注入模組清單的策略工廠 `createBotPolicy(level, { modules })`、`createFallbackPolicy(modules)`；`botOwesAction` | PL-1 | SF-3；PL-2 的 naive 座位與假模組 |
 | golden replay 測試（48 局：base 3–6 人 × 10 種子，另含保底席、`createBotPolicy` 與全保底局；策略 §4.10） | PL-1 | 所有改動 `src` 的 SF 切片都要通過 |
 | `newBotGame({ profileId })`、仿 BotDriver 模式、看門狗、每視窗指令數統計、`BOTS_SEEDS`、`test/modules/<id>.ts` 介面、`bench --profile`、naive 座位（只放入模組的 `duty`） | PL-2 | SF-3、SF-2a 的 bench 驗收 |
@@ -157,7 +157,7 @@ PR 一律指向 `release/v0.4.1`，以 squash merge 合併（策略 §7）。wor
 | 切片 | 分支／worktree slug | 檔案所有權 | 內容 | 行數 src／test | 依賴 | 驗收命令 |
 |---|---|---|---|---|---|---|
 | RX rules 匯出 | `feat/bots-seafarers-exports`／`bots-seafarers-exports` | `packages/rules/src/modules/seafarers/index.ts`、`packages/rules/src/index.ts`、`packages/rules/test/seafarers-exports.test.ts`（新） | 把模組物件內的 `project`／`actionHints` 抽成具名函式 `projectSeafarers`、`seafarersHints`，模組物件改為引用它們；以 `ReturnType` 匯出 view 與 hints 型別（比照 `explorersPirates/index.ts:285,368`）；在 `seafarers/index.ts` 定義並匯出 gold pending 介面；匯出 `ModuleViewMap`、`ModuleHintsMap`、`SHIP_COST`、`GOLD_FRAME`；形狀測試比對實際 key 集合。不碰 web | 30–40／30–40 | 無（可與 PL-1 並行） | `pnpm --filter @catan/rules exec vitest run`（**rules 測試全部通過、行為不變**）；`pnpm --filter @catan/rules typecheck`；`pnpm --filter @catan/web typecheck`；`git diff --stat` 只有上述 3 檔 |
-| SF-1 海域模型與保底 | `feat/bots-seafarers-sea`／`bots-seafarers-sea` | `packages/bots/src/sea.ts`（新）、`board.ts`、`economy.ts`（只改型別：`Plan.ships: number[]`，base 恆為 `[]`；`PieceCounts.ships`）、`fallback.ts`、base freeRoads 處理器（PL-1 合併後所在的檔案，只加存量檢查）、`src/modules/seafarers/**`（新：`index.ts` 掛上全部鉤子並接到對應的 stub 檔：`plan.ts` 放 economy 鉤子與 `planStep`，`actions.ts` 放 `actions` 與 `freeRouteCandidates`，`frames.ts` 放 `answerFrame`，`bandit.ts` 放 `banditCandidates` 與 `preroll`，`setup.ts` 放 `setup`，都先回傳 `undefined`／`[]`，讓階段 C 不必修改 `index.ts`；另有 `duty.ts`）、`src/modules/view.ts`（新）、registry 的一行、`packages/bots/test/sf-sea.test.ts`、`sf-duty.test.ts`（新） | §4.1 保底；§4.3 模型；修正 G7–G11；`supports` 先回 false；`pacing`（§4.6） | 250–300／180–230 | PL-1、RX；**合併在 PL-2、PL-3 之後**（R-SF10） | `pnpm --filter @catan/bots exec vitest run test/sf-sea.test.ts test/sf-duty.test.ts`；golden replay（PL-1 提供的測試檔）逐一相同；`pnpm --filter @catan/bots exec vitest run`；`pnpm --filter @catan/bots typecheck`；`pnpm typecheck` |
+| SF-1 海域模型與保底 | `feat/bots-seafarers-sea`／`bots-seafarers-sea` | `packages/bots/src/sea.ts`（新）、`board.ts`、`economy.ts`（只改型別：`Plan.ships: number[]`，base 恆為 `[]`）、`PieceCounts.ships`（可改為選用，也可以不加：`Economy.left` 帶索引簽章，已能承載 SF `piecesLeft` 回傳的 `ships`）、base freeRoads 處理器 `src/base/duty.ts` 與 `src/base/roads.ts`（只加存量檢查；`fallback.ts` 與 `heuristic.ts` 不必改，模組的 `duty` 經 registry 接上）、`src/modules/seafarers/**`（新：`index.ts` 掛上全部鉤子並接到對應的 stub 檔：`plan.ts` 放 economy 鉤子與 `planStep`，`actions.ts` 放 `actions` 與 `freeRouteCandidates`，`frames.ts` 放 `answerFrame`，`bandit.ts` 放 `banditCandidates` 與 `preroll`，`setup.ts` 放 `setup`，都先回傳 `undefined`／`[]`，讓階段 C 不必修改 `index.ts`；另有 `duty.ts`）、`src/modules/view.ts`（新）、registry 的一行、`packages/bots/test/sf-sea.test.ts`、`sf-duty.test.ts`（新） | §4.1 保底；§4.3 模型；修正 G7–G11；`supports` 先回 false；`pacing`（§4.6） | 250–300／180–230 | PL-1、RX；**合併在 PL-2、PL-3 之後**（R-SF10） | `pnpm --filter @catan/bots exec vitest run test/sf-sea.test.ts test/sf-duty.test.ts`；golden replay（PL-1 提供的測試檔）逐一相同；`pnpm --filter @catan/bots exec vitest run`；`pnpm --filter @catan/bots typecheck`；`pnpm typecheck` |
 | SF-2a 島嶼計畫與行動 | `feat/bots-seafarers-plans`／`bots-seafarers-plans` | `packages/bots/src/economy.ts`、`src/modules/seafarers/{plan,actions}.ts`、`packages/bots/test/sf-decisions.test.ts`（新）；不改 `heuristic.ts`（PL-1 已提供通用掛點；若 PL-1 的介面審查決定不提供，改由 SF-2a 在階段 C 獨占 `heuristic.ts`） | §4.2 的 action 各列（計畫、造船步驟、移船、Road Building、交易目標）與 `freeRouteCandidates`；easy 差異；SF-FAQ 18 的 hints 推導測試（§10 D-SF6） | 290–360／150–200 | SF-1；PL-2（bench） | `pnpm --filter @catan/bots exec vitest run test/sf-decisions.test.ts`；golden replay；`pnpm --filter @catan/bots bench 10 --profile sf-new-shores-2025` 與 `--profile sf-new-shores-paired-2025`：`problems 0`，每局都有 `build.ship`；`pnpm typecheck` |
 | SF-2b frame、強盜與 setup | `feat/bots-seafarers-frames`／`bots-seafarers-frames` | `src/modules/seafarers/{frames,bandit,setup}.ts`、`packages/bots/test/sf-frames.test.ts`（新）；不改 `heuristic.ts`、`economy.ts` | gold 的 `answerFrame`；強盜與海盜評分；preroll 騎士；setup 的建築與「路或船」；standard 與 easy 的 I9 固定盤面測試 | 140–190／120–160 | SF-1；PL-1 的 `banditCandidates` | `pnpm --filter @catan/bots exec vitest run test/sf-frames.test.ts`；golden replay；`pnpm --filter @catan/bots typecheck`；`pnpm typecheck` |
 | SF-3 驗收測試（gating 前） | `feat/bots-seafarers-tests`／`bots-seafarers-tests` | `packages/bots/test/modules/seafarers.ts`（新：`conservation`、`hideDifferently`、`perturb`、`responseCommands`、`mechanics`）、`test/sf-game.test.ts`、`sf-fair.test.ts`、`sf-fuzz.test.ts`、`sf-fallback.test.ts`（新）；在 PL-2 建立的 family 註冊檔 `packages/bots/test/families.ts` 加上 SF 一筆 | Q1 矩陣與 Q2 門檻（§6）；B-POLICY-SEA 在對局中取樣。profile 清單明寫；PL-2 的 matrix guard 在 SF-4 之後會要求 SF 由這些檔案涵蓋 | 0／260–330 | 開發：SF-1、PL-2；**合併：SF-2a、SF-2b 之後** | `pnpm --filter @catan/bots exec vitest run test/sf-game.test.ts test/sf-fair.test.ts test/sf-fuzz.test.ts test/sf-fallback.test.ts`（預設 3 種子）；`BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run test/sf-game.test.ts`（發布閘門）；`pnpm --filter @catan/bots exec vitest run` |
