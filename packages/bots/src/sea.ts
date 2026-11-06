@@ -35,9 +35,16 @@ export type VertexBlocker = (vertex: number) => string | null;
 export interface ShipOptions {
   /** 保留給 SF+CK（0.4.3）的掛點；預設回 null。 */
   readonly blocker?: VertexBlocker;
-  /** 移船：這條邊目前的船視為不在，也不能當作連接點（對應 rules 的 `moving`）。 */
+  /**
+   * 移船：這條邊目前的船視為不在，也不能當作連接點（對應 rules 的 `moving`）。船本身還留在盤面上
+   * （view 沒有移除它），所以這條邊既不是船位，也不能被走過去；它的兩端若另有自己的建築或船，
+   * 仍然是連接點。
+   */
   readonly moving?: number;
 }
+
+/** 道路只有 `blocker` 會影響：移船不改變道路。 */
+export type RoadOptions = Pick<ShipOptions, 'blocker'>;
 
 // ---------------------------------------------------------------------------
 // 島嶼與海岸
@@ -148,7 +155,7 @@ export function shipEdgesFrom(view: GameView, selfId: string, options: ShipOptio
  * 玩家現在能放道路的邊（不含棋子存量與費用），由小到大；對應 rules 的 `canPlaceRoad`（非開局）。
  * 只有陸地邊，只從建築與非船道路延伸：船在自己的建築處才與道路相接。
  */
-export function roadEdgesOf(model: BoardModel, playerId: string = model.selfId, options: ShipOptions = {}): number[] {
+export function roadEdgesOf(model: BoardModel, playerId: string = model.selfId, options: RoadOptions = {}): number[] {
   const { buildings, roads } = model.view.board;
   const canExtendFrom = (vertex: number): boolean => {
     const building = buildings[vertex];
@@ -168,7 +175,7 @@ export function roadEdgesOf(model: BoardModel, playerId: string = model.selfId, 
 }
 
 /** `roadEdgesOf` 的 view 版本。 */
-export function roadEdgesFrom(view: GameView, selfId: string, options: ShipOptions = {}): number[] {
+export function roadEdgesFrom(view: GameView, selfId: string, options: RoadOptions = {}): number[] {
   return roadEdgesOf(boardModel(view, selfId), selfId, options);
 }
 
@@ -183,6 +190,9 @@ export function roadEdgesFrom(view: GameView, selfId: string, options: ShipOptio
  * - 起點：自己的建築，與自己的船的兩端；被對手建築或 blocker 擋住的路口不是起點，也不會被走到
  *   （船不能穿越它）。
  * - 只走空的海邊，避開海盜所在 hex 的邊。
+ * - `options.moving`（評估移船）：與 `canPlaceShip` 相同，那艘船視為不在。它的兩端不會因為它而成為
+ *   起點（若另有自己的建築或其他船相連，仍會因那些棋子成為起點）；那條邊本身不能放船，所以也不會被走過去
+ *   （它在盤面上本來就有棋子，這裡再明確排除）。沒有 `moving` 時結果與先前相同。
  * - 決定性：逐層擴張，同一層有多條路徑到同一個路口時取 edge index 最小的那條；每層的路口由小到大。
  * - `maxDepth` 是最多幾艘新船；自己的船數存量由呼叫端另行限制（`shipsLeft`）。
  */
@@ -194,6 +204,7 @@ export function searchShips(
 ): RoadSearch {
   const { topo } = model;
   const { buildings, roads } = model.view.board;
+  const { moving } = options;
   const distance = topo.vertices.map(() => Infinity);
   const viaEdge = topo.vertices.map(() => -1);
   const viaVertex = topo.vertices.map(() => -1);
@@ -202,7 +213,7 @@ export function searchShips(
     if (building && building.player === playerId) starts.add(vertex);
   });
   roads.forEach((road, edge) => {
-    if (!road || !road.ship || road.player !== playerId) return;
+    if (edge === moving || !road || !road.ship || road.player !== playerId) return;
     for (const vertex of topo.edges[edge]!.vertices) {
       if (!blockedFor(model, vertex, playerId, options.blocker)) starts.add(vertex);
     }
@@ -213,7 +224,7 @@ export function searchShips(
     const reached = new Map<number, { edge: number; from: number }>();
     for (const vertex of frontier) {
       for (const edge of topo.vertices[vertex]!.edges) {
-        if (roads[edge] || !isSeaEdge(model, edge) || touchesPirate(model, edge)) continue;
+        if (edge === moving || roads[edge] || !isSeaEdge(model, edge) || touchesPirate(model, edge)) continue;
         const [a, b] = topo.edges[edge]!.vertices;
         const next = a === vertex ? b : a;
         if (distance[next] !== Infinity || blockedFor(model, next, playerId, options.blocker)) continue;

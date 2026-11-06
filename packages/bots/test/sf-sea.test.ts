@@ -21,7 +21,16 @@ import {
 import { forceTurn, newGame } from '../../rules/test/helpers.ts';
 import { corner, emptySeafarersGame, road, seafarersGame, settle, ship, side } from '../../rules/test/seafarers-helpers.ts';
 import { simulateSeafarers } from '../../rules/test/seafarers-sim.ts';
-import { boardModel, isFreeSpot, isLandEdge, roadPath, routeLength, searchRoads } from '../src/board.ts';
+import {
+  boardModel,
+  isFreeSpot,
+  isLandEdge,
+  roadPath,
+  routeLength,
+  searchRoads,
+  type BoardModel,
+  type RoadSearch,
+} from '../src/board.ts';
 import { moduleHints, moduleView } from '../src/modules/view.ts';
 import {
   coastVertices,
@@ -29,6 +38,7 @@ import {
   islandOfVertex,
   islandsAt,
   roadEdgesFrom,
+  roadEdgesOf,
   searchShips,
   shipEdgesFrom,
   shipEdgesOf,
@@ -69,10 +79,43 @@ function finalState(players: 3 | 4 | 5 | 6, seed: number): GameState {
   return state;
 }
 
+/** 這位玩家此刻可以移動的船（hints 的 `movableShips`）。 */
+const moveHints = (view: GameView) => moduleHints(view.hints, 'seafarers')?.movableShips ?? [];
+
 const sorted = (edges: readonly number[]): number[] => edges.slice().sort((a, b) => a - b);
 
 /** 各項比對實際執行了幾次；最後一個 it 確認取樣不是空轉。 */
-const coverage = { actors: 0, shipEdges: 0, roadEdges: 0, movable: 0, routes: 0, shipRoutes: 0, paths: 0 };
+const coverage = {
+  actors: 0,
+  shipEdges: 0,
+  roadEdges: 0,
+  movable: 0,
+  routes: 0,
+  shipRoutes: 0,
+  paths: 0,
+  movingSearches: 0,
+  movingDropsAStart: 0,
+};
+
+/** 獨立推導的船 BFS 起點：自己的建築，與（扣掉 `moving` 的）自己的船的兩端；對手的建築擋住的不算。 */
+function expectedStarts(model: BoardModel, playerId: string, moving?: number): number[] {
+  const { buildings, roads } = model.view.board;
+  const starts = new Set<number>();
+  buildings.forEach((building, vertex) => {
+    if (building?.player === playerId) starts.add(vertex);
+  });
+  roads.forEach((road, edge) => {
+    if (edge === moving || !road?.ship || road.player !== playerId) return;
+    for (const vertex of model.topo.edges[edge]!.vertices) {
+      const building = buildings[vertex];
+      if (!building || building.player === playerId) starts.add(vertex);
+    }
+  });
+  return [...starts].sort((a, b) => a - b);
+}
+
+const zeroOf = (search: RoadSearch): number[] =>
+  search.distance.flatMap((distance, vertex) => (distance === 0 ? [vertex] : []));
 
 describe('B-POLICY-SEA: sea.ts equals rules on whole games', () => {
   const cases = ([3, 4, 5, 6] as const).flatMap((players) => ([1, 2] as const).map((seed) => [players, seed] as const));
@@ -172,6 +215,65 @@ describe('B-POLICY-SEA: sea.ts equals rules on whole games', () => {
     SIM_TIMEOUT,
   );
 
+  it.each(cases)(
+    '%i players, seed %i: ship search for a ship being moved starts without the moved ship',
+    (players, seed) => {
+      const state = finalState(players, seed);
+      for (const [seat, player] of state.players.entries()) {
+        const forced = asActor(state, seat);
+        const view = viewOf(forced, player.id);
+        const model = boardModel(view, player.id);
+        const { buildings } = view.board;
+        const plain = searchShips(model, player.id, 1);
+        // 不帶 moving：起點就是建築與船的兩端；{} 與 { moving: undefined } 結果相同。
+        expect(zeroOf(plain), `${player.id} plain starts`).toEqual(expectedStarts(model, player.id));
+        expect(searchShips(model, player.id, 1, {})).toEqual(plain);
+        expect(searchShips(model, player.id, 1, { moving: undefined })).toEqual(plain);
+
+        for (const movable of moveHints(view)) {
+          const search = searchShips(model, player.id, 1, { moving: movable.edge });
+          coverage.movingSearches += 1;
+          expect(zeroOf(search), `${player.id} moving ${movable.edge}`).toEqual(expectedStarts(model, player.id, movable.edge));
+
+          // 規則要求移動的船有一端既沒有自己的建築、也沒有別的自己的船：這一端不再是起點。
+          const lonely = model.topo.edges[movable.edge]!.vertices.filter((vertex) => {
+            if (buildings[vertex]?.player === player.id) return false;
+            return !model.topo.vertices[vertex]!.edges.some((edge) => {
+              const road = view.board.roads[edge];
+              return edge !== movable.edge && !!road && road.ship && road.player === player.id;
+            });
+          });
+          expect(lonely.length, `${player.id} ${movable.edge} has an open end`).toBeGreaterThan(0);
+          for (const vertex of lonely) {
+            // 對手的建築擋住的末端本來就不是起點。
+            const walled = !!buildings[vertex] && buildings[vertex]!.player !== player.id;
+            expect(plain.distance[vertex], `${player.id} ${vertex} starts while the ship stays`).toBe(walled ? Infinity : 0);
+            expect(search.distance[vertex], `${player.id} ${vertex} cannot start from the moving ship`).not.toBe(0);
+            if (!walled) coverage.movingDropsAStart += 1;
+          }
+
+          // 走訪不經過被移的那條邊；第一步的邊都是合法的移船目標，一步可達的路口就是目標的另一端。
+          const targets = new Set(movable.targets);
+          const oneStep = new Set<number>();
+          for (const edge of targets) {
+            for (const vertex of model.topo.edges[edge]!.vertices) {
+              const building = buildings[vertex];
+              if (!building || building.player === player.id) oneStep.add(vertex);
+            }
+          }
+          search.distance.forEach((distance, vertex) => {
+            if (distance === 1) {
+              expect(search.viaEdge[vertex]).not.toBe(movable.edge);
+              expect(targets.has(search.viaEdge[vertex]!), `${player.id} step to ${vertex}`).toBe(true);
+            }
+            if (oneStep.has(vertex)) expect(distance).toBeLessThanOrEqual(1);
+          });
+        }
+      }
+    },
+    SIM_TIMEOUT,
+  );
+
   it('the samples were not vacuous', () => {
     expect(coverage.actors).toBe(2 * (3 + 4 + 5 + 6));
     expect(coverage.shipEdges).toBeGreaterThan(100);
@@ -179,6 +281,8 @@ describe('B-POLICY-SEA: sea.ts equals rules on whole games', () => {
     expect(coverage.movable).toBeGreaterThan(0);
     expect(coverage.shipRoutes).toBeGreaterThan(10);
     expect(coverage.paths).toBeGreaterThan(5);
+    expect(coverage.movingSearches).toBeGreaterThan(0);
+    expect(coverage.movingDropsAStart).toBeGreaterThan(0);
   });
 });
 
@@ -411,6 +515,118 @@ describe('ship search', () => {
     const search = searchShips(model, 'p1', 1);
     expect(search.distance[target]).toBe(1);
     expect(search.viaEdge[target]).toBe(Math.min(...neighbours.map((n) => n.edge)));
+  });
+});
+
+describe('ship search with a ship being moved', () => {
+  /** p1 的聚落在 k3，船鏈沿著海環 (2,0) 往東：NW（k3–k4）、NE（k4–k5）、E（k5–k0），k0 是開放的末端。 */
+  function ringChain(withSettlement = true) {
+    const state = emptySeafarersGame(4, 0, 'action');
+    state.board.pirate = null;
+    const k = (n: number) => corner(state, 2, 0, n);
+    const e = { NW: side(state, 2, 0, 2), NE: side(state, 2, 0, 1), E: side(state, 2, 0, 0) };
+    if (withSettlement) settle(state, 'p1', k(3));
+    for (const edge of Object.values(e)) ship(state, 'p1', edge);
+    return { state, e, k3: k(3), k4: k(4), k5: k(5), k0: k(0) };
+  }
+  const modelOf = (state: GameState) => boardModel(viewOf(state, 'p1'), 'p1');
+
+  it('without moving the result is unchanged: every building and ship end starts', () => {
+    const { state, k3, k4, k5, k0 } = ringChain();
+    const model = modelOf(state);
+    const plain = searchShips(model, 'p1', 3);
+    expect(zeroOf(plain)).toEqual([k3, k4, k5, k0].sort((a, b) => a - b));
+    expect(searchShips(model, 'p1', 3, {})).toEqual(plain);
+    expect(searchShips(model, 'p1', 3, { moving: undefined })).toEqual(plain);
+    expect(zeroOf(plain)).toEqual(expectedStarts(model, 'p1'));
+  });
+
+  it('a lone ship that moves leaves no start behind', () => {
+    const state = emptySeafarersGame(4, 0, 'action');
+    state.board.pirate = null;
+    const NE = side(state, 2, 0, 1);
+    ship(state, 'p1', NE);
+    const model = modelOf(state);
+    const [a, b] = model.topo.edges[NE]!.vertices;
+    expect(zeroOf(searchShips(model, 'p1', 2)).sort((x, y) => x - y)).toEqual([a, b].sort((x, y) => x - y));
+    const moved = searchShips(model, 'p1', 2, { moving: NE });
+    expect(zeroOf(moved)).toEqual([]);
+    expect(moved.distance.every((distance) => distance === Infinity)).toBe(true);
+  });
+
+  it('a settlement at one end keeps that end only', () => {
+    const state = emptySeafarersGame(4, 0, 'action');
+    state.board.pirate = null;
+    const NE = side(state, 2, 0, 1);
+    const k4 = corner(state, 2, 0, 4);
+    const k5 = corner(state, 2, 0, 5);
+    settle(state, 'p1', k4);
+    ship(state, 'p1', NE);
+    const model = modelOf(state);
+    expect(zeroOf(searchShips(model, 'p1', 2))).toEqual([k4, k5].sort((x, y) => x - y));
+    const moved = searchShips(model, 'p1', 2, { moving: NE });
+    expect(zeroOf(moved)).toEqual([k4]);
+    // k5 只能繞過被移的邊才到得了，不再是距離 0；一艘船以內到不了（NE 本身不能放）。
+    expect(searchShips(model, 'p1', 1, { moving: NE }).distance[k5]).toBe(Infinity);
+    expect(moved.distance[k5]).toBeGreaterThan(0);
+    expect(moved.viaEdge).not.toContain(NE);
+  });
+
+  it('the open end of a chain stops being a start, the connected ends stay', () => {
+    const { state, e, k3, k4, k5, k0 } = ringChain();
+    const model = modelOf(state);
+    const moved = searchShips(model, 'p1', 3, { moving: e.E });
+    expect(zeroOf(moved)).toEqual([k3, k4, k5].sort((a, b) => a - b));
+    expect(moved.distance[k0]).toBeGreaterThan(0);
+    expect(moved.viaEdge).not.toContain(e.E);
+    // k0 的另一側繞路也到得了，但要新造船：不經過被移的邊。
+    expect(searchShips(model, 'p1', 1, { moving: e.E }).distance[k0]).toBe(Infinity);
+  });
+
+  it('a ship in the middle or next to the settlement leaves every end connected', () => {
+    const { state, e } = ringChain();
+    const model = modelOf(state);
+    const plain = searchShips(model, 'p1', 3);
+    for (const edge of [e.NE, e.NW]) {
+      const moved = searchShips(model, 'p1', 3, { moving: edge });
+      expect(zeroOf(moved), `moving ${edge}`).toEqual(zeroOf(plain));
+      expect(moved.viaEdge).not.toContain(edge);
+      expect(zeroOf(moved)).toEqual(expectedStarts(model, 'p1', edge));
+    }
+  });
+
+  it('a settlement joining the chain at the open end keeps it a start', () => {
+    const { state, e, k0 } = ringChain();
+    settle(state, 'p1', k0);
+    const model = modelOf(state);
+    expect(zeroOf(searchShips(model, 'p1', 2, { moving: e.E }))).toContain(k0);
+  });
+
+  it('the moved ship never lets the search or the placement model use its own edge', () => {
+    const { state, e } = ringChain();
+    const model = modelOf(state);
+    for (const edge of Object.values(e)) {
+      expect(shipEdgesOf(model, 'p1', { moving: edge })).not.toContain(edge);
+      expect(searchShips(model, 'p1', Infinity, { moving: edge }).viaEdge).not.toContain(edge);
+    }
+    // 即使盤面上沒有那艘船（edge 是空的），moving 指定的邊也不能走。
+    const bare = emptySeafarersGame(4, 0, 'action');
+    bare.board.pirate = null;
+    const k3 = corner(bare, 2, 0, 3);
+    const NW = side(bare, 2, 0, 2);
+    const k4 = corner(bare, 2, 0, 4);
+    settle(bare, 'p1', k3);
+    const bareModel = modelOf(bare);
+    expect(searchShips(bareModel, 'p1', 1).distance[k4]).toBe(1);
+    expect(searchShips(bareModel, 'p1', 1, { moving: NW }).distance[k4]).toBe(Infinity);
+  });
+
+  it('roads ignore moving: only the blocker matters', () => {
+    const { state, e } = ringChain();
+    const model = modelOf(state);
+    expect(roadEdgesOf(model, 'p1')).toEqual(roadEdgesFrom(viewOf(state, 'p1'), 'p1'));
+    // @ts-expect-error 移船不改變道路，道路的 options 沒有 moving
+    expect(roadEdgesOf(model, 'p1', { moving: e.E })).toEqual(roadEdgesOf(model, 'p1'));
   });
 });
 
