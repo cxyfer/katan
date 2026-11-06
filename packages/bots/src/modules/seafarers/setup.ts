@@ -48,13 +48,10 @@ export function claimedIslands(view: GameView, selfId: string): readonly number[
   return moduleView(view, 'seafarers')?.islandBonus?.[selfId] ?? [];
 }
 
+/** 與 `claimed` 無關的部分（空點、所在島、不含 +2 VP 的價值）；同一次決策內只算一次。 */
 const siteCache = new WeakMap<BoardModel, readonly IslandSite[]>();
 
-/**
- * 小島（非主島）上目前可以蓋聚落的空點，由小到大。價值＝聚落的點數與缺少資源加成、金礦點數、
- * 以及尚未領取的 +2 VP。同一次決策內只算一次。
- */
-export function islandSites(model: BoardModel, claimed: readonly number[]): readonly IslandSite[] {
+function baseSites(model: BoardModel): readonly IslandSite[] {
   const cached = siteCache.get(model);
   if (cached) return cached;
   const weights = resourceWeights(model);
@@ -62,17 +59,28 @@ export function islandSites(model: BoardModel, claimed: readonly number[]): read
   const sites: IslandSite[] = [];
   for (let vertex = 0; vertex < model.topo.vertices.length; vertex++) {
     if (!isFreeSpot(model, vertex)) continue;
+    // New Shores 3–6 人盤面沒有同時鄰接兩座島的路口，取最小的島 id 與規則的島嶼判定沒有差異。
     const island = islandOfVertex(model, vertex);
     if (island === null || island === MAIN_ISLAND) continue;
     let value = settlementSpotValue(model, vertex, weights, mine);
     for (const hex of model.topo.vertices[vertex]!.hexes) {
       if (model.hexGold[hex]) value += GOLD_PIP_WEIGHT * model.hexPips[hex]!;
     }
-    if (!claimed.includes(island)) value += ISLAND_VP_VALUE;
     sites.push({ vertex, island, value });
   }
   siteCache.set(model, sites);
   return sites;
+}
+
+/**
+ * 小島（非主島）上目前可以蓋聚落的空點，由小到大。價值＝聚落的點數與缺少資源加成、金礦點數、
+ * 以及尚未領取的 +2 VP（只在 New Shores 的島嶼規則下，與 rules 的 `claimIslands` 一致）。
+ */
+export function islandSites(model: BoardModel, claimed: readonly number[]): readonly IslandSite[] {
+  const bonus = model.profile.scenario === 'new-shores';
+  return baseSites(model).map((site) =>
+    bonus && !claimed.includes(site.island) ? { ...site, value: site.value + ISLAND_VP_VALUE } : site,
+  );
 }
 
 /** 不屬於任何座位的 id：把自己的棋子「移出」船搜尋的起點，但邊仍然被占用。 */
