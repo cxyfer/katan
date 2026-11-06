@@ -16,6 +16,7 @@ import {
   type AbandonProposalView,
   type BotLevel,
   type GameOrderMode,
+  type LeaveRoomResult,
   type Notice,
   type PolicyProposalView,
   type RoomMemberView,
@@ -571,17 +572,22 @@ export class RoomService {
     return this.view(roomId, playerId);
   }
 
-  async leave(playerId: string, roomId: string): Promise<{ left: true; hostTransferredTo: string | null }> {
+  async leave(playerId: string, roomId: string): Promise<LeaveRoomResult> {
     return this.withRoomLock(roomId, () => this.leaveLocked(playerId, roomId));
   }
 
-  private async leaveLocked(
-    playerId: string,
-    roomId: string,
-  ): Promise<{ left: true; hostTransferredTo: string | null }> {
+  private async leaveLocked(playerId: string, roomId: string): Promise<LeaveRoomResult> {
     const room = await this.requireRoom(roomId);
     const membership = await this.repo.findMembership(roomId, playerId);
     if (!membership) return { left: true, hostTransferredTo: null };
+
+    // 同一身分在這個房間仍有 live 訂閱連線：這是遲到或重複的離開（例如 client 逾時後
+    // 才執行的請求，而玩家已經重新進入），或同一人另一個分頁還在房內。不做任何變更。
+    // 刻意離開的 client 會先取消訂閱並等 `unsubscribed`，到這裡時已沒有連線。
+    // register／unregister 與這裡共用 room lock，檢查之後不會有連線插隊。
+    if (this.runtimes.get(roomId)?.connections.has(playerId)) {
+      return { left: false, hostTransferredTo: null };
+    }
 
     if (room.status === 'lobby') {
       await this.repo.deleteMembership(roomId, playerId);
@@ -947,9 +953,17 @@ export class RoomService {
 
   // -- presence ------------------------------------------------------------
 
+  /**
+   * 連線登記與離開同一把 room lock（`leave` 也在其中），讓「leave 確認沒有連線後、
+   * 變更前」不會被新連線插隊。注意鎖不可重入：鎖內的方法不得再呼叫它。
+   */
   async registerConnection(connection: Connection): Promise<void> {
     const roomId = connection.roomId;
     if (!roomId) return;
+    return this.withRoomLock(roomId, () => this.registerConnectionLocked(connection, roomId));
+  }
+
+  private async registerConnectionLocked(connection: Connection, roomId: string): Promise<void> {
     const runtime = this.runtime(roomId);
     const set = runtime.connections.get(connection.playerId) ?? new Set<Connection>();
     set.add(connection);
@@ -980,6 +994,10 @@ export class RoomService {
   async unregisterConnection(connection: Connection): Promise<void> {
     const roomId = connection.roomId;
     if (!roomId) return;
+    return this.withRoomLock(roomId, () => this.unregisterConnectionLocked(connection, roomId));
+  }
+
+  private async unregisterConnectionLocked(connection: Connection, roomId: string): Promise<void> {
     const runtime = this.runtimes.get(roomId);
     if (!runtime) return;
     const set = runtime.connections.get(connection.playerId);

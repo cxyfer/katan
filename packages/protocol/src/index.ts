@@ -251,6 +251,15 @@ export interface AbandonConsentResult {
   abandoned: boolean;
 }
 
+/**
+ * `POST /api/rooms/:roomId/leave` 的回應。`left: false` 表示這次離開被忽略
+ * （同一身分在該房仍有 live 訂閱連線，多半是遲到或重複的請求），沒有任何變更。
+ */
+export interface LeaveRoomResult {
+  left: boolean;
+  hostTransferredTo: string | null;
+}
+
 /** `POST /api/games/:gameId/withdraw` 的回應。 */
 export interface WithdrawResult {
   /** 套用後該席位是否處於退出狀態。 */
@@ -410,7 +419,9 @@ export type ServerMessage =
   | { type: 'presence'; payload: { roomId: string; members: RoomMemberView[] } }
   | { type: 'notice'; payload: Notice }
   | { type: 'error'; payload: Notice & { code: string } }
-  | { type: 'pong'; payload: { at: string } };
+  | { type: 'pong'; payload: { at: string } }
+  /** 取消訂閱（`subscribe` 不帶 `roomId`）處理完成後的確認；未訂閱時 `roomId` 為 null。 */
+  | { type: 'unsubscribed'; payload: { roomId: string | null } };
 
 export type ClientMessage =
   | { type: 'ping' }

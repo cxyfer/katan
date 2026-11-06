@@ -32,7 +32,7 @@ Conventions:
 | POST | `/api/rooms` | `{ visibility, capacity, profileId?, ruleset?, setupMode, orderMode?, policy? }` | `RoomView` |
 | POST | `/api/rooms/join` | `{ code }` | `RoomView` |
 | GET | `/api/rooms/:roomId` | – | `RoomView` |
-| POST | `/api/rooms/:roomId/leave` | – | `{ left: true, hostTransferredTo: string \| null }` |
+| POST | `/api/rooms/:roomId/leave` | – | `LeaveRoomResult` (`{ left: boolean, hostTransferredTo: string \| null }`) |
 | POST | `/api/rooms/:roomId/seat` | `{ color }` | `RoomView` |
 | POST | `/api/rooms/:roomId/ready` | `{ ready }` | `RoomView` |
 | POST | `/api/rooms/:roomId/settings` | `{ capacity?, profileId?, ruleset?, setupMode?, orderMode?, policy? }` | `RoomView` |
@@ -159,8 +159,9 @@ only the original human players must reconnect and become ready to resume.
 Leaving a started game has three distinct meanings (SPEC §4.6, §4.8); none of
 them removes the seat.
 
-- **Save and leave** — `POST /api/games/:gameId/save`, then
-  `POST /api/rooms/:roomId/leave`. The game stays resumable and the seat is not
+- **Save and leave** — `POST /api/games/:gameId/save`, then unsubscribe over the
+  socket and wait for `unsubscribed`, then `POST /api/rooms/:roomId/leave`
+  (see "Leaving a room" below). The game stays resumable and the seat is not
   withdrawn.
 - **Withdraw** — `POST /api/games/:gameId/withdraw` with `{ withdrawn: boolean }`
   records or retracts an explicit withdrawal and answers
@@ -506,13 +507,49 @@ idempotent and the socket stays open for a later subscribe. Messages on one
 socket are handled in order, so an unsubscribe followed at once by a subscribe
 ends up subscribed. Closing the socket unsubscribes implicitly.
 
+Once the unsubscribe has been processed the server answers
+`{ "type": "unsubscribed", "payload": { "roomId": "..." | null } }`.
+`roomId` is the room the socket just left, or `null` when it was not
+subscribed (the acknowledgement is sent either way, so a client can always wait
+for it). It is sent only after the connection is out of the room and the seat
+has been marked disconnected, so a request sent after it no longer races the
+socket.
+
 Save and leave from a client is therefore: `POST /api/games/:gameId/save`, then
-unsubscribe over the socket, then `POST /api/rooms/:roomId/leave`. Without the
-unsubscribe the socket keeps the seat online, keeps bots playing and keeps
-pushing the room back to the leaving client.
+unsubscribe over the socket and wait for `unsubscribed`, then
+`POST /api/rooms/:roomId/leave`. Without the unsubscribe the socket keeps the
+seat online, keeps bots playing and keeps pushing the room back to the leaving
+client.
 
 Server → client: `ServerMessage` union from `@catan/protocol`
-(`hello`, `room`, `snapshot`, `events`, `chat`, `presence`, `notice`, `error`, `pong`).
+(`hello`, `room`, `snapshot`, `events`, `chat`, `presence`, `notice`, `error`, `pong`,
+`unsubscribed`).
+
+### Leaving a room
+
+`POST /api/rooms/:roomId/leave` answers `LeaveRoomResult { left, hostTransferredTo }`.
+
+- `left: true` — the leave took effect. In a lobby the membership is removed
+  (the room closes when no person remains, and the host role moves on); in a
+  started game the seat is kept and only marked disconnected, and the host role
+  moves on if the leaver held it. A caller with no membership also gets
+  `left: true` (nothing to do).
+- `left: false, hostTransferredTo: null` — **ignored, nothing changed**: the same
+  person still has a live subscribed socket in that room. This catches a late or
+  repeated request (for example a `/leave` the client gave up waiting for that
+  reaches the server after the player re-entered the room), which would
+  otherwise disconnect the seat, move the host role or remove a lobby
+  membership under a player who is back. It applies in lobbies and started
+  games alike, and nothing is persisted, cancelled or broadcast.
+- With several tabs of the same person open, a leave from one tab is ignored
+  while any other tab is still subscribed to the room; it takes effect once
+  every tab has unsubscribed. A caller with no socket at all (plain HTTP) is
+  not affected.
+- The check and every connection registration or removal share the room's lock,
+  so a connection cannot slip in between the check and the change.
+
+A deliberate leave from the web client is therefore: unsubscribe → wait for
+`unsubscribed` → `POST /api/rooms/:roomId/leave`.
 
 Ordering guarantee: `events` are delivered in ascending `seq`; after any gap the
 client refetches `GET /api/games/:gameId` and replaces its state.

@@ -85,10 +85,14 @@ export function createWebSocketServer(deps: WsDeps): {
           if (!roomId) {
             // 沒有 roomId＝取消訂閱：把連線移出房間，presence 與推送隨之停止
             // （Bot 也只在房內有 live socket 時行動）。沒訂閱時冪等不做事。
-            if (connection.roomId) {
+            const previous = connection.roomId;
+            if (previous) {
               await deps.rooms.unregisterConnection(connection);
               connection.roomId = null;
             }
+            // client 等這則確認才送 HTTP /leave，所以到那時 server 已沒有這條連線；
+            // 原本就沒訂閱時也回覆，roomId 為 null。
+            connection.send({ type: 'unsubscribed', payload: { roomId: previous } });
             return;
           }
           await deps.rooms.requireMembership(roomId, context.playerId);
