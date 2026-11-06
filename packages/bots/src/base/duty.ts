@@ -1,6 +1,7 @@
 /** base 的保底義務：只做必定合法的最小動作（規格 I9）。 */
 
 import { RESOURCES, type Command, type GameView, type Resource } from '@catan/rules';
+import { roadStockLeft } from '../board.ts';
 
 /** 自己欠的待決效果；沒有則回傳 null。 */
 export function pendingDuty(view: GameView, selfId: string): Command | null {
@@ -31,6 +32,9 @@ export function pendingDuty(view: GameView, selfId: string): Command | null {
     }
     case 'freeRoads': {
       if (pending.actor !== selfId) return null;
+      // `legalRoads` 不扣存量：道路用完時送 build.road 會得到 E_NO_PIECES，改交給模組（造船）。
+      // base 的 frame 在存量為 0 時不會被投影，所以對 base 沒有影響。
+      if (roadStockLeft(view, selfId) <= 0) return null;
       const edge = view.hints?.legalRoads[0];
       return edge === undefined ? null : { type: 'build.road', edge };
     }
