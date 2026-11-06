@@ -1,6 +1,6 @@
 # Seafarers 電腦對手：實作計畫（v0.4.1）
 
-日期：2026-11-04。狀態：**建議計畫，待使用者確認 §10。**
+日期：2026-11-04；2026-11-06 開工前依程式現況核對並刷新（策略 §12）。狀態：**使用者已於 2026-11-05 確認 §10 的 D-SF1–D-SF9 採用建議。**
 
 本文件是 Aegis 工作紀錄，不是權威的執行期決策；權威需求以 `docs/SPEC.md` §4.9 為準。
 
@@ -10,13 +10,13 @@
 - bot 規格 `docs/aegis/specs/2026-11-01-bot-opponents.md`（I1–I9、§5 合約）
 - rules：`packages/rules/src/modules/seafarers/{index,ships,gold,pirate,islands}.ts`、`docs/FIDELITY.md` 的 R-SF 列（:100-117）與 Seafarers interpretations（:219-264）
 
-證據基準為 `a200840`。第一輪報告（`docs/aegis/work/2026-11-04-bots-seafarers-research.md`）的結論是起點；本計畫依賴的事實已以 `檔案:行號` 重新核實。第二輪探查腳本放在 `/tmp/katan-bot-research/seafarers/`，不提交（附錄）。探查期間 load 介於 2 與 44 之間，**耗時只是參考值**；結論只依步數、局數、拒絕數等決定性指標。
+證據基準為 `a200840`。第一輪報告（`docs/aegis/work/2026-11-04-bots-seafarers-research.md`）的結論是起點；本計畫依賴的事實已以 `檔案:行號` 重新核實。2026-11-06 開工前，又依 `73a0d95`（`release/v0.4.1` 的起點）核對一次：更正了 10 處引用，並把 S1–S11 的調整併入 §3、§4.1、§4.4、§4.5、§5、§5.1、§7.1、§8、§9（清單見策略 §12）。第二輪探查腳本放在 `/tmp/katan-bot-research/seafarers/`，不提交（附錄）。探查期間 load 介於 2 與 44 之間，**耗時只是參考值**；結論只依步數、局數、拒絕數等決定性指標。
 
 ## 1. 目標與範圍
 
 | 項目 | 內容 |
 |---|---|
-| profile | `sf-new-shores-2025`（3–4 人，`fixed`）、`sf-new-shores-paired-2025`（5–6 人，`variable`）；`ruleModules: ['seafarers']`，`sf-2025.2`，14 VP（`packages/rules/src/profiles.ts:370-412`） |
+| profile | `sf-new-shores-2025`（3–4 人，`fixed`）、`sf-new-shores-paired-2025`（5–6 人，`variable`）；`ruleModules: ['seafarers']`，`sf-2025.2`，14 VP（`packages/rules/src/profiles.ts:370-413`） |
 | 同版交付 | 平台 PL-1 到 PL-3（策略 §4.10）、rules 匯出（RX）、SF-1 到 SF-4 |
 | 目標 | 兩個 profile 的 3–6 人都能加入 easy 與 standard；兩種難度都會造船並登島；每個 frame 與強制動作都有保底；paired 5–6 人與 3–4 人同版開放 |
 | 非目標 | 策略 §1.3 全部；SF+CK（0.4.3）；SF 的其他劇本（由 `supports` 擋下，§4.4）；海盜騷擾、先佔金礦等進階戰術（延後到 0.4.x 調參） |
@@ -50,7 +50,7 @@
 | `legalRoads`、`legalSettlements` | **都不扣存量**；`countRoads` 不計船 | `engine.ts:481-492`、`:1203`、`:1291`；`analysis.ts:47-51` |
 | freeRoads 容量（`sf-2025.2`） | 有合法道路時加上剩餘道路數；有任何船位時加上**全部**剩餘船數。容量為 0 的 frame 由 `normalizedPending` 截斷，投影時 `pending` 為 null | `engine.ts:1251-1256`、`:1266-1268`、`:629-646`；探查 F2b |
 | `setupShips` | setup 的 road 階段、輪到自己時，與剛放的聚落相鄰的海邊；`view.turn.setup` 沒有 `lastVertex`，只能依賴 hints | `index.ts:95`；`ships.ts:231-246` |
-| `movableShips` | `inAction && !moved` 時提供，已涵蓋其他模組的 veto | `index.ts:96`；`ships.ts:111-129` |
+| `movableShips` | `inAction && !moved` 時提供，已涵蓋其他模組的 veto | `index.ts:96`；`ships.ts:111-128`（`shipMoveBlock`、`moduleShipMoveVeto`）、`:136-144`（`movableShips`） |
 | gold frame | `seafarers.gold`；`responders` 依序，從擲骰者開始；`goldRequired = min(owed, 銀行總數)`，只對 `responders[0]` 非零；每種資源再各自檢查 `E_BANK_EMPTY` | `gold.ts:54-63`、`:78-85`、`:103-105` |
 | 強盜與海盜 | `pending.moveRobber`、`dev.playKnight` 的 `hex` 型別本來就是 `number \| null`；傳陸地 hex 移強盜，傳海 hex 或 `null`（外框）移海盜；目標見 `hints.modules.seafarers.{robberTargets,pirateTargets}` | `engine.ts:89,94`（`Command` union）；`pirate.ts:13-21`、`:37-54`；`index.ts:98-102` |
 | 騎士 blocker（SF+CK 重用） | `canPlaceShip` 經 `isBlockedFor` 呼叫 `moduleVertexBlocker`，由 C&K 的 `vertexBlocker` 提供；移船另有 `shipMoveBlocked` | `ships.ts:57-75`；`analysis.ts:88-106`；`citiesKnights/index.ts:122`；`seafarersCitiesKnights/index.ts:121` |
@@ -63,7 +63,7 @@
 
 ### 4.1 保底（`modules/seafarers/duty.ts`，I9）
 
-先跑 base 的 `pendingDuty`，再跑模組的 `duty`（策略 §4.1）。下表涵蓋 SF profile 會出現的每一種 frame 與強制動作。「探查」欄是 `duty-fixtures.ts` 的結果：草稿保底送出的指令，全部都被 `applyCommand` 接受。
+pending 與 setup 先跑 base 的處理器，回 null 時才詢問模組的 `duty`；preroll 與 action 先詢問模組的 `duty`，再送 `turn.roll` 或 `turn.end`（策略 §4.1）。下表涵蓋 SF profile 會出現的每一種 frame 與強制動作。「探查」欄是 `duty-fixtures.ts` 的結果：草稿保底送出的指令，全部都被 `applyCommand` 接受。
 
 | frame／強制動作 | 最小動作 | 為何必定合法 | 證據（探查） |
 |---|---|---|---|
@@ -79,7 +79,7 @@
 | `seafarers.gold`（**I9 風險 3**） | 只有 `responders[0] === self` 時才行動：依 `RESOURCES` 順序，每種資源取 `min(view.bank[r], 剩餘)`，湊滿 `goldRequired` 張 | `goldRequired ≤ 銀行總數`（`gold.ts:84`），而且每種都不超過該種存量，所以不會觸發 `E_BANK_EMPTY` | F3：欠 2、銀行 1 → `["ore"] ok`；F3b：欠 3、wool 與 ore 各 1 → `["wool","ore"] ok`；F4：第一位 responder 是非行動者 `→ ok`，行動者回 null |
 | 其他模組 frame | `undefined`（不歸 SF 管），由平台記錄診斷（策略 §4.7-4） | — | — |
 
-保底**不會**在 freeRoads 以外造船，也不會移船。base 的 freeRoads 處理器（`fallback.ts:36-40`、`heuristic.ts:157-161`）在 SF-1 補上道路存量檢查。base 不受影響，因為 base 容量已依存量截斷（`engine.ts:1244-1248`），存量為 0 的 frame 不會被投影出來。golden replay 驗證這一點。
+保底**不會**在 freeRoads 以外造船，也不會移船。base 的 freeRoads 處理器（`fallback.ts:36-40`、`heuristic.ts:157-161`；PL-1 合併後以它所在的檔案為準）在 SF-1 補上道路存量檢查。base 不受影響：`base-2025.4` 的容量經 `pendingRouteCapacity`（`engine.ts:651-655`）交給 `roadBuildingGrantCapacity`（`:1251-1256`），在 `:1254` 依道路存量截斷，存量為 0 的 frame 不會被投影出來。golden replay 驗證這一點。
 
 ### 4.2 standard 與 easy
 
@@ -116,18 +116,22 @@
 - SF-4 把它改為 `['new-shores']`，並同步更新快照（策略 §4.4）。
 - 未來的 SF 劇本不會被自動放行。
 - SF+CK 仍然缺少 `seafarersCitiesKnights` 與 `citiesKnights` 兩個 BotModule，所以 `botsCanPlay` 維持 false。這與既有的 `seafarers-cities-knights.test.ts:150,159` 一致。
+- `botModulesOf` 不檢查 `supports`（策略 §4.2），所以 SF-3 在 SF-4 翻轉 gating 之前就能跑 B-GAME。
+- `BOT_RULE_MODULES` 在 PL-1 保留為 deprecated 的空陣列，`botsCanPlay` 不讀它；SF-4 刪除這個匯出，並更新引用它的文件與註解（策略 §4.4）。
 
 ### 4.5 對平台與 rules 的需求
 
 | 需求 | 提供者 | 使用的 SF 切片 |
 |---|---|---|
-| `BotCommand`、BotModule 型別、registry、`duty`／`answerFrame`／`setup`／`preroll`／`actions`／`freeRouteCandidates` 的組合 | PL-1 | SF-1、SF-2a、SF-2b |
-| **`banditCandidates?(turn, cause): Scored<number \| null>[]`**，與 base 強盜候選串接後統一評分（§11-1） | PL-1 | SF-2b |
-| base 評分函式改為具名匯出：`setupSpotScore`、`roadDirectionScore`、強盜評分、`plentyPick`、`usefulRoad` | PL-1 | SF-2a、SF-2b |
-| golden replay 測試（base 3–6 人 × 10 種子） | PL-1 | 所有改動 `src` 的 SF 切片都要通過 |
-| `newBotGame({ profileId })`、仿 BotDriver 模式、看門狗、每視窗指令數統計、`BOTS_SEEDS`、`test/modules/<id>.ts` 介面、`bench --profile`、naive 座位（只啟用模組的 `duty`） | PL-2 | SF-3、SF-2a 的 bench 驗收 |
-| `BOT_PACING` 合併、依 profile 的視窗上限、「欠動作卻沒有動作」的診斷；`bots.test.ts:252-263` 改用 `botsCanPlay`，`:278-290` 改用含未知模組的 fixture | PL-3 | SF-1 合併、SF-4 |
-| 型別匯出 `SeafarersView`、`SeafarersHints`、`SeafarersGoldPendingView`、`ModuleViewMap`（型別）；常數 `SHIP_COST`、`GOLD_FRAME` | RX | SF-1 起 |
+| `BotCommand`、BotModule 型別、registry、`duty`／`answerFrame`／`setup`／`preroll`／`actions`／`freeRouteCandidates`／`planStep` 的組合；`Scored`、`TurnContext` 與測試用的 `turnContext()`；`RobberCause` | PL-1 | SF-1、SF-2a、SF-2b |
+| **`banditCandidates?(turn, cause): Scored<number \| null>[]`**，接在 base 強盜候選之後統一評分（§11-1）；挑選結果要區分「沒有候選」與「選中 `null`（外框）」 | PL-1 | SF-2b |
+| base 評分函式改為具名匯出：`setupSpotScore`、`roadDirectionScore`、`robberCandidates`（從 `robberHex` 拆出）、`plentyPick(turn, hand?, bank?)`（可重複選，供 gold 使用）、`usefulRoad`、`canPlay`；放在 `src/base/*.ts`，避免與模組循環 import | PL-1 | SF-2a、SF-2b |
+| `economyOf(model, modules)` 組合 `costs`、`piecesLeft`、`scoreExtras`；`heuristic.ts` 的通用掛點：`planStep`、「可立即得分」的判斷、Road Building 條件納入模組的 `freeRouteCandidates`（策略 §4.10 合約 11、12） | PL-1 | SF-2a |
+| 可注入模組清單的策略工廠 `createBotPolicy(level, { modules })`、`createFallbackPolicy(modules)`；`botOwesAction` | PL-1 | SF-3；PL-2 的 naive 座位與假模組 |
+| golden replay 測試（48 局：base 3–6 人 × 10 種子，另含保底席、`createBotPolicy` 與全保底局；策略 §4.10） | PL-1 | 所有改動 `src` 的 SF 切片都要通過 |
+| `newBotGame({ profileId })`、仿 BotDriver 模式、看門狗、每視窗指令數統計、`BOTS_SEEDS`、`test/modules/<id>.ts` 介面、`bench --profile`、naive 座位（只放入模組的 `duty`） | PL-2 | SF-3、SF-2a 的 bench 驗收 |
+| server 依 `BOT_PACING` 查表、依 profile 的視窗上限、「欠動作卻沒有動作」的診斷；`bots.test.ts:252-264` 改用 `botsCanPlay`，`:279-291` 改用含未知模組的 fixture | PL-3 | SF-1 合併、SF-4 |
+| 型別匯出 `SeafarersView`、`SeafarersHints`、`SeafarersGoldPendingView`、`ModuleViewMap`、`ModuleHintsMap`（型別）；常數 `SHIP_COST`（`ships.ts:27`）與 `GOLD_FRAME`（`gold.ts:21`）由 index 轉出。`SeafarersGoldPendingView` 目前不存在（`gold.ts:124-133` 回傳通用的 `PublicModulePendingView`），由 RX 在 `seafarers/index.ts` 定義 | RX | SF-1 起 |
 | accessor `moduleView(view, 'seafarers')`、`moduleHints(hints, 'seafarers')` 放在 bots（`modules/view.ts`），讓 rules 維持只新增型別與常數（P8） | SF-1 | 全部 |
 
 本版**不實作** `economy.routeEdge` 與 `hexYield`。陸海判定是通用幾何，直接放在 `sea.ts` 與 `board.ts`；金礦的估值在 SF 模組的 `scoreExtras` 與 setup 評分中處理。兩個鉤子保留給後續版本。
@@ -152,12 +156,12 @@ PR 一律指向 `release/v0.4.1`，以 squash merge 合併（策略 §7）。wor
 
 | 切片 | 分支／worktree slug | 檔案所有權 | 內容 | 行數 src／test | 依賴 | 驗收命令 |
 |---|---|---|---|---|---|---|
-| RX rules 匯出 | `feat/bots-seafarers-exports`／`bots-seafarers-exports` | `packages/rules/src/modules/seafarers/index.ts`、`packages/rules/src/index.ts`、`packages/rules/test/seafarers-exports.test.ts`（新） | 把模組物件內的 `project`／`actionHints` 抽成具名函式 `projectSeafarers`、`seafarersHints`，模組物件改為引用它們；以 `ReturnType` 匯出 view 與 hints 型別（比照 `explorersPirates/index.ts:285,368`）；匯出 gold pending 介面、`ModuleViewMap`、`SHIP_COST`、`GOLD_FRAME`；形狀測試比對實際 key 集合。不碰 web | 30–40／30–40 | 無（可與 PL-1 並行） | `pnpm --filter @catan/rules exec vitest run`（**rules 測試全部通過、行為不變**）；`pnpm --filter @catan/rules typecheck`；`pnpm --filter @catan/web typecheck`；`git diff --stat` 只有上述 3 檔 |
-| SF-1 海域模型與保底 | `feat/bots-seafarers-sea`／`bots-seafarers-sea` | `packages/bots/src/sea.ts`（新）、`board.ts`、`economy.ts`（只改型別：`Plan.ships: number[]`，base 恆為 `[]`；`PieceCounts.ships`）、`fallback.ts` 與 base freeRoads 處理器的存量檢查、`src/modules/seafarers/**`（新：`index.ts` 掛上全部鉤子，`duty.ts`，`plan.ts`、`actions.ts`、`frames.ts`、`bandit.ts`、`setup.ts` 先放回傳 `undefined`／`[]` 的 stub）、`src/modules/view.ts`（新）、registry 的一行、`packages/bots/test/sf-sea.test.ts`、`sf-duty.test.ts`（新） | §4.1 保底；§4.3 模型；修正 G7–G11；`supports` 先回 false；`pacing`（§4.6） | 250–300／180–230 | PL-1、RX；**合併在 PL-3 之後**（R-SF10） | `pnpm --filter @catan/bots exec vitest run test/sf-sea.test.ts test/sf-duty.test.ts`；golden replay（PL-1 提供的測試檔）逐一相同；`pnpm --filter @catan/bots exec vitest run`；`pnpm --filter @catan/bots typecheck` |
-| SF-2a 島嶼計畫與行動 | `feat/bots-seafarers-plans`／`bots-seafarers-plans` | `packages/bots/src/economy.ts`、`src/modules/seafarers/{plan,actions}.ts`、`packages/bots/test/sf-decisions.test.ts`（新） | §4.2 的 action 各列（計畫、造船步驟、移船、Road Building、交易目標）與 `freeRouteCandidates`；easy 差異；SF-FAQ 18 的 hints 推導測試（§10 D-SF6） | 290–360／150–200 | SF-1；PL-2（bench） | `pnpm --filter @catan/bots exec vitest run test/sf-decisions.test.ts`；golden replay；`pnpm --filter @catan/bots bench 10 --profile sf-new-shores-2025` 與 `--profile sf-new-shores-paired-2025`：`problems 0`，每局都有 `build.ship` |
-| SF-2b frame、強盜與 setup | `feat/bots-seafarers-frames`／`bots-seafarers-frames` | `src/modules/seafarers/{frames,bandit,setup}.ts`、`packages/bots/test/sf-frames.test.ts`（新） | gold 的 `answerFrame`；強盜與海盜評分；preroll 騎士；setup 的建築與「路或船」；standard 與 easy 的 I9 固定盤面測試 | 140–190／120–160 | SF-1；PL-1 的 `banditCandidates` | `pnpm --filter @catan/bots exec vitest run test/sf-frames.test.ts`；golden replay；`pnpm --filter @catan/bots typecheck` |
-| SF-3 驗收測試（gating 前） | `feat/bots-seafarers-tests`／`bots-seafarers-tests` | `packages/bots/test/modules/seafarers.ts`（新：`conservation`、`hideDifferently`、`perturb`、`responseCommands`、`mechanics`）、`test/sf-game.test.ts`、`sf-fair.test.ts`、`sf-fuzz.test.ts`、`sf-fallback.test.ts`（新） | Q1 矩陣與 Q2 門檻（§6）；B-POLICY-SEA 在對局中取樣。profile 清單明寫；PL-2 的 matrix guard 在 SF-4 之後會要求 SF 由這些檔案涵蓋 | 0／260–330 | 開發：SF-1、PL-2；**合併：SF-2a、SF-2b 之後** | `pnpm --filter @catan/bots exec vitest run test/sf-game.test.ts test/sf-fair.test.ts test/sf-fuzz.test.ts test/sf-fallback.test.ts`（預設 3 種子）；`BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run test/sf-game.test.ts`（發布閘門）；`pnpm --filter @catan/bots exec vitest run` |
-| SF-4 開放 gating | `feat/bots-seafarers-gate`／`bots-seafarers-gate` | `src/modules/seafarers/index.ts`（`SUPPORTED_SCENARIOS`）、`packages/bots/test/support.test.ts`（快照）、`packages/server/test/seafarers-bots.test.ts`（新）、`packages/server/test/bots.test.ts:265-276`（翻轉）、`packages/server/src/bot-seats.ts:46-48`（只改註解）、i18n 兩行、§7 列出的文件 | gating 翻轉；server 四類案例（策略 §4.7-5）；SPEC §4.9 改寫；大廳文案；文件 | 10–20／150–200；docs 60–90 | SF-3、PL-3 | `pnpm --filter @catan/bots exec vitest run test/support.test.ts`；`pnpm --filter @catan/server exec vitest run test/seafarers-bots.test.ts test/bots.test.ts test/seafarers-cities-knights.test.ts`；`pnpm --filter @catan/web exec vitest run test/i18n.test.ts`；`pnpm verify` |
+| RX rules 匯出 | `feat/bots-seafarers-exports`／`bots-seafarers-exports` | `packages/rules/src/modules/seafarers/index.ts`、`packages/rules/src/index.ts`、`packages/rules/test/seafarers-exports.test.ts`（新） | 把模組物件內的 `project`／`actionHints` 抽成具名函式 `projectSeafarers`、`seafarersHints`，模組物件改為引用它們；以 `ReturnType` 匯出 view 與 hints 型別（比照 `explorersPirates/index.ts:285,368`）；在 `seafarers/index.ts` 定義並匯出 gold pending 介面；匯出 `ModuleViewMap`、`ModuleHintsMap`、`SHIP_COST`、`GOLD_FRAME`；形狀測試比對實際 key 集合。不碰 web | 30–40／30–40 | 無（可與 PL-1 並行） | `pnpm --filter @catan/rules exec vitest run`（**rules 測試全部通過、行為不變**）；`pnpm --filter @catan/rules typecheck`；`pnpm --filter @catan/web typecheck`；`git diff --stat` 只有上述 3 檔 |
+| SF-1 海域模型與保底 | `feat/bots-seafarers-sea`／`bots-seafarers-sea` | `packages/bots/src/sea.ts`（新）、`board.ts`、`economy.ts`（只改型別：`Plan.ships: number[]`，base 恆為 `[]`；`PieceCounts.ships`）、`fallback.ts`、base freeRoads 處理器（PL-1 合併後所在的檔案，只加存量檢查）、`src/modules/seafarers/**`（新：`index.ts` 掛上全部鉤子並接到對應的 stub 檔：`plan.ts` 放 economy 鉤子與 `planStep`，`actions.ts` 放 `actions` 與 `freeRouteCandidates`，`frames.ts` 放 `answerFrame`，`bandit.ts` 放 `banditCandidates` 與 `preroll`，`setup.ts` 放 `setup`，都先回傳 `undefined`／`[]`，讓階段 C 不必修改 `index.ts`；另有 `duty.ts`）、`src/modules/view.ts`（新）、registry 的一行、`packages/bots/test/sf-sea.test.ts`、`sf-duty.test.ts`（新） | §4.1 保底；§4.3 模型；修正 G7–G11；`supports` 先回 false；`pacing`（§4.6） | 250–300／180–230 | PL-1、RX；**合併在 PL-2、PL-3 之後**（R-SF10） | `pnpm --filter @catan/bots exec vitest run test/sf-sea.test.ts test/sf-duty.test.ts`；golden replay（PL-1 提供的測試檔）逐一相同；`pnpm --filter @catan/bots exec vitest run`；`pnpm --filter @catan/bots typecheck`；`pnpm typecheck` |
+| SF-2a 島嶼計畫與行動 | `feat/bots-seafarers-plans`／`bots-seafarers-plans` | `packages/bots/src/economy.ts`、`src/modules/seafarers/{plan,actions}.ts`、`packages/bots/test/sf-decisions.test.ts`（新）；不改 `heuristic.ts`（PL-1 已提供通用掛點；若 PL-1 的介面審查決定不提供，改由 SF-2a 在階段 C 獨占 `heuristic.ts`） | §4.2 的 action 各列（計畫、造船步驟、移船、Road Building、交易目標）與 `freeRouteCandidates`；easy 差異；SF-FAQ 18 的 hints 推導測試（§10 D-SF6） | 290–360／150–200 | SF-1；PL-2（bench） | `pnpm --filter @catan/bots exec vitest run test/sf-decisions.test.ts`；golden replay；`pnpm --filter @catan/bots bench 10 --profile sf-new-shores-2025` 與 `--profile sf-new-shores-paired-2025`：`problems 0`，每局都有 `build.ship`；`pnpm typecheck` |
+| SF-2b frame、強盜與 setup | `feat/bots-seafarers-frames`／`bots-seafarers-frames` | `src/modules/seafarers/{frames,bandit,setup}.ts`、`packages/bots/test/sf-frames.test.ts`（新）；不改 `heuristic.ts`、`economy.ts` | gold 的 `answerFrame`；強盜與海盜評分；preroll 騎士；setup 的建築與「路或船」；standard 與 easy 的 I9 固定盤面測試 | 140–190／120–160 | SF-1；PL-1 的 `banditCandidates` | `pnpm --filter @catan/bots exec vitest run test/sf-frames.test.ts`；golden replay；`pnpm --filter @catan/bots typecheck`；`pnpm typecheck` |
+| SF-3 驗收測試（gating 前） | `feat/bots-seafarers-tests`／`bots-seafarers-tests` | `packages/bots/test/modules/seafarers.ts`（新：`conservation`、`hideDifferently`、`perturb`、`responseCommands`、`mechanics`）、`test/sf-game.test.ts`、`sf-fair.test.ts`、`sf-fuzz.test.ts`、`sf-fallback.test.ts`（新）；在 PL-2 的 family 註冊檔加一筆 | Q1 矩陣與 Q2 門檻（§6）；B-POLICY-SEA 在對局中取樣。profile 清單明寫；PL-2 的 matrix guard 在 SF-4 之後會要求 SF 由這些檔案涵蓋 | 0／260–330 | 開發：SF-1、PL-2；**合併：SF-2a、SF-2b 之後** | `pnpm --filter @catan/bots exec vitest run test/sf-game.test.ts test/sf-fair.test.ts test/sf-fuzz.test.ts test/sf-fallback.test.ts`（預設 3 種子）；`BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run test/sf-game.test.ts`（發布閘門）；`pnpm --filter @catan/bots exec vitest run` |
+| SF-4 開放 gating | `feat/bots-seafarers-gate`／`bots-seafarers-gate` | `src/modules/seafarers/index.ts`（`SUPPORTED_SCENARIOS`）、`src/support.ts`（刪除 `BOT_RULE_MODULES`）、`packages/bots/test/support.test.ts`（快照）、`packages/server/test/seafarers-bots.test.ts`（新）、`packages/server/test/bots.test.ts:266-277`（翻轉）、`packages/server/src/bot-seats.ts:46-48` 與 `packages/server/test/traders-barbarians.test.ts:67`（只改註解）、i18n 兩行、`packages/web/test/bots.test.tsx:175-195`（範例改用 `ck-2025`，期望值改成新文案）、§7 列出的文件 | gating 翻轉；server 四類案例（策略 §4.7-5）；SPEC §4.9 改寫；大廳文案；文件 | 10–20／150–200；docs 60–90 | SF-3、PL-3 | `pnpm --filter @catan/bots exec vitest run test/support.test.ts`；`pnpm --filter @catan/server exec vitest run test/seafarers-bots.test.ts test/bots.test.ts test/seafarers-cities-knights.test.ts`；`pnpm --filter @catan/web exec vitest run test/i18n.test.ts test/bots.test.tsx`；`pnpm verify` |
 
 **合計**：src 720–910，test 890–1,160，docs 60–90，總計約 1,670–2,160 行。比策略 §5 原估的 1,450–1,850 略高，原因是 server 四類案例與模組測試工具算在 SF 切片內；策略 §5 已依此更新。
 
@@ -176,8 +180,8 @@ PR 一律指向 `release/v0.4.1`，以 squash merge 合併（策略 §7）。wor
 
 | 階段 | 並行開發 | 合併順序 | 備註 |
 |---|---|---|---|
-| A | PL-1 ∥ RX | RX、PL-1（不分先後） | RX 只動 rules，PL-1 只動 bots，互不重疊 |
-| B | PL-2 ∥ PL-3 ∥ SF-1 | PL-2、PL-3，然後 SF-1 | SF-1 不用 harness（固定盤面直接用 `rules/test/seafarers-helpers.ts`），檔案也與 PL-2、PL-3 不重疊（§11-2） |
+| A | PL-1 ∥ RX | RX、PL-1（不分先後） | RX 只動 rules；PL-1 動 bots，以及 server 的型別註記與 bot 規格（策略 §4.10）。兩者互不重疊 |
+| B | PL-2 ∥ PL-3 ∥ SF-1 | PL-2、PL-3，然後 SF-1 | SF-1 不用 harness（固定盤面直接用 `rules/test/seafarers-helpers.ts`），檔案也與 PL-2、PL-3 不重疊（§11-2）；PL-2 的所有權明列檔案，不含 `test/sf-*`（策略 §4.10） |
 | C | SF-2a ∥ SF-2b ∥ SF-3 | SF-2a、SF-2b，然後 SF-3 | stub 讓 2a 與 2b 各改各的檔案；SF-3 只改新的測試檔 |
 | D | SF-4 | — | SPEC、文案與 gating 都放在這一個 PR |
 | E | 發布 QA、Browser QA、rc | — | §7 |
@@ -246,16 +250,17 @@ PR 一律指向 `release/v0.4.1`，以 squash merge 合併（策略 §7）。wor
 | `docs/SPEC.md:188` | 改用策略 §4.4 的 Rulesets 條文；「Today that is the base game and Seafarers — Heading for New Shores (`sf-new-shores-2025`, `sf-new-shores-paired-2025`), including paired 5–6 player turns.」 |
 | `docs/API.md:141-147` | 改寫判定說明：依 BotModule 加上 `supports`；SF 兩個 profile 為 `botSeats: true`，其餘擴充仍為 false |
 | `docs/FIDELITY.md:34-35` | 兩個 SF profile 列加上「easy／standard bot seats」 |
-| `docs/FIDELITY.md:65` | 在 New Shores 開放段落補一句 Bot 證據（Q1／Q2、server 測試） |
+| `docs/FIDELITY.md:65` | 在 New Shores 開放段落補一句 Bot 證據（Q1／Q2、server 測試）；同段 C&K 句子對 `BOT_RULE_MODULES` 的引用，改寫為依 BotModule 判定 |
 | `docs/FIDELITY.md:67` | 「as for the other expansions」改為「as for every expansion except New Shores」 |
 | `docs/FIDELITY.md:117` 之後 | 新增 `R-SF bots` 列：bots 的 `sf-*.test.ts`、`server/test/seafarers-bots.test.ts` |
 | `docs/aegis/specs/2026-11-01-bot-opponents.md:16` | 範圍加上兩個 SF profile |
 | 同上 `:19` | 刪除「目前停用的 Seafarers／C&K profile」 |
-| 同上 `:108-119` | 規則 7 的表格加上 §4.1 的 SF 列，或改為指向本計畫。合約條文（規則 3、4、8、9、I3）由 PL-1 修改；`:258` 的完成閘門由 PL-2 修改 |
+| 同上 `:108-119` | 規則 7 的表格加上 §4.1 的 SF 列，或改為指向本計畫。合約條文由 PL-1 修改：`:42` 的 I3、`:76-98` 的程式碼區塊、`:104-105` 的規則 3 與 4，以及新增的規則 8、9；`:258` 的完成閘門由 PL-2 修改 |
 | `README.md:153-157` | SF 段落加上「with easy and standard computer opponents」 |
-| `README.md:176` | 「not offered for the expansions」改為「not offered for this combination」 |
-| `packages/web/src/i18n/zh-Hant.ts:275`、`en.ts:278` | 改用策略 §4.4 的文案（message id 不變） |
-| `RELEASING.md:102-113` | pre-flight 加上 `BOTS_SEEDS=10 pnpm verify`（若 PL-2 已加則略過） |
+| `README.md:176-177` | 「not offered for the expansions」改為「not offered for this combination」 |
+| `packages/web/src/i18n/zh-Hant.ts:276`、`en.ts:279` | 改用策略 §4.4 的文案（message id 不變） |
+| `packages/web/test/bots.test.tsx:175-195` | 不支援的範例改用 `ck-2025`，期望值改成新文案 |
+| `RELEASING.md:102-113` | 由 PL-2 修改：pre-flight 的 `pnpm verify` 改為 `BOTS_SEEDS=10 pnpm verify`（策略 D7）；SF-4 不動 |
 | `docs/aegis/work/2026-11-0x-bots-seafarers.md`（新）、`docs/aegis/INDEX.md` | 工作紀錄（Q1／Q2 表、bench 表、探查結論）與索引列 |
 
 `docs/aegis/work/2026-11-01-seafarers.md:142-143` 是當時的歷史紀錄，**不改**。
@@ -277,7 +282,9 @@ PR 一律指向 `release/v0.4.1`，以 squash merge 合併（策略 §7）。wor
 
 | 切片 | 角色 | 隔離 | 審查 | 備註 |
 |---|---|---|---|---|
-| PL-1 合約 | Implementer (Backend) | worktree | **Architect** 先審介面（含 `banditCandidates` 與匯出的 base 評分函式），再由 Reviewer (Sol) 審 diff | 共用合約檔由主 agent 擁有（策略 §8） |
+| PL-1 合約 | Implementer (Backend) | `.worktrees/bots-platform-contract` | **Architect** 先審介面（含 `banditCandidates`、匯出的 base 評分函式與 `heuristic.ts` 的通用掛點），再由 Reviewer (Sol) 審 diff | 共用合約檔由主 agent 擁有（策略 §8） |
+| PL-2 測試基礎建設 | Implementer (Backend) | `.worktrees/bots-platform-harness` | Reviewer (Opus)：harness 與 BotDriver 的語意一致、golden 沒有被改動、反例測試 | 與 PL-3、SF-1 同時派工 |
+| PL-3 伺服器 | Implementer (Backend) | `.worktrees/bots-platform-server` | Reviewer (Sol)：退避重試不形成熱迴圈、上限邏輯、診斷內容 | 與 PL-2、SF-1 同時派工 |
 | RX | Implementer (Backend) | `.worktrees/bots-seafarers-exports` | Reviewer (Opus)（輕量：只看行為是否不變） | 與 PL-1 同時派工 |
 | SF-1 | Implementer (Backend) | `.worktrees/bots-seafarers-sea` | Reviewer (Sol)：I9、合約規則 5、golden replay | 與 PL-2、PL-3 同時派工 |
 | SF-2a | Implementer (Backend) | `.worktrees/bots-seafarers-plans` | Reviewer (Sol)：決定性、tie-break | 共用檔 `economy.ts` 只給這一個 agent |
@@ -305,7 +312,7 @@ PR 一律指向 `release/v0.4.1`，以 squash merge 合併（策略 §7）。wor
 | R-SF7 | 平台的 base frame 調整鉤子容不下海盜目標 | `banditCandidates`（§11-1），由 Architect 在 PL-1 審查 |
 | R-SF8 | 測試時間 | 預設 3 種子；拆成多個檔案；timeout 120 s |
 | R-SF9 | paired P2 的限制 | B-GAME 涵蓋 5、6 人；F8 |
-| R-SF10 | 合併順序：SF-1 註冊模組時，`bots.test.ts:259-261` 若仍以 `BOT_RULE_MODULES` 推算，會與 `botsCanPlay` 不一致 | SF-1 合併在 PL-3 之後 |
+| R-SF10 | 合併順序：SF-1 註冊模組時，`bots.test.ts:259-261` 若仍以 `BOT_RULE_MODULES` 推算，會與 `botsCanPlay` 不一致 | SF-1 合併在 PL-3 之後；PL-1 另把 `BOT_RULE_MODULES` 保留為 deprecated 的空陣列（策略 §4.4），所以在 SF-4 翻轉 gating 之前，兩種推算的結果都相同 |
 | R-SF11 | 模組 hints 讀原始 `state.pending`（`index.ts:87-89`），已停滯的 freeRoads 會讓 `movableShips` 暫時為空 | 只會少移一次船，不影響 I9；不修 |
 
 ## 10. 待使用者決定的事
