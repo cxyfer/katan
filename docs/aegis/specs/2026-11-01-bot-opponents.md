@@ -290,7 +290,12 @@ ALTER TABLE guests ADD COLUMN bot_level TEXT;                      -- 只有 bot
 | B-RACE | server | 真人與 Bot 在同一 revision 送出：只有一個 accepted，另一個 stale，且不重複套用 |
 | B-WEB | web | 建房不含 Bot 欄位、空位新增電腦對話框與徽章、i18n parity |
 
-完成閘門：`pnpm verify` 全綠；B-GAME 涵蓋 3、4、5、6 人各至少 10 個種子；Docker 依賴層可以建置。
+完成閘門：`pnpm verify` 全綠；Docker 依賴層可以建置；B-GAME 的種子數與判定如下：
+
+- base：3、4、5、6 人各 10 個種子，固定，不受 `BOTS_SEEDS` 影響。
+- 擴充 profile：`pnpm test` 與 `pnpm verify` 每個人數預設 3 個種子；發布閘門以 `BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run` 跑 10 個（`RELEASING.md` 的 Pre-flight）。
+- 每局以仿 BotDriver 模式進行（策略回 null 時改用保底），必須做到：0 次拒絕；有勝者；沒有殘留 pending；資源守恆（base 加上各模組的守恆檢查）；沒有「策略閒置、但保底有動作」，也沒有兩者都閒置而卡死；通過進度看門狗（連續 N 次擲骰沒有任何玩家創新高即失敗，N 與步數上限依 profile 設定）。
+- 另有保底席（每個 profile × 人數至少一局，1 席只走保底）與全保底有界局（只要求 0 拒絕且每一步都有動作，不要求終局）。
 
 模擬時間：bots 測試 harness 以步數模擬報價階段——報價建立後，其他座位各輪一次前為 `collecting`，之後為 `ready`，再一輪後為 `expired`。
 
