@@ -695,6 +695,30 @@ describe('economy composition', () => {
     expect(economy.plans.filter((plan) => !plan.kind.includes('.'))).toEqual(base.plans);
   });
 
+  it('keeps module plan ties in module order, whatever their vertices are', () => {
+    const m = model();
+    const plan = (kind: `${string}.${string}`, vertex: number): Plan => ({ kind, vertex, roads: [], cost: {}, nextCost: {}, value: 1, eta: 0, score: 1000 });
+    const kindsOf = (modules: readonly BotModule[]): string[] =>
+      economyOf(m, modules, 'standard').plans.filter((candidate) => candidate.kind.includes('.')).map((candidate) => candidate.kind);
+    // (a) 前一個模組的計畫路口編號較大，仍排在後一個模組的計畫之前。
+    const early: BotModule = { id: 'fx', economy: { scoreExtras: () => [plan('fx.a', 100)] } };
+    const late: BotModule = { id: 'fy', economy: { scoreExtras: () => [plan('fy.b', 1)] } };
+    expect(kindsOf([early, late])).toEqual(['fx.a', 'fy.b']);
+    expect(kindsOf([late, early])).toEqual(['fy.b', 'fx.a']);
+    // (b) 同一個模組的計畫依插入順序，不依路口編號。
+    const same: BotModule = {
+      id: 'fx',
+      economy: { scoreExtras: () => [plan('fx.x', 50), plan('fx.y', 5), plan('fx.z', 20)] },
+    };
+    expect(kindsOf([same])).toEqual(['fx.x', 'fx.y', 'fx.z']);
+    // 模組計畫之間仍先比分數，路口編號不參與。
+    const better: BotModule = {
+      id: 'fz',
+      economy: { scoreExtras: () => [{ ...plan('fz.c', 999), score: 2000 }] },
+    };
+    expect(kindsOf([early, late, better])).toEqual(['fz.c', 'fx.a', 'fy.b']);
+  });
+
   it('decides which plans score immediately', () => {
     const plan = (patch: Partial<Plan>): Plan => ({ kind: 'city', vertex: 0, roads: [], cost: {}, nextCost: {}, value: 1, eta: 0, score: 1, ...patch });
     expect(isImmediate(plan({ kind: 'city' }))).toBe(true);

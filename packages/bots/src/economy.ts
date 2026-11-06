@@ -339,10 +339,15 @@ function comparePlans(a: Plan, b: Plan): number {
 
 const BASE_KIND_ORDER: readonly string[] = ['city', 'settlement', 'longestRoad', 'devCard'];
 
-/** base 種類依序為 0–3；模組計畫一律排在後面（4）。路口數最多 174，間距 1000 不會重疊。 */
+/**
+ * base 種類依序為 0–3，再以路口編號打破同分（路口數最多 174，間距 1000 不會重疊）。模組計畫一律
+ * 排在後面，而且共用同一個鍵、不加路口編號：同分時靠穩定排序保留串接順序，也就是先依模組順序、
+ * 再依模組內的順序；若以路口編號排序，後面模組的計畫可能插到前面模組的計畫之前。
+ */
 function planOrder(plan: Plan): number {
   const rank = BASE_KIND_ORDER.indexOf(plan.kind);
-  return (rank < 0 ? BASE_KIND_ORDER.length : rank) * 1000 + (plan.vertex ?? 0);
+  if (rank < 0) return BASE_KIND_ORDER.length * 1000;
+  return rank * 1000 + (plan.vertex ?? 0);
 }
 
 /** 能讓自己最長道路變長的合法道路；沒有則回傳 null。 */
