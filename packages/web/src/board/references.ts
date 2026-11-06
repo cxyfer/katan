@@ -151,9 +151,15 @@ function baseReference(context: ReferenceContext, kind: ReferenceKind, index: nu
   if (kind === 'hex') return isLand(context, index) ? tileRef(context, index) : null;
   if (kind === 'vertex') {
     const land = landOf(context, topology.vertices[index]?.hexes ?? []);
-    return land.length > 0 ? tileList(context, land) : null;
+    if (land.length === 0) return null;
+    // 地塊內部的廣場（商人與蠻族的採石場、玻璃工坊、城堡）不是地塊交界。
+    if (topology.vertices[index]?.interior) return t(locale, 'board.inside', { tile: tileRef(context, land[0]!) });
+    return tileList(context, land);
   }
   const land = landOf(context, topology.edges[index]?.hexes ?? []);
+  if (topology.edges[index]?.interior && land.length === 1) {
+    return t(locale, 'board.inside', { tile: tileRef(context, land[0]!) });
+  }
   if (land.length >= 2) {
     return t(locale, 'board.edgeBetween', { a: tileRef(context, land[0]!), b: tileRef(context, land[1]!) });
   }

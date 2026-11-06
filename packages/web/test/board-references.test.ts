@@ -89,13 +89,13 @@ describe('board references', () => {
     }
   });
 
-  it.each(['sf-new-shores-2025', 'ep-land-ho-2025', 'ep-pirate-lairs-2025'])(
+  it.each(['sf-new-shores-2025', 'ep-land-ho-2025', 'ep-pirate-lairs-2025', 'tb-traders-barbarians-2025'])(
     'never gives two positions the same name on the %s board',
     (profileId) => {
       const players = Array.from({ length: 4 }, (_, seat) => ({
         id: `p${seat}`, nickname: `P${seat}`, color: (['red', 'blue', 'orange', 'white'] as const)[seat]!,
       }));
-      const state = createGame({ profileId, players, setupMode: 'fixed', rng: seededRng(4) });
+      const state = createGame({ profileId, players, setupMode: profileId.startsWith('tb-') ? 'variable' : 'fixed', rng: seededRng(4) });
       const view = projectGame(state, 'p0');
       const fog = fogRegions(epView(view));
       for (const locale of ['en', 'zh-Hant'] as const) {
@@ -122,5 +122,21 @@ describe('board references', () => {
         || context.topology.edges[a.index]!.x - context.topology.edges[b.index]!.x);
       expect(ordered[n! - 1]!.index).toBe(index);
     }
+  });
+
+  it('describes paths and plazas inside a Traders & Barbarians site tile as inside, not as coast', () => {
+    const players = Array.from({ length: 4 }, (_, seat) => ({
+      id: `p${seat}`, nickname: `P${seat}`, color: (['red', 'blue', 'orange', 'white'] as const)[seat]!,
+    }));
+    const state = createGame({ profileId: 'tb-traders-barbarians-2025', players, setupMode: 'variable', rng: seededRng(4) });
+    const board = projectGame(state, 'p0').board;
+    const context = contextFor(board);
+    const interiorEdges = context.topology.edges.flatMap((edge, index) => edge.interior ? [index] : []);
+    const interiorVertices = context.topology.vertices.flatMap((vertex, index) => vertex.interior ? [index] : []);
+    expect(interiorEdges.length).toBeGreaterThan(0);
+    expect(interiorVertices.length).toBeGreaterThan(0);
+    for (const index of interiorEdges) expect(boardReference(context, 'edge', index)).toMatch(/^Inside /);
+    for (const index of interiorVertices) expect(boardReference(context, 'vertex', index)).toMatch(/^Inside /);
+    expect(boardReference(contextFor(board, 'zh-Hant'), 'edge', interiorEdges[0]!)).toMatch(/內部/);
   });
 });
