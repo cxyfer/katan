@@ -312,6 +312,7 @@ export const zhHant: Catalog = {
   'board.viewingAngle': '觀看角度',
   'board.viewingAngleDegrees': '{degrees} 度',
   'board.cameraGestureHint': '拖曳旋轉／俯仰 · Shift／右鍵拖曳平移 · 滾輪／雙指縮放',
+  'board.cameraGestureHintTouch': '單指拖曳旋轉／俯仰 · 雙指開合縮放 · 雙指拖曳平移',
   'board.resetView': '重設視角',
   'board.inspectMap': '探索地圖',
   'board.inspectRelated': '相鄰地塊',

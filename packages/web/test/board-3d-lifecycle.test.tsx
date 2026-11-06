@@ -7,6 +7,7 @@ import type { BoardEffectAnchors, BoardSceneProps } from '../src/board/render-co
 import { boardEffectGroup } from '../src/board/animation.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { BoardEffects } from '../src/components/BoardEffects.tsx';
+import { TOUCH_POINTER_QUERY } from '../src/components/useIsMobile.ts';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
@@ -171,6 +172,39 @@ describe('renderer lifecycle and presentation cursor', () => {
     expect(screen.getByTestId('selection-preview')).toBeTruthy();
     expect(screen.getAllByTestId('target-edge-5')).toHaveLength(1);
     expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
+  it('leaves zoom and rotation to finger gestures on touch screens, keeping reset, targets and settings', async () => {
+    const stub = globalThis.matchMedia;
+    vi.spyOn(globalThis, 'matchMedia').mockImplementation((query: string) =>
+      query === TOUCH_POINTER_QUERY ? { ...stub(query), matches: true } : stub(query));
+    const api = createFakeApi({ snapshot: rolled(12) });
+    await openGame(api);
+    const cameraButtons = ['zoom-in', 'zoom-out', 'rotate-left', 'rotate-right'];
+    for (const testId of cameraButtons) expect(screen.queryByTestId(testId)).toBeNull();
+    expect(screen.getByTestId('reset-view')).toBeTruthy();
+    expect(screen.getByTestId('board-display-settings')).toBeTruthy();
+
+    fireEvent.change(screen.getByTestId('renderer-select'), { target: { value: 'r3f' } });
+    await waitFor(() => expect(screen.getByTestId('board').getAttribute('data-effective-renderer')).toBe('r3f'));
+    for (const testId of cameraButtons) expect(screen.queryByTestId(testId)).toBeNull();
+    fireEvent.click(screen.getByTestId('action-build.road'));
+    expect(await screen.findByTestId('open-target-picker')).toBeTruthy();
+    expect(screen.getByTestId('camera-gesture-hint').textContent).toBe('Drag one finger to rotate and tilt · Pinch to zoom · Drag two fingers to pan');
+
+    const surface = screen.getByTestId('board-surface');
+    const pointer = (type: string, x: number, y: number) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperties(event, { pointerId: { value: 1 }, pointerType: { value: 'touch' },
+        button: { value: 0 }, clientX: { value: x }, clientY: { value: y } });
+      fireEvent(surface, event);
+    };
+    pointer('pointerdown', 100, 100);
+    pointer('pointermove', 160, 100);
+    pointer('pointerup', 160, 100);
+    expect(sceneMock.props!.viewport.azimuthDeg).not.toBe(20);
+    fireEvent.click(screen.getByTestId('reset-view'));
+    expect(sceneMock.props!.viewport.azimuthDeg).toBe(20);
   });
 
   it('L01 cancels the active presentation on a renderer switch and plays only the next authoritative event', async () => {

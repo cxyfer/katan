@@ -315,6 +315,7 @@ export const en: Catalog = {
   'board.viewingAngle': 'Viewing angle',
   'board.viewingAngleDegrees': '{degrees} degrees',
   'board.cameraGestureHint': 'Drag to rotate and tilt · Shift-drag or right-drag to pan · Wheel / pinch to zoom',
+  'board.cameraGestureHintTouch': 'Drag one finger to rotate and tilt · Pinch to zoom · Drag two fingers to pan',
   'board.resetView': 'Reset view',
   'board.inspectMap': 'Explore map',
   'board.inspectRelated': 'Adjacent tiles',
