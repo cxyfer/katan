@@ -8,7 +8,8 @@
  */
 
 import { topologyOf } from '../../analysis.ts';
-import type { RulesModule } from '../types.ts';
+import type { GameState } from '../../types.ts';
+import type { ModuleViewContext, PublicModulePendingView, RulesModule } from '../types.ts';
 import { afterProduction, chooseGold, goldRequired, GOLD_FRAME, projectGold, skipEmptySupply } from './gold.ts';
 import { allowBuilding, claimIslands } from './islands.ts';
 import { moveBandit, pirateTargets } from './pirate.ts';
@@ -20,9 +21,61 @@ import {
   movableShips,
   moveShip,
   setupShip,
+  SHIP_COST,
 } from './ships.ts';
 import { SEAFARERS, initialSeafarersState, seafarersState, seafarersView } from './state.ts';
 import { setModuleState } from '../state.ts';
+
+export { GOLD_FRAME, SHIP_COST };
+
+/**
+ * The `seafarers.gold` pending frame as a viewer sees it (`projectGold`): the
+ * entitlements are public, so every seat gets the same `picks`, one entry per
+ * remaining responder.
+ */
+export interface SeafarersGoldPendingView extends PublicModulePendingView {
+  kind: typeof GOLD_FRAME;
+  module: typeof SEAFARERS;
+  data: { picks: Record<string, number> };
+}
+
+/** Public Seafarers state, published as `GameView.modules.seafarers`. */
+export function projectSeafarers(state: GameState) {
+  const slot = seafarersView(state);
+  return {
+    islandBonus: Object.fromEntries(Object.entries(slot.islands).map(([id, islands]) => [id, islands.slice()])),
+    islandClaims: (slot.claims ?? []).map((claim) => ({ ...claim })),
+    shipsBuiltThisTurn: slot.built.slice(),
+    shipMoved: slot.moved,
+  };
+}
+
+export type SeafarersView = ReturnType<typeof projectSeafarers>;
+
+/** Advisory legal targets, published as `ActionHints.modules.seafarers`. */
+export function seafarersHints(state: GameState, playerId: string, ctx: ModuleViewContext) {
+  const isTurn = state.players[state.turn.seat]?.id === playerId;
+  const inAction = isTurn && state.turn.phase === 'action' && !state.pending;
+  const freeRoads = state.pending?.kind === 'freeRoads' && state.pending.actor === playerId;
+  const setup = state.turn.setup;
+  const setupShipStep = !!setup && setup.stage === 'road' && state.players[setup.order[setup.index] ?? -1]?.id === playerId;
+  const robberMove = state.pending?.kind === 'moveRobber' && state.pending.actor === playerId;
+  const view = seafarersView(state);
+  return {
+    legalShips: inAction || freeRoads ? buildableShipEdges(state, playerId, ctx.profile.pieces.ships) : [],
+    setupShips: setupShipStep ? legalShipEdges(state, playerId, { setupVertex: setup!.lastVertex }) : [],
+    movableShips: inAction && !view.moved ? movableShips(state, playerId) : [],
+    shipMoved: view.moved,
+    pirateTargets: robberMove || isTurn ? pirateTargets(state) : [],
+    robberTargets: robberMove || isTurn
+      ? topologyOf(state).hexes.map((_, hex) => hex).filter((hex) =>
+        state.board.layout.terrain[hex] !== 'sea' && hex !== state.board.robber)
+      : [],
+    goldRequired: goldRequired(state, playerId),
+  };
+}
+
+export type SeafarersHints = ReturnType<typeof seafarersHints>;
 
 export const seafarersModule: RulesModule = {
   id: SEAFARERS,
@@ -67,40 +120,12 @@ export const seafarersModule: RulesModule = {
     if (frame.kind === GOLD_FRAME) skipEmptySupply(state, frame, ctx);
   },
 
-  project(state) {
-    const slot = seafarersView(state);
-    return {
-      islandBonus: Object.fromEntries(Object.entries(slot.islands).map(([id, islands]) => [id, islands.slice()])),
-      islandClaims: (slot.claims ?? []).map((claim) => ({ ...claim })),
-      shipsBuiltThisTurn: slot.built.slice(),
-      shipMoved: slot.moved,
-    };
-  },
+  project: projectSeafarers,
 
   projectPending(state, frame, viewerId, ctx) {
     if (frame.kind === GOLD_FRAME) return projectGold(state, frame, viewerId, ctx);
     return { kind: frame.kind, module: frame.module, responders: frame.responders.slice(), data: {} };
   },
 
-  actionHints(state, playerId, ctx) {
-    const isTurn = state.players[state.turn.seat]?.id === playerId;
-    const inAction = isTurn && state.turn.phase === 'action' && !state.pending;
-    const freeRoads = state.pending?.kind === 'freeRoads' && state.pending.actor === playerId;
-    const setup = state.turn.setup;
-    const setupShipStep = !!setup && setup.stage === 'road' && state.players[setup.order[setup.index] ?? -1]?.id === playerId;
-    const robberMove = state.pending?.kind === 'moveRobber' && state.pending.actor === playerId;
-    const view = seafarersView(state);
-    return {
-      legalShips: inAction || freeRoads ? buildableShipEdges(state, playerId, ctx.profile.pieces.ships) : [],
-      setupShips: setupShipStep ? legalShipEdges(state, playerId, { setupVertex: setup!.lastVertex }) : [],
-      movableShips: inAction && !view.moved ? movableShips(state, playerId) : [],
-      shipMoved: view.moved,
-      pirateTargets: robberMove || isTurn ? pirateTargets(state) : [],
-      robberTargets: robberMove || isTurn
-        ? topologyOf(state).hexes.map((_, hex) => hex).filter((hex) =>
-          state.board.layout.terrain[hex] !== 'sea' && hex !== state.board.robber)
-        : [],
-      goldRequired: goldRequired(state, playerId),
-    };
-  },
+  actionHints: seafarersHints,
 };
