@@ -5,8 +5,9 @@
  * 海盜候選（hex 或外框 null）的分數＝可偷的對手＋封鎖對手 open-end 船的前線－封鎖我自己的航線：
  * - 可偷的對手：該 hex 的邊上有對手的船、而且對手有牌；與 base 強盜的偷牌加成相同，只看公開的手牌張數。
  * - 封鎖前線：對手每艘 open-end 船的下一步（`shipEdgesOf`）中，鄰接該 hex 的邊，乘上領先係數。
- * - 封鎖我的航線：「我的航線」是海盜不在時、朝價值最高的小島空點（`islandSites`）的船路徑。以搜尋比較
- *   「海盜在這個 hex」與「沒有海盜」的最佳航線價值差，所以繞得過去的海盜不扣分。
+ * - 封鎖我的航線：「我的航線」就是 SF-2a 的島嶼聚落計畫（`islandSettlementPlans`，與 bot 實際在走的計畫
+ *   同一份目標排序與船路徑上限）。比較「沒有海盜」與「海盜在這個 hex」兩種盤面下最好的計畫 score
+ *   （以 economy 的匯率換成加權點數），所以繞得過去的海盜不扣分，沒有船可造時也不擋住什麼。
  * - 海盜現在擋住我時（差 > 0），移走它本身就有收益：每個不再擋住我的候選都加上這個差（`relief`），
  *   外框 `null` 只有這個收益加上微小的偏好，所以只在「擋住我、而且沒有更好的目標」時才會勝出。
  * - 基準是現況：base 的強盜候選分數是「把強盜放在那裡的好壞」，並不含「把強盜移離目前的格子」的收益，
@@ -14,20 +15,19 @@
  *   以及海盜離開 P 之後放開的對手前線。否則強盜與海盜同時擋住我時，海盜會因為多了一項收益而佔便宜。
  *   強盜那一側不含偷牌加分（強盜留在原處偷不到牌），否則旁邊有對手又有牌時基準會多出 1.75–3.5 分。
  *
- * 這裡的「航線」是自己用海域模型算的，沒有讀 SF-2a 的計畫（兩個切片並行開發）；兩者若日後漂移，
- * 以 SF-3 的 bench 為準再調。決定性：不讀事件、不消耗亂數；同分取候選順序在前者（hex 由小到大，null 最後）。
+ * 決定性：不讀事件、不消耗亂數；同分取候選順序在前者（hex 由小到大，null 最後）。航線價值取決於自己的
+ * 手牌與產能（計畫的 ETA），所以缺牌時海盜擋路的代價較低；這是刻意的：打不起船時，限制你的不是海盜。
  */
 
 import { canPlay } from '../../base/cards.ts';
 import { robberCandidates } from '../../base/robber.ts';
 import type { BoardModel } from '../../board.ts';
-import { searchShips, shipEdgesOf, shipsLeft } from '../../sea.ts';
+import { PIP_VALUE } from '../../economy.ts';
+import { shipEdgesOf } from '../../sea.ts';
 import type { BanditTarget, BotModule, Scored, TurnContext } from '../types.ts';
 import { moduleHints } from '../view.ts';
-import { claimedIslands, islandSites, shipDiscount, type IslandSite } from './setup.ts';
+import { islandSettlementPlans } from './plan.ts';
 
-/** 航線最多幾艘新船（SF 計畫 §4.2 的島嶼聚落計畫上限）。 */
-const ROUTE_REACH = 4;
 /** 每條被封鎖的對手前線邊的價值，以及單一對手最多計幾條。 */
 const FRONT_VALUE = 1.5;
 const FRONT_CAP = 2;
@@ -77,16 +77,15 @@ function withPirate(model: BoardModel, hex: number | null): BoardModel {
   return { ...model, view: { ...model.view, board: { ...model.view.board, pirate: hex } } };
 }
 
-/** 在 `model` 上，ROUTE_REACH 艘（受船存量限制）以內到達小島空點的最佳價值（含距離折扣）。 */
-function routeValue(model: BoardModel, sites: readonly IslandSite[], depth: number): number {
-  if (depth <= 0) return 0;
-  const { distance } = searchShips(model, model.selfId, depth);
-  let best = 0;
-  for (const site of sites) {
-    const ships = distance[site.vertex]!;
-    if (ships <= depth) best = Math.max(best, site.value * shipDiscount(ships));
-  }
-  return best;
+/**
+ * 「我的航線」的價值：SF-2a 的島嶼聚落計畫（`islandSettlementPlans`，船路徑上限、目標排序與 bot 實際
+ * 在走的計畫相同）在 `model` 上最好的一個的 score，以 economy 的匯率（1 VP = 1 / PIP_VALUE 點）換算成
+ * 與強盜評分相同的加權點數。船已用完或路徑被擋死時沒有計畫，價值為 0。計畫用 `turn.economy` 當 base：
+ * 它只讀手牌、產能、匯率、道路搜尋與剩餘棋子，與海盜的位置無關。
+ */
+function routeValue(turn: TurnContext, model: BoardModel): number {
+  const best = islandSettlementPlans({ model, level: turn.level, base: turn.economy })[0];
+  return best ? best.score / PIP_VALUE : 0;
 }
 
 /** 對手 open-end 船的前線：下一步能放船、而且接在沒有自己棋子的船端（規則的 open end）上的邊。 */
@@ -129,12 +128,10 @@ export function pirateOptions(turn: TurnContext): PirateOption[] {
   const targets = moduleHints(turn.view.hints, 'seafarers')?.pirateTargets ?? [];
   if (targets.length === 0) return [];
   const { model, view, ctx } = turn;
-  const sites = islandSites(model, claimedIslands(view, ctx.selfId));
-  const depth = Math.min(ROUTE_REACH, shipsLeft(model));
   const free = withPirate(model, null);
-  const best = routeValue(free, sites, depth);
+  const best = routeValue(turn, free);
   // 海盜現在擋住我的價值；沒有海盜（或繞得過去）時為 0。
-  const unblock = best - routeValue(model, sites, depth);
+  const unblock = Math.max(0, best - routeValue(turn, model));
   // 對手的前線以「沒有海盜」的盤面計算，才看得到海盜現在已經擋住的邊。
   const fronts = view.players
     .filter((player) => player.id !== ctx.selfId)
@@ -164,7 +161,7 @@ export function pirateOptions(turn: TurnContext): PirateOption[] {
     }
     const stealable = stealableHand(turn, target);
     const raid = stealable > 0 ? 1.5 + 0.25 * Math.min(stealable, 8) : 0;
-    const loss = best - routeValue(withPirate(model, target), sites, depth);
+    const loss = Math.max(0, best - routeValue(turn, withPirate(model, target)));
     add(target, raid + frontValue(target) - loss + unblock - released, unblock - loss);
   }
   return options;
