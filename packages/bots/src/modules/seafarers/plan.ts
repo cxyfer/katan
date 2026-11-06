@@ -60,7 +60,11 @@ export function unclaimedIslandsAt(model: PlanInput['model'], vertex: number, cl
   return islandsAt(model, vertex).filter((island) => island !== MAIN_ISLAND && !claimed.has(island)).length;
 }
 
-function islandSettlementPlans({ model, level, base }: PlanInput): Plan[] {
+/**
+ * 島嶼聚落計畫。`base.left.ships` 是船路徑的容量上限：付費造船用真實的存量；移船（`actions.ts`）
+ * 另以 `存量 + 1` 評估，因為移進來的那一艘不花船。
+ */
+export function islandSettlementPlans({ model, level, base }: PlanInput): Plan[] {
   const { view, selfId } = model;
   // `legalSettlements` 不扣聚落存量（N2），自己檢查。
   if (base.left.settlements <= 0) return [];
