@@ -45,6 +45,7 @@ import {
   type StorageLike,
 } from './session.ts';
 import { DICE_PRESENTATION_DURATION_MS } from '../board/animation.ts';
+import { newerSeenVersion } from '../news/player-notes.ts';
 import {
   awaitingProjection,
   EMPTY_SELECTION,
@@ -820,8 +821,11 @@ export function useTable(options: UseTableOptions): TableController {
 
   const markNewsSeen = useCallback(
     (version: string): void => {
-      dispatch({ type: 'news-seen', version });
-      writeStoredNewsSeen(storage, version);
+      // 其他分頁可能已寫入更新的版號；以 storage 現值比較，已讀版號不倒退。
+      const stored = readStoredNewsSeen(storage);
+      const next = newerSeenVersion(stored, version);
+      dispatch({ type: 'news-seen', version: next });
+      if (next !== stored) writeStoredNewsSeen(storage, next);
     },
     [dispatch, storage],
   );

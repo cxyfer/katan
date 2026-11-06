@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { App } from '../src/App.tsx';
 import { SUPPORTED_LOCALES } from '../src/i18n/index.ts';
-import { compareStableVersions, isNoteUnread, notesForVersion, PLAYER_NOTES, type PlayerNote } from '../src/news/player-notes.ts';
+import { compareStableVersions, isNoteUnread, newerSeenVersion, notesForVersion, PLAYER_NOTES, type PlayerNote } from '../src/news/player-notes.ts';
 import { memoryStorage, NEWS_SEEN_KEY, type StorageLike } from '../src/state/session.ts';
 import { createFakeApi } from '../src/test/fake-api.ts';
 
@@ -100,6 +100,13 @@ describe('seen-version watermark', () => {
     expect(isNoteUnread(note('0.4.0'), '0.5.0')).toBe(false);
     expect(isNoteUnread(note('0.4.0'), 'corrupt')).toBe(true);
   });
+
+  it('keeps the newer of the stored and the opened version', () => {
+    expect(newerSeenVersion(null, '0.4.0')).toBe('0.4.0');
+    expect(newerSeenVersion('0.3.0', '0.4.0')).toBe('0.4.0');
+    expect(newerSeenVersion('0.5.0', '0.4.0')).toBe('0.5.0');
+    expect(newerSeenVersion('corrupt', '0.4.0')).toBe('0.4.0');
+  });
 });
 
 function renderHome(storage: StorageLike) {
@@ -142,6 +149,21 @@ describe('home notice board', () => {
     await screen.findByRole('tabpanel', { name: /notice board/i });
     expect(screen.queryByTestId('news-unread')).toBeNull();
     expect(storage.getItem(NEWS_SEEN_KEY)).toBe(future);
+  });
+
+  it('does not rewind a newer version another tab stored while this one was open', async () => {
+    const storage = memoryStorage();
+    renderHome(storage);
+    const tab = await screen.findByRole('tab', { name: /notice board/i });
+    expect(within(tab).getByTestId('news-unread')).toBeTruthy();
+    // 這個分頁載入後，另一個開著新版的分頁寫入了更新的已讀版號。
+    const [major, minor] = LATEST_PLAYER_NOTE!.version.split('.').map(Number);
+    const future = `${major}.${minor! + 1}.0`;
+    storage.setItem(NEWS_SEEN_KEY, future);
+    fireEvent.click(tab);
+    await screen.findByRole('tabpanel', { name: /notice board/i });
+    expect(storage.getItem(NEWS_SEEN_KEY)).toBe(future);
+    expect(screen.queryByTestId('news-unread')).toBeNull();
   });
 
   it('renders the notes in Traditional Chinese', async () => {

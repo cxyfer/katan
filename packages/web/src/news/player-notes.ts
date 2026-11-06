@@ -211,6 +211,19 @@ export function notesForVersion(version: string, notes: readonly PlayerNote[] = 
 }
 
 /**
+ * 已讀版號取較新者，讓它只往前推。
+ *
+ * 寫入前要以 storage 的現值當 `stored`：同一個瀏覽器可能另開著新版的分頁，
+ * 已先寫入較新的版號，舊分頁記憶體裡的狀態不能拿來覆寫它。
+ * 無法解析的舊紀錄讓位給新版號。
+ */
+export function newerSeenVersion(stored: string | null, version: string): string {
+  if (stored === null) return version;
+  const order = compareStableVersions(stored, version);
+  return order !== null && order > 0 ? stored : version;
+}
+
+/**
  * 公告是否比這個瀏覽器看過的版號更新。
  *
  * 已讀版號只往前推：站台回滾到較舊的版本時，看過更新公告的玩家不會再看到
