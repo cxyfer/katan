@@ -12,6 +12,7 @@
  * - 基準是現況：base 的強盜候選分數是「把強盜放在那裡的好壞」，並不含「把強盜移離目前的格子」的收益，
  *   所以移海盜（強盜留在原處）要扣掉強盜目前壓在我身上的損失（base 評分套用在強盜所在的格子上），
  *   以及海盜離開 P 之後放開的對手前線。否則強盜與海盜同時擋住我時，海盜會因為多了一項收益而佔便宜。
+ *   強盜那一側不含偷牌加分（強盜留在原處偷不到牌），否則旁邊有對手又有牌時基準會多出 1.75–3.5 分。
  *
  * 這裡的「航線」是自己用海域模型算的，沒有讀 SF-2a 的計畫（兩個切片並行開發）；兩者若日後漂移，
  * 以 SF-3 的 bench 為準再調。決定性：不讀事件、不消耗亂數；同分取候選順序在前者（hex 由小到大，null 最後）。
@@ -35,11 +36,16 @@ const NULL_BONUS = 0.1;
 /** preroll 打騎士移海盜的最低收益（加權點數）；未經對局調校，SF-3 的 bench 之後再調。 */
 const PREROLL_RELIEF_MIN = 5;
 
-interface PirateOption {
+export interface PirateOption {
   readonly target: BanditTarget;
   readonly score: number;
   /** 這個選擇替我的航線解除的封鎖（海盜現在擋住的價值，扣掉新位置仍擋住的部分）。 */
   readonly relief: number;
+  /**
+   * 只看海盜這一側的淨值：`score` 扣掉強盜基準。偷牌＋新位置的前線－新位置擋住自己的損失＋解除的封鎖
+   * －離開 P 放開的前線；preroll 的門檻用它，因為打不打這張騎士，強盜都留在原處。
+   */
+  readonly net: number;
 }
 
 /** 與 base 強盜相同的領先係數：領先者、接近勝利者的船更值得封鎖。 */
@@ -52,11 +58,17 @@ function leadFactor(turn: TurnContext, ownerScore: number): number {
 /**
  * base 強盜評分套用在強盜目前所在的格子上的分數（base 的候選會跳過這一格）：負值代表強盜壓著自己的建築，
  * 移走它有收益；正值代表它正壓著對手。以同一個公式計算，只是把強盜暫時看成不在任何格子上。
+ *
+ * 偷牌加分不算：它只在把強盜移過去時才拿得到，強盜留在原處偷不到牌，所以暫時把所有人的手牌看成 0。
+ * 前提：`robberCandidates` 只讀 `view`、`model`、`ctx`、`me`（`Object.create` 只覆寫 `view`，其餘沿用原型）。
  */
 function robberScoreHere(turn: TurnContext): number {
   const { view } = turn;
   const here = view.board.robber;
-  const away = Object.create(turn, { view: { value: { ...view, board: { ...view.board, robber: -1 } } } }) as TurnContext;
+  const players = view.players.map((player) => ({ ...player, handSize: 0 }));
+  const away = Object.create(turn, {
+    view: { value: { ...view, players, board: { ...view.board, robber: -1 } } },
+  }) as TurnContext;
   return robberCandidates(away).find((candidate) => candidate.item === here)?.score ?? 0;
 }
 
@@ -112,8 +124,8 @@ function stealableHand(turn: TurnContext, hex: number): number {
   return most;
 }
 
-/** 所有海盜選擇（hints 的 `pirateTargets`）與各自的分數；沒有 hints 時為空。 */
-function pirateOptions(turn: TurnContext): PirateOption[] {
+/** 所有海盜選擇（hints 的 `pirateTargets`）與各自的分數；沒有 hints 時為空。匯出只為了測試。 */
+export function pirateOptions(turn: TurnContext): PirateOption[] {
   const targets = moduleHints(turn.view.hints, 'seafarers')?.pirateTargets ?? [];
   if (targets.length === 0) return [];
   const { model, view, ctx } = turn;
@@ -139,17 +151,21 @@ function pirateOptions(turn: TurnContext): PirateOption[] {
   };
   // 現況的基準（見檔頭）：強盜留在原處，海盜離開 P 放開 P 封鎖的對手前線。
   const pirateHere = view.board.pirate;
-  const baseline = robberScoreHere(turn) - (pirateHere === null ? 0 : frontValue(pirateHere));
+  const robberHere = robberScoreHere(turn);
+  const released = pirateHere === null ? 0 : frontValue(pirateHere);
   const options: PirateOption[] = [];
+  const add = (target: BanditTarget, net: number, relief: number): void => {
+    options.push({ target, score: net + robberHere, relief, net });
+  };
   for (const target of targets) {
     if (target === null) {
-      if (unblock > 0) options.push({ target, score: unblock + NULL_BONUS + baseline, relief: unblock });
+      if (unblock > 0) add(target, unblock + NULL_BONUS - released, unblock);
       continue;
     }
     const stealable = stealableHand(turn, target);
     const raid = stealable > 0 ? 1.5 + 0.25 * Math.min(stealable, 8) : 0;
     const loss = best - routeValue(withPirate(model, target), sites, depth);
-    options.push({ target, score: raid + frontValue(target) - loss + unblock + baseline, relief: unblock - loss });
+    add(target, raid + frontValue(target) - loss + unblock - released, unblock - loss);
   }
   return options;
 }
@@ -164,12 +180,15 @@ export const seafarersBanditCandidates: NonNullable<BotModule['banditCandidates'
  * 海盜擋住我的航線，而且有一個移法能解除它時，打騎士把海盜移走（base 的騎士條件不成立時才會被挑）。
  * 目標只在海盜的選擇裡挑（強盜解決不了這個問題），取分數最高者，同分取前面的。easy 同 base。
  * 強盜壓著自己的建築時由 base 的騎士條件先決定（被擋 ≥3 點），而且它的目標評分已含上述基準，所以這裡不另外比較。
+ * 門檻有兩道：解除的封鎖本身要夠大（`relief`，否則只是換個地方擋路），而且海盜這一側的淨值（`net`）也要夠大，
+ * 也就是扣掉離開 P 之後放開的對手前線；否則為了剛好達標的 relief，會放掉更大的封鎖價值。
  */
 export const seafarersPreroll: NonNullable<BotModule['preroll']> = (turn) => {
   if (turn.level === 'easy' || !canPlay(turn, 'knight')) return [];
   let chosen: PirateOption | null = null;
   for (const option of pirateOptions(turn)) {
-    if (option.relief >= PREROLL_RELIEF_MIN && (chosen === null || option.score > chosen.score)) chosen = option;
+    if (option.relief < PREROLL_RELIEF_MIN || option.net < PREROLL_RELIEF_MIN) continue;
+    if (chosen === null || option.score > chosen.score) chosen = option;
   }
   return chosen === null ? [] : [{ item: { type: 'dev.playKnight', hex: chosen.target }, score: chosen.relief }];
 };
