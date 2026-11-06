@@ -17,6 +17,8 @@
  * - 只檢查 profile，不檢查人數：檔案是否跑完 `playerCounts` 的每個人數，要靠測試本身。
  * - 只讀 `test/` 底下一層的 `*.test.ts`（`matrix.test.ts` 的 `import.meta.glob('./*.test.ts')`），
  *   不遞迴子目錄；family 的測試檔必須放在 `test/` 根目錄。
+ * - `stripComments` 不處理 regex 字面值：regex 裡的引號（`'`、`"`、`` ` ``）或 `//` 會讓去註解出錯
+ *   （把後面的程式碼當成字串或註解吃掉），family 測試檔請避免在 regex 字面值裡放這兩種字元。
  */
 
 export interface BotTestFamily {

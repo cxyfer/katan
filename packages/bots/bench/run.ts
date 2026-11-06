@@ -194,8 +194,8 @@ const notes = [
   'standard rotates through the seats game by game; seeds run from 10000.',
   "naive seats keep only each module's duty (the v0.4.0 behaviour). A profile without bot modules (base) has " +
     'nothing to strip, so there a naive seat plays exactly like standard.',
-  "'fallback/game' counts commands the BotDriver-like harness took from the fallback because the policy idled " +
-    '(expected for naive seats on a module profile, a failure for standard and easy).',
+  "'fallback/game' counts commands the BotDriver-like harness took from the fallback because the policy idled. " +
+    'Every seat should be 0, naive included (the skeleton falls back to the module duty itself); a non-zero count is a defect.',
   "'max cmds/window' is the most commands one seat sent in one action window (the server forces the fallback after 40).",
 ];
 
