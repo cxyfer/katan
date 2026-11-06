@@ -1,35 +1,39 @@
 {
-  "sourceHead": "a0c6f23c64a9765e5dfec5a54edb2e20a5517f58",
-  "sourceDigest": "37bf9f3204039fd3baddbe7800b014aff2f50cc9db800b0e5c76c3525276ff90",
-  "buildDigest": "0b9764421ddaadf7a9a91073ca850daf5efec39e2f0146e898a14d32ede08c86",
+  "sourceHead": "3002f916908f2fbff92a17a024878d9ec72f1305",
+  "sourceDigest": "306a0271e2c9f5c7f9db38ab8247f2317a06320a280a249ec07bd630d889630d",
+  "buildDigest": "0e9fa34bf1286b35d39796ebd1e54370587e458a7652f6a67f75be18739892f1",
   "assets": {
-    "assets/BoardScene3D-D_kgGHjB.js": {
-      "sha256": "3c00d7153527e6dc8dba9bd04765d2f37a1efb4781696607eaabe1542fb03f9f",
-      "bytes": 972925
+    "apple-touch-icon.png": {
+      "sha256": "d6a0f14f391a86641b946a2fd4aa4bc0280e7212de86c1e0f51ab2b0b3fab0fb",
+      "bytes": 12315
     },
-    "assets/BoardScene3D-D_kgGHjB.js.map": {
-      "sha256": "69972cf516ed5dd93cb37d6568e1877d116b06e07046591f8e1a1fa93e6f8727",
-      "bytes": 4444445
+    "assets/BoardScene3D-DjHCUJZU.js": {
+      "sha256": "d5b5199ba6bd302431d43971a713d44b17324723a150724162614c4851100aab",
+      "bytes": 1005270
+    },
+    "assets/BoardScene3D-DjHCUJZU.js.map": {
+      "sha256": "ca4d87875f3dbfb496a311a077cda7d1e26dc75eed2fbb86be67cab227991652",
+      "bytes": 4586802
     },
     "assets/IslandPreview-6VpjSEr9.css": {
       "sha256": "01320e60a675adf503f3e581c335f5ab3b634df087425e3ada59a6f899a8c1db",
       "bytes": 7621
     },
-    "assets/IslandPreview-CNTcDp4O.js": {
-      "sha256": "a550809bdde0ff00579766be51f97fc5edf1f467d1da679c7014090ce7a4869a",
-      "bytes": 8510
+    "assets/IslandPreview-CcQCRldE.js": {
+      "sha256": "e8953fb05a2b2ed94c2a81a5ec9534f7962c5577867725e7723345b9d0118ff7",
+      "bytes": 8667
     },
-    "assets/IslandPreview-CNTcDp4O.js.map": {
-      "sha256": "1d2913ed9ebb26b9bec7a9d7df795b363b3a695aa80b584bad0369ced3769a67",
-      "bytes": 20697
+    "assets/IslandPreview-CcQCRldE.js.map": {
+      "sha256": "39a1737892555db377d3f62bc63331027e652782e3a16c27dabb6a0ad42f4ba0",
+      "bytes": 21753
     },
-    "assets/SoundPreview-D8iY6qYr.js": {
-      "sha256": "d44faf7760d5d626ffc66dcb4cfed4008056c976a360f7dd0e2cf560343bf599",
-      "bytes": 4760
+    "assets/SoundPreview-J9lATzcb.js": {
+      "sha256": "0a48645a09c8914c8f1685753105282feb372ee42ea5f9e43c853119753b0c70",
+      "bytes": 5614
     },
-    "assets/SoundPreview-D8iY6qYr.js.map": {
-      "sha256": "c29c6d83405a0fc44ef552b80eb7fdd8edacf5dd79232db9c3d4cbc34765b8b1",
-      "bytes": 13070
+    "assets/SoundPreview-J9lATzcb.js.map": {
+      "sha256": "5660dc4ef2ecf9e29f359cc6030922773e1e6ebc7bc4a0105e3359e5bb874b34",
+      "bytes": 14355
     },
     "assets/SoundPreview-M4jn87NU.css": {
       "sha256": "bf8377fbcfa4ea19888be16b24dd72dbae9292d2d98866337938d539b78d5102",
@@ -39,41 +43,45 @@
       "sha256": "a5feda529e3aa794fcbb270a87030a04547f46747da22b5ee54a44e300b00f18",
       "bytes": 9652
     },
-    "assets/coastline-BmTneMz-.js": {
-      "sha256": "d598f30236ad5f1eb3079482e40aa49c8f68828a2f74d57bc72b3b690ea76bda",
-      "bytes": 26264
+    "assets/index-C3VlD2cv.js": {
+      "sha256": "8f9dca84d3a48df3e4db8e81d665626c0562d4d0b5fd9bf555d4e241c6003790",
+      "bytes": 1112451
     },
-    "assets/coastline-BmTneMz-.js.map": {
-      "sha256": "f3f55d9249f0fae3b2d4ed5c80d0e25abd51f9d9889a6a99ed0711f593d37cc9",
-      "bytes": 185161
+    "assets/index-C3VlD2cv.js.map": {
+      "sha256": "64c82e2142124069c8046b5cb0a0b677cc0498775c9476244fee1d9b7736f251",
+      "bytes": 3994229
     },
-    "assets/index-CKUMfX4M.js": {
-      "sha256": "cd5621f96b0f105b481e1c941b9ce453cdd497a23a5dd221285768828e4064d5",
-      "bytes": 560806
+    "assets/index-CT1oFpxc.css": {
+      "sha256": "93b88d0f2e66abeaf332982b9a0696dd45dc155bcdcefa9c933f1f84a42439e1",
+      "bytes": 183136
     },
-    "assets/index-CKUMfX4M.js.map": {
-      "sha256": "215313c1b94c518c93c4210e533227533f1882d4412327a85d75f2361670c29f",
-      "bytes": 2058118
+    "favicon.ico": {
+      "sha256": "615efdb4ac8624db37f1b7558223e38fd0a0015937ba9ecc6b03f47c9e800f40",
+      "bytes": 7224
     },
-    "assets/index-OV4zL3iP.css": {
-      "sha256": "33de76a08aea103d906c2bfc227473ef6aac02c746e4e7b2af8494f86bf8a39e",
-      "bytes": 150140
+    "favicon.svg": {
+      "sha256": "c5143e15898dd8f8ec7461d1a7cc7e89db00224bca72915099e044ce9b34ee5f",
+      "bytes": 1446
     },
-    "assets/jsx-runtime-Wy9s6hX0.js": {
-      "sha256": "c826bfbd9bf765e2f383ccf768c783d76751c28663aee5ed3dabaa269880bde9",
-      "bytes": 8960
+    "icon-192.png": {
+      "sha256": "ffb464f2692fe619bf70f5b1eeb776c41721d9cd3487472ecf40e2cc644a86fe",
+      "bytes": 13410
     },
-    "assets/jsx-runtime-Wy9s6hX0.js.map": {
-      "sha256": "1c869bebd7341ed8be19860e112245f1acb86f95f77757cd384d8b817daf0337",
-      "bytes": 33033
+    "icon-512.png": {
+      "sha256": "eda806145c6542d2bb90e0483dfdfefed517865e3e9a835e58965d41c6fd259b",
+      "bytes": 35039
     },
     "index.html": {
-      "sha256": "98a94b382efa36ad01547a07e9d0e756853f0a3070d37d5a54426a7d417301ef",
-      "bytes": 1611
+      "sha256": "4c7b6b5884bf852c55c672e8778382c6efa9729a9404185e7c6b5b4639d44c3b",
+      "bytes": 16965
     },
     "og-image.png": {
       "sha256": "ce642e2b8d12c59528a45241cf4173665155fca1cba692cae118dc5db7192ff3",
       "bytes": 371957
+    },
+    "site.webmanifest": {
+      "sha256": "8eacab454362b57b81cda6ca18f717fcc38f59e442762fb36456999d1c30d2d7",
+      "bytes": 429
     }
   },
   "fixture": "docs/aegis/work/2026-10-29-board-3d/evidence/fixtures-final.json",
@@ -98,7 +106,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 373.609375,
-              "y": 301.078125
+              "y": 303.875
             }
           },
           {
@@ -112,7 +120,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 488.078125,
-              "y": 102.828125
+              "y": 105.625
             }
           },
           {
@@ -126,7 +134,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 755.140625,
-              "y": 36.75
+              "y": 39.546875
             }
           },
           {
@@ -140,7 +148,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 945.90625,
-              "y": 102.828125
+              "y": 105.625
             }
           },
           {
@@ -153,8 +161,8 @@
             ],
             "attempts": 1,
             "tooltip": {
-              "x": 1060.375,
-              "y": 301.078125
+              "x": 692.375,
+              "y": 303.875
             }
           },
           {
@@ -168,7 +176,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 984.0625,
-              "y": 565.421875
+              "y": 568.21875
             }
           },
           {
@@ -182,7 +190,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 831.453125,
-              "y": 697.578125
+              "y": 700.375
             }
           },
           {
@@ -196,7 +204,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 602.53125,
-              "y": 697.578125
+              "y": 700.375
             }
           },
           {
@@ -210,7 +218,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 411.765625,
-              "y": 499.328125
+              "y": 502.125
             }
           }
         ],
@@ -233,7 +241,7 @@
             "via": "focus",
             "tooltip": {
               "x": 72.03125,
-              "y": 305.5
+              "y": 308.296875
             }
           },
           {
@@ -250,7 +258,7 @@
             "type": "generic",
             "via": "focus",
             "tooltip": {
-              "x": 69.5,
+              "x": 62.296875,
               "y": 302.296875
             }
           },
@@ -259,7 +267,7 @@
             "type": "ore",
             "via": "focus",
             "tooltip": {
-              "x": 96.40625,
+              "x": 82,
               "y": 332.265625
             }
           },
@@ -268,8 +276,8 @@
             "type": "wool",
             "via": "focus",
             "tooltip": {
-              "x": 32.359375,
-              "y": 305.5
+              "x": 17.953125,
+              "y": 308.296875
             }
           },
           {
@@ -277,7 +285,7 @@
             "type": "generic",
             "via": "focus",
             "tooltip": {
-              "x": 96.40625,
+              "x": 82,
               "y": 542.046875
             }
           },
@@ -286,7 +294,7 @@
             "type": "brick",
             "via": "focus",
             "tooltip": {
-              "x": 96.40625,
+              "x": 82,
               "y": 601.984375
             }
           },
@@ -304,8 +312,8 @@
             "type": "generic",
             "via": "focus",
             "tooltip": {
-              "x": 89.34375,
-              "y": 395.390625
+              "x": 8,
+              "y": 512.078125
             }
           }
         ],
@@ -333,7 +341,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 435.1875,
-              "y": 229.4375
+              "y": 232.234375
             }
           },
           {
@@ -347,7 +355,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 582.109375,
-              "y": 135.140625
+              "y": 137.9375
             }
           },
           {
@@ -361,7 +369,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 878.921875,
-              "y": 140.65625
+              "y": 143.453125
             }
           },
           {
@@ -374,8 +382,8 @@
             ],
             "attempts": 1,
             "tooltip": {
-              "x": 1067.078125,
-              "y": 261.21875
+              "x": 658.0625,
+              "y": 264.015625
             }
           },
           {
@@ -388,8 +396,8 @@
             ],
             "attempts": 1,
             "tooltip": {
-              "x": 1068.140625,
-              "y": 401
+              "x": 700.140625,
+              "y": 403.796875
             }
           },
           {
@@ -403,7 +411,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 918.03125,
-              "y": 615.484375
+              "y": 618.28125
             }
           },
           {
@@ -417,7 +425,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 705.0625,
-              "y": 663.265625
+              "y": 666.0625
             }
           },
           {
@@ -431,7 +439,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 529.109375,
-              "y": 610.828125
+              "y": 613.625
             }
           },
           {
@@ -445,7 +453,7 @@
             "attempts": 1,
             "tooltip": {
               "x": 382.40625,
-              "y": 390.828125
+              "y": 393.625
             }
           }
         ],
@@ -485,7 +493,7 @@
             "type": "generic",
             "via": "focus",
             "tooltip": {
-              "x": 96.40625,
+              "x": 82,
               "y": 339.609375
             }
           },
@@ -494,8 +502,8 @@
             "type": "ore",
             "via": "focus",
             "tooltip": {
-              "x": 14.3125,
-              "y": 279.921875
+              "x": 82,
+              "y": 393.421875
             }
           },
           {
@@ -503,8 +511,8 @@
             "type": "wool",
             "via": "focus",
             "tooltip": {
-              "x": 28.765625,
-              "y": 350.953125
+              "x": 14.359375,
+              "y": 353.75
             }
           },
           {
@@ -512,7 +520,7 @@
             "type": "generic",
             "via": "focus",
             "tooltip": {
-              "x": 96.40625,
+              "x": 82,
               "y": 557.578125
             }
           },
@@ -521,7 +529,7 @@
             "type": "brick",
             "via": "focus",
             "tooltip": {
-              "x": 42.109375,
+              "x": 34.90625,
               "y": 580.03125
             }
           },
@@ -540,7 +548,7 @@
             "via": "focus",
             "tooltip": {
               "x": 79.25,
-              "y": 341.046875
+              "y": 343.84375
             }
           }
         ],
@@ -555,5 +563,5 @@
     "The served index.html differs from dist by the OG-image origin placeholder; JS/CSS remain byte-identical."
   ],
   "browser": "145.0.7632.6",
-  "sourceDigestAfter": "37bf9f3204039fd3baddbe7800b014aff2f50cc9db800b0e5c76c3525276ff90"
+  "sourceDigestAfter": "306a0271e2c9f5c7f9db38ab8247f2317a06320a280a249ec07bd630d889630d"
 }
