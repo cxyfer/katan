@@ -36,12 +36,25 @@ tested (SPEC §10).
 | `BOT_DELAY_SCALE` | `1` | Multiplier for every bot think delay (`0`–`5`; `0` acts immediately) |
 | `BOT_OFFER_COLLECT_MS` | `6000` | How long a bot waits for answers before settling its own trade offer |
 | `BOT_OFFER_PATIENCE_MS` | `20000` | When a bot withdraws an offer nobody accepted |
-| `BOT_RETRY_MS` | `30000` | Back-off after a bot's fallback move is also rejected |
+| `BOT_RETRY_MS` | `30000` | Fixed back-off after a bot's fallback move is rejected, or when a bot owes an action but has none to play (minimum `1000`; lower values are raised to it) |
 
 Bots run inside the service process and call no external service. A bot acts
 only while at least one person in its room has a live socket, so a table that
 everyone left waits instead of playing itself. Rejected or failing bot moves are
 logged at `warn` with the game, seat, command type and message id.
+
+A bot that owes an action (it must answer a pending choice, or it is the active
+player in setup, before the roll or in its action phase) while neither its
+strategy nor the fallback has a move is stuck, not idle. The service logs `bot owes an action but
+strategy and fallback are idle; retrying later` at `warn` with the game,
+revision, seat, what is owed (`owed`), the pending kind, its responders and the
+phase each rules module reports (`modulePhases`), then looks again after
+`BOT_RETRY_MS`. The retry repeats at that fixed interval until the state
+changes, so a stuck table shows up as one `warn` per interval per stuck bot
+instead of silence. A player reconnecting makes the service look again at once,
+but a bot already reported at the same revision is not reported again within
+the interval. A bot waiting for answers to its own trade offer owes
+nothing and is not reported.
 
 Policy bounds are enforced server-side (`POLICY_BOUNDS`): turn clock `0–3600`,
 disconnect grace `30–3600`. Invalid values are rejected with

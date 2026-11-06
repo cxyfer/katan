@@ -5,9 +5,12 @@
  * 不保存任何決策狀態：重啟後從已提交的遊戲狀態繼續，報價計時則從頭算起。
  */
 
-import { actionHints, projectGame, type GameState, type GameView } from '@catan/rules';
+import { actionHints, getProfile, projectGame, type GameState, type GameView } from '@catan/rules';
 import {
+  BOT_PACING,
   botActingOrder,
+  botCommandLimit,
+  botOwesAction,
   botSeed,
   createBotPolicy,
   fallbackPolicy,
@@ -16,6 +19,7 @@ import {
   type BotLevel,
   type BotPolicy,
   type OfferPhase,
+  type OwedAction,
 } from '@catan/bots';
 import type { CommandReceipt, CommandRequest } from '@catan/protocol';
 import type { ServerConfig } from './config.ts';
@@ -34,6 +38,8 @@ export interface BotDriverDeps {
   log: Log;
   /** 依難度取得策略；測試可替換。 */
   policyFor: (level: BotLevel) => BotPolicy;
+  /** 單一行動視窗內每個 Bot 的指令上限；省略時依 profile 取 `botCommandLimit`。測試可注入。 */
+  commandLimitFor?: (profileId: string) => number;
   now: () => number;
 }
 
@@ -62,13 +68,29 @@ const THINK_MS: Readonly<Record<string, number>> = {
   'pending.steal': 800,
   'pending.takeResource': 700,
 };
+/** base 加上各 Bot 模組的 `pacing`；同一個指令以模組的值為準。 */
+const PACING_MS: Readonly<Record<string, number>> = { ...THINK_MS, ...BOT_PACING };
 const DEFAULT_THINK_MS = 900;
 /** 客戶端骰子演出約 2.5 秒；擲骰後的 Bot 動作至少等這麼久。 */
 const ROLL_PRESENTATION_MS = 2800;
 /** 投影附帶的近期事件數，與 `GameCoordinator.snapshot` 相同。 */
 const RECENT_EVENTS = 40;
-/** 單一行動視窗內每個 Bot 的指令上限；超過代表策略在打轉，之後該 Bot 只走保底策略。 */
-const MAX_BOT_COMMANDS_PER_WINDOW = 40;
+/**
+ * 單一行動視窗內每個 Bot 的指令上限（base 值）；超過代表策略在打轉，之後該 Bot 只走保底策略。
+ * 實際上限依 profile 取各模組 `maxCommandsPerWindow` 的最大值，見 `commandLimit`。
+ */
+const BASE_COMMANDS_PER_WINDOW = 40;
+
+/** 欠著動作、但策略與保底都沒有動作的 Bot；只用於診斷。 */
+interface IdleDuty {
+  botId: string;
+  owed: OwedAction;
+  turnPhase: string;
+  pendingKind: string | null;
+  responders: string[];
+  /** 各模組 hints 的 `phase`（例如 E&P 的 action／movement）。 */
+  modulePhases: Record<string, string>;
+}
 
 interface Decision {
   botId: string;
@@ -94,6 +116,35 @@ interface GameRuntime {
   attempts: { revision: number; next: number; fallbackBots: Set<string> };
   /** 目前行動視窗內每個 Bot 已提交的指令數。 */
   window: { id: number; commands: Map<string, number> };
+  /** 每個卡住的 Bot 最近一次「欠動作卻沒有動作」warn 的 revision 與時間，用來限制 warn 頻率。 */
+  idleWarned: Map<string, { revision: number; at: number }>;
+}
+
+/** 目前待決效果的回應者：模組 frame 與 base 各自的欄位。 */
+function respondersOf(pending: NonNullable<GameView['pending']>): string[] {
+  if ('responders' in pending) return pending.responders;
+  return pending.kind === 'discard' ? pending.waitingFor : [pending.actor];
+}
+
+/** 各模組 hints 的子階段（`hints.modules[id].phase`）；沒有則省略該模組。 */
+function modulePhasesOf(view: GameView): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [id, hints] of Object.entries(view.hints?.modules ?? {})) {
+    const phase = (hints as { phase?: unknown } | null)?.phase;
+    if (typeof phase === 'string') out[id] = phase;
+  }
+  return out;
+}
+
+function describeIdle(view: GameView, botId: string, owed: OwedAction): IdleDuty {
+  return {
+    botId,
+    owed,
+    turnPhase: view.turn.phase,
+    pendingKind: view.pending?.kind ?? null,
+    responders: view.pending ? respondersOf(view.pending) : [],
+    modulePhases: modulePhasesOf(view),
+  };
 }
 
 export function defaultPolicyFor(): (level: BotLevel) => BotPolicy {
@@ -218,7 +269,7 @@ export class BotDriver {
       }
     } catch (error) {
       this.deps.log('warn', 'bot evaluation failed', { gameId, error: String(error) });
-      this.schedule(gameId, runtime, this.deps.config.bots.retryMs, () => this.kick(gameId));
+      this.schedule(gameId, runtime, this.retryDelay(), () => this.kick(gameId));
     } finally {
       runtime.busy = false;
     }
@@ -252,18 +303,45 @@ export class BotDriver {
       return;
     }
     this.pruneOffers(runtime, state);
-    const decision = this.decide(gameId, game.revision, state, bots, runtime);
+    const idle: IdleDuty[] = [];
+    const decision = this.decide(gameId, game.revision, state, bots, runtime, idle);
     if (decision) {
       this.schedule(gameId, runtime, this.delayFor(decision.command, runtime), () =>
         this.track(this.perform(gameId, decision)),
       );
       return;
     }
-    // 沒有 Bot 要動；若有 Bot 在等自己報價的回應，於下一個階段邊界再看一次。
+    // 沒有 Bot 要動：於下一次可能改變結果的時間點再看一次。
+    const wakeAfter: number[] = [];
+    // 有 Bot 在等自己報價的回應：下一個階段邊界。
     const boundary = this.nextOfferBoundary(state, bots, runtime);
-    if (boundary !== null) {
-      this.schedule(gameId, runtime, boundary - this.deps.now(), () => this.kick(gameId));
+    if (boundary !== null) wakeAfter.push(boundary - this.deps.now());
+    // 有 Bot 欠著動作卻沒有動作：記錄後以固定間隔重試，與指令被拒（`rejected`）走同一條路徑。
+    // 計時器只會在 `retryDelay()` 之後才再評估，所以狀態不變時不會熱迴圈。外部喚醒（真人重連、
+    // 提交）仍會立即重新評估並重排計時器，但同一個 Bot 在同一個 revision 的 warn 每個間隔最多
+    // 一筆；喚醒停止後，計時器仍會在一個間隔後再評估、再記一筆。
+    if (idle.length > 0) {
+      const interval = this.retryDelay();
+      const now = this.deps.now();
+      for (const duty of idle) {
+        const last = runtime.idleWarned.get(duty.botId);
+        if (last && last.revision === game.revision && now >= last.at && now - last.at < interval) continue;
+        runtime.idleWarned.set(duty.botId, { revision: game.revision, at: now });
+        this.deps.log('warn', 'bot owes an action but strategy and fallback are idle; retrying later', {
+          gameId,
+          revision: game.revision,
+          windowId: state.windowId,
+          retryMs: interval,
+          ...duty,
+        });
+      }
+      wakeAfter.push(interval);
     }
+    // 不再卡住的 Bot 不保留紀錄，下次卡住時照常記錄。
+    for (const botId of [...runtime.idleWarned.keys()]) {
+      if (!idle.some((duty) => duty.botId === botId)) runtime.idleWarned.delete(botId);
+    }
+    if (wakeAfter.length > 0) this.schedule(gameId, runtime, Math.min(...wakeAfter), () => this.kick(gameId));
   }
 
   private decide(
@@ -272,12 +350,14 @@ export class BotDriver {
     state: GameState,
     bots: readonly MemberRow[],
     runtime: GameRuntime,
+    idle: IdleDuty[],
   ): Decision | null {
     if (runtime.attempts.revision !== revision) {
       runtime.attempts = { revision, next: 0, fallbackBots: new Set() };
     }
     if (runtime.window.id !== state.windowId) runtime.window = { id: state.windowId, commands: new Map() };
     const attempt = runtime.attempts.next;
+    const commandLimit = this.commandLimit(state.profileId);
     const botIds = bots.map((bot) => bot.player_id);
     const views = new Map<string, GameView>();
     const viewFor = (botId: string): GameView => {
@@ -301,7 +381,7 @@ export class BotDriver {
         seed: botSeed(gameId, botId, revision, attempt),
         offerPhases: this.offerPhases(state, botId, runtime),
       };
-      const looping = (runtime.window.commands.get(botId) ?? 0) >= MAX_BOT_COMMANDS_PER_WINDOW;
+      const looping = (runtime.window.commands.get(botId) ?? 0) >= commandLimit;
       if (looping && !runtime.attempts.fallbackBots.has(botId)) {
         this.deps.log('warn', 'bot command limit reached in this window; using fallback', {
           gameId,
@@ -328,7 +408,8 @@ export class BotDriver {
       }
       // 策略沒有動作，但若這個 Bot 其實欠著必要動作（保底策略會動），就由保底策略
       // 代為完成；唯一的例外是行動者正在等自己報價的回應。
-      if (!forced && this.waitingOnOwnOffers(state, botId, runtime)) continue;
+      const waiting = this.waitingOnOwnOffers(state, botId, runtime);
+      if (!forced && waiting) continue;
       const fallback = fallbackPolicy.decide(viewFor(botId), context);
       if (fallback) {
         if (!forced) {
@@ -341,8 +422,24 @@ export class BotDriver {
         }
         return { botId, command: fallback, revision, attempt, fallback: true };
       }
+      // 兩者都沒有動作。等自己報價的回應不算欠動作；否則 Bot 卡住了，交給呼叫端記錄並重試。
+      const owed = waiting ? null : botOwesAction(viewFor(botId), botId);
+      if (owed) idle.push(describeIdle(viewFor(botId), botId, owed));
     }
     return null;
+  }
+
+  /** 所有重試的固定間隔；下限由設定解析保證（`MIN_BOT_RETRY_MS`），這裡不另外加。 */
+  private retryDelay(): number {
+    return this.deps.config.bots.retryMs;
+  }
+
+  /** 這個 profile 的單一視窗指令上限：測試注入優先，否則 base 與各模組上限的最大值。 */
+  private commandLimit(profileId: string): number {
+    const injected = this.deps.commandLimitFor?.(profileId);
+    if (injected !== undefined) return injected;
+    const profile = getProfile(profileId);
+    return profile ? botCommandLimit(profile, BASE_COMMANDS_PER_WINDOW) : BASE_COMMANDS_PER_WINDOW;
   }
 
   private async perform(gameId: string, decision: Decision): Promise<void> {
@@ -353,7 +450,7 @@ export class BotDriver {
       await this.submitDecision(gameId, runtime, decision);
     } catch (error) {
       this.deps.log('warn', 'bot submission failed', { gameId, error: String(error) });
-      this.schedule(gameId, runtime, this.deps.config.bots.retryMs, () => this.kick(gameId));
+      this.schedule(gameId, runtime, this.retryDelay(), () => this.kick(gameId));
     } finally {
       runtime.busy = false;
     }
@@ -421,7 +518,7 @@ export class BotDriver {
     // 保底也被拒：記錄後退避，重試時再給策略一次機會。
     this.deps.log('warn', 'bot fallback rejected; retrying later', meta);
     runtime.attempts.fallbackBots.clear();
-    this.schedule(gameId, runtime, this.deps.config.bots.retryMs, () => this.kick(gameId));
+    this.schedule(gameId, runtime, this.retryDelay(), () => this.kick(gameId));
   }
 
   // -- 計時與報價階段 ---------------------------------------------------------
@@ -429,7 +526,7 @@ export class BotDriver {
   private delayFor(command: BotCommand, runtime: GameRuntime): number {
     const scale = this.deps.config.bots.delayScale;
     const now = this.deps.now();
-    let due = runtime.changedAt + (THINK_MS[command.type] ?? DEFAULT_THINK_MS) * scale;
+    let due = runtime.changedAt + (PACING_MS[command.type] ?? DEFAULT_THINK_MS) * scale;
     if (runtime.rolledAt !== null) due = Math.max(due, runtime.rolledAt + ROLL_PRESENTATION_MS * scale);
     return Math.max(0, due - now);
   }
@@ -497,6 +594,7 @@ export class BotDriver {
         offerOpenedAt: new Map(),
         attempts: { revision: -1, next: 0, fallbackBots: new Set() },
         window: { id: -1, commands: new Map() },
+        idleWarned: new Map(),
       };
       this.runtimes.set(gameId, runtime);
     }
