@@ -64,7 +64,7 @@ function contractChecks(seats: readonly BotSeat[]) {
 }
 
 function robberTarget(command: BotCommand): number | null {
-  if (command.type === 'pending.moveRobber' || command.type === 'dev.playKnight') return command.hex as number;
+  if (command.type === 'pending.moveRobber' || command.type === 'dev.playKnight') return command.hex as number | null;
   return null;
 }
 

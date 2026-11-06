@@ -142,6 +142,21 @@ const RICH = { lumber: 9, brick: 9, wool: 9, grain: 9, ore: 9 } as const;
 const noScoringBuilds = (view: GameView): GameView => withHints(view, { legalCities: [], legalSettlements: [] });
 
 const cmd = (type: string) => ({ type });
+
+const offerOf = (patch: Partial<Offer>, from: string, windowId: number): Offer => ({
+  id: 'o1',
+  revision: 1,
+  from,
+  to: 'all',
+  give: { lumber: 1 },
+  want: { grain: 1 },
+  windowId,
+  status: 'open',
+  responses: {},
+  agreedWith: null,
+  createdSeq: 1,
+  ...patch,
+});
 const scored = <T>(item: T, score: number): Scored<T> => ({ item, score });
 
 // ---------------------------------------------------------------------------
@@ -203,16 +218,24 @@ describe('fallback duties', () => {
     expect(createFallbackPolicy([]).decide(notOwing, ctxFor(id))).toBeNull();
   });
 
-  it('answers a module frame only for its responders', () => {
-    const { id, view } = actionPosition();
+  it('answers a module frame only as its first responder, without asking the duty otherwise', () => {
+    const { id, view, state } = actionPosition();
     const other = view.players.find((player) => player.id !== id)!.id;
     const duty = cmd('fx.duty');
-    const policy = createFallbackPolicy([{ id: 'fx', duty: () => duty }]);
-    const frame = { kind: 'fx.frame' as const, module: 'fx', responders: [id], data: {} };
-    expect(policy.decide(withPending(view, frame), ctxFor(id))).toBe(duty);
-    expect(policy.decide(withPending(viewOf(actionPosition().state, other), frame), ctxFor(other))).toBeNull();
+    let asked = 0;
+    const policy = createFallbackPolicy([{ id: 'fx', duty: () => (asked++, duty) }]);
+    const frameFor = (responders: string[]) => ({ kind: 'fx.frame' as const, module: 'fx', responders, data: {} });
+    // 第一位 responder：詢問模組的 duty。
+    expect(policy.decide(withPending(view, frameFor([id, other])), ctxFor(id))).toBe(duty);
+    expect(asked).toBe(1);
+    // 在 responders 裡但不是第一位（P3：保底一律採保守的 responders[0]）：回 null，duty 沒有被呼叫。
+    expect(policy.decide(withPending(view, frameFor([other, id])), ctxFor(id))).toBeNull();
+    expect(asked).toBe(1);
+    // 完全不在 responders 裡。
+    expect(policy.decide(withPending(viewOf(state, other), frameFor([id])), ctxFor(other))).toBeNull();
+    expect(asked).toBe(1);
     // base 不認得模組 frame：沒有模組時沒有義務。
-    expect(createFallbackPolicy([]).decide(withPending(view, frame), ctxFor(id))).toBeNull();
+    expect(createFallbackPolicy([]).decide(withPending(view, frameFor([id])), ctxFor(id))).toBeNull();
   });
 
   it('stays silent once the game has a result, and never throws on an unknown profile', () => {
@@ -256,6 +279,21 @@ describe('strategy hooks', () => {
       const module: BotModule = { id: 'fx', answerFrame: () => (asked++, cmd('fx.answer')) };
       const otherView = withPending(viewOf(state, other), frameFor([id]));
       expect(policyOf([module]).decide(otherView, ctxFor(other))).toBeNull();
+      expect(asked).toBe(0);
+    });
+
+    it('asks answerFrame for any responder, while the fallback stays with the first one', () => {
+      const { id, view } = actionPosition();
+      const other = view.players.find((player) => player.id !== id)!.id;
+      // 同時作答的 frame：自己在 responders 裡但不是第一位。
+      const frame = withPending(view, frameFor([other, id]));
+      const answer = cmd('fx.answer');
+      expect(policyOf([{ id: 'fx', answerFrame: () => answer }]).decide(frame, ctxFor(id))).toBe(answer);
+      // 模組不回答時退到保底：不是第一位，所以回 null，duty 沒有被呼叫。
+      let asked = 0;
+      const duty = (): ReturnType<NonNullable<BotModule['duty']>> => (asked++, cmd('fx.duty'));
+      expect(policyOf([{ id: 'fx', answerFrame: () => undefined, duty }]).decide(frame, ctxFor(id))).toBeNull();
+      expect(policyOf([{ id: 'fx', answerFrame: () => null, duty }]).decide(frame, ctxFor(id))).toBeNull();
       expect(asked).toBe(0);
     });
 
@@ -733,21 +771,6 @@ describe('registry and support with modules', () => {
 // ---------------------------------------------------------------------------
 
 describe('rule 9: offers the strategy cannot price', () => {
-  const offerOf = (patch: Partial<Offer>, from: string, windowId: number): Offer => ({
-    id: 'o1',
-    revision: 1,
-    from,
-    to: 'all',
-    give: { lumber: 1 },
-    want: { grain: 1 },
-    windowId,
-    status: 'open',
-    responses: {},
-    agreedWith: null,
-    createdSeq: 1,
-    ...patch,
-  });
-
   it('prices only plain resource terms', () => {
     const offer = offerOf({}, 'a', 1);
     expect(offerTermsKnown(offer)).toBe(true);

@@ -323,7 +323,7 @@ function devCardDecision(turn: TurnContext): Command | null {
   }
 
   // base-2025.3 可只授予最後一個道路棋子；仍需有合法道路才值得打出。
-  // base 的條件先求值（`usefulRoad` 在 easy 下會消耗亂數），模組只在 base 條件不成立時補充。
+  // base 的條件先求值，與 v0.4.0 相同；模組候選只在 base 條件不成立時才計算。
   if (
     canPlay(turn, 'roadBuilding') &&
     ((economy.left.roads >= 1 && usefulRoad(turn, true) !== null) ||

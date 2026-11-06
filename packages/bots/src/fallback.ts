@@ -19,13 +19,17 @@ export { handList, pendingDuty } from './base/duty.ts';
 /**
  * `selfId` 此刻欠的最小動作；沒有則回傳 null。順序：待決效果與初始放置先 base 後模組，
  * 擲骰前與行動階段先模組後 base（模組 `duty` 回 null 時，不再送 `turn.roll`／`turn.end`）。
+ *
+ * 模組 frame 一律採保守的 `responders[0]`（策略原則 P3）：不是第一位 responder 就回 null，
+ * 也不詢問模組的 `duty`；同時作答的 frame 由策略路徑的 `answerFrame` 負責。與
+ * `botOwesAction` 的判定一致。
  */
 export function fallbackDecision(view: GameView, selfId: string, modules: readonly BotModule[]): BotCommand | null {
   if (view.result) return null;
   const askDuty = (): BotCommand | null | undefined => firstAnswer(modules, (module) => module.duty?.(view, selfId));
   const pending = view.pending;
   if (pending) {
-    if (isModuleFrame(pending) && !pending.responders.includes(selfId)) return null;
+    if (isModuleFrame(pending) && pending.responders[0] !== selfId) return null;
     return pendingDuty(view, selfId) ?? askDuty() ?? null;
   }
   if (view.turn.playerId !== selfId) return null;

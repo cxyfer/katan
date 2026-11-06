@@ -6,6 +6,8 @@
  * - undefined：不歸我管，交給下一個模組，最後交給 base。
  * - null：歸我管，但這次不送指令。策略鉤子回 null 時，骨架改走保底；
  *   duty 回 null 時，保底不再送 base 預設（turn.roll／turn.end），交給 server 診斷。
+ * - 例外：planStep 回 null 或 undefined，骨架都會繼續處理銀行交易與其他計畫，不走保底；
+ *   兩者的差別只在於要不要繼續詢問下一個模組。
  */
 
 import type {
@@ -99,13 +101,22 @@ export interface BotModule {
   supports?(profile: ProfileDefinition): boolean;
 
   // ---- 0.4.1 實作 ----
+  /**
+   * 保底義務。模組 frame 時，保底只在自己是 `responders[0]` 時才詢問（P3）。不得 throw：
+   * server 的保底呼叫不在 try 裡（packages/server/src/bot-driver.ts:332），例外會讓這一局不斷重試。
+   */
   duty?(view: GameView, selfId: string): BotCommand | null | undefined;
+  /**
+   * 回應模組 frame。骨架只以 `responders.includes(self)` 過濾；依序作答的 frame（例如 SF 的
+   * gold）由模組自行檢查 `responders[0] === self`。
+   */
   answerFrame?(turn: TurnContext, frame: PublicModulePendingView): BotCommand | null | undefined;
   setup?(turn: TurnContext): BotCommand | null | undefined;
   preroll?(turn: TurnContext): readonly Scored<BotCommand>[];
   actions?(turn: TurnContext): readonly Scored<BotCommand>[];
   freeRouteCandidates?(turn: TurnContext): readonly Scored<BotCommand>[];
   banditCandidates?(turn: TurnContext, cause: RobberCause): readonly Scored<BanditTarget>[];
+  /** 模組計畫的下一步。回 null 或 undefined，骨架都會繼續處理銀行交易與其他計畫（不走保底）；差別只在於是否繼續詢問下一個模組。 */
   planStep?(turn: TurnContext, plan: Plan): BotCommand | null | undefined;
   readonly economy?: BotEconomyHooks;
   readonly pacing?: Readonly<Record<string, number>>;
