@@ -1,8 +1,9 @@
 import { useId, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
-import { COSTS, getTopology } from '@catan/rules';
+import { COSTS } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
 import { describeTarget } from '../board/targets.ts';
+import { viewReferenceContext } from '../board/references.ts';
 import { nameOf } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { EP_HARBOR_COST, EP_SHIP_COST } from '../board/explorersPirates.ts';
@@ -59,7 +60,7 @@ export function SelectionPreview({
   const option = useMemo(() => {
     if (!view || !selection.kind || selection.index === null) return null;
     return describeTarget(
-      { locale, topology: getTopology(view.board.topologyId), board: view.board, nameOf: nameResolver },
+      { ...viewReferenceContext(locale, view), nameOf: nameResolver },
       selection.kind,
       selection.index,
     );

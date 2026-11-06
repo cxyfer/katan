@@ -74,6 +74,7 @@ export function TargetPicker({
   ambiguousOnly,
   minDistance,
   anchor,
+  fog,
 }: {
   geometry: BoardGeometry;
   board: PublicBoardView;
@@ -87,6 +88,8 @@ export function TargetPicker({
   minDistance?: number;
   /** 觸發消歧目標的目前投影位置（視窗 CSS 像素）；有值時 popover 貼近該點。 */
   anchor?: Point;
+  /** Explorers & Pirates 的未探索地塊；描述時不透露其內容。 */
+  fog?: ReadonlyMap<number, 'parrot' | 'goose'>;
 }) {
   const t = useT();
   const locale = useLocale();
@@ -97,10 +100,10 @@ export function TargetPicker({
   const headingId = useId();
 
   const options: TargetOption[] = useMemo(() => {
-    const context = { locale, topology, board, nameOf };
+    const context = { locale, topology, board, nameOf, fog };
     const indices = ambiguousOnly && ambiguousOnly.length > 0 ? ambiguousOnly : targets;
     return indices.map((index) => describeTarget(context, kind, index));
-  }, [ambiguousOnly, board, kind, locale, nameOf, targets, topology]);
+  }, [ambiguousOnly, board, fog, kind, locale, nameOf, targets, topology]);
 
   const points = useMemo(() => {
     const map = new Map<number, Point>();

@@ -12,6 +12,7 @@ import {
   type EpShipHints,
   type EpView,
 } from '../board/explorersPirates.ts';
+import { hexReference, vertexReference, viewReferenceContext, type ReferenceContext } from '../board/references.ts';
 import { blocksNewCommands } from '../state/commands.ts';
 import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
@@ -45,6 +46,7 @@ type Submit = (payload: { type: string; [field: string]: unknown }, labelId: str
  */
 export function ExplorersPiratesPrompt({ controller }: { controller: TableController }) {
   const t = useT();
+  const locale = useLocale();
   const { state, actions } = controller;
   const view = state.game?.view ?? null;
   const ep = epHints(view);
@@ -57,6 +59,7 @@ export function ExplorersPiratesPrompt({ controller }: { controller: TableContro
   const arm = (kind: 'vertex' | 'edge' | 'hex', commandType: string, labelId: string, params?: Record<string, unknown>) =>
     actions.selectTarget({ kind, index: null, commandType, labelId, ...(params ? { params } : {}) });
   const armed = state.selection.commandType;
+  const places = viewReferenceContext(locale, view);
 
   const pending = view.pending;
   if (pending?.kind === EP_FRAME) {
@@ -97,8 +100,8 @@ export function ExplorersPiratesPrompt({ controller }: { controller: TableContro
         <span>{t('ep.gold.count', { gold: slot.players[selfId]?.gold ?? 0 })}</span>
       </p>
       {ep.phase === 'action'
-        ? <ActionPhase controller={controller} ep={ep} slot={slot} selfId={selfId} submit={submit} arm={arm} blocked={blocked} />
-        : <MovementPhase controller={controller} ep={ep} slot={slot} selfId={selfId} submit={submit} arm={arm} blocked={blocked} />}
+        ? <ActionPhase controller={controller} ep={ep} slot={slot} selfId={selfId} submit={submit} arm={arm} blocked={blocked} places={places} />
+        : <MovementPhase controller={controller} ep={ep} slot={slot} selfId={selfId} submit={submit} arm={arm} blocked={blocked} places={places} />}
     </div>
   );
 }
@@ -111,9 +114,11 @@ interface PhaseProps {
   submit: Submit;
   arm: (kind: 'vertex' | 'edge' | 'hex', commandType: string, labelId: string, params?: Record<string, unknown>) => void;
   blocked: boolean;
+  /** 以資源與點數描述港口與海域，不顯示地圖編號。 */
+  places: ReferenceContext;
 }
 
-function ActionPhase({ controller, ep, slot, selfId, submit, arm, blocked }: PhaseProps) {
+function ActionPhase({ controller, ep, slot, selfId, submit, arm, blocked, places }: PhaseProps) {
   const t = useT();
   const locale = useLocale();
   const hand = shownHand(controller.state) ?? {};
@@ -122,7 +127,7 @@ function ActionPhase({ controller, ep, slot, selfId, submit, arm, blocked }: Pha
   const ownShips = slot.ships.filter((ship) => ship.player === selfId);
   const holders: { key: string; label: string; cargo: EpCargo[]; field: Record<string, unknown> }[] = [
     ...ep.pieceHarbors.map((vertex) => ({
-      key: `h${vertex}`, label: t('ep.holder.harbor', { vertex }),
+      key: `h${vertex}`, label: t('ep.holder.harbor', { place: vertexReference(places, vertex) }),
       cargo: slot.harbors.find((harbor) => harbor.vertex === vertex)?.cargo ?? [], field: { harbor: vertex },
     })),
     ...ep.pieceShips.map((id) => ({
@@ -257,7 +262,7 @@ function ExtraMoves({ ep, slot, submit, blocked, wool }: Pick<PhaseProps, 'ep' |
   );
 }
 
-function MovementPhase({ controller, ep, slot, selfId, submit, arm, blocked }: PhaseProps) {
+function MovementPhase({ controller, ep, slot, selfId, submit, arm, blocked, places }: PhaseProps) {
   const t = useT();
   const wool = shownHand(controller.state)?.wool ?? 0;
   void selfId;
@@ -269,14 +274,14 @@ function MovementPhase({ controller, ep, slot, selfId, submit, arm, blocked }: P
     )}
     <ul className="ep-prompt__ships">
       {ep.ships.map((ship) => <ShipCard key={ship.id} ship={ship} slot={slot} submit={submit} arm={arm} blocked={blocked}
-        armed={controller.state.selection} />)}
+        armed={controller.state.selection} places={places} />)}
     </ul>
     <ExtraMoves ep={ep} slot={slot} submit={submit} blocked={blocked} wool={wool} />
     <p className="muted ep-prompt__note">{t('ep.move.endNote')}</p>
   </>;
 }
 
-function ShipCard({ ship, slot, submit, arm, blocked, armed }: Pick<PhaseProps, 'slot' | 'submit' | 'arm' | 'blocked'> & {
+function ShipCard({ ship, slot, submit, arm, blocked, armed, places }: Pick<PhaseProps, 'slot' | 'submit' | 'arm' | 'blocked' | 'places'> & {
   ship: EpShipHints; armed: TableController['state']['selection'];
 }) {
   const t = useT();
@@ -311,13 +316,13 @@ function ShipCard({ ship, slot, submit, arm, blocked, armed }: Pick<PhaseProps, 
             ? [button(`swap-${vertex}`, t('ep.action.swap'), () => submit({ type: 'ep.swap', ship: ship.id, harbor: vertex }, 'ep.action.swap'))]
             : []),
         ])}
-        {ship.dropCrew.map((hex) => button(`drop-${hex}`, t('ep.action.dropCrew', { site: t(`ep.site.${slot.sites.find((site) => site.hex === hex)?.kind ?? 'lair'}`), hex }),
+        {ship.dropCrew.map((hex) => button(`drop-${hex}`, t('ep.action.dropCrew', { site: t(`ep.site.${slot.sites.find((site) => site.hex === hex)?.kind ?? 'lair'}`), place: hexReference(places, hex) }),
           () => submit({ type: 'ep.dropCrew', ship: ship.id, hex }, 'ep.action.dropLabel')))}
-        {ship.pickCrew.map((hex) => button(`pick-${hex}`, t('ep.action.pickCrew', { hex }),
+        {ship.pickCrew.map((hex) => button(`pick-${hex}`, t('ep.action.pickCrew', { place: hexReference(places, hex) }),
           () => submit({ type: 'ep.pickCrew', ship: ship.id, hex }, 'ep.action.pickLabel')))}
-        {ship.loadFish.map((hex) => button(`fish-${hex}`, t('ep.action.loadFish', { hex }),
+        {ship.loadFish.map((hex) => button(`fish-${hex}`, t('ep.action.loadFish', { place: hexReference(places, hex) }),
           () => submit({ type: 'ep.loadFish', ship: ship.id, hex }, 'ep.action.fishLabel')))}
-        {ship.loadSpice.map((hex) => button(`spice-${hex}`, t('ep.action.loadSpice', { hex }),
+        {ship.loadSpice.map((hex) => button(`spice-${hex}`, t('ep.action.loadSpice', { place: hexReference(places, hex) }),
           () => submit({ type: 'ep.loadSpice', ship: ship.id, hex }, 'ep.action.spiceLabel')))}
         {ship.deliver && button('deliver', t('ep.action.deliver'), () => submit({ type: 'ep.deliver', ship: ship.id }, 'ep.action.deliver'))}
         {ship.chase && button('chase', t('ep.action.chase'), () => submit({ type: 'ep.chase', ship: ship.id }, 'ep.action.chase'))}

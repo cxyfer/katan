@@ -1,5 +1,6 @@
-import { useT } from '../../i18n/context.tsx';
+import { useLocale, useT } from '../../i18n/context.tsx';
 import { playerColorHex } from '../../board/terrain.ts';
+import { edgeReference, viewReferenceContext } from '../../board/references.ts';
 import { nameOf } from '../../state/table.ts';
 import { blocksNewCommands } from '../../state/commands.ts';
 import { followUpsHeld, shownTradersBarbarians } from '../../state/table.ts';
@@ -66,8 +67,11 @@ export function BarbariansSection({ controller }: { controller: TableController 
 /** End-of-turn knight moves: pick a knight, then its destination on the board. */
 export function KnightMovesChoice({ controller }: { controller: TableController }) {
   const t = useT();
+  const locale = useLocale();
   const { state, actions } = controller;
-  const hints = tbHints<BarbariansHints>(state.game?.view, 'tb-barbarian-attack');
+  const view = state.game?.view;
+  const hints = tbHints<BarbariansHints>(view, 'tb-barbarian-attack');
+  const places = view ? viewReferenceContext(locale, view) : null;
   const busy = blocksNewCommands(state.command) || followUpsHeld(state);
   const arm = (from: number, boost: boolean) => actions.selectTarget({
     kind: 'edge', index: null, commandType: 'tb.moveKnight', labelId: boost ? 'tb.ba.moveFar' : 'tb.ba.move',
@@ -77,7 +81,7 @@ export function KnightMovesChoice({ controller }: { controller: TableController 
     <div className="tb-actions" data-testid="tb-knight-moves">
       {(hints?.knightMoves ?? []).map((move) => (
         <span key={move.from} className="tb-token">
-          {t('tb.ba.knightAt', { edge: move.from })}
+          {places && t('tb.ba.knightAt', { place: edgeReference(places, move.from) })}
           <button type="button" className="button button--chip" disabled={busy || move.targets.length === 0}
             data-testid={`tb-knight-move-${move.from}`} onClick={() => arm(move.from, false)}>{t('tb.ba.move')}</button>
           <button type="button" className="button button--chip" disabled={busy || move.boosted.length === 0}

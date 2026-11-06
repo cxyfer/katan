@@ -21,6 +21,8 @@ export interface BoardTargetOverlayProps {
   fallbackFocusRef?: RefObject<HTMLElement | null>;
   renderer?: 'svg' | 'r3f';
   selection?: { kind: TargetKind; index: number } | null;
+  /** Explorers & Pirates: unexplored hexes, described without revealing their contents. */
+  fog?: ReadonlyMap<number, 'parrot' | 'goose'>;
 }
 
 function targetKey(kind: TargetKind, index: number): string {
@@ -73,6 +75,7 @@ export function BoardTargetOverlay({
   fallbackFocusRef,
   renderer = 'r3f',
   selection = null,
+  fog,
 }: BoardTargetOverlayProps) {
   const t = useT();
   const locale = useLocale();
@@ -123,7 +126,7 @@ export function BoardTargetOverlay({
       tabIndex={-1}
     >
       {visibleTargets.map((target) => {
-        const option = describeTarget({ locale, topology, board, nameOf }, target.kind, target.index);
+        const option = describeTarget({ locale, topology, board, nameOf, fog }, target.kind, target.index);
         const key = targetKey(target.kind, target.index);
         const selected = selection?.kind === target.kind && selection.index === target.index;
         const edge = target.kind === 'edge' ? edgeIndicator(target) : null;

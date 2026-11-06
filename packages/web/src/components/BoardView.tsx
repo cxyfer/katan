@@ -327,7 +327,7 @@ export function BoardView({ controller }: { controller: TableController }) {
           geometry={geometry} board={shownBoard} renderer={effective} controls={controls}
           nameOf={nameResolver} fallbackFocusRef={surfaceRef} fog={epFog} />
         <BoardTargetOverlay targets={targets} rect={controls.viewport.rect} selection={selection} board={board} topology={topology} nameOf={nameResolver}
-          renderer={effective} onSelect={selectTarget} consumeSuppressedClick={controls.consumeSuppressedClick}
+          fog={epFog} renderer={effective} onSelect={selectTarget} consumeSuppressedClick={controls.consumeSuppressedClick}
           fallbackFocusRef={surfaceRef} onCancel={actions.cancelSelection}
           onAmbiguous={(kind, index, candidates) => {
             setPickerTarget({ kind, index });
@@ -337,6 +337,7 @@ export function BoardView({ controller }: { controller: TableController }) {
       {stage && animation.active && anchors && createPortal(<BoardEffects group={animation.active} geometry={geometry} view={view} anchors={anchors} />, stage)}
       {pickerOpen && intent && <TargetPicker geometry={geometry} board={board} topology={topology} kind={intent.kind}
         targets={intent.targets} nameOf={nameResolver} {...(cluster ? { ambiguousOnly: cluster } : {})}
+        fog={epFog}
         {...(pickerAnchor ? { anchor: pickerAnchor } : {})}
         onCancel={() => { setPickerOpen(false); setCluster(null); setPickerTarget(null); }}
         onChoose={(index) => selectTarget(intent.kind, index)} />}

@@ -7,7 +7,7 @@ import { buildGeometry, distance } from '../src/board/geometry.ts';
 import { DICE_PRESENTATION_DURATION_MS } from '../src/board/animation.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
-import { makeEvent, makeHints, makeSnapshot, makeView } from '../src/test/fixtures.ts';
+import { makeEvent, makeHints, makeSnapshot, makeView, placeLabel } from '../src/test/fixtures.ts';
 
 beforeEach(() => {
   const original = HTMLElement.prototype.getBoundingClientRect;
@@ -312,7 +312,7 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     expect(screen.getByTestId('target-picker').textContent).toContain('Several legal targets');
     fireEvent.click(screen.getByTestId(`picker-edge-${second.index}`));
     expect(screen.queryByTestId('target-picker')).toBeNull();
-    expect(screen.getByTestId('selection-preview').textContent).toContain(`Path ${second.index}`);
+    expect(screen.getByTestId('selection-preview').textContent).toContain(placeLabel('edge', second.index));
     expect(screen.getByTestId('board-preview-ghost').getAttribute('aria-hidden')).toBe('true');
     expect(api.callsOf('sendCommand')).toHaveLength(0);
     fireEvent.click(screen.getByTestId('confirm-selection'));
@@ -404,7 +404,7 @@ describe('CSS target selection and gestures (I02–I05)', () => {
     fireEvent(window, new Event('resize'));
     expect(screen.getByTestId('board').getAttribute('data-zoom')).toBe('1.25');
     fireEvent.keyDown(screen.getByTestId(`target-edge-${first.index}`), { key: 'Enter' });
-    expect(screen.getByTestId('selection-preview').textContent).toContain(`Path ${first.index}`);
+    expect(screen.getByTestId('selection-preview').textContent).toContain(placeLabel('edge', first.index));
     fireEvent.click(screen.getByTestId('cancel-selection'));
     expect(screen.queryByTestId('selection-preview')).toBeNull();
     expect(screen.queryByTestId('board-preview-ghost')).toBeNull();
