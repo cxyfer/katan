@@ -11,19 +11,18 @@
  * 評分單位與 `setupSpotScore` 相同（加權點數）。常數是未經對局調校的起點，SF-3 的 bench 之後再調。
  */
 
-import { MAIN_ISLAND, type GameView } from '@catan/rules';
+import { MAIN_ISLAND } from '@catan/rules';
 import { roadDirectionScore } from '../../base/roads.ts';
 import { setupSpotScore } from '../../base/setup.ts';
 import { isFreeSpot, playerYield, type BoardModel, type RoadSearch } from '../../board.ts';
 import { resourceWeights, settlementSpotValue } from '../../economy.ts';
 import { islandOfVertex, searchShips } from '../../sea.ts';
 import type { BotCommand, BotModule, Scored, TurnContext } from '../types.ts';
-import { moduleHints, moduleView } from '../view.ts';
+import { claimedIslands } from './plan.ts';
+import { moduleHints } from '../view.ts';
 
 /** 小島第一座聚落的 +2 VP 折成加權點數；一座聚落 1 VP 約 3 點，所以約 6 點。 */
 export const ISLAND_VP_VALUE = 6;
-/** 金礦每一點的價值：任一資源都行，高於一般資源權重（0.8–1.3）。 */
-const GOLD_PIP_WEIGHT = 1.2;
 /** 每多一艘船的折扣，與 `roadDirectionScore` 對第二步的 0.75 一致。 */
 const SHIP_DISCOUNT = 0.75;
 /** 開局時，聚落最遠能以幾艘船登島。 */
@@ -43,11 +42,6 @@ export function shipDiscount(ships: number): number {
   return SHIP_DISCOUNT ** Math.max(0, ships - 1);
 }
 
-/** 自己已領取 +2 VP 的小島 id。 */
-export function claimedIslands(view: GameView, selfId: string): readonly number[] {
-  return moduleView(view, 'seafarers')?.islandBonus?.[selfId] ?? [];
-}
-
 /** 與 `claimed` 無關的部分（空點、所在島、不含 +2 VP 的價值）；同一次決策內只算一次。 */
 const siteCache = new WeakMap<BoardModel, readonly IslandSite[]>();
 
@@ -62,10 +56,8 @@ function baseSites(model: BoardModel): readonly IslandSite[] {
     // New Shores 3–6 人盤面沒有同時鄰接兩座島的路口，取最小的島 id 與規則的島嶼判定沒有差異。
     const island = islandOfVertex(model, vertex);
     if (island === null || island === MAIN_ISLAND) continue;
-    let value = settlementSpotValue(model, vertex, weights, mine);
-    for (const hex of model.topo.vertices[vertex]!.hexes) {
-      if (model.hexGold[hex]) value += GOLD_PIP_WEIGHT * model.hexPips[hex]!;
-    }
+    // 金礦由 `settlementSpotValue` 計價（`economy.ts`，SF-2a）：這裡不再另外加，否則會算兩次。
+    const value = settlementSpotValue(model, vertex, weights, mine);
     sites.push({ vertex, island, value });
   }
   siteCache.set(model, sites);
@@ -73,13 +65,14 @@ function baseSites(model: BoardModel): readonly IslandSite[] {
 }
 
 /**
- * 小島（非主島）上目前可以蓋聚落的空點，由小到大。價值＝聚落的點數與缺少資源加成、金礦點數、
- * 以及尚未領取的 +2 VP（只在 New Shores 的島嶼規則下，與 rules 的 `claimIslands` 一致）。
+ * 小島（非主島）上目前可以蓋聚落的空點，由小到大。價值＝`settlementSpotValue`（點數、缺少資源加成、
+ * 金礦各算一次）加上尚未領取的 +2 VP（只在 New Shores 的島嶼規則下，與 rules 的 `claimIslands` 一致）。
+ * `claimed` 是自己已領取 +2 VP 的小島（plan.ts 的 `claimedIslands`）。
  */
-export function islandSites(model: BoardModel, claimed: readonly number[]): readonly IslandSite[] {
+export function islandSites(model: BoardModel, claimed: ReadonlySet<number>): readonly IslandSite[] {
   const bonus = model.profile.scenario === 'new-shores';
   return baseSites(model).map((site) =>
-    bonus && !claimed.includes(site.island) ? { ...site, value: site.value + ISLAND_VP_VALUE } : site,
+    bonus && !claimed.has(site.island) ? { ...site, value: site.value + ISLAND_VP_VALUE } : site,
   );
 }
 
@@ -106,8 +99,8 @@ export function reachFrom(model: BoardModel, starts: readonly number[], maxDepth
  * 沒有可登的小島（或不是 Seafarers 盤面）時為 0。
  */
 export function islandSetupBonus(turn: TurnContext, vertex: number): number {
-  const { model, view, ctx } = turn;
-  const sites = islandSites(model, claimedIslands(view, ctx.selfId));
+  const { model } = turn;
+  const sites = islandSites(model, claimedIslands(model));
   if (sites.length === 0) return 0;
   const { distance } = reachFrom(model, [vertex], SETUP_REACH);
   let best = 0;
@@ -124,7 +117,7 @@ export function setupShipScore(turn: TurnContext, edge: number): number {
   const [a, b] = model.topo.edges[edge]!.vertices;
   // 船靠在剛放的聚落上；另一端才是出海的方向。
   const far = view.board.buildings[a]?.player === ctx.selfId ? b : a;
-  const sites = islandSites(model, claimedIslands(view, ctx.selfId));
+  const sites = islandSites(model, claimedIslands(model));
   const { distance } = reachFrom(model, [far], SETUP_REACH - 1);
   let best = 0;
   for (const site of sites) {
