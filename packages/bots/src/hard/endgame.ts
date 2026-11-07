@@ -26,6 +26,7 @@ const ENDGAME_GAP = 3;
 interface Node {
   readonly position: Position;
   readonly left: { readonly settlements: number; readonly cities: number; readonly roads: number };
+  /** 建造與交易都只在手牌和銀行之間搬資源，所以銀行由手牌決定，`keyOf` 不必包含它。 */
   readonly bank: Readonly<Record<Resource, number>>;
   readonly trades: number;
 }
@@ -114,6 +115,13 @@ function moved(position: Position, hand: Hand, changes: Partial<Position>): Posi
   return { ...position, ...changes, hand };
 }
 
+/** 建造的花費回到銀行（引擎的 `payBuild` 也是如此），之後的銀行交易才換得到。 */
+function refunded(bank: Node['bank'], cost: Cost): Node['bank'] {
+  const out = { ...bank };
+  for (const resource of RESOURCES) out[resource] += cost[resource] ?? 0;
+  return out;
+}
+
 function expand(turn: HardTurn, table: Table, node: Node, isRoot: boolean): Child[] {
   const hints = turn.view.hints!;
   const rates = hints.bankRates;
@@ -127,6 +135,7 @@ function expand(turn: HardTurn, table: Table, node: Node, isRoot: boolean): Chil
         node: {
           ...node,
           left: { ...node.left, cities: node.left.cities - 1, settlements: node.left.settlements + 1 },
+          bank: refunded(node.bank, COSTS.city),
           position: moved(position, pay(hand, COSTS.city), {
             settlements: position.settlements.filter((other) => other !== vertex),
             cities: [...position.cities, vertex],
@@ -143,6 +152,7 @@ function expand(turn: HardTurn, table: Table, node: Node, isRoot: boolean): Chil
         node: {
           ...node,
           left: { ...node.left, settlements: node.left.settlements - 1 },
+          bank: refunded(node.bank, COSTS.settlement),
           position: moved(position, pay(hand, COSTS.settlement), { settlements: [...position.settlements, vertex] }),
         },
         command: { type: 'build.settlement', vertex },
@@ -155,6 +165,7 @@ function expand(turn: HardTurn, table: Table, node: Node, isRoot: boolean): Chil
         node: {
           ...node,
           left: { ...node.left, roads: node.left.roads - 1 },
+          bank: refunded(node.bank, COSTS.road),
           position: moved(position, pay(hand, COSTS.road), { roads: [...position.roads, edge] }),
         },
         command: { type: 'build.road', edge },

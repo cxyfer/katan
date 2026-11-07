@@ -151,6 +151,42 @@ describe('B-GAME hard', () => {
   });
 });
 
+/** 第一個「行動階段、沒有待決事項」的狀態（setup 剛結束，每人兩座聚落）。 */
+function firstActionState(players: number, seed: number): GameState {
+  let found: GameState | null = null;
+  runBotGame({
+    seats: seatsFor(players, seed, true),
+    seed,
+    profileId: 'base-2025',
+    onDecision: (state) => {
+      if (!found && state.turn.phase === 'action' && !state.pending) found = cloneState(state);
+    },
+  });
+  return found!;
+}
+
+describe('hard endgame search', () => {
+  it('trades for resources that its own builds returned to the bank', () => {
+    const state = firstActionState(4, 61);
+    const me = state.players[state.turn.seat]!;
+    const view0 = viewFor(state, me.id);
+    expect(view0.hints!.legalCities.length).toBeGreaterThanOrEqual(2);
+    const rate = view0.hints!.bankRates.wool;
+    // 兩座聚落 + 6 張分數卡 = 8 分；手上只夠一座城市，第二座缺的 2 張穀物銀行裡沒有，
+    // 只有第一座城市付出的穀物回到銀行後才換得到。
+    me.devCards = Array(6).fill('victoryPoint');
+    me.resources = { lumber: 0, brick: 0, wool: 2 * rate, grain: 2, ore: 6 };
+    const others = state.players.filter((player) => player.id !== me.id);
+    for (const player of others) player.resources.grain = 0;
+    state.bank.grain = 0;
+    const view = viewFor(state, me.id);
+    const ctx: BotContext = { selfId: me.id, level: 'standard', seed: 1, offerPhases: {} };
+    const turn = new HardTurn(view, ctx, view.players.find((player) => player.id === me.id)!);
+    expect(turn.scoreOf(me.id)).toBe(view.victoryTarget - 2);
+    expect(winningLine(turn)?.first.type).toBe('build.city');
+  });
+});
+
 describe('B-POLICY hard determinism', () => {
   const transcript = (seed: number): string[] => {
     const commands: string[] = [];
