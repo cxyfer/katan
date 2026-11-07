@@ -8,7 +8,7 @@ import { TargetPicker } from '../src/components/TargetPicker.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { initialTableState, type Selection } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
-import { makeSnapshot, makeView } from '../src/test/fixtures.ts';
+import { makeSnapshot, makeView, placeLabel } from '../src/test/fixtures.ts';
 
 function previewController(selection: Selection): TableController {
   const state = initialTableState('en');
@@ -98,7 +98,7 @@ describe('board target focus management', () => {
 
     const heading = await screen.findByTestId('preview-heading');
     expect(document.activeElement).toBe(heading);
-    expect(screen.getByRole('status').textContent).toContain('Path 5');
+    expect(screen.getByRole('status').textContent).toContain(placeLabel('edge', 5));
 
     const unrelated = screen.getByRole('button', { name: 'Unrelated control' });
     unrelated.focus();
@@ -121,7 +121,7 @@ describe('board target focus management', () => {
       </LocaleProvider>,
     );
     expect(document.activeElement).toBe(screen.getByTestId('preview-heading'));
-    expect(screen.getByRole('status').textContent).toContain('Path 9');
+    expect(screen.getByRole('status').textContent).toContain(placeLabel('edge', 9));
 
     fireEvent.keyDown(screen.getByTestId('preview-heading'), { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledTimes(1);

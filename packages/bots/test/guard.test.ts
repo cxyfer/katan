@@ -5,6 +5,17 @@ import manifest from '../package.json';
 
 const sources = import.meta.glob('../src/**/*.ts', { query: '?raw', import: 'default', eager: true });
 
+/** 把相對 specifier 解析成與 `sources` 鍵相同形式的路徑（不依賴 Node 的 path）。 */
+function resolveSpecifier(file: string, specifier: string): string {
+  const parts = file.split('/').slice(0, -1);
+  for (const part of specifier.split('/')) {
+    if (part === '' || part === '.') continue;
+    if (part === '..') parts.pop();
+    else parts.push(part);
+  }
+  return parts.join('/');
+}
+
 describe('B-GUARD source boundaries', () => {
   it('scans every strategy source file', () => {
     const files = Object.keys(sources);
@@ -12,14 +23,42 @@ describe('B-GUARD source boundaries', () => {
     expect(files.length).toBeGreaterThanOrEqual(8);
   });
 
-  it('imports only the rules package and its own modules', () => {
+  it('imports only the rules package and files inside src', () => {
     const offenders: string[] = [];
     for (const [file, text] of Object.entries(sources)) {
       for (const match of text.matchAll(/\bfrom\s+'([^']+)'/g)) {
         const specifier = match[1]!;
-        if (specifier !== '@catan/rules' && !specifier.startsWith('./')) offenders.push(`${file}: ${specifier}`);
+        if (specifier === '@catan/rules') continue;
+        const relative = specifier.startsWith('./') || specifier.startsWith('../');
+        if (!relative || !resolveSpecifier(file, specifier).startsWith('../src/')) offenders.push(`${file}: ${specifier}`);
       }
       if (/\bimport\s*\(|\brequire\s*\(/.test(text)) offenders.push(`${file}: dynamic import`);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps base and module code free of the skeleton files', () => {
+    // 骨架（組合點與 registry）在上層；base/** 與 modules/** 只能被它們呼叫，不得反向依賴，
+    // 否則模組一註冊就會形成循環。對 turn.ts 只允許型別 import。
+    const skeleton = ['heuristic', 'fallback', 'policy', 'support', 'index', 'modules/registry'].map(
+      (name) => `../src/${name}.ts`,
+    );
+    const importPattern = /^\s*(?:import|export)\s+(type\s+)?(?:\{[^}]*\}|\*(?:\s+as\s+\w+)?|\w+)\s+from\s+'([^']+)'/gm;
+    const scanned = Object.entries(sources).filter(
+      ([file]) => file.startsWith('../src/base/') || file.startsWith('../src/modules/'),
+    );
+    expect(scanned.length).toBeGreaterThan(0);
+    const offenders: string[] = [];
+    for (const [file, text] of scanned) {
+      for (const match of text.matchAll(importPattern)) {
+        const specifier = match[2]!;
+        if (!specifier.startsWith('.')) continue;
+        const target = resolveSpecifier(file, specifier);
+        const typeOnly = match[1] !== undefined;
+        if (skeleton.includes(target) || (target === '../src/turn.ts' && !typeOnly)) {
+          offenders.push(`${file}: ${specifier}`);
+        }
+      }
     }
     expect(offenders).toEqual([]);
   });

@@ -56,17 +56,16 @@ describe('target descriptions', () => {
     nameOf: (id: string) => (id === 'p1' ? 'Alex' : id),
   };
 
-  it('names a vertex textually, including its neighbouring hexes', () => {
+  it('names a vertex by its neighbouring tiles’ resources and dice numbers', () => {
     const option = describeVertex(context, 0);
-    expect(option.label).toBe('Intersection 0');
-    expect(option.detail).toContain('between hexes');
-    expect(option.detail).toContain('Empty');
+    expect(option.label).toBe('Wool (6), Ore (10), Wool (2)');
+    expect(option.detail).toBe('Empty');
   });
 
-  it('names an edge textually', () => {
+  it('names an edge by the tiles on either side', () => {
     const option = describeEdge(context, 0);
-    expect(option.label).toBe('Path 0');
-    expect(option.detail.length).toBeGreaterThan(0);
+    expect(option.label).toBe('Between Wool (6) and Ore (10)');
+    expect(option.detail).toBe('Empty');
   });
 
   it('reports an occupied vertex with its owner and piece type', () => {

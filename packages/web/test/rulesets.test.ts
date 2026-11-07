@@ -3,7 +3,7 @@ import { PROFILES } from '@catan/rules';
 import { profileView } from '@catan/protocol';
 import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../src/state/rulesets.ts';
 
-const registry = PROFILES.map((profile) => profileView(profile, { botSeats: profile.ruleModules.length === 0 }));
+const registry = PROFILES.map((profile) => profileView(profile, { botLevels: profile.ruleModules.length === 0 ? ['easy', 'standard', 'hard'] : [] }));
 
 describe('lobby ruleset picker', () => {
   it('offers only enabled profiles: the base game, Seafarers, Cities & Knights and both combined for 3–6 players, and Traders & Barbarians', () => {

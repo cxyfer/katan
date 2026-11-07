@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 /** 手機橫屏（短高度、觸控）：牌桌改用浮動 HUD 以讓出棋盤高度。 */
 export const COMPACT_LANDSCAPE_QUERY = '(orientation: landscape) and (max-height: 520px) and (pointer: coarse)';
+/** 主要輸入為手指（手機、平板）：棋盤視角改以手勢操作，不顯示縮放與旋轉按鈕。 */
+export const TOUCH_POINTER_QUERY = '(pointer: coarse)';
 
 /**
  * Viewport classification. The layout itself is CSS-driven; this hook only

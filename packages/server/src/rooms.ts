@@ -49,6 +49,8 @@ import {
   isBotMember,
   ORPHAN_BOT_GUEST_AGE_MS,
   parseBotLevel,
+  profileBotLevels,
+  unsupportedBotLevel,
 } from './bot-seats.ts';
 
 /** A ruleset named by its parts instead of a profile id (§5.2). */
@@ -363,6 +365,11 @@ export class RoomService {
     // never start, even if it got there before the profile changed.
     if (members.some((member) => member.bot) && !botsSupported(profile)) {
       blockers.push({ messageId: 'blocker.botsUnsupported', params: { profileId: profile.id } });
+    } else {
+      // 難度也一樣：hard 只玩基本版，不能留在其他設定檔的房間裡開局。
+      const levels = profileBotLevels(profile);
+      const level = members.find((member) => member.bot && member.botLevel && !levels.includes(member.botLevel))?.botLevel;
+      if (level) blockers.push({ messageId: 'blocker.botLevelUnsupported', params: { profileId: profile.id, level } });
     }
     const notReady = members.filter((member) => !member.ready);
     if (notReady.length > 0) {
@@ -512,6 +519,13 @@ export class RoomService {
     }
     const level = this.requireBotLevel(levelInput);
     this.requireBotsAllowed(room.profile_id);
+    if (!profileBotLevels(requireProfile(room.profile_id)).includes(level)) {
+      throw new ServiceError('E_INVALID_BOT', 'error.E_INVALID_BOT', {
+        reason: 'profileLevel',
+        level,
+        profileId: room.profile_id,
+      });
+    }
     const members = await this.repo.listMembers(roomId);
     if (members.length >= room.capacity) {
       throw new ServiceError('E_ROOM_FULL', 'error.E_ROOM_FULL', { capacity: room.capacity }, 409);
@@ -811,6 +825,10 @@ export class RoomService {
     }
     if (memberships.some(isBotMember) && !botsSupported(requireProfile(profileId))) {
       throw new ServiceError('E_INVALID_BOT', 'error.E_INVALID_BOT', { reason: 'profile', profileId });
+    }
+    const seatedLevel = unsupportedBotLevel(requireProfile(profileId), memberships);
+    if (seatedLevel) {
+      throw new ServiceError('E_INVALID_BOT', 'error.E_INVALID_BOT', { reason: 'profileLevel', level: seatedLevel, profileId });
     }
     let policy = this.policyOf(room);
     if (input.policy) {

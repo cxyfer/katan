@@ -13,10 +13,12 @@ P1 範圍內：
 - 房間中房主從「電腦對手」工具列逐一新增電腦對手，可用鉛筆圖示設定名稱（留空使用預設）並選擇難度，也可個別移除；建房時不詢問 Bot 數量（2026-11-02 變更）。
 - 兩種難度：`easy`、`standard`（預設）。
 - Bot 自動完成初始放置、擲骰、建造、買／打發展卡、棄牌、移動強盜、偷牌、豐收之年、免費道路、銀行／港口交易、回應報價、主動提出國內報價（附收集窗與逾時）、結束回合。
-- 支援目前啟用的 profile：`base-2025`（3–4 人）與 `base-paired-2025`（5–6 人；Player 2 不擲骰、不可發起或結算國內交易）。
+- 支援的 profile：
+  - `base-2025`（3–4 人）與 `base-paired-2025`（5–6 人；Player 2 不擲骰、不可發起或結算國內交易）。
+  - 0.4.1 起加上 Seafarers — Heading for New Shores 的 `sf-new-shores-2025`（3–4 人）與 `sf-new-shores-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-seafarers.md`。
 - 座位、大廳與遊戲中玩家面板顯示「電腦」徽章與難度。
 
-P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房間層級節奏設定、開局後增減 Bot、Bot 的反報價（counteroffer）、以事件紀錄推算對手手牌、目前停用的 Seafarers／C&K profile。
+P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房間層級節奏設定、開局後增減 Bot、Bot 的反報價（counteroffer）、以事件紀錄推算對手手牌。
 
 ## 2. 已定案決策
 
@@ -27,7 +29,7 @@ P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房�
 | D3 | 外部依賴 | 無；`packages/bots` 只依賴 `@catan/rules` | 使用者要求 |
 | D4 | 加入方式 | 只在房間中逐一新增（2026-11-02 移除建房捷徑） | 建房流程保持單純；每個 Bot 可各自設定名稱與難度 |
 | D5 | 國內交易 | 回應報價＋銀行／港口＋主動開價（收集窗＋逾時） | 使用者選擇；讓真人有可交易的對手 |
-| D6 | 難度 | `easy`＋`standard` | hard 需要自建推演模擬器，延後 |
+| D6 | 難度 | `easy`＋`standard`；`hard` 由 `2026-11-07-hard-bot.md` 加入，只在沒有 rules module 的 profile（基本版）提供 | hard 需要計牌與推演，另立規格 |
 | D7 | 節奏 | 伺服器預設、依動作調整；`BOT_DELAY_SCALE` 整體縮放 | 不新增房間設定 |
 | D8 | 公開房 | 允許；房間列表顯示 Bot 數 | 沒有禁止的必要 |
 | D9 | 上限 | 每房 Bot ≤ capacity − 1 | 房主一定是真人 |
@@ -39,7 +41,7 @@ P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房�
 |---|---|---|
 | I1 | Bot 只能經 `GameCoordinator.submit` 改變遊戲 | 程式結構；B-RACE |
 | I2 | 策略輸入只有 `projectGame(state, botId, { hints })` 的結果與 `BotContext`，型別上拿不到 `GameState` | `BotPolicy` 介面；B-FAIR |
-| I3 | `packages/rules` 的規則、`GameState`、事件與錯誤碼不變 | 既有 rules 測試全綠 |
+| I3 | `packages/rules` 的規則判定、`GameState`、事件與錯誤碼不變；允許只新增型別與常數的匯出，包括把模組內的投影與 hints 函式抽成具名函式 | 既有 rules 測試全綠 |
 | I4 | Bot 無可用登入憑證、不能成為房主、沒有 socket | `token_hash` 哨兵值；B-ROOM |
 | I5 | 每局同一時間最多一個 Bot 指令在飛 | BotDriver `inFlight`；B-LIFE |
 | I6 | 決策決定性：同一 view＋context → 同一指令 | 種子由 `gameId:botId:revision:attempt` 推導；B-POLICY |
@@ -77,6 +79,9 @@ BotDriver ──────┘          │
 export type BotLevel = 'easy' | 'standard';
 export const BOT_LEVELS: readonly BotLevel[];
 
+/** Bot 可送出的指令；協定的 command 本來就是開放型別，模組指令也走同一條路。 */
+export type BotCommand = Command | ModuleCommand;
+
 /** 排程器觀察到的、Bot 自己開出且仍 open 的報價階段。 */
 export type OfferPhase = 'collecting' | 'ready' | 'expired';
 
@@ -89,23 +94,50 @@ export interface BotContext {
 
 export interface BotPolicy {
   /** 回傳 selfId 此刻該送的指令；此刻無事可做回傳 null。 */
-  decide(view: GameView, ctx: BotContext): Command | null;
+  decide(view: GameView, ctx: BotContext): BotCommand | null;
 }
 
-export function createBotPolicy(level: BotLevel): BotPolicy;
-export const fallbackPolicy: BotPolicy;
+export interface BotPolicyOptions {
+  /** 省略時依 view.profileId 取 botModulesOf；[] = 只有 base。 */
+  readonly modules?: readonly BotModule[];
+}
+
+export function createBotPolicy(level: BotLevel, options?: BotPolicyOptions): BotPolicy;
+export function createFallbackPolicy(modules?: readonly BotModule[]): BotPolicy; // 省略時依 view.profileId 推導；查不到 profile 時只有 base，不得拋出
+export const fallbackPolicy: BotPolicy;                                          // = createFallbackPolicy()
+export function fallbackDecision(view: GameView, selfId: string, modules: readonly BotModule[]): BotCommand | null;
 export function botSeed(...parts: (string | number)[]): number;
+
+/** 此刻是否欠一個動作（待決效果、模組 frame、初始放置、擲骰前、行動階段）。 */
+export type OwedAction = 'frame' | 'pending' | 'setup' | 'preroll' | 'action';
+export function botOwesAction(view: GameView, selfId: string): OwedAction | null;
+
+/**
+ * Bot 模組：每個 rules module 可以註冊一個。鉤子、回傳值語意（undefined = 不歸我管，
+ * null = 歸我管但這次不送指令）與組合規則見 packages/bots/src/modules/types.ts。
+ */
+export interface BotModule { readonly id: string; /* … */ }
+export const BOT_MODULES: ReadonlyMap<string, BotModule>;
+export function botModulesOf(profile: Pick<ProfileDefinition, 'ruleModules'>): readonly BotModule[];
+
+/** profile 的每個 rules module 都有已註冊、且 supports 該 profile 的 Bot 模組。 */
+export function botsCanPlay(profile: ProfileDefinition): boolean;
+
+export const BOT_PACING: Readonly<Record<string, number>>;       // 合併各模組的 pacing
+export function botCommandLimit(profile: Pick<ProfileDefinition, 'ruleModules'>, base: number): number;
+export const BASE_RESPONSE_COMMANDS: ReadonlySet<string>;        // 非行動者可送的 base 指令
+export function botResponseCommands(profile: Pick<ProfileDefinition, 'ruleModules'>): ReadonlySet<string>;
 ```
 
 規則：
 
 1. `decide` 是純函式：不讀時間與環境、不持有跨呼叫狀態；隨機性只來自 `seededRng(ctx.seed)`。排程器仍會攔截例外，但策略不應拋出。
 2. 可用資訊：`view`、`getTopology(view.board.topologyId)`、`requireProfile(view.profileId)`、`COSTS`、`RESOURCES` 等常數。不得接收或建構 `GameState` 來取得隱藏資訊。
-3. 非行動者（`selfId !== view.turn.playerId`）只在兩種情況回傳指令：自己欠的待決效果（棄牌等）；收件人包含自己、仍 open、且自己尚未回應的報價。
-4. 行動者在 `action` 階段無事可做時必須回傳 `turn.end`。唯一允許回傳 `null` 的情況是自己仍有 open 報價在等回應。排程器把「行動者沒有 open 報價卻回傳 null」視為策略失敗。
+3. 非行動者（`selfId !== view.turn.playerId`）只在兩種情況回傳指令：自己欠的待決效果（base 的棄牌，以及自己有資格回應的模組 frame：同時作答的 frame 只要 `responders` 包含自己，依序作答的 frame 只有 `responders[0]` 可以回應；保底一律只在自己是 `responders[0]` 時回應）；收件人包含自己、仍 open、且自己尚未回應的報價。
+4. 行動者在 `action` 階段無事可做時，回傳結束行動窗口的指令：模組有 `endWindow` 就用它，否則用 `turn.end`（`endWindow` 自 0.4.5 起實作，在那之前一律是 `turn.end`；模組的 `duty` 可以在 `turn.end` 之前接手）。唯一允許回傳 `null` 的情況是自己仍有 open 報價在等回應。排程器把「行動者沒有 open 報價卻回傳 null」視為策略失敗。
 5. `hints.legalSettlements`／`legalRoads` 只代表位置合法，不代表付得起；策略要用 `COSTS` 與自己的 `resources` 檢查，也要檢查剩餘棋子數（以盤面計數對照 profile 的 pieces）。
 6. 報價回應只用 `consented` 或 `declined`；回應過的報價（`responses[selfId]` 有值）不再回應，報價被 revise 後才重新評估。
-7. 保底策略 `fallbackPolicy` 只做必定合法的最小動作，非強制的事一律不做（回傳 null）：
+7. 保底策略 `fallbackPolicy` 只做必定合法的最小動作，非強制的事一律不做（回傳 null）。保底表由各模組擴充，內容寫在各擴充計畫的保底一節；下表是 base 的部分：
 
 | 情況 | 保底動作 |
 |---|---|
@@ -117,6 +149,11 @@ export function botSeed(...parts: (string | number)[]): number;
 | 初始放置 | `hints.legalSettlements[0]`／`hints.legalRoads[0]` |
 | `preroll` | `turn.roll` |
 | `action` | `turn.end` |
+
+Seafarers 的保底見 SF 計畫 `docs/aegis/plans/2026-11-04-bots-seafarers.md` §4.1，包含 gold frame、移動強盜或海盜、含船的免費道路與初始放船。
+
+8. 策略不得讀 `view.events`：BotDriver 投影時帶最近 40 筆事件，測試 harness 不帶，讀了會讓兩邊結果不一致（決定性，I6）。
+9. 報價包含 Bot 無法估值的卡種或 goods（`giveGoods`、`wantGoods`）時一律拒絕（不同意、不結算）；對方要求的數量超過自己持有量，或提議者公開的 goods 付不起 `giveGoods` 時，也一律拒絕（引擎在同意時會檢查雙方）。
 
 報價階段由排程器以真實時間推導，策略只看階段：
 
@@ -255,7 +292,12 @@ ALTER TABLE guests ADD COLUMN bot_level TEXT;                      -- 只有 bot
 | B-RACE | server | 真人與 Bot 在同一 revision 送出：只有一個 accepted，另一個 stale，且不重複套用 |
 | B-WEB | web | 建房不含 Bot 欄位、空位新增電腦對話框與徽章、i18n parity |
 
-完成閘門：`pnpm verify` 全綠；B-GAME 涵蓋 3、4、5、6 人各至少 10 個種子；Docker 依賴層可以建置。
+完成閘門：`pnpm verify` 全綠；Docker 依賴層可以建置；B-GAME 的種子數與判定如下：
+
+- base：3、4、5、6 人各 10 個種子，固定，不受 `BOTS_SEEDS` 影響。
+- 擴充 profile：`pnpm test` 與 `pnpm verify` 每個人數預設 3 個種子；發布閘門以 `BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run` 跑 10 個（`RELEASING.md` 的 Pre-flight）。
+- 每局以仿 BotDriver 模式進行（策略回 null 時改用保底），必須做到：0 次拒絕；有勝者；沒有殘留 pending；資源守恆（base 加上各模組的守恆檢查）；沒有「策略閒置、但保底有動作」，也沒有兩者都閒置而卡死；通過進度看門狗（連續 N 次擲骰沒有任何玩家創新高即失敗，N 與步數上限依 profile 設定）。
+- 另有保底席（每個 profile × 人數至少一局，1 席只走保底）與全保底有界局（只要求 0 拒絕且每一步都有動作，不要求終局）。
 
 模擬時間：bots 測試 harness 以步數模擬報價階段——報價建立後，其他座位各輪一次前為 `collecting`，之後為 `ready`，再一輪後為 `expired`。
 

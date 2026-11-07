@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { RESOURCES } from '@catan/rules';
-import { useT } from '../i18n/context.tsx';
+import { useLocale, useT } from '../i18n/context.tsx';
 import { citiesKnightsHints, TRACKS } from '../board/citiesKnights.ts';
+import { vertexReference, viewReferenceContext } from '../board/references.ts';
 import { blocksNewCommands } from '../state/commands.ts';
 import { followUpsHeld } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
@@ -21,6 +22,7 @@ const PROGRESS_FRAME = 'citiesKnights.progressDiscard';
  */
 export function CitiesKnightsPrompt({ controller }: { controller: TableController }) {
   const t = useT();
+  const locale = useLocale();
   const { state, actions } = controller;
   const view = state.game?.view ?? null;
   const ck = citiesKnightsHints(view);
@@ -35,6 +37,7 @@ export function CitiesKnightsPrompt({ controller }: { controller: TableControlle
   // On one's own turn a card drawn over the limit is discarded at once (CK25 p. 10).
   const ownTurnExcess = !pending && view.turn.playerId === selfId && view.turn.phase === 'action' ? ck.progressExcess : 0;
   const discard = frameRequired || ownTurnExcess;
+  const places = viewReferenceContext(locale, view);
 
   return <>
     <ProgressPrompt controller={controller} />
@@ -45,7 +48,7 @@ export function CitiesKnightsPrompt({ controller }: { controller: TableControlle
           {ck.pillage.map((vertex) => <li key={vertex}>
             <button type="button" className="button" data-testid={`ck-pillage-${vertex}`} disabled={blocked}
               onClick={() => void actions.submitCommand({ type: 'barbarians.pillage', vertex }, 'ck.prompt.pillage')}>
-              {t('ck.prompt.cityAt', { vertex })}
+              {t('ck.prompt.cityAt', { place: vertexReference(places, vertex) })}
             </button>
           </li>)}
         </ul>
@@ -58,7 +61,7 @@ export function CitiesKnightsPrompt({ controller }: { controller: TableControlle
           {ck.retreat.map((vertex) => <li key={vertex}>
             <button type="button" className="button" data-testid={`ck-retreat-${vertex}`} disabled={blocked}
               onClick={() => void actions.submitCommand({ type: 'knight.retreat', vertex }, 'ck.prompt.retreat')}>
-              {t('ck.prompt.intersection', { vertex })}
+              {vertexReference(places, vertex)}
             </button>
           </li>)}
         </ul>

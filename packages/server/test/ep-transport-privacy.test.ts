@@ -55,9 +55,12 @@ describe('E&P transport privacy', () => {
           expect(snapshot.view.modules?.explorersPirates).not.toHaveProperty('lairTokens');
         }
         const history = client.expectOk<{ events: CommandReceipt['events'] }>(await client.get(`/api/games/${gameId}/events?after=0`));
+        // 歷史與快照相同：旁觀者看得到事件，但沒有牌面。
+        expect(history.events.every((entry) => entry.private === undefined)).toBe(true);
         const event = history.events.find((entry) => entry.type === 'ep.pirateStole');
-        if (client === outsider) expect(event).toBeUndefined();
-        else expect(event?.params.resource).toBe('ore');
+        expect(event).toBeDefined();
+        if (client === outsider) expect(event!.params).not.toHaveProperty('resource');
+        else expect(event!.params.resource).toBe('ore');
       }
     } finally { for (const feed of feeds) feed.socket.close(); }
   });

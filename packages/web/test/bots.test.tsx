@@ -119,6 +119,39 @@ describe('lobby bot seats', () => {
     expect((await screen.findByTestId('bot-badge-1')).textContent).toBe('Bot · Easy');
   });
 
+  it('offers Hard in base rooms and adds a hard bot', async () => {
+    const api = createFakeApi({ room: makeRoom({ members: [makeMember()] }) });
+    await joinLobby(api);
+
+    const select = screen.getByTestId('lobby-bot-level') as HTMLSelectElement;
+    expect([...select.options].map((option) => [option.value, option.textContent])).toEqual([
+      ['easy', 'Easy'],
+      ['standard', 'Standard'],
+      ['hard', 'Hard'],
+    ]);
+    expect(screen.queryByTestId('lobby-bots-hard-base-only')).toBeNull();
+    fireEvent.change(select, { target: { value: 'hard' } });
+    fireEvent.click(screen.getByTestId('add-bot'));
+    await waitFor(() => expect(api.callsOf('addBot')).toHaveLength(1));
+    expect(api.callsOf('addBot')[0]!.args).toEqual(['r1', { level: 'hard' }]);
+    expect((await screen.findByTestId('bot-badge-1')).textContent).toBe('Bot · Hard');
+  });
+
+  it('leaves Hard out of rulesets it cannot play and says why', async () => {
+    const api = createFakeApi({
+      profiles: [makeProfile({ id: 'sf-new-shores-2025', expansions: ['seafarers'], botLevels: ['easy', 'standard'] })],
+      room: makeRoom({ profileId: 'sf-new-shores-2025', members: [makeMember()] }),
+      identity: makeIdentity({ locale: 'zh-Hant' }),
+    });
+    await joinLobby(api, ['zh-TW']);
+
+    const select = screen.getByTestId('lobby-bot-level') as HTMLSelectElement;
+    expect([...select.options].map((option) => option.value)).toEqual(['easy', 'standard']);
+    expect(select.value).toBe('standard');
+    expect(screen.getByTestId('lobby-bots-hard-base-only').textContent).toBe('困難電腦只支援基本版。');
+    expect((screen.getByTestId('add-bot') as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('opens the name dialog from the small icon and adds with the custom name', async () => {
     const api = createFakeApi({ room: makeRoom({ members: [makeMember()] }) });
     await joinLobby(api);
@@ -171,10 +204,10 @@ describe('lobby bot seats', () => {
     expect(screen.getByText('Every seat is taken.')).toBeTruthy();
   });
 
-  it('disables adding a bot with a localized reason when the profile has expansion rules', async () => {
+  it('disables adding a bot with a localized reason when bots cannot play the ruleset', async () => {
     const api = createFakeApi({
-      profiles: [makeProfile({ id: 'sf-new-shores-2025', expansions: ['seafarers'], botSeats: false })],
-      room: makeRoom({ profileId: 'sf-new-shores-2025', members: [makeMember()] }),
+      profiles: [makeProfile({ id: 'ck-2025', expansions: ['citiesKnights'], botSeats: false })],
+      room: makeRoom({ profileId: 'ck-2025', members: [makeMember()] }),
       identity: makeIdentity({ locale: 'zh-Hant' }),
     });
     await joinLobby(api, ['zh-TW']);
@@ -190,7 +223,7 @@ describe('lobby bot seats', () => {
     expect(api.callsOf('addBot')).toHaveLength(0);
     expect(screen.queryByTestId('bot-name')).toBeNull();
     expect(screen.getByTestId('lobby-bots-unsupported').textContent).toBe(
-      '電腦對手只會玩基本遊戲，無法加入使用擴充規則的組合。',
+      '電腦對手尚未支援這個規則組合。',
     );
   });
 
@@ -246,10 +279,19 @@ describe('lobby bot seats', () => {
     // 已登入身分的語系優先於瀏覽器語言。
     const api = createFakeApi({
       identity: makeIdentity({ locale: 'zh-Hant' }),
-      room: makeRoom({ members: [makeMember(), makeBotMember({ botLevel: 'easy' })] }),
+      room: makeRoom({
+        members: [
+          makeMember(),
+          makeBotMember({ botLevel: 'easy' }),
+          makeBotMember({ playerId: 'bot2', nickname: 'Bram', seat: 2, color: 'white', botLevel: 'hard' }),
+        ],
+        capacity: 4,
+      }),
     });
     await joinLobby(api, ['zh-TW']);
     expect(screen.getByRole('heading', { name: '電腦對手' })).toBeTruthy();
+    expect(screen.getByTestId('bot-badge-2').textContent).toBe('電腦・困難');
+    expect([...(screen.getByTestId('lobby-bot-level') as HTMLSelectElement).options].map((option) => option.textContent)).toEqual(['簡單', '標準', '困難']);
     expect(screen.getByLabelText('電腦難度')).toBeTruthy();
     expect(screen.getByRole('button', { name: '加入電腦' })).toBeTruthy();
     expect(screen.getByTestId('bot-badge-1').textContent).toBe('電腦・簡單');

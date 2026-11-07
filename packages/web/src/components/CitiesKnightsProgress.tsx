@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { COMMODITIES, RESOURCES, type CardKind, type GameView } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
+import { hexReference, vertexReference, viewReferenceContext } from '../board/references.ts';
 import {
   cardFrameData, citiesKnightsHints, citiesKnightsView, PROGRESS_BOARD_TARGET, PROGRESS_TRACK,
   type CitiesKnightsHints, type CraneOption, type ProgressCardHint,
@@ -182,7 +183,7 @@ function ProgressPlayForm({ hint, view, disabled, nameOf, onPlay, onCancel, onBo
         {hexes.map((hex) => <li key={hex}>
           <button type="button" className="button button--chip" aria-pressed={picked.includes(hex)} data-testid={`ck-invention-${hex}`}
             onClick={() => toggle(hex, 2)}>
-            {t('ck.card.hexLabel', { terrain: t(`terrain.${view.board.terrain[hex]}`), number: n(view.board.numbers[hex] ?? 0), hex: n(hex) })}
+            {hexReference(viewReferenceContext(locale, view), hex)}
           </button>
         </li>)}
       </ul>
@@ -199,7 +200,7 @@ function ProgressPlayForm({ hint, view, disabled, nameOf, onPlay, onCancel, onBo
           return <li key={vertex}>
             <button type="button" className="button button--chip" aria-pressed={picked.includes(vertex)} data-testid={`ck-smithing-${vertex}`}
               onClick={() => toggle(vertex, 2)}>
-              {t('ck.card.knightAt', { level: t(`ck.knight.${knight?.level ?? 1}`), vertex: n(vertex) })}
+              {t('ck.card.knightAt', { level: t(`ck.knight.${knight?.level ?? 1}`), place: vertexReference(viewReferenceContext(locale, view), vertex) })}
             </button>
           </li>;
         })}
@@ -440,7 +441,7 @@ export function ProgressPrompt({ controller }: { controller: TableController }) 
           {knights.map((vertex) => <li key={vertex}>
             <button type="button" className="button" data-testid={`ck-treason-remove-${vertex}`} disabled={blocked}
               onClick={() => void submit({ type: 'progress.treasonRemove', vertex }, 'ck.progress.treason')}>
-              {t('ck.card.knightAt', { level: t(`ck.knight.${ck?.knights.find((knight) => knight.vertex === vertex)?.level ?? 1}`), vertex: n(vertex) })}
+              {t('ck.card.knightAt', { level: t(`ck.knight.${ck?.knights.find((knight) => knight.vertex === vertex)?.level ?? 1}`), place: vertexReference(viewReferenceContext(locale, view), vertex) })}
             </button>
           </li>)}
         </ul>

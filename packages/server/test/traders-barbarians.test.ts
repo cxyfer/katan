@@ -64,7 +64,7 @@ describe('Traders & Barbarians rooms', () => {
     });
   }
 
-  // Bots only play rulesets whose modules they know (`BOT_RULE_MODULES`); no T&B part is among them.
+  // 依 `@catan/bots` 的 `botsCanPlay`（BotModule 與 `supports`）判定；沒有任何 T&B 部件有 BotModule。
   const tbProfiles = PROFILES.filter((profile) => profile.enabled && profile.id.startsWith('tb-'));
 
   it('lists every enabled T&B profile without bot seats', async () => {

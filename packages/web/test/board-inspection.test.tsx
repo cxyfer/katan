@@ -169,7 +169,9 @@ describe('public map inspection', () => {
     expect(inspectDescription(context, { kind: 'edge', index: 5 }).lines).toContain('Owner: Public name');
     const harbor = inspectDescription(context, { kind: 'harbor', index: board.harbors[0]!.edge });
     expect(harbor.lines.join(' ')).toContain('either endpoint');
-    expect(harbor.relatedHexes.length).toBeGreaterThan(0);
+    // 港口以沿岸地塊命名，不再顯示路徑或交點編號。
+    expect(harbor.title).toMatch(/^Harbour on .+ coast/);
+    expect(harbor.lines.join(' ')).not.toMatch(/Harbour intersections: [\d, ]+$/);
     const elements = inspectionElements(geometry, board, 'r3f');
     expect(elements.some((item) => item.kind === 'vertex' && item.index === vertex)).toBe(true);
     const dock = elements.find((item) => item.kind === 'harbor')!;

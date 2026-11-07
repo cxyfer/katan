@@ -31,6 +31,11 @@ its contents scroll inside the dialog box.
 | `10-floating-hud-568x320-en.png` | en | 568×320 | The shortest supported landscape size |
 | `11-save-failed-568x320-en.png` | en | 568×320 | Failed receipt at the shortest size |
 
+`04-target-picker-above-hud-844x390-en.png` was re-captured on 2026-11-07 from
+the merge of `master` (`c4f9d7f`) into `release/v0.4.1` (`3387257`), so its
+targets are named by resource and dice number (#128) on the leave and save
+layout above; every other capture is from `11010a8`.
+
 The script asserts the compact layout is active, the status strip is absolutely
 positioned, the board takes the full viewport height, the page does not scroll,
 the leave button stays inside the viewport, the target picker is above the HUD,

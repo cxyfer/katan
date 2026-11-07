@@ -132,7 +132,9 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
 ## What is supported today
 
 - Base game (`base-2025`) for **3 and 4 players**, and paired base
-  (`base-paired-2025`) for **5 and 6 players**, fixed or variable setup.
+  (`base-paired-2025`) for **5 and 6 players**, fixed or variable setup, with
+  easy, standard and hard computer opponents (hard counts cards from the
+  public event history).
 - Traders & Barbarians (2025 rulebook) on the base board for **3 and 4
   players**: the Friendly Robber and Harbors of Catan variants, and the
   scenarios Fishing on Catan, Rivers of Catan, Merchant Trains, Barbarian
@@ -154,7 +156,7 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   editions): the printed 3- and 4-player maps and the 5–6 map with its random
   main island, ships (build, move, Road Building), the pirate, gold fields,
   the per-player small-island bonus, Longest Trade Route and a 14-point goal,
-  in both the 3D and SVG boards.
+  in both the 3D and SVG boards, with easy and standard computer opponents.
 - **Explorers & Pirates** for 3–4 players (CN3085 2025 edition), one profile
   per mission set in book order — Land Ho!, Pirate Lairs, Fish for Catan,
   Spices for Catan and the full game: fog over unexplored hexes, harbour
@@ -174,7 +176,7 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   carried along ships and onto the sea, the pirate waiting for the first
   barbarian attack and chased by knights, gold without commodities and a
   16-point goal, in both the 3D and SVG boards. Bot seats are not offered
-  for the expansions.
+  for this combination.
 
 The Traders & Barbarians event-card variant remains disabled because the 2025 rulebook omits the deck list.
 

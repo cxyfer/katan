@@ -18,6 +18,8 @@ import {
   type RoadSearch,
   type Yield,
 } from './board.ts';
+import type { BotModule } from './modules/types.ts';
+import type { BotLevel } from './types.ts';
 
 export type Hand = Record<Resource, number>;
 export type Cost = Partial<Record<Resource, number>>;
@@ -89,7 +91,36 @@ export function weightedPips(value: Yield, weights: Record<Resource, number>): n
   return RESOURCES.reduce((sum, resource) => sum + value[resource] * weights[resource], 0);
 }
 
-export type PlanKind = 'city' | 'settlement' | 'devCard' | 'longestRoad';
+/**
+ * 路口鄰接的金礦點數總和（Seafarers）。金礦的資源由擲出時的玩家任選，不在 `hexResource` 內，所以
+ * `vertexYield` 看不到它。沒有金礦的盤面（base）恆為 0，下面所有依它加分的估值都不會變動。
+ */
+export function goldPipsAt(model: BoardModel, vertex: number): number {
+  let pips = 0;
+  for (const hex of model.topo.vertices[vertex]!.hexes) {
+    if (model.hexGold[hex]) pips += model.hexPips[hex]!;
+  }
+  return pips;
+}
+
+/** 一張萬用資源的權重：可以挑目前最缺的資源，所以取各資源權重的最大值。 */
+export function wildcardWeight(weights: Record<Resource, number>): number {
+  return Math.max(...RESOURCES.map((resource) => weights[resource]));
+}
+
+/**
+ * 一座建築的點數產能價值（加權後）。金礦以一張萬用資源計價：聚落一張、城市兩張，所以升級城市時
+ * 多得的就是這一張。沒有金礦時與 `weightedPips(vertexYield(...))` 完全相同。
+ */
+export function productionValue(model: BoardModel, vertex: number, weights: Record<Resource, number>): number {
+  const value = weightedPips(vertexYield(model, vertex), weights);
+  const gold = goldPipsAt(model, vertex);
+  return gold > 0 ? value + gold * wildcardWeight(weights) : value;
+}
+
+export type BasePlanKind = 'city' | 'settlement' | 'devCard' | 'longestRoad';
+/** base 的四種計畫，加上模組計畫（kind 為 `<module id>.<名稱>`）。 */
+export type PlanKind = BasePlanKind | `${string}.${string}`;
 
 export interface Plan {
   kind: PlanKind;
@@ -97,6 +128,11 @@ export interface Plan {
   vertex: number | null;
   /** 需要先建的道路，依建造順序排列。 */
   roads: number[];
+  /**
+   * 需要先造的船（edge index），依建造順序排列；base 計畫恆為 `[]`。模組計畫（例如 Seafarers 的
+   * 島嶼聚落）才會有值。省略時視為 `[]`：已有的模組計畫字面值不必逐一補上。
+   */
+  ships?: number[];
   /** 整個計畫的總成本（含道路）。 */
   cost: Cost;
   /** 下一步的成本：道路未完成時為一條道路，否則為目標本身。 */
@@ -106,12 +142,22 @@ export interface Plan {
   /** 估計還要幾輪才能湊齊資源。 */
   eta: number;
   score: number;
+  /** 下一步完成就得分（主動開價的條件）；省略時：city，或 roads 為空的 settlement。 */
+  immediate?: boolean;
+}
+
+/** 計畫完成後是否立即得分（見 `Plan.immediate`）。 */
+export function isImmediate(plan: Plan): boolean {
+  return plan.immediate ?? (plan.kind === 'city' || (plan.kind === 'settlement' && plan.roads.length === 0));
 }
 
 export interface Economy {
   readonly model: BoardModel;
   readonly hand: Hand;
-  readonly left: PieceCounts;
+  /** 剩餘棋子；模組可加上自己的鍵（例如 ships），也可覆寫 base 的鍵。 */
+  readonly left: Readonly<PieceCounts> & Readonly<Record<string, number>>;
+  /** base 的四種成本，加上模組的具名成本。 */
+  readonly costs: Readonly<Record<string, Cost>>;
   readonly weights: Record<Resource, number>;
   /** 自己目前（排除強盜格）的點數產能。 */
   readonly yield: Yield;
@@ -128,6 +174,12 @@ export function settlementSpotValue(model: BoardModel, vertex: number, weights: 
   let value = weightedPips(spot, weights);
   for (const resource of RESOURCES) {
     if (spot[resource] > 0 && mine[resource] === 0) value += 2.5;
+  }
+  // 金礦：點數以萬用資源計價；它也能補上任何一種還沒有產能的資源（只算一次）。
+  const gold = goldPipsAt(model, vertex);
+  if (gold > 0) {
+    value += gold * wildcardWeight(weights);
+    if (RESOURCES.some((resource) => spot[resource] === 0 && mine[resource] === 0)) value += 2.5;
   }
   const harbor = model.harborAt[vertex];
   if (harbor === 'generic') value += 1.5;
@@ -173,10 +225,46 @@ export function etaRounds(
   return rounds;
 }
 
-export function economyOf(model: BoardModel): Economy {
+/** 依序合併；同一個鍵先出現的值優先。 */
+function mergeFirstWins<T>(layers: readonly Readonly<Record<string, T>>[]): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const layer of layers) {
+    for (const [key, value] of Object.entries(layer)) {
+      if (!Object.hasOwn(out, key)) out[key] = value;
+    }
+  }
+  return out;
+}
+
+/**
+ * 經濟評估：base 加上各模組的 economy 鉤子。模組清單為空時，結果與只有 base 完全相同。
+ * 模組計畫同分時排在 base 種類之後。
+ */
+export function economyOf(
+  model: BoardModel,
+  modules: readonly BotModule[] = [],
+  level: BotLevel = 'standard',
+): Economy {
+  const base = baseEconomyOf(model, modules);
+  // 不遞迴：scoreExtras 拿不到 TurnContext，只看 base 經濟。
+  const extras: Plan[] = [];
+  for (const module of modules) extras.push(...(module.economy?.scoreExtras?.({ model, level, base }) ?? []));
+  if (extras.length === 0) return base;
+  return { ...base, plans: [...base.plans, ...extras].sort(comparePlans) };
+}
+
+function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Economy {
   const { view, selfId } = model;
   const hand = handOf(model);
-  const left = piecesLeft(model, selfId);
+  const left = {
+    ...piecesLeft(model, selfId),
+    ...mergeFirstWins(modules.map((module) => module.economy?.piecesLeft?.(model) ?? {})),
+  };
+  // base 的鍵不可覆寫：base 計畫直接讀 COSTS。
+  const costs = {
+    ...mergeFirstWins(modules.map((module) => module.economy?.costs?.(model) ?? {})),
+    ...COSTS,
+  };
   const weights = resourceWeights(model);
   const mine = playerYield(model, selfId);
   const longTerm = playerYield(model, selfId, true);
@@ -196,7 +284,7 @@ export function economyOf(model: BoardModel): Economy {
     let bestValue = -Infinity;
     view.board.buildings.forEach((building, vertex) => {
       if (!building || building.player !== selfId || building.city) return;
-      const value = weightedPips(vertexYield(model, vertex), weights);
+      const value = productionValue(model, vertex, weights);
       if (value > bestValue) {
         bestValue = value;
         best = vertex;
@@ -207,6 +295,7 @@ export function economyOf(model: BoardModel): Economy {
         kind: 'city',
         vertex: best,
         roads: [],
+        ships: [],
         cost: COSTS.city,
         nextCost: COSTS.city,
         value: 1 + PIP_VALUE * bestValue,
@@ -233,6 +322,7 @@ export function economyOf(model: BoardModel): Economy {
         kind: 'settlement',
         vertex,
         roads,
+        ships: [],
         cost,
         nextCost: roads.length > 0 ? COSTS.road : COSTS.settlement,
         value,
@@ -253,7 +343,7 @@ export function economyOf(model: BoardModel): Economy {
     if (holder !== selfId && myKnights + 2 >= Math.max(3, holderKnights + 1)) value += 0.25;
     // 沒有聚落點也沒有城市可蓋時，發展卡是剩下的得分路線。
     if (!plans.some((plan) => plan.kind === 'settlement' || plan.kind === 'city')) value += 0.3;
-    push({ kind: 'devCard', vertex: null, roads: [], cost: COSTS.devCard, nextCost: COSTS.devCard, value });
+    push({ kind: 'devCard', vertex: null, roads: [], ships: [], cost: COSTS.devCard, nextCost: COSTS.devCard, value });
   }
 
   // 最長道路：差一兩條就能拿到時才值得專門投資。
@@ -270,6 +360,7 @@ export function economyOf(model: BoardModel): Economy {
             kind: 'longestRoad',
             vertex: null,
             roads: [edge],
+            ships: [],
             cost: scaleCost(COSTS.road, needed),
             nextCost: COSTS.road,
             value: needed === 1 ? 1.8 : 1.4,
@@ -279,12 +370,25 @@ export function economyOf(model: BoardModel): Economy {
     }
   }
 
-  plans.sort((a, b) => b.score - a.score || planOrder(a) - planOrder(b));
-  return { model, hand, left, weights, yield: mine, rates, search, myRoute, plans };
+  plans.sort(comparePlans);
+  return { model, hand, left, costs, weights, yield: mine, rates, search, myRoute, plans };
 }
 
+function comparePlans(a: Plan, b: Plan): number {
+  return b.score - a.score || planOrder(a) - planOrder(b);
+}
+
+const BASE_KIND_ORDER: readonly string[] = ['city', 'settlement', 'longestRoad', 'devCard'];
+
+/**
+ * base 種類依序為 0–3，再以路口編號打破同分（路口數最多 174，間距 1000 不會重疊）。模組計畫一律
+ * 排在後面，而且共用同一個鍵、不加路口編號：同分時靠穩定排序保留串接順序，也就是先依模組順序、
+ * 再依模組內的順序；若以路口編號排序，後面模組的計畫可能插到前面模組的計畫之前。
+ */
 function planOrder(plan: Plan): number {
-  return ['city', 'settlement', 'longestRoad', 'devCard'].indexOf(plan.kind) * 1000 + (plan.vertex ?? 0);
+  const rank = BASE_KIND_ORDER.indexOf(plan.kind);
+  if (rank < 0) return BASE_KIND_ORDER.length * 1000;
+  return rank * 1000 + (plan.vertex ?? 0);
 }
 
 /** 能讓自己最長道路變長的合法道路；沒有則回傳 null。 */
