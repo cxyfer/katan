@@ -1,4 +1,4 @@
-/* 離開對話框、退出／結束對局橫幅與玩家欄的「已退出」標記（SPEC §4.6）。 */
+/* 離開對話框、退出／結束對局與全桌暫停的橫幅，以及玩家欄的「已退出」標記（SPEC §4.6、§4.8）。 */
 
 /* 狀態列的離開鈕：尺寸沿用全螢幕鈕（table.css、compact-landscape.css），這裡只補暖色邊框提示它會離開牌桌。 */
 .status-strip .table-leave { border-color: #c9856a80; }
@@ -11,6 +11,8 @@
 .leave-option { display: flex; flex-direction: column; gap: .35rem; }
 .leave-option > .button { width: 100%; justify-content: flex-start; text-align: left; }
 .leave-option > p { margin: 0; font-size: .82rem; }
+/* 座位綁定此瀏覽器的提醒：放在選項下方，字級比選項說明再小一階。 */
+.leave-step > .leave-identity { font-size: .76rem; }
 
 /* 不可逆的選項：暖紅邊框；主要按鈕改用暖紅底，與一般的金色主要按鈕區分。 */
 .leave-danger { border-color: #d98f78; }
@@ -22,7 +24,7 @@
 }
 .leave-danger.button--primary:hover:not(:disabled) { color: #221613; background: linear-gradient(135deg, #f7c6b6, #e08a73); border-color: #f7c6b6; }
 
-/* 牌桌訊息欄的橫幅：沿用 .prompt 的密度，按鈕並排時各占一半。 */
+/* 牌桌訊息欄的橫幅（結束對局與全桌暫停共用）：沿用 .prompt 的密度，按鈕並排時各占一半。 */
 .screen--game .game__messages .abandon-panel { margin-bottom: 8px; }
 .screen--game .game__messages .abandon-panel:last-child { margin-bottom: 0; }
 .screen--game .game__messages .abandon-panel .muted { margin: 4px 0 0; }

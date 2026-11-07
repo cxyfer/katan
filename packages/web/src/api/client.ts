@@ -28,9 +28,12 @@ import type {
   ResumableGameView,
   RoomPolicy,
   RoomSummaryView,
+  ResumeReadyResult,
   RoomView,
   SaveReceipt,
   ServerConfigView,
+  SuspendConsentResult,
+  SuspendProposeResult,
   WithdrawResult,
 } from '@catan/protocol';
 
@@ -121,13 +124,17 @@ export interface CatanApi {
   ): Promise<ApiResult<{ events: GameEvent[]; revision: number }>>;
   sendCommand(gameId: string, request: CommandRequest): Promise<ApiResult<CommandReceipt>>;
   saveGame(gameId: string, requestId: string): Promise<ApiResult<SaveReceipt>>;
-  suspendGame(gameId: string, proposalId?: string): Promise<ApiResult<RoomView>>;
+  /** 不帶 body 為提議全桌保存並暫停；帶 proposalId 為對該提案表態（§4.8）。 */
+  suspendGame(
+    gameId: string,
+    body?: { proposalId: string; approve: boolean },
+  ): Promise<ApiResult<SuspendProposeResult | SuspendConsentResult>>;
   abandonGame(
     gameId: string,
     body?: { proposalId: string; approve: boolean },
   ): Promise<ApiResult<AbandonProposeResult | AbandonConsentResult>>;
   withdrawGame(gameId: string, withdrawn: boolean): Promise<ApiResult<WithdrawResult>>;
-  resumeGame(gameId: string, ready: boolean): Promise<ApiResult<RoomView>>;
+  resumeGame(gameId: string, ready: boolean): Promise<ApiResult<ResumeReadyResult>>;
   getChat(roomId: string, query?: { after?: number; limit?: number }): Promise<ApiResult<ChatPage>>;
   sendChat(
     roomId: string,
@@ -306,10 +313,12 @@ export class ApiClient implements CatanApi {
       requestId,
     });
   }
-  suspendGame(gameId: string, proposalId?: string) {
-    return this.#request<RoomView>('POST', `/api/games/${encodeURIComponent(gameId)}/suspend`, {
-      proposalId,
-    });
+  suspendGame(gameId: string, body?: { proposalId: string; approve: boolean }) {
+    return this.#request<SuspendProposeResult | SuspendConsentResult>(
+      'POST',
+      `/api/games/${encodeURIComponent(gameId)}/suspend`,
+      body ?? {},
+    );
   }
   abandonGame(gameId: string, body?: { proposalId: string; approve: boolean }) {
     return this.#request<AbandonProposeResult | AbandonConsentResult>(
@@ -324,7 +333,7 @@ export class ApiClient implements CatanApi {
     });
   }
   resumeGame(gameId: string, ready: boolean) {
-    return this.#request<RoomView>('POST', `/api/games/${encodeURIComponent(gameId)}/resume`, { ready });
+    return this.#request<ResumeReadyResult>('POST', `/api/games/${encodeURIComponent(gameId)}/resume`, { ready });
   }
   getChat(roomId: string, query?: { after?: number; limit?: number }) {
     return this.#request<ChatPage>(

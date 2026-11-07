@@ -14,6 +14,7 @@ import {
 import {
   DEFAULT_POLICY,
   type AbandonProposalView,
+  type SuspendProposalView,
   type BotLevel,
   type GameOrderMode,
   type LeaveRoomResult,
@@ -283,6 +284,26 @@ export class RoomService {
       }
     }
 
+    // 全桌暫停提案只在進行中的對局有意義；暫停中則改列出已表示準備繼續的真人（§4.8）。
+    let pendingSuspend: SuspendProposalView | null = null;
+    let resumeReady: string[] | null = null;
+    if (room.game_id && room.status === 'playing') {
+      const suspend = await this.repo.findOpenGameProposal(room.game_id, 'suspend');
+      if (suspend) {
+        pendingSuspend = {
+          id: suspend.id,
+          proposedBy: suspend.proposed_by,
+          consents: await this.repo.listGameConsents(suspend.id),
+          createdAt: suspend.created_at,
+        };
+      }
+    } else if (room.game_id && room.status === 'suspended') {
+      const humans = new Set(humanMembers(memberships).map((member) => member.player_id));
+      resumeReady = (await this.repo.listGameReady(room.game_id))
+        .filter((row) => row.ready === 1 && humans.has(row.player_id))
+        .map((row) => row.player_id);
+    }
+
     return {
       id: room.id,
       code: room.code,
@@ -302,6 +323,8 @@ export class RoomService {
       startBlockers: this.startBlockers(room, members),
       pendingPolicy,
       pendingAbandon,
+      pendingSuspend,
+      resumeReady,
       ...(viewerId ? { viewerEntryEpoch: this.entryEpochOf(roomId, viewerId) } : {}),
     };
   }
@@ -644,6 +667,7 @@ export class RoomService {
 
     // A seat in a running or saved game is never removed by leaving.
     await this.markDisconnected(roomId, playerId, 'leave');
+    await this.clearResumeReady(room, playerId);
     let transferred: string | null = null;
     if (room.host_id === playerId) transferred = await this.transferHostLocked(roomId);
     await this.cancelPendingProposals(roomId);
@@ -689,9 +713,24 @@ export class RoomService {
     return this.view(roomId, playerId);
   }
 
-  /** Cancels any open vote when the eligibility of the voters changes; returns how many were cancelled. */
+  /**
+   * 回來的連線讓它沒參與的結束對局投票失效（§4.6）；回傳取消了幾筆。全桌暫停提案不受影響：
+   * 它要所有真人同意，缺席者正是要回來才能表態，重連若取消它，有人離線時就永遠無法成立（§4.8）。
+   */
   async invalidateGameVotes(gameId: string): Promise<number> {
-    return this.repo.cancelOpenGameProposals(gameId);
+    return this.repo.cancelOpenGameProposalsOfKind(gameId, 'abandon');
+  }
+
+  /**
+   * 暫停中的對局：「準備繼續」代表人在牌桌上且準備好，離線就收回（§4.8）。否則離線前已準備的人
+   * 回來時，全員都已連線又都已準備，卻沒有任何請求會觸發恢復。回傳是否收回了準備。
+   */
+  private async clearResumeReady(room: RoomRow, playerId: string): Promise<boolean> {
+    if (room.status !== 'suspended' || !room.game_id) return false;
+    const rows = await this.repo.listGameReady(room.game_id);
+    if (!rows.some((row) => row.player_id === playerId && row.ready === 1)) return false;
+    await this.repo.setGameReady(room.game_id, playerId, false);
+    return true;
   }
 
   async setReady(playerId: string, roomId: string, ready: boolean): Promise<RoomView> {
@@ -1052,9 +1091,10 @@ export class RoomService {
     const room = await this.repo.findRoom(roomId);
     if (!room) return;
     await this.markDisconnected(roomId, connection.playerId, 'transport');
+    const unready = await this.clearResumeReady(room, connection.playerId);
     this.broadcastPresence(roomId);
-    // presence 不含 pendingAbandon；有 open 提案時推送完整檢視，讓缺席名單保持最新。
-    if (room.game_id && (await this.repo.findOpenGameProposal(room.game_id, 'abandon'))) {
+    // presence 不含 pendingAbandon 與 resumeReady；有 open 提案或收回了準備時推送完整檢視。
+    if (unready || (room.game_id && (await this.repo.findOpenGameProposal(room.game_id, 'abandon')))) {
       this.broadcastRoom(roomId);
     }
 

@@ -5,7 +5,7 @@
  * 電腦座位不缺席、不投票，所以每個判斷都先排除。
  */
 
-import type { AbandonProposalView, RoomMemberView, RoomView } from '@catan/protocol';
+import type { AbandonProposalView, RoomMemberView, RoomView, SuspendProposalView } from '@catan/protocol';
 
 export function humanMembers(room: RoomView | null | undefined): RoomMemberView[] {
   return (room?.members ?? []).filter((member) => !member.bot);
@@ -63,6 +63,20 @@ export function mustVote(
 /** 還沒同意的投票者（供「等待…」點名）。 */
 export function awaitingConsent(room: RoomView | null | undefined, proposal: AbandonProposalView): RoomMemberView[] {
   return abandonVoters(room).filter((member) => !proposal.consents.includes(member.playerId));
+}
+
+/** 全桌暫停提案還沒同意的真人：伺服器要所有真人座位同意，缺席或已退出者也要回來表態（§4.8）。 */
+export function awaitingSuspendConsent(
+  room: RoomView | null | undefined,
+  proposal: SuspendProposalView,
+): RoomMemberView[] {
+  return humanMembers(room).filter((member) => !proposal.consents.includes(member.playerId));
+}
+
+/** 暫停中、繼續前還在等的真人：尚未連線或尚未表示準備好（§4.8）。 */
+export function awaitingResume(room: RoomView | null | undefined): RoomMemberView[] {
+  const ready = room?.resumeReady ?? [];
+  return humanMembers(room).filter((member) => !member.connected || !ready.includes(member.playerId));
 }
 
 /** playerId → 暱稱；找不到時退回 id，確認畫面不會顯示空白。 */

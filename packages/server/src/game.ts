@@ -29,8 +29,11 @@ import type {
   GameSnapshot,
   Notice,
   ResumableGameView,
+  ResumeReadyResult,
   RoomStatus,
   SaveReceipt,
+  SuspendConsentResult,
+  SuspendProposeResult,
   WithdrawResult,
 } from '@catan/protocol';
 import type { ServerConfig } from './config.ts';
@@ -516,13 +519,17 @@ export class GameCoordinator {
   }
 
   /** All-seat save/suspend proposal; the table freezes once everyone consents. */
-  async proposeSuspend(playerId: string, gameId: string): Promise<{ proposalId: string }> {
+  async proposeSuspend(playerId: string, gameId: string): Promise<SuspendProposeResult> {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
       await this.requireSeat(game, playerId);
       this.assertNotTerminal(game);
+      // 已暫停的桌子不再開新提案：成立時會重寫存檔並清掉已表示的準備繼續。
+      if (game.status === 'suspended') {
+        throw new ServiceError('E_GAME_SUSPENDED', 'error.E_GAME_SUSPENDED', { gameId }, 409);
+      }
       const existing = await this.repo.findOpenGameProposal(gameId, 'suspend');
-      if (existing) return { proposalId: existing.id };
+      if (existing) return { proposalId: existing.id, suspended: false };
       const proposalId = newId('suspend');
       await this.repo.insertGameProposal({
         id: proposalId,
@@ -533,8 +540,10 @@ export class GameCoordinator {
         created_at: new Date().toISOString(),
       });
       await this.repo.insertGameConsent(proposalId, playerId);
-      await this.tryApplySuspend(game, proposalId);
-      return { proposalId };
+      const suspended = await this.tryApplySuspend(game, proposalId);
+      // 尚未成立：推送房間檢視，其他座位才看得到投票橫幅。
+      if (!suspended) this.deps.rooms.broadcastRoom(game.room_id);
+      return { proposalId, suspended };
     });
   }
 
@@ -543,7 +552,7 @@ export class GameCoordinator {
     gameId: string,
     proposalId: string,
     approve: boolean,
-  ): Promise<{ suspended: boolean }> {
+  ): Promise<SuspendConsentResult> {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
       await this.requireSeat(game, playerId);
@@ -554,10 +563,13 @@ export class GameCoordinator {
       }
       if (!approve) {
         await this.repo.updateGameProposalStatus(proposalId, 'rejected');
+        this.deps.rooms.broadcastRoom(game.room_id);
         return { suspended: false };
       }
       await this.repo.insertGameConsent(proposalId, playerId);
-      return { suspended: await this.tryApplySuspend(game, proposalId) };
+      const suspended = await this.tryApplySuspend(game, proposalId);
+      if (!suspended) this.deps.rooms.broadcastRoom(game.room_id);
+      return { suspended };
     });
   }
 
@@ -588,7 +600,7 @@ export class GameCoordinator {
     playerId: string,
     gameId: string,
     ready: boolean,
-  ): Promise<{ resumed: boolean; waitingFor: string[] }> {
+  ): Promise<ResumeReadyResult> {
     return this.withLock(gameId, async () => {
       const game = await this.requireGame(gameId);
       await this.requireSeat(game, playerId);
@@ -602,7 +614,11 @@ export class GameCoordinator {
       const waitingFor = memberships
         .filter((membership) => membership.connected !== 1 || readiness.get(membership.player_id) !== true)
         .map((membership) => membership.player_id);
-      if (waitingFor.length > 0) return { resumed: false, waitingFor };
+      if (waitingFor.length > 0) {
+        // 準備名單改變了：推送房間檢視，其他座位的「等待…」才會更新。
+        this.deps.rooms.broadcastRoom(game.room_id);
+        return { resumed: false, waitingFor };
+      }
       await this.repo.transaction(async () => {
         await this.repo.saveGame(
           gameId,

@@ -318,6 +318,27 @@ describe('explicit withdrawal at a multi-person table', () => {
     if (!response.body.ok) expect(response.body.error.code).not.toBe('E_SEAT_WITHDRAWN');
   });
 
+  it('a returning seat keeps an open suspend proposal and can agree to it', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await setOffline(roomId, third.playerId!, true);
+    const suspend = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    await second.post(`/api/games/${gameId}/suspend`, { proposalId: suspend.proposalId, approve: true });
+    // 回來的連線只讓結束對局投票失效；暫停提案正等著這位缺席者表態。
+    const drop = await reconnect(roomId, third.playerId!);
+    try {
+      expect((await harness.service.repo.findOpenGameProposal(gameId, 'suspend'))?.id).toBe(suspend.proposalId);
+      expect((await roomOf(host, roomId)).pendingSuspend?.id).toBe(suspend.proposalId);
+      const result = third.expectOk<{ suspended: boolean }>(
+        await third.post(`/api/games/${gameId}/suspend`, { proposalId: suspend.proposalId, approve: true }),
+      );
+      expect(result.suspended).toBe(true);
+    } finally {
+      await drop();
+    }
+  });
+
   it('withdrawing or retracting leaves a suspend proposal alone', async () => {
     const { clients, gameId } = await startedGame(harness, 3);
     await runSetupOverApi(clients, gameId);

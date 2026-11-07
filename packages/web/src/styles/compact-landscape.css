@@ -25,7 +25,7 @@
 .screen--game[data-layout="compact-landscape"] .status-strip__spacer,
 .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="save-time"] { display: none; }
 /*
- * 儲存中與失敗必須保持可見：設定選單關閉後，失敗訊息只剩在收合的 <details> 裡。只隱藏不需行動的狀態。
+ * 儲存中與失敗必須保持可見：離開對話框關閉後，失敗訊息只剩狀態列這一處。只隱藏不需行動的狀態。
  * table.css 的 (width <= 1100px) 會把 .status-strip__save 整個隱藏，因此這裡必須明確把 pending／failed 開回來。
  */
 .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="idle"],
@@ -107,16 +107,13 @@
 /* ---------- 下方：工具帶改為浮動圖示鈕 ---------- */
 .screen--game[data-layout="compact-landscape"] .game-tools { bottom: var(--hud-gap); left: 8px; }
 .screen--game[data-layout="compact-landscape"] .game-tools__tabs { gap: 6px; }
-.screen--game[data-layout="compact-landscape"] .game-tools__tab,
-.screen--game[data-layout="compact-landscape"] .game__menu > summary {
+.screen--game[data-layout="compact-landscape"] .game-tools__tab {
   display: grid; place-items: center; width: var(--hud-size); min-width: var(--hud-size);
   height: var(--hud-size); min-height: var(--hud-size); padding: 0;
   background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
 }
-.screen--game[data-layout="compact-landscape"] .game-tools__tab > span:not(.game-tools__unread),
-.screen--game[data-layout="compact-landscape"] .game__menu > summary > span { display: none; }
-.screen--game[data-layout="compact-landscape"] .game-tools__tab svg,
-.screen--game[data-layout="compact-landscape"] .game__menu > summary svg { width: 20px; height: 20px; }
+.screen--game[data-layout="compact-landscape"] .game-tools__tab > span:not(.game-tools__unread) { display: none; }
+.screen--game[data-layout="compact-landscape"] .game-tools__tab svg { width: 20px; height: 20px; }
 .screen--game[data-layout="compact-landscape"] .game-tools__tab--active { background: #3a4934; border-color: #d6bb7a; }
 .screen--game[data-layout="compact-landscape"] .game-tools__surface { bottom: calc(var(--hud-size) + var(--hud-gap) + 4px); max-height: calc(100dvh - 76px); }
 .screen--game[data-layout="compact-landscape"] .game-tools__header { padding-block: .35rem; }
@@ -133,8 +130,6 @@
 .screen--game[data-layout="compact-landscape"] .chat__compose { flex: 0 0 auto; flex-direction: row; align-items: stretch; gap: .5rem; margin-top: .5rem; }
 .screen--game[data-layout="compact-landscape"] .chat__compose textarea { flex: 1 1 auto; width: auto; height: 48px; min-height: 48px; resize: none; }
 .screen--game[data-layout="compact-landscape"] .chat__compose .button { flex: 0 0 auto; min-height: 48px; }
-.screen--game[data-layout="compact-landscape"] .game__menu { bottom: var(--hud-gap); right: 8px; }
-.screen--game[data-layout="compact-landscape"] .persistence { bottom: calc(var(--hud-size) + 4px); max-height: calc(100dvh - 76px); }
 
 /* 窄橫屏（約 667px 寬）：相機工具列與右上控制改用 40px 圖示鈕並收緊間距，兩者才不會相撞。 */
 @media (max-width: 700px) {

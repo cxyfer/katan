@@ -3,9 +3,10 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { WebSocket } from 'ws';
 import { legalRoadEdges, requireProfile, type GameState, type GameView } from '@catan/rules';
-import type { ResumableGameView } from '@catan/protocol';
+import type { ResumableGameView, RoomView, ServerMessage } from '@catan/protocol';
 import { startService } from '../src/main.ts';
 import {
   createClient,
@@ -164,6 +165,118 @@ describe('R-SAVE all-seat suspension', () => {
     expect(result.suspended).toBe(false);
     const room = host.expectOk<{ status: string }>(await host.get(`/api/rooms/${roomId}`));
     expect(room.status).toBe('playing');
+  });
+});
+
+/** 訂閱房間的真實 socket，收集伺服器推送的房間檢視。 */
+async function watchRoom(client: TestClient, roomId: string): Promise<{ rooms: () => RoomView[]; close: () => Promise<void> }> {
+  const socket = new WebSocket(`${harness.base.replace('http', 'ws')}/ws`, { headers: { cookie: client.cookie! } });
+  const messages: ServerMessage[] = [];
+  socket.on('message', (data) => messages.push(JSON.parse(data.toString()) as ServerMessage));
+  await new Promise<void>((resolve, reject) => {
+    socket.once('open', resolve);
+    socket.once('error', reject);
+  });
+  const rooms = () => messages.flatMap((message) => (message.type === 'room' ? [message.payload] : []));
+  socket.send(JSON.stringify({ type: 'subscribe', payload: { roomId } }));
+  await vi.waitFor(() => expect(rooms().length).toBeGreaterThan(0));
+  return {
+    rooms,
+    close: () => new Promise<void>((resolve) => {
+      if (socket.readyState === WebSocket.CLOSED) return resolve();
+      socket.once('close', () => resolve());
+      socket.close();
+    }),
+  };
+}
+
+describe('R-SAVE suspension in the room view', () => {
+  it('shows the open proposal and its consents, and pushes every change to the table', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const tab = await watchRoom(second, roomId);
+    try {
+      const proposal = host.expectOk<{ proposalId: string; suspended: boolean }>(
+        await host.post(`/api/games/${gameId}/suspend`, {}),
+      );
+      expect(proposal.suspended).toBe(false);
+      // 其他座位靠推送看到投票，不必自己重新整理。
+      await vi.waitFor(() => expect(tab.rooms().at(-1)?.pendingSuspend?.id).toBe(proposal.proposalId));
+      let view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+      expect(view.pendingSuspend).toMatchObject({ id: proposal.proposalId, proposedBy: host.playerId, consents: [host.playerId] });
+      expect(view.resumeReady).toBeNull();
+
+      await second.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+      await vi.waitFor(() => expect(tab.rooms().at(-1)?.pendingSuspend?.consents).toHaveLength(2));
+      view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+      expect([...view.pendingSuspend!.consents].sort()).toEqual([host.playerId, second.playerId].sort());
+
+      await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: false });
+      await vi.waitFor(() => expect(tab.rooms().at(-1)?.pendingSuspend).toBeNull());
+      view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+      expect(view.status).toBe('playing');
+      expect(view.pendingSuspend).toBeNull();
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('lists who is ready to resume while suspended and refuses another proposal', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const proposal = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    await second.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+    await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+
+    let view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+    expect(view.status).toBe('suspended');
+    expect(view.pendingSuspend).toBeNull();
+    expect(view.resumeReady).toEqual([]);
+    host.expectError(await host.post(`/api/games/${gameId}/suspend`, {}), 'E_GAME_SUSPENDED');
+
+    const tab = await watchRoom(third, roomId);
+    try {
+      await host.post(`/api/games/${gameId}/resume`, { ready: true });
+      await vi.waitFor(() => expect(tab.rooms().at(-1)?.resumeReady).toEqual([host.playerId]));
+      view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+      expect(view.resumeReady).toEqual([host.playerId]);
+
+      await host.post(`/api/games/${gameId}/resume`, { ready: false });
+      await vi.waitFor(() => expect(tab.rooms().at(-1)?.resumeReady).toEqual([]));
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('takes back readiness when a ready person drops off or leaves', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const proposal = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    await second.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+    await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+
+    const watcher = await watchRoom(third, roomId);
+    const secondTab = await watchRoom(second, roomId);
+    try {
+      await second.post(`/api/games/${gameId}/resume`, { ready: true });
+      await vi.waitFor(() => expect(watcher.rooms().at(-1)?.resumeReady).toEqual([second.playerId]));
+      // 斷線後回來，不能因為留著舊的準備紀錄而讓全桌卡在「都準備好了卻沒恢復」。
+      await secondTab.close();
+      await vi.waitFor(() => expect(watcher.rooms().at(-1)?.resumeReady).toEqual([]));
+
+      await host.post(`/api/games/${gameId}/resume`, { ready: true });
+      await vi.waitFor(() => expect(watcher.rooms().at(-1)?.resumeReady).toEqual([host.playerId]));
+      host.expectOk(await host.post(`/api/rooms/${roomId}/leave`));
+      const view = third.expectOk<RoomView>(await third.get(`/api/rooms/${roomId}`));
+      expect(view.status).toBe('suspended');
+      expect(view.resumeReady).toEqual([]);
+    } finally {
+      await secondTab.close();
+      await watcher.close();
+    }
   });
 });
 

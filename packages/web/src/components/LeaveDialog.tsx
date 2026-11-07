@@ -16,11 +16,11 @@ import '../styles/leave.css';
 export type LeaveStep = 'choose' | 'end' | 'withdraw';
 
 /**
- * 離開對局（SPEC §4.6、§4.8）：保存並離開、退出（投降）與結束對局是三件不同的事，
- * 不可逆的兩項都要在對話框內再確認一次。
+ * 離開對局（SPEC §4.6、§4.8）：牌桌上所有離開相關的操作只從這裡進入。保存並離開、全桌暫停、
+ * 退出（投降）與結束對局是不同的事，不可逆的退出與結束都要在對話框內再確認一次。
  *
- * 單人桌（其餘座位皆為電腦）只問「保留」或「結束」；多人桌另有「退出」，並在有人缺席時
- * 提供「提議結束」。房間資料尚未載入時只提供保存並離開，其餘資格交給伺服器載入後再判斷。
+ * 單人桌（其餘座位皆為電腦）只問「保留」或「結束」；多人桌另有「提議全桌保存並暫停」與「退出」，
+ * 並在有人缺席時提供「提議結束」。房間資料尚未載入時只提供保存並離開，其餘資格交給伺服器載入後再判斷。
  */
 export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
   controller: TableController;
@@ -42,6 +42,9 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
   // 多人桌的提議資格：政策允許、有其他真人缺席或已退出，且自己是在線、未退出的投票者。
   const canProposeEnd = !solo && allowed && absent.length > 0 && self !== null && self.connected && !withdrawn;
   const knownTable = room !== null && self !== null;
+  const suspended = room?.status === 'suspended';
+  // 全桌暫停只對多人桌有意義（單人桌離開時電腦本來就不會繼續下）；已有提案時改在牌桌橫幅表態。
+  const canProposeSuspend = knownTable && !solo && room.status === 'playing' && !room.pendingSuspend;
 
   const [step, setStep] = useState<LeaveStep>(
     initialStep === 'end' && !(solo ? allowed : canProposeEnd) ? 'choose' : initialStep,
@@ -91,6 +94,8 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
   const saveFailed = state.save.status === 'failed' && (
     <p className="error" role="alert" data-testid="leave-save-failed">{t('play.saveFailed')}</p>
   );
+  // 回來時要用同一個瀏覽器：離開前提醒座位綁定的範圍。
+  const identityNote = <p className="muted leave-identity" data-testid="leave-identity">{t('entry.identityNote')}</p>;
   const keepButton = (label: string, help: string, primary = true) => (
     <div className="leave-option">
       <button type="button" className={primary ? 'button button--primary' : 'button'} data-testid="leave-keep"
@@ -150,6 +155,7 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
         </div>
         {workingNote}
         {saveFailed}
+        {identityNote}
         <div className="form-actions">{cancel}</div>
       </div>
     );
@@ -167,14 +173,24 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
         {keepButton(t('play.saveAndLeave'), t('play.leave.keepMultiHelp'), false)}
         {workingNote}
         {saveFailed}
+        {identityNote}
         <div className="form-actions">{cancel}</div>
       </div>
     );
   } else {
     body = (
       <div className="leave-step" ref={stepRef} tabIndex={-1}>
-        <p>{t('play.leave.multiIntro')}</p>
-        {keepButton(t('play.saveAndLeave'), t('play.leave.keepMultiHelp'))}
+        <p>{t(suspended ? 'play.leave.suspendedIntro' : 'play.leave.multiIntro')}</p>
+        {keepButton(t('play.saveAndLeave'), t(suspended ? 'play.leave.keepSuspendedHelp' : 'play.leave.keepMultiHelp'))}
+        {canProposeSuspend && (
+          <div className="leave-option">
+            <button type="button" className="button" data-testid="leave-suspend" disabled={working}
+              aria-describedby="leave-suspend-help" onClick={() => void run(() => actions.suspendGame())}>
+              <GameIcon name="pause" />{t('play.leave.suspend')}
+            </button>
+            <p className="muted" id="leave-suspend-help">{t('play.leave.suspendHelp')}</p>
+          </div>
+        )}
         {knownTable && (
           <div className="leave-option">
             <button type="button" className="button leave-danger" data-testid="leave-withdraw" disabled={busy}
@@ -195,6 +211,7 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
         )}
         {workingNote}
         {saveFailed}
+        {identityNote}
         <div className="form-actions">{cancel}</div>
       </div>
     );
