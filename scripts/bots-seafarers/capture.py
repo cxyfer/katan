@@ -68,35 +68,43 @@ def start_server(root: Path, out: Path):
     entry = root / "packages/server/dist/server.mjs"
     if not entry.is_file() or not (dist / "index.html").is_file():
         raise SystemExit(f"built artifacts missing under {root}; run pnpm build first")
-    temporary = tempfile.TemporaryDirectory(prefix="catan-bots-seafarers-")
-    log = (out / "server.log").open("w", encoding="utf-8")
-    port = free_port()
-    env = {
-        **os.environ,
-        "HOST": "127.0.0.1",
-        "PORT": str(port),
-        "SQLITE_PATH": str(Path(temporary.name) / "capture.sqlite"),
-        "DATABASE_URL": "",
-        "DATABASE_SCHEMA": "",
-        "WEB_DIST_PATH": str(dist),
-        "LOG_LEVEL": "warn",
-        # 縮短思考延遲讓擷取更快；節奏表本身由伺服器測試涵蓋。
-        "BOT_DELAY_SCALE": "0.25",
-    }
-    child = subprocess.Popen(["node", str(entry)], cwd=root, env=env, stdout=log, stderr=log)
-    BASE = f"http://127.0.0.1:{port}"
-    deadline = time.monotonic() + 20
-    while time.monotonic() < deadline:
-        if child.poll() is not None:
-            raise SystemExit(f"service exited {child.returncode}; see {out / 'server.log'}")
-        try:
-            with urlopen(BASE + "/healthz", timeout=1) as response:
-                if response.status == 200:
-                    return child, temporary, log
-        except OSError:
-            time.sleep(0.15)
-    child.terminate()
-    raise SystemExit(f"service did not become healthy; see {out / 'server.log'}")
+    child = temporary = log = None
+    try:
+        temporary = tempfile.TemporaryDirectory(prefix="catan-bots-seafarers-")
+        log = (out / "server.log").open("w", encoding="utf-8")
+        port = free_port()
+        env = {
+            **os.environ,
+            "HOST": "127.0.0.1",
+            "PORT": str(port),
+            "SQLITE_PATH": str(Path(temporary.name) / "capture.sqlite"),
+            "DATABASE_URL": "",
+            "DATABASE_SCHEMA": "",
+            "WEB_DIST_PATH": str(dist),
+            "LOG_LEVEL": "warn",
+            # 不依賴呼叫端的 shell：電腦對手必須開啟，本機 HTTP 不能用 Secure cookie。
+            "BOTS_ENABLED": "1",
+            "COOKIE_SECURE": "0",
+            # 縮短思考延遲讓擷取更快；節奏表本身由伺服器測試涵蓋。
+            "BOT_DELAY_SCALE": "0.25",
+        }
+        child = subprocess.Popen(["node", str(entry)], cwd=root, env=env, stdout=log, stderr=log)
+        BASE = f"http://127.0.0.1:{port}"
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            if child.poll() is not None:
+                raise SystemExit(f"service exited {child.returncode}; see {out / 'server.log'}")
+            try:
+                with urlopen(BASE + "/healthz", timeout=1) as response:
+                    if response.status == 200:
+                        return child, temporary, log
+            except OSError:
+                time.sleep(0.15)
+        raise SystemExit(f"service did not become healthy; see {out / 'server.log'}")
+    except BaseException:
+        # 啟動失敗時呼叫端拿不到這三個資源：在這裡終止程序（逾時就 kill）、關 log、清暫存目錄。
+        stop_server(child, temporary, log)
+        raise
 
 
 def stop_server(child, temporary, log) -> None:
