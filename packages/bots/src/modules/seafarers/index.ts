@@ -17,10 +17,10 @@ import { seafarersEconomy, seafarersPlanStep } from './plan.ts';
 import { seafarersSetup } from './setup.ts';
 
 /**
- * Bot 能玩的 Seafarers 劇本（D-SF9）。SF-1 到 SF-3 為空；SF-4 改為 `['new-shores']`，並同步更新
- * `support.test.ts` 的快照。未來的劇本不會被自動放行。
+ * Bot 能玩的 Seafarers 劇本（D-SF9）。SF-4 起只放行 `new-shores`（Heading for New Shores）；
+ * 其他劇本與 SF+CK 不會被自動放行，新增劇本時須同步更新 `support.test.ts` 的快照。
  */
-export const SUPPORTED_SCENARIOS: readonly (string | null)[] = [];
+export const SUPPORTED_SCENARIOS: readonly (string | null)[] = ['new-shores'];
 
 /** 各指令的思考延遲（毫秒，§4.6）。每個行動視窗的指令上限維持 40，不設 `maxCommandsPerWindow`。 */
 export const SEAFARERS_PACING: Readonly<Record<string, number>> = {

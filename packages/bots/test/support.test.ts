@@ -4,7 +4,6 @@ import {
   BASE_RESPONSE_COMMANDS,
   BOT_MODULES,
   BOT_PACING,
-  BOT_RULE_MODULES,
   botCommandLimit,
   botModulesOf,
   botResponseCommands,
@@ -63,11 +62,9 @@ describe('bot ruleset support', () => {
     expect(PROFILES.filter((profile) => botsCanPlay(profile)).map((profile) => profile.id)).toEqual([
       'base-2025',
       'base-paired-2025',
+      'sf-new-shores-2025',
+      'sf-new-shores-paired-2025',
     ]);
-  });
-
-  it('keeps the deprecated BOT_RULE_MODULES empty', () => {
-    expect(BOT_RULE_MODULES).toEqual([]);
   });
 });
 

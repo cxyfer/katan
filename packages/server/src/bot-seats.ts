@@ -43,8 +43,8 @@ export function botLevelOf(member: { bot_level?: string | null }): BotLevel {
 }
 
 /**
- * Bot 策略只涵蓋基本規則（含 5–6 人 paired）；設定檔的每個規則模組都必須在
- * `@catan/bots` 的 `BOT_RULE_MODULES` 之中才可加入 Bot。
+ * 能否加入 Bot 依 `@catan/bots` 的 `botsCanPlay` 判定：設定檔的每個規則模組都要有已註冊的
+ * BotModule，且該模組的 `supports` 接受這個設定檔。
  */
 export function botsSupported(profile: ProfileDefinition): boolean {
   return botsCanPlay(profile);
