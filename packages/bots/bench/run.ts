@@ -47,8 +47,14 @@ const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit];
 /**
  * 與 rules 腳本模擬（確定性的腳本座位）對照的平均回合數：`profile id → 人數 → 回合數`。沒有腳本模擬的
  * profile（包括 base）不列，輸出標示 n/a；擴充的測試切片有實測時再加。
+ *
+ * Seafarers：`rules/test/seafarers-sim.ts` 的 `simulateSeafarers`，種子 10000–10019（與 bench 相同的起點），
+ * 每人數 20 局全數終局；回合數 = `stats.turns / players`，與本表的「avg rounds」同一單位。
  */
-const RULES_SIM_ROUNDS: Readonly<Record<string, Readonly<Record<number, number>>>> = {};
+const RULES_SIM_ROUNDS: Readonly<Record<string, Readonly<Record<number, number>>>> = {
+  'sf-new-shores-2025': { 3: 84.7, 4: 49.4 },
+  'sf-new-shores-paired-2025': { 5: 32.7, 6: 26.5 },
+};
 
 /** 每個人數的四種對局。 */
 function configsFor(profile: ProfileDefinition): Config[] {

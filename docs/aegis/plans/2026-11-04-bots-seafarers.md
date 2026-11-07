@@ -245,7 +245,7 @@ PR 一律指向 `release/v0.4.1`，以 squash merge 合併（策略 §7）。wor
 |---|---|
 | 設定 | `--profile sf-new-shores-2025` 3、4 人；`--profile sf-new-shores-paired-2025` 5、6 人。每組 100 局，種子從 10000 起；standard 依局數輪換座位 |
 | 對局 | ①1 standard 對其餘 easy；②1 standard 對其餘 naive（base 策略加上 SF `duty`，等於 v0.4.0 的行為）；③全 standard；④全 easy |
-| 指標 | 勝率與公平份額；平均回合數，並與 naive 及 rules 腳本模擬（seafarers-sim 333／235／126／110 回合）對照；平均指令數；每視窗最大指令數；decide 平均與最大；保底次數；拒絕數；每局造船數、移船數、setup 放船數、小島聚落與加分、gold 張數、強盜與海盜各移動幾次、含船的最長路線持有率；problems（含看門狗） |
+| 指標 | 勝率與公平份額；平均回合數，並與 naive 及 rules 腳本模擬對照（seafarers-sim 種子 10000–10019 的平均，`stats.turns / players`：3／4／5／6 人 84.7／49.4／32.7／26.5；先前寫的 333／235／126／110 是 sim 測試單局的 `stats.turns`，沒有除以人數）；平均指令數；每視窗最大指令數；decide 平均與最大；保底次數；拒絕數；每局造船數、移船數、setup 放船數、小島聚落與加分、gold 張數、強盜與海盜各移動幾次、含船的最長路線持有率；problems（含看門狗） |
 | soft target（推測） | ①standard 勝率 ≥ 1.3 × 公平份額；②勝率 ≥ 公平份額 + 10 pp，且 naive 那幾局的活鎖不計為 standard 的勝利；平均回合數不高於 naive 的 110%；每視窗最大指令數 ≤ 20；低負載下 decide 最大 ≤ 50 ms；拒絕與「策略閒置」都是 0 |
 | 基準 | PL-2 的 bench PR 必須附上 base 的同組數據，作為對照 |
 
