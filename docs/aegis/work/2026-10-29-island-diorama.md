@@ -73,8 +73,8 @@ not enable expansion rules.
 | Persistent local service | Bound to `127.0.0.1:3000` with a new task-specific SQLite database. Health/readiness checked; native browser opened the built preview with ready WebGL and no API requests, and the real game entry rendered without alerts. |
 | Aegis workspace structure | `aegis-workspace.py check` PASS after retaining the three expected empty workspace directories in Git. `bundle --work 2026-10-29-island-diorama` returned "work directory does not exist": this record is a narrative Markdown file, not a generated work directory. No generated proof bundle is claimed. The passing check covers structure and index references only. |
 
-Evidence is retained in
-[`docs/screenshots/island-diorama`](../../screenshots/island-diorama/README.md).
+Evidence was retained in
+[`docs/screenshots/island-diorama`](https://github.com/cxyfer/katan/blob/b8d0d1febc37534e7019b3599f5af7ba6afd26ec/docs/screenshots/island-diorama/README.md).
 The fixture is byte-identical to the existing
 [`fixtures-final.json`](2026-10-29-board-3d/evidence/fixtures-final.json)
 (SHA256 `d03eb8bd0e97a2d016460de06894f91883f1f23dfff931333ca03464e39caa55`).

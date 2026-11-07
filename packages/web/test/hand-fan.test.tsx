@@ -135,6 +135,42 @@ describe('held card fan', () => {
     expect(api.callsOf('sendCommand')).toHaveLength(0);
   });
 
+  it('toggles the fan from the resource tally, which phones use as the hand handle', async () => {
+    const api = await open();
+    const hand = screen.getByTestId('hand-panel');
+    const tally = screen.getByTestId('resource-tally');
+    fireEvent.click(tally);
+    expect(hand.dataset.expanded).toBe('true');
+    // 數量列不算「點到手牌外」：按下時不先收合，點擊才切換。
+    fireEvent.pointerDown(screen.getByTestId('resource-grain'));
+    expect(hand.dataset.expanded).toBe('true');
+    fireEvent.click(screen.getByTestId('resource-grain'));
+    expect(hand.dataset.expanded).toBe('false');
+    expect(document.activeElement).toBe(hand);
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
+  it('reports the wrapped tally height so the fan can lift with it', async () => {
+    let observed: (() => void) | undefined;
+    const original = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class { constructor(callback: () => void) { observed = callback; } observe() {} disconnect() {} unobserve() {} } as unknown as typeof ResizeObserver;
+    try {
+      await open();
+      const tally = screen.getByTestId('resource-tally');
+      Object.defineProperty(tally, 'offsetHeight', { configurable: true, value: 62 });
+      act(() => observed?.());
+      expect(screen.getByTestId('hand-panel').style.getPropertyValue('--tally-height')).toBe('62px');
+    } finally {
+      globalThis.ResizeObserver = original;
+    }
+  });
+
+  it('keeps an empty hand collapsed when the resource tally is tapped', async () => {
+    await open(emptyHandView());
+    fireEvent.click(screen.getByTestId('resource-tally'));
+    expect(screen.getByTestId('hand-panel').dataset.expanded).toBe('false');
+  });
+
   it('reveals the fan from keyboard focus and returns focus to the gathered hand on Escape', async () => {
     const api = await open();
     const hand = screen.getByTestId('hand-panel');

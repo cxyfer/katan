@@ -12,20 +12,17 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`current/`](current/) | Entry → home → lobby → setup → table → tools → post-game statistics, full three-player game, zh-Hant and en | `a200840` (2026-11-04) | [`scripts/screenshots/capture-current.py`](../../scripts/screenshots/capture-current.py) |
 | [`hand-cards/`](hand-cards/) | Card faces from PR #27: collapsed/expanded hand fan, card inspect and development-card closeups (desktop, phone, landscape) | `a200840` (2026-11-04) | [`scripts/hand-cards/capture.py`](../../scripts/hand-cards/capture.py) |
 | [`discard-prompt/`](discard-prompt/) | Discard picker from PR #33: card-based selection, per-resource caps, the waiting state for other players, and large discards at phone and short viewports | `a200840` (2026-11-04) | [`scripts/discard-prompt/capture.py`](../../scripts/discard-prompt/capture.py) |
-| [`hover-details/`](hover-details/) | Map-detail tooltips and collapsed/expanded rails, desktop and mobile | 2026-10-30 | `scripts/side-rails/verify.py`, see [work record](../aegis/work/2026-10-30-hover-details.md) |
 | [`table-ui-polish/`](table-ui-polish/) | Dice focus, hand-gain feedback, trade surface (desktop and mobile) | 2026-10-30 | `scripts/table-ui-polish/verify.py`, see [work record](../aegis/work/2026-10-30-table-ui-polish.md) |
-| [`island-diorama/`](island-diorama/README.md) | Standalone 3D island preview at several camera angles and sizes, plus game-surface checks. Captured before the #44 island remodel; see [`board-polish/`](board-polish/README.md) for the current island | 2026-10-29 | `scripts/board-3d/verify-diorama.py`, see [work record](../aegis/work/2026-10-29-island-diorama.md) |
 | [`lobby-capacity/`](lobby-capacity/README.md) | Four-seat base and six-seat paired lobbies below capacity, plus the lowered-capacity state, desktop/mobile and both locales | 2026-10-30 | [`scripts/lobby-capacity/capture.py`](../../scripts/lobby-capacity/capture.py) |
 | [`notice-dismiss/`](notice-dismiss/README.md) | Notice cards with the countdown ring around the close control: rejected receipt, hover hold, turn-change fade, network toast and the persistent unknown-outcome receipt | 2026-10-31 | [`scripts/notice-dismiss/capture.py`](../../scripts/notice-dismiss/capture.py) |
 | [`trade-offer-perspective/`](trade-offer-perspective/README.md) | The same open offer card as the proposer and as the recipient, card crops plus table viewport | 2026-10-31 | [`scripts/trade-offer-perspective/capture.py`](../../scripts/trade-offer-perspective/capture.py) |
-| [`landscape-ui/`](landscape-ui/README.md) | One-page landscape layout from PR #42 across six landscape viewports: entry, home, lobby, setup, table, trade, and result with the timeline tab; `before/` is the `6d1cb97` comparison | 2026-11-01 | [`scripts/landscape-ui/capture.py`](../../scripts/landscape-ui/capture.py) |
-| [`svg-board-polish/`](svg-board-polish/README.md) | Before/after SVG board (desktop fit, close-up, phone) and the shared terrain emblems on the entry island and hand cards | 2026-10-31 | [`scripts/svg-board-polish/capture.py`](../../scripts/svg-board-polish/capture.py) |
+| [`landscape-ui/`](landscape-ui/README.md) | One-page landscape layout from PR #42 at the sizes `current/` does not cover (1920×1080, 1024×600, 844×390 and the portrait fallbacks): entry, home, lobby, table and result | 2026-11-01 | [`scripts/landscape-ui/capture.py`](../../scripts/landscape-ui/capture.py) |
+| [`svg-board-polish/`](svg-board-polish/README.md) | Illustrated SVG board from PR #43 (desktop fit, close-up, phone) and the shared terrain emblems on the hand cards | 2026-10-31 | [`scripts/svg-board-polish/capture.py`](../../scripts/svg-board-polish/capture.py) |
 | [`game-audio/`](game-audio/README.md) | Sound settings in lobby and table (desktop, mobile, both locales) and the offline-rendered sound palette | 2026-10-31 | [`scripts/audio/live.py`](../../scripts/audio/live.py), [`scripts/audio/verify.py`](../../scripts/audio/verify.py) |
-| [`board-polish/`](board-polish/README.md) | Before/after 3D board: desktop fit, close-up and phone, the standalone island preview, the 30-hex island and low quality | 2026-10-31 | [`scripts/board-polish/capture.py`](../../scripts/board-polish/capture.py) |
+| [`board-polish/`](board-polish/README.md) | Remodelled 3D board from PR #44: desktop fit, close-up and phone, the standalone island preview, the 30-hex island and low quality | 2026-10-31 | [`scripts/board-polish/capture.py`](../../scripts/board-polish/capture.py) |
 | [`harbor-hover/`](harbor-hover/README.md) | Harbour tooltip over the far end of the 3D pier and boat, plus the SVG token, desktop and phone | `3002f91` (2026-11-07) | [`scripts/harbor-hover/verify.py`](../../scripts/harbor-hover/verify.py), see [work record](../aegis/work/2026-11-01-harbor-hover.md) |
 | [`expansion-platform/`](expansion-platform/README.md) | Base 19/30-hex boards (byte-identical before/after) and the sample archipelago in SVG and 3D, desktop and phone, plus `?preview=archipelago` | 2026-11-01 | [`scripts/expansion-platform/capture.py`](../../scripts/expansion-platform/capture.py), see [work record](../aegis/work/2026-11-01-expansion-platform.md) |
-| [`bot-opponents/`](bot-opponents/) | Computer opponents from PRs #59 and #67: create form, add-bot dialog, lobby with bots and full seats, a bot turn at the table, desktop and phone, both locales | 2026-11-02 | [`scripts/bot-opponents/capture.py`](../../scripts/bot-opponents/capture.py) |
-| [`trade-auto-decline/`](trade-auto-decline/) | Auto-decline for unaffordable offers from PR #68, desktop and phone | 2026-11-02 | [`scripts/trade-auto-decline/verify.py`](../../scripts/trade-auto-decline/verify.py) |
+| [`bot-opponents/`](bot-opponents/) | Computer opponents from PRs #59 and #67: add-bot dialog, lobby with two bots, a bot turn at the table, resuming from home, desktop and phone, both locales; the create form and full-seat lobby are in `lobby-order-bots/` | 2026-11-02 | [`scripts/bot-opponents/capture.py`](../../scripts/bot-opponents/capture.py) |
 | [`seafarers/`](seafarers/README.md) | Seafarers, Heading for New Shores (PR #63): ships, pirate, gold fields and island bonus; the lobby with bots (v0.4.1) | 2026-11-03; lobby 2026-11-07 | [`scripts/seafarers/capture.py`](../../scripts/seafarers/capture.py), [`scripts/bots-seafarers/capture.py`](../../scripts/bots-seafarers/capture.py) |
 | [`cities-knights/`](cities-knights/README.md) | Cities & Knights (PRs #69, #76): knights, barbarians, commodities, city improvements and progress cards | 2026-11-03 | [`scripts/cities-knights/capture.py`](../../scripts/cities-knights/capture.py) |
 | [`seafarers-cities-knights/`](seafarers-cities-knights/README.md) | Seafarers and Cities & Knights combined (PR #81) | 2026-11-03 | [`scripts/seafarers-cities-knights/capture.py`](../../scripts/seafarers-cities-knights/capture.py) |
@@ -44,6 +41,15 @@ now. The other sets are focused feature reviews kept with their work records;
 each was captured at the commit named in its record. The sets captured from
 `a200840` cover UI merged after the #49 refresh that had no checked-in
 captures.
+
+`table-ui-polish/`, `lobby-capacity/`, `notice-dismiss/`,
+`trade-offer-perspective/`, `svg-board-polish/` and `game-audio/` were captured
+before the one-page layout (#42) and the island remodel (#44). The component
+each set is about still looks the same, but the surrounding table or lobby
+does not: the camera controls, legend and rails have moved and the 3D island
+is the old one. `lobby-capacity/` shows the old two-column lobby, so recapture
+it with its script before relying on it. Refresh or remove the others when a
+change touches what they show (see [Curation rules](#curation-rules)).
 
 ## `current/`
 
@@ -203,6 +209,37 @@ running (`UI_BASE_URL` defaults to `http://127.0.0.1:3000`):
 python3 scripts/discard-prompt/capture.py docs/screenshots/discard-prompt
 ```
 
+## Curation rules
+
+This directory holds reference captures of the UI as it is on `master`. A PR's
+before/after comparison and other one-off review evidence go on the
+`pr-assets` branch under `pr-<N>/` and are linked from the PR body; they are
+not committed here.
+
+- **One owner per state.** `current/` owns the main flow at 1366×768 (entry,
+  home, lobby, setup, table, tools and result). A feature set captures only
+  what no other set shows (its own controls, other viewports, other locales)
+  and its README points to the owning capture for the rest.
+- **No `before/` directories.** The state before a change is in git history
+  and in the PR's `pr-assets` images.
+- **No two captures of the same state** at the same viewport and locale.
+  Captures that differ only in a detail the set's README names, such as a
+  countdown ring or a save indicator, are fine.
+- **Retire what a change makes wrong.** A PR that moves or restyles something a
+  set shows refreshes that set or removes the affected captures, and updates
+  the table above and the set's README.
+- **Copy only listed files.** Capture scripts may save more than a set keeps
+  (`landscape-ui/` and `bot-opponents/` do). After a run into a new, empty
+  directory, copy only the files the set's README lists.
+
+Before committing, check that no PNG under `docs/screenshots/` is byte- or
+pixel-identical to another. The check needs Pillow and exits with 1 when it
+finds a duplicate:
+
+```sh
+python3 scripts/screenshots/check-duplicates.py
+```
+
 ## Limitations
 
 These images were not visually approved by a reviewer; they show rendered
@@ -216,3 +253,22 @@ table-interactions, side-rails, table-experience and ui-refresh sets) were
 removed in the 2026-10-30 reorganization because they predate the current
 table HUD and rail. They remain in git history at `ca1e8db` under
 `docs/screenshots/`.
+
+The 2026-11-07 review removed duplicate and superseded captures. They remain in
+git history at `b8d0d1f` under `docs/screenshots/`:
+
+- `island-diorama/`: the island before the #44 remodel; `board-polish/` shows
+  the current one.
+- `hover-details/`: the old island and rails. The map tooltip is in
+  `harbor-hover/` and the collapsed and expanded rails are in
+  `lobby-order-bots/`.
+- `trade-auto-decline/`: byte-identical to `pr-68/` on `pr-assets`, and the
+  checkbox is in `current/09-trade-1366x768-zh-Hant.png`.
+- The `before/` directories of `board-polish/`, `svg-board-polish/` and
+  `landscape-ui/`.
+- The 1366×768 captures in `landscape-ui/`: two were pixel-identical to
+  `current/` and the rest show the same states as `current/`.
+- `svg-board-polish/after/entry-1366x768.png`: byte-identical to
+  `current/01-entry-1366x768-zh-Hant.png`.
+- The create form and full-seat lobbies in `bot-opponents/`, which
+  `lobby-order-bots/` shows with the game-order controls added later.
