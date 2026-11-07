@@ -90,16 +90,18 @@ describe('ruleset vocabulary', () => {
     const { PROFILES } = await import('@catan/rules');
     const { profileView, RULESET_MESSAGE_IDS, REQUIRED_MESSAGE_IDS } = await import('../src/index.ts');
     for (const profile of PROFILES) {
-      const view = profileView(profile, { botSeats: profile.ruleModules.length === 0 });
+      const view = profileView(profile, { botLevels: profile.ruleModules.length === 0 ? ['easy', 'standard', 'hard'] : [] });
       expect(JSON.parse(JSON.stringify(view))).toEqual(view);
       expect(view.expansions).toEqual([...profile.expansions]);
       expect(view.ruleVersion).toBe(profile.ruleVersion);
       expect(RULESET_MESSAGE_IDS).toContain(view.labelKey);
       if (view.unavailableReasonKey) expect(RULESET_MESSAGE_IDS).toContain(view.unavailableReasonKey);
     }
-    expect(profileView(PROFILES[0]!, { botSeats: true })).toMatchObject({
+    expect(profileView(PROFILES[0]!, { botLevels: ['easy', 'standard', 'hard'] })).toMatchObject({
       id: 'base-2025', expansions: [], scenario: null, variants: [], requiredBoxes: ['base'], ruleVersion: 'base-2025.4', botSeats: true,
+      botLevels: ['easy', 'standard', 'hard'],
     });
+    expect(profileView(PROFILES[0]!, { botLevels: [] })).toMatchObject({ botSeats: false, botLevels: [] });
     for (const id of ['expansion.seafarers', 'scenario.new-shores', 'scenario.standard', 'box.base-5-6']) {
       expect(REQUIRED_MESSAGE_IDS).toContain(id);
     }

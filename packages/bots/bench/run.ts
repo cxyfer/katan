@@ -21,9 +21,8 @@
 
 import { writeFileSync } from 'node:fs';
 import { getProfile, requireProfile, type ProfileDefinition } from '@catan/rules';
-import { botModulesOf, botsCanPlay } from '../src/index.ts';
+import { botModulesOf, botsCanPlay, createBotPolicy } from '../src/index.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';
-import { hardPolicy } from '../src/hard/index.ts';
 import type { BotPolicy } from '../src/types.ts';
 import { baseProfileFor, naivePolicy, runBotGame, type BotSeat } from '../test/harness.ts';
 import { seafarersKit } from '../test/modules/seafarers.ts';
@@ -143,7 +142,7 @@ function policyOf(role: Role, profile: ProfileDefinition): BotPolicy {
     case 'naive':
       return naivePolicy('standard', botModulesOf(profile));
     case 'hard':
-      return hardPolicy();
+      return createBotPolicy('hard');
     default:
       return heuristicPolicy(role);
   }
@@ -152,10 +151,10 @@ function policyOf(role: Role, profile: ProfileDefinition): BotPolicy {
 function seatsFor(roles: readonly Role[], profile: ProfileDefinition, focus: Role | null, timing: Timing): BotSeat[] {
   return roles.map((role, index) => {
     const policy = policyOf(role, profile);
-    // `hard` 在 PR 3 之前還不是 BotLevel；座位的 level 只影響 harness 的紀錄。
+    // naive 是 standard 參數的保底策略。
     return {
       id: `bot${index + 1}`,
-      level: role === 'easy' ? 'easy' : 'standard',
+      level: role === 'naive' ? 'standard' : role,
       policy: role === focus ? timed(policy, timing) : policy,
     };
   });

@@ -1,18 +1,17 @@
 /**
  * hard 策略（docs/aegis/specs/2026-11-07-hard-bot.md §9）：B-GAME、B-POLICY、B-FAIR 涵蓋 hard，
- * 3–6 人。`hard` 在 PR 3 之前還不是 BotLevel，座位的 level 記為 standard，策略直接用 `hardPolicy()`。
+ * 3–6 人；另測 `createBotPolicy('hard')` 與各 profile 可選的難度（`botLevelsFor`）。
  */
 
 import { describe, expect, it } from 'vitest';
-import { getTopology, requireProfile, type GameState, type GameView } from '@catan/rules';
-import { botCommandLimit, botResponseCommands } from '../src/index.ts';
+import { getTopology, PROFILES, requireProfile, type GameState, type GameView } from '@catan/rules';
+import { botCommandLimit, botLevelsFor, botResponseCommands, botsCanPlay, createBotPolicy } from '../src/index.ts';
 import { winningLine } from '../src/hard/endgame.ts';
-import { hardPolicy } from '../src/hard/index.ts';
 import { HardTurn } from '../src/hard/turn.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';
 import { botSeed } from '../src/seed.ts';
 import { MAX_OFFERS_PER_WINDOW } from '../src/trade.ts';
-import type { BotCommand, BotContext, BotPolicy } from '../src/types.ts';
+import type { BotCommand, BotContext } from '../src/types.ts';
 import {
   BOT_WINDOW_COMMAND_LIMIT,
   cloneState,
@@ -40,14 +39,13 @@ const SEEDS = [71, 72, 73];
 function seatsFor(players: number, seed: number, allHard = false): BotSeat[] {
   return Array.from({ length: players }, (_, index) => {
     const hard = allHard || index === seed % players;
-    const level = hard || index % 2 === 0 ? 'standard' : 'easy';
-    const policy: BotPolicy = hard ? hardPolicy() : heuristicPolicy(level);
-    return { id: `bot${index + 1}`, level, policy, hard } as BotSeat & { hard: boolean };
+    const level = hard ? 'hard' : index % 2 === 0 ? 'standard' : 'easy';
+    return { id: `bot${index + 1}`, level, policy: createBotPolicy(level) };
   });
 }
 
 function isHard(seat: BotSeat | undefined): boolean {
-  return (seat as (BotSeat & { hard?: boolean }) | undefined)?.hard === true;
+  return seat?.level === 'hard';
 }
 
 function robberHex(command: BotCommand): number | null {
@@ -101,7 +99,7 @@ function play(profileId: string, seats: readonly BotSeat[], seed: number): Playe
     // 終盤搜尋的健全性：找到勝利序列時，這個視窗結束前一定獲勝。
     if (isHard(seat) && actor === turnActor && state.turn.phase === 'action' && !state.pending) {
       const view = viewFor(state, actor);
-      const ctx: BotContext = { selfId: actor, level: 'standard', seed: 1, offerPhases: {} };
+      const ctx: BotContext = { selfId: actor, level: 'hard', seed: 1, offerPhases: {} };
       const me = view.players.find((player) => player.id === actor)!;
       if (winningLine(new HardTurn(view, ctx, me))) lines.push({ actor, windowId: state.windowId });
     }
@@ -146,8 +144,8 @@ describe('B-GAME hard', () => {
     const { state } = newBotGame({ profileId: 'sf-new-shores-2025', players: 4, seed: 1 });
     const id = state.players[state.turn.seat]!.id;
     const view = viewFor(state, id);
-    const ctx: BotContext = { selfId: id, level: 'standard', seed: 9, offerPhases: {} };
-    expect(hardPolicy().decide(view, ctx)).toEqual(heuristicPolicy('standard').decide(view, ctx));
+    const ctx: BotContext = { selfId: id, level: 'hard', seed: 9, offerPhases: {} };
+    expect(createBotPolicy('hard').decide(view, ctx)).toEqual(heuristicPolicy('standard').decide(view, ctx));
   });
 });
 
@@ -180,10 +178,23 @@ describe('hard endgame search', () => {
     for (const player of others) player.resources.grain = 0;
     state.bank.grain = 0;
     const view = viewFor(state, me.id);
-    const ctx: BotContext = { selfId: me.id, level: 'standard', seed: 1, offerPhases: {} };
+    const ctx: BotContext = { selfId: me.id, level: 'hard', seed: 1, offerPhases: {} };
     const turn = new HardTurn(view, ctx, view.players.find((player) => player.id === me.id)!);
     expect(turn.scoreOf(me.id)).toBe(view.victoryTarget - 2);
     expect(winningLine(turn)?.first.type).toBe('build.city');
+  });
+});
+
+describe('hard level availability', () => {
+  it('offers hard only in profiles without rules modules', () => {
+    expect(botLevelsFor(requireProfile('base-2025'))).toEqual(['easy', 'standard', 'hard']);
+    expect(botLevelsFor(requireProfile('base-paired-2025'))).toEqual(['easy', 'standard', 'hard']);
+    expect(botLevelsFor(requireProfile('sf-new-shores-2025'))).toEqual(['easy', 'standard']);
+    for (const profile of PROFILES) {
+      const levels = botLevelsFor(profile);
+      if (!botsCanPlay(profile)) expect(levels, profile.id).toEqual([]);
+      else expect(levels.includes('hard'), profile.id).toBe(profile.ruleModules.length === 0);
+    }
   });
 });
 
@@ -240,7 +251,7 @@ describe('B-FAIR hard hidden information', () => {
   });
 
   it('decides identically when only hidden information differs', () => {
-    const policy = hardPolicy();
+    const policy = createBotPolicy('hard');
     let compared = 0;
     for (const state of states) {
       for (const player of state.players) {
@@ -250,7 +261,7 @@ describe('B-FAIR hard hidden information', () => {
         const original: GameView = viewFor(state, player.id);
         const altered: GameView = viewFor(variant, player.id);
         expect(JSON.stringify(altered)).toBe(JSON.stringify(original));
-        const ctx: BotContext = { selfId: player.id, level: 'standard', seed: botSeed('fair', player.id, state.seq), offerPhases: {} };
+        const ctx: BotContext = { selfId: player.id, level: 'hard', seed: botSeed('fair', player.id, state.seq), offerPhases: {} };
         expect(policy.decide(altered, ctx)).toEqual(policy.decide(original, ctx));
         compared += 1;
       }
@@ -259,11 +270,11 @@ describe('B-FAIR hard hidden information', () => {
   }, GAME_TIMEOUT);
 
   it('never mutates the projection it is given', () => {
-    const policy = hardPolicy();
+    const policy = createBotPolicy('hard');
     for (const state of states.slice(0, 30)) {
       for (const player of state.players) {
         const view: GameView = deepFreeze(viewFor(state, player.id));
-        const ctx = deepFreeze({ selfId: player.id, level: 'standard' as const, seed: 7, offerPhases: {} });
+        const ctx = deepFreeze({ selfId: player.id, level: 'hard' as const, seed: 7, offerPhases: {} });
         expect(() => policy.decide(view, ctx)).not.toThrow();
       }
     }

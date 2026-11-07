@@ -287,12 +287,14 @@ export const en: Catalog = {
   'lobby.bots.full': 'Every seat is taken.',
   'lobby.bots.seatNote': 'Plays on its own and is always ready.',
   'lobby.bots.unsupported': "Bot opponents can't play this ruleset yet.",
+  'lobby.bots.hardBaseOnly': 'Hard bots play the base game only.',
   'lobby.botCount': '{count} bot(s)',
   'lobby.policyBotsExcluded': 'Bot seats do not vote.',
 
   // --- bots ----------------------------------------------------------------
   'bot.level.easy': 'Easy',
   'bot.level.standard': 'Standard',
+  'bot.level.hard': 'Hard',
   'bot.badge': 'Bot · {level}',
   'bot.badgeShort': 'Bot',
   'bot.playerName': '{name} (bot)',
@@ -862,6 +864,7 @@ export const en: Catalog = {
   'blocker.notReady': 'Not ready: {players}',
   'blocker.disconnected': 'Not connected: {players}',
   'blocker.botsUnsupported': 'Bot opponents cannot play this ruleset; remove them to start.',
+  'blocker.botLevelUnsupported': 'Hard bots play the base game only; remove them to start.',
   'blocker.noHost': 'No connected host is present.',
   'blocker.profilePlayerCount': 'The {profileId} ruleset does not support {playerCount} players.',
   'blocker.capacity': 'The room capacity is {capacity}, but {seated} players are seated.',

@@ -7,7 +7,7 @@
 
 import { PLAYER_COLORS, type ProfileDefinition } from '@catan/rules';
 import { BOT_LEVELS, type BotLevel } from '@catan/protocol';
-import { botsCanPlay, type BotLevel as PolicyBotLevel } from '@catan/bots';
+import { botLevelsFor, botsCanPlay, type BotLevel as PolicyBotLevel } from '@catan/bots';
 import { newId, type MemberRow, type Repository } from './db.ts';
 
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -48,6 +48,20 @@ export function botLevelOf(member: { bot_level?: string | null }): BotLevel {
  */
 export function botsSupported(profile: ProfileDefinition): boolean {
   return botsCanPlay(profile);
+}
+
+/** 這個設定檔可選的難度，由弱到強；hard 只在沒有規則模組的設定檔提供。Bot 玩不動時是空清單。 */
+export function profileBotLevels(profile: ProfileDefinition): BotLevel[] {
+  return botLevelsFor(profile);
+}
+
+/** 已就座 Bot 中，難度不在這個設定檔清單內的第一席；沒有則為 undefined。 */
+export function unsupportedBotLevel<T extends { kind?: string | null; bot_level?: string | null }>(
+  profile: ProfileDefinition,
+  members: readonly T[],
+): BotLevel | undefined {
+  const levels = profileBotLevels(profile);
+  return members.filter(isBotMember).map(botLevelOf).find((level) => !levels.includes(level));
 }
 
 /** Bot 席位永遠就緒。 */

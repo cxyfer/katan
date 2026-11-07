@@ -113,10 +113,12 @@ export function LobbyScreen({ controller }: ScreenProps) {
     setPolicyDraft({ ...policy, [key]: value });
   };
 
-  const botLevels = offeredBotLevels(state.config);
+  const botLevels = offeredBotLevels(state.config, profile);
   const chosenBotLevel = pickBotLevel(botLevels, botLevel);
   const roomFull = room.members.length >= room.capacity;
   const profileBots = profileAllowsBots(profile);
+  // 伺服器有困難、這個規則組合卻沒有時說明原因，免得選項看起來像是不見了。
+  const hardBaseOnly = profileBots && offeredBotLevels(state.config).includes('hard') && !botLevels.includes('hard');
   const addBotNote = !profileBots ? 'lobby-bots-unsupported' : roomFull ? 'lobby-bots-full' : undefined;
   const runBotAction = (work: () => Promise<unknown>) => {
     setBotBusy(true);
@@ -256,6 +258,9 @@ export function LobbyScreen({ controller }: ScreenProps) {
                     ))}
                   </select>
                 </div>
+                {hardBaseOnly && (
+                  <p className="muted lobby-bots__full" data-testid="lobby-bots-hard-base-only">{t('lobby.bots.hardBaseOnly')}</p>
+                )}
                 <div className="lobby-bots__actions">
                   <button
                     type="button"

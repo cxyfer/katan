@@ -1,7 +1,7 @@
 /**
- * hard 策略（docs/aegis/specs/2026-11-07-hard-bot.md）。只支援沒有 rules module 的 profile；
- * 擴充版 profile 直接交給 standard。流程與 standard 相同（每次只決定一個指令、不保留跨呼叫
- * 狀態），各決策點換成 hard 的版本。
+ * hard 策略（docs/aegis/specs/2026-11-07-hard-bot.md）。只支援沒有 rules module 的 profile
+ * （`hardSupports`）；房間不會在其他 profile 提供 hard，萬一遇到也直接交給 standard。流程與
+ * standard 相同（每次只決定一個指令、不保留跨呼叫狀態），各決策點換成 hard 的版本。
  */
 
 import { requireProfile, type GameView, type PublicModulePendingView, type PublicPendingView } from '@catan/rules';
@@ -10,6 +10,8 @@ import { freeRoadDecision } from '../base/roads.ts';
 import { fallbackDecision } from '../fallback.ts';
 import { heuristicPolicy } from '../heuristic.ts';
 import { isModuleFrame } from '../modules/compose.ts';
+import type { BotModule } from '../modules/types.ts';
+import { hardSupports } from '../support.ts';
 import type { BotCommand, BotContext, BotPolicy } from '../types.ts';
 import { hardActionDecision, hardRespond } from './action.ts';
 import { hardDiscard } from './cards.ts';
@@ -48,7 +50,7 @@ function pendingDecision(turn: HardTurn, pending: BasePending): BotCommand | nul
 
 function decide(view: GameView, ctx: BotContext, standard: BotPolicy): BotCommand | null {
   if (view.result) return null;
-  if (requireProfile(view.profileId).ruleModules.length > 0) return standard.decide(view, ctx);
+  if (!hardSupports(requireProfile(view.profileId))) return standard.decide(view, ctx);
   const me = view.players.find((player) => player.id === ctx.selfId);
   if (!me || !view.hints) return null;
   const turn = new HardTurn(view, ctx, me);
@@ -70,8 +72,8 @@ function decide(view: GameView, ctx: BotContext, standard: BotPolicy): BotComman
   return null;
 }
 
-/** hard 策略；擴充版 profile 的決策交給 standard（`heuristicPolicy('standard')`）。 */
-export function hardPolicy(): BotPolicy {
-  const standard = heuristicPolicy('standard');
+/** hard 策略；`modules` 只給 hard 不支援的 profile 交給 standard 時使用（同 `createBotPolicy`）。 */
+export function hardPolicy(modules?: readonly BotModule[]): BotPolicy {
+  const standard = heuristicPolicy('standard', modules);
   return { decide: (view, ctx) => decide(view, ctx, standard) };
 }
