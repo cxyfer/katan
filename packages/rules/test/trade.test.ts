@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { harborRates, topologyOf } from '../src/analysis.ts';
+import { suspendNegotiation } from '../src/engine.ts';
 import {
   act,
   expectRejected,
@@ -235,6 +236,41 @@ describe('R-B04 trading', () => {
     expect(offer.revision).toBe(2);
     expect(offer.responses).toEqual({});
     expectRejected(current, 'p1', { type: 'trade.settle', offerId }, 'E_NOT_CONSENTED');
+  });
+
+  it('expires open and agreed offers when the table suspends, keeping everything else', () => {
+    const { state } = playableGame({ players: 4 });
+    setHand(state, 'p1', { lumber: 2 });
+    setHand(state, 'p2', { ore: 1 });
+    let current = act(
+      state,
+      'p1',
+      { type: 'trade.offer', to: 'p2', give: { lumber: 1 }, want: { ore: 1 } },
+      scriptedRng([0]),
+    ).state;
+    current = act(current, 'p2', { type: 'trade.respond', offerId: current.offers[0]!.id, response: 'consented' }, scriptedRng([0])).state;
+    current = act(
+      current,
+      'p1',
+      { type: 'trade.offer', to: 'all', give: { lumber: 1 }, want: { ore: 1 } },
+      scriptedRng([0]),
+    ).state;
+    const snapshot = JSON.parse(JSON.stringify(current)) as typeof current;
+
+    const frozen = suspendNegotiation(current);
+    expect(frozen).not.toBe(current);
+    expect(current).toEqual(snapshot);
+    expect(frozen.offers.map((offer) => offer.status)).toEqual(['expired', 'expired']);
+    expect(frozen.log.slice(-2).map((event) => [event.type, event.params.reason])).toEqual([
+      ['trade.expired', 'suspended'],
+      ['trade.expired', 'suspended'],
+    ]);
+    // 暫停不是規則：回合、待決效果與手牌都不變。
+    expect(frozen.turn).toEqual(current.turn);
+    expect(frozen.pending).toEqual(current.pending);
+    expect(handOf(frozen, 'p1')).toEqual(handOf(current, 'p1'));
+    // 已經沒有可取消的報價：回傳同一個物件，不產生新的修訂版本。
+    expect(suspendNegotiation(frozen)).toBe(frozen);
   });
 
   it('expires open offers when the action window ends', () => {

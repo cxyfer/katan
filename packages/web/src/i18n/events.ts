@@ -166,7 +166,7 @@ export function eventParams(
     case 'trade.withdrawn':
       return {};
     case 'trade.expired':
-      return { reason: str(p.reason) };
+      return { reason: t(locale, `play.tradeExpiredReason.${str(p.reason, 'window')}`) };
     case 'trade.bank':
       return {
         player: player(),

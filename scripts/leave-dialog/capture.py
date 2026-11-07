@@ -159,6 +159,38 @@ def finish_setup(people: list, game_id: str, timeout: float = 120) -> None:
     raise AssertionError("opening placement did not finish in time")
 
 
+def open_offer(context, game_id: str, me: str, timeout: float = 60) -> None:
+    """推進到自己的行動時段（必要時擲骰、處理強盜），再對全桌發出一個報價。"""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        snapshot = api(context, "GET", f"/api/games/{game_id}")
+        view = snapshot["view"]
+        mine = view["turn"]["playerId"] == me
+        if mine and view["turn"]["phase"] == "action" and not view.get("pending"):
+            hand = next(p for p in view["players"] if p["id"] == me)["resources"]
+            give = next((r for r in RESOURCES if hand[r] > 0), None)
+            assert give, "the host has no resource to offer"
+            want = next(r for r in RESOURCES if r != give)
+            api(context, "POST", f"/api/games/{game_id}/commands", {
+                "commandId": f"capture-{uuid.uuid4()}",
+                "expectedRevision": snapshot["revision"],
+                "command": {"type": "trade.offer", "to": "all", "give": {give: 1}, "want": {want: 1}},
+            })
+            return
+        command = human_move(view, me)
+        if command is None and mine and view["turn"]["phase"] == "preroll" and (view.get("hints") or {}).get("canRoll"):
+            command = {"type": "turn.roll"}
+        if command:
+            api(context, "POST", f"/api/games/{game_id}/commands", {
+                "commandId": f"capture-{uuid.uuid4()}",
+                "expectedRevision": snapshot["revision"],
+                "command": command,
+            })
+        else:
+            time.sleep(0.25)
+    raise AssertionError("the host never reached an action window")
+
+
 class Shots:
     def __init__(self, out: Path, result: dict):
         self.out = out
@@ -193,7 +225,7 @@ def open_table(page, code: str) -> None:
     expect(page.get_by_test_id("connection-state")).to_have_attribute("data-state", "online")
 
 
-def capture(root: Path, out: Path, before: bool) -> dict:
+def capture(root: Path, out: Path, before: bool, offer: bool = False) -> dict:
     result: dict = {"screenshots": [], "checks": {}}
     checks = result["checks"]
     shots = Shots(out, result)
@@ -259,6 +291,13 @@ def capture(root: Path, out: Path, before: bool) -> dict:
                 shots.take(solo, "leave-dialog-solo")
                 solo.get_by_test_id("leave-cancel").click()
 
+                if offer:
+                    # 暫停前留一個進行中的報價：暫停成立時應以「全桌已暫停」為由失效（§4.8）。
+                    host.get_by_test_id("leave-cancel").click()
+                    open_offer(host_ctx, game_id, host_id)
+                    host.wait_for_timeout(800)
+                    host.get_by_test_id("leave-game").click()
+
                 # 提議：提案者留在牌桌等待；另一位真人經由推送看到投票。
                 host.get_by_test_id("leave-suspend").click()
                 expect(host.get_by_test_id("leave-dialog")).to_have_count(0)
@@ -275,6 +314,14 @@ def capture(root: Path, out: Path, before: bool) -> dict:
                 checks["tableVisibleWhileSuspended"] = host.get_by_test_id("board-svg").is_visible() \
                     and guest.get_by_test_id("board-svg").is_visible()
                 shots.take(host, "suspended")
+
+                if offer:
+                    offers = api(host_ctx, "GET", f"/api/games/{game_id}")["view"]["offers"]
+                    checks["offersExpiredOnSuspend"] = bool(offers) and all(o["status"] == "expired" for o in offers)
+                    host.get_by_test_id("tool-tab-log").click()
+                    expect(host.get_by_test_id("tool-panel-log")).to_contain_text("全桌已暫停")
+                    shots.take(host, "event-log-offer-expired")
+                    host.get_by_test_id("tool-tab-log").click()
 
                 # 準備繼續：等待另一位真人。
                 host.get_by_test_id("resume-ready").click()
@@ -313,12 +360,14 @@ def main() -> None:
     parser.add_argument("--root", default=str(Path(__file__).resolve().parents[2]),
                         help="checkout whose built web bundle and server are served")
     parser.add_argument("--before", action="store_true", help="capture the old table menu instead")
+    parser.add_argument("--offer", action="store_true",
+                        help="leave an open trade offer before the pause and capture its expiry in the event log")
     args = parser.parse_args()
     out = Path(args.out).resolve()
     if out.exists() and any(out.iterdir()):
         raise SystemExit(f"{out} must be new and empty")
     out.mkdir(parents=True, exist_ok=True)
-    result = capture(Path(args.root).resolve(), out, args.before)
+    result = capture(Path(args.root).resolve(), out, args.before, args.offer)
     (out / "report.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"checks": result["checks"], "screenshots": result["screenshots"]}, ensure_ascii=False, indent=2))
 

@@ -514,7 +514,7 @@ export function canPlaceRoad(
 // turn lifecycle
 // ---------------------------------------------------------------------------
 
-function expireOffers(state: GameState, reason: 'window' | 'withdrawn' | 'gameOver'): void {
+function expireOffers(state: GameState, reason: 'window' | 'withdrawn' | 'gameOver' | 'suspended'): void {
   for (const offer of state.offers) {
     if (offer.status === 'open' || offer.status === 'agreed') {
       offer.status = 'expired';
@@ -2020,6 +2020,19 @@ function resourceTerms(terms: Partial<Record<CardKind, number>>): Partial<Record
   const out: Partial<Record<Resource, number>> = {};
   for (const resource of RESOURCES) if (terms[resource]) out[resource] = terms[resource];
   return out;
+}
+
+/**
+ * 全桌保存並暫停（§4.8）的生命週期轉移，不是規則：取消進行中的交易協商，
+ * 策略上的待決效果（棄牌、移動強盜、免費道路等）原樣保留，恢復後接著處理。
+ * 沒有可取消的提案時回傳同一個物件，呼叫端據此判斷是否需要新的修訂版本。
+ */
+export function suspendNegotiation(state: GameState): GameState {
+  if (state.result) return state;
+  if (!state.offers.some((offer) => offer.status === 'open' || offer.status === 'agreed')) return state;
+  const next = clone(state);
+  expireOffers(next, 'suspended');
+  return next;
 }
 
 /**

@@ -16,6 +16,7 @@ import {
   requireProfile,
   secureRng,
   shuffle,
+  suspendNegotiation,
   type Command,
   type GameEvent,
   type GameState,
@@ -578,19 +579,23 @@ export class GameCoordinator {
     const memberships = humanMembers(await this.repo.listMembers(game.room_id));
     const consents = new Set(await this.repo.listGameConsents(proposalId));
     if (!memberships.every((membership) => consents.has(membership.player_id))) return false;
+    // §4.8：暫停成立時取消進行中的交易協商與房間政策提案；策略上的待決效果保留。
+    // 有提案被取消才是新的狀態轉移：修訂版本加一並記下事件，否則維持原修訂版本。
+    const current = JSON.parse(game.state_json) as GameState;
+    const frozen = suspendNegotiation(current);
+    const events = frozen === current ? [] : frozen.log.slice(-(frozen.seq - current.seq));
+    const revision = events.length > 0 ? game.revision + 1 : game.revision;
     await this.repo.transaction(async () => {
-      await this.repo.saveGame(
-        game.id,
-        JSON.parse(game.state_json) as GameState,
-        game.revision,
-        'suspended',
-        'saved',
-      );
+      await this.repo.saveGame(game.id, frozen, revision, 'suspended', 'saved');
+      if (events.length > 0) await this.repo.appendEvents(game.id, revision, events);
       await this.repo.updateGameProposalStatus(proposalId, 'applied');
       await this.repo.updateRoom(game.room_id, { status: 'suspended' });
+      await this.repo.cancelOpenProposals(game.room_id);
       await this.repo.clearGameReady(game.id);
     });
     this.deps.rooms.broadcastRoom(game.room_id);
+    // 報價已失效：推送新的投影，牌桌上的交易面板才不會留著已取消的報價。
+    if (events.length > 0) this.publish(game.room_id, game.id, revision, events);
     this.notifyLifecycle(game.id, 'suspended');
     return true;
   }

@@ -109,6 +109,16 @@ describe('t()', () => {
     expect(translated.text).toBe('The game was abandoned: Ended without a winner.');
   });
 
+  it('explains why an offer expired in the reader\'s language', () => {
+    const suspended = makeEvent(11, 'trade.expired', { offerId: 'offer-1', reason: 'suspended' });
+    expect(translateEvent('en', suspended, (id) => id).text).toBe('An offer expired (the table was paused).');
+    expect(translateEvent('zh-Hant', suspended, (id) => id).text).toBe('有提案已逾期（全桌已暫停）。');
+    for (const reason of ['window', 'withdrawn', 'gameOver']) {
+      const text = translateEvent('zh-Hant', makeEvent(12, 'trade.expired', { reason }), (id) => id).text;
+      expect(text).not.toContain(reason);
+    }
+  });
+
   it('renders a bank shortage with the dice total, not as a shortfall amount', () => {
     const event = makeEvent(10, 'production.starved', { hex: 4, resource: 'ore', total: 6 });
     expect(translateEvent('en', event, (id) => id).text).toBe(

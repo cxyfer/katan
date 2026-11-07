@@ -192,7 +192,12 @@ table's leave dialog.
   (`approve` defaults to `true`) and answer `{ suspended }`; any rejection,
   including the proposer's own, cancels the proposal. An unknown or closed
   `proposalId` is `E_NO_PROPOSAL` (404), and proposing on a table that is
-  already suspended is `E_GAME_SUSPENDED` (409). Once suspended, commands are
+  already suspended is `E_GAME_SUSPENDED` (409). When the suspension takes
+  effect, open and agreed trade offers expire (`trade.expired` with
+  `reason: "suspended"`) and the room's pending policy proposal is cancelled;
+  strategic pending effects are kept. Expiring offers is a new revision, pushed
+  to every connected seat as a `snapshot`; with nothing to expire the revision
+  stays the same. Once suspended, commands are
   refused with `E_GAME_SUSPENDED` until `POST /api/games/:gameId/resume` with
   `{ ready }` has every person connected and ready; it answers
   `ResumeReadyResult { resumed, waitingFor }`, where `waitingFor` lists the
