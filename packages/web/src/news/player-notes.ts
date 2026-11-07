@@ -35,12 +35,16 @@ export const PLAYER_NOTES: readonly PlayerNote[] = [
     },
     items: [
       {
-        'zh-Hant': '航海家「航向新海岸」開放「簡單」與「標準」電腦對手入座，3–6 人都可以，包含 5–6 人的搭檔回合；它們會造船、到小島蓋村莊，也會在金礦挑選資源。其他擴充仍只開放真人玩家。',
-        en: 'Easy and standard computer opponents can now take seats in Seafarers — Heading for New Shores at 3–6 players, paired turns included: they build ships, settle islands and pick resources from gold fields. The other expansions still seat human players only.',
+        'zh-Hant': '航海家「航向新海岸」開放「簡單」與「標準」電腦對手入座，3–6 人都可以，包含 5–6 人的搭檔回合；它們會造船、到小島蓋村莊，也會在金礦挑選資源。其他擴充（包含航海家＋城市與騎士）仍只開放真人玩家入座。',
+        en: 'Easy and standard computer opponents can now take seats in Seafarers — Heading for New Shores at 3–6 players, paired turns included: they build ships, settle islands and pick resources from gold fields. The other expansions, Seafarers + Cities & Knights included, still seat human players only.',
       },
       {
-        'zh-Hant': '牌桌上新增「離開」：只有你和電腦玩家的對局，可以保留之後再回來，或直接結束；有其他玩家的對局，可以退出（投降），座位仍會保留。',
-        en: 'A Leave button at the table: a game with only you and computer players can be kept for later or ended, and a game with other people lets you withdraw (resign) while your seat stays reserved.',
+        'zh-Hant': '牌桌上新增「離開」按鈕：只有你和電腦玩家的對局，可以保留之後再回來；房間允許時，也可以直接結束。',
+        en: 'A Leave button at the table: a game with only you and computer players can be kept for later or, if the room allows it, ended.',
+      },
+      {
+        'zh-Hant': '有其他玩家的對局可以退出（投降），座位仍會保留。房間允許時，若有人缺席或退出，仍在線的玩家可以提議結束對局，全員同意就以無勝者結束。',
+        en: 'In a game with other people you can withdraw (resign) and keep your seat. If the room allows it and someone is away or has withdrawn, the players still online can propose ending the game, which ends with no winner once they all agree.',
       },
       {
         'zh-Hant': '建立房間的表單拿掉佈局模式與遊戲順序，兩者都改在大廳的「房間設定」調整。',
@@ -52,11 +56,11 @@ export const PLAYER_NOTES: readonly PlayerNote[] = [
       },
       {
         'zh-Hant': '目標清單與棋盤目標改用相鄰地塊的資源和點數描述，例如「羊毛（6）與礦石（10）之間」，不再使用棋盤上看不到的編號。',
-        en: 'Targets are now described by the resources and dice numbers around them, such as “between Wool (6) and Ore (10)”, instead of map numbers you cannot see on the board.',
+        en: 'Targets are now described by the resources and dice numbers around them, such as “Between Wool (6) and Ore (10)”, instead of map numbers you cannot see on the board.',
       },
       {
         'zh-Hant': '觸控裝置的棋盤工具列拿掉縮放與旋轉按鈕，改用手勢操作；需要按鈕時可以在「顯示」面板找到。',
-        en: 'On touch devices the board toolbar leaves zooming and rotating to gestures; the buttons are still in the Display panel.',
+        en: 'On touch devices the board toolbar leaves zooming and rotating to gestures; the buttons are now in the Display panel.',
       },
       {
         'zh-Hant': '手機上的資源數量固定在畫面底部，點一下就能展開或收起手牌，不再擋住棋盤。',
@@ -64,11 +68,11 @@ export const PLAYER_NOTES: readonly PlayerNote[] = [
       },
       {
         'zh-Hant': '探險家與海盜：船不會再開進已有兩艘船、又沒有出路的航道；已經卡在那裡的對局也能結束移動，繼續進行。',
-        en: 'Explorers & Pirates: ships no longer sail onto an edge that already holds two ships when there is no way on from it, and games already stuck there can end the move and carry on.',
+        en: 'Explorers & Pirates: ships no longer sail onto a path that already holds two ships when there is no way on from it, and games already stuck there can end the move and carry on.',
       },
       {
-        'zh-Hant': '大廳的遊戲順序選單、結算統計表與目標選擇器不再被裁切或超出畫面；「旋轉為橫向」提示只在直向手機上出現。',
-        en: 'The lobby’s game order menu, the end-of-game statistics and the target picker no longer get clipped or run off the screen, and the “Rotate to landscape” hint only appears on phones held upright.',
+        'zh-Hant': '大廳的遊戲順序選單與目標選擇器不再被裁切或超出畫面，賽後數據的總覽表放不下時會提示可以往右捲動；「旋轉為橫向」提示只在直向手機上出現。',
+        en: 'The lobby’s game order menu and the target picker no longer get clipped or run off the screen, the Game statistics overview shows when there is more to scroll, and the “Rotate to landscape” hint only appears on phones held upright.',
       },
       {
         'zh-Hant': '英文介面的載入畫面在只下載一個檔案時，改用單數「1 file」。',
