@@ -309,7 +309,8 @@ def table_after(context, page, out: Path, result: dict, timeout: float) -> None:
     page.get_by_test_id("toggle-ready").click()
     expect(page.get_by_test_id("start-game")).to_be_enabled()
     page.get_by_test_id("start-game").click()
-    page.wait_for_url("**", wait_until="networkidle")
+    # 等牌桌真的出現：開局請求與換頁是非同步的，網址比對會在點擊後立刻成立。
+    page.get_by_test_id("game-stage").wait_for(timeout=60_000)
     games = api(context, "GET", "/api/games")
     game = (games["games"] if isinstance(games, dict) else games)[0]
     game_id = game["gameId"]
