@@ -230,7 +230,7 @@ function prerollDecision(turn: TurnContext): BotCommand | null {
 }
 
 /** 自己被強盜擋住的點數（城市加倍）。 */
-function blockedPips(turn: TurnContext): number {
+export function blockedPips(turn: TurnContext): number {
   const { view, model, ctx } = turn;
   const hex = view.board.robber;
   let blocked = 0;
@@ -447,7 +447,7 @@ export function dedupeCandidates(candidates: readonly Scored<BotCommand>[]): Sco
 }
 
 /** 計畫的下一步；付不起或已不合法時回傳 null。 */
-function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
+export function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
   const { view } = turn;
   const hints = view.hints!;
   const economy = turn.economy;
@@ -481,7 +481,7 @@ function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
 }
 
 /** 手牌 8 張以上時：先買發展卡、再鋪有用的路，最後把過剩資源換成需要的。 */
-function handRelief(turn: TurnContext): Command | null {
+export function handRelief(turn: TurnContext): Command | null {
   const { view } = turn;
   const economy = turn.economy;
   const hand = economy.hand;
