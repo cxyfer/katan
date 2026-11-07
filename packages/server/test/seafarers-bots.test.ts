@@ -243,53 +243,58 @@ describe('Heading for New Shores with bot seats', () => {
   for (const { profileId, players } of fullGames) {
     it(`plays a whole ${players}-player ${profileId} game to a winner`, async () => {
       const logs = captureLogs(driverDeps(harness.service));
-      const host = await harness.client('SeaHost');
-      const { roomId, gameId, botIds } = await seaGame(harness.service, host, { bots: players - 1, profileId });
-      const disconnect = await liveSocket(harness.service, roomId, host.playerId!);
-      const policy = createBotPolicy('standard');
-      const deadline = Date.now() + 100_000;
-      let humanCommands = 0;
-      let view: GameView | null = null;
-      while (Date.now() < deadline) {
-        const snapshot = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
-        view = snapshot.view;
-        if (view.result) break;
-        const command = policy.decide(view, {
-          selfId: host.playerId!,
-          level: 'standard',
-          seed: snapshot.revision,
-          offerPhases: {},
-        });
-        if (!command) {
-          await sleep(5);
-          continue;
+      let disconnect: (() => Promise<void>) | null = null;
+      try {
+        const host = await harness.client('SeaHost');
+        const { roomId, gameId, botIds } = await seaGame(harness.service, host, { bots: players - 1, profileId });
+        disconnect = await liveSocket(harness.service, roomId, host.playerId!);
+        const policy = createBotPolicy('standard');
+        const deadline = Date.now() + 100_000;
+        let humanCommands = 0;
+        let view: GameView | null = null;
+        while (Date.now() < deadline) {
+          const snapshot = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
+          view = snapshot.view;
+          if (view.result) break;
+          const command = policy.decide(view, {
+            selfId: host.playerId!,
+            level: 'standard',
+            seed: snapshot.revision,
+            offerPhases: {},
+          });
+          if (!command) {
+            await sleep(5);
+            continue;
+          }
+          const receipt = host.expectOk<Receipt>(
+            await host.post(`/api/games/${gameId}/commands`, {
+              commandId: id('human'),
+              expectedRevision: snapshot.revision,
+              command,
+            }),
+          );
+          // 與 Bot 同時送出時可能落後一個 revision，其他拒絕都代表策略或伺服器有誤。
+          if (receipt.outcome === 'rejected') expect(receipt.error?.messageId).toBe('error.E_STALE_REVISION');
+          else humanCommands += 1;
         }
-        const receipt = host.expectOk<Receipt>(
-          await host.post(`/api/games/${gameId}/commands`, {
-            commandId: id('human'),
-            expectedRevision: snapshot.revision,
-            command,
-          }),
-        );
-        // 與 Bot 同時送出時可能落後一個 revision，其他拒絕都代表策略或伺服器有誤。
-        if (receipt.outcome === 'rejected') expect(receipt.error?.messageId).toBe('error.E_STALE_REVISION');
-        else humanCommands += 1;
+        expect(logs.entries.filter(isIdleDutyWarn)).toEqual([]);
+        expect(view?.result?.playerId).toBeTruthy();
+        expect(humanCommands).toBeGreaterThan(10);
+        const game = await state(gameId, harness.service);
+        expect(game.profileId).toBe(profileId);
+        expect(game.pending).toBeNull();
+        // 每個 Bot 都真的蓋了東西，而不是只靠保底擲骰與結束回合。
+        for (const botId of botIds) {
+          const built = game.board.buildings.filter((building) => building?.player === botId).length;
+          expect(built, botId).toBeGreaterThanOrEqual(2);
+        }
+        expect((await harness.service.repo.findRoom(roomId))?.status).toBe('completed');
+        expect(await rejectedBotReceipts(harness.service, gameId)).toEqual([]);
+      } finally {
+        // 逾時或斷言失敗時也要還原 logger、放掉真人連線，避免汙染共用的 BotDriverDeps。
+        logs.restore();
+        await disconnect?.();
       }
-      await disconnect();
-      logs.restore();
-      expect(logs.entries.filter(isIdleDutyWarn)).toEqual([]);
-      expect(view?.result?.playerId).toBeTruthy();
-      expect(humanCommands).toBeGreaterThan(10);
-      const game = await state(gameId, harness.service);
-      expect(game.profileId).toBe(profileId);
-      expect(game.pending).toBeNull();
-      // 每個 Bot 都真的蓋了東西，而不是只靠保底擲骰與結束回合。
-      for (const botId of botIds) {
-        const built = game.board.buildings.filter((building) => building?.player === botId).length;
-        expect(built, botId).toBeGreaterThanOrEqual(2);
-      }
-      expect((await harness.service.repo.findRoom(roomId))?.status).toBe('completed');
-      expect(await rejectedBotReceipts(harness.service, gameId)).toEqual([]);
     }, 130_000);
   }
 
