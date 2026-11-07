@@ -6,8 +6,10 @@
  * 沒有 `--profile` 時跑 base（`base-2025` 與 `base-paired-2025`）；`--profile` 指定任何 Bot 玩得動的
  * profile（例如擴充在 gating 翻轉之前）。每個人數跑四種對局（Seafarers 計畫 §6.3）：
  * ① 1 位 standard 對其餘 easy；② 1 位 standard 對其餘 naive；③ 全 standard；④ 全 easy。
- * standard 依局數輪換座位，避免先手偏差；種子從 10000 起，結果可重現。對局用仿 BotDriver 模式與
- * 進度看門狗（`test/harness.ts`）。
+ * 沒有 rules module 的 profile 另外跑 hard（docs/aegis/specs/2026-11-07-hard-bot.md §2 H5、H6）：
+ * ⑤ 1 位 hard 對其餘 standard；⑥ 全 hard。
+ * 量測對象（focus）依局數輪換座位，避免先手偏差；種子從 10000 起，結果可重現。對局用仿 BotDriver
+ * 模式與進度看門狗（`test/harness.ts`）。focus 的決策耗時另外記錄（`focus decide avg/max ms`）。
  *
  * naive 座位只保留模組的 `duty`（`naivePolicy`），等於 v0.4.0 的行為；沒有 Bot 模組的 profile（base）
  * 沒有東西可保留，naive 與 standard 完全相同，② 照跑只是為了表格形狀一致。
@@ -21,22 +23,27 @@ import { writeFileSync } from 'node:fs';
 import { getProfile, requireProfile, type ProfileDefinition } from '@catan/rules';
 import { botModulesOf, botsCanPlay } from '../src/index.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';
+import { hardPolicy } from '../src/hard/index.ts';
 import type { BotPolicy } from '../src/types.ts';
 import { baseProfileFor, naivePolicy, runBotGame, type BotSeat } from '../test/harness.ts';
 import { seafarersKit } from '../test/modules/seafarers.ts';
 import { kitsOf, type ModuleTestKit } from '../test/modules/types.ts';
 import { BENCH_USAGE, BenchArgError, parseBenchArgs } from './args.ts';
 
-type Role = 'standard' | 'easy' | 'naive';
+type Role = 'hard' | 'standard' | 'easy' | 'naive';
 
 interface Config {
   name: string;
   profileId: string;
   players: number;
-  /** 其中 standard 座位的數量，其餘為 `rest`。 */
-  standard: number;
-  rest: 'easy' | 'naive';
+  /** 量測對象；null 表示沒有（全 easy）。 */
+  focus: Role | null;
+  /** focus 座位的數量，其餘為 `rest`。 */
+  count: number;
+  rest: Role;
 }
+
+declare const performance: { now(): number };
 
 /**
  * 模組測試工具（`test/modules/<id>.ts`）：有擴充的 profile 才有機制計數。擴充的測試切片把自己的 kit
@@ -56,15 +63,22 @@ const RULES_SIM_ROUNDS: Readonly<Record<string, Readonly<Record<number, number>>
   'sf-new-shores-paired-2025': { 5: 32.7, 6: 26.5 },
 };
 
-/** 每個人數的四種對局。 */
+/** 每個人數的四種對局；沒有 rules module 的 profile 再加兩種 hard。 */
 function configsFor(profile: ProfileDefinition): Config[] {
+  const hard = profile.ruleModules.length === 0;
   return profile.playerCounts.flatMap((players): Config[] => {
     const base = { profileId: profile.id, players };
     return [
-      { ...base, name: `${players}p 1 standard vs ${players - 1} easy`, standard: 1, rest: 'easy' },
-      { ...base, name: `${players}p 1 standard vs ${players - 1} naive`, standard: 1, rest: 'naive' },
-      { ...base, name: `${players}p ${players} standard`, standard: players, rest: 'easy' },
-      { ...base, name: `${players}p ${players} easy`, standard: 0, rest: 'easy' },
+      { ...base, name: `${players}p 1 standard vs ${players - 1} easy`, focus: 'standard', count: 1, rest: 'easy' },
+      { ...base, name: `${players}p 1 standard vs ${players - 1} naive`, focus: 'standard', count: 1, rest: 'naive' },
+      { ...base, name: `${players}p ${players} standard`, focus: 'standard', count: players, rest: 'standard' },
+      { ...base, name: `${players}p ${players} easy`, focus: null, count: 0, rest: 'easy' },
+      ...(hard
+        ? ([
+            { ...base, name: `${players}p 1 hard vs ${players - 1} standard`, focus: 'hard', count: 1, rest: 'standard' },
+            { ...base, name: `${players}p ${players} hard`, focus: 'hard', count: players, rest: 'hard' },
+          ] satisfies Config[])
+        : []),
     ];
   });
 }
@@ -95,16 +109,55 @@ for (const profile of profiles) {
 
 function rolesFor(config: Config, game: number): Role[] {
   return Array.from({ length: config.players }, (_, seat) =>
-    (((seat - game) % config.players) + config.players) % config.players < config.standard ? 'standard' : config.rest,
+    config.focus !== null && (((seat - game) % config.players) + config.players) % config.players < config.count
+      ? config.focus
+      : config.rest,
   );
 }
 
-function seatsFor(roles: readonly Role[], profile: ProfileDefinition): BotSeat[] {
-  const modules = botModulesOf(profile);
+interface Timing {
+  count: number;
+  totalMs: number;
+  maxMs: number;
+}
+
+/** 量測單一策略的決策耗時（只含 `decide` 本身，不含投影）。 */
+function timed(policy: BotPolicy, timing: Timing): BotPolicy {
+  return {
+    decide(view, ctx) {
+      const started = performance.now();
+      try {
+        return policy.decide(view, ctx);
+      } finally {
+        const elapsed = performance.now() - started;
+        timing.count += 1;
+        timing.totalMs += elapsed;
+        timing.maxMs = Math.max(timing.maxMs, elapsed);
+      }
+    },
+  };
+}
+
+function policyOf(role: Role, profile: ProfileDefinition): BotPolicy {
+  switch (role) {
+    case 'naive':
+      return naivePolicy('standard', botModulesOf(profile));
+    case 'hard':
+      return hardPolicy();
+    default:
+      return heuristicPolicy(role);
+  }
+}
+
+function seatsFor(roles: readonly Role[], profile: ProfileDefinition, focus: Role | null, timing: Timing): BotSeat[] {
   return roles.map((role, index) => {
-    const policy: BotPolicy =
-      role === 'naive' ? naivePolicy('standard', modules) : heuristicPolicy(role === 'easy' ? 'easy' : 'standard');
-    return { id: `bot${index + 1}`, level: role === 'easy' ? 'easy' : 'standard', policy };
+    const policy = policyOf(role, profile);
+    // `hard` 在 PR 3 之前還不是 BotLevel；座位的 level 只影響 harness 的紀錄。
+    return {
+      id: `bot${index + 1}`,
+      level: role === 'easy' ? 'easy' : 'standard',
+      policy: role === focus ? timed(policy, timing) : policy,
+    };
   });
 }
 
@@ -114,7 +167,7 @@ for (const profile of profiles) {
   const kits = kitsOf(profile, BENCH_KITS);
   for (const config of configsFor(profile)) {
     if (filter && !config.name.includes(filter)) continue;
-    let standardWins = 0;
+    let focusWins = 0;
     let finished = 0;
     let rounds = 0;
     let steps = 0;
@@ -127,6 +180,7 @@ for (const profile of profiles) {
     let watchdog = 0;
     let fallbacks = 0;
     let maxWindowCommands = 0;
+    const focusTiming: Timing = { count: 0, totalMs: 0, maxMs: 0 };
     let offers = 0;
     let settled = 0;
     const mechanics: Record<string, number> = {};
@@ -134,7 +188,7 @@ for (const profile of profiles) {
     for (let game = 0; game < games; game++) {
       const roles = rolesFor(config, game);
       const run = runBotGame({
-        seats: seatsFor(roles, profile),
+        seats: seatsFor(roles, profile, config.focus, focusTiming),
         seed: 10_000 + game,
         profileId: profile.id,
         kits,
@@ -166,20 +220,23 @@ for (const profile of profiles) {
       steps += run.steps;
       rounds += (run.state.stats?.turns ?? 0) / config.players;
       const winner = run.state.players.findIndex((player) => player.id === run.state.result!.playerId);
-      if (roles[winner] === 'standard') standardWins += 1;
+      if (config.focus !== null && roles[winner] === config.focus) focusWins += 1;
     }
     rows.push({
       profile: profile.id,
       config: config.name,
       games,
-      'standard win %': config.standard > 0 ? +((standardWins / Math.max(1, finished)) * 100).toFixed(1) : '-',
-      'fair share %': +((config.standard / config.players) * 100).toFixed(1),
+      focus: config.focus ?? '-',
+      'focus win %': config.focus !== null ? +((focusWins / Math.max(1, finished)) * 100).toFixed(1) : '-',
+      'fair share %': +((config.count / config.players) * 100).toFixed(1),
       'avg rounds': +(rounds / Math.max(1, finished)).toFixed(1),
       'rules-sim rounds': RULES_SIM_ROUNDS[profile.id]?.[config.players] ?? 'n/a',
       'avg commands': Math.round(steps / Math.max(1, finished)),
       'max cmds/window': maxWindowCommands,
       'decide avg ms': +(decideTotal / Math.max(1, decideCount)).toFixed(3),
       'decide max ms': +decideMax.toFixed(2),
+      'focus decide avg ms': config.focus !== null ? +(focusTiming.totalMs / Math.max(1, focusTiming.count)).toFixed(3) : '-',
+      'focus decide max ms': config.focus !== null ? +focusTiming.maxMs.toFixed(2) : '-',
       'offers/game': +(offers / games).toFixed(1),
       'settled/game': +(settled / games).toFixed(1),
       rejections,
@@ -198,7 +255,8 @@ for (const profile of profiles) {
   }
 }
 const notes = [
-  'standard rotates through the seats game by game; seeds run from 10000.',
+  'the focus role rotates through the seats game by game; seeds run from 10000.',
+  "'focus decide avg/max ms' time only the focus seats' decide calls; 'decide avg/max ms' cover every seat.",
   "naive seats keep only each module's duty (the v0.4.0 behaviour). A profile without bot modules (base) has " +
     'nothing to strip, so there a naive seat plays exactly like standard.',
   "'fallback/game' counts commands the BotDriver-like harness took from the fallback because the policy idled. " +
