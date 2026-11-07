@@ -178,7 +178,7 @@ describe('Seafarers fallback mixed seating', () => {
     expect(tally1.snapshot().longestRoadIncludesShips).toBe(0);
 
     // 情況 2：把該船改接在路線尾端 v0 上，藉由 v0 上的聚落相連並延長路線
-    delete state.board.roads[farEdge];
+    state.board.roads[farEdge] = null;
     const connectingEdge = topo.edges.findIndex((e, idx) => idx !== 0 && idx !== e1 && idx !== e2 && e.vertices.includes(v0));
     state.board.roads[connectingEdge] = { player: p1, ship: true };
 

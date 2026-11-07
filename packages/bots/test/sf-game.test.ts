@@ -28,13 +28,12 @@ import {
 } from '@catan/rules';
 import { forceTurn } from '../../rules/test/helpers.ts';
 import { boardModel, routeLength } from '../src/board.ts';
-import { turnContext } from '../src/heuristic.ts';
 import { botCommandLimit } from '../src/index.ts';
-import { seafarersAnswerFrame } from '../src/modules/seafarers/frames.ts';
 import { moduleHints } from '../src/modules/view.ts';
+import type { BotModule } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { roadEdgesFrom, shipEdgesFrom, shipsLeft } from '../src/sea.ts';
-import { botSeed } from '../src/seed.ts';
+import { botModulesOf } from '../src/support.ts';
 import { MAX_OFFERS_PER_WINDOW } from '../src/trade.ts';
 import type { BotCommand } from '../src/types.ts';
 import {
@@ -50,7 +49,6 @@ import {
   type BotSeat,
   type Decision,
   type StepInfo,
-  viewFor,
 } from './harness.ts';
 import { seafarersKit } from './modules/seafarers.ts';
 
@@ -186,11 +184,29 @@ describe('Seafarers B-GAME', () => {
         const limit = botCommandLimit(profile, BOT_WINDOW_COMMAND_LIMIT);
 
         for (const seed of seeds) {
-          const seats = botSeats(mixedLevels(players, seed), (level) => createBotPolicy(level));
+          let lastAnsweredFrameCmd: BotCommand | null = null;
+          const seats = botSeats(mixedLevels(players, seed), (level) => {
+            const modules = botModulesOf(profile).map((m) => {
+              if (m.id !== 'seafarers' || !m.answerFrame) return m;
+              return {
+                ...m,
+                answerFrame: (...args: Parameters<NonNullable<BotModule['answerFrame']>>) => {
+                  const res = m.answerFrame!(...args);
+                  if (res !== undefined && res !== null) {
+                    lastAnsweredFrameCmd = res;
+                  }
+                  return res;
+                },
+              };
+            });
+            return createBotPolicy(level, { modules });
+          });
           const contract = contractChecks(seats, profile);
           const seaProblems: string[] = [];
           let seaComparisons = 0;
           let policyGoldChoices = 0;
+          let nonFreeShipCommands = 0;
+          let expectedGoldCards = 0;
           let stepCount = 0;
 
           const run = runBotGame({
@@ -200,21 +216,21 @@ describe('Seafarers B-GAME', () => {
             kits: KITS,
             onDecision: (state, decision) => {
               contract.check(state, decision);
-              if (decision.command.type === 'gold.choose' && decision.source !== 'fallback') {
-                const seat = seats.find((s) => s.id === decision.actor)!;
-                const view = viewFor(state, decision.actor);
-                const ctx = {
-                  selfId: decision.actor,
-                  level: seat.level,
-                  seed: botSeed('test', decision.actor, state.seq),
-                  offerPhases: {},
-                };
-                const pending = view.pending as Parameters<typeof seafarersAnswerFrame>[1];
-                const own = seafarersAnswerFrame(turnContext(view, ctx, seat.level), pending);
-                if (own && JSON.stringify(own) === JSON.stringify(decision.command)) {
-                  policyGoldChoices += 1;
+              if (decision.command.type === 'build.ship' && state.pending?.kind !== 'freeRoads') {
+                nonFreeShipCommands += 1;
+              }
+              if (decision.command.type === 'gold.choose') {
+                const res = (decision.command as { resources?: unknown[] }).resources;
+                if (Array.isArray(res)) {
+                  expectedGoldCards += res.length;
+                }
+                if (decision.source !== 'fallback') {
+                  if (lastAnsweredFrameCmd && JSON.stringify(lastAnsweredFrameCmd) === JSON.stringify(decision.command)) {
+                    policyGoldChoices += 1;
+                  }
                 }
               }
+              lastAnsweredFrameCmd = null;
             },
             onStep: (step: StepInfo) => {
               if (stepCount++ % 5 === 0) {
@@ -303,6 +319,20 @@ describe('Seafarers B-GAME', () => {
           expect(contract.violations, `${label}: contract violations`).toEqual([]);
           expect(seaProblems, `${label}: sea model mismatch`).toEqual([]);
           expect(seaComparisons, `${label}: B-POLICY-SEA comparison count`).toBeGreaterThan(0);
+
+          // 交叉檢查：paidShips、goldCards、islandSettlements vs islandBonuses
+          expect(
+            run.mechanics['seafarers.paidShips'] ?? 0,
+            `${label}: paidShips must equal non-free ship commands (${run.mechanics['seafarers.paidShips']} != ${nonFreeShipCommands})`,
+          ).toBe(nonFreeShipCommands);
+          expect(
+            run.mechanics['seafarers.goldCards'] ?? 0,
+            `${label}: goldCards must equal total gold.choose resources count (${run.mechanics['seafarers.goldCards']} != ${expectedGoldCards})`,
+          ).toBe(expectedGoldCards);
+          expect(
+            run.mechanics['seafarers.islandSettlements'] ?? 0,
+            `${label}: islandSettlements must be >= islandBonuses (${run.mechanics['seafarers.islandSettlements']} < ${run.mechanics['seafarers.islandBonuses']})`,
+          ).toBeGreaterThanOrEqual(run.mechanics['seafarers.islandBonuses'] ?? 0);
 
           // 道路與船各 ≤ 15
           for (const player of run.state.players) {

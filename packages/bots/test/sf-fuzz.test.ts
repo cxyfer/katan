@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { applyCommand, seededRng, type GameState } from '@catan/rules';
+import { applyCommand, RESOURCES, seededRng, type GameState } from '@catan/rules';
 import { botOwesAction, fallbackPolicy } from '../src/fallback.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';
@@ -78,6 +78,17 @@ describe('Seafarers fuzz perturbed states', () => {
         }
 
         expect(variants).toHaveLength(FUZZ_VARIANTS_TARGET);
+
+        // 驗證守恆：所有變體的資源總數都等於 bank 存量（4 人 19*5，6 人 24*5）
+        let conservationFailures = 0;
+        for (const variant of variants) {
+          const probs = seafarersKit.conservation!(variant);
+          if (probs.length > 0) conservationFailures += 1;
+        }
+        console.log(
+          `fuzz ${profileId} (${players}p): 150 variants conservation failures = ${conservationFailures}`,
+        );
+        expect(conservationFailures).toBe(0);
 
         const pirateAtSeaCount = variants.filter(
           (v) => v.board.pirate !== null && v.board.layout.terrain[v.board.pirate] === 'sea',
@@ -145,5 +156,47 @@ describe('Seafarers fuzz perturbed states', () => {
       },
       GAME_TIMEOUT,
     );
+
+    it(`conserves resources and knight cards during seafarers perturbation (${profileId})`, () => {
+      const baseStates = sample(profileId, players, 71, 5);
+      const rng = seededRng(players * 2000 + 13);
+      let checked = 0;
+      let knightGiven = 0;
+      for (const base of baseStates) {
+        const state = cloneState(base);
+        const beforeResources = RESOURCES.map(
+          (r) => state.bank[r] + state.players.reduce((sum, p) => sum + p.resources[r], 0),
+        );
+        const beforeDeckKnights = state.devDeck.filter((c) => c === 'knight').length;
+        const beforeHeldKnights = state.players.reduce(
+          (sum, p) => sum + p.devCards.filter((c) => c === 'knight').length,
+          0,
+        );
+        const beforeTotalDevCards =
+          state.devDeck.length + state.players.reduce((sum, p) => sum + p.devCards.length, 0);
+
+        seafarersKit.perturb!(state, rng);
+
+        const afterResources = RESOURCES.map(
+          (r) => state.bank[r] + state.players.reduce((sum, p) => sum + p.resources[r], 0),
+        );
+        const afterDeckKnights = state.devDeck.filter((c) => c === 'knight').length;
+        const afterHeldKnights = state.players.reduce(
+          (sum, p) => sum + p.devCards.filter((c) => c === 'knight').length,
+          0,
+        );
+        const afterTotalDevCards =
+          state.devDeck.length + state.players.reduce((sum, p) => sum + p.devCards.length, 0);
+
+        expect(afterResources).toEqual(beforeResources);
+        expect(afterDeckKnights + afterHeldKnights).toBe(beforeDeckKnights + beforeHeldKnights);
+        expect(afterTotalDevCards).toBe(beforeTotalDevCards);
+        if (afterHeldKnights > beforeHeldKnights) knightGiven += 1;
+        checked += 1;
+      }
+      console.log(
+        `perturb conservation (${profileId} ${players}p): ${checked} states checked, resources & dev cards conserved, knights transferred from deck = ${knightGiven}`,
+      );
+    });
   }
 });

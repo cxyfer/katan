@@ -33,7 +33,8 @@ class SeafarersMechanicsTally implements MechanicsTally {
   private islandSettlements = 0;
   private islandBonuses = 0;
   private goldCards = 0;
-  private policyGoldChoices = 0;
+  /** 策略輪次中送出 gold.choose 的次數；包含策略自行作答與保底代答的答案。 */
+  private goldChoices = 0;
   private robberMoves = 0;
   private pirateMoves = 0;
   private lastState: GameState | null = null;
@@ -43,15 +44,14 @@ class SeafarersMechanicsTally implements MechanicsTally {
     const { level, command, source, after, events } = step;
 
     if (command.type === 'gold.choose' && source === 'policy') {
-      this.policyGoldChoices += 1;
+      this.goldChoices += 1;
     }
 
     for (const event of events) {
       switch (event.type) {
         case 'ship.built': {
           this.shipsBuilt += 1;
-          const free = (event as { free?: boolean }).free ?? (event.params as { free?: boolean } | undefined)?.free;
-          if (!free) {
+          if (event.params.free !== true) {
             this.paidShips += 1;
             if (source === 'policy') {
               if (level === 'standard') this.standardPaidShips += 1;
@@ -76,10 +76,8 @@ class SeafarersMechanicsTally implements MechanicsTally {
           break;
         }
         case 'build.settlement': {
-          const vertex =
-            (event as unknown as { vertex?: number }).vertex ??
-            (event.params as { vertex?: number } | undefined)?.vertex;
-          if (vertex !== undefined) {
+          const vertex = event.params.vertex;
+          if (typeof vertex === 'number') {
             const topo = topologyOf(after);
             const onSmallIsland = topo.vertices[vertex]?.hexes.some(
               (hex) => (after.board.layout.islands[hex] ?? 0) > 1,
@@ -91,10 +89,10 @@ class SeafarersMechanicsTally implements MechanicsTally {
           break;
         }
         case 'gold.chosen': {
-          const resources =
-            (event as { resources?: unknown[] }).resources ??
-            (event.params as { resources?: unknown[] } | undefined)?.resources;
-          this.goldCards += resources?.length ?? 0;
+          const resources = event.params.resources;
+          if (Array.isArray(resources)) {
+            this.goldCards += resources.length;
+          }
           break;
         }
         case 'robber.moved': {
@@ -106,10 +104,7 @@ class SeafarersMechanicsTally implements MechanicsTally {
           break;
         }
         case 'dev.knight': {
-          const pirate =
-            (event as { pirate?: boolean }).pirate ??
-            (event.params as { pirate?: boolean } | undefined)?.pirate;
-          if (!pirate) {
+          if (event.params.pirate !== true) {
             this.robberMoves += 1;
           }
           break;
@@ -138,7 +133,7 @@ class SeafarersMechanicsTally implements MechanicsTally {
       islandSettlements: this.islandSettlements,
       islandBonuses: this.islandBonuses,
       goldCards: this.goldCards,
-      policyGoldChoices: this.policyGoldChoices,
+      goldChoices: this.goldChoices,
       robberMoves: this.robberMoves,
       pirateMoves: this.pirateMoves,
       longestRoadIncludesShips,
@@ -250,10 +245,10 @@ export const seafarersKit: ModuleTestKit = {
     ) {
       const actorPlayer = state.players[state.turn.seat];
       if (actorPlayer) {
-        actorPlayer.devCards.push('knight');
-        if (rng.int(2) === 0) {
-          actorPlayer.resources.lumber += 2;
-          actorPlayer.resources.wool += 2;
+        const knightIdx = state.devDeck.indexOf('knight');
+        if (knightIdx >= 0) {
+          state.devDeck.splice(knightIdx, 1);
+          actorPlayer.devCards.push('knight');
         }
       }
     }
