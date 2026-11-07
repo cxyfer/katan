@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { AbandonProposalView, RoomView } from '@catan/protocol';
+import type { AbandonProposalView, RoomView, SuspendProposalView } from '@catan/protocol';
 import { ApiClient, type FetchLike } from '../src/api/client.ts';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
@@ -125,11 +125,17 @@ describe('API client', () => {
     await api.abandonGame('g1', { proposalId: 'ab1', approve: false });
     await api.withdrawGame('g1', true);
     await api.withdrawGame('g1', false);
+    await api.suspendGame('g1');
+    await api.suspendGame('g1', { proposalId: 'sus1', approve: true });
+    await api.resumeGame('g1', false);
     expect(calls).toEqual([
       { url: '/api/games/g%2F1/abandon', method: 'POST', body: {} },
       { url: '/api/games/g1/abandon', method: 'POST', body: { proposalId: 'ab1', approve: false } },
       { url: '/api/games/g1/withdraw', method: 'POST', body: { withdrawn: true } },
       { url: '/api/games/g1/withdraw', method: 'POST', body: { withdrawn: false } },
+      { url: '/api/games/g1/suspend', method: 'POST', body: {} },
+      { url: '/api/games/g1/suspend', method: 'POST', body: { proposalId: 'sus1', approve: true } },
+      { url: '/api/games/g1/resume', method: 'POST', body: { ready: false } },
     ]);
   });
 
@@ -150,15 +156,22 @@ describe('API client', () => {
 });
 
 describe('leave entry', () => {
-  it('is visible on the table without opening the settings menu and keeps the old menu actions', async () => {
+  it('is the only way to leave from the table, visible in the status strip', async () => {
     await enterTable(createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) }));
     const button = screen.getByTestId('leave-game');
     expect(button.closest('[data-testid="status-strip"]')).toBeTruthy();
     expect(button.getAttribute('aria-label')).toBe('Leave this game');
     expect(button.closest('details')).toBeNull();
-    // compact-hud 擷取腳本依賴的設定選單按鈕不變。
-    expect(screen.getByTestId('table-menu').contains(screen.getByTestId('save-and-leave'))).toBe(true);
-    expect(screen.getByTestId('table-menu').contains(screen.getByTestId('suspend-propose'))).toBe(true);
+    // 舊的右下角牌桌選單已併入離開對話框，牌桌上不再有第二個保存或暫停入口。
+    expect(screen.queryByTestId('table-menu')).toBeNull();
+    expect(screen.queryByTestId('save-and-leave')).toBeNull();
+    expect(screen.queryByTestId('suspend-propose')).toBeNull();
+  });
+
+  it('reminds that the seat is bound to this browser', async () => {
+    await enterTable(createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) }));
+    openLeaveDialog();
+    expect(screen.getByTestId('leave-identity').textContent).toContain('this browser');
   });
 
   it('is not offered on the result screen', async () => {
@@ -621,6 +634,134 @@ describe('withdrawn seats', () => {
     expect(within(screen.getByTestId('seat-1')).getByTestId('seat-withdrawn-1').textContent).toBe('Withdrawn');
     expect(screen.getByTestId('seat-0').dataset.withdrawn).toBeUndefined();
     expect(screen.queryByTestId('seat-withdrawn-0')).toBeNull();
+  });
+});
+
+function pendingSuspend(overrides: Partial<SuspendProposalView> = {}): SuspendProposalView {
+  return { id: 'sus1', proposedBy: 'p2', consents: ['p2'], createdAt: '2026-01-02T00:00:00.000Z', ...overrides };
+}
+
+describe('saving and pausing the table for everyone (SPEC §4.8)', () => {
+  it('is not offered at a table with only computer players', async () => {
+    await enterTable(createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) }));
+    openLeaveDialog();
+    expect(screen.queryByTestId('leave-suspend')).toBeNull();
+  });
+
+  it('proposes from the leave dialog, stays at the table and shows the wait', async () => {
+    const api = createFakeApi({ room: duoRoom(), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    openLeaveDialog();
+    // 伺服器記下提案後，重新抓到的房間檢視帶著這個提案。
+    api.setRoom(duoRoom({ pendingSuspend: pendingSuspend({ proposedBy: 'p1', consents: ['p1'] }) }));
+    fireEvent.click(screen.getByTestId('leave-suspend'));
+    await waitFor(() => expect(screen.queryByTestId('leave-dialog')).toBeNull());
+    expect(api.callsOf('suspendGame')[0]!.args).toEqual(['g1', undefined]);
+    expect(api.callsOf('saveGame')).toHaveLength(0);
+    expect(api.callsOf('leaveRoom')).toHaveLength(0);
+    expect((await screen.findByTestId('suspend-waiting')).textContent).toBe('You agreed. Waiting for 小美 to agree.');
+    expect(screen.queryByTestId('suspend-approve')).toBeNull();
+    expect(screen.getByTestId('board-svg')).toBeTruthy();
+
+    // 已有提案時，對話框不再提供第二次提議。
+    openLeaveDialog();
+    expect(screen.queryByTestId('leave-suspend')).toBeNull();
+    fireEvent.click(screen.getByTestId('leave-cancel'));
+
+    api.setRoom(duoRoom());
+    fireEvent.click(screen.getByTestId('suspend-withdraw'));
+    await waitFor(() => expect(screen.queryByTestId('suspend-proposal')).toBeNull());
+    expect(api.callsOf('suspendGame')[1]!.args).toEqual(['g1', { proposalId: 'sus1', approve: false }]);
+  });
+
+  it('keeps the table on screen when the proposal suspends the game at once', async () => {
+    // 回歸：回應是 `{ proposalId, suspended }` 而不是 RoomView；曾被當成房間寫入而讓牌桌整個黑掉。
+    const api = createFakeApi({
+      room: duoRoom(),
+      snapshot: makeSnapshot(makeView()),
+      suspendResult: { ok: true, data: { proposalId: 'sus1', suspended: true } },
+    });
+    await enterTable(api);
+    openLeaveDialog();
+    api.setRoom(duoRoom({ status: 'suspended', resumeReady: [] }));
+    fireEvent.click(screen.getByTestId('leave-suspend'));
+    expect(await screen.findByTestId('resume-bar')).toBeTruthy();
+    expect(screen.getByTestId('board-svg')).toBeTruthy();
+    expect(screen.getByTestId('leave-game')).toBeTruthy();
+  });
+
+  it('lets the other players agree or decline from the table banner', async () => {
+    const api = createFakeApi({ room: trioRoom({ pendingSuspend: pendingSuspend() }), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    expect(screen.getByTestId('suspend-summary').textContent).toContain('小美 proposed saving and pausing');
+    fireEvent.click(screen.getByTestId('suspend-approve'));
+    await waitFor(() => expect(api.callsOf('suspendGame')).toHaveLength(1));
+    expect(api.callsOf('suspendGame')[0]!.args).toEqual(['g1', { proposalId: 'sus1', approve: true }]);
+    fireEvent.click(screen.getByTestId('suspend-reject'));
+    await waitFor(() => expect(api.callsOf('suspendGame')).toHaveLength(2));
+    expect(api.callsOf('suspendGame')[1]!.args).toEqual(['g1', { proposalId: 'sus1', approve: false }]);
+  });
+
+  it('names everyone who still has to agree, including absent players', async () => {
+    const api = createFakeApi({
+      room: trioRoom({ pendingSuspend: pendingSuspend({ consents: ['p2', 'p1'] }) }),
+      snapshot: makeSnapshot(makeView()),
+    });
+    await enterTable(api);
+    expect(screen.getByTestId('suspend-waiting').textContent).toBe('You agreed. Waiting for Bo to agree.');
+    // 不是提案者：沒有撤回提案的按鈕。
+    expect(screen.queryByTestId('suspend-withdraw')).toBeNull();
+  });
+
+  it('reports a proposal that is already gone', async () => {
+    const api = createFakeApi({
+      room: trioRoom({ pendingSuspend: pendingSuspend() }),
+      snapshot: makeSnapshot(makeView()),
+      suspendResult: { ok: false, error: { code: 'E_NO_PROPOSAL', messageId: 'error.E_NO_PROPOSAL' } },
+    });
+    await enterTable(api);
+    api.setRoom(trioRoom());
+    fireEvent.click(screen.getByTestId('suspend-approve'));
+    expect((await screen.findByTestId('toast')).textContent).toContain('proposal to save and pause was cancelled');
+    await waitFor(() => expect(screen.queryByTestId('suspend-proposal')).toBeNull());
+  });
+
+  it('collects readiness to resume and can take it back', async () => {
+    const api = createFakeApi({ room: duoRoom({ status: 'suspended', resumeReady: [] }), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    expect(screen.getByTestId('resume-bar').textContent).toContain('Game saved and paused');
+    api.setRoom(duoRoom({ status: 'suspended', resumeReady: ['p1'] }));
+    fireEvent.click(screen.getByTestId('resume-ready'));
+    expect((await screen.findByTestId('resume-waiting')).textContent).toBe('You are ready. Waiting for 小美.');
+    expect(api.callsOf('resumeGame')[0]!.args).toEqual(['g1', true]);
+
+    api.setRoom(duoRoom({ status: 'suspended', resumeReady: [] }));
+    fireEvent.click(screen.getByTestId('resume-not-ready'));
+    await screen.findByTestId('resume-ready');
+    expect(api.callsOf('resumeGame')[1]!.args).toEqual(['g1', false]);
+  });
+
+  it('leaves a paused table without offering another pause', async () => {
+    const api = createFakeApi({ room: duoRoom({ status: 'suspended', resumeReady: [] }), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    const dialog = openLeaveDialog();
+    expect(dialog.textContent).toContain('saved and paused, so you can leave safely');
+    expect(dialog.textContent).toContain('the game stays paused');
+    expect(screen.queryByTestId('leave-suspend')).toBeNull();
+    fireEvent.click(screen.getByTestId('leave-keep'));
+    await waitFor(() => expect(api.callsOf('saveGame')).toHaveLength(1));
+    expect(await screen.findByTestId('resume-list')).toBeTruthy();
+  });
+
+  it('is written in Traditional Chinese', async () => {
+    const api = createFakeApi({
+      identity: makeIdentity({ locale: 'zh-Hant' }),
+      room: duoRoom(),
+      snapshot: makeSnapshot(makeView()),
+    });
+    await enterTable(api, ['zh-Hant']);
+    openLeaveDialog();
+    expect(screen.getByTestId('leave-suspend').textContent).toBe('提議全桌保存並暫停');
   });
 });
 

@@ -60,8 +60,7 @@
 .screen--game .game-tools__close > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .screen--game .game-tools__panel[data-testid="tool-panel-log"] > .panel > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 @media (min-width: 900px) and (min-height: 521px) {
-  .screen--game .game-tools__tab,
-  .screen--game .game__menu > summary { min-height: 40px; padding-inline: .75rem; border-radius: 8px; font-size: .72rem; }
+  .screen--game .game-tools__tab { min-height: 40px; padding-inline: .75rem; border-radius: 8px; font-size: .72rem; }
 }
 /* 矮橫屏：收合計分板從頂端排起並縮小每列高度，三到四位玩家都能完整排下；相機工具列讓到計分板右側。 */
 @media (max-height: 520px) and (min-width: 650px) {

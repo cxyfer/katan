@@ -22,9 +22,12 @@ import type {
   ResumableGameView,
   RoomPolicy,
   RoomSummaryView,
+  ResumeReadyResult,
   RoomView,
   SaveReceipt,
   ServerConfigView,
+  SuspendConsentResult,
+  SuspendProposeResult,
   WithdrawResult,
 } from '@catan/protocol';
 import type { AddBotBody, CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
@@ -61,6 +64,10 @@ export interface FakeApiOptions {
   abandonResult?: ApiResult<AbandonProposeResult | AbandonConsentResult>;
   /** 預設：回 `{ withdrawn: <請求值>, abandoned: false }`。 */
   withdrawResult?: ApiResult<WithdrawResult>;
+  /** 預設：提案回 `{ proposalId: 'sus1', suspended: false }`，表態回 `{ suspended: false }`。 */
+  suspendResult?: ApiResult<SuspendProposeResult | SuspendConsentResult>;
+  /** 預設：回 `{ resumed: false, waitingFor: [] }`。 */
+  resumeResult?: ApiResult<ResumeReadyResult>;
   sessionResult?: ApiResult<{ player: PlayerIdentity }>;
 }
 
@@ -73,6 +80,8 @@ export interface FakeApi extends CatanApi {
   setSessionResult(result: ApiResult<{ player: PlayerIdentity }>): void;
   setAbandonResult(result: ApiResult<AbandonProposeResult | AbandonConsentResult> | undefined): void;
   setWithdrawResult(result: ApiResult<WithdrawResult> | undefined): void;
+  setSuspendResult(result: ApiResult<SuspendProposeResult | SuspendConsentResult> | undefined): void;
+  setResumeResult(result: ApiResult<ResumeReadyResult> | undefined): void;
   callsOf(method: string): RecordedCall[];
 }
 
@@ -118,6 +127,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
 
   let abandonResult = options.abandonResult;
   let withdrawResult = options.withdrawResult;
+  let suspendResult = options.suspendResult;
+  let resumeResult = options.resumeResult;
 
   const record = (method: string, ...args: unknown[]) => {
     calls.push({ method, args });
@@ -148,6 +159,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     },
     setWithdrawResult(result) {
       withdrawResult = result;
+    },
+    setSuspendResult(result) {
+      suspendResult = result;
+    },
+    setResumeResult(result) {
+      resumeResult = result;
     },
 
     async getConfig() {
@@ -285,9 +302,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         })
       );
     },
-    async suspendGame(gameId: string, proposalId?: string) {
-      record('suspendGame', gameId, proposalId);
-      return room ? ok(room) : { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
+    async suspendGame(gameId: string, body?: { proposalId: string; approve: boolean }) {
+      record('suspendGame', gameId, body);
+      // 與伺服器相同：回應是提案結果，不是 RoomView。
+      return suspendResult ?? ok(body ? { suspended: false } : { proposalId: 'sus1', suspended: false });
     },
     async abandonGame(gameId: string, body?: { proposalId: string; approve: boolean }) {
       record('abandonGame', gameId, body);
@@ -299,7 +317,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     },
     async resumeGame(gameId: string, ready: boolean) {
       record('resumeGame', gameId, ready);
-      return room ? ok(room) : { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
+      return resumeResult ?? ok({ resumed: false, waitingFor: [] });
     },
     async getChat(roomId: string, query?: { after?: number; limit?: number }) {
       record('getChat', roomId, query);

@@ -51,6 +51,13 @@ is the old one. `lobby-capacity/` shows the old two-column lobby, so recapture
 it with its script before relying on it. Refresh or remove the others when a
 change touches what they show (see [Curation rules](#curation-rules)).
 
+Since 2026-11-07 the table has no separate table menu in the bottom-right
+corner: Save and leave and the all-seat save-and-pause proposal moved into the
+leave dialog in the status strip. Table captures taken before that, including
+`current/`, still show the menu button in that corner; nothing else in them
+changed. `compact-hud/`, whose save-state captures used the menu, was
+recaptured with the change.
+
 ## `current/`
 
 Captured on 2026-11-04 from `a200840` (the `pnpm build` output served with

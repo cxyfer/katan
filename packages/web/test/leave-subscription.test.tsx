@@ -272,16 +272,17 @@ describe('leaving the table', () => {
     expect(api.callsOf('leaveRoom')).toHaveLength(1);
   });
 
-  it('keeps the menu save button disabled and sends no second leave while leaving', async () => {
+  it('sends no second save or leave when keep is pressed again while leaving', async () => {
     const api = createFakeApi({ room: soloRoom(), snapshot: makeSnapshot(makeView()) });
     const release = holdLeave(api);
     await enterTable(api);
-    const menuSave = screen.getByTestId('save-and-leave') as HTMLButtonElement;
-    fireEvent.click(menuSave);
+    fireEvent.click(screen.getByTestId('leave-game'));
+    const keep = screen.getByTestId('leave-keep') as HTMLButtonElement;
+    fireEvent.click(keep);
     await waitFor(() => expect(api.callsOf('leaveRoom')).toHaveLength(1));
-    expect(menuSave.disabled).toBe(true);
+    expect(keep.disabled).toBe(true);
     expect(screen.getByTestId('save-state').getAttribute('data-state')).toBe('pending');
-    fireEvent.click(menuSave);
+    fireEvent.click(keep);
     expect(api.callsOf('saveGame')).toHaveLength(1);
     release();
     await screen.findByTestId('resume-list');

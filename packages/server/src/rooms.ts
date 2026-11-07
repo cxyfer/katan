@@ -14,6 +14,7 @@ import {
 import {
   DEFAULT_POLICY,
   type AbandonProposalView,
+  type SuspendProposalView,
   type BotLevel,
   type GameOrderMode,
   type LeaveRoomResult,
@@ -283,6 +284,26 @@ export class RoomService {
       }
     }
 
+    // 全桌暫停提案只在進行中的對局有意義；暫停中則改列出已表示準備繼續的真人（§4.8）。
+    let pendingSuspend: SuspendProposalView | null = null;
+    let resumeReady: string[] | null = null;
+    if (room.game_id && room.status === 'playing') {
+      const suspend = await this.repo.findOpenGameProposal(room.game_id, 'suspend');
+      if (suspend) {
+        pendingSuspend = {
+          id: suspend.id,
+          proposedBy: suspend.proposed_by,
+          consents: await this.repo.listGameConsents(suspend.id),
+          createdAt: suspend.created_at,
+        };
+      }
+    } else if (room.game_id && room.status === 'suspended') {
+      const humans = new Set(humanMembers(memberships).map((member) => member.player_id));
+      resumeReady = (await this.repo.listGameReady(room.game_id))
+        .filter((row) => row.ready === 1 && humans.has(row.player_id))
+        .map((row) => row.player_id);
+    }
+
     return {
       id: room.id,
       code: room.code,
@@ -302,6 +323,8 @@ export class RoomService {
       startBlockers: this.startBlockers(room, members),
       pendingPolicy,
       pendingAbandon,
+      pendingSuspend,
+      resumeReady,
       ...(viewerId ? { viewerEntryEpoch: this.entryEpochOf(roomId, viewerId) } : {}),
     };
   }

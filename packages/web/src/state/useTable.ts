@@ -108,7 +108,10 @@ export interface TableActions {
   retryCommand(): Promise<void>;
   clearCommand(): void;
   saveGame(): Promise<void>;
-  suspendGame(): Promise<void>;
+  /** 提議全桌保存並暫停（§4.8）；成功送出回傳 true，失敗已以 toast 回報。 */
+  suspendGame(): Promise<boolean>;
+  /** 對既有的全桌暫停提案表態（提案者拒絕即撤回）；提案已失效時重新抓房間並提示。 */
+  respondSuspend(proposalId: string, approve: boolean): Promise<void>;
   /** 提議（單人桌即直接）以無勝者結束對局；成功回傳 true，失敗已以 toast 回報。 */
   endGame(): Promise<boolean>;
   /** 對既有的結束對局提案表態；提案已失效時重新抓房間並提示。 */
@@ -869,14 +872,6 @@ export function useTable(options: UseTableOptions): TableController {
     }
   }, [api, dispatch, leaveToHome]);
 
-  const suspendGame = useCallback(async (): Promise<void> => {
-    const gameId = gameIdRef.current;
-    if (!gameId) return;
-    const result = await api.suspendGame(gameId);
-    if (result.ok) applyRoom(result, 'suspend');
-    else dispatch({ type: 'toast', notice: noticeFrom(result.error) });
-  }, [api, applyRoom, dispatch]);
-
   // ---------------------------------------------------------------------
   // withdraw / end the game (SPEC §4.6)
   // ---------------------------------------------------------------------
@@ -889,6 +884,38 @@ export function useTable(options: UseTableOptions): TableController {
     // 回應回來前已離開這個房間（保存並離開、退出）就不要再把它拉回來。
     if (result.ok && roomIdRef.current === roomId) dispatch({ type: 'room', room: result.data });
   }, [api, dispatch]);
+
+  // 全桌保存並暫停（SPEC §4.8）。回應只有提案結果，不是 RoomView（把它當房間寫進狀態會讓牌桌崩潰），
+  // 所以一律重新抓房間；其他座位則由伺服器推送的房間檢視看到投票。
+  const suspendGame = useCallback(async (): Promise<boolean> => {
+    const gameId = gameIdRef.current;
+    if (!gameId || leavingRef.current) return false;
+    const result = await api.suspendGame(gameId);
+    if (!result.ok) {
+      dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+      return false;
+    }
+    await refreshRoom();
+    return true;
+  }, [api, dispatch, refreshRoom]);
+
+  const respondSuspend = useCallback(
+    async (proposalId: string, approve: boolean): Promise<void> => {
+      const gameId = gameIdRef.current;
+      if (!gameId) return;
+      const result = await api.suspendGame(gameId, { proposalId, approve });
+      if (result.ok) {
+        await refreshRoom();
+      } else if (result.error.code === 'E_NO_PROPOSAL') {
+        // 有人先拒絕或撤回：視為提案已取消。
+        dispatch({ type: 'toast', notice: localNotice('play.suspendVote.cancelled') });
+        await refreshRoom();
+      } else {
+        dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+      }
+    },
+    [api, dispatch, refreshRoom],
+  );
 
   /** 對局已結束：以權威的房間與投影切到結果畫面，並刷新已不再可恢復的清單。 */
   const showEndedGame = useCallback(async (): Promise<void> => {
@@ -960,13 +987,15 @@ export function useTable(options: UseTableOptions): TableController {
       const gameId = gameIdRef.current;
       if (!gameId) return;
       const result = await api.resumeGame(gameId, ready);
-      if (result.ok) {
-        applyRoom(result, 'resume');
-        await refreshGame('resume');
+      if (!result.ok) {
+        dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+        return;
       }
-      else dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+      // 回應是 `{ resumed, waitingFor }`，不是 RoomView：重新抓房間取得狀態與準備名單。
+      await refreshRoom();
+      await refreshGame('resume');
     },
-    [api, applyRoom, dispatch, refreshGame],
+    [api, dispatch, refreshRoom, refreshGame],
   );
 
   // ---------------------------------------------------------------------
@@ -1146,6 +1175,7 @@ export function useTable(options: UseTableOptions): TableController {
       clearCommand,
       saveGame,
       suspendGame,
+      respondSuspend,
       endGame,
       respondAbandon,
       withdrawGame,
@@ -1189,6 +1219,7 @@ export function useTable(options: UseTableOptions): TableController {
       clearCommand,
       saveGame,
       suspendGame,
+      respondSuspend,
       endGame,
       respondAbandon,
       withdrawGame,
