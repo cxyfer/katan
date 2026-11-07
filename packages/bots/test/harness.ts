@@ -194,9 +194,9 @@ export const DEFAULT_LIMITS: GameLimits = { maxSteps: 5000, watchdogRolls: 60 };
 
 /** 逐 profile 覆寫；沒有列出的 profile 用 `DEFAULT_LIMITS`。擴充 profile 需要時在這裡加一筆。 */
 const PROFILE_LIMITS: Readonly<Record<string, Partial<GameLimits>>> = {
-  // Seafarers（SF 計畫 §6.1 真實策略 40 局實測）：混座已終局最長 761 步（6p seed 1，3p 410、4p 473、5p 529），最長一段無創新高為 28 次擲骰（3p seed 9，其餘局 5–20 次）；看門狗 N=60 約為最長停滯的 2.1 倍餘裕，40 局全數終局未觸發。
-  'sf-new-shores-2025': { maxSteps: 5000, watchdogRolls: 60 },
-  'sf-new-shores-paired-2025': { maxSteps: 5000, watchdogRolls: 60 },
+  // Seafarers（SF 計畫 §6.1 真實策略 40 局實測）：混座已終局最長 761 步（6p seed 1，3p 410、4p 473、5p 529），最長一段無創新高為 28 次擲骰（3p seed 9，其餘局 5–20 次）；看門狗 N=60 約為最長停滯的 2.1 倍餘裕，40 局全數終局未觸發，沿用 DEFAULT_LIMITS。
+  'sf-new-shores-2025': {},
+  'sf-new-shores-paired-2025': {},
 };
 
 export function limitsFor(profileId: string): GameLimits {

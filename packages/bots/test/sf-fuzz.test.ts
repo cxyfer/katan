@@ -28,6 +28,8 @@ import {
 } from './harness.ts';
 import { seafarersKit } from './modules/seafarers.ts';
 
+declare const console: { log(...args: unknown[]): void };
+
 const KITS = [seafarersKit];
 const FUZZ_VARIANTS_TARGET = 150;
 
@@ -83,6 +85,7 @@ describe('Seafarers fuzz perturbed states', () => {
         expect(pirateAtSeaCount, 'fuzz variants must contain states with pirate at sea').toBeGreaterThanOrEqual(1);
 
         let checked = 0;
+        let knightMovesPirate = 0;
         const failures: string[] = [];
 
         for (const [vIdx, variant] of variants.entries()) {
@@ -111,6 +114,13 @@ describe('Seafarers fuzz perturbed states', () => {
               checked += 1;
 
               if (command) {
+                if (
+                  command.type === 'dev.playKnight' &&
+                  typeof command.hex === 'number' &&
+                  variant.board.layout.terrain[command.hex] === 'sea'
+                ) {
+                  knightMovesPirate += 1;
+                }
                 const outcome = applyCommand(variant, player.id, command, seededRng(1));
                 if (!outcome.ok) {
                   failures.push(
@@ -131,6 +141,7 @@ describe('Seafarers fuzz perturbed states', () => {
 
         expect(failures.slice(0, 10)).toEqual([]);
         expect(checked).toBeGreaterThanOrEqual(FUZZ_VARIANTS_TARGET * players * 3);
+        console.log(`fuzz ${profileId} (${players}p): knight moves pirate count = ${knightMovesPirate}`);
       },
       GAME_TIMEOUT,
     );

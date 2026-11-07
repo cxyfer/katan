@@ -40,7 +40,7 @@ interface Config {
 
 /**
  * 模組測試工具（`test/modules/<id>.ts`）：有擴充的 profile 才有機制計數。擴充的測試切片把自己的 kit
- * 加在這裡；目前沒有任何模組。
+ * 加在這裡。
  */
 const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit];
 

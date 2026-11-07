@@ -28,10 +28,13 @@ import {
 } from '@catan/rules';
 import { forceTurn } from '../../rules/test/helpers.ts';
 import { boardModel, routeLength } from '../src/board.ts';
+import { turnContext } from '../src/heuristic.ts';
 import { botCommandLimit } from '../src/index.ts';
+import { seafarersAnswerFrame } from '../src/modules/seafarers/frames.ts';
 import { moduleHints } from '../src/modules/view.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { roadEdgesFrom, shipEdgesFrom, shipsLeft } from '../src/sea.ts';
+import { botSeed } from '../src/seed.ts';
 import { MAX_OFFERS_PER_WINDOW } from '../src/trade.ts';
 import type { BotCommand } from '../src/types.ts';
 import {
@@ -47,6 +50,7 @@ import {
   type BotSeat,
   type Decision,
   type StepInfo,
+  viewFor,
 } from './harness.ts';
 import { seafarersKit } from './modules/seafarers.ts';
 
@@ -185,6 +189,8 @@ describe('Seafarers B-GAME', () => {
           const seats = botSeats(mixedLevels(players, seed), (level) => createBotPolicy(level));
           const contract = contractChecks(seats, profile);
           const seaProblems: string[] = [];
+          let seaComparisons = 0;
+          let policyGoldChoices = 0;
           let stepCount = 0;
 
           const run = runBotGame({
@@ -194,6 +200,21 @@ describe('Seafarers B-GAME', () => {
             kits: KITS,
             onDecision: (state, decision) => {
               contract.check(state, decision);
+              if (decision.command.type === 'gold.choose' && decision.source !== 'fallback') {
+                const seat = seats.find((s) => s.id === decision.actor)!;
+                const view = viewFor(state, decision.actor);
+                const ctx = {
+                  selfId: decision.actor,
+                  level: seat.level,
+                  seed: botSeed('test', decision.actor, state.seq),
+                  offerPhases: {},
+                };
+                const pending = view.pending as Parameters<typeof seafarersAnswerFrame>[1];
+                const own = seafarersAnswerFrame(turnContext(view, ctx, seat.level), pending);
+                if (own && JSON.stringify(own) === JSON.stringify(decision.command)) {
+                  policyGoldChoices += 1;
+                }
+              }
             },
             onStep: (step: StepInfo) => {
               if (stepCount++ % 5 === 0) {
@@ -204,7 +225,10 @@ describe('Seafarers B-GAME', () => {
                   const forced = asActor(step.after, seat);
                   const view = viewOf(forced, player.id);
                   const hints = moduleHints(view.hints, 'seafarers');
-                  if (hints) {
+                  if (!hints) {
+                    seaProblems.push(`step ${stepCount} seq ${step.after.seq} ${player.id}: missing seafarers hints`);
+                  } else {
+                    seaComparisons += 1;
                     const model = boardModel(view, player.id);
                     const ships = shipEdgesFrom(view, player.id).slice().sort((a, b) => a - b);
                     const expectedShips = shipsLeft(model) > 0 ? hints.legalShips : [];
@@ -218,6 +242,15 @@ describe('Seafarers B-GAME', () => {
                       seaProblems.push(
                         `step ${stepCount} seq ${step.after.seq} ${player.id}: road edges mismatch`,
                       );
+                    }
+                    for (const movable of hints.movableShips) {
+                      const targets = shipEdgesFrom(view, player.id, { moving: movable.edge }).slice().sort((a, b) => a - b);
+                      const expected = movable.targets.slice().sort((a, b) => a - b);
+                      if (JSON.stringify(targets) !== JSON.stringify(expected)) {
+                        seaProblems.push(
+                          `step ${stepCount} seq ${step.after.seq} ${player.id}: movable ship ${movable.edge} targets mismatch`,
+                        );
+                      }
                     }
                     const length = routeLength(model, player.id);
                     const expectedLength = longestRouteLength(forced, player.id, true);
@@ -249,7 +282,7 @@ describe('Seafarers B-GAME', () => {
             islandBonuses: run.mechanics['seafarers.islandBonuses'] ?? 0,
             standardPaidShips: run.mechanics['seafarers.standardPaidShips'] ?? 0,
             easyPaidShips: run.mechanics['seafarers.easyPaidShips'] ?? 0,
-            policyGoldChoices: run.mechanics['seafarers.policyGoldChoices'] ?? 0,
+            policyGoldChoices,
             standardShipsMoved: run.mechanics['seafarers.standardShipsMoved'] ?? 0,
             maxWindowCommands: run.maxWindowCommands,
             longestStagnation: run.longestStagnation,
@@ -269,6 +302,7 @@ describe('Seafarers B-GAME', () => {
           expect(run.maxWindowCommands, `${label}: commands in one window`).toBeLessThanOrEqual(limit);
           expect(contract.violations, `${label}: contract violations`).toEqual([]);
           expect(seaProblems, `${label}: sea model mismatch`).toEqual([]);
+          expect(seaComparisons, `${label}: B-POLICY-SEA comparison count`).toBeGreaterThan(0);
 
           // 道路與船各 ≤ 15
           for (const player of run.state.players) {
@@ -283,7 +317,13 @@ describe('Seafarers B-GAME', () => {
     );
   }
 
-  it('checks Q2 thresholds across all played games', () => {
+  const seedCount = seedsFor(requireProfile('sf-new-shores-2025')).length;
+
+  it.skipIf(seedCount !== 3 && seedCount !== 10)('checks Q2 thresholds across all played games', () => {
+    expect(allGameStats.length, 'allGameStats count must equal expected total games across matrix').toBe(
+      SF_ENTRIES.length * seedCount,
+    );
+
     console.table(
       allGameStats.map((s) => ({
         game: `${s.profileId} ${s.players}p s${s.seed}`,
@@ -306,38 +346,38 @@ describe('Seafarers B-GAME', () => {
     for (const entry of SF_ENTRIES) {
       const { profileId, players } = entry;
       const stats = allGameStats.filter((s) => s.profileId === profileId && s.players === players);
-      if (stats.length === 0) continue;
+      const label = `${profileId} ${players}p (${seedCount} seeds)`;
+      expect(stats.length, `${label}: played games must equal seed count`).toBe(seedCount);
 
-      const totalGames = stats.length;
       const q2_1Games = stats.filter((s) => s.paidShips > 0).length;
       const q2_2Games = stats.filter((s) => s.islandBonuses > 0).length;
 
-      const label = `${profileId} ${players}p (${totalGames} seeds)`;
-
-      if (totalGames === 3) {
+      if (seedCount === 3) {
         // 預設 3 種子：Q2-1 需 3/3，Q2-2 需 ≥ 2/3
-        expect(q2_1Games, `Q2-1 (${label}) paid build.ship games: ${q2_1Games}/${totalGames}`).toBe(3);
+        expect(q2_1Games, `Q2-1 (${label}) paid build.ship games: ${q2_1Games}/${seedCount}`).toBe(3);
         expect(
           q2_2Games,
-          `Q2-2 (${label}) island bonus games: ${q2_2Games}/${totalGames}`,
+          `Q2-2 (${label}) island bonus games: ${q2_2Games}/${seedCount}`,
         ).toBeGreaterThanOrEqual(2);
-      } else if (totalGames === 10) {
+      } else if (seedCount === 10) {
         // 10 種子：Q2-1 ≥ 9/10，Q2-2 ≥ 8/10
         expect(
           q2_1Games,
-          `Q2-1 (${label}) paid build.ship games: ${q2_1Games}/${totalGames}`,
+          `Q2-1 (${label}) paid build.ship games: ${q2_1Games}/${seedCount}`,
         ).toBeGreaterThanOrEqual(9);
         expect(
           q2_2Games,
-          `Q2-2 (${label}) island bonus games: ${q2_2Games}/${totalGames}`,
+          `Q2-2 (${label}) island bonus games: ${q2_2Games}/${seedCount}`,
         ).toBeGreaterThanOrEqual(8);
       }
     }
 
     // 10 種子時檢查 Q2-3、Q2-4、Q2-5（每個 profile 合計 20 局）
-    for (const pid of ['sf-new-shores-2025', 'sf-new-shores-paired-2025'] as const) {
-      const stats = allGameStats.filter((s) => s.profileId === pid);
-      if (stats.length === 20) {
+    if (seedCount === 10) {
+      for (const pid of ['sf-new-shores-2025', 'sf-new-shores-paired-2025'] as const) {
+        const stats = allGameStats.filter((s) => s.profileId === pid);
+        expect(stats.length, `stats for ${pid} must equal 20 games`).toBe(20);
+
         const q2_3Standard = stats.filter((s) => s.standardPaidShips > 0).length;
         const q2_3Easy = stats.filter((s) => s.easyPaidShips > 0).length;
         const q2_4Games = stats.filter((s) => s.policyGoldChoices > 0).length;

@@ -10,11 +10,14 @@
  */
 
 import {
+  longestRouteLength,
   RESOURCES,
   requireProfile,
   topologyOf,
+  type FreeRoadsPending,
   type GameState,
   type ModulePending,
+  type MoveRobberPending,
   type Rng,
 } from '@catan/rules';
 import type { MechanicsStep, MechanicsTally, ModuleTestKit } from './types.ts';
@@ -47,8 +50,8 @@ class SeafarersMechanicsTally implements MechanicsTally {
       switch (event.type) {
         case 'ship.built': {
           this.shipsBuilt += 1;
-          const e = event as { free?: boolean };
-          if (!e.free) {
+          const free = (event as { free?: boolean }).free ?? (event.params as { free?: boolean } | undefined)?.free;
+          if (!free) {
             this.paidShips += 1;
             if (source === 'policy') {
               if (level === 'standard') this.standardPaidShips += 1;
@@ -73,19 +76,25 @@ class SeafarersMechanicsTally implements MechanicsTally {
           break;
         }
         case 'build.settlement': {
-          const e = event as unknown as { vertex: number };
-          const topo = topologyOf(after);
-          const onSmallIsland = topo.vertices[e.vertex]?.hexes.some(
-            (hex) => (after.board.layout.islands[hex] ?? 0) > 1,
-          );
-          if (onSmallIsland) {
-            this.islandSettlements += 1;
+          const vertex =
+            (event as unknown as { vertex?: number }).vertex ??
+            (event.params as { vertex?: number } | undefined)?.vertex;
+          if (vertex !== undefined) {
+            const topo = topologyOf(after);
+            const onSmallIsland = topo.vertices[vertex]?.hexes.some(
+              (hex) => (after.board.layout.islands[hex] ?? 0) > 1,
+            );
+            if (onSmallIsland) {
+              this.islandSettlements += 1;
+            }
           }
           break;
         }
         case 'gold.chosen': {
-          const e = event as { resources?: unknown[] };
-          this.goldCards += e.resources?.length ?? 0;
+          const resources =
+            (event as { resources?: unknown[] }).resources ??
+            (event.params as { resources?: unknown[] } | undefined)?.resources;
+          this.goldCards += resources?.length ?? 0;
           break;
         }
         case 'robber.moved': {
@@ -97,10 +106,10 @@ class SeafarersMechanicsTally implements MechanicsTally {
           break;
         }
         case 'dev.knight': {
-          const e = event as { pirate?: boolean };
-          if (e.pirate) {
-            this.pirateMoves += 1;
-          } else {
+          const pirate =
+            (event as { pirate?: boolean }).pirate ??
+            (event.params as { pirate?: boolean } | undefined)?.pirate;
+          if (!pirate) {
             this.robberMoves += 1;
           }
           break;
@@ -111,10 +120,11 @@ class SeafarersMechanicsTally implements MechanicsTally {
 
   snapshot(): Readonly<Record<string, number>> {
     let longestRoadIncludesShips = 0;
-    const holderId = this.lastState?.awards.longestRoad;
+    const holderId = this.lastState?.awards?.longestRoad;
     if (holderId && this.lastState) {
-      const hasShip = this.lastState.board.roads.some((r) => r?.player === holderId && r?.ship);
-      if (hasShip) longestRoadIncludesShips = 1;
+      const withShips = longestRouteLength(this.lastState, holderId, true);
+      const withoutShips = longestRouteLength(this.lastState, holderId, false);
+      if (withShips > withoutShips) longestRoadIncludesShips = 1;
     }
 
     return {
@@ -193,34 +203,58 @@ export const seafarersKit: ModuleTestKit = {
       }
     }
 
-    if (state.turn.phase !== 'setup' && state.players.length > 0) {
-      const p = state.players[rng.int(state.players.length)]!.id;
+    const currentActor = state.players[state.turn.seat]?.id;
+    if (state.turn.phase !== 'setup' && currentActor) {
       const choice = rng.int(4);
       if (choice === 0) {
-        const responders = [p];
-        const other = state.players.find((pl) => pl.id !== p);
+        const responders = [currentActor];
+        const other = state.players.find((pl) => pl.id !== currentActor);
         if (other && rng.int(2) === 0) responders.push(other.id);
         const picks: Record<string, number> = {};
         for (const id of responders) {
           picks[id] = rng.int(2) + 1;
         }
-        state.pending = {
+        const goldPending: ModulePending = {
           kind: 'seafarers.gold',
           module: 'seafarers',
           responders,
           data: { picks },
-        } as unknown as ModulePending;
+        };
+        state.pending = goldPending;
       } else if (choice === 1) {
-        state.pending = {
+        const remaining = rng.int(2) + 1;
+        const freeRoadsPending: FreeRoadsPending = {
           kind: 'freeRoads',
-          actor: p,
-          count: rng.int(2) + 1,
-        } as unknown as ModulePending;
+          actor: currentActor,
+          remaining,
+          granted: remaining,
+        };
+        state.pending = freeRoadsPending;
       } else if (choice === 2) {
-        state.pending = {
+        const moveRobberPending: MoveRobberPending = {
           kind: 'moveRobber',
-          actor: p,
-        } as unknown as ModulePending;
+          actor: currentActor,
+          cause: 'seven',
+          pirate: false,
+        };
+        state.pending = moveRobberPending;
+      }
+    }
+
+    if (
+      !state.pending &&
+      (state.turn.phase === 'preroll' || state.turn.phase === 'action') &&
+      !state.turn.devCardPlayed &&
+      currentActor &&
+      rng.int(2) === 0
+    ) {
+      const actorPlayer = state.players[state.turn.seat];
+      if (actorPlayer) {
+        actorPlayer.devCards.push('knight');
+        if (rng.int(2) === 0) {
+          actorPlayer.resources.lumber += 2;
+          actorPlayer.resources.wool += 2;
+        }
       }
     }
   },

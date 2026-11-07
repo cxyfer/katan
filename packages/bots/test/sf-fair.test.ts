@@ -10,7 +10,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { actionHints, isSeaEdge as rulesIsSeaEdge, topologyOf, type GameState, type GameView, type ModulePending } from '@catan/rules';
+import {
+  actionHints,
+  type FreeRoadsPending,
+  type GameState,
+  type GameView,
+  type ModulePending,
+  type MoveRobberPending,
+} from '@catan/rules';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';
 import {
@@ -51,7 +58,10 @@ function snapshots(profileId: string, players: number, seed: number, every: numb
   return out;
 }
 
-/** 注入特定 pending frame 的狀態，確保取樣涵蓋 gold、可移動海盜的 moveRobber、含船的 freeRoads。 */
+/**
+ * 注入特定 pending frame 的狀態，確保取樣涵蓋 gold、可移動海盜的 moveRobber、含船的 freeRoads。
+ * 註：4 人局四項均為自然樣本；6 人局的「含船 freeRoads」由第一分支注入（挑選盤面上具合法船位的玩家）。
+ */
 function ensureRequiredFairStates(states: GameState[]): GameState[] {
   const result = [...states];
   const baseState = states.find((s) => s.turn.phase === 'action' && !s.result && s.turn.setup === null) ?? states[0];
@@ -63,12 +73,13 @@ function ensureRequiredFairStates(states: GameState[]): GameState[] {
   const hasGold = result.some((s) => s.pending?.kind === 'seafarers.gold');
   if (!hasGold) {
     const goldState = cloneState(baseState);
-    goldState.pending = {
+    const goldPending: ModulePending = {
       kind: 'seafarers.gold',
       module: 'seafarers',
       responders: [actorId],
       data: { picks: { [actorId]: 2 } },
-    } as unknown as ModulePending;
+    };
+    goldState.pending = goldPending;
     result.push(goldState);
   }
 
@@ -81,10 +92,13 @@ function ensureRequiredFairStates(states: GameState[]): GameState[] {
   });
   if (!hasPirateRobber) {
     const robberState = cloneState(baseState);
-    robberState.pending = {
+    const robberPending: MoveRobberPending = {
       kind: 'moveRobber',
       actor: actorId,
-    } as unknown as ModulePending;
+      cause: 'seven',
+      pirate: false,
+    };
+    robberState.pending = robberPending;
     result.push(robberState);
   }
 
@@ -99,11 +113,13 @@ function ensureRequiredFairStates(states: GameState[]): GameState[] {
     let found = false;
     for (const player of baseState.players) {
       const candidateState = cloneState(baseState);
-      candidateState.pending = {
+      const freeRoadsPending: FreeRoadsPending = {
         kind: 'freeRoads',
         actor: player.id,
-        count: 2,
-      } as unknown as ModulePending;
+        remaining: 2,
+        granted: 2,
+      };
+      candidateState.pending = freeRoadsPending;
       const hints = actionHints(candidateState, player.id).modules?.seafarers as { legalShips?: number[] } | undefined;
       if ((hints?.legalShips?.length ?? 0) > 0) {
         result.push(candidateState);
@@ -112,32 +128,7 @@ function ensureRequiredFairStates(states: GameState[]): GameState[] {
       }
     }
     if (!found) {
-      const candidateState = cloneState(baseState);
-      const topo = topologyOf(candidateState);
-      const seaEdgeIndex = topo.edges.findIndex((_, edge) => rulesIsSeaEdge(candidateState, edge));
-      if (seaEdgeIndex >= 0) {
-        const v = topo.edges[seaEdgeIndex]!.vertices[0]!;
-        candidateState.board.buildings[v] = { player: actorId, city: false };
-      }
-      candidateState.pending = {
-        kind: 'freeRoads',
-        actor: actorId,
-        count: 2,
-      } as unknown as ModulePending;
-      result.push(candidateState);
-    }
-  }
-
-  // 4. pirate at sea
-  const hasPirateAtSea = result.some(
-    (s) => s.board.pirate !== null && s.board.layout.terrain[s.board.pirate] === 'sea',
-  );
-  if (!hasPirateAtSea) {
-    const seaHex = baseState.board.layout.terrain.findIndex((t) => t === 'sea');
-    if (seaHex >= 0) {
-      const pirateState = cloneState(baseState);
-      pirateState.board.pirate = seaHex;
-      result.push(pirateState);
+      throw new Error('cannot find player with legal ships to inject freeRoads');
     }
   }
 
