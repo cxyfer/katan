@@ -582,8 +582,7 @@ export class GameCoordinator {
     // §4.8：暫停成立時取消進行中的交易協商與房間政策提案；策略上的待決效果保留。
     // 有提案被取消才是新的狀態轉移：修訂版本加一並記下事件，否則維持原修訂版本。
     const current = JSON.parse(game.state_json) as GameState;
-    const frozen = suspendNegotiation(current);
-    const events = frozen === current ? [] : frozen.log.slice(-(frozen.seq - current.seq));
+    const { state: frozen, events } = suspendNegotiation(current);
     const revision = events.length > 0 ? game.revision + 1 : game.revision;
     await this.repo.transaction(async () => {
       await this.repo.saveGame(game.id, frozen, revision, 'suspended', 'saved');

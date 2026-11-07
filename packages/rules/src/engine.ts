@@ -514,13 +514,16 @@ export function canPlaceRoad(
 // turn lifecycle
 // ---------------------------------------------------------------------------
 
-function expireOffers(state: GameState, reason: 'window' | 'withdrawn' | 'gameOver' | 'suspended'): void {
+/** 回傳這次發出的事件；`state.log` 有長度上限，呼叫端不能靠切片取回全部事件。 */
+function expireOffers(state: GameState, reason: 'window' | 'withdrawn' | 'gameOver' | 'suspended'): GameEvent[] {
+  const events: GameEvent[] = [];
   for (const offer of state.offers) {
     if (offer.status === 'open' || offer.status === 'agreed') {
       offer.status = 'expired';
-      emit(state, 'trade.expired', { offerId: offer.id, reason });
+      events.push(emit(state, 'trade.expired', { offerId: offer.id, reason }));
     }
   }
+  return events;
 }
 
 function beginTurn(state: GameState, seat: number): void {
@@ -2025,14 +2028,15 @@ function resourceTerms(terms: Partial<Record<CardKind, number>>): Partial<Record
 /**
  * 全桌保存並暫停（§4.8）的生命週期轉移，不是規則：取消進行中的交易協商，
  * 策略上的待決效果（棄牌、移動強盜、免費道路等）原樣保留，恢復後接著處理。
- * 沒有可取消的提案時回傳同一個物件，呼叫端據此判斷是否需要新的修訂版本。
+ * 回傳轉移後的狀態與這次發出的事件；沒有可取消的提案時回傳同一個物件與空事件，
+ * 呼叫端據此判斷是否需要新的修訂版本。事件另外回傳，不受 `state.log` 的長度上限影響。
  */
-export function suspendNegotiation(state: GameState): GameState {
-  if (state.result) return state;
-  if (!state.offers.some((offer) => offer.status === 'open' || offer.status === 'agreed')) return state;
+export function suspendNegotiation(state: GameState): { state: GameState; events: GameEvent[] } {
+  if (state.result) return { state, events: [] };
+  if (!state.offers.some((offer) => offer.status === 'open' || offer.status === 'agreed')) return { state, events: [] };
   const next = clone(state);
-  expireOffers(next, 'suspended');
-  return next;
+  const events = expireOffers(next, 'suspended');
+  return { state: next, events };
 }
 
 /**
