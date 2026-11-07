@@ -6,7 +6,7 @@
  * - 4 人（'sf-new-shores-2025'）、6 人（'sf-new-shores-paired-2025'）
  * - standard、easy
  * - 種子 61、62
- * - 取樣狀態必須包含：gold、可移動海盜的 moveRobber、含船的 freeRoads。
+ * - 取樣狀態必須包含：gold、可移動海盜的 moveRobber、含船的 freeRoads、海盜在海上。
  */
 
 import { describe, expect, it } from 'vitest';
@@ -128,6 +128,19 @@ function ensureRequiredFairStates(states: GameState[]): GameState[] {
     }
   }
 
+  // 4. pirate at sea
+  const hasPirateAtSea = result.some(
+    (s) => s.board.pirate !== null && s.board.layout.terrain[s.board.pirate] === 'sea',
+  );
+  if (!hasPirateAtSea) {
+    const seaHex = baseState.board.layout.terrain.findIndex((t) => t === 'sea');
+    if (seaHex >= 0) {
+      const pirateState = cloneState(baseState);
+      pirateState.board.pirate = seaHex;
+      result.push(pirateState);
+    }
+  }
+
   return result;
 }
 
@@ -144,7 +157,7 @@ for (const { profileId, players } of CASES) {
     ];
     const states = ensureRequiredFairStates(collected);
 
-    it('collects mid-game states containing gold, moveRobber with pirate, and freeRoads with ships', () => {
+    it('collects mid-game states containing gold, moveRobber with pirate, freeRoads with ships, and pirate at sea', () => {
       expect(states.length).toBeGreaterThan(20);
 
       const hasGold = states.some((s) => s.pending?.kind === 'seafarers.gold');
@@ -160,10 +173,14 @@ for (const { profileId, players } of CASES) {
         const hints = actionHints(s, actor).modules?.seafarers as { legalShips?: unknown[] } | undefined;
         return (hints?.legalShips?.length ?? 0) > 0;
       });
+      const hasPirateAtSea = states.some(
+        (s) => s.board.pirate !== null && s.board.layout.terrain[s.board.pirate] === 'sea',
+      );
 
       expect(hasGold, 'sample must contain seafarers.gold pending').toBe(true);
       expect(hasPirateRobber, 'sample must contain moveRobber with pirate targets').toBe(true);
       expect(hasShipFreeRoads, 'sample must contain freeRoads with legal ships').toBe(true);
+      expect(hasPirateAtSea, 'sample must contain states with pirate at sea').toBe(true);
     });
 
     for (const level of ['standard', 'easy'] as const) {

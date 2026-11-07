@@ -77,6 +77,11 @@ describe('Seafarers fuzz perturbed states', () => {
 
         expect(variants).toHaveLength(FUZZ_VARIANTS_TARGET);
 
+        const pirateAtSeaCount = variants.filter(
+          (v) => v.board.pirate !== null && v.board.layout.terrain[v.board.pirate] === 'sea',
+        ).length;
+        expect(pirateAtSeaCount, 'fuzz variants must contain states with pirate at sea').toBeGreaterThanOrEqual(1);
+
         let checked = 0;
         const failures: string[] = [];
 

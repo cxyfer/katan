@@ -122,7 +122,12 @@ function contractChecks(seats: readonly BotSeat[], profile: ProfileDefinition) {
 
     const seat = seats.find((candidate) => candidate.id === actor);
     const robberHex = robberTarget(command);
-    if (seat?.level === 'standard' && robberHex !== null && ownsOnlyBuildingsOn(state, actor, robberHex)) {
+    if (
+      seat?.level === 'standard' &&
+      robberHex !== null &&
+      state.board.layout.terrain[robberHex] !== 'sea' &&
+      ownsOnlyBuildingsOn(state, actor, robberHex)
+    ) {
       violations.push(`robber on own hex: ${where} hex ${robberHex}`);
     }
   };
@@ -159,6 +164,8 @@ interface GameStats {
   easyPaidShips: number;
   policyGoldChoices: number;
   standardShipsMoved: number;
+  maxWindowCommands: number;
+  longestStagnation: number;
 }
 
 describe('Seafarers B-GAME', () => {
@@ -244,6 +251,8 @@ describe('Seafarers B-GAME', () => {
             easyPaidShips: run.mechanics['seafarers.easyPaidShips'] ?? 0,
             policyGoldChoices: run.mechanics['seafarers.policyGoldChoices'] ?? 0,
             standardShipsMoved: run.mechanics['seafarers.standardShipsMoved'] ?? 0,
+            maxWindowCommands: run.maxWindowCommands,
+            longestStagnation: run.longestStagnation,
           });
 
           // Q1 矩陣斷言
@@ -288,6 +297,8 @@ describe('Seafarers B-GAME', () => {
         easyPaid: s.easyPaidShips,
         goldPolicy: s.policyGoldChoices,
         stdMoved: s.standardShipsMoved,
+        maxWindow: s.maxWindowCommands,
+        stagnant: s.longestStagnation,
       })),
     );
 
