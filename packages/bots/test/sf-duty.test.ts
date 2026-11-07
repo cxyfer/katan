@@ -555,13 +555,15 @@ describe('module registration (SF-1)', () => {
     for (const profile of profiles) expect(botModulesOf(profile).map((module) => module.id)).toEqual(['seafarers']);
   });
 
-  it('does not open the profiles yet: no scenario is supported until SF-4', () => {
-    expect(SUPPORTED_SCENARIOS).toEqual([]);
+  it('opens both profiles: new-shores is the only supported scenario', () => {
+    expect(SUPPORTED_SCENARIOS).toEqual(['new-shores']);
     for (const profile of profiles) {
       expect(profile.scenario).toBe('new-shores');
-      expect(BOT_MODULES.get('seafarers')!.supports!(profile)).toBe(false);
-      expect(botsCanPlay(profile)).toBe(false);
+      expect(BOT_MODULES.get('seafarers')!.supports!(profile)).toBe(true);
+      expect(botsCanPlay(profile)).toBe(true);
     }
+    // Seafarers + Cities & Knights 缺 CK 的 BotModule，仍然不開放。
+    expect(botsCanPlay(getProfile('sf-ck-new-shores-2025') as ProfileDefinition)).toBe(false);
   });
 
   it('merges the planned pacing, keeps the window limit and lets gold responders answer', () => {
