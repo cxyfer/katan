@@ -7,22 +7,29 @@
  * - 封鎖前線：對手每艘 open-end 船的下一步（`shipEdgesOf`）中，鄰接該 hex 的邊，乘上領先係數。
  * - 封鎖我的航線：「我的航線」就是 SF-2a 的島嶼聚落計畫（`islandSettlementPlans`，與 bot 實際在走的計畫
  *   同一份目標排序與船路徑上限）。比較「沒有海盜」與「海盜在這個 hex」兩種盤面下最好的計畫 score
- *   （以 economy 的匯率換成加權點數），所以繞得過去的海盜不扣分，沒有船可造時也不擋住什麼。
- * - 海盜現在擋住我時（差 > 0），移走它本身就有收益：每個不再擋住我的候選都加上這個差（`relief`），
+ *   （換成加權點數），所以繞得過去的海盜不扣分，沒有船可造時也不擋住什麼。
+ * - 海盜現在擋住我時（差 > 0），移走它本身就有收益：每個不再擋住我的候選都加上這個差（`unblock`），
  *   外框 `null` 只有這個收益加上微小的偏好，所以只在「擋住我、而且沒有更好的目標」時才會勝出。
  * - 基準是現況：base 的強盜候選分數是「把強盜放在那裡的好壞」，並不含「把強盜移離目前的格子」的收益，
  *   所以移海盜（強盜留在原處）要扣掉強盜目前壓在我身上的損失（base 評分套用在強盜所在的格子上），
  *   以及海盜離開 P 之後放開的對手前線。否則強盜與海盜同時擋住我時，海盜會因為多了一項收益而佔便宜。
  *   強盜那一側不含偷牌加分（強盜留在原處偷不到牌），否則旁邊有對手又有牌時基準會多出 1.75–3.5 分。
  *
- * 決定性：不讀事件、不消耗亂數；同分取候選順序在前者（hex 由小到大，null 最後）。航線價值取決於自己的
- * 手牌與產能（計畫的 ETA），所以缺牌時海盜擋路的代價較低；這是刻意的：打不起船時，限制你的不是海盜。
+ * 兩種航線尺度（同一份計畫、不同的手牌假設）：
+ * - 放置（`score`，7 點與騎士的目標挑選）：海盜放下後會停在盤面上好幾個回合，擋住的是這條航線「之後」
+ *   的價值，不該因為此刻手牌少就縮水，否則手牌少的 bot 會為了偷牌把海盜放到自己的航線上，擲出 7
+ *   時也不會移走擋路的海盜。所以用「付得起」的手牌評估，計畫分數只剩 value / (1 + 船數 × ETA_PER_SHIP)。
+ * - 打騎士（`relief`、`net`，preroll 的門檻）：騎士是此刻要花的資源，手牌湊不出船時，限制你的不是
+ *   海盜，不值得為它動用騎士，所以用真實手牌的 ETA。
+ * 騎士打出後，目標格由放置的 `score` 決定。
+ *
+ * 決定性：不讀事件、不消耗亂數；同分取候選順序在前者（hex 由小到大，null 最後）。
  */
 
 import { canPlay } from '../../base/cards.ts';
 import { robberCandidates } from '../../base/robber.ts';
 import type { BoardModel } from '../../board.ts';
-import { PIP_VALUE } from '../../economy.ts';
+import { PIP_VALUE, type Hand } from '../../economy.ts';
 import { shipEdgesOf } from '../../sea.ts';
 import type { BanditTarget, BotModule, Scored, TurnContext } from '../types.ts';
 import { moduleHints } from '../view.ts';
@@ -38,12 +45,13 @@ const PREROLL_RELIEF_MIN = 5;
 
 export interface PirateOption {
   readonly target: BanditTarget;
+  /** 放置的分數（7 點與騎士的目標挑選）：航線以「付得起」的手牌評估，不隨手牌縮水。 */
   readonly score: number;
-  /** 這個選擇替我的航線解除的封鎖（海盜現在擋住的價值，扣掉新位置仍擋住的部分）。 */
+  /** 這個選擇替我的航線解除的封鎖，以真實手牌的 ETA 評估（preroll 的門檻）。 */
   readonly relief: number;
   /**
-   * 只看海盜這一側的淨值：`score` 扣掉強盜基準。偷牌＋新位置的前線－新位置擋住自己的損失＋解除的封鎖
-   * －離開 P 放開的前線；preroll 的門檻用它，因為打不打這張騎士，強盜都留在原處。
+   * 只看海盜這一側的淨值，同樣以真實手牌評估（preroll 的門檻）：偷牌＋新位置的前線－新位置擋住自己的
+   * 損失＋解除的封鎖－離開 P 放開的前線；打不打這張騎士，強盜都留在原處，所以不含強盜基準。
    */
   readonly net: number;
 }
@@ -77,15 +85,35 @@ function withPirate(model: BoardModel, hex: number | null): BoardModel {
   return { ...model, view: { ...model.view, board: { ...model.view.board, pirate: hex } } };
 }
 
+/** 付得起任何島嶼計畫（最多 4 艘船加一座聚落）的手牌：ETA 只剩 `船數 × ETA_PER_SHIP`。 */
+const FULL_HAND: Hand = { lumber: 9, brick: 9, wool: 9, grain: 9, ore: 9 };
+
 /**
  * 「我的航線」的價值：SF-2a 的島嶼聚落計畫（`islandSettlementPlans`，船路徑上限、目標排序與 bot 實際
- * 在走的計畫相同）在 `model` 上最好的一個的 score，以 economy 的匯率（1 VP = 1 / PIP_VALUE 點）換算成
+ * 在走的計畫相同）在 `model` 上最好的一個的 score，以 economy 的匯率（1 VP = 1 / PIP_VALUE 點，
+ * 約 14.3 點／VP，是強盜評分用的尺度；開局選位的 `ISLAND_VP_VALUE` 是另一種決策的尺度）換算成
  * 與強盜評分相同的加權點數。船已用完或路徑被擋死時沒有計畫，價值為 0。計畫用 `turn.economy` 當 base：
- * 它只讀手牌、產能、匯率、道路搜尋與剩餘棋子，與海盜的位置無關。
+ * 它只讀手牌、產能、匯率、道路搜尋與剩餘棋子，與海盜的位置無關；`hand` 給定時改用它當手牌（見檔頭的兩種尺度）。
+ *
+ * 近似：只比較島嶼計畫，沒有和整體最佳計畫（城市、發展卡等）比。若別的計畫本來就更好，擋住島嶼
+ * 航線的實際損失比這裡算的小（relief 會偏高，實測 10.6 對約 6.5）；SF-3 校準時可改成
+ * `max(P0, 島嶼_無海盜) − max(P0, 島嶼_有海盜)`。
  */
-function routeValue(turn: TurnContext, model: BoardModel): number {
-  const best = islandSettlementPlans({ model, level: turn.level, base: turn.economy })[0];
+function routeValue(turn: TurnContext, model: BoardModel, hand?: Hand): number {
+  const base = hand === undefined ? turn.economy : { ...turn.economy, hand };
+  const best = islandSettlementPlans({ model, level: turn.level, base })[0];
   return best ? best.score / PIP_VALUE : 0;
+}
+
+/** 一種手牌假設下的航線：海盜現在擋住的價值，以及把海盜放到 `hex` 之後擋住的價值。 */
+function routeScale(turn: TurnContext, hand?: Hand): { unblock: number; loss: (hex: number) => number } {
+  const { model } = turn;
+  // 沒有海盜時最好的計畫：海盜擋不到更好的了。
+  const best = routeValue(turn, withPirate(model, null), hand);
+  return {
+    unblock: Math.max(0, best - routeValue(turn, model, hand)),
+    loss: (hex) => Math.max(0, best - routeValue(turn, withPirate(model, hex), hand)),
+  };
 }
 
 /** 對手 open-end 船的前線：下一步能放船、而且接在沒有自己棋子的船端（規則的 open end）上的邊。 */
@@ -129,9 +157,9 @@ export function pirateOptions(turn: TurnContext): PirateOption[] {
   if (targets.length === 0) return [];
   const { model, view, ctx } = turn;
   const free = withPirate(model, null);
-  const best = routeValue(turn, free);
-  // 海盜現在擋住我的價值；沒有海盜（或繞得過去）時為 0。
-  const unblock = Math.max(0, best - routeValue(turn, model));
+  // 放置用「付得起」的手牌，打騎士用真實手牌（見檔頭）。
+  const placing = routeScale(turn, FULL_HAND);
+  const paying = routeScale(turn);
   // 對手的前線以「沒有海盜」的盤面計算，才看得到海盜現在已經擋住的邊。
   const fronts = view.players
     .filter((player) => player.id !== ctx.selfId)
@@ -151,18 +179,28 @@ export function pirateOptions(turn: TurnContext): PirateOption[] {
   const robberHere = robberScoreHere(turn);
   const released = pirateHere === null ? 0 : frontValue(pirateHere);
   const options: PirateOption[] = [];
-  const add = (target: BanditTarget, net: number, relief: number): void => {
-    options.push({ target, score: net + robberHere, relief, net });
-  };
   for (const target of targets) {
     if (target === null) {
-      if (unblock > 0) add(target, unblock + NULL_BONUS - released, unblock);
+      // 外框只在海盜現在擋住我時才有意義。
+      if (placing.unblock > 0) {
+        options.push({
+          target,
+          score: placing.unblock + NULL_BONUS - released + robberHere,
+          relief: paying.unblock,
+          net: paying.unblock + NULL_BONUS - released,
+        });
+      }
       continue;
     }
     const stealable = stealableHand(turn, target);
     const raid = stealable > 0 ? 1.5 + 0.25 * Math.min(stealable, 8) : 0;
-    const loss = Math.max(0, best - routeValue(turn, withPirate(model, target)));
-    add(target, raid + frontValue(target) - loss + unblock - released, unblock - loss);
+    const gain = raid + frontValue(target) - released;
+    options.push({
+      target,
+      score: gain - placing.loss(target) + placing.unblock + robberHere,
+      relief: paying.unblock - paying.loss(target),
+      net: gain - paying.loss(target) + paying.unblock,
+    });
   }
   return options;
 }
@@ -179,6 +217,8 @@ export const seafarersBanditCandidates: NonNullable<BotModule['banditCandidates'
  * 強盜壓著自己的建築時由 base 的騎士條件先決定（被擋 ≥3 點），而且它的目標評分已含上述基準，所以這裡不另外比較。
  * 門檻有兩道：解除的封鎖本身要夠大（`relief`，否則只是換個地方擋路），而且海盜這一側的淨值（`net`）也要夠大，
  * 也就是扣掉離開 P 之後放開的對手前線；否則為了剛好達標的 relief，會放掉更大的封鎖價值。
+ * 兩道門檻看真實手牌的 ETA（手牌湊不出船時不浪費騎士）；通過門檻之後，目標格由放置的 `score` 挑
+ * （與手牌無關，見檔頭的兩種尺度）。
  */
 export const seafarersPreroll: NonNullable<BotModule['preroll']> = (turn) => {
   if (turn.level === 'easy' || !canPlay(turn, 'knight')) return [];

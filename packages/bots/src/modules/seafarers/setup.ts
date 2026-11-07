@@ -21,7 +21,11 @@ import type { BotCommand, BotModule, Scored, TurnContext } from '../types.ts';
 import { claimedIslands } from './plan.ts';
 import { moduleHints } from '../view.ts';
 
-/** 小島第一座聚落的 +2 VP 折成加權點數；一座聚落 1 VP 約 3 點，所以約 6 點。 */
+/**
+ * 小島第一座聚落的 +2 VP 折成加權點數；一座聚落 1 VP 約 3 點，所以約 6 點。這是開局選位的尺度（與
+ * `setupSpotScore` 同單位）；`bandit.ts` 把計畫分數（VP）換成點數用 `1 / PIP_VALUE` 約 14.3 點／VP，
+ * 那是強盜與海盜評分的尺度，兩種決策各用各的，不互換。
+ */
 export const ISLAND_VP_VALUE = 6;
 /** 每多一艘船的折扣，與 `roadDirectionScore` 對第二步的 0.75 一致。 */
 const SHIP_DISCOUNT = 0.75;

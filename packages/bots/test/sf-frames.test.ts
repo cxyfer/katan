@@ -31,7 +31,7 @@ import { PIP_VALUE, goldPipsAt, resourceWeights, settlementSpotValue, wildcardWe
 import { heuristicPolicy, turnContext } from '../src/heuristic.ts';
 import { pirateOptions, seafarersBanditCandidates, seafarersPreroll } from '../src/modules/seafarers/bandit.ts';
 import { seafarersAnswerFrame } from '../src/modules/seafarers/frames.ts';
-import { ISLAND_SETTLEMENT, islandSettlementPlans } from '../src/modules/seafarers/plan.ts';
+import { ETA_PER_SHIP, ISLAND_SETTLEMENT, islandSettlementPlans } from '../src/modules/seafarers/plan.ts';
 import { ISLAND_VP_VALUE, islandSetupBonus, islandSites, setupShipScore, shipDiscount } from '../src/modules/seafarers/setup.ts';
 import type { TurnContext } from '../src/modules/types.ts';
 import { moduleHints } from '../src/modules/view.ts';
@@ -169,20 +169,26 @@ function fillRoads(state: GameState, playerId: string, count: number): void {
   for (const edge of edges.slice(0, count)) road(state, playerId, edge);
 }
 
+/** 一副可以造船的手牌：打騎士的門檻看真實手牌的 ETA（SF-2a 的計畫），有這副牌海盜擋路才有代價。 */
+const SHIP_HAND = { lumber: 3, wool: 2, brick: 1, grain: 1 } as const;
+
 /**
  * 海盜擋路的盤面：p1 的聚落在 (1,0) 的東北角（A），到島 3 金礦邊的空點（(2,0) 的 corner 5，
  * 簡稱 S）只要沿 (2,0) 的 NW、NE 兩條邊各一艘船；海盜在 (2,0) 時，這兩條邊都不能放，
- * 最短的繞路要 4 艘。
+ * 最短的繞路要 4 艘。p1 預設空手：放置海盜（7 點）不看手牌；要看 ETA 的測試（preroll 的騎士門檻）傳 `hand`。
  */
-function blockedRoute(phase: 'preroll' | 'action' = 'preroll', pirate: 'blocking' | 'frame' = 'blocking') {
+function blockedRoute(
+  phase: 'preroll' | 'action' = 'preroll',
+  pirate: 'blocking' | 'frame' = 'blocking',
+  hand: Partial<Record<Resource, number>> = {},
+) {
   const state = emptySeafarersGame(4, 0, phase);
   const a = corner(state, 1, 0, 5);
   const s = corner(state, 2, 0, 5);
   settle(state, 'p1', a);
   state.board.pirate = pirate === 'blocking' ? hex(state, 2, 0) : null;
   state.players[0]!.devCards = ['knight'];
-  // 航線的價值取決於 ETA（SF-2a 的計畫）：要有一副可以造船的手牌，海盜擋路才有代價。
-  giveHand(state, 'p1', { lumber: 3, wool: 2, brick: 1, grain: 1 });
+  giveHand(state, 'p1', hand);
   return { state, a, s, sea: hex(state, 2, 0) };
 }
 
@@ -335,7 +341,7 @@ describe('answerFrame: seafarers.gold', () => {
 
 describe('preroll: the knight moves a pirate that blocks the planned route', () => {
   it('standard plays the knight on the pirate and unblocks the route', () => {
-    const { state, s } = blockedRoute();
+    const { state, s } = blockedRoute('preroll', 'blocking', SHIP_HAND);
     expect(shipsToSite(state, s)).toBeGreaterThan(3); // 被擋：最短的繞路要 4 艘
     const view = viewOf(state, 'p1');
     const command = heuristicPolicy('standard').decide(view, ctxFor('p1'));
@@ -347,7 +353,7 @@ describe('preroll: the knight moves a pirate that blocks the planned route', () 
   });
 
   it('the hook returns one candidate scored by what it frees', () => {
-    const { state } = blockedRoute();
+    const { state } = blockedRoute('preroll', 'blocking', SHIP_HAND);
     const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
     const candidates = seafarersPreroll(turn);
     expect(candidates).toHaveLength(1);
@@ -356,33 +362,33 @@ describe('preroll: the knight moves a pirate that blocks the planned route', () 
   });
 
   it('easy leaves the pirate alone (same as base)', () => {
-    const { state } = blockedRoute();
+    const { state } = blockedRoute('preroll', 'blocking', SHIP_HAND);
     const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1', 'easy'), 'easy');
     expect(seafarersPreroll(turn)).toEqual([]);
     expect(decide(state, 'p1', 'easy')).toEqual({ type: 'turn.roll' });
   });
 
   it('does nothing without a knight, without a blocking pirate, or without the pirate on the board', () => {
-    const noKnight = blockedRoute();
+    const noKnight = blockedRoute('preroll', 'blocking', SHIP_HAND);
     noKnight.state.players[0]!.devCards = [];
     expect(decide(noKnight.state, 'p1', 'standard')).toEqual({ type: 'turn.roll' });
 
-    const far = blockedRoute();
+    const far = blockedRoute('preroll', 'blocking', SHIP_HAND);
     far.state.board.pirate = hex(far.state, 0, 3); // 與航線無關的海格
     expect(seafarersPreroll(turnContext(viewOf(far.state, 'p1'), ctxFor('p1'), 'standard'))).toEqual([]);
     expect(decide(far.state, 'p1', 'standard')).toEqual({ type: 'turn.roll' });
 
-    const frame = blockedRoute('preroll', 'frame');
+    const frame = blockedRoute('preroll', 'frame', SHIP_HAND);
     expect(decide(frame.state, 'p1', 'standard')).toEqual({ type: 'turn.roll' });
 
     // 已經沒有船可造：航線不存在，海盜擋不住什麼。
-    const noShips = blockedRoute();
+    const noShips = blockedRoute('preroll', 'blocking', SHIP_HAND);
     fillShips(noShips.state, 'p1', 15);
     expect(seafarersPreroll(turnContext(viewOf(noShips.state, 'p1'), ctxFor('p1'), 'standard'))).toEqual([]);
   });
 
   it('without ships left there is no route for the pirate to block', () => {
-    const { state } = blockedRoute();
+    const { state } = blockedRoute('preroll', 'blocking', SHIP_HAND);
     const view = viewOf(state, 'p1');
     expect(seafarersPreroll(turnContext(view, ctxFor('p1'), 'standard'))).toHaveLength(1);
     // 同一個盤面，但這個座位的船已經用完（profile 的船數設成 0）：沒有船可造，海盜擋不住什麼。
@@ -398,7 +404,7 @@ describe('preroll: the knight moves a pirate that blocks the planned route', () 
   it('a hex that still blocks the route frees nothing, however much it pays', () => {
     // 海盜在 (2,-1)，擋住直達的航線。p2 領先，船的開放端在 (2,0) 的 NE 邊：偷牌與封鎖前線讓 (2,0) 的
     // 分數最高，但放過去仍然擋住 p1（relief 幾乎為 0）；外框與不擋路的海格才有完整的 relief。
-    const { state, sea } = blockedRoute();
+    const { state, sea } = blockedRoute('preroll', 'blocking', SHIP_HAND);
     state.board.pirate = hex(state, 2, -1);
     ship(state, 'p2', side(state, 2, 0, 1));
     giveHand(state, 'p2', { lumber: 3, brick: 3, wool: 2 });
@@ -417,7 +423,7 @@ describe('preroll: the knight moves a pirate that blocks the planned route', () 
   it('does not spend the knight when leaving the pirate hex releases a bigger front', () => {
     // 同一個盤面：海盜在 (2,-1) 正封鎖領先的 p2（它的前線邊鄰接 (2,-1)）。外框能解除 p1 的航線（relief > 5），
     // 但離開 (2,-1) 就放開 p2 的前線，淨值低於門檻，所以不打騎士。
-    const { state } = blockedRoute();
+    const { state } = blockedRoute('preroll', 'blocking', SHIP_HAND);
     state.board.pirate = hex(state, 2, -1);
     ship(state, 'p2', side(state, 2, 0, 1));
     giveHand(state, 'p2', { lumber: 3, brick: 3, wool: 2 });
@@ -429,14 +435,57 @@ describe('preroll: the knight moves a pirate that blocks the planned route', () 
     expect(seafarersPreroll(turn)).toEqual([]);
     expect(decide(state, 'p1', 'standard')).toEqual({ type: 'turn.roll' });
     // 對照：沒有 p2 的前線可放開時，同樣的 relief 會打騎士。
-    const alone = blockedRoute();
+    const alone = blockedRoute('preroll', 'blocking', SHIP_HAND);
     alone.state.board.pirate = hex(alone.state, 2, -1);
     expect(decide(alone.state, 'p1', 'standard')).toEqual({ type: 'dev.playKnight', hex: null });
   });
 
+  it('sends the knight to a raid target when the released front is outweighed, judging the net by the real hand', () => {
+    // 海盜在 (2,-1) 擋住 p1，也正封鎖領先的 p2（p2 的船在 (2,0)｜(2,-1) 之間）。p3 的船在 (3,1) 旁邊，手上有牌。
+    // 離開 (2,-1) 會放開 p2 的前線；p3 這個可偷的格子在扣掉它之後的淨值剛好過門檻（真實手牌：約 6）。
+    const lead = (bonus: number) => {
+      const { state } = blockedRoute('preroll', 'blocking', SHIP_HAND);
+      state.board.pirate = hex(state, 2, -1);
+      ship(state, 'p2', side(state, 2, 0, 1));
+      giveHand(state, 'p2', { lumber: 3, brick: 3, wool: 2 });
+      state.players[1]!.bonusPoints = bonus;
+      ship(state, 'p3', side(state, 3, 1, 3));
+      giveHand(state, 'p3', { lumber: 2, brick: 2, wool: 1 });
+      return state;
+    };
+    const turn = turnContext(viewOf(lead(8), 'p1'), ctxFor('p1'), 'standard');
+    const raid = pirateOptions(turn).filter((option) => option.target !== null && option.relief > 5 && option.net > 5);
+    expect(raid.map((option) => option.target)).toEqual([hex(lead(8), 2, 1), hex(lead(8), 3, 1)]);
+    const candidates = seafarersPreroll(turn);
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]!.item).toEqual({ type: 'dev.playKnight', hex: raid[0]!.target });
+    expect(decide(lead(8), 'p1', 'standard')).toEqual({ type: 'dev.playKnight', hex: raid[0]!.target });
+    // p2 再領先一些：放開的前線更值錢，淨值掉到門檻以下，不打騎士。
+    const ahead = turnContext(viewOf(lead(10), 'p1'), ctxFor('p1'), 'standard');
+    expect(pirateOptions(ahead).some((option) => option.relief > 5 && option.net > 5)).toBe(false);
+    expect(seafarersPreroll(ahead)).toEqual([]);
+  });
+
+  it('the frame net is judged on the real hand: a front it releases that still leaves enough goes to the frame', () => {
+    // 同一個擋路與 p2 的前線，但 p2 領先得少（放開的前線較小），而且沒有 p3 可偷：外框與所有不擋路的海格
+    // 淨值都過門檻（真實手牌：外框約 5.6），外框的放置分數最高，騎士打在外框。
+    const { state } = blockedRoute('preroll', 'blocking', SHIP_HAND);
+    state.board.pirate = hex(state, 2, -1);
+    ship(state, 'p2', side(state, 2, 0, 1));
+    giveHand(state, 'p2', { lumber: 3, brick: 3, wool: 2 });
+    state.players[1]!.bonusPoints = 3;
+    const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
+    const options = pirateOptions(turn);
+    const frame = options.find((option) => option.target === null)!;
+    expect(frame.net).toBeGreaterThanOrEqual(5);
+    expect(frame.net).toBeLessThan(6);
+    expect(options.filter((option) => option.target !== null && option.relief > 5 && option.net > 5).length).toBeGreaterThan(3);
+    expect(seafarersPreroll(turn).map((candidate) => candidate.item)).toEqual([{ type: 'dev.playKnight', hex: null }]);
+  });
+
   it('does not spend the knight just to raid or block a rival when nothing of mine is in the way', () => {
     // 海盜不在盤面上，p2 領先、船端旁的前線很值錢（淨值夠大），但這張騎士解除不了 p1 的任何封鎖。
-    const { state } = blockedRoute('preroll', 'frame');
+    const { state } = blockedRoute('preroll', 'frame', SHIP_HAND);
     ship(state, 'p2', side(state, 2, 0, 0));
     giveHand(state, 'p2', { lumber: 3, brick: 3, wool: 2 });
     state.players[1]!.bonusPoints = 5;
@@ -451,7 +500,7 @@ describe('preroll: the knight moves a pirate that blocks the planned route', () 
   it('plays the knight on the robber, not the pirate, when the robber presses my city', () => {
     // 強盜壓住自己的城市（(1,0) 點數 9），海盜同時擋路：移開強盜的收益遠大於解除海盜，
     // 所以是強盜被移走，海盜留在原處。
-    const { state, sea } = blockedRoute();
+    const { state, sea } = blockedRoute('preroll', 'blocking', SHIP_HAND);
     settle(state, 'p1', corner(state, 1, 0, 2), true);
     state.board.robber = hex(state, 1, 0);
     const view = viewOf(state, 'p1');
@@ -495,8 +544,8 @@ describe('banditCandidates: robber and pirate scored together', () => {
    * p2 的船在 (2,0) 與島 3 的金礦 (3,0) 之間（只有 (2,0) 一個海格可以偷到它），而且手上有牌；
    * 其他地方什麼也沒有。`withMyRoute` 為真時 p1 的聚落在 A，(2,0) 剛好在 p1 的航線上。
    */
-  function raidable(withMyRoute: boolean) {
-    const { state, ...rest } = blockedRoute('preroll', 'frame');
+  function raidable(withMyRoute: boolean, hand: Partial<Record<Resource, number>> = {}) {
+    const { state, ...rest } = blockedRoute('preroll', 'frame', hand);
     if (!withMyRoute) state.board.buildings = state.board.buildings.map(() => null);
     ship(state, 'p2', side(state, 2, 0, 0));
     giveHand(state, 'p2', { lumber: 2, brick: 2, wool: 1 });
@@ -572,6 +621,45 @@ describe('banditCandidates: robber and pirate scored together', () => {
     const outcome = applyCommand(state, 'p1', command as Command, seededRng(1));
     expect(outcome.ok).toBe(true);
     if (outcome.ok) expect(shipsToSite(outcome.state, s)).toBe(2);
+  });
+
+  it('does not put the pirate on its own route either when the hand is short (the placement does not shrink with the hand)', () => {
+    // 放下的海盜會停在盤面上好幾個回合：擋住航線的損失看的是之後造得起船的價值，不是此刻的手牌。
+    // 手牌少時 relief（打騎士用）會縮到幾乎為 0，但放置的分數與決策必須和有造船手牌時相同。
+    let rich: number | undefined;
+    for (const [name, hand] of [['ship hand', SHIP_HAND], ['one ship', { lumber: 1, wool: 1 }], ['grain', { grain: 1 }], ['empty', {}]] as const) {
+      const { state, sea, s } = raidable(true, hand);
+      const view = viewOf(state, 'p1');
+      const turn = turnContext(view, ctxFor('p1'), 'standard');
+      const score = new Map(seafarersBanditCandidates(turn, 'seven').map((candidate) => [candidate.item, candidate.score])).get(sea)!;
+      expect(score, name).toBeLessThan(0);
+      rich ??= score;
+      expect(score, name).toBeCloseTo(rich, 9);
+      const command = heuristicPolicy('standard').decide(view, ctxFor('p1')) as { type: string; hex: number | null };
+      expect(command, name).toEqual({ type: 'pending.moveRobber', hex: hex(state, 2, 1) });
+      const outcome = applyCommand(state, 'p1', command as Command, seededRng(1));
+      expect(outcome.ok, name).toBe(true);
+      if (outcome.ok) expect(shipsToSite(outcome.state, s), name).toBe(2);
+    }
+  });
+
+  it('moves a pirate that blocks the route on a 7 even when the hand is short', () => {
+    // 反方向：手牌少時 unblock 也不縮水，擲出 7 照樣把擋路的海盜移走（外框，不擋住自己）。
+    let rich: number | undefined;
+    for (const [name, hand] of [['ship hand', SHIP_HAND], ['one ship', { lumber: 1, wool: 1 }], ['grain', { grain: 1 }], ['empty', {}]] as const) {
+      const { state, s } = blockedRoute('preroll', 'blocking', hand);
+      const rolled = sevenOn(state);
+      const view = viewOf(rolled, 'p1');
+      const frame = seafarersBanditCandidates(turnContext(view, ctxFor('p1'), 'standard'), 'seven').find((candidate) => candidate.item === null)!;
+      expect(frame.score, name).toBeGreaterThan(5);
+      rich ??= frame.score;
+      expect(frame.score, name).toBeCloseTo(rich, 9);
+      const command = heuristicPolicy('standard').decide(view, ctxFor('p1'));
+      expect(command, name).toEqual({ type: 'pending.moveRobber', hex: null });
+      const outcome = applyCommand(rolled, 'p1', command as Command, seededRng(1));
+      expect(outcome.ok, name).toBe(true);
+      if (outcome.ok) expect(shipsToSite(outcome.state, s), name).toBe(2);
+    }
   });
 
   it('a strong robber target outweighs the pirate', () => {
@@ -801,7 +889,7 @@ describe('pirate route: the island plan the bot would follow', () => {
   const planScore = (turn: TurnContext, model: BoardModel): number => (bestIslandPlan(turn, model)?.score ?? 0) / PIP_VALUE;
 
   it('the frame frees exactly the drop of the best island plan, in weighted pips', () => {
-    const { state } = blockedRoute();
+    const { state } = blockedRoute('preroll', 'blocking', SHIP_HAND);
     const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
     const free = bestIslandPlan(turn, withPirate(turn.model, null))!;
     const now = bestIslandPlan(turn, turn.model)!;
@@ -816,7 +904,7 @@ describe('pirate route: the island plan the bot would follow', () => {
   });
 
   it('every hex frees what the plan gains by moving the pirate there', () => {
-    const { state } = blockedRoute();
+    const { state } = blockedRoute('preroll', 'blocking', SHIP_HAND);
     const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
     const options = pirateOptions(turn).filter((option) => option.target !== null);
     expect(options.length).toBeGreaterThan(5);
@@ -832,14 +920,31 @@ describe('pirate route: the island plan the bot would follow', () => {
     expect(options.some((option) => option.relief > 5)).toBe(true);
   });
 
+  it('net is the relief plus what the hex itself gains: a partly blocking hex pays its loss once', () => {
+    // 沒有對手：不擋路的海格沒有偷牌、前線，net 就是 relief；擋住一部分航線的海格（損失 > 0）也一樣，
+    // 損失只在 relief 與 net 各算一次（不是漏掉，也不是重複）。
+    const state = emptySeafarersGame(4, 0, 'preroll');
+    settle(state, 'p1', corner(state, 1, 0, 0));
+    state.board.pirate = hex(state, 2, 0);
+    state.players[0]!.devCards = ['knight'];
+    giveHand(state, 'p1', SHIP_HAND);
+    const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
+    const options = pirateOptions(turn);
+    const frame = options.find((option) => option.target === null)!;
+    const hexes = options.filter((option) => option.target !== null);
+    expect(hexes.some((option) => frame.relief - option.relief > 0.1 && option.relief > 5)).toBe(true);
+    for (const option of hexes) expect(option.net, `hex ${option.target}`).toBeCloseTo(option.relief, 9);
+    expect(frame.net).toBeCloseTo(frame.relief + 0.1, 9);
+  });
+
   it('uses the bot ship limit: a four-ship detour still counts as a route', () => {
-    const probe = blockedRoute();
+    const probe = blockedRoute('preroll', 'blocking', SHIP_HAND);
     const t0 = turnContext(viewOf(probe.state, 'p1'), ctxFor('p1'), 'standard');
     const plans = islandSettlementPlans({ model: t0.model, level: 'standard', base: t0.economy });
     // 海盜擋著時：一個三艘船的目標，加上兩個要四艘船的（它們是前者的延伸）。
     expect(plans.slice(0, 3).map((plan) => plan.ships!.length)).toEqual([3, 4, 4]);
     // 另一個四艘船的目標被 p2 占走，它與三艘船的目標相鄰（距離規則）：只剩下要四艘船的繞路。
-    const { state } = blockedRoute();
+    const { state } = blockedRoute('preroll', 'blocking', SHIP_HAND);
     settle(state, 'p2', plans[2]!.vertex!);
     const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
     const now = bestIslandPlan(turn, turn.model)!;
@@ -852,22 +957,34 @@ describe('pirate route: the island plan the bot would follow', () => {
     expect(frame.relief).toBeCloseTo((free.score - now.score) / PIP_VALUE, 9);
   });
 
-  it('what the pirate costs depends on whether the plan can be paid for (ETA, by design)', () => {
-    const rich = blockedRoute().state;
+  it('the knight looks at the real hand, the placement at a hand that can pay (two scales, by design)', () => {
+    const rich = blockedRoute('preroll', 'blocking', SHIP_HAND).state;
     const poor = blockedRoute().state;
-    giveHand(poor, 'p1', {});
-    const reliefOf = (state: GameState) => {
+    const frameOf = (state: GameState) => {
       const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
       return { turn, frame: pirateOptions(turn).find((option) => option.target === null)! };
     };
-    const a = reliefOf(rich);
-    const b = reliefOf(poor);
+    const a = frameOf(rich);
+    const b = frameOf(poor);
+    // 打騎士（relief）：湊不出船的手牌，限制你的不是海盜（ETA 很長，計畫分數趨近 0），不值得動用騎士。
     expect(a.frame.relief).toBeGreaterThan(5);
-    // 湊不出船的手牌：限制你的不是海盜（ETA 很長，計畫分數趨近 0），所以不值得為它動用騎士。
     expect(b.frame.relief).toBeLessThan(1);
     expect(b.frame.relief).toBeCloseTo(planScore(b.turn, withPirate(b.turn.model, null)) - planScore(b.turn, b.turn.model), 9);
     expect(seafarersPreroll(a.turn)).toHaveLength(1);
     expect(seafarersPreroll(b.turn)).toEqual([]);
+    // 放置（score）：與手牌無關，等於「付得起」時計畫分數 value / (1 + 船數 × ETA_PER_SHIP) 的落差，外框再加微小偏好。
+    const full = { lumber: 9, brick: 9, wool: 9, grain: 9, ore: 9 };
+    const payable = (turn: TurnContext, model: BoardModel): number => {
+      const plans = islandSettlementPlans({ model, level: turn.level, base: { ...turn.economy, hand: full } });
+      for (const plan of plans) expect(plan.score).toBeCloseTo(plan.value / (1 + plan.ships!.length * ETA_PER_SHIP), 12);
+      return (plans[0]?.score ?? 0) / PIP_VALUE;
+    };
+    for (const { turn, frame } of [a, b]) {
+      const drop = payable(turn, withPirate(turn.model, null)) - payable(turn, turn.model);
+      expect(drop).toBeGreaterThan(5);
+      expect(frame.score).toBeCloseTo(drop + 0.1, 9);
+    }
+    expect(a.frame.score).toBeCloseTo(b.frame.score, 9);
   });
 });
 
