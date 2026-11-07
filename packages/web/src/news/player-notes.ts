@@ -43,7 +43,7 @@ export const PLAYER_NOTES: readonly PlayerNote[] = [
         en: 'A Leave button at the table: a game with only you and computer players can be kept for later or, if the room allows it, ended.',
       },
       {
-        'zh-Hant': '有其他玩家的對局可以退出（投降），座位仍會保留。房間允許時，若有人缺席或退出，仍在線的玩家可以提議結束對局，全員同意就以無勝者結束。',
+        'zh-Hant': '有其他玩家的對局可以退出（投降），座位仍會保留。房間允許時，若有人缺席或退出，仍在線的玩家可以提議結束對局，在線玩家全數同意就以無勝者結束。',
         en: 'In a game with other people you can withdraw (resign) and keep your seat. If the room allows it and someone is away or has withdrawn, the players still online can propose ending the game, which ends with no winner once they all agree.',
       },
       {
