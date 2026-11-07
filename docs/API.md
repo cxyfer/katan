@@ -196,7 +196,11 @@ table's leave dialog.
   refused with `E_GAME_SUSPENDED` until `POST /api/games/:gameId/resume` with
   `{ ready }` has every person connected and ready; it answers
   `ResumeReadyResult { resumed, waitingFor }`, where `waitingFor` lists the
-  people still offline or not ready. Creating, consenting to or rejecting a
+  people still offline or not ready. A reconnecting seat leaves the suspend
+  proposal open (reconnection only cancels an abandon vote), so an absent person
+  can come back and agree. Readiness means being at the table: dropping the last
+  socket or leaving the room while suspended takes that person's readiness back,
+  and they say ready again when they return. Creating, consenting to or rejecting a
   proposal, and every readiness change that does not resume yet, push a fresh
   `room` message to everyone connected. None of these answers is a `RoomView`:
   clients read the new state from that push or from `GET /api/rooms/:roomId`.

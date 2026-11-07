@@ -741,6 +741,17 @@ describe('saving and pausing the table for everyone (SPEC §4.8)', () => {
     expect(api.callsOf('resumeGame')[1]!.args).toEqual(['g1', false]);
   });
 
+  it('offers readiness again when everyone is ready but the table is still paused', async () => {
+    // 例如服務重啟留下的準備紀錄：自己已準備、沒有在等任何人，再送一次準備讓伺服器重新判斷。
+    const api = createFakeApi({ room: duoRoom({ status: 'suspended', resumeReady: ['p1', 'p2'] }), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    expect(screen.queryByTestId('resume-not-ready')).toBeNull();
+    expect(screen.queryByTestId('resume-waiting')).toBeNull();
+    fireEvent.click(screen.getByTestId('resume-ready'));
+    await waitFor(() => expect(api.callsOf('resumeGame')).toHaveLength(1));
+    expect(api.callsOf('resumeGame')[0]!.args).toEqual(['g1', true]);
+  });
+
   it('leaves a paused table without offering another pause', async () => {
     const api = createFakeApi({ room: duoRoom({ status: 'suspended', resumeReady: [] }), snapshot: makeSnapshot(makeView()) });
     await enterTable(api);

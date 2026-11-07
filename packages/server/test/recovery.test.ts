@@ -183,6 +183,7 @@ async function watchRoom(client: TestClient, roomId: string): Promise<{ rooms: (
   return {
     rooms,
     close: () => new Promise<void>((resolve) => {
+      if (socket.readyState === WebSocket.CLOSED) return resolve();
       socket.once('close', () => resolve());
       socket.close();
     }),
@@ -246,6 +247,35 @@ describe('R-SAVE suspension in the room view', () => {
       await vi.waitFor(() => expect(tab.rooms().at(-1)?.resumeReady).toEqual([]));
     } finally {
       await tab.close();
+    }
+  });
+
+  it('takes back readiness when a ready person drops off or leaves', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const proposal = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    await second.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+    await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+
+    const watcher = await watchRoom(third, roomId);
+    const secondTab = await watchRoom(second, roomId);
+    try {
+      await second.post(`/api/games/${gameId}/resume`, { ready: true });
+      await vi.waitFor(() => expect(watcher.rooms().at(-1)?.resumeReady).toEqual([second.playerId]));
+      // 斷線後回來，不能因為留著舊的準備紀錄而讓全桌卡在「都準備好了卻沒恢復」。
+      await secondTab.close();
+      await vi.waitFor(() => expect(watcher.rooms().at(-1)?.resumeReady).toEqual([]));
+
+      await host.post(`/api/games/${gameId}/resume`, { ready: true });
+      await vi.waitFor(() => expect(watcher.rooms().at(-1)?.resumeReady).toEqual([host.playerId]));
+      host.expectOk(await host.post(`/api/rooms/${roomId}/leave`));
+      const view = third.expectOk<RoomView>(await third.get(`/api/rooms/${roomId}`));
+      expect(view.status).toBe('suspended');
+      expect(view.resumeReady).toEqual([]);
+    } finally {
+      await secondTab.close();
+      await watcher.close();
     }
   });
 });

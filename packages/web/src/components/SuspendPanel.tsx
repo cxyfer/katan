@@ -98,6 +98,8 @@ function ResumeBar({ controller, room }: { controller: TableController; room: Ro
   const seated = selfMemberOf(room, selfId) !== null;
   const selfReady = selfId !== null && (room.resumeReady ?? []).includes(selfId);
   const waiting = awaitingResume(room).filter((member) => member.playerId !== selfId);
+  // 自己已準備、也沒有在等任何人卻仍暫停（例如服務重啟留下的準備紀錄）：再送一次準備，讓伺服器重新判斷。
+  const canUnready = selfReady && waiting.length > 0;
 
   return (
     <section className="prompt abandon-panel suspend-panel" aria-labelledby={`${id}-suspended`} data-testid="resume-bar"
@@ -111,7 +113,7 @@ function ResumeBar({ controller, room }: { controller: TableController; room: Ro
       )}
       {seated && (
         <div className="abandon-panel__actions">
-          {selfReady ? (
+          {canUnready ? (
             <button type="button" className="button" data-testid="resume-not-ready" disabled={busy}
               onClick={() => void guard(() => actions.resumeTable(false))}>
               {t('play.resumeNotReady')}
