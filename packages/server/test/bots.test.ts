@@ -727,6 +727,29 @@ describe('B-LIFE bot scheduling', () => {
     }
   });
 
+  it('falls back to the snapshot log once when the stored history has a gap', async () => {
+    const deps = driverDeps();
+    const logs = captureLogs(deps);
+    const { host, roomId, gameId, botIds } = await botGame(2);
+    // 真人先走完兩步（還沒有真人在線，Bot 不會評估、也還沒有快取），再挖掉一筆 game_events：
+    // 排程器補不齊歷史，改用快照內的 log，而且只 warn 一次。
+    await humanStep(host, gameId);
+    await humanStep(host, gameId);
+    await harness.service.repo.db.run('DELETE FROM game_events WHERE game_id = ? AND seq = 2', [gameId]);
+    expect((await harness.service.repo.listEvents(gameId, 0, 2)).map((event) => event.seq)).toEqual([1, 3]);
+    const drop = await liveSocket(harness.service, roomId, host.playerId!);
+    try {
+      await waitFor(async () => actorOf(await state(gameId)) === host.playerId, 'bots to finish setup despite the gap');
+      for (const botId of botIds) expect(botCounts(await state(gameId), botId)).toEqual({ buildings: 2, roads: 2 });
+      const warnings = logs.entries.filter((entry) => entry.message.startsWith('bot event history'));
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toMatchObject({ level: 'warn', meta: { gameId } });
+    } finally {
+      logs.restore();
+      await drop();
+    }
+  });
+
   it('stops a strategy that keeps answering the same offer', async () => {
     const deps = driverDeps();
     const original = deps.policyFor;
@@ -1154,6 +1177,8 @@ describe('B-LIFE restart and shutdown', () => {
       expect(first.bots.stats()).toMatchObject({ games: 0, timers: 0, tasks: 0 });
 
       const second = await startService(overrides, () => undefined);
+      // 重啟後的排程器沒有快取，必須從 game_events 重新載入整局歷史。
+      const histories = recordHistories(driverDeps(second));
       try {
         expect(await revision(gameId, second)).toBe(before);
         const drop = await liveSocket(second, room.id, host.playerId!);
@@ -1162,6 +1187,8 @@ describe('B-LIFE restart and shutdown', () => {
           'bots to continue after the restart',
         );
         expect(await revision(gameId, second)).toBe(before + 8);
+        expect(histories.views).toBeGreaterThan(0);
+        expect(histories.problems).toEqual([]);
         await drop();
       } finally {
         await second.close();
@@ -1251,6 +1278,37 @@ function captureLogs(deps: BotDriverDeps): { entries: LogEntry[]; restore(): voi
   };
 }
 
+/**
+ * 記錄排程器交給策略的每個投影（hard 規格 §5.1、H-I5）。檢查每次決策的 `view.events` 都從
+ * seq 1 連續到 `view.seq`、沒有 `private` 物件，而且牌面只出現在小偷與受害者的投影裡。
+ */
+function recordHistories(deps: BotDriverDeps): { problems: string[]; views: number; maxSeq: number; restore(): void } {
+  const original = deps.policyFor;
+  const result = { problems: [] as string[], views: 0, maxSeq: 0, restore: () => { deps.policyFor = original; } };
+  deps.policyFor = (level) => {
+    const inner = original(level);
+    return {
+      decide(view, ctx) {
+        result.views += 1;
+        result.maxSeq = Math.max(result.maxSeq, view.seq);
+        const events = view.events;
+        const contiguous = events.every((event, index) => event.seq === index + 1);
+        if (!contiguous || events.length !== view.seq) {
+          result.problems.push(`${ctx.selfId}@${view.seq}: history ${events[0]?.seq ?? '-'}..${events.at(-1)?.seq ?? '-'}`);
+        }
+        for (const event of events) {
+          if (event.private !== undefined) result.problems.push(`${ctx.selfId}@${view.seq}: private object on #${event.seq}`);
+          if (event.type !== 'robber.stole') continue;
+          const party = event.params.playerId === ctx.selfId || event.params.victim === ctx.selfId;
+          if (party !== ('resource' in event.params)) result.problems.push(`${ctx.selfId}@${view.seq}: theft #${event.seq} card visibility`);
+        }
+        return inner.decide(view, ctx);
+      },
+    };
+  };
+  return result;
+}
+
 /** 「欠動作卻沒有動作」的診斷 warn。 */
 function isIdleDutyWarn(entry: LogEntry): boolean {
   return entry.level === 'warn' && entry.message.startsWith('bot owes an action');
@@ -1318,6 +1376,7 @@ async function eventTimes(gameId: string): Promise<Record<string, number>> {
 describe('B-GAME full table on the service', () => {
   it('plays a whole game with the real strategy through the command path', async () => {
     const logs = captureLogs(driverDeps());
+    const histories = recordHistories(driverDeps());
     const { host, roomId, gameId, botIds } = await botGame(3, { capacity: 4 });
     const disconnect = await liveSocket(harness.service, roomId, host.playerId!);
     // 真人座位也交給同一套策略，透過 HTTP 送指令；Bot 座位由排程器推進。
@@ -1352,6 +1411,11 @@ describe('B-GAME full table on the service', () => {
     }
     await disconnect();
     logs.restore();
+    histories.restore();
+    // 每次決策都帶著整局歷史，而且超過快照 log 的 200 筆上限也一樣。
+    expect(histories.problems).toEqual([]);
+    expect(histories.maxSeq).toBeGreaterThan(200);
+    expect(logs.entries.filter((entry) => entry.message.startsWith('bot event history'))).toEqual([]);
     // 正常對局中策略或保底總有動作，診斷不應該出現。
     expect(logs.entries.filter(isIdleDutyWarn)).toEqual([]);
     expect(view?.result?.playerId).toBeTruthy();
