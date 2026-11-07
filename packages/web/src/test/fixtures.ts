@@ -175,7 +175,7 @@ export function makeConfig(overrides: Partial<ServerConfigView> = {}): ServerCon
       chatRatePerMinute: 30,
       roomCapacityMax: 6,
     },
-    bots: { enabled: true, levels: ['easy', 'standard'] },
+    bots: { enabled: true, levels: ['easy', 'standard', 'hard'] },
     ...overrides,
   };
 }
@@ -205,6 +205,7 @@ export function makeProfile(overrides: Partial<ProfileView> = {}): ProfileView {
     setupModes: ['fixed', 'variable'],
     enabled: true,
     botSeats: true,
+    botLevels: ['easy', 'standard', 'hard'],
     ...overrides,
   };
 }

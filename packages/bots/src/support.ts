@@ -9,6 +9,7 @@
 
 import type { ProfileDefinition } from '@catan/rules';
 import { BOT_MODULES, botModulesOf } from './modules/registry.ts';
+import { BOT_LEVELS, type BotLevel } from './types.ts';
 
 export { BOT_MODULES, botModulesOf };
 
@@ -18,6 +19,17 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
     const module = BOT_MODULES.get(id);
     return module !== undefined && (module.supports?.(profile) ?? true);
   });
+}
+
+/** hard 只有基本版的策略（docs/aegis/specs/2026-11-07-hard-bot.md §1）：profile 不能有 rules module。 */
+export function hardSupports(profile: ProfileDefinition): boolean {
+  return profile.ruleModules.length === 0;
+}
+
+/** 這個 profile 可以選的難度，由弱到強；Bot 玩不動的 profile 是空清單。 */
+export function botLevelsFor(profile: ProfileDefinition): BotLevel[] {
+  if (!botsCanPlay(profile)) return [];
+  return BOT_LEVELS.filter((level) => level !== 'hard' || hardSupports(profile));
 }
 
 /** 各指令的思考延遲（毫秒）：依註冊順序合併各模組的 `pacing`，重複的鍵以先註冊者為準。 */

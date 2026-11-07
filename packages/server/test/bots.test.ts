@@ -17,6 +17,7 @@ import {
 } from '@catan/rules';
 import {
   BOT_LEVELS as POLICY_BOT_LEVELS,
+  botLevelsFor,
   botsCanPlay,
   createBotPolicy,
   fallbackPolicy,
@@ -143,14 +144,18 @@ async function createRoom(client: TestClient, body: Record<string, unknown> = {}
   return room;
 }
 
-/** 一位真人房主加上 `bots` 個 Bot 並開局。 */
+/** 一位真人房主加上 `bots` 個 Bot 並開局；`levels` 依序指定各席難度，省略時用預設難度。 */
 async function botGame(
   bots = 2,
-  options: { capacity?: number; service?: TestHarness } = {},
+  options: { capacity?: number; service?: TestHarness; levels?: readonly string[] } = {},
 ): Promise<{ host: TestClient; roomId: string; gameId: string; botIds: string[] }> {
   const target = options.service ?? harness;
   const host = await target.client('BotHost');
-  const room = await createRoom(host, { capacity: options.capacity ?? bots + 1, bots });
+  let room = await createRoom(host, { capacity: options.capacity ?? bots + 1 });
+  for (let index = 0; index < bots; index++) {
+    const level = options.levels?.[index];
+    room = host.expectOk<RoomShape>(await host.post(`/api/rooms/${room.id}/bots`, level ? { level } : {}));
+  }
   host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
   const { gameId } = host.expectOk<{ gameId: string }>(await host.post(`/api/rooms/${room.id}/start`));
   return {
@@ -277,7 +282,7 @@ describe('B-ROOM bot seats', () => {
   it('offers bot seats only for profiles whose rules modules bots can play', async () => {
     const host = await harness.client('ProfileBots');
     const { profiles } = host.expectOk<{
-      profiles: { id: string; expansions: string[]; variants: string[]; botSeats: boolean }[];
+      profiles: { id: string; expansions: string[]; variants: string[]; botSeats: boolean; botLevels: string[] }[];
     }>(await host.get('/api/profiles'));
     expect(profiles.find((profile) => profile.id === 'base-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'base-paired-2025')?.botSeats).toBe(true);
@@ -288,8 +293,51 @@ describe('B-ROOM bot seats', () => {
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')?.botSeats).toBe(false);
     for (const profile of profiles) {
       expect(profile.botSeats).toBe(botsCanPlay(getProfile(profile.id)!));
+      expect(profile.botLevels, profile.id).toEqual(botLevelsFor(getProfile(profile.id)!));
     }
     expect(profiles.some((profile) => !profile.botSeats)).toBe(true);
+    // hard 只有基本版。
+    const levels = (id: string) => profiles.find((profile) => profile.id === id)?.botLevels;
+    expect(levels('base-2025')).toEqual(['easy', 'standard', 'hard']);
+    expect(levels('base-paired-2025')).toEqual(['easy', 'standard', 'hard']);
+    expect(levels('sf-new-shores-2025')).toEqual(['easy', 'standard']);
+    expect(levels('ck-2025')).toEqual([]);
+  });
+
+  it('seats hard bots only in profiles without rules modules', async () => {
+    const host = await harness.client('HardBots');
+    const base = await createRoom(host, { bots: 1, botLevel: 'hard' });
+    expect(base.members.find((member) => member.bot)).toMatchObject({ botLevel: 'hard', ready: true });
+
+    const seaHost = await harness.client('HardSeaHost');
+    const seaRoom = await createRoom(seaHost, { profileId: 'sf-new-shores-2025' });
+    const refused = await seaHost.post(`/api/rooms/${seaRoom.id}/bots`, { level: 'hard' });
+    seaHost.expectError(refused, 'E_INVALID_BOT');
+    expect(refused.body.ok ? null : refused.body.error.params).toMatchObject({ reason: 'profileLevel', level: 'hard' });
+    seaHost.expectOk(await seaHost.post(`/api/rooms/${seaRoom.id}/bots`, { level: 'standard' }));
+
+    // 坐著 hard 的房間不能改成 hard 不支援的設定檔；移除後就可以。
+    const switching = await host.post(`/api/rooms/${base.id}/settings`, { profileId: 'sf-new-shores-2025' });
+    host.expectError(switching, 'E_INVALID_BOT');
+    expect(switching.body.ok ? null : switching.body.error.params).toMatchObject({ reason: 'profileLevel', level: 'hard' });
+    const bot = base.members.find((member) => member.bot)!;
+    host.expectOk(await host.request('DELETE', `/api/rooms/${base.id}/bots/${bot.playerId}`));
+    host.expectOk(await host.post(`/api/rooms/${base.id}/settings`, { profileId: 'sf-new-shores-2025' }));
+  });
+
+  it('blocks start when a hard bot ends up in a profile hard cannot play', async () => {
+    // 房間不允許這種狀態，這裡直接改資料庫。
+    const host = await harness.client('HardForced');
+    const room = await createRoom(host, { bots: 1, botLevel: 'hard' });
+    host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    await harness.service.repo.updateRoom(room.id, { profile_id: 'sf-new-shores-2025' });
+
+    const view = host.expectOk<RoomShape>(await host.get(`/api/rooms/${room.id}`));
+    expect(view.startBlockers).toContainEqual({
+      messageId: 'blocker.botLevelUnsupported',
+      params: { profileId: 'sf-new-shores-2025', level: 'hard' },
+    });
+    host.expectError(await host.post(`/api/rooms/${room.id}/start`), 'E_START_BLOCKED');
   });
 
   it('seats bots in Heading for New Shores rooms and lets a room with bots switch to it', async () => {
@@ -341,7 +389,7 @@ describe('B-ROOM bot seats', () => {
     guest.expectOk(await guest.post('/api/rooms/join', { code: room.code }));
 
     guest.expectError(await guest.post(`/api/rooms/${room.id}/bots`, {}), 'E_NOT_HOST');
-    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, { level: 'hard' }), 'E_INVALID_BOT');
+    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, { level: 'expert' }), 'E_INVALID_BOT');
     const added = host.expectOk<RoomShape>(await host.post(`/api/rooms/${room.id}/bots`, {}));
     const bot = added.members.find((member) => member.bot)!;
     expect(bot).toMatchObject({ botLevel: 'standard', seat: 2 });
@@ -517,7 +565,7 @@ describe('B-ROOM disabled deployment', () => {
     try {
       const host = await disabled.client('NoBots');
       const config = host.expectOk<{ bots: { enabled: boolean; levels: string[] } }>(await host.get('/api/config'));
-      expect(config.bots).toEqual({ enabled: false, levels: ['easy', 'standard'] });
+      expect(config.bots).toEqual({ enabled: false, levels: ['easy', 'standard', 'hard'] });
       const room = host.expectOk<RoomShape>(
         await host.post('/api/rooms', {
           visibility: 'private',
@@ -1377,7 +1425,8 @@ describe('B-GAME full table on the service', () => {
   it('plays a whole game with the real strategy through the command path', async () => {
     const logs = captureLogs(driverDeps());
     const histories = recordHistories(driverDeps());
-    const { host, roomId, gameId, botIds } = await botGame(3, { capacity: 4 });
+    // 三種難度各一席，排程器依席位難度取策略。
+    const { host, roomId, gameId, botIds } = await botGame(3, { capacity: 4, levels: ['standard', 'hard', 'easy'] });
     const disconnect = await liveSocket(harness.service, roomId, host.playerId!);
     // 真人座位也交給同一套策略，透過 HTTP 送指令；Bot 座位由排程器推進。
     const policy = createBotPolicy('standard');

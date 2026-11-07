@@ -92,6 +92,7 @@ export const ROOM_NOTICE_IDS: readonly string[] = [
   'blocker.profilePlayerCount',
   'blocker.capacity',
   'blocker.botsUnsupported',
+  'blocker.botLevelUnsupported',
 ];
 
 /**
@@ -178,11 +179,12 @@ export const POLICY_BOUNDS: PolicyBounds = {
 };
 
 /**
- * Computer-opponent difficulty (SPEC §4.9). Difficulty changes strategy
- * quality only, never what the bot may see.
+ * Computer-opponent difficulty (SPEC §4.9), weakest first. Difficulty changes
+ * strategy quality only, never what the bot may see. `hard` is offered only in
+ * profiles without rules modules; see `ProfileView.botLevels`.
  */
-export type BotLevel = 'easy' | 'standard';
-export const BOT_LEVELS: readonly BotLevel[] = ['easy', 'standard'];
+export type BotLevel = 'easy' | 'standard' | 'hard';
+export const BOT_LEVELS: readonly BotLevel[] = ['easy', 'standard', 'hard'];
 
 export interface RoomMemberView {
   playerId: string;
@@ -331,9 +333,12 @@ export interface ProfileView {
    * from the bot strategies' supported rules modules.
    */
   botSeats: boolean;
+  /** Difficulties a host may pick in this profile, weakest first; empty when `botSeats` is false. */
+  botLevels: BotLevel[];
 }
 
-export function profileView(profile: ProfileDefinition, support: { botSeats: boolean }): ProfileView {
+/** `support.botLevels` comes from the bot strategies; `botSeats` is true when it is not empty. */
+export function profileView(profile: ProfileDefinition, support: { botLevels: readonly BotLevel[] }): ProfileView {
   return {
     id: profile.id,
     labelKey: profile.labelKey,
@@ -347,7 +352,8 @@ export function profileView(profile: ProfileDefinition, support: { botSeats: boo
     victoryTarget: profile.victoryTarget,
     setupModes: [...profile.setupModes],
     enabled: profile.enabled,
-    botSeats: support.botSeats,
+    botSeats: support.botLevels.length > 0,
+    botLevels: [...support.botLevels],
     ...(profile.unavailableReasonKey ? { unavailableReasonKey: profile.unavailableReasonKey } : {}),
   };
 }

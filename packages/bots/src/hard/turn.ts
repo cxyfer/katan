@@ -2,20 +2,11 @@
 
 import { RESOURCES, type GameView, type PublicPlayerView, type Resource } from '@catan/rules';
 import type { Economy } from '../economy.ts';
-import type { LevelParams } from '../level.ts';
+import { LEVEL_PARAMS } from '../level.ts';
 import { trackTable, type HandBelief, type TableBelief } from '../tracker.ts';
 import { Turn } from '../turn.ts';
 import type { BotContext } from '../types.ts';
 import { hardEconomyOf } from './economy.ts';
-
-/** hard 的難度參數；hard 自己的決策不讀 `acceptMargin`，沿用的 standard 函式才會讀。 */
-export const HARD_PARAMS: LevelParams = {
-  topK: 1,
-  proposeOffers: true,
-  eagerKnights: true,
-  acceptMargin: 0.6,
-  monopolyMin: 2,
-};
 
 export class HardTurn extends Turn {
   private cachedBelief: TableBelief | null = null;
@@ -23,9 +14,9 @@ export class HardTurn extends Turn {
   /** 對手模型（`hard/trade.ts` 的 `rivalModel`）的快取，只活在這次決策。 */
   readonly rivals = new Map<string, unknown>();
 
-  // `hard` 在 PR 3 之前還不是 BotLevel；base 經濟不讀 level，傳 standard 不影響結果。
+  /** 參數用 `LEVEL_PARAMS.hard`；hard 自己的決策不讀 `acceptMargin`，沿用的 standard 函式才會讀。 */
   constructor(view: GameView, ctx: BotContext, me: PublicPlayerView) {
-    super(view, ctx, 'standard', HARD_PARAMS, me, []);
+    super(view, ctx, 'hard', LEVEL_PARAMS.hard, me, []);
   }
 
   /** hard 的計畫估值（`hard/economy.ts`）；沿用的 standard 函式也讀這一份。 */

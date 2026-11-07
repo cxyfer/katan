@@ -19,11 +19,22 @@ export function profileAllowsBots(profile: ProfileView | null | undefined): bool
   return profile?.botSeats !== false;
 }
 
-/** 伺服器提供的難度，只保留前端認得的值；沒有提供時沿用協定清單。 */
-export function offeredBotLevels(config: ServerConfigView | null | undefined): BotLevel[] {
+/**
+ * 伺服器提供、而且這個規則組合可選的難度（例如困難只有基本版），只保留前端認得的值。
+ * 伺服器沒有提供時沿用協定清單；規則組合沒有 `botLevels`（舊版伺服器）或不能加電腦時不再過濾，
+ * 後者由 `profileAllowsBots` 擋下。
+ */
+export function offeredBotLevels(
+  config: ServerConfigView | null | undefined,
+  profile?: ProfileView | null,
+): BotLevel[] {
   const offered = config?.bots?.levels ?? BOT_LEVELS;
   const known = offered.filter((level): level is BotLevel => BOT_LEVELS.includes(level));
-  return known.length > 0 ? known : [...BOT_LEVELS];
+  const server = known.length > 0 ? known : [...BOT_LEVELS];
+  const allowed = profile?.botLevels;
+  if (!allowed || allowed.length === 0) return server;
+  const narrowed = server.filter((level) => allowed.includes(level));
+  return narrowed.length > 0 ? narrowed : server;
 }
 
 /** 偏好的難度不在清單中時，退回預設難度或清單第一項。 */

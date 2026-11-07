@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { botResponseCommands, createFallbackPolicy, fallbackPolicy } from '../src/index.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import type { BotModule } from '../src/modules/types.ts';
-import type { BotPolicy } from '../src/types.ts';
+import type { BotLevel, BotPolicy } from '../src/types.ts';
 import {
   allowedResponseCommands,
   botSeats,
@@ -401,7 +401,7 @@ describe('naive seats', () => {
   });
 
   it('plays a base game exactly like a seat with no modules', () => {
-    const play = (policyFor: (level: 'standard' | 'easy') => BotPolicy) => {
+    const play = (policyFor: (level: BotLevel) => BotPolicy) => {
       const commands: string[] = [];
       runBotGame({
         seats: botSeats(mixedLevels(3, 9), policyFor),

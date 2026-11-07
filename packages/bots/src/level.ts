@@ -1,4 +1,7 @@
-/** 難度參數（規格 §6）；standard 完全決定，easy 從前幾名候選中隨機挑選。 */
+/**
+ * 難度參數（規格 §6）；standard 完全決定，easy 從前幾名候選中隨機挑選。hard 的決策在 `hard/`，
+ * 這組參數只給它沿用的 standard 函式讀（docs/aegis/specs/2026-11-07-hard-bot.md）。
+ */
 
 import type { BotLevel } from './types.ts';
 
@@ -18,4 +21,5 @@ export interface LevelParams {
 export const LEVEL_PARAMS: Readonly<Record<BotLevel, LevelParams>> = {
   standard: { topK: 1, proposeOffers: true, eagerKnights: true, acceptMargin: 0.6, monopolyMin: 3 },
   easy: { topK: 3, proposeOffers: false, eagerKnights: false, acceptMargin: 1.6, monopolyMin: 4 },
+  hard: { topK: 1, proposeOffers: true, eagerKnights: true, acceptMargin: 0.6, monopolyMin: 2 },
 };

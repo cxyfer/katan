@@ -132,7 +132,9 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
 ## What is supported today
 
 - Base game (`base-2025`) for **3 and 4 players**, and paired base
-  (`base-paired-2025`) for **5 and 6 players**, fixed or variable setup.
+  (`base-paired-2025`) for **5 and 6 players**, fixed or variable setup, with
+  easy, standard and hard computer opponents (hard counts cards from the
+  public event history).
 - Traders & Barbarians (2025 rulebook) on the base board for **3 and 4
   players**: the Friendly Robber and Harbors of Catan variants, and the
   scenarios Fishing on Catan, Rivers of Catan, Merchant Trains, Barbarian

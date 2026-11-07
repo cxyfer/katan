@@ -10,8 +10,9 @@ import type { Command, GameView, ModuleCommand } from '@catan/rules';
 /** Bot 可送出的指令；協定的 command 本來就是開放型別（protocol/src/index.ts:299-303）。 */
 export type BotCommand = Command | ModuleCommand;
 
-export type BotLevel = 'easy' | 'standard';
-export const BOT_LEVELS: readonly BotLevel[] = ['easy', 'standard'];
+/** 由弱到強；`hard` 只在沒有 rules module 的 profile 提供（`botLevelsFor`）。 */
+export type BotLevel = 'easy' | 'standard' | 'hard';
+export const BOT_LEVELS: readonly BotLevel[] = ['easy', 'standard', 'hard'];
 export const DEFAULT_BOT_LEVEL: BotLevel = 'standard';
 
 export function isBotLevel(value: unknown): value is BotLevel {

@@ -74,7 +74,8 @@ Conventions:
   "victoryTarget": 10,
   "setupModes": ["fixed", "variable"],
   "enabled": true,
-  "botSeats": true
+  "botSeats": true,
+  "botLevels": ["easy", "standard", "hard"]
 }
 ```
 
@@ -82,7 +83,9 @@ Conventions:
 `explorersPirates` (empty for the base game); `scenario` and `variants` are
 registry ids. `requiredBoxes` is display metadata only and never validated.
 Disabled entries carry `unavailableReasonKey`. `botSeats` says whether hosts
-may seat computer opponents in the profile (see bots below). Every `labelKey`, reason and
+may seat computer opponents in the profile, and `botLevels` lists the
+difficulties they may pick there, weakest first (empty when `botSeats` is
+false; see bots below). Every `labelKey`, reason and
 `expansion.*` / `scenario.*` / `variant.*` / `box.*` name is in the protocol's
 `RULESET_MESSAGE_IDS`, so both locales must translate it.
 
@@ -116,15 +119,16 @@ count the profile supports up to its capacity, so it does not need to be full;
 `blocker.seats` reports the profile minimum while below it, and
 `blocker.profilePlayerCount` reports a seated count the profile does not
 support. `blocker.botsUnsupported` reports a bot seat in a profile bots cannot
-play.
+play, and `blocker.botLevelUnsupported` a bot whose difficulty the profile does
+not offer.
 
 ### Computer opponents (bots)
 
 Bot seats are part of the room (SPEC §4.9). `RoomMemberView.bot` marks them
-and `botLevel` (`'easy' | 'standard'`, default `'standard'`) is present only on
+and `botLevel` (`'easy' | 'standard' | 'hard'`, default `'standard'`) is present only on
 bot seats; `RoomSummaryView.botCount` and `ResumableGameView.players[].bot`
 describe them in lists. `ServerConfigView.bots` reports whether hosts may add
-bots and which levels exist. `ServerConfigView.retention.gameRetentionDays` is the
+bots and which levels exist (`ProfileView.botLevels` narrows them per profile). `ServerConfigView.retention.gameRetentionDays` is the
 operator's unfinished-game retention window in days (`0` = disabled): a game idle
 for longer is ended without a winner, with result reason `expired` (SPEC §4.6).
 `ResumableGameView.allSeatsNeeded` is false for a game containing bot seats:
@@ -151,6 +155,13 @@ only the original human players must reconnect and become ready to resume.
   changing a room with bot seats to an unsupported profile is `E_INVALID_BOT`, reason
   `profile`. A bot seat that still ends up in such a room (for example after a
   registry change) adds `blocker.botsUnsupported`, so the game cannot start.
+- `hard` plays only profiles without rules modules (today `base-2025` and
+  `base-paired-2025`), so it is missing from `ProfileView.botLevels`
+  elsewhere. Adding a `hard` bot to another profile, or changing a room with a
+  `hard` bot to one, is `E_INVALID_BOT` with reason `profileLevel` and the
+  `level` and `profileId` params. A `hard` seat that still ends up there adds
+  `blocker.botLevelUnsupported` (params `profileId`, `level`). An unknown
+  `level` is `E_INVALID_BOT`, reason `level`.
 - Bot seats always report `ready` and `connected`, never become host, and do not
   vote: pause/resume, abandonment and post-start policy changes count people
   only. When every other seat is a bot, the one person may abandon without an
