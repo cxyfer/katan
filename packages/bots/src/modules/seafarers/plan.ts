@@ -41,7 +41,7 @@ export const EASY_MAX_PLAN_SHIPS = 3;
 const PLANS_KEPT = 3;
 
 /** 每艘船讓計畫晚一些完成（輪數），與 base 每條道路的 0.35 相同。 */
-const ETA_PER_SHIP = 0.35;
+export const ETA_PER_SHIP = 0.35;
 
 export const seafarersEconomy: BotEconomyHooks = {
   costs: () => ({ ship: SHIP_COST }),
