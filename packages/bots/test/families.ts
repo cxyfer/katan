@@ -46,6 +46,11 @@ export const BOT_FAMILIES: readonly BotTestFamily[] = [
     files: GENERIC_MATRIX_FILES,
     generic: true,
   },
+  {
+    id: 'seafarers',
+    profiles: ['sf-new-shores-2025', 'sf-new-shores-paired-2025'],
+    files: ['sf-game.test.ts', 'sf-fair.test.ts', 'sf-fuzz.test.ts', 'sf-fallback.test.ts'],
+  },
 ];
 
 /** 有專屬測試檔的 family 所涵蓋的 profile；通用矩陣跳過它們。 */
