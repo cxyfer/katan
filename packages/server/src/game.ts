@@ -243,14 +243,9 @@ export class GameCoordinator {
     const game = await this.requireGame(gameId);
     await this.requireSeat(game, playerId);
     const events = await this.repo.listEvents(gameId, after, Math.min(limit, 500));
-    const filtered = events.filter((event) => !event.private || event.private.to.includes(playerId));
-    return {
-      events: filtered.map((event) => {
-        if (!event.private) return event;
-        return { seq: event.seq, type: event.type, params: { ...event.params, ...event.private.params } };
-      }),
-      revision: game.revision,
-    };
+    // 與快照、推送相同的投影：每筆事件都保留，私有欄位只給收件人（SPEC §8.3：誰偷了誰、
+    // 誰買了發展卡是公開的，牌面不是）。Bot 收到的歷史也是同一份投影。
+    return { events: events.map((event) => projectEvent(event, playerId)), revision: game.revision };
   }
 
   async resumableGames(playerId: string): Promise<ResumableGameView[]> {

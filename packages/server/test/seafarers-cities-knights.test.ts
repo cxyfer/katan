@@ -119,11 +119,13 @@ describe('Seafarers + Cities & Knights over the API', () => {
             expect(thefts[0]!.params).toMatchObject({ resource: card });
           }
         }
-        // events 路由會省略非收件人的 private event；snapshot 保留遮蔽後的公開事件。
+        // events 路由與 snapshot 相同：每個座位都看得到遮蔽後的公開事件，牌面只給收件人。
         expect(events.events.every((event) => event.private === undefined)).toBe(true);
         const historyThefts = events.events.filter((event) => event.type === 'robber.stole');
-        expect(historyThefts).toHaveLength(feed.client === bystander ? 0 : 1);
-        if (feed.client !== bystander) expect(historyThefts[0]!.params).toMatchObject({ resource: card });
+        expect(historyThefts).toHaveLength(1);
+        expect(historyThefts[0]!.params).toMatchObject({ playerId: actor.playerId, victim: victim.playerId, pirate: true });
+        if (feed.client === bystander) expect(historyThefts[0]!.params).not.toHaveProperty('resource');
+        else expect(historyThefts[0]!.params).toMatchObject({ resource: card });
         for (const snapshot of [http, ws.payload]) {
           for (const player of snapshot.view.players) {
             if (player.id === feed.client.playerId) continue;

@@ -81,6 +81,31 @@ export function defaultSetupMode(profile: Pick<ProfileDefinition, 'setupModes'>)
   return profile.setupModes.includes('variable') ? 'variable' : profile.setupModes[0]!;
 }
 
+/**
+ * 每個狀態從開局到該狀態的完整事件（含私有欄位），與伺服器的 `game_events` 相同。快照的
+ * `state.log` 最多只留 200 筆，所以 harness 另外記錄：`newBotGame` 與 `applyDecision`
+ * 產生的狀態會登記在這裡。
+ */
+const HISTORY = new WeakMap<GameState, readonly GameEvent[]>();
+
+/**
+ * 狀態的完整事件歷史。沒有登記的狀態（測試自行建構或複製的狀態）退回 `state.log`：
+ * 前 200 筆事件內仍然完整，之後計牌模組會判定為不完整並降級。
+ */
+export function historyOf(state: GameState): readonly GameEvent[] {
+  return HISTORY.get(state) ?? state.log;
+}
+
+/** 直接登記狀態的完整歷史（例如複製出來的狀態沿用原本的歷史）。 */
+export function setHistory(state: GameState, history: readonly GameEvent[]): void {
+  HISTORY.set(state, history.slice());
+}
+
+/** 登記 `next` 的歷史 = `previous` 的歷史加上這一步的事件（測試直接呼叫 `applyCommand` 時使用）。 */
+export function recordHistory(previous: GameState, next: GameState, events: readonly GameEvent[]): void {
+  setHistory(next, [...historyOf(previous), ...events]);
+}
+
 export interface NewGameOptions {
   profileId: string;
   players: number;
@@ -101,12 +126,13 @@ export function newBotGame(options: NewGameOptions): { state: GameState; rng: Rn
     setupMode: options.setupMode ?? defaultSetupMode(profile),
     rng,
   });
+  HISTORY.set(state, state.log.slice());
   return { state, rng };
 }
 
-/** 與伺服器相同的投影：自己座位的 view 加上 hints。 */
+/** 與伺服器相同的投影：自己座位的 view、完整的事件歷史（依座位遮蔽）與 hints。 */
 export function viewFor(state: GameState, playerId: string): GameView {
-  return projectGame(state, playerId, { hints: actionHints(state, playerId) });
+  return projectGame(state, playerId, { events: [...historyOf(state)], hints: actionHints(state, playerId) });
 }
 
 export function mixedLevels(players: number, seed: number): BotLevel[] {
@@ -343,7 +369,10 @@ export function applyDecision(
   | { ok: true; state: GameState; events: GameEvent[] }
   | { ok: false; failure: StepFailure } {
   const outcome = applyCommand(state, decision.actor, decision.command, rng);
-  if (outcome.ok) return { ok: true, state: outcome.state, events: outcome.events };
+  if (outcome.ok) {
+    recordHistory(state, outcome.state, outcome.events);
+    return { ok: true, state: outcome.state, events: outcome.events };
+  }
   return {
     ok: false,
     failure: {

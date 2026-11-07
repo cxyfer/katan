@@ -2,10 +2,11 @@
  * Bot 排程器（SPEC §4.9）。
  *
  * Bot 只透過 `GameCoordinator.submit` 送出指令，決策只看該座位的投影。排程器
- * 不保存任何決策狀態：重啟後從已提交的遊戲狀態繼續，報價計時則從頭算起。
+ * 不保存任何決策狀態：重啟後從已提交的遊戲狀態繼續，報價計時則從頭算起。投影帶著
+ * 整局的事件歷史（hard 規格 §5.1）；快取的歷史只是 `game_events` 的副本，重啟後重新載入。
  */
 
-import { actionHints, getProfile, projectGame, type GameState, type GameView } from '@catan/rules';
+import { actionHints, getProfile, projectGame, type GameEvent, type GameState, type GameView } from '@catan/rules';
 import {
   BOT_PACING,
   botActingOrder,
@@ -73,8 +74,8 @@ const PACING_MS: Readonly<Record<string, number>> = { ...THINK_MS, ...BOT_PACING
 const DEFAULT_THINK_MS = 900;
 /** 客戶端骰子演出約 2.5 秒；擲骰後的 Bot 動作至少等這麼久。 */
 const ROLL_PRESENTATION_MS = 2800;
-/** 投影附帶的近期事件數，與 `GameCoordinator.snapshot` 相同。 */
-const RECENT_EVENTS = 40;
+/** 從 `game_events` 補齊事件歷史時每次讀取的筆數。 */
+const HISTORY_PAGE = 500;
 /**
  * 單一行動視窗內每個 Bot 的指令上限（base 值）；超過代表策略在打轉，之後該 Bot 只走保底策略。
  * 實際上限依 profile 取各模組 `maxCommandsPerWindow` 的最大值，見 `commandLimit`。
@@ -118,6 +119,13 @@ interface GameRuntime {
   window: { id: number; commands: Map<string, number> };
   /** 每個卡住的 Bot 最近一次「欠動作卻沒有動作」warn 的 revision 與時間，用來限制 warn 頻率。 */
   idleWarned: Map<string, { revision: number; at: number }>;
+  /**
+   * 從 seq 1 連續到最近一次評估的事件歷史（含私有欄位，投影時才依座位遮蔽）。只是
+   * `game_events` 的快取，`forget` 時一起丟棄。
+   */
+  history: GameEvent[];
+  /** 歷史補不齊時只 warn 一次。 */
+  historyWarned: boolean;
 }
 
 /** 目前待決效果的回應者：模組 frame 與 base 各自的欄位。 */
@@ -303,8 +311,9 @@ export class BotDriver {
       return;
     }
     this.pruneOffers(runtime, state);
+    const history = await this.historyFor(gameId, runtime, state);
     const idle: IdleDuty[] = [];
-    const decision = this.decide(gameId, game.revision, state, bots, runtime, idle);
+    const decision = this.decide(gameId, game.revision, state, history, bots, runtime, idle);
     if (decision) {
       this.schedule(gameId, runtime, this.delayFor(decision.command, runtime), () =>
         this.track(this.perform(gameId, decision)),
@@ -348,6 +357,7 @@ export class BotDriver {
     gameId: string,
     revision: number,
     state: GameState,
+    history: GameEvent[],
     bots: readonly MemberRow[],
     runtime: GameRuntime,
     idle: IdleDuty[],
@@ -363,11 +373,9 @@ export class BotDriver {
     const viewFor = (botId: string): GameView => {
       let view = views.get(botId);
       if (!view) {
-        // 與客戶端快照相同的投影：只有這個座位能看到的資訊。
-        view = projectGame(state, botId, {
-          events: state.log.slice(-RECENT_EVENTS),
-          hints: actionHints(state, botId),
-        });
+        // 與客戶端相同的投影：只有這個座位能看到的資訊，加上這個座位從事件 API 讀得到的
+        // 整局歷史（私有欄位只留給收件人）。
+        view = projectGame(state, botId, { events: history, hints: actionHints(state, botId) });
         views.set(botId, view);
       }
       return view;
@@ -521,6 +529,55 @@ export class BotDriver {
     this.schedule(gameId, runtime, this.retryDelay(), () => this.kick(gameId));
   }
 
+  // -- 事件歷史 ---------------------------------------------------------------
+
+  /**
+   * 從 seq 1 連續到 `state.seq` 的事件歷史。快取的歷史從最後一筆之後向 `game_events` 補齊；
+   * 補不齊（缺號或資料庫沒有那麼多筆）時丟掉快取、下次從頭載入，這次改用快照內的
+   * `state.log`（最多 200 筆）。計牌模組遇到不完整的歷史會自行降級。
+   */
+  private async historyFor(gameId: string, runtime: GameRuntime, state: GameState): Promise<GameEvent[]> {
+    let history = runtime.history;
+    const last = (): number => history[history.length - 1]?.seq ?? 0;
+    // 快取超前（例如狀態被改寫）時從頭載入。
+    if (last() > state.seq) history = [];
+    let complete = true;
+    while (last() < state.seq) {
+      const page = await this.deps.repo.listEvents(gameId, last(), HISTORY_PAGE);
+      if (page.length === 0) {
+        complete = false;
+        break;
+      }
+      for (const event of page) {
+        if (event.seq > state.seq) break;
+        if (event.seq !== last() + 1) {
+          complete = false;
+          break;
+        }
+        history.push(event);
+      }
+      if (!complete) break;
+      if (page.length < HISTORY_PAGE && last() < state.seq) {
+        complete = false;
+        break;
+      }
+    }
+    if (complete) {
+      runtime.history = history;
+      return history;
+    }
+    runtime.history = [];
+    if (!runtime.historyWarned) {
+      runtime.historyWarned = true;
+      this.deps.log('warn', 'bot event history is incomplete; using the snapshot log', {
+        gameId,
+        seq: state.seq,
+        loaded: last(),
+      });
+    }
+    return state.log.slice();
+  }
+
   // -- 計時與報價階段 ---------------------------------------------------------
 
   private delayFor(command: BotCommand, runtime: GameRuntime): number {
@@ -595,6 +652,8 @@ export class BotDriver {
         attempts: { revision: -1, next: 0, fallbackBots: new Set() },
         window: { id: -1, commands: new Map() },
         idleWarned: new Map(),
+        history: [],
+        historyWarned: false,
       };
       this.runtimes.set(gameId, runtime);
     }

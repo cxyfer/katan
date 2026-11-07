@@ -92,9 +92,11 @@ describe('T&B service privacy', () => {
         }
         const history = client.expectOk<{ events: CommandReceipt['events'] }>(await client.get(`/api/games/${gameId}/events?after=${state.seq}`));
         expect(history.events.every((event) => event.private === undefined)).toBe(true);
+        // 歷史與快照相同：每個座位都看得到事件，祕密欄位只給收件人。
         const events = history.events.filter((event) => event.type === type);
-        expect(events).toHaveLength(maySee(client) ? 1 : 0);
+        expect(events).toHaveLength(1);
         if (maySee(client)) expect(events[0]!.params).toMatchObject(secret);
+        else for (const key of Object.keys(secret)) expect(events[0]!.params).not.toHaveProperty(key);
       }
     } finally {
       rng.mockRestore();

@@ -257,6 +257,22 @@ Rules:
 - Command types beyond the base set are accepted only when the game's profile
   lists a rules module that handles them; otherwise `error.E_INVALID_COMMAND`.
 
+### Event history
+
+`GET /api/games/:gameId/events?after=<seq>&limit=<n>` pages through the game's
+whole event log in `seq` order, starting after `after` (default `0`), at most
+500 events per page. It uses the same projection as snapshots, WebSocket pushes
+and receipts:
+
+- Every event is returned to every seated player.
+- A field that belongs to particular players, such as a stolen card or a drawn
+  development card, is merged into `params` only for those players. Other seats
+  receive the same event without it, for example `robber.stole` with
+  `playerId` and `victim` but no `resource`.
+- No event carries a `private` object.
+
+Bot seats decide from this same projected history (SPEC §4.9).
+
 ### Pending choices
 
 `GameView.pending` is the active mandatory choice and `GameView.pendingQueue`
