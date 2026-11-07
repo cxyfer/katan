@@ -307,6 +307,11 @@ def save_failure_pass(table: Table, shots: Shots, checks: dict, label: str, size
     viewport = page.viewport_size
     checks[f"{label}FailedVisibleWithDialogClosed"] = box is not None and box["x"] >= 0 and box["y"] >= 0 \
         and box["x"] + box["width"] <= viewport["width"] + 0.5 and box["y"] + box["height"] <= viewport["height"] + 0.5
+    # 疊在棋盤上要讀得清楚：字級至少 10px，且有不透明度大於 0 的底色（不是直接印在棋盤上）。
+    style = page.get_by_test_id("save-state").evaluate(
+        "(node) => { const s = getComputedStyle(node); return { fontSize: parseFloat(s.fontSize), background: s.backgroundColor }; }"
+    )
+    checks[f"{label}FailedLegible"] = style["fontSize"] >= 10 and style["background"] not in ("rgba(0, 0, 0, 0)", "transparent")
     shots.take(table, f"{len(shots.files) + 1:02d}-save-failed-{size[0]}x{size[1]}-{locale}")
 
 

@@ -30,8 +30,13 @@
  */
 .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="idle"],
 .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="saved"] { display: none; }
+/* 與連線狀態同樣用半透明小底的膠囊：疊在棋盤上也讀得清楚，不沿用直屏狀態列縮小的字級（side-layout.css）。 */
 .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="pending"],
-.screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="failed"] { display: inline-flex; }
+.screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="failed"] {
+  display: inline-flex; min-height: var(--hud-size); padding: 0 10px; font-size: .7rem; white-space: nowrap;
+  background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
+}
+.screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="failed"] { color: var(--danger); border-color: #d98f78aa; }
 /* 連線狀態保持可見（docs/SPEC.md §8.1/§8.4），縮成半透明小底的燈號加短文字。 */
 .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="connection-state"] {
   min-height: var(--hud-size); padding: 0 10px; font-size: .7rem; white-space: nowrap;
@@ -141,7 +146,9 @@
   .screen--game[data-layout="compact-landscape"] .board--side-controls .board__toolbar--side > .button,
   .screen--game[data-layout="compact-landscape"] .board--side-controls .board__display-settings > summary { width: 40px; }
   .screen--game[data-layout="compact-landscape"] .status-strip { gap: 4px; }
-  .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="connection-state"] { padding: 0 7px; font-size: .64rem; }
+  .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="connection-state"],
+  .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="pending"],
+  .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="failed"] { padding: 0 7px; font-size: .64rem; }
   .screen--game[data-layout="compact-landscape"] .status-strip .language-switch select { max-width: 78px; padding-inline: 6px 2px; font-size: .64rem; }
 }
 
