@@ -281,23 +281,43 @@ describe('B-ROOM bot seats', () => {
     }>(await host.get('/api/profiles'));
     expect(profiles.find((profile) => profile.id === 'base-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'base-paired-2025')?.botSeats).toBe(true);
+    // Heading for New Shores 的兩個 profile 開放；其餘擴充仍不行。
+    expect(profiles.find((profile) => profile.id === 'sf-new-shores-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'sf-new-shores-paired-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'ck-2025')?.botSeats).toBe(false);
+    expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')?.botSeats).toBe(false);
     for (const profile of profiles) {
       expect(profile.botSeats).toBe(botsCanPlay(getProfile(profile.id)!));
     }
     expect(profiles.some((profile) => !profile.botSeats)).toBe(true);
   });
 
-  it('refuses adding bot seats to Seafarers rooms and switching a room with bots to Seafarers', async () => {
+  it('seats bots in Heading for New Shores rooms and lets a room with bots switch to it', async () => {
     const host = await harness.client('SeafarersBots');
     const sea = await createRoom(host, { profileId: 'sf-new-shores-2025' });
-    host.expectError(await host.post(`/api/rooms/${sea.id}/bots`, {}), 'E_INVALID_BOT');
+    const added = host.expectOk<RoomShape>(await host.post(`/api/rooms/${sea.id}/bots`, {}));
+    expect(added.members.filter((member) => member.bot)).toHaveLength(1);
 
     const other = await harness.client('SeafarersSwitch');
     const base = await createRoom(other, { bots: 1 });
-    other.expectError(
-      await other.post(`/api/rooms/${base.id}/settings`, { profileId: 'sf-new-shores-2025' }),
-      'E_INVALID_BOT',
-    );
+    other.expectOk(await other.post(`/api/rooms/${base.id}/settings`, { profileId: 'sf-new-shores-2025' }));
+    const switched = other.expectOk<RoomShape & { profileId: string }>(await other.get(`/api/rooms/${base.id}`));
+    expect(switched.profileId).toBe('sf-new-shores-2025');
+    expect(switched.members.filter((member) => member.bot)).toHaveLength(1);
+  });
+
+  it('still refuses bot seats for rulesets bots cannot play, and switching a bot room to them', async () => {
+    // 城市與騎士，以及它和 Seafarers 的組合，都還沒有 BotModule。
+    for (const profileId of ['ck-2025', 'sf-ck-new-shores-2025']) {
+      expect(botsCanPlay(getProfile(profileId)!), profileId).toBe(false);
+      const host = await harness.client('NoBots');
+      const room = await createRoom(host, { profileId });
+      host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
+
+      const other = await harness.client('NoBotsSwitch');
+      const base = await createRoom(other, { bots: 1 });
+      other.expectError(await other.post(`/api/rooms/${base.id}/settings`, { profileId }), 'E_INVALID_BOT');
+    }
   });
 
   it('blocks start and further bots once the profile runs modules bots cannot play', async () => {

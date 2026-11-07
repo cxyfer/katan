@@ -9,7 +9,7 @@ sha256; this folder keeps a curated subset).
 
 | File | Renderer | Viewport | State |
 |---|---|---|---|
-| `lobby-seafarers.png` | – | 1366×900 | lobby: Seafarers → Heading for New Shores, game order, why bots are not offered, ruleset and required boxes |
+| `lobby-seafarers.png` | – | 1366×900 | lobby: a Heading for New Shores room with a standard and an easy bot, the add-bot toolbar, room settings with the game order, and the ruleset chip (v0.4.1) |
 | `map-3p-svg-desktop.png` | SVG | 1366×900 | 3-player map (SF25 p. 4) during setup; pirate waiting on the frame |
 | `map-3p-r3f-desktop.png` | 3D | 1366×900 | the same in 3D |
 | `map-4p-svg-desktop.png` | SVG | 1366×900 | 4-player map (SF25 p. 5); setup targets only on the main island |
@@ -50,3 +50,9 @@ looked different (master's game-order field and the note that bots only play
 the base game), so `lobby-seafarers.png` was replaced (sha256 `5e4c72b6b2e11a67…`). The
 other captures differ only by game randomness (robber, dice, hands, the
 variable 5–6 main island) and were kept; `report.json` lists the first run.
+
+For v0.4.1, bots can play Heading for New Shores, so the lobby no longer explains
+why bots are not offered. `lobby-seafarers.png` was re-shot by
+`scripts/bots-seafarers/capture.py` against the production build: a New Shores
+room where the host added a standard and an easy bot from the toolbar (sha256
+`91865512ffed5a52…`, no page errors). The other captures are unchanged.

@@ -283,7 +283,7 @@ export const zhHant: Catalog = {
   'lobby.bots.removeLabel': '移除電腦 {name}',
   'lobby.bots.full': '座位已滿。',
   'lobby.bots.seatNote': '自動行動，永遠已準備。',
-  'lobby.bots.unsupported': '電腦對手只會玩基本遊戲，無法加入使用擴充規則的組合。',
+  'lobby.bots.unsupported': '電腦對手尚未支援這個規則組合。',
   'lobby.botCount': '含 {count} 位電腦',
   'lobby.policyBotsExcluded': '電腦座位不參與表決。',
 

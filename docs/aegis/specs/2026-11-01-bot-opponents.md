@@ -13,10 +13,12 @@ P1 範圍內：
 - 房間中房主從「電腦對手」工具列逐一新增電腦對手，可用鉛筆圖示設定名稱（留空使用預設）並選擇難度，也可個別移除；建房時不詢問 Bot 數量（2026-11-02 變更）。
 - 兩種難度：`easy`、`standard`（預設）。
 - Bot 自動完成初始放置、擲骰、建造、買／打發展卡、棄牌、移動強盜、偷牌、豐收之年、免費道路、銀行／港口交易、回應報價、主動提出國內報價（附收集窗與逾時）、結束回合。
-- 支援目前啟用的 profile：`base-2025`（3–4 人）與 `base-paired-2025`（5–6 人；Player 2 不擲骰、不可發起或結算國內交易）。
+- 支援的 profile：
+  - `base-2025`（3–4 人）與 `base-paired-2025`（5–6 人；Player 2 不擲骰、不可發起或結算國內交易）。
+  - 0.4.1 起加上 Seafarers — Heading for New Shores 的 `sf-new-shores-2025`（3–4 人）與 `sf-new-shores-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-seafarers.md`。
 - 座位、大廳與遊戲中玩家面板顯示「電腦」徽章與難度。
 
-P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房間層級節奏設定、開局後增減 Bot、Bot 的反報價（counteroffer）、以事件紀錄推算對手手牌、目前停用的 Seafarers／C&K profile。
+P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房間層級節奏設定、開局後增減 Bot、Bot 的反報價（counteroffer）、以事件紀錄推算對手手牌。
 
 ## 2. 已定案決策
 
@@ -120,8 +122,6 @@ export function botModulesOf(profile: Pick<ProfileDefinition, 'ruleModules'>): r
 
 /** profile 的每個 rules module 都有已註冊、且 supports 該 profile 的 Bot 模組。 */
 export function botsCanPlay(profile: ProfileDefinition): boolean;
-/** @deprecated 0.4.1 起不再使用（保持為空）；改用 botsCanPlay。 */
-export const BOT_RULE_MODULES: readonly string[];
 
 export const BOT_PACING: Readonly<Record<string, number>>;       // 合併各模組的 pacing
 export function botCommandLimit(profile: Pick<ProfileDefinition, 'ruleModules'>, base: number): number;
@@ -149,6 +149,8 @@ export function botResponseCommands(profile: Pick<ProfileDefinition, 'ruleModule
 | 初始放置 | `hints.legalSettlements[0]`／`hints.legalRoads[0]` |
 | `preroll` | `turn.roll` |
 | `action` | `turn.end` |
+
+Seafarers 的保底見 SF 計畫 `docs/aegis/plans/2026-11-04-bots-seafarers.md` §4.1，包含 gold frame、移動強盜或海盜、含船的免費道路與初始放船。
 
 8. 策略不得讀 `view.events`：BotDriver 投影時帶最近 40 筆事件，測試 harness 不帶，讀了會讓兩邊結果不一致（決定性，I6）。
 9. 報價包含 Bot 無法估值的卡種或 goods（`giveGoods`、`wantGoods`）時一律拒絕（不同意、不結算）；對方要求的數量超過自己持有量，或提議者公開的 goods 付不起 `giveGoods` 時，也一律拒絕（引擎在同意時會檢查雙方）。

@@ -286,7 +286,7 @@ export const en: Catalog = {
   'lobby.bots.removeLabel': 'Remove bot {name}',
   'lobby.bots.full': 'Every seat is taken.',
   'lobby.bots.seatNote': 'Plays on its own and is always ready.',
-  'lobby.bots.unsupported': 'Bot opponents only play the base game; this ruleset uses expansion rules they do not know.',
+  'lobby.bots.unsupported': "Bot opponents can't play this ruleset yet.",
   'lobby.botCount': '{count} bot(s)',
   'lobby.policyBotsExcluded': 'Bot seats do not vote.',
 

@@ -12,12 +12,6 @@ import { BOT_MODULES, botModulesOf } from './modules/registry.ts';
 
 export { BOT_MODULES, botModulesOf };
 
-/**
- * @deprecated 0.4.1 起不再使用，SF-4 刪除；請改用 `botsCanPlay(profile)`。模組一律由
- * `modules/registry.ts` 註冊，這個清單保持為空。
- */
-export const BOT_RULE_MODULES: readonly string[] = [];
-
 /** True when bots can be seated in a game of this profile. */
 export function botsCanPlay(profile: ProfileDefinition): boolean {
   return profile.ruleModules.every((id) => {

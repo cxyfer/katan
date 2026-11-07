@@ -171,10 +171,10 @@ describe('lobby bot seats', () => {
     expect(screen.getByText('Every seat is taken.')).toBeTruthy();
   });
 
-  it('disables adding a bot with a localized reason when the profile has expansion rules', async () => {
+  it('disables adding a bot with a localized reason when bots cannot play the ruleset', async () => {
     const api = createFakeApi({
-      profiles: [makeProfile({ id: 'sf-new-shores-2025', expansions: ['seafarers'], botSeats: false })],
-      room: makeRoom({ profileId: 'sf-new-shores-2025', members: [makeMember()] }),
+      profiles: [makeProfile({ id: 'ck-2025', expansions: ['citiesKnights'], botSeats: false })],
+      room: makeRoom({ profileId: 'ck-2025', members: [makeMember()] }),
       identity: makeIdentity({ locale: 'zh-Hant' }),
     });
     await joinLobby(api, ['zh-TW']);
@@ -190,7 +190,7 @@ describe('lobby bot seats', () => {
     expect(api.callsOf('addBot')).toHaveLength(0);
     expect(screen.queryByTestId('bot-name')).toBeNull();
     expect(screen.getByTestId('lobby-bots-unsupported').textContent).toBe(
-      '電腦對手只會玩基本遊戲，無法加入使用擴充規則的組合。',
+      '電腦對手尚未支援這個規則組合。',
     );
   });
 
