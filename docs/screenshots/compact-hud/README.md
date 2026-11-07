@@ -2,8 +2,9 @@
 
 Review captures for the floating HUD on short landscape phones (#89) and for the
 save state that stays visible in that layout (#90). They were rendered from
-commit `e44804b` on 2026-11-07, after saving moved from the table menu into the
-leave dialog.
+commit `11010a8` on 2026-11-07, after saving moved from the table menu into the
+leave dialog and the save state in this layout became a pill with its own
+backdrop, like the connection state, so it reads over the board.
 
 Captured from the production build (`pnpm build`) in headless Chromium with
 device scale factor 1 and reduced motion. The script starts a disposable
@@ -23,7 +24,7 @@ its contents scroll inside the dialog box.
 | `03-action-rail-open-844x390-en.png` | en | 844×390 | Action rail open above the HUD |
 | `04-target-picker-above-hud-844x390-en.png` | en | 844×390 | Target list open while the robber must move; picker sits above the HUD |
 | `05-save-pending-844x390-en.png` | en | 844×390 | Save request held from the leave dialog: "Save pending…" on its button and the working note |
-| `06-save-failed-844x390-en.png` | en | 844×390 | Failed receipt after closing the dialog: "Save failed" stays in the status strip |
+| `06-save-failed-844x390-en.png` | en | 844×390 | Failed receipt after closing the dialog: "Save failed" stays in the status strip as a red pill on a dark backdrop |
 | `07-floating-hud-740x360-zh-Hant.png` | zh-Hant | 740×360 | Compact landscape HUD in Traditional Chinese |
 | `08-save-failed-dialog-open-740x360-zh-Hant.png` | zh-Hant | 740×360 | Leave dialog still open, failed save reported inside it |
 | `09-save-failed-740x360-zh-Hant.png` | zh-Hant | 740×360 | Failed receipt visible after the dialog is closed |
@@ -34,7 +35,8 @@ The script asserts the compact layout is active, the status strip is absolutely
 positioned, the board takes the full viewport height, the page does not scroll,
 the leave button stays inside the viewport, the target picker is above the HUD,
 the save state is visible while the save is pending, and "Save failed" stays
-visible in the status strip after the dialog is closed.
+visible in the status strip after the dialog is closed, at a font size of at
+least 10px on a backdrop that is not transparent.
 
 ## Reproduce
 
