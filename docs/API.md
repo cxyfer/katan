@@ -141,11 +141,14 @@ only the original human players must reconnect and become ready to resume.
   must differ from every seated member, case-insensitively
   (`E_BOT_NAME_TAKEN`).
 - When the deployment sets `BOTS_ENABLED=0`, adding bots is `E_BOTS_DISABLED`.
-- Bots only play profiles whose every rules module (`ProfileDefinition.ruleModules`)
-  is listed in `BOT_RULE_MODULES` (`packages/bots/src/support.ts`); the list is
-  empty today, so only base profiles qualify and `ProfileView.botSeats` is false
-  for every expansion profile. Adding a bot or
-  changing a room with bot seats to such a profile is `E_INVALID_BOT`, reason
+- Bots only play profiles that `botsCanPlay` (`packages/bots/src/support.ts`)
+  accepts: every rules module of the profile (`ProfileDefinition.ruleModules`)
+  needs a bot module, and that module's `supports(profile)` must accept the
+  profile. Today the base profiles and the two Heading for New Shores profiles
+  (`sf-new-shores-2025`, `sf-new-shores-paired-2025`) qualify, so
+  `ProfileView.botSeats` is true for them and false for every other expansion
+  profile, including Seafarers with Cities & Knights. Adding a bot or
+  changing a room with bot seats to an unsupported profile is `E_INVALID_BOT`, reason
   `profile`. A bot seat that still ends up in such a room (for example after a
   registry change) adds `blocker.botsUnsupported`, so the game cannot start.
 - Bot seats always report `ready` and `connected`, never become host, and do not

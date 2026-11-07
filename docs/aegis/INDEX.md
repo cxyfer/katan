@@ -5,6 +5,7 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-07 | work | docs/aegis/work/2026-11-07-bots-seafarers.md | Seafarers bots (v0.4.1) implementation record: slices, decisions, Q1/Q2 results, reviews and follow-ups |
 | 2026-11-04 | plan | docs/aegis/plans/2026-11-04-expansion-bots-roadmap.md | Expansion bots roadmap: BotModule platform, per-profile gating, quality gates and the 0.4.1–0.4.5 release plan |
 | 2026-11-04 | plan | docs/aegis/plans/2026-11-04-bots-seafarers.md | Seafarers bots (v0.4.1): sea model, ship duties, island plans, gold and bandit answers |
 | 2026-11-04 | plan | docs/aegis/plans/2026-11-04-bots-cities-knights.md | Cities & Knights bots (v0.4.2): commodity economy, frame duties, city improvements, knights and progress cards |
