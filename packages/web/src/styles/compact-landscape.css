@@ -25,13 +25,18 @@
 .screen--game[data-layout="compact-landscape"] .status-strip__spacer,
 .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="save-time"] { display: none; }
 /*
- * 儲存中與失敗必須保持可見：設定選單關閉後，失敗訊息只剩在收合的 <details> 裡。只隱藏不需行動的狀態。
+ * 儲存中與失敗必須保持可見：離開對話框關閉後，失敗訊息只剩狀態列這一處。只隱藏不需行動的狀態。
  * table.css 的 (width <= 1100px) 會把 .status-strip__save 整個隱藏，因此這裡必須明確把 pending／failed 開回來。
  */
 .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="idle"],
 .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="saved"] { display: none; }
+/* 與連線狀態同樣用半透明小底的膠囊：疊在棋盤上也讀得清楚，不沿用直屏狀態列縮小的字級（side-layout.css）。 */
 .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="pending"],
-.screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="failed"] { display: inline-flex; }
+.screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="failed"] {
+  display: inline-flex; min-height: var(--hud-size); padding: 0 10px; font-size: .7rem; white-space: nowrap;
+  background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
+}
+.screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="failed"] { color: var(--danger); border-color: #d98f78aa; }
 /* 連線狀態保持可見（docs/SPEC.md §8.1/§8.4），縮成半透明小底的燈號加短文字。 */
 .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="connection-state"] {
   min-height: var(--hud-size); padding: 0 10px; font-size: .7rem; white-space: nowrap;
@@ -107,16 +112,13 @@
 /* ---------- 下方：工具帶改為浮動圖示鈕 ---------- */
 .screen--game[data-layout="compact-landscape"] .game-tools { bottom: var(--hud-gap); left: 8px; }
 .screen--game[data-layout="compact-landscape"] .game-tools__tabs { gap: 6px; }
-.screen--game[data-layout="compact-landscape"] .game-tools__tab,
-.screen--game[data-layout="compact-landscape"] .game__menu > summary {
+.screen--game[data-layout="compact-landscape"] .game-tools__tab {
   display: grid; place-items: center; width: var(--hud-size); min-width: var(--hud-size);
   height: var(--hud-size); min-height: var(--hud-size); padding: 0;
   background: var(--hud-fill); border: 1px solid var(--hud-edge); border-radius: 8px;
 }
-.screen--game[data-layout="compact-landscape"] .game-tools__tab > span:not(.game-tools__unread),
-.screen--game[data-layout="compact-landscape"] .game__menu > summary > span { display: none; }
-.screen--game[data-layout="compact-landscape"] .game-tools__tab svg,
-.screen--game[data-layout="compact-landscape"] .game__menu > summary svg { width: 20px; height: 20px; }
+.screen--game[data-layout="compact-landscape"] .game-tools__tab > span:not(.game-tools__unread) { display: none; }
+.screen--game[data-layout="compact-landscape"] .game-tools__tab svg { width: 20px; height: 20px; }
 .screen--game[data-layout="compact-landscape"] .game-tools__tab--active { background: #3a4934; border-color: #d6bb7a; }
 .screen--game[data-layout="compact-landscape"] .game-tools__surface { bottom: calc(var(--hud-size) + var(--hud-gap) + 4px); max-height: calc(100dvh - 76px); }
 .screen--game[data-layout="compact-landscape"] .game-tools__header { padding-block: .35rem; }
@@ -133,8 +135,6 @@
 .screen--game[data-layout="compact-landscape"] .chat__compose { flex: 0 0 auto; flex-direction: row; align-items: stretch; gap: .5rem; margin-top: .5rem; }
 .screen--game[data-layout="compact-landscape"] .chat__compose textarea { flex: 1 1 auto; width: auto; height: 48px; min-height: 48px; resize: none; }
 .screen--game[data-layout="compact-landscape"] .chat__compose .button { flex: 0 0 auto; min-height: 48px; }
-.screen--game[data-layout="compact-landscape"] .game__menu { bottom: var(--hud-gap); right: 8px; }
-.screen--game[data-layout="compact-landscape"] .persistence { bottom: calc(var(--hud-size) + 4px); max-height: calc(100dvh - 76px); }
 
 /* 窄橫屏（約 667px 寬）：相機工具列與右上控制改用 40px 圖示鈕並收緊間距，兩者才不會相撞。 */
 @media (max-width: 700px) {
@@ -146,7 +146,9 @@
   .screen--game[data-layout="compact-landscape"] .board--side-controls .board__toolbar--side > .button,
   .screen--game[data-layout="compact-landscape"] .board--side-controls .board__display-settings > summary { width: 40px; }
   .screen--game[data-layout="compact-landscape"] .status-strip { gap: 4px; }
-  .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="connection-state"] { padding: 0 7px; font-size: .64rem; }
+  .screen--game[data-layout="compact-landscape"] .status-strip [data-testid="connection-state"],
+  .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="pending"],
+  .screen--game[data-layout="compact-landscape"] .status-strip__save[data-state="failed"] { padding: 0 7px; font-size: .64rem; }
   .screen--game[data-layout="compact-landscape"] .status-strip .language-switch select { max-width: 78px; padding-inline: 6px 2px; font-size: .64rem; }
 }
 

@@ -680,7 +680,9 @@ describe('B-LIFE bot scheduling', () => {
     const { host, roomId, gameId, botIds } = await botGame(2);
     await humanStep(host, gameId);
     await humanStep(host, gameId);
-    host.expectOk(await host.post(`/api/games/${gameId}/suspend`, {}));
+    // 唯一真人提案即成立：回應直接回報已暫停。
+    const proposal = host.expectOk<{ proposalId: string; suspended: boolean }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    expect(proposal.suspended).toBe(true);
     expect((await harness.service.repo.findRoom(roomId))!.status).toBe('suspended');
     const { games } = host.expectOk<{ games: ResumableGameView[] }>(await host.get('/api/games'));
     const saved = games.find((game) => game.gameId === gameId)!;

@@ -12,9 +12,10 @@ fixture, as in scripts/notice-dismiss). Phones are emulated with touch so the
   the top right, the tool band floating icon buttons at the bottom left, and the
   board takes the full height;
 * the action rail and the target-list popover stay tappable above the HUD;
-* the save request is held and then answered with a failed receipt: "saving" and
-  "save failed" stay visible in the status strip while the table menu is closed
-  (they are the only save states shown in this layout).
+* the save request is held and then answered with a failed receipt: "saving"
+  stays visible in the status strip while the leave dialog waits, and "save
+  failed" stays there after the dialog is closed (they are the only save states
+  shown in this layout).
 
 Run after `pnpm build`:
 
@@ -236,7 +237,7 @@ def layout_facts(table: Table, size: tuple[int, int]) -> dict:
       const stage = document.querySelector('[data-testid="game-stage"]');
       const strip = document.querySelector('[data-testid="status-strip"]').getBoundingClientRect();
       const map = document.querySelector('.game__map').getBoundingClientRect();
-      const menu = document.querySelector('[data-testid="table-menu"] > summary').getBoundingClientRect();
+      const leave = document.querySelector('[data-testid="leave-game"]').getBoundingClientRect();
       return {
         layout: stage.dataset.layout || null,
         coarse: matchMedia('(pointer: coarse)').matches,
@@ -245,7 +246,7 @@ def layout_facts(table: Table, size: tuple[int, int]) -> dict:
         mapHeight: Math.round(map.height), innerHeight, innerWidth,
         pageOverflowX: document.documentElement.scrollWidth - innerWidth,
         pageOverflowY: document.documentElement.scrollHeight - innerHeight,
-        menuInside: menu.left >= 0 && menu.top >= 0 && menu.right <= innerWidth + 0.5 && menu.bottom <= innerHeight + 0.5,
+        leaveInside: leave.left >= 0 && leave.top >= 0 && leave.right <= innerWidth + 0.5 && leave.bottom <= innerHeight + 0.5,
       };
     }""")
     if size[0] > 1000:
@@ -256,7 +257,7 @@ def layout_facts(table: Table, size: tuple[int, int]) -> dict:
     assert facts["stripPosition"] == "absolute", f"status strip is not floating: {facts}"
     assert facts["mapHeight"] == facts["innerHeight"], f"board does not take the full height: {facts}"
     assert facts["pageOverflowX"] <= 0 and facts["pageOverflowY"] <= 0, f"page scrolls: {facts}"
-    assert facts["menuInside"], f"menu button leaves the viewport: {facts}"
+    assert facts["leaveInside"], f"leave button leaves the viewport: {facts}"
     return facts
 
 
@@ -268,19 +269,18 @@ def visible_box(page, test_id: str):
 
 
 def save_failure_pass(table: Table, shots: Shots, checks: dict, label: str, size: tuple[int, int], locale: str, *,
-                      pending_shot: bool = False, menu_shot: bool = False) -> None:
-    """Hold the save request, then answer with a failed receipt."""
+                      pending_shot: bool = False, dialog_shot: bool = False) -> None:
+    """Hold the save request from the leave dialog, then answer with a failed receipt."""
     page = table.page
     held: list = []
     table.overrides[("POST", SAVE_PATH)] = held.append
     checks[f"{label}IdleHidden"] = visible_box(page, "save-state") is None
-    page.get_by_test_id("table-menu").locator("summary").click()
-    page.get_by_test_id("save-and-leave").click()
+    page.get_by_test_id("leave-game").click()
+    page.get_by_test_id("leave-keep").click()
     expect(page.get_by_test_id("save-state")).to_have_attribute("data-state", "pending")
-    page.get_by_test_id("table-menu").locator("summary").click()
-    expect(page.get_by_test_id("table-menu")).not_to_have_attribute("open", "")
+    # 保存進行中對話框無法關閉；狀態列仍要顯示保存中。
     pending = visible_box(page, "save-state")
-    checks[f"{label}PendingVisibleWithMenuClosed"] = pending is not None
+    checks[f"{label}PendingVisible"] = pending is not None
     if pending_shot:
         shots.take(table, f"{len(shots.files) + 1:02d}-save-pending-{size[0]}x{size[1]}-{locale}")
     deadline = time.monotonic() + 20
@@ -297,18 +297,22 @@ def save_failure_pass(table: Table, shots: Shots, checks: dict, label: str, size
         "error": {"messageId": "error.E_SAVE_FAILED"},
     }})
     expect(page.get_by_test_id("save-state")).to_have_attribute("data-state", "failed")
+    expect(page.get_by_test_id("leave-save-failed")).to_be_visible()
+    if dialog_shot:
+        shots.take(table, f"{len(shots.files) + 1:02d}-save-failed-dialog-open-{size[0]}x{size[1]}-{locale}")
+    page.get_by_test_id("leave-cancel").click()
+    expect(page.get_by_test_id("leave-dialog")).to_have_count(0)
+    # 失敗訊息不能只留在已關閉的對話框裡。
     box = visible_box(page, "save-state")
     viewport = page.viewport_size
-    checks[f"{label}FailedVisibleWithMenuClosed"] = box is not None and box["x"] >= 0 and box["y"] >= 0 \
+    checks[f"{label}FailedVisibleWithDialogClosed"] = box is not None and box["x"] >= 0 and box["y"] >= 0 \
         and box["x"] + box["width"] <= viewport["width"] + 0.5 and box["y"] + box["height"] <= viewport["height"] + 0.5
-    # 失敗訊息不能只躲在收合的選單裡。
-    checks[f"{label}MenuClosed"] = page.get_by_test_id("table-menu").get_attribute("open") is None
+    # 疊在棋盤上要讀得清楚：字級至少 10px，且有不透明度大於 0 的底色（不是直接印在棋盤上）。
+    style = page.get_by_test_id("save-state").evaluate(
+        "(node) => { const s = getComputedStyle(node); return { fontSize: parseFloat(s.fontSize), background: s.backgroundColor }; }"
+    )
+    checks[f"{label}FailedLegible"] = style["fontSize"] >= 10 and style["background"] not in ("rgba(0, 0, 0, 0)", "transparent")
     shots.take(table, f"{len(shots.files) + 1:02d}-save-failed-{size[0]}x{size[1]}-{locale}")
-    if menu_shot:
-        page.get_by_test_id("table-menu").locator("summary").click()
-        expect(page.get_by_test_id("save-failed")).to_be_visible()
-        shots.take(table, f"{len(shots.files) + 1:02d}-save-failed-menu-open-{size[0]}x{size[1]}-{locale}")
-        page.get_by_test_id("table-menu").locator("summary").click()
 
 
 def capture(out: Path) -> dict:
@@ -362,13 +366,13 @@ def capture(out: Path) -> dict:
             finally:
                 phone.close()
 
-            # 740x360（繁體中文）：儲存失敗，選單開著與收起各一張。
+            # 740x360（繁體中文）：儲存失敗，離開對話框開著與關閉各一張。
             phone = Table(browser, "zh-Hant", (740, 360), touch=True)
             try:
                 phone.open()
                 result["layout"]["phone740x360"] = layout_facts(phone, (740, 360))
                 shots.take(phone, f"{len(files) + 1:02d}-floating-hud-740x360-zh-Hant")
-                save_failure_pass(phone, shots, checks, "phone740", (740, 360), "zh-Hant", menu_shot=True)
+                save_failure_pass(phone, shots, checks, "phone740", (740, 360), "zh-Hant", dialog_shot=True)
                 assert not phone.errors, phone.errors
             finally:
                 phone.close()

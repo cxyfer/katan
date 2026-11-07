@@ -1173,55 +1173,6 @@
 .game-tools__panel fieldset {
   padding: .75rem;
 }
-.game__menu {
-  z-index: 36;
-  position: absolute;
-  bottom: 12px;
-  right: 22px;
-}
-.game__menu > summary {
-  color: #d4c89f;
-  background: #102b30e8;
-  border: 1px solid #8fa38b44;
-  border-radius: 5px;
-  align-items: center;
-  gap: .45rem;
-  min-height: 37px;
-  padding: .35rem .7rem;
-  font-size: .65rem;
-  display: flex;
-}
-.game__menu > summary::marker {
-  content: "";
-}
-.persistence {
-  background: #173337fc;
-  border: 1px solid #b2a16a99;
-  border-radius: 10px;
-  flex-direction: column;
-  gap: .7rem;
-  width: min(330px, 100vw - 44px);
-  max-height: calc(100dvh - 100px);
-  padding: 1.2rem;
-  display: flex;
-  position: absolute;
-  bottom: 46px;
-  right: 0;
-  overflow-y: auto;
-  box-shadow: 0 15px 50px #00121bb3;
-}
-.persistence h2 {
-  color: #e2c894;
-  margin-bottom: .25rem;
-  font-size: 1rem;
-}
-.persistence p {
-  margin: 0;
-  font-size: .75rem;
-}
-.persistence .button {
-  font-size: .76rem;
-}
 .game__orientation {
   display: none;
 }
@@ -1659,19 +1610,6 @@
     max-height: calc(100dvh - 125px);
     bottom: 36px;
   }
-  .game__menu {
-    bottom: 7px;
-    right: 12px;
-  }
-  .game__menu > summary {
-    min-height: 29px;
-    padding: .3rem .5rem;
-    font-size: .55rem;
-  }
-  .game__menu > summary svg {
-    width: 16px;
-    height: 16px;
-  }
   .screen--game .legend {
     top: 10px;
   }
@@ -1985,17 +1923,6 @@
     width: calc(100vw - 20px);
     max-height: calc(100dvh - 246px);
     bottom: 44px;
-  }
-  .game__menu {
-    bottom: 13px;
-    right: 10px;
-  }
-  .game__menu > summary {
-    min-height: 33px;
-    padding: .35rem;
-  }
-  .game__menu > summary > span {
-    display: none;
   }
   .game__preview {
     max-height: 85%;

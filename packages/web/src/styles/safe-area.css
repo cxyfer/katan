@@ -10,7 +10,6 @@
 }
 /* 直接以 .screen--game 為定位基準的浮動元件不受 padding 影響，另外位移 */
 .screen--game > .game-tools { translate: env(safe-area-inset-left, 0px) calc(-1 * env(safe-area-inset-bottom, 0px)); }
-.screen--game > .game__menu { translate: calc(-1 * env(safe-area-inset-right, 0px)) calc(-1 * env(safe-area-inset-bottom, 0px)); }
 .screen--game > .game__orientation { translate: 0 calc(-1 * env(safe-area-inset-bottom, 0px)); }
 .screen--game > .table-fullscreen-error { translate: calc(-1 * env(safe-area-inset-right, 0px)) env(safe-area-inset-top, 0px); }
 

@@ -33,7 +33,7 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`boot-progress/`](boot-progress/README.md) | Step-by-step startup progress from PR #79: each pending step, the slow hint and the failed states, desktop and phone | `a200840` (2026-11-04) | [`scripts/boot-progress/capture.py`](../../scripts/boot-progress/capture.py) |
 | [`board-motion/`](board-motion/README.md) | Key frames of roads and buildings dropping from the sky (PR #80) and the board held during the roll presentation (PR #91), SVG and 3D | `a200840` (2026-11-04) | [`scripts/board-motion/capture.py`](../../scripts/board-motion/capture.py) |
 | [`target-picker/`](target-picker/README.md) | Compact target picker from PR #85: target list, picker for overlapping targets and dismissal by an outside click, desktop and phone | `3002f91` (2026-11-07) | [`scripts/target-picker/capture.py`](../../scripts/target-picker/capture.py) |
-| [`compact-hud/`](compact-hud/README.md) | Floating HUD on short landscape phones from PR #89 (844×390, 740×360, 568×320, touch) and the save state kept visible in that layout from PR #90 | `a200840` (2026-11-04); `04` re-captured at `3002f91` (2026-11-07) | [`scripts/compact-hud/capture.py`](../../scripts/compact-hud/capture.py) |
+| [`compact-hud/`](compact-hud/README.md) | Floating HUD on short landscape phones from PR #89 (844×390, 740×360, 568×320, touch) and the save state kept visible in that layout from PR #90, saved from the leave dialog and shown as a pill over the board | `11010a8` (2026-11-07); `04` re-captured on the merge of `c4f9d7f` into `3387257` (2026-11-07) | [`scripts/compact-hud/capture.py`](../../scripts/compact-hud/capture.py) |
 | [`dialog-portal/`](dialog-portal/README.md) | Trade settle dialog rendered through a portal instead of clipped by the table panel (PR #92), desktop and short landscape | `a200840` (2026-11-04) | [`scripts/dialog-portal/capture.py`](../../scripts/dialog-portal/capture.py) |
 
 `current/`, `hand-cards/` and `discard-prompt/` reflect the table as it is
@@ -50,6 +50,13 @@ does not: the camera controls, legend and rails have moved and the 3D island
 is the old one. `lobby-capacity/` shows the old two-column lobby, so recapture
 it with its script before relying on it. Refresh or remove the others when a
 change touches what they show (see [Curation rules](#curation-rules)).
+
+Since 2026-11-07 the table has no separate table menu in the bottom-right
+corner: Save and leave and the all-seat save-and-pause proposal moved into the
+leave dialog in the status strip. Table captures taken before that, including
+`current/`, still show the menu button in that corner; nothing else in them
+changed. `compact-hud/`, whose save-state captures used the menu, was
+recaptured with the change.
 
 ## `current/`
 

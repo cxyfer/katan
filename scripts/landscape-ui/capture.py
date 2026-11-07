@@ -197,7 +197,7 @@ with sync_playwright() as p:
         raise AssertionError('never reached an action phase on the host turn')
     host.wait_for_timeout(2500)
     sweep(host, '05-table', [(1366, 768), (1920, 1080), (1024, 600), (844, 390), (390, 844)], 900,
-          controls=['players-toggle', 'action-rail-toggle', 'zoom-in', 'tool-tab-trade', 'table-menu'])
+          controls=['players-toggle', 'action-rail-toggle', 'zoom-in', 'tool-tab-trade', 'leave-game'])
 
     host.set_viewport_size({'width': 1366, 'height': 768})
     host.get_by_test_id('tool-tab-trade').click()

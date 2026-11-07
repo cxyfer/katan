@@ -50,8 +50,8 @@ Conventions:
 | POST | `/api/games/:gameId/abandon` | `{}` or `{ proposalId, approve }` | `AbandonProposeResult` (`{ proposalId, abandoned }`) or `AbandonConsentResult` (`{ abandoned }`) |
 | POST | `/api/games/:gameId/withdraw` | `{ withdrawn }` | `WithdrawResult` (`{ withdrawn, abandoned }`) |
 | POST | `/api/rooms/:roomId/withdraw` | `{ withdrawn }` | `RoomView` (compatibility alias of the game route) |
-| POST | `/api/games/:gameId/suspend` | `{ proposalId? }` | `RoomView` |
-| POST | `/api/games/:gameId/resume` | `{ ready }` | `RoomView` |
+| POST | `/api/games/:gameId/suspend` | `{}` or `{ proposalId, approve? }` | `SuspendProposeResult` (`{ proposalId, suspended }`) or `SuspendConsentResult` (`{ suspended }`) |
+| POST | `/api/games/:gameId/resume` | `{ ready }` | `ResumeReadyResult` (`{ resumed, waitingFor }`) |
 | GET | `/api/rooms/:roomId/chat` | query `after?`, `limit?` | `ChatPage` |
 | POST | `/api/rooms/:roomId/chat` | `{ clientMessageId, text }` | `ChatMessageView` |
 
@@ -172,8 +172,9 @@ only the original human players must reconnect and become ready to resume.
 
 ### Withdrawal and ending a game
 
-Leaving a started game has three distinct meanings (SPEC §4.6, §4.8); none of
-them removes the seat.
+Leaving a started game has four distinct meanings (SPEC §4.6, §4.8); none of
+them removes the seat. The web client offers all of them from one place, the
+table's leave dialog.
 
 - **Save and leave** — `POST /api/games/:gameId/save`, then unsubscribe over the
   socket and wait for `unsubscribed`, then `POST /api/rooms/:roomId/leave`
@@ -194,6 +195,34 @@ them removes the seat.
   withdraw. `POST /api/rooms/:roomId/withdraw` is kept as an alias that
   forwards to the game route and still answers `RoomView`; a room without a
   game answers `E_GAME_NOT_STARTED` (409).
+- **Save and suspend the table** — `POST /api/games/:gameId/suspend` with `{}`
+  proposes an all-seat save/pause and answers
+  `SuspendProposeResult { proposalId, suspended }`. The proposal counts as the
+  proposer's consent; proposing while a proposal is already open answers that
+  `proposalId` without recording a consent. Every person must agree, including
+  one who is offline or withdrawn (an absent person is never treated as
+  consenting); bots count as agreeing, so a sole person against bots suspends
+  at once (`suspended: true`). Further votes use `{ proposalId, approve }`
+  (`approve` defaults to `true`) and answer `{ suspended }`; any rejection,
+  including the proposer's own, cancels the proposal. An unknown or closed
+  `proposalId` is `E_NO_PROPOSAL` (404), and proposing on a table that is
+  already suspended is `E_GAME_SUSPENDED` (409). When the suspension takes
+  effect, open and agreed trade offers expire (`trade.expired` with
+  `reason: "suspended"`) and the room's pending policy proposal is cancelled;
+  strategic pending effects are kept. Expiring offers is a new revision, pushed
+  to every connected seat as a `snapshot`; with nothing to expire the revision
+  stays the same. Once suspended, commands are
+  refused with `E_GAME_SUSPENDED` until `POST /api/games/:gameId/resume` with
+  `{ ready }` has every person connected and ready; it answers
+  `ResumeReadyResult { resumed, waitingFor }`, where `waitingFor` lists the
+  people still offline or not ready. A reconnecting seat leaves the suspend
+  proposal open (reconnection only cancels an abandon vote), so an absent person
+  can come back and agree. Readiness means being at the table: dropping the last
+  socket or leaving the room while suspended takes that person's readiness back,
+  and they say ready again when they return. Creating, consenting to or rejecting a
+  proposal, and every readiness change that does not resume yet, push a fresh
+  `room` message to everyone connected. None of these answers is a `RoomView`:
+  clients read the new state from that push or from `GET /api/rooms/:roomId`.
 - **End the game** — `POST /api/games/:gameId/abandon` with `{}` proposes
   abandonment and answers `AbandonProposeResult { proposalId, abandoned }`. The
   proposal counts as the proposer's consent, and proposing while a proposal is
@@ -223,6 +252,12 @@ withdrawn, for the confirmation dialog to name. `ResumableGameView.withdrawn` is
 true when the viewer's own seat is withdrawn; the game stays listed so the seat
 can be taken back. All three fields are optional in the types, but the server
 always fills them.
+
+`RoomView.pendingSuspend` is the open save-and-suspend proposal while the room
+is `playing`, as `{ id, proposedBy, consents, createdAt }`, and `null`
+otherwise. `RoomView.resumeReady` lists the people who said they are ready to
+resume while the room is `suspended`, and is `null` in any other status. Both
+are optional in the types; the server always fills them.
 
 ### Command handling
 

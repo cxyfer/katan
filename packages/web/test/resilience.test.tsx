@@ -37,11 +37,12 @@ describe('persistence UX', () => {
     });
     await openGame(api);
 
-    fireEvent.click(screen.getByTestId('save-and-leave'));
+    fireEvent.click(screen.getByTestId('leave-game'));
+    fireEvent.click(screen.getByTestId('leave-keep'));
     await waitFor(() =>
       expect(screen.getByTestId('save-state').getAttribute('data-state')).toBe('failed'),
     );
-    expect(screen.getByTestId('save-failed')).toBeTruthy();
+    expect(screen.getByTestId('leave-save-failed')).toBeTruthy();
     expect(api.callsOf('saveGame')).toHaveLength(1);
     // Still on the game screen: a failed save must not look like a success.
     expect(screen.getByTestId('board-svg')).toBeTruthy();
@@ -50,7 +51,8 @@ describe('persistence UX', () => {
   it('returns to the resume list only after an acknowledged save', async () => {
     const api = createFakeApi({ snapshot: makeSnapshot(makeView()) });
     await openGame(api);
-    fireEvent.click(screen.getByTestId('save-and-leave'));
+    fireEvent.click(screen.getByTestId('leave-game'));
+    fireEvent.click(screen.getByTestId('leave-keep'));
     await waitFor(() => expect(api.callsOf('saveGame')).toHaveLength(1));
     const saved = await screen.findByTestId('resume-list');
     expect(saved.textContent).toContain('Alex');
@@ -73,10 +75,21 @@ describe('persistence UX', () => {
   });
 
   it('proposes a shared save/suspend without pretending it is agreed', async () => {
-    const api = createFakeApi({ snapshot: makeSnapshot(makeView()) });
-    await openGame(api);
-    fireEvent.click(screen.getByTestId('suspend-propose'));
+    const api = createFakeApi({
+      room: makeRoom({ status: 'playing', gameId: 'g1' }),
+      snapshot: makeSnapshot(makeView()),
+    });
+    renderApp(api);
+    fireEvent.change(await screen.findByTestId('join-code'), { target: { value: 'ABC123' } });
+    fireEvent.click(screen.getByTestId('join-room'));
+    await screen.findByTestId('board-svg');
+    fireEvent.click(screen.getByTestId('leave-game'));
+    fireEvent.click(screen.getByTestId('leave-suspend'));
     await waitFor(() => expect(api.callsOf('suspendGame')).toHaveLength(1));
+    // 只有提案：房間仍在進行中，沒有出現「已暫停」的準備繼續橫幅。
+    await waitFor(() => expect(api.callsOf('getRoom').length).toBeGreaterThan(0));
+    expect(screen.queryByTestId('resume-bar')).toBeNull();
+    expect(screen.getByTestId('board-svg')).toBeTruthy();
   });
 });
 

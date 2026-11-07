@@ -3,9 +3,10 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { WebSocket } from 'ws';
 import { legalRoadEdges, requireProfile, type GameState, type GameView } from '@catan/rules';
-import type { ResumableGameView } from '@catan/protocol';
+import type { ResumableGameView, RoomView, ServerMessage } from '@catan/protocol';
 import { startService } from '../src/main.ts';
 import {
   createClient,
@@ -164,6 +165,195 @@ describe('R-SAVE all-seat suspension', () => {
     expect(result.suspended).toBe(false);
     const room = host.expectOk<{ status: string }>(await host.get(`/api/rooms/${roomId}`));
     expect(room.status).toBe('playing');
+  });
+});
+
+/** 訂閱房間的真實 socket，收集伺服器推送的房間檢視。 */
+async function watchRoom(client: TestClient, roomId: string): Promise<{
+  rooms: () => RoomView[];
+  snapshots: () => Snapshot[];
+  close: () => Promise<void>;
+}> {
+  const socket = new WebSocket(`${harness.base.replace('http', 'ws')}/ws`, { headers: { cookie: client.cookie! } });
+  const messages: ServerMessage[] = [];
+  socket.on('message', (data) => messages.push(JSON.parse(data.toString()) as ServerMessage));
+  await new Promise<void>((resolve, reject) => {
+    socket.once('open', resolve);
+    socket.once('error', reject);
+  });
+  const rooms = () => messages.flatMap((message) => (message.type === 'room' ? [message.payload] : []));
+  const snapshots = () => messages.flatMap((message) => (message.type === 'snapshot' ? [message.payload] : []));
+  socket.send(JSON.stringify({ type: 'subscribe', payload: { roomId } }));
+  await vi.waitFor(() => expect(rooms().length).toBeGreaterThan(0));
+  return {
+    rooms,
+    snapshots: () => snapshots() as unknown as Snapshot[],
+    close: () => new Promise<void>((resolve) => {
+      if (socket.readyState === WebSocket.CLOSED) return resolve();
+      socket.once('close', () => resolve());
+      socket.close();
+    }),
+  };
+}
+
+describe('R-SAVE suspension in the room view', () => {
+  it('shows the open proposal and its consents, and pushes every change to the table', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const tab = await watchRoom(second, roomId);
+    try {
+      const proposal = host.expectOk<{ proposalId: string; suspended: boolean }>(
+        await host.post(`/api/games/${gameId}/suspend`, {}),
+      );
+      expect(proposal.suspended).toBe(false);
+      // 其他座位靠推送看到投票，不必自己重新整理。
+      await vi.waitFor(() => expect(tab.rooms().at(-1)?.pendingSuspend?.id).toBe(proposal.proposalId));
+      let view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+      expect(view.pendingSuspend).toMatchObject({ id: proposal.proposalId, proposedBy: host.playerId, consents: [host.playerId] });
+      expect(view.resumeReady).toBeNull();
+
+      await second.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+      await vi.waitFor(() => expect(tab.rooms().at(-1)?.pendingSuspend?.consents).toHaveLength(2));
+      view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+      expect([...view.pendingSuspend!.consents].sort()).toEqual([host.playerId, second.playerId].sort());
+
+      await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: false });
+      await vi.waitFor(() => expect(tab.rooms().at(-1)?.pendingSuspend).toBeNull());
+      view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+      expect(view.status).toBe('playing');
+      expect(view.pendingSuspend).toBeNull();
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('lists who is ready to resume while suspended and refuses another proposal', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const proposal = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    await second.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+    await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+
+    let view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+    expect(view.status).toBe('suspended');
+    expect(view.pendingSuspend).toBeNull();
+    expect(view.resumeReady).toEqual([]);
+    host.expectError(await host.post(`/api/games/${gameId}/suspend`, {}), 'E_GAME_SUSPENDED');
+
+    const tab = await watchRoom(third, roomId);
+    try {
+      await host.post(`/api/games/${gameId}/resume`, { ready: true });
+      await vi.waitFor(() => expect(tab.rooms().at(-1)?.resumeReady).toEqual([host.playerId]));
+      view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+      expect(view.resumeReady).toEqual([host.playerId]);
+
+      await host.post(`/api/games/${gameId}/resume`, { ready: false });
+      await vi.waitFor(() => expect(tab.rooms().at(-1)?.resumeReady).toEqual([]));
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('takes back readiness when a ready person drops off or leaves', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const proposal = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    await second.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+    await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+
+    const watcher = await watchRoom(third, roomId);
+    const secondTab = await watchRoom(second, roomId);
+    try {
+      await second.post(`/api/games/${gameId}/resume`, { ready: true });
+      await vi.waitFor(() => expect(watcher.rooms().at(-1)?.resumeReady).toEqual([second.playerId]));
+      // 斷線後回來，不能因為留著舊的準備紀錄而讓全桌卡在「都準備好了卻沒恢復」。
+      await secondTab.close();
+      await vi.waitFor(() => expect(watcher.rooms().at(-1)?.resumeReady).toEqual([]));
+
+      await host.post(`/api/games/${gameId}/resume`, { ready: true });
+      await vi.waitFor(() => expect(watcher.rooms().at(-1)?.resumeReady).toEqual([host.playerId]));
+      host.expectOk(await host.post(`/api/rooms/${roomId}/leave`));
+      const view = third.expectOk<RoomView>(await third.get(`/api/rooms/${roomId}`));
+      expect(view.status).toBe('suspended');
+      expect(view.resumeReady).toEqual([]);
+    } finally {
+      await secondTab.close();
+      await watcher.close();
+    }
+  });
+});
+
+describe('R-SAVE suspension cancels negotiation (SPEC §4.8)', () => {
+  /** 讓目前的行動者直接進入行動階段並握有一張羊毛，才能發出報價。 */
+  async function actionWindow(gameId: string): Promise<string> {
+    const row = (await harness.service.repo.findGame(gameId))!;
+    const state = JSON.parse(row.state_json) as GameState;
+    state.turn.phase = 'action';
+    state.turn.dice = [3, 4];
+    const actor = state.players[state.turn.seat]!;
+    actor.resources.wool += 1;
+    await harness.service.repo.db.run('UPDATE games SET state_json = ? WHERE id = ?', [JSON.stringify(state), gameId]);
+    return actor.id;
+  }
+
+  it('expires open offers, cancels the room-policy proposal and pushes the new state', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const actorId = await actionWindow(gameId);
+    const actor = clients.find((client) => client.playerId === actorId)!;
+    const before = actor.expectOk<Snapshot>(await actor.get(`/api/games/${gameId}`));
+    const offered = actor.expectOk<Receipt>(
+      await actor.post(`/api/games/${gameId}/commands`, {
+        commandId: id('offer-before-suspend'),
+        expectedRevision: before.revision,
+        command: { type: 'trade.offer', to: 'all', give: { wool: 1 }, want: { ore: 1 } },
+      }),
+    );
+    expect(offered.outcome).toBe('accepted');
+    const proposed = host.expectOk<RoomView>(
+      await host.post(`/api/rooms/${roomId}/policy`, { policy: { turnClockSeconds: 30 } }),
+    );
+    expect(proposed.pendingPolicy).not.toBeNull();
+
+    const tab = await watchRoom(third, roomId);
+    try {
+      const proposal = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+      await second.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+      await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+
+      const snapshot = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
+      expect(snapshot.revision).toBe(offered.revision + 1);
+      expect(snapshot.view.offers.map((offer) => offer.status)).toEqual(['expired']);
+      const { events } = host.expectOk<{ events: { type: string; params: Record<string, unknown> }[] }>(
+        await host.get(`/api/games/${gameId}/events?after=${before.view.events.at(-1)?.seq ?? 0}`),
+      );
+      expect(events.filter((event) => event.type === 'trade.expired').map((event) => event.params.reason)).toEqual(['suspended']);
+      // 其他座位收到新的投影，牌桌上不會留著已取消的報價。
+      await vi.waitFor(() => expect(tab.snapshots().at(-1)?.revision).toBe(offered.revision + 1));
+
+      const view = host.expectOk<RoomView>(await host.get(`/api/rooms/${roomId}`));
+      expect(view.status).toBe('suspended');
+      expect(view.pendingPolicy).toBeNull();
+      expect(view.policy.turnClockSeconds).not.toBe(30);
+    } finally {
+      await tab.close();
+    }
+  });
+
+  it('keeps the revision when there is nothing to cancel', async () => {
+    const { clients, gameId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const before = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
+    const proposal = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    await second.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+    await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
+    const after = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
+    expect(after.revision).toBe(before.revision);
   });
 });
 

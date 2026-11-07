@@ -17,6 +17,7 @@ import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
 import { RotatePrompt } from './RotatePrompt.tsx';
 import { SelectionPreview } from './SelectionPreview.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
+import { SuspendPanel } from './SuspendPanel.tsx';
 import { useFullscreen } from './useFullscreen.ts';
 import { COMPACT_LANDSCAPE_QUERY, useIsMobile } from './useIsMobile.ts';
 import { useAutoDeclineTrades } from './useAutoDeclineTrades.ts';
@@ -55,7 +56,6 @@ export function GameScreen({ controller }: { controller: TableController }) {
     setAnnouncement(next ? t(next.messageId, next.params) : '');
   }, [action, t]);
 
-  const suspended = state.room?.status === 'suspended';
   const interrupted = state.room?.status === 'playing' && state.connection !== 'online';
 
   return (
@@ -88,10 +88,11 @@ export function GameScreen({ controller }: { controller: TableController }) {
           <div className="game__messages">
             <PendingPrompt controller={controller} />
             {state.activeElsewhere && <p className="notice notice--warning" data-testid="active-elsewhere" role="alert">{t('app.activeInAnotherTab')} — {t('app.activeInAnotherTabHelp')}</p>}
-            {(suspended || interrupted) && <div className="notice" data-testid="resume-bar">
-              <p>{t(suspended ? 'play.suspended' : 'play.interrupted')}</p>
+            {interrupted && <div className="notice" data-testid="resume-bar">
+              <p>{t('play.interrupted')}</p>
               <button type="button" className="button" data-testid="resume-ready" onClick={() => void controller.actions.resumeTable(true)}>{t('play.resumeReady')}</button>
             </div>}
+            <SuspendPanel controller={controller} />
             {state.command?.status !== 'accepted' && <CommandStatus controller={controller} />}
             <PolicyProposalPanel controller={controller} />
             <AbandonPanel controller={controller} onPropose={proposeEnd} />
@@ -107,21 +108,6 @@ export function GameScreen({ controller }: { controller: TableController }) {
       </div>
 
       <GameTools controller={controller} />
-      <details className="game__menu" data-testid="table-menu" onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.currentTarget.open = false;
-          event.currentTarget.querySelector('summary')?.focus();
-        }
-      }}>
-        <summary aria-label={t('table.settings')} title={t('table.settings')}><GameIcon name="settings" size={21} /><span>{t('table.settings')}</span></summary>
-        <section className="persistence" aria-labelledby="persistence-heading" data-testid="persistence-bar">
-          <h2 id="persistence-heading">{t('table.settings')}</h2>
-          <p className="muted">{t('entry.identityNote')}</p>
-          <button type="button" className="button" data-testid="save-and-leave" disabled={state.save.status === 'pending'} onClick={() => void controller.actions.saveGame()}>{state.save.status === 'pending' ? t('play.savePending') : t('play.saveAndLeave')}</button>
-          <button type="button" className="button button--ghost" data-testid="suspend-propose" onClick={() => void controller.actions.suspendGame()}>{t('play.suspendPropose')}</button>
-          {state.save.status === 'failed' && <p className="error" role="alert" data-testid="save-failed">{t('play.saveFailed')}</p>}
-        </section>
-      </details>
       {leaveStep && <LeaveDialog controller={controller} initialStep={leaveStep} onClose={closeLeave} />}
       <p className="game__orientation"><GameIcon name="refresh" size={14} />{t('table.landscapeHint')}</p>
       <RotatePrompt />

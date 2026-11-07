@@ -228,6 +228,10 @@ export interface RoomView {
   pendingPolicy: PolicyProposalView | null;
   /** 進行中對局的 open 放棄提案；沒有提案或沒有對局時為 null。 */
   pendingAbandon?: AbandonProposalView | null;
+  /** 進行中（`playing`）對局的 open 全桌保存並暫停提案（§4.8）；沒有時為 null。 */
+  pendingSuspend?: SuspendProposalView | null;
+  /** 暫停中（`suspended`）對局已表示準備繼續的真人 playerId；不是暫停中時為 null。 */
+  resumeReady?: string[] | null;
   /**
    * 檢視者在這個房間目前的進房世代（每次 HTTP join 或 socket 訂閱都會變大）。
    * 沒有 `unsubscribed` 確認可用時，離開請求以它當備援。只在有檢視者時出現。
@@ -256,6 +260,34 @@ export interface AbandonProposeResult {
 /** `POST /api/games/:gameId/abandon`（附 proposalId 表態）的回應。 */
 export interface AbandonConsentResult {
   abandoned: boolean;
+}
+
+/** 全桌保存並暫停提案（§4.8）：所有真人座位都同意才成立，缺席者不視為同意。 */
+export interface SuspendProposalView {
+  id: string;
+  proposedBy: string;
+  /** 已同意的真人 playerId（提案者本身算一票）。 */
+  consents: string[];
+  createdAt: string;
+}
+
+/** `POST /api/games/:gameId/suspend`（提案）的回應。 */
+export interface SuspendProposeResult {
+  proposalId: string;
+  /** 提案即同意；唯一真人或同意者已齊時為 true，對局已暫停。 */
+  suspended: boolean;
+}
+
+/** `POST /api/games/:gameId/suspend`（附 proposalId 表態）的回應。 */
+export interface SuspendConsentResult {
+  suspended: boolean;
+}
+
+/** `POST /api/games/:gameId/resume` 的回應。 */
+export interface ResumeReadyResult {
+  resumed: boolean;
+  /** 尚未連線或尚未準備好的真人 playerId；`resumed` 為 true 時為空陣列。 */
+  waitingFor: string[];
 }
 
 /**
