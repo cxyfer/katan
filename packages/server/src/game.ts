@@ -838,10 +838,11 @@ export class GameCoordinator {
       if (proposalId) await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
       return false;
     }
-    const abandoned = abandonGame(current);
+    // 終局會讓進行中的提案逾期：存下轉移發出的全部事件，不只最後一則 `game.abandoned`。
+    const { state: abandoned, events } = abandonGame(current);
     await this.repo.transaction(async () => {
       await this.repo.saveGame(gameId, abandoned, fresh.revision + 1, 'abandoned', null);
-      await this.repo.appendEvents(gameId, fresh.revision + 1, abandoned.log.slice(-1));
+      await this.repo.appendEvents(gameId, fresh.revision + 1, events);
       if (proposalId) await this.repo.updateGameProposalStatus(proposalId, 'applied');
       await this.repo.updateRoom(roomId, { status: 'abandoned' });
       await this.repo.cancelOpenGameProposals(gameId);
@@ -930,7 +931,7 @@ export class GameCoordinator {
       const current = JSON.parse(fresh.state_json) as GameState;
       // 排隊期間可能已有終局（勝利優先）。
       if (current.result) return false;
-      const abandoned = abandonGame(current, 'expired');
+      const { state: abandoned, events } = abandonGame(current, 'expired');
       const idle = await this.repo.transaction<IdleGameRow | null>(async () => {
         // 閒置確認與終止寫入放在同一個交易：連線、房主轉移等不經每局鎖的活動
         // 不會在兩者之間插入。SQLite 的交易會讓其他呼叫者排隊；PostgreSQL 先以
@@ -940,7 +941,7 @@ export class GameCoordinator {
         const [row] = await this.repo.listIdleGames(cutoff, 1, { gameId });
         if (!row) return null;
         await this.repo.saveGame(gameId, abandoned, fresh.revision + 1, 'abandoned', null);
-        await this.repo.appendEvents(gameId, fresh.revision + 1, abandoned.log.slice(-1));
+        await this.repo.appendEvents(gameId, fresh.revision + 1, events);
         await this.repo.updateRoom(fresh.room_id, { status: 'abandoned' });
         await this.repo.cancelOpenGameProposals(gameId);
         return row;
@@ -949,7 +950,7 @@ export class GameCoordinator {
       if (!idle) return false;
       this.deps.rooms.broadcastRoom(fresh.room_id);
       // 仍連線的客戶端要拿到帶有 `expired` 原因的終局投影，而不只是房間狀態。
-      this.publish(fresh.room_id, gameId, fresh.revision + 1, abandoned.log.slice(-1));
+      this.publish(fresh.room_id, gameId, fresh.revision + 1, events);
       this.notifyLifecycle(gameId, 'abandoned');
       const lastActivity = [idle.updated_at, idle.room_updated_at, idle.last_seen_at ?? ''].sort().pop();
       this.deps.log?.('info', 'game expired by retention policy', {

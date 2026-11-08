@@ -191,7 +191,7 @@ describe('game statistics', () => {
     expect(during.stats).toBeUndefined();
     expect(JSON.stringify(during)).not.toContain('victoryPoint');
 
-    const ended = abandonGame(bought);
+    const ended = abandonGame(bought).state;
     const after = projectGame(ended, 'p2');
     expect(after.stats?.players['p1']!.devCardsBought.victoryPoint).toBe(1);
     // 終局時再取樣一次，且包含隱藏的勝利分數卡。
