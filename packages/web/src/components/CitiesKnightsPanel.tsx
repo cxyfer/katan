@@ -1,5 +1,5 @@
 import { useT, useLocale } from '../i18n/context.tsx';
-import { formatNumber } from '../i18n/format.ts';
+import { bankSupply, formatBankSupply, formatNumber } from '../i18n/format.ts';
 import {
   citiesKnightsHints, citiesKnightsView, MAX_LEVEL, MAX_WALLS, TRACK_COMMODITY, TRACKS, VP_PROGRESS,
   type CitiesKnightsModuleView, type ImprovementOption,
@@ -130,12 +130,19 @@ export function CitiesKnightsPanel({ controller }: { controller: TableController
       <section className="ck-panel__section" aria-labelledby="ck-supply-heading" data-testid="ck-supply">
         <h3 id="ck-supply-heading">{t('ck.panel.supply')}</h3>
         <ul className="ck-supply">
-          {(['paper', 'cloth', 'coin'] as const).map((commodity) => <li key={commodity} data-testid={`ck-supply-${commodity}`}>
-            <CommodityEmblem commodity={commodity} size={20} />
-            <span>{t(`resource.${commodity}`)}</span>
-            <strong>{n(ck.commodityBank[commodity])}</strong>
-            {hints && <small>{t('ck.panel.rate', { rate: n(hints.commodityRates[commodity]) })}</small>}
-          </li>)}
+          {(['paper', 'cloth', 'coin'] as const).map((commodity) => {
+            // 投影的商品存量只到上限（#137）：上限值顯示「2+」，螢幕閱讀器讀「至少 2 張」。
+            const supply = bankSupply(ck.commodityBank[commodity]);
+            return <li key={commodity} data-testid={`ck-supply-${commodity}`}>
+              <CommodityEmblem commodity={commodity} size={20} />
+              <span>{t(`resource.${commodity}`)}</span>
+              <strong>{supply.atLeast
+                ? <><span aria-hidden="true">{formatBankSupply(locale, ck.commodityBank[commodity])}</span>
+                  <span className="visually-hidden">{t('bank.supply.atLeastLabel', { count: n(supply.count) })}</span></>
+                : n(supply.count)}</strong>
+              {hints && <small>{t('ck.panel.rate', { rate: n(hints.commodityRates[commodity]) })}</small>}
+            </li>;
+          })}
         </ul>
         {self && <p className="muted">{t('ck.panel.walls', { walls: n(self.cityWalls), limit: n(MAX_WALLS) })}</p>}
         {hints && <p className="muted" data-testid="ck-knight-supply">

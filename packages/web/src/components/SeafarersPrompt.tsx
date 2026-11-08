@@ -43,7 +43,7 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
 
   return <>
     {pending?.kind === 'seafarers.gold' && sea.goldRequired > 0 && (
-      <GoldPicker key={`${view.seq}`} count={sea.goldRequired} bank={view.bank} disabled={blocked}
+      <GoldPicker key={`${view.seq}`} count={sea.goldRequired} bank={sea.goldBank ?? view.bank} disabled={blocked}
         onSubmit={(resources) => void actions.submitCommand({ type: 'gold.choose', resources }, 'play.pending.seafarers.gold')} />
     )}
     {(robberMine || knightArmed) && (
@@ -71,7 +71,11 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
   </>;
 }
 
-/** Picks `count` resources of the player's choice, never more than the bank holds. */
+/**
+ * Picks `count` resources of the player's choice, never more than the bank holds.
+ * `bank` is the gold supply hint (`min(supply, count)` per resource), not the
+ * public bank, which stops at two (#137).
+ */
 function GoldPicker({ count, bank, disabled, onSubmit }: {
   count: number; bank: Record<Resource, number>; disabled: boolean; onSubmit: (resources: Resource[]) => void;
 }) {

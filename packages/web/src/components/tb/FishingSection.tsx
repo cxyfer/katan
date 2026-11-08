@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { RESOURCES } from '@catan/rules';
+import { RESOURCES, type Resource } from '@catan/rules';
 import { useT } from '../../i18n/context.tsx';
 import { nameOf } from '../../state/table.ts';
 import { blocksNewCommands } from '../../state/commands.ts';
@@ -51,7 +51,7 @@ export function FishingSection({ controller }: { controller: TableController }) 
   const [action, setAction] = useState<FishAction | null>(null);
   const [picked, setPicked] = useState<number[]>([]);
   const [victim, setVictim] = useState('');
-  const [resource, setResource] = useState<string>(RESOURCES[0]!);
+  const [resource, setResource] = useState<Resource>(RESOURCES[0]!);
   const mine = useMemo(() => fishing?.mine ?? [], [fishing?.mine]);
   if (!view || !fishing) return null;
   const name = nameOf(state);
@@ -80,6 +80,8 @@ export function FishingSection({ controller }: { controller: TableController }) 
     setPicked([]);
   };
   const victims = view.players.filter((player) => player.id !== selfId && player.handSize > 0);
+  // 銀行沒有所選資源時拿不到（投影的 0 是確切值，#137）。
+  const bankEmpty = action === 'takeResource' && (view.bank[resource] ?? 0) <= 0;
 
   return (
     <section className="tb-section" data-testid="tb-fishing" aria-labelledby="tb-fishing-heading">
@@ -122,13 +124,17 @@ export function FishingSection({ controller }: { controller: TableController }) 
           )}
           {action === 'takeResource' && (
             <label>{t('tb.fishing.resource')}{' '}
-              <select value={resource} onChange={(event) => setResource(event.target.value)} data-testid="tb-fish-resource">
+              <select value={resource} onChange={(event) => setResource(event.target.value as Resource)} data-testid="tb-fish-resource">
                 {RESOURCES.map((item) => <option key={item} value={item}>{t(`resource.${item}`)}</option>)}
               </select>
             </label>
           )}
+          {bankEmpty && <span className="muted" id="tb-fish-bank-empty" data-testid="tb-fish-bank-empty">
+            {t('bank.empty', { resource: t(`resource.${resource}`) })}
+          </span>}
           <button type="button" className="button" data-testid="tb-fish-submit"
-            disabled={busy || sum < cost || (action === 'steal' && !victim)} onClick={submit}>
+            disabled={busy || sum < cost || (action === 'steal' && !victim) || bankEmpty}
+            aria-describedby={bankEmpty ? 'tb-fish-bank-empty' : undefined} onClick={submit}>
             {t(action === 'road' ? 'tb.fishing.pickRoad' : 'tb.fishing.pay')}
           </button>
         </div>

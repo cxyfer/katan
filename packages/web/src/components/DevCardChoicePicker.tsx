@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { RESOURCES, type Resource } from '@catan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
-import { formatNumber } from '../i18n/format.ts';
+import { bankSupply, formatBankSupply, formatNumber } from '../i18n/format.ts';
 import { ResourceGlyph } from './GameArt.tsx';
 import { ResourceCardArt } from './ResourceCardArt.tsx';
 import '../styles/discard-picker.css';
@@ -17,7 +17,7 @@ const NONE: Counts = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
 export function DevCardChoicePicker({ card, required, bank, busy, onSubmit, onCancel }: {
   card: 'monopoly' | 'yearOfPlenty';
   required: number;
-  /** 豐收之年才需要：每種資源銀行還剩幾張。 */
+  /** 豐收之年才需要：每種資源的投影存量（`min(存量, 2)`，2 代表「2 張以上」，#137）。 */
   bank?: Partial<Record<Resource, number>>;
   /** 指令送出中：鎖住選擇與按鈕。 */
   busy: boolean;
@@ -72,6 +72,8 @@ export function DevCardChoicePicker({ card, required, bank, busy, onSubmit, onCa
             const remaining = monopoly ? 1 : left(resource);
             const unavailable = busy || remaining <= 0 || (!monopoly && full);
             const name = t(`resource.${resource}`);
+            // 投影只到上限：上限值是「至少」，扣掉已選的牌後仍是「至少」。
+            const supply = bankSupply(bank?.[resource] ?? 0, picked[resource]);
             return (
               <li key={resource} className={`discard-card hand-card hand-card--${resource}`}
                 data-resource={resource} data-empty={remaining <= 0 ? 'true' : undefined}
@@ -79,14 +81,14 @@ export function DevCardChoicePicker({ card, required, bank, busy, onSubmit, onCa
                 <button type="button" className="hand-card__face discard-card__face" data-testid={`choice-add-${resource}`}
                   aria-disabled={unavailable} aria-describedby="choice-progress"
                   aria-pressed={monopoly ? picked[resource] > 0 : undefined}
-                  aria-label={monopoly ? name : t('devCard.choice.take', { resource: name, left: n(remaining) })}
+                  aria-label={monopoly ? name : t(supply.atLeast ? 'devCard.choice.takeAtLeast' : 'devCard.choice.take', { resource: name, left: n(supply.count) })}
                   onClick={() => take(resource)}>
                   <span className="hand-card__art"><ResourceCardArt resource={resource} /></span>
                   <span className="hand-card__pip"><ResourceGlyph resource={resource} size={14} /></span>
                   <span className="hand-card__name">{name}</span>
                 </button>
                 {!monopoly && <span className="discard-card__count" data-testid={`choice-bank-${resource}`} aria-hidden="true">
-                  {n(remaining)}
+                  {formatBankSupply(locale, bank?.[resource] ?? 0, picked[resource])}
                 </span>}
               </li>
             );

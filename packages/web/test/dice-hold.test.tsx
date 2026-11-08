@@ -197,7 +197,7 @@ describe('roll hold in the table state', () => {
       knights: [{ player: 'p1', vertex: 0, level: 2, active: true }],
       progressCounts: { p1: 1 }, progressVp: { p1: [] as string[] },
       decks: { science: 18, trade: 18, politics: 18 },
-      commodityBank: { paper: 12, cloth: 12, coin: 12 },
+      commodityBank: { paper: 2, cloth: 2, coin: 2 },
     };
     before.game!.view.modules = { citiesKnights: previous };
     before.game!.view.players[0]!.progressCards = ['alchemy'];
@@ -211,7 +211,7 @@ describe('roll hold in the table state', () => {
       knights: [{ player: 'p1', vertex: 0, level: 2, active: false }],
       progressCounts: { p1: 2 }, progressVp: { p1: ['printing'] },
       decks: { science: 16, trade: 18, politics: 18 },
-      commodityBank: { paper: 11, cloth: 12, coin: 12 },
+      commodityBank: { paper: 1, cloth: 2, coin: 2 },
     } };
     after.view.players[0]!.progressCards = ['alchemy', 'crane'];
     after.view.players[0]!.defenders = 1;
@@ -236,7 +236,9 @@ describe('roll hold in the table state', () => {
     expect(screen.queryByTestId('ck-card-crane')).toBeNull();
     expect(screen.getByTestId('ck-card-alchemy').getAttribute('data-card')).toBe('alchemy');
     expect(screen.queryByTestId('ck-progress-vp')).toBeNull();
-    expect(screen.getByTestId('ck-supply-paper').querySelector('strong')!.textContent).toBe('12');
+    // 投影的商品存量只到 2（#137）：等於上限顯示「2+」，螢幕閱讀器讀「至少 2」。
+    expect(screen.getByTestId('ck-supply-paper').querySelector('strong [aria-hidden="true"]')!.textContent).toBe('2+');
+    expect(screen.getByTestId('ck-supply-paper').querySelector('strong .visually-hidden')!.textContent).toBe('at least 2');
     expect(mark('players-progress-0')).toBe('1');
     expect(mark('players-knights-0')).toBe('2');
     expect(screen.queryByTestId('players-defender-0')).toBeNull();
@@ -254,7 +256,7 @@ describe('roll hold in the table state', () => {
     expect(screen.getByTestId('ck-event-die').getAttribute('data-face')).toBe('ship');
     expect(screen.getByTestId('ck-card-crane').getAttribute('data-card')).toBe('crane');
     expect(screen.getByTestId('ck-progress-vp').textContent).toContain('Printing');
-    expect(screen.getByTestId('ck-supply-paper').querySelector('strong')!.textContent).toBe('11');
+    expect(screen.getByTestId('ck-supply-paper').querySelector('strong')!.textContent).toBe('1');
     expect(mark('players-progress-0')).toBe('2');
     expect(mark('players-knights-0')).toBe('0');
     expect(mark('players-defender-0')).toBe('1');

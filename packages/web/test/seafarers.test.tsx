@@ -110,6 +110,30 @@ describe('seafarers client', () => {
     expect(submitCommand).toHaveBeenCalledWith({ type: 'gold.choose', resources: ['ore', 'wool'] }, 'play.pending.seafarers.gold');
   });
 
+  it('lets gold take more of one kind than the capped bank shows, within the supply hint (#137)', () => {
+    const view = seaView((state) => {
+      state.bank = { lumber: 10, brick: 10, wool: 1, grain: 0, ore: 10 };
+      state.pending = { kind: 'seafarers.gold', module: 'seafarers', responders: ['p1'], data: { picks: { p1: 3 } } };
+    });
+    // 公開的銀行只到 2；欠 3 張時仍能拿 3 張同種，存量依 hints 的 goldBank。
+    expect(view.bank.ore).toBe(2);
+    expect(seafarersHints(view)!.goldBank).toEqual({ lumber: 3, brick: 3, wool: 1, grain: 0, ore: 3 });
+    const submitCommand = vi.fn();
+    const controller = { state: tableWith(view), actions: { submitCommand, selectTarget: vi.fn(), cancelSelection: vi.fn() } } as unknown as TableController;
+    render(<LocaleProvider locale="en"><SeafarersPrompt controller={controller} /></LocaleProvider>);
+    expect((screen.getByTestId('gold-grain') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByTestId('gold-wool'));
+    expect((screen.getByTestId('gold-wool') as HTMLButtonElement).disabled).toBe(true); // the bank had one
+    fireEvent.click(screen.getByTestId('gold-clear'));
+    expect(screen.getByTestId('gold-ore').getAttribute('aria-label')).toBe('Add Ore (up to 3 more from the bank)');
+    fireEvent.click(screen.getByTestId('gold-ore'));
+    fireEvent.click(screen.getByTestId('gold-ore'));
+    expect((screen.getByTestId('gold-ore') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByTestId('gold-ore'));
+    fireEvent.click(screen.getByTestId('gold-confirm'));
+    expect(submitCommand).toHaveBeenCalledWith({ type: 'gold.choose', resources: ['ore', 'ore', 'ore'] }, 'play.pending.seafarers.gold');
+  });
+
   it('draws ships, the pirate and island-bonus tokens on the SVG board', () => {
     const view = seaView((state) => {
       state.board.buildings[50] = { player: 'p1', city: false };
