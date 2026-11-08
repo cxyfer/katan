@@ -12,7 +12,16 @@ import type { GameSnapshot, RoomView, ServerMessage } from '@catan/protocol';
 import { loadConfig } from '../src/config.ts';
 import { createDialect, newId, newRoomCode, type SqlDialect } from '../src/db.ts';
 import { startService, type Logger } from '../src/main.ts';
-import { runSetupOverApi, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
+import {
+  openOfferOverApi,
+  runSetupOverApi,
+  seqRange,
+  startHarness,
+  startedGame,
+  storedHistory,
+  type TestClient,
+  type TestHarness,
+} from './helpers.ts';
 
 const DAY_MS = 86_400_000;
 const daysAgo = (days: number): string => new Date(Date.now() - days * DAY_MS).toISOString();
@@ -180,6 +189,25 @@ describe('retention enabled (7 days)', () => {
     const entry = logs.find((log) => log.message === 'game expired by retention policy');
     expect(entry?.level).toBe('info');
     expect(entry?.meta).toMatchObject({ gameId, roomId, lastActivityAt: latest, retentionDays: 7 });
+  });
+
+  it('stores the offer expiries together with the retention expiry (#143)', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const offered = await openOfferOverApi(harness, clients, gameId);
+    const before = await storedHistory(harness, gameId);
+    await backdate(harness, roomId, gameId, 8);
+
+    const result = await harness.service.games.expireIdleGames();
+    expect(result.expired).toEqual([gameId]);
+
+    const after = await storedHistory(harness, gameId);
+    expect(after.events.map((event) => event.seq)).toEqual(seqRange(0, after.seq));
+    const added = after.events.filter((event) => event.seq > before.seq);
+    expect(added.map((event) => [event.type, event.params.reason, event.revision])).toEqual([
+      ['trade.expired', 'gameOver', offered.revision + 1],
+      ['game.abandoned', 'expired', offered.revision + 1],
+    ]);
   });
 
   it('ends an idle suspended game', async () => {

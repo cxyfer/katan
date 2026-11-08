@@ -1,7 +1,16 @@
 /** R-ROOM / R-POLICY: abandonment of an interrupted table (§4.6). */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { startHarness, startedGame, runSetupOverApi, type TestClient, type TestHarness } from './helpers.ts';
+import {
+  openOfferOverApi,
+  runSetupOverApi,
+  seqRange,
+  startHarness,
+  startedGame,
+  storedHistory,
+  type TestClient,
+  type TestHarness,
+} from './helpers.ts';
 
 let harness: TestHarness;
 
@@ -66,6 +75,34 @@ describe('abandonment of an interrupted table', () => {
       }),
       'E_GAME_OVER',
     );
+  });
+
+  it('stores every event of the abandonment, including the offer expiries (#143)', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const offered = await openOfferOverApi(harness, clients, gameId);
+    const before = await storedHistory(harness, gameId);
+    await setOffline(roomId, third.playerId!, true);
+
+    const proposal = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/abandon`, {}));
+    const applied = second.expectOk<{ abandoned: boolean }>(
+      await second.post(`/api/games/${gameId}/abandon`, { proposalId: proposal.proposalId, approve: true }),
+    );
+    expect(applied.abandoned).toBe(true);
+
+    const after = await storedHistory(harness, gameId);
+    expect(after.events.map((event) => event.seq)).toEqual(seqRange(0, after.seq));
+    const added = after.events.filter((event) => event.seq > before.seq);
+    expect(added.map((event) => [event.type, event.params.reason, event.revision])).toEqual([
+      ['trade.expired', 'gameOver', offered.revision + 1],
+      ['game.abandoned', 'abandoned', offered.revision + 1],
+    ]);
+    // 玩家讀取的事件 API 也看得到逾期的提案。
+    const { events } = host.expectOk<{ events: { seq: number; type: string }[] }>(
+      await host.get(`/api/games/${gameId}/events?after=${before.seq}`),
+    );
+    expect(events.map((event) => event.type)).toEqual(['trade.expired', 'game.abandoned']);
   });
 
   it('requires an explicit confirmation from each connected seat', async () => {

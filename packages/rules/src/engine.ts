@@ -238,6 +238,13 @@ function clone<T>(value: T): T {
   return deepClone(value);
 }
 
+/**
+ * 進行中的轉移收集到的事件，以轉移中的狀態物件為鍵。`state.log` 只保留最後
+ * `LOG_LIMIT` 則，一次轉移發出的事件可能超過上限，所以轉移回傳的事件一律從這裡
+ * 取得，不從 log 尾端推導。
+ */
+const collectors = new WeakMap<GameState, GameEvent[]>();
+
 function emit(
   state: GameState,
   type: string,
@@ -249,7 +256,19 @@ function emit(
   if (priv) event.private = priv;
   state.log.push(event);
   if (state.log.length > LOG_LIMIT) state.log.splice(0, state.log.length - LOG_LIMIT);
+  collectors.get(state)?.push(event);
   return event;
+}
+
+/** 在 `state` 上執行一次轉移，並收集轉移期間對它發出的每一則事件。 */
+function collectEvents<T>(state: GameState, transition: () => T): { result: T; events: GameEvent[] } {
+  const events: GameEvent[] = [];
+  collectors.set(state, events);
+  try {
+    return { result: transition(), events };
+  } finally {
+    collectors.delete(state);
+  }
 }
 
 function fail(code: CommandErrorCode, params?: Record<string, unknown>): CommandOutcome {
@@ -683,6 +702,18 @@ export function applyCommand(
   if (moduleDisabledCommand(state, command.type)) return fail('E_INVALID_COMMAND', { reason: 'not-in-ruleset' });
 
   const next = clone(state);
+  const { result: rejection, events } = collectEvents(next, () => runCommand(next, actorId, command, rng));
+  if (rejection) return rejection;
+  return { ok: true, state: next, events };
+}
+
+/** 在複本上就地執行指令；拒絕時回傳拒絕結果，接受時回傳 undefined。 */
+function runCommand(
+  next: GameState,
+  actorId: string,
+  command: Command | ModuleCommand,
+  rng: Rng,
+): CommandOutcome | undefined {
   normalizePending(next);
   ensureStats(next);
   const previousPending = next.pending;
@@ -709,8 +740,7 @@ export function applyCommand(
   const outcome = dispatch(next, actorId, command, rng);
   if (!outcome.ok) return outcome;
   trackPeakHands(next);
-  const events = next.log.filter((event) => event.seq > state.seq);
-  return { ok: true, state: next, events };
+  return undefined;
 }
 
 /** A module's refusal of a command before dispatch (base profiles: none). */
@@ -2045,17 +2075,25 @@ export function suspendNegotiation(state: GameState): { state: GameState; events
  * This is a lifecycle transition, not a rule: it produces no winner, cancels
  * outstanding negotiation and rejects every later strategic command (§4.6).
  * `expired` marks a table the operator retention process closed (§4.6).
+ *
+ * 回傳轉移後的狀態與這次發出的全部事件（提案逾期在前、`game.abandoned` 在後），
+ * 不受 `state.log` 的長度上限影響；已有結果時回傳同一個物件與空事件。
  */
-export function abandonGame(state: GameState, reason: 'abandoned' | 'expired' = 'abandoned'): GameState {
-  if (state.result) return state;
+export function abandonGame(
+  state: GameState,
+  reason: 'abandoned' | 'expired' = 'abandoned',
+): { state: GameState; events: GameEvent[] } {
+  if (state.result) return { state, events: [] };
   const next = clone(state);
-  next.result = { playerId: null, reason, atSeq: next.seq };
-  next.turn.phase = 'gameOver';
-  clearPending(next);
-  expireOffers(next, 'gameOver');
-  sampleTimeline(next);
-  emit(next, 'game.abandoned', { reason });
-  return next;
+  const { events } = collectEvents(next, () => {
+    next.result = { playerId: null, reason, atSeq: next.seq };
+    next.turn.phase = 'gameOver';
+    clearPending(next);
+    expireOffers(next, 'gameOver');
+    sampleTimeline(next);
+    emit(next, 'game.abandoned', { reason });
+  });
+  return { state: next, events };
 }
 
 // ---------------------------------------------------------------------------
