@@ -73,6 +73,14 @@ export function createClient(base: string): TestClient {
   return client;
 }
 
+/**
+ * 在 harness 的同一份持久資料上啟動另一個服務實例（SQLite 檔，或 PostgreSQL
+ * 的同一個 schema），讓重啟測試在兩種資料庫上都能執行。呼叫前先關閉原本的服務。
+ */
+export function restartService(harness: TestHarness, log: Logger = () => undefined): Promise<RunningService> {
+  return startService({ ...harness.service.config, port: 0 }, log);
+}
+
 export async function startHarness(
   overrides: Partial<ServerConfig> = {},
   options: { postgresUrl?: string; log?: Logger } = {},
