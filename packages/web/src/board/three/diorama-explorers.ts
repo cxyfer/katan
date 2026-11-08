@@ -9,7 +9,7 @@
 import { BoxGeometry, BufferGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, SphereGeometry } from 'three';
 import type { EpCargo } from '@catan/rules';
 import type { BoardGeometry } from '../geometry.ts';
-import type { EpView } from '../explorersPirates.ts';
+import { shipLaneOffsets, shipSlots, type EpView } from '../explorersPirates.ts';
 import { SEA_LEVEL } from '../sea.ts';
 import { ModelBuilder } from './diorama-geometry.ts';
 import { shipTransform } from './diorama-ships.ts';
@@ -151,20 +151,21 @@ export interface EpShipPlacement extends InstanceTransform {
   cargo: EpCargo[];
 }
 
-/** Ships sharing a path sit side by side across it. */
+/** Ships sharing a path sit side by side across it, one lane each (see `shipLaneOffsets`). */
 export function epShipPlacements(geometry: BoardGeometry, view: EpView, scale: number): EpShipPlacement[] {
-  const byEdge = new Map<number, string[]>();
-  for (const ship of view.ships) byEdge.set(ship.edge, [...(byEdge.get(ship.edge) ?? []), ship.id]);
+  const slots = shipSlots(view);
   return view.ships.flatMap((ship) => {
     const transform = shipTransform(geometry, ship.edge);
-    if (!transform) return [];
-    const group = byEdge.get(ship.edge) ?? [ship.id];
-    const slot = group.indexOf(ship.id);
-    const offset = group.length > 1 ? (slot === 0 ? -0.12 : 0.12) : 0;
+    const edge = geometry.edges[ship.edge];
+    if (!transform || !edge) return [];
     // Perpendicular to the keel (rotationY turns +X towards the edge direction).
     const nx = Math.sin(transform.rotationY);
     const nz = Math.cos(transform.rotationY);
     const [x, y, z] = transform.position;
+    // 海岸路徑上 shipTransform 已把船推向海側；三艘以上時整組往海側展開，船身不上岸。
+    const shore = (x - (edge.x1 + edge.x2) / 2 / geometry.scale) * nx + (z - (edge.y1 + edge.y2) / 2 / geometry.scale) * nz;
+    const place = slots.get(ship.id) ?? { slot: 0, of: 1 };
+    const offset = shipLaneOffsets(place.of, Math.abs(shore) > 1e-6 ? (Math.sign(shore) as -1 | 1) : 0)[place.slot]!;
     return [{
       id: ship.id,
       playerId: ship.player,
