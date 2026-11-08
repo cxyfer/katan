@@ -385,6 +385,10 @@ E&P never runs with the Seafarers commands above. A turn is `turn.roll`,
 the Action phase (base `build.settlement`, `build.road`, `trade.*` and the
 commands below), `ep.startMovement`, the Movement phase, then `turn.end`.
 There are no development cards, cities or robber.
+The base build hints follow the same checks as the commands: `hints.legalRoads`
+and `hints.legalSettlements` are empty in the Movement phase
+(`E_EP_MOVEMENT_PHASE`) and once the piece supply is used up (`E_NO_PIECES`),
+and `hints.legalCities` is always empty.
 Domestic offers may include coins: `trade.offer` / `trade.revise` accept
 `giveGoods` / `wantGoods` (`{ gold: 3 }`); `Offer` and the `trade.*` events
 repeat them. Amounts and holdings are validated at proposal, revision,
