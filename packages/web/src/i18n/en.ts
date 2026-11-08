@@ -460,6 +460,7 @@ export const en: Catalog = {
   'play.disabled.other': 'This action is currently unavailable.',
   'play.disabled.rolling': 'Rolling — waiting for the result.',
   'play.disabled.syncing': 'Syncing the table — please wait.',
+  'play.disabled.suspended': 'The game is paused until everyone is ready to continue.',
   'play.syncing': 'Syncing the table…',
   'play.selectionTitle': 'Selected target',
   'play.selectionTarget': 'Target: {target}',

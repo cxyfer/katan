@@ -114,6 +114,8 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   const calls: RecordedCall[] = [];
   let snapshot = options.snapshot === undefined ? makeSnapshot() : options.snapshot;
   let room = options.room === undefined ? makeRoom() : options.room;
+  /** 測試是否指定過房間（選項、`setRoom` 或建立房間）；沒有時 `getRoom` 會配合已開啟的對局。 */
+  let roomGiven = options.room !== undefined;
   let commandResult: ApiResult<CommandReceipt> = options.commandResult ?? ok({
     commandId: 'cmd',
     outcome: 'accepted',
@@ -144,6 +146,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     },
     setRoom(next) {
       room = next;
+      roomGiven = true;
     },
     setCommandResult(result) {
       commandResult = result;
@@ -199,6 +202,7 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
         profileId: body.profileId,
         orderMode: body.orderMode ?? 'join',
       });
+      roomGiven = true;
       return ok(room);
     },
     async joinRoom(body: { code: string }) {
@@ -207,7 +211,16 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
     },
     async getRoom(roomId: string) {
       record('getRoom', roomId);
-      return room ? ok(room) : { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
+      if (!room) return { ok: false, error: { code: 'E_ROOM_NOT_FOUND', messageId: 'error.E_ROOM_NOT_FOUND' } };
+      // 伺服器上正在進行對局的房間不會是沒有對局的大廳：測試只給了對局（例如從首頁續玩），
+      // 就以進行中的房間回應，牌桌才等得到這一局的房間。
+      const gameOpened = calls.some((call) => call.method === 'getGame');
+      if (!roomGiven && gameOpened && snapshot && room.gameId === null && room.id === snapshot.roomId) {
+        const result = snapshot.view.result;
+        const status = !result ? 'playing' : result.reason === 'victory' ? 'completed' : 'abandoned';
+        return ok({ ...room, status, gameId: snapshot.gameId });
+      }
+      return ok(room);
     },
     async leaveRoom(roomId: string, body?: LeaveRoomRequest) {
       record('leaveRoom', roomId, body);

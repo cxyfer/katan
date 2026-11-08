@@ -49,9 +49,11 @@ import { DICE_PRESENTATION_DURATION_MS } from '../board/animation.ts';
 import { newerSeenVersion } from '../news/player-notes.ts';
 import {
   awaitingProjection,
+  awaitingRoom,
   EMPTY_SELECTION,
   initialTableState,
   tableReducer,
+  tableSuspended,
   type DrawerPanel,
   type GameSyncBoundary,
   type GameSyncCause,
@@ -299,11 +301,24 @@ export function useTable(options: UseTableOptions): TableController {
       if (result.ok) {
         if (generation !== syncGenerationRef.current || gameId !== gameIdRef.current) return;
         receiveSnapshot(result.data, generation, 'refresh');
-        if (result.data.roomId) {
-          roomIdRef.current = result.data.roomId;
-          if (departedRef.current?.roomId === result.data.roomId) departedRef.current = null;
+        const roomId = result.data.roomId;
+        if (roomId) {
+          roomIdRef.current = roomId;
+          if (departedRef.current?.roomId === roomId) departedRef.current = null;
           // Resume/reconnect: recover authorized recent chat history.
-          void loadChatRef.current?.(result.data.roomId);
+          void loadChatRef.current?.(roomId);
+          // 從首頁續玩時房間還沒載入：主動抓一次，不只等 WebSocket 推送。暫停橫幅、
+          // 離開與結束對局的資格都要看房間。推送若先到就以推送為準，不用較舊的回應覆蓋。
+          if (stateRef.current.room?.id !== roomId) {
+            // 與投影在同一次繪製生效：房間確認前不開放任何指令（見 `tableHold`）。
+            dispatch({ type: 'room-awaited', roomId });
+            void api.getRoom(roomId).then((room) => {
+              if (!room.ok || room.data.gameId !== gameId) return;
+              if (roomIdRef.current !== roomId || gameIdRef.current !== gameId) return;
+              if (stateRef.current.room?.id === roomId) return;
+              dispatch({ type: 'room', room: room.data });
+            });
+          }
         }
       } else {
         dispatch({ type: 'room-error', error: noticeFrom(result.error) });
@@ -794,13 +809,17 @@ export function useTable(options: UseTableOptions): TableController {
       if (blocksNewCommands(current.command)) return null;
       const snapshot: GameSnapshot | null = current.game;
       if (!snapshot) return null;
-      // 所有指令入口（動作列、交易、兌換、發展卡、棋盤）共用：點數揭曉前、
-      // 或投影尚未追上已知事件時，不依過時畫面送出後續指令。
+      // 所有指令入口（動作列、交易、兌換、發展卡、棋盤）共用：全桌暫停中、點數揭曉前、
+      // 投影尚未追上已知事件，或這一局的房間尚未載入時，不依過時畫面送出後續指令。
+      if (tableSuspended(current)) {
+        dispatch({ type: 'toast', notice: localNotice('play.disabled.suspended') });
+        return null;
+      }
       if (current.dicePresenting) {
         dispatch({ type: 'toast', notice: localNotice('play.disabled.rolling') });
         return null;
       }
-      if (awaitingProjection(current)) {
+      if (awaitingProjection(current) || awaitingRoom(current)) {
         dispatch({ type: 'toast', notice: localNotice('play.disabled.syncing') });
         return null;
       }

@@ -147,6 +147,11 @@ export interface TableState {
   drawer: DrawerPanel;
   selection: Selection;
   devCardChoice: DevCardChoice | null;
+  /**
+   * 開啟對局時這一局的房間還沒載入（例如從首頁續玩）：等待中的房間 id。房間到達前
+   * 不知道能不能下，見 `tableHold`。
+   */
+  awaitingRoomId: string | null;
   /** 擲骰演出進行中（含排隊中的骰子）；後續動作選項與資源演出等它結束才出現。 */
   dicePresenting: boolean;
   /** 擲骰演出期間凍結的擲骰前狀態，點數揭曉前不從手牌、玩家列表或紀錄透露結果。 */
@@ -190,6 +195,7 @@ export function initialTableState(locale: Locale, nickname = ''): TableState {
     drawer: 'none',
     selection: EMPTY_SELECTION,
     devCardChoice: null,
+    awaitingRoomId: null,
     dicePresenting: false,
     rollHold: null,
     toast: null,
@@ -212,6 +218,7 @@ export type TableAction =
   | { type: 'rooms-error'; error: Notice }
   | { type: 'room-query'; query: RoomQuery }
   | { type: 'room'; room: RoomView | null }
+  | { type: 'room-awaited'; roomId: string }
   | { type: 'room-error'; error: Notice | null }
   | { type: 'games'; games: ResumableGameView[] }
   | { type: 'game-sync'; cause: GameSyncBoundary; generation: number }
@@ -280,9 +287,47 @@ export function awaitingProjection(state: TableState): boolean {
   return !!game && game.view.events.some((event) => event.seq > game.view.seq);
 }
 
-/** 後續操作是否暫停：擲骰演出中，或投影尚未追上已知事件。 */
+/**
+ * 牌桌層級暫停操作的原因：`suspended` 全桌已保存並暫停（SPEC §4.8），伺服器以
+ * `E_GAME_SUSPENDED` 拒絕所有遊戲指令；`room` 這一局的房間尚未載入，還不知道能不能下。
+ *
+ * 以這一局的房間為準。從首頁續玩時投影會先到、房間稍後才載入（`awaitingRoomId`）：這段期間
+ * 清單上的「已暫停」可以先採用（自己不在牌桌時無法繼續），清單上的「進行中」則可能已過時
+ * （同意暫停後先離開，其他人才完成暫停），所以等房間確認前一律暫停操作。
+ */
+export type TableHold = 'suspended' | 'room';
+
+export function tableHold(state: TableState): TableHold | null {
+  const game = state.game;
+  if (game && state.awaitingRoomId === game.roomId) {
+    return state.games.some((entry) => entry.gameId === game.gameId && entry.status === 'suspended') ? 'suspended' : 'room';
+  }
+  const room = state.room;
+  if (room && (!game || room.id === game.roomId)) return room.status === 'suspended' ? 'suspended' : null;
+  return null;
+}
+
+/** 全桌已保存並暫停（或房間尚未載入、但續玩清單記為已暫停）。 */
+export function tableSuspended(state: TableState): boolean {
+  return tableHold(state) === 'suspended';
+}
+
+/** 這一局的房間尚未載入，狀態未定。 */
+export function awaitingRoom(state: TableState): boolean {
+  return tableHold(state) === 'room';
+}
+
+/** 牌桌層級暫停操作時給玩家看的原因；可以操作時為 null。 */
+export function tableHoldReason(state: TableState): string | null {
+  const hold = tableHold(state);
+  if (hold === 'suspended') return 'play.disabled.suspended';
+  if (hold === 'room') return 'play.disabled.syncing';
+  return null;
+}
+
+/** 後續操作是否暫停：擲骰演出中、投影尚未追上已知事件、全桌已暫停，或房間尚未載入。 */
 export function followUpsHeld(state: TableState): boolean {
-  return state.dicePresenting || awaitingProjection(state);
+  return state.dicePresenting || awaitingProjection(state) || tableHold(state) !== null;
 }
 
 /** 畫面上顯示的本人資源與商品：擲骰演出期間用擲骰前的數量。手牌不可見時為 undefined。 */
@@ -411,9 +456,14 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         room,
         roomError: null,
         devCardChoice: room ? state.devCardChoice : null,
+        // 全桌暫停後不再保留棋盤上選到一半的目標，免得暫停中還能確認送出。
+        selection: room?.status === 'suspended' ? EMPTY_SELECTION : state.selection,
+        awaitingRoomId: room && room.id === state.awaitingRoomId ? null : state.awaitingRoomId,
         screen: state.screen === 'entry' ? state.screen : nextScreen,
       };
     }
+    case 'room-awaited':
+      return { ...state, awaitingRoomId: action.roomId };
     case 'room-error':
       return { ...state, roomError: action.error };
     case 'games':
@@ -437,6 +487,7 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         game: snapshot,
         // 換局或離開對局時，上一局未完成的發展卡資源選擇不能帶到下一局。
         devCardChoice: sameGame ? state.devCardChoice : null,
+        awaitingRoomId: sameGame ? state.awaitingRoomId : null,
         gameSync: { generation, cause: state.gameSyncPending ? state.gameSync.cause : (action.cause ?? 'snapshot') },
         gameSyncPending: false,
         screen: snapshot ? (terminal ? 'result' : 'game') : state.screen,

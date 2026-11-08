@@ -289,7 +289,8 @@ export function makeResumable(overrides: Partial<ResumableGameView> = {}): Resum
     roomId: 'r1',
     roomCode: 'ABC123',
     profileId: 'base-2025',
-    status: 'suspended',
+    // 預設是中斷（玩家離開）而非全桌暫停的對局：開啟後即可出牌。暫停的對局請明確指定。
+    status: 'playing',
     players: [{ playerId: 'p1', nickname: 'Alex', color: 'red' }],
     lastSavedAt: '2026-01-02T03:04:05.000Z',
     revision: 12,

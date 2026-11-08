@@ -32,10 +32,14 @@ export function withdrawnOthers(room: RoomView | null | undefined, selfId: strin
   return humanMembers(room).filter((member) => member.playerId !== selfId && member.withdrawn === true);
 }
 
-/** 其他缺席（離線或已退出）的真人；多人桌提議結束對局的資格條件（SPEC §4.6）。 */
+/**
+ * 其他缺席（離線或已退出）的真人；多人桌提議結束對局的資格條件（SPEC §4.6）。
+ * 全桌暫停（`suspended`）時離線是大家同意的預期缺席，不算數，只剩明確退出（§4.8）。
+ */
 export function absentOthers(room: RoomView | null | undefined, selfId: string | null): RoomMemberView[] {
+  const suspended = room?.status === 'suspended';
   return humanMembers(room).filter(
-    (member) => member.playerId !== selfId && (member.withdrawn === true || !member.connected),
+    (member) => member.playerId !== selfId && (member.withdrawn === true || (!suspended && !member.connected)),
   );
 }
 
@@ -44,9 +48,13 @@ export function abandonmentAllowed(room: RoomView | null | undefined): boolean {
   return room?.policy.allowAbandonment !== false;
 }
 
-/** 投票者：在線且未退出的真人（退出者視同同意，電腦不投票）。 */
+/**
+ * 投票者：未退出的真人（退出者視同同意，電腦不投票）。平常只算在線的人；全桌暫停
+ * （`suspended`）時離線是預期中的，離線的人仍要回來表態（SPEC §4.6、§4.8）。
+ */
 export function abandonVoters(room: RoomView | null | undefined): RoomMemberView[] {
-  return humanMembers(room).filter((member) => member.connected && member.withdrawn !== true);
+  const suspended = room?.status === 'suspended';
+  return humanMembers(room).filter((member) => member.withdrawn !== true && (suspended || member.connected));
 }
 
 /** 自己是否為這個提案的投票者，且尚未同意。 */
