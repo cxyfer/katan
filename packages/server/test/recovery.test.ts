@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
 import { legalRoadEdges, requireProfile, type GameState, type GameView } from '@catan/rules';
-import type { ResumableGameView, RoomView, ServerMessage } from '@catan/protocol';
+import type { AbandonProposeResult, ResumableGameView, RoomView, ServerMessage } from '@catan/protocol';
+import { newId } from '../src/db.ts';
 import { startService } from '../src/main.ts';
 import {
   createClient,
@@ -354,6 +355,188 @@ describe('R-SAVE suspension cancels negotiation (SPEC §4.8)', () => {
     await third.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true });
     const after = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
     expect(after.revision).toBe(before.revision);
+  });
+});
+
+describe('R-SAVE a suspended table is not ended over its expected absences (SPEC §4.6, §4.8)', () => {
+  /** 所有真人同意暫停；回傳時房間已是 suspended。 */
+  async function suspendAll(clients: TestClient[], gameId: string, roomId: string): Promise<void> {
+    const [proposer, ...others] = clients as [TestClient, ...TestClient[]];
+    const proposal = proposer.expectOk<{ proposalId: string }>(await proposer.post(`/api/games/${gameId}/suspend`, {}));
+    for (const client of others) {
+      client.expectOk(await client.post(`/api/games/${gameId}/suspend`, { proposalId: proposal.proposalId, approve: true }));
+    }
+    expect((await harness.service.repo.findRoom(roomId))?.status).toBe('suspended');
+  }
+
+  async function setOffline(roomId: string, playerId: string): Promise<void> {
+    await harness.service.repo.updateMembership(roomId, playerId, {
+      connected: 0,
+      disconnected_at: new Date().toISOString(),
+    });
+  }
+
+  async function roomOf(client: TestClient, roomId: string): Promise<RoomView> {
+    return client.expectOk<RoomView>(await client.get(`/api/rooms/${roomId}`));
+  }
+
+  it('refuses an abandonment proposal from the one person back at the table', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    await runSetupOverApi(clients, gameId);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await suspendAll(clients, gameId, roomId);
+    second.expectOk(await second.post(`/api/rooms/${roomId}/leave`));
+    third.expectOk(await third.post(`/api/rooms/${roomId}/leave`));
+
+    host.expectError(await host.post(`/api/games/${gameId}/abandon`, {}), 'E_GAME_SUSPENDED');
+    const view = await roomOf(host, roomId);
+    expect(view.status).toBe('suspended');
+    expect(view.pendingAbandon).toBeNull();
+    // 兩人確實離線：拒絕的理由是暫停，而不是沒人缺席。
+    expect(view.members.filter((member) => !member.connected).map((member) => member.playerId).sort())
+      .toEqual([second.playerId, third.playerId].sort());
+    expect((await harness.service.repo.findGame(gameId))?.status).toBe('suspended');
+  });
+
+  it('cancels a vote opened before the suspension instead of letting it end the table', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await setOffline(roomId, third.playerId!);
+    const vote = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+    expect(vote.abandoned).toBe(false);
+
+    // 離線的人也能透過 HTTP 同意暫停；暫停成立後，他的離線就是預期中的。
+    await suspendAll(clients, gameId, roomId);
+    expect((await roomOf(host, roomId)).pendingAbandon).toBeNull();
+    second.expectError(
+      await second.post(`/api/games/${gameId}/abandon`, { proposalId: vote.proposalId, approve: true }),
+      'E_NO_PROPOSAL',
+    );
+    expect((await harness.service.repo.findRoom(roomId))?.status).toBe('suspended');
+  });
+
+  it("refuses to commit a leftover vote that only the suspension's absences carry", async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await suspendAll(clients, gameId, roomId);
+    second.expectOk(await second.post(`/api/rooms/${roomId}/leave`));
+    third.expectOk(await third.post(`/api/rooms/${roomId}/leave`));
+    // 修正前留下的 open 提案：暫停中、只靠離線成立。提交時必須重查資格。
+    const proposalId = newId('abandon');
+    await harness.service.repo.insertGameProposal({
+      id: proposalId,
+      game_id: gameId,
+      kind: 'abandon',
+      proposed_by: host.playerId!,
+      status: 'open',
+      created_at: new Date().toISOString(),
+    });
+
+    host.expectError(
+      await host.post(`/api/games/${gameId}/abandon`, { proposalId, approve: true }),
+      'E_GAME_SUSPENDED',
+    );
+    expect(await harness.service.repo.findOpenGameProposal(gameId, 'abandon')).toBeNull();
+    const view = await roomOf(host, roomId);
+    expect(view.status).toBe('suspended');
+    expect(view.pendingAbandon).toBeNull();
+  });
+
+  it('counts an explicit withdrawal, but an offline person still has to vote', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await suspendAll(clients, gameId, roomId);
+    second.expectOk(await second.post(`/api/rooms/${roomId}/leave`));
+    third.expectOk(await third.post(`/api/games/${gameId}/withdraw`, { withdrawn: true }));
+
+    // 退出照算，所以可以提案；但離線的 P2 仍是投票者，P1 一個人結束不了。
+    const vote = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+    expect(vote.abandoned).toBe(false);
+    const view = await roomOf(host, roomId);
+    expect(view.status).toBe('suspended');
+    expect(view.pendingAbandon).toMatchObject({ id: vote.proposalId, consents: [host.playerId], absent: [third.playerId] });
+
+    // P2 透過真正的 socket 回來：他本來就是投票者、也不算缺席，回來不會讓投票失效。
+    const tab = await watchRoom(second, roomId);
+    try {
+      expect((await roomOf(host, roomId)).pendingAbandon?.id).toBe(vote.proposalId);
+      const final = second.expectOk<{ abandoned: boolean }>(
+        await second.post(`/api/games/${gameId}/abandon`, { proposalId: vote.proposalId, approve: true }),
+      );
+      expect(final.abandoned).toBe(true);
+    } finally {
+      await tab.close();
+    }
+    expect((await harness.service.repo.findRoom(roomId))?.status).toBe('abandoned');
+  });
+
+  it('lets the offline person turn the vote down, keeping the table suspended', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await suspendAll(clients, gameId, roomId);
+    second.expectOk(await second.post(`/api/rooms/${roomId}/leave`));
+    third.expectOk(await third.post(`/api/games/${gameId}/withdraw`, { withdrawn: true }));
+    const vote = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+    expect(vote.abandoned).toBe(false);
+
+    // 還沒重連也能透過 HTTP 表態；否決就取消投票。
+    const answer = second.expectOk<{ abandoned: boolean }>(
+      await second.post(`/api/games/${gameId}/abandon`, { proposalId: vote.proposalId, approve: false }),
+    );
+    expect(answer.abandoned).toBe(false);
+    expect(await harness.service.repo.findOpenGameProposal(gameId, 'abandon')).toBeNull();
+    const view = await roomOf(host, roomId);
+    expect(view.status).toBe('suspended');
+    expect(view.pendingAbandon).toBeNull();
+  });
+
+  it('keeps an open vote and its consents when the table resumes', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await suspendAll(clients, gameId, roomId);
+    third.expectOk(await third.post(`/api/games/${gameId}/withdraw`, { withdrawn: true }));
+    const vote = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+    expect(vote.abandoned).toBe(false);
+
+    // 恢復時每個人都在線，暫停中與進行中的投票者名單相同，投票與已表態的同意照舊有效。
+    for (const client of clients) client.expectOk(await client.post(`/api/games/${gameId}/resume`, { ready: true }));
+    const view = await roomOf(host, roomId);
+    expect(view.status).toBe('playing');
+    expect(view.pendingAbandon).toMatchObject({ id: vote.proposalId, consents: [host.playerId] });
+    const final = second.expectOk<{ abandoned: boolean }>(
+      await second.post(`/api/games/${gameId}/abandon`, { proposalId: vote.proposalId, approve: true }),
+    );
+    expect(final.abandoned).toBe(true);
+  });
+
+  it('names only withdrawn people, not offline ones, as absent on a suspended table', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 4);
+    const [host, , third, fourth] = clients as [TestClient, TestClient, TestClient, TestClient];
+    await suspendAll(clients, gameId, roomId);
+    fourth.expectOk(await fourth.post(`/api/rooms/${roomId}/leave`));
+    third.expectOk(await third.post(`/api/games/${gameId}/withdraw`, { withdrawn: true }));
+
+    const vote = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+    expect(vote.abandoned).toBe(false);
+    expect((await roomOf(host, roomId)).pendingAbandon?.absent).toEqual([third.playerId]);
+  });
+
+  it('still lets the sole person at a bot table end a suspended game', async () => {
+    const host = await harness.client('SuspendedSolo');
+    let room = host.expectOk<RoomView>(
+      await host.post('/api/rooms', { visibility: 'private', capacity: 3, profileId: 'base-2025', setupMode: 'fixed' }),
+    );
+    for (let index = 0; index < 2; index++) {
+      room = host.expectOk<RoomView>(await host.post(`/api/rooms/${room.id}/bots`, { level: 'easy' }));
+    }
+    host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
+    const { gameId } = host.expectOk<{ gameId: string }>(await host.post(`/api/rooms/${room.id}/start`));
+    await suspendAll([host], gameId, room.id);
+
+    // 唯一的真人結束對局不靠任何缺席條件（§4.6），暫停中照樣可以。
+    const result = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+    expect(result.abandoned).toBe(true);
+    expect((await harness.service.repo.findRoom(room.id))?.status).toBe('abandoned');
   });
 });
 

@@ -251,8 +251,6 @@ def start_game(browser, mission, names, lobby_shot=None):
     if host.locator('#room-setup option').count() > 1:
         host.locator('#room-setup').select_option(setup_mode)
     expect(host.get_by_test_id('resolved-profile')).to_be_visible()
-    if lobby_shot:
-        shot(host, lobby_shot, f'lobby: Explorers & Pirates / {scenario}')
     host.get_by_test_id('create-room').click()
     code = host.get_by_test_id('room-code').inner_text()
     for page in pages[1:]:
@@ -262,6 +260,9 @@ def start_game(browser, mission, names, lobby_shot=None):
     for page in pages:
         page.get_by_test_id('toggle-ready').click()
     expect(host.get_by_test_id('start-game')).to_be_enabled()
+    # 大廳截圖：建房後、全員準備完成、按開始之前（房間設定與座位），不是首頁建房表單。
+    if lobby_shot:
+        shot(host, lobby_shot, f'lobby: Explorers & Pirates / {scenario}')
     host.get_by_test_id('start-game').click()
     expect(host.get_by_test_id('board')).to_be_visible(timeout=60000)
     identity = [api(context, 'GET', '/api/session')['player']['id'] for context in contexts]

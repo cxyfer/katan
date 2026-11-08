@@ -209,9 +209,10 @@ table's leave dialog.
   already suspended is `E_GAME_SUSPENDED` (409). When the suspension takes
   effect, open and agreed trade offers expire (`trade.expired` with
   `reason: "suspended"`) and the room's pending policy proposal is cancelled;
-  strategic pending effects are kept. Expiring offers is a new revision, pushed
-  to every connected seat as a `snapshot`; with nothing to expire the revision
-  stays the same. Once suspended, commands are
+  an open abandon vote is cancelled too unless someone has explicitly
+  withdrawn (see **End the game**); strategic pending effects are kept.
+  Expiring offers is a new revision, pushed to every connected seat as a
+  `snapshot`; with nothing to expire the revision stays the same. Once suspended, commands are
   refused with `E_GAME_SUSPENDED` until `POST /api/games/:gameId/resume` with
   `{ ready }` has every person connected and ready; it answers
   `ResumeReadyResult { resumed, waitingFor }`, where `waitingFor` lists the
@@ -232,15 +233,26 @@ table's leave dialog.
   against bots that is immediate (the policy check still applies,
   `E_ABANDON_DISABLED`). Further votes use `{ proposalId, approve }` and answer
   `{ abandoned }`. `E_NO_ABSENT_PLAYER` still applies when several people are
-  present and nobody is absent or withdrawn. A withdrawn seat cannot propose,
-  consent or reject (`E_SEAT_WITHDRAWN`): its withdrawal already counts as
-  consent and its return never cancels the vote, so a veto would be a new
-  power. A person who is merely offline (no live socket) but has not
-  withdrawn may still answer over HTTP; that is equivalent to reconnecting,
-  which cancels the vote anyway (their consent is not counted, a rejection
-  ends it), so it adds no power. A reconnecting seat cancels the open vote
-  (after being marked connected), except a withdrawn seat, whose return changes
-  nothing. Creating, consenting to, rejecting or cancelling the vote, and a
+  present and nobody is absent or withdrawn. While the room is `suspended`,
+  being offline is expected and does not count as absence; only an explicit
+  withdrawal does (a sole person against bots needs none). Proposing, or
+  agreeing to an open vote, on a suspended table where nobody has withdrawn is
+  `E_GAME_SUSPENDED` (409): the game stays suspended and any such open vote is
+  cancelled (pushed as a `room` message); rejecting a vote is still accepted.
+  On a suspended table the voters are every non-withdrawn person, offline or
+  not: the vote stays open (`abandoned: false`, the room still `suspended`)
+  until each of them agrees or one rejects, and their reconnection does not
+  cancel it. When the table resumes everyone is connected, so an open vote
+  keeps its consents.
+  A withdrawn seat cannot propose, consent or reject (`E_SEAT_WITHDRAWN`): its
+  withdrawal already counts as consent and its return never cancels the vote,
+  so a veto would be a new power. A person who is merely offline (no live
+  socket) but has not withdrawn may still answer over HTTP. During play that is
+  equivalent to reconnecting, which cancels the vote anyway (their consent is
+  not counted, a rejection ends it), so it adds no power; on a suspended table
+  they are voters and the answer counts. A reconnecting seat cancels the open
+  vote (after being marked connected), except a withdrawn seat, whose return
+  changes nothing, and any seat while the room is `suspended`. Creating, consenting to, rejecting or cancelling the vote, and a
   person dropping out of it, push a fresh `room` message with
   `pendingAbandon` to everyone connected.
 
@@ -248,7 +260,8 @@ table's leave dialog.
 carry the state to clients. `pendingAbandon` is `null` when nothing is open;
 otherwise `{ id, proposedBy, consents, absent, createdAt }`, where `consents`
 are the people who agreed and `absent` the people currently offline or
-withdrawn, for the confirmation dialog to name. `ResumableGameView.withdrawn` is
+withdrawn (on a `suspended` room, only the withdrawn ones), for the
+confirmation dialog to name. `ResumableGameView.withdrawn` is
 true when the viewer's own seat is withdrawn; the game stays listed so the seat
 can be taken back. All three fields are optional in the types, but the server
 always fills them.

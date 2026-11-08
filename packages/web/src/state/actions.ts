@@ -11,7 +11,7 @@
 
 import { COSTS, type Resource } from '@catan/rules';
 import type { GameSnapshot } from '@catan/protocol';
-import { awaitingProjection, type TableState } from './table.ts';
+import { awaitingProjection, awaitingRoom, tableSuspended, type TableState } from './table.ts';
 import { blocksNewCommands } from './commands.ts';
 import { seafarersHints, SHIP_COST } from '../board/seafarers.ts';
 import { EP_HARBOR_COST, EP_SHIP_COST, epHints } from '../board/explorersPirates.ts';
@@ -76,10 +76,14 @@ interface ActionInput {
   presentingDice: boolean;
   /** 投影尚未追上已知事件：畫面是過時狀態。 */
   syncing: boolean;
+  /** 全桌已暫停（§4.8）：伺服器拒絕所有指令，直到全員準備繼續。 */
+  suspended: boolean;
 }
 
 /** Shared reason resolution, in the priority order a player experiences it. */
 export function reasonFor(input: ActionInput, extra: string | null): string | null {
+  // 暫停是整桌的狀態，重新連線也不會解除，所以優先說明。
+  if (input.suspended) return 'play.disabled.suspended';
   if (!input.connected) return 'play.disabled.connectivity';
   if (input.blockedByCommand) return 'play.disabled.pending';
   // 演出期間一律顯示擲骰原因：其他原因（待處理、資源不足）來自擲骰後的投影，會透露點數。
@@ -95,9 +99,11 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
   const connected = state.connection === 'online';
   const blocked = blocksNewCommands(state.command);
   const presentingDice = state.dicePresenting;
-  const syncing = awaitingProjection(state);
-  const ready = !blocked && connected && !presentingDice && !syncing;
-  const input: ActionInput = { snapshot, selfId, connected, blockedByCommand: blocked, presentingDice, syncing };
+  // 房間尚未載入時還不知道能不能下，與投影未追上一樣視為同步中。
+  const syncing = awaitingProjection(state) || awaitingRoom(state);
+  const suspended = tableSuspended(state);
+  const ready = !blocked && connected && !presentingDice && !syncing && !suspended;
+  const input: ActionInput = { snapshot, selfId, connected, blockedByCommand: blocked, presentingDice, syncing, suspended };
   const resources = selfResources(snapshot, selfId);
   const isTurnActor = !!view && !!selfId && view.turn.playerId === selfId;
   const pending = view?.pending ?? null;

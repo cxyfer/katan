@@ -456,6 +456,7 @@ export const zhHant: Catalog = {
   'play.disabled.other': '此動作目前無法使用。',
   'play.disabled.rolling': '擲骰中，等待點數揭曉。',
   'play.disabled.syncing': '正在同步牌桌，請稍候。',
+  'play.disabled.suspended': '對局已暫停，所有玩家準備好繼續後才能行動。',
   'play.syncing': '正在同步牌桌…',
   'play.selectionTitle': '已選目標',
   'play.selectionTarget': '目標：{target}',

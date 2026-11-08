@@ -164,7 +164,6 @@ def start_game(browser, count, profile, setup_mode, lobby=False):
         host.get_by_test_id('expansion-select').select_option('citiesKnights+seafarers')
         host.locator('#room-capacity').select_option(str(count))
         expect(host.get_by_test_id('resolved-profile')).to_be_visible()
-        shot(host, 'lobby-combined', 'lobby: Cities & Knights + Seafarers resolves to Heading for New Shores (16 VP)')
         host.get_by_test_id('create-room').click()
         code = host.get_by_test_id('room-code').inner_text()
         for page in pages[1:]:
@@ -174,6 +173,8 @@ def start_game(browser, count, profile, setup_mode, lobby=False):
         for page in pages:
             page.get_by_test_id('toggle-ready').click()
         expect(host.get_by_test_id('start-game')).to_be_enabled()
+        # 大廳截圖：建房後、全員準備完成、按開始之前，拍到房間設定與座位（不是首頁建房表單）。
+        shot(host, 'lobby-combined', 'lobby: Cities & Knights + Seafarers resolves to Heading for New Shores (16 VP)')
         host.get_by_test_id('start-game').click()
         expect(host.get_by_test_id('setup-guide')).to_be_visible()
         game_id = api(contexts[0], 'GET', '/api/games')['games'][0]['gameId']

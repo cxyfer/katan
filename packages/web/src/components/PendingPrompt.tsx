@@ -31,6 +31,9 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
   const action = requiredActionFor(state);
 
   if (!view) return null;
+  // 全桌暫停（§4.8）：不提示待辦動作，也不留擲骰、結束回合或模組的指令入口；
+  // 訊息欄改由暫停橫幅（SuspendPanel）說明並收集「準備繼續」。
+  if (action?.kind === 'suspended') return null;
   const pending = rolling ? null : view.pending;
 
   const nameOf = resolveName(state);
