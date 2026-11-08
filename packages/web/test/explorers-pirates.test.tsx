@@ -8,6 +8,7 @@ import { epHints, epView, fogRegions, shipSlots } from '../src/board/explorersPi
 import { buildGeometry } from '../src/board/geometry.ts';
 import { boardIntent } from '../src/board/intent.ts';
 import { epShipPlacements } from '../src/board/three/diorama-explorers.ts';
+import { shipTransform } from '../src/board/three/diorama-ships.ts';
 import { inspectDescription } from '../src/board/inspection.ts';
 import { ExplorersPiratesPrompt } from '../src/components/ExplorersPiratesPrompt.tsx';
 import { ActionBar } from '../src/components/ActionBar.tsx';
@@ -243,14 +244,16 @@ describe('explorers & pirates client', () => {
     expect(placed.map((ship) => ship.id)).toEqual(ids);
     // The 3D hull is 0.13 × 1.5 = 0.195 wide.
     for (const [a, b] of pairs(placed)) expect(Math.hypot(a.position[0] - b.position[0], a.position[2] - b.position[2])).toBeGreaterThan(0.195);
-    // Every hull stays off the land: on the sea side of the path, clear of the beach.
+    // The 3D beach reaches about 0.3 past a coastal path: no ship sits nearer the land than a lone ship does.
     const info = geometry.topology.edges[edge]!;
     const line = geometry.edges[edge]!;
     const [mx, mz] = [(line.x1 + line.x2) / 200, (line.y1 + line.y2) / 200];
     for (const hex of info.hexes.filter((index) => geometry.land[index] !== false)) {
       const [cx, cz] = [geometry.hexes[hex]!.cx / 100, geometry.hexes[hex]!.cy / 100];
       const [ox, oz] = [(mx - cx) / Math.hypot(mx - cx, mz - cz), (mz - cz) / Math.hypot(mx - cx, mz - cz)];
-      for (const ship of placed) expect((ship.position[0] - mx) * ox + (ship.position[2] - mz) * oz).toBeGreaterThan(0.05);
+      const seaward = (point: readonly number[]) => (point[0]! - mx) * ox + (point[2]! - mz) * oz;
+      const lone = seaward(shipTransform(geometry, edge)!.position);
+      for (const ship of placed) expect(seaward(ship.position)).toBeGreaterThanOrEqual(lone - 1e-6);
     }
   });
 

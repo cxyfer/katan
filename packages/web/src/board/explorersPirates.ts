@@ -47,22 +47,35 @@ export function fogRegions(view: EpView | null): Map<number, 'parrot' | 'goose'>
 
 /** 船身含貨物橫跨路徑的寬度：SVG 船身加貨物約 22.5/100，3D 船身 0.13 × 1.5 = 0.195。 */
 export const SHIP_BEAM = 0.225;
-/** 相鄰航道的間距（兩艘船時即原本的並排位置）。 */
+/** 相鄰航道的間距（SVG 的預設；兩艘船時即原本的並排位置）。 */
 export const SHIP_LANE = 0.24;
-/** 整組航道最大展開幅度：四艘船時剛好用滿；更多船時壓縮間距，整組仍留在路徑兩側的半格內。 */
-const SHIP_SPREAD = 3 * SHIP_LANE;
 
-/**
- * `count` 艘船各自的航道偏移（slot 0 起，橫跨路徑、正向即路徑法線方向），以路徑中線置中。
- * `shore`（+1 / -1）為海岸路徑上開放水域的一側：整組往海側展開，
- * 使最靠陸地的航道不比中線更往陸側超過半個航道（兩艘船時位置不變）。
- */
-export function shipLaneOffsets(count: number, shore: -1 | 0 | 1 = 0): number[] {
-  const lane = count > 1 ? Math.min(SHIP_LANE, SHIP_SPREAD / (count - 1)) : 0;
-  const offsets = Array.from({ length: count }, (_, slot) => (slot - (count - 1) / 2) * lane);
-  if (!shore) return offsets;
-  const shift = Math.max(0, ((count - 1) / 2) * lane - SHIP_LANE / 2);
-  return offsets.map((offset) => offset + shore * shift);
+/** 一艘船在路徑上的位置：`across` 橫跨路徑（正向即路徑法線），`along` 順著龍骨。 */
+export interface ShipLane {
+  across: number;
+  along: number;
+}
+
+export interface ShipLaneOptions {
+  /** 相鄰航道的間距；超過四艘時壓縮，整組不超過四艘的展開幅度。 */
+  lane?: number;
+  /** 相鄰航道沿龍骨交錯的距離（slot 偶數往後、奇數往前），讓斜視時桅帆與貨物不疊成一列。 */
+  stagger?: number;
+  /**
+   * 海岸路徑上開放水域的一側（+1 / -1）：最靠陸的航道留在錨點（單艘船的位置），
+   * 整組往海側展開；0 時以錨點置中。
+   */
+  shore?: -1 | 0 | 1;
+}
+
+/** `count` 艘同路徑船各自的航道（slot 0 起），相對於單艘船時的錨點。 */
+export function shipLanes(count: number, { lane = SHIP_LANE, stagger = 0, shore = 0 }: ShipLaneOptions = {}): ShipLane[] {
+  const step = count > 1 ? Math.min(lane, (3 * lane) / (count - 1)) : 0;
+  const shift = shore * ((count - 1) / 2) * step;
+  return Array.from({ length: count }, (_, slot) => ({
+    across: (slot - (count - 1) / 2) * step + shift,
+    along: count > 1 && stagger ? (slot % 2 ? stagger : -stagger) : 0,
+  }));
 }
 
 /** 依船隻編號排序（`s2` 在 `s10` 之前），讓航道不隨陣列順序變動。 */

@@ -10,7 +10,7 @@
 import type { GameView } from '@catan/rules';
 import type { BoardEffectGroup } from '../board/animation.ts';
 import type { BoardGeometry } from '../board/geometry.ts';
-import { epView, shipLaneOffsets, shipSlots, type EpView } from '../board/explorersPirates.ts';
+import { epView, shipLanes, shipSlots, type EpView } from '../board/explorersPirates.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { useT } from '../i18n/context.tsx';
 import type { EpCargo } from '@catan/rules';
@@ -192,7 +192,7 @@ export function SvgExplorersPiratesLayer({ geometry, view, active, nameResolver 
       const angle = edgeAngle(edge);
       const mid = edgeMidpoint(edge);
       const place = slots.get(ship.id) ?? { slot: 0, of: 1 };
-      const offset = shipLaneOffsets(place.of)[place.slot]! * geometry.scale;
+      const offset = shipLanes(place.of)[place.slot]!.across * geometry.scale;
       const rad = ((angle + 90) * Math.PI) / 180;
       const x = mid.x + Math.cos(rad) * offset;
       const y = mid.y + Math.sin(rad) * offset;
