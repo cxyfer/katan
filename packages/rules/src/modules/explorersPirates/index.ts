@@ -9,10 +9,10 @@
  * README.md in the parent directory for the hooks.
  */
 
-import { topologyOf } from '../../analysis.ts';
+import { countBuildings, countRoads, topologyOf } from '../../analysis.ts';
 import type { CommandOutcome, GameState, ModulePending } from '../../types.ts';
 import type { EpMission } from '../../explorers-pirates-boards.ts';
-import type { ModuleCommand, RulesModule } from '../types.ts';
+import type { ModuleCommand, ModuleViewContext, RulesModule } from '../types.ts';
 import { EP_PIECES, epPoints, goldOf, harborsOf, piecesInPlay, plainSettlements, scenarioOf, trackLeader, TRACK_VALUES } from './core.ts';
 import {
   abilityCount,
@@ -82,19 +82,40 @@ const ACTION_ONLY = new Set([
   'build.road', 'build.settlement', 'build.city', 'build.devCard',
   'trade.bank', 'trade.offer', 'trade.revise', 'trade.settle',
 ]);
+/** The supply piece each base build command takes; E&P has no cities (`pieces.cities` is 0). */
+const BUILD_PIECE: Readonly<Record<string, 'road' | 'settlement' | 'city'>> = {
+  'build.road': 'road',
+  'build.settlement': 'settlement',
+  'build.city': 'city',
+};
 
 function copy<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function fail(code: string): CommandOutcome {
-  return { ok: false, error: { code, params: {} } } as CommandOutcome;
+function fail(code: string, params: Record<string, unknown> = {}): CommandOutcome {
+  return { ok: false, error: { code, params } } as CommandOutcome;
 }
 
-function vetoCommand(state: GameState, _actorId: string, command: ModuleCommand): CommandOutcome | undefined {
+function pieceLeft(state: GameState, playerId: string, piece: 'road' | 'settlement' | 'city', ctx: ModuleViewContext): boolean {
+  const pieces = ctx.profile.pieces;
+  if (piece === 'road') return countRoads(state, playerId) < pieces.roads;
+  if (piece === 'settlement') return countBuildings(state, playerId, 'settlement') < pieces.settlements;
+  return countBuildings(state, playerId, 'city') < pieces.cities;
+}
+
+/**
+ * 派發前的否決；`actionHints` 以同一個否決過濾 `legalRoads`／`legalSettlements`／
+ * `legalCities`，提示不會列出這裡拒絕的建設（#114）。
+ */
+function vetoCommand(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleViewContext): CommandOutcome | undefined {
   if (BASE_SETUP.has(command.type)) return fail('E_INVALID_COMMAND');
   if (state.turn.phase !== 'action') return undefined;
   if (viewTurn(state).phase === 'movement' && ACTION_ONLY.has(command.type)) return fail('E_EP_MOVEMENT_PHASE');
+  // 供應區用完（城市一開始就是 0）：和 base 的 `E_NO_PIECES` 相同，只是提早到派發前。
+  const piece = BUILD_PIECE[command.type];
+  const actor = state.players[state.turn.seat]?.id === actorId && !state.pending;
+  if (piece && actor && !pieceLeft(state, actorId, piece, ctx)) return fail('E_NO_PIECES', { piece });
   return undefined;
 }
 

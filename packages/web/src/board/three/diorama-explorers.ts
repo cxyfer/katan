@@ -9,7 +9,7 @@
 import { BoxGeometry, BufferGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, SphereGeometry } from 'three';
 import type { EpCargo } from '@catan/rules';
 import type { BoardGeometry } from '../geometry.ts';
-import type { EpView } from '../explorersPirates.ts';
+import { shipLanes, shipSlots, type EpView } from '../explorersPirates.ts';
 import { SEA_LEVEL } from '../sea.ts';
 import { ModelBuilder } from './diorama-geometry.ts';
 import { shipTransform } from './diorama-ships.ts';
@@ -151,25 +151,49 @@ export interface EpShipPlacement extends InstanceTransform {
   cargo: EpCargo[];
 }
 
-/** Ships sharing a path sit side by side across it. */
+/*
+ * 3D 的相機斜看棋盤（仰角 50°／窄螢幕 60°），橫跨路徑的方向常落在畫面縱深上，
+ * 間距被壓縮，前船的船身又擋住後船；所以 3D 的航道比 SVG 寬，並沿龍骨交錯。
+ * 在預設相機、各種路徑方向下，2–4 艘同路徑船的船身與貨物都約有八成可見。
+ */
+/** 3D 相鄰航道的間距（邊長單位）。 */
+export const EP_SHIP_LANE_3D = 0.28;
+/** 3D 相鄰航道沿龍骨交錯的距離；船身仍在路徑兩端之內（0.3 + 0.1 < 0.5）。 */
+export const EP_SHIP_STAGGER_3D = 0.1;
+
+/**
+ * Ships sharing a path sit side by side across it, one lane each (see `shipLanes`).
+ * On a coast `shipTransform` floats a lone ship out to sea; a group keeps its
+ * landmost ship on that spot and grows seaward from it, so no ship sits nearer the land than a lone one.
+ */
 export function epShipPlacements(geometry: BoardGeometry, view: EpView, scale: number): EpShipPlacement[] {
-  const byEdge = new Map<number, string[]>();
-  for (const ship of view.ships) byEdge.set(ship.edge, [...(byEdge.get(ship.edge) ?? []), ship.id]);
+  const slots = shipSlots(view);
   return view.ships.flatMap((ship) => {
     const transform = shipTransform(geometry, ship.edge);
-    if (!transform) return [];
-    const group = byEdge.get(ship.edge) ?? [ship.id];
-    const slot = group.indexOf(ship.id);
-    const offset = group.length > 1 ? (slot === 0 ? -0.12 : 0.12) : 0;
+    const edge = geometry.edges[ship.edge];
+    if (!transform || !edge) return [];
     // Perpendicular to the keel (rotationY turns +X towards the edge direction).
     const nx = Math.sin(transform.rotationY);
     const nz = Math.cos(transform.rotationY);
+    // Along the keel.
+    const kx = Math.cos(transform.rotationY);
+    const kz = -Math.sin(transform.rotationY);
     const [x, y, z] = transform.position;
+    // 錨點相對路徑中點往法線哪一側推（海岸路徑才不為 0），即海側方向。
+    const shore = (x - (edge.x1 + edge.x2) / 2 / geometry.scale) * nx + (z - (edge.y1 + edge.y2) / 2 / geometry.scale) * nz;
+    const place = slots.get(ship.id) ?? { slot: 0, of: 1 };
+    const lane = shipLanes(place.of, {
+      lane: EP_SHIP_LANE_3D,
+      stagger: EP_SHIP_STAGGER_3D,
+      shore: Math.abs(shore) > 1e-6 ? (Math.sign(shore) as -1 | 1) : 0,
+    })[place.slot]!;
+    const dx = nx * lane.across + kx * lane.along;
+    const dz = nz * lane.across + kz * lane.along;
     return [{
       id: ship.id,
       playerId: ship.player,
       cargo: ship.cargo.slice(),
-      position: [x + nx * offset, y, z + nz * offset] as Vec3,
+      position: [x + dx, y, z + dz] as Vec3,
       rotationY: transform.rotationY,
       scale: [scale, scale, scale] as Vec3,
     }];

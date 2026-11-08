@@ -4,12 +4,11 @@
  * module commands go through the same durable, idempotent receipts.
  */
 
-import { join } from 'node:path';
 import { rmSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { applyCommand, type Command, type GameState } from '@catan/rules';
-import { startService } from '../src/main.ts';
-import { createClient, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
+import type { RunningService } from '../src/main.ts';
+import { createClient, restartService, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;
 
@@ -92,9 +91,10 @@ describe('Explorers & Pirates over the API', () => {
     expect(after.view.modules?.explorersPirates?.harbors.map((harbor) => harbor.vertex)).toEqual([vertex]);
   });
 
-  it.skipIf(!!process.env.TEST_POSTGRES_URL)('keeps fog, pools and a pirate frame across a restart without drawing again', async () => {
+  // 重啟測試在 harness 的同一份資料上重開服務（SQLite 檔或 PostgreSQL schema），兩種資料庫都會執行。
+  it('keeps fog, pools and a pirate frame across a restart without drawing again', async () => {
     const local = await startHarness();
-    let restarted: Awaited<ReturnType<typeof startService>> | null = null;
+    let restarted: RunningService | null = null;
     try {
       const { clients, gameId } = await startedGame(local, 3, { profileId: 'ep-pirate-lairs-2025', setupMode: 'fixed' });
       // Variable placement on the printed island, through the API.
@@ -128,7 +128,7 @@ describe('Explorers & Pirates over the API', () => {
       expect(before.view.modules?.explorersPirates?.fog.length).toBeGreaterThan(0);
 
       await local.service.close();
-      restarted = await startService({ port: 0, host: '127.0.0.1', sqlitePath: join(local.dataDir, 'test.sqlite') }, () => undefined);
+      restarted = await restartService(local);
       const base = `http://127.0.0.1:${restarted.port}`;
       const resumed = (client: TestClient) => Object.assign(createClient(base), { cookie: client.cookie, playerId: client.playerId });
       const after = resumed(host).expectOk<EpSnapshot>(await resumed(host).get(`/api/games/${gameId}`));
@@ -155,12 +155,10 @@ describe('Explorers & Pirates over the API', () => {
   });
 
   // #97：未完成的 ep-2025.1 卡死存檔在重啟後以 ep-2025.2 的行為救援，不重做事件。
-  // 此案例以 `repo.db.run` 直接改寫 SQLite 的 engine_version，並在同一個 SQLite 檔上重啟，
-  // 因此只跑 SQLite；PostgreSQL 尚未覆蓋，與上一個重啟案例的 skipIf 理由相同。
-  it.skipIf(!!process.env.TEST_POSTGRES_URL)('rescues a persisted ep-2025.1 stranded ship across restarts (#97)', async () => {
+  // `repo.db.run` 走資料庫方言介面改寫 engine_version，SQLite 與 PostgreSQL 都適用（#115）。
+  it('rescues a persisted ep-2025.1 stranded ship across restarts (#97)', async () => {
     const local = await startHarness();
-    const sqlitePath = join(local.dataDir, 'test.sqlite');
-    let running: Awaited<ReturnType<typeof startService>> | null = null;
+    let running: RunningService | null = null;
     try {
       const { clients, gameId } = await startedGame(local, 3, { profileId: 'ep-land-ho-2025', setupMode: 'fixed' });
       // 以固定骰點擲骰（5，無 7 的棄牌），直接寫回存檔。
@@ -202,7 +200,7 @@ describe('Explorers & Pirates over the API', () => {
       const saved = (await local.service.repo.findGame(gameId))!.state_json;
       await local.service.close();
 
-      running = await startService({ port: 0, host: '127.0.0.1', sqlitePath }, () => undefined);
+      running = await restartService(local);
       let base = `http://127.0.0.1:${running.port}`;
       const resumed = () => Object.assign(createClient(base), { cookie: actor.cookie, playerId: actor.playerId });
       type StrandView = EpSnapshot & {
@@ -242,7 +240,7 @@ describe('Explorers & Pirates over the API', () => {
       running = null;
 
       // 再次重啟：版本、事件與 receipt 不變，救援不會重做。
-      running = await startService({ port: 0, host: '127.0.0.1', sqlitePath }, () => undefined);
+      running = await restartService(local);
       base = `http://127.0.0.1:${running.port}`;
       const again = resumed().expectOk<StrandView>(await resumed().get(`/api/games/${gameId}`));
       expect(again.revision).toBe(ended.revision);

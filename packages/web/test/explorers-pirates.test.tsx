@@ -8,6 +8,7 @@ import { epHints, epView, fogRegions, shipSlots } from '../src/board/explorersPi
 import { buildGeometry } from '../src/board/geometry.ts';
 import { boardIntent } from '../src/board/intent.ts';
 import { epShipPlacements } from '../src/board/three/diorama-explorers.ts';
+import { shipTransform } from '../src/board/three/diorama-ships.ts';
 import { inspectDescription } from '../src/board/inspection.ts';
 import { ExplorersPiratesPrompt } from '../src/components/ExplorersPiratesPrompt.tsx';
 import { ActionBar } from '../src/components/ActionBar.tsx';
@@ -184,6 +185,76 @@ describe('explorers & pirates client', () => {
     const placed = epShipPlacements(geometry, slot, 1.5).filter((ship) => ship.id === first!.id || ship.id === second!.id);
     expect(placed).toHaveLength(2);
     expect(placed[0]!.position).not.toEqual(placed[1]!.position);
+  });
+
+  /** Land Ho! with `count` ships on `pick`'s edge (extra ships are added for other seats). */
+  function crowdedPath(count: number, pick: (geometry: ReturnType<typeof buildGeometry>, edge: number) => boolean) {
+    const view = structuredClone(viewOf(landHo()));
+    const slot = epView(view)!;
+    const geometry = buildGeometry(view.board.topologyId, 100, view.board.terrain);
+    const edge = geometry.topology.edges.findIndex((_, index) => pick(geometry, index));
+    expect(edge).toBeGreaterThanOrEqual(0);
+    const others = ['p2', 'p3', 'p4'] as const;
+    while (slot.ships.length < count) slot.ships.push({ id: `s${90 + slot.ships.length}`, player: others[slot.ships.length % 3]!, edge, cargo: ['fish'] });
+    const crowded = slot.ships.slice(0, count);
+    for (const ship of crowded) ship.edge = edge;
+    crowded[0]!.cargo = ['settler', 'crew'];
+    return { view, slot, geometry, edge, ids: crowded.map((ship) => ship.id) };
+  }
+  const openSea = (geometry: ReturnType<typeof buildGeometry>, edge: number) => {
+    const hexes = geometry.topology.edges[edge]!.hexes;
+    return hexes.length === 2 && hexes.every((hex) => geometry.land[hex] === false);
+  };
+  const coast = (geometry: ReturnType<typeof buildGeometry>, edge: number) => {
+    const hexes = geometry.topology.edges[edge]!.hexes;
+    return hexes.length === 2 && hexes.filter((hex) => geometry.land[hex] === false).length === 1;
+  };
+  const pairs = <T,>(items: T[]) => items.flatMap((a, i) => items.slice(i + 1).map((b) => [a, b] as const));
+
+  it.each([
+    ['three ships at open sea', 3, openSea],
+    ['four ships at open sea', 4, openSea],
+    ['three ships on a coast', 3, coast],
+    ['four ships on a coast', 4, coast],
+  ] as const)('gives each of %s its own place on the SVG board', (_, count, pick) => {
+    const { view, geometry, ids } = crowdedPath(count, pick);
+    const { container } = render(<LocaleProvider locale="en"><SvgBoard svgRef={() => undefined} geometry={geometry} view={view}
+      active={null} selection={EMPTY_SELECTION} selfId="p1" intent={null} pan={{ x: 0, y: 0 }} zoom={1}
+      viewBoxCenter={{ x: 0, y: 0 }} nameResolver={(id) => id.toUpperCase()} /></LocaleProvider>);
+    const at = new Map(ids.map((id) => {
+      const hull = container.querySelector(`[data-testid="ep-ship-${id}"] > g`)!;
+      const [, x, y] = /translate\(([-\d.e]+) ([-\d.e]+)\)/.exec(hull.getAttribute('transform')!)!;
+      return [id, { x: Number(x), y: Number(y) }];
+    }));
+    // A hull with its cargo is about 22 units across; neighbouring lanes must clear it.
+    for (const [a, b] of pairs(ids)) expect(Math.hypot(at.get(a)!.x - at.get(b)!.x, at.get(a)!.y - at.get(b)!.y)).toBeGreaterThan(22.5);
+    // Cargo stays readable: a ship is drawn after the neighbour whose sail reaches up into its hull.
+    const drawn = [...container.querySelectorAll('[data-testid^="ep-ship-"]')].map((node) => node.getAttribute('data-testid')!.slice('ep-ship-'.length));
+    expect(drawn.filter((id) => ids.includes(id))).toEqual(ids.slice().reverse());
+  });
+
+  it.each([
+    ['three ships at open sea', 3, openSea],
+    ['four ships at open sea', 4, openSea],
+    ['three ships on a coast', 3, coast],
+    ['four ships on a coast', 4, coast],
+  ] as const)('gives each of %s its own place on the 3D board', (_, count, pick) => {
+    const { slot, geometry, edge, ids } = crowdedPath(count, pick);
+    const placed = epShipPlacements(geometry, slot, 1.5).filter((ship) => ids.includes(ship.id));
+    expect(placed.map((ship) => ship.id)).toEqual(ids);
+    // The 3D hull is 0.13 × 1.5 = 0.195 wide.
+    for (const [a, b] of pairs(placed)) expect(Math.hypot(a.position[0] - b.position[0], a.position[2] - b.position[2])).toBeGreaterThan(0.195);
+    // The 3D beach reaches about 0.3 past a coastal path: no ship sits nearer the land than a lone ship does.
+    const info = geometry.topology.edges[edge]!;
+    const line = geometry.edges[edge]!;
+    const [mx, mz] = [(line.x1 + line.x2) / 200, (line.y1 + line.y2) / 200];
+    for (const hex of info.hexes.filter((index) => geometry.land[index] !== false)) {
+      const [cx, cz] = [geometry.hexes[hex]!.cx / 100, geometry.hexes[hex]!.cy / 100];
+      const [ox, oz] = [(mx - cx) / Math.hypot(mx - cx, mz - cz), (mz - cz) / Math.hypot(mx - cx, mz - cz)];
+      const seaward = (point: readonly number[]) => (point[0]! - mx) * ox + (point[2]! - mz) * oz;
+      const lone = seaward(shipTransform(geometry, edge)!.position);
+      for (const ship of placed) expect(seaward(ship.position)).toBeGreaterThanOrEqual(lone - 1e-6);
+    }
   });
 
   it('labels the variable setup steps and shows the help section', () => {

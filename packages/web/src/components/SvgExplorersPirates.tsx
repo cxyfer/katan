@@ -10,7 +10,7 @@
 import type { GameView } from '@catan/rules';
 import type { BoardEffectGroup } from '../board/animation.ts';
 import type { BoardGeometry } from '../board/geometry.ts';
-import { epView, shipSlots, type EpView } from '../board/explorersPirates.ts';
+import { epView, shipLanes, shipSlots, type EpView } from '../board/explorersPirates.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { useT } from '../i18n/context.tsx';
 import type { EpCargo } from '@catan/rules';
@@ -149,7 +149,7 @@ function Sites({ geometry, view, slot, nameResolver }: { geometry: BoardGeometry
 
 /**
  * Everything E&P adds on top of the base SVG layers. Renders nothing for
- * other games. Ships sharing an edge sit side by side across it.
+ * other games. Ships sharing an edge sit side by side across it, one lane each.
  */
 export function SvgExplorersPiratesLayer({ geometry, view, active, nameResolver }: {
   geometry: BoardGeometry; view: GameView; active: BoardEffectGroup | null; nameResolver: (id: string) => string;
@@ -158,6 +158,8 @@ export function SvgExplorersPiratesLayer({ geometry, view, active, nameResolver 
   const slot = epView(view);
   if (!slot) return null;
   const slots = shipSlots(slot);
+  // 帆朝航道負向伸出，會蓋到前一條航道的船身；由最後一條航道往前畫，讓每艘船的船身與貨物都在鄰船的帆之上。
+  const ships = slot.ships.slice().sort((a, b) => (slots.get(b.id)?.slot ?? 0) - (slots.get(a.id)?.slot ?? 0));
   const revealed = (active?.events ?? []).filter((event) => event.type === 'ep.explored' && typeof event.params.hex === 'number');
   return <g data-testid="ep-layer">
     <Sites geometry={geometry} view={view} slot={slot} nameResolver={nameResolver} />
@@ -182,7 +184,7 @@ export function SvgExplorersPiratesLayer({ geometry, view, active, nameResolver 
         <title>{`${t('ep.piece.harbor')} · ${nameResolver(harbor.player)}${harbor.cargo.length ? ` · ${harbor.cargo.map((piece) => t(`ep.piece.${piece}`)).join(', ')}` : ''}`}</title>
       </g>;
     })}
-    {slot.ships.map((ship) => {
+    {ships.map((ship) => {
       const edge = geometry.edges[ship.edge];
       if (!edge) return null;
       const player = view.players.find((candidate) => candidate.id === ship.player);
@@ -190,7 +192,7 @@ export function SvgExplorersPiratesLayer({ geometry, view, active, nameResolver 
       const angle = edgeAngle(edge);
       const mid = edgeMidpoint(edge);
       const place = slots.get(ship.id) ?? { slot: 0, of: 1 };
-      const offset = place.of > 1 ? (place.slot === 0 ? -11 : 11) : 0;
+      const offset = shipLanes(place.of)[place.slot]!.across * geometry.scale;
       const rad = ((angle + 90) * Math.PI) / 180;
       const x = mid.x + Math.cos(rad) * offset;
       const y = mid.y + Math.sin(rad) * offset;
