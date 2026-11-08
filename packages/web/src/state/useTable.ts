@@ -300,11 +300,22 @@ export function useTable(options: UseTableOptions): TableController {
       if (result.ok) {
         if (generation !== syncGenerationRef.current || gameId !== gameIdRef.current) return;
         receiveSnapshot(result.data, generation, 'refresh');
-        if (result.data.roomId) {
-          roomIdRef.current = result.data.roomId;
-          if (departedRef.current?.roomId === result.data.roomId) departedRef.current = null;
+        const roomId = result.data.roomId;
+        if (roomId) {
+          roomIdRef.current = roomId;
+          if (departedRef.current?.roomId === roomId) departedRef.current = null;
           // Resume/reconnect: recover authorized recent chat history.
-          void loadChatRef.current?.(result.data.roomId);
+          void loadChatRef.current?.(roomId);
+          // 從首頁續玩時房間還沒載入：主動抓一次，不只等 WebSocket 推送。暫停橫幅、
+          // 離開與結束對局的資格都要看房間。推送若先到就以推送為準，不用較舊的回應覆蓋。
+          if (stateRef.current.room?.id !== roomId) {
+            void api.getRoom(roomId).then((room) => {
+              if (!room.ok || room.data.gameId !== gameId) return;
+              if (roomIdRef.current !== roomId || gameIdRef.current !== gameId) return;
+              if (stateRef.current.room?.id === roomId) return;
+              dispatch({ type: 'room', room: room.data });
+            });
+          }
         }
       } else {
         dispatch({ type: 'room-error', error: noticeFrom(result.error) });

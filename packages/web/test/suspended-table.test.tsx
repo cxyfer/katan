@@ -13,7 +13,7 @@ import { memoryStorage } from '../src/state/session.ts';
 import { EMPTY_SELECTION, followUpsHeld, initialTableState, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
-import { makeHints, makeMember, makeRoom, makeSnapshot, makeView } from '../src/test/fixtures.ts';
+import { makeHints, makeMember, makeResumable, makeRoom, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
 /** 全桌保存並暫停（SPEC §4.8）時，牌桌不提示待辦動作、所有遊戲指令入口都停用（#142）。 */
 
@@ -191,6 +191,62 @@ describe('the table while suspended', () => {
     }
     expect(screen.queryAllByTestId(/^target-/)).toHaveLength(0);
     expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
+  /** 從首頁的可續玩清單開啟 g1（房間尚未載入，也沒有 WebSocket 推送）。 */
+  async function resumeFromHome(api: FakeApi): Promise<void> {
+    render(<App services={{ api, storage: memoryStorage(), languages: ['en'], connectSocket: false }} />);
+    fireEvent.click(await screen.findByTestId('resume-g1'));
+    await screen.findByTestId('board-svg', {}, { timeout: 8000 });
+  }
+
+  const staleOffer: Offer = {
+    id: 'o1', revision: 1, from: 'p2', to: 'all', give: { lumber: 1 }, want: { brick: 1 },
+    windowId: 1, status: 'open', responses: {}, agreedWith: null, createdSeq: 1,
+  };
+
+  it('holds a suspended game opened from the resume list before its room arrives', async () => {
+    const api = createFakeApi({
+      games: [makeResumable({ status: 'suspended' })],
+      snapshot: makeSnapshot(makeView({ hints: makeHints({ canEndTurn: true, legalRoads: [3] }), offers: [staleOffer] })),
+    });
+    // 房間一直沒有回來：只靠清單已知的暫停狀態。
+    vi.spyOn(api, 'getRoom').mockReturnValue(new Promise(() => undefined));
+    await resumeFromHome(api);
+    expect(screen.queryByTestId('required-action-prompt')).toBeNull();
+    expect(screen.getByTestId('action-endTurn').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByTestId('reason-endTurn').textContent).toBe(PAUSED_REASON);
+    expect(screen.queryAllByTestId(/^target-/)).toHaveLength(0);
+    fireEvent.click(screen.getByTestId('tool-tab-trade'));
+    expect(screen.getByTestId('create-offer').hasAttribute('disabled')).toBe(true);
+    fireEvent.click(screen.getByTestId('consent-o1'));
+    await waitFor(() => expect(screen.getByTestId('toast').textContent).toContain(PAUSED_REASON));
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+  });
+
+  it('loads the room of a game opened from the resume list, so the resume banner shows without a push', async () => {
+    const api = createFakeApi({
+      games: [makeResumable({ status: 'suspended' })],
+      room: duoRoom('suspended'),
+      snapshot: makeSnapshot(makeView()),
+    });
+    await resumeFromHome(api);
+    expect(await screen.findByTestId('resume-bar')).toBeTruthy();
+    expect(api.callsOf('getRoom').map((call) => call.args)).toContainEqual(['r1']);
+    expect(screen.getByTestId('action-endTurn').hasAttribute('disabled')).toBe(true);
+  });
+
+  it('keeps an interrupted game playable at once while its room is still loading', async () => {
+    const api = createFakeApi({
+      games: [makeResumable({ status: 'playing' })],
+      snapshot: makeSnapshot(makeView({ hints: makeHints({ canEndTurn: true }) })),
+    });
+    vi.spyOn(api, 'getRoom').mockReturnValue(new Promise(() => undefined));
+    await resumeFromHome(api);
+    expect(screen.getByTestId('action-endTurn').hasAttribute('disabled')).toBe(false);
+    expect(screen.getByTestId('prompt-end-turn')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('prompt-end-turn'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
   });
 
   it('refuses a command from a stale entry locally instead of sending it', async () => {

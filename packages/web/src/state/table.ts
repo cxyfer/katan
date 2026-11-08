@@ -283,9 +283,16 @@ export function awaitingProjection(state: TableState): boolean {
 /**
  * 全桌已保存並暫停（SPEC §4.8）：伺服器以 `E_GAME_SUSPENDED` 拒絕所有遊戲指令，
  * 直到每位真人都回到牌桌並表示準備好。
+ *
+ * 以這一局的房間為準。從首頁續玩時投影會先到、房間稍後才載入，這段期間沿用續玩清單
+ * 的狀態：暫停要全員同意、繼續要全員準備好，自己不在牌桌時清單上的暫停與否不會改變。
  */
 export function tableSuspended(state: TableState): boolean {
-  return state.room?.status === 'suspended';
+  const game = state.game;
+  const room = state.room;
+  if (room && (!game || room.id === game.roomId)) return room.status === 'suspended';
+  if (!game) return false;
+  return state.games.some((entry) => entry.gameId === game.gameId && entry.status === 'suspended');
 }
 
 /** 後續操作是否暫停：擲骰演出中、投影尚未追上已知事件，或全桌已暫停。 */
