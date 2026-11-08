@@ -442,21 +442,71 @@ describe('R-SAVE a suspended table is not ended over its expected absences (SPEC
     expect(view.pendingAbandon).toBeNull();
   });
 
-  it('still counts an explicit withdrawal made during the suspension', async () => {
+  it('counts an explicit withdrawal, but an offline person still has to vote', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await suspendAll(clients, gameId, roomId);
+    second.expectOk(await second.post(`/api/rooms/${roomId}/leave`));
+    third.expectOk(await third.post(`/api/games/${gameId}/withdraw`, { withdrawn: true }));
+
+    // 退出照算，所以可以提案；但離線的 P2 仍是投票者，P1 一個人結束不了。
+    const vote = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+    expect(vote.abandoned).toBe(false);
+    const view = await roomOf(host, roomId);
+    expect(view.status).toBe('suspended');
+    expect(view.pendingAbandon).toMatchObject({ id: vote.proposalId, consents: [host.playerId], absent: [third.playerId] });
+
+    // P2 透過真正的 socket 回來：他本來就是投票者、也不算缺席，回來不會讓投票失效。
+    const tab = await watchRoom(second, roomId);
+    try {
+      expect((await roomOf(host, roomId)).pendingAbandon?.id).toBe(vote.proposalId);
+      const final = second.expectOk<{ abandoned: boolean }>(
+        await second.post(`/api/games/${gameId}/abandon`, { proposalId: vote.proposalId, approve: true }),
+      );
+      expect(final.abandoned).toBe(true);
+    } finally {
+      await tab.close();
+    }
+    expect((await harness.service.repo.findRoom(roomId))?.status).toBe('abandoned');
+  });
+
+  it('lets the offline person turn the vote down, keeping the table suspended', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3);
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    await suspendAll(clients, gameId, roomId);
+    second.expectOk(await second.post(`/api/rooms/${roomId}/leave`));
+    third.expectOk(await third.post(`/api/games/${gameId}/withdraw`, { withdrawn: true }));
+    const vote = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
+    expect(vote.abandoned).toBe(false);
+
+    // 還沒重連也能透過 HTTP 表態；否決就取消投票。
+    const answer = second.expectOk<{ abandoned: boolean }>(
+      await second.post(`/api/games/${gameId}/abandon`, { proposalId: vote.proposalId, approve: false }),
+    );
+    expect(answer.abandoned).toBe(false);
+    expect(await harness.service.repo.findOpenGameProposal(gameId, 'abandon')).toBeNull();
+    const view = await roomOf(host, roomId);
+    expect(view.status).toBe('suspended');
+    expect(view.pendingAbandon).toBeNull();
+  });
+
+  it('keeps an open vote and its consents when the table resumes', async () => {
     const { clients, gameId, roomId } = await startedGame(harness, 3);
     const [host, second, third] = clients as [TestClient, TestClient, TestClient];
     await suspendAll(clients, gameId, roomId);
     third.expectOk(await third.post(`/api/games/${gameId}/withdraw`, { withdrawn: true }));
-
     const vote = host.expectOk<AbandonProposeResult>(await host.post(`/api/games/${gameId}/abandon`, {}));
     expect(vote.abandoned).toBe(false);
-    expect((await roomOf(host, roomId)).pendingAbandon).toMatchObject({ id: vote.proposalId, absent: [third.playerId] });
 
+    // 恢復時每個人都在線，暫停中與進行中的投票者名單相同，投票與已表態的同意照舊有效。
+    for (const client of clients) client.expectOk(await client.post(`/api/games/${gameId}/resume`, { ready: true }));
+    const view = await roomOf(host, roomId);
+    expect(view.status).toBe('playing');
+    expect(view.pendingAbandon).toMatchObject({ id: vote.proposalId, consents: [host.playerId] });
     const final = second.expectOk<{ abandoned: boolean }>(
       await second.post(`/api/games/${gameId}/abandon`, { proposalId: vote.proposalId, approve: true }),
     );
     expect(final.abandoned).toBe(true);
-    expect((await harness.service.repo.findRoom(roomId))?.status).toBe('abandoned');
   });
 
   it('names only withdrawn people, not offline ones, as absent on a suspended table', async () => {

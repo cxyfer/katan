@@ -117,10 +117,14 @@ function abandonmentEligible(members: readonly MemberRow[], suspended: boolean):
 }
 
 /**
- * 放棄的投票者：連線中且未退出的真人。退出視同同意，不需要再投票；Bot 不投票。
+ * 放棄的投票者：未退出的真人。退出視同同意，不需要再投票；Bot 不投票。平常只算
+ * 連線中的人（離線即缺席）；全桌暫停時離線是預期中的、不算缺席，離線的人仍是
+ * 投票者，要回來（或透過 HTTP）表態（§4.6、§4.8）。
  */
-function abandonmentVoters<T extends MemberRow>(members: readonly T[]): T[] {
-  return humanMembers(members).filter((member) => member.connected === 1 && member.withdrawn !== 1);
+function abandonmentVoters<T extends MemberRow>(members: readonly T[], suspended: boolean): T[] {
+  return humanMembers(members).filter(
+    (member) => member.withdrawn !== 1 && (suspended || member.connected === 1),
+  );
 }
 
 export class GameCoordinator {
@@ -645,7 +649,8 @@ export class GameCoordinator {
    * §4.6: any connected seated player may propose abandonment once the policy
    * allows it and at least one seat is absent or has withdrawn (on a suspended
    * table only a withdrawal counts, §4.8). Every connected,
-   * non-withdrawn seated player must confirm the same proposal; the proposal
+   * non-withdrawn seated player must confirm the same proposal (on a suspended
+   * table every non-withdrawn one, offline or not); the proposal
    * itself counts as the proposer's consent. A sole human at a bot table ends
    * the game at once.
    */
@@ -728,8 +733,9 @@ export class GameCoordinator {
    * 放棄提案與表態（含否決）只開放給未退出的真人。退出視同同意，且退出者重連
    * 不會取消投票；若退出者還能提案或否決，就多出一個新的否決權。
    *
-   * 離線（socket 斷線）但未退出的真人透過 HTTP 表態則不擋：他的效果等同重連，
-   * 而重連本來就會取消投票（同意不計入投票者，否決與取消等價），沒有新增權力。
+   * 離線（socket 斷線）但未退出的真人透過 HTTP 表態則不擋：平常他的效果等同重連，
+   * 而重連本來就會取消投票（同意不計入投票者，否決與取消等價），沒有新增權力；
+   * 全桌暫停時他本來就是投票者，表態照常計入。
    */
   private async requireAbandonParticipant(game: GameRow, playerId: string): Promise<void> {
     await this.requireSeat(game, playerId);
@@ -813,8 +819,8 @@ export class GameCoordinator {
       await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
       return false;
     }
-    // Bot 席位不投票；退出者視同同意。
-    const voters = abandonmentVoters(memberships);
+    // Bot 席位不投票；退出者視同同意；暫停中離線的人仍要投票。
+    const voters = abandonmentVoters(memberships, room.status === 'suspended');
     const consents = new Set(await this.repo.listGameConsents(proposalId));
     if (!voters.every((voter) => consents.has(voter.player_id))) return false;
     return this.commitAbandoned(game.id, game.room_id, proposalId);

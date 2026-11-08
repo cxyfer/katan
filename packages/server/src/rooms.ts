@@ -727,7 +727,8 @@ export class RoomService {
   }
 
   /**
-   * 回來的連線讓它沒參與的結束對局投票失效（§4.6）；回傳取消了幾筆。全桌暫停提案不受影響：
+   * 回來的連線讓它沒參與的結束對局投票失效（§4.6；全桌暫停中與已退出者回來除外，由呼叫端判斷）；
+   * 回傳取消了幾筆。全桌暫停提案不受影響：
    * 它要所有真人同意，缺席者正是要回來才能表態，重連若取消它，有人離線時就永遠無法成立（§4.8）。
    */
   async invalidateGameVotes(gameId: string): Promise<number> {
@@ -1075,9 +1076,10 @@ export class RoomService {
     // A returning connection invalidates a vote it did not participate in. 必須
     // 先標記為已連線再取消：反過來的話，取消與標記之間成立的新提案仍把這位玩家
     // 當成缺席，之後就不會再被取消。tryApplyAbandon 在提交時重讀 membership 重查資格。
-    // 已退出的席位回來不改變缺席條件，因此不取消投票；退出只能明確撤回。
+    // 已退出的席位回來不改變缺席條件，因此不取消投票；退出只能明確撤回。全桌暫停時
+    // 離線者本來就不算缺席、也仍是投票者，回來同樣不改變任何資格，不取消（§4.8）。
     const room = await this.repo.findRoom(roomId);
-    if (room?.game_id) {
+    if (room?.game_id && room.status !== 'suspended') {
       const returning = await this.repo.findMembership(roomId, connection.playerId);
       // 是否廣播取決於這次 UPDATE 真的取消了幾筆，而不是事先讀到什麼：先讀後取消
       // 之間若有新提案成立又被取消，其他客戶端仍需要知道它消失了。

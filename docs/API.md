@@ -239,14 +239,20 @@ table's leave dialog.
   agreeing to an open vote, on a suspended table where nobody has withdrawn is
   `E_GAME_SUSPENDED` (409): the game stays suspended and any such open vote is
   cancelled (pushed as a `room` message); rejecting a vote is still accepted.
+  On a suspended table the voters are every non-withdrawn person, offline or
+  not: the vote stays open (`abandoned: false`, the room still `suspended`)
+  until each of them agrees or one rejects, and their reconnection does not
+  cancel it. When the table resumes everyone is connected, so an open vote
+  keeps its consents.
   A withdrawn seat cannot propose, consent or reject (`E_SEAT_WITHDRAWN`): its
   withdrawal already counts as consent and its return never cancels the vote,
-  so a veto would be a new power. A person who is merely offline (no live socket) but has not
-  withdrawn may still answer over HTTP; that is equivalent to reconnecting,
-  which cancels the vote anyway (their consent is not counted, a rejection
-  ends it), so it adds no power. A reconnecting seat cancels the open vote
-  (after being marked connected), except a withdrawn seat, whose return changes
-  nothing. Creating, consenting to, rejecting or cancelling the vote, and a
+  so a veto would be a new power. A person who is merely offline (no live
+  socket) but has not withdrawn may still answer over HTTP. During play that is
+  equivalent to reconnecting, which cancels the vote anyway (their consent is
+  not counted, a rejection ends it), so it adds no power; on a suspended table
+  they are voters and the answer counts. A reconnecting seat cancels the open
+  vote (after being marked connected), except a withdrawn seat, whose return
+  changes nothing, and any seat while the room is `suspended`. Creating, consenting to, rejecting or cancelling the vote, and a
   person dropping out of it, push a fresh `room` message with
   `pendingAbandon` to everyone connected.
 

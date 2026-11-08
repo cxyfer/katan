@@ -825,6 +825,38 @@ describe('ending a suspended table', () => {
     expect(screen.getByTestId('leave-confirm-end').textContent).toContain('小美');
   });
 
+  it('still waits for an offline person to vote while suspended', async () => {
+    // 暫停中離線的人仍是投票者：p3 已退出，p2 離線，p1 提案後要等 p2 回來表態。
+    const api = createFakeApi({
+      room: {
+        ...suspendedTrio({ withdrawn: true }, { connected: false }),
+        pendingAbandon: pendingAbandon({ proposedBy: 'p1', consents: ['p1'], absent: ['p3'] }),
+      },
+      snapshot: makeSnapshot(makeView()),
+    });
+    await enterTable(api);
+    const waiting = screen.getByTestId('abandon-waiting').textContent;
+    expect(waiting).toContain('You agreed.');
+    expect(waiting).toContain('Waiting for 小美 to agree.');
+  });
+
+  it('does not call the vote final while an offline person has not answered', async () => {
+    const trio = suspendedTrio({ withdrawn: true });
+    const api = createFakeApi({
+      room: {
+        ...trio,
+        members: [...trio.members, makeMember({ playerId: 'p4', nickname: 'Cy', seat: 3, color: 'white', connected: false, ...HUMAN })],
+        pendingAbandon: pendingAbandon({ proposedBy: 'p2', consents: ['p2'], absent: ['p3'] }),
+      },
+      snapshot: makeSnapshot(makeView()),
+    });
+    await enterTable(api);
+    startApprove();
+    const warning = screen.getByTestId('abandon-approve-warning').textContent!;
+    expect(warning).toContain('If everyone else has agreed too');
+    expect(warning).not.toContain('Your agreement ends the game at once');
+  });
+
   it('lets the only person at a computer table end it while suspended', async () => {
     const api = createFakeApi({ room: soloRoom({ status: 'suspended', resumeReady: [] }), snapshot: makeSnapshot(makeView()) });
     await enterTable(api);
