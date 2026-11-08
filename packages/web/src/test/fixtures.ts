@@ -123,7 +123,8 @@ export function makeView(options: MakeViewOptions = {}): GameView {
     victoryTarget: 10,
     players,
     board: options.board ?? fixedBoard(),
-    bank: { lumber: 19, brick: 19, wool: 19, grain: 19, ore: 19 },
+    // 投影的銀行每堆只到 BANK_VIEW_CAP（#137）：2 代表「2 張以上」。
+    bank: { lumber: 2, brick: 2, wool: 2, grain: 2, ore: 2 },
     devDeckSize: 20,
     turn: {
       seat: players.find((player) => player.id === (options.turnPlayerId ?? selfId))?.seat ?? 0,

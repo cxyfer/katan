@@ -5,7 +5,7 @@
  */
 
 import type { Locale } from '@catan/protocol';
-import { COMMODITIES, RESOURCES, type Resource } from '@catan/rules';
+import { BANK_VIEW_CAP, COMMODITIES, RESOURCES, type Resource } from '@catan/rules';
 import { t } from './index.ts';
 
 export function formatNumber(locale: Locale, value: number): string {
@@ -28,6 +28,23 @@ export function formatDateTime(locale: Locale, iso: string | null | undefined): 
   } catch {
     return date.toISOString();
   }
+}
+
+/**
+ * 投影的銀行／商品存量只到 `BANK_VIEW_CAP`（SPEC §8.3、#137）：低於上限是確切張數，
+ * 等於上限代表「至少這麼多」。`taken` 是這次選擇已先拿走的張數（例如豐收之年已選的牌），
+ * 從「至少」的值扣掉後仍是「至少」；扣到 0 時不再標示。
+ */
+export function bankSupply(supply: number, taken = 0): { count: number; atLeast: boolean } {
+  const count = Math.max(0, supply - taken);
+  return { count, atLeast: supply >= BANK_VIEW_CAP && count > 0 };
+}
+
+/** 銀行存量的顯示文字：確切張數，或「至少」時的 `2+`。 */
+export function formatBankSupply(locale: Locale, supply: number, taken = 0): string {
+  const { count, atLeast } = bankSupply(supply, taken);
+  const text = formatNumber(locale, count);
+  return atLeast ? t(locale, 'bank.supply.atLeast', { count: text }) : text;
 }
 
 function isResource(value: string): value is Resource {

@@ -7,7 +7,7 @@
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as rules from '@catan/rules';
-import type { GameState } from '@catan/rules';
+import { BANK_VIEW_CAP, type GameState } from '@catan/rules';
 import type { CommandReceipt } from '@catan/protocol';
 import { startHarness, runSetupOverApi, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
@@ -138,7 +138,7 @@ describe('Cities & Knights over the API (test-only profile path)', () => {
     const first = await snapshot(clients[0]!, gameId);
     expect(first.view.engineVersion).toBe('ck-2025.1');
     expect(first.view.victoryTarget).toBe(13);
-    expect(first.view.modules?.citiesKnights).toMatchObject({ barbarian: { position: 0 }, robberActive: false, commodityBank: { paper: 12, cloth: 12, coin: 12 } });
+    expect(first.view.modules?.citiesKnights).toMatchObject({ barbarian: { position: 0 }, robberActive: false, commodityBank: { paper: BANK_VIEW_CAP, cloth: BANK_VIEW_CAP, coin: BANK_VIEW_CAP } });
 
     const setup = await runSetupOverApi(clients, gameId);
     expect(setup.view.turn.phase).toBe('preroll');

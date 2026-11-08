@@ -14,7 +14,7 @@ import {
 } from '../board/explorersPirates.ts';
 import { hexReference, vertexReference, viewReferenceContext, type ReferenceContext } from '../board/references.ts';
 import { blocksNewCommands } from '../state/commands.ts';
-import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.ts';
+import { followUpsHeld, nameOf as resolveName, shownBank, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ResourceIcon } from './GameArt.tsx';
 import { CargoChip } from './SvgExplorersPirates.tsx';
@@ -124,6 +124,7 @@ function ActionPhase({ controller, ep, slot, selfId, submit, arm, blocked, place
   const hand = shownHand(controller.state) ?? {};
   const have = (resource: Resource) => hand[resource] ?? 0;
   const gold = slot.players[selfId]?.gold ?? 0;
+  const bank = shownBank(controller.state);
   const ownShips = slot.ships.filter((ship) => ship.player === selfId);
   const holders: { key: string; label: string; cargo: EpCargo[]; field: Record<string, unknown> }[] = [
     ...ep.pieceHarbors.map((vertex) => ({
@@ -184,13 +185,17 @@ function ActionPhase({ controller, ep, slot, selfId, submit, arm, blocked, place
     <section className="ep-prompt__group" data-testid="ep-buy">
       <h3>{t('ep.trade.buy', { left: ep.goldBuysLeft })}</h3>
       <ul className="ep-prompt__resources">
-        {RESOURCES.map((resource) => (
-          <li key={resource}><button type="button" className="button button--chip" data-testid={`ep-buy-${resource}`}
-            disabled={blocked || ep.goldBuysLeft <= 0 || gold < 2} aria-label={t('ep.trade.buyOne', { resource: t(`resource.${resource}`) })}
+        {RESOURCES.map((resource) => {
+          // 銀行沒有這種資源時買不到（投影的 0 是確切值，#137），停用並說明原因。
+          const empty = (bank?.[resource] ?? 0) <= 0;
+          const label = t('ep.trade.buyOne', { resource: t(`resource.${resource}`) });
+          const reason = empty ? t('bank.empty', { resource: t(`resource.${resource}`) }) : undefined;
+          return <li key={resource}><button type="button" className="button button--chip" data-testid={`ep-buy-${resource}`}
+            disabled={blocked || ep.goldBuysLeft <= 0 || gold < 2 || empty} aria-label={reason ? `${label} — ${reason}` : label} title={reason}
             onClick={() => submit({ type: 'ep.buyResource', receive: resource }, 'ep.trade.buyLabel')}>
             <ResourceIcon resource={resource} size={18} />
-          </button></li>
-        ))}
+          </button></li>;
+        })}
       </ul>
     </section>
     <section className="ep-prompt__group" data-testid="ep-sell">

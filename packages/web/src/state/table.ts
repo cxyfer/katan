@@ -39,6 +39,8 @@ export interface RollHold {
   hand: Partial<Record<CardKind, number>> | null;
   /** 擲骰前各玩家公開的手牌張數。 */
   handSizes: Readonly<Record<string, number>>;
+  /** 擲骰前的資源銀行（投影只到上限，#137）：產出會讓某堆歸零，不能先於點數顯示。 */
+  bank: Readonly<Record<Resource, number>>;
   /** C&K 面板的擲骰前投影，含 module、進步手牌及玩家分數。 */
   citiesKnights: GameSnapshot['view'] | null;
   /** T&B 擲骰前的投影，包含魚牌、舊靴子、金幣與分數。 */
@@ -257,6 +259,7 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
     rollHold: {
       hand: own?.resources ? { ...own.resources, ...own.commodities } : null,
       handSizes: Object.fromEntries(current.view.players.map((player) => [player.id, player.handSize])),
+      bank: { ...current.view.bank },
       citiesKnights: citiesKnightsView(current.view) ? current.view : null,
       tradersBarbarians: current.view.modules?.tradersBarbarians ? current.view : null,
       explorersPirates: current.view.modules?.explorersPirates ? current.view : null,
@@ -340,6 +343,14 @@ export function shownHand(state: TableState): Partial<Record<CardKind, number>> 
 /** 玩家公開的手牌張數：擲骰演出期間用擲骰前的張數。 */
 export function shownHandSize(state: TableState, player: { id: string; handSize: number }): number {
   return activeHold(state)?.handSizes[player.id] ?? player.handSize;
+}
+
+/**
+ * 畫面上顯示的資源銀行：擲骰演出期間用擲骰前的存量，產出讓某堆變少或歸零時不會先透露點數。
+ * 依銀行存量顯示或停用的介面都要讀這裡；C&K 商品供應區隨 `shownCitiesKnights` 凍結。
+ */
+export function shownBank(state: TableState): Readonly<Record<Resource, number>> | null {
+  return activeHold(state)?.bank ?? state.game?.view.bank ?? null;
 }
 
 /** C&K 狀態顯示共用擲骰前投影；手牌與 defender 分數也在 players，不能只凍結 module。 */

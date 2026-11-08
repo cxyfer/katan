@@ -2,7 +2,7 @@ import { CARD_KINDS, type Resource } from '@catan/rules';
 import { useT } from '../i18n/context.tsx';
 import { blocksNewCommands } from '../state/commands.ts';
 import { requiredActionFor } from '../state/pending.ts';
-import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.ts';
+import { followUpsHeld, nameOf as resolveName, shownBank, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { DevCardChoicePicker } from './DevCardChoicePicker.tsx';
 import { DiscardPicker } from './DiscardPicker.tsx';
@@ -53,7 +53,8 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
   const choiceBusy = blocksNewCommands(state.command) || (choice?.card === 'yearOfPlenty' && choice.queued.length > 0);
   // 已打出或失去出牌資格時不再顯示（useDevCardChoice 隨後清掉狀態），避免閃現一幀。
   const preplay = choice !== null && !plenty && !rolling && (choiceBusy || canPlayDevCard(state, choice.card));
-  const bankTotal = Object.values(view.bank).reduce((sum, count) => sum + count, 0);
+  const bank = shownBank(state) ?? view.bank;
+  const bankTotal = Object.values(bank).reduce((sum, count) => sum + count, 0);
   const playMonopoly = async (resource: Resource) => {
     const receipt = await actions.submitCommand({ type: 'dev.playMonopoly', resource }, 'devCard.monopoly');
     if (receipt?.outcome === 'accepted') actions.setDevCardChoice(null);
@@ -73,7 +74,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
         <h2 id="prompt-heading">{t(`devCard.choice.title.${choice.card}`, { remaining: Math.min(2, bankTotal) })}</h2>
         <div className="prompt__body">
           <DevCardChoicePicker key={choice.card} card={choice.card} required={choice.card === 'monopoly' ? 1 : Math.min(2, bankTotal)}
-            bank={view.bank} busy={choiceBusy}
+            bank={bank} busy={choiceBusy}
             onCancel={() => actions.setDevCardChoice(null)}
             onSubmit={(resources) => void (choice.card === 'monopoly' ? playMonopoly(resources[0]!) : playYearOfPlenty(resources))} />
         </div>
@@ -151,7 +152,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
 
       {plenty && (
         <div className="prompt__body">
-          <DevCardChoicePicker key={plenty.remaining} card="yearOfPlenty" required={plenty.remaining} bank={view.bank} busy={choiceBusy}
+          <DevCardChoicePicker key={plenty.remaining} card="yearOfPlenty" required={plenty.remaining} bank={bank} busy={choiceBusy}
             onSubmit={(resources) => void playYearOfPlenty(resources)} />
         </div>
       )}

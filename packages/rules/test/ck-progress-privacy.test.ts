@@ -56,11 +56,12 @@ describe('R-VIS progress cards', () => {
   it('VIS-PC3 Guild Dues: the hand is shown to the taker only; the cards to both players', () => {
     const state = emptyCkGame(4);
     setBuilding(state, 'p2', spreadVertices(state, 1)[0]!, false);
-    give(state, 'p2', { lumber: 2, brick: 1 });
+    // 3 張木材：投影的銀行只到 2（#137），所以 `"lumber":3` 只可能來自 p2 的手牌。
+    give(state, 'p2', { lumber: 3, brick: 1 });
     handCards(state, 'p1', ['guildDues']);
     const played = playCard(state, 'p1', 'guildDues', { target: 'p2' });
-    expect(seenBy(played.state, played.events, 'p3')).not.toContain('"lumber":2');
-    expect(JSON.stringify(projectGame(played.state, 'p1').pending)).toContain('"lumber":2');
+    expect(seenBy(played.state, played.events, 'p3')).not.toContain('"lumber":3');
+    expect(JSON.stringify(projectGame(played.state, 'p1').pending)).toContain('"lumber":3');
     const taken = actCk(played.state, 'p1', { type: 'progress.takeCards', cards: ['brick', 'lumber'] });
     const event = taken.events.find((candidate) => candidate.type === 'ck.guildDuesTaken')!;
     expect(projectEvent(event, 'p4').params).not.toHaveProperty('cards');

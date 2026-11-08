@@ -3,6 +3,7 @@
  */
 
 import { RESOURCES, type CardKind, type Command, type GameView, type Offer, type Resource } from '@catan/rules';
+import { plannedBank } from './bank.ts';
 import {
   canAfford,
   deficitOf,
@@ -138,7 +139,8 @@ export function bankTradeToward(view: GameView, economy: Economy, nextCost: Cost
     const keep = Math.max(nextCost[resource] ?? 0, reserve[resource] ?? 0);
     spare[resource] = Math.max(0, economy.hand[resource] - keep);
   }
-  const bank = { ...view.bank };
+  // 投影的銀行只到上限（#137）：規劃連續幾筆交易時把「至少」當成足夠。
+  const bank = plannedBank(view);
   let first: Command | null = null;
   const order = RESOURCES.slice().sort((a, b) => missing[b] - missing[a]);
   for (const want of order) {

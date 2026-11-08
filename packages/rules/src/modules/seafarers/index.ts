@@ -8,6 +8,7 @@
  */
 
 import { topologyOf } from '../../analysis.ts';
+import { bankView } from '../../bank-view.ts';
 import type { GameState } from '../../types.ts';
 import type { ModuleViewContext, PublicModulePendingView, RulesModule } from '../types.ts';
 import { afterProduction, chooseGold, goldRequired, GOLD_FRAME, projectGold, skipEmptySupply } from './gold.ts';
@@ -58,6 +59,7 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
   const setupShipStep = !!setup && setup.stage === 'road' && state.players[setup.order[setup.index] ?? -1]?.id === playerId;
   const robberMove = state.pending?.kind === 'moveRobber' && state.pending.actor === playerId;
   const view = seafarersView(state);
+  const required = goldRequired(state, playerId);
   return {
     legalShips: inAction || freeRoads ? buildableShipEdges(state, playerId, ctx.profile.pieces.ships) : [],
     setupShips: setupShipStep ? legalShipEdges(state, playerId, { setupVertex: setup!.lastVertex }) : [],
@@ -68,7 +70,12 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
       ? topologyOf(state).hexes.map((_, hex) => hex).filter((hex) =>
         state.board.layout.terrain[hex] !== 'sea' && hex !== state.board.robber)
       : [],
-    goldRequired: goldRequired(state, playerId),
+    goldRequired: required,
+    /**
+     * 金礦作答所需的銀行存量：每種 `min(存量, goldRequired)`，只給當下作答的玩家（其他人
+     * 全為 0）。`GameView.bank` 只到 `BANK_VIEW_CAP`，金礦卻可能要拿更多同種的牌（#137）。
+     */
+    goldBank: bankView(state.bank, required),
   };
 }
 

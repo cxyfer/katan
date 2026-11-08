@@ -149,6 +149,24 @@ describe('explorers & pirates client', () => {
     }
   });
 
+  it('disables buying a resource the bank has run out of, and says why', () => {
+    const state = landHo();
+    state.bank.ore = 0;
+    const view = viewOf(state);
+    epView(view)!.players.p1!.gold = 2;
+    const { controller, submitCommand } = controllerFor(tableWith(view));
+    render(<LocaleProvider locale="en"><ExplorersPiratesPrompt controller={controller} /></LocaleProvider>);
+    const ore = screen.getByTestId('ep-buy-ore') as HTMLButtonElement;
+    expect(ore.disabled).toBe(true);
+    expect(ore.getAttribute('aria-label')).toBe('Buy 1 Ore for 2 gold — The bank has no Ore left.');
+    expect(ore.getAttribute('title')).toBe('The bank has no Ore left.');
+    const wool = screen.getByTestId('ep-buy-wool') as HTMLButtonElement;
+    expect(wool.disabled).toBe(false);
+    expect(wool.getAttribute('title')).toBeNull();
+    fireEvent.click(wool);
+    expect(submitCommand).toHaveBeenCalledWith({ type: 'ep.buyResource', receive: 'wool' }, 'ep.trade.buyLabel');
+  });
+
   it('draws fog, harbour settlements and ships on the SVG board', () => {
     const view = viewOf(landHo());
     const slot = epView(view)!;

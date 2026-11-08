@@ -45,6 +45,25 @@ describe('Fishing on Catan UI', () => {
       { type: 'tb.spendFish', action: 'takeResource', tokens: [3, 2], resource: 'lumber' }, 'tb.fishing.action.takeResource');
   });
 
+  it('will not take a resource the bank has run out of, and says why', () => {
+    const state = tbState(PROFILE);
+    tbSlot<{ hands: Record<string, number[]> }>(state, 'tb-fishing').hands.p1 = [3, 2, 1];
+    state.bank.lumber = 0;
+    const controller = tbController(state);
+    render(<LocaleProvider locale="en"><TbPanel controller={controller} /></LocaleProvider>);
+    fireEvent.click(screen.getByTestId('tb-fish-action-takeResource'));
+    const submit = screen.getByTestId('tb-fish-submit') as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    expect(screen.getByTestId('tb-fish-bank-empty').textContent).toBe('The bank has no Lumber left.');
+    expect(submit.getAttribute('aria-describedby')).toBe('tb-fish-bank-empty');
+    fireEvent.change(screen.getByTestId('tb-fish-resource'), { target: { value: 'ore' } });
+    expect(screen.queryByTestId('tb-fish-bank-empty')).toBeNull();
+    expect(submit.disabled).toBe(false);
+    fireEvent.click(submit);
+    expect(controller.actions.submitCommand).toHaveBeenCalledWith(
+      { type: 'tb.spendFish', action: 'takeResource', tokens: [3, 2], resource: 'ore' }, 'tb.fishing.action.takeResource');
+  });
+
   it('arms the board for a free road instead of submitting', () => {
     const state = tbState(PROFILE);
     tbSlot<{ hands: Record<string, number[]> }>(state, 'tb-fishing').hands.p1 = [3, 3];

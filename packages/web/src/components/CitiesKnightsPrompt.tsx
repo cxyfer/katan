@@ -4,7 +4,7 @@ import { useLocale, useT } from '../i18n/context.tsx';
 import { citiesKnightsHints, TRACKS } from '../board/citiesKnights.ts';
 import { vertexReference, viewReferenceContext } from '../board/references.ts';
 import { blocksNewCommands } from '../state/commands.ts';
-import { followUpsHeld } from '../state/table.ts';
+import { followUpsHeld, shownBank } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ResourceIcon } from './GameArt.tsx';
 import { ProgressPrompt } from './CitiesKnightsProgress.tsx';
@@ -91,7 +91,7 @@ export function CitiesKnightsPrompt({ controller }: { controller: TableControlle
         <ul className="resource-picker">
           {RESOURCES.map((resource) => <li key={resource}>
             <button type="button" className="button button--chip" data-testid={`ck-science-${resource}`}
-              disabled={blocked || view.bank[resource] <= 0}
+              disabled={blocked || (shownBank(state)?.[resource] ?? 0) <= 0}
               onClick={() => void actions.submitCommand({ type: 'science.take', resource }, 'ck.prompt.science')}>
               <ResourceIcon resource={resource} size={20} />{t(`resource.${resource}`)}
             </button>

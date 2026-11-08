@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { CARD_KINDS, RESOURCES, type CardKind } from '@catan/rules';
-import { citiesKnightsHints, isCommodityCard } from '../board/citiesKnights.ts';
+import { citiesKnightsHints, citiesKnightsView, isCommodityCard } from '../board/citiesKnights.ts';
 import { useT } from '../i18n/context.tsx';
-import { tableHoldReason } from '../state/table.ts';
+import { shownBank, shownCitiesKnights, tableHoldReason } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/trade.css';
 
@@ -20,6 +20,12 @@ export function ExchangePanel({ controller }: { controller: TableController }) {
   const rateOf = (card: CardKind) => isCommodityCard(card) ? ck?.commodityRates[card] ?? 4 : view.hints?.bankRates?.[card] ?? 4;
   const rates = view.hints?.bankRates;
   const sameResource = give === receive;
+  // 投影的存量只到上限（#137），但「0」仍是確切值：銀行沒有就不送出注定被拒的兌換。
+  // 擲骰演出期間用擲骰前的存量，產出讓某堆歸零時不先透露點數。
+  const bank = shownBank(state);
+  const commodityBank = citiesKnightsView(shownCitiesKnights(state))?.commodityBank;
+  const supplyOf = (card: CardKind) => (isCommodityCard(card) ? commodityBank?.[card] : bank?.[card]) ?? 0;
+  const receiveEmpty = !sameResource && supplyOf(receive) <= 0;
   // 全桌暫停（§4.8）或房間尚未載入時不開放兌換。
   const holdReason = tableHoldReason(state);
 
@@ -54,9 +60,10 @@ export function ExchangePanel({ controller }: { controller: TableController }) {
         </p>
       )}
       {sameResource && <p className="error" role="alert">{t('play.bankTradeSame')}</p>}
+      {receiveEmpty && <p className="muted" id="bank-empty" data-testid="bank-empty">{t('bank.empty', { resource: t(`resource.${receive}`) })}</p>}
       {holdReason && <p className="muted" id="bank-hold" data-testid="bank-hold">{t(holdReason)}</p>}
-      <button type="button" className="button button--primary" data-testid="bank-submit" disabled={sameResource || holdReason !== null}
-        aria-describedby={holdReason ? 'bank-hold' : undefined}
+      <button type="button" className="button button--primary" data-testid="bank-submit" disabled={sameResource || receiveEmpty || holdReason !== null}
+        aria-describedby={[receiveEmpty && 'bank-empty', holdReason && 'bank-hold'].filter(Boolean).join(' ') || undefined}
         onClick={() => void actions.submitCommand({ type: 'trade.bank', give, receive }, 'play.bankTrade')}>
         {t('play.bankTradeSubmit')}
       </button>

@@ -28,6 +28,11 @@ export interface SeafarersHints {
   pirateTargets: (number | null)[];
   robberTargets: number[];
   goldRequired: number;
+  /**
+   * 金礦作答可拿的銀行存量：每種 `min(存量, goldRequired)`，只給當下作答的玩家（#137）。
+   * `GameView.bank` 只到 `BANK_VIEW_CAP`，金礦卻可能要拿更多同種的牌。缺欄時為 null，由呼叫端退回公開的銀行。
+   */
+  goldBank: Record<Resource, number> | null;
 }
 
 export const SHIP_COST: Partial<Record<Resource, number>> = { lumber: 1, wool: 1 };
@@ -64,6 +69,7 @@ export function seafarersHints(view: Pick<GameView, 'hints'> | null | undefined)
     pirateTargets: slot.pirateTargets ?? [],
     robberTargets: slot.robberTargets ?? [],
     goldRequired: slot.goldRequired ?? 0,
+    goldBank: slot.goldBank ?? null,
   };
 }
 

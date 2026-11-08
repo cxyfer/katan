@@ -1,18 +1,19 @@
 import { StrictMode } from 'react';
-import { act, render, renderHook, screen } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DICE_PRESENTATION_DURATION_MS, MAX_EFFECT_DURATION_MS } from '../src/board/animation.ts';
 import { useBoardAnimation } from '../src/board/useBoardAnimation.ts';
 import { EventLog } from '../src/components/EventLog.tsx';
 import { BoardView } from '../src/components/BoardView.tsx';
 import { CitiesKnightsPanel } from '../src/components/CitiesKnightsPanel.tsx';
+import { ExchangePanel } from '../src/components/ExchangePanel.tsx';
 import { HandPanel } from '../src/components/HandPanel.tsx';
 import { PlayersPanel } from '../src/components/PlayersPanel.tsx';
 import { TradePanel } from '../src/components/TradePanel.tsx';
 import { TbPanel } from '../src/components/tb/TbPanel.tsx';
 import { tbController, tbSlot, tbState } from './tb-helpers.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
-import { initialTableState, shownCitiesKnights, shownExplorersPirates, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
+import { initialTableState, shownBank, shownCitiesKnights, shownExplorersPirates, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import type { GameView } from '@catan/rules';
 import { makeEvent, makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -46,6 +47,42 @@ describe('roll hold in the table state', () => {
     expect(shownExplorersPirates(state)?.modules?.explorersPirates).toEqual({ players: { p1: { gold: 1 } } });
     state = tableReducer(state, { type: 'dice-presenting', value: false });
     expect(shownExplorersPirates(state)?.modules?.explorersPirates).toEqual({ players: { p1: { gold: 3 } } });
+  });
+
+  it.each(['snapshot', 'events'] as const)('holds the bank exchange supply until the dice settle (%s first)', (delivery) => {
+    // 擲骰的產出把礦石與紙張從 1 張拿到 0：演出結束前不能先顯示「銀行沒有」（#137）。
+    const ck = (paper: number) => ({ citiesKnights: { barbarian: { position: 2, length: 7, attacks: 0 }, commodityBank: { paper, cloth: 2, coin: 2 } } });
+    const before = base();
+    before.game!.view.bank = { lumber: 2, brick: 2, wool: 2, grain: 2, ore: 1 };
+    before.game!.view.modules = ck(1);
+    const after = rolledSnapshot(9);
+    after.view.bank = { lumber: 2, brick: 2, wool: 2, grain: 2, ore: 0 };
+    after.view.modules = ck(0);
+    after.view.hints = { ...after.view.hints!, modules: { citiesKnights: { commodityRates: { paper: 4, cloth: 4, coin: 4 } } } };
+    let held = delivery === 'events' ? tableReducer(before, { type: 'events', events: after.view.events }) : before;
+    held = tableReducer(held, { type: 'snapshot', snapshot: after });
+    expect(held.dicePresenting).toBe(true);
+    expect(shownBank(held)).toEqual(before.game!.view.bank);
+    const panel = (state: TableState) => {
+      const controller = { state, dispatch: vi.fn(), actions: { submitCommand: vi.fn() } } as unknown as TableController;
+      return <LocaleProvider locale="en"><ExchangePanel controller={controller} /></LocaleProvider>;
+    };
+    const submit = () => screen.getByTestId('bank-submit') as HTMLButtonElement;
+    const { rerender } = render(panel(held));
+    for (const receive of ['ore', 'paper']) {
+      fireEvent.change(screen.getByTestId('bank-receive'), { target: { value: receive } });
+      expect(screen.queryByTestId('bank-empty')).toBeNull();
+      expect(submit().disabled).toBe(false);
+    }
+
+    const revealed = tableReducer(held, { type: 'dice-presenting', value: false });
+    expect(shownBank(revealed)).toEqual(after.view.bank);
+    rerender(panel(revealed));
+    expect(screen.getByTestId('bank-empty').textContent).toBe('The bank has no Paper left.');
+    expect(submit().disabled).toBe(true);
+    fireEvent.change(screen.getByTestId('bank-receive'), { target: { value: 'ore' } });
+    expect(screen.getByTestId('bank-empty').textContent).toBe('The bank has no Ore left.');
+    expect(submit().disabled).toBe(true);
   });
 
   it.each(['snapshot', 'events'] as const)('holds fish, boot and scores until the dice settle (%s first)', (delivery) => {
@@ -197,7 +234,7 @@ describe('roll hold in the table state', () => {
       knights: [{ player: 'p1', vertex: 0, level: 2, active: true }],
       progressCounts: { p1: 1 }, progressVp: { p1: [] as string[] },
       decks: { science: 18, trade: 18, politics: 18 },
-      commodityBank: { paper: 12, cloth: 12, coin: 12 },
+      commodityBank: { paper: 2, cloth: 2, coin: 2 },
     };
     before.game!.view.modules = { citiesKnights: previous };
     before.game!.view.players[0]!.progressCards = ['alchemy'];
@@ -211,7 +248,7 @@ describe('roll hold in the table state', () => {
       knights: [{ player: 'p1', vertex: 0, level: 2, active: false }],
       progressCounts: { p1: 2 }, progressVp: { p1: ['printing'] },
       decks: { science: 16, trade: 18, politics: 18 },
-      commodityBank: { paper: 11, cloth: 12, coin: 12 },
+      commodityBank: { paper: 1, cloth: 2, coin: 2 },
     } };
     after.view.players[0]!.progressCards = ['alchemy', 'crane'];
     after.view.players[0]!.defenders = 1;
@@ -236,7 +273,9 @@ describe('roll hold in the table state', () => {
     expect(screen.queryByTestId('ck-card-crane')).toBeNull();
     expect(screen.getByTestId('ck-card-alchemy').getAttribute('data-card')).toBe('alchemy');
     expect(screen.queryByTestId('ck-progress-vp')).toBeNull();
-    expect(screen.getByTestId('ck-supply-paper').querySelector('strong')!.textContent).toBe('12');
+    // 投影的商品存量只到 2（#137）：等於上限顯示「2+」，螢幕閱讀器讀「至少 2」。
+    expect(screen.getByTestId('ck-supply-paper').querySelector('strong [aria-hidden="true"]')!.textContent).toBe('2+');
+    expect(screen.getByTestId('ck-supply-paper').querySelector('strong .visually-hidden')!.textContent).toBe('at least 2');
     expect(mark('players-progress-0')).toBe('1');
     expect(mark('players-knights-0')).toBe('2');
     expect(screen.queryByTestId('players-defender-0')).toBeNull();
@@ -254,7 +293,7 @@ describe('roll hold in the table state', () => {
     expect(screen.getByTestId('ck-event-die').getAttribute('data-face')).toBe('ship');
     expect(screen.getByTestId('ck-card-crane').getAttribute('data-card')).toBe('crane');
     expect(screen.getByTestId('ck-progress-vp').textContent).toContain('Printing');
-    expect(screen.getByTestId('ck-supply-paper').querySelector('strong')!.textContent).toBe('11');
+    expect(screen.getByTestId('ck-supply-paper').querySelector('strong')!.textContent).toBe('1');
     expect(mark('players-progress-0')).toBe('2');
     expect(mark('players-knights-0')).toBe('0');
     expect(mark('players-defender-0')).toBe('1');
