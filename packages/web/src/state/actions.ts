@@ -11,7 +11,7 @@
 
 import { COSTS, type Resource } from '@catan/rules';
 import type { GameSnapshot } from '@catan/protocol';
-import { awaitingProjection, tableSuspended, type TableState } from './table.ts';
+import { awaitingProjection, awaitingRoom, tableSuspended, type TableState } from './table.ts';
 import { blocksNewCommands } from './commands.ts';
 import { seafarersHints, SHIP_COST } from '../board/seafarers.ts';
 import { EP_HARBOR_COST, EP_SHIP_COST, epHints } from '../board/explorersPirates.ts';
@@ -99,7 +99,8 @@ export function deriveActions(state: TableState, selfId: string | null): ActionD
   const connected = state.connection === 'online';
   const blocked = blocksNewCommands(state.command);
   const presentingDice = state.dicePresenting;
-  const syncing = awaitingProjection(state);
+  // 房間尚未載入時還不知道能不能下，與投影未追上一樣視為同步中。
+  const syncing = awaitingProjection(state) || awaitingRoom(state);
   const suspended = tableSuspended(state);
   const ready = !blocked && connected && !presentingDice && !syncing && !suspended;
   const input: ActionInput = { snapshot, selfId, connected, blockedByCommand: blocked, presentingDice, syncing, suspended };

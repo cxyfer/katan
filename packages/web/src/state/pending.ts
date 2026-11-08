@@ -8,7 +8,7 @@
 
 import { epView } from '../board/explorersPirates.ts';
 import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
-import { awaitingProjection, nameOf as resolveName, tableSuspended, type TableState } from './table.ts';
+import { awaitingProjection, awaitingRoom, nameOf as resolveName, tableSuspended, type TableState } from './table.ts';
 
 export interface RequiredAction {
   kind: 'setup' | 'roll' | 'rolling' | 'syncing' | 'suspended' | 'discard' | 'moveRobber' | 'steal' | 'yearOfPlenty' | 'freeRoads' | 'module' | 'turn';
@@ -47,8 +47,8 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
   if (state.dicePresenting) {
     return { kind: 'rolling', messageId: 'dice.rolling', params: {}, mine: false, waitingFor: [] };
   }
-  // 事件先到而投影未追上：不依過時投影提示擲骰或其他義務。
-  if (awaitingProjection(state)) {
+  // 事件先到而投影未追上，或這一局的房間尚未載入：不依過時投影提示擲骰或其他義務。
+  if (awaitingProjection(state) || awaitingRoom(state)) {
     return { kind: 'syncing', messageId: 'play.syncing', params: {}, mine: false, waitingFor: [] };
   }
 

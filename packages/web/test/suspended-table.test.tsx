@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Offer } from '@catan/rules';
 import type { RoomView } from '@catan/protocol';
 import { App } from '../src/App.tsx';
@@ -18,6 +18,7 @@ import { makeHints, makeMember, makeResumable, makeRoom, makeSnapshot, makeView 
 /** 全桌保存並暫停（SPEC §4.8）時，牌桌不提示待辦動作、所有遊戲指令入口都停用（#142）。 */
 
 const PAUSED_REASON = 'The game is paused until everyone is ready to continue.';
+const SYNCING_REASON = 'Syncing the table — please wait.';
 
 function duoRoom(status: RoomView['status']): RoomView {
   return makeRoom({
@@ -135,8 +136,8 @@ describe('trade and exchange on a suspended table', () => {
     fireEvent.click(screen.getByTestId('give-add-lumber'));
     expect(screen.getByTestId('create-offer').hasAttribute('disabled')).toBe(true);
     expect(screen.getByTestId('bank-submit').hasAttribute('disabled')).toBe(true);
-    expect(screen.getByTestId('trade-suspended').textContent).toBe(PAUSED_REASON);
-    expect(screen.getByTestId('bank-suspended').textContent).toBe(PAUSED_REASON);
+    expect(screen.getByTestId('trade-hold').textContent).toBe(PAUSED_REASON);
+    expect(screen.getByTestId('bank-hold').textContent).toBe(PAUSED_REASON);
     fireEvent.click(screen.getByTestId('create-offer'));
     fireEvent.click(screen.getByTestId('bank-submit'));
     expect(submit).not.toHaveBeenCalled();
@@ -152,8 +153,8 @@ describe('trade and exchange on a suspended table', () => {
     );
     expect(screen.getByTestId('create-offer').hasAttribute('disabled')).toBe(false);
     expect(screen.getByTestId('bank-submit').hasAttribute('disabled')).toBe(false);
-    expect(screen.queryByTestId('trade-suspended')).toBeNull();
-    expect(screen.queryByTestId('bank-suspended')).toBeNull();
+    expect(screen.queryByTestId('trade-hold')).toBeNull();
+    expect(screen.queryByTestId('bank-hold')).toBeNull();
   });
 });
 
@@ -236,17 +237,57 @@ describe('the table while suspended', () => {
     expect(screen.getByTestId('action-endTurn').hasAttribute('disabled')).toBe(true);
   });
 
-  it('keeps an interrupted game playable at once while its room is still loading', async () => {
+  /** 讓 `getRoom` 停在請求中，由測試決定何時回應。 */
+  function holdRoom(api: FakeApi): (room: RoomView) => Promise<void> {
+    let respond: (room: RoomView) => void = () => undefined;
+    vi.spyOn(api, 'getRoom').mockReturnValue(new Promise((done) => { respond = (room) => done({ ok: true, data: room }); }));
+    return async (room) => {
+      await act(async () => respond(room));
+    };
+  }
+
+  it('holds a game listed as playing until its room confirms it, then plays at once', async () => {
+    // 清單上的「進行中」可能已過時（同意暫停後先離開，其他人才完成暫停），房間確認前不開放操作。
+    const api = createFakeApi({
+      games: [makeResumable({ status: 'playing' })],
+      snapshot: makeSnapshot(makeView({ hints: makeHints({ canEndTurn: true }), offers: [staleOffer] })),
+    });
+    const arrive = holdRoom(api);
+    await resumeFromHome(api);
+    expect(screen.getByTestId('required-action-prompt').textContent).toContain('Syncing the table');
+    expect(screen.queryByTestId('prompt-end-turn')).toBeNull();
+    expect(screen.getByTestId('action-endTurn').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByTestId('reason-endTurn').textContent).toBe(SYNCING_REASON);
+    expect(screen.queryAllByTestId(/^target-/)).toHaveLength(0);
+    fireEvent.click(screen.getByTestId('tool-tab-trade'));
+    expect(screen.getByTestId('create-offer').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByTestId('trade-hold').textContent).toBe(SYNCING_REASON);
+    fireEvent.click(screen.getByTestId('consent-o1'));
+    await waitFor(() => expect(screen.getByTestId('toast').textContent).toContain(SYNCING_REASON));
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
+
+    await arrive(duoRoom('playing'));
+    expect(screen.getByTestId('action-endTurn').hasAttribute('disabled')).toBe(false);
+    expect(screen.getByTestId('create-offer').hasAttribute('disabled')).toBe(false);
+    expect(screen.queryByTestId('trade-hold')).toBeNull();
+    fireEvent.click(screen.getByTestId('prompt-end-turn'));
+    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+  });
+
+  it('stays held, now as paused, when the room of a game listed as playing arrives suspended', async () => {
     const api = createFakeApi({
       games: [makeResumable({ status: 'playing' })],
       snapshot: makeSnapshot(makeView({ hints: makeHints({ canEndTurn: true }) })),
     });
-    vi.spyOn(api, 'getRoom').mockReturnValue(new Promise(() => undefined));
+    const arrive = holdRoom(api);
     await resumeFromHome(api);
-    expect(screen.getByTestId('action-endTurn').hasAttribute('disabled')).toBe(false);
-    expect(screen.getByTestId('prompt-end-turn')).toBeTruthy();
-    fireEvent.click(screen.getByTestId('prompt-end-turn'));
-    await waitFor(() => expect(api.callsOf('sendCommand')).toHaveLength(1));
+    expect(screen.getByTestId('action-endTurn').hasAttribute('disabled')).toBe(true);
+    await arrive(duoRoom('suspended'));
+    expect(screen.getByTestId('resume-bar')).toBeTruthy();
+    expect(screen.queryByTestId('required-action-prompt')).toBeNull();
+    expect(screen.getByTestId('action-endTurn').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByTestId('reason-endTurn').textContent).toBe(PAUSED_REASON);
+    expect(api.callsOf('sendCommand')).toHaveLength(0);
   });
 
   it('refuses a command from a stale entry locally instead of sending it', async () => {

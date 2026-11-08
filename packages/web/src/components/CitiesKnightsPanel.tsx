@@ -6,7 +6,7 @@ import {
 } from '../board/citiesKnights.ts';
 import { pirateActive } from '../board/seafarersCitiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
-import { shownCitiesKnights, tableSuspended } from '../state/table.ts';
+import { shownCitiesKnights, tableHoldReason } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ProgressHand } from './CitiesKnightsProgress.tsx';
 import { BarbarianTrack, CommodityEmblem, EventDieFace, PipDieFace, TRACK_COLOR, TrackEmblem } from './SvgCitiesKnights.tsx';
@@ -27,9 +27,9 @@ export function CitiesKnightsPanel({ controller }: { controller: TableController
   const hints = citiesKnightsHints(view);
   const selfId = state.session?.id ?? null;
   const self = view.players.find((player) => player.id === selfId);
-  // 全桌暫停（§4.8）時伺服器拒絕城市升級。
-  const suspended = tableSuspended(state);
-  const blocked = blocksNewCommands(state.command) || suspended;
+  // 全桌暫停（§4.8）或房間尚未載入時不開放城市升級。
+  const holdReason = tableHoldReason(state);
+  const blocked = blocksNewCommands(state.command) || holdReason !== null;
   const n = (value: number) => formatNumber(locale, value);
   const nameOf = (id: string) => view.players.find((player) => player.id === id)?.nickname ?? id;
 
@@ -71,7 +71,7 @@ export function CitiesKnightsPanel({ controller }: { controller: TableController
 
       <section className="ck-panel__section" aria-labelledby="ck-improvements-heading" data-testid="ck-improvements">
         <h3 id="ck-improvements-heading">{t('ck.panel.improvements')}</h3>
-        {suspended && <p className="muted" data-testid="ck-improvements-suspended">{t('play.disabled.suspended')}</p>}
+        {holdReason && <p className="muted" data-testid="ck-improvements-hold">{t(holdReason)}</p>}
         <ul className="ck-chart">
           {TRACKS.map((track) => {
             const level = self?.improvements[track] ?? 0;

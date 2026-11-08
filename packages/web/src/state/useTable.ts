@@ -49,6 +49,7 @@ import { DICE_PRESENTATION_DURATION_MS } from '../board/animation.ts';
 import { newerSeenVersion } from '../news/player-notes.ts';
 import {
   awaitingProjection,
+  awaitingRoom,
   EMPTY_SELECTION,
   initialTableState,
   tableReducer,
@@ -309,6 +310,8 @@ export function useTable(options: UseTableOptions): TableController {
           // 從首頁續玩時房間還沒載入：主動抓一次，不只等 WebSocket 推送。暫停橫幅、
           // 離開與結束對局的資格都要看房間。推送若先到就以推送為準，不用較舊的回應覆蓋。
           if (stateRef.current.room?.id !== roomId) {
+            // 與投影在同一次繪製生效：房間確認前不開放任何指令（見 `tableHold`）。
+            dispatch({ type: 'room-awaited', roomId });
             void api.getRoom(roomId).then((room) => {
               if (!room.ok || room.data.gameId !== gameId) return;
               if (roomIdRef.current !== roomId || gameIdRef.current !== gameId) return;
@@ -807,7 +810,7 @@ export function useTable(options: UseTableOptions): TableController {
       const snapshot: GameSnapshot | null = current.game;
       if (!snapshot) return null;
       // 所有指令入口（動作列、交易、兌換、發展卡、棋盤）共用：全桌暫停中、點數揭曉前、
-      // 或投影尚未追上已知事件時，不依過時畫面送出後續指令。
+      // 投影尚未追上已知事件，或這一局的房間尚未載入時，不依過時畫面送出後續指令。
       if (tableSuspended(current)) {
         dispatch({ type: 'toast', notice: localNotice('play.disabled.suspended') });
         return null;
@@ -816,7 +819,7 @@ export function useTable(options: UseTableOptions): TableController {
         dispatch({ type: 'toast', notice: localNotice('play.disabled.rolling') });
         return null;
       }
-      if (awaitingProjection(current)) {
+      if (awaitingProjection(current) || awaitingRoom(current)) {
         dispatch({ type: 'toast', notice: localNotice('play.disabled.syncing') });
         return null;
       }

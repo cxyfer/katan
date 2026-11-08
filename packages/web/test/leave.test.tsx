@@ -194,6 +194,7 @@ describe('leave entry', () => {
 
   it('only offers saving while the room has not loaded yet', async () => {
     const api = createFakeApi({ snapshot: makeSnapshot(makeView()) });
+    vi.spyOn(api, 'getRoom').mockReturnValue(new Promise(() => undefined));
     renderApp(api);
     fireEvent.click(await screen.findByTestId('resume-g1'));
     await screen.findByTestId('board-svg', {}, { timeout: 8000 });
