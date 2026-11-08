@@ -5,7 +5,7 @@ import { formatResourceMap } from '../i18n/format.ts';
 import { seafarersHints } from '../board/seafarers.ts';
 import { banditTargets, seafarersCitiesKnightsHints } from '../board/seafarersCitiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
-import { followUpsHeld } from '../state/table.ts';
+import { followUpsHeld, shownBank } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ResourceIcon } from './GameArt.tsx';
 import '../styles/seafarers.css';
@@ -43,7 +43,7 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
 
   return <>
     {pending?.kind === 'seafarers.gold' && sea.goldRequired > 0 && (
-      <GoldPicker key={`${view.seq}`} count={sea.goldRequired} bank={sea.goldBank ?? view.bank} disabled={blocked}
+      <GoldPicker key={`${view.seq}`} count={sea.goldRequired} bank={sea.goldBank ?? shownBank(state) ?? view.bank} disabled={blocked}
         onSubmit={(resources) => void actions.submitCommand({ type: 'gold.choose', resources }, 'play.pending.seafarers.gold')} />
     )}
     {(robberMine || knightArmed) && (

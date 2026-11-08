@@ -14,7 +14,7 @@ import {
 } from '../board/explorersPirates.ts';
 import { hexReference, vertexReference, viewReferenceContext, type ReferenceContext } from '../board/references.ts';
 import { blocksNewCommands } from '../state/commands.ts';
-import { followUpsHeld, nameOf as resolveName, shownHand } from '../state/table.ts';
+import { followUpsHeld, nameOf as resolveName, shownBank, shownHand } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { ResourceIcon } from './GameArt.tsx';
 import { CargoChip } from './SvgExplorersPirates.tsx';
@@ -124,7 +124,7 @@ function ActionPhase({ controller, ep, slot, selfId, submit, arm, blocked, place
   const hand = shownHand(controller.state) ?? {};
   const have = (resource: Resource) => hand[resource] ?? 0;
   const gold = slot.players[selfId]?.gold ?? 0;
-  const bank = controller.state.game?.view.bank;
+  const bank = shownBank(controller.state);
   const ownShips = slot.ships.filter((ship) => ship.player === selfId);
   const holders: { key: string; label: string; cargo: EpCargo[]; field: Record<string, unknown> }[] = [
     ...ep.pieceHarbors.map((vertex) => ({

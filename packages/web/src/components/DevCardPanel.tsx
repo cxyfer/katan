@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as R
 import { createPortal } from 'react-dom';
 import { useT } from '../i18n/context.tsx';
 import { blocksNewCommands } from '../state/commands.ts';
-import { followUpsHeld } from '../state/table.ts';
+import { followUpsHeld, shownBank } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { GameIcon } from './GameArt.tsx';
 import { DevCardArt } from './DevCardArt.tsx';
@@ -63,7 +63,8 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
     !view.turn.devCardPlayed && view.pending === null;
   const draggable = playable && !blocksNewCommands(state.command);
   // 銀行一張資源都沒有時豐收之年打不出去（伺服器回 E_BANK_EMPTY），乾脆不讓它出牌。
-  const bankEmpty = !!view && Object.values(view.bank).every((count) => count <= 0);
+  const bank = shownBank(state);
+  const bankEmpty = !!bank && Object.values(bank).every((count) => count <= 0);
   const usable = (card: string) => PLAYABLE.has(card) && !(card === 'yearOfPlenty' && bankEmpty);
   const held = self?.devCards ?? [];
   const fresh = self?.newDevCards ?? [];

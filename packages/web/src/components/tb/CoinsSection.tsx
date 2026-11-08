@@ -1,7 +1,7 @@
 import { RESOURCES } from '@catan/rules';
 import { useT } from '../../i18n/context.tsx';
 import { blocksNewCommands } from '../../state/commands.ts';
-import { followUpsHeld, shownTradersBarbarians } from '../../state/table.ts';
+import { followUpsHeld, shownBank, shownTradersBarbarians } from '../../state/table.ts';
 import type { TableController } from '../../state/useTable.ts';
 import { CoinEmblem } from './emblems.tsx';
 import { tbHints, tbPart } from './model.ts';
@@ -35,7 +35,7 @@ export function CoinsSection({ controller }: { controller: TableController }) {
           <div className="tb-actions" data-testid="tb-gold-buy">
             {RESOURCES.map((resource) => (
               <button key={resource} type="button" className="button" data-testid={`tb-buy-${resource}`}
-                disabled={busy || mine < coins.goldPerResource || coins.purchasesLeft <= 0 || (view.bank[resource] ?? 0) <= 0}
+                disabled={busy || mine < coins.goldPerResource || coins.purchasesLeft <= 0 || (shownBank(state)?.[resource] ?? 0) <= 0}
                 onClick={() => void actions.submitCommand({ type: 'tb.buyResource', resource }, 'tb.coins.title')}>
                 {t('tb.coins.buy', { resource: t(`resource.${resource}`), gold: coins.goldPerResource })}
               </button>

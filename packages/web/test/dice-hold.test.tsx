@@ -1,18 +1,19 @@
 import { StrictMode } from 'react';
-import { act, render, renderHook, screen } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DICE_PRESENTATION_DURATION_MS, MAX_EFFECT_DURATION_MS } from '../src/board/animation.ts';
 import { useBoardAnimation } from '../src/board/useBoardAnimation.ts';
 import { EventLog } from '../src/components/EventLog.tsx';
 import { BoardView } from '../src/components/BoardView.tsx';
 import { CitiesKnightsPanel } from '../src/components/CitiesKnightsPanel.tsx';
+import { ExchangePanel } from '../src/components/ExchangePanel.tsx';
 import { HandPanel } from '../src/components/HandPanel.tsx';
 import { PlayersPanel } from '../src/components/PlayersPanel.tsx';
 import { TradePanel } from '../src/components/TradePanel.tsx';
 import { TbPanel } from '../src/components/tb/TbPanel.tsx';
 import { tbController, tbSlot, tbState } from './tb-helpers.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
-import { initialTableState, shownCitiesKnights, shownExplorersPirates, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
+import { initialTableState, shownBank, shownCitiesKnights, shownExplorersPirates, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import type { GameView } from '@catan/rules';
 import { makeEvent, makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -46,6 +47,42 @@ describe('roll hold in the table state', () => {
     expect(shownExplorersPirates(state)?.modules?.explorersPirates).toEqual({ players: { p1: { gold: 1 } } });
     state = tableReducer(state, { type: 'dice-presenting', value: false });
     expect(shownExplorersPirates(state)?.modules?.explorersPirates).toEqual({ players: { p1: { gold: 3 } } });
+  });
+
+  it.each(['snapshot', 'events'] as const)('holds the bank exchange supply until the dice settle (%s first)', (delivery) => {
+    // 擲骰的產出把礦石與紙張從 1 張拿到 0：演出結束前不能先顯示「銀行沒有」（#137）。
+    const ck = (paper: number) => ({ citiesKnights: { barbarian: { position: 2, length: 7, attacks: 0 }, commodityBank: { paper, cloth: 2, coin: 2 } } });
+    const before = base();
+    before.game!.view.bank = { lumber: 2, brick: 2, wool: 2, grain: 2, ore: 1 };
+    before.game!.view.modules = ck(1);
+    const after = rolledSnapshot(9);
+    after.view.bank = { lumber: 2, brick: 2, wool: 2, grain: 2, ore: 0 };
+    after.view.modules = ck(0);
+    after.view.hints = { ...after.view.hints!, modules: { citiesKnights: { commodityRates: { paper: 4, cloth: 4, coin: 4 } } } };
+    let held = delivery === 'events' ? tableReducer(before, { type: 'events', events: after.view.events }) : before;
+    held = tableReducer(held, { type: 'snapshot', snapshot: after });
+    expect(held.dicePresenting).toBe(true);
+    expect(shownBank(held)).toEqual(before.game!.view.bank);
+    const panel = (state: TableState) => {
+      const controller = { state, dispatch: vi.fn(), actions: { submitCommand: vi.fn() } } as unknown as TableController;
+      return <LocaleProvider locale="en"><ExchangePanel controller={controller} /></LocaleProvider>;
+    };
+    const submit = () => screen.getByTestId('bank-submit') as HTMLButtonElement;
+    const { rerender } = render(panel(held));
+    for (const receive of ['ore', 'paper']) {
+      fireEvent.change(screen.getByTestId('bank-receive'), { target: { value: receive } });
+      expect(screen.queryByTestId('bank-empty')).toBeNull();
+      expect(submit().disabled).toBe(false);
+    }
+
+    const revealed = tableReducer(held, { type: 'dice-presenting', value: false });
+    expect(shownBank(revealed)).toEqual(after.view.bank);
+    rerender(panel(revealed));
+    expect(screen.getByTestId('bank-empty').textContent).toBe('The bank has no Paper left.');
+    expect(submit().disabled).toBe(true);
+    fireEvent.change(screen.getByTestId('bank-receive'), { target: { value: 'ore' } });
+    expect(screen.getByTestId('bank-empty').textContent).toBe('The bank has no Ore left.');
+    expect(submit().disabled).toBe(true);
   });
 
   it.each(['snapshot', 'events'] as const)('holds fish, boot and scores until the dice settle (%s first)', (delivery) => {

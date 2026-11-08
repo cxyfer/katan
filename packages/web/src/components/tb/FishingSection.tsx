@@ -3,7 +3,7 @@ import { RESOURCES, type Resource } from '@catan/rules';
 import { useT } from '../../i18n/context.tsx';
 import { nameOf } from '../../state/table.ts';
 import { blocksNewCommands } from '../../state/commands.ts';
-import { followUpsHeld, shownTradersBarbarians } from '../../state/table.ts';
+import { followUpsHeld, shownBank, shownTradersBarbarians } from '../../state/table.ts';
 import type { TableController } from '../../state/useTable.ts';
 import { BootEmblem, FishEmblem } from './emblems.tsx';
 import { tbHints, tbPart } from './model.ts';
@@ -81,7 +81,7 @@ export function FishingSection({ controller }: { controller: TableController }) 
   };
   const victims = view.players.filter((player) => player.id !== selfId && player.handSize > 0);
   // 銀行沒有所選資源時拿不到（投影的 0 是確切值，#137）。
-  const bankEmpty = action === 'takeResource' && (view.bank[resource] ?? 0) <= 0;
+  const bankEmpty = action === 'takeResource' && (shownBank(state)?.[resource] ?? 0) <= 0;
 
   return (
     <section className="tb-section" data-testid="tb-fishing" aria-labelledby="tb-fishing-heading">
