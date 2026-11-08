@@ -31,6 +31,16 @@ export function humanMembers<T extends { kind?: string | null }>(members: readon
   return members.filter((member) => !isBotMember(member));
 }
 
+/**
+ * 放棄投票所說的缺席真人（SPEC §4.6）：離線或已明確退出；Bot 永遠不缺席。全桌
+ * 暫停（`suspended`）時離線是大家同意的預期缺席，不算數，只剩明確退出（§4.8、§5.8）。
+ */
+export function absentHumans<T extends MemberRow>(members: readonly T[], suspended: boolean): T[] {
+  return humanMembers(members).filter(
+    (member) => member.withdrawn === 1 || (!suspended && member.connected !== 1),
+  );
+}
+
 export function parseBotLevel(value: unknown): BotLevel | null {
   return typeof value === 'string' && (BOT_LEVELS as readonly string[]).includes(value)
     ? (value as BotLevel)

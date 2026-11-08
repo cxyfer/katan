@@ -39,6 +39,7 @@ import {
   type RoomRow,
 } from './db.ts';
 import {
+  absentHumans,
   botLevelOf,
   botsSupported,
   DEFAULT_BOT_LEVEL,
@@ -277,10 +278,8 @@ export class RoomService {
           id: abandon.id,
           proposedBy: abandon.proposed_by,
           consents: await this.repo.listGameConsents(abandon.id),
-          // 缺席或已退出的真人；Bot 不缺席。
-          absent: humanMembers(memberships)
-            .filter((member) => member.connected !== 1 || member.withdrawn === 1)
-            .map((member) => member.player_id),
+          // 缺席或已退出的真人；Bot 不缺席，暫停中的離線也不算（§4.8）。
+          absent: absentHumans(memberships, room.status === 'suspended').map((member) => member.player_id),
           createdAt: abandon.created_at,
         };
       }

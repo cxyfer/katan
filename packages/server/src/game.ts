@@ -50,7 +50,7 @@ import {
   type RoomRow,
 } from './db.ts';
 import { ServiceError, type RoomService } from './rooms.ts';
-import { humanMembers, isBotMember } from './bot-seats.ts';
+import { absentHumans, humanMembers, isBotMember } from './bot-seats.ts';
 
 const RECEIPT_EVENT_LIMIT = 200;
 const DAY_MS = 86_400_000;
@@ -108,12 +108,12 @@ export interface RetentionSweepResult {
 
 /**
  * 放棄的缺席條件（SPEC §4.6）：只看真人席位；Bot 永遠不缺席。其他席位全是
- * Bot 時，唯一的真人不需要缺席條件也能結束這局。
+ * Bot 時，唯一的真人不需要缺席條件也能結束這局。全桌暫停（`suspended`）時
+ * 離線是預期中的，不構成缺席，只剩明確退出算數（§4.8）。
  */
-function abandonmentEligible(members: readonly MemberRow[]): boolean {
-  const humans = humanMembers(members);
-  if (humans.length === 1) return true;
-  return humans.some((member) => member.connected !== 1 || member.withdrawn === 1);
+function abandonmentEligible(members: readonly MemberRow[], suspended: boolean): boolean {
+  if (humanMembers(members).length === 1) return true;
+  return absentHumans(members, suspended).length > 0;
 }
 
 /**
@@ -579,12 +579,16 @@ export class GameCoordinator {
     const current = JSON.parse(game.state_json) as GameState;
     const { state: frozen, events } = suspendNegotiation(current);
     const revision = events.length > 0 ? game.revision + 1 : game.revision;
+    // §4.6 資格改變即取消放棄投票：暫停後離線不再算缺席，只靠離線成立的投票就此失效；
+    // 靠明確退出成立的投票不受影響。
+    const abandonVoteLapses = !abandonmentEligible(memberships, true);
     await this.repo.transaction(async () => {
       await this.repo.saveGame(game.id, frozen, revision, 'suspended', 'saved');
       if (events.length > 0) await this.repo.appendEvents(game.id, revision, events);
       await this.repo.updateGameProposalStatus(proposalId, 'applied');
       await this.repo.updateRoom(game.room_id, { status: 'suspended' });
       await this.repo.cancelOpenProposals(game.room_id);
+      if (abandonVoteLapses) await this.repo.cancelOpenGameProposalsOfKind(game.id, 'abandon');
       await this.repo.clearGameReady(game.id);
     });
     this.deps.rooms.broadcastRoom(game.room_id);
@@ -639,7 +643,8 @@ export class GameCoordinator {
 
   /**
    * §4.6: any connected seated player may propose abandonment once the policy
-   * allows it and at least one seat is absent or has withdrawn. Every connected,
+   * allows it and at least one seat is absent or has withdrawn (on a suspended
+   * table only a withdrawal counts, §4.8). Every connected,
    * non-withdrawn seated player must confirm the same proposal; the proposal
    * itself counts as the proposer's consent. A sole human at a bot table ends
    * the game at once.
@@ -659,7 +664,9 @@ export class GameCoordinator {
         throw new ServiceError('E_GAME_OVER', 'error.E_GAME_OVER', { gameId }, 409);
       }
       const memberships = await this.repo.listMembers(game.room_id);
-      if (!abandonmentEligible(memberships)) {
+      const suspended = room.status === 'suspended';
+      if (!abandonmentEligible(memberships, suspended)) {
+        if (suspended) await this.refuseSuspendedAbsence(game);
         throw new ServiceError('E_NO_ABSENT_PLAYER', 'error.E_NO_ABSENT_PLAYER', {}, 409);
       }
       const existing = await this.repo.findOpenGameProposal(gameId, 'abandon');
@@ -703,6 +710,13 @@ export class GameCoordinator {
         this.deps.rooms.broadcastRoom(game.room_id);
         return { abandoned: false };
       }
+      // 暫停中的同意若只有預期離線撐著，不能讓投票成立（§4.8）：取消並說明原因。
+      // 暫停成立時已取消這類投票；這裡擋的是之前留下的提案。
+      const room = await this.repo.findRoom(game.room_id);
+      const members = await this.repo.listMembers(game.room_id);
+      if (room?.status === 'suspended' && !abandonmentEligible(members, true)) {
+        await this.refuseSuspendedAbsence(game);
+      }
       await this.recordConsent(proposalId, playerId);
       const abandoned = await this.tryApplyAbandon(game, proposalId);
       if (!abandoned) this.deps.rooms.broadcastRoom(game.room_id);
@@ -726,6 +740,17 @@ export class GameCoordinator {
     if (self.withdrawn === 1) {
       throw new ServiceError('E_SEAT_WITHDRAWN', 'error.E_SEAT_WITHDRAWN', { gameId: game.id }, 409);
     }
+  }
+
+  /**
+   * 暫停中只剩預期離線、沒有明確退出可當缺席條件（§4.6、§4.8）：取消殘留的放棄
+   * 投票（推送給其他人），並以 `E_GAME_SUSPENDED` 拒絕這次提案或同意。
+   */
+  private async refuseSuspendedAbsence(game: GameRow): Promise<never> {
+    if ((await this.repo.cancelOpenGameProposalsOfKind(game.id, 'abandon')) > 0) {
+      this.deps.rooms.broadcastRoom(game.room_id);
+    }
+    throw new ServiceError('E_GAME_SUSPENDED', 'error.E_GAME_SUSPENDED', { gameId: game.id }, 409);
   }
 
   /** 同一位玩家重複表態不是錯誤（提案即同意，之後再按同意也成立）。 */
@@ -782,8 +807,9 @@ export class GameCoordinator {
       return false;
     }
     const memberships = await this.repo.listMembers(game.room_id);
-    // Recheck the absence condition: a reconnection invalidates the vote.
-    if (!abandonmentEligible(memberships)) {
+    // Recheck the absence condition: a reconnection invalidates the vote, and on a
+    // suspended table being offline no longer counts.
+    if (!abandonmentEligible(memberships, room.status === 'suspended')) {
       await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
       return false;
     }
