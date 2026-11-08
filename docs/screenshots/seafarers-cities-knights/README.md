@@ -18,7 +18,7 @@ player 1. Other seats and filler turns are played over the API.
 
 | File | Renderer | Viewport | State |
 |---|---|---|---|
-| `lobby-combined.png` | – | 1366×900 | lobby: Cities & Knights + Seafarers resolves to Heading for New Shores (16 VP) |
+| `lobby-combined.png` | – | 1366×900 | lobby on the room page, all four seats ready, before the start (re-captured from `369b7fe`, 2026-11-08): Cities & Knights + Seafarers resolves to Heading for New Shores; bot note 「電腦對手尚未支援這個規則組合。」 |
 | `p4-svg-desktop-chase-pirate-knight.png` | SVG | 1366×900 | COMB-6: an active knight next to the pirate’s sea hex (on the ships) chases it |
 | `p4-svg-desktop-chase-pirate-target.png` | SVG | 1366×900 | COMB-6: the pirate moves to sea hexes (or the frame) only; land is not offered |
 | `p4-svg-desktop-after-chase.png` | SVG | 1366×900 | ships, the lying knight on the sea intersection, pirate and robber together |

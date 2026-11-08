@@ -33,7 +33,7 @@ Every one ran through the UI in SVG and was reached in 3D, and 25 also ran in 3D
 
 | File | Renderer | Viewport | State |
 |---|---|---|---|
-| `land-ho-lobby.png` | – | 1366×900 | lobby: Explorers & Pirates → Land Ho!, resolved profile, no bots |
+| `land-ho-lobby.png` | – | 1366×900 | lobby on the room page, all four seats ready, before the start (re-captured from `369b7fe`, 2026-11-08): Explorers & Pirates → Land Ho!, no bot seated; bot note 「電腦對手尚未支援這個規則組合。」 |
 | `land-ho-start-svg.png` | SVG | 1366×900 | Land Ho! printed start: the starting island, harbour settlements and ships; parrot and goose fog |
 | `land-ho-start-r3f.png` | 3D | 1366×900 | the same in 3D: fog banks with region markers, ships and harbour flags |
 | `land-ho-movement-svg.png` | SVG | 1366×900 | Movement phase prompt: per-ship sail, found and extra-move buttons |
