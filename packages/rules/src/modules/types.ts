@@ -223,7 +223,11 @@ export interface RulesModule {
   commands?: Readonly<Record<string, ModuleCommandHandler>>;
   /** Command types accepted while a frame is pending (base gate otherwise). */
   pendingCommands?: readonly string[];
-  /** Veto a command before dispatch (for scenario phase and action boundaries). */
+  /**
+   * Veto a command before dispatch (for scenario phase and action boundaries).
+   * The base build hints (`legalRoads`, `legalSettlements`, `legalCities`) drop
+   * every target this refuses.
+   */
   vetoCommand?(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleViewContext): CommandOutcome | undefined;
   /** Extra condition for a road on `edge` (setup and action phase). */
   roadAllowed?(state: GameState, playerId: string, edge: number, ctx: ModuleViewContext): boolean;

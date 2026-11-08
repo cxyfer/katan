@@ -43,7 +43,7 @@ their state under one key of the module slot (`state.ts`).
 | roll | `afterProduction` | after production or the 7 has been set up |
 | commands | `commands` / `pendingCommands` | module-owned command types; types accepted while a frame is pending |
 | commands | `disabledCommands` | base command types the ruleset lacks (C&K: development cards); rejected |
-| commands | `vetoCommand` | before dispatch; return a failed outcome to refuse a command (E&P: base setup commands, building and trading in the Movement phase) |
+| commands | `vetoCommand` | before dispatch; return a failed outcome to refuse a command; `actionHints` filters `legalRoads`, `legalSettlements` and `legalCities` through it too (E&P: base setup commands, building and trading in the Movement phase, base pieces past the supply, so no cities) |
 | commands | `beforeEndTurn` | veto on `turn.end`, also used by `canEndTurn` (C&K: progress hand limit; E&P: a ship must sail on from a full edge) |
 | board | `allowBuilding` | extra veto on a building intersection (setup and play), e.g. New Shores' main-island start |
 | board | `allowCity` | extra veto on upgrading a settlement (C&K: a toppled city must be rebuilt first) |

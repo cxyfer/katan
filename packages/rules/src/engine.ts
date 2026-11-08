@@ -2122,19 +2122,23 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
   const setupIsMine = !!setup && state.players[setup.order[setup.index] ?? -1]?.id === playerId;
   const setupBuilding = setupIsMine && setup!.stage === 'building';
   const setupRoad = setupIsMine && setup!.stage === 'road';
+  // `applyCommand` 派發前的模組否決也套用在提示上（例如 E&P 的 Movement 階段與沒有城市，#114）。
+  const unvetoed = (type: CommandType, field: 'edge' | 'vertex') => (target: number) =>
+    !moduleVeto(state, playerId, { type, [field]: target });
   return {
     canRoll: isTurn && state.turn.phase === 'preroll' && !pending,
     canEndTurn: inAction && !moduleEndTurnVeto(state, playerId),
     legalRoads:
       inAction || freeRoads
-        ? legalRoadEdges(state, playerId)
+        ? legalRoadEdges(state, playerId).filter(unvetoed('build.road', 'edge'))
         : setupRoad
           ? legalRoadEdges(state, playerId, { setup: true, lastVertex: setup!.lastVertex })
+              .filter(unvetoed('setup.placeRoad', 'edge'))
           : [],
     legalSettlements: inAction
-      ? legalBuildingVertices(state, playerId)
+      ? legalBuildingVertices(state, playerId).filter(unvetoed('build.settlement', 'vertex'))
       : setupBuilding
-        ? legalBuildingVertices(state, playerId, { setup: true })
+        ? legalBuildingVertices(state, playerId, { setup: true }).filter(unvetoed('setup.placeBuilding', 'vertex'))
         : [],
     legalCities: inAction
       ? state.board.buildings
@@ -2143,6 +2147,7 @@ export function actionHints(state: GameState, playerId: string): ActionHints {
           .map(({ vertex }) => vertex)
           .filter((vertex) => modulesAllowCity(state, playerId, vertex))
           .filter((vertex) => modulesAllowScenarioBuilding(state, playerId, vertex, 'city'))
+          .filter(unvetoed('build.city', 'vertex'))
       : [],
     bankRates: bankRatesFor(state, playerId),
     pendingKind: pending ? pending.kind : null,
