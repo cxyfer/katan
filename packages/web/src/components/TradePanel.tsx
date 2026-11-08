@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { CARD_KINDS, RESOURCES, type CardKind, type Offer } from '@catan/rules';
 import { citiesKnightsView } from '../board/citiesKnights.ts';
 import { epView } from '../board/explorersPirates.ts';
@@ -6,7 +6,7 @@ import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatTradeMap } from '../i18n/format.ts';
 import { GoodsStepper, goodsBalance, goodsTotal, tradeGoodsOf, viewerGoods, type Goods } from './tb/TradeGoods.tsx';
 import { Dialog } from './Dialog.tsx';
-import { nameOf as resolveName, shownExplorersPirates, shownHand, shownTradersBarbarians } from '../state/table.ts';
+import { nameOf as resolveName, shownExplorersPirates, shownHand, shownTradersBarbarians, tableSuspended } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/trade.css';
 
@@ -82,6 +82,7 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
   const [wantGoods, setWantGoods] = useState<Goods>({});
   const [hint, setHint] = useState<TradeHint | null>(null);
   const hintRef = useRef<HTMLParagraphElement>(null);
+  const suspendedNoteId = useId();
   useEffect(() => {
     if (!hint) return;
     // 提示可能落在可捲動面板的下緣之外，出現時捲入可視範圍（只在新提示時捲動一次）。
@@ -128,6 +129,8 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
   const others = view.players.filter((player) => player.id !== selfId);
   const playerName = resolveName(state);
   const nameOf = (playerId: string) => (playerId === 'all' ? t('play.tradeToAll') : playerName(playerId));
+  // 全桌暫停（§4.8）時伺服器拒絕新提案；殘留的提案由 submitCommand 統一擋下。
+  const suspended = tableSuspended(state);
 
   const bump = (
     setter: (value: Terms) => void,
@@ -238,6 +241,7 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
           })}
         </div>
         {hintFor('builder')}
+        {suspended && <p className="muted" id={suspendedNoteId} data-testid="trade-suspended">{t('play.disabled.suspended')}</p>}
         <div className="trade-builder__actions">
           <button
             type="button"
@@ -260,6 +264,8 @@ export function TradePanel({ controller, embedded = false }: { controller: Table
             type="button"
             className="button button--primary"
             data-testid="create-offer"
+            disabled={suspended}
+            aria-describedby={suspended ? suspendedNoteId : undefined}
             onClick={() => {
               // 草稿後手牌可能已減少（建造、被搶），送出前再對照一次。
               const missing = offerShortfall(give, giveGoods);

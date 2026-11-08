@@ -8,10 +8,10 @@
 
 import { epView } from '../board/explorersPirates.ts';
 import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
-import { awaitingProjection, nameOf as resolveName, type TableState } from './table.ts';
+import { awaitingProjection, nameOf as resolveName, tableSuspended, type TableState } from './table.ts';
 
 export interface RequiredAction {
-  kind: 'setup' | 'roll' | 'rolling' | 'syncing' | 'discard' | 'moveRobber' | 'steal' | 'yearOfPlenty' | 'freeRoads' | 'module' | 'turn';
+  kind: 'setup' | 'roll' | 'rolling' | 'syncing' | 'suspended' | 'discard' | 'moveRobber' | 'steal' | 'yearOfPlenty' | 'freeRoads' | 'module' | 'turn';
   /** Message id for the prompt headline. */
   messageId: string;
   params: Record<string, unknown>;
@@ -36,6 +36,11 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
   const nameOf = resolveName(state);
 
   if (view.result) return null;
+
+  // 全桌暫停（§4.8）：伺服器拒絕所有指令，沒有任何人欠動作；暫停前的待辦等繼續後再提示。
+  if (tableSuspended(state)) {
+    return { kind: 'suspended', messageId: 'play.suspendedBar.title', params: {}, mine: false, waitingFor: [] };
+  }
 
   // 擲骰演出期間，所有狀態顯示（提示、計分板、狀態列、朗讀）都只說「擲骰中」，
   // 不從擲骰後的投影透露棄牌、強盜等結果。

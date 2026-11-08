@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import type { AbandonProposalView, RoomView, SuspendProposalView } from '@catan/protocol';
 import { ApiClient, type FetchLike } from '../src/api/client.ts';
 import { App } from '../src/App.tsx';
+import { absentOthers } from '../src/state/leave.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import {
@@ -773,6 +774,65 @@ describe('saving and pausing the table for everyone (SPEC §4.8)', () => {
     await enterTable(api, ['zh-Hant']);
     openLeaveDialog();
     expect(screen.getByTestId('leave-suspend').textContent).toBe('提議全桌保存並暫停');
+  });
+});
+
+describe('ending a suspended table', () => {
+  // 全桌暫停時離線是大家同意的預期缺席，只有明確退出才算缺席（SPEC §4.6、§4.8、#141）。
+  const suspendedTrio = (p3: Partial<ReturnType<typeof makeMember>> = {}, p2: Partial<ReturnType<typeof makeMember>> = {}) =>
+    makeRoom({
+      ...trioRoom(),
+      status: 'suspended',
+      resumeReady: [],
+      members: [
+        makeMember(),
+        makeMember({ playerId: 'p2', nickname: '小美', seat: 1, color: 'blue', ...HUMAN, ...p2 }),
+        makeMember({ playerId: 'p3', nickname: 'Bo', seat: 2, color: 'orange', connected: false, ...HUMAN, ...p3 }),
+      ],
+    });
+
+  it('counts only withdrawn people as absent while suspended', () => {
+    expect(absentOthers(trioRoom(), 'p1').map((member) => member.playerId)).toEqual(['p3']);
+    expect(absentOthers(suspendedTrio(), 'p1')).toEqual([]);
+    expect(absentOthers(suspendedTrio({ withdrawn: true }), 'p1').map((member) => member.playerId)).toEqual(['p3']);
+    expect(absentOthers(suspendedTrio({}, { withdrawn: true, connected: false }), 'p1').map((member) => member.playerId)).toEqual(['p2']);
+    // 自己不算，電腦也不算。
+    expect(absentOthers(suspendedTrio({ withdrawn: true }), 'p3')).toEqual([]);
+    expect(absentOthers(soloRoom({ status: 'suspended' }), 'p1')).toEqual([]);
+  });
+
+  it('does not offer a proposal when the others are only offline', async () => {
+    const api = createFakeApi({ room: suspendedTrio(), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    const dialog = openLeaveDialog();
+    expect(dialog.textContent).toContain('saved and paused');
+    expect(screen.queryByTestId('leave-propose-end')).toBeNull();
+    expect(dialog.textContent).not.toContain('Absent or withdrawn');
+  });
+
+  it('still offers a proposal for a player who withdrew, naming only them', async () => {
+    const api = createFakeApi({
+      room: suspendedTrio({}, { withdrawn: true, connected: false }),
+      snapshot: makeSnapshot(makeView()),
+    });
+    await enterTable(api);
+    openLeaveDialog();
+    expect(screen.getByTestId('leave-propose-end')).toBeTruthy();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.textContent).toContain('Absent or withdrawn: 小美');
+    expect(dialog.textContent).not.toContain('Bo');
+    fireEvent.click(screen.getByTestId('leave-propose-end'));
+    expect(screen.getByTestId('leave-confirm-end').textContent).toContain('小美');
+  });
+
+  it('lets the only person at a computer table end it while suspended', async () => {
+    const api = createFakeApi({ room: soloRoom({ status: 'suspended', resumeReady: [] }), snapshot: makeSnapshot(makeView()) });
+    await enterTable(api);
+    openLeaveDialog();
+    const end = screen.getByTestId('leave-end') as HTMLButtonElement;
+    expect(end.disabled).toBe(false);
+    fireEvent.click(end);
+    expect(screen.getByTestId('leave-confirm-end').textContent).toContain('no winner');
   });
 });
 

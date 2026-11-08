@@ -52,6 +52,7 @@ import {
   EMPTY_SELECTION,
   initialTableState,
   tableReducer,
+  tableSuspended,
   type DrawerPanel,
   type GameSyncBoundary,
   type GameSyncCause,
@@ -794,8 +795,12 @@ export function useTable(options: UseTableOptions): TableController {
       if (blocksNewCommands(current.command)) return null;
       const snapshot: GameSnapshot | null = current.game;
       if (!snapshot) return null;
-      // 所有指令入口（動作列、交易、兌換、發展卡、棋盤）共用：點數揭曉前、
+      // 所有指令入口（動作列、交易、兌換、發展卡、棋盤）共用：全桌暫停中、點數揭曉前、
       // 或投影尚未追上已知事件時，不依過時畫面送出後續指令。
+      if (tableSuspended(current)) {
+        dispatch({ type: 'toast', notice: localNotice('play.disabled.suspended') });
+        return null;
+      }
       if (current.dicePresenting) {
         dispatch({ type: 'toast', notice: localNotice('play.disabled.rolling') });
         return null;

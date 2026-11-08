@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CARD_KINDS, RESOURCES, type CardKind } from '@catan/rules';
 import { citiesKnightsHints, isCommodityCard } from '../board/citiesKnights.ts';
 import { useT } from '../i18n/context.tsx';
+import { tableSuspended } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import '../styles/trade.css';
 
@@ -19,6 +20,8 @@ export function ExchangePanel({ controller }: { controller: TableController }) {
   const rateOf = (card: CardKind) => isCommodityCard(card) ? ck?.commodityRates[card] ?? 4 : view.hints?.bankRates?.[card] ?? 4;
   const rates = view.hints?.bankRates;
   const sameResource = give === receive;
+  // 全桌暫停（§4.8）時伺服器拒絕兌換。
+  const suspended = tableSuspended(state);
 
   return (
     <section className="panel exchange-panel" aria-labelledby="exchange-heading" data-testid="exchange-panel">
@@ -51,7 +54,9 @@ export function ExchangePanel({ controller }: { controller: TableController }) {
         </p>
       )}
       {sameResource && <p className="error" role="alert">{t('play.bankTradeSame')}</p>}
-      <button type="button" className="button button--primary" data-testid="bank-submit" disabled={sameResource}
+      {suspended && <p className="muted" id="bank-suspended" data-testid="bank-suspended">{t('play.disabled.suspended')}</p>}
+      <button type="button" className="button button--primary" data-testid="bank-submit" disabled={sameResource || suspended}
+        aria-describedby={suspended ? 'bank-suspended' : undefined}
         onClick={() => void actions.submitCommand({ type: 'trade.bank', give, receive }, 'play.bankTrade')}>
         {t('play.bankTradeSubmit')}
       </button>

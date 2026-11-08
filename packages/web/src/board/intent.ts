@@ -7,7 +7,7 @@
  * what the player finally sees.
  */
 
-import type { TableState } from '../state/table.ts';
+import { tableSuspended, type TableState } from '../state/table.ts';
 import { EP_FRAME, epHints, epView } from './explorersPirates.ts';
 import { isShipCommand, seafarersHints } from './seafarers.ts';
 import { banditTargets, moveBanditMessageId, seafarersCitiesKnightsHints } from './seafarersCitiesKnights.ts';
@@ -107,7 +107,8 @@ function robberHexes(state: TableState): number[] {
  */
 export function boardIntent(state: TableState, selfId: string | null): BoardIntent | null {
   const view = state.game?.view;
-  if (!view || view.result) return null;
+  // 全桌暫停（§4.8）時任何棋盤指令都會被拒，連已選取中的建造也不再提供目標。
+  if (!view || view.result || tableSuspended(state)) return null;
   const hints = view.hints ?? null;
 
   const armed = state.selection.commandType;

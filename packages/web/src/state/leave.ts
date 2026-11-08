@@ -32,10 +32,14 @@ export function withdrawnOthers(room: RoomView | null | undefined, selfId: strin
   return humanMembers(room).filter((member) => member.playerId !== selfId && member.withdrawn === true);
 }
 
-/** 其他缺席（離線或已退出）的真人；多人桌提議結束對局的資格條件（SPEC §4.6）。 */
+/**
+ * 其他缺席（離線或已退出）的真人；多人桌提議結束對局的資格條件（SPEC §4.6）。
+ * 全桌暫停（`suspended`）時離線是大家同意的預期缺席，不算數，只剩明確退出（§4.8）。
+ */
 export function absentOthers(room: RoomView | null | undefined, selfId: string | null): RoomMemberView[] {
+  const suspended = room?.status === 'suspended';
   return humanMembers(room).filter(
-    (member) => member.playerId !== selfId && (member.withdrawn === true || !member.connected),
+    (member) => member.playerId !== selfId && (member.withdrawn === true || (!suspended && !member.connected)),
   );
 }
 

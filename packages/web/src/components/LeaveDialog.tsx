@@ -39,7 +39,7 @@ export function LeaveDialog({ controller, initialStep = 'choose', onClose }: {
   const allowed = abandonmentAllowed(room);
   const absent = absentOthers(room, selfId);
   const absentNames = joinNames(locale, absent.map((member) => member.nickname));
-  // 多人桌的提議資格：政策允許、有其他真人缺席或已退出，且自己是在線、未退出的投票者。
+  // 多人桌的提議資格：政策允許、有其他真人缺席或已退出（全桌暫停中只算已退出），且自己是在線、未退出的投票者。
   const canProposeEnd = !solo && allowed && absent.length > 0 && self !== null && self.connected && !withdrawn;
   const knownTable = room !== null && self !== null;
   const suspended = room?.status === 'suspended';

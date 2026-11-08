@@ -280,9 +280,17 @@ export function awaitingProjection(state: TableState): boolean {
   return !!game && game.view.events.some((event) => event.seq > game.view.seq);
 }
 
-/** 後續操作是否暫停：擲骰演出中，或投影尚未追上已知事件。 */
+/**
+ * 全桌已保存並暫停（SPEC §4.8）：伺服器以 `E_GAME_SUSPENDED` 拒絕所有遊戲指令，
+ * 直到每位真人都回到牌桌並表示準備好。
+ */
+export function tableSuspended(state: TableState): boolean {
+  return state.room?.status === 'suspended';
+}
+
+/** 後續操作是否暫停：擲骰演出中、投影尚未追上已知事件，或全桌已暫停。 */
 export function followUpsHeld(state: TableState): boolean {
-  return state.dicePresenting || awaitingProjection(state);
+  return state.dicePresenting || awaitingProjection(state) || tableSuspended(state);
 }
 
 /** 畫面上顯示的本人資源與商品：擲骰演出期間用擲骰前的數量。手牌不可見時為 undefined。 */
@@ -411,6 +419,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         room,
         roomError: null,
         devCardChoice: room ? state.devCardChoice : null,
+        // 全桌暫停後不再保留棋盤上選到一半的目標，免得暫停中還能確認送出。
+        selection: room?.status === 'suspended' ? EMPTY_SELECTION : state.selection,
         screen: state.screen === 'entry' ? state.screen : nextScreen,
       };
     }
