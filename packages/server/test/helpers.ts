@@ -3,6 +3,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { GameEvent, GameState } from '@catan/rules';
 import { startService, type Logger, type RunningService } from '../src/main.ts';
 import type { ServerConfig } from '../src/config.ts';
 
@@ -209,4 +210,59 @@ export async function runSetupOverApi(
     current = refreshed.view;
   }
   return { revision, view: current };
+}
+
+/**
+ * 讓目前的行動者直接進入行動階段並握有一張羊毛，再透過 API 對全桌開出一則報價
+ * （羊毛換礦石）。回傳開出報價的玩家與報價被接受後的修訂版本。
+ */
+export async function openOfferOverApi(
+  harness: TestHarness,
+  clients: TestClient[],
+  gameId: string,
+): Promise<{ actor: TestClient; revision: number }> {
+  const row = (await harness.service.repo.findGame(gameId))!;
+  const state = JSON.parse(row.state_json) as GameState;
+  state.turn.phase = 'action';
+  state.turn.dice = [3, 4];
+  const seated = state.players[state.turn.seat]!;
+  seated.resources.wool += 1;
+  await harness.service.repo.db.run('UPDATE games SET state_json = ? WHERE id = ?', [JSON.stringify(state), gameId]);
+  const actor = clients.find((client) => client.playerId === seated.id)!;
+  const receipt = actor.expectOk<{ outcome: string; revision: number }>(
+    await actor.post(`/api/games/${gameId}/commands`, {
+      commandId: `offer-${Math.random().toString(36).slice(2)}`,
+      expectedRevision: row.revision,
+      command: { type: 'trade.offer', to: 'all', give: { wool: 1 }, want: { ore: 1 } },
+    }),
+  );
+  if (receipt.outcome !== 'accepted') throw new Error(`offer rejected: ${JSON.stringify(receipt)}`);
+  return { actor, revision: receipt.revision };
+}
+
+/** 事件庫內這局的全部事件（依序號），以及目前狀態的序號與 log 長度。 */
+export async function storedHistory(
+  harness: TestHarness,
+  gameId: string,
+): Promise<{ events: (GameEvent & { revision: number })[]; seq: number; logLength: number }> {
+  const rows = await harness.service.repo.db.all<{ seq: number; revision: number; type: string; params_json: string }>(
+    'SELECT seq, revision, type, params_json FROM game_events WHERE game_id = ? ORDER BY seq ASC',
+    [gameId],
+  );
+  const state = JSON.parse((await harness.service.repo.findGame(gameId))!.state_json) as GameState;
+  return {
+    events: rows.map((row) => ({
+      seq: Number(row.seq),
+      revision: Number(row.revision),
+      type: row.type,
+      params: JSON.parse(row.params_json) as Record<string, unknown>,
+    })),
+    seq: state.seq,
+    logLength: state.log.length,
+  };
+}
+
+/** `from + 1` 到 `to` 的連續序號。 */
+export function seqRange(from: number, to: number): number[] {
+  return Array.from({ length: to - from }, (_, index) => from + index + 1);
 }
