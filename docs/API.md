@@ -319,6 +319,20 @@ and receipts:
 
 Bot seats decide from this same projected history (SPEC §4.9).
 
+### Bank supply
+
+`GameView.bank` gives each resource pile as `min(count, 2)` (`BANK_VIEW_CAP`
+in `@catan/rules`): below two the value is exact, `2` means "two or more".
+Discards return cards to the bank privately, so an exact supply would let any
+seat read a discard from the difference between two snapshots (SPEC §8.3,
+issue #137). The capped value is enough for every choice that takes from the
+bank: a bank or harbor trade, a science bonus or a gold purchase takes one
+card, and Year of Plenty takes `min(2, total)` cards, at most two of a kind.
+`GameView.modules.citiesKnights.commodityBank` is capped the same way.
+Seafarers gold can owe more of one kind, so its responder alone gets the exact
+supply it needs in `hints.modules.seafarers.goldBank`. The engine still checks
+every command against the full supply; `E_BANK_EMPTY` names only the resource.
+
 ### Pending choices
 
 `GameView.pending` is the active mandatory choice and `GameView.pendingQueue`
@@ -375,9 +389,11 @@ ids per player), `islandClaims` (`{ player, island, vertex }`),
 `shipsBuiltThisTurn` and `shipMoved` for the current action window.
 `hints.modules.seafarers` lists `legalShips`, `setupShips`,
 `movableShips` (`{ edge, targets }`), `pirateTargets` (sea hexes, plus
-`null` when the frame is a legal move), `robberTargets` and
-`goldRequired`. The `seafarers.gold` frame projects `data.picks` (owed
-resources per remaining responder).
+`null` when the frame is a legal move), `robberTargets`,
+`goldRequired` and `goldBank` (each resource as `min(count, goldRequired)`:
+the supply the current gold responder may take, all zero for everybody else;
+`GameView.bank` stops at two, see "Bank supply"). The `seafarers.gold` frame
+projects `data.picks` (owed resources per remaining responder).
 
 ### Explorers & Pirates commands (`ep-*-2025`)
 
@@ -517,7 +533,8 @@ window is `E_ALCHEMY_SET`.
 `robberActive`, `knights` (`player`, `vertex`, `level`, `active`, `fresh`,
 `promoted`), `walls` (`vertex`, `player`), `metropolises` per track
 (`player`, `vertex` or `null`), `toppled`, `progressVp` per player,
-`progressCounts`, `decks` (card counts per track), `commodityBank`,
+`progressCounts`, `decks` (card counts per track), `commodityBank` (each
+commodity as `min(count, 2)`, like `GameView.bank`),
 `lastRoll` (`event`, `red`, `atSeq`), `lastAttack`, `handLimit`, `merchant`
 (`player`, `hex`, or `null`), and for the current window `alchemy` (`player`,
 `dice`), `fleets` (`player`, `kind`) and `harbor` (`player`, `offers`).

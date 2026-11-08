@@ -11,6 +11,7 @@
  */
 
 import { playerById, topologyOf } from '../../analysis.ts';
+import { bankView } from '../../bank-view.ts';
 import { COMMODITIES, type GameState, type ModulePending } from '../../types.ts';
 import type { ModuleViewContext, PublicModulePendingView, RulesModule } from '../types.ts';
 import { setModuleState } from '../state.ts';
@@ -231,7 +232,8 @@ export function projectCitiesKnights(state: GameState) {
     progressVp: Object.fromEntries(state.players.map((player) => [player.id, (view.progressVp[player.id] ?? []).slice()])),
     progressCounts: Object.fromEntries(state.players.map((player) => [player.id, player.progressCards.length])),
     decks: Object.fromEntries(TRACKS.map((track) => [track, state.progressDecks[track].length])),
-    commodityBank: { ...state.commodityBank },
+    // 與 `GameView.bank` 相同只到上限：丟棄的商品不能從前後差還原（#137）。
+    commodityBank: bankView(state.commodityBank),
     lastRoll: view.lastRoll ? { ...view.lastRoll } : null,
     lastAttack: view.lastAttack
       ? { ...view.lastAttack, contributions: { ...view.lastAttack.contributions }, pillaged: view.lastAttack.pillaged.map((entry) => ({ ...entry })) }

@@ -7,6 +7,7 @@
  */
 
 import { scoreOf, topologyOf, totalCards, victoryTargetOf } from './analysis.ts';
+import { bankView } from './bank-view.ts';
 import { effectivePending } from './engine.ts';
 import { rulesModulesOf } from './modules/registry.ts';
 import type { PublicModulePendingView } from './modules/types.ts';
@@ -74,6 +75,10 @@ export interface GameView {
   victoryTarget: number;
   players: PublicPlayerView[];
   board: PublicBoardView;
+  /**
+   * 銀行存量，每種只到 `BANK_VIEW_CAP`（§8.3、#137）：低於上限是確切張數，等於上限
+   * 表示「至少這麼多」。只用來判斷能不能從銀行拿牌，不是確切存量。
+   */
   bank: Record<Resource, number>;
   devDeckSize: number;
   turn: {
@@ -249,7 +254,7 @@ export function projectGame(
       ),
       ...(state.board.layout.extraNumbers?.length ? { extraNumbers: state.board.layout.extraNumbers.map((extra) => ({ ...extra })) } : {}),
     },
-    bank: { ...state.bank },
+    bank: bankView(state.bank),
     devDeckSize: state.devDeck.length,
     turn: {
       seat: state.turn.seat,

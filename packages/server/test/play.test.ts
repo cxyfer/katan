@@ -7,7 +7,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { GameState } from '@catan/rules';
+import { BANK_VIEW_CAP, RESOURCES, requireProfile, type GameState } from '@catan/rules';
 import { startHarness, startedGame, runSetupOverApi, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;
@@ -164,13 +164,28 @@ describe('base play slice', () => {
     expect(snapshot.view.turn.playerId).not.toBe(actorId);
   });
 
-  it('keeps the bank conserved across a full turn', async () => {
+  it('keeps the bank conserved across a full turn and serves only its availability', async () => {
     const { clients, gameId } = await startedGame(harness, 3);
     const { revision } = await runSetupOverApi(clients, gameId);
     const host = clients[0]!;
+    // 守恆以伺服器保存的完整狀態檢查；API 只送出到 `BANK_VIEW_CAP` 的存量（§8.3、#137）。
+    const conserved = async (): Promise<void> => {
+      const state = JSON.parse((await harness.service.repo.findGame(gameId))!.state_json) as GameState;
+      const perResource = requireProfile(state.profileId).bankPerResource;
+      for (const resource of RESOURCES) {
+        const held = state.players.reduce((sum, player) => sum + player.resources[resource], 0);
+        expect(state.bank[resource] + held, resource).toBe(perResource);
+      }
+    };
+    const capped = (snapshot: Snapshot): void => {
+      for (const value of Object.values(snapshot.view.bank)) {
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThanOrEqual(BANK_VIEW_CAP);
+      }
+    };
     const before = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
-    const handBefore = before.view.players.reduce((sum, player) => sum + player.handSize, 0);
-    const bankBefore = Object.values(before.view.bank).reduce((sum, value) => sum + value, 0);
+    capped(before);
+    await conserved();
 
     const actor = clients.find((client) => client.playerId === before.view.turn.playerId)!;
     const receipt = actor.expectOk<Receipt>(
@@ -182,14 +197,8 @@ describe('base play slice', () => {
     );
     expect(receipt.outcome).toBe('accepted');
 
-    const after = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
-    const handAfter = after.view.players.reduce((sum, player) => sum + player.handSize, 0);
-    const bankAfter = Object.values(after.view.bank).reduce((sum, value) => sum + value, 0);
-    const totalBefore = handBefore + bankBefore;
-    const totalAfter = handAfter + bankAfter;
-    // A 7 moves cards from hands to the bank; production moves the other way.
-    expect(totalAfter).toBeLessThanOrEqual(totalBefore);
-    expect(bankAfter).toBeGreaterThanOrEqual(0);
+    capped(host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`)));
+    await conserved();
   });
 });
 
