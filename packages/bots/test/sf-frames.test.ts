@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest';
 import {
   actionHints,
   applyCommand,
+  BANK_VIEW_CAP,
   projectGame,
   seededRng,
   type Command,
@@ -263,6 +264,21 @@ describe('answerFrame: seafarers.gold', () => {
     expect(seafarersAnswerFrame(turn, frame)).toEqual({ type: 'gold.choose', resources: ['wool', 'ore'] });
   });
 
+  it('takes three of one kind when it owes three, although view.bank stops at the cap', () => {
+    // 銀行只剩礦石：欠 3 張就拿 3 張礦。`view.bank` 只到 BANK_VIEW_CAP（#137），存量取自 `goldBank`。
+    const state = goldRoll('p1', (s) => {
+      settle(s, 'p2', gold(s, 0), true);
+      settle(s, 'p2', gold(s, 2));
+      s.bank = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 19 };
+    });
+    const view = viewOf(state, 'p2');
+    expect(view.bank.ore).toBe(BANK_VIEW_CAP);
+    expect(moduleHints(view.hints, 'seafarers')).toMatchObject({ goldRequired: 3, goldBank: { ore: 3 } });
+    for (const command of expectEveryRunMoves(state, 'p2')) {
+      expect(command).toEqual({ type: 'gold.choose', resources: ['ore', 'ore', 'ore'] });
+    }
+  });
+
   it('re-checks what the plan misses after every pick', () => {
     // 升城市的計畫缺 1 張穀物與 1 張礦：第一張補其中一種之後，缺口隨之縮小，第二張要補另一種。
     const state = goldForCityPlan({ grain: 1, ore: 2 });
@@ -317,9 +333,11 @@ describe('answerFrame: seafarers.gold', () => {
     // 沒有 hints 就不知道欠幾張：不猜，回 null 交給保底。
     const bare = turnContext({ ...clone(view), hints: undefined }, ctxFor('p2'), 'standard');
     expect(seafarersAnswerFrame(bare, frame)).toBeNull();
-    // 銀行已經拿光、湊不滿：不送必定被拒絕的指令。
+    // 銀行已經拿光、湊不滿：不送必定被拒絕的指令。存量取自作答者的 `goldBank`。
     const drained = clone(view);
-    drained.bank = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
+    const empty = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
+    drained.bank = { ...empty };
+    moduleHints(drained.hints, 'seafarers')!.goldBank = { ...empty };
     expect(seafarersAnswerFrame(turnContext(drained, ctxFor('p2'), 'standard'), frame)).toBeNull();
   });
 

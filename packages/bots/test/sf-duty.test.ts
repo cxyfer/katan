@@ -264,6 +264,20 @@ describe('F3b: gold owed 3, the bank split across two resources', () => {
     }
   });
 
+  it('owing three of the only resource left takes three, although view.bank stops at the cap', () => {
+    // `view.bank` 只到 BANK_VIEW_CAP（#137）：保底的存量取自作答者的 `goldBank`。
+    const state = emptySeafarersGame(4, 0, 'preroll');
+    settle(state, 'p2', gold(state, 0), true);
+    settle(state, 'p2', gold(state, 2));
+    state.bank = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 19 };
+    const rolled = act(state, 'p1', { type: 'turn.roll' }, TEN()).state;
+    const view = viewOf(rolled, 'p2');
+    expect(view.bank.ore).toBe(2);
+    const command = seafarersDuty(view, 'p2');
+    expect(command).toEqual({ type: 'gold.choose', resources: ['ore', 'ore', 'ore'] });
+    expectAccepted(rolled, 'p2', command!);
+  });
+
   it('a full bank takes the first resources in order', () => {
     const state = goldRoll('p1', (s) => settle(s, 'p1', gold(s, 0), true));
     const view = viewOf(state, 'p1');

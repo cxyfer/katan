@@ -9,7 +9,7 @@
  *   由保底處理，不自行猜測欠額。
  * - 每張牌用 `plentyPick`（豐收之年的挑選）：先補計畫的下一步，再補整個計畫，所以計畫成本含船
  *   （SF-2a 的 `economy.costs`）時，金礦會優先補船的缺口。每挑一張就更新手牌與銀行，
- *   因此缺口隨之縮小，而且任何資源都不超過 `view.bank`（否則 E_BANK_EMPTY）。
+ *   因此缺口隨之縮小，而且任何資源都不超過 `goldBank`（否則 E_BANK_EMPTY）。
  * - easy 同 standard：挑選是決定性的，不消耗亂數。
  */
 
@@ -22,10 +22,13 @@ import { moduleHints } from '../view.ts';
 export const seafarersAnswerFrame: NonNullable<BotModule['answerFrame']> = (turn, frame) => {
   if (frame.kind !== GOLD_FRAME) return undefined;
   if (frame.responders[0] !== turn.ctx.selfId) return null;
-  const required = moduleHints(turn.view.hints, 'seafarers')?.goldRequired;
+  const hints = moduleHints(turn.view.hints, 'seafarers');
+  const required = hints?.goldRequired;
   if (typeof required !== 'number' || !Number.isInteger(required) || required < 0) return null;
   const hand: Hand = { ...turn.economy.hand };
-  const bank: Record<Resource, number> = { ...turn.view.bank };
+  // `view.bank` 只到 `BANK_VIEW_CAP`（#137），金礦卻可能要拿更多同種的牌：存量取自只給作答者的
+  // `goldBank`（每種 `min(存量, goldRequired)`，對這次挑選而言是確切的）。
+  const bank: Record<Resource, number> = { ...(hints?.goldBank ?? turn.view.bank) };
   const resources: Resource[] = [];
   while (resources.length < required) {
     const pick = plentyPick(turn, hand, bank);

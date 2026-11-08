@@ -6,7 +6,7 @@
  * - freeRoads：道路存量 > 0 且有 `legalRoads` 就蓋路，否則蓋 `legalShips[0]`（Road Building 中造船免費）。
  *   `legalRoads` 不扣存量，所以存量用完時不能送 build.road（E_NO_PIECES）。
  * - `seafarers.gold`：只有 `responders[0]` 才作答；依 `RESOURCES` 順序湊滿 `goldRequired` 張，每種都
- *   不超過銀行存量（否則 E_BANK_EMPTY）。
+ *   不超過 `goldBank`（缺漏時退回 `view.bank`）的存量（否則 E_BANK_EMPTY）。
  * - 保底只在 freeRoads 造船，不在其他時機造船或移船；其他模組的 frame 回 undefined。
  */
 
@@ -45,8 +45,10 @@ function freeRoadsDuty(view: GameView, selfId: string): ReturnType<NonNullable<B
 
 function goldDuty(view: GameView, frame: PublicModulePendingView, selfId: string): ReturnType<NonNullable<BotModule['duty']>> {
   if (frame.responders?.[0] !== selfId) return null;
+  // `view.bank` 只到 `BANK_VIEW_CAP`（#137）；作答者的 `goldBank` 是這次挑選所需的確切存量。
+  const supply = moduleHints(view.hints, 'seafarers')?.goldBank ?? view.bank;
   const stock = (resource: Resource): number => {
-    const amount = view.bank?.[resource];
+    const amount = supply?.[resource];
     return typeof amount === 'number' && Number.isFinite(amount) ? Math.max(0, Math.floor(amount)) : 0;
   };
   const hinted = moduleHints(view.hints, 'seafarers')?.goldRequired;

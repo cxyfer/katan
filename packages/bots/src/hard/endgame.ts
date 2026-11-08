@@ -9,6 +9,7 @@
 
 import { COSTS, RESOURCES, type Resource } from '@catan/rules';
 import { isLandEdge } from '../board.ts';
+import { plannedBank } from '../bank.ts';
 import { canAfford, pay, type Cost, type Hand } from '../economy.ts';
 import type { BotCommand } from '../types.ts';
 import { positionOf, routeOf, tableOf, victoryPointsOf, type Position, type Table } from './position.ts';
@@ -225,7 +226,8 @@ export function winningLine(turn: HardTurn): WinningLine | null {
   const root: Node = {
     position: positionOf(view, ctx.selfId),
     left: { settlements: left.settlements, cities: left.cities, roads: left.roads },
-    bank: { ...view.bank },
+    // 投影的銀行只到上限（#137）：搜尋時把「至少」當成足夠。
+    bank: plannedBank(view),
     trades: 0,
   };
   const seen = new Set<string>([keyOf(root.position)]);
