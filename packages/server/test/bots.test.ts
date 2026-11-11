@@ -286,10 +286,11 @@ describe('B-ROOM bot seats', () => {
     }>(await host.get('/api/profiles'));
     expect(profiles.find((profile) => profile.id === 'base-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'base-paired-2025')?.botSeats).toBe(true);
-    // Heading for New Shores 的兩個 profile 開放；其餘擴充仍不行。
+    // Heading for New Shores 與城市與騎士的兩個 profile 開放；Seafarers + C&K 的組合仍不行。
     expect(profiles.find((profile) => profile.id === 'sf-new-shores-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-new-shores-paired-2025')?.botSeats).toBe(true);
-    expect(profiles.find((profile) => profile.id === 'ck-2025')?.botSeats).toBe(false);
+    expect(profiles.find((profile) => profile.id === 'ck-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'ck-paired-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')?.botSeats).toBe(false);
     for (const profile of profiles) {
       expect(profile.botSeats).toBe(botsCanPlay(getProfile(profile.id)!));
@@ -301,7 +302,9 @@ describe('B-ROOM bot seats', () => {
     expect(levels('base-2025')).toEqual(['easy', 'standard', 'hard']);
     expect(levels('base-paired-2025')).toEqual(['easy', 'standard', 'hard']);
     expect(levels('sf-new-shores-2025')).toEqual(['easy', 'standard']);
-    expect(levels('ck-2025')).toEqual([]);
+    expect(levels('ck-2025')).toEqual(['easy', 'standard']);
+    expect(levels('ck-paired-2025')).toEqual(['easy', 'standard']);
+    expect(levels('sf-ck-new-shores-2025')).toEqual([]);
   });
 
   it('seats hard bots only in profiles without rules modules', async () => {
@@ -354,9 +357,27 @@ describe('B-ROOM bot seats', () => {
     expect(switched.members.filter((member) => member.bot)).toHaveLength(1);
   });
 
+  it('seats bots in Cities & Knights rooms and lets a room with bots switch to it', async () => {
+    const host = await harness.client('CkBots');
+    const ck = await createRoom(host, { profileId: 'ck-2025' });
+    const added = host.expectOk<RoomShape>(await host.post(`/api/rooms/${ck.id}/bots`, {}));
+    expect(added.members.filter((member) => member.bot)).toHaveLength(1);
+    // hard 只有基本版。
+    const refused = await host.post(`/api/rooms/${ck.id}/bots`, { level: 'hard' });
+    host.expectError(refused, 'E_INVALID_BOT');
+    expect(refused.body.ok ? null : refused.body.error.params).toMatchObject({ reason: 'profileLevel', level: 'hard' });
+
+    const other = await harness.client('CkSwitch');
+    const base = await createRoom(other, { bots: 1 });
+    other.expectOk(await other.post(`/api/rooms/${base.id}/settings`, { profileId: 'ck-2025' }));
+    const switched = other.expectOk<RoomShape & { profileId: string }>(await other.get(`/api/rooms/${base.id}`));
+    expect(switched.profileId).toBe('ck-2025');
+    expect(switched.members.filter((member) => member.bot)).toHaveLength(1);
+  });
+
   it('still refuses bot seats for rulesets bots cannot play, and switching a bot room to them', async () => {
-    // 城市與騎士，以及它和 Seafarers 的組合，都還沒有 BotModule。
-    for (const profileId of ['ck-2025', 'sf-ck-new-shores-2025']) {
+    // Seafarers 與城市與騎士的組合層沒有 BotModule。
+    for (const profileId of ['sf-ck-new-shores-2025']) {
       expect(botsCanPlay(getProfile(profileId)!), profileId).toBe(false);
       const host = await harness.client('NoBots');
       const room = await createRoom(host, { profileId });

@@ -206,8 +206,8 @@ describe('lobby bot seats', () => {
 
   it('disables adding a bot with a localized reason when bots cannot play the ruleset', async () => {
     const api = createFakeApi({
-      profiles: [makeProfile({ id: 'ck-2025', expansions: ['citiesKnights'], botSeats: false })],
-      room: makeRoom({ profileId: 'ck-2025', members: [makeMember()] }),
+      profiles: [makeProfile({ id: 'sf-ck-new-shores-2025', expansions: ['seafarers', 'citiesKnights'], botSeats: false })],
+      room: makeRoom({ profileId: 'sf-ck-new-shores-2025', members: [makeMember()] }),
       identity: makeIdentity({ locale: 'zh-Hant' }),
     });
     await joinLobby(api, ['zh-TW']);
