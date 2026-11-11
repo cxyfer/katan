@@ -40,6 +40,7 @@ import {
   productionValue,
   scaleCost,
   weightedPips,
+  type Cost,
   type Economy,
   type KindTable,
 } from '../src/economy.ts';
@@ -49,7 +50,7 @@ import { COMMODITY_WEIGHT } from '../src/modules/citiesKnights/economy.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { bankHas, plannedBankOf, plannedCommodityBank } from '../src/bank.ts';
 import { plentyPick } from '../src/base/cards.ts';
-import { handUtility, bankTradeToward, offerGain, offerTermsKnown } from '../src/trade.ts';
+import { handUtility, bankTradeToward, offerGain, offerTermsKnown, proposeOffer } from '../src/trade.ts';
 import type { BotModule, TurnContext } from '../src/modules/types.ts';
 import type { BotContext, BotLevel } from '../src/types.ts';
 import { viewOf } from './ck-fixtures.ts';
@@ -641,6 +642,74 @@ describe('receiving commodities, and the cards a pick can name', () => {
     // 資源銀行沒有牌時不挑：commodity 銀行有牌也不算。
     const empty = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
     expect(plentyPick(turn, economy.hand, empty)).toBeNull();
+  });
+});
+
+describe('relief and offers with commodities', () => {
+  /** p1 的行動階段，手牌 `resources` 加 `commodities`（沒有建築、道路，也買不起發展卡）。 */
+  function holding(resources: Parameters<typeof give>[2], commodities: Parameters<typeof giveCommodities>[2] = {}): GameState {
+    const state = emptyCkGame(4, 0, 'action');
+    give(state, 'p1', resources);
+    giveCommodities(state, 'p1', commodities);
+    return state;
+  }
+
+  /** 以 `view` 建立決策資料；`cost` 給了就把計畫換成需要這些牌的測試計畫。 */
+  function turnFor(view: GameView, cost?: Cost): TurnContext {
+    const turn = turnContext(view, ctxFor('p1'), 'standard');
+    if (!cost) return turn;
+    const plan = { kind: 'test.plan' as const, vertex: null, roads: [], cost, nextCost: cost, value: 1, eta: 1, score: 1 };
+    return { ...turn, economy: { ...turn.economy, plans: [plan] } } as unknown as TurnContext;
+  }
+
+  const accepted = (state: GameState, command: Command | null): void => {
+    expect(command).not.toBeNull();
+    expect(applyCommand(state, 'p1', command!, seededRng(1)).ok).toBe(true);
+  };
+
+  it('relief gives a commodity surplus to the bank: 4 spare paper in a hand of 8 go out as a paper trade', () => {
+    const state = holding({ lumber: 3, wool: 1 }, { paper: 4 });
+    const command = handRelief(turnFor(viewOf(state, 'p1')));
+    expect(command).toMatchObject({ type: 'trade.bank', give: 'paper' });
+    expect((command as { receive: string }).receive).not.toBe('paper');
+    accepted(state, command);
+  });
+
+  it('relief never gives a commodity the bank has no rate for', () => {
+    const state = holding({}, { paper: 8 });
+    const view = JSON.parse(JSON.stringify(viewOf(state, 'p1'))) as GameView;
+    view.hints!.modules = {};
+    expect(handRelief(turnFor(view))).toBeNull();
+    // 有匯率的同一手牌會換出去。
+    expect(handRelief(turnFor(viewOf(state, 'p1')))).toMatchObject({ type: 'trade.bank', give: 'paper' });
+  });
+
+  it('relief receives the commodity the plan lacks, and only while the commodity bank has it', () => {
+    const state = holding({ lumber: 8 });
+    const command = handRelief(turnFor(viewOf(state, 'p1'), { paper: 2 }));
+    expect(command).toEqual({ type: 'trade.bank', give: 'lumber', receive: 'paper' });
+    accepted(state, command);
+    // 銀行沒有 paper：不送一個必定被拒絕的交易，改換別的。
+    const dry = holding({ lumber: 8 });
+    dry.commodityBank.paper = 0;
+    expect(bankHas(viewOf(dry, 'p1'), 'paper')).toBe(false);
+    const other = handRelief(turnFor(viewOf(dry, 'p1'), { paper: 2 }));
+    expect(other).toMatchObject({ type: 'trade.bank', give: 'lumber' });
+    expect((other as { receive: string }).receive).not.toBe('paper');
+    accepted(dry, other);
+  });
+
+  it('proposeOffer never opens a domestic offer for a missing commodity (the offer would carry no wants)', () => {
+    const state = holding({ lumber: 3, ore: 1 });
+    give(state, 'p2', { wool: 1 });
+    const view = viewOf(state, 'p1');
+    const economy = economyFor(state);
+    // 只缺 commodity：不開價（沒有 want 的報價是白送）。
+    expect(proposeOffer(view, economy, 'p1', { paper: 1 }, 1)).toBeNull();
+    // 資源與 commodity 都缺：同樣不開價，不能只替資源那一半開價。
+    expect(proposeOffer(view, economy, 'p1', { ore: 2, paper: 1 }, 2)).toBeNull();
+    // 對照：缺的是資源就照舊開價，want 是那張資源。
+    expect(proposeOffer(view, economy, 'p1', { ore: 2 }, 1)).toMatchObject({ type: 'trade.offer', want: { ore: 1 } });
   });
 });
 
