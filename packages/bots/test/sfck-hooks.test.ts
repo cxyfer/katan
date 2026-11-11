@@ -24,6 +24,7 @@ import { boardModel, isLandVertex, type BoardModel } from '../src/board.ts';
 import { createFallbackPolicy, fallbackDecision } from '../src/fallback.ts';
 import { rescoreCandidates, turnContext } from '../src/heuristic.ts';
 import { pendingDuty } from '../src/index.ts';
+import { rescoreDelta } from '../src/modules/compose.ts';
 import { botModulesOf } from '../src/modules/registry.ts';
 import type { BanditTarget, BotModule, Scored } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';
@@ -123,6 +124,27 @@ describe('bots platform hooks (SFCK-P): bandit target fold', () => {
       expect(targets).not.toContain(null);
     });
 
+    it('adds sea hexes and the frame only for a profile with a pirate (hasPirate)', () => {
+      const { state } = seaView();
+      const pirate = placePirate(state);
+      const view = viewOf(state, 'p1');
+      const { land, sea } = hexesOf(view);
+      expect(sea.length).toBeGreaterThan(0);
+      for (const id of ['sf-new-shores-2025', 'sf-new-shores-paired-2025', 'sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025']) {
+        expect(getProfile(id)?.hasPirate, id).toBe(true);
+      }
+      expect(defaultBanditTargets(view)).toEqual([...land.filter((hex) => hex !== view.board.robber), ...sea.filter((hex) => hex !== pirate), null]);
+      // 盤面有海格、但 profile 沒有海盜（ck-2025）：初值只有陸地，沒有海格也沒有外框。
+      expect(getProfile('ck-2025')?.hasPirate).toBe(false);
+      const noPirate: GameView = { ...view, profileId: 'ck-2025' };
+      expect(defaultBanditTargets(noPirate)).toEqual(land.filter((hex) => hex !== view.board.robber));
+      expect(banditTargets(noPirate, 'p1', [])).toEqual(defaultBanditTargets(noPirate));
+      // 查不到 profile：維持只看盤面的行為，而且不 throw。
+      const unknown: GameView = { ...view, profileId: 'no-such-profile' };
+      expect(() => defaultBanditTargets(unknown)).not.toThrow();
+      expect(defaultBanditTargets(unknown)).toEqual(defaultBanditTargets(view));
+    });
+
     it('keeps every land hex before the first attack (robber = -1), with and without a pirate', () => {
       const state = emptySfckGame(4);
       const view = viewOf(state, 'p1');
@@ -185,14 +207,17 @@ describe('bots platform hooks (SFCK-P): bandit target fold', () => {
       expect(banditTargets(view, 'p1', [widen])).toEqual([view.board.robber, 1, null]);
     });
 
-    it('only accepts integers and null, ignores non-arrays, and survives a throwing module', () => {
+    it('only accepts in-range integers and null, ignores non-arrays, and survives a throwing module', () => {
       const { view } = baseView();
       const initial = defaultBanditTargets(view);
+      const hexCount = view.board.terrain.length;
       const messy: BotModule = {
         id: 'messy',
-        robberTargets: () => [3, 1.5, Number.NaN, '4', null, undefined, 7, Infinity, { hex: 2 }] as unknown as BanditTarget[],
+        robberTargets: () =>
+          [3, 1.5, Number.NaN, '4', null, undefined, 7, Infinity, { hex: 2 }, -1, hexCount, hexCount - 1, 0, 10_000] as unknown as BanditTarget[],
       };
-      expect(banditTargets(view, 'p1', [messy])).toEqual([3, null, 7]);
+      // 範圍外的整數（負數、等於或超過 hex 數）也丟掉；0 與最後一格都算。
+      expect(banditTargets(view, 'p1', [messy])).toEqual([3, null, 7, hexCount - 1, 0]);
       for (const bad of [undefined, null, 5, 'x', {}] as const) {
         const broken: BotModule = { id: 'broken', robberTargets: () => bad as unknown as BanditTarget[] };
         expect(banditTargets(view, 'p1', [broken])).toEqual(initial);
@@ -284,6 +309,15 @@ describe('bots platform hooks (SFCK-P): bandit target fold', () => {
       expect(view.board.terrain[first!]).toBe('sea');
       expect(banditChoice(turn, 'seven')).toEqual({ target: first });
       expect(draws).not.toHaveBeenCalled();
+      // 整條策略路徑（easy、topK > 1）也一樣：集合有很多項、沒有候選，答案與種子無關，永遠是第一項。
+      expect(banditTargets(view, 'p1', [sea]).length).toBeGreaterThan(2);
+      const frame = withMoveRobber(view, 'p1');
+      const answers = new Set<string>();
+      for (let seed = 1; seed <= 20; seed++) {
+        answers.add(JSON.stringify(createBotPolicy('easy', { modules: [sea] }).decide(frame, { ...ctxFor('p1', 'easy'), seed })));
+      }
+      expect([...answers]).toEqual([JSON.stringify({ type: 'pending.moveRobber', hex: first })]);
+      expect(fallbackDecision(frame, 'p1', [sea])).toEqual({ type: 'pending.moveRobber', hex: first });
     });
 
     it('returns null only when the fold itself is empty', () => {
@@ -349,13 +383,26 @@ describe('bots platform hooks (SFCK-P): bandit target fold', () => {
       expect(fallbackDecision(frame, id, [boom])).toEqual(pendingDuty(frame, id));
     });
 
-    it('does not consume the policy rng: the fold has no rng to draw from', () => {
+    it('is terminal when the fold is empty: no module duty is asked, even one that would send a move', () => {
       const { view, id } = baseView();
-      const turn = turnContext(withMoveRobber(view, id), ctxFor(id, 'easy'), 'easy', []);
-      const draws = vi.spyOn(turn.rng, 'int');
-      pendingDuty(turn.view, id, turn.modules);
-      banditTargets(turn.view, id, turn.modules);
-      expect(draws).not.toHaveBeenCalled();
+      const frame = withMoveRobber(view, id);
+      const asked = vi.fn((): BotCommand => ({ type: 'pending.moveRobber', hex: 0 }));
+      const empty: BotModule = { id: 'fx', robberTargets: () => [], duty: asked };
+      // 集合是完整的合法集合：空的時候沒有任何模組的 duty 能做得更好，整體回 null 交給 server 診斷。
+      expect(pendingDuty(frame, id, [empty])).toBeNull();
+      expect(fallbackDecision(frame, id, [empty])).toBeNull();
+      expect(createFallbackPolicy([empty]).decide(frame, ctxFor(id))).toBeNull();
+      expect(createBotPolicy('standard', { modules: [empty] }).decide(frame, ctxFor(id))).toBeNull();
+      expect(asked).not.toHaveBeenCalled();
+      // 只有「自己欠 moveRobber」才是終止結果：別的待決效果沒有 base 動作時，照舊詢問模組的 duty。
+      const steal = { ...view, pending: { kind: 'steal', actor: id, hex: 0, candidates: [], pirate: false } } as unknown as GameView;
+      expect(fallbackDecision(steal, id, [empty])).toEqual({ type: 'pending.moveRobber', hex: 0 });
+      expect(asked).toHaveBeenCalledTimes(1);
+      // 集合不是空的：base 的第一項優先，duty 不會被問到。
+      asked.mockClear();
+      const one: BotModule = { id: 'fx', robberTargets: () => [4], duty: asked };
+      expect(fallbackDecision(frame, id, [one])).toEqual({ type: 'pending.moveRobber', hex: 4 });
+      expect(asked).not.toHaveBeenCalled();
     });
   });
 });
@@ -408,6 +455,27 @@ describe('bots platform hooks (SFCK-P): rescore', () => {
     expect(list).toEqual([scored(A, 10), scored(B, 9)]);
     // 每個提供者對每個候選各問一次，依模組順序。
     expect(seen).toEqual(['one:fx.a', 'two:fx.a', 'one:fx.b', 'two:fx.b']);
+  });
+
+  it('rescoreDelta (compose.ts) sums the finite deltas of the modules that provide rescore', () => {
+    const { view, id } = idleActionView();
+    const turn = turnContext(view, ctxFor(id), 'standard', []);
+    const args: unknown[][] = [];
+    const one: BotModule = { id: 'one', rescore: (...rest) => (args.push(rest), 1.5) };
+    const two: BotModule = { id: 'two', rescore: () => -0.25 };
+    expect(rescoreDelta([], turn, A)).toBe(0);
+    expect(rescoreDelta([{ id: 'plain' }], turn, A)).toBe(0);
+    expect(rescoreDelta([one, { id: 'plain' }, two], turn, A)).toBe(1.25);
+    expect(args).toEqual([[turn, A]]);
+    // 非有限值視為 0：不能用 −∞ 表達排除，要壓低分數請回有限的負值。
+    const nan: BotModule = { id: 'nan', rescore: () => Number.NaN };
+    const inf: BotModule = { id: 'inf', rescore: () => Infinity };
+    const minusInf: BotModule = { id: 'minus-inf', rescore: () => -Infinity };
+    expect(rescoreDelta([nan, inf, minusInf], turn, A)).toBe(0);
+    expect(rescoreDelta([nan, one, inf, two, minusInf], turn, A)).toBe(1.25);
+    // 骨架用的就是這個加總。
+    const scoredList = [scored(A, 10)];
+    expect(rescoreCandidates(turnContext(view, ctxFor(id), 'standard', [one, two]), scoredList)).toEqual([scored(A, 11.25)]);
   });
 
   it('treats a delta of 0 or a non-finite delta as no change', () => {
