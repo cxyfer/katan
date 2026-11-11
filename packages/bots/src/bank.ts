@@ -33,6 +33,10 @@ export function plannedBank(view: Pick<GameView, 'bank' | 'profileId'>): Record<
  * 投影的 commodity 銀行（C&K 的 `view.modules.citiesKnights.commodityBank`）：與 `view.bank` 一樣只到
  * `BANK_VIEW_CAP`。引擎的 `trade.bank` 以核心狀態的 commodity 存量判斷，所以這裡不依賴 C&K 的型別，只讀
  * 這個欄位；沒有這個模組（或形狀不對）時是 undefined，呼叫端視為沒有存量。
+ *
+ * 技術債：這是骨架裡唯一直接讀模組 view 鍵（`'citiesKnights'`）的地方，與 `rates`、`weights` 走鉤子不一致。
+ * 目前只有 C&K 提供 commodity，所以先保留；出現第二個 commodity 提供者時，改成 `bankStock?` 鉤子，合成
+ * `Economy.bank`（消費者 `bankTradeToward`、`handRelief` 都拿得到 Economy，改動成本低）。
  */
 function commodityBankShown(view: Pick<GameView, 'modules'>): Partial<Record<Commodity, number>> | undefined {
   const entry = view.modules?.['citiesKnights'];
