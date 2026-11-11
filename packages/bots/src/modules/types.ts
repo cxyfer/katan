@@ -112,6 +112,12 @@ export interface BotEconomyHooks {
   vertexBlocker?(model: BoardModel, vertex: number): string | null;
   /** `vertex` 不能蓋建築（C&K：上面有任何騎士，含自己的）；任一模組為 true 就算（OR）。骨架在 `isFreeSpot` 使用。 */
   siteBlocked?(model: BoardModel, vertex: number): boolean;
+  /**
+   * 擲出 7 時超過幾張要棄牌，與 rules 的 `discardLimit` 相同的折疊：依模組順序，每個模組拿到前一個的結果
+   * `base`（第一個是 7）並回傳新的上限（C&K：`base + 2 ×` 自己的城牆數，城牆數讀自己的公開 view）。結果放進
+   * `Economy.handLimit`；`handRelief` 等「手牌太多」的判斷都讀它，不再寫死 7。回傳非有限數字視為沒有調整。
+   */
+  discardLimit?(model: BoardModel, base: number): number;
 
   // ---- 只保留型別，骨架不呼叫。尚無實作者，簽章由第一個實作的版本定稿 ----
   awards?(model: BoardModel): { readonly longestRoad?: boolean }; // 0.4.4

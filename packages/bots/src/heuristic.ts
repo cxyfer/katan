@@ -493,12 +493,12 @@ export function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
   }
 }
 
-/** 手牌 8 張以上時：先買發展卡、再鋪有用的路，最後把過剩資源換成需要的。 */
+/** 手牌超過上限（`Economy.handLimit`，base 為 7，C&K 每座城牆 +2；張數含 commodity）時：先買發展卡、再鋪有用的路，最後把過剩的牌換成需要的。 */
 export function handRelief(turn: TurnContext): Command | null {
   const { view } = turn;
   const economy = turn.economy;
   const hand = economy.hand;
-  if (handSize(hand) < 8) return null;
+  if (handSize(hand) <= economy.handLimit) return null;
   if (view.devDeckSize > 0 && canAfford(hand, COSTS.devCard)) return { type: 'build.devCard' };
   if (economy.left.roads > 0 && canAfford(hand, COSTS.road)) {
     const edge = usefulRoad(turn, economy.left.roads > 3);

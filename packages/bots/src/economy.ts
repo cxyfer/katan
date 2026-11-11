@@ -184,6 +184,9 @@ export function isImmediate(plan: Plan): boolean {
   return plan.immediate ?? (plan.kind === 'city' || (plan.kind === 'settlement' && plan.roads.length === 0));
 }
 
+/** 擲出 7 時不必棄牌的手牌上限（base）；模組的 `discardLimit` 鉤子折疊它，結果是 `Economy.handLimit`。 */
+export const BASE_HAND_LIMIT = 7;
+
 export interface Economy {
   readonly model: BoardModel;
   /** 這局的卡種清單：`RESOURCES` 加上各模組的 `cardKinds`。估值類迴圈（效用、棄牌、ETA）依它。 */
@@ -202,6 +205,8 @@ export interface Economy {
   readonly search: RoadSearch;
   readonly myRoute: number;
   readonly plans: Plan[];
+  /** 手牌上限：超過就會在擲出 7 時棄牌。base 為 7，模組的 `discardLimit` 依序折疊（C&K：每座城牆 +2）。 */
+  readonly handLimit: number;
 }
 
 export const PIP_VALUE = 0.07;
@@ -458,7 +463,11 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
   }
 
   plans.sort(comparePlans);
-  return { model, kinds, hand, left, costs, weights, yield: mine, rates, search, myRoute, plans };
+  const handLimit = modules.reduce((limit, module) => {
+    const next = module.economy?.discardLimit?.(model, limit);
+    return typeof next === 'number' && Number.isFinite(next) ? next : limit;
+  }, BASE_HAND_LIMIT);
+  return { model, kinds, hand, left, costs, weights, yield: mine, rates, search, myRoute, plans, handLimit };
 }
 
 function comparePlans(a: Plan, b: Plan): number {

@@ -43,7 +43,7 @@ import {
   type Economy,
   type KindTable,
 } from '../src/economy.ts';
-import { heuristicPolicy, turnContext } from '../src/heuristic.ts';
+import { handRelief, heuristicPolicy, turnContext } from '../src/heuristic.ts';
 import { citiesKnightsBotModule } from '../src/modules/citiesKnights/index.ts';
 import { COMMODITY_WEIGHT } from '../src/modules/citiesKnights/economy.ts';
 import { createBotPolicy } from '../src/policy.ts';
@@ -621,6 +621,58 @@ describe('receiving commodities, and the cards a pick can name', () => {
     // 資源銀行沒有牌時不挑：commodity 銀行有牌也不算。
     const empty = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
     expect(plentyPick(turn, economy.hand, empty)).toBeNull();
+  });
+});
+
+describe('hand limit (discardLimit)', () => {
+  /** p1 的行動階段，手牌為 `resources` 加 `commodities`，自己有 `walls` 座城牆。 */
+  function withHand(walls: number, resources: Parameters<typeof give>[2], commodities: Parameters<typeof giveCommodities>[2] = {}): GameState {
+    const state = emptyCkGame(4, 0, 'action');
+    state.players[0]!.cityWalls = walls;
+    give(state, 'p1', resources);
+    giveCommodities(state, 'p1', commodities);
+    return state;
+  }
+  const relief = (state: GameState) => handRelief(turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard'));
+
+  it('is 7 in a base game and without a wall, plus 2 per own wall in Cities & Knights', () => {
+    expect(economyFor(withHand(0, {}), 'p1', []).handLimit).toBe(7);
+    const base = viewOf(newGame({ players: 4, profileId: 'base-2025', seed: 1 }).state, 'p1');
+    expect(economyOf(boardModel(base, 'p1'), []).handLimit).toBe(7);
+    expect(economyFor(withHand(0, {})).handLimit).toBe(7);
+    expect(economyFor(withHand(1, {})).handLimit).toBe(9);
+    expect(economyFor(withHand(3, {})).handLimit).toBe(13);
+    // 別人的城牆不算。
+    const other = withHand(0, {});
+    other.players[1]!.cityWalls = 2;
+    expect(economyFor(other).handLimit).toBe(7);
+  });
+
+  it('folds the modules in order, each seeing the previous result, and ignores a non-finite answer', () => {
+    const double: BotModule = { id: 'a', economy: { discardLimit: (_model, base) => base * 2 } };
+    const plusOne: BotModule = { id: 'b', economy: { discardLimit: (_model, base) => base + 1 } };
+    const broken: BotModule = { id: 'c', economy: { discardLimit: () => Number.NaN } };
+    const state = withHand(0, {});
+    expect(economyFor(state, 'p1', [double, plusOne]).handLimit).toBe(15);
+    expect(economyFor(state, 'p1', [plusOne, double]).handLimit).toBe(16);
+    expect(economyFor(state, 'p1', [double, broken, plusOne]).handLimit).toBe(15);
+    expect(economyFor(state, 'p1', [citiesKnightsBotModule, double]).handLimit).toBe(14);
+  });
+
+  it('a wall moves the relief threshold: 8 cards wait, 10 cards are worked off (9 is exactly the limit)', () => {
+    // 沒有城牆：8 張就消化手牌。
+    expect(relief(withHand(0, { lumber: 8 }))).not.toBeNull();
+    expect(relief(withHand(0, { lumber: 7 }))).toBeNull();
+    // 1 座城牆：上限 9。
+    expect(relief(withHand(1, { lumber: 8 }))).toBeNull();
+    expect(relief(withHand(1, { lumber: 9 }))).toBeNull();
+    expect(relief(withHand(1, { lumber: 10 }))).toMatchObject({ type: 'trade.bank', give: 'lumber' });
+    // 手牌張數含 commodity：5 lumber 加 4 paper 是 9 張，加 1 張就是 10。
+    expect(relief(withHand(1, { lumber: 5 }, { paper: 4 }))).toBeNull();
+    expect(relief(withHand(1, { lumber: 5 }, { paper: 5 }))).not.toBeNull();
+    // 2 座城牆：上限 11。
+    expect(relief(withHand(2, { lumber: 11 }))).toBeNull();
+    expect(relief(withHand(2, { lumber: 12 }))).not.toBeNull();
   });
 });
 

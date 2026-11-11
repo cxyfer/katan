@@ -6,6 +6,7 @@
  * - `costs`：騎士、升級、啟動、城牆、醫藥，以及三條軌道的下一級改良。
  * - `hexYield`：森林、牧場、山脈上的城市產 1 張資源加 1 張 commodity；其他地形（含 SF 的金礦）回 undefined。
  * - `vertexBlocker`、`siteBlocked`：騎士封路、騎士所在的點不能蓋建築。
+ * - `discardLimit`：7 加上每座城牆 2 張。
  */
 
 import {
@@ -17,6 +18,7 @@ import {
   CK_TRACK_COMMODITY,
   CK_TRACKS,
   CK_WALL_COST,
+  CK_WALL_HAND_BONUS,
   COMMODITIES,
   TERRAIN_COMMODITY,
   type CardKind,
@@ -112,6 +114,11 @@ function knightsAt(model: BoardModel): ReadonlyMap<number, string> {
   return index;
 }
 
+/** 手牌上限：7 加上每座城牆 2 張（與 rules 的 `discardLimit` 相同；城牆數讀自己的公開 view）。 */
+function discardLimit(model: BoardModel, base: number): number {
+  return base + CK_WALL_HAND_BONUS * (selfOf(model)?.cityWalls ?? 0);
+}
+
 export const citiesKnightsEconomy: BotEconomyHooks = {
   costs,
   cardKinds: () => COMMODITIES,
@@ -120,4 +127,5 @@ export const citiesKnightsEconomy: BotEconomyHooks = {
   hexYield,
   vertexBlocker: (model, vertex) => knightsAt(model).get(vertex) ?? null,
   siteBlocked: (model, vertex) => knightsAt(model).has(vertex),
+  discardLimit,
 };
