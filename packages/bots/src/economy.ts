@@ -2,7 +2,7 @@
  * 經濟評估：手牌、成本缺口、資源權重、產能速率與建造計畫。
  */
 
-import { CARD_KINDS, COMMODITIES, COSTS, RESOURCES, type CardKind, type Commodity, type Resource } from '@catan/rules';
+import { CARD_KINDS, COMMODITIES, COSTS, RESOURCES, type CardKind, type Resource } from '@catan/rules';
 import {
   cityUpgradeYield,
   emptyYield,
@@ -13,7 +13,7 @@ import {
   routeLength,
   searchRoads,
   vertexYield,
-  yieldTotal,
+  resourceTotal,
   type BoardModel,
   type PieceCounts,
   type RoadSearch,
@@ -23,12 +23,12 @@ import type { BotModule } from './modules/types.ts';
 import type { BotLevel } from './types.ts';
 
 /**
- * 手牌：資源恆有值；commodity（C&K）只在持有時才寫入，讀取一律 `?? 0`，base 的物件形狀與只有資源時相同。
- * 型別與 `Yield` 相同，權重與匯率也用它。
+ * 手牌、權重與匯率與 `Yield` 同形：資源恆有值，commodity（C&K）只在持有（或模組回答）時才寫入，讀取一律
+ * `?? 0`，base 的物件形狀與只有資源時相同。這裡只是別名，不另外定義。
  */
-export type Hand = Record<Resource, number> & Partial<Record<Commodity, number>>;
+export type Hand = Yield;
 /** 各卡種的權重或匯率：資源恆有值，commodity 只在模組回答時才有。 */
-export type KindTable = Record<Resource, number> & Partial<Record<Commodity, number>>;
+export type KindTable = Yield;
 export type Cost = Partial<Record<CardKind, number>>;
 
 /** 建造計畫所需的最多新道路數；更遠的空點視為暫時到不了。 */
@@ -104,7 +104,7 @@ export function resourceWeights(model: BoardModel): Record<Resource, number> {
   model.hexResource.forEach((resource, hex) => {
     if (resource) totals[resource] += model.hexPips[hex]!;
   });
-  const mean = yieldTotal(totals) / RESOURCES.length;
+  const mean = resourceTotal(totals) / RESOURCES.length;
   const out = { ...emptyYield() };
   for (const resource of RESOURCES) {
     const ratio = totals[resource] > 0 ? mean / totals[resource] : 1.4;

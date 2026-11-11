@@ -4,7 +4,7 @@
  */
 
 import {
-  COMMODITIES,
+  CARD_KINDS,
   getProfile,
   getTopology,
   RESOURCES,
@@ -32,7 +32,8 @@ export function emptyYield(): Yield {
   return { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
 }
 
-export function yieldTotal(value: Yield): number {
+/** 只加五種資源的張數（不含 commodity）；用在只關心資源的盤面統計。 */
+export function resourceTotal(value: Yield): number {
   return RESOURCES.reduce((sum, resource) => sum + value[resource], 0);
 }
 
@@ -201,7 +202,7 @@ export function vertexYield(model: BoardModel, vertex: number, blockedHex: numbe
     const pips = model.hexPips[hex]!;
     const amounts = model.hexYield?.(model, hex, vertex, city);
     if (amounts !== undefined) {
-      for (const kind of CARD_KIND_ORDER) {
+      for (const kind of CARD_KINDS) {
         const amount = amounts[kind];
         if (amount) out[kind] = (out[kind] ?? 0) + pips * amount;
       }
@@ -213,8 +214,6 @@ export function vertexYield(model: BoardModel, vertex: number, blockedHex: numbe
   return out;
 }
 
-const CARD_KIND_ORDER: readonly CardKind[] = [...RESOURCES, ...COMMODITIES];
-
 /**
  * 聚落升成城市多得的產能。沒有模組的產出鉤子時就是聚落的產能（城市恆為兩倍）；有鉤子時以城市減聚落逐卡種計算。
  */
@@ -223,7 +222,7 @@ export function cityUpgradeYield(model: BoardModel, vertex: number): Yield {
   const city = vertexYield(model, vertex, null, true);
   const settlement = vertexYield(model, vertex);
   const out = emptyYield();
-  for (const kind of CARD_KIND_ORDER) {
+  for (const kind of CARD_KINDS) {
     const gain = (city[kind] ?? 0) - (settlement[kind] ?? 0);
     if (gain > 0) out[kind] = gain;
   }
@@ -237,7 +236,7 @@ export function playerYield(model: BoardModel, playerId: string, ignoreRobber = 
   model.view.board.buildings.forEach((building, vertex) => {
     if (!building || building.player !== playerId) return;
     const single = vertexYield(model, vertex, blocked, building.city);
-    for (const kind of CARD_KIND_ORDER) {
+    for (const kind of CARD_KINDS) {
       const amount = single[kind];
       if (amount) out[kind] = (out[kind] ?? 0) + amount;
     }
