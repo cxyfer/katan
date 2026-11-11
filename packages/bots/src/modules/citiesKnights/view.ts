@@ -240,6 +240,13 @@ export function diplomacyData(frame: PublicModulePendingView): DiplomacyData | n
 
 const command = (type: string, fields: Record<string, unknown> = {}): BotCommand => ({ type, ...fields }) as BotCommand;
 
+/** 放棄放置不帶等級；放置要帶 `level`（引擎沒有等級會拒絕）。 */
+function treasonPlace(vertex: null): BotCommand;
+function treasonPlace(vertex: number, level: number): BotCommand;
+function treasonPlace(vertex: number | null, level?: number): BotCommand {
+  return command('progress.treasonPlace', vertex === null ? { vertex } : { vertex, level });
+}
+
 export const ckCommands = {
   // action
   buildWall: (vertex: number) => command('build.wall', { vertex }),
@@ -267,8 +274,7 @@ export const ckCommands = {
   sabotageDiscard: (cards: readonly CardKind[]) => command('progress.sabotageDiscard', { cards: cards.slice() }),
   weddingGive: (cards: readonly CardKind[]) => command('progress.weddingGive', { cards: cards.slice() }),
   treasonRemove: (vertex: number) => command('progress.treasonRemove', { vertex }),
-  /** `vertex: null` 放棄放置（不檢查等級）；放置時要帶 `level`。 */
-  treasonPlace: (vertex: number | null, level?: number) =>
-    command('progress.treasonPlace', vertex === null || level === undefined ? { vertex } : { vertex, level }),
+  /** `vertex: null` 放棄放置（不檢查等級）；放置（非 null 的 `vertex`）一定要帶 `level`，型別強制。 */
+  treasonPlace,
   diplomacyRoad: (edge: number | null) => command('progress.diplomacyRoad', { edge }),
 };

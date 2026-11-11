@@ -367,6 +367,11 @@ describe('commands and declarations match the rules module', () => {
     expect(ckCommands.improveCity('trade', 9)).toEqual({ type: 'city.improve', track: 'trade', vertex: 9 });
     expect(ckCommands.treasonPlace(null)).toEqual({ type: 'progress.treasonPlace', vertex: null });
     expect(ckCommands.treasonPlace(5, 2)).toEqual({ type: 'progress.treasonPlace', vertex: 5, level: 2 });
+    // 放置一定帶等級：沒有 level 的放置是型別錯誤（引擎會拒絕）。
+    // @ts-expect-error a placement needs a level
+    ckCommands.treasonPlace(5);
+    // @ts-expect-error giving up takes no level
+    ckCommands.treasonPlace(null, 2);
     expect(ckCommands.scienceTake(null)).toEqual({ type: 'science.take', resource: null });
     // 回傳新的陣列，不共用呼叫端的。
     const cards = ['alchemy'];
