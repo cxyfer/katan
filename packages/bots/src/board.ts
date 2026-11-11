@@ -58,14 +58,20 @@ export interface BoardModel {
   readonly harborAt: readonly (HarborType | null)[];
   /**
    * 組合後的盤面掛點（各模組的 economy 鉤子，E-2）。只有至少一個模組提供對應鉤子時才存在；沒有傳入模組的
-   * 模型（tracker、hard）與 base 完全相同。第一個參數以外的語意見 `BotEconomyHooks`。
+   * 模型（tracker、hard）與 base 完全相同。掛點在呼叫時收 model（不閉包綁住建模時的 view）：展開後換了 `view`
+   * 的模型（`{ ...model, view: hypothetical }`）傳進去，讀到的就是假設盤面。語意見 `BotEconomyHooks`。
    */
   /** 擋住路口的非建築棋子擁有者（第一個非 null 勝出）。 */
-  readonly blocker?: (vertex: number) => string | null;
+  readonly blocker?: (model: BoardModel, vertex: number) => string | null;
   /** 路口不能蓋建築（任一模組為 true）。 */
-  readonly siteBlocked?: (vertex: number) => boolean;
+  readonly siteBlocked?: (model: BoardModel, vertex: number) => boolean;
   /** 一座建築在 `hex` 擲中時拿到的張數（第一個非 undefined 勝出）；undefined 表示沿用 base。 */
-  readonly hexYield?: (hex: number, vertex: number, city: boolean) => Readonly<Partial<Record<CardKind, number>>> | undefined;
+  readonly hexYield?: (
+    model: BoardModel,
+    hex: number,
+    vertex: number,
+    city: boolean,
+  ) => Readonly<Partial<Record<CardKind, number>>> | undefined;
 }
 
 interface TopologyTables {
@@ -124,32 +130,31 @@ export function boardModel(view: GameView, selfId: string, modules: readonly Bot
   const sites = hooks.filter((hook) => hook.siteBlocked);
   const yields = hooks.filter((hook) => hook.hexYield);
   if (blockers.length === 0 && sites.length === 0 && yields.length === 0) return base;
-  // 鉤子引用最終模型；模型建好之後才會被呼叫。
-  const model: BoardModel = {
+  // 鉤子拿到的是呼叫端傳入的 model（可能是展開後換了 view 的模型），不是這裡建的那一個。
+  return {
     ...base,
     ...(blockers.length > 0 && {
-      blocker: (vertex: number) => {
+      blocker: (at: BoardModel, vertex: number) => {
         for (const hook of blockers) {
-          const owner = hook.vertexBlocker!(model, vertex);
+          const owner = hook.vertexBlocker!(at, vertex);
           if (owner !== null) return owner;
         }
         return null;
       },
     }),
     ...(sites.length > 0 && {
-      siteBlocked: (vertex: number) => sites.some((hook) => hook.siteBlocked!(model, vertex)),
+      siteBlocked: (at: BoardModel, vertex: number) => sites.some((hook) => hook.siteBlocked!(at, vertex)),
     }),
     ...(yields.length > 0 && {
-      hexYield: (hex: number, vertex: number, city: boolean) => {
+      hexYield: (at: BoardModel, hex: number, vertex: number, city: boolean) => {
         for (const hook of yields) {
-          const amounts = hook.hexYield!(model, hex, vertex, city);
+          const amounts = hook.hexYield!(at, hex, vertex, city);
           if (amounts !== undefined) return amounts;
         }
         return undefined;
       },
     }),
   };
-  return model;
 }
 
 export function isLandHex(model: BoardModel, hex: number): boolean {
@@ -177,7 +182,7 @@ export function isFreeSpot(model: BoardModel, vertex: number): boolean {
   const buildings = model.view.board.buildings;
   if (buildings[vertex]) return false;
   if (!isLandVertex(model, vertex)) return false;
-  if (model.siteBlocked?.(vertex)) return false;
+  if (model.siteBlocked?.(model, vertex)) return false;
   return model.neighbors[vertex]!.every((neighbor) => !buildings[neighbor]);
 }
 
@@ -190,7 +195,7 @@ export function vertexYield(model: BoardModel, vertex: number, blockedHex: numbe
   for (const hex of model.topo.vertices[vertex]!.hexes) {
     if (hex === blockedHex) continue;
     const pips = model.hexPips[hex]!;
-    const amounts = model.hexYield?.(hex, vertex, city);
+    const amounts = model.hexYield?.(model, hex, vertex, city);
     if (amounts !== undefined) {
       for (const kind of CARD_KIND_ORDER) {
         const amount = amounts[kind];
@@ -286,7 +291,7 @@ export function roadStockLeft(view: GameView, playerId: string): number {
 function opponentAt(model: BoardModel, vertex: number, playerId: string): boolean {
   const building = model.view.board.buildings[vertex];
   if (building) return building.player !== playerId;
-  const blocker = model.blocker?.(vertex);
+  const blocker = model.blocker?.(model, vertex);
   return blocker !== undefined && blocker !== null && blocker !== playerId;
 }
 

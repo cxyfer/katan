@@ -145,7 +145,7 @@ describe('knights cut routes and close sites', () => {
     const view = viewOf(state, 'p1');
     const hooked = boardModel(view, 'p1', MODULES);
     const plain = boardModel(view, 'p1');
-    expect(hooked.blocker?.(path[2]!)).toBe('p2');
+    expect(hooked.blocker?.(hooked, path[2]!)).toBe('p2');
     expect(longestRouteLength(state, 'p1')).toBe(2);
     expect(routeLength(hooked, 'p1')).toBe(2);
     expect(routeLength(plain, 'p1')).toBe(4);
@@ -162,8 +162,35 @@ describe('knights cut routes and close sites', () => {
     expect(routeLength(model, 'p1')).toBe(4);
     expect(searchRoads(model, 'p1', 3).distance[path[2]!]).toBeLessThan(Infinity);
     // 騎士所在的點（含自己的）不能蓋建築。
-    expect(model.siteBlocked?.(path[2]!)).toBe(true);
+    expect(model.siteBlocked?.(model, path[2]!)).toBe(true);
     expect(isFreeSpot(model, path[2]!)).toBe(false);
+  });
+
+  it('a model spread over a hypothetical view reads the hypothetical knights, not the view it was built on', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    const [a] = spreadVertices(state, 1);
+    const path = pathFrom(state, a!, 4);
+    setBuilding(state, 'p1', path[0]!, false);
+    roadAlong(state, 'p1', path);
+    // 原本的盤面沒有騎士；假設盤面在 path[2] 放 p2 的騎士。
+    const view = viewOf(state, 'p1');
+    addKnight(state, { player: 'p2', vertex: path[2]!, level: 1, active: false });
+    const hypothetical = viewOf(state, 'p1');
+    const model = boardModel(view, 'p1', MODULES);
+    const spread: BoardModel = { ...model, view: hypothetical };
+    const rebuilt = boardModel(hypothetical, 'p1', MODULES);
+    expect(routeLength(model, 'p1')).toBe(4);
+    expect(routeLength(rebuilt, 'p1')).toBe(2);
+    expect(routeLength(spread, 'p1')).toBe(routeLength(rebuilt, 'p1'));
+    expect(searchRoads(spread, 'p1', 3).distance[path[2]!]).toBe(Infinity);
+    expect(model.siteBlocked?.(model, path[2]!)).toBe(false);
+    expect(spread.siteBlocked?.(spread, path[2]!)).toBe(true);
+    expect(spread.blocker?.(spread, path[2]!)).toBe('p2');
+    expect(isFreeSpot(spread, path[2]!)).toBe(false);
+    // 反過來：由有騎士的盤面展開成沒有騎士的假設盤面，騎士就消失。
+    const lifted: BoardModel = { ...rebuilt, view };
+    expect(routeLength(lifted, 'p1')).toBe(4);
+    expect(lifted.blocker?.(lifted, path[2]!)).toBeNull();
   });
 
   it('the hooks are only present for a model built with the module, and only for the hooks it provides', () => {
@@ -176,8 +203,8 @@ describe('knights cut routes and close sites', () => {
     expect(model.siteBlocked).toBeTypeOf('function');
     expect(model.hexYield).toBeTypeOf('function');
     // 沒有任何騎士時什麼都不擋。
-    expect(model.blocker?.(0)).toBeNull();
-    expect(model.siteBlocked?.(0)).toBe(false);
+    expect(model.blocker?.(model, 0)).toBeNull();
+    expect(model.siteBlocked?.(model, 0)).toBe(false);
   });
 
   it('combines the hooks of several modules: first non-null blocker, any siteBlocked, first answered yield', () => {
@@ -192,14 +219,14 @@ describe('knights cut routes and close sites', () => {
       economy: { vertexBlocker: (_m, v) => (v === 1 ? 'p3' : v === 3 ? 'p4' : null), siteBlocked: (_m, v) => v === 4, hexYield: (_m, hex) => (hex === 0 ? { ore: 5 } : undefined) },
     };
     const model: BoardModel = boardModel(view, 'p1', [first, second]);
-    expect(model.blocker?.(1)).toBe('p2');
-    expect(model.blocker?.(3)).toBe('p4');
-    expect(model.blocker?.(5)).toBeNull();
-    expect(model.siteBlocked?.(2)).toBe(true);
-    expect(model.siteBlocked?.(4)).toBe(true);
-    expect(model.siteBlocked?.(6)).toBe(false);
-    expect(model.hexYield?.(0, 0, false)).toEqual({ ore: 5 });
-    expect(model.hexYield?.(1, 0, false)).toBeUndefined();
+    expect(model.blocker?.(model, 1)).toBe('p2');
+    expect(model.blocker?.(model, 3)).toBe('p4');
+    expect(model.blocker?.(model, 5)).toBeNull();
+    expect(model.siteBlocked?.(model, 2)).toBe(true);
+    expect(model.siteBlocked?.(model, 4)).toBe(true);
+    expect(model.siteBlocked?.(model, 6)).toBe(false);
+    expect(model.hexYield?.(model, 0, 0, false)).toEqual({ ore: 5 });
+    expect(model.hexYield?.(model, 1, 0, false)).toBeUndefined();
   });
 });
 

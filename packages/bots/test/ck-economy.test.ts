@@ -270,14 +270,14 @@ describe('city yield (hexYield)', () => {
     const state = emptyCkGame(4, 0, 'preroll');
     const { hex, vertex, number } = site(state, terrain);
     const model = boardModel(viewOf(state, 'p1'), 'p1', MODULES);
-    expect(model.hexYield?.(hex, vertex, true)).toEqual({ [resource]: 1, [commodity]: 1 });
-    expect(model.hexYield?.(hex, vertex, false)).toBeUndefined();
+    expect(model.hexYield?.(model, hex, vertex, true)).toEqual({ [resource]: 1, [commodity]: 1 });
+    expect(model.hexYield?.(model, hex, vertex, false)).toBeUndefined();
     // 對照引擎：每個鄰接且點數相同的格子都算進去。
     const sameNumber = model.topo.vertices[vertex]!.hexes.filter((candidate) => model.view.board.numbers[candidate] === number);
     const expectCity: Partial<Record<CardKind, number>> = {};
     const expectSettlement: Partial<Record<CardKind, number>> = {};
     for (const candidate of sameNumber) {
-      const kinds = model.hexYield?.(candidate, vertex, true) ?? { [model.hexResource[candidate]!]: 2 };
+      const kinds = model.hexYield?.(model, candidate, vertex, true) ?? { [model.hexResource[candidate]!]: 2 };
       for (const [kind, amount] of Object.entries(kinds)) expectCity[kind as CardKind] = (expectCity[kind as CardKind] ?? 0) + amount!;
       const resourceOf = model.hexResource[candidate]!;
       expectSettlement[resourceOf] = (expectSettlement[resourceOf] ?? 0) + 1;
@@ -290,7 +290,7 @@ describe('city yield (hexYield)', () => {
     const state = emptyCkGame(4, 0, 'preroll');
     const { hex, vertex, number } = site(state, terrain);
     const model = boardModel(viewOf(state, 'p1'), 'p1', MODULES);
-    expect(model.hexYield?.(hex, vertex, true)).toBeUndefined();
+    expect(model.hexYield?.(model, hex, vertex, true)).toBeUndefined();
     const got = produced(state, vertex, true, number);
     for (const commodity of COMMODITIES) expect(got).not.toHaveProperty(commodity);
     expect(got[model.hexResource[hex]!]).toBeGreaterThanOrEqual(2);

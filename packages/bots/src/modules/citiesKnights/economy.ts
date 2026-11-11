@@ -93,7 +93,11 @@ function hexYield(model: BoardModel, hex: number, _vertex: number, city: boolean
   return commodity && resource ? { [resource]: 1, [commodity]: 1 } : undefined;
 }
 
-/** 騎士在路口的索引；以 view 的 knights 陣列為鍵快取，一次決策內只建一次。 */
+/**
+ * 騎士在路口的索引；以 view 的 `knights` 陣列為鍵快取，一次決策內只建一次。每次呼叫都讀傳入 model 的 view，
+ * 所以展開後換了 view 的模型（假設盤面放了騎士）會讀到新的陣列、建新的索引。前提：投影的 `knights` 陣列
+ * 不會被原地修改（每次投影都是新物件；假設盤面要換一個新陣列，不要改舊的）。
+ */
 const knightIndex = new WeakMap<object, ReadonlyMap<number, string>>();
 const NO_KNIGHTS: ReadonlyMap<number, string> = new Map();
 
