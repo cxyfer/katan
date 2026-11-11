@@ -20,7 +20,7 @@ import {
   CK_WALL_COST,
   type CkTrack,
 } from '@catan/rules';
-import { addCosts, etaRounds, handSize, productionValue, type Cost, type Plan } from '../../economy.ts';
+import { addCosts, canAfford, etaRounds, handSize, productionValue, type Cost, type Plan } from '../../economy.ts';
 import type { BotModule, PlanInput, TurnContext } from '../types.ts';
 import { defenseAway, defenseStep, recruitSite } from './defense.ts';
 import { consideredOptions, hasCity } from './improve.ts';
@@ -34,7 +34,7 @@ export const WALL_PLAN = 'citiesKnights.wall' as const;
 const IMPROVE_PREFIX = `${IMPROVE_PLAN}.`;
 
 /** 騎士計畫的基本價值（有城市要守，但還沒有騎士）與蠻族逼近時每一級緊迫度加上的價值。 */
-const KNIGHT_BASE_VALUE = 0.35;
+const KNIGHT_BASE_VALUE = 0.6;
 const KNIGHT_URGENCY_VALUE = 1.2;
 /** 緊迫度：蠻族還差幾艘船（≥ 5 艘時不急）。 */
 const URGENCY_BY_AWAY: Readonly<Record<number, number>> = { 4: 0.2, 3: 0.5, 2: 1, 1: 1.5 };
@@ -69,16 +69,20 @@ export function citiesKnightsPlans(input: PlanInput): Plan[] {
   const easy = level === 'easy';
   const owned = knightsOf(view, model.selfId);
   const want = desiredKnights(threat.pillageable, easy);
-  if (want > 0 && (owned.length < want || threat.away <= defenseAway(level) + 1)) {
-    const urgency = URGENCY_BY_AWAY[threat.away] ?? 0;
-    let value = (owned.length < want ? KNIGHT_BASE_VALUE : 0) + KNIGHT_URGENCY_VALUE * urgency * (threat.atRisk ? 1 : 0.4);
-    // easy 在距離攻擊還很遠時不為騎士存牌。
-    if (easy && threat.away > defenseAway(level) + 1) value = 0;
+  const urgency = URGENCY_BY_AWAY[threat.away] ?? 0;
+  const near = threat.away <= defenseAway(level) + 1;
+  const idle = owned.filter((knight) => !knight.active).length;
+  if (want > 0 && near && idle > 0 && threat.atRisk) {
+    // 手上有躺著的騎士、攻擊逼近：先存下啟動的 grain（每隻 1 張，只備最低等級就夠脫離風險的那些）。
+    const cost: Cost = { ...CK_ACTIVATE_COST };
+    plans.push(planOf(input, KNIGHT_PLAN, cost, cost, KNIGHT_URGENCY_VALUE * urgency));
+  } else if (want > 0 && owned.length < want) {
+    // 騎士不夠：平時就招募（攻擊後所有騎士都躺下，但棋子還在），逼近時價值升高。easy 距離還遠時不存牌。
+    let value = KNIGHT_BASE_VALUE + KNIGHT_URGENCY_VALUE * urgency * (threat.atRisk ? 1 : 0.4);
+    if (easy && !near) value = 0;
     if (value > 0) {
-      const waiting = owned.some((knight) => !knight.active);
-      const inWindow = threat.away <= defenseAway(level);
       const cost = addCosts(CK_KNIGHT_COST, CK_ACTIVATE_COST);
-      plans.push(planOf(input, KNIGHT_PLAN, cost, waiting && inWindow ? CK_ACTIVATE_COST : CK_KNIGHT_COST, value));
+      plans.push(planOf(input, KNIGHT_PLAN, cost, CK_KNIGHT_COST, value));
     }
   }
 
@@ -139,6 +143,8 @@ export const citiesKnightsPlanStep: NonNullable<BotModule['planStep']> = (turn, 
     const threat = threatOf(turn.view, turn.ctx.selfId);
     const want = desiredKnights(threat.pillageable, turn.level === 'easy');
     if (knightsOf(turn.view, turn.ctx.selfId).length >= want) return null;
+    // `nextCost` 可能是啟動的費用；真要招募時，招募自己的費用也要付得起。
+    if (!canAfford(turn.economy.hand, CK_KNIGHT_COST)) return null;
     const site = recruitSite(turn);
     return site === null ? null : ckCommands.recruitKnight(site);
   }

@@ -21,7 +21,7 @@ import { ckCommands, ckHints } from './view.ts';
 
 /** 反應的距離門檻：standard 還差 2 艘船以內，easy 只在還差 1 艘（`position ≥ 6`）。 */
 export function defenseAway(level: BotLevel): number {
-  return level === 'easy' ? 1 : 2;
+  return level === 'easy' ? 1 : 3;
 }
 
 /** 攻擊逼近：還差的船數不超過門檻，而且自己有可掠奪的城市。 */
