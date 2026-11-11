@@ -13,10 +13,10 @@ import type { HardTurn } from './turn.ts';
 
 /** 付完 `spend` 後，主要計畫已持有的資源是否減少。 */
 function hurts(economy: Economy, primary: Cost, spend: Cost): boolean {
-  return (Object.keys(spend) as (keyof Cost)[]).some(
-    (resource) =>
-      economy.hand[resource] - (spend[resource] ?? 0) < Math.min(economy.hand[resource], primary[resource] ?? 0),
-  );
+  return (Object.keys(spend) as (keyof Cost)[]).some((kind) => {
+    const held = economy.hand[kind] ?? 0;
+    return held - (spend[kind] ?? 0) < Math.min(held, primary[kind] ?? 0);
+  });
 }
 
 export function hardBuildDecision(turn: HardTurn): BotCommand | null {

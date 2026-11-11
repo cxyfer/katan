@@ -77,14 +77,50 @@ export interface BotEconomyHooks {
   /** 模組計畫；kind 必須是 `<module id>.<名稱>`。不得呼叫 economyOf。 */
   scoreExtras?(input: PlanInput): readonly Plan[];
 
+  // ---- 0.4.2 實作（C&K；CK-B1 接上骨架，模組清單為空時 base 不變）----
+  /**
+   * 這個模組讓手牌多出的卡種（C&K：paper、cloth、coin）；不得含 Resource。組合：`RESOURCES` 在前，
+   * 依模組順序附加、去重，得到 `Economy.kinds`。手牌、成本、ETA、估值、棄牌與規則 9 都依這份清單；
+   * 清單外的卡種一律視為無法估值。
+   */
+  cardKinds?(model: BoardModel): readonly CardKind[];
+  /**
+   * 給銀行一張該卡種要付的張數，只回答自己 `cardKinds` 內的卡種（C&K：`hints.modules.citiesKnights.commodityRates`）。
+   * 資源一律讀 `hints.bankRates`（已含模組調整），模組回傳的資源鍵忽略。缺漏的卡種視為不能與銀行交易。
+   */
+  rates?(model: BoardModel): Readonly<Partial<Record<CardKind, number>>>;
+  /**
+   * 卡種的估值權重，與 `resourceWeights` 同尺度；只回答自己 `cardKinds` 內的卡種，資源權重維持 base。
+   * 先出現的模組優先；缺漏的模組卡種權重為 0。
+   */
+  weights?(model: BoardModel): Readonly<Partial<Record<CardKind, number>>>;
+  /**
+   * `vertex` 上的一座建築（`city` 可以是假設，例如城市計畫）在 `hex` 擲中時拿到的張數。依模組順序詢問，第一個
+   * 非 undefined 勝出；都沒有回答時用 base：`hexResource` 的資源 `city ? 2 : 1` 張（沙漠、海、金礦為空）。
+   * 模組只回答自己定義產出的地形，其餘回 undefined（金礦仍由 `goldPipsAt` 計價）。
+   */
+  hexYield?(
+    model: BoardModel,
+    hex: number,
+    vertex: number,
+    city: boolean,
+  ): Readonly<Partial<Record<CardKind, number>>> | undefined;
+  /**
+   * 擋住 `vertex` 的非建築棋子的擁有者（C&K：騎士），沒有則回 null；第一個非 null 勝出。骨架在道路 BFS
+   * （`searchRoads`）與路線長度（`routeLength`）把「擁有者不是自己」當成對手建築，自己的不擋。
+   */
+  vertexBlocker?(model: BoardModel, vertex: number): string | null;
+  /** `vertex` 不能蓋建築（C&K：上面有任何騎士，含自己的）；任一模組為 true 就算（OR）。骨架在 `isFreeSpot` 使用。 */
+  siteBlocked?(model: BoardModel, vertex: number): boolean;
+  /**
+   * 擲出 7 時超過幾張要棄牌，與 rules 的 `discardLimit` 相同的折疊：依模組順序，每個模組拿到前一個的結果
+   * `base`（第一個是 7）並回傳新的上限（C&K：`base + 2 ×` 自己的城牆數，城牆數讀自己的公開 view）。結果放進
+   * `Economy.handLimit`；`handRelief` 等「手牌太多」的判斷都讀它，不再寫死 7。回傳非有限數字視為沒有調整。
+   */
+  discardLimit?(model: BoardModel, base: number): number;
+
   // ---- 只保留型別，骨架不呼叫。尚無實作者，簽章由第一個實作的版本定稿 ----
   awards?(model: BoardModel): { readonly longestRoad?: boolean }; // 0.4.4
-  cardKinds?(model: BoardModel): readonly CardKind[]; // 0.4.2
-  rates?(model: BoardModel): Readonly<Partial<Record<CardKind, number>>>; // 0.4.2
-  weights?(model: BoardModel): Readonly<Partial<Record<CardKind, number>>>; // 0.4.2
-  hexYield?(model: BoardModel, hex: number, vertex: number): Readonly<Partial<Record<CardKind, number>>> | undefined; // 0.4.2
-  vertexBlocker?(model: BoardModel, vertex: number): string | null; // 0.4.2
-  siteBlocked?(model: BoardModel, vertex: number): boolean; // 0.4.2
   routeEdge?(model: BoardModel, edge: number): boolean | undefined; // 延後（SF §11-6）
 }
 
