@@ -72,12 +72,17 @@ export function sevenValue(turn: TurnContext): number {
   return value;
 }
 
-/** 紅骰 `red` 的進步卡抽牌價值：每個軌道 1/6 的機會擲到城門，自己抽到加分、對手抽到依威脅權重扣分。 */
+/**
+ * 紅骰 `red` 的進步卡抽牌價值：每個軌道 1/6 的機會擲到城門，自己抽到加分、對手抽到依威脅權重扣分。
+ * 只用在 Alchemy 的估值（手牌張數含正要打出的 Alchemy）。
+ */
 export function drawValue(turn: TurnContext, red: number): number {
   const { view } = turn;
   const decks = ckView(view)?.decks;
-  // 手牌已滿，多抽到的牌會被棄掉：價值打折。
-  const mineFactor = progressHeld(turn) >= 4 ? 0.5 : 1;
+  // 手牌已滿，多抽到的牌會被棄掉：價值打折。Alchemy 打出後會先離開手牌（擲骰在它之後），
+  // 所以用「打出 Alchemy 之後」的張數估計：手上 4 張含 Alchemy 時，還剩一個空位可以抽。
+  const handAfterAlchemy = Math.max(0, progressHeld(turn) - 1);
+  const mineFactor = handAfterAlchemy >= 4 ? 0.5 : 1;
   let value = 0;
   for (const track of CK_TRACKS) {
     if ((decks?.[track] ?? 1) <= 0) continue;

@@ -46,7 +46,7 @@ import {
   interactiveCardActions,
   inventionPlan,
 } from '../src/modules/citiesKnights/cards-interactive.ts';
-import { ALCHEMY_MIN, alchemyChoice, citiesKnightsPreroll, sevenValue } from '../src/modules/citiesKnights/preroll.ts';
+import { ALCHEMY_MIN, alchemyChoice, citiesKnightsPreroll, drawValue, sevenValue } from '../src/modules/citiesKnights/preroll.ts';
 import {
   TACTIC_MIN,
   blockValue,
@@ -776,6 +776,26 @@ describe('Alchemy：窮舉 36 種骰面', () => {
     expect(choice.yellow + choice.red).toBe(8);
     // 8 的組合裡紅骰最小的是 2（2 + 6），其次 3、4：抽卡的紅骰 ≤ 4 都可以，最小的紅骰先被選到。
     expect(choice.red).toBeLessThanOrEqual(4);
+  });
+
+  it('counts the hand after Alchemy leaves it: a full hand of four still has room for one draw', () => {
+    // 三人的三條軌道都是 1 級（紅骰 ≤ 2 就抽）；p1 手上 4 張含 Alchemy。Alchemy 先打出，手牌 4→3，抽得下。
+    const { state } = alchemyGame();
+    for (const id of ['p1', 'p2', 'p3']) {
+      for (const track of ['science', 'trade', 'politics'] as const) setImprovement(state, id, track, 1);
+    }
+    handCards(state, 'p1', ['guildDues', 'wedding', 'treason']);
+    expect(state.players[0]!.progressCards).toHaveLength(4);
+    const turn = turnOf(state);
+    // 紅骰 2 對自己仍有正的抽牌價值（沒有被腰斬成負值）。
+    expect(drawValue(turn, 2)).toBeGreaterThan(0);
+    const choice = alchemyChoice(turn)!;
+    expect([choice.yellow, choice.red]).toEqual([6, 2]);
+    const command = decide(state);
+    expect(command).toMatchObject({ type: 'progress.play', card: 'alchemy', dice: [6, 2] });
+    expectAccepted(state, 'p1', command);
+    const after = actCk(state, 'p1', command as never).state;
+    expect(after.players[0]!.progressCards).toHaveLength(3);
   });
 });
 
