@@ -546,10 +546,13 @@ function pillageable(state: GameState, playerId: string): boolean {
   );
 }
 
+/** 計數的指令：C&K 的行動與回應指令（建城牆、改良、騎士、進步卡、科學獎勵、蠻族）。 */
+const CK_COMMAND = /^(build\.wall|city\.|knight\.|progress\.|science\.|barbarians\.)/;
+
 /**
  * 鍵（全部是整數累計，`harness` 會再加上 `citiesKnights.` 前綴）：
- * - `cmd.<type>`：保底以外的策略送出的指令；`cmd.<level>.<type>` 依座位難度細分；
- * - `ev.<type>`：全部來源的事件；`ev.policy.<type>`、`ev.<level>.<type>`：由策略指令引起的事件（level 為 standard／easy）；
+ * - `cmd.<type>`：保底以外的策略送出的 C&K 指令；`cmd.<level>.<type>` 依座位難度細分；
+ * - `ev.<type>`：全部來源的 `ck.*` 事件；`ev.policy.<type>`、`ev.<level>.<type>`：由策略指令引起的事件（level 為 standard／easy）；
  * - `card.<card>`：策略打出的進步卡（M3、M7）；
  * - `attack.defenders`、`attack.barbarians`：蠻族攻擊的結果（M4）；
  * - `exposed.<player>`：該玩家在幾次攻擊前有會被掠奪的城；`lost.<player>`：失去幾座城（M5，test 依座位難度合計）；
@@ -564,15 +567,18 @@ class CkMechanicsTally implements MechanicsTally {
 
   observe(step: MechanicsStep): void {
     const { level, command, source, before, events } = step;
-    if (source === 'policy') {
+    if (source === 'policy' && CK_COMMAND.test(command.type)) {
       this.bump(`cmd.${command.type}`);
       this.bump(`cmd.${level}.${command.type}`);
     }
     for (const event of events) {
-      this.bump(`ev.${event.type}`);
-      if (source === 'policy') {
-        this.bump(`ev.policy.${event.type}`);
-        this.bump(`ev.${level}.${event.type}`);
+      // 只計 C&K 自己的事件：bench 把每個鍵都印成一欄，base 的事件與指令由 base 的計數涵蓋。
+      if (event.type.startsWith('ck.')) {
+        this.bump(`ev.${event.type}`);
+        if (source === 'policy') {
+          this.bump(`ev.policy.${event.type}`);
+          this.bump(`ev.${level}.${event.type}`);
+        }
       }
       const params = event.params as Record<string, unknown>;
       switch (event.type) {

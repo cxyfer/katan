@@ -380,7 +380,7 @@ describe('Cities & Knights B-GAME', () => {
         expect.soft(metropolises, `M6 ${label}: metropolises at the end ${metropolises}`).toBeGreaterThanOrEqual(5);
 
         const types = new Set(stats.flatMap((s) => Object.keys(s.cards)));
-        console.log(`Q2 ${label}: M4 defended ${defended}, M6 metropolises ${metropolises}, M7 types ${types.size}/12`);
+        console.log(`Q2 ${label}: M4 defended ${defended}, M6 metropolises ${metropolises}, M7 types ${types.size}/12, max steps ${Math.max(...stats.map((s) => s.steps))}, longest stagnation ${Math.max(...stats.map((s) => s.longestStagnation))}, max window ${Math.max(...stats.map((s) => s.maxWindowCommands))}`);
         expect.soft(types.size, `M7 ${label}: F1 card types played ${types.size}/12 (${[...types].sort().join(',')})`).toBeGreaterThanOrEqual(10);
       }
     }
