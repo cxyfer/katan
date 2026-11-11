@@ -29,12 +29,14 @@ import {
   giveCommodities,
   handCards,
   pathFrom,
+  rollRng,
   roadAlong,
   setBuilding,
   setImprovement,
+  SHIP,
   spreadVertices,
 } from '../../rules/test/ck-helpers.ts';
-import { give } from '../../rules/test/helpers.ts';
+import { forceTurn, give } from '../../rules/test/helpers.ts';
 import { boardModel } from '../src/board.ts';
 import { economyOf } from '../src/economy.ts';
 import { dedupeCandidates, turnContext } from '../src/heuristic.ts';
@@ -62,7 +64,7 @@ import type { TurnContext } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import type { BotCommand, BotContext, BotLevel } from '../src/types.ts';
 import { stripComments } from './families.ts';
-import { newBotGame } from './harness.ts';
+import { cloneState, newBotGame } from './harness.ts';
 
 // ---------------------------------------------------------------------------
 // 工具
@@ -616,16 +618,32 @@ describe('B1 審查留下的測試', () => {
     expect(model.hexYield!(model, hex!, a!, false)).toBeUndefined();
   });
 
-  it('a real build.wall raises the discard threshold by two, matching Economy.handLimit', () => {
-    const state = emptyCkGame(4, 0, 'action');
-    const [a] = spreadVertices(state, 1);
-    setBuilding(state, 'p1', a!, true);
-    give(state, 'p1', { brick: 2 });
-    const before = economyOf(boardModel(viewOf(state, 'p1'), 'p1', [citiesKnightsBotModule]), [citiesKnightsBotModule]);
-    expect(before.handLimit).toBe(7);
-    const walled = actCk(state, 'p1', { type: 'build.wall', vertex: a! }).state;
-    const after = economyOf(boardModel(viewOf(walled, 'p1'), 'p1', [citiesKnightsBotModule]), [citiesKnightsBotModule]);
-    expect(after.handLimit).toBe(9);
+  it('a real build.wall raises the discard threshold by two: the engine\'s roll-7 discard matches Economy.handLimit', () => {
+    const limitOf = (state: GameState): number =>
+      economyOf(boardModel(viewOf(state, 'p1'), 'p1', [citiesKnightsBotModule]), [citiesKnightsBotModule]).handLimit;
+    const walled = (): GameState => {
+      const state = emptyCkGame(4, 0, 'action');
+      const [a] = spreadVertices(state, 1);
+      setBuilding(state, 'p1', a!, true);
+      give(state, 'p1', { brick: 2 });
+      const built = actCk(state, 'p1', { type: 'build.wall', vertex: a! }).state;
+      built.players[0]!.resources.brick = 0;
+      return built;
+    };
+    expect(limitOf(emptyCkGame(4, 0, 'action'))).toBe(7);
+    const base = walled();
+    expect(limitOf(base)).toBe(9);
+    // 擲出 7：手牌恰為上限不必棄，多 1 張就要棄一半（無條件捨去）。
+    for (const [hand, required] of [[9, null], [10, 5], [11, 5]] as const) {
+      const state = cloneState(base);
+      give(state, 'p1', { lumber: hand });
+      forceTurn(state, 0, 'preroll');
+      state.windowId += 1;
+      const rolled = actCk(state, 'p1', { type: 'turn.roll' }, rollRng(3, 4, SHIP)).state;
+      const pending = rolled.pending as { kind: string; required: Record<string, number> } | null;
+      expect(pending?.required?.p1 ?? null, `hand ${hand}`).toBe(required);
+      expect(hand > limitOf(state)).toBe(required !== null);
+    }
   });
 
   it('dedupe merges a candidate with an undefined field with the same one lacking the field', () => {

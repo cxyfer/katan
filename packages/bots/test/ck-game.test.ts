@@ -361,6 +361,10 @@ describe('Cities & Knights B-GAME', () => {
         expect.soft(s.dutyFrames, `${game}: C&K frames answered by the duty instead of the strategy`).toBe(0);
       }
 
+      console.log(
+        `Q2 ${label}: M1 min recruit ${Math.min(...stats.map((s) => s.recruits))} activate ${Math.min(...stats.map((s) => s.activates))}, M2 min level ${Math.min(...stats.map((s) => s.maxImprovement))}, M3 min plays ${Math.min(...stats.map((s) => s.plays))}`,
+      );
+
       // M4–M7：每格 10 局合計，只在種子數 ≥ 10 時檢查。
       if (seedCount >= 10) {
         const defended = stats.reduce((sum, s) => sum + s.defended, 0);
