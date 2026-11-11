@@ -11,7 +11,8 @@ test-only fixture then fills player 1's hand so that most actions are
 available. Each table is captured with the rail collapsed and expanded, on
 desktop (1366x768), phone (390x844) and a phone held sideways (844x390,
 touch, the compact-landscape layout),
-plus one capture from another seat (not their turn, one shared reason).
+plus English on desktop and one capture from another seat (not their turn,
+one shared reason). File names end in ``-<width>x<height>-<locale>``.
 """
 import json
 import sys
@@ -97,7 +98,9 @@ def open_table(browser, table, seat, viewport):
     return context, page
 
 
-def capture(page, name, note):
+def capture(page, name, note, locale='zh-Hant'):
+    size = page.viewport_size
+    name = f"{name}-{size['width']}x{size['height']}-{locale}"
     settle(page, 600)
     path = ckkit.OUT / f'{name}.png'
     page.screenshot(path=str(path), animations='disabled')
@@ -138,14 +141,24 @@ def main():
                 fill_hand(table)
                 for viewport in VIEWPORTS:
                     context, page = open_table(browser, table, 0, viewport)
-                    capture(page, f'{slug}-collapsed-{viewport}', f'{profile}: own action phase, rail collapsed')
+                    capture(page, f'{slug}-collapsed', f'{profile}: own action phase, rail collapsed')
                     expand(page, viewport)
-                    capture(page, f'{slug}-expanded-{viewport}', f'{profile}: own action phase, rail expanded')
+                    capture(page, f'{slug}-expanded', f'{profile}: own action phase, rail expanded')
                     context.close()
-                context, page = open_table(browser, table, 1, 'desktop')
-                capture(page, f'{slug}-waiting-collapsed-desktop', f'{profile}: another seat, rail collapsed')
+                # 英文標籤較長，在桌機展開檢查換行。
+                context, page = open_table(browser, table, 0, 'desktop')
+                page.get_by_test_id('locale-switch-game').select_option('en')
+                expect(page.get_by_test_id('action-rail')).to_have_attribute('aria-label', 'Actions')
                 expand(page, 'desktop')
-                capture(page, f'{slug}-waiting-expanded-desktop', f'{profile}: another seat, one shared reason')
+                capture(page, f'{slug}-expanded', f'{profile}: own action phase, rail expanded, English', 'en')
+                page.get_by_test_id('locale-switch-game').select_option('zh-Hant')
+                expect(page.get_by_test_id('action-rail')).to_have_attribute('aria-label', '行動')
+                page.wait_for_timeout(500)
+                context.close()
+                context, page = open_table(browser, table, 1, 'desktop')
+                capture(page, f'{slug}-waiting-collapsed', f'{profile}: another seat, rail collapsed')
+                expand(page, 'desktop')
+                capture(page, f'{slug}-waiting-expanded', f'{profile}: another seat, one shared reason')
                 context.close()
                 for context in table.contexts:
                     context.close()
