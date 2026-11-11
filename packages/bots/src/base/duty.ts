@@ -7,7 +7,8 @@ import { banditTargets } from './robber.ts';
 
 /**
  * 自己欠的待決效果；沒有則回傳 null。`modules` 只用在 moveRobber：取盜賊目標 fold 的第一項
- * （`banditTargets`）；省略時沒有模組，結果與 base 相同。
+ * （`banditTargets`）；省略時沒有模組，結果與 base 相同。有模組的 profile 必須傳 `modules`（否則 fold 看不到
+ * 模組的收窄，可能選到不合法的目標）；一般呼叫端請用 `fallbackPolicy`，它會依 profile 帶入模組。
  */
 export function pendingDuty(view: GameView, selfId: string, modules: readonly BotModule[] = []): Command | null {
   const pending = view.pending;

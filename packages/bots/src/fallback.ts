@@ -30,7 +30,12 @@ export function fallbackDecision(view: GameView, selfId: string, modules: readon
   const pending = view.pending;
   if (pending) {
     if (isModuleFrame(pending) && pending.responders[0] !== selfId) return null;
-    return pendingDuty(view, selfId, modules) ?? askDuty() ?? null;
+    const duty = pendingDuty(view, selfId, modules);
+    if (duty !== null) return duty;
+    // 自己欠 moveRobber 而 fold 為空：集合是完整的合法集合，沒有任何模組的 duty 能做得更好，直接回 null
+    // 交給 server 診斷，不再詢問模組（否則可能送出集合外的指令）。
+    if (pending.kind === 'moveRobber' && pending.actor === selfId) return null;
+    return askDuty() ?? null;
   }
   if (view.turn.playerId !== selfId) return null;
   const hints = view.hints;
