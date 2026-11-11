@@ -17,7 +17,7 @@
  * 決定性（P4）：不消耗亂數；同分取順序靠前者（玩家依 `view.players`，路口與邊依編號）。
  */
 
-import { CARD_KINDS, RESOURCES, type PublicPlayerView, type Resource } from '@catan/rules';
+import { BASE_AWARD_RULES, CARD_KINDS, RESOURCES, type PublicPlayerView, type Resource } from '@catan/rules';
 import { isFreeSpot, routeLength, searchRoads, type BoardModel } from '../../board.ts';
 import { PIP_VALUE } from '../../economy.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';
@@ -328,6 +328,30 @@ function routeAfterRemoval(turn: TurnContext, edge: number, owner: string): numb
   return routeLength(at, owner);
 }
 
+/**
+ * 持有者 `owner` 的最長路線掉到 `after` 之後，最長道路由誰持有（照 rules 的 `recomputeAwards`，C&K 沿用基礎規則）：
+ * - owner 仍有資格（≥ 最短長度）：依座位順序第一個「嚴格長於」owner 的人接手，沒有就保留；平手不奪走。
+ * - owner 失去資格：有資格的人之中取最長，同長取座位最小；沒有人有資格就空缺（`null`）。
+ * `lengths` 是各人目前的最長路線（owner 以 `after` 取代）。
+ */
+export function roadHolderAfter(
+  players: readonly Pick<PublicPlayerView, 'id' | 'seat'>[],
+  lengths: ReadonlyMap<string, number>,
+  owner: string,
+  after: number,
+): string | null {
+  const minimum = BASE_AWARD_RULES.minLongestRoad;
+  const ordered = players
+    .slice()
+    .sort((a, b) => a.seat - b.seat)
+    .map((player) => ({ id: player.id, length: player.id === owner ? after : (lengths.get(player.id) ?? 0) }));
+  const candidates = ordered.filter((player) => player.length >= minimum);
+  if (after >= minimum) return candidates.find((player) => player.length > after)?.id ?? owner;
+  if (candidates.length === 0) return null;
+  const longest = Math.max(...candidates.map((player) => player.length));
+  return candidates.find((player) => player.length === longest)!.id;
+}
+
 /** Diplomacy：拆掉別人的開放道路。價值在於讓最長道路的持有者掉下來，或縮短領先者的路線。 */
 function diplomacy(ctx: Context, targets: Record<string, unknown>): Play | null {
   const { turn, forced } = ctx;
@@ -347,12 +371,9 @@ function diplomacy(ctx: Context, targets: Record<string, unknown>): Play | null 
     if (drop <= 0) continue;
     let value = 0.12 * drop * rivalWeight(turn, owner);
     if (holder === owner.id) {
-      const others = Math.max(0, ...view.players.filter((player) => player.id !== owner.id).map((player) => lengths.get(player.id) ?? 0));
-      if (after < 5 || others > after) {
-        // 持有者失去最長道路（2 分）；自己正好是次長而且夠長，就接手。
-        value += 2;
-        if ((lengths.get(self) ?? 0) >= 5 && (lengths.get(self) ?? 0) >= others) value += 2;
-      }
+      // 照 rules 的重算規則推演誰接手：持有者失去 2 分；只有自己真的接到才再加 2 分（同長時座位較後的拿不到）。
+      const next = roadHolderAfter(view.players, lengths, owner.id, after);
+      if (next !== owner.id) value += next === self ? 4 : 2;
     }
     if (!best || value > best.value + 1e-9) best = { edge, value };
   }

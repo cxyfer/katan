@@ -45,6 +45,7 @@ import {
   harborOfferActions,
   interactiveCardActions,
   inventionPlan,
+  roadHolderAfter,
 } from '../src/modules/citiesKnights/cards-interactive.ts';
 import { ALCHEMY_MIN, alchemyChoice, citiesKnightsPreroll, drawValue, sevenValue } from '../src/modules/citiesKnights/preroll.ts';
 import {
@@ -830,6 +831,84 @@ describe('Alchemy：窮舉 36 種骰面', () => {
       state.progressDecks.science = [];
       expect(drawValue(turnOf(state), 2)).toBe(0);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Diplomacy：最長道路的接手者（照 rules 的重算規則）
+// ---------------------------------------------------------------------------
+
+describe('Diplomacy：最長道路由誰接手', () => {
+  const players = [
+    { id: 'p1', seat: 0 },
+    { id: 'p2', seat: 1 },
+    { id: 'p3', seat: 2 },
+    { id: 'p4', seat: 3 },
+  ];
+  const lengthsOf = (p1: number, p3: number, p4: number): Map<string, number> =>
+    new Map([['p1', p1], ['p2', 9], ['p3', p3], ['p4', p4]]);
+
+  it('hands a tie to the earliest seat once the holder drops below five', () => {
+    expect(roadHolderAfter(players, lengthsOf(5, 5, 0), 'p2', 4)).toBe('p1');
+    expect(roadHolderAfter(players, lengthsOf(0, 5, 5), 'p2', 4)).toBe('p3');
+    // 傳入的順序不影響結果：依座位排。
+    expect(roadHolderAfter(players.slice().reverse(), lengthsOf(0, 5, 5), 'p2', 4)).toBe('p3');
+  });
+
+  it('gives the award to the longest eligible road, and to nobody when none reaches five', () => {
+    expect(roadHolderAfter(players, lengthsOf(0, 5, 6), 'p2', 4)).toBe('p4');
+    expect(roadHolderAfter(players, lengthsOf(4, 0, 4), 'p2', 4)).toBeNull();
+  });
+
+  it('keeps the holder on a tie while it still has five, and lets the first strictly longer seat take over', () => {
+    // 持有者仍有 5 條、對手 5 條：平手不奪走。
+    expect(roadHolderAfter(players, lengthsOf(5, 5, 5), 'p2', 5)).toBe('p2');
+    // 嚴格較長的人接手，但是依座位順序第一個，不是最長的那個。
+    expect(roadHolderAfter(players, lengthsOf(0, 6, 7), 'p2', 5)).toBe('p3');
+    expect(roadHolderAfter(players, lengthsOf(0, 5, 7), 'p2', 5)).toBe('p4');
+  });
+
+  /** 每人的道路條數（這些路都是單一路徑，條數就是最長路線）。 */
+  function roadLengths(state: GameState): Map<string, number> {
+    const lengths = new Map(state.players.map((player) => [player.id, 0]));
+    for (const road of state.board.roads) if (road) lengths.set(road.player, (lengths.get(road.player) ?? 0) + 1);
+    return lengths;
+  }
+
+  /** 三條互不相連的 5 步路：p2（持有者，起點有聚落，最末一條開放）、p1、p3。 */
+  function tiedRoadsGame(seat: number): GameState {
+    const state = emptyCkGame(4, seat);
+    const theirs = freePath(state, 5);
+    setBuilding(state, 'p2', theirs[0]!, false);
+    roadAlong(state, 'p2', theirs);
+    const first = freePath(state, 5, theirs);
+    roadAlong(state, 'p1', first);
+    const third = freePath(state, 5, [...theirs, ...first]);
+    roadAlong(state, 'p3', third);
+    state.awards.longestRoad = 'p2';
+    handCards(state, state.players[seat]!.id, ['diplomacy']);
+    return state;
+  }
+
+  it('does not count on taking the award when a tied rival sits in an earlier seat (rules agree)', () => {
+    const state = tiedRoadsGame(2);
+    // 三人各 5 條；打掉 p2 的最末一條後 p2 剩 4 條：p1 與 p3 平手，座位較前的 p1 拿走。
+    expect(roadHolderAfter(viewOf(state, 'p3').players, roadLengths(state), 'p2', 4)).toBe('p1');
+    const candidate = candidateOf(state, 'diplomacy', 'standard', 'p3');
+    expect(candidate, 'p3 still plays Diplomacy to strip the holder').toBeDefined();
+    expect(state.board.roads[fieldsOf(candidate!.item).edge as number]?.player).toBe('p2');
+    const after = actCk(state, 'p3', candidate!.item as never).state;
+    expect(after.awards.longestRoad).toBe('p1');
+  });
+
+  it('counts on taking the award when self is the earliest tied seat (rules agree)', () => {
+    const state = tiedRoadsGame(0);
+    expect(roadHolderAfter(viewOf(state, 'p1').players, roadLengths(state), 'p2', 4)).toBe('p1');
+    const candidate = candidateOf(state, 'diplomacy');
+    expect(candidate).toBeDefined();
+    expect(state.board.roads[fieldsOf(candidate!.item).edge as number]?.player).toBe('p2');
+    const after = actCk(state, 'p1', candidate!.item as never).state;
+    expect(after.awards.longestRoad).toBe('p1');
   });
 });
 
