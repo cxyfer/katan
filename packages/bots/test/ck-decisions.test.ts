@@ -58,13 +58,14 @@ import {
 import { mainTrack, trackOptions } from '../src/modules/citiesKnights/improve.ts';
 import { chaseCandidates, chaseValue, threatOf } from '../src/modules/citiesKnights/knights.ts';
 import { IMPROVE_PLAN, KNIGHT_PLAN, WALL_PLAN, citiesKnightsPlanStep, desiredKnights } from '../src/modules/citiesKnights/plans.ts';
-import { citySetupScore } from '../src/modules/citiesKnights/setup.ts';
+import { citySetupScore, touchesOreOrGrain } from '../src/modules/citiesKnights/setup.ts';
 import { commodityTradeActions } from '../src/modules/citiesKnights/trade.ts';
 import type { BotModule, TurnContext } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import type { BotCommand, BotContext, BotLevel } from '../src/types.ts';
 import { stripComments } from './families.ts';
-import { cloneState, newBotGame } from './harness.ts';
+import { botSeats, cloneState, mixedLevels, newBotGame, runBotGame, viewFor } from './harness.ts';
+import { citiesKnightsKit } from './modules/citiesKnights.ts';
 
 // ---------------------------------------------------------------------------
 // 工具
@@ -170,7 +171,7 @@ describe('setup 第 2 輪的城市選點', () => {
     throw new Error('no second round reached');
   }
 
-  it('picks a legal vertex with the best city score, and touches ore or grain', () => {
+  it('picks the best city score among the legal points that touch ore or grain', () => {
     const { state, actor } = secondRound();
     const view = viewOf(state, actor);
     const model = boardModel(view, actor, [citiesKnightsBotModule]);
@@ -178,7 +179,9 @@ describe('setup 第 2 輪的城市選點', () => {
     expect(command.type).toBe('setup.placeBuilding');
     const legal = view.hints!.legalSettlements;
     expect(legal).toContain(command.vertex);
-    const best = Math.max(...legal.map((vertex) => citySetupScore(model, vertex)));
+    const fitting = legal.filter((vertex) => touchesOreOrGrain(model, vertex));
+    const pool = fitting.length > 0 ? fitting : legal;
+    const best = Math.max(...pool.map((vertex) => citySetupScore(model, vertex)));
     expect(citySetupScore(model, command.vertex)).toBeCloseTo(best, 9);
     const resources = model.topo.vertices[command.vertex]!.hexes.map((hex) => model.hexResource[hex]);
     expect(resources.some((resource) => resource === 'ore' || resource === 'grain'), `hexes ${resources.join(',')}`).toBe(true);
@@ -196,6 +199,88 @@ describe('setup 第 2 輪的城市選點', () => {
     expect(withOne.length).toBeGreaterThan(0);
     const best = (vertices: number[]) => Math.max(...vertices.map((vertex) => citySetupScore(model, vertex)));
     expect(best(withOne)).toBeGreaterThan(best(without));
+  });
+
+  /** 與 B-GAME 相同的對局（`runBotGame`、`mixedLevels` 座位）走完開局，記下第 2 輪每次放置：合法點、選了哪裡、相鄰地形。 */
+  function roundTwoChoices(players: number, seed: number) {
+    const levels = mixedLevels(players, seed);
+    const choices: { actor: string; level: BotLevel; legal: number[]; chosen: number; touches: (vertex: number) => boolean }[] = [];
+    runBotGame({
+      seats: botSeats(levels, (level) => createBotPolicy(level)),
+      seed,
+      profileId: 'ck-2025',
+      kits: [citiesKnightsKit],
+      maxSteps: players * 6,
+      onDecision: (state, decision) => {
+        if (state.turn.setup?.round !== 2 || state.turn.setup.stage !== 'building' || decision.command.type !== 'setup.placeBuilding') return;
+        const view = viewFor(state, decision.actor);
+        const model = boardModel(view, decision.actor, [citiesKnightsBotModule]);
+        choices.push({
+          actor: decision.actor,
+          level: levels[Number(decision.actor.slice(3)) - 1]!,
+          legal: view.hints!.legalSettlements,
+          chosen: (decision.command as { vertex: number }).vertex,
+          touches: (vertex) => touchesOreOrGrain(model, vertex),
+        });
+      },
+    });
+    return choices;
+  }
+
+  it('always takes a city point that touches ore or grain when a legal one exists (standard and easy)', () => {
+    let checked = 0;
+    let constrained = 0;
+    for (const players of [3, 4]) {
+      for (let seed = 1; seed <= 8; seed++) {
+        for (const choice of roundTwoChoices(players, seed)) {
+          const fitting = choice.legal.filter((vertex) => choice.touches(vertex));
+          checked += 1;
+          if (fitting.length === 0) continue;
+          // 篩選只看城市點自己的相鄰地形，不論第 1 輪的聚落靠不靠近 ore 或 grain。
+          if (fitting.length < choice.legal.length) constrained += 1;
+          expect(choice.touches(choice.chosen), `${players}p seed ${seed} ${choice.actor} (${choice.level}) chose ${choice.chosen}`).toBe(true);
+        }
+      }
+    }
+    expect(checked).toBeGreaterThanOrEqual(20);
+    // 取樣裡真的有「合法點不全部符合」的局面，這個測試才鎖得住篩選。
+    expect(constrained).toBeGreaterThan(0);
+  });
+
+  it('the 4-player seed-1 case from review: bot4 (standard) no longer takes vertex 43', () => {
+    const bot4 = roundTwoChoices(4, 1).find((choice) => choice.actor === 'bot4');
+    expect(bot4, 'bot4 places a city in round 2').toBeDefined();
+    // 審查時合法點裡有相鄰 ore 或 grain 的，bot4 卻選了不相鄰的 43。
+    expect(bot4!.legal.some((vertex) => bot4!.touches(vertex))).toBe(true);
+    expect(bot4!.touches(bot4!.chosen)).toBe(true);
+    expect(bot4!.chosen).not.toBe(43);
+  });
+
+  it('citySetupScore uses the same criterion: a point without ore or grain loses even when the first settlement has both', () => {
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const { state, actor } = (() => {
+        const game = newBotGame({ profileId: 'ck-2025', players: 4, seed });
+        const policy = createBotPolicy('standard');
+        for (let guard = 0; guard < 80; guard++) {
+          const who = game.state.players[game.state.turn.seat]!.id;
+          if (game.state.turn.setup?.round === 2 && game.state.turn.setup.stage === 'building') return { state: game.state, actor: who };
+          const command = policy.decide(viewOf(game.state, who), ctxFor(who));
+          const outcome = applyCommand(game.state, who, command as Command, seededRng(guard + 1));
+          if (!outcome.ok) throw new Error(outcome.error.code);
+          Object.assign(game.state, outcome.state);
+        }
+        throw new Error('no second round reached');
+      })();
+      const view = viewOf(state, actor);
+      const model = boardModel(view, actor, [citiesKnightsBotModule]);
+      const rich = { lumber: 3, brick: 3, wool: 3, grain: 3, ore: 3 } as never;
+      const legal = view.hints!.legalSettlements;
+      const fitting = legal.filter((vertex) => touchesOreOrGrain(model, vertex));
+      const missing = legal.filter((vertex) => !touchesOreOrGrain(model, vertex));
+      if (fitting.length === 0 || missing.length === 0) continue;
+      const best = (vertices: number[]) => Math.max(...vertices.map((vertex) => citySetupScore(model, vertex, rich)));
+      expect(best(fitting), `seed ${seed}`).toBeGreaterThan(best(missing));
+    }
   });
 
   it('leaves the first round to the base setup (a module returns undefined)', () => {

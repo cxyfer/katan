@@ -1,7 +1,7 @@
 /**
  * C&K 的開局放置（C&K 計畫 §4.3 setup 第 2 輪）：第 2 輪放的是城市，選點分數 = 點數加上 commodity 產出
- * （森林、牧場、山脈上的城市各多一張 commodity），而且至少要相鄰 ore 或 grain 其中之一（騎士與啟動都要用）。
- * 第 1 輪（聚落）與放路都沿用 base：回 undefined。
+ * （森林、牧場、山脈上的城市各多一張 commodity），而且至少要相鄰 ore 或 grain 其中之一（騎士與啟動都要用）：
+ * 有符合條件的合法點時先篩選再評分，沒有時才用全部合法點。第 1 輪（聚落）與放路都沿用 base：回 undefined。
  *
  * `citySetupScore` 是純函式，供 0.4.3 的 SF+CK 組合 setup 使用：只讀 `model`（含組合後的 `hexYield`），
  * 不讀 hints、不消耗亂數。評分單位與 base 的 `setupSpotScore` 相同（加權點數）。
@@ -17,6 +17,17 @@ import { COMMODITY_WEIGHT } from './economy.ts';
 /** commodity 的估值權重（開局時還沒有改良可以參考，用基準值）。 */
 function setupWeights(model: BoardModel): KindTable {
   return { ...resourceWeights(model), paper: COMMODITY_WEIGHT.base, cloth: COMMODITY_WEIGHT.base, coin: COMMODITY_WEIGHT.base };
+}
+
+/**
+ * 這個路口自己相鄰的地形有 ore 或 grain 其中之一（騎士與啟動都要用）。只看城市點的相鄰格，不併入第 1 輪聚落的
+ * 產能：第 1 輪的點靠不靠近 ore 或 grain，不能替第 2 輪的城市點補上這個條件。`setup` 與 `citySetupScore` 共用。
+ */
+export function touchesOreOrGrain(model: BoardModel, vertex: number): boolean {
+  return (model.topo.vertices[vertex]?.hexes ?? []).some((hex) => {
+    const resource = model.hexResource[hex];
+    return resource === 'ore' || resource === 'grain';
+  });
 }
 
 /**
@@ -39,7 +50,7 @@ export function citySetupScore(model: BoardModel, vertex: number, mine: Yield = 
   for (const resource of RESOURCES) combined[resource] += city[resource];
   if (combined.lumber === 0) score -= 2.5;
   if (combined.brick === 0) score -= 2.5;
-  if (combined.ore === 0 && combined.grain === 0) score -= 3;
+  if (!touchesOreOrGrain(model, vertex)) score -= 3;
   else if (combined.grain === 0) score -= 1;
   else if (combined.ore === 0) score -= 1;
   if (combined.wool === 0) score -= 0.5;
@@ -53,6 +64,10 @@ export const citiesKnightsSetup: NonNullable<BotModule['setup']> = (turn) => {
   const setup = view.turn.setup;
   if (setup?.stage !== 'building' || setup.round !== 2) return undefined;
   const mine = playerYield(model, turn.ctx.selfId, true);
-  const vertex = turn.pick((view.hints?.legalSettlements ?? []).map((item) => ({ item, score: citySetupScore(model, item, mine) })));
+  // 有相鄰 ore 或 grain 的合法點時只在它們之中選（硬條件）；一個都沒有才用全部合法點。
+  const legal = view.hints?.legalSettlements ?? [];
+  const fitting = legal.filter((candidate) => touchesOreOrGrain(model, candidate));
+  const pool = fitting.length > 0 ? fitting : legal;
+  const vertex = turn.pick(pool.map((item) => ({ item, score: citySetupScore(model, item, mine) })));
   return vertex === null ? undefined : { type: 'setup.placeBuilding', vertex };
 };
