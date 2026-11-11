@@ -430,13 +430,18 @@ function buildDecision(turn: TurnContext): BotCommand | null {
  * 指令（例如帶小島加分的聚落），不去重會在 easy 的 topK 裡多佔名額。鍵依內容遞迴正規化：物件的 key
  * 順序不影響結果，陣列順序有意義（例如 `knight.*` 的路線、`progress.discard` 的牌序）。
  */
-/** 遞迴把物件的 key 排序，陣列保留順序；只用來產生比對用的鍵。 */
+/**
+ * 遞迴把物件重建成 key 排序後的物件，陣列保留順序；只用來產生比對用的鍵。物件仍是物件、陣列仍是陣列，
+ * 所以 `{ a: 1 }` 與 `[['a', 1]]` 的鍵不同。
+ */
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
   if (typeof value === 'object' && value !== null) {
-    return Object.entries(value)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([key, inner]) => [key, canonical(inner)]);
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([key, inner]) => [key, canonical(inner)]),
+    );
   }
   return value;
 }

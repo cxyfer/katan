@@ -46,6 +46,23 @@ describe('dedupeCandidates', () => {
     expect(reordered).toHaveLength(2);
   });
 
+  it('物件與長得像它的「鍵值對陣列」是不同的指令', () => {
+    const out = dedupeCandidates([
+      { item: cmd({ type: 'x', terms: { a: 1 } }), score: 1 },
+      { item: cmd({ type: 'x', terms: [['a', 1]] }), score: 1 },
+      { item: cmd({ type: 'x', terms: { a: 1, b: { c: 2 } } }), score: 1 },
+      { item: cmd({ type: 'x', terms: [['a', 1], ['b', [['c', 2]]]] }), score: 1 },
+    ]);
+    expect(out).toHaveLength(4);
+    // 同一個物件換 key 順序仍然合併，巢狀的也是。
+    const same = dedupeCandidates([
+      { item: cmd({ type: 'x', terms: { a: 1, b: { c: 2, d: 3 } } }), score: 1 },
+      { item: cmd({ type: 'x', terms: { b: { d: 3, c: 2 }, a: 1 } }), score: 2 },
+    ]);
+    expect(same).toHaveLength(1);
+    expect(same[0]!.score).toBe(2);
+  });
+
   it('值不同、或有 null／缺欄位的差異不會被誤合併', () => {
     const candidates: Scored<BotCommand>[] = [
       { item: cmd({ type: 'x', target: null }), score: 1 },
