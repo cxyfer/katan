@@ -557,3 +557,14 @@ CK-B2 的 Q1／Q2 結果（種子 1–10）：
   - 1 standard 對其餘 easy 的勝率：3 人 62%、4 人 74%、5 人 52%、6 人 40%。公平份額依序為 33%、25%、20%、16.7%。
   - 拒絕 0、保底代答 0；每視窗最多 18 個指令。
   - `decide` 平均 ≤ 0.05 ms，最大 9.4 ms。
+
+### 12.2 CK-C 實作期間的決定（2026-11-11）
+
+| # | 決定 | 依據 |
+|---|---|---|
+| C-1 | standard 只在有正淨價值時打 F2 與 Alchemy；超過手牌上限時門檻放寬為「價值為正」，並先打再棄。easy 不打（D-CK3） | §4.3、§4.4 |
+| C-2 | Intrigue 的價值由四項相加：擋到前 3 個計畫的點或端點、擴張選擇的改善、最長路線的增量、路口仍可延伸。封死的路口不打 | 第一版 40 局只打出 1 次，M8 沒有餘裕；放寬後 5 次，每次淨價值為正 |
+| C-3 | 騎士封鎖戰術（`tactics.ts`）保留實作與單元測試；40 局矩陣中 0 次發動，不列入 M8 | 騎士只在蠻族視窗內啟動，而視窗內依 §4.3 不移動防守騎士；視窗外可到的路口都在自己的路網上，淨價值最高約 0.08 |
+| C-4 | Commercial Harbor 每張卡最多對 N−1 位對手各報價一次；paired 的 Player 2 依 hints 打（D-CK2） | §4.8、§10 |
+
+CK-C 的 M8（種子 1–10，四格合計，只計策略席位）：invention 34、commercialHarbor 23、guildDues 18、espionage 61、intrigue 5、sabotage 34、wedding 33、taxation 44、treason 19、diplomacy 13、alchemy 37、`progress.harborOffer` 68。Q1 與 M1–M7 沒有退步：每視窗最多 16 個指令；M5 standard 0.21–0.27。
