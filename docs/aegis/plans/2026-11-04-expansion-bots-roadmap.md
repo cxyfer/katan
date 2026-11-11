@@ -1,6 +1,6 @@
 # 電腦對手支援擴充包：整體策略與版本計畫（v0.4.1–v0.4.5）
 
-日期：2026-11-04；2026-11-06 開工前依程式現況核對並刷新（§12），同日併入 PL-1 的介面定案（§13）。狀態：**使用者已於 2026-11-05 確認 §10 的 D1–D4、D7–D11 採用建議；D5、D6 未列入，留待相關版本開工前決定。**
+日期：2026-11-04；2026-11-06 開工前依程式現況核對並刷新（§12），同日併入 PL-1 的介面定案（§13）；2026-11-11 依 `3664868` 更正 0.4.2 的 economy 掛點（§4.1、§4.2、§4.9、§13，細節見 C&K 計畫 §12）。狀態：**使用者已於 2026-11-05 確認 §10 的 D1–D4、D7–D11 採用建議；D5、D6 未列入，留待相關版本開工前決定。**
 
 本文件是 Aegis 工作紀錄，不是權威的執行期決策；權威需求仍以 `docs/SPEC.md` §4.9 為準。每個版本開放 profile 時，要同步修訂 SPEC、FIDELITY 與 bot 規格。
 
@@ -174,12 +174,12 @@ export interface BotEconomyHooks {
   costs?(model: BoardModel): Readonly<Record<string, Cost>>;        // 具名成本，例如 { ship }；不得用 base 的四個鍵
   piecesLeft?(model: BoardModel): Readonly<Record<string, number>>; // 例如 { ships: 12 }；可覆寫 base 的鍵，先出現的模組優先
   scoreExtras?(input: PlanInput): readonly Plan[];                  // kind 為 `<module id>.<名稱>`；不得呼叫 economyOf
-  // 以下只保留型別，是暫定簽章，由第一個實作的版本定稿
+  // 以下只保留型別，是暫定簽章，由第一個實作的版本定稿（0.4.2 的六個 economy 鉤子由 CK-B1 的第一個 commit 定稿，見 C&K 計畫 §4.6）
   awards?(model: BoardModel): { readonly longestRoad?: boolean };                                   // 0.4.4
   cardKinds?(model: BoardModel): readonly CardKind[];                                                // 0.4.2
   rates?(model: BoardModel): Readonly<Partial<Record<CardKind, number>>>;                            // 0.4.2
   weights?(model: BoardModel): Readonly<Partial<Record<CardKind, number>>>;                          // 0.4.2
-  hexYield?(model: BoardModel, hex: number, vertex: number): Readonly<Partial<Record<CardKind, number>>> | undefined; // 0.4.2
+  hexYield?(model: BoardModel, hex: number, vertex: number, city: boolean): Readonly<Partial<Record<CardKind, number>>> | undefined; // 0.4.2；city 可以是假設（城市計畫、setup 第 2 輪）
   vertexBlocker?(model: BoardModel, vertex: number): string | null;                                  // 0.4.2
   siteBlocked?(model: BoardModel, vertex: number): boolean;                                           // 0.4.2
   routeEdge?(model: BoardModel, edge: number): boolean | undefined;                                   // 延後（SF 計畫 §11-6）
@@ -230,16 +230,16 @@ export interface BotModule {
      - 先看是否有模組以 `phase` 接管（0.4.5）。
      - 否則依序處理報價、發展卡與建造。建造時，base 的立即得分建造與模組的 `actions` 一起評分；接著走計畫的下一步，模組計畫種類交給 `planStep`。之後是主動開價與換牌，最後走 `endWindow`（0.4.5）或保底的 `turn.end`。
 - `fallbackPolicy` 的順序：
-  1. pending 與 setup：先跑 base 的處理器（pending 用 `pendingDuty`，套用 `cardKinds` 與 `robberTargets`；setup 取 hints 的第一項），回 null 時才詢問模組的 `duty`。模組 frame 中，自己不是 `responders[0]` 時不動作，也不詢問 `duty`（P3）。例如 SF 的 setup road 只剩船位時，由模組送 `setup.placeShip`（SF 計畫 F5）。
+  1. pending 與 setup：先跑 base 的處理器（pending 用 `pendingDuty`，手牌張數直接依 `CARD_KINDS` 展開、不經 `cardKinds` 鉤子（保底沒有 `BoardModel` 也不得 throw，C&K 計畫 §4.6），並套用 `robberTargets`；setup 取 hints 的第一項），回 null 時才詢問模組的 `duty`。模組 frame 中，自己不是 `responders[0]` 時不動作，也不詢問 `duty`（P3）。例如 SF 的 setup road 只剩船位時，由模組送 `setup.placeShip`（SF 計畫 F5）。
   2. preroll 與 action：先詢問模組的 `duty`，再送 `turn.roll` 或 `turn.end`。
 - `fallbackPolicy` 的模組清單預設依 `view.profileId` 推導，所以 server 直接呼叫的 `fallbackPolicy` 也會用到已註冊模組的 `duty`。查不到 profile 時用空清單，不 throw，因為 server 的保底呼叫不在 try 裡（`packages/server/src/bot-driver.ts:332`）。同樣的理由，模組的 `duty` 不得 throw。
 - 介面先保留全部鉤子的位置，0.4.1 只實作 SF 用到的鉤子，其餘到第一個用到它的版本才實作（§4.9）：
   - **0.4.1 實作組合**：`supports`、`duty`、`answerFrame`、`setup`、`preroll`、`actions`、`freeRouteCandidates`、`banditCandidates`、`planStep`、`economy.costs`、`economy.piecesLeft`、`economy.scoreExtras`、`pacing`、`maxCommandsPerWindow`、`responseCommands`。
-  - **只保留型別，骨架不呼叫**：`phase`、`endWindow`（0.4.5）；`robberTargets` fold、`rescore`（0.4.3）；`economy.awards`（0.4.4）；`economy.cardKinds`、`rates`、`weights`、`hexYield`、`vertexBlocker`、`siteBlocked`（0.4.2、0.4.3）；`economy.routeEdge`（延後，SF 計畫 §11-6）；`trade.goods`、`trade.goodValue`（0.4.4、0.4.5）。`support.test` 斷言已註冊的模組沒有定義這些鉤子，以免誤以為已經生效。
+  - **只保留型別，骨架不呼叫**：`phase`、`endWindow`（0.4.5）；`robberTargets` fold、`rescore`（0.4.3）；`economy.awards`（0.4.4）；`economy.cardKinds`、`rates`、`weights`、`hexYield`、`vertexBlocker`、`siteBlocked`（0.4.2、0.4.3；簽章在 0.4.2 定稿，`hexYield` 加上 `city` 參數，見 C&K 計畫 §4.6）；`economy.routeEdge`（延後，SF 計畫 §11-6）；`trade.goods`、`trade.goodValue`（0.4.4、0.4.5）。`support.test` 斷言已註冊的模組沒有定義這些鉤子，以免誤以為已經生效。
 
 ### 4.2 組合規則
 
-`botModulesOf(profile)` 依 `profile.ruleModules` 的順序取出 `BOT_MODULES.get(id)`，順序與 rules 一致。`BOT_MODULES` 是 `Map`，避免 `constructor` 這類原型鍵被當成已註冊的模組。以 SF+CK 為例，順序是 `seafarersCitiesKnights` → `seafarers` → `citiesKnights`，組合模組排在第一位，因此可以先攔截。未註冊的模組直接略過，例如 `packages/bots/test/ck-road-building.test.ts` 以 C&K 盤面跑 base 策略。這裡也不檢查 `supports`：gating 只由 `botsCanPlay` 判定，所以 SF-3 能在 SF-4 翻轉 gating 之前跑 B-GAME。
+`botModulesOf(profile)` 依 `profile.ruleModules` 的順序取出 `BOT_MODULES.get(id)`，順序與 rules 一致。`BOT_MODULES` 是 `Map`，避免 `constructor` 這類原型鍵被當成已註冊的模組。以 SF+CK 為例，順序是 `seafarersCitiesKnights` → `seafarers` → `citiesKnights`，組合模組排在第一位，因此可以先攔截。未註冊的模組直接略過，例如 `packages/bots/test/ck-road-building.test.ts` 以 C&K 盤面跑 base 策略（CK-B1 註冊 C&K 之後，該測試改走 C&K 模組）。這裡也不檢查 `supports`：gating 只由 `botsCanPlay` 判定，所以 SF-3 能在 SF-4 翻轉 gating 之前跑 B-GAME。
 
 | 鉤子 | 組合方式 |
 |---|---|
@@ -252,9 +252,10 @@ export interface BotModule {
 | `robberTargets` | 依 `profile.ruleModules` 的順序 fold，與 rules 的 `legalRobberHexes` 相同（`packages/rules/src/engine.ts:1462-1471`），元素為 `number \| null`。初值是「盜賊預設」：陸地且不是目前強盜所在格；海格且不是目前海盜所在格；海盜在場時再加上 `null`（外框）。base 沒有海格、海盜為 null，所以初值與 rules 相同。每個模組收到目前候選並回傳下一組，可以縮小、替換或擴大，例如 FR 在沒有合法格時回傳沙漠格，即使強盜就在沙漠（`packages/rules/src/modules/tradersBarbarians/variants/friendlyRobber.ts:34-40`），SF+CK 依 `bandit` hint 收窄。結果是本次 `pending.moveRobber` 的完整合法集合：保底取第一項；base 的強盜候選與 `banditCandidates` 先以它過濾再評分，過濾後沒有候選時取第一項。`banditCandidates` 負責評分，fold 負責合法性 |
 | `rescore` | 各模組的差值相加；只調整分數，不新增、不移除候選，也不得當作合法性過濾 |
 | `vertexBlocker`、`siteBlocked` | 任一模組阻擋就算阻擋（OR）；`vertexBlocker` 的回傳值取第一個非 null |
-| `hexYield` | 逐 hex 依序詢問，第一個非 `undefined` 者勝；都沒有回答時用 base。模組只對自己定義產出的地形回值，例如 C&K 只回答森林、牧場、山脈上的城市，金礦交給 SF |
+| `hexYield` | 簽章 `hexYield(model, hex, vertex, city)`，`city` 可以是假設的城市（城市計畫、setup 第 2 輪）；逐 hex 依序詢問，第一個非 `undefined` 者勝；都沒有回答時用 base。模組只對自己定義產出的地形回值，例如 C&K 只回答森林、牧場、山脈上的城市，金礦交給 SF |
 | `awards` | 任一模組設為 false 就關閉；例如 `longestRoad: false` 時不再規劃最長道路（T&B 的 Traders、E&P） |
-| `costs`、`piecesLeft`、`cardKinds`、`pacing`、`responseCommands` | 合併；重複的鍵以先出現的模組為準。`costs` 不得覆寫 base 的四個鍵，因為 base 計畫直接讀 `COSTS`；`piecesLeft` 可以覆寫，例如 E&P 的聚落上限 |
+| `costs`、`piecesLeft`、`cardKinds`、`pacing`、`responseCommands` | 合併；重複的鍵以先出現的模組為準。`costs` 不得覆寫 base 的四個鍵，因為 base 計畫直接讀 `COSTS`；`piecesLeft` 可以覆寫，例如 E&P 的聚落上限；`cardKinds` 以 `RESOURCES` 為首、依模組順序附加並去重，得到 `Economy.kinds`（估值類迴圈用；張數類迴圈直接走 `CARD_KINDS`） |
+| `rates`、`weights` | 只回答模組自己 `cardKinds` 內的卡種，每個鍵先出現的模組優先；資源一律讀 `hints.bankRates` 與 base 的資源權重，模組回傳的資源鍵忽略。缺漏的卡種：`rates` 視為不能與銀行交易，`weights` 視為 0 |
 | `maxCommandsPerWindow` | 取最大值 |
 
 ### 4.3 型別
@@ -391,8 +392,8 @@ export function botsCanPlay(profile: ProfileDefinition): boolean {
 | 版本 | 平台交付 |
 |---|---|
 | 0.4.1 | `BotCommand`；BotModule 介面與 registry；組合骨架（base 行為不變，以 golden replay 驗證）；可注入模組清單的策略工廠與 `botOwesAction`；`supports` gating 與快照；合約與 I3 修訂；harness 與模組測試工具；仿 BotDriver 模式與看門狗；種子數與 timeout；bench 參數化；server 的節奏、上限、診斷與型別；server 測試修正；規則 9 防護 |
-| 0.4.2 | CardKind 手牌、成本與匯率（commodity）；economy 的 `rates`、`weights`、`hexYield`（城市的 commodity 產出）、`vertexBlocker` 與 `siteBlocked`（騎士阻擋）掛點 |
-| 0.4.3 | 組合層；`robberTargets` fold（元素 `number \| null`，從 0.4.4 提前）；`rescore`；`sea.ts` 的 `blocker` 預設改為組合後的 `vertexBlocker`；`vertexBlocker`、`siteBlocked`、`hexYield` 與 setup 的組合規則；確認 `supports` 要求三個 BotModule 都存在 |
+| 0.4.2 | CardKind 手牌、成本與匯率（commodity）；economy 的 `cardKinds`、`rates`、`weights`、`hexYield`（城市的 commodity 產出，簽章加 `city`）、`vertexBlocker` 與 `siteBlocked`（騎士阻擋）掛點，其中盤面三個掛點經 `BoardModel` 的可選欄位組合；棄牌保底直接走 `CARD_KINDS` |
+| 0.4.3 | 組合層；`robberTargets` fold（元素 `number \| null`，從 0.4.4 提前）；`rescore`；`sea.ts` 的 `blocker` 預設改為 `options.blocker ?? model.blocker`（`BoardModel` 已在 0.4.2 組合 `vertexBlocker`）；SF+CK 對 `vertexBlocker`、`siteBlocked`、`hexYield` 的組合驗證與 setup 的組合規則；確認 `supports` 要求三個 BotModule 都存在 |
 | 0.4.4 | goods 估值與規則 9 的提議者檢查；以 part 為單位的 `supports`；沿用 0.4.3 的 `robberTargets` fold（FR）；`economy.awards`（Traders 停用最長道路）；個人勝利分 `player.victoryTarget`（Fishing 的舊靴）；測試回合結束時排入的 frame（`onEndTurn` defer）與依序多 responder 的 frame |
 | 0.4.5 | `phase` 與 `endWindow` 接管；依 profile 的指令上限；以 mission 為單位的 `supports`；E&P 沿用 0.4.4 的 `economy.awards` 關掉最長道路 |
 
@@ -644,4 +645,4 @@ PL-1 開工前，由 Architect 以唯讀方式做介面審查。審查在 `git a
 | A6 | golden driver 在 0.4.1 內不得修改 | 錄製後、`src` 改動前，把 `Decision.command` 改成跟著 `BotPolicy.decide` 走的 `PolicyCommand` 型別，併入第一個 commit | `decide` 放寬為 `BotCommand` 後，原本的 `Command` 註記會讓 typecheck 失敗；只改型別，fixture 不必重錄 |
 | A7 | 保底以 `responders.includes(self)` 判斷模組 frame 的資格（介面定案的初稿） | 保底只在 `responders[0] === self` 時回應模組 frame，也只在這時詢問模組的 `duty`；策略的 `answerFrame` 仍以 `includes` 過濾，依序 frame 由模組自行檢查 `responders[0]` | 與 P3「保底一律採保守的 `responders[0]`」及 `botOwesAction` 一致；依序 frame 只接受第一位作答，非第一位送出會被拒（`E_NOT_YOUR_TURN`），例如 SF 的 gold（`packages/rules/src/modules/seafarers/gold.ts:94`）、C&K 的 science（`citiesKnights/production.ts:140`）與防守者選牌堆（`citiesKnights/barbarians.ts:198`）。PR #119 審查時發現 |
 
-後續計畫引用的 v0.4.0 行號會因 PL-1 移動，例如 T&B §4.3 的 `heuristic.ts:195-200,214`，PL-1 之後在 `src/base/robber.ts`；`fallback.ts:19-25` 在 `src/base/duty.ts`；C&K §4.6 的 `fallback.ts:47-57` 也在 `src/base/duty.ts`。這些行號由 Planner 在各版開工前刷新。
+後續計畫引用的 v0.4.0 行號會因 PL-1 移動，例如 T&B §4.3 的 `heuristic.ts:195-200,214`，PL-1 之後在 `src/base/robber.ts`；`fallback.ts:19-25` 在 `src/base/duty.ts`；C&K §4.6 的 `fallback.ts:47-57` 也在 `src/base/duty.ts`。這些行號由 Planner 在各版開工前刷新；C&K 計畫已於 2026-11-11 依 `3664868` 刷新完成（`handList` 在 `packages/bots/src/base/duty.ts:61-70`，見 C&K 計畫 §12），其餘計畫仍待各版開工前刷新。
