@@ -190,6 +190,8 @@ describe('hard level availability', () => {
     expect(botLevelsFor(requireProfile('base-2025'))).toEqual(['easy', 'standard', 'hard']);
     expect(botLevelsFor(requireProfile('base-paired-2025'))).toEqual(['easy', 'standard', 'hard']);
     expect(botLevelsFor(requireProfile('sf-new-shores-2025'))).toEqual(['easy', 'standard']);
+    expect(botLevelsFor(requireProfile('ck-2025'))).toEqual(['easy', 'standard']);
+    expect(botLevelsFor(requireProfile('ck-paired-2025'))).toEqual(['easy', 'standard']);
     for (const profile of PROFILES) {
       const levels = botLevelsFor(profile);
       if (!botsCanPlay(profile)) expect(levels, profile.id).toEqual([]);

@@ -8,8 +8,9 @@ guest session and goes through the real UI:
   easy bot from the lobby toolbar. This writes the curated
   `lobby-seafarers.png` (zh-Hant, 1366x900, full page) and an en capture;
 * the paired 5–6 player profile (five seats) with two bots, zh-Hant;
-* a Cities & Knights room, where adding a bot stays disabled with the
-  unsupported note, in both locales;
+* a Seafarers + Cities & Knights room (`sf-ck-new-shores-2025`), where adding a
+  bot stays disabled with the unsupported note, in both locales (plain Cities &
+  Knights rooms accept bots since CK-G; see `scripts/bots-cities-knights/capture.py`);
 * with `--table`, the New Shores room is filled with a third bot and started.
   The host's own moves go over the same session's API until a bot owns a ship;
   that step is best effort and records `"timeout"` instead of failing.
@@ -288,17 +289,21 @@ def new_shores_before(browser, out: Path, result: dict, errors: list[str]) -> No
     context.close()
 
 
-def cities_knights(browser, out: Path, result: dict, errors: list[str], mode: str) -> None:
+def sf_ck_unsupported(browser, out: Path, result: dict, errors: list[str], mode: str) -> None:
     suffix = "-before" if mode == "before" else ""
     context, page = guest(browser, errors, "城堡騎士")
-    result["checks"]["citiesKnightsProfile"] = create_room(page, "citiesKnights", 4)
+    # 組合的 key 是排序後的擴充 id（`state/rulesets.ts`）；兩個擴充一起選才會解析成 sf-ck。
+    resolved = create_room(page, "citiesKnights+seafarers", 4)
+    result["checks"]["seafarersCitiesKnightsProfile"] = resolved
+    # 選錯組合（例如只有 C&K）會讓這個案例默默驗到另一個規則集。
+    result["checks"]["seafarersCitiesKnightsResolved"] = "航海家" in resolved and "城市與騎士" in resolved
     expect(page.get_by_test_id("add-bot")).to_be_disabled()
     note = page.get_by_test_id("lobby-bots-unsupported")
     expect(note).to_have_text(NOTE[mode]["zh-Hant"])
-    shot(page, out, result, f"ck-lobby-bots-unsupported{suffix}-1366x768-zh-Hant", 1366, 768, full_page=True)
+    shot(page, out, result, f"sf-ck-lobby-bots-unsupported{suffix}-1366x768-zh-Hant", 1366, 768, full_page=True)
     set_locale(page, "en")
     expect(note).to_have_text(NOTE[mode]["en"])
-    shot(page, out, result, f"ck-lobby-bots-unsupported{suffix}-1366x768-en", 1366, 768, full_page=True)
+    shot(page, out, result, f"sf-ck-lobby-bots-unsupported{suffix}-1366x768-en", 1366, 768, full_page=True)
     context.close()
 
 
@@ -353,11 +358,11 @@ def capture(root: Path, out: Path, before: bool, table: bool, table_timeout: flo
             browser = playwright.chromium.launch(headless=True, args=["--no-sandbox", "--enable-unsafe-swiftshader"])
             if before:
                 new_shores_before(browser, out, result, errors)
-                cities_knights(browser, out, result, errors, mode)
+                sf_ck_unsupported(browser, out, result, errors, mode)
             else:
                 context, page = new_shores_after(browser, out, result, errors)
                 paired_after(browser, out, result, errors)
-                cities_knights(browser, out, result, errors, mode)
+                sf_ck_unsupported(browser, out, result, errors, mode)
                 if table:
                     table_after(context, page, out, result, table_timeout)
                 context.close()

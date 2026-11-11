@@ -16,6 +16,7 @@ P1 範圍內：
 - 支援的 profile：
   - `base-2025`（3–4 人）與 `base-paired-2025`（5–6 人；Player 2 不擲骰、不可發起或結算國內交易）。
   - 0.4.1 起加上 Seafarers — Heading for New Shores 的 `sf-new-shores-2025`（3–4 人）與 `sf-new-shores-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-seafarers.md`。
+  - 0.4.2 起加上 Cities & Knights 的 `ck-2025`（3–4 人）與 `ck-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-cities-knights.md`。
 - 座位、大廳與遊戲中玩家面板顯示「電腦」徽章與難度。
 
 P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房間層級節奏設定、開局後增減 Bot、Bot 的反報價（counteroffer）、以事件紀錄推算對手手牌。

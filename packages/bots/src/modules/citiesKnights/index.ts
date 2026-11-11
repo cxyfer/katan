@@ -2,8 +2,8 @@
  * Cities & Knights 的 BotModule（C&K 計畫 §4）。CK-B1 註冊模組並接上保底、經濟鉤子、節奏與回應指令；
  * 策略鉤子（setup、actions、frame 偏好、plans）由 CK-B2 接上，各自改自己的檔案，不必再改這裡。
  *
- * 在 CK-G 放行之前 `supports` 回傳 false：`botsCanPlay` 仍然是 false，server 不會讓 Bot 入座 C&K 的桌子；
- * 組合骨架只看 registry，所以測試與 harness 照樣會用到這個模組。
+ * CK-G 起 `supports` 回傳 true：`ck-2025`、`ck-paired-2025` 可以讓 Bot 入座。Seafarers + C&K 的組合仍由
+ * `botsCanPlay` 擋下：它的 `seafarersCitiesKnights` 組合層沒有註冊 BotModule（SF+CK 排在 0.4.3）。
  */
 
 import type { BotModule } from '../types.ts';
@@ -21,8 +21,8 @@ import { tacticsActions } from './tactics.ts';
 import { commodityTradeActions } from './trade.ts';
 import { CITIES_KNIGHTS } from './view.ts';
 
-/** Bot 能不能玩 C&K；CK-G 才改為 true。 */
-export const CK_BOTS_RELEASED = false;
+/** Bot 能不能玩 C&K；CK-G 起為 true，座位開放與否仍以 `botsCanPlay(profile)` 為準。 */
+export const CK_BOTS_RELEASED = true;
 
 /**
  * C&K 的 13 個 pending 指令：與 rules 的 `pendingCommands` 一致（`test/ck-model.test.ts` 對照）。
