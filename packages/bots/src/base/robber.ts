@@ -1,6 +1,6 @@
 /** base 的強盜：壓領先者的高產能格、避開自己的建築，並優先有牌可偷的格子。 */
 
-import type { GameView } from '@catan/rules';
+import { getProfile, type GameView } from '@catan/rules';
 import { collectScored } from '../modules/compose.ts';
 import type { BanditTarget, BotModule, RobberCause, Scored, TurnContext } from '../modules/types.ts';
 
@@ -42,26 +42,37 @@ export function robberCandidates(turn: TurnContext): Scored<number>[] {
 /**
  * 盜賊目標 fold 的初值（「盜賊預設」，與 rules 的 `legalRobberHexes` 加上 SF 的 `pirateTargets` 相同）：
  * 依 hex index 遞增，先放陸地且不是強盜現位的 hex，再放海且不是海盜現位的 hex，海盜在場時最後加上 `null`
- * （外框）。首攻前 `robber = -1`，所以陸地全部在內。base 沒有海格、海盜為 null，結果就是 base 的強盜目標。
+ * （外框）。首攻前 `robber = -1`，所以陸地全部在內。
+ *
+ * 海格與外框只在 profile 有海盜（`ProfileDefinition.hasPirate`）時加入：沒有海盜的 profile（base、C&K、E&P 等）
+ * 即使盤面有海格，也只有陸地目標。查不到 profile 時（`getProfile` 回 undefined；這裡不能 throw）視為有海盜，
+ * 維持原本只看盤面的行為。base 沒有海格、海盜為 null，結果就是 base 的強盜目標。
  */
 export function defaultBanditTargets(view: GameView): BanditTarget[] {
   const { terrain, robber, pirate } = view.board;
+  const hasPirate = getProfile(view.profileId)?.hasPirate ?? true;
   const land: BanditTarget[] = [];
   const sea: BanditTarget[] = [];
   terrain.forEach((kind, hex) => {
     if (kind === 'sea') {
-      if (hex !== pirate) sea.push(hex);
+      if (hasPirate && hex !== pirate) sea.push(hex);
     } else if (hex !== robber) {
       land.push(hex);
     }
   });
-  return pirate === null || pirate === undefined ? [...land, ...sea] : [...land, ...sea, null];
+  return hasPirate && pirate !== null && pirate !== undefined ? [...land, ...sea, null] : [...land, ...sea];
 }
 
-/** fold 的回傳值只接受整數與 null；不是陣列時回 null，由呼叫端沿用上一組。 */
-function sanitizeTargets(value: unknown): BanditTarget[] | null {
+/**
+ * fold 的回傳值只接受 `0 <= hex < hexCount` 的整數與 null，其餘丟掉；不是陣列時回 null，
+ * 由呼叫端沿用上一組。
+ */
+function sanitizeTargets(value: unknown, hexCount: number): BanditTarget[] | null {
   if (!Array.isArray(value)) return null;
-  return value.filter((target): target is BanditTarget => target === null || Number.isInteger(target));
+  return value.filter(
+    (target): target is BanditTarget =>
+      target === null || (Number.isInteger(target) && target >= 0 && target < hexCount),
+  );
 }
 
 /**
@@ -76,7 +87,7 @@ export function banditTargets(view: GameView, selfId: string, modules: readonly 
     if (!module.robberTargets) continue;
     let next: BanditTarget[] | null;
     try {
-      next = sanitizeTargets(module.robberTargets(view, selfId, targets));
+      next = sanitizeTargets(module.robberTargets(view, selfId, targets), view.board.terrain.length);
     } catch {
       next = null;
     }
