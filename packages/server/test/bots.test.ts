@@ -376,15 +376,24 @@ describe('B-ROOM bot seats', () => {
   });
 
   it('still refuses bot seats for rulesets bots cannot play, and switching a bot room to them', async () => {
-    // Seafarers 與城市與騎士的組合層沒有 BotModule。
-    for (const profileId of ['sf-ck-new-shores-2025']) {
+    // Seafarers 與城市與騎士的組合層沒有 BotModule；5–6 人（paired）的組合也一樣。
+    for (const profileId of ['sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025']) {
       expect(botsCanPlay(getProfile(profileId)!), profileId).toBe(false);
+      const paired = profileId.includes('paired');
       const host = await harness.client('NoBots');
-      const room = await createRoom(host, { profileId });
+      const room = await createRoom(host, {
+        profileId,
+        capacity: paired ? 5 : 3,
+        setupMode: paired ? 'variable' : 'fixed',
+      });
       host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
 
       const other = await harness.client('NoBotsSwitch');
-      const base = await createRoom(other, { bots: 1 });
+      // paired 的房間要從同樣 5–6 人的 base profile 切換，否則先被人數與組合檢查擋下。
+      const base = await createRoom(
+        other,
+        paired ? { bots: 1, profileId: 'base-paired-2025', capacity: 5, setupMode: 'variable' } : { bots: 1 },
+      );
       other.expectError(await other.post(`/api/rooms/${base.id}/settings`, { profileId }), 'E_INVALID_BOT');
     }
   });
