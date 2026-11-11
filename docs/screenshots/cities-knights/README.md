@@ -15,6 +15,7 @@ profiles). The progress-card captures (`progress-*`, below) come from
 
 | File | Renderer | Viewport | State |
 |---|---|---|---|
+| `lobby-cities-knights.png` | – | 1366×900 | lobby: a `ck-2025` room with a standard and an easy bot, the add-bot toolbar (easy and standard; hard plays only the base game), room settings and the ruleset chip (v0.4.2) |
 | `live-knight-recruit-svg.png` | SVG | 1366×900 | recruit a knight: free intersections on own routes, knight preview |
 | `live-wall-target-svg.png` | SVG | 1366×900 | city wall: own cities without a wall |
 | `live-panel-svg.png` | SVG | 1366×900 | C&K panel: barbarian track, event roll, improvement chart, progress hand (shown, not playable) |
@@ -28,6 +29,11 @@ profiles). The progress-card captures (`progress-*`, below) come from
 | `live-after-attack-3d.png` | 3D | 1366×900 | after the first attack: the robber is on the desert |
 | `map-6p-svg-desktop.png` | SVG | 1366×900 | `ck-paired-2025` board during setup |
 | `map-6p-r3f-desktop.png` | 3D | 1366×900 | the same in 3D |
+
+For v0.4.2, bots can play both Cities & Knights profiles. `lobby-cities-knights.png`
+was taken by `scripts/bots-cities-knights/capture.py` against the production
+build: a `ck-2025` room where the host added a standard and an easy bot from the
+toolbar (sha256 `e3fc1fb9d0d48adb…`, no page errors). The other captures are unchanged.
 
 ## Progress cards and the merchant (P3)
 
