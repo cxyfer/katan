@@ -74,7 +74,8 @@ export function sevenValue(turn: TurnContext): number {
 
 /**
  * 紅骰 `red` 的進步卡抽牌價值：每個軌道 1/6 的機會擲到城門，自己抽到加分、對手抽到依威脅權重扣分。
- * 只用在 Alchemy 的估值（手牌張數含正要打出的 Alchemy）。
+ * 只用在 Alchemy 的估值（手牌張數含正要打出的 Alchemy）。牌堆張數少於符合資格的人數時，只有依回合順序
+ * 排在前面的人抽得到。
  */
 export function drawValue(turn: TurnContext, red: number): number {
   const { view } = turn;
@@ -83,12 +84,19 @@ export function drawValue(turn: TurnContext, red: number): number {
   // 所以用「打出 Alchemy 之後」的張數估計：手上 4 張含 Alchemy 時，還剩一個空位可以抽。
   const handAfterAlchemy = Math.max(0, progressHeld(turn) - 1);
   const mineFactor = handAfterAlchemy >= 4 ? 0.5 : 1;
+  // 抽牌依回合順序（從擲骰者起算，rules 的 `turnOrder`）；牌堆抽空就停（只算得到牌的玩家）。
+  const count = view.players.length;
+  const order = view.players
+    .slice()
+    .sort((a, b) => ((a.seat - view.turn.seat + count) % count) - ((b.seat - view.turn.seat + count) % count));
   let value = 0;
   for (const track of CK_TRACKS) {
-    if ((decks?.[track] ?? 1) <= 0) continue;
+    let remaining = decks?.[track] ?? count;
     let perTrack = 0;
-    for (const player of view.players) {
+    for (const player of order) {
       if (red > ckDrawThreshold(player.improvements?.[track] ?? 0)) continue;
+      if (remaining <= 0) break;
+      remaining -= 1;
       perTrack += player.id === turn.ctx.selfId ? DRAW_VALUE * mineFactor : -DRAW_VALUE * 0.5 * rivalWeight(turn, player);
     }
     value += perTrack / 6;

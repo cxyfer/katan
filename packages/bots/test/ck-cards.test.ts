@@ -797,6 +797,40 @@ describe('Alchemy：窮舉 36 種骰面', () => {
     const after = actCk(state, 'p1', command as never).state;
     expect(after.players[0]!.progressCards).toHaveLength(3);
   });
+
+  describe('牌堆張數限制抽牌的人數', () => {
+    /** 只有 science 軌道有 1 張牌；三人的 science 都是 1 級（紅骰 ≤ 2 就抽）。`seat` 是正在擲骰的座位。 */
+    function oneCardDeck(seat: number, selfLevel = 1): GameState {
+      const state = emptyCkGame(4, seat, 'preroll');
+      state.progressDecks.science = state.progressDecks.science.slice(0, 1);
+      state.progressDecks.trade = [];
+      state.progressDecks.politics = [];
+      setImprovement(state, 'p1', 'science', selfLevel);
+      setImprovement(state, 'p2', 'science', 1);
+      setImprovement(state, 'p3', 'science', 1);
+      return state;
+    }
+
+    it('gives the only card to the roller when self rolls first, so rivals draw nothing', () => {
+      const first = drawValue(turnOf(oneCardDeck(0)), 2);
+      // 自己（擲骰者）抽到唯一的一張：2 / 6；對手分不到。
+      expect(first).toBeCloseTo(2 / 6);
+    });
+
+    it('values a draw as 0 for self when a rival draws the last card first', () => {
+      // p2 在擲骰，排在 p1 前面：牌被 p2 抽走，p1 抽不到，價值只剩對手抽到的扣分（和 p1 沒有資格時一樣）。
+      const eligible = drawValue(turnOf(oneCardDeck(1)), 2);
+      const ineligible = drawValue(turnOf(oneCardDeck(1, 0)), 2);
+      expect(eligible).toBeLessThan(0);
+      expect(eligible).toBeCloseTo(ineligible);
+    });
+
+    it('stops at an empty deck: nobody draws', () => {
+      const state = oneCardDeck(0);
+      state.progressDecks.science = [];
+      expect(drawValue(turnOf(state), 2)).toBe(0);
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
