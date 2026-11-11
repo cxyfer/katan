@@ -226,7 +226,8 @@ export function settlementSpotValue(model: BoardModel, vertex: number, weights: 
 
 /**
  * 依缺口與產能估計湊齊成本需要的輪數；過剩的牌可先以銀行匯率換成缺口。`kinds` 是估值的卡種清單
- * （`Economy.kinds`），省略時只有資源；沒有匯率的卡種不能換匯。
+ * （`Economy.kinds`），省略時只有資源；沒有匯率的卡種不能換匯。成本含 `kinds` 以外的卡種且有缺口時回傳
+ * `Infinity`：清單外的卡種無法估值，不能當成「不缺」（呼叫端漏傳 `kinds` 時計畫的分數會歸零，而不是灌水）。
  */
 export function etaRounds(
   hand: Hand,
@@ -237,6 +238,9 @@ export function etaRounds(
   kinds: readonly CardKind[] = RESOURCES,
 ): number {
   const missing = deficitOf(hand, cost);
+  for (const kind of CARD_KINDS) {
+    if ((missing[kind] ?? 0) > 0 && !kinds.includes(kind)) return Infinity;
+  }
   let total = kinds.reduce((sum, kind) => sum + (missing[kind] ?? 0), 0);
   if (total === 0) return 0;
   let tradeable = 0;

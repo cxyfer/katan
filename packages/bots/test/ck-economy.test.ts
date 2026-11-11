@@ -367,8 +367,15 @@ describe('eta, utility and bank trades with commodities', () => {
     expect(etaRounds({ ...emptyYield(), paper: 8 }, { ore: 2 }, emptyYield(), noPaper, 4, kinds)).toBeGreaterThan(1);
   });
 
-  it('ignores kinds outside the list (a base economy cannot price a commodity)', () => {
-    expect(etaRounds(emptyYield(), { paper: 2 }, emptyYield(), rates, 4)).toBe(0);
+  it('a kind outside the list cannot be priced: a gap in it is unreachable, not free', () => {
+    // 預設清單只有資源：缺 paper 就是到不了（分數歸零），而不是不缺。
+    expect(etaRounds(emptyYield(), { paper: 2 }, emptyYield(), rates, 4)).toBe(Infinity);
+    expect(etaRounds(emptyYield(), { paper: 2, ore: 1 }, emptyYield(), rates, 4, [...RESOURCES, 'cloth'])).toBe(Infinity);
+    // 清單外的卡種手上湊得齊就不算缺口；清單內照舊。
+    expect(etaRounds({ ...emptyYield(), paper: 2 }, { paper: 2 }, emptyYield(), rates, 4)).toBe(0);
+    expect(etaRounds(emptyYield(), { paper: 2 }, emptyYield(), rates, 4, kinds)).toBeLessThan(Infinity);
+    // 沒有 commodity 的成本與清單無關：base 的結果不變。
+    expect(etaRounds(emptyYield(), { ore: 1 }, emptyYield(), rates, 4)).toBe(etaRounds(emptyYield(), { ore: 1 }, emptyYield(), rates, 4, kinds));
   });
 
   it('counts commodities in hand utility: the held commodity needed by the target is worth keeping', () => {
