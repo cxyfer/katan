@@ -4,11 +4,12 @@
  */
 
 import type { ProfileDefinition } from '@catan/rules';
+import { citiesKnightsBotModule } from './citiesKnights/index.ts';
 import { seafarersBotModule } from './seafarers/index.ts';
 import type { BotModule } from './types.ts';
 
 /** 已註冊的 Bot 模組；每個模組在這裡加一行。 */
-const REGISTERED: readonly BotModule[] = [seafarersBotModule];
+const REGISTERED: readonly BotModule[] = [seafarersBotModule, citiesKnightsBotModule];
 
 // 用 Map：`{}['constructor']` 這類原型鍵不會被當成已註冊的模組。
 export const BOT_MODULES: ReadonlyMap<string, BotModule> = new Map(
