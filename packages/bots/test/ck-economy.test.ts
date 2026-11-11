@@ -135,6 +135,26 @@ describe('composed economy', () => {
     expect(economy.rates).toBe(view.hints!.bankRates);
   });
 
+  it('the model carries its modules and the economy reads them by default', () => {
+    const state = handGame();
+    const view = viewOf(state, 'p1');
+    const model = boardModel(view, 'p1', MODULES);
+    expect(model.modules).toBe(MODULES);
+    // 不另外傳模組清單：經濟的卡種、權重、匯率與模型的掛點一致（城市在森林、牧場、山脈上多得 commodity）。
+    const economy = economyOf(model);
+    expect(economy.kinds).toEqual([...RESOURCES, ...COMMODITIES]);
+    expect(economy.weights.paper).toBeGreaterThan(0);
+    expect(economy.rates.paper).toBe(4);
+    expect(economy.handLimit).toBe(7);
+    expect(economy).toMatchObject({ kinds: economyOf(model, MODULES).kinds, weights: economyOf(model, MODULES).weights });
+    // 明確傳入 [] 表示只有 base；沒有模組的模型沒有 modules 欄位，物件形狀不變。
+    expect(economyOf(model, []).kinds).toBe(RESOURCES);
+    const plain = boardModel(view, 'p1');
+    expect(plain).not.toHaveProperty('modules');
+    expect(boardModel(view, 'p1', [])).not.toHaveProperty('modules');
+    expect(economyOf(plain).kinds).toBe(RESOURCES);
+  });
+
   it('adds the commodities with their own rates, weights and costs', () => {
     const economy = economyFor(handGame());
     expect(economy.kinds).toEqual([...RESOURCES, ...COMMODITIES]);

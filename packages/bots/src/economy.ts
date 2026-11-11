@@ -290,11 +290,12 @@ function mergeFirstWins<T>(layers: readonly Readonly<Record<string, T>>[]): Reco
 
 /**
  * 經濟評估：base 加上各模組的 economy 鉤子。模組清單為空時，結果與只有 base 完全相同。
- * 模組計畫同分時排在 base 種類之後。
+ * 模組計畫同分時排在 base 種類之後。`modules` 預設讀 `model.modules`（建模時的清單），讓模型的掛點與經濟的
+ * 卡種、權重、匯率用同一份清單；明確傳入 `[]` 表示只有 base。
  */
 export function economyOf(
   model: BoardModel,
-  modules: readonly BotModule[] = [],
+  modules: readonly BotModule[] = model.modules ?? [],
   level: BotLevel = 'standard',
 ): Economy {
   const base = baseEconomyOf(model, modules);

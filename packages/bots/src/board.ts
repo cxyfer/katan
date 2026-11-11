@@ -72,6 +72,8 @@ export interface BoardModel {
     vertex: number,
     city: boolean,
   ) => Readonly<Partial<Record<CardKind, number>>> | undefined;
+  /** 建模時的模組清單；沒有模組時省略。`economyOf` 預設讀它，讓模型與經濟用同一份清單。 */
+  readonly modules?: readonly BotModule[];
 }
 
 interface TopologyTables {
@@ -129,10 +131,12 @@ export function boardModel(view: GameView, selfId: string, modules: readonly Bot
   const blockers = hooks.filter((hook) => hook.vertexBlocker);
   const sites = hooks.filter((hook) => hook.siteBlocked);
   const yields = hooks.filter((hook) => hook.hexYield);
-  if (blockers.length === 0 && sites.length === 0 && yields.length === 0) return base;
+  // 模組清單跟著模型走；沒有模組（tracker、hard）時不加欄位，物件形狀與 base 相同。
+  const model: BoardModel = modules.length > 0 ? { ...base, modules } : base;
+  if (blockers.length === 0 && sites.length === 0 && yields.length === 0) return model;
   // 鉤子拿到的是呼叫端傳入的 model（可能是展開後換了 view 的模型），不是這裡建的那一個。
   return {
-    ...base,
+    ...model,
     ...(blockers.length > 0 && {
       blocker: (at: BoardModel, vertex: number) => {
         for (const hook of blockers) {
