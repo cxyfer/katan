@@ -21,8 +21,8 @@ import {
   type Command,
   type GameState,
 } from '@catan/rules';
-import { addKnight, emptyCkGame, handCards, pathFrom, roadAlong, setBuilding, spreadVertices } from '../../rules/test/ck-helpers.ts';
-import { forceTurn } from '../../rules/test/helpers.ts';
+import { addKnight, emptyCkGame, giveCommodities, handCards, pathFrom, roadAlong, setBuilding, spreadVertices } from '../../rules/test/ck-helpers.ts';
+import { forceTurn, give } from '../../rules/test/helpers.ts';
 import { simulateCitiesKnights } from '../../rules/test/ck-sim.ts';
 import { boardModel, isFreeSpot, isLandEdge, routeLength, searchRoads, type BoardModel } from '../src/board.ts';
 import { citiesKnightsDuty } from '../src/modules/citiesKnights/duty.ts';
@@ -428,11 +428,15 @@ describe('the C&K test kit', () => {
 
   it('hideDifferently: changes only what the viewer cannot see, hand sizes and the viewer\'s own projection stay', () => {
     let changedAny = 0;
-    // 進度牌堆被縮短來腳本化抽牌的 fixture 不守恆，不在此取樣（kit 只對守恆的盤面承諾）。
-    const states = [...SAMPLES.map(([players, seed]) => finalState(players, seed)), ...Object.values(FRAME_FIXTURES).map((build) => build().state)].filter(
-      (candidate) => citiesKnightsKit.conservation!(candidate).length === 0,
-    );
-    expect(states.length).toBeGreaterThan(SAMPLES.length);
+    // 進度牌堆被縮短來腳本化抽牌的 fixture 不守恆，不在此取樣（kit 只對守恆的盤面承諾）；被排除的就這兩個。
+    const fixtures = Object.entries(FRAME_FIXTURES).map(([kind, build]) => ({ kind, state: build().state }));
+    const excluded = fixtures.filter(({ state }) => citiesKnightsKit.conservation!(state).length > 0).map(({ kind }) => kind);
+    expect(excluded.sort()).toEqual(['citiesKnights.defenderDraw', 'citiesKnights.progressDiscard']);
+    const states = [
+      ...SAMPLES.map(([players, seed]) => finalState(players, seed)),
+      ...fixtures.filter(({ kind }) => !excluded.includes(kind)).map(({ state }) => state),
+    ];
+    expect(states).toHaveLength(SAMPLES.length + Object.keys(FRAME_FIXTURES).length - 2);
     for (const base of states) {
       for (const viewer of base.players) {
         const source = base.result ? asActor(base, base.players.findIndex((p) => p.id === viewer.id)) : base;
@@ -454,11 +458,29 @@ describe('the C&K test kit', () => {
     expect(JSON.stringify(variant.progressDecks)).not.toBe(JSON.stringify(source.progressDecks));
   });
 
-  it('hideDifferently leaves the victim of a Guild Dues the actor is looking at alone', () => {
+  it('the kit leaves the victim of a Guild Dues alone for the actor looking at the hand, and changes the other opponents', () => {
     const fx = FRAME_FIXTURES['citiesKnights.guildDues']!();
-    const { variant } = hideDifferently(fx.state, fx.responder, [citiesKnightsKit]);
-    const victim = (s: GameState) => JSON.stringify([s.players[1]!.resources, s.players[1]!.commodities]);
-    expect(victim(variant)).toBe(victim(fx.state));
+    // 受害者 p2 有牌（ore 2、grain 1、coin 1）；其他對手也要有牌，kit 才有東西可以交換：p3 一張資源、p4 一張 commodity。
+    const state = cloneState(fx.state);
+    give(state, 'p3', { wool: 1 });
+    giveCommodities(state, 'p4', { cloth: 1 });
+    expect(citiesKnightsKit.conservation!(state)).toEqual([]);
+    const hand = (s: GameState, index: number) => JSON.stringify([s.players[index]!.resources, s.players[index]!.commodities]);
+
+    const variant = cloneState(state);
+    expect(citiesKnightsKit.hideDifferently!(variant, fx.responder)).toBe(true);
+    expect(hand(variant, 1)).toBe(hand(state, 1));
+    expect(hand(variant, 2)).not.toBe(hand(state, 2));
+    expect(hand(variant, 3)).not.toBe(hand(state, 3));
+    expect(citiesKnightsKit.conservation!(variant)).toEqual([]);
+    // 行動者看到的投影不變。
+    const view = (s: GameState) => JSON.stringify(projectGame(s, fx.responder, { hints: actionHints(s, fx.responder) }));
+    expect(view(variant)).toBe(view(state));
+
+    // 對照：不是 frame 的回應者（p3）看不到 p2 的手牌，p2 就和別的對手一樣會被換。
+    const other = cloneState(state);
+    expect(citiesKnightsKit.hideDifferently!(other, 'p3')).toBe(true);
+    expect(hand(other, 1)).not.toBe(hand(state, 1));
   });
 
   it('perturb keeps every supply, and what the engine needs to project and give hints', () => {
