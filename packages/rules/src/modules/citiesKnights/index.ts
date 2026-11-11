@@ -247,6 +247,8 @@ export function projectCitiesKnights(state: GameState) {
   };
 }
 
+export type CitiesKnightsView = ReturnType<typeof projectCitiesKnights>;
+
 function projectFrame(state: GameState, frame: ModulePending, _viewerId: string, _ctx: ModuleViewContext): PublicModulePendingView {
   const base = { kind: frame.kind, module: frame.module, responders: frame.responders.slice() };
   switch (frame.kind) {
@@ -307,6 +309,8 @@ export function citiesKnightsHints(state: GameState, playerId: string, ctx: Modu
     twoForOne: twoForOneKinds(state, playerId),
   };
 }
+
+export type CitiesKnightsHints = ReturnType<typeof citiesKnightsHints>;
 
 function commodityRate(state: GameState, playerId: string): number {
   // Mirrors the engine's supply rate: 4:1, a 3:1 port, trade level 3 at 2:1.
