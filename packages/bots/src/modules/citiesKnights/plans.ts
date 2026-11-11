@@ -37,7 +37,7 @@ const IMPROVE_PREFIX = `${IMPROVE_PLAN}.`;
 const KNIGHT_BASE_VALUE = 0.6;
 const KNIGHT_URGENCY_VALUE = 1.2;
 /** 緊迫度：蠻族還差幾艘船（≥ 5 艘時不急）。 */
-const URGENCY_BY_AWAY: Readonly<Record<number, number>> = { 4: 0.2, 3: 0.5, 2: 1, 1: 1.5 };
+const URGENCY_BY_AWAY: Readonly<Record<number, number>> = { 4: 0.4, 3: 1, 2: 1.6, 1: 2.2 };
 /** 城牆計畫的價值（只為了多 2 張手牌上限）。 */
 const WALL_VALUE = 0.3;
 
