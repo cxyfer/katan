@@ -23,6 +23,7 @@ import {
   CK_PROGRESS_DISCARD_FRAME,
   CK_SCIENCE_FRAME,
   CITIES_KNIGHTS,
+  type GameEvent,
   type GameState,
   type GameView,
 } from '@catan/rules';
@@ -229,6 +230,16 @@ function eventPlayers(game: GameState, type: string): string[] {
   return game.log.filter((event) => event.type === type).map((event) => event.params.playerId as string);
 }
 
+/** 整局已提交的事件（`state.log` 只留最後 200 筆，完整對局要從資料庫讀）。 */
+async function allEvents(service: RunningService, gameId: string): Promise<GameEvent[]> {
+  const events: GameEvent[] = [];
+  for (;;) {
+    const page = await service.repo.listEvents(gameId, events[events.length - 1]?.seq ?? 0, 500);
+    if (page.length === 0) return events;
+    events.push(...page);
+  }
+}
+
 async function rejectedBotReceipts(service: RunningService, gameId: string): Promise<string[]> {
   const rows = await service.repo.db.all<{ error_json: string }>(
     `SELECT error_json FROM command_receipts WHERE game_id = ? AND outcome = 'rejected' AND command_id LIKE 'bot:%'`,
@@ -340,11 +351,15 @@ describe('Cities & Knights with bot seats', () => {
       const game = await state(gameId, harness.service);
       expect(game.profileId).toBe(PROFILE_ID);
       expect(game.pending).toBeNull();
-      // 每個 Bot 都真的蓋了東西，而不是只靠保底擲骰與結束回合。
-      for (const botId of botIds) {
-        const built = game.board.buildings.filter((building) => building?.player === botId).length;
-        expect(built, botId).toBeGreaterThanOrEqual(2);
-      }
+      // Bot 真的玩了 C&K：招募過騎士或改良過城市。setup 本來就給每人一座村莊與一座城市，
+      // 建築數不能當證據；事件從資料庫讀完整的歷史。
+      const events = await allEvents(harness.service, gameId);
+      const botActions = events.filter(
+        (event) =>
+          (event.type === 'ck.knightRecruited' || event.type === 'ck.cityImproved') &&
+          botIds.includes(event.params.playerId as string),
+      );
+      expect(botActions.length).toBeGreaterThan(0);
       expect((await harness.service.repo.findRoom(roomId))?.status).toBe('completed');
       expect(await rejectedBotReceipts(harness.service, gameId)).toEqual([]);
     } finally {
