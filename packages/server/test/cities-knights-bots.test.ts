@@ -2,14 +2,15 @@
  * Cities & Knights 的 Bot 席位（CK-G，C&K 計畫 §6.3；結構比照 `seafarers-bots.test.ts`）。
  *
  * 四類案例，全都經過 HTTP 與真實的 BotDriver：
- * 1. 真人房主加上 Bot 的完整 `ck-2025` 對局，跑到終局有勝者，沒有非 stale 的拒絕；
+ * 1. 真人房主加上 Bot 的完整 `ck-2025`（3 人）與 `ck-paired-2025`（5 人）對局，跑到終局有勝者，沒有非 stale 的拒絕；
  * 2. 策略拋錯時，`citiesKnights.pillage` 由保底代答，沒有被拒絕、也不必等重試；
- * 3. `scienceBonus` 的 `responders[0]` 是真人時 Bot 等待，真人作答後 Bot 才答；`progressDiscard` 中
- *    真人與 Bot 並存，Bot 在輪到自己時作答、輪到真人時等待；
+ * 3. 4 人房：`scienceBonus` 的 `responders[0]` 是真人時 Bot 等待，真人作答後 Bot 才答；`progressDiscard`
+ *    為 Bot → 真人 → Bot，Bot 在輪到自己時作答、輪到真人時等待（策略只作答 frame，不主動打牌）；
  * 4. `defenderDraw` 等待真人時重啟伺服器，frame 與 Bot 的後續作答由已提交的狀態恢復。
  *
  * 注入的 pending 形狀照 rules 的實際建立處（`barbarians.ts`、`production.ts`、`progress.ts`）：
- * `{ kind, module, responders, data }`，`data` 的欄位與內容也一致。
+ * `{ kind, module, responders, data }`，`data` 的欄位與內容也一致；`responders` 的成員與順序照
+ * `turnOrder`（從行動者起算）與 `overLimitOffTurn`（排除行動者），都是真實對局能走到的狀態。
  */
 
 import { randomUUID } from 'node:crypto';
@@ -259,6 +260,21 @@ const throwingPolicy: BotPolicy = {
 };
 
 /**
+ * 策略只作答待決的 frame，沒有待決效果時改由保底行動（只擲骰與結束回合）。回傳還原函式；
+ * 測試結束要呼叫，避免汙染共用的 BotDriverDeps。
+ */
+function frameOnlyPolicies(deps: BotDriverDeps): () => void {
+  const original = deps.policyFor;
+  deps.policyFor = (level) => {
+    const strategy = original(level);
+    return { decide: (view, ctx) => (view.pending ? strategy.decide(view, ctx) : fallbackPolicy.decide(view, ctx)) };
+  };
+  return () => {
+    deps.policyFor = original;
+  };
+}
+
+/**
  * 開出 `citiesKnights.pillage`：`actor` 回合的行動階段，`bot` 的兩座建築都是城市（真實的 frame 只在
  * 受害者有兩座以上可掠奪的城市時才出現），frame 只等 `bot`。
  */
@@ -426,25 +442,35 @@ describe('Cities & Knights with bot seats', () => {
     }
   }, 30_000);
 
-  // 3. 真人與 Bot 並存：scienceBonus 依序作答（真人在前，Bot 等待）；progressDiscard 在 Bot、真人、Bot 之間輪流。
+  // 3. 真人與 Bot 並存（4 人房：真人加 3 個 Bot）。frame 的作答順序依 rules 的實際規則：
+  //    - scienceBonus 依 `turnOrder`（從擲骰者起算）：真人排在 Bot 前面，Bot 不搶答；
+  //    - progressDiscard 排除行動者（`overLimitOffTurn`），依 `turnOrder` 為 Bot → 真人 → Bot。
+  //    座位以真人為 0 順時針編號：`before` 是真人前一座、`after` 是後一座、`across` 在對面。
   it('lets bots wait for a person in scienceBonus and answer around one in progressDiscard', async () => {
     const service = harness.service;
-    const logs = captureLogs(driverDeps(service));
+    const deps = driverDeps(service);
+    const logs = captureLogs(deps);
+    // 策略只作答 frame，沒有待決效果時由保底行動：CK-C 之後 standard 會主動打出進步卡，
+    // 可能開出需要真人作答的 frame，測試裡的真人不會答，整局就卡住。
+    const restorePolicy = frameOnlyPolicies(deps);
     const host = await harness.client('CkShared');
-    const { roomId, gameId, botIds } = await ckGame(service, host, { bots: 2 });
-    const [first, last] = botIds as [string, string];
+    const { roomId, gameId } = await ckGame(service, host, { bots: 3 });
     const drop = await liveSocket(service, roomId, host.playerId!);
     try {
       await finishSetup(host, gameId, service);
+      const seats = (await state(gameId, service)).players.map((player) => player.id);
+      const at = (offset: number): string => seats[(seats.indexOf(host.playerId!) + offset) % seats.length]!;
+      const [after, across, before] = [at(1), at(2), at(3)];
 
-      // scienceBonus：真人排在最前面，Bot 不搶答，連同回合都停住。
-      const science = await openScience(gameId, service, first, [host.playerId!, last]);
+      // scienceBonus：擲骰者是 before，turnOrder 為 before → 真人 → after → across；
+      // 真人與 after 沒有拿到牌，真人排在最前面，Bot 不搶答，連同回合都停住。
+      const science = await openScience(gameId, service, before, [host.playerId!, after]);
       service.bots.kick(gameId);
       await sleep(300);
       expect(await revision(gameId, service)).toBe(science);
-      expect(respondersOf(await state(gameId, service))).toEqual([host.playerId, last]);
+      expect(respondersOf(await state(gameId, service))).toEqual([host.playerId, after]);
       const mine = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
-      expect(mine.view.pending).toMatchObject({ kind: CK_SCIENCE_FRAME, responders: [host.playerId, last] });
+      expect(mine.view.pending).toMatchObject({ kind: CK_SCIENCE_FRAME, responders: [host.playerId, after] });
       const hints = mine.view.hints?.modules as { citiesKnights?: { scienceBonus?: boolean } } | undefined;
       expect(hints?.citiesKnights?.scienceBonus).toBe(true);
 
@@ -458,7 +484,7 @@ describe('Cities & Knights with bot seats', () => {
       );
       expect(declined.outcome).toBe('accepted');
       await waitFor(async () => (await state(gameId, service)).pending === null, 'the bot to answer the scienceBonus frame');
-      expect(eventPlayers(await state(gameId, service), 'ck.scienceBonusTaken')).toEqual([host.playerId, last]);
+      expect(eventPlayers(await state(gameId, service), 'ck.scienceBonusTaken')).toEqual([host.playerId, after]);
 
       // 回合繼續輪下去，直到輪到真人。
       await waitFor(async () => {
@@ -466,23 +492,24 @@ describe('Cities & Knights with bot seats', () => {
         return current.pending === null && actorOf(current) === host.playerId;
       }, 'the turn to reach the person');
 
-      // progressDiscard：Bot → 真人 → 另一個 Bot，每人各欠 1 張進步卡。
-      const discard = await openProgressDiscard(gameId, service, first, [first, host.playerId!, last]);
+      // progressDiscard：行動者是 across，turnOrder 為 across → before → 真人 → after；
+      // 行動者不在名單內，三位 responder 各欠 1 張進步卡，順序是 Bot → 真人 → Bot。
+      const discard = await openProgressDiscard(gameId, service, across, [before, host.playerId!, after]);
       service.bots.kick(gameId);
       await waitFor(async () => respondersOf(await state(gameId, service))?.[0] === host.playerId, 'the first bot to discard');
       const afterFirst = await state(gameId, service);
-      expect(afterFirst.players.find((player) => player.id === first)!.progressCards).toHaveLength(4);
+      expect(afterFirst.players.find((player) => player.id === before)!.progressCards).toHaveLength(4);
       const waiting = await revision(gameId, service);
       expect(waiting).toBeGreaterThan(discard);
       await sleep(300);
       expect(await revision(gameId, service)).toBe(waiting);
-      expect(respondersOf(await state(gameId, service))).toEqual([host.playerId, last]);
+      expect(respondersOf(await state(gameId, service))).toEqual([host.playerId, after]);
 
       const own = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
       expect(own.view.pending).toMatchObject({
         kind: CK_PROGRESS_DISCARD_FRAME,
-        responders: [host.playerId, last],
-        data: { required: { [host.playerId!]: 1, [last]: 1 } },
+        responders: [host.playerId, after],
+        data: { required: { [host.playerId!]: 1, [after]: 1 } },
       });
       const answer = host.expectOk<Receipt>(
         await host.post(`/api/games/${gameId}/commands`, {
@@ -495,8 +522,12 @@ describe('Cities & Knights with bot seats', () => {
 
       await waitFor(async () => (await state(gameId, service)).pending === null, 'the last bot to discard');
       const game = await state(gameId, service);
-      expect(eventPlayers(game, 'ck.progressDiscarded')).toEqual([first, host.playerId, last]);
-      for (const player of game.players) expect(player.progressCards, player.id).toHaveLength(4);
+      expect(eventPlayers(game, 'ck.progressDiscarded')).toEqual([before, host.playerId, after]);
+      // 策略不會主動打牌，frame 一結束每位 responder 都剛好在上限；行動者沒有被要求棄牌。
+      for (const playerId of [before, host.playerId!, after]) {
+        expect(game.players.find((player) => player.id === playerId)!.progressCards, playerId).toHaveLength(4);
+      }
+      expect(game.players.find((player) => player.id === across)!.progressCards).toEqual([]);
       expect(game.players.find((player) => player.id === host.playerId)!.progressCards).not.toContain('wedding');
       await waitFor(async () => {
         const current = await state(gameId, service);
@@ -506,6 +537,7 @@ describe('Cities & Knights with bot seats', () => {
       expect(logs.entries.filter(isRetryWarn)).toEqual([]);
       expect(await rejectedBotReceipts(service, gameId)).toEqual([]);
     } finally {
+      restorePolicy();
       logs.restore();
       await drop();
     }
