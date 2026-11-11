@@ -49,12 +49,12 @@ export function offerGain(economy: Economy, offer: Offer): number {
   return handUtility(economy, after, target) - handUtility(economy, hand, target);
 }
 
+/** 收到報價的牌：張數類，依 `CARD_KINDS`（E-3），否則 `offerGain` 會漏掉收到的 commodity。 */
 function addHand(hand: Hand, cost: Cost): Hand {
   const out = { ...hand };
-  for (const resource of RESOURCES) out[resource] += cost[resource] ?? 0;
-  for (const commodity of COMMODITIES) {
-    const amount = cost[commodity] ?? 0;
-    if (amount > 0) out[commodity] = (hand[commodity] ?? 0) + amount;
+  for (const kind of CARD_KINDS) {
+    const amount = cost[kind] ?? 0;
+    if (amount > 0) out[kind] = (hand[kind] ?? 0) + amount;
   }
   return out;
 }
