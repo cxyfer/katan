@@ -181,7 +181,8 @@ function siteOpened(turn: TurnContext, vertex: number): number {
 
 /**
  * Intrigue：擠走一隻碰到自己路線的對手騎士（不需要自己的騎士）。價值：它擋住自己的計畫、讓自己的路線多出幾格、
- * 擋住自己兩條路以內的聚落點，或者是領先者的啟動中強騎士（少一隻防守的人，風險落到別人身上）。
+ * 擋住自己兩條路以內的聚落點，或者是領先者的強騎士。底分很低：被擠走的騎士由對手自己選退路，狀態不變，
+ * 所以沒有這些好處時只是讓路口空出來。
  */
 function intrigue(ctx: Context, targets: Record<string, unknown>): Play | null {
   const { turn } = ctx;
