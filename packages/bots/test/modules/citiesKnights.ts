@@ -8,10 +8,12 @@
  *   反轉各牌組（張數是公開的）。guildDues／espionage 的行動者看得到受害者的手牌，那位受害者不動；
  * - perturb：重新分配 commodity 與進步卡、挪動騎士、調整蠻族位置，並在沒有待決效果時偶爾注入 C&K 的
  *   frame（形狀依 rules 的實際投影，見 `stageFrame`）；
- * - responseCommands：宣告 13 個 pending 指令。
+ * - responseCommands：宣告 13 個 pending 指令；
+ * - mechanics（B2）：Q2 計數器，事件欄位一律讀 `event.params.*`，指令與事件分「策略」與「保底」兩種來源，
+ *   並分 standard／easy 兩種難度（鍵的格式見 `CkMechanicsTally`）。
  *
  * 不得 import `rules/test/ck-checks.ts`：它依賴 vitest 的 `expect`，而 bench 會把 kit 打包進去。這裡只用
- * `@catan/rules` 的公開 API，檢查回傳字串清單。`mechanics` 由 CK-B2 加上。
+ * `@catan/rules` 的公開 API，檢查回傳字串清單。
  */
 
 import {
@@ -31,6 +33,7 @@ import {
   CK_SABOTAGE_FRAME,
   CK_SCIENCE_FRAME,
   CK_TRACKS,
+  CK_VP_PROGRESS_CARDS,
   CK_TREASON_PLACE_FRAME,
   CK_TREASON_REMOVE_FRAME,
   CK_WEDDING_FRAME,
@@ -48,7 +51,7 @@ import {
   type ProgressCardType,
   type Rng,
 } from '@catan/rules';
-import type { ModuleTestKit } from './types.ts';
+import type { MechanicsStep, MechanicsTally, ModuleTestKit } from './types.ts';
 
 /** rules 的 `CitiesKnightsState` 沒有匯出；這裡只宣告會讀寫的欄位。 */
 interface CkKnight {
@@ -66,10 +69,16 @@ interface CkSlot {
   knights: CkKnight[];
   walls: number[];
   progressVp: Record<string, ProgressCardType[]>;
+  metropolises?: Record<string, { player: string; vertex: number } | null>;
 }
 
 function slotOf(state: GameState): CkSlot | undefined {
   return moduleStateOf<CkSlot>(state, CITIES_KNIGHTS);
+}
+
+/** 分數卡（printing、constitution）打出時立刻攤開，不會留在手牌：擾動與換牌都不得把它們放進手牌。 */
+function isHeldCard(card: ProgressCardType): boolean {
+  return !CK_VP_PROGRESS_CARDS.includes(card);
 }
 
 /** 進步卡所屬的牌組（棄牌與換牌都放回自己的牌組）。 */
@@ -207,7 +216,7 @@ function hideDifferently(variant: GameState, viewerId: string): boolean {
       const card = player.progressCards[index]!;
       const track = trackOf(card);
       const deck = track ? variant.progressDecks[track] : undefined;
-      const deckIndex = deck ? deck.findIndex((other) => other !== card) : -1;
+      const deckIndex = deck ? deck.findIndex((other) => other !== card && isHeldCard(other)) : -1;
       if (!deck || deckIndex < 0) continue;
       player.progressCards[index] = deck[deckIndex]!;
       deck[deckIndex] = card;
@@ -289,8 +298,9 @@ function perturbProgress(state: GameState, rng: Rng, frozen: ReadonlySet<string>
       const decks = CK_TRACKS.filter((track) => state.progressDecks[track].length > 0);
       if (decks.length === 0) return;
       const deck = state.progressDecks[pick(decks, rng)];
-      const index = rng.int(deck.length);
-      player.progressCards.push(deck.splice(index, 1)[0]!);
+      const held = deck.flatMap((card, at) => (isHeldCard(card) ? [at] : []));
+      if (held.length === 0) continue;
+      player.progressCards.push(deck.splice(pick(held, rng), 1)[0]!);
     }
   }
 }
@@ -474,10 +484,16 @@ export function stageFrame(state: GameState, kind: string, rng: Rng): boolean {
       break;
     }
     case CK_DIPLOMACY_FRAME: {
-      const hints = actionHints(state, actor.id);
-      const edges = hints.legalRoads.slice();
+      // 比照 rules 的 Diplomacy：先拆掉自己的一條道路，再以拆除後的盤面算出可重建的邊（cards-politics.ts）。
       const taken = state.board.roads.findIndex((road) => road?.player === actor.id && !road.ship);
-      if (edges.length === 0 || taken < 0) return false;
+      if (taken < 0) return false;
+      const removed = state.board.roads[taken];
+      state.board.roads[taken] = null;
+      const edges = actionHints(state, actor.id).legalRoads.slice();
+      if (edges.length === 0) {
+        state.board.roads[taken] = removed;
+        return false;
+      }
       staged = frame(kind, [actor.id], { edge: taken, edges });
       break;
     }
@@ -491,6 +507,11 @@ export function stageFrame(state: GameState, kind: string, rng: Rng): boolean {
 function perturb(state: GameState, rng: Rng): void {
   const slot = slotOf(state);
   if (!slot) return;
+  // C&K 沒有發展卡（騎士、豐收等指令是 `not-in-ruleset`）：harness 的 base 擾動發的發展卡在這裡收回。
+  for (const player of state.players) {
+    player.devCards = [];
+    player.newDevCards = [];
+  }
   clampFrame(state);
   const frozen = frozenPlayers(state);
   perturbCommodities(state, rng, frozen);
@@ -503,6 +524,93 @@ function perturb(state: GameState, rng: Rng): void {
   // 偶爾注入一個 C&K frame，而且第一個答案要合法：先試一種，不行就算了。
   if (!state.pending && state.turn.phase === 'action' && rng.int(3) === 0) {
     stageFrame(state, pick(STAGEABLE_FRAMES, rng), rng);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// mechanics（Q2 計數器）
+// ---------------------------------------------------------------------------
+
+/** 終局時持有的大都市數（M6）；從公開狀態讀，不靠事件。 */
+export function metropolisCount(state: GameState): number {
+  return Object.values(slotOf(state)?.metropolises ?? {}).filter((entry) => entry !== null && entry !== undefined).length;
+}
+
+/** 桌上最高的改良等級（M2）。 */
+export function maxImprovementLevel(state: GameState): number {
+  return Math.max(0, ...state.players.flatMap((player) => CK_TRACKS.map((track) => player.improvements[track] ?? 0)));
+}
+
+/** 這個玩家目前有沒有會被掠奪的城（沒有大都市標記的城市）。 */
+function pillageable(state: GameState, playerId: string): boolean {
+  const slot = slotOf(state);
+  const metropolisVertices = new Set(
+    Object.values(slot?.metropolises ?? {}).flatMap((entry) => (entry ? [entry.vertex] : [])),
+  );
+  return state.board.buildings.some(
+    (building, vertex) => building?.city === true && building.player === playerId && !metropolisVertices.has(vertex),
+  );
+}
+
+/** 計數的指令：C&K 的行動與回應指令（建城牆、改良、騎士、進步卡、科學獎勵、蠻族）。 */
+const CK_COMMAND = /^(build\.wall|city\.|knight\.|progress\.|science\.|barbarians\.)/;
+
+/**
+ * 鍵（全部是整數累計，`harness` 會再加上 `citiesKnights.` 前綴）：
+ * - `cmd.<type>`：保底以外的策略送出的 C&K 指令；`cmd.<level>.<type>` 依座位難度細分；
+ * - `ev.<type>`：全部來源的 `ck.*` 事件；`ev.policy.<type>`、`ev.<level>.<type>`：由策略指令引起的事件（level 為 standard／easy）；
+ * - `card.<card>`：策略打出的進步卡（M3、M7）；
+ * - `attack.defenders`、`attack.barbarians`：蠻族攻擊的結果（M4）；
+ * - `exposed.<player>`：該玩家在幾次攻擊前有會被掠奪的城；`lost.<player>`：失去幾座城（M5，test 依座位難度合計）；
+ * - `maxImprovement`：升級事件的最高等級（取最大值，不累加）。
+ */
+class CkMechanicsTally implements MechanicsTally {
+  private readonly counts: Record<string, number> = {};
+
+  private bump(key: string, by = 1): void {
+    this.counts[key] = (this.counts[key] ?? 0) + by;
+  }
+
+  observe(step: MechanicsStep): void {
+    const { level, command, source, before, events } = step;
+    if (source === 'policy' && CK_COMMAND.test(command.type)) {
+      this.bump(`cmd.${command.type}`);
+      this.bump(`cmd.${level}.${command.type}`);
+    }
+    for (const event of events) {
+      // 只計 C&K 自己的事件：bench 把每個鍵都印成一欄，base 的事件與指令由 base 的計數涵蓋。
+      if (event.type.startsWith('ck.')) {
+        this.bump(`ev.${event.type}`);
+        if (source === 'policy') {
+          this.bump(`ev.policy.${event.type}`);
+          this.bump(`ev.${level}.${event.type}`);
+        }
+      }
+      const params = event.params as Record<string, unknown>;
+      switch (event.type) {
+        case 'ck.progressPlayed':
+          if (source === 'policy' && typeof params.card === 'string') this.bump(`card.${params.card}`);
+          break;
+        case 'ck.cityImproved':
+          if (typeof params.level === 'number') {
+            this.counts.maxImprovement = Math.max(this.counts.maxImprovement ?? 0, params.level);
+          }
+          break;
+        case 'ck.barbariansAttack':
+          if (params.outcome === 'defenders') this.bump('attack.defenders');
+          if (params.outcome === 'barbarians') this.bump('attack.barbarians');
+          for (const player of before.players) if (pillageable(before, player.id)) this.bump(`exposed.${player.id}`);
+          break;
+        case 'ck.cityPillaged':
+          if (typeof params.playerId === 'string') this.bump(`lost.${params.playerId}`);
+          break;
+        default:
+      }
+    }
+  }
+
+  snapshot(): Readonly<Record<string, number>> {
+    return { ...this.counts };
   }
 }
 
@@ -527,4 +635,5 @@ export const citiesKnightsKit: ModuleTestKit = {
   conservation,
   hideDifferently,
   perturb,
+  mechanics: () => new CkMechanicsTally(),
 };

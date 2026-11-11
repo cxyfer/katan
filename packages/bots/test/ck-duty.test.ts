@@ -3,7 +3,7 @@
  *
  * 14 種 frame（13 種以真實指令走到，resolveRoll 是續行 frame）、含 commodity 的 base 棄牌、
  * `progressExcess`，以及 base 的強盜與偷牌在 C&K 上的行為。每個保底指令都必須被 `applyCommand` 接受，
- * 保底、standard、easy（兩個種子）都不會卡住，而且 B1 沒有策略鉤子，所以四種策略的答案相同。
+ * 保底、standard、easy（兩個種子）都不會卡住；保底的答案是「第一個合法選項」，策略的選擇另見 `ck-frames.test.ts`（B2），這裡只要求策略的答案同樣被引擎接受。
  * 盤面由 `ck-fixtures.ts` 以 rules 的真實指令建構，不使用 harness。
  */
 
@@ -32,7 +32,7 @@ const ctxFor = (selfId: string, level: BotLevel = 'standard', seed = 1): BotCont
   offerPhases: {},
 });
 
-/** 保底，加上 standard 與 easy（兩個種子）：C&K 的策略鉤子要到 B2 才有，策略都靠保底作答。 */
+/** 保底，加上 standard 與 easy（兩個種子）；第一項（保底）的答案是「第一個合法選項」的基準。 */
 const POLICIES: readonly (readonly [string, BotPolicy, BotLevel, number])[] = [
   ['fallback', fallbackPolicy, 'standard', 1],
   ['standard', createBotPolicy('standard'), 'standard', 1],
@@ -48,7 +48,7 @@ function expectAccepted(state: GameState, actor: string, command: BotCommand | n
   return outcome.ok ? outcome.state : state;
 }
 
-/** 每種策略在這個盤面上都送出同一個被接受的指令；回傳該指令。 */
+/** 每種策略在這個盤面上都送出被引擎接受的指令；回傳保底的指令（第一個合法選項）。 */
 function expectEveryPolicyAnswers(state: GameState, actor: string): BotCommand {
   const view = viewOf(state, actor);
   const answers = POLICIES.map(([name, policy, level, seed]) => {
@@ -57,7 +57,6 @@ function expectEveryPolicyAnswers(state: GameState, actor: string): BotCommand {
     expectAccepted(state, actor, command);
     return command!;
   });
-  for (const answer of answers) expect(answer).toEqual(answers[0]);
   return answers[0]!;
 }
 
@@ -93,7 +92,7 @@ describe('14 種 C&K frame 的保底', () => {
   });
 
   describe.each(Object.entries(FRAME_FIXTURES))('%s', (kind, build) => {
-    it('the duty takes the first legal option, and every policy sends it', () => {
+    it('the duty takes the first legal option, and every policy sends a legal answer', () => {
       const fx = build();
       const view = viewOf(fx.state, fx.responder);
       const expected = EXPECTED[kind]!(fx, view);
