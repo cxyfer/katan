@@ -43,6 +43,11 @@ export function GameIcon({ name, size = 20, className = '' }: { name: string; si
     exit: <path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9" />,
     pause: <><circle cx="12" cy="12" r="9" /><path d="M10 8.5v7m4-7v7" /></>,
     pencil: <><path d="M4 20h4L20 8a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13 5 6 6" /></>,
+    road: <path d="M4 21 9.5 3m5 0L20 21M12 5v2.5m0 4v2.5m0 4V21" />,
+    wall: <><path d="M4.5 21V8h3v3h3V8h3v3h3V8h3v13Z" /><path d="M4.5 16h15M12 16v5M8 11v5m8-5v5" /></>,
+    bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />,
+    'chevron-up': <path d="m5 15 7-7 7 7" />,
+    robber: <><circle cx="12" cy="6.5" r="3.5" /><path d="M5 21c0-6 3-10 7-10s7 4 7 10Z" /></>,
   };
   return <svg className={`game-icon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{paths[name] ?? paths.compass}</svg>;
 }

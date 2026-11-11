@@ -2,8 +2,9 @@
 
 Review captures for the floating HUD on short landscape phones (#89) and for the
 save state that stays visible in that layout (#90). They were rendered from
-commit `11010a8` on 2026-11-07, after saving moved from the table menu into the
-leave dialog and the save state in this layout became a pill with its own
+commit `3ce2779` on 2026-11-12, after the action rail was regrouped into a
+two-column dock that expands into cards (`../action-rail/`). Saving lives in
+the leave dialog, and the save state in this layout is a pill with its own
 backdrop, like the connection state, so it reads over the board.
 
 Captured from the production build (`pnpm build`) in headless Chromium with
@@ -21,7 +22,7 @@ its contents scroll inside the dialog box.
 |---|---|---|---|
 | `01-desktop-reference-1366x768-en.png` | en | 1366×768 | Regular layout for reference; header and tool band unchanged |
 | `02-floating-hud-844x390-en.png` | en | 844×390 | Header as a floating control cluster top right, tool band bottom left, board full height |
-| `03-action-rail-open-844x390-en.png` | en | 844×390 | Action rail open above the HUD |
+| `03-action-rail-open-844x390-en.png` | en | 844×390 | Action rail open above the HUD: phase and available count in the header, build cards in two columns |
 | `04-target-picker-above-hud-844x390-en.png` | en | 844×390 | Target list open while the robber must move; picker sits above the HUD |
 | `05-save-pending-844x390-en.png` | en | 844×390 | Save request held from the leave dialog: "Save pending…" on its button and the working note |
 | `06-save-failed-844x390-en.png` | en | 844×390 | Failed receipt after closing the dialog: "Save failed" stays in the status strip as a red pill on a dark backdrop |
@@ -30,11 +31,6 @@ its contents scroll inside the dialog box.
 | `09-save-failed-740x360-zh-Hant.png` | zh-Hant | 740×360 | Failed receipt visible after the dialog is closed |
 | `10-floating-hud-568x320-en.png` | en | 568×320 | The shortest supported landscape size |
 | `11-save-failed-568x320-en.png` | en | 568×320 | Failed receipt at the shortest size |
-
-`04-target-picker-above-hud-844x390-en.png` was re-captured on 2026-11-07 from
-the merge of `master` (`c4f9d7f`) into `release/v0.4.1` (`3387257`), so its
-targets are named by resource and dice number (#128) on the leave and save
-layout above; every other capture is from `11010a8`.
 
 The script asserts the compact layout is active, the status strip is absolutely
 positioned, the board takes the full viewport height, the page does not scroll,

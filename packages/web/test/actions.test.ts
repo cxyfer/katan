@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveActions } from '../src/state/actions.ts';
+import { actionGroupOf, deriveActions, groupActions, sharedReason, type ActionDescriptor } from '../src/state/actions.ts';
 import { requiredActionFor, requiredActionAnnouncement } from '../src/state/pending.ts';
 import { initialTableState, type TableState } from '../src/state/table.ts';
 import { beginCommand } from '../src/state/commands.ts';
@@ -218,5 +218,46 @@ describe('required action derivation', () => {
       }),
     );
     expect(requiredActionAnnouncement(theirs, (id) => id)).toBeNull();
+  });
+});
+
+describe('action groups', () => {
+  const action = (id: string, reasonId: string | null): ActionDescriptor => ({
+    id, labelId: id, commandType: id, enabled: reasonId === null, reasonId, cost: null, targetCount: 0,
+  });
+
+  it('orders groups as turn, build, sea, knights and keeps the derived order inside each group', () => {
+    const groups = groupActions([
+      action('roll', 'play.disabled.timing'),
+      action('endTurn', null),
+      action('build.road', null),
+      action('build.ship', null),
+      action('knight.recruit', 'play.disabled.noTargets'),
+      action('build.settlement', 'play.disabled.noTargets'),
+      action('ship.move', 'sf.disabled.shipMoved'),
+      action('build.wall', null),
+    ]);
+    expect(groups.map((group) => [group.id, group.actions.map((item) => item.id)])).toEqual([
+      ['turn', ['roll', 'endTurn']],
+      ['build', ['build.road', 'build.settlement', 'build.wall']],
+      ['sea', ['build.ship', 'ship.move']],
+      ['knights', ['knight.recruit']],
+    ]);
+    expect(groups.find((group) => group.id === 'knights')?.sharedReasonId).toBe('play.disabled.noTargets');
+    expect(groups.find((group) => group.id === 'build')?.sharedReasonId).toBeNull();
+  });
+
+  it('only shares a reason when every action is disabled for the same reason', () => {
+    expect(sharedReason([action('a', 'play.disabled.notYourTurn'), action('b', 'play.disabled.notYourTurn')])).toBe('play.disabled.notYourTurn');
+    expect(sharedReason([action('a', 'play.disabled.notYourTurn'), action('b', 'play.disabled.inventory')])).toBeNull();
+    expect(sharedReason([action('a', 'play.disabled.notYourTurn'), action('b', null)])).toBeNull();
+    expect(sharedReason([])).toBeNull();
+  });
+
+  it('places every expansion action in a group', () => {
+    expect(actionGroupOf('ep.buildHarbor')).toBe('build');
+    expect(actionGroupOf('ep.buildShip')).toBe('sea');
+    expect(actionGroupOf('build.devCard')).toBe('build');
+    expect(actionGroupOf('knight.chasePirate')).toBe('knights');
   });
 });

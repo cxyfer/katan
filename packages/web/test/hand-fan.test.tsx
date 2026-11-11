@@ -151,14 +151,15 @@ describe('held card fan', () => {
   });
 
   it('reports the wrapped tally height so the fan can lift with it', async () => {
-    let observed: (() => void) | undefined;
+    // 牌桌上不只手牌使用 ResizeObserver（行動欄也量測捲動），所以通知每一個觀察者。
+    const observed: Array<() => void> = [];
     const original = globalThis.ResizeObserver;
-    globalThis.ResizeObserver = class { constructor(callback: () => void) { observed = callback; } observe() {} disconnect() {} unobserve() {} } as unknown as typeof ResizeObserver;
+    globalThis.ResizeObserver = class { constructor(callback: () => void) { observed.push(callback); } observe() {} disconnect() {} unobserve() {} } as unknown as typeof ResizeObserver;
     try {
       await open();
       const tally = screen.getByTestId('resource-tally');
       Object.defineProperty(tally, 'offsetHeight', { configurable: true, value: 62 });
-      act(() => observed?.());
+      act(() => observed.forEach((callback) => callback()));
       expect(screen.getByTestId('hand-panel').style.getPropertyValue('--tally-height')).toBe('62px');
     } finally {
       globalThis.ResizeObserver = original;
