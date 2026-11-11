@@ -484,10 +484,16 @@ export function stageFrame(state: GameState, kind: string, rng: Rng): boolean {
       break;
     }
     case CK_DIPLOMACY_FRAME: {
-      const hints = actionHints(state, actor.id);
-      const edges = hints.legalRoads.slice();
+      // 比照 rules 的 Diplomacy：先拆掉自己的一條道路，再以拆除後的盤面算出可重建的邊（cards-politics.ts）。
       const taken = state.board.roads.findIndex((road) => road?.player === actor.id && !road.ship);
-      if (edges.length === 0 || taken < 0) return false;
+      if (taken < 0) return false;
+      const removed = state.board.roads[taken];
+      state.board.roads[taken] = null;
+      const edges = actionHints(state, actor.id).legalRoads.slice();
+      if (edges.length === 0) {
+        state.board.roads[taken] = removed;
+        return false;
+      }
       staged = frame(kind, [actor.id], { edge: taken, edges });
       break;
     }
