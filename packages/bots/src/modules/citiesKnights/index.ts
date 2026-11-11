@@ -7,8 +7,18 @@
  */
 
 import type { BotModule } from '../types.ts';
+import { cardActions } from './cards.ts';
+import { interactiveCardActions } from './cards-interactive.ts';
+import { defenseActions, guardedKnights } from './defense.ts';
 import { citiesKnightsDuty } from './duty.ts';
 import { citiesKnightsEconomy } from './economy.ts';
+import { citiesKnightsAnswerFrame } from './frames.ts';
+import { knightActions } from './knights.ts';
+import { citiesKnightsPlanStep, citiesKnightsPlans } from './plans.ts';
+import { citiesKnightsPreroll } from './preroll.ts';
+import { citiesKnightsSetup } from './setup.ts';
+import { tacticsActions } from './tactics.ts';
+import { commodityTradeActions } from './trade.ts';
 import { CITIES_KNIGHTS } from './view.ts';
 
 /** Bot 能不能玩 C&K；CK-G 才改為 true。 */
@@ -68,11 +78,26 @@ export const CK_PACING: Readonly<Record<string, number>> = {
   'progress.diplomacyRoad': 900,
 };
 
+/** 「現在就該做」的行動：防守、進步卡、騎士、換匯；與 base 的立即建造同一份清單 pick（分數是勝利分當量）。 */
+export const citiesKnightsActions: NonNullable<BotModule['actions']> = (turn) => [
+  ...cardActions(turn),
+  ...interactiveCardActions(turn),
+  ...defenseActions(turn),
+  ...knightActions(turn, guardedKnights(turn)),
+  ...tacticsActions(turn),
+  ...commodityTradeActions(turn),
+];
+
 export const citiesKnightsBotModule: BotModule = {
   id: CITIES_KNIGHTS,
   supports: () => CK_BOTS_RELEASED,
   duty: citiesKnightsDuty,
-  economy: citiesKnightsEconomy,
+  answerFrame: citiesKnightsAnswerFrame,
+  setup: citiesKnightsSetup,
+  preroll: citiesKnightsPreroll,
+  actions: citiesKnightsActions,
+  planStep: citiesKnightsPlanStep,
+  economy: { ...citiesKnightsEconomy, scoreExtras: citiesKnightsPlans },
   pacing: CK_PACING,
   responseCommands: CK_PENDING_COMMANDS,
 };
