@@ -4,15 +4,18 @@
  */
 
 import {
+  CARD_KINDS,
   COSTS,
   requireProfile,
   RESOURCES,
+  type CardKind,
   type Command,
   type GameView,
   type PublicModulePendingView,
   type PublicPendingView,
   type Resource,
 } from '@catan/rules';
+import { bankHas } from './bank.ts';
 import { playerYield } from './board.ts';
 import { banditChoice, robberCauseOf } from './base/robber.ts';
 import { canPlay, plentyPick } from './base/cards.ts';
@@ -145,28 +148,29 @@ function basePendingDecision(turn: TurnContext, pending: BasePending): BotComman
   }
 }
 
-/** 保留最接近目標的組合，先丟過剩、再丟價值低的資源。 */
+/** 保留最接近目標的組合，先丟過剩、再丟價值低的牌；卡種依 `Economy.kinds`（C&K 的 commodity 也要能棄）。 */
 function discardDecision(turn: TurnContext, count: number): Command | null {
   const economy = turn.economy;
   const keep: Cost = economy.plans[0]?.cost ?? {};
   const hand = { ...economy.hand };
-  const out: Resource[] = [];
+  const out: CardKind[] = [];
   for (let i = 0; i < count; i++) {
-    let best: Resource | null = null;
+    let best: CardKind | null = null;
     let bestValue = Infinity;
-    for (const resource of RESOURCES) {
-      if (hand[resource] <= 0) continue;
-      const surplus = hand[resource] - (keep[resource] ?? 0);
+    for (const kind of economy.kinds) {
+      const held = hand[kind] ?? 0;
+      if (held <= 0) continue;
+      const surplus = held - (keep[kind] ?? 0);
       const value =
-        (surplus > 0 ? -surplus * 0.5 : 10) + economy.weights[resource] + (economy.yield[resource] === 0 ? 0.5 : 0);
+        (surplus > 0 ? -surplus * 0.5 : 10) + (economy.weights[kind] ?? 0) + ((economy.yield[kind] ?? 0) === 0 ? 0.5 : 0);
       if (value < bestValue) {
         bestValue = value;
-        best = resource;
+        best = kind;
       }
     }
     if (!best) return null;
     out.push(best);
-    hand[best] -= 1;
+    hand[best] = (hand[best] ?? 0) - 1;
   }
   return { type: 'pending.discard', resources: out };
 }
@@ -207,7 +211,7 @@ function respondToOffers(turn: TurnContext): Command | null {
   if (view.turn.phase !== 'action') return null;
   for (const offer of offersAwaitingMe(view, ctx.selfId)) {
     // 規則 9：無法估值的報價視為不划算，下面的比較自然得到 declined。
-    const gain = offerTermsKnown(offer) ? offerGain(turn.economy, offer) : -Infinity;
+    const gain = offerTermsKnown(offer, turn.economy.kinds) ? offerGain(turn.economy, offer) : -Infinity;
     const margin = acceptMargin(view, ctx.selfId, offer.from, params.acceptMargin);
     return {
       type: 'trade.respond',
@@ -266,10 +270,10 @@ function actionDecision(turn: TurnContext, duty: () => BotCommand | null): BotCo
   // 2. 別人直接對我（行動者）提出的反報價：划算就結算，否則拒絕。
   for (const offer of offersAwaitingMe(view, ctx.selfId)) {
     // 規則 9：無法估值的報價視為不划算，下面的比較自然得到 declined。
-    const gain = offerTermsKnown(offer) ? offerGain(turn.economy, offer) : -Infinity;
+    const gain = offerTermsKnown(offer, turn.economy.kinds) ? offerGain(turn.economy, offer) : -Infinity;
     const margin = acceptMargin(view, ctx.selfId, offer.from, params.acceptMargin);
     const proposer = view.players.find((player) => player.id === offer.from);
-    const proposerCanPay = (proposer?.handSize ?? 0) >= RESOURCES.reduce((sum, r) => sum + (offer.give[r] ?? 0), 0);
+    const proposerCanPay = (proposer?.handSize ?? 0) >= CARD_KINDS.reduce((sum, kind) => sum + (offer.give[kind] ?? 0), 0);
     if (offer.to === ctx.selfId && !turn.pairedSecond && proposerCanPay && gain >= margin) {
       return { type: 'trade.settle', offerId: offer.id };
     }
@@ -360,12 +364,12 @@ function monopolyChoice(turn: TurnContext): Resource | null {
   return bestValue >= params.monopolyMin ? best : null;
 }
 
-/** 付完 `spend` 後，主要計畫已持有的資源是否減少。 */
+/** 付完 `spend` 後，主要計畫已持有的牌是否減少（張數類，含 commodity）。 */
 function hurts(economy: Economy, primary: Cost, spend: Cost): boolean {
-  return RESOURCES.some(
-    (resource) =>
-      economy.hand[resource] - (spend[resource] ?? 0) < Math.min(economy.hand[resource], primary[resource] ?? 0),
-  );
+  return CARD_KINDS.some((kind) => {
+    const held = economy.hand[kind] ?? 0;
+    return held - (spend[kind] ?? 0) < Math.min(held, primary[kind] ?? 0);
+  });
 }
 
 function buildDecision(turn: TurnContext): BotCommand | null {
@@ -423,13 +427,22 @@ function buildDecision(turn: TurnContext): BotCommand | null {
 
 /**
  * 完全相同的指令只留一個：分數取最高，位置取第一次出現的。模組的候選可能與 base 的立即建造是同一個
- * 指令（例如帶小島加分的聚落），不去重會在 easy 的 topK 裡多佔名額。
- * 限制：鍵只排序頂層欄位，巢狀物件的 key 順序不同時會視為不同指令（漏去重，不會誤合併）。目前會
- * 重複的指令都只有平面欄位；第一個帶巢狀 payload 的模組候選接入時，要改成遞迴正規化並補測試。
+ * 指令（例如帶小島加分的聚落），不去重會在 easy 的 topK 裡多佔名額。鍵依內容遞迴正規化：物件的 key
+ * 順序不影響結果，陣列順序有意義（例如 `knight.*` 的路線、`progress.discard` 的牌序）。
  */
+/** 遞迴把物件的 key 排序，陣列保留順序；只用來產生比對用的鍵。 */
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (typeof value === 'object' && value !== null) {
+    return Object.entries(value)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, inner]) => [key, canonical(inner)]);
+  }
+  return value;
+}
+
 export function dedupeCandidates(candidates: readonly Scored<BotCommand>[]): Scored<BotCommand>[] {
-  const keyOf = (command: BotCommand): string =>
-    JSON.stringify(Object.entries(command).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  const keyOf = (command: BotCommand): string => JSON.stringify(canonical(command));
   const seen = new Map<string, { item: BotCommand; score: number }>();
   const out: { item: BotCommand; score: number }[] = [];
   for (const candidate of candidates) {
@@ -493,15 +506,18 @@ export function handRelief(turn: TurnContext): Command | null {
   }
   const target = economy.plans[0]?.cost ?? {};
   const missing = deficitOf(hand, target);
-  let give: Resource | null = null;
-  for (const resource of RESOURCES) {
-    const extra = hand[resource] - (target[resource] ?? 0);
-    if (extra < economy.rates[resource]) continue;
-    if (!give || extra - economy.rates[resource] > hand[give] - (target[give] ?? 0) - economy.rates[give]) give = resource;
+  const { kinds, rates } = economy;
+  let give: CardKind | null = null;
+  for (const kind of kinds) {
+    const rate = rates[kind];
+    if (rate === undefined) continue;
+    const extra = (hand[kind] ?? 0) - (target[kind] ?? 0);
+    if (extra < rate) continue;
+    if (!give || extra - rate > (hand[give] ?? 0) - (target[give] ?? 0) - rates[give]!) give = kind;
   }
   if (!give) return null;
-  const receive = RESOURCES.filter((resource) => resource !== give && view.bank[resource] > 0).sort(
-    (a, b) => missing[b] - missing[a] || economy.weights[b] - economy.weights[a],
-  )[0];
+  const receive = kinds
+    .filter((kind) => kind !== give && bankHas(view, kind))
+    .sort((a, b) => (missing[b] ?? 0) - (missing[a] ?? 0) || (economy.weights[b] ?? 0) - (economy.weights[a] ?? 0))[0];
   return receive ? { type: 'trade.bank', give, receive } : null;
 }

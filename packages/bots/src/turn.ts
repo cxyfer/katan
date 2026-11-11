@@ -34,7 +34,7 @@ export class Turn implements TurnContext {
     this.params = params;
     this.me = me;
     this.modules = modules;
-    this.model = boardModel(view, ctx.selfId);
+    this.model = boardModel(view, ctx.selfId, modules);
     this.rng = seededRng(ctx.seed);
   }
 

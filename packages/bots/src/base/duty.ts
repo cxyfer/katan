@@ -1,6 +1,6 @@
 /** base 的保底義務：只做必定合法的最小動作（規格 I9）。 */
 
-import { RESOURCES, type Command, type GameView, type Resource } from '@catan/rules';
+import { COMMODITIES, RESOURCES, type CardKind, type Command, type GameView } from '@catan/rules';
 import { roadStockLeft } from '../board.ts';
 
 /** 自己欠的待決效果；沒有則回傳 null。 */
@@ -58,13 +58,22 @@ export function setupDuty(view: GameView): Command | null {
   return null;
 }
 
-/** 依 `RESOURCES` 順序展開自己的手牌。 */
-export function handList(view: GameView, selfId: string): Resource[] {
-  const resources = view.players.find((player) => player.id === selfId)?.resources;
-  const out: Resource[] = [];
+/**
+ * 依 `CARD_KINDS` 順序展開自己的手牌（資源在前、commodity 在後）。直接讀 `resources` 與 `commodities`，
+ * 不經模組的 `cardKinds` 鉤子：保底沒有模型、不得 throw（E-3）。base 的 commodity 恆為空，結果與只有資源相同。
+ */
+export function handList(view: GameView, selfId: string): CardKind[] {
+  const player = view.players.find((candidate) => candidate.id === selfId);
+  const out: CardKind[] = [];
+  const resources = player?.resources;
   if (!resources) return out;
   for (const resource of RESOURCES) {
     for (let i = 0; i < resources[resource]; i++) out.push(resource);
+  }
+  for (const commodity of COMMODITIES) {
+    const amount = player?.commodities?.[commodity];
+    if (typeof amount !== 'number') continue;
+    for (let i = 0; i < amount; i++) out.push(commodity);
   }
   return out;
 }

@@ -2,8 +2,8 @@
  * 交易：手牌效用、報價評估、自己報價的生命週期、銀行交易與開價條件。
  */
 
-import { RESOURCES, type CardKind, type Command, type GameView, type Offer, type Resource } from '@catan/rules';
-import { plannedBank } from './bank.ts';
+import { CARD_KINDS, COMMODITIES, RESOURCES, type CardKind, type Command, type GameView, type Offer, type Resource } from '@catan/rules';
+import { plannedBankOf } from './bank.ts';
 import {
   canAfford,
   deficitOf,
@@ -17,19 +17,24 @@ import type { OfferPhase } from './types.ts';
 /** 每個行動視窗最多主動開價次數（規格 §5）。 */
 export const MAX_OFFERS_PER_WINDOW = 2;
 
+/** 張數類：依 `CARD_KINDS` 計算（E-3），不經模組鉤子。 */
 function costTotal(cost: Cost): number {
-  return RESOURCES.reduce((sum, resource) => sum + (cost[resource] ?? 0), 0);
+  return CARD_KINDS.reduce((sum, kind) => sum + (cost[kind] ?? 0), 0);
 }
 
-/** 以目標成本衡量的手牌效用：目標內的牌價值高，過剩的牌依匯率折價。 */
+/**
+ * 以目標成本衡量的手牌效用：目標內的牌價值高，過剩的牌依匯率折價。估值類迴圈，依 `Economy.kinds`；
+ * 模組卡種沒有匯率時以 4:1 計流動性（與銀行不能換的牌一樣不好脫手），沒有權重時過剩的牌不值錢。
+ */
 export function handUtility(economy: Economy, hand: Hand, target: Cost): number {
   let utility = 0;
-  for (const resource of RESOURCES) {
-    const need = target[resource] ?? 0;
-    const useful = Math.min(hand[resource], need);
-    const extra = Math.max(0, hand[resource] - need);
-    const liquidity = 0.45 + (4 - economy.rates[resource]) * 0.2;
-    utility += useful * 3 + extra * liquidity * economy.weights[resource];
+  for (const kind of economy.kinds) {
+    const held = hand[kind] ?? 0;
+    const need = target[kind] ?? 0;
+    const useful = Math.min(held, need);
+    const extra = Math.max(0, held - need);
+    const liquidity = 0.45 + (4 - (economy.rates[kind] ?? 4)) * 0.2;
+    utility += useful * 3 + extra * liquidity * (economy.weights[kind] ?? 0);
   }
   if (canAfford(hand, target)) utility += 2;
   return utility;
@@ -47,17 +52,21 @@ export function offerGain(economy: Economy, offer: Offer): number {
 function addHand(hand: Hand, cost: Cost): Hand {
   const out = { ...hand };
   for (const resource of RESOURCES) out[resource] += cost[resource] ?? 0;
+  for (const commodity of COMMODITIES) {
+    const amount = cost[commodity] ?? 0;
+    if (amount > 0) out[commodity] = (hand[commodity] ?? 0) + amount;
+  }
   return out;
 }
 
 /**
- * 規則 9：報價只含 Bot 估得了價的東西。含非資源卡種，或任何 goods 的報價無法估值，
- * 一律拒絕（不接受、不結算）。base 的報價必定通過：引擎只保留正數的卡種，goods 總數為 0
- * 時會刪掉該欄位。
+ * 規則 9：報價只含 Bot 估得了價的東西。含 `kinds` 以外的卡種，或任何 goods 的報價無法估值，
+ * 一律拒絕（不接受、不結算）。`kinds` 是 `Economy.kinds`，省略時只有資源。base 的報價必定通過：
+ * 引擎只保留正數的卡種，goods 總數為 0 時會刪掉該欄位。
  */
-export function offerTermsKnown(offer: Offer): boolean {
+export function offerTermsKnown(offer: Offer, kinds: readonly CardKind[] = RESOURCES): boolean {
   const known = (terms: Partial<Record<CardKind, number>>): boolean =>
-    Object.entries(terms).every(([kind, amount]) => !(amount! > 0) || (RESOURCES as readonly string[]).includes(kind));
+    Object.entries(terms).every(([kind, amount]) => !(amount! > 0) || (kinds as readonly string[]).includes(kind));
   const noGoods = (goods?: Record<string, number>): boolean =>
     !goods || Object.values(goods).every((amount) => !(amount > 0));
   return known(offer.give) && known(offer.want) && noGoods(offer.giveGoods) && noGoods(offer.wantGoods);
@@ -128,37 +137,40 @@ export function ownOfferStep(
 }
 
 /**
- * 以銀行／港口補齊 `nextCost`，只用 `reserve` 以外的過剩資源。全部補得起才回傳
- * 第一筆交易，否則回傳 null（避免換了一半又蓋不成）。
+ * 以銀行／港口補齊 `nextCost`，只用 `reserve` 以外的過剩卡牌。全部補得起才回傳
+ * 第一筆交易，否則回傳 null（避免換了一半又蓋不成）。卡種依 `Economy.kinds`：模組卡種要有匯率才能付出，
+ * 要銀行有存量才能換入。
  */
 export function bankTradeToward(view: GameView, economy: Economy, nextCost: Cost, reserve: Cost): Command | null {
+  const { kinds } = economy;
   const missing = deficitOf(economy.hand, nextCost);
-  if (RESOURCES.every((resource) => missing[resource] === 0)) return null;
+  if (kinds.every((kind) => (missing[kind] ?? 0) === 0)) return null;
   const spare: Hand = { ...economy.hand };
-  for (const resource of RESOURCES) {
-    const keep = Math.max(nextCost[resource] ?? 0, reserve[resource] ?? 0);
-    spare[resource] = Math.max(0, economy.hand[resource] - keep);
+  for (const kind of kinds) {
+    const keep = Math.max(nextCost[kind] ?? 0, reserve[kind] ?? 0);
+    spare[kind] = Math.max(0, (economy.hand[kind] ?? 0) - keep);
   }
   // 投影的銀行只到上限（#137）：規劃連續幾筆交易時把「至少」當成足夠。
-  const bank = plannedBank(view);
+  const bank = plannedBankOf(view, kinds);
   let first: Command | null = null;
-  const order = RESOURCES.slice().sort((a, b) => missing[b] - missing[a]);
+  const order = kinds.slice().sort((a, b) => (missing[b] ?? 0) - (missing[a] ?? 0));
   for (const want of order) {
-    for (let unit = 0; unit < missing[want]; unit++) {
-      if (bank[want] <= 0) return null;
-      let give: Resource | null = null;
-      for (const resource of RESOURCES) {
-        if (resource === want || spare[resource] < economy.rates[resource]) continue;
-        // 換完後剩最多的優先；同分時拿出價值較低的資源。
-        const left = spare[resource] - economy.rates[resource];
-        const bestLeft = give ? spare[give] - economy.rates[give] : -Infinity;
-        if (left > bestLeft || (left === bestLeft && economy.weights[resource] < economy.weights[give!])) {
-          give = resource;
+    for (let unit = 0; unit < (missing[want] ?? 0); unit++) {
+      if ((bank[want] ?? 0) <= 0) return null;
+      let give: CardKind | null = null;
+      for (const kind of kinds) {
+        const rate = economy.rates[kind];
+        if (kind === want || rate === undefined || (spare[kind] ?? 0) < rate) continue;
+        // 換完後剩最多的優先；同分時拿出價值較低的牌。
+        const left = (spare[kind] ?? 0) - rate;
+        const bestLeft = give ? (spare[give] ?? 0) - economy.rates[give]! : -Infinity;
+        if (left > bestLeft || (left === bestLeft && (economy.weights[kind] ?? 0) < (economy.weights[give!] ?? 0))) {
+          give = kind;
         }
       }
       if (!give) return null;
-      spare[give] -= economy.rates[give];
-      bank[want] -= 1;
+      spare[give] = (spare[give] ?? 0) - economy.rates[give]!;
+      bank[want] = (bank[want] ?? 0) - 1;
       first ??= { type: 'trade.bank', give, receive: want };
     }
   }
@@ -166,7 +178,7 @@ export function bankTradeToward(view: GameView, economy: Economy, nextCost: Cost
 }
 
 function sameTerms(a: Cost, b: Cost): boolean {
-  return RESOURCES.every((resource) => (a[resource] ?? 0) === (b[resource] ?? 0));
+  return CARD_KINDS.every((kind) => (a[kind] ?? 0) === (b[kind] ?? 0));
 }
 
 /**
@@ -185,6 +197,8 @@ export function proposeOffer(
   const others = view.players.filter((player) => player.id !== selfId);
   if (!others.some((player) => player.handSize > 0)) return null;
   const missing = deficitOf(economy.hand, nextCost);
+  // 不主動提出 commodity 的國內報價：缺 commodity 時不開價（報價只含資源）。
+  if (COMMODITIES.some((commodity) => (missing[commodity] ?? 0) > 0)) return null;
   const need = costTotal(missing);
   if (need < 1 || need > maxMissing) return null;
   const want: Cost = {};
