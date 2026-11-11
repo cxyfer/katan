@@ -4,6 +4,7 @@
  */
 
 import {
+  COMMODITIES,
   getProfile,
   getTopology,
   RESOURCES,
@@ -11,14 +12,21 @@ import {
   TERRAIN_RESOURCE,
   verticesOfHex,
   type BoardTopology,
+  type CardKind,
+  type Commodity,
   type GameView,
   type HarborType,
   type ProfileDefinition,
   type Resource,
   type Terrain,
 } from '@catan/rules';
+import type { BotModule } from './modules/types.ts';
 
-export type Yield = Record<Resource, number>;
+/**
+ * 各卡種的數量（點數、產能、權重、匯率都用它）。資源恆有值；commodity 只在模組讓它存在且非 0 時才寫入，
+ * 讀取一律 `?? 0`，base 的物件形狀因此與只有資源時相同。
+ */
+export type Yield = Record<Resource, number> & Partial<Record<Commodity, number>>;
 
 export function emptyYield(): Yield {
   return { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
@@ -48,6 +56,16 @@ export interface BoardModel {
   /** 金礦格（Seafarers）：任何一張資源，不在 `hexResource` 內。base 全部為 false。 */
   readonly hexGold: readonly boolean[];
   readonly harborAt: readonly (HarborType | null)[];
+  /**
+   * 組合後的盤面掛點（各模組的 economy 鉤子，E-2）。只有至少一個模組提供對應鉤子時才存在；沒有傳入模組的
+   * 模型（tracker、hard）與 base 完全相同。第一個參數以外的語意見 `BotEconomyHooks`。
+   */
+  /** 擋住路口的非建築棋子擁有者（第一個非 null 勝出）。 */
+  readonly blocker?: (vertex: number) => string | null;
+  /** 路口不能蓋建築（任一模組為 true）。 */
+  readonly siteBlocked?: (vertex: number) => boolean;
+  /** 一座建築在 `hex` 擲中時拿到的張數（第一個非 undefined 勝出）；undefined 表示沿用 base。 */
+  readonly hexYield?: (hex: number, vertex: number, city: boolean) => Readonly<Partial<Record<CardKind, number>>> | undefined;
 }
 
 interface TopologyTables {
@@ -75,7 +93,11 @@ function topologyTables(topo: BoardTopology): TopologyTables {
   return tables;
 }
 
-export function boardModel(view: GameView, selfId: string): BoardModel {
+/**
+ * `modules` 提供的盤面鉤子會組合進模型（見 `BoardModel`）；省略或沒有任何模組提供鉤子時，結果與 base 相同。
+ * 鉤子拿到的是最終模型（含組合後的掛點），可以呼叫本檔的 `isFreeSpot`、`vertexYield` 等函式。
+ */
+export function boardModel(view: GameView, selfId: string, modules: readonly BotModule[] = []): BoardModel {
   const topo = getTopology(view.board.topologyId);
   const tables = topologyTables(topo);
   const harborAt: (HarborType | null)[] = topo.vertices.map(() => null);
@@ -84,7 +106,7 @@ export function boardModel(view: GameView, selfId: string): BoardModel {
     if (!edge) continue;
     for (const vertex of edge.vertices) harborAt[vertex] = harbor.type as HarborType;
   }
-  return {
+  const base: BoardModel = {
     view,
     selfId,
     topo,
@@ -97,6 +119,37 @@ export function boardModel(view: GameView, selfId: string): BoardModel {
     hexGold: view.board.terrain.map((terrain) => terrain === 'gold'),
     harborAt,
   };
+  const hooks = modules.flatMap((module) => (module.economy ? [module.economy] : []));
+  const blockers = hooks.filter((hook) => hook.vertexBlocker);
+  const sites = hooks.filter((hook) => hook.siteBlocked);
+  const yields = hooks.filter((hook) => hook.hexYield);
+  if (blockers.length === 0 && sites.length === 0 && yields.length === 0) return base;
+  // 鉤子引用最終模型；模型建好之後才會被呼叫。
+  const model: BoardModel = {
+    ...base,
+    ...(blockers.length > 0 && {
+      blocker: (vertex: number) => {
+        for (const hook of blockers) {
+          const owner = hook.vertexBlocker!(model, vertex);
+          if (owner !== null) return owner;
+        }
+        return null;
+      },
+    }),
+    ...(sites.length > 0 && {
+      siteBlocked: (vertex: number) => sites.some((hook) => hook.siteBlocked!(model, vertex)),
+    }),
+    ...(yields.length > 0 && {
+      hexYield: (hex: number, vertex: number, city: boolean) => {
+        for (const hook of yields) {
+          const amounts = hook.hexYield!(model, hex, vertex, city);
+          if (amounts !== undefined) return amounts;
+        }
+        return undefined;
+      },
+    }),
+  };
+  return model;
 }
 
 export function isLandHex(model: BoardModel, hex: number): boolean {
@@ -119,34 +172,66 @@ export function isSeaEdge(model: BoardModel, edge: number): boolean {
   return hexes.length === 1 || hexes.some((hex) => !model.hexLand[hex]);
 }
 
-/** 陸地上的空點且相鄰路口都沒有建築（距離規則）。 */
+/** 陸地上的空點且相鄰路口都沒有建築（距離規則）；模組可以另外封住路口（C&K 的騎士）。 */
 export function isFreeSpot(model: BoardModel, vertex: number): boolean {
   const buildings = model.view.board.buildings;
   if (buildings[vertex]) return false;
   if (!isLandVertex(model, vertex)) return false;
+  if (model.siteBlocked?.(vertex)) return false;
   return model.neighbors[vertex]!.every((neighbor) => !buildings[neighbor]);
 }
 
-/** 單一路口的點數產能；`blockedHex` 指定的格子（強盜）不計。 */
-export function vertexYield(model: BoardModel, vertex: number, blockedHex: number | null = null): Yield {
+/**
+ * 單一路口的點數產能；`blockedHex` 指定的格子（強盜）不計。`city` 為 true 時是城市的產能（預設聚落）。
+ * 模組的 `hexYield` 回答時，各卡種依它給的張數加總；否則 base：資源 `city ? 2 : 1` 張。
+ */
+export function vertexYield(model: BoardModel, vertex: number, blockedHex: number | null = null, city = false): Yield {
   const out = emptyYield();
   for (const hex of model.topo.vertices[vertex]!.hexes) {
     if (hex === blockedHex) continue;
+    const pips = model.hexPips[hex]!;
+    const amounts = model.hexYield?.(hex, vertex, city);
+    if (amounts !== undefined) {
+      for (const kind of CARD_KIND_ORDER) {
+        const amount = amounts[kind];
+        if (amount) out[kind] = (out[kind] ?? 0) + pips * amount;
+      }
+      continue;
+    }
     const resource = model.hexResource[hex];
-    if (resource) out[resource] += model.hexPips[hex]!;
+    if (resource) out[resource] += city ? pips * 2 : pips;
   }
   return out;
 }
 
-/** 玩家所有建築的點數產能（城市加倍）；預設排除強盜所在格。 */
+const CARD_KIND_ORDER: readonly CardKind[] = [...RESOURCES, ...COMMODITIES];
+
+/**
+ * 聚落升成城市多得的產能。沒有模組的產出鉤子時就是聚落的產能（城市恆為兩倍）；有鉤子時以城市減聚落逐卡種計算。
+ */
+export function cityUpgradeYield(model: BoardModel, vertex: number): Yield {
+  if (!model.hexYield) return vertexYield(model, vertex);
+  const city = vertexYield(model, vertex, null, true);
+  const settlement = vertexYield(model, vertex);
+  const out = emptyYield();
+  for (const kind of CARD_KIND_ORDER) {
+    const gain = (city[kind] ?? 0) - (settlement[kind] ?? 0);
+    if (gain > 0) out[kind] = gain;
+  }
+  return out;
+}
+
+/** 玩家所有建築的點數產能（城市依地形加倍或換成 commodity）；預設排除強盜所在格。 */
 export function playerYield(model: BoardModel, playerId: string, ignoreRobber = false): Yield {
   const out = emptyYield();
   const blocked = ignoreRobber ? null : model.view.board.robber;
   model.view.board.buildings.forEach((building, vertex) => {
     if (!building || building.player !== playerId) return;
-    const factor = building.city ? 2 : 1;
-    const single = vertexYield(model, vertex, blocked);
-    for (const resource of RESOURCES) out[resource] += single[resource] * factor;
+    const single = vertexYield(model, vertex, blocked, building.city);
+    for (const kind of CARD_KIND_ORDER) {
+      const amount = single[kind];
+      if (amount) out[kind] = (out[kind] ?? 0) + amount;
+    }
   });
   return out;
 }
@@ -197,9 +282,12 @@ export function roadStockLeft(view: GameView, playerId: string): number {
   return profile.pieces.roads - used;
 }
 
+/** 路口上有別人的建築，或別人的非建築棋子（模組的 `vertexBlocker`，C&K 的騎士）；自己的不擋。 */
 function opponentAt(model: BoardModel, vertex: number, playerId: string): boolean {
   const building = model.view.board.buildings[vertex];
-  return !!building && building.player !== playerId;
+  if (building) return building.player !== playerId;
+  const blocker = model.blocker?.(vertex);
+  return blocker !== undefined && blocker !== null && blocker !== playerId;
 }
 
 export interface RoadSearch {

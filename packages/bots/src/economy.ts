@@ -2,8 +2,9 @@
  * 經濟評估：手牌、成本缺口、資源權重、產能速率與建造計畫。
  */
 
-import { COSTS, RESOURCES, type Resource } from '@catan/rules';
+import { CARD_KINDS, COMMODITIES, COSTS, RESOURCES, type CardKind, type Commodity, type Resource } from '@catan/rules';
 import {
+  cityUpgradeYield,
   emptyYield,
   isFreeSpot,
   piecesLeft,
@@ -21,27 +22,43 @@ import {
 import type { BotModule } from './modules/types.ts';
 import type { BotLevel } from './types.ts';
 
-export type Hand = Record<Resource, number>;
-export type Cost = Partial<Record<Resource, number>>;
+/**
+ * 手牌：資源恆有值；commodity（C&K）只在持有時才寫入，讀取一律 `?? 0`，base 的物件形狀與只有資源時相同。
+ * 型別與 `Yield` 相同，權重與匯率也用它。
+ */
+export type Hand = Record<Resource, number> & Partial<Record<Commodity, number>>;
+/** 各卡種的權重或匯率：資源恆有值，commodity 只在模組回答時才有。 */
+export type KindTable = Record<Resource, number> & Partial<Record<Commodity, number>>;
+export type Cost = Partial<Record<CardKind, number>>;
 
 /** 建造計畫所需的最多新道路數；更遠的空點視為暫時到不了。 */
 export const MAX_PLAN_ROADS = 3;
 
+/**
+ * 自己（或手牌可見者）的手牌。張數類的函式（`handSize`、`addCosts`、`scaleCost`、`deficitOf`、`canAfford`、
+ * `pay`）一律走 `CARD_KINDS`，不經模組的 `cardKinds` 鉤子（E-3）：保底沒有模型、不得 throw，naive 座位也要
+ * 算對棄牌張數。base 的 commodity 恆為 0，結果與只有資源時相同。
+ */
 export function handOf(model: BoardModel, playerId: string = model.selfId): Hand {
-  const resources = model.view.players.find((player) => player.id === playerId)?.resources;
-  return resources ? { ...resources } : { ...emptyYield() };
+  const player = model.view.players.find((candidate) => candidate.id === playerId);
+  const hand: Hand = player?.resources ? { ...player.resources } : { ...emptyYield() };
+  for (const commodity of COMMODITIES) {
+    const amount = player?.commodities?.[commodity];
+    if (typeof amount === 'number' && amount > 0) hand[commodity] = amount;
+  }
+  return hand;
 }
 
 export function handSize(hand: Hand): number {
-  return RESOURCES.reduce((sum, resource) => sum + hand[resource], 0);
+  return CARD_KINDS.reduce((sum, kind) => sum + (hand[kind] ?? 0), 0);
 }
 
 export function addCosts(...costs: Cost[]): Cost {
   const out: Cost = {};
   for (const cost of costs) {
-    for (const resource of RESOURCES) {
-      const amount = cost[resource] ?? 0;
-      if (amount > 0) out[resource] = (out[resource] ?? 0) + amount;
+    for (const kind of CARD_KINDS) {
+      const amount = cost[kind] ?? 0;
+      if (amount > 0) out[kind] = (out[kind] ?? 0) + amount;
     }
   }
   return out;
@@ -49,26 +66,35 @@ export function addCosts(...costs: Cost[]): Cost {
 
 export function scaleCost(cost: Cost, factor: number): Cost {
   const out: Cost = {};
-  for (const resource of RESOURCES) {
-    const amount = (cost[resource] ?? 0) * factor;
-    if (amount > 0) out[resource] = amount;
+  for (const kind of CARD_KINDS) {
+    const amount = (cost[kind] ?? 0) * factor;
+    if (amount > 0) out[kind] = amount;
   }
   return out;
 }
 
+/** 各卡種還缺幾張；commodity 只在有缺口時才寫入。 */
 export function deficitOf(hand: Hand, cost: Cost): Hand {
-  const out = { ...emptyYield() };
+  const out: Hand = { ...emptyYield() };
   for (const resource of RESOURCES) out[resource] = Math.max(0, (cost[resource] ?? 0) - hand[resource]);
+  for (const commodity of COMMODITIES) {
+    const missing = (cost[commodity] ?? 0) - (hand[commodity] ?? 0);
+    if (missing > 0) out[commodity] = missing;
+  }
   return out;
 }
 
 export function canAfford(hand: Hand, cost: Cost): boolean {
-  return RESOURCES.every((resource) => hand[resource] >= (cost[resource] ?? 0));
+  return CARD_KINDS.every((kind) => (hand[kind] ?? 0) >= (cost[kind] ?? 0));
 }
 
 export function pay(hand: Hand, cost: Cost): Hand {
   const out = { ...hand };
   for (const resource of RESOURCES) out[resource] -= cost[resource] ?? 0;
+  for (const commodity of COMMODITIES) {
+    const amount = cost[commodity] ?? 0;
+    if (amount > 0) out[commodity] = (hand[commodity] ?? 0) - amount;
+  }
   return out;
 }
 
@@ -87,8 +113,14 @@ export function resourceWeights(model: BoardModel): Record<Resource, number> {
   return out;
 }
 
-export function weightedPips(value: Yield, weights: Record<Resource, number>): number {
-  return RESOURCES.reduce((sum, resource) => sum + value[resource] * weights[resource], 0);
+/** 加權點數；commodity 的權重缺漏視為 0（模組沒有給它估值）。 */
+export function weightedPips(value: Yield, weights: KindTable): number {
+  let sum = RESOURCES.reduce((total, resource) => total + value[resource] * weights[resource], 0);
+  for (const commodity of COMMODITIES) {
+    const amount = value[commodity];
+    if (amount) sum += amount * (weights[commodity] ?? 0);
+  }
+  return sum;
 }
 
 /**
@@ -104,16 +136,17 @@ export function goldPipsAt(model: BoardModel, vertex: number): number {
 }
 
 /** 一張萬用資源的權重：可以挑目前最缺的資源，所以取各資源權重的最大值。 */
-export function wildcardWeight(weights: Record<Resource, number>): number {
+export function wildcardWeight(weights: KindTable): number {
   return Math.max(...RESOURCES.map((resource) => weights[resource]));
 }
 
 /**
  * 一座建築的點數產能價值（加權後）。金礦以一張萬用資源計價：聚落一張、城市兩張，所以升級城市時
- * 多得的就是這一張。沒有金礦時與 `weightedPips(vertexYield(...))` 完全相同。
+ * 多得的就是這一張。沒有金礦與模組產出鉤子時與 `weightedPips(vertexYield(...))` 完全相同；模組的
+ * `hexYield` 回答時，以城市減聚落的產能差計價（C&K：森林上的城市多得一張 paper，不是多一張木材）。
  */
-export function productionValue(model: BoardModel, vertex: number, weights: Record<Resource, number>): number {
-  const value = weightedPips(vertexYield(model, vertex), weights);
+export function productionValue(model: BoardModel, vertex: number, weights: KindTable): number {
+  const value = weightedPips(cityUpgradeYield(model, vertex), weights);
   const gold = goldPipsAt(model, vertex);
   return gold > 0 ? value + gold * wildcardWeight(weights) : value;
 }
@@ -153,15 +186,19 @@ export function isImmediate(plan: Plan): boolean {
 
 export interface Economy {
   readonly model: BoardModel;
+  /** 這局的卡種清單：`RESOURCES` 加上各模組的 `cardKinds`。估值類迴圈（效用、棄牌、ETA）依它。 */
+  readonly kinds: readonly CardKind[];
   readonly hand: Hand;
   /** 剩餘棋子；模組可加上自己的鍵（例如 ships），也可覆寫 base 的鍵。 */
   readonly left: Readonly<PieceCounts> & Readonly<Record<string, number>>;
   /** base 的四種成本，加上模組的具名成本。 */
   readonly costs: Readonly<Record<string, Cost>>;
-  readonly weights: Record<Resource, number>;
+  /** 資源權重（base）加上模組卡種的權重；模組卡種沒有人給權重時為 0。 */
+  readonly weights: KindTable;
   /** 自己目前（排除強盜格）的點數產能。 */
   readonly yield: Yield;
-  readonly rates: Record<Resource, number>;
+  /** 銀行匯率：資源讀 `hints.bankRates`；模組卡種只在模組給了匯率時才有，缺漏表示不能與銀行交易。 */
+  readonly rates: KindTable;
   readonly search: RoadSearch;
   readonly myRoute: number;
   readonly plans: Plan[];
@@ -169,7 +206,7 @@ export interface Economy {
 
 export const PIP_VALUE = 0.07;
 
-export function settlementSpotValue(model: BoardModel, vertex: number, weights: Record<Resource, number>, mine: Yield): number {
+export function settlementSpotValue(model: BoardModel, vertex: number, weights: KindTable, mine: Yield): number {
   const spot = vertexYield(model, vertex);
   let value = weightedPips(spot, weights);
   for (const resource of RESOURCES) {
@@ -187,40 +224,46 @@ export function settlementSpotValue(model: BoardModel, vertex: number, weights: 
   return value;
 }
 
-/** 依缺口與產能估計湊齊成本需要的輪數；過剩資源可先以銀行匯率換成缺口。 */
+/**
+ * 依缺口與產能估計湊齊成本需要的輪數；過剩的牌可先以銀行匯率換成缺口。`kinds` 是估值的卡種清單
+ * （`Economy.kinds`），省略時只有資源；沒有匯率的卡種不能換匯。
+ */
 export function etaRounds(
   hand: Hand,
   cost: Cost,
   mine: Yield,
-  rates: Record<Resource, number>,
+  rates: KindTable,
   players: number,
+  kinds: readonly CardKind[] = RESOURCES,
 ): number {
   const missing = deficitOf(hand, cost);
-  let total = RESOURCES.reduce((sum, resource) => sum + missing[resource], 0);
+  let total = kinds.reduce((sum, kind) => sum + (missing[kind] ?? 0), 0);
   if (total === 0) return 0;
   let tradeable = 0;
-  for (const resource of RESOURCES) {
-    const surplus = hand[resource] - (cost[resource] ?? 0);
-    if (surplus > 0) tradeable += Math.floor(surplus / rates[resource]);
+  for (const kind of kinds) {
+    const surplus = (hand[kind] ?? 0) - (cost[kind] ?? 0);
+    const rate = rates[kind];
+    if (surplus > 0 && rate !== undefined) tradeable += Math.floor(surplus / rate);
   }
   const covered = Math.min(total, tradeable);
   total -= covered;
   if (total === 0) return 0.25;
   // 每輪有 players 次擲骰；以期望產量估算，換匯能力取最好的匯率。
-  const perRound = (resource: Resource) => (mine[resource] * players) / 36;
-  const income = RESOURCES.reduce((sum, resource) => sum + perRound(resource), 0);
-  const bestRate = Math.min(...RESOURCES.map((resource) => rates[resource]));
+  const perRound = (kind: CardKind) => ((mine[kind] ?? 0) * players) / 36;
+  const income = kinds.reduce((sum, kind) => sum + perRound(kind), 0);
+  let bestRate = Infinity;
+  for (const kind of kinds) bestRate = Math.min(bestRate, rates[kind] ?? Infinity);
   const viaTrade = income / bestRate / 2;
   let rounds = 0;
   let remaining = covered;
   // 換匯先補產量最低的缺口。
-  const order = RESOURCES.slice().sort((a, b) => perRound(a) - perRound(b));
-  for (const resource of order) {
-    let need = missing[resource];
+  const order = kinds.slice().sort((a, b) => perRound(a) - perRound(b));
+  for (const kind of order) {
+    let need = missing[kind] ?? 0;
     const used = Math.min(need, remaining);
     need -= used;
     remaining -= used;
-    if (need > 0) rounds += need / Math.max(perRound(resource), viaTrade, 0.05);
+    if (need > 0) rounds += need / Math.max(perRound(kind), viaTrade, 0.05);
   }
   return rounds;
 }
@@ -253,9 +296,42 @@ export function economyOf(
   return { ...base, plans: [...base.plans, ...extras].sort(comparePlans) };
 }
 
+/** 卡種清單：`RESOURCES` 在前，依模組順序附加模組的 `cardKinds`、去重；沒有模組卡種時就是 `RESOURCES`。 */
+function kindsOf(model: BoardModel, modules: readonly BotModule[]): readonly CardKind[] {
+  let out: CardKind[] | null = null;
+  for (const module of modules) {
+    for (const kind of module.economy?.cardKinds?.(model) ?? []) {
+      if (RESOURCES.includes(kind as Resource) || (out ?? []).includes(kind)) continue;
+      out ??= [];
+      out.push(kind);
+    }
+  }
+  return out ? [...RESOURCES, ...out] : RESOURCES;
+}
+
+/** 模組給的數值表，只取 `extra` 內的卡種；每個卡種先回答的模組優先，非有限正數視為沒有回答。 */
+function moduleTable(
+  extra: readonly CardKind[],
+  layers: readonly (Readonly<Partial<Record<CardKind, number>>> | undefined)[],
+  allowZero: boolean,
+): Partial<Record<CardKind, number>> {
+  const out: Partial<Record<CardKind, number>> = {};
+  for (const kind of extra) {
+    for (const layer of layers) {
+      const value = layer?.[kind];
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || (!allowZero && value === 0)) continue;
+      out[kind] = value;
+      break;
+    }
+  }
+  return out;
+}
+
 function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Economy {
   const { view, selfId } = model;
   const hand = handOf(model);
+  const kinds = kindsOf(model, modules);
+  const extraKinds = kinds.slice(RESOURCES.length);
   const left = {
     ...piecesLeft(model, selfId),
     ...mergeFirstWins(modules.map((module) => module.economy?.piecesLeft?.(model) ?? {})),
@@ -265,16 +341,29 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
     ...mergeFirstWins(modules.map((module) => module.economy?.costs?.(model) ?? {})),
     ...COSTS,
   };
-  const weights = resourceWeights(model);
+  // 模組只回答自己的卡種（E-4）：資源權重與資源匯率維持 base，模組回傳的資源鍵一律忽略。
+  const weights: KindTable =
+    extraKinds.length === 0
+      ? resourceWeights(model)
+      : {
+          ...resourceWeights(model),
+          // 缺漏的模組卡種權重為 0。
+          ...Object.fromEntries(extraKinds.map((kind) => [kind, 0])),
+          ...moduleTable(extraKinds, modules.map((module) => module.economy?.weights?.(model)), true),
+        };
   const mine = playerYield(model, selfId);
   const longTerm = playerYield(model, selfId, true);
-  const rates = view.hints?.bankRates ?? { lumber: 4, brick: 4, wool: 4, grain: 4, ore: 4 };
+  const bankRates = view.hints?.bankRates ?? { lumber: 4, brick: 4, wool: 4, grain: 4, ore: 4 };
+  const rates: KindTable =
+    extraKinds.length === 0
+      ? bankRates
+      : { ...bankRates, ...moduleTable(extraKinds, modules.map((module) => module.economy?.rates?.(model)), false) };
   const search = searchRoads(model, selfId, Math.min(MAX_PLAN_ROADS, Math.max(0, left.roads)));
   const players = view.players.length;
   const me = view.players.find((player) => player.id === selfId);
   const plans: Plan[] = [];
   const push = (plan: Omit<Plan, 'eta' | 'score'>): void => {
-    const eta = etaRounds(hand, plan.cost, mine, rates, players);
+    const eta = etaRounds(hand, plan.cost, mine, rates, players, kinds);
     plans.push({ ...plan, eta, score: plan.value / (1 + eta) });
   };
 
@@ -317,7 +406,7 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
       const cost = addCosts(COSTS.settlement, roadCost);
       // 越遠越可能被別人搶先，價值打折。
       const value = (1 + PIP_VALUE * settlementSpotValue(model, vertex, weights, longTerm)) * 0.9 ** roads.length;
-      const eta = etaRounds(hand, cost, mine, rates, players) + roads.length * 0.35;
+      const eta = etaRounds(hand, cost, mine, rates, players, kinds) + roads.length * 0.35;
       candidates.push({
         kind: 'settlement',
         vertex,
@@ -371,7 +460,7 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
   }
 
   plans.sort(comparePlans);
-  return { model, hand, left, costs, weights, yield: mine, rates, search, myRoute, plans };
+  return { model, kinds, hand, left, costs, weights, yield: mine, rates, search, myRoute, plans };
 }
 
 function comparePlans(a: Plan, b: Plan): number {
