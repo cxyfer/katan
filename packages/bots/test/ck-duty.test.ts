@@ -251,6 +251,22 @@ describe('base discard with commodities', () => {
     });
   });
 
+  it('with all three commodity kinds beside resources, standard keeps one of each kind while the fallback empties the resources first', () => {
+    const state = discardGame({ ore: 1, wool: 1 }, { paper: 3, cloth: 2, coin: 3 });
+    const counts = (command: BotCommand | null): Record<string, number> => {
+      const out: Record<string, number> = {};
+      for (const card of (command as { resources: string[] }).resources) out[card] = (out[card] ?? 0) + 1;
+      return out;
+    };
+    const standard = counts(createBotPolicy('standard').decide(viewOf(state, 'p2'), ctxFor('p2')));
+    const fallback = counts(fallbackPolicy.decide(viewOf(state, 'p2'), ctxFor('p2')));
+    // 保底沒有估值：資源先、再依 CARD_KINDS 的順序。
+    expect(fallback).toEqual({ ore: 1, wool: 1, paper: 3 });
+    // standard 依估值：資源留著，棄掉各 commodity 多出來的牌，每個種類至少留一張。
+    expect(standard).toEqual({ paper: 2, cloth: 1, coin: 2 });
+    expect(standard).not.toEqual(fallback);
+  });
+
   it('standard keeps what the main plan needs and discards the rest', () => {
     // 3 ore 加 2 grain 是城市的成本；p2 有一座聚落可升級。其餘是 commodity 與雜牌。
     const state = emptyCkGame(4, 0, 'preroll');
