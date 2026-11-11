@@ -10,6 +10,7 @@ import {
   botsCanPlay,
   type BotModule,
 } from '../src/index.ts';
+import { CK_BOTS_RELEASED, CK_PACING, CK_PENDING_COMMANDS } from '../src/modules/citiesKnights/index.ts';
 import { SEAFARERS_PACING } from '../src/modules/seafarers/index.ts';
 
 /** 以 base-2025 為底、加上指定規則模組的 fixture profile。 */
@@ -19,16 +20,7 @@ function profileWith(ruleModules: readonly string[]): ProfileDefinition {
 
 /** 骨架不呼叫、只保留型別的鉤子（定案 §1.1）；哪一版實作了某個鉤子，就在同一個 PR 從這裡移除。 */
 const RESERVED_HOOKS = ['phase', 'endWindow', 'robberTargets', 'rescore', 'trade'] as const;
-const RESERVED_ECONOMY_HOOKS = [
-  'awards',
-  'cardKinds',
-  'rates',
-  'weights',
-  'hexYield',
-  'vertexBlocker',
-  'siteBlocked',
-  'routeEdge',
-] as const;
+const RESERVED_ECONOMY_HOOKS = ['awards', 'routeEdge'] as const;
 
 function reservedHooksOf(module: BotModule): string[] {
   const found: string[] = RESERVED_HOOKS.filter((hook) => hook in module);
@@ -57,6 +49,14 @@ describe('bot ruleset support', () => {
     expect(botsCanPlay(profileWith(['base', 'no-such-module']))).toBe(false);
   });
 
+  it('registers Cities & Knights but keeps seats refused until the gate slice', () => {
+    expect(BOT_MODULES.has('citiesKnights')).toBe(true);
+    expect(CK_BOTS_RELEASED).toBe(false);
+    for (const id of ['ck-2025', 'ck-paired-2025', 'sf-ck-new-shores-2025']) {
+      expect(botsCanPlay(getProfile(id)!), id).toBe(false);
+    }
+  });
+
   // 快照：哪個切片開放哪些 profile，就在同一個 PR 更新這份清單。
   it('lists the playable profiles', () => {
     expect(PROFILES.filter((profile) => botsCanPlay(profile)).map((profile) => profile.id)).toEqual([
@@ -72,9 +72,9 @@ describe('bot module registry', () => {
   it('registers no module that defines a hook the skeleton never calls', () => {
     for (const module of BOT_MODULES.values()) expect(reservedHooksOf(module), module.id).toEqual([]);
     // 檢查器本身要抓得到保留的鉤子。
-    expect(reservedHooksOf({ id: 'fx', phase: () => null, economy: { rates: () => ({}) } })).toEqual([
+    expect(reservedHooksOf({ id: 'fx', phase: () => null, economy: { awards: () => ({}) } })).toEqual([
       'phase',
-      'economy.rates',
+      'economy.awards',
     ]);
   });
 
@@ -85,11 +85,19 @@ describe('bot module registry', () => {
   });
 
   it('merges pacing, command limits and response commands from the registered modules', () => {
-    // 0.4.1 只註冊了 Seafarers：節奏就是它的四個值，其他 profile 沒有模組。
-    expect(BOT_PACING).toEqual(SEAFARERS_PACING);
+    // 0.4.2 註冊了 Seafarers 與 Cities & Knights：節奏是兩者的合併，鍵不重複，也不蓋掉 base 的鍵。
+    expect(BOT_PACING).toEqual({ ...SEAFARERS_PACING, ...CK_PACING });
+    expect(Object.keys(BOT_PACING)).toHaveLength(Object.keys(SEAFARERS_PACING).length + Object.keys(CK_PACING).length);
+    // `pending.moveRobber` 沿用 base 的 1200（knight.chaseRobber 之後的指令）。
+    expect(CK_PACING).not.toHaveProperty('pending.moveRobber');
     expect(botCommandLimit(profileWith([]), 40)).toBe(40);
     expect(botCommandLimit(profileWith(['seafarers']), 40)).toBe(40);
+    expect(botCommandLimit(profileWith(['citiesKnights']), 40)).toBe(40);
     expect(botResponseCommands(profileWith([]))).toEqual(BASE_RESPONSE_COMMANDS);
+    expect(botResponseCommands(profileWith(['citiesKnights']))).toEqual(
+      new Set([...BASE_RESPONSE_COMMANDS, ...CK_PENDING_COMMANDS]),
+    );
+    expect(CK_PENDING_COMMANDS).toHaveLength(13);
     expect([...BASE_RESPONSE_COMMANDS].sort()).toEqual([
       'build.road',
       'pending.discard',
