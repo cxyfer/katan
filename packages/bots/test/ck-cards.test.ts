@@ -17,6 +17,7 @@ import {
   projectGame,
   requireProfile,
   seededRng,
+  topologyOf,
   type Command,
   type GameState,
   type GameView,
@@ -466,6 +467,56 @@ describe('F2 互動卡：該打與不該打', () => {
       }
     }
     expect(state.players.find((p) => p.id === 'p1')!.progressCards).toEqual([]);
+  });
+});
+
+describe('Intrigue：只在擠走騎士對自己有好處時打', () => {
+  /** p1 只有聚落與一條 1 步的路；p2 的騎士站在路的另一端，那個路口的其他兩條邊都已被 p2 的路佔住（封死）。 */
+  function closedVertexGame(): { state: GameState; vertex: number } {
+    const state = emptyCkGame(4);
+    const [start] = spreadVertices(state, 1);
+    const [a, vertex] = pathFrom(state, start!, 1);
+    setBuilding(state, 'p1', a!, false);
+    roadAlong(state, 'p1', [a!, vertex!]);
+    const topo = topologyOf(state);
+    for (const edge of topo.vertices[vertex!]!.edges) {
+      if (!state.board.roads[edge]) state.board.roads[edge] = { player: 'p2', ship: false };
+    }
+    addKnight(state, { player: 'p2', vertex: vertex!, level: 1, active: false });
+    return { state, vertex: vertex! };
+  }
+
+  it('keeps the card for a knight that blocks nothing: a sealed vertex next to its own settlement', () => {
+    const { state } = closedVertexGame();
+    handCards(state, 'p1', ['intrigue']);
+    expect(actionHints(state, 'p1').modules!.citiesKnights).toMatchObject({ progress: [{ card: 'intrigue', playable: true }] });
+    expect(candidateOf(state, 'intrigue')).toBeUndefined();
+  });
+
+  it('with progress excess it plays the useless target only when the card would be discarded anyway', () => {
+    const lowest = closedVertexGame().state;
+    // intrigue 是最低價值的牌：本來就會被棄掉，打出去不會更差。
+    handCards(lowest, 'p1', ['intrigue', 'merchant', 'medicine', 'crane', 'smithing']);
+    const forced = candidateOf(lowest, 'intrigue');
+    expect(forced, 'forced intrigue').toBeDefined();
+    expect(forced!.score).toBeGreaterThanOrEqual(10);
+    expectAccepted(lowest, 'p1', forced!.item);
+    // 手上有更低價值的牌（taxation）：棄那張，intrigue 留著。
+    const other = closedVertexGame().state;
+    handCards(other, 'p1', ['intrigue', 'merchant', 'medicine', 'crane', 'taxation']);
+    expect(candidateOf(other, 'intrigue')).toBeUndefined();
+  });
+
+  it('values a knight that cuts the own route above one at the end of it', () => {
+    const cut = candidateOf(SCENARIOS.intrigue!.play(), 'intrigue')!;
+    const { state, mine } = roadsGame();
+    addKnight(state, { player: 'p2', vertex: mine[3]!, level: 1, active: false });
+    handCards(state, 'p1', ['intrigue']);
+    const end = candidateOf(state, 'intrigue')!;
+    expect(fieldsOf(end.item).vertex).toBe(mine[3]);
+    // 路線中間的騎士讓最長路線少一格；路線盡頭的只擋住延伸（底分）。
+    expect(cut.score).toBeGreaterThan(end.score);
+    expectAccepted(state, 'p1', end.item);
   });
 });
 

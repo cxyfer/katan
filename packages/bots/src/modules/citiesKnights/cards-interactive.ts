@@ -21,6 +21,7 @@ import { CARD_KINDS, RESOURCES, type PublicPlayerView, type Resource } from '@ca
 import { isFreeSpot, routeLength, searchRoads, type BoardModel } from '../../board.ts';
 import { PIP_VALUE } from '../../economy.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';
+import { lowestValueCards } from './cards.ts';
 import { DEFENSE_SCORE, defenseWindow } from './defense.ts';
 import { consideredOptions, hasCity } from './improve.ts';
 import { knightsOf, threatOf } from './knights.ts';
@@ -102,13 +103,34 @@ function spareTotal(turn: TurnContext): number {
   return RESOURCES.reduce((sum, resource) => sum + spareResources(turn)[resource], 0);
 }
 
-/** 自己的計畫目標路口與道路端點。 */
+/** 還要幾條路才到：對價值的折扣；超過 2 條路視為到不了。 */
+const DISTANCE_FACTOR: Readonly<Record<number, number>> = { 0: 1, 1: 0.6, 2: 0.3 };
+
+/** 聚落點的價值：1 + 點數 × `PIP_VALUE`（與 base 的立即建造同尺度）。 */
+export function spotValue(model: BoardModel, vertex: number): number {
+  const pips = model.topo.vertices[vertex]!.hexes.reduce((sum, hex) => sum + model.hexPips[hex]!, 0);
+  return 1 + PIP_VALUE * pips;
+}
+
+/** 玩家 `playerId` 在這個盤面下最好的擴張選擇的價值（兩條路以內最好的空點，依距離折扣）。 */
+export function expansionValue(model: BoardModel, playerId: string): number {
+  const search = searchRoads(model, playerId, 2);
+  let best = 0;
+  model.topo.vertices.forEach((_, vertex) => {
+    const factor = DISTANCE_FACTOR[search.distance[vertex] ?? Infinity];
+    if (factor === undefined || !isFreeSpot(model, vertex)) return;
+    best = Math.max(best, factor * spotValue(model, vertex));
+  });
+  return best;
+}
+
+/** 自己的計畫目標路口與道路端點（前 3 個計畫）。 */
 function planVertices(turn: TurnContext): Set<number> {
   const out = new Set<number>();
-  const plan = turn.economy.plans[0];
-  if (!plan) return out;
-  if (plan.vertex !== null) out.add(plan.vertex);
-  for (const edge of plan.roads) for (const vertex of turn.model.topo.edges[edge]?.vertices ?? []) out.add(vertex);
+  for (const plan of turn.economy.plans.slice(0, 3)) {
+    if (plan.vertex !== null) out.add(plan.vertex);
+    for (const edge of plan.roads) for (const vertex of turn.model.topo.edges[edge]?.vertices ?? []) out.add(vertex);
+  }
   return out;
 }
 
@@ -171,43 +193,35 @@ function routeGain(turn: TurnContext, vertex: number): number {
   return Math.max(0, routeLength(withoutKnightAt(model, vertex), ctx.selfId) - routeLength(model, ctx.selfId));
 }
 
-/** 騎士走了之後，這個點成為自己兩條路以內可以蓋的聚落點：回傳它的點數總和（否則 0）。 */
-function siteOpened(turn: TurnContext, vertex: number): number {
-  const freed = withoutKnightAt(turn.model, vertex);
-  if (!isFreeSpot(freed, vertex)) return 0;
-  if (searchRoads(freed, turn.ctx.selfId, 2).distance[vertex]! > 2) return 0;
-  return freed.topo.vertices[vertex]!.hexes.reduce((sum, hex) => sum + freed.hexPips[hex]!, 0);
-}
-
 /**
- * Intrigue：擠走一隻碰到自己路線的對手騎士（不需要自己的騎士）。價值：它擋住自己的計畫、讓自己的路線多出幾格、
- * 擋住自己兩條路以內的聚落點，或者是領先者的強騎士。底分很低：被擠走的騎士由對手自己選退路，狀態不變，
- * 所以沒有這些好處時只是讓路口空出來。
+ * Intrigue：擠走一隻碰到自己路線的對手騎士（不需要自己的騎士）。只有擠走它對自己有好處才打：
+ * - 它站在前 3 個計畫的目標點或道路端點上（+1.2）；
+ * - 騎士走了之後，自己最好的擴張選擇變好（開出聚落點或讓路線通過，`expansionValue` 前後的差，×0.6）；
+ * - 自己的最長路線多出幾格（×0.45）；
+ * - 那個路口還有沒鋪的邊，自己的路線原本可以延伸過去（+0.15）。
+ * 被擠走的騎士由對手自己選退路、狀態不變，所以沒有這些好處（例如封死的路口）就是白白用掉一張卡。
+ * 手牌超過上限時：這張卡本來就是最先被棄掉的，打出去至少不比棄掉差，所以沒有好處也打。
  */
 function intrigue(ctx: Context, targets: Record<string, unknown>): Play | null {
-  const { turn } = ctx;
+  const { turn, forced } = ctx;
   const { model, view } = turn;
   const wanted = planVertices(turn);
+  const before = expansionValue(model, turn.ctx.selfId);
   let best: { vertex: number; value: number } | null = null;
   for (const vertex of numbersOf(targets.vertices)) {
-    const knight = ckView(view)?.knights.find((candidate) => candidate.vertex === vertex);
-    if (!knight) continue;
-    const owner = view.players.find((player) => player.id === knight.player);
-    const opened = siteOpened(turn, vertex);
-    const lead = owner && owner.publicScore > turn.me.publicScore ? 1 : 0;
+    if (!ckView(view)?.knights.some((knight) => knight.vertex === vertex)) continue;
+    const gain = Math.max(0, expansionValue(withoutKnightAt(model, vertex), turn.ctx.selfId) - before);
     const open = model.topo.vertices[vertex]!.edges.some((edge) => !view.board.roads[edge]);
-    // 底分 0.3：碰到自己路線的對手騎士一直是個麻煩（擋住路線的延伸與穿越），擠走它不花任何東西。
-    const value =
-      0.3 +
-      (wanted.has(vertex) ? 1.2 : 0) +
-      (opened > 0 ? 0.6 + PIP_VALUE * opened : 0) +
-      0.45 * routeGain(turn, vertex) +
-      (open ? 0.2 : 0) +
-      lead * (0.15 + 0.1 * knight.level * (knight.active ? 1.5 : 0.5));
+    const value = (wanted.has(vertex) ? 1.2 : 0) + 0.6 * gain + 0.45 * routeGain(turn, vertex) + (open ? 0.15 : 0);
     if (!best || value > best.value + 1e-9) best = { vertex, value };
   }
-  // 擠走對手的騎士沒有代價（不需要自己的騎士），目標本身又很少見：底分就夠打。
   if (!best) return null;
+  if (best.value <= 0) {
+    const hand = turn.me.progressCards ?? [];
+    const discarded = forced && lowestValueCards(hand, Math.max(1, hand.length - 4)).includes('intrigue');
+    if (!discarded) return null;
+    return { fields: { vertex: best.vertex }, value: 0.01 };
+  }
   return { fields: { vertex: best.vertex }, value: best.value };
 }
 

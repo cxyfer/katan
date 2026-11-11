@@ -13,32 +13,29 @@
  * 不影響蠻族防禦（§4.3「攻擊前不讓防守需要的騎士移動」）：攻擊逼近的視窗內（`guardedKnights`）不動啟動中的騎士；
  * 啟動要在視窗前 2 艘船以外（`near ≥ 2`），來得及在下個回合動、也不佔用視窗內的 grain。只有 standard 做；easy 不做。
  *
- * 實測（C&K 矩陣 10 個種子）：這個戰術幾乎不會發動。騎士的可達路口都在自己的路網上，對手最好的擴張選擇很少剛好
- * 經過那裡；封鎖的淨價值最高約 0.08，遠低於 `TACTIC_MIN`。門檻是估計值，留著讓盤面真的出現機會時才動。
+ * 實測（C&K 矩陣 10 個種子 × 4 格，40 局）：0 次發動（沒有任何 `knight.move`）。原因有兩層：
+ * 1. 騎士只在蠻族視窗內才啟動（`defense.ts`），而視窗內依 §4.3 不能動啟動中的騎士；視窗外騎士都是閒置的，
+ *    只能先付 1 grain 啟動、下一個回合再動（動完又要再啟動才能防守），而且啟動還要留在視窗前 2 艘船以外。
+ * 2. 即使不看時機，騎士的可達路口都在自己的路網上，對手最好的擴張選擇很少剛好經過那裡，換第二好的點損失很小：
+ *    封鎖的淨價值最高約 0.08，遠低於 `TACTIC_MIN`。
+ * 實作與單元測試照留：門檻是估計值，盤面真的出現機會時才動，不為了湊次數調低。
  *
  * 決定性（P4）：不消耗亂數；同分取騎士與目標路口編號較小者（hints 的順序）。
  */
 
 import { CK_ACTIVATE_COST } from '@catan/rules';
-import { isFreeSpot, searchRoads, type BoardModel } from '../../board.ts';
-import { canAfford, PIP_VALUE } from '../../economy.ts';
+import { type BoardModel } from '../../board.ts';
+import { canAfford } from '../../economy.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';
-import { opponentsOf, rivalWeight } from './cards-interactive.ts';
+import { expansionValue, opponentsOf, rivalWeight, spotValue } from './cards-interactive.ts';
 import { defenseAway, guardedKnights } from './defense.ts';
 import { threatOf } from './knights.ts';
 import { ckCommands, ckHints } from './view.ts';
 
+export { expansionValue };
+
 /** 封鎖的淨價值（勝利分當量）至少要有這麼多才讓騎士躺下：要扣掉再啟動的 1 grain 與放棄原本的站位。 */
 export const TACTIC_MIN = 0.7;
-/** 還要幾條路才到：對價值的折扣；超過 2 條路視為到不了。 */
-const DISTANCE_FACTOR: Readonly<Record<number, number>> = { 0: 1, 1: 0.6, 2: 0.3 };
-
-/** 聚落點的價值：1 + 點數 × `PIP_VALUE`（與 base 的立即建造同尺度）。 */
-function spotValue(model: BoardModel, vertex: number): number {
-  const pips = model.topo.vertices[vertex]!.hexes.reduce((sum, hex) => sum + model.hexPips[hex]!, 0);
-  return 1 + PIP_VALUE * pips;
-}
-
 /** 假設自己的騎士從 `from` 移到 `to`：`to` 被擋、不能蓋建築，`from` 解除。 */
 export function withKnightMoved(model: BoardModel, selfId: string, from: number, to: number): BoardModel {
   return {
@@ -46,18 +43,6 @@ export function withKnightMoved(model: BoardModel, selfId: string, from: number,
     blocker: (at, candidate) => (candidate === to ? selfId : candidate === from ? null : model.blocker?.(at, candidate) ?? null),
     siteBlocked: (at, candidate) => candidate === to || (candidate !== from && (model.siteBlocked?.(at, candidate) ?? false)),
   };
-}
-
-/** 對手 `playerId` 在這個盤面下最好的擴張選擇的價值（兩條路以內最好的空點，依距離折扣）。 */
-export function expansionValue(model: BoardModel, playerId: string): number {
-  const search = searchRoads(model, playerId, 2);
-  let best = 0;
-  model.topo.vertices.forEach((_, vertex) => {
-    const factor = DISTANCE_FACTOR[search.distance[vertex] ?? Infinity];
-    if (factor === undefined || !isFreeSpot(model, vertex)) return;
-    best = Math.max(best, factor * spotValue(model, vertex));
-  });
-  return best;
 }
 
 /**
