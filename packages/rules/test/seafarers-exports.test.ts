@@ -20,6 +20,7 @@ import {
   type SeafarersView,
 } from '../src/index.ts';
 import { requireProfile } from '../src/profiles.ts';
+import { citiesKnightsModule } from '../src/modules/citiesKnights/index.ts';
 import { explorersPiratesModule } from '../src/modules/explorersPirates/index.ts';
 import { projectSeafarers, seafarersHints, seafarersModule } from '../src/modules/seafarers/index.ts';
 import { seafarersState } from '../src/modules/seafarers/state.ts';
@@ -162,7 +163,8 @@ describe('seafarers module exports (bot plan RX)', () => {
     const ids: Record<keyof ModuleViewMap, string> = {
       seafarers: seafarersModule.id,
       explorersPirates: explorersPiratesModule.id,
+      citiesKnights: citiesKnightsModule.id,
     };
-    expect(ids).toEqual({ seafarers: 'seafarers', explorersPirates: 'explorersPirates' });
+    expect(ids).toEqual({ seafarers: 'seafarers', explorersPirates: 'explorersPirates', citiesKnights: 'citiesKnights' });
   });
 });

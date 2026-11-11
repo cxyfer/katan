@@ -5,6 +5,7 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-11 | work | docs/aegis/work/2026-11-11-bots-cities-knights.md | Cities & Knights bots (v0.4.2) implementation record: slices, decisions, Q1/Q2 results, reviews and follow-ups |
 | 2026-11-07 | spec | docs/aegis/specs/2026-11-07-hard-bot.md | Hard bot for the base game: full event history, card tracker, turn search, performance budget and delivery plan |
 | 2026-11-07 | work | docs/aegis/work/2026-11-07-bots-seafarers.md | Seafarers bots (v0.4.1) implementation record: slices, decisions, Q1/Q2 results, reviews and follow-ups |
 | 2026-11-04 | plan | docs/aegis/plans/2026-11-04-expansion-bots-roadmap.md | Expansion bots roadmap: BotModule platform, per-profile gating, quality gates and the 0.4.1–0.4.5 release plan |

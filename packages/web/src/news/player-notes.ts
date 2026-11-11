@@ -27,6 +27,32 @@ export interface PlayerNote {
 
 export const PLAYER_NOTES: readonly PlayerNote[] = [
   {
+    version: '0.4.2',
+    date: '2026-11-12',
+    title: {
+      'zh-Hant': '電腦對手加入城市與騎士',
+      en: 'Computer opponents join Cities & Knights',
+    },
+    items: [
+      {
+        'zh-Hant': '城市與騎士開放「簡單」與「標準」電腦對手入座，3–6 人都可以；它們會招募並啟動騎士抵禦野蠻人、改良城市、交易商品，也會打出進步卡。「困難」仍只在基本版提供，航海家＋城市與騎士也仍只開放真人玩家入座。',
+        en: 'Easy and standard computer opponents can now take seats in Cities & Knights at 3–6 players: they recruit and activate knights against the barbarians, improve their cities, trade commodities and play progress cards. Hard remains base-game only, and Seafarers + Cities & Knights still seats human players only.',
+      },
+      {
+        'zh-Hant': '全桌暫停期間，離線不再算作缺席，先回來的玩家無法獨自結束對局；擲骰、建設、交易與城市改良也會停用，直到所有玩家準備好繼續。',
+        en: 'While the whole table is paused, being offline no longer counts as being away, so the first player back cannot end the game alone; rolling, building, trading and city improvements stay off until everyone is ready to resume.',
+      },
+      {
+        'zh-Hant': '銀行存量最多只顯示到「2+」，不到 2 張時才顯示確切張數；銀行原本就有 2 張以上的資源，不會因為對手棄牌而改變顯示。',
+        en: 'The bank now shows its supply only up to “2+”, with an exact count below two, so an opponent’s discards no longer change what it shows for any resource it already holds two or more of.',
+      },
+      {
+        'zh-Hant': '探險家與海盜：建設提示不再列出實際無法建造的位置；同一條航道上有好幾艘船時會並排顯示，不再疊在一起。',
+        en: 'Explorers & Pirates: build hints no longer offer spots you cannot actually build on, and several ships on the same path sit side by side instead of on top of each other.',
+      },
+    ],
+  },
+  {
     version: '0.4.1',
     date: '2026-11-07',
     title: {

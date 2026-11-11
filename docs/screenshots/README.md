@@ -24,7 +24,7 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`expansion-platform/`](expansion-platform/README.md) | Base 19/30-hex boards (byte-identical before/after) and the sample archipelago in SVG and 3D, desktop and phone, plus `?preview=archipelago` | 2026-11-01 | [`scripts/expansion-platform/capture.py`](../../scripts/expansion-platform/capture.py), see [work record](../aegis/work/2026-11-01-expansion-platform.md) |
 | [`bot-opponents/`](bot-opponents/) | Computer opponents from PRs #59 and #67: add-bot dialog, lobby with two bots, a bot turn at the table, resuming from home, desktop and phone, both locales; the create form and full-seat lobby are in `lobby-order-bots/` | 2026-11-02 | [`scripts/bot-opponents/capture.py`](../../scripts/bot-opponents/capture.py) |
 | [`seafarers/`](seafarers/README.md) | Seafarers, Heading for New Shores (PR #63): ships, pirate, gold fields and island bonus; the lobby with bots (v0.4.1) | 2026-11-03; lobby 2026-11-07 | [`scripts/seafarers/capture.py`](../../scripts/seafarers/capture.py), [`scripts/bots-seafarers/capture.py`](../../scripts/bots-seafarers/capture.py) |
-| [`cities-knights/`](cities-knights/README.md) | Cities & Knights (PRs #69, #76): knights, barbarians, commodities, city improvements and progress cards | 2026-11-03 | [`scripts/cities-knights/capture.py`](../../scripts/cities-knights/capture.py) |
+| [`cities-knights/`](cities-knights/README.md) | Cities & Knights (PRs #69, #76): knights, barbarians, commodities, city improvements and progress cards; the lobby with bots (v0.4.2) | 2026-11-03; lobby 2026-11-11 | [`scripts/cities-knights/capture.py`](../../scripts/cities-knights/capture.py), [`scripts/bots-cities-knights/capture.py`](../../scripts/bots-cities-knights/capture.py) |
 | [`seafarers-cities-knights/`](seafarers-cities-knights/README.md) | Seafarers and Cities & Knights combined (PR #81) | 2026-11-03; lobby `369b7fe` (2026-11-08) | [`scripts/seafarers-cities-knights/capture.py`](../../scripts/seafarers-cities-knights/capture.py) |
 | [`traders-barbarians/`](traders-barbarians/README.md) | Traders & Barbarians scenarios and base variants (PR #62) | 2026-11-03 | [`scripts/traders-barbarians/capture.py`](../../scripts/traders-barbarians/capture.py) |
 | [`explorers-pirates/`](explorers-pirates/README.md) | Explorers & Pirates missions (PR #87) | 2026-11-03; lobby `369b7fe` (2026-11-08) | [`scripts/explorers-pirates/capture.py`](../../scripts/explorers-pirates/capture.py) |
@@ -33,8 +33,9 @@ touch, screen-reader or 200%-zoom evidence exists yet (`docs/FIDELITY.md`, gap 5
 | [`boot-progress/`](boot-progress/README.md) | Step-by-step startup progress from PR #79: each pending step, the slow hint and the failed states, desktop and phone | `a200840` (2026-11-04) | [`scripts/boot-progress/capture.py`](../../scripts/boot-progress/capture.py) |
 | [`board-motion/`](board-motion/README.md) | Key frames of roads and buildings dropping from the sky (PR #80) and the board held during the roll presentation (PR #91), SVG and 3D | `a200840` (2026-11-04) | [`scripts/board-motion/capture.py`](../../scripts/board-motion/capture.py) |
 | [`target-picker/`](target-picker/README.md) | Compact target picker from PR #85: target list, picker for overlapping targets and dismissal by an outside click, desktop and phone | `3002f91` (2026-11-07) | [`scripts/target-picker/capture.py`](../../scripts/target-picker/capture.py) |
-| [`compact-hud/`](compact-hud/README.md) | Floating HUD on short landscape phones from PR #89 (844×390, 740×360, 568×320, touch) and the save state kept visible in that layout from PR #90, saved from the leave dialog and shown as a pill over the board | `11010a8` (2026-11-07); `04` re-captured on the merge of `c4f9d7f` into `3387257` (2026-11-07) | [`scripts/compact-hud/capture.py`](../../scripts/compact-hud/capture.py) |
+| [`compact-hud/`](compact-hud/README.md) | Floating HUD on short landscape phones from PR #89 (844×390, 740×360, 568×320, touch) and the save state kept visible in that layout from PR #90, saved from the leave dialog and shown as a pill over the board | `3ce2779` (2026-11-12) | [`scripts/compact-hud/capture.py`](../../scripts/compact-hud/capture.py) |
 | [`dialog-portal/`](dialog-portal/README.md) | Trade settle dialog rendered through a portal instead of clipped by the table panel (PR #92), desktop and short landscape | `a200840` (2026-11-04) | [`scripts/dialog-portal/capture.py`](../../scripts/dialog-portal/capture.py) |
+| [`action-rail/`](action-rail/README.md) | Regrouped action rail: collapsed icon dock and expanded cards for the base game, Cities & Knights and Seafarers + Cities & Knights, the shared reason from another seat, desktop, phone and phone landscape, both locales | `3ce2779` (2026-11-12) | [`scripts/action-rail/capture.py`](../../scripts/action-rail/capture.py) |
 
 `current/`, `hand-cards/` and `discard-prompt/` reflect the table as it is
 now. The other sets are focused feature reviews kept with their work records;
@@ -50,6 +51,12 @@ does not: the camera controls, legend and rails have moved and the 3D island
 is the old one. `lobby-capacity/` shows the old two-column lobby, so recapture
 it with its script before relying on it. Refresh or remove the others when a
 change touches what they show (see [Curation rules](#curation-rules)).
+
+Since 2026-11-12 the action rail on the right is a grouped two-column dock
+that expands into cards, and roll and end turn stay in the turn prompt
+(`action-rail/`). Table captures taken before that, including `current/` and
+the expansion sets, still show the old single-column rail; `compact-hud/` was
+recaptured with the change.
 
 Since 2026-11-07 the table has no separate table menu in the bottom-right
 corner: Save and leave and the all-seat save-and-pause proposal moved into the

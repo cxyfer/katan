@@ -1,0 +1,802 @@
+/**
+ * C&K 的 commodity 經濟（C&K 計畫 §4.5、§4.6；0.4.2 平台掛點）：CardKind 的手牌與成本、組合後的 kinds、
+ * rates、weights、costs、城市產出、ETA、銀行交易，以及規則 9（報價只含估得了價的東西）。
+ *
+ * 盤面一律用 rules 的 C&K 固定盤面與真實指令；產出的對照以 `applyCommand` 擲骰的實際結果為準。
+ */
+
+import { describe, expect, it } from 'vitest';
+import {
+  applyCommand,
+  COMMODITIES,
+  RESOURCES,
+  seededRng,
+  type CardKind,
+  type Command,
+  type GameState,
+  type GameView,
+  type Offer,
+} from '@catan/rules';
+import { actCk, emptyCkGame, giveCommodities, player, rollRng, setImprovement, spreadVertices, TRADE } from '../../rules/test/ck-helpers.ts';
+import { give, newGame } from '../../rules/test/helpers.ts';
+import {
+  boardModel,
+  cityUpgradeYield,
+  emptyYield,
+  pipsOf,
+  playerYield,
+  vertexYield,
+  type BoardModel,
+} from '../src/board.ts';
+import {
+  addCosts,
+  canAfford,
+  deficitOf,
+  economyOf,
+  etaRounds,
+  handOf,
+  handSize,
+  pay,
+  productionValue,
+  scaleCost,
+  weightedPips,
+  type Cost,
+  type Economy,
+  type KindTable,
+} from '../src/economy.ts';
+import { handRelief, heuristicPolicy, turnContext } from '../src/heuristic.ts';
+import { citiesKnightsBotModule } from '../src/modules/citiesKnights/index.ts';
+import { COMMODITY_WEIGHT } from '../src/modules/citiesKnights/economy.ts';
+import { createBotPolicy } from '../src/policy.ts';
+import { bankHas, plannedBankOf, plannedCommodityBank } from '../src/bank.ts';
+import { plentyPick } from '../src/base/cards.ts';
+import { handUtility, bankTradeToward, offerGain, offerTermsKnown, proposeOffer } from '../src/trade.ts';
+import type { BotModule, TurnContext } from '../src/modules/types.ts';
+import type { BotContext, BotLevel } from '../src/types.ts';
+import { viewOf } from './ck-fixtures.ts';
+
+const MODULES: readonly BotModule[] = [citiesKnightsBotModule];
+
+const ctxFor = (selfId: string, level: BotLevel = 'standard', seed = 1): BotContext => ({ selfId, level, seed, offerPhases: {} });
+
+/** p1 的行動階段：2 ore、3 paper、1 coin。 */
+function handGame(): GameState {
+  const state = emptyCkGame(4, 0, 'action');
+  give(state, 'p1', { ore: 2 });
+  giveCommodities(state, 'p1', { paper: 3, coin: 1 });
+  return state;
+}
+
+function economyFor(state: GameState, playerId = 'p1', modules: readonly BotModule[] = MODULES): Economy {
+  return economyOf(boardModel(viewOf(state, playerId), playerId, modules), modules);
+}
+
+// ---------------------------------------------------------------------------
+// 手牌與成本（E-1、E-3）
+// ---------------------------------------------------------------------------
+
+describe('hands and costs over card kinds', () => {
+  it('reads commodities into the hand, only when held', () => {
+    const model = boardModel(viewOf(handGame(), 'p1'), 'p1', MODULES);
+    const hand = handOf(model);
+    expect(hand).toMatchObject({ ore: 2, paper: 3, coin: 1 });
+    expect(Object.keys(hand).sort()).toEqual([...RESOURCES, 'paper', 'coin'].sort());
+    expect(hand).not.toHaveProperty('cloth');
+    expect(handSize(hand)).toBe(6);
+    // 別人的手牌是隱藏的：只有張數，沒有組成。
+    expect(handOf(model, 'p2')).toEqual(emptyYield());
+  });
+
+  it('keeps the base object shape: no commodity keys without commodities', () => {
+    const view = viewOf(newGame({ players: 4, profileId: 'base-2025', seed: 1 }).state, 'p1');
+    expect(Object.keys(handOf(boardModel(view, 'p1'))).sort()).toEqual([...RESOURCES].sort());
+    const state = emptyCkGame(4, 0, 'action');
+    expect(Object.keys(handOf(boardModel(viewOf(state, 'p1'), 'p1', MODULES))).sort()).toEqual([...RESOURCES].sort());
+  });
+
+  it('canAfford, deficitOf and pay count every card kind', () => {
+    const hand = handOf(boardModel(viewOf(handGame(), 'p1'), 'p1', MODULES));
+    expect(canAfford(hand, { paper: 3 })).toBe(true);
+    expect(canAfford(hand, { paper: 4 })).toBe(false);
+    expect(canAfford(hand, { cloth: 1 })).toBe(false);
+    expect(canAfford(hand, { ore: 2, paper: 3, coin: 1 })).toBe(true);
+    // 缺口只在真的缺時才寫入 commodity。
+    const missing = deficitOf(hand, { paper: 5, cloth: 1, ore: 3, coin: 1 });
+    expect(missing).toMatchObject({ ore: 1, paper: 2, cloth: 1 });
+    expect(missing).not.toHaveProperty('coin');
+    expect(Object.keys(deficitOf(hand, { ore: 1 })).sort()).toEqual([...RESOURCES].sort());
+    const paid = pay(hand, { paper: 2, ore: 1 });
+    expect(paid).toMatchObject({ ore: 1, paper: 1, coin: 1 });
+    expect(paid).not.toHaveProperty('cloth');
+    // 不改動原本的手牌。
+    expect(hand).toMatchObject({ ore: 2, paper: 3 });
+    expect(pay(hand, { coin: 1 })).toMatchObject({ coin: 0 });
+  });
+
+  it('adds and scales costs across resources and commodities', () => {
+    expect(addCosts({ ore: 1, paper: 2 }, { paper: 1, coin: 3 })).toEqual({ ore: 1, paper: 3, coin: 3 });
+    expect(scaleCost({ brick: 1, cloth: 2 }, 3)).toEqual({ brick: 3, cloth: 6 });
+    expect(scaleCost({ paper: 2 }, 0)).toEqual({});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 組合後的經濟
+// ---------------------------------------------------------------------------
+
+describe('composed economy', () => {
+  it('base only: kinds are the resources and the economy has no commodity keys', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    const view = viewOf(state, 'p1');
+    const economy = economyOf(boardModel(view, 'p1', []), []);
+    expect(economy.kinds).toBe(RESOURCES);
+    expect(Object.keys(economy.weights).sort()).toEqual([...RESOURCES].sort());
+    expect(Object.keys(economy.rates).sort()).toEqual([...RESOURCES].sort());
+    // 沒有模組卡種時匯率就是 hints 的 bankRates 本身。
+    expect(economy.rates).toBe(view.hints!.bankRates);
+  });
+
+  it('the model carries its modules and the economy reads them by default', () => {
+    const state = handGame();
+    const view = viewOf(state, 'p1');
+    const model = boardModel(view, 'p1', MODULES);
+    expect(model.modules).toBe(MODULES);
+    // 不另外傳模組清單：經濟的卡種、權重、匯率與模型的掛點一致（城市在森林、牧場、山脈上多得 commodity）。
+    const economy = economyOf(model);
+    expect(economy.kinds).toEqual([...RESOURCES, ...COMMODITIES]);
+    expect(economy.weights.paper).toBeGreaterThan(0);
+    expect(economy.rates.paper).toBe(4);
+    expect(economy.handLimit).toBe(7);
+    expect(economy).toMatchObject({ kinds: economyOf(model, MODULES).kinds, weights: economyOf(model, MODULES).weights });
+    // 明確傳入 [] 表示只有 base；沒有模組的模型沒有 modules 欄位，物件形狀不變。
+    expect(economyOf(model, []).kinds).toBe(RESOURCES);
+    const plain = boardModel(view, 'p1');
+    expect(plain).not.toHaveProperty('modules');
+    expect(boardModel(view, 'p1', [])).not.toHaveProperty('modules');
+    expect(economyOf(plain).kinds).toBe(RESOURCES);
+  });
+
+  it('the city plan picks among the legal cities: a toppled city must be upgraded first', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    const [a, b] = spreadVertices(state, 2);
+    state.board.buildings[a!] = { player: 'p1', city: false };
+    state.board.buildings[b!] = { player: 'p1', city: false };
+    const cityPlan = (s: GameState, playerId = 'p1') => economyFor(s, playerId).plans.find((plan) => plan.kind === 'city');
+    const free = cityPlan(state)!.vertex!;
+    expect([a, b]).toContain(free);
+    const other = free === a ? b! : a!;
+    // 另一座倒下了（被掠奪）：規則只允許升級它，計畫跟著走。
+    (state.moduleState!.citiesKnights as { toppled: number[] }).toppled.push(other);
+    expect(viewOf(state, 'p1').hints!.legalCities).toEqual([other]);
+    expect(cityPlan(state)!.vertex).toBe(other);
+    // 不是輪到自己的行動階段時 legalCities 是空的，計畫不受它限制（照估值選）。
+    expect(cityPlan(state, 'p2')).toBeUndefined();
+    const preroll = emptyCkGame(4, 0, 'preroll');
+    preroll.board.buildings[a!] = { player: 'p1', city: false };
+    preroll.board.buildings[b!] = { player: 'p1', city: false };
+    (preroll.moduleState!.citiesKnights as { toppled: number[] }).toppled.push(other);
+    expect(viewOf(preroll, 'p1').hints!.legalCities).toEqual([]);
+    expect(cityPlan(preroll)!.vertex).toBe(free);
+  });
+
+  it('adds the commodities with their own rates, weights and costs', () => {
+    const economy = economyFor(handGame());
+    expect(economy.kinds).toEqual([...RESOURCES, ...COMMODITIES]);
+    expect(economy.rates).toMatchObject({ lumber: 4, paper: 4, cloth: 4, coin: 4 });
+    for (const commodity of COMMODITIES) {
+      expect(economy.weights[commodity]).toBeGreaterThanOrEqual(COMMODITY_WEIGHT.min);
+      expect(economy.weights[commodity]).toBeLessThanOrEqual(COMMODITY_WEIGHT.max);
+    }
+    expect(Object.keys(economy.costs).sort()).toEqual(
+      ['activate', 'city', 'devCard', 'improve.politics', 'improve.science', 'improve.trade', 'knight', 'medicine', 'promote', 'road', 'settlement', 'wall'].sort(),
+    );
+    expect(economy.costs).toMatchObject({
+      wall: { brick: 2 },
+      knight: { wool: 1, ore: 1 },
+      promote: { wool: 1, ore: 1 },
+      activate: { grain: 1 },
+      medicine: { grain: 1, ore: 2 },
+      'improve.science': { paper: 1 },
+      'improve.trade': { cloth: 1 },
+      'improve.politics': { coin: 1 },
+    });
+    // base 的四個鍵不被模組蓋掉。
+    expect(economy.costs.city).toEqual({ ore: 3, grain: 2 });
+  });
+
+  it('prices the next improvement level, and drops a maxed track', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    setImprovement(state, 'p1', 'science', 2);
+    setImprovement(state, 'p1', 'trade', 5);
+    const economy = economyFor(state);
+    expect(economy.costs['improve.science']).toEqual({ paper: 3 });
+    expect(economy.costs).not.toHaveProperty('improve.trade');
+    expect(economy.costs['improve.politics']).toEqual({ coin: 1 });
+    // 滿級軌道的 commodity 只剩流動性。
+    expect(economy.weights.cloth).toBe(COMMODITY_WEIGHT.maxed);
+  });
+
+  it('weighs a commodity higher when the next improvement is within reach', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    const none = economyFor(state).weights;
+    giveCommodities(state, 'p1', { paper: 1 });
+    const affordable = economyFor(state).weights;
+    expect(none.paper).toBe(COMMODITY_WEIGHT.base + COMMODITY_WEIGHT.near);
+    expect(affordable.paper).toBe(COMMODITY_WEIGHT.base + COMMODITY_WEIGHT.affordable);
+    expect(affordable.cloth).toBe(none.cloth);
+    // 差很多張時只有基準值。
+    const far = emptyCkGame(4, 0, 'action');
+    setImprovement(far, 'p1', 'science', 4);
+    expect(economyFor(far).weights.paper).toBe(COMMODITY_WEIGHT.base);
+  });
+
+  it('reads the commodity rates from the hints: 3:1 port, trade level 3 at 2:1', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    setImprovement(state, 'p1', 'trade', 3);
+    expect(economyFor(state).rates).toMatchObject({ paper: 2, cloth: 2, coin: 2 });
+    expect(economyFor(state, 'p2').rates).toMatchObject({ paper: 4, cloth: 4, coin: 4 });
+    // 沒有 hints（例如別人的視角、不在行動階段仍有 commodityRates）：缺漏的卡種不能與銀行交易。
+    const view = JSON.parse(JSON.stringify(viewOf(state, 'p1'))) as GameView;
+    view.hints!.modules = {};
+    const bare = economyOf(boardModel(view, 'p1', MODULES), MODULES);
+    for (const commodity of COMMODITIES) expect(bare.rates).not.toHaveProperty(commodity);
+    expect(bare.rates.lumber).toBe(4);
+  });
+
+  it('composes several modules: dedupes kinds, first answer wins, ignores resources and bad numbers', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    const a: BotModule = {
+      id: 'a',
+      economy: {
+        cardKinds: () => ['paper', 'lumber'],
+        rates: () => ({ paper: 3, lumber: 1, coin: 2, cloth: Number.NaN }),
+        weights: () => ({ paper: 1.1, lumber: 9 }),
+      },
+    };
+    const b: BotModule = {
+      id: 'b',
+      economy: {
+        cardKinds: () => ['paper', 'coin'],
+        rates: () => ({ paper: 2, coin: 0, cloth: -1 }),
+        weights: () => ({ paper: 0.6, coin: 0.7 }),
+      },
+    };
+    const economy = economyOf(boardModel(viewOf(state, 'p1'), 'p1', [a, b]), [a, b]);
+    expect(economy.kinds).toEqual([...RESOURCES, 'paper', 'coin']);
+    // 先回答的模組優先；模組回傳的資源鍵一律忽略；非有限或非正的匯率視為沒有；每個模組只回答自己宣告的
+    // 卡種（a 沒有宣告 coin，它給的 coin 匯率不算）。
+    expect(economy.rates).toMatchObject({ lumber: 4, paper: 3 });
+    expect(economy.rates).not.toHaveProperty('coin');
+    expect(economy.rates).not.toHaveProperty('cloth');
+    expect(economy.weights).toMatchObject({ paper: 1.1, coin: 0.7 });
+    expect(economy.weights.lumber).toBeLessThan(2);
+    expect(economy.weights).not.toHaveProperty('cloth');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 產出：hexYield 與引擎一致
+// ---------------------------------------------------------------------------
+
+describe('city yield (hexYield)', () => {
+  /** 一個陸地格與它的一個路口；挑點數的格子，避開強盜與同點數的鄰格。 */
+  function site(state: GameState, terrain: string): { hex: number; vertex: number; number: number } {
+    const view = viewOf(state, 'p1');
+    const model = boardModel(view, 'p1', MODULES);
+    const hex = model.view.board.terrain.findIndex(
+      (candidate, index) => candidate === terrain && model.view.board.numbers[index] !== null && index !== model.view.board.robber,
+    );
+    expect(hex, terrain).toBeGreaterThanOrEqual(0);
+    return { hex, vertex: model.hexVertices[hex]![0]!, number: model.view.board.numbers[hex]! };
+  }
+
+  /** 引擎擲出 `number` 後 p1 的資源與 commodity 變化。 */
+  function produced(state: GameState, vertex: number, city: boolean, number: number): Partial<Record<CardKind, number>> {
+    const board = { ...state, board: { ...state.board, buildings: state.board.buildings.slice() } };
+    board.board.buildings[vertex] = { player: 'p1', city };
+    const preroll = JSON.parse(JSON.stringify(board)) as GameState;
+    preroll.turn.phase = 'preroll';
+    const yellow = Math.min(6, number - 1);
+    const outcome = applyCommand(preroll, 'p1', { type: 'turn.roll' }, rollRng(yellow, number - yellow, TRADE));
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return {};
+    const out: Partial<Record<CardKind, number>> = {};
+    for (const kind of RESOURCES) if (outcome.state.players[0]!.resources[kind] > 0) out[kind] = outcome.state.players[0]!.resources[kind];
+    for (const kind of COMMODITIES) if (outcome.state.players[0]!.commodities[kind] > 0) out[kind] = outcome.state.players[0]!.commodities[kind];
+    return out;
+  }
+
+  it.each([
+    ['forest', 'lumber', 'paper'],
+    ['pasture', 'wool', 'cloth'],
+    ['mountains', 'ore', 'coin'],
+  ] as const)('a city on %s takes one %s and one %s; a settlement takes one resource', (terrain, resource, commodity) => {
+    const state = emptyCkGame(4, 0, 'preroll');
+    const { hex, vertex, number } = site(state, terrain);
+    const model = boardModel(viewOf(state, 'p1'), 'p1', MODULES);
+    expect(model.hexYield?.(model, hex, vertex, true)).toEqual({ [resource]: 1, [commodity]: 1 });
+    expect(model.hexYield?.(model, hex, vertex, false)).toBeUndefined();
+    // 對照引擎：每個鄰接且點數相同的格子都算進去。
+    const sameNumber = model.topo.vertices[vertex]!.hexes.filter((candidate) => model.view.board.numbers[candidate] === number);
+    const expectCity: Partial<Record<CardKind, number>> = {};
+    const expectSettlement: Partial<Record<CardKind, number>> = {};
+    for (const candidate of sameNumber) {
+      const kinds = model.hexYield?.(model, candidate, vertex, true) ?? { [model.hexResource[candidate]!]: 2 };
+      for (const [kind, amount] of Object.entries(kinds)) expectCity[kind as CardKind] = (expectCity[kind as CardKind] ?? 0) + amount!;
+      const resourceOf = model.hexResource[candidate]!;
+      expectSettlement[resourceOf] = (expectSettlement[resourceOf] ?? 0) + 1;
+    }
+    expect(produced(state, vertex, true, number)).toEqual(expectCity);
+    expect(produced(state, vertex, false, number)).toEqual(expectSettlement);
+  });
+
+  it.each(['hills', 'fields'] as const)('a city on %s takes two resources and no commodity', (terrain) => {
+    const state = emptyCkGame(4, 0, 'preroll');
+    const { hex, vertex, number } = site(state, terrain);
+    const model = boardModel(viewOf(state, 'p1'), 'p1', MODULES);
+    expect(model.hexYield?.(model, hex, vertex, true)).toBeUndefined();
+    const got = produced(state, vertex, true, number);
+    for (const commodity of COMMODITIES) expect(got).not.toHaveProperty(commodity);
+    expect(got[model.hexResource[hex]!]).toBeGreaterThanOrEqual(2);
+  });
+
+  it('vertexYield and playerYield price the engine\'s production in pips', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    const model0 = boardModel(viewOf(state, 'p1'), 'p1', MODULES);
+    const vertex = model0.hexVertices.findIndex((_corners, hex) => model0.hexResource[hex] === 'lumber' && model0.view.board.numbers[hex] !== null);
+    const forestVertex = model0.hexVertices[vertex]![0]!;
+    state.board.buildings[forestVertex] = { player: 'p1', city: true };
+    const model = boardModel(viewOf(state, 'p1'), 'p1', MODULES);
+    const city = vertexYield(model, forestVertex, null, true);
+    const settlement = vertexYield(model, forestVertex);
+    let expectedPaper = 0;
+    for (const hex of model.topo.vertices[forestVertex]!.hexes) {
+      if (model.hexResource[hex] === 'lumber') expectedPaper += pipsOf(model.view.board.numbers[hex]);
+    }
+    expect(city.paper).toBe(expectedPaper);
+    expect(settlement.paper).toBeUndefined();
+    // 自己的產能把城市算成「1 資源 + 1 commodity」，不是兩張資源。
+    const mine = playerYield(model, 'p1', true);
+    expect(mine.paper).toBe(expectedPaper);
+    expect(mine.lumber).toBe(settlement.lumber);
+    // 強盜所在的格子不產（資源與 commodity 都一樣）。
+    const robberHex = model.topo.vertices[forestVertex]!.hexes.find((hex) => model.hexResource[hex] === 'lumber')!;
+    const blocked = vertexYield(model, forestVertex, robberHex, true);
+    expect(blocked.paper ?? 0).toBeLessThan(expectedPaper || 1);
+  });
+
+  it('upgrading values the commodity gained, not a second resource', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    const model0 = boardModel(viewOf(state, 'p1'), 'p1', MODULES);
+    const base0 = boardModel(viewOf(state, 'p1'), 'p1');
+    const hex = model0.hexVertices.findIndex((_corners, candidate) => model0.hexResource[candidate] === 'wool' && model0.view.board.numbers[candidate] !== null);
+    const vertex = model0.hexVertices[hex]![0]!;
+    const weights: KindTable = { ...economyFor(state).weights, cloth: 1.2, wool: 0.9 };
+    const gain = cityUpgradeYield(model0, vertex);
+    // 牧場上的城市比聚落多的是 cloth，wool 不變。
+    expect(gain.cloth).toBeGreaterThan(0);
+    expect(gain.wool ?? 0).toBe(0);
+    expect(productionValue(model0, vertex, weights)).toBeCloseTo(weightedPips(gain, weights), 10);
+    // 沒有模組時城市就是聚落的兩倍，升級多得的是同樣一份資源（base 不變）。
+    expect(cityUpgradeYield(base0, vertex)).toEqual(vertexYield(base0, vertex));
+    expect(productionValue(base0, vertex, weights)).toBe(weightedPips(vertexYield(base0, vertex), weights));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ETA、效用與銀行交易
+// ---------------------------------------------------------------------------
+
+describe('eta, utility and bank trades with commodities', () => {
+  const rates: KindTable = { lumber: 4, brick: 4, wool: 4, grain: 4, ore: 4, paper: 4, cloth: 4, coin: 4 };
+  const kinds = [...RESOURCES, ...COMMODITIES];
+
+  it('estimates a commodity cost the way it estimates the same resource cost', () => {
+    const empty = emptyYield();
+    const viaPaper = etaRounds(empty, { paper: 2 }, { ...empty, paper: 5 }, rates, 4, kinds);
+    const viaLumber = etaRounds(empty, { lumber: 2 }, { ...empty, lumber: 5 }, rates, 4, kinds);
+    expect(viaPaper).toBeGreaterThan(0);
+    expect(viaPaper).toBe(viaLumber);
+    // 產能越高越快；沒有任何產能時以最低速度估。
+    expect(etaRounds(empty, { paper: 2 }, { ...empty, paper: 10 }, rates, 4, kinds)).toBeLessThan(viaPaper);
+    expect(etaRounds(empty, { paper: 2 }, empty, rates, 4, kinds)).toBeGreaterThan(viaPaper);
+  });
+
+  it('trades surplus cards at the bank rate: a commodity surplus pays for a resource gap', () => {
+    const hand = { ...emptyYield(), ore: 8 };
+    expect(etaRounds(hand, { paper: 2 }, emptyYield(), rates, 4, kinds)).toBe(0.25);
+    expect(etaRounds({ ...emptyYield(), paper: 8 }, { ore: 2 }, emptyYield(), rates, 4, kinds)).toBe(0.25);
+    // 沒有匯率的卡種不能換匯。
+    const { paper: _paper, ...noPaper } = rates;
+    expect(etaRounds({ ...emptyYield(), paper: 8 }, { ore: 2 }, emptyYield(), noPaper, 4, kinds)).toBeGreaterThan(1);
+  });
+
+  it('a kind outside the list cannot be priced: a gap in it is unreachable, not free', () => {
+    // 預設清單只有資源：缺 paper 就是到不了（分數歸零），而不是不缺。
+    expect(etaRounds(emptyYield(), { paper: 2 }, emptyYield(), rates, 4)).toBe(Infinity);
+    expect(etaRounds(emptyYield(), { paper: 2, ore: 1 }, emptyYield(), rates, 4, [...RESOURCES, 'cloth'])).toBe(Infinity);
+    // 清單外的卡種手上湊得齊就不算缺口；清單內照舊。
+    expect(etaRounds({ ...emptyYield(), paper: 2 }, { paper: 2 }, emptyYield(), rates, 4)).toBe(0);
+    expect(etaRounds(emptyYield(), { paper: 2 }, emptyYield(), rates, 4, kinds)).toBeLessThan(Infinity);
+    // 沒有 commodity 的成本與清單無關：base 的結果不變。
+    expect(etaRounds(emptyYield(), { ore: 1 }, emptyYield(), rates, 4)).toBe(etaRounds(emptyYield(), { ore: 1 }, emptyYield(), rates, 4, kinds));
+  });
+
+  it('counts commodities in hand utility: the held commodity needed by the target is worth keeping', () => {
+    const economy = economyFor(handGame());
+    const target = { paper: 3 };
+    const hand = economy.hand;
+    const without = { ...hand, paper: 0 };
+    expect(handUtility(economy, hand, target)).toBeGreaterThan(handUtility(economy, without, target) + 8);
+    // 目標以外的 commodity 靠權重與流動性計價，不是 0。
+    expect(handUtility(economy, hand, {})).toBeGreaterThan(handUtility(economy, { ...hand, paper: 0, coin: 0 }, {}));
+    // 只有資源的經濟不替 commodity 估值。
+    const baseOnly = economyFor(handGame(), 'p1', []);
+    expect(handUtility(baseOnly, hand, {})).toBe(handUtility(baseOnly, { ...hand, coin: 0 }, {}));
+  });
+
+  it('buys a commodity from the bank with surplus resources, and pays with a surplus commodity', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    give(state, 'p1', { lumber: 5 });
+    const view = viewOf(state, 'p1');
+    const economy = economyFor(state);
+    const buy = bankTradeToward(view, economy, { coin: 1 }, {});
+    expect(buy).toEqual({ type: 'trade.bank', give: 'lumber', receive: 'coin' });
+    expect(applyCommand(state, 'p1', buy as Command, seededRng(1)).ok).toBe(true);
+
+    const rich = emptyCkGame(4, 0, 'action');
+    giveCommodities(rich, 'p1', { paper: 4 });
+    const pay = bankTradeToward(viewOf(rich, 'p1'), economyFor(rich), { ore: 1 }, {});
+    expect(pay).toEqual({ type: 'trade.bank', give: 'paper', receive: 'ore' });
+    expect(applyCommand(rich, 'p1', pay as Command, seededRng(1)).ok).toBe(true);
+  });
+
+  it('holds back what the plan reserves, needs a rate, and needs the bank to have the card', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    give(state, 'p1', { lumber: 5 });
+    // 5 張 lumber、保留 2 張：只剩 3 張，不夠 4:1。
+    expect(bankTradeToward(viewOf(state, 'p1'), economyFor(state), { coin: 1 }, { lumber: 2 })).toBeNull();
+    // 銀行沒有 coin：不送一個必定被拒絕的交易。
+    const dry = emptyCkGame(4, 0, 'action');
+    give(dry, 'p1', { lumber: 5 });
+    dry.commodityBank.coin = 0;
+    expect(bankHas(viewOf(dry, 'p1'), 'coin')).toBe(false);
+    expect(bankTradeToward(viewOf(dry, 'p1'), economyFor(dry), { coin: 1 }, {})).toBeNull();
+    // 沒有匯率的 commodity 不能付出。
+    const view = JSON.parse(JSON.stringify(viewOf(state, 'p1'))) as GameView;
+    view.hints!.modules = {};
+    const noRates = economyOf(boardModel(view, 'p1', MODULES), MODULES);
+    const stuck = emptyCkGame(4, 0, 'action');
+    giveCommodities(stuck, 'p1', { paper: 4 });
+    const economy = { ...noRates, hand: handOf(boardModel(viewOf(stuck, 'p1'), 'p1', MODULES)) };
+    expect(bankTradeToward(viewOf(stuck, 'p1'), economy, { ore: 1 }, {})).toBeNull();
+  });
+
+  it('plans the commodity bank like the resource bank: only "at least" is known above the cap', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    const view = viewOf(state, 'p1');
+    expect(plannedCommodityBank(view)).toEqual({ paper: 12, cloth: 12, coin: 12 });
+    expect(plannedBankOf(view, RESOURCES)).not.toHaveProperty('paper');
+    expect(plannedBankOf(view, [...RESOURCES, 'paper'])).toMatchObject({ lumber: 19, paper: 12 });
+    // 低於上限是確切張數；沒有這個模組的視角沒有 commodity 存量。
+    state.commodityBank.cloth = 1;
+    expect(plannedCommodityBank(viewOf(state, 'p1')).cloth).toBe(1);
+    const base = viewOf(newGame({ players: 4, profileId: 'base-2025', seed: 1 }).state, 'p1');
+    expect(plannedCommodityBank(base)).toEqual({ paper: 0, cloth: 0, coin: 0 });
+    expect(bankHas(base, 'paper')).toBe(false);
+    expect(bankHas(base, 'lumber')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 規則 9：報價只含估得了價的東西
+// ---------------------------------------------------------------------------
+
+describe('rule 9: offers with commodities', () => {
+  const offer = (give: Offer['give'], want: Offer['want'], extra: Partial<Offer> = {}): Offer =>
+    ({ id: 'o1', from: 'p1', to: 'all', give, want, status: 'open', windowId: 1, responses: {}, ...extra }) as Offer;
+
+  it('accepts only the kinds the economy can price', () => {
+    expect(offerTermsKnown(offer({ wool: 1 }, { coin: 3 }))).toBe(false);
+    expect(offerTermsKnown(offer({ coin: 1 }, { wool: 1 }))).toBe(false);
+    expect(offerTermsKnown(offer({ wool: 1 }, { coin: 3 }), [...RESOURCES, ...COMMODITIES])).toBe(true);
+    expect(offerTermsKnown(offer({ wool: 1 }, { coin: 3 }), [...RESOURCES, 'paper'])).toBe(false);
+    // 數量為 0 的卡種不算；goods 一律拒絕。
+    expect(offerTermsKnown(offer({ wool: 1, coin: 0 }, { ore: 1 }))).toBe(true);
+    expect(offerTermsKnown(offer({ wool: 1 }, { ore: 1 }, { giveGoods: { trade: 1 } as never }), [...RESOURCES, ...COMMODITIES])).toBe(false);
+  });
+
+  it('prices an offer in commodities: paying what the bot does not hold is refused', () => {
+    const economy = economyFor(handGame());
+    expect(offerGain(economy, offer({ wool: 1 }, { coin: 3 }))).toBe(-Infinity);
+    expect(Number.isFinite(offerGain(economy, offer({ wool: 1 }, { coin: 1 })))).toBe(true);
+  });
+
+  /** p1 是行動者，提出「give 換 want」；p2 是 Bot。 */
+  function offered(p2: { resources?: Parameters<typeof give>[2]; commodities?: Parameters<typeof giveCommodities>[2] }, terms: Offer['give'], want: Offer['want']): GameState {
+    const state = emptyCkGame(4, 0, 'action');
+    give(state, 'p1', terms as Parameters<typeof give>[2]);
+    const city = state.board.buildings.findIndex((building) => building === null);
+    state.board.buildings[city] = { player: 'p2', city: false };
+    if (p2.resources) give(state, 'p2', p2.resources);
+    if (p2.commodities) giveCommodities(state, 'p2', p2.commodities);
+    return actCk(state, 'p1', { type: 'trade.offer', to: 'all', give: terms, want } as Command).state;
+  }
+
+  it.each(['standard', 'easy'] as const)('%s: with 1 coin the bot declines "1 wool for 3 coin"', (level) => {
+    const state = offered({ commodities: { coin: 1 } }, { wool: 1 }, { coin: 3 });
+    const command = createBotPolicy(level).decide(viewOf(state, 'p2'), ctxFor('p2', level));
+    expect(command).toMatchObject({ type: 'trade.respond', response: 'declined' });
+  });
+
+  it.each(['standard', 'easy'] as const)('%s: with 3 coin and a worthwhile deal the bot consents, and the trade settles', (level) => {
+    // p2 的城市計畫缺 1 張 grain：用 3 coin 換 grain 划算。
+    const state = offered({ resources: { ore: 3, grain: 1 }, commodities: { coin: 3 } }, { grain: 1 }, { coin: 3 });
+    const policy = createBotPolicy(level);
+    const response = policy.decide(viewOf(state, 'p2'), ctxFor('p2', level));
+    expect(response).toMatchObject({ type: 'trade.respond', response: 'consented' });
+    const answered = actCk(state, 'p2', response as Command).state;
+    const offerId = (answered.offers[0] as Offer).id;
+    const settled = actCk(answered, 'p1', { type: 'trade.settle', offerId, counterparty: 'p2' } as Command).state;
+    expect(player(settled, 'p2').commodities.coin).toBe(0);
+    expect(player(settled, 'p2').resources.grain).toBe(2);
+    expect(player(settled, 'p1').commodities.coin).toBe(3);
+  });
+
+  /** 行動者 p1（Bot）的城市計畫：有聚落，ore 3、grain 1；p2 向它直接報價。 */
+  function counterOffer(p1: { resources: Parameters<typeof give>[2]; commodities?: Parameters<typeof giveCommodities>[2] }, p2: { resources: Parameters<typeof give>[2]; commodities?: Parameters<typeof giveCommodities>[2] }, terms: Offer['give'], want: Offer['want']): GameState {
+    const state = emptyCkGame(4, 0, 'action');
+    const city = state.board.buildings.findIndex((building) => building === null);
+    state.board.buildings[city] = { player: 'p1', city: false };
+    give(state, 'p1', p1.resources);
+    if (p1.commodities) giveCommodities(state, 'p1', p1.commodities);
+    give(state, 'p2', p2.resources);
+    if (p2.commodities) giveCommodities(state, 'p2', p2.commodities);
+    return actCk(state, 'p2', { type: 'trade.offer', to: 'p1', give: terms, want } as Command).state;
+  }
+
+  it('a Bot actor settles a worthwhile direct offer paid in commodities', () => {
+    // p1 的城市只缺 grain；p2 給 grain、要 2 coin。
+    const state = counterOffer({ resources: { ore: 3, grain: 1 }, commodities: { coin: 3 } }, { resources: { grain: 1 } }, { grain: 1 }, { coin: 2 });
+    const command = createBotPolicy('standard').decide(viewOf(state, 'p1'), ctxFor('p1'));
+    expect(command).toMatchObject({ type: 'trade.settle' });
+    const settled = actCk(state, 'p1', command as Command).state;
+    expect(player(settled, 'p1').resources.grain).toBe(2);
+    expect(player(settled, 'p1').commodities.coin).toBe(1);
+  });
+
+  it('a Bot actor declines a direct offer that would break its plan', () => {
+    // p1 的城市已經湊齊：p2 給 2 coin 換走 1 grain 不划算。
+    const state = counterOffer({ resources: { ore: 3, grain: 2 } }, { resources: {}, commodities: { coin: 2 } }, { coin: 2 }, { grain: 1 });
+    const command = createBotPolicy('standard').decide(viewOf(state, 'p1'), ctxFor('p1'));
+    expect(command).toMatchObject({ type: 'trade.respond', response: 'declined' });
+  });
+
+  it('counts the proposer\'s cards by card kind: a commodity in the offer needs a card behind it', () => {
+    // p2 給 grain 1 與 paper 1（共 2 張）、要 1 coin：對 p1 的城市計畫有利。
+    const state = counterOffer(
+      { resources: { ore: 3, grain: 1 }, commodities: { coin: 3 } },
+      { resources: { grain: 1 }, commodities: { paper: 1 } },
+      { grain: 1, paper: 1 },
+      { coin: 1 },
+    );
+    const policy = createBotPolicy('standard');
+    expect(policy.decide(viewOf(state, 'p1'), ctxFor('p1'))).toMatchObject({ type: 'trade.settle' });
+    // 公開的手牌張數只有 1：資源只算 grain 的話 1 ≤ 1 會誤判付得起，依卡種算要 2 張。
+    const hacked = JSON.parse(JSON.stringify(viewOf(state, 'p1'))) as GameView;
+    hacked.players.find((candidate) => candidate.id === 'p2')!.handSize = 1;
+    expect(policy.decide(hacked, ctxFor('p1'))).toMatchObject({ type: 'trade.respond', response: 'declined' });
+  });
+});
+
+describe('receiving commodities, and the cards a pick can name', () => {
+  const offer = (give: Offer['give'], want: Offer['want']): Offer =>
+    ({ id: 'o1', from: 'p1', to: 'all', give, want, status: 'open', windowId: 1, responses: {} }) as Offer;
+
+  /** 計畫最缺的是 commodity：2 paper 加 1 ore 的成本，手上只有 1 ore、1 wool。 */
+  function paperPlan(): Economy {
+    const state = emptyCkGame(4, 0, 'action');
+    give(state, 'p1', { ore: 1, wool: 1 });
+    const economy = economyFor(state);
+    const plan = { ...economy.plans[0]!, cost: { paper: 2, ore: 1 }, nextCost: { paper: 2 } };
+    return { ...economy, plans: [plan] };
+  }
+
+  it('offerGain counts the commodities the proposer gives: receiving what the plan needs is a gain', () => {
+    const economy = paperPlan();
+    const gain = offerGain(economy, offer({ paper: 2 }, { wool: 1 }));
+    expect(gain).toBeGreaterThan(0);
+    // 收到的張數越多越好；收到計畫用不到的 commodity 也不會被當成沒收到（剩餘的牌依權重算）。
+    expect(gain).toBeGreaterThan(offerGain(economy, offer({ paper: 1 }, { wool: 1 })));
+    expect(offerGain(economy, offer({ cloth: 2 }, { wool: 1 }))).toBeGreaterThan(offerGain(economy, offer({}, { wool: 1 })));
+  });
+
+  /** 計畫要 2 paper 的測試模組（B1 的 C&K 模組還沒有 commodity 計畫）。 */
+  const paperModule: BotModule = {
+    id: 'test',
+    economy: {
+      scoreExtras: () => [{ kind: 'test.paper', vertex: null, roads: [], cost: { paper: 2 }, nextCost: { paper: 2 }, value: 5, eta: 1, score: 5, immediate: true }],
+    },
+  };
+
+  /** p2 是 Bot：有聚落、4 wool；p1 向全部人報價「give 換 1 wool」。 */
+  function wool4(offered: Offer['give']): GameState {
+    const state = emptyCkGame(4, 0, 'action');
+    const site = state.board.buildings.findIndex((building) => building === null);
+    state.board.buildings[site] = { player: 'p2', city: false };
+    give(state, 'p2', { wool: 4 });
+    giveCommodities(state, 'p1', offered);
+    return actCk(state, 'p1', { type: 'trade.offer', to: 'all', give: offered, want: { wool: 1 } } as Command).state;
+  }
+
+  it.each(['standard', 'easy'] as const)('%s: a bot whose plan needs paper consents to "2 paper for 1 wool", and the trade settles', (level) => {
+    const open = wool4({ paper: 2 });
+    const policy = heuristicPolicy(level, [citiesKnightsBotModule, paperModule]);
+    const response = policy.decide(viewOf(open, 'p2'), ctxFor('p2', level));
+    expect(response).toMatchObject({ type: 'trade.respond', response: 'consented' });
+    const answered = actCk(open, 'p2', response as Command).state;
+    const settled = actCk(answered, 'p1', { type: 'trade.settle', offerId: (open.offers[0] as Offer).id, counterparty: 'p2' } as Command).state;
+    expect(player(settled, 'p2').commodities.paper).toBe(2);
+    expect(player(settled, 'p2').resources.wool).toBe(3);
+    // 同一個報價換成計畫用不到的 cloth：只是多一張雜牌，不划算。
+    const idle = wool4({ cloth: 2 });
+    expect(policy.decide(viewOf(idle, 'p2'), ctxFor('p2', level))).toMatchObject({ type: 'trade.respond', response: 'declined' });
+  });
+
+  it('a bot with no commodity plan sees a paper-for-surplus-wool swap as even: declined at the margin', () => {
+    const open = wool4({ paper: 1 });
+    expect(createBotPolicy('standard').decide(viewOf(open, 'p2'), ctxFor('p2'))).toMatchObject({ type: 'trade.respond', response: 'declined' });
+  });
+
+  it('plentyPick only names a Resource, even when the plan lacks commodities most', () => {
+    const economy = paperPlan();
+    const view = viewOf(emptyCkGame(4, 0, 'action'), 'p1');
+    const turn = { economy, view } as unknown as TurnContext;
+    // 計畫缺的是 paper：缺口與權重都指向 commodity，挑出來的仍是 Resource（pending.takeResource、
+    // science.take、SF 的 gold 都只收 Resource）。
+    expect(deficitOf(economy.hand, economy.plans[0]!.cost).paper).toBe(2);
+    expect(economy.weights.paper).toBeGreaterThan(0);
+    const pick = plentyPick(turn);
+    expect(pick).not.toBeNull();
+    expect(RESOURCES).toContain(pick);
+    // 缺的 Resource 仍優先：計畫改成同時缺 ore，就挑 ore。
+    const needsOre = { ...economy, plans: [{ ...economy.plans[0]!, cost: { paper: 2, ore: 3 }, nextCost: { paper: 2 } }] };
+    expect(plentyPick({ economy: needsOre, view } as unknown as TurnContext)).toBe('ore');
+    // 資源銀行沒有牌時不挑：commodity 銀行有牌也不算。
+    const empty = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
+    expect(plentyPick(turn, economy.hand, empty)).toBeNull();
+  });
+});
+
+describe('relief and offers with commodities', () => {
+  /** p1 的行動階段，手牌 `resources` 加 `commodities`（沒有建築、道路，也買不起發展卡）。 */
+  function holding(resources: Parameters<typeof give>[2], commodities: Parameters<typeof giveCommodities>[2] = {}): GameState {
+    const state = emptyCkGame(4, 0, 'action');
+    give(state, 'p1', resources);
+    giveCommodities(state, 'p1', commodities);
+    return state;
+  }
+
+  /** 以 `view` 建立決策資料；`cost` 給了就把計畫換成需要這些牌的測試計畫。 */
+  function turnFor(view: GameView, cost?: Cost): TurnContext {
+    const turn = turnContext(view, ctxFor('p1'), 'standard');
+    if (!cost) return turn;
+    const plan = { kind: 'test.plan' as const, vertex: null, roads: [], cost, nextCost: cost, value: 1, eta: 1, score: 1 };
+    return { ...turn, economy: { ...turn.economy, plans: [plan] } } as unknown as TurnContext;
+  }
+
+  const accepted = (state: GameState, command: Command | null): void => {
+    expect(command).not.toBeNull();
+    expect(applyCommand(state, 'p1', command!, seededRng(1)).ok).toBe(true);
+  };
+
+  it('relief gives a commodity surplus to the bank: 4 spare paper in a hand of 8 go out as a paper trade', () => {
+    const state = holding({ lumber: 3, wool: 1 }, { paper: 4 });
+    const command = handRelief(turnFor(viewOf(state, 'p1')));
+    expect(command).toMatchObject({ type: 'trade.bank', give: 'paper' });
+    expect((command as { receive: string }).receive).not.toBe('paper');
+    accepted(state, command);
+  });
+
+  it('relief never gives a commodity the bank has no rate for', () => {
+    const state = holding({}, { paper: 8 });
+    const view = JSON.parse(JSON.stringify(viewOf(state, 'p1'))) as GameView;
+    view.hints!.modules = {};
+    expect(handRelief(turnFor(view))).toBeNull();
+    // 有匯率的同一手牌會換出去。
+    expect(handRelief(turnFor(viewOf(state, 'p1')))).toMatchObject({ type: 'trade.bank', give: 'paper' });
+  });
+
+  it('relief receives the commodity the plan lacks, and only while the commodity bank has it', () => {
+    const state = holding({ lumber: 8 });
+    const command = handRelief(turnFor(viewOf(state, 'p1'), { paper: 2 }));
+    expect(command).toEqual({ type: 'trade.bank', give: 'lumber', receive: 'paper' });
+    accepted(state, command);
+    // 銀行沒有 paper：不送一個必定被拒絕的交易，改換別的。
+    const dry = holding({ lumber: 8 });
+    dry.commodityBank.paper = 0;
+    expect(bankHas(viewOf(dry, 'p1'), 'paper')).toBe(false);
+    const other = handRelief(turnFor(viewOf(dry, 'p1'), { paper: 2 }));
+    expect(other).toMatchObject({ type: 'trade.bank', give: 'lumber' });
+    expect((other as { receive: string }).receive).not.toBe('paper');
+    accepted(dry, other);
+  });
+
+  it('proposeOffer never opens a domestic offer for a missing commodity (the offer would carry no wants)', () => {
+    const state = holding({ lumber: 3, ore: 1 });
+    give(state, 'p2', { wool: 1 });
+    const view = viewOf(state, 'p1');
+    const economy = economyFor(state);
+    // 只缺 commodity：不開價（沒有 want 的報價是白送）。
+    expect(proposeOffer(view, economy, 'p1', { paper: 1 }, 1)).toBeNull();
+    // 資源與 commodity 都缺：同樣不開價，不能只替資源那一半開價。
+    expect(proposeOffer(view, economy, 'p1', { ore: 2, paper: 1 }, 2)).toBeNull();
+    // 對照：缺的是資源就照舊開價，want 是那張資源。
+    expect(proposeOffer(view, economy, 'p1', { ore: 2 }, 1)).toMatchObject({ type: 'trade.offer', want: { ore: 1 } });
+  });
+});
+
+describe('hand limit (discardLimit)', () => {
+  /** p1 的行動階段，手牌為 `resources` 加 `commodities`，自己有 `walls` 座城牆。 */
+  function withHand(walls: number, resources: Parameters<typeof give>[2], commodities: Parameters<typeof giveCommodities>[2] = {}): GameState {
+    const state = emptyCkGame(4, 0, 'action');
+    state.players[0]!.cityWalls = walls;
+    give(state, 'p1', resources);
+    giveCommodities(state, 'p1', commodities);
+    return state;
+  }
+  const relief = (state: GameState) => handRelief(turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard'));
+
+  it('is 7 in a base game and without a wall, plus 2 per own wall in Cities & Knights', () => {
+    expect(economyFor(withHand(0, {}), 'p1', []).handLimit).toBe(7);
+    const base = viewOf(newGame({ players: 4, profileId: 'base-2025', seed: 1 }).state, 'p1');
+    expect(economyOf(boardModel(base, 'p1'), []).handLimit).toBe(7);
+    expect(economyFor(withHand(0, {})).handLimit).toBe(7);
+    expect(economyFor(withHand(1, {})).handLimit).toBe(9);
+    expect(economyFor(withHand(3, {})).handLimit).toBe(13);
+    // 別人的城牆不算。
+    const other = withHand(0, {});
+    other.players[1]!.cityWalls = 2;
+    expect(economyFor(other).handLimit).toBe(7);
+  });
+
+  it('folds the modules in order, each seeing the previous result, and ignores a non-finite answer', () => {
+    const double: BotModule = { id: 'a', economy: { discardLimit: (_model, base) => base * 2 } };
+    const plusOne: BotModule = { id: 'b', economy: { discardLimit: (_model, base) => base + 1 } };
+    const broken: BotModule = { id: 'c', economy: { discardLimit: () => Number.NaN } };
+    const state = withHand(0, {});
+    expect(economyFor(state, 'p1', [double, plusOne]).handLimit).toBe(15);
+    expect(economyFor(state, 'p1', [plusOne, double]).handLimit).toBe(16);
+    expect(economyFor(state, 'p1', [double, broken, plusOne]).handLimit).toBe(15);
+    expect(economyFor(state, 'p1', [citiesKnightsBotModule, double]).handLimit).toBe(14);
+  });
+
+  it('a wall moves the relief threshold: 8 cards wait, 10 cards are worked off (9 is exactly the limit)', () => {
+    // 沒有城牆：8 張就消化手牌。
+    expect(relief(withHand(0, { lumber: 8 }))).not.toBeNull();
+    expect(relief(withHand(0, { lumber: 7 }))).toBeNull();
+    // 1 座城牆：上限 9。
+    expect(relief(withHand(1, { lumber: 8 }))).toBeNull();
+    expect(relief(withHand(1, { lumber: 9 }))).toBeNull();
+    expect(relief(withHand(1, { lumber: 10 }))).toMatchObject({ type: 'trade.bank', give: 'lumber' });
+    // 手牌張數含 commodity：5 lumber 加 4 paper 是 9 張，加 1 張就是 10。
+    expect(relief(withHand(1, { lumber: 5 }, { paper: 4 }))).toBeNull();
+    expect(relief(withHand(1, { lumber: 5 }, { paper: 5 }))).not.toBeNull();
+    // 2 座城牆：上限 11。
+    expect(relief(withHand(2, { lumber: 11 }))).toBeNull();
+    expect(relief(withHand(2, { lumber: 12 }))).not.toBeNull();
+  });
+});
+
+describe('the Bot module stays out of games it does not play', () => {
+  it('a base game has no commodity hooks on the board model', () => {
+    const view = viewOf(newGame({ players: 4, profileId: 'base-2025', seed: 1 }).state, 'p1');
+    const model: BoardModel = boardModel(view, 'p1', []);
+    expect(model.hexYield).toBeUndefined();
+    expect(model.blocker).toBeUndefined();
+    expect(model.siteBlocked).toBeUndefined();
+    const turn = turnContext(view, ctxFor('p1'), 'standard');
+    expect(turn.modules).toEqual([]);
+    expect(turn.economy.kinds).toBe(RESOURCES);
+  });
+});

@@ -25,6 +25,7 @@ import { botModulesOf, botsCanPlay, createBotPolicy } from '../src/index.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';
 import type { BotPolicy } from '../src/types.ts';
 import { baseProfileFor, naivePolicy, runBotGame, type BotSeat } from '../test/harness.ts';
+import { citiesKnightsKit } from '../test/modules/citiesKnights.ts';
 import { seafarersKit } from '../test/modules/seafarers.ts';
 import { kitsOf, type ModuleTestKit } from '../test/modules/types.ts';
 import { BENCH_USAGE, BenchArgError, parseBenchArgs } from './args.ts';
@@ -48,7 +49,7 @@ declare const performance: { now(): number };
  * 模組測試工具（`test/modules/<id>.ts`）：有擴充的 profile 才有機制計數。擴充的測試切片把自己的 kit
  * 加在這裡。
  */
-const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit];
+const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit, citiesKnightsKit];
 
 /**
  * 與 rules 腳本模擬（確定性的腳本座位）對照的平均回合數：`profile id → 人數 → 回合數`。沒有腳本模擬的
@@ -56,10 +57,15 @@ const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit];
  *
  * Seafarers：`rules/test/seafarers-sim.ts` 的 `simulateSeafarers`，種子 10000–10019（與 bench 相同的起點），
  * 每人數 20 局全數終局；回合數 = `stats.turns / players`，與本表的「avg rounds」同一單位。
+ *
+ * Cities & Knights：`rules/test/ck-sim.ts` 的 `simulateCitiesKnights`，種子 10000–10019，每人數 20 局全數終局
+ * （2026-11-11 實測；C&K 計畫 §6.4 原列的 158／190／198／208 回合不沿用）。
  */
 const RULES_SIM_ROUNDS: Readonly<Record<string, Readonly<Record<number, number>>>> = {
   'sf-new-shores-2025': { 3: 84.7, 4: 49.4 },
   'sf-new-shores-paired-2025': { 5: 32.7, 6: 26.5 },
+  'ck-2025': { 3: 45.7, 4: 43.1 },
+  'ck-paired-2025': { 5: 30.8, 6: 31.2 },
 };
 
 /** 每個人數的四種對局；沒有 rules module 的 profile 再加兩種 hard。 */

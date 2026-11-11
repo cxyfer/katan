@@ -262,3 +262,37 @@ export function findAction(
 ): ActionDescriptor | undefined {
   return actions.find((action) => action.id === id);
 }
+
+/** 動作欄的分組：同組動作在收合與展開時都排在一起。 */
+export type ActionGroupId = 'turn' | 'build' | 'sea' | 'knights';
+
+export interface ActionGroup {
+  id: ActionGroupId;
+  actions: ActionDescriptor[];
+  /** 整組共用的停用原因；組內各動作原因不同時為 null。 */
+  sharedReasonId: string | null;
+}
+
+const GROUP_ORDER: readonly ActionGroupId[] = ['turn', 'build', 'sea', 'knights'];
+
+export function actionGroupOf(id: string): ActionGroupId {
+  if (id === 'roll' || id === 'endTurn') return 'turn';
+  if (id.startsWith('knight.')) return 'knights';
+  if (id === 'build.ship' || id === 'ship.move' || id === 'ep.buildShip') return 'sea';
+  return 'build';
+}
+
+/** 所有動作都停用且原因相同時回傳該原因，讓介面只說明一次。 */
+export function sharedReason(actions: readonly ActionDescriptor[]): string | null {
+  const first = actions[0]?.reasonId ?? null;
+  if (!first) return null;
+  return actions.every((action) => action.reasonId === first) ? first : null;
+}
+
+/** 依固定順序分組，保留各組內 `deriveActions` 的原始順序。 */
+export function groupActions(actions: readonly ActionDescriptor[]): ActionGroup[] {
+  return GROUP_ORDER.flatMap((id) => {
+    const members = actions.filter((action) => actionGroupOf(action.id) === id);
+    return members.length ? [{ id, actions: members, sharedReasonId: sharedReason(members) }] : [];
+  });
+}
