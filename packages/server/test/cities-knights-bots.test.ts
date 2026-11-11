@@ -10,7 +10,8 @@
  *
  * 注入的 pending 形狀照 rules 的實際建立處（`barbarians.ts`、`production.ts`、`progress.ts`）：
  * `{ kind, module, responders, data }`，`data` 的欄位與內容也一致；`responders` 的成員與順序照
- * `turnOrder`（從行動者起算）與 `overLimitOffTurn`（排除行動者），都是真實對局能走到的狀態。
+ * `turnOrder`（從行動者起算）與 `overLimitOffTurn`（排除行動者）。周邊狀態只補到 Bot 作答所需
+ * （例如 pillage 的城市、discard 的手牌）；scienceBonus 的 responders 沒有升到科學 3 級，見 `openScience`。
  */
 
 import { randomUUID } from 'node:crypto';
@@ -290,6 +291,8 @@ async function openPillage(gameId: string, service: RunningService, actor: strin
 async function openScience(gameId: string, service: RunningService, actor: string, responders: string[]): Promise<number> {
   return rewrite(gameId, service, (game) => {
     actionPhase(game, actor);
+    // 不提高 responders 的科學等級：真實的 scienceBonus 只列入科學 3 級以上的玩家，但升到 3 級後
+    // 之後每次擲骰都會再開出 frame，等不會作答的測試真人。Bot 只看 hints 與 responders，不受影響。
     game.pending = { kind: CK_SCIENCE_FRAME, module: CITIES_KNIGHTS, responders, data: {} };
   });
 }
@@ -442,9 +445,10 @@ describe('Cities & Knights with bot seats', () => {
     }
   }, 30_000);
 
-  // 3. 真人與 Bot 並存（4 人房：真人加 3 個 Bot）。frame 的作答順序依 rules 的實際規則：
-  //    - scienceBonus 依 `turnOrder`（從擲骰者起算）：真人排在 Bot 前面，Bot 不搶答；
-  //    - progressDiscard 排除行動者（`overLimitOffTurn`），依 `turnOrder` 為 Bot → 真人 → Bot。
+  // 3. 真人與 Bot 並存（4 人房：真人加 3 個 Bot）。responders 的成員與順序照 rules 建立 frame 的方式：
+  //    - scienceBonus 依 `turnOrder`（從擲骰者起算），rules 也要求依序作答：真人排在 Bot 前面，Bot 不搶答；
+  //    - progressDiscard 排除行動者（`overLimitOffTurn`），依 `turnOrder` 為 Bot → 真人 → Bot。rules 允許
+  //      任何 responder 作答，等真人是 Bot 自己的做法：只有在 `responders[0]` 時才作答。
   //    座位以真人為 0 順時針編號：`before` 是真人前一座、`after` 是後一座、`across` 在對面。
   it('lets bots wait for a person in scienceBonus and answer around one in progressDiscard', async () => {
     const service = harness.service;
@@ -453,9 +457,18 @@ describe('Cities & Knights with bot seats', () => {
     // 策略只作答 frame，沒有待決效果時由保底行動：CK-C 之後 standard 會主動打出進步卡，
     // 可能開出需要真人作答的 frame，測試裡的真人不會答，整局就卡住。
     const restorePolicy = frameOnlyPolicies(deps);
-    const host = await harness.client('CkShared');
-    const { roomId, gameId } = await ckGame(service, host, { bots: 3 });
-    const drop = await liveSocket(service, roomId, host.playerId!);
+    let opened: { host: Awaited<ReturnType<typeof harness.client>>; gameId: string; drop: () => Promise<void> };
+    try {
+      const client = await harness.client('CkShared');
+      const created = await ckGame(service, client, { bots: 3 });
+      opened = { host: client, gameId: created.gameId, drop: await liveSocket(service, created.roomId, client.playerId!) };
+    } catch (error) {
+      // 建局失敗時也要還原共用 BotDriverDeps 上的策略與 logger。
+      restorePolicy();
+      logs.restore();
+      throw error;
+    }
+    const { host, gameId, drop } = opened;
     try {
       await finishSetup(host, gameId, service);
       const seats = (await state(gameId, service)).players.map((player) => player.id);
