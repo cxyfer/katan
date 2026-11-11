@@ -43,8 +43,8 @@ export const PLAYER_NOTES: readonly PlayerNote[] = [
         en: 'While the whole table is paused, being offline no longer counts as being away, so the first player back cannot end the game alone; rolling, building, trading and city improvements stay off until everyone is ready to resume.',
       },
       {
-        'zh-Hant': '銀行存量最多只顯示到「2+」，不到 2 張時才顯示確切張數；銀行數字的變化不會再透露對手棄了哪些牌。',
-        en: 'The bank now shows its supply only up to “2+”, with an exact count below two, so its numbers no longer give away which cards an opponent discarded.',
+        'zh-Hant': '銀行存量最多只顯示到「2+」，不到 2 張時才顯示確切張數；銀行原本就有 2 張以上的資源，不會因為對手棄牌而改變顯示。',
+        en: 'The bank now shows its supply only up to “2+”, with an exact count below two, so an opponent’s discards no longer change what it shows for any resource it already holds two or more of.',
       },
       {
         'zh-Hant': '探險家與海盜：建設提示不再列出實際無法建造的位置；同一條航道上有好幾艘船時會並排顯示，不再疊在一起。',
