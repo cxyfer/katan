@@ -152,7 +152,8 @@ describe('14 種 C&K frame 的保底', () => {
     const fx = FRAME_FIXTURES['citiesKnights.pillage']!();
     const view = JSON.parse(JSON.stringify(viewOf(fx.state, fx.responder))) as GameView;
     (view.pending as { data: unknown }).data = {};
-    const command = citiesKnightsDuty(view, fx.responder) as { vertex: number };
+    const command = citiesKnightsDuty(view, fx.responder);
+    expect(command).toMatchObject({ type: 'barbarians.pillage', vertex: expect.any(Number) });
     expectAccepted(fx.state, fx.responder, command);
   });
 
@@ -259,10 +260,10 @@ describe('base discard with commodities', () => {
     giveCommodities(state, 'p2', { cloth: 2 });
     const rolled = actCk(state, 'p1', { type: 'turn.roll' }, rollRng(3, 4, TRADE)).state;
     expect(rolled.pending).toMatchObject({ kind: 'discard', required: { p2: 4 } });
-    const command = createBotPolicy('standard').decide(viewOf(rolled, 'p2'), ctxFor('p2')) as { resources: string[] };
+    const command = createBotPolicy('standard').decide(viewOf(rolled, 'p2'), ctxFor('p2'));
     expectAccepted(rolled, 'p2', command);
     const kept = new Map<string, number>([['ore', 3], ['grain', 2]]);
-    for (const card of command.resources) if (kept.has(card)) kept.set(card, kept.get(card)! - 1);
+    for (const card of (command as { resources: string[] }).resources) if (kept.has(card)) kept.set(card, kept.get(card)! - 1);
     expect([...kept.values()], 'ore and grain for the city stay in hand').toEqual([3, 2]);
   });
 });

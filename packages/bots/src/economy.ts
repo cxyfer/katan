@@ -296,29 +296,21 @@ export function economyOf(
   return { ...base, plans: [...base.plans, ...extras].sort(comparePlans) };
 }
 
-/** 卡種清單：`RESOURCES` 在前，依模組順序附加模組的 `cardKinds`、去重；沒有模組卡種時就是 `RESOURCES`。 */
-function kindsOf(model: BoardModel, modules: readonly BotModule[]): readonly CardKind[] {
-  let out: CardKind[] | null = null;
-  for (const module of modules) {
-    for (const kind of module.economy?.cardKinds?.(model) ?? []) {
-      if (RESOURCES.includes(kind as Resource) || (out ?? []).includes(kind)) continue;
-      out ??= [];
-      out.push(kind);
-    }
-  }
-  return out ? [...RESOURCES, ...out] : RESOURCES;
+/** 這個模組讓手牌多出的卡種（不含資源）。 */
+function moduleKindsOf(model: BoardModel, module: BotModule): readonly CardKind[] {
+  return (module.economy?.cardKinds?.(model) ?? []).filter((kind) => !RESOURCES.includes(kind as Resource));
 }
 
-/** 模組給的數值表，只取 `extra` 內的卡種；每個卡種先回答的模組優先，非有限正數視為沒有回答。 */
+/** 模組給的數值表；每個模組只回答自己的卡種，每個卡種先回答的模組優先，非有限正數視為沒有回答。 */
 function moduleTable(
   extra: readonly CardKind[],
-  layers: readonly (Readonly<Partial<Record<CardKind, number>>> | undefined)[],
+  layers: readonly { readonly kinds: readonly CardKind[]; readonly table: Readonly<Partial<Record<CardKind, number>>> | undefined }[],
   allowZero: boolean,
 ): Partial<Record<CardKind, number>> {
   const out: Partial<Record<CardKind, number>> = {};
   for (const kind of extra) {
-    for (const layer of layers) {
-      const value = layer?.[kind];
+    for (const { kinds, table } of layers) {
+      const value = kinds.includes(kind) ? table?.[kind] : undefined;
       if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || (!allowZero && value === 0)) continue;
       out[kind] = value;
       break;
@@ -330,8 +322,10 @@ function moduleTable(
 function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Economy {
   const { view, selfId } = model;
   const hand = handOf(model);
-  const kinds = kindsOf(model, modules);
-  const extraKinds = kinds.slice(RESOURCES.length);
+  // 卡種清單：`RESOURCES` 在前，依模組順序附加各模組的 `cardKinds`、去重；沒有模組卡種時就是 `RESOURCES`。
+  const owned = modules.map((module) => ({ module, kinds: moduleKindsOf(model, module) }));
+  const extraKinds = [...new Set(owned.flatMap((entry) => entry.kinds))];
+  const kinds: readonly CardKind[] = extraKinds.length === 0 ? RESOURCES : [...RESOURCES, ...extraKinds];
   const left = {
     ...piecesLeft(model, selfId),
     ...mergeFirstWins(modules.map((module) => module.economy?.piecesLeft?.(model) ?? {})),
@@ -349,7 +343,7 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
           ...resourceWeights(model),
           // 缺漏的模組卡種權重為 0。
           ...Object.fromEntries(extraKinds.map((kind) => [kind, 0])),
-          ...moduleTable(extraKinds, modules.map((module) => module.economy?.weights?.(model)), true),
+          ...moduleTable(extraKinds, owned.map(({ module, kinds }) => ({ kinds, table: module.economy?.weights?.(model) })), true),
         };
   const mine = playerYield(model, selfId);
   const longTerm = playerYield(model, selfId, true);
@@ -357,7 +351,7 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
   const rates: KindTable =
     extraKinds.length === 0
       ? bankRates
-      : { ...bankRates, ...moduleTable(extraKinds, modules.map((module) => module.economy?.rates?.(model)), false) };
+      : { ...bankRates, ...moduleTable(extraKinds, owned.map(({ module, kinds }) => ({ kinds, table: module.economy?.rates?.(model) })), false) };
   const search = searchRoads(model, selfId, Math.min(MAX_PLAN_ROADS, Math.max(0, left.roads)));
   const players = view.players.length;
   const me = view.players.find((player) => player.id === selfId);
