@@ -173,8 +173,8 @@ export interface BotModule {
   /**
    * 行動候選的分數差值（勝利分當量）。骨架在 `buildDecision` 合併 base 的立即建造與各模組的 `actions`、去重之後，
    * 把所有模組對同一個候選的差值相加，再挑選；沒有任何模組提供時完全不呼叫。只調整分數，不得用來表達合法性或排除
-   * 候選（合法性只看 hints，P2）；不相干的指令回 0。不得消耗亂數。C&K 的 `recruitSite` 也以它為各招募點排序
-   * （同分保留既有順序）。
+   * 候選（合法性只看 hints，P2）；不相干的指令回 0。不得消耗亂數。非有限值視為 0；要壓低分數請回有限的負值，
+   * 不得以 −∞ 表達排除（R-SC9）。（SFCK-2 起，D2）C&K 的 `recruitSite` 也以它為各招募點排序（同分保留既有順序）。
    */
   rescore?(turn: TurnContext, command: BotCommand): number;
 
