@@ -148,8 +148,9 @@ only the original human players must reconnect and become ready to resume.
 - Bots only play profiles that `botsCanPlay` (`packages/bots/src/support.ts`)
   accepts: every rules module of the profile (`ProfileDefinition.ruleModules`)
   needs a bot module, and that module's `supports(profile)` must accept the
-  profile. Today the base profiles and the two Heading for New Shores profiles
-  (`sf-new-shores-2025`, `sf-new-shores-paired-2025`) qualify, so
+  profile. Today the base profiles, the two Heading for New Shores profiles
+  (`sf-new-shores-2025`, `sf-new-shores-paired-2025`) and the two Cities &
+  Knights profiles (`ck-2025`, `ck-paired-2025`) qualify, so
   `ProfileView.botSeats` is true for them and false for every other expansion
   profile, including Seafarers with Cities & Knights. Adding a bot or
   changing a room with bot seats to an unsupported profile is `E_INVALID_BOT`, reason
@@ -478,7 +479,7 @@ Bots cannot be seated in E&P rooms (`E_INVALID_BOT`, `blocker.botsUnsupported`).
 The `ck-2025` and `ck-paired-2025` profiles are enabled: the lobby offers
 them and a room created with either one runs the full module (knights,
 barbarians, improvements, commodities, the 23 playable progress cards and the
-merchant). Bot seats are still refused on these profiles (`botSeats: false` in the profile list; `blocker.botsUnsupported` on the start check).
+merchant). Bots can be seated at `easy` or `standard` (`botSeats: true`, `botLevels: ['easy','standard']`); `hard` is refused (`E_INVALID_BOT`, reason `profileLevel`).
 Base `build.devCard` and `dev.play*` are rejected (`E_INVALID_COMMAND`).
 
 | Command | Fields | When |

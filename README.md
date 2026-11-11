@@ -168,7 +168,7 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   event die and barbarians, knights, walls, commodities, city improvements,
   metropolises, the 54 progress cards (23 playable types, two scored when
   drawn) and the merchant, with a 13-point goal, in both the 3D and SVG
-  boards. Computer opponents are not available in this mode yet.
+  boards. Easy and standard computer opponents can be added.
 
 - **Seafarers + Cities & Knights — Heading for New Shores combined** for 3–6
   players (COMB guidance and CK25 p. 12): the New Shores maps with the Cities
