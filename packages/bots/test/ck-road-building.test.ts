@@ -1,6 +1,6 @@
 /**
- * C&K 尚不開放 bot 座位（`CK_BOTS_RELEASED` 為 false）；共用 freeRoads 的選路器仍須能逐步完成效果。
- * 0.4.2 起 C&K 的 Bot 模組已註冊：策略與保底都會組合它，這裡驗證加上模組後的行為，不是只有 base。
+ * 共用 freeRoads 的選路器須能逐步完成 C&K 的 Road Building 效果。
+ * C&K 的 Bot 模組已註冊並開放座位（CK-G）：策略與保底都會組合它，這裡驗證加上模組後的行為，不是只有 base。
  */
 import { describe, expect, it } from 'vitest';
 import { getTopology, type GameState } from '@catan/rules';

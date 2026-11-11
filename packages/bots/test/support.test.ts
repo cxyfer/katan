@@ -49,10 +49,13 @@ describe('bot ruleset support', () => {
     expect(botsCanPlay(profileWith(['base', 'no-such-module']))).toBe(false);
   });
 
-  it('registers Cities & Knights but keeps seats refused until the gate slice', () => {
+  it('opens Cities & Knights seats, but not its combination with Seafarers', () => {
     expect(BOT_MODULES.has('citiesKnights')).toBe(true);
-    expect(CK_BOTS_RELEASED).toBe(false);
-    for (const id of ['ck-2025', 'ck-paired-2025', 'sf-ck-new-shores-2025']) {
+    expect(CK_BOTS_RELEASED).toBe(true);
+    for (const id of ['ck-2025', 'ck-paired-2025']) expect(botsCanPlay(getProfile(id)!), id).toBe(true);
+    // 組合層 `seafarersCitiesKnights` 沒有 BotModule，兩個組合 profile 仍然不開放。
+    expect(BOT_MODULES.has('seafarersCitiesKnights')).toBe(false);
+    for (const id of ['sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025']) {
       expect(botsCanPlay(getProfile(id)!), id).toBe(false);
     }
   });
@@ -64,6 +67,8 @@ describe('bot ruleset support', () => {
       'base-paired-2025',
       'sf-new-shores-2025',
       'sf-new-shores-paired-2025',
+      'ck-2025',
+      'ck-paired-2025',
     ]);
   });
 });
