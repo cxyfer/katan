@@ -1,0 +1,492 @@
+{
+  "base": "http://127.0.0.1:3034",
+  "cases": [
+    {
+      "name": "base-collapsed-1366x768-zh-Hant",
+      "note": "base-2025: own action phase, rail collapsed",
+      "rail": {
+        "x": 1266,
+        "y": 347.59375,
+        "width": 84,
+        "height": 123
+      },
+      "expanded": "false",
+      "scroll": 82,
+      "client": 82,
+      "overflowX": false,
+      "contentWidth": 82,
+      "tileRight": -5,
+      "tileWidth": 34,
+      "visible": 4
+    },
+    {
+      "name": "base-expanded-1366x768-zh-Hant",
+      "note": "base-2025: own action phase, rail expanded",
+      "rail": {
+        "x": 1038,
+        "y": 325.0625,
+        "width": 312,
+        "height": 168.0625
+      },
+      "expanded": "true",
+      "scroll": 127,
+      "client": 127,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 4
+    },
+    {
+      "name": "base-collapsed-390x844-zh-Hant",
+      "note": "base-2025: own action phase, rail collapsed",
+      "rail": {
+        "x": 301,
+        "y": 389.890625,
+        "width": 73,
+        "height": 107
+      },
+      "expanded": "false",
+      "scroll": 71,
+      "client": 71,
+      "overflowX": false,
+      "contentWidth": 71,
+      "tileRight": -4,
+      "tileWidth": 30,
+      "visible": 4
+    },
+    {
+      "name": "base-expanded-390x844-zh-Hant",
+      "note": "base-2025: own action phase, rail expanded",
+      "rail": {
+        "x": 86,
+        "y": 357.2578125,
+        "width": 288,
+        "height": 172.265625
+      },
+      "expanded": "true",
+      "scroll": 136,
+      "client": 136,
+      "overflowX": false,
+      "contentWidth": 286,
+      "tileRight": -4,
+      "tileWidth": 137,
+      "visible": 4
+    },
+    {
+      "name": "base-collapsed-844x390-zh-Hant",
+      "note": "base-2025: own action phase, rail collapsed",
+      "rail": {
+        "x": 761,
+        "y": 210,
+        "width": 75,
+        "height": 124
+      },
+      "expanded": "false",
+      "scroll": 73,
+      "client": 73,
+      "overflowX": false,
+      "contentWidth": 73,
+      "tileRight": -5,
+      "tileWidth": 30,
+      "visible": 4
+    },
+    {
+      "name": "base-expanded-844x390-zh-Hant",
+      "note": "base-2025: own action phase, rail expanded",
+      "rail": {
+        "x": 524,
+        "y": 160.40625,
+        "width": 312,
+        "height": 173.59375
+      },
+      "expanded": "true",
+      "scroll": 127,
+      "client": 123,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 4
+    },
+    {
+      "name": "base-expanded-1366x768-en",
+      "note": "base-2025: own action phase, rail expanded, English",
+      "rail": {
+        "x": 1038,
+        "y": 319.359375,
+        "width": 312,
+        "height": 179.46875
+      },
+      "expanded": "true",
+      "scroll": 138,
+      "client": 138,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 4
+    },
+    {
+      "name": "base-waiting-collapsed-1366x768-zh-Hant",
+      "note": "base-2025: another seat, rail collapsed",
+      "rail": {
+        "x": 1266,
+        "y": 347.59375,
+        "width": 84,
+        "height": 123
+      },
+      "expanded": "false",
+      "scroll": 82,
+      "client": 82,
+      "overflowX": false,
+      "contentWidth": 82,
+      "tileRight": -5,
+      "tileWidth": 34,
+      "visible": 4
+    },
+    {
+      "name": "base-waiting-expanded-1366x768-zh-Hant",
+      "note": "base-2025: another seat, one shared reason",
+      "rail": {
+        "x": 1038,
+        "y": 317.953125,
+        "width": 312,
+        "height": 182.28125
+      },
+      "expanded": "true",
+      "scroll": 141,
+      "client": 141,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 4
+    },
+    {
+      "name": "ck-collapsed-1366x768-zh-Hant",
+      "note": "ck-2025: own action phase, rail collapsed",
+      "rail": {
+        "x": 1266,
+        "y": 287.09375,
+        "width": 84,
+        "height": 244
+      },
+      "expanded": "false",
+      "scroll": 203,
+      "client": 203,
+      "overflowX": false,
+      "contentWidth": 82,
+      "tileRight": -5,
+      "tileWidth": 34,
+      "visible": 10
+    },
+    {
+      "name": "ck-expanded-1366x768-zh-Hant",
+      "note": "ck-2025: own action phase, rail expanded",
+      "rail": {
+        "x": 1038,
+        "y": 222.4375,
+        "width": 312,
+        "height": 373.3125
+      },
+      "expanded": "true",
+      "scroll": 332,
+      "client": 332,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 10
+    },
+    {
+      "name": "ck-collapsed-390x844-zh-Hant",
+      "note": "ck-2025: own action phase, rail collapsed",
+      "rail": {
+        "x": 301,
+        "y": 336.390625,
+        "width": 73,
+        "height": 214
+      },
+      "expanded": "false",
+      "scroll": 178,
+      "client": 178,
+      "overflowX": false,
+      "contentWidth": 71,
+      "tileRight": -4,
+      "tileWidth": 30,
+      "visible": 10
+    },
+    {
+      "name": "ck-expanded-390x844-zh-Hant",
+      "note": "ck-2025: own action phase, rail expanded",
+      "rail": {
+        "x": 86,
+        "y": 254.6328125,
+        "width": 288,
+        "height": 377.515625
+      },
+      "expanded": "true",
+      "scroll": 342,
+      "client": 342,
+      "overflowX": false,
+      "contentWidth": 286,
+      "tileRight": -4,
+      "tileWidth": 137,
+      "visible": 10
+    },
+    {
+      "name": "ck-collapsed-844x390-zh-Hant",
+      "note": "ck-2025: own action phase, rail collapsed",
+      "rail": {
+        "x": 761,
+        "y": 160.40625,
+        "width": 75,
+        "height": 173.59375
+      },
+      "expanded": "false",
+      "scroll": 180,
+      "client": 123,
+      "overflowX": false,
+      "contentWidth": 73,
+      "tileRight": -5,
+      "tileWidth": 30,
+      "visible": 10
+    },
+    {
+      "name": "ck-expanded-844x390-zh-Hant",
+      "note": "ck-2025: own action phase, rail expanded",
+      "rail": {
+        "x": 524,
+        "y": 160.40625,
+        "width": 312,
+        "height": 173.59375
+      },
+      "expanded": "true",
+      "scroll": 332,
+      "client": 123,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 10
+    },
+    {
+      "name": "ck-expanded-1366x768-en",
+      "note": "ck-2025: own action phase, rail expanded, English",
+      "rail": {
+        "x": 1038,
+        "y": 211.03125,
+        "width": 312,
+        "height": 396.125
+      },
+      "expanded": "true",
+      "scroll": 355,
+      "client": 355,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 10
+    },
+    {
+      "name": "ck-waiting-collapsed-1366x768-zh-Hant",
+      "note": "ck-2025: another seat, rail collapsed",
+      "rail": {
+        "x": 1266,
+        "y": 287.09375,
+        "width": 84,
+        "height": 244
+      },
+      "expanded": "false",
+      "scroll": 203,
+      "client": 203,
+      "overflowX": false,
+      "contentWidth": 82,
+      "tileRight": -5,
+      "tileWidth": 34,
+      "visible": 10
+    },
+    {
+      "name": "ck-waiting-expanded-1366x768-zh-Hant",
+      "note": "ck-2025: another seat, one shared reason",
+      "rail": {
+        "x": 1038,
+        "y": 238.71875,
+        "width": 312,
+        "height": 340.75
+      },
+      "expanded": "true",
+      "scroll": 300,
+      "client": 300,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 10
+    },
+    {
+      "name": "sfck-collapsed-1366x768-zh-Hant",
+      "note": "sf-ck-new-shores-2025: own action phase, rail collapsed",
+      "rail": {
+        "x": 1266,
+        "y": 245.59375,
+        "width": 84,
+        "height": 327
+      },
+      "expanded": "false",
+      "scroll": 286,
+      "client": 286,
+      "overflowX": false,
+      "contentWidth": 82,
+      "tileRight": -5,
+      "tileWidth": 34,
+      "visible": 13
+    },
+    {
+      "name": "sfck-expanded-1366x768-zh-Hant",
+      "note": "sf-ck-new-shores-2025: own action phase, rail expanded",
+      "rail": {
+        "x": 1038,
+        "y": 150.1875,
+        "width": 312,
+        "height": 517.8125
+      },
+      "expanded": "true",
+      "scroll": 477,
+      "client": 477,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 13
+    },
+    {
+      "name": "sfck-collapsed-390x844-zh-Hant",
+      "note": "sf-ck-new-shores-2025: own action phase, rail collapsed",
+      "rail": {
+        "x": 301,
+        "y": 299.390625,
+        "width": 73,
+        "height": 288
+      },
+      "expanded": "false",
+      "scroll": 252,
+      "client": 252,
+      "overflowX": false,
+      "contentWidth": 71,
+      "tileRight": -4,
+      "tileWidth": 30,
+      "visible": 13
+    },
+    {
+      "name": "sfck-expanded-390x844-zh-Hant",
+      "note": "sf-ck-new-shores-2025: own action phase, rail expanded",
+      "rail": {
+        "x": 86,
+        "y": 182.3046875,
+        "width": 288,
+        "height": 522.171875
+      },
+      "expanded": "true",
+      "scroll": 486,
+      "client": 486,
+      "overflowX": false,
+      "contentWidth": 286,
+      "tileRight": -4,
+      "tileWidth": 137,
+      "visible": 13
+    },
+    {
+      "name": "sfck-collapsed-844x390-zh-Hant",
+      "note": "sf-ck-new-shores-2025: own action phase, rail collapsed",
+      "rail": {
+        "x": 761,
+        "y": 160.40625,
+        "width": 75,
+        "height": 173.59375
+      },
+      "expanded": "false",
+      "scroll": 254,
+      "client": 123,
+      "overflowX": false,
+      "contentWidth": 73,
+      "tileRight": -5,
+      "tileWidth": 30,
+      "visible": 13
+    },
+    {
+      "name": "sfck-expanded-844x390-zh-Hant",
+      "note": "sf-ck-new-shores-2025: own action phase, rail expanded",
+      "rail": {
+        "x": 524,
+        "y": 160.40625,
+        "width": 312,
+        "height": 173.59375
+      },
+      "expanded": "true",
+      "scroll": 477,
+      "client": 123,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 13
+    },
+    {
+      "name": "sfck-expanded-1366x768-en",
+      "note": "sf-ck-new-shores-2025: own action phase, rail expanded, English",
+      "rail": {
+        "x": 1038,
+        "y": 150.1875,
+        "width": 312,
+        "height": 517.8125
+      },
+      "expanded": "true",
+      "scroll": 500,
+      "client": 477,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 13
+    },
+    {
+      "name": "sfck-waiting-collapsed-1366x768-zh-Hant",
+      "note": "sf-ck-new-shores-2025: another seat, rail collapsed",
+      "rail": {
+        "x": 1266,
+        "y": 245.59375,
+        "width": 84,
+        "height": 327
+      },
+      "expanded": "false",
+      "scroll": 286,
+      "client": 286,
+      "overflowX": false,
+      "contentWidth": 82,
+      "tileRight": -5,
+      "tileWidth": 34,
+      "visible": 13
+    },
+    {
+      "name": "sfck-waiting-expanded-1366x768-zh-Hant",
+      "note": "sf-ck-new-shores-2025: another seat, one shared reason",
+      "rail": {
+        "x": 1038,
+        "y": 181.984375,
+        "width": 312,
+        "height": 454.21875
+      },
+      "expanded": "true",
+      "scroll": 413,
+      "client": 413,
+      "overflowX": false,
+      "contentWidth": 310,
+      "tileRight": -5,
+      "tileWidth": 148,
+      "visible": 13
+    }
+  ],
+  "errors": []
+}
