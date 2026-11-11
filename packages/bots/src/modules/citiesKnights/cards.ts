@@ -2,8 +2,8 @@
  * C&K 的進步卡（C&K 計畫 §4.3 F1 卡、`progressExcess`；§4.4 easy）。
  *
  * - F1：不需要互動的 12 種卡（irrigation、mining、merchant、merchantFleet、resourceMonopoly、tradeMonopoly、
- *   medicine、crane、engineering、smithing、encouragement、roadBuilding）。互動卡（F2）與 Alchemy 在 CK-C 之前不打，
- *   價值表把它們評為低價，手牌超過上限時先棄掉。
+ *   medicine、crane、engineering、smithing、encouragement、roadBuilding）。互動卡（F2）與 Alchemy 由 `cards-interactive.ts`、
+ *   `preroll.ts` 處理（CK-C）；價值表給它們中低段的估值。
  * - 每張卡只有「現在就該打」才回傳候選，分數是勝利分當量，與 base 的立即建造同一份清單 pick：免費的資源卡與
  *   +1 VP 的 merchant 先於建造，讓拿到的牌能馬上用。
  * - `progressExcess > 0`（`turn.end` 被否決）：先打可打的卡，不夠再依價值表棄掉最低的。
@@ -45,7 +45,7 @@ export const F1_CARDS: readonly string[] = [
 ];
 
 /**
- * 保留價值（越高越不該棄）。F1 依效果高低；F2 與 Alchemy 在 CK-C 之前不會打，評為低價。
+ * 保留價值（越高越不該棄）。F1 依效果高低；F2 與 Alchemy 在 F1 的中低段（CK-C）。
  * 沒列的卡（含 VP 卡，它們不在手牌）視為 0。
  */
 export const CARD_VALUE: Readonly<Record<string, number>> = {
@@ -61,18 +61,19 @@ export const CARD_VALUE: Readonly<Record<string, number>> = {
   engineering: 2.4,
   tradeMonopoly: 2.2,
   merchantFleet: 1.8,
-  // F2 與 Alchemy：CK-C 之前不打。
-  guildDues: 1.2,
-  sabotage: 1.2,
-  wedding: 1.2,
-  treason: 1.2,
-  espionage: 1,
-  taxation: 1,
-  diplomacy: 1,
-  intrigue: 1,
-  invention: 1,
-  commercialHarbor: 1,
-  alchemy: 0.8,
+  // F2 與 Alchemy（CK-C）：standard 會打，估值落在 F1 的中低段：不再比 F1 先被棄掉，但也不比立即有益的卡高。
+  // easy 不打這些卡（D-CK3），它們只佔手牌，所以不能比 F1 的高價卡更值得留。
+  treason: 3,
+  wedding: 2.9,
+  guildDues: 2.8,
+  intrigue: 2.5,
+  commercialHarbor: 2.5,
+  invention: 2.4,
+  sabotage: 2.3,
+  alchemy: 2.2,
+  espionage: 2.1,
+  taxation: 2,
+  diplomacy: 2,
 };
 
 export function cardValue(card: string): number {

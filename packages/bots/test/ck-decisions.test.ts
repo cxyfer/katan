@@ -539,10 +539,10 @@ describe('F1 進步卡', () => {
   it('lists exactly the twelve non-interactive cards, all with a value in the table', () => {
     expect(F1_CARDS).toHaveLength(12);
     for (const card of F1_CARDS) expect(cardValue(card), card).toBeGreaterThan(1);
-    // F2 與 Alchemy 在 CK-C 之前評為低價，而且不在 F1。
+    // F2 與 Alchemy 不在 F1；CK-C 之後它們有自己的打法，價值表給中低段的估值（不低於 F1 最低的 merchantFleet）。
     for (const card of ['alchemy', 'invention', 'guildDues', 'espionage', 'intrigue', 'sabotage', 'wedding', 'taxation', 'treason', 'diplomacy', 'commercialHarbor']) {
       expect(F1_CARDS).not.toContain(card);
-      expect(cardValue(card), card).toBeLessThan(1.5);
+      expect(cardValue(card), card).toBeGreaterThanOrEqual(cardValue('merchantFleet'));
     }
   });
 
