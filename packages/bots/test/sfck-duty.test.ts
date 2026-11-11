@@ -557,3 +557,78 @@ describe('F11 a knight cannot be recruited on a sea intersection', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// F1、F2：追擊之後的 moveRobber frame（保底與策略都要靠 `robberTargets` 的 fold）
+// ---------------------------------------------------------------------------
+
+/** 沒有組合層的策略：base 候選加上 SF 的海盜候選，fold 只有「盜賊預設」。 */
+const withoutSfck = (level: BotLevel): BotPolicy => createBotPolicy(level, { modules: WITHOUT_SFCK });
+
+describe('F1 a knight chased the pirate: only sea hexes and the frame are legal', () => {
+  function chasedPirate(): GameState {
+    const state = afterFirstAttack(shipLine());
+    state.board.pirate = hex(state, 2, -2);
+    // p2 在海格 (2,0) 旁有一艘船和一張牌：移海盜有東西可偷。
+    ship(state, 'p2', edgeBetween(state, 48, 47));
+    setHand(state, 'p2', { brick: 1 });
+    addKnight(state, { player: 'p1', vertex: V11, level: 1, active: true });
+    return actCk(state, 'p1', { type: 'knight.chasePirate', vertex: V11 }).state;
+  }
+
+  it('the duty takes the first sea hex but the pirate’s own, and every policy answers legally', () => {
+    const state = chasedPirate();
+    expect(state.pending).toMatchObject({ kind: 'moveRobber', actor: 'p1', cause: 'knight', pirate: true });
+    const view = viewOf(state, 'p1');
+    expect((view.hints!.modules!.seafarersCitiesKnights as { bandit: string }).bandit).toBe('pirate');
+    const firstSea = view.board.terrain.findIndex((terrain, index) => terrain === 'sea' && index !== view.board.pirate);
+    expect(expectEveryPolicyAnswers(state, 'p1')).toEqual({ type: 'pending.moveRobber', hex: firstSea });
+    expectOthersWait(state, ['p1']);
+  });
+
+  it('without the combination layer the duty, and easy, choose land that rules refuses', () => {
+    const state = chasedPirate();
+    const view = viewOf(state, 'p1');
+    const firstLand = view.board.terrain.findIndex((terrain, index) => terrain !== 'sea' && index !== view.board.robber);
+    const duty = fallbackDecision(view, 'p1', WITHOUT_SFCK);
+    expect(duty).toEqual({ type: 'pending.moveRobber', hex: firstLand });
+    expect(rejection(state, 'p1', duty)).toMatchObject({ code: 'E_ILLEGAL_TARGET', params: { reason: 'pirate' } });
+    // easy 沒有海盜候選，只會從陸地挑。
+    for (const seed of [1, 2]) {
+      const command = withoutSfck('easy').decide(view, ctxFor('p1', 'easy', seed));
+      expect(rejection(state, 'p1', command), `easy#${seed}`).toMatchObject({ code: 'E_ILLEGAL_TARGET', params: { reason: 'pirate' } });
+    }
+  });
+});
+
+describe('F2 a knight chased the robber: only land hexes are legal', () => {
+  function chasedRobber(): GameState {
+    // p1 沒有建築：強盜壓著誰都不痛，所有陸地格的分數都是 0。
+    const state = afterFirstAttack(emptySfckGame(4));
+    state.board.robber = hex(state, 1, -1);
+    addKnight(state, { player: 'p1', vertex: V29, level: 1, active: true });
+    // p2 在海格 (2,0) 旁有一艘船和一張牌：沒有組合層時，SF 的海盜選項比任何陸地格都有價值。
+    ship(state, 'p2', edgeBetween(state, 48, 47));
+    setHand(state, 'p2', { brick: 1 });
+    return actCk(state, 'p1', { type: 'knight.chaseRobber', vertex: V29 }).state;
+  }
+
+  it('the duty takes the first land hex, and every policy answers legally', () => {
+    const state = chasedRobber();
+    expect(state.pending).toMatchObject({ kind: 'moveRobber', actor: 'p1', cause: 'knight', pirate: false });
+    const view = viewOf(state, 'p1');
+    expect((view.hints!.modules!.seafarersCitiesKnights as { bandit: string }).bandit).toBe('robber');
+    const firstLand = view.board.terrain.findIndex((terrain, index) => terrain !== 'sea' && index !== view.board.robber);
+    expect(expectEveryPolicyAnswers(state, 'p1')).toEqual({ type: 'pending.moveRobber', hex: firstLand });
+    expectOthersWait(state, ['p1']);
+  });
+
+  it('without the combination layer, standard moves the pirate and rules refuses it', () => {
+    const state = chasedRobber();
+    const view = viewOf(state, 'p1');
+    const naive = withoutSfck('standard').decide(view, ctxFor('p1', 'standard', 1)) as { type: string; hex: number | null };
+    expect(naive.type).toBe('pending.moveRobber');
+    expect(naive.hex === null || view.board.terrain[naive.hex] === 'sea', 'the SF pirate option wins').toBe(true);
+    expect(rejection(state, 'p1', naive as BotCommand)).toMatchObject({ code: 'E_ILLEGAL_TARGET', params: { reason: 'robber' } });
+  });
+});
