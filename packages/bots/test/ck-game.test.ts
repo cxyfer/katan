@@ -314,7 +314,7 @@ describe('Cities & Knights B-GAME', () => {
 
   const seedCount = seedsFor(requireProfile('ck-2025')).length;
 
-  it.skipIf(seedCount !== 3 && seedCount !== 10)('checks Q2 thresholds across all played games', () => {
+  it('checks Q2 thresholds across all played games', () => {
     expect(allGameStats.length, 'allGameStats count must equal expected total games across matrix').toBe(
       CK_ENTRIES.length * seedCount,
     );
