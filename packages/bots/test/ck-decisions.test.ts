@@ -60,7 +60,7 @@ import { chaseCandidates, chaseValue, threatOf } from '../src/modules/citiesKnig
 import { IMPROVE_PLAN, KNIGHT_PLAN, WALL_PLAN, citiesKnightsPlanStep, desiredKnights } from '../src/modules/citiesKnights/plans.ts';
 import { citySetupScore } from '../src/modules/citiesKnights/setup.ts';
 import { commodityTradeActions } from '../src/modules/citiesKnights/trade.ts';
-import type { TurnContext } from '../src/modules/types.ts';
+import type { BotModule, TurnContext } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import type { BotCommand, BotContext, BotLevel } from '../src/types.ts';
 import { stripComments } from './families.ts';
@@ -506,6 +506,40 @@ describe('F1 進步卡', () => {
       const command = decideAccepted(state, level, 'p1', seed);
       expect(command, `${level} seed ${seed}`).toMatchObject({ type: 'progress.discard', cards: ['alchemy'] });
     }
+  });
+
+  describe('Road Building and the composed free route（§4.9）', () => {
+    /** 組合模組（SF+CK 的船）提供的免費路線候選；這裡只回一個船候選。 */
+    const shipRoute: BotModule = {
+      id: 'stub.ships',
+      freeRouteCandidates: () => [{ item: { type: 'build.ship', edge: 0 } as BotCommand, score: 1 }],
+    };
+
+    /** p1 有一張 Road Building；`withRoads` 時有城市與道路（base 的 legalRoads 非空），否則什麼都沒有（沒有地方放路）。 */
+    function roadTurn(withRoads: boolean, modules: readonly BotModule[], plan: { roads?: number[]; ships?: number[] }): TurnContext {
+      const state = withRoads ? defenseGame({ position: 0 }).state : emptyCkGame(4, 0, 'action');
+      handCards(state, 'p1', ['roadBuilding']);
+      const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard', modules);
+      const target = { kind: 'longestRoad' as const, vertex: null, roads: plan.roads ?? [], ships: plan.ships ?? [], cost: {}, nextCost: {}, value: 1, eta: 1, score: 1 };
+      return { ...turn, economy: { ...turn.economy, plans: [target] } } as unknown as TurnContext;
+    }
+    const plays = (turn: TurnContext) => cardActions(turn).filter((candidate) => (candidate.item as { card?: string }).card === 'roadBuilding');
+
+    it('plays it when only a ship can be placed and the plan needs ships', () => {
+      expect(plays(roadTurn(false, [citiesKnightsBotModule, shipRoute], { ships: [0] }))).toHaveLength(1);
+    });
+
+    it('does not play it without a place to put anything, ships included', () => {
+      expect(plays(roadTurn(false, [citiesKnightsBotModule], { ships: [0] }))).toEqual([]);
+    });
+
+    it('does not play it when no plan needs a road or a ship, even if the free route exists', () => {
+      expect(plays(roadTurn(false, [citiesKnightsBotModule, shipRoute], {}))).toEqual([]);
+    });
+
+    it('still plays it for a road plan on land alone (base behavior unchanged)', () => {
+      expect(plays(roadTurn(true, [citiesKnightsBotModule], { roads: [0] }))).toHaveLength(1);
+    });
   });
 
   it('plays mining and irrigation only with a legal hex and a stocked bank', () => {

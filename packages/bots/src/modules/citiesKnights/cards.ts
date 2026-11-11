@@ -20,6 +20,7 @@
 import { COSTS, RESOURCES, type CardKind, type CkTrack, type Resource } from '@catan/rules';
 import { playerYield } from '../../board.ts';
 import { canAfford, handSize, productionValue, PIP_VALUE } from '../../economy.ts';
+import { collectScored } from '../compose.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';
 import { DEFENSE_SCORE, defenseWindow } from './defense.ts';
 import { trackOptions } from './improve.ts';
@@ -304,8 +305,12 @@ function cardCandidate(turn: TurnContext, hint: NonNullable<ReturnType<typeof ck
       return null;
     }
     case 'roadBuilding': {
-      if (economy.left.roads <= 0 || (view.hints?.legalRoads?.length ?? 0) === 0) return null;
-      const needsRoads = economy.plans.slice(0, 3).some((plan) => plan.roads.length >= 1);
+      // 能不能放：base 的道路，或組合模組（SF+CK 的船、§4.9）提供的免費路線候選；只有船可放時也要打得出去。
+      const canPlace =
+        (economy.left.roads > 0 && (view.hints?.legalRoads?.length ?? 0) > 0) ||
+        collectScored(turn.modules, (module) => module.freeRouteCandidates?.(turn)).length > 0;
+      if (!canPlace) return null;
+      const needsRoads = economy.plans.slice(0, 3).some((plan) => plan.roads.length >= 1 || (plan.ships?.length ?? 0) >= 1);
       return needsRoads && !canAfford(economy.hand, COSTS.road) ? play({}, 2.2) : needsRoads ? play({}, 1.8) : null;
     }
     default:
