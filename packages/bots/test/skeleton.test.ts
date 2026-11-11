@@ -372,8 +372,10 @@ describe('strategy hooks', () => {
     it('asks banditCandidates with the knight cause, and a null target moves the bandit off the board', () => {
       const { id, view } = knightPosition();
       const causes: string[] = [];
+      // base 盤面沒有海盜，外框（null）要由 robberTargets 加進集合才能選。
       const module: BotModule = {
         id: 'fx',
+        robberTargets: (_view, _self, targets) => [...targets, null],
         banditCandidates: (_turn, cause) => (causes.push(cause), [scored(null, 1e6)]),
       };
       expect(policyOf([module]).decide(view, ctxFor(id))).toEqual({ type: 'dev.playKnight', hex: null });
@@ -446,6 +448,7 @@ describe('strategy hooks', () => {
       const seen: string[] = [];
       const module: BotModule = {
         id: 'fx',
+        robberTargets: (_view, _self, targets) => [...targets, null],
         banditCandidates: (_turn, cause) => (seen.push(cause), [scored(null, 1e6)]),
       };
       expect(policyOf([module]).decide(moveRobber(id, view, 'seven'), ctxFor(id))).toEqual({
@@ -462,13 +465,18 @@ describe('strategy hooks', () => {
 
     it('tells "no candidate" from "picked the null target"', () => {
       const { id, view } = actionPosition();
-      // 沒有任何陸地格可選：base 沒有候選，保底也找不到合法格。
-      const sea: GameView = { ...view, board: { ...view.board, terrain: view.board.terrain.map(() => 'sea') } };
-      const frame = moveRobber(id, sea, 'seven');
-      expect(policyOf([]).decide(frame, ctxFor(id))).toBeNull();
-      expect(policyOf([{ id: 'fx', banditCandidates: () => [] }]).decide(frame, ctxFor(id))).toBeNull();
+      const frame = moveRobber(id, view, 'seven');
+      // robberTargets 的集合是空的：base 沒有候選，保底也找不到合法格。
+      const none: BotModule = { id: 'fx', robberTargets: () => [] };
+      expect(policyOf([none]).decide(frame, ctxFor(id))).toBeNull();
+      expect(policyOf([{ ...none, banditCandidates: () => [] }]).decide(frame, ctxFor(id))).toBeNull();
       // 模組選中 null（外框）是一個真正的選擇，要送出 hex: null。
-      expect(policyOf([{ id: 'fx', banditCandidates: () => [scored(null, 1)] }]).decide(frame, ctxFor(id))).toEqual({
+      const frameOnly: BotModule = {
+        id: 'fx',
+        robberTargets: () => [null],
+        banditCandidates: () => [scored(null, 1)],
+      };
+      expect(policyOf([frameOnly]).decide(frame, ctxFor(id))).toEqual({
         type: 'pending.moveRobber',
         hex: null,
       });

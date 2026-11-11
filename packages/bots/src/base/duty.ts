@@ -2,9 +2,14 @@
 
 import { COMMODITIES, RESOURCES, type CardKind, type Command, type GameView } from '@catan/rules';
 import { roadStockLeft } from '../board.ts';
+import type { BotModule } from '../modules/types.ts';
+import { banditTargets } from './robber.ts';
 
-/** 自己欠的待決效果；沒有則回傳 null。 */
-export function pendingDuty(view: GameView, selfId: string): Command | null {
+/**
+ * 自己欠的待決效果；沒有則回傳 null。`modules` 只用在 moveRobber：取盜賊目標 fold 的第一項
+ * （`banditTargets`）；省略時沒有模組，結果與 base 相同。
+ */
+export function pendingDuty(view: GameView, selfId: string, modules: readonly BotModule[] = []): Command | null {
   const pending = view.pending;
   if (!pending) return null;
   switch (pending.kind) {
@@ -15,10 +20,8 @@ export function pendingDuty(view: GameView, selfId: string): Command | null {
     }
     case 'moveRobber': {
       if (pending.actor !== selfId) return null;
-      const hex = view.board.terrain.findIndex(
-        (terrain, index) => index !== view.board.robber && terrain !== 'sea',
-      );
-      return hex < 0 ? null : { type: 'pending.moveRobber', hex };
+      const hex = banditTargets(view, selfId, modules)[0];
+      return hex === undefined ? null : { type: 'pending.moveRobber', hex };
     }
     case 'steal': {
       if (pending.actor !== selfId) return null;

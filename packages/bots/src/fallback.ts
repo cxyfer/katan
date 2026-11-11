@@ -30,7 +30,7 @@ export function fallbackDecision(view: GameView, selfId: string, modules: readon
   const pending = view.pending;
   if (pending) {
     if (isModuleFrame(pending) && pending.responders[0] !== selfId) return null;
-    return pendingDuty(view, selfId) ?? askDuty() ?? null;
+    return pendingDuty(view, selfId, modules) ?? askDuty() ?? null;
   }
   if (view.turn.playerId !== selfId) return null;
   const hints = view.hints;
