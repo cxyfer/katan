@@ -17,7 +17,7 @@ import {
   type GameView,
   type Offer,
 } from '@catan/rules';
-import { actCk, emptyCkGame, giveCommodities, player, rollRng, setImprovement, TRADE } from '../../rules/test/ck-helpers.ts';
+import { actCk, emptyCkGame, giveCommodities, player, rollRng, setImprovement, spreadVertices, TRADE } from '../../rules/test/ck-helpers.ts';
 import { give, newGame } from '../../rules/test/helpers.ts';
 import {
   boardModel,
@@ -154,6 +154,29 @@ describe('composed economy', () => {
     expect(plain).not.toHaveProperty('modules');
     expect(boardModel(view, 'p1', [])).not.toHaveProperty('modules');
     expect(economyOf(plain).kinds).toBe(RESOURCES);
+  });
+
+  it('the city plan picks among the legal cities: a toppled city must be upgraded first', () => {
+    const state = emptyCkGame(4, 0, 'action');
+    const [a, b] = spreadVertices(state, 2);
+    state.board.buildings[a!] = { player: 'p1', city: false };
+    state.board.buildings[b!] = { player: 'p1', city: false };
+    const cityPlan = (s: GameState, playerId = 'p1') => economyFor(s, playerId).plans.find((plan) => plan.kind === 'city');
+    const free = cityPlan(state)!.vertex!;
+    expect([a, b]).toContain(free);
+    const other = free === a ? b! : a!;
+    // 另一座倒下了（被掠奪）：規則只允許升級它，計畫跟著走。
+    (state.moduleState!.citiesKnights as { toppled: number[] }).toppled.push(other);
+    expect(viewOf(state, 'p1').hints!.legalCities).toEqual([other]);
+    expect(cityPlan(state)!.vertex).toBe(other);
+    // 不是輪到自己的行動階段時 legalCities 是空的，計畫不受它限制（照估值選）。
+    expect(cityPlan(state, 'p2')).toBeUndefined();
+    const preroll = emptyCkGame(4, 0, 'preroll');
+    preroll.board.buildings[a!] = { player: 'p1', city: false };
+    preroll.board.buildings[b!] = { player: 'p1', city: false };
+    (preroll.moduleState!.citiesKnights as { toppled: number[] }).toppled.push(other);
+    expect(viewOf(preroll, 'p1').hints!.legalCities).toEqual([]);
+    expect(cityPlan(preroll)!.vertex).toBe(free);
   });
 
   it('adds the commodities with their own rates, weights and costs', () => {

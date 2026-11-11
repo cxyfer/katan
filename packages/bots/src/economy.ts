@@ -371,12 +371,16 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
     plans.push({ ...plan, eta, score: plan.value / (1 + eta) });
   };
 
-  // 城市：選產能最高的聚落升級。
+  // 城市：選產能最高的聚落升級。輪到自己的行動階段（沒有待決效果）時只在 `hints.legalCities` 裡選：
+  // 模組可能限制哪座聚落能升級（C&K：被掠奪而倒下的城市要先升級）。base 的 legalCities 就是全部聚落。
   if (left.cities > 0) {
+    const acting = view.hints !== undefined && view.turn.playerId === selfId && view.turn.phase === 'action' && !view.pending;
+    const legalCities = acting ? new Set(view.hints!.legalCities) : null;
     let best = -1;
     let bestValue = -Infinity;
     view.board.buildings.forEach((building, vertex) => {
       if (!building || building.player !== selfId || building.city) return;
+      if (legalCities && !legalCities.has(vertex)) return;
       const value = productionValue(model, vertex, weights);
       if (value > bestValue) {
         bestValue = value;
