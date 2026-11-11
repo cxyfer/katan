@@ -91,7 +91,7 @@ export function islandSettlementPlans({ model, level, base }: PlanInput): Plan[]
     // 越遠越可能被別人搶先，聚落本身的價值打折；小島加分每位玩家各領一次，不會被搶走，所以不打折。
     const settlement = (1 + PIP_VALUE * settlementSpotValue(model, vertex, base.weights, longTerm)) * 0.9 ** ships;
     const value = settlement + ISLAND_BONUS_VP * unclaimedIslandsAt(model, vertex, claimed);
-    const eta = etaRounds(base.hand, cost, base.yield, base.rates, players) + ships * ETA_PER_SHIP;
+    const eta = etaRounds(base.hand, cost, base.yield, base.rates, players, base.kinds) + ships * ETA_PER_SHIP;
     candidates.push({
       kind: ISLAND_SETTLEMENT,
       vertex,
