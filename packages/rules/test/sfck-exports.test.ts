@@ -144,58 +144,57 @@ describe('seafarers + cities & knights module exports (bot plan SFCK-X)', () => 
   });
 
   describe('the value domain of the bandit hint', () => {
-    const observed = new Set<SfckBandit | null>();
-    const bandit = (state: GameState, playerId: string): SfckBandit | null => {
-      const value = hintsOf(state, playerId).bandit;
-      observed.add(value);
-      return value;
-    };
+    /** 每列自行建盤面、不共用狀態，所以任何順序或單獨執行都成立。 */
+    type Scenario = [name: string, build: () => GameState, playerId: string, expected: SfckBandit | null];
 
-    it('is null while no moveRobber frame waits for the viewer', () => {
-      const state = afterFirstAttack(emptySfckGame(4, 0, 'action'));
-      expect(bandit(state, 'p1')).toBeNull();
-      expect(bandit(emptySfckGame(4, 0, 'preroll'), 'p1')).toBeNull();
-      // A frame that waits for p1 says nothing to the other players.
-      state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false };
-      expect(bandit(state, 'p2')).toBeNull();
-    });
-
-    it('is "robber" before the first attack, as only the robber is in play', () => {
-      const state = emptySfckGame(4);
-      state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false };
-      expect(hintsOf(state, 'p1').pirateActive).toBe(false);
-      expect(bandit(state, 'p1')).toBe('robber');
-    });
-
-    it('is "either" after a 7 once the first attack has happened', () => {
+    const afterSeven = (): GameState => {
       const state = afterFirstAttack(emptySfckGame(4, 0, 'preroll'));
       const rolled = actCk(state, 'p1', { type: 'turn.roll' }, rollRng(3, 4, TRADE));
       expect(rolled.state.pending).toMatchObject({ kind: 'moveRobber', cause: 'seven', pirate: false });
-      expect(bandit(rolled.state, 'p1')).toBe('either');
-      expect(bandit(rolled.state, 'p2')).toBeNull();
-    });
-
-    it('is "robber" for a knight chasing the robber, even after the first attack', () => {
+      return rolled.state;
+    };
+    const chasedRobber = (): GameState => {
       const state = pirateChase();
       addKnight(state, { player: 'p1', vertex: V29, level: 1, active: true });
       state.board.robber = hex(state, 1, -1);
       const chased = actCk(state, 'p1', { type: 'knight.chaseRobber', vertex: V29 });
       expect(chased.state.pending).toMatchObject({ kind: 'moveRobber', cause: 'knight', pirate: false });
-      expect(bandit(chased.state, 'p1')).toBe('robber');
-    });
-
-    it('is "pirate" for a knight chasing the pirate', () => {
+      return chased.state;
+    };
+    const chasedPirate = (): GameState => {
       const chased = actCk(pirateChase(), 'p1', { type: 'knight.chasePirate', vertex: V11 });
       expect(chased.state.pending).toMatchObject({ kind: 'moveRobber', cause: 'knight', pirate: true });
-      expect(bandit(chased.state, 'p1')).toBe('pirate');
-      expect(bandit(chased.state, 'p2')).toBeNull();
+      return chased.state;
+    };
+    const waitingBeforeAttack = (): GameState => {
+      const state = emptySfckGame(4);
+      state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false };
+      expect(hintsOf(state, 'p1').pirateActive).toBe(false);
+      return state;
+    };
+
+    const scenarios: Scenario[] = [
+      ['no frame waits (action phase)', () => afterFirstAttack(emptySfckGame(4, 0, 'action')), 'p1', null],
+      ['no frame waits (preroll)', () => emptySfckGame(4, 0, 'preroll'), 'p1', null],
+      ['a frame waits for another player', waitingBeforeAttack, 'p2', null],
+      ['before the first attack only the robber is in play', waitingBeforeAttack, 'p1', 'robber'],
+      ['a 7 after the first attack, for the roller', afterSeven, 'p1', 'either'],
+      ['a 7 after the first attack, for another player', afterSeven, 'p2', null],
+      ['a knight chasing the robber, even after the first attack', chasedRobber, 'p1', 'robber'],
+      ['a knight chasing the pirate, for its owner', chasedPirate, 'p1', 'pirate'],
+      ['a knight chasing the pirate, for another player', chasedPirate, 'p2', null],
+    ];
+
+    it.each(scenarios)('%s', (_name, build, playerId, expected) => {
+      expect(hintsOf(build(), playerId).bandit).toBe(expected);
     });
 
-    it('takes no value outside SfckBandit | null', () => {
-      // The scenarios above run first (tests in a describe run in order).
-      expect([...observed].sort((a, b) => String(a).localeCompare(String(b)))).toEqual(
-        [null, ...keysOf(BANDIT_VALUES)].sort((a, b) => String(a).localeCompare(String(b))),
-      );
+    it('takes no value outside SfckBandit | null, and every value is covered', () => {
+      const expected = [null, ...keysOf(BANDIT_VALUES)].map(String).sort();
+      const covered = new Set(scenarios.map(([, , , value]) => value));
+      expect([...covered].map(String).sort()).toEqual(expected);
+      const actual = new Set(scenarios.map(([, build, playerId]) => hintsOf(build(), playerId).bandit));
+      expect([...actual].map(String).sort()).toEqual(expected);
     });
   });
 

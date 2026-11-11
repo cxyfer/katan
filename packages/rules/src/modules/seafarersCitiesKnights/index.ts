@@ -138,8 +138,9 @@ function moveShipCombined(state: GameState, actorId: string, command: ModuleComm
 }
 
 /**
- * Which bandit the actor may move now: the robber, the pirate or either one
- * (`null` when no `moveRobber` frame waits for the actor).
+ * Which bandit the actor may move now: the robber, the pirate or either one.
+ * The `bandit` hint is typed `SfckBandit | null`; it is `null` when no
+ * `moveRobber` frame waits for the actor.
  */
 export type SfckBandit = 'robber' | 'pirate' | 'either';
 
