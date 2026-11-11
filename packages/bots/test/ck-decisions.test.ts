@@ -482,6 +482,32 @@ describe('F1 進步卡', () => {
     expectAccepted(after, 'p1', second);
   });
 
+  it.each(['standard', 'easy'] as const)('with progress excess (%s) plays a playable card first, for every seed — never the discard', (level) => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const { state } = defenseGame({ position: 0 });
+      handCards(state, 'p1', ['merchant', 'alchemy', 'invention', 'guildDues', 'sabotage']);
+      expect(actionHints(state, 'p1').canEndTurn).toBe(false);
+      // 有可打的卡時，候選裡根本沒有棄牌（easy 的 topK 才不會抽到它）。
+      const candidates = cardActions(turnOf(state, level));
+      expect(candidates.some((candidate) => candidate.item.type === 'progress.discard'), `${level} seed ${seed}`).toBe(false);
+      expect(candidates.some((candidate) => (candidate.item as { card?: string }).card === 'merchant')).toBe(true);
+      const command = decideAccepted(state, level, 'p1', seed);
+      expect(command, `${level} seed ${seed}`).toMatchObject({ type: 'progress.play', card: 'merchant' });
+    }
+  });
+
+  it.each(['standard', 'easy'] as const)('with progress excess (%s) and nothing playable, it discards the lowest-value card', (level) => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const { state } = defenseGame({ position: 0 });
+      // F2 與 Alchemy 在 CK-C 之前不打：沒有可打的卡，只能棄。
+      handCards(state, 'p1', ['guildDues', 'alchemy', 'invention', 'sabotage', 'wedding']);
+      const candidates = cardActions(turnOf(state, level));
+      expect(candidates).toHaveLength(1);
+      const command = decideAccepted(state, level, 'p1', seed);
+      expect(command, `${level} seed ${seed}`).toMatchObject({ type: 'progress.discard', cards: ['alchemy'] });
+    }
+  });
+
   it('plays mining and irrigation only with a legal hex and a stocked bank', () => {
     const state = emptyCkGame(4, 0, 'action');
     const [a] = spreadVertices(state, 1);

@@ -335,7 +335,8 @@ export function cardActions(turn: TurnContext): Scored<BotCommand>[] {
     const candidate = cardCandidate(turn, hint);
     if (candidate) out.push(excess > 0 ? { item: candidate.item, score: candidate.score + 10 } : candidate);
   }
-  if (excess > 0 && cards.length >= excess) {
+  // 先打牌、再棄牌（§4.3）：有可打的卡就不放棄牌候選，否則 easy 的 topK 會抽到棄牌、白白丟掉能打的卡。
+  if (out.length === 0 && excess > 0 && cards.length >= excess) {
     out.push({ item: ckCommands.discardProgress(lowestValueCards(cards, excess)), score: 9 });
   }
   return out;
