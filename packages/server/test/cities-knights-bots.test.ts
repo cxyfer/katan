@@ -43,7 +43,8 @@ const FAST_BOTS: BotSettings = {
   retryMs: 50,
 };
 
-const PROFILE_ID = 'ck-2025';
+type CkProfileId = 'ck-2025' | 'ck-paired-2025';
+const PROFILE_ID: CkProfileId = 'ck-2025';
 
 let harness: TestHarness;
 
@@ -161,14 +162,16 @@ async function rewrite(gameId: string, service: RunningService, edit: (game: Gam
 async function ckGame(
   service: RunningService,
   host: TestClient,
-  options: { bots: number },
+  options: { bots: number; profileId?: CkProfileId },
 ): Promise<{ roomId: string; gameId: string; botIds: string[] }> {
+  const profileId = options.profileId ?? PROFILE_ID;
   let room = host.expectOk<RoomShape>(
     await host.post('/api/rooms', {
       visibility: 'private',
       capacity: options.bots + 1,
-      profileId: PROFILE_ID,
-      setupMode: 'fixed',
+      profileId,
+      // 5–6 人的 paired profile 只提供 variable 擺法。
+      setupMode: profileId === 'ck-paired-2025' ? 'variable' : 'fixed',
     }),
   );
   for (let index = 0; index < options.bots; index++) {
@@ -176,7 +179,7 @@ async function ckGame(
   }
   host.expectOk(await host.post(`/api/rooms/${room.id}/ready`, { ready: true }));
   const { gameId } = host.expectOk<{ gameId: string }>(await host.post(`/api/rooms/${room.id}/start`));
-  expect((await state(gameId, service)).profileId).toBe(PROFILE_ID);
+  expect((await state(gameId, service)).profileId).toBe(profileId);
   return { roomId: room.id, gameId, botIds: room.members.filter((member) => member.bot).map((member) => member.playerId) };
 }
 
@@ -309,65 +312,71 @@ async function openDefenderDraw(gameId: string, service: RunningService, actor: 
 
 describe('Cities & Knights with bot seats', () => {
   // 1. 完整對局：真人座位也交給同一套策略，透過 HTTP 送指令；Bot 座位由排程器推進。
-  it('plays a whole 3-player ck-2025 game to a winner', async () => {
-    const logs = captureLogs(driverDeps(harness.service));
-    let disconnect: (() => Promise<void>) | null = null;
-    try {
-      const host = await harness.client('CkHost');
-      const { roomId, gameId, botIds } = await ckGame(harness.service, host, { bots: 2 });
-      disconnect = await liveSocket(harness.service, roomId, host.playerId!);
-      const policy = createBotPolicy('standard');
-      const deadline = Date.now() + 150_000;
-      let humanCommands = 0;
-      let view: GameView | null = null;
-      while (Date.now() < deadline) {
-        const snapshot = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
-        view = snapshot.view;
-        if (view.result) break;
-        const command = policy.decide(view, {
-          selfId: host.playerId!,
-          level: 'standard',
-          seed: snapshot.revision,
-          offerPhases: {},
-        });
-        if (!command) {
-          await sleep(5);
-          continue;
+  const fullGames = [
+    { profileId: 'ck-2025', players: 3 },
+    { profileId: 'ck-paired-2025', players: 5 },
+  ] as const;
+  for (const { profileId, players } of fullGames) {
+    it(`plays a whole ${players}-player ${profileId} game to a winner`, async () => {
+      const logs = captureLogs(driverDeps(harness.service));
+      let disconnect: (() => Promise<void>) | null = null;
+      try {
+        const host = await harness.client('CkHost');
+        const { roomId, gameId, botIds } = await ckGame(harness.service, host, { bots: players - 1, profileId });
+        disconnect = await liveSocket(harness.service, roomId, host.playerId!);
+        const policy = createBotPolicy('standard');
+        const deadline = Date.now() + 150_000;
+        let humanCommands = 0;
+        let view: GameView | null = null;
+        while (Date.now() < deadline) {
+          const snapshot = host.expectOk<Snapshot>(await host.get(`/api/games/${gameId}`));
+          view = snapshot.view;
+          if (view.result) break;
+          const command = policy.decide(view, {
+            selfId: host.playerId!,
+            level: 'standard',
+            seed: snapshot.revision,
+            offerPhases: {},
+          });
+          if (!command) {
+            await sleep(5);
+            continue;
+          }
+          const receipt = host.expectOk<Receipt>(
+            await host.post(`/api/games/${gameId}/commands`, {
+              commandId: id('human'),
+              expectedRevision: snapshot.revision,
+              command,
+            }),
+          );
+          // 與 Bot 同時送出時可能落後一個 revision，其他拒絕都代表策略或伺服器有誤。
+          if (receipt.outcome === 'rejected') expect(receipt.error?.messageId).toBe('error.E_STALE_REVISION');
+          else humanCommands += 1;
         }
-        const receipt = host.expectOk<Receipt>(
-          await host.post(`/api/games/${gameId}/commands`, {
-            commandId: id('human'),
-            expectedRevision: snapshot.revision,
-            command,
-          }),
+        expect(logs.entries.filter(isIdleDutyWarn)).toEqual([]);
+        expect(view?.result?.playerId).toBeTruthy();
+        expect(humanCommands).toBeGreaterThan(10);
+        const game = await state(gameId, harness.service);
+        expect(game.profileId).toBe(profileId);
+        expect(game.pending).toBeNull();
+        // Bot 真的玩了 C&K：招募過騎士或改良過城市。setup 本來就給每人一座村莊與一座城市，
+        // 建築數不能當證據；事件從資料庫讀完整的歷史。
+        const events = await allEvents(harness.service, gameId);
+        const botActions = events.filter(
+          (event) =>
+            (event.type === 'ck.knightRecruited' || event.type === 'ck.cityImproved') &&
+            botIds.includes(event.params.playerId as string),
         );
-        // 與 Bot 同時送出時可能落後一個 revision，其他拒絕都代表策略或伺服器有誤。
-        if (receipt.outcome === 'rejected') expect(receipt.error?.messageId).toBe('error.E_STALE_REVISION');
-        else humanCommands += 1;
+        expect(botActions.length).toBeGreaterThan(0);
+        expect((await harness.service.repo.findRoom(roomId))?.status).toBe('completed');
+        expect(await rejectedBotReceipts(harness.service, gameId)).toEqual([]);
+      } finally {
+        // 逾時或斷言失敗時也要還原 logger、放掉真人連線，避免汙染共用的 BotDriverDeps。
+        logs.restore();
+        await disconnect?.();
       }
-      expect(logs.entries.filter(isIdleDutyWarn)).toEqual([]);
-      expect(view?.result?.playerId).toBeTruthy();
-      expect(humanCommands).toBeGreaterThan(10);
-      const game = await state(gameId, harness.service);
-      expect(game.profileId).toBe(PROFILE_ID);
-      expect(game.pending).toBeNull();
-      // Bot 真的玩了 C&K：招募過騎士或改良過城市。setup 本來就給每人一座村莊與一座城市，
-      // 建築數不能當證據；事件從資料庫讀完整的歷史。
-      const events = await allEvents(harness.service, gameId);
-      const botActions = events.filter(
-        (event) =>
-          (event.type === 'ck.knightRecruited' || event.type === 'ck.cityImproved') &&
-          botIds.includes(event.params.playerId as string),
-      );
-      expect(botActions.length).toBeGreaterThan(0);
-      expect((await harness.service.repo.findRoom(roomId))?.status).toBe('completed');
-      expect(await rejectedBotReceipts(harness.service, gameId)).toEqual([]);
-    } finally {
-      // 逾時或斷言失敗時也要還原 logger、放掉真人連線，避免汙染共用的 BotDriverDeps。
-      logs.restore();
-      await disconnect?.();
-    }
-  }, 180_000);
+    }, 180_000);
+  }
 
   // 2. 策略拋錯：pillage 由保底代答，第一次嘗試就被接受，沒有走到重試。
   it('answers a pillage frame through the fallback when the strategy throws', async () => {
