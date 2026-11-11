@@ -581,15 +581,25 @@ describe('F1 進步卡', () => {
     }
   });
 
-  it.each(['standard', 'easy'] as const)('with progress excess (%s) and nothing playable, it discards the lowest-value card', (level) => {
+  it('with progress excess and only F2 cards, easy never plays them and discards the lowest-value card (D-CK3)', () => {
     for (const seed of [1, 2, 3, 4, 5]) {
       const { state } = defenseGame({ position: 0 });
-      // F2 與 Alchemy 在 CK-C 之前不打：沒有可打的卡，只能棄。
       handCards(state, 'p1', ['guildDues', 'alchemy', 'invention', 'sabotage', 'wedding']);
-      const candidates = cardActions(turnOf(state, level));
+      const candidates = cardActions(turnOf(state, 'easy'));
       expect(candidates).toHaveLength(1);
-      const command = decideAccepted(state, level, 'p1', seed);
-      expect(command, `${level} seed ${seed}`).toMatchObject({ type: 'progress.discard', cards: ['alchemy'] });
+      const command = decideAccepted(state, 'easy', 'p1', seed);
+      expect(command, `easy seed ${seed}`).toMatchObject({ type: 'progress.discard', cards: ['alchemy'] });
+    }
+  });
+
+  it('with progress excess and only F2 cards, standard plays one (CK-C) instead of discarding', () => {
+    // F1 沒有可打的卡：F1 的候選只剩棄牌；互動卡（`cards-interactive.ts`）的 +10 讓打牌排在它前面。
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const { state } = defenseGame({ position: 0 });
+      handCards(state, 'p1', ['guildDues', 'alchemy', 'invention', 'sabotage', 'wedding']);
+      expect(cardActions(turnOf(state, 'standard'))).toHaveLength(1);
+      const command = decideAccepted(state, 'standard', 'p1', seed);
+      expect(command, `standard seed ${seed}`).toMatchObject({ type: 'progress.play' });
     }
   });
 
