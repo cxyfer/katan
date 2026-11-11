@@ -35,7 +35,7 @@ import {
 } from './economy.ts';
 import { LEVEL_PARAMS, type LevelParams } from './level.ts';
 import { fallbackDecision } from './fallback.ts';
-import { collectScored, firstAnswer, isModuleFrame } from './modules/compose.ts';
+import { collectScored, firstAnswer, isModuleFrame, rescoreDelta } from './modules/compose.ts';
 import { botModulesOf } from './modules/registry.ts';
 import type { BotModule, Scored, TurnContext } from './modules/types.ts';
 import { Turn } from './turn.ts';
@@ -438,11 +438,7 @@ export function rescoreCandidates(
   const hooks = turn.modules.filter((module) => module.rescore);
   if (hooks.length === 0) return candidates;
   return candidates.map((candidate) => {
-    let delta = 0;
-    for (const module of hooks) {
-      const diff = module.rescore!(turn, candidate.item);
-      if (Number.isFinite(diff)) delta += diff;
-    }
+    const delta = rescoreDelta(hooks, turn, candidate.item);
     return delta === 0 ? candidate : { item: candidate.item, score: candidate.score + delta };
   });
 }
