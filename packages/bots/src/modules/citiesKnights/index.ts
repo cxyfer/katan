@@ -2,8 +2,8 @@
  * Cities & Knights 的 BotModule（C&K 計畫 §4）。CK-B1 註冊模組並接上保底、經濟鉤子、節奏與回應指令；
  * 策略鉤子（setup、actions、frame 偏好、plans）由 CK-B2 接上，各自改自己的檔案，不必再改這裡。
  *
- * CK-G 起 `supports` 回傳 true：`ck-2025`、`ck-paired-2025` 可以讓 Bot 入座；Seafarers + C&K 的組合
- * 仍由 `botsCanPlay` 擋下（它的 Seafarers 劇本不在放行清單內）。
+ * CK-G 起 `supports` 回傳 true：`ck-2025`、`ck-paired-2025` 可以讓 Bot 入座。Seafarers + C&K 的組合仍由
+ * `botsCanPlay` 擋下：它的 `seafarersCitiesKnights` 組合層沒有註冊 BotModule（SF+CK 排在 0.4.3）。
  */
 
 import type { BotModule } from '../types.ts';
