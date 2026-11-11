@@ -43,13 +43,14 @@ import {
   type Economy,
   type KindTable,
 } from '../src/economy.ts';
-import { turnContext } from '../src/heuristic.ts';
+import { heuristicPolicy, turnContext } from '../src/heuristic.ts';
 import { citiesKnightsBotModule } from '../src/modules/citiesKnights/index.ts';
 import { COMMODITY_WEIGHT } from '../src/modules/citiesKnights/economy.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { bankHas, plannedBankOf, plannedCommodityBank } from '../src/bank.ts';
+import { plentyPick } from '../src/base/cards.ts';
 import { handUtility, bankTradeToward, offerGain, offerTermsKnown } from '../src/trade.ts';
-import type { BotModule } from '../src/modules/types.ts';
+import type { BotModule, TurnContext } from '../src/modules/types.ts';
 import type { BotContext, BotLevel } from '../src/types.ts';
 import { viewOf } from './ck-fixtures.ts';
 
@@ -534,6 +535,85 @@ describe('rule 9: offers with commodities', () => {
     const hacked = JSON.parse(JSON.stringify(viewOf(state, 'p1'))) as GameView;
     hacked.players.find((candidate) => candidate.id === 'p2')!.handSize = 1;
     expect(policy.decide(hacked, ctxFor('p1'))).toMatchObject({ type: 'trade.respond', response: 'declined' });
+  });
+});
+
+describe('receiving commodities, and the cards a pick can name', () => {
+  const offer = (give: Offer['give'], want: Offer['want']): Offer =>
+    ({ id: 'o1', from: 'p1', to: 'all', give, want, status: 'open', windowId: 1, responses: {} }) as Offer;
+
+  /** 計畫最缺的是 commodity：2 paper 加 1 ore 的成本，手上只有 1 ore、1 wool。 */
+  function paperPlan(): Economy {
+    const state = emptyCkGame(4, 0, 'action');
+    give(state, 'p1', { ore: 1, wool: 1 });
+    const economy = economyFor(state);
+    const plan = { ...economy.plans[0]!, cost: { paper: 2, ore: 1 }, nextCost: { paper: 2 } };
+    return { ...economy, plans: [plan] };
+  }
+
+  it('offerGain counts the commodities the proposer gives: receiving what the plan needs is a gain', () => {
+    const economy = paperPlan();
+    const gain = offerGain(economy, offer({ paper: 2 }, { wool: 1 }));
+    expect(gain).toBeGreaterThan(0);
+    // 收到的張數越多越好；收到計畫用不到的 commodity 也不會被當成沒收到（剩餘的牌依權重算）。
+    expect(gain).toBeGreaterThan(offerGain(economy, offer({ paper: 1 }, { wool: 1 })));
+    expect(offerGain(economy, offer({ cloth: 2 }, { wool: 1 }))).toBeGreaterThan(offerGain(economy, offer({}, { wool: 1 })));
+  });
+
+  /** 計畫要 2 paper 的測試模組（B1 的 C&K 模組還沒有 commodity 計畫）。 */
+  const paperModule: BotModule = {
+    id: 'test',
+    economy: {
+      scoreExtras: () => [{ kind: 'test.paper', vertex: null, roads: [], cost: { paper: 2 }, nextCost: { paper: 2 }, value: 5, eta: 1, score: 5, immediate: true }],
+    },
+  };
+
+  /** p2 是 Bot：有聚落、4 wool；p1 向全部人報價「give 換 1 wool」。 */
+  function wool4(offered: Offer['give']): GameState {
+    const state = emptyCkGame(4, 0, 'action');
+    const site = state.board.buildings.findIndex((building) => building === null);
+    state.board.buildings[site] = { player: 'p2', city: false };
+    give(state, 'p2', { wool: 4 });
+    giveCommodities(state, 'p1', offered);
+    return actCk(state, 'p1', { type: 'trade.offer', to: 'all', give: offered, want: { wool: 1 } } as Command).state;
+  }
+
+  it.each(['standard', 'easy'] as const)('%s: a bot whose plan needs paper consents to "2 paper for 1 wool", and the trade settles', (level) => {
+    const open = wool4({ paper: 2 });
+    const policy = heuristicPolicy(level, [citiesKnightsBotModule, paperModule]);
+    const response = policy.decide(viewOf(open, 'p2'), ctxFor('p2', level));
+    expect(response).toMatchObject({ type: 'trade.respond', response: 'consented' });
+    const answered = actCk(open, 'p2', response as Command).state;
+    const settled = actCk(answered, 'p1', { type: 'trade.settle', offerId: (open.offers[0] as Offer).id, counterparty: 'p2' } as Command).state;
+    expect(player(settled, 'p2').commodities.paper).toBe(2);
+    expect(player(settled, 'p2').resources.wool).toBe(3);
+    // 同一個報價換成計畫用不到的 cloth：只是多一張雜牌，不划算。
+    const idle = wool4({ cloth: 2 });
+    expect(policy.decide(viewOf(idle, 'p2'), ctxFor('p2', level))).toMatchObject({ type: 'trade.respond', response: 'declined' });
+  });
+
+  it('a bot with no commodity plan sees a paper-for-surplus-wool swap as even: declined at the margin', () => {
+    const open = wool4({ paper: 1 });
+    expect(createBotPolicy('standard').decide(viewOf(open, 'p2'), ctxFor('p2'))).toMatchObject({ type: 'trade.respond', response: 'declined' });
+  });
+
+  it('plentyPick only names a Resource, even when the plan lacks commodities most', () => {
+    const economy = paperPlan();
+    const view = viewOf(emptyCkGame(4, 0, 'action'), 'p1');
+    const turn = { economy, view } as unknown as TurnContext;
+    // 計畫缺的是 paper：缺口與權重都指向 commodity，挑出來的仍是 Resource（pending.takeResource、
+    // science.take、SF 的 gold 都只收 Resource）。
+    expect(deficitOf(economy.hand, economy.plans[0]!.cost).paper).toBe(2);
+    expect(economy.weights.paper).toBeGreaterThan(0);
+    const pick = plentyPick(turn);
+    expect(pick).not.toBeNull();
+    expect(RESOURCES).toContain(pick);
+    // 缺的 Resource 仍優先：計畫改成同時缺 ore，就挑 ore。
+    const needsOre = { ...economy, plans: [{ ...economy.plans[0]!, cost: { paper: 2, ore: 3 }, nextCost: { paper: 2 } }] };
+    expect(plentyPick({ economy: needsOre, view } as unknown as TurnContext)).toBe('ore');
+    // 資源銀行沒有牌時不挑：commodity 銀行有牌也不算。
+    const empty = { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 };
+    expect(plentyPick(turn, economy.hand, empty)).toBeNull();
   });
 });
 
