@@ -6,12 +6,13 @@ import { initialTableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
-function open(phase: 'action' | 'preroll' = 'action') {
+function open(phase: 'action' | 'preroll' = 'action', turnPlayerId?: string) {
   const state = initialTableState('en');
   state.session = makeIdentity();
   state.game = makeSnapshot(makeView({
     phase,
-    hints: makeHints({ canRoll: phase === 'preroll', canEndTurn: phase === 'action', legalRoads: [1] }),
+    turnPlayerId,
+    hints: makeHints({ canRoll: phase === 'preroll' && !turnPlayerId, canEndTurn: phase === 'action' && !turnPlayerId, legalRoads: [1] }),
   }));
   const selectTarget = vi.fn();
   const submitCommand = vi.fn();
@@ -110,5 +111,26 @@ describe('action rail', () => {
     expect(submitCommand).toHaveBeenCalledWith({ type: 'turn.roll' }, 'play.roll');
     expect((screen.getByTestId('action-build.road') as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId('reason-build.road').textContent).toBeTruthy();
+  });
+
+  it('groups actions and counts the available optional ones on the toggle', () => {
+    const { toggle } = open();
+    expect([...document.querySelectorAll('[data-group]')].map((group) => group.getAttribute('data-group'))).toEqual(['turn', 'build']);
+    // 道路有目標、發展卡買得起；結束回合可用但不計入（它在提示面板上）。
+    expect([...document.querySelectorAll('[data-group="build"] button[data-enabled="true"]')].map((button) => button.getAttribute('data-testid')))
+      .toEqual(['action-build.road', 'action-build.devCard']);
+    expect(screen.getByTestId('action-endTurn').getAttribute('data-enabled')).toBe('true');
+    expect(screen.getByTestId('action-rail-count').textContent).toBe('2');
+    expect(toggle.getAttribute('aria-label')).toBe('Actions, 2 available');
+  });
+
+  it('explains a reason shared by every action once while each action keeps its own', () => {
+    open('action', 'p2');
+    expect(screen.getByTestId('action-shared-reason').textContent).toBe('It is not your turn.');
+    expect(screen.queryByTestId('action-rail-count')).toBeNull();
+    const road = screen.getByTestId('reason-build.road');
+    expect(road.textContent).toBe('It is not your turn.');
+    expect(road.classList.contains('action-list__reason--shared')).toBe(true);
+    expect(screen.getByTestId('action-build.road').getAttribute('aria-describedby')).toBe('reason-build.road');
   });
 });

@@ -1,56 +1,67 @@
+/*
+ * 右側行動欄：收合時是兩欄的分組圖示塢，展開時同一個格線放大成卡片。
+ * 兩種狀態共用同一批按鈕與排列順序，展開只增加文字，不移動按鈕。
+ */
 .action-rail {
-  --action-rail-width: 210px;
-  --action-rail-peek: 46px;
+  --action-tile: 34px;
+  --action-gap: 4px;
+  --action-pad: 5px;
+  --action-collapsed-width: calc(var(--action-tile) * 2 + var(--action-gap) + var(--action-pad) * 2 + 2px);
+  --action-expanded-width: 312px;
   position: absolute;
   z-index: 34;
   top: 50%;
   right: 16px;
   display: flex;
   flex-direction: column;
-  width: var(--action-rail-width);
+  width: var(--action-collapsed-width);
+  max-width: calc(100vw - 24px);
   max-height: 100%;
-  pointer-events: none;
+  overflow: hidden;
+  border: 1px solid #a99d6d66;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #19373bf0, #0f282ef0);
+  box-shadow: 0 10px 24px #03192344;
+  pointer-events: auto;
   transform: translateY(-50%);
+  transition: width .2s ease, border-color .2s ease;
 }
 
+.action-rail[data-expanded="true"] {
+  width: var(--action-expanded-width);
+  border-color: #c2ad7499;
+  background: linear-gradient(155deg, #1d3d3bf7, #102a30f7);
+}
+
+/* ---- 開關 ---- */
 .action-rail__toggle {
-  position: relative;
   display: flex;
-  flex: 0 0 36px;
+  flex: 0 0 var(--action-tile);
   align-items: center;
   justify-content: center;
-  align-self: flex-end;
-  width: var(--action-rail-peek);
-  min-height: 36px;
-  padding: 6px;
-  border: 1px solid #a99d6d66;
-  border-radius: 7px;
-  background: #19373bf2;
+  gap: 4px;
+  min-height: var(--action-tile);
+  margin: var(--action-pad) var(--action-pad) 0;
+  padding: 0 6px;
+  border: 1px solid #a99d6d55;
+  border-radius: 8px;
+  background: #102a2f;
   color: #e2d09e;
   font: inherit;
-  font-size: .69rem;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .03em;
   cursor: pointer;
   pointer-events: auto;
-  transition: border-radius .2s ease, background .2s ease;
 }
 
-.action-rail__toggle > span {
-  position: absolute;
-  top: -1px;
-  right: 100%;
-  bottom: -1px;
-  display: flex;
-  align-items: center;
-  width: calc(var(--action-rail-width) - var(--action-rail-peek));
-  padding: 6px 12px;
-  border: 1px solid #a99d6d66;
-  border-right: 0;
-  border-radius: 7px 0 0;
-  background: #19373bf2;
-  white-space: nowrap;
-  pointer-events: none;
-  clip-path: inset(0 0 0 100%);
-  transition: clip-path .2s ease;
+.action-rail__toggle:hover {
+  border-color: #e3c37f;
+}
+
+.action-rail__toggle:focus-visible {
+  outline: 2px solid #f5d394;
+  outline-offset: 1px;
 }
 
 .action-rail__toggle > svg {
@@ -59,44 +70,86 @@
   transition: transform .2s ease;
 }
 
-.action-rail__toggle:focus-visible {
-  outline: 2px solid #f5d394;
-  outline-offset: -3px;
+.action-rail__title {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
+.action-rail__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #f1d59c, #bf9654);
+  color: #2b3028;
+  font-size: .64rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.action-rail[data-expanded="false"] .action-rail__toggle > svg {
+  order: -1;
+}
+
+.action-rail[data-expanded="true"] .action-rail__toggle {
+  justify-content: flex-start;
+  padding-inline: 10px 6px;
+}
+
+.action-rail[data-expanded="true"] .action-rail__toggle > svg {
+  transform: none;
+}
+
+/* ---- 內容 ---- */
 .action-rail__content {
   flex: 0 1 auto;
   min-height: 0;
+  padding: var(--action-pad);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   pointer-events: auto;
-  clip-path: inset(0 0 0 calc(var(--action-rail-width) - var(--action-rail-peek)));
-  border: 1px solid transparent;
-  border-radius: 0 0 9px 9px;
-  transition: clip-path .2s ease, background .2s ease, border-color .2s ease;
 }
 
-.action-rail .action-rail__phase {
-  position: relative;
-  justify-content: flex-start;
-  height: 30px;
-  margin: 0;
-  padding: 0 11px;
-  font-size: .61rem;
-  letter-spacing: .03em;
+.action-rail__phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 0 auto 0 6px;
+  overflow: hidden;
+  color: #b8c3ad;
+  font-size: .62rem;
+  font-weight: 500;
+  letter-spacing: .02em;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.action-rail__phase > svg {
-  margin-left: auto;
+.action-rail__phase .game__phase-dot {
+  flex: 0 0 auto;
+}
+
+/* 內容超出時，在可捲動的那一端淡出，提示還有其他動作。 */
+.action-rail__content[data-overflow="end"] {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+}
+
+.action-rail__content[data-overflow="start"] {
+  mask-image: linear-gradient(to top, #000 calc(100% - 22px), transparent);
+}
+
+.action-rail__content[data-overflow="both"] {
+  mask-image: linear-gradient(to bottom, transparent, #000 22px, #000 calc(100% - 22px), transparent);
 }
 
 /* 舊面板的 !important 位於 table layer，覆寫也需留在同層。 */
 @layer table {
   .action-rail .action-panel {
-    padding: 0 4px 4px !important;
+    padding: 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
     background: transparent !important;
@@ -104,28 +157,95 @@
   }
 }
 
-.action-rail .action-panel h2 {
+.action-panel__reason,
+.action-group__reason {
+  margin: 0 0 6px;
+  padding: 5px 8px;
+  border-left: 2px solid #c7ad70;
+  border-radius: 4px;
+  background: #0c252a;
+  color: #d9d0b0;
+  font-size: .64rem;
+  line-height: 1.35;
+}
+
+.action-groups {
+  display: flex;
+  flex-direction: column;
+}
+
+.action-group + .action-group {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid #a99d6d33;
+}
+
+.action-rail[data-expanded="true"] .action-group + .action-group {
+  margin-top: 6px;
+  padding-top: 5px;
+}
+
+.action-group__title {
+  margin: 0 0 4px;
+  padding: 0 2px;
+  color: #b8c3ad;
+  font-size: .6rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* 回合動作只有一顆主按鈕，標題多餘。 */
+.action-rail .action-group[data-group="turn"] .action-group__title {
   position: absolute;
   width: 1px;
   height: 1px;
-  padding: 0;
   overflow: hidden;
   clip-path: inset(50%);
 }
 
+/*
+ * 擲骰與結束回合是必要動作，已由上方提示面板（PendingPrompt）提供；行動欄只在提示沒有給出
+ * 且回合鈕可用時才補上，平常只放可選的建造、航海與騎士動作。
+ */
+.screen--game:has([data-testid="prompt-roll"], [data-testid="prompt-end-turn"]) .action-rail .action-group[data-group="turn"],
+.action-rail .action-group[data-group="turn"]:not(:has(li[data-enabled="true"])) {
+  display: none;
+}
+
+.screen--game:has([data-testid="prompt-roll"], [data-testid="prompt-end-turn"]) .action-rail .action-group[data-group="turn"] + .action-group,
+.action-rail .action-group[data-group="turn"]:not(:has(li[data-enabled="true"])) + .action-group {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* ---- 動作格線 ---- */
 .action-rail .action-list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(var(--action-tile), 1fr));
+  gap: var(--action-gap);
 }
 
 .action-rail .action-list li {
   position: relative;
-  flex: 0 0 auto;
-  padding-bottom: 26px;
-  border: 1px solid transparent;
+  grid-area: auto;
+  order: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   border-radius: 9px;
-  transition: background .2s ease, border-color .2s ease;
+  transition: background .2s ease, box-shadow .2s ease;
+}
+
+.action-rail .action-list .action-list__turn {
+  grid-area: auto / 1 / auto / -1;
+}
+
+/* 擲骰前只需要擲骰；擲骰不可用時才顯示結束回合（含其停用原因）。 */
+.action-rail .action-list .action-list__turn[data-action="roll"][data-enabled="false"],
+.action-rail .action-list:has(> [data-action="roll"][data-enabled="true"]) > [data-action="endTurn"] {
+  display: none;
 }
 
 .action-rail .action-list__button,
@@ -134,134 +254,269 @@
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: center;
+  gap: 7px;
   width: 100%;
-  height: 49px;
-  min-height: 49px;
-  padding: 3px 4px 3px 9px;
-  border-color: transparent;
+  height: auto;
+  min-height: var(--action-tile);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
   background: transparent;
   box-shadow: none;
-  font-size: .76rem;
+  color: #c9d2c3;
+  font-size: .74rem;
+  opacity: 1;
+  /* 觸控裝置的全域 .button 最小 44px 會撐破兩欄格線。 */
+  min-width: 0;
 }
 
-.action-rail .action-list__label,
-.action-rail .action-list__turn .action-list__label {
-  flex-direction: row-reverse;
-  justify-content: space-between;
-  gap: 6px;
-  width: 100%;
-  text-align: left;
-  line-height: 1.2;
+.action-rail .action-list__button:focus-visible {
+  outline: 2px solid #f5d394;
+  outline-offset: 1px;
 }
 
-.action-rail .action-list__label > svg {
+.action-list__glyph {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
   box-sizing: border-box;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  padding: 9px;
-  border: 1px solid #84957b66;
+  width: var(--action-tile);
+  height: var(--action-tile);
+  border: 1px solid #84957b55;
   border-radius: 8px;
-  background: #19383be8;
+  background: #18353a;
+  color: #9fb3a8;
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
 
-.action-rail .action-list__button[data-enabled="true"] .action-list__label > svg {
-  color: #f5d89b;
-  border-color: #d6b871;
-  background: #495039ed;
+.action-list__glyph > svg {
+  opacity: .62;
 }
 
-.action-rail .action-list__button--armed .action-list__label > svg {
-  box-shadow: 0 0 0 1px #edcf8f, 0 0 12px #dbb66d55;
-}
-
-.action-rail .action-list__cost {
+.action-list__badge {
   position: absolute;
-  bottom: 1px;
-  left: 9px;
-  justify-content: flex-start;
-  gap: 5px;
-  font-size: .64rem;
-}
-
-.action-rail .action-list__cost-chip svg {
+  right: -3px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
   width: 15px;
-  height: 14px;
+  height: 15px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: #0d2429;
 }
 
-.action-rail .action-list__reason,
-.action-rail .action-list__count {
-  position: absolute;
-  right: 8px;
-  bottom: 3px;
-  left: 9px;
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  color: #b9c7bd;
-  text-align: left;
-  font-size: .6rem;
-  line-height: 1.15;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+.action-list__badge svg {
+  stroke-width: 2.8;
 }
 
-.action-rail .action-list__turn[data-action="endTurn"] {
-  order: 5;
-}
-
-.action-rail[data-expanded="true"] .action-rail__toggle {
-  border-radius: 0 7px 0 0;
-}
-
-.action-rail[data-expanded="true"] .action-rail__toggle > span {
-  clip-path: inset(0);
-}
-
-.action-rail[data-expanded="true"] .action-rail__toggle > svg {
-  transform: none;
-}
-
-.action-rail[data-expanded="true"] .action-rail__content {
-  border-color: #a99d6d66;
-  background: linear-gradient(155deg, #1d3d3bf5, #102a30f5);
-  clip-path: inset(0);
-}
-
-/* 展開時整列（按鈕、費用與原因）是同一張卡，原因不再漂在兩張卡之間。 */
-.action-rail[data-expanded="true"] .action-list li {
-  border-color: #7c8a6855;
-  background: #223d39;
-}
-
-.action-rail[data-expanded="true"] .action-list li:has([data-enabled="true"]) {
-  border-color: #d6b871;
-  background: #44482f;
-}
-
-.action-rail[data-expanded="true"] .action-list__button[data-enabled="true"] {
+.action-rail .action-list__button[data-enabled="true"] {
   color: #f5d89b;
 }
 
-.action-rail[data-expanded="true"] .action-list li.action-list__turn:has([data-enabled="true"]) {
+.action-rail .action-list__button[data-enabled="true"] .action-list__glyph {
+  border-color: #d6b871;
+  background: #4a4f36;
+  color: #f5d89b;
+}
+
+.action-rail .action-list__button[data-enabled="true"] .action-list__glyph > svg {
+  opacity: 1;
+}
+
+.action-rail .action-list__button[data-enabled="true"]:hover .action-list__glyph {
+  border-color: #f4dba0;
+  background: #5c5c3c;
+}
+
+.action-rail .action-list__button--armed .action-list__glyph {
+  box-shadow: 0 0 0 1px #edcf8f, 0 0 12px #dbb66d88;
+}
+
+/* 回合主按鈕：外框畫在按鈕上而非圖示，可用時整條鍍金，收合時也一眼看得到。 */
+.action-rail .action-list__turn .action-list__button {
+  border: 1px solid #84957b55;
+  background: #18353a;
+}
+
+.action-rail .action-list__turn .action-list__glyph {
+  width: auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.action-rail .action-list__turn .action-list__button[data-enabled="true"] {
   border-color: #f1d59c;
   background: linear-gradient(135deg, #f1d59c, #bf9654);
-}
-
-.action-rail[data-expanded="true"] .action-list li.action-list__turn:has([data-enabled="true"]) .action-list__button,
-.action-rail[data-expanded="true"] .action-list li.action-list__turn:has([data-enabled="true"]) .action-list__count {
   color: #2b3028;
 }
 
-.action-rail .action-list li:has(.action-list__button:hover:not(:disabled)) {
-  border-color: #efd08f;
+.action-rail .action-list__turn .action-list__button[data-enabled="true"] .action-list__glyph {
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.action-rail .action-list__turn .action-list__button[data-enabled="true"]:hover {
+  background: linear-gradient(135deg, #f7e0ae, #c9a15f);
+}
+
+.action-list__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  text-align: left;
+}
+
+.action-rail .action-list__label {
+  display: block;
+  width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.action-rail .action-list__cost {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 2px 6px;
+  font-size: .62rem;
+  line-height: 1;
+}
+
+.action-rail .action-list__cost-chip svg {
+  width: 14px;
+  height: 13px;
+}
+
+.action-rail .action-list__reason {
+  margin: 0;
+  padding: 0 6px 4px;
+  color: #b9c7bd;
+  text-align: left;
+  font-size: .58rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+/* ---- 展開：格子變成卡片 ---- */
+.action-rail[data-expanded="true"] .action-list {
+  gap: 5px;
+}
+
+/* 卡片外框用 inset 陰影，不占格線寬度，收合時圖示格才能剛好塞滿兩欄。 */
+.action-rail[data-expanded="true"] .action-list li {
+  background: #1f3a37;
+  box-shadow: inset 0 0 0 1px #7c8a6844;
+}
+
+.action-rail[data-expanded="true"] .action-list li[data-enabled="true"] {
+  background: #3b412d;
+  box-shadow: inset 0 0 0 1px #d6b87199;
+}
+
+.action-rail[data-expanded="true"] .action-list li:has(.action-list__button:hover:not(:disabled)) {
+  box-shadow: inset 0 0 0 1px #efd08f;
+}
+
+.action-rail[data-expanded="true"] .action-list__button {
+  justify-content: flex-start;
+  min-height: 40px;
+  padding: 4px 6px;
+}
+
+.action-rail[data-expanded="true"] .action-list__glyph {
+  --action-tile: 28px;
+}
+
+.action-rail[data-expanded="true"] .action-list__cost {
+  gap: 2px 4px;
+}
+
+.action-rail[data-expanded="true"] .action-list__cost-chip svg {
+  width: 13px;
+  height: 12px;
+}
+
+.action-rail[data-expanded="true"] .action-list .action-list__turn {
+  background: transparent;
+  box-shadow: none;
+}
+
+.action-rail[data-expanded="true"] .action-list__turn .action-list__button {
+  min-height: 36px;
+}
+
+.action-rail[data-expanded="true"] .action-list__turn .action-list__button {
+  justify-content: center;
+  gap: 4px;
+  padding: 0 10px;
+}
+
+.action-rail[data-expanded="true"] .action-list__turn .action-list__text {
+  flex: 0 1 auto;
+}
+
+.action-rail[data-expanded="true"] .action-list__turn .action-list__label {
+  font-size: .78rem;
+  font-weight: 650;
+}
+
+.action-rail[data-expanded="true"] .action-list__turn .action-list__reason {
+  padding: 4px 2px 0;
+}
+
+/* 只留給輔助技術的文字（放在檔尾，蓋過上方的間距設定）；不能用 display: none，否則按鈕會失去可讀名稱。 */
+.action-rail[data-expanded="false"] .action-list__text,
+.action-rail[data-expanded="false"] .action-list__reason,
+.action-rail[data-expanded="false"] .action-group__title,
+.action-rail[data-expanded="false"] .action-rail__title,
+.action-rail .action-list__reason--shared,
+.action-rail .action-list__count,
+.action-rail .action-panel h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.action-rail[data-expanded="false"] .action-rail__phase,
+.action-rail[data-expanded="false"] .action-panel__reason,
+.action-rail[data-expanded="false"] .action-group__reason {
+  display: none;
+}
+
+/* ---- 窄畫面：格子縮小，收合塢不壓住太多棋盤 ---- */
+@media (max-width: 649px) {
+  .action-rail {
+    --action-tile: 30px;
+    --action-gap: 3px;
+    --action-pad: 4px;
+    --action-expanded-width: min(288px, calc(100vw - 24px));
+  }
+}
+
+@media (max-height: 520px) {
+  .action-rail {
+    --action-tile: 30px;
+    --action-gap: 3px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .action-rail__toggle,
-  .action-rail__toggle > span,
+  .action-rail,
   .action-rail__toggle > svg,
-  .action-rail__content,
+  .action-list__glyph,
   .action-rail .action-list li {
     transition: none;
   }
