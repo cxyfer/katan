@@ -294,13 +294,22 @@ function taxation(ctx: Context, targets: Record<string, unknown>): Play | null {
   return { fields: { hex: best.hex }, value: best.value };
 }
 
-/** Treason：對手移除一隻騎士，自己可以放一隻同級以下的（狀態沿用）。目標是騎士最強的對手；沒有放置點時價值減半。 */
+/**
+ * Treason：對手移除一隻騎士，自己可以放一隻同級以下的（狀態沿用）。逐一評估每個目標，取價值最高者。
+ *
+ * 能不能放置照 rules 的 `treasonLevels`：要有招募點，而且存量裡有等級 ≤ 被移除騎士的棋子（`hints.knightSupply`）。
+ * 交出哪一隻騎士是受害者自己的選擇，這裡取保守估計：以目標最弱的那隻（等級最低）為準，只有「不論交出哪一隻
+ * 都放得下」才計放置價值與防守加分，放不下時只剩對手少一隻騎士的基本價值。
+ */
 function treason(ctx: Context, targets: Record<string, unknown>): Play | null {
   const { turn, forced } = ctx;
   const { view } = turn;
   const hints = ckHints(view.hints);
-  const placeable = (hints?.recruitSites?.length ?? 0) > 0;
-  let best: { id: string; strength: number } | null = null;
+  const hasSites = (hints?.recruitSites?.length ?? 0) > 0;
+  const supply = hints?.knightSupply ?? { 1: 0, 2: 0, 3: 0 };
+  const threat = threatOf(view, turn.ctx.selfId);
+  const defending = defenseWindow(turn) && threat.atRisk;
+  let best: { id: string; value: number } | null = null;
   for (const id of stringsOf(targets.players)) {
     const knights = knightsOf(view, id);
     if (knights.length === 0) continue;
@@ -309,15 +318,14 @@ function treason(ctx: Context, targets: Record<string, unknown>): Play | null {
       knights.reduce((sum, knight) => sum + knight.level * (knight.active ? 1 : 0.4), 0) +
       (owner && owner.publicScore > turn.me.publicScore ? 0.5 : 0) +
       0.2 * knights.length;
-    if (!best || strength > best.strength) best = { id, strength };
+    const weakest = Math.min(...knights.map((knight) => knight.level));
+    const placeable = hasSites && ([1, 2, 3] as const).some((level) => level <= weakest && (supply[level] ?? 0) > 0);
+    // 放下的騎士沿用移除那隻的狀態：對手的騎士多半已啟動，攻擊逼近時等於一隻現成的防守。
+    const value = (placeable ? 0.55 : 0.1) + 0.12 * strength + (defending && placeable ? 0.8 : 0);
+    if (!best || value > best.value + 1e-9) best = { id, value };
   }
-  if (!best) return null;
-  const threat = threatOf(view, turn.ctx.selfId);
-  const defending = defenseWindow(turn) && threat.atRisk;
-  // 放下的騎士沿用移除那隻的狀態：對手的騎士多半已啟動，攻擊逼近時等於一隻現成的防守。
-  const value = (placeable ? 0.55 : 0.1) + 0.12 * best.strength + (defending && placeable ? 0.8 : 0);
-  if (value < (forced ? 0.01 : 0.9)) return null;
-  return { fields: { target: best.id }, value };
+  if (!best || best.value < (forced ? 0.01 : 0.9)) return null;
+  return { fields: { target: best.id }, value: best.value };
 }
 
 /** 打掉對手的一條開放道路後，對手的最長路線（假設盤面：那條路不在）。 */

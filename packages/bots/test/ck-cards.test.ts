@@ -57,6 +57,8 @@ import {
   withKnightMoved,
 } from '../src/modules/citiesKnights/tactics.ts';
 import type { TurnContext } from '../src/modules/types.ts';
+import { defenseWindow } from '../src/modules/citiesKnights/defense.ts';
+import { threatOf } from '../src/modules/citiesKnights/knights.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import type { BotCommand, BotContext, BotLevel } from '../src/types.ts';
 import { botSeats, cloneState, GAME_TIMEOUT, mixedLevels, runBotGame, seedsFor } from './harness.ts';
@@ -909,6 +911,69 @@ describe('Diplomacy：最長道路由誰接手', () => {
     expect(state.board.roads[fieldsOf(candidate!.item).edge as number]?.player).toBe('p2');
     const after = actCk(state, 'p1', candidate!.item as never).state;
     expect(after.awards.longestRoad).toBe('p1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Treason：放置價值要看得到的騎士棋子存量
+// ---------------------------------------------------------------------------
+
+describe('Treason：放置價值取決於棋子存量', () => {
+  /**
+   * p1 有 3 步的路（有招募點）與一座可被掠奪的城市，蠻族逼近（防守視窗內且自己有風險）；p2 只有一隻未啟動的騎士（預設 1 級）。
+   * `basicsOut`：p1 的兩隻基本（1 級）騎士都已上場，存量裡沒有 1 級棋子。
+   */
+  function treasonGame(basicsOut: boolean, victimLevel: 1 | 2 | 3 = 1): GameState {
+    const { state, mine } = roadsGame();
+    const theirs = freePath(state, 2, mine);
+    setBuilding(state, 'p2', theirs[0]!, false);
+    roadAlong(state, 'p2', theirs);
+    addKnight(state, { player: 'p2', vertex: theirs[1]!, level: victimLevel, active: false });
+    // 兩座城市：蠻族強度 2，場上沒有啟動的騎士（防守強度 0）；自己與 p3 的貢獻都是 0，自己會被掠奪。
+    const [city, other] = spreadVertices(state, 2, [...mine, ...theirs]);
+    setBuilding(state, 'p1', city!, true);
+    setBuilding(state, 'p3', other!, true);
+    setBarbarian(state, 4);
+    if (basicsOut) {
+      addKnight(state, { player: 'p1', vertex: mine[1]!, level: 1, active: false });
+      addKnight(state, { player: 'p1', vertex: mine[2]!, level: 1, active: false });
+    }
+    handCards(state, 'p1', ['treason']);
+    return state;
+  }
+
+  it('counts the placement and the defense bonus while a basic knight can be placed', () => {
+    const state = treasonGame(false);
+    const turn = turnOf(state);
+    expect(defenseWindow(turn)).toBe(true);
+    expect(threatOf(turn.view, 'p1').atRisk).toBe(true);
+    const candidate = candidateOf(state, 'treason');
+    expect(candidate, 'treason is played to get a ready defender').toBeDefined();
+    expect(fieldsOf(candidate!.item).target).toBe('p2');
+    expectAccepted(state, 'p1', candidate!.item);
+  });
+
+  it('counts neither the placement nor the defense bonus once the basic knights are all out', () => {
+    const state = treasonGame(true);
+    const turn = turnOf(state);
+    expect(defenseWindow(turn)).toBe(true);
+    // p2 只會交出 1 級騎士，p1 沒有 1 級棋子可放：打了只是少對手一隻騎士，不值得用掉卡。
+    expect(candidateOf(state, 'treason')).toBeUndefined();
+  });
+
+  it('checks the supply itself instead of trusting the recruit sites: a level-2 victim can still be answered by a level-2 knight', () => {
+    // 假設招募點的 hint 不隨 1 級存量過濾（直接塞進去）：Treason 自己要檢查棋子存量。
+    const withSites = (state: GameState): TurnContext => {
+      const view = viewOf(state, 'p1');
+      const modules = view.hints!.modules as { citiesKnights: Record<string, unknown> };
+      const hints = { ...view.hints!, modules: { ...modules, citiesKnights: { ...modules.citiesKnights, recruitSites: [1, 2, 3] } } };
+      return turnContext({ ...view, hints }, ctxFor('p1'), 'standard');
+    };
+    const treasonOf = (state: GameState) => interactiveCardActions(withSites(state)).find((entry) => (entry.item as { card?: string }).card === 'treason');
+    // 受害者只有 1 級騎士、p1 的 1 級棋子用完：放不下（等級 ≤ 1 的存量是 0）。
+    expect(treasonOf(treasonGame(true, 1))).toBeUndefined();
+    // 受害者的是 2 級騎士：p1 還有 2 級棋子，放得下，照常計放置價值與防守加分。
+    expect(treasonOf(treasonGame(true, 2))).toBeDefined();
   });
 });
 
