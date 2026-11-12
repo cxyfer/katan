@@ -12,7 +12,7 @@
  *   F9 merchant 不放金礦、F10 Diplomacy 重建船、F11 全海路口不能招募。
  */
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   actionHints,
   applyCommand,
@@ -121,7 +121,11 @@ function expectOthersWait(state: GameState, owners: readonly string[]): void {
 // ---------------------------------------------------------------------------
 
 describe('SF+CK Bot module registration', () => {
-  it('is registered, runs first in the combined profiles, and leaves every other hook to its parts', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('is registered, runs first in the combined profiles, and leaves frames and the economy to its parts', () => {
     expect(BOT_MODULES.get(SEAFARERS_CITIES_KNIGHTS)).toBe(seafarersCitiesKnightsBotModule);
     for (const id of COMBINED_IDS) {
       expect(botModulesOf(combinedProfile(id)).map((module) => module.id), id).toEqual([
@@ -130,9 +134,15 @@ describe('SF+CK Bot module registration', () => {
         'citiesKnights',
       ]);
     }
-    // 組合層只有 robberTargets、supports 與 pacing：frame、經濟、策略都屬於 base、SF 或 C&K。
-    const keys = Object.keys(seafarersCitiesKnightsBotModule).sort();
-    expect(keys).toEqual(['id', 'pacing', 'robberTargets', 'supports']);
+    // 一定有的：身分、開關、節奏與盜賊目標。
+    for (const key of ['id', 'supports', 'pacing', 'robberTargets']) {
+      expect(seafarersCitiesKnightsBotModule, key).toHaveProperty(key);
+    }
+    // 不得有的：frame、保底、經濟與回應指令都屬於 base、SF 或 C&K（計畫 §4.1）。策略鉤子（actions、setup、rescore）
+    // 由 SFCK-2 掛上，所以這裡不鎖死 key 集合。
+    for (const hook of ['duty', 'answerFrame', 'economy', 'responseCommands', 'maxCommandsPerWindow']) {
+      expect(hook in seafarersCitiesKnightsBotModule, hook).toBe(false);
+    }
   });
 
   it('opens a combined profile only when its own supports says so', () => {
@@ -144,13 +154,21 @@ describe('SF+CK Bot module registration', () => {
       expect(seafarersCitiesKnightsBotModule.supports!(profile), `${id} sfck`).toBe(SFCK_BOTS_RELEASED);
       expect(botsCanPlay(profile), id).toBe(SFCK_BOTS_RELEASED);
     }
+    // 正向分支：組合層的 `supports` 回 true、其餘兩個部件都支援時，兩個 profile 都開放。旗標為 false 時用 spy 走這一支；
+    // SFCK-G 把旗標改成 true 之後，spy 的回傳值與真實行為相同，上面的 `=== SFCK_BOTS_RELEASED` 斷言也仍然成立。
+    vi.spyOn(seafarersCitiesKnightsBotModule, 'supports').mockReturnValue(true);
+    for (const id of COMBINED_IDS) expect(botsCanPlay(combinedProfile(id)), `${id} opened`).toBe(true);
   });
 
   it.each(['seafarersCitiesKnights', 'seafarers', 'citiesKnights'])(
-    'refuses a profile that lacks the %s Bot module, whatever the others say',
+    'refuses a profile that lacks the %s Bot module, even when the combination layer says yes',
     (missing) => {
+      // 旗標為 false 時，缺 seafarers 或 citiesKnights 也會因為組合層而被拒，測不出是缺的那一個造成的。所以先讓組合層
+      // 的 `supports` 回 true（SFCK-G 之後這與真實行為相同），確認完整 profile 開放，再逐一拿掉一個模組。
+      vi.spyOn(seafarersCitiesKnightsBotModule, 'supports').mockReturnValue(true);
       for (const id of COMBINED_IDS) {
         const base = combinedProfile(id);
+        expect(botsCanPlay(base), `${id} complete`).toBe(true);
         // 缺一個：該位置換成沒有人註冊的 id；其餘兩個都有註冊。
         const ruleModules = base.ruleModules.map((module) => (module === missing ? `${missing}-unregistered` : module));
         expect(botsCanPlay({ ...base, ruleModules }), `${id} without ${missing}`).toBe(false);
@@ -249,8 +267,10 @@ interface BanditCase {
   readonly chasingPirate: boolean;
 }
 
+// 第一種情境在實戰不會出現：首攻前擲出 7 只棄牌，不會有 `moveRobber` frame（`robberInactive`）。這裡人工建構它，
+// 只為了確認組合層在 hint 為 `'robber'`、盜賊都在外框時也不會收窄出錯誤的集合（防禦性）。
 const BANDIT_CASES: readonly BanditCase[] = [
-  { name: 'robber before the first attack', expected: 'robber', attacked: false, pirate: 'frame', cause: 'seven', chasingPirate: false },
+  { name: 'robber before the first attack (hand-built; a 7 there only discards)', expected: 'robber', attacked: false, pirate: 'frame', cause: 'seven', chasingPirate: false },
   { name: 'robber after a knight chased it, pirate on the frame', expected: 'robber', attacked: true, pirate: 'frame', cause: 'knight', chasingPirate: false },
   { name: 'robber after a knight chased it, pirate at sea', expected: 'robber', attacked: true, pirate: 'board', cause: 'knight', chasingPirate: false },
   { name: 'either after a 7, pirate on the frame', expected: 'either', attacked: true, pirate: 'frame', cause: 'seven', chasingPirate: false },
@@ -539,20 +559,28 @@ describe('F7 a gold field answer comes before the aqueduct bonus', () => {
 });
 
 describe('F8 knights pin ships', () => {
-  it('F8 an own knight on the last ship closes the route: moving it is refused, the policies do not try', () => {
+  /** hints 的 `movableShips`：已經扣掉被騎士壓住的船。 */
+  const movableEdges = (state: GameState): number[] =>
+    (actionHints(state, 'p1').modules!.seafarers as { movableShips: { edge: number }[] }).movableShips.map((entry) => entry.edge);
+
+  it('F8 an own knight on the last ship closes the route: not movable, refused, and the policies do not try', () => {
     const state = shipLine();
-    addKnight(state, { player: 'p1', vertex: V10, level: 1, active: true });
     const tip = edgeBetween(state, V11, V10);
+    expect(movableEdges(state), 'without the knight').toContain(tip);
+    addKnight(state, { player: 'p1', vertex: V10, level: 1, active: true });
+    expect(movableEdges(state), 'with the knight').not.toContain(tip);
     const naive = { type: 'ship.move', from: tip, to: edgeBetween(state, V11, 6) } as unknown as BotCommand;
     expect(rejection(state, 'p1', naive).code).toBe('E_SHIP_PINNED_BY_KNIGHT');
     // 保底永遠不送 ship.move：行動階段只結束回合。
     expect(expectEveryPolicyAnswers(state, 'p1')).toEqual({ type: 'turn.end' });
   });
 
-  it('F8 an opponent knight between two ships pins both of them', () => {
+  it('F8 an opponent knight on the ship’s inner end pins the open ship: not movable, refused, and the policies do not try', () => {
     const state = shipLine();
-    addKnight(state, { player: 'p2', vertex: V11, level: 1, active: false });
     const tip = edgeBetween(state, V11, V10);
+    expect(movableEdges(state), 'without the knight').toContain(tip);
+    addKnight(state, { player: 'p2', vertex: V11, level: 1, active: false });
+    expect(movableEdges(state), 'with the knight').not.toContain(tip);
     const naive = { type: 'ship.move', from: tip, to: edgeBetween(state, V10, V15) } as unknown as BotCommand;
     expect(rejection(state, 'p1', naive).code).toBe('E_SHIP_PINNED_BY_KNIGHT');
     expect(expectEveryPolicyAnswers(state, 'p1')).toEqual({ type: 'turn.end' });
@@ -606,17 +634,34 @@ describe('F10 Diplomacy replaces a ship with a ship', () => {
 });
 
 describe('F11 a knight cannot be recruited on a sea intersection', () => {
-  it('the engine refuses the sea intersection, and no policy recruits there', () => {
-    const state = shipLine();
-    give(state, 'p1', { wool: 2, ore: 2 });
+  /**
+   * p1 的城市在 V28，船 V28–V11–V10 通到小島的海岸 V10；p2 的城市有一隻啟動的騎士，蠻族已經在門口，所以 p1 面臨失城的風險，
+   * standard 與 easy 都會招募。手上有招募（wool、ore）與啟動（grain）的費用。
+   */
+  function recruitBoard(): GameState {
+    const state = emptySfckGame(4);
+    settle(state, 'p1', V28, true);
+    ship(state, 'p1', edgeBetween(state, V28, V11));
+    ship(state, 'p1', edgeBetween(state, V11, V10));
+    settle(state, 'p2', corner(state, 0, 0, 0), true);
+    addKnight(state, { player: 'p2', vertex: corner(state, 0, 0, 3), level: 1, active: true });
+    state.moduleState!.citiesKnights = { ...(state.moduleState!.citiesKnights as object), barbarian: 6 };
+    give(state, 'p1', { wool: 1, ore: 1, grain: 1 });
+    return state;
+  }
+
+  it('the only recruit site is the coast; the engine refuses the sea intersection, and the strategies recruit on the coast', () => {
+    const state = recruitBoard();
+    // 海上的全海路口（V11）不是招募點，只有接到自己的船的海岸 V10 是。
+    expect((actionHints(state, 'p1').modules!.citiesKnights as { recruitSites: number[] }).recruitSites).toEqual([V10]);
     const naive = { type: 'knight.recruit', vertex: V11 } as unknown as BotCommand;
     expect(rejection(state, 'p1', naive).code).toBe('E_ILLEGAL_TARGET');
-    // 靠海岸的路口（接到自己的船）是合法的。
     expectAccepted(state, 'p1', { type: 'knight.recruit', vertex: V10 } as unknown as BotCommand);
-    expectEveryPolicyAnswers(state, 'p1');
-    for (const [, policy, level, seed] of POLICIES) {
-      const command = policy.decide(viewOf(state, 'p1'), ctxFor('p1', level, seed)) as { type: string; vertex?: number };
-      if (command.type === 'knight.recruit') expect(command.vertex).not.toBe(V11);
+    // 保底只做義務：結束回合。standard 與 easy 都真的招募，而且只在海岸。
+    expect(expectEveryPolicyAnswers(state, 'p1')).toEqual({ type: 'turn.end' });
+    for (const [name, policy, level, seed] of POLICIES) {
+      const command = policy.decide(viewOf(state, 'p1'), ctxFor('p1', level, seed));
+      expect(command, name).toEqual(name === 'fallback' ? { type: 'turn.end' } : { type: 'knight.recruit', vertex: V10 });
     }
   });
 });

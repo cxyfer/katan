@@ -3,8 +3,9 @@
  * （`seafarersCitiesKnights`、`seafarers`、`citiesKnights`），所以它的 `robberTargets` 最先收到 fold 的初值。
  *
  * SFCK-1 只註冊模組並接上 `robberTargets` 與節奏：frame 全部屬於 base、SF 或 C&K，所以沒有 `duty`、
- * `answerFrame`、`economy`，也沒有回應指令。策略（setup 合成、追擊海盜、騎士位置的 `rescore`）由 SFCK-2 接上，
- * 各自改自己的檔案，不必再改這裡。
+ * `answerFrame`、`economy`，也沒有回應指令（這幾項之後也不會有）。策略鉤子（`actions`＝追擊海盜、`setup`＝
+ * 開局分數合成、`rescore`＝騎士位置的罰分）由 SFCK-2 在這個檔案掛上，實作放在 `chase.ts`、`setup.ts`、
+ * `rescore.ts`。
  *
  * `supports` 在 SFCK-G 之前回傳 false：`botsCanPlay` 仍擋下兩個組合 profile，模組本身已可被 `botModulesOf`
  * 取得，測試因此能以真實的模組組合驅動保底與策略。
