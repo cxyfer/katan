@@ -6,8 +6,8 @@
  * 組合層只做三件事：收窄盜賊目標（`robberTargets`，SFCK-1）；策略鉤子 `actions`＝追擊海盜、`setup`＝開局分數合成、
  * `rescore`＝騎士位置的罰分（SFCK-2），實作放在 `chase.ts`、`setup.ts`、`rescore.ts`。
  *
- * `supports` 在 SFCK-G 之前回傳 false：`botsCanPlay` 仍擋下兩個組合 profile，模組本身已可被 `botModulesOf`
- * 取得，測試因此能以真實的模組組合驅動保底與策略。
+ * SFCK-G 起 `supports` 回傳 true：`sf-ck-new-shores-2025`、`sf-ck-new-shores-paired-2025` 可以讓 Bot 入座
+ * （easy、standard；hard 仍只有基本版）。
  */
 
 import type { BotModule } from '../types.ts';
@@ -17,8 +17,8 @@ import { sfckSetup } from './setup.ts';
 import { sfckRobberTargets } from './targets.ts';
 import { SEAFARERS_CITIES_KNIGHTS } from './view.ts';
 
-/** Bot 能不能玩 SF+CK；SFCK-G 才改為 true，座位開放與否仍以 `botsCanPlay(profile)` 為準。 */
-export const SFCK_BOTS_RELEASED = false;
+/** Bot 能不能玩 SF+CK；SFCK-G 起為 true，座位開放與否仍以 `botsCanPlay(profile)` 為準。 */
+export const SFCK_BOTS_RELEASED = true;
 
 /**
  * 各指令的思考延遲（毫秒，SF+CK 計畫 §4.7）：與 C&K 的 `knight.chaseRobber` 相同；之後的

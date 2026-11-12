@@ -145,11 +145,11 @@ describe('Seafarers + Cities & Knights over the API', () => {
     }
   });
 
-  it('offers both combined profiles, resolves them from their parts and refuses bot seats', async () => {
+  it('offers both combined profiles, resolves them from their parts and opens bot seats', async () => {
     const host = await harness.client('SfCkLobby');
     const { profiles, selectable } = host.expectOk<{ profiles: { id: string; botSeats: boolean }[]; selectable: string[] }>(await host.get('/api/profiles'));
     expect(selectable).toEqual(expect.arrayContaining(['sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025']));
-    expect(profiles.filter((profile) => profile.id.startsWith('sf-ck-')).map((profile) => profile.botSeats)).toEqual([false, false]);
+    expect(profiles.filter((profile) => profile.id.startsWith('sf-ck-')).map((profile) => profile.botSeats)).toEqual([true, true]);
     const room = host.expectOk<{ id: string; profileId: string }>(await host.post('/api/rooms', {
       visibility: 'private', capacity: 3, setupMode: 'fixed', ruleset: { expansions: ['citiesKnights', 'seafarers'], scenario: 'new-shores' },
     }));
@@ -158,7 +158,10 @@ describe('Seafarers + Cities & Knights over the API', () => {
       visibility: 'private', capacity: 6, setupMode: 'variable', ruleset: { expansions: ['seafarers', 'citiesKnights'], scenario: 'new-shores' },
     }));
     expect(paired.profileId).toBe('sf-ck-new-shores-paired-2025');
-    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
+    const seated = host.expectOk<{ members: { bot?: boolean }[] }>(await host.post(`/api/rooms/${room.id}/bots`, {}));
+    expect(seated.members.filter((member) => member.bot)).toHaveLength(1);
+    // hard 只有基本版，組合的房間比照 SF、C&K 拒絕。
+    host.expectError(await host.post(`/api/rooms/${room.id}/bots`, { level: 'hard' }), 'E_INVALID_BOT');
   });
 
   it('starts a combined game with both bandits waiting, keeps receipts idempotent and hands private', async () => {

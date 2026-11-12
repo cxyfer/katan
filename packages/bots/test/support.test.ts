@@ -53,18 +53,18 @@ describe('bot ruleset support', () => {
     expect(botsCanPlay(profileWith(['base', 'no-such-module']))).toBe(false);
   });
 
-  it('opens Cities & Knights seats, but not its combination with Seafarers', () => {
+  it('opens Cities & Knights seats and its combination with Seafarers', () => {
     expect(BOT_MODULES.has('citiesKnights')).toBe(true);
     expect(CK_BOTS_RELEASED).toBe(true);
     for (const id of ['ck-2025', 'ck-paired-2025']) expect(botsCanPlay(getProfile(id)!), id).toBe(true);
-    // 組合層 `seafarersCitiesKnights` 已註冊（SFCK-1），但 `supports` 在 SFCK-G 之前回 false，兩個組合 profile
-    // 仍然不開放。
+    // 組合層 `seafarersCitiesKnights` 已註冊（SFCK-1），`supports` 自 SFCK-G 起回 true：兩個組合 profile 開放，
+    // 而且它們的每個規則模組（組合層、seafarers、citiesKnights）都有已註冊的 BotModule。
     expect(BOT_MODULES.has('seafarersCitiesKnights')).toBe(true);
-    expect(SFCK_BOTS_RELEASED).toBe(false);
+    expect(SFCK_BOTS_RELEASED).toBe(true);
     for (const id of ['sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025']) {
       const profile = getProfile(id)!;
       expect(botModulesOf(profile).map((module) => module.id), id).toEqual(profile.ruleModules);
-      expect(botsCanPlay(profile), id).toBe(false);
+      expect(botsCanPlay(profile), id).toBe(true);
     }
   });
 
@@ -77,6 +77,8 @@ describe('bot ruleset support', () => {
       'sf-new-shores-paired-2025',
       'ck-2025',
       'ck-paired-2025',
+      'sf-ck-new-shores-2025',
+      'sf-ck-new-shores-paired-2025',
     ]);
   });
 });

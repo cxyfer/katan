@@ -17,6 +17,7 @@ P1 範圍內：
   - `base-2025`（3–4 人）與 `base-paired-2025`（5–6 人；Player 2 不擲骰、不可發起或結算國內交易）。
   - 0.4.1 起加上 Seafarers — Heading for New Shores 的 `sf-new-shores-2025`（3–4 人）與 `sf-new-shores-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-seafarers.md`。
   - 0.4.2 起加上 Cities & Knights 的 `ck-2025`（3–4 人）與 `ck-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-cities-knights.md`。
+  - 0.4.3 起加上 `sf-ck-new-shores-2025`（3–4 人）與 `sf-ck-new-shores-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-seafarers-cities-knights.md`。
 - 座位、大廳與遊戲中玩家面板顯示「電腦」徽章與難度。
 
 P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房間層級節奏設定、開局後增減 Bot、Bot 的反報價（counteroffer）、以事件紀錄推算對手手牌。
@@ -143,7 +144,7 @@ export function botResponseCommands(profile: Pick<ProfileDefinition, 'ruleModule
 | 情況 | 保底動作 |
 |---|---|
 | 自己要棄牌 | 依 `RESOURCES` 順序丟出應棄張數 |
-| 自己要移動強盜 | 第一個非目前強盜格、非海洋的格子 |
+| 自己要移動強盜 | 盜賊目標集合（`robberTargets` fold）的第一項；base 的集合就是陸地格，所以是第一個非目前強盜格的陸地格 |
 | 自己要偷牌 | `candidates[0]` |
 | 豐收之年 | 銀行仍有存量的第一種資源 |
 | 免費道路 | `hints.legalRoads[0]` |
@@ -152,6 +153,8 @@ export function botResponseCommands(profile: Pick<ProfileDefinition, 'ruleModule
 | `action` | `turn.end` |
 
 Seafarers 的保底見 SF 計畫 `docs/aegis/plans/2026-11-04-bots-seafarers.md` §4.1，包含 gold frame、移動強盜或海盜、含船的免費道路與初始放船。
+
+Cities & Knights 的保底見 C&K 計畫 `docs/aegis/plans/2026-11-04-bots-cities-knights.md` §4.2，包含 14 個 C&K frame 與含 commodity、進步卡上限的棄牌。Seafarers + Cities & Knights 的保底見 SF+CK 計畫 `docs/aegis/plans/2026-11-04-bots-seafarers-cities-knights.md` §4.3：沒有自己的 frame，盜賊目標取 §4.2 的 fold 集合的第一項（首攻前的 7 只棄牌，追擊海盜之後的 `moveRobber` 只收海格或 `null`）。
 
 8. 策略不得讀 `view.events`：BotDriver 投影時帶最近 40 筆事件，測試 harness 不帶，讀了會讓兩邊結果不一致（決定性，I6）。
 9. 報價包含 Bot 無法估值的卡種或 goods（`giveGoods`、`wantGoods`）時一律拒絕（不同意、不結算）；對方要求的數量超過自己持有量，或提議者公開的 goods 付不起 `giveGoods` 時，也一律拒絕（引擎在同意時會檢查雙方）。
