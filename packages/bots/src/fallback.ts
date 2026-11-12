@@ -22,7 +22,8 @@ export { handList, pendingDuty } from './base/duty.ts';
  *
  * 模組 frame 一律採保守的 `responders[0]`（策略原則 P3）：不是第一位 responder 就回 null，
  * 也不詢問模組的 `duty`；同時作答的 frame 由策略路徑的 `answerFrame` 負責。與
- * `botOwesAction` 的判定一致。
+ * `botOwesAction` 的判定一致。自己欠 `moveRobber` 而 `robberTargets` 的 fold 為空時直接回 null，不詢問模組的
+ * `duty`（fold 是完整的合法集合，沒有任何模組能做得更好）。
  */
 export function fallbackDecision(view: GameView, selfId: string, modules: readonly BotModule[]): BotCommand | null {
   if (view.result) return null;

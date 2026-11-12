@@ -2,16 +2,18 @@
  * Seafarers + Cities & Knights 組合層的 BotModule（SF+CK 計畫 §4.1）。排在 `ruleModules` 的第一位
  * （`seafarersCitiesKnights`、`seafarers`、`citiesKnights`），所以它的 `robberTargets` 最先收到 fold 的初值。
  *
- * SFCK-1 只註冊模組並接上 `robberTargets` 與節奏：frame 全部屬於 base、SF 或 C&K，所以沒有 `duty`、
- * `answerFrame`、`economy`，也沒有回應指令（這幾項之後也不會有）。策略鉤子（`actions`＝追擊海盜、`setup`＝
- * 開局分數合成、`rescore`＝騎士位置的罰分）由 SFCK-2 在這個檔案掛上，實作放在 `chase.ts`、`setup.ts`、
- * `rescore.ts`。
+ * frame 全部屬於 base、SF 或 C&K，所以沒有 `duty`、`answerFrame`、`economy`，也沒有回應指令（這幾項之後也不會有）。
+ * 組合層只做三件事：收窄盜賊目標（`robberTargets`，SFCK-1）；策略鉤子 `actions`＝追擊海盜、`setup`＝開局分數合成、
+ * `rescore`＝騎士位置的罰分（SFCK-2），實作放在 `chase.ts`、`setup.ts`、`rescore.ts`。
  *
  * `supports` 在 SFCK-G 之前回傳 false：`botsCanPlay` 仍擋下兩個組合 profile，模組本身已可被 `botModulesOf`
  * 取得，測試因此能以真實的模組組合驅動保底與策略。
  */
 
 import type { BotModule } from '../types.ts';
+import { sfckActions } from './chase.ts';
+import { sfckRescore } from './rescore.ts';
+import { sfckSetup } from './setup.ts';
 import { sfckRobberTargets } from './targets.ts';
 import { SEAFARERS_CITIES_KNIGHTS } from './view.ts';
 
@@ -29,6 +31,9 @@ export const SFCK_PACING: Readonly<Record<string, number>> = {
 export const seafarersCitiesKnightsBotModule: BotModule = {
   id: SEAFARERS_CITIES_KNIGHTS,
   supports: () => SFCK_BOTS_RELEASED,
+  setup: sfckSetup,
+  actions: sfckActions,
   robberTargets: sfckRobberTargets,
+  rescore: sfckRescore,
   pacing: SFCK_PACING,
 };
