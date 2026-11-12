@@ -84,6 +84,8 @@ interface Coverage {
   commands: Record<string, number>;
   /** 每個 `pending.moveRobber` 決策的目標都落在 fold 集合內的次數（依 `bandit` hint 分）。 */
   moveRobber: Record<string, number>;
+  /** 被規則接受的 `knight.chasePirate`（依策略分）；之後的 `pirate` frame 的 fold 只剩海格與外框，已檢查過。 */
+  chases: Record<string, number>;
 }
 
 /** 對一個狀態的每個座位、每種策略要一個答案：被接受，或是 null 而且不欠動作；盜賊目標必須在 fold 內。 */
@@ -92,6 +94,7 @@ function problemsOf(variant: GameState, profileId: string, tag: string): Coverag
   const failures: string[] = [];
   const commands: Record<string, number> = {};
   const moveRobber: Record<string, number> = {};
+  const chases: Record<string, number> = {};
   let checked = 0;
   for (const player of variant.players) {
     for (const [name, policy, level] of POLICIES) {
@@ -112,6 +115,21 @@ function problemsOf(variant: GameState, profileId: string, tag: string): Coverag
           failures.push(
             `${tag} ${player.id} (${name}) rejected: ${JSON.stringify(command)} -> ${outcome.error.code} ${JSON.stringify(outcome.error.params ?? {})} [${variant.pending?.kind ?? variant.turn.phase}]`,
           );
+        }
+        if (command.type === 'knight.chasePirate') {
+          // 只有 standard 追擊海盜：easy 不追擊，保底永遠不送 knight 指令。
+          if (name !== 'standard') failures.push(`${tag} ${player.id} (${name}) chased the pirate`);
+          if (outcome.ok) {
+            chases[name] = (chases[name] ?? 0) + 1;
+            const after = viewFor(outcome.state, player.id);
+            const bandit = (actionHints(outcome.state, player.id).modules?.seafarersCitiesKnights as { bandit: string | null } | undefined)?.bandit;
+            const folded = banditTargets(after, player.id, modules);
+            if (bandit !== 'pirate') failures.push(`${tag} ${player.id} (${name}) chased the pirate but the frame hint is ${String(bandit)}`);
+            if (folded.length === 0) failures.push(`${tag} ${player.id} (${name}) the pirate fold after the chase is empty`);
+            for (const target of folded) {
+              if (target !== null && after.board.terrain[target] !== 'sea') failures.push(`${tag} ${player.id} (${name}) the pirate fold after the chase holds land hex ${target}`);
+            }
+          }
         }
         if (command.type === 'pending.moveRobber') {
           const hex = command.hex as BanditTarget;
@@ -135,7 +153,7 @@ function problemsOf(variant: GameState, profileId: string, tag: string): Coverag
       }
     }
   }
-  return { checked, failures, commands, moveRobber };
+  return { checked, failures, commands, moveRobber, chases };
 }
 
 const merge = (into: Record<string, number>, from: Record<string, number>): void => {
@@ -164,6 +182,7 @@ describe('Seafarers + Cities & Knights fuzz perturbed states', () => {
         const failures: string[] = [];
         const commands: Record<string, number> = {};
         const moveRobber: Record<string, number> = {};
+        const chases: Record<string, number> = {};
         const frames = new Set<string>();
         const bandits = new Set<string>();
         let beforeAttack = 0;
@@ -188,10 +207,11 @@ describe('Seafarers + Cities & Knights fuzz perturbed states', () => {
           failures.push(...result.failures);
           merge(commands, result.commands);
           merge(moveRobber, result.moveRobber);
+          merge(chases, result.chases);
         }
 
         console.log(
-          `fuzz ${profileId} (${players}p): ${checked} decisions; before/after the first attack ${beforeAttack}/${afterAttack}, pirate on the board ${pirateAtSea}, bandit frames ${[...bandits].sort().join(',')}, pirate-chase windows ${pirateChase}, frames ${[...frames].sort().join(',')}, moveRobber answers ${JSON.stringify(moveRobber)}, commands ${JSON.stringify(commands)}`,
+          `fuzz ${profileId} (${players}p): ${checked} decisions; before/after the first attack ${beforeAttack}/${afterAttack}, pirate on the board ${pirateAtSea}, bandit frames ${[...bandits].sort().join(',')}, pirate-chase windows ${pirateChase}, frames ${[...frames].sort().join(',')}, moveRobber answers ${JSON.stringify(moveRobber)}, accepted chases ${JSON.stringify(chases)}, commands ${JSON.stringify(commands)}`,
         );
         expect(failures.slice(0, 10)).toEqual([]);
         // 策略確實送出指令（平均每個狀態至少一個），不是全部回 null 就算通過；每個決策都檢查過（拋錯會進 failures）。
@@ -252,8 +272,9 @@ describe('Seafarers + Cities & Knights fuzz perturbed states', () => {
         const bases = samplesOf(profileId, players).filter((state) => state.turn.phase === 'action' && !state.pending);
         const rng = seededRng(players * 3000 + 17);
         let staged = 0;
+        const policyChases: Record<string, number> = {};
         const failures: string[] = [];
-        for (let attempt = 0; attempt < bases.length * 2 && staged < 20; attempt++) {
+        for (let attempt = 0; attempt < bases.length * 8 && staged < 200; attempt++) {
           const variant = perturbState(bases[attempt % bases.length]!, rng, KITS);
           variant.pending = null;
           variant.turn.phase = 'action';
@@ -263,7 +284,9 @@ describe('Seafarers + Cities & Knights fuzz perturbed states', () => {
           if (hints.pirateChase.length === 0) continue;
           staged += 1;
           expect(conservationOf(variant), `chase#${staged} conservation`).toEqual([]);
-          failures.push(...problemsOf(variant, profileId, `chase#${staged}`).failures);
+          const answered = problemsOf(variant, profileId, `chase#${staged}`);
+          failures.push(...answered.failures);
+          merge(policyChases, answered.chases);
           // 規則接受 hint 列出的追擊，而且之後的 frame 是 `pirate`，fold 只剩海格與外框。
           const chased = applyCommand(variant, actor, { type: 'knight.chasePirate', vertex: hints.pirateChase[0]! }, seededRng(1));
           if (!chased.ok) {
@@ -278,7 +301,7 @@ describe('Seafarers + Cities & Knights fuzz perturbed states', () => {
           }
           failures.push(...problemsOf(chased.state, profileId, `chased#${staged}`).failures);
         }
-        console.log(`pirate-chase states (${profileId} ${players}p): ${staged}`);
+        console.log(`pirate-chase states (${profileId} ${players}p): ${staged}, accepted chases by the policies ${JSON.stringify(policyChases)}`);
         expect(failures.slice(0, 10)).toEqual([]);
         expect(staged, 'staged knight-next-to-pirate windows').toBeGreaterThan(0);
       },
