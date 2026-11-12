@@ -226,6 +226,9 @@ const PROFILE_LIMITS: Readonly<Record<string, Partial<GameLimits>>> = {
   // Cities & Knights（C&K 計畫 §6.1）：步數 6000、看門狗 72 次擲骰（`turn.roll` 次數，每回合恰好一次；paired 只有 Player 1 擲骰）。計畫的原型量測：接近正式策略的組合最多 1950 步、不防禦也不打卡的退化對局最多 2581 步，最長無創新高 36 回合（退化對局 64–69、真正打轉的那一局 799）。B2 的真實策略 40 局（3–6 人 × 種子 1–10，全數終局）實測：最多 870 步（5p）、最長一段無創新高 27 次擲骰（3p、4p；5p 15、6p 22），所以 6000 步約為最長局的 7 倍、72 約為最長停滯的 2.7 倍，沿用計畫的數值。
   'ck-2025': { maxSteps: 6000, watchdogRolls: 72 },
   'ck-paired-2025': { maxSteps: 6000, watchdogRolls: 72 },
+  // Seafarers + Cities & Knights（SF+CK 計畫 §6.1、D4）：步數 6000（第一輪全 standard、不打卡的版本最多 2004 步，約為它的 3 倍，與 C&K 一致）、看門狗 72 次擲骰（`turn.roll` 次數，每回合恰好一次；paired 只有 Player 1 擲骰）。計畫的原型 mixed 40 局最長一段無創新高為 41 次擲骰（10.3 回合），72 約為它的 1.8 倍；超過約 50 次要提報（SFCK-3 回報 `longestStagnation`）。
+  'sf-ck-new-shores-2025': { maxSteps: 6000, watchdogRolls: 72 },
+  'sf-ck-new-shores-paired-2025': { maxSteps: 6000, watchdogRolls: 72 },
 };
 
 export function limitsFor(profileId: string): GameLimits {
