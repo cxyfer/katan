@@ -52,14 +52,36 @@
 
 ## Q3 bench
 
-待發布 QA 補上：bench（`bench --profile sf-ck-new-shores-2025`、`sf-ck-new-shores-paired-2025`）在 gating 開放之後才跑得動（D6），依計畫 §6.4 在發布 PR 附上 Q3 表，並引用 #135（SF standard 在 3–4 人對 naive 未達 soft target）。
+bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 的 head，與最後的 `7076e82` 只差一張 PNG）上跑 `pnpm --filter @catan/bots bench 100 --profile sf-ck-new-shores-2025`（3、4 人）與 `--profile sf-ck-new-shores-paired-2025`（5、6 人）。每組 100 局，種子從 10000 起，standard 依局數輪換座位。只報告、不擋發布（計畫 §6.4）。
+
+「勝率／公平份額」是 1 個 standard 對其餘座位的勝率；「回合」是平均回合，「rules-sim」是 `RULES_SIM_ROUNDS` 的腳本模擬對照。
+
+| 人數 | 1 standard vs easy：勝率／公平份額，回合 | 1 standard vs naive：勝率／公平份額，回合 | 全 standard 回合 | 全 easy 回合 | rules-sim 回合 |
+|---|---|---|---|---|---|
+| 3 | 79% ／ 33.3%，31.3 | 100% ／ 33.3%，29.0（只計 96 局，見下） | 28.9 | 36.7 | 75.7 |
+| 4 | 63% ／ 25%，26.9 | 100% ／ 25%，32.6 | 21.9 | 29.4 | 36.5 |
+| 5 | 65% ／ 20%，17.1 | 100% ／ 20%，19.1 | 16.9 | 19.7 | 32.0 |
+| 6 | 55% ／ 16.7%，15.4 | 100% ／ 16.7%，18.2 | 14.9 | 17.0 | 24.2 |
+
+- **soft target ①②（勝率 ≥ 1.3 × 公平份額、≥ 公平份額 + 10 pp）**：對 easy、對 naive 各 4 組，共 8/8 達成。**平均回合目標**（3 人 ≤ 40、4 人 ≤ 38、5 人 ≤ 24、6 人 ≤ 23）所有組都達成，最大值為 36.7／32.6／19.7／18.2。
+- **穩定與效能**：16 組合計，每視窗最大指令數 19（目標 ≤ 20）；`decide` 最大 18.18 ms（3 人 1 standard vs 2 easy，目標 ≤ 50 ms）；拒絕 0、保底 0、卡死 0。看門狗只在下述一組出現。
+- **釘船**：自己的騎士釘住自己的船的窗口比例，各組最高 1.92%（6 人全 standard），低於第一輪原型的 14%。
+- **追擊海盜**：16 組合計幾乎是 0（只有 6 人全 standard 平均每局 0.01 次），維持由固定盤面 FX-C1／C8 守門。
+- **#135**（SF standard 在 3–4 人對 naive 未達 soft target）：在 sf-ck 沒有重現，3、4 人對 naive 都是 100%；但 3 人那一組有下面的已知限制。
+
+### 已知限制（待根因）：3 人 1 standard vs 2 naive 的後期停滯
+
+- **現象**：這一組 100 局只有 96 局終局，4 局（game 9、21、36、57，種子 10009、10021、10036、10057，standard 都在座位 1）觸發 72 次擲骰的看門狗；其餘 15 組的看門狗與 problems 都是 0。bench 把這 4 局排除在終局局數之外，所以該列的勝率 100% 與平均回合 29.0 只算 96 局。
+- **不是 naive 造成的退化局**：用 bench 相同的種子與座位輪換在 scratch 重現。四局停滯時，standard 的三條改良軌道多在 4–5 級、手上有 2–3 座城市與大都市，但陸上的 `legalBuildingVertices` 與 `legalRoadEdges` 都是 0（沒有可蓋的點），`islands` 也都是 0（沒有登上新島）。最後 72 次擲骰沒有任何 `build.*` 或 `city.improve`，卻有 30–47 次 `trade.bank`（例如 game 21 的 `grain→lumber` 13 次、`lumber→brick` 9 次），在幾種資源之間來回換，手牌湊不成一組建築。standard 被蠻族劫掠的城市只有 1–4 座，兩個 naive 座位各損失 8–24 座；naive 座位在 game 9、21、57 只有 9–11 分，game 36 則是 6 分與 14–15 分。
+- **關掉看門狗（`watchdogRolls: null`）重跑**：game 9 在第 214 次擲骰、game 57 在第 721 次、game 21 在第 1563 次才由 standard 勝出，三局最後的 1–2 分都來自蠻族攻擊時被動拿到的 `ck.defenderOfCatan`；game 36 在 12000 步（約 2192 次擲骰）後仍未終局（standard 11 分、naive 14–15 分，目標 16 分；另以 20000 步上限跑也未終局）。
+- **狀態**：已知限制，根因與是否在本版修正尚未判斷，之後可能改寫這段。重現腳本放在 repo 外（`.worktrees/_scratch/sfckg-wd/`），不提交。
 
 ## 審查得出的限制與後續事項
 
 - **`rescore` 只能重排，不能排除**：唯一候選即使是負分仍會被選。`knight.displace` 的小島罰分實際上幾乎不會觸發，因為 `siteBlocked` 會先把該計畫排除。
 - **未調校的常數**：K6 的分數公式拿掉了計畫建議的常數項 `1`；`REACTIVATE_PRICE = 0.3`、`DEFENSE_PER_LEVEL = 0.1`（`chase.ts`）與 `OPEN_END_PENALTY = 0.3`（`rescore.ts`）都是推測值，沒有調校。
 - **追擊海盜在模擬對局中是 0 次**：只有固定盤面 FX-C1／C8 守門，真實對局的行為要靠 Q3 與試玩觀察。
-- **效能**：4 人固定盤面上 K2 的重算 p50 2.6 ms、最大 4.3 ms；5–6 人實際對局的 `decide` 上限交給 Q3 量測。
+- **效能**：4 人固定盤面上 K2 的重算 p50 2.6 ms、最大 4.3 ms；5–6 人實際對局的 `decide` 最大值由 Q3 量測：10.35 ms（5 人 1 standard vs 4 easy），其餘組都在 10 ms 以下。
 - **T&B（0.4.4）的後續事項**：
   - friendly robber 的 `robberTargets` 寫法：FR 在沒有合法格時回沙漠，要與 fold 的初值相容。
   - `knightDecision` 的強制第一項。

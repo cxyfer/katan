@@ -227,7 +227,7 @@ PR 一律指向 `release/v0.4.3`，以 squash merge 合併。分支為 `feat/bot
 | **SFCK-1** 組合模組 | `feat/bots-sfck-module`／`.worktrees/bots-sfck-module/` | `B/modules/seafarersCitiesKnights/{index,view,targets}.ts`（新）；registry 一行（`registry.ts:7-12`）；`packages/bots/test/sfck-duty.test.ts`（新）；`packages/bots/test/support.test.ts`（`:22`、`:52-61`、`:92-114`） | 註冊；`supports` 回 false；`robberTargets`；`pacing`；F1–F11 的 I9 固定盤面（以 `rules/test/sfck-helpers.ts` 重建）；三種 `bandit` 在 3、4、6 人地圖上的真值表（集合 = rules 合法集合，且非空）；`supports` 測試（缺任一模組就不開放）。`support.test.ts`：一註冊模組，`:57` 就會失敗，加了 pacing 會讓 `:94-95` 失敗，定義 `robberTargets` 會讓 `:78` 失敗，所以由 SFCK-1 改：`:22` 的 `RESERVED_HOOKS` 移除 `robberTargets`（建議一併移除 `rescore`）、`:52-61` 改為「已註冊但 `supports` 回 false」、`:94-95` 納入新的 pacing | 60–90／200–260 | 開發：SFCK-X 的型別（可先用本地型別）；合併：SFCK-P、SFCK-X 之後 | `pnpm --filter @catan/bots exec vitest run test/sfck-duty.test.ts`；`pnpm --filter @catan/bots exec vitest run`；`pnpm --filter @catan/bots typecheck` |
 | **SFCK-2** 組合策略 | `feat/bots-sfck-strategy`／`.worktrees/bots-sfck-strategy/` | `B/modules/seafarersCitiesKnights/{chase,setup,rescore}.ts`（新）與 `index.ts` 的掛接；`B/modules/citiesKnights/defense.ts`（D2：只動 `recruitSite`）；`packages/bots/test/sfck-strategy.test.ts`（新）。SF 與 C&K 的 `setup.ts` 不必動（A4 成立），`plan.ts` 也不必動（A5 實作在平台的 `economy.ts`） | §4.4、§4.5；FX-C、FX-S、FX-K、FX-G、FX-B | 180–260／200–260（行數未依刷新重估） | SFCK-1 | `pnpm --filter @catan/bots exec vitest run test/sfck-strategy.test.ts test/sf-decisions.test.ts test/sf-frames.test.ts test/ck-decisions.test.ts`（`citySetupScore` 在 `ck-decisions`，`seafarersSetup` 在 `sf-frames`）；`pnpm --filter @catan/bots typecheck`；動到 `recruitSite`（D2），另跑 D1 的 ck-\* 決策雜湊比對與 `BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run test/ck-game.test.ts` |
 | **SFCK-3** 驗收測試 | `feat/bots-sfck-tests`／`.worktrees/bots-sfck-tests/` | `packages/bots/test/modules/seafarersCitiesKnights.ts`（新）：family 測試明列 `[seafarersKit, citiesKnightsKit, sfckKit]`，SF／C&K 既有的守恆、`hideDifferently`、`responseCommands` 檢查與擾動由各自的 kit 提供；SFCK kit 只補組合特有的不變量、擾動修補（首攻前狀態）與計數，不再次呼叫部件 kit；SFCK 的 `perturb` 最後執行，修補首攻前狀態，再加上海盜位置、首攻前後與船端騎士的擾動（SFCK 沒有回應指令）；`mechanics` 逐步累計 `events`。另有 `test/sfck-game.test.ts`、`sfck-fair.test.ts`、`sfck-fuzz.test.ts`、`sfck-fallback.test.ts`（新）；`packages/bots/test/harness.ts`（`PROFILE_LIMITS` 兩筆：6000 步、72 次擲骰；沒有項目時會套用預設的 5000 步、60 次擲骰，bench 也讀這裡）；`packages/bots/test/families.ts`（`BOT_FAMILIES` 一筆 family）；`packages/bots/bench/run.ts`（**一定要改**：`BENCH_KITS` `:52`、`RULES_SIM_ROUNDS` `:64-69`） | §6.1 的 Q1 矩陣、§6.2 的 Q2；family 明列兩個 profile（策略 §4.6；profile id 寫成單引號字面值，`families.ts:14-21`） | 0／300–385（行數未依刷新重估） | 開發：SFCK-1；合併：SFCK-2 之後 | `BOTS_SEEDS=3 pnpm --filter @catan/bots exec vitest run test/sfck-game.test.ts test/sfck-fair.test.ts test/sfck-fuzz.test.ts test/sfck-fallback.test.ts`；`BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run test/sfck-game.test.ts`；回報 `longestStagnation`（D4）。**bench 不在此驗收**（`bench --profile sf-ck-…` 在 SFCK-G 之前會被 `botsCanPlay` 擋下，D6）：移到 §8 步驟 4 的 QA；SFCK-3 可在本地暫時翻開 gating 跑 bench 做校準，不提交 |
-| **SFCK-G** 開放 gating | `feat/bots-sfck-gate`／`.worktrees/bots-sfck-gate/` | `modules/seafarersCitiesKnights/index.ts`（`SFCK_BOTS_RELEASED = true`）；`packages/bots/test/support.test.ts`（`:52-61` 與快照 `:64-73` 加入兩個 id）；server 測試：`packages/server/test/seafarers-cities-knights.test.ts:148-162`（翻轉；`:152` 斷言 botSeats 為 `[false,false]`、`:161` 斷言 `E_INVALID_BOT`）、`bots.test.ts:289-294`（sf-ck 的 botSeats）、`:304-307`（`levels('sf-ck-new-shores-2025')`）與 `:378-399`（整個「still refuses bot seats」測試以 sf-ck 為例，改用其他不支援的 profile，例如 `ep-land-ho-2025`）、`rooms.test.ts:218-220`（`botSeats: false`）；`packages/server/test/seafarers-cities-knights-bots.test.ts`（新；既有慣例是 `seafarers-bots.test.ts`、`cities-knights-bots.test.ts`）；§7.1 的文件；截圖（D3，待使用者決定） | gating；server 四類案例（策略 §4.7-5），加上拒絕 hard 的案例（比照 C&K：`E_INVALID_BOT`／`profileLevel`）；文件 | 5–10／150–200；docs 40–60（行數未依刷新重估） | SFCK-3 | `pnpm --filter @catan/bots exec vitest run test/support.test.ts test/sfck-game.test.ts`；`pnpm --filter @catan/server exec vitest run test/seafarers-cities-knights.test.ts test/seafarers-cities-knights-bots.test.ts test/bots.test.ts test/rooms.test.ts`；`BOTS_SEEDS=10 pnpm verify` |
+| **SFCK-G** 開放 gating | `feat/bots-sfck-gate`／`.worktrees/bots-sfck-gate/` | `modules/seafarersCitiesKnights/index.ts`（`SFCK_BOTS_RELEASED = true`）；`packages/bots/test/support.test.ts`（`:52-61` 與快照 `:64-73` 加入兩個 id）；server 測試：`packages/server/test/seafarers-cities-knights.test.ts:148-162`（翻轉；`:152` 斷言 botSeats 為 `[false,false]`、`:161` 斷言 `E_INVALID_BOT`）、`bots.test.ts:289-294`（sf-ck 的 botSeats）、`:304-307`（`levels('sf-ck-new-shores-2025')`）與 `:378-399`（整個「still refuses bot seats」測試以 sf-ck 為例，改用其他不支援的 profile，例如 `ep-land-ho-2025`）、`rooms.test.ts:218-220`（`botSeats: false`）；`packages/server/test/seafarers-cities-knights-bots.test.ts`（新；既有慣例是 `seafarers-bots.test.ts`、`cities-knights-bots.test.ts`）；§7.1 的文件；截圖（D3 已決定，見 §10） | gating；server 四類案例（策略 §4.7-5），加上拒絕 hard 的案例（比照 C&K：`E_INVALID_BOT`／`profileLevel`）；文件。**實際完成（PR #170）**：`SFCK_BOTS_RELEASED = true`，`support.test.ts` 的兩個 sf-ck profile 為 `botsCanPlay === true` 並進快照；既有 server 測試翻轉為 `botSeats: true`（`seafarers-cities-knights.test.ts`、`rooms.test.ts`、`bots.test.ts`），其中「仍拒絕」的案例改用 `ep-land-ho-2025`、`ep-pirate-lairs-2025`；新檔 `seafarers-cities-knights-bots.test.ts` 共 16 個測試（3 人與 5 人整局、保底、共用 frame、重啟，兩個 profile 都涵蓋；hard 仍被拒絕為 `E_INVALID_BOT`／`profileLevel`）；文件 §7.1 與大廳截圖（D3） | 5–10／150–200；docs 40–60（行數未依刷新重估） | SFCK-3 | `pnpm --filter @catan/bots exec vitest run test/support.test.ts test/sfck-game.test.ts`；`pnpm --filter @catan/server exec vitest run test/seafarers-cities-knights.test.ts test/seafarers-cities-knights-bots.test.ts test/bots.test.ts test/rooms.test.ts`；`BOTS_SEEDS=10 pnpm verify` |
 
 - **合計**：src 310–475，test 965–1,270，docs 40–60，總計約 1,315–1,805 行。比第一輪的 1,130–1,650 略高，因為 server 四類案例與組合測試工具都算在本版內（D1 的決策雜湊比對在 scratch 進行、不提交，不計入）。
 - **commit subject**（squash 後附 `(#N)`）：X `✨ feat(rules): export seafarers cities knights hint types`；P `✨ feat(bots): fold bandit targets and rescore candidates`；1 `✨ feat(bots): add the seafarers cities knights module`；2 `✨ feat(bots): chase the pirate and combine setup scores`；3 `🧪 test(bots): gate seafarers cities knights bot games`；G `✨ feat(bots): play new shores with cities & knights`。
@@ -276,23 +276,24 @@ PR 一律指向 `release/v0.4.3`，以 squash merge 合併。分支為 `feat/bot
 
 ### 6.2 Q2 門檻（發布閘門；只計策略席位）
 
-數據來自 `q2-calibrate.ts mixed`：每格 10 局。原型偏弱（只在沒有聚落點時才造船），正式策略應不低於它。SFCK-3 先以 `BOTS_SEEDS=10` 確認，達不到時回報主 agent，不自行降低門檻。
+門檻的依據是 `q2-calibrate.ts mixed`（第一輪原型，每格 10 局）：原型偏弱（只在沒有聚落點時才造船），正式策略應不低於它。SFCK-3 先以 `BOTS_SEEDS=10` 確認，達不到時回報主 agent，不自行降低門檻。**「正式策略實測」欄是 SFCK-3（PR #169，squash `218274f`）在 `BOTS_SEEDS=10`、策略 `aa46ceb` 下的結果**，與 `docs/aegis/work/2026-11-12-bots-seafarers-cities-knights.md` 的 Q2 表一致；第一輪原型的數字移到表後的「第一輪校準」。
 
-| # | 指標 | 3 人 | 4 人 | 5 人 | 6 人 | 預設 3 種子 | 實測（3／4／5／6） | 性質 |
+| # | 指標 | 3 人 | 4 人 | 5 人 | 6 人 | 預設 3 種子 | 正式策略實測（3／4／5／6；PR #169，`BOTS_SEEDS=10`） | 性質 |
 |---|---|---|---|---|---|---|---|---|
 | S1 | 至少有一次付費 `build.ship` 的局數 | ≥ 9/10 | ≥ 9/10 | ≥ 9/10 | ≥ 9/10 | 3/3 | 10／10／10／10 | 實測 |
-| S2 | 有人拿到小島加分的局數 | ≥ 6/10 | ≥ 5/10 | ≥ 8/10 | ≥ 8/10 | 3–4 人 ≥ 1/3；5–6 人 ≥ 2/3 | 8／6／10／10 | 實測（下限） |
-| S3 | standard 席與 easy 席各自有付費造船的局數（每個 profile 合計 20 局） | 各 ≥ 12/20 | | 各 ≥ 12/20 | | 不檢查 | 3–4 人：std 17、easy 13；5–6 人：20、19 | 實測 |
-| S4 | 由策略送出 `gold.choose` 的局數（每個 profile 合計 20 局） | 不設門檻（改由 FX-G1） | | ≥ 6/20 | | 不檢查 | 3–4 人 2/20；5–6 人 11/20 | 實測 |
-| C1 | `knight.recruit`、`knight.activate` | 每局各 ≥ 1 | 同 | 同 | 同 | 同 | 每局最少：招募 2／6／3／7，啟動 7／22／9／26 | 實測（沿用 C&K 的 M1） |
-| C2 | 桌上最高改良等級 ≥ 3 的局數 | ≥ 7/10 | ≥ 9/10 | ≥ 9/10 | ≥ 9/10 | 3–4 人 ≥ 2/3；5–6 人 3/3 | 8／10／10／10 | 實測（改寫 C&K 的 M2，G-SC8） |
-| C3 | `progress.play` | 每局 ≥ 3 | 同 | 同 | 同 | 同 | 每局最少 10／18／10／22 | 實測（沿用 M3） |
-| C4 | 守住蠻族（每格合計） | ≥ 2 | ≥ 2 | ≥ 2 | ≥ 2 | 不檢查 | 32／37／26／27 | 實測（沿用 M4） |
-| C5 | 終局時持有的大都市（每格合計） | ≥ 5 | ≥ 5 | ≥ 5 | ≥ 5 | 不檢查 | 8／21／17／23 | 實測（沿用 M6） |
-| X1 | `knight.chasePirate` | **固定盤面守門**：FX-C1 中 standard 必須追擊；FX-C2–C6 中不追擊 | | | | 每次都跑 | sim 只有 1/40 局（第一輪全 standard 6/40） | sim 覆蓋不到 |
-| X2 | 金礦城市 | **固定盤面守門**：FX-G2 中 standard 升級金礦聚落，加上估值單元測試 | | | | 每次都跑 | sim 0/40 | sim 覆蓋不到 |
-| X3 | `either` 時移海盜 | **固定盤面守門**：FX-B3 中 standard 在海盜較好時移海盜，easy 只移強盜 | | | | 每次都跑 | 3–4 人 0/20；5–6 人 5/20 | sim 不穩定 |
+| S2 | 有人拿到小島加分的局數 | ≥ 6/10 | ≥ 5/10 | ≥ 8/10 | ≥ 8/10 | 3–4 人 ≥ 1/3；5–6 人 ≥ 2/3 | 10／10／10／10 | 實測（下限） |
+| S3 | standard 席與 easy 席各自有付費造船的局數（每個 profile 合計 20 局） | 各 ≥ 12/20 | | 各 ≥ 12/20 | | 不檢查 | 3–4 人：std 20、easy 20；5–6 人：std 20、easy 17 | 實測 |
+| S4 | 由策略送出 `gold.choose` 的局數（每個 profile 合計 20 局） | 不設門檻（改由 FX-G1） | | ≥ 6/20 | | 不檢查 | 3–4 人不設門檻；5–6 人 17/20 | 實測 |
+| C1 | `knight.recruit`、`knight.activate` | 每局各 ≥ 1 | 同 | 同 | 同 | 同 | 每局最少：招募 3／3／4／8，啟動 4／3／9／14 | 實測（沿用 C&K 的 M1） |
+| C2 | 桌上最高改良等級 ≥ 3 的局數 | ≥ 7/10 | ≥ 9/10 | ≥ 9/10 | ≥ 9/10 | 3–4 人 ≥ 2/3；5–6 人 3/3 | 9／10／10／10 | 實測（改寫 C&K 的 M2，G-SC8） |
+| C3 | `progress.play` | 每局 ≥ 3 | 同 | 同 | 同 | 同 | 每局最少 4／9／15／28 | 實測（沿用 M3） |
+| C4 | 守住蠻族（每格合計） | ≥ 2 | ≥ 2 | ≥ 2 | ≥ 2 | 不檢查 | 17／11／4／4 | 實測（沿用 M4） |
+| C5 | 終局時持有的大都市（每格合計） | ≥ 5 | ≥ 5 | ≥ 5 | ≥ 5 | 不檢查 | 12／15／23／24 | 實測（沿用 M6） |
+| X1 | `knight.chasePirate` | **固定盤面守門**：FX-C1 中 standard 必須追擊；FX-C2–C6 中不追擊 | | | | 每次都跑 | 模擬對局 0 次；固定盤面 FX-C1／C8 守門 | sim 覆蓋不到 |
+| X2 | 金礦城市 | **固定盤面守門**：FX-G2 中 standard 升級金礦聚落，加上估值單元測試 | | | | 每次都跑 | 由固定盤面守門（模擬對局不計） | sim 覆蓋不到 |
+| X3 | `either` 時移海盜 | **固定盤面守門**：FX-B3 中 standard 在海盜較好時移海盜，easy 只移強盜 | | | | 每次都跑 | 由固定盤面守門（模擬對局不計） | sim 不穩定 |
 
+- **第一輪校準（原型策略，`q2-calibrate.ts mixed`，每格 10 局；僅供門檻出處，不是現行實測）**：S1 10／10／10／10；S2 8／6／10／10；S3 3–4 人 std 17、easy 13，5–6 人 20、19；S4 3–4 人 2/20，5–6 人 11/20；C1 每局最少招募 2／6／3／7、啟動 7／22／9／26；C2 8／10／10／10；C3 每局最少 10／18／10／22；C4 32／37／26／27；C5 8／21／17／23；X1 sim 1/40 局（第一輪全 standard 6/40）、X2 0/40、X3 3–4 人 0/20、5–6 人 5/20。
 - **不套用到 sf-ck 的 C&K 門檻**：M5（失城率）、M7（F1 卡種）、M8（CK-C）。卡片策略與 C&K 相同，由 ck-\* 的格子守門；這些指標在 sf-ck 只列入 Q3。
 - **SF 的 Q2-5**（`ship.move`）在 sf-ck 也只列入 Q3：釘船讓移船更少見，原型也不移船。
 - X1–X3 偏離策略 Q2「全部種子合計」的定義，見 §11-4。
@@ -348,7 +349,7 @@ mixed 每局 0.6–1.0 s（load 0.5–1.2）。預設 3 種子是 12 局 B-GAME�
 | `README.md:178-179` | 「Bot seats are not offered for this combination.」比照 `:171` 改為「Easy and standard computer opponents can be added.」 |
 | `docs/aegis/specs/2026-11-01-bot-opponents.md:16-19`（支援清單） | 在 `:19`（0.4.2 的 C&K）之後加「0.4.3 起加上 `sf-ck-new-shores-2025`（3–4 人）與 `sf-ck-new-shores-paired-2025`（5–6 人）。策略與保底見本計畫」 |
 | 同上 §5 規則 7（`:141-154`） | `:146`「自己要移動強盜：第一個非目前強盜格、非海洋的格子」改為「fold 集合的第一項（base 就是第一個非目前強盜格的陸地格）」；`:154` 只有 SF 的指引，之後補 C&K（C&K 計畫 §4.2）與 SF+CK（本計畫 §4.3）的指引 |
-| `docs/screenshots/seafarers-cities-knights/README.md:21`、`lobby-combined.png` | 說明「電腦對手尚未支援這個規則組合。」在 SFCK-G 之後會過時；去向依 D3（使用者決定） |
+| `docs/screenshots/seafarers-cities-knights/README.md:21`、`lobby-combined.png` | 說明「電腦對手尚未支援這個規則組合。」在 SFCK-G 之後會過時；依 D3（2026-11-12 使用者決定：比照 CK-G）已在 SFCK-G 重拍 `lobby-combined.png` 並改寫該列 |
 | `docs/aegis/work/<date>-bots-seafarers-cities-knights.md`（新）、`docs/aegis/INDEX.md` | 工作紀錄（Q1、Q2、Q3 表與探查結論）與索引列（比照 `INDEX.md:8`） |
 
 - `docs/aegis/work/2026-11-02-seafarers-cities-knights.md:356` 是歷史紀錄，**不改**。
@@ -359,7 +360,7 @@ mixed 每局 0.6–1.0 s（load 0.5–1.2）。預設 3 種子是 12 局 B-GAME�
 1. v0.4.2 stable 發布後，從 `master` 建立 `release/v0.4.3`（2026-11-12 已建立，起點 `fc6b3b5`），各 PR 依 §5.1 的順序合併。
 2. SFCK-G 合併後，QA 執行 `BOTS_SEEDS=10 pnpm verify` 與 §6.4 的 bench（bench 在 gating 開放後才跑得動，D6），把 Q3 表附在發布 PR。
 3. 在 release 分支直接 push `🔖 release: v0.4.3-rc.1`，用 rc 映像試玩。
-4. Browser QA：`sf-ck-new-shores-2025` 4 人房加入 1 easy、1 standard 後開局，觀察數個 Bot 回合，至少看到造船、招募或啟動騎士、`city.improve`、小島聚落或首攻後的盜賊選擇，而且沒有停住；`sf-ck-new-shores-paired-2025` 6 人房再驗證一次，包含 P2 的 window。追擊海盜在試玩中很少見，不列為必看項目，由 FX-C1 保證。截圖政策**待使用者在 SFCK-G 決定**（D3）：提案比照 CK-G（E-9，使用者 2026-11-11 決定）——PR 證據放 `pr-assets` 分支的 `pr-<N>/`，再新增或重拍 `docs/screenshots/seafarers-cities-knights/lobby-*.png`，同步更新該 README `:21`（「電腦對手尚未支援這個規則組合。」會過時）；原稿「放在 `.tmp/`，不提交（D10）」在使用者決定前不採用。
+4. Browser QA：`sf-ck-new-shores-2025` 4 人房加入 1 easy、1 standard 後開局，觀察數個 Bot 回合，至少看到造船、招募或啟動騎士、`city.improve`、小島聚落或首攻後的盜賊選擇，而且沒有停住；`sf-ck-new-shores-paired-2025` 6 人房再驗證一次，包含 P2 的 window。追擊海盜在試玩中很少見，不列為必看項目，由 FX-C1 保證。截圖政策（D3）：2026-11-12 使用者決定比照 CK-G（E-9，使用者 2026-11-11 決定）——PR 證據放 `pr-assets` 分支的 `pr-<N>/`，再重拍 `docs/screenshots/seafarers-cities-knights/lobby-combined.png`，同步更新該 README（`:21` 的列與說明段落）；已在 SFCK-G 完成。原稿「放在 `.tmp/`，不提交（D10）」不採用。
 5. stable：開 PR `release/v0.4.3 → master`，以 merge commit 合併；在 master 建立 `🔖 release: v0.4.3`、打 tag，並以 `scripts/release-notes.sh` 加上 `scripts/release-notes-lint.sh` 產生 notes。tag 與 Release 只在使用者授權後執行。
 
 ## 8. Paseo 分工
@@ -375,7 +376,7 @@ mixed 每局 0.6–1.0 s（load 0.5–1.2）。預設 3 種子是 12 局 B-GAME�
 | 1″ | SFCK-1，與 1、1′ 並行開發 | Implementer（Backend）丙 | `.worktrees/bots-sfck-module/` | Reviewer（Opus）：I9、真值表 |
 | 2 | SFCK-2，延續 SFCK-1 的脈絡 | Implementer（Backend）丙 | `.worktrees/bots-sfck-strategy/` | Reviewer（Sol）：分數尺度、決定性、B-FAIR |
 | 2′ | SFCK-3，與 2 並行 | QA（只改測試） | `.worktrees/bots-sfck-tests/` | Reviewer（Opus） |
-| 3 | SFCK-G；文件由主 agent 處理；截圖政策先問使用者（D3） | Implementer（Backend）甲 | `.worktrees/bots-sfck-gate/` | Reviewer（Sol） |
+| 3 | SFCK-G；文件由主 agent 處理；截圖政策依 D3（使用者已決定比照 CK-G） | Implementer（Backend）甲 | `.worktrees/bots-sfck-gate/` | Reviewer（Sol） |
 | 4 | `BOTS_SEEDS=10` 的 Q1／Q2 矩陣與 bench（`bench --profile sf-ck-…` 在 SFCK-G 之後才跑得動，D6） | QA | 自己的 worktree | 主 agent |
 | 5 | rc 的瀏覽器驗證 | Browser QA | 共用工作區 | 主 agent |
 | 6 | rc 與 stable 的 tag、Release | Release Manager（需要使用者明確授權） | — | — |
@@ -421,7 +422,7 @@ mixed 每局 0.6–1.0 s（load 0.5–1.2）。預設 3 種子是 12 局 B-GAME�
 |---|---|---|---|
 | D1 | SFCK-P 的 golden replay：golden 只涵蓋 base（`test/golden/driver.ts`；`harness.ts:779-835` 的 `goldenIdsFor`），sf-\*、ck-\* 沒有基礎設施 | 不提交 sf／ck 的 golden fixture。SFCK-P 在 scratch 以 `createDecisionHasher`（`packages/bots/test/harness.ts:821`）比對決策雜湊：同一批局在 `fc6b3b5` 與 PR head 各跑一次——base 3–6 人 × 10 種子（沿用既有 golden），加上 `sf-new-shores-2025`、`sf-new-shores-paired-2025`、`ck-2025`、`ck-paired-2025` 各 3 種子（混合難度）。每個雜湊必須相同，結果表放進 PR 本文。腳本放在 repo 外（例如 `.worktrees/_scratch/sfck-p/`），不提交 | §5 SFCK-P、SFCK-2 驗收；§8；§9 R-SC1 |
 | D2 | `knight.recruit` 的點：`recruitSite` 只選一個點，planStep 也不經過 `rescore`，`rescore` 改不了它 | 選 (b)：SFCK-2 可改 `citiesKnights/defense.ts` 的 `recruitSite`（只動這個函式），讓 `free` 依各模組對 `knight.recruit {vertex}` 的 `rescore` 差值總和由高到低排序，同分依原有順序、再取 vertex 較小者。沒有任何 `rescore` 提供者的 profile（除 sf-ck 以外全部）結果必須逐位元相同：D1 的 ck-\* 雜湊比對，加上 `BOTS_SEEDS=10` 的 `ck-game`。`types.ts` 的 `rescore` 註解加一句：「C&K's `recruitSite` also orders recruit sites by it (ties keep the existing order).」（捨棄 (a)：K2 只罰 move 與 displace，釘船比例只在 Q3 觀察） | §4.1、§4.4、§4.6、§5 SFCK-2、§6.3 FX-K、§8 |
-| D3 | 截圖政策：原稿「放在 `.tmp/`，不提交（D10）」；CK-G 採 E-9（使用者 2026-11-11 決定）：PR 證據放 `pr-assets` 的 `pr-<N>/`，再把一張大廳截圖收進 `docs/screenshots/` | **待使用者在 SFCK-G 決定**（屆時詢問）。提案：比照 CK-G，放 `pr-assets` 的 `pr-<N>/`，並新增或重拍 `docs/screenshots/seafarers-cities-knights/lobby-*.png`，同步更新 README `:21`（「電腦對手尚未支援這個規則組合。」） | §5 SFCK-G、§7.1、§7.2-4、§8 |
+| D3 | 截圖政策：原稿「放在 `.tmp/`，不提交（D10）」；CK-G 採 E-9（使用者 2026-11-11 決定）：PR 證據放 `pr-assets` 的 `pr-<N>/`，再把一張大廳截圖收進 `docs/screenshots/` | **已決定（使用者 2026-11-12）**：比照 CK-G，PR 證據放 `pr-assets` 的 `pr-<N>/`，並重拍 `docs/screenshots/seafarers-cities-knights/lobby-combined.png`，同步更新 README（`:21` 的列「電腦對手尚未支援這個規則組合。」與說明段落）；拍攝腳本為 `scripts/bots-seafarers-cities-knights/capture.py`，已在 SFCK-G（PR #170）完成 | §5 SFCK-G、§7.1、§7.2-4、§8 |
 | D4 | 看門狗的單位：harness 計的是 `turn.roll` 次數，原稿「72 回合 ≈ 7 倍」是以輪計 | 維持 `watchdogRolls: 72`（= 72 次 `turn.roll`，與 C&K 同義），改正原稿的說法（原型最長 41 次擲骰，約 1.8 倍）；SFCK-3 回報 `longestStagnation`，超過約 50 次擲骰時提報 | §6.1、§5 SFCK-3 |
 | D5 | 第 2 輪 setup 的合成公式：原稿三者相加，會重複計算產能 | 第 1 輪 `setupSpotScore + islandSetupBonus`；第 2 輪 `citySetupScore + islandSetupBonus`，加上 `touchesOreOrGrain` 的硬篩選（複製 `citiesKnightsSetup:67-71`）；不得把 `setupSpotScore` 與 `citySetupScore` 相加；road 階段回 undefined（交給 SF） | §4.1、§4.4、§6.3 FX-S |
 | D6 | `bench --profile sf-ck-*` 在 SFCK-G 之前會被 `botsCanPlay` 擋下（`bench/run.ts:109-113`） | 從 SFCK-3 的驗收移到 SFCK-G 之後的 QA（§8 步驟 4）；SFCK-3 可在本地暫時翻開 gating 做校準，不提交 | §5 SFCK-3、§6.4、§7.2-2、§8 |
