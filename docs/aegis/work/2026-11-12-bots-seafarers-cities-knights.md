@@ -79,7 +79,7 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
   2. 第二輪 setup 把座位 1 放進內陸：3 人 New Shores 地圖固定，座位 1 第一輪選內陸的 v35；第二輪的 ore／grain 硬過濾（`packages/bots/src/modules/seafarersCitiesKnights/setup.ts:29-30`，D5）刪掉沿海的 v78（小島加分 4.63、分數 13.22），留下內陸的 v49（加分 0、分數 10.34）。單獨的 SF 選 35／78；sf-ck 座位 1 的 34 局全選 35／49。
   3. 兩棟建築都在內陸，船出不去：船只能接自己的建築或船，不能接路（`packages/rules/src/modules/seafarers/ships.ts:69-74`），bot 找船也只從建築與船出發（`packages/bots/src/sea.ts:240,245`），沒有計畫會「修路到海岸以解鎖船」。naive 的路把唯一的沿海出口封住後（game 9、21：沿海的 v31 的海邊 39、43 被 bot3 的路占走），分數卡在 14–15，只剩防禦者與 VP 牌這類隨機分數。100 局中「standard 從未有合法船位」的局與看門狗局完全重合（4/4）；`rescore` 與追擊海盜沒有參與。
 - **`city.improve` 停止與 bank 循環**（都是 v0.4.2 與 base 既有的行為，只在 sf-ck 這個條件下造成停滯）：game 21 三條軌道都滿級；game 9 的 `mainTrack` 選到已滿級的 trade（`packages/bots/src/modules/citiesKnights/improve.ts:94-112` 不跳過滿級），science、politics 又被非主軌 > 3 級的規則丟掉（`improve.ts:163`），計畫清單為空；game 36、57 的下一級要大都市，但自己每座城市都已有一座，規則回 `blocked = 'no-site'`（`packages/rules/src/modules/citiesKnights/cities.ts:124`），而 `citiesKnightsPlans`（`packages/bots/src/modules/citiesKnights/plans.ts:62`）沒有檢查 `blocked`，計畫卡在第一項、`improveCommand` 回 null（`plans.ts:131`）。bank 循環來自 base 的 `handRelief`（`packages/bots/src/heuristic.ts:520`）：手牌超過上限且計畫為空或已湊齊時，`receive` 退回權重最高的資源，C&K 又在買得起時把目標商品的權重乘 1.3（`citiesKnights/economy.ts:68`），於是換進換出；每次 2:1 都縮小手牌，會自然停止，浪費指令但不是停滯的原因。
-- **看門狗是組合新出現的，與 #135 機制不同**：3 人 1 standard vs 2 naive 各 100 局，sf-new-shores-2025 在 head 與 v0.4.2（`fc6b3b5`）都是勝率 28%、平均 29.1 回合、看門狗 0；ck-2025 在 head 是勝率 100%、27.7 回合、看門狗 0。#135 的症狀是座位 2 只贏 2/33 局、船位一直可達，與這裡不同。
+- **看門狗是組合新出現的，與 #135 機制不同**：3 人 1 standard vs 2 naive 各 100 局，sf-new-shores-2025 在 head 與 v0.4.2（`fc6b3b5`）都是勝率 28%、平均 29.1 回合、看門狗 0；ck-2025 在 head 是勝率 100%、27.7 回合、看門狗 0。#135 的症狀是座位 2 的 standard 只贏 2/33 局（建點 v76／v78，每局都有船位），與這裡不同。
 - **真實對手的風險低**：停滯需要其他玩家都無法獲勝；easy 與 standard 會造船與改良，下面各組都沒有觸發。4 人 1 standard vs 3 naive 已有 4 局 50–58 次擲骰的停滯，這一組天生脆弱。
 
   | sf-ck，各 100 局 | 看門狗 | 最長停滯（擲骰） | standard 從未有船位的局數 |
@@ -90,7 +90,7 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
   | 5 人／6 人 vs easy | 0 | 34／31 | 14／12 |
 
   另有一項未驗證的觀察：3 人全 standard 的座位勝場是 21／34、12／33、1／33，可能是固定地圖的座位偏差。
-- **評估過、不採用的修法**：B5（第一輪建築沒有海邊時，放寬第二輪的 ore／grain 過濾）與 B5b（保留過濾，另加 `islandSetupBonus > 0` 的候選），scratch 模擬如下。勝率沒有可測的提升（±5 pp 的雜訊內）；5–6 人的無船局略增（14 → 18／16）；3 人 vs naive 仍有 56／61 次擲骰的停滯，只是移到座位 2；而且要修改 D5，並全面重跑 Q1／Q2／Q3。
+- **評估過、不採用的修法**：B5（第一輪建築沒有海邊時，放寬第二輪的 ore／grain 過濾）與 B5b（保留過濾，另加 `islandSetupBonus > 0` 的候選），scratch 模擬如下。勝率沒有可測的提升（±5 pp 的雜訊內）；5–6 人的無船局略增（5 人 vs easy 14 → 18（B5）／16（B5b），6 人 vs easy 12 → 14／14）；3 人 vs naive 仍有 56／61 次擲骰的停滯，只是移到座位 2；而且要修改 D5，並全面重跑 Q1／Q2／Q3。
 
   | 組 | 現況 | B5 | B5b |
   |---|---|---|---|
@@ -99,6 +99,8 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
   | 3 人全 standard 無船局 | 5 | 2 | — |
   | 5 人 vs easy 勝場 | 65 | 59 | 62 |
   | 6 人 vs easy 勝場 | 55 | 56 | 53 |
+  | 5 人 vs easy 無船局 | 14 | 18 | 16 |
+  | 6 人 vs easy 無船局 | 12 | 14 | 14 |
 
 ## 審查得出的限制與後續事項
 
