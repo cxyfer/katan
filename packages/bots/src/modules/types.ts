@@ -159,10 +159,27 @@ export interface BotModule {
   readonly maxCommandsPerWindow?: number;
   readonly responseCommands?: readonly string[];
 
+  // ---- 0.4.3 實作（SF+CK；SFCK-P 接上骨架）----
+  /**
+   * 盜賊目標的 fold（策略 §4.2；比照 rules 的 `legalRobberHexes`，`packages/rules/src/engine.ts:1495-1505`）。依
+   * `profile.ruleModules` 順序，每個模組收到目前的集合並回傳下一組（可以縮小、替換或擴大，例如 T&B 的 FR 換成沙漠）。
+   * 初值是「盜賊預設」：陸地且不是 `view.board.robber` 的 hex（index 遞增），接著是海且不是 `view.board.pirate`
+   * 的 hex，`view.board.pirate !== null` 時最後加上 `null`（外框）。base 沒有海格、海盜為 null，所以初值就是 base
+   * 的強盜目標。結果是這次 `pending.moveRobber`（以及打出騎士卡）的完整合法集合：保底取第一項；策略以它過濾 base 的
+   * 強盜候選與各模組的 `banditCandidates`，過濾後沒有候選時直接取第一項（不消耗亂數）。fold 之後不再另外排除
+   * `view.board.robber`。保底路徑也會呼叫它：不得 throw、不得消耗亂數，只讀 view 與 hints。
+   */
+  robberTargets?(view: GameView, selfId: string, targets: readonly BanditTarget[]): readonly BanditTarget[];
+  /**
+   * 行動候選的分數差值（勝利分當量）。骨架在 `buildDecision` 合併 base 的立即建造與各模組的 `actions`、去重之後，
+   * 把所有模組對同一個候選的差值相加，再挑選；沒有任何模組提供時完全不呼叫。只調整分數，不得用來表達合法性或排除
+   * 候選（合法性只看 hints，P2）；不相干的指令回 0。不得消耗亂數。非有限值視為 0；要壓低分數請回有限的負值，
+   * 不得以 −∞ 表達排除（R-SC9）。（SFCK-2 起，D2）C&K 的 `recruitSite` 也以它為各招募點排序（同分保留既有順序）。
+   */
+  rescore?(turn: TurnContext, command: BotCommand): number;
+
   // ---- 只保留型別，骨架不呼叫 ----
   phase?(turn: TurnContext): BotCommand | null | undefined; // 0.4.5
   endWindow?(turn: TurnContext): BotCommand | null | undefined; // 0.4.5
-  robberTargets?(view: GameView, selfId: string, targets: readonly BanditTarget[]): readonly BanditTarget[]; // 0.4.3
-  rescore?(turn: TurnContext, command: BotCommand): number; // 0.4.3
   readonly trade?: BotTradeHooks; // 0.4.4、0.4.5
 }

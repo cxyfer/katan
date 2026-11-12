@@ -1,6 +1,7 @@
 import type { CitiesKnightsHints, CitiesKnightsView } from './modules/citiesKnights/index.ts';
 import type { ExplorersPiratesHints, ExplorersPiratesView } from './modules/explorersPirates/index.ts';
 import type { SeafarersHints, SeafarersView } from './modules/seafarers/index.ts';
+import type { SeafarersCitiesKnightsHints, SeafarersCitiesKnightsView } from './modules/seafarersCitiesKnights/index.ts';
 
 export * from './types.ts';
 export * from './messages.ts';
@@ -65,6 +66,8 @@ export {
   TREASON_PLACE_FRAME as CK_TREASON_PLACE_FRAME,
   DIPLOMACY_FRAME as CK_DIPLOMACY_FRAME,
 } from './modules/citiesKnights/card-common.ts';
+export type { SeafarersCitiesKnightsView, SeafarersCitiesKnightsHints, SfckBandit } from './modules/seafarersCitiesKnights/index.ts';
+export { SEAFARERS_CITIES_KNIGHTS } from './modules/seafarersCitiesKnights/index.ts';
 export * from './modules/index.ts';
 export * from './analysis.ts';
 export * from './profiles.ts';
@@ -82,6 +85,7 @@ export interface ModuleViewMap {
   seafarers: SeafarersView;
   explorersPirates: ExplorersPiratesView;
   citiesKnights: CitiesKnightsView;
+  seafarersCitiesKnights: SeafarersCitiesKnightsView;
 }
 
 /**
@@ -93,4 +97,5 @@ export interface ModuleHintsMap {
   seafarers: SeafarersHints;
   explorersPirates: ExplorersPiratesHints;
   citiesKnights: CitiesKnightsHints;
+  seafarersCitiesKnights: SeafarersCitiesKnightsHints;
 }

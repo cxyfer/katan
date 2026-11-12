@@ -35,7 +35,7 @@ import {
 } from './economy.ts';
 import { LEVEL_PARAMS, type LevelParams } from './level.ts';
 import { fallbackDecision } from './fallback.ts';
-import { collectScored, firstAnswer, isModuleFrame } from './modules/compose.ts';
+import { collectScored, firstAnswer, isModuleFrame, rescoreDelta } from './modules/compose.ts';
 import { botModulesOf } from './modules/registry.ts';
 import type { BotModule, Scored, TurnContext } from './modules/types.ts';
 import { Turn } from './turn.ts';
@@ -394,9 +394,11 @@ function buildDecision(turn: TurnContext): BotCommand | null {
       scoring.push({ item: { type: 'build.settlement', vertex }, score: value });
     }
   }
-  // 模組的「現在就該做」候選接在 base 之後，一起評分。
+  // 模組的「現在就該做」候選接在 base 之後，一起評分；合併、去重之後再套用各模組的 rescore 差值。
   const extra = collectScored(turn.modules, (module) => module.actions?.(turn));
-  const scoringPick = turn.pick(extra.length === 0 ? scoring : dedupeCandidates([...scoring, ...extra]));
+  const scoringPick = turn.pick(
+    rescoreCandidates(turn, extra.length === 0 ? scoring : dedupeCandidates([...scoring, ...extra])),
+  );
   if (scoringPick) return scoringPick;
 
   // b) 主要計畫：付得起就做下一步，否則看銀行交易能否在這回合補齊。
@@ -423,6 +425,22 @@ function buildDecision(turn: TurnContext): BotCommand | null {
     if (edge !== null) return { type: 'build.road', edge };
   }
   return null;
+}
+
+/**
+ * 把所有提供 `rescore` 的模組對同一個候選的差值相加到分數上（不新增、不移除候選，順序不變）。沒有任何
+ * 模組提供 `rescore` 時原樣回傳同一個陣列：不呼叫任何鉤子，也不改變順序或亂數消耗。非有限的差值視為 0。
+ */
+export function rescoreCandidates(
+  turn: TurnContext,
+  candidates: readonly Scored<BotCommand>[],
+): readonly Scored<BotCommand>[] {
+  const hooks = turn.modules.filter((module) => module.rescore);
+  if (hooks.length === 0) return candidates;
+  return candidates.map((candidate) => {
+    const delta = rescoreDelta(hooks, turn, candidate.item);
+    return delta === 0 ? candidate : { item: candidate.item, score: candidate.score + delta };
+  });
 }
 
 /**

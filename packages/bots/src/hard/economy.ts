@@ -46,7 +46,7 @@ function routePlan(turn: HardTurn, economy: Economy): Plan | null {
   const edge = bestRouteEdge(model, view.hints?.legalRoads ?? [], economy.myRoute);
   if (edge === null) return null;
   const cost = scaleCost(COSTS.road, needed);
-  const eta = etaRounds(economy.hand, cost, playerYield(model, ctx.selfId), economy.rates, view.players.length);
+  const eta = etaRounds(economy.hand, cost, playerYield(model, ctx.selfId), economy.rates, view.players.length, economy.kinds);
   return { kind: 'longestRoad', vertex: null, roads: [edge], ships: [], cost, nextCost: COSTS.road, value, eta, score: value / (1 + eta) };
 }
 
