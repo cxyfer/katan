@@ -304,6 +304,9 @@ describe('Seafarers + Cities & Knights fuzz perturbed states', () => {
         console.log(`pirate-chase states (${profileId} ${players}p): ${staged}, accepted chases by the policies ${JSON.stringify(policyChases)}`);
         expect(failures.slice(0, 10)).toEqual([]);
         expect(staged, 'staged knight-next-to-pirate windows').toBeGreaterThan(0);
+        // 佈置樣本是決定性的：standard 策略一定會送出被規則接受的追擊，追擊後的 `pirate` frame 檢查才不會變成空洞。
+        // （150 個擾動狀態的測試不加這條：那裡的追擊數是 0。）
+        expect(policyChases.standard ?? 0, 'standard chases accepted by the rules').toBeGreaterThan(0);
       },
       GAME_TIMEOUT,
     );

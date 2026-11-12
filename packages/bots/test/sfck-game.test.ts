@@ -506,6 +506,8 @@ describe('Seafarers + Cities & Knights B-GAME', () => {
     );
 
     // 每局門檻（預設與發布都檢查）：C1、C3，C&K 的 frame 由策略自己作答。
+    // 調參時留意餘裕最小的兩格（BOTS_SEEDS=10，SFCK-3 rebase 到 #168 之後）：C3 的 3p 每局最少 `progress.play` 為 4
+    // （門檻 3），C1 的 4p 每局最少 `knight.activate` 為 3（門檻 1）。
     for (const s of allGameStats) {
       const game = `${s.profileId} ${s.players}p seed ${s.seed}`;
       expect.soft(s.recruits, `C1 ${game}: knight.recruit`).toBeGreaterThanOrEqual(1);
