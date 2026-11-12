@@ -24,6 +24,7 @@ import { citiesKnightsModule } from '../src/modules/citiesKnights/index.ts';
 import { explorersPiratesModule } from '../src/modules/explorersPirates/index.ts';
 import { projectSeafarers, seafarersHints, seafarersModule } from '../src/modules/seafarers/index.ts';
 import { seafarersState } from '../src/modules/seafarers/state.ts';
+import { seafarersCitiesKnightsModule } from '../src/modules/seafarersCitiesKnights/index.ts';
 import type { GameState } from '../src/types.ts';
 import { act, scriptedRng } from './helpers.ts';
 import { corner, emptySeafarersGame, seafarersGame, settle, ship, side } from './seafarers-helpers.ts';
@@ -164,7 +165,13 @@ describe('seafarers module exports (bot plan RX)', () => {
       seafarers: seafarersModule.id,
       explorersPirates: explorersPiratesModule.id,
       citiesKnights: citiesKnightsModule.id,
+      seafarersCitiesKnights: seafarersCitiesKnightsModule.id,
     };
-    expect(ids).toEqual({ seafarers: 'seafarers', explorersPirates: 'explorersPirates', citiesKnights: 'citiesKnights' });
+    expect(ids).toEqual({
+      seafarers: 'seafarers',
+      explorersPirates: 'explorersPirates',
+      citiesKnights: 'citiesKnights',
+      seafarersCitiesKnights: 'seafarersCitiesKnights',
+    });
   });
 });
