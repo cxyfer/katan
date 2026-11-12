@@ -12,8 +12,9 @@ guest session and goes through the real UI:
 * a `sf-ck-new-shores-paired-2025` room (five seats) with two bots, zh-Hant;
 * with `--table`, the four-seat room is filled with a third bot and started. The
   host's own moves go over the same session's API until a bot owns a ship, a
-  knight or a city improvement; that step is best effort and records `"timeout"`
-  instead of failing.
+  knight or a city improvement. The run fails unless three bots are seated, one
+  of those three things is seen (a `"timeout"` or `"error: ..."` in
+  `tableBotProgress` counts as a failure) and the table screenshot is written.
 
 `--before` checks a build without SFCK-G instead: the combined toolbar must be
 disabled with the unsupported note, and only the lobby captures run (`-before`
@@ -178,6 +179,11 @@ def guest(browser, errors: list[str], nickname: str):
 COMBINED = "citiesKnights+seafarers"
 
 
+def has_both_expansions(resolved: str) -> bool:
+    """選錯組合（例如只有 C&K）會讓案例默默驗到另一個規則集。"""
+    return "航海家" in resolved and "城市與騎士" in resolved
+
+
 def create_room(page, expansion: str, capacity: int) -> tuple[str, str]:
     """建房並回傳（畫面上解析出的規則組合文字，伺服器回傳的 profileId）。"""
     page.get_by_test_id("expansion-select").select_option(expansion)
@@ -306,9 +312,8 @@ def sfck_after(browser, out: Path, result: dict, errors: list[str]):
     context, page = guest(browser, errors, "航海騎士")
     resolved, profile_id = create_room(page, COMBINED, 4)
     result["checks"]["sfckProfile"] = profile_id == "sf-ck-new-shores-2025"
-    result["checks"]["sfckResolved"] = resolved
-    # 選錯組合（例如只有 C&K）會讓這個案例默默驗到另一個規則集。
-    result["checks"]["sfckBothExpansions"] = "航海家" in resolved and "城市與騎士" in resolved
+    result["resolved"]["sfck"] = resolved
+    result["checks"]["sfckResolved"] = has_both_expansions(resolved)
     expect(page.get_by_test_id("add-bot")).to_be_enabled()
     result["checks"]["sfckWithoutNote"] = page.get_by_test_id("lobby-bots-unsupported").count() == 0
     # hard 只有基本版：下拉只有 easy 與 standard，工具列說明原因。
@@ -337,7 +342,8 @@ def paired_after(browser, out: Path, result: dict, errors: list[str]) -> None:
     context, page = guest(browser, errors, "雙座航海騎士")
     resolved, profile_id = create_room(page, COMBINED, 5)
     result["checks"]["pairedProfile"] = profile_id == "sf-ck-new-shores-paired-2025"
-    result["checks"]["pairedResolved"] = resolved
+    result["resolved"]["paired"] = resolved
+    result["checks"]["pairedResolved"] = has_both_expansions(resolved)
     expect(page.get_by_test_id("add-bot")).to_be_enabled()
     add_bot(page, "standard", 1)
     add_bot(page, "easy", 2)
@@ -349,8 +355,8 @@ def sfck_before(browser, out: Path, result: dict, errors: list[str]) -> None:
     context, page = guest(browser, errors, "航海騎士")
     resolved, profile_id = create_room(page, COMBINED, 4)
     result["checks"]["sfckProfile"] = profile_id == "sf-ck-new-shores-2025"
-    result["checks"]["sfckResolved"] = resolved
-    result["checks"]["sfckBothExpansions"] = "航海家" in resolved and "城市與騎士" in resolved
+    result["resolved"]["sfck"] = resolved
+    result["checks"]["sfckResolved"] = has_both_expansions(resolved)
     expect(page.get_by_test_id("add-bot")).to_be_disabled()
     note = page.get_by_test_id("lobby-bots-unsupported")
     expect(note).to_have_text(NOTE["zh-Hant"])
@@ -376,6 +382,8 @@ def table_after(context, page, out: Path, result: dict, timeout: float) -> None:
     # /api/games 的 ResumableGameView 使用 playerId（與牌桌 projection 的 id 不同）。
     bots = {p["playerId"] for p in game["players"] if p.get("bot")}
     result["checks"]["tableBots"] = len(bots)
+    # --table 要求三個 bot 都入座，否則等於驗了另一個局面。
+    result["checks"]["tableBotsSeated"] = len(bots) == 3
     found: dict = {}
     started = time.monotonic()
 
@@ -394,24 +402,30 @@ def table_after(context, page, out: Path, result: dict, timeout: float) -> None:
     try:
         snapshot = play_host_until(context, game_id, me, bot_progress, timeout)
     except AssertionError as error:
-        # 這一步只是補充證據：真人座位的簡化走法被拒絕時記錄下來，不讓大廳的擷取失敗。
+        # 真人座位的簡化走法被拒絕：記錄原因，並讓 `tableProgress` 失敗（--table 就是要看到 bot 的進展）。
         result["checks"]["tableBotProgress"] = f"error: {error}"
+        result["checks"]["tableProgress"] = False
         return
     if snapshot is None:
         result["checks"]["tableBotProgress"] = "timeout"
+        result["checks"]["tableProgress"] = False
         return
     kind = "ships" if found.get("ships") else "knights" if found.get("knights") else "improvement"
     result["checks"]["tableBotProgress"] = kind
+    # 船、騎士、改良至少要看到一種。
+    result["checks"]["tableProgress"] = bool(found.get("ships") or found.get("knights") or found.get("improvedBots"))
     result["checks"]["tableRevision"] = snapshot["revision"]
     result["checks"]["tableBotShips"] = found.get("ships")
     result["checks"]["tableBotKnights"] = found.get("knights")
     result["checks"]["tableBotsImproved"] = found.get("improvedBots")
-    shot(page, out, result, f"sfck-table-bot-{kind}-1366x768-zh-Hant", 1366, 768)
+    name = f"sfck-table-bot-{kind}-1366x768-zh-Hant"
+    shot(page, out, result, name, 1366, 768)
+    result["checks"]["tableShot"] = (out / f"{name}.png").is_file()
 
 
 def capture(root: Path, out: Path, before: bool, table: bool, table_timeout: float) -> dict:
     mode = "before" if before else "after"
-    result: dict = {"mode": mode, "screenshots": {}, "checks": {}}
+    result: dict = {"mode": mode, "screenshots": {}, "checks": {}, "resolved": {}}
     try:
         result["root"] = subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True,
