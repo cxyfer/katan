@@ -72,7 +72,7 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
 ### 已知限制（待根因）：3 人 1 standard vs 2 naive 的後期停滯
 
 - **現象**：這一組 100 局只有 96 局終局，4 局（game 9、21、36、57，種子 10009、10021、10036、10057，standard 都在座位 1）觸發 72 次擲骰的看門狗；其餘 15 組的看門狗與 problems 都是 0。bench 把這 4 局排除在終局局數之外，所以該列的勝率 100% 與平均回合 29.0 只算 96 局。
-- **不是 naive 造成的退化局**：用 bench 相同的種子與座位輪換在 scratch 重現。四局停滯時，standard 的三條改良軌道多在 4–5 級、手上有 2–3 座城市與大都市，但陸上的 `legalBuildingVertices` 與 `legalRoadEdges` 都是 0（沒有可蓋的點），`islands` 也都是 0（沒有登上新島）。最後 72 次擲骰沒有任何 `build.*` 或 `city.improve`，卻有 30–47 次 `trade.bank`（例如 game 21 的 `grain→lumber` 13 次、`lumber→brick` 9 次），在幾種資源之間來回換，手牌湊不成一組建築。standard 被蠻族劫掠的城市只有 1–4 座，兩個 naive 座位各損失 8–24 座；naive 座位在 game 9、21、57 只有 9–11 分，game 36 則是 6 分與 14–15 分。
+- **觀察上與 naive 座位的失敗模式不同**（standard 陸地用盡、沒有登上小島、bank 交易來回循環）；對手互動是否間接造成尚未排除，根因調查中。用 bench 相同的種子與座位輪換在 scratch 重現：四局停滯時，standard 的三條改良軌道多在 4–5 級、手上有 2–3 座城市與大都市，但陸上的 `legalBuildingVertices` 與 `legalRoadEdges` 都是 0（沒有可蓋的點），`islands` 也都是 0（沒有登上新島）。最後 72 次擲骰沒有任何 `build.*` 或 `city.improve`，卻有 30–47 次 `trade.bank`（例如 game 21 的 `grain→lumber` 13 次、`lumber→brick` 9 次），在幾種資源之間來回換，手牌湊不成一組建築。standard 被蠻族劫掠的城市只有 1–4 座，兩個 naive 座位各損失 8–24 座；naive 座位在 game 9、21、57 只有 9–11 分，game 36 則是 6 分與 14–15 分。
 - **關掉看門狗（`watchdogRolls: null`）重跑**：game 9 在第 214 次擲骰、game 57 在第 721 次、game 21 在第 1563 次才由 standard 勝出，三局最後的 1–2 分都來自蠻族攻擊時被動拿到的 `ck.defenderOfCatan`；game 36 在 12000 步（約 2192 次擲骰）後仍未終局（standard 11 分、naive 14–15 分，目標 16 分；另以 20000 步上限跑也未終局）。
 - **狀態**：已知限制，根因與是否在本版修正尚未判斷，之後可能改寫這段。重現腳本放在 repo 外（`.worktrees/_scratch/sfckg-wd/`），不提交。
 
