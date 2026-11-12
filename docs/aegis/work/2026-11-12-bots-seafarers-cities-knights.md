@@ -69,12 +69,36 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
 - **追擊海盜**：16 組合計幾乎是 0（只有 6 人全 standard 平均每局 0.01 次），維持由固定盤面 FX-C1／C8 守門。
 - **#135**（SF standard 在 3–4 人對 naive 未達 soft target）：在 sf-ck 沒有重現，3、4 人對 naive 都是 100%；但 3 人那一組有下面的已知限制。
 
-### 已知限制（待根因）：3 人 1 standard vs 2 naive 的後期停滯
+### 已知限制：3 人 1 standard vs 2 naive 的後期停滯（rc.1 不修）
 
-- **現象**：這一組 100 局只有 96 局終局，4 局（game 9、21、36、57，種子 10009、10021、10036、10057，standard 都在座位 1）觸發 72 次擲骰的看門狗；其餘 15 組的看門狗與 problems 都是 0。bench 把這 4 局排除在終局局數之外，所以該列的勝率 100% 與平均回合 29.0 只算 96 局。
-- **觀察上與 naive 座位的失敗模式不同**（standard 陸地用盡、沒有登上小島、bank 交易來回循環）；對手互動是否間接造成尚未排除，根因調查中。用 bench 相同的種子與座位輪換在 scratch 重現：四局停滯時，standard 的三條改良軌道多在 4–5 級、手上有 2–3 座城市與大都市，但陸上的 `legalBuildingVertices` 與 `legalRoadEdges` 都是 0（沒有可蓋的點），`islands` 也都是 0（沒有登上新島）。最後 72 次擲骰沒有任何 `build.*` 或 `city.improve`，卻有 30–47 次 `trade.bank`（例如 game 21 的 `grain→lumber` 13 次、`lumber→brick` 9 次），在幾種資源之間來回換，手牌湊不成一組建築。standard 被蠻族劫掠的城市只有 1–4 座，兩個 naive 座位各損失 8–24 座；naive 座位在 game 9、21、57 只有 9–11 分，game 36 則是 6 分與 14–15 分。
-- **關掉看門狗（`watchdogRolls: null`）重跑**：game 9 在第 214 次擲骰、game 57 在第 721 次、game 21 在第 1563 次才由 standard 勝出，三局最後的 1–2 分都來自蠻族攻擊時被動拿到的 `ck.defenderOfCatan`；game 36 在 12000 步（約 2192 次擲骰）後仍未終局（standard 11 分、naive 14–15 分，目標 16 分；另以 20000 步上限跑也未終局）。
-- **狀態**：已知限制，根因與是否在本版修正尚未判斷，之後可能改寫這段。重現腳本放在 repo 外（`.worktrees/_scratch/sfckg-wd/`），不提交。
+根因由 Debugger 查明（腳本與報告放在 repo 外：`.worktrees/_scratch/sfckg-wd/`、`sfckg-wd2/`，不提交）。決定 rc.1 不修，記為已知限制，後續事項列在下一節。
+
+- **現象**：這一組 100 局只有 96 局終局，4 局（game 9、21、36、57，種子 10009、10021、10036、10057，standard 都在座位 1）觸發 72 次擲骰的看門狗；其餘 15 組都是 0。bench 把這 4 局排除在終局局數之外，所以該列的勝率 100% 與平均回合 29.0 只算 96 局。停滯時 standard 的合法路、聚落與船全是 0，`islands` 為 0，最後 72 次擲骰沒有 `build.*` 或 `city.improve`，卻有 30–47 次 `trade.bank`。關掉看門狗重跑：game 9／57／21 在第 214／721／1563 次擲骰才靠被動的 `ck.defenderOfCatan` 結束，game 36 到 12000 步（約 2192 次擲骰）仍未終局。
+- **根因（三層，缺一不可）**：
+  1. naive 的天花板低於目標：naive 不造船、不改良、不養騎士，最多 4 城 + 5 聚落 + 最長道路 = 15 分，目標是 16（`packages/rules/src/profiles.ts:481`）；單獨的 SF（14）與 C&K（13）naive 仍拿得到勝利，所以 standard 一停住就沒有人能結束遊戲。
+  2. 第二輪 setup 把座位 1 放進內陸：3 人 New Shores 地圖固定，座位 1 第一輪選內陸的 v35；第二輪的 ore／grain 硬過濾（`packages/bots/src/modules/seafarersCitiesKnights/setup.ts:29-30`，D5）刪掉沿海的 v78（小島加分 4.63、分數 13.22），留下內陸的 v49（加分 0、分數 10.34）。單獨的 SF 選 35／78；sf-ck 座位 1 的 34 局全選 35／49。
+  3. 兩棟建築都在內陸，船出不去：船只能接自己的建築或船，不能接路（`packages/rules/src/modules/seafarers/ships.ts:69-74`），bot 找船也只從建築與船出發（`packages/bots/src/sea.ts:240,245`），沒有計畫會「修路到海岸以解鎖船」。naive 的路把唯一的沿海出口封住後（game 9、21：沿海的 v31 的海邊 39、43 被 bot3 的路占走），分數卡在 14–15，只剩防禦者與 VP 牌這類隨機分數。100 局中「standard 從未有合法船位」的局與看門狗局完全重合（4/4）；`rescore` 與追擊海盜沒有參與。
+- **`city.improve` 停止與 bank 循環**（都是 v0.4.2 與 base 既有的行為，只在 sf-ck 這個條件下造成停滯）：game 21 三條軌道都滿級；game 9 的 `mainTrack` 選到已滿級的 trade（`packages/bots/src/modules/citiesKnights/improve.ts:94-112` 不跳過滿級），science、politics 又被非主軌 > 3 級的規則丟掉（`improve.ts:163`），計畫清單為空；game 36、57 的下一級要大都市，但自己每座城市都已有一座，規則回 `blocked = 'no-site'`（`packages/rules/src/modules/citiesKnights/cities.ts:124`），而 `citiesKnightsPlans`（`packages/bots/src/modules/citiesKnights/plans.ts:62`）沒有檢查 `blocked`，計畫卡在第一項、`improveCommand` 回 null（`plans.ts:131`）。bank 循環來自 base 的 `handRelief`（`packages/bots/src/heuristic.ts:520`）：手牌超過上限且計畫為空或已湊齊時，`receive` 退回權重最高的資源，C&K 又在買得起時把目標商品的權重乘 1.3（`citiesKnights/economy.ts:68`），於是換進換出；每次 2:1 都縮小手牌，會自然停止，浪費指令但不是停滯的原因。
+- **看門狗是組合新出現的，與 #135 機制不同**：3 人 1 standard vs 2 naive 各 100 局，sf-new-shores-2025 在 head 與 v0.4.2（`fc6b3b5`）都是勝率 28%、平均 29.1 回合、看門狗 0；ck-2025 在 head 是勝率 100%、27.7 回合、看門狗 0。#135 的症狀是座位 2 只贏 2/33 局、船位一直可達，與這裡不同。
+- **真實對手的風險低**：停滯需要其他玩家都無法獲勝；easy 與 standard 會造船與改良，下面各組都沒有觸發。4 人 1 standard vs 3 naive 已有 4 局 50–58 次擲骰的停滯，這一組天生脆弱。
+
+  | sf-ck，各 100 局 | 看門狗 | 最長停滯（擲骰） | standard 從未有船位的局數 |
+  |---|---|---|---|
+  | 3 人 vs easy | 0 | 41 | 3（都輸） |
+  | 3 人全 standard | 0 | 32 | 5 |
+  | 4 人 vs easy／全 standard | 0 | 28／26 | 0 |
+  | 5 人／6 人 vs easy | 0 | 34／31 | 14／12 |
+
+  另有一項未驗證的觀察：3 人全 standard 的座位勝場是 21／34、12／33、1／33，可能是固定地圖的座位偏差。
+- **評估過、不採用的修法**：B5（第一輪建築沒有海邊時，放寬第二輪的 ore／grain 過濾）與 B5b（保留過濾，另加 `islandSetupBonus > 0` 的候選），scratch 模擬如下。勝率沒有可測的提升（±5 pp 的雜訊內）；5–6 人的無船局略增（14 → 18／16）；3 人 vs naive 仍有 56／61 次擲骰的停滯，只是移到座位 2；而且要修改 D5，並全面重跑 Q1／Q2／Q3。
+
+  | 組 | 現況 | B5 | B5b |
+  |---|---|---|---|
+  | 3 人 vs naive：看門狗／勝場 | 4／96 | 0／100 | 0／100 |
+  | 3 人 vs easy：勝場／無船局 | 79／3 | 77／0 | 77／0 |
+  | 3 人全 standard 無船局 | 5 | 2 | — |
+  | 5 人 vs easy 勝場 | 65 | 59 | 62 |
+  | 6 人 vs easy 勝場 | 55 | 56 | 53 |
 
 ## 審查得出的限制與後續事項
 
@@ -86,3 +110,8 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
   - friendly robber 的 `robberTargets` 寫法：FR 在沒有合法格時回沙漠，要與 fold 的初值相容。
   - `knightDecision` 的強制第一項。
 - **`fallbackDecision`** 的 JSDoc 已在 #168 補上。
+- **Q3 停滯的後續（待開 issue，尚未開）**：
+  - SF／base：沒有船位時，以海岸可達性評估建點（可能與 #135 有關，未驗證）。
+  - C&K：`plans.ts`、`improve.ts` 跳過 `no-site` 與滿級選項，不以滿級軌為主軌（只會改變這些狀態下 ck-\* 的決策雜湊）。
+  - base 的 `handRelief`：不立刻換回剛收到的牌（會改變所有 profile 的決策雜湊，發布之後再做）。
+  - 調查 3 人 sf-ck 全 standard 的座位偏差（未驗證）。
