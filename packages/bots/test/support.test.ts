@@ -19,7 +19,10 @@ function profileWith(ruleModules: readonly string[]): ProfileDefinition {
   return { ...getProfile('base-2025')!, ruleModules };
 }
 
-/** 骨架不呼叫、只保留型別的鉤子（定案 §1.1）；哪一版實作了某個鉤子，就在同一個 PR 從這裡移除。 */
+/**
+ * 骨架仍然不呼叫、只保留型別的鉤子（定案 §1.1）；哪一版實作了某個鉤子，就在同一個 PR 從這裡移除。
+ * `robberTargets` 與 `rescore` 在 0.4.3 起由骨架呼叫（SFCK-P），組合層（SFCK-1）是第一個定義 `robberTargets` 的模組。
+ */
 const RESERVED_HOOKS = ['phase', 'endWindow', 'trade'] as const;
 const RESERVED_ECONOMY_HOOKS = ['awards', 'routeEdge'] as const;
 
@@ -79,7 +82,7 @@ describe('bot ruleset support', () => {
 });
 
 describe('bot module registry', () => {
-  it('registers no module that defines a hook the skeleton never calls', () => {
+  it('registers no module that defines a hook the skeleton still never calls', () => {
     for (const module of BOT_MODULES.values()) expect(reservedHooksOf(module), module.id).toEqual([]);
     // 檢查器本身要抓得到保留的鉤子。
     expect(reservedHooksOf({ id: 'fx', phase: () => null, economy: { awards: () => ({}) } })).toEqual([

@@ -595,7 +595,8 @@ describe('bots platform hooks (SFCK-P): sea.ts blocker default', () => {
     const state = game();
     const near = coast(boardModel(viewOf(state, 'p1'), 'p1')).far;
     const view = withKnight(state, near, 'p2');
-    expect(modules.map((module) => module.id)).toEqual(['seafarers', 'citiesKnights']);
+    // SFCK-1 起組合層也已註冊，排在 SF 與 C&K 之前；它沒有 `economy`，所以 blocker 仍然來自 C&K。
+    expect(modules.map((module) => module.id)).toEqual(['seafarersCitiesKnights', 'seafarers', 'citiesKnights']);
     expect(boardModel(view, 'p1', modules).blocker?.(boardModel(view, 'p1', modules), near)).toBe('p2');
     expect(boardModel(view, 'p1').blocker).toBeUndefined();
   });

@@ -40,7 +40,9 @@ import {
 import { give, setHand } from '../../rules/test/helpers.ts';
 import { corner, hex, settle, ship } from '../../rules/test/seafarers-helpers.ts';
 import { afterFirstAttack, emptySfckGame } from '../../rules/test/sfck-helpers.ts';
+import { banditChoice, banditTargets, defaultBanditTargets, robberCauseOf } from '../src/base/robber.ts';
 import { fallbackDecision, fallbackPolicy } from '../src/fallback.ts';
+import { turnContext } from '../src/heuristic.ts';
 import { BOT_MODULES, botModulesOf, botsCanPlay } from '../src/index.ts';
 import { SFCK_BOTS_RELEASED, seafarersCitiesKnightsBotModule } from '../src/modules/seafarersCitiesKnights/index.ts';
 import { sfckRobberTargets } from '../src/modules/seafarersCitiesKnights/targets.ts';
@@ -72,6 +74,9 @@ const POLICIES: readonly (readonly [string, BotPolicy, BotLevel, number])[] = [
   ['easy#1', createBotPolicy('easy'), 'easy', 1],
   ['easy#2', createBotPolicy('easy'), 'easy', 2],
 ];
+
+/** 沒有組合層的策略：base 候選加上 SF 的海盜候選，fold 只有「盜賊預設」。 */
+const withoutSfck = (level: BotLevel): BotPolicy => createBotPolicy(level, { modules: WITHOUT_SFCK });
 
 function expectAccepted(state: GameState, actor: string, command: BotCommand | null | undefined): GameState {
   expect(command, `${actor} has a command`).not.toBeNull();
@@ -207,25 +212,18 @@ describe('SF+CK robberTargets', () => {
 // 真值表：fold 的集合 = rules 的合法集合，而且非空
 // ---------------------------------------------------------------------------
 
-/** 盜賊預設（fold 的初值）：陸地非現位、海格非現位，海盜在場時最後加上 `null`。 */
-function defaultTargets(view: GameView): BanditTarget[] {
-  const { terrain, robber, pirate } = view.board;
-  const land: BanditTarget[] = [];
-  const sea: BanditTarget[] = [];
-  terrain.forEach((kind, hexIndex) => {
-    if (kind === 'sea') {
-      if (hexIndex !== pirate) sea.push(hexIndex);
-    } else if (hexIndex !== robber) {
-      land.push(hexIndex);
-    }
-  });
-  return [...land, ...sea, ...(pirate !== null ? [null] : [])];
-}
-
-/** 依模組順序 fold，與 rules 的 `legalRobberHexes` 相同。 */
-function foldTargets(modules: readonly BotModule[], view: GameView, selfId: string): readonly BanditTarget[] {
-  let targets: readonly BanditTarget[] = defaultTargets(view);
-  for (const module of modules) if (module.robberTargets) targets = module.robberTargets(view, selfId, targets);
+/**
+ * 依模組順序直接呼叫 `module.robberTargets`，而且斷言不 throw：`banditTargets` 會吞掉模組的例外，只看它的結果
+ * 會掩蓋組合層自己的 throw。
+ */
+function directFold(modules: readonly BotModule[], view: GameView, selfId: string): readonly BanditTarget[] {
+  let targets: readonly BanditTarget[] = defaultBanditTargets(view);
+  for (const module of modules) {
+    if (!module.robberTargets) continue;
+    const previous = targets;
+    expect(() => module.robberTargets!(view, selfId, previous), `${module.id}.robberTargets`).not.toThrow();
+    targets = module.robberTargets(view, selfId, previous);
+  }
   return targets;
 }
 
@@ -283,7 +281,11 @@ describe.each([
     // 盤面真的是我們要的那一種 frame。
     expect((actionHints(state, 'p1').modules!.seafarersCitiesKnights as { bandit: string | null }).bandit).toBe(test.expected);
 
-    const folded = foldTargets(modules, view, 'p1');
+    // 模組自己不 throw；平台的 fold（會吞例外）與直接 fold 的結果相同。
+    const direct = directFold(modules, view, 'p1');
+    const folded = banditTargets(view, 'p1', modules);
+    expect(folded).toEqual(direct);
+
     const legal = rulesLegalTargets(state, 'p1');
     expect(legal.length, 'rules has a legal target').toBeGreaterThan(0);
     expect(folded.length, 'the fold has a target').toBeGreaterThan(0);
@@ -291,7 +293,7 @@ describe.each([
     // 不重複。
     expect(new Set(folded).size).toBe(folded.length);
 
-    // 型態與順序：陸地在前，保底因此在 `either` 時一律移強盜；`pirate` 時第一項是海格。
+    // 順序：陸地在前，保底因此在 `either` 時一律移強盜；`pirate` 時第一項是海格。
     const first = folded[0]!;
     if (test.expected === 'pirate') expect(first === null ? 'sea' : view.board.terrain[first]).toBe('sea');
     else expect(view.board.terrain[first as number]).not.toBe('sea');
@@ -301,10 +303,71 @@ describe.each([
     const test = BANDIT_CASES.find((candidate) => candidate.expected === 'pirate')!;
     const state = banditState(players, test);
     const view = viewOf(state, 'p1');
-    const unnarrowed = foldTargets(WITHOUT_SFCK, view, 'p1');
+    const unnarrowed = banditTargets(view, 'p1', WITHOUT_SFCK);
     const legal = new Set(rulesLegalTargets(state, 'p1'));
     expect(unnarrowed.filter((target) => !legal.has(target)).length).toBeGreaterThan(0);
-    expect(sorted(foldTargets(MODULES, view, 'p1'))).toEqual(sorted([...legal]));
+    expect(sorted(banditTargets(view, 'p1', MODULES))).toEqual(sorted([...legal]));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 策略層：SF 的 `banditCandidates` 不看 frame，區分完全靠 fold
+// ---------------------------------------------------------------------------
+
+/**
+ * 4 人地圖、首攻之後，p1 沒有建築。p2 在海格 (2,0) 旁有一艘船和一張牌（海盜的誘餌）；`pirate` 與 `either` 時另外在
+ * 6 或 8 的陸地格旁放一座城（強盜的誘餌，分數遠高於海盜）。沒有 fold 時，錯的那一邊會贏。
+ */
+function lureState(kind: SfckBandit): GameState {
+  const state = afterFirstAttack(emptySfckGame(4));
+  state.board.robber = hex(state, 1, -1);
+  ship(state, 'p2', edgeBetween(state, 48, 47));
+  setHand(state, 'p2', { brick: 1 });
+  if (kind !== 'robber') {
+    const { terrain, numbers } = state.board.layout;
+    const lure = terrain.findIndex((t, index) => t !== 'sea' && index !== state.board.robber && (numbers[index] === 6 || numbers[index] === 8));
+    settle(state, 'p2', topologyOf(state).vertices.findIndex((vertex) => vertex.hexes.includes(lure)), true);
+  }
+  if (kind === 'pirate') state.board.pirate = hex(state, 2, -2);
+  state.pending = { kind: 'moveRobber', actor: 'p1', cause: kind === 'either' ? 'seven' : 'knight', pirate: kind === 'pirate' };
+  return state;
+}
+
+describe('the strategy stays inside the fold', () => {
+  it.each(['robber', 'pirate', 'either'] as const)('%s frame: banditChoice and the policies answer within the fold, rules accepts', (kind) => {
+    const state = lureState(kind);
+    const view = viewOf(state, 'p1');
+    expect((view.hints!.modules!.seafarersCitiesKnights as { bandit: string }).bandit).toBe(kind);
+    const folded = banditTargets(view, 'p1', MODULES);
+    expect(folded.length).toBeGreaterThan(0);
+    const cause = robberCauseOf((view.pending as { cause: string }).cause);
+    for (const level of ['standard', 'easy'] as const) {
+      for (const seed of [1, 2, 3]) {
+        const ctx = ctxFor('p1', level, seed);
+        const choice = banditChoice(turnContext(view, ctx, level, MODULES), cause);
+        expect(choice, `${level}#${seed} chooses`).not.toBeNull();
+        expect(folded, `${level}#${seed} banditChoice`).toContain(choice!.target);
+        const command = createBotPolicy(level).decide(view, ctx);
+        expect(command, `${level}#${seed} decides`).toMatchObject({ type: 'pending.moveRobber' });
+        expect(folded, `${level}#${seed} policy`).toContain((command as { hex: BanditTarget }).hex);
+        expectAccepted(state, 'p1', command);
+      }
+    }
+  });
+
+  it('the wrong side wins without the fold: the lure beats the legal targets, and rules refuses it', () => {
+    // 追擊強盜：SF 的海盜選項勝出。
+    const robber = lureState('robber');
+    const robberView = viewOf(robber, 'p1');
+    const wrongPirate = withoutSfck('standard').decide(robberView, ctxFor('p1')) as { hex: number | null };
+    expect(wrongPirate.hex === null || robberView.board.terrain[wrongPirate.hex] === 'sea').toBe(true);
+    expect(rejection(robber, 'p1', wrongPirate as BotCommand)).toMatchObject({ code: 'E_ILLEGAL_TARGET', params: { reason: 'robber' } });
+    // 追擊海盜：陸地的城市（高產能、有牌可偷）勝出。
+    const pirate = lureState('pirate');
+    const pirateView = viewOf(pirate, 'p1');
+    const wrongLand = withoutSfck('standard').decide(pirateView, ctxFor('p1')) as { hex: number };
+    expect(pirateView.board.terrain[wrongLand.hex]).not.toBe('sea');
+    expect(rejection(pirate, 'p1', wrongLand as unknown as BotCommand)).toMatchObject({ code: 'E_ILLEGAL_TARGET', params: { reason: 'pirate' } });
   });
 });
 
@@ -561,9 +624,6 @@ describe('F11 a knight cannot be recruited on a sea intersection', () => {
 // ---------------------------------------------------------------------------
 // F1、F2：追擊之後的 moveRobber frame（保底與策略都要靠 `robberTargets` 的 fold）
 // ---------------------------------------------------------------------------
-
-/** 沒有組合層的策略：base 候選加上 SF 的海盜候選，fold 只有「盜賊預設」。 */
-const withoutSfck = (level: BotLevel): BotPolicy => createBotPolicy(level, { modules: WITHOUT_SFCK });
 
 describe('F1 a knight chased the pirate: only sea hexes and the frame are legal', () => {
   function chasedPirate(): GameState {
