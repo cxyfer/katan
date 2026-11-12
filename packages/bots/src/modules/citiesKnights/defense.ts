@@ -15,6 +15,7 @@
 import { CK_ACTIVATE_COST, CK_KNIGHT_COST, CK_PROMOTE_COST } from '@catan/rules';
 import { canAfford, pay, type Hand } from '../../economy.ts';
 import type { BotLevel } from '../../types.ts';
+import { rescoreDelta } from '../compose.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';
 import { knightsOf, threatOf } from './knights.ts';
 import { ckCommands, ckHints } from './view.ts';
@@ -43,7 +44,9 @@ export function guardedKnights(turn: TurnContext): ReadonlySet<number> {
 
 /**
  * 招募的地點：只取 `recruitSites`。騎士會擋住那個路口上的建築（含自己的），所以避開自己現在或計畫中的
- * 聚落與城市點；其餘取路口編號最小者。
+ * 聚落與城市點；其餘取路口編號最小者。有模組提供 `rescore`（0.4.3 起只有 SF+CK 的組合層）時，這些空點先依它對
+ * `knight.recruit { vertex }` 的差值由高到低排序（同分保留原順序，D2）：例如避開自己船的 open end。沒有任何模組提供
+ * `rescore` 時走原本的路徑，結果完全相同。
  */
 export function recruitSite(turn: TurnContext): number | null {
   const hints = ckHints(turn.view.hints);
@@ -51,6 +54,11 @@ export function recruitSite(turn: TurnContext): number | null {
   const wanted = new Set<number>(turn.view.hints?.legalSettlements ?? []);
   for (const plan of turn.economy.plans) if (plan.vertex !== null) wanted.add(plan.vertex);
   const free = hints.recruitSites.filter((vertex) => !wanted.has(vertex));
+  if (free.length > 1 && turn.modules.some((module) => module.rescore)) {
+    const ranked = free.map((vertex, index) => ({ vertex, index, delta: rescoreDelta(turn.modules, turn, ckCommands.recruitKnight(vertex)) }));
+    ranked.sort((a, b) => b.delta - a.delta || a.index - b.index);
+    return ranked[0]!.vertex;
+  }
   return (free.length > 0 ? free : hints.recruitSites)[0] ?? null;
 }
 
