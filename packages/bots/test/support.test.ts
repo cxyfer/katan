@@ -12,14 +12,18 @@ import {
 } from '../src/index.ts';
 import { CK_BOTS_RELEASED, CK_PACING, CK_PENDING_COMMANDS } from '../src/modules/citiesKnights/index.ts';
 import { SEAFARERS_PACING } from '../src/modules/seafarers/index.ts';
+import { SFCK_BOTS_RELEASED, SFCK_PACING } from '../src/modules/seafarersCitiesKnights/index.ts';
 
 /** 以 base-2025 為底、加上指定規則模組的 fixture profile。 */
 function profileWith(ruleModules: readonly string[]): ProfileDefinition {
   return { ...getProfile('base-2025')!, ruleModules };
 }
 
-/** 骨架不呼叫、只保留型別的鉤子（定案 §1.1）；哪一版實作了某個鉤子，就在同一個 PR 從這裡移除。 */
-const RESERVED_HOOKS = ['phase', 'endWindow', 'robberTargets', 'rescore', 'trade'] as const;
+/**
+ * 骨架仍然不呼叫、只保留型別的鉤子（定案 §1.1）；哪一版實作了某個鉤子，就在同一個 PR 從這裡移除。
+ * `robberTargets` 與 `rescore` 在 0.4.3 起由骨架呼叫（SFCK-P），組合層（SFCK-1）是第一個定義 `robberTargets` 的模組。
+ */
+const RESERVED_HOOKS = ['phase', 'endWindow', 'trade'] as const;
 const RESERVED_ECONOMY_HOOKS = ['awards', 'routeEdge'] as const;
 
 function reservedHooksOf(module: BotModule): string[] {
@@ -53,10 +57,14 @@ describe('bot ruleset support', () => {
     expect(BOT_MODULES.has('citiesKnights')).toBe(true);
     expect(CK_BOTS_RELEASED).toBe(true);
     for (const id of ['ck-2025', 'ck-paired-2025']) expect(botsCanPlay(getProfile(id)!), id).toBe(true);
-    // 組合層 `seafarersCitiesKnights` 沒有 BotModule，兩個組合 profile 仍然不開放。
-    expect(BOT_MODULES.has('seafarersCitiesKnights')).toBe(false);
+    // 組合層 `seafarersCitiesKnights` 已註冊（SFCK-1），但 `supports` 在 SFCK-G 之前回 false，兩個組合 profile
+    // 仍然不開放。
+    expect(BOT_MODULES.has('seafarersCitiesKnights')).toBe(true);
+    expect(SFCK_BOTS_RELEASED).toBe(false);
     for (const id of ['sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025']) {
-      expect(botsCanPlay(getProfile(id)!), id).toBe(false);
+      const profile = getProfile(id)!;
+      expect(botModulesOf(profile).map((module) => module.id), id).toEqual(profile.ruleModules);
+      expect(botsCanPlay(profile), id).toBe(false);
     }
   });
 
@@ -74,7 +82,7 @@ describe('bot ruleset support', () => {
 });
 
 describe('bot module registry', () => {
-  it('registers no module that defines a hook the skeleton never calls', () => {
+  it('registers no module that defines a hook the skeleton still never calls', () => {
     for (const module of BOT_MODULES.values()) expect(reservedHooksOf(module), module.id).toEqual([]);
     // 檢查器本身要抓得到保留的鉤子。
     expect(reservedHooksOf({ id: 'fx', phase: () => null, economy: { awards: () => ({}) } })).toEqual([
@@ -90,9 +98,14 @@ describe('bot module registry', () => {
   });
 
   it('merges pacing, command limits and response commands from the registered modules', () => {
-    // 0.4.2 註冊了 Seafarers 與 Cities & Knights：節奏是兩者的合併，鍵不重複，也不蓋掉 base 的鍵。
-    expect(BOT_PACING).toEqual({ ...SEAFARERS_PACING, ...CK_PACING });
-    expect(Object.keys(BOT_PACING)).toHaveLength(Object.keys(SEAFARERS_PACING).length + Object.keys(CK_PACING).length);
+    // 已註冊 Seafarers、Cities & Knights 與兩者的組合層：節奏是三者的合併，鍵不重複，也不蓋掉 base 的鍵。
+    expect(BOT_PACING).toEqual({ ...SEAFARERS_PACING, ...CK_PACING, ...SFCK_PACING });
+    expect(Object.keys(BOT_PACING)).toHaveLength(
+      Object.keys(SEAFARERS_PACING).length + Object.keys(CK_PACING).length + Object.keys(SFCK_PACING).length,
+    );
+    // 組合層的 `knight.chasePirate` 與 C&K 的 `knight.chaseRobber` 同為 900；`pending.moveRobber` 同樣不列。
+    expect(SFCK_PACING).toEqual({ 'knight.chasePirate': 900 });
+    expect(SFCK_PACING).not.toHaveProperty('pending.moveRobber');
     // `pending.moveRobber` 沿用 base 的 1200（knight.chaseRobber 之後的指令）。
     expect(CK_PACING).not.toHaveProperty('pending.moveRobber');
     expect(botCommandLimit(profileWith([]), 40)).toBe(40);
@@ -101,6 +114,12 @@ describe('bot module registry', () => {
     expect(botResponseCommands(profileWith([]))).toEqual(BASE_RESPONSE_COMMANDS);
     expect(botResponseCommands(profileWith(['citiesKnights']))).toEqual(
       new Set([...BASE_RESPONSE_COMMANDS, ...CK_PENDING_COMMANDS]),
+    );
+    // 組合層沒有回應指令，也不改每視窗上限：回應指令是 SF（gold.choose）與 C&K 的聯集。
+    const combined = profileWith(['seafarersCitiesKnights', 'seafarers', 'citiesKnights']);
+    expect(botCommandLimit(combined, 40)).toBe(40);
+    expect(botResponseCommands(combined)).toEqual(
+      new Set([...BASE_RESPONSE_COMMANDS, 'gold.choose', ...CK_PENDING_COMMANDS]),
     );
     expect(CK_PENDING_COMMANDS).toHaveLength(13);
     expect([...BASE_RESPONSE_COMMANDS].sort()).toEqual([
