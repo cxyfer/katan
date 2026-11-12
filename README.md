@@ -175,8 +175,8 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   & Knights setup, progress decks, knights, barbarians and merchant, knights
   carried along ships and onto the sea, the pirate waiting for the first
   barbarian attack and chased by knights, gold without commodities and a
-  16-point goal, in both the 3D and SVG boards. Bot seats are not offered
-  for this combination.
+  16-point goal, in both the 3D and SVG boards. Easy and standard computer
+  opponents can be added.
 
 The Traders & Barbarians event-card variant remains disabled because the 2025 rulebook omits the deck list.
 
