@@ -101,6 +101,8 @@ function conservation(state: GameState): readonly string[] {
     // 追擊海盜要鄰接海盜所在的海格，所以海盜一定在場上。
     if (pending.pirate === true && pirate === null) problems.push('pirate moveRobber frame while the pirate is off the board');
   }
+  // 偷牌只接在盜賊移動之後；首攻前沒有盜賊移動，也就沒有偷牌的 frame。
+  if (pending?.kind === 'steal' && !attacked) problems.push('steal frame before the first attack');
 
   const merchant = slot.merchant;
   if (merchant && terrain[merchant.hex] === 'gold') problems.push(`the merchant stands on the gold field ${merchant.hex}`);
@@ -118,16 +120,22 @@ function enterFirstAttack(state: GameState, slot: CkSlot): void {
 }
 
 /**
- * 組合層不可能出現的盜賊狀態：首攻前兩個盜賊都在外框、沒有 `moveRobber` frame；首攻後強盜一定在場。
- * 其他模組的擾動（SF kit 的海盜、`moveRobber cause:'seven'`）與本 kit 自己的翻轉之後都要呼叫一次。
+ * 組合層不可能出現的盜賊狀態：首攻前兩個盜賊都在外框、沒有 `moveRobber` 與 `steal` frame；首攻後強盜一定在場，
+ * 追擊海盜的 `moveRobber` frame（`pirate: true`）要求海盜在海格上。SF kit 無條件把海盜放到 `[null, ...海格]` 之一，
+ * 所以其他模組的擾動與本 kit 自己的翻轉之後都要呼叫一次。海盜不在場時放到第一個海格（決定性，不消耗亂數）。
  */
 function repairBandits(state: GameState, slot: CkSlot): void {
   if (slot.attacks === 0) {
     state.board.robber = -1;
     state.board.pirate = null;
-    if (state.pending?.kind === 'moveRobber') state.pending = null;
-  } else if (state.board.robber < 0) {
-    state.board.robber = state.board.layout.robber;
+    if (state.pending?.kind === 'moveRobber' || state.pending?.kind === 'steal') state.pending = null;
+    return;
+  }
+  if (state.board.robber < 0) state.board.robber = state.board.layout.robber;
+  if (state.pending?.kind === 'moveRobber' && state.pending.pirate === true && state.board.pirate === null) {
+    const sea = seaHexesOf(state);
+    if (sea.length > 0) state.board.pirate = sea[0]!;
+    else state.pending = null;
   }
 }
 
@@ -215,12 +223,11 @@ export function stageBandit(state: GameState, bandit: StagedBandit, rng: Rng): b
   const slot = slotOf(state);
   const actor = state.players[state.turn.seat];
   if (!slot || !actor) return false;
+  // 條件都確認之後才動狀態：回 false 時狀態不變。
+  const sea = seaHexesOf(state);
+  if (bandit === 'pirate' && sea.length === 0) return false;
   enterFirstAttack(state, slot);
-  if (bandit === 'pirate') {
-    const sea = seaHexesOf(state);
-    if (sea.length === 0) return false;
-    state.board.pirate = pick(sea, rng);
-  }
+  if (bandit === 'pirate') state.board.pirate = pick(sea, rng);
   const pending: MoveRobberPending = {
     kind: 'moveRobber',
     actor: actor.id,

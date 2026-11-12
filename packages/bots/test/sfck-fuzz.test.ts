@@ -16,6 +16,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { actionHints, applyCommand, requireProfile, seededRng, type GameState } from '@catan/rules';
+import { emptySfckGame } from '../../rules/test/sfck-helpers.ts';
 import { banditTargets, defaultBanditTargets } from '../src/base/robber.ts';
 import { botOwesAction, fallbackPolicy } from '../src/fallback.ts';
 import type { BanditTarget } from '../src/modules/types.ts';
@@ -193,7 +194,10 @@ describe('Seafarers + Cities & Knights fuzz perturbed states', () => {
           `fuzz ${profileId} (${players}p): ${checked} decisions; before/after the first attack ${beforeAttack}/${afterAttack}, pirate on the board ${pirateAtSea}, bandit frames ${[...bandits].sort().join(',')}, pirate-chase windows ${pirateChase}, frames ${[...frames].sort().join(',')}, moveRobber answers ${JSON.stringify(moveRobber)}, commands ${JSON.stringify(commands)}`,
         );
         expect(failures.slice(0, 10)).toEqual([]);
-        expect(checked).toBeGreaterThanOrEqual(FUZZ_VARIANTS_TARGET * players * POLICIES.length);
+        // 策略確實送出指令（平均每個狀態至少一個），不是全部回 null 就算通過；每個決策都檢查過（拋錯會進 failures）。
+        const issued = Object.values(commands).reduce((sum, count) => sum + count, 0);
+        expect(issued, `commands issued over ${checked} decisions`).toBeGreaterThanOrEqual(FUZZ_VARIANTS_TARGET);
+        expect(checked).toBe(FUZZ_VARIANTS_TARGET * players * POLICIES.length);
         // 擾動要同時走到首攻前與首攻後、三種 bandit frame、騎士相鄰海盜的行動階段。
         expect(beforeAttack, 'perturbed states before the first attack').toBeGreaterThan(0);
         expect(afterAttack, 'perturbed states after the first attack').toBeGreaterThan(0);
@@ -286,7 +290,6 @@ describe('Seafarers + Cities & Knights fuzz perturbed states', () => {
       expect(bases.length, 'sampled states before the first attack').toBeGreaterThan(0);
       const rng = seededRng(players * 4000 + 3);
       let brokenWithoutRepair = 0;
-      let repaired = 0;
       for (let attempt = 0; attempt < 60; attempt++) {
         const base = bases[attempt % bases.length]!;
         // 沒有組合 kit：SF kit 在首攻前把海盜放到海上，或佈置 `moveRobber`，組合守恆會失敗。
@@ -297,16 +300,53 @@ describe('Seafarers + Cities & Knights fuzz perturbed states', () => {
         const full = perturbState(base, rng, KITS);
         const problems = conservationOf(full);
         expect(problems, `attempt ${attempt}`).toEqual([]);
-        repaired += 1;
       }
       // 沒有修補就會壞：這個測試確實在守門。
       expect(brokenWithoutRepair, 'states the Seafarers perturbation alone leaves impossible').toBeGreaterThan(0);
-      expect(repaired).toBe(60);
     });
   }
 });
 
 describe('the combination kit', () => {
+  // 審查者的做法：`stagePirateChase` 之後真的送出 `knight.chasePirate`，得到 `pirate: true` 的 `moveRobber` frame；
+  // SF kit 的擾動無條件把海盜放到 `[null, ...海格]` 之一，組合 kit（最後執行）要把不在場的海盜補回海格。
+  it('repairs a pirate moveRobber frame whose pirate the Seafarers perturbation moved off the board', () => {
+    const rng = seededRng(97);
+    const start = emptySfckGame(4);
+    expect(stagePirateChase(start, rng)).toBe(true);
+    const actor = start.players[start.turn.seat]!.id;
+    const chase = (actionHints(start, actor).modules?.seafarersCitiesKnights as { pirateChase: number[] }).pirateChase;
+    expect(chase.length, 'the staged knight stands next to the pirate').toBeGreaterThan(0);
+    const outcome = applyCommand(start, actor, { type: 'knight.chasePirate', vertex: chase[0]! }, seededRng(1));
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    const chased = outcome.state;
+    expect(chased.pending).toMatchObject({ kind: 'moveRobber', actor, cause: 'knight', pirate: true });
+    expect(conservationOf(chased), 'the real frame after the chase').toEqual([]);
+
+    // 海盜被擾動到外框：組合守恆會抓到，修補之後要回到海格上。
+    const offBoard = cloneState(chased);
+    offBoard.board.pirate = null;
+    expect(sfckKit.conservation!(offBoard).join(' ')).toContain('pirate moveRobber frame while the pirate is off the board');
+    sfckKit.perturb!(offBoard, seededRng(1));
+    expect(conservationOf(offBoard)).toEqual([]);
+
+    // 整條擾動鏈（SF、C&K、組合）重複 600 次：SF kit 把海盜放到外框而 frame 還在的狀態，每一個都修補回來。
+    let offBoardByTheSeafarersKit = 0;
+    let frameKept = 0;
+    for (let attempt = 0; attempt < 600; attempt++) {
+      const alone = cloneState(chased);
+      seafarersKit.perturb!(alone, rng);
+      if (alone.pending?.kind === 'moveRobber' && alone.pending.pirate === true) {
+        frameKept += 1;
+        if (alone.board.pirate === null) offBoardByTheSeafarersKit += 1;
+      }
+      expect(conservationOf(perturbState(chased, rng, KITS)), `attempt ${attempt}`).toEqual([]);
+    }
+    expect(frameKept, 'attempts where the pirate frame survives the Seafarers perturbation').toBeGreaterThan(0);
+    expect(offBoardByTheSeafarersKit, 'attempts where the Seafarers kit moved the pirate off the board').toBeGreaterThan(0);
+  });
+
   it('flags the states the combination can never reach', () => {
     const base = samplesOf('sf-ck-new-shores-2025', 4).find((state) => (state.moduleState?.citiesKnights as { attacks: number }).attacks === 0)!;
     expect(sfckKit.conservation!(base), 'a real state before the first attack').toEqual([]);
@@ -333,6 +373,11 @@ describe('the combination kit', () => {
     expect(sfckKit.conservation!(attacked)).toEqual([]);
     attacked.pending = { kind: 'moveRobber', actor: attacked.players[0]!.id, cause: 'seven', pirate: true };
     expect(sfckKit.conservation!(attacked).join(' ')).toContain('only a knight chases the pirate');
+
+    // 首攻前沒有盜賊移動，也就沒有偷牌的 frame。
+    const steal = cloneState(base);
+    steal.pending = { kind: 'steal', actor: steal.players[0]!.id, candidates: [steal.players[1]!.id] } as unknown as GameState['pending'];
+    expect(sfckKit.conservation!(steal).join(' ')).toContain('steal frame before the first attack');
 
     // 海盜在陸地上、商人在金礦上。
     const land = cloneState(attacked);

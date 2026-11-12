@@ -51,6 +51,7 @@ import {
   botSeats,
   cloneState,
   GAME_TIMEOUT,
+  limitsFor,
   mixedLevels,
   responseCommandDrift,
   runBotGame,
@@ -65,7 +66,7 @@ import { citiesKnightsKit, maxImprovementLevel, metropolisCount } from './module
 import { seafarersKit } from './modules/seafarers.ts';
 import { sfckKit } from './modules/seafarersCitiesKnights.ts';
 
-declare const console: { table(data: unknown): void; log(...args: unknown[]): void };
+declare const console: { table(data: unknown): void; log(...args: unknown[]): void; warn(...args: unknown[]): void };
 
 /** 部件 kit 在前、組合 kit 最後：`perturb` 依序套用，組合層最後修補首攻前的狀態。 */
 const KITS = [seafarersKit, citiesKnightsKit, sfckKit];
@@ -82,7 +83,7 @@ const SFCK_ENTRIES: readonly SfckEntry[] = [
   { profileId: 'sf-ck-new-shores-paired-2025', players: 6 },
 ];
 
-/** 看門狗 N = 72；停滯超過這個次數（D4）就提報，不影響通過與否。 */
+/** 看門狗 N 取自 `PROFILE_LIMITS`（72）；停滯超過這個次數（D4）就提報，不影響通過與否。 */
 const STAGNATION_WARNING = 50;
 
 /** 只由行動者在行動階段送出的指令；非行動者送它們就是越權。 */
@@ -379,7 +380,7 @@ function playChecked(entry: SfckEntry, seed: number, options: PlayOptions = {}):
   expect(seaProblems, `${label}: sea model mismatch`).toEqual([]);
   if (options.sea !== false) expect(seaComparisons, `${label}: B-POLICY-SEA+K comparison count`).toBeGreaterThan(0);
   if (run.longestStagnation > STAGNATION_WARNING) {
-    console.log(`WARNING ${label}: ${run.longestStagnation} rolls without a new high (watchdog ${72}, warning ${STAGNATION_WARNING})`);
+    console.log(`WARNING ${label}: ${run.longestStagnation} rolls without a new high (watchdog ${limitsFor(profileId).watchdogRolls}, warning ${STAGNATION_WARNING})`);
   }
 
   // 交叉檢查：事件（`event.params`）與指令、終局狀態一致。
@@ -438,16 +439,32 @@ function playChecked(entry: SfckEntry, seed: number, options: PlayOptions = {}):
   };
 }
 
-describe('Seafarers + Cities & Knights B-GAME', () => {
-  const allGameStats: GameStats[] = [];
+/**
+ * 每一局只玩一次（成功才記下來）：B-GAME 的各個 `it` 與 Q2 的 `it` 都從這裡取統計，所以測試的先後順序
+ * （例如 `--sequence.shuffle`）不影響結果；Q2 先跑時由它代為玩完全部的局。
+ */
+const played = new Map<string, GameStats>();
+function gameOf(entry: SfckEntry, seed: number): GameStats {
+  const key = `${entry.profileId}:${entry.players}:${seed}`;
+  const cached = played.get(key);
+  if (cached) return cached;
+  const stats = playChecked(entry, seed);
+  played.set(key, stats);
+  return stats;
+}
 
+function allGames(): GameStats[] {
+  return SFCK_ENTRIES.flatMap((entry) => seedsFor(requireProfile(entry.profileId)).map((seed) => gameOf(entry, seed)));
+}
+
+describe('Seafarers + Cities & Knights B-GAME', () => {
   for (const entry of SFCK_ENTRIES) {
     const { profileId, players } = entry;
     const seeds = seedsFor(requireProfile(profileId));
     it(
       `finishes with a winner and satisfies Q1 invariants (${profileId}, ${players} players, ${seeds.length} seeds)`,
       () => {
-        for (const seed of seeds) allGameStats.push(playChecked(entry, seed));
+        for (const seed of seeds) gameOf(entry, seed);
       },
       GAME_TIMEOUT,
     );
@@ -456,6 +473,7 @@ describe('Seafarers + Cities & Knights B-GAME', () => {
   const seedCount = seedsFor(requireProfile('sf-ck-new-shores-2025')).length;
 
   it('checks Q2 thresholds across all played games', () => {
+    const allGameStats = allGames();
     expect(allGameStats.length, 'allGameStats count must equal expected total games across matrix').toBe(
       SFCK_ENTRIES.length * seedCount,
     );
@@ -500,6 +518,11 @@ describe('Seafarers + Cities & Knights B-GAME', () => {
     const release = seedCount >= 10;
     const scaled = (atTen: number): number => Math.ceil((atTen * seedCount) / 10);
     const ratioChecked = seedCount === 3 || release;
+    if (!ratioChecked) {
+      console.warn(
+        `Q2 ratio thresholds NOT checked with ${seedCount} seeds (only 3 or >= 10 seeds have them): S1, S2, S3, S4, C2, C4 and C5 are skipped; the per-game C1 and C3 checks still ran. Use the default 3 seeds or BOTS_SEEDS=10 for the gate.`,
+      );
+    }
 
     // 每個格子（profile × 人數）：S1、S2、C2、C4、C5。
     const S2_RELEASE: Record<number, number> = { 3: 6, 4: 5, 5: 8, 6: 8 };
@@ -553,17 +576,20 @@ describe('Seafarers + Cities & Knights B-GAME', () => {
         expect.soft(gold, `S4 ${profileId}: games with a policy gold.choose ${gold}/${stats.length}`).toBeGreaterThanOrEqual(scaled(6));
       }
     }
-  });
+  }, GAME_TIMEOUT);
 
   it('exercises the knight blocker of the sea model and the bandit fold in real games', () => {
+    const allGameStats = allGames();
     expect(allGameStats.length).toBe(SFCK_ENTRIES.length * seedCount);
     const comparisons = allGameStats.reduce((sum, s) => sum + s.seaComparisons, 0);
     const blockerMatters = allGameStats.reduce((sum, s) => sum + s.blockerMatters, 0);
     const moveRobbers = allGameStats.reduce((sum, s) => sum + s.moveRobbers, 0);
     console.log(`B-POLICY-SEA+K: ${comparisons} comparisons, ${blockerMatters} where the knight blocker changed the answer; moveRobber decisions checked ${moveRobbers}`);
     expect(comparisons).toBeGreaterThan(100);
+    // 騎士 blocker 確實被比對到：帶模組與不帶模組的答案至少有一次不同（預設 3 種子約 22 次）。
+    expect(blockerMatters, 'comparisons where the knight blocker changed the sea model answer').toBeGreaterThan(0);
     expect(moveRobbers, 'moveRobber decisions checked against the fold').toBeGreaterThan(0);
-  });
+  }, GAME_TIMEOUT);
 });
 
 describe('fallback seat', () => {
