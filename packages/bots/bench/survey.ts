@@ -99,6 +99,12 @@ interface SeatRecord {
   produced: number;
   turns: number;
   improvements: number;
+  /** 被強盜偷走與被強盜擋住的資源張數。 */
+  robbed: number;
+  blocked: number;
+  /** 終局時是否持有最長道路、最大騎士團。 */
+  longestRoad: boolean;
+  largestArmy: boolean;
   /** 腳本頂點不合法、退回 bot 自己選擇的次數（沒有腳本時為 0）。 */
   scriptMiss: number;
   /** 第 10、20 輪開始時的分數；整局在那之前結束則為 null。 */
@@ -271,6 +277,8 @@ function playGame(
     policy: script ? scripted(policyOf(role, profile), script, index, players, misses) : policyOf(role, profile),
   }));
   const openings: number[][] = seats.map(() => []);
+  // 開局描述必須在放置當下（套用前的狀態）取得：之後的對局可能改動數字標記（例如 C&K 的 Inventor）。
+  const described: ReturnType<typeof describeVertex>[][] = seats.map(() => []);
   const events = seats.map(() => ({ paidShips: 0, freeShips: 0, setupShips: 0, shipsMoved: 0, islandBonuses: 0 }));
   const seed = 10_000 + game;
   const run = runBotGame({
@@ -278,10 +286,12 @@ function playGame(
     seed,
     profileId: profile.id,
     kits,
-    onDecision: (_state, decision) => {
+    onDecision: (before, decision) => {
       const vertex = (decision.command as { vertex?: unknown }).vertex;
       if (decision.command.type === 'setup.placeBuilding' && typeof vertex === 'number') {
-        openings[seatIndexOf(decision.actor)]?.push(vertex);
+        const seat = seatIndexOf(decision.actor);
+        openings[seat]?.push(vertex);
+        described[seat]?.push(describeVertex(before, vertex));
       }
     },
     onStep: (step) => {
@@ -312,7 +322,7 @@ function playGame(
   const timeline = state.stats?.timeline ?? [];
   const records: SeatRecord[] = state.players.map((player, seat) => {
     const stats = state.stats?.players[player.id];
-    const described = (openings[seat] ?? []).map((vertex) => describeVertex(state, vertex));
+    const placed = described[seat] ?? [];
     const produced = stats ? Object.values(stats.produced).reduce((a, b) => a + b, 0) : 0;
     const sampled = (round: number): number | null =>
       timeline.length - 1 > round ? (timeline[round]?.[seat] ?? null) : null;
@@ -322,10 +332,10 @@ function playGame(
       won: player.id === winnerId,
       score: scoreOf(state, player.id, { includeHidden: true }),
       opening: openings[seat] ?? [],
-      openPips: described.map((entry) => entry.pips),
-      openCoast: described.map((entry) => entry.coast),
-      openHarbor: described.map((entry) => entry.harbor),
-      openKinds: new Set(described.flatMap((entry) => entry.kinds)).size,
+      openPips: placed.map((entry) => entry.pips),
+      openCoast: placed.map((entry) => entry.coast),
+      openHarbor: placed.map((entry) => entry.harbor),
+      openKinds: new Set(placed.flatMap((entry) => entry.kinds)).size,
       ...events[seat]!,
       settlements: stats?.settlementsBuilt ?? 0,
       cities: stats?.citiesBuilt ?? 0,
@@ -337,6 +347,10 @@ function playGame(
       produced,
       turns: stats?.turns ?? 0,
       improvements: player.improvements.trade + player.improvements.politics + player.improvements.science,
+      robbed: stats ? Object.values(stats.robbed).reduce((a, b) => a + b, 0) : 0,
+      blocked: stats ? Object.values(stats.blockedResources).reduce((a, b) => a + b, 0) : 0,
+      longestRoad: state.awards.longestRoad === player.id,
+      largestArmy: state.awards.largestArmy === player.id,
       scriptMiss: misses[seat] ?? 0,
       vp10: sampled(10),
       vp20: sampled(20),
@@ -385,6 +399,10 @@ const STAT_COLUMNS: readonly [string, (seat: SeatRecord) => number][] = [
   ['produced', (s) => s.produced],
   ['turns', (s) => s.turns],
   ['improvements', (s) => s.improvements],
+  ['robbed', (s) => s.robbed],
+  ['blocked', (s) => s.blocked],
+  ['longest road %', (s) => (s.longestRoad ? 100 : 0)],
+  ['largest army %', (s) => (s.largestArmy ? 100 : 0)],
 ];
 
 function groupBy<T>(items: readonly T[], key: (item: T) => string): Map<string, T[]> {
