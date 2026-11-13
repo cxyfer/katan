@@ -119,6 +119,7 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
   | sf-new-shores-paired-2025 | 6 人 vs easy／naive | 30%／32% → 30%／32% | 0 → 0 | 14／1 → 0／0 |
 
   - 3 人 sf-ck vs naive 的最長停滯從 72 次擲骰降到 37 次。四個 profile 共 32 組 bench：拒絕、卡死、看門狗、保底都是 0；沿海計畫啟用時多花約 0.15 ms（4 人固定盤面）。
+  - 每視窗最大指令數：sf-ck paired 6 人 1 standard vs 5 easy 有一個視窗 23 個（soft target ≤ 20，硬上限 40；rc.1 時這個 profile 最多 19）。這是 game 37 standard 座位的一個視窗：前 20 個指令含 5 次 Commercial Harbor 交換、4 次 bank、3 次進步卡、1 次改良、3 艘船，沒有一個是沿海計畫的指令；是對局軌跡改變後出現的 C&K 忙碌視窗。其餘各組都 ≤ 20。
   - sf 5 人 vs easy 的 36% → 31% 在 ±5 pp 的雜訊內，而且來自 easy 對手也會修路出海：只讓 standard 使用沿海計畫時，同一組是 38%。
   - D1（base 3–6 人 × 10 種子，其餘 profile 各人數 × 3 種子，共 76 局）：base 與 ck-\* 的 52 局雜湊不變。sf-\*／sf-ck-\* 的 24 局中有 16 局改變，每一局都有決策出現沿海計畫（3、5、6 人局）；4 人局沒有內陸狀態，雜湊不變。
   - Q1／Q2（`BOTS_SEEDS=10`，`sf-game.test.ts`、`sfck-game.test.ts`）通過。sf-ck 餘裕最小的格：C4 6 人 2（門檻 2，原為 4）、C1 3 人招募每局最少 2（門檻 1，原為 3）、C3 5 人每局最少 8（門檻 3，原為 15）。
