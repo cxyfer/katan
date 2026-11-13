@@ -2,12 +2,19 @@
  * 座位偏差量測（不進 CI；Issue #174 座位勝率偏差、#135 對局拆解）：
  *
  *   node bench/survey.mjs [局數] --profile <id> --players <n> --roles <規格>
- *                         [--from <起始局>] [--jsonl <檔>] [--markdown <檔>]
+ *                         [--from <起始局>] [--openings <開局表> [--shift <k>]]
+ *                         [--jsonl <檔>] [--markdown <檔>]
  *   node bench/survey.mjs --merge <jsonl 檔>... [--markdown <檔>]
  *
  * `--roles` 規格：`standard`／`easy`／`naive` 表示全部座位同一策略；`standard:easy` 表示 1 位 standard
  * 對其餘 easy（`standard:naive` 同理）。focus 座位依局數輪換（第 g 局放在座位 `g % 人數`），種子從
  * `10000 + g` 起，與 `bench/run.ts` 的 ① ② 對局完全相同（同一 profile、人數、局數時，focus 勝率一致）。
+ *
+ * `--openings 35/49,76/64,37/57` 指定每個座位「原本」的開局頂點（依座位 1、2、… 順序，每個座位兩個聚落，
+ * 先放第一輪、再放第二輪；可由先前基線報告的 Openings 表讀出），`--shift k` 讓座位 s 改用第
+ * `(s + k) % 人數` 份。bot 的聚落頂點以腳本取代（只換頂點，道路與其後的策略不變；腳本頂點不合法時
+ * 退回 bot 自己的選擇並記為 `scriptMiss`）。用來分離「開局位置的好壞」與「回合順序」：若勝率跟著開局走，
+ * 偏差來自位置；若仍跟著座位走，偏差來自回合順序。不改任何規則或策略碼。
  *
  * 每局記錄每個座位的勝負、終局分數、開局頂點與其產出、造船、小島加分、城市、發展卡、交易等
  * （來源為 `state.stats` 與 rules 事件，不改任何規則或策略），再彙整成 markdown 表：
@@ -43,7 +50,7 @@ const ROLES: readonly Role[] = ['standard', 'easy', 'naive'];
 const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit, citiesKnightsKit, sfckKit];
 
 const USAGE =
-  'usage: survey [games] --profile <id> --players <n> --roles <role | focus:rest> [--from <game>] [--jsonl <file>] [--markdown <file>]\n' +
+  'usage: survey [games] --profile <id> --players <n> --roles <role | focus:rest> [--from <game>] [--openings <a/b,...> [--shift <k>]] [--jsonl <file>] [--markdown <file>]\n' +
   '       survey --merge <jsonl>... [--markdown <file>]';
 
 // ---------------------------------------------------------------------------
@@ -56,6 +63,9 @@ interface Meta {
   roles: string;
   from: number;
   games: number;
+  /** 腳本開局（`--openings`）與位移（`--shift`）；沒有腳本時省略。 */
+  openings?: string;
+  shift?: number;
 }
 
 interface SeatRecord {
@@ -89,6 +99,8 @@ interface SeatRecord {
   produced: number;
   turns: number;
   improvements: number;
+  /** 腳本頂點不合法、退回 bot 自己選擇的次數（沒有腳本時為 0）。 */
+  scriptMiss: number;
   /** 第 10、20 輪開始時的分數；整局在那之前結束則為 null。 */
   vp10: number | null;
   vp20: number | null;
@@ -218,18 +230,45 @@ function describeVertex(state: GameState, vertex: number): { pips: number; coast
   return { pips, coast, harbor, kinds };
 }
 
+/** 開局腳本：`openings[i]` 是第 i 份開局（每份依放置順序的聚落頂點）；座位 s 使用第 `(s + shift) % n` 份。 */
+interface OpeningScript {
+  openings: readonly (readonly number[])[];
+  shift: number;
+}
+
+/**
+ * 把策略的聚落放置換成腳本頂點（只換 `setup.placeBuilding`；其餘指令原樣通過）。第幾個聚落由自己已
+ * 放的建築數決定，不靠內部計數（`nextDecision` 會對每個座位反覆詢問，指令未必被套用）。
+ */
+function scripted(policy: BotPolicy, script: OpeningScript, seat: number, players: number, misses: number[]): BotPolicy {
+  const mine = script.openings[(seat + script.shift) % players]!;
+  return {
+    decide(view, ctx) {
+      const command = policy.decide(view, ctx);
+      if (!command || command.type !== 'setup.placeBuilding') return command;
+      const placed = view.board.buildings.filter((building) => building?.player === ctx.selfId).length;
+      const wanted = mine[placed];
+      if (wanted !== undefined && view.hints?.legalSettlements.includes(wanted)) return { type: 'setup.placeBuilding', vertex: wanted };
+      misses[seat] = (misses[seat] ?? 0) + 1;
+      return command;
+    },
+  };
+}
+
 function playGame(
   spec: RoleSpec,
   profile: ProfileDefinition,
   kits: readonly ModuleTestKit[],
   players: number,
   game: number,
+  script: OpeningScript | null,
 ): GameRecord {
   const roles = rolesFor(spec, players, game);
+  const misses: number[] = roles.map(() => 0);
   const seats: BotSeat[] = roles.map((role, index) => ({
     id: `bot${index + 1}`,
     level: role === 'naive' ? 'standard' : role,
-    policy: policyOf(role, profile),
+    policy: script ? scripted(policyOf(role, profile), script, index, players, misses) : policyOf(role, profile),
   }));
   const openings: number[][] = seats.map(() => []);
   const events = seats.map(() => ({ paidShips: 0, freeShips: 0, setupShips: 0, shipsMoved: 0, islandBonuses: 0 }));
@@ -298,6 +337,7 @@ function playGame(
       produced,
       turns: stats?.turns ?? 0,
       improvements: player.improvements.trade + player.improvements.politics + player.improvements.science,
+      scriptMiss: misses[seat] ?? 0,
       vp10: sampled(10),
       vp20: sampled(20),
     };
@@ -365,7 +405,11 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
   const spec = parseRoles(meta.roles);
   const mixed = spec.focus !== null && spec.focus !== spec.rest;
   const lines: string[] = [];
-  lines.push(`# Seat survey: ${meta.profile} ${meta.players}p ${meta.roles}`, '');
+  lines.push(
+    `# Seat survey: ${meta.profile} ${meta.players}p ${meta.roles}` +
+      (meta.openings ? ` (scripted openings ${meta.openings}, shift ${meta.shift})` : ''),
+    '',
+  );
   lines.push(
     `\`${command}\` — ${games.length} games (game ${Math.min(...games.map((g) => g.game))}–${Math.max(...games.map((g) => g.game))}, ` +
       `seeds from ${10_000 + Math.min(...games.map((g) => g.game))}), ${finished.length} finished, ${problems} problems` +
@@ -401,6 +445,27 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
       `(fair share ${fmt(100 / meta.players, 1)}%).`,
     '',
   );
+
+  if (meta.openings) {
+    // 依「開局」重新歸類：座位 s 用第 (s + shift) % n 份。
+    const shift = meta.shift ?? 0;
+    const list = meta.openings.split(',');
+    const misses = flat.reduce((sum, s) => sum + s.scriptMiss, 0);
+    lines.push(`## Wins by scripted opening (seat s plays opening (s + ${shift}) % ${meta.players} + 1)`, '');
+    lines.push(
+      ...table(
+        ['opening', 'vertices', 'seat', 'wins', 'win %', '95% CI'],
+        seatNumbers.map((seat) => {
+          const wins = winsBySeat[seat]!;
+          const [lo, hi] = wilson(wins, finished.length);
+          return [((seat + shift) % meta.players) + 1, list[(seat + shift) % meta.players]!, seat + 1, wins, fmt((wins / Math.max(1, finished.length)) * 100, 1), `${fmt(lo, 1)}–${fmt(hi, 1)}`];
+        }).sort((a, b) => Number(a[0]) - Number(b[0])),
+      ),
+      '',
+      `Script misses (scripted vertex not legal, bot's own choice used): ${misses} over ${flat.length} seat-games.`,
+      '',
+    );
+  }
 
   // B. focus 座位（輪換）
   if (mixed) {
@@ -555,6 +620,8 @@ interface Args {
   players: number | undefined;
   roles: string | undefined;
   from: number;
+  openings: string | undefined;
+  shift: number;
   jsonl: string | undefined;
   markdown: string | undefined;
   merge: boolean;
@@ -562,7 +629,7 @@ interface Args {
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, jsonl: undefined, markdown: undefined, merge: false, files: [] };
+  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: 0, jsonl: undefined, markdown: undefined, merge: false, files: [] };
   const positional: string[] = [];
   const seen = new Set<string>();
   const value = (option: string, index: number): string => {
@@ -591,6 +658,15 @@ function parseArgs(argv: readonly string[]): Args {
         const raw = value(arg, ++index);
         if (!/^\d+$/.test(raw)) fail(`--from must be a non-negative integer, got "${raw}"`);
         out.from = Number(raw);
+        break;
+      }
+      case '--openings':
+        out.openings = value(arg, ++index);
+        break;
+      case '--shift': {
+        const raw = value(arg, ++index);
+        if (!/^\d+$/.test(raw)) fail(`--shift must be a non-negative integer, got "${raw}"`);
+        out.shift = Number(raw);
         break;
       }
       case '--jsonl':
@@ -629,7 +705,13 @@ if (args.merge) {
   const metas = parts.map((lines) => (JSON.parse(lines[0]!) as { meta: Meta }).meta);
   const first = metas[0]!;
   for (const other of metas) {
-    if (other.profile !== first.profile || other.players !== first.players || other.roles !== first.roles) {
+    if (
+      other.profile !== first.profile ||
+      other.players !== first.players ||
+      other.roles !== first.roles ||
+      other.openings !== first.openings ||
+      other.shift !== first.shift
+    ) {
       fail(`cannot merge shards of different configs: ${JSON.stringify(first)} vs ${JSON.stringify(other)}`);
     }
   }
@@ -649,9 +731,26 @@ if (args.merge) {
     fail((error as Error).message);
   }
   const kits = kitsOf(profile, BENCH_KITS);
-  meta = { profile: profile.id, players: args.players, roles: args.roles, from: args.from, games: args.games };
+  let script: OpeningScript | null = null;
+  if (args.openings) {
+    const openings = args.openings.split(',').map((entry) => entry.split('/').map(Number));
+    if (openings.length !== args.players || openings.some((entry) => entry.length !== 2 || entry.some((v) => !Number.isInteger(v) || v < 0))) {
+      fail(`--openings needs ${args.players} entries of the form <vertex>/<vertex>, got "${args.openings}"`);
+    }
+    script = { openings, shift: args.shift % args.players };
+  } else if (args.shift !== 0) {
+    fail('--shift needs --openings');
+  }
+  meta = {
+    profile: profile.id,
+    players: args.players,
+    roles: args.roles,
+    from: args.from,
+    games: args.games,
+    ...(script ? { openings: args.openings!, shift: script.shift } : {}),
+  };
   games = [];
-  for (let game = args.from; game < args.from + args.games; game++) games.push(playGame(spec, profile, kits, args.players, game));
+  for (let game = args.from; game < args.from + args.games; game++) games.push(playGame(spec, profile, kits, args.players, game, script));
   if (args.jsonl) {
     writeFileSync(args.jsonl, [JSON.stringify({ meta }), ...games.map((game) => JSON.stringify(game))].join('\n') + '\n');
   }
