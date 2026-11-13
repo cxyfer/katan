@@ -135,7 +135,7 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
   - friendly robber 的 `robberTargets` 寫法：FR 在沒有合法格時回沙漠，要與 fold 的初值相容。
   - `knightDecision` 的強制第一項。
 - **`fallbackDecision`** 的 JSDoc 已在 #168 補上。
-- **Q3 停滯的後續（待開 issue，尚未開）**：
+- **Q3 停滯的後續（#171 已處理；#172–#174 另案）**：
   - SF／base：沒有船位時，以海岸可達性評估建點（可能與 #135 有關，未驗證）。→ 已開 #171 並處理（見上一節的「處理」）；#135 的 sf 3 人 vs naive 前後都是 28%，這個修正沒有幫到 #135。
   - C&K：`plans.ts`、`improve.ts` 跳過 `no-site` 與滿級選項，不以滿級軌為主軌（只會改變這些狀態下 ck-\* 的決策雜湊）。
   - base 的 `handRelief`：不立刻換回剛收到的牌（會改變所有 profile 的決策雜湊，發布之後再做）。

@@ -6,7 +6,10 @@
  * - 內陸開局：最好的計畫是修路到沿海空點，決策是那條路（base 的聚落計畫走向內陸的另一條路）；兩邊都能蓋時，
  *   立即蓋的是沿海點而不是產能較高的內陸點；Road Building 的免費道路也走同一條路。
  * - 已有出發點時（含只被海盜擋住的海邊）不產生計畫、不加分：`scoreExtras` 與只有島嶼計畫時完全相同。
- * - 海邊被占走的沿海點、沒有船或聚落可用時不產生計畫；`planStep` 只送 hints 認可的指令。
+ * - 海邊被對手的路或船占走、被對手建築以距離規則擋住、或有騎士站在上面的沿海點不是候選，改選另一個沿海點；
+ *   對手的騎士站在路徑中間時，路徑繞開它（blocker）。沒有船或聚落可用時不產生計畫；`planStep` 只送 hints 認可的指令。
+ * - 回歸：重播 #171 的看門狗局（sf-ck 3 人、1 standard vs 2 naive、standard 在座位 1，真實的 setup 路徑）。開局後
+ *   standard 沒有出發點、計畫修路到海岸，整局正常終局、沒有看門狗。預設只跑種子 10009，`BOTS_SEEDS` 大於預設時跑四個。
  * - SF+CK：騎士站到沿海計畫的建地上要付該計畫的價值（`rescore`）。
  *
  * 每個送出的指令都必須被 `applyCommand` 接受。
@@ -26,11 +29,12 @@ import {
   type GameView,
 } from '@catan/rules';
 import { act, setHand } from '../../rules/test/helpers.ts';
-import { emptySeafarersGame, road, settle } from '../../rules/test/seafarers-helpers.ts';
+import { addKnight } from '../../rules/test/ck-helpers.ts';
+import { emptySeafarersGame, road, settle, ship } from '../../rules/test/seafarers-helpers.ts';
 import { emptySfckGame } from '../../rules/test/sfck-helpers.ts';
 import { isSeaEdge, playerYield, type BoardModel } from '../src/board.ts';
 import { economyOf, PIP_VALUE, settlementSpotValue, type Plan } from '../src/economy.ts';
-import { turnContext } from '../src/heuristic.ts';
+import { heuristicPolicy, turnContext } from '../src/heuristic.ts';
 import { botModulesOf } from '../src/index.ts';
 import { seafarersActions } from '../src/modules/seafarers/actions.ts';
 import {
@@ -51,6 +55,7 @@ import { moduleHints } from '../src/modules/view.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { shipEdgesOf } from '../src/sea.ts';
 import type { BotCommand, BotContext, BotLevel } from '../src/types.ts';
+import { EXTENSION_SEED_COUNT, extensionSeedCount, naivePolicy, runBotGame, type BotSeat } from './harness.ts';
 
 // ---------------------------------------------------------------------------
 // 工具與幾何
@@ -243,15 +248,89 @@ describe('an existing launch point leaves the decisions unchanged', () => {
 // 不產生計畫的情況與 planStep
 // ---------------------------------------------------------------------------
 
+/** v41 → v37 路徑中間的路口（52 與 53 共用的端點）。 */
+function midpoint(state: GameState): number {
+  const topo = getTopology(state.board.layout.topologyId);
+  const [a, b] = topo.edges[TO_COAST[0]]!.vertices;
+  const mid = a === INLAND ? b : a;
+  expect(topo.edges[TO_COAST[1]]!.vertices).toContain(mid);
+  return mid;
+}
+
+/**
+ * v37 被排除之後，仍有另一個沿海計畫，而且它的下一步是一條現在合法、引擎接受的路。所有沿海計畫的路徑都不經過
+ * `avoid`（被擋住的路口）。
+ */
+function expectAnotherCoastalSite(state: GameState, modules?: readonly BotModule[], avoid: number | null = null): void {
+  const turn = turnContext(viewOf(state), ctxFor('p1'), 'standard', modules);
+  expect(hasLaunchPoint(turn.model)).toBe(false);
+  const plans = coastPlans(turn);
+  expect(plans.map((plan) => plan.vertex)).not.toContain(COAST);
+  expect(plans.length).toBeGreaterThan(0);
+  const topo = turn.model.topo;
+  if (avoid !== null) {
+    for (const plan of plans) {
+      expect(plan.vertex).not.toBe(avoid);
+      for (const edge of plan.roads) expect(topo.edges[edge]!.vertices, `v${plan.vertex} road ${edge}`).not.toContain(avoid);
+    }
+  }
+  const step = seafarersPlanStep(turn, plans[0]!);
+  expect(step).toEqual({ type: 'build.road', edge: plans[0]!.roads[0] });
+  expect(turn.view.hints!.legalRoads).toContain(plans[0]!.roads[0]);
+  const outcome = applyCommand(state, 'p1', step as Command, seededRng(1));
+  expect(outcome.ok, outcome.ok ? 'ok' : outcome.error.code).toBe(true);
+}
+
 describe('coastal sites that do not give a launch point', () => {
   it('skips a coastal site whose sea edges are already taken by other roads', () => {
     const state = landlocked();
     const model = turnOf(state).model;
     for (const edge of seaEdgesAt(model, COAST)) road(state, 'p2', edge);
-    const turn = turnOf(state);
-    expect(hasLaunchPoint(turn.model)).toBe(false);
-    expect(coastPlans(turn).map((plan) => plan.vertex)).not.toContain(COAST);
-    expect(coastPlans(turn).length).toBeGreaterThan(0);
+    expectAnotherCoastalSite(state);
+  });
+
+  it('skips a coastal site whose sea edges are already taken by other ships', () => {
+    const state = landlocked();
+    const model = turnOf(state).model;
+    for (const edge of seaEdgesAt(model, COAST)) ship(state, 'p2', edge);
+    expectAnotherCoastalSite(state);
+  });
+
+  it('skips a coastal site that an opponent building blocks by the distance rule', () => {
+    const state = landlocked();
+    const model = turnOf(state).model;
+    const mid = midpoint(state);
+    // v37 的另一個鄰點（不在路徑上），所以路徑本身沒有被切斷，只有距離規則擋住 v37。
+    const neighbour = model.neighbors[COAST]!.find((vertex) => vertex !== mid)!;
+    settle(state, 'p2', neighbour);
+    expect(turnOf(state).economy.search.distance[COAST]).toBe(TO_COAST.length);
+    expectAnotherCoastalSite(state);
+  });
+
+  it('SF+CK: skips a coastal site with a knight on it, and routes around an opponent knight', () => {
+    const modules = botModulesOf(getProfile('sf-ck-new-shores-2025')!);
+    const sfck = (): GameState => {
+      const state = emptySfckGame(4, 0, 'action');
+      settle(state, 'p1', INLAND);
+      setHand(state, 'p1', { lumber: 1, brick: 1 });
+      return state;
+    };
+    // 沒有騎士時，SF+CK 也是 v37 經 52、53（與 SF 相同的盤面）。
+    const plain = turnContext(viewOf(sfck()), ctxFor('p1'), 'standard', modules);
+    expect(coastPlans(plain)[0]).toMatchObject({ vertex: COAST, roads: [...TO_COAST] });
+
+    // 騎士站在建地上：任何人的騎士都讓它蓋不成（`siteBlocked`）。
+    for (const owner of ['p1', 'p2']) {
+      const onSite = sfck();
+      addKnight(onSite, { player: owner, vertex: COAST, level: 1, active: false });
+      expectAnotherCoastalSite(onSite, modules);
+    }
+
+    // 對手的騎士站在路徑中間：道路過不去，沿海計畫都不經過那個路口（blocker）。
+    const onPath = sfck();
+    const mid = midpoint(onPath);
+    addKnight(onPath, { player: 'p2', vertex: mid, level: 1, active: false });
+    expectAnotherCoastalSite(onPath, modules, mid);
   });
 
   it('makes no plan without a ship or a settlement left', () => {
@@ -282,6 +361,72 @@ describe('coastal sites that do not give a launch point', () => {
     expect(seafarersPlanStep(arrived, there)).toEqual({ type: 'build.settlement', vertex: COAST });
     expect(seafarersPlanStep(arrived, { ...there, vertex: RICHER_INLAND })).toBeNull();
   });
+});
+
+// ---------------------------------------------------------------------------
+// 回歸：#171 的看門狗局（sf-ck 3 人，1 standard vs 2 naive）
+// ---------------------------------------------------------------------------
+
+/**
+ * Q3 bench 中觸發看門狗的種子（standard 都在座位 1）。預設只重播第一個（約 1 秒）；`BOTS_SEEDS` 大於預設的
+ * 擴充種子數時（發布閘門 `BOTS_SEEDS=10`）重播全部四個。
+ */
+const WATCHDOG_SEEDS = [10009, 10021, 10036, 10057] as const;
+const REPLAYED = extensionSeedCount() > EXTENSION_SEED_COUNT ? WATCHDOG_SEEDS : WATCHDOG_SEEDS.slice(0, 1);
+
+describe('regression: the #171 watchdog games (sf-ck 3p, 1 standard vs 2 naive)', () => {
+  const profile = getProfile('sf-ck-new-shores-2025')!;
+  const modules = botModulesOf(profile);
+  for (const seed of REPLAYED) {
+    it(`seed ${seed}: the landlocked standard seat plans a road to the coast, ships out and the game ends`, () => {
+      // 與 bench 相同的座位：第 (seed − 10000) 局的 focus 是座位 (seed − 10000) % 3，四個種子都是座位 1（bot1）。
+      expect((seed - 10_000) % 3).toBe(0);
+      const seats: BotSeat[] = [
+        { id: 'bot1', level: 'standard', policy: heuristicPolicy('standard') },
+        { id: 'bot2', level: 'standard', policy: naivePolicy('standard', modules) },
+        { id: 'bot3', level: 'standard', policy: naivePolicy('standard', modules) },
+      ];
+      let firstWindow: GameState | null = null;
+      let shipsBuilt = 0;
+      const run = runBotGame({
+        seats,
+        seed,
+        profileId: 'sf-ck-new-shores-2025',
+        onStep: (step) => {
+          if (step.actor === 'bot1' && step.command.type === 'build.ship') shipsBuilt += 1;
+          const { turn, pending, players } = step.after;
+          if (firstWindow === null && turn.setup === null && turn.phase === 'action' && !pending && players[turn.seat]!.id === 'bot1') {
+            firstWindow = step.after;
+          }
+        },
+      });
+
+      // 開局之後的第一個行動視窗：兩棟建築都在內陸（setup 改變而不再內陸時，這個 fixture 要換種子）。
+      expect(firstWindow, 'bot1 reaches an action window').not.toBeNull();
+      const state = firstWindow! as GameState;
+      const turn = turnContext(viewOf(state, 'bot1'), ctxFor('bot1'), 'standard', modules);
+      expect(hasLaunchPoint(turn.model), 'bot1 starts landlocked').toBe(false);
+      const plan = coastPlans(turn)[0];
+      expect(plan, 'bot1 plans a coastal settlement').toBeDefined();
+      expect(plan!.roads.length).toBeGreaterThan(0);
+      expect(turn.view.hints!.legalRoads).toContain(plan!.roads[0]);
+      // 有一條路的資源時，下一步就是那條路，而且引擎接受。
+      const affordable = JSON.parse(JSON.stringify(state)) as GameState;
+      setHand(affordable, 'bot1', { lumber: 1, brick: 1 });
+      const stepTurn = turnContext(viewOf(affordable, 'bot1'), ctxFor('bot1'), 'standard', modules);
+      const step = seafarersPlanStep(stepTurn, coastPlans(stepTurn)[0]!);
+      expect(step).toEqual({ type: 'build.road', edge: plan!.roads[0] });
+      const outcome = applyCommand(affordable, 'bot1', step as Command, seededRng(1));
+      expect(outcome.ok, outcome.ok ? 'ok' : outcome.error.code).toBe(true);
+
+      // 整局：沒有看門狗、拒絕或卡死，正常終局；standard 這次造得了船。
+      expect(run.watchdog, `watchdog after ${run.longestStagnation} rolls`).toBeNull();
+      expect(run.failure).toBeNull();
+      expect(run.stalled).toBe(false);
+      expect(run.state.result?.reason).toBe('victory');
+      expect(shipsBuilt, 'bot1 builds ships').toBeGreaterThan(0);
+    }, 60_000);
+  }
 });
 
 // ---------------------------------------------------------------------------
