@@ -596,6 +596,30 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
       '',
     );
   }
+  if (mixed) {
+    // 投入與勝負：focus 在各投入量下的勝率（觀察性資料，投入量與開局、運氣互相混淆）。
+    const focusSeats = flat.filter((s) => s.role === spec.focus);
+    const buckets: readonly [string, (s: SeatRecord) => number, readonly [string, number, number][]][] = [
+      ['paid ships', (s) => s.paidShips, [['0', 0, 0], ['1–2', 1, 2], ['3–4', 3, 4], ['5+', 5, 99]]],
+      ['island bonuses', (s) => s.islandBonuses, [['0', 0, 0], ['1', 1, 1], ['2', 2, 2], ['3+', 3, 99]]],
+      ['cities', (s) => s.cities, [['0', 0, 0], ['1', 1, 1], ['2', 2, 2], ['3+', 3, 99]]],
+    ];
+    lines.push(`## ${spec.focus} win rate by investment (observational; ${focusSeats.length} seat-games)`, '');
+    for (const [name, pick, ranges] of buckets) {
+      lines.push(
+        ...table(
+          [name, 'n', 'share %', 'win %', '95% CI', 'avg final score'],
+          ranges.map(([label, lo, hi]) => {
+            const rows = focusSeats.filter((s) => pick(s) >= lo && pick(s) <= hi);
+            const wins = rows.filter((s) => s.won).length;
+            const [cl, ch] = wilson(wins, rows.length);
+            return [label, rows.length, fmt((rows.length / Math.max(1, focusSeats.length)) * 100, 1), fmt((wins / Math.max(1, rows.length)) * 100, 1), `${fmt(cl, 1)}–${fmt(ch, 1)}`, fmt(mean(rows.map((s) => s.score)))];
+          }),
+        ),
+        '',
+      );
+    }
+  }
   lines.push(
     '- seat 1 = turn order first and the first placement of round 1 (and the last of round 2); in a fixed-map profile the map is identical every game.',
     '- `pips` = production-number dots (6 − |7 − n|) around the settlement; `kinds` = distinct resources (gold counted) over both settlements.',
