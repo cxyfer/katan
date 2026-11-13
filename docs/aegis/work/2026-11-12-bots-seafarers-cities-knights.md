@@ -69,9 +69,9 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
 - **追擊海盜**：16 組合計幾乎是 0（只有 6 人全 standard 平均每局 0.01 次），維持由固定盤面 FX-C1／C8 守門。
 - **#135**（SF standard 在 3–4 人對 naive 未達 soft target）：在 sf-ck 沒有重現，3、4 人對 naive 都是 100%；但 3 人那一組有下面的已知限制。
 
-### 已知限制：3 人 1 standard vs 2 naive 的後期停滯（rc.1 不修）
+### 已知限制：3 人 1 standard vs 2 naive 的後期停滯（rc.1 不修；已由 #171 的修正處理）
 
-根因由 Debugger 查明（腳本與報告放在 repo 外：`.worktrees/_scratch/sfckg-wd/`、`sfckg-wd2/`，不提交）。決定 rc.1 不修，記為已知限制，後續事項列在下一節。
+根因由 Debugger 查明（腳本與報告放在 repo 外：`.worktrees/_scratch/sfckg-wd/`、`sfckg-wd2/`，不提交）。決定 rc.1 不修，記為已知限制，後續事項列在下一節。**rc.1 之後已由 issue #171 的修正處理**（海路通達，見本節最後的「處理」）；以下是 rc.1 當時的紀錄。
 
 - **現象**：這一組 100 局只有 96 局終局，4 局（game 9、21、36、57，種子 10009、10021、10036、10057，standard 都在座位 1）觸發 72 次擲骰的看門狗；其餘 15 組都是 0。bench 把這 4 局排除在終局局數之外，所以該列的勝率 100% 與平均回合 29.0 只算 96 局。停滯時 standard 的合法路、聚落與船全是 0，`islands` 為 0，最後 72 次擲骰沒有 `build.*` 或 `city.improve`，卻有 30–47 次 `trade.bank`。關掉看門狗重跑：game 9／57／21 在第 214／721／1563 次擲骰才靠被動的 `ck.defenderOfCatan` 結束，game 36 到 12000 步（約 2192 次擲骰）仍未終局。
 - **根因（三層，缺一不可）**：
@@ -101,6 +101,28 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
   | 6 人 vs easy 勝場 | 55 | 56 | 53 |
   | 5 人 vs easy 無船局 | 14 | 18 | 16 |
   | 6 人 vs easy 無船局 | 12 | 14 | 14 |
+- **處理（#171，rc.1 之後）**：當成一般的「海路通達」問題處理，不改 setup（D5 不變）。SF 模組新增計畫種類 `seafarers.coastSettlement`（`packages/bots/src/modules/seafarers/plan.ts`）：自己沒有船的出發點時（自己的建築與船旁邊沒有現在就能放船的海邊，不看海盜），沿 base 的道路 BFS（≤ 3 條路）到一個沿海空點；蓋好之後那裡要還有空的海邊，而且出海 ≤ 4 艘船（easy 3 艘）登得上小島。價值是聚落本身加上 0.5 × 最佳島嶼聚落的價值，再依道路數打折。立即建造（`actions.ts`）、Road Building 的免費道路與 SF+CK 的騎士罰分（`rescore.ts`）都認得這個計畫。已有出發點時不產生任何計畫，決策不變（`test/sf-coast.test.ts`）。
+  bench 各 100 局（種子 10000 起）；前＝`885644a`（rc.1），後＝#171 的修正。「無船局」是 focus 的 standard 在所有行動視窗都沒有合法船位的局數（scratch 量測，與 bench 同種子、同座位輪換，勝率與 bench 一致）：
+
+  | profile | 組 | focus 勝率 前 → 後 | 看門狗 前 → 後 | 無船局 前 → 後 |
+  |---|---|---|---|---|
+  | sf-ck-new-shores-2025 | 3 人 vs naive | 100%（只計 96 局）→ 100%（100 局） | 4 → 0 | 6 → 0 |
+  | sf-ck-new-shores-2025 | 3 人 vs easy | 79% → 83% | 0 → 0 | 4 → 0 |
+  | sf-ck-new-shores-2025 | 3 人全 standard | — | 0 → 0 | 6 → 1 |
+  | sf-ck-new-shores-2025 | 4 人 vs easy／naive | 63%／100% → 63%／100% | 0 → 0 | 0 → 0 |
+  | sf-ck-new-shores-paired-2025 | 5 人 vs easy／naive | 65%／100% → 72%／100% | 0 → 0 | 14／6 → 1／0 |
+  | sf-ck-new-shores-paired-2025 | 6 人 vs easy／naive | 55%／100% → 56%／100% | 0 → 0 | 12／0 → 2／0 |
+  | sf-ck-new-shores-paired-2025 | 5 人／6 人全 standard | — | 0 → 0 | 18／5 → 4／1 |
+  | sf-new-shores-2025 | 3 人 vs easy／naive | 54%／28% → 51%／28% | 0 → 0 | 1／0 → 1／0 |
+  | sf-new-shores-2025 | 4 人 vs easy／naive | 45%／31% → 45%／32% | 0 → 0 | 0 → 0 |
+  | sf-new-shores-paired-2025 | 5 人 vs easy／naive | 36%／33% → 31%／33% | 0 → 0 | 13／3 → 2／1 |
+  | sf-new-shores-paired-2025 | 6 人 vs easy／naive | 30%／32% → 30%／32% | 0 → 0 | 14／1 → 0／0 |
+
+  - 3 人 sf-ck vs naive 的最長停滯從 72 次擲骰降到 37 次。四個 profile 共 32 組 bench：拒絕、卡死、看門狗、保底都是 0；沿海計畫啟用時多花約 0.15 ms（4 人固定盤面）。
+  - sf 5 人 vs easy 的 36% → 31% 在 ±5 pp 的雜訊內，而且來自 easy 對手也會修路出海：只讓 standard 使用沿海計畫時，同一組是 38%。
+  - D1（base 3–6 人 × 10 種子，其餘 profile 各人數 × 3 種子，共 76 局）：base 與 ck-\* 的 52 局雜湊不變。sf-\*／sf-ck-\* 的 24 局中有 16 局改變，每一局都有決策出現沿海計畫（3、5、6 人局）；4 人局沒有內陸狀態，雜湊不變。
+  - Q1／Q2（`BOTS_SEEDS=10`，`sf-game.test.ts`、`sfck-game.test.ts`）通過。sf-ck 餘裕最小的格：C4 6 人 2（門檻 2，原為 4）、C1 3 人招募每局最少 2（門檻 1，原為 3）、C3 5 人每局最少 8（門檻 3，原為 15）。
+  - 3 人全 standard 的座位勝場 21／12／1 → 20／8／2，座位偏差（#174）仍在；sf 3 人 vs naive 前後都是 28%，這個修正沒有幫到 #135。
 
 ## 審查得出的限制與後續事項
 
@@ -113,7 +135,7 @@ bench 在 gating 開放之後才跑得動（D6）。來源：`0a9450b`（SFCK-G 
   - `knightDecision` 的強制第一項。
 - **`fallbackDecision`** 的 JSDoc 已在 #168 補上。
 - **Q3 停滯的後續（待開 issue，尚未開）**：
-  - SF／base：沒有船位時，以海岸可達性評估建點（可能與 #135 有關，未驗證）。
+  - SF／base：沒有船位時，以海岸可達性評估建點（可能與 #135 有關，未驗證）。→ 已開 #171 並處理（見上一節的「處理」）；#135 的 sf 3 人 vs naive 前後都是 28%，這個修正沒有幫到 #135。
   - C&K：`plans.ts`、`improve.ts` 跳過 `no-site` 與滿級選項，不以滿級軌為主軌（只會改變這些狀態下 ck-\* 的決策雜湊）。
   - base 的 `handRelief`：不立刻換回剛收到的牌（會改變所有 profile 的決策雜湊，發布之後再做）。
   - 調查 3 人 sf-ck 全 standard 的座位偏差（未驗證）。

@@ -3,7 +3,8 @@
  * `knight.displace`、`knight.recruit` 的目標路口罰分。只調分數，不新增、不移除候選（R-SC9）；不相干的指令回 0。
  *
  * - **小島空點**（standard 與 easy 都罰）：目標是自己現行島嶼計畫（`economy.plans` 中的 `seafarers.islandSettlement`）
- *   的建地時，罰分等於該計畫的價值（勝利分當量）：騎士站上去，那座聚落就蓋不成（`siteBlocked`）。
+ *   的建地時，罰分等於該計畫的價值（勝利分當量）：騎士站上去，那座聚落就蓋不成（`siteBlocked`）。沒有船的出發點時，
+ *   沿海計畫（`seafarers.coastSettlement`，#171）的建地同樣罰分。
  * - **船的 open end**（只限 standard）：目標是 `hints.modules.seafarers.movableShips` 中自己葉端船的 open end 時，
  *   罰 `OPEN_END_PENALTY`：騎士站在那一端，這艘船就只剩被騎士壓住的端點，rules 會回 `E_SHIP_PINNED_BY_KNIGHT`。
  *   easy 不移船（SF 計畫 D-SF2），所以不罰，`recruitSite` 的順序也不變。
@@ -15,7 +16,7 @@
  */
 
 import type { GameView } from '@catan/rules';
-import { ISLAND_SETTLEMENT } from '../seafarers/plan.ts';
+import { COAST_SETTLEMENT, ISLAND_SETTLEMENT } from '../seafarers/plan.ts';
 import type { BotCommand, BotModule, TurnContext } from '../types.ts';
 import { moduleHints } from '../view.ts';
 
@@ -28,11 +29,14 @@ function targetVertex(command: BotCommand): number | null {
   return typeof field === 'number' && Number.isInteger(field) ? field : null;
 }
 
-/** 自己現行島嶼計畫中，建地是 `vertex` 者的最大價值；沒有則 0。 */
+/** 罰分的計畫種類：島嶼聚落，與沒有船的出發點時的沿海聚落（騎士站上去，出海的起點就蓋不成，#171）。 */
+const SEA_PLANS: readonly string[] = [ISLAND_SETTLEMENT, COAST_SETTLEMENT];
+
+/** 自己現行島嶼或沿海計畫中，建地是 `vertex` 者的最大價值；沒有則 0。 */
 function islandPlanValue(turn: TurnContext, vertex: number): number {
   let value = 0;
   for (const plan of turn.economy.plans) {
-    if (plan.kind === ISLAND_SETTLEMENT && plan.vertex === vertex && Number.isFinite(plan.value)) value = Math.max(value, plan.value);
+    if (SEA_PLANS.includes(plan.kind) && plan.vertex === vertex && Number.isFinite(plan.value)) value = Math.max(value, plan.value);
   }
   return value;
 }
