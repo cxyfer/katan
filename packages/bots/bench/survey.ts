@@ -431,7 +431,7 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
   const lines: string[] = [];
   lines.push(
     `# Seat survey: ${meta.profile} ${meta.players}p ${meta.roles}` +
-      (meta.openings ? ` (scripted openings ${meta.openings}, shift ${meta.shift})` : ''),
+      (meta.openings ? ` (scripted openings ${meta.openings}, ${meta.shift === undefined ? 'pooled over shifts' : `shift ${meta.shift}`})` : ''),
     '',
   );
   lines.push(
@@ -470,9 +470,9 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
     '',
   );
 
-  if (meta.openings) {
+  if (meta.openings && meta.shift !== undefined) {
     // 依「開局」重新歸類：座位 s 用第 (s + shift) % n 份。
-    const shift = meta.shift ?? 0;
+    const shift = meta.shift;
     const list = meta.openings.split(',');
     const misses = flat.reduce((sum, s) => sum + s.scriptMiss, 0);
     lines.push(`## Wins by scripted opening (seat s plays opening (s + ${shift}) % ${meta.players} + 1)`, '');
@@ -874,16 +874,20 @@ if (args.merge) {
       other.profile !== first.profile ||
       other.players !== first.players ||
       other.roles !== first.roles ||
-      other.openings !== first.openings ||
-      other.shift !== first.shift
+      other.openings !== first.openings
     ) {
       fail(`cannot merge shards of different configs: ${JSON.stringify(first)} vs ${JSON.stringify(other)}`);
     }
   }
   games = parts.flatMap((lines) => lines.slice(1).map((line) => JSON.parse(line) as GameRecord));
+  // 位移不同的分片只能「池化」（座位 × 開局被平衡掉）：game 編號會重複，座位表失去意義，只看策略與勝負拆解。
+  const pooled = metas.some((other) => other.shift !== first.shift);
   const ids = new Set(games.map((game) => game.game));
-  if (ids.size !== games.length) fail('shards overlap: a game index appears twice');
+  if (!pooled && ids.size !== games.length) fail('shards overlap: a game index appears twice');
   meta = { ...first, from: Math.min(...games.map((game) => game.game)), games: games.length };
+  if (pooled) {
+    delete meta.shift;
+  }
 } else {
   if (!args.profile || args.players === undefined || !args.roles) fail('--profile, --players and --roles are required');
   const profile = getProfile(args.profile) ?? fail(`unknown ruleset profile: ${args.profile}`);
