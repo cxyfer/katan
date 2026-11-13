@@ -5,6 +5,7 @@
  *                         [--from <起始局>] [--openings <開局表> [--shift <k>]]
  *                         [--jsonl <檔>] [--markdown <檔>]
  *   node bench/survey.mjs --merge <jsonl 檔>... [--markdown <檔>]
+ *   node bench/survey.mjs --latin <jsonl 檔>... [--markdown <檔>]
  *
  * `--roles` 規格：`standard`／`easy`／`naive` 表示全部座位同一策略；`standard:easy` 表示 1 位 standard
  * 對其餘 easy（`standard:naive` 同理）。focus 座位依局數輪換（第 g 局放在座位 `g % 人數`），種子從
@@ -15,6 +16,10 @@
  * `(s + k) % 人數` 份。bot 的聚落頂點以腳本取代（只換頂點，道路與其後的策略不變；腳本頂點不合法時
  * 退回 bot 自己的選擇並記為 `scriptMiss`）。用來分離「開局位置的好壞」與「回合順序」：若勝率跟著開局走，
  * 偏差來自位置；若仍跟著座位走，偏差來自回合順序。不改任何規則或策略碼。
+ *
+ * `--latin` 讀入同一組開局、不同 `--shift` 的分片（每個位移一個檔，座位 × 開局成拉丁方陣），輸出
+ * 「座位 × 開局」勝率矩陣與兩個邊際：座位邊際（每個座位輪過每一份開局，開局的影響平均掉，剩下回合順序）、
+ * 開局邊際（每份開局輪過每個座位，回合順序平均掉，剩下開局位置）。
  *
  * 每局記錄每個座位的勝負、終局分數、開局頂點與其產出、造船、小島加分、城市、發展卡、交易等
  * （來源為 `state.stats` 與 rules 事件，不改任何規則或策略），再彙整成 markdown 表：
@@ -51,7 +56,8 @@ const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit, citiesKnightsKit, sf
 
 const USAGE =
   'usage: survey [games] --profile <id> --players <n> --roles <role | focus:rest> [--from <game>] [--openings <a/b,...> [--shift <k>]] [--jsonl <file>] [--markdown <file>]\n' +
-  '       survey --merge <jsonl>... [--markdown <file>]';
+  '       survey --merge <jsonl>... [--markdown <file>]\n' +
+  '       survey --latin <jsonl>... [--markdown <file>]';
 
 // ---------------------------------------------------------------------------
 // 記錄格式
@@ -667,11 +673,12 @@ interface Args {
   jsonl: string | undefined;
   markdown: string | undefined;
   merge: boolean;
+  latin: boolean;
   files: string[];
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: 0, jsonl: undefined, markdown: undefined, merge: false, files: [] };
+  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: 0, jsonl: undefined, markdown: undefined, merge: false, latin: false, files: [] };
   const positional: string[] = [];
   const seen = new Set<string>();
   const value = (option: string, index: number): string => {
@@ -720,14 +727,18 @@ function parseArgs(argv: readonly string[]): Args {
       case '--merge':
         out.merge = true;
         break;
+      case '--latin':
+        out.latin = true;
+        break;
       default:
         if (arg.startsWith('-')) fail(`unknown option ${arg}`);
         positional.push(arg);
     }
   }
-  if (out.merge) {
+  if (out.merge && out.latin) fail('--merge and --latin are exclusive');
+  if (out.merge || out.latin) {
     out.files = positional;
-    if (out.files.length === 0) fail('--merge needs at least one jsonl file');
+    if (out.files.length === 0) fail(`--${out.merge ? 'merge' : 'latin'} needs at least one jsonl file`);
   } else {
     if (positional.length > 1) fail(`unexpected argument "${positional[1]}"`);
     const rawGames = positional[0] ?? '100';
@@ -737,11 +748,98 @@ function parseArgs(argv: readonly string[]): Args {
   return out;
 }
 
+
+/** 讀一個 jsonl 分片：第一行 meta，其餘為逐局記錄。 */
+function readShard(file: string): { meta: Meta; games: GameRecord[] } {
+  const lines = readFileSync(file, 'utf8').split('\n').filter((line) => line.trim() !== '');
+  return { meta: (JSON.parse(lines[0]!) as { meta: Meta }).meta, games: lines.slice(1).map((line) => JSON.parse(line) as GameRecord) };
+}
+
+/** 拉丁方陣：座位 × 開局的勝率矩陣與兩個邊際。 */
+function renderLatin(files: readonly string[], command: string): string {
+  const shards = files.map(readShard);
+  const first = shards[0]!.meta;
+  const n = first.players;
+  for (const { meta } of shards) {
+    if (!meta.openings || meta.profile !== first.profile || meta.players !== n || meta.roles !== first.roles || meta.openings !== first.openings) {
+      fail('--latin needs scripted shards (--openings) of one config with the same openings list');
+    }
+  }
+  const byShift = new Map<number, GameRecord[]>();
+  for (const { meta, games } of shards) {
+    const shift = meta.shift ?? 0;
+    byShift.set(shift, [...(byShift.get(shift) ?? []), ...games.filter((game) => game.finished)]);
+  }
+  const shifts = [...byShift.keys()].sort((a, b) => a - b);
+  if (shifts.length !== n || shifts.some((shift, index) => shift !== index)) fail(`--latin needs one shard per shift 0..${n - 1}, got ${shifts.join(',')}`);
+  const list = first.openings!.split(',');
+  // cell[seat][opening] = [wins, games]
+  const cell = Array.from({ length: n }, () => Array.from({ length: n }, () => [0, 0] as [number, number]));
+  for (const [shift, games] of byShift) {
+    for (const game of games) {
+      for (let seat = 0; seat < n; seat++) {
+        const slot = cell[seat]![(seat + shift) % n]!;
+        slot[1] += 1;
+        if (game.winner === seat) slot[0] += 1;
+      }
+    }
+  }
+  const rate = ([wins, games]: [number, number]): string => `${fmt((wins / Math.max(1, games)) * 100, 1)} (${wins}/${games})`;
+  const lines: string[] = [];
+  lines.push(`# Latin square: ${first.profile} ${n}p ${first.roles} (openings ${first.openings})`, '');
+  lines.push(`\`${command}\` — ${shifts.map((shift) => `shift ${shift}: ${byShift.get(shift)!.length}`).join(', ')} finished games (500 per shift is the intended size).`, '');
+  lines.push('Win % (wins/games) of the seat in the row when it plays the opening in the column; every game has one winner, so each shift run sums to 100%.', '');
+  lines.push(
+    ...table(
+      ['seat \\ opening', ...list.map((entry, index) => `${index + 1} (${entry})`), 'seat marginal (turn order)'],
+      cell.map((row, seat) => {
+        const [wins, games] = row.reduce<[number, number]>((acc, slot) => [acc[0] + slot[0], acc[1] + slot[1]], [0, 0]);
+        const [lo, hi] = wilson(wins, games);
+        return [seat + 1, ...row.map(rate), `${fmt((wins / Math.max(1, games)) * 100, 1)} [${fmt(lo, 1)}–${fmt(hi, 1)}]`];
+      }),
+    ),
+    '',
+  );
+  const openingMarginals = list.map((_, opening) => {
+    const [wins, games] = cell.reduce<[number, number]>((acc, row) => [acc[0] + row[opening]![0], acc[1] + row[opening]![1]], [0, 0]);
+    return { wins, games };
+  });
+  lines.push(
+    ...table(
+      ['opening marginal (position)', ...list.map((entry, index) => `${index + 1} (${entry})`)],
+      [[
+        'win % [95% CI]',
+        ...openingMarginals.map(({ wins, games }) => {
+          const [lo, hi] = wilson(wins, games);
+          return `${fmt((wins / Math.max(1, games)) * 100, 1)} [${fmt(lo, 1)}–${fmt(hi, 1)}]`;
+        }),
+      ]],
+    ),
+    '',
+  );
+  // 邊際的卡方：每個邊際的 n 個單元格各自有相同的場次數。
+  const chiOf = (marginals: readonly { wins: number; games: number }[]): string => {
+    const total = marginals.reduce((sum, m) => sum + m.wins, 0);
+    const expected = total / marginals.length;
+    const chi = marginals.reduce((sum, m) => sum + (m.wins - expected) ** 2 / expected, 0);
+    return `chi-square ${fmt(chi, 1)}, df ${marginals.length - 1}, p = ${fmt(chiSquareP(chi, marginals.length - 1), 4)}`;
+  };
+  const seatMarginals = cell.map((row) => ({ wins: row.reduce((sum, slot) => sum + slot[0], 0), games: row.reduce((sum, slot) => sum + slot[1], 0) }));
+  lines.push(`- seat marginal (opening effect averaged out): ${chiOf(seatMarginals)}.`, `- opening marginal (turn order averaged out): ${chiOf(openingMarginals)}.`, '');
+  return lines.join('\n');
+}
+
 const args = parseArgs(process.argv.slice(2));
 const command = `node bench/survey.mjs ${process.argv.slice(2).join(' ')}`;
 let meta: Meta;
 let games: GameRecord[];
 
+if (args.latin) {
+  const text = renderLatin(args.files, command);
+  console.log(text);
+  if (args.markdown) writeFileSync(args.markdown, text);
+  process.exit(0);
+}
 if (args.merge) {
   const parts = args.files.map((file) => readFileSync(file, 'utf8').split('\n').filter((line) => line.trim() !== ''));
   const metas = parts.map((lines) => (JSON.parse(lines[0]!) as { meta: Meta }).meta);
