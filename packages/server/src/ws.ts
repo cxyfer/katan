@@ -39,14 +39,6 @@ export function createWebSocketServer(deps: WsDeps): {
     inflight.add(work);
     void work.then(() => inflight.delete(work));
   }
-  /** 連線結束後的清理：錯誤記 warn，不再變成 unhandled rejection 而讓程序崩潰。 */
-  function trackCleanup(connection: Connection): void {
-    track(
-      deps.rooms.unregisterConnection(connection).catch((error) => {
-        deps.log('warn', 'ws disconnect cleanup failed', { connectionId: connection.id, error: String(error) });
-      }),
-    );
-  }
 
   server.on('connection', (socket: WebSocket, _req: IncomingMessage, context: { playerId: string }) => {
     const connection: Connection = {
@@ -64,6 +56,8 @@ export function createWebSocketServer(deps: WsDeps): {
     // 同一條連線的訊息依序處理：取消訂閱後立刻訂閱別的房間時，兩者不能交錯。
     let messageQueue: Promise<void> = Promise.resolve();
     socket.on('message', (raw) => {
+      // 連線已結束（清理已排入）：之後到達的訊息不再處理。
+      if (cleanup) return;
       messageQueue = messageQueue.then(() => handleRaw(raw)).catch(() => undefined);
       track(messageQueue);
     });
@@ -131,6 +125,9 @@ export function createWebSocketServer(deps: WsDeps): {
           if (connection.roomId && connection.roomId !== roomId) {
             await deps.rooms.unregisterConnection(connection);
           }
+          // 等待期間 socket 已結束：不再登記死連線（會遞增進房世代、喚醒 Bot）。
+          // 從這裡到指派 roomId 之間沒有 await；之後才結束的 socket 由接在佇列後的清理移除。
+          if (cleanup) return;
           connection.roomId = roomId;
           await deps.rooms.registerConnection(connection);
           connection.send({
@@ -152,8 +149,22 @@ export function createWebSocketServer(deps: WsDeps): {
       }
     }
 
-    socket.on('close', () => trackCleanup(connection));
-    socket.on('error', () => trackCleanup(connection));
+    // 斷線清理接在該連線已排隊的訊息之後：subscribe 可能還停在 requireMembership 或
+    // 正在切離前一個房間，這時 `connection.roomId` 尚未是最終值；若清理搶先執行，
+    // 之後恢復的 handler 會把已關閉的連線註冊進去，沒人再清理，座位永遠顯示在線。
+    // `close` 與 `error` 都可能觸發，只清理一次。錯誤記 warn，不變成 unhandled rejection。
+    let cleanup: Promise<void> | null = null;
+    const cleanupAfterQueue = (): void => {
+      if (cleanup) return;
+      cleanup = messageQueue
+        .then(() => deps.rooms.unregisterConnection(connection))
+        .catch((error) => {
+          deps.log('warn', 'ws disconnect cleanup failed', { connectionId: connection.id, error: String(error) });
+        });
+      track(cleanup);
+    };
+    socket.on('close', cleanupAfterQueue);
+    socket.on('error', cleanupAfterQueue);
 
     connection.send({
       type: 'hello',
