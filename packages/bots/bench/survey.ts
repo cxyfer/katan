@@ -825,6 +825,31 @@ function renderLatin(files: readonly string[], command: string): string {
     return `chi-square ${fmt(chi, 1)}, df ${marginals.length - 1}, p = ${fmt(chiSquareP(chi, marginals.length - 1), 4)}`;
   };
   const seatMarginals = cell.map((row) => ({ wins: row.reduce((sum, slot) => sum + slot[0], 0), games: row.reduce((sum, slot) => sum + slot[1], 0) }));
+  const spec = parseRoles(first.roles);
+  if (spec.focus !== null && spec.focus !== spec.rest) {
+    // focus 座位的勝率：focus 輪過每個座位、每個座位輪過每份開局，所以位置與回合順序都被平衡掉，剩下策略差異。
+    const focusCell = Array.from({ length: n }, () => Array.from({ length: n }, () => [0, 0] as [number, number]));
+    for (const [shift, games] of byShift) {
+      for (const game of games) {
+        for (const seatRecord of game.seats) {
+          if (seatRecord.role !== spec.focus) continue;
+          const slot = focusCell[seatRecord.seat]![(seatRecord.seat + shift) % n]!;
+          slot[1] += 1;
+          if (seatRecord.won) slot[0] += 1;
+        }
+      }
+    }
+    const [fw, fg] = focusCell.flat().reduce<[number, number]>((acc, slot) => [acc[0] + slot[0], acc[1] + slot[1]], [0, 0]);
+    const [flo, fhi] = wilson(fw, fg);
+    lines.push(
+      `${spec.focus} win % (wins/games) by the seat it sits in and the opening it plays (vs ${spec.rest}; fair share ${fmt(100 / n, 1)}%):`,
+      '',
+      ...table(['seat \\ opening', ...list.map((entry, index) => `${index + 1} (${entry})`)], focusCell.map((row, seat) => [seat + 1, ...row.map(rate)])),
+      '',
+      `- ${spec.focus} win rate pooled over every seat and opening: ${fmt((fw / Math.max(1, fg)) * 100, 1)}% [${fmt(flo, 1)}–${fmt(fhi, 1)}] (${fw}/${fg}).`,
+      '',
+    );
+  }
   lines.push(`- seat marginal (opening effect averaged out): ${chiOf(seatMarginals)}.`, `- opening marginal (turn order averaged out): ${chiOf(openingMarginals)}.`, '');
   return lines.join('\n');
 }
