@@ -7,14 +7,15 @@
  *     `1 + PIP_VALUE × settlementSpotValue`，再加上 `ISLAND_BONUS_VP` × 還沒領過加分的小島數。小島加分是
  *     實際的勝利分，而且這座島的加分只有這一次，所以權重為 1（不打折，與島嶼計畫的價值相同）。
  *     同一個指令在 base 與這裡各出現一次，骨架合併候選時去重（保留最高分），不會佔掉 easy topK 的名額。
+ *     沒有船的出發點時，沿海計畫的建地也以同樣的方式另外回傳（`coastSettlements`，#171）。
  *   - 移船：只有 standard 會移（easy 不移船，D-SF2）。條件：有一艘不在任何島嶼計畫路徑上的葉端船
  *     （拿掉它，所有島嶼計畫所需的船數都不變），而且它的 `targets` 含最佳計畫的下一條邊，就把它移到
  *     那條邊，讓計畫少造一艘。`from` 與 `to` 只取自 `hints.movableShips`（D-SF6：船圈與迴路的判定
  *     留給 rules，日後改判時只有 hints 會變）。移船不花船，所以計畫以「存量 + 1」的容量評估：15 艘船都在
  *     盤面上時，付費造船沒有計畫，但一次合法的移船仍能推進登島。
  * - `freeRouteCandidates`：免費路線（Road Building）。計畫路徑的下一步在 `legalShips` 就造船，下一步
- *   是路（道路存量 > 0 而且在 `legalRoads` 中）就造路，否則挑最能延伸計畫的一步。候選非空時會取代
- *   base 的選路，所以道路候選也由這裡提供。行動階段（還沒打出 Road Building）只回傳船的候選：骨架以
+ *   是路（道路存量 > 0 而且在 `legalRoads` 中；base 的聚落、最長道路與沿海聚落計畫）就造路，否則挑最能
+ *   延伸計畫的一步。候選非空時會取代 base 的選路，所以道路候選也由這裡提供。行動階段（還沒打出 Road Building）只回傳船的候選：骨架以
  *   「任一模組的候選非空」決定要不要打出，道路由 base 判斷。easy 的「取前 3 名」由骨架的 topK 完成。
  *
  * 決定性（P4）：候選依 edge／vertex index 遞增產生，分數相同時保留這個順序；不消耗亂數。
@@ -29,6 +30,7 @@ import type { BotCommand, BotModule, Scored, TurnContext } from '../types.ts';
 import { moduleHints } from '../view.ts';
 import {
   claimedIslands,
+  COAST_SETTLEMENT,
   ISLAND_BONUS_VP,
   ISLAND_SETTLEMENT,
   islandSettlementPlans,
@@ -50,8 +52,27 @@ const SHIP_APPROACH_REACH = 5;
 
 export const seafarersActions: NonNullable<BotModule['actions']> = (turn) => [
   ...islandSettlements(turn),
+  ...coastSettlements(turn),
   ...shipMoves(turn),
 ];
+
+/**
+ * 立即蓋沿海聚落（海路通達，#171）：沒有船的出發點時，base 的立即建造只看產能，可能把資源花在城市或內陸的
+ * 聚落上。沿海計畫（`economy.plans` 的 `seafarers.coastSettlement`）中不必再修路、而且現在合法的點，另外以
+ * 計畫的價值回傳一個 `build.settlement` 候選：不必修路時，價值就是 `1 + PIP_VALUE × settlementSpotValue`
+ * 加上 `ACCESS_WEIGHT` × 出海價值，與 base 同單位。已有出發點時沒有沿海計畫，這裡回傳空陣列。
+ */
+function coastSettlements(turn: TurnContext): Scored<BotCommand>[] {
+  const { view, economy } = turn;
+  if (economy.left.settlements <= 0 || !canAfford(economy.hand, COSTS.settlement)) return [];
+  const legal = view.hints?.legalSettlements ?? [];
+  const out: Scored<BotCommand>[] = [];
+  for (const plan of economy.plans) {
+    if (plan.kind !== COAST_SETTLEMENT || plan.roads.length > 0 || plan.vertex === null || !legal.includes(plan.vertex)) continue;
+    out.push({ item: { type: 'build.settlement', vertex: plan.vertex }, score: plan.value });
+  }
+  return out;
+}
 
 function islandSettlements(turn: TurnContext): Scored<BotCommand>[] {
   const { view, model, economy, ctx } = turn;
@@ -120,7 +141,7 @@ export const seafarersFreeRouteCandidates: NonNullable<BotModule['freeRouteCandi
     if (plan.kind === ISLAND_SETTLEMENT) {
       const edge = plan.ships?.[0];
       if (edge !== undefined && ships.includes(edge) && !shipSteps.has(edge)) shipSteps.set(edge, tier);
-    } else if (plan.kind === 'settlement' || plan.kind === 'longestRoad') {
+    } else if (plan.kind === 'settlement' || plan.kind === 'longestRoad' || plan.kind === COAST_SETTLEMENT) {
       const edge = plan.roads[0];
       if (edge !== undefined && roads.includes(edge) && !roadSteps.has(edge)) roadSteps.set(edge, tier);
     }
