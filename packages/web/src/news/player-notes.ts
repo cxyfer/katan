@@ -27,6 +27,32 @@ export interface PlayerNote {
 
 export const PLAYER_NOTES: readonly PlayerNote[] = [
   {
+    version: '0.4.3',
+    date: '2026-11-15',
+    title: {
+      'zh-Hant': '電腦對手駛向航海家＋城市與騎士',
+      en: 'Computer opponents sail Seafarers + Cities & Knights',
+    },
+    items: [
+      {
+        'zh-Hant': '航海家＋城市與騎士開放「簡單」與「標準」電腦對手入座，3–6 人都可以，包含 5–6 人的搭檔回合；它們會造船、到島上建村莊、招募騎士抵禦野蠻人，也會追逐海盜。「困難」仍只在基本版提供。',
+        en: 'Easy and standard computer opponents can now take seats in Seafarers + Cities & Knights at 3–6 players, paired turns included: they build ships, settle islands, recruit knights against the barbarians and chase the pirate. Hard remains base-game only.',
+      },
+      {
+        'zh-Hant': '航海家電腦對手會依兩個開局村莊的整體搭配挑選位置，不再開出兩個內陸點、或沒有羊毛而造不起船的組合；沒有地方造船時，也會先把道路鋪向海岸。',
+        en: 'Seafarers computer opponents now pick their two opening settlements as a pair, so they no longer start inland or without the wool that ships need; when there is no spot for a ship they build roads toward the coast first.',
+      },
+      {
+        'zh-Hant': '城市與騎士電腦對手不再投資已經升滿、或已無大都會位置的城市改良項目，會改為專注在還能前進的項目。',
+        en: 'Cities & Knights computer opponents stop investing in a city improvement track that is maxed out or has no metropolis site left, and focus on one that can still advance.',
+      },
+      {
+        'zh-Hant': '電腦對手為了減少手牌而與銀行交易時，不再在同一回合內來回交換相同資源。',
+        en: 'When computer opponents trade with the bank to shrink an oversized hand, they no longer swap the same resources back and forth in one turn.',
+      },
+    ],
+  },
+  {
     version: '0.4.2',
     date: '2026-11-12',
     title: {
