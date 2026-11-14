@@ -1266,6 +1266,41 @@ describe('setup: islands and ships', () => {
       expectAccepted(state, 'p2', command);
     });
 
+    it('the wool penalty in fixed cases: first settlement has wool 0, candidate has wool 0, gold only 0, no wool source 2', () => {
+      /** 第 2 輪的額外扣分＝修正前的分數減去現在的分數（同一個 turn，登島加權兩邊相同）。 */
+      const penalty = (turn: TurnContext, vertex: number): number => before(turn, vertex) - seafarersSetupScore(turn, vertex);
+      // noWool：p2 的第一座是 v76（ore、grain、lumber，沒有 wool）；withWool：p2 的第一座是 v63（wool、lumber、brick）。
+      const noWool = playSetup(3, [35, 76, 63, 57]);
+      const withWool = playSetup(3, [35, 63, 76, 57]);
+      for (const state of [noWool, withWool]) expect(state.turn.setup).toMatchObject({ stage: 'building', round: 2 });
+      const dry = turnContext(viewOf(noWool, 'p2'), ctxFor('p2'), 'standard');
+      const wet = turnContext(viewOf(withWool, 'p2'), ctxFor('p2'), 'standard');
+      // v78 是 brick、lumber，沒有 wool；v37 有 wool。
+      expect(vertexYield(dry.model, 78).wool).toBe(0);
+      expect(vertexYield(dry.model, 37).wool).toBeGreaterThan(0);
+      expect(dry.view.hints!.legalSettlements).toEqual(expect.arrayContaining([37, 78]));
+      expect(wet.view.hints!.legalSettlements).toContain(78);
+      // 只有金礦：把 v78 的 brick 格當成金礦（`Turn` 是 class，用 `Object.create` 覆寫 `model`，保留其他欄位）。
+      const brick = dry.model.topo.vertices[78]!.hexes.find((hex) => dry.model.hexResource[hex] === 'brick')!;
+      const gold = Object.create(dry, {
+        model: { value: { ...dry.model, hexGold: dry.model.hexGold.map((isGold, hex) => isGold || hex === brick) } },
+      }) as TurnContext;
+      expect(goldPipsAt(gold.model, 78)).toBeGreaterThan(0);
+      expect(vertexYield(gold.model, 78).wool).toBe(0);
+      const cases: [string, TurnContext, number][] = [
+        ['first settlement has wool', wet, 78],
+        ['candidate has wool', dry, 37],
+        ['gold only', gold, 78],
+        ['no wool source', dry, 78],
+      ];
+      expect(cases.map(([name, turn, vertex]) => [name, penalty(turn, vertex)])).toEqual([
+        ['first settlement has wool', 0],
+        ['candidate has wool', 0],
+        ['gold only', 0],
+        ['no wool source', 2],
+      ]);
+    });
+
     it('all-standard 4p: seat 3 no longer ends with the grain-less 27/67 of #174, and every opening still makes wool', () => {
       const state = playSetup(4);
       expect(state.turn.phase).not.toBe('setup');
