@@ -25,7 +25,7 @@
  * （來源為 `state.stats` 與 rules 事件，不改任何規則或策略），再彙整成 markdown 表：
  * 座位勝率與 Wilson 95% 信賴區間、開局分析、各座位遊戲內容、依（策略 × 勝負）拆解。
  * `--jsonl` 把逐局記錄寫成檔案（第一行為 meta）；`--merge` 把多個分片（`--from` 切開、可平行執行）
- * 合併成同一份表。
+ * 合併成同一份表（規則見 `survey-merge.ts`：同一 shift 內局號不能重複，位移不同的分片只能池化）。
  *
  * 座位編號從 1 起算（座位 1 = 回合順序第一位，也是開局第一個放置的人）。
  */
@@ -48,6 +48,7 @@ import { citiesKnightsKit } from '../test/modules/citiesKnights.ts';
 import { seafarersKit } from '../test/modules/seafarers.ts';
 import { sfckKit } from '../test/modules/seafarersCitiesKnights.ts';
 import { kitsOf, type ModuleTestKit } from '../test/modules/types.ts';
+import { mergeShards, ShardMergeError, checkShards } from './survey-merge.ts';
 
 type Role = 'standard' | 'easy' | 'naive';
 const ROLES: readonly Role[] = ['standard', 'easy', 'naive'];
@@ -760,10 +761,15 @@ function renderLatin(files: readonly string[], command: string): string {
   const shards = files.map(readShard);
   const first = shards[0]!.meta;
   const n = first.players;
+  // 同一個 shift 的分片局號不能重複（否則該局被重複計入）；不同 shift 之間局號本來就相同。
+  try {
+    checkShards(shards);
+  } catch (error) {
+    if (error instanceof ShardMergeError) fail(error.message);
+    throw error;
+  }
   for (const { meta } of shards) {
-    if (!meta.openings || meta.profile !== first.profile || meta.players !== n || meta.roles !== first.roles || meta.openings !== first.openings) {
-      fail('--latin needs scripted shards (--openings) of one config with the same openings list');
-    }
+    if (!meta.openings) fail('--latin needs scripted shards (--openings) of one config with the same openings list');
   }
   const byShift = new Map<number, GameRecord[]>();
   for (const { meta, games } of shards) {
@@ -866,27 +872,13 @@ if (args.latin) {
   process.exit(0);
 }
 if (args.merge) {
-  const parts = args.files.map((file) => readFileSync(file, 'utf8').split('\n').filter((line) => line.trim() !== ''));
-  const metas = parts.map((lines) => (JSON.parse(lines[0]!) as { meta: Meta }).meta);
-  const first = metas[0]!;
-  for (const other of metas) {
-    if (
-      other.profile !== first.profile ||
-      other.players !== first.players ||
-      other.roles !== first.roles ||
-      other.openings !== first.openings
-    ) {
-      fail(`cannot merge shards of different configs: ${JSON.stringify(first)} vs ${JSON.stringify(other)}`);
-    }
-  }
-  games = parts.flatMap((lines) => lines.slice(1).map((line) => JSON.parse(line) as GameRecord));
-  // 位移不同的分片只能「池化」（座位 × 開局被平衡掉）：game 編號會重複，座位表失去意義，只看策略與勝負拆解。
-  const pooled = metas.some((other) => other.shift !== first.shift);
-  const ids = new Set(games.map((game) => game.game));
-  if (!pooled && ids.size !== games.length) fail('shards overlap: a game index appears twice');
-  meta = { ...first, from: Math.min(...games.map((game) => game.game)), games: games.length };
-  if (pooled) {
-    delete meta.shift;
+  try {
+    const merged = mergeShards(args.files.map(readShard));
+    games = merged.games;
+    meta = { ...merged.meta, from: Math.min(...games.map((game) => game.game)), games: games.length };
+  } catch (error) {
+    if (error instanceof ShardMergeError) fail(error.message);
+    throw error;
   }
 } else {
   if (!args.profile || args.players === undefined || !args.roles) fail('--profile, --players and --roles are required');
