@@ -25,7 +25,9 @@
  *
  * `--latin` 讀入同一組開局、不同 `--shift` 的分片（每個位移一個檔，座位 × 開局成拉丁方陣），輸出
  * 「座位 × 開局」勝率矩陣與兩個邊際：座位邊際（每個座位輪過每一份開局，開局的影響平均掉，剩下回合順序）、
- * 開局邊際（每份開局輪過每個座位，回合順序平均掉，剩下開局位置）。
+ * 開局邊際（每份開局輪過每個座位，回合順序平均掉，剩下開局位置）。位移必須恰好是 0..人數−1，而且只用
+ * 在每個位移都有記錄、都終局的局號（交集；被剔除的局數逐位移回報），否則同一個種子在不同位移的座位 ×
+ * 開局排列會缺席，邊際就混入種子本身的結果。
  *
  * 每局記錄每個座位的勝負、終局分數、開局頂點與其產出、造船、小島加分、城市、發展卡、交易等
  * （來源為 `state.stats` 與 rules 事件，不改任何規則或策略），再彙整成 markdown 表：
@@ -54,7 +56,7 @@ import { citiesKnightsKit } from '../test/modules/citiesKnights.ts';
 import { seafarersKit } from '../test/modules/seafarers.ts';
 import { sfckKit } from '../test/modules/seafarersCitiesKnights.ts';
 import { kitsOf, type ModuleTestKit } from '../test/modules/types.ts';
-import { mergeShards, ShardMergeError, checkShards } from './survey-merge.ts';
+import { cohortWarning, latinCohort, mergeShards, poolBalanceWarning, SEED_BASE, ShardMergeError, type Shard } from './survey-merge.ts';
 
 type Role = 'standard' | 'easy' | 'naive';
 const ROLES: readonly Role[] = ['standard', 'easy', 'naive'];
@@ -316,7 +318,7 @@ function playGame(
   // 開局描述必須在放置當下（套用前的狀態）取得：之後的對局可能改動數字標記（例如 C&K 的 Inventor）。
   const described: ReturnType<typeof describeVertex>[][] = seats.map(() => []);
   const events = seats.map(() => ({ paidShips: 0, freeShips: 0, setupShips: 0, shipsMoved: 0, islandBonuses: 0 }));
-  const seed = 10_000 + game;
+  const seed = SEED_BASE + game;
   const run = runBotGame({
     seats,
     seed,
@@ -509,6 +511,7 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
     const list = meta.openings.split(',');
     const misses = flat.reduce((sum, s) => sum + s.scriptMiss, 0);
     lines.push(`## Wins by scripted opening (seat s plays opening (s + ${shift}) % ${meta.players} + 1)`, '');
+    if (meta.scriptRoles) lines.push(`Only ${meta.scriptRoles} seats follow the script; the other seats choose their own openings, so the opening column is nominal for them.`, '');
     lines.push(
       ...table(
         ['opening', 'vertices', 'seat', 'wins', 'win %', '95% CI'],
@@ -702,7 +705,7 @@ interface Args {
   roles: string | undefined;
   from: number;
   openings: string | undefined;
-  shift: number;
+  shift: number | undefined;
   scriptRoles: string | undefined;
   setupFrom: string | undefined;
   jsonl: string | undefined;
@@ -713,7 +716,7 @@ interface Args {
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: 0, scriptRoles: undefined, setupFrom: undefined, jsonl: undefined, markdown: undefined, merge: false, latin: false, files: [] };
+  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: undefined, scriptRoles: undefined, setupFrom: undefined, jsonl: undefined, markdown: undefined, merge: false, latin: false, files: [] };
   const positional: string[] = [];
   const seen = new Set<string>();
   const value = (option: string, index: number): string => {
@@ -793,36 +796,74 @@ function parseArgs(argv: readonly string[]): Args {
 }
 
 
-/** 讀一個 jsonl 分片：第一行 meta，其餘為逐局記錄。 */
-function readShard(file: string): { meta: Meta; games: GameRecord[] } {
-  const lines = readFileSync(file, 'utf8').split('\n').filter((line) => line.trim() !== '');
-  return { meta: (JSON.parse(lines[0]!) as { meta: Meta }).meta, games: lines.slice(1).map((line) => JSON.parse(line) as GameRecord) };
+/** 讀一個 jsonl 分片：第一行 meta，其餘為逐局記錄；格式不對時丟 `ShardMergeError`（含檔名）。 */
+function readShard(file: string): Shard<Meta, GameRecord> {
+  let text: string;
+  try {
+    text = readFileSync(file, 'utf8');
+  } catch (error) {
+    throw new ShardMergeError(`cannot read ${file}: ${(error as Error).message}`);
+  }
+  const lines = text.split('\n').filter((line) => line.trim() !== '');
+  if (lines.length === 0) throw new ShardMergeError(`${file} is empty`);
+  const parse = (line: string, index: number): unknown => {
+    try {
+      return JSON.parse(line);
+    } catch {
+      throw new ShardMergeError(`${file} line ${index + 1} is not valid JSON`);
+    }
+  };
+  const head = parse(lines[0]!, 0) as { meta?: Partial<Meta> } | null;
+  const meta = head?.meta;
+  const isInt = (value: unknown, min = 0): value is number => typeof value === 'number' && Number.isInteger(value) && value >= min;
+  if (!meta || typeof meta.profile !== 'string' || !isInt(meta.players, 1) || typeof meta.roles !== 'string') {
+    throw new ShardMergeError(`${file} line 1 is not a shard meta (needs profile, players, roles)`);
+  }
+  for (const key of ['from', 'games', 'shift'] as const) {
+    if (meta[key] !== undefined && !isInt(meta[key])) throw new ShardMergeError(`${file} meta.${key} must be a non-negative integer`);
+  }
+  for (const key of ['openings', 'scriptRoles', 'setupFrom'] as const) {
+    if (meta[key] !== undefined && typeof meta[key] !== 'string') throw new ShardMergeError(`${file} meta.${key} must be a string`);
+  }
+  try {
+    parseRoles(meta.roles);
+  } catch (error) {
+    throw new ShardMergeError(`${file} meta.roles is invalid: ${(error as Error).message}`);
+  }
+  if (meta.openings !== undefined) {
+    if (!/^\d+\/\d+(,\d+\/\d+)*$/.test(meta.openings) || meta.openings.split(',').length !== meta.players) {
+      throw new ShardMergeError(`${file} meta.openings must list ${meta.players} <vertex>/<vertex> entries, got "${meta.openings}"`);
+    }
+    if (meta.shift !== undefined && meta.shift >= meta.players) throw new ShardMergeError(`${file} meta.shift ${meta.shift} must be below the player count ${meta.players}`);
+  }
+  const games = lines.slice(1).map((line, index) => {
+    const game = parse(line, index + 1) as Partial<GameRecord> | null;
+    if (!game || !isInt(game.game) || typeof game.finished !== 'boolean' || !Array.isArray(game.seats)) {
+      throw new ShardMergeError(`${file} line ${index + 2} is not a game record (needs game, finished, seats)`);
+    }
+    if (game.finished && !(isInt(game.winner) && game.winner < meta.players!)) {
+      throw new ShardMergeError(`${file} game ${game.game} is finished but has no winner seat`);
+    }
+    return game as GameRecord;
+  });
+  return { meta: meta as Meta, games, file };
 }
 
-/** 拉丁方陣：座位 × 開局的勝率矩陣與兩個邊際。 */
+/** 拉丁方陣：座位 × 開局的勝率矩陣與兩個邊際（只用在每個 shift 都終局的局號，見 `latinCohort`）。 */
 function renderLatin(files: readonly string[], command: string): string {
   const shards = files.map(readShard);
   const first = shards[0]!.meta;
   const n = first.players;
-  // 同一個 shift 的分片局號不能重複（否則該局被重複計入）；不同 shift 之間局號本來就相同。
-  try {
-    checkShards(shards);
-  } catch (error) {
-    if (error instanceof ShardMergeError) fail(error.message);
-    throw error;
+  for (const { meta, file } of shards) {
+    if (!meta.openings) throw new ShardMergeError(`${file} has no scripted openings; --latin needs shards made with --openings and --shift`);
+    if (meta.scriptRoles) throw new ShardMergeError(`${file} was made with --script-roles; --latin needs every seat scripted (such shards can only be pooled with --merge)`);
   }
-  for (const { meta } of shards) {
-    if (!meta.openings) fail('--latin needs scripted shards (--openings) of one config with the same openings list');
-    if (meta.scriptRoles) fail('--latin needs every seat scripted; shards made with --script-roles can only be pooled with --merge');
-  }
-  const byShift = new Map<number, GameRecord[]>();
-  for (const { meta, games } of shards) {
-    const shift = meta.shift ?? 0;
-    byShift.set(shift, [...(byShift.get(shift) ?? []), ...games.filter((game) => game.finished)]);
-  }
-  const shifts = [...byShift.keys()].sort((a, b) => a - b);
-  if (shifts.length !== n || shifts.some((shift, index) => shift !== index)) fail(`--latin needs one shard per shift 0..${n - 1}, got ${shifts.join(',')}`);
   const list = first.openings!.split(',');
+  if (list.length !== n) throw new ShardMergeError(`--openings has ${list.length} entries but the shards have ${n} players`);
+  const cohort = latinCohort(shards);
+  const { byShift, shifts } = cohort;
+  const warning = cohortWarning(cohort);
+  if (warning) console.error(`warning: ${warning}`);
   // cell[seat][opening] = [wins, games]
   const cell = Array.from({ length: n }, () => Array.from({ length: n }, () => [0, 0] as [number, number]));
   for (const [shift, games] of byShift) {
@@ -837,7 +878,12 @@ function renderLatin(files: readonly string[], command: string): string {
   const rate = ([wins, games]: [number, number]): string => `${fmt((wins / Math.max(1, games)) * 100, 1)} (${wins}/${games})`;
   const lines: string[] = [];
   lines.push(`# Latin square: ${first.profile} ${n}p ${first.roles} (openings ${first.openings})`, '');
-  lines.push(`\`${command}\` — ${shifts.map((shift) => `shift ${shift}: ${byShift.get(shift)!.length}`).join(', ')} finished games (500 per shift is the intended size).`, '');
+  lines.push(
+    `\`${command}\` — cohort: ${cohort.ids.length} games per shift (game ids present and finished in every shift, so every seed meets every seat × opening arrangement exactly once); ` +
+      shifts.map((shift) => { const s = cohort.stats.get(shift)!; return `shift ${shift}: ${s.games} games, ${s.finished} finished, ${s.dropped} dropped`; }).join('; ') + '.',
+    '',
+  );
+  if (warning) lines.push(`> **Warning:** ${warning}. Games that did not finish in some shift are dropped from every shift.`, '');
   lines.push('Win % (wins/games) of the seat in the row when it plays the opening in the column; every game has one winner, so each shift run sums to 100%.', '');
   lines.push(
     ...table(
@@ -908,18 +954,31 @@ const args = parseArgs(process.argv.slice(2));
 const command = `node bench/survey.mjs ${process.argv.slice(2).join(' ')}`;
 let meta: Meta;
 let games: GameRecord[];
+const notes: string[] = [];
 
 if (args.latin) {
-  const text = renderLatin(args.files, command);
+  let text: string;
+  try {
+    text = renderLatin(args.files, command);
+  } catch (error) {
+    if (error instanceof ShardMergeError) fail(error.message);
+    throw error;
+  }
   console.log(text);
   if (args.markdown) writeFileSync(args.markdown, text);
   process.exit(0);
 }
 if (args.merge) {
   try {
-    const merged = mergeShards(args.files.map(readShard));
+    const shards = args.files.map(readShard);
+    const merged = mergeShards(shards);
     games = merged.games;
     meta = { ...merged.meta, from: Math.min(...games.map((game) => game.game)), games: games.length };
+    const poolWarning = poolBalanceWarning(shards);
+    if (poolWarning) {
+      console.error(`warning: ${poolWarning}`);
+      notes.push(poolWarning);
+    }
   } catch (error) {
     if (error instanceof ShardMergeError) fail(error.message);
     throw error;
@@ -942,18 +1001,25 @@ if (args.merge) {
     if (openings.length !== args.players || openings.some((entry) => entry.length !== 2 || entry.some((v) => !Number.isInteger(v) || v < 0))) {
       fail(`--openings needs ${args.players} entries of the form <vertex>/<vertex>, got "${args.openings}"`);
     }
+    if (new Set(openings.flat()).size !== openings.length * 2) fail(`--openings must not repeat a vertex, got "${args.openings}"`);
     let onlyRole: Role | undefined;
     if (args.scriptRoles !== undefined) {
       if (!ROLES.includes(args.scriptRoles as Role)) fail(`--script-roles must be one of ${ROLES.join('|')}, got "${args.scriptRoles}"`);
       onlyRole = args.scriptRoles as Role;
+      if (spec.focus !== onlyRole && spec.rest !== onlyRole) fail(`--script-roles ${onlyRole} matches no seat in --roles ${args.roles}`);
     }
-    script = { openings, shift: args.shift % args.players, ...(onlyRole ? { onlyRole } : {}) };
-  } else if (args.shift !== 0) {
+    const shift = args.shift ?? 0;
+    if (shift >= args.players) fail(`--shift must be below the player count (0..${args.players - 1}), got ${shift}`);
+    script = { openings, shift, ...(onlyRole ? { onlyRole } : {}) };
+  } else if (args.shift !== undefined) {
     fail('--shift needs --openings');
   } else if (args.scriptRoles !== undefined) {
     fail('--script-roles needs --openings');
   }
-  if (args.setupFrom !== undefined && script) fail('--setup-from and --openings are exclusive');
+  if (args.setupFrom !== undefined) {
+    if (script) fail('--setup-from and --openings are exclusive');
+    if (spec.focus !== 'standard' && spec.rest !== 'standard') fail(`--setup-from naive needs a standard seat in --roles, got ${args.roles}`);
+  }
   meta = {
     profile: profile.id,
     players: args.players,
@@ -971,6 +1037,6 @@ if (args.merge) {
   }
 }
 
-const report = renderReport(meta, games, command);
+const report = renderReport(meta, games, command) + (notes.length > 0 ? `\n${notes.map((note) => `- **Warning:** ${note}.`).join('\n')}\n` : '');
 console.log(report);
 if (args.markdown) writeFileSync(args.markdown, report);
