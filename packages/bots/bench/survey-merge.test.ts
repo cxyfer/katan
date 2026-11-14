@@ -45,6 +45,7 @@ describe('mergeShards', () => {
     expect(() => mergeShards([shard(0, [0]), shard(0, [1], { players: 4 })])).toThrow(ShardMergeError);
     expect(() => mergeShards([shard(0, [0]), shard(0, [1], { openings: '1/2,3/4,5/6' })])).toThrow(ShardMergeError);
     expect(() => mergeShards([shard(0, [0]), shard(0, [1], { scriptRoles: 'standard' })])).toThrow(ShardMergeError);
+    expect(() => mergeShards([shard(0, [0]), shard(0, [1], { setupFrom: 'naive' })])).toThrow(ShardMergeError);
   });
 
   it('rejects an empty list', () => {

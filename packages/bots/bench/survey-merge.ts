@@ -2,7 +2,7 @@
  * survey 分片的合併檢查（純函式，`bench/survey-merge.test.ts` 測它；`survey.ts` 的 `--merge`、`--latin` 共用）。
  *
  * 規則：
- * - 分片必須是同一組態：profile、人數、`--roles`、`--openings` 都相同，否則拒絕；
+ * - 分片必須是同一組態：profile、人數、`--roles`、`--openings`、`--script-roles`、`--setup-from` 都相同，否則拒絕；
  * - 局號以 `(shift, game)` 判斷唯一：同一個 shift 內不能有兩個分片含有同一局（否則該局會被重複計入）；
  *   不同 shift 之間局號可以相同（拉丁方陣每個 shift 都從同一批種子起跑）；
  * - 位移不同的分片只能「池化」：座位 × 開局被平衡掉，合併後的 `meta.shift` 移除。
@@ -16,6 +16,8 @@ export interface ShardMeta {
   shift?: number;
   /** 只腳本化某個角色（`--script-roles`）；不同的分片不能合併。 */
   scriptRoles?: string;
+  /** standard 座位的 setup 改用哪個策略的決定（`--setup-from`）；不同的分片不能合併。 */
+  setupFrom?: string;
 }
 
 export interface ShardGame {
@@ -44,7 +46,8 @@ export function checkShards<M extends ShardMeta, G extends ShardGame>(shards: re
       meta.players !== first.players ||
       meta.roles !== first.roles ||
       meta.openings !== first.openings ||
-      meta.scriptRoles !== first.scriptRoles
+      meta.scriptRoles !== first.scriptRoles ||
+      meta.setupFrom !== first.setupFrom
     ) {
       throw new ShardMergeError(`cannot merge shards of different configs: ${JSON.stringify(first)} vs ${JSON.stringify(meta)}`);
     }

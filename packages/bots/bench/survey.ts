@@ -3,7 +3,7 @@
  *
  *   node bench/survey.mjs [局數] --profile <id> --players <n> --roles <規格>
  *                         [--from <起始局>] [--openings <開局表> [--shift <k>] [--script-roles <角色>]]
- *                         [--jsonl <檔>] [--markdown <檔>]
+ *                         [--setup-from naive] [--jsonl <檔>] [--markdown <檔>]
  *   node bench/survey.mjs --merge <jsonl 檔>... [--markdown <檔>]
  *   node bench/survey.mjs --latin <jsonl 檔>... [--markdown <檔>]
  *
@@ -17,6 +17,11 @@
  * `(s + k) % 人數` 份。bot 的聚落頂點以腳本取代（只換頂點，道路與其後的策略不變；腳本頂點不合法時
  * 退回 bot 自己的選擇並記為 `scriptMiss`）。用來分離「開局位置的好壞」與「回合順序」：若勝率跟著開局走，
  * 偏差來自位置；若仍跟著座位走，偏差來自回合順序。不改任何規則或策略碼。
+ *
+ * `--setup-from naive`：`standard` 角色的座位在 setup 階段（所有 `setup.*` 指令：聚落、道路、船）改用 naive
+ * 策略的決定，其餘階段仍是 standard；naive 與其他角色照常自選，不用腳本頂點。用來檢驗「standard 對 naive 的落差
+ * 是不是來自 standard 的 setup」：這是對單一角色的 setup 做的對照，沒有開局腳本造成的頂點衝突，也不會改動
+ * 對手的開局。與 `--openings` 互斥。
  *
  * `--latin` 讀入同一組開局、不同 `--shift` 的分片（每個位移一個檔，座位 × 開局成拉丁方陣），輸出
  * 「座位 × 開局」勝率矩陣與兩個邊際：座位邊際（每個座位輪過每一份開局，開局的影響平均掉，剩下回合順序）、
@@ -57,7 +62,7 @@ const ROLES: readonly Role[] = ['standard', 'easy', 'naive'];
 const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit, citiesKnightsKit, sfckKit];
 
 const USAGE =
-  'usage: survey [games] --profile <id> --players <n> --roles <role | focus:rest> [--from <game>] [--openings <a/b,...> [--shift <k>] [--script-roles <role>]] [--jsonl <file>] [--markdown <file>]\n' +
+  'usage: survey [games] --profile <id> --players <n> --roles <role | focus:rest> [--from <game>] [--openings <a/b,...> [--shift <k>] [--script-roles <role>]] [--setup-from naive] [--jsonl <file>] [--markdown <file>]\n' +
   '       survey --merge <jsonl>... [--markdown <file>]\n' +
   '       survey --latin <jsonl>... [--markdown <file>]';
 
@@ -73,6 +78,8 @@ interface Meta {
   games: number;
   /** 只腳本化這個角色的座位（`--script-roles`）；省略表示所有座位。 */
   scriptRoles?: string;
+  /** `standard` 座位的 setup 階段改用哪個策略的決定（`--setup-from`）；省略表示不改。 */
+  setupFrom?: string;
   /** 腳本開局（`--openings`）與位移（`--shift`）；沒有腳本時省略。 */
   openings?: string;
   shift?: number;
@@ -273,6 +280,17 @@ function scripted(policy: BotPolicy, script: OpeningScript, seat: number, player
   };
 }
 
+/** 其餘階段用 `policy`，setup 階段（任何 `setup.*` 指令）改用 `setup` 策略的決定；`setup` 沒有決定時退回 `policy`。 */
+function setupFrom(policy: BotPolicy, setup: BotPolicy): BotPolicy {
+  return {
+    decide(view, ctx) {
+      const command = policy.decide(view, ctx);
+      if (!command || !command.type.startsWith('setup.')) return command;
+      return setup.decide(view, ctx) ?? command;
+    },
+  };
+}
+
 function playGame(
   spec: RoleSpec,
   profile: ProfileDefinition,
@@ -280,6 +298,7 @@ function playGame(
   players: number,
   game: number,
   script: OpeningScript | null,
+  setupFromNaive = false,
 ): GameRecord {
   const roles = rolesFor(spec, players, game);
   const misses: number[] = roles.map(() => 0);
@@ -289,7 +308,9 @@ function playGame(
     policy:
       script && (script.onlyRole === undefined || script.onlyRole === role)
         ? scripted(policyOf(role, profile), script, index, players, misses)
-        : policyOf(role, profile),
+        : setupFromNaive && role === 'standard'
+          ? setupFrom(policyOf(role, profile), policyOf('naive', profile))
+          : policyOf(role, profile),
   }));
   const openings: number[][] = seats.map(() => []);
   // 開局描述必須在放置當下（套用前的狀態）取得：之後的對局可能改動數字標記（例如 C&K 的 Inventor）。
@@ -440,6 +461,7 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
   const lines: string[] = [];
   lines.push(
     `# Seat survey: ${meta.profile} ${meta.players}p ${meta.roles}` +
+      (meta.setupFrom ? ` (standard seats use ${meta.setupFrom}'s setup decisions)` : '') +
       (meta.openings
         ? ` (scripted openings ${meta.openings}${meta.scriptRoles ? ` for ${meta.scriptRoles} seats only` : ''}, ${meta.shift === undefined ? 'pooled over shifts' : `shift ${meta.shift}`})`
         : ''),
@@ -682,6 +704,7 @@ interface Args {
   openings: string | undefined;
   shift: number;
   scriptRoles: string | undefined;
+  setupFrom: string | undefined;
   jsonl: string | undefined;
   markdown: string | undefined;
   merge: boolean;
@@ -690,7 +713,7 @@ interface Args {
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: 0, scriptRoles: undefined, jsonl: undefined, markdown: undefined, merge: false, latin: false, files: [] };
+  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: 0, scriptRoles: undefined, setupFrom: undefined, jsonl: undefined, markdown: undefined, merge: false, latin: false, files: [] };
   const positional: string[] = [];
   const seen = new Set<string>();
   const value = (option: string, index: number): string => {
@@ -733,6 +756,12 @@ function parseArgs(argv: readonly string[]): Args {
       case '--script-roles':
         out.scriptRoles = value(arg, ++index);
         break;
+      case '--setup-from': {
+        const raw = value(arg, ++index);
+        if (raw !== 'naive') fail(`--setup-from only supports "naive", got "${raw}"`);
+        out.setupFrom = raw;
+        break;
+      }
       case '--jsonl':
         out.jsonl = value(arg, ++index);
         break;
@@ -924,17 +953,19 @@ if (args.merge) {
   } else if (args.scriptRoles !== undefined) {
     fail('--script-roles needs --openings');
   }
+  if (args.setupFrom !== undefined && script) fail('--setup-from and --openings are exclusive');
   meta = {
     profile: profile.id,
     players: args.players,
     roles: args.roles,
     from: args.from,
     games: args.games,
+    ...(args.setupFrom ? { setupFrom: args.setupFrom } : {}),
     ...(script ? { openings: args.openings!, shift: script.shift } : {}),
     ...(script?.onlyRole ? { scriptRoles: script.onlyRole } : {}),
   };
   games = [];
-  for (let game = args.from; game < args.from + args.games; game++) games.push(playGame(spec, profile, kits, args.players, game, script));
+  for (let game = args.from; game < args.from + args.games; game++) games.push(playGame(spec, profile, kits, args.players, game, script, args.setupFrom === 'naive'));
   if (args.jsonl) {
     writeFileSync(args.jsonl, [JSON.stringify({ meta }), ...games.map((game) => JSON.stringify(game))].join('\n') + '\n');
   }
