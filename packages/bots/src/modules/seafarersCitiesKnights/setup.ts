@@ -5,8 +5,8 @@
  *
  * - 第 1 輪（聚落）：`setupSpotScore`（base）＋ `islandSetupBonus`（SF）。自 #135 起 SF 單獨時的第 1 輪不計登島加權
  *   （`seafarersSetupScore`），這裡**刻意保留**：SF+CK 的第 2 輪是城市，第 1 輪改成產能優先後，最先放的座位只剩
- *   低點數的城市點，全 standard 的座位偏差反而變大（3 人 63／30／7% → 26／68／7%，4 人 50／32／5／14% →
- *   4／16／56／24%，各 300 局，數字見 #135 的 PR）。
+ *   低點數的城市點，全 standard 的座位偏差反而變大（4 人 50／32／5／14% → 4／16／56／24%，3 人同樣變大；
+ *   各 300 局，數字見 #135 的 PR）。
  * - 第 2 輪（城市，起始資源每格一張）：`citySetupScore`（C&K）＋ `islandSetupBonus`，並且複製
  *   `citiesKnightsSetup` 的硬篩選：有相鄰 ore 或 grain 的合法點時只在它們之中選，一個都沒有才用全部。
  *   **不把 `setupSpotScore` 與 `citySetupScore` 相加**：兩者都含產能與缺資源的加成，相加會重複計算。
