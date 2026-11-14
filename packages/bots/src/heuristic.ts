@@ -516,7 +516,29 @@ export function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
   }
 }
 
-/** 手牌超過上限（`Economy.handLimit`，base 為 7，C&K 每座城牆 +2；張數含 commodity）時：先買發展卡、再鋪有用的路，最後把過剩的牌換成需要的。 */
+/**
+ * 這個回合（自最近一次 `turn.started` 起）自己做過的銀行交易：收進來的牌與換出去的牌。策略沒有跨呼叫的狀態，
+ * 所以從投影的事件歷史推回來；歷史缺漏或沒有附（測試用的投影）時兩個集合都是空的。
+ */
+function bankTradesThisTurn(view: GameView, selfId: string): { received: Set<CardKind>; gave: Set<CardKind> } {
+  const received = new Set<CardKind>();
+  const gave = new Set<CardKind>();
+  for (let index = view.events.length - 1; index >= 0; index--) {
+    const event = view.events[index]!;
+    if (event.type === 'turn.started') break;
+    if (event.type !== 'trade.bank' || event.params.playerId !== selfId) continue;
+    received.add(event.params.receive as CardKind);
+    gave.add(event.params.give as CardKind);
+  }
+  return { received, gave };
+}
+
+/**
+ * 手牌超過上限（`Economy.handLimit`，base 為 7，C&K 每座城牆 +2；張數含 commodity）時：先買發展卡、再鋪有用的路，最後把過剩的牌換成需要的。
+ *
+ * 銀行交易不來回換（#173）：同一回合內不換出剛從銀行換進來的牌、也不再換入換出去過的牌；兩個計畫的排名會隨手牌互相翻轉，
+ * 光看當下的缺牌會在 A → B、B → A 之間打轉。再加上「收下去馬上又夠格當 give 的牌排後面」，在沒有事件歷史時也能避開大部分。
+ */
 export function handRelief(turn: TurnContext): Command | null {
   const { view } = turn;
   const economy = turn.economy;
@@ -530,17 +552,29 @@ export function handRelief(turn: TurnContext): Command | null {
   const target = economy.plans[0]?.cost ?? {};
   const missing = deficitOf(hand, target);
   const { kinds, rates } = economy;
+  const traded = bankTradesThisTurn(view, turn.ctx.selfId);
   let give: CardKind | null = null;
   for (const kind of kinds) {
     const rate = rates[kind];
-    if (rate === undefined) continue;
+    if (rate === undefined || traded.received.has(kind)) continue;
     const extra = (hand[kind] ?? 0) - (target[kind] ?? 0);
     if (extra < rate) continue;
     if (!give || extra - rate > (hand[give] ?? 0) - (target[give] ?? 0) - rates[give]!) give = kind;
   }
   if (!give) return null;
+  // 收下去馬上又夠格當 give 的牌（超出計畫所需的張數 ≥ 匯率）排後面：不然下一步就會把它換回去，
+  // 或者換掉剛收到的牌（計畫空了、或已經湊齊時，`missing` 全是 0，只剩權重決定收什麼）。
+  const recyclable = (kind: CardKind): number => {
+    const rate = rates[kind];
+    return rate !== undefined && (hand[kind] ?? 0) + 1 - (target[kind] ?? 0) >= rate ? 1 : 0;
+  };
   const receive = kinds
-    .filter((kind) => kind !== give && bankHas(view, kind))
-    .sort((a, b) => (missing[b] ?? 0) - (missing[a] ?? 0) || (economy.weights[b] ?? 0) - (economy.weights[a] ?? 0))[0];
+    .filter((kind) => kind !== give && !traded.gave.has(kind) && bankHas(view, kind))
+    .sort(
+      (a, b) =>
+        (missing[b] ?? 0) - (missing[a] ?? 0) ||
+        recyclable(a) - recyclable(b) ||
+        (economy.weights[b] ?? 0) - (economy.weights[a] ?? 0),
+    )[0];
   return receive ? { type: 'trade.bank', give, receive } : null;
 }
