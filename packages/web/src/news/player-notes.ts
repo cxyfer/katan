@@ -39,8 +39,8 @@ export const PLAYER_NOTES: readonly PlayerNote[] = [
         en: 'Easy and standard computer opponents can now take seats in Seafarers + Cities & Knights at 3–6 players, paired turns included: they build ships, settle islands, recruit knights against the barbarians and chase the pirate. Hard remains base-game only.',
       },
       {
-        'zh-Hant': '航海家電腦對手會依兩個開局村莊的整體搭配挑選位置，不再開出兩個內陸點、或沒有羊毛而造不起船的組合；沒有地方造船時，也會先把道路鋪向海岸。',
-        en: 'Seafarers computer opponents now pick their two opening settlements as a pair, so they no longer start inland or without the wool that ships need; when there is no spot for a ship they build roads toward the coast first.',
+        'zh-Hant': '航海家電腦對手會依兩個開局村莊的整體搭配挑選位置，更傾向避開兩個內陸點、或沒有羊毛而造不起船的組合；沒有地方造船時，也會先把道路鋪向海岸。',
+        en: 'Seafarers computer opponents now pick their two opening settlements as a pair, so they are less likely to start inland or without the wool that ships need; when there is no spot for a ship they build roads toward the coast first.',
       },
       {
         'zh-Hant': '城市與騎士電腦對手不再投資已經升滿、或已無大都會位置的城市改良項目，會改為專注在還能前進的項目。',
