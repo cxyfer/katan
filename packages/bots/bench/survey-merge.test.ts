@@ -44,6 +44,7 @@ describe('mergeShards', () => {
     expect(() => mergeShards([shard(0, [0]), shard(0, [1], { profile: 'sf-ck-new-shores-2025' })])).toThrow(ShardMergeError);
     expect(() => mergeShards([shard(0, [0]), shard(0, [1], { players: 4 })])).toThrow(ShardMergeError);
     expect(() => mergeShards([shard(0, [0]), shard(0, [1], { openings: '1/2,3/4,5/6' })])).toThrow(ShardMergeError);
+    expect(() => mergeShards([shard(0, [0]), shard(0, [1], { scriptRoles: 'standard' })])).toThrow(ShardMergeError);
   });
 
   it('rejects an empty list', () => {

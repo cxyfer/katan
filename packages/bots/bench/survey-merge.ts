@@ -14,6 +14,8 @@ export interface ShardMeta {
   roles: string;
   openings?: string;
   shift?: number;
+  /** 只腳本化某個角色（`--script-roles`）；不同的分片不能合併。 */
+  scriptRoles?: string;
 }
 
 export interface ShardGame {
@@ -41,7 +43,8 @@ export function checkShards<M extends ShardMeta, G extends ShardGame>(shards: re
       meta.profile !== first.profile ||
       meta.players !== first.players ||
       meta.roles !== first.roles ||
-      meta.openings !== first.openings
+      meta.openings !== first.openings ||
+      meta.scriptRoles !== first.scriptRoles
     ) {
       throw new ShardMergeError(`cannot merge shards of different configs: ${JSON.stringify(first)} vs ${JSON.stringify(meta)}`);
     }

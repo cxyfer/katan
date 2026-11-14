@@ -2,7 +2,7 @@
  * 座位偏差量測（不進 CI；Issue #174 座位勝率偏差、#135 對局拆解）：
  *
  *   node bench/survey.mjs [局數] --profile <id> --players <n> --roles <規格>
- *                         [--from <起始局>] [--openings <開局表> [--shift <k>]]
+ *                         [--from <起始局>] [--openings <開局表> [--shift <k>] [--script-roles <角色>]]
  *                         [--jsonl <檔>] [--markdown <檔>]
  *   node bench/survey.mjs --merge <jsonl 檔>... [--markdown <檔>]
  *   node bench/survey.mjs --latin <jsonl 檔>... [--markdown <檔>]
@@ -12,7 +12,8 @@
  * `10000 + g` 起，與 `bench/run.ts` 的 ① ② 對局完全相同（同一 profile、人數、局數時，focus 勝率一致）。
  *
  * `--openings 35/49,76/64,37/57` 指定每個座位「原本」的開局頂點（依座位 1、2、… 順序，每個座位兩個聚落，
- * 先放第一輪、再放第二輪；可由先前基線報告的 Openings 表讀出），`--shift k` 讓座位 s 改用第
+ * 先放第一輪、再放第二輪；可由先前基線報告的 Openings 表讀出），`--script-roles standard` 只腳本化該角色的座位
+ * （其餘角色照常自己選開局；腳本頂點若已被占走則退回 bot 自己的選擇），`--shift k` 讓座位 s 改用第
  * `(s + k) % 人數` 份。bot 的聚落頂點以腳本取代（只換頂點，道路與其後的策略不變；腳本頂點不合法時
  * 退回 bot 自己的選擇並記為 `scriptMiss`）。用來分離「開局位置的好壞」與「回合順序」：若勝率跟著開局走，
  * 偏差來自位置；若仍跟著座位走，偏差來自回合順序。不改任何規則或策略碼。
@@ -56,7 +57,7 @@ const ROLES: readonly Role[] = ['standard', 'easy', 'naive'];
 const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit, citiesKnightsKit, sfckKit];
 
 const USAGE =
-  'usage: survey [games] --profile <id> --players <n> --roles <role | focus:rest> [--from <game>] [--openings <a/b,...> [--shift <k>]] [--jsonl <file>] [--markdown <file>]\n' +
+  'usage: survey [games] --profile <id> --players <n> --roles <role | focus:rest> [--from <game>] [--openings <a/b,...> [--shift <k>] [--script-roles <role>]] [--jsonl <file>] [--markdown <file>]\n' +
   '       survey --merge <jsonl>... [--markdown <file>]\n' +
   '       survey --latin <jsonl>... [--markdown <file>]';
 
@@ -70,6 +71,8 @@ interface Meta {
   roles: string;
   from: number;
   games: number;
+  /** 只腳本化這個角色的座位（`--script-roles`）；省略表示所有座位。 */
+  scriptRoles?: string;
   /** 腳本開局（`--openings`）與位移（`--shift`）；沒有腳本時省略。 */
   openings?: string;
   shift?: number;
@@ -247,6 +250,8 @@ function describeVertex(state: GameState, vertex: number): { pips: number; coast
 interface OpeningScript {
   openings: readonly (readonly number[])[];
   shift: number;
+  /** 只腳本化這個角色；省略表示所有座位。 */
+  onlyRole?: Role;
 }
 
 /**
@@ -281,7 +286,10 @@ function playGame(
   const seats: BotSeat[] = roles.map((role, index) => ({
     id: `bot${index + 1}`,
     level: role === 'naive' ? 'standard' : role,
-    policy: script ? scripted(policyOf(role, profile), script, index, players, misses) : policyOf(role, profile),
+    policy:
+      script && (script.onlyRole === undefined || script.onlyRole === role)
+        ? scripted(policyOf(role, profile), script, index, players, misses)
+        : policyOf(role, profile),
   }));
   const openings: number[][] = seats.map(() => []);
   // 開局描述必須在放置當下（套用前的狀態）取得：之後的對局可能改動數字標記（例如 C&K 的 Inventor）。
@@ -432,7 +440,9 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
   const lines: string[] = [];
   lines.push(
     `# Seat survey: ${meta.profile} ${meta.players}p ${meta.roles}` +
-      (meta.openings ? ` (scripted openings ${meta.openings}, ${meta.shift === undefined ? 'pooled over shifts' : `shift ${meta.shift}`})` : ''),
+      (meta.openings
+        ? ` (scripted openings ${meta.openings}${meta.scriptRoles ? ` for ${meta.scriptRoles} seats only` : ''}, ${meta.shift === undefined ? 'pooled over shifts' : `shift ${meta.shift}`})`
+        : ''),
     '',
   );
   lines.push(
@@ -671,6 +681,7 @@ interface Args {
   from: number;
   openings: string | undefined;
   shift: number;
+  scriptRoles: string | undefined;
   jsonl: string | undefined;
   markdown: string | undefined;
   merge: boolean;
@@ -679,7 +690,7 @@ interface Args {
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: 0, jsonl: undefined, markdown: undefined, merge: false, latin: false, files: [] };
+  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: 0, scriptRoles: undefined, jsonl: undefined, markdown: undefined, merge: false, latin: false, files: [] };
   const positional: string[] = [];
   const seen = new Set<string>();
   const value = (option: string, index: number): string => {
@@ -719,6 +730,9 @@ function parseArgs(argv: readonly string[]): Args {
         out.shift = Number(raw);
         break;
       }
+      case '--script-roles':
+        out.scriptRoles = value(arg, ++index);
+        break;
       case '--jsonl':
         out.jsonl = value(arg, ++index);
         break;
@@ -770,6 +784,7 @@ function renderLatin(files: readonly string[], command: string): string {
   }
   for (const { meta } of shards) {
     if (!meta.openings) fail('--latin needs scripted shards (--openings) of one config with the same openings list');
+    if (meta.scriptRoles) fail('--latin needs every seat scripted; shards made with --script-roles can only be pooled with --merge');
   }
   const byShift = new Map<number, GameRecord[]>();
   for (const { meta, games } of shards) {
@@ -898,9 +913,16 @@ if (args.merge) {
     if (openings.length !== args.players || openings.some((entry) => entry.length !== 2 || entry.some((v) => !Number.isInteger(v) || v < 0))) {
       fail(`--openings needs ${args.players} entries of the form <vertex>/<vertex>, got "${args.openings}"`);
     }
-    script = { openings, shift: args.shift % args.players };
+    let onlyRole: Role | undefined;
+    if (args.scriptRoles !== undefined) {
+      if (!ROLES.includes(args.scriptRoles as Role)) fail(`--script-roles must be one of ${ROLES.join('|')}, got "${args.scriptRoles}"`);
+      onlyRole = args.scriptRoles as Role;
+    }
+    script = { openings, shift: args.shift % args.players, ...(onlyRole ? { onlyRole } : {}) };
   } else if (args.shift !== 0) {
     fail('--shift needs --openings');
+  } else if (args.scriptRoles !== undefined) {
+    fail('--script-roles needs --openings');
   }
   meta = {
     profile: profile.id,
@@ -909,6 +931,7 @@ if (args.merge) {
     from: args.from,
     games: args.games,
     ...(script ? { openings: args.openings!, shift: script.shift } : {}),
+    ...(script?.onlyRole ? { scriptRoles: script.onlyRole } : {}),
   };
   games = [];
   for (let game = args.from; game < args.from + args.games; game++) games.push(playGame(spec, profile, kits, args.players, game, script));
