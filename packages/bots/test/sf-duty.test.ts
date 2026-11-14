@@ -576,8 +576,8 @@ describe('module registration (SF-1)', () => {
       expect(BOT_MODULES.get('seafarers')!.supports!(profile)).toBe(true);
       expect(botsCanPlay(profile)).toBe(true);
     }
-    // Seafarers + Cities & Knights 缺 CK 的 BotModule，仍然不開放。
-    expect(botsCanPlay(getProfile('sf-ck-new-shores-2025') as ProfileDefinition)).toBe(false);
+    // Seafarers + Cities & Knights 的組合層自 SFCK-G 起開放；部件模組 seafarers 對它同樣回 true。
+    expect(botsCanPlay(getProfile('sf-ck-new-shores-2025') as ProfileDefinition)).toBe(true);
   });
 
   it('merges the planned pacing, keeps the window limit and lets gold responders answer', () => {

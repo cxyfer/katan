@@ -85,7 +85,7 @@ pending 與 setup 先跑 base 的處理器，回 null 時才詢問模組的 `dut
 
 | 時機 | standard | easy | 鉤子（策略 §4.1） |
 |---|---|---|---|
-| setup building | 沿用 base 的 `setupSpotScore`，加上登島加權：≤3 艘船可達的未領加分小島，以點數、金礦與 +2 VP 計價，再乘上距離折扣。登島加權寫成可匯出的純函式 `islandSetupBonus`，供 SF+CK 的組合 setup 使用 | 同 standard，topK 3 | `setup` |
+| setup building | 第 1 輪只用 base 的 `setupSpotScore`（產能優先，不計登島加權）。第 2 輪補齊組合：`setupSpotScore` 加上登島加權（≤3 艘船可達的未領加分小島，以點數、金礦與 +2 VP 計價，再乘上距離折扣），兩座聚落都不產 wool 時再扣 `SHIP_WOOL_PENALTY`（2，船要 lumber 與 wool）。登島加權寫成可匯出的純函式 `islandSetupBonus`，供 SF+CK 的組合 setup 使用。（#135 修訂：原稿兩輪都加登島加權，第一座聚落被推向 8–9 點的沿海點，standard 對 naive 在 3／4 人只有 26%／31%） | 同 standard，topK 3 | `setup` |
 | setup road | 比較最佳道路方向與最佳船方向（船 BFS 的第一步），取分數高者 | 只放路；`legalRoads` 為空時改用保底 | `setup` |
 | preroll 騎士 | base 條件之外，海盜擋住我計畫航線的邊時，也打騎士把海盜移走 | 同 base | `preroll` |
 | moveRobber／騎士目標 | 強盜候選（base 評分）與海盜候選放在一起評分。海盜分數＝可偷的對手＋封鎖對手 open-end 船的前線－封鎖我自己的航線；`null` 只在「海盜擋住我、又沒有更好目標」時使用 | 只移強盜 | **`banditCandidates`（新增，§11-1）** |

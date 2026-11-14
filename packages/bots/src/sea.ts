@@ -9,7 +9,8 @@
  *   基本的 `isLandHex`／`isLandEdge`／`isSeaEdge` 定義在 `board.ts`（道路 BFS 與空點判定要用），
  *   這裡再匯出。
  * - 船位模擬 `shipEdgesFrom`：對應 rules 的 `canPlaceShip`。騎士等模組擋住路口的 callback
- *   `blocker` 是保留的掛點，預設回 null；SF+CK 在 0.4.3 用 view 中的騎士位置實作。
+ *   `blocker`：呼叫端沒傳時預設用 model 組合後的 `model.blocker`（C&K 的對手騎士；沒有模組提供時為 null），
+ *   而且用傳入的 model（展開後換了 `view` 的假設盤面也生效），不讀 `turn.model`。
  * - 道路與船是兩套獨立的搜尋：道路 BFS 在 `board.ts` 的 `searchRoads`（只走陸地邊，只從建築與
  *   非船道路出發）；船 BFS 是這裡的 `searchShips`（只走海邊，只從建築與船出發）。含船的路線長度是
  *   `board.ts` 的 `routeLength`，只在 `profile.longestRouteIncludesShips` 時計入船。
@@ -17,6 +18,7 @@
  */
 
 import type { GameView } from '@catan/rules';
+import type { BotModule } from './modules/types.ts';
 import {
   boardModel,
   isLandEdge,
@@ -33,7 +35,10 @@ export { isLandEdge, isLandHex, isLandVertex, isSeaEdge };
 export type VertexBlocker = (vertex: number) => string | null;
 
 export interface ShipOptions {
-  /** 保留給 SF+CK（0.4.3）的掛點；預設回 null。 */
+  /**
+   * 擋住路口的 callback。省略時預設用傳入 model 的 `model.blocker`（`defaultBlocker`）；傳入時以傳入者為準，
+   * 不再疊加 model 的。
+   */
   readonly blocker?: VertexBlocker;
   /**
    * 移船：這條邊目前的船視為不在，也不能當作連接點（對應 rules 的 `moving`）。船本身還留在盤面上
@@ -101,6 +106,15 @@ function touchesPirate(model: BoardModel, edge: number): boolean {
   return pirate !== null && model.topo.edges[edge]!.hexes.includes(pirate);
 }
 
+/**
+ * 沒傳 `options.blocker` 時的預設：model 組合後的 `blocker`（各模組的 `vertexBlocker`，第一個非 null 勝出）。
+ * 一律用傳入的 `model`：`{ ...model, view: hypothetical }` 展開的假設盤面傳進來，鉤子讀到的就是假設盤面。
+ * 沒有任何模組提供時回 undefined，結果與沒有 blocker 相同。
+ */
+function defaultBlocker(model: BoardModel): VertexBlocker | undefined {
+  return model.blocker ? (vertex) => model.blocker!(model, vertex) : undefined;
+}
+
 /** 路口是否被別人擋住：對手的建築，或 blocker 回報的別人的棋子。自己的不算。 */
 function blockedFor(model: BoardModel, vertex: number, playerId: string, blocker: VertexBlocker | undefined): boolean {
   const building = model.view.board.buildings[vertex];
@@ -120,7 +134,8 @@ function ownShipAt(model: BoardModel, playerId: string, vertex: number, except: 
 
 /** 對應 rules 的 `canPlaceShip`（非開局）：空的海邊，避開海盜，接在自己的建築或船上。 */
 function canPlaceShip(model: BoardModel, playerId: string, edge: number, options: ShipOptions): boolean {
-  const { moving, blocker } = options;
+  const { moving } = options;
+  const blocker = options.blocker ?? defaultBlocker(model);
   if (edge === moving) return false;
   if (model.view.board.roads[edge]) return false;
   if (!isSeaEdge(model, edge)) return false;
@@ -146,9 +161,14 @@ export function shipEdgesOf(model: BoardModel, playerId: string = model.selfId, 
   return out;
 }
 
-/** `shipEdgesOf` 的 view 版本。 */
-export function shipEdgesFrom(view: GameView, selfId: string, options: ShipOptions = {}): number[] {
-  return shipEdgesOf(boardModel(view, selfId), selfId, options);
+/** `shipEdgesOf` 的 view 版本；`modules` 提供的 `vertexBlocker` 會組合進預設的 blocker（省略時只有 base）。 */
+export function shipEdgesFrom(
+  view: GameView,
+  selfId: string,
+  options: ShipOptions = {},
+  modules: readonly BotModule[] = [],
+): number[] {
+  return shipEdgesOf(boardModel(view, selfId, modules), selfId, options);
 }
 
 /**
@@ -157,10 +177,11 @@ export function shipEdgesFrom(view: GameView, selfId: string, options: ShipOptio
  */
 export function roadEdgesOf(model: BoardModel, playerId: string = model.selfId, options: RoadOptions = {}): number[] {
   const { buildings, roads } = model.view.board;
+  const blocker = options.blocker ?? defaultBlocker(model);
   const canExtendFrom = (vertex: number): boolean => {
     const building = buildings[vertex];
     if (building) return building.player === playerId;
-    if (blockedFor(model, vertex, playerId, options.blocker)) return false;
+    if (blockedFor(model, vertex, playerId, blocker)) return false;
     return model.topo.vertices[vertex]!.edges.some((edge) => {
       const road = roads[edge];
       return !!road && road.player === playerId && !road.ship;
@@ -174,9 +195,14 @@ export function roadEdgesOf(model: BoardModel, playerId: string = model.selfId, 
   return out;
 }
 
-/** `roadEdgesOf` 的 view 版本。 */
-export function roadEdgesFrom(view: GameView, selfId: string, options: RoadOptions = {}): number[] {
-  return roadEdgesOf(boardModel(view, selfId), selfId, options);
+/** `roadEdgesOf` 的 view 版本；`modules` 的用法同 `shipEdgesFrom`。 */
+export function roadEdgesFrom(
+  view: GameView,
+  selfId: string,
+  options: RoadOptions = {},
+  modules: readonly BotModule[] = [],
+): number[] {
+  return roadEdgesOf(boardModel(view, selfId, modules), selfId, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -205,6 +231,7 @@ export function searchShips(
   const { topo } = model;
   const { buildings, roads } = model.view.board;
   const { moving } = options;
+  const blocker = options.blocker ?? defaultBlocker(model);
   const distance = topo.vertices.map(() => Infinity);
   const viaEdge = topo.vertices.map(() => -1);
   const viaVertex = topo.vertices.map(() => -1);
@@ -215,7 +242,7 @@ export function searchShips(
   roads.forEach((road, edge) => {
     if (edge === moving || !road || !road.ship || road.player !== playerId) return;
     for (const vertex of topo.edges[edge]!.vertices) {
-      if (!blockedFor(model, vertex, playerId, options.blocker)) starts.add(vertex);
+      if (!blockedFor(model, vertex, playerId, blocker)) starts.add(vertex);
     }
   });
   let frontier = [...starts].sort((a, b) => a - b);
@@ -227,7 +254,7 @@ export function searchShips(
         if (edge === moving || roads[edge] || !isSeaEdge(model, edge) || touchesPirate(model, edge)) continue;
         const [a, b] = topo.edges[edge]!.vertices;
         const next = a === vertex ? b : a;
-        if (distance[next] !== Infinity || blockedFor(model, next, playerId, options.blocker)) continue;
+        if (distance[next] !== Infinity || blockedFor(model, next, playerId, blocker)) continue;
         const known = reached.get(next);
         if (!known || edge < known.edge) reached.set(next, { edge, from: vertex });
       }

@@ -56,6 +56,11 @@ export const BOT_FAMILIES: readonly BotTestFamily[] = [
     profiles: ['ck-2025', 'ck-paired-2025'],
     files: ['ck-game.test.ts', 'ck-fair.test.ts', 'ck-fuzz.test.ts', 'ck-fallback.test.ts'],
   },
+  {
+    id: 'seafarersCitiesKnights',
+    profiles: ['sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025'],
+    files: ['sfck-game.test.ts', 'sfck-fair.test.ts', 'sfck-fuzz.test.ts', 'sfck-fallback.test.ts'],
+  },
 ];
 
 /** 有專屬測試檔的 family 所涵蓋的 profile；通用矩陣跳過它們。 */

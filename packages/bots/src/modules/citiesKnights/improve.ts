@@ -5,6 +5,8 @@
  *   4 級可以取走大都市（+2 VP、免疫掠奪），5 級可以從 4 級持有者手上搶走。
  * - 主軌道 = 自己最容易付得起的那一軌：長期產能（含城市）加上手上已有的 commodity，已經投資的軌道再加一點慣性；
  *   對手在這軌道已經領先 2 級以上且擁有大都市時降權（打不過）。其他軌道只升到 3 級（取得能力、提高抽卡率）。
+ * - 買不了的軌道不當主軌道、也不產生項目：滿級（`max-level`），或下一級會拿大都市、但每座城市都已有大都市
+ *   （`no-site`，rules 會拒絕那個指令，所以不能當成一般改良估值）。全部買不了時沒有項目，`mainTrack` 仍回傳一軌供選牌堆等用途。
  * - easy：永遠只升持有 commodity 最多的那一軌（D-CK3、§4.4）。
  * - 價值的單位是勝利分當量，與 base 的計畫同尺度（`1 + PIP_VALUE × 點數`）；常數是未經對局調校的起點。
  *
@@ -73,6 +75,26 @@ export function awardsMetropolis(model: BoardModel, track: CkTrack, next: number
   return level < CK_PERMANENT_METROPOLIS_LEVEL;
 }
 
+/**
+ * 有城市、但每一座都已經有大都市（rules 的 `no-site`，優先序在 `no-city` 之後）：會拿到大都市的那一級改良會被擋下。
+ * 沒有任何城市（例如被掠奪降級）是 `no-city`，不算在內；那是暫時的，不該改變選軌道的結果。
+ */
+export function lacksMetropolisSite(model: BoardModel): boolean {
+  const metropolises = ckView(model.view)?.metropolises;
+  const taken = new Set<number>();
+  for (const track of CK_TRACKS) {
+    const vertex = metropolises?.[track]?.vertex;
+    if (typeof vertex === 'number') taken.add(vertex);
+  }
+  let cities = 0;
+  for (const [vertex, building] of model.view.board.buildings.entries()) {
+    if (!building?.city || building.player !== model.selfId) continue;
+    if (!taken.has(vertex)) return false;
+    cities += 1;
+  }
+  return cities > 0;
+}
+
 /** 對手在這軌道已經領先到我們追不上：擁有大都市而且至少高 2 級。 */
 function outClassed(model: BoardModel, track: CkTrack): boolean {
   const holder = ckView(model.view)?.metropolises?.[track];
@@ -90,11 +112,29 @@ function supply(model: BoardModel, track: CkTrack): number {
   return production + held * 0.5;
 }
 
-/** 主軌道：easy 看手上 commodity 最多的，standard 看產能、持有與已投入的等級。同分取排在前面的軌道。 */
-export function mainTrack(model: BoardModel, level: BotLevel = 'standard'): CkTrack {
+/**
+ * 下一級現在能不能買（不看手牌）：沒有滿級，而且不是「會拿大都市、卻沒有可放的城市」（rules 的 `max-level`、
+ * `no-site`）。大都市點要掃一次建築，只有在這一級會拿大都市時才查，每次呼叫最多一次。
+ */
+function improvableCheck(model: BoardModel): (track: CkTrack) => boolean {
   const me = selfOf(model);
-  let best: CkTrack = CK_TRACKS[0]!;
+  let blocked: boolean | undefined;
+  return (track) => {
+    const next = (me?.improvements?.[track] ?? 0) + 1;
+    if (next > CK_MAX_LEVEL) return false;
+    if (!awardsMetropolis(model, track, next)) return true;
+    blocked ??= lacksMetropolisSite(model);
+    return !blocked;
+  };
+}
+
+function pickMain(model: BoardModel, level: BotLevel, improvable: (track: CkTrack) => boolean): CkTrack {
+  const me = selfOf(model);
+  let best: CkTrack | null = null;
   let bestScore = -Infinity;
+  // 沒有任何一軌能買時（全部滿級或沒有放大都市的城市），退回對全部軌道的評分，呼叫端仍拿得到一個軌道。
+  let fallback: CkTrack = CK_TRACKS[0]!;
+  let fallbackScore = -Infinity;
   for (const track of CK_TRACKS) {
     const commodity = CK_TRACK_COMMODITY[track];
     const invested = me?.improvements?.[track] ?? 0;
@@ -102,12 +142,24 @@ export function mainTrack(model: BoardModel, level: BotLevel = 'standard'): CkTr
       level === 'easy'
         ? (me?.commodities?.[commodity] ?? 0) + (playerYield(model, model.selfId, true)[commodity] ?? 0) * 0.01
         : supply(model, track) + invested * 1.2 - (outClassed(model, track) ? 4 : 0);
-    if (score > bestScore) {
+    if (score > fallbackScore) {
+      fallbackScore = score;
+      fallback = track;
+    }
+    if (score > bestScore && improvable(track)) {
       bestScore = score;
       best = track;
     }
   }
-  return best;
+  return best ?? fallback;
+}
+
+/**
+ * 主軌道：easy 看手上 commodity 最多的，standard 看產能、持有與已投入的等級。同分取排在前面的軌道。
+ * 只在買得了下一級的軌道中挑（滿級、或下一級會拿大都市卻沒有可放的城市的軌道不當主軌道）；都買不了時退回全部軌道。
+ */
+export function mainTrack(model: BoardModel, level: BotLevel = 'standard'): CkTrack {
+  return pickMain(model, level, improvableCheck(model));
 }
 
 /** 其他玩家在這軌道搶大都市的競爭：追上或超過自己下一級的對手越多，勝算越低。 */
@@ -133,14 +185,15 @@ function valueOf(model: BoardModel, track: CkTrack, next: number, main: boolean)
   return value;
 }
 
-/** 三條軌道的下一級；滿級的軌道沒有項目。 */
+/** 三條軌道的下一級；買不了的軌道（滿級，或下一級會拿大都市卻沒有可放的城市）沒有項目。 */
 export function trackOptions(model: BoardModel, level: BotLevel = 'standard'): TrackOption[] {
   const me = selfOf(model);
-  const main = mainTrack(model, level);
+  const improvable = improvableCheck(model);
+  const main = pickMain(model, level, improvable);
   const out: TrackOption[] = [];
   for (const track of CK_TRACKS) {
+    if (!improvable(track)) continue;
     const next = (me?.improvements?.[track] ?? 0) + 1;
-    if (next > CK_MAX_LEVEL) continue;
     out.push({
       track,
       commodity: CK_TRACK_COMMODITY[track],

@@ -22,7 +22,8 @@ export { handList, pendingDuty } from './base/duty.ts';
  *
  * 模組 frame 一律採保守的 `responders[0]`（策略原則 P3）：不是第一位 responder 就回 null，
  * 也不詢問模組的 `duty`；同時作答的 frame 由策略路徑的 `answerFrame` 負責。與
- * `botOwesAction` 的判定一致。
+ * `botOwesAction` 的判定一致。自己欠 `moveRobber` 而 `robberTargets` 的 fold 為空時直接回 null，不詢問模組的
+ * `duty`（fold 是完整的合法集合，沒有任何模組能做得更好）。
  */
 export function fallbackDecision(view: GameView, selfId: string, modules: readonly BotModule[]): BotCommand | null {
   if (view.result) return null;
@@ -30,7 +31,12 @@ export function fallbackDecision(view: GameView, selfId: string, modules: readon
   const pending = view.pending;
   if (pending) {
     if (isModuleFrame(pending) && pending.responders[0] !== selfId) return null;
-    return pendingDuty(view, selfId) ?? askDuty() ?? null;
+    const duty = pendingDuty(view, selfId, modules);
+    if (duty !== null) return duty;
+    // 自己欠 moveRobber 而 fold 為空：集合是完整的合法集合，沒有任何模組的 duty 能做得更好，直接回 null
+    // 交給 server 診斷，不再詢問模組（否則可能送出集合外的指令）。
+    if (pending.kind === 'moveRobber' && pending.actor === selfId) return null;
+    return askDuty() ?? null;
   }
   if (view.turn.playerId !== selfId) return null;
   const hints = view.hints;

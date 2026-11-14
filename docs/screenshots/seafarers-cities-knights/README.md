@@ -18,7 +18,7 @@ player 1. Other seats and filler turns are played over the API.
 
 | File | Renderer | Viewport | State |
 |---|---|---|---|
-| `lobby-combined.png` | – | 1366×900 | lobby on the room page, all four seats ready, before the start (re-captured from `369b7fe`, 2026-11-08): Cities & Knights + Seafarers resolves to Heading for New Shores; bot note 「電腦對手尚未支援這個規則組合。」 |
+| `lobby-combined.png` | – | 1366×900 | lobby: a `sf-ck-new-shores-2025` room (Cities & Knights + Seafarers resolves to Heading for New Shores) with a standard and an easy bot, the add-bot toolbar (easy and standard; hard plays only the base game), room settings and the ruleset chip (v0.4.3) |
 | `p4-svg-desktop-chase-pirate-knight.png` | SVG | 1366×900 | COMB-6: an active knight next to the pirate’s sea hex (on the ships) chases it |
 | `p4-svg-desktop-chase-pirate-target.png` | SVG | 1366×900 | COMB-6: the pirate moves to sea hexes (or the frame) only; land is not offered |
 | `p4-svg-desktop-after-chase.png` | SVG | 1366×900 | ships, the lying knight on the sea intersection, pirate and robber together |
@@ -41,3 +41,14 @@ Each step asserts the DOM or game state it captures: targets offered (sea
 hexes and the frame for the pirate, no land; land only for the robber), the
 pirate's and robber's hex after the move, the knight lying down, the knight's
 new vertex and every score mark.
+
+For v0.4.3, bots can play both combined profiles. `lobby-combined.png` was
+re-taken by `scripts/bots-seafarers-cities-knights/capture.py` against the
+production build: a `sf-ck-new-shores-2025` room created through the lobby
+("Cities & Knights + Seafarers") where the host added a standard and an easy bot
+from the toolbar; the script writes it as `sfck-lobby-bots-1366x900-zh-Hant.png`
+in its output directory and checks that only easy and standard are offered, with
+the hard note shown, and that the unsupported note is gone. It replaces the
+earlier lobby capture (four humans ready, with the note that bots could not play
+this ruleset); `report.json` still lists that earlier capture's sha256. The other
+captures are unchanged: they were taken with human seats only.

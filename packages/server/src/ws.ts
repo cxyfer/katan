@@ -29,6 +29,17 @@ export function createWebSocketServer(deps: WsDeps): {
 } {
   const server = new WebSocketServer({ noServer: true });
 
+  // 進行中的連線工作（升級握手、訊息處理、斷線清理）。關機時 `close()` 等它們全部
+  // 結束才回傳，呼叫端接著才能關資料庫；否則 close 事件觸發的清理還在查詢時
+  // pool 就先 end，清理以 unhandled rejection 收場，座位的連線旗標也沒寫回。
+  const inflight = new Set<Promise<void>>();
+  let closing = false;
+  /** 登記一項工作；傳入的 promise 不得 reject（呼叫端自行處理錯誤）。 */
+  function track(work: Promise<void>): void {
+    inflight.add(work);
+    void work.then(() => inflight.delete(work));
+  }
+
   server.on('connection', (socket: WebSocket, _req: IncomingMessage, context: { playerId: string }) => {
     const connection: Connection = {
       id: randomUUID(),
@@ -45,7 +56,10 @@ export function createWebSocketServer(deps: WsDeps): {
     // 同一條連線的訊息依序處理：取消訂閱後立刻訂閱別的房間時，兩者不能交錯。
     let messageQueue: Promise<void> = Promise.resolve();
     socket.on('message', (raw) => {
+      // 連線已結束（清理已排入）：之後到達的訊息不再處理。
+      if (cleanup) return;
       messageQueue = messageQueue.then(() => handleRaw(raw)).catch(() => undefined);
+      track(messageQueue);
     });
 
     function handleRaw(raw: unknown): Promise<void> {
@@ -111,6 +125,9 @@ export function createWebSocketServer(deps: WsDeps): {
           if (connection.roomId && connection.roomId !== roomId) {
             await deps.rooms.unregisterConnection(connection);
           }
+          // 等待期間 socket 已結束：不再登記死連線（會遞增進房世代、喚醒 Bot）。
+          // 從這裡到指派 roomId 之間沒有 await；之後才結束的 socket 由接在佇列後的清理移除。
+          if (cleanup) return;
           connection.roomId = roomId;
           await deps.rooms.registerConnection(connection);
           connection.send({
@@ -132,12 +149,22 @@ export function createWebSocketServer(deps: WsDeps): {
       }
     }
 
-    socket.on('close', () => {
-      void deps.rooms.unregisterConnection(connection);
-    });
-    socket.on('error', () => {
-      void deps.rooms.unregisterConnection(connection);
-    });
+    // 斷線清理接在該連線已排隊的訊息之後：subscribe 可能還停在 requireMembership 或
+    // 正在切離前一個房間，這時 `connection.roomId` 尚未是最終值；若清理搶先執行，
+    // 之後恢復的 handler 會把已關閉的連線註冊進去，沒人再清理，座位永遠顯示在線。
+    // `close` 與 `error` 都可能觸發，只清理一次。錯誤記 warn，不變成 unhandled rejection。
+    let cleanup: Promise<void> | null = null;
+    const cleanupAfterQueue = (): void => {
+      if (cleanup) return;
+      cleanup = messageQueue
+        .then(() => deps.rooms.unregisterConnection(connection))
+        .catch((error) => {
+          deps.log('warn', 'ws disconnect cleanup failed', { connectionId: connection.id, error: String(error) });
+        });
+      track(cleanup);
+    };
+    socket.on('close', cleanupAfterQueue);
+    socket.on('error', cleanupAfterQueue);
 
     connection.send({
       type: 'hello',
@@ -147,23 +174,42 @@ export function createWebSocketServer(deps: WsDeps): {
 
   return {
     handleUpgrade(req, socket, head) {
-      void (async () => {
-        const identity = await deps.sessions.resolve(req.headers.cookie);
-        if (!identity) {
-          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-          socket.destroy();
-          return;
-        }
-        server.handleUpgrade(req, socket, head, (socket_) => {
-          server.emit('connection', socket_, req, { playerId: identity.id });
-        });
-      })().catch(() => {
+      const refuseWhileClosing = (): void => {
+        socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
         socket.destroy();
-      });
+      };
+      if (closing) {
+        refuseWhileClosing();
+        return;
+      }
+      track(
+        (async () => {
+          const identity = await deps.sessions.resolve(req.headers.cookie);
+          if (!identity) {
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+          // 查 session 的期間可能已開始關機：不再收新連線。
+          if (closing) {
+            refuseWhileClosing();
+            return;
+          }
+          server.handleUpgrade(req, socket, head, (socket_) => {
+            server.emit('connection', socket_, req, { playerId: identity.id });
+          });
+        })().catch(() => {
+          socket.destroy();
+        }),
+      );
     },
     async close() {
+      closing = true;
       for (const client of server.clients) client.close(1001, 'server shutting down');
+      // 回呼在最後一條 socket 的 close 事件之後觸發；那些事件啟動的清理已登記在
+      // inflight，這裡再等它們寫完，呼叫端才能關資料庫。
       await new Promise<void>((resolve) => server.close(() => resolve()));
+      while (inflight.size > 0) await Promise.all([...inflight]);
     },
   };
 }

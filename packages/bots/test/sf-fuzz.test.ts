@@ -46,9 +46,15 @@ const MIN_PIRATE_SHARE = 0.2;
 interface Samples {
   /** 沿用的取樣：種子 71 每 5 個決策、種子 72 每 7 個決策。 */
   spread: GameState[];
-  /** 兩局裡所有擲骰前、沒有待決效果的狀態（可打騎士的時機）。 */
+  /** 種子 71–74 四局裡所有擲骰前、沒有待決效果的狀態（可打騎士的時機）。 */
   preroll: GameState[];
 }
+
+/**
+ * 只取擲骰前狀態的額外對局。#135 之後第一座聚落不再優先靠海，原本兩局的船少了，能佈置成「海盜擋在船端前」的
+ * 狀態從 43／23 個（4／6 人）降到 13／8 個，樣本太小；多跑兩局把樣本補回來，門檻不變。
+ */
+const PREROLL_EXTRA_SEEDS = [73, 74] as const;
 
 function runSample(
   profileId: string,
@@ -75,13 +81,14 @@ function runSample(
 
 const sampleCache = new Map<string, Samples>();
 
-/** 同一個 profile 的兩局只跑一次，各個測試共用（取樣是確定的，測試只會 clone 後再改）。 */
+/** 同一個 profile 的取樣對局只跑一次，各個測試共用（取樣是確定的，測試只會 clone 後再改）。 */
 function samplesOf(profileId: string, players: number): Samples {
   const cached = sampleCache.get(profileId);
   if (cached) return cached;
   const samples: Samples = { spread: [], preroll: [] };
   runSample(profileId, players, 71, 5, samples.spread, samples.preroll);
   runSample(profileId, players, 72, 7, samples.spread, samples.preroll);
+  for (const seed of PREROLL_EXTRA_SEEDS) runSample(profileId, players, seed, Infinity, [], samples.preroll);
   sampleCache.set(profileId, samples);
   return samples;
 }

@@ -137,6 +137,38 @@ function moveShipCombined(state: GameState, actorId: string, command: ModuleComm
   return moveShip(state, actorId, command, ctx);
 }
 
+/**
+ * Which bandit the actor may move now: the robber, the pirate or either one.
+ * The `bandit` hint is typed `SfckBandit | null`; it is `null` when no
+ * `moveRobber` frame waits for the actor.
+ */
+export type SfckBandit = 'robber' | 'pirate' | 'either';
+
+/** Public combination state, published as `GameView.modules.seafarersCitiesKnights`. */
+export function projectSeafarersCitiesKnights(state: GameState) {
+  return { pirateActive: pirateInPlay(state) };
+}
+
+export type SeafarersCitiesKnightsView = ReturnType<typeof projectSeafarersCitiesKnights>;
+
+/** Advisory targets, published as `ActionHints.modules.seafarersCitiesKnights`. */
+export function seafarersCitiesKnightsHints(state: GameState, playerId: string) {
+  const isTurn = state.players[state.turn.seat]?.id === playerId;
+  const inAction = isTurn && state.turn.phase === 'action' && !state.pending;
+  const pending = state.pending;
+  let bandit: SfckBandit | null = null;
+  if (pending?.kind === 'moveRobber' && pending.actor === playerId) {
+    bandit = pending.pirate ? 'pirate' : pending.cause === 'knight' || !pirateInPlay(state) ? 'robber' : 'either';
+  }
+  return {
+    pirateActive: pirateInPlay(state),
+    pirateChase: inAction ? pirateChasers(state, playerId) : [],
+    bandit,
+  };
+}
+
+export type SeafarersCitiesKnightsHints = ReturnType<typeof seafarersCitiesKnightsHints>;
+
 export const seafarersCitiesKnightsModule: RulesModule = {
   id: SEAFARERS_CITIES_KNIGHTS,
 
@@ -169,22 +201,6 @@ export const seafarersCitiesKnightsModule: RulesModule = {
     'ship.move': moveShipCombined,
   },
 
-  project(state) {
-    return { pirateActive: pirateInPlay(state) };
-  },
-
-  actionHints(state, playerId) {
-    const isTurn = state.players[state.turn.seat]?.id === playerId;
-    const inAction = isTurn && state.turn.phase === 'action' && !state.pending;
-    const pending = state.pending;
-    let bandit: 'robber' | 'pirate' | 'either' | null = null;
-    if (pending?.kind === 'moveRobber' && pending.actor === playerId) {
-      bandit = pending.pirate ? 'pirate' : pending.cause === 'knight' || !pirateInPlay(state) ? 'robber' : 'either';
-    }
-    return {
-      pirateActive: pirateInPlay(state),
-      pirateChase: inAction ? pirateChasers(state, playerId) : [],
-      bandit,
-    };
-  },
+  project: projectSeafarersCitiesKnights,
+  actionHints: seafarersCitiesKnightsHints,
 };

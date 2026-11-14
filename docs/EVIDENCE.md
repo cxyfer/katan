@@ -45,8 +45,9 @@ All commands were run from the repository root unless stated otherwise.
 | 17 | Playwright + Chromium 156 headless, three isolated browser contexts against the published URL | lobby → start → settlement → road, `PROBLEMS: none` (see below) |
 | 18 | Same harness, full three-player game advanced through the API then rendered | 12 setup commands accepted, roll accepted, 12 states captured in `docs/screenshots/` (superseded by the 2026-10-28 refresh below) |
 | 19 | Board-fit measurement at 1366×768 before and after the fix | SVG bottom `803` → `752` against a `768` viewport; whole map now above the fold |
+| 20 | `TEST_POSTGRES_URL=postgres://catan:catan@127.0.0.1:55433/catan pnpm --filter @catan/server test` on PostgreSQL 17.12 (`postgres:17`), 2026-11-14, commit `0130d07` (#115) | 28 files; 358 passed, 2 skipped (`retention sweep scheduling`, SQLite-only by design); exit 0, 0 errors. Both E&P restart cases in `explorers-pirates.test.ts` passed. The same suite at `885644a` passed its tests but exited 1 with 10 `Cannot use a pool after calling end on the pool` unhandled rejections (see `packages/server/test/shutdown-drain.test.ts`) |
 
-All seventeen commands were executed in this session.
+Rows 1–19 were executed in the original session; row 20 was added on 2026-11-14.
 
 ## Real-browser verification
 

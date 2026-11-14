@@ -216,7 +216,7 @@ describe('R-ROOM lobby', () => {
       requiredBoxes: ['base', 'base-5-6'], playerCounts: [5, 6], enabled: true,
     });
     expect(data.profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')).toMatchObject({
-      expansions: ['seafarers', 'citiesKnights'], scenario: 'new-shores', enabled: true, botSeats: false,
+      expansions: ['seafarers', 'citiesKnights'], scenario: 'new-shores', enabled: true, botSeats: true,
     });
     for (const profile of data.profiles) expect(profile).not.toHaveProperty('modules');
   });

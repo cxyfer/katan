@@ -35,7 +35,7 @@ import {
 } from './economy.ts';
 import { LEVEL_PARAMS, type LevelParams } from './level.ts';
 import { fallbackDecision } from './fallback.ts';
-import { collectScored, firstAnswer, isModuleFrame } from './modules/compose.ts';
+import { collectScored, firstAnswer, isModuleFrame, rescoreDelta } from './modules/compose.ts';
 import { botModulesOf } from './modules/registry.ts';
 import type { BotModule, Scored, TurnContext } from './modules/types.ts';
 import { Turn } from './turn.ts';
@@ -394,9 +394,11 @@ function buildDecision(turn: TurnContext): BotCommand | null {
       scoring.push({ item: { type: 'build.settlement', vertex }, score: value });
     }
   }
-  // 模組的「現在就該做」候選接在 base 之後，一起評分。
+  // 模組的「現在就該做」候選接在 base 之後，一起評分；合併、去重之後再套用各模組的 rescore 差值。
   const extra = collectScored(turn.modules, (module) => module.actions?.(turn));
-  const scoringPick = turn.pick(extra.length === 0 ? scoring : dedupeCandidates([...scoring, ...extra]));
+  const scoringPick = turn.pick(
+    rescoreCandidates(turn, extra.length === 0 ? scoring : dedupeCandidates([...scoring, ...extra])),
+  );
   if (scoringPick) return scoringPick;
 
   // b) 主要計畫：付得起就做下一步，否則看銀行交易能否在這回合補齊。
@@ -423,6 +425,22 @@ function buildDecision(turn: TurnContext): BotCommand | null {
     if (edge !== null) return { type: 'build.road', edge };
   }
   return null;
+}
+
+/**
+ * 把所有提供 `rescore` 的模組對同一個候選的差值相加到分數上（不新增、不移除候選，順序不變）。沒有任何
+ * 模組提供 `rescore` 時原樣回傳同一個陣列：不呼叫任何鉤子，也不改變順序或亂數消耗。非有限的差值視為 0。
+ */
+export function rescoreCandidates(
+  turn: TurnContext,
+  candidates: readonly Scored<BotCommand>[],
+): readonly Scored<BotCommand>[] {
+  const hooks = turn.modules.filter((module) => module.rescore);
+  if (hooks.length === 0) return candidates;
+  return candidates.map((candidate) => {
+    const delta = rescoreDelta(hooks, turn, candidate.item);
+    return delta === 0 ? candidate : { item: candidate.item, score: candidate.score + delta };
+  });
 }
 
 /**
@@ -498,7 +516,29 @@ export function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
   }
 }
 
-/** 手牌超過上限（`Economy.handLimit`，base 為 7，C&K 每座城牆 +2；張數含 commodity）時：先買發展卡、再鋪有用的路，最後把過剩的牌換成需要的。 */
+/**
+ * 這個回合（自最近一次 `turn.started` 起）自己做過的銀行交易：收進來的牌與換出去的牌。策略沒有跨呼叫的狀態，
+ * 所以從投影的事件歷史推回來；歷史缺漏或沒有附（測試用的投影）時兩個集合都是空的。
+ */
+function bankTradesThisTurn(view: GameView, selfId: string): { received: Set<CardKind>; gave: Set<CardKind> } {
+  const received = new Set<CardKind>();
+  const gave = new Set<CardKind>();
+  for (let index = view.events.length - 1; index >= 0; index--) {
+    const event = view.events[index]!;
+    if (event.type === 'turn.started') break;
+    if (event.type !== 'trade.bank' || event.params.playerId !== selfId) continue;
+    received.add(event.params.receive as CardKind);
+    gave.add(event.params.give as CardKind);
+  }
+  return { received, gave };
+}
+
+/**
+ * 手牌超過上限（`Economy.handLimit`，base 為 7，C&K 每座城牆 +2；張數含 commodity）時：先買發展卡、再鋪有用的路，最後把過剩的牌換成需要的。
+ *
+ * 銀行交易不來回換（#173）：同一回合內不換出剛從銀行換進來的牌、也不再換入換出去過的牌；兩個計畫的排名會隨手牌互相翻轉，
+ * 光看當下的缺牌會在 A → B、B → A 之間打轉。再加上「收下去馬上又夠格當 give 的牌排後面」，在沒有事件歷史時也能避開大部分。
+ */
 export function handRelief(turn: TurnContext): Command | null {
   const { view } = turn;
   const economy = turn.economy;
@@ -512,17 +552,29 @@ export function handRelief(turn: TurnContext): Command | null {
   const target = economy.plans[0]?.cost ?? {};
   const missing = deficitOf(hand, target);
   const { kinds, rates } = economy;
+  const traded = bankTradesThisTurn(view, turn.ctx.selfId);
   let give: CardKind | null = null;
   for (const kind of kinds) {
     const rate = rates[kind];
-    if (rate === undefined) continue;
+    if (rate === undefined || traded.received.has(kind)) continue;
     const extra = (hand[kind] ?? 0) - (target[kind] ?? 0);
     if (extra < rate) continue;
     if (!give || extra - rate > (hand[give] ?? 0) - (target[give] ?? 0) - rates[give]!) give = kind;
   }
   if (!give) return null;
+  // 收下去馬上又夠格當 give 的牌（超出計畫所需的張數 ≥ 匯率）排後面：不然下一步就會把它換回去，
+  // 或者換掉剛收到的牌（計畫空了、或已經湊齊時，`missing` 全是 0，只剩權重決定收什麼）。
+  const recyclable = (kind: CardKind): number => {
+    const rate = rates[kind];
+    return rate !== undefined && (hand[kind] ?? 0) + 1 - (target[kind] ?? 0) >= rate ? 1 : 0;
+  };
   const receive = kinds
-    .filter((kind) => kind !== give && bankHas(view, kind))
-    .sort((a, b) => (missing[b] ?? 0) - (missing[a] ?? 0) || (economy.weights[b] ?? 0) - (economy.weights[a] ?? 0))[0];
+    .filter((kind) => kind !== give && !traded.gave.has(kind) && bankHas(view, kind))
+    .sort(
+      (a, b) =>
+        (missing[b] ?? 0) - (missing[a] ?? 0) ||
+        recyclable(a) - recyclable(b) ||
+        (economy.weights[b] ?? 0) - (economy.weights[a] ?? 0),
+    )[0];
   return receive ? { type: 'trade.bank', give, receive } : null;
 }

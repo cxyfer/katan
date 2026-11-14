@@ -149,10 +149,11 @@ only the original human players must reconnect and become ready to resume.
   accepts: every rules module of the profile (`ProfileDefinition.ruleModules`)
   needs a bot module, and that module's `supports(profile)` must accept the
   profile. Today the base profiles, the two Heading for New Shores profiles
-  (`sf-new-shores-2025`, `sf-new-shores-paired-2025`) and the two Cities &
-  Knights profiles (`ck-2025`, `ck-paired-2025`) qualify, so
+  (`sf-new-shores-2025`, `sf-new-shores-paired-2025`), the two Cities &
+  Knights profiles (`ck-2025`, `ck-paired-2025`) and the two combined profiles
+  (`sf-ck-new-shores-2025`, `sf-ck-new-shores-paired-2025`) qualify, so
   `ProfileView.botSeats` is true for them and false for every other expansion
-  profile, including Seafarers with Cities & Knights. Adding a bot or
+  profile. Adding a bot or
   changing a room with bot seats to an unsupported profile is `E_INVALID_BOT`, reason
   `profile`. A bot seat that still ends up in such a room (for example after a
   registry change) adds `blocker.botsUnsupported`, so the game cannot start.
@@ -570,9 +571,11 @@ discarded card's face is sent only to its holder.
 
 ### Seafarers + Cities & Knights (`sf-ck-new-shores-*`)
 
-The combined profiles (engine `sf-ck-2025.1`, 16 VP, human seats only)
-accept every Seafarers and Cities & Knights command above, except the base
-development cards, plus one command:
+The combined profiles (engine `sf-ck-2025.1`, 16 VP) accept every Seafarers
+and Cities & Knights command above, except the base development cards, plus
+one command. Bots can be seated at `easy` or `standard` (`botSeats: true`,
+`botLevels: ['easy','standard']`); `hard` is refused (`E_INVALID_BOT`, reason
+`profileLevel`):
 
 | Command | Fields | When |
 |---|---|---|
