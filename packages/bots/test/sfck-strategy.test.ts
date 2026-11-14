@@ -48,7 +48,7 @@ import { guardedKnights, recruitSite } from '../src/modules/citiesKnights/defens
 import { knightsOf, threatOf } from '../src/modules/citiesKnights/knights.ts';
 import { citiesKnightsSetup, citySetupScore, touchesOreOrGrain } from '../src/modules/citiesKnights/setup.ts';
 import { ISLAND_SETTLEMENT } from '../src/modules/seafarers/plan.ts';
-import { islandSetupBonus, seafarersSetup } from '../src/modules/seafarers/setup.ts';
+import { islandSetupBonus, openingMakesWool, seafarersSetup, seafarersSetupScore } from '../src/modules/seafarers/setup.ts';
 import { CHASE_MIN_AWAY, chaseScore, sfckChaseActions } from '../src/modules/seafarersCitiesKnights/chase.ts';
 import { seafarersCitiesKnightsBotModule } from '../src/modules/seafarersCitiesKnights/index.ts';
 import { OPEN_END_PENALTY, sfckRescore } from '../src/modules/seafarersCitiesKnights/rescore.ts';
@@ -651,7 +651,8 @@ describe('FX-S setup building (D5)', () => {
   // 種子 3816 的隨機第 1 輪：p4 在第 2 輪，SF 單獨（setupSpotScore + 島嶼加權）選 v44，城市評分
   // （citySetupScore + 島嶼加權）選 v92。v44 的點數略高（12.81 對 12.21），v92 的 commodity 較多（8 對 5）。
   const S1_PICKS = [76, 67, 58, 61] as const;
-  // 種子 14 的隨機第 1 輪：SF 選 v44、城市評分選 v55；兩者都沒有登島加權，所以與 C&K 單獨時的選擇相同。
+  // 種子 14 的隨機第 1 輪：SF 選 v75、城市評分選 v55；兩者都沒有登島加權，所以與 C&K 單獨時的選擇相同。
+  // （#135 之前 SF 選 v44：v103 加 v44 不產 wool，SF 的第 2 輪現在扣 `SHIP_WOOL_PENALTY`。）
   const PLAIN_PICKS = [38, 85, 42, 103] as const;
   // 種子 3：不加硬篩選時 `citySetupScore + islandSetupBonus` 最高的 v78 沒有相鄰 ore 或 grain。
   const FILTER_PICKS = [42, 57, 62, 85] as const;
@@ -694,8 +695,9 @@ describe('FX-S setup building (D5)', () => {
     const { ranked, turn } = citySetupRanking(state);
     const sf = (seafarersSetup(turn) as { vertex: number }).vertex;
     const best = ranked[0]!.vertex;
-    expect(sf).toBe(44);
+    expect(sf).toBe(75);
     expect(best).toBe(55);
+    expect(openingMakesWool(turn.model, 44)).toBe(false);
     expect(islandSetupBonus(turn, sf)).toBe(0);
     expect(islandSetupBonus(turn, best)).toBe(0);
     expect(sfckSetup(turn)).toEqual({ type: 'setup.placeBuilding', vertex: best });
@@ -777,12 +779,13 @@ describe('FX-S setup building (D5)', () => {
     },
   );
 
-  it('S2 round 1 is SF alone: setupSpotScore plus the island bonus, for standard and easy', () => {
+  it('S2 round 1 keeps setupSpotScore plus the island bonus, which SF alone no longer adds (#135), for standard and easy', () => {
     for (const players of [3, 4] as const) {
       let { state } = sfckGame(players);
       expect(getProfile(state.profileId)!.ruleModules).toEqual(['seafarersCitiesKnights', 'seafarers', 'citiesKnights']);
       const sfOnly = WITHOUT_SFCK; // 沒有組合層：SF 先回答，與 SF 單獨相同
       let islandPicks = 0;
+      let differs = 0;
       for (let step = 0; step < players; step++) {
         const actor = setupActor(state);
         const setup = state.turn.setup!;
@@ -795,11 +798,23 @@ describe('FX-S setup building (D5)', () => {
           .sort((a, b) => b.score - a.score || a.vertex - b.vertex)[0]!;
         const sfckCommand = createBotPolicy('standard').decide(view, ctxFor(actor));
         expect(sfckCommand, `p${step + 1}`).toEqual({ type: 'setup.placeBuilding', vertex: best.vertex });
-        expect(createBotPolicy('standard', { modules: sfOnly }).decide(view, ctxFor(actor))).toEqual(sfckCommand);
+        // SF 單獨：第 1 輪只用 setupSpotScore（`seafarersSetupScore`），與組合層不一定相同。
+        const sfBest = legal
+          .map((vertex) => ({ vertex, score: seafarersSetupScore(turn, vertex) }))
+          .sort((a, b) => b.score - a.score || a.vertex - b.vertex)[0]!;
+        expect(sfBest.score).toBe(setupSpotScore(turn, sfBest.vertex));
+        const sfCommand = createBotPolicy('standard', { modules: sfOnly }).decide(view, ctxFor(actor));
+        expect(sfCommand).toEqual({ type: 'setup.placeBuilding', vertex: sfBest.vertex });
+        if (sfBest.vertex !== best.vertex) differs++;
+        const topThree = legal
+          .map((vertex) => ({ vertex, score: setupSpotScore(turn, vertex) + islandSetupBonus(turn, vertex) }))
+          .sort((a, b) => b.score - a.score || a.vertex - b.vertex)
+          .slice(0, 3)
+          .map((entry) => entry.vertex);
         for (const seed of [1, 2, 3]) {
-          expect(createBotPolicy('easy').decide(view, ctxFor(actor, 'easy', seed)), `easy#${seed}`).toEqual(
-            createBotPolicy('easy', { modules: sfOnly }).decide(view, ctxFor(actor, 'easy', seed)),
-          );
+          const easy = createBotPolicy('easy').decide(view, ctxFor(actor, 'easy', seed)) as { type: string; vertex: number };
+          expect(easy.type, `easy#${seed}`).toBe('setup.placeBuilding');
+          expect(topThree, `easy#${seed}`).toContain(easy.vertex);
         }
         if (islandSetupBonus(turn, best.vertex) > 0) islandPicks++;
         state = expectAccepted(state, actor, sfckCommand);
@@ -809,6 +824,7 @@ describe('FX-S setup building (D5)', () => {
         state = expectAccepted(state, actor, createBotPolicy('standard').decide(viewOf(state, actor), ctxFor(actor)));
       }
       expect(islandPicks, `${players} players: the island bonus reaches at least one coastal pick`).toBeGreaterThan(0);
+      expect(differs, `${players} players: SF alone picks another vertex at least once`).toBeGreaterThan(0);
     }
   });
 

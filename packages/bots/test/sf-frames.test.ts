@@ -16,6 +16,7 @@ import {
   applyCommand,
   BANK_VIEW_CAP,
   projectGame,
+  RESOURCES,
   seededRng,
   type Command,
   type GameState,
@@ -27,13 +28,22 @@ import { act, scriptedRng } from '../../rules/test/helpers.ts';
 import { corner, emptySeafarersGame, hex, road, seafarersGame, settle, ship, side } from '../../rules/test/seafarers-helpers.ts';
 import { roadDirectionScore } from '../src/base/roads.ts';
 import { setupSpotScore } from '../src/base/setup.ts';
-import { boardModel, playerYield, type BoardModel } from '../src/board.ts';
+import { boardModel, playerYield, vertexYield, type BoardModel } from '../src/board.ts';
 import { PIP_VALUE, goldPipsAt, resourceWeights, settlementSpotValue, wildcardWeight } from '../src/economy.ts';
 import { heuristicPolicy, turnContext } from '../src/heuristic.ts';
 import { pirateOptions, seafarersBanditCandidates, seafarersPreroll } from '../src/modules/seafarers/bandit.ts';
 import { seafarersAnswerFrame } from '../src/modules/seafarers/frames.ts';
 import { ETA_PER_SHIP, ISLAND_SETTLEMENT, islandSettlementPlans } from '../src/modules/seafarers/plan.ts';
-import { ISLAND_VP_VALUE, islandSetupBonus, islandSites, setupShipScore, shipDiscount } from '../src/modules/seafarers/setup.ts';
+import {
+  ISLAND_VP_VALUE,
+  SHIP_WOOL_PENALTY,
+  islandSetupBonus,
+  islandSites,
+  openingMakesWool,
+  seafarersSetupScore,
+  setupShipScore,
+  shipDiscount,
+} from '../src/modules/seafarers/setup.ts';
 import type { TurnContext } from '../src/modules/types.ts';
 import { moduleHints } from '../src/modules/view.ts';
 import { botOwesAction } from '../src/fallback.ts';
@@ -1161,35 +1171,167 @@ describe('setup: islands and ships', () => {
   });
 
   describe('setup building', () => {
-    it('standard picks the best base score plus the island bonus, and that is not what base alone picks', () => {
+    /** #135 之前的分數：每一輪都是 `setupSpotScore + islandSetupBonus`。 */
+    const before = (turn: TurnContext, vertex: number): number => setupSpotScore(turn, vertex) + islandSetupBonus(turn, vertex);
+    const argmax = (vertices: readonly number[], score: (vertex: number) => number): number =>
+      vertices.map((vertex) => ({ vertex, value: score(vertex) })).reduce((a, b) => (b.value > a.value ? b : a)).vertex;
+    const pips = (turn: TurnContext, vertex: number): number => {
+      const spot = vertexYield(turn.model, vertex);
+      return RESOURCES.reduce((sum, resource) => sum + spot[resource], 0);
+    };
+    const building = (vertex: number): BotCommand => ({ type: 'setup.placeBuilding', vertex });
+
+    /**
+     * 依 `picks` 放 setup 的聚落（路由 standard 決定），直到下一個要放的聚落不在 `picks` 裡；回傳那時的狀態。
+     * `picks` 為空時每個聚落都由 standard 決定，放完整個 setup。
+     */
+    function playSetup(players: 3 | 4, picks: readonly number[] = []): GameState {
+      let { state } = seafarersGame(players);
+      let next = 0;
+      for (let step = 0; step < 4 * players && state.turn.phase === 'setup'; step++) {
+        const setup = state.turn.setup!;
+        const actor = state.players[setup.order[setup.index]!]!.id;
+        if (setup.stage === 'building' && picks.length > 0 && next >= picks.length) return state;
+        const command = setup.stage === 'building' && picks.length > 0 ? building(picks[next++]!) : decide(state, actor, 'standard');
+        expectAccepted(state, actor, command);
+        state = act(state, actor, command as Command).state;
+      }
+      return state;
+    }
+
+    it('round 1 ranks by setupSpotScore alone: the island bonus no longer pulls the first settlement to a poorer coast spot (#135)', () => {
       const { state } = seafarersGame(4);
       const view = viewOf(state, 'p1');
       const turn = turnContext(view, ctxFor('p1'), 'standard');
-      const scored = view.hints!.legalSettlements.map((vertex) => ({ vertex, score: setupSpotScore(turn, vertex) + islandSetupBonus(turn, vertex) }));
-      const best = scored.reduce((a, b) => (b.score > a.score ? b : a));
+      const legal = view.hints!.legalSettlements;
+      const old = argmax(legal, (vertex) => before(turn, vertex));
+      const pick = argmax(legal, (vertex) => seafarersSetupScore(turn, vertex));
+      for (const vertex of legal) expect(seafarersSetupScore(turn, vertex)).toBe(setupSpotScore(turn, vertex));
+      // 修正前：9 點的沿海點 v78（登島加權 > 0）；修正後：12 點的內陸點 v89，與 base 單獨時相同。
+      expect([old, pick]).toEqual([78, 89]);
+      expect(islandSetupBonus(turn, old)).toBeGreaterThan(0);
+      expect(islandSetupBonus(turn, pick)).toBe(0);
+      expect(pips(turn, pick)).toBeGreaterThan(pips(turn, old));
       const command = heuristicPolicy('standard').decide(view, ctxFor('p1'));
-      expect(command).toEqual({ type: 'setup.placeBuilding', vertex: best.vertex });
+      expect(command).toEqual(building(pick));
+      expect(heuristicPolicy('standard', []).decide(view, ctxFor('p1'))).toEqual(command);
       expectAccepted(state, 'p1', command);
-      // 沒有模組時（純 base）選另一個點：登島加權改變了決策。
-      const baseOnly = heuristicPolicy('standard', []).decide(view, ctxFor('p1'));
-      expect(baseOnly).not.toEqual(command);
     });
 
-    it('easy picks among the best three by the same score', () => {
-      const { state } = seafarersGame(4);
-      const view = viewOf(state, 'p1');
-      const turn = turnContext(view, ctxFor('p1'), 'easy');
-      const scored = view.hints!.legalSettlements.map((vertex) => ({ vertex, score: setupSpotScore(turn, vertex) + islandSetupBonus(turn, vertex) }));
-      const top3 = scored.slice().sort((a, b) => b.score - a.score).slice(0, 3).map((entry) => entry.vertex);
-      const seen = new Set<number>();
-      for (let seed = 1; seed <= 40; seed++) {
-        const command = heuristicPolicy('easy').decide(view, ctxFor('p1', 'easy', seed)) as { type: string; vertex: number };
-        expect(command.type).toBe('setup.placeBuilding');
-        expect(top3).toContain(command.vertex);
-        seen.add(command.vertex);
-        if (seed <= 3) expectAccepted(state, 'p1', command);
+    it('round 1 of an all-standard 4p setup: no seat starts on an island-bonus coast spot, the old score put every seat there', () => {
+      let { state } = seafarersGame(4);
+      let checked = 0;
+      while (state.turn.phase === 'setup' && state.turn.setup!.round === 1) {
+        const setup = state.turn.setup!;
+        const actor = state.players[setup.order[setup.index]!]!.id;
+        if (setup.stage === 'building') {
+          const view = viewOf(state, actor);
+          const turn = turnContext(view, ctxFor(actor), 'standard');
+          const legal = view.hints!.legalSettlements;
+          const pick = argmax(legal, (vertex) => seafarersSetupScore(turn, vertex));
+          const old = argmax(legal, (vertex) => before(turn, vertex));
+          expect(islandSetupBonus(turn, pick), actor).toBe(0);
+          expect(islandSetupBonus(turn, old), actor).toBeGreaterThan(0);
+          expect(pips(turn, pick), actor).toBeGreaterThan(pips(turn, old));
+          checked += 1;
+        }
+        const command = decide(state, actor, 'standard');
+        state = act(state, actor, command as Command).state;
       }
-      expect(seen.size).toBeGreaterThan(1);
+      expect(checked).toBe(4);
+    });
+
+    it('round 2 completes the pair: a pair without wool pays SHIP_WOOL_PENALTY, so standard settles v37 instead of v78 (3p, #135)', () => {
+      // 3 人：p1 35、p2 76、p3 63／57 之後輪到 p2 的第 2 座（standard 對 naive 時的座位 2）。
+      const state = playSetup(3, [35, 76, 63, 57]);
+      expect(state.turn.setup).toMatchObject({ stage: 'building', round: 2 });
+      const view = viewOf(state, 'p2');
+      const turn = turnContext(view, ctxFor('p2'), 'standard');
+      const legal = view.hints!.legalSettlements;
+      expect(legal).toEqual(expect.arrayContaining([37, 78]));
+      for (const vertex of legal) {
+        const penalty = openingMakesWool(turn.model, vertex) ? 0 : SHIP_WOOL_PENALTY;
+        expect(seafarersSetupScore(turn, vertex)).toBeCloseTo(before(turn, vertex) - penalty, 9);
+      }
+      const old = argmax(legal, (vertex) => before(turn, vertex));
+      const pick = argmax(legal, (vertex) => seafarersSetupScore(turn, vertex));
+      // v76 是 ore、grain、lumber；修正前的 v78（brick、lumber）讓這組開局完全沒有 wool，造不了船。
+      expect([old, pick]).toEqual([78, 37]);
+      expect(openingMakesWool(turn.model, old)).toBe(false);
+      expect(openingMakesWool(turn.model, pick)).toBe(true);
+      // 第 2 輪仍計登島加權：v37 靠海、能登島。
+      expect(islandSetupBonus(turn, pick)).toBeGreaterThan(0);
+      const command = heuristicPolicy('standard').decide(view, ctxFor('p2'));
+      expect(command).toEqual(building(pick));
+      expectAccepted(state, 'p2', command);
+    });
+
+    it('the wool penalty in fixed cases: first settlement has wool 0, candidate has wool 0, gold only 0, no wool source 2', () => {
+      /** 第 2 輪的額外扣分＝修正前的分數減去現在的分數（同一個 turn，登島加權兩邊相同）。 */
+      const penalty = (turn: TurnContext, vertex: number): number => before(turn, vertex) - seafarersSetupScore(turn, vertex);
+      // noWool：p2 的第一座是 v76（ore、grain、lumber，沒有 wool）；withWool：p2 的第一座是 v63（wool、lumber、brick）。
+      const noWool = playSetup(3, [35, 76, 63, 57]);
+      const withWool = playSetup(3, [35, 63, 76, 57]);
+      for (const state of [noWool, withWool]) expect(state.turn.setup).toMatchObject({ stage: 'building', round: 2 });
+      const dry = turnContext(viewOf(noWool, 'p2'), ctxFor('p2'), 'standard');
+      const wet = turnContext(viewOf(withWool, 'p2'), ctxFor('p2'), 'standard');
+      // v78 是 brick、lumber，沒有 wool；v37 有 wool。
+      expect(vertexYield(dry.model, 78).wool).toBe(0);
+      expect(vertexYield(dry.model, 37).wool).toBeGreaterThan(0);
+      expect(dry.view.hints!.legalSettlements).toEqual(expect.arrayContaining([37, 78]));
+      expect(wet.view.hints!.legalSettlements).toContain(78);
+      // 只有金礦：把 v78 的 brick 格當成金礦（`Turn` 是 class，用 `Object.create` 覆寫 `model`，保留其他欄位）。
+      const brick = dry.model.topo.vertices[78]!.hexes.find((hex) => dry.model.hexResource[hex] === 'brick')!;
+      const gold = Object.create(dry, {
+        model: { value: { ...dry.model, hexGold: dry.model.hexGold.map((isGold, hex) => isGold || hex === brick) } },
+      }) as TurnContext;
+      expect(goldPipsAt(gold.model, 78)).toBeGreaterThan(0);
+      expect(vertexYield(gold.model, 78).wool).toBe(0);
+      const cases: [string, TurnContext, number][] = [
+        ['first settlement has wool', wet, 78],
+        ['candidate has wool', dry, 37],
+        ['gold only', gold, 78],
+        ['no wool source', dry, 78],
+      ];
+      expect(cases.map(([name, turn, vertex]) => [name, penalty(turn, vertex)])).toEqual([
+        ['first settlement has wool', 0],
+        ['candidate has wool', 0],
+        ['gold only', 0],
+        ['no wool source', 2],
+      ]);
+    });
+
+    it('all-standard 4p: seat 3 no longer ends with the grain-less 27/67 of #174, and every opening still makes wool', () => {
+      const state = playSetup(4);
+      expect(state.turn.phase).not.toBe('setup');
+      const turn = turnContext(viewOf(state, 'p1'), ctxFor('p1'), 'standard');
+      const openings = state.players.map((player) =>
+        state.board.buildings.flatMap((building, vertex) => (building?.player === player.id ? [vertex] : [])),
+      );
+      const makes = (vertices: readonly number[], resource: Resource): boolean =>
+        vertices.some((vertex) => vertexYield(turn.model, vertex)[resource] > 0);
+      expect(openings[2]).toEqual([41, 43]);
+      expect(makes(openings[2]!, 'grain') && makes(openings[2]!, 'ore')).toBe(true);
+      for (const opening of openings) expect(makes(opening, 'wool'), opening.join('/')).toBe(true);
+    });
+
+    it('easy picks among the best three by the same score, in both rounds', () => {
+      for (const state of [seafarersGame(4).state, playSetup(3, [35, 76, 63, 57])]) {
+        const actor = state.players[state.turn.setup!.order[state.turn.setup!.index]!]!.id;
+        const view = viewOf(state, actor);
+        const turn = turnContext(view, ctxFor(actor, 'easy'), 'easy');
+        const scored = view.hints!.legalSettlements.map((vertex) => ({ vertex, score: seafarersSetupScore(turn, vertex) }));
+        const top3 = scored.slice().sort((a, b) => b.score - a.score).slice(0, 3).map((entry) => entry.vertex);
+        const seen = new Set<number>();
+        for (let seed = 1; seed <= 40; seed++) {
+          const command = heuristicPolicy('easy').decide(view, ctxFor(actor, 'easy', seed)) as { type: string; vertex: number };
+          expect(command.type).toBe('setup.placeBuilding');
+          expect(top3).toContain(command.vertex);
+          seen.add(command.vertex);
+          if (seed <= 3) expectAccepted(state, actor, command);
+        }
+        expect(seen.size).toBeGreaterThan(1);
+      }
     });
   });
 

@@ -1,21 +1,26 @@
 /**
- * Seafarers 的開局放置（SF 計畫 §4.2）：登島加權，與 setup 的「路或船」。
+ * Seafarers 的開局放置（SF 計畫 §4.2）：依開局組合的品質選點，與 setup 的「路或船」。
  *
- * - setup building：base 的 `setupSpotScore` 加上 `islandSetupBonus`（≤3 艘船可達、尚未領取 +2 VP
- *   的小島）；easy 同 standard，由 `turn.pick` 的 topK 3 挑選。
+ * - setup building（`seafarersSetupScore`）：
+ *   - 第 1 輪只用 base 的 `setupSpotScore`，產能優先，不計登島加權。登島要等之後造船，開局時把聚落推向低產出的
+ *     沿海點並不划算（#135、#174：4 人局四個座位的第一輪原本都選 8–9 點的沿海點）。
+ *   - 第 2 輪補齊組合：`setupSpotScore`（已含兩座合計缺資源的扣分）加上 `islandSetupBonus`，兩座都不產 wool 時再扣
+ *     `SHIP_WOOL_PENALTY`（船要 lumber 與 wool）。登島加權只在這一輪計入，一組開局有一個靠海的出海點就夠了。
+ *   - easy 用同一個分數，由 `turn.pick` 的 topK 3 挑選。
  * - setup road：standard 比較最佳道路方向與最佳船方向（朝小島的第一步），取分數高者，同分取路；
  *   easy 只放路：回 undefined 讓 base 選路，`legalRoads` 為空時 base 回 null，改走保底（放 `setupShips[0]`）。
  * - 合法性一律取自 hints（`legalSettlements`、`legalRoads`、`setupShips`）；這裡的海域模型只用來估值。
  * - 決定性：不讀事件，不額外消耗亂數（挑選只經 `turn.pick`）。
  *
- * 評分單位與 `setupSpotScore` 相同（加權點數）。常數是未經對局調校的起點，SF-3 的 bench 之後再調。
+ * 評分單位與 `setupSpotScore` 相同（加權點數）。`ISLAND_VP_VALUE`、`SETUP_REACH`、`BONUS_WEIGHT` 仍是未經對局
+ * 調校的起點；兩個輪次的分工與 `SHIP_WOOL_PENALTY` 依 #135 的 bench 選定（數字見 PR）。
  */
 
 import { MAIN_ISLAND } from '@catan/rules';
 import { roadDirectionScore } from '../../base/roads.ts';
 import { setupSpotScore } from '../../base/setup.ts';
-import { isFreeSpot, playerYield, type BoardModel, type RoadSearch } from '../../board.ts';
-import { resourceWeights, settlementSpotValue } from '../../economy.ts';
+import { isFreeSpot, playerYield, vertexYield, type BoardModel, type RoadSearch } from '../../board.ts';
+import { goldPipsAt, resourceWeights, settlementSpotValue } from '../../economy.ts';
 import { islandOfVertex, searchShips } from '../../sea.ts';
 import type { BotCommand, BotModule, Scored, TurnContext } from '../types.ts';
 import { claimedIslands } from './plan.ts';
@@ -33,6 +38,12 @@ const SHIP_DISCOUNT = 0.75;
 export const SETUP_REACH = 3;
 /** 登島加權相對於聚落評分的比重：只傾向靠海的好點，不壓過產能。 */
 const BONUS_WEIGHT = 0.5;
+/**
+ * 第 2 輪兩座聚落都不產 wool 時的額外扣分。base 的第 2 輪缺 lumber、brick 各扣 3，缺 wool 只扣 1；Seafarers 的船
+ * 要 lumber 與 wool，這裡把缺 wool 補到與缺 lumber 相同。SF+CK 的城市評分缺 lumber 扣 2.5、缺 wool 扣 0.5，
+ * 同一個值也剛好補齊（目前 SF+CK 不使用，見 `seafarersCitiesKnights/setup.ts`）。
+ */
+export const SHIP_WOOL_PENALTY = 2;
 
 /** 離島上的一個空點與它的價值（加權點數）。 */
 export interface IslandSite {
@@ -131,11 +142,30 @@ export function setupShipScore(turn: TurnContext, edge: number): number {
   return best;
 }
 
+/** 自己已有的建築加上 `vertex` 這組開局有沒有 wool 的來源；金礦可以換成任何資源，也算。 */
+export function openingMakesWool(model: BoardModel, vertex: number): boolean {
+  const sources = [vertex];
+  model.view.board.buildings.forEach((building, at) => {
+    if (building?.player === model.selfId) sources.push(at);
+  });
+  return sources.some((at) => vertexYield(model, at).wool > 0 || goldPipsAt(model, at) > 0);
+}
+
+/**
+ * setup building 的分數（純函式，不讀 hints、不消耗亂數）。第 1 輪＝`setupSpotScore`；第 2 輪再加 `islandSetupBonus`，
+ * 組合沒有 wool 時扣 `SHIP_WOOL_PENALTY`。
+ */
+export function seafarersSetupScore(turn: TurnContext, vertex: number): number {
+  const score = setupSpotScore(turn, vertex);
+  if (turn.view.turn.setup?.round !== 2) return score;
+  return score + islandSetupBonus(turn, vertex) - (openingMakesWool(turn.model, vertex) ? 0 : SHIP_WOOL_PENALTY);
+}
+
 export const seafarersSetup: NonNullable<BotModule['setup']> = (turn) => {
   const stage = turn.view.turn.setup?.stage;
   if (stage === 'building') {
     const legal = turn.view.hints?.legalSettlements ?? [];
-    const vertex = turn.pick(legal.map((item) => ({ item, score: setupSpotScore(turn, item) + islandSetupBonus(turn, item) })));
+    const vertex = turn.pick(legal.map((item) => ({ item, score: seafarersSetupScore(turn, item) })));
     return vertex === null ? null : { type: 'setup.placeBuilding', vertex };
   }
   if (stage === 'road') {
