@@ -3,7 +3,8 @@
  * `--merge`、`--latin` 共用）。
  *
  * 分片的規則（`checkShards`）：
- * - 分片不能是空的，`meta.games` 要等於實際局數（檔案被截斷時拒絕），局號要落在 `[from, from + games)`；
+ * - 分片不能是空的；`meta.from`、`meta.games`、每局的 `game`、`seed`、`seats` 都是必填（缺少、型別不對一律拒絕，
+ *   不會靜默略過檢查）；`meta.games` 要等於實際局數（檔案被截斷時拒絕），局號要落在 `[from, from + games)`；
  * - 種子必須是 `10000 + 局號`（`SEED_BASE`），否則不同來源的對局被當成同一局；
  * - 分片必須是同一組態：profile、人數、`--roles`、`--openings`、`--script-roles`、`--setup-from` 都相同，否則拒絕；
  * - 局號以 `(shift, game)` 判斷唯一：同一個 shift 內不能有兩個分片含有同一局（否則該局會被重複計入）；
@@ -29,17 +30,17 @@ export interface ShardMeta {
   scriptRoles?: string;
   /** standard 座位的 setup 改用哪個策略的決定（`--setup-from`）；不同的分片不能合併。 */
   setupFrom?: string;
-  /** 分片宣告的起始局與局數；有的話與實際記錄對照。 */
-  from?: number;
-  games?: number;
+  /** 分片宣告的起始局與局數（必填）：與實際記錄對照。 */
+  from: number;
+  games: number;
 }
 
 export interface ShardGame {
   game: number;
-  /** 逐局種子；有的話必須是 `SEED_BASE + game`。 */
-  seed?: number;
-  /** 逐局的座位記錄；有的話數量必須等於人數。 */
-  seats?: readonly unknown[];
+  /** 逐局種子（必填）：必須是 `SEED_BASE + game`。 */
+  seed: number;
+  /** 逐局的座位記錄（必填）：數量必須等於人數。 */
+  seats: readonly unknown[];
 }
 
 export interface Shard<M extends ShardMeta, G extends ShardGame> {
@@ -58,28 +59,33 @@ function shiftOf(meta: ShardMeta): string {
 
 const nameOf = (shard: Shard<ShardMeta, ShardGame>, index: number): string => shard.file ?? `shard #${index + 1}`;
 
-/** 檢查分片可以合併；不合規則時丟 `ShardMergeError`。 */
+/** 檢查分片可以合併；不合規則時丟 `ShardMergeError`。型別是必填，但資料來自 JSON，所以執行期也逐項檢查。 */
 export function checkShards<M extends ShardMeta, G extends ShardGame>(shards: readonly Shard<M, G>[]): void {
   const first = shards[0]?.meta;
   if (!first) throw new ShardMergeError('nothing to merge');
+  const isInt = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value);
   shards.forEach((shard, index) => {
     const { meta, games } = shard;
     const name = nameOf(shard, index);
+    if (!isInt(meta.from) || meta.from < 0 || !isInt(meta.games) || meta.games < 0) {
+      throw new ShardMergeError(`${name} needs integer meta.from and meta.games`);
+    }
     if (games.length === 0) throw new ShardMergeError(`${name} is empty (no game records)`);
     if (meta.openings !== undefined && meta.shift === undefined) throw new ShardMergeError(`${name} has scripted openings but no shift`);
     if (meta.openings === undefined && meta.shift !== undefined) throw new ShardMergeError(`${name} has a shift but no scripted openings`);
-    if (meta.games !== undefined && meta.games !== games.length) {
+    if (meta.games !== games.length) {
       throw new ShardMergeError(`${name} has ${games.length} game records but its meta says ${meta.games} (truncated or edited file?)`);
     }
     for (const game of games) {
-      if (meta.from !== undefined && meta.games !== undefined && (game.game < meta.from || game.game >= meta.from + meta.games)) {
-        throw new ShardMergeError(`${name} has game ${game.game} outside its declared range ${meta.from}..${meta.from + meta.games - 1}`);
+      if (!isInt(game.game) || game.game < meta.from || game.game >= meta.from + meta.games) {
+        throw new ShardMergeError(`${name} has game ${String(game.game)} outside its declared range ${meta.from}..${meta.from + meta.games - 1}`);
       }
-      if (game.seed !== undefined && game.seed !== SEED_BASE + game.game) {
+      if (!isInt(game.seed)) throw new ShardMergeError(`${name} game ${game.game} needs an integer seed, got ${JSON.stringify(game.seed)}`);
+      if (game.seed !== SEED_BASE + game.game) {
         throw new ShardMergeError(`${name} game ${game.game} has seed ${game.seed}, expected ${SEED_BASE + game.game}`);
       }
-      if (game.seats !== undefined && game.seats.length !== meta.players) {
-        throw new ShardMergeError(`${name} game ${game.game} has ${game.seats.length} seats, expected ${meta.players}`);
+      if (!Array.isArray(game.seats) || game.seats.length !== meta.players) {
+        throw new ShardMergeError(`${name} game ${game.game} needs ${meta.players} seat records, got ${Array.isArray(game.seats) ? game.seats.length : JSON.stringify(game.seats)}`);
       }
     }
   });

@@ -57,9 +57,7 @@ import { seafarersKit } from '../test/modules/seafarers.ts';
 import { sfckKit } from '../test/modules/seafarersCitiesKnights.ts';
 import { kitsOf, type ModuleTestKit } from '../test/modules/types.ts';
 import { cohortWarning, latinCohort, mergeShards, poolBalanceWarning, SEED_BASE, ShardMergeError, type Shard } from './survey-merge.ts';
-
-type Role = 'standard' | 'easy' | 'naive';
-const ROLES: readonly Role[] = ['standard', 'easy', 'naive'];
+import { parseRoles, parseShard, ROLES, rolesFor, type GameRecord, type Meta, type Role, type RoleSpec, type SeatRecord } from './survey-records.ts';
 
 const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit, citiesKnightsKit, sfckKit];
 
@@ -68,79 +66,7 @@ const USAGE =
   '       survey --merge <jsonl>... [--markdown <file>]\n' +
   '       survey --latin <jsonl>... [--markdown <file>]';
 
-// ---------------------------------------------------------------------------
-// 記錄格式
-// ---------------------------------------------------------------------------
-
-interface Meta {
-  profile: string;
-  players: number;
-  roles: string;
-  from: number;
-  games: number;
-  /** 只腳本化這個角色的座位（`--script-roles`）；省略表示所有座位。 */
-  scriptRoles?: string;
-  /** `standard` 座位的 setup 階段改用哪個策略的決定（`--setup-from`）；省略表示不改。 */
-  setupFrom?: string;
-  /** 腳本開局（`--openings`）與位移（`--shift`）；沒有腳本時省略。 */
-  openings?: string;
-  shift?: number;
-}
-
-interface SeatRecord {
-  seat: number;
-  role: Role;
-  won: boolean;
-  /** 終局分數（含隱藏分）。 */
-  score: number;
-  /** 開局依序放置的聚落頂點。 */
-  opening: number[];
-  /** 每個開局頂點周圍的點數（pips）合計。 */
-  openPips: number[];
-  /** 每個開局頂點是否臨海。 */
-  openCoast: boolean[];
-  /** 每個開局頂點是否在港口上。 */
-  openHarbor: boolean[];
-  /** 兩個開局頂點周圍不同資源（含金礦）的種類數。 */
-  openKinds: number;
-  paidShips: number;
-  freeShips: number;
-  setupShips: number;
-  shipsMoved: number;
-  islandBonuses: number;
-  settlements: number;
-  cities: number;
-  roads: number;
-  devBought: number;
-  knights: number;
-  playerTrades: number;
-  bankTrades: number;
-  produced: number;
-  turns: number;
-  improvements: number;
-  /** 被強盜偷走與被強盜擋住的資源張數。 */
-  robbed: number;
-  blocked: number;
-  /** 終局時是否持有最長道路、最大騎士團。 */
-  longestRoad: boolean;
-  largestArmy: boolean;
-  /** 腳本頂點不合法、退回 bot 自己選擇的次數（沒有腳本時為 0）。 */
-  scriptMiss: number;
-  /** 第 10、20 輪開始時的分數；整局在那之前結束則為 null。 */
-  vp10: number | null;
-  vp20: number | null;
-}
-
-interface GameRecord {
-  game: number;
-  seed: number;
-  finished: boolean;
-  /** 沒有正常終局的原因（看門狗、卡死、拒絕、守恆）。 */
-  problem: string | null;
-  winner: number | null;
-  rounds: number;
-  seats: SeatRecord[];
-}
+// 記錄格式（Meta、SeatRecord、GameRecord）與 jsonl 分片的解析在 `survey-records.ts`。
 
 // ---------------------------------------------------------------------------
 // 統計
@@ -199,26 +125,6 @@ const fmt = (value: number, digits = 2): string => (Number.isFinite(value) ? val
 // ---------------------------------------------------------------------------
 // 對局
 // ---------------------------------------------------------------------------
-
-interface RoleSpec {
-  focus: Role | null;
-  rest: Role;
-}
-
-function parseRoles(spec: string): RoleSpec {
-  const [first, second, ...extra] = spec.split(':');
-  const valid = (value: string | undefined): value is Role => ROLES.includes(value as Role);
-  if (extra.length > 0 || !valid(first) || (second !== undefined && !valid(second))) {
-    throw new Error(`--roles must be <role> or <focus>:<rest> with roles ${ROLES.join('|')}, got "${spec}"`);
-  }
-  return second === undefined ? { focus: null, rest: first } : { focus: first, rest: second };
-}
-
-function rolesFor(spec: RoleSpec, players: number, game: number): Role[] {
-  return Array.from({ length: players }, (_, seat) =>
-    spec.focus !== null && (((seat - game) % players) + players) % players < 1 ? spec.focus : spec.rest,
-  );
-}
 
 function policyOf(role: Role, profile: ProfileDefinition): BotPolicy {
   return role === 'naive' ? naivePolicy('standard', botModulesOf(profile)) : heuristicPolicy(role);
@@ -796,7 +702,7 @@ function parseArgs(argv: readonly string[]): Args {
 }
 
 
-/** 讀一個 jsonl 分片：第一行 meta，其餘為逐局記錄；格式不對時丟 `ShardMergeError`（含檔名）。 */
+/** 讀一個 jsonl 分片（解析與驗證在 `survey-records.ts`）。 */
 function readShard(file: string): Shard<Meta, GameRecord> {
   let text: string;
   try {
@@ -804,49 +710,7 @@ function readShard(file: string): Shard<Meta, GameRecord> {
   } catch (error) {
     throw new ShardMergeError(`cannot read ${file}: ${(error as Error).message}`);
   }
-  const lines = text.split('\n').filter((line) => line.trim() !== '');
-  if (lines.length === 0) throw new ShardMergeError(`${file} is empty`);
-  const parse = (line: string, index: number): unknown => {
-    try {
-      return JSON.parse(line);
-    } catch {
-      throw new ShardMergeError(`${file} line ${index + 1} is not valid JSON`);
-    }
-  };
-  const head = parse(lines[0]!, 0) as { meta?: Partial<Meta> } | null;
-  const meta = head?.meta;
-  const isInt = (value: unknown, min = 0): value is number => typeof value === 'number' && Number.isInteger(value) && value >= min;
-  if (!meta || typeof meta.profile !== 'string' || !isInt(meta.players, 1) || typeof meta.roles !== 'string') {
-    throw new ShardMergeError(`${file} line 1 is not a shard meta (needs profile, players, roles)`);
-  }
-  for (const key of ['from', 'games', 'shift'] as const) {
-    if (meta[key] !== undefined && !isInt(meta[key])) throw new ShardMergeError(`${file} meta.${key} must be a non-negative integer`);
-  }
-  for (const key of ['openings', 'scriptRoles', 'setupFrom'] as const) {
-    if (meta[key] !== undefined && typeof meta[key] !== 'string') throw new ShardMergeError(`${file} meta.${key} must be a string`);
-  }
-  try {
-    parseRoles(meta.roles);
-  } catch (error) {
-    throw new ShardMergeError(`${file} meta.roles is invalid: ${(error as Error).message}`);
-  }
-  if (meta.openings !== undefined) {
-    if (!/^\d+\/\d+(,\d+\/\d+)*$/.test(meta.openings) || meta.openings.split(',').length !== meta.players) {
-      throw new ShardMergeError(`${file} meta.openings must list ${meta.players} <vertex>/<vertex> entries, got "${meta.openings}"`);
-    }
-    if (meta.shift !== undefined && meta.shift >= meta.players) throw new ShardMergeError(`${file} meta.shift ${meta.shift} must be below the player count ${meta.players}`);
-  }
-  const games = lines.slice(1).map((line, index) => {
-    const game = parse(line, index + 1) as Partial<GameRecord> | null;
-    if (!game || !isInt(game.game) || typeof game.finished !== 'boolean' || !Array.isArray(game.seats)) {
-      throw new ShardMergeError(`${file} line ${index + 2} is not a game record (needs game, finished, seats)`);
-    }
-    if (game.finished && !(isInt(game.winner) && game.winner < meta.players!)) {
-      throw new ShardMergeError(`${file} game ${game.game} is finished but has no winner seat`);
-    }
-    return game as GameRecord;
-  });
-  return { meta: meta as Meta, games, file };
+  return parseShard(file, text);
 }
 
 /** 拉丁方陣：座位 × 開局的勝率矩陣與兩個邊際（只用在每個 shift 都終局的局號，見 `latinCohort`）。 */

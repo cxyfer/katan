@@ -14,20 +14,26 @@ import {
   type ShardMeta,
 } from './survey-merge.ts';
 
-const base: ShardMeta = { profile: 'sf-new-shores-2025', players: 3, roles: 'standard', openings: '35/78,76/63,37/57' };
+const config = { profile: 'sf-new-shores-2025', players: 3, roles: 'standard', openings: '35/78,76/63,37/57' };
 
+/** 一局的記錄：種子、座位記錄都齊全；`extra` 可覆寫或加欄位。 */
+function record(game: number, extra: Record<string, unknown> = {}): ShardGame {
+  return { game, seed: 10_000 + game, seats: [{}, {}, {}], ...extra } as ShardGame;
+}
+
+/** 分片：`from`、`games` 預設由局號決定（最小局號、記錄數），`meta` 可覆寫。 */
 function shard(shift: number | undefined, games: readonly number[], meta: Partial<ShardMeta> = {}): Shard<ShardMeta, ShardGame> {
   return {
-    meta: { ...base, ...(shift === undefined ? {} : { shift }), ...meta },
-    games: games.map((game) => ({ game })),
+    meta: { ...config, from: games.length > 0 ? Math.min(...games) : 0, games: games.length, ...(shift === undefined ? {} : { shift }), ...meta },
+    games: games.map((game) => record(game)),
   };
 }
 
 /** 拉丁方陣的分片：`failed` 是這個 shift 沒有終局（看門狗）的局號。 */
 function latinShard(shift: number, games: readonly number[], failed: readonly number[] = [], meta: Partial<ShardMeta> = {}): Shard<ShardMeta, LatinGame> {
   return {
-    meta: { ...base, shift, ...meta },
-    games: games.map((game) => ({ game, seed: 10_000 + game, finished: !failed.includes(game) })),
+    meta: { ...config, from: games.length > 0 ? Math.min(...games) : 0, games: games.length, shift, ...meta },
+    games: games.map((game) => ({ ...record(game), finished: !failed.includes(game) })),
   };
 }
 
@@ -101,11 +107,42 @@ describe('checkShards', () => {
     expect(() => checkShards([shard(0, [0, 5], { from: 0, games: 2 })])).toThrow('outside its declared range');
   });
 
-  it('rejects a game whose seed is not 10000 + game, and a seat count that is not the player count', () => {
-    const wrongSeed: Shard<ShardMeta, ShardGame> = { meta: { ...base, shift: 0 }, games: [{ game: 3, seed: 10_004 }] };
-    expect(() => checkShards([wrongSeed])).toThrow('seed 10004, expected 10003');
-    const wrongSeats: Shard<ShardMeta, ShardGame> = { meta: { ...base, shift: 0 }, games: [{ game: 3, seed: 10_003, seats: [{}, {}] }] };
-    expect(() => checkShards([wrongSeats])).toThrow('2 seats, expected 3');
+  it('rejects a game whose seed is missing, not an integer, or not 10000 + game', () => {
+    const withGame = (game: unknown): Shard<ShardMeta, ShardGame> => ({
+      meta: { ...config, from: 3, games: 1, shift: 0 },
+      games: [game as unknown as ShardGame],
+    });
+    const { seed: _omitted, ...noSeed } = record(3);
+    expect(() => checkShards([withGame(noSeed)])).toThrow('needs an integer seed, got undefined');
+    expect(() => checkShards([withGame(record(3, { seed: 10_003.5 }))])).toThrow('needs an integer seed');
+    expect(() => checkShards([withGame(record(3, { seed: '10003' }))])).toThrow('needs an integer seed');
+    expect(() => checkShards([withGame(record(3, { seed: null }))])).toThrow('needs an integer seed');
+    expect(() => checkShards([withGame(record(3, { seed: 10_004 }))])).toThrow('seed 10004, expected 10003');
+    expect(() => checkShards([withGame(record(3))])).not.toThrow();
+  });
+
+  it('rejects the same missing or wrong seed through merge and latin', () => {
+    const { seed: _omitted, ...noSeed } = record(1);
+    const broken = (shift: number): Shard<ShardMeta, LatinGame> => ({
+      meta: { ...config, from: 0, games: 2, shift },
+      games: [{ ...record(0), finished: true }, { ...noSeed, finished: true } as unknown as LatinGame],
+    });
+    expect(() => mergeShards([broken(0)])).toThrow('needs an integer seed');
+    expect(() => latinCohort([broken(0), latinShard(1, range(0, 2)), latinShard(2, range(0, 2))])).toThrow('needs an integer seed');
+    // 另一個 shift 的種子與局號不符：不能靠局號配對。
+    const shifted = latinShard(1, range(0, 2));
+    shifted.games = shifted.games.map((game) => ({ ...game, seed: game.seed + 1 }));
+    expect(() => latinCohort([latinShard(0, range(0, 2)), shifted, latinShard(2, range(0, 2))])).toThrow('seed 10001, expected 10000');
+  });
+
+  it('rejects missing seat records and a missing or non-integer meta.from / meta.games', () => {
+    const noSeats: Shard<ShardMeta, ShardGame> = { meta: { ...config, from: 3, games: 1, shift: 0 }, games: [{ game: 3, seed: 10_003 } as unknown as ShardGame] };
+    expect(() => checkShards([noSeats])).toThrow('needs 3 seat records');
+    const twoSeats: Shard<ShardMeta, ShardGame> = { meta: { ...config, from: 3, games: 1, shift: 0 }, games: [record(3, { seats: [{}, {}] })] };
+    expect(() => checkShards([twoSeats])).toThrow('needs 3 seat records, got 2');
+    expect(() => checkShards([shard(0, [0], { from: undefined } as unknown as Partial<ShardMeta>)])).toThrow('needs integer meta.from and meta.games');
+    expect(() => checkShards([shard(0, [0], { games: undefined } as unknown as Partial<ShardMeta>)])).toThrow('needs integer meta.from and meta.games');
+    expect(() => checkShards([shard(0, [0], { from: 0.5 })])).toThrow('needs integer meta.from and meta.games');
   });
 });
 
@@ -163,7 +200,7 @@ describe('latinCohort', () => {
 
   it('rejects a shard without a shift and shards of different configs', () => {
     const ids = range(0, 3);
-    const noShift: Shard<ShardMeta, LatinGame> = { meta: { ...base }, games: ids.map((game) => ({ game, finished: true })) };
+    const noShift: Shard<ShardMeta, LatinGame> = { meta: { ...config, from: 0, games: ids.length }, games: ids.map((game) => ({ ...record(game), finished: true })) };
     expect(() => latinCohort([noShift, latinShard(1, ids), latinShard(2, ids)])).toThrow('has scripted openings but no shift');
     expect(() => latinCohort([latinShard(0, ids), latinShard(1, ids, [], { roles: 'easy' }), latinShard(2, ids)])).toThrow('different configs');
     expect(() => latinCohort([latinShard(0, ids), latinShard(1, ids, [], { openings: '1/2,3/4,5/6' }), latinShard(2, ids)])).toThrow('different configs');
