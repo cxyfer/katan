@@ -13,6 +13,7 @@ import {
 import { CK_BOTS_RELEASED, CK_PACING, CK_PENDING_COMMANDS } from '../src/modules/citiesKnights/index.ts';
 import { SEAFARERS_PACING } from '../src/modules/seafarers/index.ts';
 import { SFCK_BOTS_RELEASED, SFCK_PACING } from '../src/modules/seafarersCitiesKnights/index.ts';
+import { TB_PACING } from '../src/modules/tradersBarbarians/index.ts';
 
 /** 以 base-2025 為底、加上指定規則模組的 fixture profile。 */
 function profileWith(ruleModules: readonly string[]): ProfileDefinition {
@@ -101,10 +102,14 @@ describe('bot module registry', () => {
   });
 
   it('merges pacing, command limits and response commands from the registered modules', () => {
-    // 已註冊 Seafarers、Cities & Knights 與兩者的組合層：節奏是三者的合併，鍵不重複，也不蓋掉 base 的鍵。
-    expect(BOT_PACING).toEqual({ ...SEAFARERS_PACING, ...CK_PACING, ...SFCK_PACING });
+    // 已註冊 Seafarers、Cities & Knights、兩者的組合層與 Traders & Barbarians：節奏是四者的合併，鍵不重複，也不蓋掉
+    // base 的鍵（T&B 的鍵一律是 `tb.*`）。
+    expect(BOT_PACING).toEqual({ ...SEAFARERS_PACING, ...CK_PACING, ...SFCK_PACING, ...TB_PACING });
     expect(Object.keys(BOT_PACING)).toHaveLength(
-      Object.keys(SEAFARERS_PACING).length + Object.keys(CK_PACING).length + Object.keys(SFCK_PACING).length,
+      Object.keys(SEAFARERS_PACING).length +
+        Object.keys(CK_PACING).length +
+        Object.keys(SFCK_PACING).length +
+        Object.keys(TB_PACING).length,
     );
     // 組合層的 `knight.chasePirate` 與 C&K 的 `knight.chaseRobber` 同為 900；`pending.moveRobber` 同樣不列。
     expect(SFCK_PACING).toEqual({ 'knight.chasePirate': 900 });
