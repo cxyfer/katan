@@ -199,7 +199,9 @@ produced.
 
 Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE): you may run,
 modify and share it for any noncommercial purpose, including private
-self-hosting for friends. Commercial use needs separate written permission.
+self-hosting for friends. Charities, educational institutions, public research
+and the other organizations the license lists may use it regardless of funding;
+any other commercial use needs separate written permission.
 
 This is an unofficial, fan-made implementation of a paraphrased rules
 specification, not affiliated with or endorsed by CATAN GmbH or CATAN Studio.

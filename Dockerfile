@@ -54,6 +54,8 @@ COPY --from=builder --chown=10001:10001 /rootfs/data /data
 COPY --from=builder /app/packages/server/dist ./dist
 COPY --from=builder /app/packages/web/dist ./web
 COPY --from=builder /app/package.json ./package.json
+# 轉散布 image 的人也要拿到授權條款與 Required Notice（PolyForm Noncommercial「Notices」條款）
+COPY LICENSE NOTICE ./
 
 USER 10001:10001
 VOLUME ["/data"]
