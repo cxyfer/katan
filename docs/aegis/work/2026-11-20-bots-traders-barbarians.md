@@ -136,4 +136,10 @@
 
 - **全保底的有界局只用種子 1**，Trains 投標、BA 卡與魚片交換靠固定盤面守門（見上）。
 - **Bot 不主動提出含 gold 的報價**（D-TB3），gold 交易只在真人提出時發生；easy 一律拒絕。
-- 瀏覽器 QA 與大廳截圖由 QA 另外處理（計畫 §7 發布流程第 2 步）。
+- **截圖沒有提交**：瀏覽器驗收的截圖與腳本留在 scratch（見「瀏覽器驗收」），沒有比照 0.4.3 收進 `docs/screenshots/`。
+- **既有的 UI 小問題（與 Bot 無關）**：`tb-friendly-robber-2025` 的「情境」分頁打開是空面板（`GameTools.tsx` 對所有 T&B profile 都顯示分頁，`TbPanel` 沒有 part slot 時回 null），自 #62 起就是如此。
+
+## 驗證
+
+- **`BOTS_SEEDS=10 pnpm verify`**（`fe9e923`，與另一個 session 的測試同時執行，負載 10–18）：typecheck 通過；rules 920、protocol 8、bots 1396、server 353（19 skipped）全過；web 在負載下有 5 秒逾時（179 個）。以 `--maxWorkers 2 --testTimeout 30000` 重跑剩 5 個（`bots`、`lobby`、`resilience` 三檔），這三檔單獨重跑 54/54 通過；`packages/web` 與 `packages/protocol` 相對 master 沒有任何改動。build、smoke 13/13、`test:dev` 1/1 通過。
+- **瀏覽器驗收（DoD 5）**：`fe9e923` 的 production build，Chromium headless、SVG、zh-Hant，`BOT_DELAY_SCALE=0.25`。8 個 profile 都從大廳的真實 UI 建 3 人房、加入 easy 與 standard（難度只有這兩個，API 送 hard 回 `E_INVALID_BOT`），開局後兩個 Bot 各至少 3 回合，沒有停住（兩次 revision 變化最長間隔 0.8–1.2 秒）、沒有錯誤提示或 pageerror，server log 沒有 policy throw 或保底。代表機制：FR／FR+H 移動強盜；H 港口建築；Rivers 得到與購買 gold；Trains 投標與投票流程；BA 抽 BA 卡、放置與移動騎士、驅逐；Traders 車隊移動、裝貨、升級、移動蠻族、打蠻族騎士卡。Fishing 第一局 Bot 沒有拿到魚（推測是地圖上 Bot 沒有靠魚場），重跑兩局都看到抓魚、花魚與偷牌。4 個 `tb-event-cards*` 不在大廳，以 API 建房回 `E_UNSUPPORTED_COMBINATION`。真人座位以 easy 策略經 HTTP 推進，不在驗收範圍。腳本與截圖（共 14MB）留在 scratch，不提交。
