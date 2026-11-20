@@ -204,7 +204,8 @@ function composeTrade(
       goods: (view, playerId) => mergeFirstWins(partsOf(view).map((part) => part.trade?.goods?.(view, playerId) ?? {})),
     }),
     ...(has('goodValue') && {
-      goodValue: (turn, good, amount) => firstOf(partsOf(turn.view), (part) => part.trade?.goodValue?.(turn, good, amount)),
+      goodValue: (turn, good, amount, side) =>
+        firstOf(partsOf(turn.view), (part) => part.trade?.goodValue?.(turn, good, amount, side)),
     }),
   };
   return Object.keys(hooks).length > 0 ? hooks : undefined;

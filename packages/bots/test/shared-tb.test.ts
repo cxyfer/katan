@@ -113,11 +113,14 @@ describe('rule 9: offer goods', () => {
     createdSeq: 1,
     ...patch,
   });
-  const goldModule = (held: Record<string, number>, perGold = 1): BotModule => ({
+  const goldModule = (held: Record<string, number>, perGold = 1, sides: string[] = []): BotModule => ({
     id: 'fx',
     trade: {
       goods: (_view, playerId) => ({ gold: held[playerId] ?? 0 }),
-      goodValue: (_turn, good, amount) => (good === 'gold' ? amount * perGold : undefined),
+      goodValue: (_turn, good, amount, side) => {
+        sides.push(side);
+        return good === 'gold' ? amount * perGold : undefined;
+      },
     },
   });
   const answer = (view: GameView, offer: Offer, modules: BotModule[]) =>
@@ -187,6 +190,19 @@ describe('rule 9: offer goods', () => {
     const overpay = offerOf(view, { give: { grain: 1 }, wantGoods: { gold: 8 } });
     expect(answer(view, overpay, [goldModule({ p1: 9, p2: 9 }, 0.5)])).toMatchObject(declined);
     expect(goodsGain(turn(0.5), { ...plain, wantGoods: { gold: 2 } })).toBeCloseTo(-USEFUL_CARD_UTILITY);
+  });
+
+  it('(e) tells the module which side of the offer the goods are on', () => {
+    const { view } = position();
+    const sides: string[] = [];
+    const t = turnContext(view, ctxFor('p2'), 'standard', [goldModule({ p1: 9, p2: 9 }, 1, sides)]);
+    const plain = offerOf(view, { give: { wool: 1 }, want: { ore: 1 } });
+    goodsGain(t, { ...plain, giveGoods: { gold: 2 } });
+    expect(sides).toEqual(['receive']);
+    goodsGain(t, { ...plain, wantGoods: { gold: 2 } });
+    expect(sides).toEqual(['receive', 'pay']);
+    goodsGain(t, { ...plain, giveGoods: { gold: 1 }, wantGoods: { gold: 3 } });
+    expect(sides).toEqual(['receive', 'pay', 'receive', 'pay']);
   });
 });
 

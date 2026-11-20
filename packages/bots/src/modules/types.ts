@@ -139,10 +139,12 @@ export interface BotTradeHooks {
   goods?(view: GameView, playerId: string): Readonly<Record<string, number>>;
   /**
    * `amount` 個 `good` 對自己的價值，單位是「資源當量」：1 = 一張用得上的資源（`handUtility` 目標內的一張，
-   * 骨架以 `USEFUL_CARD_UTILITY` 換算）。goods 暫時用不掉（例如本回合買不了）時由模組自行折價。
+   * 骨架以 `USEFUL_CARD_UTILITY` 換算）。`side` 是自己這一方：`'receive'` 收進（報價的 `giveGoods`）、`'pay'` 付出
+   * （`wantGoods`）。收進時 goods 暫時用不掉（例如本回合買不了）可以由模組自行折價；付出時不得低於市價（T&B 的 gold
+   * 是銀行的 `GOLD_PER_RESOURCE`），否則對手能用低價買走 goods 再向銀行換牌套利。模組不願付出時回 null。
    * 不認識的 good 回 undefined；認識但不願估值回 null（報價一律拒絕）。不得消耗亂數。
    */
-  goodValue?(turn: TurnContext, good: string, amount: number): number | null | undefined;
+  goodValue?(turn: TurnContext, good: string, amount: number, side: 'receive' | 'pay'): number | null | undefined;
 }
 
 export interface BotModule {

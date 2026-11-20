@@ -100,9 +100,9 @@ export function goodsOf(modules: readonly BotModule[], view: GameView, playerId:
   return mergeFirstWins(modules.map((module) => module.trade?.goods?.(view, playerId) ?? {}));
 }
 
-/** `amount` 個 `good` 的價值（資源當量）：第一個非 undefined 勝出；沒有人估得了、null 或非有限值都回 null。 */
-function goodValueOf(turn: TurnContext, good: string, amount: number): number | null {
-  const value = firstAnswer(turn.modules, (module) => module.trade?.goodValue?.(turn, good, amount));
+/** `amount` 個 `good` 在 `side` 這一方的價值（資源當量）：第一個非 undefined 勝出；沒有人估得了、null 或非有限值都回 null。 */
+function goodValueOf(turn: TurnContext, good: string, amount: number, side: 'receive' | 'pay'): number | null {
+  const value = firstAnswer(turn.modules, (module) => module.trade?.goodValue?.(turn, good, amount, side));
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
@@ -110,7 +110,8 @@ function goodValueOf(turn: TurnContext, good: string, amount: number): number | 
  * 規則 9 的 goods 部分：報價以提出者的角度記錄，所以收到 `giveGoods`、付出 `wantGoods`。下列任一成立就回
  * null（拒絕）：有 good 無法估值、`wantGoods` 超過自己持有、`giveGoods` 超過提出者公開持有。否則回傳淨值，
  * 由資源當量乘上 `USEFUL_CARD_UTILITY`（一張用得上的牌），換算到 `handUtility` 的尺度：goods 能換成缺的牌，
- * 以過剩牌計價會讓 Bot 用遠高於銀行的價格付出 goods。用不掉的 goods 由模組在 `goodValue` 折價。沒有模組提供
+ * 以過剩牌計價會讓 Bot 用遠高於銀行的價格付出 goods。收進的 goods 用不掉時由模組在 `goodValue` 折價（只有收的一方，
+ * 付出的一方不得低於市價）。沒有模組提供
  * trade 鉤子時一律 null。
  */
 export function goodsGain(turn: TurnContext, offer: Offer): number | null {
@@ -121,9 +122,9 @@ export function goodsGain(turn: TurnContext, offer: Offer): number | null {
   if (pay.some(([good, amount]) => amount > (mine[good] ?? 0))) return null;
   if (receive.some(([good, amount]) => amount > (theirs[good] ?? 0))) return null;
   let units = 0;
-  for (const [terms, sign] of [[receive, 1], [pay, -1]] as const) {
+  for (const [terms, sign, side] of [[receive, 1, 'receive'], [pay, -1, 'pay']] as const) {
     for (const [good, amount] of terms) {
-      const value = goodValueOf(turn, good, amount);
+      const value = goodValueOf(turn, good, amount, side);
       if (value === null) return null;
       units += sign * value;
     }

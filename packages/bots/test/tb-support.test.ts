@@ -220,7 +220,7 @@ function fakeTable(): Map<string, TbPartBot> {
       discardLimit: (_model, base) => base * 2,
       awards: () => ({ longestRoad: false }),
     },
-    trade: { goods: () => ({ gold: 9, fish: 1 }), goodValue: (_turn, _good, amount) => amount / 2 },
+    trade: { goods: () => ({ gold: 9, fish: 1 }), goodValue: (_turn, _good, amount, side) => (side === 'pay' ? amount : amount / 2) },
   };
   return new Map([
     ['tb-coins', coins],
@@ -273,8 +273,10 @@ describe('T&B part composition (§3.2)', () => {
   it('merges trade goods (first part wins) and takes the first good value', () => {
     const trade = module.trade!;
     expect(trade.goods!({ profileId: rivers } as GameView, 'bot1')).toEqual({ gold: 4, fish: 1 });
-    expect(trade.goodValue!(turnFor(rivers), 'gold', 4)).toBe(2);
-    expect(trade.goodValue!(turnFor(fishing), 'gold', 4)).toBeUndefined();
+    expect(trade.goodValue!(turnFor(rivers), 'gold', 4, 'receive')).toBe(2);
+    // 方向原樣傳給 part。
+    expect(trade.goodValue!(turnFor(rivers), 'gold', 4, 'pay')).toBe(4);
+    expect(trade.goodValue!(turnFor(fishing), 'gold', 4, 'pay')).toBeUndefined();
   });
 
   it('keeps the §4.4 pacing over part pacing and adds part response commands', () => {

@@ -7,9 +7,10 @@
  * - `tb.sellResources`（只有 standard）：Rivers 能靠賣出脫離 Poor（−2 VP）時；或手牌超過上限、而銀行交易換不到牌時（gold 不算手牌）。
  * - Rivers 的財富板塊（唯一最多 +1、最少含並列 −2）：standard 買資源前先確認不會因此失分；付出 gold 會失分的報價一律拒絕。
  *   完整的排名估值在 S8（rivers），它可以直接用 `wealthDelta`、`sellCandidates`。
- * - Traders：買資源不動用為過路費保留的 gold（`traders.ts` 的 `tollReserve`，§4.2 Traders 列）。
- * - 報價（規則 9）：`trade.goods` 回傳各玩家公開的 gold；`trade.goodValue` standard 以 0.5 × 張數估值，買不了時（本回合購買
- *   次數用完，或 gold 已多到用不完）再折價；easy 回 null，一律拒絕含 goods 的報價。兩者都不主動提出 gold 報價（骨架不提）。
+ * - Traders：買資源與報價付出都不動用為過路費保留的 gold（`traders.ts` 的 `tollReserve`，§4.2 Traders 列）。
+ * - 報價（規則 9）：`trade.goods` 回傳各玩家公開的 gold；`trade.goodValue` standard 以 0.5 × 張數估值；收進的 gold 買不了時（本回合購買
+ *   次數用完，或 gold 已多到用不完）再折價；付出時固定以銀行價格估值、不動用過路費保留；easy 回 null，一律拒絕含 goods
+ *   的報價。兩者都不主動提出 gold 報價（骨架不提）。
  *
  * 所有鉤子只讀 view、hints 與經濟模型，不消耗亂數、不 throw。
  */
@@ -33,7 +34,7 @@ import { goldOf, TB_PART_IDS, tbPartHints, tbPartIdsOfView, tbPartView } from '.
 export const GOLD_RESOURCE_VALUE = 1 / GOLD_PER_RESOURCE;
 /** 暫時用不掉的 gold 的折價係數（本回合買不了，或 gold 多到用不完）。 */
 export const IDLE_GOLD_FACTOR = 0.6;
-/** 持有超過這麼多 gold 時，多出來的 gold 短期內用不完（兩回合的購買量）。 */
+/** 持有至少這麼多 gold 時，再收進的 gold 短期內用不完（兩回合的購買量）。 */
 export const GOLD_HOARD = 2 * PURCHASES_PER_TURN * GOLD_PER_RESOURCE;
 
 /** 買資源候選的分數：只是補齊計畫的手段，低於任何立即建造（base 的立即建造 ≥ 1）。 */
@@ -242,18 +243,24 @@ export function sellCandidates(turn: TurnContext): Scored<BotCommand>[] {
 }
 
 /**
- * `amount` 個 gold 的資源當量（`trade.goodValue`）。standard：0.5 × 張數；本回合買不了（自己的行動視窗、購買次數用完）
- * 或 gold 已超過 `GOLD_HOARD` 時乘 `IDLE_GOLD_FACTOR`。easy 回 null（拒絕含 goods 的報價）。
- *
- * 鉤子不知道是收還是付。Rivers 裡付出 `amount` 會讓財富板塊失分時回 null（保守：連收 gold 的報價也一起拒絕，R3）。
+ * `amount` 個 gold 在 `side` 這一方的資源當量（`trade.goodValue`）。easy 回 null（拒絕含 goods 的報價）。standard：
+ * - 收進（`'receive'`）：0.5 × 張數；本回合買不了（自己的行動視窗、購買次數用完）或持有至少 `GOLD_HOARD` 時乘
+ *   `IDLE_GOLD_FACTOR`。收進 gold 不會失去財富板塊，所以不看 Rivers 的排名（排名加分留給 S8）。
+ * - 付出（`'pay'`）：固定 0.5 × 張數，也就是銀行的價格（`GOLD_PER_RESOURCE` gold 換一張），不折價：折價會讓對手用
+ *   低於銀行的價格買走 gold，再向銀行換牌套利。超出「持有減去 Traders 過路費保留」的部分不付（null）；Rivers 裡付出後
+ *   財富板塊會失分時也不付（保守，R3）。
  */
-export function goldValue(turn: TurnContext, amount: number): number | null {
+export function goldValue(turn: TurnContext, amount: number, side: 'receive' | 'pay'): number | null {
   if (turn.level === 'easy') return null;
   if (!(amount > 0)) return 0;
   const { view, ctx } = turn;
   const status = coinsStatus(view, ctx.selfId);
   if (!status) return null;
-  if (wealthDelta(view, ctx.selfId, -amount) < 0) return null;
+  if (side === 'pay') {
+    if (amount > status.gold - tollReserve(view)) return null;
+    if (wealthDelta(view, ctx.selfId, -amount) < 0) return null;
+    return amount * GOLD_RESOURCE_VALUE;
+  }
   const acting = view.turn.playerId === ctx.selfId && view.turn.phase === 'action';
   const idle = (acting && status.purchasesLeft <= 0) || status.gold >= GOLD_HOARD;
   return amount * GOLD_RESOURCE_VALUE * (idle ? IDLE_GOLD_FACTOR : 1);
@@ -265,6 +272,6 @@ export const coinsBot: TbPartBot = {
   trade: {
     goods: (view, playerId): Readonly<Record<string, number>> =>
       tbPartView(view, TB_PART_IDS.coins) ? { gold: goldOf(view, playerId) } : {},
-    goodValue: (turn, good, amount) => (good === 'gold' ? goldValue(turn, amount) : undefined),
+    goodValue: (turn, good, amount, side) => (good === 'gold' ? goldValue(turn, amount, side) : undefined),
   },
 };

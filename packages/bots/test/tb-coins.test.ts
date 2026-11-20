@@ -8,7 +8,8 @@
  *   - `tb.buyResource`：買完就能做主要計畫的下一步時才買（standard 與 easy，DoD 1）；缺口超過可買次數、計畫已付得起、
  *     gold 不夠、不在行動階段時不買；Traders 保留 1 gold 過路費；Rivers 的 standard 不因買資源掉進 Poor（easy 照買）。
  *   - `tb.sellResources`（只有 standard）：Rivers 賣一次就脫離 Poor；手牌超過上限而銀行換不到牌時賣超出計畫的牌。
- *   - gold 估值（R11）：1 gold = 0.5 資源當量；本回合買不了或 gold 太多時折價；easy 回 null。報價經引擎建立，用得上的一張牌
+ *   - gold 估值（R11）：1 gold = 0.5 資源當量；只有收進的 gold 在本回合買不了或 gold 太多時折價，付出的固定以銀行價格計，
+ *     也不動用 Traders 的過路費保留；easy 回 null。報價經引擎建立，用得上的一張牌
  *     換 1 gold 同意、換 2 gold（剛好打平，低於門檻）拒絕；easy 一律拒絕含 goods 的報價（R3）。
  * - 短局：Rivers 3 人種子 1，standard 與 easy 都買過資源；策略不主動提出含 goods 的報價；同種子重跑雜湊相同。
  * - B-FAIR：Rivers 與 Traders 的對局狀態，只擾動對手手牌與發展卡牌庫（gold 是公開的），決策不變。
@@ -252,41 +253,89 @@ describe('tb.sellResources: standard only, to leave Poor in Rivers or when over 
 });
 
 describe('gold value and rule 9 (R3, R11)', () => {
-  it('prices 1 gold at 0.5 resource equivalents, discounted when it cannot be spent soon; easy refuses', () => {
+  it('prices 1 gold at 0.5 resource equivalents; only received gold is discounted when it cannot be spent soon; easy refuses', () => {
     const state = board(BA, {}, { p1: 4, p2: 4, p3: 4 });
     const turn = turnOf(state, 'p1');
-    expect(goldValue(turn, 2)).toBe(1);
-    expect(goldValue(turn, 1)).toBe(0.5);
-    expect(goldValue(turn, 0)).toBe(0);
+    for (const side of ['receive', 'pay'] as const) {
+      expect(goldValue(turn, 2, side), side).toBe(1);
+      expect(goldValue(turn, 1, side), side).toBe(0.5);
+      expect(goldValue(turn, 0, side), side).toBe(0);
+    }
     const hook = tradersBarbariansBotModule.trade!;
-    expect(hook.goodValue!(turn, 'gold', 4)).toBe(2);
-    expect(hook.goodValue!(turn, 'silk', 4)).toBeUndefined();
+    expect(hook.goodValue!(turn, 'gold', 4, 'receive')).toBe(2);
+    expect(hook.goodValue!(turn, 'gold', 4, 'pay')).toBe(2);
+    expect(hook.goodValue!(turn, 'silk', 4, 'receive')).toBeUndefined();
     expect(hook.goods!(viewOf(state, 'p1'), 'p2')).toEqual({ gold: 4 });
     expect(coinsBot.trade!.goods!(viewOf(tbPlayable('tb-friendly-robber-2025'), 'p1'), 'p1')).toEqual({});
 
-    // 本回合的購買次數用完（自己的行動視窗）：暫時用不掉。
+    // 本回合的購買次數用完（自己的行動視窗）：收進的 gold 暫時用不掉，折價；付出的 gold 仍以銀行價格計。
     setPurchases(state, 'p1', 2);
-    expect(goldValue(turnOf(state, 'p1'), 2)).toBeCloseTo(IDLE_GOLD_FACTOR);
-    // 非行動者下一回合才能買，不折價；gold 太多時折價。
-    expect(goldValue(turnOf(state, 'p2'), 2)).toBe(1);
+    expect(goldValue(turnOf(state, 'p1'), 2, 'receive')).toBeCloseTo(IDLE_GOLD_FACTOR);
+    expect(goldValue(turnOf(state, 'p1'), 2, 'pay')).toBe(1);
+    // 非行動者下一回合才能買，不折價；持有至少 GOLD_HOARD 時收進的折價、付出的不折價。
+    expect(goldValue(turnOf(state, 'p2'), 2, 'receive')).toBe(1);
     setGold(state, { p2: GOLD_HOARD });
-    expect(goldValue(turnOf(state, 'p2'), 2)).toBeCloseTo(IDLE_GOLD_FACTOR);
+    expect(goldValue(turnOf(state, 'p2'), 2, 'receive')).toBeCloseTo(IDLE_GOLD_FACTOR);
+    expect(goldValue(turnOf(state, 'p2'), 2, 'pay')).toBe(1);
+    // 付不出持有以外的 gold。
+    expect(goldValue(turnOf(state, 'p2'), GOLD_HOARD + 1, 'pay')).toBeNull();
 
-    expect(goldValue(turnOf(state, 'p2', 'easy'), 2)).toBeNull();
-    expect(hook.goodValue!(turnOf(state, 'p2', 'easy'), 'gold', 2)).toBeNull();
+    for (const side of ['receive', 'pay'] as const) {
+      expect(goldValue(turnOf(state, 'p2', 'easy'), 2, side), side).toBeNull();
+      expect(hook.goodValue!(turnOf(state, 'p2', 'easy'), 'gold', 2, side), side).toBeNull();
+    }
   });
 
-  it('refuses gold offers in Rivers when paying the gold would cost a wealth tile', () => {
+  it('refuses to pay gold in Rivers when paying would cost a wealth tile, but still takes gold', () => {
     // p2 與 p1 並列最多（不是唯一，沒有 +1）；p2 付 1 gold 就變成 Poor（並列最少）。
     const state = board(RIVERS, {}, { p1: 2, p2: 2, p3: 1 });
     expect(wealthDelta(viewOf(state, 'p2'), 'p2', -1)).toBe(-2);
-    expect(goldValue(turnOf(state, 'p2'), 1)).toBeNull();
+    expect(goldValue(turnOf(state, 'p2'), 1, 'pay')).toBeNull();
+    // 收進 gold 不會失去財富板塊。
+    expect(goldValue(turnOf(state, 'p2'), 1, 'receive')).toBe(0.5);
     // p1 唯一最多：付 1 gold 變成並列，失去 Wealthiest。
     const rich = board(RIVERS, {}, { p1: 3, p2: 2, p3: 1 });
-    expect(goldValue(turnOf(rich, 'p1'), 1)).toBeNull();
+    expect(goldValue(turnOf(rich, 'p1'), 1, 'pay')).toBeNull();
     // 付了也不會失分時照常估值。
     const safe = board(RIVERS, {}, { p1: 4, p2: 4, p3: 1 });
-    expect(goldValue(turnOf(safe, 'p1'), 1)).toBe(0.5);
+    expect(goldValue(turnOf(safe, 'p1'), 1, 'pay')).toBe(0.5);
+  });
+
+  /**
+   * #193 審查的重現：p2 的城市只差 1 ore，p1 開價「給 1 ore、要 `gold` 個 gold」。付出的 gold 不折價，所以持有 8 gold
+   * （折價門檻 `GOLD_HOARD`）時也不會用 4 gold 換一張牌（對手可以拿 4 gold 向銀行換 2 張）；2 gold 換一張照樣同意。
+   */
+  function oreForGold(profileId: string, held: number, gold: number): GameState {
+    const state = board(profileId, {}, { p1: 4, p2: held, p3: 4 });
+    setHand(state, 'p2', CITY_SHORT_ORE);
+    expect(turnOf(state, 'p2').economy.plans[0]!.kind).toBe('city');
+    setHand(state, 'p1', { ore: 1 });
+    return accept(state, 'p1', {
+      type: 'trade.offer',
+      to: 'p2',
+      give: { ore: 1 },
+      want: {},
+      wantGoods: { gold },
+    } as unknown as Command);
+  }
+
+  it('does not pay above the bank price even while hoarding or after its purchases are used up', () => {
+    expect(GOLD_HOARD).toBe(8);
+    expect(decide(oreForGold(BA, 8, 4), 'p2', 'standard')).toMatchObject({ type: 'trade.respond', response: 'declined' });
+    const fair = oreForGold(BA, 8, 2);
+    const consent = decide(fair, 'p2', 'standard');
+    expect(consent).toMatchObject({ type: 'trade.respond', response: 'consented' });
+    accept(fair, 'p2', consent);
+  });
+
+  it('keeps the Traders toll reserve when paying gold in a trade', () => {
+    // 只有 2 gold：付 2 gold 會動用過路費保留，拒絕；3 gold 時照樣同意。
+    expect(goldValue(turnOf(board(TRADERS, {}, { p2: 2 }), 'p2'), 2, 'pay')).toBeNull();
+    expect(decide(oreForGold(TRADERS, 2, 2), 'p2', 'standard')).toMatchObject({ type: 'trade.respond', response: 'declined' });
+    const enough = oreForGold(TRADERS, 3, 2);
+    const consent = decide(enough, 'p2', 'standard');
+    expect(consent).toMatchObject({ type: 'trade.respond', response: 'consented' });
+    accept(enough, 'p2', consent);
   });
 
   /** p1 對 p2 開價：給 p2 一張它用得上、但湊不齊計畫的牌，向 p2 要 `gold` 個 gold。 */
