@@ -176,11 +176,13 @@ export function buyCandidates(turn: TurnContext): Scored<BotCommand>[] {
   if (short === 0) return [];
   const order = purchaseOrder(view, missing, economy.weights, Math.min(short, buyable));
   if (order.length === 0) return [];
-  // 買完之後要嘛已經付得起，要嘛剩下的缺口銀行交易補得齊（`bankTradeToward` 全部補得起才回傳交易）。
+  // 買完之後要嘛已經付得起，要嘛剩下的缺口銀行交易補得齊（`bankTradeToward` 全部補得起才回傳交易）。帶 `selfId`，
+  // 和建造階段的計畫交易一樣守著同回合的銀行交易（#180），不然會買了牌、計畫交易卻不肯換。
   const hand: Hand = { ...economy.hand };
   for (const resource of order) hand[resource] += 1;
   const covered =
-    canAfford(hand, plan.nextCost) || bankTradeToward(view, { ...economy, hand }, plan.nextCost, plan.cost) !== null;
+    canAfford(hand, plan.nextCost) ||
+    bankTradeToward(view, { ...economy, hand }, plan.nextCost, plan.cost, ctx.selfId) !== null;
   if (!covered) return [];
   if (turn.level !== 'easy' && wealthDelta(view, ctx.selfId, -GOLD_PER_RESOURCE) < 0) return [];
   return [{ item: command('tb.buyResource', { resource: order[0]! }), score: BUY_SCORE }];
