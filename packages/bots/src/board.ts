@@ -77,6 +77,20 @@ export interface BoardModel {
   readonly modules?: readonly BotModule[];
 }
 
+/** 各格的點數：`numbers` 加上 `extraNumbers`（T&B Rivers 的第二個數字）；沒有 extraNumbers 時與 base 相同。 */
+function hexPipsOf(view: GameView): number[] {
+  const pips = view.board.numbers.map((number) => pipsOf(number));
+  for (const extra of view.board.extraNumbers ?? []) {
+    if (extra.hex >= 0 && extra.hex < pips.length) pips[extra.hex]! += pipsOf(extra.number);
+  }
+  return pips;
+}
+
+/** 這位玩家的勝利分：個人目標（T&B 等，與 profile 不同時才投影）優先，否則用全域值。 */
+export function targetOf(view: GameView, playerId: string): number {
+  return view.players.find((player) => player.id === playerId)?.victoryTarget ?? view.victoryTarget;
+}
+
 interface TopologyTables {
   neighbors: number[][];
   hexVertices: number[][];
@@ -122,7 +136,7 @@ export function boardModel(view: GameView, selfId: string, modules: readonly Bot
     profile: requireProfile(view.profileId),
     neighbors: tables.neighbors,
     hexVertices: tables.hexVertices,
-    hexPips: view.board.numbers.map((number) => pipsOf(number)),
+    hexPips: hexPipsOf(view),
     hexResource: view.board.terrain.map((terrain) => TERRAIN_RESOURCE[terrain as Terrain] ?? null),
     hexLand: view.board.terrain.map((terrain) => terrain !== 'sea'),
     hexGold: view.board.terrain.map((terrain) => terrain === 'gold'),
@@ -258,7 +272,8 @@ export function piecesOnBoard(model: BoardModel, playerId: string): PieceCounts 
     else counts.settlements += 1;
   }
   for (const road of model.view.board.roads) {
-    if (road && road.player === playerId && !road.ship) counts.roads += 1;
+    // 橋（T&B Rivers）算路線、不佔道路存量，與規則引擎的 `countRoads` 相同。
+    if (road && road.player === playerId && !road.ship && !road.bridge) counts.roads += 1;
   }
   return counts;
 }
