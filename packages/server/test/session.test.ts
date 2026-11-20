@@ -111,17 +111,39 @@ describe('legacy session cookie', () => {
     expect(cookies.some((cookie) => cookie.startsWith('catan_session=;') && cookie.includes('Max-Age=0'))).toBe(true);
   });
 
-  it('prefers the current cookie and only clears a leftover legacy one', async () => {
-    const current = await tokenOf('Current');
-    const leftover = await tokenOf('Leftover');
+  it('falls back to a valid legacy cookie when the current one is stale', async () => {
+    const legacy = await tokenOf('Fallback');
     const response = await fetch(`${harness.base}/api/session`, {
-      headers: { cookie: `catan_session=${leftover.token}; katan_session=${current.token}` },
+      headers: { cookie: `katan_session=stale-token; catan_session=${legacy.token}` },
+    });
+    const body = (await response.json()) as { data: { player: { id: string } } };
+    expect(body.data.player.id).toBe(legacy.playerId);
+    const cookies = response.headers.getSetCookie();
+    expect(cookies.some((cookie) => cookie.startsWith(`katan_session=${legacy.token};`))).toBe(true);
+    expect(cookies.some((cookie) => cookie.startsWith('catan_session=;') && cookie.includes('Max-Age=0'))).toBe(true);
+  });
+
+  it('keeps a legacy cookie that still holds another identity', async () => {
+    const current = await tokenOf('Current');
+    const other = await tokenOf('Other');
+    const response = await fetch(`${harness.base}/api/session`, {
+      headers: { cookie: `catan_session=${other.token}; katan_session=${current.token}` },
     });
     const body = (await response.json()) as { data: { player: { id: string } } };
     expect(body.data.player.id).toBe(current.playerId);
-    const cookies = response.headers.getSetCookie();
-    expect(cookies).toHaveLength(1);
-    expect(cookies[0]).toMatch(/^catan_session=;.*Max-Age=0/);
+    expect(response.headers.getSetCookie()).toEqual([]);
+  });
+
+  it('clears a legacy cookie that is already migrated or no longer resolves', async () => {
+    const current = await tokenOf('Migrated');
+    for (const legacy of [current.token, 'unknown-token']) {
+      const response = await fetch(`${harness.base}/api/session`, {
+        headers: { cookie: `catan_session=${legacy}; katan_session=${current.token}` },
+      });
+      const cookies = response.headers.getSetCookie();
+      expect(cookies).toHaveLength(1);
+      expect(cookies[0]).toMatch(/^catan_session=;.*Max-Age=0/);
+    }
   });
 
   it('sends no cookie rewrite to a browser that already uses the current name', async () => {

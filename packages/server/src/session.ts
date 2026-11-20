@@ -70,21 +70,53 @@ export class SessionService {
     private readonly legacyCookieNames: readonly string[] = [],
   ) {}
 
-  /** 目前名稱優先，其次依序找舊版名稱。 */
-  private readToken(cookieHeader: string | undefined): string | null {
+  /**
+   * 依序以目前名稱、各舊版名稱的 token 查詢身分，採用第一個查得到的；只看名稱而不查資料庫，
+   * 會讓過期的 `katan_session` 蓋過仍有效的舊 cookie。
+   *
+   * 同時回傳遷移用的 Set-Cookie：身分來自舊名稱時改寫成目前名稱；舊 cookie 只在它就是
+   * 目前採用的 token、或已查不到身分時才清除，其他仍有效的舊身分保留不動。
+   */
+  async resolveRequest(
+    cookieHeader: string | undefined,
+  ): Promise<{ identity: SessionIdentity | null; cookies: string[] }> {
+    const rows = new Map<string, GuestRow | null>();
+    const lookup = async (token: string): Promise<GuestRow | null> => {
+      if (!rows.has(token)) rows.set(token, await this.repo.findGuestByTokenHash(hashToken(token)));
+      return rows.get(token)!;
+    };
+
+    const candidates: { name: string; token: string }[] = [];
     for (const name of [this.cookieName, ...this.legacyCookieNames]) {
       const token = parseCookie(cookieHeader, name);
-      if (token) return token;
+      if (token) candidates.push({ name, token });
     }
-    return null;
+
+    let chosen: { name: string; token: string; row: GuestRow } | null = null;
+    for (const candidate of candidates) {
+      const row = await lookup(candidate.token);
+      if (row) {
+        chosen = { ...candidate, row };
+        break;
+      }
+    }
+
+    const cookies: string[] = [];
+    if (chosen && chosen.name !== this.cookieName) {
+      cookies.push(serializeCookie(this.cookieName, chosen.token, { secure: this.cookieSecure }));
+    }
+    for (const candidate of candidates) {
+      if (candidate.name === this.cookieName) continue;
+      if (candidate.token === chosen?.token || !(await lookup(candidate.token))) {
+        cookies.push(clearCookie(candidate.name, this.cookieSecure));
+      }
+    }
+    return { identity: chosen ? toIdentity(chosen.row) : null, cookies };
   }
 
   /** Resolves the identity carried by the request cookie, if any. */
   async resolve(cookieHeader: string | undefined): Promise<SessionIdentity | null> {
-    const token = this.readToken(cookieHeader);
-    if (!token) return null;
-    const row = await this.repo.findGuestByTokenHash(hashToken(token));
-    return row ? toIdentity(row) : null;
+    return (await this.resolveRequest(cookieHeader)).identity;
   }
 
   /** Creates a new guest and returns the token plus its cookie header value. */
@@ -109,24 +141,6 @@ export class SessionService {
       identity: toIdentity(row),
       setCookie: serializeCookie(this.cookieName, token, { secure: this.cookieSecure }),
     };
-  }
-
-  /**
-   * 把舊版 cookie 改寫成目前名稱：token 不變，只換名稱並清除舊 cookie。
-   * 沒有舊 cookie 時回傳空陣列。
-   */
-  migrationCookies(cookieHeader: string | undefined): string[] {
-    const cookies: string[] = [];
-    const current = parseCookie(cookieHeader, this.cookieName);
-    for (const name of this.legacyCookieNames) {
-      const legacy = parseCookie(cookieHeader, name);
-      if (legacy === null) continue;
-      if (!current && cookies.length === 0) {
-        cookies.push(serializeCookie(this.cookieName, legacy, { secure: this.cookieSecure }));
-      }
-      cookies.push(clearCookie(name, this.cookieSecure));
-    }
-    return cookies;
   }
 
   /** 登出時同時清除目前與舊版名稱的 cookie。 */

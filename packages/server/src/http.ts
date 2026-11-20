@@ -580,7 +580,8 @@ export function createHttpHandler(deps: HttpDeps) {
         if (!matched) continue;
 
         try {
-          const player = await deps.sessions.resolve(req.headers.cookie);
+          const session = await deps.sessions.resolveRequest(req.headers.cookie);
+          const player = session.identity;
           const body = method === 'GET' || method === 'HEAD' ? {} : await readBody(req);
           const result = await candidate.handler({
             req,
@@ -591,7 +592,7 @@ export function createHttpHandler(deps: HttpDeps) {
             query: url.searchParams,
           });
           // 路由自己設定的 cookie 排在後面，同名時以它為準
-          const cookies = [...deps.sessions.migrationCookies(req.headers.cookie), ...(result?.cookies ?? [])];
+          const cookies = [...session.cookies, ...(result?.cookies ?? [])];
           ok(res, result ? result.data : {}, cookies.length > 0 ? cookies : undefined);
         } catch (error) {
           fail(res, error instanceof ServiceError ? error.status : 500, error as Error);
