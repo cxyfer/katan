@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RESOURCES, type Resource } from '@catan/rules';
+import { RESOURCES, type Resource } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
 import { seafarersHints } from '../board/seafarers.ts';

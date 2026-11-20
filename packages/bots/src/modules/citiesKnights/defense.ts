@@ -12,7 +12,7 @@
  * 決定性（P4）：不消耗亂數；同分取路口編號較小者。
  */
 
-import { CK_ACTIVATE_COST, CK_KNIGHT_COST, CK_PROMOTE_COST } from '@catan/rules';
+import { CK_ACTIVATE_COST, CK_KNIGHT_COST, CK_PROMOTE_COST } from '@katan/rules';
 import { canAfford, pay, type Hand } from '../../economy.ts';
 import type { BotLevel } from '../../types.ts';
 import { rescoreDelta } from '../compose.ts';

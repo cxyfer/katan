@@ -9,7 +9,7 @@
  * 決定性（P4）：不消耗亂數；依 `CARD_KINDS` 順序，同分取靠前者。
  */
 
-import { COMMODITIES, type CardKind } from '@catan/rules';
+import { COMMODITIES, type CardKind } from '@katan/rules';
 import { bankHas } from '../../bank.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';
 import { mainTrack, trackOptions } from './improve.ts';

@@ -8,7 +8,7 @@ import { TbPanel } from '../src/components/tb/TbPanel.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { EMPTY_SELECTION } from '../src/state/table.ts';
 import { t } from '../src/i18n/index.ts';
-import type { Offer } from '@catan/rules';
+import type { Offer } from '@katan/rules';
 import { tbController, tbSlot, tbState } from './tb-helpers.tsx';
 
 const PROFILE = 'tb-rivers-2025';
@@ -25,7 +25,7 @@ function tradeState(profile = PROFILE) {
   return state;
 }
 
-describe('Rivers of Catan UI', () => {
+describe('Rivers of Katan UI', () => {
   it.each([undefined, { gold: 1 }])('revises resources and both goods sides together (want goods: %j)', (wantGoods) => {
     const state = tradeState();
     if (wantGoods) state.offers[0]!.wantGoods = wantGoods;

@@ -1,5 +1,5 @@
 /**
- * Type and constant exports that `@catan/bots` builds on (bot plan RX / P8):
+ * Type and constant exports that `@katan/bots` builds on (bot plan RX / P8):
  * the Seafarers view, hints and gold-frame shapes, plus `SHIP_COST` and
  * `GOLD_FRAME`. The key lists below are `Record<keyof T, true>` so that a key
  * added to or removed from a type breaks `tsc`, and the tests compare them

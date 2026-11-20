@@ -21,7 +21,7 @@ import {
   type ModulePending,
   type MoveRobberPending,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import type { MechanicsStep, MechanicsTally, ModuleTestKit } from './types.ts';
 
 class SeafarersMechanicsTally implements MechanicsTally {

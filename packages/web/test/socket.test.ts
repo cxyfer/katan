@@ -6,7 +6,7 @@ import {
   UNSUBSCRIBE_ACK_TIMEOUT_MS,
   type SocketLike,
 } from '../src/api/socket.ts';
-import type { ClientMessage, ServerMessage } from '@catan/protocol';
+import type { ClientMessage, ServerMessage } from '@katan/protocol';
 
 class FakeSocket implements SocketLike {
   readonly sent: string[] = [];

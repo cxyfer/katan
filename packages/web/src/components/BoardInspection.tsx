@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import type { PublicBoardView } from '@catan/rules';
+import type { PublicBoardView } from '@katan/rules';
 import type { BoardGeometry } from '../board/geometry.ts';
 import type { BoardViewportControls } from '../board/useBoardViewport.ts';
 import type { ProjectedAnchor } from '../board/render-contract.ts';

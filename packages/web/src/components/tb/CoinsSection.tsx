@@ -1,4 +1,4 @@
-import { RESOURCES } from '@catan/rules';
+import { RESOURCES } from '@katan/rules';
 import { useT } from '../../i18n/context.tsx';
 import { blocksNewCommands } from '../../state/commands.ts';
 import { followUpsHeld, shownBank, shownTradersBarbarians } from '../../state/table.ts';

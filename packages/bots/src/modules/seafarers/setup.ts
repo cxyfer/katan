@@ -16,7 +16,7 @@
  * 調校的起點；兩個輪次的分工與 `SHIP_WOOL_PENALTY` 依 #135 的 bench 選定（數字見 PR）。
  */
 
-import { MAIN_ISLAND } from '@catan/rules';
+import { MAIN_ISLAND } from '@katan/rules';
 import { roadDirectionScore } from '../../base/roads.ts';
 import { setupSpotScore } from '../../base/setup.ts';
 import { isFreeSpot, playerYield, vertexYield, type BoardModel, type RoadSearch } from '../../board.ts';

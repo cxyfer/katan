@@ -33,7 +33,7 @@ import {
   type ProfileDefinition,
   type Rng,
   type SetupMode,
-} from '@catan/rules';
+} from '@katan/rules';
 import { botActingOrder } from '../src/order.ts';
 import { botSeed } from '../src/seed.ts';
 import {

@@ -10,11 +10,11 @@ import {
   type PlayerStats,
   type PublicPlayerView,
   type ResourceCounts,
-} from '@catan/rules';
+} from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatResourceMap } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
-import type { BotLevel } from '@catan/protocol';
+import type { BotLevel } from '@katan/protocol';
 import { GameIcon } from './GameArt.tsx';
 import { BotBadge } from './BotBadge.tsx';
 import { DiceDistributionChart, ScoreTimelineChart } from './StatsCharts.tsx';

@@ -8,7 +8,7 @@
  * one hex radius is 1.
  */
 
-import type { BoardTopology } from '@catan/rules';
+import type { BoardTopology } from '@katan/rules';
 import type { Point } from './geometry.ts';
 
 export interface CoastLoop {

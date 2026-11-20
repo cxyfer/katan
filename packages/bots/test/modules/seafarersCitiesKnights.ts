@@ -17,7 +17,7 @@
  *
  * 沒有 `hideDifferently`（組合層沒有額外的隱藏資訊）、也沒有 `responseCommands`（`knight.chasePirate` 只有行動者送）。
  *
- * 不得 import `rules/test/*`：bench 會把 kit 打包進去，那些 helper 依賴 vitest。這裡只用 `@catan/rules` 的公開 API。
+ * 不得 import `rules/test/*`：bench 會把 kit 打包進去，那些 helper 依賴 vitest。這裡只用 `@katan/rules` 的公開 API。
  */
 
 import {
@@ -31,7 +31,7 @@ import {
   type GameState,
   type MoveRobberPending,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import type { MechanicsStep, MechanicsTally, ModuleTestKit } from './types.ts';
 
 /** `moveRobber` frame 對應的三種 `bandit` hint（與 rules 的 `SfckBandit` 相同）。 */

@@ -1,6 +1,6 @@
 import { shownTradersBarbarians } from '../../state/table.ts';
 import type { ComponentType } from 'react';
-import { getProfile } from '@catan/rules';
+import { getProfile } from '@katan/rules';
 import { useT } from '../../i18n/context.tsx';
 import type { TableController } from '../../state/useTable.ts';
 import { BarbariansSection } from './BarbariansSection.tsx';

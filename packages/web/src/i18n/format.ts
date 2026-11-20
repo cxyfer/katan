@@ -4,8 +4,8 @@
  * (docs/SPEC.md §8.7).
  */
 
-import type { Locale } from '@catan/protocol';
-import { BANK_VIEW_CAP, COMMODITIES, RESOURCES, type Resource } from '@catan/rules';
+import type { Locale } from '@katan/protocol';
+import { BANK_VIEW_CAP, COMMODITIES, RESOURCES, type Resource } from '@katan/rules';
 import { t } from './index.ts';
 
 export function formatNumber(locale: Locale, value: number): string {

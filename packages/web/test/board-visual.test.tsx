@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GameSnapshot, ServerMessage } from '@catan/protocol';
+import type { GameSnapshot, ServerMessage } from '@katan/protocol';
 import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
 import { buildGeometry, distance } from '../src/board/geometry.ts';

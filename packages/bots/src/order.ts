@@ -1,4 +1,4 @@
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 
 /**
  * 排程器詢問 Bot 的順序：先依座位詢問非行動者（棄牌、回應報價），最後才

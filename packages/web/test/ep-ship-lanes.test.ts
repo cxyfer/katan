@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actionHints, createGame, projectGame, seededRng } from '@catan/rules';
+import { actionHints, createGame, projectGame, seededRng } from '@katan/rules';
 import { SHIP_BEAM, SHIP_LANE, shipLanes, shipSlots, type EpView } from '../src/board/explorersPirates.ts';
 import { buildGeometry, type BoardGeometry } from '../src/board/geometry.ts';
 import { CAMERA_AZIMUTH_DEG, DESKTOP_ELEVATION_DEG, NARROW_ELEVATION_DEG } from '../src/board/three/camera.ts';

@@ -1,6 +1,6 @@
 /** base 的道路選擇：免費道路、最長道路與開局的路向評分。 */
 
-import type { Command } from '@catan/rules';
+import type { Command } from '@katan/rules';
 import { isFreeSpot, playerYield, roadStockLeft } from '../board.ts';
 import { bestRouteEdge, resourceWeights, settlementSpotValue } from '../economy.ts';
 import type { TurnContext } from '../modules/types.ts';

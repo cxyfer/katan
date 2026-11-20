@@ -15,7 +15,7 @@ import { tbController, tbSlot, tbState } from './tb-helpers.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { initialTableState, shownBank, shownCitiesKnights, shownExplorersPirates, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import { makeEvent, makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 
 function base(): TableState {

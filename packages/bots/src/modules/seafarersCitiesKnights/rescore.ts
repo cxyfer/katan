@@ -15,7 +15,7 @@
  * 決定性（P4）：只讀 view 與 economy，不消耗亂數。
  */
 
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import { COAST_SETTLEMENT, ISLAND_SETTLEMENT } from '../seafarers/plan.ts';
 import type { BotCommand, BotModule, TurnContext } from '../types.ts';
 import { moduleHints } from '../view.ts';

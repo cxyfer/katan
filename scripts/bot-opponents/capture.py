@@ -50,7 +50,7 @@ def start_server(out: Path):
     global BASE
     if not SERVER_ENTRY.is_file() or not (DIST / "index.html").is_file():
         raise SystemExit("built artifacts missing; run pnpm build first")
-    temporary = tempfile.TemporaryDirectory(prefix="catan-bot-opponents-")
+    temporary = tempfile.TemporaryDirectory(prefix="katan-bot-opponents-")
     log = (out / "server.log").open("w", encoding="utf-8")
     port = free_port()
     env = {
@@ -183,7 +183,7 @@ def capture(out: Path) -> dict:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True, args=["--no-sandbox", "--enable-unsafe-swiftshader"])
             context = browser.new_context(viewport={"width": 1366, "height": 768}, locale="zh-TW", reduced_motion="reduce")
-            context.add_init_script("localStorage.setItem('catan.locale', 'zh-Hant');")
+            context.add_init_script("localStorage.setItem('katan.locale', 'zh-Hant');")
             page = context.new_page()
             errors: list[str] = []
             page.on("pageerror", lambda error: errors.append(str(error)))

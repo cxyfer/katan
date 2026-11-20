@@ -1,8 +1,8 @@
 /** T&B 私密結果經 receipt、HTTP、WS 與事件歷史的逐座位驗證。 */
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
-import * as rules from '@catan/rules';
-import type { CommandReceipt, GameSnapshot, ServerMessage } from '@catan/protocol';
+import * as rules from '@katan/rules';
+import type { CommandReceipt, GameSnapshot, ServerMessage } from '@katan/protocol';
 import { runSetupOverApi, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;

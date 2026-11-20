@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GameEvent, ServerMessage } from '@catan/protocol';
+import type { GameEvent, ServerMessage } from '@katan/protocol';
 import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
 import type { SoundCue } from '../src/audio/cues.ts';

@@ -3,7 +3,7 @@ import { useT } from '../i18n/context.tsx';
 import { useIsMobile } from './useIsMobile.ts';
 import '../styles/rotate-prompt.css';
 
-const DISMISSED_KEY = 'catan.rotatePromptDismissed';
+const DISMISSED_KEY = 'katan.rotatePromptDismissed';
 
 /**
  * 已安裝（standalone）的觸控裝置以直向開啟牌桌時，提示使用者橫放。

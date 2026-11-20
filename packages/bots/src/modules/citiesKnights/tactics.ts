@@ -23,7 +23,7 @@
  * 決定性（P4）：不消耗亂數；同分取騎士與目標路口編號較小者（hints 的順序）。
  */
 
-import { CK_ACTIVATE_COST } from '@catan/rules';
+import { CK_ACTIVATE_COST } from '@katan/rules';
 import { type BoardModel } from '../../board.ts';
 import { canAfford } from '../../economy.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';

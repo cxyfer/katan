@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getProfile, PROFILES } from '@catan/rules';
+import { getProfile, PROFILES } from '@katan/rules';
 import { botsCanPlay } from '../src/index.ts';
 import {
   BOT_FAMILIES,

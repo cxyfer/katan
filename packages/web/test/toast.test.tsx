@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toast } from '../src/components/Toast.tsx';
 import { NOTICE_EXIT_MS } from '../src/components/useTransientNotice.ts';
 import { LocaleProvider } from '../src/i18n/context.tsx';
-import type { Notice } from '@catan/protocol';
+import type { Notice } from '@katan/protocol';
 
 const saved: Notice = { messageId: 'lobby.settingsSaved' };
 

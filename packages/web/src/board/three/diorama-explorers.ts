@@ -2,12 +2,12 @@
  * Explorers & Pirates miniatures for the 3D board: the fog bank over an
  * unexplored hex with its region marker, cargo pieces (settler, crew, fish
  * haul, spice sack), the harbour flag, and the site markers (pirate lair,
- * fish shoal pips, spice farm, Council of Catan). Procedural geometry in the
+ * fish shoal pips, spice farm, Council of Katan). Procedural geometry in the
  * style of `diorama-ships.ts`; nothing is traced from official artwork.
  */
 
 import { BoxGeometry, BufferGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, SphereGeometry } from 'three';
-import type { EpCargo } from '@catan/rules';
+import type { EpCargo } from '@katan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import { shipLanes, shipSlots, type EpView } from '../explorersPirates.ts';
 import { SEA_LEVEL } from '../sea.ts';
@@ -89,7 +89,7 @@ export function createHarborFlagModel(color: string): BufferGeometry {
   return model.build();
 }
 
-/** The Council of Catan: a small columned hall with a red banner. */
+/** The Council of Katan: a small columned hall with a red banner. */
 export function createCouncilModel(): BufferGeometry {
   const model = new ModelBuilder();
   box(model, '#d9c79a', [0, 0.03, 0], [0.62, 0.06, 0.44]);

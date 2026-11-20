@@ -17,7 +17,7 @@
  * 決定性（P4）：不消耗亂數；同分取順序靠前者（玩家依 `view.players`，路口與邊依編號）。
  */
 
-import { BASE_AWARD_RULES, CARD_KINDS, RESOURCES, type PublicPlayerView, type Resource } from '@catan/rules';
+import { BASE_AWARD_RULES, CARD_KINDS, RESOURCES, type PublicPlayerView, type Resource } from '@katan/rules';
 import { isFreeSpot, routeLength, searchRoads, type BoardModel } from '../../board.ts';
 import { PIP_VALUE } from '../../economy.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';

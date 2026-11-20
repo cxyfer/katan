@@ -11,7 +11,7 @@ import {
   TorusGeometry,
   Vector3,
 } from 'three';
-import type { PublicBoardView } from '@catan/rules';
+import type { PublicBoardView } from '@katan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import { HARBOR_STRUCTURE, harborPlacement } from '../harbor.ts';
 import { ModelBuilder, outwardFace, PaintedMesh } from './diorama-geometry.ts';

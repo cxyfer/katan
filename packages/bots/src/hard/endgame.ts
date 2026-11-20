@@ -7,7 +7,7 @@
  * 得到同一指令。
  */
 
-import { COSTS, RESOURCES, type Resource } from '@catan/rules';
+import { COSTS, RESOURCES, type Resource } from '@katan/rules';
 import { isLandEdge } from '../board.ts';
 import { plannedBank } from '../bank.ts';
 import { canAfford, pay, type Cost, type Hand } from '../economy.ts';

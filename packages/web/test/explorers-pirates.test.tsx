@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { actionHints, applyCommand, createGame, projectGame, seededRng, type Command, type GameState, type GameView } from '@catan/rules';
+import { actionHints, applyCommand, createGame, projectGame, seededRng, type Command, type GameState, type GameView } from '@katan/rules';
 import { cueForEvent } from '../src/audio/cues.ts';
 import { epHints, epView, fogRegions, shipSlots } from '../src/board/explorersPirates.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
@@ -283,7 +283,7 @@ describe('explorers & pirates client', () => {
     expect(requiredActionFor(table)?.messageId).toBe('ep.setup.harbor');
     const { controller } = controllerFor(table);
     render(<LocaleProvider locale="en"><HelpPanel controller={controller} /></LocaleProvider>);
-    expect(screen.getByTestId('help-explorers-pirates').textContent).toContain('Fish for Catan');
+    expect(screen.getByTestId('help-explorers-pirates').textContent).toContain('Fish for Katan');
   });
 
   it('translates exploration and maps E&P events to sound cues', () => {

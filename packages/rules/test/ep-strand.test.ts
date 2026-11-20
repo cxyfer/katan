@@ -24,7 +24,7 @@ import { forceTurn } from './helpers.ts';
 const SCENARIOS = Object.keys(EP_PROFILE) as EpScenarioId[];
 const FISH: readonly EpScenarioId[] = ['fish', 'spices', 'explorers-pirates'];
 const CASES = SCENARIOS.map((scenario) => [EP_PROFILE[scenario], scenario] as const);
-/** Spice farms, and so Swift Voyage, exist only in Spices for Catan and the full game (EP25 p. 14). */
+/** Spice farms, and so Swift Voyage, exist only in Spices for Katan and the full game (EP25 p. 14). */
 const SPICE_CASES = CASES.filter(([, scenario]) => scenario === 'spices' || scenario === 'explorers-pirates');
 
 // -- boards ------------------------------------------------------------------------

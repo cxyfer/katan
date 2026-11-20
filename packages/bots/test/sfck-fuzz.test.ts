@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { actionHints, applyCommand, requireProfile, seededRng, type GameState } from '@catan/rules';
+import { actionHints, applyCommand, requireProfile, seededRng, type GameState } from '@katan/rules';
 import { emptySfckGame } from '../../rules/test/sfck-helpers.ts';
 import { banditTargets, defaultBanditTargets } from '../src/base/robber.ts';
 import { botOwesAction, fallbackPolicy } from '../src/fallback.ts';

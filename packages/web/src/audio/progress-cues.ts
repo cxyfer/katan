@@ -3,7 +3,7 @@
  * card cues' procedural recipes live with the others in `synth.ts`.
  */
 
-import type { GameEvent } from '@catan/protocol';
+import type { GameEvent } from '@katan/protocol';
 import type { SoundCue } from './cues.ts';
 
 export const PROGRESS_CUES = ['progress.play', 'progress.alchemy', 'progress.merchant', 'progress.request'] as const;

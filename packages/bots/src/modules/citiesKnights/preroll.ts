@@ -14,7 +14,7 @@
  * 只讀公開資訊與自己的手牌（B-FAIR）；決定性：同分取黃骰較小、再取紅骰較小者。
  */
 
-import { CARD_KINDS, CK_TRACKS, ckDrawThreshold, type CardKind } from '@catan/rules';
+import { CARD_KINDS, CK_TRACKS, ckDrawThreshold, type CardKind } from '@katan/rules';
 import type { BotModule, TurnContext } from '../types.ts';
 import { progressHeld, rivalWeight } from './cards-interactive.ts';
 import { handSize } from '../../economy.ts';

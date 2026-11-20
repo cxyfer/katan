@@ -1,5 +1,5 @@
 /**
- * R-TB-FI: Fishing on Catan (TB25 pp. 9–10). Each case states its start
+ * R-TB-FI: Fishing on Katan (TB25 pp. 9–10). Each case states its start
  * state, actor/window, command, expected public/private result and clause.
  */
 
@@ -52,7 +52,7 @@ function fishTotal(state: GameState): [number, number, number, number] {
   return counts;
 }
 
-describe('R-TB-FI Fishing on Catan setup (p. 9)', () => {
+describe('R-TB-FI Fishing on Katan setup (p. 9)', () => {
   it('FI1: lake in the inner area, 18 base land hexes, six numbered grounds, robber beside the board', () => {
     for (const seed of [1, 2, 3, 4, 5]) {
       const state = tbCreate(PROFILE, { seed });

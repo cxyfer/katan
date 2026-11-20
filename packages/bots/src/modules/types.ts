@@ -18,7 +18,7 @@ import type {
   PublicModulePendingView,
   PublicPlayerView,
   Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import type { BoardModel } from '../board.ts';
 import type { Cost, Economy, Plan } from '../economy.ts';
 import type { LevelParams } from '../level.ts';

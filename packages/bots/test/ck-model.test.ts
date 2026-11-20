@@ -20,7 +20,7 @@ import {
   seededRng,
   type Command,
   type GameState,
-} from '@catan/rules';
+} from '@katan/rules';
 import { addKnight, emptyCkGame, giveCommodities, handCards, pathFrom, roadAlong, setBuilding, spreadVertices } from '../../rules/test/ck-helpers.ts';
 import { forceTurn, give } from '../../rules/test/helpers.ts';
 import { simulateCitiesKnights } from '../../rules/test/ck-sim.ts';

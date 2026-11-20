@@ -1,6 +1,6 @@
 /** base 的保底義務：只做必定合法的最小動作（規格 I9）。 */
 
-import { COMMODITIES, RESOURCES, type CardKind, type Command, type GameView } from '@catan/rules';
+import { COMMODITIES, RESOURCES, type CardKind, type Command, type GameView } from '@katan/rules';
 import { roadStockLeft } from '../board.ts';
 import type { BotModule } from '../modules/types.ts';
 import { banditTargets } from './robber.ts';

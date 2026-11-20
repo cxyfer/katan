@@ -1,4 +1,4 @@
-/** R-TB-RV: Rivers of Catan (TB25 pp. 11–12). */
+/** R-TB-RV: Rivers of Katan (TB25 pp. 11–12). */
 
 import { describe, expect, it } from 'vitest';
 import { scoreOf, topologyOf } from '../src/analysis.ts';
@@ -39,7 +39,7 @@ function bare(): GameState {
 const edgeAt = (state: GameState, vertex: number, exclude: number[] = []) =>
   topologyOf(state).vertices[vertex]!.edges.find((edge) => !exclude.includes(edge))!;
 
-describe('R-TB-RV Rivers of Catan setup (p. 11)', () => {
+describe('R-TB-RV Rivers of Katan setup (p. 11)', () => {
   it('RV1: two fixed rivers, 12 random hexes, the 2 on the 12 hex, robber on a swamp, 7 bridge sites', () => {
     for (const seed of [1, 2, 3]) {
       const state = tbCreate(PROFILE, { seed });

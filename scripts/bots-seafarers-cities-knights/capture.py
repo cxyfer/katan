@@ -73,7 +73,7 @@ def start_server(root: Path, out: Path):
         raise SystemExit(f"built artifacts missing under {root}; run pnpm build first")
     child = temporary = log = None
     try:
-        temporary = tempfile.TemporaryDirectory(prefix="catan-bots-seafarers-cities-knights-")
+        temporary = tempfile.TemporaryDirectory(prefix="katan-bots-seafarers-cities-knights-")
         log = (out / "server.log").open("w", encoding="utf-8")
         port = free_port()
         env = {
@@ -164,7 +164,7 @@ def shot_element(page, locator, out: Path, result: dict, name: str, width: int, 
 def guest(browser, errors: list[str], nickname: str):
     """新的訪客 session，停在首頁的建房表單。"""
     context = browser.new_context(viewport={"width": 1366, "height": 768}, locale="zh-TW", reduced_motion="reduce")
-    context.add_init_script("localStorage.setItem('catan.locale', 'zh-Hant');")
+    context.add_init_script("localStorage.setItem('katan.locale', 'zh-Hant');")
     page = context.new_page()
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.set_default_timeout(20_000)

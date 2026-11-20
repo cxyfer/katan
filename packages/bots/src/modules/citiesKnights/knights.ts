@@ -11,7 +11,7 @@
  * 決定性（P4）：不消耗亂數、不讀事件；同分時保留 hints 的順序。
  */
 
-import type { CitiesKnightsView, GameView } from '@catan/rules';
+import type { CitiesKnightsView, GameView } from '@katan/rules';
 import { PIP_VALUE } from '../../economy.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';
 import { ckCommands, ckHints, ckView } from './view.ts';

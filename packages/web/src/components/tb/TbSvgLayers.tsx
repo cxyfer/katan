@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import type { BoardGeometry, Point } from '../../board/geometry.ts';
 import { pipsFor, playerColorHex } from '../../board/terrain.ts';
 import { riverCourse } from '../../board/tb-rivers.ts';

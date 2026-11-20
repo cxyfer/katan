@@ -7,7 +7,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { BANK_VIEW_CAP, RESOURCES, requireProfile, type GameState } from '@catan/rules';
+import { BANK_VIEW_CAP, RESOURCES, requireProfile, type GameState } from '@katan/rules';
 import { startHarness, startedGame, runSetupOverApi, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;
@@ -16,10 +16,10 @@ let staticDir: string;
 
 beforeAll(async () => {
   harness = await startHarness();
-  staticDir = mkdtempSync(join(tmpdir(), 'catan-web-'));
+  staticDir = mkdtempSync(join(tmpdir(), 'katan-web-'));
   writeFileSync(
     join(staticDir, 'index.html'),
-    '<!doctype html><title>CATAN client</title><link rel="canonical" href="__PUBLIC_ORIGIN__/" />'
+    '<!doctype html><title>KATAN client</title><link rel="canonical" href="__PUBLIC_ORIGIN__/" />'
       + '<meta property="og:image" content="__PUBLIC_ORIGIN__/og-image.png" />',
   );
   writeFileSync(join(staticDir, 'app.js'), 'console.log("client");');
@@ -207,7 +207,7 @@ describe('static client delivery', () => {
     const index = await fetch(`${staticHarness.base}/`);
     expect(index.status).toBe(200);
     expect(index.headers.get('content-type')).toContain('text/html');
-    expect(await index.text()).toContain('CATAN client');
+    expect(await index.text()).toContain('KATAN client');
 
     const asset = await fetch(`${staticHarness.base}/app.js`);
     expect(asset.status).toBe(200);
@@ -224,17 +224,17 @@ describe('static client delivery', () => {
   it('falls back to the client entry point for unknown routes', async () => {
     const route = await fetch(`${staticHarness.base}/room/ABC12345`);
     expect(route.status).toBe(200);
-    expect(await route.text()).toContain('CATAN client');
+    expect(await route.text()).toContain('KATAN client');
   });
 
   it('fills the og:image origin from forwarded headers', async () => {
     const res = await fetch(`${staticHarness.base}/room/ABC12345`, {
-      headers: { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'catan.example.com' },
+      headers: { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'katan.example.com' },
     });
     const html = await res.text();
-    expect(html).toContain('content="https://catan.example.com/og-image.png"');
+    expect(html).toContain('content="https://katan.example.com/og-image.png"');
     // 房間網址也以站點根目錄為 canonical，避免邀請連結被當成獨立頁面
-    expect(html).toContain('href="https://catan.example.com/"');
+    expect(html).toContain('href="https://katan.example.com/"');
   });
 
   it('rejects malformed forwarded hosts instead of injecting them', async () => {
@@ -266,7 +266,7 @@ describe('static client delivery', () => {
   it('does not expose files outside the client root', async () => {
     const traversal = await fetch(`${staticHarness.base}/../package.json`);
     const body = await traversal.text();
-    expect(body).not.toContain('"name": "catan"');
+    expect(body).not.toContain('"name": "katan"');
   });
 });
 

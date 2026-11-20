@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BoardSceneProps } from '../src/board/render-contract.ts';
-import type { CommandRequest } from '@catan/protocol';
+import type { CommandRequest } from '@katan/protocol';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';

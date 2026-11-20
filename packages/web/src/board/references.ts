@@ -11,8 +11,8 @@
  * 只使用公開棋盤資料；未探索的地塊（Explorers & Pirates）一律寫成「未探索」，不洩漏內容。
  */
 
-import type { Locale } from '@catan/protocol';
-import { getTopology, type BoardTopology, type GameView, type PublicBoardView } from '@catan/rules';
+import type { Locale } from '@katan/protocol';
+import { getTopology, type BoardTopology, type GameView, type PublicBoardView } from '@katan/rules';
 import { t } from '../i18n/index.ts';
 import { epView, fogRegions } from './explorersPirates.ts';
 import { pipsFor, resourceOfTerrain } from './terrain.ts';

@@ -4,8 +4,8 @@
  * Transcribed from the printed maps and hex tables:
  *   - Land Ho!: EP25-M (Mission Guide) p. 4;
  *   - Pirate Lairs: EP25-M p. 8;
- *   - Fish for Catan: EP25-M p. 14 (same grid as Pirate Lairs);
- *   - Spices for Catan: EP25-M p. 16;
+ *   - Fish for Katan: EP25-M p. 14 (same grid as Pirate Lairs);
+ *   - Spices for Katan: EP25-M p. 16;
  *   - Explorers & Pirates (all missions): EP25 (rulebook) pp. 6–7.
  * Source hashes and the transcription method are recorded in
  * docs/aegis/work/2026-11-02-explorers-pirates.md and docs/FIDELITY.md.
@@ -13,7 +13,7 @@
  * Coordinates are axial (pointy-top, `r` grows downwards, see `topology.ts`);
  * `(0, 0)` is the hex east of the `8` at the east tip of the starting island.
  * Each topology lists the starting island, the faceup sea hexes, the Council
- * of Catan and both unexplored regions. The hex-shaped bump at the east end of
+ * of Katan and both unexplored regions. The hex-shaped bump at the east end of
  * the middle row belongs to the frame and is not a cell.
  *
  * The layout holds no hidden information: an unexplored hex is stored as
@@ -30,7 +30,7 @@ import type { BoardLayout, PlayerColor, Terrain } from './types.ts';
 
 export type EpScenarioId = 'land-ho' | 'pirate-lairs' | 'fish' | 'spices' | 'explorers-pirates';
 export type EpRegion = 'parrot' | 'goose';
-/** Tiles of an unexplored region: CATAN terrain or an E&P special hex. */
+/** Tiles of an unexplored region: Katan terrain or an E&P special hex. */
 export type EpTile = 'sea' | 'hills' | 'forest' | 'pasture' | 'fields' | 'mountains' | 'gold' | 'shoal' | 'spice';
 export type EpMission = 'lairs' | 'fish' | 'spices';
 
@@ -52,8 +52,8 @@ const START_ISLAND: readonly StartHex[] = [
 /** The pasture printed on a sea frame piece (EP25 p. 5): fixed in every map. */
 const FRAME_PASTURE: HexCoord = { q: -3, r: 0 };
 
-/** The 14 CATAN terrain hexes kept for E&P (EP25-M p. 2). */
-const CATAN_TERRAIN: readonly Terrain[] = [
+/** The 14 Katan terrain hexes kept for E&P (EP25-M p. 2). */
+const KATAN_TERRAIN: readonly Terrain[] = [
   'hills', 'hills',
   'forest', 'forest', 'forest', 'forest',
   'pasture', 'pasture', 'pasture',
@@ -100,7 +100,7 @@ const LAIRS_MAP: MapSpec = {
 };
 
 /**
- * Fish for Catan — EP25-M p. 14: the Pirate Lairs grid with 19 seas. The map
+ * Fish for Katan — EP25-M p. 14: the Pirate Lairs grid with 19 seas. The map
  * omits the Council although the mission delivers to it and the table has one
  * sea fewer; it goes on `(0, 0)` as in the Spices and full-game maps (open
  * fixture, FIDELITY).
@@ -113,7 +113,7 @@ const FISH_MAP: MapSpec = {
   council: { q: 0, r: 0 },
 };
 
-/** Spices for Catan — EP25-M p. 16: 22 seas, 13 + 13 unexplored. */
+/** Spices for Katan — EP25-M p. 16: 22 seas, 13 + 13 unexplored. */
 const SPICES_MAP: MapSpec = {
   topologyId: 'ep-spices',
   seas: { [-3]: [2, 3], [-2]: [1, 2], [-1]: [0, 1, 4, 6], 0: range(1, 6), 1: [-1, 0, 3, 5], 2: [-1, 0], 3: [-1, 0] },
@@ -168,7 +168,7 @@ export interface EpRegionSpec {
 export interface EpScenario {
   id: EpScenarioId;
   map: MapSpec;
-  /** Starting-island terrain; `null` deals the 14 CATAN hexes at random. */
+  /** Starting-island terrain; `null` deals the 14 Katan hexes at random. */
   startTerrain: Readonly<Record<string, Terrain>> | null;
   /** Fixed starting pieces (Land Ho!) instead of the variable setup. */
   fixedStart: boolean;
@@ -361,7 +361,7 @@ const key = (q: number, r: number): string => `${q},${r}`;
 function startTerrain(scenario: EpScenario, rng: LayoutContext['rng']): Map<string, Terrain> {
   if (scenario.startTerrain) return new Map(Object.entries(scenario.startTerrain));
   const cream = START_ISLAND.filter((cell) => !(cell.q === FRAME_PASTURE.q && cell.r === FRAME_PASTURE.r));
-  const dealt = shuffle(CATAN_TERRAIN, rng);
+  const dealt = shuffle(KATAN_TERRAIN, rng);
   const out = new Map<string, Terrain>([[key(FRAME_PASTURE.q, FRAME_PASTURE.r), 'pasture']]);
   cream.forEach((cell, index) => out.set(key(cell.q, cell.r), dealt[index]!));
   return out;
@@ -397,7 +397,7 @@ export function explorersPiratesLayout(context: LayoutContext, topologyFor: (id:
 /** Transcribed inventories, for the fixture tests. */
 export const EXPLORERS_PIRATES_SOURCE = {
   startIsland: START_ISLAND,
-  catanTerrain: CATAN_TERRAIN,
+  katanTerrain: KATAN_TERRAIN,
   maps: { 'land-ho': LAND_HO_MAP, 'pirate-lairs': LAIRS_MAP, fish: FISH_MAP, spices: SPICES_MAP, 'explorers-pirates': FULL_MAP },
   cellCount: (spec: MapSpec) => mapCells(spec).length,
 } as const;

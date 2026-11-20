@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket } from 'ws';
-import type { ClientMessage, ServerMessage } from '@catan/protocol';
+import type { ClientMessage, ServerMessage } from '@katan/protocol';
 import type { ServerConfig } from './config.ts';
 import type { SessionService } from './session.ts';
 import { ServiceError, type RoomService, type Connection } from './rooms.ts';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CARD_KINDS, RESOURCES, type CardKind } from '@catan/rules';
+import { CARD_KINDS, RESOURCES, type CardKind } from '@katan/rules';
 import { citiesKnightsHints, citiesKnightsView, isCommodityCard } from '../board/citiesKnights.ts';
 import { useT } from '../i18n/context.tsx';
 import { shownBank, shownCitiesKnights, tableHoldReason } from '../state/table.ts';

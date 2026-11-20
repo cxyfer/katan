@@ -125,7 +125,7 @@ jobs:
       - name: Start the pushed digest
         run: |
           set -euo pipefail
-          docker run --detach --name catan-smoke --platform ${{ matrix.platform }} \
+          docker run --detach --name katan-smoke --platform ${{ matrix.platform }} \
             --publish 3411:3000 \
             --env COOKIE_SECURE=false --env LOG_LEVEL=warn \
             "${{ env.IMAGE }}@${{ needs.build.outputs.digest }}"
@@ -138,13 +138,13 @@ jobs:
             sleep 2
           done
           echo "container never became healthy; logs follow" >&2
-          docker logs catan-smoke >&2
+          docker logs katan-smoke >&2
           exit 1
 
       - name: Volume initialization tools
         run: |
           set -euo pipefail
-          docker exec catan-smoke sh -c '
+          docker exec katan-smoke sh -c '
             test "$(id -u)" = 10001
             for tool in sh cp chown find stat; do
               command -v "$tool" >/dev/null || {
@@ -186,11 +186,11 @@ jobs:
 
       - name: Container logs
         if: failure()
-        run: docker logs catan-smoke || true
+        run: docker logs katan-smoke || true
 
       - name: Stop container
         if: always()
-        run: docker rm --force catan-smoke || true
+        run: docker rm --force katan-smoke || true
 
   publish:
     name: Promote tested digest

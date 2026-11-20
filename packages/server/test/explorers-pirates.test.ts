@@ -6,7 +6,7 @@
 
 import { rmSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { applyCommand, type Command, type GameState } from '@catan/rules';
+import { applyCommand, type Command, type GameState } from '@katan/rules';
 import type { RunningService } from '../src/main.ts';
 import { createClient, restartService, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 

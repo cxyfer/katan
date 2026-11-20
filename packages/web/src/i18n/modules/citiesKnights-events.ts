@@ -1,7 +1,7 @@
 /** Display parameters for the Cities & Knights rule events (see `../events.ts`). */
 
-import type { Locale } from '@catan/protocol';
-import type { GameEvent } from '@catan/rules';
+import type { Locale } from '@katan/protocol';
+import type { GameEvent } from '@katan/rules';
 import { t } from '../index.ts';
 import { formatGrantMap, formatNumber, formatResourceMap } from '../format.ts';
 
@@ -41,7 +41,7 @@ export function citiesKnightsEventParams(locale: Locale, event: GameEvent, nameO
       return { position: num(p.position), length: num(p.length) };
     case 'ck.barbariansAttack':
       return { barbarians: num(p.barbarians), defenders: num(p.defenders), outcome: t(locale, str(p.outcome) === 'barbarians' ? 'ck.attack.barbarians' : 'ck.attack.defenders') };
-    case 'ck.defenderOfCatan':
+    case 'ck.defenderOfKatan':
     case 'ck.robberIdle':
       return { player };
     case 'ck.defendersTied':

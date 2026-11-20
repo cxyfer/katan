@@ -1,5 +1,5 @@
 /**
- * Seafarers + Cities & Knights messages: event/error ids from `@catan/rules`
+ * Seafarers + Cities & Knights messages: event/error ids from `@katan/rules`
  * `modules/seafarersCitiesKnights`, ship variants of C&K road events and the
  * UI strings of the combination layer. Both locales define the same keys
  * (catalog parity test). Rule texts are paraphrased.

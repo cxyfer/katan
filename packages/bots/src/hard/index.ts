@@ -4,7 +4,7 @@
  * standard 相同（每次只決定一個指令、不保留跨呼叫狀態），各決策點換成 hard 的版本。
  */
 
-import { requireProfile, type GameView, type PublicModulePendingView, type PublicPendingView } from '@catan/rules';
+import { requireProfile, type GameView, type PublicModulePendingView, type PublicPendingView } from '@katan/rules';
 import { plentyPick } from '../base/cards.ts';
 import { freeRoadDecision } from '../base/roads.ts';
 import { fallbackDecision } from '../fallback.ts';

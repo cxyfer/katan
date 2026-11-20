@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { GameSnapshot } from '@catan/protocol';
+import type { GameSnapshot } from '@katan/protocol';
 import type { GameSyncMetadata } from '../state/table.ts';
 import {
   boardEffectGroups,

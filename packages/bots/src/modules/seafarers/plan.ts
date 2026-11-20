@@ -14,7 +14,7 @@
  * `searchShips` 保證取 edge index 最小者。
  */
 
-import { COSTS, MAIN_ISLAND, SHIP_COST } from '@catan/rules';
+import { COSTS, MAIN_ISLAND, SHIP_COST } from '@katan/rules';
 import { isFreeSpot, isSeaEdge, playerYield, roadPath, type BoardModel, type Yield } from '../../board.ts';
 import {
   addCosts,

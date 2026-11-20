@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { actionHints, createGame, projectGame, seededRng, type GameState, type GameView } from '@catan/rules';
+import { actionHints, createGame, projectGame, seededRng, type GameState, type GameView } from '@katan/rules';
 import { boardIntent } from '../src/board/intent.ts';
 import { buildGeometry, type BoardGeometry } from '../src/board/geometry.ts';
 import { citiesKnightsHints, citiesKnightsPoints, citiesKnightsView, knightFollowUp, knightGhost } from '../src/board/citiesKnights.ts';
@@ -266,7 +266,7 @@ describe('cities & knights client', () => {
       makeEvent(1, 'ck.eventRolled', { event: 'trade', red: 3 }),
       makeEvent(2, 'ck.barbariansAdvanced', { position: 3, length: 7 }),
       makeEvent(3, 'ck.barbariansAttack', { barbarians: 4, defenders: 3, outcome: 'barbarians' }),
-      makeEvent(4, 'ck.defenderOfCatan', { playerId: 'p1' }),
+      makeEvent(4, 'ck.defenderOfKatan', { playerId: 'p1' }),
       makeEvent(5, 'ck.defendersTied', { players: ['p1', 'p2'] }),
       makeEvent(6, 'ck.cityPillaged', { playerId: 'p1', vertex: 4, wallLost: true, toppled: true }),
       makeEvent(7, 'ck.robberEntered', { hex: 9 }),

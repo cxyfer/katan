@@ -6,7 +6,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
-import type { ServerMessage } from '@catan/protocol';
+import type { ServerMessage } from '@katan/protocol';
 import { restartService, startHarness, type TestClient, type TestHarness } from './helpers.ts';
 
 const rejections: unknown[] = [];

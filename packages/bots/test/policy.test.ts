@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getTopology, requireProfile, type GameState, type ProfileDefinition } from '@catan/rules';
+import { getTopology, requireProfile, type GameState, type ProfileDefinition } from '@katan/rules';
 import { botCommandLimit } from '../src/index.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';
 import { createBotPolicy } from '../src/policy.ts';

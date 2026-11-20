@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, type ServerConfig } from './config.ts';
 import { createDialect, migrate, Repository } from './db.ts';
+import { migrateLegacySqlite } from './legacy-sqlite.ts';
 import { SessionService } from './session.ts';
 import { RoomService } from './rooms.ts';
 import { GameCoordinator } from './game.ts';
@@ -17,8 +18,8 @@ import { createWebSocketServer } from './ws.ts';
 // `build.mjs` replaces this with the root package.json version, so a release
 // bumps one file and `/healthz` reports the version of the tag that was built.
 // Source imports in tests see the fallback instead.
-declare const __CATAN_VERSION__: string;
-export const VERSION = typeof __CATAN_VERSION__ === 'string' ? __CATAN_VERSION__ : '0.0.0-dev';
+declare const __KATAN_VERSION__: string;
+export const VERSION = typeof __KATAN_VERSION__ === 'string' ? __KATAN_VERSION__ : '0.0.0-dev';
 
 export interface Logger {
   (level: 'debug' | 'info' | 'warn' | 'error', message: string, meta?: unknown): void;
@@ -56,6 +57,8 @@ export async function startService(
   if (!config.databaseUrl && config.sqlitePath !== ':memory:') {
     const directory = dirname(resolve(config.sqlitePath));
     if (!existsSync(directory)) mkdirSync(directory, { recursive: true });
+    const legacy = migrateLegacySqlite(config.sqlitePath, config.legacySqlitePath);
+    if (legacy.action !== 'none') log('info', 'migrated legacy sqlite database', legacy);
   }
   const db = await createDialect({
     ...(config.databaseUrl ? { databaseUrl: config.databaseUrl } : {}),
@@ -66,7 +69,12 @@ export async function startService(
   if (applied.length > 0) log('info', 'applied migrations', { applied });
   const repo = new Repository(db);
 
-  const sessions = new SessionService(repo, config.sessionCookieName, config.cookieSecure);
+  const sessions = new SessionService(
+    repo,
+    config.sessionCookieName,
+    config.cookieSecure,
+    config.legacySessionCookieNames,
+  );
   const gamesRef: { current: GameCoordinator | null } = { current: null };
   // Bot 排程器依賴房間與遊戲服務，兩者的回呼在組裝完成後才接上。
   const botsRef: { current: BotDriver | null } = { current: null };

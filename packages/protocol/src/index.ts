@@ -14,7 +14,7 @@ import {
   RULE_EVENT_TYPES,
   SCENARIO_IDS,
   VARIANT_IDS,
-} from '@catan/rules';
+} from '@katan/rules';
 import type {
   BoxId,
   ExpansionId,
@@ -24,7 +24,7 @@ import type {
   Resource,
   ScenarioId,
   VariantId,
-} from '@catan/rules';
+} from '@katan/rules';
 
 /**
  * Stable message ids a client must be able to render. Both lists come from the

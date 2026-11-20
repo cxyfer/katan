@@ -8,8 +8,8 @@
  * re-validates the resolved profile.
  */
 
-import type { ProfileView } from '@catan/protocol';
-import { EXPANSION_IDS } from '@catan/rules';
+import type { ProfileView } from '@katan/protocol';
+import { EXPANSION_IDS } from '@katan/rules';
 
 /** Registry order (base → Seafarers → C&K → T&B → E&P) for display. */
 function displayOrder(expansions: readonly string[]): string[] {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { AbandonProposalView, RoomView, SuspendProposalView } from '@catan/protocol';
+import type { AbandonProposalView, RoomView, SuspendProposalView } from '@katan/protocol';
 import { ApiClient, type FetchLike } from '../src/api/client.ts';
 import { App } from '../src/App.tsx';
 import { absentOthers } from '../src/state/leave.ts';

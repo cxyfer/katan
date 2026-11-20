@@ -1,4 +1,4 @@
-# Releasing catan
+# Releasing katan
 
 This file is the release contract for the repository. Read it before creating a version tag.
 The automation lives in [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml).
@@ -117,7 +117,7 @@ refactors and tests.
   matching entry, so `pnpm verify` blocks a stable bump that forgot its notes.
 
 Players who have not opened the board since the newest entry see a **New** badge on its tab; the last
-version they read is stored in `localStorage` under `catan.news.seen`.
+version they read is stored in `localStorage` under `katan.news.seen`.
 
 
 ### 1. Pre-flight
@@ -132,7 +132,7 @@ git status --short          # must be empty
 
 pnpm install --frozen-lockfile
 pnpm verify                 # typecheck + tests + build + post-build smoke
-BOTS_SEEDS=10 pnpm --filter @catan/bots exec vitest run   # bot gate: 10 seeds per expansion profile
+BOTS_SEEDS=10 pnpm --filter @katan/bots exec vitest run   # bot gate: 10 seeds per expansion profile
 ```
 
 `pnpm verify` runs the expansion profiles' bot games with 3 seeds per player count; the
@@ -150,7 +150,7 @@ The version lives in one file:
 | [`package.json`](package.json) | `"version": "0.2.0"` |
 
 Nothing else carries the version. `packages/server/build.mjs` reads this file and defines
-`__CATAN_VERSION__` when it bundles the service, which is what `/healthz` reports.
+`__KATAN_VERSION__` when it bundles the service, which is what `/healthz` reports.
 
 ```bash
 git add package.json
@@ -188,10 +188,10 @@ that `/healthz` reports the version of the commit it built, so this manual check
 on the same claim — the tag, the bundle and the image must agree:
 
 ```bash
-docker run --rm -d --name catan-version-check -p 3411:3000 \
+docker run --rm -d --name katan-version-check -p 3411:3000 \
   ghcr.io/cxyfer/katan:v0.2.0
 curl -s http://127.0.0.1:3411/healthz      # {"ok":true,"data":{"version":"0.2.0",...}}
-docker rm -f catan-version-check
+docker rm -f katan-version-check
 ```
 
 The image tag is the Git tag verbatim, so `v0.2.0-rc.3` publishes `ghcr.io/cxyfer/katan:v0.2.0-rc.3`

@@ -1,5 +1,5 @@
 import { memo, useId } from 'react';
-import type { Resource } from '@catan/rules';
+import type { Resource } from '@katan/rules';
 import { TerrainIllustration } from './GameArt.tsx';
 
 const PALETTES: Record<Resource, { sky: string; light: string; far: string; near: string; ground: string }> = {

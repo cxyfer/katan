@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { applyCommand, seededRng, type GameState } from '@catan/rules';
+import { applyCommand, seededRng, type GameState } from '@katan/rules';
 import { botOwesAction, fallbackPolicy } from '../src/fallback.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';

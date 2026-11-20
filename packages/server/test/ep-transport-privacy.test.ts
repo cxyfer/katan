@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
-import type { GameState } from '@catan/rules';
-import type { CommandReceipt, GameSnapshot, ServerMessage } from '@catan/protocol';
+import type { GameState } from '@katan/rules';
+import type { CommandReceipt, GameSnapshot, ServerMessage } from '@katan/protocol';
 import { startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;

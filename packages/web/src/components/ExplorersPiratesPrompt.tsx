@@ -1,4 +1,4 @@
-import { RESOURCES, type EpCargo, type Resource } from '@catan/rules';
+import { RESOURCES, type EpCargo, type Resource } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatResourceMap } from '../i18n/format.ts';
 import {

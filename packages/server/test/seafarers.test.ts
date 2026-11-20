@@ -5,7 +5,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { getTopology } from '@catan/rules';
+import { getTopology } from '@katan/rules';
 import { startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;

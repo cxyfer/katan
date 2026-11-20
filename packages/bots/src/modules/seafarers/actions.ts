@@ -21,7 +21,7 @@
  * 決定性（P4）：候選依 edge／vertex index 遞增產生，分數相同時保留這個順序；不消耗亂數。
  */
 
-import { COSTS } from '@catan/rules';
+import { COSTS } from '@katan/rules';
 import { roadDirectionScore } from '../../base/roads.ts';
 import { isFreeSpot, playerYield, roadStockLeft, type BoardModel } from '../../board.ts';
 import { bestRouteEdge, canAfford, PIP_VALUE, settlementSpotValue, type Plan } from '../../economy.ts';

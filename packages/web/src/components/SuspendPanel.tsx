@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import type { RoomView, SuspendProposalView } from '@catan/protocol';
+import type { RoomView, SuspendProposalView } from '@katan/protocol';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { awaitingResume, awaitingSuspendConsent, joinNames, nicknameOf, selfMemberOf } from '../state/leave.ts';
 import type { TableController } from '../state/useTable.ts';

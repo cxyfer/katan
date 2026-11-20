@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { CommandRequest } from '@catan/protocol';
+import type { CommandRequest } from '@katan/protocol';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
@@ -70,7 +70,7 @@ describe('entry and locale', () => {
     );
     await screen.findByTestId('nickname-input');
     fireEvent.change(screen.getByTestId('locale-switch'), { target: { value: 'zh-Hant' } });
-    expect(storage.getItem('catan.locale')).toBe('zh-Hant');
+    expect(storage.getItem('katan.locale')).toBe('zh-Hant');
   });
 });
 

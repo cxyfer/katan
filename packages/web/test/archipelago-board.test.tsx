@@ -2,7 +2,7 @@
 
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { getTopology } from '@catan/rules';
+import { getTopology } from '@katan/rules';
 import { coastLoops, insideLoop } from '../src/board/coastline.ts';
 import { buildGeometry, isCoastEdge, landHexOfEdge } from '../src/board/geometry.ts';
 import { harborPlacement } from '../src/board/harbor.ts';

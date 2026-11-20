@@ -23,7 +23,7 @@ import {
   type GameState,
   type GameView,
   type ProfileDefinition,
-} from '@catan/rules';
+} from '@katan/rules';
 import {
   actCk,
   addKnight,

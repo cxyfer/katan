@@ -1,4 +1,4 @@
-import type { PublicBoardView } from '@catan/rules';
+import type { PublicBoardView } from '@katan/rules';
 import { isCoastEdge, landHexOfEdge, type BoardGeometry } from '../geometry.ts';
 import type { SceneBounds, WorldPoint } from '../render-contract.ts';
 import { HARBOR_STRUCTURE } from '../harbor.ts';

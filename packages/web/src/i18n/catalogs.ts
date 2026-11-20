@@ -10,13 +10,13 @@
  * asserts that parity, and `REQUIRED_MESSAGE_IDS` asserts the contractual ids.
  */
 
-import type { Locale } from '@catan/protocol';
+import type { Locale } from '@katan/protocol';
 import {
   ERROR_MESSAGE_IDS as PROTOCOL_ERROR_IDS,
   EVENT_MESSAGE_IDS as PROTOCOL_EVENT_IDS,
   REQUIRED_MESSAGE_IDS as PROTOCOL_REQUIRED_IDS,
   SERVER_ERROR_IDS as PROTOCOL_SERVER_ERROR_IDS,
-} from '@catan/protocol';
+} from '@katan/protocol';
 import { en } from './en.ts';
 import { MODULE_CATALOGS } from './modules/index.ts';
 import { zhHant } from './zh-Hant.ts';
@@ -64,7 +64,7 @@ export const REQUIRED_MESSAGE_IDS: readonly string[] = [
 
 export { PROTOCOL_REQUIRED_IDS };
 
-/** Canonical rule-event message ids, re-exported from `@catan/protocol`. */
+/** Canonical rule-event message ids, re-exported from `@katan/protocol`. */
 export const EVENT_MESSAGE_IDS: readonly string[] = PROTOCOL_EVENT_IDS;
 
 /**

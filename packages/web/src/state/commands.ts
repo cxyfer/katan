@@ -8,7 +8,7 @@
  * on top of an unresolved command would invite a double submission.
  */
 
-import type { CommandReceipt, Notice } from '@catan/protocol';
+import type { CommandReceipt, Notice } from '@katan/protocol';
 
 export type CommandStatus = 'submitting' | 'unknown' | 'rejected' | 'stale' | 'accepted';
 

@@ -176,7 +176,7 @@ def start_server(out: Path):
     global BASE
     if not SERVER_ENTRY.is_file() or not (DIST / "index.html").is_file():
         raise SystemExit("built artifacts missing; run pnpm build first")
-    temporary = tempfile.TemporaryDirectory(prefix="catan-layout-clipping-")
+    temporary = tempfile.TemporaryDirectory(prefix="katan-layout-clipping-")
     log = (out / "server.log").open("w", encoding="utf-8")
     port = free_port()
     env = {
@@ -400,7 +400,7 @@ def phone_context(browser, storage, viewport: tuple[int, int], locale: str):
         is_mobile=True,
         device_scale_factor=1,
     )
-    context.add_init_script(f"localStorage.setItem('catan.locale', {json.dumps(locale)});")
+    context.add_init_script(f"localStorage.setItem('katan.locale', {json.dumps(locale)});")
     page = context.new_page()
     page.set_default_timeout(TIMEOUT_MS)
     return context, page
@@ -494,7 +494,7 @@ def capture(out: Path) -> dict:
             ]
             pages = []
             for context, name in zip(contexts, NAMES):
-                context.add_init_script("localStorage.setItem('catan.locale', 'en');")
+                context.add_init_script("localStorage.setItem('katan.locale', 'en');")
                 page = context.new_page()
                 page.set_default_timeout(TIMEOUT_MS)
                 page.on("pageerror", lambda error, who=name: errors.append(f"{who}: {error}"))

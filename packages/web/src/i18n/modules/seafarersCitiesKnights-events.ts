@@ -1,7 +1,7 @@
 /** Display parameters for the Seafarers + Cities & Knights events (see `../events.ts`). */
 
-import type { Locale } from '@catan/protocol';
-import type { GameEvent } from '@catan/rules';
+import type { Locale } from '@katan/protocol';
+import type { GameEvent } from '@katan/rules';
 import { t } from '../index.ts';
 
 type NameResolver = (playerId: string) => string;

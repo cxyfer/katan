@@ -7,7 +7,7 @@
  * response commands are merged from the registered modules.
  */
 
-import type { ProfileDefinition } from '@catan/rules';
+import type { ProfileDefinition } from '@katan/rules';
 import { BOT_MODULES, botModulesOf } from './modules/registry.ts';
 import { BOT_LEVELS, type BotLevel } from './types.ts';
 

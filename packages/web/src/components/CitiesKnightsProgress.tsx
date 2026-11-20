@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react';
-import { COMMODITIES, RESOURCES, type CardKind, type GameView } from '@catan/rules';
+import { COMMODITIES, RESOURCES, type CardKind, type GameView } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import { hexReference, vertexReference, viewReferenceContext } from '../board/references.ts';

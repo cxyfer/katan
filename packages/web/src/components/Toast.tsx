@@ -1,4 +1,4 @@
-import type { Notice } from '@catan/protocol';
+import type { Notice } from '@katan/protocol';
 import { translateNotice } from '../i18n/events.ts';
 import { useLocale } from '../i18n/context.tsx';
 import { GameIcon } from './GameArt.tsx';

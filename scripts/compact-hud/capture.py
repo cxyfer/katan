@@ -73,7 +73,7 @@ def start_server(out: Path):
     global BASE
     if not SERVER_ENTRY.is_file() or not (DIST / "index.html").is_file():
         raise SystemExit("built artifacts missing; run pnpm build first")
-    temporary = tempfile.TemporaryDirectory(prefix="catan-compact-hud-")
+    temporary = tempfile.TemporaryDirectory(prefix="katan-compact-hud-")
     log = (out / "server.log").open("w", encoding="utf-8")
     port = free_port()
     env = {
@@ -135,7 +135,7 @@ class Table:
         if touch:
             options.update(has_touch=True, is_mobile=True, device_scale_factor=PHONE_SCALE)
         self.context = browser.new_context(**options)
-        self.context.add_init_script(f"localStorage.setItem('catan.locale', {json.dumps(locale)});")
+        self.context.add_init_script(f"localStorage.setItem('katan.locale', {json.dumps(locale)});")
         self.context.route("**/api/**", self.route_api)
         self.context.route_web_socket("**/ws", self.connect_socket)
         self.page = self.context.new_page()

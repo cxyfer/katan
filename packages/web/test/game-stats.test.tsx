@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { createGameStats, type GameStats, type GameView } from '@catan/rules';
+import { createGameStats, type GameStats, type GameView } from '@katan/rules';
 import { GameStatsPanel, buildStatsRows } from '../src/components/GameStats.tsx';
 import { diceWays } from '../src/components/StatsCharts.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';

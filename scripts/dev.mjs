@@ -71,7 +71,7 @@ async function restartService() {
       HOST: serviceHost,
       PORT: String(port),
       WEB_DIST_PATH: process.env.WEB_DIST_PATH ?? resolve(webDir, 'dist'),
-      SQLITE_PATH: process.env.SQLITE_PATH ?? resolve(root, '.data/catan.sqlite'),
+      SQLITE_PATH: process.env.SQLITE_PATH ?? resolve(root, '.data/katan.sqlite'),
     },
   });
   server = child;

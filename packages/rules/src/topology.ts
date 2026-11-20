@@ -1,5 +1,5 @@
 /**
- * Board topology for hex-grid CATAN-style boards.
+ * Board topology for hex-grid island boards.
  *
  * The topology is pure geometry: hexes, their shared vertices (intersections)
  * and edges (paths). Terrain, numbers, harbors and island membership belong to

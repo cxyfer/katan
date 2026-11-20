@@ -1,5 +1,5 @@
-import type { GameEvent } from '@catan/protocol';
-import { RESOURCES, type PublicBoardView } from '@catan/rules';
+import type { GameEvent } from '@katan/protocol';
+import { RESOURCES, type PublicBoardView } from '@katan/rules';
 import type { BoardEffectGroup } from './animation.ts';
 
 export const MAX_FLIGHT_ICONS = 24;

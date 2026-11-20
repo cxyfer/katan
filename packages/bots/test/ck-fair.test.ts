@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { CITIES_KNIGHTS, seededRng, type GameState, type GameView, type ModulePending } from '@catan/rules';
+import { CITIES_KNIGHTS, seededRng, type GameState, type GameView, type ModulePending } from '@katan/rules';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';
 import { GAME_TIMEOUT, botSeats, cloneState, hideDifferently, mixedLevels, runBotGame, viewFor } from './harness.ts';

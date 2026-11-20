@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { CARD_KINDS, RESOURCES, type CardKind, type Offer } from '@catan/rules';
+import { CARD_KINDS, RESOURCES, type CardKind, type Offer } from '@katan/rules';
 import { citiesKnightsView } from '../board/citiesKnights.ts';
 import { epView } from '../board/explorersPirates.ts';
 import { useLocale, useT } from '../i18n/context.tsx';

@@ -1,6 +1,6 @@
 import { useT } from '../i18n/context.tsx';
 import { ALL_TERRAIN, RESOURCE_GLYPH, TERRAIN_FILL, terrainLetter, terrainSymbol } from '../board/terrain.ts';
-import { RESOURCES } from '@catan/rules';
+import { RESOURCES } from '@katan/rules';
 
 /**
  * Legend: terrain letter + glyph + swatch, and resource glyph. Every entry is

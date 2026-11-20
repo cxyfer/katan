@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ApiResult, RoomSummaryView } from '@catan/protocol';
+import type { ApiResult, RoomSummaryView } from '@katan/protocol';
 import { App } from '../src/App.tsx';
 import type { RoomQuery } from '../src/api/client.ts';
 import { memoryStorage } from '../src/state/session.ts';

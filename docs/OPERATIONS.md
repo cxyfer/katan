@@ -13,10 +13,11 @@ tested (SPEC §10).
 | `PORT` | `3000` | HTTP/WebSocket listen port |
 | `HOST` | `0.0.0.0` | Listen address |
 | `DATABASE_URL` | – | `postgres://…` selects PostgreSQL; `sqlite:/path` selects SQLite |
-| `SQLITE_PATH` | `./.data/catan.sqlite` | SQLite file when `DATABASE_URL` is unset |
+| `SQLITE_PATH` | `./.data/katan.sqlite` | SQLite file when `DATABASE_URL` is unset |
+| `LEGACY_SQLITE_PATH` | – | A 0.4.x `catan.sqlite` to copy from when `SQLITE_PATH` does not exist yet; the SQLite Compose file sets it to the old volume (see [Upgrading from 0.4.x](#upgrading-from-04x-catan--katan-rename)) |
 | `WEB_DIST_PATH` | – | Directory of the built client; unset serves API only |
-| `PUBLIC_URL` | – | Public origin (e.g. `https://catan.example.com`) used for the absolute `og:image`, `og:url` and canonical URLs in link previews; unset derives it from `X-Forwarded-Proto`/`Host` |
-| `SESSION_COOKIE_NAME` | `catan_session` | Guest identity cookie name |
+| `PUBLIC_URL` | – | Public origin (e.g. `https://katan.example.com`) used for the absolute `og:image`, `og:url` and canonical URLs in link previews; unset derives it from `X-Forwarded-Proto`/`Host` |
+| `SESSION_COOKIE_NAME` | `katan_session` | Guest identity cookie name; with the default, a 0.4.x `catan_session` cookie is still recognised and renamed on the next HTTP response |
 | `COOKIE_SECURE` | `true` when `NODE_ENV=production` | Adds `Secure` to the cookie |
 | `NICKNAME_MAX_LENGTH` | `24` | Nickname bound (code points) |
 | `CHAT_MAX_LENGTH` | `500` | Chat message bound (code points) |
@@ -76,11 +77,11 @@ The service still runs as UID `10001` and starts through its Node command.
 
 ```bash
 docker compose up -d
-docker compose logs -f catan
+docker compose logs -f katan
 ```
 
 The data volume must be mounted and persistent; the path is `SQLITE_PATH`
-(`/data/catan.sqlite` in the image). SQLite mode requires a single writer, which
+(`/data/katan.sqlite` in the image). SQLite mode requires a single writer, which
 the supported one-replica topology provides.
 
 ### PostgreSQL
@@ -104,7 +105,7 @@ POSTGRES_PASSWORD='<secret>' docker compose -f docker-compose.postgres.yml \
   -f docker-compose.build.yml up --build -d
 ```
 
-The local image is tagged `catan:local`, so a later `docker compose pull` does
+The local image is tagged `katan:local`, so a later `docker compose pull` does
 not replace it.
 
 ## Health and readiness
@@ -130,10 +131,10 @@ stored snapshot and receipt; clients converge by refetching the game.
 **SQLite**
 
 ```bash
-docker compose stop catan
-docker run --rm -v catan_catan-data:/data -v "$PWD:/backup" alpine \
-  sh -c 'cp /data/catan.sqlite /backup/catan-$(date +%Y%m%d).sqlite'
-docker compose start catan
+docker compose stop katan
+docker run --rm -v katan_katan-data:/data -v "$PWD:/backup" alpine \
+  sh -c 'cp /data/katan.sqlite /backup/katan-$(date +%Y%m%d).sqlite'
+docker compose start katan
 ```
 
 Use `sqlite3 <file> ".backup <target>"` for a consistent copy while running, or
@@ -144,7 +145,7 @@ the database when the service is not stopped.
 
 ```bash
 docker compose -f docker-compose.postgres.yml exec -T postgres \
-  pg_dump -U catan catan | gzip > catan-$(date +%Y%m%d).sql.gz
+  pg_dump -U katan katan | gzip > katan-$(date +%Y%m%d).sql.gz
 ```
 
 Restore into an empty database, then start the service and verify `/readyz`.
@@ -185,6 +186,57 @@ Restore into an empty database, then start the service and verify `/readyz`.
    (`ghcr.io/cxyfer/katan@sha256:<digest>`) and run `docker compose up -d`. If
    the new image applied a migration, restore the matching backup — schema
    migrations are not automatically reversible.
+
+### Upgrading from 0.4.x (Catan → Katan rename)
+
+0.4.x stored its data under `catan` names. Browsers need nothing: the
+`catan_session` cookie and the `catan.*` local preferences are moved to their
+`katan` names on the first visit. The database depends on the deployment:
+
+- **Local or plain `docker run`.** With the default `SQLITE_PATH`, a
+  `catan.sqlite` next to the new `katan.sqlite` (for example `.data/` or a
+  volume mounted at `/data`) is renamed together with its `-wal`/`-shm` files
+  on first start. A custom `SQLITE_PATH` is used as configured.
+- **SQLite Compose.** The service is now `katan` with the volume `katan-data`.
+  Stop the old stack with the old Compose file *before* replacing it, so the
+  old container releases the database and port 3000:
+
+  ```bash
+  docker compose down                 # still the 0.4.x docker-compose.yml
+  # replace docker-compose.yml with this release's file
+  docker compose pull && docker compose up -d
+  docker compose logs katan | grep 'migrated legacy sqlite database'
+  ```
+
+  The new file mounts the old `catan-data` volume read-only at `/data-legacy`
+  and copies `catan.sqlite` into the empty `katan-data` volume once; the old
+  volume is left untouched as a backup. After checking the games and guests,
+  remove the `catan-data` mount and declaration from the Compose file and
+  delete the volume (`docker volume rm <project>_catan-data`).
+- **PostgreSQL Compose.** Docker cannot rename a volume, and the new file uses
+  a new volume, role and database (`katan`). Move the data with a dump while
+  the old stack is still running:
+
+  ```bash
+  # with the 0.4.x docker-compose.postgres.yml
+  docker compose -f docker-compose.postgres.yml exec -T postgres \
+    pg_dump -U catan --no-owner --no-privileges catan > katan-upgrade.sql
+  docker compose -f docker-compose.postgres.yml down
+  # replace docker-compose.postgres.yml with this release's file
+  export POSTGRES_PASSWORD='<secret>'
+  docker compose -f docker-compose.postgres.yml up -d postgres
+  docker compose -f docker-compose.postgres.yml exec -T postgres \
+    psql -U katan -d katan -v ON_ERROR_STOP=1 < katan-upgrade.sql
+  docker compose -f docker-compose.postgres.yml up -d
+  ```
+
+  Starting the service before the restore creates an empty schema and the
+  restore then fails on existing tables. Keep the old `catan-postgres` volume
+  until the new deployment is verified.
+
+Migration `0004_katan_event_ids` also rewrites the stored event id
+`ck.defenderOfCatan` to `ck.defenderOfKatan` in events, game logs and command
+receipts, so finished and unfinished Cities & Knights games keep their history.
 
 ## Retention
 

@@ -1,7 +1,7 @@
 /** Game commands, receipts, revisions and per-player projections over HTTP. */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { seededRng } from '@catan/rules';
+import { seededRng } from '@katan/rules';
 import { orderForGame } from '../src/game.ts';
 import {
   runSetupOverApi,

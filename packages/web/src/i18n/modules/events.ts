@@ -3,8 +3,8 @@
  * types the base formatter does not know. One line per module.
  */
 
-import type { Locale } from '@catan/protocol';
-import type { GameEvent } from '@catan/rules';
+import type { Locale } from '@katan/protocol';
+import type { GameEvent } from '@katan/rules';
 import { moduleEventParams as tradersBarbariansEventParams } from '../module-events.ts';
 import { citiesKnightsEventParams } from './citiesKnights-events.ts';
 import { explorersPiratesEventParams } from './explorersPirates-events.ts';

@@ -6,8 +6,8 @@
  * invents information: a parameter the viewer did not receive stays absent.
  */
 
-import type { Locale } from '@catan/protocol';
-import type { GameEvent } from '@catan/rules';
+import type { Locale } from '@katan/protocol';
+import type { GameEvent } from '@katan/rules';
 import { t } from './index.ts';
 import { formatDice, formatGrantMap, formatResourceMap, formatTradeMap } from './format.ts';
 import { moduleEventParams } from './modules/events.ts';
@@ -198,7 +198,7 @@ export function eventParams(
 
 export function translateEvent(locale: Locale, event: GameEvent, nameOf: NameResolver): EventText {
   const params = eventParams(locale, event, nameOf);
-  // Canonical id shape from `@catan/protocol`: `event.<engine event type>`.
+  // Canonical id shape from `@katan/protocol`: `event.<engine event type>`.
   // A pirate action reuses a robber event with `pirate: true` and its own
   // text; a ship reuses a road event with `ship: true` the same way.
   const base = `event.${event.type}`;

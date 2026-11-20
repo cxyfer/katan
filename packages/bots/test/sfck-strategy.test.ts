@@ -23,7 +23,7 @@ import {
   topologyOf,
   type Command,
   type GameState,
-} from '@catan/rules';
+} from '@katan/rules';
 import {
   actCk,
   addKnight,

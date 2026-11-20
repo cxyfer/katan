@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
-import { legalRoadEdges, requireProfile, type GameState, type GameView } from '@catan/rules';
-import type { AbandonProposeResult, ResumableGameView, RoomView, ServerMessage } from '@catan/protocol';
+import { legalRoadEdges, requireProfile, type GameState, type GameView } from '@katan/rules';
+import type { AbandonProposeResult, ResumableGameView, RoomView, ServerMessage } from '@katan/protocol';
 import { newId } from '../src/db.ts';
 import { startService } from '../src/main.ts';
 import {
@@ -599,7 +599,7 @@ describe('R-REC restart recovery', () => {
   }
 
   it('restores the same revision, seat and receipts after a service restart', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'catan-restart-'));
+    const dir = mkdtempSync(join(tmpdir(), 'katan-restart-'));
     const sqlitePath = join(dir, 'restart.sqlite');
     const first = await startService({ port: 0, host: '127.0.0.1', sqlitePath }, () => undefined);
     const base1 = `http://127.0.0.1:${first.port}`;

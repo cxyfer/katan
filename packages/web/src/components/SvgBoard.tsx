@@ -1,5 +1,5 @@
 import { memo, useId, useMemo, type ComponentProps, type Ref } from 'react';
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import type { BoardEffectGroup } from '../board/animation.ts';
 import { landHexOfEdge, type BoardGeometry, type Point } from '../board/geometry.ts';
 import type { BoardIntent } from '../board/intent.ts';

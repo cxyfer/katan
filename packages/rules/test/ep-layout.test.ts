@@ -67,7 +67,7 @@ describe('Explorers & Pirates maps', () => {
     });
   }
 
-  it('the shuffled starting island uses the 14 CATAN terrain hexes', () => {
+  it('the shuffled starting island uses the 14 Katan terrain hexes', () => {
     for (const id of ['fish', 'spices', 'explorers-pirates'] as const) {
       for (const seed of [1, 2]) {
         const { state } = epGame(id, 3, seed);

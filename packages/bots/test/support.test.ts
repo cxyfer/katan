@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PROFILES, getProfile, type ProfileDefinition } from '@catan/rules';
+import { PROFILES, getProfile, type ProfileDefinition } from '@katan/rules';
 import {
   BASE_RESPONSE_COMMANDS,
   BOT_MODULES,

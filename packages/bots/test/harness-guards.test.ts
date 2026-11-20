@@ -31,7 +31,7 @@ import {
   type BotSeat,
 } from './harness.ts';
 import { kitsOf, type ModuleTestKit } from './modules/types.ts';
-import { requireProfile, RESOURCES, seededRng, type GameState } from '@catan/rules';
+import { requireProfile, RESOURCES, seededRng, type GameState } from '@katan/rules';
 
 
 const fallbackSeats = (players: number): BotSeat[] =>
