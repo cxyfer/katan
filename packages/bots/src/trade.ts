@@ -136,19 +136,59 @@ export function ownOfferStep(
   return null;
 }
 
+/** 這個回合自己和銀行換過的牌（`bankTradesThisTurn`）。 */
+export interface SameTurnBankTrades {
+  /** 從銀行換進來的卡種。 */
+  received: ReadonlySet<CardKind>;
+  /** 換給銀行的卡種。 */
+  gave: ReadonlySet<CardKind>;
+}
+
+const NO_TRADES: SameTurnBankTrades = { received: new Set(), gave: new Set() };
+
+/**
+ * 這個回合（自最近一次 `turn.started` 起）自己做過的銀行交易：收進來的牌與換出去的牌。策略沒有跨呼叫的狀態，
+ * 所以從投影的事件歷史推回來；歷史缺漏或沒有附（測試用的投影）時兩個集合都是空的。`handRelief` 與
+ * `bankTradeToward` 共用（#173、#180）。
+ */
+export function bankTradesThisTurn(view: Pick<GameView, 'events'>, selfId: string): SameTurnBankTrades {
+  const received = new Set<CardKind>();
+  const gave = new Set<CardKind>();
+  for (let index = view.events.length - 1; index >= 0; index--) {
+    const event = view.events[index]!;
+    if (event.type === 'turn.started') break;
+    if (event.type !== 'trade.bank' || event.params.playerId !== selfId) continue;
+    received.add(event.params.receive as CardKind);
+    gave.add(event.params.give as CardKind);
+  }
+  return { received, gave };
+}
+
 /**
  * 以銀行／港口補齊 `nextCost`，只用 `reserve` 以外的過剩卡牌。全部補得起才回傳
  * 第一筆交易，否則回傳 null（避免換了一半又蓋不成）。卡種依 `Economy.kinds`：模組卡種要有匯率才能付出，
  * 要銀行有存量才能換入。
+ *
+ * 給了 `selfId` 時不來回換（#180），與 `handRelief` 相同：同一回合內不換出這個回合從銀行換進來的牌（不論是
+ * relief、模組的換匯還是前一筆計畫交易換進來的），也不換回換出去過的牌；這樣補不齊就不交易。計畫的排名會隨手牌
+ * 改變，C&K 模組先為改良換進主軌道的 commodity，下一步的計畫交易又把它當成過剩的牌換掉，就是這種來回。
  */
-export function bankTradeToward(view: GameView, economy: Economy, nextCost: Cost, reserve: Cost): Command | null {
+export function bankTradeToward(
+  view: GameView,
+  economy: Economy,
+  nextCost: Cost,
+  reserve: Cost,
+  selfId?: string,
+): Command | null {
   const { kinds } = economy;
+  const traded = selfId === undefined ? NO_TRADES : bankTradesThisTurn(view, selfId);
   const missing = deficitOf(economy.hand, nextCost);
   if (kinds.every((kind) => (missing[kind] ?? 0) === 0)) return null;
+  if (kinds.some((kind) => (missing[kind] ?? 0) > 0 && traded.gave.has(kind))) return null;
   const spare: Hand = { ...economy.hand };
   for (const kind of kinds) {
     const keep = Math.max(nextCost[kind] ?? 0, reserve[kind] ?? 0);
-    spare[kind] = Math.max(0, (economy.hand[kind] ?? 0) - keep);
+    spare[kind] = traded.received.has(kind) ? 0 : Math.max(0, (economy.hand[kind] ?? 0) - keep);
   }
   // 投影的銀行只到上限（#137）：規劃連續幾筆交易時把「至少」當成足夠。
   const bank = plannedBankOf(view, kinds);
