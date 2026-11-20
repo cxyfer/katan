@@ -657,13 +657,14 @@ for (const testCase of cases) {
           for (const statement of migration.statements) await db.run(statement);
           await db.run('INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)', [migration.id, 'then']);
         }
-        const legacyEvent = { seq: 7, type: 'ck.defenderOfCatan', params: { playerId: 'p1' } };
+        // 暱稱剛好等於舊事件 id 也是合法輸入，遷移不可改到它
+        const legacyEvent = { seq: 7, type: 'ck.defenderOfCatan', params: { playerId: 'p1', nickname: 'ck.defenderOfCatan' } };
         const otherEvent = { seq: 8, type: 'ck.defendersTied', params: {} };
         await db.run(
           `INSERT INTO games (id, room_id, profile_id, engine_version, state_json, revision, status,
             pause_reason, result_json, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          ['game_old', 'room_old', 'ck-2025', 'old', JSON.stringify({ log: [legacyEvent, otherEvent] }), 3, 'active', null, null, 'then', 'then'],
+          ['game_old', 'room_old', 'ck-2025', 'old', JSON.stringify({ players: [{ id: 'p1', nickname: 'ck.defenderOfCatan' }], log: [legacyEvent, otherEvent] }), 3, 'active', null, null, 'then', 'then'],
         );
         for (const event of [legacyEvent, otherEvent]) {
           await db.run(
@@ -683,12 +684,14 @@ for (const testCase of cases) {
         const types = await db.all<{ type: string }>('SELECT type FROM game_events ORDER BY seq');
         expect(types.map((row) => row.type)).toEqual(['ck.defenderOfKatan', 'ck.defendersTied']);
         const [game] = await db.all<{ state_json: string }>('SELECT state_json FROM games WHERE id = ?', ['game_old']);
-        expect(JSON.parse(game!.state_json).log.map((event: { type: string }) => event.type)).toEqual([
-          'ck.defenderOfKatan',
-          'ck.defendersTied',
-        ]);
+        const state = JSON.parse(game!.state_json);
+        expect(state.log.map((event: { type: string }) => event.type)).toEqual(['ck.defenderOfKatan', 'ck.defendersTied']);
+        expect(state.players[0].nickname).toBe('ck.defenderOfCatan');
+        expect(state.log[0].params.nickname).toBe('ck.defenderOfCatan');
         const [receipt] = await db.all<{ events_json: string }>('SELECT events_json FROM command_receipts');
-        expect(JSON.parse(receipt!.events_json)[0].type).toBe('ck.defenderOfKatan');
+        const receiptEvents = JSON.parse(receipt!.events_json);
+        expect(receiptEvents[0].type).toBe('ck.defenderOfKatan');
+        expect(receiptEvents[0].params.nickname).toBe('ck.defenderOfCatan');
       } finally {
         await db.close();
       }

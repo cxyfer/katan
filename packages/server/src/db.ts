@@ -365,14 +365,16 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
     statements: [`ALTER TABLE rooms ADD COLUMN order_mode TEXT NOT NULL DEFAULT 'join'`],
   },
   {
-    // 事件 id `ck.defenderOfCatan` 改名為 `ck.defenderOfKatan`；已存的事件、對局紀錄與指令回條一併改寫
+    // 事件 id `ck.defenderOfCatan` 改名為 `ck.defenderOfKatan`；已存的事件、對局紀錄與指令回條一併改寫。
+    // JSON 欄位只比對事件物件的 `"type":"…"`（JSON.stringify 不留空白），暱稱等同名字串不受影響。
     id: '0004_katan_event_ids',
     statements: [
       `UPDATE game_events SET type = 'ck.defenderOfKatan' WHERE type = 'ck.defenderOfCatan'`,
-      `UPDATE games SET state_json = REPLACE(state_json, '"ck.defenderOfCatan"', '"ck.defenderOfKatan"')
-        WHERE state_json LIKE '%"ck.defenderOfCatan"%'`,
-      `UPDATE command_receipts SET events_json = REPLACE(events_json, '"ck.defenderOfCatan"', '"ck.defenderOfKatan"')
-        WHERE events_json LIKE '%"ck.defenderOfCatan"%'`,
+      `UPDATE games SET state_json = REPLACE(state_json, '"type":"ck.defenderOfCatan"', '"type":"ck.defenderOfKatan"')
+        WHERE state_json LIKE '%"type":"ck.defenderOfCatan"%'`,
+      `UPDATE command_receipts
+        SET events_json = REPLACE(events_json, '"type":"ck.defenderOfCatan"', '"type":"ck.defenderOfKatan"')
+        WHERE events_json LIKE '%"type":"ck.defenderOfCatan"%'`,
     ],
   },
 ];
