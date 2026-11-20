@@ -195,8 +195,18 @@ produced.
 - **SQL is portable.** Statements are authored with `?` placeholders and
   rewritten for PostgreSQL; the same repository contract suite runs on both.
 
-## Intellectual property
+## License and intellectual property
 
-This is an original implementation of a paraphrased rules specification. It does
-not include official artwork, logos or card text. Review licensing before any
-public branded release (SPEC §14).
+Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE): you may run,
+modify and share it for any noncommercial purpose, including private
+self-hosting for friends. Charities, educational institutions, public research
+and the other organizations the license lists may use it regardless of funding;
+any other commercial use needs separate written permission.
+
+This is an unofficial, fan-made implementation of a paraphrased rules
+specification, not affiliated with or endorsed by CATAN GmbH or CATAN Studio.
+CATAN and its expansion names are trademarks of CATAN GmbH, and the license
+grants no rights in them. The repository does not include official artwork,
+logos, card or rulebook text; all artwork is original and all sounds are
+synthesised. See [`NOTICE`](NOTICE) and SPEC §14 before any public branded
+release.

@@ -1,0 +1,47 @@
+Katan
+Copyright (c) 2026 cxyfer
+https://github.com/cxyfer/katan
+
+Required Notice: Copyright (c) 2026 cxyfer (https://github.com/cxyfer/katan)
+
+The source code, documentation and original artwork in this repository are
+licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE). In
+short, and without replacing the license text: you may run, study, modify and
+share this software for any noncommercial purpose, including private
+self-hosting for friends, family or a club. Use by any charitable
+organization, educational institution, public research organization, public
+safety or health organization, environmental protection organization or
+government institution is permitted regardless of its funding. Any other
+commercial use, including indirect commercial use such as hosting the game on
+a site that carries advertising, requires separate written permission.
+
+Trademarks and affiliation
+--------------------------
+
+CATAN, and the names of its expansions and scenarios (including Seafarers,
+Cities & Knights, Traders & Barbarians and Explorers & Pirates), are
+trademarks of CATAN GmbH. Where this software or its documentation refers to
+them, it does so only to identify the rules it follows or to cite the official
+rulebooks. "Katan" is the name of this project, not a CATAN GmbH product.
+
+This project is an unofficial, fan-made, noncommercial implementation. It is
+not affiliated with, endorsed by or sponsored by CATAN GmbH, CATAN Studio,
+Inc. or KOSMOS. The license in LICENSE covers only the copyright of cxyfer in
+this repository; it grants no rights in any third-party trademark, and none of
+the permissions it gives extend to those trademarks.
+
+Rules and assets
+----------------
+
+The rules engine implements game mechanics from a paraphrased specification
+(docs/SPEC.md). The repository does not contain official artwork, logos, card
+text, rulebook text, fonts or sound recordings. The board, card and icon
+artwork is original SVG drawn for this project, and all sounds are synthesised
+at runtime. No bundled asset carries separate licence terms.
+
+Third-party software
+--------------------
+
+Dependencies installed through pnpm remain under their own licences (MIT,
+ISC and BSD-3-Clause for the runtime dependencies at the time of writing). Run
+`pnpm licenses list --prod` for the current list.
