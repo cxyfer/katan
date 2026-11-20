@@ -4,7 +4,7 @@
  * - 路線：`graph.ts` 依 MP 算最短路徑（有道路 1、沒有 2、邊上有蠻族再 +2）。中途不得經過其他據點的廣場：
  *   進入廣場就結束這一次移動。有貨時去需要它的據點，沒貨時去最近、貨物堆還有貨的據點。
  * - 過路費：經過對手道路要付 1 gold。路線的過路費不超過「gold − 準備金 1」；這一次移動就能送達時（送達會拿回 gold）
- *   可以用到準備金。付不起時改走不收費的路線，兩者都沒有才動用準備金。
+ *   可以用到準備金。付不起時改走不收費的路線，再不行改走過路費最少的路線；都不在預算內才動用準備金（`budgetedLeg`）。
  * - 運貨優先：`tbWagon` frame 一步一步沿路線走，走不動就停；單一 frame 最多送 12 個指令，之後改送 `tb.wagonStop`。
  * - 升級（`tb.upgradeWagon`）以計畫估值：能讓這回合多送一次貨時值 1 次運貨，其餘依 MP、gold 與滿級分數估長期價值。
  *   加速（`tb.wagonBoost`，1 grain、+2 MP）只在「本回合因此多送一次貨」時使用。驅離蠻族（`tb.driveOff`）不花資源，
@@ -49,6 +49,8 @@ export const WAGON_FRAME_COMMANDS = 12;
 
 /** 一次過路費在路徑成本裡折算的 MP：1 gold 約 0.5 張資源，另外還送對手 1 gold。 */
 const TOLL_MP = 1.5;
+/** 找「過路費最少」路線時每次過路費的權重：遠大於任何路線的 MP，同樣次數才比 MP。 */
+const FEWEST_TOLLS_MP = 1000;
 /** 一次運貨的價值（勝利分當量）：1 分。 */
 const DELIVERY_VALUE = 1;
 /** 每多 1 MP 的長期價值（勝利分當量）：往返一趟大約 8 MP，剩下的對局還能多送一部分。 */
@@ -127,14 +129,16 @@ function destinations(traders: TbTradersView, wagon: Wagon): { site: Site; deliv
     .map((site) => ({ site, delivers: false }));
 }
 
-/** `allowTolls` 為 false 時對手的道路不能走；其他據點的廣場不能經過（只能當終點）。 */
-function legTo(ctx: LegContext, from: number, target: number, delivers: boolean, allowTolls: boolean): WagonLeg | null {
+/**
+ * `tollMp` 是每次過路費在路徑成本裡折算的 MP；null 時對手的道路不能走。其他據點的廣場不能經過（只能當終點）。
+ */
+function legTo(ctx: LegContext, from: number, target: number, delivers: boolean, tollMp: number | null): WagonLeg | null {
   const { view, topo, playerId, barbarians, plazas } = ctx;
   const paths = vertexPaths(topo, from, (edge, _at, next) => {
     if (next !== target && plazas.has(next)) return null;
     const step = wagonStepCost(view, playerId, edge, barbarians);
-    if (step.toll && !allowTolls) return null;
-    return step.mp + (step.toll ? TOLL_MP : 0);
+    if (step.toll && tollMp === null) return null;
+    return step.mp + (step.toll ? tollMp! : 0);
   });
   const edges = edgesTo(paths, target);
   if (!edges || edges.length === 0) return null;
@@ -152,18 +156,26 @@ function legTo(ctx: LegContext, from: number, target: number, delivers: boolean,
 }
 
 /**
- * 到某個據點的路線，含過路費預算（§4.2）：收費路線的過路費不超過 gold − 準備金；`reach` MP 內就能送達時可以用到
- * 準備金。付不起時改走不收費的路線，兩者都沒有才動用準備金；仍然付不起時回 null。
+ * 到某個據點的路線，含過路費預算（§4.2）。依序：
+ *
+ * 1. 最便宜的路線（MP 加上折算的過路費），過路費不超過 gold − 準備金；`reach` MP 內就能送達時可以用到準備金；
+ * 2. 不收費的路線；
+ * 3. 過路費最少的路線（同樣次數取 MP 少的），同樣受上面的預算限制；
+ * 4. 都沒有時動用準備金：過路費最少的路線，只要付得起。
+ *
+ * 第 3、4 步避免「最便宜的路線付不起、又沒有不收費的路線」時車隊永遠停著：中間還有收費較少、付得起的路線。
  */
 function budgetedLeg(ctx: LegContext, from: number, site: Site, delivers: boolean, reach: number): WagonLeg | null {
   const gold = goldOf(ctx.view, ctx.playerId);
-  const any = legTo(ctx, from, site.plaza, delivers, true);
-  if (any && (any.tolls === 0 || any.tolls <= gold - TRADERS_TOLL_RESERVE || (delivers && any.mp <= reach && any.tolls <= gold))) {
-    return any;
-  }
-  const free = any && any.tolls > 0 ? legTo(ctx, from, site.plaza, delivers, false) : null;
+  const withinBudget = (leg: WagonLeg): boolean =>
+    leg.tolls === 0 || leg.tolls <= gold - TRADERS_TOLL_RESERVE || (delivers && reaches(leg, reach) && leg.tolls <= gold);
+  const cheapest = legTo(ctx, from, site.plaza, delivers, TOLL_MP);
+  if (!cheapest) return null;
+  if (withinBudget(cheapest)) return cheapest;
+  const free = legTo(ctx, from, site.plaza, delivers, null);
   if (free) return free;
-  return any && any.tolls <= gold ? any : null;
+  const fewest = legTo(ctx, from, site.plaza, delivers, FEWEST_TOLLS_MP);
+  return fewest && fewest.tolls <= gold ? fewest : null;
 }
 
 /** 路線的成本（與 Dijkstra 相同的折算）：MP 加上過路費。 */
@@ -208,15 +220,18 @@ const reaches = (leg: WagonLeg, mp: number): boolean => stepsWithin(leg, mp) ===
 // 車隊移動（tbWagon frame）
 // ---------------------------------------------------------------------------
 
-/** 這個 frame 裡自己已經送過幾個指令：自最近一次 `turn.started` 起，自己的車隊事件數（frame 在回合結束時才開）。 */
+/**
+ * 這個 frame 裡自己已經送過幾個指令：自最近一次 `turn.started` 起，自己的車隊事件數（frame 在回合結束時才開）。
+ * 歷史裡找不到 `turn.started`（缺漏或截斷）時無法界定 frame 的起點，回 0，不把整段歷史算進來。
+ */
 export function wagonCommandsThisFrame(view: GameView, selfId: string): number {
   let count = 0;
   for (let index = view.events.length - 1; index >= 0; index--) {
     const event = view.events[index]!;
-    if (event.type === 'turn.started') break;
+    if (event.type === 'turn.started') return count;
     if (WAGON_COMMAND_EVENTS.has(event.type) && event.params.playerId === selfId) count += 1;
   }
-  return count;
+  return 0;
 }
 
 function moveData(frame: PublicModulePendingView): TbMoveData | null {
@@ -364,12 +379,14 @@ function knightCommand(turn: TurnContext): BotCommand | null {
   return move ? command('tb.playKnight', move) : null;
 }
 
-/** standard 這回合要打 Swift Journey，而不是騎士卡。 */
+/**
+ * standard 這回合要打 Swift Journey：只在「一次移動送不到、兩次送得到」時；手上也有騎士卡、而且它能拿下最大騎士團時
+ * 改打騎士卡。
+ */
 function prefersSwift(turn: TurnContext, leg: WagonLeg | null): boolean {
   const hints = hintsOf(turn.view);
-  if (turn.level === 'easy' || !hints?.canPlaySwift) return false;
-  if (!hints.canPlayKnight) return true;
-  return !takesArmy(turn) && swiftDelivers(turn, leg);
+  if (turn.level === 'easy' || !hints?.canPlaySwift || !swiftDelivers(turn, leg)) return false;
+  return !hints.canPlayKnight || !takesArmy(turn);
 }
 
 function preroll(turn: TurnContext): Scored<BotCommand>[] {
@@ -385,10 +402,7 @@ function actions(turn: TurnContext): Scored<BotCommand>[] {
   const hints = hintsOf(turn.view);
   if (!hints || (!hints.canPlayKnight && !hints.canPlaySwift)) return [];
   const leg = wagonLeg(turn.view, turn.model.topo, turn.ctx.selfId);
-  if (prefersSwift(turn, leg)) {
-    // 只在有路線時打（沒有目的地時多一次移動沒有用）。
-    return leg ? [{ item: command('tb.playSwiftJourney'), score: 0.5 }] : [];
-  }
+  if (prefersSwift(turn, leg)) return [{ item: command('tb.playSwiftJourney'), score: 0.5 }];
   if (!hints.canPlayKnight) return [];
   const knight = knightCommand(turn);
   return knight ? [{ item: knight, score: 0.5 }] : [];

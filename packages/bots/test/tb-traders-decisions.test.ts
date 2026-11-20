@@ -164,6 +164,37 @@ describe('Traders wagon routes', () => {
     // 沒有 gold：只能走不收費的路線。
     expect(legOf(tollBoard('tools', 0).state)!.tolls).toBe(0);
   });
+
+  it('takes the fewest-toll route when the cheapest one is over budget and no free route exists', () => {
+    // 路口 25 的三條邊都是 p2 的道路：沒有不收費的路線。再把最便宜路線上的空邊鋪成 p2 的道路（1 MP、收費），
+    // 直到它收兩次過路費。gold 只有 1 時它付不起，但收一次的路線付得起：車隊不能停著不動（PR #191 review）。
+    const state = board();
+    const topo = topologyOf(state);
+    for (const edge of topo.vertices[25]!.edges) placeRoad(state, 'p2', edge);
+    Object.assign(slotOf(state).wagons.p1!, { vertex: 25, cargo: 'tools' });
+    setGold(state, 'p1', 5);
+    let cheapest = legOf(state)!;
+    for (let guard = 0; cheapest.tolls < 2 && guard < 10; guard++) {
+      placeRoad(state, 'p2', cheapest.edges.findLast((edge) => !state.board.roads[edge])!);
+      cheapest = legOf(state)!;
+    }
+    expect(cheapest.tolls, 'the cheapest route pays twice').toBe(2);
+    expect(cheapest.mp, 'not deliverable in one move').toBeGreaterThan(4);
+    setGold(state, 'p1', 1);
+    const leg = legOf(state)!;
+    expect(leg, 'a route within the gold').not.toBeNull();
+    expect(leg).toMatchObject({ tolls: 1, delivers: true, target: quarry(state) });
+    const frame = endTurn(state);
+    const view = viewFor(frame, 'p1');
+    const command = decide(frame, 'p1', 'standard', view);
+    expect(command).toEqual({ type: 'tb.wagonStep', to: leg.vertices[1] });
+    const steps = (view.hints!.modules![TRADERS_BARBARIANS] as Record<string, { steps: number[] }>)['tb-traders-barbarians']!.steps;
+    expect(steps).toContain(leg.vertices[1]);
+    // easy 也走得動；整個 frame 被引擎接受。
+    expect(decide(frame, 'p1', 'easy')).toEqual(command);
+    const { state: after } = driveFrame(frame);
+    expect(slotOf(after).wagons.p1!.vertex).not.toBe(25);
+  });
 });
 
 describe('Traders boost and upgrade', () => {
@@ -280,6 +311,16 @@ describe('Traders barbarians and cards', () => {
     expect(commands.filter((entry) => entry.type === 'tb.wagonStop').length).toBeGreaterThanOrEqual(1);
   });
 
+  it('keeps Swift Journey when it does not add a delivery this turn', () => {
+    // 一次移動就送得到（4 MP），或兩次也送不到（12 MP）：都不打。
+    for (const [min, max] of [[4, 4], [12, 12]] as const) {
+      const state = board();
+      placeWagon(state, 'tools', min, max);
+      state.players[0]!.devCards = ['swiftJourney'];
+      expect(decide(state, 'p1'), `${min} MP leg`).toEqual({ type: 'turn.end' });
+    }
+  });
+
   it(`stops after ${WAGON_FRAME_COMMANDS} commands in one frame`, () => {
     const state = board();
     placeWagon(state, 'tools', 5, 8);
@@ -295,7 +336,9 @@ describe('Traders barbarians and cards', () => {
     expect(decide(frame, 'p1', 'standard', capped)).toEqual({ type: 'tb.wagonStop' });
     // 其他玩家的車隊事件不算。
     const others = { ...view, events: [...view.events, ...events.map((event) => ({ ...event, params: { playerId: 'p2' } }))] } as GameView;
-    expect(decide(frame, 'p1', 'standard', others)).toMatchObject({ type: 'tb.wagonStep' });
+    expect(decide(frame, 'p1', 'standard', others)).toMatchObject({ type: 'tb.wagonStep' });    // 歷史裡沒有 `turn.started` 時無法界定 frame 起點：不計數，照常移動。
+    const headless = { ...view, events: events.slice(1) } as GameView;
+    expect(decide(frame, 'p1', 'standard', headless)).toMatchObject({ type: 'tb.wagonStep' });
   });
 });
 
