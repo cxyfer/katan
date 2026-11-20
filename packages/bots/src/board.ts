@@ -66,6 +66,8 @@ export interface BoardModel {
   readonly blocker?: (model: BoardModel, vertex: number) => string | null;
   /** 路口不能蓋建築（任一模組為 true）。 */
   readonly siteBlocked?: (model: BoardModel, vertex: number) => boolean;
+  /** 道路搜尋能不能經過這條空邊（任一模組回 false 就不行；undefined 視為可以）。 */
+  readonly routeEdge?: (model: BoardModel, edge: number) => boolean;
   /** 一座建築在 `hex` 擲中時拿到的張數（第一個非 undefined 勝出）；undefined 表示沿用 base。 */
   readonly hexYield?: (
     model: BoardModel,
@@ -146,9 +148,10 @@ export function boardModel(view: GameView, selfId: string, modules: readonly Bot
   const blockers = hooks.filter((hook) => hook.vertexBlocker);
   const sites = hooks.filter((hook) => hook.siteBlocked);
   const yields = hooks.filter((hook) => hook.hexYield);
+  const routes = hooks.filter((hook) => hook.routeEdge);
   // 模組清單跟著模型走；沒有模組（tracker、hard）時不加欄位，物件形狀與 base 相同。
   const model: BoardModel = modules.length > 0 ? { ...base, modules } : base;
-  if (blockers.length === 0 && sites.length === 0 && yields.length === 0) return model;
+  if (blockers.length === 0 && sites.length === 0 && yields.length === 0 && routes.length === 0) return model;
   // 鉤子拿到的是呼叫端傳入的 model（可能是展開後換了 view 的模型），不是這裡建的那一個。
   return {
     ...model,
@@ -163,6 +166,9 @@ export function boardModel(view: GameView, selfId: string, modules: readonly Bot
     }),
     ...(sites.length > 0 && {
       siteBlocked: (at: BoardModel, vertex: number) => sites.some((hook) => hook.siteBlocked!(at, vertex)),
+    }),
+    ...(routes.length > 0 && {
+      routeEdge: (at: BoardModel, edge: number) => routes.every((hook) => hook.routeEdge!(at, edge) !== false),
     }),
     ...(yields.length > 0 && {
       hexYield: (at: BoardModel, hex: number, vertex: number, city: boolean) => {
@@ -324,7 +330,8 @@ export interface RoadSearch {
 /**
  * 以 BFS 計算自己的道路網延伸到各路口的成本。與標準規則一致：對手建築會
  * 切斷穿越的路口，但己方道路仍可從未被切斷的一端繼續延伸。只走陸地邊，也只從建築與
- * 非船道路的端點出發：船只在自己的建築處與道路相接（Seafarers）。
+ * 非船道路的端點出發：船只在自己的建築處與道路相接（Seafarers）。模組的 `routeEdge` 回 false 的空邊不走（只影響規劃，
+ * 合法性仍看 hints）。
  */
 export function searchRoads(model: BoardModel, playerId: string, maxDepth: number): RoadSearch {
   const { topo } = model;
@@ -354,6 +361,8 @@ export function searchRoads(model: BoardModel, playerId: string, maxDepth: numbe
       const [a, b] = topo.edges[edge]!.vertices;
       const next = a === vertex ? b : a;
       if (distance[next] !== Infinity || opponentAt(model, next, playerId)) continue;
+      // 模組不讓計畫經過的空邊（T&B Rivers：橋用完時的橋位）；沒有模組提供鉤子時不呼叫。
+      if (model.routeEdge && !model.routeEdge(model, edge)) continue;
       distance[next] = depth + 1;
       viaEdge[next] = edge;
       viaVertex[next] = vertex;

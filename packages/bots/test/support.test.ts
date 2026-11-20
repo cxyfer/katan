@@ -23,15 +23,13 @@ function profileWith(ruleModules: readonly string[]): ProfileDefinition {
 /**
  * 骨架仍然不呼叫、只保留型別的鉤子（定案 §1.1）；哪一版實作了某個鉤子，就在同一個 PR 從這裡移除。
  * `robberTargets` 與 `rescore` 在 0.4.3 起由骨架呼叫（SFCK-P），組合層（SFCK-1）是第一個定義 `robberTargets` 的模組。
- * `trade` 與 `economy.awards` 在 0.4.4 起由骨架呼叫（T&B S1）。
+ * `trade` 與 `economy.awards` 在 0.4.4 起由骨架呼叫（T&B S1）；`economy.routeEdge` 在 0.4.4 起由 `searchRoads` 呼叫（T&B S8，
+ * Rivers 的橋位）。
  */
 const RESERVED_HOOKS = ['phase', 'endWindow'] as const;
-const RESERVED_ECONOMY_HOOKS = ['routeEdge'] as const;
 
 function reservedHooksOf(module: BotModule): string[] {
-  const found: string[] = RESERVED_HOOKS.filter((hook) => hook in module);
-  for (const hook of RESERVED_ECONOMY_HOOKS) if (module.economy && hook in module.economy) found.push(`economy.${hook}`);
-  return found;
+  return RESERVED_HOOKS.filter((hook) => hook in module);
 }
 
 describe('bot ruleset support', () => {
@@ -89,10 +87,7 @@ describe('bot module registry', () => {
   it('registers no module that defines a hook the skeleton still never calls', () => {
     for (const module of BOT_MODULES.values()) expect(reservedHooksOf(module), module.id).toEqual([]);
     // 檢查器本身要抓得到保留的鉤子。
-    expect(reservedHooksOf({ id: 'fx', phase: () => null, economy: { routeEdge: () => undefined } })).toEqual([
-      'phase',
-      'economy.routeEdge',
-    ]);
+    expect(reservedHooksOf({ id: 'fx', phase: () => null, endWindow: () => null })).toEqual(['phase', 'endWindow']);
   });
 
   it('does not mistake prototype keys for registered modules', () => {
