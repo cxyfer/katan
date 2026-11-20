@@ -41,6 +41,7 @@ import type { BotModule, Scored, TurnContext } from './modules/types.ts';
 import { Turn } from './turn.ts';
 import {
   acceptMargin,
+  bankTradesThisTurn,
   bankTradeToward,
   offersAwaitingMe,
   offerValue,
@@ -405,7 +406,7 @@ function buildDecision(turn: TurnContext): BotCommand | null {
   if (primary) {
     const step = planStep(turn, primary);
     if (step) return step;
-    const trade = bankTradeToward(view, economy, primary.nextCost, primary.cost);
+    const trade = primaryBankTrade(turn, primary);
     if (trade) return trade;
   }
 
@@ -481,6 +482,16 @@ export function dedupeCandidates(candidates: readonly Scored<BotCommand>[]): Sco
   return out;
 }
 
+/**
+ * 主要計畫的銀行交易（`bankTradeToward`，帶同回合的守門，#180）。下一步是一條不在 hints 合法道路裡的邊時不換：換齊了
+ * `planStep` 也蓋不成。例如 T&B Rivers 的橋位只能蓋橋，rivers 補不齊橋的成本時，照道路的成本換牌只是白白換掉牌。
+ */
+export function primaryBankTrade(turn: TurnContext, plan: Plan): Command | null {
+  const edge = plan.kind === 'settlement' || plan.kind === 'longestRoad' ? plan.roads[0] : undefined;
+  if (edge !== undefined && !turn.view.hints!.legalRoads.includes(edge)) return null;
+  return bankTradeToward(turn.view, turn.economy, plan.nextCost, plan.cost, turn.ctx.selfId);
+}
+
 /** 計畫的下一步；付不起或已不合法時回傳 null。 */
 export function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
   const { view } = turn;
@@ -513,23 +524,6 @@ export function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
       // 只有模組計畫會走到這裡；模組對不屬於自己的 kind 必須回 undefined。
       return firstAnswer(turn.modules, (module) => module.planStep?.(turn, plan)) ?? null;
   }
-}
-
-/**
- * 這個回合（自最近一次 `turn.started` 起）自己做過的銀行交易：收進來的牌與換出去的牌。策略沒有跨呼叫的狀態，
- * 所以從投影的事件歷史推回來；歷史缺漏或沒有附（測試用的投影）時兩個集合都是空的。
- */
-function bankTradesThisTurn(view: GameView, selfId: string): { received: Set<CardKind>; gave: Set<CardKind> } {
-  const received = new Set<CardKind>();
-  const gave = new Set<CardKind>();
-  for (let index = view.events.length - 1; index >= 0; index--) {
-    const event = view.events[index]!;
-    if (event.type === 'turn.started') break;
-    if (event.type !== 'trade.bank' || event.params.playerId !== selfId) continue;
-    received.add(event.params.receive as CardKind);
-    gave.add(event.params.give as CardKind);
-  }
-  return { received, gave };
 }
 
 /**

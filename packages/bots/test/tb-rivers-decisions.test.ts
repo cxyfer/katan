@@ -33,8 +33,8 @@ import { tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { boardModel, piecesOnBoard, pipsOf, roadStockLeft, routeLength, searchRoads } from '../src/board.ts';
 import { addCosts, scaleCost, type Plan } from '../src/economy.ts';
 import { botOwesAction, fallbackPolicy } from '../src/fallback.ts';
-import { turnContext } from '../src/heuristic.ts';
-import { WIN_VALUE, wealthValue, wealthWeight, WEALTH_WEIGHT_FLOOR } from '../src/modules/tradersBarbarians/coins.ts';
+import { primaryBankTrade, turnContext } from '../src/heuristic.ts';
+import { purchaseToward, WIN_VALUE, wealthValue, wealthWeight, WEALTH_WEIGHT_FLOOR } from '../src/modules/tradersBarbarians/coins.ts';
 import {
   bridgeRouteEdge,
   bridgeSites,
@@ -47,6 +47,7 @@ import type { TurnContext } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';
 import { botModulesOf } from '../src/support.ts';
+import { bankTradeToward } from '../src/trade.ts';
 import type { BotCommand, BotContext, BotLevel } from '../src/types.ts';
 import { cloneState, GAME_TIMEOUT, hideDifferently, perturbState, viewFor } from './harness.ts';
 import { tradersBarbariansKit } from './modules/tradersBarbarians.ts';
@@ -158,6 +159,16 @@ describe('projection → boardModel on a real tb-rivers-2025 state (S1 G6, G7)',
   });
 });
 
+/** 投影附上這個回合的 `turn.started` 與 p1 一筆換出 brick 的銀行交易（同回合的守門，#180）。 */
+function brickGivenThisTurn(view: GameView): GameView {
+  const events = [
+    ...view.events,
+    { seq: view.seq + 1, type: 'turn.started', params: { playerId: 'p1', windowId: 1, pairedActor: 1 } },
+    { seq: view.seq + 2, type: 'trade.bank', params: { playerId: 'p1', give: 'brick', receive: 'grain', rate: 4 } },
+  ];
+  return { ...view, events, seq: view.seq + 2 };
+}
+
 describe('tb.buildBridge on the primary plan’s route', () => {
   for (const level of LEVELS) {
     it(`${level} builds the bridge when the plan’s next road is a bridge site`, () => {
@@ -193,6 +204,40 @@ describe('tb.buildBridge on the primary plan’s route', () => {
       expect(bought.map((candidate) => candidate.item)).toEqual([{ type: 'tb.buyResource', resource: 'brick' }]);
       const next = accept(buy, 'p1', bought[0]!.item);
       expect(riversCandidates(withPlans(turnOf(next, 'p1', level), [plan]))[0]?.item).toEqual({ type: 'tb.buildBridge', edge: site });
+    });
+  }
+
+  it('does not trade toward a road on the bridge site when the guard blocks the bridge (#180, #196 review)', () => {
+    const state = bare();
+    const { site, near, far } = siteOf(state);
+    placeBuilding(state, 'p1', near);
+    setHand(state, 'p1', { brick: 1, wool: 5 });
+    // 這個回合已經換出 brick：橋缺的第二張 brick 不能換回來。
+    const view = viewOf(state, 'p1');
+    const plan = bridgePlan(state, site, far);
+    const turn = withPlans(turnContext(brickGivenThisTurn(view), ctxFor('p1'), 'standard'), [plan]);
+    expect(riversCandidates(turn)).toEqual([]);
+    // 照道路的成本（brick 已有）只缺 lumber，換得到；但橋位不能蓋路，橋又還缺 brick，這筆交易是白換的。
+    expect(view.hints!.legalRoads).not.toContain(site);
+    expect(bankTradeToward(turn.view, turn.economy, plan.nextCost, plan.cost, 'p1')).toEqual({ type: 'trade.bank', give: 'wool', receive: 'lumber' });
+    expect(primaryBankTrade(turn, plan)).toBeNull();
+  });
+
+  for (const level of LEVELS) {
+    it(`${level} buys the kind the bank cannot give back this turn first (#180, #196 review)`, () => {
+      // 缺 brick 1、lumber 2，gold 只夠買一張，有 8 張過剩的 wool；這個回合已經換出 brick。照「缺最多的優先」會先買 lumber，
+      // 剩下的 brick 被守門擋住，整個步驟就沒有候選；先買 brick，兩張 lumber 再用 wool 換得到。
+      const state = bare();
+      const { near } = siteOf(state);
+      placeBuilding(state, 'p1', near);
+      setHand(state, 'p1', { brick: 1, wool: 8 });
+      setGold(state, { p1: 2, p2: 2, p3: 2 });
+      const turn = turnContext(brickGivenThisTurn(viewOf(state, 'p1')), ctxFor('p1', level), level);
+      const step = { brick: 2, lumber: 2 };
+      expect(purchaseToward(turn, step, step)?.item).toEqual({ type: 'tb.buyResource', resource: 'brick' });
+      // 沒有同回合的交易時照舊：先買缺最多的 lumber。
+      const plain = turnContext(viewOf(state, 'p1'), ctxFor('p1', level), level);
+      expect(purchaseToward(plain, step, step)?.item).toEqual({ type: 'tb.buyResource', resource: 'lumber' });
     });
   }
 

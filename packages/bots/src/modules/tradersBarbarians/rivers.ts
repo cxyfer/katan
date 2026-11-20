@@ -167,7 +167,8 @@ function primaryBridgeCandidates(turn: TurnContext, targets: ReadonlySet<number>
   const total = withBridge(plan);
   const buy = purchaseToward(turn, BRIDGE_COST, total);
   if (buy) return [buy];
-  const trade = bankTradeToward(turn.view, economy, BRIDGE_COST, total);
+  // 和骨架的計畫交易一樣守著同回合的銀行交易（#180）。
+  const trade = bankTradeToward(turn.view, economy, BRIDGE_COST, total, turn.ctx.selfId);
   return trade ? [{ item: trade as BotCommand, score: BRIDGE_TRADE_SCORE }] : [];
 }
 
