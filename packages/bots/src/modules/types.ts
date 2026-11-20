@@ -125,9 +125,12 @@ export interface BotEconomyHooks {
    * 最長道路計畫，也不為它估值；省略的欄位視為 true。只讀 model，不得消耗亂數。
    */
   awards?(model: BoardModel): { readonly longestRoad?: boolean };
-
-  // ---- 只保留型別，骨架不呼叫。尚無實作者，簽章由第一個實作的版本定稿 ----
-  routeEdge?(model: BoardModel, edge: number): boolean | undefined; // 延後（SF §11-6）
+  /**
+   * 自己的道路搜尋（`searchRoads`，也就是聚落計畫的路線）能不能經過這條空邊。任一模組回 false 就不經過（T&B Rivers：
+   * 橋位只能蓋橋，自己的橋用完時就不能當路線）；省略或回 undefined 視為可以。只影響規劃，合法性仍以 hints 為準（P2）。
+   * 沒有模組提供時骨架不呼叫，搜尋與迭代順序不變。只讀 model，不得 throw、不得消耗亂數。
+   */
+  routeEdge?(model: BoardModel, edge: number): boolean | undefined;
 }
 
 /**
