@@ -54,7 +54,7 @@ export function hardBuildDecision(turn: HardTurn): BotCommand | null {
       const offer = hardProposal(turn, primary.cost);
       if (offer) return offer;
     }
-    const trade = bankTradeToward(view, economy, primary.nextCost, primary.cost);
+    const trade = bankTradeToward(view, economy, primary.nextCost, primary.cost, ctx.selfId);
     if (trade) return trade;
   }
 
