@@ -39,6 +39,18 @@ describe('legacy sqlite file', () => {
     expect(existsSync(legacy)).toBe(true);
   });
 
+  it('retries a copy that was interrupted before the database was complete', () => {
+    mkdirSync(join(dir, 'legacy'));
+    const legacy = join(dir, 'legacy', 'catan.sqlite');
+    writeFileSync(legacy, 'complete database');
+    const target = join(dir, 'katan.sqlite');
+    // 上次複製在寫完前被中斷：只留下暫存檔，目標檔不存在
+    writeFileSync(`${target}.migrating`, 'compl');
+    expect(migrateLegacySqlite(target, legacy).action).toBe('copied');
+    expect(readFileSync(target, 'utf8')).toBe('complete database');
+    expect(existsSync(`${target}.migrating`)).toBe(false);
+  });
+
   it('never touches an existing katan.sqlite or a custom file name', () => {
     writeFileSync(join(dir, 'catan.sqlite'), 'old');
     writeFileSync(join(dir, 'katan.sqlite'), 'current');

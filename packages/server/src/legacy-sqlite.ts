@@ -25,6 +25,16 @@ function moveDatabase(from: string, to: string, transfer: (src: string, dest: st
   }
 }
 
+/**
+ * 先複製到暫存檔再改名：複製途中中斷（磁碟已滿、容器被終止）時目標檔不會出現，
+ * 下次啟動會從完整的舊檔重新複製，而不是開啟只複製了一半的資料庫。
+ */
+function copyThenRename(src: string, dest: string): void {
+  const partial = `${dest}.migrating`;
+  copyFileSync(src, partial);
+  renameSync(partial, dest);
+}
+
 export function migrateLegacySqlite(sqlitePath: string, legacyPath: string | null): LegacySqliteMigration {
   if (sqlitePath === ':memory:' || existsSync(sqlitePath)) return { action: 'none' };
 
@@ -37,7 +47,7 @@ export function migrateLegacySqlite(sqlitePath: string, legacyPath: string | nul
   }
 
   if (legacyPath && existsSync(legacyPath)) {
-    moveDatabase(legacyPath, sqlitePath, copyFileSync);
+    moveDatabase(legacyPath, sqlitePath, copyThenRename);
     return { action: 'copied', from: legacyPath, to: sqlitePath };
   }
   return { action: 'none' };
