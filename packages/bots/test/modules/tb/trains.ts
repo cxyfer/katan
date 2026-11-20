@@ -6,9 +6,12 @@
  * 供應量：`resourceSupplyProblems`。harness 的 base 守恆（`supplyTotal`）只算手牌與銀行，投標途中撞到步數上限的局會在
  * 那裡誤報差額，所以 T&B 的對局（`test/tb-game.ts`）改用 `tbConservationProblems`（`../tradersBarbarians.ts`），
  * 不讀 `RunResult.conservation`。
+ *
+ * S5 加上 B-FAIR 的 `hideDifferently`（對手的出價牌）與 Q2 的 `mechanics`（正出價、放置的車廂）。
  */
 
-import { requireProfile, RESOURCES, TB_FRAME_KINDS, type GameState, type PendingFrame } from '@catan/rules';
+import { requireProfile, RESOURCES, TB_FRAME_KINDS, type GameState, type PendingFrame, type Resource } from '@catan/rules';
+import type { MechanicsTally } from '../types.ts';
 import { partStateOf, type TbPartKit } from './part.ts';
 
 interface TrainsSlot {
@@ -58,4 +61,52 @@ export function resourceSupplyProblems(state: GameState): string[] {
   return problems;
 }
 
-export const trainsPartKit: TbPartKit = { id: 'tb-merchant-trains', conservation };
+const BID_CARDS: readonly Resource[] = ['wool', 'grain'];
+
+/**
+ * B-FAIR：對手手上能出價的牌（wool、grain）是隱藏資訊（投影只有張數）。讓一位對手的一張 wool 或 grain 與另一位對手的一張
+ * 非出價牌交換：兩人的張數不變、守恆不變，只改變誰能出價多少。出價本身是公開的，不擾動。
+ */
+function hideDifferently(variant: GameState, viewerId: string): boolean {
+  const opponents = variant.players.filter((player) => player.id !== viewerId);
+  for (const a of opponents) {
+    for (const b of opponents) {
+      if (a === b) continue;
+      for (const give of BID_CARDS) {
+        if (a.resources[give] === 0) continue;
+        for (const take of RESOURCES) {
+          if (BID_CARDS.includes(take) || b.resources[take] === 0) continue;
+          a.resources[give] -= 1;
+          a.resources[take] += 1;
+          b.resources[take] -= 1;
+          b.resources[give] += 1;
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Q2（§6.3）：只計策略送出的指令（`source === 'policy'`）。
+ * - `positiveBids`：wool + grain > 0 的 `tb.bidWagon`；
+ * - `wagonsPlaced`：`tb.wagonPlaced` 事件（放置或分配結算時發出）。
+ */
+function mechanics(): MechanicsTally {
+  let positiveBids = 0;
+  let wagonsPlaced = 0;
+  return {
+    observe(step) {
+      if (step.source !== 'policy') return;
+      if (step.command.type === 'tb.bidWagon') {
+        const bid = step.command as unknown as { wool?: number; grain?: number };
+        if ((bid.wool ?? 0) + (bid.grain ?? 0) > 0) positiveBids += 1;
+      }
+      wagonsPlaced += step.events.filter((event) => event.type === 'tb.wagonPlaced').length;
+    },
+    snapshot: () => ({ positiveBids, wagonsPlaced }),
+  };
+}
+
+export const trainsPartKit: TbPartKit = { id: 'tb-merchant-trains', conservation, hideDifferently, mechanics };
