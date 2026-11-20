@@ -229,6 +229,17 @@ const PROFILE_LIMITS: Readonly<Record<string, Partial<GameLimits>>> = {
   // Seafarers + Cities & Knights（SF+CK 計畫 §6.1、D4）：步數 6000（第一輪全 standard、不打卡的版本最多 2004 步，約為它的 3 倍，與 C&K 一致）、看門狗 72 次擲骰（`turn.roll` 次數，每回合恰好一次；paired 只有 Player 1 擲骰）。計畫的原型 mixed 40 局最長一段無創新高為 41 次擲骰（10.3 回合），72 約為它的 1.8 倍；超過約 50 次要提報（SFCK-3 回報 `longestStagnation`）。
   'sf-ck-new-shores-2025': { maxSteps: 6000, watchdogRolls: 72 },
   'sf-ck-new-shores-paired-2025': { maxSteps: 6000, watchdogRolls: 72 },
+  // Traders & Barbarians（T&B 計畫 §6.1；S2 一次加齊 8 筆，QA 在 W3 依實測調整）：plus 原型 20 種子 × 3、4 人實測的最多步數／最長無得分
+  // 回合為 FR、H、FR+H 522／23、Fishing 451／29、Rivers 508／26、Trains 556／24，步數 3000 約為最長局的 5.4 倍；BA 1079／31、
+  // Traders 538／14（rules 腳本模擬最多 1091 步）沿用預設 5000。看門狗都沿用 60 次 `turn.roll`（Traders 擲出 2、12 的重擲在同一個指令內，只算一次）。
+  'tb-friendly-robber-2025': { maxSteps: 3000 },
+  'tb-harbors-2025': { maxSteps: 3000 },
+  'tb-friendly-robber-harbors-2025': { maxSteps: 3000 },
+  'tb-fishing-2025': { maxSteps: 3000 },
+  'tb-rivers-2025': { maxSteps: 3000 },
+  'tb-merchant-trains-2025': { maxSteps: 3000 },
+  'tb-barbarian-attack-2025': {},
+  'tb-traders-barbarians-2025': {},
 };
 
 export function limitsFor(profileId: string): GameLimits {
