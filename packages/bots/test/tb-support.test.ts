@@ -161,10 +161,12 @@ describe('T&B module contract (§3.2, §4.4)', () => {
     for (const id of Object.keys(TB_PROFILES)) expect(botCommandLimit(profile(id), 40), id).toBe(40);
   });
 
-  it('exposes no economy or trade hooks while every part is a stub', () => {
-    // 骨架以「鉤子存在」決定是否組合盤面掛點：沒有 part 定義時，模組上也沒有這些鉤子。
-    expect(tradersBarbariansBotModule.economy).toBeUndefined();
-    expect(tradersBarbariansBotModule.trade).toBeUndefined();
+  it('exposes only the economy and trade hooks some part defines', () => {
+    // 骨架以「鉤子存在」決定是否組合盤面掛點：沒有任何 part 定義的鉤子，模組上也沒有。
+    const parts = [...TB_PART_BOTS.values()];
+    const defined = (group: 'economy' | 'trade') => [...new Set(parts.flatMap((part) => Object.keys(part[group] ?? {})))].sort();
+    expect(Object.keys(tradersBarbariansBotModule.economy ?? {}).sort()).toEqual(defined('economy'));
+    expect(Object.keys(tradersBarbariansBotModule.trade ?? {}).sort()).toEqual(defined('trade'));
   });
 });
 
