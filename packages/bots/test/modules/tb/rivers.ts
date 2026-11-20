@@ -1,6 +1,12 @@
-/** `tb-rivers` 的子 kit：每人最多 `BRIDGES_PER_PLAYER` 座橋，橋只蓋在橋位上（rules `tb-rivers.test.ts` 的模擬局斷言）。 */
+/**
+ * `tb-rivers` 的子 kit：
+ * - conservation：每人最多 `BRIDGES_PER_PLAYER` 座橋，橋只蓋在橋位上（rules `tb-rivers.test.ts` 的模擬局斷言）。
+ * - mechanics（Q2，§6.3）：策略發出、被接受的 `tb.buildBridge`，依難度分（`bridge.standard`、`bridge.easy`）。
+ * Rivers 沒有隱藏資訊（橋、河與 gold 都公開），所以沒有 `hideDifferently`；gold 的擾動在 coins 的 kit。
+ */
 
 import { BRIDGES_PER_PLAYER, type GameState } from '@catan/rules';
+import type { MechanicsTally } from '../types.ts';
 import { partStateOf, type TbPartKit } from './part.ts';
 
 interface RiversSlot {
@@ -22,4 +28,15 @@ function conservation(state: GameState): readonly string[] {
   return problems;
 }
 
-export const riversPartKit: TbPartKit = { id: 'tb-rivers', conservation };
+function mechanics(): MechanicsTally {
+  const counts: Record<string, number> = {};
+  return {
+    observe(step) {
+      if (step.source !== 'policy' || step.command.type !== 'tb.buildBridge') return;
+      counts[`bridge.${step.level}`] = (counts[`bridge.${step.level}`] ?? 0) + 1;
+    },
+    snapshot: () => ({ ...counts }),
+  };
+}
+
+export const riversPartKit: TbPartKit = { id: 'tb-rivers', conservation, mechanics };

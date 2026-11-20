@@ -6,7 +6,8 @@
  *   （rules 以 view 的 `purchasesLeft` 執行）。base 的立即建造付得起時不買。standard 與 easy 都會買。
  * - `tb.sellResources`（只有 standard）：Rivers 能靠賣出脫離 Poor（−2 VP）時；或手牌超過上限、而銀行交易換不到牌時（gold 不算手牌）。
  * - Rivers 的財富板塊（唯一最多 +1、最少含並列 −2）：standard 買資源前先確認不會因此失分；付出 gold 會失分的報價一律拒絕。
- *   完整的排名估值在 S8（rivers），它可以直接用 `wealthDelta`、`sellCandidates`。
+ *   收進 gold 的排名價值（蓋橋、河邊建造）在 rivers：`wealthValue` 以「離勝利還差幾分」加權（`wealthWeight`：差 1 分時全額，
+ *   越遠越低，下限 `WEALTH_WEIGHT_FLOOR`；排名隨時會被追平），排名變化讓自己立即達標時是 `WIN_VALUE`。easy 不估排名。
  * - Traders：買資源與報價付出都不動用為過路費保留的 gold（`traders.ts` 的 `tollReserve`，§4.2 Traders 列）。
  * - 報價（規則 9）：`trade.goods` 回傳各玩家公開的 gold；`trade.goodValue` standard 以 0.5 × 張數估值；收進的 gold 買不了時（本回合購買
  *   次數用完，或 gold 已多到用不完）再折價；付出時固定以銀行價格估值、不動用過路費保留；easy 回 null，一律拒絕含 goods
@@ -23,7 +24,8 @@ import {
   type GameView,
   type Resource,
 } from '@catan/rules';
-import { canAfford, deficitOf, handSize, type Economy, type Hand } from '../../economy.ts';
+import { targetOf } from '../../board.ts';
+import { canAfford, deficitOf, handSize, type Cost, type Economy, type Hand } from '../../economy.ts';
 import { bankTradeToward } from '../../trade.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';
 import type { TbPartBot } from './part.ts';
@@ -41,6 +43,15 @@ export const GOLD_HOARD = 2 * PURCHASES_PER_TURN * GOLD_PER_RESOURCE;
 const BUY_SCORE = 0.3;
 /** 手牌超過上限時賣出的分數：只在其他消化方式都不可行時才會出現。 */
 const RELIEF_SELL_SCORE = 0.2;
+
+/** 一張用得上的資源的勝利分當量（與 fishing 的 `RESOURCE_VP` 同尺度；一座聚落約 4–5 張）。 */
+export const CARD_VP = 0.2;
+/** 財富板塊加權的下限：離勝利還遠時，排名多半會在終局前易手。 */
+export const WEALTH_WEIGHT_FLOOR = 0.25;
+/** 離勝利還差幾分以內，財富板塊的權重才開始高於下限（差 1 分時是 1）。 */
+export const WEALTH_HORIZON = 4;
+/** 排名變化讓自己立即達標（獲勝）的分數：高於任何其他候選。 */
+export const WIN_VALUE = 10;
 
 const WEALTHIEST_POINTS = 1;
 const POOR_POINTS = -2;
@@ -93,7 +104,6 @@ function wealthPoints(golds: readonly { id: string; gold: number }[], selfId: st
 
 /**
  * 自己的 gold 變動 `delta` 時，Rivers 財富板塊的分數變化（其他人的 gold 不變）。不是 Rivers 時恆為 0。
- * S8（rivers）可以直接呼叫它估排名效果。
  */
 export function wealthDelta(view: GameView, selfId: string, delta: number): number {
   if (!hasPart(view, TB_PART_IDS.rivers)) return 0;
@@ -102,6 +112,33 @@ export function wealthDelta(view: GameView, selfId: string, delta: number): numb
   return wealthPoints(after, selfId) - wealthPoints(golds, selfId);
 }
 
+/** 自己目前的分數：公開分數（已含財富板塊）加上自己手上的勝利分卡。 */
+export function ownScore(view: GameView, selfId: string): number {
+  const me = view.players.find((player) => player.id === selfId);
+  if (!me) return 0;
+  const cards = [...(me.devCards ?? []), ...(me.newDevCards ?? [])].filter((card) => card === 'victoryPoint').length;
+  return me.publicScore + cards;
+}
+
+/**
+ * 財富板塊的權重（0–1）：離勝利還差 1 分時是 1，每遠 1 分少 `1 / WEALTH_HORIZON`，下限 `WEALTH_WEIGHT_FLOOR`。
+ * 排名只在達標的那一刻有用，而 gold 每回合都在變（河邊建造、橋、買賣），離終局越遠，現在的排名越可能易手。
+ */
+export function wealthWeight(view: GameView, selfId: string): number {
+  const distance = targetOf(view, selfId) - ownScore(view, selfId);
+  return Math.min(1, Math.max(WEALTH_WEIGHT_FLOOR, 1 - (distance - 1) / WEALTH_HORIZON));
+}
+
+/**
+ * 自己的 gold 變動 `delta` 的排名價值（勝利分當量）：`wealthDelta` 乘上 `wealthWeight`；得分讓自己立即達標時是
+ * `WIN_VALUE`（只在自己的行動階段有意義：賣出、蓋橋與買資源之後引擎都會檢查勝利）。不是 Rivers 時恆為 0。
+ */
+export function wealthValue(view: GameView, selfId: string, delta: number): number {
+  const points = wealthDelta(view, selfId, delta);
+  if (points === 0) return 0;
+  if (points > 0 && ownScore(view, selfId) + points >= targetOf(view, selfId)) return WIN_VALUE;
+  return points * wealthWeight(view, selfId);
+}
 
 /** base 的立即建造（城市、聚落）現在付得起而且有合法位置：那就先蓋，不買。 */
 function immediateBuildAffordable(turn: TurnContext): boolean {
@@ -158,32 +195,40 @@ function purchaseOrder(view: GameView, missing: Hand, weights: Economy['weights'
 }
 
 /**
+ * 買資源補齊 `nextCost`（`total` 是整個計畫的成本，銀行交易時保留）：買完（不夠時再加銀行交易）就付得起才回傳下一張要買的
+ * 資源。standard 另外確認這次購買不會讓 Rivers 的財富板塊失分；easy 不估排名（§4.2）。rivers 用它為計畫路線上的橋買資源。
+ */
+export function purchaseToward(turn: TurnContext, nextCost: Cost, total: Cost): Scored<BotCommand> | null {
+  const { view, ctx } = turn;
+  const status = coinsStatus(view, ctx.selfId);
+  if (!status || !status.canTrade || status.purchasesLeft <= 0) return null;
+  const affordable = Math.floor((status.gold - tollReserve(view)) / GOLD_PER_RESOURCE);
+  const buyable = Math.min(status.purchasesLeft, affordable);
+  if (buyable <= 0) return null;
+  const economy = turn.economy;
+  const missing = deficitOf(economy.hand, nextCost);
+  const short = RESOURCES.reduce((sum, resource) => sum + missing[resource], 0);
+  if (short === 0) return null;
+  const order = purchaseOrder(view, missing, economy.weights, Math.min(short, buyable));
+  if (order.length === 0) return null;
+  // 買完之後要嘛已經付得起，要嘛剩下的缺口銀行交易補得齊（`bankTradeToward` 全部補得起才回傳交易）。
+  const hand: Hand = { ...economy.hand };
+  for (const resource of order) hand[resource] += 1;
+  const covered = canAfford(hand, nextCost) || bankTradeToward(view, { ...economy, hand }, nextCost, total) !== null;
+  if (!covered) return null;
+  if (turn.level !== 'easy' && wealthDelta(view, ctx.selfId, -GOLD_PER_RESOURCE) < 0) return null;
+  return { item: command('tb.buyResource', { resource: order[0]! }), score: BUY_SCORE };
+}
+
+/**
  * `tb.buyResource` 的候選：買完（不夠時再加銀行交易）就能做主要計畫的下一步，才回傳下一張要買的資源。
  * standard 另外確認 Rivers 的財富板塊不會因此失分；easy 不估排名（§4.2）。
  */
 export function buyCandidates(turn: TurnContext): Scored<BotCommand>[] {
-  const { view, ctx } = turn;
-  const status = coinsStatus(view, ctx.selfId);
-  if (!status || !status.canTrade || status.purchasesLeft <= 0) return [];
-  const affordable = Math.floor((status.gold - tollReserve(view)) / GOLD_PER_RESOURCE);
-  const buyable = Math.min(status.purchasesLeft, affordable);
-  if (buyable <= 0) return [];
-  const economy = turn.economy;
-  const plan = economy.plans[0];
+  const plan = turn.economy.plans[0];
   if (!plan || immediateBuildAffordable(turn) || !planExecutable(turn, plan)) return [];
-  const missing = deficitOf(economy.hand, plan.nextCost);
-  const short = RESOURCES.reduce((sum, resource) => sum + missing[resource], 0);
-  if (short === 0) return [];
-  const order = purchaseOrder(view, missing, economy.weights, Math.min(short, buyable));
-  if (order.length === 0) return [];
-  // 買完之後要嘛已經付得起，要嘛剩下的缺口銀行交易補得齊（`bankTradeToward` 全部補得起才回傳交易）。
-  const hand: Hand = { ...economy.hand };
-  for (const resource of order) hand[resource] += 1;
-  const covered =
-    canAfford(hand, plan.nextCost) || bankTradeToward(view, { ...economy, hand }, plan.nextCost, plan.cost) !== null;
-  if (!covered) return [];
-  if (turn.level !== 'easy' && wealthDelta(view, ctx.selfId, -GOLD_PER_RESOURCE) < 0) return [];
-  return [{ item: command('tb.buyResource', { resource: order[0]! }), score: BUY_SCORE }];
+  const buy = purchaseToward(turn, plan.nextCost, plan.cost);
+  return buy ? [buy] : [];
 }
 
 /** 賣哪一種資源：超出主要計畫的張數減去比率最多者優先，再依權重低者、`RESOURCES` 順序。`surplusOnly` 時只賣超出計畫的牌。 */
@@ -222,6 +267,8 @@ function baseReliefAvailable(turn: TurnContext): boolean {
 /**
  * `tb.sellResources` 的候選（只有 standard；easy 只買不賣）：
  * 1. Rivers：賣一次就能脫離 Poor（−2 VP）。分數高於立即建造，可以動用計畫內的牌（2 VP 比幾張牌值錢），超出計畫的牌優先。
+ *    開局全員 0 gold 時也會賣（S8 驗證：全 standard 的對戰中，與「從不為此賣牌」、「只在加權排名價值高於賣掉的牌時賣」
+ *    兩種做法相比，勝率與回合數都沒有可量測的差別；賣出很少發生，每局約 0.5 次）。
  * 2. 手牌超過上限，而 base 的消化方式（發展卡、道路、銀行交易）都不可行：只賣超出計畫的牌。
  */
 export function sellCandidates(turn: TurnContext): Scored<BotCommand>[] {
@@ -245,7 +292,8 @@ export function sellCandidates(turn: TurnContext): Scored<BotCommand>[] {
 /**
  * `amount` 個 gold 在 `side` 這一方的資源當量（`trade.goodValue`）。easy 回 null（拒絕含 goods 的報價）。standard：
  * - 收進（`'receive'`）：0.5 × 張數；本回合買不了（自己的行動視窗、購買次數用完）或持有至少 `GOLD_HOARD` 時乘
- *   `IDLE_GOLD_FACTOR`。收進 gold 不會失去財富板塊，所以不看 Rivers 的排名（排名加分留給 S8）。
+ *   `IDLE_GOLD_FACTOR`。收進 gold 不會失去財富板塊；排名的加分也不計（保守，R3：終局時脫離 Poor 值 2 分，計入的話
+ *   會為 1 gold 付出整手牌）。
  * - 付出（`'pay'`）：固定 0.5 × 張數，也就是銀行的價格（`GOLD_PER_RESOURCE` gold 換一張），不折價：折價會讓對手用
  *   低於銀行的價格買走 gold，再向銀行換牌套利。超出「持有減去 Traders 過路費保留」的部分不付（null）；Rivers 裡付出後
  *   財富板塊會失分時也不付（保守，R3）。
