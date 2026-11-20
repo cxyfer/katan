@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { requireProfile, type GameState } from '@catan/rules';
+import { requireProfile, type GameState } from '@katan/rules';
 import { tbRobberHexes } from '../src/modules/tradersBarbarians/view.ts';
 import { GAME_TIMEOUT, seedsFor, viewFor, type Decision } from './harness.ts';
 import { commandCount, expectTbGameHealthy, runTbGame, tbMatrix, type TbGameRecord } from './tb-game.ts';

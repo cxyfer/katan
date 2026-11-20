@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { GameSnapshot } from '@catan/protocol';
-import { RESOURCES, type Resource } from '@catan/rules';
+import type { GameSnapshot } from '@katan/protocol';
+import { RESOURCES, type Resource } from '@katan/rules';
 import { decideBoardAnimation, type PresentationCursor } from '../board/animation.ts';
 import type { GameSyncMetadata } from '../state/table.ts';
 

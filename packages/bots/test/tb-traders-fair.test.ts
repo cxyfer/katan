@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { actionHints, TB_FRAME_KINDS, TRADERS_BARBARIANS, type GameState, type GameView } from '@catan/rules';
+import { actionHints, TB_FRAME_KINDS, TRADERS_BARBARIANS, type GameState, type GameView } from '@katan/rules';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';
 import { botSeats, cloneState, GAME_TIMEOUT, hideDifferently, mixedLevels, runBotGame, viewFor } from './harness.ts';

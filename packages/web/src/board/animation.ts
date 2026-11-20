@@ -1,4 +1,4 @@
-import type { GameEvent, GameSnapshot } from '@catan/protocol';
+import type { GameEvent, GameSnapshot } from '@katan/protocol';
 import type { GameSyncMetadata } from '../state/table.ts';
 
 export const MAX_EFFECT_GROUPS = 8;

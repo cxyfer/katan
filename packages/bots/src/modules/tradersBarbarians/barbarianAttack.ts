@@ -15,7 +15,7 @@
  * 只讀投影與 hints，合法性一律以 hints 為準（P2）；不消耗亂數，同分依編號（先出現者）決勝。
  */
 
-import { BA_CARD_COST, CONQUER_AT, type BoardTopology, type GameView, type TbBarbarianAttackView } from '@catan/rules';
+import { BA_CARD_COST, CONQUER_AT, type BoardTopology, type GameView, type TbBarbarianAttackView } from '@katan/rules';
 import type { BoardModel } from '../../board.ts';
 import { etaRounds, type Plan } from '../../economy.ts';
 import type { BotCommand, PlanInput, TurnContext } from '../types.ts';

@@ -1,7 +1,7 @@
 # Runs the published image (ghcr.io/cxyfer/katan). To build from this checkout,
 # add docker-compose.build.yml (see docs/OPERATIONS.md).
 services:
-  catan:
+  katan:
     image: ghcr.io/cxyfer/katan:latest
     restart: unless-stopped
     ports:
@@ -9,7 +9,7 @@ services:
     environment:
       PORT: "3000"
       HOST: "0.0.0.0"
-      DATABASE_URL: postgres://catan:${POSTGRES_PASSWORD:-catan}@postgres:5432/catan
+      DATABASE_URL: postgres://katan:${POSTGRES_PASSWORD:-katan}@postgres:5432/katan
       WEB_DIST_PATH: /app/web
       COOKIE_SECURE: "false" # set to true behind TLS
       LOG_LEVEL: info
@@ -22,16 +22,16 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: catan
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-catan}
-      POSTGRES_DB: catan
+      POSTGRES_USER: katan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-katan}
+      POSTGRES_DB: katan
     volumes:
-      - catan-postgres:/var/lib/postgresql/data
+      - katan-postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U catan -d catan"]
+      test: ["CMD-SHELL", "pg_isready -U katan -d katan"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
-  catan-postgres:
+  katan-postgres:

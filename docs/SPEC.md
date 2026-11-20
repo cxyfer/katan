@@ -1,4 +1,4 @@
-# Browser-Based CATAN-Style Game: Design Specification
+# Browser-Based Katan Game: Design Specification
 
 Date: 2026-10-26
 Status: Product decisions D-01–D-06 confirmed; implementation and technical validation pending

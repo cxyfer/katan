@@ -1,4 +1,4 @@
-import type { GameView, Offer } from '@catan/rules';
+import type { GameView, Offer } from '@katan/rules';
 import { useT } from '../../i18n/context.tsx';
 import { epView } from '../../board/explorersPirates.ts';
 import { tbPart } from './model.ts';

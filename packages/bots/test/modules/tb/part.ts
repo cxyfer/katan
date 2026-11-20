@@ -5,11 +5,11 @@
  * S2 只放守恆檢查；B-FAIR 的 `hideDifferently`、fuzz 的 `perturb` 與 Q2 的 `mechanics` 由各 part 的切片（S3–S8）補上，
  * 欄位語意與 `ModuleTestKit` 的同名欄位相同。
  *
- * 不得 import `rules/test/*`：bench 會把 kit 打包進去，那些 helper 依賴 vitest。這裡只用 `@catan/rules` 的公開 API。
+ * 不得 import `rules/test/*`：bench 會把 kit 打包進去，那些 helper 依賴 vitest。這裡只用 `@katan/rules` 的公開 API。
  * rules 的 part 狀態型別沒有匯出，各子 kit 只宣告自己會讀的欄位。
  */
 
-import { moduleStateOf, TRADERS_BARBARIANS, type GameState, type Rng } from '@catan/rules';
+import { moduleStateOf, TRADERS_BARBARIANS, type GameState, type Rng } from '@katan/rules';
 import type { MechanicsTally } from '../types.ts';
 
 export interface TbPartKit {

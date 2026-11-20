@@ -1,6 +1,6 @@
 /** 電腦對手（SPEC §4.9）的前端選擇器：只讀房間成員與伺服器設定，不推算任何遊戲資訊。 */
 
-import { BOT_LEVELS, type BotLevel, type ProfileView, type RoomView, type ServerConfigView } from '@catan/protocol';
+import { BOT_LEVELS, type BotLevel, type ProfileView, type RoomView, type ServerConfigView } from '@katan/protocol';
 
 export const DEFAULT_BOT_LEVEL: BotLevel = 'standard';
 

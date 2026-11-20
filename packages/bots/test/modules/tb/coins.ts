@@ -6,7 +6,7 @@
  * - mechanics（Q2）：策略發出、被接受的 `tb.buyResource`／`tb.sellResources`，依難度分（`buy.standard`、`sell.easy`…）。
  */
 
-import { GOLD_SUPPLY, PURCHASES_PER_TURN, type GameState, type Rng } from '@catan/rules';
+import { GOLD_SUPPLY, PURCHASES_PER_TURN, type GameState, type Rng } from '@katan/rules';
 import type { MechanicsTally } from '../types.ts';
 import { partStateOf, sum, type TbPartKit } from './part.ts';
 

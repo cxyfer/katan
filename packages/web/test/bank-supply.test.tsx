@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { BANK_VIEW_CAP, type GameView } from '@catan/rules';
+import { BANK_VIEW_CAP, type GameView } from '@katan/rules';
 import { DevCardChoicePicker } from '../src/components/DevCardChoicePicker.tsx';
 import { ExchangePanel } from '../src/components/ExchangePanel.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';

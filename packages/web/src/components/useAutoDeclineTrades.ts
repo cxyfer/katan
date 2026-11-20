@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Offer } from '@catan/rules';
+import type { Offer } from '@katan/rules';
 import { blocksNewCommands, STALE_MESSAGE_ID } from '../state/commands.ts';
 import { followUpsHeld, shownHand, type TableState } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';

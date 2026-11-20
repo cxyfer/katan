@@ -25,7 +25,7 @@ import {
   type GameState,
   type GameView,
   type ProfileDefinition,
-} from '@catan/rules';
+} from '@katan/rules';
 import { forceTurn } from '../../rules/test/helpers.ts';
 import { boardModel, routeLength } from '../src/board.ts';
 import { botCommandLimit } from '../src/index.ts';

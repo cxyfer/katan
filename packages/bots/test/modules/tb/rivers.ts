@@ -5,7 +5,7 @@
  * Rivers 沒有隱藏資訊（橋、河與 gold 都公開），所以沒有 `hideDifferently`；gold 的擾動在 coins 的 kit。
  */
 
-import { BRIDGES_PER_PLAYER, type GameState } from '@catan/rules';
+import { BRIDGES_PER_PLAYER, type GameState } from '@katan/rules';
 import type { MechanicsTally } from '../types.ts';
 import { partStateOf, type TbPartKit } from './part.ts';
 

@@ -8,7 +8,7 @@
  * - mechanics（Q2）：策略送出、被接受的指令造成的運貨次數（`tb.commodityDelivered` 事件），依 standard／easy 分開。
  */
 
-import type { GameState } from '@catan/rules';
+import type { GameState } from '@katan/rules';
 import type { MechanicsTally } from '../types.ts';
 import { partStateOf, sum, type TbPartKit } from './part.ts';
 

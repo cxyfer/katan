@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { requireProfile, type PublicModulePendingView } from '@catan/rules';
+import { requireProfile, type PublicModulePendingView } from '@katan/rules';
 import { TB_FRAME_KINDS } from '../src/modules/tradersBarbarians/frames.ts';
 import type { BotModule } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';

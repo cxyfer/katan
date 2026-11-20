@@ -1,4 +1,4 @@
-# CATAN-style browser game
+# Katan
 
 A server-authoritative, browser-based multiplayer hex-board trading game for
 3–4 players (base game), built from the design specification in
@@ -33,7 +33,7 @@ so guest cookies and live table updates share the browser's origin. The runner
 compiles the TypeScript service using the same esbuild options as production,
 watches service/rules/protocol changes, and stops both servers on Ctrl-C or a
 runtime startup failure. No prior `pnpm build` is required. Data stays in
-`.data/catan.sqlite` unless `SQLITE_PATH` is set. If ports are occupied, stop
+`.data/katan.sqlite` unless `SQLITE_PATH` is set. If ports are occupied, stop
 the earlier dev session or use `PORT=3001 VITE_PORT=5174 pnpm dev`; Vite does not
 silently select a different port. Keep using one hostname for the same session.
 
@@ -88,10 +88,10 @@ Individual gates:
 
 ```bash
 pnpm typecheck                       # all packages
-pnpm --filter @catan/rules test      # rules fixtures R-B01–R-B07, R-56, R-VIS
-pnpm --filter @catan/server test     # R-ROOM/R-POLICY/R-SAVE/R-REC/R-CHAT
-pnpm --filter @catan/protocol test
-pnpm --filter @catan/web test        # client component tests
+pnpm --filter @katan/rules test      # rules fixtures R-B01–R-B07, R-56, R-VIS
+pnpm --filter @katan/server test     # R-ROOM/R-POLICY/R-SAVE/R-REC/R-CHAT
+pnpm --filter @katan/protocol test
+pnpm --filter @katan/web test        # client component tests
 pnpm build                           # client bundle + service bundle
 pnpm smoke                           # boots the built artefacts and plays a setup
 pnpm test:dev                        # temp SQLite, real dev proxy/socket/watch lifecycle
@@ -126,7 +126,7 @@ WebSocket are audible, and that they are silent while muted.
 To replay the service suite against PostgreSQL:
 
 ```bash
-TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server test
+TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @katan/server test
 ```
 
 ## What is supported today
@@ -136,8 +136,8 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   easy, standard and hard computer opponents (hard counts cards from the
   public event history).
 - Traders & Barbarians (2025 rulebook) on the base board for **3 and 4
-  players**: the Friendly Robber and Harbors of Catan variants, and the
-  scenarios Fishing on Catan, Rivers of Catan, Merchant Trains, Barbarian
+  players**: the Friendly Robber and Harbors of Katan variants, and the
+  scenarios Fishing on Katan, Rivers of Katan, Merchant Trains, Barbarian
   Attack and Traders & Barbarians, each its own profile, with easy and
   standard computer opponents.
 - Private rooms with invite codes and a public room list.
@@ -159,10 +159,10 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
   the per-player small-island bonus, Longest Trade Route and a 14-point goal,
   in both the 3D and SVG boards, with easy and standard computer opponents.
 - **Explorers & Pirates** for 3–4 players (CN3085 2025 edition), one profile
-  per mission set in book order — Land Ho!, Pirate Lairs, Fish for Catan,
-  Spices for Catan and the full game: fog over unexplored hexes, harbour
+  per mission set in book order — Land Ho!, Pirate Lairs, Fish for Katan,
+  Spices for Katan and the full game: fog over unexplored hexes, harbour
   settlements, ships carrying settlers, crews, fish and spice, coins, pirate
-  ships, lairs, the Council of Catan and mission tracks, in both boards.
+  ships, lairs, the Council of Katan and mission tracks, in both boards.
   Never combined with Seafarers; human seats only.
 
 - **Cities & Knights** for 3–6 players (CK25/CK56-25 2025 editions): the
@@ -196,8 +196,18 @@ produced.
 - **SQL is portable.** Statements are authored with `?` placeholders and
   rewritten for PostgreSQL; the same repository contract suite runs on both.
 
-## Intellectual property
+## License and intellectual property
 
-This is an original implementation of a paraphrased rules specification. It does
-not include official artwork, logos or card text. Review licensing before any
-public branded release (SPEC §14).
+Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE): you may run,
+modify and share it for any noncommercial purpose, including private
+self-hosting for friends. Charities, educational institutions, public research
+and the other organizations the license lists may use it regardless of funding;
+any other commercial use needs separate written permission.
+
+This is an unofficial, fan-made implementation of a paraphrased rules
+specification, not affiliated with or endorsed by CATAN GmbH or CATAN Studio.
+CATAN and its expansion names are trademarks of CATAN GmbH, and the license
+grants no rights in them. The repository does not include official artwork,
+logos, card or rulebook text; all artwork is original and all sounds are
+synthesised. See [`NOTICE`](NOTICE) and SPEC §14 before any public branded
+release.

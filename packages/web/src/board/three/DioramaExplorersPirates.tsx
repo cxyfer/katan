@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { Material, Mesh, MeshStandardMaterial } from 'three';
-import type { EpCargo } from '@catan/rules';
+import type { EpCargo } from '@katan/rules';
 import type { BoardSceneProps } from '../render-contract.ts';
 import { playerColorHex } from '../terrain.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';

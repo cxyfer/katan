@@ -1,4 +1,4 @@
-import type { PublicBoardView } from '@catan/rules';
+import type { PublicBoardView } from '@katan/rules';
 import type { BoardGeometry } from './geometry.ts';
 import type { WorldPoint } from './render-contract.ts';
 import { geometryPointToWorld, targetsFromGeometry } from './projection.ts';

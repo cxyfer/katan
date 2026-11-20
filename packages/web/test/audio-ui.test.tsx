@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { App } from '../src/App.tsx';
 import type { SoundCue } from '../src/audio/cues.ts';

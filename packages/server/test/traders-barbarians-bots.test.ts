@@ -28,8 +28,8 @@ import {
   type GameEvent,
   type GameState,
   type GameView,
-} from '@catan/rules';
-import { createBotPolicy, fallbackPolicy, type BotCommand, type BotPolicy } from '@catan/bots';
+} from '@katan/rules';
+import { createBotPolicy, fallbackPolicy, type BotCommand, type BotPolicy } from '@katan/bots';
 import { loadConfig, type BotSettings } from '../src/config.ts';
 import type { BotDriverDeps } from '../src/bot-driver.ts';
 import type { Connection } from '../src/rooms.ts';
@@ -636,7 +636,7 @@ describe('Traders & Barbarians with bot seats', () => {
 
   // 4. 車隊移動到一半時重啟：frame 由已提交的狀態恢復，Bot 接著完成移動。
   it(`resumes a wagon move in ${TRADERS_PROFILE} after a restart`, async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'catan-tb-bots-restart-'));
+    const dir = mkdtempSync(join(tmpdir(), 'katan-tb-bots-restart-'));
     const overrides = { port: 0, host: '127.0.0.1', sqlitePath: join(dir, 'tb.sqlite'), bots: { ...FAST_BOTS } };
     try {
       const first = await startService(overrides, () => undefined);

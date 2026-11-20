@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PROFILES } from '@catan/rules';
-import { profileView } from '@catan/protocol';
+import { PROFILES } from '@katan/rules';
+import { profileView } from '@katan/protocol';
 import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../src/state/rulesets.ts';
 
 const registry = PROFILES.map((profile) => profileView(profile, { botLevels: profile.ruleModules.length === 0 ? ['easy', 'standard', 'hard'] : [] }));

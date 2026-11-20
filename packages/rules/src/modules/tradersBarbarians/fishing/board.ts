@@ -1,5 +1,5 @@
 /**
- * Fishing on Catan board (TB25 p. 9): B25 variable setup with the lake in
+ * Fishing on Katan board (TB25 p. 9): B25 variable setup with the lake in
  * place of the desert, the lake plus six random hexes in the inner seven
  * positions, and six fishing grounds on the frame.
  */

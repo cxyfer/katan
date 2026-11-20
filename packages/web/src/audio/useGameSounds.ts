@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { GameEvent } from '@catan/protocol';
+import type { GameEvent } from '@katan/protocol';
 import { requiredActionFor, type RequiredAction } from '../state/pending.ts';
 import type { TableState } from '../state/table.ts';
 import { cueGroups, stagger, type SoundCue } from './cues.ts';

@@ -7,7 +7,7 @@
  * server.
  */
 
-import { getTopology, type BoardTopology } from '@catan/rules';
+import { getTopology, type BoardTopology } from '@katan/rules';
 
 export const BASE_TOPOLOGY_ID = 'hex-r2';
 

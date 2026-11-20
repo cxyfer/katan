@@ -24,7 +24,7 @@ import {
   type CardKind,
   type Commodity,
   type Terrain,
-} from '@catan/rules';
+} from '@katan/rules';
 import type { BoardModel } from '../../board.ts';
 import type { Cost } from '../../economy.ts';
 import type { BotEconomyHooks } from '../types.ts';

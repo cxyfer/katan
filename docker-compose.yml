@@ -1,7 +1,7 @@
 # Runs the published image (ghcr.io/cxyfer/katan). To build from this checkout,
 # add docker-compose.build.yml (see docs/OPERATIONS.md).
 services:
-  catan:
+  katan:
     image: ghcr.io/cxyfer/katan:latest
     restart: unless-stopped
     ports:
@@ -9,14 +9,18 @@ services:
     environment:
       PORT: "3000"
       HOST: "0.0.0.0"
-      SQLITE_PATH: /data/catan.sqlite
+      SQLITE_PATH: /data/katan.sqlite
+      # 0.4.x 以前的資料庫；/data 沒有 katan.sqlite 時會從這裡複製一份
+      LEGACY_SQLITE_PATH: /data-legacy/catan.sqlite
       WEB_DIST_PATH: /app/web
       COOKIE_SECURE: "false" # set to true behind TLS
       LOG_LEVEL: info
       DEFAULT_DISCONNECT_GRACE_SECONDS: "300"
       DEFAULT_TURN_CLOCK_SECONDS: "0"
     volumes:
-      - catan-data:/data
+      - katan-data:/data
+      # 0.4.x 以前的 volume，唯讀掛載只供首次啟動複製；確認遷移完成後可移除這行與下方宣告
+      - catan-data:/data-legacy:ro
     stop_grace_period: 30s
     healthcheck:
       test:
@@ -30,4 +34,5 @@ services:
       start_period: 15s
 
 volumes:
+  katan-data:
   catan-data:

@@ -26,7 +26,7 @@
  * | 17 | preroll、action | 回 undefined，由 base 送 `turn.roll`／`turn.end` |
  */
 
-import type { GameView, PublicModulePendingView } from '@catan/rules';
+import type { GameView, PublicModulePendingView } from '@katan/rules';
 import type { BotCommand } from '../../types.ts';
 import type { BotModule } from '../types.ts';
 import { isMine, isTbFrame, TB_FRAME_KINDS } from './frames.ts';

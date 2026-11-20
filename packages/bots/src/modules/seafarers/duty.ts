@@ -10,7 +10,7 @@
  * - 保底只在 freeRoads 造船，不在其他時機造船或移船；其他模組的 frame 回 undefined。
  */
 
-import { GOLD_FRAME, RESOURCES, type GameView, type PublicModulePendingView, type Resource } from '@catan/rules';
+import { GOLD_FRAME, RESOURCES, type GameView, type PublicModulePendingView, type Resource } from '@katan/rules';
 import { roadStockLeft } from '../../board.ts';
 import type { BotModule } from '../types.ts';
 import { moduleHints } from '../view.ts';

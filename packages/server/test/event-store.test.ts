@@ -4,7 +4,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { GameState } from '@catan/rules';
+import type { GameState } from '@katan/rules';
 import {
   openOfferOverApi,
   runSetupOverApi,

@@ -5,7 +5,7 @@
  * 只有 profile 啟用的模組才有項目，缺漏（或形狀不是物件）一律回 undefined，呼叫端要自行處理。
  */
 
-import type { GameView, ModuleHintsMap, ModuleViewMap } from '@catan/rules';
+import type { GameView, ModuleHintsMap, ModuleViewMap } from '@katan/rules';
 
 function entryOf(record: Record<string, unknown> | undefined, id: string): unknown {
   if (!record || !Object.hasOwn(record, id)) return undefined;

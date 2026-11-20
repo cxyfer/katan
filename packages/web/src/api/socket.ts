@@ -7,7 +7,7 @@
  * because only it knows which game/room it is currently showing.
  */
 
-import type { ClientMessage, ServerMessage } from '@catan/protocol';
+import type { ClientMessage, ServerMessage } from '@katan/protocol';
 
 export type SocketStatus = 'connecting' | 'open' | 'closed';
 

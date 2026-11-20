@@ -6,7 +6,7 @@
  * 替代方案（§5）時只放入已通過閘門的 part。
  */
 
-import { TB_SCENARIO_PART_IDS, TB_VARIANT_PART_IDS, type ProfileDefinition } from '@catan/rules';
+import { TB_SCENARIO_PART_IDS, TB_VARIANT_PART_IDS, type ProfileDefinition } from '@katan/rules';
 import { barbarianAttackBot } from './barbarianAttack.ts';
 import { coinsBot } from './coins.ts';
 import { fishingBot } from './fishing.ts';

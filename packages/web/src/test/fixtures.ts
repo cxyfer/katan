@@ -17,7 +17,7 @@ import {
   type Offer,
   type PublicBoardView,
   type PublicPlayerView,
-} from '@catan/rules';
+} from '@katan/rules';
 import type {
   ChatMessageView,
   GameSnapshot,
@@ -29,7 +29,7 @@ import type {
   RoomSummaryView,
   RoomView,
   ServerConfigView,
-} from '@catan/protocol';
+} from '@katan/protocol';
 import { boardReference, type ReferenceKind } from '../board/references.ts';
 
 export const TOPOLOGY_ID = 'hex-r2';

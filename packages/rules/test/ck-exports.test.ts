@@ -1,5 +1,5 @@
 /**
- * Type and constant exports that `@catan/bots` builds on (bot plan CK-A / P8):
+ * Type and constant exports that `@katan/bots` builds on (bot plan CK-A / P8):
  * the Cities & Knights view and hint shapes, the pending-frame kinds and the
  * constants the bots read. The key lists below are `Record<keyof T, true>` so
  * that a key added to or removed from a type breaks `tsc`, and the tests

@@ -16,7 +16,7 @@ import {
   type Command,
   type GameState,
   type GameView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { actCk, emptyCkGame, giveCommodities, handCards, player, rollRng, SHIP, TRADE } from '../../rules/test/ck-helpers.ts';
 import { give } from '../../rules/test/helpers.ts';
 import { botOwesAction, fallbackDecision, fallbackPolicy } from '../src/fallback.ts';

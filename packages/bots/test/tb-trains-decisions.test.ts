@@ -26,7 +26,7 @@ import {
   type GameState,
   type GameView,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import { placeBuilding, placeRoad, setHand } from '../../rules/test/helpers.ts';
 import { clearBoard, tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { boardModel } from '../src/board.ts';

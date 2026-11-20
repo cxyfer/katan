@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { topologyOf, TRADERS_BARBARIANS, type Command, type GameState, type GameView } from '@catan/rules';
+import { topologyOf, TRADERS_BARBARIANS, type Command, type GameState, type GameView } from '@katan/rules';
 import { act, give, placeRoad, scriptedRng, setHand } from '../../rules/test/helpers.ts';
 import { clearBoard, tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { longestRoadAwarded } from '../src/economy.ts';

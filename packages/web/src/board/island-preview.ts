@@ -1,4 +1,4 @@
-import { archipelagoLayout, buildBaseLayout, getTopology, seededRng, type PublicBoardView } from '@catan/rules';
+import { archipelagoLayout, buildBaseLayout, getTopology, seededRng, type PublicBoardView } from '@katan/rules';
 import type { BoardSceneInput } from './render-contract.ts';
 
 export const ISLAND_PREVIEW_PLAYERS: BoardSceneInput['players'] = [

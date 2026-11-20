@@ -14,7 +14,7 @@ import {
   type GameEvent,
   type GameView,
   type Resource,
-} from '@catan/rules';
+} from '@katan/rules';
 import { boardModel, playerYield } from './board.ts';
 
 /** 每位對手最多保留的可能手牌數；超過時刪掉機率最低者。 */

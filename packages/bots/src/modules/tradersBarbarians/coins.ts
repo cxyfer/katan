@@ -24,7 +24,7 @@ import {
   type CardKind,
   type GameView,
   type Resource,
-} from '@catan/rules';
+} from '@katan/rules';
 import { targetOf } from '../../board.ts';
 import { canAfford, deficitOf, handSize, type Cost, type Economy, type Hand } from '../../economy.ts';
 import { bankTradesThisTurn, bankTradeToward } from '../../trade.ts';

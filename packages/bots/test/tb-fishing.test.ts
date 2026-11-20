@@ -1,5 +1,5 @@
 /**
- * Fishing on Catan 的 B-GAME（Q1）與 Q2 門檻（T&B 計畫 §6.1、§6.3；S4）。
+ * Fishing on Katan 的 B-GAME（Q1）與 Q2 門檻（T&B 計畫 §6.1、§6.3；S4）。
  *
  * - profile：'tb-fishing-2025'，3、4 人；`tbMatrix`（`seedsFor` 的種子各一局，standard 與 easy 輪替，另加 bot2 只走保底的一局）。
  *   步數上限 3000、看門狗 60 次擲骰（`PROFILE_LIMITS`）。每局都要通過 `expectTbGameHealthy`。
@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { requireProfile, type PublicModulePendingView } from '@catan/rules';
+import { requireProfile, type PublicModulePendingView } from '@katan/rules';
 import { TB_FRAME_KINDS } from '../src/modules/tradersBarbarians/frames.ts';
 import type { BotModule } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';

@@ -4,7 +4,7 @@ import { topologyOf } from '../../analysis.ts';
 import type { GameState } from '../../types.ts';
 import { epState, isFog, siteAt, type EpHarbor, type EpShip, type ExplorersPiratesState } from './state.ts';
 
-/** An explored sea hex: open sea, a fish shoal or the Council of Catan. */
+/** An explored sea hex: open sea, a fish shoal or the Council of Katan. */
 export function isWater(state: GameState, slot: ExplorersPiratesState, hex: number): boolean {
   return state.board.layout.terrain[hex] === 'sea' && !isFog(slot, hex);
 }

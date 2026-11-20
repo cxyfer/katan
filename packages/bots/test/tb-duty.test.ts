@@ -21,7 +21,7 @@ import {
   type GameView,
   type PublicModulePendingView,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import { placeRoad, scriptedRng, setHand } from '../../rules/test/helpers.ts';
 import { clearBoard, tbCreate, tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { pendingDuty } from '../src/base/duty.ts';

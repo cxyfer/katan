@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import type { BoardEffectGroup } from '../board/animation.ts';
 import type { BoardGeometry } from '../board/geometry.ts';
 import { MAX_FLIGHT_ICONS, neutralThefts, productionGrants } from '../board/effects.ts';

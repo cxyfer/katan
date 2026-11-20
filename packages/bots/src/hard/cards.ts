@@ -1,6 +1,6 @@
 /** hard 的發展卡：騎士用 hard 的強盜評分，壟斷用計牌結果。 */
 
-import { RESOURCES, type Command, type Resource } from '@catan/rules';
+import { RESOURCES, type Command, type Resource } from '@katan/rules';
 import { canPlay } from '../base/cards.ts';
 import { usefulRoad } from '../base/roads.ts';
 import { deficitOf } from '../economy.ts';

@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { requireProfile, topologyOf, type Command, type GameState } from '@catan/rules';
+import { requireProfile, topologyOf, type Command, type GameState } from '@katan/rules';
 import { act, give, placeRoad } from '../../rules/test/helpers.ts';
 import { tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { botModulesOf } from '../src/support.ts';

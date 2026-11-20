@@ -7,7 +7,7 @@ import { memoryStorage, NEWS_SEEN_KEY, type StorageLike } from '../src/state/ses
 import { createFakeApi } from '../src/test/fake-api.ts';
 
 // vite.config.ts 從根目錄 package.json 注入，和 /healthz 回報的是同一個版號。
-const rootVersion = __CATAN_VERSION__;
+const rootVersion = __KATAN_VERSION__;
 // 首頁實際顯示的紀錄與最新一則。
 const SHOWN = notesForVersion(rootVersion);
 const LATEST_PLAYER_NOTE = SHOWN[0];
@@ -125,7 +125,7 @@ describe('home notice board', () => {
 
     fireEvent.click(tab);
     const panel = await screen.findByRole('tabpanel', { name: /notice board/i });
-    expect(within(panel).getByTestId('news-version').textContent).toBe(`You are playing v${__CATAN_VERSION__}`);
+    expect(within(panel).getByTestId('news-version').textContent).toBe(`You are playing v${__KATAN_VERSION__}`);
     const entries = within(panel).getAllByRole('article');
     expect(entries).toHaveLength(SHOWN.length);
     expect(within(entries[0]!).getByRole('heading', { level: 3 }).textContent).toBe(LATEST_PLAYER_NOTE!.title.en);

@@ -3,14 +3,14 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
-import type { GameState, GameView } from '@catan/rules';
+import type { GameState, GameView } from '@katan/rules';
 import type {
   AbandonProposeResult,
   ResumableGameView,
   RoomView,
   ServerMessage,
   WithdrawResult,
-} from '@catan/protocol';
+} from '@katan/protocol';
 import { newId } from '../src/db.ts';
 import type { Connection } from '../src/rooms.ts';
 import {

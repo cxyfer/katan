@@ -10,7 +10,7 @@ import {
   requireProfile,
   resolveCombination,
   type PlayerColor,
-} from '@catan/rules';
+} from '@katan/rules';
 import {
   DEFAULT_POLICY,
   type AbandonProposalView,
@@ -27,7 +27,7 @@ import {
   type RoomView,
   type ServerMessage,
   type Visibility,
-} from '@catan/protocol';
+} from '@katan/protocol';
 import type { ServerConfig } from './config.ts';
 import { validateNickname, validatePolicy } from './config.ts';
 import {

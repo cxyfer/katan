@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ServerMessage } from '@catan/protocol';
+import type { ServerMessage } from '@katan/protocol';
 import type { SocketLike } from '../src/api/socket.ts';
 import type { BoardEffectAnchors, BoardSceneProps } from '../src/board/render-contract.ts';
 import { boardEffectGroup } from '../src/board/animation.ts';

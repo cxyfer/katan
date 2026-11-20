@@ -1,7 +1,8 @@
 {
-  "name": "catan",
+  "name": "katan",
   "version": "0.4.4-rc.1",
   "private": true,
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "packageManager": "pnpm@10.28.0",
   "engines": {
@@ -10,7 +11,7 @@
   "scripts": {
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "build": "pnpm --filter @catan/web build && pnpm --filter @catan/server build",
+    "build": "pnpm --filter @katan/web build && pnpm --filter @katan/server build",
     "smoke": "node scripts/smoke.mjs",
     "test:dev": "node --test scripts/dev.test.mjs",
     "verify": "pnpm typecheck && pnpm -r test && pnpm build && pnpm smoke && pnpm test:dev",

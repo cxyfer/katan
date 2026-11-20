@@ -13,7 +13,7 @@
  *   並分 standard／easy 兩種難度（鍵的格式見 `CkMechanicsTally`）。
  *
  * 不得 import `rules/test/ck-checks.ts`：它依賴 vitest 的 `expect`，而 bench 會把 kit 打包進去。這裡只用
- * `@catan/rules` 的公開 API，檢查回傳字串清單。
+ * `@katan/rules` 的公開 API，檢查回傳字串清單。
  */
 
 import {
@@ -50,7 +50,7 @@ import {
   type PlayerState,
   type ProgressCardType,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import type { MechanicsStep, MechanicsTally, ModuleTestKit } from './types.ts';
 
 /** rules 的 `CitiesKnightsState` 沒有匯出；這裡只宣告會讀寫的欄位。 */

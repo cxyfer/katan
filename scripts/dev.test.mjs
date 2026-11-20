@@ -53,13 +53,13 @@ async function fixture() {
     const target = join(directory, relative);
     await cp(join(root, relative, 'src'), join(target, 'src'), { recursive: true });
     await cp(join(root, relative, 'package.json'), join(target, 'package.json'));
-    await mkdir(join(target, 'node_modules/@catan'), { recursive: true });
+    await mkdir(join(target, 'node_modules/@katan'), { recursive: true });
     for (const entry of await readdir(join(root, relative, 'node_modules'))) {
-      if (entry === '@catan' || entry.startsWith('.')) continue;
+      if (entry === '@katan' || entry.startsWith('.')) continue;
       await symlink(join(root, relative, 'node_modules', entry), join(target, 'node_modules', entry), 'dir');
     }
     for (const workspace of ['rules', 'protocol', 'bots']) {
-      await symlink(join(directory, 'packages', workspace), join(target, 'node_modules/@catan', workspace), 'dir');
+      await symlink(join(directory, 'packages', workspace), join(target, 'node_modules/@katan', workspace), 'dir');
     }
   }
   return directory;

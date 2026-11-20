@@ -8,7 +8,7 @@
  */
 
 import type { ReactNode } from 'react';
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import { merchantSpot, TRACKS, type CitiesKnightsModuleView, type Commodity, type EventFace, type KnightLevel, type Track } from '../board/citiesKnights.ts';
 import type { BoardGeometry } from '../board/geometry.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';

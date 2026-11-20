@@ -1,4 +1,4 @@
-import { CARD_KINDS, type Resource } from '@catan/rules';
+import { CARD_KINDS, type Resource } from '@katan/rules';
 import { useT } from '../i18n/context.tsx';
 import { blocksNewCommands } from '../state/commands.ts';
 import { requiredActionFor } from '../state/pending.ts';

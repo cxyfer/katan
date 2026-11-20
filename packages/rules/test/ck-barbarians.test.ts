@@ -62,7 +62,7 @@ describe('R-CK defenders win (CK25 p. 11)', () => {
     const before = scoreOf(state, 'p2', { includeHidden: false });
     const rolled = attack(state);
     expect(eventsOf(rolled, 'ck.barbariansAttack')[0]!.params).toMatchObject({ barbarians: 2, defenders: 2, outcome: 'defenders' });
-    expect(eventsOf(rolled, 'ck.defenderOfCatan')[0]!.params).toEqual({ playerId: 'p2' });
+    expect(eventsOf(rolled, 'ck.defenderOfKatan')[0]!.params).toEqual({ playerId: 'p2' });
     expect(player(rolled.state, 'p2').defenders).toBe(1);
     expect(scoreOf(rolled.state, 'p2', { includeHidden: false })).toBe(before + 1);
     expect(rolled.state.board.buildings[a!]).toEqual({ player: 'p1', city: true });
@@ -78,7 +78,7 @@ describe('R-CK defenders win (CK25 p. 11)', () => {
     state.progressDecks.trade = ['merchant', 'guildDues'];
     state.progressDecks.politics = ['wedding'];
     const rolled = actCk(state, 'p3', { type: 'turn.roll' }, rollRng(6, 6, SHIP));
-    expect(eventsOf(rolled, 'ck.defenderOfCatan')).toHaveLength(0);
+    expect(eventsOf(rolled, 'ck.defenderOfKatan')).toHaveLength(0);
     expect(eventsOf(rolled, 'ck.defendersTied')[0]!.params).toEqual({ players: ['p4', 'p2'] });
     expect(moduleFrame(rolled.state)).toMatchObject({ kind: 'citiesKnights.defenderDraw', responders: ['p4', 'p2'] });
     expect(rejectCk(rolled.state, 'p2', { type: 'barbarians.chooseDeck', track: 'trade' })).toBe('E_NOT_YOUR_TURN');

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { BoxGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, type Material } from 'three';
-import type { PublicBoardView } from '@catan/rules';
+import type { PublicBoardView } from '@katan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import { ModelBuilder, useDioramaGeometry } from './diorama-geometry.ts';
 import { cubicPoints, riverCourse } from '../tb-rivers.ts';

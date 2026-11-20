@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { requireProfile } from '@catan/rules';
+import { requireProfile } from '@katan/rules';
 import { GAME_TIMEOUT, seedsFor } from './harness.ts';
 import { partStateOf } from './modules/tb/part.ts';
 import { expectTbGameHealthy, runTbGame, tbMatrix, type TbGameRecord } from './tb-game.ts';

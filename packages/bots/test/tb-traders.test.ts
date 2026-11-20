@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { requireProfile, TB_FRAME_KINDS, TRADERS_BARBARIANS, type GameState, type ModulePending } from '@catan/rules';
+import { requireProfile, TB_FRAME_KINDS, TRADERS_BARBARIANS, type GameState, type ModulePending } from '@katan/rules';
 import { botModulesOf } from '../src/index.ts';
 import type { BotCommand, BotModule } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';

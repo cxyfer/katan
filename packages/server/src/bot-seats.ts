@@ -5,9 +5,9 @@
  * 旗標對 Bot 沒有意義（例如設定變更會清除 ready），讀取時一律用這裡的函式推導。
  */
 
-import { PLAYER_COLORS, type ProfileDefinition } from '@catan/rules';
-import { BOT_LEVELS, type BotLevel } from '@catan/protocol';
-import { botLevelsFor, botsCanPlay, type BotLevel as PolicyBotLevel } from '@catan/bots';
+import { PLAYER_COLORS, type ProfileDefinition } from '@katan/rules';
+import { BOT_LEVELS, type BotLevel } from '@katan/protocol';
+import { botLevelsFor, botsCanPlay, type BotLevel as PolicyBotLevel } from '@katan/bots';
 import { newId, type MemberRow, type Repository } from './db.ts';
 
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -53,7 +53,7 @@ export function botLevelOf(member: { bot_level?: string | null }): BotLevel {
 }
 
 /**
- * 能否加入 Bot 依 `@catan/bots` 的 `botsCanPlay` 判定：設定檔的每個規則模組都要有已註冊的
+ * 能否加入 Bot 依 `@katan/bots` 的 `botsCanPlay` 判定：設定檔的每個規則模組都要有已註冊的
  * BotModule，且該模組的 `supports` 接受這個設定檔。
  */
 export function botsSupported(profile: ProfileDefinition): boolean {

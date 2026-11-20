@@ -10,10 +10,10 @@
  * - mechanics：每局為每個啟用 part 各建一個計數器，鍵加上 `<part id>.` 前綴（harness 再加 `tradersBarbarians.`）；
  * - responseCommands：rules 的 15 個 pending 指令。
  *
- * 不得 import `rules/test/*`：bench 會把 kit 打包進去，那些 helper 依賴 vitest。這裡只用 `@catan/rules` 的公開 API。
+ * 不得 import `rules/test/*`：bench 會把 kit 打包進去，那些 helper 依賴 vitest。這裡只用 `@katan/rules` 的公開 API。
  */
 
-import { getProfile, TB_PENDING_COMMANDS, TRADERS_BARBARIANS, type GameState, type Rng } from '@catan/rules';
+import { getProfile, TB_PENDING_COMMANDS, TRADERS_BARBARIANS, type GameState, type Rng } from '@katan/rules';
 import { tbPartIdsOf } from '../../src/modules/tradersBarbarians/view.ts';
 import { barbarianAttackPartKit } from './tb/barbarianAttack.ts';
 import { coinsPartKit } from './tb/coins.ts';

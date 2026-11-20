@@ -9,7 +9,7 @@
  * plays the card and pins the approved grant behavior. Topology indices and
  * base layouts remain pinned to the original baseline; fresh snapshots and
  * whole games are pinned to the active base rule version. Re-record those
- * with `RECORD_BASE_PINS=1 pnpm --filter @catan/rules exec vitest run
+ * with `RECORD_BASE_PINS=1 pnpm --filter @katan/rules exec vitest run
  * test/base-regression.test.ts --silent=false` after an approved base change.
  */
 

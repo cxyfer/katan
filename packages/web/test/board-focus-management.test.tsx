@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
-import type { BoardTopology, PublicBoardView } from '@catan/rules';
+import type { BoardTopology, PublicBoardView } from '@katan/rules';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { SelectionPreview } from '../src/components/SelectionPreview.tsx';
 import { TargetPicker } from '../src/components/TargetPicker.tsx';

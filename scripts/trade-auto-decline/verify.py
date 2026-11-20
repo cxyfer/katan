@@ -11,7 +11,7 @@ Then:
     python3 scripts/trade-auto-decline/verify.py <new empty output directory>
 
 The script seats three players in a real room. Both recipients' browsers start
-with `catan.trade.autoDecline` already stored and their trade panels closed. A
+with `katan.trade.autoDecline` already stored and their trade panels closed. A
 table-wide offer nobody can cover is proposed through the API; both clients must
 decline it without any pointer or keyboard input, so at least one has to recover
 from a stale-command receipt. A second, affordable offer must stay unanswered.
@@ -29,7 +29,7 @@ from playwright.sync_api import expect, sync_playwright
 
 BASE = os.environ.get('UI_BASE_URL', 'http://127.0.0.1:3112')
 RESOURCES = ['lumber', 'brick', 'wool', 'grain', 'ore']
-STORAGE_KEY = 'catan.trade.autoDecline'
+STORAGE_KEY = 'katan.trade.autoDecline'
 
 if len(sys.argv) != 2:
     sys.exit('usage: verify.py <new empty output directory>')

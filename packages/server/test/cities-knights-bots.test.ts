@@ -28,8 +28,8 @@ import {
   type GameEvent,
   type GameState,
   type GameView,
-} from '@catan/rules';
-import { createBotPolicy, fallbackPolicy, type BotCommand, type BotPolicy } from '@catan/bots';
+} from '@katan/rules';
+import { createBotPolicy, fallbackPolicy, type BotCommand, type BotPolicy } from '@katan/bots';
 import { loadConfig, type BotSettings } from '../src/config.ts';
 import type { BotDriverDeps } from '../src/bot-driver.ts';
 import type { Connection } from '../src/rooms.ts';
@@ -558,7 +558,7 @@ describe('Cities & Knights with bot seats', () => {
 
   // 4. defenderDraw 等待真人時重啟：frame 與 Bot 的後續作答都由已提交的狀態恢復。
   it('resumes a waiting defenderDraw frame after a restart', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'catan-ck-bots-restart-'));
+    const dir = mkdtempSync(join(tmpdir(), 'katan-ck-bots-restart-'));
     const overrides = { port: 0, host: '127.0.0.1', sqlitePath: join(dir, 'ck.sqlite'), bots: { ...FAST_BOTS } };
     try {
       const first = await startService(overrides, () => undefined);

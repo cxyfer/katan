@@ -5,7 +5,7 @@
  * helper returns `null` (or nothing) there.
  */
 
-import type { GameView, Resource } from '@catan/rules';
+import type { GameView, Resource } from '@katan/rules';
 import type { Selection } from '../state/table.ts';
 
 export type Track = 'science' | 'trade' | 'politics';

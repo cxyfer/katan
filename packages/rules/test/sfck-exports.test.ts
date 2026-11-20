@@ -1,5 +1,5 @@
 /**
- * Type and constant exports that `@catan/bots` builds on (bot plan SFCK-X /
+ * Type and constant exports that `@katan/bots` builds on (bot plan SFCK-X /
  * P8): the Seafarers + Cities & Knights combination view and hint shapes, the
  * `SfckBandit` value domain and the module id. The key lists below are
  * `Record<keyof T, true>` so that a key added to or removed from a type breaks

@@ -7,7 +7,7 @@
  */
 
 import { BoxGeometry, BufferGeometry, Color, CylinderGeometry, ExtrudeGeometry, Shape } from 'three';
-import type { PublicBoardView } from '@catan/rules';
+import type { PublicBoardView } from '@katan/rules';
 import { placementArrival } from '../effects.ts';
 import type { BoardEffectGroup } from '../animation.ts';
 import type { BoardGeometry } from '../geometry.ts';

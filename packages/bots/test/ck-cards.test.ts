@@ -21,7 +21,7 @@ import {
   type Command,
   type GameState,
   type GameView,
-} from '@catan/rules';
+} from '@katan/rules';
 import {
   actCk,
   addKnight,

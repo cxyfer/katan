@@ -60,7 +60,7 @@ function friendlyRobber() {
   }
 }
 
-/** Harbors of Catan: upgrading the second port building reaches 3 VP on ports. */
+/** Harbors of Katan: upgrading the second port building reaches 3 VP on ports. */
 function harbors() {
   actionPhase();
   const ports = state.board.layout.harbors.map((harbor) => topology.edges[harbor.edge].vertices[0]);

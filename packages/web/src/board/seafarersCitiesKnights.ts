@@ -5,7 +5,7 @@
  * helper returns `null` / leaves its input unchanged elsewhere.
  */
 
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 
 export interface SeafarersCitiesKnightsHints {
   /** The pirate (like the robber) is in play from the first barbarian attack. */

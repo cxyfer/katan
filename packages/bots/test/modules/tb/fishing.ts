@@ -9,7 +9,7 @@
  * - mechanics（Q2，§6.3）：策略送出的花魚（依用途）、交出舊靴、交換與放棄交換。
  */
 
-import { FISH_LIMIT, FISH_SUPPLY, type GameState, type Rng } from '@catan/rules';
+import { FISH_LIMIT, FISH_SUPPLY, type GameState, type Rng } from '@katan/rules';
 import type { MechanicsTally } from '../types.ts';
 import { partStateOf, type TbPartKit } from './part.ts';
 

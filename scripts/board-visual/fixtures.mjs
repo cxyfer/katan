@@ -16,7 +16,7 @@ if (!outputRelative || outputRelative.startsWith('..') || isAbsolute(outputRelat
   throw new Error('--out must name a file inside this worktree\'s test-results/');
 }
 
-const temporary = await mkdtemp(join(tmpdir(), 'catan-board-fixtures-'));
+const temporary = await mkdtemp(join(tmpdir(), 'katan-board-fixtures-'));
 try {
   const bundle = join(temporary, 'fixtures.mjs');
   await build({

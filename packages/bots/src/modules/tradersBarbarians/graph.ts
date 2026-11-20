@@ -5,7 +5,7 @@
  * 較小的那條。邊的 BFS 依距離分層，同一層內依編號遞增。
  */
 
-import type { BoardTopology, GameView } from '@catan/rules';
+import type { BoardTopology, GameView } from '@katan/rules';
 
 /** 走一條邊的成本；null 表示不能走。`from`、`to` 是邊的兩端。 */
 export type StepCost = (edge: number, from: number, to: number) => number | null;

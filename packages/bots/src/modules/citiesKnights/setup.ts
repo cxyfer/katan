@@ -8,7 +8,7 @@
  * 常數是未經對局調校的起點。
  */
 
-import { RESOURCES, type Resource } from '@catan/rules';
+import { RESOURCES, type Resource } from '@katan/rules';
 import { playerYield, vertexYield, type BoardModel, type Yield } from '../../board.ts';
 import { resourceWeights, weightedPips, type KindTable } from '../../economy.ts';
 import type { BotModule } from '../types.ts';

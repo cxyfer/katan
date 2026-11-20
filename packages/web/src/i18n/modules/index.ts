@@ -5,7 +5,7 @@
  * may not redefine a base key (catalog test).
  */
 
-import type { Locale } from '@catan/protocol';
+import type { Locale } from '@katan/protocol';
 import { citiesKnights } from './citiesKnights.ts';
 import { explorersPirates } from './explorersPirates.ts';
 import { seafarers } from './seafarers.ts';

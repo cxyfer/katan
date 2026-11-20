@@ -9,7 +9,7 @@ import {
   ERROR_MESSAGE_IDS as PROTOCOL_ERROR_IDS,
   EVENT_MESSAGE_IDS as PROTOCOL_EVENT_IDS,
   REQUIRED_MESSAGE_IDS as PROTOCOL_REQUIRED_IDS,
-} from '@catan/protocol';
+} from '@katan/protocol';
 import { asLocale, detectLocale, hasMessage, interpolate, t } from '../src/i18n/index.ts';
 import { translateEvent, translateNotice } from '../src/i18n/events.ts';
 import { makeEvent } from '../src/test/fixtures.ts';
@@ -86,8 +86,8 @@ describe('t()', () => {
   });
 
   it('falls back to the default locale and finally to the id', () => {
-    expect(t('en', 'app.title')).toBe('Catan Table');
-    expect(t('zh-Hant', 'app.title')).toBe('卡坦桌遊桌');
+    expect(t('en', 'app.title')).toBe('Katan Table');
+    expect(t('zh-Hant', 'app.title')).toBe('喀坦桌遊桌');
     expect(t('en', 'not.a.real.key')).toBe('not.a.real.key');
   });
 

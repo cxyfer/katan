@@ -1,5 +1,5 @@
 /**
- * Seafarers messages: event/error ids from `@catan/rules` `modules/seafarers`,
+ * Seafarers messages: event/error ids from `@katan/rules` `modules/seafarers`,
  * `play.pending.seafarers.<step>` prompts and any UI strings the module adds.
  * Both locales must define the same keys (catalog parity test). Rule texts
  * are paraphrased, never copied from the rulebook.

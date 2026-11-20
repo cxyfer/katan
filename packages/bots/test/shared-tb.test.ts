@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { actionHints, projectGame, type GameState, type GameView, type Offer } from '@catan/rules';
+import { actionHints, projectGame, type GameState, type GameView, type Offer } from '@katan/rules';
 import { placePath, playableGame } from '../../rules/test/helpers.ts';
 import { boardModel, piecesLeft, piecesOnBoard, pipsOf, routeLength, targetOf, vertexYield } from '../src/board.ts';
 import { robberCandidates } from '../src/base/robber.ts';

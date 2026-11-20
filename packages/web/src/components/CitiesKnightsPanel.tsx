@@ -167,7 +167,7 @@ function AttackResult({ ck, nameOf }: { ck: CitiesKnightsModuleView; nameOf: (id
       <ul className="ck-attack__list">
         {contributions.map(([player, value]) => <li key={player}>{t('ck.panel.contribution', { player: nameOf(player), strength: value })}</li>)}
       </ul>
-      {attack.defender && <p data-testid="ck-attack-defender">{t('event.ck.defenderOfCatan', { player: nameOf(attack.defender) })}</p>}
+      {attack.defender && <p data-testid="ck-attack-defender">{t('event.ck.defenderOfKatan', { player: nameOf(attack.defender) })}</p>}
       {attack.tied.length > 0 && <p>{t('event.ck.defendersTied', { players: attack.tied.map(nameOf) })}</p>}
       {attack.pillaged.length > 0 && <p data-testid="ck-attack-pillaged">
         {t('ck.panel.pillaged', { cities: attack.pillaged.map((entry) => t('ck.panel.pillagedEntry', { player: nameOf(entry.player), vertex: entry.vertex })) })}

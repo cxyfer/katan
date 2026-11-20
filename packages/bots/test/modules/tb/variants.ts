@@ -4,7 +4,7 @@
  * （`tb.strongestPorts` 事件，`transfers`）。兩者都沒有隱藏資訊。
  */
 
-import { STRONGEST_PORTS_MINIMUM, topologyOf, type GameState } from '@catan/rules';
+import { STRONGEST_PORTS_MINIMUM, topologyOf, type GameState } from '@katan/rules';
 import type { MechanicsTally } from '../types.ts';
 import { partStateOf, type TbPartKit } from './part.ts';
 

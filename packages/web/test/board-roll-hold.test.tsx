@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { act, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import { DICE_PRESENTATION_DURATION_MS, MAX_EFFECT_DURATION_MS } from '../src/board/animation.ts';
 import type { BoardSceneProps } from '../src/board/render-contract.ts';
 import { useBoardAnimation } from '../src/board/useBoardAnimation.ts';

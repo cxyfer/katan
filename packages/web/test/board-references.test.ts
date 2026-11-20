@@ -1,7 +1,7 @@
 /** 棋盤位置以「資源（骰子）」描述，取代玩家看不到的地圖編號。 */
 
 import { describe, expect, it } from 'vitest';
-import { createGame, getTopology, projectGame, seededRng, type PublicBoardView } from '@catan/rules';
+import { createGame, getTopology, projectGame, seededRng, type PublicBoardView } from '@katan/rules';
 import { epView, fogRegions } from '../src/board/explorersPirates.ts';
 import { createIslandPreviewBoard } from '../src/board/island-preview.ts';
 import { boardReference, tileRef, type ReferenceContext, type ReferenceKind } from '../src/board/references.ts';

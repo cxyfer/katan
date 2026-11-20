@@ -23,7 +23,7 @@ import {
   type GameView,
   type PublicModulePendingView,
   type Resource,
-} from '@catan/rules';
+} from '@katan/rules';
 import { act, scriptedRng } from '../../rules/test/helpers.ts';
 import { corner, emptySeafarersGame, hex, road, seafarersGame, settle, ship, side } from '../../rules/test/seafarers-helpers.ts';
 import { roadDirectionScore } from '../src/base/roads.ts';

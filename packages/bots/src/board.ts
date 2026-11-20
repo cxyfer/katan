@@ -19,7 +19,7 @@ import {
   type ProfileDefinition,
   type Resource,
   type Terrain,
-} from '@catan/rules';
+} from '@katan/rules';
 import type { BotModule } from './modules/types.ts';
 
 /**

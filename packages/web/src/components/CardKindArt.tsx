@@ -1,4 +1,4 @@
-import type { CardKind } from '@catan/rules';
+import type { CardKind } from '@katan/rules';
 import { isCommodityCard as isCommodity } from '../board/citiesKnights.ts';
 import { ResourceGlyph } from './GameArt.tsx';
 import { ResourceCardArt } from './ResourceCardArt.tsx';

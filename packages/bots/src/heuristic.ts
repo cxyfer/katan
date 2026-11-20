@@ -14,7 +14,7 @@ import {
   type PublicModulePendingView,
   type PublicPendingView,
   type Resource,
-} from '@catan/rules';
+} from '@katan/rules';
 import { bankHas } from './bank.ts';
 import { playerYield, targetOf } from './board.ts';
 import { banditChoice, robberCauseOf } from './base/robber.ts';

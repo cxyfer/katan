@@ -17,7 +17,7 @@ import {
   seededRng,
   type CardKind,
   type GameState,
-} from '@catan/rules';
+} from '@katan/rules';
 import { emptyCkGame, giveCommodities, setBuilding, spreadVertices } from '../../rules/test/ck-helpers.ts';
 import { forceTurn, give, newGame } from '../../rules/test/helpers.ts';
 import { handSize } from '../src/economy.ts';

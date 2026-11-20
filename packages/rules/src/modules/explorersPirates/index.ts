@@ -2,7 +2,7 @@
  * Explorers & Pirates rules module (EP25 / EP25-M, CN3085, 2025).
  *
  * Standalone E&P for 3–4 players, one profile per mission set (Land Ho!,
- * Pirate Lairs, Fish for Catan, Spices for Catan, Explorers & Pirates). The
+ * Pirate Lairs, Fish for Katan, Spices for Katan, Explorers & Pirates). The
  * base engine supplies production, the 7's discards, roads, settlements and
  * supply trades; this module adds the Movement phase, harbour settlements,
  * ships with cargo, exploration, coins, pirate ships and the missions. See

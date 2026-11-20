@@ -4,7 +4,7 @@
  * Injected so tests never touch a real `localStorage`.
  */
 
-import type { Locale } from '@catan/protocol';
+import type { Locale } from '@katan/protocol';
 import { asLocale } from '../i18n/index.ts';
 
 export interface StorageLike {
@@ -13,11 +13,11 @@ export interface StorageLike {
   removeItem(key: string): void;
 }
 
-export const LOCALE_KEY = 'catan.locale';
-export const NICKNAME_KEY = 'catan.nickname';
-export const MUTE_KEY = 'catan.mute';
-export const TRADE_AUTO_DECLINE_KEY = 'catan.trade.autoDecline';
-export const NEWS_SEEN_KEY = 'catan.news.seen';
+export const LOCALE_KEY = 'katan.locale';
+export const NICKNAME_KEY = 'katan.nickname';
+export const MUTE_KEY = 'katan.mute';
+export const TRADE_AUTO_DECLINE_KEY = 'katan.trade.autoDecline';
+export const NEWS_SEEN_KEY = 'katan.news.seen';
 
 export function readStoredLocale(storage: StorageLike): Locale | null {
   try {
@@ -119,7 +119,37 @@ export function memoryStorage(seed: Record<string, string> = {}): StorageLike {
   };
 }
 
+/** 0.4.x 以前以 `catan.` 為前綴的鍵，也涵蓋 audio/preferences.ts 的音效偏好。 */
+const LEGACY_KEY_PAIRS: readonly (readonly [legacy: string, current: string])[] = [
+  'locale',
+  'nickname',
+  'mute',
+  'trade.autoDecline',
+  'news.seen',
+  'audio',
+].map((suffix) => [`catan.${suffix}`, `katan.${suffix}`] as const);
+
+/** 把舊鍵的值搬到新鍵；新鍵已有值時以新鍵為準，舊鍵一律移除。 */
+export function migrateLegacyStorage(storage: StorageLike): void {
+  for (const [legacy, current] of LEGACY_KEY_PAIRS) {
+    try {
+      const value = storage.getItem(legacy);
+      if (value === null) continue;
+      if (storage.getItem(current) === null) storage.setItem(current, value);
+      storage.removeItem(legacy);
+    } catch {
+      // 與其他偏好相同：儲存空間不可用時直接略過
+    }
+  }
+}
+
+let legacyStorageMigrated = false;
+
 export function browserStorage(): StorageLike {
   if (typeof globalThis.localStorage === 'undefined') return memoryStorage();
+  if (!legacyStorageMigrated) {
+    legacyStorageMigrated = true;
+    migrateLegacyStorage(globalThis.localStorage);
+  }
   return globalThis.localStorage;
 }

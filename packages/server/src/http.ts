@@ -3,14 +3,13 @@
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { ApiResult, GameOrderMode, Locale } from '@catan/protocol';
-import { BOT_LEVELS, LOCALES, profileView } from '@catan/protocol';
-import { selectableProfiles, PROFILES } from '@catan/rules';
+import type { ApiResult, GameOrderMode, Locale } from '@katan/protocol';
+import { BOT_LEVELS, LOCALES, profileView } from '@katan/protocol';
+import { selectableProfiles, PROFILES } from '@katan/rules';
 import type { ServerConfig } from './config.ts';
 import { validateNickname } from './config.ts';
 import type { Repository } from './db.ts';
 import type { SessionService } from './session.ts';
-import { clearCookie } from './session.ts';
 import { profileBotLevels } from './bot-seats.ts';
 import { ServiceError, type RoomService, type RulesetRequest } from './rooms.ts';
 import type { GameCoordinator } from './game.ts';
@@ -286,7 +285,7 @@ export function createHttpHandler(deps: HttpDeps) {
 
   route('DELETE', '/api/session', async () => ({
     data: { cleared: true },
-    cookies: [clearCookie(deps.config.sessionCookieName, deps.config.cookieSecure)],
+    cookies: deps.sessions.clearCookies(),
   }));
 
   // -- profiles and rooms --------------------------------------------------
@@ -581,7 +580,8 @@ export function createHttpHandler(deps: HttpDeps) {
         if (!matched) continue;
 
         try {
-          const player = await deps.sessions.resolve(req.headers.cookie);
+          const session = await deps.sessions.resolveRequest(req.headers.cookie);
+          const player = session.identity;
           const body = method === 'GET' || method === 'HEAD' ? {} : await readBody(req);
           const result = await candidate.handler({
             req,
@@ -591,8 +591,9 @@ export function createHttpHandler(deps: HttpDeps) {
             playerId: player?.id ?? null,
             query: url.searchParams,
           });
-          if (result) ok(res, result.data, result.cookies);
-          else ok(res, {});
+          // 路由自己設定的 cookie 排在後面，同名時以它為準
+          const cookies = [...session.cookies, ...(result?.cookies ?? [])];
+          ok(res, result ? result.data : {}, cookies.length > 0 ? cookies : undefined);
         } catch (error) {
           fail(res, error instanceof ServiceError ? error.status : 500, error as Error);
         }

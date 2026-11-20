@@ -1,6 +1,6 @@
 /** hard 的行動階段與報價回應。 */
 
-import { RESOURCES, type Command } from '@catan/rules';
+import { RESOURCES, type Command } from '@katan/rules';
 import { handRelief } from '../heuristic.ts';
 import { offersAwaitingMe, ownOfferStep, ownOpenOffers } from '../trade.ts';
 import type { BotCommand } from '../types.ts';

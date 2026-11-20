@@ -9,7 +9,7 @@
  * - 開局道路：模擬之後的對手選點，朝還會留下來的好空點鋪。
  */
 
-import { RESOURCES, type Command, type Resource } from '@catan/rules';
+import { RESOURCES, type Command, type Resource } from '@katan/rules';
 import { emptyYield, isFreeSpot, type BoardModel, type Yield } from '../board.ts';
 import { resourceWeights } from '../economy.ts';
 import type { HardTurn } from './turn.ts';

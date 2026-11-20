@@ -1,5 +1,5 @@
 /**
- * Rivers of Catan 的 B-GAME（Q1）與 Q2 門檻（T&B 計畫 §6.1、§6.3；S8）。
+ * Rivers of Katan 的 B-GAME（Q1）與 Q2 門檻（T&B 計畫 §6.1、§6.3；S8）。
  *
  * - profile：'tb-rivers-2025'（`tb-coins` + `tb-rivers`），3、4 人；`tbMatrix`（`seedsFor` 的種子各一局，standard 與 easy 輪替，
  *   另加 bot2 只走保底的一局）。步數上限 3000、看門狗 60 次擲骰（`PROFILE_LIMITS`）。每局都要通過 `expectTbGameHealthy`，
@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { requireProfile } from '@catan/rules';
+import { requireProfile } from '@katan/rules';
 import { GAME_TIMEOUT, seedsFor } from './harness.ts';
 import { partStateOf } from './modules/tb/part.ts';
 import { commandCount, expectTbGameHealthy, runTbGame, tbMatrix, type TbGameRecord, type TbGameSpec } from './tb-game.ts';

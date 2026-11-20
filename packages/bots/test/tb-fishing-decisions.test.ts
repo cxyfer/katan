@@ -1,5 +1,5 @@
 /**
- * Fishing on Catan 的固定盤面、B-FAIR 與 fuzz（T&B 計畫 §4.2、§6.1；S4）。
+ * Fishing on Katan 的固定盤面、B-FAIR 與 fuzz（T&B 計畫 §4.2、§6.1；S4）。
  *
  * 固定盤面以 rules 的測試工具建好（`tbPlayable` 之後直接改魚片、手牌、建築與強盜），每個決策都要被 `applyCommand` 接受：
  * - 付款：超付最少，同超付時用掉較多片；
@@ -25,7 +25,7 @@ import {
   type GameView,
   type Resource,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import { placeBuilding, placeRoad, scriptedRng, setHand } from '../../rules/test/helpers.ts';
 import { tbCreate, tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { setupSpotScore } from '../src/base/setup.ts';

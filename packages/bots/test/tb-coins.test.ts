@@ -29,7 +29,7 @@ import {
   type GameState,
   type GameView,
   type Resource,
-} from '@catan/rules';
+} from '@katan/rules';
 import { setHand } from '../../rules/test/helpers.ts';
 import { tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { deficitOf } from '../src/economy.ts';

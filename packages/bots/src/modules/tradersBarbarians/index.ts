@@ -19,7 +19,7 @@
  * 含全部 8 個 part，8 個 T&B profile 都可以讓 Bot 入座，4 個 `tb-event-cards*` 仍然不行。
  */
 
-import { getProfile, TB_PENDING_COMMANDS, type GameView, type ProfileDefinition } from '@catan/rules';
+import { getProfile, TB_PENDING_COMMANDS, type GameView, type ProfileDefinition } from '@katan/rules';
 import type { BoardModel } from '../../board.ts';
 import type { Plan } from '../../economy.ts';
 import type { BanditTarget, BotCommand, BotEconomyHooks, BotModule, BotTradeHooks, Scored } from '../types.ts';

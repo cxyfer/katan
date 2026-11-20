@@ -3,7 +3,7 @@
  * 偷牌以計牌結果估計偷到的牌對自己的價值。
  */
 
-import { RESOURCES, type Command, type Resource } from '@catan/rules';
+import { RESOURCES, type Command, type Resource } from '@katan/rules';
 import { canPlay } from '../base/cards.ts';
 import { deficitOf } from '../economy.ts';
 import { blockedPips } from '../heuristic.ts';

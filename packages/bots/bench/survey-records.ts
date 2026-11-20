@@ -7,7 +7,7 @@
  * 該功能」時才省略的設定（`openings`／`shift`／`scriptRoles`／`setupFrom`），它們有就必須合法且彼此一致。
  */
 
-import { getProfile } from '@catan/rules';
+import { getProfile } from '@katan/rules';
 import { ShardMergeError, type Shard } from './survey-merge.ts';
 
 export type Role = 'standard' | 'easy' | 'naive';

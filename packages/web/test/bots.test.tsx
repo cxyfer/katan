@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { ClientMessage, PolicyProposalView } from '@catan/protocol';
-import { createGameStats, type GameView } from '@catan/rules';
+import type { ClientMessage, PolicyProposalView } from '@katan/protocol';
+import { createGameStats, type GameView } from '@katan/rules';
 import { GameStatsPanel } from '../src/components/GameStats.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { ApiClient, type CreateRoomBody, type FetchLike } from '../src/api/client.ts';

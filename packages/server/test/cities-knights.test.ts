@@ -6,9 +6,9 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import * as rules from '@catan/rules';
-import { BANK_VIEW_CAP, type GameState } from '@catan/rules';
-import type { CommandReceipt } from '@catan/protocol';
+import * as rules from '@katan/rules';
+import { BANK_VIEW_CAP, type GameState } from '@katan/rules';
+import type { CommandReceipt } from '@katan/protocol';
 import { startHarness, runSetupOverApi, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;

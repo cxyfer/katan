@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getTopology } from '@catan/rules';
+import { getTopology } from '@katan/rules';
 import { coastLoops, distanceToLoop, insideLoop, offsetLoop, smoothLoop } from '../src/board/coastline.ts';
 
 describe('island coastline', () => {

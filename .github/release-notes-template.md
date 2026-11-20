@@ -44,7 +44,7 @@ editor soft-wrap it. The lint script rejects a draft that still has wrapped pros
 
 1. **Lead with the callout.** Most readers never scroll past it. Say what the release is, then say what breaks or changes for an existing install. Pre-releases say so and name the exact tag to pull.
 2. **Write the highlights for players and operators, not for the git history.** One bullet per area, a bold area name, then prose: what a person can now do in the game, or must now do differently when deploying. Group related commits into one bullet. Never paste commit subjects here.
-3. **Explain a changed default with the fix.** "The container now writes to `/data` and the old volume is ignored; mount `-v catan-data:/data`" beats "storage path changed".
+3. **Explain a changed default with the fix.** "The container now writes to `/data` and the old volume is ignored; mount `-v katan-data:/data`" beats "storage path changed".
 4. **`What's Changed` is generated.** Only edit it to fix a title that reads badly. It is built from the `(#N)` suffix in commit subjects, because this repository squashes and rewrites merges and GitHub's own generator drops those pull requests.
 5. **English only.** The release notes are not localised, even though the client is.
 6. **Pre-releases stay pre-releases.** A `-rc.N` tag is published with `--prerelease` and never takes `latest`, `X.Y` or the branch tag. See [RELEASING.md](../RELEASING.md).

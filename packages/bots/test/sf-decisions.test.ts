@@ -29,7 +29,7 @@ import {
   type Command,
   type GameState,
   type GameView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { act, setHand } from '../../rules/test/helpers.ts';
 import { corner, emptySeafarersGame, road, settle, ship, side } from '../../rules/test/seafarers-helpers.ts';
 import { boardModel, playerYield, vertexYield } from '../src/board.ts';

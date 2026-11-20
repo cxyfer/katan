@@ -29,7 +29,7 @@ import {
   type PublicModulePendingView,
   type TbMoveData,
   type TbTradersView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { canAfford, etaRounds, type Cost, type Plan } from '../../economy.ts';
 import type { BotCommand, PlanInput, Scored, TurnContext } from '../types.ts';
 import { isMine, TB_FRAME_KINDS } from './frames.ts';

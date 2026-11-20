@@ -27,7 +27,7 @@ import {
   type Command,
   type GameState,
   type GameView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { act, setHand } from '../../rules/test/helpers.ts';
 import { addKnight } from '../../rules/test/ck-helpers.ts';
 import { emptySeafarersGame, road, settle, ship } from '../../rules/test/seafarers-helpers.ts';

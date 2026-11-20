@@ -1,4 +1,4 @@
-import type { Locale } from '@catan/protocol';
+import type { Locale } from '@katan/protocol';
 import { SUPPORTED_LOCALES } from '../i18n/catalogs.ts';
 import { useLocale, useT } from '../i18n/context.tsx';
 

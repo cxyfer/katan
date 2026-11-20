@@ -16,7 +16,7 @@ import {
   type GameState,
   type GameView,
   type Offer,
-} from '@catan/rules';
+} from '@katan/rules';
 import { actCk, emptyCkGame, giveCommodities, player, rollRng, setImprovement, spreadVertices, TRADE } from '../../rules/test/ck-helpers.ts';
 import { give, newGame } from '../../rules/test/helpers.ts';
 import {

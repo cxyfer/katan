@@ -1,5 +1,5 @@
 /**
- * Fishing on Catan 的策略（T&B 計畫 §4.2）。
+ * Fishing on Katan 的策略（T&B 計畫 §4.2）。
  *
  * 規則重點（`TB/fishing/index.ts`）：魚場與湖依擲骰發出蓋著的魚片（面額 1–3，`FISH_SUPPLY` [11,10,8]，期望 55/29 ≈ 1.90 條魚），
  * 手上最多 `FISH_LIMIT` 片；在自己的行動階段可以花魚（`FISH_COSTS`：2 移走強盜、3 偷牌、4 取資源、5 道路、7 發展卡），
@@ -21,7 +21,7 @@
  * 一樣用 `turn.pick` 挑選），同分依先出現者決勝。
  */
 
-import { FISH_COSTS, FISH_LIMIT, RESOURCES, type GameView, type PublicModulePendingView, type Resource, type TbFishingView } from '@catan/rules';
+import { FISH_COSTS, FISH_LIMIT, RESOURCES, type GameView, type PublicModulePendingView, type Resource, type TbFishingView } from '@katan/rules';
 import { setupSpotScore } from '../../base/setup.ts';
 import { pipsOf, roadStockLeft } from '../../board.ts';
 import { bestRouteEdge, deficitOf, handSize, longestRoadAwarded } from '../../economy.ts';

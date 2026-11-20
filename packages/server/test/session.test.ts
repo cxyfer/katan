@@ -92,3 +92,79 @@ describe('guest session', () => {
     expect(body.data.status).toBe('ready');
   });
 });
+
+describe('legacy session cookie', () => {
+  async function tokenOf(nickname: string): Promise<{ token: string; playerId: string }> {
+    const client = await harness.client(nickname);
+    const [name, token] = client.cookie!.split('=');
+    expect(name).toBe('katan_session');
+    return { token: token!, playerId: client.playerId! };
+  }
+
+  it('keeps a 0.4.x catan_session identity and renames the cookie', async () => {
+    const { token, playerId } = await tokenOf('Legacy');
+    const response = await fetch(`${harness.base}/api/session`, { headers: { cookie: `catan_session=${token}` } });
+    const body = (await response.json()) as { data: { player: { id: string } } };
+    expect(body.data.player.id).toBe(playerId);
+    const cookies = response.headers.getSetCookie();
+    expect(cookies.some((cookie) => cookie.startsWith(`katan_session=${token};`))).toBe(true);
+    expect(cookies.some((cookie) => cookie.startsWith('catan_session=;') && cookie.includes('Max-Age=0'))).toBe(true);
+  });
+
+  it('falls back to a valid legacy cookie when the current one is stale', async () => {
+    const legacy = await tokenOf('Fallback');
+    const response = await fetch(`${harness.base}/api/session`, {
+      headers: { cookie: `katan_session=stale-token; catan_session=${legacy.token}` },
+    });
+    const body = (await response.json()) as { data: { player: { id: string } } };
+    expect(body.data.player.id).toBe(legacy.playerId);
+    const cookies = response.headers.getSetCookie();
+    expect(cookies.some((cookie) => cookie.startsWith(`katan_session=${legacy.token};`))).toBe(true);
+    expect(cookies.some((cookie) => cookie.startsWith('catan_session=;') && cookie.includes('Max-Age=0'))).toBe(true);
+  });
+
+  it('keeps a legacy cookie that still holds another identity', async () => {
+    const current = await tokenOf('Current');
+    const other = await tokenOf('Other');
+    const response = await fetch(`${harness.base}/api/session`, {
+      headers: { cookie: `catan_session=${other.token}; katan_session=${current.token}` },
+    });
+    const body = (await response.json()) as { data: { player: { id: string } } };
+    expect(body.data.player.id).toBe(current.playerId);
+    expect(response.headers.getSetCookie()).toEqual([]);
+  });
+
+  it('clears a legacy cookie that is already migrated or no longer resolves', async () => {
+    const current = await tokenOf('Migrated');
+    for (const legacy of [current.token, 'unknown-token']) {
+      const response = await fetch(`${harness.base}/api/session`, {
+        headers: { cookie: `catan_session=${legacy}; katan_session=${current.token}` },
+      });
+      const cookies = response.headers.getSetCookie();
+      expect(cookies).toHaveLength(1);
+      expect(cookies[0]).toMatch(/^catan_session=;.*Max-Age=0/);
+    }
+  });
+
+  it('sends no cookie rewrite to a browser that already uses the current name', async () => {
+    const { token } = await tokenOf('Settled');
+    const response = await fetch(`${harness.base}/api/session`, { headers: { cookie: `katan_session=${token}` } });
+    expect(response.headers.getSetCookie()).toEqual([]);
+  });
+
+  it('clears both cookie names on sign-out', async () => {
+    const { token } = await tokenOf('Leaving');
+    const response = await fetch(`${harness.base}/api/session`, {
+      method: 'DELETE',
+      headers: { cookie: `catan_session=${token}` },
+    });
+    const cleared = response.headers
+      .getSetCookie()
+      .filter((cookie) => cookie.includes('Max-Age=0'))
+      .map((cookie) => cookie.split('=')[0]);
+    expect(cleared).toEqual(expect.arrayContaining(['katan_session', 'catan_session']));
+    // 登出的清除排在遷移 cookie 之後，瀏覽器最後看到的 katan_session 是清除
+    const last = response.headers.getSetCookie().filter((cookie) => cookie.startsWith('katan_session=')).at(-1);
+    expect(last).toContain('Max-Age=0');
+  });
+});

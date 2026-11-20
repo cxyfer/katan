@@ -9,7 +9,7 @@
  * 保底不在這裡：`duty.ts` 是整張保底表（§4.1），S2 合併後凍結。
  */
 
-import type { GameView, PublicModulePendingView } from '@catan/rules';
+import type { GameView, PublicModulePendingView } from '@katan/rules';
 import type { Plan } from '../../economy.ts';
 import type { BanditTarget, BotCommand, BotEconomyHooks, BotTradeHooks, Scored, TurnContext } from '../types.ts';
 

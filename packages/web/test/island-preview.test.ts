@@ -1,4 +1,4 @@
-import { getTopology } from '@catan/rules';
+import { getTopology } from '@katan/rules';
 import { describe, expect, it } from 'vitest';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { createIslandPreviewBoard, ISLAND_PREVIEW_PLAYERS } from '../src/board/island-preview.ts';

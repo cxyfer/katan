@@ -10,7 +10,7 @@
  * S5 加上 B-FAIR 的 `hideDifferently`（對手的出價牌）與 Q2 的 `mechanics`（正出價、放置的車廂）。
  */
 
-import { requireProfile, RESOURCES, TB_FRAME_KINDS, type GameState, type PendingFrame, type Resource } from '@catan/rules';
+import { requireProfile, RESOURCES, TB_FRAME_KINDS, type GameState, type PendingFrame, type Resource } from '@katan/rules';
 import type { MechanicsTally } from '../types.ts';
 import { partStateOf, type TbPartKit } from './part.ts';
 

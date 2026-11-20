@@ -9,7 +9,7 @@
  * 等那次骰子揭曉才響，不在點數揭曉前透露結果。
  */
 
-import type { GameEvent } from '@catan/protocol';
+import type { GameEvent } from '@katan/protocol';
 import { boardEffectGroups } from '../board/animation.ts';
 import { TB_SOUND_CUES, tbCueForEvent } from './tb-cues.ts';
 import { PROGRESS_CUES, progressCueForEvent } from './progress-cues.ts';

@@ -5,7 +5,7 @@
  * 電腦座位不缺席、不投票，所以每個判斷都先排除。
  */
 
-import type { AbandonProposalView, RoomMemberView, RoomView, SuspendProposalView } from '@catan/protocol';
+import type { AbandonProposalView, RoomMemberView, RoomView, SuspendProposalView } from '@katan/protocol';
 
 export function humanMembers(room: RoomView | null | undefined): RoomMemberView[] {
   return (room?.members ?? []).filter((member) => !member.bot);

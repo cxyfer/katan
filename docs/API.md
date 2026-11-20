@@ -1,6 +1,6 @@
 # Service API contract
 
-Scope: the HTTP/WebSocket surface between `@catan/web` and `@catan/server`.
+Scope: the HTTP/WebSocket surface between `@katan/web` and `@katan/server`.
 Both sides implement against this document; the server is authoritative for
 every rule decision.
 
@@ -11,8 +11,10 @@ Conventions:
   `{ "ok": false, "error": { "code", "messageId", "params" } }`.
 - `messageId` is a stable i18n key; the client renders it with `params`. The
   server never sends localised sentences.
-- Identity is a secure, HTTP-only, SameSite=Lax cookie (`catan_session`)
-  issued by `POST /api/session`. No client-supplied player id is trusted.
+- Identity is a secure, HTTP-only, SameSite=Lax cookie (`katan_session`)
+  issued by `POST /api/session`. No client-supplied player id is trusted. A
+  0.4.x `catan_session` cookie is still accepted; any HTTP response to such a
+  request re-issues it as `katan_session` and clears the old name.
 - Every mutating game request carries `commandId` (client-generated UUID) and
   `expectedRevision`. Repeating the same `commandId` with the same payload
   returns the original receipt.
@@ -342,7 +344,7 @@ Bot seats decide from this same projected history (SPEC §4.9).
 ### Bank supply
 
 `GameView.bank` gives each resource pile as `min(count, 2)` (`BANK_VIEW_CAP`
-in `@catan/rules`): below two the value is exact, `2` means "two or more".
+in `@katan/rules`): below two the value is exact, `2` means "two or more".
 Discards return cards to the bank privately, so an exact supply would let any
 seat read a discard from the difference between two snapshots (SPEC §8.3,
 issue #137). The capped value is enough for every choice that takes from the
@@ -656,7 +658,7 @@ unsubscribe over the socket and wait for `unsubscribed`, then
 seat online, keeps bots playing and keeps pushing the room back to the leaving
 client.
 
-Server → client: `ServerMessage` union from `@catan/protocol`
+Server → client: `ServerMessage` union from `@katan/protocol`
 (`hello`, `room`, `snapshot`, `events`, `chat`, `presence`, `notice`, `error`, `pong`,
 `unsubscribed`).
 

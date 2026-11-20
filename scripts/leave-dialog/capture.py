@@ -56,7 +56,7 @@ def start_server(root: Path, out: Path):
     entry = root / "packages/server/dist/server.mjs"
     if not entry.is_file() or not (dist / "index.html").is_file():
         raise SystemExit(f"built artifacts missing under {root}; run pnpm build first")
-    temporary = tempfile.TemporaryDirectory(prefix="catan-leave-dialog-")
+    temporary = tempfile.TemporaryDirectory(prefix="katan-leave-dialog-")
     log = (out / "server.log").open("w", encoding="utf-8")
     port = free_port()
     env = {
@@ -208,7 +208,7 @@ class Shots:
 
 def person(browser, nickname: str, errors: list[str]):
     context = browser.new_context(viewport={"width": 1366, "height": 768}, locale="zh-TW", reduced_motion="reduce")
-    context.add_init_script("localStorage.setItem('catan.locale', 'zh-Hant');")
+    context.add_init_script("localStorage.setItem('katan.locale', 'zh-Hant');")
     player = api(context, "POST", "/api/session", {"nickname": nickname, "locale": "zh-Hant"})["player"]
     page = context.new_page()
     page.on("pageerror", lambda error: errors.append(f"{nickname}: {error}"))

@@ -9,8 +9,8 @@
  * (docs/SPEC.md §8.4).
  */
 
-import { COSTS, type Resource } from '@catan/rules';
-import type { GameSnapshot } from '@catan/protocol';
+import { COSTS, type Resource } from '@katan/rules';
+import type { GameSnapshot } from '@katan/protocol';
 import { awaitingProjection, awaitingRoom, tableSuspended, type TableState } from './table.ts';
 import { blocksNewCommands } from './commands.ts';
 import { seafarersHints, SHIP_COST } from '../board/seafarers.ts';

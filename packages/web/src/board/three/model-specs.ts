@@ -1,4 +1,4 @@
-import type { PublicBoardView } from '@catan/rules';
+import type { PublicBoardView } from '@katan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import type { BoardIntent } from '../intent.ts';
 import { placementArrival } from '../effects.ts';

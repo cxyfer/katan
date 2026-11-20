@@ -9,7 +9,7 @@
  * - mechanics（Q2，§6.3）：策略送出的 BA 指令與它們造成的事件（俘虜、驅逐、征服、解放）。
  */
 
-import { BA_BARBARIAN_SUPPLY, BA_DECK, BA_KNIGHTS_PER_PLAYER, CONQUER_AT, type GameState, type Rng } from '@catan/rules';
+import { BA_BARBARIAN_SUPPLY, BA_DECK, BA_KNIGHTS_PER_PLAYER, CONQUER_AT, type GameState, type Rng } from '@katan/rules';
 import type { MechanicsTally } from '../types.ts';
 import { partStateOf, sum, type TbPartKit } from './part.ts';
 

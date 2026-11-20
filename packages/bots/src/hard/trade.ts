@@ -3,7 +3,7 @@
  * 手牌，開出對方多半會接受、又對自己有利的報價；回應別人的報價時，也考慮對方得到多少。
  */
 
-import { RESOURCES, type Command, type GameView, type Offer, type Resource } from '@catan/rules';
+import { RESOURCES, type Command, type GameView, type Offer, type Resource } from '@katan/rules';
 import { boardModel } from '../board.ts';
 import { canAfford, deficitOf, economyOf, type Cost, type Economy, type Hand } from '../economy.ts';
 import { acceptMargin, handUtility, MAX_OFFERS_PER_WINDOW, offerGain, offerTermsKnown } from '../trade.ts';

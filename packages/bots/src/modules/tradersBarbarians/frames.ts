@@ -6,7 +6,7 @@
  *   `responders[0] === self` 時動作，與 `fallbackDecision`、`botOwesAction` 一致。
  */
 
-import { TB_FRAME_KINDS, type PublicModulePendingView } from '@catan/rules';
+import { TB_FRAME_KINDS, type PublicModulePendingView } from '@katan/rules';
 import { TRADERS_BARBARIANS } from './view.ts';
 
 export { TB_FRAME_KINDS };

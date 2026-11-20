@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { GameState, GameView } from '@catan/rules';
+import type { GameState, GameView } from '@katan/rules';
 import { heuristicPolicy } from '../src/heuristic.ts';
 import { botSeed } from '../src/seed.ts';
 import type { BotLevel } from '../src/types.ts';

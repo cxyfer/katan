@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { applyCommand, COMMODITIES, RESOURCES, seededRng, type CardKind, type GameState, type GameView } from '@catan/rules';
+import { applyCommand, COMMODITIES, RESOURCES, seededRng, type CardKind, type GameState, type GameView } from '@katan/rules';
 import { emptyCkGame, giveCommodities, setBuilding, setImprovement, spreadVertices } from '../../rules/test/ck-helpers.ts';
 import { forceTurn, give, newGame } from '../../rules/test/helpers.ts';
 import { createBotPolicy } from '../src/index.ts';

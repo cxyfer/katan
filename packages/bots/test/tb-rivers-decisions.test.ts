@@ -1,5 +1,5 @@
 /**
- * Rivers of Catan 的固定盤面、投影 → `boardModel` 的路徑、B-FAIR 與 fuzz（T&B 計畫 §4.2 rivers 列、§6.1；S8）。
+ * Rivers of Katan 的固定盤面、投影 → `boardModel` 的路徑、B-FAIR 與 fuzz（T&B 計畫 §4.2 rivers 列、§6.1；S8）。
  *
  * 固定盤面以 rules 的測試工具建好（`tbPlayable` 之後清空盤面，直接放建築、道路、手牌與 gold），每個決策都要被 `applyCommand` 接受：
  * - 真實的 'tb-rivers-2025' 狀態：投影的 `extraNumbers`（12 那一格的 2）進到 `boardModel.hexPips`；蓋好的橋在投影裡是
@@ -27,7 +27,7 @@ import {
   type Command,
   type GameState,
   type GameView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { placeBuilding, placeRoad, setHand } from '../../rules/test/helpers.ts';
 import { tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { boardModel, piecesOnBoard, pipsOf, roadStockLeft, routeLength, searchRoads } from '../src/board.ts';

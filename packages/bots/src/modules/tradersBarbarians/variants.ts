@@ -21,7 +21,7 @@
  * 只讀 view、hints 與模型，不 throw、不消耗亂數。
  */
 
-import { COSTS, STRONGEST_PORTS_MINIMUM, STRONGEST_PORTS_POINTS, type GameView } from '@catan/rules';
+import { COSTS, STRONGEST_PORTS_MINIMUM, STRONGEST_PORTS_POINTS, type GameView } from '@katan/rules';
 import { isFreeSpot, playerYield, roadPath, type BoardModel } from '../../board.ts';
 import {
   addCosts,

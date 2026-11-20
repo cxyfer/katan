@@ -1,7 +1,8 @@
 {
-  "name": "@catan/bots",
+  "name": "@katan/bots",
   "version": "0.1.0",
   "private": true,
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -12,6 +13,6 @@
     "bench": "node bench/run.mjs"
   },
   "dependencies": {
-    "@catan/rules": "workspace:*"
+    "@katan/rules": "workspace:*"
   }
 }

@@ -25,7 +25,7 @@ import {
   type PublicModulePendingView,
   type Resource,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import { placeBuilding, scriptedRng, setHand } from '../../rules/test/helpers.ts';
 import { tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { vertexYield } from '../src/board.ts';

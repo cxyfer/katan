@@ -1,7 +1,7 @@
 /**
  * Coins (TB25 pp. 12, 16, 21): gold is public, finite (40 coins worth 100
  * gold), tradeable between players, never a resource card. Shared by Rivers
- * of Catan, Barbarian Attack and Traders & Barbarians.
+ * of Katan, Barbarian Attack and Traders & Barbarians.
  */
 
 import { harborRates, playerById } from '../../../analysis.ts';

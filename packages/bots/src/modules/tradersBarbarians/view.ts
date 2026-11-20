@@ -15,7 +15,7 @@ import {
   type ProfileDefinition,
   type TradersBarbariansHints,
   type TradersBarbariansView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { moduleHints, moduleView } from '../view.ts';
 
 export { TRADERS_BARBARIANS };

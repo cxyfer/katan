@@ -6,7 +6,7 @@ import {
   type BotLevel,
   type GameOrderMode,
   type RoomPolicy,
-} from '@catan/protocol';
+} from '@katan/protocol';
 import { useT } from '../i18n/context.tsx';
 import { botsEnabled, DEFAULT_BOT_LEVEL, offeredBotLevels, pickBotLevel, profileAllowsBots } from '../state/bots.ts';
 import { BotBadge } from './BotBadge.tsx';

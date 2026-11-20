@@ -5,7 +5,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PROFILES } from '@catan/rules';
+import { PROFILES } from '@katan/rules';
 import { runSetupOverApi, startHarness, startedGame, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;
@@ -64,7 +64,7 @@ describe('Traders & Barbarians rooms', () => {
     });
   }
 
-  // 依 `@catan/bots` 的 `botsCanPlay`（BotModule 與 `supports`）判定：S9 起 8 個可玩的 T&B profile 都開放 Bot 席位
+  // 依 `@katan/bots` 的 `botsCanPlay`（BotModule 與 `supports`）判定：S9 起 8 個可玩的 T&B profile 都開放 Bot 席位
   // （easy、standard）；4 個 event-card profile 沒有開放，也不能讓 Bot 入座。
   const tbProfiles = PROFILES.filter((profile) => profile.enabled && profile.id.startsWith('tb-'));
   const eventCardProfiles = PROFILES.filter((profile) => profile.id.startsWith('tb-event-cards'));

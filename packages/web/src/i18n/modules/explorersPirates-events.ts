@@ -1,7 +1,7 @@
 /** Display parameters for the Explorers & Pirates rule events (see `../events.ts`). */
 
-import type { Locale } from '@catan/protocol';
-import type { GameEvent } from '@catan/rules';
+import type { Locale } from '@katan/protocol';
+import type { GameEvent } from '@katan/rules';
 import { t } from '../index.ts';
 import { formatNumber, formatResourceMap } from '../format.ts';
 

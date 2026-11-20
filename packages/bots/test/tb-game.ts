@@ -17,7 +17,7 @@
  */
 
 import { expect } from 'vitest';
-import { requireProfile, topologyOf, type GameState } from '@catan/rules';
+import { requireProfile, topologyOf, type GameState } from '@katan/rules';
 import { banditTargets } from '../src/base/robber.ts';
 import { fallbackPolicy } from '../src/fallback.ts';
 import { botCommandLimit, botModulesOf } from '../src/index.ts';

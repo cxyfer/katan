@@ -8,7 +8,7 @@
  * 這裡只放型別與一個挑選函式；組合邏輯（base 加上各模組）在 `harness.ts`。
  */
 
-import type { GameEvent, GameState, ProfileDefinition, Rng } from '@catan/rules';
+import type { GameEvent, GameState, ProfileDefinition, Rng } from '@katan/rules';
 import type { BotCommand, BotLevel } from '../../src/types.ts';
 
 /** `MechanicsTally.observe` 的輸入：一個被規則引擎接受的決策。 */

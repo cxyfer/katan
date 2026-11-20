@@ -29,7 +29,7 @@ import {
   type GameView,
   type PublicModulePendingView,
   type TbTrainsView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { isFreeSpot, playerYield, roadPath, targetOf, type BoardModel } from '../../board.ts';
 import { addCosts, canAfford, etaRounds, PIP_VALUE, scaleCost, settlementSpotValue, type Plan } from '../../economy.ts';
 import type { BotCommand, PlanInput, Scored, TurnContext } from '../types.ts';

@@ -22,8 +22,8 @@ export const zhHant: Catalog = {
   'board.rendererRetry': '重試 3D',
   'board.rendererSettings': '顯示',
   // --- app shell -----------------------------------------------------------
-  'app.title': '卡坦桌遊桌',
-  'app.tagline': '在瀏覽器上共享同一張桌的卡坦式對局',
+  'app.title': '喀坦桌遊桌',
+  'app.tagline': '在瀏覽器上共享同一張桌的六角島嶼對局',
   'audio.settings': '音效',
   'audio.settingsOpen': '音效設定',
   'audio.mute': '全部靜音',
@@ -795,8 +795,8 @@ export const zhHant: Catalog = {
   'expansion.explorersPirates': '探險家與海盜',
   'scenario.standard': '標準版圖',
   'scenario.new-shores': '航向新海岸',
-  'box.base': 'CATAN 基本版',
-  'box.base-5-6': 'CATAN 5–6 人擴充',
+  'box.base': 'Katan 基本版',
+  'box.base-5-6': 'Katan 5–6 人擴充',
   'box.seafarers': '航海家',
   'box.seafarers-5-6': '航海家 5–6 人擴充',
   'box.citiesKnights': '城市與騎士',
@@ -879,7 +879,7 @@ export const zhHant: Catalog = {
   'error.E_UNAUTHORIZED': '此瀏覽器身分無權存取該房間。',
   'error.E_INVALID_INVITE': '邀請碼無效或已逾期。',
   'error.unknown': '牌桌回報了無法辨識的錯誤（{code}）。',
-  // --- service notices and rejections (owned by @catan/protocol) ----------
+  // --- service notices and rejections (owned by @katan/protocol) ----------
   'blocker.seats': '需要至少 {min} 位玩家才能開始，目前入座 {seated} 位。',
   'blocker.notReady': '尚未準備：{players}',
   'blocker.disconnected': '尚未連線：{players}',

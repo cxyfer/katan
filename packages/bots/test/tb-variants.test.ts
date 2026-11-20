@@ -22,7 +22,7 @@ import {
   type GameState,
   type GameView,
   type Resource,
-} from '@catan/rules';
+} from '@katan/rules';
 import { scriptedRng, setHand } from '../../rules/test/helpers.ts';
 import { clearBoard, tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { robberCandidates } from '../src/base/robber.ts';

@@ -5,7 +5,7 @@
  * `GameState`，所以無法讀取其他座位的隱藏資訊（§8.3）。
  */
 
-import type { Command, GameView, ModuleCommand } from '@catan/rules';
+import type { Command, GameView, ModuleCommand } from '@katan/rules';
 
 /** Bot 可送出的指令；協定的 command 本來就是開放型別（protocol/src/index.ts:299-303）。 */
 export type BotCommand = Command | ModuleCommand;

@@ -38,7 +38,7 @@ import {
   COMMODITIES,
   type CardKind,
   type CkTrack,
-} from '@catan/rules';
+} from '@katan/rules';
 import { plentyPick } from '../../base/cards.ts';
 import { routeLength } from '../../board.ts';
 import { productionValue, type Cost, type Hand } from '../../economy.ts';

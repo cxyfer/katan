@@ -17,7 +17,7 @@ import {
   type GameView,
   type ModulePending,
   type MoveRobberPending,
-} from '@catan/rules';
+} from '@katan/rules';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';
 import {

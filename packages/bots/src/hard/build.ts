@@ -1,6 +1,6 @@
 /** hard 的建造順序：與 standard 相同，但在銀行交易之前先嘗試國內交易。 */
 
-import { COSTS } from '@catan/rules';
+import { COSTS } from '@katan/rules';
 import { playerYield } from '../board.ts';
 import { usefulRoad } from '../base/roads.ts';
 import { canAfford, PIP_VALUE, productionValue, settlementSpotValue, type Cost, type Economy } from '../economy.ts';

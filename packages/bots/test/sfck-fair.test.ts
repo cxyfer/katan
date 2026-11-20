@@ -20,7 +20,7 @@ import {
   type GameView,
   type ModulePending,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';
 import { GAME_TIMEOUT, botSeats, cloneState, hideDifferently, mixedLevels, runBotGame, viewFor } from './harness.ts';

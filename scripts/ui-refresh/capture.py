@@ -24,7 +24,7 @@ def settle(page, ms=400):
 def pregame(browser, base, out, locale, name, size):
     context = browser.new_context(viewport={"width": size[0], "height": size[1]}, device_scale_factor=1,
                                   locale="zh-TW" if locale == "zh-Hant" else "en-US", reduced_motion="reduce")
-    context.add_init_script(f"localStorage.setItem('catan.locale', {json.dumps(locale)});")
+    context.add_init_script(f"localStorage.setItem('katan.locale', {json.dumps(locale)});")
     page = context.new_page()
     page.goto(base + "/", wait_until="networkidle")
     settle(page)

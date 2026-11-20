@@ -25,8 +25,8 @@ import type {
   RoomPolicy,
   RoomView,
   ServerConfigView,
-} from '@catan/protocol';
-import type { CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
+} from '@katan/protocol';
+import type { KatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
 import { FORCED_CLOSE_WAIT_MS, SocketClient, type SocketFactory } from '../api/socket.ts';
 import { detectLocale } from '../i18n/index.ts';
 import { bootAssetsFailed, type BootStepId } from './boot.ts';
@@ -67,7 +67,7 @@ import type { CommandPayload } from './commands.ts';
 import { blocksNewCommands } from './commands.ts';
 
 export interface UseTableOptions {
-  api: CatanApi;
+  api: KatanApi;
   storage?: StorageLike;
   socketFactory?: SocketFactory;
   socketUrl?: string;

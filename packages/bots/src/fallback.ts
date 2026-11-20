@@ -6,7 +6,7 @@
  * server 的保底路徑不在 try 裡。
  */
 
-import { getProfile, type GameView } from '@catan/rules';
+import { getProfile, type GameView } from '@katan/rules';
 import { pendingDuty, setupDuty } from './base/duty.ts';
 import { firstAnswer, isModuleFrame } from './modules/compose.ts';
 import { botModulesOf } from './modules/registry.ts';

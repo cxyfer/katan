@@ -18,7 +18,7 @@ import {
   type GameView,
   type ProfileDefinition,
   type PublicModulePendingView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { BOT_MODULES, botCommandLimit, botLevelsFor, botModulesOf, botResponseCommands, botsCanPlay } from '../src/index.ts';
 import type { BoardModel } from '../src/board.ts';
 import type { Plan } from '../src/economy.ts';

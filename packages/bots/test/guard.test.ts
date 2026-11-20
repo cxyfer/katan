@@ -28,7 +28,7 @@ describe('B-GUARD source boundaries', () => {
     for (const [file, text] of Object.entries(sources)) {
       for (const match of text.matchAll(/\bfrom\s+'([^']+)'/g)) {
         const specifier = match[1]!;
-        if (specifier === '@catan/rules') continue;
+        if (specifier === '@katan/rules') continue;
         const relative = specifier.startsWith('./') || specifier.startsWith('../');
         if (!relative || !resolveSpecifier(file, specifier).startsWith('../src/')) offenders.push(`${file}: ${specifier}`);
       }
@@ -85,7 +85,7 @@ describe('B-GUARD source boundaries', () => {
   });
 
   it('declares no runtime dependency besides the rules package', () => {
-    expect(Object.keys(manifest.dependencies ?? {})).toEqual(['@catan/rules']);
+    expect(Object.keys(manifest.dependencies ?? {})).toEqual(['@katan/rules']);
     expect((manifest as { devDependencies?: unknown }).devDependencies).toBeUndefined();
   });
 });

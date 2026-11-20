@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { RESOURCES, type CardKind } from '@catan/rules';
+import { RESOURCES, type CardKind } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import { CardKindArt, CardKindGlyph } from './CardKindArt.tsx';

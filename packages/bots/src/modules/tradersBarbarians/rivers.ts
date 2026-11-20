@@ -1,5 +1,5 @@
 /**
- * Rivers of Catan 的策略（T&B 計畫 §4.2 rivers 列；S8）。
+ * Rivers of Katan 的策略（T&B 計畫 §4.2 rivers 列；S8）。
  *
  * 規則重點（`TB/rivers/index.ts`）：河上有 7 個橋位，道路不能蓋在橋位上，只能蓋橋（`tb.buildBridge`，`BRIDGE_COST` brick 2、
  * lumber 1，每人 `BRIDGES_PER_PLAYER` 座）。橋接上自己的道路網、算路線但不佔道路存量（S1 已處理 G7）。蓋橋得
@@ -32,7 +32,7 @@ import {
   RESOURCES,
   type GameView,
   type TbRiversView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { playerYield, routeLength, type BoardModel } from '../../board.ts';
 import {
   addCosts,

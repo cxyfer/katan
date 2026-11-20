@@ -4,7 +4,7 @@
  * 0.6 ms，這個模型的複製只要微秒級）。
  */
 
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import { emptyYield, type BoardModel } from '../board.ts';
 import type { Hand } from '../economy.ts';
 

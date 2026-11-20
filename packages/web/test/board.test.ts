@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildGeometry, BASE_BOARD_COUNTS, distance } from '../src/board/geometry.ts';
 import { ambiguousClusters, ambiguousWith, describeEdge, describeVertex } from '../src/board/targets.ts';
 import { fixedBoard, TOPOLOGY_ID } from '../src/test/fixtures.ts';
-import { getTopology } from '@catan/rules';
+import { getTopology } from '@katan/rules';
 import type { Point } from '../src/board/geometry.ts';
 
 const geometry = buildGeometry(TOPOLOGY_ID, 100);

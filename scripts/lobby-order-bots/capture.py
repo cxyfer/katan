@@ -55,7 +55,7 @@ def start_server(out: Path):
     global BASE
     if not SERVER_ENTRY.is_file() or not (DIST / "index.html").is_file():
         raise SystemExit("built artifacts missing; run pnpm build first")
-    temporary = tempfile.TemporaryDirectory(prefix="catan-lobby-order-bots-")
+    temporary = tempfile.TemporaryDirectory(prefix="katan-lobby-order-bots-")
     log = (out / "server.log").open("w", encoding="utf-8")
     port = free_port()
     env = {
@@ -139,7 +139,7 @@ def attempt(browser, out: Path, number: int) -> dict | None:
     """One full pass with a fresh session; None when the draw equalled the join order."""
     context = browser.new_context(viewport={"width": 1366, "height": 768}, locale="zh-TW",
                                   reduced_motion="reduce", device_scale_factor=1)
-    context.add_init_script("localStorage.setItem('catan.locale', 'zh-Hant');")
+    context.add_init_script("localStorage.setItem('katan.locale', 'zh-Hant');")
     page = context.new_page()
     page.set_default_timeout(TIMEOUT_MS)
     errors: list[str] = []

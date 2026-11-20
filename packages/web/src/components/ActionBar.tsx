@@ -1,4 +1,4 @@
-import { RESOURCES } from '@catan/rules';
+import { RESOURCES } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatResourceMap } from '../i18n/format.ts';
 import { deriveActions, groupActions, sharedReason, type ActionDescriptor } from '../state/actions.ts';
