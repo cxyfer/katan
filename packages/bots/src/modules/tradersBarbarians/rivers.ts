@@ -13,6 +13,8 @@
  *   淨值為正才列為候選。不動用主要計畫已持有的牌時，付出的是過剩的牌，以銀行匯率折價：3 枚 gold 能買 1.5 張指定的牌，比
  *   4:1 換掉 3 張過剩的牌划算，所以過剩的 brick 幾乎總是值得蓋橋。會動用時牌全額計價，淨值還要與立即建造同級
  *   （`HURTING_BRIDGE_MIN`，例如終局時靠 gold 脫離 Poor 或立即獲勝）。
+ * - 橋用完之後（`economy.routeEdge`）：道路搜尋不再經過空的橋位，計畫改走陸路，不會停在蓋不了的橋位上。最後一座橋
+ *   留給計畫路線：不在任何路線上、只靠 gold 的橋位要有立即建造等級的淨值才蓋。
  * - 河邊的聚落：base 的立即建造分數加上 1 gold 的價值（同一個指令去重後取高分）。河邊的道路不另外估值：道路只為計畫而鋪。
  * - 財富板塊（standard）：gold 的變化另外計入 `wealthValue`（coins 的加權排名價值：離勝利越近權重越高，立即達標時是
  *   `WIN_VALUE`）。排名估值與 coins 共用：買資源不讓自己失分、賣牌脫離 Poor、付出 gold 的報價，都在 `coins.ts`。
@@ -31,7 +33,7 @@ import {
   type GameView,
   type TbRiversView,
 } from '@catan/rules';
-import { playerYield, routeLength } from '../../board.ts';
+import { playerYield, routeLength, type BoardModel } from '../../board.ts';
 import {
   addCosts,
   canAfford,
@@ -78,6 +80,21 @@ export function bridgeSites(view: Pick<GameView, 'modules'>): readonly number[] 
 /** 此刻能蓋橋的橋位（hints；只在自己的行動階段、橋還沒用完時才有）。 */
 export function bridgeTargets(view: GameView): readonly number[] {
   return tbTargets(view.hints, BRIDGE);
+}
+
+/** 自己還能蓋幾座橋（view 的 `bridges`）；缺漏時視為用完。 */
+export function bridgesLeft(view: Pick<GameView, 'modules'>, playerId: string): number {
+  const left = riversView(view)?.bridges?.[playerId];
+  return typeof left === 'number' && Number.isFinite(left) ? left : 0;
+}
+
+/**
+ * 道路搜尋能不能經過這條空邊（`economy.routeEdge`）：橋位只能蓋橋，自己的橋用完時回 false，否則計畫的下一步會停在
+ * 一個誰都蓋不了的橋位上（rivers、骨架的 `planStep` 與 coins 都不會動手，(c) 又為主要計畫保留著牌）。其他邊回 undefined。
+ */
+export function bridgeRouteEdge(model: BoardModel, edge: number): boolean | undefined {
+  if (!bridgeSites(model.view).includes(edge)) return undefined;
+  return bridgesLeft(model.view, model.selfId) > 0 ? undefined : false;
 }
 
 /** 河邊的路口（蓋聚落得 gold）。 */
@@ -165,7 +182,7 @@ function routeValue(turn: TurnContext, edge: number): number {
 /**
  * 其他橋位：付得起，淨值（gold + 路線 − 付出的牌）為正。不動用主要計畫已持有的牌時，付出的牌以銀行匯率折價（過剩的牌）；
  * 會動用時每張牌全額計價，而且淨值至少要有 `HURTING_BRIDGE_MIN`（與立即得分的建造同級，例如終局時靠 gold 脫離 Poor
- * 或立即獲勝），否則留給主要計畫。
+ * 或立即獲勝），否則留給主要計畫。只剩最後一座橋時，不在任何計畫路線上的橋位也要有同樣的淨值，把橋留給路線。
  */
 function spareBridgeCandidates(turn: TurnContext, targets: readonly number[], skip: number | null): Scored<BotCommand>[] {
   const economy = turn.economy;
@@ -173,11 +190,14 @@ function spareBridgeCandidates(turn: TurnContext, targets: readonly number[], sk
   const hurts = hurtsPrimary(economy, BRIDGE_COST);
   const gold = goldGainValue(turn, BRIDGE_GOLD);
   const cost = hurts ? cardTotal(BRIDGE_COST) * CARD_VP : surplusCost(economy, BRIDGE_COST);
-  const floor = hurts ? HURTING_BRIDGE_MIN : 0;
+  const last = bridgesLeft(turn.view, turn.ctx.selfId) <= 1;
   const out: Scored<BotCommand>[] = [];
   for (const edge of targets) {
     if (edge === skip) continue;
-    const net = gold + routeValue(turn, edge) - cost;
+    const route = routeValue(turn, edge);
+    // 最後一座橋留給計畫路線：只靠 gold 的橋（淨值約 +0.15）要有立即建造等級的價值才蓋。
+    const floor = hurts || (last && route === 0) ? HURTING_BRIDGE_MIN : 0;
+    const net = gold + route - cost;
     if (net > floor) out.push({ item: command(BRIDGE, { edge }), score: net });
   }
   return out;
@@ -217,4 +237,5 @@ export function riversCandidates(turn: TurnContext): Scored<BotCommand>[] {
 export const riversBot: TbPartBot = {
   id: RIVERS,
   actions: riversCandidates,
+  economy: { routeEdge: bridgeRouteEdge },
 };

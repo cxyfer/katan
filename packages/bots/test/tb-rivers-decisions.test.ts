@@ -35,7 +35,14 @@ import { addCosts, scaleCost, type Plan } from '../src/economy.ts';
 import { botOwesAction, fallbackPolicy } from '../src/fallback.ts';
 import { turnContext } from '../src/heuristic.ts';
 import { WIN_VALUE, wealthValue, wealthWeight, WEALTH_WEIGHT_FLOOR } from '../src/modules/tradersBarbarians/coins.ts';
-import { bridgeSites, bridgeTargets, PLAN_BRIDGE_SCORE, riversCandidates } from '../src/modules/tradersBarbarians/rivers.ts';
+import {
+  bridgeRouteEdge,
+  bridgeSites,
+  bridgesLeft,
+  bridgeTargets,
+  PLAN_BRIDGE_SCORE,
+  riversCandidates,
+} from '../src/modules/tradersBarbarians/rivers.ts';
 import type { TurnContext } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';
@@ -235,6 +242,80 @@ describe('tb.buildBridge with spare cards', () => {
     setGold(early, { p2: 1, p3: 1 });
     expect(wealthWeight(viewOf(early, 'p1'), 'p1')).toBe(WEALTH_WEIGHT_FLOOR);
     expect(riversCandidates(turnOf(early, 'p1')).filter((candidate) => candidate.item.type === 'tb.buildBridge')).toEqual([]);
+  });
+});
+
+describe('road plans after the last bridge (#195 review)', () => {
+  /**
+   * p1 的 3 座橋都蓋好了，聚落在第 4 個橋位的一端（另一端不在自己的道路網上）：base 的道路搜尋（沒有 `routeEdge`）會經過
+   * 那個空橋位到達另一端。依橋位順序找第一個這樣的盤面（決定性）。
+   */
+  function exhausted(): { state: GameState; site: number; far: number } {
+    const sites = riversOf(bare()).bridgeSites;
+    for (const site of sites) {
+      for (const end of [0, 1] as const) {
+        const state = bare();
+        const [home, far] = end === 0 ? topologyOf(state).edges[site]!.vertices : [...topologyOf(state).edges[site]!.vertices].reverse();
+        placeBuilding(state, 'p1', home!);
+        const others = sites.filter((other) => other !== site).slice(0, 3);
+        for (const other of others) state.board.roads[other] = { player: 'p1', ship: false, bridge: true };
+        setHand(state, 'p1', { brick: 2, lumber: 2, wool: 1, grain: 1 });
+        const plain = searchRoads(boardModel(viewOf(state, 'p1'), 'p1'), 'p1', 3);
+        if (plain.distance[far!] === 1 && plain.viaEdge[far!] === site) return { state, site, far: far! };
+      }
+    }
+    throw new Error('no bridge-site route');
+  }
+
+  it('keeps plans off an empty bridge site once all bridges are built, and keeps building', () => {
+    const { state, site, far } = exhausted();
+    const view = viewOf(state, 'p1');
+    expect(bridgesLeft(view, 'p1')).toBe(0);
+    expect(bridgeTargets(view)).toEqual([]);
+    const model = boardModel(view, 'p1', MODULES);
+    expect(bridgeRouteEdge(model, site)).toBe(false);
+    // 有 Rivers 的 `routeEdge` 時，搜尋不再經過那個橋位。
+    expect(searchRoads(model, 'p1', 3).viaEdge[far]).not.toBe(site);
+    // 其他邊不表態；別人的橋數不影響自己的路線。
+    const land = topologyOf(state).vertices[topologyOf(state).edges[site]!.vertices[0]!]!.edges.find((edge) => edge !== site)!;
+    expect(bridgeRouteEdge(model, land)).toBeUndefined();
+    expect(bridgeRouteEdge(boardModel(viewOf(state, 'p2'), 'p2', MODULES), site)).toBeUndefined();
+
+    const sites = new Set(bridgeSites(view));
+    for (const level of LEVELS) {
+      const turn = turnOf(state, 'p1', level);
+      for (const plan of turn.economy.plans) {
+        expect(plan.roads.filter((edge) => sites.has(edge)), `${level} ${plan.kind} ${plan.vertex}`).toEqual([]);
+      }
+      // 這一回合照樣鋪路推進計畫，不會拿著聚落的牌直接結束回合。
+      let current = state;
+      const sent: string[] = [];
+      for (let step = 0; step < 8 && !current.result; step++) {
+        const command = createBotPolicy(level).decide(viewOf(current, 'p1'), ctxFor('p1', level, 3 + step));
+        if (!command) break;
+        sent.push(command.type);
+        current = accept(current, 'p1', command);
+        if (command.type === 'turn.end') break;
+      }
+      expect(sent[0], `${level}: ${sent.join(', ')}`).not.toBe('turn.end');
+      expect(sent.some((type) => type.startsWith('build.')), `${level}: ${sent.join(', ')}`).toBe(true);
+    }
+  });
+
+  it('saves the last bridge for plan routes unless it is worth an immediate build', () => {
+    const state = bare();
+    const { site, near } = siteOf(state);
+    placeBuilding(state, 'p1', near);
+    setHand(state, 'p1', { ...BRIDGE_COST, ore: 2, grain: 2 });
+    const others = riversOf(state).bridgeSites.filter((other) => other !== site).slice(0, 2);
+    for (const other of others) state.board.roads[other] = { player: 'p1', ship: false, bridge: true };
+    const turn = turnOf(state, 'p1');
+    expect(bridgesLeft(turn.view, 'p1')).toBe(1);
+    const onRoute = turn.economy.plans.some((plan) => plan.roads.includes(site));
+    const bridges = riversCandidates(turn).filter((candidate) => candidate.item.type === 'tb.buildBridge');
+    // 這個橋位不在任何計畫路線上：只靠 gold 的最後一座橋不蓋（兩座橋以上時照樣蓋，見上面的 spare 測試）。
+    expect(onRoute).toBe(false);
+    expect(bridges).toEqual([]);
   });
 });
 

@@ -8,7 +8,8 @@
  * - `preroll`、`actions`：依 part 順序串接候選。
  * - `robberTargets`：依 part 順序 fold；某個 part 丟例外時沿用上一組（與 base 的 fold 相同）。
  * - economy：`costs`、`piecesLeft` 合併，同一個鍵先出現者優先；`scoreExtras` 串接；`hexYield` 第一個非 undefined 勝出；
- *   `discardLimit` 依序 fold；`awards` 任一 part 回 `longestRoad: false` 就關閉（§12.4 C1）。其他 economy 鉤子 T&B 不用。
+ *   `discardLimit` 依序 fold；`awards` 任一 part 回 `longestRoad: false` 就關閉（§12.4 C1）；`routeEdge` 任一 part 回 false
+ *   就不經過。其他 economy 鉤子 T&B 不用。
  * - `trade.goods` 合併（同一個 good 先出現者優先）；`trade.goodValue` 第一個非 undefined 勝出（§12.4 C2）。
  *
  * economy 與 trade 只在至少一個 part 定義了對應鉤子時才出現在模組上：骨架以「鉤子存在」決定是否組合盤面掛點
@@ -184,6 +185,10 @@ function composeEconomy(
           const next = part.economy?.discardLimit?.(model, limit);
           return typeof next === 'number' && Number.isFinite(next) ? next : limit;
         }, base),
+    }),
+    ...(has('routeEdge') && {
+      routeEdge: (model, edge) =>
+        partsOf(model).some((part) => part.economy?.routeEdge?.(model, edge) === false) ? false : undefined,
     }),
     ...(has('awards') && {
       awards: (model) =>
