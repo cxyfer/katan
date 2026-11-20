@@ -16,7 +16,7 @@
 | S3 coins＋variants | #193 | `2730260` | Coins、Friendly Robber 與 Harbors 的策略；gold 交易 |
 | S4 Fishing | #194 | `0ac3267` | Fishing on Catan 的策略 |
 | S8 Rivers | #195 | `92c6acb` | Rivers of Catan 的策略：橋、河邊聚落、財富排名；`economy.routeEdge` 接上骨架 |
-| S9 開放 | 本 PR | 合併後補 | `TB_READY_PARTS` 放入 8 個 part、快照、family 登記、server 測試、文件 |
+| S9 開放 | #197 | 合併後補 | `TB_READY_PARTS` 放入 8 個 part、快照、family 登記、server 測試、文件 |
 
 合併順序與計畫的波次不同：S6、S7 先合併，S5、S4 依序 rebase 在 #191 之上，S3 接著合併並 rebase 在 #191 之上（coins 因此也在 BA 與 Traders 的對局中出手，S6、S7 的測試檔重跑仍通過），S8 在 S3 之後合併。8 個 part 都通過 Q1、Q2，S9 一次開放 8 個 profile，沒有走替代方案。
 

@@ -392,9 +392,9 @@ All are absent for base games, so base payloads are unchanged.
   `wagonStop`. Frames are `tradersBarbarians.<step>`.
 - Bots can be seated at `easy` or `standard` in the eight playable profiles
   (`botSeats: true`, `botLevels: ['easy','standard']`); `hard` is refused
-  (`E_INVALID_BOT`, reason `profileLevel`). Bots answer the sequential
-  `wagonBid`, `tbWagon` and `tbBarbarian` frames only when they are
-  `responders[0]`, and the simultaneous `wagonAssign` whenever they are listed.
+  (`E_INVALID_BOT`, reason `profileLevel`). Bots answer every T&B frame
+  only when they are `responders[0]`, except the simultaneous `wagonAssign`,
+  which a strategy seat answers whenever it is listed.
 ### Seafarers commands (`sf-new-shores-*`)
 
 | Command | Fields | When |
