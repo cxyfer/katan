@@ -1,7 +1,7 @@
 # Traders & Barbarians 電腦對手：實作計畫（v0.4.4）
 
 - 日期：2026-11-04；2026-11-20 刷新（§12）
-- 狀態：**S0–S9 已交付（2026-11-20，#186–#195 與 S9 的 PR），8 個 profile 一次開放，沒有走替代方案；Q3 待 QA，見 §12.6 與工作紀錄。** 2026-11-20 起執行：使用者指示「直接照計畫進入開發」，§10 的 D-TB1–D-TB7 全部採用建議。切片 PR 依 `RELEASING.md` 指向 `release/v0.4.4` 並 squash merge（§5、§7）。刷新後交給 Orchestrator 決定的合約細節列在 §12.4。
+- 狀態：**S0–S9 已交付（2026-11-20，#186–#195 與 S9 的 PR），8 個 profile 一次開放，沒有走替代方案；Q3 已量測，見 §12.6 與工作紀錄。** 2026-11-20 起執行：使用者指示「直接照計畫進入開發」，§10 的 D-TB1–D-TB7 全部採用建議。切片 PR 依 `RELEASING.md` 指向 `release/v0.4.4` 並 squash merge（§5、§7）。刷新後交給 Orchestrator 決定的合約細節列在 §12.4。
 - 前置閱讀：
   - 整體策略：`docs/aegis/plans/2026-11-04-expansion-bots-roadmap.md`（下稱「策略」）
   - bot 規格：`docs/aegis/specs/2026-11-01-bot-opponents.md`
