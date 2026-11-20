@@ -8,7 +8,7 @@ import { countRoads, playerById, scoreOf, topologyOf, totalResources } from '../
 import { RESOURCES, type GameState, type ModulePending, type Resource } from '../../../types.ts';
 import { verticesOfHex } from '../../../topology.ts';
 import { playerStats } from '../../../stats.ts';
-import type { ModuleCommand, ModuleContext } from '../../types.ts';
+import type { ModuleCommand, ModuleContext, ModuleViewContext } from '../../types.ts';
 import { frameKind, moduleFrame, TB, type TbPart } from '../part.ts';
 import { partState, requirePartState, setPartState } from '../state.ts';
 import { groundGeometry, GROUND_NUMBERS, LAKE_NUMBERS, type GroundGeometry } from './board.ts';
@@ -57,7 +57,7 @@ interface FishGrant {
   count: number;
 }
 
-const SWAP_FRAME = frameKind('fishSwap');
+export const SWAP_FRAME = frameKind('fishSwap');
 
 function fishing(state: GameState): FishingState {
   return requirePartState<FishingState>(state, FISHING);
@@ -328,6 +328,51 @@ function swapFish(state: GameState, actorId: string, command: ModuleCommand, ctx
   return ctx.kit.accept(state);
 }
 
+/** 魚場、湖、魚標記數與舊靴的公開狀態；`mine` 只給持有者本人。 */
+export function fishingView(state: GameState, viewerId: string) {
+  const slot = partState<FishingState>(state, FISHING);
+  if (!slot) return null;
+  return {
+    grounds: slot.grounds.map((ground) => ({ ...ground, vertices: [...ground.vertices], edges: [...ground.edges] })),
+    lake: slot.lake,
+    lakeNumbers: [...LAKE_NUMBERS],
+    supplyCount: slot.supply.fish.reduce((sum, count) => sum + count, 0) + slot.supply.boot,
+    discard: [...slot.discard],
+    tokenCounts: Object.fromEntries(Object.entries(slot.hands).map(([id, hand]) => [id, hand.length])),
+    boot: slot.boot,
+    ...(slot.hands[viewerId] ? { mine: [...slot.hands[viewerId]!] } : {}),
+    limit: FISH_LIMIT,
+    costs: { ...FISH_COSTS },
+  };
+}
+
+export type TbFishingView = NonNullable<ReturnType<typeof fishingView>>;
+
+/** 花魚、送舊靴與換魚 frame 的提示。 */
+export function fishingHints(state: GameState, playerId: string, ctx: ModuleViewContext) {
+  const slot = partState<FishingState>(state, FISHING);
+  if (!slot) return null;
+  const own = ctx.profile && state.players[state.turn.seat]?.id === playerId && state.turn.phase === 'action' && !state.pending;
+  const fish = (slot.hands[playerId] ?? []).reduce((sum, value) => sum + value, 0);
+  const roads = own && fish >= FISH_COSTS.road && ctx.rules
+    ? topologyOf(state).edges.map((_, edge) => edge).filter((edge) => ctx.rules!.canPlaceRoad(state, playerId, edge))
+    : [];
+  const frame = moduleFrame(state);
+  return {
+    canSpend: !!own,
+    fish,
+    canGiveBoot: !!own && slot.boot === playerId,
+    bootTargets: own && slot.boot === playerId
+      ? state.players.filter((player) => player.id !== playerId &&
+        scoreOf(state, player.id, { includeHidden: false }) >= scoreOf(state, playerId, { includeHidden: false })).map((player) => player.id)
+      : [],
+    targets: { 'tb.spendFish': roads },
+    swap: frame?.kind === SWAP_FRAME && frame.responders[0] === playerId,
+  };
+}
+
+export type TbFishingHints = NonNullable<ReturnType<typeof fishingHints>>;
+
 export const fishingPart: TbPart = {
   id: FISHING,
   frames: [SWAP_FRAME],
@@ -367,44 +412,9 @@ export const fishingPart: TbPart = {
   victoryTarget(state, playerId, base) {
     return partState<FishingState>(state, FISHING)?.boot === playerId ? base + 1 : base;
   },
-  project(state, viewerId) {
-    const slot = partState<FishingState>(state, FISHING);
-    if (!slot) return null;
-    return {
-      grounds: slot.grounds.map((ground) => ({ ...ground, vertices: [...ground.vertices], edges: [...ground.edges] })),
-      lake: slot.lake,
-      lakeNumbers: [...LAKE_NUMBERS],
-      supplyCount: slot.supply.fish.reduce((sum, count) => sum + count, 0) + slot.supply.boot,
-      discard: [...slot.discard],
-      tokenCounts: Object.fromEntries(Object.entries(slot.hands).map(([id, hand]) => [id, hand.length])),
-      boot: slot.boot,
-      ...(slot.hands[viewerId] ? { mine: [...slot.hands[viewerId]!] } : {}),
-      limit: FISH_LIMIT,
-      costs: { ...FISH_COSTS },
-    };
-  },
+  project: fishingView,
   projectPending(_state, frame, viewerId) {
     return { kind: frame.kind, module: frame.module, responders: frame.responders.slice(), data: frame.responders.includes(viewerId) ? { limit: FISH_LIMIT } : {} };
   },
-  actionHints(state, playerId, ctx) {
-    const slot = partState<FishingState>(state, FISHING);
-    if (!slot) return null;
-    const own = ctx.profile && state.players[state.turn.seat]?.id === playerId && state.turn.phase === 'action' && !state.pending;
-    const fish = (slot.hands[playerId] ?? []).reduce((sum, value) => sum + value, 0);
-    const roads = own && fish >= FISH_COSTS.road && ctx.rules
-      ? topologyOf(state).edges.map((_, edge) => edge).filter((edge) => ctx.rules!.canPlaceRoad(state, playerId, edge))
-      : [];
-    const frame = moduleFrame(state);
-    return {
-      canSpend: !!own,
-      fish,
-      canGiveBoot: !!own && slot.boot === playerId,
-      bootTargets: own && slot.boot === playerId
-        ? state.players.filter((player) => player.id !== playerId &&
-          scoreOf(state, player.id, { includeHidden: false }) >= scoreOf(state, playerId, { includeHidden: false })).map((player) => player.id)
-        : [],
-      targets: { 'tb.spendFish': roads },
-      swap: frame?.kind === SWAP_FRAME && frame.responders[0] === playerId,
-    };
-  },
+  actionHints: fishingHints,
 };

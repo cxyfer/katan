@@ -9,7 +9,7 @@ import { playerStats } from '../../../stats.ts';
 import { RESOURCES, type GameState, type ModulePending, type Resource } from '../../../types.ts';
 import type { ModuleCommand, ModuleContext, RollResult } from '../../types.ts';
 import { coins, goldOf, grantGold, payGold } from '../coins/index.ts';
-import { frameKind, moduleFrame, TB, type TbPart } from '../part.ts';
+import { frameKind, moduleFrame, TB, type TbBoardChoice, type TbPart } from '../part.ts';
 import { partState, requirePartState, setPartState } from '../state.ts';
 import {
   barbarianEdges,
@@ -60,7 +60,8 @@ export interface TradersState {
   swift: Record<string, number>;
 }
 
-interface MoveData {
+/** 回合結束車隊移動的 frame 資料（投影時原樣公開）。 */
+export interface MoveData {
   mp: number;
   boosted: boolean;
   /** Move actions still available after the current one (Swift Journey). */
@@ -69,8 +70,8 @@ interface MoveData {
   drivenOff: number[];
 }
 
-const MOVE = frameKind('tbWagon');
-const BARBARIAN = frameKind('tbBarbarian');
+export const MOVE = frameKind('tbWagon');
+export const BARBARIAN = frameKind('tbBarbarian');
 
 function traders(state: GameState): TradersState {
   return requirePartState<TradersState>(state, TRADERS);
@@ -312,6 +313,61 @@ function reachableSteps(state: GameState, playerId: string, mp: number): number[
   });
 }
 
+/** 據點、X 邊、蠻族、貨物堆與各玩家車隊的公開狀態。 */
+export function tradersView(state: GameState) {
+  const slot = partState<TradersState>(state, TRADERS);
+  if (!slot) return null;
+  return {
+    sites: slot.sites.map((site) => ({ ...site, needs: [...SITES.find((spec) => spec.id === site.id)!.needs] })),
+    xEdges: [...slot.xEdges],
+    barbarians: [...slot.barbarians],
+    stackCounts: Object.fromEntries(Object.entries(slot.stacks).map(([id, stack]) => [id, stack.length])),
+    wagons: JSON.parse(JSON.stringify(slot.wagons)) as Record<string, Wagon>,
+    levels: WAGON_LEVELS.map((entry) => ({ ...entry })),
+    upgradeCosts: UPGRADE_COSTS.map((cost) => ({ ...cost })),
+    swift: Object.keys(slot.swift).filter((id) => slot.swift[id] === state.windowId),
+  };
+}
+
+export type TbTradersView = NonNullable<ReturnType<typeof tradersView>>;
+
+/** 移動蠻族、車隊移動與升級、出牌的提示。 */
+export function tradersHints(state: GameState, playerId: string) {
+  const slot = partState<TradersState>(state, TRADERS);
+  if (!slot) return null;
+  const pending = moduleFrame(state);
+  const mine = !!pending && pending.responders[0] === playerId;
+  const own = state.players[state.turn.seat]?.id === playerId && (state.turn.phase === 'action' || state.turn.phase === 'preroll') && !state.pending;
+  const free = topologyOf(state).edges.map((_, edge) => edge).filter((edge) => !slot.barbarians.includes(edge));
+  const targets: Record<string, number[]> = {};
+  for (const from of slot.barbarians) targets[`tb.barbarian:${from}`] = free;
+  let board: TbBoardChoice | null = null;
+  let steps: number[] = [];
+  let driveOff: number[] = [];
+  if (mine && pending!.kind === MOVE) {
+    const data = pending!.data as unknown as MoveData;
+    steps = reachableSteps(state, playerId, data.mp);
+    board = { kind: 'vertex', commandType: 'tb.wagonStep', labelId: 'tb.traders.step', targets: steps, field: 'to' };
+    const wagon = slot.wagons[playerId]!;
+    driveOff = level(wagon).driveOff > 0
+      ? topologyOf(state).vertices[wagon.vertex]!.edges.filter((edge) => slot.barbarians.includes(edge) && !data.drivenOff.includes(slot.barbarians.indexOf(edge)))
+      : [];
+  }
+  const player = state.players.find((candidate) => candidate.id === playerId);
+  return {
+    targets,
+    board,
+    steps,
+    driveOff,
+    moveBarbarian: mine && pending!.kind === BARBARIAN,
+    canUpgrade: own && state.turn.phase === 'action' && (slot.wagons[playerId]?.level ?? 5) < WAGON_LEVELS.length,
+    canPlayKnight: own && !state.turn.devCardPlayed && !!player?.devCards.includes('barbarianKnight'),
+    canPlaySwift: own && !state.turn.devCardPlayed && !!player?.devCards.includes('swiftJourney'),
+  };
+}
+
+export type TbTradersHints = NonNullable<ReturnType<typeof tradersHints>>;
+
 export const tradersPart: TbPart = {
   id: TRADERS,
   frames: [MOVE, BARBARIAN],
@@ -397,54 +453,9 @@ export const tradersPart: TbPart = {
     if (!wagon) return 0;
     return wagon.delivered + (wagon.level === WAGON_LEVELS.length ? FULL_UPGRADE_POINTS : 0);
   },
-  project(state) {
-    const slot = partState<TradersState>(state, TRADERS);
-    if (!slot) return null;
-    return {
-      sites: slot.sites.map((site) => ({ ...site, needs: [...SITES.find((spec) => spec.id === site.id)!.needs] })),
-      xEdges: [...slot.xEdges],
-      barbarians: [...slot.barbarians],
-      stackCounts: Object.fromEntries(Object.entries(slot.stacks).map(([id, stack]) => [id, stack.length])),
-      wagons: JSON.parse(JSON.stringify(slot.wagons)),
-      levels: WAGON_LEVELS.map((entry) => ({ ...entry })),
-      upgradeCosts: UPGRADE_COSTS.map((cost) => ({ ...cost })),
-      swift: Object.keys(slot.swift).filter((id) => slot.swift[id] === state.windowId),
-    };
-  },
+  project: tradersView,
   projectPending(_state, frame) {
     return { kind: frame.kind, module: frame.module, responders: frame.responders.slice(), data: frame.kind === MOVE ? { ...frame.data } : {} };
   },
-  actionHints(state, playerId) {
-    const slot = partState<TradersState>(state, TRADERS);
-    if (!slot) return null;
-    const pending = moduleFrame(state);
-    const mine = !!pending && pending.responders[0] === playerId;
-    const own = state.players[state.turn.seat]?.id === playerId && (state.turn.phase === 'action' || state.turn.phase === 'preroll') && !state.pending;
-    const free = topologyOf(state).edges.map((_, edge) => edge).filter((edge) => !slot.barbarians.includes(edge));
-    const targets: Record<string, number[]> = {};
-    for (const from of slot.barbarians) targets[`tb.barbarian:${from}`] = free;
-    let board: unknown = null;
-    let steps: number[] = [];
-    let driveOff: number[] = [];
-    if (mine && pending!.kind === MOVE) {
-      const data = pending!.data as unknown as MoveData;
-      steps = reachableSteps(state, playerId, data.mp);
-      board = { kind: 'vertex', commandType: 'tb.wagonStep', labelId: 'tb.traders.step', targets: steps, field: 'to' };
-      const wagon = slot.wagons[playerId]!;
-      driveOff = level(wagon).driveOff > 0
-        ? topologyOf(state).vertices[wagon.vertex]!.edges.filter((edge) => slot.barbarians.includes(edge) && !data.drivenOff.includes(slot.barbarians.indexOf(edge)))
-        : [];
-    }
-    const player = state.players.find((candidate) => candidate.id === playerId);
-    return {
-      targets,
-      board,
-      steps,
-      driveOff,
-      moveBarbarian: mine && pending!.kind === BARBARIAN,
-      canUpgrade: own && state.turn.phase === 'action' && (slot.wagons[playerId]?.level ?? 5) < WAGON_LEVELS.length,
-      canPlayKnight: own && !state.turn.devCardPlayed && !!player?.devCards.includes('barbarianKnight'),
-      canPlaySwift: own && !state.turn.devCardPlayed && !!player?.devCards.includes('swiftJourney'),
-    };
-  },
+  actionHints: tradersHints,
 };

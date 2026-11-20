@@ -11,7 +11,8 @@ import { partState, setPartState } from '../state.ts';
 
 export const HARBORS = 'harbors';
 
-const MINIMUM = 3;
+/** 取得 Strongest Ports 所需的港口建築分數下限。 */
+export const MINIMUM = 3;
 export const STRONGEST_PORTS_POINTS = 2;
 
 export interface HarborsState {
@@ -37,6 +38,14 @@ function holderOf(state: GameState): string | null {
   return partState<HarborsState>(state, HARBORS)?.holder ?? null;
 }
 
+/** Strongest Ports 的持有者與各玩家在港口上的建築分數。 */
+export function harborsView(state: GameState) {
+  const points = portPoints(state);
+  return { holder: holderOf(state), portPoints: points, minimum: MINIMUM };
+}
+
+export type TbHarborsView = ReturnType<typeof harborsView>;
+
 export const harborsPart: TbPart = {
   id: HARBORS,
   initGame(state) {
@@ -59,8 +68,5 @@ export const harborsPart: TbPart = {
   score(state, playerId) {
     return holderOf(state) === playerId ? STRONGEST_PORTS_POINTS : 0;
   },
-  project(state) {
-    const points = portPoints(state);
-    return { holder: holderOf(state), portPoints: points, minimum: MINIMUM };
-  },
+  project: harborsView,
 };

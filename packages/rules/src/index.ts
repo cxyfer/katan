@@ -2,6 +2,7 @@ import type { CitiesKnightsHints, CitiesKnightsView } from './modules/citiesKnig
 import type { ExplorersPiratesHints, ExplorersPiratesView } from './modules/explorersPirates/index.ts';
 import type { SeafarersHints, SeafarersView } from './modules/seafarers/index.ts';
 import type { SeafarersCitiesKnightsHints, SeafarersCitiesKnightsView } from './modules/seafarersCitiesKnights/index.ts';
+import type { TradersBarbariansHints, TradersBarbariansView } from './modules/tradersBarbarians/index.ts';
 
 export * from './types.ts';
 export * from './messages.ts';
@@ -68,6 +69,81 @@ export {
 } from './modules/citiesKnights/card-common.ts';
 export type { SeafarersCitiesKnightsView, SeafarersCitiesKnightsHints, SfckBandit } from './modules/seafarersCitiesKnights/index.ts';
 export { SEAFARERS_CITIES_KNIGHTS } from './modules/seafarersCitiesKnights/index.ts';
+// Traders & Barbarians：view／hints 型別、frame data 與規則常數（bots 0.4.4 用）。
+export {
+  TB_FRAME_KINDS,
+  TB_PENDING_COMMANDS,
+  TB_SCENARIO_PART_IDS,
+  TB_VARIANT_PART_IDS,
+  type TradersBarbariansView,
+  type TradersBarbariansHints,
+} from './modules/tradersBarbarians/index.ts';
+export { TB as TRADERS_BARBARIANS, type TbBoardChoice } from './modules/tradersBarbarians/part.ts';
+export {
+  GOLD_SUPPLY,
+  GOLD_PER_RESOURCE,
+  GOLD_PER_SALE,
+  PURCHASES_PER_TURN,
+  type TbCoinsView,
+  type TbCoinsHints,
+} from './modules/tradersBarbarians/coins/index.ts';
+export {
+  FISH_COSTS,
+  FISH_LIMIT,
+  FISH_SUPPLY,
+  type FishAction as TbFishAction,
+  type FishValue as TbFishValue,
+  type TbFishingView,
+  type TbFishingHints,
+} from './modules/tradersBarbarians/fishing/index.ts';
+export {
+  BRIDGE_COST,
+  BRIDGE_GOLD,
+  BRIDGES_PER_PLAYER,
+  RIVER_BUILD_GOLD,
+  WEALTHIEST_POINTS,
+  POOR_POINTS,
+  type TbRiversView,
+  type TbRiversHints,
+} from './modules/tradersBarbarians/rivers/index.ts';
+export {
+  WAGON_SUPPLY,
+  BETWEEN_WAGONS_POINTS,
+  type VoteData as TbVoteData,
+  type TbTrainsView,
+  type TbTrainsHints,
+} from './modules/tradersBarbarians/trains/index.ts';
+export {
+  CARD_COST as BA_CARD_COST,
+  BA_DECK,
+  BARBARIAN_SUPPLY as BA_BARBARIAN_SUPPLY,
+  KNIGHTS_PER_PLAYER as BA_KNIGHTS_PER_PLAYER,
+  CONQUER_AT,
+  KNIGHT_RANGE as BA_KNIGHT_RANGE,
+  KNIGHT_BOOSTED_RANGE as BA_KNIGHT_BOOSTED_RANGE,
+  TREASON_GOLD as BA_TREASON_GOLD,
+  CONSOLATION_GOLD as BA_CONSOLATION_GOLD,
+  type BaCard as TbBaCard,
+  type TreasonData as TbTreasonData,
+  type KnightsData as TbKnightsData,
+  type TbBarbarianAttackView,
+  type TbBarbarianAttackHints,
+} from './modules/tradersBarbarians/barbarians/index.ts';
+export {
+  STARTING_GOLD as TRADERS_STARTING_GOLD,
+  WAGON_LEVELS,
+  UPGRADE_COSTS,
+  FULL_UPGRADE_POINTS,
+  BOOST_MP,
+  type MoveData as TbMoveData,
+  type TbTradersView,
+  type TbTradersHints,
+} from './modules/tradersBarbarians/traders/index.ts';
+export {
+  STRONGEST_PORTS_POINTS,
+  MINIMUM as STRONGEST_PORTS_MINIMUM,
+  type TbHarborsView,
+} from './modules/tradersBarbarians/variants/harbors.ts';
 export * from './modules/index.ts';
 export * from './analysis.ts';
 export * from './profiles.ts';
@@ -86,6 +162,7 @@ export interface ModuleViewMap {
   explorersPirates: ExplorersPiratesView;
   citiesKnights: CitiesKnightsView;
   seafarersCitiesKnights: SeafarersCitiesKnightsView;
+  tradersBarbarians: TradersBarbariansView;
 }
 
 /**
@@ -98,4 +175,5 @@ export interface ModuleHintsMap {
   explorersPirates: ExplorersPiratesHints;
   citiesKnights: CitiesKnightsHints;
   seafarersCitiesKnights: SeafarersCitiesKnightsHints;
+  tradersBarbarians: TradersBarbariansHints;
 }

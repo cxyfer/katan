@@ -6,6 +6,7 @@
  */
 
 import { getProfile, type ProfileDefinition } from '../../profiles.ts';
+import type { GameState } from '../../types.ts';
 import type {
   ModuleCommandHandler,
   ModuleViewContext,
@@ -14,15 +15,41 @@ import type {
   RulesModule,
 } from '../types.ts';
 import './boards.ts';
-import { barbarianAttackPart } from './barbarians/index.ts';
-import { coinsPart } from './coins/index.ts';
-import { fishingPart } from './fishing/index.ts';
-import { riversPart } from './rivers/index.ts';
-import { tradersPart } from './traders/index.ts';
-import { trainsPart } from './trains/index.ts';
-import { TB, type TbPart } from './part.ts';
+import {
+  BARBARIAN_ATTACK,
+  barbarianAttackPart,
+  CAPTURE as BA_CAPTURE_FRAME,
+  KNIGHTHOOD as BA_KNIGHTHOOD_FRAME,
+  KNIGHTS as BA_KNIGHTS_FRAME,
+  STEAL as BA_STEAL_FRAME,
+  SWIFT as BA_SWIFT_KNIGHT_FRAME,
+  TREASON as BA_TREASON_FRAME,
+  type TbBarbarianAttackHints,
+  type TbBarbarianAttackView,
+} from './barbarians/index.ts';
+import { COINS, coinsPart, type TbCoinsHints, type TbCoinsView } from './coins/index.ts';
+import { FISHING, fishingPart, SWAP_FRAME as FISH_SWAP_FRAME, type TbFishingHints, type TbFishingView } from './fishing/index.ts';
+import { RIVERS, riversPart, type TbRiversHints, type TbRiversView } from './rivers/index.ts';
+import {
+  BARBARIAN as TRADERS_BARBARIAN_FRAME,
+  MOVE as TRADERS_WAGON_FRAME,
+  TRADERS,
+  tradersPart,
+  type TbTradersHints,
+  type TbTradersView,
+} from './traders/index.ts';
+import {
+  ASSIGN as WAGON_ASSIGN_FRAME,
+  BID as WAGON_BID_FRAME,
+  PLACE as WAGON_PLACE_FRAME,
+  TRAINS,
+  trainsPart,
+  type TbTrainsHints,
+  type TbTrainsView,
+} from './trains/index.ts';
+import { TB, type TbBoardChoice, type TbPart } from './part.ts';
 import { friendlyRobberPart } from './variants/friendlyRobber.ts';
-import { harborsPart } from './variants/harbors.ts';
+import { HARBORS, harborsPart, type TbHarborsView } from './variants/harbors.ts';
 
 /** Scenario id → parts it runs, shared parts first. */
 const SCENARIO_PARTS: Readonly<Record<string, readonly TbPart[]>> = {
@@ -38,6 +65,67 @@ const VARIANT_PARTS: Readonly<Record<string, TbPart>> = {
   [friendlyRobberPart.id]: friendlyRobberPart,
   [harborsPart.id]: harborsPart,
 };
+
+/** 劇本 id → 依序執行的 part id；未知劇本查不到（`undefined`）。 */
+export const TB_SCENARIO_PART_IDS: Readonly<Partial<Record<string, readonly string[]>>> = Object.freeze(
+  Object.fromEntries(Object.entries(SCENARIO_PARTS).map(([id, list]) => [id, Object.freeze(list.map((part) => part.id))])),
+);
+
+/** 變體 id → part id；沒有 part 的變體（如 `event-cards`）查不到（`undefined`）。 */
+export const TB_VARIANT_PART_IDS: Readonly<Partial<Record<string, readonly string[]>>> = Object.freeze(
+  Object.fromEntries(Object.entries(VARIANT_PARTS).map(([id, part]) => [id, Object.freeze([part.id])])),
+);
+
+/** frame 進行中可以送的模組指令（所有 part 的聯集）；bots 的 responseCommands 用它。 */
+export const TB_PENDING_COMMANDS: readonly string[] = Object.freeze([
+  ...new Set(allParts().flatMap((part) => part.pendingCommands ?? [])),
+]);
+
+/** T&B 各 part 的 pending frame kind，鍵為步驟名。 */
+export const TB_FRAME_KINDS = {
+  fishSwap: FISH_SWAP_FRAME,
+  wagonBid: WAGON_BID_FRAME,
+  wagonAssign: WAGON_ASSIGN_FRAME,
+  wagonPlace: WAGON_PLACE_FRAME,
+  baSteal: BA_STEAL_FRAME,
+  baCapture: BA_CAPTURE_FRAME,
+  baKnighthood: BA_KNIGHTHOOD_FRAME,
+  baSwiftKnight: BA_SWIFT_KNIGHT_FRAME,
+  baTreason: BA_TREASON_FRAME,
+  baKnights: BA_KNIGHTS_FRAME,
+  tbWagon: TRADERS_WAGON_FRAME,
+  tbBarbarian: TRADERS_BARBARIAN_FRAME,
+} as const;
+
+/**
+ * `GameView.modules.tradersBarbarians`：part id → 該 part 的 view，只有 profile
+ * 啟用的 part 才有鍵（part 狀態未建立時為 `null`）。Friendly Robber 沒有 view。
+ */
+export interface TradersBarbariansView {
+  [FISHING]?: TbFishingView | null;
+  [COINS]?: TbCoinsView | null;
+  [RIVERS]?: TbRiversView | null;
+  [TRAINS]?: TbTrainsView | null;
+  [BARBARIAN_ATTACK]?: TbBarbarianAttackView | null;
+  [TRADERS]?: TbTradersView | null;
+  [HARBORS]?: TbHarborsView;
+}
+
+/**
+ * `ActionHints.modules.tradersBarbarians`：啟用 part 的 hints，加上根層合併的
+ * `targets`、第一個非空的 `board`，以及有 part 限制強盜位置時的 `robberHexes`。
+ */
+export interface TradersBarbariansHints {
+  [FISHING]?: TbFishingHints | null;
+  [COINS]?: TbCoinsHints;
+  [RIVERS]?: TbRiversHints | null;
+  [TRAINS]?: TbTrainsHints | null;
+  [BARBARIAN_ATTACK]?: TbBarbarianAttackHints | null;
+  [TRADERS]?: TbTradersHints | null;
+  targets: Record<string, number[]>;
+  board: TbBoardChoice | null;
+  robberHexes?: number[];
+}
 
 const resolved = new WeakMap<ProfileDefinition, readonly TbPart[]>();
 
@@ -79,6 +167,37 @@ function partOfFrame(profile: ProfileDefinition, kind: string): TbPart | undefin
 }
 
 const parts = (ctx: ModuleViewContext) => activeParts(ctx.profile);
+
+/** 合併啟用 part 的 view，發布為 `GameView.modules.tradersBarbarians`。 */
+export function tradersBarbariansView(state: GameState, viewerId: string, ctx: ModuleViewContext): TradersBarbariansView {
+  return Object.fromEntries(
+    parts(ctx).filter((part) => part.project).map((part) => [part.id, part.project!(state, viewerId, ctx)]),
+  ) as TradersBarbariansView;
+}
+
+/** 合併啟用 part 的 hints，發布為 `ActionHints.modules.tradersBarbarians`。 */
+export function tradersBarbariansHints(state: GameState, playerId: string, ctx: ModuleViewContext): TradersBarbariansHints {
+  const hints: Record<string, unknown> = Object.fromEntries(
+    parts(ctx).filter((part) => part.actionHints).map((part) => [part.id, part.actionHints!(state, playerId, ctx)]),
+  );
+  // Board targets and pending board choices are published at the root so a
+  // client finds them without knowing which part asked.
+  const targets: Record<string, number[]> = {};
+  let board: unknown = null;
+  for (const value of Object.values(hints)) {
+    if (!value || typeof value !== 'object') continue;
+    Object.assign(targets, (value as { targets?: Record<string, number[]> }).targets ?? {});
+    board ??= (value as { board?: unknown }).board ?? null;
+  }
+  hints.targets = targets;
+  hints.board = board;
+  if (parts(ctx).some((part) => part.robberTargets)) {
+    // The robber's legal hexes when a part narrows them (the board's targets).
+    const base = state.board.layout.terrain.map((_, hex) => hex).filter((hex) => hex !== state.board.robber);
+    hints.robberHexes = parts(ctx).reduce((value, part) => part.robberTargets?.(state, playerId, value, ctx) ?? value, base);
+  }
+  return hints as unknown as TradersBarbariansHints;
+}
 
 export const tradersBarbariansModule: RulesModule = {
   id: TB,
@@ -169,7 +288,7 @@ export const tradersBarbariansModule: RulesModule = {
   },
 
   commands: composeCommands(),
-  pendingCommands: [...new Set(allParts().flatMap((part) => part.pendingCommands ?? []))],
+  pendingCommands: [...TB_PENDING_COMMANDS],
   resumePending(state, frame, ctx) {
     partOfFrame(ctx.profile, frame.kind)?.resumePending?.(state, frame, ctx);
   },
@@ -181,38 +300,13 @@ export const tradersBarbariansModule: RulesModule = {
     return parts(ctx).reduce((value, part) => part.victoryTarget?.(state, playerId, value, ctx) ?? value, base);
   },
 
-  project(state, viewerId, ctx) {
-    return Object.fromEntries(
-      parts(ctx).filter((part) => part.project).map((part) => [part.id, part.project!(state, viewerId, ctx)]),
-    );
-  },
+  project: tradersBarbariansView,
   projectPending(state, frame, viewerId, ctx): PublicModulePendingView {
     const part = partOfFrame(ctx.profile, frame.kind);
     if (part?.projectPending) return part.projectPending(state, frame, viewerId, ctx);
     return { kind: frame.kind, module: frame.module, responders: frame.responders.slice(), data: {} };
   },
-  actionHints(state, playerId, ctx) {
-    const hints: Record<string, unknown> = Object.fromEntries(
-      parts(ctx).filter((part) => part.actionHints).map((part) => [part.id, part.actionHints!(state, playerId, ctx)]),
-    );
-    // Board targets and pending board choices are published at the root so a
-    // client finds them without knowing which part asked.
-    const targets: Record<string, number[]> = {};
-    let board: unknown = null;
-    for (const value of Object.values(hints)) {
-      if (!value || typeof value !== 'object') continue;
-      Object.assign(targets, (value as { targets?: Record<string, number[]> }).targets ?? {});
-      board ??= (value as { board?: unknown }).board ?? null;
-    }
-    hints.targets = targets;
-    hints.board = board;
-    if (parts(ctx).some((part) => part.robberTargets)) {
-      // The robber's legal hexes when a part narrows them (the board's targets).
-      const base = state.board.layout.terrain.map((_, hex) => hex).filter((hex) => hex !== state.board.robber);
-      hints.robberHexes = parts(ctx).reduce((value, part) => part.robberTargets?.(state, playerId, value, ctx) ?? value, base);
-    }
-    return hints;
-  },
+  actionHints: tradersBarbariansHints,
 };
 
 /** The active part that defines trade goods. */

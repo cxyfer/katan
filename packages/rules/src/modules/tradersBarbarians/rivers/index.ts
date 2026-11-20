@@ -18,6 +18,8 @@ export const BRIDGES_PER_PLAYER = 3;
 export const BRIDGE_GOLD = 3;
 export const WEALTHIEST_POINTS = 1;
 export const POOR_POINTS = -2;
+/** 在河邊蓋聚落或道路所得的金幣（p. 11）。 */
+export const RIVER_BUILD_GOLD = 1;
 
 export type RiversState = RiverGeometry;
 
@@ -73,6 +75,35 @@ function buildBridge(state: GameState, actorId: string, command: ModuleCommand, 
   return ctx.kit.accept(state);
 }
 
+/** 河流、橋與財富板塊的公開狀態。 */
+export function riversView(state: GameState) {
+  const slot = partState<RiversState>(state, RIVERS);
+  if (!slot) return null;
+  const tiles = wealth(state);
+  return {
+    ...slot,
+    bridges: Object.fromEntries(state.players.map((player) => [player.id, BRIDGES_PER_PLAYER - bridgesOf(state, player.id)])),
+    wealthiest: tiles.wealthiest,
+    poor: tiles.poor,
+    bridgeCost: { ...BRIDGE_COST },
+  };
+}
+
+export type TbRiversView = NonNullable<ReturnType<typeof riversView>>;
+
+/** 可建橋的邊（只在自己的行動階段、橋還沒用完時）。 */
+export function riversHints(state: GameState, playerId: string) {
+  const slot = partState<RiversState>(state, RIVERS);
+  if (!slot) return null;
+  const own = state.players[state.turn.seat]?.id === playerId && state.turn.phase === 'action' && !state.pending;
+  const bridges = own && bridgesOf(state, playerId) < BRIDGES_PER_PLAYER
+    ? slot.bridgeSites.filter((edge) => !state.board.roads[edge] && connects(state, playerId, edge))
+    : [];
+  return { targets: { 'tb.buildBridge': bridges } };
+}
+
+export type TbRiversHints = NonNullable<ReturnType<typeof riversHints>>;
+
 export const riversPart: TbPart = {
   id: RIVERS,
   initGame(state) {
@@ -84,35 +115,16 @@ export const riversPart: TbPart = {
   },
   afterBuild(state, build, ctx) {
     const slot = rivers(state);
-    if (build.piece === 'settlement' && slot.vertices.includes(build.vertex!)) grantGold(state, build.playerId, 1, 'riverSettlement', ctx);
-    if (build.piece === 'road' && slot.edges.includes(build.edge!)) grantGold(state, build.playerId, 1, 'riverRoad', ctx);
+    if (build.piece === 'settlement' && slot.vertices.includes(build.vertex!)) grantGold(state, build.playerId, RIVER_BUILD_GOLD, 'riverSettlement', ctx);
+    if (build.piece === 'road' && slot.edges.includes(build.edge!)) grantGold(state, build.playerId, RIVER_BUILD_GOLD, 'riverRoad', ctx);
   },
   commands: { 'tb.buildBridge': buildBridge },
   score(state, playerId) {
     const tiles = wealth(state);
     return (tiles.wealthiest === playerId ? WEALTHIEST_POINTS : 0) + (tiles.poor.includes(playerId) ? POOR_POINTS : 0);
   },
-  project(state) {
-    const slot = partState<RiversState>(state, RIVERS);
-    if (!slot) return null;
-    const tiles = wealth(state);
-    return {
-      ...slot,
-      bridges: Object.fromEntries(state.players.map((player) => [player.id, BRIDGES_PER_PLAYER - bridgesOf(state, player.id)])),
-      wealthiest: tiles.wealthiest,
-      poor: tiles.poor,
-      bridgeCost: { ...BRIDGE_COST },
-    };
-  },
-  actionHints(state, playerId) {
-    const slot = partState<RiversState>(state, RIVERS);
-    if (!slot) return null;
-    const own = state.players[state.turn.seat]?.id === playerId && state.turn.phase === 'action' && !state.pending;
-    const bridges = own && bridgesOf(state, playerId) < BRIDGES_PER_PLAYER
-      ? slot.bridgeSites.filter((edge) => !state.board.roads[edge] && connects(state, playerId, edge))
-      : [];
-    return { targets: { 'tb.buildBridge': bridges } };
-  },
+  project: riversView,
+  actionHints: riversHints,
 };
 
 /** Gold in play plus the supply always equals the 100 gold of coins. */
