@@ -82,7 +82,7 @@ export const TB_PENDING_COMMANDS: readonly string[] = Object.freeze([
 ]);
 
 /** T&B 各 part 的 pending frame kind，鍵為步驟名。 */
-export const TB_FRAME_KINDS = {
+export const TB_FRAME_KINDS = Object.freeze({
   fishSwap: FISH_SWAP_FRAME,
   wagonBid: WAGON_BID_FRAME,
   wagonAssign: WAGON_ASSIGN_FRAME,
@@ -95,7 +95,7 @@ export const TB_FRAME_KINDS = {
   baKnights: BA_KNIGHTS_FRAME,
   tbWagon: TRADERS_WAGON_FRAME,
   tbBarbarian: TRADERS_BARBARIAN_FRAME,
-} as const;
+} as const);
 
 /**
  * `GameView.modules.tradersBarbarians`：part id → 該 part 的 view，只有 profile

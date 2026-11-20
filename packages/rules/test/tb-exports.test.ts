@@ -107,6 +107,35 @@ function moduleHints(state: GameState, playerId: string): TradersBarbariansHints
   return (actionHints(state, playerId).modules as Partial<ModuleHintsMap>).tradersBarbarians!;
 }
 
+/** FNV-1a（32 位元）；rules 測試沒有 node:crypto。 */
+function fnv1a(text: string, hash = 0x811c9dc5): number {
+  for (let i = 0; i < text.length; i += 1) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193) >>> 0;
+  return hash;
+}
+
+/**
+ * 抽出前（`58fe789`）的 T&B view／hints 指紋：每個取樣狀態、每位玩家的 `modules.tradersBarbarians`
+ * view 與 hints JSON 依序累積雜湊。抽出時以 42,084 次逐一比對確認相同，這裡鎖住它（P8）。
+ */
+const GOLDEN: Record<string, number> = {
+  'tb-friendly-robber-2025': 765286753,
+  'tb-harbors-2025': 1557642069,
+  'tb-friendly-robber-harbors-2025': 135960393,
+  'tb-fishing-2025': 3245187587,
+  'tb-rivers-2025': 2750568664,
+  'tb-merchant-trains-2025': 3496752847,
+  'tb-barbarian-attack-2025': 33682852,
+  'tb-traders-barbarians-2025': 2572377026,
+};
+
+function fingerprint(states: readonly GameState[]): number {
+  let hash = 0x811c9dc5;
+  for (const state of states) {
+    for (const { id } of state.players) hash = fnv1a(JSON.stringify([moduleView(state, id), moduleHints(state, id)]), hash);
+  }
+  return hash;
+}
+
 describe('traders & barbarians exports (bots plan S0)', () => {
   it('the module and every part use the exported named functions', () => {
     expect(tradersBarbariansModule.id).toBe(TRADERS_BARBARIANS);
@@ -147,6 +176,7 @@ describe('traders & barbarians exports (bots plan S0)', () => {
     for (const [step, kind] of Object.entries(TB_FRAME_KINDS)) expect(kind).toBe(`tradersBarbarians.${step}`);
     const owned = [fishingPart, trainsPart, barbarianAttackPart, tradersPart].flatMap((part) => part.frames ?? []);
     expect(Object.values(TB_FRAME_KINDS).sort()).toEqual([...owned].sort());
+    expect(Object.isFrozen(TB_FRAME_KINDS) && Object.isFrozen(TB_PENDING_COMMANDS)).toBe(true);
   });
 
   it('TB_PENDING_COMMANDS is the module pendingCommands', () => {
@@ -175,6 +205,7 @@ describe('traders & barbarians exports (bots plan S0)', () => {
       const hintParts = parts.filter((id) => id !== 'friendly-robber' && id !== 'harbors').sort();
       const states = sampledStates(profileId, bot);
       expect(states.length).toBeGreaterThan(10);
+      expect(fingerprint(states)).toBe(GOLDEN[profileId]);
       for (const state of states) {
         for (const { id } of state.players) {
           const view = moduleView(state, id);
