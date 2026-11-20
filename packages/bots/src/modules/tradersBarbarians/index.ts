@@ -13,10 +13,10 @@
  * - `trade.goods` 合併（同一個 good 先出現者優先）；`trade.goodValue` 第一個非 undefined 勝出（§12.4 C2）。
  *
  * economy 與 trade 只在至少一個 part 定義了對應鉤子時才出現在模組上：骨架以「鉤子存在」決定是否組合盤面掛點
- * （例如 `hexYield`），沒有 part 需要時模組的形狀就與沒有這些鉤子相同。S2 的 part 都是 stub，所以模組上還沒有它們。
+ * （例如 `hexYield`），沒有 part 需要時模組的形狀就與沒有這些鉤子相同。
  *
- * 保底（`duty`）是 `duty.ts` 的整張表，不經 part。`supports` 讀原始的劇本與變體 id（§3.3）；S2 的 `TB_READY_PARTS`
- * 是空集合，所以 8 個 T&B profile 都還不能讓 Bot 入座。
+ * 保底（`duty`）是 `duty.ts` 的整張表，不經 part。`supports` 讀原始的劇本與變體 id（§3.3）；S9 起 `TB_READY_PARTS`
+ * 含全部 8 個 part，8 個 T&B profile 都可以讓 Bot 入座，4 個 `tb-event-cards*` 仍然不行。
  */
 
 import { getProfile, TB_PENDING_COMMANDS, type GameView, type ProfileDefinition } from '@catan/rules';

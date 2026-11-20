@@ -79,6 +79,14 @@ describe('bot ruleset support', () => {
       'ck-paired-2025',
       'sf-ck-new-shores-2025',
       'sf-ck-new-shores-paired-2025',
+      'tb-friendly-robber-2025',
+      'tb-harbors-2025',
+      'tb-friendly-robber-harbors-2025',
+      'tb-fishing-2025',
+      'tb-rivers-2025',
+      'tb-merchant-trains-2025',
+      'tb-barbarian-attack-2025',
+      'tb-traders-barbarians-2025',
     ]);
   });
 });
