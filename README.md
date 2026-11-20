@@ -138,7 +138,8 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @catan/server 
 - Traders & Barbarians (2025 rulebook) on the base board for **3 and 4
   players**: the Friendly Robber and Harbors of Catan variants, and the
   scenarios Fishing on Catan, Rivers of Catan, Merchant Trains, Barbarian
-  Attack and Traders & Barbarians, each its own profile.
+  Attack and Traders & Barbarians, each its own profile, with easy and
+  standard computer opponents.
 - Private rooms with invite codes and a public room list.
 - Guest identity via a secure browser cookie, with nickname changes.
 - Host-configured room policy before start; after start every seated player must

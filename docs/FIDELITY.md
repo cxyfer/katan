@@ -42,14 +42,14 @@ publisher's rulebooks. No official artwork or card text is copied.
 | `ck-paired-2025` | 5, 6 | 13 | **enabled** (as above, CK56-25 paired turns; easy and standard bot seats) |
 | `sf-ck-new-shores-2025` | 3, 4 | 16 | **enabled** (SF25 maps with the CK25 setup and the COMB rules; easy and standard bot seats) |
 | `sf-ck-new-shores-paired-2025` | 5, 6 | 16 | **enabled** (SF56-25 map with both 5–6 rulebooks and COMB; easy and standard bot seats) |
-| `tb-friendly-robber-2025` | 3, 4 | 10 | **enabled** |
-| `tb-harbors-2025` | 3, 4 | 11 | **enabled** |
-| `tb-friendly-robber-harbors-2025` | 3, 4 | 11 | **enabled** |
-| `tb-fishing-2025` | 3, 4 | 10 (11 with the old boot) | **enabled** |
-| `tb-rivers-2025` | 3, 4 | 10 | **enabled** |
-| `tb-merchant-trains-2025` | 3, 4 | 12 | **enabled** |
-| `tb-barbarian-attack-2025` | 3, 4 | 12 | **enabled** |
-| `tb-traders-barbarians-2025` | 3, 4 | 13 | **enabled** |
+| `tb-friendly-robber-2025` | 3, 4 | 10 | **enabled** (easy and standard bot seats) |
+| `tb-harbors-2025` | 3, 4 | 11 | **enabled** (easy and standard bot seats) |
+| `tb-friendly-robber-harbors-2025` | 3, 4 | 11 | **enabled** (easy and standard bot seats) |
+| `tb-fishing-2025` | 3, 4 | 10 (11 with the old boot) | **enabled** (easy and standard bot seats) |
+| `tb-rivers-2025` | 3, 4 | 10 | **enabled** (easy and standard bot seats) |
+| `tb-merchant-trains-2025` | 3, 4 | 12 | **enabled** (easy and standard bot seats) |
+| `tb-barbarian-attack-2025` | 3, 4 | 12 | **enabled** (easy and standard bot seats) |
+| `tb-traders-barbarians-2025` | 3, 4 | 13 | **enabled** (easy and standard bot seats) |
 
 Every row of the §5.7 matrix is now enabled. A profile registered with
 `enabled: false` carries an `unavailableReasonKey`; the lobby does not offer
@@ -66,6 +66,8 @@ The registry separates two questions:
 
 The combined Heading for New Shores profiles are enabled (P4, 2026-11-02) after the R-COMB fixtures below pass with a citation per clause, simulated 3/4/5/6-player games reach 16 points with every supply conserved, and the browser run `scripts/seafarers-cities-knights/capture.py` creates a room through the lobby and plays the combined interactions on the 3-, 4- and 6-player maps in SVG and 3D, desktop and phone ([captures](screenshots/seafarers-cities-knights/README.md)). Every combined command other than `knight.chasePirate` is the Seafarers or Cities & Knights command already reachable in both renderers; the chase is new and reached in both. Their easy and standard bot seats are offered after the bot gates pass: bot-only games with mixed levels finish with a winner at 3, 4, 5 and 6 players with no rejected or idle command (Q1); over 10 seeds the strategies pay for ships, take the island bonus, recruit and activate knights, improve cities, defend against the barbarians, take metropolises and play progress cards (Q2), and fixed boards pin the pirate chase, the gold-field city and the choice between the robber and the pirate; and the service tests cover a whole HTTP game at 3 and 5 players, fallback answers, frames shared by a person and bots, and a restart during a defender draw and during a gold frame (R-COMB bots below). A `hard` seat is refused (`E_INVALID_BOT`, reason `profileLevel`).
 The five Explorers & Pirates profiles are enabled one per mission set, in book order, after the R-EP fixtures below pass, the maps are transcribed from EP25/EP25-M (method, per-cell data and interpretations in [the work record](aegis/work/2026-11-02-explorers-pirates.md) and `packages/rules/src/explorers-pirates-boards.ts`) and each mission is played to its result in the browser with every command in play made through the UI in one renderer and reached in the other (`scripts/explorers-pirates/capture.py`, [captures](screenshots/explorers-pirates/README.md)). Explorers & Pirates is never combined with Seafarers; bots refuse E&P rooms.
+
+The eight playable Traders & Barbarians profiles offer easy and standard bot seats (v0.4.4) after the bot gates pass for each part they run (the scenario, its variants and Coins): bot-only games with mixed levels at 3 and 4 players, plus one game per player count with a fallback-only seat, finish with a winner with no rejected command, residual pending effect, stall or idle duty, and with every part's supply conserved (Q1); bounded all-fallback games of all eight profiles run 800 steps without a rejection; over 10 seeds the strategies move the robber within the Friendly Robber targets, take Strongest Ports, spend fish, buy and sell resources and build bridges with gold, bid for and place wagons, buy Barbarian Attack cards and take prisoners, and deliver commodities, upgrade wagons and play barbarian knights (Q2); and the service tests cover a whole HTTP game of Merchant Trains, a fallback after a rejected wagon step, the sequential wagon bid and the simultaneous assignment shared by a person and bots in both seat orders, and a restart in the middle of a wagon move (R-TB-BOT below). A `hard` seat is refused (`E_INVALID_BOT`, reason `profileLevel`). The four `tb-event-cards*` rows stay closed and offer no bot seats.
 
 Registry v2 (2026-11-01 expansion platform) adds per-profile `expansions`,
 `scenario`, `variants`, `ruleVersion`, `sources` and display-only
@@ -146,7 +148,8 @@ six whole simulated base/paired games are pinned against the active
 | R-TB-MT | Merchant Trains (pp. 13–14): watering hole and starts, wagon collection, ordered public bids, majority / most-voted / top bidder / active player, no branching, merging, +1 VP between wagons, wagon road weight | `packages/rules/test/tb-trains.test.ts` (14 + 2), `packages/web/test/tb-trains.test.tsx` (2) | covered |
 | R-TB-BA | Barbarian Attack (pp. 15–19): printed numbers and areas, city setup, barbarian landing, conquest (production, building, VP, ports), 7 steal, four cards, knight moves, expel / prisoners / dice ties / knight losses | `packages/rules/test/tb-barbarians.test.ts` (22 + 2), `packages/web/test/tb-barbarians.test.tsx` (3) | covered |
 | R-TB-TR | Traders & Barbarians (pp. 20–24): interior paths, X sides, sites and stacks, 5 gold, wagon on the setup city, 2/12 reroll, 7 barbarian move and robbery, Knight / Swift Journey, upgrades, movement costs, deliveries, drive-off | `packages/rules/test/tb-traders.test.ts` (18 + 2), `packages/web/test/tb-traders.test.tsx` (4) | covered |
-| R-TB-SRV | ruleset resolution by parts, setup over the API for every scenario, module receipts, projection privacy | `packages/server/test/traders-barbarians.test.ts` (7) | covered (SQLite) |
+| R-TB-SRV | ruleset resolution by parts, setup over the API for every scenario, module receipts, projection privacy; easy and standard bot seats in the eight playable profiles (a bot room can switch to each), none in the event-card rows, hard refused | `packages/server/test/traders-barbarians.test.ts`, `packages/server/test/bots.test.ts`, `packages/server/test/rooms.test.ts` | covered (SQLite) |
+| R-TB-BOT | easy and standard bots on the eight playable profiles, one strategy per part composed in rules order. The strategies cover:<br>• Friendly Robber targets and Strongest Ports (standard values the ports);<br>• Coins: buying the missing resource, selling to leave Poor (standard), gold valued by side in offers, the Traders toll reserve;<br>• Fishing: spending fish, the old boot, the token swap (standard), setup next to the fish;<br>• Rivers: bridges (planned routes skip bridge spots once no bridge is left), river settlements and the wealth ranking (standard);<br>• Merchant Trains: bids from spare wool and grain (easy bids 0), assignments and placements, train roads and settlements between wagons (standard);<br>• Barbarian Attack: cards, knight moves, captures, Treason and the boost (standard);<br>• Traders & Barbarians: wagon routes with tolls, deliveries, upgrades, boosts and drive-offs (standard), barbarian knights and Swift Journey, no Longest Road plan.<br>Fallbacks answer all 17 rows of the T&B duty table: end-of-turn frames (votes, knights, wagon), sequential frames only by `responders[0]`. Q1 and Q2 as above; the four event-card rows are refused even when every part is ready | `packages/bots/test/tb-support.test.ts`, `tb-duty.test.ts`, `tb-fallback.3p.test.ts`, `tb-fallback.4p.test.ts`, `tb-game.test.ts`, `tb-coins.test.ts`, `tb-rivers*.test.ts`, `tb-variants*.test.ts`, `tb-fishing*.test.ts`, `tb-trains*.test.ts`, `tb-barbarian-attack*.test.ts`, `tb-traders*.test.ts`, `shared-tb.test.ts`; `packages/server/test/traders-barbarians-bots.test.ts`:<br>• a whole HTTP game of `tb-merchant-trains-2025` through end-of-turn votes;<br>• the fallback stopping a wagon after a rejected step;<br>• `wagonBid` (in turn) and `wagonAssign` (at once) shared by a person and bots, person first and bot first;<br>• a restart in the middle of a wagon move;<br>• `hard` refused on all eight profiles | covered; strategy strength is benchmarked (Q3), not gated |
 | R-CHAT | audience, deduplication, length/rate limits, mute isolation, epoch isolation, paging, verbatim markup | `packages/server/test/chat.test.ts` | covered |
 | R-TRADE | concurrent responses, revised terms, inventory changes, withdrawal, expiry, counteroffer settlement | `packages/rules/test/trade.test.ts` (engine) | covered at engine level; multi-client browser race not yet observed |
 | U-01, U-02, U-05 | rendered layout, mouse/keyboard/touch selection, dense content | `packages/web/test/*.test.tsx` (jsdom), `docs/screenshots/`, and the P1B headless Chromium captures below | **partially covered** — captured layouts and DOM pointer/keyboard contracts; no physical touch, rotation or pointer-device acceptance |
@@ -690,7 +693,9 @@ with `implemented: false, enabled: false` and
 not how many cards carry each event nor the number disc printed on each card,
 so the deck cannot be transcribed from the source. Catan for Two, 5–6 players
 and every combination with Seafarers, Cities & Knights or between scenarios
-are out of scope (roadmap P5).
+are out of scope (roadmap P5). Easy and standard bots play every enabled row
+(v0.4.4; hard plays only the base game); the event-card rows offer no bot
+seats.
 
 Transcribed from printed maps (no rule text gives them):
 
