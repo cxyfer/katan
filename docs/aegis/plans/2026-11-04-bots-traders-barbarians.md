@@ -1,7 +1,7 @@
 # Traders & Barbarians 電腦對手：實作計畫（v0.4.4）
 
 - 日期：2026-11-04；2026-11-20 刷新（§12）
-- 狀態：**執行中（2026-11-20 起）。** 使用者指示「直接照計畫進入開發」，§10 的 D-TB1–D-TB7 全部採用建議。使用者另決定所有切片 PR 以 `master` 為 base 並 squash merge（§5、§7）。刷新後交給 Orchestrator 決定的合約細節列在 §12.4。
+- 狀態：**執行中（2026-11-20 起）。** 使用者指示「直接照計畫進入開發」，§10 的 D-TB1–D-TB7 全部採用建議。切片 PR 依 `RELEASING.md` 指向 `release/v0.4.4` 並 squash merge（§5、§7）。刷新後交給 Orchestrator 決定的合約細節列在 §12.4。
 - 前置閱讀：
   - 整體策略：`docs/aegis/plans/2026-11-04-expansion-bots-roadmap.md`（下稱「策略」）
   - bot 規格：`docs/aegis/specs/2026-11-01-bot-opponents.md`
@@ -257,12 +257,11 @@ server 以 `command.type` 查表。合併表在 `S/bot-driver.ts:73`，寫法是
 
 ## 5. 切片與 PR
 
-**分支流程（使用者 2026-11-20 決定）**：
+**分支流程**（策略 §7、`RELEASING.md:40-56`）：
 
 - 分支命名為 `feat/bots-tb-<slice>`，worktree 放在 `.worktrees/bots-tb-<slice>/`。
-- **每個切片的 PR 都以 `master` 為 base**，以 squash merge 合併，subject 保留 `(#N)`；不指向 `release/v0.4.4`。
-- `TB_READY_PARTS` 在 S9 之前都是空集合，所以 S0–S8 合併進 master 後，T&B 的 Bot 座位仍然關閉，master 隨時可以發布。
-- 打 rc 時，再從 `master` 更新 `release/v0.4.4`（§7）。這個分支已經存在，目前指向 `58fe789`。
+- 各切片的 PR 指向 `release/v0.4.4`（已存在，與 `master` 同在 `58fe789`），以 squash merge 合併，subject 保留 `(#N)`。
+- master 有修正時，以 merge 方式併入 `release/v0.4.4`，不 rebase、不 force-push。
 
 | 切片 | 分支／worktree slug | 檔案所有權（並行切片之間不重疊） | 內容 | src／test 行 | 依賴 | 驗收指令 |
 |---|---|---|---|---|---|---|
@@ -436,11 +435,11 @@ focus 依局數輪換座位，種子從 10000 起。原稿的「4 人：2 standa
 
 大廳文案在 0.4.1 已經改過（策略 §4.4），這一版不用動。
 
-發布流程。策略 §7 與 `RELEASING.md:40-56` 原本要求各 PR squash 進 release 分支，本版依使用者 2026-11-20 的決定改為以 master 為 base：
+發布流程依策略 §7 與 `RELEASING.md:40-56`：
 
-1. 各切片的 PR 指向 `master`，以 squash merge 合併（§5）。`release/v0.4.4` 在開發期間不接收切片 PR。
+1. 各切片的 PR 指向 `release/v0.4.4`，以 squash merge 合併（§5）；master 有修正時以 merge 方式同步進來。
 2. 打 rc 前，Browser QA 依 DoD 5 驗證 8 個 profile：從大廳建房、加入 easy 與 standard 電腦後開局，觀察數個 Bot 回合，確認用到代表性機制而且沒有停住。可沿用 `scripts/traders-barbarians/capture.py` 截圖。截圖比照 0.4.2、0.4.3 的 E-9：PR 證據放 `pr-assets` 的 `pr-<N>/`；是否在 `docs/screenshots/traders-barbarians/` 收一張大廳參考截圖，由 S9 依前例決定。
-3. 打 rc 時，由 Orchestrator 把 `master` 更新進 `release/v0.4.4`：fast-forward 或 merge，不 rebase、不 force-push。接著在 release 分支 push `🔖 release: v0.4.4-rc.1` 並打 tag，用 rc 映像試玩。rc 之後若 master 再有修正，以同樣方式更新 release 分支，再打下一個 rc。
+3. 在 release 分支 push `🔖 release: v0.4.4-rc.1` 並打 tag，用 rc 映像試玩。
 4. 發 stable：開 `release/v0.4.4 → master` 的 PR，以 merge commit 合併；打 tag 前先跑 `BOTS_SEEDS=10 pnpm verify`；release notes 用 `scripts/release-notes.sh` 產生，並跑 `scripts/release-notes-lint.sh`；發布 PR 附上 Q3 表格，並與 0.4.3 比較。
 5. tag 與 Release 只在使用者明確授權後，由 Release Manager 處理。
 
@@ -451,7 +450,7 @@ focus 依局數輪換座位，種子從 10000 起。原稿的「4 人：2 standa
 | 順序 | 角色 | 工作 | 隔離 | 並行 |
 |---|---|---|---|---|
 | 0 | Planner | 依 0.4.3 的程式刷新本計畫的行號與鉤子名稱；唯讀。**2026-11-20 完成（§12）** | worktree `bots-tb-plan` | — |
-| 0 | Orchestrator | 在 S1 分支先提交 `modules/types.ts` 的 `awards`、`trade` 簽章（§12.4）；負責註冊表審核、Git、整合與最終驗證；rc 時把 master 更新進 `release/v0.4.4` | 主 worktree | — |
+| 0 | Orchestrator | 在 S1 分支先提交 `modules/types.ts` 的 `awards`、`trade` 簽章（§12.4）；負責註冊表審核、Git、整合與最終驗證 | 主 worktree | — |
 | W0 | Implementer（Backend）× 2 | S0、S1 | 各自的 worktree | 2 |
 | W1 | Implementer（Backend） | S2 | worktree | 1 |
 | W2 | Implementer（Backend）× 3 | 先做 S3、S6、S7，再做 S4、S5、S8 | 各自的 worktree | ≤3 |
@@ -481,11 +480,10 @@ focus 依局數輪換座位，種子從 10000 起。原稿的「4 人：2 standa
 | R9 | 各 part 的分數尺度不一致，例如 gold、魚、俘虜，導致策略偏食 | 統一換算成資源當量；bench 的機制計數若偏差就交給 Architect |
 | R10 | BA 的 capture 替換迴圈理論上可能開出沒有目標的 frame（`TB/barbarians/index.ts:179-187`） | 矩陣斷言這種情況不會發生；萬一發生，走 server 的「欠動作」診斷；修正走 rules 的修正 PR，不在本版範圍 |
 | R11 | `goodValue` 的單位沒有定稿，gold 的估值與 `handUtility` 尺度不一致時，Bot 會過度或從不接受 gold 報價 | 由 Orchestrator 在 S1 的合約 commit 定稿（§12.4 C2）；S3 的固定盤面測試鎖住「1 gold ≈ 0.5 資源」的取捨點 |
-| R12 | 切片直接合併進 master，master 上會有未開放的 T&B Bot 程式 | gating 由 `TB_READY_PARTS` 控制，S9 之前為空集合；`support.test.ts` 的可玩清單快照守住；BOT_PACING 多出 `tb.*` 鍵，只在 T&B 對局用到 |
 
 ## 10. 待使用者決定的事
 
-**2026-11-20：使用者指示「直接照計畫進入開發」，下表 D-TB1–D-TB7 全部採用建議。** 同一天，使用者也決定切片 PR 以 `master` 為 base（§5、§7）。
+**2026-11-20：使用者指示「直接照計畫進入開發」，下表 D-TB1–D-TB7 全部採用建議。**
 
 | # | 事項 | 建議（已採用） |
 |---|---|---|
@@ -566,7 +564,6 @@ v0.4.3 stable 發布後、0.4.4 開工前，Planner 依 `58fe789`（`master`，`
 | §6.1「看門狗 N（回合）」 | 單位是 `turn.roll` 次數（`harness.ts:204`）；預設 60、步數 5000（`:219`）；3000 步要寫進 `PROFILE_LIMITS` | §6.1 |
 | §6.4「4 人：2 standard 對 2 easy」 | bench 沒有這個設定；改為 ① 到 ④ 四種對局，用 0.4.3 的 soft target | §6.4 |
 | §6.6「現行 bots 套件是 48 個測試」 | 已過時（`58fe789` 有 45 個測試檔），S2 重量 | §6.6 |
-| §7「各切片 PR 指向 `release/v0.4.4`」 | 依使用者決定改為以 master 為 base；rc 時從 master 更新 release 分支 | §5、§7 |
 
 ### 12.2 落差現況
 
