@@ -21,12 +21,13 @@ import {
   GOLD_PER_RESOURCE,
   PURCHASES_PER_TURN,
   RESOURCES,
+  type CardKind,
   type GameView,
   type Resource,
 } from '@catan/rules';
 import { targetOf } from '../../board.ts';
 import { canAfford, deficitOf, handSize, type Cost, type Economy, type Hand } from '../../economy.ts';
-import { bankTradeToward } from '../../trade.ts';
+import { bankTradesThisTurn, bankTradeToward } from '../../trade.ts';
 import type { BotCommand, Scored, TurnContext } from '../types.ts';
 import type { TbPartBot } from './part.ts';
 import { tollReserve } from './traders.ts';
@@ -175,16 +176,26 @@ function planExecutable(turn: TurnContext, plan: Economy['plans'][number]): bool
 }
 
 /**
- * 買哪一種資源補主要計畫：缺最多的優先，再依權重高者、`RESOURCES` 順序決勝；銀行沒有的不買。回傳依序要買的資源
- * （最多 `count` 張）。
+ * 買哪一種資源補主要計畫：這個回合換給銀行過的種類優先（同回合的守門不讓銀行交易換回來，#180），再來缺最多的，
+ * 再依權重高者、`RESOURCES` 順序決勝；銀行沒有的不買。回傳依序要買的資源（最多 `count` 張）。
  */
-function purchaseOrder(view: GameView, missing: Hand, weights: Economy['weights'], count: number): Resource[] {
+function purchaseOrder(
+  view: GameView,
+  missing: Hand,
+  weights: Economy['weights'],
+  count: number,
+  unreturnable: ReadonlySet<CardKind>,
+): Resource[] {
   const left = { ...missing };
   const bank = { ...view.bank };
   const out: Resource[] = [];
   while (out.length < count) {
     const next = RESOURCES.filter((resource) => left[resource] > 0 && bank[resource] > 0).sort(
-      (a, b) => left[b] - left[a] || weights[b] - weights[a] || RESOURCES.indexOf(a) - RESOURCES.indexOf(b),
+      (a, b) =>
+        Number(unreturnable.has(b)) - Number(unreturnable.has(a)) ||
+        left[b] - left[a] ||
+        weights[b] - weights[a] ||
+        RESOURCES.indexOf(a) - RESOURCES.indexOf(b),
     )[0];
     if (!next) break;
     out.push(next);
@@ -209,7 +220,8 @@ export function purchaseToward(turn: TurnContext, nextCost: Cost, total: Cost): 
   const missing = deficitOf(economy.hand, nextCost);
   const short = RESOURCES.reduce((sum, resource) => sum + missing[resource], 0);
   if (short === 0) return null;
-  const order = purchaseOrder(view, missing, economy.weights, Math.min(short, buyable));
+  const { gave } = bankTradesThisTurn(view, ctx.selfId);
+  const order = purchaseOrder(view, missing, economy.weights, Math.min(short, buyable), gave);
   if (order.length === 0) return null;
   // 買完之後要嘛已經付得起，要嘛剩下的缺口銀行交易補得齊（`bankTradeToward` 全部補得起才回傳交易）。帶 `selfId`，
   // 和計畫交易一樣守著同回合的銀行交易（#180），不然會買了牌、計畫交易卻不肯換。
