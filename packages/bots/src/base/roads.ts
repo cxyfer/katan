@@ -2,11 +2,11 @@
 
 import type { Command } from '@catan/rules';
 import { isFreeSpot, playerYield, roadStockLeft } from '../board.ts';
-import { bestRouteEdge, resourceWeights, settlementSpotValue } from '../economy.ts';
+import { bestRouteEdge, longestRoadAwarded, resourceWeights, settlementSpotValue } from '../economy.ts';
 import type { TurnContext } from '../modules/types.ts';
 
 /**
- * 最有用的合法道路：先朝主要聚落目標，再延長最長道路，最後朝附近最好的空點。
+ * 最有用的合法道路：先朝主要聚落目標，再延長最長道路（profile 有這個獎勵時），最後朝附近最好的空點。
  * `anyEdge` 為 true 時（免費道路）至少回傳一條合法道路。
  */
 export function usefulRoad(turn: TurnContext, anyEdge: boolean): number | null {
@@ -19,7 +19,8 @@ export function usefulRoad(turn: TurnContext, anyEdge: boolean): number | null {
       if (legal.includes(plan.roads[0]!)) return plan.roads[0]!;
     }
   }
-  const longer = bestRouteEdge(model, legal, economy.myRoute);
+  // 沒有最長道路獎勵時（awards），不為了延長路線而鋪路。
+  const longer = longestRoadAwarded(model, turn.modules) ? bestRouteEdge(model, legal, economy.myRoute) : null;
   if (longer !== null) return longer;
   if (!anyEdge) return null;
   const scored = legal.map((edge) => ({ item: edge, score: roadDirectionScore(turn, edge) }));

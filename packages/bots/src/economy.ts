@@ -278,7 +278,7 @@ export function etaRounds(
 }
 
 /** 依序合併；同一個鍵先出現的值優先。 */
-function mergeFirstWins<T>(layers: readonly Readonly<Record<string, T>>[]): Record<string, T> {
+export function mergeFirstWins<T>(layers: readonly Readonly<Record<string, T>>[]): Record<string, T> {
   const out: Record<string, T> = {};
   for (const layer of layers) {
     for (const [key, value] of Object.entries(layer)) {
@@ -443,9 +443,9 @@ function baseEconomyOf(model: BoardModel, modules: readonly BotModule[]): Econom
     push({ kind: 'devCard', vertex: null, roads: [], ships: [], cost: COSTS.devCard, nextCost: COSTS.devCard, value });
   }
 
-  // 最長道路：差一兩條就能拿到時才值得專門投資。
+  // 最長道路：差一兩條就能拿到時才值得專門投資；profile 沒有這個獎勵時（awards）不推動。
   const myRoute = routeLength(model, selfId);
-  if (left.roads > 0) {
+  if (left.roads > 0 && longestRoadAwarded(model, modules)) {
     const holder = view.awards.longestRoad;
     if (holder !== selfId) {
       const holderLength = holder ? view.players.find((player) => player.id === holder)?.longestRoadLength ?? 0 : 0;
@@ -490,6 +490,14 @@ function planOrder(plan: Plan): number {
   const rank = BASE_KIND_ORDER.indexOf(plan.kind);
   if (rank < 0) return BASE_KIND_ORDER.length * 1000;
   return rank * 1000 + (plan.vertex ?? 0);
+}
+
+/**
+ * 這個 profile 有沒有最長道路獎勵：任一模組的 `awards` 回 `longestRoad: false` 就沒有（AND）；
+ * 沒有模組回答時視為有，base 不變。
+ */
+export function longestRoadAwarded(model: BoardModel, modules: readonly BotModule[] = model.modules ?? []): boolean {
+  return modules.every((module) => module.economy?.awards?.(model)?.longestRoad !== false);
 }
 
 /** 能讓自己最長道路變長的合法道路；沒有則回傳 null。 */

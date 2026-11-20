@@ -1,6 +1,7 @@
 /** base 的強盜：壓領先者的高產能格、避開自己的建築，並優先有牌可偷的格子。 */
 
 import { getProfile, type GameView } from '@catan/rules';
+import { targetOf } from '../board.ts';
 import { collectScored } from '../modules/compose.ts';
 import type { BanditTarget, BotModule, RobberCause, Scored, TurnContext } from '../modules/types.ts';
 
@@ -29,7 +30,7 @@ export function robberCandidates(turn: TurnContext): Scored<number>[] {
       const owner = view.players.find((player) => player.id === building.player)!;
       const lead =
         1 + 0.35 * Math.max(0, owner.publicScore - me.publicScore) +
-        (owner.publicScore >= view.victoryTarget - 3 ? 0.8 : 0);
+        (owner.publicScore >= targetOf(view, owner.id) - 3 ? 0.8 : 0);
       score += pips * factor * lead;
       if (owner.handSize > 0) stealable = Math.max(stealable, owner.handSize);
     }
