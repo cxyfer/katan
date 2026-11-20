@@ -406,7 +406,7 @@ function buildDecision(turn: TurnContext): BotCommand | null {
   if (primary) {
     const step = planStep(turn, primary);
     if (step) return step;
-    const trade = bankTradeToward(view, economy, primary.nextCost, primary.cost, ctx.selfId);
+    const trade = primaryBankTrade(turn, primary);
     if (trade) return trade;
   }
 
@@ -480,6 +480,16 @@ export function dedupeCandidates(candidates: readonly Scored<BotCommand>[]): Sco
     }
   }
   return out;
+}
+
+/**
+ * 主要計畫的銀行交易（`bankTradeToward`，帶同回合的守門，#180）。下一步是一條不在 hints 合法道路裡的邊時不換：換齊了
+ * `planStep` 也蓋不成。例如 T&B Rivers 的橋位只能蓋橋，rivers 補不齊橋的成本時，照道路的成本換牌只是白白換掉牌。
+ */
+export function primaryBankTrade(turn: TurnContext, plan: Plan): Command | null {
+  const edge = plan.kind === 'settlement' || plan.kind === 'longestRoad' ? plan.roads[0] : undefined;
+  if (edge !== undefined && !turn.view.hints!.legalRoads.includes(edge)) return null;
+  return bankTradeToward(turn.view, turn.economy, plan.nextCost, plan.cost, turn.ctx.selfId);
 }
 
 /** 計畫的下一步；付不起或已不合法時回傳 null。 */

@@ -33,7 +33,7 @@ import { tbPlayable } from '../../rules/test/tb-helpers.ts';
 import { boardModel, piecesOnBoard, pipsOf, roadStockLeft, routeLength, searchRoads } from '../src/board.ts';
 import { addCosts, scaleCost, type Plan } from '../src/economy.ts';
 import { botOwesAction, fallbackPolicy } from '../src/fallback.ts';
-import { turnContext } from '../src/heuristic.ts';
+import { primaryBankTrade, turnContext } from '../src/heuristic.ts';
 import { WIN_VALUE, wealthValue, wealthWeight, WEALTH_WEIGHT_FLOOR } from '../src/modules/tradersBarbarians/coins.ts';
 import {
   bridgeRouteEdge,
@@ -47,6 +47,7 @@ import type { TurnContext } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';
 import { botModulesOf } from '../src/support.ts';
+import { bankTradeToward } from '../src/trade.ts';
 import type { BotCommand, BotContext, BotLevel } from '../src/types.ts';
 import { cloneState, GAME_TIMEOUT, hideDifferently, perturbState, viewFor } from './harness.ts';
 import { tradersBarbariansKit } from './modules/tradersBarbarians.ts';
@@ -195,6 +196,27 @@ describe('tb.buildBridge on the primary plan’s route', () => {
       expect(riversCandidates(withPlans(turnOf(next, 'p1', level), [plan]))[0]?.item).toEqual({ type: 'tb.buildBridge', edge: site });
     });
   }
+
+  it('does not trade toward a road on the bridge site when the guard blocks the bridge (#180, #196 review)', () => {
+    const state = bare();
+    const { site, near, far } = siteOf(state);
+    placeBuilding(state, 'p1', near);
+    setHand(state, 'p1', { brick: 1, wool: 5 });
+    // 這個回合已經換出 brick：橋缺的第二張 brick 不能換回來。
+    const view = viewOf(state, 'p1');
+    const events = [
+      ...view.events,
+      { seq: view.seq + 1, type: 'turn.started', params: { playerId: 'p1', windowId: 1, pairedActor: 1 } },
+      { seq: view.seq + 2, type: 'trade.bank', params: { playerId: 'p1', give: 'brick', receive: 'grain', rate: 4 } },
+    ];
+    const plan = bridgePlan(state, site, far);
+    const turn = withPlans(turnContext({ ...view, events, seq: view.seq + 2 }, ctxFor('p1'), 'standard'), [plan]);
+    expect(riversCandidates(turn)).toEqual([]);
+    // 照道路的成本（brick 已有）只缺 lumber，換得到；但橋位不能蓋路，橋又還缺 brick，這筆交易是白換的。
+    expect(view.hints!.legalRoads).not.toContain(site);
+    expect(bankTradeToward(turn.view, turn.economy, plan.nextCost, plan.cost, 'p1')).toEqual({ type: 'trade.bank', give: 'wool', receive: 'lumber' });
+    expect(primaryBankTrade(turn, plan)).toBeNull();
+  });
 
   it('leaves an unconnected bridge site to the skeleton', () => {
     const state = bare();
