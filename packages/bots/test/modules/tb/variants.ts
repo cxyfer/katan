@@ -1,9 +1,11 @@
 /**
  * 變體的子 kit。Friendly Robber 沒有自己的狀態；Harbors 的 Strongest Ports 持有者必須是在場的玩家，而且港口建築分數
- * 至少 `STRONGEST_PORTS_MINIMUM`（持有者跌破下限時板塊回到中央）。
+ * 至少 `STRONGEST_PORTS_MINIMUM`（持有者跌破下限時板塊回到中央）。Harbors 的 mechanics 計 Strongest Ports 換手的次數
+ * （`tb.strongestPorts` 事件，`transfers`）。兩者都沒有隱藏資訊。
  */
 
 import { STRONGEST_PORTS_MINIMUM, topologyOf, type GameState } from '@catan/rules';
+import type { MechanicsTally } from '../types.ts';
 import { partStateOf, type TbPartKit } from './part.ts';
 
 interface HarborsSlot {
@@ -31,5 +33,15 @@ function harborsConservation(state: GameState): readonly string[] {
   return points >= STRONGEST_PORTS_MINIMUM ? [] : [`Strongest Ports holder ${holder} has ${points} < ${STRONGEST_PORTS_MINIMUM} port points`];
 }
 
+function harborsMechanics(): MechanicsTally {
+  let transfers = 0;
+  return {
+    observe(step) {
+      transfers += step.events.filter((event) => event.type === 'tb.strongestPorts').length;
+    },
+    snapshot: () => ({ transfers }),
+  };
+}
+
 export const friendlyRobberPartKit: TbPartKit = { id: 'friendly-robber' };
-export const harborsPartKit: TbPartKit = { id: 'harbors', conservation: harborsConservation };
+export const harborsPartKit: TbPartKit = { id: 'harbors', conservation: harborsConservation, mechanics: harborsMechanics };
