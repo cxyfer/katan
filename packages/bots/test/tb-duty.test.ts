@@ -6,8 +6,7 @@
  * 狀態（BA 牌庫的下一張、Traders 的 Swift Journey）才直接改 part 狀態。每個保底指令都必須被 `applyCommand` 接受；
  * standard 與 easy 在 S2 還沒有 part 策略，它們回答 T&B frame 時走同一個保底，所以也一併斷言不會卡住。
  *
- * 最後 8 個 profile 各跑一次「全部座位只走保底」的有界局（3、4 人各 1 個種子，800 步）：gating 關著也能跑，因為
- * `fallbackPolicy` 依 profile 直接取註冊的模組（不看 `botsCanPlay`）。
+ * 「全部座位只走保底」的有界局依 §6.6 的拆檔規則放在 `tb-fallback.3p.test.ts`、`tb-fallback.4p.test.ts`。
  */
 
 import { describe, expect, it } from 'vitest';
@@ -34,7 +33,6 @@ import { edgeDistances, edgesTo, pathTo, vertexPaths, wagonStepCost } from '../s
 import { tbPartView, tbRobberHexes } from '../src/modules/tradersBarbarians/view.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import type { BotCommand, BotContext, BotLevel, BotPolicy } from '../src/types.ts';
-import { ALL_FALLBACK_STEPS, GAME_TIMEOUT, runBotGame, type BotSeat } from './harness.ts';
 import { tradersBarbariansKit } from './modules/tradersBarbarians.ts';
 import { partStateOf } from './modules/tb/part.ts';
 
@@ -565,55 +563,4 @@ describe('graph tools (S6, S7)', () => {
     }
     expect(edgeDistances(topo, -1, 3).size).toBe(0);
   });
-});
-
-// ---------------------------------------------------------------------------
-// 全部座位只走保底的有界局（§4.1 保底的驗收；§6.1 最後一列）
-// ---------------------------------------------------------------------------
-
-const BOUNDED_PROFILES = [
-  'tb-friendly-robber-2025',
-  'tb-harbors-2025',
-  'tb-friendly-robber-harbors-2025',
-  'tb-fishing-2025',
-  'tb-rivers-2025',
-  'tb-merchant-trains-2025',
-  'tb-barbarian-attack-2025',
-  'tb-traders-barbarians-2025',
-] as const;
-
-function fallbackSeats(players: number): BotSeat[] {
-  return Array.from({ length: players }, (_, index) => ({ id: `bot${index + 1}`, level: 'standard' as const, policy: fallbackPolicy }));
-}
-
-describe('all-fallback bounded games', () => {
-  for (const profileId of BOUNDED_PROFILES) {
-    for (const players of [3, 4]) {
-      it(`only issues accepted commands and never stalls (${profileId}, ${players} players)`, () => {
-        const kinds = new Set<string>();
-        const run = runBotGame({
-          seats: fallbackSeats(players),
-          seed: 1,
-          profileId,
-          maxSteps: ALL_FALLBACK_STEPS,
-          watchdogRolls: null,
-          kits: [tradersBarbariansKit],
-          onDecision: (_state, decision) => kinds.add(decision.command.type),
-        });
-        const label = `${profileId} ${players}p`;
-        if (run.failure) expect.fail(`${label}: ${JSON.stringify(run.failure)}`);
-        expect(run.stuck, `${label}: stalled at step ${run.steps}`).toBeNull();
-        expect(run.steps, label).toBe(ALL_FALLBACK_STEPS);
-        expect(run.state.turn.phase, label).not.toBe('setup');
-        expect(run.conservation, label).toEqual([]);
-        expect([...kinds], label).toEqual(
-          expect.arrayContaining(['setup.placeBuilding', 'setup.placeRoad', 'turn.roll', 'turn.end', 'pending.discard']),
-        );
-        // 每回合結束都有車隊移動；擲出 7 時移動蠻族。
-        if (profileId === TRADERS) expect([...kinds], label).toEqual(expect.arrayContaining(['tb.wagonStop', 'tb.moveBarbarian']));
-        if (profileId === BA) expect([...kinds], label).toContain('tb.baSteal');
-        if (profileId.includes('friendly-robber')) expect([...kinds], label).toContain('pending.moveRobber');
-      }, GAME_TIMEOUT);
-    }
-  }
 });

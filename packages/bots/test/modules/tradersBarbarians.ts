@@ -5,7 +5,7 @@
  * 八個 profile 共用這一個 rules module，所以 kit 依 `state.profileId` 啟用的 part（rules 順序，`tbPartIdsOf`）在內部
  * 組合 `test/modules/tb/*.ts` 的子 kit：
  *
- * - conservation：各 part 的不變量（§6.2），訊息前面加上 part id；
+ * - conservation：各 part 的不變量（§6.2），訊息前面加上 part id；資源守恆（含 Trains 投標中的牌）另見 `tbConservationProblems`；
  * - hideDifferently、perturb：依 part 順序套用（S2 的子 kit 都還沒有）；
  * - mechanics：每局為每個啟用 part 各建一個計數器，鍵加上 `<part id>.` 前綴（harness 再加 `tradersBarbarians.`）；
  * - responseCommands：rules 的 15 個 pending 指令。
@@ -21,7 +21,7 @@ import { fishingPartKit } from './tb/fishing.ts';
 import type { TbPartKit } from './tb/part.ts';
 import { riversPartKit } from './tb/rivers.ts';
 import { tradersPartKit } from './tb/traders.ts';
-import { trainsPartKit } from './tb/trains.ts';
+import { resourceSupplyProblems, trainsPartKit } from './tb/trains.ts';
 import { friendlyRobberPartKit, harborsPartKit } from './tb/variants.ts';
 import type { MechanicsTally, ModuleTestKit } from './types.ts';
 
@@ -53,6 +53,14 @@ function conservation(state: GameState): readonly string[] {
   return tbPartKitsOf(state.profileId).flatMap((kit) =>
     (kit.conservation?.(state) ?? []).map((problem) => `${kit.id}: ${problem}`),
   );
+}
+
+/**
+ * T&B 對局的完整守恆：資源（算進投標中的牌，`resourceSupplyProblems`）加上各 part 的不變量。`test/tb-game.ts` 每 50 步與
+ * 終局都用它檢查；harness 的 `RunResult.conservation` 的 base 資源守恆不算投標中的牌，T&B 的對局不讀它。
+ */
+export function tbConservationProblems(state: GameState): string[] {
+  return [...resourceSupplyProblems(state), ...conservation(state)];
 }
 
 function hideDifferently(variant: GameState, viewerId: string): boolean {
