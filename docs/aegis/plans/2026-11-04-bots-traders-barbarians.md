@@ -1,7 +1,7 @@
 # Traders & Barbarians 電腦對手：實作計畫（v0.4.4）
 
 - 日期：2026-11-04；2026-11-20 刷新（§12）
-- 狀態：**執行中（2026-11-20 起）。** 使用者指示「直接照計畫進入開發」，§10 的 D-TB1–D-TB7 全部採用建議。切片 PR 依 `RELEASING.md` 指向 `release/v0.4.4` 並 squash merge（§5、§7）。刷新後交給 Orchestrator 決定的合約細節列在 §12.4。
+- 狀態：**S0–S9 已交付（2026-11-20，#186–#195 與 S9 的 PR），8 個 profile 一次開放，沒有走替代方案；Q3 待 QA，見 §12.6 與工作紀錄。** 2026-11-20 起執行：使用者指示「直接照計畫進入開發」，§10 的 D-TB1–D-TB7 全部採用建議。切片 PR 依 `RELEASING.md` 指向 `release/v0.4.4` 並 squash merge（§5、§7）。刷新後交給 Orchestrator 決定的合約細節列在 §12.4。
 - 前置閱讀：
   - 整體策略：`docs/aegis/plans/2026-11-04-expansion-bots-roadmap.md`（下稱「策略」）
   - bot 規格：`docs/aegis/specs/2026-11-01-bot-opponents.md`
@@ -640,6 +640,14 @@ v0.4.3 stable 發布後、0.4.4 開工前，Planner 依 `58fe789`（`master`，`
   - FR 的 `robberTargets` 只讀 hints，不得 throw、不得消耗亂數（`types.ts:163-172`）。hints 的 `robberHexes` 是以檢視者的身分計算的，FR 的判定與行動者無關，可以直接用。
 - **S9**
   - hard 的拒絕不必寫程式，但 server 測試要涵蓋，文件比照 `docs/API.md:483`。
+
+### 12.6 交付紀錄（2026-11-20）
+
+S0–S9 都已交付，以 squash merge 合併進 `release/v0.4.4`：#186 計畫刷新（`92649c5`）、#187 S0（`84e2a62`）、#188 S1（`43781d8`）、#189 S2（`3711496`）、#190 S6（`3133afa`）、#191 S7（`a66b1d7`）、#192 S5（`f468fee`）、#193 S3（`2730260`）、#194 S4（`0ac3267`）、#195 S8（`92c6acb`）、S9（本計畫的最後一個 PR）。
+
+- 8 個 part 都通過 Q1、Q2，`TB_READY_PARTS` 一次放入 8 個 part（D-TB1），沒有走 §5 的替代方案。
+- 與本計畫不同之處：C2 的 `goodValue` 單位改為「一張用得上的牌」並加上收付方向（#188、#193 的審查）；`economy.routeEdge` 在 0.4.4 由 S8 接上骨架（#195 的審查：沒有橋可用時，規劃不經過空的橋位）；server 測試檔名為 `traders-barbarians-bots.test.ts`；全保底的有界局只用種子 1。
+- Q1、Q2 的實測與審查修正見 [工作紀錄](../work/2026-11-20-bots-traders-barbarians.md)。Q3 由 QA 在 S9 之後量測，填在工作紀錄的「Q3 bench」一節（C5）。
 
 ## 附錄：探查
 
