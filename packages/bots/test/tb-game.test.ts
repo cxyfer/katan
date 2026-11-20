@@ -9,7 +9,8 @@ import { describe, expect, it } from 'vitest';
 import { requireProfile, topologyOf, type Command, type GameState } from '@catan/rules';
 import { act, give, placeRoad } from '../../rules/test/helpers.ts';
 import { tbPlayable } from '../../rules/test/tb-helpers.ts';
-import { conservationProblems, fallbackSeatSeeds, GAME_TIMEOUT, limitsFor, mixedLevels, seedsFor } from './harness.ts';
+import { botModulesOf } from '../src/support.ts';
+import { conservationProblems, fallbackSeatSeeds, GAME_TIMEOUT, limitsFor, mixedLevels, naivePolicy, seedsFor } from './harness.ts';
 import { tbConservationProblems, tradersBarbariansKit } from './modules/tradersBarbarians.ts';
 import { commandCount, expectTbGameHealthy, runTbGame, tbMatrix } from './tb-game.ts';
 
@@ -83,5 +84,16 @@ describe('runTbGame', () => {
     expect(record.commands.fallback).toEqual({});
     // 同一種子重跑，決策序列相同（R2）。
     expect(runTbGame(spec).hash).toBe(record.hash);
+  }, GAME_TIMEOUT);
+
+  it('naive seats keep the Friendly Robber fold: a protected-everyone 7 leaves the robber on the desert', () => {
+    // naive 只有 base 策略加保底；FR 的合法強盜格靠 robberTargets 的 fold，不是 duty（#189 審查）。
+    const modules = botModulesOf(requireProfile(FR));
+    for (const seed of [1, 2, 3]) {
+      const spec = { ...tbMatrix(FR, 3)[0]!, seed, label: `${FR} 3p seed ${seed} (naive)` };
+      const record = runTbGame(spec, { policyFor: (level) => naivePolicy(level, modules), maxSteps: 800, watchdogRolls: null });
+      expectTbGameHealthy(record, { requireWinner: false });
+      expect(commandCount(record, 'pending.moveRobber')).toBeGreaterThan(0);
+    }
   }, GAME_TIMEOUT);
 });

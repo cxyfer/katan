@@ -412,13 +412,15 @@ export function withFallbackSeat(seats: readonly BotSeat[], index: number): BotS
 
 /**
  * naive 座位：只保留模組的 `duty`（以及不屬於策略的 `supports`、節奏與上限），等於
- * v0.4.0 的 base 策略加上模組的保底義務。用於和正式策略對照強度。
+ * v0.4.0 的 base 策略加上模組的保底義務與盜賊目標 fold。用於和正式策略對照強度。
  */
 export function naiveModule(module: BotModule): BotModule {
   return {
     id: module.id,
     ...(module.supports ? { supports: module.supports } : {}),
     ...(module.duty ? { duty: module.duty } : {}),
+    // 盜賊目標的 fold 是合法集合（T&B 的 FR 會換成目前所在格），和 duty 一樣屬於正確性，不是策略。
+    ...(module.robberTargets ? { robberTargets: module.robberTargets } : {}),
     ...(module.pacing ? { pacing: module.pacing } : {}),
     ...(module.maxCommandsPerWindow !== undefined ? { maxCommandsPerWindow: module.maxCommandsPerWindow } : {}),
     ...(module.responseCommands ? { responseCommands: module.responseCommands } : {}),
