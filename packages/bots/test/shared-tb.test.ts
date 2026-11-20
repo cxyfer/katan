@@ -15,7 +15,7 @@ import { economyOf } from '../src/economy.ts';
 import { turnContext } from '../src/heuristic.ts';
 import type { BotModule } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';
-import { acceptMargin, goodsGain, offerGain, offerValue } from '../src/trade.ts';
+import { acceptMargin, goodsGain, offerGain, offerValue, USEFUL_CARD_UTILITY } from '../src/trade.ts';
 import type { BotContext } from '../src/types.ts';
 
 const ctxFor = (selfId: string): BotContext => ({ selfId, level: 'standard', seed: 1, offerPhases: {} });
@@ -182,7 +182,11 @@ describe('rule 9: offer goods', () => {
     // goods 的價值足以左右決定：同樣送 2 gold，估值高才同意。
     const goldOnly = offerOf(view, { giveGoods: { gold: 2 } });
     expect(answer(view, goldOnly, [goldModule({ p1: 9 }, 1)])).toMatchObject(consented);
-    expect(answer(view, goldOnly, [goldModule({ p1: 9 }, 0.1)])).toMatchObject(declined);
+    expect(answer(view, goldOnly, [goldModule({ p1: 9 }, 0.01)])).toMatchObject(declined);
+    // 一個資源當量是一張用得上的牌：1 gold = 0.5 張時，不會用 8 gold 換 1 張牌（銀行 2 gold 一張）。
+    const overpay = offerOf(view, { give: { grain: 1 }, wantGoods: { gold: 8 } });
+    expect(answer(view, overpay, [goldModule({ p1: 9, p2: 9 }, 0.5)])).toMatchObject(declined);
+    expect(goodsGain(turn(0.5), { ...plain, wantGoods: { gold: 2 } })).toBeCloseTo(-USEFUL_CARD_UTILITY);
   });
 });
 

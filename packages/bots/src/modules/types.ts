@@ -122,7 +122,7 @@ export interface BotEconomyHooks {
   // ---- 0.4.4 實作（T&B；S1 接上骨架）----
   /**
    * 這個 profile 有哪些 base 的獎勵（T&B 的 Traders：沒有最長道路）。任一模組回 `longestRoad: false`，骨架就不推動
-   * 最長道路計畫，也不為它估值；省略的欄位視為 true。只讀 view，不得消耗亂數。
+   * 最長道路計畫，也不為它估值；省略的欄位視為 true。只讀 model，不得消耗亂數。
    */
   awards?(model: BoardModel): { readonly longestRoad?: boolean };
 
@@ -138,7 +138,8 @@ export interface BotTradeHooks {
   /** `playerId` 公開持有的 goods 數量；只回答自己定義的 good。規則 9 以它檢查雙方付得起。 */
   goods?(view: GameView, playerId: string): Readonly<Record<string, number>>;
   /**
-   * `amount` 個 `good` 對自己的價值，單位是「資源當量」（1 = 一張平均資源，骨架再換算成手牌效用）。
+   * `amount` 個 `good` 對自己的價值，單位是「資源當量」：1 = 一張用得上的資源（`handUtility` 目標內的一張，
+   * 骨架以 `USEFUL_CARD_UTILITY` 換算）。goods 暫時用不掉（例如本回合買不了）時由模組自行折價。
    * 不認識的 good 回 undefined；認識但不願估值回 null（報價一律拒絕）。不得消耗亂數。
    */
   goodValue?(turn: TurnContext, good: string, amount: number): number | null | undefined;

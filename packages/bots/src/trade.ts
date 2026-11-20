@@ -30,6 +30,9 @@ function costTotal(cost: Cost): number {
  * 以目標成本衡量的手牌效用：目標內的牌價值高，過剩的牌依匯率折價。估值類迴圈，依 `Economy.kinds`；
  * 模組卡種沒有匯率時以 4:1 計流動性（與銀行不能換的牌一樣不好脫手），沒有權重時過剩的牌不值錢。
  */
+/** 目標內一張牌的效用；也是 goods 一個資源當量的效用（`goodsGain`）。 */
+export const USEFUL_CARD_UTILITY = 3;
+
 export function handUtility(economy: Economy, hand: Hand, target: Cost): number {
   let utility = 0;
   for (const kind of economy.kinds) {
@@ -37,7 +40,7 @@ export function handUtility(economy: Economy, hand: Hand, target: Cost): number 
     const need = target[kind] ?? 0;
     const useful = Math.min(held, need);
     const extra = Math.max(0, held - need);
-    utility += useful * 3 + extra * liquidityOf(economy, kind) * (economy.weights[kind] ?? 0);
+    utility += useful * USEFUL_CARD_UTILITY + extra * liquidityOf(economy, kind) * (economy.weights[kind] ?? 0);
   }
   if (canAfford(hand, target)) utility += 2;
   return utility;
@@ -106,7 +109,9 @@ function goodValueOf(turn: TurnContext, good: string, amount: number): number | 
 /**
  * 規則 9 的 goods 部分：報價以提出者的角度記錄，所以收到 `giveGoods`、付出 `wantGoods`。下列任一成立就回
  * null（拒絕）：有 good 無法估值、`wantGoods` 超過自己持有、`giveGoods` 超過提出者公開持有。否則回傳淨值，
- * 由資源當量乘上一張過剩資源的平均效用，換算到 `handUtility` 的尺度。沒有模組提供 trade 鉤子時一律 null。
+ * 由資源當量乘上 `USEFUL_CARD_UTILITY`（一張用得上的牌），換算到 `handUtility` 的尺度：goods 能換成缺的牌，
+ * 以過剩牌計價會讓 Bot 用遠高於銀行的價格付出 goods。用不掉的 goods 由模組在 `goodValue` 折價。沒有模組提供
+ * trade 鉤子時一律 null。
  */
 export function goodsGain(turn: TurnContext, offer: Offer): number | null {
   const receive = positiveGoods(offer.giveGoods);
@@ -123,10 +128,7 @@ export function goodsGain(turn: TurnContext, offer: Offer): number | null {
       units += sign * value;
     }
   }
-  // 一張過剩資源的平均效用（與 `handUtility` 的過剩項同尺度）。
-  const { economy } = turn;
-  const unit = RESOURCES.reduce((sum, kind) => sum + liquidityOf(economy, kind) * economy.weights[kind], 0) / RESOURCES.length;
-  return units * unit;
+  return units * USEFUL_CARD_UTILITY;
 }
 
 /**
