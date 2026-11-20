@@ -64,32 +64,60 @@ describe('Traders & Barbarians rooms', () => {
     });
   }
 
-  // 依 `@catan/bots` 的 `botsCanPlay`（BotModule 與 `supports`）判定；沒有任何 T&B 部件有 BotModule。
+  // 依 `@catan/bots` 的 `botsCanPlay`（BotModule 與 `supports`）判定：S9 起 8 個可玩的 T&B profile 都開放 Bot 席位
+  // （easy、standard）；4 個 event-card profile 沒有開放，也不能讓 Bot 入座。
   const tbProfiles = PROFILES.filter((profile) => profile.enabled && profile.id.startsWith('tb-'));
+  const eventCardProfiles = PROFILES.filter((profile) => profile.id.startsWith('tb-event-cards'));
 
-  it('lists every enabled T&B profile without bot seats', async () => {
+  it('lists every enabled T&B profile with bot seats and keeps the event-card rows without them', async () => {
+    expect(tbProfiles).toHaveLength(8);
+    expect(eventCardProfiles).toHaveLength(4);
     const host = await harness.client('TbBotList');
-    const { profiles } = host.expectOk<{ profiles: { id: string; botSeats: boolean }[] }>(await host.get('/api/profiles'));
-    for (const profile of tbProfiles) expect(profiles.find((entry) => entry.id === profile.id)?.botSeats, profile.id).toBe(false);
+    const { profiles } = host.expectOk<{ profiles: { id: string; botSeats: boolean; botLevels: string[] }[] }>(await host.get('/api/profiles'));
+    for (const profile of tbProfiles) {
+      expect(profiles.find((entry) => entry.id === profile.id), profile.id).toMatchObject({ botSeats: true, botLevels: ['easy', 'standard'] });
+    }
+    for (const profile of eventCardProfiles) {
+      expect(profile.enabled, profile.id).toBe(false);
+      expect(profiles.find((entry) => entry.id === profile.id), profile.id).toMatchObject({ botSeats: false, botLevels: [] });
+    }
   });
 
   for (const profile of tbProfiles) {
-    it(`${profile.id}: refuses adding bot seats and switching a bot room to the profile`, async () => {
+    it(`${profile.id}: seats bots and lets a bot room switch to the profile`, async () => {
       const host = await harness.client(`TbBots${tbProfiles.indexOf(profile)}`);
       const body = {
         visibility: 'private', capacity: 3, profileId: profile.id,
         setupMode: profile.setupModes.includes('variable') ? 'variable' : 'fixed',
       };
       const room = host.expectOk<{ id: string }>(await host.post('/api/rooms', body));
-      host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
-      // A base room that already seats a bot cannot be switched to this profile.
+      const seated = host.expectOk<{ members: { bot?: boolean }[] }>(await host.post(`/api/rooms/${room.id}/bots`, {}));
+      expect(seated.members.filter((member) => member.bot)).toHaveLength(1);
+      // A base room that already seats a bot can be switched to this profile.
       const base = host.expectOk<{ id: string }>(await host.post('/api/rooms', {
         visibility: 'private', capacity: 3, profileId: 'base-2025', setupMode: 'variable',
       }));
       host.expectOk(await host.post(`/api/rooms/${base.id}/bots`, {}));
-      host.expectError(await host.post(`/api/rooms/${base.id}/settings`, { profileId: profile.id, setupMode: body.setupMode }), 'E_INVALID_BOT');
+      host.expectOk(await host.post(`/api/rooms/${base.id}/settings`, { profileId: profile.id, setupMode: body.setupMode }));
+      const switched = host.expectOk<{ profileId: string; members: { bot?: boolean }[] }>(await host.get(`/api/rooms/${base.id}`));
+      expect(switched.profileId).toBe(profile.id);
+      expect(switched.members.filter((member) => member.bot)).toHaveLength(1);
     });
   }
+
+  it('cannot seat bots in the closed event-card rows: neither a room nor a bot room switch reaches them', async () => {
+    const host = await harness.client('TbEventBots');
+    const base = host.expectOk<{ id: string }>(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 3, profileId: 'base-2025', setupMode: 'variable',
+    }));
+    host.expectOk(await host.post(`/api/rooms/${base.id}/bots`, {}));
+    for (const profile of eventCardProfiles) {
+      const created = await host.post('/api/rooms', { visibility: 'private', capacity: 3, profileId: profile.id, setupMode: 'fixed' });
+      expect(created.body.ok, profile.id).toBe(false);
+      const switched = await host.post(`/api/rooms/${base.id}/settings`, { profileId: profile.id, setupMode: 'fixed' });
+      expect(switched.body.ok, profile.id).toBe(false);
+    }
+  });
 
   it('keeps fish token values private and replays a module command receipt', async () => {
     const { clients, gameId } = await startedGame(harness, 3, { profileId: 'tb-rivers-2025', setupMode: 'variable' });

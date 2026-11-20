@@ -2,7 +2,8 @@
  * T&B 的 part 表與開放清單（T&B 計畫 §3.2、§3.3）。
  *
  * `TB_READY_PARTS` 決定哪些 part 的策略已經可以上桌：profile 的每個 part 都在清單裡，`supports` 才回 true。S2 是
- * 空集合（8 個 T&B profile 都還不能讓 Bot 入座）；S9 才翻開，而且只改這一行。替代方案（§5）時只放入已通過閘門的 part。
+ * 空集合；S9 起放入全部 8 個 part，8 個 T&B profile 都可以讓 Bot 入座（easy、standard；hard 仍只有基本版）。
+ * 替代方案（§5）時只放入已通過閘門的 part。
  */
 
 import { TB_SCENARIO_PART_IDS, TB_VARIANT_PART_IDS, type ProfileDefinition } from '@catan/rules';
@@ -16,8 +17,17 @@ import { trainsBot } from './trains.ts';
 import { friendlyRobberBot, harborsBot } from './variants.ts';
 import { ownEntry, tbPartIdsOf } from './view.ts';
 
-/** 已開放給 Bot 的 part id；S9 翻開。 */
-export const TB_READY_PARTS: ReadonlySet<string> = new Set<string>();
+/** 已開放給 Bot 的 part id（S9）。 */
+export const TB_READY_PARTS: ReadonlySet<string> = new Set<string>([
+  'tb-coins',
+  'tb-rivers',
+  'tb-fishing',
+  'tb-merchant-trains',
+  'tb-barbarian-attack',
+  'tb-traders-barbarians',
+  'friendly-robber',
+  'harbors',
+]);
 
 /** part id → 策略。用 Map：`{}['constructor']` 這類原型鍵不會被當成 part。 */
 export const TB_PART_BOTS: ReadonlyMap<string, TbPartBot> = new Map(

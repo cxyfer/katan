@@ -18,6 +18,7 @@ P1 範圍內：
   - 0.4.1 起加上 Seafarers — Heading for New Shores 的 `sf-new-shores-2025`（3–4 人）與 `sf-new-shores-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-seafarers.md`。
   - 0.4.2 起加上 Cities & Knights 的 `ck-2025`（3–4 人）與 `ck-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-cities-knights.md`。
   - 0.4.3 起加上 `sf-ck-new-shores-2025`（3–4 人）與 `sf-ck-new-shores-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-seafarers-cities-knights.md`。
+  - 0.4.4 起加上 Traders & Barbarians 的 8 個可玩 profile（都是 3–4 人）：變體 `tb-friendly-robber-2025`、`tb-harbors-2025`、`tb-friendly-robber-harbors-2025`，劇本 `tb-fishing-2025`、`tb-rivers-2025`、`tb-merchant-trains-2025`、`tb-barbarian-attack-2025`、`tb-traders-barbarians-2025`。Bot 依 profile 的每個 part（劇本、變體、Coins）判定能不能玩，4 個 `tb-event-cards*` 不在範圍內（rules 也沒有開放）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-traders-barbarians.md`。
 - 座位、大廳與遊戲中玩家面板顯示「電腦」徽章與難度。
 
 P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房間層級節奏設定、開局後增減 Bot、Bot 的反報價（counteroffer）、以事件紀錄推算對手手牌。
@@ -156,8 +157,10 @@ Seafarers 的保底見 SF 計畫 `docs/aegis/plans/2026-11-04-bots-seafarers.md`
 
 Cities & Knights 的保底見 C&K 計畫 `docs/aegis/plans/2026-11-04-bots-cities-knights.md` §4.2，包含 14 個 C&K frame 與含 commodity、進步卡上限的棄牌。Seafarers + Cities & Knights 的保底見 SF+CK 計畫 `docs/aegis/plans/2026-11-04-bots-seafarers-cities-knights.md` §4.3：沒有自己的 frame，盜賊目標取 §4.2 的 fold 集合的第一項（首攻前的 7 只棄牌，追擊海盜之後的 `moveRobber` 只收海格或 `null`）。
 
+Traders & Barbarians 的保底見 T&B 計畫 `docs/aegis/plans/2026-11-04-bots-traders-barbarians.md` §4.1 的 17 列（`packages/bots/src/modules/tradersBarbarians/duty.ts`）：各 frame 取 hints 的第一個候選，回合結束時排入的 frame 取最小動作（Trains 出價 0、BA 的騎士結束移動、Traders 的車隊停車），多 responder 的 frame 只在自己是 `responders[0]` 時作答；Friendly Robber 的強盜目標由 `robberTargets` 換成 hints 的 `robberHexes`，全部受保護時可以留在沙漠。
+
 8. 策略不得讀 `view.events`：BotDriver 投影時帶最近 40 筆事件，測試 harness 不帶，讀了會讓兩邊結果不一致（決定性，I6）。
-9. 報價包含 Bot 無法估值的卡種或 goods（`giveGoods`、`wantGoods`）時一律拒絕（不同意、不結算）；對方要求的數量超過自己持有量，或提議者公開的 goods 付不起 `giveGoods` 時，也一律拒絕（引擎在同意時會檢查雙方）。
+9. 報價包含 Bot 無法估值的卡種或 goods（`giveGoods`、`wantGoods`）時一律拒絕（不同意、不結算）；對方要求的數量超過自己持有量，或提議者公開的 goods 付不起 `giveGoods` 時，也一律拒絕（引擎在同意時會檢查雙方）。能估值的 goods（0.4.4 起 T&B 的 gold，由模組的 `trade.goodValue` 估）依收付方向計價：收進的 `giveGoods` 可以因本回合用不掉而折價，付出的 `wantGoods` 不得低於銀行價（T&B 為 1 gold = 0.5 張），以免被對手低價收購 goods 後向銀行換牌；單位是「一張用得上的牌」。easy 不估 goods，一律拒絕這類報價。
 
 報價階段由排程器以真實時間推導，策略只看階段：
 

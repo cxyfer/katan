@@ -150,10 +150,15 @@ only the original human players must reconnect and become ready to resume.
   needs a bot module, and that module's `supports(profile)` must accept the
   profile. Today the base profiles, the two Heading for New Shores profiles
   (`sf-new-shores-2025`, `sf-new-shores-paired-2025`), the two Cities &
-  Knights profiles (`ck-2025`, `ck-paired-2025`) and the two combined profiles
-  (`sf-ck-new-shores-2025`, `sf-ck-new-shores-paired-2025`) qualify, so
-  `ProfileView.botSeats` is true for them and false for every other expansion
-  profile. Adding a bot or
+  Knights profiles (`ck-2025`, `ck-paired-2025`), the two combined profiles
+  (`sf-ck-new-shores-2025`, `sf-ck-new-shores-paired-2025`) and the eight
+  playable Traders & Barbarians profiles (`tb-friendly-robber-2025`,
+  `tb-harbors-2025`, `tb-friendly-robber-harbors-2025`, `tb-fishing-2025`,
+  `tb-rivers-2025`, `tb-merchant-trains-2025`, `tb-barbarian-attack-2025`,
+  `tb-traders-barbarians-2025`) qualify, so `ProfileView.botSeats` is true for
+  them and false for every other expansion profile, including the four closed
+  `tb-event-cards*` rows (the Traders & Barbarians module refuses the
+  `event-cards` variant even if a row were opened). Adding a bot or
   changing a room with bot seats to an unsupported profile is `E_INVALID_BOT`, reason
   `profile`. A bot seat that still ends up in such a room (for example after a
   registry change) adds `blocker.botsUnsupported`, so the game cannot start.
@@ -385,6 +390,11 @@ All are absent for base games, so base payloads are unchanged.
   `baSteal`, `moveKnight`, `endKnights`, `moveBarbarian`, `playKnight`,
   `playSwiftJourney`, `upgradeWagon`, `wagonStep`, `wagonBoost`, `driveOff`,
   `wagonStop`. Frames are `tradersBarbarians.<step>`.
+- Bots can be seated at `easy` or `standard` in the eight playable profiles
+  (`botSeats: true`, `botLevels: ['easy','standard']`); `hard` is refused
+  (`E_INVALID_BOT`, reason `profileLevel`). Bots answer every T&B frame
+  only when they are `responders[0]`, except the simultaneous `wagonAssign`,
+  which a strategy seat answers whenever it is listed.
 ### Seafarers commands (`sf-new-shores-*`)
 
 | Command | Fields | When |

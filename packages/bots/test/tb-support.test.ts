@@ -3,8 +3,8 @@
  *
  * - 4 個 `tb-event-cards*` 的 `supports` 一律回 false，即使所有 part 都開放：直接呼叫 `supports`，因為它們本來就是
  *   `enabled:false`，`botsCanPlay` 擋不擋都看不出來。
- * - S2 的 `TB_READY_PARTS` 是空集合：8 個 profile 都不能讓 Bot 入座。開放清單以注入的集合測試，不改常數：把某個 part
- *   移出時，只有含它的 profile 關閉。
+ * - S9 起 `TB_READY_PARTS` 含全部 8 個 part：8 個 profile 都可以讓 Bot 入座（easy、standard）。開放清單的組合仍以注入的
+ *   集合測試，不改常數：把某個 part 移出時，只有含它的 profile 關閉。
  */
 
 import { describe, expect, it } from 'vitest';
@@ -75,12 +75,14 @@ describe('T&B supports (§3.3)', () => {
     expect([...ALL_PARTS].sort()).toEqual([...ruleParts].sort());
   });
 
-  it('opens no T&B profile in S2: the ready set is empty', () => {
-    expect(TB_READY_PARTS.size).toBe(0);
+  it('opens the eight playable profiles in S9: every part is ready', () => {
+    expect([...TB_READY_PARTS].sort()).toEqual([...ALL_PARTS].sort());
     for (const candidate of tbProfiles()) {
-      expect(tradersBarbariansBotModule.supports!(candidate), candidate.id).toBe(false);
-      expect(botsCanPlay(candidate), candidate.id).toBe(false);
-      expect(botLevelsFor(candidate), candidate.id).toEqual([]);
+      const open = Object.keys(TB_PROFILES).includes(candidate.id);
+      expect(tradersBarbariansBotModule.supports!(candidate), candidate.id).toBe(open);
+      expect(botsCanPlay(candidate), candidate.id).toBe(open);
+      // hard 仍只有基本版。
+      expect(botLevelsFor(candidate), candidate.id).toEqual(open ? ['easy', 'standard'] : []);
       // 模組本身一直是註冊狀態：保底與測試工具照樣拿得到它。
       expect(botModulesOf(candidate).map((module) => module.id), candidate.id).toEqual(['tradersBarbarians']);
     }
