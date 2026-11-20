@@ -1,6 +1,6 @@
 /** 單次決策共用的資料（`TurnContext` 的實作）。 */
 
-import { seededRng, type GameView, type PublicPlayerView, type Rng } from '@catan/rules';
+import { seededRng, type GameView, type PublicPlayerView, type Rng } from '@katan/rules';
 import { boardModel, type BoardModel } from './board.ts';
 import { economyOf, type Economy } from './economy.ts';
 import type { LevelParams } from './level.ts';

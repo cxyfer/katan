@@ -1,6 +1,6 @@
 /** base 的強盜：壓領先者的高產能格、避開自己的建築，並優先有牌可偷的格子。 */
 
-import { getProfile, type GameView } from '@catan/rules';
+import { getProfile, type GameView } from '@katan/rules';
 import { collectScored } from '../modules/compose.ts';
 import type { BanditTarget, BotModule, RobberCause, Scored, TurnContext } from '../modules/types.ts';
 

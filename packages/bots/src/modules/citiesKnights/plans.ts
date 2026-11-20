@@ -19,7 +19,7 @@ import {
   CK_MAX_WALLS,
   CK_WALL_COST,
   type CkTrack,
-} from '@catan/rules';
+} from '@katan/rules';
 import { addCosts, canAfford, etaRounds, handSize, productionValue, type Cost, type Plan } from '../../economy.ts';
 import type { BotModule, PlanInput, TurnContext } from '../types.ts';
 import { defenseAway, defenseStep, recruitSite } from './defense.ts';

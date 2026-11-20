@@ -4,8 +4,8 @@
  * Other games have neither, so every helper returns `null` there.
  */
 
-import type { ExplorersPiratesHints, ExplorersPiratesView, GameView, Resource } from '@catan/rules';
-import { EP_COSTS } from '@catan/rules';
+import type { ExplorersPiratesHints, ExplorersPiratesView, GameView, Resource } from '@katan/rules';
+import { EP_COSTS } from '@katan/rules';
 
 export type EpView = ExplorersPiratesView;
 export type EpHints = ExplorersPiratesHints;

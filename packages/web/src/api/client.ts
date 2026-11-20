@@ -35,7 +35,7 @@ import type {
   SuspendConsentResult,
   SuspendProposeResult,
   WithdrawResult,
-} from '@catan/protocol';
+} from '@katan/protocol';
 
 export type { ApiError, ApiResult };
 
@@ -93,7 +93,7 @@ export interface AddBotBody {
 }
 
 /** The full surface the UI depends on. Faked wholesale in tests. */
-export interface CatanApi {
+export interface KatanApi {
   getConfig(): Promise<ApiResult<ServerConfigView>>;
   getSession(): Promise<ApiResult<{ player: PlayerIdentity | null }>>;
   createSession(body: { nickname: string; locale?: Locale }): Promise<ApiResult<{ player: PlayerIdentity }>>;
@@ -178,7 +178,7 @@ export function parseApiResult<T>(status: number, body: unknown): ApiResult<T> {
   };
 }
 
-export class ApiClient implements CatanApi {
+export class ApiClient implements KatanApi {
   readonly #fetch: FetchLike;
   readonly #baseUrl: string;
 

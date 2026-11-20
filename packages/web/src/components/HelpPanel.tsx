@@ -1,4 +1,4 @@
-import { COSTS, RESOURCES } from '@catan/rules';
+import { COSTS, RESOURCES } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
 import { Legend } from './Legend.tsx';

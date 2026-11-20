@@ -14,7 +14,7 @@ import {
   type GameState,
   type GameView,
   type Resource,
-} from '@catan/rules';
+} from '@katan/rules';
 import {
   BOT_LEVELS as POLICY_BOT_LEVELS,
   botLevelsFor,
@@ -23,8 +23,8 @@ import {
   fallbackPolicy,
   type BotCommand,
   type BotPolicy,
-} from '@catan/bots';
-import { BOT_LEVELS, type ResumableGameView } from '@catan/protocol';
+} from '@katan/bots';
+import { BOT_LEVELS, type ResumableGameView } from '@katan/protocol';
 import { loadConfig, type BotSettings } from '../src/config.ts';
 import type { BotDriverDeps } from '../src/bot-driver.ts';
 import type { Connection } from '../src/rooms.ts';
@@ -585,7 +585,7 @@ describe('B-ROOM bot seats', () => {
     const room = await createRoom(await harness.client('SessionBots'), { bots: 1 });
     const botId = room.members.find((member) => member.bot)!.playerId;
     const impostor = createClient(harness.base);
-    impostor.cookie = `catan_session=${encodeURIComponent(`bot:${botId}`)}`;
+    impostor.cookie = `katan_session=${encodeURIComponent(`bot:${botId}`)}`;
     const session = impostor.expectOk<{ player: unknown }>(await impostor.get('/api/session'));
     expect(session.player).toBeNull();
     expect(await harness.service.repo.findGuestByTokenHash(`bot:${botId}`)).toBeNull();
@@ -1261,7 +1261,7 @@ describe('B-RACE one revision, two actors', () => {
 
 describe('B-LIFE restart and shutdown', () => {
   it('continues a bot table from the committed state after a restart', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'catan-bots-restart-'));
+    const dir = mkdtempSync(join(tmpdir(), 'katan-bots-restart-'));
     const sqlitePath = join(dir, 'bots.sqlite');
     const overrides = { port: 0, host: '127.0.0.1', sqlitePath, bots: { ...FAST_BOTS } };
     try {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { RESOURCES, type Resource } from '@catan/rules';
+import { RESOURCES, type Resource } from '@katan/rules';
 import { useT } from '../../i18n/context.tsx';
 import { nameOf } from '../../state/table.ts';
 import { blocksNewCommands } from '../../state/commands.ts';

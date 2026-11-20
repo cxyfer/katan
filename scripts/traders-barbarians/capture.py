@@ -173,7 +173,7 @@ def live_game(browser, base, profile_id, players=3):
     for index in range(players):
         context = browser.new_context(base_url=base, viewport={"width": 1366, "height": 900}, device_scale_factor=1,
                                       locale="en-US", reduced_motion="reduce", service_workers="block")
-        context.add_init_script("localStorage.setItem('catan.locale', 'en');")
+        context.add_init_script("localStorage.setItem('katan.locale', 'en');")
         player = api(context.request, "POST", "/api/session", {"nickname": f"Live {index + 1}", "locale": "en"})["player"]
         contexts.append((context, player["id"]))
     host = contexts[0][0].request

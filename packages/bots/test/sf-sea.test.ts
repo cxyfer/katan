@@ -17,7 +17,7 @@ import {
   projectGame,
   type GameState,
   type GameView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { forceTurn, newGame } from '../../rules/test/helpers.ts';
 import { corner, emptySeafarersGame, road, seafarersGame, settle, ship, side } from '../../rules/test/seafarers-helpers.ts';
 import { simulateSeafarers } from '../../rules/test/seafarers-sim.ts';

@@ -12,7 +12,7 @@
  * - 下一版的紀錄可以在版號 bump 前先合入；超前的紀錄在公告牌上先隱藏（`notesForVersion`）。
  */
 
-import type { Locale } from '@catan/protocol';
+import type { Locale } from '@katan/protocol';
 
 export type LocalizedText = Readonly<Record<Locale, string>>;
 
@@ -157,8 +157,8 @@ export const PLAYER_NOTES: readonly PlayerNote[] = [
         en: 'Seafarers + Cities & Knights: both rule sets on the New Shores maps, with knights travelling by ship, played to 16 points.',
       },
       {
-        'zh-Hant': '商人與野蠻人：3–4 人，可加入友善強盜與卡坦港口變體，另有卡坦漁夫、卡坦河流、商隊、野蠻人來襲與商人與野蠻人五個劇本。',
-        en: 'Traders & Barbarians: 3–4 players can add the Friendly Robber and Harbors variants or play Fishing on Catan, Rivers of Catan, Merchant Trains, Barbarian Attack and Traders & Barbarians.',
+        'zh-Hant': '商人與野蠻人：3–4 人，可加入友善強盜與喀坦港口變體，另有喀坦漁夫、喀坦河流、商隊、野蠻人來襲與商人與野蠻人五個劇本。',
+        en: 'Traders & Barbarians: 3–4 players can add the Friendly Robber and Harbors variants or play Fishing on Katan, Rivers of Katan, Merchant Trains, Barbarian Attack and Traders & Barbarians.',
       },
       {
         'zh-Hant': '探險家與海盜：3–4 人，依序挑戰五個任務，未探索的海域會被迷霧覆蓋，要靠船隻揭開。',
@@ -262,7 +262,7 @@ export const PLAYER_NOTES: readonly PlayerNote[] = [
     version: '0.1.0',
     date: '2026-10-27',
     title: {
-      'zh-Hant': '卡坦桌遊桌開張',
+      'zh-Hant': '喀坦桌遊桌開張',
       en: 'The table opens',
     },
     items: [

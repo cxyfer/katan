@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { CARD_KINDS, RESOURCES, type CardKind } from '@catan/rules';
+import { CARD_KINDS, RESOURCES, type CardKind } from '@katan/rules';
 import { citiesKnightsView } from '../board/citiesKnights.ts';
 import { CardKindArt, CardKindGlyph } from './CardKindArt.tsx';
 import { useT } from '../i18n/context.tsx';

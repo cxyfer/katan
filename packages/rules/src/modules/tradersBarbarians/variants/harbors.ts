@@ -1,5 +1,5 @@
 /**
- * Harbors of Catan (TB25 p. 4). The Strongest Ports tile (2 VP) goes to the
+ * Harbors of Katan (TB25 p. 4). The Strongest Ports tile (2 VP) goes to the
  * first player with 3 VP in buildings on ports and moves to a player who has
  * strictly more. The profile's target already includes the variant's +1 VP.
  */

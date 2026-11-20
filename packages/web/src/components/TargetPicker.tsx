@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef } from 'react';
-import type { BoardTopology, PublicBoardView } from '@catan/rules';
+import type { BoardTopology, PublicBoardView } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { ambiguousWith, describeTarget, type TargetKind, type TargetOption } from '../board/targets.ts';
 import type { BoardGeometry, Point } from '../board/geometry.ts';

@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { RESOURCES, type GameEvent, type GameState, type GameView, type Resource } from '@catan/rules';
+import { RESOURCES, type GameEvent, type GameState, type GameView, type Resource } from '@katan/rules';
 import { heuristicPolicy } from '../src/heuristic.ts';
 import { historyComplete, trackTable, type HandBelief } from '../src/tracker.ts';
 import {

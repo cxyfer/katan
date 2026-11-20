@@ -5,7 +5,7 @@
 
 import type { StorageLike } from '../state/session.ts';
 
-export const AUDIO_KEY = 'catan.audio';
+export const AUDIO_KEY = 'katan.audio';
 
 export interface AudioPreferences {
   muted: boolean;

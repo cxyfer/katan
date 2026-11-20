@@ -87,7 +87,7 @@ describe('message id coverage', () => {
 
 describe('ruleset vocabulary', () => {
   it('describes every registered profile through ProfileView', async () => {
-    const { PROFILES } = await import('@catan/rules');
+    const { PROFILES } = await import('@katan/rules');
     const { profileView, RULESET_MESSAGE_IDS, REQUIRED_MESSAGE_IDS } = await import('../src/index.ts');
     for (const profile of PROFILES) {
       const view = profileView(profile, { botLevels: profile.ruleModules.length === 0 ? ['easy', 'standard', 'hard'] : [] });

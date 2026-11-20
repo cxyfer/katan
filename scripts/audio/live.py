@@ -123,9 +123,9 @@ def main() -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=False)
     base = f'http://127.0.0.1:{args.port}'
-    data_dir = tempfile.mkdtemp(prefix='catan-audio-')
+    data_dir = tempfile.mkdtemp(prefix='katan-audio-')
     env = {**os.environ, 'PORT': str(args.port), 'HOST': '127.0.0.1',
-           'SQLITE_PATH': str(Path(data_dir) / 'catan.sqlite'),
+           'SQLITE_PATH': str(Path(data_dir) / 'katan.sqlite'),
            'WEB_DIST_PATH': str(ROOT / 'packages/web/dist')}
     log = open(out / 'server.log', 'w')
     server = subprocess.Popen(['node', str(ROOT / 'packages/server/dist/server.mjs')], env=env, stdout=log, stderr=log)
@@ -142,7 +142,7 @@ def main() -> int:
         with sync_playwright() as p:
             browser = p.chromium.launch(args=['--autoplay-policy=user-gesture-required'])
             context = browser.new_context(viewport={'width': 1366, 'height': 768}, locale='zh-TW')
-            context.add_init_script("localStorage.setItem('catan.locale', 'zh-Hant');")
+            context.add_init_script("localStorage.setItem('katan.locale', 'zh-Hant');")
             context.add_init_script(TAP_SCRIPT)
             page = context.new_page()
             errors: list[str] = []

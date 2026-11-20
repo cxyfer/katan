@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Material } from 'three';
-import type { PublicBoardView } from '@catan/rules';
+import type { PublicBoardView } from '@katan/rules';
 import type { BoardGeometry } from '../geometry.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import { useDioramaGeometry } from './diorama-geometry.ts';

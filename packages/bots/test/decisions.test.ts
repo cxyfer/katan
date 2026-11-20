@@ -9,7 +9,7 @@ import {
   type GameState,
   type Offer,
   type Resource,
-} from '@catan/rules';
+} from '@katan/rules';
 import { boardModel, searchRoads } from '../src/board.ts';
 import { economyOf } from '../src/economy.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';

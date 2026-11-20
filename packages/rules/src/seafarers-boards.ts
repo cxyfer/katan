@@ -5,7 +5,7 @@
  *   - 3 players: SF25 (CN3083, 2025) p. 4, component table p. 4;
  *   - 4 players: SF25 p. 5, component table p. 5;
  *   - 5–6 players: SF56-25 (CN3084, 2025) p. 4 (small islands fixed, main
- *     island built with the CATAN 5–6 variable setup, ports random on the
+ *     island built with the Katan 5–6 variable setup, ports random on the
  *     marked positions).
  * Source hashes and the transcription method are recorded in
  * docs/aegis/work/2026-11-01-seafarers.md and docs/FIDELITY.md.
@@ -219,7 +219,7 @@ function fixedLayout(topology: BoardTopology, land: readonly LandHex[], ports: r
 
 /**
  * 5–6 players: the small islands are fixed; the main island takes the
- * CATAN 5–6 terrain and number inventories at random (the same procedure the
+ * Katan 5–6 terrain and number inventories at random (the same procedure the
  * engine uses for the base 5–6 variable board: shuffled terrain, shuffled
  * number discs dealt to the non-desert hexes) and the port tokens are
  * shuffled over the marked positions. The robber starts on the first desert.

@@ -21,7 +21,7 @@ import {
   type Command,
   type GameState,
   type GameView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { addKnight, giveCommodities, handCards, player, setBuilding, setImprovement, spreadVertices } from '../../rules/test/ck-helpers.ts';
 import { give } from '../../rules/test/helpers.ts';
 import { boardModel } from '../src/board.ts';

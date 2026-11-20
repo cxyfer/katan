@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ApiResult, ClientMessage, LeaveRoomResult, RoomView, ServerMessage } from '@catan/protocol';
+import type { ApiResult, ClientMessage, LeaveRoomResult, RoomView, ServerMessage } from '@katan/protocol';
 import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';

@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { activeTurnKey, initialTableState, tableReducer } from '../src/state/table.ts';
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
 import { makeRoom, makeSnapshot, makeView } from '../src/test/fixtures.ts';
 

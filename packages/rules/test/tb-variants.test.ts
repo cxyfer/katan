@@ -1,5 +1,5 @@
 /**
- * R-TB-FR / R-TB-HB: The Friendly Robber and Harbors of Catan (TB25 p. 4) on
+ * R-TB-FR / R-TB-HB: The Friendly Robber and Harbors of Katan (TB25 p. 4) on
  * the base board. Each case names its start state, actor/window, command,
  * expected result and source clause.
  */
@@ -140,7 +140,7 @@ function strongest(state: GameState): unknown {
     .tradersBarbarians!.harbors!.holder;
 }
 
-describe('R-TB-HB Harbors of Catan (TB25 p. 4)', () => {
+describe('R-TB-HB Harbors of Katan (TB25 p. 4)', () => {
   it('HB1: the first player with 3 VP on ports takes Strongest Ports (2 VP); victory needs 11', () => {
     // TB25 p.4: Strongest Ports (2 VP) goes to the first player with 3 VP in buildings on ports; the
     // target becomes 11 (10 + 1). Upgrading to a harbour city counts 2 VP; the win comes at exactly 11.

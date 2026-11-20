@@ -3,7 +3,7 @@
  * C&K 的 Bot 模組已註冊並開放座位（CK-G）：策略與保底都會組合它，這裡驗證加上模組後的行為，不是只有 base。
  */
 import { describe, expect, it } from 'vitest';
-import { getTopology, type GameState } from '@catan/rules';
+import { getTopology, type GameState } from '@katan/rules';
 import { actCk, emptyCkGame, handCards, playCard } from '../../rules/test/ck-helpers.ts';
 import { fallbackPolicy } from '../src/fallback.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';

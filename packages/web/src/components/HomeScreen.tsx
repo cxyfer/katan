@@ -16,7 +16,7 @@ import { expansionLabelIds, resolveRuleset, scenarioLabelIds } from '../state/ru
  * lobby metadata and never seated-player state (docs/SPEC.md §8.3).
  */
 /** 公告牌只顯示不超過這個 bundle 版號的紀錄。 */
-const SHOWN_NOTES = notesForVersion(__CATAN_VERSION__);
+const SHOWN_NOTES = notesForVersion(__KATAN_VERSION__);
 
 type HomePane = 'table' | 'resume' | 'rooms' | 'news' | 'identity';
 
@@ -407,7 +407,7 @@ export function HomeScreen({ controller }: ScreenProps) {
       </section>
 
       <section id="home-pane-news" role="tabpanel" aria-labelledby="home-tab-news" hidden={homePane !== 'news'} className="home-pane home__news">
-        <NewsBoard notes={SHOWN_NOTES} version={__CATAN_VERSION__} />
+        <NewsBoard notes={SHOWN_NOTES} version={__KATAN_VERSION__} />
       </section>
 
       <section id="home-pane-identity" role="tabpanel" aria-labelledby="home-tab-identity" hidden={homePane !== 'identity'} className="home-pane home__identity">

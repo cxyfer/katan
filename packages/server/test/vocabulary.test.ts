@@ -17,7 +17,7 @@ import {
   REQUIRED_MESSAGE_IDS,
   ROOM_NOTICE_IDS,
   SERVER_ERROR_IDS,
-} from '@catan/protocol';
+} from '@katan/protocol';
 
 function serviceSources(dir = fileURLToPath(new URL('../src', import.meta.url))): string[] {
   const out: string[] = [];

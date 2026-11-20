@@ -44,7 +44,7 @@ export interface AttackSummary {
   outcome: 'barbarians' | 'defenders';
   /** Players who lose a city (barbarians win). */
   losers: string[];
-  /** The Defender of Catan (single highest contributor), if any. */
+  /** The Defender of Katan (single highest contributor), if any. */
   defender: string | null;
   /** Tied best contributors who draw a progress card instead. */
   tied: string[];

@@ -3,7 +3,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { GameEvent, GameState } from '@catan/rules';
+import type { GameEvent, GameState } from '@katan/rules';
 import { startService, type Logger, type RunningService } from '../src/main.ts';
 import type { ServerConfig } from '../src/config.ts';
 
@@ -86,7 +86,7 @@ export async function startHarness(
   overrides: Partial<ServerConfig> = {},
   options: { postgresUrl?: string; log?: Logger } = {},
 ): Promise<TestHarness> {
-  const dataDir = mkdtempSync(join(tmpdir(), 'catan-test-'));
+  const dataDir = mkdtempSync(join(tmpdir(), 'katan-test-'));
   // The whole service suite can be replayed against PostgreSQL by exporting
   // TEST_POSTGRES_URL; the default remains the single-instance SQLite mode.
   const postgresUrl = options.postgresUrl ?? process.env.TEST_POSTGRES_URL;

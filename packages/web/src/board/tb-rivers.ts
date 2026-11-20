@@ -1,11 +1,11 @@
 /**
- * River course for the Rivers of Catan tiles, in topology units (hex radius
+ * River course for the Rivers of Katan tiles, in topology units (hex radius
  * 1). The water enters each hex at one bridge site and leaves at the next,
  * bowing sideways so it never covers the hex's number token; it springs
  * inside the first hex and ends at the mouth on the coast.
  */
 
-import type { BoardTopology } from '@catan/rules';
+import type { BoardTopology } from '@katan/rules';
 
 export interface Point2 { x: number; y: number }
 export interface CubicSegment { from: Point2; c1: Point2; c2: Point2; to: Point2 }

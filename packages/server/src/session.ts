@@ -9,8 +9,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { GuestRow } from './db.ts';
 import { Repository, newId } from './db.ts';
-import type { Locale } from '@catan/protocol';
-import { LOCALES } from '@catan/protocol';
+import type { Locale } from '@katan/protocol';
+import { LOCALES } from '@katan/protocol';
 
 export interface SessionIdentity {
   id: string;
@@ -67,11 +67,21 @@ export class SessionService {
     private readonly repo: Repository,
     private readonly cookieName: string,
     private readonly cookieSecure: boolean,
+    private readonly legacyCookieNames: readonly string[] = [],
   ) {}
+
+  /** 目前名稱優先，其次依序找舊版名稱。 */
+  private readToken(cookieHeader: string | undefined): string | null {
+    for (const name of [this.cookieName, ...this.legacyCookieNames]) {
+      const token = parseCookie(cookieHeader, name);
+      if (token) return token;
+    }
+    return null;
+  }
 
   /** Resolves the identity carried by the request cookie, if any. */
   async resolve(cookieHeader: string | undefined): Promise<SessionIdentity | null> {
-    const token = parseCookie(cookieHeader, this.cookieName);
+    const token = this.readToken(cookieHeader);
     if (!token) return null;
     const row = await this.repo.findGuestByTokenHash(hashToken(token));
     return row ? toIdentity(row) : null;
@@ -99,6 +109,29 @@ export class SessionService {
       identity: toIdentity(row),
       setCookie: serializeCookie(this.cookieName, token, { secure: this.cookieSecure }),
     };
+  }
+
+  /**
+   * 把舊版 cookie 改寫成目前名稱：token 不變，只換名稱並清除舊 cookie。
+   * 沒有舊 cookie 時回傳空陣列。
+   */
+  migrationCookies(cookieHeader: string | undefined): string[] {
+    const cookies: string[] = [];
+    const current = parseCookie(cookieHeader, this.cookieName);
+    for (const name of this.legacyCookieNames) {
+      const legacy = parseCookie(cookieHeader, name);
+      if (legacy === null) continue;
+      if (!current && cookies.length === 0) {
+        cookies.push(serializeCookie(this.cookieName, legacy, { secure: this.cookieSecure }));
+      }
+      cookies.push(clearCookie(name, this.cookieSecure));
+    }
+    return cookies;
+  }
+
+  /** 登出時同時清除目前與舊版名稱的 cookie。 */
+  clearCookies(): string[] {
+    return [this.cookieName, ...this.legacyCookieNames].map((name) => clearCookie(name, this.cookieSecure));
   }
 
   async update(

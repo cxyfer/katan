@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type KeyboardEvent, type RefObject } from 'react';
-import type { PublicBoardView, BoardTopology } from '@catan/rules';
+import type { PublicBoardView, BoardTopology } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import type { CssRect, ProjectedTarget } from '../board/render-contract.ts';
 import { describeTarget, type TargetKind } from '../board/targets.ts';

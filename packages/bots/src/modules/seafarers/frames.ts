@@ -13,7 +13,7 @@
  * - easy 同 standard：挑選是決定性的，不消耗亂數。
  */
 
-import { GOLD_FRAME, RESOURCES, type Resource } from '@catan/rules';
+import { GOLD_FRAME, RESOURCES, type Resource } from '@katan/rules';
 import { plentyPick } from '../../base/cards.ts';
 import type { Hand } from '../../economy.ts';
 import type { BotModule } from '../types.ts';

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { CommandRequest, ServerMessage } from '@catan/protocol';
-import type { Offer } from '@catan/rules';
+import type { CommandRequest, ServerMessage } from '@katan/protocol';
+import type { Offer } from '@katan/rules';
 import type { SocketLike } from '../src/api/socket.ts';
 import { App } from '../src/App.tsx';
 import { offerTermsForViewer, tradeShortfall } from '../src/components/TradePanel.tsx';
@@ -331,7 +331,7 @@ describe('structured trading', () => {
 });
 
 describe('automatic declines', () => {
-  const AUTO_DECLINE_KEY = 'catan.trade.autoDecline';
+  const AUTO_DECLINE_KEY = 'katan.trade.autoDecline';
   // p1 的手牌是每種 2 張，`want: { ore: 3 }` 必然付不出來。
   const unaffordable: Offer = { ...openOffer, want: { ore: 3 } };
 

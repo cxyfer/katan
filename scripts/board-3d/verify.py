@@ -121,7 +121,7 @@ def tree_hash(paths: list[Path]) -> str:
 
 def build_manifest() -> tuple[str, dict[str, dict[str, int | str]]]:
     if not DIST.is_dir():
-        raise Blocked("production web artifacts missing; run pnpm --filter @catan/web build")
+        raise Blocked("production web artifacts missing; run pnpm --filter @katan/web build")
     files = {}
     for path in sorted(item for item in DIST.rglob("*") if item.is_file()):
         files[path.relative_to(DIST).as_posix()] = {"sha256": file_hash(path), "bytes": path.stat().st_size}
@@ -323,7 +323,7 @@ class Scenario:
         self.closed = False
         self.video_started_at = time.monotonic() if video else None
         self.context = browser.new_context(**options)
-        self.context.add_init_script(f"localStorage.setItem('catan.locale', {json.dumps(locale)});")
+        self.context.add_init_script(f"localStorage.setItem('katan.locale', {json.dumps(locale)});")
         self.context.add_init_script(GPU_INSTRUMENT)
         if init_script:
             self.context.add_init_script(init_script)

@@ -6,7 +6,7 @@
  * echoes a local id replaces that local entry rather than adding a duplicate.
  */
 
-import type { ChatMessageView, Notice } from '@catan/protocol';
+import type { ChatMessageView, Notice } from '@katan/protocol';
 
 export type ChatSendStatus = 'sending' | 'sent' | 'rejected' | 'unknown';
 

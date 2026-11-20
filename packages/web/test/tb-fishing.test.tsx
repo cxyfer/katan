@@ -11,7 +11,7 @@ import { tbController, tbSlot, tbState } from './tb-helpers.tsx';
 
 const PROFILE = 'tb-fishing-2025';
 
-describe('Fishing on Catan UI', () => {
+describe('Fishing on Katan UI', () => {
   it('draws six numbered fishing grounds and the lake numbers on the SVG board', () => {
     const state = tbState(PROFILE);
     const controller = tbController(state);

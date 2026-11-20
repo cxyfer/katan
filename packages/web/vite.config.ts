@@ -12,12 +12,12 @@ const backend = `http://${connectHost.includes(':') ? `[${connectHost}]` : conne
 /**
  * Browser client build + test configuration.
  *
- * `@catan/rules` and `@catan/protocol` are workspace packages whose `exports`
+ * `@katan/rules` and `@katan/protocol` are workspace packages whose `exports`
  * point straight at TypeScript sources, so no alias mapping is required.
  */
 export default defineConfig({
   plugins: [react()],
-  define: { __CATAN_VERSION__: JSON.stringify(version) },
+  define: { __KATAN_VERSION__: JSON.stringify(version) },
   server: {
     host: process.env.VITE_HOST ?? '127.0.0.1',
     port: Number(process.env.VITE_PORT ?? 5173),

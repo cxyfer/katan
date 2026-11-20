@@ -4,7 +4,7 @@
  * client only reads them, so every field is optional and checked.
  */
 
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 
 export type TbView = Record<string, unknown>;
 

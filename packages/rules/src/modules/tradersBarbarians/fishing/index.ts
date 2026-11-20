@@ -1,5 +1,5 @@
 /**
- * Fishing on Catan (TB25 pp. 9–10): fishing grounds and the lake hand out
+ * Fishing on Katan (TB25 pp. 9–10): fishing grounds and the lake hand out
  * secret fish tokens, which buy special actions; the old boot raises its
  * holder's target by 1 VP.
  */

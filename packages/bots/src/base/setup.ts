@@ -1,6 +1,6 @@
 /** base 的初始放置評分。 */
 
-import { RESOURCES, type Resource } from '@catan/rules';
+import { RESOURCES, type Resource } from '@katan/rules';
 import { playerYield, vertexYield } from '../board.ts';
 import { resourceWeights, weightedPips } from '../economy.ts';
 import type { TurnContext } from '../modules/types.ts';

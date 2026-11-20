@@ -17,7 +17,7 @@
  * 決定性（P4）：不消耗亂數、不讀事件。
  */
 
-import { COSTS, RESOURCES, type CardKind, type CkTrack, type Resource } from '@catan/rules';
+import { COSTS, RESOURCES, type CardKind, type CkTrack, type Resource } from '@katan/rules';
 import { playerYield } from '../../board.ts';
 import { canAfford, handSize, productionValue, PIP_VALUE } from '../../economy.ts';
 import { collectScored } from '../compose.ts';

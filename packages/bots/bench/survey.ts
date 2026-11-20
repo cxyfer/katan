@@ -47,7 +47,7 @@ import {
   topologyOf,
   type GameState,
   type ProfileDefinition,
-} from '@catan/rules';
+} from '@katan/rules';
 import { botModulesOf, botsCanPlay } from '../src/index.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';
 import type { BotPolicy } from '../src/types.ts';

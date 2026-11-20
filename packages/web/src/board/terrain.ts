@@ -5,7 +5,7 @@
  * board stays readable without colour perception (docs/SPEC.md §8.1, U-04).
  */
 
-import { TERRAIN_RESOURCE, type Resource } from '@catan/rules';
+import { TERRAIN_RESOURCE, type Resource } from '@katan/rules';
 
 export const TERRAIN_LETTER: Readonly<Record<string, string>> = {
   forest: 'F',

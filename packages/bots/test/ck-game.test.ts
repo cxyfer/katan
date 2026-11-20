@@ -22,7 +22,7 @@ import {
   requireProfile,
   type GameState,
   type ProfileDefinition,
-} from '@catan/rules';
+} from '@katan/rules';
 import { botCommandLimit } from '../src/index.ts';
 import type { BotModule } from '../src/modules/types.ts';
 import { createBotPolicy } from '../src/policy.ts';

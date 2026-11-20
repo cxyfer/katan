@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { BANK_VIEW_CAP, requireProfile, type GameState } from '@catan/rules';
+import { BANK_VIEW_CAP, requireProfile, type GameState } from '@katan/rules';
 import { plannedBank } from '../src/bank.ts';
 import { heuristicPolicy, turnContext } from '../src/heuristic.ts';
 import { bankTradeToward } from '../src/trade.ts';

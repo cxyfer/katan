@@ -586,7 +586,7 @@ describe('R-EP pirates, lairs and gold fields (EP25 pp. 8–13, EP25-M pp. 9–1
     expect([...LAIR_TOKENS]).toEqual([2, 3, 5, 6, 8, 11]);
     expect(epState(epPlayable('pirate-lairs', 3)).lairTokens).toEqual([2, 3, 5, 6, 8, 11]);
     expect(epState(epPlayable('fish', 3)).lairTokens).toEqual([2, 3, 5, 6, 8, 11]);
-    // Spices for Catan has no gold fields and no lair tokens.
+    // Spices for Katan has no gold fields and no lair tokens.
     expect(epState(epPlayable('spices', 3)).lairTokens).toEqual([]);
     expect(epState(landHo()).lairTokens).toEqual([]);
   });

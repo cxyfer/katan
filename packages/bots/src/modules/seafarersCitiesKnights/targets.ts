@@ -8,7 +8,7 @@
  * 保底與策略共用這個函式：不得 throw、不得消耗亂數，只讀 view。
  */
 
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import type { BanditTarget, BotModule } from '../types.ts';
 import { sfckBandit } from './view.ts';
 

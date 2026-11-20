@@ -4,7 +4,7 @@
  * the sound, so a cue never reveals a hidden draw.
  */
 
-import type { GameEvent } from '@catan/protocol';
+import type { GameEvent } from '@katan/protocol';
 
 export const TB_SOUND_CUES = ['tb.fish', 'tb.coins', 'tb.barbarians', 'tb.wagon', 'tb.victory'] as const;
 export type TbSoundCue = (typeof TB_SOUND_CUES)[number];

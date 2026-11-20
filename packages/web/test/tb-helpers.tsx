@@ -1,7 +1,7 @@
 /** Engine-backed fixtures for Traders & Barbarians UI tests. */
 
 import { vi } from 'vitest';
-import { actionHints, createGame, moduleStateOf, projectGame, seededRng, type GameState } from '@catan/rules';
+import { actionHints, createGame, moduleStateOf, projectGame, seededRng, type GameState } from '@katan/rules';
 import { initialTableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeSnapshot } from '../src/test/fixtures.ts';

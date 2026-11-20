@@ -23,13 +23,13 @@ importers:
 
   packages/bots:
     dependencies:
-      '@catan/rules':
+      '@katan/rules':
         specifier: workspace:*
         version: link:../rules
 
   packages/protocol:
     dependencies:
-      '@catan/rules':
+      '@katan/rules':
         specifier: workspace:*
         version: link:../rules
 
@@ -37,13 +37,13 @@ importers:
 
   packages/server:
     dependencies:
-      '@catan/bots':
+      '@katan/bots':
         specifier: workspace:*
         version: link:../bots
-      '@catan/protocol':
+      '@katan/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@catan/rules':
+      '@katan/rules':
         specifier: workspace:*
         version: link:../rules
       pg:
@@ -65,10 +65,10 @@ importers:
 
   packages/web:
     dependencies:
-      '@catan/protocol':
+      '@katan/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@catan/rules':
+      '@katan/rules':
         specifier: workspace:*
         version: link:../rules
       '@react-three/fiber':

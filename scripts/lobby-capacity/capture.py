@@ -44,7 +44,7 @@ def start_server(out: Path):
     global BASE
     if not SERVER_ENTRY.is_file() or not (DIST / "index.html").is_file():
         raise SystemExit("built artifacts missing; run pnpm build first")
-    temporary = tempfile.TemporaryDirectory(prefix="catan-lobby-capacity-")
+    temporary = tempfile.TemporaryDirectory(prefix="katan-lobby-capacity-")
     log = (out / "server.log").open("w", encoding="utf-8")
     port = free_port()
     env = {
@@ -117,7 +117,7 @@ def open_host(browser, locale: str, nickname: str):
         locale="zh-TW" if locale == "zh-Hant" else "en-US",
         reduced_motion="reduce",
     )
-    context.add_init_script(f"localStorage.setItem('catan.locale', {json.dumps(locale)});")
+    context.add_init_script(f"localStorage.setItem('katan.locale', {json.dumps(locale)});")
     page = context.new_page()
     errors: list[str] = []
     page.on("pageerror", lambda error: errors.append(str(error)))

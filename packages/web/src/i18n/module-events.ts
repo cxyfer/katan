@@ -5,8 +5,8 @@
  * Anything else (numbers, flags) passes through unchanged.
  */
 
-import type { Locale } from '@catan/protocol';
-import type { GameEvent } from '@catan/rules';
+import type { Locale } from '@katan/protocol';
+import type { GameEvent } from '@katan/rules';
 import { formatNumber, formatResourceMap } from './format.ts';
 import { hasMessage, t } from './index.ts';
 

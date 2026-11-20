@@ -8,7 +8,7 @@ export const messages = {
     'ck.eventRolled',
     'ck.barbariansAdvanced',
     'ck.barbariansAttack',
-    'ck.defenderOfCatan',
+    'ck.defenderOfKatan',
     'ck.defendersTied',
     'ck.cityPillaged',
     'ck.robberEntered',

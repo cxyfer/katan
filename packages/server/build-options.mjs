@@ -20,11 +20,11 @@ export const serverBuildOptions = {
   format: 'esm',
   sourcemap: true,
   legalComments: 'none',
-  define: { __CATAN_VERSION__: JSON.stringify(version) },
+  define: { __KATAN_VERSION__: JSON.stringify(version) },
   banner: {
     js: [
-      "import { createRequire as __catanCreateRequire } from 'node:module';",
-      'const require = __catanCreateRequire(import.meta.url);',
+      "import { createRequire as __katanCreateRequire } from 'node:module';",
+      'const require = __katanCreateRequire(import.meta.url);',
     ].join('\n'),
   },
   // Optional native accelerators that are resolved lazily at runtime.

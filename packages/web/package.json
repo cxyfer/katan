@@ -1,5 +1,5 @@
 {
-  "name": "@catan/web",
+  "name": "@katan/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,8 +13,8 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@catan/protocol": "workspace:*",
-    "@catan/rules": "workspace:*",
+    "@katan/protocol": "workspace:*",
+    "@katan/rules": "workspace:*",
     "@react-three/fiber": "9.8.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

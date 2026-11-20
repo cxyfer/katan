@@ -30,7 +30,7 @@ import {
   type GameView,
   type PublicModulePendingView,
   type Resource,
-} from '@catan/rules';
+} from '@katan/rules';
 import type { BotCommand } from '../../types.ts';
 import { moduleHints, moduleView } from '../view.ts';
 

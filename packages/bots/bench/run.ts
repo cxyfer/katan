@@ -1,7 +1,7 @@
 /**
  * Bot 強度與效能量測（不進 CI）：
  *
- *   pnpm --filter @catan/bots bench [局數] [設定名稱片段] [--profile <id>] [--markdown <檔案>]
+ *   pnpm --filter @katan/bots bench [局數] [設定名稱片段] [--profile <id>] [--markdown <檔案>]
  *
  * 沒有 `--profile` 時跑 base（`base-2025` 與 `base-paired-2025`）；`--profile` 指定任何 Bot 玩得動的
  * profile（例如擴充在 gating 翻轉之前）。每個人數跑四種對局（Seafarers 計畫 §6.3）：
@@ -20,7 +20,7 @@
  */
 
 import { writeFileSync } from 'node:fs';
-import { getProfile, requireProfile, type ProfileDefinition } from '@catan/rules';
+import { getProfile, requireProfile, type ProfileDefinition } from '@katan/rules';
 import { botModulesOf, botsCanPlay, createBotPolicy } from '../src/index.ts';
 import { heuristicPolicy } from '../src/heuristic.ts';
 import type { BotPolicy } from '../src/types.ts';
@@ -287,7 +287,7 @@ function renderMarkdown(): string {
   return [
     '# Bot bench',
     '',
-    `\`pnpm --filter @catan/bots bench ${process.argv.slice(2).join(' ')}\` — ${games} games per config.`,
+    `\`pnpm --filter @katan/bots bench ${process.argv.slice(2).join(' ')}\` — ${games} games per config.`,
     '',
     ...table(rows),
     '',

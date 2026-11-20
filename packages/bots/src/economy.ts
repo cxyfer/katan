@@ -2,7 +2,7 @@
  * 經濟評估：手牌、成本缺口、資源權重、產能速率與建造計畫。
  */
 
-import { CARD_KINDS, COMMODITIES, COSTS, RESOURCES, type CardKind, type Resource } from '@catan/rules';
+import { CARD_KINDS, COMMODITIES, COSTS, RESOURCES, type CardKind, type Resource } from '@katan/rules';
 import {
   cityUpgradeYield,
   emptyYield,

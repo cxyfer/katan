@@ -8,7 +8,7 @@
  * command id.
  */
 
-import type { Locale } from '@catan/protocol';
+import type { Locale } from '@katan/protocol';
 import { catalogs, DEFAULT_LOCALE, SUPPORTED_LOCALES } from './catalogs.ts';
 
 export * from './catalogs.ts';

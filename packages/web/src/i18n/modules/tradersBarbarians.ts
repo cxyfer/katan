@@ -1,5 +1,5 @@
 /**
- * Traders & Barbarians messages: event/error ids from `@catan/rules` `modules/tradersBarbarians`,
+ * Traders & Barbarians messages: event/error ids from `@katan/rules` `modules/tradersBarbarians`,
  * `play.pending.tradersBarbarians.<step>` prompts and any UI strings the module adds.
  * Both locales must define the same keys (catalog parity test). Rule texts are
  * paraphrases, never the rulebook's wording.
@@ -10,20 +10,20 @@ import type { ModuleCatalog } from './index.ts';
 const en: Record<string, string> = {
   // Registry vocabulary
   'profile.tb-friendly-robber-2025': 'Traders & Barbarians — The Friendly Robber, 3–4 players',
-  'profile.tb-harbors-2025': 'Traders & Barbarians — Harbors of Catan, 3–4 players',
+  'profile.tb-harbors-2025': 'Traders & Barbarians — Harbors of Katan, 3–4 players',
   'profile.tb-friendly-robber-harbors-2025': 'Traders & Barbarians — Friendly Robber + Harbors, 3–4 players',
   'profile.tb-event-cards-2025': 'Traders & Barbarians — Event Cards, 3–4 players',
   'profile.tb-event-cards-friendly-robber-2025': 'Traders & Barbarians — Event Cards + Friendly Robber, 3–4 players',
   'profile.tb-event-cards-harbors-2025': 'Traders & Barbarians — Event Cards + Harbors, 3–4 players',
   'profile.tb-event-cards-friendly-robber-harbors-2025': 'Traders & Barbarians — Event Cards + Friendly Robber + Harbors, 3–4 players',
   'profile.unavailable.tbEventDeck': 'The event deck’s card list is not in the 2025 rulebook, so event-card games are not enabled.',
-  'scenario.tb-fishing': 'Fishing on Catan',
-  'scenario.tb-rivers': 'Rivers of Catan',
+  'scenario.tb-fishing': 'Fishing on Katan',
+  'scenario.tb-rivers': 'Rivers of Katan',
   'scenario.tb-merchant-trains': 'Merchant Trains',
   'scenario.tb-barbarian-attack': 'Barbarian Attack',
   'scenario.tb-traders-barbarians': 'Traders & Barbarians',
   'variant.friendly-robber': 'The Friendly Robber',
-  'variant.harbors': 'Harbors of Catan',
+  'variant.harbors': 'Harbors of Katan',
   'variant.event-cards': 'Event Cards',
 
   // Shared terms
@@ -42,8 +42,8 @@ const en: Record<string, string> = {
   'tb.help.harbors': 'The first player with 3 VP in buildings on harbours takes Strongest Ports (2 VP); a player with more takes it over. You need 11 VP to win.',
   'tb.help.event-cards': 'Each turn reveals an event card instead of rolling: its event happens first, then its number produces.',
 
-  // Fishing on Catan
-  'profile.tb-fishing-2025': 'Traders & Barbarians — Fishing on Catan, 3–4 players',
+  // Fishing on Katan
+  'profile.tb-fishing-2025': 'Traders & Barbarians — Fishing on Katan, 3–4 players',
   'event.tb.fishDrawn': '{player} drew {count} fish token(s).',
   'event.tb.bootDrawn': '{player} pulled up the old boot and needs 1 more VP to win.',
   'event.tb.fishRefilled': 'The {count} used fish tokens were shuffled into a new supply.',
@@ -87,8 +87,8 @@ const en: Record<string, string> = {
   'tb.fishing.ground': 'Fishing ground {number}',
   'tb.fishing.lake': 'Lake (2, 3, 11, 12)',
   'tb.help.tb-fishing': 'Fishing grounds and the lake give secret fish tokens on their numbers (city 2). Spend fish on your turn: 2 remove the robber, 3 steal a card, 4 take a resource, 5 free road, 7 development card. Hold at most 7. The old boot holder needs 11 VP and may pass it to a player with at least as many VP.',
-  // Coins and Rivers of Catan
-  'profile.tb-rivers-2025': 'Traders & Barbarians — Rivers of Catan, 3–4 players',
+  // Coins and Rivers of Katan
+  'profile.tb-rivers-2025': 'Traders & Barbarians — Rivers of Katan, 3–4 players',
   'event.tb.goldGained': '{player} received {amount} gold ({cause}).',
   'event.tb.goldBought': '{player} paid {gold} gold for 1 {resource}.',
   'event.tb.goldSold': '{player} sold {rate} {resource} for 1 gold.',
@@ -113,9 +113,9 @@ const en: Record<string, string> = {
   'tb.rivers.title': 'Rivers',
   'tb.rivers.bridges': 'Bridges left: {count}',
   'tb.rivers.build': 'Build a bridge (2 brick, 1 lumber)',
-  'tb.rivers.wealthiest': 'Wealthiest Catanian: {player} (+1 VP)',
-  'tb.rivers.wealthiestNone': 'Wealthiest Catanian: tied, stays in the supply',
-  'tb.rivers.poor': 'Poor Catanian (−2 VP): {players}',
+  'tb.rivers.wealthiest': 'Wealthiest Katanian: {player} (+1 VP)',
+  'tb.rivers.wealthiestNone': 'Wealthiest Katanian: tied, stays in the supply',
+  'tb.rivers.poor': 'Poor Katanian (−2 VP): {players}',
   'tb.rivers.bridge': 'Bridge',
   'tb.rivers.site': 'Bridge site',
   'tb.help.tb-rivers': 'Roads cannot cross a river; build bridges (2 brick, 1 lumber, 3 gold back) on the bridge sites. Settlements and roads on river hexes earn 1 gold. Spend 2 gold for a resource (twice a turn) or sell resources for gold at your trade rate. Most gold: +1 VP; least gold: −2 VP.',
@@ -250,20 +250,20 @@ const en: Record<string, string> = {
 
 const zhHant: Record<string, string> = {
   'profile.tb-friendly-robber-2025': '商人與野蠻人 — 友善的強盜，3–4 人',
-  'profile.tb-harbors-2025': '商人與野蠻人 — 卡坦港口，3–4 人',
-  'profile.tb-friendly-robber-harbors-2025': '商人與野蠻人 — 友善的強盜＋卡坦港口，3–4 人',
+  'profile.tb-harbors-2025': '商人與野蠻人 — 喀坦港口，3–4 人',
+  'profile.tb-friendly-robber-harbors-2025': '商人與野蠻人 — 友善的強盜＋喀坦港口，3–4 人',
   'profile.tb-event-cards-2025': '商人與野蠻人 — 事件卡，3–4 人',
   'profile.tb-event-cards-friendly-robber-2025': '商人與野蠻人 — 事件卡＋友善的強盜，3–4 人',
-  'profile.tb-event-cards-harbors-2025': '商人與野蠻人 — 事件卡＋卡坦港口，3–4 人',
-  'profile.tb-event-cards-friendly-robber-harbors-2025': '商人與野蠻人 — 事件卡＋友善的強盜＋卡坦港口，3–4 人',
+  'profile.tb-event-cards-harbors-2025': '商人與野蠻人 — 事件卡＋喀坦港口，3–4 人',
+  'profile.tb-event-cards-friendly-robber-harbors-2025': '商人與野蠻人 — 事件卡＋友善的強盜＋喀坦港口，3–4 人',
   'profile.unavailable.tbEventDeck': '2025 年版規則書未列出事件卡牌組的內容，因此尚未啟用事件卡對局。',
-  'scenario.tb-fishing': '卡坦漁夫',
-  'scenario.tb-rivers': '卡坦河流',
+  'scenario.tb-fishing': '喀坦漁夫',
+  'scenario.tb-rivers': '喀坦河流',
   'scenario.tb-merchant-trains': '商隊',
   'scenario.tb-barbarian-attack': '野蠻人來襲',
   'scenario.tb-traders-barbarians': '商人與野蠻人',
   'variant.friendly-robber': '友善的強盜',
-  'variant.harbors': '卡坦港口',
+  'variant.harbors': '喀坦港口',
   'variant.event-cards': '事件卡',
 
   'tb.nobody': '無人',
@@ -279,7 +279,7 @@ const zhHant: Record<string, string> = {
   'tb.help.harbors': '港口上的建築先累積 3 分的玩家取得最強港口（2 分）；之後港口建築分數更高者立即接手。獲勝需 11 分。',
   'tb.help.event-cards': '每回合翻開一張事件卡取代擲骰：先處理事件，再以卡上的數字生產。',
 
-  'profile.tb-fishing-2025': '商人與野蠻人 — 卡坦漁夫，3–4 人',
+  'profile.tb-fishing-2025': '商人與野蠻人 — 喀坦漁夫，3–4 人',
   'event.tb.fishDrawn': '{player} 抽到 {count} 個魚標記。',
   'event.tb.bootDrawn': '{player} 撈到舊靴子，獲勝需多 1 分。',
   'event.tb.fishRefilled': '{count} 個用過的魚標記洗勻成為新的供應堆。',
@@ -323,7 +323,7 @@ const zhHant: Record<string, string> = {
   'tb.fishing.ground': '漁場 {number}',
   'tb.fishing.lake': '湖泊（2、3、11、12）',
   'tb.help.tb-fishing': '漁場與湖泊在其數字擲出時發給祕密魚標記（城市 2 個）。在你的回合花魚：2 移除強盜、3 搶一張卡、4 拿一個資源、5 免費道路、7 發展卡。最多持有 7 個。舊靴子持有者需 11 分獲勝，並可交給分數不低於自己的玩家。',
-  'profile.tb-rivers-2025': '商人與野蠻人 — 卡坦河流，3–4 人',
+  'profile.tb-rivers-2025': '商人與野蠻人 — 喀坦河流，3–4 人',
   'event.tb.goldGained': '{player} 獲得 {amount} 金（{cause}）。',
   'event.tb.goldBought': '{player} 支付 {gold} 金買入 1 個{resource}。',
   'event.tb.goldSold': '{player} 以 {rate} 個{resource}換得 1 金。',
@@ -348,9 +348,9 @@ const zhHant: Record<string, string> = {
   'tb.rivers.title': '河流',
   'tb.rivers.bridges': '剩餘橋梁：{count}',
   'tb.rivers.build': '建橋（2 磚、1 木）',
-  'tb.rivers.wealthiest': '最富有的卡坦人：{player}（+1 分）',
-  'tb.rivers.wealthiestNone': '最富有的卡坦人：平手，留在供應堆',
-  'tb.rivers.poor': '貧窮的卡坦人（−2 分）：{players}',
+  'tb.rivers.wealthiest': '最富有的喀坦人：{player}（+1 分）',
+  'tb.rivers.wealthiestNone': '最富有的喀坦人：平手，留在供應堆',
+  'tb.rivers.poor': '貧窮的喀坦人（−2 分）：{players}',
   'tb.rivers.bridge': '橋',
   'tb.rivers.site': '橋址',
   'tb.help.tb-rivers': '道路不能跨越河流；在橋址建橋（2 磚、1 木，返還 3 金）。在河流地形上建聚落或道路各得 1 金。可花 2 金買一個資源（每回合兩次），或依交易比例賣資源換金。金幣最多 +1 分，最少 −2 分。',

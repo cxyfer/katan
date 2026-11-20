@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#0c1d27" />
-    <title>卡坦桌遊桌 · Catan Table</title>
+    <title>喀坦桌遊桌 · Katan Table</title>
     <meta
       name="description"
-      content="在瀏覽器上和朋友同桌開拓的卡坦式多人桌遊。Play a Catan-style board game with friends in your browser."
+      content="在瀏覽器上和朋友同桌開拓的六角島嶼多人桌遊。Play a hex-island trading board game with friends in your browser."
     />
     <link rel="canonical" href="__PUBLIC_ORIGIN__/" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -16,20 +16,20 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Catan Table" />
+    <meta property="og:site_name" content="Katan Table" />
     <meta property="og:url" content="__PUBLIC_ORIGIN__/" />
     <meta property="og:locale" content="zh_TW" />
     <meta property="og:locale:alternate" content="en_US" />
-    <meta property="og:title" content="卡坦桌遊桌 · Catan Table" />
+    <meta property="og:title" content="喀坦桌遊桌 · Katan Table" />
     <meta
       property="og:description"
-      content="在瀏覽器上和朋友同桌開拓的卡坦式多人桌遊。Play a Catan-style board game with friends in your browser."
+      content="在瀏覽器上和朋友同桌開拓的六角島嶼多人桌遊。Play a hex-island trading board game with friends in your browser."
     />
     <meta property="og:image" content="__PUBLIC_ORIGIN__/og-image.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="卡坦桌遊桌：一座由六角地塊組成的島嶼" />
+    <meta property="og:image:alt" content="喀坦桌遊桌：一座由六角地塊組成的島嶼" />
     <meta name="twitter:card" content="summary_large_image" />
     <!--
       啟動畫面的 critical CSS：主樣式表下載完成前就要能繪製。React 接手後的
@@ -183,7 +183,8 @@
         var catalogs = JSON.parse(document.getElementById('boot-i18n').textContent);
         // 與 src/state/session.ts 的 readStoredLocale、src/i18n/index.ts 的 detectLocale 相同的判斷
         var locale = null;
-        try { locale = localStorage.getItem('catan.locale'); } catch (e) {}
+        // 0.4.x 以前存在 catan.locale；正式搬移由 src/state/session.ts 的 migrateLegacyStorage 負責
+        try { locale = localStorage.getItem('katan.locale') || localStorage.getItem('catan.locale'); } catch (e) {}
         if (locale !== 'en' && locale !== 'zh-Hant') {
           locale = 'zh-Hant';
           var languages = navigator.languages || [navigator.language || ''];

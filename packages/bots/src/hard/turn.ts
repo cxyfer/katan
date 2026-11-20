@@ -1,6 +1,6 @@
 /** hard 的單次決策資料：standard 的 `Turn` 加上計牌結果與分數估計。 */
 
-import { RESOURCES, type GameView, type PublicPlayerView, type Resource } from '@catan/rules';
+import { RESOURCES, type GameView, type PublicPlayerView, type Resource } from '@katan/rules';
 import type { Economy } from '../economy.ts';
 import { LEVEL_PARAMS } from '../level.ts';
 import { trackTable, type HandBelief, type TableBelief } from '../tracker.ts';

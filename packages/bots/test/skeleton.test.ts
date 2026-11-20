@@ -6,7 +6,7 @@
  * `turnContext(...)` 注入，逐一驗證鉤子的語意；註冊表本身只在 `vi.resetModules()` 後的獨立模組圖
  * 裡被改動，不會影響其他測試，也不碰 `REGISTERED`。
  *
- * 不依賴 `harness.ts`：盤面直接以 `@catan/rules` 的 API 建構。
+ * 不依賴 `harness.ts`：盤面直接以 `@katan/rules` 的 API 建構。
  */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -24,7 +24,7 @@ import {
   type ProfileDefinition,
   type PublicPendingView,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import {
   botActingOrder,
   botOwesAction,

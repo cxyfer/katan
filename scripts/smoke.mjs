@@ -26,11 +26,11 @@ if (!externalBase && !existsSync(serverEntry)) {
   process.exit(1);
 }
 if (!externalBase && !existsSync(join(webDist, 'index.html'))) {
-  console.error(`missing ${webDist}/index.html; run "pnpm --filter @catan/web build" first`);
+  console.error(`missing ${webDist}/index.html; run "pnpm --filter @katan/web build" first`);
   process.exit(1);
 }
 
-const dataDir = mkdtempSync(join(tmpdir(), 'catan-smoke-'));
+const dataDir = mkdtempSync(join(tmpdir(), 'katan-smoke-'));
 const child = externalBase
   ? null
   : spawn('node', [serverEntry], {

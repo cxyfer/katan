@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { GameEvent, GameState } from '@catan/rules';
+import type { GameEvent, GameState } from '@katan/rules';
 import { fallbackPolicy } from '../src/fallback.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';

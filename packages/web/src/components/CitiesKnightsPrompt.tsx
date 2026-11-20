@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RESOURCES } from '@catan/rules';
+import { RESOURCES } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { citiesKnightsHints, TRACKS } from '../board/citiesKnights.ts';
 import { vertexReference, viewReferenceContext } from '../board/references.ts';

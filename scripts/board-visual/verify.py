@@ -90,7 +90,7 @@ def start_server(out):
     entry = ROOT / 'packages/server/dist/server.mjs'
     if not entry.is_file() or not (DIST / 'index.html').is_file():
         raise Blocked('production artifacts missing; run pnpm build in this worktree')
-    temporary = tempfile.TemporaryDirectory(prefix='catan-board-visual-')
+    temporary = tempfile.TemporaryDirectory(prefix='katan-board-visual-')
     log = (out / 'server.log').open('w', encoding='utf-8')
     child = None
     try:
@@ -170,7 +170,7 @@ class Scenario:
             options.update(record_video_dir=str(out / 'videos'), record_video_size=options['viewport'])
         self.context = browser.new_context(**options)
         self.context.add_init_script("window.__appRafCalls=0; const originalRaf=window.requestAnimationFrame; window.requestAnimationFrame=function(callback){window.__appRafCalls++;return originalRaf.call(window,callback)}")
-        self.context.add_init_script(f"localStorage.setItem('catan.locale', {json.dumps(locale)});")
+        self.context.add_init_script(f"localStorage.setItem('katan.locale', {json.dumps(locale)});")
         self.context.route('**/api/**', self.route)
         self.context.route_web_socket('**/ws', self.connect)
         self.page = self.context.new_page()

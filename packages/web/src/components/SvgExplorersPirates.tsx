@@ -2,18 +2,18 @@
  * Explorers & Pirates pieces for the SVG board: the fog over unexplored hexes
  * (with a lifting animation when a hex is explored), harbour settlements,
  * ships with their cargo, crews, lairs, fish shoals, spice farms, the Council
- * of Catan and the pirate ship. Original hand-written shapes; colour is never
+ * of Katan and the pirate ship. Original hand-written shapes; colour is never
  * the only cue (ships carry the seat's dash pattern, cargo has distinct
  * silhouettes and every piece has a <title>).
  */
 
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import type { BoardEffectGroup } from '../board/animation.ts';
 import type { BoardGeometry } from '../board/geometry.ts';
 import { epView, shipLanes, shipSlots, type EpView } from '../board/explorersPirates.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { useT } from '../i18n/context.tsx';
-import type { EpCargo } from '@catan/rules';
+import type { EpCargo } from '@katan/rules';
 import { shade } from './SvgBoardArt.tsx';
 import { edgeAngle, edgeMidpoint, PirateShip, ShipPiece } from './SvgSeafarers.tsx';
 

@@ -21,7 +21,7 @@ import {
   type GameEvent,
   type GameState,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import type {
   AbandonConsentResult,
   AbandonProposeResult,
@@ -36,7 +36,7 @@ import type {
   SuspendConsentResult,
   SuspendProposeResult,
   WithdrawResult,
-} from '@catan/protocol';
+} from '@katan/protocol';
 import type { ServerConfig } from './config.ts';
 import {
   digestPayload,

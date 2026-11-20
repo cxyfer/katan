@@ -1,5 +1,5 @@
 /**
- * In-memory `CatanApi` used by tests. Every call is recorded so a test can
+ * In-memory `KatanApi` used by tests. Every call is recorded so a test can
  * assert what the UI actually asked the server to do, and every response can be
  * overridden per test.
  */
@@ -29,8 +29,8 @@ import type {
   SuspendConsentResult,
   SuspendProposeResult,
   WithdrawResult,
-} from '@catan/protocol';
-import type { AddBotBody, CatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
+} from '@katan/protocol';
+import type { AddBotBody, KatanApi, CreateRoomBody, RoomQuery, RoomSettingsBody } from '../api/client.ts';
 import {
   makeBotMember,
   makeChatMessage,
@@ -71,7 +71,7 @@ export interface FakeApiOptions {
   sessionResult?: ApiResult<{ player: PlayerIdentity }>;
 }
 
-export interface FakeApi extends CatanApi {
+export interface FakeApi extends KatanApi {
   calls: RecordedCall[];
   setSnapshot(snapshot: GameSnapshot | null): void;
   setRoom(room: RoomView | null): void;

@@ -17,7 +17,7 @@ import {
   type Commodity,
   type GameView,
   type Resource,
-} from '@catan/rules';
+} from '@katan/rules';
 
 export function plannedBank(view: Pick<GameView, 'bank' | 'profileId'>): Record<Resource, number> {
   const full = getProfile(view.profileId)?.bankPerResource ?? BANK_VIEW_CAP;

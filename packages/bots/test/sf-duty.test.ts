@@ -24,7 +24,7 @@ import {
   type ProfileDefinition,
   getProfile,
   getTopology,
-} from '@catan/rules';
+} from '@katan/rules';
 import { act, scriptedRng } from '../../rules/test/helpers.ts';
 import { corner, emptySeafarersGame, road, seafarersGame, settle, side } from '../../rules/test/seafarers-helpers.ts';
 import { roadStockLeft } from '../src/board.ts';

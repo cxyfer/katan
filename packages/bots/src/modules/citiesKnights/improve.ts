@@ -23,7 +23,7 @@ import {
   CK_TRACK_COMMODITY,
   type CkTrack,
   type Commodity,
-} from '@catan/rules';
+} from '@katan/rules';
 import { playerYield, type BoardModel } from '../../board.ts';
 import type { BotLevel } from '../../types.ts';
 import { ckView } from './view.ts';

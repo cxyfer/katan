@@ -33,8 +33,8 @@ import {
   type GameEvent,
   type GameState,
   type GameView,
-} from '@catan/rules';
-import { createBotPolicy, fallbackPolicy, type BotCommand, type BotPolicy } from '@catan/bots';
+} from '@katan/rules';
+import { createBotPolicy, fallbackPolicy, type BotCommand, type BotPolicy } from '@katan/bots';
 import { loadConfig, type BotSettings } from '../src/config.ts';
 import type { BotDriverDeps } from '../src/bot-driver.ts';
 import type { Connection } from '../src/rooms.ts';
@@ -834,7 +834,7 @@ describe('Seafarers + Cities & Knights with bot seats', () => {
   ] as const;
   for (const { profileId, bots, frame } of restartCases) {
     it(`resumes a waiting ${frame} frame in ${profileId} after a restart`, async () => {
-      const dir = mkdtempSync(join(tmpdir(), 'catan-sfck-bots-restart-'));
+      const dir = mkdtempSync(join(tmpdir(), 'katan-sfck-bots-restart-'));
       const overrides = { port: 0, host: '127.0.0.1', sqlitePath: join(dir, 'sfck.sqlite'), bots: { ...FAST_BOTS } };
       const scenario = restartFrames[frame];
       try {

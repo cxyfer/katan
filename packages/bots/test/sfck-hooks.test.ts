@@ -14,7 +14,7 @@ import {
   type GameState,
   type GameView,
   type PublicPendingView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { addKnight } from '../../rules/test/ck-helpers.ts';
 import { forceTurn, newGame } from '../../rules/test/helpers.ts';
 import { emptySeafarersGame, road, settle, ship } from '../../rules/test/seafarers-helpers.ts';

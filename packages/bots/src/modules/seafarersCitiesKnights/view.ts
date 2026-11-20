@@ -11,7 +11,7 @@ import {
   type SeafarersCitiesKnightsHints,
   type SeafarersCitiesKnightsView,
   type SfckBandit,
-} from '@catan/rules';
+} from '@katan/rules';
 import { moduleHints, moduleView } from '../view.ts';
 
 export { SEAFARERS_CITIES_KNIGHTS };

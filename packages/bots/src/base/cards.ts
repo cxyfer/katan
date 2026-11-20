@@ -1,6 +1,6 @@
 /** base 的發展卡輔助：能否打出，以及豐收之年的挑選。 */
 
-import { RESOURCES, type DevCardType, type Resource } from '@catan/rules';
+import { RESOURCES, type DevCardType, type Resource } from '@katan/rules';
 import { deficitOf, type Hand } from '../economy.ts';
 import type { Scored, TurnContext } from '../modules/types.ts';
 

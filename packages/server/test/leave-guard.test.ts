@@ -7,7 +7,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
-import type { LeaveRoomResult, RoomView, ServerMessage } from '@catan/protocol';
+import type { LeaveRoomResult, RoomView, ServerMessage } from '@katan/protocol';
 import type { Connection } from '../src/rooms.ts';
 import { runSetupOverApi, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 

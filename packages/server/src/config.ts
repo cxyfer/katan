@@ -1,6 +1,6 @@
 /** Runtime configuration from environment variables (see docs/OPERATIONS.md). */
 
-import { DEFAULT_POLICY, POLICY_BOUNDS, type PolicyBounds, type RoomPolicy } from '@catan/protocol';
+import { DEFAULT_POLICY, POLICY_BOUNDS, type PolicyBounds, type RoomPolicy } from '@katan/protocol';
 
 export interface ServerLimits {
   nicknameMaxLength: number;
@@ -35,10 +35,14 @@ export interface ServerConfig {
   /** Optional PostgreSQL schema; defaults to the connection's search path. */
   databaseSchema: string | null;
   sqlitePath: string;
+  /** 0.4.x 以前的 SQLite 檔；`sqlitePath` 不存在時複製過來（見 legacy-sqlite.ts）。 */
+  legacySqlitePath: string | null;
   sessionCookieName: string;
+  /** 舊版 cookie 名稱：仍可辨識身分，並在下一次 HTTP 回應改寫成 `sessionCookieName`。 */
+  legacySessionCookieNames: string[];
   cookieSecure: boolean;
   webDistPath: string | null;
-  /** 對外網址（如 https://catan.example.com），用於 og:image 等需絕對網址的 meta；未設定時由請求標頭推導。 */
+  /** 對外網址（如 https://katan.example.com），用於 og:image 等需絕對網址的 meta；未設定時由請求標頭推導。 */
   publicUrl: string | null;
   defaultPolicy: RoomPolicy;
   policyBounds: PolicyBounds;
@@ -95,8 +99,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     port: int(env.PORT, 3000),
     databaseUrl: env.DATABASE_URL && env.DATABASE_URL !== '' ? env.DATABASE_URL : null,
     databaseSchema: env.DATABASE_SCHEMA && env.DATABASE_SCHEMA !== '' ? env.DATABASE_SCHEMA : null,
-    sqlitePath: env.SQLITE_PATH ?? './.data/catan.sqlite',
-    sessionCookieName: env.SESSION_COOKIE_NAME ?? 'catan_session',
+    sqlitePath: env.SQLITE_PATH ?? './.data/katan.sqlite',
+    legacySqlitePath: env.LEGACY_SQLITE_PATH && env.LEGACY_SQLITE_PATH !== '' ? env.LEGACY_SQLITE_PATH : null,
+    sessionCookieName: env.SESSION_COOKIE_NAME ?? 'katan_session',
+    // 自訂名稱時由營運者自行負責；只有預設名稱才需要從 0.4.x 的 `catan_session` 遷移
+    legacySessionCookieNames: env.SESSION_COOKIE_NAME ? [] : ['catan_session'],
     cookieSecure: bool(env.COOKIE_SECURE, env.NODE_ENV === 'production'),
     webDistPath: env.WEB_DIST_PATH ?? null,
     publicUrl: env.PUBLIC_URL && env.PUBLIC_URL !== '' ? env.PUBLIC_URL : null,

@@ -8,7 +8,7 @@
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
-import type { GameEvent, GameState } from '@catan/rules';
+import type { GameEvent, GameState } from '@katan/rules';
 
 export type DialectKind = 'sqlite' | 'postgres';
 
@@ -182,7 +182,7 @@ export async function createDialect(options: {
   if (options.databaseUrl && options.databaseUrl.startsWith('sqlite')) {
     return createSqliteDialect(options.databaseUrl.replace(/^sqlite:(\/\/)?/, ''));
   }
-  return createSqliteDialect(options.sqlitePath ?? './.data/catan.sqlite');
+  return createSqliteDialect(options.sqlitePath ?? './.data/katan.sqlite');
 }
 
 // ---------------------------------------------------------------------------
@@ -363,6 +363,17 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
     // 既有房間沿用目前的進房順序；新房可選擇開局時隨機。
     id: '0003_room_order_mode',
     statements: [`ALTER TABLE rooms ADD COLUMN order_mode TEXT NOT NULL DEFAULT 'join'`],
+  },
+  {
+    // 事件 id `ck.defenderOfCatan` 改名為 `ck.defenderOfKatan`；已存的事件、對局紀錄與指令回條一併改寫
+    id: '0004_katan_event_ids',
+    statements: [
+      `UPDATE game_events SET type = 'ck.defenderOfKatan' WHERE type = 'ck.defenderOfCatan'`,
+      `UPDATE games SET state_json = REPLACE(state_json, '"ck.defenderOfCatan"', '"ck.defenderOfKatan"')
+        WHERE state_json LIKE '%"ck.defenderOfCatan"%'`,
+      `UPDATE command_receipts SET events_json = REPLACE(events_json, '"ck.defenderOfCatan"', '"ck.defenderOfKatan"')
+        WHERE events_json LIKE '%"ck.defenderOfCatan"%'`,
+    ],
   },
 ];
 

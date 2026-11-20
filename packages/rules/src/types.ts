@@ -170,7 +170,7 @@ export interface PlayerState {
   improvements: Record<'trade' | 'politics' | 'science', number>;
   /** City walls on the board (Cities & Knights). */
   cityWalls: number;
-  /** Defender of Catan VP tokens (Cities & Knights). */
+  /** Defender of Katan VP tokens (Cities & Knights). */
   defenders: number;
   /** VP tokens from expansion effects that are public. */
   bonusPoints: number;

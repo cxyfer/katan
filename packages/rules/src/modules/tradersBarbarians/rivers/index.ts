@@ -1,6 +1,6 @@
 /**
- * Rivers of Catan (TB25 pp. 11–12): bridges over the rivers, gold for
- * building along them, and the Wealthiest / Poor Catanian tiles.
+ * Rivers of Katan (TB25 pp. 11–12): bridges over the rivers, gold for
+ * building along them, and the Wealthiest / Poor Katanian tiles.
  */
 
 import { playerById, topologyOf } from '../../../analysis.ts';

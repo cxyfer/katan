@@ -108,7 +108,7 @@ def start_server(out: Path):
     global BASE
     if not SERVER_ENTRY.is_file() or not (DIST / "index.html").is_file():
         raise SystemExit("built artifacts missing; run pnpm build first")
-    temporary = tempfile.TemporaryDirectory(prefix="catan-target-picker-")
+    temporary = tempfile.TemporaryDirectory(prefix="katan-target-picker-")
     log = (out / "server.log").open("w", encoding="utf-8")
     port = free_port()
     env = {
@@ -294,7 +294,7 @@ def phone_pass(browser, storage, game_id: str, out: Path, files: list[str], chec
         is_mobile=True,
         device_scale_factor=1,
     )
-    context.add_init_script(f"localStorage.setItem('catan.locale', '{locale}');")
+    context.add_init_script(f"localStorage.setItem('katan.locale', '{locale}');")
     page = context.new_page()
     page.set_default_timeout(TIMEOUT_MS)
     errors: list[str] = []
@@ -324,7 +324,7 @@ def capture(out: Path) -> dict:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True, args=["--no-sandbox", "--enable-unsafe-swiftshader"])
             context = browser.new_context(viewport={"width": 1366, "height": 768}, locale="en-US", reduced_motion="reduce")
-            context.add_init_script("localStorage.setItem('catan.locale', 'en');")
+            context.add_init_script("localStorage.setItem('katan.locale', 'en');")
             page = context.new_page()
             page.set_default_timeout(TIMEOUT_MS)
             errors: list[str] = []

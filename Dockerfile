@@ -24,8 +24,8 @@ RUN pnpm install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY packages ./packages
 COPY scripts ./scripts
-RUN pnpm --filter @catan/web build \
- && pnpm --filter @catan/server build \
+RUN pnpm --filter @katan/web build \
+ && pnpm --filter @katan/server build \
  && mkdir -p /rootfs/data
 
 # --- runtime ----------------------------------------------------------------
@@ -42,7 +42,7 @@ ENV NODE_ENV=production
 ENV PATH=/busybox:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV PORT=3000
 ENV HOST=0.0.0.0
-ENV SQLITE_PATH=/data/catan.sqlite
+ENV SQLITE_PATH=/data/katan.sqlite
 ENV WEB_DIST_PATH=/app/web
 WORKDIR /app
 

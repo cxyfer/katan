@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
-import { COSTS } from '@catan/rules';
+import { COSTS } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
 import { describeTarget } from '../board/targets.ts';

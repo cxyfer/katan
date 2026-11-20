@@ -17,7 +17,7 @@
  * - 決定性（P4）：不讀事件、不消耗亂數；船 BFS 的 tie-break 一律取 edge index 較小者。
  */
 
-import type { GameView } from '@catan/rules';
+import type { GameView } from '@katan/rules';
 import type { BotModule } from './modules/types.ts';
 import {
   boardModel,

@@ -20,7 +20,7 @@ import {
   type MembershipRow,
   type RoomRow,
 } from '../src/db.ts';
-import { createGame, seededRng } from '@catan/rules';
+import { createGame, seededRng } from '@katan/rules';
 
 const postgresUrl = process.env.TEST_POSTGRES_URL;
 
@@ -627,13 +627,68 @@ for (const testCase of cases) {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           ['room_old', 'OLDCODE1', 'private', 'lobby', 'player_old', 'base-2025', 'fixed', 3, '{}', 1, null, 'then', 'then'],
         );
-        expect(await migrate(db)).toEqual(['0002_bots', '0003_room_order_mode']);
+        expect(await migrate(db)).toEqual(['0002_bots', '0003_room_order_mode', '0004_katan_event_ids']);
         const repo = new Repository(db);
         const old = await repo.findGuest('player_old');
         expect(old?.kind).toBe('human');
         expect(old?.bot_level).toBeNull();
         expect((await repo.findGuestByTokenHash('hash-old'))?.id).toBe('player_old');
         expect((await repo.findRoom('room_old'))?.order_mode).toBe('join');
+      } finally {
+        await db.close();
+      }
+    });
+  });
+}
+
+for (const testCase of cases) {
+  describe.skipIf(testCase.skip)(`katan event id migration (${testCase.label})`, () => {
+    it('rewrites stored ck.defenderOfCatan events, game logs and receipts', async () => {
+      const db =
+        testCase.kind === 'postgres'
+          ? await createDialect({
+              databaseUrl: postgresUrl,
+              schema: `t_katan_${Math.random().toString(36).slice(2, 10)}`,
+            })
+          : await createDialect({ sqlitePath: ':memory:' });
+      try {
+        // 模擬 0.4.x 的資料庫：套用到 0003，並寫入舊事件 id。
+        for (const migration of MIGRATIONS.filter((entry) => entry.id < '0004')) {
+          for (const statement of migration.statements) await db.run(statement);
+          await db.run('INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)', [migration.id, 'then']);
+        }
+        const legacyEvent = { seq: 7, type: 'ck.defenderOfCatan', params: { playerId: 'p1' } };
+        const otherEvent = { seq: 8, type: 'ck.defendersTied', params: {} };
+        await db.run(
+          `INSERT INTO games (id, room_id, profile_id, engine_version, state_json, revision, status,
+            pause_reason, result_json, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ['game_old', 'room_old', 'ck-2025', 'old', JSON.stringify({ log: [legacyEvent, otherEvent] }), 3, 'active', null, null, 'then', 'then'],
+        );
+        for (const event of [legacyEvent, otherEvent]) {
+          await db.run(
+            `INSERT INTO game_events (game_id, seq, revision, type, params_json, private_json, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            ['game_old', event.seq, 3, event.type, JSON.stringify(event.params), null, 'then'],
+          );
+        }
+        await db.run(
+          `INSERT INTO command_receipts (game_id, player_id, command_id, payload_digest, outcome, revision,
+            error_json, events_json, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ['game_old', 'p1', 'cmd_old', 'digest', 'accepted', 3, null, JSON.stringify([legacyEvent]), 'then'],
+        );
+
+        expect(await migrate(db)).toEqual(['0004_katan_event_ids']);
+        const types = await db.all<{ type: string }>('SELECT type FROM game_events ORDER BY seq');
+        expect(types.map((row) => row.type)).toEqual(['ck.defenderOfKatan', 'ck.defendersTied']);
+        const [game] = await db.all<{ state_json: string }>('SELECT state_json FROM games WHERE id = ?', ['game_old']);
+        expect(JSON.parse(game!.state_json).log.map((event: { type: string }) => event.type)).toEqual([
+          'ck.defenderOfKatan',
+          'ck.defendersTied',
+        ]);
+        const [receipt] = await db.all<{ events_json: string }>('SELECT events_json FROM command_receipts');
+        expect(JSON.parse(receipt!.events_json)[0].type).toBe('ck.defenderOfKatan');
       } finally {
         await db.close();
       }

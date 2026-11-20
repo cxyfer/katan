@@ -33,7 +33,7 @@ import {
   type CardKind,
   type GameView,
   type PublicModulePendingView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { handList } from '../../base/duty.ts';
 import type { BotCommand } from '../../types.ts';
 import type { BotModule } from '../types.ts';

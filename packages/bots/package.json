@@ -1,5 +1,5 @@
 {
-  "name": "@catan/bots",
+  "name": "@katan/bots",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,6 +12,6 @@
     "bench": "node bench/run.mjs"
   },
   "dependencies": {
-    "@catan/rules": "workspace:*"
+    "@katan/rules": "workspace:*"
   }
 }

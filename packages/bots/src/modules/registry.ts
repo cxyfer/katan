@@ -3,7 +3,7 @@
  * `profile.ruleModules` 的順序回傳已註冊的模組。
  */
 
-import type { ProfileDefinition } from '@catan/rules';
+import type { ProfileDefinition } from '@katan/rules';
 import { citiesKnightsBotModule } from './citiesKnights/index.ts';
 import { seafarersBotModule } from './seafarers/index.ts';
 import { seafarersCitiesKnightsBotModule } from './seafarersCitiesKnights/index.ts';

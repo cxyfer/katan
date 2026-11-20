@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { Offer } from '@catan/rules';
-import type { RoomView } from '@catan/protocol';
+import type { Offer } from '@katan/rules';
+import type { RoomView } from '@katan/protocol';
 import { App } from '../src/App.tsx';
 import { boardIntent } from '../src/board/intent.ts';
 import { ExchangePanel } from '../src/components/ExchangePanel.tsx';

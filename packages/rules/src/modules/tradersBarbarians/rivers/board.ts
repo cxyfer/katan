@@ -1,5 +1,5 @@
 /**
- * Rivers of Catan board (TB25 p. 11): two river tiles at fixed positions, the
+ * Rivers of Katan board (TB25 p. 11): two river tiles at fixed positions, the
  * other twelve hexes random, the 2 disc sharing the 12 hex, the robber on a
  * swamp.
  */

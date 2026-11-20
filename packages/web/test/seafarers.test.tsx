@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { actionHints, createGame, projectGame, seededRng, type GameView } from '@catan/rules';
+import { actionHints, createGame, projectGame, seededRng, type GameView } from '@katan/rules';
 import { boardIntent } from '../src/board/intent.ts';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { targetsFromGeometry } from '../src/board/projection.ts';

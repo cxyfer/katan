@@ -2,7 +2,7 @@
  * 交易：手牌效用、報價評估、自己報價的生命週期、銀行交易與開價條件。
  */
 
-import { CARD_KINDS, COMMODITIES, RESOURCES, type CardKind, type Command, type GameView, type Offer, type Resource } from '@catan/rules';
+import { CARD_KINDS, COMMODITIES, RESOURCES, type CardKind, type Command, type GameView, type Offer, type Resource } from '@katan/rules';
 import { plannedBankOf } from './bank.ts';
 import {
   canAfford,

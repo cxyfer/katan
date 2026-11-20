@@ -25,7 +25,7 @@ import {
   type GameState,
   type GameView,
   type Rng,
-} from '@catan/rules';
+} from '@katan/rules';
 import {
   botActingOrder,
   botSeed,

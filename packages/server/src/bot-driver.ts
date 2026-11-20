@@ -6,7 +6,7 @@
  * 整局的事件歷史（hard 規格 §5.1）；快取的歷史只是 `game_events` 的副本，重啟後重新載入。
  */
 
-import { actionHints, getProfile, projectGame, type GameEvent, type GameState, type GameView } from '@catan/rules';
+import { actionHints, getProfile, projectGame, type GameEvent, type GameState, type GameView } from '@katan/rules';
 import {
   BOT_PACING,
   botActingOrder,
@@ -21,8 +21,8 @@ import {
   type BotPolicy,
   type OfferPhase,
   type OwedAction,
-} from '@catan/bots';
-import type { CommandReceipt, CommandRequest } from '@catan/protocol';
+} from '@katan/bots';
+import type { CommandReceipt, CommandRequest } from '@katan/protocol';
 import type { ServerConfig } from './config.ts';
 import type { MemberRow, Repository } from './db.ts';
 import type { CommitNotice, GameCoordinator, GameLifecycleChange } from './game.ts';

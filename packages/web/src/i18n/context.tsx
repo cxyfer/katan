@@ -5,7 +5,7 @@
  */
 
 import { createContext, useCallback, useContext, type ReactNode } from 'react';
-import type { Locale } from '@catan/protocol';
+import type { Locale } from '@katan/protocol';
 import { DEFAULT_LOCALE, t } from './index.ts';
 
 export const LocaleContext = createContext<Locale>(DEFAULT_LOCALE);

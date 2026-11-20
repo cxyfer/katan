@@ -6,7 +6,7 @@ import type { CommandOutcome, GameState } from '../../types.ts';
 import type { ModuleContext, RulesKit } from '../types.ts';
 import { epState, epTurn, type Cargo, type EpTurn, type ExplorersPiratesState } from './state.ts';
 
-/** Per-colour pieces (EP25 p. 2; CATAN: 5 settlements, 15 roads). */
+/** Per-colour pieces (EP25 p. 2; Katan: 5 settlements, 15 roads). */
 export const EP_PIECES = { harbors: 4, ships: 3, settlers: 2, crews: 9, settlements: 5 } as const;
 export const COIN_SUPPLY = 148;
 export const FISH_HAULS = 6;

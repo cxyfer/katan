@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { AbandonProposalView, RoomView } from '@catan/protocol';
+import type { AbandonProposalView, RoomView } from '@katan/protocol';
 import { useLocale, useT } from '../i18n/context.tsx';
 import {
   abandonmentAllowed,

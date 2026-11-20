@@ -4,7 +4,7 @@
  * have neither, so every helper returns `null` there.
  */
 
-import type { GameView, Resource } from '@catan/rules';
+import type { GameView, Resource } from '@katan/rules';
 import { isEpShipCommand } from './explorersPirates.ts';
 
 export interface IslandClaimView {

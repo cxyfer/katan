@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getTopology, PROFILES, requireProfile, type GameState, type GameView } from '@catan/rules';
+import { getTopology, PROFILES, requireProfile, type GameState, type GameView } from '@katan/rules';
 import { botCommandLimit, botLevelsFor, botResponseCommands, botsCanPlay, createBotPolicy } from '../src/index.ts';
 import { winningLine } from '../src/hard/endgame.ts';
 import { HardTurn } from '../src/hard/turn.ts';

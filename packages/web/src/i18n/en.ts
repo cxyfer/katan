@@ -22,8 +22,8 @@ export const en: Catalog = {
   'board.rendererRetry': 'Retry 3D',
   'board.rendererSettings': 'Display',
   // --- app shell -----------------------------------------------------------
-  'app.title': 'Catan Table',
-  'app.tagline': 'Shared-table Catan-style play in the browser',
+  'app.title': 'Katan Table',
+  'app.tagline': 'Shared-table island trading in the browser',
   'audio.settings': 'Sound',
   'audio.settingsOpen': 'Sound settings',
   'audio.mute': 'Mute all sound',
@@ -801,8 +801,8 @@ export const en: Catalog = {
   'expansion.explorersPirates': 'Explorers & Pirates',
   'scenario.standard': 'Standard board',
   'scenario.new-shores': 'Heading for New Shores',
-  'box.base': 'CATAN base game',
-  'box.base-5-6': 'CATAN 5–6 player extension',
+  'box.base': 'Katan base game',
+  'box.base-5-6': 'Katan 5–6 player extension',
   'box.seafarers': 'Seafarers',
   'box.seafarers-5-6': 'Seafarers 5–6 player extension',
   'box.citiesKnights': 'Cities & Knights',
@@ -886,7 +886,7 @@ export const en: Catalog = {
   'error.E_UNAUTHORIZED': 'This browser identity is not authorized for that room.',
   'error.E_INVALID_INVITE': 'That invite code is invalid or expired.',
   'error.unknown': 'The table reported an unrecognised error ({code}).',
-  // --- service notices and rejections (owned by @catan/protocol) ----------
+  // --- service notices and rejections (owned by @katan/protocol) ----------
   'blocker.seats': 'Need at least {min} players to start; {seated} seated.',
   'blocker.notReady': 'Not ready: {players}',
   'blocker.disconnected': 'Not connected: {players}',

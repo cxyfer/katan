@@ -97,7 +97,7 @@ function resolveAttack(state: GameState, ctx: ModuleContext): void {
     } else if (top.length === 1) {
       summary.defender = top[0]!;
       playerById(state, top[0]!)!.defenders += 1;
-      ctx.kit.emit(state, 'ck.defenderOfCatan', { playerId: top[0]! });
+      ctx.kit.emit(state, 'ck.defenderOfKatan', { playerId: top[0]! });
     } else {
       summary.tied = top;
       ctx.kit.emit(state, 'ck.defendersTied', { players: top.slice() });

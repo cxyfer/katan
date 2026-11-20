@@ -3,7 +3,7 @@
  * 沿用 standard 的函式（例如 `planStep`、`usefulRoad`）時，讀到的也是這份經濟。
  */
 
-import { COSTS } from '@catan/rules';
+import { COSTS } from '@katan/rules';
 import { playerYield } from '../board.ts';
 import { bestRouteEdge, economyOf, etaRounds, scaleCost, type Economy, type Plan } from '../economy.ts';
 import type { HardTurn } from './turn.ts';

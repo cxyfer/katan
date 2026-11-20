@@ -17,8 +17,8 @@ import type {
   RoomSummaryView,
   RoomView,
   ServerConfigView,
-} from '@catan/protocol';
-import type { CardKind, Resource } from '@catan/rules';
+} from '@katan/protocol';
+import type { CardKind, Resource } from '@katan/rules';
 import type { RoomQuery } from '../api/client.ts';
 import { diceRollPresentations } from '../board/animation.ts';
 import { citiesKnightsView } from '../board/citiesKnights.ts';

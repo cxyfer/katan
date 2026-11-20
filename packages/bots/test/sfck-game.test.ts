@@ -32,7 +32,7 @@ import {
   type GameState,
   type GameView,
   type ProfileDefinition,
-} from '@catan/rules';
+} from '@katan/rules';
 import { forceTurn } from '../../rules/test/helpers.ts';
 import { banditTargets, defaultBanditTargets } from '../src/base/robber.ts';
 import { boardModel, routeLength } from '../src/board.ts';

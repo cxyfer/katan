@@ -1,6 +1,6 @@
 /** 模組組合的純函式：不讀環境、不消耗亂數，模組清單為空時等同沒有模組。 */
 
-import type { PublicModulePendingView, PublicPendingView } from '@catan/rules';
+import type { PublicModulePendingView, PublicPendingView } from '@katan/rules';
 import type { BotCommand, BotModule, Scored, TurnContext } from './types.ts';
 
 /** 模組 frame 的 kind 都是 `<module id>.<名稱>`；base frame 沒有句點。 */

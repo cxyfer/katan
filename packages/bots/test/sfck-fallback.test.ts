@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { GameEvent, GameState } from '@catan/rules';
+import type { GameEvent, GameState } from '@katan/rules';
 import { addKnight, edgeBetween } from '../../rules/test/ck-helpers.ts';
 import { settle, ship } from '../../rules/test/seafarers-helpers.ts';
 import { emptySfckGame } from '../../rules/test/sfck-helpers.ts';

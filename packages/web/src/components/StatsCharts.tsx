@@ -1,6 +1,6 @@
 import { useId, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import type { GameStats, GameView } from '@catan/rules';
-import type { BotLevel } from '@catan/protocol';
+import type { GameStats, GameView } from '@katan/rules';
+import type { BotLevel } from '@katan/protocol';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';

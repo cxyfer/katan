@@ -118,7 +118,7 @@ const COUNTED: Record<string, keyof CkCounters> = {
   'ck.eventRolled': 'events',
   'ck.barbariansAttack': 'attacks',
   'ck.cityPillaged': 'pillaged',
-  'ck.defenderOfCatan': 'defenders',
+  'ck.defenderOfKatan': 'defenders',
   'ck.defendersTied': 'defenderTies',
   'ck.knightRecruited': 'knightsRecruited',
   'ck.knightActivated': 'knightsActivated',

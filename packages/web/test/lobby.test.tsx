@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { RoomPolicy } from '@catan/protocol';
+import type { RoomPolicy } from '@katan/protocol';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
 import { createFakeApi, type FakeApi } from '../src/test/fake-api.ts';
@@ -255,7 +255,7 @@ describe('room creation picker', () => {
 
     fireEvent.change(capacity, { target: { value: '6' } });
     expect(screen.getByTestId('resolved-profile').textContent).toContain('Base game, 5–6 players (paired)');
-    expect(screen.getByTestId('resolved-profile').textContent).toContain('CATAN 5–6 player extension');
+    expect(screen.getByTestId('resolved-profile').textContent).toContain('Katan 5–6 player extension');
     fireEvent.click(screen.getByTestId('create-room'));
     await waitFor(() => expect(api.callsOf('createRoom')).toHaveLength(1));
     expect(api.callsOf('createRoom')[0]!.args[0]).toMatchObject({ capacity: 6, profileId: 'base-paired-2025' });

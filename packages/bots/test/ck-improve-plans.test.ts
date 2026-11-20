@@ -18,7 +18,7 @@ import {
   type Command,
   type GameState,
   type GameView,
-} from '@catan/rules';
+} from '@katan/rules';
 import { ckState } from '../../rules/src/modules/citiesKnights/state.ts';
 import { emptyCkGame, giveCommodities, hints, setBuilding, setImprovement, spreadVertices } from '../../rules/test/ck-helpers.ts';
 import { boardModel } from '../src/board.ts';

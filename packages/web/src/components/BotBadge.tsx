@@ -1,4 +1,4 @@
-import type { BotLevel } from '@catan/protocol';
+import type { BotLevel } from '@katan/protocol';
 import { useT } from '../i18n/context.tsx';
 import { botBadgeLabel } from '../state/bots.ts';
 import { GameIcon } from './GameArt.tsx';

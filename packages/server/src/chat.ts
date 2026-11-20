@@ -5,7 +5,7 @@
  * room/game membership epoch, and can never move cards or mutate game state.
  */
 
-import type { ChatMessageView, ChatPage } from '@catan/protocol';
+import type { ChatMessageView, ChatPage } from '@katan/protocol';
 import type { ServerConfig } from './config.ts';
 import { validateChatText } from './config.ts';
 import { newId, type ChatRow, type Repository } from './db.ts';

@@ -7,8 +7,8 @@
 import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
-import type { GameState } from '@catan/rules';
-import type { GameSnapshot, RoomView, ServerMessage } from '@catan/protocol';
+import type { GameState } from '@katan/rules';
+import type { GameSnapshot, RoomView, ServerMessage } from '@katan/protocol';
 import { loadConfig } from '../src/config.ts';
 import { createDialect, newId, newRoomCode, type SqlDialect } from '../src/db.ts';
 import { startService, type Logger } from '../src/main.ts';

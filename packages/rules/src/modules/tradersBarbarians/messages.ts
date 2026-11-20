@@ -5,9 +5,9 @@
 
 export const messages = {
   eventTypes: [
-    // Harbors of Catan
+    // Harbors of Katan
     'tb.strongestPorts',
-    // Fishing on Catan
+    // Fishing on Katan
     'tb.fishDrawn',
     'tb.bootDrawn',
     'tb.fishRefilled',
@@ -24,7 +24,7 @@ export const messages = {
     'tb.goldGained',
     'tb.goldBought',
     'tb.goldSold',
-    // Rivers of Catan
+    // Rivers of Katan
     'tb.bridgeBuilt',
     // Merchant Trains
     'tb.wagonCollected',
@@ -60,7 +60,7 @@ export const messages = {
     'tb.wagonStarted',
   ] as const,
   errorCodes: [
-    // Fishing on Catan
+    // Fishing on Katan
     'E_TB_FISH_NOT_HELD',
     'E_TB_FISH_SHORT',
     'E_TB_NO_ROBBER',
