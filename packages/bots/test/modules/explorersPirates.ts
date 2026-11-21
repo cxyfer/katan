@@ -2,8 +2,8 @@
  * Explorers & Pirates 的 ModuleTestKit（E&P 計畫 §6.1；E1）。kit 的 `id` 是 rules module id `explorersPirates`。
  *
  * - conservation：金幣 148 枚、魚 6 份（有魚任務時）、棋子不超過 `EP_PIECES`、每邊最多 2 艘船。每邊上限的
- *   豁免（C7）：移動中的船穿越滿格邊時該邊暫時有 3 艘；無出口的擱淺船也會就地結束移動（ep-2025.2，#97），
- *   所以 3 艘只在邊上有「行動者的船」時放行，超過 3 艘一律違規。
+ *   豁免（C7）：移動中的船穿越滿格邊時該邊暫時有 3 艘，所以只有行動者 active 船所在的邊可以有 3 艘；
+ *   ep-2025.2（#97）只允許進入之後仍有出口的滿格邊，靜止的 3 艘一律違規，超過 3 艘也一律違規。
  * - hideDifferently：打亂牌堆內部順序（discs、abilities、lairTokens），view 不投影這些；
  * - perturb：在只有 1 艘船的邊上，替非行動者補一艘空船，製造滿格邊（不超過每人 3 艘）；
  * - mechanics：策略送出的 `ep.*` 事件計數（保底代送的不算，Q2 只看策略）；
@@ -42,6 +42,7 @@ interface Slot {
   pools: Record<string, { discs: number[]; abilities: string[] }>;
   lairTokens: number[];
   nextShip: number;
+  turn?: { active: string | null };
 }
 
 const slotOf = (state: GameState): Slot | undefined => moduleStateOf<Slot>(state, ID);
@@ -76,8 +77,10 @@ function conservation(state: GameState): readonly string[] {
   }
   const perEdge = new Map<number, string[]>();
   for (const ship of slot.ships) perEdge.set(ship.edge, [...(perEdge.get(ship.edge) ?? []), ship.player]);
+  // C7：只豁免行動者 active 船所在的那一條邊（正在穿越滿格邊時暫時有 3 艘）。
+  const active = slot.ships.find((ship) => ship.id === slot.turn?.active && ship.player === turnPlayer);
   for (const [edge, owners] of perEdge) {
-    const exempt = owners.length === 3 && owners.includes(turnPlayer ?? '');
+    const exempt = owners.length === 3 && active !== undefined && active.edge === edge;
     if (owners.length > 2 && !exempt) problems.push(`edge ${edge} holds ${owners.length} ships`);
   }
   return problems;
