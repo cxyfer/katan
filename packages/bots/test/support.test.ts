@@ -71,6 +71,8 @@ describe('bot ruleset support', () => {
       'ep-land-ho-2025',
       'ep-pirate-lairs-2025',
       'ep-fish-2025',
+      'ep-spices-2025',
+      'ep-full-2025',
       'tb-friendly-robber-2025',
       'tb-harbors-2025',
       'tb-friendly-robber-harbors-2025',
@@ -88,10 +90,10 @@ describe('bot module registry', () => {
     const module = BOT_MODULES.get('explorersPirates')!;
     expect(module.maxCommandsPerWindow).toBe(80);
     expect(module.pacing?.['ep.moveShip']).toBe(400);
-    expect(SUPPORTED_PARTS).toEqual(['core', 'pirates', 'lairs', 'fish']);
+    expect(SUPPORTED_PARTS).toEqual(['core', 'pirates', 'lairs', 'fish', 'spices']);
     for (const profile of PROFILES.filter((item) => item.ruleModules.includes('explorersPirates'))) {
-      // E4a 起開放 Land Ho!、Pirate Lairs 與 Fish；Spices、Full 的香料部件還沒有策略。
-      const open = ['ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025'].includes(profile.id);
+      // E4b 起五個 E&P profile 全開。
+      const open = true;
       expect(botsCanPlay(profile), profile.id).toBe(open);
       expect(botLevelsFor(profile), profile.id).toEqual(open ? ['easy', 'standard'] : []);
       // 每視窗上限取各模組最大值，pacing 併入 BOT_PACING。
@@ -113,7 +115,9 @@ describe('bot module registry', () => {
     // 部件清單決定開放範圍。
     expect(epSupports(getProfile('ep-pirate-lairs-2025')!)).toBe(true);
     expect(epSupports(getProfile('ep-fish-2025')!)).toBe(true);
-    expect(epSupports(getProfile('ep-spices-2025')!)).toBe(false);
+    expect(epSupports(getProfile('ep-spices-2025')!)).toBe(true);
+    expect(epSupports(getProfile('ep-full-2025')!)).toBe(true);
+    expect(epSupports(getProfile('ep-spices-2025')!, ['core', 'pirates', 'lairs', 'fish'])).toBe(false);
     expect(epSupports(getProfile('ep-fish-2025')!, ['core', 'pirates', 'lairs'])).toBe(false);
     expect(epSupports(getProfile('ep-pirate-lairs-2025')!, ['core', 'lairs'])).toBe(false);
   });

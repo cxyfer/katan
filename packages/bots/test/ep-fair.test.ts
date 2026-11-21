@@ -19,7 +19,7 @@ import type { BotLevel } from '../src/types.ts';
 import { botSeats, cloneState, GAME_TIMEOUT, hideDifferently, mixedLevels, runBotGame, viewFor } from './harness.ts';
 import { explorersPiratesKit } from './modules/explorersPirates.ts';
 
-const PROFILES = ['ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025'] as const;
+const PROFILES = ['ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025'] as const;
 const KITS = [explorersPiratesKit];
 
 function deepFreeze<T>(value: T): T {
