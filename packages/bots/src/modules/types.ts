@@ -119,15 +119,35 @@ export interface BotEconomyHooks {
    */
   discardLimit?(model: BoardModel, base: number): number;
 
-  // ---- 只保留型別，骨架不呼叫。尚無實作者，簽章由第一個實作的版本定稿 ----
-  awards?(model: BoardModel): { readonly longestRoad?: boolean }; // 0.4.4
-  routeEdge?(model: BoardModel, edge: number): boolean | undefined; // 延後（SF §11-6）
+  // ---- 0.4.4 實作（T&B；S1 接上骨架）----
+  /**
+   * 這個 profile 有哪些 base 的獎勵（T&B 的 Traders：沒有最長道路）。任一模組回 `longestRoad: false`，骨架就不推動
+   * 最長道路計畫，也不為它估值；省略的欄位視為 true。只讀 model，不得消耗亂數。
+   */
+  awards?(model: BoardModel): { readonly longestRoad?: boolean };
+  /**
+   * 自己的道路搜尋（`searchRoads`，也就是聚落計畫的路線）能不能經過這條空邊。任一模組回 false 就不經過（T&B Rivers：
+   * 橋位只能蓋橋，自己的橋用完時就不能當路線）；省略或回 undefined 視為可以。只影響規劃，合法性仍以 hints 為準（P2）。
+   * 沒有模組提供時骨架不呼叫，搜尋與迭代順序不變。只讀 model，不得 throw、不得消耗亂數。
+   */
+  routeEdge?(model: BoardModel, edge: number): boolean | undefined;
 }
 
-/** 只保留型別（0.4.4、0.4.5）。 */
+/**
+ * 報價中的 goods（`trade.*` 的 `giveGoods`／`wantGoods`，T&B 的 gold）。0.4.4 由 S1 接上骨架；E&P 沿用。
+ * 組合：`goods` 依模組順序合併（同一個 good 先出現者優先）；`goodValue` 第一個非 undefined 勝出。
+ */
 export interface BotTradeHooks {
-  goods?(view: GameView, playerId: string): Readonly<Record<string, number>>; // 公開持有量
-  goodValue?(turn: TurnContext, good: string, amount: number): number | null; // null = 無法估值 → 拒絕
+  /** `playerId` 公開持有的 goods 數量；只回答自己定義的 good。規則 9 以它檢查雙方付得起。 */
+  goods?(view: GameView, playerId: string): Readonly<Record<string, number>>;
+  /**
+   * `amount` 個 `good` 對自己的價值，單位是「資源當量」：1 = 一張用得上的資源（`handUtility` 目標內的一張，
+   * 骨架以 `USEFUL_CARD_UTILITY` 換算）。`side` 是自己這一方：`'receive'` 收進（報價的 `giveGoods`）、`'pay'` 付出
+   * （`wantGoods`）。收進時 goods 暫時用不掉（例如本回合買不了）可以由模組自行折價；付出時不得低於市價（T&B 的 gold
+   * 是銀行的 `GOLD_PER_RESOURCE`），否則對手能用低價買走 goods 再向銀行換牌套利。模組不願付出時回 null。
+   * 不認識的 good 回 undefined；認識但不願估值回 null（報價一律拒絕）。不得消耗亂數。
+   */
+  goodValue?(turn: TurnContext, good: string, amount: number, side: 'receive' | 'pay'): number | null | undefined;
 }
 
 export interface BotModule {
@@ -139,7 +159,7 @@ export interface BotModule {
   // ---- 0.4.1 實作 ----
   /**
    * 保底義務。模組 frame 時，保底只在自己是 `responders[0]` 時才詢問（P3）。不得 throw：
-   * server 的保底呼叫不在 try 裡（packages/server/src/bot-driver.ts:332），例外會讓這一局不斷重試。
+   * server 的保底呼叫不在 try 裡（packages/server/src/bot-driver.ts:421），例外會讓這一局不斷重試。
    */
   duty?(view: GameView, selfId: string): BotCommand | null | undefined;
   /**
@@ -181,5 +201,7 @@ export interface BotModule {
   // ---- 只保留型別，骨架不呼叫 ----
   phase?(turn: TurnContext): BotCommand | null | undefined; // 0.4.5
   endWindow?(turn: TurnContext): BotCommand | null | undefined; // 0.4.5
-  readonly trade?: BotTradeHooks; // 0.4.4、0.4.5
+
+  // ---- 0.4.4 實作（T&B；S1 接上骨架）----
+  readonly trade?: BotTradeHooks;
 }

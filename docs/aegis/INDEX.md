@@ -5,6 +5,7 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-20 | work | docs/aegis/work/2026-11-20-bots-traders-barbarians.md | Traders & Barbarians bots (v0.4.4) implementation record: slices, decisions, Q1/Q2 results, server tests, reviews and follow-ups |
 | 2026-11-14 | work | docs/aegis/work/2026-11-14-bots-seat-bias.md | New Shores seat win-rate bias and standard-vs-naive breakdown (#174, #135): seat vs opening-position latin squares, before/after #171, counterfactual openings, setup-swap control and follow-up proposals |
 | 2026-11-12 | work | docs/aegis/work/2026-11-12-bots-seafarers-cities-knights.md | Seafarers + Cities & Knights bots (v0.4.3) implementation record: slices, decisions, Q1/Q2 results, reviews and follow-ups |
 | 2026-11-11 | work | docs/aegis/work/2026-11-11-bots-cities-knights.md | Cities & Knights bots (v0.4.2) implementation record: slices, decisions, Q1/Q2 results, reviews and follow-ups |

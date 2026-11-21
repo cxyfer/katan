@@ -17,6 +17,8 @@ export const GOLD_SUPPLY = 100;
 /** Gold paid for one resource of choice, and how often per turn (p. 12). */
 export const GOLD_PER_RESOURCE = 2;
 export const PURCHASES_PER_TURN = 2;
+/** 以港口比率賣出資源所得的金幣（p. 12）。 */
+export const GOLD_PER_SALE = 1;
 
 export interface CoinsState {
   gold: Record<string, number>;
@@ -96,10 +98,33 @@ function sellResources(state: GameState, actorId: string, command: ModuleCommand
   stats.bankTrades += 1;
   stats.bankGiven[resource] += rate;
   ctx.kit.emit(state, 'tb.goldSold', { playerId: actorId, resource, rate });
-  grantGold(state, actorId, 1, 'sale', ctx);
+  grantGold(state, actorId, GOLD_PER_SALE, 'sale', ctx);
   ctx.kit.checkVictory(state);
   return ctx.kit.accept(state);
 }
+
+/** 金幣的公開狀態，發布為 `modules.tradersBarbarians['tb-coins']`。 */
+export function coinsView(state: GameState, viewerId: string) {
+  const slot = partState<CoinsState>(state, COINS);
+  if (!slot) return null;
+  const used = slot.purchases[viewerId]?.windowId === state.windowId ? slot.purchases[viewerId]!.count : 0;
+  return {
+    gold: { ...slot.gold },
+    supply: slot.supply,
+    purchasesLeft: Math.max(0, PURCHASES_PER_TURN - used),
+    goldPerResource: GOLD_PER_RESOURCE,
+  };
+}
+
+export type TbCoinsView = NonNullable<ReturnType<typeof coinsView>>;
+
+/** 金幣買賣的提示：是否在自己的行動階段、各資源賣出的比率。 */
+export function coinsHints(state: GameState, playerId: string) {
+  const own = state.players[state.turn.seat]?.id === playerId && state.turn.phase === 'action' && !state.pending;
+  return { canTrade: own, sellRates: harborRates(state, playerId) };
+}
+
+export type TbCoinsHints = ReturnType<typeof coinsHints>;
 
 export const coinsPart: TbPart = {
   id: COINS,
@@ -121,19 +146,6 @@ export const coinsPart: TbPart = {
       if (good === 'gold') payGold(state, from, to, amount);
     },
   },
-  project(state, viewerId) {
-    const slot = partState<CoinsState>(state, COINS);
-    if (!slot) return null;
-    const used = slot.purchases[viewerId]?.windowId === state.windowId ? slot.purchases[viewerId]!.count : 0;
-    return {
-      gold: { ...slot.gold },
-      supply: slot.supply,
-      purchasesLeft: Math.max(0, PURCHASES_PER_TURN - used),
-      goldPerResource: GOLD_PER_RESOURCE,
-    };
-  },
-  actionHints(state, playerId) {
-    const own = state.players[state.turn.seat]?.id === playerId && state.turn.phase === 'action' && !state.pending;
-    return { canTrade: own, sellRates: harborRates(state, playerId) };
-  },
+  project: coinsView,
+  actionHints: coinsHints,
 };

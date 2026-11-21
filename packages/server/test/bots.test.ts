@@ -294,6 +294,20 @@ describe('B-ROOM bot seats', () => {
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-paired-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'ep-land-ho-2025')?.botSeats).toBe(false);
+    // Traders & Barbarians 的 8 個可玩 profile 開放；event-card 的 4 個沒有開放，也不提供 Bot。
+    for (const id of [
+      'tb-friendly-robber-2025',
+      'tb-harbors-2025',
+      'tb-friendly-robber-harbors-2025',
+      'tb-fishing-2025',
+      'tb-rivers-2025',
+      'tb-merchant-trains-2025',
+      'tb-barbarian-attack-2025',
+      'tb-traders-barbarians-2025',
+    ]) {
+      expect(profiles.find((profile) => profile.id === id)?.botSeats, id).toBe(true);
+    }
+    expect(profiles.find((profile) => profile.id === 'tb-event-cards-2025')?.botSeats).toBe(false);
     for (const profile of profiles) {
       expect(profile.botSeats).toBe(botsCanPlay(getProfile(profile.id)!));
       expect(profile.botLevels, profile.id).toEqual(botLevelsFor(getProfile(profile.id)!));
@@ -309,6 +323,9 @@ describe('B-ROOM bot seats', () => {
     expect(levels('sf-ck-new-shores-2025')).toEqual(['easy', 'standard']);
     expect(levels('sf-ck-new-shores-paired-2025')).toEqual(['easy', 'standard']);
     expect(levels('ep-land-ho-2025')).toEqual([]);
+    expect(levels('tb-merchant-trains-2025')).toEqual(['easy', 'standard']);
+    expect(levels('tb-traders-barbarians-2025')).toEqual(['easy', 'standard']);
+    expect(levels('tb-event-cards-2025')).toEqual([]);
   });
 
   it('seats hard bots only in profiles without rules modules', async () => {
@@ -404,6 +421,33 @@ describe('B-ROOM bot seats', () => {
       const switched = other.expectOk<RoomShape & { profileId: string }>(await other.get(`/api/rooms/${base.id}`));
       expect(switched.profileId).toBe(profileId);
       expect(switched.members.filter((member) => member.bot)).toHaveLength(1);
+    }
+  });
+
+  it('seats bots in Traders & Barbarians rooms, refuses hard and lets a room with bots switch to them', async () => {
+    // 一個變體、一個沒有 coins 的劇本、一個帶 coins 的劇本；全部 8 個的入座與切換在 traders-barbarians.test.ts。
+    for (const profileId of ['tb-friendly-robber-harbors-2025', 'tb-merchant-trains-2025', 'tb-traders-barbarians-2025']) {
+      const host = await harness.client('TbBots');
+      const room = await createRoom(host, { profileId, setupMode: 'variable' });
+      const added = host.expectOk<RoomShape>(await host.post(`/api/rooms/${room.id}/bots`, {}));
+      expect(added.members.filter((member) => member.bot)).toHaveLength(1);
+      // hard 只有基本版。
+      const refused = await host.post(`/api/rooms/${room.id}/bots`, { level: 'hard' });
+      host.expectError(refused, 'E_INVALID_BOT');
+      expect(refused.body.ok ? null : refused.body.error.params).toMatchObject({ reason: 'profileLevel', level: 'hard' });
+
+      const other = await harness.client('TbSwitch');
+      const base = await createRoom(other, { bots: 1 });
+      other.expectOk(await other.post(`/api/rooms/${base.id}/settings`, { profileId, setupMode: 'variable' }));
+      const switched = other.expectOk<RoomShape & { profileId: string }>(await other.get(`/api/rooms/${base.id}`));
+      expect(switched.profileId).toBe(profileId);
+      expect(switched.members.filter((member) => member.bot)).toHaveLength(1);
+
+      // 坐著 hard 的房間不能改成 T&B。
+      const hard = await createRoom(other, { bots: 1, botLevel: 'hard' });
+      const blocked = await other.post(`/api/rooms/${hard.id}/settings`, { profileId, setupMode: 'variable' });
+      other.expectError(blocked, 'E_INVALID_BOT');
+      expect(blocked.body.ok ? null : blocked.body.error.params).toMatchObject({ reason: 'profileLevel', level: 'hard' });
     }
   });
 

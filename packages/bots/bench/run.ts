@@ -28,6 +28,7 @@ import { baseProfileFor, naivePolicy, runBotGame, type BotSeat } from '../test/h
 import { citiesKnightsKit } from '../test/modules/citiesKnights.ts';
 import { seafarersKit } from '../test/modules/seafarers.ts';
 import { sfckKit } from '../test/modules/seafarersCitiesKnights.ts';
+import { tradersBarbariansKit } from '../test/modules/tradersBarbarians.ts';
 import { kitsOf, type ModuleTestKit } from '../test/modules/types.ts';
 import { BENCH_USAGE, BenchArgError, parseBenchArgs } from './args.ts';
 
@@ -50,7 +51,7 @@ declare const performance: { now(): number };
  * 模組測試工具（`test/modules/<id>.ts`）：有擴充的 profile 才有機制計數。擴充的測試切片把自己的 kit
  * 加在這裡。
  */
-const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit, citiesKnightsKit, sfckKit];
+const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit, citiesKnightsKit, sfckKit, tradersBarbariansKit];
 
 /**
  * 與 rules 腳本模擬（確定性的腳本座位）對照的平均回合數：`profile id → 人數 → 回合數`。沒有腳本模擬的

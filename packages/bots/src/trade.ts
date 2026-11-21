@@ -4,14 +4,18 @@
 
 import { CARD_KINDS, COMMODITIES, RESOURCES, type CardKind, type Command, type GameView, type Offer, type Resource } from '@katan/rules';
 import { plannedBankOf } from './bank.ts';
+import { targetOf } from './board.ts';
 import {
   canAfford,
   deficitOf,
+  mergeFirstWins,
   pay,
   type Cost,
   type Economy,
   type Hand,
 } from './economy.ts';
+import { firstAnswer } from './modules/compose.ts';
+import type { BotModule, TurnContext } from './modules/types.ts';
 import type { OfferPhase } from './types.ts';
 
 /** 每個行動視窗最多主動開價次數（規格 §5）。 */
@@ -26,6 +30,9 @@ function costTotal(cost: Cost): number {
  * 以目標成本衡量的手牌效用：目標內的牌價值高，過剩的牌依匯率折價。估值類迴圈，依 `Economy.kinds`；
  * 模組卡種沒有匯率時以 4:1 計流動性（與銀行不能換的牌一樣不好脫手），沒有權重時過剩的牌不值錢。
  */
+/** 目標內一張牌的效用；也是 goods 一個資源當量的效用（`goodsGain`）。 */
+export const USEFUL_CARD_UTILITY = 3;
+
 export function handUtility(economy: Economy, hand: Hand, target: Cost): number {
   let utility = 0;
   for (const kind of economy.kinds) {
@@ -33,11 +40,15 @@ export function handUtility(economy: Economy, hand: Hand, target: Cost): number 
     const need = target[kind] ?? 0;
     const useful = Math.min(held, need);
     const extra = Math.max(0, held - need);
-    const liquidity = 0.45 + (4 - (economy.rates[kind] ?? 4)) * 0.2;
-    utility += useful * 3 + extra * liquidity * (economy.weights[kind] ?? 0);
+    utility += useful * USEFUL_CARD_UTILITY + extra * liquidityOf(economy, kind) * (economy.weights[kind] ?? 0);
   }
   if (canAfford(hand, target)) utility += 2;
   return utility;
+}
+
+/** 過剩的牌依匯率折價的流動性係數。 */
+function liquidityOf(economy: Economy, kind: CardKind): number {
+  return 0.45 + (4 - (economy.rates[kind] ?? 4)) * 0.2;
 }
 
 /** 接受報價後效用的變化；付不起時回傳 -Infinity。報價條款以提出者的角度記錄。 */
@@ -62,14 +73,75 @@ function addHand(hand: Hand, cost: Cost): Hand {
 /**
  * 規則 9：報價只含 Bot 估得了價的東西。含 `kinds` 以外的卡種，或任何 goods 的報價無法估值，
  * 一律拒絕（不接受、不結算）。`kinds` 是 `Economy.kinds`，省略時只有資源。base 的報價必定通過：
- * 引擎只保留正數的卡種，goods 總數為 0 時會刪掉該欄位。
+ * 引擎只保留正數的卡種，goods 總數為 0 時會刪掉該欄位。策略骨架改用 `offerValue`，含 goods 的報價交給模組的
+ * trade 鉤子估值；這裡維持不看鉤子（hard 沿用）。
  */
 export function offerTermsKnown(offer: Offer, kinds: readonly CardKind[] = RESOURCES): boolean {
+  return cardTermsKnown(offer, kinds) && !hasGoods(offer);
+}
+
+function cardTermsKnown(offer: Offer, kinds: readonly CardKind[]): boolean {
   const known = (terms: Partial<Record<CardKind, number>>): boolean =>
     Object.entries(terms).every(([kind, amount]) => !(amount! > 0) || (kinds as readonly string[]).includes(kind));
-  const noGoods = (goods?: Record<string, number>): boolean =>
-    !goods || Object.values(goods).every((amount) => !(amount > 0));
-  return known(offer.give) && known(offer.want) && noGoods(offer.giveGoods) && noGoods(offer.wantGoods);
+  return known(offer.give) && known(offer.want);
+}
+
+/** 只留正數的 goods。 */
+function positiveGoods(goods?: Record<string, number>): [string, number][] {
+  return goods ? Object.entries(goods).filter(([, amount]) => amount > 0) : [];
+}
+
+function hasGoods(offer: Offer): boolean {
+  return positiveGoods(offer.giveGoods).length > 0 || positiveGoods(offer.wantGoods).length > 0;
+}
+
+/** `playerId` 公開持有的 goods：依模組順序合併各模組的 `trade.goods`，同一個 good 先出現者優先。 */
+export function goodsOf(modules: readonly BotModule[], view: GameView, playerId: string): Record<string, number> {
+  return mergeFirstWins(modules.map((module) => module.trade?.goods?.(view, playerId) ?? {}));
+}
+
+/** `amount` 個 `good` 在 `side` 這一方的價值（資源當量）：第一個非 undefined 勝出；沒有人估得了、null 或非有限值都回 null。 */
+function goodValueOf(turn: TurnContext, good: string, amount: number, side: 'receive' | 'pay'): number | null {
+  const value = firstAnswer(turn.modules, (module) => module.trade?.goodValue?.(turn, good, amount, side));
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * 規則 9 的 goods 部分：報價以提出者的角度記錄，所以收到 `giveGoods`、付出 `wantGoods`。下列任一成立就回
+ * null（拒絕）：有 good 無法估值、`wantGoods` 超過自己持有、`giveGoods` 超過提出者公開持有。否則回傳淨值，
+ * 由資源當量乘上 `USEFUL_CARD_UTILITY`（一張用得上的牌），換算到 `handUtility` 的尺度：goods 能換成缺的牌，
+ * 以過剩牌計價會讓 Bot 用遠高於銀行的價格付出 goods。收進的 goods 用不掉時由模組在 `goodValue` 折價（只有收的一方，
+ * 付出的一方不得低於市價）。沒有模組提供
+ * trade 鉤子時一律 null。
+ */
+export function goodsGain(turn: TurnContext, offer: Offer): number | null {
+  const receive = positiveGoods(offer.giveGoods);
+  const pay = positiveGoods(offer.wantGoods);
+  const mine = goodsOf(turn.modules, turn.view, turn.ctx.selfId);
+  const theirs = goodsOf(turn.modules, turn.view, offer.from);
+  if (pay.some(([good, amount]) => amount > (mine[good] ?? 0))) return null;
+  if (receive.some(([good, amount]) => amount > (theirs[good] ?? 0))) return null;
+  let units = 0;
+  for (const [terms, sign, side] of [[receive, 1, 'receive'], [pay, -1, 'pay']] as const) {
+    for (const [good, amount] of terms) {
+      const value = goodValueOf(turn, good, amount, side);
+      if (value === null) return null;
+      units += sign * value;
+    }
+  }
+  return units * USEFUL_CARD_UTILITY;
+}
+
+/**
+ * 接受報價後的效用變化，含 goods；規則 9 拒絕或付不起時回 -Infinity。不含 goods 的報價與
+ * `offerTermsKnown` 加 `offerGain` 相同，不呼叫任何 trade 鉤子。
+ */
+export function offerValue(turn: TurnContext, offer: Offer): number {
+  const { economy } = turn;
+  if (!cardTermsKnown(offer, economy.kinds)) return -Infinity;
+  if (!hasGoods(offer)) return offerGain(economy, offer);
+  const goods = goodsGain(turn, offer);
+  return goods === null ? -Infinity : offerGain(economy, offer) + goods;
 }
 
 /** 對手接近勝利時不幫他；領先越多，要求的好處越大。 */
@@ -77,7 +149,7 @@ export function acceptMargin(view: GameView, selfId: string, proposerId: string,
   const proposer = view.players.find((player) => player.id === proposerId);
   const me = view.players.find((player) => player.id === selfId);
   if (!proposer || !me) return Infinity;
-  if (proposer.publicScore >= view.victoryTarget - 2) return Infinity;
+  if (proposer.publicScore >= targetOf(view, proposerId) - 2) return Infinity;
   const lead = proposer.publicScore - me.publicScore;
   return base + Math.max(0, lead - 1) * 0.75;
 }
@@ -136,19 +208,59 @@ export function ownOfferStep(
   return null;
 }
 
+/** 這個回合自己和銀行換過的牌（`bankTradesThisTurn`）。 */
+export interface SameTurnBankTrades {
+  /** 從銀行換進來的卡種。 */
+  received: ReadonlySet<CardKind>;
+  /** 換給銀行的卡種。 */
+  gave: ReadonlySet<CardKind>;
+}
+
+const NO_TRADES: SameTurnBankTrades = { received: new Set(), gave: new Set() };
+
+/**
+ * 這個回合（自最近一次 `turn.started` 起）自己做過的銀行交易：收進來的牌與換出去的牌。策略沒有跨呼叫的狀態，
+ * 所以從投影的事件歷史推回來；歷史缺漏或沒有附（測試用的投影）時兩個集合都是空的。`handRelief` 與
+ * `bankTradeToward` 共用（#173、#180）。
+ */
+export function bankTradesThisTurn(view: Pick<GameView, 'events'>, selfId: string): SameTurnBankTrades {
+  const received = new Set<CardKind>();
+  const gave = new Set<CardKind>();
+  for (let index = view.events.length - 1; index >= 0; index--) {
+    const event = view.events[index]!;
+    if (event.type === 'turn.started') break;
+    if (event.type !== 'trade.bank' || event.params.playerId !== selfId) continue;
+    received.add(event.params.receive as CardKind);
+    gave.add(event.params.give as CardKind);
+  }
+  return { received, gave };
+}
+
 /**
  * 以銀行／港口補齊 `nextCost`，只用 `reserve` 以外的過剩卡牌。全部補得起才回傳
  * 第一筆交易，否則回傳 null（避免換了一半又蓋不成）。卡種依 `Economy.kinds`：模組卡種要有匯率才能付出，
  * 要銀行有存量才能換入。
+ *
+ * 給了 `selfId` 時不來回換（#180），與 `handRelief` 相同：同一回合內不換出這個回合從銀行換進來的牌（不論是
+ * relief、模組的換匯還是前一筆計畫交易換進來的），也不換回換出去過的牌；這樣補不齊就不交易。計畫的排名會隨手牌
+ * 改變，C&K 模組先為改良換進主軌道的 commodity，下一步的計畫交易又把它當成過剩的牌換掉，就是這種來回。
  */
-export function bankTradeToward(view: GameView, economy: Economy, nextCost: Cost, reserve: Cost): Command | null {
+export function bankTradeToward(
+  view: GameView,
+  economy: Economy,
+  nextCost: Cost,
+  reserve: Cost,
+  selfId?: string,
+): Command | null {
   const { kinds } = economy;
+  const traded = selfId === undefined ? NO_TRADES : bankTradesThisTurn(view, selfId);
   const missing = deficitOf(economy.hand, nextCost);
   if (kinds.every((kind) => (missing[kind] ?? 0) === 0)) return null;
+  if (kinds.some((kind) => (missing[kind] ?? 0) > 0 && traded.gave.has(kind))) return null;
   const spare: Hand = { ...economy.hand };
   for (const kind of kinds) {
     const keep = Math.max(nextCost[kind] ?? 0, reserve[kind] ?? 0);
-    spare[kind] = Math.max(0, (economy.hand[kind] ?? 0) - keep);
+    spare[kind] = traded.received.has(kind) ? 0 : Math.max(0, (economy.hand[kind] ?? 0) - keep);
   }
   // 投影的銀行只到上限（#137）：規劃連續幾筆交易時把「至少」當成足夠。
   const bank = plannedBankOf(view, kinds);

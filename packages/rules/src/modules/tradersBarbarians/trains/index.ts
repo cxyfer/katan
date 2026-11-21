@@ -7,7 +7,7 @@
 import { playerById, topologyOf } from '../../../analysis.ts';
 import type { GameState, ModulePending } from '../../../types.ts';
 import type { ModuleCommand, ModuleContext } from '../../types.ts';
-import { frameKind, moduleFrame, TB, type TbPart } from '../part.ts';
+import { frameKind, moduleFrame, TB, type TbBoardChoice, type TbPart } from '../part.ts';
 import { partState, requirePartState, setPartState } from '../state.ts';
 import { trainStarts, type TrainStart } from './board.ts';
 
@@ -31,15 +31,15 @@ export interface TrainsState {
 }
 
 /** Bids and assignments of one voting round (public: bids are face up). */
-interface VoteData {
+export interface VoteData {
   bids: Record<string, { wool: number; grain: number }>;
   assignments: Record<string, number>;
   active: string;
 }
 
-const BID = frameKind('wagonBid');
-const ASSIGN = frameKind('wagonAssign');
-const PLACE = frameKind('wagonPlace');
+export const BID = frameKind('wagonBid');
+export const ASSIGN = frameKind('wagonAssign');
+export const PLACE = frameKind('wagonPlace');
 
 function trains(state: GameState): TrainsState {
   return requirePartState<TrainsState>(state, TRAINS);
@@ -244,6 +244,47 @@ function place(state: GameState, actorId: string, command: ModuleCommand, ctx: M
   return ctx.kit.accept(state);
 }
 
+/** 車廂、列車前端與投票中的出價（出價公開）。 */
+export function trainsView(state: GameState) {
+  const slot = partState<TrainsState>(state, TRAINS);
+  if (!slot) return null;
+  const frame = moduleFrame(state);
+  const vote = frame && ([BID, ASSIGN, PLACE] as string[]).includes(frame.kind) ? (frame.data as unknown as VoteData) : null;
+  return {
+    oasis: slot.oasis,
+    starts: slot.starts.map((start) => ({ ...start })),
+    wagons: slot.wagons.map((wagon) => ({ ...wagon })),
+    heads: Object.fromEntries(trainHeads(state)),
+    supply: slot.supply,
+    collected: slot.collectedWindow === state.windowId,
+    betweenWagons: betweenWagons(state),
+    vote: vote ? { bids: JSON.parse(JSON.stringify(vote.bids)) as VoteData['bids'], assignments: { ...vote.assignments }, active: vote.active } : null,
+  };
+}
+
+export type TbTrainsView = NonNullable<ReturnType<typeof trainsView>>;
+
+/** 車廂可放的位置、是否輪到出價，以及分配／放置時的盤面選擇。 */
+export function trainsHints(state: GameState, playerId: string) {
+  const slot = partState<TrainsState>(state, TRAINS);
+  if (!slot) return null;
+  const frame = moduleFrame(state);
+  const locations = [...wagonLocations(state).keys()];
+  const mine = !!frame && frame.responders.includes(playerId);
+  const board: TbBoardChoice | null = mine && frame!.kind === PLACE
+    ? { kind: 'edge', commandType: 'tb.placeWagon', labelId: 'tb.trains.place', targets: locations }
+    : mine && frame!.kind === ASSIGN
+      ? { kind: 'edge', commandType: 'tb.assignWagon', labelId: 'tb.trains.assign', targets: locations }
+      : null;
+  return {
+    locations,
+    bidTurn: mine && frame!.kind === BID && frame!.responders[0] === playerId,
+    board,
+  };
+}
+
+export type TbTrainsHints = NonNullable<ReturnType<typeof trainsHints>>;
+
 export const trainsPart: TbPart = {
   id: TRAINS,
   frames: [BID, ASSIGN, PLACE],
@@ -293,41 +334,10 @@ export const trainsPart: TbPart = {
     if (!partState<TrainsState>(state, TRAINS)) return 0;
     return betweenWagons(state).filter((vertex) => state.board.buildings[vertex]?.player === playerId).length * BETWEEN_WAGONS_POINTS;
   },
-  project(state) {
-    const slot = partState<TrainsState>(state, TRAINS);
-    if (!slot) return null;
-    const frame = moduleFrame(state);
-    const vote = frame && [BID, ASSIGN, PLACE].includes(frame.kind) ? (frame.data as unknown as VoteData) : null;
-    return {
-      oasis: slot.oasis,
-      starts: slot.starts.map((start) => ({ ...start })),
-      wagons: slot.wagons.map((wagon) => ({ ...wagon })),
-      heads: Object.fromEntries(trainHeads(state)),
-      supply: slot.supply,
-      collected: slot.collectedWindow === state.windowId,
-      betweenWagons: betweenWagons(state),
-      vote: vote ? { bids: JSON.parse(JSON.stringify(vote.bids)), assignments: { ...vote.assignments }, active: vote.active } : null,
-    };
-  },
+  project: trainsView,
   projectPending(_state, frame) {
     // Bids and assignments are public (face-up cards, open negotiation).
     return { kind: frame.kind, module: frame.module, responders: frame.responders.slice(), data: JSON.parse(JSON.stringify(frame.data)) };
   },
-  actionHints(state, playerId) {
-    const slot = partState<TrainsState>(state, TRAINS);
-    if (!slot) return null;
-    const frame = moduleFrame(state);
-    const locations = [...wagonLocations(state).keys()];
-    const mine = !!frame && frame.responders.includes(playerId);
-    const board = mine && frame!.kind === PLACE
-      ? { kind: 'edge', commandType: 'tb.placeWagon', labelId: 'tb.trains.place', targets: locations }
-      : mine && frame!.kind === ASSIGN
-        ? { kind: 'edge', commandType: 'tb.assignWagon', labelId: 'tb.trains.assign', targets: locations }
-        : null;
-    return {
-      locations,
-      bidTurn: mine && frame!.kind === BID && frame!.responders[0] === playerId,
-      board,
-    };
-  },
+  actionHints: trainsHints,
 };

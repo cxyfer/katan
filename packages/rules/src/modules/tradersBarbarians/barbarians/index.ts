@@ -10,7 +10,7 @@ import { playerStats } from '../../../stats.ts';
 import { RESOURCES, type GameState, type ModulePending, type Resource } from '../../../types.ts';
 import type { ModuleCommand, ModuleContext } from '../../types.ts';
 import { grantGold } from '../coins/index.ts';
-import { frameKind, moduleFrame, TB, type TbPart } from '../part.ts';
+import { frameKind, moduleFrame, TB, type TbBoardChoice, type TbPart } from '../part.ts';
 import { partState, requirePartState, setPartState } from '../state.ts';
 import { CASTLE, coastalHexes } from './board.ts';
 import { hexIndex } from '../boardHelpers.ts';
@@ -53,12 +53,12 @@ export interface BarbarianAttackState {
   discard: BaCard[];
 }
 
-const STEAL = frameKind('baSteal');
-const CAPTURE = frameKind('baCapture');
-const KNIGHTHOOD = frameKind('baKnighthood');
-const SWIFT = frameKind('baSwiftKnight');
-const TREASON = frameKind('baTreason');
-const KNIGHTS = frameKind('baKnights');
+export const STEAL = frameKind('baSteal');
+export const CAPTURE = frameKind('baCapture');
+export const KNIGHTHOOD = frameKind('baKnighthood');
+export const SWIFT = frameKind('baSwiftKnight');
+export const TREASON = frameKind('baTreason');
+export const KNIGHTS = frameKind('baKnights');
 
 function ba(state: GameState): BarbarianAttackState {
   return requirePartState<BarbarianAttackState>(state, BARBARIAN_ATTACK);
@@ -245,10 +245,15 @@ function placeKnight(state: GameState, actorId: string, command: ModuleCommand, 
   return done(state, active, ctx);
 }
 
-interface TreasonData {
+export interface TreasonData {
   moved: number;
   sources: number[];
   targets: number[];
+}
+
+/** 回合結束移動騎士的 frame 資料：本回合已移到的邊。 */
+export interface KnightsData {
+  moved: number[];
 }
 
 /** Legal (from, to) moves for the next Treason step; from -1 is the supply. */
@@ -332,7 +337,7 @@ function moveKnight(state: GameState, actorId: string, command: ModuleCommand, c
   const { frame: pending, error } = activeFrame(state, KNIGHTS, actorId, ctx);
   if (error) return error;
   const slot = ba(state);
-  const moved = pending.data.moved as number[];
+  const moved = (pending.data as unknown as KnightsData).moved;
   const knight = slot.knights.find((candidate) => candidate.edge === command.from && candidate.player === actorId);
   if (!knight || moved.includes(knight.edge)) return ctx.kit.fail('E_ILLEGAL_TARGET', { from: command.from });
   const boost = command.boost === true;
@@ -439,6 +444,73 @@ function expel(state: GameState, ctx: ModuleContext): void {
   }
 }
 
+/** 城堡、海岸蠻族、騎士、俘虜與 BA 牌堆的公開狀態。 */
+export function barbarianAttackView(state: GameState) {
+  const slot = partState<BarbarianAttackState>(state, BARBARIAN_ATTACK);
+  if (!slot) return null;
+  return {
+    castle: slot.castle,
+    castleEdges: castleEdges(state),
+    coastal: [...slot.coastal],
+    barbarians: { ...slot.barbarians },
+    conquered: slot.coastal.filter((hex) => isConquered(state, hex)),
+    conqueredBuildings: state.board.buildings.map((building, vertex) => (building && conqueredVertex(state, vertex) ? vertex : -1)).filter((vertex) => vertex >= 0),
+    supply: slot.supply,
+    knights: slot.knights.map((knight) => ({ ...knight })),
+    knightsLeft: Object.fromEntries(state.players.map((player) => [player.id, knightsLeft(state, player.id)])),
+    prisoners: { ...slot.prisoners },
+    deckCount: slot.deck.length,
+    discard: [...slot.discard],
+    orientations: Object.fromEntries(castleEdges(state).map((edge) => [edge, edgeOrientation(state, edge)])),
+  };
+}
+
+export type TbBarbarianAttackView = NonNullable<ReturnType<typeof barbarianAttackView>>;
+
+/** BA 卡、騎士移動、Treason 與偷牌 frame 的提示。 */
+export function barbarianAttackHints(state: GameState, playerId: string) {
+  const slot = partState<BarbarianAttackState>(state, BARBARIAN_ATTACK);
+  if (!slot) return null;
+  const pending = moduleFrame(state);
+  const mine = !!pending && pending.responders[0] === playerId;
+  const own = state.players[state.turn.seat]?.id === playerId && state.turn.phase === 'action' && !state.pending;
+  let board: TbBoardChoice | null = null;
+  if (mine && pending!.kind === CAPTURE) board = { kind: 'hex', commandType: 'tb.baCapture', labelId: 'tb.ba.capture', targets: coastalWithBarbarians(state) };
+  if (mine && pending!.kind === KNIGHTHOOD) {
+    board = { kind: 'edge', commandType: 'tb.baPlaceKnight', labelId: 'tb.ba.placeKnight',
+      targets: castleEdges(state).filter((edge) => !slot.knights.some((knight) => knight.edge === edge)) };
+  }
+  if (mine && pending!.kind === SWIFT) {
+    board = { kind: 'edge', commandType: 'tb.baPlaceKnight', labelId: 'tb.ba.placeKnight',
+      targets: topologyOf(state).edges.map((_, edge) => edge).filter((edge) => !slot.knights.some((knight) => knight.edge === edge)) };
+  }
+  const moved = mine && pending!.kind === KNIGHTS ? (pending!.data as unknown as KnightsData).moved : [];
+  const knightMoves = mine && pending!.kind === KNIGHTS
+    ? slot.knights.filter((knight) => knight.player === playerId && !moved.includes(knight.edge)).map((knight) => ({
+      from: knight.edge,
+      targets: knightTargets(state, knight.edge, KNIGHT_RANGE),
+      boosted: knightTargets(state, knight.edge, KNIGHT_BOOSTED_RANGE),
+    }))
+    : [];
+  const targets: Record<string, number[]> = {};
+  for (const move of knightMoves) {
+    targets[`tb.moveKnight:${move.from}:0`] = move.targets;
+    targets[`tb.moveKnight:${move.from}:1`] = move.boosted;
+  }
+  return {
+    canBuildCard: own && slot.deck.length + slot.discard.length > 0,
+    board,
+    targets,
+    knightMoves,
+    treasonMoves: mine && pending!.kind === TREASON ? treasonMoves(state, pending!.data as unknown as TreasonData) : [],
+    stealVictims: mine && pending!.kind === STEAL
+      ? state.players.filter((player) => player.id !== playerId && totalResources(player) > 0).map((player) => player.id)
+      : [],
+  };
+}
+
+export type TbBarbarianAttackHints = NonNullable<ReturnType<typeof barbarianAttackHints>>;
+
 export const barbarianAttackPart: TbPart = {
   id: BARBARIAN_ATTACK,
   frames: [STEAL, CAPTURE, KNIGHTHOOD, SWIFT, TREASON, KNIGHTS],
@@ -489,7 +561,7 @@ export const barbarianAttackPart: TbPart = {
   onEndTurn(state, actorId, ctx) {
     const slot = ba(state);
     if (slot.knights.some((knight) => knight.player === actorId)) {
-      ctx.kit.enqueuePending(state, frame(KNIGHTS, actorId, { moved: [] }));
+      ctx.kit.enqueuePending(state, frame(KNIGHTS, actorId, { moved: [] } satisfies KnightsData as unknown as Record<string, unknown>));
       return 'defer';
     }
     expel(state, ctx);
@@ -516,68 +588,11 @@ export const barbarianAttackPart: TbPart = {
     });
     return score;
   },
-  project(state) {
-    const slot = partState<BarbarianAttackState>(state, BARBARIAN_ATTACK);
-    if (!slot) return null;
-    return {
-      castle: slot.castle,
-      castleEdges: castleEdges(state),
-      coastal: [...slot.coastal],
-      barbarians: { ...slot.barbarians },
-      conquered: slot.coastal.filter((hex) => isConquered(state, hex)),
-      conqueredBuildings: state.board.buildings.map((building, vertex) => (building && conqueredVertex(state, vertex) ? vertex : -1)).filter((vertex) => vertex >= 0),
-      supply: slot.supply,
-      knights: slot.knights.map((knight) => ({ ...knight })),
-      knightsLeft: Object.fromEntries(state.players.map((player) => [player.id, knightsLeft(state, player.id)])),
-      prisoners: { ...slot.prisoners },
-      deckCount: slot.deck.length,
-      discard: [...slot.discard],
-      orientations: Object.fromEntries(castleEdges(state).map((edge) => [edge, edgeOrientation(state, edge)])),
-    };
-  },
+  project: barbarianAttackView,
   projectPending(state, pending) {
     const data = pending.kind === TREASON || pending.kind === KNIGHTS ? JSON.parse(JSON.stringify(pending.data)) : {};
     void state;
     return { kind: pending.kind, module: pending.module, responders: pending.responders.slice(), data };
   },
-  actionHints(state, playerId) {
-    const slot = partState<BarbarianAttackState>(state, BARBARIAN_ATTACK);
-    if (!slot) return null;
-    const pending = moduleFrame(state);
-    const mine = !!pending && pending.responders[0] === playerId;
-    const own = state.players[state.turn.seat]?.id === playerId && state.turn.phase === 'action' && !state.pending;
-    let board: unknown = null;
-    if (mine && pending!.kind === CAPTURE) board = { kind: 'hex', commandType: 'tb.baCapture', labelId: 'tb.ba.capture', targets: coastalWithBarbarians(state) };
-    if (mine && pending!.kind === KNIGHTHOOD) {
-      board = { kind: 'edge', commandType: 'tb.baPlaceKnight', labelId: 'tb.ba.placeKnight',
-        targets: castleEdges(state).filter((edge) => !slot.knights.some((knight) => knight.edge === edge)) };
-    }
-    if (mine && pending!.kind === SWIFT) {
-      board = { kind: 'edge', commandType: 'tb.baPlaceKnight', labelId: 'tb.ba.placeKnight',
-        targets: topologyOf(state).edges.map((_, edge) => edge).filter((edge) => !slot.knights.some((knight) => knight.edge === edge)) };
-    }
-    const moved = mine && pending!.kind === KNIGHTS ? (pending!.data.moved as number[]) : [];
-    const knightMoves = mine && pending!.kind === KNIGHTS
-      ? slot.knights.filter((knight) => knight.player === playerId && !moved.includes(knight.edge)).map((knight) => ({
-        from: knight.edge,
-        targets: knightTargets(state, knight.edge, KNIGHT_RANGE),
-        boosted: knightTargets(state, knight.edge, KNIGHT_BOOSTED_RANGE),
-      }))
-      : [];
-    const targets: Record<string, number[]> = {};
-    for (const move of knightMoves) {
-      targets[`tb.moveKnight:${move.from}:0`] = move.targets;
-      targets[`tb.moveKnight:${move.from}:1`] = move.boosted;
-    }
-    return {
-      canBuildCard: own && slot.deck.length + slot.discard.length > 0,
-      board,
-      targets,
-      knightMoves,
-      treasonMoves: mine && pending!.kind === TREASON ? treasonMoves(state, pending!.data as unknown as TreasonData) : [],
-      stealVictims: mine && pending!.kind === STEAL
-        ? state.players.filter((player) => player.id !== playerId && totalResources(player) > 0).map((player) => player.id)
-        : [],
-    };
-  },
+  actionHints: barbarianAttackHints,
 };

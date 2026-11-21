@@ -13,6 +13,7 @@ import {
 import { CK_BOTS_RELEASED, CK_PACING, CK_PENDING_COMMANDS } from '../src/modules/citiesKnights/index.ts';
 import { SEAFARERS_PACING } from '../src/modules/seafarers/index.ts';
 import { SFCK_BOTS_RELEASED, SFCK_PACING } from '../src/modules/seafarersCitiesKnights/index.ts';
+import { TB_PACING } from '../src/modules/tradersBarbarians/index.ts';
 
 /** 以 base-2025 為底、加上指定規則模組的 fixture profile。 */
 function profileWith(ruleModules: readonly string[]): ProfileDefinition {
@@ -22,14 +23,13 @@ function profileWith(ruleModules: readonly string[]): ProfileDefinition {
 /**
  * 骨架仍然不呼叫、只保留型別的鉤子（定案 §1.1）；哪一版實作了某個鉤子，就在同一個 PR 從這裡移除。
  * `robberTargets` 與 `rescore` 在 0.4.3 起由骨架呼叫（SFCK-P），組合層（SFCK-1）是第一個定義 `robberTargets` 的模組。
+ * `trade` 與 `economy.awards` 在 0.4.4 起由骨架呼叫（T&B S1）；`economy.routeEdge` 在 0.4.4 起由 `searchRoads` 呼叫（T&B S8，
+ * Rivers 的橋位）。
  */
-const RESERVED_HOOKS = ['phase', 'endWindow', 'trade'] as const;
-const RESERVED_ECONOMY_HOOKS = ['awards', 'routeEdge'] as const;
+const RESERVED_HOOKS = ['phase', 'endWindow'] as const;
 
 function reservedHooksOf(module: BotModule): string[] {
-  const found: string[] = RESERVED_HOOKS.filter((hook) => hook in module);
-  for (const hook of RESERVED_ECONOMY_HOOKS) if (module.economy && hook in module.economy) found.push(`economy.${hook}`);
-  return found;
+  return RESERVED_HOOKS.filter((hook) => hook in module);
 }
 
 describe('bot ruleset support', () => {
@@ -79,6 +79,14 @@ describe('bot ruleset support', () => {
       'ck-paired-2025',
       'sf-ck-new-shores-2025',
       'sf-ck-new-shores-paired-2025',
+      'tb-friendly-robber-2025',
+      'tb-harbors-2025',
+      'tb-friendly-robber-harbors-2025',
+      'tb-fishing-2025',
+      'tb-rivers-2025',
+      'tb-merchant-trains-2025',
+      'tb-barbarian-attack-2025',
+      'tb-traders-barbarians-2025',
     ]);
   });
 });
@@ -87,10 +95,7 @@ describe('bot module registry', () => {
   it('registers no module that defines a hook the skeleton still never calls', () => {
     for (const module of BOT_MODULES.values()) expect(reservedHooksOf(module), module.id).toEqual([]);
     // 檢查器本身要抓得到保留的鉤子。
-    expect(reservedHooksOf({ id: 'fx', phase: () => null, economy: { awards: () => ({}) } })).toEqual([
-      'phase',
-      'economy.awards',
-    ]);
+    expect(reservedHooksOf({ id: 'fx', phase: () => null, endWindow: () => null })).toEqual(['phase', 'endWindow']);
   });
 
   it('does not mistake prototype keys for registered modules', () => {
@@ -100,10 +105,14 @@ describe('bot module registry', () => {
   });
 
   it('merges pacing, command limits and response commands from the registered modules', () => {
-    // 已註冊 Seafarers、Cities & Knights 與兩者的組合層：節奏是三者的合併，鍵不重複，也不蓋掉 base 的鍵。
-    expect(BOT_PACING).toEqual({ ...SEAFARERS_PACING, ...CK_PACING, ...SFCK_PACING });
+    // 已註冊 Seafarers、Cities & Knights、兩者的組合層與 Traders & Barbarians：節奏是四者的合併，鍵不重複，也不蓋掉
+    // base 的鍵（T&B 的鍵一律是 `tb.*`）。
+    expect(BOT_PACING).toEqual({ ...SEAFARERS_PACING, ...CK_PACING, ...SFCK_PACING, ...TB_PACING });
     expect(Object.keys(BOT_PACING)).toHaveLength(
-      Object.keys(SEAFARERS_PACING).length + Object.keys(CK_PACING).length + Object.keys(SFCK_PACING).length,
+      Object.keys(SEAFARERS_PACING).length +
+        Object.keys(CK_PACING).length +
+        Object.keys(SFCK_PACING).length +
+        Object.keys(TB_PACING).length,
     );
     // 組合層的 `knight.chasePirate` 與 C&K 的 `knight.chaseRobber` 同為 900；`pending.moveRobber` 同樣不列。
     expect(SFCK_PACING).toEqual({ 'knight.chasePirate': 900 });

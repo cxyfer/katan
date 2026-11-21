@@ -204,6 +204,7 @@ describe('seafarers + cities & knights module exports (bot plan SFCK-X)', () => 
       explorersPirates: 'explorersPirates',
       citiesKnights: 'citiesKnights',
       seafarersCitiesKnights: seafarersCitiesKnightsModule.id,
+      tradersBarbarians: 'tradersBarbarians',
     };
     expect(ids.seafarersCitiesKnights).toBe('seafarersCitiesKnights');
     const state = emptySfckGame(4);

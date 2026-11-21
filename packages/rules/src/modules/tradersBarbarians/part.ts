@@ -21,8 +21,18 @@ export interface TbPart extends Omit<RulesModule, 'id' | 'commands' | 'pendingCo
 }
 
 /** Frame kind owned by the T&B module. */
-export function frameKind(step: string): `${string}.${string}` {
+export function frameKind<S extends string>(step: S): `${typeof TB}.${S}` {
   return `${TB}.${step}`;
+}
+
+/** part 要玩家在盤面上做的選擇（發布為 hints 根層的 `board`）：要送的指令與可選的 hex／邊／交點。 */
+export interface TbBoardChoice {
+  kind: 'hex' | 'edge' | 'vertex';
+  commandType: string;
+  labelId: string;
+  targets: number[];
+  /** 接收目標索引的指令欄位；省略時依 `kind`。 */
+  field?: string;
 }
 
 export function hasVariant(profile: ProfileDefinition, variant: string): boolean {

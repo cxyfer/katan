@@ -16,7 +16,7 @@ import {
   type Resource,
 } from '@katan/rules';
 import { bankHas } from './bank.ts';
-import { playerYield } from './board.ts';
+import { playerYield, targetOf } from './board.ts';
 import { banditChoice, robberCauseOf } from './base/robber.ts';
 import { canPlay, plentyPick } from './base/cards.ts';
 import { freeRoadDecision, roadDirectionScore, usefulRoad } from './base/roads.ts';
@@ -41,10 +41,10 @@ import type { BotModule, Scored, TurnContext } from './modules/types.ts';
 import { Turn } from './turn.ts';
 import {
   acceptMargin,
+  bankTradesThisTurn,
   bankTradeToward,
-  offerGain,
   offersAwaitingMe,
-  offerTermsKnown,
+  offerValue,
   ownOfferStep,
   ownOpenOffers,
   proposeOffer,
@@ -210,8 +210,8 @@ function respondToOffers(turn: TurnContext): Command | null {
   const { view, ctx, params } = turn;
   if (view.turn.phase !== 'action') return null;
   for (const offer of offersAwaitingMe(view, ctx.selfId)) {
-    // 規則 9：無法估值的報價視為不划算，下面的比較自然得到 declined。
-    const gain = offerTermsKnown(offer, turn.economy.kinds) ? offerGain(turn.economy, offer) : -Infinity;
+    // 規則 9：無法估值的報價（含 goods 的檢查）視為不划算，下面的比較自然得到 declined。
+    const gain = offerValue(turn, offer);
     const margin = acceptMargin(view, ctx.selfId, offer.from, params.acceptMargin);
     return {
       type: 'trade.respond',
@@ -251,7 +251,7 @@ function knightDecision(turn: TurnContext): Command | null {
   const holder = view.awards.largestArmy;
   const holderKnights = holder ? view.players.find((player) => player.id === holder)?.playedKnights ?? 0 : 0;
   const takesArmy = holder !== me.id && me.playedKnights + 1 >= 3 && me.playedKnights + 1 > holderKnights;
-  const wins = takesArmy && (me.ownScore ?? me.publicScore) + 2 >= view.victoryTarget;
+  const wins = takesArmy && (me.ownScore ?? me.publicScore) + 2 >= targetOf(view, me.id);
   const unblock = blockedPips(turn) >= 3;
   if (!unblock && !wins && !(params.eagerKnights && takesArmy)) return null;
   const choice = banditChoice(turn, 'knight');
@@ -269,8 +269,8 @@ function actionDecision(turn: TurnContext, duty: () => BotCommand | null): BotCo
 
   // 2. 別人直接對我（行動者）提出的反報價：划算就結算，否則拒絕。
   for (const offer of offersAwaitingMe(view, ctx.selfId)) {
-    // 規則 9：無法估值的報價視為不划算，下面的比較自然得到 declined。
-    const gain = offerTermsKnown(offer, turn.economy.kinds) ? offerGain(turn.economy, offer) : -Infinity;
+    // 規則 9：無法估值的報價視為不划算，下面的比較自然得到 declined。提出者付不起 goods 時 offerValue 已回 -Infinity。
+    const gain = offerValue(turn, offer);
     const margin = acceptMargin(view, ctx.selfId, offer.from, params.acceptMargin);
     const proposer = view.players.find((player) => player.id === offer.from);
     const proposerCanPay = (proposer?.handSize ?? 0) >= CARD_KINDS.reduce((sum, kind) => sum + (offer.give[kind] ?? 0), 0);
@@ -406,7 +406,7 @@ function buildDecision(turn: TurnContext): BotCommand | null {
   if (primary) {
     const step = planStep(turn, primary);
     if (step) return step;
-    const trade = bankTradeToward(view, economy, primary.nextCost, primary.cost);
+    const trade = primaryBankTrade(turn, primary);
     if (trade) return trade;
   }
 
@@ -482,6 +482,16 @@ export function dedupeCandidates(candidates: readonly Scored<BotCommand>[]): Sco
   return out;
 }
 
+/**
+ * 主要計畫的銀行交易（`bankTradeToward`，帶同回合的守門，#180）。下一步是一條不在 hints 合法道路裡的邊時不換：換齊了
+ * `planStep` 也蓋不成。例如 T&B Rivers 的橋位只能蓋橋，rivers 補不齊橋的成本時，照道路的成本換牌只是白白換掉牌。
+ */
+export function primaryBankTrade(turn: TurnContext, plan: Plan): Command | null {
+  const edge = plan.kind === 'settlement' || plan.kind === 'longestRoad' ? plan.roads[0] : undefined;
+  if (edge !== undefined && !turn.view.hints!.legalRoads.includes(edge)) return null;
+  return bankTradeToward(turn.view, turn.economy, plan.nextCost, plan.cost, turn.ctx.selfId);
+}
+
 /** 計畫的下一步；付不起或已不合法時回傳 null。 */
 export function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
   const { view } = turn;
@@ -514,23 +524,6 @@ export function planStep(turn: TurnContext, plan: Plan): BotCommand | null {
       // 只有模組計畫會走到這裡；模組對不屬於自己的 kind 必須回 undefined。
       return firstAnswer(turn.modules, (module) => module.planStep?.(turn, plan)) ?? null;
   }
-}
-
-/**
- * 這個回合（自最近一次 `turn.started` 起）自己做過的銀行交易：收進來的牌與換出去的牌。策略沒有跨呼叫的狀態，
- * 所以從投影的事件歷史推回來；歷史缺漏或沒有附（測試用的投影）時兩個集合都是空的。
- */
-function bankTradesThisTurn(view: GameView, selfId: string): { received: Set<CardKind>; gave: Set<CardKind> } {
-  const received = new Set<CardKind>();
-  const gave = new Set<CardKind>();
-  for (let index = view.events.length - 1; index >= 0; index--) {
-    const event = view.events[index]!;
-    if (event.type === 'turn.started') break;
-    if (event.type !== 'trade.bank' || event.params.playerId !== selfId) continue;
-    received.add(event.params.receive as CardKind);
-    gave.add(event.params.give as CardKind);
-  }
-  return { received, gave };
 }
 
 /**

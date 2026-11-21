@@ -61,6 +61,34 @@ export const BOT_FAMILIES: readonly BotTestFamily[] = [
     profiles: ['sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025'],
     files: ['sfck-game.test.ts', 'sfck-fair.test.ts', 'sfck-fuzz.test.ts', 'sfck-fallback.test.ts'],
   },
+  {
+    // T&B 計畫 §6.6：各 part 的 B-GAME 與固定盤面檔明列自己的 profile；全部座位只走保底的有界局涵蓋 8 個 profile。
+    id: 'tradersBarbarians',
+    profiles: [
+      'tb-friendly-robber-2025',
+      'tb-harbors-2025',
+      'tb-friendly-robber-harbors-2025',
+      'tb-fishing-2025',
+      'tb-rivers-2025',
+      'tb-merchant-trains-2025',
+      'tb-barbarian-attack-2025',
+      'tb-traders-barbarians-2025',
+    ],
+    files: [
+      'tb-variants-fr.test.ts',
+      'tb-variants-h.test.ts',
+      'tb-variants-frh.test.ts',
+      'tb-fishing.test.ts',
+      'tb-coins.test.ts',
+      'tb-rivers.test.ts',
+      'tb-rivers-decisions.test.ts',
+      'tb-trains.test.ts',
+      'tb-barbarian-attack.test.ts',
+      'tb-traders.test.ts',
+      'tb-fallback.3p.test.ts',
+      'tb-fallback.4p.test.ts',
+    ],
+  },
 ];
 
 /** 有專屬測試檔的 family 所涵蓋的 profile；通用矩陣跳過它們。 */
