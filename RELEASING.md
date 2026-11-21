@@ -56,6 +56,12 @@ squash the integration PR. Publish the stable `vX.Y.Z` from `master` afterwards 
 `🔖 release: vX.Y.Z` commit. Only pre-release tags may be created from a release branch; a stable
 `vX.Y.Z` tag still belongs on `master`.
 
+The release branch's `package.json` still declares the last rc (`X.Y.Z-rc.N`), so the integration PR
+brings that value onto `master`. This is expected, and automated reviewers flag it as a version
+mismatch: do not edit `package.json` in the integration PR. Reply that the stable bump follows as its
+own commit, and never tag the merge commit, because the build job rejects a tag that does not equal
+`package.json`.
+
 ## Rules
 
 1. **The tag must equal the `package.json` version.** `v0.2.0` requires `"version": "0.2.0"`. That
@@ -140,6 +146,15 @@ BOTS_SEEDS=10 pnpm --filter @katan/bots exec vitest run   # bot gate: 10 seeds p
 
 For a stable release, check that [Player notes](#player-notes) already has the entry for this
 version; `pnpm verify` fails after the bump if it is missing.
+
+A stable release also has a version checklist, because `package.json` is the one file the tag must
+match (see [Rules](#rules)):
+
+1. Before the integration PR, `package.json` on the release branch is the last `X.Y.Z-rc.N`.
+2. After the integration PR merges, `package.json` on `master` is still that rc value.
+3. Step 2 below bumps it to the bare `X.Y.Z` in its own `🔖 release: vX.Y.Z` commit on `master`.
+4. Before step 3, confirm `node -p "require('./package.json').version"` prints `X.Y.Z` on the commit
+   you are about to tag.
 
 ### 2. Bump the version
 
