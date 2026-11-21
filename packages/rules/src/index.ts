@@ -17,7 +17,24 @@ export * from './seafarers-boards.ts';
 export { EP_SCENARIOS, epScenario, type EpScenarioId, type EpMission, type EpRegion, type EpTile } from './explorers-pirates-boards.ts';
 export type { ExplorersPiratesView, ExplorersPiratesHints } from './modules/explorersPirates/index.ts';
 export type { SeafarersView, SeafarersHints, SeafarersGoldPendingView } from './modules/seafarers/index.ts';
-export { COSTS as EP_COSTS, TRACK_VALUES as EP_TRACK_VALUES, EP_PIECES } from './modules/explorersPirates/core.ts';
+export {
+  COSTS as EP_COSTS,
+  TRACK_VALUES as EP_TRACK_VALUES,
+  EP_PIECES,
+  COIN_SUPPLY as EP_COIN_SUPPLY,
+  FISH_HAULS as EP_FISH_HAULS,
+  START_GOLD as EP_START_GOLD,
+  BASE_MP as EP_BASE_MP,
+  EXTRA_MP as EP_EXTRA_MP,
+  LAIR_TOKENS as EP_LAIR_TOKENS,
+  TRACK_BONUS as EP_TRACK_BONUS,
+} from './modules/explorersPirates/core.ts';
+export { DISCOVERY_GOLD as EP_DISCOVERY_GOLD } from './modules/explorersPirates/explore.ts';
+export { SWIFT_MAX as EP_SWIFT_MAX } from './modules/explorersPirates/movement.ts';
+export { GOLD_BUYS_PER_TURN as EP_GOLD_BUYS_PER_TURN } from './modules/explorersPirates/economy.ts';
+export { PIRATE_FRAME as EP_PIRATE_FRAME } from './modules/explorersPirates/pirate.ts';
+export type { SetupStep as EpSetupStep } from './modules/explorersPirates/setup.ts';
+export { CARGO_SIZE as EP_CARGO_SIZE, HOLD_CAPACITY as EP_HOLD_CAPACITY } from './modules/explorersPirates/state.ts';
 export type { Cargo as EpCargo, SpiceAbility as EpSpiceAbility, EpSite } from './modules/explorersPirates/state.ts';
 export { SHIP_COST } from './modules/seafarers/ships.ts';
 export { GOLD_FRAME } from './modules/seafarers/gold.ts';
