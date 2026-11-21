@@ -1,16 +1,16 @@
 /**
- * B-FAIR：Land Ho! 的隱藏資訊與公平性（E&P 計畫 §6.1）。
+ * B-FAIR：Land Ho! 與 Pirate Lairs 的隱藏資訊與公平性（E&P 計畫 §6.1；E3 加入 Pirate Lairs）。
  *
  * 兩個只差在隱藏資訊的狀態，投影相同，決策也必須相同：
  * - 對手的資源組成互換、發展卡與牌庫順序（harness `hideDifferently`）；
- * - 霧區的圓片順序（E&P kit：`pools.discs`、`abilities`、`lairTokens`；view 不投影它們）；
+ * - 霧區的圓片順序（E&P kit：`pools.discs`、`abilities`、`lairTokens`；view 不投影它們，Pirate Lairs 的巢穴數字也在內）；
  * - view 有沒有附事件歷史（策略只讀公開狀態，不讀事件）。
  * 決策不得修改傳入的投影；同一局重播，決策序列逐一相同。
  * 取樣涵蓋 Action 與 Movement 兩個子階段，standard 與 easy 各至少 100 次比較。
  */
 
 import { describe, expect, it } from 'vitest';
-import type { GameState, GameView } from '@katan/rules';
+import { EP_PIRATE_FRAME, type GameState, type GameView } from '@katan/rules';
 import { epHints } from '../src/modules/explorersPirates/view.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import { botSeed } from '../src/seed.ts';
@@ -19,7 +19,7 @@ import type { BotLevel } from '../src/types.ts';
 import { botSeats, cloneState, GAME_TIMEOUT, hideDifferently, mixedLevels, runBotGame, viewFor } from './harness.ts';
 import { explorersPiratesKit } from './modules/explorersPirates.ts';
 
-const PROFILE = 'ep-land-ho-2025';
+const PROFILES = ['ep-land-ho-2025', 'ep-pirate-lairs-2025'] as const;
 const KITS = [explorersPiratesKit];
 
 function deepFreeze<T>(value: T): T {
@@ -30,14 +30,14 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-function snapshots(players: number, seed: number, every: number): GameState[] {
+function snapshots(profileId: string, players: number, seed: number, every: number): GameState[] {
   const seats = botSeats(mixedLevels(players, seed), (level) => createBotPolicy(level));
   const out: GameState[] = [];
   let step = 0;
   runBotGame({
     seats,
     seed,
-    profileId: PROFILE,
+    profileId,
     kits: KITS,
     onDecision: (state) => {
       if (step++ % every === 0 && !state.result) out.push(cloneState(state));
@@ -48,14 +48,19 @@ function snapshots(players: number, seed: number, every: number): GameState[] {
 
 const ctxOf = (id: string, level: BotLevel, state: GameState) => ({ selfId: id, level, seed: botSeed('fair', id, state.seq), offerPhases: {} });
 
-for (const players of [3, 4]) {
+for (const [PROFILE, players] of PROFILES.flatMap((id) => [3, 4].map((count) => [id, count] as const))) {
   describe(`B-FAIR hidden information (${PROFILE}, ${players} players)`, () => {
-    const states = [...snapshots(players, 61, 3), ...snapshots(players, 62, 4)];
+    const states = [...snapshots(PROFILE, players, 61, 3), ...snapshots(PROFILE, players, 62, 4)];
 
     it('samples both the Action and the Movement sub-phases', () => {
       const phases = new Set(states.flatMap((state) => state.players.map((player) => epHints(viewFor(state, player.id).hints)?.phase)));
       expect(phases.has('action')).toBe(true);
       expect(phases.has('movement')).toBe(true);
+      // Pirate Lairs 另外取到海盜 frame 與開局的決策。
+      if (PROFILE === 'ep-pirate-lairs-2025') {
+        expect(states.some((state) => state.pending?.kind === EP_PIRATE_FRAME)).toBe(true);
+        expect(states.some((state) => state.turn.phase === 'setup')).toBe(true);
+      }
     });
 
     for (const level of ['standard', 'easy'] as const) {
@@ -123,25 +128,27 @@ for (const players of [3, 4]) {
   });
 }
 
-describe(`B-POLICY determinism (${PROFILE})`, () => {
-  it(
-    'replays a game identically',
-    () => {
-      const record = (): string[] => {
-        const out: string[] = [];
-        runBotGame({
-          seats: botSeats(mixedLevels(4, 3), (level) => createBotPolicy(level)),
-          seed: 3,
-          profileId: PROFILE,
-          kits: KITS,
-          onDecision: (_, decision) => out.push(`${decision.actor}:${JSON.stringify(decision.command)}`),
-        });
-        return out;
-      };
-      const first = record();
-      expect(first.length).toBeGreaterThan(0);
-      expect(record()).toEqual(first);
-    },
-    GAME_TIMEOUT,
-  );
-});
+for (const PROFILE of PROFILES) {
+  describe(`B-POLICY determinism (${PROFILE})`, () => {
+    it(
+      'replays a game identically',
+      () => {
+        const record = (): string[] => {
+          const out: string[] = [];
+          runBotGame({
+            seats: botSeats(mixedLevels(4, 3), (level) => createBotPolicy(level)),
+            seed: 3,
+            profileId: PROFILE,
+            kits: KITS,
+            onDecision: (_, decision) => out.push(`${decision.actor}:${JSON.stringify(decision.command)}`),
+          });
+          return out;
+        };
+        const first = record();
+        expect(first.length).toBeGreaterThan(0);
+        expect(record()).toEqual(first);
+      },
+      GAME_TIMEOUT,
+    );
+  });
+}

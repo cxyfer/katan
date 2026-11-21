@@ -69,6 +69,7 @@ describe('bot ruleset support', () => {
       'sf-ck-new-shores-2025',
       'sf-ck-new-shores-paired-2025',
       'ep-land-ho-2025',
+      'ep-pirate-lairs-2025',
       'tb-friendly-robber-2025',
       'tb-harbors-2025',
       'tb-friendly-robber-harbors-2025',
@@ -86,11 +87,12 @@ describe('bot module registry', () => {
     const module = BOT_MODULES.get('explorersPirates')!;
     expect(module.maxCommandsPerWindow).toBe(80);
     expect(module.pacing?.['ep.moveShip']).toBe(400);
-    expect(SUPPORTED_PARTS).toEqual(['core']);
+    expect(SUPPORTED_PARTS).toEqual(['core', 'pirates', 'lairs']);
     for (const profile of PROFILES.filter((item) => item.ruleModules.includes('explorersPirates'))) {
-      // E2 只開放 Land Ho!（沒有任務、沒有海盜）；其餘 profile 的任務與海盜部件還沒有策略。
-      expect(botsCanPlay(profile), profile.id).toBe(profile.id === 'ep-land-ho-2025');
-      expect(botLevelsFor(profile), profile.id).toEqual(profile.id === 'ep-land-ho-2025' ? ['easy', 'standard'] : []);
+      // E3 開放 Land Ho! 與 Pirate Lairs；Fish、Spices、Full 的魚與香料部件還沒有策略。
+      const open = ['ep-land-ho-2025', 'ep-pirate-lairs-2025'].includes(profile.id);
+      expect(botsCanPlay(profile), profile.id).toBe(open);
+      expect(botLevelsFor(profile), profile.id).toEqual(open ? ['easy', 'standard'] : []);
       // 每視窗上限取各模組最大值，pacing 併入 BOT_PACING。
       expect(botCommandLimit(profile, 40), profile.id).toBe(80);
     }
@@ -108,8 +110,9 @@ describe('bot module registry', () => {
     expect(epSupports({ ...land, scenario: 'no-such-scenario' } as never)).toBe(false);
     expect(epSupports({ ...land, playerCounts: [3, 4, 5] })).toBe(false);
     // 部件清單決定開放範圍。
-    expect(epSupports(getProfile('ep-pirate-lairs-2025')!)).toBe(false);
-    expect(epSupports(getProfile('ep-pirate-lairs-2025')!, ['core', 'lairs', 'pirates'])).toBe(true);
+    expect(epSupports(getProfile('ep-pirate-lairs-2025')!)).toBe(true);
+    expect(epSupports(getProfile('ep-fish-2025')!)).toBe(false);
+    expect(epSupports(getProfile('ep-pirate-lairs-2025')!, ['core', 'lairs'])).toBe(false);
   });
 
   it('does not mistake prototype keys for registered modules', () => {

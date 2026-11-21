@@ -14,14 +14,16 @@ import type { BotEconomyHooks, PlanInput } from '../types.ts';
 import { closedSite, epGeometry, foundVertices, isCoastalVertex, isSeaRoute, vertexTouchesFog, type EpGeometry } from './geometry.ts';
 import { landExpected } from './explore.ts';
 import { remainingTiles } from './inventory.ts';
+import { crewWanted } from './missions/lairs.ts';
 import { epPlayer, epView, ownShips, type EpView } from './view.ts';
 
-/** Land Ho! 的目標船數（計畫 §4.3；有任務時為 3，E3 起）。 */
-export const SHIP_TARGET = 2;
+/** 目標船數（計畫 §4.3）：Land Ho! 為 2，有任務時為 3（`EP_PIECES.ships`）。 */
+export const shipTarget = (ep: EpView): number => (ep.missions.length > 0 ? 3 : 2);
 
 const HARBOR_VALUE = 1;
 const SETTLER_VALUE = 0.7;
 const SHIP_VALUE = 0.3;
+const CREW_VALUE = 0.6;
 
 /** 同一份 view 只建一次幾何（view 是不可變的投影）。 */
 const geometries = new WeakMap<object, EpGeometry | null>();
@@ -84,9 +86,10 @@ function epPlans({ model, base }: PlanInput): readonly Plan[] {
   if (player.supply.harbors > 0 && harbors.length > 0) push('explorersPirates.harbor', harbors[0]!, EP_COSTS.harbor, HARBOR_VALUE, true);
   if (settlerWanted(g, model.selfId)) push('explorersPirates.settler', null, EP_COSTS.settler, SETTLER_VALUE);
   const hasHarbor = g.ep.harbors.some((harbor) => harbor.player === model.selfId);
-  if (hasHarbor && player.supply.ships > 0 && ownShips(g.ep, model.selfId).length < SHIP_TARGET) {
+  if (hasHarbor && player.supply.ships > 0 && ownShips(g.ep, model.selfId).length < shipTarget(g.ep)) {
     push('explorersPirates.ship', null, EP_COSTS.ship, SHIP_VALUE);
   }
+  if (hasHarbor && crewWanted(g, model.selfId)) push('explorersPirates.crew', null, EP_COSTS.crew, CREW_VALUE);
   return plans;
 }
 

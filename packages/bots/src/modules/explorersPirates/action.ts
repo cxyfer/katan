@@ -6,8 +6,7 @@
  * - `planStep`：E&P 計畫的下一步（與 `actions` 共用同一組建造指令）；
  * - `endWindow`：手牌過多時換金幣，否則有航程就 `ep.startMovement`，沒有就 `turn.end`。
  *
- * 合法目標一律取自 hints（P2）。MVP 不替換船：Land Ho! 的目標是 2 艘，低於上限 3，用不到 `replace`
- * （E3 起任務需要 3 艘時再加）。
+ * 合法目標一律取自 hints（P2）。目標船數不超過 3（棋子上限），所以用不到 `replace`。
  */
 
 import { EP_BASE_MP, EP_COSTS, RESOURCES, type Resource } from '@katan/rules';
@@ -16,12 +15,14 @@ import { canAfford, deficitOf, handSize, type Cost, type Hand, type Plan } from 
 import type { BotCommand, Scored, TurnContext } from '../types.ts';
 import { epGeometry, type EpGeometry } from './geometry.ts';
 import { fleetOf, hasWork, voyagesOf } from './movement.ts';
-import { geometryOf, SHIP_TARGET, settlerWanted } from './plans.ts';
+import { crewBuild } from './missions/lairs.ts';
+import { geometryOf, settlerWanted, shipTarget } from './plans.ts';
 import { epHints, epPlayer, epView, ownShips, type EpHints, type EpPlayerView, type EpShipView, type EpView } from './view.ts';
 
 const HARBOR_SCORE = 1;
 const SETTLER_SCORE = 0.9;
 const SHIP_SCORE = 0.55;
+const CREW_SCORE = 0.8;
 const BUY_SCORE = 0.95;
 
 interface Ctx {
@@ -44,7 +45,7 @@ function ctxOf(turn: TurnContext): Ctx | undefined {
   return g && player ? { turn, hints, ep, g, me: turn.ctx.selfId, player, hand: turn.economy.hand } : undefined;
 }
 
-type Kind = 'harbor' | 'settler' | 'ship';
+type Kind = 'harbor' | 'settler' | 'ship' | 'crew';
 const KIND_PREFIX = 'explorersPirates.';
 
 /** harbour 升級：優先選旁邊有空的船位（船放得下）的沿海聚落。 */
@@ -66,7 +67,7 @@ function settlerCommand(c: Ctx): BotCommand | null {
 
 /** 新船放在最有航程的位置：以假想的船規劃，取最佳航程分數（沒有航程時取最小編號的邊）。 */
 function shipCommand(c: Ctx): BotCommand | null {
-  if (c.hints.shipEdges.length === 0 || c.player.supply.ships <= 0 || ownShips(c.ep, c.me).length >= SHIP_TARGET) return null;
+  if (c.hints.shipEdges.length === 0 || c.player.supply.ships <= 0 || ownShips(c.ep, c.me).length >= shipTarget(c.ep)) return null;
   let best: { edge: number; score: number } | null = null;
   for (const edge of c.hints.shipEdges) {
     const ghost: EpShipView = { id: 'ghost', player: c.me, edge, cargo: [] };
@@ -77,12 +78,15 @@ function shipCommand(c: Ctx): BotCommand | null {
   return best ? { type: 'ep.buildShip', edge: best.edge } : null;
 }
 
-const BUILDERS: Record<Kind, (c: Ctx) => BotCommand | null> = { harbor: harborCommand, settler: settlerCommand, ship: shipCommand };
-const COSTS: Record<Kind, Cost> = { harbor: EP_COSTS.harbor, settler: EP_COSTS.settler, ship: EP_COSTS.ship };
+/** crew：放在船或 harbour，沒有空位時才替換用不到的 settler（`remove`）。 */
+const crewCommand = (c: Ctx): BotCommand | null => crewBuild(c.g, c.hints, c.me, settlerWanted(c.g, c.me));
+
+const BUILDERS: Record<Kind, (c: Ctx) => BotCommand | null> = { harbor: harborCommand, settler: settlerCommand, ship: shipCommand, crew: crewCommand };
+const COSTS: Record<Kind, Cost> = { harbor: EP_COSTS.harbor, settler: EP_COSTS.settler, ship: EP_COSTS.ship, crew: EP_COSTS.crew };
 
 function kindOf(plan: Plan): Kind | null {
   const name = plan.kind.startsWith(KIND_PREFIX) ? plan.kind.slice(KIND_PREFIX.length) : '';
-  return name === 'harbor' || name === 'settler' || name === 'ship' ? name : null;
+  return name === 'harbor' || name === 'settler' || name === 'ship' || name === 'crew' ? name : null;
 }
 
 /** 這個計畫的下一步現在有合法目標（不看成本）。 */
@@ -111,8 +115,8 @@ export function epActions(turn: TurnContext): readonly Scored<BotCommand>[] {
   const c = ctxOf(turn);
   if (!c) return [];
   const out: Scored<BotCommand>[] = [];
-  const scores: Record<Kind, number> = { harbor: HARBOR_SCORE, settler: SETTLER_SCORE, ship: SHIP_SCORE };
-  for (const kind of ['harbor', 'settler', 'ship'] as const) {
+  const scores: Record<Kind, number> = { harbor: HARBOR_SCORE, settler: SETTLER_SCORE, ship: SHIP_SCORE, crew: CREW_SCORE };
+  for (const kind of ['harbor', 'settler', 'ship', 'crew'] as const) {
     if (!canAfford(c.hand, COSTS[kind])) continue;
     const command = BUILDERS[kind](c);
     if (command) out.push({ item: command, score: scores[kind] });
