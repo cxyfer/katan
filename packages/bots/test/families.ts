@@ -89,6 +89,13 @@ export const BOT_FAMILIES: readonly BotTestFamily[] = [
       'tb-fallback.4p.test.ts',
     ],
   },
+  {
+    // E&P 計畫 §6.1：E1 只有保底與航線的固定盤面測試（`supports` 仍為 false，不在 BOT_TEST_MATRIX）；
+    // E2 起各 profile 加上 B-GAME、B-FAIR、fuzz 的測試檔並登記在這裡。
+    id: 'explorersPirates',
+    profiles: ['ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025'],
+    files: ['ep-duty.test.ts'],
+  },
 ];
 
 /** 有專屬測試檔的 family 所涵蓋的 profile；通用矩陣跳過它們。 */
