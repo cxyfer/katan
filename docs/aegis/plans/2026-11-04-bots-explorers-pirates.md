@@ -1,6 +1,6 @@
 # Explorers & Pirates 電腦對手：實作計畫（v0.4.5）
 
-日期：2026-11-04。狀態：**建議計畫，待使用者確認 §10。**
+日期：2026-11-04。狀態：**已交付（2026-11-21，#204–#210 與 E5b 的 PR），5 個 profile 一次開放，走方案 (a)，沒有任何項目延到 0.4.6；交付紀錄見 §12。**
 
 前置閱讀：整體策略 `docs/aegis/plans/2026-11-04-expansion-bots-roadmap.md`（以下簡稱「整體策略」）；bot 規格 `docs/aegis/specs/2026-11-01-bot-opponents.md`（不變式 I1–I9、§5 合約）；rules 文件 `docs/SPEC.md` §4.9 與第 274 行的 E&P 合約、`docs/FIDELITY.md` 的 R-EP 列（105–113）、`docs/aegis/work/2026-11-02-explorers-pirates.md`、`packages/rules/src/modules/explorersPirates/`。
 
@@ -403,3 +403,11 @@ E0 → E1 → E2 → E3 ┬→ E4a ──→ E4b（合併）┬→ E5b → rc
 | D-3 | §5 與 R7：rules 修正是 0.4.5 的依賴，要在 0.4.5 之前完成 | 仍建議在 rc 前合併，但不列為 Bot 發布的硬依賴 | 擱淺只會由行動者自己的移動造成（C3），Bot 靠規劃避開就能通過 Q1；修正保護的是真人玩家，與 Bot 是否上線無關 |
 | D-4 | §5：規模約 3,300 行 | 約 3,370 行 | 多出來的是 server 測試，約 200 行（§5.1） |
 | D-5 | §4.7-5：server 測試要涵蓋「多 responder frame 中真人與 Bot 並存」 | E&P 改用 7 之後的 base 棄牌 frame 來測 | E&P 唯一的模組 frame（海盜）只有一位 responder（pirate.ts:27-29） |
+
+## 12. 交付紀錄（2026-11-21）
+
+E0–E5b 都以 squash merge 合併進 `release/v0.4.5`：#204 E0（`9118579`）、#205 E1（`b25b85c`）、#206 E2（`1e5011a`）、#207 E3（`5894707`）、#208 E4a（`40f6fcc`）、#209 E5a（`96f3496`）、#210 E4b（`4eb7721`）、E5b（bench 與文件）。
+
+- 5 個 profile 都通過 Q1、Q2，沒有調低任何門檻，沒有走 §5.3 的 (b)。
+- 與本計畫不同之處：#97（`ep-2025.2`）的規則修正取代 §4.1 的擱淺保底列；E1 的守恆與 E3 的追擊就緒判斷是審查修正；E4a 與 E4b 因 Spices 需要 Fish 機制而依序進行；Pirate Lairs 的 SPEC 文字依 C8 改為印刷盤面加變動式放置。
+- Q1、Q2 的實測、bench 與後續事項見 [工作紀錄](../work/2026-11-21-bots-explorers-pirates.md)。

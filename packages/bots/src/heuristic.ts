@@ -261,6 +261,10 @@ function knightDecision(turn: TurnContext): Command | null {
 function actionDecision(turn: TurnContext, duty: () => BotCommand | null): BotCommand | null {
   const { view, ctx, params } = turn;
 
+  // 0. 模組接管整個行動階段（0.4.5）：第一個非 undefined 勝出；null 代表歸它管但沒有指令，改走保底。
+  const takeover = firstAnswer(turn.modules, (module) => module.phase?.(turn));
+  if (takeover !== undefined) return takeover ?? duty();
+
   // 1. 自己的報價：結算、撤回或等待。等待期間不做別的事，避免手牌變動。
   const own = ownOpenOffers(view, ctx.selfId)[0];
   if (own) {
@@ -302,7 +306,9 @@ function actionDecision(turn: TurnContext, duty: () => BotCommand | null): BotCo
   const relief = handRelief(turn);
   if (relief) return relief;
 
-  // 7. 沒有事可做：交給保底義務（模組 duty 優先，否則結束回合）。
+  // 7. 沒有事可做：先問模組的 endWindow（0.4.5，null 走保底），再交給保底義務（模組 duty 優先，否則結束回合）。
+  const end = firstAnswer(turn.modules, (module) => module.endWindow?.(turn));
+  if (end !== undefined) return end ?? duty();
   return duty();
 }
 

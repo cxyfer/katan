@@ -293,7 +293,12 @@ describe('B-ROOM bot seats', () => {
     expect(profiles.find((profile) => profile.id === 'ck-paired-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-paired-2025')?.botSeats).toBe(true);
-    expect(profiles.find((profile) => profile.id === 'ep-land-ho-2025')?.botSeats).toBe(false);
+    // Explorers & Pirates：五個 profile 全部開放（E4b）。
+    expect(profiles.find((profile) => profile.id === 'ep-land-ho-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'ep-pirate-lairs-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'ep-fish-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'ep-spices-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'ep-full-2025')?.botSeats).toBe(true);
     // Traders & Barbarians 的 8 個可玩 profile 開放；event-card 的 4 個沒有開放，也不提供 Bot。
     for (const id of [
       'tb-friendly-robber-2025',
@@ -322,7 +327,11 @@ describe('B-ROOM bot seats', () => {
     expect(levels('ck-paired-2025')).toEqual(['easy', 'standard']);
     expect(levels('sf-ck-new-shores-2025')).toEqual(['easy', 'standard']);
     expect(levels('sf-ck-new-shores-paired-2025')).toEqual(['easy', 'standard']);
-    expect(levels('ep-land-ho-2025')).toEqual([]);
+    expect(levels('ep-land-ho-2025')).toEqual(['easy', 'standard']);
+    expect(levels('ep-pirate-lairs-2025')).toEqual(['easy', 'standard']);
+    expect(levels('ep-fish-2025')).toEqual(['easy', 'standard']);
+    expect(levels('ep-spices-2025')).toEqual(['easy', 'standard']);
+    expect(levels('ep-full-2025')).toEqual(['easy', 'standard']);
     expect(levels('tb-merchant-trains-2025')).toEqual(['easy', 'standard']);
     expect(levels('tb-traders-barbarians-2025')).toEqual(['easy', 'standard']);
     expect(levels('tb-event-cards-2025')).toEqual([]);
@@ -451,18 +460,17 @@ describe('B-ROOM bot seats', () => {
     }
   });
 
-  it('still refuses bot seats for rulesets bots cannot play, and switching a bot room to them', async () => {
-    // Explorers & Pirates 沒有 BotModule（兩個 fixed 場景，3–4 人）。
-    for (const profileId of ['ep-land-ho-2025', 'ep-pirate-lairs-2025']) {
+  it('keeps refusing the rulesets bots cannot play', async () => {
+    // Explorers & Pirates 五個 profile 都已開放（E4b）；剩下沒有 Bot 策略的只有未開放的 event-card profile，
+    // 房間本身就建不出來，所以改驗證兩道關卡：botsCanPlay 為 false，而且房間拒絕這個組合。
+    const host = await harness.client('NoBots');
+    for (const profileId of ['tb-event-cards-2025', 'tb-event-cards-harbors-2025']) {
       expect(botsCanPlay(getProfile(profileId)!), profileId).toBe(false);
-      const host = await harness.client('NoBots');
-      const room = await createRoom(host, { profileId });
-      host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
-
-      const other = await harness.client('NoBotsSwitch');
-      const base = await createRoom(other, { bots: 1 });
-      other.expectError(await other.post(`/api/rooms/${base.id}/settings`, { profileId }), 'E_INVALID_BOT');
+      host.expectError(await host.post('/api/rooms', { visibility: 'private', capacity: 3, profileId, setupMode: 'fixed' }), 'E_UNSUPPORTED_COMBINATION');
     }
+    // 已建立的 Bot 房間改成不支援的組合同樣被拒。
+    const base = await createRoom(host, { bots: 1 });
+    host.expectError(await host.post(`/api/rooms/${base.id}/settings`, { profileId: 'tb-event-cards-2025', setupMode: 'fixed' }), 'E_UNSUPPORTED_COMBINATION');
   });
 
   it('blocks start and further bots once the profile runs modules bots cannot play', async () => {
@@ -1039,6 +1047,8 @@ describe('B-LIFE pacing', () => {
       expect(driver.delayFor({ type: 'trade.offer' }, runtime)).toBe(2400);
       expect(driver.delayFor({ type: 'dev.playKnight' }, runtime)).toBe(2200);
       expect(driver.delayFor({ type: 'unknown.module.command' }, runtime)).toBe(1800);
+      // 模組的 pacing 經 BOT_PACING 合併（E&P：ep.moveShip 400 ms，delayScale 2 → 800）。
+      expect(driver.delayFor({ type: 'ep.moveShip' }, runtime)).toBe(800);
       // 擲骰演出期間，任何指令都至少等到演出結束。
       expect(driver.delayFor({ type: 'trade.withdraw' }, { changedAt: now, rolledAt: now })).toBe(5600);
     } finally {

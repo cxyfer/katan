@@ -37,10 +37,13 @@ import {
 } from './geometry.ts';
 import { cargoPiece, epState, epTurn, hasRoom, shipTurn, siteAt, viewTurn, type Cargo, type EpShip, type EpTurn } from './state.ts';
 
+/** Swift Voyage 最多加幾點 MP。 */
+export const SWIFT_MAX = 2;
+
 /** MP of a ship this turn: 4, 6 with the extra wool, +1/+2 with Swift Voyage. */
 export function shipAllowance(state: GameState, ship: EpShip, turn: EpTurn): number {
   const record = turn.ships[ship.id];
-  return BASE_MP + (record?.extra ? EXTRA_MP : 0) + Math.min(2, abilityCount(state, ship.player, 'swift'));
+  return BASE_MP + (record?.extra ? EXTRA_MP : 0) + Math.min(SWIFT_MAX, abilityCount(state, ship.player, 'swift'));
 }
 
 export function movesLeft(state: GameState, ship: EpShip, turn: EpTurn): number {

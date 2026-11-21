@@ -5,6 +5,7 @@
 
 import type { ProfileDefinition } from '@katan/rules';
 import { citiesKnightsBotModule } from './citiesKnights/index.ts';
+import { explorersPiratesBotModule } from './explorersPirates/index.ts';
 import { seafarersBotModule } from './seafarers/index.ts';
 import { seafarersCitiesKnightsBotModule } from './seafarersCitiesKnights/index.ts';
 import { tradersBarbariansBotModule } from './tradersBarbarians/index.ts';
@@ -16,6 +17,7 @@ const REGISTERED: readonly BotModule[] = [
   citiesKnightsBotModule,
   seafarersCitiesKnightsBotModule,
   tradersBarbariansBotModule,
+  explorersPiratesBotModule,
 ];
 
 // 用 Map：`{}['constructor']` 這類原型鍵不會被當成已註冊的模組。
