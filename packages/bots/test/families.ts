@@ -90,11 +90,11 @@ export const BOT_FAMILIES: readonly BotTestFamily[] = [
     ],
   },
   {
-    // E&P 計畫 §6.1：E1 只有保底與航線的固定盤面測試（`supports` 仍為 false，不在 BOT_TEST_MATRIX）；
-    // E2 起各 profile 加上 B-GAME、B-FAIR、fuzz 的測試檔並登記在這裡。
+    // E&P 計畫 §6.1：保底與航線的固定盤面測試涵蓋 5 個 profile；E2 起 Land Ho! 開放（進 BOT_TEST_MATRIX），
+    // 由 ep-land-ho（B-GAME、Q2）、ep-fair（B-FAIR）、ep-decisions 涵蓋。其餘 profile 隨各切片加測試檔並登記在這裡。
     id: 'explorersPirates',
     profiles: ['ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025'],
-    files: ['ep-duty.test.ts'],
+    files: ['ep-duty.test.ts', 'ep-land-ho.test.ts', 'ep-fair.test.ts', 'ep-decisions.test.ts'],
   },
 ];
 

@@ -87,3 +87,11 @@ export function foundVertices(g: EpGeometry, edge: number, playerId: string): nu
     return info.edges.every((other) => g.topo.edges[other]!.vertices.every((end) => end === vertex || !buildings[end]));
   });
 }
+
+/** 沿海路口：鄰接已探索的海格，或在外框上（可以升級為 harbour）。 */
+export function isCoastalVertex(g: EpGeometry, vertex: number): boolean {
+  const info = g.topo.vertices[vertex];
+  if (!info) return false;
+  if (info.hexes.some((hex) => isWater(g, hex))) return true;
+  return info.edges.some((edge) => g.topo.edges[edge]!.hexes.length === 1);
+}

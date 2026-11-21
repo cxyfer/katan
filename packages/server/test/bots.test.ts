@@ -293,7 +293,9 @@ describe('B-ROOM bot seats', () => {
     expect(profiles.find((profile) => profile.id === 'ck-paired-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-paired-2025')?.botSeats).toBe(true);
-    expect(profiles.find((profile) => profile.id === 'ep-land-ho-2025')?.botSeats).toBe(false);
+    // Explorers & Pirates：只有 Land Ho!（沒有任務與海盜）開放，其餘 4 個 profile 仍然拒絕。
+    expect(profiles.find((profile) => profile.id === 'ep-land-ho-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'ep-pirate-lairs-2025')?.botSeats).toBe(false);
     // Traders & Barbarians 的 8 個可玩 profile 開放；event-card 的 4 個沒有開放，也不提供 Bot。
     for (const id of [
       'tb-friendly-robber-2025',
@@ -322,7 +324,8 @@ describe('B-ROOM bot seats', () => {
     expect(levels('ck-paired-2025')).toEqual(['easy', 'standard']);
     expect(levels('sf-ck-new-shores-2025')).toEqual(['easy', 'standard']);
     expect(levels('sf-ck-new-shores-paired-2025')).toEqual(['easy', 'standard']);
-    expect(levels('ep-land-ho-2025')).toEqual([]);
+    expect(levels('ep-land-ho-2025')).toEqual(['easy', 'standard']);
+    expect(levels('ep-pirate-lairs-2025')).toEqual([]);
     expect(levels('tb-merchant-trains-2025')).toEqual(['easy', 'standard']);
     expect(levels('tb-traders-barbarians-2025')).toEqual(['easy', 'standard']);
     expect(levels('tb-event-cards-2025')).toEqual([]);
@@ -452,8 +455,8 @@ describe('B-ROOM bot seats', () => {
   });
 
   it('still refuses bot seats for rulesets bots cannot play, and switching a bot room to them', async () => {
-    // Explorers & Pirates 沒有 BotModule（兩個 fixed 場景，3–4 人）。
-    for (const profileId of ['ep-land-ho-2025', 'ep-pirate-lairs-2025']) {
+    // Explorers & Pirates 的任務與海盜部件還沒有 Bot 策略（Land Ho! 已開放）。
+    for (const profileId of ['ep-pirate-lairs-2025']) {
       expect(botsCanPlay(getProfile(profileId)!), profileId).toBe(false);
       const host = await harness.client('NoBots');
       const room = await createRoom(host, { profileId });

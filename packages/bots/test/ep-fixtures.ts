@@ -18,6 +18,8 @@ export const EP_PROFILES = [
 ] as const;
 
 export interface EpSlot {
+  gold: Record<string, number>;
+  fog: { hex: number; region: string }[];
   ships: { id: string; player: string; edge: number; cargo: string[] }[];
   harbors: { vertex: number; player: string; cargo: string[] }[];
   pirate: { hex: number; owner: string } | null;
