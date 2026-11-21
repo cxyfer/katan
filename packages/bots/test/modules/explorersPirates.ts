@@ -16,6 +16,7 @@ import {
   EP_COIN_SUPPLY,
   EP_FISH_HAULS,
   EP_PIECES,
+  epScenario,
   moduleStateOf,
   type GameState,
   type Rng,
@@ -54,7 +55,8 @@ function conservation(state: GameState): readonly string[] {
   if (gold !== EP_COIN_SUPPLY) problems.push(`gold ${gold} != ${EP_COIN_SUPPLY}`);
   const cargo = [...slot.ships, ...slot.harbors].flatMap((holder) => holder.cargo);
   const fish = slot.fishSupply + slot.sites.filter((site) => site.kind === 'shoal' && site.fish).length + cargo.filter((piece) => piece === 'fish').length;
-  const hasFish = slot.fishSupply > 0 || fish > 0;
+  // 依劇本判斷有沒有魚任務；不能用「總數 > 0」，否則魚全數消失的回歸會被漏掉。
+  const hasFish = epScenario(slot.scenario).missions.includes('fish');
   if (hasFish && fish !== EP_FISH_HAULS) problems.push(`fish hauls ${fish} != ${EP_FISH_HAULS}`);
   const turnPlayer = state.players[state.turn.seat]?.id;
   for (const player of state.players) {
