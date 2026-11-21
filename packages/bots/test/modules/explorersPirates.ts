@@ -65,7 +65,9 @@ function conservation(state: GameState): readonly string[] {
     const mine = [...slot.ships, ...slot.harbors].filter((holder) => holder.player === player.id).flatMap((holder) => holder.cargo);
     const settlers = mine.filter((piece) => piece === 'settler').length;
     if (settlers > EP_PIECES.settlers) problems.push(`${player.id} has ${settlers} settlers > ${EP_PIECES.settlers}`);
-    const crews = mine.filter((piece) => piece === 'crew').length;
+    // 與 rules 的 piecesInPlay 相同：船上、harbour 上，加上駐在巢穴與香料農場的 crew。
+    const stationed = slot.sites.flatMap((site) => site.crews ?? []).filter((id) => id === player.id).length;
+    const crews = mine.filter((piece) => piece === 'crew').length + stationed;
     if (crews > EP_PIECES.crews) problems.push(`${player.id} has ${crews} crews > ${EP_PIECES.crews}`);
     const plain = state.board.buildings.filter((building) => building?.player === player.id).length - harbors;
     if (plain > EP_PIECES.settlements) problems.push(`${player.id} has ${plain} plain settlements > ${EP_PIECES.settlements}`);
