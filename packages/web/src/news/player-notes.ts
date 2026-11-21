@@ -27,6 +27,32 @@ export interface PlayerNote {
 
 export const PLAYER_NOTES: readonly PlayerNote[] = [
   {
+    version: '0.4.4',
+    date: '2026-11-21',
+    title: {
+      'zh-Hant': '電腦對手加入商人與野蠻人，並正名為喀坦',
+      en: 'Computer opponents join Traders & Barbarians, and we are now Katan',
+    },
+    items: [
+      {
+        'zh-Hant': '商人與野蠻人開放「簡單」與「標準」電腦對手入座，3–4 人都可以，友善強盜、港口變體與五個劇本（喀坦漁夫、喀坦河流、商隊、野蠻人來襲、商人與野蠻人）皆適用；它們會捕魚、渡河造橋、運送商隊貨物、抵禦野蠻人，也會賺取金幣與獎勵。「困難」仍只在基本版提供，事件卡劇本仍未開放。',
+        en: 'Easy and standard computer opponents can now take seats in Traders & Barbarians at 3–4 players, in the Friendly Robber and Harbors variants and all five scenarios (Fishing on Katan, Rivers of Katan, Merchant Trains, Barbarian Attack, Traders & Barbarians): they fish, bridge rivers, haul caravan goods, hold off the barbarians and earn coins and rewards. Hard remains base-game only, and the Event Cards scenario is still closed.',
+      },
+      {
+        'zh-Hant': '電腦對手與銀行交易時，不再在同一回合內把剛換進來的資源又換出去，或把剛換出去的資源又換回來；城市與騎士的商品兌換也不再出現這種來回交易。',
+        en: 'Computer opponents no longer undo their own bank trades within a turn, giving away a card they just took in or taking back one they just gave up; this includes Cities & Knights commodity exchanges.',
+      },
+      {
+        'zh-Hant': '遊戲更名為「喀坦」（Katan），標題、箱盒與劇本名稱一併更新，例如「喀坦漁夫」、「喀坦河流」。',
+        en: 'The game is now called Katan: the title, boxes and scenario names are updated, for example Fishing on Katan and Rivers of Katan.',
+      },
+      {
+        'zh-Hant': '更名不影響你的進度：既有的登入身分、偏好設定與進行中的對局都會自動沿用。',
+        en: 'The rename does not cost you anything: your existing sign-in, preferences and games in progress carry over automatically.',
+      },
+    ],
+  },
+  {
     version: '0.4.3',
     date: '2026-11-15',
     title: {
