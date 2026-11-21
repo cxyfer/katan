@@ -62,13 +62,15 @@ describe('Explorers & Pirates over the API', () => {
     expect(combined.status).toBeGreaterThanOrEqual(400);
   });
 
-  it('refuses bot seats in every mission', async () => {
+  it('refuses bot seats in the missions the bots cannot play yet, and seats them in Land Ho!', async () => {
     const host = await harness.client('EpBots');
     for (const [, profileId, setupMode] of MISSIONS) {
       const room = host.expectOk<{ id: string }>(await host.post('/api/rooms', {
         visibility: 'private', capacity: 3, profileId, setupMode,
       }));
-      host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
+      const added = await host.post(`/api/rooms/${room.id}/bots`, {});
+      if (profileId === 'ep-land-ho-2025') host.expectOk(added);
+      else host.expectError(added, 'E_INVALID_BOT');
     }
   });
 

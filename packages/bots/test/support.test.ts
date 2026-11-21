@@ -7,10 +7,11 @@ import {
   botCommandLimit,
   botModulesOf,
   botResponseCommands,
+  botLevelsFor,
   botsCanPlay,
 } from '../src/index.ts';
 import { CK_BOTS_RELEASED, CK_PACING, CK_PENDING_COMMANDS } from '../src/modules/citiesKnights/index.ts';
-import { EP_PACING } from '../src/modules/explorersPirates/index.ts';
+import { EP_PACING, epPartsOf, epSupports, SUPPORTED_PARTS } from '../src/modules/explorersPirates/index.ts';
 import { SEAFARERS_PACING } from '../src/modules/seafarers/index.ts';
 import { SFCK_BOTS_RELEASED, SFCK_PACING } from '../src/modules/seafarersCitiesKnights/index.ts';
 import { TB_PACING } from '../src/modules/tradersBarbarians/index.ts';
@@ -67,6 +68,7 @@ describe('bot ruleset support', () => {
       'ck-paired-2025',
       'sf-ck-new-shores-2025',
       'sf-ck-new-shores-paired-2025',
+      'ep-land-ho-2025',
       'tb-friendly-robber-2025',
       'tb-harbors-2025',
       'tb-friendly-robber-harbors-2025',
@@ -80,17 +82,34 @@ describe('bot ruleset support', () => {
 });
 
 describe('bot module registry', () => {
-  it('registers explorersPirates without opening its rooms to bots', () => {
+  it('registers explorersPirates and opens only the profiles whose parts are all supported', () => {
     const module = BOT_MODULES.get('explorersPirates')!;
     expect(module.maxCommandsPerWindow).toBe(80);
     expect(module.pacing?.['ep.moveShip']).toBe(400);
+    expect(SUPPORTED_PARTS).toEqual(['core']);
     for (const profile of PROFILES.filter((item) => item.ruleModules.includes('explorersPirates'))) {
-      expect(botsCanPlay(profile), profile.id).toBe(false);
+      // E2 只開放 Land Ho!（沒有任務、沒有海盜）；其餘 profile 的任務與海盜部件還沒有策略。
+      expect(botsCanPlay(profile), profile.id).toBe(profile.id === 'ep-land-ho-2025');
+      expect(botLevelsFor(profile), profile.id).toEqual(profile.id === 'ep-land-ho-2025' ? ['easy', 'standard'] : []);
       // 每視窗上限取各模組最大值，pacing 併入 BOT_PACING。
       expect(botCommandLimit(profile, 40), profile.id).toBe(80);
     }
     for (const [type, ms] of Object.entries(EP_PACING)) expect(BOT_PACING[type]).toBe(ms);
     expect(botCommandLimit(getProfile('base-2025')!, 40)).toBe(40);
+  });
+
+  it('derives the E&P parts from the scenario and never throws', () => {
+    const land = getProfile('ep-land-ho-2025')!;
+    expect(epPartsOf(land)).toEqual([]);
+    expect(epPartsOf(getProfile('ep-pirate-lairs-2025')!)).toEqual(['lairs', 'pirates']);
+    expect(epPartsOf(getProfile('ep-spices-2025')!)).toEqual(['fish', 'spices', 'pirates']);
+    // 未知 scenario：不 throw，也不開放；超過 4 人也不開放。
+    expect(epPartsOf({ scenario: 'no-such-scenario' } as never)).toBeNull();
+    expect(epSupports({ ...land, scenario: 'no-such-scenario' } as never)).toBe(false);
+    expect(epSupports({ ...land, playerCounts: [3, 4, 5] })).toBe(false);
+    // 部件清單決定開放範圍。
+    expect(epSupports(getProfile('ep-pirate-lairs-2025')!)).toBe(false);
+    expect(epSupports(getProfile('ep-pirate-lairs-2025')!, ['core', 'lairs', 'pirates'])).toBe(true);
   });
 
   it('does not mistake prototype keys for registered modules', () => {

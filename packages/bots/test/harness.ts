@@ -241,7 +241,7 @@ const PROFILE_LIMITS: Readonly<Record<string, Partial<GameLimits>>> = {
   'tb-barbarian-attack-2025': {},
   'tb-traders-barbarians-2025': {},
   // Explorers & Pirates（E&P 計畫 §6.1）：步數上限約為 fixture 健康局最大步數（526／945／1,651／1,758／1,996）的 4–5 倍，
-  // 看門狗 N=60 次 `turn.roll`（健康局最長無得分區間 ≤ 25 回合，病態局在 55 輪以上）；E2–E4 以真實策略重新校準。
+  // 看門狗 N=60 次 `turn.roll`（健康局最長無得分區間 ≤ 25 回合，病態局在 55 輪以上）；E2–E4 以真實策略重新校準（Land Ho! 實測 3–4 人各 10 種子：最多 358 步、35 輪，最長無創新高 8 次擲骰，沿用上限）。
   'ep-land-ho-2025': { maxSteps: 2500, watchdogRolls: 60 },
   'ep-pirate-lairs-2025': { maxSteps: 4000, watchdogRolls: 60 },
   'ep-fish-2025': { maxSteps: 6000, watchdogRolls: 60 },
