@@ -67,7 +67,7 @@ export function crewBuild(g: EpGeometry, hints: EpHints, me: string, keepSettler
 }
 
 /** 與 `hex` 的任一角相連的海路邊。 */
-function edgesAround(g: EpGeometry, hex: number): Set<number> {
+export function edgesAround(g: EpGeometry, hex: number): Set<number> {
   const out = new Set<number>();
   for (const vertex of g.topo.vertices) {
     if (!vertex.hexes.includes(hex)) continue;
@@ -77,7 +77,7 @@ function edgesAround(g: EpGeometry, hex: number): Set<number> {
 }
 
 /** 船的兩端碰到的格子。 */
-const hexesAt = (g: EpGeometry, ship: EpShipView): number[] =>
+export const hexesAt = (g: EpGeometry, ship: EpShipView): number[] =>
   g.topo.edges[ship.edge]!.vertices.flatMap((vertex) => g.topo.vertices[vertex]!.hexes);
 
 function targets(f: Fleet, ship: EpShipView): ReadonlyMap<number, MissionTarget> {

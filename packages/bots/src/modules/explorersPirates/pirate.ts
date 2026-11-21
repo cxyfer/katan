@@ -17,7 +17,17 @@ import { epHints, epPlayer } from './view.ts';
 const NEAR_WEIGHT = 0.25;
 const CARGO_BONUS = 0.5;
 const HARBOR_WEIGHT = 0.3;
+/** 自己的船靠近有魚的淺灘：放海盜會嚇走自己要裝的魚。 */
 const SHOAL_PENALTY = 1;
+/** 離自己的船都遠的魚：嚇走只是回供應，輕微扣分。 */
+const SHOAL_IDLE = 0.25;
+/** 對手的船靠近有魚的淺灘：嚇走他要裝的魚。 */
+const SCARE_BONUS = 0.75;
+/** 船在這個格子的邊上，或再走一條邊就到（約 2 步內）。 */
+function nearHex(g: EpGeometry, edge: number, hex: number): boolean {
+  const { vertices, hexes } = g.topo.edges[edge]!;
+  return hexes.includes(hex) || vertices.some((vertex) => g.topo.vertices[vertex]!.edges.some((next) => g.topo.edges[next]!.hexes.includes(hex)));
+}
 
 /** 目標格 `hex` 的分數（純函式）。 */
 export function pirateHexScore(turn: TurnContext, g: EpGeometry, hex: number): number {
@@ -43,7 +53,10 @@ export function pirateHexScore(turn: TurnContext, g: EpGeometry, hex: number): n
   }
   for (const harbor of g.ep.harbors) if (harbor.player !== me && corners.has(harbor.vertex)) score += HARBOR_WEIGHT * weightOf(harbor.player);
   const site = g.ep.sites.find((entry) => entry.hex === hex);
-  if (site?.kind === 'shoal' && site.fish) score -= SHOAL_PENALTY;
+  if (site?.kind === 'shoal' && site.fish) {
+    const near = (own: boolean): boolean => g.ep.ships.some((ship) => (ship.player === me) === own && !ship.cargo.includes('fish') && nearHex(g, ship.edge, hex));
+    score += (near(false) ? SCARE_BONUS : 0) - (near(true) ? SHOAL_PENALTY : SHOAL_IDLE);
+  }
   return score;
 }
 
