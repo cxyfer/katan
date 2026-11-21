@@ -19,7 +19,7 @@ import type { BotLevel } from '../src/types.ts';
 import { botSeats, cloneState, GAME_TIMEOUT, hideDifferently, mixedLevels, runBotGame, viewFor } from './harness.ts';
 import { explorersPiratesKit } from './modules/explorersPirates.ts';
 
-const PROFILES = ['ep-land-ho-2025', 'ep-pirate-lairs-2025'] as const;
+const PROFILES = ['ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025'] as const;
 const KITS = [explorersPiratesKit];
 
 function deepFreeze<T>(value: T): T {
@@ -57,7 +57,7 @@ for (const [PROFILE, players] of PROFILES.flatMap((id) => [3, 4].map((count) => 
       expect(phases.has('action')).toBe(true);
       expect(phases.has('movement')).toBe(true);
       // Pirate Lairs 另外取到海盜 frame 與開局的決策。
-      if (PROFILE === 'ep-pirate-lairs-2025') {
+      if (PROFILE !== 'ep-land-ho-2025') {
         expect(states.some((state) => state.pending?.kind === EP_PIRATE_FRAME)).toBe(true);
         expect(states.some((state) => state.turn.phase === 'setup')).toBe(true);
       }
