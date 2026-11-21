@@ -11,6 +11,7 @@ import type { BotCommand } from '../../types.ts';
 import { isSeaRoute, type EpGeometry } from '../geometry.ts';
 import type { Fleet } from '../movement.ts';
 import { epPlayer, type EpHints, type EpShipView, type EpView } from '../view.ts';
+import { farmsToCrew } from './tracks.ts';
 import type { Mission, MissionTarget } from './index.ts';
 
 type LairSite = Extract<EpView['sites'][number], { kind: 'lair' }>;
@@ -40,10 +41,14 @@ function unlanded(ep: EpView, me: string): number {
   return holders.reduce((sum, holder) => sum + holder.cargo.filter((piece) => piece === 'crew').length, 0);
 }
 
-/** 還值得再造一個 crew：有開放的巢穴、供應有餘，而且手上未上岸的不超過剩餘需求。 */
+/**
+ * 還值得再造一個 crew：供應有餘，而且手上未上岸的不超過剩餘需求。需求來自開放的巢穴（有 lairs 任務時）
+ * 與還沒放 crew 的香料農場（有 spices 任務時）；兩者互相獨立，香料劇本沒有巢穴也成立。
+ */
 export function crewWanted(g: EpGeometry, me: string): boolean {
-  if (!g.ep.missions.includes('lairs') || (epPlayer(g.ep, me)?.supply.crews ?? 0) < 1) return false;
-  const need = openLairs(g.ep).reduce((sum, site) => sum + CREWS_NEEDED - site.crews.length, 0);
+  if ((epPlayer(g.ep, me)?.supply.crews ?? 0) < 1) return false;
+  const lairs = g.ep.missions.includes('lairs') ? openLairs(g.ep).reduce((sum, site) => sum + CREWS_NEEDED - site.crews.length, 0) : 0;
+  const need = lairs + (g.ep.missions.includes('spices') ? farmsToCrew(g.ep, me).length : 0);
   return unlanded(g.ep, me) < Math.min(need, UNLANDED_MAX);
 }
 

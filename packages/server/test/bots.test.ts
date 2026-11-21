@@ -293,11 +293,12 @@ describe('B-ROOM bot seats', () => {
     expect(profiles.find((profile) => profile.id === 'ck-paired-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-paired-2025')?.botSeats).toBe(true);
-    // Explorers & Pirates：Land Ho!、Pirate Lairs 與 Fish 開放，Spices、Full 仍然拒絕。
+    // Explorers & Pirates：五個 profile 全部開放（E4b）。
     expect(profiles.find((profile) => profile.id === 'ep-land-ho-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'ep-pirate-lairs-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'ep-fish-2025')?.botSeats).toBe(true);
-    expect(profiles.find((profile) => profile.id === 'ep-spices-2025')?.botSeats).toBe(false);
+    expect(profiles.find((profile) => profile.id === 'ep-spices-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'ep-full-2025')?.botSeats).toBe(true);
     // Traders & Barbarians 的 8 個可玩 profile 開放；event-card 的 4 個沒有開放，也不提供 Bot。
     for (const id of [
       'tb-friendly-robber-2025',
@@ -329,7 +330,8 @@ describe('B-ROOM bot seats', () => {
     expect(levels('ep-land-ho-2025')).toEqual(['easy', 'standard']);
     expect(levels('ep-pirate-lairs-2025')).toEqual(['easy', 'standard']);
     expect(levels('ep-fish-2025')).toEqual(['easy', 'standard']);
-    expect(levels('ep-spices-2025')).toEqual([]);
+    expect(levels('ep-spices-2025')).toEqual(['easy', 'standard']);
+    expect(levels('ep-full-2025')).toEqual(['easy', 'standard']);
     expect(levels('tb-merchant-trains-2025')).toEqual(['easy', 'standard']);
     expect(levels('tb-traders-barbarians-2025')).toEqual(['easy', 'standard']);
     expect(levels('tb-event-cards-2025')).toEqual([]);
@@ -458,18 +460,17 @@ describe('B-ROOM bot seats', () => {
     }
   });
 
-  it('still refuses bot seats for rulesets bots cannot play, and switching a bot room to them', async () => {
-    // Explorers & Pirates 的香料任務還沒有 Bot 策略（Land Ho!、Pirate Lairs、Fish 已開放）。
-    for (const profileId of ['ep-spices-2025', 'ep-full-2025']) {
+  it('keeps refusing the rulesets bots cannot play', async () => {
+    // Explorers & Pirates 五個 profile 都已開放（E4b）；剩下沒有 Bot 策略的只有未開放的 event-card profile，
+    // 房間本身就建不出來，所以改驗證兩道關卡：botsCanPlay 為 false，而且房間拒絕這個組合。
+    const host = await harness.client('NoBots');
+    for (const profileId of ['tb-event-cards-2025', 'tb-event-cards-harbors-2025']) {
       expect(botsCanPlay(getProfile(profileId)!), profileId).toBe(false);
-      const host = await harness.client('NoBots');
-      const room = await createRoom(host, { profileId, setupMode: 'variable' });
-      host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
-
-      const other = await harness.client('NoBotsSwitch');
-      const base = await createRoom(other, { bots: 1 });
-      other.expectError(await other.post(`/api/rooms/${base.id}/settings`, { profileId, setupMode: 'variable' }), 'E_INVALID_BOT');
+      host.expectError(await host.post('/api/rooms', { visibility: 'private', capacity: 3, profileId, setupMode: 'fixed' }), 'E_UNSUPPORTED_COMBINATION');
     }
+    // 已建立的 Bot 房間改成不支援的組合同樣被拒。
+    const base = await createRoom(host, { bots: 1 });
+    host.expectError(await host.post(`/api/rooms/${base.id}/settings`, { profileId: 'tb-event-cards-2025', setupMode: 'fixed' }), 'E_UNSUPPORTED_COMBINATION');
   });
 
   it('blocks start and further bots once the profile runs modules bots cannot play', async () => {

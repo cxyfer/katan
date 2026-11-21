@@ -6,47 +6,21 @@
  * 「下一次加分 ÷ 還要幾份」，領先者的 bonus 另計；easy 不看價值（一律 1，近的先去）。
  */
 
-import { EP_TRACK_BONUS, EP_TRACK_VALUES } from '@katan/rules';
 import type { BotCommand } from '../../types.ts';
 import { isSeaRoute } from '../geometry.ts';
 import type { Fleet } from '../movement.ts';
-import { type EpShipView, type EpView } from '../view.ts';
+import type { EpShipView, EpView } from '../view.ts';
 import { edgesAround, hasRoom, hexesAt } from './lairs.ts';
+import { haulValue, trackOpen } from './tracks.ts';
 import type { Mission, MissionTarget } from './index.ts';
 
-type FishTrack = { positions: Record<string, number>; leader: string | null };
-
-/** 沒有立即加分的一份魚也有的進度價值。 */
-const PROGRESS_VALUE = 0.35;
 /** 空淺灘（等擲魚）只給一點價值，讓船停在附近。 */
 const WAIT_FACTOR = 0.3;
 const LOAD_FACTOR = 0.8;
 const DELIVER_FACTOR = 1.5;
 
-const trackOf = (ep: EpView): FishTrack | undefined => (ep.tracks as { fish?: FishTrack }).fish;
-const LAST = EP_TRACK_VALUES.fish.length;
-
 /** 自己的魚軌道還有路可走。 */
-export function fishOpen(ep: EpView, me: string): boolean {
-  const track = trackOf(ep);
-  return !!track && (track.positions[me] ?? 0) < LAST;
-}
-
-/** 再交付一份魚的價值（勝利分當量）。 */
-function haulValue(ep: EpView, me: string): number {
-  const track = trackOf(ep)!;
-  const at = track.positions[me] ?? 0;
-  const score = (space: number): number => (space > 0 ? EP_TRACK_VALUES.fish[space - 1]! : 0);
-  let gain = 0;
-  let hauls = 0;
-  for (let space = at + 1; space <= LAST && gain === 0; space++) {
-    hauls += 1;
-    gain = score(space) - score(at);
-  }
-  const best = Math.max(0, ...Object.entries(track.positions).filter(([id]) => id !== me).map(([, space]) => space));
-  const lead = at + 1 > best && track.leader !== me ? EP_TRACK_BONUS : 0;
-  return Math.max(PROGRESS_VALUE, gain / Math.max(1, hauls)) + lead;
-}
+export const fishOpen = (ep: EpView, me: string): boolean => trackOpen(ep, me, 'fish');
 
 /** 這回合還值得擲魚：有空淺灘可以長魚、有船裝得下，而且軌道還沒走完。 */
 function rollWanted(f: Fleet): boolean {
@@ -60,7 +34,7 @@ function targets(f: Fleet, ship: EpShipView): ReadonlyMap<number, MissionTarget>
   const out = new Map<number, MissionTarget>();
   const { g } = f;
   if (!fishOpen(g.ep, f.me)) return out;
-  const value = f.standard ? haulValue(g.ep, f.me) : 1;
+  const value = f.standard ? haulValue(g.ep, f.me, 'fish') : 1;
   const add = (edge: number, kind: MissionTarget['kind'], score: number): void => {
     if ((out.get(edge)?.value ?? 0) < score) out.set(edge, { kind, value: score });
   };
@@ -98,6 +72,6 @@ export const fishMission: Mission = {
 };
 
 /** 船的任一端是 Council anchor。 */
-function atAnchor(f: Fleet, ship: EpShipView): boolean {
+export function atAnchor(f: Fleet, ship: EpShipView): boolean {
   return f.g.topo.edges[ship.edge]!.vertices.some((vertex) => f.g.ep.anchors.includes(vertex));
 }

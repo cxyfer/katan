@@ -1,6 +1,6 @@
 /**
  * Explorers & Pirates through the service: rooms resolve one profile per
- * mission, games start on the mission maps with fog, bots are refused, and
+ * mission, games start on the mission maps with fog, bots are seated, and
  * module commands go through the same durable, idempotent receipts.
  */
 
@@ -62,15 +62,13 @@ describe('Explorers & Pirates over the API', () => {
     expect(combined.status).toBeGreaterThanOrEqual(400);
   });
 
-  it('refuses bot seats in the missions the bots cannot play yet, and seats them in Land Ho!, Pirate Lairs and Fish', async () => {
+  it('seats bots in every Explorers & Pirates mission', async () => {
     const host = await harness.client('EpBots');
     for (const [, profileId, setupMode] of MISSIONS) {
       const room = host.expectOk<{ id: string }>(await host.post('/api/rooms', {
         visibility: 'private', capacity: 3, profileId, setupMode,
       }));
-      const added = await host.post(`/api/rooms/${room.id}/bots`, {});
-      if (['ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025'].includes(profileId)) host.expectOk(added);
-      else host.expectError(added, 'E_INVALID_BOT');
+      host.expectOk(await host.post(`/api/rooms/${room.id}/bots`, {}));
     }
   });
 

@@ -53,9 +53,9 @@ export const EP_PACING: Readonly<Record<string, number>> = {
 
 /**
  * Bot 已經會玩的部件（§4.8 N3）。`core` 是共同的底座（Land Ho! 只有它）；E3 加入 `pirates`、`lairs`，
- * E4a 加入 `fish`，E4b 再加入 `spices`。
+ * E4a 加入 `fish`，E4b 加入 `spices`（五個 profile 全開）。
  */
-export const SUPPORTED_PARTS: readonly string[] = ['core', 'pirates', 'lairs', 'fish'];
+export const SUPPORTED_PARTS: readonly string[] = ['core', 'pirates', 'lairs', 'fish', 'spices'];
 
 /**
  * profile 需要的任務部件：`missions` 加上有海盜時的 `pirates`；未知 scenario 回 null（不 throw）。
