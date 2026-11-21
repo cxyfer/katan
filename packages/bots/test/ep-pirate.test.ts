@@ -11,11 +11,12 @@ import { fallbackPolicy } from '../src/fallback.ts';
 import { turnContext } from '../src/heuristic.ts';
 import { epGeometry } from '../src/modules/explorersPirates/geometry.ts';
 import { crewBuild } from '../src/modules/explorersPirates/missions/lairs.ts';
+import { chaseReady, fleetOf, hasWork } from '../src/modules/explorersPirates/movement.ts';
 import { pirateHexScore } from '../src/modules/explorersPirates/pirate.ts';
-import { epView } from '../src/modules/explorersPirates/view.ts';
+import { epHints, epView } from '../src/modules/explorersPirates/view.ts';
 import { createBotPolicy } from '../src/policy.ts';
 import type { BotCommand, BotLevel } from '../src/types.ts';
-import { accept, ctxFor, hintsOf, newEpGame, slotOf, toAction } from './ep-fixtures.ts';
+import { accept, ctxFor, enterMovement, hintsOf, newEpGame, slotOf, toAction } from './ep-fixtures.ts';
 import { cloneState, viewFor } from './harness.ts';
 
 const PROFILE = 'ep-pirate-lairs-2025';
@@ -132,5 +133,32 @@ describe('crew building', () => {
     const command = build(state, me, false);
     expect(command).toMatchObject({ type: 'ep.buildCrew', remove: 'settler' });
     accept(state, me, command!, rng());
+  });
+});
+
+describe('chase readiness', () => {
+  it('enters Movement for a ship next to a rival pirate, and agrees with the rules chase hint', () => {
+    const { state, me } = toAction(PROFILE, 3, 1);
+    const rival = state.players.map((player) => player.id).find((id) => id !== me)!;
+    const view = viewFor(state, me);
+    const g = epGeometry(view, epView(view))!;
+    const ship = slotOf(state).ships.find((entry) => entry.player === me)!;
+    // 把對手的海盜放在我船端點碰到的海格上。
+    const hex = g.topo.edges[ship.edge]!.vertices.flatMap((vertex) => g.topo.vertices[vertex]!.hexes).find((h) => view.board.terrain[h] === 'sea')!;
+    slotOf(state).pirate = { hex, owner: rival };
+    const action = viewFor(state, me);
+    const turn = turnContext(action, ctxFor(me), 'standard');
+    const fleet = fleetOf(turn, epGeometry(action, epView(action))!);
+    const mine = epView(action)!.ships.find((entry) => entry.id === ship.id)!;
+    expect(chaseReady(fleet, mine)).toBe(true);
+    expect(hasWork(fleet, mine, 0, false)).toBe(true);
+    // rules 在 Movement 中給出的 chase hint 必須一致。
+    const moving = cloneState(state);
+    enterMovement(moving, null);
+    expect(epHints(viewFor(moving, me).hints)!.ships.find((info) => info.id === ship.id)!.chase).toBe(true);
+    // 自己的海盜不追。
+    slotOf(state).pirate = { hex, owner: me };
+    const own = viewFor(state, me);
+    expect(chaseReady(fleetOf(turnContext(own, ctxFor(me), 'standard'), epGeometry(own, epView(own))!), mine)).toBe(false);
   });
 });

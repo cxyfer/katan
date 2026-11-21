@@ -166,8 +166,22 @@ export function hasWork(f: Fleet, ship: EpShipView, left: number, paid: boolean)
     foundHere(f, ship).length > 0 ||
     fetchEdges(f, ship).has(ship.edge) ||
     activeMissions(f).some((mission) => mission.here(f, ship)) ||
+    chaseReady(f, ship) ||
     voyagesOf(f, ship, left, paid).length > 0
   );
+}
+
+/**
+ * 這艘船能不能追逐海盜（比照 rules `canChase`）：海盜屬於別人、船的端點碰到海盜格的角，而且本回合還沒移動也沒追過。
+ * Action 子階段用它決定是否進入 Movement；Movement 中以 `H.ships[i].chase` 為準。
+ */
+export function chaseReady(f: Fleet, ship: EpShipView): boolean {
+  const pirate = f.g.ep.pirate;
+  if (!pirate || pirate.owner === ship.player) return false;
+  const record = f.g.ep.turn.ships[ship.id];
+  if (record && (record.used > 0 || record.chased)) return false;
+  const ends = f.g.topo.edges[ship.edge]?.vertices ?? [];
+  return ends.some((vertex) => f.g.topo.vertices[vertex]?.hexes.includes(pirate.hex) ?? false);
 }
 
 function trade(turn: TurnContext): BotCommand | null {
