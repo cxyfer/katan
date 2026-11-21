@@ -79,6 +79,9 @@ export function sellForGold(state: GameState, actorId: string, command: ModuleCo
   return ctx.kit.accept(state);
 }
 
+/** 每回合最多用金幣買資源的次數。 */
+export const GOLD_BUYS_PER_TURN = 2;
+
 /** Twice per turn: 2 gold → 1 resource of choice (EP25 p. 9). */
 export function buyResource(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
   const refused = requireAction(state, actorId, ctx.kit);
@@ -87,7 +90,7 @@ export function buyResource(state: GameState, actorId: string, command: ModuleCo
   if (!receive) return ctx.kit.fail('E_INVALID_SELECTION');
   const slot = epState(state);
   const turn = epTurn(state);
-  if (turn.goldBuys >= 2) return ctx.kit.fail('E_EP_TURN_LIMIT', { limit: 2 });
+  if (turn.goldBuys >= GOLD_BUYS_PER_TURN) return ctx.kit.fail('E_EP_TURN_LIMIT', { limit: GOLD_BUYS_PER_TURN });
   if (goldOf(slot, actorId) < 2) return ctx.kit.fail('E_EP_NO_GOLD', { required: 2 });
   if (state.bank[receive] <= 0) return ctx.kit.fail('E_BANK_EMPTY', { resource: receive });
   payGold(slot, actorId, 2);

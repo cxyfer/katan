@@ -8,9 +8,9 @@ import {
   botModulesOf,
   botResponseCommands,
   botsCanPlay,
-  type BotModule,
 } from '../src/index.ts';
 import { CK_BOTS_RELEASED, CK_PACING, CK_PENDING_COMMANDS } from '../src/modules/citiesKnights/index.ts';
+import { EP_PACING } from '../src/modules/explorersPirates/index.ts';
 import { SEAFARERS_PACING } from '../src/modules/seafarers/index.ts';
 import { SFCK_BOTS_RELEASED, SFCK_PACING } from '../src/modules/seafarersCitiesKnights/index.ts';
 import { TB_PACING } from '../src/modules/tradersBarbarians/index.ts';
@@ -18,18 +18,6 @@ import { TB_PACING } from '../src/modules/tradersBarbarians/index.ts';
 /** 以 base-2025 為底、加上指定規則模組的 fixture profile。 */
 function profileWith(ruleModules: readonly string[]): ProfileDefinition {
   return { ...getProfile('base-2025')!, ruleModules };
-}
-
-/**
- * 骨架仍然不呼叫、只保留型別的鉤子（定案 §1.1）；哪一版實作了某個鉤子，就在同一個 PR 從這裡移除。
- * `robberTargets` 與 `rescore` 在 0.4.3 起由骨架呼叫（SFCK-P），組合層（SFCK-1）是第一個定義 `robberTargets` 的模組。
- * `trade` 與 `economy.awards` 在 0.4.4 起由骨架呼叫（T&B S1）；`economy.routeEdge` 在 0.4.4 起由 `searchRoads` 呼叫（T&B S8，
- * Rivers 的橋位）。
- */
-const RESERVED_HOOKS = ['phase', 'endWindow'] as const;
-
-function reservedHooksOf(module: BotModule): string[] {
-  return RESERVED_HOOKS.filter((hook) => hook in module);
 }
 
 describe('bot ruleset support', () => {
@@ -92,10 +80,17 @@ describe('bot ruleset support', () => {
 });
 
 describe('bot module registry', () => {
-  it('registers no module that defines a hook the skeleton still never calls', () => {
-    for (const module of BOT_MODULES.values()) expect(reservedHooksOf(module), module.id).toEqual([]);
-    // 檢查器本身要抓得到保留的鉤子。
-    expect(reservedHooksOf({ id: 'fx', phase: () => null, endWindow: () => null })).toEqual(['phase', 'endWindow']);
+  it('registers explorersPirates without opening its rooms to bots', () => {
+    const module = BOT_MODULES.get('explorersPirates')!;
+    expect(module.maxCommandsPerWindow).toBe(80);
+    expect(module.pacing?.['ep.moveShip']).toBe(400);
+    for (const profile of PROFILES.filter((item) => item.ruleModules.includes('explorersPirates'))) {
+      expect(botsCanPlay(profile), profile.id).toBe(false);
+      // 每視窗上限取各模組最大值，pacing 併入 BOT_PACING。
+      expect(botCommandLimit(profile, 40), profile.id).toBe(80);
+    }
+    for (const [type, ms] of Object.entries(EP_PACING)) expect(BOT_PACING[type]).toBe(ms);
+    expect(botCommandLimit(getProfile('base-2025')!, 40)).toBe(40);
   });
 
   it('does not mistake prototype keys for registered modules', () => {
@@ -105,14 +100,15 @@ describe('bot module registry', () => {
   });
 
   it('merges pacing, command limits and response commands from the registered modules', () => {
-    // 已註冊 Seafarers、Cities & Knights、兩者的組合層與 Traders & Barbarians：節奏是四者的合併，鍵不重複，也不蓋掉
+    // 已註冊 Seafarers、Cities & Knights、兩者的組合層、Traders & Barbarians 與 Explorers & Pirates：節奏是五者的合併，鍵不重複，也不蓋掉
     // base 的鍵（T&B 的鍵一律是 `tb.*`）。
-    expect(BOT_PACING).toEqual({ ...SEAFARERS_PACING, ...CK_PACING, ...SFCK_PACING, ...TB_PACING });
+    expect(BOT_PACING).toEqual({ ...SEAFARERS_PACING, ...CK_PACING, ...SFCK_PACING, ...TB_PACING, ...EP_PACING });
     expect(Object.keys(BOT_PACING)).toHaveLength(
       Object.keys(SEAFARERS_PACING).length +
         Object.keys(CK_PACING).length +
         Object.keys(SFCK_PACING).length +
-        Object.keys(TB_PACING).length,
+        Object.keys(TB_PACING).length +
+        Object.keys(EP_PACING).length,
     );
     // 組合層的 `knight.chasePirate` 與 C&K 的 `knight.chaseRobber` 同為 900；`pending.moveRobber` 同樣不列。
     expect(SFCK_PACING).toEqual({ 'knight.chasePirate': 900 });

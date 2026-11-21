@@ -1039,6 +1039,8 @@ describe('B-LIFE pacing', () => {
       expect(driver.delayFor({ type: 'trade.offer' }, runtime)).toBe(2400);
       expect(driver.delayFor({ type: 'dev.playKnight' }, runtime)).toBe(2200);
       expect(driver.delayFor({ type: 'unknown.module.command' }, runtime)).toBe(1800);
+      // 模組的 pacing 經 BOT_PACING 合併（E&P：ep.moveShip 400 ms，delayScale 2 → 800）。
+      expect(driver.delayFor({ type: 'ep.moveShip' }, runtime)).toBe(800);
       // 擲骰演出期間，任何指令都至少等到演出結束。
       expect(driver.delayFor({ type: 'trade.withdraw' }, { changedAt: now, rolledAt: now })).toBe(5600);
     } finally {

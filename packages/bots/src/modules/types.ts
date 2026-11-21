@@ -198,9 +198,17 @@ export interface BotModule {
    */
   rescore?(turn: TurnContext, command: BotCommand): number;
 
-  // ---- 只保留型別，骨架不呼叫 ----
-  phase?(turn: TurnContext): BotCommand | null | undefined; // 0.4.5
-  endWindow?(turn: TurnContext): BotCommand | null | undefined; // 0.4.5
+  // ---- 0.4.5 實作（E&P；E0 接上骨架）----
+  /**
+   * 行動階段接管。行動者的行動視窗一開始、在報價與其他策略之前依模組順序詢問，第一個非 undefined 勝出；
+   * 回 null 表示歸自己管但這次不送指令，骨架改走保底。沒有模組定義時完全不呼叫，行為與亂數消耗不變。
+   */
+  phase?(turn: TurnContext): BotCommand | null | undefined;
+  /**
+   * 行動視窗收尾。骨架沒有其他事可做、準備送 `turn.end` 之前依模組順序詢問，第一個非 undefined 勝出（可取代 `turn.end`）；
+   * 回 null 時改走保底（模組 `duty`，最後才是 `turn.end`）；都回 undefined 則照舊。
+   */
+  endWindow?(turn: TurnContext): BotCommand | null | undefined;
 
   // ---- 0.4.4 實作（T&B；S1 接上骨架）----
   readonly trade?: BotTradeHooks;

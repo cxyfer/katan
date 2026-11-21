@@ -413,6 +413,60 @@ describe('strategy hooks', () => {
     });
   });
 
+  describe('phase and endWindow (0.4.5)', () => {
+    it('lets the first module that answers phase take over the action window', () => {
+      const { id, view } = actionPosition();
+      const take = cmd('fx.take');
+      const never = vi.fn(() => cmd('fx.never'));
+      const modules: BotModule[] = [{ id: 'a', phase: () => undefined }, { id: 'b', phase: () => take }, { id: 'c', phase: never }];
+      expect(policyOf(modules).decide(withHand(view, id, RICH), ctxFor(id))).toBe(take);
+      expect(never).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the duty path when phase answers null', () => {
+      const { id, view } = actionPosition();
+      const rich = withHand(view, id, RICH);
+      const nullPhase = policyOf([{ id: 'fx', phase: () => null }]).decide(rich, ctxFor(id));
+      // null 歸模組管但不送指令：不再走 base 建造，直接保底（turn.end）。
+      expect(nullPhase).toEqual({ type: 'turn.end' });
+      const duty = cmd('fx.duty');
+      expect(policyOf([{ id: 'fx', phase: () => null, duty: () => duty }]).decide(rich, ctxFor(id))).toBe(duty);
+    });
+
+    it('asks endWindow only when nothing else is left, replacing turn.end', () => {
+      const { id, view } = actionPosition();
+      const quiet = noScoringBuilds(withHand(view, id, { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 }));
+      const end = cmd('fx.end');
+      const hook = vi.fn(() => end);
+      expect(policyOf([{ id: 'fx', endWindow: hook }]).decide(quiet, ctxFor(id))).toBe(end);
+      expect(hook).toHaveBeenCalledTimes(1);
+      // 還有建造可做時不詢問。
+      const busy = vi.fn(() => end);
+      const rich = withHand(view, id, RICH);
+      expect(policyOf([{ id: 'fx', endWindow: busy }]).decide(rich, ctxFor(id))).toEqual(policyOf([]).decide(rich, ctxFor(id)));
+      expect(busy).not.toHaveBeenCalled();
+    });
+
+    it('treats endWindow null as fallback and undefined as pass-through', () => {
+      const { id, view } = actionPosition();
+      const quiet = noScoringBuilds(withHand(view, id, { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 }));
+      const base = policyOf([]).decide(quiet, ctxFor(id));
+      expect(policyOf([{ id: 'fx', endWindow: () => null }]).decide(quiet, ctxFor(id))).toEqual(base);
+      expect(policyOf([{ id: 'fx', endWindow: () => undefined }]).decide(quiet, ctxFor(id))).toEqual(base);
+      const second = cmd('fx.second');
+      expect(policyOf([{ id: 'a', endWindow: () => undefined }, { id: 'b', endWindow: () => second }]).decide(quiet, ctxFor(id))).toBe(second);
+    });
+
+    it('keeps decisions and rng consumption identical when no module defines the hooks', () => {
+      const { id, view } = actionPosition();
+      const rich = withHand(view, id, RICH);
+      for (const level of ['easy', 'standard'] as const) {
+        const plain = policyOf([], level).decide(rich, ctxFor(id, level, 7));
+        expect(policyOf([{ id: 'fx' }], level).decide(rich, ctxFor(id, level, 7))).toEqual(plain);
+      }
+    });
+  });
+
   describe('freeRouteCandidates', () => {
     it('replaces base road choice for a freeRoads frame when non-empty', () => {
       const { id, view } = actionPosition();
