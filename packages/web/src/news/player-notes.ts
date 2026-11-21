@@ -27,6 +27,32 @@ export interface PlayerNote {
 
 export const PLAYER_NOTES: readonly PlayerNote[] = [
   {
+    version: '0.4.5',
+    date: '2026-11-22',
+    title: {
+      'zh-Hant': '電腦對手出航探險家與海盜',
+      en: 'Computer opponents set sail in Explorers & Pirates',
+    },
+    items: [
+      {
+        'zh-Hant': '探險家與海盜開放「簡單」與「標準」電腦對手入座，3–4 人都可以，五個任務（發現陸地！、海盜巢穴、為喀坦捕魚、為喀坦運香料、全部任務）皆適用。「困難」仍只在基本版提供。',
+        en: 'Easy and standard computer opponents can now take seats in Explorers & Pirates at 3–4 players, in all five missions (Land Ho!, Pirate Lairs, Fish for Katan, Spices for Katan and all missions). Hard remains base-game only.',
+      },
+      {
+        'zh-Hant': '它們會駕船探索迷霧、載移民到新島建村莊並升級港口，在變動式開局自己挑選港口與航線。',
+        en: 'They sail into the fog, carry settlers to new islands, upgrade harbours and choose their own harbour and route in the variable setup.',
+      },
+      {
+        'zh-Hant': '它們也會派船員攻下海盜巢穴、追逐並放置海盜、擲魚並把漁獲送到議會，還會在香料農場駐員、運回香料袋。',
+        en: 'They also land crews to capture pirate lairs, chase and place the pirate, roll for fish and deliver hauls to the council, and staff spice farms to bring back spice sacks.',
+      },
+      {
+        'zh-Hant': '電腦對手不會主動提出含金幣的交易；你用金幣向它們開價時，它們會依金幣的市價判斷，並總會留下至少一枚金幣付過路費。',
+        en: 'Computer opponents never propose trades involving gold; when you offer them gold they judge it at market value and always keep at least one coin for tribute.',
+      },
+    ],
+  },
+  {
     version: '0.4.4',
     date: '2026-11-21',
     title: {
