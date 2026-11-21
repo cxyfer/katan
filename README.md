@@ -163,7 +163,7 @@ TEST_POSTGRES_URL=postgres://user:pass@host:5432/db pnpm --filter @katan/server 
   Spices for Katan and the full game: fog over unexplored hexes, harbour
   settlements, ships carrying settlers, crews, fish and spice, coins, pirate
   ships, lairs, the Council of Katan and mission tracks, in both boards.
-  Never combined with Seafarers; human seats only.
+  Never combined with Seafarers; easy and standard computer opponents can be added.
 
 - **Cities & Knights** for 3–6 players (CK25/CK56-25 2025 editions): the
   event die and barbarians, knights, walls, commodities, city improvements,

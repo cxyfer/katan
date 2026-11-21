@@ -19,6 +19,7 @@ P1 範圍內：
   - 0.4.2 起加上 Cities & Knights 的 `ck-2025`（3–4 人）與 `ck-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-cities-knights.md`。
   - 0.4.3 起加上 `sf-ck-new-shores-2025`（3–4 人）與 `sf-ck-new-shores-paired-2025`（5–6 人）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-seafarers-cities-knights.md`。
   - 0.4.4 起加上 Traders & Barbarians 的 8 個可玩 profile（都是 3–4 人）：變體 `tb-friendly-robber-2025`、`tb-harbors-2025`、`tb-friendly-robber-harbors-2025`，劇本 `tb-fishing-2025`、`tb-rivers-2025`、`tb-merchant-trains-2025`、`tb-barbarian-attack-2025`、`tb-traders-barbarians-2025`。Bot 依 profile 的每個 part（劇本、變體、Coins）判定能不能玩，4 個 `tb-event-cards*` 不在範圍內（rules 也沒有開放）。策略與保底見 `docs/aegis/plans/2026-11-04-bots-traders-barbarians.md`。
+  - 0.4.5 起加上 Explorers & Pirates 的 5 個 profile（都是 3–4 人，只有 easy 與 standard）：`ep-land-ho-2025`、`ep-pirate-lairs-2025`、`ep-fish-2025`、`ep-spices-2025`、`ep-full-2025`。策略與保底見 `docs/aegis/plans/2026-11-04-bots-explorers-pirates.md`。
 - 座位、大廳與遊戲中玩家面板顯示「電腦」徽章與難度。
 
 P1 範圍外：斷線托管（§9 只設計）、hard 難度、Bot 聊天、房間層級節奏設定、開局後增減 Bot、Bot 的反報價（counteroffer）、以事件紀錄推算對手手牌。
@@ -156,6 +157,8 @@ export function botResponseCommands(profile: Pick<ProfileDefinition, 'ruleModule
 Seafarers 的保底見 SF 計畫 `docs/aegis/plans/2026-11-04-bots-seafarers.md` §4.1，包含 gold frame、移動強盜或海盜、含船的免費道路與初始放船。
 
 Cities & Knights 的保底見 C&K 計畫 `docs/aegis/plans/2026-11-04-bots-cities-knights.md` §4.2，包含 14 個 C&K frame 與含 commodity、進步卡上限的棄牌。Seafarers + Cities & Knights 的保底見 SF+CK 計畫 `docs/aegis/plans/2026-11-04-bots-seafarers-cities-knights.md` §4.3：沒有自己的 frame，盜賊目標取 §4.2 的 fold 集合的第一項（首攻前的 7 只棄牌，追擊海盜之後的 `moveRobber` 只收海格或 `null`）。
+
+Explorers & Pirates 的保底見 E&P 計畫 `docs/aegis/plans/2026-11-04-bots-explorers-pirates.md` §4.1（`packages/bots/src/modules/explorersPirates/duty.ts`）：每個 frame 與強制動作都有答案，擱淺死結由 rules 的 `ep-2025.2` 解決。
 
 Traders & Barbarians 的保底見 T&B 計畫 `docs/aegis/plans/2026-11-04-bots-traders-barbarians.md` §4.1 的 17 列（`packages/bots/src/modules/tradersBarbarians/duty.ts`）：各 frame 取 hints 的第一個候選，回合結束時排入的 frame 取最小動作（Trains 出價 0、BA 的騎士結束移動、Traders 的車隊停車），多 responder 的 frame 只在自己是 `responders[0]` 時作答；Friendly Robber 的強盜目標由 `robberTargets` 換成 hints 的 `robberHexes`，全部受保護時可以留在沙漠。
 

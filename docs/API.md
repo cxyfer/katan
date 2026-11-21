@@ -157,7 +157,8 @@ only the original human players must reconnect and become ready to resume.
   playable Traders & Barbarians profiles (`tb-friendly-robber-2025`,
   `tb-harbors-2025`, `tb-friendly-robber-harbors-2025`, `tb-fishing-2025`,
   `tb-rivers-2025`, `tb-merchant-trains-2025`, `tb-barbarian-attack-2025`,
-  `tb-traders-barbarians-2025`) qualify, so `ProfileView.botSeats` is true for
+  `tb-traders-barbarians-2025`) and the five Explorers & Pirates profiles
+  (`ep-land-ho-2025`, `ep-pirate-lairs-2025`, `ep-fish-2025`, `ep-spices-2025`, `ep-full-2025`) qualify, so `ProfileView.botSeats` is true for
   them and false for every other expansion profile, including the four closed
   `tb-event-cards*` rows (the Traders & Barbarians module refuses the
   `event-cards` variant even if a row were opened). Adding a bot or
@@ -486,7 +487,7 @@ ships' `steps` are empty. A stranded ship with no way out is not `stranded`:
 `turn.end`, another ship's move or the fish roll ends its movement there, and
 the edge holds three ships until they sail on. Unfinished `ep-2025.1` games
 behave the same way (SPEC §7.3).
-Bots cannot be seated in E&P rooms (`E_INVALID_BOT`, `blocker.botsUnsupported`).
+E&P rooms accept easy and standard bot seats at 3–4 players; `hard` is `E_INVALID_BOT` (reason `profileLevel`).
 ### Cities & Knights commands (`ck-*`)
 
 The `ck-2025` and `ck-paired-2025` profiles are enabled: the lobby offers
