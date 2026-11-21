@@ -1,18 +1,19 @@
 /**
  * Explorers & Pirates 的 BotModule（E&P 計畫 §4.9、§5.1）。
  *
- * E0 註冊模組與節奏，E1 接上保底 `duty` 與最小的 `setup`，E2 接上 Land Ho! 的策略：economy 鉤子與計畫、
- * Action 的 `actions`／`planStep`／`endWindow`、Movement 的 `phase`、金幣的 trade 鉤子，並依部件開放 `supports`。
+ * E0 註冊模組與節奏，E1 接上保底 `duty`，E2 接上 Land Ho! 的策略：economy 鉤子與計畫、
+ * Action 的 `actions`／`planStep`／`endWindow`、Movement 的 `phase`、金幣的 trade 鉤子，並依部件開放 `supports`；E3 接上變動式開局、海盜 frame 與巢穴任務。
  */
 
 import { epScenario, type ProfileDefinition } from '@katan/rules';
 import type { BotModule } from '../types.ts';
 import { epActions, epEndWindow, epPlanStep } from './action.ts';
-import { explorersPiratesDuty, setupDuty } from './duty.ts';
+import { explorersPiratesDuty } from './duty.ts';
 import { epMovement } from './movement.ts';
+import { epAnswerFrame } from './pirate.ts';
 import { explorersPiratesEconomy } from './plans.ts';
+import { epSetup } from './setup.ts';
 import { explorersPiratesTrade } from './trade.ts';
-import { epHints, epView } from './view.ts';
 
 /** 各指令的思考延遲（毫秒，§4.9 全表）。鍵一律是 `ep.*`，不與其他模組重複。 */
 export const EP_PACING: Readonly<Record<string, number>> = {
@@ -51,10 +52,10 @@ export const EP_PACING: Readonly<Record<string, number>> = {
 };
 
 /**
- * Bot 已經會玩的部件（§4.8 N3）。`core` 是共同的底座（Land Ho! 只有它）；E3 起加入 `pirates`、`lairs`，
+ * Bot 已經會玩的部件（§4.8 N3）。`core` 是共同的底座（Land Ho! 只有它）；E3 加入 `pirates`、`lairs`，
  * E4a、E4b 再加入 `fish`、`spices`。
  */
-export const SUPPORTED_PARTS: readonly string[] = ['core'];
+export const SUPPORTED_PARTS: readonly string[] = ['core', 'pirates', 'lairs'];
 
 /**
  * profile 需要的任務部件：`missions` 加上有海盜時的 `pirates`；未知 scenario 回 null（不 throw）。
@@ -88,13 +89,7 @@ export const explorersPiratesBotModule: BotModule = {
   planStep: epPlanStep,
   endWindow: epEndWindow,
   phase: epMovement,
-  /**
-   * 變動式開局：只要 `V.setupStep` 非 null 就接管，讓 base 的 setup 指令（會被 veto）不會送出；
-   * 游標上回傳最小動作，其他座位回 null。E3 以策略取代（§4.2）。
-   */
-  setup(turn) {
-    if (!epView(turn.view)?.setupStep) return undefined;
-    const hints = epHints(turn.view.hints);
-    return hints ? (setupDuty(hints) ?? null) : null;
-  },
+  answerFrame: epAnswerFrame,
+  // 變動式開局：`V.setupStep` 非 null 就接管（base 的 setup 指令會被 veto）；非游標的座位回 null。
+  setup: epSetup,
 };

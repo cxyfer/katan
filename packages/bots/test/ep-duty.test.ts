@@ -100,7 +100,9 @@ describe('pirate frames and discards', () => {
     const state = frame({ stage: 'place', cause: 'seven' });
     const first = target(state);
     for (const [who, command] of decisions(state, me)) {
-      expect(command, who).toEqual({ type: 'ep.placePirate', hex: first });
+      // 保底取第一個目標；策略另有評分（ep-pirate.test.ts），這裡只要求合法被接受。
+      if (who === 'fallback') expect(command).toEqual({ type: 'ep.placePirate', hex: first });
+      expect(command?.type, who).toBe('ep.placePirate');
       accept(state, me, command!, rng());
     }
     slotOf(state).pirate = { hex: first, owner: others[0]! };
@@ -121,7 +123,8 @@ describe('pirate frames and discards', () => {
   it('robs the first of two candidates, and only for the first responder', () => {
     const state = frame({ stage: 'rob', cause: 'seven', candidates: others });
     for (const [who, command] of decisions(state, me)) {
-      expect(command, who).toEqual({ type: 'ep.robPlayer', victim: others[0] });
+      if (who === 'fallback') expect(command).toEqual({ type: 'ep.robPlayer', victim: others[0] });
+      expect(command?.type, who).toBe('ep.robPlayer');
       accept(state, me, command!, rng());
     }
     expect(dutyOf(state, others[0]!)).toBeNull();

@@ -23,6 +23,7 @@ export interface EpSlot {
   ships: { id: string; player: string; edge: number; cargo: string[] }[];
   harbors: { vertex: number; player: string; cargo: string[] }[];
   pirate: { hex: number; owner: string } | null;
+  sites: { hex: number; kind: string; crews?: string[]; captured?: boolean }[];
   turn: {
     windowId: number;
     phase: 'action' | 'movement';

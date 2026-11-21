@@ -15,8 +15,9 @@ import { explorersPiratesDuty } from './duty.ts';
 import { exploreValue } from './explore.ts';
 import { foundVertices, fogAtEnds, type EpGeometry } from './geometry.ts';
 import { remainingTiles } from './inventory.ts';
+import { activeMissions, type MissionKind } from './missions/index.ts';
 import { geometryOf } from './plans.ts';
-import { reachableEdges, routeWorld } from './route.ts';
+import { reachableEdges, routeWorld, type RoutePath, type RouteWorld } from './route.ts';
 import { activeShip, epHints, epPlayer, epView, woolOf, type EpHints, type EpShipHints, type EpShipView } from './view.ts';
 
 /** 規劃航程的 MP 視野（一個回合 4 + 2 + 2，再看遠一點讓船朝目標前進）。 */
@@ -27,6 +28,8 @@ const STEP_DISCOUNT = 0.85;
 const EXTRA_MIN_VALUE = 0.4;
 /** 前往已放著 settler 的 harbour 取貨。 */
 const FETCH_VALUE = 0.9;
+/** 付過路費的條件：繞開要多走至少這麼多步（standard，付完還要留 1 金）。 */
+const TRIBUTE_DETOUR = 2;
 /** 起始島上的定居點打折：產能與起始聚落重疊、也最擠；standard 寧可先探索新島。 */
 const START_ISLAND_FACTOR = 0.6;
 
@@ -36,7 +39,7 @@ export interface Voyage {
   readonly edge: number;
   /** 依序經過的邊，第一個是下一步。 */
   readonly path: readonly number[];
-  readonly kind: 'found' | 'explore' | 'fetch';
+  readonly kind: 'found' | 'explore' | 'fetch' | MissionKind;
   readonly value: number;
   readonly score: number;
 }
@@ -106,8 +109,9 @@ export function voyagesOf(f: Fleet, ship: EpShipView, left: number, paid: boolea
   const gold = f.standard ? (epPlayer(f.g.ep, f.me)?.gold ?? 0) : 0;
   const settler = settlerAboard(f, ship);
   const fetch = fetchEdges(f, ship);
+  const missions = activeMissions(f).map((mission) => mission.targets(f, ship));
   const out: Voyage[] = [];
-  for (const [edge, route] of reachableEdges(world, ship.edge, Math.max(left, HORIZON), paid, gold)) {
+  for (const [edge, route] of routesOf(f, world, ship, Math.max(left, HORIZON), paid, gold)) {
     let kind: Voyage['kind'] | null = null;
     let value = 0;
     if (settler) {
@@ -115,6 +119,15 @@ export function voyagesOf(f: Fleet, ship: EpShipView, left: number, paid: boolea
       if (sites.length > 0) {
         kind = 'found';
         value = Math.max(...sites.map(f.spot));
+      }
+    }
+    if (kind === null) {
+      for (const targets of missions) {
+        const target = targets.get(edge);
+        if (target && target.value > value) {
+          kind = target.kind;
+          value = target.value;
+        }
       }
     }
     if (kind === null && fogAtEnds(f.g, edge).length > 0) {
@@ -131,9 +144,30 @@ export function voyagesOf(f: Fleet, ship: EpShipView, left: number, paid: boolea
   return out.sort((a, b) => b.score - a.score);
 }
 
+/**
+ * 可到達的邊與路徑。預設不付過路費；standard 在有海盜、付完仍留 ≥ 1 金時，只有繞開要多走 ≥ 2 步
+ * （或根本繞不開）的目標才付（§4.3）。easy 的 `gold` 是 0，永遠不付。
+ */
+function routesOf(f: Fleet, world: RouteWorld, ship: EpShipView, left: number, paid: boolean, gold: number): ReadonlyMap<number, RoutePath> {
+  if (paid || !f.g.ep.pirate) return reachableEdges(world, ship.edge, left, paid, gold);
+  const free = reachableEdges(world, ship.edge, left, paid, 0);
+  if (gold < 2) return free;
+  const out = new Map(free);
+  for (const [edge, route] of reachableEdges(world, ship.edge, left, paid, gold)) {
+    const around = free.get(edge);
+    if (!around || around.mp - route.mp >= TRIBUTE_DETOUR) out.set(edge, route);
+  }
+  return out;
+}
+
 /** 這艘船有航程可走，或已經在可定居的位置（`endWindow` 判斷要不要進 Movement）。 */
 export function hasWork(f: Fleet, ship: EpShipView, left: number, paid: boolean): boolean {
-  return foundHere(f, ship).length > 0 || fetchEdges(f, ship).has(ship.edge) || voyagesOf(f, ship, left, paid).length > 0;
+  return (
+    foundHere(f, ship).length > 0 ||
+    fetchEdges(f, ship).has(ship.edge) ||
+    activeMissions(f).some((mission) => mission.here(f, ship)) ||
+    voyagesOf(f, ship, left, paid).length > 0
+  );
 }
 
 function trade(turn: TurnContext): BotCommand | null {
@@ -191,8 +225,15 @@ export function epMovement(turn: TurnContext): BotCommand | null | undefined {
       const paid = ep.turn.ships[info.id]?.tribute ?? false;
       return { info, ship, voyages: executable(voyagesOf(fleet, ship, info.movesLeft, paid), info) };
     });
+  // 追海盜是免費的、而且要在船移動之前（easy 一律追；standard 同樣有利無害，擲不中不損失）。
+  const chaser = hints.ships.find((info) => info.chase && !info.done);
+  if (chaser) return { type: 'ep.chase', ship: chaser.id };
   const free = freeAction(fleet, hints, new Map(candidates.map((entry) => [entry.info.id, entry.voyages[0]?.score ?? 0])));
   if (free) return free;
+  for (const mission of activeMissions(fleet)) {
+    const action = mission.free(fleet, hints);
+    if (action) return action;
+  }
 
   // active 船先走完；其餘依最佳航程分數。
   const active = activeShip(ep)?.id;

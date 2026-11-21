@@ -293,9 +293,10 @@ describe('B-ROOM bot seats', () => {
     expect(profiles.find((profile) => profile.id === 'ck-paired-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-2025')?.botSeats).toBe(true);
     expect(profiles.find((profile) => profile.id === 'sf-ck-new-shores-paired-2025')?.botSeats).toBe(true);
-    // Explorers & Pirates：只有 Land Ho!（沒有任務與海盜）開放，其餘 4 個 profile 仍然拒絕。
+    // Explorers & Pirates：Land Ho! 與 Pirate Lairs 開放，Fish、Spices、Full 仍然拒絕。
     expect(profiles.find((profile) => profile.id === 'ep-land-ho-2025')?.botSeats).toBe(true);
-    expect(profiles.find((profile) => profile.id === 'ep-pirate-lairs-2025')?.botSeats).toBe(false);
+    expect(profiles.find((profile) => profile.id === 'ep-pirate-lairs-2025')?.botSeats).toBe(true);
+    expect(profiles.find((profile) => profile.id === 'ep-fish-2025')?.botSeats).toBe(false);
     // Traders & Barbarians 的 8 個可玩 profile 開放；event-card 的 4 個沒有開放，也不提供 Bot。
     for (const id of [
       'tb-friendly-robber-2025',
@@ -325,7 +326,8 @@ describe('B-ROOM bot seats', () => {
     expect(levels('sf-ck-new-shores-2025')).toEqual(['easy', 'standard']);
     expect(levels('sf-ck-new-shores-paired-2025')).toEqual(['easy', 'standard']);
     expect(levels('ep-land-ho-2025')).toEqual(['easy', 'standard']);
-    expect(levels('ep-pirate-lairs-2025')).toEqual([]);
+    expect(levels('ep-pirate-lairs-2025')).toEqual(['easy', 'standard']);
+    expect(levels('ep-fish-2025')).toEqual([]);
     expect(levels('tb-merchant-trains-2025')).toEqual(['easy', 'standard']);
     expect(levels('tb-traders-barbarians-2025')).toEqual(['easy', 'standard']);
     expect(levels('tb-event-cards-2025')).toEqual([]);
@@ -455,16 +457,16 @@ describe('B-ROOM bot seats', () => {
   });
 
   it('still refuses bot seats for rulesets bots cannot play, and switching a bot room to them', async () => {
-    // Explorers & Pirates 的任務與海盜部件還沒有 Bot 策略（Land Ho! 已開放）。
-    for (const profileId of ['ep-pirate-lairs-2025']) {
+    // Explorers & Pirates 的魚、香料任務還沒有 Bot 策略（Land Ho!、Pirate Lairs 已開放）。
+    for (const profileId of ['ep-fish-2025', 'ep-spices-2025', 'ep-full-2025']) {
       expect(botsCanPlay(getProfile(profileId)!), profileId).toBe(false);
       const host = await harness.client('NoBots');
-      const room = await createRoom(host, { profileId });
+      const room = await createRoom(host, { profileId, setupMode: 'variable' });
       host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
 
       const other = await harness.client('NoBotsSwitch');
       const base = await createRoom(other, { bots: 1 });
-      other.expectError(await other.post(`/api/rooms/${base.id}/settings`, { profileId }), 'E_INVALID_BOT');
+      other.expectError(await other.post(`/api/rooms/${base.id}/settings`, { profileId, setupMode: 'variable' }), 'E_INVALID_BOT');
     }
   });
 
