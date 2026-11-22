@@ -1,8 +1,9 @@
-/** survey 分片的解析：meta 與每局、每座位的欄位都必填且型別正確，沒有欄位被靜默略過。 */
+/** survey 分片的解析與觀測欄位。 */
 
 import { describe, expect, it } from 'vitest';
-import { parseShard } from './survey-records.ts';
-import { ShardMergeError } from './survey-merge.ts';
+import { checkpointVp, openingMetrics } from './survey-observations.ts';
+import { parseRoles, parseShard, rolesFor } from './survey-records.ts';
+import { mergeShards, ShardMergeError } from './survey-merge.ts';
 
 const PROFILE = 'sf-new-shores-2025';
 
@@ -119,6 +120,29 @@ describe('parseShard', () => {
     expect(() => parseShard('r.jsonl', text(meta, [game(0, { seats: [seat(0, 'standard', 0), seat(1, 'naive', 0), seat(2, 'naive', 0)] }), wrong]))).toThrow('expected');
   });
 
+  it('accepts hard and hard0 as single roles, focus/rest roles and script roles', () => {
+    expect(rolesFor(parseRoles('hard'), 3, 1)).toEqual(['hard', 'hard', 'hard']);
+    expect(rolesFor(parseRoles('hard0'), 3, 1)).toEqual(['hard0', 'hard0', 'hard0']);
+    expect(rolesFor(parseRoles('hard0:standard'), 3, 2)).toEqual(['standard', 'standard', 'hard0']);
+    expect(rolesFor(parseRoles('hard:hard0'), 3, 1)).toEqual(['hard0', 'hard', 'hard0']);
+    const seats = [seat(0, 'standard', 0), seat(1, 'hard0', 0), seat(2, 'standard', 0)];
+    const meta = { ...META, roles: 'hard0:standard', scriptRoles: 'hard0', from: 1, games: 1 };
+    expect(parseShard('hard0.jsonl', text(meta, [game(1, { seats })])).games[0]!.seats.map(({ role }) => role)).toEqual(['standard', 'hard0', 'standard']);
+  });
+
+  it('validates optional observations and merges new shards with legacy shards unchanged', () => {
+    const observations = { openExpected: 17 / 36, openRank: 1, vp5: 2, vp15: null, vpCards: 0 };
+    const seatsWith = (extra: Json): Json[] => [0, 1, 2].map((index) => ({ ...seat(index, 'standard', 0), ...extra }));
+    const old = parseShard('old.jsonl', text({ ...META, games: 1 }, [game(0)]));
+    const parseNew = (extra: Json) => parseShard('new.jsonl', text({ ...META, from: 1, games: 1 }, [game(1, { seats: seatsWith(extra) })]));
+    const merged = mergeShards([old, parseNew(observations)]);
+    expect(merged.games[0]!.seats[0]).toEqual(seat(0, 'standard', 0));
+    expect(merged.games[1]!.seats[0]).toMatchObject(observations);
+    for (const [key, value] of Object.entries({ openExpected: '0.47', openRank: 1.5, vp5: false, vp15: [], vpCards: null })) {
+      expect(() => parseNew({ ...observations, [key]: value })).toThrow(`needs ${key}`);
+    }
+  });
+
   it('requires and types the meta fields', () => {
     const body = [game(0), game(1)];
     for (const key of ['profile', 'players', 'roles', 'from', 'games']) {
@@ -143,5 +167,27 @@ describe('parseShard', () => {
     expect(() => parseShard('e.jsonl', JSON.stringify(game(0)) + '\n')).toThrow('line 1 is not a shard meta');
     expect(() => parseShard('e.jsonl', JSON.stringify({ meta: META }) + '\n{oops\n')).toThrow('line 2 is not valid JSON');
     expect(() => parseShard('e.jsonl', JSON.stringify({ meta: META }) + '\n[1]\n')).toThrow('is not a game record');
+  });
+});
+
+describe('survey observations', () => {
+  it('uses both settlements for production and gives tied seats the same rank', () => {
+    expect(openingMetrics([[7, 8], [10, 5], [7, 6]])).toEqual([
+      { openExpected: 15 / 36, openRank: 1 },
+      { openExpected: 15 / 36, openRank: 1 },
+      { openExpected: 13 / 36, openRank: 3 },
+    ]);
+    expect(openingMetrics([[7, 8], [10]])).toEqual([
+      { openExpected: 15 / 36, openRank: null },
+      { openExpected: null, openRank: null },
+    ]);
+  });
+
+  it('samples the start of the next round and never treats the final score as a checkpoint', () => {
+    const throughRound5 = [[2, 2], [2, 2], [2, 2], [3, 2], [3, 3]];
+    const nextRound = [...throughRound5, [4, 3]];
+    expect(checkpointVp([...throughRound5, [10, 3]], 5, 0, true)).toBeNull();
+    expect(checkpointVp([...nextRound, [10, 4]], 5, 1, true)).toBe(3);
+    expect(checkpointVp(nextRound, 5, 0, false)).toBe(4);
   });
 });
