@@ -4,10 +4,11 @@
  */
 
 import { RESOURCES, type Command, type GameView, type Offer, type Resource } from '@katan/rules';
-import { boardModel } from '../board.ts';
-import { canAfford, deficitOf, economyOf, type Cost, type Economy, type Hand } from '../economy.ts';
+import { canAfford, deficitOf, economyOf, isImmediate, type Cost, type Economy, type Hand } from '../economy.ts';
 import { acceptMargin, handUtility, MAX_OFFERS_PER_WINDOW, offerGain, offerTermsKnown } from '../trade.ts';
 import { LEVEL_PARAMS } from '../level.ts';
+import type { HandBelief } from '../tracker.ts';
+import { rivalHints } from './rival-hints.ts';
 import type { HardTurn } from './turn.ts';
 
 /** 每位對手最多模擬幾種可能手牌（依機率由高到低，累積到 `WORLD_MASS` 為止）。 */
@@ -36,11 +37,11 @@ export interface RivalModel {
   readonly worlds: readonly RivalWorld[];
 }
 
-/** 以對手的角度建立投影：資源換成假設的手牌，沒有 hints（對方的合法位置自己算不到）。 */
-function viewAs(view: GameView, rivalId: string, hand: Hand): GameView {
-  const { hints: _hints, ...rest } = view;
+/** 以假設手牌和公開盤面推算的提示建立對手投影，不沿用自己的 hints。 */
+function viewAs(view: GameView, rivalId: string, hand: Hand, hints: NonNullable<GameView['hints']>): GameView {
   return {
-    ...rest,
+    ...view,
+    hints,
     players: view.players.map((player) => (player.id === rivalId ? { ...player, resources: { ...hand } } : player)),
   };
 }
@@ -55,24 +56,45 @@ export function rivalModel(turn: HardTurn, rivalId: string): RivalModel {
   return model;
 }
 
+/** 依小數餘額分配整張牌，讓近似手牌仍符合公開張數。 */
+function roundedHand(belief: HandBelief): Hand {
+  const hand = { ...belief.expected };
+  const byRemainder = RESOURCES.slice().sort((first, second) =>
+    (hand[second] - Math.floor(hand[second])) - (hand[first] - Math.floor(hand[first])),
+  );
+  let remaining = belief.size;
+  for (const resource of RESOURCES) {
+    hand[resource] = Math.floor(hand[resource]);
+    remaining -= hand[resource];
+  }
+  for (const resource of byRemainder.slice(0, remaining)) hand[resource] += 1;
+  return hand;
+}
+
 function buildRivalModel(turn: HardTurn, rivalId: string): RivalModel {
   const belief = turn.hand(rivalId);
+  if (!belief || (belief.worlds.length === 0 && belief.size === 0)) return { id: rivalId, worlds: [] };
+  const candidates = belief.worlds.length > 0 ? belief.worlds : [{ p: 1, hand: roundedHand(belief) }];
+  const base = { ...turn.model, selfId: rivalId };
+  const hints = rivalHints(base);
   const worlds: RivalWorld[] = [];
-  if (belief && belief.worlds.length > 0) {
-    let mass = 0;
-    // 盤面模型只依盤面而定：建一次，每種手牌只換掉 view。
-    const base = boardModel(turn.view, rivalId);
-    for (const world of belief.worlds) {
-      if (worlds.length >= MAX_RIVAL_WORLDS || mass >= WORLD_MASS) break;
-      const hand = { ...world.hand } as Hand;
-      worlds.push({ p: world.p, hand, economy: economyOf({ ...base, view: viewAs(turn.view, rivalId, hand) }) });
-      mass += world.p;
+  let mass = 0;
+  let scoringHints = hints;
+  for (const world of candidates) {
+    if (worlds.length >= MAX_RIVAL_WORLDS || mass >= WORLD_MASS) break;
+    const hand = { ...world.hand };
+    const model = { ...base, view: viewAs(turn.view, rivalId, hand, hints) };
+    const economy = scoringHints === hints
+      ? economyOf(model)
+      : { ...economyOf({ ...model, view: { ...model.view, hints: scoringHints } }), model };
+    // 最長路候選與手牌無關，後續世界只重估同一條邊的計畫分數。
+    if (worlds.length === 0 && hints.legalRoads.length > 1) {
+      scoringHints = { ...hints, legalRoads: economy.plans.find((plan) => plan.kind === 'longestRoad')?.roads ?? [] };
     }
-    // 只用前幾種可能時重新正規化。
-    const total = worlds.reduce((sum, world) => sum + world.p, 0);
-    return { id: rivalId, worlds: worlds.map((world) => ({ ...world, p: world.p / total })) };
+    worlds.push({ p: world.p, hand, economy });
+    mass += world.p;
   }
-  return { id: rivalId, worlds };
+  return { id: rivalId, worlds: worlds.map((world) => ({ ...world, p: world.p / mass })) };
 }
 
 /**
@@ -152,17 +174,21 @@ export function hardProposal(turn: HardTurn, target: Cost): Command | null {
   return best ? { type: 'trade.offer', to: 'all', give: best.give, want: best.want } : null;
 }
 
-/** 交易讓對手剛好湊齊主要計畫時，該計畫的價值（依可能手牌加權，以勝利分計）。 */
+/** 取交易新增可負擔的最高即時得分計畫，依可能手牌加權，不重複計入互斥計畫。 */
 function rivalBenefit(rival: RivalModel, receives: Cost, pays: Cost): number {
   let benefit = 0;
   for (const world of rival.worlds) {
-    const plan = world.economy.plans[0];
-    if (!plan) continue;
-    const before = canAfford(world.hand, plan.cost);
+    if (!canAfford(world.hand, pays)) continue;
     const after = { ...world.hand };
     for (const resource of RESOURCES) after[resource] += (receives[resource] ?? 0) - (pays[resource] ?? 0);
-    if (RESOURCES.some((resource) => after[resource] < 0)) continue;
-    if (!before && canAfford(after, plan.cost)) benefit += world.p * plan.value;
+    let best = 0;
+    for (const plan of world.economy.plans) {
+      const immediate = isImmediate(plan) || (plan.kind === 'longestRoad' && sameTerms(plan.cost, plan.nextCost));
+      if (immediate && plan.value > best && !canAfford(world.hand, plan.cost) && canAfford(after, plan.cost)) {
+        best = plan.value;
+      }
+    }
+    benefit += world.p * best;
   }
   return benefit;
 }
