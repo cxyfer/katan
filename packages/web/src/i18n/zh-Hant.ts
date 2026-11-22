@@ -208,6 +208,7 @@ export const zhHant: Catalog = {
   'lobby.setupMode': '佈局模式',
   'lobby.setupMode.fixed': '固定地圖',
   'lobby.setupMode.variable': '隨機地圖',
+  'lobby.setupMode.official': '官方 5–6 人版圖',
   'lobby.orderMode': '遊戲順序',
   'lobby.orderMode.join': '依進房順序',
   'lobby.orderMode.random': '隨機抽出',

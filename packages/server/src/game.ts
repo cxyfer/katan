@@ -21,6 +21,7 @@ import {
   type GameEvent,
   type GameState,
   type Rng,
+  type SetupMode,
 } from '@katan/rules';
 import type {
   AbandonConsentResult,
@@ -181,7 +182,7 @@ export class GameCoordinator {
     const state = createGame({
       profileId: profile.id,
       players: seated,
-      setupMode: room.setup_mode as 'fixed' | 'variable',
+      setupMode: room.setup_mode as SetupMode,
       rng,
     });
     const gameId = newId('game');

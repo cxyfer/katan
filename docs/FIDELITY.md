@@ -30,7 +30,7 @@ publisher's rulebooks. No official artwork or card text is copied.
 | Profile | Counts | Victory target | Status |
 |---|---|---|---|
 | `base-2025` | 3, 4 | 10 | **enabled** |
-| `base-paired-2025` | 5, 6 | 10 | **enabled** |
+| `base-paired-2025` | 5, 6 | 10 | **enabled** (setup modes `fixed`, `variable` and `official`; see the official 5–6 board note under Known gaps) |
 | `sf-new-shores-2025` | 3, 4 | 14 | **enabled** (printed SF25 maps, fixed setup; easy and standard bot seats) |
 | `sf-new-shores-paired-2025` | 5, 6 | 14 | **enabled** (SF56-25 map: fixed small islands, variable main island and ports; easy and standard bot seats) |
 | `ep-land-ho-2025` | 3, 4 | 8 | **enabled** (EP25-M Land Ho! printed start) |
@@ -575,6 +575,31 @@ a whole combined game (the browser run drives the other seats through the API).
 ## Known gaps and unresolved items
 
 These are recorded rather than hidden. None of them is presented as verified.
+
+0. **Official 5–6 board (`official` setup mode, `base-paired-2025` only).**
+   The legacy `hex-r56` topology and its `fixed`/`variable` layouts are kept
+   byte-for-byte (pinned in `base-regression.test.ts`) but are not the printed
+   board: the rows 3-4-5-6-5-4-3 are sheared (83 corners, 112 edges, 44 shore
+   edges, two hexes with only two neighbours) and the `fixed` numbers are an
+   extension of the B25 first-game layout (one 5, four 9s and four 10s, an
+   adjacent 8 and 6), not a B56-25 transcription. The `official` mode uses the
+   symmetric `hex-r56-official` topology (80 corners, 109 edges, 38 shore
+   edges), shuffles the terrain, lays the 28 number tokens in the lettered
+   A→BB order (Za, Zb, Zc = 3, 2, 6) along the spiral that starts at the
+   bottom-left corner (the rulebook lets A go on any corner; it is fixed here) and
+   runs counter-clockwise inwards (deserts skipped),
+   and uses the 11 harbors printed on the frame: 5 generic 3:1 and 2:1
+   lumber, brick, ore, grain and two wool (the extension adds a 3:1 and a
+   wool piece to the base game's nine). Evidence: the 2007 and 2022 5–6
+   rulebooks and the 2025 CN3082 component list (catan.com), plus a photo of
+   the 2025 frame supplied by the maintainer, from which the harbor edges
+   (`official-56-board.ts`) were read. The A→BB values are read from the 2007
+   rulebook illustration; its picture draws Zb as 12, which contradicts the
+   token inventory (2×2, 2×12), so Zb = 2 is used. Open: the 2025 PDF does not
+   list the letter values as text, and the frame pieces' numbered joints (which
+   constrain how the small frame pieces may be shuffled in the printed
+   variable setup) are not modelled — the harbors are always in the photographed
+   positions. `ck-paired-2025` still offers only `fixed` and `variable`.
 
 1. **Harbor positions are approximated.** The nine harbor *positions* are
    derived from the coastal-edge ring with a documented spacing pattern

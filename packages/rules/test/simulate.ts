@@ -3,6 +3,7 @@
 import { totalResources } from '../src/analysis.ts';
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
 import { seededRng } from '../src/rng.ts';
+import type { SetupMode } from '../src/profiles.ts';
 import { RESOURCES, type GameState, type Resource } from '../src/types.ts';
 import { newGame, runSetup } from './helpers.ts';
 
@@ -65,7 +66,7 @@ export interface SimulationBot {
 export function simulateGame(
   seed: number,
   maxSteps = 6000,
-  options: { players?: number; profileId?: string; mode?: 'fixed' | 'variable'; bot?: SimulationBot } = {},
+  options: { players?: number; profileId?: string; mode?: SetupMode; bot?: SimulationBot } = {},
 ): GameState {
   const rng = seededRng(seed);
   let state = runSetup(newGame({ players: options.players ?? 4, seed, ...(options.profileId ? { profileId: options.profileId } : {}), ...(options.mode ? { mode: options.mode } : {}) }).state, rng);

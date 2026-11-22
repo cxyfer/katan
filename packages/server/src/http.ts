@@ -5,7 +5,7 @@ import { extname, join, normalize, resolve } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ApiResult, GameOrderMode, Locale } from '@katan/protocol';
 import { BOT_LEVELS, LOCALES, profileView } from '@katan/protocol';
-import { selectableProfiles, PROFILES } from '@katan/rules';
+import { selectableProfiles, PROFILES, type SetupMode } from '@katan/rules';
 import type { ServerConfig } from './config.ts';
 import { validateNickname } from './config.ts';
 import type { Repository } from './db.ts';
@@ -321,7 +321,7 @@ export function createHttpHandler(deps: HttpDeps) {
       capacity: requireNumber(body, 'capacity'),
       ...(profileId !== undefined ? { profileId } : {}),
       ...(ruleset ? { ruleset } : {}),
-      setupMode: (optionalString(body, 'setupMode') ?? 'fixed') as 'fixed' | 'variable',
+      setupMode: (optionalString(body, 'setupMode') ?? 'fixed') as SetupMode,
       // 有送出但型別錯誤的值也交給服務驗證，不能悄悄退回 join。
       orderMode: ('orderMode' in input ? input.orderMode : 'join') as GameOrderMode,
       policy: (input.policy ?? {}) as never,
@@ -369,7 +369,7 @@ export function createHttpHandler(deps: HttpDeps) {
         ...(typeof input.capacity === 'number' ? { capacity: input.capacity } : {}),
         ...(typeof input.profileId === 'string' ? { profileId: input.profileId } : {}),
         ...(optionalRuleset(body) ? { ruleset: optionalRuleset(body)! } : {}),
-        ...(input.setupMode === 'fixed' || input.setupMode === 'variable'
+        ...(input.setupMode === 'fixed' || input.setupMode === 'variable' || input.setupMode === 'official'
           ? { setupMode: input.setupMode }
           : {}),
         ...('orderMode' in input

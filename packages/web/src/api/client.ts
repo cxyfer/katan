@@ -36,6 +36,7 @@ import type {
   SuspendProposeResult,
   WithdrawResult,
 } from '@katan/protocol';
+import type { SetupMode } from '@katan/rules';
 
 export type { ApiError, ApiResult };
 
@@ -73,7 +74,7 @@ export interface CreateRoomBody {
   visibility: 'private' | 'public';
   capacity: number;
   profileId: string;
-  setupMode: 'fixed' | 'variable';
+  setupMode: SetupMode;
   orderMode?: GameOrderMode;
   policy?: RoomPolicy;
 }
@@ -81,7 +82,7 @@ export interface CreateRoomBody {
 export interface RoomSettingsBody {
   capacity?: number;
   profileId?: string;
-  setupMode?: 'fixed' | 'variable';
+  setupMode?: SetupMode;
   orderMode?: GameOrderMode;
   policy?: RoomPolicy;
 }

@@ -211,6 +211,7 @@ export const en: Catalog = {
   'lobby.setupMode': 'Setup mode',
   'lobby.setupMode.fixed': 'Fixed board',
   'lobby.setupMode.variable': 'Variable board',
+  'lobby.setupMode.official': 'Official 5–6 board',
   'lobby.orderMode': 'Game order',
   'lobby.orderMode.join': 'Join order',
   'lobby.orderMode.random': 'Random draw',

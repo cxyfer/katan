@@ -98,7 +98,11 @@ export interface ProfilePieces {
   knights: number;
 }
 
-export type SetupMode = 'fixed' | 'variable';
+/**
+ * `official` 只有 `base-paired-2025` 提供：官方 5–6 人版圖（對稱形狀、
+ * 數字依 A→BB 固定順序、框上印好的港口），見 `official-56-board.ts`。
+ */
+export type SetupMode = 'fixed' | 'variable' | 'official';
 
 export interface ProfileDefinition {
   id: string;
@@ -371,6 +375,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     devDeck: PAIRED_DEV_DECK,
     sources: [{ id: 'B25', pages: 'entire rulebook' }, { id: 'B56-25', pages: 'p. 3' }],
     requiredBoxes: ['base', 'base-5-6'],
+    setupModes: ['fixed', 'variable', 'official'],
     // Paired turns and the 5–6 base setup/supply/deck fixtures are verified.
     implemented: true,
     enabled: true,
