@@ -62,15 +62,11 @@ export function hardDevCardDecision(turn: HardTurn): Command | null {
 export function hardDiscard(turn: HardTurn, count: number): Command | null {
   const economy = turn.economy;
   const hand = economy.hand;
-  const plans = economy.plans.slice(0, 3);
-  const weights = DISCARD_WEIGHTS;
+  const plans = economy.plans.slice(0, DISCARD_WEIGHTS.length);
   const keepValue = (kept: Record<Resource, number>): number => {
     if (plans.length === 0) return RESOURCES.reduce((sum, r) => sum + kept[r] * economy.weights[r], 0);
-    let value = 0;
-    plans.forEach((plan, index) => {
-      value += weights[index]! * handUtility(economy, kept, plan.cost);
-    });
-    return value;
+    return plans.reduce((value, plan, index) =>
+      value + DISCARD_WEIGHTS[index]! * handUtility(economy, kept, plan.cost), 0);
   };
   let best: Resource[] | null = null;
   let bestValue = -Infinity;

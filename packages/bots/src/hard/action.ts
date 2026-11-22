@@ -1,12 +1,12 @@
 /** hard 的行動階段與報價回應。 */
 
 import { RESOURCES, type Command } from '@katan/rules';
-import { handRelief } from '../heuristic.ts';
 import { offersAwaitingMe, ownOfferStep, ownOpenOffers } from '../trade.ts';
 import type { BotCommand } from '../types.ts';
 import { hardBuildDecision } from './build.ts';
 import { hardDevCardDecision } from './cards.ts';
 import { winningLine } from './endgame.ts';
+import { hardHandRelief } from './hand-relief.ts';
 import { hardAccepts } from './trade.ts';
 import type { HardTurn } from './turn.ts';
 
@@ -42,7 +42,7 @@ export function hardActionDecision(turn: HardTurn, duty: () => BotCommand | null
   if (build) return build;
 
   // 6. 手牌太多時先消化，降低擲出 7 時的損失。
-  const relief = handRelief(turn);
+  const relief = hardHandRelief(turn);
   if (relief) return relief;
 
   return duty();

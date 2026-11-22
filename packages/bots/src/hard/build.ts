@@ -12,7 +12,7 @@ import { hardProposal } from './trade.ts';
 import type { HardTurn } from './turn.ts';
 
 /** 付完 `spend` 後，主要計畫已持有的資源是否減少。 */
-function hurts(economy: Economy, primary: Cost, spend: Cost): boolean {
+export function hurts(economy: Economy, primary: Cost, spend: Cost): boolean {
   return (Object.keys(spend) as (keyof Cost)[]).some((kind) => {
     const held = economy.hand[kind] ?? 0;
     return held - (spend[kind] ?? 0) < Math.min(held, primary[kind] ?? 0);
