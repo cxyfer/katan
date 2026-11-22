@@ -5,8 +5,6 @@
  */
 
 import { requireProfile, type GameView, type PublicModulePendingView, type PublicPendingView } from '@katan/rules';
-import { plentyPick } from '../base/cards.ts';
-import { freeRoadDecision } from '../base/roads.ts';
 import { fallbackDecision } from '../fallback.ts';
 import { heuristicPolicy } from '../heuristic.ts';
 import { isModuleFrame } from '../modules/compose.ts';
@@ -14,8 +12,9 @@ import type { BotModule } from '../modules/types.ts';
 import { hardSupports } from '../support.ts';
 import type { BotCommand, BotContext, BotPolicy } from '../types.ts';
 import { hardActionDecision, hardRespond } from './action.ts';
-import { hardDiscard } from './cards.ts';
-import { hardKnightDecision, hardStealVictim, robberTarget } from './robber.ts';
+import { hardDevCardDecision, hardDiscard, hardPlentyPick } from './cards.ts';
+import { hardStealVictim, robberTarget } from './robber.ts';
+import { hardFreeRoadDecision } from './roads.ts';
 import { hardSetupDecision } from './setup.ts';
 import { HardTurn } from './turn.ts';
 
@@ -39,12 +38,12 @@ function pendingDecision(turn: HardTurn, pending: BasePending): BotCommand | nul
     }
     case 'yearOfPlenty': {
       if (pending.actor !== ctx.selfId) return null;
-      const resource = plentyPick(turn);
+      const resource = hardPlentyPick(turn);
       return resource === null ? null : { type: 'pending.takeResource', resource };
     }
     case 'freeRoads':
       if (pending.actor !== ctx.selfId) return null;
-      return freeRoadDecision(turn);
+      return hardFreeRoadDecision(turn, pending.remaining);
   }
 }
 
@@ -67,7 +66,7 @@ function decide(view: GameView, ctx: BotContext, standard: BotPolicy): BotComman
   }
   if (view.turn.playerId !== ctx.selfId) return hardRespond(turn);
   // 擲骰前只考慮騎士；擲骰交給保底義務。
-  if (view.turn.phase === 'preroll') return hardKnightDecision(turn) ?? duty();
+  if (view.turn.phase === 'preroll') return hardDevCardDecision(turn) ?? duty();
   if (view.turn.phase === 'action') return hardActionDecision(turn, duty);
   return null;
 }

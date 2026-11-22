@@ -3,10 +3,11 @@
 import { RESOURCES, type Command } from '@katan/rules';
 import { offersAwaitingMe, ownOfferStep, ownOpenOffers } from '../trade.ts';
 import type { BotCommand } from '../types.ts';
-import { hardBuildDecision } from './build.ts';
-import { hardDevCardDecision } from './cards.ts';
+import { hardBuildDecision, hardScoringBuild } from './build.ts';
+import { hardDevCardDecision, winningMonopoly } from './cards.ts';
 import { winningLine } from './endgame.ts';
 import { hardHandRelief } from './hand-relief.ts';
+import { scoringRoad } from './roads.ts';
 import { hardAccepts } from './trade.ts';
 import type { HardTurn } from './turn.ts';
 
@@ -30,7 +31,12 @@ export function hardActionDecision(turn: HardTurn, duty: () => BotCommand | null
   }
 
   // 3. 發展卡。
+  const monopoly = winningMonopoly(turn);
+  if (monopoly) return monopoly;
   const card = hardDevCardDecision(turn);
+  if (card?.type === 'dev.playMonopoly') {
+    return hardScoringBuild(turn) ?? scoringRoad(turn) ?? card;
+  }
   if (card) return card;
 
   // 4. 終盤：這回合能靠交易與建造拿到勝利分數時，照那個序列做。

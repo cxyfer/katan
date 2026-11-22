@@ -93,10 +93,10 @@ export function hardStealVictim(turn: HardTurn, candidates: readonly string[]): 
 }
 
 /**
- * 騎士：standard 的時機（解除封鎖、拿到最大騎士團、致勝）之外，只要還追得上最大騎士團就打；
- * 目標用 hard 的強盜評分。
+ * 騎士：解除封鎖、致勝或爭取最大騎士團；穩握獎勵時保留最後一張。
+ * 若本回合有可用的進度卡，除非能解封或致勝，否則保留出牌額度。
  */
-export function hardKnightDecision(turn: HardTurn): Command | null {
+export function hardKnightDecision(turn: HardTurn, reservePlay = false): Command | null {
   if (!canPlay(turn, 'knight')) return null;
   const { view, me } = turn;
   const holder = view.awards.largestArmy;
@@ -104,10 +104,10 @@ export function hardKnightDecision(turn: HardTurn): Command | null {
   const takesArmy = holder !== me.id && me.playedKnights + 1 >= 3 && me.playedKnights + 1 > holderKnights;
   const wins = takesArmy && (me.ownScore ?? me.publicScore) + 2 >= view.victoryTarget;
   const unblock = blockedPips(turn) >= KNIGHT_UNBLOCK;
-  // 積極：只要還追得上最大騎士團，就趁早打出（偷牌、封鎖領先者、累積騎士數）。自我對局：4 人局
-  // 從 42% 提高到 49%、6 人局從 25% 提高到 32%（standard 只在解除封鎖或拿到騎士團時才打）。
+  if (reservePlay && !wins && !unblock) return null;
   const rivalKnights = Math.max(0, ...turn.opponents.map((player) => player.playedKnights));
   const held = (me.devCards ?? []).filter((card) => card === 'knight').length;
+  if (!unblock && holder === me.id && me.playedKnights >= rivalKnights + 2 && held === 1) return null;
   const eager = me.playedKnights + held + 1 >= rivalKnights;
   if (!unblock && !wins && !takesArmy && !eager) return null;
   const hex = robberTarget(turn);

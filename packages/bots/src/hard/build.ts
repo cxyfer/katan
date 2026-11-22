@@ -19,7 +19,7 @@ export function hurts(economy: Economy, primary: Cost, spend: Cost): boolean {
   });
 }
 
-export function hardBuildDecision(turn: HardTurn): BotCommand | null {
+export function hardScoringBuild(turn: HardTurn): BotCommand | null {
   const { view, model, ctx } = turn;
   const hints = view.hints!;
   const economy = turn.economy;
@@ -42,8 +42,14 @@ export function hardBuildDecision(turn: HardTurn): BotCommand | null {
       });
     }
   }
-  const scoringPick = turn.pick(scoring);
-  if (scoringPick) return scoringPick;
+  return turn.pick(scoring);
+}
+
+export function hardBuildDecision(turn: HardTurn): BotCommand | null {
+  const scoring = hardScoringBuild(turn);
+  if (scoring) return scoring;
+  const { view, ctx, economy } = turn;
+  const { hand, left } = economy;
 
   // b) 主要計畫：付得起就做下一步；否則先找玩家交易，再看銀行交易能否在這回合補齊。
   const primary = economy.plans[0];
