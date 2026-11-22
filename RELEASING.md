@@ -144,6 +144,18 @@ BOTS_SEEDS=10 pnpm --filter @katan/bots exec vitest run   # bot gate: 10 seeds p
 `pnpm verify` runs the expansion profiles' bot games with 3 seeds per player count; the
 `BOTS_SEEDS=10` line is the release gate. Base always runs 10 seeds.
 
+The `BOTS_SEEDS=10` run is only needed when the release can change how a game plays. Compare the
+branch with the previous release tag; skip the 10-seed run, and say so in the release notes or the
+commit body, when nothing under `packages/rules`, `packages/bots`, `packages/protocol` or
+`packages/server` changed (docs, player notes, web styling, scripts and CI only). `pnpm verify` always runs.
+
+```bash
+git diff --stat "$(git describe --tags --abbrev=0)"..HEAD -- packages/rules packages/bots packages/protocol packages/server
+```
+
+An empty result means the 10-seed gate can be skipped. Run the checks one batch at a time: on a
+shared machine, a second concurrent `pnpm verify` or bot run makes tests hit the 5 s default timeout.
+
 For a stable release, check that [Player notes](#player-notes) already has the entry for this
 version; `pnpm verify` fails after the bump if it is missing.
 
