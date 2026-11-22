@@ -47,6 +47,15 @@ export const SCENARIO_IDS = [
   'tb-merchant-trains',
   'tb-barbarian-attack',
   'tb-traders-barbarians',
+  // Seafarers further scenarios (SF25 pp. 6–20, D8)
+  'four-islands',
+  'fog-islands',
+  'through-the-desert',
+  'forgotten-tribe',
+  'cloth-for-catan',
+  'pirate-islands',
+  'wonders-of-catan',
+  'new-world',
   'land-ho', 'pirate-lairs', 'fish', 'spices', 'explorers-pirates',
 ] as const;
 export type ScenarioId = (typeof SCENARIO_IDS)[number];
@@ -65,7 +74,7 @@ export const VARIANT_IDS: readonly string[] = [
 export type VariantId = string;
 
 /** Rulebook source ids from SPEC §5.3. Later phases append their own. */
-export const SOURCE_IDS = ['B25', 'B56-25', 'SF25', 'SF56-25', 'CK25', 'CK56-25', 'COMB', 'TB25', 'EP25', 'EP25-M'] as const;
+export const SOURCE_IDS = ['B25', 'B56-25', 'SF25', 'SF56-25', 'CK25', 'CK56-25', 'COMB', 'TB25', 'EP25', 'EP25-M', 'SFCN-20'] as const;
 export type SourceId = (typeof SOURCE_IDS)[number];
 
 export interface ProfileSource {
@@ -242,6 +251,63 @@ function tbProfile(
     ...overrides,
   });
 }
+
+/**
+ * Seafarers 其餘八個劇本（SF25 pp. 6–20，spec 2026-11-22-seafarers-scenarios.md §7.1）。
+ * 只做 3–4 人，一個劇本一個 profile，共用規則版本 `sf-2025.3`。S0 只登記：
+ * `implemented` 與 `enabled` 都是 false，各切片補齊轉錄與規則證據後才逐一啟用。
+ * layout builder 與 topology 尚未存在（S2 起各切片自行登記 `layoutId`），
+ * 因此 `topologyId` 沿用 `baseProfile` 的預設值，只是佔位；在 `enabled: false`
+ * 之下 `resolveCombination` 一律回 `disabled`，不會走到建圖。
+ * 不在 bot 支援清單內（`bots/src/modules/seafarers` 的 `SUPPORTED_SCENARIOS`），
+ * 因此一律拒絕 bot 座位。
+ */
+const SF_SCENARIO_RULE_VERSION = 'sf-2025.3';
+
+function seafarersScenarioProfile(
+  id: string,
+  scenario: ScenarioId,
+  victoryTarget: number,
+  pages: string,
+  overrides: ProfileOverrides = {},
+): ProfileDefinition {
+  return baseProfile(id, [3, 4], {
+    ruleVersion: SF_SCENARIO_RULE_VERSION,
+    expansions: ['seafarers'],
+    scenario,
+    sources: [
+      { id: 'B25', pages: 'entire rulebook' },
+      { id: 'SF25', pages: `pp. 2–3, ${pages}` },
+      { id: 'SFCN-20', pages: 'cross-check only' },
+    ],
+    requiredBoxes: ['base', 'seafarers'],
+    victoryTarget,
+    setupModes: ['fixed'],
+    layoutId: id.replace(/-2025$/, ''),
+    pieces: { ...BASE_PIECES, ships: 15 },
+    // §7.1：S8 在規則內關閉海盜，S6、S7 在規則內關閉最長道路；registry 欄位一律先填 true。
+    hasPirate: true,
+    longestRouteIncludesShips: true,
+    implemented: false,
+    enabled: false,
+    unavailableReasonKey: 'profile.unavailable.seafarersScenario',
+    ...overrides,
+  });
+}
+
+const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
+  seafarersScenarioProfile('sf-four-islands-2025', 'four-islands', 13, 'pp. 6–7'),
+  seafarersScenarioProfile('sf-fog-islands-2025', 'fog-islands', 12, 'pp. 8–9'),
+  seafarersScenarioProfile('sf-through-the-desert-2025', 'through-the-desert', 14, 'pp. 10–11'),
+  seafarersScenarioProfile('sf-forgotten-tribe-2025', 'forgotten-tribe', 13, 'pp. 12–13'),
+  // 目標 14 分；另有「回合結束時部落耗盡」的終局與共同勝利（D12），在 S6 實作。
+  seafarersScenarioProfile('sf-cloth-for-catan-2025', 'cloth-for-catan', 14, 'pp. 14–15'),
+  // 真正條件是「收復自己的堡壘且 10 分」，複合條件在 S7 實作；此處只放分數部分。
+  seafarersScenarioProfile('sf-pirate-islands-2025', 'pirate-islands', 10, 'pp. 16–17'),
+  // 真正條件是「完成奇觀，或 10 分且層數最高」，複合條件在 S8 實作；此處只放分數部分。
+  seafarersScenarioProfile('sf-wonders-of-catan-2025', 'wonders-of-catan', 10, 'pp. 18–19'),
+  seafarersScenarioProfile('sf-new-world-2025', 'new-world', 12, 'p. 20', { setupModes: ['variable'] }),
+];
 
 /**
  * 五個 E&P profile 共用的規則版本。ep-2025.2 修正 #97 的擱淺死結；未完成的
@@ -529,6 +595,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     enabled: true,
   }),
 
+  ...SEAFARERS_SCENARIO_PROFILES,
   ...EXPLORERS_PIRATES_PROFILES,
   ...TRADERS_BARBARIANS_PROFILES,
 ];

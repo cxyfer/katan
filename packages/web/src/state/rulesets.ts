@@ -47,6 +47,12 @@ export interface ResolvedRuleset {
   playerCounts: number[];
   playerCount: number | null;
   profile: ProfileView | null;
+  /** 所選劇本的人數範圍（不受房間上限過濾）；沒有可選劇本時為 null。 */
+  scenarioPlayerRange: { min: number; max: number } | null;
+  /** 所選劇本的最大人數小於全域最大人數時為 true，大廳要提示「此劇本只支援 N–M 人」。 */
+  scenarioNarrowsPlayers: boolean;
+  /** 選擇的人數不被所選劇本接受，已自動改成第一個合法值（過去是靜默發生）。 */
+  playerCountAdjusted: boolean;
 }
 
 export function expansionKey(expansions: readonly string[]): string {
@@ -95,7 +101,15 @@ export function resolveRuleset(
   const profile = playerCount === null
     ? null
     : candidates.find((candidate) => candidate.playerCounts.includes(playerCount)) ?? null;
-  return { expansions, expansion, scenarios, scenario, playerCounts, playerCount, profile };
+  const allCounts = candidates.flatMap((candidate) => candidate.playerCounts);
+  const scenarioPlayerRange = allCounts.length ? { min: Math.min(...allCounts), max: Math.max(...allCounts) } : null;
+  const globalMax = Math.max(0, ...enabled.flatMap((candidate) => candidate.playerCounts));
+  const scenarioNarrowsPlayers = scenarioPlayerRange !== null && scenarioPlayerRange.max < globalMax;
+  const playerCountAdjusted = selection.playerCount !== undefined && playerCount !== null && playerCount !== selection.playerCount;
+  return {
+    expansions, expansion, scenarios, scenario, playerCounts, playerCount, profile,
+    scenarioPlayerRange, scenarioNarrowsPlayers, playerCountAdjusted,
+  };
 }
 
 /** Message ids naming an expansion set, in display order. */

@@ -201,6 +201,15 @@ export function HomeScreen({ controller }: ScreenProps) {
               {t('lobby.requiredBoxes', { boxes: chosenProfile.requiredBoxes.map((box) => t(`box.${box}`)) })}
             </p>
           )}
+          {ruleset.scenarioNarrowsPlayers && ruleset.scenarioPlayerRange && (
+            <p className="muted" data-testid="scenario-player-counts">
+              {t(ruleset.playerCountAdjusted ? 'lobby.scenarioPlayerCountsAdjusted' : 'lobby.scenarioPlayerCounts', {
+                min: ruleset.scenarioPlayerRange.min,
+                max: ruleset.scenarioPlayerRange.max,
+                count: effectiveCapacity,
+              })}
+            </p>
+          )}
           {chosenProfile?.paired && <p className="muted">{t('lobby.pairedNote')}</p>}
           <div className="form-actions">
             <button

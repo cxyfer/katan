@@ -57,6 +57,15 @@ describe('bot ruleset support', () => {
     }
   });
 
+  it('refuses bot seats on the eight further Seafarers scenario profiles (S0)', () => {
+    const ids = ['sf-four-islands-2025', 'sf-fog-islands-2025', 'sf-through-the-desert-2025', 'sf-forgotten-tribe-2025', 'sf-cloth-for-catan-2025', 'sf-pirate-islands-2025', 'sf-wonders-of-catan-2025', 'sf-new-world-2025'];
+    for (const id of ids) {
+      const profile = getProfile(id)!;
+      expect(botsCanPlay(profile), id).toBe(false);
+      expect(botLevelsFor(profile), id).toEqual([]);
+    }
+  });
+
   // 快照：哪個切片開放哪些 profile，就在同一個 PR 更新這份清單。
   it('lists the playable profiles', () => {
     expect(PROFILES.filter((profile) => botsCanPlay(profile)).map((profile) => profile.id)).toEqual([

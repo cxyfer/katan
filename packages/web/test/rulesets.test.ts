@@ -33,6 +33,38 @@ describe('lobby ruleset picker', () => {
     expect(resolveRuleset(registry, { expansionKey: 'citiesKnights', playerCount: 5 }).profile?.id).toBe('ck-paired-2025');
   });
 
+  it('hints when a scenario supports fewer players than the registry maximum and says when the count was adjusted', () => {
+    // 八個新劇本在 S0 仍是 disabled；用「全部啟用」的副本驗證提示。
+    const enabledAll = registry.map((profile) => ({ ...profile, enabled: true }));
+    const base = resolveRuleset(enabledAll, { playerCount: 4 });
+    expect(base.scenarioPlayerRange).toEqual({ min: 3, max: 6 });
+    expect(base.scenarioNarrowsPlayers).toBe(false);
+    // 揚帆出海是 3–6 人：不提示。
+    const shores = resolveRuleset(enabledAll, { expansionKey: 'seafarers', scenarioKey: 'new-shores', playerCount: 5 });
+    expect(shores.scenarioNarrowsPlayers).toBe(false);
+    expect(shores.playerCountAdjusted).toBe(false);
+    // 3–4 人劇本：提示；選了 5 人會被改成 3 並說明。
+    const four = resolveRuleset(enabledAll, { expansionKey: 'seafarers', scenarioKey: 'four-islands', playerCount: 5 });
+    expect(four.profile?.id).toBe('sf-four-islands-2025');
+    expect(four.scenarioPlayerRange).toEqual({ min: 3, max: 4 });
+    expect(four.scenarioNarrowsPlayers).toBe(true);
+    expect(four.playerCount).toBe(3);
+    expect(four.playerCountAdjusted).toBe(true);
+    // 人數本來就合法：提示但不說調整。
+    const kept = resolveRuleset(enabledAll, { expansionKey: 'seafarers', scenarioKey: 'four-islands', playerCount: 4 });
+    expect(kept.scenarioNarrowsPlayers).toBe(true);
+    expect(kept.playerCountAdjusted).toBe(false);
+  });
+
+  it('keeps the eight further Seafarers scenarios out of the lobby while they are disabled', () => {
+    const sea = resolveRuleset(registry, { expansionKey: 'seafarers' });
+    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores']]);
+    expect(sea.scenarioNarrowsPlayers).toBe(false);
+    const ids = registry.filter((profile) => profile.scenario && ['four-islands', 'fog-islands', 'through-the-desert', 'forgotten-tribe', 'cloth-for-catan', 'pirate-islands', 'wonders-of-catan', 'new-world'].includes(profile.scenario));
+    expect(ids).toHaveLength(8);
+    for (const profile of ids) expect(profile.enabled).toBe(false);
+  });
+
   it('cascades expansion set → scenario → player count from the registry', () => {
     const enabledAll = registry
       .filter((profile) => !profile.expansions.includes('tradersBarbarians'))
