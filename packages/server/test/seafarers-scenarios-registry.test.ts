@@ -1,12 +1,11 @@
 /**
  * Seafarers 其餘八個劇本（S0）：只登記、不啟用。
- * 這些 profile 是 disabled，房間建不起來，所以 bot 座位拒絕以 `botsSupported`
- * （`rooms.ts` 的 `requireBotsAllowed` 所用的判定）驗證，大廳以 `/api/profiles` 驗證。
+ * 這些 profile 是 disabled，房間建不起來；bot 座位拒絕見 `bots.test.ts`，
+ * 這裡驗證大廳（`/api/profiles`）與人數檢查。
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getProfile } from '@katan/rules';
-import { botsSupported, profileBotLevels } from '../src/bot-seats.ts';
 import { startHarness, type TestHarness } from './helpers.ts';
 
 const SCENARIOS = [
@@ -66,14 +65,6 @@ describe('seafarers further scenarios (S0 registry only)', () => {
         host.expectError(response, 'E_UNSUPPORTED_COMBINATION');
         expect(reason(response), `${id} ${capacity}`).toBe('disabled');
       }
-    }
-  });
-
-  it('is not on the bot support list, so a bot seat would be refused with reason profile', () => {
-    for (const [id] of SCENARIOS) {
-      const profile = getProfile(id)!;
-      expect(botsSupported(profile), id).toBe(false);
-      expect(profileBotLevels(profile), id).toEqual([]);
     }
   });
 });

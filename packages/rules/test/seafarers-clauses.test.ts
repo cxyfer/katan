@@ -229,6 +229,7 @@ describe('ships and the pirate (SF25 pp. 2–3, SF-FAQ 11, 18)', () => {
 
 describe('Road Building with ships (SF25 p. 3, SF-FAQ 1)', () => {
   it.each([
+    ['sf-2025.3', 2, 2],
     ['sf-2025.2', 2, 2],
     ['sf-2025.1', 1, 1],
   ] as const)('uses the %s ship grant when one ship opens a second edge', (engineVersion, granted, placed) => {

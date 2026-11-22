@@ -30,6 +30,8 @@ export function HomeScreen({ controller }: ScreenProps) {
   const [capacity, setCapacity] = useState(3);
   const [expansionKey, setExpansionKey] = useState('');
   const [scenarioKey, setScenarioKey] = useState('');
+  // 人數被劇本調整時的提示：記住調整後的人數，切換到下一個劇本且人數沒再變就清掉。
+  const [adjustedTo, setAdjustedTo] = useState<number | null>(null);
   const homePanes = ['table', 'resume', 'rooms', 'news', 'identity'] as const;
   const homeTabRef = useRef<HTMLButtonElement | null>(null);
 
@@ -42,6 +44,12 @@ export function HomeScreen({ controller }: ScreenProps) {
   const chosenProfile = ruleset.profile;
   const capacityOptions = ruleset.playerCounts;
   const effectiveCapacity = ruleset.playerCount ?? capacityOptions[0] ?? 4;
+  // 被夾住時把 capacity state 同步成使用者實際看到的值，之後切換劇本以這個值為準。
+  useEffect(() => {
+    if (ruleset.playerCount === null) return;
+    if (ruleset.playerCount !== capacity) setCapacity(ruleset.playerCount);
+    if (ruleset.playerCountAdjusted) setAdjustedTo(ruleset.playerCount);
+  }, [ruleset.playerCount, ruleset.playerCountAdjusted, capacity]);
   const joinLabels = (ids: string[]) => ids.map((id) => t(id)).join(' + ');
   // 佈局模式與遊戲順序改在房間設定中調整；建房時先用規則集允許的預設值。
   const setupOptions = chosenProfile?.setupModes ?? ['fixed', 'variable'];
@@ -158,7 +166,7 @@ export function HomeScreen({ controller }: ScreenProps) {
                 id="room-expansions"
                 data-testid="expansion-select"
                 value={ruleset.expansion?.key ?? ''}
-                onChange={(event) => setExpansionKey(event.target.value)}
+                onChange={(event) => { setAdjustedTo(null); setExpansionKey(event.target.value); }}
               >
                 {ruleset.expansions.length === 0 && <option value="">{t('app.none')}</option>}
                 {ruleset.expansions.map((choice) => (
@@ -173,7 +181,7 @@ export function HomeScreen({ controller }: ScreenProps) {
                 data-testid="scenario-select"
                 value={ruleset.scenario?.key ?? ''}
                 disabled={ruleset.scenarios.length <= 1}
-                onChange={(event) => setScenarioKey(event.target.value)}
+                onChange={(event) => { setAdjustedTo(null); setScenarioKey(event.target.value); }}
               >
                 {ruleset.scenarios.length === 0 && <option value="">{t('app.none')}</option>}
                 {ruleset.scenarios.map((choice) => (
@@ -186,7 +194,7 @@ export function HomeScreen({ controller }: ScreenProps) {
               <select
                 id="room-capacity"
                 value={effectiveCapacity}
-                onChange={(event) => setCapacity(Number(event.target.value))}
+                onChange={(event) => { setAdjustedTo(null); setCapacity(Number(event.target.value)); }}
               >
                 {capacityOptions.map((count) => (
                   <option key={count} value={count}>{count}</option>
@@ -203,10 +211,10 @@ export function HomeScreen({ controller }: ScreenProps) {
           )}
           {ruleset.scenarioNarrowsPlayers && ruleset.scenarioPlayerRange && (
             <p className="muted" data-testid="scenario-player-counts">
-              {t(ruleset.playerCountAdjusted ? 'lobby.scenarioPlayerCountsAdjusted' : 'lobby.scenarioPlayerCounts', {
+              {t(adjustedTo !== null ? 'lobby.scenarioPlayerCountsAdjusted' : 'lobby.scenarioPlayerCounts', {
                 min: ruleset.scenarioPlayerRange.min,
                 max: ruleset.scenarioPlayerRange.max,
-                count: effectiveCapacity,
+                count: adjustedTo ?? effectiveCapacity,
               })}
             </p>
           )}

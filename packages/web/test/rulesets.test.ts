@@ -56,6 +56,17 @@ describe('lobby ruleset picker', () => {
     expect(kept.playerCountAdjusted).toBe(false);
   });
 
+  it('does not blame the scenario when only the room capacity limit clamped the player count', () => {
+    const enabledAll = registry.map((profile) => ({ ...profile, enabled: true }));
+    const capped = resolveRuleset(enabledAll, { expansionKey: 'seafarers', scenarioKey: 'four-islands', playerCount: 4 }, 3);
+    expect(capped.playerCount).toBe(3);
+    expect(capped.scenarioPlayerRange).toEqual({ min: 3, max: 4 });
+    expect(capped.playerCountAdjusted).toBe(false);
+    // 劇本範圍外（5 人）同時也超過上限：仍是劇本造成的調整。
+    const outside = resolveRuleset(enabledAll, { expansionKey: 'seafarers', scenarioKey: 'four-islands', playerCount: 5 }, 3);
+    expect(outside.playerCountAdjusted).toBe(true);
+  });
+
   it('keeps the eight further Seafarers scenarios out of the lobby while they are disabled', () => {
     const sea = resolveRuleset(registry, { expansionKey: 'seafarers' });
     expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores']]);
