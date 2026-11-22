@@ -12,6 +12,7 @@
 import { RESOURCES, type Command, type Resource } from '@katan/rules';
 import { emptyYield, isFreeSpot, type BoardModel, type Yield } from '../board.ts';
 import { resourceWeights } from '../economy.ts';
+import { NO_PORT_RATES, PORT_TRADE_COSTS, portTradeValue, ratesWithPort } from './ports.ts';
 import type { HardTurn } from './turn.ts';
 
 /**
@@ -33,10 +34,6 @@ const OPENING_WEIGHTS = {
   oreGrain: 0.1062,
   /** 同一個點數重複出現的格數。 */
   duplicateNumber: 0.0123,
-  genericHarbor: 0.181,
-  /** 2:1 港口對應的資源點數（至少 3 點才算）；對不上的 2:1 港口是負的。 */
-  matchedHarbor: 0.072,
-  otherHarbor: -0.2468,
   /** 走 2–3 步可達的空點：最好、第二好的點數，以及 8 點以上的空點數。 */
   expansionBest: -0.002,
   expansionSecond: 0.028,
@@ -154,19 +151,10 @@ export function openingValue(
   value += w.lumberBrick * Math.min(total.lumber, total.brick);
   value += w.oreGrain * Math.min(total.ore, total.grain);
   value += w.duplicateNumber * (hexes - numbers.size);
-  let generic = false;
-  let other = false;
-  let matched = 0;
-  for (const vertex of vertices) {
-    const harbor = model.harborAt[vertex];
-    if (!harbor) continue;
-    if (harbor === 'generic') generic = true;
-    else if (total[harbor as Resource] >= 3) matched += total[harbor as Resource];
-    else other = true;
-  }
-  if (generic) value += w.genericHarbor;
-  if (other) value += w.otherHarbor;
-  value += w.matchedHarbor * matched;
+  let rates = NO_PORT_RATES;
+  for (const vertex of vertices) rates = ratesWithPort(rates, model.harborAt[vertex] ?? null);
+  // 開局還沒有計畫，先用三種基本建造成本估算兩座聚落合計的匯率收益。
+  value += 0.6 * portTradeValue(total, NO_PORT_RATES, rates, model.view.players.length, PORT_TRADE_COSTS);
   if (!expansion) return value;
   const spots = expansionSpots(model, vertices, taken, selfId);
   value += w.expansionBest * (spots[0] ?? 0) + w.expansionSecond * (spots[1] ?? 0);

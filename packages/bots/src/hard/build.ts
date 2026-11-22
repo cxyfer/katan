@@ -3,11 +3,12 @@
 import { COSTS } from '@katan/rules';
 import { playerYield } from '../board.ts';
 import { usefulRoad } from '../base/roads.ts';
-import { canAfford, PIP_VALUE, productionValue, settlementSpotValue, type Cost, type Economy } from '../economy.ts';
+import { canAfford, PIP_VALUE, productionValue, type Cost, type Economy } from '../economy.ts';
 import { planStep } from '../heuristic.ts';
 import type { Scored } from '../modules/types.ts';
 import { bankTradeToward } from '../trade.ts';
 import type { BotCommand } from '../types.ts';
+import { hardSettlementValue, settlementPortTargets } from './economy.ts';
 import { hardProposal } from './trade.ts';
 import type { HardTurn } from './turn.ts';
 
@@ -35,10 +36,11 @@ export function hardScoringBuild(turn: HardTurn): BotCommand | null {
   }
   if (left.settlements > 0 && canAfford(hand, COSTS.settlement)) {
     const mine = playerYield(model, ctx.selfId, true);
+    const targets = settlementPortTargets(economy);
     for (const vertex of hints.legalSettlements) {
       scoring.push({
         item: { type: 'build.settlement', vertex },
-        score: 1 + PIP_VALUE * settlementSpotValue(model, vertex, weights, mine),
+        score: hardSettlementValue(economy, vertex, mine, targets),
       });
     }
   }

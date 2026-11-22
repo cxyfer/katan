@@ -3,10 +3,11 @@
  * 沿用 standard 的函式（例如 `planStep`、`usefulRoad`）時，讀到的也是這份經濟。
  */
 
-import { COSTS } from '@katan/rules';
-import { isFreeSpot, playerYield, roadPath } from '../board.ts';
-import { addCosts, bestRouteEdge, economyOf, PIP_VALUE, scaleCost, settlementSpotValue, type Economy, type Plan } from '../economy.ts';
+import { COSTS, RESOURCES } from '@katan/rules';
+import { isFreeSpot, playerYield, roadPath, vertexYield, type Yield } from '../board.ts';
+import { addCosts, bestRouteEdge, economyOf, PIP_VALUE, scaleCost, weightedPips, type Cost, type Economy, type Plan } from '../economy.ts';
 import { hardEtaRounds } from './eta.ts';
+import { NO_PORT_RATES, portTradeValue, ratesWithPort } from './ports.ts';
 import type { HardTurn } from './turn.ts';
 
 /** 還差幾條道路就拿到最長道路時，計畫的價值（以勝利分計）。standard 只追差 1–2 條的。 */
@@ -59,18 +60,41 @@ function devCardFactor(turn: HardTurn): number {
   return (DEV_CARD_SCALE * value) / BASE_DEV_VALUE;
 }
 
+/** 港口收益只看目前仍可走的基本建造方向；多個聚落候選只算一種成本。 */
+export function settlementPortTargets(economy: Economy): Cost[] {
+  const targets: Cost[] = [];
+  if (economy.plans.some((plan) => plan.kind === 'city')) targets.push(COSTS.city);
+  if (economy.left.settlements > 1 && economy.plans.some((plan) => plan.kind === 'settlement')) targets.push(COSTS.settlement);
+  if (economy.plans.some((plan) => plan.kind === 'devCard')) targets.push(COSTS.devCard);
+  return targets;
+}
+
+/** 長期產能與多樣性沿用基本估值，港口則只計新匯率帶來的收益。 */
+export function hardSettlementValue(base: Economy, vertex: number, mine: Yield, targets: readonly Cost[]): number {
+  const { model, rates } = base;
+  const spot = vertexYield(model, vertex);
+  let pips = weightedPips(spot, base.weights);
+  for (const resource of RESOURCES) if (spot[resource] > 0 && mine[resource] === 0) pips += 2.5;
+  const upgraded = ratesWithPort(rates, model.harborAt[vertex] ?? null);
+  if (upgraded === rates) return 1 + PIP_VALUE * pips;
+  for (const resource of RESOURCES) spot[resource] += mine[resource];
+  const trade = portTradeValue(spot, rates, upgraded, model.view.players.length, targets);
+  return 1 + PIP_VALUE * pips + 0.5 * trade;
+}
+
 /** 共用經濟已截取前三名；hard 得先用自己的估值重排所有可達空點。 */
 function settlementPlans(turn: HardTurn, base: Economy, scorePlan: (plan: Omit<Plan, 'eta' | 'score'>) => Plan): Plan[] {
   if (base.left.settlements <= 0) return [];
   const { model, view, ctx } = turn;
   const mine = playerYield(model, ctx.selfId, true);
+  const targets = settlementPortTargets(base);
   const legalNow = new Set(view.hints?.legalSettlements ?? []);
   const plans: Plan[] = [];
   for (let vertex = 0; vertex < model.topo.vertices.length; vertex++) {
     const distance = base.search.distance[vertex]!;
     if (distance === Infinity || (distance === 0 && !legalNow.has(vertex)) || !isFreeSpot(model, vertex)) continue;
     const roads = roadPath(base.search, vertex);
-    const value = (1 + PIP_VALUE * settlementSpotValue(model, vertex, base.weights, mine)) * 0.9 ** distance;
+    const value = hardSettlementValue(base, vertex, mine, targets) * 0.9 ** distance;
     plans.push(scorePlan({
       kind: 'settlement',
       vertex,
@@ -85,7 +109,14 @@ function settlementPlans(turn: HardTurn, base: Economy, scorePlan: (plan: Omit<P
 }
 
 export function hardEconomyOf(turn: HardTurn): Economy {
-  const base = economyOf(turn.model, [], 'standard');
+  const standard = economyOf(turn.model, [], 'standard');
+  let rates = turn.view.hints?.bankRates ?? NO_PORT_RATES;
+  if (!turn.view.hints) {
+    turn.view.board.buildings.forEach((building, vertex) => {
+      if (building?.player === turn.ctx.selfId) rates = ratesWithPort(rates, turn.model.harborAt[vertex] ?? null);
+    });
+  }
+  const base = { ...standard, rates };
   const route = routePlan(turn, base);
   const factor = base.plans.some((plan) => plan.kind === 'devCard') ? devCardFactor(turn) : 1;
   const scorePlan = (plan: Omit<Plan, 'eta' | 'score'>): Plan => {
