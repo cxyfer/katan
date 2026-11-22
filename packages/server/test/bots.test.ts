@@ -487,6 +487,18 @@ describe('B-ROOM bot seats', () => {
     host.expectError(await host.post(`/api/rooms/${room.id}/bots`, {}), 'E_INVALID_BOT');
   });
 
+  it('refuses bot seats in the eight further Seafarers scenario profiles with reason profile', async () => {
+    // 這些 profile 是 disabled，房間建不出來，所以和上面一樣先建房再強制換 profile。
+    const host = await harness.client('ScenarioBots');
+    const room = await createRoom(host, { bots: 1 });
+    for (const profileId of ['sf-four-islands-2025', 'sf-fog-islands-2025', 'sf-through-the-desert-2025', 'sf-forgotten-tribe-2025', 'sf-cloth-for-catan-2025', 'sf-pirate-islands-2025', 'sf-wonders-of-catan-2025', 'sf-new-world-2025']) {
+      await harness.service.repo.updateRoom(room.id, { profile_id: profileId });
+      const refused = await host.post(`/api/rooms/${room.id}/bots`, {});
+      host.expectError(refused, 'E_INVALID_BOT');
+      expect(refused.body.ok ? null : refused.body.error.params, profileId).toMatchObject({ reason: 'profile', profileId });
+    }
+  });
+
   it('lets only the host add and remove bots before start', async () => {
     const host = await harness.client('LobbyHost');
     const guest = await harness.client('LobbyGuest');

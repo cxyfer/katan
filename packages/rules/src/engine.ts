@@ -1297,7 +1297,7 @@ function freeRouteCapacity(state: GameState, playerId: string): number {
 
 /** Engine versions approved for the Road Building grant introduced by PR #82. */
 function grantsBothRoads(engineVersion: string): boolean {
-  return ['base-2025.4', 'sf-2025.2', 'tb-2025.2'].includes(engineVersion);
+  return ['base-2025.4', 'sf-2025.2', 'sf-2025.3', 'tb-2025.2'].includes(engineVersion);
 }
 
 /** Free placements the profile's modules offer (ships), supply included. */
