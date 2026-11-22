@@ -1,14 +1,15 @@
 /**
  * Bot 強度與效能量測（不進 CI）：
  *
- *   pnpm --filter @katan/bots bench [局數] [設定名稱片段] [--profile <id>] [--markdown <檔案>]
+ *   pnpm --filter @katan/bots bench [局數] [設定名稱片段] [--profile <id>] [--markdown <檔案>] [--seed <起點>]
  *
  * 沒有 `--profile` 時跑 base（`base-2025` 與 `base-paired-2025`）；`--profile` 指定任何 Bot 玩得動的
  * profile（例如擴充在 gating 翻轉之前）。每個人數跑四種對局（Seafarers 計畫 §6.3）：
  * ① 1 位 standard 對其餘 easy；② 1 位 standard 對其餘 naive；③ 全 standard；④ 全 easy。
  * 沒有 rules module 的 profile 另外跑 hard（docs/aegis/specs/2026-11-07-hard-bot.md §2 H5、H6）：
- * ⑤ 1 位 hard 對其餘 standard；⑥ 全 hard。
- * 量測對象（focus）依局數輪換座位，避免先手偏差；種子從 10000 起，結果可重現。對局用仿 BotDriver
+ * ⑤ 1 位 hard 對其餘 standard；⑥ 全 hard。hard v2（docs/aegis/specs/2026-11-22-hard-bot-v2.md §7、V8）再加：
+ * ⑦ 1 位 hard 對其餘 hard0（凍結的舊 hard，`bench/hard-baseline/`；非劣性閘門）；⑧ 1 位 hard0 對其餘 standard（基線）。
+ * 量測對象（focus）依局數輪換座位，避免先手偏差；種子預設從 10000 起（`--seed` 可改，holdout 用 50000 起），結果可重現。對局用仿 BotDriver
  * 模式與進度看門狗（`test/harness.ts`）。focus 的決策耗時另外記錄（`focus decide avg/max ms`）。
  *
  * naive 座位只保留模組的 `duty`（`naivePolicy`），等於 v0.4.0 的行為；沒有 Bot 模組的 profile（base）
@@ -16,15 +17,15 @@
  *
  * 輸出除了勝率與效能，還有：拒絕數、卡死與看門狗次數、保底次數（策略閒置、保底代為送出）、
  * 每個視窗的最大指令數、模組機制計數，以及和 rules 腳本模擬對照的回合數（沒有對照時為 n/a）。
- * `--markdown` 把同一份表寫成 markdown 檔。
+ * 閘門讀 `focus wins`、`finished` 與 `wilson95 lower %`（單邊 95% Wilson 下界，`bench/stats.ts`），不讀四捨五入的
+ * `focus win %`。`--markdown` 把同一份表寫成 markdown 檔。
  */
 
 import { writeFileSync } from 'node:fs';
 import { getProfile, requireProfile, type ProfileDefinition } from '@katan/rules';
-import { botModulesOf, botsCanPlay, createBotPolicy } from '../src/index.ts';
-import { heuristicPolicy } from '../src/heuristic.ts';
+import { botsCanPlay } from '../src/index.ts';
 import type { BotPolicy } from '../src/types.ts';
-import { baseProfileFor, naivePolicy, runBotGame, type BotSeat } from '../test/harness.ts';
+import { baseProfileFor, runBotGame, type BotSeat } from '../test/harness.ts';
 import { citiesKnightsKit } from '../test/modules/citiesKnights.ts';
 import { explorersPiratesKit } from '../test/modules/explorersPirates.ts';
 import { seafarersKit } from '../test/modules/seafarers.ts';
@@ -32,8 +33,8 @@ import { sfckKit } from '../test/modules/seafarersCitiesKnights.ts';
 import { tradersBarbariansKit } from '../test/modules/tradersBarbarians.ts';
 import { kitsOf, type ModuleTestKit } from '../test/modules/types.ts';
 import { BENCH_USAGE, BenchArgError, parseBenchArgs } from './args.ts';
-
-type Role = 'hard' | 'standard' | 'easy' | 'naive';
+import { policyOf, type Role } from './roles.ts';
+import { NON_INFERIORITY_DELTA_PP, nonInferiority, wilson95LowerPct } from './stats.ts';
 
 interface Config {
   name: string;
@@ -90,6 +91,8 @@ function configsFor(profile: ProfileDefinition): Config[] {
         ? ([
             { ...base, name: `${players}p 1 hard vs ${players - 1} standard`, focus: 'hard', count: 1, rest: 'standard' },
             { ...base, name: `${players}p ${players} hard`, focus: 'hard', count: players, rest: 'hard' },
+            { ...base, name: `${players}p 1 hard vs ${players - 1} hard0`, focus: 'hard', count: 1, rest: 'hard0' },
+            { ...base, name: `${players}p 1 hard0 vs ${players - 1} standard`, focus: 'hard0', count: 1, rest: 'standard' },
           ] satisfies Config[])
         : []),
     ];
@@ -109,7 +112,7 @@ try {
   if (error instanceof BenchArgError) fail(error.message, true);
   throw error;
 }
-const { games, filter, profileId: profileArg, markdown } = args;
+const { games, filter, profileId: profileArg, markdown, seed: firstSeed } = args;
 
 const profiles: ProfileDefinition[] = profileArg
   ? [getProfile(profileArg) ?? fail(`unknown ruleset profile: ${profileArg}`)]
@@ -151,24 +154,13 @@ function timed(policy: BotPolicy, timing: Timing): BotPolicy {
   };
 }
 
-function policyOf(role: Role, profile: ProfileDefinition): BotPolicy {
-  switch (role) {
-    case 'naive':
-      return naivePolicy('standard', botModulesOf(profile));
-    case 'hard':
-      return createBotPolicy('hard');
-    default:
-      return heuristicPolicy(role);
-  }
-}
-
 function seatsFor(roles: readonly Role[], profile: ProfileDefinition, focus: Role | null, timing: Timing): BotSeat[] {
   return roles.map((role, index) => {
     const policy = policyOf(role, profile);
     // naive 是 standard 參數的保底策略。
     return {
       id: `bot${index + 1}`,
-      level: role === 'naive' ? 'standard' : role,
+      level: role === 'naive' ? 'standard' : role === 'hard0' ? 'hard' : role,
       policy: role === focus ? timed(policy, timing) : policy,
     };
   });
@@ -202,7 +194,7 @@ for (const profile of profiles) {
       const roles = rolesFor(config, game);
       const run = runBotGame({
         seats: seatsFor(roles, profile, config.focus, focusTiming),
-        seed: 10_000 + game,
+        seed: firstSeed + game,
         profileId: profile.id,
         kits,
         onDecision: (_state, decision) => {
@@ -235,12 +227,22 @@ for (const profile of profiles) {
       const winner = run.state.players.findIndex((player) => player.id === run.state.result!.playerId);
       if (config.focus !== null && roles[winner] === config.focus) focusWins += 1;
     }
+    // 1 hard 對其餘 hard0：非劣性判定（下界 > p0 − δ）；其他設定沒有這個欄位。
+    const noninf =
+      config.focus === 'hard' && config.rest === 'hard0' && config.count === 1
+        ? nonInferiority(focusWins, finished, config.players)
+        : null;
     rows.push({
       profile: profile.id,
       config: config.name,
       games,
       focus: config.focus ?? '-',
       'focus win %': config.focus !== null ? +((focusWins / Math.max(1, finished)) * 100).toFixed(1) : '-',
+      'focus wins': config.focus !== null ? focusWins : '-',
+      finished,
+      'wilson95 lower %': config.focus !== null ? +wilson95LowerPct(focusWins, finished).toFixed(3) : '-',
+      'p0-delta %': noninf ? +noninf.thresholdPct.toFixed(3) : '-',
+      'non-inferior': noninf ? (noninf.pass ? 'pass' : 'fail') : '-',
       'fair share %': +((config.count / config.players) * 100).toFixed(1),
       'avg rounds': +(rounds / Math.max(1, finished)).toFixed(1),
       'rules-sim rounds': RULES_SIM_ROUNDS[profile.id]?.[config.players] ?? 'n/a',
@@ -268,7 +270,11 @@ for (const profile of profiles) {
   }
 }
 const notes = [
-  'the focus role rotates through the seats game by game; seeds run from 10000.',
+  `the focus role rotates through the seats game by game; seeds run from ${firstSeed} (--seed, default 10000).`,
+  "'focus wins' and 'finished' are raw counts; 'wilson95 lower %' is the one-sided 95% Wilson lower bound of focus wins / finished. " +
+    'Gates read these columns, never the rounded win %.',
+  `'non-inferior' (1 hard vs hard0 only) passes when 'wilson95 lower %' > 'p0-delta %' = 100/players - ${NON_INFERIORITY_DELTA_PP}; ` +
+    "hard0 is the frozen old hard in bench/hard-baseline/.",
   "'focus decide avg/max ms' time only the focus seats' decide calls; 'decide avg/max ms' cover every seat.",
   "naive seats keep only each module's duty (the v0.4.0 behaviour). A profile without bot modules (base) has " +
     'nothing to strip, so there a naive seat plays exactly like standard.',

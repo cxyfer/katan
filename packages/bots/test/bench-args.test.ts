@@ -5,7 +5,7 @@ import { BenchArgError, parseBenchArgs } from '../bench/args.ts';
 
 describe('parseBenchArgs', () => {
   it('uses 100 games and no profile by default', () => {
-    expect(parseBenchArgs([])).toEqual({ games: 100, filter: undefined, profileId: undefined, markdown: undefined });
+    expect(parseBenchArgs([])).toEqual({ games: 100, filter: undefined, profileId: undefined, markdown: undefined, seed: 10_000 });
   });
 
   it('reads the game count, the name filter and the options in any order', () => {
@@ -60,5 +60,20 @@ describe('parseBenchArgs', () => {
 
   it('rejects stray extra arguments', () => {
     expect(() => parseBenchArgs(['10', '4p', 'extra'])).toThrow('unexpected argument "extra"');
+  });
+
+  it('reads --seed as the first seed and defaults to 10000', () => {
+    expect(parseBenchArgs(['10']).seed).toBe(10_000);
+    expect(parseBenchArgs(['10', '--seed', '50000']).seed).toBe(50_000);
+    expect(parseBenchArgs(['--seed=70000', '4']).seed).toBe(70_000);
+    expect(parseBenchArgs(['10', '--seed', '0']).seed).toBe(0);
+  });
+
+  it('rejects a missing, repeated or non-integer --seed', () => {
+    expect(() => parseBenchArgs(['10', '--seed'])).toThrow('--seed needs a value');
+    expect(() => parseBenchArgs(['10', '--seed', '1', '--seed', '2'])).toThrow('--seed was given twice');
+    expect(() => parseBenchArgs(['10', '--seed', 'abc'])).toThrow('--seed must be a non-negative integer');
+    expect(() => parseBenchArgs(['10', '--seed', '1.5'])).toThrow(BenchArgError);
+    expect(() => parseBenchArgs(['10', '--seed', '007'])).toThrow(BenchArgError);
   });
 });
