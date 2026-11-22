@@ -135,8 +135,11 @@ describe('B-GAME hard', () => {
       const seed = 80 + players;
       const played = play(profileId, seatsFor(players, seed, true), seed);
       expectClean(`${players}p all hard seed ${seed}`, played, profileId);
-      // 勝者通常在最後一個視窗由終盤搜尋找到勝利序列；健全性檢查因此不是空的。
-      expect(played.lines.length, `${players}p all hard: winning lines`).toBeGreaterThan(0);
+      // 騎士能靠最大騎士團直接致勝，這條路徑不在建造與交易搜尋內。
+      const { state } = played.run;
+      const finalAction = historyOf(state).find((event) => event.seq === state.result?.atSeq);
+      const winsWithKnight = finalAction?.type === 'dev.knight' && finalAction.params.playerId === state.result?.playerId;
+      expect(played.lines.length > 0 || winsWithKnight, `${players}p all hard: winning line or knight`).toBe(true);
     }, GAME_TIMEOUT);
   }
 

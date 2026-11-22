@@ -1,11 +1,11 @@
 /** hard 的發展卡：騎士用 hard 的強盜評分，壟斷用計牌結果。 */
 
-import { RESOURCES, type Command, type Resource } from '@katan/rules';
+import { COSTS, RESOURCES, type Command, type Resource } from '@katan/rules';
 import { canPlay } from '../base/cards.ts';
-import { usefulRoad } from '../base/roads.ts';
 import { deficitOf } from '../economy.ts';
 import { handUtility } from '../trade.ts';
 import { hardKnightDecision } from './robber.ts';
+import { roadBuildingEdge } from './roads.ts';
 import type { HardTurn } from './turn.ts';
 
 /** 壟斷至少預期拿到幾張（依用途加權）才打。 */
@@ -33,26 +33,94 @@ export function monopolyChoice(turn: HardTurn): Resource | null {
   return bestValue >= MONOPOLY_MIN ? best : null;
 }
 
+function hasSettlementSites(turn: HardTurn, sites: readonly number[], count: number): boolean {
+  if (sites.length < count) return false;
+  if (count <= 1) return true;
+  return sites.some((site, index) => hasSettlementSites(
+    turn,
+    sites.slice(index + 1).filter((other) => !turn.model.neighbors[site]!.includes(other)),
+    count - 1,
+  ));
+}
+
+function monopolyWins(turn: HardTurn, resource: Resource): boolean {
+  const { me, view } = turn;
+  const gap = view.victoryTarget - (me.ownScore ?? me.publicScore);
+  if (view.turn.phase !== 'action' || gap < 1 || gap > 3) return false;
+  const { hand, left } = turn.economy;
+  const maxCities = Math.min(left.cities, view.hints!.legalCities.length, gap);
+  const sites = view.hints!.legalSettlements;
+  const taken = turn.opponents.reduce((sum, player) => sum + (turn.hand(player.id)?.min[resource] ?? 0), 0);
+  if (taken === 0) return false;
+  for (let cities = 0; cities <= maxCities; cities++) {
+    const settlements = gap - cities;
+    if (settlements > left.settlements + cities || settlements > sites.length) continue;
+    const cost = (kind: Resource): number => cities * (COSTS.city[kind] ?? 0) + settlements * (COSTS.settlement[kind] ?? 0);
+    if (hand[resource] >= cost(resource)) continue;
+    if (RESOURCES.every((kind) => hand[kind] + (kind === resource ? taken : 0) >= cost(kind)) &&
+      hasSettlementSites(turn, sites, settlements)) return true;
+  }
+  return false;
+}
+
+export function winningMonopoly(turn: HardTurn): Command | null {
+  const resource = canPlay(turn, 'monopoly') ? RESOURCES.find((kind) => monopolyWins(turn, kind)) : undefined;
+  return resource ? { type: 'dev.playMonopoly', resource } : null;
+}
+
+function progressCard(turn: HardTurn): Command | null {
+  if (canPlay(turn, 'yearOfPlenty')) {
+    const { plans, hand } = turn.economy;
+    const plan = plans[0];
+    if (plan) {
+      const missing = deficitOf(hand, plan.nextCost);
+      const need = RESOURCES.reduce((sum, resource) => sum + missing[resource], 0);
+      if (need >= 1 && need <= 2) return { type: 'dev.playYearOfPlenty' };
+    }
+  }
+  const resource = canPlay(turn, 'monopoly') ? monopolyChoice(turn) : null;
+  return resource ? { type: 'dev.playMonopoly', resource } : null;
+}
+
 export function hardDevCardDecision(turn: HardTurn): Command | null {
-  const { view } = turn;
-  const knight = hardKnightDecision(turn);
-  if (knight) return knight;
-  const economy = turn.economy;
-  const plan = economy.plans[0];
-  if (canPlay(turn, 'yearOfPlenty') && plan) {
-    const bankTotal = RESOURCES.reduce((sum, resource) => sum + view.bank[resource], 0);
-    const missing = deficitOf(economy.hand, plan.nextCost);
-    const need = RESOURCES.reduce((sum, resource) => sum + missing[resource], 0);
-    if (bankTotal >= 1 && need >= 1 && need <= 2) return { type: 'dev.playYearOfPlenty' };
-  }
-  if (canPlay(turn, 'monopoly')) {
-    const resource = monopolyChoice(turn);
-    if (resource) return { type: 'dev.playMonopoly', resource };
-  }
-  if (canPlay(turn, 'roadBuilding') && economy.left.roads >= 1 && usefulRoad(turn, true) !== null) {
+  const preroll = turn.view.turn.phase === 'preroll';
+  if (preroll && !canPlay(turn, 'knight')) return null;
+  const progress = progressCard(turn);
+  const knight = hardKnightDecision(turn, progress !== null);
+  if (knight || preroll) return knight;
+  if (progress) return progress;
+  if (canPlay(turn, 'roadBuilding') && roadBuildingEdge(turn, 2) !== null) {
     return { type: 'dev.playRoadBuilding' };
   }
   return null;
+}
+
+export function hardPlentyPick(turn: HardTurn): Resource | null {
+  const { view, ctx } = turn;
+  const pending = view.pending;
+  if (pending?.kind !== 'yearOfPlenty' || pending.actor !== ctx.selfId) return null;
+  const { bank } = view;
+  const { hand, plans, weights, yield: income } = turn.economy;
+  const useful = plans.find((plan) => {
+    const missing = deficitOf(hand, plan.nextCost);
+    const count = RESOURCES.reduce((total, resource) => total + missing[resource], 0);
+    return count > 0 && count <= pending.remaining && RESOURCES.every((resource) => missing[resource] <= bank[resource]);
+  }) ?? plans[0];
+  const next = deficitOf(hand, useful?.nextCost ?? {});
+  const full = deficitOf(hand, useful?.cost ?? {});
+  let best: Resource | null = null;
+  let bestScore = -Infinity;
+  for (const resource of RESOURCES) {
+    if (bank[resource] <= 0) continue;
+    const nextCount = Math.min(next[resource], bank[resource], pending.remaining);
+    const fullCount = Math.min(full[resource], bank[resource], pending.remaining);
+    const score = 20 * nextCount + 5 * fullCount + weights[resource] + (income[resource] === 0 ? 1 : 0);
+    if (score > bestScore) {
+      best = resource;
+      bestScore = score;
+    }
+  }
+  return best;
 }
 
 /**
