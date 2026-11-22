@@ -3,13 +3,13 @@
  *
  *   node bench/survey.mjs [局數] --profile <id> --players <n> --roles <規格>
  *                         [--from <起始局>] [--openings <開局表> [--shift <k>] [--script-roles <角色>]]
- *                         [--setup-from naive] [--jsonl <檔>] [--markdown <檔>]
+ *                         [--setup-from naive] [--trajectory] [--jsonl <檔>] [--markdown <檔>]
  *   node bench/survey.mjs --merge <jsonl 檔>... [--markdown <檔>]
  *   node bench/survey.mjs --latin <jsonl 檔>... [--markdown <檔>]
  *
- * `--roles` 規格：`standard`／`easy`／`naive` 表示全部座位同一策略；`standard:easy` 表示 1 位 standard
- * 對其餘 easy（`standard:naive` 同理）。focus 座位依局數輪換（第 g 局放在座位 `g % 人數`），種子從
- * `10000 + g` 起，與 `bench/run.ts` 的 ① ② 對局完全相同（同一 profile、人數、局數時，focus 勝率一致）。
+ * `--roles` 規格：單一角色（`standard`／`easy`／`naive`／`hard`／`hard0`）表示全部座位同一策略；
+ * `hard0:standard` 表示 1 位凍結版 hard 對其餘 standard。focus 座位依局數輪換（第 g 局放在座位
+ * `g % 人數`），種子從 `10000 + g` 起，與 `bench/run.ts` 的相同組態一致。
  *
  * `--openings 35/49,76/64,37/57` 指定每個座位「原本」的開局頂點（依座位 1、2、… 順序，每個座位兩個聚落，
  * 先放第一輪、再放第二輪；可由先前基線報告的 Openings 表讀出），`--script-roles standard` 只腳本化該角色的座位
@@ -34,6 +34,8 @@
  * 座位勝率與 Wilson 95% 信賴區間、開局分析、各座位遊戲內容、依（策略 × 勝負）拆解。
  * `--jsonl` 把逐局記錄寫成檔案（第一行為 meta）；`--merge` 把多個分片（`--from` 切開、可平行執行）
  * 合併成同一份表（規則見 `survey-merge.ts`：同一 shift 內局號不能重複，位移不同的分片只能池化）。
+ * `--trajectory` 加記每次擲骰的起始理論產量、總 pips 並列名次、第 5／15 輪結束分數和終局勝利點卡數。
+ * 有 hard／hard0 角色時自動啟用；純舊角色不加此旗標時輸出不變。
  *
  * 座位編號從 1 起算（座位 1 = 回合順序第一位，也是開局第一個放置的人）。
  */
@@ -48,21 +50,22 @@ import {
   type GameState,
   type ProfileDefinition,
 } from '@katan/rules';
-import { botModulesOf, botsCanPlay } from '../src/index.ts';
-import { heuristicPolicy } from '../src/heuristic.ts';
+import { botsCanPlay } from '../src/index.ts';
 import type { BotPolicy } from '../src/types.ts';
-import { naivePolicy, runBotGame, type BotSeat } from '../test/harness.ts';
+import { runBotGame, type BotSeat } from '../test/harness.ts';
 import { citiesKnightsKit } from '../test/modules/citiesKnights.ts';
 import { seafarersKit } from '../test/modules/seafarers.ts';
 import { sfckKit } from '../test/modules/seafarersCitiesKnights.ts';
 import { kitsOf, type ModuleTestKit } from '../test/modules/types.ts';
+import { policyOf } from './roles.ts';
 import { cohortWarning, latinCohort, mergeShards, poolBalanceWarning, SEED_BASE, ShardMergeError, type Shard } from './survey-merge.ts';
+import { checkpointVp, openingMetrics } from './survey-observations.ts';
 import { parseRoles, parseShard, ROLES, rolesFor, type GameRecord, type Meta, type Role, type RoleSpec, type SeatRecord } from './survey-records.ts';
 
 const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit, citiesKnightsKit, sfckKit];
 
 const USAGE =
-  'usage: survey [games] --profile <id> --players <n> --roles <role | focus:rest> [--from <game>] [--openings <a/b,...> [--shift <k>] [--script-roles <role>]] [--setup-from naive] [--jsonl <file>] [--markdown <file>]\n' +
+  'usage: survey [games] --profile <id> --players <n> --roles <role | focus:rest> [--from <game>] [--openings <a/b,...> [--shift <k>] [--script-roles <role>]] [--setup-from naive] [--trajectory] [--jsonl <file>] [--markdown <file>]\n' +
   '       survey --merge <jsonl>... [--markdown <file>]\n' +
   '       survey --latin <jsonl>... [--markdown <file>]';
 
@@ -125,10 +128,6 @@ const fmt = (value: number, digits = 2): string => (Number.isFinite(value) ? val
 // ---------------------------------------------------------------------------
 // 對局
 // ---------------------------------------------------------------------------
-
-function policyOf(role: Role, profile: ProfileDefinition): BotPolicy {
-  return role === 'naive' ? naivePolicy('standard', botModulesOf(profile)) : heuristicPolicy(role);
-}
 
 function seatIndexOf(id: string): number {
   return Number(id.slice('bot'.length)) - 1;
@@ -206,13 +205,14 @@ function playGame(
   players: number,
   game: number,
   script: OpeningScript | null,
-  setupFromNaive = false,
+  setupFromNaive: boolean,
+  trajectory: boolean,
 ): GameRecord {
   const roles = rolesFor(spec, players, game);
   const misses: number[] = roles.map(() => 0);
   const seats: BotSeat[] = roles.map((role, index) => ({
     id: `bot${index + 1}`,
-    level: role === 'naive' ? 'standard' : role,
+    level: role === 'naive' ? 'standard' : role === 'hard0' ? 'hard' : role,
     policy:
       script && (script.onlyRole === undefined || script.onlyRole === role)
         ? scripted(policyOf(role, profile), script, index, players, misses)
@@ -264,12 +264,13 @@ function playGame(
             : null;
   const winnerId = state.result?.playerId;
   const timeline = state.stats?.timeline ?? [];
+  const metrics = trajectory ? openingMetrics(described.map((placed) => placed.map((entry) => entry.pips))) : undefined;
   const records: SeatRecord[] = state.players.map((player, seat) => {
     const stats = state.stats?.players[player.id];
     const placed = described[seat] ?? [];
     const produced = stats ? Object.values(stats.produced).reduce((a, b) => a + b, 0) : 0;
     const sampled = (round: number): number | null =>
-      timeline.length - 1 > round ? (timeline[round]?.[seat] ?? null) : null;
+      checkpointVp(timeline, round, seat, !trajectory || state.result !== null);
     return {
       seat,
       role: roles[seat]!,
@@ -298,6 +299,12 @@ function playGame(
       scriptMiss: misses[seat] ?? 0,
       vp10: sampled(10),
       vp20: sampled(20),
+      ...(metrics ? {
+        ...metrics[seat]!,
+        vp5: sampled(5),
+        vp15: sampled(15),
+        vpCards: [...player.devCards, ...player.newDevCards].filter((card) => card === 'victoryPoint').length,
+      } : {}),
     };
   });
   return {
@@ -614,6 +621,7 @@ interface Args {
   shift: number | undefined;
   scriptRoles: string | undefined;
   setupFrom: string | undefined;
+  trajectory: boolean;
   jsonl: string | undefined;
   markdown: string | undefined;
   merge: boolean;
@@ -622,7 +630,7 @@ interface Args {
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: undefined, scriptRoles: undefined, setupFrom: undefined, jsonl: undefined, markdown: undefined, merge: false, latin: false, files: [] };
+  const out: Args = { games: 100, profile: undefined, players: undefined, roles: undefined, from: 0, openings: undefined, shift: undefined, scriptRoles: undefined, setupFrom: undefined, trajectory: false, jsonl: undefined, markdown: undefined, merge: false, latin: false, files: [] };
   const positional: string[] = [];
   const seen = new Set<string>();
   const value = (option: string, index: number): string => {
@@ -671,6 +679,9 @@ function parseArgs(argv: readonly string[]): Args {
         out.setupFrom = raw;
         break;
       }
+      case '--trajectory':
+        out.trajectory = true;
+        break;
       case '--jsonl':
         out.jsonl = value(arg, ++index);
         break;
@@ -894,8 +905,9 @@ if (args.merge) {
     ...(script ? { openings: args.openings!, shift: script.shift } : {}),
     ...(script?.onlyRole ? { scriptRoles: script.onlyRole } : {}),
   };
+  const trajectory = args.trajectory || [spec.focus, spec.rest].some((role) => role === 'hard' || role === 'hard0');
   games = [];
-  for (let game = args.from; game < args.from + args.games; game++) games.push(playGame(spec, profile, kits, args.players, game, script, args.setupFrom === 'naive'));
+  for (let game = args.from; game < args.from + args.games; game++) games.push(playGame(spec, profile, kits, args.players, game, script, args.setupFrom === 'naive', trajectory));
   if (args.jsonl) {
     writeFileSync(args.jsonl, [JSON.stringify({ meta }), ...games.map((game) => JSON.stringify(game))].join('\n') + '\n');
   }

@@ -3,15 +3,15 @@
  *
  * 分片是外部輸入：meta 與逐局、逐座位的每個欄位都必填且型別正確（`GAME_SCHEMA`、`SEAT_SCHEMA` 用
  * `Record<keyof …>` 讓新增欄位時編譯器強迫同步），並檢查彼此一致：座位角色對得上 `--roles` 的輪換、
- * `won` 對得上 `winner`、`finished` 對得上 `problem`。沒有欄位會被靜默略過驗證；選填的只有「沒有用到
- * 該功能」時才省略的設定（`openings`／`shift`／`scriptRoles`／`setupFrom`），它們有就必須合法且彼此一致。
+ * `won` 對得上 `winner`、`finished` 對得上 `problem`。選填的設定與觀測欄位若出現，一樣驗證。
  */
 
 import { getProfile } from '@katan/rules';
+import type { Role } from './roles.ts';
 import { ShardMergeError, type Shard } from './survey-merge.ts';
 
-export type Role = 'standard' | 'easy' | 'naive';
-export const ROLES: readonly Role[] = ['standard', 'easy', 'naive'];
+export type { Role } from './roles.ts';
+export const ROLES = ['standard', 'easy', 'naive', 'hard', 'hard0'] as const satisfies readonly Role[];
 
 
 // ---------------------------------------------------------------------------
@@ -72,9 +72,18 @@ export interface SeatRecord {
   largestArmy: boolean;
   /** 腳本頂點不合法、退回 bot 自己選擇的次數（沒有腳本時為 0）。 */
   scriptMiss: number;
-  /** 第 10、20 輪開始時的分數；整局在那之前結束則為 null。 */
+  /** 完成第 10、20 輪後的分數（含隱藏分）；沒到下一輪則為 null。 */
   vp10: number | null;
   vp20: number | null;
+  /** 未受阻擋時，兩個起始聚落每次擲骰的理論產量。 */
+  openExpected?: number | null;
+  /** 依兩個起始聚落的總 pips 排名；同分並列，開局未完成則為 null。 */
+  openRank?: number | null;
+  /** 補充第 5、15 輪後的分數，終局分數沿用 score。 */
+  vp5?: number | null;
+  vp15?: number | null;
+  /** 終局持有的勝利點卡數。 */
+  vpCards?: number;
 }
 
 export interface GameRecord {
@@ -120,7 +129,9 @@ const GAME_SCHEMA: Record<Exclude<keyof GameRecord, 'seats'>, FieldKind> = {
   rounds: 'num',
 };
 
-const SEAT_SCHEMA: Record<keyof SeatRecord, FieldKind> = {
+type SeatSchema = { [Key in keyof SeatRecord]: FieldKind };
+
+const SEAT_SCHEMA = {
   seat: 'int',
   role: 'role',
   won: 'bool',
@@ -152,7 +163,15 @@ const SEAT_SCHEMA: Record<keyof SeatRecord, FieldKind> = {
   scriptMiss: 'num',
   vp10: 'num|null',
   vp20: 'num|null',
-};
+} satisfies SeatSchema;
+
+const OPTIONAL_SEAT_SCHEMA = {
+  openExpected: 'num|null',
+  openRank: 'int|null',
+  vp5: 'num|null',
+  vp15: 'num|null',
+  vpCards: 'int',
+} satisfies Required<Pick<SeatSchema, Exclude<keyof SeatRecord, keyof typeof SEAT_SCHEMA>>>;
 
 const isInteger = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value);
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
@@ -182,7 +201,7 @@ function matchesKind(kind: FieldKind, value: unknown): boolean {
   }
 }
 
-/** 逐局記錄的完整驗證：每個欄位都必填且型別正確，座位角色、勝者與終局狀態彼此一致。 */
+/** 逐局記錄的完整驗證：必要欄位齊全、型別正確，座位角色、勝者與終局狀態彼此一致。 */
 function checkGameRecord(file: string, lineNumber: number, raw: unknown, meta: Meta, spec: RoleSpec): GameRecord {
   const where = `${file} line ${lineNumber}`;
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new ShardMergeError(`${where} is not a game record`);
@@ -201,6 +220,9 @@ function checkGameRecord(file: string, lineNumber: number, raw: unknown, meta: M
     const seat = entry as Record<string, unknown>;
     for (const [key, kind] of Object.entries(SEAT_SCHEMA)) {
       if (!(key in seat) || !matchesKind(kind, seat[key])) throw new ShardMergeError(`${where} seat ${index + 1} needs ${key} (${kind}), got ${JSON.stringify(seat[key])}`);
+    }
+    for (const [key, kind] of Object.entries(OPTIONAL_SEAT_SCHEMA)) {
+      if (key in seat && !matchesKind(kind, seat[key])) throw new ShardMergeError(`${where} seat ${index + 1} needs ${key} (${kind}), got ${JSON.stringify(seat[key])}`);
     }
     if (seat.seat !== index) throw new ShardMergeError(`${where} seat ${index + 1} has seat index ${String(seat.seat)}`);
     if (seat.role !== expectedRoles[index]) throw new ShardMergeError(`${where} seat ${index + 1} has role ${String(seat.role)}, expected ${expectedRoles[index]} for --roles ${meta.roles}`);
