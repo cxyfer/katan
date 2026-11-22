@@ -4,8 +4,9 @@
  */
 
 import { COSTS } from '@katan/rules';
-import { playerYield } from '../board.ts';
-import { bestRouteEdge, economyOf, etaRounds, scaleCost, type Economy, type Plan } from '../economy.ts';
+import { isFreeSpot, playerYield, roadPath } from '../board.ts';
+import { addCosts, bestRouteEdge, economyOf, PIP_VALUE, scaleCost, settlementSpotValue, type Economy, type Plan } from '../economy.ts';
+import { hardEtaRounds } from './eta.ts';
 import type { HardTurn } from './turn.ts';
 
 /** 還差幾條道路就拿到最長道路時，計畫的價值（以勝利分計）。standard 只追差 1–2 條的。 */
@@ -25,7 +26,7 @@ function comparePlans(a: Plan, b: Plan): number {
 }
 
 /** 最長道路：還差 1–4 條、而且有能延長路線的合法道路時列為計畫；自己持有時防守。 */
-function routePlan(turn: HardTurn, economy: Economy): Plan | null {
+function routePlan(turn: HardTurn, economy: Economy): Omit<Plan, 'eta' | 'score'> | null {
   const { view, model, ctx } = turn;
   if (economy.left.roads <= 0) return null;
   const holder = view.awards.longestRoad;
@@ -46,8 +47,7 @@ function routePlan(turn: HardTurn, economy: Economy): Plan | null {
   const edge = bestRouteEdge(model, view.hints?.legalRoads ?? [], economy.myRoute);
   if (edge === null) return null;
   const cost = scaleCost(COSTS.road, needed);
-  const eta = etaRounds(economy.hand, cost, playerYield(model, ctx.selfId), economy.rates, view.players.length, economy.kinds);
-  return { kind: 'longestRoad', vertex: null, roads: [edge], ships: [], cost, nextCost: COSTS.road, value, eta, score: value / (1 + eta) };
+  return { kind: 'longestRoad', vertex: null, roads: [edge], ships: [], cost, nextCost: COSTS.road, value };
 }
 
 /** 發展卡的倍率，依計牌模組的未現身牌池調整：分數卡都已現身時下降，剩下的騎士多時上升。 */
@@ -59,19 +59,45 @@ function devCardFactor(turn: HardTurn): number {
   return (DEV_CARD_SCALE * value) / BASE_DEV_VALUE;
 }
 
+/** 共用經濟已截取前三名；hard 得先用自己的估值重排所有可達空點。 */
+function settlementPlans(turn: HardTurn, base: Economy, scorePlan: (plan: Omit<Plan, 'eta' | 'score'>) => Plan): Plan[] {
+  if (base.left.settlements <= 0) return [];
+  const { model, view, ctx } = turn;
+  const mine = playerYield(model, ctx.selfId, true);
+  const legalNow = new Set(view.hints?.legalSettlements ?? []);
+  const plans: Plan[] = [];
+  for (let vertex = 0; vertex < model.topo.vertices.length; vertex++) {
+    const distance = base.search.distance[vertex]!;
+    if (distance === Infinity || (distance === 0 && !legalNow.has(vertex)) || !isFreeSpot(model, vertex)) continue;
+    const roads = roadPath(base.search, vertex);
+    const value = (1 + PIP_VALUE * settlementSpotValue(model, vertex, base.weights, mine)) * 0.9 ** distance;
+    plans.push(scorePlan({
+      kind: 'settlement',
+      vertex,
+      roads,
+      ships: [],
+      cost: addCosts(COSTS.settlement, scaleCost(COSTS.road, distance)),
+      nextCost: distance > 0 ? COSTS.road : COSTS.settlement,
+      value,
+    }));
+  }
+  return plans.sort(comparePlans).slice(0, 3);
+}
+
 export function hardEconomyOf(turn: HardTurn): Economy {
   const base = economyOf(turn.model, [], 'standard');
   const route = routePlan(turn, base);
   const factor = base.plans.some((plan) => plan.kind === 'devCard') ? devCardFactor(turn) : 1;
+  const scorePlan = (plan: Omit<Plan, 'eta' | 'score'>): Plan => {
+    const eta = hardEtaRounds(base.hand, plan.cost, base.yield, base.rates, turn.view.players.length)
+      + (plan.kind === 'settlement' ? plan.roads.length * 0.35 : 0);
+    return { ...plan, eta, score: plan.value / (1 + eta) };
+  };
   const plans = base.plans
-    .filter((plan) => !route || plan.kind !== 'longestRoad')
-    .map((plan) => {
-      if (plan.kind !== 'devCard') return plan;
-      const value = plan.value * factor;
-      return { ...plan, value, score: value / (1 + plan.eta) };
-    });
-  if (route) plans.push(route);
-  // 穩定排序：同分時保留 base 的順序。
+    .filter((plan) => plan.kind !== 'settlement' && (!route || plan.kind !== 'longestRoad'))
+    .map((plan) => scorePlan(plan.kind === 'devCard' ? { ...plan, value: plan.value * factor } : plan));
+  plans.push(...settlementPlans(turn, base, scorePlan));
+  if (route) plans.push(scorePlan(route));
   plans.sort(comparePlans);
   return { ...base, plans };
 }
