@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { COSTS, type GameState } from '@katan/rules';
 import { forceTurn, newGame } from '../../rules/test/helpers.ts';
-import { emptyYield } from '../src/board.ts';
-import { hardSettlementValue } from '../src/hard/economy.ts';
+import { emptyYield, isLandEdge, playerYield } from '../src/board.ts';
+import { hardSettlementValue, settlementPortTargets } from '../src/hard/economy.ts';
 import { hardEtaRounds } from '../src/hard/eta.ts';
 import { portTradeValue, ratesWithPort } from '../src/hard/ports.ts';
 import { openingValue } from '../src/hard/setup.ts';
@@ -77,6 +77,43 @@ describe('hard port value', () => {
     const withPort = { ...model, harborAt: ['ore' as const], hexResource: model.hexResource.map(() => 'lumber' as const) };
     expect(openingValue(withPort, 'p1', [0], undefined, false)).toBe(
       openingValue({ ...withPort, harborAt: [null] }, 'p1', [0], undefined, false),
+    );
+  });
+});
+
+describe('hard expansion and Largest Army', () => {
+  it('discounts the same spot more when a rival road reaches it', () => {
+    const { state } = newGame({ players: 3, seed: 7 });
+    forceTurn(state, 0, 'action');
+    state.board.buildings[0] = { player: 'p1', city: false };
+    const { economy, model } = hardTurn(state);
+    const open = economy.plans.find((plan) => plan.kind === 'settlement')!;
+    const vertex = open.vertex!;
+    const rivalEdge = model.topo.vertices[vertex]!.edges.find((edge) => !open.roads.includes(edge) && isLandEdge(model, edge));
+    expect(rivalEdge).toBeDefined();
+    const raw = hardSettlementValue(economy, vertex, playerYield(model, 'p1', true), settlementPortTargets(economy));
+    expect(open.value / raw).toBeCloseTo(0.95 ** open.roads.length);
+
+    state.board.roads[rivalEdge!] = { player: 'p2', ship: false };
+    const contested = hardTurn(state).economy.plans.find((plan) => plan.kind === 'settlement' && plan.vertex === vertex)!;
+    expect(contested.roads).toEqual(open.roads);
+    expect(contested.eta).toBe(open.eta);
+    expect(contested.value / raw).toBeCloseTo(0.85 ** contested.roads.length);
+  });
+
+  it('values the same knight pool more at one knight short than at two', () => {
+    const { state } = newGame({ players: 3, seed: 7 });
+    forceTurn(state, 0, 'action');
+    state.board.buildings[0] = { player: 'p1', city: false };
+    state.awards.largestArmy = 'p2';
+    for (const player of state.players) player.playedKnights = 3;
+    const near = hardTurn(state);
+    state.players[1]!.playedKnights = 4;
+    state.players[2]!.playedKnights = 2;
+    const far = hardTurn(state);
+    expect(near.belief.dev.unseen).toEqual(far.belief.dev.unseen);
+    expect(near.economy.plans.find((plan) => plan.kind === 'devCard')!.value).toBeGreaterThan(
+      far.economy.plans.find((plan) => plan.kind === 'devCard')!.value,
     );
   });
 });

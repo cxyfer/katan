@@ -1,11 +1,11 @@
 /**
- * hard 的計畫估值（規格 §4 第 3 點）：以 base 經濟為底，改寫最長道路計畫與發展卡的價值。
+ * hard 的計畫估值：以 base 經濟為底，重算各計畫的 ETA 與聚落、最長道路、發展卡的價值。
  * 沿用 standard 的函式（例如 `planStep`、`usefulRoad`）時，讀到的也是這份經濟。
  */
 
-import { COSTS, RESOURCES } from '@katan/rules';
-import { isFreeSpot, playerYield, roadPath, vertexYield, type Yield } from '../board.ts';
-import { addCosts, bestRouteEdge, economyOf, PIP_VALUE, scaleCost, weightedPips, type Cost, type Economy, type Plan } from '../economy.ts';
+import { BASE_AWARD_RULES, COSTS, RESOURCES } from '@katan/rules';
+import { isFreeSpot, piecesLeft, playerYield, roadPath, searchRoads, vertexYield, type Yield } from '../board.ts';
+import { addCosts, bestRouteEdge, economyOf, MAX_PLAN_ROADS, PIP_VALUE, scaleCost, weightedPips, type Cost, type Economy, type Plan } from '../economy.ts';
 import { hardEtaRounds } from './eta.ts';
 import { NO_PORT_RATES, portTradeValue, ratesWithPort } from './ports.ts';
 import type { HardTurn } from './turn.ts';
@@ -51,13 +51,26 @@ function routePlan(turn: HardTurn, economy: Economy): Omit<Plan, 'eta' | 'score'
   return { kind: 'longestRoad', vertex: null, roads: [edge], ships: [], cost, nextCost: COSTS.road, value };
 }
 
-/** 發展卡的倍率，依計牌模組的未現身牌池調整：分數卡都已現身時下降，剩下的騎士多時上升。 */
-function devCardFactor(turn: HardTurn): number {
+/** 騎士仍能解封或偷牌；額外得分價值隨超越持有者所需的騎士數遞減。 */
+function knightValue(turn: HardTurn): number {
+  const holder = turn.view.awards.largestArmy;
+  if (holder === turn.ctx.selfId) return 0.25;
+  const holderKnights = holder ? turn.player(holder)?.playedKnights ?? 0 : 0;
+  const threshold = Math.max(BASE_AWARD_RULES.minLargestArmy, holderKnights + 1);
+  const held = turn.me.devCards?.filter((card) => card === 'knight').length ?? 0;
+  const gap = threshold - turn.me.playedKnights - held;
+  return 0.25 + (gap > 0 ? 0.6 / gap : 0);
+}
+
+/** 未現身牌池的期望價值；奪獎收益只計入騎士，不再給整疊發展卡固定加分。 */
+function devCardValue(turn: HardTurn, base: Economy): number {
+  const hasBuild = base.plans.some((plan) => plan.kind === 'city' || plan.kind === 'settlement');
+  const value = (hasBuild ? 0.55 : 0.85) * DEV_CARD_SCALE;
   const { unseen, unseenTotal } = turn.belief.dev;
-  if (unseenTotal <= 0) return DEV_CARD_SCALE;
+  if (unseenTotal <= 0) return value;
   const progress = unseenTotal - unseen.victoryPoint - unseen.knight;
-  const value = (unseen.victoryPoint * 1 + unseen.knight * 0.4 + progress * 0.5) / unseenTotal;
-  return (DEV_CARD_SCALE * value) / BASE_DEV_VALUE;
+  const expected = (unseen.victoryPoint + unseen.knight * knightValue(turn) + progress * 0.5) / unseenTotal;
+  return (value * expected) / BASE_DEV_VALUE;
 }
 
 /** 港口收益只看目前仍可走的基本建造方向；多個聚落候選只算一種成本。 */
@@ -82,6 +95,17 @@ export function hardSettlementValue(base: Economy, vertex: number, mine: Yield, 
   return 1 + PIP_VALUE * pips + 0.5 * trade;
 }
 
+/** 搜尋各對手的公開路網，最多比自己的規劃多一步，足以分辨誰能先到。 */
+function rivalRoadDistances(turn: HardTurn): (readonly number[])[] {
+  const distances: (readonly number[])[] = [];
+  for (const rival of turn.opponents) {
+    const left = piecesLeft(turn.model, rival.id);
+    if (left.settlements <= 0) continue;
+    distances.push(searchRoads(turn.model, rival.id, Math.min(MAX_PLAN_ROADS + 1, left.roads)).distance);
+  }
+  return distances;
+}
+
 /** 共用經濟已截取前三名；hard 得先用自己的估值重排所有可達空點。 */
 function settlementPlans(turn: HardTurn, base: Economy, scorePlan: (plan: Omit<Plan, 'eta' | 'score'>) => Plan): Plan[] {
   if (base.left.settlements <= 0) return [];
@@ -90,11 +114,19 @@ function settlementPlans(turn: HardTurn, base: Economy, scorePlan: (plan: Omit<P
   const targets = settlementPortTargets(base);
   const legalNow = new Set(view.hints?.legalSettlements ?? []);
   const plans: Plan[] = [];
+  let rivals: (readonly number[])[] | undefined;
   for (let vertex = 0; vertex < model.topo.vertices.length; vertex++) {
     const distance = base.search.distance[vertex]!;
     if (distance === Infinity || (distance === 0 && !legalNow.has(vertex)) || !isFreeSpot(model, vertex)) continue;
     const roads = roadPath(base.search, vertex);
-    const value = hardSettlementValue(base, vertex, mine, targets) * 0.9 ** distance;
+    let value = hardSettlementValue(base, vertex, mine, targets);
+    if (distance > 0) {
+      rivals ??= rivalRoadDistances(turn);
+      let nearest = Infinity;
+      for (const rival of rivals) nearest = Math.min(nearest, rival[vertex]!);
+      const perRoad = nearest <= distance ? 0.85 : nearest === distance + 1 ? 0.9 : 0.95;
+      value *= perRoad ** distance;
+    }
     plans.push(scorePlan({
       kind: 'settlement',
       vertex,
@@ -118,7 +150,6 @@ export function hardEconomyOf(turn: HardTurn): Economy {
   }
   const base = { ...standard, rates };
   const route = routePlan(turn, base);
-  const factor = base.plans.some((plan) => plan.kind === 'devCard') ? devCardFactor(turn) : 1;
   const scorePlan = (plan: Omit<Plan, 'eta' | 'score'>): Plan => {
     const eta = hardEtaRounds(base.hand, plan.cost, base.yield, base.rates, turn.view.players.length)
       + (plan.kind === 'settlement' ? plan.roads.length * 0.35 : 0);
@@ -126,7 +157,7 @@ export function hardEconomyOf(turn: HardTurn): Economy {
   };
   const plans = base.plans
     .filter((plan) => plan.kind !== 'settlement' && (!route || plan.kind !== 'longestRoad'))
-    .map((plan) => scorePlan(plan.kind === 'devCard' ? { ...plan, value: plan.value * factor } : plan));
+    .map((plan) => scorePlan(plan.kind === 'devCard' ? { ...plan, value: devCardValue(turn, base) } : plan));
   plans.push(...settlementPlans(turn, base, scorePlan));
   if (route) plans.push(scorePlan(route));
   plans.sort(comparePlans);
