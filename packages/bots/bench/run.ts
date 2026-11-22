@@ -230,7 +230,7 @@ for (const profile of profiles) {
     // 1 hard 對其餘 hard0：非劣性判定（下界 > p0 − δ）；其他設定沒有這個欄位。
     const noninf =
       config.focus === 'hard' && config.rest === 'hard0' && config.count === 1
-        ? nonInferiority(focusWins, finished, config.players)
+        ? nonInferiority(focusWins, finished, config.players, problems)
         : null;
     rows.push({
       profile: profile.id,
@@ -273,7 +273,7 @@ const notes = [
   `the focus role rotates through the seats game by game; seeds run from ${firstSeed} (--seed, default 10000).`,
   "'focus wins' and 'finished' are raw counts; 'wilson95 lower %' is the one-sided 95% Wilson lower bound of focus wins / finished. " +
     'Gates read these columns, never the rounded win %.',
-  `'non-inferior' (1 hard vs hard0 only) passes when 'wilson95 lower %' > 'p0-delta %' = 100/players - ${NON_INFERIORITY_DELTA_PP}; ` +
+  `'non-inferior' (1 hard vs hard0 only) passes when 'wilson95 lower %' > 'p0-delta %' = 100/players - ${NON_INFERIORITY_DELTA_PP} and 'problems' is 0 (unfinished games are not counted in 'finished', so they must fail the gate); ` +
     "hard0 is the frozen old hard in bench/hard-baseline/.",
   "'focus decide avg/max ms' time only the focus seats' decide calls; 'decide avg/max ms' cover every seat.",
   "naive seats keep only each module's duty (the v0.4.0 behaviour). A profile without bot modules (base) has " +

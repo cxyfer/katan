@@ -26,19 +26,25 @@ export interface NonInferiority {
   /** `p0 − δ`，百分比。 */
   thresholdPct: number;
   lowerPct: number;
-  /** Wilson 下界嚴格大於 `p0 − δ`。 */
+  /** 沒有完成的局（卡死、看門狗、守恆違規、失敗）數；有任何一局就不通過，不能靠丟掉不利的局拿到下界。 */
+  problems: number;
+  /** 沒有任何問題局，且 Wilson 下界嚴格大於 `p0 − δ`。 */
   pass: boolean;
 }
 
-/** 1 位新策略對其餘 `players − 1` 位基線的非劣性判定：下界 > `p0 − δ`（`p0 = 1/players`）。 */
+/**
+ * 1 位新策略對其餘 `players − 1` 位基線的非劣性判定：下界 > `p0 − δ`（`p0 = 1/players`），且 `problems` 為 0。
+ * 沒完成的局不計入 `finished`，若不要求零問題，退步的策略可以靠讓不利的局失敗來通過。
+ */
 export function nonInferiority(
   wins: number,
   finished: number,
   players: number,
+  problems: number,
   deltaPp: number = NON_INFERIORITY_DELTA_PP,
 ): NonInferiority {
   const p0Pct = 100 / players;
   const thresholdPct = p0Pct - deltaPp;
   const lowerPct = wilson95LowerPct(wins, finished);
-  return { p0Pct, thresholdPct, lowerPct, pass: lowerPct > thresholdPct };
+  return { p0Pct, thresholdPct, lowerPct, problems, pass: problems === 0 && lowerPct > thresholdPct };
 }

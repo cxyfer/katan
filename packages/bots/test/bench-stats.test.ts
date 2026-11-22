@@ -23,8 +23,8 @@ describe('wilson95LowerPct', () => {
 
 describe('nonInferiority', () => {
   it('passes at 562/1806 and fails at 561/1806 for 3 players (threshold 33.333 − 4 = 29.333%)', () => {
-    const fail = nonInferiority(561, 1806, 3);
-    const pass = nonInferiority(562, 1806, 3);
+    const fail = nonInferiority(561, 1806, 3, 0);
+    const pass = nonInferiority(562, 1806, 3, 0);
     expect(fail.thresholdPct).toBeCloseTo(29.333, 3);
     expect(fail.pass).toBe(false);
     expect(pass.pass).toBe(true);
@@ -33,13 +33,22 @@ describe('nonInferiority', () => {
   });
 
   it('uses the fair share 1/players as p0', () => {
-    expect(nonInferiority(0, 0, 4).p0Pct).toBe(25);
-    expect(nonInferiority(0, 0, 6).thresholdPct).toBeCloseTo(100 / 6 - 4, 10);
-    expect(nonInferiority(0, 0, 5).pass).toBe(false);
+    expect(nonInferiority(0, 0, 4, 0).p0Pct).toBe(25);
+    expect(nonInferiority(0, 0, 6, 0).thresholdPct).toBeCloseTo(100 / 6 - 4, 10);
+    expect(nonInferiority(0, 0, 5, 0).pass).toBe(false);
   });
 
   it('requires a strictly greater lower bound', () => {
-    expect(nonInferiority(100, 100, 3).pass).toBe(true);
-    expect(nonInferiority(10, 100, 3).pass).toBe(false);
+    expect(nonInferiority(100, 100, 3, 0).pass).toBe(true);
+    expect(nonInferiority(10, 100, 3, 0).pass).toBe(false);
+  });
+
+  it('fails when any game did not finish, however good the finished ones look', () => {
+    expect(nonInferiority(562, 1806, 3, 0).pass).toBe(true);
+    // 退步的策略讓不利的局失敗（不計入 finished）：勝率看起來沒變，仍然不通過。
+    const gamed = nonInferiority(562, 1806, 3, 1);
+    expect(gamed.lowerPct).toBeGreaterThan(gamed.thresholdPct);
+    expect(gamed.problems).toBe(1);
+    expect(gamed.pass).toBe(false);
   });
 });
