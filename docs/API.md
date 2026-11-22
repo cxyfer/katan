@@ -74,7 +74,7 @@ Conventions:
   "playerCounts": [5, 6],
   "paired": true,
   "victoryTarget": 10,
-  "setupModes": ["fixed", "variable"],
+  "setupModes": ["fixed", "variable", "official"],
   "enabled": true,
   "botSeats": true,
   "botLevels": ["easy", "standard", "hard"]

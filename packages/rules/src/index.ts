@@ -12,6 +12,7 @@ export * from './topology-registry.ts';
 export * from './rng.ts';
 export * from './layout.ts';
 export * from './layout-registry.ts';
+export * from './official-56-board.ts';
 export * from './sample-boards.ts';
 export * from './seafarers-boards.ts';
 export { EP_SCENARIOS, epScenario, type EpScenarioId, type EpMission, type EpRegion, type EpTile } from './explorers-pirates-boards.ts';

@@ -5,7 +5,7 @@ import { ambiguousWith } from '../src/board/targets.ts';
 
 describe('SVG world / CSS projection (I01, I03, I05)', () => {
   it('round-trips both topologies at fit / zoom / pan, across aspect ratios and DPRs within one CSS px', () => {
-    for (const topology of ['hex-r2', 'hex-r56']) {
+    for (const topology of ['hex-r2', 'hex-r56', 'hex-r56-official']) {
       const geometry = buildGeometry(topology);
       for (const [width, height] of [[1366, 768], [800, 450], [844, 390], [768, 1024], [390, 844], [360, 640]]) {
         for (const zoom of [.7, 1, 3]) for (const dpr of [1, 2, 3]) {
@@ -52,7 +52,7 @@ describe('SVG world / CSS projection (I01, I03, I05)', () => {
   });
 
   it('preserves SVG points while exposing the numeric corners of every hex', () => {
-    for (const topology of ['hex-r2', 'hex-r56']) for (const hex of buildGeometry(topology).hexes) {
+    for (const topology of ['hex-r2', 'hex-r56', 'hex-r56-official']) for (const hex of buildGeometry(topology).hexes) {
       expect(hex.corners).toHaveLength(6);
       expect(hex.points).toBe(hex.corners.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' '));
     }

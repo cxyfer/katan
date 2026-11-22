@@ -23,6 +23,7 @@ import type {
   ProfileDefinition,
   Resource,
   ScenarioId,
+  SetupMode,
   VariantId,
 } from '@katan/rules';
 
@@ -214,7 +215,7 @@ export interface RoomView {
   status: RoomStatus;
   hostId: string;
   profileId: string;
-  setupMode: 'fixed' | 'variable';
+  setupMode: SetupMode;
   orderMode: GameOrderMode;
   capacity: number;
   policy: RoomPolicy;
@@ -357,7 +358,7 @@ export interface ProfileView {
   playerCounts: number[];
   paired: boolean;
   victoryTarget: number;
-  setupModes: ('fixed' | 'variable')[];
+  setupModes: SetupMode[];
   enabled: boolean;
   unavailableReasonKey?: string;
   /**

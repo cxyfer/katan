@@ -11,6 +11,7 @@
 
 import { explorersPiratesLayout } from './explorers-pirates-boards.ts';
 import { buildBaseLayout } from './layout.ts';
+import { OFFICIAL_56_TOPOLOGY_ID, officialPairedLayout } from './official-56-board.ts';
 import type { ProfileDefinition, SetupMode } from './profiles.ts';
 import type { Rng } from './rng.ts';
 import { newShoresLayout } from './seafarers-boards.ts';
@@ -31,7 +32,10 @@ export type LayoutBuilder = (context: LayoutContext) => BoardLayout;
 
 const builders = new Map<string, LayoutBuilder>([
   // B25 / B56-25 fixed and variable boards, unchanged.
-  ['base', ({ topology, mode, rng }) => buildBaseLayout({ topology, mode, rng })],
+  ['base', ({ topology, mode, rng }) => mode === 'official'
+    // 官方 5–6 人版圖：對稱形狀、A→BB 數字序、框上固定港口。
+    ? officialPairedLayout(getTopology(OFFICIAL_56_TOPOLOGY_ID), rng)
+    : buildBaseLayout({ topology, mode, rng })],
   // SF25 pp. 4–5 / SF56-25 p. 4 Heading for New Shores maps.
   ['sf-new-shores', (context) => newShoresLayout(context, getTopology)],
   // EP25 pp. 6–7 / EP25-M pp. 4–16 Explorers & Pirates mission maps.

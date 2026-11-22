@@ -3,6 +3,7 @@
 import { applyCommand, createGame, type Command } from '../src/engine.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
 import { legalBuildingVertices, legalRoadEdges } from '../src/engine.ts';
+import type { SetupMode } from '../src/profiles.ts';
 import type { GameEvent, GameState, PlayerColor, Resource } from '../src/types.ts';
 
 export const COLORS: PlayerColor[] = ['red', 'blue', 'orange', 'white', 'green', 'brown'];
@@ -12,7 +13,7 @@ export function playerIds(count: number): string[] {
 }
 
 export function newGame(
-  options: { players?: number; seed?: number; mode?: 'fixed' | 'variable'; profileId?: string } = {},
+  options: { players?: number; seed?: number; mode?: SetupMode; profileId?: string } = {},
 ): { state: GameState; rng: Rng } {
   const count = options.players ?? 4;
   const rng = seededRng(options.seed ?? 12345);

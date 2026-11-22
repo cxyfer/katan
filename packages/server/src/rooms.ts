@@ -10,6 +10,7 @@ import {
   requireProfile,
   resolveCombination,
   type PlayerColor,
+  type SetupMode,
 } from '@katan/rules';
 import {
   DEFAULT_POLICY,
@@ -70,7 +71,7 @@ export function resolveRoomProfile(input: {
   profileId?: string;
   ruleset?: RulesetRequest;
   capacity: number;
-  setupMode: 'fixed' | 'variable';
+  setupMode: SetupMode;
 }): string {
   const reject = (reason: string): never => {
     throw new ServiceError('E_UNSUPPORTED_COMBINATION', 'error.E_UNSUPPORTED_COMBINATION', {
@@ -312,7 +313,7 @@ export class RoomService {
       status: room.status as RoomStatus,
       hostId: room.host_id,
       profileId: room.profile_id,
-      setupMode: room.setup_mode as 'fixed' | 'variable',
+      setupMode: room.setup_mode as SetupMode,
       orderMode: parseOrderMode(room.order_mode) ?? 'join',
       capacity: room.capacity,
       policy: this.policyOf(room),
@@ -422,7 +423,7 @@ export class RoomService {
       capacity: number;
       profileId?: string;
       ruleset?: RulesetRequest;
-      setupMode: 'fixed' | 'variable';
+      setupMode: SetupMode;
       orderMode: GameOrderMode;
       policy?: Partial<RoomPolicy>;
     },
@@ -768,7 +769,7 @@ export class RoomService {
       capacity?: number;
       profileId?: string;
       ruleset?: RulesetRequest;
-      setupMode?: 'fixed' | 'variable';
+      setupMode?: SetupMode;
       orderMode?: GameOrderMode;
       policy?: Partial<RoomPolicy>;
     },
@@ -783,7 +784,7 @@ export class RoomService {
       capacity?: number;
       profileId?: string;
       ruleset?: RulesetRequest;
-      setupMode?: 'fixed' | 'variable';
+      setupMode?: SetupMode;
       orderMode?: GameOrderMode;
       policy?: Partial<RoomPolicy>;
     },
@@ -795,7 +796,7 @@ export class RoomService {
     if (room.status !== 'lobby') {
       throw new ServiceError('E_ROOM_STARTED', 'error.E_ROOM_STARTED', {}, 409);
     }
-    const setupMode = input.setupMode ?? (room.setup_mode as 'fixed' | 'variable');
+    const setupMode = input.setupMode ?? (room.setup_mode as SetupMode);
     const orderMode =
       input.orderMode === undefined
         ? parseOrderMode(room.order_mode)

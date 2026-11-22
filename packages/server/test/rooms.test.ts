@@ -157,6 +157,31 @@ describe('R-ROOM lobby', () => {
       expect(room.profileId).toBe(profileId);
     }
   });
+  it('offers the official 5–6 board for the paired base profile only', async () => {
+    const host = await harness.client('OfficialHost');
+    const room = host.expectOk<RoomShape & { profileId: string; setupMode: string }>(await host.post('/api/rooms', {
+      visibility: 'private', capacity: 5, setupMode: 'official',
+      ruleset: { expansions: [], scenario: null, variants: [] },
+    }));
+    expect(room.profileId).toBe('base-paired-2025');
+    expect(room.setupMode).toBe('official');
+
+    const switched = host.expectOk<RoomShape & { setupMode: string }>(
+      await host.post(`/api/rooms/${room.id}/settings`, { setupMode: 'variable' }),
+    );
+    expect(switched.setupMode).toBe('variable');
+    const back = host.expectOk<RoomShape & { setupMode: string }>(
+      await host.post(`/api/rooms/${room.id}/settings`, { setupMode: 'official' }),
+    );
+    expect(back.setupMode).toBe('official');
+
+    const refused = await host.post('/api/rooms', {
+      visibility: 'private', capacity: 4, setupMode: 'official', profileId: 'base-2025',
+      ruleset: { expansions: [], scenario: null },
+    });
+    host.expectError(refused, 'E_UNSUPPORTED_COMBINATION');
+  });
+
   it('resolves a ruleset named by its parts to exactly one enabled profile', async () => {
     const host = await harness.client('RulesetHost');
     const reason = (response: { body: { ok: boolean; error?: { params?: Record<string, unknown> } } }) =>

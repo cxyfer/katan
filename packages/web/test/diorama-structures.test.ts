@@ -169,7 +169,7 @@ describe('baked architectural miniatures', () => {
     expect(signatures.size).toBe(6);
   });
 
-  it.each(['hex-r2', 'hex-r56'])('keeps every %s coastal edge identity and places boats seaward', (topologyId) => {
+  it.each(['hex-r2', 'hex-r56', 'hex-r56-official'])('keeps every %s coastal edge identity and places boats seaward', (topologyId) => {
     const geometry = buildGeometry(topologyId);
     const coastal = geometry.topology.edges.flatMap((edge, index) => edge.hexes.length === 1 ? [index] : []);
     const board = { ...fixedBoard(), topologyId, harbors: coastal.map((edge) => ({ edge, type: 'generic' as const })) };

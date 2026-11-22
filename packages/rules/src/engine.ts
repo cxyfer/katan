@@ -43,7 +43,7 @@ import type {
   RulesModule,
 } from './modules/types.ts';
 import { advancePending, clearPending, enqueuePending, normalizePending, pendingQueueOf } from './pending.ts';
-import { requireProfile, type ProfileDefinition } from './profiles.ts';
+import { requireProfile, type ProfileDefinition, type SetupMode } from './profiles.ts';
 import { shuffle, type Rng } from './rng.ts';
 import {
   addResource,
@@ -131,7 +131,7 @@ export interface CreateGamePlayer {
 export interface CreateGameOptions {
   profileId: string;
   players: CreateGamePlayer[];
-  setupMode: 'fixed' | 'variable';
+  setupMode: SetupMode;
   rng: Rng;
 }
 

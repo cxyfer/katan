@@ -3,7 +3,7 @@ import { getTopology } from '@katan/rules';
 import { coastLoops, distanceToLoop, insideLoop, offsetLoop, smoothLoop } from '../src/board/coastline.ts';
 
 describe('island coastline', () => {
-  it.each([['hex-r2', 30], ['hex-r56', 44]] as const)('%s walks every shoreline edge into one outward loop', (id, edges) => {
+  it.each([['hex-r2', 30], ['hex-r56', 44], ['hex-r56-official', 38]] as const)('%s walks every shoreline edge into one outward loop', (id, edges) => {
     const topology = getTopology(id);
     const boundary = topology.edges.filter((edge) => edge.hexes.length === 1).length;
     expect(boundary).toBe(edges);

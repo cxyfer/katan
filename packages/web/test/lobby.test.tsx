@@ -113,6 +113,21 @@ describe('lobby', () => {
     });
   });
 
+  it('offers the official 5–6 board on the paired base profile and sends it as the setup mode', async () => {
+    const api = createFakeApi({
+      room: makeRoom({ profileId: 'base-paired-2025', capacity: 5, setupMode: 'fixed' }),
+      profiles: [makeProfile({ id: 'base-paired-2025', playerCounts: [5, 6], paired: true, setupModes: ['fixed', 'variable', 'official'] })],
+    });
+    await joinLobby(api);
+
+    const setup = screen.getByTestId('lobby-setup') as HTMLSelectElement;
+    expect([...setup.options].map((option) => option.value)).toEqual(['fixed', 'variable', 'official']);
+    fireEvent.change(setup, { target: { value: 'official' } });
+    fireEvent.click(screen.getByTestId('save-settings'));
+    await waitFor(() => expect(api.callsOf('updateSettings')).toHaveLength(1));
+    expect(api.callsOf('updateSettings')[0]!.args[1]).toEqual({ setupMode: 'official' });
+  });
+
   it('leaves setup mode and game order out of the create form', async () => {
     const api = createFakeApi({ room: null });
     renderApp(api);
