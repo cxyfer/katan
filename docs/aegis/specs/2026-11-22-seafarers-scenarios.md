@@ -294,7 +294,9 @@ SFCN-20 的分區表（檢查和）：
 - 隨機模式（S10，SF25 p. 15）：框、四座小島、海洋、部落圓片與布匹如圖；大島的陸地與圓片隨機放；港口隨機；**玩家選擇哪一個 12 號圓片格放強盜**。
 - 引擎要點：部落是頂點上的數字圓片；module state 存每個部落的剩餘布匹、每位玩家已建立的關係集合與布匹數。連接判定：從自己的村落／城市沿**自己的船**可到達該頂點（道路不經海）。擲骰時在 `afterProduction` 之前產出部落生產。
 
-**共同勝利與 `GameResult`**：`GameResult`（`packages/rules/src/types.ts`）現在是 `{ playerId: string | null; reason; atSeq }`，只能放一位勝者。S6 切片新增勝者清單（例如 `playerIds: string[]`，**新欄位可省略**）：單一勝者時 `playerId` 行為與輸出不變，舊 snapshot 不需遷移。會影響的地方：`packages/rules/src/project.ts`（公開 view）、`packages/web/src/components/ResultScreen.tsx`、`packages/web/src/components/GameStats.tsx`（含 zh-Hant 與 en）、`packages/bots/bench/survey.ts`（共同勝利的勝率算法）。伺服器沒有讀這個欄位，不用改。音效也是消費者：`packages/web/src/audio/cues.ts` 的 `cueForEvent` 只看 `event.params.playerId` 決定播 `game.victory` 或 `game.over`，共同勝利時每位勝者都要播勝利音效，S6 要改這裡並加共同勝利的音效測試。**終局事件也要一併處理**：`checkVictory`（`packages/rules/src/engine.ts`）現在發出的 `game.finished` 只帶單一 `playerId`，對應的在地化事件文字也是單數。S6 要定義並 projection 一個多勝者的終局事件（例如事件資料帶 `playerIds`，單一勝者時與現在逐位元相同），並補 zh-Hant 與 en 的訊息，否則重連的用戶端會看到共同勝利的結果畫面，而權威事件紀錄只指名一位勝者；
+**共同勝利與 `GameResult`**：`GameResult`（`packages/rules/src/types.ts`）現在是 `{ playerId: string | null; reason; atSeq }`，只能放一位勝者。S6 切片新增勝者清單（例如 `playerIds: string[]`，**新欄位可省略**）：單一勝者時 `playerId` 行為與輸出不變，舊 snapshot 不需遷移。會影響的地方：`packages/rules/src/project.ts`（公開 view）、`packages/web/src/components/ResultScreen.tsx`、`packages/web/src/components/GameStats.tsx`（含 zh-Hant 與 en）、`packages/bots/bench/survey.ts`（共同勝利的勝率算法）。伺服器沒有讀這個欄位，不用改。音效也是消費者：`packages/web/src/audio/cues.ts` 的 `cueForEvent` 只看 `event.params.playerId` 決定播 `game.victory` 或 `game.over`，共同勝利時每位勝者都要播勝利音效，S6 要改這裡並加共同勝利的音效測試。**終局原因也要表示**：布匹耗盡（回合結束時 5 個部落沒有布匹）可能讓只有一位勝者的分數低於 14，目前 `game.finished` 的文字與 `ResultScreen.tsx` 都會連同目標分一起顯示，會誤導。S6 要定義並 projection 一個終局原因（例如事件與結果帶 `cause: 'target' | 'clothExhausted'`，既有路徑維持 `target`，輸出不變），單一或共同勝者在 `clothExhausted` 時都顯示「布匹耗盡」而不是「達到目標分」，並補兩種語言文字與 SFX-S6 案例。
+
+**終局事件也要一併處理**：`checkVictory`（`packages/rules/src/engine.ts`）現在發出的 `game.finished` 只帶單一 `playerId`，對應的在地化事件文字也是單數。S6 要定義並 projection 一個多勝者的終局事件（例如事件資料帶 `playerIds`，單一勝者時與現在逐位元相同），並補 zh-Hant 與 en 的訊息，否則重連的用戶端會看到共同勝利的結果畫面，而權威事件紀錄只指名一位勝者；
 `docs/FIDELITY.md` 的 SFCN／S6 列把平手處理標為使用者決定的解釋。
 
 ### 6.6 S7 海盜巢穴（SF25 pp. 16–17；profile `sf-pirate-islands-2025`；收復堡壘 + 10 分）
@@ -391,7 +393,7 @@ SFCN-20 的分區表（檢查和）：
   5. 起始村落（與路／船）可放在一座或兩座島上，這些是 home islands。
 - 獎勵：每位玩家在每座**非 home island** 上蓋第一個村落得 1 分，別人已在該島也一樣（§5.1）。
 - 結束：12 分。
-- 「玩家可以同意調整」的數位對應：**房主在開局前可以重新產生版圖**，次數不限；**不要**另外發明島大小、島數等硬約束（SF25 只要求紅色圓片分開、金礦不放紅色圓片）。
+- 「玩家可以同意調整」的數位對應：**重新產生版圖必須經全體真人玩家同意**，不是房主單方動作。沿用房間內既有的提案與同意介面（房主提出、每位真人座位接受才生效，任何人拒絕即取消），避免單一玩家反覆重抽挑版圖；**不要**另外發明島大小、島數等硬約束（SF25 只要求紅色圓片分開、金礦不放紅色圓片）。同意流程的細節（是否限制重抽次數、是否可由玩家指定要移動的格子）在 S9 開工前由使用者決定（OQ-5）。
 - 「Further setup options」：可自由改變地形的種類與數量，金礦不應該放紅色圓片；這是變體，S9 不做。
 
 ## 7. Registry、大廳與周邊
@@ -464,6 +466,7 @@ SF25 解決了先前大部分疑問。還沒解決的：
 | OQ-1 | 五座奇觀牌的名稱、施工條件、費用不在 SF25 規則書文字裡（牌是實體配件）。只有 SFCN-20 p. 19 的牌面可核對；旁支轉來的官方名稱與「Grand Monument = 港口上的城市 + 5 條路／船」無法由規則書驗證 | 奇觀做成資料表；先用 SFCN-20 牌面，巨像採字面的「至少 1 個海港」；S8 啟用前取得實體牌或官方牌面圖核對；找不到就維持 SFCN-20 並在 FIDELITY 標為依第三方來源 | **阻塞 S8 啟用**（只缺牌面核對，不缺實作） |
 | OQ-2 | S3：SF25 的觸發寫 `place a ship or road adjacent to an intersection with an empty hex space`。(a) 一次放置同時鄰接多個空格時翻哪一個；(b) 移動船算不算「place」（S5 的原文明寫 `build or move`，S3 沒寫）；(c) 探索到金礦的資源怎麼選 | (a) 放置者選一個；(b) **只有建造算，移動不算**（`fogOnMove` 旗標，預設 `false`）；(c) 探索者自選一種，供應堆沒有就拿不到 | S3 |
 | OQ-3 | S7「最短路徑」要強制，但 SF25 沒給可計算的定義；§6.6 的定義（每艘船讓到下一目標的距離減 1，距離以目前空著的海邊計算，海盜限制不算）是旁支對話的建議 | 採 §6.6 的定義，多條最短路徑任選一條；完全無路時才放寬成往任何合法方向延伸（`shortestPathFallback`，標為偏離 SF25）；S7a 用模擬量測是否真的會卡死，不會就關掉放寬 | S7，**阻塞 S7 啟用**（待使用者確認定義） |
+| OQ-5 | S9「玩家可同意調整版圖」的流程：重抽是否限次數、是否可由玩家指定移動哪些格子 | 先做全體同意的整盤重抽，不限制次數但每次都要全員同意；指定格子留作後續 | S9 |
 | OQ-4 | 各圖的海盜與強盜位置（海洋格或海框）、S5 的 18 個禮物邊、S7 的航道順序與 beachhead／堡壘位置、S8 的標記交叉點、各 topology 的外形 | 從 SF25 的向量 PDF 渲染轉錄，取代 SFCN-20 的截圖 | 轉錄切片 |
 
 **已由 SF25 解決**（不再是疑問）：S5 強盜起始與可移動範圍、S5 3–4 人共用同一張圖、S5 的「build or move」、S6 的第三個村落配路、S6 的部落耗盡終局時機（回合結束時 5 個）、S7 的最短路徑為強制規則與船線的真正限制、S7 的攻擊與城市棄牌、S8 的小島獎勵（每座島第一個）與標記不共用、S9 的強盜與海盜位置、S9 不用另外發明硬約束。release 分支（`release/v0.4.6`）與 S6 的共同勝利為使用者決定。
@@ -483,7 +486,7 @@ SF25 解決了先前大部分疑問。還沒解決的：
 | S6 | 布匹產地：部落、布匹庫存、連接圖、複合結束條件、`GameResult` 勝者清單（rules、project、web、bench survey） | SFX-S6，含單一勝者輸出不變的回歸 |
 | S8 | 卡坦奇觀：奇觀資料表、奇觀命令、施工條件、終局判定 | SFX-S8（啟用前先解決 OQ-1 的牌面核對） |
 | S7 | 海盜巢穴，拆成 S7a（版圖、預置、beachhead、堡壘、西島船線與最短路徑）、S7b（巡弋海盜與攻擊）、S7c（戰船、進攻、結束） | SFX-S7a–c（先確認 OQ-3 的最短路徑定義） |
-| S9 | 新世界：產生器、玩家輪流放港口、重新產生 | SFX-S9 |
+| S9 | 新世界：產生器、玩家輪流放港口、經全體同意的重新產生 | SFX-S9 |
 | S10 | 其餘劇本（S2–S6、S8）的 `variable` 模式，含 S1 | SFX-S10 |
 
 建議順序：S0 → S1 → S2 → S4 → S3 → S5 → S6 → S9 → S8 → S7 → S10（依風險由低到高）。每個切片啟用 profile 的前提是下面的證據齊全。
