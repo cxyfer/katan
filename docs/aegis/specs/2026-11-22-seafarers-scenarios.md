@@ -294,7 +294,7 @@ SFCN-20 的分區表（檢查和）：
 - 隨機模式（S10，SF25 p. 15）：框、四座小島、海洋、部落圓片與布匹如圖；大島的陸地與圓片隨機放；港口隨機；**玩家選擇哪一個 12 號圓片格放強盜**。
 - 引擎要點：部落是頂點上的數字圓片；module state 存每個部落的剩餘布匹、每位玩家已建立的關係集合與布匹數。連接判定：從自己的村落／城市沿**自己的船**可到達該頂點（道路不經海）。擲骰時在 `afterProduction` 之前產出部落生產。
 
-**共同勝利與 `GameResult`**：`GameResult`（`packages/rules/src/types.ts`）現在是 `{ playerId: string | null; reason; atSeq }`，只能放一位勝者。S6 切片新增勝者清單（例如 `playerIds: string[]`，**新欄位可省略**）：單一勝者時 `playerId` 行為與輸出不變，舊 snapshot 不需遷移。會影響的地方：`packages/rules/src/project.ts`（公開 view）、`packages/web/src/components/ResultScreen.tsx`、`packages/web/src/components/GameStats.tsx`（含 zh-Hant 與 en）、`packages/bots/bench/survey.ts`（共同勝利的勝率算法）。伺服器沒有讀這個欄位，不用改。**終局事件也要一併處理**：`checkVictory`（`packages/rules/src/engine.ts`）現在發出的 `game.finished` 只帶單一 `playerId`，對應的在地化事件文字也是單數。S6 要定義並 projection 一個多勝者的終局事件（例如事件資料帶 `playerIds`，單一勝者時與現在逐位元相同），並補 zh-Hant 與 en 的訊息，否則重連的用戶端會看到共同勝利的結果畫面，而權威事件紀錄只指名一位勝者；
+**共同勝利與 `GameResult`**：`GameResult`（`packages/rules/src/types.ts`）現在是 `{ playerId: string | null; reason; atSeq }`，只能放一位勝者。S6 切片新增勝者清單（例如 `playerIds: string[]`，**新欄位可省略**）：單一勝者時 `playerId` 行為與輸出不變，舊 snapshot 不需遷移。會影響的地方：`packages/rules/src/project.ts`（公開 view）、`packages/web/src/components/ResultScreen.tsx`、`packages/web/src/components/GameStats.tsx`（含 zh-Hant 與 en）、`packages/bots/bench/survey.ts`（共同勝利的勝率算法）。伺服器沒有讀這個欄位，不用改。音效也是消費者：`packages/web/src/audio/cues.ts` 的 `cueForEvent` 只看 `event.params.playerId` 決定播 `game.victory` 或 `game.over`，共同勝利時每位勝者都要播勝利音效，S6 要改這裡並加共同勝利的音效測試。**終局事件也要一併處理**：`checkVictory`（`packages/rules/src/engine.ts`）現在發出的 `game.finished` 只帶單一 `playerId`，對應的在地化事件文字也是單數。S6 要定義並 projection 一個多勝者的終局事件（例如事件資料帶 `playerIds`，單一勝者時與現在逐位元相同），並補 zh-Hant 與 en 的訊息，否則重連的用戶端會看到共同勝利的結果畫面，而權威事件紀錄只指名一位勝者；
 `docs/FIDELITY.md` 的 SFCN／S6 列把平手處理標為使用者決定的解釋。
 
 ### 6.6 S7 海盜巢穴（SF25 pp. 16–17；profile `sf-pirate-islands-2025`；收復堡壘 + 10 分）
@@ -426,7 +426,7 @@ SFCN-20 的分區表（檢查和）：
 
 新增 `seafarers-scenario-boards.ts`（避免把 `seafarers-boards.ts` 撐大），放各劇本的 `*_CELLS`、`*_LAND`、`*_PORTS` 與 layout builder，註冊到 `layout-registry.ts`。外框形狀：
 
-- 3 人外框（35 格）與 4 人外框（42 格）：沿用 `NS3_CELLS`、`NS4_CELLS`（S2、S3、S4 的各人數版本與 S9）；
+- 35 格外框沿用 `NS3_CELLS`，42 格外框沿用 `NS4_CELLS`。**外框依劇本與人數的格數選，不是依人數**：S2 的 3、4 人都是 35 格；S3 的 3、4 人都是 42 格（30 + 12）；S4 的 3 人是 35 格、4 人是 42 格；S9 是 42 格。layout builder 以格數檢查選到的 topology；
 - 49 格的寬版外框：S5、S7、S8 三張圖，確認三者是否共用同一個外形後決定是一個還是三個 topology（轉錄時定案）；
 - S6 是 42 格。
 
