@@ -5,6 +5,7 @@ Entries are workspace records, not authoritative runtime decisions.
 
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
+| 2026-11-22 | work | docs/aegis/work/2026-11-22-hard-bot-v2.md | Hard bot v2 implementation record: per-slice changes, baseline measurements, ablations and follow-ups (S0: frozen hard0 baseline, bench tooling, E18) |
 | 2026-11-22 | spec | docs/aegis/specs/2026-11-22-hard-bot-v2.md | Hard bot v2 for the base game: audit findings, hard-only optimizations (standard and easy stay frozen), measurement plan and delivery slices |
 | 2026-11-20 | work | docs/aegis/work/2026-11-20-bots-traders-barbarians.md | Traders & Barbarians bots (v0.4.4) implementation record: slices, decisions, Q1/Q2 results, server tests, reviews and follow-ups |
 | 2026-11-21 | work | docs/aegis/work/2026-11-21-bots-explorers-pirates.md | Explorers & Pirates bots (v0.4.5) implementation record: slices, decisions, Q1/Q2 results, bench and follow-ups |
