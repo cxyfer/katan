@@ -18,6 +18,8 @@ export interface SeafarersModuleView {
   islandClaims: IslandClaimView[];
   shipsBuiltThisTurn: number[];
   shipMoved: boolean;
+  /** 各玩家的 home islands（四島群島、新世界在設置結束後才有）。 */
+  home: Record<string, number[]> | null;
 }
 
 export interface SeafarersHints {
@@ -55,6 +57,7 @@ export function seafarersView(view: Pick<GameView, 'modules'> | null | undefined
     islandClaims: slot.islandClaims ?? [],
     shipsBuiltThisTurn: slot.shipsBuiltThisTurn ?? [],
     shipMoved: !!slot.shipMoved,
+    home: slot.home ?? null,
   };
 }
 
