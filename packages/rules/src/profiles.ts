@@ -271,9 +271,10 @@ function tbProfile(
  * Seafarers 其餘八個劇本（SF25 pp. 6–20，spec 2026-11-22-seafarers-scenarios.md §7.1）。
  * 只做 3–4 人，一個劇本一個 profile，共用規則版本 `sf-2025.3`。S0 只登記：
  * `implemented` 與 `enabled` 都是 false，各切片補齊轉錄與規則證據後才逐一啟用。
- * layout builder 與 topology 尚未存在（S2 起各切片自行登記 `layoutId`），
- * 因此 `topologyId` 沿用 `baseProfile` 的預設值，只是佔位；在 `enabled: false`
- * 之下 `resolveCombination` 一律回 `disabled`，不會走到建圖。
+ * 尚未啟用的劇本，layout builder 與 topology 尚未存在（各切片自行登記），
+ * `topologyId` 沿用 `baseProfile` 的預設值，只是佔位；在 `enabled: false`
+ * 之下 `resolveCombination` 一律回 `disabled`，不會走到建圖。四島群島（S2）
+ * 已有版圖與規則證據，故啟用。
  * 不在 bot 支援清單內（`bots/src/modules/seafarers` 的 `SUPPORTED_SCENARIOS`），
  * 因此一律拒絕 bot 座位。
  */
@@ -311,7 +312,13 @@ function seafarersScenarioProfile(
 }
 
 const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
-  seafarersScenarioProfile('sf-four-islands-2025', 'four-islands', 13, 'pp. 6–7', { islandBonus: { points: 2, skip: 'home' } }),
+  seafarersScenarioProfile('sf-four-islands-2025', 'four-islands', 13, 'pp. 6–7', {
+    islandBonus: { points: 2, skip: 'home' },
+    // 3、4 人同為 35 格外框，layout builder 依人數選港口位置不同的 topology。
+    topologyId: 'sf-four-islands-3',
+    implemented: true,
+    enabled: true,
+  }),
   seafarersScenarioProfile('sf-fog-islands-2025', 'fog-islands', 12, 'pp. 8–9'),
   seafarersScenarioProfile('sf-through-the-desert-2025', 'through-the-desert', 14, 'pp. 10–11', { islandBonus: { points: 2, skip: 'main' } }),
   seafarersScenarioProfile('sf-forgotten-tribe-2025', 'forgotten-tribe', 13, 'pp. 12–13'),

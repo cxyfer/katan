@@ -45,6 +45,8 @@ export function projectSeafarers(state: GameState) {
     islandClaims: (slot.claims ?? []).map((claim) => ({ ...claim })),
     shipsBuiltThisTurn: slot.built.slice(),
     shipMoved: slot.moved,
+    // 只有島嶼獎勵排除 home 的劇本（四島群島、新世界）在設置結束後才有；其餘劇本不帶此欄，投影不變。
+    ...(slot.home ? { home: Object.fromEntries(Object.entries(slot.home).map(([id, islands]) => [id, islands.slice()])) } : {}),
   };
 }
 

@@ -48,7 +48,7 @@ describe('ruleset registry', () => {
 
   it('enables only the profiles whose rules and fixtures have passed', () => {
     const enabled = PROFILES.filter((profile) => profile.enabled && !profile.id.startsWith('tb-')).map((profile) => profile.id);
-    const all = ['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ck-2025', 'ck-paired-2025', 'sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025', 'ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025'];
+    const all = ['base-2025', 'base-paired-2025', 'sf-new-shores-2025', 'sf-new-shores-paired-2025', 'ck-2025', 'ck-paired-2025', 'sf-ck-new-shores-2025', 'sf-ck-new-shores-paired-2025', 'sf-four-islands-2025', 'ep-land-ho-2025', 'ep-pirate-lairs-2025', 'ep-fish-2025', 'ep-spices-2025', 'ep-full-2025'];
     expect(enabled).toEqual(all);
     expect(selectableProfiles().filter((profile) => !profile.id.startsWith('tb-')).map((profile) => profile.id)).toEqual(all);
     expect(selectableProfiles(5).map((profile) => profile.id)).toEqual(['base-paired-2025', 'sf-new-shores-paired-2025', 'ck-paired-2025', 'sf-ck-new-shores-paired-2025']);
@@ -178,28 +178,35 @@ describe('ruleset registry', () => {
     }
   });
 
-  it('registers the eight further Seafarers scenarios closed, for 3–4 players only (S0)', () => {
+  it('registers the eight further Seafarers scenarios for 3–4 players only (S0; S2 is open)', () => {
     const ids = [
       ['sf-four-islands-2025', 'four-islands', 13], ['sf-fog-islands-2025', 'fog-islands', 12],
       ['sf-through-the-desert-2025', 'through-the-desert', 14], ['sf-forgotten-tribe-2025', 'forgotten-tribe', 13],
       ['sf-cloth-for-catan-2025', 'cloth-for-catan', 14], ['sf-pirate-islands-2025', 'pirate-islands', 10],
       ['sf-wonders-of-catan-2025', 'wonders-of-catan', 10], ['sf-new-world-2025', 'new-world', 12],
     ] as const;
+    // 已啟用的切片：S2 四島群島（版圖與規則證據齊全）。
+    const live = new Set<string>(['sf-four-islands-2025']);
     for (const [id, scenario, target] of ids) {
       const profile = getProfile(id)!;
+      const open = live.has(id);
       expect(profile, id).toMatchObject({
         scenario, victoryTarget: target, playerCounts: [3, 4], ruleVersion: 'sf-2025.3',
         expansions: ['seafarers'], requiredBoxes: ['base', 'seafarers'],
-        implemented: false, enabled: false, hasPirate: true, longestRouteIncludesShips: true,
+        implemented: open, enabled: open, hasPirate: true, longestRouteIncludesShips: true,
       });
       expect(profile.pieces.ships).toBe(15);
       expect(profile.setupModes).toEqual(scenario === 'new-world' ? ['variable'] : ['fixed']);
       expect(profile.sources.map((source) => source.id)).toEqual(['B25', 'SF25', 'SFCN-20']);
-      expect(selectableProfiles().map((item) => item.id)).not.toContain(id);
+      expect(selectableProfiles().map((item) => item.id).includes(id)).toBe(open);
       const base = { expansions: ['seafarers'], scenario, variants: [], setupMode: profile.setupModes[0]! };
       // 5、6 人先被人數檢查擋下；3、4 人因 disabled 被擋下。
       for (const playerCount of [5, 6, 2, 7]) expect(resolveCombination({ ...base, playerCount }), `${id} ${playerCount}`).toEqual({ ok: false, reason: 'bad-player-count' });
-      for (const playerCount of [3, 4]) expect(resolveCombination({ ...base, playerCount })).toEqual({ ok: false, reason: 'disabled' });
+      for (const playerCount of [3, 4]) {
+        const result = resolveCombination({ ...base, playerCount });
+        if (open) expect(result).toMatchObject({ ok: true });
+        else expect(result).toEqual({ ok: false, reason: 'disabled' });
+      }
     }
     // sf-2025.2（兩個 New Shores profile）不變。
     expect(getProfile('sf-new-shores-2025')!.ruleVersion).toBe('sf-2025.2');
