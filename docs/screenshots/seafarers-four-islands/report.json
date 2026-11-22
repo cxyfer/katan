@@ -1,0 +1,144 @@
+{
+  "base": "http://127.0.0.1:3187",
+  "fixtures": {
+    "topologyId": "sf-new-shores-4",
+    "coast": 48,
+    "shipNW": 61,
+    "shipNE": 65,
+    "branch": 63,
+    "goldVertex": 50,
+    "goldHex": 23,
+    "seaHex": 22,
+    "pirateSea": 15
+  },
+  "cases": [
+    {
+      "name": "lobby-four-islands",
+      "status": "PASS",
+      "note": "lobby: Seafarers / The Four Islands, 3-4 players only",
+      "sha256": "f762a152ac529e55a4e0d8ee8acd4581aee8241de0aaa1fa3b44c7a63314575f",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-four-islands-3",
+      "sha256": "02a3ef139fac3729915a903f2851d4427ff01d9dc6ef9a7cf3ab3dbd012ad8af",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-four-islands-3",
+      "sha256": "7e212de6dbe62fc612bb5ea83417e98272db880d801dce0cbc560f655e44904e",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-phone",
+      "status": "PASS",
+      "note": "sf-four-islands-3",
+      "sha256": "627d8889e3ef6dd22813e0441491d1196d95591cfea5f3451e789e7478cf2ab2",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": false
+    },
+    {
+      "name": "map-3p-r3f-phone",
+      "status": "PASS",
+      "note": "sf-four-islands-3",
+      "sha256": "815333bb8fd6f0500206f97658ce6c683ca630c2200a3e7f64e8af2d25831899",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": false
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-four-islands-4",
+      "sha256": "550e07573a84e00d526abbb5598109deeed71f15bcbaaccc0cc7f6dc10a62617",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-four-islands-4",
+      "sha256": "fb229ec9ffd1e1e60107053ec619de4c9a2205fa7b0b8e957b9b76b085e24b19",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-svg-phone",
+      "status": "PASS",
+      "note": "sf-four-islands-4",
+      "sha256": "eb17fc5d6cc49dc33300f14590bf39b60b70c7fda03dfef00822ebd9dd8ea34d",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-r3f-phone",
+      "status": "PASS",
+      "note": "sf-four-islands-4",
+      "sha256": "aef99c6d90cc85d760af5df13f97037b61f0e0422407a07652095eee57b149bd",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "help-four-islands-svg-desktop",
+      "status": "PASS",
+      "note": "setup done, home islands {'player_c2e1d49be469485585f8': [2], 'player_b156c6ec1f384207a198': [2, 3], 'player_9973196a8308417d97d9': [4], 'player_e610302963c0442e9879': [3, 4]}; help panel shows the Four Islands rules",
+      "sha256": "4e394758f2905f73b01656b58dad1f622c91b0688079fd43aaf0aeab5bbed2fb",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    }
+  ],
+  "home": {
+    "player_c2e1d49be469485585f8": [
+      2
+    ],
+    "player_b156c6ec1f384207a198": [
+      2,
+      3
+    ],
+    "player_9973196a8308417d97d9": [
+      4
+    ],
+    "player_e610302963c0442e9879": [
+      3,
+      4
+    ]
+  },
+  "errors": [],
+  "note": "Two 3-player phone captures were not committed to keep the repository small; their sha256 stays listed (committed: false)."
+}

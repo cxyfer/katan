@@ -54,6 +54,8 @@ if OUT.exists() and any(OUT.iterdir()):
 OUT.mkdir(parents=True, exist_ok=True)
 
 RESOURCES = ['lumber', 'brick', 'wool', 'grain', 'ore']
+# 共用機器負載高時可用 SF_TIMEOUT（毫秒）拉長 Playwright 的預設逾時。
+TIMEOUT = int(os.environ.get('SF_TIMEOUT', '20000'))
 DESKTOP = {'width': 1366, 'height': 900}
 PHONE = {'width': 390, 'height': 844}
 FIX = json.loads(subprocess.run(
@@ -173,7 +175,7 @@ def new_player(browser, name, viewport=DESKTOP):
     context = browser.new_context(viewport=viewport, locale='zh-TW', reduced_motion='reduce', service_workers='block')
     page = context.new_page()
     page.on('pageerror', lambda error: ERRORS.append(f'{name}: {error}'))
-    page.set_default_timeout(20000)
+    page.set_default_timeout(TIMEOUT)
     page.goto(BASE)
     page.get_by_test_id('nickname-input').fill(name)
     page.locator('form button[type=submit]').click()
