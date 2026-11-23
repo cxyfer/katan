@@ -21,7 +21,7 @@ function ScoreMark({ icon, label, value, awarded = false, testId, detail }: {
   /** 看得見的補充小字（觸控裝置看不到 title／aria-label，例如島嶼獎勵的島號）。 */
   detail?: string;
 }) {
-  return <span className={`score-mark${awarded ? ' score-mark--medal' : ''}`} role="img"
+  return <span className={`score-mark${awarded ? ' score-mark--medal' : ''}${detail ? ' score-mark--detail' : ''}`} role="img"
     aria-label={`${label}: ${value}`} title={`${label}: ${value}`} data-testid={testId}>
     <span className="score-mark__icon"><GameIcon name={icon} size={14} /></span>
     <span className="score-mark__value" aria-hidden="true">{value}</span>
@@ -315,9 +315,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                 <div className="players__bonuses">
                   {isSelf && <ScoreMark icon="crown" label={t('table.playersHiddenVp')} value={number(hiddenVp)} testId="players-hidden-vp" />}
                   {islandPoints > 0 && <ScoreMark icon="compass" testId={`players-islands-${player.seat}`}
-                    label={`${t(fourIslands ? 'sf.score.islands.fourIslands' : 'sf.score.islands')} · ${t(fourIslands ? 'sf.score.islandsValue.fourIslands' : 'sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })} (${t('sf.score.islandIds', { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') })})`}
+                    label={`${t(fourIslands ? 'sf.score.islands.fourIslands' : 'sf.score.islands')} · ${t(fourIslands ? 'sf.score.islandsValue.fourIslands' : 'sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })} (${t((sea!.islandBonus[player.id]?.length ?? 0) === 1 ? 'sf.score.islandId' : 'sf.score.islandIds', { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') })})`}
                     value={number(islandPoints)}
-                    detail={t('sf.score.islandIds', { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') })} />}
+                    detail={fourIslands ? t((sea!.islandBonus[player.id]?.length ?? 0) === 1 ? 'sf.score.islandId' : 'sf.score.islandIds', { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') }) : undefined} />}
                   {epPlayer && epPlayer.harborPoints > 0 && <ScoreMark icon="anchor" testId={`players-ep-harbors-${player.seat}`}
                     label={t('ep.score.harbors', { points: number(epPlayer.harborPoints) })} value={number(epPlayer.harborPoints)} />}
                   {epPlayer && (['lairs', 'fish', 'spices'] as const).filter((mission) => ep!.missions.includes(mission)).map((mission) => (

@@ -144,7 +144,8 @@
 .screen--game .players__bonuses { display: flex; gap: 5px; min-width: 0; }
 .screen--game .score-mark { display: inline-flex; position: relative; align-items: center; gap: 2px; min-width: 0; color: #c4d2c8; font-size: .67rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .screen--game .score-mark__icon { display: grid; place-items: center; width: 16px; height: 18px; flex: 0 0 auto; }
-.screen--game .score-mark__detail { margin-left: 3px; font-size: .62rem; color: #e3c987; white-space: nowrap; }
+.screen--game .score-mark--detail { flex-wrap: wrap; max-width: 100%; }
+.screen--game .score-mark__detail { flex: 1 0 100%; font-size: .62rem; color: #e3c987; white-space: normal; overflow-wrap: anywhere; }
 .screen--game .score-mark--medal { color: #ffe0a0; }
 .screen--game .score-mark--medal .score-mark__icon { position: relative; isolation: isolate; background: #6b542d; border: 1px solid #e9c16e; border-radius: 50%; box-shadow: inset 0 0 0 2px #273f38; }
 .screen--game .score-mark--medal .score-mark__icon::after { content: ''; position: absolute; top: 13px; width: 11px; height: 8px; background: #d2aa60; clip-path: polygon(0 0, 100% 0, 85% 100%, 50% 65%, 15% 100%); z-index: -1; }

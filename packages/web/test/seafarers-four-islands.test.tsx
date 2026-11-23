@@ -134,16 +134,30 @@ describe('Four Islands wording (no "small island")', () => {
     render(<LocaleProvider locale={locale}><PlayersPanel controller={controller} /></LocaleProvider>);
     const mark = screen.getByTestId('players-islands-0');
     // 島號也要以可見文字呈現（觸控裝置沒有 title／aria-label）。
-    expect(mark.textContent).toContain(locale === 'en' ? 'island 3, 5' : '島 3, 5');
+    const visible = mark.textContent!;
+    if (profileId === 'sf-four-islands-2025') expect(visible).toContain(locale === 'en' ? 'islands 3, 5' : '島 3, 5');
+    else expect(visible).not.toMatch(/island|島/i); // New Shores 維持原本的可見輸出（只有 title／aria-label）
     return mark.getAttribute('aria-label')!;
   }
 
   it('the player panel lists the counted islands, in both locales, with no "small" in four islands', () => {
-    expect(panelFor('sf-four-islands-2025', 'en')).toBe('Island bonus · 2 new island(s), +4 (island 3, 5): 4');
+    expect(panelFor('sf-four-islands-2025', 'en')).toBe('Island bonus · 2 new island(s), +4 (islands 3, 5): 4');
     expect(panelFor('sf-four-islands-2025', 'zh-Hant')).toBe('島嶼獎勵 · 2 座新島嶼，+4 (島 3, 5): 4');
   });
 
+  it('uses the singular for one island', () => {
+    cleanup();
+    const state = createGame({ profileId: 'sf-four-islands-2025', players: ['p1', 'p2', 'p3'].map((id, seat) => ({ id, nickname: id, color: COLORS[seat]! })), setupMode: 'fixed', rng: seededRng(4) });
+    state.moduleState = { seafarers: { window: state.windowId, built: [], moved: false, islands: { p1: [3], p2: [], p3: [] }, claims: [] } };
+    state.players[0]!.bonusPoints = 2;
+    const view = projectGame(state, 'p2', { hints: actionHints(state, 'p2') });
+    const controller = { state: { ...initialTableState('en', 'Alex'), game: makeSnapshot(view) }, dispatch: vi.fn(), actions: {} } as unknown as TableController;
+    render(<LocaleProvider locale="en"><PlayersPanel controller={controller} /></LocaleProvider>);
+    expect(screen.getByTestId('players-islands-0').textContent).toContain('island 3');
+    expect(screen.getByTestId('players-islands-0').textContent).not.toContain('islands');
+  });
+
   it('New Shores keeps its wording and also lists the islands', () => {
-    expect(panelFor('sf-new-shores-2025', 'en')).toBe('Island bonus · 2 small island(s), +4 (island 3, 5): 4');
+    expect(panelFor('sf-new-shores-2025', 'en')).toBe('Island bonus · 2 small island(s), +4 (islands 3, 5): 4');
   });
 });

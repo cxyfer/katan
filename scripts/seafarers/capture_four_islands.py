@@ -218,8 +218,10 @@ def run():
                 try:
                     finish_live(contexts, pages, identity, game_id)
                 except Exception:
-                    pages[0].screenshot(path=str(OUT / 'failure.png'), timeout=base.TIMEOUT)
-                    print('PLAYERS', pages[0].get_by_test_id('players-toggle').get_attribute('aria-expanded'),
+                    pages[0].screenshot(path=str(OUT / 'failure.png'), timeout=10000)
+                    toggle = pages[0].get_by_test_id('players-toggle')
+                    # 結果畫面或首頁沒有這個按鈕：先確認存在、用短逾時，免得蓋掉原始錯誤。
+                    print('PLAYERS', toggle.get_attribute('aria-expanded', timeout=2000) if toggle.count() else 'no-toggle',
                           pages[0].locator('[data-testid^="players-islands"]').count(), flush=True)
                     raise
             for context in contexts:
