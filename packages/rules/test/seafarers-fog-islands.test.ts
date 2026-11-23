@@ -744,18 +744,37 @@ describe('SFX-S3 金礦選擇緊接在目前的 frame 之後', () => {
 describe('SFX-S3-P 逐步重播', () => {
   // repo 沒有「由歷史重建每一步」的機制：快照原樣存檔，指令以 receipt 冪等，引擎是決定性的
   // （同一個初始狀態、同一串指令與 rng 必得同一串狀態）。這裡就以這個決定性重播逐步檢查。
-  type Step = { actor: string; command: Command; seed: number };
+  type Step = { kind: 'command'; actor: string; command: Command; seed: number } | { kind: 'prepare' };
 
-  it('逐步重播一局（含翻開）：每一步每位觀看者的公開視圖都與原局相同，翻開前不含任何空格的地形與數字', () => {
-    const first = fogGame(3, 11).state;
-    const initial: GameState = JSON.parse(JSON.stringify(first));
-    const hidden = fogOf(first).slice();
+  /** 設置後的確定性盤面準備：行動者進入行動階段，在一條只碰一個空格的海邊一端有村落與一艘船的料。 */
+  function prepare(state: GameState): { actor: string; edge: number } {
+    const actor = state.players[state.turn.seat]!.id;
+    state.turn.phase = 'action';
+    state.windowId += 1;
+    const edge = edgesWithFog(state, 1)[0]!;
+    settle(state, actor, topologyOf(state).edges[edge]!.vertices[0]);
+    setHand(state, actor, { lumber: 1, wool: 1 });
+    return { actor, edge };
+  }
+
+  it('逐步重播一局（設置、準備、建船翻開）：每一步每位觀看者的公開視圖（含該步事件）都與原局相同，翻開前不含任何空格的地形與數字', () => {
+    const initial = fogGame(3, 11).state;
+    const hidden = fogOf(initial).slice();
+    const viewers = ['p1', 'p2', 'p3'];
+    const outputs = (s: GameState, events: GameState['log']) => viewers.map((viewer) => projectGame(s, viewer, { events }));
+
+    // 原局：記下每一步的指令與每步的公開輸出。
     const steps: Step[] = [];
-    let state = first;
+    const recorded: ReturnType<typeof outputs>[] = [];
+    const revealsAt: number[] = [];
+    let state: GameState = JSON.parse(JSON.stringify(initial));
     const apply = (actor: string, command: Command) => {
       const seed = steps.length + 100;
-      steps.push({ actor, command, seed });
-      state = act(state, actor, command, seededRng(seed)).state;
+      steps.push({ kind: 'command', actor, command, seed });
+      const done = act(state, actor, command, seededRng(seed));
+      state = done.state;
+      if (done.events.some((event) => event.type === 'fog.revealed')) revealsAt.push(steps.length - 1);
+      recorded.push(outputs(state, done.events));
     };
     let guard = 0;
     while (state.turn.phase === 'setup' && guard++ < 40) {
@@ -765,46 +784,44 @@ describe('SFX-S3-P 逐步重播', () => {
       if (setup.stage === 'building') apply(actor, { type: 'setup.placeBuilding', vertex: hints.legalSettlements[0]! });
       else apply(actor, { type: 'setup.placeRoad', edge: hints.legalRoads[0]! });
     }
-    const actor = state.players[state.turn.seat]!.id;
-    state.turn.phase = 'action';
-    state.windowId += 1;
-    const edge = edgesWithFog(state, 1)[0]!;
-    settle(state, actor, topologyOf(state).edges[edge]!.vertices[0]);
-    setHand(state, actor, { lumber: 1, wool: 1 });
-    const prepared: GameState = JSON.parse(JSON.stringify(state));
+    steps.push({ kind: 'prepare' });
+    const { actor, edge } = prepare(state);
+    recorded.push(outputs(state, []));
     apply(actor, cmd({ type: 'build.ship', edge }));
-    const revealed = fogHexesAtEdge(prepared, edge)[0]!;
+    expect(revealsAt).toEqual([steps.length - 1]);
+    const revealed = fogHexesAtEdge(JSON.parse(JSON.stringify(initial)) as GameState, edge)[0]!;
 
-    // 重播：從同一個初始狀態與同一串指令逐步再走一遍（在「準備盤面」那一刻接上同一份快照）。
-    let replay: GameState = initial;
-    const outputs = (s: GameState) => ['p1', 'p2', 'p3'].map((viewer) => view(s, viewer));
-    const publicHidden = (projected: ReturnType<typeof view>) => hidden.map((h) => [projected.board.terrain[h], projected.board.numbers[h]]);
-    const base = publicHidden(view(initial, 'p1'));
-    let index = 0;
-    for (const step of steps) {
-      const isShip = (step.command as { type: string }).type === 'build.ship';
-      if (isShip) replay = JSON.parse(JSON.stringify(prepared));
-      const outcome = applyCommand(replay, step.actor, step.command, seededRng(step.seed));
-      if (!outcome.ok) throw new Error(outcome.error.code);
-      const before = replay;
-      replay = outcome.state;
-      for (const projected of outputs(replay)) {
+    // 重播：從同一個初始狀態一路跑完設置、準備與建船，逐步與原局比對。
+    const base = hidden.map((h) => [initial.board.layout.terrain[h], initial.board.layout.numbers[h]]);
+    let replay: GameState = JSON.parse(JSON.stringify(initial));
+    steps.forEach((step, index) => {
+      let events: GameState['log'] = [];
+      if (step.kind === 'prepare') {
+        prepare(replay);
+      } else {
+        const outcome = applyCommand(replay, step.actor, step.command, seededRng(step.seed));
+        if (!outcome.ok) throw new Error(outcome.error.code);
+        replay = outcome.state;
+        events = outcome.events;
+      }
+      const now = outputs(replay, events);
+      // 與原局逐步一致（projection、該步事件、提示以外的公開輸出）。
+      expect(now, `step ${index}`).toEqual(recorded[index]);
+      const isReveal = revealsAt.includes(index);
+      for (const projected of now) {
         const json = JSON.stringify(projected);
         for (const key of LEAK_KEYS) expect(json).not.toContain(key);
-        const now = publicHidden(projected);
-        // 翻開前的每一步：所有空格仍是無數字的海；翻開那一步：只有被翻開的那一格變了。
-        now.forEach((cell, i) => {
-          if (hidden[i] === revealed && isShip) return;
-          expect(cell, `step ${index} hex ${hidden[i]}`).toEqual(base[i]);
+        // 翻開前的每一步（含事件）：所有空格仍是無數字的海；翻開那一步只有被翻開的那一格變了。
+        hidden.forEach((h, i) => {
+          if (isReveal && h === revealed) return;
+          expect([projected.board.terrain[h], projected.board.numbers[h]], `step ${index} hex ${h}`).toEqual(base[i]);
         });
+        if (!isReveal) expect(JSON.stringify(projected.events ?? [])).not.toContain('fog.revealed');
+        else expect(JSON.stringify(projected.events ?? [])).toContain('fog.revealed');
       }
-      expect(before.log.some((event) => event.type === 'fog.revealed')).toBe(false);
-      index++;
-    }
-    // 重播的最終狀態與原局逐位元相同，被翻開的那一格公開、其餘不變。
+    });
     expect(replay).toEqual(state);
-    const after = view(replay, 'p2');
-    expect(after.board.terrain[revealed]).toBe(state.board.layout.terrain[revealed]);
     expect(replay.log.filter((event) => event.type === 'fog.revealed')).toHaveLength(1);
+    expect(projectGame(replay, 'p2').board.terrain[revealed]).toBe(state.board.layout.terrain[revealed]);
   });
 });
