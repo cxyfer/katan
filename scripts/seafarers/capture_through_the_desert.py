@@ -20,8 +20,8 @@ through the real UI and API (no mocked snapshots):
    6 other bonus points and a road to two empty corners (``desert_fixture.mjs
    plan``): one between the desert and the land strip, one on a
    small island. Through the UI player 1 settles the desert/strip corner in
-   the 3D renderer (+2 and it counts for island 2 only; the board root carries
-   ``data-island-claims`` for the 3D token, SVG token and player panel are
+   the 3D renderer (+2 and it counts for island 2 only; the canvas carries
+   ``data-island-tokens`` for the 3D token, SVG token and player panel are
    checked after), then the small island in SVG (+2 again), which reaches 14 VP
    and shows the result screen. The run FAILS if a token or the result screen
    is missing.
@@ -153,8 +153,8 @@ def finish_live(contexts, pages, identity, game_id):
     # 碰到主島（沙漠）與島 2：只算島 2。
     assert view['modules']['seafarers']['islandBonus'][p1] == [2], view['modules']['seafarers']
     assert view['result'] is None
-    # 3D 端的獎勵標記：場景以同一份 islandClaims 繪出，板面根節點帶出標記所在的交叉點。
-    expect(page.get_by_test_id('board')).to_have_attribute('data-island-claims', str(first['vertex']))
+    # 3D 端的獎勵標記：場景實際畫出的標記數由 canvas 的 data-island-tokens 斷言。
+    page.wait_for_function("() => document.querySelector('canvas')?.dataset.islandTokens === '1'", timeout=60000)
     shot(page, 'live-strip-bonus-3d', 'settlement between the desert and the land strip placed in the 3D board: +2 for region 2 only', ms=2500)
     open_game(page, game_id, 'svg')
     expect(page.get_by_test_id(f"island-bonus-{first['vertex']}")).to_be_attached()

@@ -230,7 +230,6 @@ export function BoardView({ controller }: { controller: TableController }) {
     <div className="board board--side-controls" data-testid="board" data-zoom={zoom} data-camera-azimuth={controls.viewport.azimuthDeg}
       data-camera-elevation={controls.viewport.elevationDeg} ref={boardRef}
       data-requested-renderer={requested} data-effective-renderer={effective} data-quality={quality}
-      data-island-claims={seaView && seaView.islandClaims.length ? seaView.islandClaims.map((claim) => claim.vertex).join(',') : undefined}
       data-renderer-status={failure ? 'failed' : requested === 'svg' ? 'idle' : effective === 'r3f' ? 'ready' : 'loading'} data-fallback-reason={failure ?? undefined}>
       {setupGuide && (messageHost ? createPortal(setupGuide, messageHost) : setupGuide)}
       <div className="board__toolbar board__toolbar--side" role="group" aria-label={t('board.heading')}>
