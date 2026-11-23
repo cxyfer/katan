@@ -338,6 +338,15 @@ describe('SFX-S4 四處 unexplored region 各 +2', () => {
     }
   });
 
+  it('沒有任何交叉點同時碰到兩處外地：每個交叉點最多一處獎勵', () => {
+    for (const players of [3, 4] as const) {
+      const { state } = desert(players);
+      topologyOf(state).vertices.forEach((_vertex, vertex) => {
+        expect(islandsAt(state, vertex).filter((island) => island > 1).length, `vertex ${vertex}`).toBeLessThanOrEqual(1);
+      });
+    }
+  });
+
   it('設置階段在主島，所以設置完成時不領任何獎勵；首次進入外地才領', () => {
     const { done, bonus, tick } = readyGame(3);
     tick();
