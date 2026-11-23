@@ -165,10 +165,10 @@ def live(contexts, pages, identity, game_id):
         plan.update(json.loads(out))
         if plan['settlement'] is not None:
             state['board']['buildings'][plan['settlement']] = {'player': p1, 'city': False}
-        for edge in plan['choice']['prefix'] + plan['reveal']['prefix']:
+        for edge in plan['choice']['prefix'] + plan['choice2']['prefix'] + plan['reveal']['prefix']:
             state['board']['roads'][edge] = {'player': p1, 'ship': True}
         player = state['players'][seat]
-        player['resources'] = {'lumber': 2, 'brick': 0, 'wool': 2, 'grain': 0, 'ore': 0}
+        player['resources'] = {'lumber': 3, 'brick': 0, 'wool': 3, 'grain': 0, 'ore': 0}
         state['turn'].update({'seat': seat, 'phase': 'action', 'dice': [3, 4], 'setup': None})
         state['pending'] = None
         state['windowId'] += 1
@@ -176,7 +176,7 @@ def live(contexts, pages, identity, game_id):
     page = pages[0]
     for other in pages:
         other.reload()
-    reveal, choice = plan['reveal'], plan['choice']
+    reveal, choice, choice2 = plan['reveal'], plan['choice'], plan['choice2']
     path = f'/api/games/{game_id}'
 
     view = snap(contexts[0], path)['view']
@@ -231,6 +231,31 @@ def live(contexts, pages, identity, game_id):
     wait_fog_3d(page, 10)
     shot(page, 'live-fog-reveal-3d', f"the chosen hex {pick} is revealed in 3D: {tile}{' (gold picked in the UI)' if gold else ''}; 10 fog banks left", ms=2500)
 
+    # 3) 第二個多空格選擇：SVG 渲染器上建造、在 SVG 棋盤上選（預覽顯示「未探索」）。
+    open_game(page, game_id, 'svg')
+    open_actions(page)
+    page.get_by_test_id('action-build.ship').click()
+    ui_target(page, 'edge', choice2['edge'])
+    ui_confirm(page)
+    page.wait_for_timeout(800)
+    view = snap(contexts[0], path)['view']
+    assert view['pending'] and view['pending']['kind'] == 'seafarers.fog', view['pending']
+    assert sorted(view['pending']['data']['hexes']) == sorted(choice2['hexes']), (view['pending'], choice2)
+    assert len(view['modules']['seafarers']['fog']) == 10
+    for hex_index in choice2['hexes']:
+        expect(page.get_by_test_id(f'target-hex-{hex_index}')).to_be_attached()
+    pick2 = choice2['hexes'][0]
+    ui_target(page, 'hex', pick2)
+    expect(page.get_by_test_id('selection-preview')).to_contain_text('未探索')
+    shot(page, 'live-fog-choice-svg', f"SVG choice between {choice2['hexes']}: picked hex {pick2}, the confirm preview says unexplored")
+    ui_confirm(page)
+    page.wait_for_timeout(800)
+    gold2 = settle_gold(page)
+    view = snap(contexts[0], path)['view']
+    assert view['pending'] is None and pick2 not in view['modules']['seafarers']['fog'] and len(view['modules']['seafarers']['fog']) == 9
+    expect(page.locator('[data-testid^="sf-fog-"]')).to_have_count(9)
+    shot(page, 'live-fog-reveal-choice-svg', f"the chosen hex {pick2} is revealed on the SVG board: {view['board']['terrain'][pick2]}{' (gold picked in the UI)' if gold2 else ''}; 9 clouds left")
+
     # 手機寬度：迷霧與翻開後的格。
     phone_ctx = browser_ref['browser'].new_context(storage_state=contexts[0].storage_state(), viewport=base.PHONE, locale='zh-TW',
                                                    reduced_motion='reduce', service_workers='block', is_mobile=True, has_touch=True)
@@ -238,8 +263,8 @@ def live(contexts, pages, identity, game_id):
     phone.on('pageerror', lambda error: ERRORS.append(f'phone: {error}'))
     phone.set_default_timeout(base.TIMEOUT)
     open_game(phone, game_id, 'svg')
-    assert fog_count_svg(phone) == 10
-    shot(phone, 'live-fog-phone', 'phone width: 10 clouds left, two hexes revealed')
+    assert fog_count_svg(phone) == 9
+    shot(phone, 'live-fog-phone', 'phone width: 9 clouds left, three hexes revealed')
     phone_ctx.close()
 
     # 3) 收尾：給最後的分數與一個空位，合法的蓋村落命令達 12 分（沒有島嶼獎勵）。

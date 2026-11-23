@@ -80,14 +80,23 @@ for (const vertex of [null, ...coast]) {
   const choice = route((hexes) => hexes.length === 2);
   if (choice) {
     const hexes = fogHexesAtEdge(state, choice.final);
-    // 另一條：只碰一個空格，且不是 choice 的候選。
+    // 第二個選擇（SVG 用）與單格翻開：候選互不重疊，先翻開哪個都不影響另外兩個。
     const avoid = new Set(hexes);
-    const reveal = route((found) => found.length === 1 && !avoid.has(found[0]));
-    if (reveal) {
-      plan = { choice: { prefix: choice.prefix, edge: choice.final, hexes }, reveal: { prefix: reveal.prefix, edge: reveal.final, hex: fogHexesAtEdge(state, reveal.final)[0] } };
+    const choice2 = route((found) => found.length === 2 && found.every((hex) => !avoid.has(hex)));
+    if (choice2) {
+      const hexes2 = fogHexesAtEdge(state, choice2.final);
+      hexes2.forEach((hex) => avoid.add(hex));
+      const reveal = route((found) => found.length === 1 && !avoid.has(found[0]));
+      if (reveal) {
+        plan = {
+          choice: { prefix: choice.prefix, edge: choice.final, hexes },
+          choice2: { prefix: choice2.prefix, edge: choice2.final, hexes: hexes2 },
+          reveal: { prefix: reveal.prefix, edge: reveal.final, hex: fogHexesAtEdge(state, reveal.final)[0] },
+        };
+      }
     }
   }
-  const cost = plan ? plan.choice.prefix.length + plan.reveal.prefix.length : Infinity;
+  const cost = plan ? plan.choice.prefix.length + plan.choice2.prefix.length + plan.reveal.prefix.length : Infinity;
   if (plan && (!best || cost < best.cost)) best = { vertex, cost, plan, roads: JSON.parse(JSON.stringify(state.board.roads)) };
   if (vertex !== null) state.board.buildings[vertex] = null;
   if (best && vertex === null) break;

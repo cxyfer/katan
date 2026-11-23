@@ -37,7 +37,7 @@
       "name": "map-4p-svg-desktop",
       "status": "PASS",
       "note": "sf-fog-islands-4",
-      "sha256": "b862f6d6af17573851ca982854cba2fe6a30376829cfef161485037c6fef7e02",
+      "sha256": "c772d88b9bde9df86363d54cb87161feac51aa0ec17288743e0b0ae6f01c94da",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -47,7 +47,7 @@
       "name": "map-4p-r3f-desktop",
       "status": "PASS",
       "note": "sf-fog-islands-4",
-      "sha256": "98bfb1a7bdd7099eff2cd620432fd92eaac43c414a4f4c6cfce8971d5159faf7",
+      "sha256": "033d93fa159d0122cf34ef3eac683d8c5395bd1b6d720545b03c302dcc7ecb44",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -66,8 +66,8 @@
     {
       "name": "live-fog-before-svg",
       "status": "PASS",
-      "note": "before: 12 clouds; build ship targets include the path 34 that touches one unexplored hex",
-      "sha256": "7e1fcfbd0f60268228a4285af4c92ede1cf792d3ea0ae8b12394191a35dcc215",
+      "note": "before: 12 clouds; build ship targets include the path 60 that touches one unexplored hex",
+      "sha256": "6f999073129e52fdb7e62779202054a5e4fc672f64009ffbe5277405d54d77ff",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -76,8 +76,8 @@
     {
       "name": "live-fog-reveal-svg",
       "status": "PASS",
-      "note": "ship built through the SVG board revealed hex 13: sea None; 11 clouds left",
-      "sha256": "7334b5ae64fe545db821a4df1f5c647e8322a977dcc57bd31f63a996726208a5",
+      "note": "ship built through the SVG board revealed hex 21: pasture 12; 11 clouds left",
+      "sha256": "62d75e71891f121d75f4c8e2abfd1ed5159daa7351219bdc61c5680a0caa62a6",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -87,7 +87,7 @@
       "name": "live-fog-choice-3d",
       "status": "PASS",
       "note": "the ship touches two unexplored hexes [0, 6]: the placer chooses one on the 3D board",
-      "sha256": "fb16ce51a0f3c4ab1ff85158c60291bb3e86533fd0058bab6b67a9ff9fc1f1ee",
+      "sha256": "4421a16adedca033988ed7db44008f0a060bd36e6020f0199729fb31250c2fc8",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -96,8 +96,28 @@
     {
       "name": "live-fog-reveal-3d",
       "status": "PASS",
-      "note": "the chosen hex 6 is revealed in 3D: gold (gold picked in the UI); 10 fog banks left",
-      "sha256": "0437348d143fd5aced5d845ad2c54dc2350d0d7da663f65af1f55325bcdc3619",
+      "note": "the chosen hex 6 is revealed in 3D: fields; 10 fog banks left",
+      "sha256": "cd78183ee5f45aa2b0d7235ff23b8aa75079b071544161e13fdd0c33342205be",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-choice-svg",
+      "status": "PASS",
+      "note": "SVG choice between [13, 20]: picked hex 13, the confirm preview says unexplored",
+      "sha256": "fa0c7b6a887399323ea0e04a30e8b6585749220c8a35ee9579222012dd3a34de",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-reveal-choice-svg",
+      "status": "PASS",
+      "note": "the chosen hex 13 is revealed on the SVG board: mountains; 9 clouds left",
+      "sha256": "4a4d8d5a2e9e66c00a0be29cd1ed73900af28843fda36b0b66a6912f192f73b0",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -106,8 +126,8 @@
     {
       "name": "live-fog-phone",
       "status": "PASS",
-      "note": "phone width: 10 clouds left, two hexes revealed",
-      "sha256": "5b7c9f212b10fb275a4271be98b1cac35eb79a83e5b2b7d07cb7af8091f07577",
+      "note": "phone width: 9 clouds left, three hexes revealed",
+      "sha256": "18726f2e128b71ac851c4c5ff425278f6f6cc6cead18813494d26f11310e7c7b",
       "viewport": {
         "width": 390,
         "height": 844
@@ -117,7 +137,7 @@
       "name": "live-result",
       "status": "PASS",
       "note": "a legal settlement reaches 12 VP (no island bonus): result screen",
-      "sha256": "9a5a7734e131600b375253487517e237f0154fb4df951d591e33692964c93c74",
+      "sha256": "0db8a00b0a8158ef8dd47f01a6b929a58b056fa713a31007eb4aa06aa602bb28",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -127,8 +147,8 @@
   "live": {
     "reveal": {
       "prefix": [],
-      "edge": 34,
-      "hex": 13
+      "edge": 60,
+      "hex": 21
     },
     "choice": {
       "prefix": [
@@ -147,7 +167,7 @@
       "edge": 13
     },
     "result": {
-      "playerId": "player_dd9716c30eb048c581eb",
+      "playerId": "player_9d557d5b37254c1880e9",
       "reason": "victory",
       "score": 14
     }

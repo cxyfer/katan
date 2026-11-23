@@ -151,7 +151,8 @@ spaces (`pirate: null`). Islands: 2 (north-east) → 10 hexes, 3 (south-west) �
 | I5 | Gold (OQ-2 c) | A revealed gold hex is land: it gets a disc and the explorer takes 1 resource of their own choice (reusing the `seafarers.gold` frame and picker); resources the supply lacks cannot be taken, and with an empty supply nothing is taken. | SF25 p. 8 ("the type produced by that hex"); gold rule p. 2 |
 | I6 | Land resource | The explorer takes 1 card of the hex's resource if the supply has it, else nothing. Sea: no disc, no card. The hex stays terrain `sea` with no number. | SF25 p. 8 |
 | I7 | Villages | Settlements and cities never explore. | SF25 p. 8 (ship or road only) |
-| I8 | Setup placements | A starting road or ship counts as "place": a setup ship whose far end touches a space explores (rules test plays setups where this happens; it can only be a ship: no known land hex touches a space). The explorer takes the resource at once; a gold hex or a multi-space touch raises the same frames, and the next setup step waits for the answer. Starting **settlements** are limited to hexes of the known islands (every land hex around the intersection must carry an island number), so land revealed during setup is not a legal start. | SF25 p. 8 "may be placed on one island or two"; spec §5.2 |
+| I8 | Setup placements | Starting roads and ships do **not** explore; the first in-game road or ship next to a space does. The exploration rule sits under Additional rules (SF25 p. 8) and a reveal during setup would hand out a card or raise a pending frame before the game has started: the setup flow clears or is blocked by it (the last step opens the first turn, which clears pending frames; earlier steps leave the next player's setup commands rejected). Making setup wait for such frames means changing the shared engine setup flow, which is too risky for this slice. Starting **settlements** are limited to hexes of the known islands (every land hex around the intersection must carry an island number), so land revealed later is never a start. The rules test places setup ships next to spaces and checks that nothing is revealed and nothing is pending. | SF25 p. 8; spec §5.2 |
+| I12 | Queued frames | With Road Building both free pieces are placed first and the fog frames queue behind the card (the choice is not moved to the moment of placement). `fog.choose` reveals first, then closes its frame, so a gold pick queues right after it; a queued frame drops hexes revealed meanwhile and, when one hex is left, reveals it itself. `fog.choose` exists only in fog scenarios (New Shores keeps `E_INVALID_COMMAND`). |
 | I9 | Robber and pirate | Robber starts on the 12 disc. It only goes on land (a space is stored as sea, so never). The pirate starts on the frame, goes only on revealed sea hexes or the frame, never on an unrevealed space (`E_ILLEGAL_TARGET`, and the hint list omits them). | SF25 p. 8; spec §5.4 |
 | I10 | Victory | 12 VP on the own turn, no island bonus. | SF25 p. 8 |
 | I11 | Variable setup | SF25 p. 9 variable setup (known land random, reds may touch, ports random) is deferred to S10. | spec §10 |
@@ -172,7 +173,7 @@ spaces (`pirate: null`). Islands: 2 (north-east) → 10 hexes, 3 (south-west) �
 - Rules: `seafarers-fog-islands.test.ts` (topology; both layouts and the fog
   deck value by value; ports beside known land; trigger by ship and road; no
   trigger for settlements or moving; `fogOnMove`; several spaces → choice;
-  land + disc + resource; supply-empty; gold pick; sea; setup ships; start
+  land + disc + resource; supply-empty; gold pick; sea; setup ships do not explore, the first in-game build does; Road Building with two queued fog frames; `fog.choose` limited to fog scenarios; step-by-step replay privacy; coastal-edge count 46; start
   settlements on known land; robber/pirate limits; 12 VP; privacy SFX-S3-P:
   projection, events, snapshot, same-state-different-draw, JSON restore),
   simulated 3- and 4-player games to a 12-point winner with reveals and a
@@ -199,7 +200,7 @@ spaces (`pirate: null`). Islands: 2 (north-east) → 10 hexes, 3 (south-west) �
 ## Browser evidence
 
 `scripts/seafarers/capture_fog_islands.py` (Chromium, software WebGL, built
-service on a private SQLite file, `SF_TIMEOUT=180000`): 12 cases, no page
+service on a private SQLite file, `SF_TIMEOUT=180000`): 14 cases, no page
 errors. Real UI and API, no mocked snapshots:
 
 1. Lobby: Seafarers / The Fog Islands offers 3 and 4 players only.
@@ -211,11 +212,13 @@ errors. Real UI and API, no mocked snapshots:
    reveals its hex (11 clouds left); the two-space ship built on the **3D**
    board raises the choice prompt with the two candidates highlighted, the pick
    on the 3D board reveals it (10 banks left; a gold hex was answered in the
-   gold picker in this run). The run fails if a reveal, the choice frame or a fog
+   gold picker if a gold hex turns up). A second two-space ship then repeats the
+   choice on the **SVG** board (the confirm preview reads "未探索", 9 clouds left).
+   The run fails if a reveal, the choice frame or a fog
    count is missing; it also asserts the view carries no deck.
 4. A second fixture gives player 1 the last points and a free spot; a legal
    settlement ends the game (result screen; no island bonus). The final score is
    14 because the fixture's ship chain also earns the Longest Trade Route.
 
-Report and 9 curated captures plus lobby: `docs/screenshots/seafarers-fog-islands/`
+Report and 13 captures: `docs/screenshots/seafarers-fog-islands/`
 (sha256 per image in `report.json`).
