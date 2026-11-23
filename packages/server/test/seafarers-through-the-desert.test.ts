@@ -5,7 +5,7 @@
 
 import { rmSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { getTopology, type GameState } from '@katan/rules';
+import { applyCommand, getTopology, type GameState } from '@katan/rules';
 import {
   createClient,
   restartService,
@@ -48,7 +48,7 @@ interface Receipt {
 const snapshot = async (client: TestClient, gameId: string): Promise<TdSnapshot> =>
   client.expectOk<TdSnapshot>(await client.get(`/api/games/${gameId}`));
 
-describe('The Four Islands over the API', () => {
+describe('Through the Desert over the API', () => {
   it('is listed as enabled and selectable, without bot seats', async () => {
     const host = await harness.client('TdLister');
     const data = host.expectOk<{
@@ -172,6 +172,60 @@ describe('The Four Islands over the API', () => {
       expect(final.view.result).toMatchObject({ playerId: actorId, reason: 'victory' });
       const room = resumed(host).expectOk<{ status: string }>(await resumed(host).get(`/api/rooms/${roomId}`));
       expect(room.status).toBe('completed');
+    } finally {
+      if (restarted) await restarted.close();
+      else await local.service.close().catch(() => undefined);
+      rmSync(local.dataDir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it('restores a pending gold choice after a restart and completes it (spec 11.3)', async () => {
+    const local = await startHarness();
+    let restarted: Awaited<ReturnType<typeof restartService>> | undefined;
+    try {
+      const { clients, gameId } = await startedGame(local, 4, { profileId: PROFILE });
+      await runSetupOverApi(clients, gameId);
+      // test-only 準備：行動者在外地金礦（島 4，(2,1) 圓片 5）旁有一個村落，擲出 5 產生金礦選擇 frame。
+      const row = (await local.service.repo.findGame(gameId))!;
+      const state = JSON.parse(row.state_json) as GameState;
+      const topology = getTopology(state.board.layout.topologyId);
+      const actorId = state.players[state.turn.seat]!.id;
+      const gold = topology.hexes.findIndex((cell) => cell.q === 2 && cell.r === 1);
+      expect(state.board.layout.terrain[gold]).toBe('gold');
+      expect(state.board.layout.numbers[gold]).toBe(5);
+      const near = (vertex: number): number[] => topology.vertices[vertex]!.edges
+        .flatMap((edge) => topology.edges[edge]!.vertices).filter((other) => other !== vertex);
+      const spot = topology.vertices.findIndex((info, vertex) => info.hexes.includes(gold) && !state.board.buildings[vertex]
+        && near(vertex).every((other) => !state.board.buildings[other]));
+      expect(spot).toBeGreaterThanOrEqual(0);
+      state.board.buildings[spot] = { player: actorId, city: false };
+      state.turn.phase = 'preroll';
+      const rolled = applyCommand(state, actorId, { type: 'turn.roll' }, { int: (() => { const dice = [1, 2]; return () => dice.shift()!; })() });
+      if (!rolled.ok) throw new Error(rolled.error.code);
+      expect(rolled.state.pending).toMatchObject({ kind: 'seafarers.gold', responders: [actorId] });
+      await local.service.repo.saveGame(gameId, rolled.state, row.revision, 'playing', null);
+      const host = clients[0]!;
+      const before = await snapshot(host, gameId);
+      const pendingBefore = (before.view as unknown as { pending: { kind: string } | null }).pending;
+      expect(pendingBefore).toMatchObject({ kind: 'seafarers.gold' });
+      const saved = (await local.service.repo.findGame(gameId))!.state_json;
+
+      await local.service.close();
+      restarted = await restartService(local);
+      const base = `http://127.0.0.1:${restarted.port}`;
+      const resumed = (client: TestClient) => Object.assign(createClient(base), { cookie: client.cookie, playerId: client.playerId });
+      expect((await restarted.repo.findGame(gameId))!.state_json).toBe(saved);
+      const actor = resumed(clients.find((client) => client.playerId === actorId)!);
+      const after = await snapshot(actor, gameId);
+      // 重連後仍有該選擇提示，且行動者要選 1 張。
+      expect((after.view as unknown as { pending: { kind: string } | null }).pending).toMatchObject({ kind: 'seafarers.gold' });
+      expect(after.revision).toBe(before.revision);
+      const receipt = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, {
+        commandId: 'td-gold-choose', expectedRevision: after.revision, command: { type: 'gold.choose', resources: ['ore'] },
+      }));
+      expect(receipt, JSON.stringify(receipt)).toMatchObject({ outcome: 'accepted' });
+      const done = await snapshot(actor, gameId);
+      expect((done.view as unknown as { pending: unknown }).pending).toBeNull();
     } finally {
       if (restarted) await restarted.close();
       else await local.service.close().catch(() => undefined);
