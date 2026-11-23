@@ -132,7 +132,10 @@ describe('Four Islands wording (no "small island")', () => {
     const view = projectGame(state, 'p2', { hints: actionHints(state, 'p2') });
     const controller = { state: { ...initialTableState(locale, 'Alex'), game: makeSnapshot(view) }, dispatch: vi.fn(), actions: {} } as unknown as TableController;
     render(<LocaleProvider locale={locale}><PlayersPanel controller={controller} /></LocaleProvider>);
-    return screen.getByTestId('players-islands-0').getAttribute('aria-label')!;
+    const mark = screen.getByTestId('players-islands-0');
+    // 島號也要以可見文字呈現（觸控裝置沒有 title／aria-label）。
+    expect(mark.textContent).toContain(locale === 'en' ? 'island 3, 5' : '島 3, 5');
+    return mark.getAttribute('aria-label')!;
   }
 
   it('the player panel lists the counted islands, in both locales, with no "small" in four islands', () => {

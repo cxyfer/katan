@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useThree } from '@react-three/fiber';
+import { useEffect, useMemo } from 'react';
 import type { Material } from 'three';
 import type { BoardSceneProps } from '../render-contract.ts';
 import { playerColorHex } from '../terrain.ts';
@@ -42,6 +43,19 @@ function IslandTokens({ color, vertices, geometry, material }: Pick<Props, 'geom
   return <InstancedPrimitive geometry={model} material={material} instances={instances} />;
 }
 
+/**
+ * 證據用掛勾（無副作用）：把場景實際畫出的島嶼獎勵標記數寫到 canvas 的
+ * `data-island-tokens`，瀏覽器證據腳本以此斷言 3D 場景有標記。
+ */
+function IslandTokenProbe({ count }: { count: number }) {
+  const canvas = useThree((state) => state.gl.domElement);
+  useEffect(() => {
+    canvas.dataset.islandTokens = String(count);
+    return () => { delete canvas.dataset.islandTokens; };
+  }, [canvas, count]);
+  return null;
+}
+
 /** Ships, the pirate and island-bonus tokens; nothing for base games. */
 export function DioramaSeafarers(props: Props) {
   const { geometry, board, players, seafarers, material, quality } = props;
@@ -49,7 +63,9 @@ export function DioramaSeafarers(props: Props) {
   const pirateModel = useDioramaGeometry(createPirateModel, []);
   if (!seafarers) return null;
   const pirate = pirateTransform(geometry, board);
+  const tokenCount = seafarers.islandClaims.filter((claim) => !!geometry.vertices[claim.vertex]).length;
   return <>
+    <IslandTokenProbe count={tokenCount} />
     {players.map((player) => {
       const items = ships.filter((ship) => ship.playerId === player.id);
       return items.length ? <PlayerShips key={player.id} {...props} color={playerColorHex(player.color)} seat={player.seat} items={items} /> : null;

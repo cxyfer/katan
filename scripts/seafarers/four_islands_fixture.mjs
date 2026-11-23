@@ -22,6 +22,7 @@ for (const island of [...new Set(islands.filter((id) => id > 0))].sort((a, b) =>
   if (home.includes(island) || targets.length === 2) continue;
   const vertex = topology.vertices.findIndex((info, index) => !info.interior && !state.board.buildings[index]
     && islandOf(index).length === 1 && islandOf(index)[0] === island && near(index).every((other) => !state.board.buildings[other]));
+  if (vertex < 0) continue;
   const edge = topology.vertices[vertex].edges.find((candidate) => topology.edges[candidate].hexes.some((hex) => terrain[hex] !== 'sea'));
   targets.push({ vertex, edge, island });
 }

@@ -258,6 +258,9 @@ describe('SFX-S2 VP 標記供應（SF25 pp. 6–7：3 人 18、4 人 24）', () 
   it('模擬整局後每位玩家的島嶼獎勵不超過 6，全桌不超過供應', () => {
     for (const [players, supply] of [[3, 18], [4, 24]] as const) {
       const run = simulateSeafarers(players, 40 + players, 30000, PROFILE);
+      // 不能空洞通過：每局都要真的完賽，且至少有一次島嶼獎勵。
+      expect(run.state.result?.reason).toBe('victory');
+      expect(run.islandBonuses).toBeGreaterThan(0);
       const claims = Object.values((run.state.moduleState as unknown as { seafarers: { islands: Record<string, number[]> } }).seafarers.islands);
       expect(claims.every((list) => list.length <= 3)).toBe(true);
       const bonus = run.state.players.reduce((sum, player) => sum + player.bonusPoints, 0);

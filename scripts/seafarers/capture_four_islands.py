@@ -98,6 +98,9 @@ def setup_over_api(contexts, identity, game_id):
         assert response.json()['ok'], response.json()
 
 
+browser_ref = {}
+
+
 def finish_live(contexts, pages, identity, game_id):
     """Player 1 settles two new islands through the UI: +2 each, the second reaches 13 VP."""
     p1 = identity[0]
@@ -122,36 +125,68 @@ def finish_live(contexts, pages, identity, game_id):
     for other in pages:
         other.reload()
 
-    def settle(target):
-        open_game(page, game_id, 'svg')
+    def settle(target, renderer):
+        open_game(page, game_id, renderer)
         open_actions(page)
         page.get_by_test_id('action-build.settlement').click()
         ui_click_target(page, 'vertex', target['vertex'])
         ui_confirm(page)
 
-    settle(first)
+    def expand_players(page_):
+        toggle = page_.get_by_test_id('players-toggle')
+        if toggle.get_attribute('aria-expanded') != 'true':
+            toggle.click()
+        page_.wait_for_timeout(500)
+
+    def check_islands_mark(page_, island):
+        """The island list is visible text (touch has no title), the wording has no 'small'."""
+        mark = page_.get_by_test_id('players-islands-0')
+        expect(mark).to_be_visible()
+        assert f'島 {island}' in mark.inner_text(), mark.inner_text()
+        label = mark.get_attribute('aria-label')
+        assert '新島嶼' in label and '小島' not in label, label
+
+    # 第一座新島：SVG 渲染器上建村，展開玩家面板看島號。
+    settle(first, 'svg')
     view = snap(contexts[0], f'/api/games/{game_id}')['view']
     assert view['modules']['seafarers']['islandBonus'][p1] == [first['island']], view['modules']['seafarers']
     assert view['result'] is None
     expect(page.get_by_test_id(f"island-bonus-{first['vertex']}")).to_be_attached()
-    expect(page.get_by_test_id('players-islands-0')).to_be_attached()
-    shot(page, 'live-island-bonus-svg', f"first settlement on non-home island {first['island']}: +2 token and the player panel")
-    open_game(page, game_id, 'r3f')
-    shot(page, 'live-island-bonus-3d', 'the same bonus in the 3D board', ms=2500)
+    expand_players(page)
+    check_islands_mark(page, first['island'])
+    shot(page, 'live-island-bonus-svg', f"first settlement on non-home island {first['island']}: +2 token and the expanded player panel lists the island")
 
-    settle(second)
+    # 同一狀態的 3D：場景實際畫出的標記數由 canvas 的 data-island-tokens 斷言。
+    open_game(page, game_id, 'r3f')
+    page.wait_for_function("() => document.querySelector('canvas')?.dataset.islandTokens === '1'", timeout=60000)
+    shot(page, 'live-island-bonus-3d', 'the same bonus in the 3D board (canvas data-island-tokens = 1)', ms=2500)
+
+    # 手機寬度：展開玩家面板，島號以可見文字呈現。
+    phone_ctx = browser_ref['browser'].new_context(storage_state=contexts[0].storage_state(), viewport=base.PHONE, locale='zh-TW',
+                                                   reduced_motion='reduce', service_workers='block', is_mobile=True, has_touch=True)
+    phone = phone_ctx.new_page()
+    phone.on('pageerror', lambda error: ERRORS.append(f'phone: {error}'))
+    phone.set_default_timeout(base.TIMEOUT)
+    open_game(phone, game_id, 'svg')
+    expand_players(phone)
+    check_islands_mark(phone, first['island'])
+    shot(phone, 'live-island-bonus-phone', 'phone width: expanded player panel with the island number as visible text')
+    phone_ctx.close()
+
+    # 第二座新島：在 3D 渲染器上透過 UI 完成（每個命令兩個渲染器都 reachable），達 13 分。
+    settle(second, 'r3f')
     view = snap(contexts[0], f'/api/games/{game_id}')['view']
     assert view['result'] and view['result']['playerId'] == p1 and view['result']['reason'] == 'victory', view['result']
     assert view['modules']['seafarers']['islandBonus'][p1] == sorted([first['island'], second['island']])
     expect(page.get_by_test_id('result-screen')).to_be_visible()
     expect(page.get_by_test_id('result-winner')).to_be_visible()
-    shot(page, 'live-result', 'second new island reaches 13 VP: result screen')
+    shot(page, 'live-result', 'second new island, settled in the 3D renderer, reaches 13 VP: result screen')
     REPORT['finish'] = {'targets': plan['targets'], 'home': plan['home'], 'result': view['result']}
 
 
 def run():
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
+        browser = browser_ref['browser'] = p.chromium.launch(headless=True, args=['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
         for count in (3, 4):
             contexts, pages, identity, game_id = start_four_islands(browser, count, lobby_shot='lobby-four-islands' if count == 3 else None)
             view = snap(contexts[0], f'/api/games/{game_id}')['view']
