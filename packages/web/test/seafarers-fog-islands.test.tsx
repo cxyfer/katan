@@ -6,6 +6,7 @@ import { actionHints, applyCommand, createGame, getTopology, projectGame, seeded
 import { buildGeometry } from '../src/board/geometry.ts';
 import { boardIntent } from '../src/board/intent.ts';
 import { fogChoice, seafarersFog, seafarersView } from '../src/board/seafarers.ts';
+import { hexReference, viewReferenceContext } from '../src/board/references.ts';
 import { describeTarget } from '../src/board/targets.ts';
 import { HelpPanel } from '../src/components/HelpPanel.tsx';
 import { SvgBoard } from '../src/components/SvgBoard.tsx';
@@ -169,5 +170,39 @@ describe('Fog Islands help and event wording', () => {
     expect(translateEvent('en', gold, names).text).toContain('Gold with the number 11');
     expect(translateEvent('zh-Hant', land, names).text).toContain('探索了第 9 格');
     expect(translateEvent('zh-Hant', sea, names).text).toBe('P2 探索了第 4 格，發現一片海洋。');
+  });
+});
+
+describe('Fog Islands choice preview', () => {
+  it('the confirm preview reads an unexplored hex as unexplored (same fog as the board)', () => {
+    const view = viewOf(fogState(3));
+    const hex = seafarersView(view)!.fog[0]!;
+    const english = hexReference(viewReferenceContext('en', view), hex);
+    expect(english).toContain('Unexplored');
+    expect(hexReference(viewReferenceContext('zh-Hant', view), hex)).toContain('未探索');
+    // 已翻開的格不再是「未探索」。
+    const edge = fogEdge(fogState(3), 1);
+    const next = viewOf(buildShip(fogState(3), edge, 3));
+    const revealed = seafarersView(view)!.fog.find((h) => !seafarersView(next)!.fog.includes(h))!;
+    expect(hexReference(viewReferenceContext('en', next), revealed)).not.toContain('Unexplored');
+  });
+
+  it('drawing the preview of a fog.choose hex shows no pirate ghost, while a pirate move on sea still does', () => {
+    const view = viewOf(fogState(3));
+    const hex = seafarersView(view)!.fog[0]!;
+    const geometry = buildGeometry(view.board.topologyId, 100, view.board.terrain);
+    const draw = (commandType: string) => {
+      const intent = { kind: 'hex' as const, commandType, labelId: 'x', targets: [hex], fromHints: true };
+      const selection = { kind: 'hex' as const, index: hex, commandType, labelId: 'x' };
+      const out = render(<LocaleProvider locale="en"><SvgBoard svgRef={() => undefined} geometry={geometry} view={view}
+        arrivals={[]} selection={selection} selfId="p1" intent={intent} pan={{ x: 0, y: 0 }} zoom={1}
+        viewBoxCenter={{ x: 0, y: 0 }} nameResolver={(id) => id} /></LocaleProvider>);
+      const ghost = out.container.querySelector('[data-testid="board-preview-ghost"]');
+      const html = ghost?.innerHTML ?? '';
+      out.unmount();
+      return html;
+    };
+    expect(draw('fog.choose')).toBe('');
+    expect(draw('pending.moveRobber').length).toBeGreaterThan(0);
   });
 });

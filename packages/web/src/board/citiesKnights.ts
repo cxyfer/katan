@@ -242,6 +242,8 @@ export function cardFrameData(view: Partial<Pick<GameView, 'pending'>> | null | 
  * hex, nothing for a road Diplomacy removes, or the usual piece ('default').
  */
 export function progressGhost(commandType: string | null | undefined, params?: Record<string, unknown>): 'merchant' | 'none' | 'default' {
+  // 未知海域選要翻開的空格：沒有棋子要預覽（空格是海，但不是海盜的落點）。
+  if (commandType === 'fog.choose') return 'none';
   if (commandType !== 'progress.play') return 'default';
   if (params?.card === 'merchant') return 'merchant';
   if (params?.card === 'diplomacy') return 'none';
