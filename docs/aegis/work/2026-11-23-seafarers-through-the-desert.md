@@ -246,7 +246,8 @@ two harbor tokens: (0, 1) on 3 players (sides 1 and 5); (2, -1) (sides 1 and 5),
   (`bad-player-count`), bot seat refused (`E_INVALID_BOT`, reason `profile`),
   3- and 4-player starts on the two frames with the robber on a desert, every
   setup spot on the main island, mid-game restart, a 14-point finish by
-  settling a region.
+  settling a region, and a pending gold choice (rolled on the gold next to a
+  region settlement) that survives a restart and can be completed.
 - Web: SVG board (hexes, harbors, pirate on the frame), coastline loops (the
   main island and the strip form one landmass, plus three small islands = 4
   loops), help panel in both locales (gold line kept, no "small island"),
@@ -261,8 +262,10 @@ two harbor tokens: (0, 1) on 3 players (sides 1 and 5); (2, -1) (sides 1 and 5),
   test-only fixture (service stopped) gives player 1 the turn, building cards,
   6 other bonus points and a road to two empty corners: one between the desert
   and the land strip (touches islands 1 and 2), one on small island 3. Player 1
-  settles the first (+2, recorded for island 2 only: token in SVG and 3D,
-  region list in the player panel) and the second (+2, 14 VP, result screen).
+  settles the first through the 3D renderer (+2, recorded for island 2 only;
+  canvas `data-island-tokens` = 1, then token in SVG and the region list in the
+  player panel) and the second in SVG (+2, 14 VP, result screen). Setup
+  commands are checked for an `accepted` receipt, not just HTTP ok.
   The run fails if a token or the result screen is missing. Report with sha256
   per image: `docs/screenshots/seafarers-through-the-desert/report.json`; 9 of
   the 11 captures are kept in the repository (`committed: true`), the 3-player
