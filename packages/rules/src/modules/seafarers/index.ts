@@ -98,7 +98,7 @@ export const seafarersModule: RulesModule = {
 
   // 建造路之後探索；船在 `ships.ts` 的建造與設置指令裡探索。
   afterBuild(state, build, ctx) {
-    if (build.piece === 'road' && build.edge !== undefined) exploreAtEdge(state, build.playerId, build.edge, ctx);
+    if (build.piece === 'road' && !build.setup && build.edge !== undefined) exploreAtEdge(state, build.playerId, build.edge, ctx);
   },
 
   afterProduction,

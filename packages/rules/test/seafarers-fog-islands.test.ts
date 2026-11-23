@@ -40,6 +40,8 @@ describe('The Fog Islands topologies (SF25 pp. 8–9, spec §7.3)', () => {
       expect(topology.harborSlots).toHaveLength(harbors);
       expect(topology.hexes).toEqual(getTopology('sf-new-shores-4').hexes);
     }
+    // 海框內緣邊（§7.3）與 harborSlots 一併檢查。
+    for (const id of ['sf-fog-islands-3', 'sf-fog-islands-4']) expect(getTopology(id).coastalEdges).toHaveLength(46);
     expect(getTopology('sf-fog-islands-3').edges).toHaveLength(getTopology('sf-new-shores-4').edges.length);
     expect(getTopology('sf-fog-islands-3').vertices).toHaveLength(getTopology('sf-new-shores-4').vertices.length);
   });
@@ -402,44 +404,49 @@ describe('SFX-S3 移動船不觸發（fogOnMove，OQ-2）', () => {
 });
 
 describe('SFX-S3 設置階段', () => {
-  it('設置的船也算 place：端點碰到空格就翻開，設置照常往下一位', () => {
+  it('設置階段放碰到空格的船不翻開；開局後第一次建造鄰接的船才翻開', () => {
     for (const players of [3, 4] as const) {
       let state = fogGame(players, 7).state;
-      let reveals = 0;
+      let touching = 0;
       let guard = 0;
       while (state.turn.phase === 'setup' && guard++ < 40) {
         const setup = state.turn.setup!;
         const actor = state.players[setup.order[setup.index]!]!.id;
-        if (state.pending) {
-          const data = state.pending.kind === 'seafarers.fog' ? (state.pending.data as { hexes: number[] }) : null;
-          const responder = (state.pending as { responders: string[] }).responders[0]!;
-          state = act(state, responder, data ? cmd({ type: 'fog.choose', hex: data.hexes[0]! }) : cmd({ type: 'gold.choose', resources: ['ore'] }), seededRng(guard)).state;
-          continue;
-        }
+        expect(state.pending).toBeNull();
         if (setup.stage === 'building') {
-          // 偏好有碰空格的海邊的海岸交叉點，讓設置船觸發翻開。
+          // 偏好有碰空格的海邊的海岸交叉點，讓設置船有機會鄰接空格。
           const hints = actionHints(state, actor);
-          const vertex = hints.legalSettlements.find((candidate) => {
-            const touching = topologyOf(state).vertices[candidate]!.edges;
-            return touching.some((edge) => edgesWithFog(state, 1).includes(edge) || edgesWithFog(state, 2).includes(edge));
-          }) ?? hints.legalSettlements[0]!;
+          const vertex = hints.legalSettlements.find((candidate) => topologyOf(state).vertices[candidate]!.edges.some((edge) =>
+            edgesWithFog(state, 1).includes(edge) || edgesWithFog(state, 2).includes(edge))) ?? hints.legalSettlements[0]!;
           state = act(state, actor, { type: 'setup.placeBuilding', vertex }).state;
           continue;
         }
         const sea = (actionHints(state, actor).modules!.seafarers as { setupShips: number[] }).setupShips;
-        const touching = sea.find((edge) => fogHexesAtEdge(state, edge).length > 0);
-        const before = state.log.length;
-        state = touching !== undefined
-          ? act(state, actor, cmd({ type: 'setup.placeShip', edge: touching }), seededRng(guard)).state
-          : act(state, actor, { type: 'setup.placeRoad', edge: actionHints(state, actor).legalRoads[0]! }).state;
-        reveals += state.log.slice(before).filter((event) => event.type === 'fog.revealed').length;
+        const edge = sea.find((candidate) => fogHexesAtEdge(state, candidate).length > 0);
+        if (edge !== undefined) {
+          touching++;
+          state = act(state, actor, cmd({ type: 'setup.placeShip', edge }), seededRng(guard)).state;
+        } else {
+          state = act(state, actor, { type: 'setup.placeRoad', edge: actionHints(state, actor).legalRoads[0]! }).state;
+        }
       }
       expect(state.turn.phase).not.toBe('setup');
-      // 所有起始村落都在已知陸地上。
-      for (const [vertex, building] of state.board.buildings.entries()) {
-        if (building) expect(topologyOf(state).vertices[vertex]!.hexes.some((h) => isLandHex(state, h) && FOG_ISLANDS_SOURCE[players].land.some((l) => hex(state, l.q, l.r) === h))).toBe(true);
+      // 不能空洞通過：真的放過鄰接空格的設置船，卻沒有任何翻開、也沒有待處理的 frame。
+      expect(touching).toBeGreaterThan(0);
+      expect(state.log.some((event) => event.type === 'fog.revealed')).toBe(false);
+      expect(fogOf(state)).toHaveLength(12);
+      expect(state.pending).toBeNull();
+      // 開局後第一次建造鄰接的船：翻開。
+      const actor = state.players[state.turn.seat]!.id;
+      state.turn.phase = 'action';
+      state.windowId += 1;
+      setHand(state, actor, { lumber: 1, wool: 1 });
+      const legal = (actionHints(state, actor).modules!.seafarers as { legalShips: number[] }).legalShips;
+      const edge = legal.find((candidate) => fogHexesAtEdge(state, candidate).length === 1);
+      if (edge !== undefined) {
+        const built = act(state, actor, cmd({ type: 'build.ship', edge }), seededRng(3));
+        expect(built.events.filter((event) => event.type === 'fog.revealed')).toHaveLength(1);
       }
-      expect(reveals).toBeGreaterThan(0);
     }
   });
 
@@ -625,5 +632,106 @@ describe('SFX-S3-P 翻開前後都不洩漏未翻開格的身分', () => {
       const resumed: GameState = JSON.parse(JSON.stringify(direct));
       expect(buildShipAt(resumed, second, seededRng(8)).state).toEqual(buildShipAt(direct, second, seededRng(8)).state);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 築路卡與排隊的 fog frame、指令限定、重播隱私
+// ---------------------------------------------------------------------------
+
+describe('SFX-S3 築路卡兩艘船各鄰兩個空格、共用一格', () => {
+  it('第一個 fog frame 選定後，翻開先於結束；第二個 frame 啟用時已濾掉那格，只剩一格就直接翻開', () => {
+    const state = ready();
+    const topo = topologyOf(state);
+    const twos = edgesWithFog(state, 2);
+    let pair: [number, number] | null = null;
+    for (const a of twos) for (const b of twos) {
+      const ha = fogHexesAtEdge(state, a);
+      const hb = fogHexesAtEdge(state, b);
+      if (a !== b && ha.filter((h) => hb.includes(h)).length === 1 && !topo.edges[a]!.vertices.some((v) => topo.edges[b]!.vertices.includes(v))) pair = [a, b];
+    }
+    expect(pair).not.toBeNull();
+    const [a, b] = pair!;
+    const shared = fogHexesAtEdge(state, a).find((h) => fogHexesAtEdge(state, b).includes(h))!;
+    const lastOfB = fogHexesAtEdge(state, b).find((h) => h !== shared)!;
+    settle(state, 'p1', topo.edges[a]!.vertices[0]);
+    settle(state, 'p1', topo.edges[b]!.vertices[0]);
+    state.players[0]!.devCards = ['roadBuilding'];
+    let next = act(state, 'p1', { type: 'dev.playRoadBuilding' }).state;
+    next = act(next, 'p1', cmd({ type: 'build.ship', edge: a })).state;
+    expect(next.pending).toMatchObject({ kind: 'freeRoads' });
+    next = act(next, 'p1', cmd({ type: 'build.ship', edge: b })).state;
+    // 兩個 frame 都排在築路卡之後；築路卡結束時第一個啟用。
+    expect(next.pending).toMatchObject({ kind: 'seafarers.fog', data: { hexes: fogHexesAtEdge(state, a) } });
+    expect(fogOf(next)).toHaveLength(12);
+    const chosen = act(next, 'p1', cmd({ type: 'fog.choose', hex: shared }), seededRng(2));
+    // 共用的那格被翻開，第二個 frame 只剩 B 的另一格，沒有選擇可做，直接翻開：兩次翻開、無 pending。
+    expect(chosen.events.filter((event) => event.type === 'fog.revealed').map((event) => event.params.hex)).toEqual([shared, lastOfB]);
+    expect(fogOf(chosen.state)).toHaveLength(10);
+    expect(chosen.state.pending === null || chosen.state.pending.kind === 'seafarers.gold').toBe(true);
+  });
+
+  it('選到金礦：金礦 frame 排在這個 frame 之後、下一個 fog frame 之前不被吃掉', () => {
+    const state = ready();
+    const edge = edgesWithFog(state, 2)[0]!;
+    const hexes = fogHexesAtEdge(state, edge);
+    const { state: waiting } = buildShipAt(state, edge);
+    const chosen = act(waiting, 'p1', cmd({ type: 'fog.choose', hex: hexes[0]! }), scriptedRng([2, 0]));
+    expect(chosen.events.map((event) => event.type).filter((type) => type === 'fog.revealed' || type === 'gold.required')).toEqual(['fog.revealed', 'gold.required']);
+    expect(chosen.state.pending).toMatchObject({ kind: 'seafarers.gold', responders: ['p1'] });
+  });
+});
+
+describe('SFX-S3 fog.choose 只在未知海域', () => {
+  it('New Shores 送 fog.choose 維持 E_INVALID_COMMAND（有沒有 pending 都一樣）', () => {
+    const state = emptySeafarersGame(4, 0, 'action');
+    expectRejected(state, 'p1', cmd({ type: 'fog.choose', hex: 0 }), 'E_INVALID_COMMAND');
+    const withPending = ready();
+    // 同一個指令在沒有 fog frame 的未知海域局面是 E_PENDING_EFFECT，不是 E_INVALID_COMMAND。
+    expectRejected(withPending, 'p1', cmd({ type: 'fog.choose', hex: fogOf(withPending)[0]! }), 'E_PENDING_EFFECT');
+  });
+});
+
+describe('SFX-S3-P 逐步重播', () => {
+  it('每一步的公開輸出（projection、事件）在翻開前都不含該格身分，翻開後只多出那一格', () => {
+    let state = fogGame(3, 11).state;
+    const hiddenBefore = new Set(fogOf(state));
+    const publicOf = (s: GameState) => {
+      const projected = view(s, 'p2');
+      return { terrain: projected.board.terrain, numbers: projected.board.numbers, json: JSON.stringify(projected) };
+    };
+    const base = publicOf(state);
+    let revealedHex: number | null = null;
+    // 逐步：設置（全部不翻開）→ 第一次建造鄰接的船（翻開）。
+    let guard = 0;
+    while (state.turn.phase === 'setup' && guard++ < 40) {
+      const setup = state.turn.setup!;
+      const actor = state.players[setup.order[setup.index]!]!.id;
+      const hints = actionHints(state, actor);
+      state = setup.stage === 'building'
+        ? act(state, actor, { type: 'setup.placeBuilding', vertex: hints.legalSettlements[0]! }).state
+        : act(state, actor, { type: 'setup.placeRoad', edge: hints.legalRoads[0]! }).state;
+      const now = publicOf(state);
+      for (const h of hiddenBefore) expect([now.terrain[h], now.numbers[h]]).toEqual([base.terrain[h], base.numbers[h]]);
+      for (const key of LEAK_KEYS) expect(now.json).not.toContain(key);
+      expect(JSON.stringify(state.log)).not.toContain('fog.revealed');
+    }
+    const actor = state.players[state.turn.seat]!.id;
+    state.turn.phase = 'action';
+    state.windowId += 1;
+    const edge = edgesWithFog(state, 1)[0]!;
+    topologyOf(state).edges[edge]!.vertices.forEach((v) => { if (!state.board.buildings[v]) settle(state, actor, v); });
+    setHand(state, actor, { lumber: 1, wool: 1 });
+    const before = publicOf(state);
+    const built = act(state, actor, cmd({ type: 'build.ship', edge }), seededRng(9));
+    revealedHex = fogHexesAtEdge(state, edge)[0]!;
+    const after = publicOf(built.state);
+    for (const h of hiddenBefore) {
+      if (h === revealedHex) continue;
+      expect([after.terrain[h], after.numbers[h]]).toEqual([before.terrain[h], before.numbers[h]]);
+    }
+    expect(after.terrain[revealedHex]).toBe(built.state.board.layout.terrain[revealedHex]);
+    expect(built.events.filter((event) => event.type === 'fog.revealed')).toHaveLength(1);
+    for (const key of LEAK_KEYS) expect(after.json).not.toContain(key);
   });
 });

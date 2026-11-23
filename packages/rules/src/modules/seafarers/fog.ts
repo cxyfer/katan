@@ -7,7 +7,7 @@
  * 指令 `fog.choose`）。翻開時以 `ctx.rng` 從剩餘板塊抽 1：陸地再抽 1 枚圓片，
  * 探索者拿 1 張該格資源（供應堆沒有就拿不到）；金礦由探索者自選一種（沿用
  * `seafarers.gold` frame）；海洋沒有圓片也沒有資源。村落與移動船不觸發
- * （移動船由 profile 的 `fogOnMove` 旗標開關，預設關）。
+ * （移動船由 profile 的 `fogOnMove` 旗標開關，預設關）。設置階段放的路與船也不翻開。
  */
 
 import { playerById, topologyOf } from '../../analysis.ts';
@@ -122,16 +122,22 @@ export function exploreAtEdge(state: GameState, playerId: string, edge: number, 
   ctx.kit.enqueuePending(state, frame);
 }
 
-/** 排在別的 frame 後面時，其間可能已有空格被翻開；只剩已翻開的就直接結束。 */
+/**
+ * 排在別的 frame 後面時（築路卡的兩艘船），其間可能已有空格被翻開：濾掉已翻開的；
+ * 沒有候選就直接結束，只剩一個就沒有選擇可做，直接翻開它。
+ */
 export function activateFog(state: GameState, frame: ModulePending, ctx: ModuleContext): void {
   const data = frame.data as unknown as FogFrameData;
   data.hexes = data.hexes.filter((hex) => isFogHex(state, hex));
-  if (data.hexes.length === 0) ctx.kit.completePending(state, ctx.rng);
+  if (data.hexes.length === 1) revealFog(state, data.hexes[0]!, frame.responders[0]!, ctx);
+  if (data.hexes.length <= 1) ctx.kit.completePending(state, ctx.rng);
 }
 
 /** `fog.choose { hex }` — 放置者從碰到的空格中選一個翻開。 */
 export function chooseFog(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
   const { kit } = ctx;
+  // 只有未知海域有這個指令；其他劇本（New Shores）維持原本的「沒有這個指令」。
+  if (!seafarersView(state).fog) return kit.fail('E_INVALID_COMMAND');
   const frame = state.pending;
   if (!frame || frame.kind !== FOG_FRAME) return kit.fail('E_PENDING_EFFECT', { pending: frame?.kind ?? 'none' });
   const pending = frame as ModulePending;
@@ -141,9 +147,10 @@ export function chooseFog(state: GameState, actorId: string, command: ModuleComm
   if (typeof hex !== 'number' || !Number.isInteger(hex) || !data.hexes.includes(hex) || !isFogHex(state, hex)) {
     return kit.fail('E_ILLEGAL_TARGET', { hex });
   }
-  // 先結束這個 frame，翻開金礦時才能把金礦 frame 排成下一個。
-  kit.completePending(state, ctx.rng);
+  // 先翻開（金礦 frame 排在這個 frame 之後），再結束它：下一個 frame 啟用時已看得到剛翻開的格，
+  // 排在後面的 fog frame 會濾掉它。
   revealFog(state, hex, actorId, ctx);
+  kit.completePending(state, ctx.rng);
   return kit.accept(state);
 }
 

@@ -245,7 +245,8 @@ export function setupShip(state: GameState, actorId: string, command: ModuleComm
   if (!canPlaceShip(state, actorId, edge, { setupVertex: setup.lastVertex })) return kit.fail('E_ILLEGAL_TARGET', { edge });
   state.board.roads[edge] = { player: actorId, ship: true };
   kit.emit(state, 'setup.ship', { playerId: actorId, edge });
-  exploreAtEdge(state, actorId, edge, ctx);
+  // 設置階段放的船不翻開迷霧：探索寫在 Additional rules（遊戲中的建造）；設置中翻開會在
+  // 開局前發資源或產生待處理選擇，與設置流程衝突（work record I8）。
   kit.finishSetupStep(state);
   return kit.accept(state);
 }
