@@ -2,6 +2,7 @@ import { getProfile } from '@katan/rules';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { useT } from '../i18n/context.tsx';
+import { islandWording } from '../i18n/islandWording.ts';
 import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
 import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
@@ -248,7 +249,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           // Seafarers: ships, Longest Trade Route and the per-island bonus.
           const sea = seafarersView(view);
           const ships = view.board.roads.filter((road) => road?.ship && road.player === player.id).length;
-          const fourIslands = getProfile(view.profileId)?.scenario === 'four-islands';
+          const wording = islandWording(getProfile(view.profileId)?.scenario);
           const islandPoints = sea ? islandBonusPoints(view, player.id) : 0;
           const routeAward = t(sea ? 'sf.award.longestTradeRoute' : 'play.award.longestRoad');
           // Explorers & Pirates: gold, ships, harbour settlements and mission points (no development cards or awards).
@@ -315,9 +316,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                 <div className="players__bonuses">
                   {isSelf && <ScoreMark icon="crown" label={t('table.playersHiddenVp')} value={number(hiddenVp)} testId="players-hidden-vp" />}
                   {islandPoints > 0 && <ScoreMark icon="compass" testId={`players-islands-${player.seat}`}
-                    label={`${t(fourIslands ? 'sf.score.islands.fourIslands' : 'sf.score.islands')} · ${t(fourIslands ? 'sf.score.islandsValue.fourIslands' : 'sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })} (${t((sea!.islandBonus[player.id]?.length ?? 0) === 1 ? 'sf.score.islandId' : 'sf.score.islandIds', { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') })})`}
+                    label={`${t(wording ? `sf.score.islands.${wording}` : 'sf.score.islands')} · ${t(wording ? `sf.score.islandsValue.${wording}` : 'sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })} (${t(`sf.score.islandId${(sea!.islandBonus[player.id]?.length ?? 0) === 1 ? '' : 's'}${wording === 'desert' ? '.desert' : ''}`, { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') })})`}
                     value={number(islandPoints)}
-                    detail={fourIslands ? t((sea!.islandBonus[player.id]?.length ?? 0) === 1 ? 'sf.score.islandId' : 'sf.score.islandIds', { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') }) : undefined} />}
+                    detail={wording ? t(`sf.score.islandId${(sea!.islandBonus[player.id]?.length ?? 0) === 1 ? '' : 's'}${wording === 'desert' ? '.desert' : ''}`, { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') }) : undefined} />}
                   {epPlayer && epPlayer.harborPoints > 0 && <ScoreMark icon="anchor" testId={`players-ep-harbors-${player.seat}`}
                     label={t('ep.score.harbors', { points: number(epPlayer.harborPoints) })} value={number(epPlayer.harborPoints)} />}
                   {epPlayer && (['lairs', 'fish', 'spices'] as const).filter((mission) => ep!.missions.includes(mission)).map((mission) => (

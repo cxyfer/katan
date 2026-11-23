@@ -15,8 +15,10 @@ export function HelpPanel({ controller }: { controller: TableController }) {
   const profileId = controller.state.game?.view.profileId ?? '';
   const paired = profileId.includes('paired');
   const ep = epView(controller.state.game?.view);
-  // 四島群島沒有主島也沒有金礦，設置與島嶼獎勵的說明與 New Shores 不同。
-  const fourIslands = getProfile(profileId)?.scenario === 'four-islands';
+  // 四島群島沒有主島也沒有金礦；穿越荒漠有沙漠與未探索區域，設置與島嶼獎勵的說明與 New Shores 不同。
+  const scenario = getProfile(profileId)?.scenario;
+  const fourIslands = scenario === 'four-islands';
+  const desert = scenario === 'through-the-desert';
 
   return (
     <section className="panel" aria-labelledby="help-heading" data-testid="help-panel">
@@ -37,14 +39,16 @@ export function HelpPanel({ controller }: { controller: TableController }) {
       <TbHelp controller={controller} />
       {seafarersView(controller.state.game?.view) && (
         <section data-testid="help-seafarers">
-          <h3>{fourIslands ? t('sf.help.four.title') : t('sf.help.title')}</h3>
+          <h3>{fourIslands ? t('sf.help.four.title') : desert ? t('sf.help.desert.title') : t('sf.help.title')}</h3>
           <ul className="help-rules">
             <li>{t('sf.build.ship')}: {formatResourceMap(locale, SHIP_COST)}</li>
             {fourIslands && <li data-testid="help-four-islands-setup">{t('sf.help.four.setup')}</li>}
+            {desert && <li data-testid="help-desert-setup">{t('sf.help.desert.setup')}</li>}
             {(['setup', 'ships', 'move', 'pirate', 'gold', 'route', 'islands'] as const)
-              .filter((key) => !fourIslands || (key !== 'setup' && key !== 'islands' && key !== 'gold'))
+              .filter((key) => !(fourIslands && (key === 'setup' || key === 'islands' || key === 'gold')) && !(desert && (key === 'setup' || key === 'islands')))
               .map((key) => <li key={key}>{t(`sf.help.${key}`)}</li>)}
             {fourIslands && <li data-testid="help-four-islands-bonus">{t('sf.help.four.islands', { target: controller.state.game?.view.victoryTarget ?? 13 })}</li>}
+            {desert && <li data-testid="help-desert-bonus">{t('sf.help.desert.islands', { target: controller.state.game?.view.victoryTarget ?? 14 })}</li>}
             {paired && <li>{t('sf.help.paired')}</li>}
           </ul>
         </section>
