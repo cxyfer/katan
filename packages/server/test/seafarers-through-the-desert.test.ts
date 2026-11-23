@@ -219,6 +219,10 @@ describe('Through the Desert over the API', () => {
       const after = await snapshot(actor, gameId);
       // 重連後仍有該選擇提示，且行動者要選 1 張。
       expect((after.view as unknown as { pending: { kind: string } | null }).pending).toMatchObject({ kind: 'seafarers.gold' });
+      // 投影給該玩家的選擇提示：還要選 1 張，公開的 picks 也是 1。
+      const hints = (after.view as unknown as { hints?: { modules?: { seafarers?: { goldRequired: number } } } }).hints;
+      expect(hints?.modules?.seafarers?.goldRequired).toBe(1);
+      expect((after.view as unknown as { pending: { data: { picks: Record<string, number> } } }).pending.data.picks[actorId]).toBe(1);
       expect(after.revision).toBe(before.revision);
       const receipt = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, {
         commandId: 'td-gold-choose', expectedRevision: after.revision, command: { type: 'gold.choose', resources: ['ore'] },

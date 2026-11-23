@@ -142,11 +142,26 @@ describe('Through the Desert wording (unexplored region)', () => {
     const view = projectGame(state, 'p2', { hints: actionHints(state, 'p2') });
     const controller = { state: { ...initialTableState(locale, 'Alex'), game: makeSnapshot(view) }, dispatch: vi.fn(), actions: {} } as unknown as TableController;
     render(<LocaleProvider locale={locale}><PlayersPanel controller={controller} /></LocaleProvider>);
-    return screen.getByTestId('players-islands-0').getAttribute('aria-label')!;
+    const mark = screen.getByTestId('players-islands-0');
+    // 區域編號也以可見文字呈現（觸控裝置沒有 title／aria-label）。
+    expect(mark.textContent).toContain(locale === 'en' ? 'regions 2, 5' : '區域 2, 5');
+    return mark.getAttribute('aria-label')!;
   }
 
   it('the player panel lists the counted regions in both locales', () => {
-    expect(panelFor(PROFILE, 'en')).toBe('Unexplored region bonus · 2 new unexplored region(s), +4 (region 2, 5): 4');
+    expect(panelFor(PROFILE, 'en')).toBe('Unexplored region bonus · 2 new unexplored region(s), +4 (regions 2, 5): 4');
     expect(panelFor(PROFILE, 'zh-Hant')).toBe('未探索區域獎勵 · 2 處新的未探索區域，+4 (區域 2, 5): 4');
+  });
+
+  it('uses the singular for one region', () => {
+    cleanup();
+    const state = createGame({ profileId: PROFILE, players: ['p1', 'p2', 'p3'].map((id, seat) => ({ id, nickname: id, color: COLORS[seat]! })), setupMode: 'fixed', rng: seededRng(4) });
+    state.moduleState = { seafarers: { window: state.windowId, built: [], moved: false, islands: { p1: [2], p2: [], p3: [] }, claims: [] } };
+    state.players[0]!.bonusPoints = 2;
+    const view = projectGame(state, 'p2', { hints: actionHints(state, 'p2') });
+    const controller = { state: { ...initialTableState('en', 'Alex'), game: makeSnapshot(view) }, dispatch: vi.fn(), actions: {} } as unknown as TableController;
+    render(<LocaleProvider locale="en"><PlayersPanel controller={controller} /></LocaleProvider>);
+    expect(screen.getByTestId('players-islands-0').textContent).toContain('region 2');
+    expect(screen.getByTestId('players-islands-0').textContent).not.toContain('regions');
   });
 });
