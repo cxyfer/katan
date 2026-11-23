@@ -169,7 +169,16 @@ describe('The Fog Islands over the API', () => {
         commandId: 'fog-choose', expectedRevision: after.revision, command: { type: 'fog.choose', hex: candidates[1] },
       }));
       expect(chosen, JSON.stringify(chosen)).toMatchObject({ outcome: 'accepted' });
-      const revealed = await snapshot(resumed(host), gameId);
+      let revealed = await snapshot(resumed(host), gameId);
+      // 翻到金礦（隨機）時，探索者要先自選一種資源。
+      if (revealed.view.pending?.kind === 'seafarers.gold') {
+        const picked = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, {
+          commandId: 'fog-gold', expectedRevision: revealed.revision, command: { type: 'gold.choose', resources: ['ore'] },
+        }));
+        expect(picked).toMatchObject({ outcome: 'accepted' });
+        revealed = await snapshot(resumed(host), gameId);
+      }
+      expect(revealed.view.pending ?? null).toBeNull();
       expect(revealed.view.modules!.seafarers!.fog).toHaveLength(11);
       expect(revealed.view.modules!.seafarers!.fog).not.toContain(candidates[1]);
       expect(revealed.view.modules!.seafarers!.fog).toContain(candidates[0]);
