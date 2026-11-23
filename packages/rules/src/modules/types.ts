@@ -56,6 +56,8 @@ export interface RulesKit {
   /** Ends the game when the current actor has reached the target. */
   checkVictory(state: GameState): void;
   enqueuePending(state: GameState, ...frames: PendingFrame[]): void;
+  /** Queues frames right behind the active one, ahead of the frames already waiting. */
+  insertPendingNext(state: GameState, ...frames: PendingFrame[]): void;
   /**
    * Finishes the active frame and runs any continuation that becomes active.
    * Pass `ctx.rng` when a continuation may draw.

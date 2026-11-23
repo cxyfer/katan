@@ -58,11 +58,13 @@ export function afterProduction(state: GameState, roll: RollResult, ctx: ModuleC
 }
 
 /** 排入金礦作答 frame（擲骰產出，或未知海域探索到金礦）；沒有人要作答就什麼都不做。 */
-export function enqueueGold(state: GameState, picks: Record<string, number>, responders: string[], ctx: ModuleContext): void {
+export function enqueueGold(state: GameState, picks: Record<string, number>, responders: string[], ctx: ModuleContext, next = false): void {
   if (responders.length === 0) return;
   const frame: ModulePending = { kind: GOLD_FRAME, module: 'seafarers', responders, data: { picks } };
   ctx.kit.emit(state, 'gold.required', { picks });
-  ctx.kit.enqueuePending(state, frame);
+  // `next`：探索金礦的選擇緊接在目前的 frame 之後，不排到已排隊的 frame 後面。
+  if (next) ctx.kit.insertPendingNext(state, frame);
+  else ctx.kit.enqueuePending(state, frame);
   if (state.pending === frame) skipEmptySupply(state, frame, ctx);
 }
 

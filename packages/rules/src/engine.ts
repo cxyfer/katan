@@ -42,7 +42,7 @@ import type {
   RulesKit,
   RulesModule,
 } from './modules/types.ts';
-import { advancePending, clearPending, enqueuePending, normalizePending, pendingQueueOf } from './pending.ts';
+import { advancePending, clearPending, enqueuePending, insertPendingNext, normalizePending, pendingQueueOf } from './pending.ts';
 import { requireProfile, type ProfileDefinition, type SetupMode } from './profiles.ts';
 import { shuffle, type Rng } from './rng.ts';
 import {
@@ -311,6 +311,7 @@ const KIT: RulesKit = {
   afterBoardChange,
   checkVictory,
   enqueuePending,
+  insertPendingNext,
   completePending: (state, rng) => completePending(state, rng ?? null),
   resolveRollOutcome: (state, roll, rng) => resolveRollOutcome(state, roll, rng ?? null),
   finishSetupStep,

@@ -104,7 +104,7 @@ export function revealFog(state: GameState, hex: number, playerId: string, ctx: 
   }
   ctx.kit.emit(state, 'fog.revealed', params);
   // 金礦：探索者自選一種；供應堆空了由 frame 跳過。
-  if (tile === 'gold') enqueueGold(state, { [playerId]: 1 }, [playerId], ctx);
+  if (tile === 'gold') enqueueGold(state, { [playerId]: 1 }, [playerId], ctx, true);
 }
 
 /**
@@ -136,8 +136,11 @@ export function activateFog(state: GameState, frame: ModulePending, ctx: ModuleC
 /** `fog.choose { hex }` — 放置者從碰到的空格中選一個翻開。 */
 export function chooseFog(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
   const { kit } = ctx;
-  // 只有未知海域有這個指令；其他劇本（New Shores）維持原本的「沒有這個指令」。
-  if (!seafarersView(state).fog) return kit.fail('E_INVALID_COMMAND');
+  // 只有未知海域有這個指令；其他劇本（New Shores）要與送出一個未知指令時一致：
+  // 有 pending frame 時被閘門擋下（E_PENDING_EFFECT），沒有時是 E_INVALID_COMMAND。
+  if (!seafarersView(state).fog) {
+    return state.pending ? kit.fail('E_PENDING_EFFECT', { pending: state.pending.kind }) : kit.fail('E_INVALID_COMMAND');
+  }
   const frame = state.pending;
   if (!frame || frame.kind !== FOG_FRAME) return kit.fail('E_PENDING_EFFECT', { pending: frame?.kind ?? 'none' });
   const pending = frame as ModulePending;

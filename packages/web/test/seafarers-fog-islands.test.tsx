@@ -138,6 +138,7 @@ describe('Fog Islands help and event wording', () => {
     expect(help.textContent).toContain('The Fog Islands');
     expect(help.textContent).toContain('unexplored');
     expect(help.textContent).toContain('Moving a ship never explores');
+    expect(help.textContent).toContain('Nothing is explored during setup');
     expect(help.textContent).toContain('12 points');
     expect(help.textContent).toContain('no island bonus');
     expect(help.textContent).not.toContain('Start on the main island');
@@ -149,6 +150,7 @@ describe('Fog Islands help and event wording', () => {
     const help = helpFor(PROFILE, 'zh-Hant');
     expect(help.textContent).toContain('未知海域特殊規則');
     expect(help.textContent).toContain('移動船不會探索');
+    expect(help.textContent).toContain('設置階段不探索');
     expect(help.textContent).toContain('12 分');
     expect(help.textContent).not.toContain('從主島開始');
     cleanup();
