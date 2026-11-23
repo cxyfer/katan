@@ -1,3 +1,4 @@
+import { getProfile } from '@katan/rules';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { useT } from '../i18n/context.tsx';
@@ -244,6 +245,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           // Seafarers: ships, Longest Trade Route and the per-island bonus.
           const sea = seafarersView(view);
           const ships = view.board.roads.filter((road) => road?.ship && road.player === player.id).length;
+          const fourIslands = getProfile(view.profileId)?.scenario === 'four-islands';
           const islandPoints = sea ? islandBonusPoints(view, player.id) : 0;
           const routeAward = t(sea ? 'sf.award.longestTradeRoute' : 'play.award.longestRoad');
           // Explorers & Pirates: gold, ships, harbour settlements and mission points (no development cards or awards).
@@ -310,7 +312,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                 <div className="players__bonuses">
                   {isSelf && <ScoreMark icon="crown" label={t('table.playersHiddenVp')} value={number(hiddenVp)} testId="players-hidden-vp" />}
                   {islandPoints > 0 && <ScoreMark icon="compass" testId={`players-islands-${player.seat}`}
-                    label={`${t('sf.score.islands')} · ${t('sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })}`}
+                    label={`${t(fourIslands ? 'sf.score.islands.fourIslands' : 'sf.score.islands')} · ${t(fourIslands ? 'sf.score.islandsValue.fourIslands' : 'sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })} (${t('sf.score.islandIds', { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') })})`}
                     value={number(islandPoints)} />}
                   {epPlayer && epPlayer.harborPoints > 0 && <ScoreMark icon="anchor" testId={`players-ep-harbors-${player.seat}`}
                     label={t('ep.score.harbors', { points: number(epPlayer.harborPoints) })} value={number(epPlayer.harborPoints)} />}

@@ -11,7 +11,7 @@ before its fixtures pass.
 |---|---|---|
 | B25 | CATAN – The Game, CN3081, 2025 | board inventory, setup, production, 7-handling, trade, cards, awards, victory |
 | B56-25 | CATAN – 5–6, CN3082, 2025 | 30-hex paired board, expanded supply/development deck, paired-player roles |
-| SF25 | CATAN – Seafarers, CN3083, 2025 (`v6.250401`), sha256 `a499abe2…b04b099` | ships, ship moves, pirate, gold, Longest Trade Route, Road Building/Knight changes (pp. 2–3); Heading for New Shores 3/4-player maps, tables, island bonus, 14 VP (pp. 4–5) |
+| SF25 | CATAN – Seafarers, CN3083, 2025 (`v6.250401`), sha256 `a499abe2…b04b099` | ships, ship moves, pirate, gold, Longest Trade Route, Road Building/Knight changes (pp. 2–3); Heading for New Shores 3/4-player maps, tables, island bonus, 14 VP (pp. 4–5); The Four Islands 3/4-player maps, tables, home-island bonus, 13 VP (pp. 6–7) |
 | SF56-25 | CATAN – Seafarers 5–6, CN3084, 2025 (`v6.250401`), sha256 `746ac86e…bb0fe` | paired turns and Player 2 ship move (pp. 2–3); 5–6 New Shores layout, tables and setup (p. 4); extra 2:1 wool port (p. 1) |
 | SF-FAQ | catan.com/faq/seafarers, accessed 2026-11-01, sha256 `91d8ad89…60d75` | clarifications compatible with SF25 (frame inner edge, Road Building order, pirate/coastal theft, moving keeps Longest Trade Route) |
 | EP25 | CATAN – Explorers & Pirates, CN3085, 2025 rulebook (`v6.251001`), sha256 `3b337981…bc308dba` | turn phases, coins, harbour settlements, ships, cargo, movement, exploring, pirate ships, tribute, chase, lairs, fish, spices, victory (pp. 2–15) |
@@ -33,6 +33,7 @@ publisher's rulebooks. No official artwork or card text is copied.
 | `base-paired-2025` | 5, 6 | 10 | **enabled** (setup modes `fixed`, `variable` and `official`; see the official 5–6 board note under Known gaps) |
 | `sf-new-shores-2025` | 3, 4 | 14 | **enabled** (printed SF25 maps, fixed setup; easy and standard bot seats) |
 | `sf-new-shores-paired-2025` | 5, 6 | 14 | **enabled** (SF56-25 map: fixed small islands, variable main island and ports; easy and standard bot seats) |
+| `sf-four-islands-2025` | 3, 4 | 13 | **enabled** (SF25 pp. 6–7 printed maps, fixed setup, `sf-2025.3`; no bot seats) |
 | `ep-land-ho-2025` | 3, 4 | 8 | **enabled** (EP25-M Land Ho! printed start) |
 | `ep-pirate-lairs-2025` | 3, 4 | 12 | **enabled** (EP25-M Pirate Lairs printed start) |
 | `ep-fish-2025` | 3, 4 | 15 | **enabled** (EP25-M Fish for Catan map, variable setup) |

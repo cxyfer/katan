@@ -1,11 +1,15 @@
 /** The Four Islands（S2）的前端：兩張沒有主島的圖在 SVG 與幾何層正確呈現，說明面板有特殊規則。 */
 
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { actionHints, createGame, getTopology, projectGame, seededRng, type GameView } from '@katan/rules';
+import { vi } from 'vitest';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { coastLoops } from '../src/board/coastline.ts';
 import { seafarersView } from '../src/board/seafarers.ts';
+import { PlayersPanel } from '../src/components/PlayersPanel.tsx';
+import { translateEvent } from '../src/i18n/events.ts';
+import { makeEvent } from '../src/test/fixtures.ts';
 import { HelpPanel } from '../src/components/HelpPanel.tsx';
 import { SvgBoard } from '../src/components/SvgBoard.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
@@ -44,11 +48,14 @@ describe.each([[3, 'sf-four-islands-3', 20], [4, 'sf-four-islands-4', 23]] as co
     expect(container.querySelector('[data-testid="pirate-frame"]')).not.toBeNull();
   });
 
-  it('the shoreline is one loop around the 35-hex frame (3D coast input)', () => {
-    const topology = getTopology(topologyId);
-    const loops = coastLoops(topology);
-    expect(loops).toHaveLength(1);
-    expect(loops[0]!.points).toHaveLength(42);
+  it('the coastline (as SVG and 3D call it, with the land mask) is one loop per island', () => {
+    const view = fourIslandsView(count);
+    const geometry = buildGeometry(view.board.topologyId, 100, view.board.terrain);
+    const loops = coastLoops(geometry.topology, geometry.land);
+    expect(loops).toHaveLength(4);
+    // 每環至少繞一座島的外緣（最小的島 4 格 = 14 條海岸邊），總邊數不超過全部陸地的外緣。
+    for (const loop of loops) expect(loop.points.length).toBeGreaterThanOrEqual(10);
+    expect(loops.reduce((sum, loop) => sum + loop.points.length, 0)).toBeLessThanOrEqual(landHexes * 6);
   });
 });
 
@@ -82,11 +89,13 @@ describe('Four Islands view and help', () => {
     expect(english.textContent).toContain('13 points');
     expect(english.textContent).not.toContain('Start on the main island');
     expect(english.textContent).not.toContain('small island');
+    expect(english.textContent).not.toMatch(/gold/i);
   });
 
   it('keeps the New Shores help (main island, 14 points) for New Shores', () => {
     const shores = helpFor('sf-new-shores-2025', 'en');
     expect(shores.textContent).toContain('Start on the main island');
+    expect(shores.textContent).toMatch(/gold/i);
     expect(shores.querySelector('[data-testid="help-four-islands-setup"]')).toBeNull();
   });
 
@@ -96,5 +105,42 @@ describe('Four Islands view and help', () => {
     expect(chinese.textContent).toContain('出發島');
     expect(chinese.textContent).toContain('13 分');
     expect(chinese.textContent).not.toContain('從主島開始');
+  });
+});
+
+describe('Four Islands wording (no "small island")', () => {
+  const names = (id: string) => id.toUpperCase();
+  const bonus = makeEvent(5, 'island.bonus', { playerId: 'p1', island: 3, vertex: 2, points: 2 });
+
+  it('island bonus events say a new island in four islands and keep the small island text elsewhere', () => {
+    expect(translateEvent('en', bonus, names, { scenario: 'four-islands' }).text).toBe('P1 settled a new island: +2 victory points.');
+    expect(translateEvent('zh-Hant', bonus, names, { scenario: 'four-islands' }).text).toBe('P1 登上一座新島嶼：額外 +2 勝利分。');
+    expect(translateEvent('en', bonus, names, { scenario: 'new-shores' }).text).toContain('small island');
+    expect(translateEvent('zh-Hant', bonus, names).text).toContain('小島');
+  });
+
+  function panelFor(profileId: string, locale: 'en' | 'zh-Hant') {
+    cleanup();
+    const state = createGame({
+      profileId,
+      players: ['p1', 'p2', 'p3'].map((id, seat) => ({ id, nickname: id, color: COLORS[seat]! })),
+      setupMode: 'fixed',
+      rng: seededRng(4),
+    });
+    state.moduleState = { seafarers: { window: state.windowId, built: [], moved: false, islands: { p1: [3, 5], p2: [], p3: [] }, claims: [] } };
+    state.players[0]!.bonusPoints = 4;
+    const view = projectGame(state, 'p2', { hints: actionHints(state, 'p2') });
+    const controller = { state: { ...initialTableState(locale, 'Alex'), game: makeSnapshot(view) }, dispatch: vi.fn(), actions: {} } as unknown as TableController;
+    render(<LocaleProvider locale={locale}><PlayersPanel controller={controller} /></LocaleProvider>);
+    return screen.getByTestId('players-islands-0').getAttribute('aria-label')!;
+  }
+
+  it('the player panel lists the counted islands, in both locales, with no "small" in four islands', () => {
+    expect(panelFor('sf-four-islands-2025', 'en')).toBe('Island bonus · 2 new island(s), +4 (island 3, 5): 4');
+    expect(panelFor('sf-four-islands-2025', 'zh-Hant')).toBe('島嶼獎勵 · 2 座新島嶼，+4 (島 3, 5): 4');
+  });
+
+  it('New Shores keeps its wording and also lists the islands', () => {
+    expect(panelFor('sf-new-shores-2025', 'en')).toBe('Island bonus · 2 small island(s), +4 (island 3, 5): 4');
   });
 });

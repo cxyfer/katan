@@ -15,7 +15,7 @@ export function HelpPanel({ controller }: { controller: TableController }) {
   const profileId = controller.state.game?.view.profileId ?? '';
   const paired = profileId.includes('paired');
   const ep = epView(controller.state.game?.view);
-  // 四島群島沒有主島，設置與島嶼獎勵的說明與 New Shores 不同。
+  // 四島群島沒有主島也沒有金礦，設置與島嶼獎勵的說明與 New Shores 不同。
   const fourIslands = getProfile(profileId)?.scenario === 'four-islands';
 
   return (
@@ -42,7 +42,7 @@ export function HelpPanel({ controller }: { controller: TableController }) {
             <li>{t('sf.build.ship')}: {formatResourceMap(locale, SHIP_COST)}</li>
             {fourIslands && <li data-testid="help-four-islands-setup">{t('sf.help.four.setup')}</li>}
             {(['setup', 'ships', 'move', 'pirate', 'gold', 'route', 'islands'] as const)
-              .filter((key) => !fourIslands || (key !== 'setup' && key !== 'islands'))
+              .filter((key) => !fourIslands || (key !== 'setup' && key !== 'islands' && key !== 'gold'))
               .map((key) => <li key={key}>{t(`sf.help.${key}`)}</li>)}
             {fourIslands && <li data-testid="help-four-islands-bonus">{t('sf.help.four.islands', { target: controller.state.game?.view.victoryTarget ?? 13 })}</li>}
             {paired && <li>{t('sf.help.paired')}</li>}

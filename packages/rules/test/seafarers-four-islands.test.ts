@@ -14,6 +14,7 @@ import { FOUR_ISLANDS_SOURCE } from '../src/seafarers-scenario-boards.ts';
 import { getTopology } from '../src/topology-registry.ts';
 import type { GameState } from '../src/types.ts';
 import { act, setHand } from './helpers.ts';
+import { simulateSeafarers } from './seafarers-sim.ts';
 import { emptySeafarersGame, hex, seafarersGame, settle } from './seafarers-helpers.ts';
 
 const PROFILE = 'sf-four-islands-2025';
@@ -237,6 +238,32 @@ describe('SFX-S2 設置、home 與島嶼獎勵', () => {
     expect(scoreOf(short, 'p1', { includeHidden: true })).toBe(12);
     expect(short.result).toBeNull();
   });
+});
+
+describe('SFX-S2 VP 標記供應（SF25 pp. 6–7：3 人 18、4 人 24）', () => {
+  it('每位玩家最多 3 座非 home 島 × 2 分 = 6，全桌剛好不超過供應', () => {
+    const supply = { 3: 18, 4: 24 } as const;
+    for (const players of [3, 4] as const) {
+      const { state } = four(players);
+      const islands = new Set(state.board.layout.islands.filter((island) => island > 0));
+      expect(islands.size).toBe(4);
+      const points = getProfile(PROFILE)!.islandBonus!.points;
+      // 引擎沒有標記供應上限；每人每座島只記一次，且至少有一座 home，上限即 (島數 - 1) × 分數。
+      const perPlayer = (islands.size - 1) * points;
+      expect(perPlayer).toBe(6);
+      expect(perPlayer * players).toBe(supply[players]);
+    }
+  });
+
+  it('模擬整局後每位玩家的島嶼獎勵不超過 6，全桌不超過供應', () => {
+    for (const [players, supply] of [[3, 18], [4, 24]] as const) {
+      const run = simulateSeafarers(players, 40 + players, 30000, PROFILE);
+      const claims = Object.values((run.state.moduleState as unknown as { seafarers: { islands: Record<string, number[]> } }).seafarers.islands);
+      expect(claims.every((list) => list.length <= 3)).toBe(true);
+      const bonus = run.state.players.reduce((sum, player) => sum + player.bonusPoints, 0);
+      expect(bonus).toBeLessThanOrEqual(supply);
+    }
+  }, 120_000);
 });
 
 describe('SFX-S2 空盤工具', () => {

@@ -5,7 +5,7 @@
 
 import { rmSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { GameState } from '@katan/rules';
+import { getTopology, type GameState } from '@katan/rules';
 import {
   createClient,
   restartService,
@@ -41,6 +41,7 @@ interface FiSnapshot {
 
 interface Receipt {
   outcome: 'accepted' | 'rejected';
+  error?: unknown;
   revision: number;
 }
 
@@ -100,7 +101,7 @@ describe('The Four Islands over the API', () => {
     }
   });
 
-  it('records home islands, survives a mid-game restart and plays to a 13-point win', async () => {
+  it('records home islands, survives a mid-game restart and wins on 13 points by settling a new island', async () => {
     const local = await startHarness();
     let restarted: Awaited<ReturnType<typeof restartService>> | undefined;
     try {
@@ -125,21 +126,43 @@ describe('The Four Islands over the API', () => {
       expect(after.view.modules!.seafarers!.home).toEqual(home);
       expect((await restarted.repo.findGame(gameId))!.state_json).toBe(saved);
 
-      // 重啟後可繼續：下一個座位已有 13 分，目前行動者結束回合即在其回合開始勝利（R-B07）。
+      // 重啟後可繼續（test-only 準備盤面）：目前行動者在行動階段，手上有蓋村落的牌，
+      // 在一座**非 home 島**上有一條自己的路接到空交叉點；其他分數先記到 8 分
+      // （2 個起始村落 + 8 = 10），村落 +1 = 11 還不夠 13，要靠島嶼獎勵 +2 才到 13。
       const row = (await restarted.repo.findGame(gameId))!;
       const state = JSON.parse(row.state_json) as GameState;
-      const winnerSeat = (state.turn.seat + 1) % state.players.length;
-      state.players[winnerSeat]!.bonusPoints = 11; // 2 個起始村落 + 11 = 13
+      const actorId = state.players[state.turn.seat]!.id;
+      const homeIslands = (state.moduleState as unknown as { seafarers: { home: Record<string, number[]> } }).seafarers.home[actorId]!;
+      const { terrain, islands } = state.board.layout;
+      const topology = getTopology(state.board.layout.topologyId);
+      const islandOf = (vertex: number): number[] => [...new Set(topology.vertices[vertex]!.hexes
+        .filter((hex) => terrain[hex] !== 'sea').map((hex) => islands[hex]!))];
+      const near = (vertex: number): number[] => topology.vertices[vertex]!.edges
+        .flatMap((edge) => topology.edges[edge]!.vertices).filter((other) => other !== vertex);
+      const target = topology.vertices.findIndex((info, vertex) => !info.interior && !state.board.buildings[vertex]
+        && islandOf(vertex).length === 1 && !homeIslands.includes(islandOf(vertex)[0]!)
+        && near(vertex).every((other) => !state.board.buildings[other]));
+      expect(target).toBeGreaterThanOrEqual(0);
+      const edge = topology.vertices[target]!.edges.find((candidate) =>
+        topology.edges[candidate]!.hexes.some((hex) => terrain[hex] !== 'sea'))!;
+      expect(edge).toBeDefined();
+      state.board.roads[edge] = { player: actorId, ship: false };
+      const me = state.players[state.turn.seat]!;
+      me.resources = { lumber: 1, brick: 1, wool: 1, grain: 1, ore: 0 };
+      me.bonusPoints = 8;
       state.turn.phase = 'action';
+      state.turn.dice = [3, 4];
       await restarted.repo.saveGame(gameId, state, row.revision, 'playing', null);
       const current = await snapshot(resumed(host), gameId);
-      const actor = resumed(clients.find((client) => client.playerId === current.view.turn.playerId)!);
+      const actor = resumed(clients.find((client) => client.playerId === actorId)!);
       const receipt = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, {
-        commandId: 'fi-end', expectedRevision: current.revision, command: { type: 'turn.end' },
+        commandId: 'fi-settle-new-island', expectedRevision: current.revision, command: { type: 'build.settlement', vertex: target },
       }));
-      expect(receipt.outcome).toBe('accepted');
+      expect(receipt, JSON.stringify(receipt)).toMatchObject({ outcome: 'accepted' });
       const final = await snapshot(resumed(host), gameId);
-      expect(final.view.result).toMatchObject({ playerId: state.players[winnerSeat]!.id, reason: 'victory' });
+      // 村落 +1 = 11，島嶼獎勵 +2 = 13：勝者是這位行動者。
+      expect(final.view.modules!.seafarers!.islandBonus[actorId]).toEqual(islandOf(target));
+      expect(final.view.result).toMatchObject({ playerId: actorId, reason: 'victory' });
       const room = resumed(host).expectOk<{ status: string }>(await resumed(host).get(`/api/rooms/${roomId}`));
       expect(room.status).toBe('completed');
     } finally {
