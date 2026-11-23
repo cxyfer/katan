@@ -146,7 +146,7 @@ describe('Through the Desert wording (unexplored region)', () => {
   }
 
   it('the player panel lists the counted regions in both locales', () => {
-    expect(panelFor(PROFILE, 'en')).toBe('Unexplored region bonus · 2 new unexplored region(s), +4 (island 2, 5): 4');
-    expect(panelFor(PROFILE, 'zh-Hant')).toBe('未探索區域獎勵 · 2 處新的未探索區域，+4 (島 2, 5): 4');
+    expect(panelFor(PROFILE, 'en')).toBe('Unexplored region bonus · 2 new unexplored region(s), +4 (region 2, 5): 4');
+    expect(panelFor(PROFILE, 'zh-Hant')).toBe('未探索區域獎勵 · 2 處新的未探索區域，+4 (區域 2, 5): 4');
   });
 });

@@ -86,7 +86,7 @@ const FI4_PORTS: readonly PortSpec[] = [
 // 島編號：1 = 主島（含三塊沙漠 (1,-3)、(0,-2)、(-1,-1)，沙漠歸主島）；2 = 被沙漠隔出的
 // 陸地帶（綠框 (0,-3)、(-1,-2)、(-2,-1)）；3、4、5 = 東北、東、東南小島（深藍框）。
 // 島 2–5 是四處 unexplored region。強盜起始在沙漠 (0,-2)；海盜棋子兩圖都在上方框上。
-// 兩份獨立轉錄的格、港口逐項一致，見 docs/aegis/work/2026-11-22-seafarers-through-the-desert.md。
+// 兩份獨立轉錄的格、港口逐項一致，見 docs/aegis/work/2026-11-23-seafarers-through-the-desert.md。
 
 /** 3 人（p. 10）：35 格外框（`NS3_CELLS`），25 格陸地。 */
 const TD3_LAND: readonly LandHex[] = [
