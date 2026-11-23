@@ -18,10 +18,11 @@ through the real UI and API (no mocked snapshots):
 4. A live finish for player 1 through the UI: while the service is stopped, a
    test-only fixture gives player 1 the turn, two sets of building cards,
    6 other bonus points and a road to two empty corners (``desert_fixture.mjs
-   plan``): one between the desert and the green-framed land strip, one on a
-   small island. Through the UI player 1 settles the desert/strip corner
-   (+2 and it counts for island 2 only: token in SVG and 3D, region list in
-   the player panel), then the small island (+2 again), which reaches 14 VP
+   plan``): one between the desert and the land strip, one on a
+   small island. Through the UI player 1 settles the desert/strip corner in
+   the 3D renderer (+2 and it counts for island 2 only; the board root carries
+   ``data-island-claims`` for the 3D token, SVG token and player panel are
+   checked after), then the small island in SVG (+2 again), which reaches 14 VP
    and shows the result screen. The run FAILS if a token or the result screen
    is missing.
 
@@ -108,7 +109,9 @@ def setup_over_api(contexts, identity, game_id):
         response = by_id[actor].request.post(f'{base.BASE}{path}/commands', data={
             'commandId': f'td-{step}-{len(REPORT["cases"])}-{command["type"]}-{turn["setup"]["stage"]}-{view["seq"]}',
             'expectedRevision': mine['revision'], 'command': command})
-        assert response.json()['ok'], response.json()
+        body = response.json()
+        # 不只看 HTTP ok：回執必須是 accepted，被拒就失敗，不重送同一個命令 ID。
+        assert body['ok'] and body['data']['outcome'] == 'accepted', (command, body)
 
 
 def finish_live(contexts, pages, identity, game_id):
@@ -136,23 +139,27 @@ def finish_live(contexts, pages, identity, game_id):
     for other in pages:
         other.reload()
 
-    def settle(target):
-        open_game(page, game_id, 'svg')
+    def settle(target, renderer='svg'):
+        open_game(page, game_id, renderer)
         open_actions(page)
         page.get_by_test_id('action-build.settlement').click()
         ui_click_target(page, 'vertex', target['vertex'])
         ui_confirm(page)
 
-    settle(first)
+    # 沙漠與陸地帶交界這一次在 3D 渲染器上透過 UI 點選完成（目標疊層與 SVG 共用）。
+    settle(first, 'r3f')
+    expect(page.get_by_test_id('board')).to_have_attribute('data-effective-renderer', 'r3f')
     view = snap(contexts[0], f'/api/games/{game_id}')['view']
     # 碰到主島（沙漠）與島 2：只算島 2。
     assert view['modules']['seafarers']['islandBonus'][p1] == [2], view['modules']['seafarers']
     assert view['result'] is None
+    # 3D 端的獎勵標記：場景以同一份 islandClaims 繪出，板面根節點帶出標記所在的交叉點。
+    expect(page.get_by_test_id('board')).to_have_attribute('data-island-claims', str(first['vertex']))
+    shot(page, 'live-strip-bonus-3d', 'settlement between the desert and the land strip placed in the 3D board: +2 for region 2 only', ms=2500)
+    open_game(page, game_id, 'svg')
     expect(page.get_by_test_id(f"island-bonus-{first['vertex']}")).to_be_attached()
     expect(page.get_by_test_id('players-islands-0')).to_be_attached()
-    shot(page, 'live-strip-bonus-svg', 'settlement between the desert and the land strip: +2 for region 2 only (token and player panel)')
-    open_game(page, game_id, 'r3f')
-    shot(page, 'live-strip-bonus-3d', 'the same bonus in the 3D board', ms=2500)
+    shot(page, 'live-strip-bonus-svg', 'the same bonus in the SVG board (token and player panel)')
 
     settle(second)
     view = snap(contexts[0], f'/api/games/{game_id}')['view']
