@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import type { FogKind } from '../board/explorersPirates.ts';
 import { createPortal } from 'react-dom';
 import type { PublicBoardView } from '@katan/rules';
 import type { BoardGeometry } from '../board/geometry.ts';
@@ -17,7 +18,7 @@ interface Props {
   nameOf: (id: string) => string;
   fallbackFocusRef: RefObject<HTMLElement | null>;
   /** Explorers & Pirates fog (hex → region), if any. */
-  fog?: ReadonlyMap<number, 'parrot' | 'goose'>;
+  fog?: ReadonlyMap<number, FogKind>;
 }
 
 export const INSPECTION_DELAY_MS = 1000;

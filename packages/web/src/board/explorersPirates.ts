@@ -34,8 +34,13 @@ export function isEpShipCommand(commandType: string | null | undefined): boolean
   return !!commandType && SHIP_COMMANDS.has(commandType);
 }
 
+/**
+ * 迷霧格的種類：E&P 的兩個區域，或 Seafarers 未知海域的「open」（沒有區域，只是還沒翻開）。
+ */
+export type FogKind = 'parrot' | 'goose' | 'open';
+
 /** Unexplored hexes by index → region. */
-export function fogRegions(view: EpView | null): Map<number, 'parrot' | 'goose'> {
+export function fogRegions(view: EpView | null): Map<number, FogKind> {
   return new Map((view?.fog ?? []).map((entry) => [entry.hex, entry.region]));
 }
 

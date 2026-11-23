@@ -12,7 +12,7 @@ import { TerrainEmblem } from './TerrainArt.tsx';
 import { TbBridge, TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
 import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
 import { isShipCommand, seafarersView } from '../board/seafarers.ts';
-import { SvgExplorersPiratesLayer } from './SvgExplorersPirates.tsx';
+import { FogCloud, SvgExplorersPiratesLayer } from './SvgExplorersPirates.tsx';
 import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
 import { MerchantPiece } from './SvgProgressArt.tsx';
 import { KnightPiece, SvgCitiesKnightsPieces, SvgCitiesKnightsWalls, ToppledCity, WallRing } from './SvgCitiesKnights.tsx';
@@ -122,6 +122,12 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
           <StaticTiles geometry={geometry} terrain={board.terrain} numbers={board.numbers} ids={ids} />
           <TbSvgUnder geometry={geometry} view={view} />
+          {/* 未知海域的空格：畫在海港、船與村落之下，邊上的船不會被雲蓋住。 */}
+          {seafarersView(view)?.fog.map((index) => {
+            const hex = geometry.hexes[index];
+            return hex ? <g key={`sf-fog-${index}`}><FogCloud hex={hex} region={null} testId={`sf-fog-${index}`} className="ep-fog sf-fog" />
+              <title>{t('sf.fog.title')}</title></g> : null;
+          })}
 
           {board.harbors.map((harbor) => {
             const edge = geometry.edges[harbor.edge];
@@ -213,6 +219,10 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
           })}
 
           <SvgExplorersPiratesLayer geometry={geometry} view={view} active={active} nameResolver={nameResolver} />
+          {(active?.events ?? []).filter((event) => event.type === 'fog.revealed' && typeof event.params.hex === 'number').map((event) => {
+            const hex = geometry.hexes[event.params.hex as number];
+            return hex ? <FogCloud key={`${active!.id}-${event.seq}`} hex={hex} region={null} className="ep-fog ep-fog--lift" /> : null;
+          })}
           <TbSvgOver geometry={geometry} view={view} />
           {ck && <SvgCitiesKnightsPieces geometry={geometry} view={view} ck={ck} nameResolver={nameResolver} />}
           {seafarersView(view)?.islandClaims.map((claim) => {

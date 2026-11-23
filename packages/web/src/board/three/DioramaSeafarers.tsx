@@ -5,16 +5,18 @@ import type { BoardSceneProps } from '../render-contract.ts';
 import { playerColorHex } from '../terrain.ts';
 import { geometryToWorld } from './bounds.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
+import { createFogModel, hexPoint } from './diorama-explorers.ts';
+import { FogLift } from './DioramaExplorersPirates.tsx';
 import { createIslandTokenModel, createPirateModel, createShipModel, pirateTransform, SHIP_SCALE, shipInstances, shipTransform } from './diorama-ships.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import { SEA_LEVEL } from '../sea.ts';
 import { ROAD_ARRIVAL_TRANSFORM_MS } from './model-specs.ts';
 
-type Props = Pick<BoardSceneProps, 'geometry' | 'board' | 'players' | 'arrivals' | 'motionAllowed' | 'quality' | 'seafarers'> & {
+type Props = Pick<BoardSceneProps, 'geometry' | 'board' | 'players' | 'arrivals' | 'motionAllowed' | 'quality' | 'seafarers' | 'active'> & {
   material: Material;
 };
 
-function PlayerShips({ color, seat, items, material, quality, motionAllowed }: Omit<Props, 'geometry' | 'board' | 'players' | 'seafarers'> & {
+function PlayerShips({ color, seat, items, material, quality, motionAllowed }: Omit<Props, 'geometry' | 'board' | 'players' | 'seafarers' | 'active'> & {
   color: string; seat: number; items: ReturnType<typeof shipInstances>;
 }) {
   const model = useDioramaGeometry(() => createShipModel(color, seat), [color, seat]);
@@ -56,16 +58,39 @@ function IslandTokenProbe({ count }: { count: number }) {
   return null;
 }
 
-/** Ships, the pirate and island-bonus tokens; nothing for base games. */
+/** 證據用掛勾：場景實際畫出的未翻開空格數（`data-fog-hexes`），瀏覽器證據腳本以此斷言 3D 有迷霧。 */
+function FogProbe({ count }: { count: number }) {
+  const canvas = useThree((state) => state.gl.domElement);
+  useEffect(() => {
+    canvas.dataset.fogHexes = String(count);
+    return () => { delete canvas.dataset.fogHexes; };
+  }, [canvas, count]);
+  return null;
+}
+
+/** Ships, the pirate, island-bonus tokens and the fog of unexplored hexes; nothing for base games. */
 export function DioramaSeafarers(props: Props) {
   const { geometry, board, players, seafarers, material, quality } = props;
   const ships = useMemo(() => shipInstances(geometry, board, props.arrivals), [geometry, board, props.arrivals]);
   const pirateModel = useDioramaGeometry(createPirateModel, []);
+  const fogModel = useDioramaGeometry(createFogModel, []);
+  const fog = useMemo(() => (seafarers?.fog ?? []).flatMap((index) => {
+    const point = hexPoint(geometry, index, SEA_LEVEL + 0.02);
+    return point ? [{ position: point, rotationY: 0, scale: [1, 1, 1] as [number, number, number] }] : [];
+  }), [seafarers?.fog, geometry]);
   if (!seafarers) return null;
+  const lifts = (props.active?.events ?? []).filter((event) => event.type === 'fog.revealed' && typeof event.params.hex === 'number');
   const pirate = pirateTransform(geometry, board);
   const tokenCount = seafarers.islandClaims.filter((claim) => !!geometry.vertices[claim.vertex]).length;
   return <>
     <IslandTokenProbe count={tokenCount} />
+    <FogProbe count={fog.length} />
+    {fog.length > 0 && <InstancedPrimitive geometry={fogModel} material={material} instances={fog} castShadow={false} />}
+    {lifts.map((event) => {
+      const point = hexPoint(geometry, event.params.hex as number, SEA_LEVEL + 0.02);
+      return point ? <FogLift key={`${props.active!.id}-${event.seq}`} animationKey={`${props.active!.id}-${event.seq}`} position={point}
+        material={material} motionAllowed={props.motionAllowed} /> : null;
+    })}
     {players.map((player) => {
       const items = ships.filter((ship) => ship.playerId === player.id);
       return items.length ? <PlayerShips key={player.id} {...props} color={playerColorHex(player.color)} seat={player.seat} items={items} /> : null;

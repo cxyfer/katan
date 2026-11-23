@@ -9,7 +9,7 @@
 
 import { tableHold, type TableState } from '../state/table.ts';
 import { EP_FRAME, epHints, epView } from './explorersPirates.ts';
-import { isShipCommand, seafarersHints } from './seafarers.ts';
+import { fogChoice, isShipCommand, seafarersHints } from './seafarers.ts';
 import { banditTargets, moveBanditMessageId, seafarersCitiesKnightsHints } from './seafarersCitiesKnights.ts';
 import { citiesKnightsHints, citiesKnightsTargets, isCitiesKnightsVertexCommand } from './citiesKnights.ts';
 import type { TargetKind } from './targets.ts';
@@ -126,6 +126,10 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
       ...(state.selection.targetsKey ? { targetsKey: state.selection.targetsKey } : {}),
     };
   }
+
+  // 未知海域：同時碰到多個空格時，放置者在棋盤上選一個翻開。
+  const fogHexes = fogChoice(view, selfId);
+  if (fogHexes) return { kind: 'hex', commandType: 'fog.choose', labelId: 'sf.fog.choose', targets: fogHexes, fromHints: true };
 
   // A rules module's pending choice (or end-of-turn step) of this viewer.
   const fromModule = moduleBoardIntent(state);

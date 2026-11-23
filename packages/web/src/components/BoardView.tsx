@@ -4,7 +4,7 @@ import { useAudio } from '../audio/context.tsx';
 import { useT } from '../i18n/context.tsx';
 import { buildGeometry } from '../board/geometry.ts';
 import { boardIntent } from '../board/intent.ts';
-import { seafarersView } from '../board/seafarers.ts';
+import { seafarersFog, seafarersView } from '../board/seafarers.ts';
 import { epView, fogRegions } from '../board/explorersPirates.ts';
 import { citiesKnightsView, knightFollowUp } from '../board/citiesKnights.ts';
 import { CitiesKnightsBadge } from './CitiesKnightsBadge.tsx';
@@ -93,7 +93,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
   const seaView = useMemo(() => seafarersView(boardView), [boardView?.modules]);
   const epModule = useMemo(() => epView(boardView), [boardView?.modules]);
-  const epFog = useMemo(() => (epModule ? fogRegions(epModule) : undefined), [epModule]);
+  const epFog = useMemo(() => (epModule ? fogRegions(epModule) : seafarersFog(boardView)), [epModule, boardView?.modules]);
   const ckView = useMemo(() => citiesKnightsView(boardView), [boardView?.modules]);
   const pickerAnchor = useMemo(() => pickerTarget
     ? targets.find((target) => target.kind === pickerTarget.kind && target.index === pickerTarget.index) ?? null

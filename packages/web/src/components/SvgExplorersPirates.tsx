@@ -60,16 +60,16 @@ export function CargoChip({ piece, labelled = false }: { piece: EpCargo; labelle
 }
 
 /** A soft bank of cloud over an unexplored hex; `region` picks the badge (parrot or goose). */
-function FogCloud({ hex, region, className, testId }: {
-  hex: BoardGeometry['hexes'][number]; region: 'parrot' | 'goose'; className?: string; testId?: string;
+export function FogCloud({ hex, region, className, testId }: {
+  hex: BoardGeometry['hexes'][number]; region: 'parrot' | 'goose' | null; className?: string; testId?: string;
 }) {
   const { cx, cy } = hex;
-  return <g className={className} data-testid={testId} data-region={region} pointerEvents="none">
+  return <g className={className} data-testid={testId} data-region={region ?? undefined} pointerEvents="none">
     <polygon points={hex.points} fill="#d8dee0" fillOpacity=".92" stroke="#f6f8f7" strokeWidth="2" strokeLinejoin="round" />
     <path d={`M${cx - 52} ${cy + 12}q-4-22 18-24q8-22 32-14q22-10 32 10q22 2 18 26Z`} fill="#f3f5f4" opacity=".9" />
     <path d={`M${cx - 30} ${cy - 22}q2-14 18-12q10-12 24 0`} fill="none" stroke="#bfc8cb" strokeWidth="3" strokeLinecap="round" />
     <path d={`M${cx - 44} ${cy + 28}h88`} stroke="#c7cfd1" strokeWidth="3" strokeLinecap="round" strokeDasharray="10 9" />
-    <RegionBadge x={cx} y={cy + 4} region={region} />
+    {region && <RegionBadge x={cx} y={cy + 4} region={region} />}
   </g>;
 }
 

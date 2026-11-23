@@ -14,7 +14,7 @@
 import type { Locale } from '@katan/protocol';
 import { getTopology, type BoardTopology, type GameView, type PublicBoardView } from '@katan/rules';
 import { t } from '../i18n/index.ts';
-import { epView, fogRegions } from './explorersPirates.ts';
+import { epView, fogRegions, type FogKind } from './explorersPirates.ts';
 import { pipsFor, resourceOfTerrain } from './terrain.ts';
 
 export interface ReferenceContext {
@@ -22,7 +22,7 @@ export interface ReferenceContext {
   topology: BoardTopology;
   board: PublicBoardView;
   /** Explorers & Pirates: unexplored hexes and their region (their contents are not known yet). */
-  fog?: ReadonlyMap<number, 'parrot' | 'goose'>;
+  fog?: ReadonlyMap<number, FogKind>;
 }
 
 export type ReferenceKind = 'vertex' | 'edge' | 'hex';
