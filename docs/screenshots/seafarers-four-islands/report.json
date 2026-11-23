@@ -40,7 +40,7 @@
       "name": "map-3p-svg-phone",
       "status": "PASS",
       "note": "sf-four-islands-3",
-      "sha256": "627d8889e3ef6dd22813e0441491d1196d95591cfea5f3451e789e7478cf2ab2",
+      "sha256": "1a0e30cac29f0da35f66ac817b6b3e49d9ea794afc87b8de0ce24dea62525e78",
       "viewport": {
         "width": 390,
         "height": 844
@@ -100,12 +100,12 @@
         "width": 390,
         "height": 844
       },
-      "committed": true
+      "committed": false
     },
     {
       "name": "help-four-islands-svg-desktop",
       "status": "PASS",
-      "note": "setup done, home islands {'player_c81ce34735e7497596b4': [2], 'player_8283e5f3587f47a7a5cf': [2, 3], 'player_798ee8783e7a45e1b8a8': [4], 'player_a2f1ac4dbb01402dbe3e': [3, 4]}; help panel shows the Four Islands rules",
+      "note": "setup done, home islands {'player_efd35707e04649729af3': [2], 'player_ccc5c1dae0d54f77a568': [2, 3], 'player_d460f7b862fd48a9b8e4': [4], 'player_1c069afcfebf4874af78': [3, 4]}; help panel shows the Four Islands rules",
       "sha256": "a52f53058be7e6009ca67fbe97d5ad72eb5b92fbb4f9944ebf82dd49297ee520",
       "viewport": {
         "width": 1366,
@@ -116,8 +116,8 @@
     {
       "name": "live-island-bonus-svg",
       "status": "PASS",
-      "note": "first settlement on non-home island 3: +2 token and the player panel",
-      "sha256": "d74047c248e0c267423b3168fd15bbec14d887fc4b57441afef8382f2b82c251",
+      "note": "first settlement on non-home island 3: +2 token and the expanded player panel lists the island",
+      "sha256": "0279159c496ba5233eb535eab30872b84367c1804575611b63b9e3a93fc0a0c3",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -127,7 +127,7 @@
     {
       "name": "live-island-bonus-3d",
       "status": "PASS",
-      "note": "the same bonus in the 3D board",
+      "note": "the same bonus in the 3D board (canvas data-island-tokens = 1)",
       "sha256": "94b07dee247f56bfeb70575dde2f35878bc66e1b05861311636159146c05e6ca",
       "viewport": {
         "width": 1366,
@@ -136,10 +136,21 @@
       "committed": true
     },
     {
+      "name": "live-island-bonus-phone",
+      "status": "PASS",
+      "note": "phone width: expanded player panel with the island number as visible text",
+      "sha256": "44a8684165893f5f4383e3cd3d455747271d098d60552368ce4898790bcfd13b",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
       "name": "live-result",
       "status": "PASS",
-      "note": "second new island reaches 13 VP: result screen",
-      "sha256": "6eb95fe6f9435f88acdebc5275ccde799df3ea8049dea92343f39bf43301223c",
+      "note": "second new island, settled in the 3D renderer, reaches 13 VP: result screen",
+      "sha256": "d825ae27851b7e6f0facbcfad37e96600a657ba11404072fd979892757cba5de",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -148,17 +159,17 @@
     }
   ],
   "home": {
-    "player_c81ce34735e7497596b4": [
+    "player_efd35707e04649729af3": [
       2
     ],
-    "player_8283e5f3587f47a7a5cf": [
+    "player_ccc5c1dae0d54f77a568": [
       2,
       3
     ],
-    "player_798ee8783e7a45e1b8a8": [
+    "player_d460f7b862fd48a9b8e4": [
       4
     ],
-    "player_a2f1ac4dbb01402dbe3e": [
+    "player_1c069afcfebf4874af78": [
       3,
       4
     ]
@@ -180,11 +191,11 @@
       2
     ],
     "result": {
-      "playerId": "player_c81ce34735e7497596b4",
+      "playerId": "player_efd35707e04649729af3",
       "reason": "victory",
       "score": 13
     }
   },
   "errors": [],
-  "note": "Three phone captures (3-player SVG and 3D, 4-player SVG) were not committed to keep the repository small; their sha256 stays listed (committed: false)."
+  "note": "Four map phone captures (3-player SVG and 3D, 4-player SVG and 3D) were not committed to keep the repository small; their sha256 stays listed (committed: false). live-island-bonus-phone covers the phone layout."
 }

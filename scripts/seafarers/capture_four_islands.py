@@ -133,10 +133,19 @@ def finish_live(contexts, pages, identity, game_id):
         ui_confirm(page)
 
     def expand_players(page_):
+        """Open the player panel and pin it (a hover preview closes when the pointer leaves)."""
         toggle = page_.get_by_test_id('players-toggle')
+        # 指標移到按鈕上就會開出預覽；先 hover 再看狀態，避免接著的點擊把預覽收掉。
+        toggle.hover()
+        page_.wait_for_timeout(600)
         if toggle.get_attribute('aria-expanded') != 'true':
             toggle.click()
+        pin = page_.get_by_test_id('players-pin')
+        expect(pin).to_be_visible()
+        if pin.get_attribute('aria-pressed') != 'true':
+            pin.click()
         page_.wait_for_timeout(500)
+        assert toggle.get_attribute('aria-expanded') == 'true'
 
     def check_islands_mark(page_, island):
         """The island list is visible text (touch has no title), the wording has no 'small'."""
@@ -206,7 +215,13 @@ def run():
                 expect(host.get_by_test_id('help-four-islands-bonus')).to_be_visible()
                 shot(host, 'help-four-islands-svg-desktop', f'setup done, home islands {home}; help panel shows the Four Islands rules')
             if count == 4:
-                finish_live(contexts, pages, identity, game_id)
+                try:
+                    finish_live(contexts, pages, identity, game_id)
+                except Exception:
+                    pages[0].screenshot(path=str(OUT / 'failure.png'), timeout=base.TIMEOUT)
+                    print('PLAYERS', pages[0].get_by_test_id('players-toggle').get_attribute('aria-expanded'),
+                          pages[0].locator('[data-testid^="players-islands"]').count(), flush=True)
+                    raise
             for context in contexts:
                 context.close()
         browser.close()

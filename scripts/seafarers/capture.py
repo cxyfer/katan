@@ -145,7 +145,7 @@ def settle(page, ms=700):
 def shot(page, name, note='', ms=700):
     settle(page, ms)
     path = OUT / f'{name}.png'
-    page.screenshot(path=str(path), animations='disabled')
+    page.screenshot(path=str(path), animations='disabled', timeout=TIMEOUT)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     REPORT['cases'].append({'name': name, 'status': 'PASS', 'note': note, 'sha256': digest,
                             'viewport': page.viewport_size})
@@ -155,10 +155,10 @@ def shot(page, name, note='', ms=700):
 def wait_renderer(page, renderer):
     page.wait_for_function(
         "(renderer) => document.querySelector('[data-testid=\"board\"]')?.dataset.effectiveRenderer === renderer",
-        arg=renderer, timeout=30000)
+        arg=renderer, timeout=TIMEOUT)
     if renderer == 'r3f':
         page.wait_for_function(
-            "() => document.querySelector('[data-testid=\"board\"]')?.dataset.rendererStatus === 'ready'", timeout=30000)
+            "() => document.querySelector('[data-testid=\"board\"]')?.dataset.rendererStatus === 'ready'", timeout=TIMEOUT)
 
 
 def open_game(page, game_id, renderer):
