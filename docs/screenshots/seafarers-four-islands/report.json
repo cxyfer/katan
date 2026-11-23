@@ -1,0 +1,201 @@
+{
+  "scenario": "four-islands",
+  "profile": "sf-four-islands-2025",
+  "base": "http://127.0.0.1:3187",
+  "cases": [
+    {
+      "name": "lobby-four-islands",
+      "status": "PASS",
+      "note": "lobby: Seafarers / The Four Islands, 3-4 players only",
+      "sha256": "f762a152ac529e55a4e0d8ee8acd4581aee8241de0aaa1fa3b44c7a63314575f",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-four-islands-3",
+      "sha256": "02a3ef139fac3729915a903f2851d4427ff01d9dc6ef9a7cf3ab3dbd012ad8af",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-four-islands-3",
+      "sha256": "7e212de6dbe62fc612bb5ea83417e98272db880d801dce0cbc560f655e44904e",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-phone",
+      "status": "PASS",
+      "note": "sf-four-islands-3",
+      "sha256": "1a0e30cac29f0da35f66ac817b6b3e49d9ea794afc87b8de0ce24dea62525e78",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": false
+    },
+    {
+      "name": "map-3p-r3f-phone",
+      "status": "PASS",
+      "note": "sf-four-islands-3",
+      "sha256": "815333bb8fd6f0500206f97658ce6c683ca630c2200a3e7f64e8af2d25831899",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": false
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-four-islands-4",
+      "sha256": "550e07573a84e00d526abbb5598109deeed71f15bcbaaccc0cc7f6dc10a62617",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-four-islands-4",
+      "sha256": "fb229ec9ffd1e1e60107053ec619de4c9a2205fa7b0b8e957b9b76b085e24b19",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-svg-phone",
+      "status": "PASS",
+      "note": "sf-four-islands-4",
+      "sha256": "dbeead49168362539874882e99d23b6a6c71367d2d01999eeba5546bd3c59be8",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": false
+    },
+    {
+      "name": "map-4p-r3f-phone",
+      "status": "PASS",
+      "note": "sf-four-islands-4",
+      "sha256": "aef99c6d90cc85d760af5df13f97037b61f0e0422407a07652095eee57b149bd",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": false
+    },
+    {
+      "name": "help-four-islands-svg-desktop",
+      "status": "PASS",
+      "note": "setup done, home islands {'player_efd35707e04649729af3': [2], 'player_ccc5c1dae0d54f77a568': [2, 3], 'player_d460f7b862fd48a9b8e4': [4], 'player_1c069afcfebf4874af78': [3, 4]}; help panel shows the Four Islands rules",
+      "sha256": "a52f53058be7e6009ca67fbe97d5ad72eb5b92fbb4f9944ebf82dd49297ee520",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-island-bonus-svg",
+      "status": "PASS",
+      "note": "first settlement on non-home island 3: +2 token and the expanded player panel lists the island",
+      "sha256": "0279159c496ba5233eb535eab30872b84367c1804575611b63b9e3a93fc0a0c3",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-island-bonus-3d",
+      "status": "PASS",
+      "note": "the same bonus in the 3D board (canvas data-island-tokens = 1)",
+      "sha256": "94b07dee247f56bfeb70575dde2f35878bc66e1b05861311636159146c05e6ca",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-island-bonus-phone",
+      "status": "PASS",
+      "note": "phone width: expanded player panel with the island number as visible text",
+      "sha256": "44a8684165893f5f4383e3cd3d455747271d098d60552368ce4898790bcfd13b",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result",
+      "status": "PASS",
+      "note": "second new island, settled in the 3D renderer, reaches 13 VP: result screen",
+      "sha256": "d825ae27851b7e6f0facbcfad37e96600a657ba11404072fd979892757cba5de",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    }
+  ],
+  "home": {
+    "player_efd35707e04649729af3": [
+      2
+    ],
+    "player_ccc5c1dae0d54f77a568": [
+      2,
+      3
+    ],
+    "player_d460f7b862fd48a9b8e4": [
+      4
+    ],
+    "player_1c069afcfebf4874af78": [
+      3,
+      4
+    ]
+  },
+  "finish": {
+    "targets": [
+      {
+        "vertex": 10,
+        "edge": 11,
+        "island": 3
+      },
+      {
+        "vertex": 48,
+        "edge": 61,
+        "island": 4
+      }
+    ],
+    "home": [
+      2
+    ],
+    "result": {
+      "playerId": "player_efd35707e04649729af3",
+      "reason": "victory",
+      "score": 13
+    }
+  },
+  "errors": [],
+  "note": "Four map phone captures (3-player SVG and 3D, 4-player SVG and 3D) were not committed to keep the repository small; their sha256 stays listed (committed: false). live-island-bonus-phone covers the phone layout."
+}

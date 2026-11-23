@@ -196,13 +196,20 @@ export function eventParams(
   }
 }
 
-export function translateEvent(locale: Locale, event: GameEvent, nameOf: NameResolver): EventText {
+export function translateEvent(
+  locale: Locale,
+  event: GameEvent,
+  nameOf: NameResolver,
+  /** 劇本（profile 的 scenario）：四島群島沒有「小島」，島嶼獎勵事件用另一句。 */
+  options: { scenario?: string | null } = {},
+): EventText {
   const params = eventParams(locale, event, nameOf);
   // Canonical id shape from `@katan/protocol`: `event.<engine event type>`.
   // A pirate action reuses a robber event with `pirate: true` and its own
   // text; a ship reuses a road event with `ship: true` the same way.
   const base = `event.${event.type}`;
-  const variant = event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null;
+  const fourIslands = event.type === 'island.bonus' && options.scenario === 'four-islands';
+  const variant = fourIslands ? `${base}.fourIslands` : event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null;
   const messageId = variant && t(locale, variant) !== variant ? variant : base;
   const text = t(locale, messageId, params);
   return {

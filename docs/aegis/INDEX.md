@@ -6,6 +6,9 @@ Entries are workspace records, not authoritative runtime decisions.
 | Date | Kind | Path | Title |
 | --- | --- | --- | --- |
 | 2026-11-22 | spec | docs/aegis/specs/2026-11-22-seafarers-scenarios.md | Seafarers scenarios beyond Heading for New Shores, plus New World (3–4 players): SF25 pp. 6–20 rules and component tables (SFCN-20 cross-check), per-scenario mechanics, registry, open questions and delivery slices |
+| 2026-11-22 | work | docs/aegis/work/2026-11-22-seafarers-four-islands.md | Seafarers scenario S2 The Four Islands (SF25 pp. 6–7): sources, two independent transcriptions, checksums, per-cell tables, interpretations and evidence |
+| 2026-11-22 | artifact | scripts/seafarers/capture_four_islands.py | Four Islands browser run: lobby, 3/4-player maps in SVG and 3D (desktop and phone), setup spread over the islands and the help panel |
+| 2026-11-22 | artifact | docs/screenshots/seafarers-four-islands/report.json | Four Islands capture report with sha256 per image |
 | 2026-11-22 | work | docs/aegis/work/2026-11-22-hard-bot-v2.md | Hard bot v2 implementation record: per-slice changes, baseline measurements, ablations and follow-ups (S0 delivered: frozen hard0 baseline, bench tooling, E18; S1 and O-F screening showed no gain, stop-loss) |
 | 2026-11-22 | spec | docs/aegis/specs/2026-11-22-hard-bot-v2.md | Hard bot v2 for the base game: audit findings, hard-only optimizations (standard and easy stay frozen), measurement plan and delivery slices |
 | 2026-11-20 | work | docs/aegis/work/2026-11-20-bots-traders-barbarians.md | Traders & Barbarians bots (v0.4.4) implementation record: slices, decisions, Q1/Q2 results, server tests, reviews and follow-ups |

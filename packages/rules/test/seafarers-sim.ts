@@ -132,9 +132,9 @@ export interface SimulationResult {
   islandBonuses: number;
 }
 
-export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 30000): SimulationResult {
+export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 30000, profileId?: string): SimulationResult {
   const rng = seededRng(seed * 7919 + players);
-  let { state } = seafarersGame(players, seed);
+  let { state } = seafarersGame(players, seed, profileId);
   const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0 };
   const count = (before: GameState, after: GameState) => {
     for (const event of after.log) {

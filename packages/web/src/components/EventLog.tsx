@@ -1,3 +1,4 @@
+import { getProfile } from '@katan/rules';
 import { useMemo } from 'react';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { translateEvent } from '../i18n/events.ts';
@@ -18,6 +19,7 @@ export function EventLog({ controller }: { controller: TableController }) {
   // 擲骰演出期間不列出擲骰與其後的事件，點數揭曉後才補上。
   const { events, diceHidden } = shownEvents(state);
   const recent = events.slice(-40).reverse();
+  const scenario = getProfile(state.game?.view.profileId ?? '')?.scenario ?? null;
 
   return (
     <section className="panel" aria-labelledby="log-heading" data-testid="event-log">
@@ -35,7 +37,7 @@ export function EventLog({ controller }: { controller: TableController }) {
       ) : (
         <ol className="event-log" data-testid="event-list">
           {recent.map((event) => {
-            const translated = translateEvent(locale, event, nameResolver);
+            const translated = translateEvent(locale, event, nameResolver, { scenario });
             return (
               <li key={`${event.seq}-${event.type}`} data-event={event.type}>
                 <span className="event-log__seq">{formatNumber(locale, event.seq)}</span>{' '}

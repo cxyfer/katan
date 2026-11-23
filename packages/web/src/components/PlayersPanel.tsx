@@ -1,3 +1,4 @@
+import { getProfile } from '@katan/rules';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { useT } from '../i18n/context.tsx';
@@ -15,14 +16,17 @@ import '../styles/scoreboard-hover.css';
 import '../styles/bot-seats.css';
 import '../styles/leave.css';
 
-function ScoreMark({ icon, label, value, awarded = false, testId }: {
+function ScoreMark({ icon, label, value, awarded = false, testId, detail }: {
   icon: string; label: string; value: string; awarded?: boolean; testId?: string;
+  /** 看得見的補充小字（觸控裝置看不到 title／aria-label，例如島嶼獎勵的島號）。 */
+  detail?: string;
 }) {
-  return <span className={`score-mark${awarded ? ' score-mark--medal' : ''}`} role="img"
+  return <span className={`score-mark${awarded ? ' score-mark--medal' : ''}${detail ? ' score-mark--detail' : ''}`} role="img"
     aria-label={`${label}: ${value}`} title={`${label}: ${value}`} data-testid={testId}>
     <span className="score-mark__icon"><GameIcon name={icon} size={14} /></span>
     <span className="score-mark__value" aria-hidden="true">{value}</span>
     {awarded && <span className="score-mark__points" aria-hidden="true">+2</span>}
+    {detail && <span className="score-mark__detail" aria-hidden="true">{detail}</span>}
   </span>;
 }
 
@@ -244,6 +248,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           // Seafarers: ships, Longest Trade Route and the per-island bonus.
           const sea = seafarersView(view);
           const ships = view.board.roads.filter((road) => road?.ship && road.player === player.id).length;
+          const fourIslands = getProfile(view.profileId)?.scenario === 'four-islands';
           const islandPoints = sea ? islandBonusPoints(view, player.id) : 0;
           const routeAward = t(sea ? 'sf.award.longestTradeRoute' : 'play.award.longestRoad');
           // Explorers & Pirates: gold, ships, harbour settlements and mission points (no development cards or awards).
@@ -310,8 +315,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                 <div className="players__bonuses">
                   {isSelf && <ScoreMark icon="crown" label={t('table.playersHiddenVp')} value={number(hiddenVp)} testId="players-hidden-vp" />}
                   {islandPoints > 0 && <ScoreMark icon="compass" testId={`players-islands-${player.seat}`}
-                    label={`${t('sf.score.islands')} · ${t('sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })}`}
-                    value={number(islandPoints)} />}
+                    label={`${t(fourIslands ? 'sf.score.islands.fourIslands' : 'sf.score.islands')} · ${t(fourIslands ? 'sf.score.islandsValue.fourIslands' : 'sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })} (${t((sea!.islandBonus[player.id]?.length ?? 0) === 1 ? 'sf.score.islandId' : 'sf.score.islandIds', { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') })})`}
+                    value={number(islandPoints)}
+                    detail={fourIslands ? t((sea!.islandBonus[player.id]?.length ?? 0) === 1 ? 'sf.score.islandId' : 'sf.score.islandIds', { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') }) : undefined} />}
                   {epPlayer && epPlayer.harborPoints > 0 && <ScoreMark icon="anchor" testId={`players-ep-harbors-${player.seat}`}
                     label={t('ep.score.harbors', { points: number(epPlayer.harborPoints) })} value={number(epPlayer.harborPoints)} />}
                   {epPlayer && (['lairs', 'fish', 'spices'] as const).filter((mission) => ep!.missions.includes(mission)).map((mission) => (

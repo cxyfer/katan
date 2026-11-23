@@ -28,13 +28,13 @@ import type { BoardLayout, HarborType, Terrain } from './types.ts';
 /** Island id of the main island; small islands are numbered from 2. */
 export const MAIN_ISLAND = 1;
 
-interface LandHex extends HexCoord {
+export interface LandHex extends HexCoord {
   terrain: Terrain;
   number: number | null;
   island: number;
 }
 
-interface PortSpec extends HarborSlotSpec {
+export interface PortSpec extends HarborSlotSpec {
   type: HarborType;
 }
 
@@ -50,7 +50,7 @@ function cells(rows: Record<number, [number, number]>, frame: readonly HexCoord[
   return out;
 }
 
-const L = (q: number, r: number, terrain: Terrain, number: number | null, island = MAIN_ISLAND): LandHex =>
+export const L = (q: number, r: number, terrain: Terrain, number: number | null, island = MAIN_ISLAND): LandHex =>
   ({ q, r, terrain, number, island });
 
 // ---------------------------------------------------------------------------
@@ -58,7 +58,7 @@ const L = (q: number, r: number, terrain: Terrain, number: number | null, island
 // ---------------------------------------------------------------------------
 
 /** Radius-3 outline minus the two frame protrusions: rows 4-5-6-5-6-5-4. */
-const NS3_CELLS = cells(
+export const NS3_CELLS = cells(
   { [-3]: [0, 3], [-2]: [-1, 3], [-1]: [-2, 3], 0: [-3, 3], 1: [-3, 2], 2: [-3, 1], 3: [-3, 0] },
   [{ q: -3, r: 0 }, { q: 3, r: 0 }],
 );
@@ -197,7 +197,7 @@ export function newShoresTopologyId(playerCount: number): string {
 
 const key = (q: number, r: number): string => `${q},${r}`;
 
-function fixedLayout(topology: BoardTopology, land: readonly LandHex[], ports: readonly PortSpec[], robber: HexCoord): BoardLayout {
+export function fixedLayout(topology: BoardTopology, land: readonly LandHex[], ports: readonly PortSpec[], robber: HexCoord): BoardLayout {
   const byKey = new Map(land.map((hex) => [key(hex.q, hex.r), hex]));
   const layout: BoardLayout = {
     topologyId: topology.id,

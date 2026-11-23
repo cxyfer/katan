@@ -66,3 +66,31 @@ describe('simulated New Shores games', () => {
     expect(totals.moves).toBeGreaterThan(0);
   }, 120_000);
 });
+
+describe('simulated Four Islands games (SFX-S2)', () => {
+  for (const players of [3, 4] as const) {
+    it(`${players} players finish with a 13-point winner, a conserved supply and legal pieces`, () => {
+      const run = simulateSeafarers(players, 21 + players, 30000, 'sf-four-islands-2025');
+      const { state } = run;
+      expect(state.result?.reason).toBe('victory');
+      expect(scoreOf(state, state.result!.playerId!, { includeHidden: true })).toBeGreaterThanOrEqual(13);
+      const bank = getProfile(state.profileId)!.bankPerResource;
+      for (const resource of RESOURCES) {
+        const total = state.bank[resource] + state.players.reduce((sum, player) => sum + player.resources[resource], 0);
+        expect(total, resource).toBe(bank);
+      }
+      checkBoard(state);
+      expect(run.shipsBuilt).toBeGreaterThan(0);
+    }, 60_000);
+  }
+
+  it('across seeds the simulation earns island bonuses (non-home islands)', () => {
+    let bonuses = 0;
+    for (const seed of [1, 2, 3, 4]) {
+      const run = simulateSeafarers(4, seed, 30000, 'sf-four-islands-2025');
+      expect(run.state.result?.reason).toBe('victory');
+      bonuses += run.islandBonuses;
+    }
+    expect(bonuses).toBeGreaterThan(0);
+  }, 120_000);
+});

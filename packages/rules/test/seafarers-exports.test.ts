@@ -37,6 +37,7 @@ const VIEW_KEYS: Record<keyof SeafarersView, true> = {
   islandClaims: true,
   shipsBuiltThisTurn: true,
   shipMoved: true,
+  home: true,
 };
 
 const CLAIM_KEYS: Record<keyof Claim, true> = { player: true, island: true, vertex: true };
@@ -56,6 +57,8 @@ const GOLD_KEYS: Record<keyof SeafarersGoldPendingView, true> = { kind: true, mo
 const GOLD_DATA_KEYS: Record<keyof SeafarersGoldPendingView['data'], true> = { picks: true };
 
 const keysOf = (record: object): string[] => Object.keys(record).sort();
+/** `home` 只在排除 home 島的劇本（四島群島、新世界）的設置結束後出現，New Shores 不帶。 */
+const VIEW_KEYS_WITHOUT_HOME = Object.keys(VIEW_KEYS).filter((key) => key !== 'home').sort();
 
 // Both maps list the same modules, so a module added to one cannot be forgotten in the other.
 type SameKeys = [keyof ModuleViewMap] extends [keyof ModuleHintsMap]
@@ -90,8 +93,16 @@ describe('seafarers module exports (bot plan RX)', () => {
 
   it('the projected view has exactly the keys of SeafarersView', () => {
     const state = emptySeafarersGame(4, 0, 'action');
-    for (const viewer of ['p1', 'p3']) expect(keysOf(viewOf(state, viewer))).toEqual(keysOf(VIEW_KEYS));
+    for (const viewer of ['p1', 'p3']) expect(keysOf(viewOf(state, viewer))).toEqual(VIEW_KEYS_WITHOUT_HOME);
+    expect(keysOf(projectSeafarers(state))).toEqual(VIEW_KEYS_WITHOUT_HOME);
+  });
+
+  it('a home-island scenario adds `home` once setup has recorded it', () => {
+    const state = emptySeafarersGame(4, 0, 'action', 'sf-four-islands-2025');
+    expect(keysOf(projectSeafarers(state))).toEqual(VIEW_KEYS_WITHOUT_HOME);
+    seafarersState(state).home = { p1: [2], p2: [3], p3: [], p4: [5, 4] };
     expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS));
+    expect(viewOf(state, 'p3').home).toEqual({ p1: [2], p2: [3], p3: [], p4: [5, 4] });
   });
 
   it('a populated view keeps the key sets, including each island claim', () => {
@@ -103,7 +114,7 @@ describe('seafarers module exports (bot plan RX)', () => {
     slot.islands.p1!.push(1);
     slot.claims.push({ player: 'p1', island: 1, vertex: corner(state, 2, 0, 5) });
     const view = viewOf(state, 'p2');
-    expect(keysOf(view)).toEqual(keysOf(VIEW_KEYS));
+    expect(keysOf(view)).toEqual(VIEW_KEYS_WITHOUT_HOME);
     expect(view.islandClaims).toHaveLength(1);
     expect(keysOf(view.islandClaims[0]!)).toEqual(keysOf(CLAIM_KEYS));
     expect(view.islandBonus.p1).toEqual([1]);

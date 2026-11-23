@@ -7,10 +7,11 @@ import { hexCenter, NEIGHBOR_DIRS } from '../src/topology.ts';
 import type { GameState } from '../src/types.ts';
 import { COLORS, forceTurn, playerIds } from './helpers.ts';
 
-export function seafarersGame(players: 3 | 4 | 5 | 6 = 4, seed = 12345): { state: GameState; rng: Rng } {
+/** 預設是 New Shores；`profileId` 可改成其他只有 fixed 版圖的 Seafarers 劇本（3–4 人）。 */
+export function seafarersGame(players: 3 | 4 | 5 | 6 = 4, seed = 12345, profileId?: string): { state: GameState; rng: Rng } {
   const rng = seededRng(seed);
   const state = createGame({
-    profileId: players <= 4 ? 'sf-new-shores-2025' : 'sf-new-shores-paired-2025',
+    profileId: profileId ?? (players <= 4 ? 'sf-new-shores-2025' : 'sf-new-shores-paired-2025'),
     players: playerIds(players).map((id, index) => ({ id, nickname: id.toUpperCase(), color: COLORS[index]! })),
     setupMode: players <= 4 ? 'fixed' : 'variable',
     rng,
@@ -19,8 +20,8 @@ export function seafarersGame(players: 3 | 4 | 5 | 6 = 4, seed = 12345): { state
 }
 
 /** A New Shores game past setup with an empty board, the turn on `seat`. */
-export function emptySeafarersGame(players: 3 | 4 | 5 | 6 = 4, seat = 0, phase: 'preroll' | 'action' = 'action'): GameState {
-  const { state } = seafarersGame(players);
+export function emptySeafarersGame(players: 3 | 4 | 5 | 6 = 4, seat = 0, phase: 'preroll' | 'action' = 'action', profileId?: string): GameState {
+  const { state } = seafarersGame(players, 12345, profileId);
   forceTurn(state, seat, phase);
   state.windowId += 1;
   return state;

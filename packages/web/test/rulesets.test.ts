@@ -22,7 +22,7 @@ describe('lobby ruleset picker', () => {
     // Event-card rows are registered but closed, so the picker never names them.
     expect(tb.scenarios.some((choice) => choice.variants.includes('event-cards'))).toBe(false);
     const sea = resolveRuleset(registry, { expansionKey: 'seafarers', playerCount: 6 });
-    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores']]);
+    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores'], ['scenario.four-islands']]);
     expect(sea.profile?.id).toBe('sf-new-shores-paired-2025');
     expect(resolveRuleset(registry, { expansionKey: 'seafarers', playerCount: 3 }).profile?.id).toBe('sf-new-shores-2025');
     const ep = resolveRuleset(registry, { expansionKey: 'explorersPirates' });
@@ -67,13 +67,13 @@ describe('lobby ruleset picker', () => {
     expect(outside.playerCountAdjusted).toBe(true);
   });
 
-  it('keeps the eight further Seafarers scenarios out of the lobby while they are disabled', () => {
+  it('shows only the enabled further Seafarers scenarios in the lobby (S2: four islands)', () => {
     const sea = resolveRuleset(registry, { expansionKey: 'seafarers' });
-    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores']]);
+    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores'], ['scenario.four-islands']]);
     expect(sea.scenarioNarrowsPlayers).toBe(false);
     const ids = registry.filter((profile) => profile.scenario && ['four-islands', 'fog-islands', 'through-the-desert', 'forgotten-tribe', 'cloth-for-catan', 'pirate-islands', 'wonders-of-catan', 'new-world'].includes(profile.scenario));
     expect(ids).toHaveLength(8);
-    for (const profile of ids) expect(profile.enabled).toBe(false);
+    for (const profile of ids) expect(profile.enabled).toBe(profile.scenario === 'four-islands');
   });
 
   it('cascades expansion set → scenario → player count from the registry', () => {

@@ -1,4 +1,4 @@
-import { COSTS, RESOURCES } from '@katan/rules';
+import { COSTS, RESOURCES, getProfile } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
 import { Legend } from './Legend.tsx';
@@ -15,6 +15,8 @@ export function HelpPanel({ controller }: { controller: TableController }) {
   const profileId = controller.state.game?.view.profileId ?? '';
   const paired = profileId.includes('paired');
   const ep = epView(controller.state.game?.view);
+  // 四島群島沒有主島也沒有金礦，設置與島嶼獎勵的說明與 New Shores 不同。
+  const fourIslands = getProfile(profileId)?.scenario === 'four-islands';
 
   return (
     <section className="panel" aria-labelledby="help-heading" data-testid="help-panel">
@@ -35,10 +37,14 @@ export function HelpPanel({ controller }: { controller: TableController }) {
       <TbHelp controller={controller} />
       {seafarersView(controller.state.game?.view) && (
         <section data-testid="help-seafarers">
-          <h3>{t('sf.help.title')}</h3>
+          <h3>{fourIslands ? t('sf.help.four.title') : t('sf.help.title')}</h3>
           <ul className="help-rules">
             <li>{t('sf.build.ship')}: {formatResourceMap(locale, SHIP_COST)}</li>
-            {(['setup', 'ships', 'move', 'pirate', 'gold', 'route', 'islands'] as const).map((key) => <li key={key}>{t(`sf.help.${key}`)}</li>)}
+            {fourIslands && <li data-testid="help-four-islands-setup">{t('sf.help.four.setup')}</li>}
+            {(['setup', 'ships', 'move', 'pirate', 'gold', 'route', 'islands'] as const)
+              .filter((key) => !fourIslands || (key !== 'setup' && key !== 'islands' && key !== 'gold'))
+              .map((key) => <li key={key}>{t(`sf.help.${key}`)}</li>)}
+            {fourIslands && <li data-testid="help-four-islands-bonus">{t('sf.help.four.islands', { target: controller.state.game?.view.victoryTarget ?? 13 })}</li>}
             {paired && <li>{t('sf.help.paired')}</li>}
           </ul>
         </section>
