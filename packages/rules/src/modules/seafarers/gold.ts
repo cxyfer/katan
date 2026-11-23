@@ -54,7 +54,11 @@ function turnOrder(state: GameState): string[] {
 export function afterProduction(state: GameState, roll: RollResult, ctx: ModuleContext): void {
   if (roll.total === 7) return;
   const picks = goldEntitlements(state, roll.total);
-  const responders = turnOrder(state).filter((id) => (picks[id] ?? 0) > 0);
+  enqueueGold(state, picks, turnOrder(state).filter((id) => (picks[id] ?? 0) > 0), ctx);
+}
+
+/** 排入金礦作答 frame（擲骰產出，或未知海域探索到金礦）；沒有人要作答就什麼都不做。 */
+export function enqueueGold(state: GameState, picks: Record<string, number>, responders: string[], ctx: ModuleContext): void {
   if (responders.length === 0) return;
   const frame: ModulePending = { kind: GOLD_FRAME, module: 'seafarers', responders, data: { picks } };
   ctx.kit.emit(state, 'gold.required', { picks });

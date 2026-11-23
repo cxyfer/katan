@@ -22,6 +22,7 @@ import { getProfile } from '../../profiles.ts';
 import type { CommandOutcome, GameState, Resource } from '../../types.ts';
 import { rulesModulesOf } from '../registry.ts';
 import type { ModuleCommand, ModuleContext } from '../types.ts';
+import { exploreAtEdge } from './fog.ts';
 import { seafarersState, seafarersView } from './state.ts';
 
 export const SHIP_COST: Partial<Record<Resource, number>> = { lumber: 1, wool: 1 };
@@ -184,6 +185,7 @@ export function buildShip(state: GameState, actorId: string, command: ModuleComm
   seafarersState(state).built.push(edge);
   kit.emit(state, 'ship.built', { playerId: actorId, edge, free: !!free });
   kit.afterBoardChange(state);
+  exploreAtEdge(state, actorId, edge, ctx);
   if (free) kit.placedFreeRoute(state, actorId, ctx.rng);
   kit.checkVictory(state);
   return kit.accept(state);
@@ -220,6 +222,8 @@ export function moveShip(state: GameState, actorId: string, command: ModuleComma
   seafarersState(state).moved = true;
   kit.emit(state, 'ship.moved', { playerId: actorId, from, to });
   kit.afterBoardChange(state);
+  // 移動船預設不翻開迷霧（SF25 p. 8 只寫 place；OQ-2）；`fogOnMove` 旗標可切換。
+  if (ctx.profile.fogOnMove) exploreAtEdge(state, actorId, to, ctx);
   kit.checkVictory(state);
   return kit.accept(state);
 }
@@ -241,6 +245,7 @@ export function setupShip(state: GameState, actorId: string, command: ModuleComm
   if (!canPlaceShip(state, actorId, edge, { setupVertex: setup.lastVertex })) return kit.fail('E_ILLEGAL_TARGET', { edge });
   state.board.roads[edge] = { player: actorId, ship: true };
   kit.emit(state, 'setup.ship', { playerId: actorId, edge });
+  exploreAtEdge(state, actorId, edge, ctx);
   kit.finishSetupStep(state);
   return kit.accept(state);
 }

@@ -12,6 +12,7 @@ import { bankView } from '../../bank-view.ts';
 import type { GameState } from '../../types.ts';
 import type { ModuleViewContext, PublicModulePendingView, RulesModule } from '../types.ts';
 import { afterProduction, chooseGold, goldRequired, GOLD_FRAME, projectGold, skipEmptySupply } from './gold.ts';
+import { activateFog, chooseFog, exploreAtEdge, FOG_FRAME, initialFog, projectFogFrame } from './fog.ts';
 import { allowBuilding, claimIslands } from './islands.ts';
 import { moveBandit, pirateTargets } from './pirate.ts';
 import {
@@ -47,6 +48,8 @@ export function projectSeafarers(state: GameState) {
     shipMoved: slot.moved,
     // 只有島嶼獎勵排除 home 的劇本（四島群島、新世界）在設置結束後才有；其餘劇本不帶此欄，投影不變。
     ...(slot.home ? { home: Object.fromEntries(Object.entries(slot.home).map(([id, islands]) => [id, islands.slice()])) } : {}),
+    // 未知海域：尚未翻開的空格（公開）；剩餘板塊與圓片的牌庫不投影。
+    ...(slot.fog ? { fog: slot.fog.hexes.slice() } : {}),
   };
 }
 
@@ -86,8 +89,16 @@ export type SeafarersHints = ReturnType<typeof seafarersHints>;
 export const seafarersModule: RulesModule = {
   id: SEAFARERS,
 
-  initGame(state) {
-    setModuleState(state, SEAFARERS, initialSeafarersState(state));
+  initGame(state, ctx) {
+    const slot = initialSeafarersState(state);
+    const fog = initialFog(state, { profile: ctx.profile });
+    if (fog) slot.fog = fog;
+    setModuleState(state, SEAFARERS, slot);
+  },
+
+  // 建造路之後探索；船在 `ships.ts` 的建造與設置指令裡探索。
+  afterBuild(state, build, ctx) {
+    if (build.piece === 'road' && build.edge !== undefined) exploreAtEdge(state, build.playerId, build.edge, ctx);
   },
 
   afterProduction,
@@ -119,17 +130,20 @@ export const seafarersModule: RulesModule = {
     'ship.move': moveShip,
     'setup.placeShip': setupShip,
     'gold.choose': chooseGold,
+    'fog.choose': chooseFog,
   },
-  pendingCommands: ['build.ship', 'gold.choose'],
+  pendingCommands: ['build.ship', 'gold.choose', 'fog.choose'],
 
   activatePending(state, frame, ctx) {
     if (frame.kind === GOLD_FRAME) skipEmptySupply(state, frame, ctx);
+    if (frame.kind === FOG_FRAME) activateFog(state, frame, ctx);
   },
 
   project: projectSeafarers,
 
   projectPending(state, frame, viewerId, ctx) {
     if (frame.kind === GOLD_FRAME) return projectGold(state, frame, viewerId, ctx);
+    if (frame.kind === FOG_FRAME) return projectFogFrame(state, frame);
     return { kind: frame.kind, module: frame.module, responders: frame.responders.slice(), data: {} };
   },
 

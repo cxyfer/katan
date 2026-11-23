@@ -60,12 +60,23 @@ function recordHome(state: GameState, slot: SeafarersState): void {
 export function allowBuilding(state: GameState, _playerId: string, vertex: number, options: { setup: boolean }, ctx: ModuleViewContext): boolean {
   if (!options.setup) return true;
   const scenario = ctx.profile.scenario;
+  if (scenario === 'fog-islands') return onKnownLand(state, vertex);
   if (scenario === 'new-shores') return islandsAt(state, vertex).includes(MAIN_ISLAND);
   if (scenario === 'through-the-desert') {
     const islands = islandsAt(state, vertex);
     return islands.length > 0 && islands.every((island) => island === MAIN_ISLAND);
   }
   return true;
+}
+
+/**
+ * 未知海域的起始村落只放在已知島（SF25 p. 8）：交叉點碰到的陸地格都要有島編號。
+ * 設置中翻開的新陸地沒有島編號（`layout.islands` 維持 0），所以不算已知島。
+ */
+function onKnownLand(state: GameState, vertex: number): boolean {
+  const hexes = topologyOf(state).vertices[vertex]?.hexes ?? [];
+  const land = hexes.filter((hex) => isLandHex(state, hex));
+  return land.length > 0 && land.every((hex) => (state.board.layout.islands[hex] ?? 0) > 0);
 }
 
 /** Awards the bonus for every new (player, island) pair. */

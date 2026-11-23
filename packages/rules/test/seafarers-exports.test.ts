@@ -38,6 +38,7 @@ const VIEW_KEYS: Record<keyof SeafarersView, true> = {
   shipsBuiltThisTurn: true,
   shipMoved: true,
   home: true,
+  fog: true,
 };
 
 const CLAIM_KEYS: Record<keyof Claim, true> = { player: true, island: true, vertex: true };
@@ -58,7 +59,8 @@ const GOLD_DATA_KEYS: Record<keyof SeafarersGoldPendingView['data'], true> = { p
 
 const keysOf = (record: object): string[] => Object.keys(record).sort();
 /** `home` 只在排除 home 島的劇本（四島群島、新世界）的設置結束後出現，New Shores 不帶。 */
-const VIEW_KEYS_WITHOUT_HOME = Object.keys(VIEW_KEYS).filter((key) => key !== 'home').sort();
+const VIEW_KEYS_WITHOUT_HOME = Object.keys(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'fog').sort();
+/** `fog` 只在未知海域劇本出現。 */
 
 // Both maps list the same modules, so a module added to one cannot be forgotten in the other.
 type SameKeys = [keyof ModuleViewMap] extends [keyof ModuleHintsMap]
@@ -97,11 +99,17 @@ describe('seafarers module exports (bot plan RX)', () => {
     expect(keysOf(projectSeafarers(state))).toEqual(VIEW_KEYS_WITHOUT_HOME);
   });
 
+  it('a fog scenario adds the unrevealed hexes as `fog`', () => {
+    const state = emptySeafarersGame(3, 0, 'action', 'sf-fog-islands-2025');
+    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'home'));
+    expect(viewOf(state, 'p2').fog).toHaveLength(12);
+  });
+
   it('a home-island scenario adds `home` once setup has recorded it', () => {
     const state = emptySeafarersGame(4, 0, 'action', 'sf-four-islands-2025');
     expect(keysOf(projectSeafarers(state))).toEqual(VIEW_KEYS_WITHOUT_HOME);
     seafarersState(state).home = { p1: [2], p2: [3], p3: [], p4: [5, 4] };
-    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS));
+    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'fog'));
     expect(viewOf(state, 'p3').home).toEqual({ p1: [2], p2: [3], p3: [], p4: [5, 4] });
   });
 

@@ -140,6 +140,11 @@ export interface ProfileDefinition {
   scenario: ScenarioId | null;
   /** 島嶼獎勵的靜態規則（spec §5.1）；省略表示沒有獎勵。 */
   islandBonus?: IslandBonusRule;
+  /**
+   * 未知海域：移動船是否也翻開迷霧。SF25 p. 8 只寫 place a ship or road，預設 false
+   * （只有建造觸發，spec §6.3、OQ-2）；日後取得官方釐清可切換而不動其他規則。
+   */
+  fogOnMove?: boolean;
   variants: readonly VariantId[];
   /** Rules modules the engine runs for this profile, in hook order. */
   ruleModules: readonly string[];
@@ -319,7 +324,13 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
     implemented: true,
     enabled: true,
   }),
-  seafarersScenarioProfile('sf-fog-islands-2025', 'fog-islands', 12, 'pp. 8–9'),
+  seafarersScenarioProfile('sf-fog-islands-2025', 'fog-islands', 12, 'pp. 8–9', {
+    // 3、4 人同為 42 格外框，layout builder 依人數選港口位置不同的 topology；無島嶼獎勵。
+    topologyId: 'sf-fog-islands-3',
+    fogOnMove: false,
+    implemented: true,
+    enabled: true,
+  }),
   seafarersScenarioProfile('sf-through-the-desert-2025', 'through-the-desert', 14, 'pp. 10–11', {
     islandBonus: { points: 2, skip: 'main' },
     // 外框依人數不同（3 人 35 格、4 人 42 格），layout builder 依人數選 topology。

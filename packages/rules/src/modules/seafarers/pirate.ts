@@ -8,13 +8,14 @@
 import { isLandHex, playerById, topologyOf, totalCards } from '../../analysis.ts';
 import type { GameState } from '../../types.ts';
 import type { BanditMove, ModuleContext } from '../types.ts';
+import { isFogHex } from './fog.ts';
 
-/** Sea hexes the pirate may move to, plus `null` for the frame. */
+/** Sea hexes the pirate may move to, plus `null` for the frame; unrevealed fog spaces are no tiles. */
 export function pirateTargets(state: GameState): (number | null)[] {
   const out: (number | null)[] = [];
   const hexes = topologyOf(state).hexes.length;
   for (let hex = 0; hex < hexes; hex++) {
-    if (!isLandHex(state, hex) && hex !== state.board.pirate) out.push(hex);
+    if (!isLandHex(state, hex) && hex !== state.board.pirate && !isFogHex(state, hex)) out.push(hex);
   }
   if (state.board.pirate !== null) out.push(null);
   return out;
@@ -46,6 +47,8 @@ export function moveBandit(
     if (typeof target !== 'number' || !Number.isInteger(target) || !topologyOf(state).hexes[target]) return undefined;
     // Land hexes belong to the robber.
     if (isLandHex(state, target)) return undefined;
+    // 空格還不是板塊：海盜不能上去。
+    if (isFogHex(state, target)) return { ok: false, error: kit.fail('E_ILLEGAL_TARGET', { hex: target }) };
   }
   if (target === state.board.pirate) return { ok: false, error: kit.fail('E_PIRATE_SAME_HEX', { hex: target }) };
   state.board.pirate = target;

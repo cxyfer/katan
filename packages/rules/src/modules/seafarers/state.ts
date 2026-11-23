@@ -21,6 +21,21 @@ export interface SeafarersState {
    * （four-islands、new-world）會在設置結束時寫入；其他劇本沒有此欄位，摘要不變。
    */
   home?: Record<string, number[]>;
+  /** 未知海域（fog-islands）：尚未翻開的空格與剩餘牌庫；其他劇本沒有此欄位，摘要不變。 */
+  fog?: FogState;
+}
+
+/**
+ * 未知海域的狀態。`hexes` 是尚未翻開的空格（公開：圖上就是空的）；`tiles` 與 `discs`
+ * 是剩餘板塊與圓片的**多重集**（只在伺服器，不投影）。沒有任何「某一格底下是什麼」的
+ * 記錄，翻開時才以 `ctx.rng` 抽出，所以翻開前沒有東西可洩漏（做法同 E&P 的探索）。
+ */
+export interface FogState {
+  hexes: number[];
+  /** 剩餘未知板塊數（依 `FogTile` 計數）。 */
+  tiles: Partial<Record<string, number>>;
+  /** 剩餘未知圓片，升冪，每枚一個元素。 */
+  discs: number[];
 }
 
 export interface IslandClaim {
