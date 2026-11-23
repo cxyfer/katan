@@ -14,6 +14,7 @@ interface SeafarersHints {
   pirateTargets: (number | null)[];
   robberTargets: number[];
   goldRequired: number;
+  harborChoices: { harbors: string[]; edges: number[] };
 }
 
 type AnyCommand = Command | { type: string; [field: string]: unknown };
@@ -100,6 +101,12 @@ function resolvePending(state: GameState, rng: Rng, step: number): GameState | n
         const hexes = (frame.data as { hexes: number[] }).hexes;
         return attempt(state, frame.responders[0]!, { type: 'fog.choose', hex: hexes[step % hexes.length]! }, rng);
       }
+      // 世外部落：放下暫存的港口（挑第一個合法的邊與港口）。
+      if (frame.kind === 'seafarers.harbor') {
+        const id = frame.responders[0]!;
+        const choices = sfHints(state, id).harborChoices;
+        return attempt(state, id, { type: 'harbor.place', edge: choices.edges[step % choices.edges.length]!, harbor: choices.harbors[0]! }, rng);
+      }
       if (frame.kind !== 'seafarers.gold') return null;
       const id = frame.responders[0]!;
       const needed = sfHints(state, id).goldRequired;
@@ -138,12 +145,14 @@ export interface SimulationResult {
   islandBonuses: number;
   /** 翻開的空格數（未知海域）。 */
   fogReveals: number;
+  gifts: number;
+  harborsPlaced: number;
 }
 
 export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 30000, profileId?: string): SimulationResult {
   const rng = seededRng(seed * 7919 + players);
   let { state } = seafarersGame(players, seed, profileId);
-  const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0, fogReveals: 0 };
+  const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0, fogReveals: 0, gifts: 0, harborsPlaced: 0 };
   const count = (before: GameState, after: GameState) => {
     for (const event of after.log) {
       if (event.seq <= before.seq) continue;
@@ -153,6 +162,8 @@ export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps
       if (event.type === 'gold.chosen') counters.goldChoices++;
       if (event.type === 'island.bonus') counters.islandBonuses++;
       if (event.type === 'fog.revealed') counters.fogReveals++;
+      if (event.type === 'tribe.gift') counters.gifts++;
+      if (event.type === 'harbor.placed') counters.harborsPlaced++;
     }
   };
   for (let step = 0; step < maxSteps && !state.result; step++) {

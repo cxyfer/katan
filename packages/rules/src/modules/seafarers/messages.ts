@@ -13,6 +13,8 @@ export const messages = {
     'gold.chosen',
     'island.bonus',
     'fog.revealed',
+    'tribe.gift',
+    'harbor.placed',
   ] as const,
   errorCodes: [
     'E_SHIP_NOT_MOVABLE',

@@ -1,6 +1,7 @@
 /** Seafarers module state (`GameState.moduleState.seafarers`). */
 
 import type { GameState } from '../../types.ts';
+import type { TribeState } from './tribe.ts';
 import { moduleStateOf, setModuleState } from '../state.ts';
 
 export const SEAFARERS = 'seafarers';
@@ -23,6 +24,8 @@ export interface SeafarersState {
   home?: Record<string, number[]>;
   /** 未知海域（fog-islands）：尚未翻開的空格與剩餘牌庫；其他劇本沒有此欄位，摘要不變。 */
   fog?: FogState;
+  /** 世外部落（forgotten-tribe）的禮物、VP 標記與暫存港口；其他劇本沒有此欄位。 */
+  tribe?: TribeState;
 }
 
 /**

@@ -1,8 +1,8 @@
 /**
  * Seafarers 其餘劇本的版圖（SF25 pp. 6–20，spec 2026-11-22-seafarers-scenarios.md §7.3）。
  *
- * 目前有 The Four Islands（四島群島）與 Through the Desert（穿越荒漠，SF25 pp. 10–11，
- * 外框依人數不同，見該節）。四島群島：
+ * 目前有 The Four Islands（四島群島）、Through the Desert（穿越荒漠，SF25 pp. 10–11，
+ * 外框依人數不同，見該節）與 The Forgotten Tribe（世外部落，SF25 pp. 12–13，49 格寬版外框）。四島群島：
  *   - 3 人：SF25 p. 6 的版圖與配件表；
  *   - 4 人：SF25 p. 7 的版圖與配件表。
  * 兩張圖都是 35 格外框，與 New Shores 3 人圖相同（rows 4-5-6-5-6-5-4，中排兩端的
@@ -17,8 +17,8 @@
 
 import type { LayoutContext } from './layout-registry.ts';
 import { fixedLayout, L, NS3_CELLS, NS4_CELLS, type LandHex, type PortSpec } from './seafarers-boards.ts';
-import type { BoardTopology, TopologyDefinition } from './topology.ts';
-import type { BoardLayout } from './types.ts';
+import { hexCenter, NEIGHBOR_DIRS, type BoardTopology, type HexCoord, type TopologyDefinition } from './topology.ts';
+import type { BoardLayout, HarborType } from './types.ts';
 
 // ---------------------------------------------------------------------------
 // 3 人 — SF25 p. 6
@@ -176,6 +176,115 @@ export const THROUGH_THE_DESERT_SOURCE = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// The Forgotten Tribe（世外部落）— SF25 pp. 12–13
+// ---------------------------------------------------------------------------
+//
+// 3 人與 4 人共用同一張圖（SF25 只有一張）。外框 49 格，rows 6-7-8-7-8-7-6；中排兩端的
+// 突出部是框，不是格（與 New Shores 同慣例，故配件表是 49 格而不是 51）。
+// 座標：轉錄原點是「最上排 r=0、該排最左 q=0」，這裡一次平移 (dq, dr) = (-1, -3)，
+// 讓中排中央附近為 (0,0)（與 NS3／NS4 的置中慣例一致）。逐格表與雙人轉錄比對見
+// docs/aegis/work/2026-11-23-seafarers-forgotten-tribe.md。
+//
+// 島編號：1 = 大島（中間三排共 18 格，全有圓片）；2、3 = 上排左右小島；4、5 = 右側兩個單格；
+// 6、7 = 下排左右小島。小島 12 格全無圓片（含三塊沙漠與兩塊金礦）。
+// 強盜放在任一沙漠（layout builder 以 `rng` 決定並寫進 layout）；海盜在海格 (1,-3)。
+
+/** 轉錄座標平移到置中座標。 */
+const FT_SHIFT = { dq: -1, dr: -3 } as const;
+
+/** 49 格外框：每排 [q 起, q 迄]（置中座標，中排兩端的框突出部不是格）。 */
+const FT_ROWS: Readonly<Record<number, readonly [number, number]>> = {
+  [-3]: [-1, 4], [-2]: [-2, 4], [-1]: [-3, 4], 0: [-3, 3], 1: [-4, 3], 2: [-4, 2], 3: [-4, 1],
+};
+
+export const FT_CELLS: readonly HexCoord[] = Object.entries(FT_ROWS).flatMap(([r, [from, to]]) =>
+  Array.from({ length: to - from + 1 }, (_, index) => ({ q: from + index, r: Number(r) })));
+
+/** 轉錄座標（原點在左上）轉成置中座標。 */
+const ft = (q: number, r: number, terrain: LandHex['terrain'], number: number | null, island: number): LandHex =>
+  L(q + FT_SHIFT.dq, r + FT_SHIFT.dr, terrain, number, island);
+
+const FT_LAND: readonly LandHex[] = [
+  // 島 2、3（上排小島）
+  ft(0, 0, 'gold', null, 2), ft(1, 0, 'mountains', null, 2),
+  ft(3, 0, 'desert', null, 3), ft(4, 0, 'mountains', null, 3), ft(5, 0, 'fields', null, 3),
+  // 大島（島 1）：r=2..4 共 18 格，全有圓片
+  ft(-2, 2, 'fields', 6, 1), ft(-1, 2, 'forest', 9, 1), ft(0, 2, 'mountains', 11, 1),
+  ft(1, 2, 'hills', 5, 1), ft(2, 2, 'forest', 6, 1), ft(3, 2, 'mountains', 4, 1),
+  ft(-2, 3, 'pasture', 10, 1), ft(-1, 3, 'hills', 8, 1), ft(0, 3, 'pasture', 4, 1),
+  ft(1, 3, 'fields', 12, 1), ft(2, 3, 'forest', 5, 1), ft(3, 3, 'pasture', 2, 1),
+  ft(-3, 4, 'forest', 11, 1), ft(-2, 4, 'fields', 9, 1), ft(-1, 4, 'mountains', 3, 1),
+  ft(0, 4, 'pasture', 8, 1), ft(1, 4, 'hills', 10, 1), ft(2, 4, 'fields', 3, 1),
+  // 島 4、5（右側單格）
+  ft(5, 2, 'pasture', null, 4), ft(4, 4, 'forest', null, 5),
+  // 島 6、7（下排小島）
+  ft(-3, 6, 'desert', null, 6), ft(-2, 6, 'hills', null, 6),
+  ft(0, 6, 'hills', null, 7), ft(1, 6, 'desert', null, 7), ft(2, 6, 'gold', null, 7),
+];
+
+/** 海盜起始的海格（轉錄 (2,0)，圖上畫在上排兩小島之間）。 */
+const FT_PIRATE: HexCoord = { q: 2 + FT_SHIFT.dq, r: 0 + FT_SHIFT.dr };
+
+export type GiftKind = 'vp' | 'devcard' | 'port';
+
+/** 禮物位置：陸地格與框之間的邊（`side` 依 topology 的 0 E … 5 SE，朝向框）。 */
+export interface GiftSpec extends HexCoord {
+  kind: GiftKind;
+  side: number;
+}
+
+const gift = (kind: GiftKind, q: number, r: number, side: number): GiftSpec =>
+  ({ kind, q: q + FT_SHIFT.dq, r: r + FT_SHIFT.dr, side });
+
+/** 18 個禮物位置：8 VP 標記、4 發展牌、6 港口（港口順序即 topology 的 harborSlots 順序）。 */
+export const FT_GIFTS: readonly GiftSpec[] = [
+  gift('vp', 0, 0, 1), gift('vp', 3, 0, 1), gift('vp', 5, 0, 1), gift('vp', 5, 2, 0),
+  gift('vp', 4, 4, 0), gift('vp', -3, 6, 5), gift('vp', 0, 6, 4), gift('vp', 2, 6, 5),
+  gift('devcard', 0, 0, 3), gift('devcard', 5, 0, 0), gift('devcard', -3, 6, 3), gift('devcard', 2, 6, 0),
+  gift('port', 0, 0, 2), gift('port', 3, 0, 2), gift('port', 5, 2, 1),
+  gift('port', 4, 4, 5), gift('port', -3, 6, 4), gift('port', 0, 6, 5),
+];
+
+const FT_PORT_SLOTS = FT_GIFTS.filter((spec) => spec.kind === 'port').map(({ q, r, side }) => ({ q, r, side }));
+
+/** 禮物位置的邊索引（陸地格與框之間的邊）。 */
+export function giftEdges(topology: BoardTopology): { edge: number; kind: GiftKind }[] {
+  return FT_GIFTS.map((spec) => {
+    const hex = topology.hexes.findIndex((candidate) => candidate.q === spec.q && candidate.r === spec.r);
+    const dir = NEIGHBOR_DIRS[spec.side];
+    if (hex < 0 || !dir) throw new Error(`forgotten tribe: bad gift ${spec.kind} ${spec.q},${spec.r}/${spec.side}`);
+    const a = hexCenter(spec);
+    const b = hexCenter({ q: spec.q + dir.q, r: spec.r + dir.r });
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    const edge = topology.edges.findIndex((candidate) =>
+      candidate.hexes.includes(hex) && Math.abs(candidate.x - mx) < 1e-4 && Math.abs(candidate.y - my) < 1e-4);
+    if (edge < 0) throw new Error(`forgotten tribe: gift ${spec.kind} ${spec.q},${spec.r}/${spec.side} has no edge`);
+    return { edge, kind: spec.kind };
+  });
+}
+
+export const FORGOTTEN_TRIBE_TOPOLOGY_ID = 'sf-forgotten-tribe';
+
+/** 2:1 港口 5 個（各一種資源）加 3:1 港口 1 個（SF25 p. 12 配件表）。 */
+export const FT_PORT_TOKENS: readonly HarborType[] = ['lumber', 'brick', 'wool', 'grain', 'ore', 'generic'];
+
+/** Layout builder，登記為 `sf-forgotten-tribe`：3 人與 4 人同一張圖；強盜隨機放在三塊沙漠之一。 */
+export function forgottenTribeLayout(context: LayoutContext, topologyFor: (id: string) => BoardTopology): BoardLayout {
+  const topology = checkedTopology(topologyFor, FORGOTTEN_TRIBE_TOPOLOGY_ID, 49);
+  const deserts = FT_LAND.filter((hex) => hex.terrain === 'desert');
+  const robber = deserts[context.rng.int(deserts.length)]!;
+  const layout = fixedLayout(topology, FT_LAND, [], robber);
+  layout.pirate = topology.hexes.findIndex((hex) => hex.q === FT_PIRATE.q && hex.r === FT_PIRATE.r);
+  return layout;
+}
+
+/** 轉錄的配件，供 fixture 測試使用（SF25 pp. 12–13）。 */
+export const FORGOTTEN_TRIBE_SOURCE = {
+  land: FT_LAND, gifts: FT_GIFTS, cells: FT_CELLS.length, pirate: FT_PIRATE, shift: FT_SHIFT,
+} as const;
+
+// ---------------------------------------------------------------------------
 // topology 與 layout
 // ---------------------------------------------------------------------------
 
@@ -186,6 +295,7 @@ export const SCENARIO_TOPOLOGIES: readonly TopologyDefinition[] = [
   { id: 'sf-four-islands-4', hexes: NS3_CELLS, harborSlots: slots(FI4_PORTS) },
   { id: 'sf-through-the-desert-3', hexes: NS3_CELLS, harborSlots: slots(TD3_PORTS) },
   { id: 'sf-through-the-desert-4', hexes: NS4_CELLS, harborSlots: slots(TD4_PORTS) },
+  { id: FORGOTTEN_TRIBE_TOPOLOGY_ID, hexes: FT_CELLS, harborSlots: FT_PORT_SLOTS },
 ];
 
 /** 四島群島：3 人與 4 人都是 35 格外框，依人數選港口位置不同的 topology。 */
