@@ -1,16 +1,7 @@
 {
+  "scenario": "four-islands",
+  "profile": "sf-four-islands-2025",
   "base": "http://127.0.0.1:3187",
-  "fixtures": {
-    "topologyId": "sf-new-shores-4",
-    "coast": 48,
-    "shipNW": 61,
-    "shipNE": 65,
-    "branch": 63,
-    "goldVertex": 50,
-    "goldHex": 23,
-    "seaHex": 22,
-    "pirateSea": 15
-  },
   "cases": [
     {
       "name": "lobby-four-islands",
@@ -93,12 +84,12 @@
       "name": "map-4p-svg-phone",
       "status": "PASS",
       "note": "sf-four-islands-4",
-      "sha256": "eb17fc5d6cc49dc33300f14590bf39b60b70c7fda03dfef00822ebd9dd8ea34d",
+      "sha256": "dbeead49168362539874882e99d23b6a6c71367d2d01999eeba5546bd3c59be8",
       "viewport": {
         "width": 390,
         "height": 844
       },
-      "committed": true
+      "committed": false
     },
     {
       "name": "map-4p-r3f-phone",
@@ -114,8 +105,41 @@
     {
       "name": "help-four-islands-svg-desktop",
       "status": "PASS",
-      "note": "setup done, home islands {'player_c2e1d49be469485585f8': [2], 'player_b156c6ec1f384207a198': [2, 3], 'player_9973196a8308417d97d9': [4], 'player_e610302963c0442e9879': [3, 4]}; help panel shows the Four Islands rules",
-      "sha256": "4e394758f2905f73b01656b58dad1f622c91b0688079fd43aaf0aeab5bbed2fb",
+      "note": "setup done, home islands {'player_c81ce34735e7497596b4': [2], 'player_8283e5f3587f47a7a5cf': [2, 3], 'player_798ee8783e7a45e1b8a8': [4], 'player_a2f1ac4dbb01402dbe3e': [3, 4]}; help panel shows the Four Islands rules",
+      "sha256": "a52f53058be7e6009ca67fbe97d5ad72eb5b92fbb4f9944ebf82dd49297ee520",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-island-bonus-svg",
+      "status": "PASS",
+      "note": "first settlement on non-home island 3: +2 token and the player panel",
+      "sha256": "d74047c248e0c267423b3168fd15bbec14d887fc4b57441afef8382f2b82c251",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-island-bonus-3d",
+      "status": "PASS",
+      "note": "the same bonus in the 3D board",
+      "sha256": "94b07dee247f56bfeb70575dde2f35878bc66e1b05861311636159146c05e6ca",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result",
+      "status": "PASS",
+      "note": "second new island reaches 13 VP: result screen",
+      "sha256": "6eb95fe6f9435f88acdebc5275ccde799df3ea8049dea92343f39bf43301223c",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -124,21 +148,43 @@
     }
   ],
   "home": {
-    "player_c2e1d49be469485585f8": [
+    "player_c81ce34735e7497596b4": [
       2
     ],
-    "player_b156c6ec1f384207a198": [
+    "player_8283e5f3587f47a7a5cf": [
       2,
       3
     ],
-    "player_9973196a8308417d97d9": [
+    "player_798ee8783e7a45e1b8a8": [
       4
     ],
-    "player_e610302963c0442e9879": [
+    "player_a2f1ac4dbb01402dbe3e": [
       3,
       4
     ]
   },
+  "finish": {
+    "targets": [
+      {
+        "vertex": 10,
+        "edge": 11,
+        "island": 3
+      },
+      {
+        "vertex": 48,
+        "edge": 61,
+        "island": 4
+      }
+    ],
+    "home": [
+      2
+    ],
+    "result": {
+      "playerId": "player_c81ce34735e7497596b4",
+      "reason": "victory",
+      "score": 13
+    }
+  },
   "errors": [],
-  "note": "Two 3-player phone captures were not committed to keep the repository small; their sha256 stays listed (committed: false)."
+  "note": "Three phone captures (3-player SVG and 3D, 4-player SVG) were not committed to keep the repository small; their sha256 stays listed (committed: false)."
 }

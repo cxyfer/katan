@@ -193,8 +193,15 @@ number 12 disc"). Pirate: on the frame (`pirate: null`). Island sizes: 2 → 4,
   3- and 4-player starts, home islands, mid-game restart, a 13-point finish.
 - Web: SVG board (hexes, nine harbors, pirate on the frame), coastline loop
   for the frame, help panel in both locales.
-- Browser: `scripts/seafarers/capture_four_islands.py` (see the report file
-  listed in the index).
+- Browser: `scripts/seafarers/capture_four_islands.py`, 13 cases and no page
+  errors (Chromium, software WebGL): lobby, both maps in SVG and 3D (desktop
+  and phone), setup spread over the islands with the help panel, then a live
+  finish through the UI. A test-only fixture (service stopped) gives player 1
+  the turn, building cards, 5 other bonus points and a road to an empty spot on
+  each of two non-home islands; player 1 then settles the first (+2: token in
+  SVG and 3D, island list in the player panel) and the second (+2, 13 VP,
+  result screen). The run fails if a token or the result screen is missing.
+  Report and 10 curated captures: `docs/screenshots/seafarers-four-islands/`.
 
 ## Limitations
 

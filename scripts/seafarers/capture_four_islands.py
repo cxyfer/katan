@@ -15,18 +15,31 @@ the real UI and API (no mocked snapshots):
 3. Setup finished over the API with the starting settlements spread over the
    islands; the typed view records each player's home islands; SVG capture and
    the in-game help panel showing the Four Islands special rules.
+4. A live finish for player 1 through the UI: while the service is stopped, a
+   test-only fixture gives player 1 the turn, two sets of building cards,
+   5 other bonus points and a road to an empty spot on each of two non-home
+   islands (`four_islands_fixture.mjs`). Then, through the UI, player 1 settles
+   the first new island (+2 island bonus: token in SVG and 3D, island list in
+   the player panel), and the second one (+2 again), which reaches 13 VP and
+   shows the result screen. The run FAILS if a token or the result screen is
+   missing.
 
 ``report.json`` lists every case with its sha256.
 """
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 
 from playwright.sync_api import expect, sync_playwright
 
 import capture as base  # noqa: E402  (module-level setup reads argv[1] and prepares OUT)
-from capture import ERRORS, OUT, REPORT, SERVER, api, log, map_shots, new_player, open_game, shot, snap
+from capture import ERRORS, OUT, REPORT, SERVER, api, log, map_shots, new_player, open_game, open_actions, shot, snap, ui_click_target, ui_confirm
+
+# capture.py 的 REPORT 預先放了 New Shores 的 fixtures；這份報告只含四島資料。
+REPORT.clear()
+REPORT.update({'scenario': 'four-islands', 'profile': 'sf-four-islands-2025', 'base': base.BASE, 'cases': []})
 
 NAMES = ['海岸領航員', 'Mira', '阿卡', 'Jonas']
 
@@ -85,6 +98,57 @@ def setup_over_api(contexts, identity, game_id):
         assert response.json()['ok'], response.json()
 
 
+def finish_live(contexts, pages, identity, game_id):
+    """Player 1 settles two new islands through the UI: +2 each, the second reaches 13 VP."""
+    p1 = identity[0]
+    plan = {}
+
+    def prepare(state):
+        seat = next(i for i, player in enumerate(state['players']) if player['id'] == p1)
+        out = subprocess.run(['node', '--experimental-strip-types', str(base.ROOT / 'scripts/seafarers/four_islands_fixture.mjs'), p1],
+                             input=json.dumps(state), check=True, capture_output=True, text=True, cwd=base.ROOT).stdout
+        plan.update(json.loads(out))
+        player = state['players'][seat]
+        player['resources'] = {'lumber': 2, 'brick': 2, 'wool': 2, 'grain': 2, 'ore': 0}
+        player['bonusPoints'] = 5  # 2 起始村落 + 5 = 7；+3 = 10；再 +3 = 13
+        for target in plan['targets']:
+            state['board']['roads'][target['edge']] = {'player': p1, 'ship': False}
+        state['turn'].update({'seat': seat, 'phase': 'action', 'dice': [3, 4], 'setup': None})
+        state['pending'] = None
+        state['windowId'] += 1
+    SERVER.patch_game(game_id, prepare)
+    first, second = plan['targets']
+    page = pages[0]
+    for other in pages:
+        other.reload()
+
+    def settle(target):
+        open_game(page, game_id, 'svg')
+        open_actions(page)
+        page.get_by_test_id('action-build.settlement').click()
+        ui_click_target(page, 'vertex', target['vertex'])
+        ui_confirm(page)
+
+    settle(first)
+    view = snap(contexts[0], f'/api/games/{game_id}')['view']
+    assert view['modules']['seafarers']['islandBonus'][p1] == [first['island']], view['modules']['seafarers']
+    assert view['result'] is None
+    expect(page.get_by_test_id(f"island-bonus-{first['vertex']}")).to_be_attached()
+    expect(page.get_by_test_id('players-islands-0')).to_be_attached()
+    shot(page, 'live-island-bonus-svg', f"first settlement on non-home island {first['island']}: +2 token and the player panel")
+    open_game(page, game_id, 'r3f')
+    shot(page, 'live-island-bonus-3d', 'the same bonus in the 3D board', ms=2500)
+
+    settle(second)
+    view = snap(contexts[0], f'/api/games/{game_id}')['view']
+    assert view['result'] and view['result']['playerId'] == p1 and view['result']['reason'] == 'victory', view['result']
+    assert view['modules']['seafarers']['islandBonus'][p1] == sorted([first['island'], second['island']])
+    expect(page.get_by_test_id('result-screen')).to_be_visible()
+    expect(page.get_by_test_id('result-winner')).to_be_visible()
+    shot(page, 'live-result', 'second new island reaches 13 VP: result screen')
+    REPORT['finish'] = {'targets': plan['targets'], 'home': plan['home'], 'result': view['result']}
+
+
 def run():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
@@ -106,10 +170,13 @@ def run():
                 expect(host.get_by_test_id('help-four-islands-setup')).to_be_visible()
                 expect(host.get_by_test_id('help-four-islands-bonus')).to_be_visible()
                 shot(host, 'help-four-islands-svg-desktop', f'setup done, home islands {home}; help panel shows the Four Islands rules')
+            if count == 4:
+                finish_live(contexts, pages, identity, game_id)
             for context in contexts:
                 context.close()
         browser.close()
     REPORT['errors'] = ERRORS
+    assert 'sf-new-shores' not in json.dumps(REPORT), 'New Shores data leaked into the report'
     (OUT / 'report.json').write_text(json.dumps(REPORT, ensure_ascii=False, indent=2), encoding='utf-8')
     log('CASES', len(REPORT['cases']), 'ERRORS', len(ERRORS))
     if ERRORS:
