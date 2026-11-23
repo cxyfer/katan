@@ -1,0 +1,156 @@
+{
+  "scenario": "fog-islands",
+  "profile": "sf-fog-islands-2025",
+  "base": "http://127.0.0.1:3057",
+  "cases": [
+    {
+      "name": "lobby-fog-islands",
+      "status": "PASS",
+      "note": "lobby: Seafarers / The Fog Islands, 3-4 players only",
+      "sha256": "e3c610574c9e937797b09351abf7101b4d5fcfe5626debaf61f5f7aa986c955b",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-fog-islands-3",
+      "sha256": "284791019a88bab417cc59889a295cdd5220c99850662611df1d4b804de35c4a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-fog-islands-3",
+      "sha256": "7371bde6744c49154dd1c68d89bf37dab2909e508b8dced71deb6f485955afc1",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-fog-islands-4",
+      "sha256": "b862f6d6af17573851ca982854cba2fe6a30376829cfef161485037c6fef7e02",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-fog-islands-4",
+      "sha256": "98bfb1a7bdd7099eff2cd620432fd92eaac43c414a4f4c6cfce8971d5159faf7",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "help-fog-islands-svg-desktop",
+      "status": "PASS",
+      "note": "setup done; help panel shows the Fog Islands rules",
+      "sha256": "c9e0b6d78b912e5e518afcd5b9a5c0bda183d1c1edb188d54d702079b2e429f4",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-before-svg",
+      "status": "PASS",
+      "note": "before: 12 clouds; build ship targets include the path 34 that touches one unexplored hex",
+      "sha256": "7e1fcfbd0f60268228a4285af4c92ede1cf792d3ea0ae8b12394191a35dcc215",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-reveal-svg",
+      "status": "PASS",
+      "note": "ship built through the SVG board revealed hex 13: sea None; 11 clouds left",
+      "sha256": "7334b5ae64fe545db821a4df1f5c647e8322a977dcc57bd31f63a996726208a5",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-choice-3d",
+      "status": "PASS",
+      "note": "the ship touches two unexplored hexes [0, 6]: the placer chooses one on the 3D board",
+      "sha256": "fb16ce51a0f3c4ab1ff85158c60291bb3e86533fd0058bab6b67a9ff9fc1f1ee",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-reveal-3d",
+      "status": "PASS",
+      "note": "the chosen hex 6 is revealed in 3D: gold (gold picked in the UI); 10 fog banks left",
+      "sha256": "0437348d143fd5aced5d845ad2c54dc2350d0d7da663f65af1f55325bcdc3619",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-phone",
+      "status": "PASS",
+      "note": "phone width: 10 clouds left, two hexes revealed",
+      "sha256": "5b7c9f212b10fb275a4271be98b1cac35eb79a83e5b2b7d07cb7af8091f07577",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "live-result",
+      "status": "PASS",
+      "note": "a legal settlement reaches 12 VP (no island bonus): result screen",
+      "sha256": "9a5a7734e131600b375253487517e237f0154fb4df951d591e33692964c93c74",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    }
+  ],
+  "live": {
+    "reveal": {
+      "prefix": [],
+      "edge": 34,
+      "hex": 13
+    },
+    "choice": {
+      "prefix": [
+        12,
+        36,
+        6
+      ],
+      "edge": 7,
+      "hexes": [
+        0,
+        6
+      ]
+    },
+    "finish": {
+      "vertex": 12,
+      "edge": 13
+    },
+    "result": {
+      "playerId": "player_dd9716c30eb048c581eb",
+      "reason": "victory",
+      "score": 14
+    }
+  },
+  "errors": []
+}
