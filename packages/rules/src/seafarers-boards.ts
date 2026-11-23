@@ -94,7 +94,7 @@ const NS3_PORTS: readonly PortSpec[] = [
 // ---------------------------------------------------------------------------
 
 /** Rows 5-6-7-6-7-6-5 (the 44-cell outline minus both protrusions). */
-const NS4_CELLS = cells(
+export const NS4_CELLS = cells(
   { [-3]: [0, 4], [-2]: [-1, 4], [-1]: [-2, 4], 0: [-3, 4], 1: [-3, 3], 2: [-3, 2], 3: [-3, 1] },
   [{ q: -3, r: 0 }, { q: 4, r: 0 }],
 );
