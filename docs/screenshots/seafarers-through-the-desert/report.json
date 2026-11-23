@@ -18,7 +18,7 @@
       "name": "map-3p-svg-desktop",
       "status": "PASS",
       "note": "sf-through-the-desert-3",
-      "sha256": "d7c52f91fe4304ed5929c8065feeff9496229e8d69ff55e5005334c79923378f",
+      "sha256": "933de19ae62385b29cc13ad0d31d50aa6d44e11226f7d3a9722b0cf974bbf56c",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -51,7 +51,7 @@
       "name": "map-4p-r3f-desktop",
       "status": "PASS",
       "note": "sf-through-the-desert-4",
-      "sha256": "6f912c43956cf074597d45b57d4015fb6c0a25382abb0b4cae619dd17b7ef449",
+      "sha256": "8e1ca06f92f5cfe20d44e906b4760b76740a789e0599300e80965185c8485af0",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -62,7 +62,7 @@
       "name": "map-4p-svg-phone",
       "status": "PASS",
       "note": "sf-through-the-desert-4",
-      "sha256": "74da2116defbace0ba96ef03c6a04a1072246825705767a2c426209763a4b81c",
+      "sha256": "9ad0e173fa7eb3d2be8396c39d53dfdb000c6a006cb8875699c7c8a4b13dbc7d",
       "viewport": {
         "width": 390,
         "height": 844
@@ -84,7 +84,7 @@
       "name": "help-desert-svg-desktop",
       "status": "PASS",
       "note": "setup done on the main island; help panel shows the Through the Desert rules and the gold line",
-      "sha256": "a1d9024a9a4cabd48caf92f276745c50286fcb7c5ebfdf6e107b66514466b758",
+      "sha256": "cb7b8087d8836a7ea4d138d9ea19063d9284d8fab2b7fb295b104d98bab54ab7",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -146,7 +146,7 @@
       }
     ],
     "result": {
-      "playerId": "player_2a61f6a1561c4550882b",
+      "playerId": "player_6ddd2b913f3a40e8bc8b",
       "reason": "victory",
       "score": 14
     }
