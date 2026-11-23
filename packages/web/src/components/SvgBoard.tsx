@@ -7,11 +7,11 @@ import type { TableState } from '../state/table.ts';
 import { useT } from '../i18n/context.tsx';
 import { pipsFor, playerColorHex, resourceLetter, seatDash, terrainFill, terrainLetter, terrainSymbol } from '../board/terrain.ts';
 import { placementArrival } from '../board/effects.ts';
-import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
+import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HARBOR_TINT, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
 import { TbBridge, TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
-import { edgeAngle, edgeMidpoint, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
-import { isShipCommand, seafarersView } from '../board/seafarers.ts';
+import { edgeAngle, edgeMidpoint, GiftMarker, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
+import { harborRatio, isShipCommand, seafarersView } from '../board/seafarers.ts';
 import { FogCloud, SvgExplorersPiratesLayer } from './SvgExplorersPirates.tsx';
 import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
 import { MerchantPiece } from './SvgProgressArt.tsx';
@@ -231,6 +231,26 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
             if (!vertex) return null;
             return <IslandBonusToken key={`island-${claim.player}-${claim.island}`} testId={`island-bonus-${claim.vertex}`}
               x={vertex.x + 17} y={vertex.y + 16} color={playerColorHex(owner?.color ?? 'white')} />;
+          })}
+          {/* 世外部落：邊上的禮物，略往框的方向推出；被拿走後從 module 狀態消失。 */}
+          {seafarersView(view)?.tribe?.gifts.map((gift) => {
+            const edge = geometry.edges[gift.edge];
+            const land = landHexOfEdge(geometry, gift.edge);
+            const hex = land === undefined ? undefined : geometry.hexes[land];
+            if (!edge || !hex) return null;
+            const mid = edgeMidpoint(edge);
+            const length = Math.hypot(mid.x - hex.cx, mid.y - hex.cy) || 1;
+            const push = gift.kind === 'port' ? 22 : 15;
+            const x = mid.x + ((mid.x - hex.cx) / length) * push;
+            const y = mid.y + ((mid.y - hex.cy) / length) * push;
+            const name = gift.kind === 'vp' ? t('sf.gift.vp') : gift.kind === 'devcard' ? t('sf.gift.devcard')
+              : gift.harbor === 'generic' ? t('sf.gift.port.generic') : t('sf.gift.port.resource', { resource: t(`resource.${gift.harbor}`) });
+            return <g key={`gift-${gift.edge}`}>
+              <GiftMarker testId={`gift-${gift.edge}`} x={x} y={y} kind={gift.kind} harbor={gift.harbor}
+                color={gift.harbor ? (HARBOR_TINT[gift.harbor] ?? HARBOR_TINT.generic) : undefined}
+                ratio={gift.harbor ? harborRatio(gift.harbor) : undefined} letter={gift.harbor && gift.harbor !== 'generic' ? resourceLetter(gift.harbor) : undefined} />
+              <title>{name}</title>
+            </g>;
           })}
           {seafarersView(view) && (() => {
             const hex = board.pirate === null ? null : geometry.hexes[board.pirate];

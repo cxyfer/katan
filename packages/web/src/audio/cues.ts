@@ -153,10 +153,13 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
     case 'gold.chosen':
       return 'gold.pick';
     case 'island.bonus':
+    case 'tribe.gift':
       return 'island.bonus';
     // 未知海域翻開一格：與 E&P 探索同一個迷霧散去的音效。
     case 'fog.revealed':
       return 'explore.reveal';
+    case 'harbor.placed':
+      return 'ship.build';
     // Explorers & Pirates reuses the sea cues and adds the fog lifting and mission progress.
     case 'ep.shipBuilt':
     case 'ep.setupShip':

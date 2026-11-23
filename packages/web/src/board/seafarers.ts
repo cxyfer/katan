@@ -13,6 +13,21 @@ export interface IslandClaimView {
   vertex: number;
 }
 
+/** 世外部落邊上的禮物（發展牌只有位置，沒有身分）。 */
+export interface TribeGiftView {
+  edge: number;
+  kind: 'vp' | 'devcard' | 'port';
+  /** 港口種類（面朝上，公開）。 */
+  harbor?: string;
+}
+
+/** 世外部落：邊上的禮物、各玩家的 VP 標記數與暫存在面前的港口（全部公開）。 */
+export interface TribeView {
+  gifts: TribeGiftView[];
+  vp: Record<string, number>;
+  held: Record<string, string[]>;
+}
+
 export interface SeafarersModuleView {
   islandBonus: Record<string, number[]>;
   islandClaims: IslandClaimView[];
@@ -22,6 +37,8 @@ export interface SeafarersModuleView {
   home: Record<string, number[]> | null;
   /** 未知海域尚未翻開的空格（hex 索引）；其他劇本為空。牌庫不在投影裡。 */
   fog: number[];
+  /** 世外部落的禮物與標記；其他劇本為 null。 */
+  tribe: TribeView | null;
 }
 
 export interface SeafarersHints {
@@ -37,6 +54,8 @@ export interface SeafarersHints {
    * `GameView.bank` 只到 `BANK_VIEW_CAP`，金礦卻可能要拿更多同種的牌。缺欄時為 null，由呼叫端退回公開的銀行。
    */
   goldBank: Record<Resource, number> | null;
+  /** 世外部落：輪到此玩家放港口時，暫存的港口種類與可放的邊。 */
+  harborChoices: { harbors: string[]; edges: number[] };
 }
 
 export const SHIP_COST: Partial<Record<Resource, number>> = { lumber: 1, wool: 1 };
@@ -46,6 +65,9 @@ export const ISLAND_BONUS_POINTS = 2;
 
 /** Board commands whose edge target is a ship. */
 const SHIP_COMMANDS = new Set(['build.ship', 'setup.placeShip', 'ship.move', 'ship.pick']);
+
+/** 世外部落禮物上顯示的港口比率與標示（2:1 資源港、3:1 通用港）。 */
+export const harborRatio = (type: string): string => (type === 'generic' ? '3:1' : '2:1');
 
 export function isShipCommand(commandType: string | null | undefined): boolean {
   return !!commandType && (SHIP_COMMANDS.has(commandType) || isEpShipCommand(commandType));
@@ -61,6 +83,7 @@ export function seafarersView(view: Pick<GameView, 'modules'> | null | undefined
     shipMoved: !!slot.shipMoved,
     home: slot.home ?? null,
     fog: slot.fog ?? [],
+    tribe: slot.tribe ?? null,
   };
 }
 
@@ -76,6 +99,7 @@ export function seafarersHints(view: Pick<GameView, 'hints'> | null | undefined)
     robberTargets: slot.robberTargets ?? [],
     goldRequired: slot.goldRequired ?? 0,
     goldBank: slot.goldBank ?? null,
+    harborChoices: slot.harborChoices ?? { harbors: [], edges: [] },
   };
 }
 

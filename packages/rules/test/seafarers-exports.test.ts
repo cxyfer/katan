@@ -54,6 +54,8 @@ const HINT_KEYS: Record<keyof SeafarersHints, true> = {
   goldRequired: true,
   goldBank: true,
   harborChoices: true,
+  targets: true,
+  board: true,
 };
 
 const GOLD_KEYS: Record<keyof SeafarersGoldPendingView, true> = { kind: true, module: true, responders: true, data: true };

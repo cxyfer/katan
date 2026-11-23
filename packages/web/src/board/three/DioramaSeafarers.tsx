@@ -7,7 +7,8 @@ import { geometryToWorld } from './bounds.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
 import { createFogModel, hexPoint } from './diorama-explorers.ts';
 import { FogLift } from './DioramaExplorersPirates.tsx';
-import { createIslandTokenModel, createPirateModel, createShipModel, pirateTransform, SHIP_SCALE, shipInstances, shipTransform } from './diorama-ships.ts';
+import { createGiftModel, createIslandTokenModel, createPirateModel, createShipModel, giftTransform, pirateTransform, SHIP_SCALE, shipInstances, shipTransform } from './diorama-ships.ts';
+import type { TribeGiftView } from '../seafarers.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import { SEA_LEVEL } from '../sea.ts';
 import { ROAD_ARRIVAL_TRANSFORM_MS } from './model-specs.ts';
@@ -43,6 +44,44 @@ function IslandTokens({ color, vertices, geometry, material }: Pick<Props, 'geom
     return [{ position: [point.x + 0.16, 0.005, point.z + 0.15] as [number, number, number], rotationY: 0, scale: [1.6, 1.6, 1.6] as [number, number, number] }];
   });
   return <InstancedPrimitive geometry={model} material={material} instances={instances} />;
+}
+
+const GIFT_TINT: Readonly<Record<string, string>> = {
+  generic: '#2f6d84', lumber: '#3f6f3d', brick: '#a8502f', wool: '#7da34f', grain: '#c39130', ore: '#6d7d86',
+};
+
+/** 世外部落的禮物：同種的合成一組實例（港口依資源各一組）。 */
+function Gifts({ gifts, geometry, material }: Pick<Props, 'geometry' | 'material'> & { gifts: readonly TribeGiftView[] }) {
+  const groups = useMemo(() => {
+    const out = new Map<string, { kind: TribeGiftView['kind']; harbor?: string; edges: number[] }>();
+    for (const gift of gifts) {
+      const key = gift.kind === 'port' ? `port:${gift.harbor}` : gift.kind;
+      const group = out.get(key) ?? { kind: gift.kind, ...(gift.harbor ? { harbor: gift.harbor } : {}), edges: [] };
+      group.edges.push(gift.edge);
+      out.set(key, group);
+    }
+    return [...out.entries()];
+  }, [gifts]);
+  return <>{groups.map(([key, group]) => <GiftGroup key={key} {...group} geometry={geometry} material={material} />)}</>;
+}
+
+function GiftGroup({ kind, harbor, edges, geometry, material }: Pick<Props, 'geometry' | 'material'> & { kind: TribeGiftView['kind']; harbor?: string; edges: number[] }) {
+  const model = useDioramaGeometry(() => createGiftModel(kind, harbor ? GIFT_TINT[harbor] : undefined), [kind, harbor]);
+  const instances = useMemo(() => edges.flatMap((edge) => {
+    const transform = giftTransform(geometry, edge);
+    return transform ? [{ position: transform.position, rotationY: transform.rotationY, scale: [1.5, 1.5, 1.5] as [number, number, number] }] : [];
+  }), [edges, geometry]);
+  return <InstancedPrimitive geometry={model} material={material} instances={instances} castShadow={false} />;
+}
+
+/** 證據用掛勾：把場景實際畫出的禮物數寫到 canvas 的 `data-gift-markers`。 */
+function GiftProbe({ count }: { count: number }) {
+  const canvas = useThree((state) => state.gl.domElement);
+  useEffect(() => {
+    canvas.dataset.giftMarkers = String(count);
+    return () => { delete canvas.dataset.giftMarkers; };
+  }, [canvas, count]);
+  return null;
 }
 
 /**
@@ -91,6 +130,10 @@ export function DioramaSeafarers(props: Props) {
       return point ? <FogLift key={`${props.active!.id}-${event.seq}`} animationKey={`${props.active!.id}-${event.seq}`} position={point}
         material={material} motionAllowed={props.motionAllowed} /> : null;
     })}
+    {seafarers.tribe && <>
+      <Gifts gifts={seafarers.tribe.gifts} geometry={geometry} material={material} />
+      <GiftProbe count={seafarers.tribe.gifts.filter((gift) => !!giftTransform(geometry, gift.edge)).length} />
+    </>}
     {players.map((player) => {
       const items = ships.filter((ship) => ship.playerId === player.id);
       return items.length ? <PlayerShips key={player.id} {...props} color={playerColorHex(player.color)} seat={player.seat} items={items} /> : null;

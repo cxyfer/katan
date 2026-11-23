@@ -46,6 +46,19 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
       };
     case 'island.bonus':
       return { player, points: num(p.points) };
+    case 'tribe.gift': {
+      const harbor = str(p.harbor);
+      const gift = p.gift === 'vp' ? t(locale, 'sf.gift.vp') : p.gift === 'devcard' ? t(locale, 'sf.gift.devcard')
+        : harbor === 'generic' ? t(locale, 'sf.gift.port.generic') : t(locale, 'sf.gift.port.resource', { resource: t(locale, `resource.${harbor}`) });
+      return { player, edge: num(p.edge), gift };
+    }
+    case 'harbor.placed': {
+      const harbor = str(p.harbor);
+      return {
+        player, edge: num(p.edge),
+        harbor: harbor === 'generic' ? t(locale, 'sf.gift.port.generic') : t(locale, 'sf.gift.port.resource', { resource: t(locale, `resource.${harbor}`) }),
+      };
+    }
     case 'fog.revealed': {
       const terrain = t(locale, `terrain.${str(p.tile)}`).replace(/\s*[（(][^)）]*[)）]\s*$/, '');
       return {

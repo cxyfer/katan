@@ -68,6 +68,7 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
   const robberMove = state.pending?.kind === 'moveRobber' && state.pending.actor === playerId;
   const view = seafarersView(state);
   const required = goldRequired(state, playerId);
+  const harbor = harborChoices(state, playerId);
   return {
     legalShips: inAction || freeRoads ? buildableShipEdges(state, playerId, ctx.profile.pieces.ships) : [],
     setupShips: setupShipStep ? legalShipEdges(state, playerId, { setupVertex: setup!.lastVertex }) : [],
@@ -79,7 +80,15 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
         state.board.layout.terrain[hex] !== 'sea' && hex !== state.board.robber && robberHexAllowed(state, hex, ctx))
       : [],
     /** 世外部落：輪到此玩家放港口時可選的港口種類與邊。 */
-    harborChoices: harborChoices(state, playerId),
+    harborChoices: harbor,
+    /**
+     * 棋盤目標（與 Traders & Barbarians 同一種慣例）：`targets` 依指令列出合法的邊；
+     * 只有一種暫存港口時 `board` 讓棋盤自動進入「選邊」，多種時由提示先選港口種類。
+     */
+    targets: harbor.edges.length > 0 ? { 'harbor.place': harbor.edges } : ({} as Record<string, number[]>),
+    board: harbor.harbors.length === 1 && harbor.edges.length > 0
+      ? { kind: 'edge' as const, commandType: 'harbor.place', labelId: 'sf.harbor.place', targets: harbor.edges, extra: { harbor: harbor.harbors[0]! } }
+      : null,
     goldRequired: required,
     /**
      * 金礦作答所需的銀行存量：每種 `min(存量, goldRequired)`，只給當下作答的玩家（其他人
