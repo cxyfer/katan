@@ -16,6 +16,11 @@ export interface SeafarersState {
   islands: Record<string, number[]>;
   /** Where each bonus was earned: the settlement that holds the VP tokens. */
   claims: IslandClaim[];
+  /**
+   * 各玩家的 home islands（設置階段村落碰到的島）。只有島嶼獎勵排除 home 的劇本
+   * （four-islands、new-world）會在設置結束時寫入；其他劇本沒有此欄位，摘要不變。
+   */
+  home?: Record<string, number[]>;
 }
 
 export interface IslandClaim {

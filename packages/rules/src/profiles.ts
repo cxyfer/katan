@@ -111,6 +111,19 @@ export interface ProfilePieces {
  * `official` 只有 `base-paired-2025` 提供：官方 5–6 人版圖（對稱形狀、
  * 數字依 A→BB 固定順序、框上印好的港口），見 `official-56-board.ts`。
  */
+/**
+ * 島嶼獎勵規則：每位玩家每座島第一個村落得 `points` 分。`skip: 'main'` 不算主島
+ * （島編號 `MAIN_ISLAND` = 1；S4 外地、S8 小島都是主島以外的島），`skip: 'home'`
+ * 不算該玩家設置階段村落碰到的島（`SeafarersState.home`）。交叉點碰到多個島時，
+ * 先剔除不計分的島，其餘各算一次（S4 沙漠與外地之間的交叉點歸外地）。
+ */
+export interface IslandBonusRule {
+  points: number;
+  skip: 'main' | 'home';
+}
+
+const NEW_SHORES_ISLAND_BONUS: IslandBonusRule = { points: 2, skip: 'main' };
+
 export type SetupMode = 'fixed' | 'variable' | 'official';
 
 export interface ProfileDefinition {
@@ -125,6 +138,8 @@ export interface ProfileDefinition {
   /** Expansion set on top of the base rules (order is not significant). */
   expansions: readonly ExpansionId[];
   scenario: ScenarioId | null;
+  /** 島嶼獎勵的靜態規則（spec §5.1）；省略表示沒有獎勵。 */
+  islandBonus?: IslandBonusRule;
   variants: readonly VariantId[];
   /** Rules modules the engine runs for this profile, in hook order. */
   ruleModules: readonly string[];
@@ -296,17 +311,17 @@ function seafarersScenarioProfile(
 }
 
 const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
-  seafarersScenarioProfile('sf-four-islands-2025', 'four-islands', 13, 'pp. 6–7'),
+  seafarersScenarioProfile('sf-four-islands-2025', 'four-islands', 13, 'pp. 6–7', { islandBonus: { points: 2, skip: 'home' } }),
   seafarersScenarioProfile('sf-fog-islands-2025', 'fog-islands', 12, 'pp. 8–9'),
-  seafarersScenarioProfile('sf-through-the-desert-2025', 'through-the-desert', 14, 'pp. 10–11'),
+  seafarersScenarioProfile('sf-through-the-desert-2025', 'through-the-desert', 14, 'pp. 10–11', { islandBonus: { points: 2, skip: 'main' } }),
   seafarersScenarioProfile('sf-forgotten-tribe-2025', 'forgotten-tribe', 13, 'pp. 12–13'),
   // 目標 14 分；另有「回合結束時部落耗盡」的終局與共同勝利（D12），在 S6 實作。
   seafarersScenarioProfile('sf-cloth-for-catan-2025', 'cloth-for-catan', 14, 'pp. 14–15'),
   // 真正條件是「收復自己的堡壘且 10 分」，複合條件在 S7 實作；此處只放分數部分。
   seafarersScenarioProfile('sf-pirate-islands-2025', 'pirate-islands', 10, 'pp. 16–17'),
   // 真正條件是「完成奇觀，或 10 分且層數最高」，複合條件在 S8 實作；此處只放分數部分。
-  seafarersScenarioProfile('sf-wonders-of-catan-2025', 'wonders-of-catan', 10, 'pp. 18–19'),
-  seafarersScenarioProfile('sf-new-world-2025', 'new-world', 12, 'p. 20', { setupModes: ['variable'] }),
+  seafarersScenarioProfile('sf-wonders-of-catan-2025', 'wonders-of-catan', 10, 'pp. 18–19', { islandBonus: { points: 1, skip: 'main' } }),
+  seafarersScenarioProfile('sf-new-world-2025', 'new-world', 12, 'p. 20', { setupModes: ['variable'], islandBonus: { points: 1, skip: 'home' } }),
 ];
 
 /**
@@ -453,6 +468,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     ruleVersion: 'sf-2025.2',
     expansions: ['seafarers'],
     scenario: 'new-shores',
+    islandBonus: NEW_SHORES_ISLAND_BONUS,
     sources: [{ id: 'B25', pages: 'entire rulebook' }, { id: 'SF25', pages: 'pp. 2–5' }],
     requiredBoxes: ['base', 'seafarers'],
     victoryTarget: 14,
@@ -475,6 +491,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     ruleVersion: 'sf-2025.2',
     expansions: ['seafarers'],
     scenario: 'new-shores',
+    islandBonus: NEW_SHORES_ISLAND_BONUS,
     sources: [
       { id: 'B56-25', pages: 'pp. 3–4' },
       { id: 'SF25', pages: 'pp. 2–5' },
@@ -541,6 +558,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     expansions: ['seafarers', 'citiesKnights'],
     ruleModules: ['seafarersCitiesKnights', 'seafarers', 'citiesKnights'],
     scenario: 'new-shores',
+    islandBonus: NEW_SHORES_ISLAND_BONUS,
     sources: [
       { id: 'B25', pages: 'entire rulebook' },
       { id: 'SF25', pages: 'pp. 2–5' },
@@ -570,6 +588,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     expansions: ['seafarers', 'citiesKnights'],
     ruleModules: ['seafarersCitiesKnights', 'seafarers', 'citiesKnights'],
     scenario: 'new-shores',
+    islandBonus: NEW_SHORES_ISLAND_BONUS,
     sources: [
       { id: 'B56-25', pages: 'pp. 3–4' },
       { id: 'SF25', pages: 'pp. 2–5' },
