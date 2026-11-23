@@ -9,6 +9,9 @@ Entries are workspace records, not authoritative runtime decisions.
 | 2026-11-22 | work | docs/aegis/work/2026-11-22-seafarers-four-islands.md | Seafarers scenario S2 The Four Islands (SF25 pp. 6–7): sources, two independent transcriptions, checksums, per-cell tables, interpretations and evidence |
 | 2026-11-22 | artifact | scripts/seafarers/capture_four_islands.py | Four Islands browser run: lobby, 3/4-player maps in SVG and 3D (desktop and phone), setup spread over the islands and the help panel |
 | 2026-11-22 | artifact | docs/screenshots/seafarers-four-islands/report.json | Four Islands capture report with sha256 per image |
+| 2026-11-23 | work | docs/aegis/work/2026-11-23-seafarers-fog-islands.md | Seafarers scenario S3 The Fog Islands (SF25 pp. 8–9): sources, two independent transcriptions, checksums, per-cell tables, interpretations (OQ-2) and evidence |
+| 2026-11-23 | artifact | scripts/seafarers/capture_fog_islands.py | Fog Islands browser run: lobby, 3/4-player maps, help, reveals through the SVG and 3D boards, choice frame, result screen |
+| 2026-11-23 | artifact | docs/screenshots/seafarers-fog-islands/report.json | Fog Islands capture report with sha256 per image |
 | 2026-11-23 | work | docs/aegis/work/2026-11-23-seafarers-through-the-desert.md | Seafarers scenario S4 Through the Desert (SF25 pp. 10–11): sources, two independent transcriptions, checksums, per-cell tables, interpretations and evidence |
 | 2026-11-23 | artifact | scripts/seafarers/capture_through_the_desert.py | Through the Desert browser run: lobby, 3/4-player maps in SVG and 3D, main-island setup, the help panel and a live finish through the desert/strip corner and a small island |
 | 2026-11-23 | artifact | docs/screenshots/seafarers-through-the-desert/report.json | Through the Desert capture report with sha256 per image (`committed` marks the curated captures kept in the repository) |
