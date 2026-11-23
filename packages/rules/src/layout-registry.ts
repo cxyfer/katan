@@ -15,7 +15,7 @@ import { OFFICIAL_56_TOPOLOGY_ID, officialPairedLayout } from './official-56-boa
 import type { ProfileDefinition, SetupMode } from './profiles.ts';
 import type { Rng } from './rng.ts';
 import { newShoresLayout } from './seafarers-boards.ts';
-import { fourIslandsLayout } from './seafarers-scenario-boards.ts';
+import { fourIslandsLayout, throughTheDesertLayout } from './seafarers-scenario-boards.ts';
 import { getTopology } from './topology-registry.ts';
 import type { BoardTopology } from './topology.ts';
 import type { BoardLayout } from './types.ts';
@@ -41,6 +41,8 @@ const builders = new Map<string, LayoutBuilder>([
   ['sf-new-shores', (context) => newShoresLayout(context, getTopology)],
   // SF25 pp. 6–7 The Four Islands maps (3 / 4 players).
   ['sf-four-islands', (context) => fourIslandsLayout(context, getTopology)],
+  // SF25 pp. 10–11 Through the Desert maps (3 players 35 cells, 4 players 42 cells).
+  ['sf-through-the-desert', (context) => throughTheDesertLayout(context, getTopology)],
   // EP25 pp. 6–7 / EP25-M pp. 4–16 Explorers & Pirates mission maps.
   ['explorers-pirates', (context) => explorersPiratesLayout(context, getTopology)],
 ]);

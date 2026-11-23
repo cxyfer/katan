@@ -52,10 +52,20 @@ function recordHome(state: GameState, slot: SeafarersState): void {
   slot.home = home;
 }
 
-/** Starting settlements only on the main island. */
+/**
+ * Starting settlements only on the main island.
+ * 穿越荒漠（SF25 p. 10）更嚴：交叉點碰到的任何格都不得屬於 unexplored region（島 2–5），
+ * 所以與被沙漠隔出的陸地帶相鄰的主島交叉點也排除；沙漠算主島。
+ */
 export function allowBuilding(state: GameState, _playerId: string, vertex: number, options: { setup: boolean }, ctx: ModuleViewContext): boolean {
-  if (!options.setup || ctx.profile.scenario !== 'new-shores') return true;
-  return islandsAt(state, vertex).includes(MAIN_ISLAND);
+  if (!options.setup) return true;
+  const scenario = ctx.profile.scenario;
+  if (scenario === 'new-shores') return islandsAt(state, vertex).includes(MAIN_ISLAND);
+  if (scenario === 'through-the-desert') {
+    const islands = islandsAt(state, vertex);
+    return islands.length > 0 && islands.every((island) => island === MAIN_ISLAND);
+  }
+  return true;
 }
 
 /** Awards the bonus for every new (player, island) pair. */

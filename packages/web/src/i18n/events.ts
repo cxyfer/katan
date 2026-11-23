@@ -9,6 +9,7 @@
 import type { Locale } from '@katan/protocol';
 import type { GameEvent } from '@katan/rules';
 import { t } from './index.ts';
+import { islandWording } from './islandWording.ts';
 import { formatDice, formatGrantMap, formatResourceMap, formatTradeMap } from './format.ts';
 import { moduleEventParams } from './modules/events.ts';
 
@@ -200,7 +201,7 @@ export function translateEvent(
   locale: Locale,
   event: GameEvent,
   nameOf: NameResolver,
-  /** 劇本（profile 的 scenario）：四島群島沒有「小島」，島嶼獎勵事件用另一句。 */
+  /** 劇本（profile 的 scenario）：四島群島沒有「小島」、穿越荒漠是「未探索區域」，島嶼獎勵事件各用另一句。 */
   options: { scenario?: string | null } = {},
 ): EventText {
   const params = eventParams(locale, event, nameOf);
@@ -208,8 +209,8 @@ export function translateEvent(
   // A pirate action reuses a robber event with `pirate: true` and its own
   // text; a ship reuses a road event with `ship: true` the same way.
   const base = `event.${event.type}`;
-  const fourIslands = event.type === 'island.bonus' && options.scenario === 'four-islands';
-  const variant = fourIslands ? `${base}.fourIslands` : event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null;
+  const wording = event.type === 'island.bonus' ? islandWording(options.scenario) : null;
+  const variant = wording ? `${base}.${wording}` : event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null;
   const messageId = variant && t(locale, variant) !== variant ? variant : base;
   const text = t(locale, messageId, params);
   return {

@@ -274,7 +274,7 @@ function tbProfile(
  * 尚未啟用的劇本，layout builder 與 topology 尚未存在（各切片自行登記），
  * `topologyId` 沿用 `baseProfile` 的預設值，只是佔位；在 `enabled: false`
  * 之下 `resolveCombination` 一律回 `disabled`，不會走到建圖。四島群島（S2）
- * 已有版圖與規則證據，故啟用。
+ * 與穿越荒漠（S4）已有版圖與規則證據，故啟用。
  * 不在 bot 支援清單內（`bots/src/modules/seafarers` 的 `SUPPORTED_SCENARIOS`），
  * 因此一律拒絕 bot 座位。
  */
@@ -320,7 +320,13 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
     enabled: true,
   }),
   seafarersScenarioProfile('sf-fog-islands-2025', 'fog-islands', 12, 'pp. 8–9'),
-  seafarersScenarioProfile('sf-through-the-desert-2025', 'through-the-desert', 14, 'pp. 10–11', { islandBonus: { points: 2, skip: 'main' } }),
+  seafarersScenarioProfile('sf-through-the-desert-2025', 'through-the-desert', 14, 'pp. 10–11', {
+    islandBonus: { points: 2, skip: 'main' },
+    // 外框依人數不同（3 人 35 格、4 人 42 格），layout builder 依人數選 topology。
+    topologyId: 'sf-through-the-desert-3',
+    implemented: true,
+    enabled: true,
+  }),
   seafarersScenarioProfile('sf-forgotten-tribe-2025', 'forgotten-tribe', 13, 'pp. 12–13'),
   // 目標 14 分；另有「回合結束時部落耗盡」的終局與共同勝利（D12），在 S6 實作。
   seafarersScenarioProfile('sf-cloth-for-catan-2025', 'cloth-for-catan', 14, 'pp. 14–15'),

@@ -1,0 +1,155 @@
+{
+  "scenario": "through-the-desert",
+  "profile": "sf-through-the-desert-2025",
+  "base": "http://127.0.0.1:3041",
+  "cases": [
+    {
+      "name": "lobby-through-the-desert",
+      "status": "PASS",
+      "note": "lobby: Seafarers / Through the Desert, 3-4 players only",
+      "sha256": "abe90f47140d632dd4fbd710ad4292532afaaa22b449b1a1bc39f4dd2574a475",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-through-the-desert-3",
+      "sha256": "933de19ae62385b29cc13ad0d31d50aa6d44e11226f7d3a9722b0cf974bbf56c",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-through-the-desert-3",
+      "sha256": "ca51dba37ca2c1456b6181838d36e0c494be42e4bce9135a0786fd08e7b4051a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-through-the-desert-4",
+      "sha256": "faab7e4343e9a86768eeeff5f7f46a2f9dd2f513108c0dac46c8a8002c3c4cbf",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-through-the-desert-4",
+      "sha256": "8e1ca06f92f5cfe20d44e906b4760b76740a789e0599300e80965185c8485af0",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-svg-phone",
+      "status": "PASS",
+      "note": "sf-through-the-desert-4",
+      "sha256": "9ad0e173fa7eb3d2be8396c39d53dfdb000c6a006cb8875699c7c8a4b13dbc7d",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-r3f-phone",
+      "status": "PASS",
+      "note": "sf-through-the-desert-4",
+      "sha256": "4edfacda3b04eeed65077f8b76662264e3708442a70e0ffa089b39e6e051294e",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": false
+    },
+    {
+      "name": "help-desert-svg-desktop",
+      "status": "PASS",
+      "note": "setup done on the main island; help panel shows the Through the Desert rules and the gold line",
+      "sha256": "cb7b8087d8836a7ea4d138d9ea19063d9284d8fab2b7fb295b104d98bab54ab7",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-strip-bonus-3d",
+      "status": "PASS",
+      "note": "settlement between the desert and the land strip placed in the 3D board: +2 for region 2 only",
+      "sha256": "62d6ea7c91239e6829dbb8c262a8d266f4b743397b68f6b535b11d48fb6069b7",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-strip-bonus-svg",
+      "status": "PASS",
+      "note": "the same bonus in the SVG board (token and player panel)",
+      "sha256": "fce06400c20406a28e1e7afbc073b257269847053e53347437b6905f3ce72402",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result",
+      "status": "PASS",
+      "note": "second region reaches 14 VP: result screen",
+      "sha256": "d8101387d70276b0a4706d55fea2ad086d9d0389af9b8721f2d8cd9e9c86e911",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    }
+  ],
+  "finish": {
+    "targets": [
+      {
+        "vertex": 0,
+        "edge": 0,
+        "touches": [
+          1,
+          2
+        ],
+        "island": 2
+      },
+      {
+        "vertex": 14,
+        "edge": 20,
+        "touches": [
+          3
+        ],
+        "island": 3
+      }
+    ],
+    "result": {
+      "playerId": "player_6ddd2b913f3a40e8bc8b",
+      "reason": "victory",
+      "score": 14
+    }
+  },
+  "errors": []
+}

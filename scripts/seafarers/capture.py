@@ -226,6 +226,7 @@ def map_shots(browser, contexts, pages, game_id, count, phone=True):
                                     reduced_motion='reduce', service_workers='block', is_mobile=True, has_touch=True)
     page = phone_ctx.new_page()
     page.on('pageerror', lambda error: ERRORS.append(f'phone: {error}'))
+    page.set_default_timeout(TIMEOUT)
     for renderer in ('svg', 'r3f'):
         open_game(page, game_id, renderer)
         shot(page, f'map-{count}p-{renderer}-phone', view['board']['topologyId'], ms=2500 if renderer == 'r3f' else 700)
