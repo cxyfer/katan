@@ -39,6 +39,11 @@ export interface PirateSimResult {
   unreachable: number;
   /** 船線還沒有船、所有可接出的交叉點都到不了目標的次數。 */
   noStart: number;
+  /** 這條規則（不得圍死任何玩家的目標）隱藏掉的合法船位次數（每次動作前，一般規則合法、被它擋下的邊數）。 */
+  wallRefusals: number;
+  /** `actionHints` 的次數與總耗時（毫秒）。 */
+  hintCalls: number;
+  hintMs: number;
   /** 被圍死時把末端的船退回（`ship.move`）的次數（`stuckLineBacktrack`）。 */
   backtracks: number;
   /** 曾經被圍死（端點到目標完全不通）的玩家數。 */
@@ -51,8 +56,10 @@ export interface PirateSimResult {
   hopeless: number;
   /** 最後仍無法到達目標的玩家：沒有完成、配件沒用完、沒有任何合法延伸、也不能退回（永久卡死）。 */
   stuckPlayers: number;
-  /** 不一致：端點到得了目標、不能退回，卻沒有任何合法的船線延伸（距離與 `lineShip` 的可走頂點不同套，必須是 0）。 */
+  /** 不一致：端點到得了目標，卻連不看「不得圍死」規則也沒有任何合法的船線延伸（距離與 `lineShip` 的可走頂點不同套，必須是 0）。 */
   inconsistent: number;
+  /** 規則死結：端點到得了目標，船線延伸只被「不得圍死別人目標」擋下（兩條船線搶同一條窄路，誰先走都會圍死對方）。 */
+  ruleDeadlocks: number;
   /** 船線端點落在別人的建築上，或船線繞回自己的頂點（必須是 0）：船線端點落在別人的建築上，或船線繞回自己的頂點（必須是 0）。 */
   badEnds: number;
   /** 海盜群島上不合法取得的路（必須是 0：模擬只用合法動作）。 */
@@ -103,10 +110,10 @@ function setupStep(state: GameState, rng: Rng): GameState {
 }
 
 /** 目前船線的延伸候選：一般合法、且是船線的延伸（接在端點、距離減 1，或完全無路時的放寬）。 */
-function lineCandidates(state: GameState, actor: string): number[] {
+function lineCandidates(state: GameState, actor: string, ignoreWalls = false): number[] {
   const ctx = lineContext(state, actor)!;
   if (ctx.next === 'done') return [];
-  return legalShipEdges(state, actor).filter((edge) => lineShip(state, actor, edge).kind === 'line');
+  return legalShipEdges(state, actor, ignoreWalls ? { walls: null } : {}).filter((edge) => lineShip(state, actor, edge).kind === 'line');
 }
 
 /** 被圍死時退回末端船的指令：優先接成新的船線延伸（嚴格規則），否則放到自由的海岸邊。 */
@@ -145,7 +152,11 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   let noStart = 0;
   let noExtension = 0;
   let backtracks = 0;
+  let wallRefusals = 0;
+  let hintCalls = 0;
+  let hintMs = 0;
   let inconsistent = 0;
+  let ruleDeadlocks = 0;
   const walled = new Set<string>();
   let illegalRoads = 0;
   let badEnds = 0;
@@ -205,7 +216,11 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
     const actions = 1 + rng.int(4);
     for (let action = 0; action < actions; action++) {
       enrich(state, actor.id);
+      const hintStart = Date.now();
       const hints = actionHints(state, actor.id);
+      hintMs += Date.now() - hintStart;
+      hintCalls++;
+      wallRefusals += legalShipEdges(state, actor.id, { walls: null }).length - legalShipEdges(state, actor.id).length;
       const candidates = lineCandidates(state, actor.id);
       // 偏向船線延伸；其餘隨機：任一合法的船、村落、城市、路。
       const tries: AnyCommand[] = [];
@@ -242,7 +257,8 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
         const saved = state.board.pirate;
         state.board.pirate = null;
         enrich(state, player.id);
-        if (lineCandidates(state, player.id).length === 0) inconsistent++;
+        if (lineCandidates(state, player.id, true).length === 0) inconsistent++;
+        else if (lineCandidates(state, player.id).length === 0) ruleDeadlocks++;
         state.board.pirate = saved;
       }
     }
@@ -274,5 +290,5 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   state.board.roads.forEach((road, edge) => {
     if (road && !road.ship && !roadAllowed(state, road.player, edge)) illegalRoads++;
   });
-  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, backtracks, illegalRoads, badEnds, inconsistent, walledPlayers: walled.size, escaped, stillWalled, hopeless, stuckPlayers: [...state.players].filter((player) => permanentlyStuck(state, player.id)).length };
+  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, backtracks, illegalRoads, badEnds, wallRefusals, hintCalls, hintMs, inconsistent, ruleDeadlocks, walledPlayers: walled.size, escaped, stillWalled, hopeless, stuckPlayers: [...state.players].filter((player) => permanentlyStuck(state, player.id)).length };
 }

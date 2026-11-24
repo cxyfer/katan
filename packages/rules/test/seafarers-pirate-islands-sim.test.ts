@@ -25,6 +25,10 @@ interface Summary {
   illegalRoads: number;
   badEnds: number;
   inconsistent: number;
+  ruleDeadlocks: number;
+  wallRefusals: number;
+  hintCalls: number;
+  hintMs: number;
   walledPlayers: number;
   escaped: number;
   stillWalled: number;
@@ -38,7 +42,7 @@ interface Summary {
 }
 
 function run(players: 3 | 4, lineBias: number, from: number): Summary {
-  const sum: Summary = { games: 0, gamesWithUnreachable: 0, unreachableObservations: 0, noStart: 0, noExtension: 0, backtracks: 0, illegalRoads: 0, badEnds: 0, inconsistent: 0, walledPlayers: 0, escaped: 0, stillWalled: 0, hopeless: 0, stuckPlayers: 0, gamesWithBacktracks: 0, linesDone: 0, playerLines: 0, outOfShips: 0, turns: 0 };
+  const sum: Summary = { games: 0, gamesWithUnreachable: 0, unreachableObservations: 0, noStart: 0, noExtension: 0, backtracks: 0, illegalRoads: 0, badEnds: 0, inconsistent: 0, ruleDeadlocks: 0, wallRefusals: 0, hintCalls: 0, hintMs: 0, walledPlayers: 0, escaped: 0, stillWalled: 0, hopeless: 0, stuckPlayers: 0, gamesWithBacktracks: 0, linesDone: 0, playerLines: 0, outOfShips: 0, turns: 0 };
   for (let seed = from; seed < from + GAMES; seed++) {
     const result: PirateSimResult = simulatePirateIslands({ players, seed, lineBias, maxTurns: 60 });
     sum.games++;
@@ -50,6 +54,10 @@ function run(players: 3 | 4, lineBias: number, from: number): Summary {
     sum.illegalRoads += result.illegalRoads;
     sum.badEnds += result.badEnds;
     sum.inconsistent += result.inconsistent;
+    sum.ruleDeadlocks += result.ruleDeadlocks;
+    sum.wallRefusals += result.wallRefusals;
+    sum.hintCalls += result.hintCalls;
+    sum.hintMs += result.hintMs;
     sum.walledPlayers += result.walledPlayers;
     sum.escaped += result.escaped;
     sum.stillWalled += result.stillWalled;
@@ -81,7 +89,7 @@ describe('Pirate Islands random legal-move simulation (S7a)', () => {
       expect(sum.badEnds, name).toBe(0);
       // 端點到得了目標時一定有合法的船線延伸（距離與可走頂點一致）。
       expect(sum.inconsistent, name).toBe(0);
-      // `walledPlayers`、`escaped`、`stuckPlayers`（永久卡死）是觀測值，見 work record。
+      // `walledPlayers`、`stuckPlayers`、`ruleDeadlocks` 是觀測值（work record）：不得圍死的規則減少但不能消除卡死。
       expect(sum.backtracks >= 0 && sum.linesDone <= sum.playerLines, name).toBe(true);
     }
   }, 3_600_000);

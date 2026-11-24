@@ -6,13 +6,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { BASE_AWARD_RULES, isLandEdge, isLandHex, scoreOf, topologyOf } from '../src/analysis.ts';
+import { BASE_AWARD_RULES, isLandEdge, isLandHex, isSeaEdge, scoreOf, topologyOf } from '../src/analysis.ts';
 import { actionHints, createGame, legalBuildingVertices, legalRobberHexes } from '../src/engine.ts';
 import { productionForRoll } from '../src/analysis.ts';
 import { seafarersModule } from '../src/modules/seafarers/index.ts';
 import { goldEntitlements } from '../src/modules/seafarers/gold.ts';
 import {
-  fortressLocked, isLineEdge, lineBacktrack, lineBacktrackMovable, lineContext, lineShip, lineVertices, pirateIslandsView,
+  fortressLocked, isLineEdge, lineBacktrack, lineBacktrackMovable, lineContext, lineShip, lineVertices, pirateIslandsView, wallContext, wallsAnyone,
 } from '../src/modules/seafarers/pirateIslands.ts';
 import { canPlaceShip, legalShipEdges } from '../src/modules/seafarers/ships.ts';
 import { seafarersState } from '../src/modules/seafarers/state.ts';
@@ -840,6 +840,125 @@ describe('Pirate Islands ship line (SF25 p. 16 Shipbuilding; spec §6.6, OQ-3)',
       const next = act(placed, 'p1', { type: 'setup.placeShip', edge: accepted } as never, rng).state;
       expect(slot(next).lines.p1!.edges).toHaveLength(slot(placed).lines.p1!.edges.length + (kinds.get(accepted) === 'line' ? 1 : 0));
     }
+  });
+});
+
+describe('Pirate Islands: nobody may wall off a target (user decision 2026-11-24)', () => {
+  /**
+   * p1 的出發處是起點村落 S 與預置船的另一端 F。把它們旁邊的空邊用 p4 的船占住（直接放），只留下 `keep` 指定的出口；
+   * 回傳出口邊 `exit` 與它另一端的頂點 X，並讓 p4 在 X 有一艘自己的船（可以接上去）。
+   */
+  function narrow(keepFrom: 'F' | 'S'): { state: GameState; exit: number; x: number } {
+    const state = started(4);
+    const topo = topologyOf(state);
+    const line = slot(state).lines.p1!;
+    const start = line.start!;
+    const far = lineContext(state, 'p1')!.end!;
+    const anchor = keepFrom === 'F' ? far : start;
+    const exits = topo.vertices[anchor]!.edges.filter((edge) => !state.board.roads[edge] && !isLineEdge(state, edge) && isSeaEdge(state, edge));
+    expect(exits.length, 'a coastal exit').toBeGreaterThan(0);
+    const exit = exits[0]!;
+    for (const vertex of [start, far]) {
+      for (const edge of topo.vertices[vertex]!.edges) if (!state.board.roads[edge] && edge !== exit) ship(state, 'p4', edge);
+    }
+    const x = topo.edges[exit]!.vertices.find((vertex) => vertex !== anchor)!;
+    // p4 在 X 放一艘自己的船（讓它接得上出口），選一條不切斷 p1 通往目標的邊。
+    const attach = topo.vertices[x]!.edges.filter((edge) => edge !== exit && !state.board.roads[edge]).find((edge) => {
+      const trial = clone(state);
+      ship(trial, 'p4', edge);
+      return wallContext(trial)!.players.some((player) => player.id === 'p1');
+    });
+    expect(attach, 'an attach edge that keeps p1 connected').toBeDefined();
+    ship(state, 'p4', attach!);
+    expect(wallContext(state)!.players.some((player) => player.id === 'p1')).toBe(true);
+    return { state, exit, x };
+  }
+
+  it('放船會把別人的目標完全擋住時被拒（E_LINE_WALLED），hints 與 legalShipEdges 都不列', () => {
+    const { state, exit } = narrow('F');
+    forceTurn(state, 3, 'action');
+    setHand(state, 'p4', { lumber: 1, wool: 1 });
+    expect(wallContext(state)!.players.map((player) => player.id)).toContain('p1');
+    expect(wallsAnyone(state, { edge: exit, owner: 'p4' })).toBe(true);
+    expect(canPlaceShip(state, 'p4', exit)).toBe(false);
+    expect(canPlaceShip(state, 'p4', exit, { walls: null })).toBe(true);
+    expect(legalShipEdges(state, 'p4')).not.toContain(exit);
+    expect(sf(state, 'p4').legalShips).not.toContain(exit);
+    expectRejected(state, 'p4', { type: 'build.ship', edge: exit } as never, 'E_LINE_WALLED');
+    // 沒有被圍住時同一條邊合法（回到沒有別的出口被占住的局面）。
+    const open = started(4);
+    expect(canPlaceShip(open, 'p4', exit, { walls: null })).toBe(canPlaceShip(open, 'p4', exit));
+  });
+
+  it('把自己的目標圍死也被拒；原本就不通時不擋其他動作', () => {
+    const { state, exit, x } = narrow('S');
+    // 自己的自由船放在唯一的出口上：p1 自己也到不了目標了。
+    expect(canPlaceShip(state, 'p1', exit, { walls: null })).toBe(true);
+    expect(canPlaceShip(state, 'p1', exit)).toBe(false);
+    forceTurn(state, 0, 'action');
+    setHand(state, 'p1', { lumber: 1, wool: 1 });
+    expectRejected(state, 'p1', { type: 'build.ship', edge: exit } as never, 'E_LINE_WALLED');
+    // 出口也被占住：p1 原本就不通，不因此禁止其他玩家的動作。
+    ship(state, 'p4', exit);
+    expect(wallContext(state)!.players.map((player) => player.id)).not.toContain('p1');
+    const topo = topologyOf(state);
+    const elsewhere = legalShipEdges(state, 'p4').filter((edge) => !topo.edges[edge]!.vertices.includes(x));
+    expect(elsewhere.length).toBeGreaterThan(0);
+    for (const edge of elsewhere.slice(0, 5)) expect(wallsAnyone(state, { edge, owner: 'p4' })).toBe(false);
+  });
+
+  it('自己的船線延伸走到 beachhead 不算圍死自己；移船也要檢查', () => {
+    const state = started(4);
+    state.windowId += 1;
+    const sailed = sail(state, 'p1', 'fortress');
+    expect(lineContext(sailed, 'p1')!.next).toBe('fortress');
+    // 每一步延伸都是合法的（sail 內部用 build 並要求被接受）；移船：圍死別人的位置同樣被拒。
+    const { state: moved, exit } = narrow('F');
+    moved.windowId += 1;
+    const free = legalShipEdges(moved, 'p4', { line: null, walls: null }).find((edge) => {
+      if (isLineEdge(moved, edge) || edge === exit) return false;
+      const trial = clone(moved);
+      ship(trial, 'p4', edge);
+      return wallContext(trial)!.players.some((player) => player.id === 'p1');
+    })!;
+    expect(free).toBeDefined();
+    ship(moved, 'p4', free);
+    moved.windowId += 1;
+    forceTurn(moved, 3, 'action');
+    expect(canPlaceShip(moved, 'p4', exit, { moving: free, line: null, walls: null })).toBe(true);
+    expect(canPlaceShip(moved, 'p4', exit, { moving: free, line: null })).toBe(false);
+  });
+
+  it('村落蓋在唯一通路的海岸交叉點上，會圍死別人時不能蓋', () => {
+    const { state, x } = narrow('F');
+    const ctx = { profile: getProfile(PROFILE)! };
+    const hook = seafarersModule.allowBuilding!;
+    // X 是 p1 唯一出口的另一端（碰東島的海岸交叉點）：p2 的村落擋住它就圍死 p1。
+    expect(topologyOf(state).vertices[x]!.hexes.some((hex) => isLandHex(state, hex))).toBe(true);
+    expect(wallsAnyone(state, { vertex: x, owner: 'p2' })).toBe(true);
+    expect(hook(state, 'p2', x, { setup: false }, ctx)).toBe(false);
+    // p1 自己蓋不會擋住自己。
+    expect(wallsAnyone(state, { vertex: x, owner: 'p1' })).toBe(false);
+  });
+
+  it('其他劇本不受影響（D7）', () => {
+    const cloth = emptySeafarersGame(3, 0, 'action', 'sf-cloth-for-catan-2025');
+    expect(wallContext(cloth)).toBeNull();
+    expect(wallsAnyone(cloth, { edge: 0, owner: 'p1' })).toBe(false);
+    expect(wallsAnyone(cloth, { vertex: 0, owner: 'p1' })).toBe(false);
+  });
+
+  it('hints 耗時：一次列出所有合法的船（含 hints 整包）在一般局面下很快', () => {
+    const state = started(4);
+    for (const id of ['p1', 'p2', 'p3', 'p4']) {
+      const t0 = Date.now();
+      for (let i = 0; i < 20; i++) legalShipEdges(state, id);
+      const per = (Date.now() - t0) / 20;
+      expect(per).toBeLessThan(50);
+    }
+    const t1 = Date.now();
+    for (let i = 0; i < 10; i++) actionHints(state, 'p1');
+    expect((Date.now() - t1) / 10).toBeLessThan(200);
   });
 });
 
