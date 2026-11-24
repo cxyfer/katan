@@ -242,4 +242,100 @@ describe('Cloth for Catan over the API', () => {
       rmSync(local.dataDir, { recursive: true, force: true });
     }
   }, 90_000);
+
+  it('restores a pirate steal waiting on a victim who has only cloth, then steals it and ends the turn', async () => {
+    const local = await startHarness();
+    let restarted: Awaited<ReturnType<typeof restartService>> | undefined;
+    try {
+      const { clients, gameId } = await startedGame(local, 3, { profileId: PROFILE });
+      const topology = getTopology('sf-cloth-for-catan');
+      await runSetupOverApi(clients, gameId);
+      const row = (await local.service.repo.findGame(gameId))!;
+      const state = JSON.parse(row.state_json) as GameState;
+      const actorId = state.players[state.turn.seat]!.id;
+      const victimId = state.players[1]!.id;
+      const sea = (edge: number): boolean => topology.edges[edge]!.hexes.length === 1
+        || topology.edges[edge]!.hexes.some((hex) => state.board.layout.terrain[hex] === 'sea');
+      const tribes = clothOf(state).tribes;
+      const tribeAt = new Map(tribes.map((tribe, index) => [tribe.vertex, index]));
+      const free = (vertex: number): boolean => !state.board.buildings[vertex]
+        && topology.vertices[vertex]!.edges.every((edge) => topology.edges[edge]!.vertices.every((other) => !state.board.buildings[other]));
+      // 行動者：一個大島海岸村落與一艘碰到部落的船（有通到部落的通路，才可移動海盜）。
+      let route: { start: number; edge: number } | undefined;
+      topology.vertices.forEach((info, vertex) => {
+        if (route || !free(vertex) || tribeAt.has(vertex)) return;
+        if (!info.hexes.some((hex) => [1, 6].includes(state.board.layout.islands[hex]!))) return;
+        if (info.hexes.some((hex) => [2, 3, 4, 5].includes(state.board.layout.islands[hex]!))) return;
+        for (const edge of info.edges) {
+          const other = topology.edges[edge]!.vertices.find((candidate) => candidate !== vertex)!;
+          if (sea(edge) && tribeAt.has(other) && !state.board.roads[edge]) route = { start: vertex, edge };
+        }
+      });
+      expect(route).toBeDefined();
+      state.board.buildings[route!.start] = { player: actorId, city: false };
+      state.board.roads[route!.edge] = { player: actorId, ship: true };
+      // 受害者：只有布匹、沒有手牌，船在一個海格的邊上。
+      const seaHex = topology.hexes.findIndex((_, hex) => state.board.layout.terrain[hex] === 'sea'
+        && topology.edges.some((info, edge) => info.hexes.length === 2 && info.hexes.includes(hex) && sea(edge) && !state.board.roads[edge]
+          && info.vertices.every((vertex) => !tribeAt.has(vertex) && !state.board.buildings[vertex])));
+      const shipEdge = topology.edges.findIndex((info, edge) => info.hexes.length === 2 && info.hexes.includes(seaHex) && sea(edge) && !state.board.roads[edge]
+        && info.vertices.every((vertex) => !tribeAt.has(vertex) && !state.board.buildings[vertex]));
+      state.board.roads[shipEdge] = { player: victimId, ship: true };
+      const victim = state.players.find((player) => player.id === victimId)!;
+      for (const resource of Object.keys(victim.resources) as (keyof typeof victim.resources)[]) {
+        state.bank[resource] += victim.resources[resource];
+        victim.resources[resource] = 0;
+      }
+      const cloth = clothOf(state);
+      cloth.cloth[victimId] = 2;
+      cloth.supply -= 2;
+      state.turn.phase = 'action';
+      state.turn.dice = [3, 4];
+      state.pending = { kind: 'moveRobber', actor: actorId, cause: 'seven', pirate: false } as never;
+      await local.service.repo.saveGame(gameId, state, row.revision, 'playing', null);
+
+      const actor = clients.find((client) => client.playerId === actorId)!;
+      const prepared = await snapshot(actor, gameId);
+      const moved = actor.expectOk<Receipt>(await actor.post(`/api/games/${gameId}/commands`, {
+        commandId: 'cfc-pirate', expectedRevision: prepared.revision, command: { type: 'pending.moveRobber', hex: seaHex },
+      }));
+      expect(moved, JSON.stringify(moved)).toMatchObject({ outcome: 'accepted' });
+      const waiting = await snapshot(actor, gameId);
+      expect(waiting.view.pending).toMatchObject({ kind: 'steal', candidates: [victimId] });
+      const hints = (waiting.view as unknown as { hints: { modules: { seafarers: { clothVictims: string[] } } } }).hints.modules.seafarers;
+      expect(hints.clothVictims).toEqual([victimId]);
+
+      // 尚未選擇偷竊時重啟：frame 與 clothVictims 都還原。
+      const saved = (await local.service.repo.findGame(gameId))!.state_json;
+      await local.service.close();
+      restarted = await restartService(local);
+      expect((await restarted.repo.findGame(gameId))!.state_json).toBe(saved);
+      const back = Object.assign(createClient(`http://127.0.0.1:${restarted.port}`), { cookie: actor.cookie, playerId: actor.playerId });
+      const after = await snapshot(back, gameId);
+      expect(after.view.pending).toMatchObject({ kind: 'steal', candidates: [victimId] });
+      expect((after.view as unknown as { hints: { modules: { seafarers: { clothVictims: string[] } } } }).hints.modules.seafarers.clothVictims).toEqual([victimId]);
+      // 受害者沒有手牌：偷牌被拒，偷布匹被接受，回合可以結束。
+      const refused = await back.post(`/api/games/${gameId}/commands`, {
+        commandId: 'cfc-card', expectedRevision: after.revision, command: { type: 'pending.steal', victim: victimId },
+      });
+      expect(refused.body.ok ? (refused.body.data as Receipt).outcome : 'error').not.toBe('accepted');
+      const stolen = back.expectOk<Receipt>(await back.post(`/api/games/${gameId}/commands`, {
+        commandId: 'cfc-cloth', expectedRevision: after.revision, command: { type: 'cloth.steal', victim: victimId },
+      }));
+      expect(stolen, JSON.stringify(stolen)).toMatchObject({ outcome: 'accepted' });
+      const done = await snapshot(back, gameId);
+      expect(done.view.pending).toBeNull();
+      const view = done.view.modules!.seafarers!.cloth!;
+      expect(view.cloth[victimId]).toBe(1);
+      expect(view.cloth[actorId]).toBe(2); // 通往部落的船先拿了 1 枚，再偷 1 枚
+      const ended = back.expectOk<Receipt>(await back.post(`/api/games/${gameId}/commands`, {
+        commandId: 'cfc-end2', expectedRevision: done.revision, command: { type: 'turn.end' },
+      }));
+      expect(ended).toMatchObject({ outcome: 'accepted' });
+    } finally {
+      if (restarted) await restarted.close();
+      else await local.service.close().catch(() => undefined);
+      rmSync(local.dataDir, { recursive: true, force: true });
+    }
+  }, 90_000);
 });
