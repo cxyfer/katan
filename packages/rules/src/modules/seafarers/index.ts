@@ -9,7 +9,7 @@
 
 import { scoreOf, topologyOf } from '../../analysis.ts';
 import { bankView } from '../../bank-view.ts';
-import type { GameState } from '../../types.ts';
+import type { CommandOutcome, GameState } from '../../types.ts';
 import type { ModuleViewContext, PublicModulePendingView, RulesModule } from '../types.ts';
 import { afterProduction as goldProduction, chooseGold, goldRequired, GOLD_FRAME, projectGold, skipEmptySupply } from './gold.ts';
 import { activateFog, chooseFog, exploreAtEdge, FOG_FRAME, initialFog, projectFogFrame } from './fog.ts';
@@ -131,7 +131,8 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
     movableShips: inAction && !view.moved ? movableShips(state, playerId) : [],
     shipMoved: view.moved,
     // 布匹產地：沒有通到部落的通路就不能移動海盜（SF25 p. 14）。
-    pirateTargets: (robberMove || isTurn) && (!view.cloth || hasTribeRoute(state, playerId)) ? pirateTargets(state) : [],
+    // 海盜巢穴：海盜只沿航道前進（S7b），玩家不能搬它。
+    pirateTargets: !view.pirateIslands && (robberMove || isTurn) && (!view.cloth || hasTribeRoute(state, playerId)) ? pirateTargets(state) : [],
     robberTargets: robberMove || isTurn
       ? topologyOf(state).hexes.map((_, hex) => hex).filter((hex) =>
         state.board.layout.terrain[hex] !== 'sea' && hex !== state.board.robber && robberHexAllowed(state, hex, ctx))
@@ -171,6 +172,8 @@ function wonderHints(state: GameState, playerId: string, ctx: ModuleViewContext,
 
 /** 世外部落：強盜只能移到有數字圓片的格（7 與騎士都一樣，SF25 p. 12）。 */
 function robberHexAllowed(state: GameState, hex: number, ctx: ModuleViewContext): boolean {
+  // 海盜巢穴：強盜放回盒子，沒有任何格可以放。
+  if (isPirateIslands(ctx)) return false;
   // 布匹產地：強盜不可移到四座小島（SF25 p. 14）。
   if (isClothForCatan(ctx)) return !isSmallIslandHex(state, hex);
   return !isForgottenTribe(ctx) || state.board.layout.numbers[hex] !== null;
@@ -238,6 +241,13 @@ export const seafarersModule: RulesModule = {
   awardRules(_state, rules, ctx) {
     if (isPirateIslands(ctx)) return { ...rules, minLongestRoad: Number.POSITIVE_INFINITY, minLargestArmy: Number.POSITIVE_INFINITY };
     return isClothForCatan(ctx) ? { ...rules, minLongestRoad: Number.POSITIVE_INFINITY } : rules;
+  },
+
+  // 海盜巢穴：騎士牌在 S7c 才改成只能改裝戰船；在那之前不能打出（否則會把盒子裡的強盜放回棋盤）。
+  vetoCommand(_state, _actorId, command, ctx) {
+    return isPirateIslands(ctx) && command.type === 'dev.playKnight'
+      ? ({ ok: false, error: { code: 'E_INVALID_COMMAND', params: {} } } as CommandOutcome)
+      : undefined;
   },
 
   // 海盜巢穴：強盜放回盒子，7 只有棄牌（偷牌的步驟在 S7b）。

@@ -286,6 +286,8 @@ export function lineShip(state: GameState, playerId: string, edge: number, optio
   if (ctx.next === 'done') return coastal ? { kind: 'free' } : { kind: 'refused', reason: 'done' };
   const [a, b] = topologyOf(state).edges[edge]!.vertices;
   const candidates: [number, number][] = [[a, b], [b, a]];
+  // 新的端點不能是自己船線上已有的頂點（不成環）。
+  const onLine = new Set(lineVertices(state, ctx.line));
   let attached = false;
   let best: { from: number; to: number } | null = null;
   for (const [from, to] of candidates) {
@@ -296,7 +298,7 @@ export function lineShip(state: GameState, playerId: string, edge: number, optio
     }
     attached = true;
     const here = ctx.dist[from]!;
-    if (here <= 0 || ctx.dist[to] !== here - 1) continue;
+    if (here <= 0 || ctx.dist[to] !== here - 1 || onLine.has(to)) continue;
     // 兩端都接得上時取較近目標的方向（距離較大的一端當出發點）。
     if (!best || here > ctx.dist[best.from]!) best = { from, to };
   }
@@ -304,6 +306,8 @@ export function lineShip(state: GameState, playerId: string, edge: number, optio
   if (attached && fallbackApplies(state, ctx)) {
     // 完全無路：往任何合法方向延伸（端點或自己的建築／船接得上的那一端）。
     for (const [from, to] of candidates) {
+      // 放寬也不能把端點推到別人的建築上（之後再也接不下去），或繞回自己的船線。
+      if (isBlockedFor(state, to, playerId) || onLine.has(to)) continue;
       if (ctx.end !== null ? from === ctx.end : (options.setupVertex !== undefined ? from === options.setupVertex : canStartAt(state, playerId, from))) {
         return { kind: 'line', from, to, relaxed: true };
       }
