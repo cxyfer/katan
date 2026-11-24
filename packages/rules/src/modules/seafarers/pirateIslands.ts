@@ -308,6 +308,8 @@ export function lineShip(state: GameState, playerId: string, edge: number, optio
     for (const [from, to] of candidates) {
       // 放寬也不能把端點推到別人的建築上（之後再也接不下去），或繞回自己的船線。
       if (isBlockedFor(state, to, playerId) || onLine.has(to)) continue;
+      // 放寬也不能把端點推進死巷：新端點還要有一條空著的邊可以再接出去。
+      if (!hasContinuation(state, playerId, to, edge, onLine)) continue;
       if (ctx.end !== null ? from === ctx.end : (options.setupVertex !== undefined ? from === options.setupVertex : canStartAt(state, playerId, from))) {
         return { kind: 'line', from, to, relaxed: true };
       }
@@ -315,6 +317,17 @@ export function lineShip(state: GameState, playerId: string, edge: number, optio
   }
   if (coastal) return { kind: 'free' };
   return { kind: 'refused', reason: attached ? 'not-shortest' : 'not-at-end' };
+}
+
+/** 這個頂點除了 `except` 之外，還有空著的海邊通到沒被擋住、也不在自己船線上的頂點。 */
+function hasContinuation(state: GameState, playerId: string, vertex: number, except: number, onLine: ReadonlySet<number>): boolean {
+  const topo = topologyOf(state);
+  return topo.vertices[vertex]!.edges.some((edge) => {
+    if (edge === except || state.board.roads[edge] || !isSeaEdge(state, edge)) return false;
+    const [a, b] = topo.edges[edge]!.vertices;
+    const next = a === vertex ? b : a;
+    return !isBlockedFor(state, next, playerId) && !onLine.has(next);
+  });
 }
 
 /** 完全無路：目標在空著的海邊上到不了（有船線看端點，還沒有船線看有沒有可出發的建築或船）。 */

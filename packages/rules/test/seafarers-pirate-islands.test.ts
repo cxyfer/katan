@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { BASE_AWARD_RULES, isLandEdge, isLandHex, scoreOf, topologyOf } from '../src/analysis.ts';
-import { actionHints, createGame, legalBuildingVertices } from '../src/engine.ts';
+import { actionHints, createGame, legalBuildingVertices, legalRobberHexes } from '../src/engine.ts';
 import { productionForRoll } from '../src/analysis.ts';
 import { seafarersModule } from '../src/modules/seafarers/index.ts';
 import { goldEntitlements } from '../src/modules/seafarers/gold.ts';
@@ -378,6 +378,25 @@ describe('Pirate Islands setup and building rules', () => {
   });
 });
 
+describe('Pirate Islands robber and knights (agy P2)', () => {
+  it('強盜不存在：沒有強盜或海盜目標；騎士牌在 S7c 前不能打出，也不會把強盜放回棋盤', () => {
+    const state = ready(4);
+    const hints = sf(state, 'p1') as unknown as { robberTargets: number[]; pirateTargets: (number | null)[] };
+    expect(hints.robberTargets).toEqual([]);
+    expect(hints.pirateTargets).toEqual([]);
+    expect(legalRobberHexes(state, 'p1')).toEqual([]);
+    state.players[0]!.devCards.push('knight');
+    const land = state.board.layout.terrain.findIndex((terrain) => terrain !== 'sea');
+    expectRejected(state, 'p1', { type: 'dev.playKnight', hex: land }, 'E_INVALID_COMMAND');
+    expectRejected(state, 'p1', { type: 'dev.playKnight', hex: null }, 'E_INVALID_COMMAND');
+    expect(state.board.robber).toBe(-1);
+    expect(state.players[0]!.devCards).toContain('knight');
+    // 其他劇本照舊：布匹產地仍有強盜目標，騎士牌可打。
+    const cloth = emptySeafarersGame(3, 0, 'action', 'sf-cloth-for-catan-2025');
+    expect((sf(cloth, 'p1') as unknown as { robberTargets: number[] }).robberTargets.length).toBeGreaterThan(0);
+  });
+});
+
 describe('Pirate Islands fortress (SF25 p. 16: no production; p. 17: recaptured counts as a settlement)', () => {
   it('收復前不產出：資源與金礦都不給；收復（lair 全除）後照一般村落', () => {
     const state = ready(4);
@@ -638,6 +657,57 @@ describe('Pirate Islands ship line (SF25 p. 16 Shipbuilding; spec §6.6, OQ-3)',
     // 有路的時候不放寬。
     const open = started(4);
     for (const edge of lineEdges(open, 'p1')) expect(lineShip(open, 'p1', edge)).toMatchObject({ relaxed: false });
+  });
+
+  it('放寬也不能把端點推到別人的建築上，也不能繞回自己的船線（agy P1）', () => {
+    const state = started(4);
+    const topo = topologyOf(state);
+    const target = lineContext(state, 'p1')!.targetVertex!;
+    // beachhead 被擋住：目標旁的交叉點全被 p2 的建築占住，放寬生效。
+    for (const edge of topo.vertices[target]!.edges) {
+      const [a, b] = topo.edges[edge]!.vertices;
+      settle(state, 'p2', a === target ? b : a);
+    }
+    const end = lineContext(state, 'p1')!.end!;
+    expect(lineContext(state, 'p1')!.dist[end]).toBe(-1);
+    const open = topo.vertices[end]!.edges.filter((edge) => !state.board.roads[edge] && canPlaceShip(state, 'p1', edge, { line: null }));
+    expect(open.length).toBeGreaterThanOrEqual(2);
+    const far = (edge: number) => topo.edges[edge]!.vertices.find((vertex) => vertex !== end)!;
+    // p2 的村落蓋在其中一條邊的遠端：那條邊不能再當船線延伸，其他邊仍可（放寬）。
+    const blocked = open[0]!;
+    settle(state, 'p2', far(blocked));
+    expect(lineShip(state, 'p1', blocked).kind).not.toBe('line');
+    const rest = open.slice(1).filter((edge) => !state.board.buildings[far(edge)]);
+    expect(rest.length).toBeGreaterThan(0);
+    for (const edge of rest) expect(lineShip(state, 'p1', edge)).toMatchObject({ kind: 'line', relaxed: true });
+    expect(lineEdges(state, 'p1')).not.toContain(blocked);
+    // 自環：船線繞一個海格 5 條邊，最後一條邊回到起點的頂點，放寬時也不行。
+    const loop = started(4);
+    const loopTarget = lineContext(loop, 'p1')!.targetVertex!;
+    for (const edge of topo.vertices[loopTarget]!.edges) {
+      const [a, b] = topo.edges[edge]!.vertices;
+      settle(loop, 'p2', a === loopTarget ? b : a);
+    }
+    const hex = routeHexes(topo)[2]!;
+    const ring = topo.edges.map((info, edge) => (info.hexes.includes(hex) && !info.interior ? edge : -1)).filter((edge) => edge >= 0);
+    expect(ring).toHaveLength(6);
+    const used: number[] = [];
+    let vertex = topo.edges[ring[0]!]!.vertices[0]!;
+    const first = vertex;
+    const vertices = [vertex];
+    for (let i = 0; i < 5; i++) {
+      const edge = ring.find((candidate) => !used.includes(candidate) && topo.edges[candidate]!.vertices.includes(vertex))!;
+      used.push(edge);
+      vertex = topo.edges[edge]!.vertices.find((v) => v !== vertex)!;
+      vertices.push(vertex);
+    }
+    for (const edge of used) ship(loop, 'p1', edge);
+    slot(loop).lines.p1 = { start: first, edges: used };
+    const closing = ring.find((edge) => !used.includes(edge))!;
+    expect(topo.edges[closing]!.vertices.toSorted()).toEqual([first, vertex].toSorted());
+    expect(lineContext(loop, 'p1')!.end).toBe(vertex);
+    expect(lineContext(loop, 'p1')!.dist[vertex]).toBe(-1);
+    expect(lineShip(loop, 'p1', closing).kind).not.toBe('line');
   });
 
   it('beachhead：自己的船線（船）到達後才可蓋村落（照常付費）；只有自己的 beachhead，海盜群島其餘處不行', () => {

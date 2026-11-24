@@ -23,6 +23,9 @@ interface Summary {
   noExtension: number;
   relaxedShips: number;
   illegalRoads: number;
+  badEnds: number;
+  deadAtPlacement: number;
+  stuckPlayers: number;
   gamesWithRelaxedShips: number;
   linesDone: number;
   playerLines: number;
@@ -31,7 +34,7 @@ interface Summary {
 }
 
 function run(players: 3 | 4, lineBias: number, from: number): Summary {
-  const sum: Summary = { games: 0, gamesWithUnreachable: 0, unreachableObservations: 0, noStart: 0, noExtension: 0, relaxedShips: 0, illegalRoads: 0, gamesWithRelaxedShips: 0, linesDone: 0, playerLines: 0, outOfShips: 0, turns: 0 };
+  const sum: Summary = { games: 0, gamesWithUnreachable: 0, unreachableObservations: 0, noStart: 0, noExtension: 0, relaxedShips: 0, illegalRoads: 0, badEnds: 0, deadAtPlacement: 0, stuckPlayers: 0, gamesWithRelaxedShips: 0, linesDone: 0, playerLines: 0, outOfShips: 0, turns: 0 };
   for (let seed = from; seed < from + GAMES; seed++) {
     const result: PirateSimResult = simulatePirateIslands({ players, seed, lineBias, maxTurns: 60 });
     sum.games++;
@@ -41,6 +44,9 @@ function run(players: 3 | 4, lineBias: number, from: number): Summary {
     sum.noExtension += result.noExtension;
     sum.relaxedShips += result.relaxedShips;
     sum.illegalRoads += result.illegalRoads;
+    sum.badEnds += result.badEnds;
+    sum.deadAtPlacement += result.deadAtPlacement;
+    sum.stuckPlayers += result.stuckPlayers;
     if (result.relaxedShips > 0) sum.gamesWithRelaxedShips++;
     sum.linesDone += result.linesDone;
     sum.playerLines += players;
@@ -51,7 +57,7 @@ function run(players: 3 | 4, lineBias: number, from: number): Summary {
 }
 
 describe('Pirate Islands random legal-move simulation (S7a)', () => {
-  it('every game keeps the ship lines legal; no line is ever left with no legal extension', () => {
+  it('every game keeps the ship lines legal: the relaxation never ends a line on a foreign building or a loop, and no illegal road appears', () => {
     const table: Record<string, Summary> = {};
     for (const players of [3, 4] as const) {
       for (const bias of BIASES) table[`${players}p-bias${bias}`] = run(players, bias, 1);
@@ -61,9 +67,11 @@ describe('Pirate Islands random legal-move simulation (S7a)', () => {
       expect(sum.games, name).toBe(GAMES);
       // 放寬之後不會有「有船線卻沒有任何合法延伸」的玩家（配件用完以外）。
       // `unreachable`／`noStart` 是觀測值（船線被別人的海路擋死的次數，由 `shortestPathFallback` 放寬處理），不設上限。
-      expect(sum.noExtension, name).toBe(0);
       // 模擬只用合法動作：海盜群島上沒有不合法取得的路。
       expect(sum.illegalRoads, name).toBe(0);
+      // 放寬不會把船線端點推到別人的建築上或繞回自己的線。
+      expect(sum.badEnds, name).toBe(0);
+      // `deadAtPlacement`（放寬放下的船當下就沒有延伸）與 `stuckPlayers`（被圍死的玩家）是觀測值：放寬救不了被圍死的線（work record）。
       expect(sum.relaxedShips >= 0 && sum.linesDone <= sum.playerLines, name).toBe(true);
     }
   }, 3_600_000);

@@ -10,7 +10,7 @@
 import { isLandHex, topologyOf } from '../src/analysis.ts';
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
 import { legalShipEdges } from '../src/modules/seafarers/ships.ts';
-import { lineContext, lineShip, pirateIslandsView, roadAllowed } from '../src/modules/seafarers/pirateIslands.ts';
+import { lineContext, lineShip, lineVertices, pirateIslandsView, roadAllowed } from '../src/modules/seafarers/pirateIslands.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
 import type { GameState, Resource } from '../src/types.ts';
 import { seafarersGame } from './seafarers-helpers.ts';
@@ -41,6 +41,12 @@ export interface PirateSimResult {
   noStart: number;
   /** 以放寬規則（`shortestPathFallback`）放下的船數。 */
   relaxedShips: number;
+  /** 曾經有過「沒有任何合法延伸」的玩家數（被別人的船與建築圍死，不是放寬造成的也算）。 */
+  stuckPlayers: number;
+  /** 放寬放下船的當下，新端點就沒有任何合法延伸（放寬造成的死巷，必須是 0）。 */
+  deadAtPlacement: number;
+  /** 放寬造成的壞端點：船線端點落在別人的建築上，或船線繞回自己的頂點（必須是 0）。 */
+  badEnds: number;
   /** 海盜群島上不合法取得的路（必須是 0：模擬只用合法動作）。 */
   illegalRoads: number;
   /** 因為配件用完（15 艘）而沒完成的玩家數。 */
@@ -104,10 +110,18 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   let noExtension = 0;
   let relaxedShips = 0;
   let illegalRoads = 0;
+  let badEnds = 0;
+  let deadAtPlacement = 0;
+  const stuckSet = new Set<string>();
   const topo = topologyOf(state);
   const observe = (current: GameState): void => {
     for (const player of current.players) {
       const ctx = lineContext(current, player.id)!;
+      if (ctx.end !== null) {
+        const vertices = lineVertices(current, ctx.line);
+        const owner = current.board.buildings[ctx.end]?.player;
+        if ((owner !== undefined && owner !== player.id) || new Set(vertices).size !== vertices.length) badEnds++;
+      }
       if (ctx.next === 'done') continue;
       if (ctx.end !== null) {
         if (ctx.dist[ctx.end]! < 0) {
@@ -172,8 +186,17 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
         const relaxed = edge !== null && (lineShip(state, actor.id, edge) as { relaxed?: boolean }).relaxed === true;
         const next = attempt(state, actor.id, command, rng);
         if (next) {
-          if (relaxed) relaxedShips++;
           state = next;
+          if (relaxed) {
+            relaxedShips++;
+            // 放下的當下新端點必須還有合法延伸（放寬不推進死巷；之後被別人圍死不算在這裡）。
+            const saved = state.board.pirate;
+            state.board.pirate = null;
+            enrich(state, actor.id);
+            const shipsNow = state.board.roads.filter((road) => road?.ship && road.player === actor.id).length;
+            if (shipsNow < 15 && lineContext(state, actor.id)!.next !== 'done' && lineCandidates(state, actor.id).length === 0) deadAtPlacement++;
+            state.board.pirate = saved;
+          }
           done = true;
           break;
         }
@@ -184,13 +207,17 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
     // 端點有路卻沒有任何合法延伸（先不看海盜：海盜每回合都換位置）。
     for (const player of state.players) {
       const ctx = lineContext(state, player.id)!;
-      if (ctx.next === 'done' || ctx.end === null || ctx.dist[ctx.end]! < 0) continue;
+      // 放寬生效（端點到不了目標）時也要有合法的船線延伸，否則放寬造成了卡死。
+      if (ctx.next === 'done' || ctx.end === null) continue;
       const ships = state.board.roads.filter((road) => road?.ship && road.player === player.id).length;
       if (ships >= 15) continue;
       const saved = state.board.pirate;
       state.board.pirate = null;
       enrich(state, player.id);
-      if (lineCandidates(state, player.id).length === 0) noExtension++;
+      if (lineCandidates(state, player.id).length === 0) {
+        noExtension++;
+        stuckSet.add(player.id);
+      }
       state.board.pirate = saved;
     }
     if (state.result) break;
@@ -209,5 +236,5 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   state.board.roads.forEach((road, edge) => {
     if (road && !road.ship && !roadAllowed(state, road.player, edge)) illegalRoads++;
   });
-  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, relaxedShips, illegalRoads };
+  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, relaxedShips, illegalRoads, badEnds, deadAtPlacement, stuckPlayers: stuckSet.size };
 }

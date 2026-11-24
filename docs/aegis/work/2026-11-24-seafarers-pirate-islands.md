@@ -174,19 +174,21 @@ coordinates: (0, 6), (-1, 6), (-1, 5), (-1, 4), (0, 3), (0, 2), (1, 1), (2, 0), 
 | I6 | The shortest path (OQ-3, confirmed by the user) | Every new line ship must make the distance from the line's end to the **next target** (the beachhead first, then the fortress) smaller by exactly 1. The distance is a breadth-first count over **every currently empty sea edge** (coastal edges included), never through a vertex held by another player's building; the pirate's temporary restrictions are not counted. The distance is from the *current end*, so when another player's ship blocks the shortest route the detour's every step is legal, and several shortest paths are all allowed. The new end's distance is checked equal to the old one minus 1 on every step in the tests. | spec §6.6, OQ-3; SF25 p. 16 "must take the shortest path" |
 | I7 | One line, no branching | The line is the ordered list of the player's line ships (`lines[player] = { start, edges }`). A line ship must attach at the end; once the line has reached the fortress (`done`) no more line ships can be built, free coastal ships still can. Ships on the line (the preset ship included) cannot be moved (`shipMoveBlocked`); a free ship moved onto a line edge is judged exactly like a new ship (`ship.move` and `setup.placeShip` go through the same check and the same `E_SHIP_LINE`). A setup ship at a new settlement is a line ship only if that settlement is the line's end and the ship cuts the distance; otherwise it must be on a coastal edge. | SF25 p. 16 "one continuous line … No branching" |
 | I8 | Reaching the targets | The line reaches the beachhead when one of its vertices is the beachhead vertex (the target then becomes the fortress) and the fortress when it passes the fortress vertex (the line is complete). A settlement at the beachhead does not stop the line: it continues from there. Counting the preset ship, every colour needs 6 ships to the beachhead and 3 more to the fortress (`EXPECTED_LINE_LENGTHS`; the map is symmetric), well inside the 15 ships of the supply. | SF25 p. 16 |
-| I9 | When nothing leads to the target | **Fallback `shortestPathFallback` (kept, profile flag; see the simulation)**: when the target is not reachable from the line's end over empty sea edges, the line may extend in any legal direction from the end (still one line); as soon as the end can reach the target again the exact rule resumes. **Departure from SF25**, which gives no definition; spec §6.6. | spec §6.6, §9 OQ-3 |
+| I9 | When nothing leads to the target | **Fallback `shortestPathFallback` (flag kept, but see the simulation: it does not rescue a walled-off line)**: when the target is not reachable from the line's end over empty sea edges, the line may extend in any legal direction from the end (still one line). A relaxed step may not end on a vertex another player's building blocks, may not return to a vertex of the player's own line (no loop), and must leave the new end an empty edge to continue on (round 2 review). As soon as the end can reach the target again the exact rule resumes. **Departure from SF25**, which gives no definition; spec §6.6. | spec §6.6, §9 OQ-3 |
 | I10 | The pirate and the robber in S7a | The pirate stands on the route's first hex and does not move until S7b; the base rule that no ship can be placed or moved onto an edge of the pirate's hex still applies. The robber is out of the game (`robberInactive`): a 7 makes players with more than 7 cards discard and nothing else happens (the "steal from any other player" step is S7b). Longest Road and Largest Army are disabled (`awardRules`). | SF25 p. 16 |
 | I11 | The deck | 3 players: the 5 victory point cards are removed (20 cards: 14 knights, 2 road building, 2 year of plenty, 2 monopoly). 4 players: they are replaced in place by knights (25 cards, 19 knights), so the shuffled order is unchanged. Playing them (warships) is S7c. | SF25 p. 16 |
 | I12 | Setup | Unchanged: two rounds, two starting settlements with a road or a ship each, on the main island only; the second settlement still gives its starting cards. Everyone then has 3 settlements and 3 VP (the fortress counts for 0). The preset pieces are placed in `initGame` without the rng. | SF25 p. 16 |
 | I13 | Profile | `implemented: true`, `enabled: false`: the engine can build the game (tests, the sim) while the lobby and the server still refuse it (`disabled`); S7c enables it. `shortestPathFallback: true` is a registry field. | spec §10 |
 | I14 | State and views | `SeafarersState.pirateIslands` (fortresses, beachheads, lines, route) exists only in this scenario; the public view `modules.seafarers.pirateIslands` and the hint `pirateLine` (next target, target vertex, end, edges) are absent elsewhere, so every other profile keeps its view and hint keys and its ship rules (D7, tested). Everything is public: no hidden information is involved. | spec D7 |
+| I15 | Robber and knights in S7a | The robber does not exist: `robberTargets`, `legalRobberHexes` and the pirate targets are empty. `dev.playKnight` is **refused** (`E_INVALID_COMMAND`, `vetoCommand`) until S7c, which turns knights into warship conversions ("knight cards may only be used to convert ships into warships"), so no command can put the removed robber back on the board. | SF25 p. 16–17 |
+| I16 | Panel settlement count | An unrecaptured fortress is not counted in the settlements of the player panel (it scores nothing), so the breakdown (e.g. Settlements (3 × 1) after setup) matches the total. | SF25 p. 16 |
 
 ## Simulation: how often is a line left without a path
 
 Spec §6.6 and OQ-3: measure with random legal moves whether the exact shortest-path rule can leave a player with no way to
-extend the line; if it never does, drop `shortestPathFallback` and its code. **Re-measured after the review fixes** (no roads from
-unrecaptured fortresses, lines start at the preset coastal settlement, coastal edges count for the distance); the first
-measurement was polluted by illegal pirate-island roads and by lines that could start at free ships, so its table is replaced.
+extend the line; if it never does, drop `shortestPathFallback` and its code. **Re-measured twice after review** (round 1: no roads from
+unrecaptured fortresses, lines start at the preset coastal settlement, coastal edges count for the distance; round 2: the relaxed step may not
+end on a foreign building or loop back, and the "no legal extension" check now also runs while the relaxation is active, which round 1 skipped).
 
 `packages/rules/test/seafarers-pirate-islands-sim.ts` plays whole setups and then turns of random **legal** actions
 (3 and 4 players, seeds 1..N, at most 60 turns, or until every line reaches its fortress): the actor rolls (a 7 only discards), then makes 1 to 4
@@ -194,29 +196,37 @@ actions, each either an extension of the own line (probability `bias`) or any ot
 beachhead (settlements elsewhere and cities are left out so nobody wins by points); the hand is refilled before every action so
 the run tests paths, not the economy; before every turn the pirate jumps to a random hex of the route (S7b will move it for
 real, so its temporary blocking shows up all over the board). Every command goes through `applyCommand`, so only legal actions
-happen, and at the end of each game every road is checked with `roadAllowed`: **`illegalRoads` is 0 in all games**. Three policies: `bias 1` (only line
-ships, every shortest path equally likely), `0.85` and `0.4` (more and more free coastal ships and roads). After every action each player is checked:
-*unreachable* = the next target cannot be reached from the line's end over empty sea edges; *noExtension* = the end can reach the target but the
-player has no legal line ship (pirate ignored, pieces left). Run with
+happen, and at the end of each game every road is checked with `roadAllowed`. Three policies: `bias 1` (only line
+ships), `0.85` and `0.4` (more and more free coastal ships and roads). Measured after every action: *unreachable* = the next target cannot be reached
+from the line's end over empty sea edges; *noExtension* = the player has a line that is not finished and no legal line ship (pirate ignored, pieces left;
+counted per turn, so a stuck player is counted every turn); *stuck players* = players who ever had that; *badEnds* = a line ending on another player's building or
+visiting a vertex twice; *dead at placement* = a relaxed ship whose new end has no legal extension right away; *illegalRoads* = roads on a pirate island
+that `roadAllowed` would refuse. Run with
 `PI_SIM_GAMES=<n> PI_SIM_BIASES=<list> PI_SIM_REPORT=1 pnpm --filter @katan/rules exec vitest run test/seafarers-pirate-islands-sim.test.ts`
-(2026-11-24, one worker per run on the shared machine, 148 s for the 600 games of `bias 1`, 396 s for the 1600 games of the other two):
+(2026-11-24, shared machine, 111 s for `bias 1`, 350 s for `0.85` and `0.4`, 307 s for `0.4` again with the final counters):
 
-| Players | Policy | Games | Games with a line left without a path | Games where the fallback placed a ship (ships) | Lines completed | Lines out of ships | noExtension | illegalRoads |
-|---|---|---|---|---|---|---|---|---|
-| 3 | bias 1 | 300 | 0 | 0 (0) | 900 / 900 | 0 | **0** | 0 |
-| 4 | bias 1 | 300 | 0 | 0 (0) | 1198 / 1200 | 2 | **0** | 0 |
-| 3 | bias 0.85 | 400 | 0 | 0 (0) | 1196 / 1200 | 4 | **0** | 0 |
-| 4 | bias 0.85 | 400 | 1 (12 observations) | 0 (0) | 1599 / 1600 | 1 | **0** | 0 |
-| 3 | bias 0.4 | 400 | 19 (4.8 %) | 4 (10) | 1090 / 1200 | 102 | **0** | 0 |
-| 4 | bias 0.4 | 400 | 46 (11.5 %) | 23 (79) | 1487 / 1600 | 77 | **0** | 0 |
+| Players | Policy | Games | Games with a line left without a path | Games where the fallback placed a ship (ships) | Lines completed | Lines out of ships | Stuck players (noExtension turns) | Dead at placement | badEnds | illegalRoads |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | bias 1 | 300 | 0 | 0 (0) | 900 / 900 | 0 | 0 (0) | 0 | 0 | 0 |
+| 4 | bias 1 | 300 | 0 | 0 (0) | 1198 / 1200 | 2 | 0 (0) | 0 | 0 | 0 |
+| 3 | bias 0.85 | 400 | 0 | 0 (0) | 1196 / 1200 | 4 | 0 (0) | 0 | 0 | 0 |
+| 4 | bias 0.85 | 400 | 1 (12 observations) | 0 (0) | 1599 / 1600 | 1 | 0 (0) | 0 | 0 | 0 |
+| 3 | bias 0.4 | 400 | 19 (4.8 %) | 4 (15) | 1091 / 1200 | 102 | 6 (201) | 2 | 0 | 0 |
+| 4 | bias 0.4 | 400 | 46 (11.5 %) | 19 (81) | 1487 / 1600 | 81 | 23 (616) | 10 | 0 | 0 |
 
-Reading: when players mostly extend their lines the exact rule never traps anybody (0 of 1,000 games with 3 or 4 players at `bias 1` and
-`0.85` for 3 players, and one passing observation for 4 players), because every line starts at its own preset ship and heads for its own target.
-When many random free coastal ships are placed (`bias 0.4`) a line's coastal segment or a narrow channel can be walled off by other players' ships in
-5 % (3 players) to 12 % (4 players) of the games, and the fallback placed ships in 1 % to 6 %. **The condition therefore still occurs, so the flag stays on
-(`shortestPathFallback: true`, I9) and the relaxed path stays.** With it, **no player was ever left without a legal line ship** (`noExtension` 0 in all
-2,200 games); lines that did not finish ran out of the 15 ships (free ships are wasted pieces) or of turns. The counts come from random play with no
-defence, so they overstate real tables; FIDELITY will mark the fallback a departure from SF25 when S7c enables the profile.
+Reading:
+
+- When players mostly extend their lines, the exact rule never traps anybody (0 stuck players in 1,400 games for `bias 1` and `0.85`; one passing
+  observation for 4 players): every line starts at its own preset ship and heads for its own target.
+- With many random free coastal ships (`bias 0.4`) a line can be walled off by other players' ships and buildings in 5 % (3 players) to 12 %
+  (4 players) of the games.
+- **The relaxation does not rescue such a line.** A relaxed step stays on empty edges, so the end stays in the component that is cut off from the
+  target; the walk only wastes ships, and the player is stuck once the pocket is full (6 and 23 stuck players above, 2 and 10 relaxed ships
+  that left no extension even at once). Round 1 hid this by skipping the check while the relaxation was active. The relaxation is safe now
+  (no foreign-building ends, no loops, 0 `badEnds`, 0 illegal roads in 2,200 games) but it does not "keep the game from stalling" as spec
+  §6.6 hoped. A real remedy needs a rule choice (for example letting a walled-off player move or remove the end ship of the line, or letting free
+  ships never wall a line); S7a keeps the user-confirmed definition and the flag as they are and reports this for a decision.
+  Honest status: the fallback is only useful if a blocker later disappears (a free ship is moved away).
 
 ## What was built
 
@@ -233,7 +243,7 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
 
 ## Verification
 
-- Rules (`packages/rules/test/seafarers-pirate-islands.test.ts`, 36 tests; whole suite 71 files, 1179 tests):
+- Rules (`packages/rules/test/seafarers-pirate-islands.test.ts`, 38 tests; whole suite 71 files, 1181 tests):
   topology (49 hexes, rows 6-7-8-7-8-7-6 on the `sf-forgotten-tribe` outline, Euler, protrusions absent, 8 distinct frame harbour edges)
   and the (-1, -3) shift against the transcribed row ranges; layout checksums (terrain 19/3/2/5×5, 24 discs, the 6 hexes without a
   disc, islands 17/4/2/1/4/2, every transcribed cell, 8 harbour tokens reproducible and varying with the seed, route 14 consecutive
@@ -248,18 +258,18 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
   beachhead and fortress with every step cutting the distance by 1 and a simple path, a finished line cannot grow, an emptied line restarts
   only at a coastal building and never at a free ship, no branching, detours around other ships and impassable vertices, the fallback with its
   flag on and off, settlement at the beachhead only after the line arrives and only the own one, line ships fixed and free ships judged when
-  moved, setup ships); public view equal for every
+  moved, setup ships, the relaxed step never ends on a foreign building or loops back, the robber and knights are refused); public view equal for every
   viewer; other scenarios without state, hints or line rules; profile enabled/implemented flags and player counts;
-  `seafarers-pirate-islands-sim.test.ts` (2 tests, 16 s: 12 games for each of 3 policies × 2 player counts, `noExtension` 0 and `illegalRoads` 0, the
+  `seafarers-pirate-islands-sim.test.ts` (2 tests: 12 games for each of 3 policies × 2 player counts, `illegalRoads` 0 and `badEnds` 0, the
   large runs above); `profiles.test.ts` and `seafarers-exports.test.ts` updated for the new key and the implemented flag;
   `message-ids.test.ts` covers `E_SHIP_LINE`.
 - Service: no code path is added (the profile is disabled); `seafarers-scenarios-registry.test.ts` still lists the profile as disabled and
   rejects 5 and 6 players with `bad-player-count` and 3–4 with `disabled`; `bots.test.ts` still refuses bot seats with reason `profile`.
-- Web (`seafarers-pirate-islands.test.tsx`, 7 tests): SVG board (49 hexes, 8 harbours, 8 buildings and 4 ships for 4 players, 4
+- Web (`seafarers-pirate-islands.test.tsx`, 8 tests): SVG board (49 hexes, 8 harbours, 8 buildings and 4 ships for 4 players, 4
   fortresses with 3 lairs and their titles, 4 beachheads, the 14-hex route, no robber, 3 players with 3 fortresses and no white
   pieces), the next-target ring (beachhead first), a recaptured fortress without lair tokens, no layer in other scenarios; 3D helper
   geometry (lair spot beside the fortress on land, beachhead on its vertex, taller stack for more lairs, models built); player panel
-  (fortress mark as one value `×3` or `recaptured`, ship line mark, no Longest Road, both locales); the new message ids in both locales. The SVG board was also
+  (the settlement count leaves an unrecaptured fortress out, the route has a title, fortress mark as one value `×3` or `recaptured`, ship line mark, no Longest Road, both locales); the new message ids in both locales. The SVG board was also
   rendered once to an image and compared with the printed map (presets, fortress stacks, beachheads, pirate on the bottom row).
   The 3D scene is not rendered in a browser in this slice (the profile is not enabled); only its instance data is tested.
 - `pnpm typecheck` passes. The browser evidence script belongs to S7c.
