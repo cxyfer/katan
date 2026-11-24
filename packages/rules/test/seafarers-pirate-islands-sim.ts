@@ -10,7 +10,7 @@
 import { isLandHex, topologyOf } from '../src/analysis.ts';
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
 import { legalShipEdges } from '../src/modules/seafarers/ships.ts';
-import { lineContext, lineShip, pirateIslandsView } from '../src/modules/seafarers/pirateIslands.ts';
+import { lineContext, lineShip, pirateIslandsView, roadAllowed } from '../src/modules/seafarers/pirateIslands.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
 import type { GameState, Resource } from '../src/types.ts';
 import { seafarersGame } from './seafarers-helpers.ts';
@@ -41,6 +41,8 @@ export interface PirateSimResult {
   noStart: number;
   /** 以放寬規則（`shortestPathFallback`）放下的船數。 */
   relaxedShips: number;
+  /** 海盜群島上不合法取得的路（必須是 0：模擬只用合法動作）。 */
+  illegalRoads: number;
   /** 因為配件用完（15 艘）而沒完成的玩家數。 */
   outOfShips: number;
   /** 被「完成」之外的原因擋住：端點有路但目前沒有任何合法的船線延伸（海盜等暫時限制以外）。 */
@@ -85,13 +87,11 @@ function setupStep(state: GameState, rng: Rng): GameState {
   return attempt(state, actor, pick(both, rng)!, rng)!;
 }
 
-/** 目前船線的延伸候選（用 `legalShips` 與船線判定的交集：不碰東島的邊）。 */
+/** 目前船線的延伸候選：一般合法、且是船線的延伸（接在端點、距離減 1，或完全無路時的放寬）。 */
 function lineCandidates(state: GameState, actor: string): number[] {
   const ctx = lineContext(state, actor)!;
   if (ctx.next === 'done') return [];
-  const topo = topologyOf(state);
-  return legalShipEdges(state, actor).filter((edge) =>
-    !topo.edges[edge]!.hexes.some((hex) => isLandHex(state, hex) && state.board.layout.islands[hex] === 1));
+  return legalShipEdges(state, actor).filter((edge) => lineShip(state, actor, edge).kind === 'line');
 }
 
 export function simulatePirateIslands(options: PirateSimOptions): PirateSimResult {
@@ -103,6 +103,7 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   let noStart = 0;
   let noExtension = 0;
   let relaxedShips = 0;
+  let illegalRoads = 0;
   const topo = topologyOf(state);
   const observe = (current: GameState): void => {
     for (const player of current.players) {
@@ -115,7 +116,7 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
         }
         continue;
       }
-      // 還沒有船線：自己的任一個建築或船所在的交叉點，或東島海岸上的任一交叉點，有沒有到得了目標的？
+      // 還沒有船線（S7a 只有在預置的船被移除時才會發生）：東島海岸上的任一交叉點到得了目標嗎？
       const reachable = ctx.dist.some((distance, vertex) => distance >= 1 && topo.vertices[vertex]!.edges.some((edge) =>
         topo.edges[edge]!.hexes.some((hex) => isLandHex(current, hex) && current.board.layout.islands[hex] === 1)));
       if (!reachable) noStart++;
@@ -204,5 +205,9 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
     if (ctx.next === 'done') linesDone++;
     else if (state.board.roads.filter((road) => road?.ship && road.player === player.id).length >= 15) outOfShips++;
   }
-  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, relaxedShips };
+  // 全部的路都要是合法取得的（海盜群島上的路只能從合法的建築接出去）。
+  state.board.roads.forEach((road, edge) => {
+    if (road && !road.ship && !roadAllowed(state, road.player, edge)) illegalRoads++;
+  });
+  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, relaxedShips, illegalRoads };
 }
