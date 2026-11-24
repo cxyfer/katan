@@ -4,6 +4,7 @@ import { formatNumber } from '../i18n/format.ts';
 import { playerColorHex } from '../board/terrain.ts';
 import { seafarersHints, seafarersView } from '../board/seafarers.ts';
 import { blocksNewCommands } from '../state/commands.ts';
+import { followUpsHeld, shownSeafarers, tableHold } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { GameIcon, ResourceIcon } from './GameArt.tsx';
 import '../styles/seafarers.css';
@@ -16,12 +17,14 @@ import '../styles/seafarers.css';
 export function WondersPanel({ controller }: { controller: TableController }) {
   const t = useT();
   const { state, actions } = controller;
-  const view = state.game?.view ?? null;
+  // 擲骰演出期間用擲骰前的投影，擲骰後可負擔的層數不先洩漏。
+  const view = shownSeafarers(state) ?? state.game?.view ?? null;
   const wonders = seafarersView(view)?.wonders ?? null;
   const selfId = state.session?.id ?? null;
   if (!view || !wonders) return null;
   const hints = seafarersHints(view)?.wonders ?? { claimable: [], buildable: false };
-  const blocked = blocksNewCommands(state.command);
+  // 與 `deriveActions` 一致：指令進行中、離線、全桌暫停／同步、擲骰演出或投影尚未追上時都不開放。
+  const blocked = blocksNewCommands(state.command) || state.connection !== 'online' || tableHold(state) !== null || followUpsHeld(state);
   const mine = selfId ? wonders.owned[selfId] ?? null : null;
   const myLevel = selfId ? wonders.levels[selfId] ?? 0 : 0;
   const nickname = (id: string) => view.players.find((player) => player.id === id)?.nickname ?? id;

@@ -26,3 +26,6 @@
 .wonders-panel__progress li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .wonders-panel__dot { width: 0.8rem; height: 0.8rem; border-radius: 50%; border: 1px solid #20180f; display: inline-block; }
 .wonders-panel__pips { letter-spacing: 0.1em; }
+
+/* 收合的行動列只有窄窄一欄：奇觀牌展開後才看得到（與其他細節文字一致），避免被裁成半寬並撐高。 */
+.action-rail[data-expanded="false"] .wonders-panel { display: none; }
