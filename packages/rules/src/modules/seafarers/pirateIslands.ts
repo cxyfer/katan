@@ -213,9 +213,16 @@ export function lineVertices(state: GameState, line: ShipLine): number[] {
 function lineTarget(slot: PirateIslandsState, playerId: string, vertices: readonly number[]): { next: LineTarget; targetVertex: number | null } {
   const beachhead = slot.beachheads.find((entry) => entry.player === playerId)?.vertex ?? null;
   const fortress = slot.fortresses.find((entry) => entry.player === playerId)?.vertex ?? null;
-  if (beachhead !== null && !vertices.includes(beachhead)) return { next: 'beachhead', targetVertex: beachhead };
-  if (fortress === null || vertices.includes(fortress)) return { next: 'done', targetVertex: null };
+  const reached = beachhead === null ? 0 : vertices.indexOf(beachhead);
+  if (beachhead !== null && reached < 0) return { next: 'beachhead', targetVertex: beachhead };
+  // 堡壘必須在 beachhead 之後到達（先經過堡壘再停在 beachhead 不算完成）。
+  if (fortress === null || vertices.indexOf(fortress, Math.max(reached, 0)) >= 0) return { next: 'done', targetVertex: null };
   return { next: 'fortress', targetVertex: fortress };
+}
+
+/** 在到達 beachhead 之前，堡壘的頂點不能當經過點。 */
+function fortressToAvoid(slot: PirateIslandsState, playerId: string, next: LineTarget): number | null {
+  return next === 'beachhead' ? slot.fortresses.find((entry) => entry.player === playerId)?.vertex ?? null : null;
 }
 
 /** 去掉末端一艘船的船線；一艘都不剩時回到「沒有船線」（只能從海岸建築重新起頭）。 */
@@ -225,10 +232,10 @@ function truncated(line: ShipLine): ShipLine {
 }
 
 /** 玩家船線的狀態：端點、下一個目標與目標的距離表。`vacated` 是正要被移走的船的邊（視為空）。 */
-export function lineContext(state: GameState, playerId: string, vacated?: number): LineContext | null {
+export function lineContext(state: GameState, playerId: string, vacated?: number, override?: ShipLine): LineContext | null {
   const slot = pirateIslandsView(state);
   if (!slot) return null;
-  const full = slot.lines[playerId] ?? { start: null, edges: [] };
+  const full = override ?? slot.lines[playerId] ?? { start: null, edges: [] };
   // 正要被移走的是船線末端的船（退回）：船線視為已經少了它。
   const line = vacated !== undefined && full.edges[full.edges.length - 1] === vacated ? truncated(full) : full;
   const vertices = lineVertices(state, line);
@@ -239,6 +246,8 @@ export function lineContext(state: GameState, playerId: string, vacated?: number
   const lineEnd = vertices.length > 0 ? vertices[vertices.length - 1]! : null;
   const ownLine = new Set(vertices);
   if (lineEnd !== null) ownLine.delete(lineEnd);
+  const avoid = fortressToAvoid(slot, playerId, next);
+  if (avoid !== null) ownLine.add(avoid);
   if (targetVertex !== null) {
     dist[targetVertex] = 0;
     const queue = [targetVertex];
@@ -269,7 +278,8 @@ export interface LineShipOptions {
 
 export type LineShip =
   | { kind: 'free' }
-  | { kind: 'line'; from: number; to: number }
+  /** `restart`：船線只有一艘船（預置的）時，從另一個自己的東島海岸建築重新開始；原來的那艘船變成自由船。 */
+  | { kind: 'line'; from: number; to: number; restart?: true }
   | { kind: 'refused'; reason: 'done' | 'not-at-end' | 'not-shortest' };
 
 /**
@@ -310,6 +320,17 @@ export function lineShip(state: GameState, playerId: string, edge: number, optio
     if (!best || here > ctx.dist[best.from]!) best = { from, to };
   }
   if (best) return { kind: 'line', ...best };
+  // 船線還沒有延伸超過一艘船：可以從自己任一個東島海岸建築以最短路徑的第一步重新開始（SF25：從任一海岸建築出發）。
+  if (options.moving === undefined && ctx.line.edges.length === 1) {
+    const fresh = lineContext(state, playerId, undefined, { start: null, edges: [] });
+    if (fresh && fresh.next !== 'done') {
+      for (const [from, to] of candidates) {
+        if (options.setupVertex !== undefined ? from !== options.setupVertex : !canStartAt(state, playerId, from)) continue;
+        const here = fresh.dist[from]!;
+        if (here > 0 && fresh.dist[to] === here - 1) return { kind: 'line', from, to, restart: true };
+      }
+    }
+  }
   if (coastal) return { kind: 'free' };
   return { kind: 'refused', reason: attached ? 'not-shortest' : 'not-at-end' };
 }
@@ -343,6 +364,12 @@ export function recordLineShip(state: GameState, playerId: string, edge: number,
     if (line.edges.length === 0) line.start = null;
   }
   if (step.kind !== 'line') return;
+  if (step.restart) {
+    // 新的船線從這個建築開始；原來的船（預置的）變成自由船。
+    line.start = step.from;
+    line.edges = [edge];
+    return;
+  }
   if (line.start === null) line.start = step.from;
   line.edges.push(edge);
 }
@@ -377,6 +404,9 @@ export interface WallChange {
   owner?: string;
   /** 放的船是放置者船線的延伸時，船線新的端點（放置者的目標與出發處據此重算）。 */
   extend?: number;
+  /** 船線延伸的出發頂點，以及它是不是從另一個建築重新開始的新船線。 */
+  from?: number;
+  restart?: boolean;
 }
 
 interface WallPlayer {
@@ -388,6 +418,8 @@ interface WallPlayer {
   /** 從目標到某個出發處的一條空海路上的邊與頂點：放置沒有碰到這條路，就一定還走得通（不必再搜尋）。 */
   pathEdges: Set<number>;
   pathVertices: Set<number>;
+  /** 目標是 beachhead 時，不能經過的堡壘頂點。 */
+  avoid: number | null;
 }
 
 /** 放置之前每位「可能被圍死」的玩家（船線沒完成、目前通得到目標）的狀態；一次算好，供一次列出許多邊時共用。 */
@@ -405,7 +437,7 @@ function wallSources(state: GameState, playerId: string, line: ShipLine): number
 }
 
 /** 從目標沿空著的海邊走到的頂點（別人的建築擋住的交叉點不能經過）；`change` 是假設的放置。 */
-function wallVisit(state: GameState, playerId: string, target: number, change: WallChange, parentEdge?: number[]): boolean[] {
+function wallVisit(state: GameState, playerId: string, target: number, change: WallChange, parentEdge?: number[], avoid: number | null = null): boolean[] {
   const topo = topologyOf(state);
   const visited = new Array<boolean>(topo.vertices.length).fill(false);
   const blocked = (vertex: number) => isBlockedFor(state, vertex, playerId)
@@ -418,7 +450,7 @@ function wallVisit(state: GameState, playerId: string, target: number, change: W
       if (edge === change.edge || !isSeaEdge(state, edge) || (state.board.roads[edge] && edge !== change.vacated)) continue;
       const [a, b] = topo.edges[edge]!.vertices;
       const other = a === vertex ? b : a;
-      if (visited[other] || blocked(other)) continue;
+      if (visited[other] || other === avoid || blocked(other)) continue;
       visited[other] = true;
       if (parentEdge) parentEdge[other] = edge;
       queue.push(other);
@@ -452,7 +484,7 @@ function computeWallContext(state: GameState, slot: PirateIslandsState): WallCon
     if (next === 'done' || targetVertex === null) continue;
     const sources = wallSources(state, id, line);
     const parentEdge: number[] = [];
-    const visited = wallVisit(state, id, targetVertex, {}, parentEdge);
+    const visited = wallVisit(state, id, targetVertex, {}, parentEdge, fortressToAvoid(slot, id, next));
     // 放置之前就已經不通的玩家不受保護（不因為舊狀態禁止所有動作）。
     const reached = sources.find((vertex) => visited[vertex]);
     if (reached === undefined) continue;
@@ -466,9 +498,20 @@ function computeWallContext(state: GameState, slot: PirateIslandsState): WallCon
       vertex = a === vertex ? b : a;
       pathVertices.add(vertex);
     }
-    players.push({ id, target: targetVertex, sources, visited, pathEdges, pathVertices });
+    players.push({ id, target: targetVertex, sources, visited, pathEdges, pathVertices, avoid: fortressToAvoid(slot, id, next) });
   }
   return { players };
+}
+
+/** 這位玩家現在從任何出發處（船線頂點，沒有船時是海岸建築）通得到目標嗎（與「不得圍死」同一個定義）。完成船線的玩家回 true。 */
+export function routeExists(state: GameState, playerId: string): boolean {
+  const slot = pirateIslandsView(state);
+  const line = slot?.lines[playerId];
+  if (!slot || !line) return true;
+  const { next, targetVertex } = lineTarget(slot, playerId, lineVertices(state, line));
+  if (next === 'done' || targetVertex === null) return true;
+  const visited = wallVisit(state, playerId, targetVertex, {}, undefined, fortressToAvoid(slot, playerId, next));
+  return wallSources(state, playerId, line).some((vertex) => visited[vertex]);
 }
 
 /** 這個放置會不會讓任何一位玩家（含自己）從通變成完全不通。沒有這個劇本的狀態時一律不會。 */
@@ -476,30 +519,40 @@ export function wallsAnyone(state: GameState, change: WallChange, context?: Wall
   const ctx = context === undefined ? wallContext(state) : context;
   if (!ctx) return false;
   const slot = pirateIslandsView(state)!;
-  // 放置者自己的船線延伸：放置之後的目標與出發處要重算（走到 beachhead 之後目標是堡壘）。
-  if (change.extend !== undefined && change.owner !== undefined) {
-    const line = slot.lines[change.owner];
-    if (line) {
-      const vertices = [...lineVertices(state, line), change.extend];
-      const { next, targetVertex } = lineTarget(slot, change.owner, vertices);
-      if (next !== 'done' && targetVertex !== null) {
-        const before = wallVisit(state, change.owner, targetVertex, {});
-        if (vertices.some((vertex) => before[vertex])) {
-          const after = wallVisit(state, change.owner, targetVertex, change);
-          if (!vertices.some((vertex) => after[vertex])) return true;
-        }
+  // 放置者自己的船線延伸或退回末端船：用移動之後的船線（目標可能從堡壘變回 beachhead，船線清空時出發處是所有海岸建築）重算。
+  const ownerLine = change.owner === undefined ? undefined : slot.lines[change.owner];
+  const movesLast = !!ownerLine && change.vacated !== undefined && ownerLine.edges[ownerLine.edges.length - 1] === change.vacated;
+  const ownerHandled = change.owner !== undefined && !!ownerLine && (change.extend !== undefined || movesLast);
+  if (ownerHandled) {
+    const owner = change.owner!;
+    const base = movesLast ? truncated(ownerLine!) : ownerLine!;
+    let vertices: number[];
+    if (change.restart && change.from !== undefined) vertices = [change.from];
+    else vertices = lineVertices(state, base);
+    if (change.extend !== undefined) {
+      if (vertices.length === 0 && change.from !== undefined) vertices.push(change.from);
+      vertices = [...vertices, change.extend];
+    }
+    const { next, targetVertex } = lineTarget(slot, owner, vertices);
+    if (next !== 'done' && targetVertex !== null) {
+      const sources = change.extend !== undefined ? vertices : wallSources(state, owner, base);
+      const avoid = fortressToAvoid(slot, owner, next);
+      const before = wallVisit(state, owner, targetVertex, change.vacated === undefined ? {} : { vacated: change.vacated }, undefined, avoid);
+      if (sources.some((vertex) => before[vertex])) {
+        const after = wallVisit(state, owner, targetVertex, change, undefined, avoid);
+        if (!sources.some((vertex) => after[vertex])) return true;
       }
     }
   }
   for (const player of ctx.players) {
-    if (change.extend !== undefined && player.id === change.owner) continue;
+    if (ownerHandled && player.id === change.owner) continue;
     // 放置沒有碰到這位玩家的那條空海路，路還在，不必搜尋。
     if (change.edge !== undefined) {
       if (!player.pathEdges.has(change.edge)) continue;
     } else if (change.vertex !== undefined) {
       if (!player.pathVertices.has(change.vertex) || change.owner === player.id) continue;
     }
-    const visited = wallVisit(state, player.id, player.target, change);
+    const visited = wallVisit(state, player.id, player.target, change, undefined, player.avoid);
     if (!player.sources.some((vertex) => visited[vertex])) return true;
   }
   return false;
@@ -522,10 +575,10 @@ export function projectPirateIslands(state: GameState, slot: PirateIslandsState)
   };
 }
 
-/** 提示：自己船線的下一個目標與端點（棋盤用它標出目標）。 */
+/** 提示：自己船線的下一個目標、端點，以及是否被圍住（`stuck`；此刻能不能移末端船由 `backtrack` 決定，在 `seafarersHints` 與 `movableShips` 一致地算）。 */
 export function pirateLineHints(state: GameState, playerId: string) {
   const ctx = lineContext(state, playerId);
   if (!ctx) return null;
   const last = ctx.line.edges[ctx.line.edges.length - 1];
-  return { next: ctx.next, target: ctx.targetVertex, end: ctx.end, edges: ctx.line.edges.slice(), stuck: last !== undefined && lineBacktrackMovable(state, playerId, last) };
+  return { next: ctx.next, target: ctx.targetVertex, end: ctx.end, edges: ctx.line.edges.slice(), stuck: last !== undefined && lineBacktrack(state, playerId, last) };
 }

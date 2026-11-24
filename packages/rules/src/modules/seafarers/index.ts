@@ -113,6 +113,7 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
   const view = seafarersView(state);
   const required = goldRequired(state, playerId);
   const harbor = harborChoices(state, playerId);
+  const movable = inAction && !view.moved ? movableShips(state, playerId) : [];
   const tribeHints = {
     /** 世外部落：輪到此玩家放港口時，暫存的港口種類與可放的邊。 */
     harborChoices: harbor,
@@ -128,7 +129,7 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
   return {
     legalShips: inAction || freeRoads ? buildableShipEdges(state, playerId, ctx.profile.pieces.ships) : [],
     setupShips: setupShipStep ? legalShipEdges(state, playerId, { setupVertex: setup!.lastVertex }) : [],
-    movableShips: inAction && !view.moved ? movableShips(state, playerId) : [],
+    movableShips: movable,
     shipMoved: view.moved,
     // 布匹產地：沒有通到部落的通路就不能移動海盜（SF25 p. 14）。
     // 海盜巢穴：海盜只沿航道前進（S7b），玩家不能搬它。
@@ -145,7 +146,7 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
       // variable setup 的選強盜：只有起始玩家在 `robber` 階段有可選的 12 號格（`board` 讓棋盤自動進入選格）。
       ...(robberChoicePhase(state) ? robberChoiceHints(state, playerId) : {}) } : {}),
     // 海盜巢穴：自己船線的下一個目標與端點（棋盤用來標出目標）；其他劇本不帶此鍵（D7）。
-    ...(view.pirateIslands ? { pirateLine: pirateLineHints(state, playerId) } : {}),
+    ...(view.pirateIslands ? { pirateLine: backtrackHint(pirateLineHints(state, playerId), movable) } : {}),
     // 新世界設置階段的港口：只有輪到的玩家有選邊提示；其他劇本不帶這些鍵。
     ...(view.world ? worldHints(state, playerId) : {}),
     // 卡坦奇觀才有奇觀提示欄位：可認領的奇觀與能否蓋下一層（只對自己的行動階段）；其他劇本的鍵集合不變（D7）。
@@ -157,6 +158,13 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
      */
     goldBank: bankView(state.bank, required),
   };
+}
+
+/** 被圍住（`stuck`）之外，加上此刻末端的船真的可以移動（`backtrack`，與 `movableShips` 一致）。 */
+function backtrackHint(hint: ReturnType<typeof pirateLineHints>, movable: { edge: number }[]) {
+  if (!hint) return null;
+  const last = hint.edges[hint.edges.length - 1];
+  return { ...hint, backtrack: hint.stuck && last !== undefined && movable.some((entry) => entry.edge === last) };
 }
 
 export type SeafarersHints = ReturnType<typeof seafarersHints>;

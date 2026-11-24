@@ -98,7 +98,7 @@ function wallsShip(state: GameState, playerId: string, edge: number, options: Sh
     edge,
     owner: playerId,
     ...(options.moving === undefined ? {} : { vacated: options.moving }),
-    ...(step.kind === 'line' ? { extend: step.to } : {}),
+    ...(step.kind === 'line' ? { extend: step.to, from: step.from, ...(step.restart ? { restart: true } : {}) } : {}),
   }, options.walls);
 }
 
