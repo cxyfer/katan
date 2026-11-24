@@ -226,6 +226,11 @@ export function clothVictims(state: GameState, candidates: readonly string[]): s
 /** `cloth.steal { victim }` — 移動海盜後偷 1 枚布匹（取代偷 1 張資源牌）。 */
 export function stealCloth(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
   const { kit } = ctx;
+  // 只有布匹產地有這個指令；其他劇本與未知指令一致（同 `placeHarbor`、`chooseFog`）：
+  // 有 pending frame 時是 E_PENDING_EFFECT，沒有時是 E_INVALID_COMMAND。
+  if (!seafarersView(state).cloth) {
+    return state.pending ? kit.fail('E_PENDING_EFFECT', { pending: state.pending.kind }) : kit.fail('E_INVALID_COMMAND');
+  }
   const frame = state.pending;
   if (!frame || frame.kind !== 'steal') return kit.fail('E_PENDING_EFFECT', { pending: frame?.kind ?? 'none' });
   if (frame.actor !== actorId) return kit.fail('E_NOT_ACTOR');

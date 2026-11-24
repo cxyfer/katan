@@ -104,16 +104,15 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
     shipMoved: view.moved,
     // 布匹產地：沒有通到部落的通路就不能移動海盜（SF25 p. 14）。
     pirateTargets: (robberMove || isTurn) && (!view.cloth || hasTribeRoute(state, playerId)) ? pirateTargets(state) : [],
-    /** 布匹產地：偷海盜的對象時可以改偷布匹的玩家（輪到此玩家選擇時才有）。 */
-    clothVictims: view.cloth && state.pending?.kind === 'steal' && state.pending.actor === playerId && state.pending.pirate
-      ? clothVictims(state, state.pending.candidates)
-      : [],
     robberTargets: robberMove || isTurn
       ? topologyOf(state).hexes.map((_, hex) => hex).filter((hex) =>
         state.board.layout.terrain[hex] !== 'sea' && hex !== state.board.robber && robberHexAllowed(state, hex, ctx))
       : [],
     // 世外部落才有港口放置的提示欄位；其他劇本（New Shores 等）的鍵集合與 sf-2025.2 時相同（D7）。
     ...(view.tribe ? tribeHints : {}),
+    // 布匹產地才有偷布匹的提示欄位（偷海盜的對象時可改偷布匹的玩家）；其他劇本的鍵集合不變（D7）。
+    ...(view.cloth ? { clothVictims: state.pending?.kind === 'steal' && state.pending.actor === playerId && state.pending.pirate
+      ? clothVictims(state, state.pending.candidates) : [] as string[] } : {}),
     goldRequired: required,
     /**
      * 金礦作答所需的銀行存量：每種 `min(存量, goldRequired)`，只給當下作答的玩家（其他人
