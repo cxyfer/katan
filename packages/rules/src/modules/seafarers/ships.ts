@@ -24,7 +24,7 @@ import type { CommandOutcome, GameState, Resource } from '../../types.ts';
 import { rulesModulesOf } from '../registry.ts';
 import type { ModuleCommand, ModuleContext } from '../types.ts';
 import { exploreAtEdge } from './fog.ts';
-import { lineAllows, lineBacktrackMovable, lineContext, recordLineShip, type LineContext } from './pirateIslands.ts';
+import { lineAllows, lineBacktrackMovable, lineContext, lineShip, recordLineShip, wallContext, wallsAnyone, type LineContext, type WallChange, type WallContext } from './pirateIslands.ts';
 import { seafarersState, seafarersView } from './state.ts';
 import { takeGift } from './tribe.ts';
 
@@ -37,6 +37,8 @@ export interface ShipPlacementOptions {
   moving?: number;
   /** 海盜巢穴：呼叫端已算好的船線狀態（一次列出所有合法邊時共用）。 */
   line?: LineContext | null;
+  /** 海盜巢穴：呼叫端已算好的「圍死別人目標」狀態（`null` 略過這條規則）。 */
+  walls?: WallContext | null;
 }
 
 export function countShips(state: GameState, playerId: string): number {
@@ -69,7 +71,8 @@ export function canPlaceShip(state: GameState, playerId: string, edge: number, o
   if (!isSeaEdge(state, edge)) return false;
   if (touchesPirate(state, edge)) return false;
   if (options.setupVertex !== undefined) {
-    return options.setupVertex !== null && info.vertices.includes(options.setupVertex) && lineAllows(state, playerId, edge, options);
+    return options.setupVertex !== null && info.vertices.includes(options.setupVertex) && lineAllows(state, playerId, edge, options)
+      && !wallsAnyone(state, wallChange(state, playerId, edge, options), options.walls);
   }
   const except = options.moving === undefined ? [edge] : [edge, options.moving];
   const connected = info.vertices.some((vertex) => {
@@ -79,7 +82,19 @@ export function canPlaceShip(state: GameState, playerId: string, edge: number, o
     return ownShipAt(state, playerId, vertex, except);
   });
   // 海盜巢穴：西島船線只能有一條不分叉的最短路徑（其他劇本一律允許）。
-  return connected && lineAllows(state, playerId, edge, options);
+  return connected && lineAllows(state, playerId, edge, options)
+    && !wallsAnyone(state, wallChange(state, playerId, edge, options), options.walls);
+}
+
+/** 放這艘船會改變的盤面（占用的邊、移船騰出的邊，以及它是不是放置者船線的延伸）。 */
+function wallChange(state: GameState, playerId: string, edge: number, options: ShipPlacementOptions): WallChange {
+  const step = lineShip(state, playerId, edge, options);
+  return {
+    edge,
+    owner: playerId,
+    ...(options.moving === undefined ? {} : { vacated: options.moving }),
+    ...(step.kind === 'line' ? { extend: step.to } : {}),
+  };
 }
 
 /**
@@ -87,16 +102,19 @@ export function canPlaceShip(state: GameState, playerId: string, edge: number, o
  * （`line: null` 讓 `canPlaceShip` 略過船線規則。）
  */
 function refusal(state: GameState, playerId: string, edge: number, options: ShipPlacementOptions, kit: ModuleContext['kit']): CommandOutcome {
-  return canPlaceShip(state, playerId, edge, { ...options, line: null })
-    ? kit.fail('E_SHIP_LINE', { edge })
-    : kit.fail('E_ILLEGAL_TARGET', { edge });
+  const plain = { ...options, line: null, walls: null };
+  if (!canPlaceShip(state, playerId, edge, plain)) return kit.fail('E_ILLEGAL_TARGET', { edge });
+  // 一般規則都過了：先看船線規則，再看會不會把別人（或自己）的目標圍死。
+  return canPlaceShip(state, playerId, edge, { ...options, walls: null })
+    ? kit.fail('E_LINE_WALLED', { edge })
+    : kit.fail('E_SHIP_LINE', { edge });
 }
 
 export function legalShipEdges(state: GameState, playerId: string, options: ShipPlacementOptions = {}): number[] {
   const out: number[] = [];
   const edges = topologyOf(state).edges.length;
   // 海盜巢穴：船線的距離表只算一次（其他劇本是 null）。
-  const checked = options.line === undefined ? { ...options, line: lineContext(state, playerId, options.moving) } : options;
+  const checked = { ...options, ...(options.line === undefined ? { line: lineContext(state, playerId, options.moving) } : {}), ...(options.walls === undefined ? { walls: wallContext(state) } : {}) };
   for (let edge = 0; edge < edges; edge++) if (canPlaceShip(state, playerId, edge, checked)) out.push(edge);
   return out;
 }
