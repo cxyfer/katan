@@ -120,4 +120,26 @@ Candidate room: 3 players 13 cells for 8 unexplored hexes, 4 players 15 for 10.
 | Lobby switch to variable (3 scenarios), SVG rendering of variable boards (6 combos) | `packages/web/test/seafarers-variable-setup.test.tsx` |
 | Browser run (lobby, SVG and 3D boards, phone) | `scripts/seafarers/capture_variable_setup.py`, `variable_fixture.mjs`; screenshots in `docs/screenshots/seafarers-variable-setup/` with `report.json` (sha256) |
 
+## Browser evidence (`scripts/seafarers/capture_variable_setup.py`)
+
+Real games through the real UI and API against the built service (private SQLite): the host creates the room, switches the setup mode to `variable` in the lobby settings and saves, three or four seats join and start. Each started board is read from the API and checked by `variable_fixture.mjs` (it differs from the fixed map; S2 no 2/3/11/12 on forest or pasture and robber on the 12; S3 robber on the 12; S4 no adjacent red discs, none on gold, robber on the desert). 21 cases, 0 errors; the curated 15 images are kept in `docs/screenshots/seafarers-variable-setup/` (the others, such as the 3-player lobby shots, are deleted after the run and marked `committed: false`).
+
+| Image | sha256 |
+|---|---|
+| `four-islands-map-3p-svg-desktop.png` | `0bf0014141a3f8378dabbaeeb3d1860f827d6e4f1cc5bbe7add9ec8657a5cc3f` |
+| `four-islands-lobby-variable.png` | `49006f6e7704210631a3eca084cdc26a7e410e38a07d713c0f32f3515dce50d7` |
+| `four-islands-map-4p-svg-desktop.png` | `f333e6cbb86bac5b0c60f80f811a247632589de98ff18237014b3b0756526feb` |
+| `four-islands-map-4p-r3f-desktop.png` | `55872504b0d28ddc55bff26ed9ba23a07a6ffd4277a43bd748dace3880177631` |
+| `four-islands-map-4p-svg-phone.png` | `9c73ec1341722d91b670e18b0cb1565b0fcf6ea14228b5666eebd75ac22ef87b` |
+| `fog-islands-map-3p-svg-desktop.png` | `8b0782950b10ad6cd180a15e4b4ee241f928a3b878a5aec4c0ebe5ff7daa6492` |
+| `fog-islands-lobby-variable.png` | `5b16113892a26abdc679c52076a49acf14caa6db6281de7c3ac243f09d4b1eab` |
+| `fog-islands-map-4p-svg-desktop.png` | `04b1bb2d203b9a47cf834f6fc73c6d999ad4ca93b14f2cec6e145bf8d1d82551` |
+| `fog-islands-map-4p-r3f-desktop.png` | `0c8685c05e0da21624ee43d08232156d8bbb2555e64dd2b821ea056d8f1332af` |
+| `fog-islands-map-4p-svg-phone.png` | `0d934f75a560b1de359434a231837f6acbdd226b93052a03df141cf313e631ab` |
+| `through-the-desert-map-3p-svg-desktop.png` | `a7bf632c2f05dd618bd8ed7c77e08b1e0a0f00bbad489e009e01ca9e374fb1c8` |
+| `through-the-desert-lobby-variable.png` | `b70cf457809709cde97afac0a49cfac7496269393d159f2719247edae8c9e539` |
+| `through-the-desert-map-4p-svg-desktop.png` | `b7857f061242dc214f181dfdc388dc3ff3f74d2b41c4c8d27567310f32cc7295` |
+| `through-the-desert-map-4p-r3f-desktop.png` | `aa2cdee84fd621d8ab64a53ecb19ec7146d4870adabffcf218a0c0e634c8f67a` |
+| `through-the-desert-map-4p-svg-phone.png` | `ff57f5d4ebcae979241e22a7bced84db99bb8f33719e73a548b6775b02862aad` |
+
 S10b (S5, S6, S8) is not part of this slice.
