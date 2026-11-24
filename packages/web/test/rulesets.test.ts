@@ -69,7 +69,7 @@ describe('lobby ruleset picker', () => {
 
   it('shows only the enabled further Seafarers scenarios in the lobby (S2, S3, S4, S5, S6: cloth for catan, S9: new world)', () => {
     const sea = resolveRuleset(registry, { expansionKey: 'seafarers' });
-    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores'], ['scenario.four-islands'], ['scenario.fog-islands'], ['scenario.through-the-desert'], ['scenario.forgotten-tribe'], ['scenario.cloth-for-catan']]);
+    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores'], ['scenario.four-islands'], ['scenario.fog-islands'], ['scenario.through-the-desert'], ['scenario.forgotten-tribe'], ['scenario.cloth-for-catan'], ['scenario.new-world']]);
     expect(sea.scenarioNarrowsPlayers).toBe(false);
     const ids = registry.filter((profile) => profile.scenario && ['four-islands', 'fog-islands', 'through-the-desert', 'forgotten-tribe', 'cloth-for-catan', 'pirate-islands', 'wonders-of-catan', 'new-world'].includes(profile.scenario));
     expect(ids).toHaveLength(8);
