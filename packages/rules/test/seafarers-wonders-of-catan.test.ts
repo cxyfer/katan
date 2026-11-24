@@ -218,7 +218,7 @@ describe('Wonders of Catan layout (SF25 p. 19 配件表)', () => {
 describe('Wonders of Catan profile', () => {
   it('3、4 人啟用，sf-2025.3，海盜與 VP 標記規則：每座小島 1 分、跳過主島', () => {
     expect(profile).toMatchObject({ ruleVersion: 'sf-2025.3', scenario: 'wonders-of-catan', playerCounts: [3, 4], enabled: true, implemented: true, victoryTarget: 10, islandBonus: { points: 1, skip: 'main' } });
-    expect(profile.setupModes).toEqual(['fixed']);
+    expect(profile.setupModes).toEqual(['fixed', 'variable']);
     const base = { expansions: ['seafarers'], scenario: 'wonders-of-catan', variants: [], setupMode: 'fixed' as const };
     for (const playerCount of [3, 4]) expect(resolveCombination({ ...base, playerCount })).toMatchObject({ ok: true });
     for (const playerCount of [2, 5, 6]) expect(resolveCombination({ ...base, playerCount })).toEqual({ ok: false, reason: 'bad-player-count' });

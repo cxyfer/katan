@@ -343,6 +343,7 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
   }),
   // 無島嶼獎勵；3 人與 4 人共用同一張 49 格圖。
   seafarersScenarioProfile('sf-forgotten-tribe-2025', 'forgotten-tribe', 13, 'pp. 12–13', {
+    setupModes: ['fixed', 'variable'],
     topologyId: 'sf-forgotten-tribe',
     implemented: true,
     enabled: true,
@@ -350,6 +351,7 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
   // 目標 14 分；另有「回合結束時部落耗盡」的終局與共同勝利（D12，使用者決定的解釋）。
   // 無島嶼獎勵；3 人與 4 人共用同一張 42 格圖；規則內關閉最長道路。
   seafarersScenarioProfile('sf-cloth-for-catan-2025', 'cloth-for-catan', 14, 'pp. 14–15', {
+    setupModes: ['fixed', 'variable'],
     topologyId: 'sf-cloth-for-catan',
     implemented: true,
     enabled: true,
@@ -359,6 +361,7 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
   // 結束條件是「完成奇觀，或 10 分且完成層數比其他每位玩家都高」（`winCause`）；`victoryTarget` 是其中的 10 分。
   // 小島獎勵每座 1 分；3 人與 4 人共用同一張 49 格圖；海盜在規則內關閉（`hasPirate` 欄位仍是 true，見 §7.1）。
   seafarersScenarioProfile('sf-wonders-of-catan-2025', 'wonders-of-catan', 10, 'pp. 18–19', {
+    setupModes: ['fixed', 'variable'],
     islandBonus: { points: 1, skip: 'main' },
     topologyId: 'sf-wonders-of-catan',
     implemented: true,
