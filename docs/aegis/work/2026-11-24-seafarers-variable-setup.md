@@ -105,7 +105,7 @@ shuffled.
 
 ## Browser evidence (`scripts/seafarers/capture_variable_setup.py`)
 
-Real games through the real UI and API against the built service (private SQLite): the host creates the room, switches the setup mode to `variable` in the lobby settings and saves, three or four seats join and start. Each started board is read from the API and checked by `variable_fixture.mjs` (it differs from the fixed map; S2 no 2/3/11/12 on forest or pasture and robber on the 12; S3 robber on the 12; S4 no adjacent red discs, none on gold, robber on the desert). 21 cases, 0 errors; the curated 15 images are kept in `docs/screenshots/seafarers-variable-setup/` (the others, such as the 3-player lobby shots, are deleted after the run and marked `committed: false`).
+Real games through the real UI and API against the built service (private SQLite): the host creates the room, switches the setup mode to `variable` in the lobby settings and saves, three or four seats join and start. Each started board is read from the API and checked by `variable_fixture.mjs` (it differs from the fixed map; S2 no 2/3/11/12 on forest or pasture and robber on the 12; S3 robber on the 12; S4 no adjacent red discs, none on gold, robber on the desert). 21 cases, 0 errors (the S4 captures were retaken after the review fix; `SF_SCENARIOS=through-the-desert` reruns one scenario); the curated 15 images are kept in `docs/screenshots/seafarers-variable-setup/` (the others, such as the 3-player lobby shots, are deleted after the run and marked `committed: false`).
 
 | Image | sha256 |
 |---|---|
@@ -119,10 +119,10 @@ Real games through the real UI and API against the built service (private SQLite
 | `fog-islands-map-4p-svg-desktop.png` | `04b1bb2d203b9a47cf834f6fc73c6d999ad4ca93b14f2cec6e145bf8d1d82551` |
 | `fog-islands-map-4p-r3f-desktop.png` | `0c8685c05e0da21624ee43d08232156d8bbb2555e64dd2b821ea056d8f1332af` |
 | `fog-islands-map-4p-svg-phone.png` | `0d934f75a560b1de359434a231837f6acbdd226b93052a03df141cf313e631ab` |
-| `through-the-desert-map-3p-svg-desktop.png` | `a7bf632c2f05dd618bd8ed7c77e08b1e0a0f00bbad489e009e01ca9e374fb1c8` |
-| `through-the-desert-lobby-variable.png` | `b70cf457809709cde97afac0a49cfac7496269393d159f2719247edae8c9e539` |
-| `through-the-desert-map-4p-svg-desktop.png` | `b7857f061242dc214f181dfdc388dc3ff3f74d2b41c4c8d27567310f32cc7295` |
-| `through-the-desert-map-4p-r3f-desktop.png` | `aa2cdee84fd621d8ab64a53ecb19ec7146d4870adabffcf218a0c0e634c8f67a` |
-| `through-the-desert-map-4p-svg-phone.png` | `ff57f5d4ebcae979241e22a7bced84db99bb8f33719e73a548b6775b02862aad` |
+| `through-the-desert-map-3p-svg-desktop.png` | `ec637d728b82e86ce8ae9cb66baae6d6bd2d5bbae38b33cc934ef6820c4968f2` |
+| `through-the-desert-lobby-variable.png` | `a4d5c3b3d5c84659aed9918d5d0348ce24aafb7e3aee44c8759e695f6e3c59a0` |
+| `through-the-desert-map-4p-svg-desktop.png` | `a2efbac978f03c575299cc09a8cea86b62501755059ce9658156d6fa070cd22c` |
+| `through-the-desert-map-4p-r3f-desktop.png` | `d33b6178f1c926d610c3417a091c864f4b96e570415792a8676909b5efee04b3` |
+| `through-the-desert-map-4p-svg-phone.png` | `b628e236f1f6d295f2eaf461c027dab048159083a16bf6573ca257044800c56f` |
 
 S10b (S5, S6, S8) is not part of this slice.

@@ -156,7 +156,7 @@
       "name": "through-the-desert-map-3p-svg-desktop",
       "status": "PASS",
       "note": "variable sf-through-the-desert-3",
-      "sha256": "a7bf632c2f05dd618bd8ed7c77e08b1e0a0f00bbad489e009e01ca9e374fb1c8",
+      "sha256": "ec637d728b82e86ce8ae9cb66baae6d6bd2d5bbae38b33cc934ef6820c4968f2",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -167,7 +167,7 @@
       "name": "through-the-desert-lobby-variable",
       "status": "PASS",
       "note": "lobby: through-the-desert, setup mode switched to variable and saved",
-      "sha256": "b70cf457809709cde97afac0a49cfac7496269393d159f2719247edae8c9e539",
+      "sha256": "a4d5c3b3d5c84659aed9918d5d0348ce24aafb7e3aee44c8759e695f6e3c59a0",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -186,7 +186,7 @@
       "name": "through-the-desert-map-4p-svg-desktop",
       "status": "PASS",
       "note": "variable sf-through-the-desert-4",
-      "sha256": "b7857f061242dc214f181dfdc388dc3ff3f74d2b41c4c8d27567310f32cc7295",
+      "sha256": "a2efbac978f03c575299cc09a8cea86b62501755059ce9658156d6fa070cd22c",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -197,7 +197,7 @@
       "name": "through-the-desert-map-4p-r3f-desktop",
       "status": "PASS",
       "note": "variable sf-through-the-desert-4",
-      "sha256": "aa2cdee84fd621d8ab64a53ecb19ec7146d4870adabffcf218a0c0e634c8f67a",
+      "sha256": "d33b6178f1c926d610c3417a091c864f4b96e570415792a8676909b5efee04b3",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -208,7 +208,7 @@
       "name": "through-the-desert-map-4p-svg-phone",
       "status": "PASS",
       "note": "variable sf-through-the-desert-4",
-      "sha256": "ff57f5d4ebcae979241e22a7bced84db99bb8f33719e73a548b6775b02862aad",
+      "sha256": "b628e236f1f6d295f2eaf461c027dab048159083a16bf6573ca257044800c56f",
       "viewport": {
         "width": 390,
         "height": 844
