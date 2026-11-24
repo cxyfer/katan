@@ -311,10 +311,10 @@ Confirmed D-02 selects **Heading for New Shores** as the first Seafarers scenari
 | `sf-four-islands-2025` | 3, 4 | SF25 The Four Islands pp. 6–7; setup modes `fixed`, `variable` (p. 7) | 13 | R-SF, R-SFX-S2, R-SFX-S10a (implemented and enabled; no bot seats) |
 | `sf-fog-islands-2025` | 3, 4 | SF25 The Fog Islands pp. 8–9; setup modes `fixed`, `variable` (p. 9) | 12 | R-SF, R-SFX-S3, R-SFX-S10a (implemented and enabled; no bot seats) |
 | `sf-through-the-desert-2025` | 3, 4 | SF25 Through the Desert pp. 10–11; setup modes `fixed`, `variable` (p. 11) | 14 | R-SF, R-SFX-S4, R-SFX-S10a (implemented and enabled; no bot seats) |
-| `sf-forgotten-tribe-2025` | 3, 4 | SF25 The Forgotten Tribe pp. 12–13 | 13 | R-SF, R-SFX-S5 (implemented and enabled; no bot seats) |
-| `sf-cloth-for-catan-2025` | 3, 4 | SF25 Cloth for Catan pp. 14–15 | 14, or five villages without cloth at the end of a turn | R-SF, R-SFX-S6 (implemented and enabled; no bot seats) |
+| `sf-forgotten-tribe-2025` | 3, 4 | SF25 The Forgotten Tribe pp. 12–13; setup modes `fixed`, `variable` (p. 13) | 13 | R-SF, R-SFX-S5, R-SFX-S10b (implemented and enabled; no bot seats) |
+| `sf-cloth-for-catan-2025` | 3, 4 | SF25 Cloth for Catan pp. 14–15; setup modes `fixed`, `variable` (p. 15, the starting player picks the robber's 12 hex) | 14, or five villages without cloth at the end of a turn | R-SF, R-SFX-S6, R-SFX-S10b (implemented and enabled; no bot seats) |
 | `sf-pirate-islands-2025` | 3, 4 | SF25 The Pirate Islands pp. 16–17 | 10 and the own fortress retaken | R-SF, R-SFX (planned; not enabled) |
-| `sf-wonders-of-catan-2025` | 3, 4 | SF25 The Wonders of Catan pp. 18–19 | 10 and the most wonder levels, or all four levels | R-SF, R-SFX-S8 (implemented and enabled; no bot seats) |
+| `sf-wonders-of-catan-2025` | 3, 4 | SF25 The Wonders of Catan pp. 18–19; setup modes `fixed`, `variable` (p. 18) | 10 and the most wonder levels, or all four levels | R-SF, R-SFX-S8, R-SFX-S10b (implemented and enabled; no bot seats) |
 | `sf-new-world-2025` | 3, 4 | SF25 New World p. 20 | 12 | R-SF, R-SFX-S9 (implemented and enabled; no bot seats) |
 | `ep-land-ho-2025` | 3, 4 | EP25-M pp. 4–7 Land Ho! printed start | 8 | R-EP (exploration, ships, settlers, coins) |
 | `ep-pirate-lairs-2025` | 3, 4 | EP25-M pp. 8–13 Pirate Lairs printed start | 12 | R-EP plus pirate ships, crews, lairs |
