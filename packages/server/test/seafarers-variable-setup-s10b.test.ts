@@ -5,7 +5,7 @@
 
 import { rmSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { getProfile, type GameState } from '@katan/rules';
+import { FT_VARIABLE_RESTRICTED, WC_VARIABLE_NO_RED, getProfile, getTopology, type GameState } from '@katan/rules';
 import { createClient, restartService, runSetupOverApi, startHarness, startedGame, type TestClient, type TestHarness } from './helpers.ts';
 
 let harness: TestHarness;
@@ -62,13 +62,15 @@ describe('variable setup over the API (S10b)', () => {
           expect(state.turn.setup!.stage).toBe('building');
           expect(layout.terrain[state.board.robber]).toBe('desert');
         }
+        const cellIndex = (cell: { q: number; r: number }) =>
+          getTopology(layout.topologyId).hexes.findIndex((hex) => hex.q === cell.q && hex.r === cell.r);
         if (scenario === 'wonders-of-catan') {
-          // 緊鄰沙漠的 2 格（森林 9、丘陵 4 的位置）沒有紅色圓片：以 fixed 的位置為準。
-          const fixedLayout = fixedState.board.layout;
-          fixedLayout.terrain.forEach((tile, hex) => {
-            if (tile !== 'forest' || fixedLayout.numbers[hex] !== 9) return;
-            expect([6, 8]).not.toContain(layout.numbers[hex]);
-          });
+          // 緊鄰沙漠的 2 格（森林 9、丘陵 4 的位置）都沒有紅色圓片。
+          for (const cell of WC_VARIABLE_NO_RED) expect([6, 8]).not.toContain(layout.numbers[cellIndex(cell)]);
+        }
+        if (scenario === 'forgotten-tribe') {
+          // 大島最右邊藍框的 3 格不放 5、6、8、9。
+          for (const cell of FT_VARIABLE_RESTRICTED) expect([5, 6, 8, 9]).not.toContain(layout.numbers[cellIndex(cell)]);
         }
       });
     }

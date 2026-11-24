@@ -40,6 +40,7 @@ export type { Cargo as EpCargo, SpiceAbility as EpSpiceAbility, EpSite } from '.
 export { SHIP_COST } from './modules/seafarers/ships.ts';
 export { GOLD_FRAME } from './modules/seafarers/gold.ts';
 export { WONDERS, WONDER_IDS, WONDER_LEVELS } from './modules/seafarers/wonders.ts';
+export { FT_VARIABLE_RESTRICTED, WC_VARIABLE_NO_RED } from './seafarers-scenario-boards.ts';
 export type { WonderDef, WonderId, WonderCondition } from './modules/seafarers/wonders.ts';
 export type { CitiesKnightsView, CitiesKnightsHints } from './modules/citiesKnights/index.ts';
 export {
