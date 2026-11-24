@@ -939,7 +939,10 @@ function setupPlaceBuilding(state: GameState, actorId: string, vertex: number, r
   state.board.buildings[vertex] = { player: actorId, city: setupPlacesCity(state, actorId, setup.round) };
   setup.stage = 'road';
   setup.lastVertex = vertex;
-  emit(state, 'setup.building', { playerId: actorId, vertex, round: setup.round });
+  // 布匹產地有三輪：第三輪事件帶 round: 3，並多一個 rounds: 3；其他 profile 的事件不變。
+  emit(state, 'setup.building', setup.third !== undefined
+    ? { playerId: actorId, vertex, round: setup.third ? 3 : setup.round, rounds: 3 }
+    : { playerId: actorId, vertex, round: setup.round });
 
   if (setup.round === 2 && setupGrantsResources(state, actorId, setup)) {
     const topo = topologyOf(state);

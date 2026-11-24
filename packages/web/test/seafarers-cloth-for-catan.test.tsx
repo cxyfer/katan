@@ -251,6 +251,14 @@ describe('Cloth for Catan text', () => {
     }
   });
 
+  it('setup placements read 1/3 … 3/3 in Cloth for Catan and keep 1/2, 2/2 elsewhere', () => {
+    const line = (params: Record<string, unknown>) => translateEvent('en', makeEvent(1, 'setup.building', { playerId: 'p1', vertex: 5, ...params }), names).text;
+    expect(line({ round: 3, rounds: 3 })).toBe('P1 placed a 3/3 settlement at intersection 5.');
+    expect(line({ round: 2, rounds: 3 })).toBe('P1 placed a 2/3 settlement at intersection 5.');
+    expect(line({ round: 2 })).toBe('P1 placed a 2/2 settlement at intersection 5.');
+    expect(line({ round: 1 })).toBe('P1 placed a 1/2 settlement at intersection 5.');
+  });
+
   it('the end-of-game event names the cause and every winner; the target path keeps the old sentence', () => {
     const target = makeEvent(1, 'game.finished', { playerId: 'p1', reason: 'victory', score: 14, target: 14 });
     const single = makeEvent(2, 'game.finished', { playerId: 'p1', playerIds: ['p1'], reason: 'victory', score: 6, cause: 'clothExhausted' });

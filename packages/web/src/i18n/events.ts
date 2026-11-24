@@ -56,7 +56,8 @@ export function eventParams(
       return {
         player: player(),
         vertex: num(p.vertex),
-        roundSuffix: num(p.round) === 2 ? '2/2 ' : '1/2 ',
+        // 布匹產地的事件帶 rounds: 3（共三輪）；其他 profile 沒有這個欄位，維持 1/2、2/2。
+        roundSuffix: `${num(p.round) || 1}/${num(p.rounds) || 2} `,
       };
     case 'setup.road':
       return { player: player(), edge: num(p.edge) };

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { CommandRequest } from '@katan/protocol';
 import { App } from '../src/App.tsx';
 import { memoryStorage } from '../src/state/session.ts';
@@ -241,6 +241,19 @@ describe('pan and zoom', () => {
     expect(screen.getByTestId('setup-guide').textContent).toContain('8 placements remain');
     expect(screen.getByTestId('target-vertex-2')).toBeTruthy();
     expect(screen.queryByTestId('target-vertex-3')).toBeNull();
+  });
+
+  it('names the third setup round of Cloth for Catan, and round 2 stays round 2 elsewhere', async () => {
+    const third = makeView({
+      setup: { seat: 0, stage: 'building', round: 2, third: true, remaining: 3 },
+      hints: makeHints({ legalSettlements: [2] }),
+    });
+    await openGame(createFakeApi({ snapshot: makeSnapshot(third) }));
+    expect(screen.getByTestId('setup-guide').textContent).toContain('Round 3');
+    cleanup();
+    const second = makeView({ setup: { seat: 0, stage: 'building', round: 2, remaining: 3 }, hints: makeHints({ legalSettlements: [2] }) });
+    await openGame(createFakeApi({ snapshot: makeSnapshot(second) }));
+    expect(screen.getByTestId('setup-guide').textContent).toContain('Round 2');
   });
 
   it('never commits a placement at the end of a pan gesture', async () => {
