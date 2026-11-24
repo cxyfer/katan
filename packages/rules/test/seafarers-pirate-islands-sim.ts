@@ -10,7 +10,7 @@
 import { isLandHex, topologyOf } from '../src/analysis.ts';
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
 import { legalShipEdges } from '../src/modules/seafarers/ships.ts';
-import { lineBacktrackMovable, lineContext, lineShip, lineVertices, pirateIslandsView, roadAllowed } from '../src/modules/seafarers/pirateIslands.ts';
+import { lineBacktrackMovable, lineContext, lineShip, lineVertices, pirateIslandsView, roadAllowed, routeExists } from '../src/modules/seafarers/pirateIslands.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
 import type { GameState, Resource } from '../src/types.ts';
 import { seafarersGame } from './seafarers-helpers.ts';
@@ -103,17 +103,23 @@ function setupStep(state: GameState, rng: Rng): GameState {
   if (setup.stage === 'building') {
     return attempt(state, actor, { type: 'setup.placeBuilding', vertex: pick(hints.legalSettlements, rng)! }, rng)!;
   }
-  const ships = sfHints(state, actor).setupShips;
+  // 設置的船：不隨機重開船線（玩家會保留預置的船線；重新開始另有專門的測試）。
+  const vertex = setup.lastVertex;
+  const ships = sfHints(state, actor).setupShips.filter((edge) => vertex === null || !(lineShip(state, actor, edge, { setupVertex: vertex }) as { restart?: boolean }).restart);
   const roads = hints.legalRoads;
   const both = [...ships.map((edge) => ({ type: 'setup.placeShip', edge })), ...roads.map((edge) => ({ type: 'setup.placeRoad', edge }))];
   return attempt(state, actor, pick(both, rng)!, rng)!;
 }
 
 /** 目前船線的延伸候選：一般合法、且是船線的延伸（接在端點、距離減 1，或完全無路時的放寬）。 */
-function lineCandidates(state: GameState, actor: string, ignoreWalls = false): number[] {
+function lineCandidates(state: GameState, actor: string, ignoreWalls = false, allowRestart = false): number[] {
   const ctx = lineContext(state, actor)!;
   if (ctx.next === 'done') return [];
-  return legalShipEdges(state, actor, ignoreWalls ? { walls: null } : {}).filter((edge) => lineShip(state, actor, edge).kind === 'line');
+  const steps = legalShipEdges(state, actor, ignoreWalls ? { walls: null } : {}).map((edge) => ({ edge, step: lineShip(state, actor, edge) }))
+    .filter((entry) => entry.step.kind === 'line');
+  // 模擬的玩家只延伸現有的船線（重新開始另有專門的測試；海盜暫時擋住時玩家也不會因此重開）；卡死檢查才把重新開始算進可走的步。
+  const extensions = steps.filter((entry) => !(entry.step as { restart?: boolean }).restart);
+  return (extensions.length > 0 || !allowRestart ? extensions : steps).map((entry) => entry.edge);
 }
 
 /** 被圍死時退回末端船的指令：優先接成新的船線延伸（嚴格規則），否則放到自由的海岸邊。 */
@@ -137,7 +143,7 @@ function permanentlyStuck(state: GameState, playerId: string): boolean {
   state.board.pirate = null;
   enrich(state, playerId);
   // 有合法的船線延伸，或末端船真的可以退回（被圍死、遠端沒有接自己的船，而且有合法的移動目的地）。
-  const stuck = lineCandidates(state, playerId).length === 0
+  const stuck = lineCandidates(state, playerId, false, true).length === 0
     && !(last !== undefined && lineBacktrackMovable(state, playerId, last) && legalShipEdges(state, playerId, { moving: last }).length > 0);
   state.board.pirate = saved;
   return stuck;
@@ -229,7 +235,8 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
       if (backtrack) tries.push(backtrack);
       if (candidates.length > 0 && rng.int(1000) / 1000 < lineBias) tries.push({ type: 'build.ship', edge: pick(candidates, rng)! });
       const others: AnyCommand[] = [
-        ...sfHints(state, actor.id).legalShips.map((edge) => ({ type: 'build.ship', edge })),
+        // 隨機的其他船：不含「重新開始船線」的第一步（玩家不會隨機重開船線）。
+        ...sfHints(state, actor.id).legalShips.filter((edge) => !(lineShip(state, actor.id, edge) as { restart?: boolean }).restart).map((edge) => ({ type: 'build.ship', edge })),
         // 村落只蓋在 beachhead（避免模擬靠分數結束）；再加上隨機的路。
         ...hints.legalSettlements.filter((vertex) => beachheads.has(vertex)).map((vertex) => ({ type: 'build.settlement', vertex })),
         ...hints.legalRoads.map((edge) => ({ type: 'build.road', edge })),
@@ -257,8 +264,8 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
         const saved = state.board.pirate;
         state.board.pirate = null;
         enrich(state, player.id);
-        if (lineCandidates(state, player.id, true).length === 0) inconsistent++;
-        else if (lineCandidates(state, player.id).length === 0) ruleDeadlocks++;
+        if (lineCandidates(state, player.id, true, true).length === 0) inconsistent++;
+        else if (lineCandidates(state, player.id, false, true).length === 0) ruleDeadlocks++;
         state.board.pirate = saved;
       }
     }
@@ -281,8 +288,8 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
     else if (state.board.roads.filter((road) => road?.ship && road.player === player.id).length >= 15) outOfShips++;
     else if (ctx.end !== null && ctx.dist[ctx.end]! < 0) {
       stillWalled++;
-      const reachable = [...lineVertices(state, ctx.line), ...state.board.buildings.flatMap((building, vertex) => (building?.player === player.id ? [vertex] : []))]
-        .some((vertex) => ctx.dist[vertex]! >= 1);
+      // 與規則同一個定義：任何出發處（船線頂點，沒有船時是海岸建築）通得到目標；退回之後的可能也算。
+      const reachable = routeExists(state, player.id);
       if (!reachable) hopeless++;
     }
   }
