@@ -763,20 +763,25 @@ describe('Wonders of Catan victory (SF25 p. 18)', () => {
     expect(finished.params).not.toHaveProperty('target');
   });
 
-  it('只在自己的回合判定：對手 10 分且層數最高也不會在別人的回合結束；輪到他的回合開始時才判定', () => {
-    const state = race(0, 2, 10);
-    // p2 持有最高層，但分數只有 0；p1 的回合 p1 層數 0：無人獲勝。
-    expect(act(state, 'p1', { type: 'turn.end' }).state.result).toBeNull();
-    const next = ready(3, 1);
-    settle(next, 'p2', corner0(next, 0));
-    player(next, 'p2').bonusPoints = 9;
-    slot(next).owned.p2 = 'greatBridge';
-    slot(next).levels.p2 = 2;
-    // 輪到 p2 的行動窗口：開窗時判定（turn.started 之後的 checkVictory）。
-    const after = act(next, 'p2', { type: 'turn.end' }).state;
-    expect(after.result).toBeNull();
-    expect(wonderCause(next, 'p2', 10, ctxOf(next))).toBe('wonderLead');
-    expect(wonderCause(next, 'p1', 10, ctxOf(next))).toBeNull();
+  it('只在自己的回合判定：p2 已 10 分且層數最高，在 p1 的回合內不結束；p1 結束回合、p2 的回合開始時才判定 p2 獲勝', () => {
+    const state = ready(3, 0);
+    // p2：10 分（村落 1 + 獎勵 9）、奇觀第 2 層，p1 與 p3 都是 0 層。
+    settle(state, 'p2', corner0(state, 0));
+    player(state, 'p2').bonusPoints = 9;
+    slot(state).owned.p2 = 'greatBridge';
+    slot(state).levels.p2 = 2;
+    expect(score(state, 'p2')).toBe(10);
+    // p1 的回合：p1 做了一件事（買發展卡會做勝利檢查），p2 的條件雖然成立但不是 p2 的回合。
+    setHand(state, 'p1', { wool: 1, grain: 1, ore: 1 });
+    const bought = act(state, 'p1', { type: 'build.devCard' }).state;
+    expect(bought.result).toBeNull();
+    expect(bought.turn.phase).toBe('action');
+    // p1 結束回合 → p2 的行動窗口開啟，開窗時的勝利檢查判定 p2。
+    const next = act(bought, 'p1', { type: 'turn.end' });
+    expect(next.state.result).toMatchObject({ playerId: 'p2', playerIds: ['p2'], cause: 'wonderLead' });
+    expect(next.state.turn.phase).toBe('gameOver');
+    expect(next.events.map((event) => event.type)).toContain('game.finished');
+    expect(wonderCause(state, 'p1', 10, ctxOf(state))).toBeNull();
   });
 
   it('wonderCause 只看奇觀層數與分數：未達目標分、層數 0 都是 null', () => {
