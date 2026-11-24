@@ -110,7 +110,7 @@ describe('seafarers module exports (bot plan RX)', () => {
 
   it('a fog scenario adds the unrevealed hexes as `fog`', () => {
     const state = emptySeafarersGame(3, 0, 'action', 'sf-fog-islands-2025');
-    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'tribe'));
+    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'tribe' && key !== 'cloth'));
     expect(viewOf(state, 'p2').fog).toHaveLength(12);
   });
 
