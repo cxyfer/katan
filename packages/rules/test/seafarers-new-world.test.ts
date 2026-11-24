@@ -68,6 +68,9 @@ describe('New World 版圖產生器（SF25 p. 20）', () => {
     expect(NW_VP_TOKENS).toBe(16);
     expect(topology.hexes).toHaveLength(42);
     expect(topology.harborSlots).toEqual([]);
+    // 與 sf-new-shores-4 同一組 42 格外框（§7.3）：149 邊、108 頂點、46 條框內緣邊；歐拉公式 V − E + F = 1。
+    expect([topology.edges.length, topology.vertices.length, topology.coastalEdges.length]).toEqual([149, 108, 46]);
+    expect(topology.vertices.length - topology.edges.length + topology.hexes.length).toBe(1);
     const rows = tally(topology.hexes.map((cell) => cell.r));
     expect([-3, -2, -1, 0, 1, 2, 3].map((r) => rows[r])).toEqual([5, 6, 7, 6, 7, 6, 5]);
   });
