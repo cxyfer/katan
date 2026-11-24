@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { isLandEdge, isSeaEdge, scoreOf, topologyOf } from '../src/analysis.ts';
 import { actionHints, applyCommand, legalBuildingVertices } from '../src/engine.ts';
-import { tribeRoutes } from '../src/modules/seafarers/cloth.ts';
+import { hasTribeRoute, tribeRoutes } from '../src/modules/seafarers/cloth.ts';
 import { seafarersState } from '../src/modules/seafarers/state.ts';
 import { getProfile, resolveCombination } from '../src/profiles.ts';
 import { projectEvent, projectGame } from '../src/project.ts';
@@ -556,6 +556,27 @@ describe('SFX-S6 分數', () => {
     }
   });
 
+  it('setup.building 事件：布匹產地第三輪帶 round: 3 與 rounds: 3，其他 profile 的事件不變', () => {
+    const run = (profile: string, players: 3 | 4) => {
+      let { state } = seafarersGame(players, 5, profile);
+      const events: Record<string, unknown>[] = [];
+      let guard = 0;
+      while (state.turn.phase === 'setup' && guard++ < 200) {
+        const setup = state.turn.setup!;
+        const actor = state.players[setup.order[setup.index]!]!.id;
+        const hints = actionHints(state, actor);
+        const out = setup.stage === 'building'
+          ? act(state, actor, { type: 'setup.placeBuilding', vertex: hints.legalSettlements[setup.index % hints.legalSettlements.length]! })
+          : act(state, actor, { type: 'setup.placeRoad', edge: hints.legalRoads[0]! });
+        events.push(...out.events.filter((e) => e.type === 'setup.building').map((e) => e.params));
+        state = out.state;
+      }
+      return events;
+    };
+    expect(run(PROFILE, 3).map((p) => [p.round, p.rounds])).toEqual([[1, 3], [1, 3], [1, 3], [2, 3], [2, 3], [2, 3], [3, 3], [3, 3], [3, 3]]);
+    for (const p of run('sf-forgotten-tribe-2025', 3)) expect(Object.keys(p).sort()).toEqual(['playerId', 'round', 'vertex']);
+  });
+
   it('設置的第三輪公開在視圖上（turn.setup.third），其他輪沒有這個欄位', () => {
     const { state } = game(3);
     expect(projectGame(state, 'p1').turn.setup).not.toHaveProperty('third');
@@ -656,6 +677,54 @@ describe('SFX-S6 封閉通路與移動船', () => {
   });
 });
 
+describe('SFX-S6 通往部落的通路只走自己的船（路與船不在空交叉點相接）', () => {
+  /** p1：村落 A 以陸路連到空的海岸交叉點 V；村落 B 以船 B–W–V；V 另有一條海邊通到部落 0。 */
+  function scene() {
+    const state = ready(3);
+    const topo = topologyOf(state);
+    const { start: v, edges } = routeTo(state, 0);
+    const e0 = edges[0]!;
+    const other = (edge: number, vertex: number) => topo.edges[edge]!.vertices.find((x) => x !== vertex)!;
+    const e1 = topo.vertices[v]!.edges.find((e) => e !== e0 && isSeaEdge(state, e) && !state.board.roads[e])!;
+    const w = other(e1, v);
+    const e2 = topo.vertices[w]!.edges.find((e) => e !== e1 && isSeaEdge(state, e) && !state.board.roads[e])!;
+    const b = other(e2, w);
+    const e3 = topo.vertices[v]!.edges.find((e) => e !== e0 && e !== e1 && isLandEdge(state, e) && !state.board.roads[e])!;
+    const a = other(e3, v);
+    expect([e1, e2, e3].every((e) => e !== undefined)).toBe(true);
+    settle(state, 'p1', a);
+    settle(state, 'p1', b);
+    road(state, 'p1', e3);
+    ship(state, 'p1', e1);
+    ship(state, 'p1', e2);
+    return { state, e0, e1, e2, w };
+  }
+
+  it('空交叉點上陸路接不到船：p2 在 W 切斷後，從 V 建船到部落不建立關係、不 +1、不封閉', () => {
+    const { state, e0, w } = scene();
+    settle(state, 'p2', w);
+    setHand(state, 'p1', { lumber: 1, wool: 1 });
+    const after = act(state, 'p1', { type: 'build.ship', edge: e0 } as never).state;
+    expect(slot(after).links.p1).toEqual([]);
+    expect(slot(after).cloth.p1).toBe(0);
+    expect(slot(after).tribes[0]!.cloth).toBe(5);
+    expect(tribeRoutes(after, 'p1').closed.has(e0)).toBe(false);
+    expect(hasTribeRoute(after, 'p1')).toBe(false);
+  });
+
+  it('通路完整時照常建立並封閉；之後被切斷則解除封閉', () => {
+    const { state, e0, e1, e2, w } = scene();
+    setHand(state, 'p1', { lumber: 1, wool: 1 });
+    const linked = act(state, 'p1', { type: 'build.ship', edge: e0 } as never).state;
+    expect(slot(linked).links.p1).toEqual([0]);
+    expect(tribeRoutes(linked, 'p1').closed).toEqual(new Set([e0, e1, e2]));
+    expect(hasTribeRoute(linked, 'p1')).toBe(true);
+    settle(linked, 'p2', w);
+    expect(tribeRoutes(linked, 'p1').closed.size).toBe(0);
+    expect(hasTribeRoute(linked, 'p1')).toBe(false);
+  });
+});
+
 describe('SFX-S6 強盜、海盜與偷布匹', () => {
   /** p1 連到部落、p2 的船在海盜將去的海格旁。回傳該海格。 */
   function pirateScene(): { state: GameState; hexIndex: number } {
@@ -743,15 +812,19 @@ describe('SFX-S6 強盜、海盜與偷布匹', () => {
 
   it('偷到的布匹可使偷的人達到 14 分而勝利；偷布匹只限海盜（強盜的 steal 不能偷布匹）', () => {
     const { state, hexIndex } = pirateScene();
-    player(state, 'p1').bonusPoints = 10; // 村落 1 + 10 + 布匹 1 枚（0 分）
+    player(state, 'p1').bonusPoints = 11; // 村落 1 + 11 + 布匹 3 枚（1 分）= 13
     slot(state).cloth.p1 = 3; // 1 分
     slot(state).cloth.p2 = 3;
     player(state, 'p2').resources.grain = 0;
     state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false } as never;
     const moved = act(state, 'p1', { type: 'pending.moveRobber', hex: hexIndex }, scriptedRng([])).state;
-    expect(score(moved, 'p1')).toBe(12);
-    const stolen = act(moved, 'p1', { type: 'cloth.steal', victim: 'p2' } as never, scriptedRng([])).state;
-    expect(score(stolen, 'p1')).toBe(13); // 4 枚 = 2 分
+    expect(score(moved, 'p1')).toBe(13);
+    expect(moved.result).toBeNull();
+    const stolenResult = act(moved, 'p1', { type: 'cloth.steal', victim: 'p2' } as never, scriptedRng([]));
+    const stolen = stolenResult.state;
+    expect(score(stolen, 'p1')).toBe(14); // 4 枚 = 2 分
+    expect(stolen.result).toMatchObject({ playerId: 'p1', reason: 'victory' });
+    expect(stolenResult.events.find((event) => event.type === 'game.finished')!.params).toMatchObject({ playerId: 'p1', score: 14, target: 14 });
     // 強盜的 steal frame 不接受 cloth.steal。
     const robbed = clone(moved);
     robbed.pending = { kind: 'steal', actor: 'p1', hex: robbed.board.robber, candidates: ['p2'], pirate: false } as never;

@@ -80,7 +80,7 @@ export function tribeRoutes(state: GameState, playerId: string): { reached: numb
   const closed = new Set<number>();
   if (!cloth) return { reached: [], closed };
   const topo = topologyOf(state);
-  const own = (edge: number): boolean => state.board.roads[edge]?.player === playerId;
+  const own = (edge: number): boolean => { const road = state.board.roads[edge]; return !!road && road.ship && road.player === playerId; };
   const reached: number[] = [];
 
   cloth.tribes.forEach((tribe, index) => {
