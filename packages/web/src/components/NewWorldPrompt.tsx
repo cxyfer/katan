@@ -15,7 +15,7 @@ export function worldPortLabel(t: (id: string, params?: Record<string, unknown>)
 }
 
 /**
- * 新世界（SF25 p. 20）設置階段 `harbor` 的提示：現在抽到的港口、輪到誰放、第幾個，
+ * 新世界（SF25 p. 20）設置階段 `harbor` 的提示：現在抽到的港口與輪到誰放（第幾個由設置導引顯示），
  * 以及房主提議重新產生版圖的入口（全體真人同意才成立，見 `RegeneratePanel`）。
  * 選邊本身由棋盤的目標提示處理（SVG 與 3D 都可操作，手機可用目標清單）。
  */
@@ -46,7 +46,6 @@ export function NewWorldPrompt({ controller }: { controller: TableController }) 
 
   return (
     <div className="prompt__body world-harbor" data-testid="world-harbor">
-      <p data-testid="world-harbor-progress">{t('sf.world.progress', { placed: Math.min(world.placed + 1, world.total), total: world.total })}</p>
       {world.drawn && (
         <p data-testid="world-harbor-drawn" data-harbor={world.drawn}>
           <GameIcon name="anchor" size={16} /> {t('sf.world.drawn', { player: nameOf(view.turn.playerId), port: worldPortLabel(t, world.drawn) })}

@@ -139,11 +139,10 @@ describe('New World prompt and regeneration vote', () => {
     actions: { proposeRegenerate: vi.fn(async () => true), respondRegenerate: vi.fn(async () => undefined), ...actions },
   }) as unknown as TableController;
 
-  it('shows the progress and the drawn port to everyone, and the choose hint only to the acting player', () => {
+  it('shows the drawn port to everyone, and the choose hint only to the acting player', () => {
     const view = viewOf(worldState());
     const drawn = seafarersView(view)!.world!.drawn!;
     render(<LocaleProvider locale="en"><NewWorldPrompt controller={controllerFor(view, 'p1', { room: room() })} /></LocaleProvider>);
-    expect(screen.getByTestId('world-harbor-progress').textContent).toBe('Placing ports: 1 of 10');
     expect(screen.getByTestId('world-harbor-drawn').getAttribute('data-harbor')).toBe(drawn);
     expect(screen.getByTestId('world-harbor-drawn').textContent).toMatch(/P1 drew a (3:1|2:1 \w+) port\./);
     expect(screen.getByTestId('world-harbor-choose')).not.toBeNull();
