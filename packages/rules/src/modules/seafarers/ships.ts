@@ -12,6 +12,7 @@
  *   building). A ship inside a line linking two own buildings never has an
  *   open end, so it cannot move even if an opponent's building splits the
  *   line (SF25 p. 2, SF-FAQ 14).
+ * - 世外部落：建造或移動船到有禮物的邊就拿走禮物（`tribe.ts`）。
  * - Like roads, ships never pass an intersection another player's module
  *   piece holds (`vertexBlocker`, the Cities & Knights knights), and other
  *   modules may veto a ship move (`shipMoveBlocked`).
@@ -24,6 +25,7 @@ import { rulesModulesOf } from '../registry.ts';
 import type { ModuleCommand, ModuleContext } from '../types.ts';
 import { exploreAtEdge } from './fog.ts';
 import { seafarersState, seafarersView } from './state.ts';
+import { takeGift } from './tribe.ts';
 
 export const SHIP_COST: Partial<Record<Resource, number>> = { lumber: 1, wool: 1 };
 
@@ -184,6 +186,8 @@ export function buildShip(state: GameState, actorId: string, command: ModuleComm
   state.board.roads[edge] = { player: actorId, ship: true };
   seafarersState(state).built.push(edge);
   kit.emit(state, 'ship.built', { playerId: actorId, edge, free: !!free });
+  // 世外部落：建造到有禮物的邊就拿走（其他劇本沒有禮物，什麼都不做）。
+  takeGift(state, actorId, edge, ctx);
   kit.afterBoardChange(state);
   exploreAtEdge(state, actorId, edge, ctx);
   if (free) kit.placedFreeRoute(state, actorId, ctx.rng);
@@ -221,6 +225,8 @@ export function moveShip(state: GameState, actorId: string, command: ModuleComma
   state.board.roads[from] = null;
   seafarersState(state).moved = true;
   kit.emit(state, 'ship.moved', { playerId: actorId, from, to });
+  // 世外部落：移動到有禮物的邊也拿走（SF25 p. 12 `build or move`）。
+  takeGift(state, actorId, to, ctx);
   kit.afterBoardChange(state);
   // 移動船預設不翻開迷霧（SF25 p. 8 只寫 place；OQ-2）；`fogOnMove` 旗標可切換。
   if (ctx.profile.fogOnMove) exploreAtEdge(state, actorId, to, ctx);

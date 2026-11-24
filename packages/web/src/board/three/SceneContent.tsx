@@ -207,7 +207,13 @@ function NumberBadges({ props, resources, texture }: { props: SceneProps; resour
 }
 
 function HarborLabels({ props, resources, texture }: { props: SceneProps; resources: BoardSceneResources; texture: Texture | null }) {
-  const labels = useMemo(() => harborLabelInstances(props.geometry, props.board), [props.geometry, props.board]);
+  // 世外部落：面朝上、尚未放下的港口禮物用同一組比率／資源標示，不只靠顏色。
+  const gifts = props.seafarers?.tribe?.gifts;
+  const board = useMemo(() => {
+    const ports = (gifts ?? []).flatMap((gift) => (gift.kind === 'port' && gift.harbor ? [{ edge: gift.edge, type: gift.harbor }] : []));
+    return ports.length ? { ...props.board, harbors: [...props.board.harbors, ...ports] } : props.board;
+  }, [props.board, gifts]);
+  const labels = useMemo(() => harborLabelInstances(props.geometry, board), [props.geometry, board]);
   return Object.keys(HARBOR_ATLAS_CELLS).map((type) => {
     const cell = HARBOR_ATLAS_CELLS[type]!;
     return <AtlasMesh key={type} texture={texture}

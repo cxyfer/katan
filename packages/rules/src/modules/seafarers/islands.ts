@@ -58,8 +58,15 @@ function recordHome(state: GameState, slot: SeafarersState): void {
  * 所以與被沙漠隔出的陸地帶相鄰的主島交叉點也排除；沙漠算主島。
  */
 export function allowBuilding(state: GameState, _playerId: string, vertex: number, options: { setup: boolean }, ctx: ModuleViewContext): boolean {
-  if (!options.setup) return true;
   const scenario = ctx.profile.scenario;
+  // 世外部落（SF25 p. 12）：村落只能蓋在碰到至少一個有數字圓片的格的交叉點（設置與之後都一樣）；
+  // 起始村落只放大島。
+  if (scenario === 'forgotten-tribe') {
+    const info = topologyOf(state).vertices[vertex];
+    if (!info?.hexes.some((hex) => state.board.layout.numbers[hex] !== null)) return false;
+    return !options.setup || islandsAt(state, vertex).includes(MAIN_ISLAND);
+  }
+  if (!options.setup) return true;
   if (scenario === 'fog-islands') return onKnownLand(state, vertex);
   if (scenario === 'new-shores') return islandsAt(state, vertex).includes(MAIN_ISLAND);
   if (scenario === 'through-the-desert') {

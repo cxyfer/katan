@@ -146,3 +146,34 @@ describe('simulated Fog Islands games (SFX-S3)', () => {
     }, 60_000);
   }
 });
+
+describe('simulated Forgotten Tribe games (SFX-S5)', () => {
+  for (const players of [3, 4] as const) {
+    it(`${players} players finish with a 13-point winner, a conserved supply and legal pieces`, () => {
+      const run = simulateSeafarers(players, 41 + players, 40000, 'sf-forgotten-tribe-2025');
+      const { state } = run;
+      expect(state.result?.reason).toBe('victory');
+      expect(scoreOf(state, state.result!.playerId!, { includeHidden: true })).toBeGreaterThanOrEqual(13);
+      const bank = getProfile(state.profileId)!.bankPerResource;
+      for (const resource of RESOURCES) {
+        const total = state.bank[resource] + state.players.reduce((sum, player) => sum + player.resources[resource], 0);
+        expect(total, resource).toBe(bank);
+      }
+      checkBoard(state);
+      expect(run.shipsBuilt).toBeGreaterThan(0);
+    }, 120_000);
+  }
+
+  it('across seeds ships collect gifts and place harbours', () => {
+    let gifts = 0;
+    let harbors = 0;
+    for (const seed of [1, 2, 3, 4]) {
+      const run = simulateSeafarers(4, seed, 40000, 'sf-forgotten-tribe-2025');
+      expect(run.state.result?.reason).toBe('victory');
+      gifts += run.gifts;
+      harbors += run.harborsPlaced;
+    }
+    expect(gifts).toBeGreaterThan(0);
+    expect(harbors).toBeGreaterThan(0);
+  }, 240_000);
+});

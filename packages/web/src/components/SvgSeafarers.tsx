@@ -72,3 +72,30 @@ export function IslandBonusToken({ x, y, color, testId }: { x: number; y: number
     <circle cx="9" cy="-4" r="2.6" fill={color} stroke="#20180f" strokeWidth="1" />
   </g>;
 }
+
+/**
+ * 世外部落的禮物：邊上的 VP 標記（金幣 +1）、面朝下的發展牌（牌背）、面朝上的港口
+ * （比率與資源色）。標記畫在邊中點，略往框的方向推出，不蓋住陸地格上的圖示。
+ */
+export function GiftMarker({ x, y, kind, harbor, color, ratio, letter, testId }: {
+  x: number; y: number; kind: 'vp' | 'devcard' | 'port'; harbor?: string; color?: string; ratio?: string; letter?: string; testId?: string;
+}) {
+  return <g transform={`translate(${x} ${y}) scale(1.35)`} data-testid={testId} data-gift-kind={kind} data-gift-harbor={harbor} pointerEvents="none">
+    {kind === 'vp' && <>
+      <ellipse cx="0" cy="3" rx="12" ry="4.5" fill="#5d3a12" opacity=".7" />
+      <ellipse cx="0" cy="0" rx="12" ry="4.5" fill="#f2c95a" stroke="#6b4512" strokeWidth="1.3" />
+      <text x="0" y="3" textAnchor="middle" fontSize="9" fontWeight="800" fill="#5a3505">+1</text>
+    </>}
+    {kind === 'devcard' && <>
+      <rect x="-9" y="-12" width="18" height="24" rx="2.5" fill="#2e5b8c" stroke="#0e2a47" strokeWidth="1.4" />
+      <rect x="-6" y="-9" width="12" height="18" rx="1.5" fill="none" stroke="#9dc3ea" strokeWidth="1" />
+      <text x="0" y="4" textAnchor="middle" fontSize="12" fontWeight="800" fill="#d8ebff">?</text>
+    </>}
+    {kind === 'port' && <>
+      <ellipse cx="0" cy="3" rx="14" ry="13" fill="#0f2a2c" opacity=".3" />
+      <circle cx="0" cy="0" r="13" fill="#f8f0d8" stroke={color ?? '#2f6d84'} strokeWidth="2.6" strokeDasharray="5 2" />
+      <text x="0" y="-1" textAnchor="middle" fontSize="8" fontWeight="800" fill="#20180f">{ratio}</text>
+      {letter && <text x="0" y="8" textAnchor="middle" fontSize="7.5" fontWeight="700" fill="#20180f">{letter}</text>}
+    </>}
+  </g>;
+}

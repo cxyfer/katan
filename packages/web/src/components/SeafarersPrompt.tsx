@@ -46,6 +46,28 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
       <GoldPicker key={`${view.seq}`} count={sea.goldRequired} bank={sea.goldBank ?? shownBank(state) ?? view.bank} disabled={blocked}
         onSubmit={(resources) => void actions.submitCommand({ type: 'gold.choose', resources }, 'play.pending.seafarers.gold')} />
     )}
+    {pending?.kind === 'seafarers.harbor' && sea.harborChoices.harbors.length > 0 && (
+      <div className="prompt__body harbor-choice" data-testid="harbor-choice">
+        <p className="muted" data-testid="harbor-choice-text">{t(sea.harborChoices.harbors.length > 1 ? 'sf.harbor.pick' : 'sf.harbor.choose')}</p>
+        {/* 暫存了不同種港口時先選種類（只有一種時棋盤自動進入選邊）。 */}
+        {sea.harborChoices.harbors.length > 1 && (
+          <ul className="resource-picker">
+            {sea.harborChoices.harbors.map((type) => {
+              const port = t(type === 'generic' ? 'sf.gift.port.generic' : 'sf.gift.port.resource', { resource: t(`resource.${type}`) });
+              return (
+                <li key={type}>
+                  <button type="button" className="button button--chip" data-testid={`harbor-type-${type}`} disabled={blocked}
+                    aria-pressed={state.selection.commandType === 'harbor.place' && state.selection.extra?.harbor === type}
+                    onClick={() => actions.selectTarget({ kind: 'edge', index: null, commandType: 'harbor.place', labelId: 'sf.harbor.place', extra: { harbor: type }, targetsKey: 'harbor.place' })}>
+                    {t('sf.harbor.type', { port })}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    )}
     {(robberMine || knightArmed) && (
       <div className="prompt__body bandit-choice" data-testid="bandit-choice">
         <p className="muted" data-testid="bandit-choice-text">{t(banditText)}</p>

@@ -130,7 +130,7 @@ export function NumberToken({ x, y, number, pips, ids }: { x: number; y: number;
   </g>;
 }
 
-const HARBOR_TINT: Readonly<Record<string, string>> = {
+export const HARBOR_TINT: Readonly<Record<string, string>> = {
   generic: '#2f6d84', lumber: '#3f6f3d', brick: '#a8502f', wool: '#7da34f', grain: '#c39130', ore: '#6d7d86',
 };
 

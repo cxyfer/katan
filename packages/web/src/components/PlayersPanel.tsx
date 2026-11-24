@@ -4,12 +4,12 @@ import { createPortal } from 'react-dom';
 import { useT } from '../i18n/context.tsx';
 import { islandWording } from '../i18n/islandWording.ts';
 import { formatNumber } from '../i18n/format.ts';
-import { playerColorHex, seatDash } from '../board/terrain.ts';
+import { playerColorHex, resourceLetter, seatDash } from '../board/terrain.ts';
 import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { epView } from '../board/explorersPirates.ts';
 import { shownCitiesKnights, shownExplorersPirates, shownTradersBarbarians, shownHandSize } from '../state/table.ts';
-import { islandBonusPoints, seafarersView } from '../board/seafarers.ts';
+import { harborRatio, islandBonusPoints, seafarersView } from '../board/seafarers.ts';
 import { activeStrength, citiesKnightsPoints, citiesKnightsView } from '../board/citiesKnights.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
@@ -319,13 +319,19 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                     label={`${t(wording ? `sf.score.islands.${wording}` : 'sf.score.islands')} · ${t(wording ? `sf.score.islandsValue.${wording}` : 'sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })} (${t(`sf.score.islandId${(sea!.islandBonus[player.id]?.length ?? 0) === 1 ? '' : 's'}${wording === 'desert' ? '.desert' : ''}`, { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') })})`}
                     value={number(islandPoints)}
                     detail={wording ? t(`sf.score.islandId${(sea!.islandBonus[player.id]?.length ?? 0) === 1 ? '' : 's'}${wording === 'desert' ? '.desert' : ''}`, { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') }) : undefined} />}
+                  {sea?.tribe && (sea.tribe.vp[player.id] ?? 0) > 0 && <ScoreMark icon="crown" testId={`players-tribe-vp-${player.seat}`}
+                    label={t('sf.score.tribeVp')} value={number(sea.tribe.vp[player.id] ?? 0)} />}
+                  {sea?.tribe && (sea.tribe.held[player.id]?.length ?? 0) > 0 && <ScoreMark icon="anchor" testId={`players-tribe-held-${player.seat}`}
+                    label={t('sf.score.tribeHeld', { ports: (sea.tribe.held[player.id] ?? []).map((type) => t(type === 'generic' ? 'sf.gift.port.generic' : 'sf.gift.port.resource', { resource: t(`resource.${type}`) })).join(' · ') })}
+                    value={number(sea.tribe.held[player.id]?.length ?? 0)}
+                    detail={(sea.tribe.held[player.id] ?? []).map((type) => `${harborRatio(type)}${type === 'generic' ? '' : resourceLetter(type)}`).join(' ')} />}
                   {epPlayer && epPlayer.harborPoints > 0 && <ScoreMark icon="anchor" testId={`players-ep-harbors-${player.seat}`}
                     label={t('ep.score.harbors', { points: number(epPlayer.harborPoints) })} value={number(epPlayer.harborPoints)} />}
                   {epPlayer && (['lairs', 'fish', 'spices'] as const).filter((mission) => ep!.missions.includes(mission)).map((mission) => (
                     <ScoreMark key={mission} icon={mission === 'lairs' ? 'shield' : mission === 'fish' ? 'anchor' : 'scales'} testId={`players-ep-${mission}-${player.seat}`}
                       label={t(`ep.score.${mission}`, { points: number(epPlayer.missionPoints[mission] ?? 0) })} value={number(epPlayer.missionPoints[mission] ?? 0)} />
                   ))}
-                  {player.bonusPoints - islandPoints > 0 && <ScoreMark icon="flag" label={t('table.playersBonus')} value={number(player.bonusPoints - islandPoints)} />}
+                  {player.bonusPoints - islandPoints - (sea?.tribe?.vp[player.id] ?? 0) > 0 && <ScoreMark icon="flag" label={t('table.playersBonus')} value={number(player.bonusPoints - islandPoints - (sea?.tribe?.vp[player.id] ?? 0))} />}
                   {ckPoints && ckPoints.metropolises > 0 && <ScoreMark icon="city" testId={`players-metropolis-${player.seat}`}
                     label={t('ck.score.metropolises', { points: number(ckPoints.metropolises) })} value={number(ckPoints.metropolises)} />}
                   {ckPoints && ckPoints.defenders > 0 && <ScoreMark icon="shield" testId={`players-defender-${player.seat}`}

@@ -203,7 +203,8 @@ export function fixedLayout(topology: BoardTopology, land: readonly LandHex[], p
     topologyId: topology.id,
     terrain: [],
     numbers: [],
-    harbors: topology.harborSlots.map((edge, index) => ({ edge, type: ports[index]!.type })),
+    // ports 為空（世外部落）：港口位置是禮物，不是固定在陸地上的港口。
+    harbors: ports.length === 0 ? [] : topology.harborSlots.map((edge, index) => ({ edge, type: ports[index]!.type })),
     islands: [],
     robber: topology.hexes.findIndex((hex) => hex.q === robber.q && hex.r === robber.r),
     pirate: null,

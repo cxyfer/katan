@@ -27,6 +27,7 @@ import { seafarersState } from '../src/modules/seafarers/state.ts';
 import { seafarersCitiesKnightsModule } from '../src/modules/seafarersCitiesKnights/index.ts';
 import { tradersBarbariansModule } from '../src/modules/tradersBarbarians/index.ts';
 import type { GameState } from '../src/types.ts';
+import { applyCommand } from '../src/engine.ts';
 import { act, scriptedRng } from './helpers.ts';
 import { corner, emptySeafarersGame, seafarersGame, settle, ship, side } from './seafarers-helpers.ts';
 
@@ -39,6 +40,7 @@ const VIEW_KEYS: Record<keyof SeafarersView, true> = {
   shipMoved: true,
   home: true,
   fog: true,
+  tribe: true,
 };
 
 const CLAIM_KEYS: Record<keyof Claim, true> = { player: true, island: true, vertex: true };
@@ -52,15 +54,20 @@ const HINT_KEYS: Record<keyof SeafarersHints, true> = {
   robberTargets: true,
   goldRequired: true,
   goldBank: true,
+  harborChoices: true,
+  targets: true,
+  board: true,
 };
 
 const GOLD_KEYS: Record<keyof SeafarersGoldPendingView, true> = { kind: true, module: true, responders: true, data: true };
 const GOLD_DATA_KEYS: Record<keyof SeafarersGoldPendingView['data'], true> = { picks: true };
 
 const keysOf = (record: object): string[] => Object.keys(record).sort();
+/** 世外部落以外的劇本沒有港口放置的提示欄位。 */
+const HINT_KEYS_WITHOUT_TRIBE = Object.keys(HINT_KEYS).filter((key) => !['harborChoices', 'targets', 'board'].includes(key)).sort();
 /** `home` 只在排除 home 島的劇本（四島群島、新世界）的設置結束後出現，New Shores 不帶。 */
-const VIEW_KEYS_WITHOUT_HOME = Object.keys(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'fog').sort();
-/** `fog` 只在未知海域劇本出現。 */
+const VIEW_KEYS_WITHOUT_HOME = Object.keys(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'fog' && key !== 'tribe').sort();
+/** `fog` 只在未知海域劇本、`tribe` 只在世外部落出現。 */
 
 // Both maps list the same modules, so a module added to one cannot be forgotten in the other.
 type SameKeys = [keyof ModuleViewMap] extends [keyof ModuleHintsMap]
@@ -101,7 +108,7 @@ describe('seafarers module exports (bot plan RX)', () => {
 
   it('a fog scenario adds the unrevealed hexes as `fog`', () => {
     const state = emptySeafarersGame(3, 0, 'action', 'sf-fog-islands-2025');
-    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'home'));
+    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'tribe'));
     expect(viewOf(state, 'p2').fog).toHaveLength(12);
   });
 
@@ -109,7 +116,7 @@ describe('seafarers module exports (bot plan RX)', () => {
     const state = emptySeafarersGame(4, 0, 'action', 'sf-four-islands-2025');
     expect(keysOf(projectSeafarers(state))).toEqual(VIEW_KEYS_WITHOUT_HOME);
     seafarersState(state).home = { p1: [2], p2: [3], p3: [], p4: [5, 4] };
-    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'fog'));
+    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'fog' && key !== 'tribe'));
     expect(viewOf(state, 'p3').home).toEqual({ p1: [2], p2: [3], p3: [], p4: [5, 4] });
   });
 
@@ -137,9 +144,22 @@ describe('seafarers module exports (bot plan RX)', () => {
     const setup = seafarersGame(4).state;
     expect(setup.turn.setup).not.toBeNull();
     for (const state of [action, preroll, gold, setup]) {
-      for (const playerId of ['p1', 'p2', 'p4']) expect(keysOf(hintsOf(state, playerId))).toEqual(keysOf(HINT_KEYS));
+      for (const playerId of ['p1', 'p2', 'p4']) expect(keysOf(hintsOf(state, playerId))).toEqual(HINT_KEYS_WITHOUT_TRIBE);
     }
-    expect(keysOf(seafarersHints(action, 'p1', { profile: requireProfile(action.profileId) }))).toEqual(keysOf(HINT_KEYS));
+    expect(keysOf(seafarersHints(action, 'p1', { profile: requireProfile(action.profileId) }))).toEqual(HINT_KEYS_WITHOUT_TRIBE);
+  });
+
+  // D7：New Shores（sf-2025.2）與其他沒有禮物的劇本不得多出世外部落的提示欄位與指令。
+  it('only The Forgotten Tribe adds the harbour hint keys; elsewhere harbor.place keeps the unknown-command errors', () => {
+    const tribe = emptySeafarersGame(3, 0, 'action', 'sf-forgotten-tribe-2025');
+    expect(keysOf(hintsOf(tribe, 'p1'))).toEqual(keysOf(HINT_KEYS));
+    for (const profileId of ['sf-new-shores-2025', 'sf-four-islands-2025', 'sf-through-the-desert-2025']) {
+      const state = emptySeafarersGame(4, 0, 'action', profileId);
+      expect(keysOf(hintsOf(state, 'p1')), profileId).toEqual(HINT_KEYS_WITHOUT_TRIBE);
+      expect(applyCommand(state, 'p1', { type: 'harbor.place', edge: 0, harbor: 'wool' } as never, scriptedRng([]))).toMatchObject({ ok: false, error: { code: 'E_INVALID_COMMAND' } });
+      state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false };
+      expect(applyCommand(state, 'p1', { type: 'harbor.place', edge: 0, harbor: 'wool' } as never, scriptedRng([]))).toMatchObject({ ok: false, error: { code: 'E_PENDING_EFFECT' } });
+    }
   });
 
   it('hints are non-trivial where they should be (the key list is not satisfied by empty values)', () => {
