@@ -56,7 +56,7 @@ export function SvgPirateIslands({ geometry, view, nameResolver }: { geometry: B
   });
   return <g data-testid="pirate-islands-layer">
     {route.length > 1 && <polygon data-testid="pirate-route" data-hexes={route.length} points={route.join(' ')} fill="none" stroke="#f4e9c6" strokeOpacity=".5"
-      strokeWidth="4" strokeDasharray="2 12" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+      strokeWidth="4" strokeDasharray="2 12" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"><title>{t('sf.pirate.route')}</title></polygon>}
     {pirate.beachheads.map((beachhead) => {
       const vertex = geometry.vertices[beachhead.vertex];
       if (!vertex) return null;

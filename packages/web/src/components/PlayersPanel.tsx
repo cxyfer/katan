@@ -235,7 +235,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           const isSelf = player.id === selfId;
           const total = isSelf ? (player.ownScore ?? player.publicScore) : player.publicScore;
           const buildings = view.board.buildings.filter((building) => building?.player === player.id);
-          const settlements = buildings.filter((building) => !building!.city).length;
+          // 海盜巢穴：未收復的堡壘不算村落（它不計分，所以聚落數與總分才對得上）。
+          const lockedFortresses = (seafarersView(view)?.pirateIslands?.fortresses ?? []).filter((fortress) => fortress.player === player.id && fortress.lairs > 0).length;
+          const settlements = buildings.filter((building) => !building!.city).length - lockedFortresses;
           const cities = buildings.filter((building) => building!.city).length;
           const hiddenVp = isSelf ? [...(player.devCards ?? []), ...(player.newDevCards ?? [])].filter((card) => card === 'victoryPoint').length : 0;
           const hiddenBonus = isSelf && player.ownScore !== undefined ? Math.max(0, player.ownScore - player.publicScore - hiddenVp) : 0;

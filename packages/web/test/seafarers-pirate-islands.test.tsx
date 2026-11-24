@@ -76,6 +76,7 @@ describe('Pirate Islands board (SVG)', () => {
     }
     expect(container.querySelectorAll('[data-testid^="beachhead-"]')).toHaveLength(4);
     expect(container.querySelector('[data-testid="pirate-route"]')!.getAttribute('data-hexes')).toBe('14');
+    expect(container.querySelector('[data-testid="pirate-route"] title')!.textContent).toBe('Pirate route');
     // 強盜不使用：沒有強盜棋子；海盜在航道起點的海格。
     expect(container.querySelector('[data-testid="robber"]')).toBeNull();
     expect(container.querySelector('[data-testid="pirate-hex"]')).not.toBeNull();
@@ -159,6 +160,27 @@ describe('Pirate Islands board (3D)', () => {
 });
 
 describe('Pirate Islands player panel and messages', () => {
+  it('does not count an unrecaptured fortress as a settlement: after setup 3 settlements, 3 VP', () => {
+    const state = pirateState(4);
+    const geometry = buildGeometry('sf-pirate-islands', 100, state.board.layout.terrain);
+    const topo = geometry.topology;
+    const east = topo.vertices.map((info, vertex) => ({ info, vertex })).filter(({ info, vertex }) =>
+      !state.board.buildings[vertex] && info.hexes.length > 0 && info.hexes.every((hex) => state.board.layout.islands[hex] === 1));
+    // 設置後第 2、3 個村落（只影響顯示，不必合乎距離規則）。
+    state.board.buildings[east[0]!.vertex] = { player: 'p1', city: false };
+    state.board.buildings[east[east.length - 1]!.vertex] = { player: 'p1', city: false };
+    render(<LocaleProvider locale="en"><PlayersPanel controller={controllerFor(viewOf(state, 'p1'), 'en')} /></LocaleProvider>);
+    expect(screen.getAllByLabelText('Settlements (3 × 1): 3').length).toBeGreaterThan(0);
+    const fortress = (state.moduleState as unknown as { seafarers: { pirateIslands: { fortresses: { player: string; lairs: number }[] } } }).seafarers.pirateIslands.fortresses[0]!;
+    expect(fortress.lairs).toBe(3);
+    cleanup();
+    // 收復後堡壘算一個村落。
+    fortress.lairs = 0;
+    render(<LocaleProvider locale="en"><PlayersPanel controller={controllerFor(viewOf(state, 'p1'), 'en')} /></LocaleProvider>);
+    expect(screen.getAllByLabelText('Settlements (4 × 1): 4').length).toBeGreaterThan(0);
+    cleanup();
+  });
+
   function panel(locale: 'en' | 'zh-Hant') {
     const state = pirateState(4);
     const slot = (state.moduleState as unknown as { seafarers: { pirateIslands: { fortresses: { player: string; lairs: number }[]; lines: Record<string, { start: number | null; edges: number[] }> } } }).seafarers.pirateIslands;
