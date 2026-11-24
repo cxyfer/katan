@@ -27,7 +27,7 @@ if (mode === 'check') {
   const settled = state.board.buildings.flatMap((building, vertex) => (building ? [{ vertex, player: building.player, islands: islandsOf(vertex) }] : []));
   process.stdout.write(JSON.stringify({ largeOnly: settled.every((entry) => entry.islands.includes(1)), settled }));
 } else {
-  /** `vertex` 一端的空海邊：不是計畫要拿的禮物，不碰海盜、未被使用；優先不是任何禮物的邊。 */
+  /** `vertex` 一端的空海邊：不是已預定的禮物，不碰海盜、未被使用；優先不是任何禮物的邊。 */
   const neighbour = (gift, vertex, reserved, used) => {
     const free = (edge) => edge !== gift && isSea(edge) && !touchesPirate(edge) && !used.has(edge) && !reserved.has(edge) && !state.board.roads[edge];
     const edges = topology.vertices[vertex].edges;
@@ -45,33 +45,44 @@ if (mode === 'check') {
     }
     return null;
   };
-  const byKind = (kind) => gifts.filter((entry) => entry.kind === kind);
-  const choose = () => {
-    for (const port of byKind('port')) for (const devcard of byKind('devcard')) {
-      const vps = byKind('vp');
-      for (const vp1 of vps) for (const vp2 of vps) {
-        if (vp1 === vp2) continue;
-        const reserved = new Set([port.edge, devcard.edge, vp1.edge, vp2.edge]);
-        const used = new Set();
-        const out = {};
-        let ok = true;
-        for (const [key, gift, anchored] of [['port', port, false], ['devcard', devcard, false], ['vp1', vp1, false], ['vp2', vp2, true]]) {
-          const found = attach(gift.edge, reserved, used, anchored);
-          if (!found) { ok = false; break; }
-          used.add(found.near);
-          if (found.anchor !== undefined) used.add(found.anchor);
-          out[key] = { gift: gift.edge, kind: gift.kind, harbor: gift.harbor, ...found };
-        }
-        if (ok) return out;
-      }
+  const specs = [['portA', 'port', false], ['portB', 'port', false], ['portC', 'port', false], ['devcard', 'devcard', false], ['vp1', 'vp', false], ['vp2', 'vp', true]];
+  /** 回溯：依序挑禮物與接應船；接應船不得壓在任何已選禮物上。 */
+  const choose = (index, chosen, used) => {
+    if (index === specs.length) {
+      const planned = new Set(Object.values(chosen).map((entry) => entry.gift));
+      const ships = Object.values(chosen).flatMap((entry) => [entry.near, entry.anchor].filter((edge) => edge !== undefined));
+      return ships.some((edge) => planned.has(edge)) ? null : chosen;
     }
-    throw new Error('no gift combination with free neighbours');
+    const [key, kind, anchored] = specs[index];
+    for (const gift of gifts.filter((entry) => entry.kind === kind && !Object.values(chosen).some((c) => c.gift === entry.edge))) {
+      const reserved = new Set([...Object.values(chosen).map((c) => c.gift), gift.edge]);
+      const found = attach(gift.edge, reserved, used, anchored);
+      if (!found) continue;
+      const next = new Set([...used, found.near, ...(found.anchor !== undefined ? [found.anchor] : [])]);
+      const out = choose(index + 1, { ...chosen, [key]: { gift: gift.edge, kind, harbor: gift.harbor, ...found } }, next);
+      if (out) return out;
+    }
+    return null;
   };
+  const plan = choose(0, {}, new Set());
+  if (!plan) throw new Error('no gift combination with free neighbours');
   const near = (vertex) => topology.vertices[vertex].edges.flatMap((edge) => topology.edges[edge].vertices).filter((other) => other !== vertex);
-  const coast = topology.vertices.findIndex((info, vertex) => info.edges.length === 3 && islandsOf(vertex).includes(1) && islandsOf(vertex).length === 1
-    && info.edges.filter(isSea).length === 2 && !state.board.buildings[vertex] && near(vertex).every((other) => !state.board.buildings[other]));
-  if (coast < 0) throw new Error('no free coast vertex on the large island');
-  const { port, devcard, vp1, vp2 } = choose();
-  const coastEdges = topology.vertices[coast].edges.filter(isSea);
-  process.stdout.write(JSON.stringify({ player: playerId, coast, coastEdges, port, devcard, vp1, vp2 }));
+  // 三個海岸村落（大島）：彼此不相鄰，海岸邊的端點互不相同，所以三個港口各有一個合法位置。
+  const coasts = [];
+  const taken = new Set();
+  topology.vertices.forEach((info, vertex) => {
+    if (coasts.length >= 3 || info.edges.length !== 3 || islandsOf(vertex).length !== 1 || islandsOf(vertex)[0] !== 1) return;
+    const coastEdges = info.edges.filter(isSea);
+    if (coastEdges.length !== 2 || state.board.buildings[vertex] || !near(vertex).every((other) => !state.board.buildings[other])) return;
+    const points = new Set(coastEdges.flatMap((edge) => topology.edges[edge].vertices));
+    if ([...points].some((point) => taken.has(point))) return;
+    // 與已有建築的海岸邊也不共用端點（設置村落旁的港口不會擋到這三個）。
+    if (state.board.buildings.some((building, other) => building && coastEdges.some((edge) => topology.edges[edge].vertices.includes(other)))) return;
+    [...points].forEach((point) => taken.add(point));
+    near(vertex).forEach((point) => taken.add(point));
+    coasts.push({ vertex, edges: coastEdges });
+  });
+  if (coasts.length < 3) throw new Error('no three free coast vertices on the large island');
+  const { portA, portB, portC, devcard, vp1, vp2 } = plan;
+  process.stdout.write(JSON.stringify({ player: playerId, coasts, portA, portB, portC, devcard, vp1, vp2 }));
 }
