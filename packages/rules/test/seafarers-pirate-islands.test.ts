@@ -12,7 +12,7 @@ import { productionForRoll } from '../src/analysis.ts';
 import { seafarersModule } from '../src/modules/seafarers/index.ts';
 import { goldEntitlements } from '../src/modules/seafarers/gold.ts';
 import {
-  fortressLocked, isLineEdge, lineContext, lineShip, lineVertices, pirateIslandsView,
+  fortressLocked, isLineEdge, lineBacktrack, lineContext, lineShip, lineVertices, pirateIslandsView,
 } from '../src/modules/seafarers/pirateIslands.ts';
 import { canPlaceShip, legalShipEdges } from '../src/modules/seafarers/ships.ts';
 import { seafarersState } from '../src/modules/seafarers/state.ts';
@@ -67,7 +67,7 @@ const slot = (state: GameState) => pirateIslandsView(state)!;
 const score = (state: GameState, id: string) => scoreOf(state, id, { includeHidden: true });
 const idx = (state: GameState, q: number, r: number): number => topologyOf(state).hexes.findIndex((cell) => cell.q === q + SH.dq && cell.r === r + SH.dr);
 const sf = (state: GameState, id: string) => actionHints(state, id).modules!.seafarers as {
-  legalShips: number[]; setupShips: number[]; movableShips: { edge: number; targets: number[] }[]; pirateLine: { next: string; target: number | null; end: number | null; edges: number[] };
+  legalShips: number[]; setupShips: number[]; movableShips: { edge: number; targets: number[] }[]; pirateLine: { next: string; target: number | null; end: number | null; edges: number[]; stuck: boolean };
 };
 const clone = (state: GameState): GameState => JSON.parse(JSON.stringify(state)) as GameState;
 const seatOf = (state: GameState, id: string) => state.players.findIndex((player) => player.id === id);
@@ -627,87 +627,102 @@ describe('Pirate Islands ship line (SF25 p. 16 Shipbuilding; spec §6.6, OQ-3)',
     expect(lineContext(clean, 'p1')!.dist.filter((distance) => distance > 0)).toHaveLength(0);
   });
 
-  it('完全無路時放寬（shortestPathFallback）：往任何合法方向延伸；旗標關掉就拒絕', () => {
-    const state = started(4);
+  /** 把 p1 的船線端點圍死：端點旁所有空著的邊都被 p4 的船占住（端點到目標在空著的海邊上完全不通）。 */
+  function wall(state: GameState): number {
     const topo = topologyOf(state);
-    const target = lineContext(state, 'p1')!.targetVertex!;
-    for (const edge of topo.vertices[target]!.edges) {
-      const [a, b] = topo.edges[edge]!.vertices;
-      settle(state, 'p2', a === target ? b : a);
-    }
-    const ctx = lineContext(state, 'p1')!;
-    expect(ctx.dist[ctx.end!]).toBe(-1);
-    const base = legalShipEdges(state, 'p1', { line: null }).filter((edge) => topo.edges[edge]!.vertices.includes(ctx.end!));
-    expect(base.length).toBeGreaterThan(0);
-    for (const edge of base) expect(lineShip(state, 'p1', edge)).toMatchObject({ kind: 'line', relaxed: true });
-    const next = build(state, 'p1', base[0]!);
-    expect(slot(next).lines.p1!.edges).toHaveLength(2);
-    // 放寬之後仍是同一條不分叉的線：下一步只能接在新的端點。
-    const end = lineContext(next, 'p1')!.end!;
-    expect(end).not.toBe(ctx.end);
-    for (const edge of lineEdges(next, 'p1')) expect(topo.edges[edge]!.vertices).toContain(end);
-    // 旗標關掉：沒有放寬，被擋死的船線不能再延伸不碰東島的邊。
+    const end = lineContext(state, 'p1')!.end!;
+    for (const edge of topo.vertices[end]!.edges) if (!state.board.roads[edge]) ship(state, 'p4', edge);
+    return end;
+  }
+
+  it('被圍死時末端的船可以移動（退回），沒被圍死時不行；hint 標出被圍住', () => {
+    let state = started(4);
+    for (let i = 0; i < 2; i++) state = build(state, 'p1', lineEdges(state, 'p1')[0]!);
+    state.windowId += 1;
+    forceTurn(state, 0, 'action');
+    const line = slot(state).lines.p1!;
+    expect(line.edges).toHaveLength(3);
+    expect(sf(state, 'p1').pirateLine.stuck).toBe(false);
+    expect(sf(state, 'p1').movableShips.some((entry) => line.edges.includes(entry.edge))).toBe(false);
+    wall(state);
+    expect(lineContext(state, 'p1')!.dist[lineContext(state, 'p1')!.end!]).toBe(-1);
+    const movable = sf(state, 'p1').movableShips.filter((entry) => line.edges.includes(entry.edge));
+    // 只有末端那一艘（不是起點的預置船，也不是中間的船）。
+    expect(movable.map((entry) => entry.edge)).toEqual([line.edges[2]]);
+    expect(sf(state, 'p1').pirateLine.stuck).toBe(true);
+    expectRejected(state, 'p1', { type: 'ship.move', from: line.edges[1]!, to: movable[0]!.targets[0]! } as never, 'E_SHIP_NOT_MOVABLE');
+    // 旗標關掉：照舊不可移動，hint 也不標。
     const profile = getProfile(PROFILE)!;
     try {
-      profile.shortestPathFallback = false;
-      for (const edge of base.filter((candidate) => isLineEdge(state, candidate))) expect(lineShip(state, 'p1', edge)).toMatchObject({ kind: 'refused' });
+      profile.stuckLineBacktrack = false;
+      expect(sf(state, 'p1').movableShips.some((entry) => line.edges.includes(entry.edge))).toBe(false);
+      expect(sf(state, 'p1').pirateLine.stuck).toBe(false);
     } finally {
-      profile.shortestPathFallback = true;
+      profile.stuckLineBacktrack = true;
     }
-    // 有路的時候不放寬。
-    const open = started(4);
-    for (const edge of lineEdges(open, 'p1')) expect(lineShip(open, 'p1', edge)).toMatchObject({ relaxed: false });
   });
 
-  it('放寬也不能把端點推到別人的建築上，也不能繞回自己的船線（agy P1）', () => {
-    const state = started(4);
+  it('移走末端的船後船線截短（端點退一格）；移走之後仍不通就可以再退，一路退到沒有船線', () => {
+    let state = started(4);
+    for (let i = 0; i < 2; i++) state = build(state, 'p1', lineEdges(state, 'p1')[0]!);
     const topo = topologyOf(state);
+    const first = [...slot(state).lines.p1!.edges];
+    // 把目標圍死（目標旁的交叉點被 p2 的建築占住）：不論退到哪一格都不通。
     const target = lineContext(state, 'p1')!.targetVertex!;
-    // beachhead 被擋住：目標旁的交叉點全被 p2 的建築占住，放寬生效。
     for (const edge of topo.vertices[target]!.edges) {
       const [a, b] = topo.edges[edge]!.vertices;
       settle(state, 'p2', a === target ? b : a);
     }
-    const end = lineContext(state, 'p1')!.end!;
-    expect(lineContext(state, 'p1')!.dist[end]).toBe(-1);
-    const open = topo.vertices[end]!.edges.filter((edge) => !state.board.roads[edge] && canPlaceShip(state, 'p1', edge, { line: null }));
-    expect(open.length).toBeGreaterThanOrEqual(2);
-    const far = (edge: number) => topo.edges[edge]!.vertices.find((vertex) => vertex !== end)!;
-    // p2 的村落蓋在其中一條邊的遠端：那條邊不能再當船線延伸，其他邊仍可（放寬）。
-    const blocked = open[0]!;
-    settle(state, 'p2', far(blocked));
-    expect(lineShip(state, 'p1', blocked).kind).not.toBe('line');
-    const rest = open.slice(1).filter((edge) => !state.board.buildings[far(edge)]);
-    expect(rest.length).toBeGreaterThan(0);
-    for (const edge of rest) expect(lineShip(state, 'p1', edge)).toMatchObject({ kind: 'line', relaxed: true });
-    expect(lineEdges(state, 'p1')).not.toContain(blocked);
-    // 自環：船線繞一個海格 5 條邊，最後一條邊回到起點的頂點，放寬時也不行。
-    const loop = started(4);
-    const loopTarget = lineContext(loop, 'p1')!.targetVertex!;
-    for (const edge of topo.vertices[loopTarget]!.edges) {
-      const [a, b] = topo.edges[edge]!.vertices;
-      settle(loop, 'p2', a === loopTarget ? b : a);
+    expect(lineContext(state, 'p1')!.dist[lineContext(state, 'p1')!.end!]).toBe(-1);
+    for (let remaining = first.length; remaining > 0; remaining--) {
+      state.windowId += 1;
+      forceTurn(state, 0, 'action');
+      const line = slot(state).lines.p1!;
+      expect(line.edges).toEqual(first.slice(0, remaining));
+      const movable = sf(state, 'p1').movableShips.filter((entry) => line.edges.includes(entry.edge));
+      expect(movable.map((entry) => entry.edge)).toEqual([line.edges[remaining - 1]]);
+      const end = lineContext(state, 'p1')!.end;
+      const free = movable[0]!.targets.find((edge) => lineShip(state, 'p1', edge, { moving: movable[0]!.edge }).kind === 'free');
+      expect(free, 'a free coastal place to put the ship').toBeDefined();
+      state = act(state, 'p1', { type: 'ship.move', from: movable[0]!.edge, to: free! } as never).state;
+      const after = slot(state).lines.p1!;
+      expect(after.edges).toEqual(first.slice(0, remaining - 1));
+      expect(after.start).toBe(remaining > 1 ? slot(started(4)).lines.p1!.start : null);
+      // 新的端點是被移走那艘船的另一端。
+      if (remaining > 1) expect(lineContext(state, 'p1')!.end).not.toBe(end);
     }
-    const hex = routeHexes(topo)[2]!;
-    const ring = topo.edges.map((info, edge) => (info.hexes.includes(hex) && !info.interior ? edge : -1)).filter((edge) => edge >= 0);
-    expect(ring).toHaveLength(6);
-    const used: number[] = [];
-    let vertex = topo.edges[ring[0]!]!.vertices[0]!;
-    const first = vertex;
-    const vertices = [vertex];
-    for (let i = 0; i < 5; i++) {
-      const edge = ring.find((candidate) => !used.includes(candidate) && topo.edges[candidate]!.vertices.includes(vertex))!;
-      used.push(edge);
-      vertex = topo.edges[edge]!.vertices.find((v) => v !== vertex)!;
-      vertices.push(vertex);
-    }
-    for (const edge of used) ship(loop, 'p1', edge);
-    slot(loop).lines.p1 = { start: first, edges: used };
-    const closing = ring.find((edge) => !used.includes(edge))!;
-    expect(topo.edges[closing]!.vertices.toSorted()).toEqual([first, vertex].toSorted());
-    expect(lineContext(loop, 'p1')!.end).toBe(vertex);
-    expect(lineContext(loop, 'p1')!.dist[vertex]).toBe(-1);
-    expect(lineShip(loop, 'p1', closing).kind).not.toBe('line');
+    // 一艘都不剩：沒有船線，只能從東島的海岸建築重新起頭。
+    expect(slot(state).lines.p1).toEqual({ start: null, edges: [] });
+  });
+
+  it('退回後回到嚴格的最短路徑，並找得到新路到達目標', () => {
+    let state = started(4);
+    for (let i = 0; i < 2; i++) state = build(state, 'p1', lineEdges(state, 'p1')[0]!);
+    state.windowId += 1;
+    forceTurn(state, 0, 'action');
+    const line = [...slot(state).lines.p1!.edges];
+    wall(state);
+    const last = line[2]!;
+    const movable = sf(state, 'p1').movableShips.find((entry) => entry.edge === last)!;
+    // 目標：把船線上最後一艘換個位置，繼續走（嚴格規則：接在新端點、距離減 1）。
+    const extension = movable.targets.find((edge) => lineShip(state, 'p1', edge, { moving: last }).kind === 'line');
+    expect(extension, 'a strict extension from the new end').toBeDefined();
+    const ctxAfterTruncation = lineContext(state, 'p1', last)!;
+    state = act(state, 'p1', { type: 'ship.move', from: last, to: extension! } as never).state;
+    const moved = slot(state).lines.p1!;
+    expect(moved.edges.slice(0, 2)).toEqual(line.slice(0, 2));
+    expect(moved.edges).toHaveLength(3);
+    const step = topologyOf(state).edges[extension!]!.vertices;
+    expect(step).toContain(ctxAfterTruncation.end!);
+    // 之後每一步都是嚴格規則（sail 檢查距離恰好 −1），走到 beachhead。
+    const reached = sail(state, 'p1', 'fortress');
+    expect(lineContext(reached, 'p1')!.next).toBe('fortress');
+  });
+
+  it('其他劇本沒有退回：布匹產地的船照一般規則，hints 沒有 pirateLine（D7）', () => {
+    const cloth = emptySeafarersGame(3, 0, 'action', 'sf-cloth-for-catan-2025');
+    expect(Object.keys(actionHints(cloth, 'p1').modules!.seafarers as object)).not.toContain('pirateLine');
+    expect(lineBacktrack(cloth, 'p1', 0)).toBe(false);
   });
 
   it('beachhead：自己的船線（船）到達後才可蓋村落（照常付費）；只有自己的 beachhead，海盜群島其餘處不行', () => {
@@ -897,10 +912,10 @@ describe('Pirate Islands views and isolation (D7)', () => {
     }
   });
 
-  it('profile：實作但未啟用（S7c 才啟用）；3–4 人，目標 10 分，旗標 shortestPathFallback', () => {
+  it('profile：實作但未啟用（S7c 才啟用）；3–4 人，目標 10 分，旗標 stuckLineBacktrack', () => {
     expect(getProfile(PROFILE)).toMatchObject({
       scenario: 'pirate-islands', victoryTarget: 10, playerCounts: [3, 4], ruleVersion: 'sf-2025.3', topologyId: 'sf-pirate-islands',
-      layoutId: 'sf-pirate-islands', implemented: true, enabled: false, shortestPathFallback: true, setupModes: ['fixed'],
+      layoutId: 'sf-pirate-islands', implemented: true, enabled: false, stuckLineBacktrack: true, setupModes: ['fixed'],
     });
     expect(getProfile(PROFILE)!.islandBonus).toBeUndefined();
     for (const playerCount of [3, 4]) {
