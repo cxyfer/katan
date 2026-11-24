@@ -60,7 +60,7 @@ import { kitsOf, type ModuleTestKit } from '../test/modules/types.ts';
 import { policyOf } from './roles.ts';
 import { cohortWarning, latinCohort, mergeShards, poolBalanceWarning, SEED_BASE, ShardMergeError, type Shard } from './survey-merge.ts';
 import { checkpointVp, openingMetrics } from './survey-observations.ts';
-import { parseRoles, parseShard, ROLES, rolesFor, type GameRecord, type Meta, type Role, type RoleSpec, type SeatRecord } from './survey-records.ts';
+import { parseRoles, parseShard, ROLES, rolesFor, winCredit, type GameRecord, type Meta, type Role, type RoleSpec, type SeatRecord } from './survey-records.ts';
 
 const BENCH_KITS: readonly ModuleTestKit[] = [seafarersKit, citiesKnightsKit, sfckKit];
 
@@ -263,6 +263,9 @@ function playGame(
             ? 'no-victory'
             : null;
   const winnerId = state.result?.playerId;
+  // 共同勝利（布匹產地）：`playerIds` 列出全部勝者；每位勝者各得 1/k 的勝利份額。
+  const winnerIds = state.result?.playerIds ?? (winnerId ? [winnerId] : []);
+  const coWinners = winnerIds.length > 1 ? winnerIds.map((id) => state.players.findIndex((player) => player.id === id)).sort((a, b) => a - b) : undefined;
   const timeline = state.stats?.timeline ?? [];
   const metrics = trajectory ? openingMetrics(described.map((placed) => placed.map((entry) => entry.pips))) : undefined;
   const records: SeatRecord[] = state.players.map((player, seat) => {
@@ -274,7 +277,8 @@ function playGame(
     return {
       seat,
       role: roles[seat]!,
-      won: player.id === winnerId,
+      won: winnerIds.includes(player.id),
+      ...(coWinners && winnerIds.includes(player.id) ? { winShare: 1 / coWinners.length } : {}),
       score: scoreOf(state, player.id, { includeHidden: true }),
       opening: openings[seat] ?? [],
       openPips: placed.map((entry) => entry.pips),
@@ -313,6 +317,7 @@ function playGame(
     finished: problem === null,
     problem,
     winner: winnerId ? state.players.findIndex((player) => player.id === winnerId) : null,
+    ...(coWinners ? { coWinners } : {}),
     rounds: (state.stats?.turns ?? 0) / players,
     seats: records,
   };
@@ -515,7 +520,7 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
         return [
           k,
           rows.length,
-          fmt((rows.filter((s) => s.won).length / rows.length) * 100, 1),
+          fmt((rows.reduce((sum, s) => sum + winCredit(s), 0) / rows.length) * 100, 1),
           sampled((s) => s.vp10),
           sampled((s) => s.vp20),
           ...STAT_COLUMNS.map(([, pick]) => fmt(mean(rows.map(pick)))),
@@ -584,7 +589,7 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
           [name, 'n', 'share %', 'win %', '95% CI', 'avg final score'],
           ranges.map(([label, lo, hi]) => {
             const rows = focusSeats.filter((s) => pick(s) >= lo && pick(s) <= hi);
-            const wins = rows.filter((s) => s.won).length;
+            const wins = rows.reduce((sum, s) => sum + winCredit(s), 0);
             const [cl, ch] = wilson(wins, rows.length);
             return [label, rows.length, fmt((rows.length / Math.max(1, focusSeats.length)) * 100, 1), fmt((wins / Math.max(1, rows.length)) * 100, 1), `${fmt(cl, 1)}–${fmt(ch, 1)}`, fmt(mean(rows.map((s) => s.score)))];
           }),
@@ -806,7 +811,7 @@ function renderLatin(files: readonly string[], command: string): string {
           if (seatRecord.role !== spec.focus) continue;
           const slot = focusCell[seatRecord.seat]![(seatRecord.seat + shift) % n]!;
           slot[1] += 1;
-          if (seatRecord.won) slot[0] += 1;
+          slot[0] += winCredit(seatRecord);
         }
       }
     }

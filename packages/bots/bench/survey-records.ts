@@ -37,6 +37,11 @@ export interface SeatRecord {
   seat: number;
   role: Role;
   won: boolean;
+  /**
+   * 共同勝利（布匹產地，D12）時每位勝者的勝利份額 1/k（k = 勝者數）；單一勝者與敗者省略。
+   * 勝率以 `winCredit` 計，所以每局的勝率加總仍是 1。
+   */
+  winShare?: number;
   /** 終局分數（含隱藏分）。 */
   score: number;
   /** 開局依序放置的聚落頂點。 */
@@ -93,8 +98,15 @@ export interface GameRecord {
   /** 沒有正常終局的原因（看門狗、卡死、拒絕、守恆）。 */
   problem: string | null;
   winner: number | null;
+  /** 共同勝利時全部勝者的座位（座位序，≥ 2 個；`winner` 是第一個）；單一勝者省略。 */
+  coWinners?: number[];
   rounds: number;
   seats: SeatRecord[];
+}
+
+/** 一個座位在這局得到的勝利份額：單一勝者 1、共同勝者 1/k、敗者 0。 */
+export function winCredit(seat: Pick<SeatRecord, 'won' | 'winShare'>): number {
+  return seat.won ? (seat.winShare ?? 1) : 0;
 }
 
 export interface RoleSpec {
@@ -120,7 +132,7 @@ export function rolesFor(spec: RoleSpec, players: number, game: number): Role[] 
 type FieldKind = 'int' | 'num' | 'bool' | 'int[]' | 'num[]' | 'bool[]' | 'str|null' | 'int|null' | 'num|null' | 'role';
 
 /** 逐局與逐座位記錄的欄位型別；`Record<keyof …>` 讓新增欄位時編譯器強迫這裡同步，不會有欄位被略過驗證。 */
-const GAME_SCHEMA: Record<Exclude<keyof GameRecord, 'seats'>, FieldKind> = {
+const GAME_SCHEMA: Record<Exclude<keyof GameRecord, 'seats' | 'coWinners'>, FieldKind> = {
   game: 'int',
   seed: 'int',
   finished: 'bool',
@@ -171,6 +183,7 @@ const OPTIONAL_SEAT_SCHEMA = {
   vp5: 'num|null',
   vp15: 'num|null',
   vpCards: 'int',
+  winShare: 'num',
 } satisfies Required<Pick<SeatSchema, Exclude<keyof SeatRecord, keyof typeof SEAT_SCHEMA>>>;
 
 const isInteger = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value);
@@ -209,6 +222,7 @@ function checkGameRecord(file: string, lineNumber: number, raw: unknown, meta: M
   for (const [key, kind] of Object.entries(GAME_SCHEMA)) {
     if (!(key in record) || !matchesKind(kind, record[key])) throw new ShardMergeError(`${where} needs ${key} (${kind}), got ${JSON.stringify(record[key])}`);
   }
+  if ('coWinners' in record && !matchesKind('int[]', record.coWinners)) throw new ShardMergeError(`${where} needs coWinners (int[]), got ${JSON.stringify(record.coWinners)}`);
   const seats = record.seats;
   if (!Array.isArray(seats) || seats.length !== meta.players) {
     throw new ShardMergeError(`${where} needs ${meta.players} seat records, got ${Array.isArray(seats) ? seats.length : JSON.stringify(seats)}`);
@@ -226,9 +240,16 @@ function checkGameRecord(file: string, lineNumber: number, raw: unknown, meta: M
     }
     if (seat.seat !== index) throw new ShardMergeError(`${where} seat ${index + 1} has seat index ${String(seat.seat)}`);
     if (seat.role !== expectedRoles[index]) throw new ShardMergeError(`${where} seat ${index + 1} has role ${String(seat.role)}, expected ${expectedRoles[index]} for --roles ${meta.roles}`);
-    if (seat.won !== (game.winner === index)) throw new ShardMergeError(`${where} seat ${index + 1} won=${String(seat.won)} disagrees with winner ${String(game.winner)}`);
+    const winners = game.coWinners ?? (game.winner === null ? [] : [game.winner]);
+    if (seat.won !== winners.includes(index)) throw new ShardMergeError(`${where} seat ${index + 1} won=${String(seat.won)} disagrees with winner ${String(game.winner)}`);
+    if (game.coWinners && seat.won && (seat.winShare === undefined || Math.abs((seat.winShare as number) - 1 / game.coWinners.length) > 1e-9)) {
+      throw new ShardMergeError(`${where} seat ${index + 1} needs winShare ${1 / game.coWinners.length} for ${game.coWinners.length} co-winners`);
+    }
   });
   if (game.finished !== (game.problem === null)) throw new ShardMergeError(`${where} finished=${String(game.finished)} disagrees with problem ${JSON.stringify(game.problem)}`);
+  if (game.coWinners && (game.coWinners.length < 2 || game.coWinners[0] !== game.winner || game.coWinners.some((seat) => seat < 0 || seat >= meta.players))) {
+    throw new ShardMergeError(`${where} has inconsistent coWinners ${JSON.stringify(game.coWinners)}`);
+  }
   if (game.finished && (game.winner === null || game.winner >= meta.players)) throw new ShardMergeError(`${where} is finished but has no winner seat`);
   if (!game.finished && game.winner !== null) throw new ShardMergeError(`${where} is unfinished but has a winner`);
   return game;

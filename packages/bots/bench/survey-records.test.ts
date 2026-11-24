@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { checkpointVp, openingMetrics } from './survey-observations.ts';
-import { parseRoles, parseShard, rolesFor } from './survey-records.ts';
+import { parseRoles, parseShard, rolesFor, winCredit } from './survey-records.ts';
 import { mergeShards, ShardMergeError } from './survey-merge.ts';
 
 const PROFILE = 'sf-new-shores-2025';
@@ -110,6 +110,24 @@ describe('parseShard', () => {
     expect(() => parseShard('c.jsonl', text(META, [game(0), unfinishedWithWinner]))).toThrow('is unfinished but has a winner');
     const unfinished = game(1, { finished: false, problem: 'watchdog', winner: null, seats: [0, 1, 2].map((index) => seat(index, 'standard', null)) });
     expect(parseShard('c.jsonl', text(META, [game(0), unfinished])).games[1]!.finished).toBe(false);
+  });
+
+  it('co-winners (Cloth for Catan, D12): every co-winner is won with a 1/k share, so a game still credits 1 win', () => {
+    const co = (seats: number[]): Json => ({
+      ...game(1, { winner: seats[0], coWinners: seats }),
+      seats: [0, 1, 2].map((index) => ({ ...seat(index, 'standard', null), won: seats.includes(index), ...(seats.includes(index) ? { winShare: 1 / seats.length } : {}) })),
+    });
+    const parsed = parseShard('co.jsonl', text(META, [game(0), co([0, 2])])).games[1]!;
+    expect(parsed.coWinners).toEqual([0, 2]);
+    expect(parsed.seats.map((entry) => winCredit(entry))).toEqual([0.5, 0, 0.5]);
+    expect(parsed.seats.reduce((sum, entry) => sum + winCredit(entry), 0)).toBe(1);
+    // 單一勝者的記錄與過去相同：份額 1，沒有 coWinners。
+    expect(parseShard('co.jsonl', text(META, [game(0), game(1)])).games.map((g) => g.coWinners)).toEqual([undefined, undefined]);
+    // 不一致：缺少份額、少於兩位、第一位不是 winner、勝者與 won 不符。
+    const noShare = { ...co([0, 2]), seats: [0, 1, 2].map((index) => ({ ...seat(index, 'standard', null), won: index !== 1 })) };
+    expect(() => parseShard('co.jsonl', text(META, [game(0), noShare]))).toThrow('needs winShare 0.5');
+    expect(() => parseShard('co.jsonl', text(META, [game(0), { ...co([0, 2]), coWinners: [0] }]))).toThrow(ShardMergeError);
+    expect(() => parseShard('co.jsonl', text(META, [game(0), { ...co([0, 2]), winner: 2 }]))).toThrow('inconsistent coWinners');
   });
 
   it('checks the focus rotation against --roles', () => {
