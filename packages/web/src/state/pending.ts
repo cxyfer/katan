@@ -128,7 +128,7 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
     return {
       kind: 'setup',
       // E&P's variable setup has its own three steps (harbour, settlement, route).
-      messageId: epStep ? `ep.setup.${epStep}` : setup.stage === 'harbor' ? 'sf.world.harbor' : setup.stage === 'building' ? 'play.build.settlement' : 'play.build.road',
+      messageId: epStep ? `ep.setup.${epStep}` : setup.stage === 'harbor' ? 'sf.world.harbor' : setup.stage === 'robber' ? 'sf.cloth.robber.piece' : setup.stage === 'building' ? 'play.build.settlement' : 'play.build.road',
       params: { remaining: setup.remaining },
       mine: actorId === me,
       waitingFor: actorId && actorId !== me ? [actorId] : [],

@@ -93,6 +93,8 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
         shortSuffix: num(p.shortBy) > 0 ? t(locale, 'sf.cloth.shortSuffix', { count: num(p.shortBy) }) : '',
       };
     }
+    case 'cloth.robberChosen':
+      return { player, hex: num(p.hex) };
     case 'cloth.stolen':
       return { player, victim: nameOf(str(p.victim)) };
     case 'wonder.chosen':
