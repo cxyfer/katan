@@ -139,8 +139,11 @@ export function variableDesertBoard(
     if (!unexploredRedCells) continue;
 
     const numberAt = new Map<string, number>();
-    mainRedCells.forEach((cell, index) => numberAt.set(key(cell), mainReds[index]!));
-    unexploredRedCells.forEach((cell, index) => numberAt.set(key(cell), unexploredReds[index]!));
+    // 6 與 8 也要洗牌：`pickReds` 的挑選順序與格子的相鄰數有關，照轉錄順序配會讓 6／8 偏向某些格。
+    const mainRedDiscs = shuffle(mainReds, rng);
+    const unexploredRedDiscs = shuffle(unexploredReds, rng);
+    mainRedCells.forEach((cell, index) => numberAt.set(key(cell), mainRedDiscs[index]!));
+    unexploredRedCells.forEach((cell, index) => numberAt.set(key(cell), unexploredRedDiscs[index]!));
     const fill = (cells: readonly HexCoord[], black: readonly number[]): void => {
       const open = cells.filter((cell) => !numberAt.has(key(cell)));
       const pool = shuffle(black, rng);
