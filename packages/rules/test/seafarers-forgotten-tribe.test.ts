@@ -512,6 +512,23 @@ describe('SFX-S5 港口放置', () => {
     expect(applyCommand(placed, 'p1', { type: 'turn.end' }, seededRng(1)).ok).toBe(true);
   });
 
+  it('停滯的道路建設 frame 讓位時，提示與 projection 一樣看到排隊的港口 frame', () => {
+    const state = ready();
+    const { vertex, coast } = coastVertex(state);
+    settle(state, 'p1', vertex);
+    const gift = portEdges(state)[0]!;
+    const taken = chainTo(state, gift.edge);
+    const harbor = (gift as Extract<TribeGift, { kind: 'port' }>).harbor;
+    // 道路建設還掛著但已無可放（remaining 0 視同停滯），港口 frame 在佇列。
+    const stalled = clone(taken);
+    stalled.pendingQueue = [taken.pending!];
+    stalled.pending = { kind: 'freeRoads', actor: 'p1', remaining: 0, granted: 2 } as never;
+    expect(projectGame(stalled, 'p1').pending).toMatchObject({ kind: 'seafarers.harbor' });
+    expect(sf(stalled, 'p1').harborChoices).toEqual({ harbors: [harbor], edges: coast.slice().sort((a, b) => a - b) });
+    expect((sf(stalled, 'p1') as unknown as { targets: unknown }).targets).toEqual({ 'harbor.place': coast.slice().sort((a, b) => a - b) });
+    expect(act(stalled, 'p1', { type: 'harbor.place', edge: coast[0]!, harbor } as never).state.pending).toBeNull();
+  });
+
   it('港口之間必須隔一條邊：已有港口的邊與共用交叉點的鄰邊都不可放', () => {
     const state = ready();
     const { vertex, coast } = coastVertex(state);

@@ -2166,7 +2166,10 @@ function moduleHints(state: GameState, playerId: string): { modules?: Record<str
   const modules = modulesOf(state).filter((module) => module.actionHints);
   if (modules.length === 0) return {};
   const ctx = viewContext(state);
-  return { modules: Object.fromEntries(modules.map((module) => [module.id, module.actionHints!(state, playerId, ctx)])) };
+  // 模組提示看到的 frame 與 projection、基礎提示相同：停滯的基礎 frame 讓給下一個排隊的 frame。
+  const { pending, queue } = effectivePending(state);
+  const seen: GameState = pending === state.pending ? state : { ...state, pending, pendingQueue: [...queue] };
+  return { modules: Object.fromEntries(modules.map((module) => [module.id, module.actionHints!(seen, playerId, ctx)])) };
 }
 
 /** Command types the profile's rules modules handle, for protocol validation. */
