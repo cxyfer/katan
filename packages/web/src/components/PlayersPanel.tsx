@@ -8,7 +8,7 @@ import { playerColorHex, resourceLetter, seatDash } from '../board/terrain.ts';
 import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { epView } from '../board/explorersPirates.ts';
-import { shownCitiesKnights, shownExplorersPirates, shownTradersBarbarians, shownHandSize } from '../state/table.ts';
+import { shownCitiesKnights, shownExplorersPirates, shownSeafarers, shownTradersBarbarians, shownHandSize } from '../state/table.ts';
 import { clothPoints, harborRatio, islandBonusPoints, seafarersView } from '../board/seafarers.ts';
 import { activeStrength, citiesKnightsPoints, citiesKnightsView } from '../board/citiesKnights.ts';
 import { GameIcon } from './GameArt.tsx';
@@ -79,7 +79,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
 }) {
   const t = useT();
   const { state } = controller;
-  const view = shownCitiesKnights(state) ?? shownTradersBarbarians(state) ?? shownExplorersPirates(state) ?? state.game?.view;
+  const view = shownCitiesKnights(state) ?? shownTradersBarbarians(state) ?? shownExplorersPirates(state) ?? shownSeafarers(state) ?? state.game?.view;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const expanded = pinned || previewOpen;
