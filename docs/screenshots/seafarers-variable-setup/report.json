@@ -1,6 +1,6 @@
 {
   "scenario": "variable-setup",
-  "base": "http://127.0.0.1:3042",
+  "base": "http://127.0.0.1:3057",
   "cases": [
     {
       "name": "four-islands-3p-board-check",
@@ -209,6 +209,241 @@
       "status": "PASS",
       "note": "variable sf-through-the-desert-4",
       "sha256": "b628e236f1f6d295f2eaf461c027dab048159083a16bf6573ca257044800c56f",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "forgotten-tribe-3p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": true, \"redOnGold\": false, \"lowOnForestPasture\": true, \"sameAsFixed\": false, \"robberOnTwelve\": false, \"robberTerrain\": \"desert\", \"tribeRestrictedBad\": false, \"wondersRedBesideDesert\": false, \"twelveCount\": 1}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "forgotten-tribe-map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-forgotten-tribe",
+      "sha256": "9929f549fc91cf51f86ab133b51043e76932f10ef3cc8d92bbae209a85f21eac",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "forgotten-tribe-lobby-variable",
+      "status": "PASS",
+      "note": "lobby: forgotten-tribe, setup mode switched to variable and saved",
+      "sha256": "150a0d46c9435f0b1c427f099ee978da2beb316a5e5d2722ad336753dc8fcd79",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "forgotten-tribe-4p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": true, \"redOnGold\": false, \"lowOnForestPasture\": true, \"sameAsFixed\": false, \"robberOnTwelve\": false, \"robberTerrain\": \"desert\", \"tribeRestrictedBad\": false, \"wondersRedBesideDesert\": false, \"twelveCount\": 1}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "forgotten-tribe-map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-forgotten-tribe",
+      "sha256": "078a9c50a075ce7e39391d7d4d586587d3f46152ae0dd199b0db70b570c4b550",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "forgotten-tribe-map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "variable sf-forgotten-tribe",
+      "sha256": "c32693a2b1cf18a3ac4f7a668a8758cc3825a6b4d75b4c0b49aea418a22d5236",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "forgotten-tribe-map-4p-svg-phone",
+      "status": "PASS",
+      "note": "variable sf-forgotten-tribe",
+      "sha256": "e7aff3ce9f89e28bc0680edda61986cbbdb83f03356955fb6023ba62b1920668",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "cloth-for-catan-3p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": true, \"redOnGold\": false, \"lowOnForestPasture\": true, \"sameAsFixed\": false, \"robberOnTwelve\": true, \"robberTerrain\": \"fields\", \"tribeRestrictedBad\": false, \"wondersRedBesideDesert\": false, \"twelveCount\": 2}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "cloth-for-catan-robber-targets-3p-svg-desktop",
+      "status": "PASS",
+      "note": "svg: the two 12 hexes the starting player may put the robber on",
+      "sha256": "ed01bc428727f524fa59aa1b1d70e2493d9cdbf6e2a1a44cb07671976838d61c",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "cloth-for-catan-map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-cloth-for-catan",
+      "sha256": "61505e7c5d18be68ac20f070a44d8b824e30b263d5c7f4fac3c709d89aa3070a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "cloth-for-catan-lobby-variable",
+      "status": "PASS",
+      "note": "lobby: cloth-for-catan, setup mode switched to variable and saved",
+      "sha256": "a2f6a7dfa68c2de34d56456b0f39d331e5e4d8217e32d307e8f109c4c135ed04",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "cloth-for-catan-4p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": true, \"redOnGold\": false, \"lowOnForestPasture\": true, \"sameAsFixed\": false, \"robberOnTwelve\": true, \"robberTerrain\": \"pasture\", \"tribeRestrictedBad\": false, \"wondersRedBesideDesert\": false, \"twelveCount\": 2}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "cloth-for-catan-robber-targets-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "r3f: the two 12 hexes the starting player may put the robber on",
+      "sha256": "b1c40809343f9b849139bf3b85b3dfb003f07b93b1a34e2ae8fcd20d005ef202",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "cloth-for-catan-map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-cloth-for-catan",
+      "sha256": "52b515bddc420fe11d263d32442dfc600c22a294e0ebd60876c6d49663c250b1",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "cloth-for-catan-map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "variable sf-cloth-for-catan",
+      "sha256": "2991c31e2ad3f22b66dc7b96088132ad62c3e968d4653d7196aa77a6ab5d35d1",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "cloth-for-catan-map-4p-svg-phone",
+      "status": "PASS",
+      "note": "variable sf-cloth-for-catan",
+      "sha256": "73cd78440ad5dca883b44d19f266af3c436641e4973172f13224d0dfd785c054",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "wonders-of-catan-3p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": false, \"redOnGold\": true, \"lowOnForestPasture\": true, \"sameAsFixed\": false, \"robberOnTwelve\": false, \"robberTerrain\": \"desert\", \"tribeRestrictedBad\": false, \"wondersRedBesideDesert\": false, \"twelveCount\": 1}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "wonders-of-catan-map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-wonders-of-catan",
+      "sha256": "ddf3a89757da209a022f2cda641225d7eff30e1006ad40b28e0e06f330449271",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "wonders-of-catan-lobby-variable",
+      "status": "PASS",
+      "note": "lobby: wonders-of-catan, setup mode switched to variable and saved",
+      "sha256": "85659364626c8aed3364a0cc4b6bb53f7720a88f24a7c285ce05cd1689fe25ed",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "wonders-of-catan-4p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": true, \"redOnGold\": true, \"lowOnForestPasture\": true, \"sameAsFixed\": false, \"robberOnTwelve\": false, \"robberTerrain\": \"desert\", \"tribeRestrictedBad\": false, \"wondersRedBesideDesert\": false, \"twelveCount\": 1}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "wonders-of-catan-map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-wonders-of-catan",
+      "sha256": "549b81723c03df9db36222927a687707205343f41fbf63866f292735723918d4",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "wonders-of-catan-map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "variable sf-wonders-of-catan",
+      "sha256": "1b37297172e2d0900563e4d4eaa0b9f7daa01ff328ed3273c4645b47d31d93e7",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "wonders-of-catan-map-4p-svg-phone",
+      "status": "PASS",
+      "note": "variable sf-wonders-of-catan",
+      "sha256": "d02e25affacb60755668d48e2d18fc2f2fd928b62058dfa9ef57f7a3f4a82cb0",
       "viewport": {
         "width": 390,
         "height": 844
