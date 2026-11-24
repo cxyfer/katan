@@ -376,9 +376,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           <span>{t('sf.cloth.supply')}: {formatNumber(state.locale, cloth.supply)} · {t('sf.cloth.exhausted', { count: formatNumber(state.locale, empty) })}</span>
         </p>;
       })()}
-      {seafarersHints(view)?.pirateLine?.stuck && <p className="players__cloth" data-testid="line-stuck" hidden={!expanded}>
+      {seafarersHints(view)?.pirateLine?.stuck && <p className="players__cloth" data-testid="line-stuck" data-backtrack={seafarersHints(view)!.pirateLine!.backtrack ? 'true' : 'false'} hidden={!expanded}>
         <GameIcon name="ship" size={14} />
-        <span>{t('sf.pirate.stuck')}</span>
+        <span>{t(seafarersHints(view)!.pirateLine!.backtrack ? 'sf.pirate.stuck' : 'sf.pirate.stuckWait')}</span>
       </p>}
       <p className="players__obligation" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}
         title={action ? t(action.messageId, action.params) : t('app.loading')}>

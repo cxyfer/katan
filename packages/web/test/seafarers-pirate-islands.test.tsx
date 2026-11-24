@@ -183,6 +183,19 @@ describe('Pirate Islands boxed-in line', () => {
       expect(screen.getByTestId('line-stuck').textContent).toBe(translate(locale, 'sf.pirate.stuck'));
       cleanup();
     }
+    // 被圍住但此刻不能移（本回合已經移過船）：顯示說明，不說「可以移動」。
+    const waiting = boxedIn();
+    const flags = (waiting.moduleState as unknown as { seafarers: { moved: boolean; window: number } }).seafarers;
+    flags.moved = true;
+    flags.window = waiting.windowId;
+    const waitView = viewOf(waiting, 'p1');
+    expect(seafarersHints(waitView)!.pirateLine).toMatchObject({ stuck: true, backtrack: false });
+    for (const locale of ['en', 'zh-Hant'] as const) {
+      render(<LocaleProvider locale={locale}><PlayersPanel controller={controllerFor(waitView, locale)} /></LocaleProvider>);
+      expect(screen.getByTestId('line-stuck').textContent).toBe(translate(locale, 'sf.pirate.stuckWait'));
+      expect(screen.getByTestId('line-stuck').getAttribute('data-backtrack')).toBe('false');
+      cleanup();
+    }
     expect(translate('en', 'sf.pirate.stuck')).toContain('boxed in');
     expect(translate('zh-Hant', 'sf.pirate.stuck')).toContain('被圍住');
     render(<LocaleProvider locale="en"><PlayersPanel controller={controllerFor(viewOf(pirateState(4), 'p1'), 'en')} /></LocaleProvider>);
@@ -230,9 +243,9 @@ describe('Pirate Islands player panel and messages', () => {
     expect(screen.queryByTestId('players-route-0')).toBeNull();
     cleanup();
     panel('zh-Hant');
-    expect(screen.getByTestId('players-fortress-0').getAttribute('aria-label')).toBe('海盜堡壘（剩餘 pirate lair）: ×3');
-    expect(screen.getByTestId('players-fortress-1').getAttribute('aria-label')).toBe('海盜堡壘（剩餘 pirate lair）: 已收復');
-    expect(screen.getByTestId('players-ship-line-0').getAttribute('aria-label')).toContain('下一站：beachhead');
+    expect(screen.getByTestId('players-fortress-0').getAttribute('aria-label')).toBe('海盜堡壘（剩餘海盜巢穴標記）: ×3');
+    expect(screen.getByTestId('players-fortress-1').getAttribute('aria-label')).toBe('海盜堡壘（剩餘海盜巢穴標記）: 已收復');
+    expect(screen.getByTestId('players-ship-line-0').getAttribute('aria-label')).toContain('下一站：補給站');
     cleanup();
   });
 
