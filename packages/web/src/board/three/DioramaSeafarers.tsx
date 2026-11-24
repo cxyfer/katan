@@ -134,7 +134,7 @@ function Tribes({ cloth, geometry, material, players }: Pick<Props, 'geometry' |
       instances={cloth.tribes.flatMap((tribe, index) => {
         const spot = spots[index];
         return spot && Math.min(5, tribe.cloth) === count
-          ? [{ position: [spot.x + spot.outX * 0.38, SEA_LEVEL + 0.01, spot.z + spot.outZ * 0.38] as [number, number, number], rotationY: Math.atan2(-spot.outZ, spot.outX), scale: [1.25, 1.25, 1.25] as [number, number, number] }]
+          ? [{ position: [spot.x + spot.outX * 0.42, SEA_LEVEL + 0.01, spot.z + spot.outZ * 0.42] as [number, number, number], rotationY: Math.atan2(-spot.outZ, spot.outX), scale: [1.7, 1.7, 1.7] as [number, number, number] }]
           : [];
       })} />)}
     {players.map((player) => {
@@ -144,7 +144,7 @@ function Tribes({ cloth, geometry, material, players }: Pick<Props, 'geometry' |
         if (!spot || !linked.includes(index)) return [];
         const slot = players.filter((candidate) => (cloth.links[candidate.id] ?? []).includes(index)).findIndex((candidate) => candidate.id === player.id);
         const side = (slot - 1) * 0.16;
-        return [{ position: [spot.x - spot.outZ * side - spot.outX * 0.28, SEA_LEVEL + 0.01, spot.z + spot.outX * side - spot.outZ * 0.28] as [number, number, number], rotationY: 0, scale: [1.3, 1.3, 1.3] as [number, number, number] }];
+        return [{ position: [spot.x - spot.outZ * side - spot.outX * 0.28, SEA_LEVEL + 0.01, spot.z + spot.outX * side - spot.outZ * 0.28] as [number, number, number], rotationY: 0, scale: [1.7, 1.7, 1.7] as [number, number, number] }];
       });
       return pins.length ? <LinkPins key={player.id} color={playerColorHex(player.color)} instances={pins} material={material} /> : null;
     })}
