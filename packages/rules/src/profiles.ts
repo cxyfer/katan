@@ -145,6 +145,11 @@ export interface ProfileDefinition {
    * （只有建造觸發，spec §6.3、OQ-2）；日後取得官方釐清可切換而不動其他規則。
    */
   fogOnMove?: boolean;
+  /**
+   * 海盜巢穴：西島船線的端點到目標在目前空著的海邊上完全不連通（被其他海路擋死）時，放寬成往任何合法方向
+   * 延伸，讓遊戲不會卡死。這是偏離 SF25 的防卡死處理（spec §6.6、OQ-3），S7a 的模擬證明它會發生。
+   */
+  shortestPathFallback?: boolean;
   variants: readonly VariantId[];
   /** Rules modules the engine runs for this profile, in hook order. */
   ruleModules: readonly string[];
@@ -356,8 +361,14 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
     implemented: true,
     enabled: true,
   }),
-  // 真正條件是「收復自己的堡壘且 10 分」，複合條件在 S7 實作；此處只放分數部分。
-  seafarersScenarioProfile('sf-pirate-islands-2025', 'pirate-islands', 10, 'pp. 16–17'),
+  // 真正條件是「收復自己的堡壘且 10 分」，複合條件在 S7c 實作；此處只放分數部分。
+  // S7a：版圖、預置、堡壘、西島船線已實作（`implemented`），但海盜、戰船與進攻還沒有，所以不啟用（S7c 才開）。
+  // 3、4 人共用同一張 49 格圖；無島嶼獎勵；規則內關閉最長道路、最大軍隊與強盜。
+  seafarersScenarioProfile('sf-pirate-islands-2025', 'pirate-islands', 10, 'pp. 16–17', {
+    topologyId: 'sf-pirate-islands',
+    shortestPathFallback: true,
+    implemented: true,
+  }),
   // 結束條件是「完成奇觀，或 10 分且完成層數比其他每位玩家都高」（`winCause`）；`victoryTarget` 是其中的 10 分。
   // 小島獎勵每座 1 分；3 人與 4 人共用同一張 49 格圖；海盜在規則內關閉（`hasPirate` 欄位仍是 true，見 §7.1）。
   seafarersScenarioProfile('sf-wonders-of-catan-2025', 'wonders-of-catan', 10, 'pp. 18–19', {

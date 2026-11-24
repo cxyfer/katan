@@ -185,7 +185,7 @@ describe('ruleset registry', () => {
       ['sf-cloth-for-catan-2025', 'cloth-for-catan', 14], ['sf-pirate-islands-2025', 'pirate-islands', 10],
       ['sf-wonders-of-catan-2025', 'wonders-of-catan', 10], ['sf-new-world-2025', 'new-world', 12],
     ] as const;
-    // 已啟用的切片：S2–S6、S8 與 S9（版圖與規則證據齊全）。
+    // 已啟用的切片：S2–S6、S8 與 S9（版圖與規則證據齊全）；S7 的 S7a 已實作但未啟用（S7c 才開）。
     const live = new Set<string>(['sf-four-islands-2025', 'sf-fog-islands-2025', 'sf-through-the-desert-2025', 'sf-forgotten-tribe-2025', 'sf-cloth-for-catan-2025', 'sf-wonders-of-catan-2025', 'sf-new-world-2025']);
     for (const [id, scenario, target] of ids) {
       const profile = getProfile(id)!;
@@ -193,7 +193,7 @@ describe('ruleset registry', () => {
       expect(profile, id).toMatchObject({
         scenario, victoryTarget: target, playerCounts: [3, 4], ruleVersion: 'sf-2025.3',
         expansions: ['seafarers'], requiredBoxes: ['base', 'seafarers'],
-        implemented: open, enabled: open, hasPirate: true, longestRouteIncludesShips: true,
+        implemented: open || id === 'sf-pirate-islands-2025', enabled: open, hasPirate: true, longestRouteIncludesShips: true,
       });
       expect(profile.pieces.ships).toBe(15);
       // S10a：四島群島、未知海域、穿越荒漠；S10b：世外部落、布匹產地、卡坦奇觀另有 variable setup（SF25 pp. 7、9、11、13、15、18）。
