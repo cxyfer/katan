@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { isLandHex, scoreOf } from '../src/analysis.ts';
+import { isLandEdge, isLandVertex, isSeaEdge, neighborsOfVertex, scoreOf, topologyOf } from '../src/analysis.ts';
 import { buildProfileLayout } from '../src/layout-registry.ts';
 import { getProfile, resolveCombination } from '../src/profiles.ts';
 import { seededRng } from '../src/rng.ts';
@@ -14,7 +14,7 @@ import { FOUR_ISLANDS_SOURCE, THROUGH_THE_DESERT_SOURCE } from '../src/seafarers
 import { DESERT_MAX_ATTEMPTS, variableDesertBoard } from '../src/seafarers-variable-boards.ts';
 import { getTopology } from '../src/topology-registry.ts';
 import { NEIGHBOR_DIRS } from '../src/topology.ts';
-import type { BoardLayout } from '../src/types.ts';
+import { RESOURCES, type BoardLayout, type GameState } from '../src/types.ts';
 import { simulateSeafarers } from './seafarers-sim.ts';
 
 const SEEDS = 1000;
@@ -164,7 +164,7 @@ describe('S3 未知海域 variable 約束（SF25 p. 9）', () => {
 
 describe('S4 穿越荒漠 variable 約束（SF25 p. 11）', () => {
   for (const players of PLAYERS) {
-    it(`${players} 人：沙漠固定；紅色圓片不相鄰、不在金礦；主島與外地的配件分區數量不變；島編號`, () => {
+    it(`${players} 人：沙漠、海洋與四個外地區固定；紅色圓片不相鄰、不在金礦；主島與外地的配件分區數量不變`, () => {
       const fixed = layoutOf('through-the-desert', players, 'fixed', 1);
       const fixedLand = landOf(fixed);
       const fixedMain = fixedLand.filter((hex) => hex.island === 1);
@@ -189,21 +189,18 @@ describe('S4 穿越荒漠 variable 約束（SF25 p. 11）', () => {
         expect(sorted(main.map((hex) => hex.number))).toEqual(sorted(fixedMain.map((hex) => hex.number)));
         expect(sorted(unexplored.map((hex) => hex.terrain))).toEqual(sorted(fixedUnexplored.map((hex) => hex.terrain)));
         expect(sorted(unexplored.map((hex) => hex.number))).toEqual(sorted(fixedUnexplored.map((hex) => hex.number)));
-        // 外地的島編號 ≥ 2，同一座島內互相連通（相鄰的外地格同編號），不同編號的外地格不相鄰。
-        for (const hex of unexplored) {
-          expect(hex.island).toBeGreaterThanOrEqual(2);
-          for (const other of near[hex.index]!) {
-            const otherIsland = layout.islands[other]!;
-            if (layout.terrain[other] !== 'sea' && otherIsland !== 1) expect(otherIsland).toBe(hex.island);
-          }
-        }
-        // 港口正對的格子不是陸地（港口面向海）。
+        // 外地仍是印刷圖的四個外地區：格位與島編號（2–5）不變、海洋格不變。
+        expect(layout.islands).toEqual(fixed.islands);
+        expect(layout.terrain.map((t) => t === 'sea')).toEqual(fixed.terrain.map((t) => t === 'sea'));
+        expect(new Set(unexplored.map((hex) => hex.island))).toEqual(new Set([2, 3, 4, 5]));
+        // 主島港口交叉點不碰外地陸地（外地不會與主島港口相連）。
         const topology = getTopology(layout.topologyId);
-        const ports = THROUGH_THE_DESERT_SOURCE[players].ports;
-        for (const port of ports) {
-          const dir = NEIGHBOR_DIRS[port.side]!;
-          const target = topology.hexes.findIndex((cell) => cell.q === port.q + dir.q && cell.r === port.r + dir.r);
-          if (target >= 0) expect(layout.terrain[target]).toBe('sea');
+        for (const harbor of layout.harbors) {
+          for (const vertex of topology.edges[harbor.edge]!.vertices) {
+            for (const hex of topology.vertices[vertex]!.hexes) {
+              if (layout.terrain[hex] !== 'sea') expect(layout.islands[hex]).toBe(1);
+            }
+          }
         }
         // 設置用的起始位置仍存在：主島有可用的內陸交叉點。
         expect(land.some((hex) => hex.island === 1 && hex.terrain !== 'desert')).toBe(true);
@@ -219,22 +216,42 @@ describe('S4 穿越荒漠 variable 約束（SF25 p. 11）', () => {
         expect(fixed.terrain[hex]).not.toBe('gold');
         for (const other of near[hex]!) expect(isRed(fixed.numbers[other]!)).toBe(false);
       });
-      const topology = getTopology(fixed.topologyId);
       let max = 0;
       let total = 0;
       for (let seed = 1; seed <= SEEDS; seed++) {
-        const board = variableDesertBoard(topology.hexes, source.land, source.ports, seededRng(seed));
+        const board = variableDesertBoard(source.land, source.ports, seededRng(seed));
         expect(board.fellBack).toBe(false);
         max = Math.max(max, board.attempts);
         total += board.attempts;
       }
-      // 實測 3 人最大 2、4 人最大 1（平均約 1.00）；留餘裕但遠低於上限。
+      // 實測 3 人最大 3、4 人最大 1（平均約 1.01、1.00）；留餘裕但遠低於上限。
       expect(max).toBeLessThanOrEqual(5);
       expect(total / SEEDS).toBeLessThan(1.5);
       expect(max).toBeLessThan(DESERT_MAX_ATTEMPTS);
     }, 120_000);
   }
 });
+
+/** 棋盤合法性（同 `seafarers-sim.test.ts` 的 `checkBoard`）：建築在陸地且不相鄰、路與船在對的邊、棋子數不超過、強盜在陸地。 */
+function checkBoard(state: GameState): void {
+  const topo = topologyOf(state);
+  const profile = getProfile(state.profileId)!;
+  state.board.buildings.forEach((building, vertex) => {
+    if (!building) return;
+    expect(isLandVertex(state, vertex)).toBe(true);
+    for (const neighbor of neighborsOfVertex(topo, vertex)) expect(state.board.buildings[neighbor]).toBeNull();
+  });
+  state.board.roads.forEach((road, edge) => {
+    if (!road) return;
+    expect(road.ship ? isSeaEdge(state, edge) : isLandEdge(state, edge)).toBe(true);
+  });
+  for (const player of state.players) {
+    expect(state.board.roads.filter((road) => road?.ship && road.player === player.id).length).toBeLessThanOrEqual(profile.pieces.ships);
+    expect(state.board.roads.filter((road) => road && !road.ship && road.player === player.id).length).toBeLessThanOrEqual(profile.pieces.roads);
+  }
+  if (state.board.pirate !== null) expect(state.board.layout.terrain[state.board.pirate]).toBe('sea');
+  expect(state.board.layout.terrain[state.board.robber]).not.toBe('sea');
+}
 
 describe('variable 整局模擬到有贏家', () => {
   const TARGET = { 'four-islands': 13, 'fog-islands': 12, 'through-the-desert': 14 } as const;
@@ -247,10 +264,14 @@ describe('variable 整局模擬到有贏家', () => {
         expect(state.board.layout.numbers).not.toEqual(layoutOf(scenario, players, 'fixed', 1).numbers);
         expect(state.result?.reason).toBe('victory');
         expect(scoreOf(state, state.result!.playerId!, { includeHidden: true })).toBeGreaterThanOrEqual(TARGET[scenario]);
-        expect(state.board.layout.terrain.some((_t, hex) => isLandHex(state, hex))).toBe(true);
-        for (const player of state.players) {
-          expect(state.board.roads.filter((road) => road?.ship && road.player === player.id).length).toBeLessThanOrEqual(15);
+        // 供應守恆：每種資源 bank + 玩家手牌 = bankPerResource；船不超過 15；棋盤合法。
+        const bank = getProfile(state.profileId)!.bankPerResource;
+        for (const resource of RESOURCES) {
+          const total = state.bank[resource] + state.players.reduce((sum, player) => sum + player.resources[resource], 0);
+          expect(total, resource).toBe(bank);
         }
+        expect(getProfile(state.profileId)!.pieces.ships).toBe(15);
+        checkBoard(state);
         if (scenario === 'fog-islands') expect(run.fogReveals).toBeGreaterThan(0);
       }, 120_000);
     }

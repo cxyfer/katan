@@ -50,8 +50,8 @@ transcription; the cell counts are the same as in the S2/S3/S4 records).
 | S2 | 4 | 4 / 8 / 7 / 4 = 23 land | terrain, discs | land: fields 5, hills 4, mountains 4, pasture 5, forest 5; discs 23; ports 9 |
 | S3 | 3 | known islands 2 / 3 = 7 / 7 = 14 land (+ 12 empty spaces) | known terrain, known discs | known: hills 2, fields 2, mountains 2, pasture 4, forest 4 (30 hexes with 16 sea); discs 14; ports 5 + 3 |
 | S3 | 4 | known islands 2 / 3 = 10 / 7 = 17 land (+ 12 empty spaces) | known terrain, known discs | known: hills 3, fields 3, mountains 3, pasture 4, forest 4 (30 hexes with 13 sea); discs 17; ports 5 + 4 |
-| S4 | 3 | main area 17 cells (14 land + 3 fixed desert); unexplored 8 land, placed in the remaining cells | main: terrain, discs, port types; unexplored: positions, terrain, discs | main: forest 4, hills 3, pasture 3, mountains 2, fields 2; discs 14. Unexplored: gold 2, fields 2, mountains 2, forest 1, pasture 1; discs 8 |
-| S4 | 4 | main area 20 cells (17 land + 3 desert); unexplored 10 land | same | main: forest 5, hills 4, pasture 4, mountains 2, fields 2; discs 17. Unexplored: gold 2, mountains 3, fields 3, hills 1, pasture 1; discs 10 |
+| S4 | 3 | main area 17 cells (14 land + 3 fixed desert); four unexplored regions 3 / 2 / 1 / 2 = 8 land (islands 2–5, printed cells) | main: terrain, discs, port types; unexplored: terrain, discs (cells fixed) | main: forest 4, hills 3, pasture 3, mountains 2, fields 2; discs 14. Unexplored: gold 2, fields 2, mountains 2, forest 1, pasture 1; discs 8 |
+| S4 | 4 | main area 20 cells (17 land + 3 desert); four unexplored regions 3 / 3 / 2 / 2 = 10 land (islands 2–5, printed cells) | same | main: forest 5, hills 4, pasture 4, mountains 2, fields 2; discs 17. Unexplored: gold 2, mountains 3, fields 3, hills 1, pasture 1; discs 10 |
 
 Fog (S3) unchanged: the 12 empty spaces stay numberless sea in the layout; the
 facedown deck and its discs are still built by `initialFog` from the same map
@@ -78,35 +78,18 @@ applied: SF25 states it only for S4 (see interpretation V2).
 the 12 disc. Port locations are the printed ones, only the port types are
 shuffled.
 
-**S4 (p. 11).** Deserts keep their positions (robber stays on desert (0,-2) as on
-the fixed map). The main-island land (non-desert cells of the main area) takes
-the main terrain and discs; the unexplored land takes its own terrain and discs
-and is placed on a random subset of the "remaining spaces" (frame cells that are
-not in the main area and not the sea cell in front of a port). Constraints: no
-two red discs (6, 8) on adjacent hexes (across the whole board, main and
-unexplored, desert has no disc), and no red disc on gold (gold only exists in
-the unexplored set). Algorithm: per attempt, draw the unexplored cells, shuffle
-both terrain sets, pick the red-disc cells with a randomized greedy
-independent-set pick (main reds first, then unexplored reds on non-gold cells,
-each skipping cells adjacent to an already chosen red), deal the black discs
-over the remaining cells; if either pick comes up short, retry the whole
-attempt. **Bounded**: at most `DESERT_MAX_ATTEMPTS` = 1,000 attempts; after
-that it falls back to the printed fixed arrangement (which itself satisfies
-both constraints, checked by the test), so it always terminates with a valid
-board. Measured over seeds 1–1,000: 3 players max 2 attempts (mean 1.01), 4
-players max 1 attempt (mean 1.00); the fallback was never used (asserted).
-Candidate room: 3 players 13 cells for 8 unexplored hexes, 4 players 15 for 10.
+**S4 (p. 11).** p. 11 orders the steps: deserts as shown; main-island land, discs and ports into the main area; then the sea hexes into the frame; then the unexplored hexes and discs into the **remaining spaces**. After the sea is placed, the remaining spaces are exactly the printed unexplored-region cells, so the sea cells, the four unexplored regions (island ids 2–5) and the main area keep their printed positions; only terrain and discs are re-dealt (main set over the main non-desert cells, unexplored set over the unexplored cells, pooled over the four regions). Deserts and the robber (desert (0,-2)) stay. Constraints: no two red discs (6, 8) on adjacent hexes (whole board, across main and unexplored; desert has no disc), and no red disc on gold (gold only exists in the unexplored set). Algorithm: per attempt shuffle both terrain sets, pick the red-disc cells with a randomized greedy independent-set pick (main reds first, then unexplored reds on non-gold cells, each skipping cells adjacent to an already chosen red), deal the black discs over the remaining cells; if either pick comes up short, retry. **Bounded**: at most `DESERT_MAX_ATTEMPTS` = 1,000 attempts, then it falls back to the printed arrangement (which itself satisfies both constraints, checked by the test), so it always terminates with a valid board. Measured over seeds 1–1,000: 3 players max 3 attempts (mean 1.01), 4 players max 1 (mean 1.00); the fallback was never used (asserted). Because island ids and cells do not change, the engine's setup exclusion, the per-region +2 bonus and the harbor corners behave exactly as on the printed map (tests: layout islands equal fixed; no harbor corner touches unexplored land).
 
 ## Interpretation table (V = variable-setup interpretations)
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| V1 | S2 and S3 ports: positions fixed? | Positions fixed, only the port types are shuffled (5×2:1 + 4×3:1 / 5 or 4 3:1 as in the tables) | S2: "place them on the port locations shown on the map"; S3: "Port locations must remain as shown". Also keeps the topology's harbor slots (edges) valid |
+| V1 | S2 and S3 ports: positions fixed? (confirmed by the coordinator) | Positions fixed, only the port types are shuffled (5×2:1 + 4×3:1 / 5 or 4 3:1 as in the tables) | S2: "place them on the port locations shown on the map"; S3: "Port locations must remain as shown". Also keeps the topology's harbor slots (edges) valid |
 | V2 | S2 red-disc adjacency? | Not constrained | p. 7 only restricts low discs on forest and pasture; adding a red-disc rule would invent a constraint |
-| V3 | S4: "main island ... ports ... randomly in the area shown" | The main-island area is the printed main land cells; harbor positions stay at the printed edges and the port types are shuffled | The page says "ports" are gathered with the main island but gives no separate port-area shape; fixed slots stay on main-island coast, which is the printed area. Free port positions would need an edge rule not given in the scenario |
-| V4 | S4: where may unexplored land go? | Any frame cell outside the main area, except the sea cell directly in front of a port (so no port faces land) | "the remaining spaces within the frame"; the exclusion is ours, 13 / 15 candidate cells remain |
-| V5 | S4: island numbers for the new board | Main island (with the three deserts) is island 1; unexplored land is grouped by adjacency among unexplored hexes only, numbered from 2 in cell order. An unexplored hex that touches the main island still counts as a different island | Same as the printed map, where the land strip (island 2) touches the desert; so the setup exclusion (only corners whose land hexes are all main) and the +2 bonus per player per unexplored region keep working with no engine change |
-| V6 | S4 VP tokens (3 players 24, 4 players 32) | The engine does not track a token supply (bonus is per player and island). A random board can have up to 8 (3 players) or 10 (4 players) unexplored islands, so in theory 4 × 10 > 32 claims; not enforced | Reaching it needs every player to settle every single-hex island before anyone wins at 14 VP; open point |
+| V3 | S4: "main island ... ports ... randomly in the area shown" | The main-island area is the printed main land cells; harbor positions stay at the printed edges and only the port types are shuffled | The page gives no separate port-area shape; free port positions would need an edge rule the scenario does not give |
+| V4 | S4: where do the unexplored hexes go? | Into the printed unexplored-region cells (islands 2–5), in the order p. 11 gives: main island, then sea into the frame, then unexplored hexes into the remaining spaces. Cells and island ids are unchanged; only terrain and discs are dealt (pooled over the four regions) | "remaining spaces" after the sea is placed are exactly those cells. An earlier draft scattered the land over any free cell; the review showed that merges unexplored land with the main island, takes harbor corners away and breaks the four-region bonus, so it was dropped (no port-facing exclusion and no re-numbering code remain) |
+| V5 | S4: island numbers | Unchanged from the printed map: main island with the three deserts is 1, unexplored regions 2–5 | Setup exclusion and +2 per player per region need no engine change |
+| V6 | VP tokens | The engine does not track a token supply and no cap is added (coordinator decision). With the four fixed unexplored regions the claims cannot exceed 4 per player, so the 24 / 32 tokens are never exceeded | |
 | V7 | S3: is the fog deck affected? | No: unknown hexes and discs, deck, reveal and privacy are as fixed | p. 9 only randomizes the faceup hexes |
 | V8 | Robber/pirate | S2, S3: robber on the 12 disc, pirate on the frame (`pirate: null`) as printed; S4: robber on desert (0,-2), pirate on the frame | p. 7/9/11 |
 | V9 | Lobby | The host switches the setup mode in the room settings (`lobby-setup`); no UI code change: the select is driven by `profile.setupModes` | Existing New Shores / base flow |
@@ -115,7 +98,7 @@ Candidate room: 3 players 13 cells for 8 unexplored hexes, 4 players 15 for 10.
 
 | What | Where |
 |---|---|
-| 1,000 seeds × scenario × 3/4 players: counts (terrain, discs, port types), port edges unchanged, robber, determinism, S2 forest/pasture limit and island areas, S3 areas and fog count, S4 constraints / main area / islands / port-facing cells, termination and attempt statistics, `fixed` byte-identical and rng untouched, `setupModes`, whole simulated games in variable mode (6 runs) | `packages/rules/test/seafarers-variable-setup.test.ts` |
+| 1,000 seeds × scenario × 3/4 players: counts (terrain, discs, port types), port edges unchanged, robber, determinism, S2 forest/pasture limit and island areas, S3 areas and fog count, S4 constraints, main area, fixed unexplored regions and islands, no harbor corner touching unexplored land, termination and attempt statistics, `fixed` byte-identical and rng untouched, `setupModes`, whole simulated games in variable mode (6 runs) | `packages/rules/test/seafarers-variable-setup.test.ts` |
 | Variable room by ruleset parts, start, constraints on the persisted layout, S4 setup over the API and snapshot restore after a restart | `packages/server/test/seafarers-variable-setup.test.ts` |
 | Lobby switch to variable (3 scenarios), SVG rendering of variable boards (6 combos) | `packages/web/test/seafarers-variable-setup.test.tsx` |
 | Browser run (lobby, SVG and 3D boards, phone) | `scripts/seafarers/capture_variable_setup.py`, `variable_fixture.mjs`; screenshots in `docs/screenshots/seafarers-variable-setup/` with `report.json` (sha256) |

@@ -26,6 +26,7 @@ for each of the three scenarios and 3 / 4 players:
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 
@@ -44,6 +45,10 @@ SCENARIOS = [
     ('fog-islands', 'sf-fog-islands-2025'),
     ('through-the-desert', 'sf-through-the-desert-2025'),
 ]
+# SF_SCENARIOS=through-the-desert,... 可只重拍部分劇本（預設全部）。
+_ONLY = [name for name in os.environ.get('SF_SCENARIOS', '').split(',') if name]
+if _ONLY:
+    SCENARIOS = [item for item in SCENARIOS if item[0] in _ONLY]
 CURATED = {
     f'{scenario}-{name}'
     for scenario, _ in SCENARIOS

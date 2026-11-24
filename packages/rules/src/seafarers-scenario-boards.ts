@@ -170,8 +170,8 @@ export function throughTheDesertLayout(context: LayoutContext, topologyFor: (id:
   const [land, ports] = context.playerCount === 3 ? [TD3_LAND, TD3_PORTS] : [TD4_LAND, TD4_PORTS];
   // 強盜在沙漠 (0,-2)；海盜在框上（`pirate: null`）。
   if (context.mode === 'variable') {
-    // SF25 p. 11 variable setup：沙漠固定，主島與外地隨機，紅色圓片不相鄰、不在金礦上。
-    const board = variableDesertBoard(topology.hexes, land, ports, context.rng);
+    // SF25 p. 11 variable setup：沙漠、海洋與四個外地區的格位固定，主島與外地各自洗牌，紅色圓片不相鄰、不在金礦上。
+    const board = variableDesertBoard(land, ports, context.rng);
     return fixedLayout(topology, board.land, board.ports, { q: 0, r: -2 });
   }
   return fixedLayout(topology, land, ports, { q: 0, r: -2 });
