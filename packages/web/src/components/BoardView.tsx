@@ -185,18 +185,23 @@ export function BoardView({ controller }: { controller: TableController }) {
   const setup = view.turn.setup;
   const setupActor = setup ? view.players.find((player) => player.seat === setup.seat) : undefined;
   const epStep = epView(view)?.setupStep ?? null;
-  const setupPiece = epStep ? t(`ep.setup.${epStep}`) : setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
+  const setupPiece = epStep ? t(`ep.setup.${epStep}`) : setup?.stage === 'harbor' ? t('sf.world.harbor') : setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
+  const world = seafarersView(view)?.world ?? null;
   const setupMine = setupActor?.id === selfId;
   const selection = intent && state.connection === 'online' && selfId && state.selection.kind === intent.kind && state.selection.index !== null && intent.targets.includes(state.selection.index)
     ? { kind: intent.kind, index: state.selection.index, playerId: selfId, params: state.selection.params } : null;
   const setupGuide = setup && (
     <section className={`board__setup-guide${setupMine ? ' board__setup-guide--mine' : ''}`} data-testid="setup-guide" aria-live="polite">
       <div className="board__setup-title">
-        <GameIcon name={setup.stage === 'building' ? 'home' : 'flag'} size={20} />
+        <GameIcon name={setup.stage === 'harbor' ? 'anchor' : setup.stage === 'building' ? 'home' : 'flag'} size={20} />
         <strong>{setupMine ? t('board.setupPlace', { piece: setupPiece }) : t('board.setupWaiting', { player: setupActor ? nameResolver(setupActor.id) : '—', piece: setupPiece })}</strong>
       </div>
-      <span>{t('board.setupGuide', { round: setup.third ? 3 : setup.round })}</span>
-      <span>{t('board.setupProgress', { remaining: setup.remaining })}</span>
+      {setup.stage === 'harbor' && world
+        ? <span data-testid="setup-harbor-progress">{t('sf.world.progress', { placed: Math.min(world.placed + 1, world.total), total: world.total })}</span>
+        : <>
+          <span>{t('board.setupGuide', { round: setup.third ? 3 : setup.round })}</span>
+          <span>{t('board.setupProgress', { remaining: setup.remaining })}</span>
+        </>}
       {setupMine && <p>{t('board.setupPickTarget')}</p>}
     </section>
   );

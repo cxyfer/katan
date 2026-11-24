@@ -59,7 +59,7 @@ function startHarbors(state: GameState, world: WorldState, ctx: ModuleContext): 
   const setup = state.turn.setup!;
   setup.stage = 'harbor';
   state.turn.seat = setup.order[0]!;
-  ctx.kit.emit(state, 'world.harborDrawn', { playerId: state.players[state.turn.seat]!.id, harbor: world.drawn });
+  ctx.kit.emit(state, 'world.harborDrawn', { playerId: state.players[state.turn.seat]!.id, harbor: world.drawn, number: world.placed + 1 });
 }
 
 /** 開局：建立狀態並進入港口階段。 */
@@ -83,7 +83,7 @@ function advance(state: GameState, world: WorldState, ctx: ModuleContext): void 
   }
   draw(world, ctx.rng);
   state.turn.seat = state.players[world.placed % state.players.length]!.seat;
-  ctx.kit.emit(state, 'world.harborDrawn', { playerId: state.players[state.turn.seat]!.id, harbor: world.drawn });
+  ctx.kit.emit(state, 'world.harborDrawn', { playerId: state.players[state.turn.seat]!.id, harbor: world.drawn, number: world.placed + 1 });
 }
 
 /** `world.harbor { edge }` — 把目前抽到的港口放到合法的邊。 */

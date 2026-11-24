@@ -320,6 +320,10 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       // 與伺服器相同：回應是提案結果，不是 RoomView。
       return suspendResult ?? ok(body ? { suspended: false } : { proposalId: 'sus1', suspended: false });
     },
+    async regenerateGame(gameId: string, body?: { proposalId: string; approve: boolean }) {
+      record('regenerateGame', gameId, body);
+      return ok(body ? { regenerated: false } : { proposalId: 'regen1', regenerated: false });
+    },
     async abandonGame(gameId: string, body?: { proposalId: string; approve: boolean }) {
       record('abandonGame', gameId, body);
       return abandonResult ?? ok(body ? { abandoned: false } : { proposalId: 'ab1', abandoned: false });

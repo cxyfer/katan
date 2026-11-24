@@ -7,6 +7,7 @@ import { banditTargets, seafarersCitiesKnightsHints } from '../board/seafarersCi
 import { blocksNewCommands } from '../state/commands.ts';
 import { followUpsHeld, shownBank } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
+import { NewWorldPrompt } from './NewWorldPrompt.tsx';
 import { ResourceIcon } from './GameArt.tsx';
 import '../styles/seafarers.css';
 
@@ -47,6 +48,7 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
   const roadsOpen = (view.hints?.legalRoads.length ?? 0) > 0;
 
   return <>
+    <NewWorldPrompt controller={controller} />
     {pending?.kind === 'seafarers.gold' && sea.goldRequired > 0 && (
       <GoldPicker key={`${view.seq}`} count={sea.goldRequired} bank={sea.goldBank ?? shownBank(state) ?? view.bank} disabled={blocked}
         onSubmit={(resources) => void actions.submitCommand({ type: 'gold.choose', resources }, 'play.pending.seafarers.gold')} />

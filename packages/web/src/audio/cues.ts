@@ -158,6 +158,11 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
     case 'island.bonus':
     case 'tribe.gift':
       return 'island.bonus';
+    // 新世界：港口放下與版圖重新產生（重新產生沿用迷霧散去的音效）。
+    case 'world.harborPlaced':
+      return 'ship.build';
+    case 'world.regenerated':
+      return 'explore.reveal';
     // 未知海域翻開一格：與 E&P 探索同一個迷霧散去的音效。
     case 'fog.revealed':
       return 'explore.reveal';

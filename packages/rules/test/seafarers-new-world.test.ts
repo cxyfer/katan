@@ -465,7 +465,7 @@ describe('SFX-S9 隱私', () => {
     // 事件裡只有抽到的那一個。
     const draws = state.log.filter((event) => event.type === 'world.harborDrawn');
     expect(draws).toHaveLength(1);
-    expect(draws[0]!.params).toEqual({ playerId: 'p1', harbor: drawn });
+    expect(draws[0]!.params).toEqual({ playerId: 'p1', harbor: drawn, number: 1 });
     expect(projectEvent(draws[0]!, 'p3')).toEqual(expect.objectContaining({ type: 'world.harborDrawn' }));
     // 放下之前，下一個港口尚未抽出：狀態裡 drawn 是 null 後才抽下一個，從事件序列看不到未來。
     const next = placeHarbor(state, sf(state, 'p1').harborChoices.edges[0]!);

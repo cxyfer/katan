@@ -250,7 +250,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           const sea = seafarersView(view);
           const ships = view.board.roads.filter((road) => road?.ship && road.player === player.id).length;
           const wording = islandWording(getProfile(view.profileId)?.scenario);
-          const islandPoints = sea ? islandBonusPoints(view, player.id) : 0;
+          const islandPoints = sea ? islandBonusPoints(view, player.id, getProfile(view.profileId)?.islandBonus?.points) : 0;
           const routeAward = t(sea ? 'sf.award.longestTradeRoute' : 'play.award.longestRoad');
           // Explorers & Pirates: gold, ships, harbour settlements and mission points (no development cards or awards).
           const ep = epView(view);

@@ -17,6 +17,7 @@ import { PolicyProposalPanel } from './PolicyProposalPanel.tsx';
 import { RotatePrompt } from './RotatePrompt.tsx';
 import { SelectionPreview } from './SelectionPreview.tsx';
 import { StatusStrip } from './StatusStrip.tsx';
+import { RegeneratePanel } from './NewWorldPrompt.tsx';
 import { SuspendPanel } from './SuspendPanel.tsx';
 import { useFullscreen } from './useFullscreen.ts';
 import { COMPACT_LANDSCAPE_QUERY, useIsMobile } from './useIsMobile.ts';
@@ -93,6 +94,7 @@ export function GameScreen({ controller }: { controller: TableController }) {
               <button type="button" className="button" data-testid="resume-ready" onClick={() => void controller.actions.resumeTable(true)}>{t('play.resumeReady')}</button>
             </div>}
             <SuspendPanel controller={controller} />
+            <RegeneratePanel controller={controller} />
             {state.command?.status !== 'accepted' && <CommandStatus controller={controller} />}
             <PolicyProposalPanel controller={controller} />
             <AbandonPanel controller={controller} onPropose={proposeEnd} />

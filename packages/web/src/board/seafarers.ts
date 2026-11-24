@@ -49,6 +49,15 @@ export const clothPoints = (count: number): number => Math.floor(count / 2);
 /** 回合結束時沒有布匹的部落達到這個數目就終局。 */
 export const CLOTH_EXHAUSTED_TRIBES = 5;
 
+/** 新世界設置階段的港口：現在抽到的港口（面朝上，公開）、已放數量與是否還能重新產生版圖。 */
+export interface WorldView {
+  drawn: string | null;
+  placed: number;
+  total: number;
+  rerolls: number;
+  canRegenerate: boolean;
+}
+
 export interface SeafarersModuleView {
   islandBonus: Record<string, number[]>;
   islandClaims: IslandClaimView[];
@@ -62,6 +71,8 @@ export interface SeafarersModuleView {
   tribe: TribeView | null;
   /** 布匹產地的部落與布匹；其他劇本為 null。 */
   cloth: ClothView | null;
+  /** 新世界的港口設置階段；其他劇本為 null。 */
+  world: WorldView | null;
 }
 
 export interface SeafarersHints {
@@ -85,7 +96,7 @@ export interface SeafarersHints {
 
 export const SHIP_COST: Partial<Record<Resource, number>> = { lumber: 1, wool: 1 };
 
-/** Points one island claim is worth (SF25 p. 4). */
+/** Points one island claim is worth (SF25 p. 4); other scenarios read `profile.islandBonus.points`. */
 export const ISLAND_BONUS_POINTS = 2;
 
 /** Board commands whose edge target is a ship. */
@@ -110,6 +121,7 @@ export function seafarersView(view: Pick<GameView, 'modules'> | null | undefined
     fog: slot.fog ?? [],
     tribe: slot.tribe ?? null,
     cloth: slot.cloth ?? null,
+    world: slot.world ?? null,
   };
 }
 
@@ -131,8 +143,8 @@ export function seafarersHints(view: Pick<GameView, 'hints'> | null | undefined)
 }
 
 /** Island bonus points a player holds (public). */
-export function islandBonusPoints(view: Pick<GameView, 'modules'> | null | undefined, playerId: string): number {
-  return (seafarersView(view)?.islandBonus[playerId]?.length ?? 0) * ISLAND_BONUS_POINTS;
+export function islandBonusPoints(view: Pick<GameView, 'modules'> | null | undefined, playerId: string, points = ISLAND_BONUS_POINTS): number {
+  return (seafarersView(view)?.islandBonus[playerId]?.length ?? 0) * points;
 }
 
 /** 未知海域的空格（hex → 'open'）；沒有空格時回 undefined。 */

@@ -114,6 +114,10 @@ export interface TableActions {
   suspendGame(): Promise<boolean>;
   /** 對既有的全桌暫停提案表態（提案者拒絕即撤回）；提案已失效時重新抓房間並提示。 */
   respondSuspend(proposalId: string, approve: boolean): Promise<void>;
+  /** 新世界：房主提議重新產生版圖（全體真人同意才成立）；成功送出回傳 true，失敗已以 toast 回報。 */
+  proposeRegenerate(): Promise<boolean>;
+  /** 對既有的重新產生提案表態（提案者拒絕即撤回）；提案已失效時重新抓房間並提示。 */
+  respondRegenerate(proposalId: string, approve: boolean): Promise<void>;
   /** 提議（單人桌即直接）以無勝者結束對局；成功回傳 true，失敗已以 toast 回報。 */
   endGame(): Promise<boolean>;
   /** 對既有的結束對局提案表態；提案已失效時重新抓房間並提示。 */
@@ -936,6 +940,38 @@ export function useTable(options: UseTableOptions): TableController {
     [api, dispatch, refreshRoom],
   );
 
+  const proposeRegenerate = useCallback(async (): Promise<boolean> => {
+    const gameId = gameIdRef.current;
+    if (!gameId || leavingRef.current) return false;
+    const result = await api.regenerateGame(gameId);
+    if (!result.ok) {
+      dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+      await refreshRoom();
+      return false;
+    }
+    await refreshRoom();
+    return true;
+  }, [api, dispatch, refreshRoom]);
+
+  const respondRegenerate = useCallback(
+    async (proposalId: string, approve: boolean): Promise<void> => {
+      const gameId = gameIdRef.current;
+      if (!gameId) return;
+      const result = await api.regenerateGame(gameId, { proposalId, approve });
+      if (result.ok) {
+        await refreshRoom();
+        // 全員同意後版圖已換：不等伺服器推送，立刻抓新的投影。
+        if ((result.data as { regenerated?: boolean }).regenerated) await refreshGame('command');
+      } else if (result.error.code === 'E_NO_PROPOSAL') {
+        dispatch({ type: 'toast', notice: localNotice('sf.world.vote.cancelled') });
+        await refreshRoom();
+      } else {
+        dispatch({ type: 'toast', notice: noticeFrom(result.error) });
+      }
+    },
+    [api, dispatch, refreshRoom, refreshGame],
+  );
+
   /** 對局已結束：以權威的房間與投影切到結果畫面，並刷新已不再可恢復的清單。 */
   const showEndedGame = useCallback(async (): Promise<void> => {
     await refreshRoom();
@@ -1195,6 +1231,8 @@ export function useTable(options: UseTableOptions): TableController {
       saveGame,
       suspendGame,
       respondSuspend,
+      proposeRegenerate,
+      respondRegenerate,
       endGame,
       respondAbandon,
       withdrawGame,
@@ -1239,6 +1277,8 @@ export function useTable(options: UseTableOptions): TableController {
       saveGame,
       suspendGame,
       respondSuspend,
+      proposeRegenerate,
+      respondRegenerate,
       endGame,
       respondAbandon,
       withdrawGame,

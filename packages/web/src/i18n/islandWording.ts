@@ -5,7 +5,8 @@
 export type IslandWording = 'fourIslands' | 'desert';
 
 export function islandWording(scenario: string | null | undefined): IslandWording | null {
-  if (scenario === 'four-islands') return 'fourIslands';
+  // 新世界與四島群島一樣沒有「小島」：每座非 home 的島都是新島嶼。
+  if (scenario === 'four-islands' || scenario === 'new-world') return 'fourIslands';
   if (scenario === 'through-the-desert') return 'desert';
   return null;
 }
