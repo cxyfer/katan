@@ -31,6 +31,7 @@ are kept (``committed: true``), the other images are deleted after the run.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -51,7 +52,7 @@ FIXTURE = str(base.ROOT / 'scripts/seafarers/wonders_fixture.mjs')
 CURATED = {
     'lobby-wonders-of-catan', 'map-3p-svg-desktop', 'map-4p-svg-desktop', 'map-4p-r3f-desktop', 'map-4p-svg-phone',
     'help-wonders-svg-desktop', 'live-claim-svg', 'live-build-3d', 'live-build-phone', 'live-result-wonder',
-    'live-result-wonder-phone',
+    'live-result-wonder-phone', 'live-rail-collapsed',
 }
 GREAT_WALL_COST = {'brick': 3, 'lumber': 1, 'grain': 1}
 
@@ -60,6 +61,26 @@ def fixture(*args, state):
     out = subprocess.run(['node', '--experimental-strip-types', FIXTURE, *args], input=json.dumps(state), check=True,
                          capture_output=True, text=True, cwd=base.ROOT).stdout
     return json.loads(out)
+
+
+def rail_open(page):
+    """Expand the action rail and keep the pointer over it (a collapsed rail hides the wonder tiles)."""
+    open_actions(page)
+    rail = page.get_by_test_id('action-rail')
+    if rail.count():
+        rail.hover()
+        expect(rail).to_have_attribute('data-expanded', 'true')
+
+
+def shot_rail(page, name, note, ms=700):
+    """Screenshot with the pointer kept on the expanded rail (``shot`` parks the pointer in a corner)."""
+    rail_open(page)
+    page.wait_for_timeout(ms)
+    path = OUT / f'{name}.png'
+    page.screenshot(path=str(path), animations='disabled', timeout=TIMEOUT)
+    REPORT['cases'].append({'name': name, 'status': 'PASS', 'note': note, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                            'viewport': page.viewport_size})
+    log('CAPTURE', name, note)
 
 
 def start_wonders(browser, count, lobby_shot=None):
@@ -184,17 +205,28 @@ def finish_live(contexts, pages, identity, game_id):
 
     # --- SVG：認領長城、蓋第 1 層 -----------------------------------------------------
     open_game(page, game_id, 'svg')
+    # 收合的行動列不顯示奇觀牌（不會被裁成半寬、不撐高 rail）；展開後才看得到。
+    page.mouse.move(5, 5)
+    page.wait_for_timeout(500)
+    expect(page.get_by_test_id('action-rail')).to_have_attribute('data-expanded', 'false')
+    assert not page.get_by_test_id('wonders-panel').is_visible(), 'wonders panel must be hidden while the rail is collapsed'
+    rail = page.get_by_test_id('action-rail').bounding_box()
+    assert rail['width'] < 120, rail
+    shot(page, 'live-rail-collapsed', 'collapsed action rail: no wonder tiles squeezed into the narrow rail')
     open_actions(page)
+    expect(page.get_by_test_id('wonders-panel')).to_be_visible()
     assert page.locator('[data-wonder-marker]').count() == 11
     hints = snap(contexts[0], path)['view']['hints']['modules']['seafarers']['wonders']
     assert hints['claimable'] == ['greatWall'], hints
     assert page.get_by_test_id('wonder-claim-greatBridge').count() == 0  # 已被玩家 2 拿走，沒有認領鈕
     expect(page.get_by_test_id('wonder-status-greatBridge')).to_contain_text(NAMES[1])
+    rail_open(page)
     page.get_by_test_id('wonder-claim-greatWall').click()
     expect(page.get_by_test_id('wonder-build')).to_be_visible()
     view = wonders_view()
     assert view['owned'][p1] == 'greatWall' and view['levels'][p1] == 0, view
-    shot(page, 'live-claim-svg', 'player 1 meets the Great Wall requirement and claims it in SVG (player 2 already holds the Great Bridge)')
+    shot_rail(page, 'live-claim-svg', 'player 1 meets the Great Wall requirement and claims it in SVG (player 2 already holds the Great Bridge)')
+    rail_open(page)
     page.get_by_test_id('wonder-build').click()
     page.wait_for_function("() => document.querySelector('[data-testid=\"wonder-card-greatWall\"]')?.dataset.level === '1'", timeout=TIMEOUT)
     view = wonders_view()
@@ -205,12 +237,12 @@ def finish_live(contexts, pages, identity, game_id):
     # --- 3D：蓋第 2 層 ---------------------------------------------------------------
     open_game(page, game_id, 'r3f')
     page.wait_for_function("() => document.querySelector('canvas')?.dataset.wonderMarkers === '5,2,4'", timeout=TIMEOUT)
-    open_actions(page)
+    rail_open(page)
     page.get_by_test_id('wonder-build').click()
     page.wait_for_function("() => document.querySelector('[data-testid=\"wonder-card-greatWall\"]')?.dataset.level === '2'", timeout=TIMEOUT)
     assert wonders_view()['levels'][p1] == 2
     expect(page.get_by_test_id('board')).to_have_attribute('data-effective-renderer', 'r3f')
-    shot(page, 'live-build-3d', 'level 2 built in 3D: markers stand on their vertices, the panel shows the level', ms=2500)
+    shot_rail(page, 'live-build-3d', 'level 2 built in 3D: markers stand on their vertices, the panel shows the level', ms=2500)
 
     # --- 手機 SVG：蓋第 3 層 ---------------------------------------------------------
     phone_ctx = browser_phone(contexts[0])
@@ -236,7 +268,7 @@ def finish_live(contexts, pages, identity, game_id):
 
     # --- 桌面 SVG：蓋第 4 層，奇觀完成，遊戲結束 -----------------------------------------
     open_game(page, game_id, 'svg')
-    open_actions(page)
+    rail_open(page)
     page.get_by_test_id('wonder-build').click()
     expect(page.get_by_test_id('result-screen')).to_be_visible()
     view = snap(contexts[0], path)['view']
