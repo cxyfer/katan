@@ -199,6 +199,21 @@ def regenerate_flow(contexts, pages, identity, game_id):
     REPORT['regenerate'] = {'declined': True, 'revisionBefore': before['revision'], 'revisionAfter': done['revision'], 'rerolls': world['rerolls']}
 
 
+def ensure_islands(contexts, identity, game_id):
+    """The live finish needs a second island with room: redraw over the API (the same all-seat vote) until the map has 3+ islands."""
+    path = f'/api/games/{game_id}'
+    for attempt in range(20):
+        view = snap(contexts[0], path)['view']
+        sizes = tally([i for i in view['board']['islands'] if i > 0])
+        if len(sizes) >= 3 and sorted(sizes.values())[-2] >= 3:
+            REPORT['islands'] = sizes
+            return
+        proposed = api(contexts[0], 'POST', f'{path}/regenerate', {})
+        for context in contexts[1:]:
+            api(context, 'POST', f'{path}/regenerate', {'proposalId': proposed['proposalId'], 'approve': True})
+    raise AssertionError('no map with three islands after 20 redraws')
+
+
 def harbors_over_api(contexts, identity, game_id, until=10):
     by_id = dict(zip(identity, contexts))
     path = f'/api/games/{game_id}'
@@ -244,7 +259,8 @@ def place_by_ui(page, contexts, identity, game_id, seat, label, renderer):
     return edge
 
 
-def setup_over_api(contexts, identity, game_id):
+def setup_over_api(contexts, identity, game_id, home_largest=None):
+    """Every seat takes a legal spot; `home_largest` (a player id) always settles on the largest island."""
     by_id = dict(zip(identity, contexts))
     path = f'/api/games/{game_id}'
     step = 0
@@ -259,6 +275,10 @@ def setup_over_api(contexts, identity, game_id):
         assert turn['setup']['stage'] in ('building', 'road'), turn['setup']
         if turn['setup']['stage'] == 'building':
             legal = hints['legalSettlements']
+            if actor == home_largest:
+                board = view['board']
+                legal = fixture('filter', state={'topologyId': board['topologyId'], 'terrain': board['terrain'],
+                                                 'islands': board['islands'], 'legal': legal})['vertices'] or legal
             command = {'type': 'setup.placeBuilding', 'vertex': legal[(step * 37) % len(legal)]}
             step += 1
         else:
@@ -340,6 +360,7 @@ def run():
         contexts, pages, identity, game_id = start_world(browser, 3, lobby_shot='lobby-new-world')
         map_shots(browser, contexts, pages, game_id, 3, phone=True)
         regenerate_flow(contexts, pages, identity, game_id)
+        ensure_islands(contexts, identity, game_id)
         ports_by_ui(browser, contexts, pages, identity, game_id)
         current = harbors_over_api(contexts, identity, game_id)
         view = current['view']
@@ -350,7 +371,7 @@ def run():
         open_game(pages[0], game_id, 'svg')
         assert pages[0].locator('[data-testid^="harbor-"]').count() >= 10
         shot(pages[0], 'map-3p-svg-ports', 'ten ports placed by the players, one edge apart; starting settlements next')
-        setup_over_api(contexts, identity, game_id)
+        setup_over_api(contexts, identity, game_id, home_largest=identity[0])
         view = snap(contexts[0], f'/api/games/{game_id}')['view']
         home = view['modules']['seafarers']['home']
         assert sorted(home) == sorted(identity) and all(1 <= len(islands) <= 2 for islands in home.values()), home

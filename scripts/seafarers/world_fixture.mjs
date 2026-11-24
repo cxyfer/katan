@@ -3,6 +3,9 @@
  * - `plan <playerId>`：替指定玩家挑一座「不是 home island」的島，找一個空的交叉點 V（只碰到那座島、
  *   與所有建築都隔一格）與一條通到 V 的陸地邊 E（內部邊，兩側都是陸地）；E 以一條玩家的道路預先放好，
  *   這樣玩家在 V 蓋第一個村落是合法的建造，且觸發非 home island 的 1 分獎勵。
+ * - `filter`：stdin 是 `{ topologyId, terrain, islands, legal }`（公開視圖的棋盤與合法交叉點），
+ *   輸出 `legal` 中只碰到「面積最大的島」的交叉點；證據腳本讓玩家 1 的 home 是最大的島，
+ *   其他島才有空位可以蓋第一個村落拿島嶼獎勵。
  * Python 不自己推導拓樸（與 tribe_fixture.mjs 相同的做法）。
  *
  * Usage: node --experimental-strip-types scripts/seafarers/world_fixture.mjs plan <playerId> < state.json
@@ -14,6 +17,15 @@ import { getTopology } from '../../packages/rules/src/index.ts';
 const mode = process.argv[2];
 const playerId = process.argv[3];
 const state = JSON.parse(readFileSync(0, 'utf8'));
+if (mode === 'filter') {
+  const topo = getTopology(state.topologyId);
+  const sizes = {};
+  for (const island of state.islands) if (island > 0) sizes[island] = (sizes[island] ?? 0) + 1;
+  const largest = Number(Object.entries(sizes).sort((a, b) => b[1] - a[1] || Number(a[0]) - Number(b[0]))[0][0]);
+  const on = (vertex) => [...new Set(topo.vertices[vertex].hexes.filter((hex) => state.terrain[hex] !== 'sea').map((hex) => state.islands[hex]))];
+  process.stdout.write(JSON.stringify({ largest, vertices: state.legal.filter((vertex) => on(vertex).length === 1 && on(vertex)[0] === largest) }));
+  process.exit(0);
+}
 const topology = getTopology(state.board.layout.topologyId);
 const { terrain, islands } = state.board.layout;
 const islandsOf = (vertex) => [...new Set(topology.vertices[vertex].hexes.filter((hex) => terrain[hex] !== 'sea').map((hex) => islands[hex]))];
