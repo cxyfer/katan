@@ -176,8 +176,10 @@ describe('seafarers module exports (bot plan RX)', () => {
       const state = emptySeafarersGame(profileId === 'sf-new-shores-2025' ? 4 : 3, 0, 'action', profileId);
       expect(keysOf(hintsOf(state, 'p1')), profileId).not.toContain('clothVictims');
       expect(applyCommand(state, 'p1', { type: 'cloth.steal', victim: 'p2' } as never, scriptedRng([]))).toMatchObject({ ok: false, error: { code: 'E_INVALID_COMMAND' } });
+      expect(applyCommand(state, 'p1', { type: 'cloth.robber', hex: 0 } as never, scriptedRng([]))).toMatchObject({ ok: false, error: { code: 'E_INVALID_COMMAND' } });
       state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false };
       expect(applyCommand(state, 'p1', { type: 'cloth.steal', victim: 'p2' } as never, scriptedRng([]))).toMatchObject({ ok: false, error: { code: 'E_PENDING_EFFECT' } });
+      expect(applyCommand(state, 'p1', { type: 'cloth.robber', hex: 0 } as never, scriptedRng([]))).toMatchObject({ ok: false, error: { code: 'E_PENDING_EFFECT' } });
     }
   });
 

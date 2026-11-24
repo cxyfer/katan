@@ -36,6 +36,8 @@ export function initRobberChoice(state: GameState, ctx: ModuleContext): void {
 /** `cloth.robber { hex }` — 起始玩家在 12 號圓片格中選強盜的起點。 */
 export function chooseClothRobber(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
   const { kit } = ctx;
+  // D7：其他劇本照舊回未知指令（與 harbor.place、cloth.steal 一致）。
+  if (!isClothForCatan(ctx)) return kit.fail(state.pending ? 'E_PENDING_EFFECT' : 'E_INVALID_COMMAND');
   if (!robberChoicePhase(state)) return kit.fail('E_WRONG_PHASE');
   const setup = state.turn.setup!;
   if (state.players[setup.order[0]!]!.id !== actorId) return kit.fail('E_NOT_YOUR_TURN');
