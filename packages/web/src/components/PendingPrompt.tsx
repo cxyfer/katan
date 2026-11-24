@@ -159,7 +159,7 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
                       onClick={() =>
                         void actions.submitCommand(
                           { type: 'cloth.steal', victim: candidate },
-                          'play.pending.steal',
+                          'play.pending.stealCloth',
                         )
                       }
                     >

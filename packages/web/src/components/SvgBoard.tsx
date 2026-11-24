@@ -240,11 +240,11 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
             const centre = island === undefined ? undefined : geometry.hexes[island];
             const linked = view.players
               .filter((candidate) => seafarersView(view)!.cloth!.links[candidate.id]?.includes(index))
-              .map((candidate) => ({ color: playerColorHex(candidate.color), name: candidate.nickname }));
+              .map((candidate) => ({ id: candidate.id, color: playerColorHex(candidate.color), name: candidate.nickname }));
             const label = tribe.cloth > 0 ? t('sf.cloth.tribe', { number: tribe.number, count: tribe.cloth }) : t('sf.cloth.tribeEmpty', { number: tribe.number });
             return <TribeMarker key={`tribe-${index}`} testId={`tribe-${index}`} x={vertex.x} y={vertex.y} number={tribe.number} cloth={tribe.cloth}
               up={!centre || vertex.y < centre.cy} linked={linked}
-              label={linked.length > 0 ? t('sf.cloth.tribeLinked', { number: tribe.number, count: tribe.cloth, players: linked.map((entry) => entry.name).join('、') }) : label} />;
+              label={linked.length > 0 ? t('sf.cloth.tribeLinked', { number: tribe.number, count: tribe.cloth, players: linked.map((entry) => entry.name) }) : label} />;
           })}
           {/* 世外部落：邊上的禮物，略往框的方向推出；被拿走後從 module 狀態消失。 */}
           {seafarersView(view)?.tribe?.gifts.map((gift) => {

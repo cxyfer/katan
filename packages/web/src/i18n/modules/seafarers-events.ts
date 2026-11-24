@@ -78,7 +78,7 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
       const names = Object.keys(gains).map((id) => nameOf(id));
       return {
         number: num(p.number),
-        gains: names.length > 0 ? names.join('、') : t(locale, 'sf.cloth.producedNone'),
+        gains: names.length > 0 ? names : t(locale, 'sf.cloth.producedNone'),
         shortSuffix: num(p.shortBy) > 0 ? t(locale, 'sf.cloth.shortSuffix', { count: num(p.shortBy) }) : '',
       };
     }

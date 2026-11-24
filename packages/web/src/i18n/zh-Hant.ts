@@ -541,6 +541,8 @@ export const zhHant: Catalog = {
   'play.pending.discardSubmit': '送出棄牌',
   'play.pending.moveRobber': '將強盜移到其他六角格。',
   'play.pending.steal': '選擇一位玩家，從其手中抽一張卡。',
+  'play.pending.stealChoice': '選擇一位玩家，從其手中抽一張卡或拿一枚布匹。',
+  'play.pending.stealCloth': '選擇一位玩家，從其手中拿一枚布匹。',
   'play.pending.yearOfPlenty': '從銀行拿取 {remaining} 個資源。',
   'play.pending.freeRoads': '放置 {remaining} 條免費道路。',
   'play.pending.waitingOthers': '等待其他玩家：{players}',

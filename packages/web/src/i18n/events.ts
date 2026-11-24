@@ -189,7 +189,7 @@ export function eventParams(
       // 共同勝利（布匹耗盡）：`playerIds` 列出全部勝者；其他終局只有 `playerId`。
       const winners = Array.isArray(p.playerIds) ? p.playerIds.map((id) => nameOf(String(id))) : [];
       return {
-        player: winners.length > 1 ? winners.join('、') : player(),
+        player: winners.length > 1 ? winners : player(),
         score: num(p.score),
         target: num(p.target),
       };

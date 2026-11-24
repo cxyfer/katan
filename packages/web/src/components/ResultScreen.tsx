@@ -41,7 +41,7 @@ export function ResultScreen({ controller }: { controller: TableController }) {
         <h1 id="result-heading">{t('play.result')}</h1>
         {result?.reason === 'victory' && shared ? (
           <p className="result__winner" data-testid="result-winners" data-shared="true">
-            {t('play.resultWinners', { players: winners.map((entry) => entry.nickname).join('、') })}
+            {t('play.resultWinners', { players: winners.map((entry) => entry.nickname) })}
           </p>
         ) : result?.reason === 'victory' && winner ? (
           <p className="result__winner" data-testid="result-winner">

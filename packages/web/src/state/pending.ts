@@ -6,6 +6,7 @@
  * how that is labelled and whether it is *our* obligation.
  */
 
+import { seafarersHints } from '../board/seafarers.ts';
 import { epView } from '../board/explorersPirates.ts';
 import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
 import { awaitingProjection, awaitingRoom, nameOf as resolveName, tableSuspended, type TableState } from './table.ts';
@@ -81,7 +82,7 @@ export function requiredActionFor(state: TableState): RequiredAction | null {
       case 'steal':
         return {
           kind: 'steal',
-          messageId: 'play.pending.steal',
+          messageId: stealMessageId(view, pending.candidates),
           params: {},
           mine: pending.actor === me,
           waitingFor: pending.actor === me ? [] : [pending.actor],
@@ -178,4 +179,16 @@ export function requiredActionAnnouncement(
     messageId: 'a11y.requiredAction',
     params: { action: translate(action.messageId, action.params) },
   };
+}
+
+/**
+ * 偷竊提示的文案：布匹產地的海盜可以偷布匹，只有布匹可偷時（對象沒有手牌）寫「布匹」，
+ * 牌與布匹都可選時兩者並列；其他情況維持原本的偷牌文案。只有當事人的提示帶 `clothVictims`。
+ */
+export function stealMessageId(view: Parameters<typeof seafarersHints>[0], candidates: readonly string[]): string {
+  const cloth = seafarersHints(view)?.clothVictims ?? [];
+  if (cloth.length === 0) return 'play.pending.steal';
+  const players = (view as { players?: { id: string; handSize: number }[] } | null)?.players ?? [];
+  const cards = candidates.some((id) => (players.find((player) => player.id === id)?.handSize ?? 0) > 0);
+  return cards ? 'play.pending.stealChoice' : 'play.pending.stealCloth';
 }

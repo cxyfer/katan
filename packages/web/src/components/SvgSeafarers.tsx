@@ -107,7 +107,7 @@ export function GiftMarker({ x, y, kind, harbor, color, ratio, letter, testId }:
  */
 export function TribeMarker({ x, y, number, cloth, up, linked, label, testId }: {
   x: number; y: number; number: number; cloth: number; up: boolean;
-  linked: { color: string; name: string }[]; label: string; testId?: string;
+  linked: { id: string; color: string; name: string }[]; label: string; testId?: string;
 }) {
   const side = up ? -1 : 1;
   const hot = number === 6 || number === 8;
@@ -134,7 +134,7 @@ export function TribeMarker({ x, y, number, cloth, up, linked, label, testId }: 
     </g>
     {/* 已建立關係的玩家：玩家色的小圓點排在圓片另一側。 */}
     {linked.map((entry, index) => (
-      <circle key={entry.name} cx={(index - (linked.length - 1) / 2) * 11} cy={-side * 25} r="4.4" fill={entry.color} stroke="#20180f" strokeWidth="1.2" data-testid={testId ? `${testId}-link-${index}` : undefined} />
+      <circle key={entry.id} cx={(index - (linked.length - 1) / 2) * 11} cy={-side * 25} r="4.4" fill={entry.color} stroke="#20180f" strokeWidth="1.2" data-testid={testId ? `${testId}-link-${index}` : undefined} />
     ))}
   </g>;
 }

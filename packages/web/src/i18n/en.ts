@@ -545,6 +545,8 @@ export const en: Catalog = {
   'play.pending.discardSubmit': 'Submit discard',
   'play.pending.moveRobber': 'Move the robber to a different hex.',
   'play.pending.steal': 'Choose a player to take one card from.',
+  'play.pending.stealChoice': 'Choose a player to take one card or one cloth token from.',
+  'play.pending.stealCloth': 'Choose a player to take one cloth token from.',
   'play.pending.yearOfPlenty': 'Take {remaining} resource(s) from the bank.',
   'play.pending.freeRoads': 'Place {remaining} free road(s).',
   'play.pending.waitingOthers': 'Waiting for other players: {players}',

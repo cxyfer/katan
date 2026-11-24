@@ -18,6 +18,8 @@ import { ResultScreen } from '../src/components/ResultScreen.tsx';
 import { SvgBoard } from '../src/components/SvgBoard.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { translateEvent } from '../src/i18n/events.ts';
+import { requiredActionFor } from '../src/state/pending.ts';
+import { t as translate } from '../src/i18n/index.ts';
 import { EMPTY_SELECTION, initialTableState, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeEvent, makeSnapshot } from '../src/test/fixtures.ts';
@@ -97,7 +99,7 @@ describe('Cloth for Catan board (SVG)', () => {
     const first = container.querySelector('[data-testid="tribe-0"]')!;
     expect(first.getAttribute('data-tribe-cloth')).toBe('3');
     expect(first.getAttribute('data-tribe-linked')).toBe('P1,P3');
-    expect(first.querySelector('title')!.textContent).toBe('Tribe 10: 3 cloth · trading: P1、P3');
+    expect(first.querySelector('title')!.textContent).toBe('Tribe 10: 3 cloth · trading: P1, P3');
     expect(first.querySelectorAll('rect')).toHaveLength(6); // 三捲布，每捲兩個矩形（布身與紅條）
     const empty = container.querySelector('[data-testid="tribe-1"]')!;
     expect(empty.getAttribute('data-tribe-cloth')).toBe('0');
@@ -183,10 +185,32 @@ describe('Cloth for Catan pirate and stealing cloth', () => {
     expect(screen.getByTestId('steal-cloth-p2').textContent).toBe('P2 · Steal cloth');
     expect((screen.getByTestId('steal-p3') as HTMLButtonElement).disabled).toBe(true); // handSize 0
     fireEvent.click(screen.getByTestId('steal-cloth-p3'));
-    expect(submitCommand).toHaveBeenLastCalledWith({ type: 'cloth.steal', victim: 'p3' }, 'play.pending.steal');
+    expect(submitCommand).toHaveBeenLastCalledWith({ type: 'cloth.steal', victim: 'p3' }, 'play.pending.stealCloth');
     fireEvent.click(screen.getByTestId('steal-p2'));
     expect(submitCommand).toHaveBeenLastCalledWith({ type: 'pending.steal', victim: 'p2' }, 'play.pending.steal');
     cleanup();
+  });
+
+  it('the prompt text names a card, a cloth token or both depending on what the victims can lose', () => {
+    const titles = (candidates: string[], locale: 'en' | 'zh-Hant') => {
+      const state = clothState();
+      state.players[1]!.resources.grain = 2; // p2 有牌
+      slotOf(state).cloth.p2 = 2;
+      slotOf(state).cloth.p3 = 1; // p3 只有布匹
+      state.pending = { kind: 'steal', actor: 'p1', hex: 0, candidates, pirate: true } as never;
+      const action = requiredActionFor(controllerFor(viewOf(state), locale).state)!;
+      return translate(locale, action.messageId, action.params);
+    };
+    expect(titles(['p2', 'p3'], 'en')).toBe('Choose a player to take one card or one cloth token from.');
+    expect(titles(['p3'], 'en')).toBe('Choose a player to take one cloth token from.');
+    expect(titles(['p3'], 'zh-Hant')).toBe('選擇一位玩家，從其手中拿一枚布匹。');
+    expect(titles(['p2', 'p3'], 'zh-Hant')).toContain('布匹');
+    // 機械盜賊（無布匹可偷）的文案不變。
+    const robber = clothState();
+    robber.players[1]!.resources.grain = 1;
+    robber.pending = { kind: 'steal', actor: 'p1', hex: robber.board.robber, candidates: ['p2'], pirate: false } as never;
+    const action = requiredActionFor(controllerFor(viewOf(robber)).state)!;
+    expect(translate('en', action.messageId)).toBe('Choose a player to take one card from.');
   });
 
   it('keeps the single button for the robber (no cloth victims)', () => {
@@ -239,7 +263,7 @@ describe('Cloth for Catan text', () => {
     const stolen = makeEvent(5, 'cloth.stolen', { playerId: 'p1', victim: 'p2' });
     expect(translateEvent('en', trade, names).text).toBe('P1 opened trade with the tribe 10 and took 1 cloth.');
     expect(translateEvent('en', tradeEmpty, names).text).toContain('the tribe had no cloth left');
-    expect(translateEvent('en', produced, names).text).toBe('Tribe 11 paid out cloth: P1、P3.');
+    expect(translateEvent('en', produced, names).text).toBe('Tribe 11 paid out cloth: P1, P3.');
     expect(translateEvent('en', short, names).text).toBe('Tribe 11 paid out cloth: P1 (2 short, the supply ran out).');
     expect(translateEvent('en', stolen, names).text).toBe('P1’s pirate took a cloth token from P2.');
     for (const locale of ['en', 'zh-Hant'] as const) {
@@ -266,7 +290,7 @@ describe('Cloth for Catan text', () => {
     expect(translateEvent('en', target, names).text).toBe('P1 won with 14 victory points (target 14).');
     expect(translateEvent('zh-Hant', target, names).text).toBe('P1 以 14 分獲勝（目標 14 分）。');
     expect(translateEvent('en', single, names).text).toBe('The cloth ran out: P1 won with 6 victory points.');
-    expect(translateEvent('en', shared, names).text).toBe('The cloth ran out: P1、P3 win together with 6 victory points.');
+    expect(translateEvent('en', shared, names).text).toBe('The cloth ran out: P1, P3 win together with 6 victory points.');
     expect(translateEvent('zh-Hant', shared, names).text).toBe('布匹耗盡：P1、P3 以 6 分共同獲勝。');
     for (const event of [single, shared]) {
       expect(translateEvent('en', event, names).text).not.toContain('target');
@@ -293,7 +317,7 @@ describe('Cloth for Catan result screen', () => {
   it('a shared victory lists every winner and never shows the target', () => {
     result('en', exhausted(['p1', 'p3']));
     const winners = screen.getByTestId('result-winners');
-    expect(winners.textContent).toBe('P1、P3 win together');
+    expect(winners.textContent).toBe('P1, P3 win together');
     expect(winners.getAttribute('data-shared')).toBe('true');
     expect(screen.queryByTestId('result-winner')).toBeNull();
     expect(screen.getByTestId('result-score').textContent).toContain('no target score');
