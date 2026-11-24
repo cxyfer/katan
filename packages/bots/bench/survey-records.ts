@@ -229,6 +229,11 @@ function checkGameRecord(file: string, lineNumber: number, raw: unknown, meta: M
   }
   const game = record as unknown as GameRecord;
   const expectedRoles = rolesFor(spec, meta.players, game.game);
+  if (game.coWinners && (game.coWinners.length < 2 || new Set(game.coWinners).size !== game.coWinners.length || game.coWinners[0] !== game.winner
+    || game.coWinners.some((seat, position) => seat < 0 || seat >= meta.players || (position > 0 && seat <= game.coWinners![position - 1]!)))) {
+    // 座位序、不重複、至少兩位、第一位是 winner。
+    throw new ShardMergeError(`${where} has inconsistent coWinners ${JSON.stringify(game.coWinners)}`);
+  }
   seats.forEach((entry, index) => {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) throw new ShardMergeError(`${where} seat ${index + 1} is not a seat record`);
     const seat = entry as Record<string, unknown>;
@@ -242,14 +247,13 @@ function checkGameRecord(file: string, lineNumber: number, raw: unknown, meta: M
     if (seat.role !== expectedRoles[index]) throw new ShardMergeError(`${where} seat ${index + 1} has role ${String(seat.role)}, expected ${expectedRoles[index]} for --roles ${meta.roles}`);
     const winners = game.coWinners ?? (game.winner === null ? [] : [game.winner]);
     if (seat.won !== winners.includes(index)) throw new ShardMergeError(`${where} seat ${index + 1} won=${String(seat.won)} disagrees with winner ${String(game.winner)}`);
+    // 勝利份額只屬於共同勝者；單一勝者與敗者不得帶 winShare。
+    if (seat.winShare !== undefined && !(game.coWinners && seat.won)) throw new ShardMergeError(`${where} seat ${index + 1} has a winShare but is not a co-winner`);
     if (game.coWinners && seat.won && (seat.winShare === undefined || Math.abs((seat.winShare as number) - 1 / game.coWinners.length) > 1e-9)) {
       throw new ShardMergeError(`${where} seat ${index + 1} needs winShare ${1 / game.coWinners.length} for ${game.coWinners.length} co-winners`);
     }
   });
   if (game.finished !== (game.problem === null)) throw new ShardMergeError(`${where} finished=${String(game.finished)} disagrees with problem ${JSON.stringify(game.problem)}`);
-  if (game.coWinners && (game.coWinners.length < 2 || game.coWinners[0] !== game.winner || game.coWinners.some((seat) => seat < 0 || seat >= meta.players))) {
-    throw new ShardMergeError(`${where} has inconsistent coWinners ${JSON.stringify(game.coWinners)}`);
-  }
   if (game.finished && (game.winner === null || game.winner >= meta.players)) throw new ShardMergeError(`${where} is finished but has no winner seat`);
   if (!game.finished && game.winner !== null) throw new ShardMergeError(`${where} is unfinished but has a winner`);
   return game;

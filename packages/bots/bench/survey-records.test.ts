@@ -130,6 +130,29 @@ describe('parseShard', () => {
     expect(() => parseShard('co.jsonl', text(META, [game(0), { ...co([0, 2]), winner: 2 }]))).toThrow('inconsistent coWinners');
   });
 
+  it('rejects malformed co-winner records', () => {
+    const mk = (seats: number[], winners: number[], shareOf: (index: number) => number | undefined, extra: Json = {}): Json => ({
+      ...game(1, { winner: seats[0], coWinners: seats, ...extra }),
+      seats: [0, 1, 2].map((index) => {
+        const share = shareOf(index);
+        return { ...seat(index, 'standard', null), won: winners.includes(index), ...(share === undefined ? {} : { winShare: share }) };
+      }),
+    });
+    const parse = (record: Json) => () => parseShard('bad.jsonl', text(META, [game(0), record]));
+    // 重複座位、順序顛倒、座位超出範圍。
+    expect(parse(mk([0, 0], [0], () => 0.5))).toThrow('inconsistent coWinners');
+    expect(parse(mk([2, 0], [0, 2], () => 0.5))).toThrow('inconsistent coWinners');
+    expect(parse(mk([0, 5], [0], () => 0.5))).toThrow('inconsistent coWinners');
+    // winShare 與人數不一致、缺少、或給了敗者／單一勝者。
+    expect(parse(mk([0, 2], [0, 2], (i) => (i === 1 ? undefined : 1)))).toThrow('needs winShare 0.5');
+    expect(parse(mk([0, 2], [0, 2], (i) => (i === 0 ? 0.5 : undefined)))).toThrow('needs winShare');
+    expect(parse(mk([0, 2], [0, 2], () => 0.5))).toThrow('winShare but is not a co-winner');
+    const singleWithShare = { ...game(1), seats: [0, 1, 2].map((index) => ({ ...seat(index, 'standard', 0), ...(index === 0 ? { winShare: 1 } : {}) })) };
+    expect(parse(singleWithShare)).toThrow('winShare but is not a co-winner');
+    // won 與 coWinners 不一致。
+    expect(parse(mk([0, 2], [0, 1], () => 0.5))).toThrow('disagrees');
+  });
+
   it('checks the focus rotation against --roles', () => {
     const meta = { ...META, roles: 'standard:naive' };
     const ok = game(1, { seats: [seat(0, 'naive', 0), seat(1, 'standard', 0), seat(2, 'naive', 0)] });
