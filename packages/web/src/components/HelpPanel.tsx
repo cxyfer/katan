@@ -58,7 +58,6 @@ export function HelpPanel({ controller }: { controller: TableController }) {
             {desert && <li data-testid="help-desert-bonus">{t('sf.help.desert.islands', { target: controller.state.game?.view.victoryTarget ?? 14 })}</li>}
             {fogIslands && <li data-testid="help-fog-islands-bandits">{t('sf.help.fog.bandits')}</li>}
             {fogIslands && <li data-testid="help-fog-islands-win">{t('sf.help.fog.win', { target: controller.state.game?.view.victoryTarget ?? 12 })}</li>}
-              .filter((key) => !(fourIslands && (key === 'setup' || key === 'islands' || key === 'gold')) && !(desert && (key === 'setup' || key === 'islands')) && !(tribe && (key === 'setup' || key === 'islands' || key === 'gold')))
             {tribe && <>
               <li data-testid="help-tribe-setup">{t('sf.help.tribe.setup')}</li>
               <li data-testid="help-tribe-discs">{t('sf.help.tribe.discs')}</li>

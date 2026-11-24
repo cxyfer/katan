@@ -86,24 +86,29 @@ export function createIslandTokenModel(color: string): BufferGeometry {
   return model.build();
 }
 
-/** 世外部落的禮物：VP 標記（金幣）、面朝下的發展牌、面朝上的港口（資源色底盤）。 */
+/** 世外部落的禮物：立在細柱上的 VP 標記（金幣）、面朝下的發展牌、港口牌（資源色底，比率在標示牌上）。 */
 export function createGiftModel(kind: 'vp' | 'devcard' | 'port', color = '#2f6d84'): BufferGeometry {
   const model = new ModelBuilder();
+  // 細柱把標記抬到沙灘之上（標記原點在水面附近，沙灘頂面比水面高）。
+  model.add(new CylinderGeometry(0.014, 0.018, 0.2, 6), TIMBER, [0, 0.1, 0]);
   if (kind === 'vp') {
-    model.add(new CylinderGeometry(0.075, 0.075, 0.02, 16), '#b9862a', [0, 0.012, 0]);
-    model.add(new CylinderGeometry(0.06, 0.06, 0.012, 16), '#f2c95a', [0, 0.027, 0]);
+    model.add(new CylinderGeometry(0.085, 0.085, 0.024, 18), '#b9862a', [0, 0.26, 0], [1, 1, 1], [Math.PI / 2, 0, 0]);
+    model.add(new CylinderGeometry(0.066, 0.066, 0.03, 18), '#f2c95a', [0, 0.26, 0], [1, 1, 1], [Math.PI / 2, 0, 0]);
+    model.add(new CylinderGeometry(0.03, 0.03, 0.034, 10), '#b9862a', [0, 0.26, 0], [1, 1, 1], [Math.PI / 2, 0, 0]);
   } else if (kind === 'devcard') {
-    box(model, '#0e2a47', [0, 0.1, 0], [0.11, 0.15, 0.02]);
-    box(model, '#2e5b8c', [0, 0.1, 0.011], [0.095, 0.135, 0.006]);
-    box(model, '#9dc3ea', [0, 0.1, 0.016], [0.05, 0.07, 0.004]);
+    box(model, '#0e2a47', [0, 0.28, 0], [0.12, 0.17, 0.022]);
+    box(model, '#2e5b8c', [0, 0.28, 0.012], [0.104, 0.15, 0.006]);
+    box(model, '#9dc3ea', [0, 0.28, 0.017], [0.055, 0.08, 0.004]);
   } else {
-    model.add(new CylinderGeometry(0.1, 0.1, 0.014, 18), color, [0, 0.01, 0]);
-    model.add(new CylinderGeometry(0.078, 0.078, 0.014, 18), '#f8f0d8', [0, 0.024, 0]);
-    model.add(new CylinderGeometry(0.012, 0.012, 0.12, 6), TIMBER, [0, 0.09, 0]);
-    box(model, color, [0, 0.16, 0], [0.1, 0.06, 0.012]);
+    model.add(new CylinderGeometry(0.11, 0.11, 0.016, 18), color, [0, 0.21, 0]);
+    model.add(new CylinderGeometry(0.088, 0.088, 0.018, 18), '#f8f0d8', [0, 0.226, 0]);
+    box(model, color, [0, 0.25, 0], [0.05, 0.04, 0.05]);
   }
   return model.build();
 }
+
+/** 禮物底座高度：高過水面，細柱立在沙灘邊（標記頂面在地形頂面之上）。 */
+export const GIFT_BASE_Y = -0.15;
 
 /** 禮物浮在海面，從陸地格往框的方向略推出（與船同一個作法）。 */
 export function giftTransform(geometry: BoardGeometry, edgeIndex: number): { position: Vec3; rotationY: number } | null {
@@ -124,7 +129,7 @@ export function giftTransform(geometry: BoardGeometry, edgeIndex: number): { pos
     x += (dx / length) * 0.17;
     z += (dz / length) * 0.17;
   }
-  return { position: [x, SEA_LEVEL + 0.01, z], rotationY: 0 };
+  return { position: [x, GIFT_BASE_Y, z], rotationY: 0 };
 }
 
 /** Ships read at board scale next to the roads (their model is built at 1:1). */
