@@ -576,6 +576,9 @@ export const zhHant: Catalog = {
   'play.resultScore': '最終分數 {score}／{target}',
   'play.resultTarget': '勝利目標：{target}',
   'play.resultReason.victory': '勝利點數',
+  'play.resultReason.clothExhausted': '布匹耗盡（回合結束時有 5 個以上部落沒有布匹）',
+  'play.resultWinners': '{players} 共同獲勝',
+  'play.resultScoreShared': '最終分數 {score}（布匹耗盡終局，沒有目標分）',
   'play.resultReason.abandoned': '無勝者結束',
   'play.resultReason.expired': '因長時間無人活動而結束',
   'play.resultBackToLobby': '回到大廳',
@@ -862,6 +865,8 @@ export const zhHant: Catalog = {
   'event.trade.bank': '{player} 在銀行以 {rate} 個{give}換得 1 個{receive}。',
   'event.trade.completed': '交易完成：{from} 將 {give} 給 {to}，並取得 {want}。',
   'event.game.finished': '{player} 以 {score} 分獲勝（目標 {target} 分）。',
+  'event.game.finished.clothExhausted': '布匹耗盡：{player} 以 {score} 分獲勝。',
+  'event.game.finished.clothShared': '布匹耗盡：{player} 以 {score} 分共同獲勝。',
   'event.game.abandoned': '對局已放棄：{reason}。',
 
   // --- error codes ---------------------------------------------------------

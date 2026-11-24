@@ -184,12 +184,15 @@ export function eventParams(
       };
     case 'game.abandoned':
       return { reason: t(locale, `play.resultReason.${str(p.reason, 'abandoned')}`) };
-    case 'game.finished':
+    case 'game.finished': {
+      // 共同勝利（布匹耗盡）：`playerIds` 列出全部勝者；其他終局只有 `playerId`。
+      const winners = Array.isArray(p.playerIds) ? p.playerIds.map((id) => nameOf(String(id))) : [];
       return {
-        player: player(),
+        player: winners.length > 1 ? winners.join('、') : player(),
         score: num(p.score),
         target: num(p.target),
       };
+    }
     default:
       // Module events format their own parameters; an id nobody knows how to
       // parameterise still renders its own text.
@@ -210,7 +213,11 @@ export function translateEvent(
   // text; a ship reuses a road event with `ship: true` the same way.
   const base = `event.${event.type}`;
   const wording = event.type === 'island.bonus' ? islandWording(options.scenario) : null;
-  const variant = wording ? `${base}.${wording}` : event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null;
+  // 布匹耗盡的終局不提目標分；共同勝利另有一句。
+  const finished = event.type === 'game.finished' && event.params?.cause === 'clothExhausted'
+    ? `${base}.${Array.isArray(event.params.playerIds) && event.params.playerIds.length > 1 ? 'clothShared' : 'clothExhausted'}`
+    : null;
+  const variant = finished ?? (wording ? `${base}.${wording}` : event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null);
   const messageId = variant && t(locale, variant) !== variant ? variant : base;
   const text = t(locale, messageId, params);
   return {

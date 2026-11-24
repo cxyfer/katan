@@ -22,7 +22,7 @@ describe('lobby ruleset picker', () => {
     // Event-card rows are registered but closed, so the picker never names them.
     expect(tb.scenarios.some((choice) => choice.variants.includes('event-cards'))).toBe(false);
     const sea = resolveRuleset(registry, { expansionKey: 'seafarers', playerCount: 6 });
-    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores'], ['scenario.four-islands'], ['scenario.fog-islands'], ['scenario.through-the-desert'], ['scenario.forgotten-tribe']]);
+    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores'], ['scenario.four-islands'], ['scenario.fog-islands'], ['scenario.through-the-desert'], ['scenario.forgotten-tribe'], ['scenario.cloth-for-catan']]);
     expect(sea.profile?.id).toBe('sf-new-shores-paired-2025');
     expect(resolveRuleset(registry, { expansionKey: 'seafarers', playerCount: 3 }).profile?.id).toBe('sf-new-shores-2025');
     const ep = resolveRuleset(registry, { expansionKey: 'explorersPirates' });
@@ -67,13 +67,13 @@ describe('lobby ruleset picker', () => {
     expect(outside.playerCountAdjusted).toBe(true);
   });
 
-  it('shows only the enabled further Seafarers scenarios in the lobby (S2 four islands, S3 fog islands, S4 through the desert, S5 forgotten tribe)', () => {
+  it('shows only the enabled further Seafarers scenarios in the lobby (S2, S3, S4, S5, S6: cloth for catan)', () => {
     const sea = resolveRuleset(registry, { expansionKey: 'seafarers' });
-    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores'], ['scenario.four-islands'], ['scenario.fog-islands'], ['scenario.through-the-desert'], ['scenario.forgotten-tribe']]);
+    expect(sea.scenarios.map(scenarioLabelIds)).toEqual([['scenario.new-shores'], ['scenario.four-islands'], ['scenario.fog-islands'], ['scenario.through-the-desert'], ['scenario.forgotten-tribe'], ['scenario.cloth-for-catan']]);
     expect(sea.scenarioNarrowsPlayers).toBe(false);
     const ids = registry.filter((profile) => profile.scenario && ['four-islands', 'fog-islands', 'through-the-desert', 'forgotten-tribe', 'cloth-for-catan', 'pirate-islands', 'wonders-of-catan', 'new-world'].includes(profile.scenario));
     expect(ids).toHaveLength(8);
-    for (const profile of ids) expect(profile.enabled).toBe(['four-islands', 'fog-islands', 'through-the-desert', 'forgotten-tribe'].includes(profile.scenario!));
+    for (const profile of ids) expect(profile.enabled).toBe(['four-islands', 'fog-islands', 'through-the-desert', 'forgotten-tribe', 'cloth-for-catan'].includes(profile.scenario!));
   });
 
   it('cascades expansion set → scenario → player count from the registry', () => {

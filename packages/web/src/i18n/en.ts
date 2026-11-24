@@ -580,6 +580,9 @@ export const en: Catalog = {
   'play.resultScore': 'Final score {score} of {target}',
   'play.resultTarget': 'Victory target: {target}',
   'play.resultReason.victory': 'Victory points',
+  'play.resultReason.clothExhausted': 'Cloth ran out (5 or more tribes empty at the end of a turn)',
+  'play.resultWinners': '{players} win together',
+  'play.resultScoreShared': 'Final score {score} (cloth ended the game; there is no target score)',
   'play.resultReason.abandoned': 'Ended without a winner',
   'play.resultReason.expired': 'Closed after a long period of inactivity',
   'play.resultBackToLobby': 'Back to lobby',
@@ -868,6 +871,8 @@ export const en: Catalog = {
   'event.trade.bank': '{player} exchanged {rate} {give} for 1 {receive} at the bank.',
   'event.trade.completed': 'Trade completed: {from} gave {give} to {to} and received {want}.',
   'event.game.finished': '{player} won with {score} victory points (target {target}).',
+  'event.game.finished.clothExhausted': 'The cloth ran out: {player} won with {score} victory points.',
+  'event.game.finished.clothShared': 'The cloth ran out: {player} win together with {score} victory points.',
   'event.game.abandoned': 'The game was abandoned: {reason}.',
 
   // --- error codes ---------------------------------------------------------

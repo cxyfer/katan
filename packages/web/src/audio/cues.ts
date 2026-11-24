@@ -139,8 +139,11 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
     case 'trade.withdrawn':
     case 'trade.expired':
       return 'trade.cancel';
-    case 'game.finished':
-      return mine ? 'game.victory' : 'game.over';
+    case 'game.finished': {
+      // 共同勝利（布匹耗盡）：每位勝者都播勝利音效。
+      const winners = Array.isArray(event.params?.playerIds) ? event.params.playerIds : [];
+      return mine || (selfId !== null && winners.includes(selfId)) ? 'game.victory' : 'game.over';
+    }
     case 'game.abandoned':
       return 'game.over';
     case 'ship.built':
@@ -160,6 +163,15 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
       return 'explore.reveal';
     case 'harbor.placed':
       return 'ship.build';
+    // 布匹產地：與部落建立貿易沿用島嶼獎勵的音效；自己拿到布匹用生產音效；偷布匹與偷牌同音。
+    case 'cloth.trade':
+      return 'island.bonus';
+    case 'cloth.produced': {
+      const gains = event.params?.gains;
+      return selfId !== null && gains && typeof gains === 'object' && selfId in gains ? 'production.self' : null;
+    }
+    case 'cloth.stolen':
+      return selfId !== null && playerId(event, 'victim') === selfId ? 'robber.stolenFromYou' : 'robber.steal';
     // Explorers & Pirates reuses the sea cues and adds the fog lifting and mission progress.
     case 'ep.shipBuilt':
     case 'ep.setupShip':

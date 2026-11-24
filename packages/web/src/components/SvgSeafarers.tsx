@@ -99,3 +99,42 @@ export function GiftMarker({ x, y, kind, harbor, color, ratio, letter, testId }:
     </>}
   </g>;
 }
+
+/**
+ * 布匹產地的部落（village）圓片：頂點上的數字圓片加一小疊布匹與已建立關係的玩家色點。
+ * `up` 為真時布匹疊在圓片上方（部落在小島的上頂點），否則在下方；布匹數同時寫成文字，
+ * 色點與標題文字讓顏色之外還有名字可讀。
+ */
+export function TribeMarker({ x, y, number, cloth, up, linked, label, testId }: {
+  x: number; y: number; number: number; cloth: number; up: boolean;
+  linked: { color: string; name: string }[]; label: string; testId?: string;
+}) {
+  const side = up ? -1 : 1;
+  const hot = number === 6 || number === 8;
+  const bolts = Math.min(cloth, 5);
+  const width = 9;
+  const start = -((bolts - 1) * width) / 2;
+  return <g transform={`translate(${x} ${y})`} data-testid={testId} data-tribe-number={number} data-tribe-cloth={cloth}
+    data-tribe-linked={linked.map((entry) => entry.name).join(',')} pointerEvents="none">
+    <title>{label}</title>
+    <ellipse cy="3" rx="19" ry="16" fill="#122019" opacity=".3" />
+    <circle r="17" fill="#f7efd9" stroke={cloth > 0 ? '#9d7c4c' : '#a33a2e'} strokeWidth="2.4" strokeDasharray={cloth > 0 ? undefined : '3 2'} />
+    {/* 小屋：屋頂與牆，部落的標誌。 */}
+    <path d="M-7 -9.5 L0 -15.5 L7 -9.5 Z" fill="#8a5a32" stroke="#4a2f17" strokeWidth="1" />
+    <text y="7.5" textAnchor="middle" fontSize="15" fontWeight="800" fill={hot ? '#b3261e' : '#20180f'}>{number}</text>
+    {/* 布匹：一枚一捲，最多畫五捲，數字另外寫出。 */}
+    <g transform={`translate(0 ${side * 29})`}>
+      {Array.from({ length: bolts }, (_, index) => (
+        <g key={index} transform={`translate(${start + index * width} 0)`}>
+          <rect x="-3.6" y="-5.5" width="7.2" height="11" rx="2.2" fill="#e9d8b0" stroke="#7a5a28" strokeWidth="1" />
+          <rect x="-3.6" y="-1.5" width="7.2" height="3" fill="#b8472f" />
+        </g>
+      ))}
+      <text y={side * 15 + (up ? 0 : 4)} textAnchor="middle" fontSize="11" fontWeight="800" fill="#20180f" stroke="#f7efd9" strokeWidth="2.6" paintOrder="stroke">×{cloth}</text>
+    </g>
+    {/* 已建立關係的玩家：玩家色的小圓點排在圓片另一側。 */}
+    {linked.map((entry, index) => (
+      <circle key={entry.name} cx={(index - (linked.length - 1) / 2) * 11} cy={-side * 25} r="4.4" fill={entry.color} stroke="#20180f" strokeWidth="1.2" data-testid={testId ? `${testId}-link-${index}` : undefined} />
+    ))}
+  </g>;
+}

@@ -97,7 +97,7 @@ export function buildStatsRows(view: GameView, stats: GameStatsData): StatsRow[]
       player,
       stats: stats.players[player.id] ?? createPlayerStats(),
       finalScore: final?.[index] ?? player.publicScore,
-      winner: view.result?.playerId === player.id,
+      winner: (view.result?.playerIds ?? [view.result?.playerId]).includes(player.id),
       settlements,
       cities,
       roads,

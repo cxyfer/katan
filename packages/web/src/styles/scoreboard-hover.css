@@ -164,6 +164,9 @@
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
+.screen--game .players__cloth { display: flex; align-items: flex-start; gap: 5px; margin: 4px 0 0; padding: 0 4px; color: #e6c98b; font-size: .68rem; line-height: 1.4; overflow-wrap: anywhere; }
+.screen--game .players__cloth[hidden] { display: none; }
+.screen--game .players__cloth > svg { flex: 0 0 auto; margin-top: 2px; }
 .screen--game .players__obligation > svg { flex: 0 0 auto; margin-top: 2px; }
 .screen--game .players__obligation[data-mine="true"] { color: #ffe2a0; }
 .screen--game .players[data-expanded="false"] .players__obligation { justify-content: center; }

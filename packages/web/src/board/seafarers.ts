@@ -28,6 +28,27 @@ export interface TribeView {
   held: Record<string, string[]>;
 }
 
+/** 布匹產地的部落（頂點、圓片數字、剩餘布匹）。 */
+export interface ClothTribeView {
+  vertex: number;
+  number: number;
+  cloth: number;
+}
+
+/** 布匹產地：部落、供應堆、各玩家布匹與已建立關係的部落索引（全部公開）。 */
+export interface ClothView {
+  tribes: ClothTribeView[];
+  supply: number;
+  links: Record<string, number[]>;
+  cloth: Record<string, number>;
+}
+
+/** 每 2 枚布匹 1 分，餘數不計（SF25 p. 14）。 */
+export const clothPoints = (count: number): number => Math.floor(count / 2);
+
+/** 回合結束時沒有布匹的部落達到這個數目就終局。 */
+export const CLOTH_EXHAUSTED_TRIBES = 5;
+
 export interface SeafarersModuleView {
   islandBonus: Record<string, number[]>;
   islandClaims: IslandClaimView[];
@@ -39,6 +60,8 @@ export interface SeafarersModuleView {
   fog: number[];
   /** 世外部落的禮物與標記；其他劇本為 null。 */
   tribe: TribeView | null;
+  /** 布匹產地的部落與布匹；其他劇本為 null。 */
+  cloth: ClothView | null;
 }
 
 export interface SeafarersHints {
@@ -56,6 +79,8 @@ export interface SeafarersHints {
   goldBank: Record<Resource, number> | null;
   /** 世外部落：輪到此玩家放港口時，暫存的港口種類與可放的邊。 */
   harborChoices: { harbors: string[]; edges: number[] };
+  /** 布匹產地：偷海盜旁的玩家時，手上有布匹因此可以改偷布匹的候選人。 */
+  clothVictims: string[];
 }
 
 export const SHIP_COST: Partial<Record<Resource, number>> = { lumber: 1, wool: 1 };
@@ -84,6 +109,7 @@ export function seafarersView(view: Pick<GameView, 'modules'> | null | undefined
     home: slot.home ?? null,
     fog: slot.fog ?? [],
     tribe: slot.tribe ?? null,
+    cloth: slot.cloth ?? null,
   };
 }
 
@@ -100,6 +126,7 @@ export function seafarersHints(view: Pick<GameView, 'hints'> | null | undefined)
     goldRequired: slot.goldRequired ?? 0,
     goldBank: slot.goldBank ?? null,
     harborChoices: slot.harborChoices ?? { harbors: [], edges: [] },
+    clothVictims: slot.clothVictims ?? [],
   };
 }
 

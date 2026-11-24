@@ -11,6 +11,7 @@ import { ExplorersPiratesPrompt } from './ExplorersPiratesPrompt.tsx';
 import { TbPrompt } from './tb/TbPrompt.tsx';
 import { CitiesKnightsPrompt } from './CitiesKnightsPrompt.tsx';
 import { citiesKnightsView } from '../board/citiesKnights.ts';
+import { seafarersHints } from '../board/seafarers.ts';
 import { moveBanditMessageId } from '../board/seafarersCitiesKnights.ts';
 import { canPlayDevCard, ownYearOfPlenty } from './useDevCardChoice.ts';
 
@@ -126,29 +127,51 @@ export function PendingPrompt({ controller }: { controller: TableController }) {
         </div>
       )}
 
-      {pending && pending.kind === 'steal' && pending.actor === selfId && (
-        <div className="prompt__body">
-          <ul className="resource-picker" data-testid="steal-candidates">
-            {pending.candidates.map((candidate) => (
-              <li key={candidate}>
-                <button
-                  type="button"
-                  className="button"
-                  data-testid={`steal-${candidate}`}
-                  onClick={() =>
-                    void actions.submitCommand(
-                      { type: 'pending.steal', victim: candidate },
-                      'play.pending.steal',
-                    )
-                  }
-                >
-                  {nameOf(candidate)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {pending && pending.kind === 'steal' && pending.actor === selfId && (() => {
+        // 布匹產地：海盜可以偷 1 張資源卡或 1 枚布匹；沒有可偷布匹的對象時維持原本的單一按鈕。
+        const clothVictims = seafarersHints(view)?.clothVictims ?? [];
+        const choice = clothVictims.length > 0;
+        const handSize = (id: string) => view.players.find((player) => player.id === id)?.handSize ?? 0;
+        return (
+          <div className="prompt__body">
+            <ul className="resource-picker" data-testid="steal-candidates">
+              {pending.candidates.map((candidate) => (
+                <li key={candidate}>
+                  <button
+                    type="button"
+                    className="button"
+                    data-testid={`steal-${candidate}`}
+                    disabled={choice && handSize(candidate) === 0}
+                    onClick={() =>
+                      void actions.submitCommand(
+                        { type: 'pending.steal', victim: candidate },
+                        'play.pending.steal',
+                      )
+                    }
+                  >
+                    {choice ? `${nameOf(candidate)} · ${t('sf.steal.card')}` : nameOf(candidate)}
+                  </button>
+                  {clothVictims.includes(candidate) && (
+                    <button
+                      type="button"
+                      className="button"
+                      data-testid={`steal-cloth-${candidate}`}
+                      onClick={() =>
+                        void actions.submitCommand(
+                          { type: 'cloth.steal', victim: candidate },
+                          'play.pending.steal',
+                        )
+                      }
+                    >
+                      {`${nameOf(candidate)} · ${t('sf.steal.cloth')}`}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
 
       {plenty && (
         <div className="prompt__body">
