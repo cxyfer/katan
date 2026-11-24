@@ -182,46 +182,51 @@ coordinates: (0, 6), (-1, 6), (-1, 5), (-1, 4), (0, 3), (0, 2), (1, 1), (2, 0), 
 | I14 | State and views | `SeafarersState.pirateIslands` (fortresses, beachheads, lines, route) exists only in this scenario; the public view `modules.seafarers.pirateIslands` and the hint `pirateLine` (next target, target vertex, end, edges) are absent elsewhere, so every other profile keeps its view and hint keys and its ship rules (D7, tested). Everything is public: no hidden information is involved. | spec D7 |
 | I15 | Robber and knights in S7a | The robber does not exist: `robberTargets`, `legalRobberHexes` and the pirate targets are empty. `dev.playKnight` is **refused** (`E_INVALID_COMMAND`, `vetoCommand`) until S7c, which turns knights into warship conversions ("knight cards may only be used to convert ships into warships"), so no command can put the removed robber back on the board. | SF25 p. 16–17 |
 | I16 | Panel settlement count | An unrecaptured fortress is not counted in the settlements of the player panel (it scores nothing), so the breakdown (e.g. Settlements (3 × 1) after setup) matches the total. | SF25 p. 16 |
+| I17 | Nobody may wall off a target | **Departure from SF25, decided by the user on 2026-11-24**, extending "you may not create a longer line to block off other players". An action is illegal when it turns **any** player (the actor included) from *connected* to *completely cut off* from the **current target** (beachhead, or the fortress once the beachhead is reached). *Connected* means: the target's component over empty sea edges, never through a vertex another player's building holds, touches one of the player's possible starting points, which are every vertex of the current line (so a retreat to any of them is possible) or, with no ship, the own coastal buildings on the main island. Players whose line is complete are not protected, and a player already cut off before the action is not protected either, so an old walled-off position never freezes the table. Checked for: `build.ship`, `ship.move`, Road Building's free ships and `setup.placeShip` (through `canPlaceShip`; error `E_LINE_WALLED`), roads on coastal edges (`roadAllowed`) and settlements (`allowBuilding`, a building blocks others' passage), setup placements included. The actor's own line extension is judged against the target it will have afterwards (reaching the beachhead switches the target to the fortress). Cost: one breadth-first search per protected player at most, and only when the placement touches the single empty route that was found for that player (a route that is still intact proves the connection), plus a cached per-board context; the hints list only legal ships. The remaining ways to be boxed in are the pirate (temporary), buildings and two lines that need the same narrow channel (see the simulation). | user decision 2026-11-24; SF25 p. 16 |
 
-## Simulation: how often is a line boxed in, and does backtracking free it
+## Simulation: how often is a line boxed in, with the no-wall rule and backtracking
 
-Spec §6.6 and OQ-3: measure with random legal moves whether the exact shortest-path rule can leave a player with no way to extend the line. It
-can (about 5 % to 12 % of games with many free ships), and an earlier "extend in any direction" relaxation was shown **not to help** (the end stays in the
-pocket cut off from the target), so on 2026-11-24 the user replaced it with the backtracking rule of I9. This section is the measurement of the
-final rule (same player counts, policies and seeds as before).
+Spec §6.6 and OQ-3. History: the exact shortest-path rule can leave a line boxed in; an "extend in any direction" relaxation was shown not to help and was replaced
+by backtracking (I9, user decision 2026-11-24); on the same day the user added the no-wall rule (I17) so that other players' ships cannot cause it. This section
+measures the final rules (same player counts, policies and seeds as before).
 
 `packages/rules/test/seafarers-pirate-islands-sim.ts` plays whole setups and then turns of random **legal** actions
 (3 and 4 players, seeds 1..N, at most 60 turns, or until every line reaches its fortress): the actor rolls (a 7 only discards), then makes 1 to 4
 actions, each either an extension of the own line (probability `bias`) or any other legal ship (free coastal routes), a road, or a settlement on a
 beachhead (settlements elsewhere and cities are left out so nobody wins by points); the hand is refilled before every action so
-the run tests paths, not the economy; before every turn the pirate jumps to a random hex of the route (S7b will move it for
-real). **A boxed-in player first backtracks** (`ship.move` of the end ship, preferring a strict extension from the new end). Every command goes through
-`applyCommand`, and at the end of each game every road is checked with `roadAllowed` and every line end for a foreign building or a loop. Policies: `bias 1`
-(only line ships), `0.85` and `0.4` (more and more free coastal ships and roads). Run with
+the run tests paths, not the economy; before every turn the pirate jumps to a random hex of the route. **A boxed-in player first backtracks**. Every command goes through
+`applyCommand`, and at the end of each game every road and every line end is checked. Measured: *boxed-in* = the target cannot be reached from the line's end over empty sea edges;
+*wall refusals* = legal ship places hidden by the no-wall rule, summed over every action (the actor's hint list, before each action); *rule deadlocks* = player-turns where the end can reach the
+target and the only thing preventing every line extension is the no-wall rule; *inconsistent* = the end can reach the target but there is no legal extension even without the no-wall rule
+(must be 0); *stuck players* = players at the end whose line is unfinished, pieces are left, no legal extension exists and the end ship cannot move to a legal place;
+*route-less* = boxed-in players with no route from any vertex of the line or any own building. Run with
 `PI_SIM_GAMES=<n> PI_SIM_BIASES=<list> PI_SIM_REPORT=1 pnpm --filter @katan/rules exec vitest run test/seafarers-pirate-islands-sim.test.ts`
-(2026-11-24, shared machine, 218 s for `bias 1`, 630 s for `0.85` and `0.4`; round 3 counters: the end ship counts as movable only if the rule of I9 lets it move and it has a legal destination, and every line is checked for "end can reach the target but no legal extension", 0 times in all runs):
+(2026-11-24; the `bias 1`, `0.85` rows are from the run of the same rules code with the earlier counters, which are 0 there; the `bias 0.4` rows are the final run, 300 games per player count):
 
-| Players | Policy | Games | Games with a boxed-in line | Boxed-in players | Backtracks (games) | Finished the line after being boxed in | Still boxed in at the end (of which no route from anywhere) | Permanently stuck (no extension and no backtrack) | badEnds | illegalRoads |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 3 | bias 1 | 300 | 0 | 0 | 0 (0) | 0 | 0 (0) | 0 | 0 | 0 |
-| 4 | bias 1 | 300 | 0 | 0 | 0 (0) | 0 | 0 (0) | 0 | 0 | 0 |
-| 3 | bias 0.85 | 400 | 0 | 0 | 0 (0) | 0 | 0 (0) | 0 | 0 | 0 |
-| 4 | bias 0.85 | 400 | 1 | 1 | 0 (0) | 0 | 0 (0) | 0 | 0 | 0 |
-| 3 | bias 0.4 | 400 | 19 (4.8 %) | 20 | 33 (16) | 1 | 4 (3) | 4 | 0 | 0 |
-| 4 | bias 0.4 | 400 | 46 (11.5 %) | 49 | 42 (25) | 0 | 30 (30) | 30 | 0 | 0 |
+| Players | Policy | Games | Games with a boxed-in line | Boxed-in players | Backtracks | Still boxed in at the end (route-less) | Stuck players | Rule deadlock turns | Wall refusals | inconsistent | badEnds | illegalRoads |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | bias 1 | 300 | 0 | 0 | 0 | 0 (0) | 0 | 0 | 0 | 0 | 0 | 0 |
+| 4 | bias 1 | 300 | 0 | 0 | 0 | 0 (0) | 0 | 0 | 0 | 0 | 0 | 0 |
+| 3 | bias 0.85 | 400 | 0 | 0 | 0 | 0 (0) | 0 | 0 | 0 | 0 | 0 | 0 |
+| 4 | bias 0.85 | 400 | 0 | 0 | 0 | 0 (0) | 0 | 0 | 0 | 0 | 0 | 0 |
+| 3 | bias 0.4 | 300 | 9 (3 %) | 9 | 19 | 1 (0) | **2** | 39 | 31 | 0 | 0 | 0 |
+| 4 | bias 0.4 | 300 | 17 (5.7 %) | 17 | 15 | 12 (12) | **22** | 342 | 195 | 0 | 0 | 0 |
+
+Hint cost (`actionHints` for the acting player, measured inside the simulation on the shared machine): about **6 ms** per call for 3 players and **3.5 ms** for 4 players on average (23,310 and 29,195 calls);
+a micro-measurement on the opening position gives `legalShipEdges` about 2 ms and the whole `actionHints` about 14 ms before the single-route shortcut and about 4 ms after; other Seafarers profiles stay below 1 ms.
+Before the shortcut every candidate cost a search for each player (45 ms per hints call).
 
 Reading:
 
-- With line-focused play nobody is boxed in (0 of 1,400 games for `bias 1` and `0.85`, one passing observation). With many random free coastal ships a
-  line is boxed in in 5 % (3 players) to 12 % (4 players) of the games.
-- **The distances and the legal steps now agree** (`inconsistent` 0 in 2,200 games): whenever the end can reach the target there is a legal line ship.
-- Permanently stuck players (no legal extension and the end ship cannot move to a legal place) are **0 in all line-focused runs and 4 / 30 at `bias 0.4`**, and each of
-  them is a player with **no route from anywhere** (3 / 30 of the boxed-in players that end boxed in): the target is enclosed by other players' fixed line ships and
-  buildings, so no retreat can find a way. The earlier round reported 0 only because the check treated "backtracking possible" as "not stuck" without testing for a legal move.
-- Backtracking frees a line only if another route exists. Of the 69 boxed-in players at `bias 0.4`, 1 finished after backtracking; the rest were freed but ran out of ships or turns
-  (free ships are wasted pieces, 15 per player) or are the route-less ones above. All moves are legal (0 bad ends, 0 illegal roads).
-- The route-less cases come from random free-ship play that walls a beachhead or fortress in; they would need another rule (for example forbidding free ships that wall a target) and
-  are reported for a decision rather than designed away here.
+- The no-wall rule cut the boxed-in lines of the heavy free-ship policy from 5 % / 12 % of the games to 3 % / 5.7 % and removed them entirely for line-focused play (still 0 in 1,400 games).
+- **It does not reach 0 stuck players** (the goal): 2 players (3 players table) and 22 (4 players table) at `bias 0.4`. Two causes remain:
+  1. **Route-less boxed-in players (12 in the 4-player table)**: the no-wall rule only protects a *connected* player, and blockers that appear from placements the rule cannot see
+     (a free ship placed before a player's line had a path, or buildings of the setup) still wall; nothing can free them.
+  2. **Rule deadlocks (39 and 342 player-turns)**: two lines that need the same narrow channel each refuse the other's step because the first step to go would cut the other off, so
+     both wait forever although both end vertices can reach their targets. This is a consequence of the rule as decided, not of a bug (`inconsistent` is 0).
+  Possible refinements, not made here: let the actor's own line step through when it is the only legal extension (priority to the first mover), or judge a step by whether the other player
+  keeps a route from the *whole* line, not just the current end. The numbers come from random play with many free ships and no coordination and overstate real tables.
+- All commands are legal (0 illegal roads, 0 bad ends).
 
 ## What was built
 
@@ -238,7 +243,7 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
 
 ## Verification
 
-- Rules (`packages/rules/test/seafarers-pirate-islands.test.ts`, 41 tests; whole suite 71 files, 1184 tests):
+- Rules (`packages/rules/test/seafarers-pirate-islands.test.ts`, 47 tests; whole suite 71 files, 1190 tests):
   topology (49 hexes, rows 6-7-8-7-8-7-6 on the `sf-forgotten-tribe` outline, Euler, protrusions absent, 8 distinct frame harbour edges)
   and the (-1, -3) shift against the transcribed row ranges; layout checksums (terrain 19/3/2/5×5, 24 discs, the 6 hexes without a
   disc, islands 17/4/2/1/4/2, every transcribed cell, 8 harbour tokens reproducible and varying with the seed, route 14 consecutive
