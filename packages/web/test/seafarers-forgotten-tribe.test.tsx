@@ -165,6 +165,8 @@ describe('Forgotten Tribe players panel', () => {
     expect(held.getAttribute('aria-label')).toBe('Ports waiting to be placed: a 2:1 Brick port · a 3:1 port: 2');
     expect(held.textContent).toContain('2:1B 3:1');
     expect(screen.queryByTestId('players-tribe-vp-1')).toBeNull();
+    // VP 標記只列一次，不再重複算進一般獎勵分。
+    expect(screen.queryByLabelText(/^Public bonus points/)).toBeNull();
     panel('zh-Hant');
     expect(screen.getByTestId('players-tribe-vp-0').getAttribute('aria-label')).toContain('VP 標記');
     expect(screen.getByTestId('players-tribe-held-0').getAttribute('aria-label')).toContain('尚未放下的港口');

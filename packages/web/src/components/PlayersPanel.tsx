@@ -331,7 +331,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                     <ScoreMark key={mission} icon={mission === 'lairs' ? 'shield' : mission === 'fish' ? 'anchor' : 'scales'} testId={`players-ep-${mission}-${player.seat}`}
                       label={t(`ep.score.${mission}`, { points: number(epPlayer.missionPoints[mission] ?? 0) })} value={number(epPlayer.missionPoints[mission] ?? 0)} />
                   ))}
-                  {player.bonusPoints - islandPoints > 0 && <ScoreMark icon="flag" label={t('table.playersBonus')} value={number(player.bonusPoints - islandPoints)} />}
+                  {player.bonusPoints - islandPoints - (sea?.tribe?.vp[player.id] ?? 0) > 0 && <ScoreMark icon="flag" label={t('table.playersBonus')} value={number(player.bonusPoints - islandPoints - (sea?.tribe?.vp[player.id] ?? 0))} />}
                   {ckPoints && ckPoints.metropolises > 0 && <ScoreMark icon="city" testId={`players-metropolis-${player.seat}`}
                     label={t('ck.score.metropolises', { points: number(ckPoints.metropolises) })} value={number(ckPoints.metropolises)} />}
                   {ckPoints && ckPoints.defenders > 0 && <ScoreMark icon="shield" testId={`players-defender-${player.seat}`}
