@@ -598,6 +598,7 @@ export class GameCoordinator {
       await this.repo.updateGameProposalStatus(proposalId, 'applied');
       await this.repo.updateRoom(game.room_id, { status: 'suspended' });
       await this.repo.cancelOpenProposals(game.room_id);
+      await this.repo.cancelOpenGameProposalsOfKind(game.id, 'regenerate');
       if (abandonVoteLapses) await this.repo.cancelOpenGameProposalsOfKind(game.id, 'abandon');
       await this.repo.clearGameReady(game.id);
     });
@@ -656,6 +657,10 @@ export class GameCoordinator {
       const game = await this.requireGame(gameId);
       await this.requireSeat(game, playerId);
       this.assertNotTerminal(game);
+      // 暫停中的桌子不能重排（暫停成立時也會取消開著的提案）。
+      if ((await this.repo.findRoom(game.room_id))?.status === 'suspended') {
+        throw new ServiceError('E_GAME_SUSPENDED', 'error.E_GAME_SUSPENDED', { gameId }, 409);
+      }
       const proposal = await this.repo.findOpenGameProposal(gameId, 'regenerate');
       if (!proposal || proposal.id !== proposalId) {
         throw new ServiceError('E_NO_PROPOSAL', 'error.E_NO_PROPOSAL', { proposalId }, 404);
@@ -665,7 +670,8 @@ export class GameCoordinator {
         this.deps.rooms.broadcastRoom(game.room_id);
         return { regenerated: false };
       }
-      await this.repo.insertGameConsent(proposalId, playerId);
+      // 冪等：重送（重試、雙擊）不會撞主鍵，也不重複計票。
+      await this.recordConsent(proposalId, playerId);
       const regenerated = await this.tryApplyRegenerate(game, proposalId);
       if (!regenerated) this.deps.rooms.broadcastRoom(game.room_id);
       return { regenerated };

@@ -219,6 +219,43 @@ describe('New World over the API', () => {
     host.expectOk(await host.post(`/api/games/${gameId}/regenerate`, { proposalId: third2.proposalId, approve: false }));
   });
 
+  it('counts a repeated approval once and never errors on the retry', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3, { profileId: PROFILE, setupMode: 'variable' });
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const proposed = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/regenerate`, {}));
+    const approve = { proposalId: proposed.proposalId, approve: true };
+    second.expectOk(await second.post(`/api/games/${gameId}/regenerate`, approve));
+    // 重送（重試、雙擊）：仍成功，票數不變，版圖不動。
+    expect(second.expectOk<{ regenerated: boolean }>(await second.post(`/api/games/${gameId}/regenerate`, approve)).regenerated).toBe(false);
+    expect((await roomOf(host, roomId)).pendingRegenerate!.consents.slice().sort()).toEqual([host.playerId, second.playerId].sort());
+    expect((await snapshot(host, gameId)).view.modules!.seafarers!.world).toMatchObject({ rerolls: 0 });
+    // 第三位同意後才重排。
+    expect(third.expectOk<{ regenerated: boolean }>(await third.post(`/api/games/${gameId}/regenerate`, approve)).regenerated).toBe(true);
+  });
+
+  it('refuses consent while the table is suspended, and a suspension cancels an open proposal', async () => {
+    const { clients, gameId, roomId } = await startedGame(harness, 3, { profileId: PROFILE, setupMode: 'variable' });
+    const [host, second, third] = clients as [TestClient, TestClient, TestClient];
+    const open = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/regenerate`, {}));
+    // 全桌同意暫停：開著的重排提案隨之取消。
+    const suspend = host.expectOk<{ proposalId: string }>(await host.post(`/api/games/${gameId}/suspend`, {}));
+    second.expectOk(await second.post(`/api/games/${gameId}/suspend`, { proposalId: suspend.proposalId, approve: true }));
+    third.expectOk(await third.post(`/api/games/${gameId}/suspend`, { proposalId: suspend.proposalId, approve: true }));
+    expect((await roomOf(host, roomId)).status).toBe('suspended');
+    expect(await harness.service.repo.findOpenGameProposal(gameId, 'regenerate')).toBeNull();
+    third.expectError(await third.post(`/api/games/${gameId}/regenerate`, { proposalId: open.proposalId, approve: true }), 'E_GAME_SUSPENDED');
+    // 即使有殘留的提案，暫停中同意也被拒，狀態與修訂版本不變。
+    const before = await snapshot(host, gameId);
+    await harness.service.repo.insertGameProposal({ id: 'stale-regen', game_id: gameId, kind: 'regenerate', proposed_by: host.playerId!, status: 'open', created_at: new Date().toISOString() });
+    await harness.service.repo.insertGameConsent('stale-regen', host.playerId!);
+    for (const client of [second, third]) {
+      client.expectError(await client.post(`/api/games/${gameId}/regenerate`, { proposalId: 'stale-regen', approve: true }), 'E_GAME_SUSPENDED');
+    }
+    const after = await snapshot(host, gameId);
+    expect(after.revision).toBe(before.revision);
+    expect(JSON.stringify(after.view.board)).toBe(JSON.stringify(before.view.board));
+  });
+
   it('refuses to regenerate once the first port is placed, and a placement cancels an open proposal', async () => {
     const { clients, gameId, roomId } = await startedGame(harness, 3, { profileId: PROFILE, setupMode: 'variable' });
     const host = clients[0]!;
