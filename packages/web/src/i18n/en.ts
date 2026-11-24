@@ -611,6 +611,7 @@ export const en: Catalog = {
   'stats.col.total': 'Total',
   'stats.col.produced': 'Dice production',
   'stats.col.starting': 'Starting',
+  'stats.col.explored': 'Exploration',
   'stats.col.stolen': 'Stolen',
   'stats.col.tradeIn': 'Traded in',
   'stats.col.built': 'Building',

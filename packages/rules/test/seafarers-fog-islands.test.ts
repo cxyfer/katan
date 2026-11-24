@@ -205,6 +205,9 @@ describe('SFX-S3 探索：建造船', () => {
     expect(next.board.layout.numbers[hexIndex]).toBe(12);
     expect(next.players[0]!.resources.grain).toBe(1);
     expect(next.bank.grain).toBe(bankBefore - 1);
+    // 探索獎勵另計，不算擲骰生產。
+    expect(next.stats!.players.p1!.explored?.grain).toBe(1);
+    expect(next.stats!.players.p1!.produced.grain).toBe(0);
     expect(isLandHex(next, hexIndex)).toBe(true);
     expect(seafarersState(next).fog!.discs).toHaveLength(9);
     expect(seafarersState(next).fog!.tiles.fields).toBe(1);
@@ -247,6 +250,8 @@ describe('SFX-S3 探索：建造船', () => {
     expectRejected(next, 'p2', cmd({ type: 'gold.choose', resources: ['ore'] }), 'E_NOT_ACTOR');
     const done = act(next, 'p1', cmd({ type: 'gold.choose', resources: ['ore'] })).state;
     expect(done.players[0]!.resources.ore).toBe(1);
+    expect(done.stats!.players.p1!.explored?.ore).toBe(1);
+    expect(done.stats!.players.p1!.produced.ore).toBe(0);
     expect(done.pending).toBeNull();
   });
 

@@ -12,7 +12,7 @@
 
 import { playerById, topologyOf } from '../../analysis.ts';
 import { fogIslandsMap, FOG_TILES, type FogTile } from '../../seafarers-fog-islands-boards.ts';
-import { addResource, playerStats } from '../../stats.ts';
+import { addResource, exploredStats } from '../../stats.ts';
 import type { CommandOutcome, GameState, ModulePending, Resource } from '../../types.ts';
 import type { ModuleCommand, ModuleContext, ModuleViewContext, PublicModulePendingView } from '../types.ts';
 import { enqueueGold } from './gold.ts';
@@ -98,13 +98,13 @@ export function revealFog(state: GameState, hex: number, playerId: string, ctx: 
     if (resource && state.bank[resource] > 0) {
       state.bank[resource] -= 1;
       playerById(state, playerId)!.resources[resource] += 1;
-      addResource(playerStats(state, playerId).produced, resource, 1);
+      addResource(exploredStats(state, playerId), resource, 1);
       params.resource = resource;
     }
   }
   ctx.kit.emit(state, 'fog.revealed', params);
   // 金礦：探索者自選一種；供應堆空了由 frame 跳過。
-  if (tile === 'gold') enqueueGold(state, { [playerId]: 1 }, [playerId], ctx, true);
+  if (tile === 'gold') enqueueGold(state, { [playerId]: 1 }, [playerId], ctx, 'fog');
 }
 
 /**

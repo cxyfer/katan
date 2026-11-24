@@ -79,6 +79,22 @@ describe('post-game statistics', () => {
     expect(document.activeElement).toBe(screen.getByTestId('stats-tab-trade'));
   });
 
+  it('shows exploration rewards as their own income column only when a player explored', () => {
+    renderPanel();
+    fireEvent.click(screen.getByTestId('stats-tab-economy'));
+    expect(screen.queryByTestId('stats-cell-income-explored-p1')).toBeNull();
+  });
+
+  it('counts exploration rewards in income but not in dice production', () => {
+    renderPanel('en', true, (view) => {
+      view.stats!.players['p1']!.explored = { lumber: 0, brick: 1, wool: 0, grain: 0, ore: 2 };
+    });
+    fireEvent.click(screen.getByTestId('stats-tab-economy'));
+    expect(screen.getByTestId('stats-cell-income-explored-p1').textContent).toContain('3');
+    expect(screen.getByTestId('stats-cell-income-produced-p1').textContent).toContain('6');
+    expect(screen.getByTestId('stats-cell-income-incomeTotal-p1').textContent).toContain('9');
+  });
+
   it('lists drawn development cards by type', () => {
     renderPanel();
     fireEvent.click(screen.getByTestId('stats-tab-development'));
