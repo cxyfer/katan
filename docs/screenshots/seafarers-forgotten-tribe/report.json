@@ -1,0 +1,224 @@
+{
+  "scenario": "forgotten-tribe",
+  "profile": "sf-forgotten-tribe-2025",
+  "base": "http://127.0.0.1:3041",
+  "cases": [
+    {
+      "name": "lobby-forgotten-tribe",
+      "status": "PASS",
+      "note": "lobby: Seafarers / The Forgotten Tribe, 3-4 players only",
+      "sha256": "10460a957d1b70b9ac682918c95b73a2d26282307834bed9d40bf496dbc49653",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-forgotten-tribe",
+      "sha256": "f332d85fe33dd5318aa2370852e53befbb5ac450e5693b09aa0085dc901454fb",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-forgotten-tribe",
+      "sha256": "0e23e25e86a7ce35d9443861d5cfe8606974aeb1c13ff9b7f0584ebb22568b7d",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-forgotten-tribe",
+      "sha256": "297e3d731720b511ac8411e16d5a460d4338f367587102fc86af6ba6897d6c6a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-forgotten-tribe",
+      "sha256": "7dd7fb459348894feb340f71f7262d0f566a8e442b54ba0af65b75760afa1249",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-svg-phone",
+      "status": "PASS",
+      "note": "sf-forgotten-tribe",
+      "sha256": "14a39ecfa2e6ed7a447059286f11102387d6f8eaaedc281e4743b981a3120413",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "help-tribe-svg-desktop",
+      "status": "PASS",
+      "note": "setup done on the large island; help panel shows the Forgotten Tribe rules",
+      "sha256": "6d7cf92f2492f098e88487cd51210446397f8e40603a4921ec58745695c2f7ca",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-port-targets-3d",
+      "status": "PASS",
+      "note": "port taken in 3D: edges beside the coastal settlement are the targets",
+      "sha256": "d2e4538bc3cf2a956b9acb30f571bc1f92696f49b7c66a58a8a3f720605dd791",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-port-placed-3d",
+      "status": "PASS",
+      "note": "port placed through the 3D board; it works at once",
+      "sha256": "36f1a3f847da38f704409768735906631de958ce6498d9566fe82b1ff3a4b861",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-gifts-svg",
+      "status": "PASS",
+      "note": "development card and VP token taken in SVG: gifts gone, VP mark on the panel",
+      "sha256": "7e80e8897f0613cfcb7934da77cd912ef1e2e5ea5783e31aaa2d6cff5a43f409",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result",
+      "status": "PASS",
+      "note": "the second VP token (taken by moving a ship) makes 13 VP: result screen",
+      "sha256": "89f7da182905c76a34f6f389367905f89cb02e024775235d41ddaa0626de51a9",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    }
+  ],
+  "finish": {
+    "plan": {
+      "player": "player_68d72a7c5ae04b01a733",
+      "coast": 33,
+      "coastEdges": [
+        39,
+        40
+      ],
+      "port": {
+        "gift": 3,
+        "kind": "port",
+        "harbor": "lumber",
+        "near": 4
+      },
+      "devcard": {
+        "gift": 2,
+        "kind": "devcard",
+        "near": 1
+      },
+      "vp1": {
+        "gift": 19,
+        "kind": "vp",
+        "near": 23
+      },
+      "vp2": {
+        "gift": 29,
+        "kind": "vp",
+        "near": 30,
+        "anchor": 28
+      },
+      "settled": [
+        {
+          "vertex": 26,
+          "player": "player_68d72a7c5ae04b01a733",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 35,
+          "player": "player_892aaaff1ffb469faa0c",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 66,
+          "player": "player_892aaaff1ffb469faa0c",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 67,
+          "player": "player_37e24aa38168472ea3bd",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 77,
+          "player": "player_17dab3a45f1d4042a3af",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 83,
+          "player": "player_37e24aa38168472ea3bd",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 87,
+          "player": "player_68d72a7c5ae04b01a733",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 89,
+          "player": "player_17dab3a45f1d4042a3af",
+          "islands": [
+            1
+          ]
+        }
+      ]
+    },
+    "result": {
+      "playerId": "player_68d72a7c5ae04b01a733",
+      "reason": "victory",
+      "score": 13
+    }
+  },
+  "errors": []
+}
