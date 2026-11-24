@@ -96,7 +96,10 @@ describe('New World board (SVG)', () => {
     slot.claims.push({ player: 'p1', island: 2, vertex });
     slot.islands.p1!.push(2);
     const { container } = svg(viewOf(state));
+    const token = container.querySelector('[data-testid^="island-bonus-"]')!;
     expect(container.querySelectorAll('[data-testid^="island-bonus-"]')).toHaveLength(1);
+    // 新世界一個島 1 分，標記上寫 +1（New Shores 是 +2）。
+    expect(token.textContent).toBe('+1');
     cleanup();
   });
 });
@@ -259,7 +262,7 @@ describe('New World text', () => {
     expect(translateEvent('en', events[0]!, names).text).toBe('P1 drew a 2:1 Ore port to place (port 3 of 10).');
     expect(translateEvent('en', events[1]!, names).text).toBe('P2 placed a 3:1 port on path 9.');
     expect(translateEvent('en', events[3]!, names).text).toContain('redraw 2');
-    expect(translateEvent('en', events[4]!, names, { scenario: 'new-world' }).text).toBe('P1 settled a new island: +1 victory points.');
+    expect(translateEvent('en', events[4]!, names, { scenario: 'new-world' }).text).toBe('P1 settled a new island: +1 victory point.');
     for (const locale of ['en', 'zh-Hant'] as const) {
       for (const event of events) {
         const text = translateEvent(locale, event, names, { scenario: 'new-world' });
@@ -267,5 +270,23 @@ describe('New World text', () => {
         expect(text.text).not.toMatch(/\{\w+\}/);
       }
     }
+  });
+});
+
+describe('New World board redraw clears a stale port selection', () => {
+  it('a snapshot with a new reroll count or terrain empties the selection; the same board keeps it', async () => {
+    const { tableReducer } = await import('../src/state/table.ts');
+    const first = worldState(3, 7);
+    const view = viewOf(first);
+    const selection = { ...EMPTY_SELECTION, kind: 'edge' as const, index: 5, commandType: 'world.harbor', labelId: 'sf.world.harbor' };
+    const base = tableWith(view, { selection });
+    const sameBoard = tableReducer(base, { type: 'snapshot', snapshot: makeSnapshot(view, 13) });
+    expect(sameBoard.selection).toEqual(selection);
+    const other = viewOf(worldState(3, 8));
+    const redrawn = tableReducer(base, { type: 'snapshot', snapshot: makeSnapshot(other, 14) });
+    expect(redrawn.selection).toEqual(EMPTY_SELECTION);
+    const rerolled = JSON.parse(JSON.stringify(view)) as GameView;
+    (rerolled.modules!.seafarers as { world: { rerolls: number } }).world.rerolls = 1;
+    expect(tableReducer(base, { type: 'snapshot', snapshot: makeSnapshot(rerolled, 15) }).selection).toEqual(EMPTY_SELECTION);
   });
 });

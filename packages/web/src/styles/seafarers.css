@@ -10,3 +10,8 @@
 .gold-picker__actions { display: flex; gap: .4rem; margin-top: .4rem; }
 .gold-picker__actions .button { flex: 1; min-height: 34px; font-size: .72rem; }
 .bandit-choice .button, .ship-choice .button { width: 100%; min-height: 34px; margin-top: .4rem; font-size: .74rem; }
+/* 新世界港口階段：提示（抽到的港口、選邊說明、重排入口）與設置導引要完整可見，放不下時整個訊息欄可捲動。 */
+.screen--game .game__messages:has(.world-harbor) { max-height: calc(100% - 70px); }
+.screen--game[data-layout="compact-landscape"] .game__messages:has(.world-harbor) { max-height: calc(100% - 20px); }
+.world-harbor p { margin: .25rem 0; }
+.world-harbor .button { width: 100%; min-height: 34px; margin-top: .3rem; font-size: .74rem; }

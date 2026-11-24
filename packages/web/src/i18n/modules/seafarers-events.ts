@@ -48,7 +48,7 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
         shortSuffix: num(p.shortBy) > 0 ? t(locale, 'sf.gold.short', { count: num(p.shortBy) }) : '',
       };
     case 'island.bonus':
-      return { player, points: num(p.points) };
+      return { player, points: num(p.points), unit: t(locale, num(p.points) === 1 ? 'sf.vp.one' : 'sf.vp.many') };
     case 'tribe.gift': {
       const harbor = str(p.harbor);
       const gift = p.gift === 'vp' ? t(locale, 'sf.gift.vp') : p.gift === 'devcard' ? t(locale, 'sf.gift.devcard')
