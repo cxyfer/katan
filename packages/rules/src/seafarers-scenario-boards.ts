@@ -2,7 +2,8 @@
  * Seafarers 其餘劇本的版圖（SF25 pp. 6–20，spec 2026-11-22-seafarers-scenarios.md §7.3）。
  *
  * 目前有 The Four Islands（四島群島）、Through the Desert（穿越荒漠，SF25 pp. 10–11，
- * 外框依人數不同，見該節）與 The Forgotten Tribe（世外部落，SF25 pp. 12–13，49 格寬版外框）。四島群島：
+ * 外框依人數不同，見該節）、The Forgotten Tribe（世外部落，SF25 pp. 12–13，49 格寬版外框）
+ * 與 Cloth for Catan（布匹產地，SF25 pp. 14–15，42 格，見該節）。四島群島：
  *   - 3 人：SF25 p. 6 的版圖與配件表；
  *   - 4 人：SF25 p. 7 的版圖與配件表。
  * 兩張圖都是 35 格外框，與 New Shores 3 人圖相同（rows 4-5-6-5-6-5-4，中排兩端的
@@ -17,7 +18,8 @@
 
 import type { LayoutContext } from './layout-registry.ts';
 import { fixedLayout, L, NS3_CELLS, NS4_CELLS, type LandHex, type PortSpec } from './seafarers-boards.ts';
-import { hexCenter, NEIGHBOR_DIRS, type BoardTopology, type HexCoord, type TopologyDefinition } from './topology.ts';
+import { shuffle } from './rng.ts';
+import { hexCenter, NEIGHBOR_DIRS, type BoardTopology, type HarborSlotSpec, type HexCoord, type TopologyDefinition } from './topology.ts';
 import type { BoardLayout, HarborType } from './types.ts';
 
 // ---------------------------------------------------------------------------
@@ -285,6 +287,106 @@ export const FORGOTTEN_TRIBE_SOURCE = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Cloth for Catan（布匹產地）— SF25 pp. 14–15
+// ---------------------------------------------------------------------------
+//
+// 3 人與 4 人共用同一張圖（SF25 只有一張，跨 pp. 14–15）。外框 42 格，rows 5-6-7-6-7-6-5，
+// 與 `NS4_CELLS` 完全同形（中排兩端的突出部是框，不是格），所以沿用 `NS4_CELLS`，只是港口位置不同。
+// 座標：轉錄原點是「最上排 r=0、該排最左 q=0」，這裡一次平移 (dq, dr) = (0, -3)：
+// 轉錄各排的 q 範圍（0..4、-1..4、-2..4、-2..3、-3..3、-3..2、-3..1）與 `NS4_CELLS` 逐排一致，
+// 所以 q 不變、r 減 3。逐格表與雙人轉錄比對見 docs/aegis/work/2026-11-24-seafarers-cloth-for-catan.md。
+//
+// 島編號：1 = 北大島（10 格）；2、3、4、5 = 四座單格小島（金礦、沙漠、沙漠、金礦，格上沒有圓片）；
+// 6 = 南大島（10 格）。強盜起始在 12 號圓片格 (-2,-1)（轉錄 (-2,2)）；海盜棋子在右側框突出部上
+//（`pirate: null`，與 S1 相同）。
+
+/** 轉錄座標平移到 `NS4_CELLS` 座標。 */
+const CFC_SHIFT = { dq: 0, dr: -3 } as const;
+
+export const CLOTH_FOR_CATAN_TOPOLOGY_ID = 'sf-cloth-for-catan';
+
+/** 轉錄座標（原點在左上）轉成 repo 座標。 */
+const cf = (q: number, r: number, terrain: LandHex['terrain'], number: number | null, island: number): LandHex =>
+  L(q + CFC_SHIFT.dq, r + CFC_SHIFT.dr, terrain, number, island);
+
+const CFC_LAND: readonly LandHex[] = [
+  // 島 1：北大島（沿外框北緣呈弧形）
+  cf(0, 0, 'forest', 4, 1), cf(1, 0, 'pasture', 6, 1), cf(2, 0, 'hills', 5, 1), cf(3, 0, 'pasture', 11, 1),
+  cf(4, 0, 'fields', 8, 1), cf(-1, 1, 'fields', 3, 1), cf(0, 1, 'forest', 12, 1), cf(3, 1, 'forest', 3, 1),
+  cf(4, 1, 'mountains', 9, 1), cf(-2, 2, 'fields', 12, 1),
+  // 島 2–5：四座單格小島（無圓片）
+  cf(1, 2, 'gold', null, 2), cf(-1, 3, 'desert', null, 3), cf(2, 3, 'desert', null, 4), cf(0, 4, 'gold', null, 5),
+  // 島 6：南大島
+  cf(3, 4, 'mountains', 2, 6), cf(-3, 5, 'hills', 9, 6), cf(-2, 5, 'fields', 2, 6), cf(1, 5, 'pasture', 11, 6),
+  cf(2, 5, 'mountains', 4, 6), cf(-3, 6, 'pasture', 10, 6), cf(-2, 6, 'forest', 6, 6), cf(-1, 6, 'mountains', 5, 6),
+  cf(0, 6, 'fields', 10, 6), cf(1, 6, 'hills', 8, 6),
+];
+
+/** 小島的島編號（不得蓋村落、強盜不可進入）。 */
+export const CFC_SMALL_ISLANDS: readonly number[] = [2, 3, 4, 5];
+
+/**
+ * 9 個港口位置（全部貼在陸地格朝向框的邊上，type 都是「?」）。順序即 topology 的 `harborSlots`；
+ * 種類是 5 個 2:1（各一種資源）+ 4 個 3:1，由 layout builder 以 game rng 洗牌。
+ */
+const CFC_PORT_SLOTS: readonly HarborSlotSpec[] = [
+  { q: 0, r: -3, side: 1 }, { q: 3, r: -3, side: 2 }, { q: -1, r: -2, side: 3 },
+  { q: 4, r: -2, side: 0 }, { q: 3, r: 1, side: 0 }, { q: -3, r: 2, side: 3 },
+  { q: 2, r: 2, side: 5 }, { q: 0, r: 3, side: 5 }, { q: -2, r: 3, side: 4 },
+];
+
+export const CFC_PORT_TOKENS: readonly HarborType[] = ['lumber', 'brick', 'wool', 'grain', 'ore', 'generic', 'generic', 'generic', 'generic'];
+
+/**
+ * 8 個部落（村落）圓片：印在小島格正上與正下的頂點。`hexes` 是共用該頂點的三格（轉錄座標已平移）；
+ * 順序固定（索引即 module state 的部落編號）。數字對 (11,8)、(10,9)、(4,5)、(6,3)。
+ */
+export interface TribeSpec {
+  number: number;
+  /** 共用該頂點的三格（含小島格與兩個海格）。 */
+  hexes: readonly HexCoord[];
+}
+
+const tribe = (number: number, cells: readonly (readonly [number, number])[]): TribeSpec =>
+  ({ number, hexes: cells.map(([q, r]) => ({ q: q + CFC_SHIFT.dq, r: r + CFC_SHIFT.dr })) });
+
+export const CFC_TRIBES: readonly TribeSpec[] = [
+  tribe(10, [[-1, 3], [-1, 2], [0, 2]]), tribe(9, [[-1, 3], [-1, 4], [-2, 4]]),
+  tribe(11, [[1, 2], [1, 1], [2, 1]]), tribe(8, [[1, 2], [1, 3], [0, 3]]),
+  tribe(6, [[0, 4], [0, 3], [1, 3]]), tribe(3, [[0, 4], [0, 5], [-1, 5]]),
+  tribe(4, [[2, 3], [2, 2], [3, 2]]), tribe(5, [[2, 3], [2, 4], [1, 4]]),
+];
+
+/** 部落的頂點索引（依 `CFC_TRIBES` 順序）：找出恰好由那三格共用的頂點。 */
+export function tribeVertices(topology: BoardTopology): number[] {
+  return CFC_TRIBES.map((spec) => {
+    const hexes = spec.hexes.map((cell) => topology.hexes.findIndex((hex) => hex.q === cell.q && hex.r === cell.r));
+    const vertex = topology.vertices.findIndex((info) =>
+      info.hexes.length === hexes.length && hexes.every((hex) => info.hexes.includes(hex)));
+    if (vertex < 0 || hexes.some((hex) => hex < 0)) throw new Error(`cloth for catan: tribe ${spec.number} has no vertex`);
+    return vertex;
+  });
+}
+
+/** 每個部落開局的布匹數與一般供應堆（SF25 p. 14：8 × 5 + 10 = 50）。 */
+export const CFC_TRIBE_CLOTH = 5;
+export const CFC_SUPPLY_CLOTH = 10;
+
+/** Layout builder，登記為 `sf-cloth-for-catan`：3 人與 4 人同一張圖；港口種類以 game rng 洗牌。 */
+export function clothForCatanLayout(context: LayoutContext, topologyFor: (id: string) => BoardTopology): BoardLayout {
+  const topology = checkedTopology(topologyFor, CLOTH_FOR_CATAN_TOPOLOGY_ID, 42);
+  const tokens = shuffle(CFC_PORT_TOKENS, context.rng);
+  const ports: PortSpec[] = CFC_PORT_SLOTS.map((slot, index) => ({ ...slot, type: tokens[index]! }));
+  // 強盜在 12 號圓片格 (-2,2)（轉錄座標）；海盜在框上（`pirate: null`）。
+  return fixedLayout(topology, CFC_LAND, ports, { q: -2 + CFC_SHIFT.dq, r: 2 + CFC_SHIFT.dr });
+}
+
+/** 轉錄的配件，供 fixture 測試使用（SF25 pp. 14–15）。 */
+export const CLOTH_FOR_CATAN_SOURCE = {
+  land: CFC_LAND, portSlots: CFC_PORT_SLOTS, tribes: CFC_TRIBES, cells: NS4_CELLS.length, shift: CFC_SHIFT,
+} as const;
+
+// ---------------------------------------------------------------------------
 // topology 與 layout
 // ---------------------------------------------------------------------------
 
@@ -296,6 +398,7 @@ export const SCENARIO_TOPOLOGIES: readonly TopologyDefinition[] = [
   { id: 'sf-through-the-desert-3', hexes: NS3_CELLS, harborSlots: slots(TD3_PORTS) },
   { id: 'sf-through-the-desert-4', hexes: NS4_CELLS, harborSlots: slots(TD4_PORTS) },
   { id: FORGOTTEN_TRIBE_TOPOLOGY_ID, hexes: FT_CELLS, harborSlots: FT_PORT_SLOTS },
+  { id: CLOTH_FOR_CATAN_TOPOLOGY_ID, hexes: NS4_CELLS, harborSlots: CFC_PORT_SLOTS.map(({ q, r, side }) => ({ q, r, side })) },
 ];
 
 /** 四島群島：3 人與 4 人都是 35 格外框，依人數選港口位置不同的 topology。 */

@@ -41,6 +41,7 @@ const VIEW_KEYS: Record<keyof SeafarersView, true> = {
   home: true,
   fog: true,
   tribe: true,
+  cloth: true,
 };
 
 const CLAIM_KEYS: Record<keyof Claim, true> = { player: true, island: true, vertex: true };
@@ -51,6 +52,7 @@ const HINT_KEYS: Record<keyof SeafarersHints, true> = {
   movableShips: true,
   shipMoved: true,
   pirateTargets: true,
+  clothVictims: true,
   robberTargets: true,
   goldRequired: true,
   goldBank: true,
@@ -66,8 +68,8 @@ const keysOf = (record: object): string[] => Object.keys(record).sort();
 /** 世外部落以外的劇本沒有港口放置的提示欄位。 */
 const HINT_KEYS_WITHOUT_TRIBE = Object.keys(HINT_KEYS).filter((key) => !['harborChoices', 'targets', 'board'].includes(key)).sort();
 /** `home` 只在排除 home 島的劇本（四島群島、新世界）的設置結束後出現，New Shores 不帶。 */
-const VIEW_KEYS_WITHOUT_HOME = Object.keys(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'fog' && key !== 'tribe').sort();
-/** `fog` 只在未知海域劇本、`tribe` 只在世外部落出現。 */
+const VIEW_KEYS_WITHOUT_HOME = Object.keys(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'fog' && key !== 'tribe' && key !== 'cloth').sort();
+/** `fog` 只在未知海域劇本、`tribe` 只在世外部落、`cloth` 只在布匹產地出現。 */
 
 // Both maps list the same modules, so a module added to one cannot be forgotten in the other.
 type SameKeys = [keyof ModuleViewMap] extends [keyof ModuleHintsMap]
@@ -116,7 +118,7 @@ describe('seafarers module exports (bot plan RX)', () => {
     const state = emptySeafarersGame(4, 0, 'action', 'sf-four-islands-2025');
     expect(keysOf(projectSeafarers(state))).toEqual(VIEW_KEYS_WITHOUT_HOME);
     seafarersState(state).home = { p1: [2], p2: [3], p3: [], p4: [5, 4] };
-    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'fog' && key !== 'tribe'));
+    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'fog' && key !== 'cloth' && key !== 'tribe'));
     expect(viewOf(state, 'p3').home).toEqual({ p1: [2], p2: [3], p3: [], p4: [5, 4] });
   });
 

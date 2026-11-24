@@ -7,12 +7,26 @@
  * building). See README.md in the parent directory for the hooks.
  */
 
-import { topologyOf } from '../../analysis.ts';
+import { scoreOf, topologyOf } from '../../analysis.ts';
 import { bankView } from '../../bank-view.ts';
 import type { GameState } from '../../types.ts';
 import type { ModuleViewContext, PublicModulePendingView, RulesModule } from '../types.ts';
-import { afterProduction, chooseGold, goldRequired, GOLD_FRAME, projectGold, skipEmptySupply } from './gold.ts';
+import { afterProduction as goldProduction, chooseGold, goldRequired, GOLD_FRAME, projectGold, skipEmptySupply } from './gold.ts';
 import { activateFog, chooseFog, exploreAtEdge, FOG_FRAME, initialFog, projectFogFrame } from './fog.ts';
+import {
+  clothPoints,
+  clothVictims,
+  closedTribeShip,
+  establishTrade,
+  exhaustionWinners,
+  hasTribeRoute,
+  initCloth,
+  isClothForCatan,
+  isSmallIslandHex,
+  produceCloth,
+  projectCloth,
+  stealCloth,
+} from './cloth.ts';
 import { allowBuilding, claimIslands } from './islands.ts';
 import { moveBandit, pirateTargets } from './pirate.ts';
 import {
@@ -53,6 +67,8 @@ export function projectSeafarers(state: GameState) {
     ...(slot.fog ? { fog: slot.fog.hexes.slice() } : {}),
     // 世外部落的禮物、VP 標記與暫存港口（發展牌禮物不含身分）；其餘劇本不帶此欄。
     ...(slot.tribe ? { tribe: projectTribe(slot.tribe) } : {}),
+    // 布匹產地的部落、供應堆、各玩家布匹與貿易關係（全部公開）；其餘劇本不帶此欄。
+    ...(slot.cloth ? { cloth: projectCloth(slot.cloth) } : {}),
   };
 }
 
@@ -86,7 +102,12 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
     setupShips: setupShipStep ? legalShipEdges(state, playerId, { setupVertex: setup!.lastVertex }) : [],
     movableShips: inAction && !view.moved ? movableShips(state, playerId) : [],
     shipMoved: view.moved,
-    pirateTargets: robberMove || isTurn ? pirateTargets(state) : [],
+    // 布匹產地：沒有通到部落的通路就不能移動海盜（SF25 p. 14）。
+    pirateTargets: (robberMove || isTurn) && (!view.cloth || hasTribeRoute(state, playerId)) ? pirateTargets(state) : [],
+    /** 布匹產地：偷海盜的對象時可以改偷布匹的玩家（輪到此玩家選擇時才有）。 */
+    clothVictims: view.cloth && state.pending?.kind === 'steal' && state.pending.actor === playerId && state.pending.pirate
+      ? clothVictims(state, state.pending.candidates)
+      : [],
     robberTargets: robberMove || isTurn
       ? topologyOf(state).hexes.map((_, hex) => hex).filter((hex) =>
         state.board.layout.terrain[hex] !== 'sea' && hex !== state.board.robber && robberHexAllowed(state, hex, ctx))
@@ -106,6 +127,8 @@ export type SeafarersHints = ReturnType<typeof seafarersHints>;
 
 /** 世外部落：強盜只能移到有數字圓片的格（7 與騎士都一樣，SF25 p. 12）。 */
 function robberHexAllowed(state: GameState, hex: number, ctx: ModuleViewContext): boolean {
+  // 布匹產地：強盜不可移到四座小島（SF25 p. 14）。
+  if (isClothForCatan(ctx)) return !isSmallIslandHex(state, hex);
   return !isForgottenTribe(ctx) || state.board.layout.numbers[hex] !== null;
 }
 
@@ -117,6 +140,13 @@ export const seafarersModule: RulesModule = {
     const fog = initialFog(state, { profile: ctx.profile });
     if (fog) slot.fog = fog;
     if (isForgottenTribe(ctx)) initTribe(state, ctx, slot);
+    if (isClothForCatan(ctx)) {
+      initCloth(state, slot);
+      // 第三輪（SF25 p. 14）：前兩輪之後，從起始玩家起順時針每人再放一個村落加一條路或船。
+      const setup = state.turn.setup!;
+      setup.order = [...setup.order, ...state.players.map((player) => player.seat)];
+      setup.third = false;
+    }
     setModuleState(state, SEAFARERS, slot);
   },
 
@@ -125,11 +155,43 @@ export const seafarersModule: RulesModule = {
     if (build.piece === 'road' && !build.setup && build.edge !== undefined) exploreAtEdge(state, build.playerId, build.edge, ctx);
   },
 
+  // 起始資源按第三個村落發；前兩個村落不收資源。
+  setupStartingResources(_state, step, ctx) {
+    return !isClothForCatan(ctx) || step.third === true;
+  },
+
+  // 每 2 枚布匹 1 分（餘數不計），全程計入。
+  score(state, playerId) {
+    return clothPoints(state, playerId);
+  },
+
+  // 不使用最長道路。
+  awardRules(_state, rules, ctx) {
+    return isClothForCatan(ctx) ? { ...rules, minLongestRoad: Number.POSITIVE_INFINITY } : rules;
+  },
+
+  // 通往部落的通路中的船不可移動；延伸或分叉出去的船照一般規則。
+  shipMoveBlocked(state, playerId, edge) {
+    return closedTribeShip(state, playerId, edge);
+  },
+
+  // 回合結束時 ≥5 個部落沒有布匹：最高分勝，平手比布匹，仍平手共同勝利（D12）。
+  onEndTurn(state, _actorId, ctx) {
+    const winners = exhaustionWinners(state, (id) => scoreOf(state, id, { includeHidden: true }));
+    if (!winners) return 'continue';
+    ctx.kit.endGame(state, winners, 'clothExhausted');
+    return 'defer';
+  },
+
   robberTargets(state, _actorId, targets, ctx) {
     return targets.filter((hex) => robberHexAllowed(state, hex, ctx));
   },
 
-  afterProduction,
+  afterProduction(state, roll, ctx) {
+    // 布匹先於金礦結算（SF25 p. 14）。
+    produceCloth(state, roll, ctx);
+    goldProduction(state, roll, ctx);
+  },
   moveBandit,
   allowBuilding,
 
@@ -151,6 +213,8 @@ export const seafarersModule: RulesModule = {
 
   afterBoardChange(state, ctx) {
     claimIslands(state, ctx);
+    // 布匹產地：新連上部落的玩家建立貿易關係並拿 1 枚布匹。
+    establishTrade(state, ctx);
     // 暫存的港口：每次盤面變動重新檢查有沒有合法位置（世外部落）。
     offerHarbors(state, ctx);
   },
@@ -162,8 +226,9 @@ export const seafarersModule: RulesModule = {
     'gold.choose': chooseGold,
     'fog.choose': chooseFog,
     'harbor.place': placeHarbor,
+    'cloth.steal': stealCloth,
   },
-  pendingCommands: ['build.ship', 'gold.choose', 'fog.choose', 'harbor.place'],
+  pendingCommands: ['build.ship', 'gold.choose', 'fog.choose', 'harbor.place', 'cloth.steal'],
 
   activatePending(state, frame, ctx) {
     if (frame.kind === GOLD_FRAME) skipEmptySupply(state, frame, ctx);

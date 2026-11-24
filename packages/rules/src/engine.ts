@@ -66,6 +66,7 @@ import {
   type CommandOutcome,
   type DevCardType,
   type GameEvent,
+  type GameEndCause,
   type GameState,
   type HarborType,
   type Offer,
@@ -75,6 +76,7 @@ import {
   type PlayerColor,
   type PlayerState,
   type Resource,
+  type SetupState,
 } from './types.ts';
 
 export type Command =
@@ -310,6 +312,7 @@ const KIT: RulesKit = {
   },
   afterBoardChange,
   checkVictory,
+  endGame,
   enqueuePending,
   insertPendingNext,
   completePending: (state, rng) => completePending(state, rng ?? null),
@@ -620,6 +623,23 @@ function checkVictory(state: GameState): void {
   }
 }
 
+/**
+ * 模組直接結束遊戲（布匹產地：回合結束時 ≥5 個部落沒有布匹）。`winners` 依座位序，非空；
+ * `result.playerId` 是第一位勝者（舊讀者仍看得到一位），`playerIds` 是全部勝者。
+ * 只有 `checkVictory` 的 target 路徑維持原本的輸出（沒有 `playerIds`、`cause`）。
+ */
+function endGame(state: GameState, winners: readonly string[], cause: GameEndCause): void {
+  if (state.result || state.turn.phase === 'setup' || state.turn.phase === 'gameOver' || winners.length === 0) return;
+  const first = winners[0]!;
+  const score = scoreOf(state, first, { includeHidden: true });
+  state.result = { playerId: first, reason: 'victory', atSeq: state.seq, playerIds: winners.slice(), cause };
+  state.turn.phase = 'gameOver';
+  clearPending(state);
+  expireOffers(state, 'gameOver');
+  sampleTimeline(state);
+  emit(state, 'game.finished', { playerId: first, playerIds: winners.slice(), reason: 'victory', score, cause });
+}
+
 function afterBoardChange(state: GameState): void {
   const modules = modulesOf(state);
   let rules = {
@@ -921,7 +941,7 @@ function setupPlaceBuilding(state: GameState, actorId: string, vertex: number, r
   setup.lastVertex = vertex;
   emit(state, 'setup.building', { playerId: actorId, vertex, round: setup.round });
 
-  if (setup.round === 2) {
+  if (setup.round === 2 && setupGrantsResources(state, actorId, setup)) {
     const topo = topologyOf(state);
     const hexes = topo.vertices[vertex]!.hexes;
     const gained: Partial<Record<Resource, number>> = {};
@@ -941,6 +961,14 @@ function setupPlaceBuilding(state: GameState, actorId: string, vertex: number, r
   const city = state.board.buildings[vertex]!.city;
   afterBuild(state, { playerId: actorId, piece: city ? 'city' : 'settlement', vertex, setup: true, free: true }, rng);
   return { ok: true, state, events: [] };
+}
+
+/** 起始資源預設在第二輪發；模組可改成別輪（布匹產地：第三個村落）。 */
+function setupGrantsResources(state: GameState, playerId: string, setup: SetupState): boolean {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return true;
+  const ctx = viewContext(state);
+  return modules.every((module) => module.setupStartingResources?.(state, { playerId, round: setup.round, third: setup.third === true }, ctx) ?? true);
 }
 
 function setupPlacesCity(state: GameState, playerId: string, round: 1 | 2): boolean {
@@ -992,6 +1020,8 @@ function finishSetupStep(state: GameState): void {
   setup.stage = 'building';
   setup.lastVertex = null;
   setup.round = setup.index < state.players.length ? 1 : 2;
+  // 第三輪（布匹產地）：模組在 initGame 放 `third: false` 表示有這一輪；前兩輪各 n 步。
+  if (setup.third !== undefined) setup.third = setup.index >= state.players.length * 2;
 
   if (setup.index >= setup.order.length) {
     state.turn.setup = null;

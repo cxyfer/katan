@@ -13,7 +13,7 @@ import { rulesModulesOf } from './modules/registry.ts';
 import type { PublicModulePendingView } from './modules/types.ts';
 import { requireProfile, type ProfileDefinition } from './profiles.ts';
 import { cloneGameStats, type GameStats } from './stats.ts';
-import type { GameEvent, GameState, PendingFrame, PlayerState, Resource, Offer } from './types.ts';
+import type { GameEndCause, GameEvent, GameState, PendingFrame, PlayerState, Resource, Offer } from './types.ts';
 import { RESOURCES } from './types.ts';
 
 export interface PublicPlayerView {
@@ -87,7 +87,7 @@ export interface GameView {
     phase: string;
     dice: [number, number] | null;
     devCardPlayed: boolean;
-    setup: { seat: number; stage: 'building' | 'road'; round: 1 | 2; remaining: number } | null;
+    setup: { seat: number; stage: 'building' | 'road'; round: 1 | 2; remaining: number; third?: true } | null;
     pairedActor: 1 | 2;
   };
   /** The active mandatory choice. */
@@ -97,7 +97,11 @@ export interface GameView {
   offers: Offer[];
   windowId: number;
   seq: number;
-  result: { playerId: string | null; reason: string; score?: number } | null;
+  /**
+   * `playerIds` 與 `cause` 只在布匹耗盡的終局出現（共同勝利列出全部勝者）；
+   * 其他終局的輸出與過去逐位元相同。
+   */
+  result: { playerId: string | null; reason: string; score?: number; playerIds?: string[]; cause?: GameEndCause } | null;
   awards: { longestRoad: string | null; largestArmy: string | null };
   events: GameEvent[];
   hints?: ActionHintsView;
@@ -230,6 +234,8 @@ export function projectGame(
           state.result.playerId !== null
             ? scoreOf(state, state.result.playerId, { includeHidden: true })
             : undefined,
+        ...(state.result.playerIds ? { playerIds: state.result.playerIds.slice() } : {}),
+        ...(state.result.cause ? { cause: state.result.cause } : {}),
       }
     : null;
 
@@ -268,6 +274,7 @@ export function projectGame(
             stage: setup.stage,
             round: setup.round,
             remaining: setup.order.length - setup.index,
+            ...(setup.third === true ? { third: true as const } : {}),
           }
         : null,
       pairedActor: state.turn.pairedActor,

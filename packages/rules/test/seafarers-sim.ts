@@ -77,8 +77,17 @@ function resolvePending(state: GameState, rng: Rng, step: number): GameState | n
       }
       return null;
     }
-    case 'steal':
-      return attempt(state, pending.actor, { type: 'pending.steal', victim: pending.candidates[0]! }, rng);
+    case 'steal': {
+      // 布匹產地：偶數步偷布匹，否則偷資源牌；沒有布匹／沒有牌時改用另一種。
+      const victim = pending.candidates[0]!;
+      const order: AnyCommand[] = [{ type: 'pending.steal', victim }, { type: 'cloth.steal', victim }];
+      if (step % 2 === 0) order.reverse();
+      for (const command of order) {
+        const next = attempt(state, pending.actor, command, rng);
+        if (next) return next;
+      }
+      return null;
+    }
     case 'yearOfPlenty':
       return attempt(state, pending.actor, { type: 'pending.takeResource', resource: sorted(state, pending.actor, false)[0]! }, rng);
     case 'freeRoads': {
@@ -147,12 +156,15 @@ export interface SimulationResult {
   fogReveals: number;
   gifts: number;
   harborsPlaced: number;
+  clothTrades: number;
+  clothProduced: number;
+  clothStolen: number;
 }
 
 export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 30000, profileId?: string): SimulationResult {
   const rng = seededRng(seed * 7919 + players);
   let { state } = seafarersGame(players, seed, profileId);
-  const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0, fogReveals: 0, gifts: 0, harborsPlaced: 0 };
+  const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0, fogReveals: 0, gifts: 0, harborsPlaced: 0, clothTrades: 0, clothProduced: 0, clothStolen: 0 };
   const count = (before: GameState, after: GameState) => {
     for (const event of after.log) {
       if (event.seq <= before.seq) continue;
@@ -164,6 +176,9 @@ export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps
       if (event.type === 'fog.revealed') counters.fogReveals++;
       if (event.type === 'tribe.gift') counters.gifts++;
       if (event.type === 'harbor.placed') counters.harborsPlaced++;
+      if (event.type === 'cloth.trade') counters.clothTrades++;
+      if (event.type === 'cloth.produced') counters.clothProduced++;
+      if (event.type === 'cloth.stolen') counters.clothStolen++;
     }
   };
   for (let step = 0; step < maxSteps && !state.result; step++) {

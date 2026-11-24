@@ -1,6 +1,7 @@
 /** Seafarers module state (`GameState.moduleState.seafarers`). */
 
 import type { GameState } from '../../types.ts';
+import type { ClothState } from './cloth.ts';
 import type { TribeState } from './tribe.ts';
 import { moduleStateOf, setModuleState } from '../state.ts';
 
@@ -26,6 +27,8 @@ export interface SeafarersState {
   fog?: FogState;
   /** 世外部落（forgotten-tribe）的禮物、VP 標記與暫存港口；其他劇本沒有此欄位。 */
   tribe?: TribeState;
+  /** 布匹產地（cloth-for-catan）的部落、供應堆、布匹與貿易關係；其他劇本沒有此欄位。 */
+  cloth?: ClothState;
 }
 
 /**

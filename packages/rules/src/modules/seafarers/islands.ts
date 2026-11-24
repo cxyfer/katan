@@ -11,6 +11,7 @@ import { MAIN_ISLAND } from '../../seafarers-boards.ts';
 import type { IslandBonusRule } from '../../profiles.ts';
 import type { GameState } from '../../types.ts';
 import type { ModuleContext, ModuleViewContext } from '../types.ts';
+import { isSmallIslandHex } from './cloth.ts';
 import { seafarersState, type SeafarersState } from './state.ts';
 
 /** Island ids of the land hexes around an intersection. */
@@ -65,6 +66,11 @@ export function allowBuilding(state: GameState, _playerId: string, vertex: numbe
     const info = topologyOf(state).vertices[vertex];
     if (!info?.hexes.some((hex) => state.board.layout.numbers[hex] !== null)) return false;
     return !options.setup || islandsAt(state, vertex).includes(MAIN_ISLAND);
+  }
+  // 布匹產地（SF25 p. 14）：不得在四座小島蓋村落（全程）；起始村落放在兩座大島之一或分在兩座。
+  if (scenario === 'cloth-for-catan') {
+    const info = topologyOf(state).vertices[vertex];
+    return !info?.hexes.some((hex) => isLandHex(state, hex) && isSmallIslandHex(state, hex));
   }
   if (!options.setup) return true;
   if (scenario === 'fog-islands') return onKnownLand(state, vertex);

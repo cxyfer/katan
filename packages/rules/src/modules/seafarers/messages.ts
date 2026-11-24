@@ -15,6 +15,9 @@ export const messages = {
     'fog.revealed',
     'tribe.gift',
     'harbor.placed',
+    'cloth.trade',
+    'cloth.produced',
+    'cloth.stolen',
   ] as const,
   errorCodes: [
     'E_SHIP_NOT_MOVABLE',
@@ -22,5 +25,6 @@ export const messages = {
     'E_SHIP_BUILT_THIS_TURN',
     'E_PIRATE_BLOCKS',
     'E_PIRATE_SAME_HEX',
+    'E_PIRATE_NEEDS_TRIBE',
   ] as const,
 };

@@ -16,7 +16,7 @@ import type { ProfileDefinition, SetupMode } from './profiles.ts';
 import type { Rng } from './rng.ts';
 import { newShoresLayout } from './seafarers-boards.ts';
 import { fogIslandsLayout } from './seafarers-fog-islands-boards.ts';
-import { forgottenTribeLayout, fourIslandsLayout, throughTheDesertLayout } from './seafarers-scenario-boards.ts';
+import { clothForCatanLayout, forgottenTribeLayout, fourIslandsLayout, throughTheDesertLayout } from './seafarers-scenario-boards.ts';
 import { getTopology } from './topology-registry.ts';
 import type { BoardTopology } from './topology.ts';
 import type { BoardLayout } from './types.ts';
@@ -48,6 +48,8 @@ const builders = new Map<string, LayoutBuilder>([
   ['sf-fog-islands', (context) => fogIslandsLayout(context, getTopology)],
   // SF25 pp. 12–13 The Forgotten Tribe map (3 and 4 players share one 49-cell map).
   ['sf-forgotten-tribe', (context) => forgottenTribeLayout(context, getTopology)],
+  // SF25 pp. 14–15 Cloth for Catan map (3 and 4 players share one 42-cell map).
+  ['sf-cloth-for-catan', (context) => clothForCatanLayout(context, getTopology)],
   // EP25 pp. 6–7 / EP25-M pp. 4–16 Explorers & Pirates mission maps.
   ['explorers-pirates', (context) => explorersPiratesLayout(context, getTopology)],
 ]);
