@@ -907,6 +907,36 @@ describe('Pirate Islands: nobody may wall off a target (user decision 2026-11-24
     for (const edge of elsewhere.slice(0, 5)) expect(wallsAnyone(state, { edge, owner: 'p4' })).toBe(false);
   });
 
+  it('兩條船線搶同一條窄路：先動的一方走自己的嚴格最短延伸，即使會圍住對方（使用者決定 2026-11-24）', () => {
+    let state = started(4);
+    for (let i = 0; i < 2; i++) state = build(state, 'p1', lineEdges(state, 'p1')[0]!);
+    const topo = topologyOf(state);
+    const e = lineEdges(state, 'p1')[0]!;
+    const end = lineContext(state, 'p1')!.end!;
+    const to = topo.edges[e]!.vertices.find((vertex) => vertex !== end)!;
+    // p2 的 beachhead 搬到 `to`（測試用的改動）；p2 的船線只有 f（接在 `end` 上），它的出發處 x 與 `end` 其他的邊都被封住：
+    // p2 只能經過 e 走到它的目標。
+    slot(state).beachheads.find((entry) => entry.player === 'p2')!.vertex = to;
+    const f = topo.vertices[end]!.edges.find((edge) => edge !== e && !state.board.roads[edge])!;
+    ship(state, 'p2', f);
+    const x = topo.edges[f]!.vertices.find((vertex) => vertex !== end)!;
+    slot(state).lines.p2 = { start: x, edges: [f] };
+    for (const vertex of [end, x]) {
+      for (const edge of topo.vertices[vertex]!.edges) if (edge !== e && !state.board.roads[edge]) ship(state, 'p4', edge);
+    }
+    expect(wallContext(state)!.players.map((player) => player.id)).toContain('p2');
+    // 規則本身會說這條邊圍住 p2；但它是 p1 自己的嚴格最短延伸，所以合法。
+    expect(wallsAnyone(state, { edge: e, owner: 'p1' })).toBe(true);
+    expect(lineShip(state, 'p1', e).kind).toBe('line');
+    expect(lineEdges(state, 'p1')).toContain(e);
+    expect(canPlaceShip(state, 'p1', e)).toBe(true);
+    expect(legalShipEdges(state, 'p1')).toContain(e);
+    const next = build(state, 'p1', e);
+    expect(slot(next).lines.p1!.edges).toContain(e);
+    // 非最短延伸的放置（移船落在同一條邊）仍被檢查：同一條邊用移動的方式放就被拒。
+    expect(canPlaceShip(state, 'p1', e, { moving: f, walls: undefined })).toBe(false);
+  });
+
   it('自己的船線延伸走到 beachhead 不算圍死自己；移船也要檢查', () => {
     const state = started(4);
     state.windowId += 1;
