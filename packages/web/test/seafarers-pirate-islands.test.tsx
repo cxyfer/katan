@@ -239,6 +239,8 @@ describe('Pirate Islands player panel and messages', () => {
   it('has the ship line refusal and the pirate texts in both locales', () => {
     expect(translate('en', 'error.E_SHIP_LINE')).toContain('shortest path');
     expect(translate('zh-Hant', 'error.E_SHIP_LINE')).toContain('最短路徑');
+    expect(translate('en', 'error.E_LINE_WALLED')).toContain('wall off');
+    expect(translate('zh-Hant', 'error.E_LINE_WALLED')).toContain('完全擋住');
     for (const locale of ['en', 'zh-Hant'] as const) {
       for (const key of ['sf.pirate.fortress', 'sf.pirate.fortressTarget', 'sf.pirate.recaptured', 'sf.pirate.beachhead', 'sf.pirate.beachheadTarget', 'sf.pirate.route', 'sf.pirate.next.done']) {
         expect(translate(locale, key as never, { player: 'P1', count: 2 })).not.toBe(key);
