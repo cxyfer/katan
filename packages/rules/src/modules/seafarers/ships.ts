@@ -24,7 +24,7 @@ import type { CommandOutcome, GameState, Resource } from '../../types.ts';
 import { rulesModulesOf } from '../registry.ts';
 import type { ModuleCommand, ModuleContext } from '../types.ts';
 import { exploreAtEdge } from './fog.ts';
-import { lineAllows, lineBacktrackMovable, lineContext, lineShip, recordLineShip, wallContext, wallsAnyone, type LineContext, type WallChange, type WallContext } from './pirateIslands.ts';
+import { lineAllows, lineBacktrackMovable, lineContext, lineShip, recordLineShip, wallContext, wallsAnyone, type LineContext, type WallContext } from './pirateIslands.ts';
 import { seafarersState, seafarersView } from './state.ts';
 import { takeGift } from './tribe.ts';
 
@@ -72,7 +72,7 @@ export function canPlaceShip(state: GameState, playerId: string, edge: number, o
   if (touchesPirate(state, edge)) return false;
   if (options.setupVertex !== undefined) {
     return options.setupVertex !== null && info.vertices.includes(options.setupVertex) && lineAllows(state, playerId, edge, options)
-      && !wallsAnyone(state, wallChange(state, playerId, edge, options), options.walls);
+      && !wallsShip(state, playerId, edge, options);
   }
   const except = options.moving === undefined ? [edge] : [edge, options.moving];
   const connected = info.vertices.some((vertex) => {
@@ -83,18 +83,23 @@ export function canPlaceShip(state: GameState, playerId: string, edge: number, o
   });
   // 海盜巢穴：西島船線只能有一條不分叉的最短路徑（其他劇本一律允許）。
   return connected && lineAllows(state, playerId, edge, options)
-    && !wallsAnyone(state, wallChange(state, playerId, edge, options), options.walls);
+    && !wallsShip(state, playerId, edge, options);
 }
 
-/** 放這艘船會改變的盤面（占用的邊、移船騰出的邊，以及它是不是放置者船線的延伸）。 */
-function wallChange(state: GameState, playerId: string, edge: number, options: ShipPlacementOptions): WallChange {
+/**
+ * 這艘船會不會圍死任何玩家的目標。自己船線的嚴格最短延伸（新蓋的船，新端點距離 −1）不受限制：
+ * 走最短路徑是規則要求的，不算蓄意擋人（使用者決定 2026-11-24）；自由船、移船（含退回後的落點）照樣檢查。
+ */
+function wallsShip(state: GameState, playerId: string, edge: number, options: ShipPlacementOptions): boolean {
+  if (options.walls === null) return false;
   const step = lineShip(state, playerId, edge, options);
-  return {
+  if (step.kind === 'line' && options.moving === undefined) return false;
+  return wallsAnyone(state, {
     edge,
     owner: playerId,
     ...(options.moving === undefined ? {} : { vacated: options.moving }),
     ...(step.kind === 'line' ? { extend: step.to } : {}),
-  };
+  }, options.walls);
 }
 
 /**
