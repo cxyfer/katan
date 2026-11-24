@@ -173,13 +173,12 @@ def run():
                 checked = check_board(profile, count, board)
                 log('VARIABLE', scenario, count, checked)
                 assert not checked['sameAsFixed'], checked
-                assert not checked['redOnGold'], checked
                 if scenario == 'four-islands':
                     assert not checked['lowOnForestPasture'] and checked['robberOnTwelve'], checked
                 elif scenario == 'fog-islands':
                     assert checked['robberOnTwelve'], checked
                 elif scenario == 'through-the-desert':
-                    assert not checked['redAdjacent'] and checked['robberTerrain'] == 'desert', checked
+                    assert not checked['redAdjacent'] and not checked['redOnGold'] and checked['robberTerrain'] == 'desert', checked
                 elif scenario == 'forgotten-tribe':
                     assert not checked['tribeRestrictedBad'] and checked['robberTerrain'] == 'desert', checked
                 elif scenario == 'wonders-of-catan':

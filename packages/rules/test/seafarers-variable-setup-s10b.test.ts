@@ -292,7 +292,7 @@ describe('S6 選強盜步驟（variable，SF25 p. 15）', () => {
 });
 
 describe('S8 卡坦奇觀 variable（SF25 p. 18，1,000 種子）', () => {
-  it('沙漠、小島、海洋、港口位置不變；大島 21 格洗牌；緊鄰沙漠的 2 格沒有 6、8；強盜在沙漠', () => {
+  it('沙漠、小島、海洋、港口位置不變；大島 22 格洗牌；緊鄰沙漠的 2 格沒有 6、8；強盜在沙漠', () => {
     const fixed = layoutOf('wonders-of-catan', 3, 'fixed', 1);
     const fixedLand = landOf(fixed);
     const main = fixedLand.filter((hex) => hex.island === 1 && hex.terrain !== 'desert');

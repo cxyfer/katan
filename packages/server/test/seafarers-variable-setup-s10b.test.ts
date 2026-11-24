@@ -95,7 +95,7 @@ describe('variable setup over the API (S10b)', () => {
     rejected(await post(starter, { type: 'cloth.robber', hex: state.board.layout.numbers.findIndex((n) => n === 5) }, view.revision, 'c-bad'), 'E_ILLEGAL_TARGET');
     rejected(await post(starter, { type: 'setup.placeBuilding', vertex: 0 }, view.revision, 'c-early'), 'E_WRONG_PHASE');
     const target = twelves.find((hex) => hex !== state.board.robber)!;
-    const receipt = starter.expectOk<{ revision: number }>(await post(starter, { type: 'cloth.robber', hex: target }, view.revision, 'c-ok'));
+    const receipt = starter.expectOk<{ revision: number }>((await post(starter, { type: 'cloth.robber', hex: target }, view.revision, 'c-ok')) as never);
     const after = await stateOf(harness, gameId);
     expect(after.board.robber).toBe(target);
     expect(after.turn.setup!.stage).toBe('building');
