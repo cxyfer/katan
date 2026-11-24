@@ -39,38 +39,7 @@ was executed. SFCN-20 is cross-check only (§2.3 lists where it differs: line st
    two deserts in the north, island 6 = desert and pasture in the south, kept apart by the sea hexes (0, 3) and (1, 3)), not
    one; both are still the "pirate islands" (every island except the main one).
 3. **Coordinates shifted once.** The transcription origin is "top row r = 0, leftmost cell of that row q = 0" (outline rows
-   `[0,5] [-1,5] [-2,5] [-2,4] [-3,4] [-3,3] [-3,2]`). The repo outline of the Forgotten Tribe (`FT_| (q, r) as transcribed | (q, r) in the repo | Terrain | Disc | Island |
-|---|---|---|---|---|
-| (0, 0) | (-1, -3) | gold | 11 | 2 |
-| (1, 0) | (0, -3) | mountains | 6 | 2 |
-| (4, 0) | (3, -3) | fields | 4 | 1 |
-| (5, 0) | (4, -3) | hills | 5 | 1 |
-| (-1, 1) | (-2, -2) | hills | – | 2 |
-| (2, 1) | (1, -2) | desert | – | 3 |
-| (4, 1) | (3, -2) | mountains | 9 | 1 |
-| (5, 1) | (4, -2) | forest | 10 | 1 |
-| (-2, 2) | (-3, -1) | fields | 4 | 2 |
-| (1, 2) | (0, -1) | desert | – | 3 |
-| (3, 2) | (2, -1) | forest | 3 | 1 |
-| (4, 2) | (3, -1) | pasture | 8 | 1 |
-| (5, 2) | (4, -1) | forest | 5 | 1 |
-| (-1, 3) | (-2, 0) | mountains | 8 | 4 |
-| (2, 3) | (1, 0) | fields | 6 | 1 |
-| (3, 3) | (2, 0) | hills | 9 | 1 |
-| (4, 3) | (3, 0) | pasture | 12 | 1 |
-| (-3, 4) | (-4, 1) | fields | 10 | 5 |
-| (0, 4) | (-1, 1) | desert | – | 6 |
-| (2, 4) | (1, 1) | pasture | 11 | 1 |
-| (3, 4) | (2, 1) | forest | 8 | 1 |
-| (4, 4) | (3, 1) | pasture | 9 | 1 |
-| (-3, 5) | (-4, 2) | hills | – | 5 |
-| (0, 5) | (-1, 2) | pasture | – | 6 |
-| (2, 5) | (1, 2) | mountains | 5 | 1 |
-| (3, 5) | (2, 2) | forest | 2 | 1 |
-| (-3, 6) | (-4, 3) | gold | 3 | 5 |
-| (-2, 6) | (-3, 3) | mountains | 6 | 5 |
-| (1, 6) | (0, 3) | fields | 10 | 1 |
-| (2, 6) | (1, 3) | hills | 4 | 1 |`, rows 6-7-8-7-8-7-6,
+   `[0,5] [-1,5] [-2,5] [-2,4] [-3,4] [-3,3] [-3,2]`). The repo outline of the Forgotten Tribe (`FT_CELLS`, rows 6-7-8-7-8-7-6,
    the middle row r = 0 holding q from -3 to 3) lists exactly the same q range on each row, so the map is the **same shape**
    and the shift is the same **(dq, dr) = (-1, -3)** as S5 and S8 will use. It is applied once in
    `seafarers-pirate-islands-boards.ts` (`PI_SHIFT`); a test compares the transcribed row ranges with the topology. This
