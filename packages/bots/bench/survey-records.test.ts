@@ -209,3 +209,22 @@ describe('survey observations', () => {
     expect(checkpointVp(nextRound, 5, 0, false)).toBe(4);
   });
 });
+
+describe('survey report with a shared victory', () => {
+  it('credits seats 0 and 2 half a win each in the seat table (merge report)', async () => {
+    const { mkdtempSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { spawnSync } = await import('node:child_process');
+    const share = (index: number, seats: number[]): Json => ({ ...seat(index, 'standard', null), won: seats.includes(index), ...(seats.includes(index) ? { winShare: 1 / seats.length } : {}) });
+    const co: Json = { ...game(0, { winner: 0, coWinners: [0, 2] }), seats: [0, 1, 2].map((index) => share(index, [0, 2])) };
+    const dir = mkdtempSync(join(tmpdir(), 'katan-survey-co-'));
+    const file = join(dir, 'shard.jsonl');
+    writeFileSync(file, text({ ...META, games: 1 }, [co]));
+    const run = spawnSync(process.execPath, [join(import.meta.dirname, 'survey.mjs'), '--merge', file], { encoding: 'utf8' });
+    expect(run.status, run.stderr).toBe(0);
+    // 座位勝利數：0.5、0、0.5（合計仍是 1 局）。
+    expect(run.stdout).toMatch(/\| 1 \| 1 \| 0\.5 \|/);
+    expect(run.stdout).toMatch(/\| 3 \| 1 \| 0\.5 \|/);
+  }, 60_000);
+});

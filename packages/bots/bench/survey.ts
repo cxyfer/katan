@@ -397,7 +397,7 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
 
   // A. 座位勝率（回合順序）
   const seatNumbers = Array.from({ length: meta.players }, (_, seat) => seat);
-  const winsBySeat = seatNumbers.map((seat) => finished.filter((game) => game.winner === seat).length);
+  const winsBySeat = seatNumbers.map((seat) => finished.reduce((sum, game) => sum + winCredit(game.seats[seat]!), 0));
   const expected = finished.length / meta.players;
   const chi = winsBySeat.reduce((sum, wins) => sum + (wins - expected) ** 2 / expected, 0);
   lines.push('## Wins by seat (seat 1 plays and places first)', '');
@@ -449,7 +449,7 @@ function renderReport(meta: Meta, games: readonly GameRecord[], command: string)
   if (mixed) {
     const focusRows = seatNumbers.map((seat) => {
       const played = finished.filter((game) => game.seats[seat]!.role === spec.focus);
-      const wins = played.filter((game) => game.winner === seat).length;
+      const wins = played.reduce((sum, game) => sum + winCredit(game.seats[seat]!), 0);
       const [lo, hi] = wilson(wins, played.length);
       return { seat, n: played.length, wins, lo, hi };
     });
@@ -751,7 +751,7 @@ function renderLatin(files: readonly string[], command: string): string {
       for (let seat = 0; seat < n; seat++) {
         const slot = cell[seat]![(seat + shift) % n]!;
         slot[1] += 1;
-        if (game.winner === seat) slot[0] += 1;
+        slot[0] += winCredit(game.seats[seat]!);
       }
     }
   }
