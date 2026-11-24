@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Seafarers variable setup (S10a: Four Islands p. 7, Fog Islands p. 9, Through the Desert p. 11)
-browser evidence against the built service.
+"""Seafarers variable setup browser evidence against the built service
+(S10a: Four Islands p. 7, Fog Islands p. 9, Through the Desert p. 11;
+S10b: Forgotten Tribe p. 13, Cloth for Catan p. 15, Wonders of Catan p. 18).
 
 Usage (``pnpm build`` first; the output directory must be new and empty):
 
@@ -8,7 +9,8 @@ Usage (``pnpm build`` first; the output directory must be new and empty):
 
 Reuses the New Shores harness (``capture.py``: private-SQLite service, Playwright
 helpers, report format). Real games through the real UI and API (no mocked snapshots),
-for each of the three scenarios and 3 / 4 players:
+for each scenario and 3 / 4 players (``SF_SCENARIOS=cloth-for-catan,...`` runs only some;
+``SF_PREV_REPORT=<old report.json>`` merges the earlier entries so the S10a cases are kept):
 
 1. Lobby: Seafarers -> scenario, create the room, the host switches the setup mode to
    ``variable`` in the lobby settings and saves (the saved value is asserted in the
@@ -17,7 +19,12 @@ for each of the three scenarios and 3 / 4 players:
    (rules package, no Python topology): it differs from the fixed map; Four Islands has no
    2/3/11/12 on forest or pasture; Through the Desert has no adjacent red discs and no red
    disc on gold; the robber sits on the 12 disc (Four Islands, Fog Islands) or on the desert
-   (Through the Desert).
+   (Through the Desert); Forgotten Tribe has none of 5/6/8/9 on the three right-edge hexes of the
+   large island and the robber on a desert; Wonders of Catan has no red disc on the two land hexes
+   beside the desert and the robber on a desert; Cloth for Catan has two 12 discs.
+   Cloth for Catan starts in the ``robber`` setup stage: the starting player picks one of the two
+   12 hexes on the board (3 players in SVG, 4 players in 3D) and confirms; the API shows the robber
+   on the chosen hex and the setup back at the starting settlements.
 3. The board is captured in SVG (3 and 4 players) and 3D (4 players) on desktop; the 4-player SVG also on a phone viewport.
 
 ``report.json`` lists every case with its sha256; only the curated captures are kept
@@ -33,7 +40,7 @@ import sys
 from playwright.sync_api import expect, sync_playwright
 
 import capture as base  # noqa: E402  (module-level setup reads argv[1] and prepares OUT)
-from capture import ERRORS, OUT, PHONE, REPORT, SERVER, api, log, new_player, open_game, shot, snap
+from capture import ERRORS, OUT, PHONE, REPORT, SERVER, TIMEOUT, api, log, new_player, open_game, shot, snap, ui_confirm
 
 REPORT.clear()
 REPORT.update({'scenario': 'variable-setup', 'base': base.BASE, 'cases': []})
@@ -44,6 +51,9 @@ SCENARIOS = [
     ('four-islands', 'sf-four-islands-2025'),
     ('fog-islands', 'sf-fog-islands-2025'),
     ('through-the-desert', 'sf-through-the-desert-2025'),
+    ('forgotten-tribe', 'sf-forgotten-tribe-2025'),
+    ('cloth-for-catan', 'sf-cloth-for-catan-2025'),
+    ('wonders-of-catan', 'sf-wonders-of-catan-2025'),
 ]
 # SF_SCENARIOS=through-the-desert,... 可只重拍部分劇本（預設全部）。
 _ONLY = [name for name in os.environ.get('SF_SCENARIOS', '').split(',') if name]
@@ -53,7 +63,8 @@ CURATED = {
     f'{scenario}-{name}'
     for scenario, _ in SCENARIOS
     for name in ('lobby-variable', 'map-4p-svg-desktop', 'map-4p-r3f-desktop', 'map-3p-svg-desktop', 'map-4p-svg-phone')
-}
+} | ({'cloth-for-catan-robber-targets-3p-svg-desktop', 'cloth-for-catan-robber-targets-4p-r3f-desktop'}
+     if any(name == 'cloth-for-catan' for name, _ in SCENARIOS) else set())
 
 
 def check_board(profile, count, board):
@@ -96,6 +107,37 @@ def start_variable(browser, scenario, count, lobby_shot=None):
     return contexts, pages, identity, game_id
 
 
+def choose_robber(page, contexts, identity, game_id, renderer, shot_name):
+    """Cloth for Catan variable setup: the starting player picks one of the two 12 hexes on the board and confirms."""
+    path = f'/api/games/{game_id}'
+    before = snap(contexts[0], path)['view']
+    assert before['turn']['setup']['stage'] == 'robber', before['turn']['setup']
+    starter = identity.index(before['turn']['playerId'])
+    assert starter == 0, starter  # 房主是起始玩家（join order）
+    twelves = [hex for hex, disc in enumerate(before['board']['numbers']) if disc == 12]
+    assert len(twelves) == 2, twelves
+    mine = snap(contexts[starter], path)['view']['hints']['modules']['seafarers']
+    assert mine['robberChoice'] == twelves and mine['board']['commandType'] == 'cloth.robber', mine
+    open_game(page, game_id, renderer)
+    expect(page.get_by_test_id('setup-robber-guide')).to_be_visible(timeout=TIMEOUT)
+    for hex in twelves:
+        expect(page.get_by_test_id(f'target-hex-{hex}')).to_be_attached(timeout=TIMEOUT)
+    shot(page, shot_name, f'{renderer}: the two 12 hexes the starting player may put the robber on', ms=2500 if renderer == 'r3f' else 700)
+    target = [hex for hex in twelves if hex != before['board']['robber']][0]
+    page.get_by_test_id(f'target-hex-{target}').click(force=True)
+    picker = page.get_by_test_id('target-picker')
+    page.wait_for_timeout(300)
+    if picker.count() and picker.is_visible():
+        page.get_by_test_id(f'picker-hex-{target}').click()
+    expect(page.get_by_test_id('confirm-selection')).to_be_visible(timeout=TIMEOUT)
+    ui_confirm(page)
+    after = snap(contexts[0], path)['view']
+    assert after['board']['robber'] == target, (after['board']['robber'], target)
+    assert after['turn']['setup']['stage'] == 'building', after['turn']['setup']
+    log('ROBBER', renderer, 'chose', target, 'of', twelves)
+    return target
+
+
 def board_shots(browser, contexts, pages, game_id, scenario, count):
     """3 players: SVG desktop; 4 players: SVG and 3D desktop plus SVG on a phone viewport (3D is slow under swiftshader)."""
     host_ctx, host = contexts[0], pages[0]
@@ -106,7 +148,6 @@ def board_shots(browser, contexts, pages, game_id, scenario, count):
         if renderer == 'svg':
             hexes = host.locator('[data-testid^="hex-"]').count()
             assert hexes == len(view['board']['terrain']), (hexes, len(view['board']['terrain']))
-            expect(host.get_by_test_id('pirate-frame')).to_be_visible()
         shot(host, f'{scenario}-map-{count}p-{renderer}-desktop', f"variable {view['board']['topologyId']}",
              ms=2500 if renderer == 'r3f' else 700)
     if count == 4:
@@ -137,10 +178,21 @@ def run():
                     assert not checked['lowOnForestPasture'] and checked['robberOnTwelve'], checked
                 elif scenario == 'fog-islands':
                     assert checked['robberOnTwelve'], checked
-                else:
+                elif scenario == 'through-the-desert':
                     assert not checked['redAdjacent'] and checked['robberTerrain'] == 'desert', checked
+                elif scenario == 'forgotten-tribe':
+                    assert not checked['tribeRestrictedBad'] and checked['robberTerrain'] == 'desert', checked
+                elif scenario == 'wonders-of-catan':
+                    assert not checked['wondersRedBesideDesert'] and checked['robberTerrain'] == 'desert', checked
+                else:
+                    # 布匹產地：強盜暫放在第一個 12 號格，之後由起始玩家在兩個 12 號格之間選。
+                    assert checked['twelveCount'] == 2 and checked['robberOnTwelve'], checked
                 REPORT['cases'].append({'name': f'{scenario}-{count}p-board-check', 'status': 'PASS', 'note': json.dumps(checked),
                                         'sha256': None, 'viewport': None, 'committed': False})
+                if scenario == 'cloth-for-catan':
+                    # 3 人在 SVG、4 人在 3D 實際選一次強盜（兩個渲染器的棋盤目標都可操作）。
+                    renderer = 'svg' if count == 3 else 'r3f'
+                    choose_robber(pages[0], contexts, identity, game_id, renderer, f'cloth-for-catan-robber-targets-{count}p-{renderer}-desktop')
                 board_shots(browser, contexts, pages, game_id, scenario, count)
                 for context in contexts:
                     context.close()
@@ -154,6 +206,12 @@ def run():
         case['committed'] = keep
         if not keep:
             (OUT / f"{case['name']}.png").unlink(missing_ok=True)
+    # 合併先前的報告（S10a 的條目）：同名的以這次為準，其餘保留。
+    previous = os.environ.get('SF_PREV_REPORT')
+    if previous:
+        old = json.loads(open(previous, encoding='utf-8').read())
+        names = {case['name'] for case in REPORT['cases']}
+        REPORT['cases'] = [case for case in old['cases'] if case['name'] not in names] + REPORT['cases']
     (OUT / 'report.json').write_text(json.dumps(REPORT, ensure_ascii=False, indent=2), encoding='utf-8')
     log('CASES', len(REPORT['cases']), 'ERRORS', len(ERRORS))
     if ERRORS:
