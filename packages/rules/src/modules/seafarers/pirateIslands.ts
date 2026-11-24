@@ -6,15 +6,17 @@
  *   對應，顏色不在這張圖上的玩家依座位順序拿剩下的組別。發展牌：3 人局移除分數牌，4 人局分數牌當騎士。
  * - 堡壘是棋盤上的村落（所以佔用交叉點、算村落配件、擋住別人的船），但在收復前不產出資源、不算分、
  *   不能升級城市（`fortressLocked`）。收復（S7c）把 `lairs` 減到 0 後它就是一般村落。
- * - 西島船線：每位玩家只能有一條連續、不分叉的線，先到自己的 beachhead，最後到自己的堡壘，且必須走最短路徑。
- *   「哪些船屬於船線」：**不碰到東島陸地格的海邊**（`isLineEdge`）上的船都屬於船線；碰到東島陸地格的邊是
- *   「大島周圍的其他海路」，不受限制（預置的船都在這種邊上）。每加一艘船線的船，新邊必須接在船線的
- *   端點，並讓「端點到下一個目標的距離」減 1；距離是在目前空著、不碰東島的海邊上算的（大島周圍的海路是自由的，不算在
- *   船線的距離內；別人的建築擋住的交叉點不能經過，海盜的暫時限制不算）。船線還沒有船時，端點可以是自己的任一個建築或船所在的交叉點（從自己在東島的
- *   海岸建築、或沿海岸的自由海路出發）。到達 beachhead 後目標換成堡壘；到達堡壘後船線完成，不能再延伸。
- *   船線上的船不可移動（`shipMoveBlocked`）。
+ * - 西島船線：每位玩家只能有一條連續、不分叉的線，從自己在東島的海岸建築出發，先到自己的 beachhead，最後到自己的
+ *   堡壘，且必須走最短路徑。預置的船是船線的第一艘（起點是預置的海岸村落）；船線沒有船時（S7c 輸掉戰鬥後），
+ *   第一艘必須接在自己在東島的海岸建築（村落或城市）所在的交叉點，只有自己自由船的交叉點不行（SF25 p. 16
+ *   "begin at one of your coastal buildings"）。
+ *   每加一艘船線的船，新邊必須接在船線的端點，並讓「端點到下一個目標的距離」減 1；距離是在目前空著的海邊上算的
+ *   （別人的建築擋住的交叉點不能經過，海盜的暫時限制不算）。船放在船線端點且距離減 1 就是船線的延伸；
+ *   否則，碰到東島陸地格的邊是「大島周圍的其他海路」（`isLineEdge` 為 false），不受限制；不碰東島的邊不是延伸就被拒絕。
+ *   到達 beachhead 後目標換成堡壘；到達堡壘後船線完成，不能再延伸。船線上的船不可移動（`shipMoveBlocked`）。
  * - beachhead：船線到達後才可在那裡蓋村落（照常付費）。海盜群島（東島以外的陸地）上只有自己的 beachhead
- *   可以蓋村落；起始村落只放東島。
+ *   可以蓋村落，而且要自己的船線（船，不是路）已到達；起始村落只放東島。海盜群島上的路只能從合法取得的建築
+ *   （beachhead 村落、收復的堡壘）接出去，未收復的堡壘不能當路的起點（`roadAllowed`）。
  * - 不使用最長道路、最大軍隊與強盜（強盜在盒子裡：`layout.robber = -1`，`robberInactive`）。
  *
  * 狀態只存在 `SeafarersState.pirateIslands`；其他劇本沒有這個欄位，行為與摘要不變（D7）。
@@ -73,11 +75,15 @@ export function initPirateIslands(state: GameState, slot: SeafarersState): void 
   const free = sets.map((_, i) => i).filter((i) => !taken.has(i));
   const fortresses: Fortress[] = [];
   const beachheads: Beachhead[] = [];
+  const presetLines: Record<string, ShipLine> = {};
   state.players.forEach((player, seat) => {
     const set = sets[assigned[seat]! >= 0 ? assigned[seat]! : free.shift()!]!;
     const { settlement, ship, fortress, beachhead } = set.pieces;
     state.board.buildings[cornerVertex(topology, settlement)] = { player: player.id, city: false };
-    state.board.roads[sideEdge(topology, ship)] = { player: player.id, ship: true };
+    const settlementVertex = cornerVertex(topology, settlement);
+    const shipEdge = sideEdge(topology, ship);
+    state.board.roads[shipEdge] = { player: player.id, ship: true };
+    presetLines[player.id] = { start: settlementVertex, edges: [shipEdge] };
     const fortressVertex = cornerVertex(topology, fortress);
     state.board.buildings[fortressVertex] = { player: player.id, city: false };
     fortresses.push({ player: player.id, vertex: fortressVertex, lairs: PI_LAIRS_PER_FORTRESS });
@@ -90,7 +96,8 @@ export function initPirateIslands(state: GameState, slot: SeafarersState): void 
   slot.pirateIslands = {
     fortresses,
     beachheads,
-    lines: Object.fromEntries(state.players.map((player) => [player.id, { start: null, edges: [] }])),
+    // 預置的船是船線的第一艘：從預置的海岸村落出發。
+    lines: presetLines,
     route: routeHexes(topology),
   };
 }
@@ -132,14 +139,38 @@ export function buildingAllowed(state: GameState, playerId: string, vertex: numb
   if (islands.length === 0) return false;
   if (islands.every((island) => island === PI_MAIN_ISLAND)) return true;
   if (options.setup) return false;
-  return pirateIslandsView(state)?.beachheads.some((beachhead) => beachhead.player === playerId && beachhead.vertex === vertex) ?? false;
+  // 只有自己的 beachhead，而且自己的西島船線（船，不是路）已經到達它。
+  const slot = pirateIslandsView(state);
+  if (!slot?.beachheads.some((beachhead) => beachhead.player === playerId && beachhead.vertex === vertex)) return false;
+  return lineVertices(state, slot.lines[playerId] ?? { start: null, edges: [] }).includes(vertex);
+}
+
+/**
+ * 海盜群島上的路：只能從玩家已在該島合法取得的建築（到達後蓋的 beachhead 村落、收復的堡壘）或
+ * 由此延伸出的路接出去；未收復的堡壘不能當路的起點。東島的路照一般規則。
+ */
+export function roadAllowed(state: GameState, playerId: string, edge: number): boolean {
+  if (!pirateIslandsView(state)) return true;
+  const topo = topologyOf(state);
+  const info = topo.edges[edge];
+  if (!info) return false;
+  const onPirateIsland = info.hexes.some((hex) => isLandHex(state, hex) && (state.board.layout.islands[hex] ?? 0) !== PI_MAIN_ISLAND);
+  if (!onPirateIsland) return true;
+  return info.vertices.some((vertex) => {
+    const building = state.board.buildings[vertex];
+    if (building?.player === playerId && !fortressLocked(state, vertex)) return true;
+    return topo.vertices[vertex]!.edges.some((other) => {
+      const road = state.board.roads[other];
+      return !!road && !road.ship && road.player === playerId;
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
 // 西島船線與最短路徑
 // ---------------------------------------------------------------------------
 
-/** 船線的邊：不碰到東島陸地格（碰到的邊是「大島周圍的其他海路」，不受限制）。 */
+/** 不碰到東島陸地格的邊：只能放船線的船（碰到的邊可以是「大島周圍的其他海路」，不受限制）。 */
 export function isLineEdge(state: GameState, edge: number): boolean {
   const info = topologyOf(state).edges[edge];
   if (!info) return false;
@@ -156,7 +187,7 @@ export interface LineContext {
   /** 下一個目標的交叉點；船線完成時為 null。 */
   targetVertex: number | null;
   /**
-   * 船線還沒有船時：自己的建築或船所在的交叉點裡，有沒有到得了目標的（距離 ≥ 1）。
+   * 船線還沒有船時：自己在東島的海岸建築所在的交叉點裡，有沒有到得了目標的（距離 ≥ 1）。
    * 沒有的話才是「完全無路」（`shortestPathFallback`）。有船線時不用（看端點的距離）。
    */
   startable: boolean;
@@ -204,7 +235,7 @@ export function lineContext(state: GameState, playerId: string, vacated?: number
     for (let head = 0; head < queue.length; head++) {
       const vertex = queue[head]!;
       for (const edge of topo.vertices[vertex]!.edges) {
-        if ((state.board.roads[edge] && edge !== vacated) || !isSeaEdge(state, edge) || !isLineEdge(state, edge)) continue;
+        if ((state.board.roads[edge] && edge !== vacated) || !isSeaEdge(state, edge)) continue;
         const [a, b] = topo.edges[edge]!.vertices;
         const other = a === vertex ? b : a;
         if (dist[other] >= 0 || isBlockedFor(state, other, playerId)) continue;
@@ -215,7 +246,7 @@ export function lineContext(state: GameState, playerId: string, vacated?: number
   }
   const end = vertices.length > 0 ? vertices[vertices.length - 1]! : null;
   const startable = end !== null || dist.some((distance, vertex) =>
-    distance >= 1 && canStartAt(state, playerId, vertex, vacated === undefined ? [] : [vacated]));
+    distance >= 1 && canStartAt(state, playerId, vertex));
   return { line, end, next, targetVertex, startable, dist };
 }
 
@@ -235,21 +266,11 @@ export type LineShip =
   | { kind: 'refused'; reason: 'done' | 'not-at-end' | 'not-shortest' };
 
 /**
- * 船線可以從這個交叉點出發：在東島的海岸上（碰到東島陸地格），且有自己的建築，或自己沿海岸的自由船
- * （自由船的兩端都碰到東島）。堡壘與 beachhead 在海盜群島上，不能當起點。
+ * 船線可以從這個交叉點出發：自己在東島的海岸建築（村落或城市，交叉點碰到東島陸地格）。
+ * 沿海岸的自由船不能當起點；堡壘與 beachhead 在海盜群島上，也不能。
  */
-function canStartAt(state: GameState, playerId: string, vertex: number, except: readonly number[]): boolean {
-  return landIslands(state, vertex).includes(PI_MAIN_ISLAND) && ownPieceAt(state, playerId, vertex, except);
-}
-
-/** 這個交叉點上有沒有自己的建築或（不計 `except` 的）船，船可以從這裡接出去。 */
-function ownPieceAt(state: GameState, playerId: string, vertex: number, except: readonly number[]): boolean {
-  if (state.board.buildings[vertex]?.player === playerId) return true;
-  return topologyOf(state).vertices[vertex]!.edges.some((edge) => {
-    if (except.includes(edge)) return false;
-    const road = state.board.roads[edge];
-    return !!road && road.ship && road.player === playerId;
-  });
+function canStartAt(state: GameState, playerId: string, vertex: number): boolean {
+  return state.board.buildings[vertex]?.player === playerId && landIslands(state, vertex).includes(PI_MAIN_ISLAND);
 }
 
 /**
@@ -257,19 +278,20 @@ function ownPieceAt(state: GameState, playerId: string, vertex: number, except: 
  * 只看船線規則；一般的連接、占用與海盜限制由 `canPlaceShip` 先判。沒有這個劇本的狀態時一律自由。
  */
 export function lineShip(state: GameState, playerId: string, edge: number, options: LineShipOptions = {}): LineShip {
-  if (options.line === null || !pirateIslandsView(state) || !isLineEdge(state, edge)) return { kind: 'free' };
+  if (options.line === null || !pirateIslandsView(state)) return { kind: 'free' };
+  // 碰到東島的邊是「大島周圍的其他海路」：不是船線的延伸時自由；不碰東島的邊只能是船線。
+  const coastal = !isLineEdge(state, edge);
   const ctx = options.line === undefined ? lineContext(state, playerId, options.moving) : options.line;
   if (!ctx) return { kind: 'free' };
-  if (ctx.next === 'done') return { kind: 'refused', reason: 'done' };
+  if (ctx.next === 'done') return coastal ? { kind: 'free' } : { kind: 'refused', reason: 'done' };
   const [a, b] = topologyOf(state).edges[edge]!.vertices;
-  const except = options.moving === undefined ? [edge] : [edge, options.moving];
   const candidates: [number, number][] = [[a, b], [b, a]];
   let attached = false;
   let best: { from: number; to: number } | null = null;
   for (const [from, to] of candidates) {
     if (ctx.end !== null) {
       if (from !== ctx.end) continue;
-    } else if (options.setupVertex !== undefined ? from !== options.setupVertex : !canStartAt(state, playerId, from, except)) {
+    } else if (options.setupVertex !== undefined ? from !== options.setupVertex : !canStartAt(state, playerId, from)) {
       continue;
     }
     attached = true;
@@ -282,11 +304,12 @@ export function lineShip(state: GameState, playerId: string, edge: number, optio
   if (attached && fallbackApplies(state, ctx)) {
     // 完全無路：往任何合法方向延伸（端點或自己的建築／船接得上的那一端）。
     for (const [from, to] of candidates) {
-      if (ctx.end !== null ? from === ctx.end : (options.setupVertex !== undefined ? from === options.setupVertex : canStartAt(state, playerId, from, except))) {
+      if (ctx.end !== null ? from === ctx.end : (options.setupVertex !== undefined ? from === options.setupVertex : canStartAt(state, playerId, from))) {
         return { kind: 'line', from, to, relaxed: true };
       }
     }
   }
+  if (coastal) return { kind: 'free' };
   return { kind: 'refused', reason: attached ? 'not-shortest' : 'not-at-end' };
 }
 

@@ -38,6 +38,7 @@ import {
   lockedFortresses,
   pirateLineHints,
   projectPirateIslands,
+  roadAllowed as pirateRoadAllowed,
 } from './pirateIslands.ts';
 import {
   buildShip,
@@ -221,6 +222,11 @@ export const seafarersModule: RulesModule = {
   // 堡壘收復前不產出資源（海盜巢穴）。
   productionAmount(state, _hex, vertex, amount) {
     return fortressLocked(state, vertex) ? 0 : amount;
+  },
+
+  // 海盜群島上的路只能從合法取得的建築接出去（未收復的堡壘不行）。
+  roadAllowed(state, playerId, edge) {
+    return pirateRoadAllowed(state, playerId, edge);
   },
 
   // 堡壘收復前不能升級成城市。
