@@ -18,6 +18,10 @@ export const messages = {
     'cloth.trade',
     'cloth.produced',
     'cloth.stolen',
+    'world.harborDrawn',
+    'world.harborPlaced',
+    'world.harborsSkipped',
+    'world.regenerated',
   ] as const,
   errorCodes: [
     'E_SHIP_NOT_MOVABLE',

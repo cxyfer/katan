@@ -134,6 +134,12 @@ function resolvePending(state: GameState, rng: Rng, step: number): GameState | n
 
 function setupStep(state: GameState, rng: Rng, step: number): GameState {
   const setup = state.turn.setup!;
+  // 新世界的港口階段：輪到誰由 `turn.seat` 決定，選一個合法的邊（輪流換位置）。
+  if (setup.stage === 'harbor') {
+    const id = state.players[state.turn.seat]!.id;
+    const edges = sfHints(state, id).harborChoices.edges;
+    return attempt(state, id, { type: 'world.harbor', edge: edges[(step * 5) % edges.length]! }, rng)!;
+  }
   const actor = state.players[setup.order[setup.index]!]!.id;
   const hints = actionHints(state, actor);
   if (setup.stage === 'building') {
@@ -175,7 +181,7 @@ export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps
       if (event.type === 'island.bonus') counters.islandBonuses++;
       if (event.type === 'fog.revealed') counters.fogReveals++;
       if (event.type === 'tribe.gift') counters.gifts++;
-      if (event.type === 'harbor.placed') counters.harborsPlaced++;
+      if (event.type === 'harbor.placed' || event.type === 'world.harborPlaced') counters.harborsPlaced++;
       if (event.type === 'cloth.trade') counters.clothTrades++;
       if (event.type === 'cloth.produced') counters.clothProduced++;
       if (event.type === 'cloth.stolen') counters.clothStolen++;

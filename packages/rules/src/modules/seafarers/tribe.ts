@@ -80,10 +80,10 @@ export function takeGift(state: GameState, playerId: string, edge: number, ctx: 
 }
 
 /**
- * 玩家現在可放港口的邊：陸地格與海／框之間的海岸邊，一端是自己的村落或城市，
- * 不是現有港口，也不與現有港口共用交叉點（港口之間必須隔一條邊，SF25 p. 12）。
+ * 港口可放的邊：陸地格與海／框之間的海岸邊，不是現有港口，也不與現有港口共用交叉點
+ * （港口之間必須隔一條邊，SF25 pp. 12、20）。世外部落與新世界共用。
  */
-export function legalHarborEdges(state: GameState, playerId: string): number[] {
+export function separatedCoastEdges(state: GameState): number[] {
   const topo = topologyOf(state);
   const harborEdges = new Set<number>();
   const harborVertices = new Set<number>();
@@ -96,10 +96,16 @@ export function legalHarborEdges(state: GameState, playerId: string): number[] {
     if (info.interior || harborEdges.has(edge)) return;
     if (!isSeaEdge(state, edge) || !info.hexes.some((hex) => isLandHex(state, hex))) return;
     if (info.vertices.some((vertex) => harborVertices.has(vertex))) return;
-    if (!info.vertices.some((vertex) => state.board.buildings[vertex]?.player === playerId)) return;
     out.push(edge);
   });
   return out;
+}
+
+/** 玩家現在可放港口的邊（世外部落）：上述的海岸邊，且一端是自己的村落或城市。 */
+export function legalHarborEdges(state: GameState, playerId: string): number[] {
+  const topo = topologyOf(state);
+  return separatedCoastEdges(state).filter((edge) =>
+    topo.edges[edge]!.vertices.some((vertex) => state.board.buildings[vertex]?.player === playerId));
 }
 
 function hasHarborFrame(state: GameState, playerId: string): boolean {

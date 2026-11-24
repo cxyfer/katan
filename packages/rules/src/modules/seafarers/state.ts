@@ -3,6 +3,7 @@
 import type { GameState } from '../../types.ts';
 import type { ClothState } from './cloth.ts';
 import type { TribeState } from './tribe.ts';
+import type { WorldState } from './world.ts';
 import { moduleStateOf, setModuleState } from '../state.ts';
 
 export const SEAFARERS = 'seafarers';
@@ -29,6 +30,8 @@ export interface SeafarersState {
   tribe?: TribeState;
   /** 布匹產地（cloth-for-catan）的部落、供應堆、布匹與貿易關係；其他劇本沒有此欄位。 */
   cloth?: ClothState;
+  /** 新世界（new-world）的港口設置階段；其他劇本沒有此欄位。 */
+  world?: WorldState;
 }
 
 /**

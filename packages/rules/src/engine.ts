@@ -2205,6 +2205,24 @@ function moduleHints(state: GameState, playerId: string): { modules?: Record<str
   return { modules: Object.fromEntries(modules.map((module) => [module.id, module.actionHints!(seen, playerId, ctx)])) };
 }
 
+/**
+ * Redraws the starting board (New World, only before the first port is placed). Called by the
+ * service after every human seat consented; it is not a player command. Returns the new state.
+ */
+export function regenerateBoard(state: GameState, rng: Rng): CommandOutcome {
+  if (state.result) return fail('E_GAME_OVER');
+  const profile = requireProfile(state.profileId);
+  const module = rulesModulesOf(profile).find((candidate) => candidate.regenerate);
+  if (!module) return fail('E_INVALID_COMMAND', { reason: 'not-in-ruleset' });
+  const next = clone(state);
+  const { result: rejection, events } = collectEvents(next, () => {
+    const outcome = module.regenerate!(next, moduleContext(profile, rng, module.id));
+    return outcome.ok ? undefined : outcome;
+  });
+  if (rejection) return rejection;
+  return { ok: true, state: next, events };
+}
+
 /** Command types the profile's rules modules handle, for protocol validation. */
 export function moduleCommandTypesOf(state: GameState): string[] {
   return moduleCommandTypes(requireProfile(state.profileId));

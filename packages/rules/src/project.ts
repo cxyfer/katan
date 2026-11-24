@@ -87,7 +87,7 @@ export interface GameView {
     phase: string;
     dice: [number, number] | null;
     devCardPlayed: boolean;
-    setup: { seat: number; stage: 'building' | 'road'; round: 1 | 2; remaining: number; third?: true } | null;
+    setup: { seat: number; stage: 'building' | 'road' | 'harbor'; round: 1 | 2; remaining: number; third?: true } | null;
     pairedActor: 1 | 2;
   };
   /** The active mandatory choice. */
@@ -270,7 +270,8 @@ export function projectGame(
       devCardPlayed: state.turn.devCardPlayed,
       setup: setup
         ? {
-            seat: setup.order[setup.index] ?? -1,
+            // 港口階段（新世界）輪到誰放由 `turn.seat` 決定，起始村落則照 setup 順序。
+            seat: setup.stage === 'harbor' ? state.turn.seat : (setup.order[setup.index] ?? -1),
             stage: setup.stage,
             round: setup.round,
             remaining: setup.order.length - setup.index,
