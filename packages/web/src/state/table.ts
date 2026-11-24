@@ -265,7 +265,8 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
       citiesKnights: citiesKnightsView(current.view) ? current.view : null,
       tradersBarbarians: current.view.modules?.tradersBarbarians ? current.view : null,
       explorersPirates: current.view.modules?.explorersPirates ? current.view : null,
-      seafarers: current.view.modules?.seafarers && (current.view.modules.seafarers as { cloth?: unknown }).cloth ? current.view : null,
+      // 布匹產地的布匹與卡坦奇觀的可負擔層數都會隨擲骰改變，演出期間用擲骰前的投影。
+      seafarers: current.view.modules?.seafarers && ((current.view.modules.seafarers as { cloth?: unknown; wonders?: unknown }).cloth || (current.view.modules.seafarers as { wonders?: unknown }).wonders) ? current.view : null,
       board: rollChangesBoard(current.view) ? current.view : null,
       eventSeq: lastSeq,
     },
