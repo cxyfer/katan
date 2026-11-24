@@ -150,10 +150,11 @@ export function establishTrade(state: GameState, ctx: ModuleContext): void {
   }
 }
 
-/** 擲出部落數字時的布匹生產（在金礦之前結算）。 */
-export function produceCloth(state: GameState, roll: RollResult, ctx: ModuleContext): void {
+/** 擲出部落數字時的布匹生產（在金礦之前結算）。有玩家拿到布匹時回傳 true（呼叫端接著判勝）。 */
+export function produceCloth(state: GameState, roll: RollResult, ctx: ModuleContext): boolean {
   const cloth = seafarersState(state).cloth;
-  if (!cloth || roll.total === 7) return;
+  if (!cloth || roll.total === 7) return false;
+  let paid = false;
   cloth.tribes.forEach((tribe, index) => {
     if (tribe.number !== roll.total) return;
     // 歸零後不再產出，也不從供應堆拿。
@@ -179,7 +180,9 @@ export function produceCloth(state: GameState, roll: RollResult, ctx: ModuleCont
       gains[id] = 1;
     }
     ctx.kit.emit(state, 'cloth.produced', { tribe: index, number: tribe.number, gains, fromTribe, fromSupply, shortBy });
+    paid = paid || fromTribe + fromSupply > 0;
   });
+  return paid;
 }
 
 /** 沒有布匹的部落數。 */

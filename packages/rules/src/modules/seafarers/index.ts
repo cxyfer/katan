@@ -188,8 +188,9 @@ export const seafarersModule: RulesModule = {
   },
 
   afterProduction(state, roll, ctx) {
-    // 布匹先於金礦結算（SF25 p. 14）。
-    produceCloth(state, roll, ctx);
+    // 布匹先於金礦結算（SF25 p. 14）；擲骰者拿到布匹可能剛好湊到目標分，先判勝再開金礦選擇。
+    if (produceCloth(state, roll, ctx)) ctx.kit.checkVictory(state);
+    if (state.result) return;
     goldProduction(state, roll, ctx);
   },
   moveBandit,

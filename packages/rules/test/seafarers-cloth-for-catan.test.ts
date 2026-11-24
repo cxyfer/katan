@@ -542,6 +542,31 @@ describe('SFX-S6 分數', () => {
     expect(view.players.find((entry) => entry.id === 'p1')!.publicScore).toBe(base + 2);
   });
 
+  it('擲骰得到的布匹也會在這次行動結束時判勝（14 分）', () => {
+    for (const [bonus, wins] of [[11, false], [12, true]] as const) {
+      const state = ready(3, 0, 'preroll');
+      settle(state, 'p1', legalBuildingVertices(state, 'p1', { setup: true })[0]!);
+      player(state, 'p1').bonusPoints = bonus; // 1 + bonus
+      slot(state).links.p1 = [0];
+      slot(state).cloth.p1 = 1; // 再拿 1 枚 = 2 枚 = +1 分
+      slot(state).tribes[0]!.cloth -= 1;
+      const after = act(state, 'p1', { type: 'turn.roll' }, scriptedRng(dice(10))).state;
+      expect(slot(after).cloth.p1).toBe(2);
+      expect(after.result !== null, `bonus ${bonus}`).toBe(wins);
+    }
+  });
+
+  it('設置的第三輪公開在視圖上（turn.setup.third），其他輪沒有這個欄位', () => {
+    const { state } = game(3);
+    expect(projectGame(state, 'p1').turn.setup).not.toHaveProperty('third');
+    const late = clone(state);
+    late.turn.setup!.index = 6;
+    late.turn.setup!.round = 2;
+    late.turn.setup!.third = true;
+    late.turn.seat = late.turn.setup!.order[6]!;
+    expect(projectGame(late, 'p1').turn.setup).toMatchObject({ third: true, round: 2, remaining: 3 });
+  });
+
   it('14 分：差一分不勝，布匹補上最後一分就在這個動作結束時勝利（建立關係拿到第 2 枚）', () => {
     for (const [bonus, wins] of [[11, false], [12, true]] as const) {
       const state = ready();

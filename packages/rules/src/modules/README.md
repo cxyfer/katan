@@ -36,6 +36,7 @@ their state under one key of the module slot (`state.ts`).
 |---|---|---|
 | setup | `initGame` | once, after the base state is built and `game.created` is emitted |
 | setup | `setupBuilding` | per setup building placement; `'city'` replaces the settlement |
+| setup | `setupStartingResources` | per round-2 or third-round setup building; `false` withholds the starting resources (Cloth for Catan pays only the third settlement; the module adds the third round by extending `turn.setup.order` and setting `third: false`) |
 | roll | `rollDice` | instead of the two base dice (first module that returns a roll wins) |
 | roll | `beforeProduction` | after `turn.rolled`; return `'defer'` after enqueueing frames that must resolve first |
 | roll | `discardLimit` | per player on a 7 (base limit 7) |
@@ -79,7 +80,7 @@ The frame's module identity preserves this position across snapshot recovery.
 
 Hooks get a `ModuleContext` (`profile`, `rng`, `kit`). `kit` exposes the engine
 services a module needs (`emit`, `fail`, `accept`, `payBuild`,
-`afterBoardChange`, `checkVictory`, `enqueuePending`, `completePending`,
+`afterBoardChange`, `checkVictory`, `endGame` (a module's own ending with a winner list and a cause), `enqueuePending`, `completePending`,
 `resolveRollOutcome`, `finishSetupStep`, `legalRoads`, `placedFreeRoute`, `finishTurn`, …)
 so module files never import `engine.ts`.
 
