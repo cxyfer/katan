@@ -254,3 +254,26 @@ export function tribeNumberTokens(geometry: BoardGeometry, tribes: readonly { ve
     return spot ? [{ index: -1, value: tribe.number, position: [spot.x, 0, spot.z] as Vec3, rotationY: 0, scale: [0.5, 1, 0.5] as Vec3 }] : [];
   });
 }
+
+/**
+ * 卡坦奇觀的地圖標記：立在頂點旁的細柱，柱頂是棕色牆塊（Great Wall）、紫色拱橋（Great Bridge）
+ * 或紅色交叉木條（X，設置禁設點）。三種形狀不同，不只靠顏色。
+ */
+export function createWonderMarkerModel(kind: 'greatWall' | 'greatBridge' | 'x'): BufferGeometry {
+  const model = new ModelBuilder();
+  model.add(new CylinderGeometry(0.016, 0.02, 0.22, 6), TIMBER, [0, 0.11, 0]);
+  if (kind === 'greatWall') {
+    box(model, '#8a5a32', [0, 0.27, 0], [0.16, 0.1, 0.07]);
+    box(model, '#b98450', [-0.055, 0.34, 0], [0.04, 0.05, 0.07]);
+    box(model, '#b98450', [0.055, 0.34, 0], [0.04, 0.05, 0.07]);
+  } else if (kind === 'greatBridge') {
+    box(model, '#7a4fb0', [0, 0.25, 0], [0.18, 0.03, 0.08]);
+    box(model, '#9a73d0', [-0.075, 0.29, 0], [0.03, 0.06, 0.08]);
+    box(model, '#9a73d0', [0.075, 0.29, 0], [0.03, 0.06, 0.08]);
+    box(model, '#7a4fb0', [0, 0.31, 0], [0.18, 0.025, 0.08]);
+  } else {
+    model.add(new BoxGeometry(0.2, 0.035, 0.035), '#c2281a', [0, 0.3, 0], [1, 1, 1], [0, 0, Math.PI / 4]);
+    model.add(new BoxGeometry(0.2, 0.035, 0.035), '#c2281a', [0, 0.3, 0], [1, 1, 1], [0, 0, -Math.PI / 4]);
+  }
+  return model.build();
+}

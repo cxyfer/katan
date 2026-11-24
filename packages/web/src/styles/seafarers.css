@@ -15,3 +15,14 @@
 .screen--game[data-layout="compact-landscape"] .game__messages:has(.world-harbor) { max-height: calc(100% - 20px); }
 .world-harbor p { margin: .25rem 0; }
 .world-harbor .button { width: 100%; min-height: 34px; margin-top: .3rem; font-size: .74rem; }
+
+/* 卡坦奇觀：奇觀牌與進度（SVG 與 3D 共用，手機單欄） */
+.wonders-panel { margin-top: 0.75rem; }
+.wonders-panel__cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); }
+.wonders-panel__card { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.5rem; border: 1px solid var(--line, #c9b48a); border-radius: 6px; font-size: 0.85rem; }
+.wonders-panel__card[data-holder] { background: rgba(122, 79, 176, 0.08); }
+.wonders-panel__cost { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.wonders-panel__progress { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.2rem; font-size: 0.85rem; }
+.wonders-panel__progress li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.wonders-panel__dot { width: 0.8rem; height: 0.8rem; border-radius: 50%; border: 1px solid #20180f; display: inline-block; }
+.wonders-panel__pips { letter-spacing: 0.1em; }

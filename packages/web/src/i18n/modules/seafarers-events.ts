@@ -95,6 +95,10 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
     }
     case 'cloth.stolen':
       return { player, victim: nameOf(str(p.victim)) };
+    case 'wonder.chosen':
+      return { player, wonder: t(locale, `sf.wonder.${str(p.wonder)}`) };
+    case 'wonder.built':
+      return { player, wonder: t(locale, `sf.wonder.${str(p.wonder)}`), level: num(p.level) };
     default:
       return undefined;
   }

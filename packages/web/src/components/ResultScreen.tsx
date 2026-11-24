@@ -29,6 +29,9 @@ export function ResultScreen({ controller }: { controller: TableController }) {
   const shared = winners.length > 1;
   // 布匹耗盡的終局不是靠目標分，所以不顯示目標分（單一或共同勝者都一樣）。
   const clothEnd = result?.cause === 'clothExhausted';
+  // 卡坦奇觀的終局（完成奇觀，或 10 分且層數最高）也不是靠「達到目標分」，所以同樣不顯示目標分。
+  const wonderEnd = result?.cause === 'wonderComplete' || result?.cause === 'wonderLead';
+  const noTarget = clothEnd || wonderEnd;
   // 電腦座位由房間成員推得；房間尚未載入時不標示。
   const bots = botLevelsOf(state.room);
 
@@ -56,7 +59,10 @@ export function ResultScreen({ controller }: { controller: TableController }) {
         {result?.score !== undefined && clothEnd && (
           <p data-testid="result-score">{t('play.resultScoreShared', { score: formatNumber(state.locale, result.score) })}</p>
         )}
-        {result?.score !== undefined && !clothEnd && (
+        {result?.score !== undefined && wonderEnd && (
+          <p data-testid="result-score">{t('play.resultScoreWonder', { score: formatNumber(state.locale, result.score) })}</p>
+        )}
+        {result?.score !== undefined && !noTarget && (
           <p data-testid="result-score">
             {t('play.resultScore', {
               score: formatNumber(state.locale, result.score),
@@ -64,8 +70,8 @@ export function ResultScreen({ controller }: { controller: TableController }) {
             })}
           </p>
         )}
-        <p className="muted" data-testid="result-reason" data-cause={clothEnd ? 'clothExhausted' : 'target'}>
-          {clothEnd ? t('play.resultReason.clothExhausted') : <>
+        <p className="muted" data-testid="result-reason" data-cause={result?.cause ?? 'target'}>
+          {noTarget ? t(`play.resultReason.${result!.cause}`) : <>
             {t('play.resultReason.' + (result?.reason ?? 'abandoned'))} ·{' '}
             {t('play.resultTarget', { target: formatNumber(state.locale, view?.victoryTarget ?? 0) })}
           </>}

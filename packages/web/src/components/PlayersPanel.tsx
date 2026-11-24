@@ -322,6 +322,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                     label={`${t(wording ? `sf.score.islands.${wording}` : 'sf.score.islands')} · ${t(wording ? `sf.score.islandsValue.${wording}` : 'sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })} (${t(`sf.score.islandId${(sea!.islandBonus[player.id]?.length ?? 0) === 1 ? '' : 's'}${wording === 'desert' ? '.desert' : ''}`, { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') })})`}
                     value={number(islandPoints)}
                     detail={wording ? t(`sf.score.islandId${(sea!.islandBonus[player.id]?.length ?? 0) === 1 ? '' : 's'}${wording === 'desert' ? '.desert' : ''}`, { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') }) : undefined} />}
+                  {sea?.wonders && <ScoreMark icon="crown" testId={`players-wonder-${player.seat}`}
+                    label={sea.wonders.owned[player.id] ? t('sf.wonder.score', { wonder: t(`sf.wonder.${sea.wonders.owned[player.id]}`), level: number(sea.wonders.levels[player.id] ?? 0), max: 4 }) : t('sf.wonder.none')}
+                    value={number(sea.wonders.levels[player.id] ?? 0)} detail={`${number(sea.wonders.levels[player.id] ?? 0)}/4`} />}
                   {sea?.tribe && (sea.tribe.vp[player.id] ?? 0) > 0 && <ScoreMark icon="crown" testId={`players-tribe-vp-${player.seat}`}
                     label={t('sf.score.tribeVp')} value={number(sea.tribe.vp[player.id] ?? 0)} />}
                   {sea?.tribe && (sea.tribe.held[player.id]?.length ?? 0) > 0 && <ScoreMark icon="anchor" testId={`players-tribe-held-${player.seat}`}
