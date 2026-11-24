@@ -168,13 +168,13 @@ coordinates: (0, 6), (-1, 6), (-1, 5), (-1, 4), (0, 3), (0, 2), (1, 1), (2, 0), 
 |---|---|---|---|
 | I1 | Which set a player gets | A player whose colour is red, blue, orange or white takes that colour's set; the others take the remaining sets in seat order. 3 players use the red, blue and orange sets (`PI_PIECES.slice(0, 3)`), so the white positions stay empty whatever colours are chosen. Colour is cosmetic in the engine, so this keeps every table legal. | SF25 p. 16 "in a 3-player game, do not use the white piece locations"; spec §5.2 |
 | I2 | The fortress | A real settlement on the board (so it occupies the vertex, uses one of the 5 settlement pieces, stops opponents' ships and lies in the distance rule) plus 3 lair tokens held in module state (`fortresses: [{ player, vertex, lairs }]`). While `lairs > 0` it **produces nothing** (neither the resource hex nor the gold hex: `productionAmount` and `goldEntitlements`), **scores nothing** (the module's `score` hook subtracts the settlement's 1 VP), and **cannot become a city** (`allowCity`). Recapturing (S7c) sets `lairs` to 0 and it is an ordinary settlement. Settlement pieces: 1 preset + 2 starting + the fortress = 4 of 5, leaving one for the beachhead. | SF25 p. 16 note, p. 17 "now counts as one of your settlements"; spec §5.3 |
-| I3 | Where settlements may go | Starting settlements: only vertices all of whose land hexes are on the main island (`allowBuilding`, setup). Later: the main island as usual; on the pirate islands only the player's **own beachhead** vertex, and the base connection rule still needs an own ship at that vertex, which is exactly "after your line of ships reaches your beachhead marker". Other players' beachheads and every other pirate-island vertex are refused. | SF25 p. 16 "You may build on the main island as normal. The remaining islands are considered pirate islands", p. 17 "Building on the pirate island" |
-| I4 | Which ships belong to the line | A ship on a sea edge that **touches no main-island land hex** (`isLineEdge`) belongs to the western ship line; a ship on an edge that touches the main island is one of "the other routes around the main island" and is free. The preset ships (the first ship of every set) are free; both of their ends touch the main island, so they can feed the line. | SF25 p. 16 "You may create other routes around the main island"; spec §2.3 (line only to the west islands, other routes free) |
-| I5 | Where the line begins | A line ship without a line yet must attach at a vertex that touches the main island and holds an own building or an own ship (the free coastal routes included, the fortress and beachhead excluded). The first line ship fixes `start`; later line ships must attach at the line's current end. | SF25 p. 16 "begin at one of your coastal buildings on the eastern island"; spec §2.3 |
-| I6 | The shortest path (OQ-3, confirmed by the user) | Every new line ship must make the distance from the line's end to the **next target** (the beachhead first, then the fortress) smaller by exactly 1. The distance is a breadth-first count over **currently empty** line edges (sea edges not touching the main island, no ship on them), never through a vertex held by another player's building; the pirate's temporary restrictions are not counted. The distance is from the *current end*, so when another player's ship blocks the shortest route the detour's every step is legal, and several shortest paths are all allowed. The new end's distance is checked equal to the old one minus 1 on every step in the tests. | spec §6.6, OQ-3; SF25 p. 16 "must take the shortest path" |
-| I7 | One line, no branching | The line is the ordered list of the player's line ships. A line ship must attach at the end (`not-at-end` otherwise, error `E_SHIP_LINE`); once the line has reached the fortress (`done`) no more line ships can be built, free coastal ships still can. The line's end is kept in `lines[player]` (`start`, `edges`), not inferred. Ships on the line cannot be moved (`shipMoveBlocked`); a free ship moved onto a line edge is judged exactly like a new ship (`ship.move` and `setup.placeShip` go through the same check and the same `E_SHIP_LINE`). | SF25 p. 16 "one continuous line … No branching" |
-| I8 | Reaching the targets | The line reaches the beachhead when one of its vertices is the beachhead vertex (the target then becomes the fortress) and the fortress when it passes the fortress vertex (the line is complete). A settlement at the beachhead does not stop the line: it continues from there. Following the shortest path from the free coastal start, every colour needs 5 line ships to the beachhead and 3 more to the fortress in the test (`EXPECTED_LINE_LENGTHS`; the map is symmetric), well inside the 15 ships of the supply. | SF25 p. 16 |
-| I9 | When nothing leads to the target | **Fallback `shortestPathFallback` (kept, profile flag)**: when the target is not reachable from the line's end over empty line edges (or, without a line, no own building or ship on the main island reaches it), the line may extend in any legal direction (still attached at the end, still one line); as soon as the end can reach the target again the exact rule resumes. **Departure from SF25**, which gives no definition; spec §6.6. The measurement that decided to keep it is in the next section. | spec §6.6, §9 OQ-3 |
+| I3 | Where settlements and roads may go | Starting settlements: only vertices all of whose land hexes are on the main island (`allowBuilding`, setup). Later: the main island as usual; on the pirate islands only the player's **own beachhead** vertex, and **only once the player's western ship line (ships, never roads) has reached it**; other players' beachheads and every other pirate-island vertex are refused. **Roads on a pirate island** may only leave a building the player holds legitimately (a beachhead settlement or a recaptured fortress) or a road built from one (`roadAllowed`): an unrecaptured fortress is a settlement on the board but cannot start a road, so nobody can walk a road from the fortress to the beachhead or claim the coast beside it (review finding, tests for Red's and Blue's cases). | SF25 p. 16 "You may build on the main island as normal. The remaining islands are considered pirate islands", p. 17 "Building on the pirate island" |
+| I4 | Which ships belong to the line | The line is the player's ordered chain of ships from the starting settlement. **The preset ship is its first ship** (start = the preset coastal settlement). A new ship placed at the line's end that cuts the distance to the next target by 1 extends the line. Any other ship on an edge that touches the main island is one of "the other routes around the main island" and is free; any other ship on an edge that touches no main-island hex is refused (`E_SHIP_LINE`). | SF25 p. 16 "You may create other routes around the main island"; spec §2.3 |
+| I5 | Where the line begins | **At an own coastal building on the main island** (SF25 p. 16 "This line must begin at one of your coastal buildings on the eastern island"; this replaces the earlier reading that a free ship could feed the line): the preset ship starts it at the preset settlement, and a line with no ship (after S7c losses) restarts only at a vertex that touches the main island and holds an own settlement or city, never at a vertex that only has an own free ship. Coastal buildings often have only coastal edges beside them, which is why the coastal edges count for the distance (I6) and the preset ship counts as the first ship. | SF25 p. 16; spec §2.3 |
+| I6 | The shortest path (OQ-3, confirmed by the user) | Every new line ship must make the distance from the line's end to the **next target** (the beachhead first, then the fortress) smaller by exactly 1. The distance is a breadth-first count over **every currently empty sea edge** (coastal edges included), never through a vertex held by another player's building; the pirate's temporary restrictions are not counted. The distance is from the *current end*, so when another player's ship blocks the shortest route the detour's every step is legal, and several shortest paths are all allowed. The new end's distance is checked equal to the old one minus 1 on every step in the tests. | spec §6.6, OQ-3; SF25 p. 16 "must take the shortest path" |
+| I7 | One line, no branching | The line is the ordered list of the player's line ships (`lines[player] = { start, edges }`). A line ship must attach at the end; once the line has reached the fortress (`done`) no more line ships can be built, free coastal ships still can. Ships on the line (the preset ship included) cannot be moved (`shipMoveBlocked`); a free ship moved onto a line edge is judged exactly like a new ship (`ship.move` and `setup.placeShip` go through the same check and the same `E_SHIP_LINE`). A setup ship at a new settlement is a line ship only if that settlement is the line's end and the ship cuts the distance; otherwise it must be on a coastal edge. | SF25 p. 16 "one continuous line … No branching" |
+| I8 | Reaching the targets | The line reaches the beachhead when one of its vertices is the beachhead vertex (the target then becomes the fortress) and the fortress when it passes the fortress vertex (the line is complete). A settlement at the beachhead does not stop the line: it continues from there. Counting the preset ship, every colour needs 6 ships to the beachhead and 3 more to the fortress (`EXPECTED_LINE_LENGTHS`; the map is symmetric), well inside the 15 ships of the supply. | SF25 p. 16 |
+| I9 | When nothing leads to the target | **Fallback `shortestPathFallback` (kept, profile flag; see the simulation)**: when the target is not reachable from the line's end over empty sea edges, the line may extend in any legal direction from the end (still one line); as soon as the end can reach the target again the exact rule resumes. **Departure from SF25**, which gives no definition; spec §6.6. | spec §6.6, §9 OQ-3 |
 | I10 | The pirate and the robber in S7a | The pirate stands on the route's first hex and does not move until S7b; the base rule that no ship can be placed or moved onto an edge of the pirate's hex still applies. The robber is out of the game (`robberInactive`): a 7 makes players with more than 7 cards discard and nothing else happens (the "steal from any other player" step is S7b). Longest Road and Largest Army are disabled (`awardRules`). | SF25 p. 16 |
 | I11 | The deck | 3 players: the 5 victory point cards are removed (20 cards: 14 knights, 2 road building, 2 year of plenty, 2 monopoly). 4 players: they are replaced in place by knights (25 cards, 19 knights), so the shuffled order is unchanged. Playing them (warships) is S7c. | SF25 p. 16 |
 | I12 | Setup | Unchanged: two rounds, two starting settlements with a road or a ship each, on the main island only; the second settlement still gives its starting cards. Everyone then has 3 settlements and 3 VP (the fortress counts for 0). The preset pieces are placed in `initGame` without the rng. | SF25 p. 16 |
@@ -184,39 +184,39 @@ coordinates: (0, 6), (-1, 6), (-1, 5), (-1, 4), (0, 3), (0, 2), (1, 1), (2, 0), 
 ## Simulation: how often is a line left without a path
 
 Spec §6.6 and OQ-3: measure with random legal moves whether the exact shortest-path rule can leave a player with no way to
-extend the line; if it never does, drop `shortestPathFallback` and its code. **It does happen, so the flag stays on (I9).**
+extend the line; if it never does, drop `shortestPathFallback` and its code. **Re-measured after the review fixes** (no roads from
+unrecaptured fortresses, lines start at the preset coastal settlement, coastal edges count for the distance); the first
+measurement was polluted by illegal pirate-island roads and by lines that could start at free ships, so its table is replaced.
 
 `packages/rules/test/seafarers-pirate-islands-sim.ts` plays whole setups and then turns of random **legal** actions
 (3 and 4 players, seeds 1..N, at most 60 turns, or until every line reaches its fortress): the actor rolls (a 7 only discards), then makes 1 to 4
-actions, each either an extension of the own line (probability `bias`) or any other legal ship, a road, or a settlement on a
+actions, each either an extension of the own line (probability `bias`) or any other legal ship (free coastal routes), a road, or a settlement on a
 beachhead (settlements elsewhere and cities are left out so nobody wins by points); the hand is refilled before every action so
 the run tests paths, not the economy; before every turn the pirate jumps to a random hex of the route (S7b will move it for
-real, so its temporary blocking shows up all over the board). Three policies: `bias 1` (only line ships, every start and every
-shortest path equally likely), `0.85` and `0.4` (more and more other legal ships, which are free around the main island).
-After every action each player is checked: *unreachable* = the line has ships and its next target cannot be reached from the end
-over empty line edges; *noStart* = no line yet and no vertex of the main island's coast reaches the target; *noExtension* = the
-end can reach the target but the player has no legal line ship (pirate ignored, pieces left). Run with
+real, so its temporary blocking shows up all over the board). Every command goes through `applyCommand`, so only legal actions
+happen, and at the end of each game every road is checked with `roadAllowed`: **`illegalRoads` is 0 in all games**. Three policies: `bias 1` (only line
+ships, every shortest path equally likely), `0.85` and `0.4` (more and more free coastal ships and roads). After every action each player is checked:
+*unreachable* = the next target cannot be reached from the line's end over empty sea edges; *noExtension* = the end can reach the target but the
+player has no legal line ship (pirate ignored, pieces left). Run with
 `PI_SIM_GAMES=<n> PI_SIM_BIASES=<list> PI_SIM_REPORT=1 pnpm --filter @katan/rules exec vitest run test/seafarers-pirate-islands-sim.test.ts`
-(2026-11-24, one worker on the shared machine, 128 s for the 600 games of `bias 1`, 856 s for the 1600 games of the other two):
+(2026-11-24, one worker per run on the shared machine, 148 s for the 600 games of `bias 1`, 396 s for the 1600 games of the other two):
 
-| Players | Policy | Games | Games with a line left without a path | Games where the fallback placed a ship (ships) | Lines completed | Lines out of ships | noStart (observations) | noExtension |
+| Players | Policy | Games | Games with a line left without a path | Games where the fallback placed a ship (ships) | Lines completed | Lines out of ships | noExtension | illegalRoads |
 |---|---|---|---|---|---|---|---|---|
-| 3 | bias 1 | 300 | 98 (33 %) | 55 (179) | 762 / 900 | 67 | 57 | **0** |
-| 4 | bias 1 | 300 | 104 (35 %) | 81 (290) | 1046 / 1200 | 32 | 84 | **0** |
-| 3 | bias 0.85 | 400 | 175 (44 %) | 117 (401) | 954 / 1200 | 101 | 32 | **0** |
-| 4 | bias 0.85 | 400 | 195 (49 %) | 168 (622) | 1295 / 1600 | 66 | 259 | **0** |
-| 3 | bias 0.4 | 400 | 354 (89 %) | 317 (1521) | 495 / 1200 | 339 | 20 | **0** |
-| 4 | bias 0.4 | 400 | 386 (97 %) | 377 (2178) | 658 / 1600 | 272 | 330 | **0** |
+| 3 | bias 1 | 300 | 0 | 0 (0) | 900 / 900 | 0 | **0** | 0 |
+| 4 | bias 1 | 300 | 0 | 0 (0) | 1198 / 1200 | 2 | **0** | 0 |
+| 3 | bias 0.85 | 400 | 0 | 0 (0) | 1196 / 1200 | 4 | **0** | 0 |
+| 4 | bias 0.85 | 400 | 1 (12 observations) | 0 (0) | 1599 / 1600 | 1 | **0** | 0 |
+| 3 | bias 0.4 | 400 | 19 (4.8 %) | 4 (10) | 1090 / 1200 | 102 | **0** | 0 |
+| 4 | bias 0.4 | 400 | 46 (11.5 %) | 23 (79) | 1487 / 1600 | 77 | **0** | 0 |
 
-Reading: with random starts and random shortest paths about a third of the games already leave some player's target unreachable on
-the open sea: lines of different players cannot cross (a vertex has three edges, so a line is a wall for everybody else), and a line
-that starts from the far side of the main island walls the others off. The counts are from random play with no defence (many random
-free ships, nobody avoids blocking), so they overstate real tables, but the case is common enough that the strict rule would stall
-games, so **the fallback stays** (`shortestPathFallback: true`, FIDELITY will mark it a departure from SF25 when S7c enables the
-profile). With it, **no player was ever left without a legal line ship** (`noExtension` 0 in all 2,200 games); lines that did not
-finish ran out of the 15 ships or of turns. One consequence worth a user decision: requiring the line to begin at the preset
-settlement's coast (or the nearest coastal building) would remove most crossings; S7a implements the user-confirmed definition
-as it is (I5, I6) and does not add that.
+Reading: when players mostly extend their lines the exact rule never traps anybody (0 of 1,000 games with 3 or 4 players at `bias 1` and
+`0.85` for 3 players, and one passing observation for 4 players), because every line starts at its own preset ship and heads for its own target.
+When many random free coastal ships are placed (`bias 0.4`) a line's coastal segment or a narrow channel can be walled off by other players' ships in
+5 % (3 players) to 12 % (4 players) of the games, and the fallback placed ships in 1 % to 6 %. **The condition therefore still occurs, so the flag stays on
+(`shortestPathFallback: true`, I9) and the relaxed path stays.** With it, **no player was ever left without a legal line ship** (`noExtension` 0 in all
+2,200 games); lines that did not finish ran out of the 15 ships (free ships are wasted pieces) or of turns. The counts come from random play with no
+defence, so they overstate real tables; FIDELITY will mark the fallback a departure from SF25 when S7c enables the profile.
 
 ## What was built
 
@@ -233,7 +233,7 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
 
 ## Verification
 
-- Rules (`packages/rules/test/seafarers-pirate-islands.test.ts`, 32 tests; whole suite 71 files, 1175 tests):
+- Rules (`packages/rules/test/seafarers-pirate-islands.test.ts`, 36 tests; whole suite 71 files, 1179 tests):
   topology (49 hexes, rows 6-7-8-7-8-7-6 on the `sf-forgotten-tribe` outline, Euler, protrusions absent, 8 distinct frame harbour edges)
   and the (-1, -3) shift against the transcribed row ranges; layout checksums (terrain 19/3/2/5×5, 24 discs, the 6 hexes without a
   disc, islands 17/4/2/1/4/2, every transcribed cell, 8 harbour tokens reproducible and varying with the seed, route 14 consecutive
@@ -242,12 +242,15 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
   assignment (green, red, blue), deck composition 20 and 25, score 1 before and 3 after setup; setup only on the main island
   (legal vertices, the beachhead refused, whole setups on three seeds), no Longest Road or Largest Army, a 7 only discards (other
   Seafarers scenarios still move the robber); the fortress lock (resources, gold, score, city, ships stopped, 4 of 5 settlement
-  pieces); the line (coastal ships free, wrong ship refused with `E_SHIP_LINE`, lines of 3 and 4 players reach beachhead and
-  fortress with every step cutting the distance by 1 and a simple path, a finished line cannot grow, no branching, detours around
-  other ships and impassable vertices, the fallback with its flag on and off, settlement at the beachhead only after the line
-  arrives and only the own one, line ships fixed and free ships judged when moved, setup ships); public view equal for every
+  pieces); roads and the beachhead (Red's roads from the fortress to the beachhead refused, a forced road path still does not unlock the
+  beachhead without the ship line, Blue's coast roads and ships beside its fortress refused, legitimate buildings still extend roads);
+  the line (the preset ship is the first line ship, free coastal routes, wrong ship refused with `E_SHIP_LINE`, every colour reaches
+  beachhead and fortress with every step cutting the distance by 1 and a simple path, a finished line cannot grow, an emptied line restarts
+  only at a coastal building and never at a free ship, no branching, detours around other ships and impassable vertices, the fallback with its
+  flag on and off, settlement at the beachhead only after the line arrives and only the own one, line ships fixed and free ships judged when
+  moved, setup ships); public view equal for every
   viewer; other scenarios without state, hints or line rules; profile enabled/implemented flags and player counts;
-  `seafarers-pirate-islands-sim.test.ts` (2 tests, 36 s: 12 games for each of 3 policies × 2 player counts, `noExtension` 0, the
+  `seafarers-pirate-islands-sim.test.ts` (2 tests, 16 s: 12 games for each of 3 policies × 2 player counts, `noExtension` 0 and `illegalRoads` 0, the
   large runs above); `profiles.test.ts` and `seafarers-exports.test.ts` updated for the new key and the implemented flag;
   `message-ids.test.ts` covers `E_SHIP_LINE`.
 - Service: no code path is added (the profile is disabled); `seafarers-scenarios-registry.test.ts` still lists the profile as disabled and
@@ -256,7 +259,7 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
   fortresses with 3 lairs and their titles, 4 beachheads, the 14-hex route, no robber, 3 players with 3 fortresses and no white
   pieces), the next-target ring (beachhead first), a recaptured fortress without lair tokens, no layer in other scenarios; 3D helper
   geometry (lair spot beside the fortress on land, beachhead on its vertex, taller stack for more lairs, models built); player panel
-  (fortress and ship line marks, no Longest Road, both locales); the new message ids in both locales. The SVG board was also
+  (fortress mark as one value `×3` or `recaptured`, ship line mark, no Longest Road, both locales); the new message ids in both locales. The SVG board was also
   rendered once to an image and compared with the printed map (presets, fortress stacks, beachheads, pirate on the bottom row).
   The 3D scene is not rendered in a browser in this slice (the profile is not enabled); only its instance data is tested.
 - `pnpm typecheck` passes. The browser evidence script belongs to S7c.
@@ -268,7 +271,7 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
 - The shortest-path definition is the user-confirmed reading of SF25 (OQ-3), not a printed rule; the line fallback is a
   departure from SF25 (I9).
 - "Which ships belong to the line" (I4–I5) is our reading of "one continuous line to the western islands … you may create other
-  routes around the main island".
+  routes around the main island", with the preset ship as the line's first ship.
 - Whether a recaptured or locked fortress counts as "a building adjacent to the pirate" for attacks, the pirate's movement and
   attacks, the 7's steal step, the warship conversion and the attack on the fortress are S7b and S7c.
 - The help panel has no scenario text yet (S7c).
