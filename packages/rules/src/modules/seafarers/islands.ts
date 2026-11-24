@@ -13,6 +13,7 @@ import type { GameState } from '../../types.ts';
 import type { ModuleContext, ModuleViewContext } from '../types.ts';
 import { isSmallIslandHex } from './cloth.ts';
 import { isSetupForbidden } from './wonders.ts';
+import { buildingAllowed as pirateBuildingAllowed } from './pirateIslands.ts';
 import { seafarersState, type SeafarersState } from './state.ts';
 
 /** Island ids of the land hexes around an intersection. */
@@ -59,7 +60,7 @@ function recordHome(state: GameState, slot: SeafarersState): void {
  * 穿越荒漠（SF25 p. 10）更嚴：交叉點碰到的任何格都不得屬於 unexplored region（島 2–5），
  * 所以與被沙漠隔出的陸地帶相鄰的主島交叉點也排除；沙漠算主島。
  */
-export function allowBuilding(state: GameState, _playerId: string, vertex: number, options: { setup: boolean }, ctx: ModuleViewContext): boolean {
+export function allowBuilding(state: GameState, playerId: string, vertex: number, options: { setup: boolean }, ctx: ModuleViewContext): boolean {
   const scenario = ctx.profile.scenario;
   // 世外部落（SF25 p. 12）：村落只能蓋在碰到至少一個有數字圓片的格的交叉點（設置與之後都一樣）；
   // 起始村落只放大島。
@@ -73,6 +74,8 @@ export function allowBuilding(state: GameState, _playerId: string, vertex: numbe
     const info = topologyOf(state).vertices[vertex];
     return !info?.hexes.some((hex) => isLandHex(state, hex) && isSmallIslandHex(state, hex));
   }
+  // 海盜巢穴（SF25 p. 16）：起始村落只放東島；海盜群島上只有自己的 beachhead 可以蓋。
+  if (scenario === 'pirate-islands') return pirateBuildingAllowed(state, playerId, vertex, options);
   if (!options.setup) return true;
   // 卡坦奇觀（SF25 p. 18）：起始村落只放大島，不可在 Great Bridge、Great Wall 與 X 標記的交叉點；
   // 之後（非設置）可以在 Great Wall／Great Bridge 標記處蓋村落（那是施工條件）。

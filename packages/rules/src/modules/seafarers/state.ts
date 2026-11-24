@@ -2,6 +2,7 @@
 
 import type { GameState } from '../../types.ts';
 import type { ClothState } from './cloth.ts';
+import type { PirateIslandsState } from './pirateIslands.ts';
 import type { TribeState } from './tribe.ts';
 import type { WorldState } from './world.ts';
 import type { WondersState } from './wonders.ts';
@@ -31,6 +32,8 @@ export interface SeafarersState {
   tribe?: TribeState;
   /** 布匹產地（cloth-for-catan）的部落、供應堆、布匹與貿易關係；其他劇本沒有此欄位。 */
   cloth?: ClothState;
+  /** 海盜巢穴（pirate-islands）的堡壘、beachhead 與西島船線；其他劇本沒有此欄位。 */
+  pirateIslands?: PirateIslandsState;
   /** 新世界（new-world）的港口設置階段；其他劇本沒有此欄位。 */
   world?: WorldState;
   /** 卡坦奇觀（wonders-of-catan）的標記、各玩家的奇觀與層數；其他劇本沒有此欄位。 */
