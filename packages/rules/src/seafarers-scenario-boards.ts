@@ -20,6 +20,7 @@
 import type { LayoutContext } from './layout-registry.ts';
 import { fixedLayout, L, NS3_CELLS, NS4_CELLS, type LandHex, type PortSpec } from './seafarers-boards.ts';
 import { shuffle } from './rng.ts';
+import { variableDesertBoard, variableFourIslandsBoard } from './seafarers-variable-boards.ts';
 import { hexCenter, NEIGHBOR_DIRS, type BoardTopology, type HarborSlotSpec, type HexCoord, type TopologyDefinition } from './topology.ts';
 import type { BoardLayout, HarborType } from './types.ts';
 
@@ -166,10 +167,14 @@ export function throughTheDesertTopologyId(playerCount: number): string {
 /** Layout builder，登記為 `sf-through-the-desert`；以格數檢查選到的外框。 */
 export function throughTheDesertLayout(context: LayoutContext, topologyFor: (id: string) => BoardTopology): BoardLayout {
   const topology = checkedTopology(topologyFor, throughTheDesertTopologyId(context.playerCount), context.playerCount === 3 ? DESERT_TOPOLOGY_CELLS[3] : DESERT_TOPOLOGY_CELLS[4]);
+  const [land, ports] = context.playerCount === 3 ? [TD3_LAND, TD3_PORTS] : [TD4_LAND, TD4_PORTS];
   // 強盜在沙漠 (0,-2)；海盜在框上（`pirate: null`）。
-  return context.playerCount === 3
-    ? fixedLayout(topology, TD3_LAND, TD3_PORTS, { q: 0, r: -2 })
-    : fixedLayout(topology, TD4_LAND, TD4_PORTS, { q: 0, r: -2 });
+  if (context.mode === 'variable') {
+    // SF25 p. 11 variable setup：沙漠固定，主島與外地隨機，紅色圓片不相鄰、不在金礦上。
+    const board = variableDesertBoard(topology.hexes, land, ports, context.rng);
+    return fixedLayout(topology, board.land, board.ports, { q: 0, r: -2 });
+  }
+  return fixedLayout(topology, land, ports, { q: 0, r: -2 });
 }
 
 /** 轉錄的配件，供 fixture 測試使用（SF25 pp. 10–11）。 */
@@ -515,9 +520,14 @@ function checkedTopology(topologyFor: (id: string) => BoardTopology, id: string,
 /** Layout builder，登記為 `sf-four-islands`。 */
 export function fourIslandsLayout(context: LayoutContext, topologyFor: (id: string) => BoardTopology): BoardLayout {
   const topology = checkedTopology(topologyFor, fourIslandsTopologyId(context.playerCount), 35);
-  return context.playerCount === 3
-    ? fixedLayout(topology, FI3_LAND, FI3_PORTS, { q: -3, r: 3 })
-    : fixedLayout(topology, FI4_LAND, FI4_PORTS, { q: 2, r: -2 });
+  const [land, ports] = context.playerCount === 3 ? [FI3_LAND, FI3_PORTS] : [FI4_LAND, FI4_PORTS];
+  if (context.mode === 'variable') {
+    // SF25 p. 7 variable setup：陸地與圓片在四個島區內隨機，強盜放在 12 號圓片格。
+    const board = variableFourIslandsBoard(land, ports, context.rng);
+    const twelve = board.land.find((hex) => hex.number === 12)!;
+    return fixedLayout(topology, board.land, board.ports, twelve);
+  }
+  return fixedLayout(topology, land, ports, context.playerCount === 3 ? { q: -3, r: 3 } : { q: 2, r: -2 });
 }
 
 /** 轉錄的配件，供 fixture 測試使用（SF25 pp. 6–7）。 */
