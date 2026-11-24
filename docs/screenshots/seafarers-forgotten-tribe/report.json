@@ -1,7 +1,7 @@
 {
   "scenario": "forgotten-tribe",
   "profile": "sf-forgotten-tribe-2025",
-  "base": "http://127.0.0.1:3041",
+  "base": "http://127.0.0.1:3046",
   "cases": [
     {
       "name": "lobby-forgotten-tribe",
@@ -18,18 +18,18 @@
       "name": "map-3p-svg-desktop",
       "status": "PASS",
       "note": "sf-forgotten-tribe",
-      "sha256": "f332d85fe33dd5318aa2370852e53befbb5ac450e5693b09aa0085dc901454fb",
+      "sha256": "6f6d0dd6a69defc647d6eb7020a5060b7c2eaa5a46e5ebe383df4dd6a3acdda6",
       "viewport": {
         "width": 1366,
         "height": 900
       },
-      "committed": true
+      "committed": false
     },
     {
       "name": "map-3p-r3f-desktop",
       "status": "PASS",
       "note": "sf-forgotten-tribe",
-      "sha256": "0e23e25e86a7ce35d9443861d5cfe8606974aeb1c13ff9b7f0584ebb22568b7d",
+      "sha256": "b5e7cb956e51c2c96060c363d7b3e9a0839ee7ba5a9cd48794fab42f2d834db8",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -40,7 +40,7 @@
       "name": "map-4p-svg-desktop",
       "status": "PASS",
       "note": "sf-forgotten-tribe",
-      "sha256": "297e3d731720b511ac8411e16d5a460d4338f367587102fc86af6ba6897d6c6a",
+      "sha256": "51f681d56d87ef1c69397cfe8170be654141a45ec90c0d344f4115dc4b07c498",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -51,7 +51,7 @@
       "name": "map-4p-r3f-desktop",
       "status": "PASS",
       "note": "sf-forgotten-tribe",
-      "sha256": "7dd7fb459348894feb340f71f7262d0f566a8e442b54ba0af65b75760afa1249",
+      "sha256": "b789d30a2a27d1e580f30eb82fd2e4a5abd89cafa9e062cbfedf88e824a5d204",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -62,7 +62,7 @@
       "name": "map-4p-svg-phone",
       "status": "PASS",
       "note": "sf-forgotten-tribe",
-      "sha256": "14a39ecfa2e6ed7a447059286f11102387d6f8eaaedc281e4743b981a3120413",
+      "sha256": "3121eda2cc3140d8319d8306c80f973734f9a679eecd438eb57041b671989b27",
       "viewport": {
         "width": 390,
         "height": 844
@@ -73,7 +73,7 @@
       "name": "help-tribe-svg-desktop",
       "status": "PASS",
       "note": "setup done on the large island; help panel shows the Forgotten Tribe rules",
-      "sha256": "6d7cf92f2492f098e88487cd51210446397f8e40603a4921ec58745695c2f7ca",
+      "sha256": "d5ba17fdb90b426f16368402cc3a6fa7c477a206edbc1b6c2fd3937a1efda953",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -83,8 +83,8 @@
     {
       "name": "live-port-targets-3d",
       "status": "PASS",
-      "note": "port taken in 3D: edges beside the coastal settlement are the targets",
-      "sha256": "d2e4538bc3cf2a956b9acb30f571bc1f92696f49b7c66a58a8a3f720605dd791",
+      "note": "portA taken in r3f: the coast edges are the placement targets",
+      "sha256": "b4b91b105123f68b3b27634864e11f4c825210dd0dc4072a6ea00f2bc57a41e5",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -94,8 +94,8 @@
     {
       "name": "live-port-placed-3d",
       "status": "PASS",
-      "note": "port placed through the 3D board; it works at once",
-      "sha256": "36f1a3f847da38f704409768735906631de958ce6498d9566fe82b1ff3a4b861",
+      "note": "port A placed through the 3D board; it works at once",
+      "sha256": "1f4e5311e2da0a739a1515386aac9fd3549d9aa7c63de772c6e8c552c63d3ad8",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -103,10 +103,43 @@
       "committed": true
     },
     {
+      "name": "live-ship-move-gift-3d",
+      "status": "PASS",
+      "note": "a ship moved onto a VP token in 3D takes it (gift count 16)",
+      "sha256": "854e8ff356d242736b20845311fe9dc41650a0385928504a34a77fccc3c115ee",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-port-pending-phone",
+      "status": "PASS",
+      "note": "portC taken in phone svg: the coast edges are the placement targets",
+      "sha256": "20aef2ed86a2e1fa2139e48158b259b7201053f700af3d9549144c1b542f77a6",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "live-port-targets-svg",
+      "status": "PASS",
+      "note": "portB taken in svg: the coast edges are the placement targets",
+      "sha256": "8982a03ae004a1c2633dd99909bfb7606ba0bb637dfb29e3a2c8f2de4a6a3959",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
       "name": "live-gifts-svg",
       "status": "PASS",
-      "note": "development card and VP token taken in SVG: gifts gone, VP mark on the panel",
-      "sha256": "7e80e8897f0613cfcb7934da77cd912ef1e2e5ea5783e31aaa2d6cff5a43f409",
+      "note": "three harbours, the development card and a VP token taken: gifts gone, VP mark on the panel",
+      "sha256": "51e72a21288c8233ccd40449fcea8de3174772cd1a364573f6cc53d3bbc0211c",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -116,8 +149,8 @@
     {
       "name": "live-result",
       "status": "PASS",
-      "note": "the second VP token (taken by moving a ship) makes 13 VP: result screen",
-      "sha256": "89f7da182905c76a34f6f389367905f89cb02e024775235d41ddaa0626de51a9",
+      "note": "the second VP token makes 13 VP: result screen",
+      "sha256": "6eb39f2ccca1c629fb75d2d457b570d2251710da39cda6a31ad3327cf67df49a",
       "viewport": {
         "width": 1366,
         "height": 900
@@ -127,17 +160,47 @@
   ],
   "finish": {
     "plan": {
-      "player": "player_68d72a7c5ae04b01a733",
-      "coast": 33,
-      "coastEdges": [
-        39,
-        40
+      "player": "player_974a5dafbe1941198e63",
+      "coasts": [
+        {
+          "vertex": 33,
+          "edges": [
+            39,
+            40
+          ]
+        },
+        {
+          "vertex": 37,
+          "edges": [
+            45,
+            46
+          ]
+        },
+        {
+          "vertex": 44,
+          "edges": [
+            56,
+            84
+          ]
+        }
       ],
-      "port": {
+      "portA": {
         "gift": 3,
         "kind": "port",
-        "harbor": "lumber",
+        "harbor": "grain",
         "near": 4
+      },
+      "portB": {
+        "gift": 18,
+        "kind": "port",
+        "harbor": "generic",
+        "near": 19
+      },
+      "portC": {
+        "gift": 80,
+        "kind": "port",
+        "harbor": "ore",
+        "near": 81
       },
       "devcard": {
         "gift": 2,
@@ -145,69 +208,69 @@
         "near": 1
       },
       "vp1": {
-        "gift": 19,
-        "kind": "vp",
-        "near": 23
-      },
-      "vp2": {
         "gift": 29,
         "kind": "vp",
-        "near": 30,
-        "anchor": 28
+        "near": 30
+      },
+      "vp2": {
+        "gift": 130,
+        "kind": "vp",
+        "near": 129,
+        "anchor": 127
       },
       "settled": [
         {
           "vertex": 26,
-          "player": "player_68d72a7c5ae04b01a733",
+          "player": "player_974a5dafbe1941198e63",
           "islands": [
             1
           ]
         },
         {
           "vertex": 35,
-          "player": "player_892aaaff1ffb469faa0c",
+          "player": "player_eefadf2c8c3e4f9c9fa8",
           "islands": [
             1
           ]
         },
         {
           "vertex": 66,
-          "player": "player_892aaaff1ffb469faa0c",
+          "player": "player_eefadf2c8c3e4f9c9fa8",
           "islands": [
             1
           ]
         },
         {
           "vertex": 67,
-          "player": "player_37e24aa38168472ea3bd",
+          "player": "player_0ad8e03a546d45e78087",
           "islands": [
             1
           ]
         },
         {
           "vertex": 77,
-          "player": "player_17dab3a45f1d4042a3af",
+          "player": "player_dabd4854eb634a3999e2",
           "islands": [
             1
           ]
         },
         {
           "vertex": 83,
-          "player": "player_37e24aa38168472ea3bd",
+          "player": "player_0ad8e03a546d45e78087",
           "islands": [
             1
           ]
         },
         {
           "vertex": 87,
-          "player": "player_68d72a7c5ae04b01a733",
+          "player": "player_974a5dafbe1941198e63",
           "islands": [
             1
           ]
         },
         {
           "vertex": 89,
-          "player": "player_17dab3a45f1d4042a3af",
+          "player": "player_dabd4854eb634a3999e2",
           "islands": [
             1
           ]
@@ -215,7 +278,7 @@
       ]
     },
     "result": {
-      "playerId": "player_68d72a7c5ae04b01a733",
+      "playerId": "player_974a5dafbe1941198e63",
       "reason": "victory",
       "score": 13
     }

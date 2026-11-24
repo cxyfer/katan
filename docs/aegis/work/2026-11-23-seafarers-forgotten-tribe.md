@@ -170,6 +170,9 @@ Port positions are in `harborSlots` order (the table's last six rows).
 | I11 | Victory | 13 VP on the own turn at any moment; no island bonus; 15 ships. | SF25 p. 12; spec §5.3 |
 | I12 | Variable setup | The three blue-outlined hexes (no 5/6/8/9) and the random large island belong to S10; the fixed map is offered. | SF25 p. 13 |
 
+| I13 | Two free ships from Road Building | Each free ship that lands on a port gift takes it at once; the harbor frames are queued behind the Road Building frame, so both ports are placed after the second ship is built, and the player chooses which held port to place first. Both ports come from the same card, so the order is the player's. | SF25 p. 12; `build.ship` and `harbor.place` |
+| I14 | Scenario isolation (D7) | Only `forgotten-tribe` carries the gift state. Elsewhere (New Shores `sf-2025.2`, Four Islands, Through the Desert, Fog Islands) `actionHints().modules.seafarers` has no `harborChoices`, `targets` or `board` keys, and `harbor.place` answers like any unknown command (`E_INVALID_COMMAND`, or `E_PENDING_EFFECT` while a frame is pending), the same treatment as `fog.choose`. A regression test pins the key set and both codes. | spec D7; `seafarers-exports.test.ts` |
+
 ## What was built
 
 | Area | Files | Notes |
@@ -228,16 +231,19 @@ Port positions are in `harborSlots` order (the table's last six rows).
   phone for 4, setup over the API (`tribe_fixture.mjs check`: every starting
   settlement touches the large island), the help panel, then a live finish for
   player 1 through the UI: a test-only fixture (service stopped) gives the
-  turn, ship cards, 8 other bonus points, a coastal settlement on the large
-  island, a knight as the card gift and floating ships beside four gifts.
-  **3D**: build a ship onto the port gift (canvas gift count 18 → 17, frame
-  pending, `harborChoices` include the new settlement's two coast edges), click
-  one of those edges on the 3D board and confirm (the harbor appears in the
-  view, the frame clears); **SVG**: build onto the development card gift (card
-  in `newDevCards`) and onto a VP token (tribe `vp` = 1, panel mark), then
-  **move** a ship onto the second VP token (13 VP, result screen). Gift edges
-  sit close together, so the script chooses in the ambiguity list when it
-  opens. Report with sha256 per image:
+  turn, ship cards, 6 other bonus points, three coastal settlements on the
+  large island, a knight as the card gift and floating ships beside seven
+  gifts. **3D**: build a ship onto a port gift (canvas gift count 18 → 17,
+  frame pending, `harborChoices` include the settlement's coast edges), click
+  an edge on the 3D board and confirm, then **move** a ship onto a VP token
+  (count 16, tribe `vp` = 1); **phone (390 px, SVG)**: build onto a second port
+  gift and place it through the target list (the seat panel covers part of the
+  board); **SVG**: build onto and place a third port, take the development card
+  gift (card in `newDevCards`) and build onto the second VP token (13 VP,
+  result screen). Gift edges sit close together, so the script chooses in the
+  ambiguity list when it opens. In 3D the gifts stand on a post above the sand
+  and face-up ports carry the same ratio and resource plaque as placed
+  harbors. Report with sha256 per image:
   `docs/screenshots/seafarers-forgotten-tribe/report.json`; the curated
   captures are `committed: true`.
 
