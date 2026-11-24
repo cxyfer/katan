@@ -12,7 +12,7 @@ import { productionForRoll } from '../src/analysis.ts';
 import { seafarersModule } from '../src/modules/seafarers/index.ts';
 import { goldEntitlements } from '../src/modules/seafarers/gold.ts';
 import {
-  fortressLocked, isLineEdge, lineBacktrack, lineContext, lineShip, lineVertices, pirateIslandsView,
+  fortressLocked, isLineEdge, lineBacktrack, lineBacktrackMovable, lineContext, lineShip, lineVertices, pirateIslandsView,
 } from '../src/modules/seafarers/pirateIslands.ts';
 import { canPlaceShip, legalShipEdges } from '../src/modules/seafarers/ships.ts';
 import { seafarersState } from '../src/modules/seafarers/state.ts';
@@ -580,6 +580,9 @@ describe('Pirate Islands ship line (SF25 p. 16 Shipbuilding; spec §6.6, OQ-3)',
     expect(ctx.end).not.toBe(line.start);
     const topo = topologyOf(state);
     const inner = lineVertices(state, line).filter((vertex) => vertex !== ctx.end);
+    // 距離與 `lineShip` 用同一套可走的頂點：自己船線上除了端點以外的頂點到不了（不會繞回自己的線）。
+    for (const vertex of inner) expect(ctx.dist[vertex]).toBe(-1);
+    expect(ctx.dist[ctx.end!]).toBeGreaterThan(0);
     const branch = inner.flatMap((vertex) => topo.vertices[vertex]!.edges.filter((edge) => canPlaceShip(state, 'p1', edge, { line: null })));
     expect(branch.length).toBeGreaterThan(0);
     for (const edge of branch) {
@@ -662,11 +665,40 @@ describe('Pirate Islands ship line (SF25 p. 16 Shipbuilding; spec §6.6, OQ-3)',
     }
   });
 
+  it('末端船的遠端接著自己的自由船時不能退回（會留下與建築斷開的孤立船）；接著自己的建築可以', () => {
+    let state = started(4);
+    for (let i = 0; i < 2; i++) state = build(state, 'p1', lineEdges(state, 'p1')[0]!);
+    state.windowId += 1;
+    forceTurn(state, 0, 'action');
+    const line = slot(state).lines.p1!;
+    const last = line.edges[line.edges.length - 1]!;
+    const topo = topologyOf(state);
+    const end = lineContext(state, 'p1')!.end!;
+    // 端點 V 上再接一艘自己的自由船 F1，第三條邊被對手的船占住：被圍死，但 E1 不可移動。
+    const spare = topo.vertices[end]!.edges.find((edge) => !state.board.roads[edge])!;
+    ship(state, 'p1', spare);
+    wall(state);
+    expect(lineBacktrack(state, 'p1', last)).toBe(true);
+    expect(lineBacktrackMovable(state, 'p1', last)).toBe(false);
+    expect(sf(state, 'p1').movableShips.some((entry) => entry.edge === last)).toBe(false);
+    expect(sf(state, 'p1').pirateLine.stuck).toBe(false);
+    expectRejected(state, 'p1', { type: 'ship.move', from: last, to: spare } as never, 'E_SHIP_NOT_MOVABLE');
+    // 遠端只接著自己的建築（沒有其他自己的船）：可以退回。
+    let built = started(4);
+    for (let i = 0; i < 2; i++) built = build(built, 'p1', lineEdges(built, 'p1')[0]!);
+    built.windowId += 1;
+    forceTurn(built, 0, 'action');
+    const end2 = wall(built);
+    settle(built, 'p1', end2);
+    expect(lineBacktrackMovable(built, 'p1', slot(built).lines.p1!.edges.at(-1)!)).toBe(true);
+  });
+
   it('移走末端的船後船線截短（端點退一格）；移走之後仍不通就可以再退，一路退到沒有船線', () => {
     let state = started(4);
     for (let i = 0; i < 2; i++) state = build(state, 'p1', lineEdges(state, 'p1')[0]!);
     const topo = topologyOf(state);
     const first = [...slot(state).lines.p1!.edges];
+    const firstVertices = lineVertices(state, slot(state).lines.p1!);
     // 把目標圍死（目標旁的交叉點被 p2 的建築占住）：不論退到哪一格都不通。
     const target = lineContext(state, 'p1')!.targetVertex!;
     for (const edge of topo.vertices[target]!.edges) {
@@ -682,7 +714,9 @@ describe('Pirate Islands ship line (SF25 p. 16 Shipbuilding; spec §6.6, OQ-3)',
       const movable = sf(state, 'p1').movableShips.filter((entry) => line.edges.includes(entry.edge));
       expect(movable.map((entry) => entry.edge)).toEqual([line.edges[remaining - 1]]);
       const end = lineContext(state, 'p1')!.end;
-      const free = movable[0]!.targets.find((edge) => lineShip(state, 'p1', edge, { moving: movable[0]!.edge }).kind === 'free');
+      // 自由的位置不碰船線上除了起點建築以外的頂點（否則那艘自由船會接在端點上，下一艘末端船就不能退了）。
+      const free = movable[0]!.targets.find((edge) => lineShip(state, 'p1', edge, { moving: movable[0]!.edge }).kind === 'free'
+        && !topologyOf(state).edges[edge]!.vertices.some((vertex) => firstVertices.slice(1).includes(vertex)));
       expect(free, 'a free coastal place to put the ship').toBeDefined();
       state = act(state, 'p1', { type: 'ship.move', from: movable[0]!.edge, to: free! } as never).state;
       const after = slot(state).lines.p1!;

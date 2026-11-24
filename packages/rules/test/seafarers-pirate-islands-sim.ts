@@ -10,7 +10,7 @@
 import { isLandHex, topologyOf } from '../src/analysis.ts';
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
 import { legalShipEdges } from '../src/modules/seafarers/ships.ts';
-import { lineBacktrack, lineContext, lineShip, lineVertices, pirateIslandsView, roadAllowed } from '../src/modules/seafarers/pirateIslands.ts';
+import { lineBacktrackMovable, lineContext, lineShip, lineVertices, pirateIslandsView, roadAllowed } from '../src/modules/seafarers/pirateIslands.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
 import type { GameState, Resource } from '../src/types.ts';
 import { seafarersGame } from './seafarers-helpers.ts';
@@ -51,6 +51,8 @@ export interface PirateSimResult {
   hopeless: number;
   /** 最後仍無法到達目標的玩家：沒有完成、配件沒用完、沒有任何合法延伸、也不能退回（永久卡死）。 */
   stuckPlayers: number;
+  /** 不一致：端點到得了目標、不能退回，卻沒有任何合法的船線延伸（距離與 `lineShip` 的可走頂點不同套，必須是 0）。 */
+  inconsistent: number;
   /** 船線端點落在別人的建築上，或船線繞回自己的頂點（必須是 0）：船線端點落在別人的建築上，或船線繞回自己的頂點（必須是 0）。 */
   badEnds: number;
   /** 海盜群島上不合法取得的路（必須是 0：模擬只用合法動作）。 */
@@ -111,7 +113,7 @@ function lineCandidates(state: GameState, actor: string): number[] {
 function backtrackMove(state: GameState, actor: string, rng: Rng): AnyCommand | null {
   const line = pirateIslandsView(state)!.lines[actor]!;
   const last = line.edges[line.edges.length - 1];
-  if (last === undefined || !lineBacktrack(state, actor, last)) return null;
+  if (last === undefined || !lineBacktrackMovable(state, actor, last)) return null;
   const entry = sfHints(state, actor).movableShips.find((candidate) => candidate.edge === last);
   if (!entry || entry.targets.length === 0) return null;
   const extensions = entry.targets.filter((edge) => lineShip(state, actor, edge, { moving: last }).kind === 'line');
@@ -124,11 +126,12 @@ function permanentlyStuck(state: GameState, playerId: string): boolean {
   if (ctx.next === 'done') return false;
   if (state.board.roads.filter((road) => road?.ship && road.player === playerId).length >= 15) return false;
   const last = ctx.line.edges[ctx.line.edges.length - 1];
-  if (last !== undefined && lineBacktrack(state, playerId, last)) return false;
   const saved = state.board.pirate;
   state.board.pirate = null;
   enrich(state, playerId);
-  const stuck = lineCandidates(state, playerId).length === 0;
+  // 有合法的船線延伸，或末端船真的可以退回（被圍死、遠端沒有接自己的船，而且有合法的移動目的地）。
+  const stuck = lineCandidates(state, playerId).length === 0
+    && !(last !== undefined && lineBacktrackMovable(state, playerId, last) && legalShipEdges(state, playerId, { moving: last }).length > 0);
   state.board.pirate = saved;
   return stuck;
 }
@@ -142,6 +145,7 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   let noStart = 0;
   let noExtension = 0;
   let backtracks = 0;
+  let inconsistent = 0;
   const walled = new Set<string>();
   let illegalRoads = 0;
   let badEnds = 0;
@@ -230,7 +234,18 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
       if (!done) break;
       observe(state);
     }
-    for (const player of state.players) if (permanentlyStuck(state, player.id)) { noExtension++; stuckSet.add(player.id); }
+    for (const player of state.players) {
+      if (permanentlyStuck(state, player.id)) { noExtension++; stuckSet.add(player.id); }
+      const ctx = lineContext(state, player.id)!;
+      const ships = state.board.roads.filter((road) => road?.ship && road.player === player.id).length;
+      if (ctx.next !== 'done' && ctx.end !== null && ctx.dist[ctx.end]! >= 0 && ships < 15) {
+        const saved = state.board.pirate;
+        state.board.pirate = null;
+        enrich(state, player.id);
+        if (lineCandidates(state, player.id).length === 0) inconsistent++;
+        state.board.pirate = saved;
+      }
+    }
     if (state.result) break;
     const ended = applyCommand(state, actor.id, { type: 'turn.end' }, rng);
     if (!ended.ok) throw new Error(`cannot end turn: ${ended.error.code} ${JSON.stringify(state.pending)}`);
@@ -259,5 +274,5 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   state.board.roads.forEach((road, edge) => {
     if (road && !road.ship && !roadAllowed(state, road.player, edge)) illegalRoads++;
   });
-  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, backtracks, illegalRoads, badEnds, walledPlayers: walled.size, escaped, stillWalled, hopeless, stuckPlayers: [...state.players].filter((player) => permanentlyStuck(state, player.id)).length };
+  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, backtracks, illegalRoads, badEnds, inconsistent, walledPlayers: walled.size, escaped, stillWalled, hopeless, stuckPlayers: [...state.players].filter((player) => permanentlyStuck(state, player.id)).length };
 }
