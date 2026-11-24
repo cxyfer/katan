@@ -228,6 +228,10 @@ describe('Cloth for Catan pirate and stealing cloth', () => {
     state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false } as never;
     expect(seafarersHints(viewOf(state))!.pirateTargets).toEqual([]);
     expect(seafarersHints(viewOf(state))!.robberTargets.length).toBeGreaterThan(0);
+    // 提示只提強盜，不叫玩家去移動不能動的海盜。
+    render(<LocaleProvider locale="en"><PendingPrompt controller={controllerFor(viewOf(state), 'en', { submitCommand: vi.fn() })} /></LocaleProvider>);
+    expect(screen.getByTestId('bandit-choice-text').textContent).toBe('Move the robber to a land hex (the pirate cannot move now).');
+    cleanup();
   });
 });
 

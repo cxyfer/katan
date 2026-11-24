@@ -32,7 +32,12 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
   const frameOpen = banditTargets(view, sea.robberTargets, sea.pirateTargets).pirate.includes(null);
   // With Cities & Knights a knight chases one bandit only (COMB-6).
   const bandit = seafarersCitiesKnightsHints(view)?.bandit ?? null;
-  const banditText = knightArmed ? 'sf.bandit.knight' : bandit === 'robber' ? 'sfck.bandit.robber' : bandit === 'pirate' ? 'sfck.bandit.pirate' : 'sf.bandit.choose';
+  // 海盜沒有任何合法目標（例如布匹產地還沒有通到部落的通路）時只提強盜。
+  const pirateLocked = sea.pirateTargets.length === 0 && !frameOpen;
+  const banditText = knightArmed
+    ? pirateLocked ? 'sf.bandit.knightRobber' : 'sf.bandit.knight'
+    : bandit === 'robber' ? 'sfck.bandit.robber' : bandit === 'pirate' ? 'sfck.bandit.pirate'
+    : pirateLocked ? 'sf.bandit.robber' : 'sf.bandit.choose';
 
   const setup = view.turn.setup;
   const setupMine = !!setup && setup.stage === 'road' && view.turn.playerId === selfId;
