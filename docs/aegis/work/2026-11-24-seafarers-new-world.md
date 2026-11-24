@@ -160,6 +160,7 @@ one needs every human seat; no choice of cells.
 | I13 | Robber and pirate on the frame | Kept as is (maintainer decision): the robber (`-1`) and the pirate (`null`) are not drawn on the frame before they first move; drawing them there would need a change in both renderers and is out of scope. |
 | I14 | Who may propose a redraw | Kept as is (maintainer decision): only the host proposes, as the spec words it; every other human seat can only agree or decline. |
 | I15 | Redraw edge cases | Consent is idempotent (a retry or double click counts once). It is refused with `E_GAME_SUSPENDED` while the table is suspended, and a suspension cancels an open redraw proposal. A redraw empties the client's port selection so a port cannot be placed on an old edge. |
+| I16 | Phone evidence | Same standard as The Forgotten Tribe and Cloth for Catan: both renderers are exercised on the desktop (SVG and 3D port placement), the phone run operates one renderer (SVG, through the target list). The renderers share one board intent (`hints.board` through `boardIntent`), so a phone 3D run adds no separate rule path. |
 
 ## Evidence
 
