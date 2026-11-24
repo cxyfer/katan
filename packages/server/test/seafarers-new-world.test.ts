@@ -264,6 +264,8 @@ describe('New World over the API', () => {
     // 提案還開著時第一個港口放下：提案失效。
     expect(await placeHarbor(clients, gameId, 'nw-first-port')).toMatchObject({ outcome: 'accepted' });
     expect((await roomOf(host, roomId)).pendingRegenerate).toBeNull();
+    // 取消與港口放置在同一個 transaction：資料庫裡已沒有 open 的提案，狀態為 cancelled。
+    expect(await harness.service.repo.findOpenGameProposal(gameId, 'regenerate')).toBeNull();
     host.expectError(await clients[1]!.post(`/api/games/${gameId}/regenerate`, { proposalId: proposed.proposalId, approve: true }), 'E_NO_PROPOSAL');
     host.expectError(await host.post(`/api/games/${gameId}/regenerate`, {}), 'E_REGENERATE_UNAVAILABLE');
     expect((await snapshot(host, gameId)).view.modules!.seafarers!.world).toMatchObject({ placed: 1, canRegenerate: false });

@@ -340,6 +340,7 @@ export class GameCoordinator {
 
       const revision = game.revision + 1;
       const events = outcome.events;
+      let lapsedProposals = 0;
       await this.repo.transaction(async () => {
         await this.repo.saveGame(
           gameId,
@@ -360,13 +361,14 @@ export class GameCoordinator {
           events_json: JSON.stringify(events.slice(-RECEIPT_EVENT_LIMIT)),
           created_at: new Date().toISOString(),
         });
+        // 版圖已往下走（例如第一個港口放下），重新產生版圖的提案隨之失效；與狀態同一個 transaction。
+        lapsedProposals = await this.repo.cancelOpenGameProposalsOfKind(gameId, 'regenerate');
       });
 
       if (outcome.state.result) {
         await this.repo.updateRoom(game.room_id, { status: 'completed' });
       }
-      // 版圖已往下走（例如第一個港口放下），重新產生版圖的提案隨之失效。
-      if ((await this.repo.cancelOpenGameProposalsOfKind(gameId, 'regenerate')) > 0) this.deps.rooms.broadcastRoom(game.room_id);
+      if (lapsedProposals > 0) this.deps.rooms.broadcastRoom(game.room_id);
       this.publish(game.room_id, gameId, revision, events);
       this.notifyCommitted({
         gameId,
