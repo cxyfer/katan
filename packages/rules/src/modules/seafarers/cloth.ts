@@ -22,7 +22,7 @@ import { playerById, topologyOf } from '../../analysis.ts';
 import { CFC_SMALL_ISLANDS, CFC_SUPPLY_CLOTH, CFC_TRIBES, CFC_TRIBE_CLOTH, tribeVertices } from '../../seafarers-scenario-boards.ts';
 import type { CommandOutcome, GameState } from '../../types.ts';
 import type { ModuleCommand, ModuleContext, ModuleViewContext, RollResult } from '../types.ts';
-import { seafarersState, seafarersView, type SeafarersState } from './state.ts';
+import { seafarersView, type SeafarersState } from './state.ts';
 
 export interface ClothTribe {
   /** 部落所在的頂點。 */
@@ -134,7 +134,7 @@ function turnOrder(state: GameState): string[] {
  * 每次盤面變動後：新連上部落的玩家建立關係並從部落拿 1 枚（部落已空則只建立關係，拿不到）。
  */
 export function establishTrade(state: GameState, ctx: ModuleContext): void {
-  const cloth = seafarersState(state).cloth;
+  const cloth = seafarersView(state).cloth; // 唯讀取得：沒有 cloth 的劇本不得改動狀態（D7）
   if (!cloth) return;
   for (const playerId of turnOrder(state)) {
     const links = (cloth.links[playerId] ??= []);
@@ -152,7 +152,7 @@ export function establishTrade(state: GameState, ctx: ModuleContext): void {
 
 /** 擲出部落數字時的布匹生產（在金礦之前結算）。有玩家拿到布匹時回傳 true（呼叫端接著判勝）。 */
 export function produceCloth(state: GameState, roll: RollResult, ctx: ModuleContext): boolean {
-  const cloth = seafarersState(state).cloth;
+  const cloth = seafarersView(state).cloth; // 唯讀取得：沒有 cloth 的劇本不得改動狀態（D7）
   if (!cloth || roll.total === 7) return false;
   let paid = false;
   cloth.tribes.forEach((tribe, index) => {
@@ -237,7 +237,7 @@ export function stealCloth(state: GameState, actorId: string, command: ModuleCom
   const victim = command.victim;
   if (typeof victim !== 'string') return kit.fail('E_INVALID_COMMAND');
   if (!frame.pirate || !frame.candidates.includes(victim) || !playerById(state, victim)) return kit.fail('E_NO_ELIGIBLE_VICTIM', { victim });
-  const cloth = seafarersState(state).cloth;
+  const cloth = seafarersView(state).cloth; // 唯讀取得：沒有 cloth 的劇本不得改動狀態（D7）
   if (!cloth || (cloth.cloth[victim] ?? 0) <= 0) return kit.fail('E_NO_ELIGIBLE_VICTIM', { victim });
   cloth.cloth[victim] = (cloth.cloth[victim] ?? 0) - 1;
   cloth.cloth[actorId] = (cloth.cloth[actorId] ?? 0) + 1;

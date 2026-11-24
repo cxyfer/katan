@@ -962,6 +962,21 @@ describe('SFX-S6 終局：回合結束時 ≥5 個部落沒有布匹', () => {
   });
 });
 
+describe('SFX-S6 D7：其他劇本的狀態不受 cloth hook 影響', () => {
+  it('New Shores 與其他劇本擲骰、建造、結束回合後 moduleState.seafarers 與沒有 cloth 模組時相同（不被讀取者改寫）', () => {
+    for (const profileId of ['sf-new-shores-2025', 'sf-four-islands-2025', 'sf-forgotten-tribe-2025']) {
+      const state = emptySeafarersGame(3, 0, 'preroll', profileId);
+      const before = JSON.stringify(state.moduleState!.seafarers);
+      const rolled = act(state, 'p1', { type: 'turn.roll' }, scriptedRng(dice(6)));
+      // 擲骰只是讀取：窗口編號與其他欄位都不被改寫。
+      expect(JSON.stringify(rolled.state.moduleState!.seafarers), profileId).toBe(before);
+      expect((rolled.state.moduleState!.seafarers as { cloth?: unknown }).cloth, profileId).toBeUndefined();
+      const ended = act(rolled.state, 'p1', { type: 'turn.end' }, scriptedRng([]));
+      expect(JSON.stringify(ended.state.moduleState!.seafarers), profileId).toBe(before);
+    }
+  });
+});
+
 describe('SFX-S6 其他', () => {
   it('seeded 隨機呼叫不洩漏：布匹狀態是公開資訊，viewer 之間視圖相同', () => {
     const state = ready(4);
