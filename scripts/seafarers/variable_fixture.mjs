@@ -8,6 +8,7 @@
 
 import { readFileSync } from 'node:fs';
 import { buildProfileLayout, getProfile, getTopology, NEIGHBOR_DIRS, seededRng } from '../../packages/rules/src/index.ts';
+import { FT_VARIABLE_RESTRICTED, WC_VARIABLE_NO_RED } from '../../packages/rules/src/seafarers-scenario-boards.ts';
 
 const { profileId, playerCount, board } = JSON.parse(readFileSync(0, 'utf8'));
 const topology = getTopology(board.topologyId);
@@ -22,4 +23,9 @@ const lowOnForestPasture = numbers.some((disc, hex) => [2, 3, 11, 12].includes(d
 const fixed = buildProfileLayout(getProfile(profileId), { mode: 'fixed', playerCount, rng: seededRng(1) });
 const sameAsFixed = JSON.stringify(fixed.numbers) === JSON.stringify(numbers) && JSON.stringify(fixed.terrain) === JSON.stringify(terrain);
 const robberOnTwelve = numbers[board.robber] === 12;
-process.stdout.write(JSON.stringify({ redAdjacent, redOnGold, lowOnForestPasture, sameAsFixed, robberOnTwelve, robberTerrain: terrain[board.robber] }));
+// S10b：世外部落右側 3 格不得放 5、6、8、9；卡坦奇觀緊鄰沙漠的 2 格不得放紅色圓片；布匹產地有兩個 12 號格。
+const cellAt = (cell) => byKey.get(`${cell.q},${cell.r}`);
+const tribeRestrictedBad = FT_VARIABLE_RESTRICTED.some((cell) => [5, 6, 8, 9].includes(numbers[cellAt(cell)]));
+const wondersRedBesideDesert = WC_VARIABLE_NO_RED.some((cell) => red(numbers[cellAt(cell)]));
+const twelveCount = numbers.filter((disc) => disc === 12).length;
+process.stdout.write(JSON.stringify({ redAdjacent, redOnGold, lowOnForestPasture, sameAsFixed, robberOnTwelve, robberTerrain: terrain[board.robber], tribeRestrictedBad, wondersRedBesideDesert, twelveCount }));

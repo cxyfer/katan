@@ -15,6 +15,7 @@ interface SeafarersHints {
   robberTargets: number[];
   goldRequired: number;
   harborChoices: { harbors: string[]; edges: number[] };
+  robberChoice?: number[];
   wonders?: { claimable: string[]; buildable: boolean };
 }
 
@@ -142,6 +143,11 @@ function setupStep(state: GameState, rng: Rng, step: number): GameState {
     return attempt(state, id, { type: 'world.harbor', edge: edges[(step * 5) % edges.length]! }, rng)!;
   }
   const actor = state.players[setup.order[setup.index]!]!.id;
+  // 布匹產地 variable：起始玩家先在 12 號圓片格中選強盜（輪流換選哪一個，兩個都會被試到）。
+  if (setup.stage === 'robber') {
+    const hexes = sfHints(state, actor).robberChoice!;
+    return attempt(state, actor, { type: 'cloth.robber', hex: hexes[step % hexes.length]! }, rng)!;
+  }
   const hints = actionHints(state, actor);
   if (setup.stage === 'building') {
     const legal = hints.legalSettlements;

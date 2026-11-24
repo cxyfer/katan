@@ -125,4 +125,155 @@ Real games through the real UI and API against the built service (private SQLite
 | `through-the-desert-map-4p-r3f-desktop.png` | `d33b6178f1c926d610c3417a091c864f4b96e570415792a8676909b5efee04b3` |
 | `through-the-desert-map-4p-svg-phone.png` | `b628e236f1f6d295f2eaf461c027dab048159083a16bf6573ca257044800c56f` |
 
-S10b (S5, S6, S8) is not part of this slice.
+---
+
+# S10b: The Forgotten Tribe, Cloth for Catan, The Wonders of Catan
+
+Slice S10b of the same spec (D1, D4, §6.4, §6.5, §6.7, §10 S10, §11.2–§11.3). Branch
+`feat/sfx-s10b-variable-setup`, based on `release/v0.4.6` (b9254c8: S0–S6, S8, S9, S10a merged).
+The three profiles keep their ids and rule version (`sf-2025.3`); only `setupModes` changes to
+`['fixed', 'variable']`. The method of S10a applies unchanged: **re-deal the fixed transcription** (frame,
+sea, island areas and harbor slots as printed; multisets of terrain, discs and port tokens from the fixed
+transcription, which the earlier S5/S6/S8 records checked against the component tables); the generators
+are in the same `packages/rules/src/seafarers-variable-boards.ts` (end of the file), the three layout
+builders call them only when `mode === 'variable'`, and `fixed` is byte-identical and draws the same
+randomness as before (regression test).
+
+## Sources (accessed 2026-11-24)
+
+SF25 (same file and sha256 as above). Pages rendered outside the repository and read as image and as
+extracted text; no downloaded code was executed.
+
+| Scenario | Page | Page image sha256 | Text read |
+|---|---|---|---|
+| S5 Forgotten Tribe | p. 13 (right half of the map and VARIABLE SETUP) | `233d7e599c71b13009eb91b4373b8a2f077a6f33ef39c6a290df3db85800773c` | "Set up the frame. Place the small islands and sea hexes as shown on the map. Gather the land hexes and number discs for the large island and place them randomly in the center of the map. Note: The 3 hexes outlined in blue on the right side of the large island should not receive the number discs 5, 6, 8, or 9. Place the robber on a desert. Then place the pirate, ports, VP tokens, and development cards on the indicated locations." |
+| S6 Cloth for Catan | p. 15 (left part of the map and VARIABLE SETUP) | `dd6681fb965254cbd2169e5a2e1138d9ef8e37de3aadae148ccaa2b672607e15` | "Set up the frame, the four small islands, and sea hexes as shown. Set up the villages by placing the number discs and cloth tokens as shown. Gather the land hexes and number discs for the large islands and place them randomly in the empty hex areas. Randomly place ports on the locations shown. Players choose which hex with a number 12 disc should start the game with the robber. Then place the pirate on the indicated location." |
+| S8 Wonders of Catan | pp. 18–19 (VARIABLE SETUP on p. 18, the map with the blue area on pp. 18–19) | p. 18 `969332e26c35e2cbf00d1131440c613d8727d3420a1cc8cb1b2009d111f092a0`, p. 19 `85cbe7881de5b9a70179fc43d4569a5f822e20b90651782812a2271e6d91bd1e` | "Set up the frame. Then place desert, small island, and sea hexes within the frame as shown. MAIN ISLAND: Gather the main island land hexes, number discs, and ports. Place them randomly in the area outlined in blue on the map. Note: The 2 land hexes next to the desert should not receive red number discs (6s and 8s). Finally, place the robber on one of the desert hexes." |
+
+## Constraint hexes, read from the page images
+
+* **S5, the 3 blue hexes (p. 13).** The blue outline on the page image encloses the rightmost hex of each of
+  the three island rows on the right side of the large island: the mountains hex with the 4 (top row of the
+  island), the pasture hex with the 2 (middle row) and the fields hex with the 3 (bottom row). In the
+  transcription (centred coordinates, shift (-1, -3)) they are (2,-1), (2,0) and (1,1)
+  (`FT_VARIABLE_RESTRICTED`). A test re-derives them: they are exactly the rightmost large-island hex of each
+  island row, and their printed contents are mountains 4, pasture 2, fields 3. The printed map has no 5, 6, 8
+  or 9 on them, which is consistent with the rule.
+* **S8, the 2 land hexes next to the desert (pp. 18–19).** The three deserts form one cluster on the east
+  side (page 19). The only land hexes touching a desert are the forest with the 9 (3,2 in the transcription)
+  and the hills with the 4 (2,3); everything else around the cluster is sea. A test derives the desert
+  neighbours from the topology and requires exactly these two (`WC_VARIABLE_NO_RED`, centred (2,-1) and
+  (1,0)). The printed discs 9 and 4 are not red, again consistent.
+* **S6.** p. 15 prints two 12 discs on the fixed map (both on the north large island); the south island has none.
+
+## Island areas and component counts
+
+| Scenario | Area (cells) | Re-dealt | Constraint | Counts (as in the SF25 tables) |
+|---|---|---|---|---|
+| S5 | large island, island 1 = 18 land hexes, all with discs | terrain, discs | the 3 right-edge hexes never get 5, 6, 8, 9 | discs 18 (all large island), terrain as printed; gifts, ports (6 face-up gift ports), pirate and small islands unchanged |
+| S6 | north large island (island 1, 10 hexes) + south large island (island 6, 10 hexes) = 20 land hexes, one pool | terrain, discs; harbor types | none except the robber choice (below) | 20 discs on land (+ 8 tribe discs, unchanged), 9 ports = 5×2:1 + 4×3:1 at the printed edges |
+| S8 | large island, island 1 non-desert = 22 land hexes (the island has 25 hexes with the 3 deserts; counted by code) | terrain, discs; harbor types | the 2 hexes beside the desert never get 6 or 8 | discs 22 on the large island (5 on the small islands, unchanged); 9 ports at the printed edges |
+
+## Constraints, randomness and termination
+
+All draws use only the passed layout `Rng`.
+
+**S5.** One pass, no retry: terrain is shuffled over the 18 hexes; the restricted hexes (in shuffled order)
+first take a legal disc from the shuffled disc pool (2, 3, 3, 4, 4, 10, 10, 11, 11, 12: 10 legal discs for 3
+cells), then the remaining discs are shuffled over the remaining hexes. Taking the first legal disc from a
+shuffled pool is uniform over the valid arrangements. 6 and 8 are therefore shuffled with all other discs
+(a test requires a large-island hex to have seen both over 1,000 seeds). The robber goes on a random desert,
+drawn after the board (all three deserts are on small islands, so the large-island deal cannot remove them);
+the pirate stays on its printed sea hex.
+
+**S6.** One pass over the two areas as one pool (V12), then the harbor types are shuffled over the printed
+locations (the fixed layout already shuffles them with the layout rng too). The robber is initially on the
+first 12 hex and moved by the choice step below.
+
+**S8.** One pass: the two restricted hexes first take a non-red disc, then the rest is shuffled over the
+remaining 20 large-island hexes. Non-red discs on the large island are far more than 2, so it cannot fail.
+Harbor types shuffled over the printed locations; robber on a random desert; no pirate.
+
+## S6 robber choice step
+
+p. 15: "Players choose which hex with a number 12 disc should start the game with the robber." After the shuffle the
+two 12 discs can be on any hex of the large islands (same island or one on each; both cases occur in the
+1,000-seed test), so the starting hex is a real decision.
+
+* **Where it lives.** A new setup stage `robber` in `SetupState.stage` (union `'building' | 'road' | 'harbor' | 'robber'`),
+  the same shape as the S9 `harbor` stage and the S6 third round: no pending frame, so it cannot collide with
+  the frames that the setup flow already uses (S3 had trouble with a setup pending frame). The module
+  command is `cloth.robber { hex }`, handled in `packages/rules/src/modules/seafarers/robber-choice.ts`; the
+  module context got an optional `setupMode` (set only for `initGame`) so the module can tell a variable game
+  from a fixed one without storing anything new in the layout.
+* **When.** `initGame` of the seafarers module sets the stage to `robber` only when the scenario is Cloth for
+  Catan and the setup mode is `variable`. Fixed games never enter it and their hints keep the same keys
+  (the robber hint keys appear only in this stage; D7 key-set test unchanged for fixed).
+* **Who.** The starting player (`setup.order[0]`, seat 0 in the engine's order, the player who then also places the
+  first settlement) chooses. "Players choose" has no mechanism in the text; a vote would add a second protocol
+  for no gain, and the first player is the natural representative (V13). Anyone else gets `E_NOT_YOUR_TURN`.
+* **What.** Only hexes with a 12 disc (always exactly two); anything else is `E_ILLEGAL_TARGET`. Choosing sets `board.robber`,
+  emits `cloth.robberChosen { playerId, hex }`, returns the stage to `building` and the turn seat to `order[0]`; the
+  usual three-round setup (V14) continues unchanged. The step draws no randomness. Before the choice the robber stands on the
+  first 12 hex (the layout's initial value), which also covers a game that is abandoned or restarted in that moment.
+* **Placement before the choice.** `setup.placeBuilding` in the `robber` stage fails with `E_WRONG_PHASE`
+  (the engine checks `stage === 'building'`) and `legalSettlements` is empty.
+* **Persistence.** Everything is in `turn.setup.stage` and `board.robber`; the snapshot already carries both,
+  so a restart before or after the choice restores exactly (server test compares the persisted JSON before and
+  after the restart, then finishes the setup with the restarted service).
+* **UI.** The hint `hints.modules.seafarers.board` arms a `hex` board intent with the 12 hexes (same mechanism
+  as the fog hex choice), so the SVG overlay, the 3D overlay and the mobile target list (`open-target-picker`)
+  all work with the existing selection and confirm flow; the intent for the stage never falls through to the
+  settlement targets. The setup guide, the required-action banner and the board intent label are written in
+  English and Traditional Chinese (`sf.cloth.robber*`, `event.cloth.robberChosen`); `activeTurnKey` includes
+  the stage so the choice is a new step (`remaining` does not change). No bot support is needed: Cloth for
+  Catan is not in the bot scenario list, so bots cannot sit in these rooms.
+
+## Interpretation table (continues the S10a numbering)
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| V10 | S5: which 3 hexes are blue? | Rightmost hex of each of the three large-island rows (mountains 4, pasture 2, fields 3 on the printed map), recorded as `FT_VARIABLE_RESTRICTED` | p. 13 image; a test re-derives them from the topology |
+| V11 | S5: "in the center of the map" | The 18 large-island hexes (island 1); small islands, gifts, pirate and sea as printed | p. 13: "Place the small islands and sea hexes as shown" |
+| V12 | S6: one pool or one per island? | One pool over both large-island areas (20 hexes) | "the land hexes and number discs for the large islands ... randomly in the empty hex areas": one set of components, plural areas |
+| V13 | S6: who chooses the robber hex? | The starting player, one step before the first settlement | "Players choose" gives no mechanism; the first player is the representative |
+| V14 | S6: third round | Unchanged | The robber step comes before round 1; nothing else in setup changes |
+| V15 | S8: which 2 hexes are "next to the desert"? | The two land hexes touching a desert: forest (3,2) and hills (2,3) in transcription coordinates, `WC_VARIABLE_NO_RED` | pp. 18–19 images; a test derives them from the topology |
+| V16 | S8: ports "placed randomly in the area outlined in blue"? | Port locations stay as printed (the "?" markers on the page), only the types are shuffled | A port token needs an edge, not a hex area; every other scenario says "on the locations shown", the page prints the locations |
+| V17 | S8: area | The large island's non-desert hexes; deserts, small islands and sea as printed ("place desert, small island, and sea hexes ... as shown") | Same reading as S10a V4 (the printed cells keep their island ids) |
+| V18 | S8: the markers (Great Wall, Great Bridge, X) | Unchanged | They are at fixed intersections the page prints; the Great Wall hub is a land hex but the markers only need its vertices |
+| V19 | S8 robber | Random desert via the layout rng, as in fixed | "on one of the desert hexes" |
+| V20 | Layout rng order | S5: board then desert; S6: board then ports; S8: board then ports then desert. Fixed uses the earlier order | Fixed output must not change |
+
+## Tests and evidence (S10b)
+
+| What | Where |
+|---|---|
+| 1,000 seeds × scenario × 3/4 players: counts, restricted hexes, fixed elements, determinism, 6/8 shuffled, 12 discs on both/one island (S6), constraint cells derived from the page, fixed regression (cells and rng use), S6 robber step (rules, projection, errors, restart by JSON round trip, rng untouched), 6 simulated variable games (supply conservation, 50 cloth, ships ≤ 15, legal board) | `packages/rules/test/seafarers-variable-setup-s10b.test.ts` |
+| Variable rooms by ruleset parts, starts, constraints on the persisted layout, S6 choice over the API (wrong player / wrong hex / early settlement rejected), restart before and after the choice | `packages/server/test/seafarers-variable-setup-s10b.test.ts` |
+| Lobby switch (3 scenarios), SVG boards (6 combinations), S6 board intent and target list, shared geometry projection for the 3D scene, banner, guide, event text in both languages, turn key | `packages/web/test/seafarers-variable-setup-s10b.test.tsx` |
+| Browser run (lobby, SVG and 3D boards, phone, the S6 choice in SVG and in 3D) | `scripts/seafarers/capture_variable_setup.py` (`SF_SCENARIOS`, `SF_PREV_REPORT`), `variable_fixture.mjs`; screenshots in `docs/screenshots/seafarers-variable-setup/` with `report.json` (S10a entries kept) |
+
+## Browser evidence (S10b)
+
+`scripts/seafarers/capture_variable_setup.py` now covers the three S10b scenarios as well (`SF_SCENARIOS=forgotten-tribe,cloth-for-catan,wonders-of-catan`, `SF_PREV_REPORT` merges the earlier `report.json` so the S10a entries stay). Real games through the real UI and API against the built service (private SQLite): the host creates the room, switches the setup mode to `variable` in the lobby settings and saves, three or four seats join and start. Each started board is read from the API and checked by `variable_fixture.mjs`: it differs from the fixed map; S5 has none of 5/6/8/9 on the three right-edge hexes and the robber on a desert; S8 has no red disc on the two hexes beside the desert and the robber on a desert; S6 has two 12 hexes, starts in the `robber` stage, and then the starting player picks one of them **on the board** (3 players in the SVG renderer, 4 players in the 3D renderer): the API shows `board.robber` on the chosen hex (the one the layout had not placed it on) and the setup back at `building`. The full report has 44 cases (the 21 S10a cases plus 23 new), 0 errors; the curated images are kept in `docs/screenshots/seafarers-variable-setup/` (S10a: 15, S10b: 17). The run takes about 12 minutes under software rendering on a loaded 4-core machine. The "no red disc on gold" check applies to Through the Desert only: the S8 small islands print red discs on gold.
+
+| Image | sha256 |
+|---|---|
+| `forgotten-tribe-map-3p-svg-desktop.png` | `9929f549fc91cf51f86ab133b51043e76932f10ef3cc8d92bbae209a85f21eac` |
+| `forgotten-tribe-lobby-variable.png` | `150a0d46c9435f0b1c427f099ee978da2beb316a5e5d2722ad336753dc8fcd79` |
+| `forgotten-tribe-map-4p-svg-desktop.png` | `078a9c50a075ce7e39391d7d4d586587d3f46152ae0dd199b0db70b570c4b550` |
+| `forgotten-tribe-map-4p-r3f-desktop.png` | `c32693a2b1cf18a3ac4f7a668a8758cc3825a6b4d75b4c0b49aea418a22d5236` |
+| `forgotten-tribe-map-4p-svg-phone.png` | `e7aff3ce9f89e28bc0680edda61986cbbdb83f03356955fb6023ba62b1920668` |
+| `cloth-for-catan-robber-targets-3p-svg-desktop.png` | `ed01bc428727f524fa59aa1b1d70e2493d9cdbf6e2a1a44cb07671976838d61c` |
+| `cloth-for-catan-map-3p-svg-desktop.png` | `61505e7c5d18be68ac20f070a44d8b824e30b263d5c7f4fac3c709d89aa3070a` |
+| `cloth-for-catan-lobby-variable.png` | `a2f6a7dfa68c2de34d56456b0f39d331e5e4d8217e32d307e8f109c4c135ed04` |
+| `cloth-for-catan-robber-targets-4p-r3f-desktop.png` | `b1c40809343f9b849139bf3b85b3dfb003f07b93b1a34e2ae8fcd20d005ef202` |
+| `cloth-for-catan-map-4p-svg-desktop.png` | `52b515bddc420fe11d263d32442dfc600c22a294e0ebd60876c6d49663c250b1` |
+| `cloth-for-catan-map-4p-r3f-desktop.png` | `2991c31e2ad3f22b66dc7b96088132ad62c3e968d4653d7196aa77a6ab5d35d1` |
+| `cloth-for-catan-map-4p-svg-phone.png` | `73cd78440ad5dca883b44d19f266af3c436641e4973172f13224d0dfd785c054` |
+| `wonders-of-catan-map-3p-svg-desktop.png` | `ddf3a89757da209a022f2cda641225d7eff30e1006ad40b28e0e06f330449271` |
+| `wonders-of-catan-lobby-variable.png` | `85659364626c8aed3364a0cc4b6bb53f7720a88f24a7c285ce05cd1689fe25ed` |
+| `wonders-of-catan-map-4p-svg-desktop.png` | `549b81723c03df9db36222927a687707205343f41fbf63866f292735723918d4` |
+| `wonders-of-catan-map-4p-r3f-desktop.png` | `1b37297172e2d0900563e4d4eaa0b9f7daa01ff328ed3273c4645b47d31d93e7` |
+| `wonders-of-catan-map-4p-svg-phone.png` | `d02e25affacb60755668d48e2d18fc2f2fd928b62058dfa9ef57f7a3f4a82cb0` |

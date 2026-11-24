@@ -223,7 +223,7 @@ export function createGame(options: CreateGameOptions): GameState {
     playerIds: players.map((player) => player.id),
     setupMode: options.setupMode,
   });
-  const ctx = moduleContext(profile, options.rng);
+  const ctx = { ...moduleContext(profile, options.rng), setupMode: options.setupMode };
   for (const module of rulesModulesOf(profile)) module.initGame?.(state, ctx);
   return state;
 }

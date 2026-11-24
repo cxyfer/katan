@@ -1,6 +1,7 @@
 /**
  * Seafarers 劇本的 variable setup（隨機版圖）產生器：四島群島（SF25 p. 7）、未知海域（p. 9）、
- * 穿越荒漠（p. 11）。S10a 切片，spec 2026-11-22-seafarers-scenarios.md §6.1–6.3、§10。
+ * 穿越荒漠（p. 11）（S10a）；世外部落（p. 13）、布匹產地（p. 15）、卡坦奇觀（p. 18）（S10b，檔尾）。
+ * spec 2026-11-22-seafarers-scenarios.md §6.1–6.7、§10。
  *
  * 這些函式是純函式：輸入是該劇本 fixed 版圖的逐格轉錄（`LandHex[]`、`PortSpec[]`），輸出同形的陸地與港口，
  * 之後交給 `fixedLayout` 組成 layout。配件多重集（各地形數量、圓片數量、港口種類）直接取自 fixed 轉錄，
@@ -164,4 +165,74 @@ export function variableDesertBoard(
     };
   }
   return { land: land.slice(), ports: ports.slice(), attempts: DESERT_MAX_ATTEMPTS + 1, fellBack: true };
+}
+
+// ---------------------------------------------------------------------------
+// S10b：世外部落（SF25 p. 13）、布匹產地（p. 15）、卡坦奇觀（p. 18）
+// ---------------------------------------------------------------------------
+
+/** 區內（每格一枚圓片、無沙漠）的地形洗牌；`restricted`（格鍵 → 圓片是否合法）的格子先挑合法圓片，其餘圓片洗牌後分配。 */
+function redealArea(
+  land: readonly LandHex[],
+  area: ReadonlySet<string>,
+  rng: Rng,
+  restricted: ReadonlyMap<string, (disc: number) => boolean> = new Map(),
+): Map<string, LandHex> {
+  const cells = land.filter((hex) => area.has(key(hex)));
+  const terrains = shuffle(cells.map((hex) => hex.terrain), rng);
+  const discs = shuffle(cells.map((hex) => hex.number).filter((disc): disc is number => disc !== null), rng);
+  const numbers = new Map<string, number>();
+  // 受限的格子先挑：從剩下的圓片中依序找第一個合法的（洗牌後的順序，所以在合法圓片中是均勻的）。
+  // 這些區內沒有沙漠（每格一枚圓片）；受限格數遠小於合法圓片數，必定挑得到。
+  for (const cellKey of shuffle([...restricted.keys()], rng)) {
+    const ok = restricted.get(cellKey)!;
+    const at = discs.findIndex(ok);
+    if (at < 0) throw new Error('variable setup: not enough legal number discs for the restricted cells');
+    numbers.set(cellKey, discs.splice(at, 1)[0]!);
+  }
+  const open = shuffle(cells.filter((hex) => !numbers.has(key(hex))), rng);
+  if (open.length !== discs.length) throw new Error('variable setup: the area needs one number disc per cell');
+  open.forEach((hex, index) => numbers.set(key(hex), discs[index]!));
+  const out = new Map<string, LandHex>();
+  cells.forEach((hex, index) => out.set(key(hex), L(hex.q, hex.r, terrains[index]!, numbers.get(key(hex))!, hex.island)));
+  return out;
+}
+
+/** 世外部落右側 3 格不得拿的圓片（SF25 p. 13）。 */
+export const TRIBE_RESTRICTED_DISCS: ReadonlySet<number> = new Set([5, 6, 8, 9]);
+
+/**
+ * 世外部落（SF25 p. 13）：小島與海洋如圖不變；大島（島 1）的 18 格地形與圓片在大島區內隨機；
+ * `restricted`（大島最右側藍線框出的 3 格）不得拿 5、6、8、9。強盜、禮物與海盜不在這裡處理。
+ * 一次構造完成：受限格先從合法圓片（2、3、4、10、11、12 共 10 枚）中挑，其餘圓片洗牌分配，無重抽。
+ */
+
+export function variableForgottenTribeBoard(land: readonly LandHex[], restricted: readonly HexCoord[], rng: Rng): LandHex[] {
+  const main = new Set(land.filter((hex) => hex.island === 1).map(key));
+  const rule = (disc: number): boolean => !TRIBE_RESTRICTED_DISCS.has(disc);
+  const dealt = redealArea(land, main, rng, new Map(restricted.map((cell) => [key(cell), rule])));
+  return land.map((hex) => dealt.get(key(hex)) ?? hex);
+}
+
+/**
+ * 布匹產地（SF25 p. 15）：框、四座小島、海洋、部落圓片與布匹如圖不變；兩座大島（島 1 與島 6）的陸地與圓片
+ * 「隨機放進空的格區」，視為同一堆（「the large islands」一句、一組配件）在兩區共 20 格內洗牌，沒有其他約束。
+ * 港口位置不變（「ports on the locations shown」），種類由呼叫端洗牌。
+ */
+export function variableClothBoard(land: readonly LandHex[], rng: Rng): LandHex[] {
+  const area = new Set(land.filter((hex) => hex.island === 1 || hex.island === 6).map(key));
+  const dealt = redealArea(land, area, rng);
+  return land.map((hex) => dealt.get(key(hex)) ?? hex);
+}
+
+/**
+ * 卡坦奇觀（SF25 p. 18）：框、三塊沙漠、小島與海洋如圖不變；大島的非沙漠格（藍框區）的地形與圓片隨機；
+ * `noRed`（緊鄰沙漠的 2 格陸地）不得拿紅色圓片（6、8）。一次構造完成，無重抽（大島非紅色圓片遠多於 2 枚）。
+ * 港口位置不變，種類由呼叫端洗牌。
+ */
+export function variableWondersBoard(land: readonly LandHex[], noRed: readonly HexCoord[], rng: Rng): LandHex[] {
+  const main = new Set(land.filter((hex) => hex.island === 1 && hex.terrain !== 'desert').map(key));
+  const rule = (disc: number): boolean => !isRedDisc(disc);
+  const dealt = redealArea(land, main, rng, new Map(noRed.map((cell) => [key(cell), rule])));
+  return land.map((hex) => dealt.get(key(hex)) ?? hex);
 }

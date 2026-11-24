@@ -20,7 +20,7 @@
 import type { LayoutContext } from './layout-registry.ts';
 import { fixedLayout, L, NS3_CELLS, NS4_CELLS, type LandHex, type PortSpec } from './seafarers-boards.ts';
 import { shuffle } from './rng.ts';
-import { variableDesertBoard, variableFourIslandsBoard } from './seafarers-variable-boards.ts';
+import { variableClothBoard, variableDesertBoard, variableForgottenTribeBoard, variableFourIslandsBoard, variableWondersBoard } from './seafarers-variable-boards.ts';
 import { hexCenter, NEIGHBOR_DIRS, type BoardTopology, type HarborSlotSpec, type HexCoord, type TopologyDefinition } from './topology.ts';
 import type { BoardLayout, HarborType } from './types.ts';
 
@@ -230,6 +230,14 @@ const FT_LAND: readonly LandHex[] = [
   ft(0, 6, 'hills', null, 7), ft(1, 6, 'desert', null, 7), ft(2, 6, 'gold', null, 7),
 ];
 
+/**
+ * variable setup 的受限格（SF25 p. 13 頁面圖）：大島最右側藍線框出的 3 格——第 1 排右端的山脈 (3,2)（圓片 4）、
+ * 第 2 排右端的牧草 (3,3)（圓片 2）、第 3 排右端的田野 (2,4)（圓片 3）。這 3 格不得放 5、6、8、9。
+ */
+export const FT_VARIABLE_RESTRICTED: readonly HexCoord[] = [
+  { q: 3 + FT_SHIFT.dq, r: 2 + FT_SHIFT.dr }, { q: 3 + FT_SHIFT.dq, r: 3 + FT_SHIFT.dr }, { q: 2 + FT_SHIFT.dq, r: 4 + FT_SHIFT.dr },
+];
+
 /** 海盜起始的海格（轉錄 (2,0)，圖上畫在上排兩小島之間）。 */
 const FT_PIRATE: HexCoord = { q: 2 + FT_SHIFT.dq, r: 0 + FT_SHIFT.dr };
 
@@ -280,9 +288,11 @@ export const FT_PORT_TOKENS: readonly HarborType[] = ['lumber', 'brick', 'wool',
 /** Layout builder，登記為 `sf-forgotten-tribe`：3 人與 4 人同一張圖；強盜隨機放在三塊沙漠之一。 */
 export function forgottenTribeLayout(context: LayoutContext, topologyFor: (id: string) => BoardTopology): BoardLayout {
   const topology = checkedTopology(topologyFor, FORGOTTEN_TRIBE_TOPOLOGY_ID, 49);
-  const deserts = FT_LAND.filter((hex) => hex.terrain === 'desert');
+  // variable（SF25 p. 13）：小島與海洋不變，大島的地形與圓片隨機（右側 3 格不得放 5、6、8、9）；強盜仍放沙漠（都在小島上）。
+  const land = context.mode === 'variable' ? variableForgottenTribeBoard(FT_LAND, FT_VARIABLE_RESTRICTED, context.rng) : FT_LAND;
+  const deserts = land.filter((hex) => hex.terrain === 'desert');
   const robber = deserts[context.rng.int(deserts.length)]!;
-  const layout = fixedLayout(topology, FT_LAND, [], robber);
+  const layout = fixedLayout(topology, land, [], robber);
   layout.pirate = topology.hexes.findIndex((hex) => hex.q === FT_PIRATE.q && hex.r === FT_PIRATE.r);
   return layout;
 }
@@ -381,10 +391,14 @@ export const CFC_SUPPLY_CLOTH = 10;
 /** Layout builder，登記為 `sf-cloth-for-catan`：3 人與 4 人同一張圖；港口種類以 game rng 洗牌。 */
 export function clothForCatanLayout(context: LayoutContext, topologyFor: (id: string) => BoardTopology): BoardLayout {
   const topology = checkedTopology(topologyFor, CLOTH_FOR_CATAN_TOPOLOGY_ID, 42);
+  // variable（SF25 p. 15）：兩座大島的陸地與圓片隨機；先洗地形再洗港口，fixed 不經過這裡（rng 序列不變）。
+  const land = context.mode === 'variable' ? variableClothBoard(CFC_LAND, context.rng) : CFC_LAND;
   const tokens = shuffle(CFC_PORT_TOKENS, context.rng);
   const ports: PortSpec[] = CFC_PORT_SLOTS.map((slot, index) => ({ ...slot, type: tokens[index]! }));
-  // 強盜在 12 號圓片格 (-2,2)（轉錄座標）；海盜在框上（`pirate: null`）。
-  return fixedLayout(topology, CFC_LAND, ports, { q: -2 + CFC_SHIFT.dq, r: 2 + CFC_SHIFT.dr });
+  // fixed：強盜在 12 號圓片格 (-2,2)（轉錄座標）；variable：由起始玩家在兩個 12 號格之間選（設置階段 `robber`），
+  // layout 先放在第一個 12 號格（棋盤上暫時顯示的位置，選擇前不會被使用）。海盜在框上（`pirate: null`）。
+  const robber = context.mode === 'variable' ? land.find((hex) => hex.number === 12)! : { q: -2 + CFC_SHIFT.dq, r: 2 + CFC_SHIFT.dr };
+  return fixedLayout(topology, land, ports, robber);
 }
 
 /** 轉錄的配件，供 fixture 測試使用（SF25 pp. 14–15）。 */
@@ -422,6 +436,14 @@ const WC_LAND: readonly LandHex[] = [
   wc(-3, 4, 'hills', 8, 1), wc(-2, 4, 'pasture', 9, 1), wc(1, 4, 'hills', 10, 1), wc(4, 4, 'gold', 6, 3),
   wc(-2, 5, 'forest', 3, 1), wc(0, 5, 'forest', 8, 1), wc(1, 5, 'fields', 9, 1), wc(3, 5, 'forest', 4, 3),
   wc(-3, 6, 'mountains', 5, 1), wc(-1, 6, 'pasture', 11, 1), wc(0, 6, 'pasture', 2, 1), wc(2, 6, 'fields', 5, 3),
+];
+
+/**
+ * variable setup 的受限格（SF25 p. 18–19 頁面圖）：緊鄰三塊沙漠的 2 塊陸地——森林 (3,2)（圓片 9）與丘陵 (2,3)（圓片 4）。
+ * 這 2 格不得放紅色圓片（6、8）。
+ */
+export const WC_VARIABLE_NO_RED: readonly HexCoord[] = [
+  { q: 3 + WC_SHIFT.dq, r: 2 + WC_SHIFT.dr }, { q: 2 + WC_SHIFT.dq, r: 3 + WC_SHIFT.dr },
 ];
 
 /** 9 個港口位置（貼在陸地格朝向框的邊，圖上全是「?」）；種類是 5 個 2:1（各一種資源）+ 4 個 3:1，由 layout builder 洗牌。 */
@@ -474,12 +496,15 @@ export function wonderMarkerVertices(topology: BoardTopology): Record<WonderMark
 /** Layout builder，登記為 `sf-wonders-of-catan`：3 人與 4 人同一張圖；港口種類以 game rng 洗牌，強盜隨機放在三塊沙漠之一。 */
 export function wondersOfCatanLayout(context: LayoutContext, topologyFor: (id: string) => BoardTopology): BoardLayout {
   const topology = checkedTopology(topologyFor, WONDERS_OF_CATAN_TOPOLOGY_ID, 49);
+  // variable（SF25 p. 18）：沙漠、小島與海洋如圖，大島其餘格的地形與圓片隨機（緊鄰沙漠的 2 格不放紅色圓片）；
+  // 港口位置不變、種類洗牌。fixed 不經過這裡。
+  const land = context.mode === 'variable' ? variableWondersBoard(WC_LAND, WC_VARIABLE_NO_RED, context.rng) : WC_LAND;
   const tokens = shuffle(WC_PORT_TOKENS, context.rng);
   const ports: PortSpec[] = WC_PORT_SLOTS.map((slot, index) => ({ ...slot, type: tokens[index]! }));
-  const deserts = WC_LAND.filter((hex) => hex.terrain === 'desert');
+  const deserts = land.filter((hex) => hex.terrain === 'desert');
   const robber = deserts[context.rng.int(deserts.length)]!;
   // 海盜不使用（SF25 p. 18「Return the pirate to the box」）：`pirate: null`。
-  return fixedLayout(topology, WC_LAND, ports, robber);
+  return fixedLayout(topology, land, ports, robber);
 }
 
 /** 轉錄的配件，供 fixture 測試使用（SF25 pp. 18–19）。 */

@@ -188,7 +188,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   const setup = view.turn.setup;
   const setupActor = setup ? view.players.find((player) => player.seat === setup.seat) : undefined;
   const epStep = epView(view)?.setupStep ?? null;
-  const setupPiece = epStep ? t(`ep.setup.${epStep}`) : setup?.stage === 'harbor' ? t('sf.world.harbor') : setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
+  const setupPiece = epStep ? t(`ep.setup.${epStep}`) : setup?.stage === 'harbor' ? t('sf.world.harbor') : setup?.stage === 'robber' ? t('sf.cloth.robber.piece') : setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
   const world = seafarersView(view)?.world ?? null;
   const setupMine = setupActor?.id === selfId;
   const selection = intent && state.connection === 'online' && selfId && state.selection.kind === intent.kind && state.selection.index !== null && intent.targets.includes(state.selection.index)
@@ -201,6 +201,8 @@ export function BoardView({ controller }: { controller: TableController }) {
       </div>
       {setup.stage === 'harbor' && world
         ? <span data-testid="setup-harbor-progress">{t('sf.world.progress', { placed: Math.min(world.placed + 1, world.total), total: world.total })}</span>
+        : setup.stage === 'robber'
+        ? <span data-testid="setup-robber-guide">{t(setupMine ? 'sf.cloth.robber.choose' : 'sf.cloth.robber.wait', { player: setupActor ? nameResolver(setupActor.id) : '—' })}</span>
         : <>
           <span>{t('board.setupGuide', { round: setup.third ? 3 : setup.round })}</span>
           <span>{t('board.setupProgress', { remaining: setup.remaining })}</span>

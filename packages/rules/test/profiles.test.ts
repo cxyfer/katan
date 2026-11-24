@@ -196,8 +196,8 @@ describe('ruleset registry', () => {
         implemented: open, enabled: open, hasPirate: true, longestRouteIncludesShips: true,
       });
       expect(profile.pieces.ships).toBe(15);
-      // S10a：四島群島、未知海域、穿越荒漠另有 variable setup（SF25 pp. 7、9、11）。
-      const withVariable = ['four-islands', 'fog-islands', 'through-the-desert'].includes(scenario);
+      // S10a：四島群島、未知海域、穿越荒漠；S10b：世外部落、布匹產地、卡坦奇觀另有 variable setup（SF25 pp. 7、9、11、13、15、18）。
+      const withVariable = ['four-islands', 'fog-islands', 'through-the-desert', 'forgotten-tribe', 'cloth-for-catan', 'wonders-of-catan'].includes(scenario);
       expect(profile.setupModes).toEqual(scenario === 'new-world' ? ['variable'] : withVariable ? ['fixed', 'variable'] : ['fixed']);
       expect(profile.sources.map((source) => source.id)).toEqual(['B25', 'SF25', 'SFCN-20']);
       expect(selectableProfiles().map((item) => item.id).includes(id)).toBe(open);
