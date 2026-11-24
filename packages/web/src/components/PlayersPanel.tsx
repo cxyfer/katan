@@ -193,7 +193,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
       }}
     >
       <header className="players__header">
-        <h2 id={headingId} className="players__heading"><GameIcon name="users" size={17} />{t('play.seats')}<span className="players__target">{t('play.resultTarget', { target: formatNumber(state.locale, view.victoryTarget) })}</span></h2>
+        <h2 id={headingId} className="players__heading"><GameIcon name="users" size={17} />{t('play.seats')}<span className="players__target">{seafarersView(view)?.wonders ? t('play.resultTarget.wonders', { target: formatNumber(state.locale, view.victoryTarget) }) : t('play.resultTarget', { target: formatNumber(state.locale, view.victoryTarget) })}</span></h2>
         <button
           ref={toggleRef}
           className="players__toggle"

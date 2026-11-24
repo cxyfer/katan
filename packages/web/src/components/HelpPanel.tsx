@@ -44,7 +44,7 @@ export function HelpPanel({ controller }: { controller: TableController }) {
       </ul>
       <h3>{t('lobby.rulesSummary')}</h3>
       <p>
-        {t(`profile.${profileId}`)} · {t('play.resultTarget', { target: controller.state.game?.view.victoryTarget ?? 10 })}
+        {t(`profile.${profileId}`)} · {wonders ? t('play.resultTarget.wonders', { target: controller.state.game?.view.victoryTarget ?? 10 }) : t('play.resultTarget', { target: controller.state.game?.view.victoryTarget ?? 10 })}
       </p>
       {paired && <p className="muted">{t('lobby.pairedNote')}</p>}
       <TbHelp controller={controller} />

@@ -18,7 +18,7 @@ import { SvgBoard } from '../src/components/SvgBoard.tsx';
 import { WondersPanel } from '../src/components/WondersPanel.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { translateEvent } from '../src/i18n/events.ts';
-import { EMPTY_SELECTION, initialTableState, type TableState } from '../src/state/table.ts';
+import { EMPTY_SELECTION, initialTableState, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeEvent, makeSnapshot } from '../src/test/fixtures.ts';
 
@@ -213,23 +213,50 @@ describe('Wonders of Catan panel', () => {
     cleanup();
   });
 
-  it('while the dice are shown the panel reads the pre-roll projection (what a roll pays is not revealed)', () => {
+  it.each(['snapshot', 'events'] as const)('while the dice are shown the panel reads the pre-roll projection from the real roll hold (%s first)', (delivery) => {
     const state = wondersState();
     state.board.buildings[slotOf(state).markers.greatWall[0]!] = { player: 'p1', city: false };
-    const before = viewOf(state);
+    const beforeView = viewOf(state);
+    beforeView.seq = 12;
+    beforeView.events = [makeEvent(12, 'turn.started')];
     slotOf(state).owned.p2 = 'greatBridge';
     slotOf(state).levels.p2 = 3;
-    const c = controllerFor(viewOf(state));
-    // 擲骰前的凍結投影沒有 p2 的奇觀；演出期間面板讀它，不讀已更新的最新投影。
-    (c.state as { dicePresenting: boolean }).dicePresenting = true;
-    (c.state as unknown as { rollHold: unknown }).rollHold = { seafarers: before };
+    const afterView = viewOf(state);
+    afterView.seq = 14;
+    afterView.events = [makeEvent(12, 'turn.started'), makeEvent(13, 'turn.rolled', { dice: [3, 3], total: 6 }), makeEvent(14, 'production.resolved')];
+    const start: TableState = { ...initialTableState('en', 'Alex'), bootstrapped: true, session: SESSION, screen: 'game', connection: 'online', game: makeSnapshot(beforeView, 12) };
+    let table = delivery === 'events' ? tableReducer(start, { type: 'events', events: afterView.events }) : start;
+    table = tableReducer(table, { type: 'snapshot', snapshot: makeSnapshot(afterView, 14) });
+    expect(table.dicePresenting).toBe(true);
+    expect(table.rollHold?.seafarers).not.toBeNull();
+    const show = () => {
+      cleanup();
+      render(<LocaleProvider locale="en"><WondersPanel controller={{ state: table, dispatch: vi.fn(), actions: {} } as unknown as TableController} /></LocaleProvider>);
+      return screen.getByTestId('wonder-status-greatBridge').textContent;
+    };
+    // 擲骰前的凍結投影還沒有 p2 的奇觀；演出結束後才看到。
+    expect(show()).toBe('Not claimed yet');
+    table = tableReducer(table, { type: 'dice-presenting', value: false });
+    expect(show()).toBe('P2 · level 3 of 4');
     cleanup();
-    render(<LocaleProvider locale="en"><WondersPanel controller={c} /></LocaleProvider>);
-    expect(screen.getByTestId('wonder-status-greatBridge').textContent).toBe('Not claimed yet');
+  });
+
+  it('the seat header and the help summary state the wonder ending, not a plain target; other scenarios keep the target', () => {
+    for (const [locale, text] of [['en', 'Win: complete a wonder, or 10 VP with the highest wonder level'], ['zh-Hant', '勝利條件：完成奇觀，或 10 分且奇觀層數最高']] as const) {
+      cleanup();
+      const c = controllerFor(viewOf(wondersState()), locale);
+      render(<LocaleProvider locale={locale}><PlayersPanel controller={c} onExpand={() => undefined} /></LocaleProvider>);
+      expect(document.querySelector('.players__target')!.textContent).toBe(text);
+      cleanup();
+      render(<LocaleProvider locale={locale}><HelpPanel controller={c} /></LocaleProvider>);
+      const summary = screen.getByTestId('help-panel').textContent!;
+      expect(summary).toContain(text);
+      expect(summary).not.toMatch(/Victory target: 10|勝利目標：10/);
+    }
     cleanup();
-    (c.state as { dicePresenting: boolean }).dicePresenting = false;
-    render(<LocaleProvider locale="en"><WondersPanel controller={c} /></LocaleProvider>);
-    expect(screen.getByTestId('wonder-status-greatBridge').textContent).toBe('P2 · level 3 of 4');
+    const other = createGame({ profileId: 'sf-new-shores-2025', players: ['p1', 'p2', 'p3'].map((id, seat) => ({ id, nickname: id, color: COLORS[seat]! })), setupMode: 'fixed', rng: seededRng(4) });
+    render(<LocaleProvider locale="en"><PlayersPanel controller={controllerFor(viewOf(other))} onExpand={() => undefined} /></LocaleProvider>);
+    expect(document.querySelector('.players__target')!.textContent).toBe('Victory target: 14');
     cleanup();
   });
 

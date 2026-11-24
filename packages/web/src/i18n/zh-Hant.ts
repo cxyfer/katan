@@ -576,6 +576,7 @@ export const zhHant: Catalog = {
   'play.resultAbandoned': '對局在無人獲勝的情況下結束',
   'play.resultNoWinner': '無獲勝者',
   'play.resultScore': '最終分數 {score}／{target}',
+  'play.resultTarget.wonders': '勝利條件：完成奇觀，或 {target} 分且奇觀層數最高',
   'play.resultTarget': '勝利目標：{target}',
   'play.resultReason.victory': '勝利點數',
   'play.resultReason.wonderComplete': '完成了一座卡坦奇觀',
