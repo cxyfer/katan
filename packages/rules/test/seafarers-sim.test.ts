@@ -285,13 +285,17 @@ describe('simulated Wonders of Catan games (SFX-S8)', () => {
   it('across seeds wonders get claimed and built and both endings are reachable games', () => {
     let claims = 0;
     let levels = 0;
+    const causes = new Set<string | undefined>();
     for (const seed of [1, 2, 3, 4]) {
       const run = simulateSeafarers(seed % 2 === 0 ? 4 : 3, seed, 80000, 'sf-wonders-of-catan-2025');
       expect(run.state.result?.reason).toBe('victory');
+      causes.add(run.state.result?.cause);
       claims += run.wonderClaims;
       levels += run.wonderLevels;
     }
     expect(claims).toBeGreaterThan(0);
     expect(levels).toBeGreaterThan(0);
+    // 種子 1 是 10 分且層數最高（wonderLead），種子 3 是完成第 4 層（wonderComplete）：兩種結局都在模擬中出現。
+    expect([...causes].sort()).toEqual(['wonderComplete', 'wonderLead']);
   }, 300_000);
 });
