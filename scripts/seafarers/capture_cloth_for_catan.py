@@ -57,7 +57,7 @@ FIXTURE = str(base.ROOT / 'scripts/seafarers/cloth_fixture.mjs')
 CURATED = {
     'lobby-cloth-for-catan', 'map-3p-svg-desktop', 'map-4p-svg-desktop', 'map-4p-r3f-desktop', 'map-4p-svg-phone',
     'help-cloth-svg-desktop', 'live-trade-svg', 'live-trade-3d', 'live-steal-3d', 'live-result-shared',
-    'live-result-shared-phone',
+    'live-result-shared-phone', 'live-steal-svg-phone',
 }
 
 
@@ -187,6 +187,11 @@ def score_of(state, pid):
     return total
 
 
+def browser_phone(host_context):
+    return host_context.browser.new_context(storage_state=host_context.storage_state(), viewport=PHONE, locale='zh-TW',
+                                            reduced_motion='reduce', service_workers='block', is_mobile=True, has_touch=True)
+
+
 def finish_live(contexts, pages, identity, game_id):
     p1, p2, p3 = identity[0], identity[1], identity[2]
     plan = {}
@@ -202,6 +207,7 @@ def finish_live(contexts, pages, identity, game_id):
             state['board']['buildings'][route['start']] = {'player': p1, 'city': False}
         # 玩家 2：海盜將去的海格旁有一艘船、2 枚布匹（從供應堆拿，總數仍是 50）、2 張牌。
         state['board']['roads'][plan['pirate']['edge']] = {'player': p2, 'ship': True}
+        state['board']['roads'][plan['pirate2']['edge']] = {'player': p2, 'ship': True}
         cloth = state['moduleState']['seafarers']['cloth']
         cloth['cloth'][p2] = 2
         cloth['supply'] -= 2
@@ -212,7 +218,7 @@ def finish_live(contexts, pages, identity, game_id):
         state['pending'] = None
         state['windowId'] += 1
     SERVER.patch_game(game_id, prepare)
-    first, second, pirate = plan['routes'][0], plan['routes'][1], plan['pirate']
+    first, second, pirate, pirate2 = plan['routes'][0], plan['routes'][1], plan['pirate'], plan['pirate2']
     page = pages[0]
     for other in pages:
         other.reload()
@@ -276,6 +282,29 @@ def finish_live(contexts, pages, identity, game_id):
     view = cloth_view()
     assert view['cloth'][p1] == 3 and view['cloth'][p2] == 1, view['cloth']
     assert snap(contexts[0], path)['view']['pending'] is None
+
+    # --- 手機 SVG：海盜再移動一次（test-only pending），在手機視窗用觸控頁面送出移動與偷牌 ---------
+    SERVER.patch_game(game_id, give_pirate)
+    phone_ctx = browser_phone(contexts[0])
+    phone = phone_ctx.new_page()
+    phone.on('pageerror', lambda error: ERRORS.append(f'phone: {error}'))
+    phone.set_default_timeout(TIMEOUT)
+    open_game(phone, game_id, 'svg')
+    hints = snap(contexts[0], path)['view']['hints']['modules']['seafarers']
+    assert pirate2['hex'] in hints['pirateTargets'], (pirate2, hints['pirateTargets'])
+    grain_before = next(p for p in snap(contexts[0], path)['view']['players'] if p['id'] == p1)['resources']['grain']
+    click_target(phone, 'hex', pirate2['hex'])
+    ui_confirm(phone)
+    assert snap(contexts[0], path)['view']['board']['pirate'] == pirate2['hex']
+    expect(phone.get_by_test_id(f'steal-cloth-{p2}')).to_be_visible()
+    shot(phone, 'live-steal-svg-phone', 'the pirate moved on a phone in SVG: steal a card or a cloth token')
+    phone.get_by_test_id(f'steal-{p2}').click()
+    phone.wait_for_timeout(800)
+    after = snap(contexts[0], path)['view']
+    assert after['pending'] is None, after['pending']
+    grain_after = next(p for p in after['players'] if p['id'] == p1)['resources']['grain']
+    assert grain_after == grain_before + 1, (grain_before, grain_after)  # 玩家 2 只有穀物，偷牌必是 1 張穀物
+    phone_ctx.close()
 
     # --- 布匹耗盡：5 個部落沒有布匹，玩家 1 與 3 的分數與布匹數相同，回合結束 → 共同勝利 ------------
     def exhaust(state):

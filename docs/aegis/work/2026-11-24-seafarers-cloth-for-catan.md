@@ -250,7 +250,7 @@ layout is built (5 × 2:1, one per resource, and 4 × 3:1).
   (co-winner shares, validation); `support.test.ts` already refuses the profile.
 - Browser: `scripts/seafarers/capture_cloth_for_catan.py` (Chromium, software
   WebGL, `SF_TIMEOUT=180000` on the shared machine, **every command receipt
-  asserted `accepted`**, 12 cases, 0 page errors): lobby (3–4 players only), the
+  asserted `accepted`**, 13 cases, 0 page errors): lobby (3–4 players only), the
   3- and 4-player map in SVG (42 hexes, 9 harbors, 8 `[data-tribe-number]`
   nodes) and 3D (canvas `data-tribe-markers` = 8, `data-tribe-cloth` =
   `5,5,5,5,5,5,5,5`), phone for 4, setup over the API (every seat places three
@@ -264,7 +264,10 @@ layout is built (5 × 2:1, one per resource, and 4 × 3:1).
   second tribe (canvas cloth stacks follow the view, 2 cloth = 1 VP); a
   test-only `moveRobber` frame, then the pirate moved onto player 2's hex on
   the 3D board and the prompt offers "steal a card" or "steal cloth" (cloth
-  chosen: 3 and 1); a second fixture empties five tribes and ties players 1
+  chosen: 3 and 1); then, on a touch **phone** context in SVG, a second pirate move and a card
+  steal (the prompt text names "a card or a cloth token"; receipts accepted;
+  player 2 holds only grain so the stolen card is exactly one grain); a second
+  fixture empties five tribes and ties players 1
   and 3 on score and cloth, and ending the turn shows the **shared victory**
   on the result screen (both winners, "cloth ran out", no target line, no
   horizontal overflow in a phone-sized viewport; both players read the same

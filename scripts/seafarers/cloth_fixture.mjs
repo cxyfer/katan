@@ -51,13 +51,19 @@ if (mode === 'check') {
   // 海盜的目標：離部落路徑夠遠的海格，旁邊放另一位玩家的船。
   const used = new Set(routes.map((route) => route.edge));
   const hexOk = (hex) => terrain[hex] === 'sea' && hex !== state.board.pirate;
-  let pirate = null;
+  const scenes = [];
   topology.hexes.forEach((_, hex) => {
-    if (pirate || !hexOk(hex)) return;
+    if (scenes.length === 2 || !hexOk(hex)) return;
     const edge = topology.edges.findIndex((info, index) => info.hexes.includes(hex) && info.hexes.length === 2 && isSea(index) && !state.board.roads[index] && !used.has(index)
       && info.vertices.every((vertex) => !tribeAt.has(vertex) && !state.board.buildings[vertex]));
-    if (edge >= 0) pirate = { hex, edge };
+    if (edge < 0) return;
+    // 第二個場景的海格不與第一個共用邊，避免第一個海盜的位置影響第二個的船。
+    if (scenes.length === 1 && topology.edges[edge].hexes.some((h) => h === scenes[0].hex)) return;
+    scenes.push({ hex, edge });
+    used.add(edge);
   });
-  if (!pirate) throw new Error('no sea hex for the pirate scene');
-  process.stdout.write(JSON.stringify({ player: playerId, other: otherId, routes, pirate }));
+  const pirate = scenes[0] ?? null;
+  const pirate2 = scenes[1] ?? null;
+  if (!pirate || !pirate2) throw new Error('no two sea hexes for the pirate scenes');
+  process.stdout.write(JSON.stringify({ player: playerId, other: otherId, routes, pirate, pirate2 }));
 }
