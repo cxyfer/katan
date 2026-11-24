@@ -11,6 +11,7 @@ import { buildGeometry } from '../src/board/geometry.ts';
 import { islandBonusPoints, seafarersHints, seafarersView } from '../src/board/seafarers.ts';
 import { createWonderMarkerModel } from '../src/board/three/diorama-ships.ts';
 import { HelpPanel } from '../src/components/HelpPanel.tsx';
+import { PendingPrompt } from '../src/components/PendingPrompt.tsx';
 import { PlayersPanel } from '../src/components/PlayersPanel.tsx';
 import { ResultScreen } from '../src/components/ResultScreen.tsx';
 import { SvgBoard } from '../src/components/SvgBoard.tsx';
@@ -184,7 +185,72 @@ describe('Wonders of Catan panel', () => {
     expect(islandBonusPoints(view, 'p1', getProfile(view.profileId)?.islandBonus?.points)).toBe(2);
     cleanup();
     render(<LocaleProvider locale="en"><PlayersPanel controller={controllerFor(view)} onExpand={() => undefined} /></LocaleProvider>);
-    expect(screen.getByTestId('players-wonder-1').textContent).toContain('3');
+    // 只留一個表示：畫面是「3/4」，aria 讀「大城堡: 3/4」，不再重複層數。
+    const mark = screen.getByTestId('players-wonder-1');
+    expect(mark.textContent).toBe('3/4');
+    expect(mark.getAttribute('aria-label')).toBe('Grand Castle: 3/4');
+    expect(screen.getByTestId('players-wonder-0').getAttribute('aria-label')).toBe('No wonder: –');
+    cleanup();
+  });
+
+  it('holds the buttons while offline, while the table is held, while the dice are shown or a command is in flight', () => {
+    const state = wondersState();
+    state.board.buildings[slotOf(state).markers.greatWall[0]!] = { player: 'p1', city: false };
+    const controller = (edit: (table: TableState) => void) => {
+      const c = controllerFor(viewOf(state), 'en', { submitCommand: vi.fn() });
+      edit(c.state);
+      return c;
+    };
+    const claim = (c: TableController) => {
+      cleanup();
+      render(<LocaleProvider locale="en"><WondersPanel controller={c} /></LocaleProvider>);
+      return screen.getByTestId('wonder-claim-greatWall') as HTMLButtonElement;
+    };
+    expect(claim(controller(() => undefined)).disabled).toBe(false);
+    expect(claim(controller((table) => { table.connection = 'offline'; })).disabled).toBe(true);
+    expect(claim(controller((table) => { table.dicePresenting = true; })).disabled).toBe(true);
+    expect(claim(controller((table) => { table.room = { id: table.game!.roomId, status: 'suspended' } as never; })).disabled).toBe(true);
+    cleanup();
+  });
+
+  it('while the dice are shown the panel reads the pre-roll projection (what a roll pays is not revealed)', () => {
+    const state = wondersState();
+    state.board.buildings[slotOf(state).markers.greatWall[0]!] = { player: 'p1', city: false };
+    const before = viewOf(state);
+    slotOf(state).owned.p2 = 'greatBridge';
+    slotOf(state).levels.p2 = 3;
+    const c = controllerFor(viewOf(state));
+    // 擲骰前的凍結投影沒有 p2 的奇觀；演出期間面板讀它，不讀已更新的最新投影。
+    (c.state as { dicePresenting: boolean }).dicePresenting = true;
+    (c.state as unknown as { rollHold: unknown }).rollHold = { seafarers: before };
+    cleanup();
+    render(<LocaleProvider locale="en"><WondersPanel controller={c} /></LocaleProvider>);
+    expect(screen.getByTestId('wonder-status-greatBridge').textContent).toBe('Not claimed yet');
+    cleanup();
+    (c.state as { dicePresenting: boolean }).dicePresenting = false;
+    render(<LocaleProvider locale="en"><WondersPanel controller={c} /></LocaleProvider>);
+    expect(screen.getByTestId('wonder-status-greatBridge').textContent).toBe('P2 · level 3 of 4');
+    cleanup();
+  });
+
+  it('the 7 and knight prompts talk about the robber only, with no pirate wording, in both locales', () => {
+    const state = wondersState();
+    state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false } as never;
+    for (const [locale, text] of [['en', 'Move the robber to a land hex.'], ['zh-Hant', '把強盜移到陸地格。']] as const) {
+      cleanup();
+      render(<LocaleProvider locale={locale}><PendingPrompt controller={controllerFor(viewOf(state), locale, { submitCommand: vi.fn() })} /></LocaleProvider>);
+      const shown = screen.getByTestId('bandit-choice-text').textContent!;
+      expect(shown).toBe(text);
+      expect(shown).not.toMatch(/pirate|海盜/);
+    }
+    // 騎士：同樣不提海盜。
+    for (const [locale, text] of [['en', 'Knight: choose a land hex for the robber.'], ['zh-Hant', '騎士：為強盜選陸地格。']] as const) {
+      cleanup();
+      const c = controllerFor(viewOf(wondersState()), locale, { submitCommand: vi.fn() });
+      (c.state as { selection: unknown }).selection = { ...EMPTY_SELECTION, commandType: 'dev.playKnight' };
+      render(<LocaleProvider locale={locale}><PendingPrompt controller={c} /></LocaleProvider>);
+      expect(screen.getByTestId('bandit-choice-text').textContent).toBe(text);
+    }
     cleanup();
   });
 
