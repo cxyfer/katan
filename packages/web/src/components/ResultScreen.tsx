@@ -32,6 +32,8 @@ export function ResultScreen({ controller }: { controller: TableController }) {
   // 卡坦奇觀的終局（完成奇觀，或 10 分且層數最高）也不是靠「達到目標分」，所以同樣不顯示目標分。
   const wonderEnd = result?.cause === 'wonderComplete' || result?.cause === 'wonderLead';
   const noTarget = clothEnd || wonderEnd;
+  // 「10 分且層數最高」仍要達到目標分，所以分數照常帶目標分；只有完成奇觀與目標分無關。
+  const wonderComplete = result?.cause === 'wonderComplete';
   // 電腦座位由房間成員推得；房間尚未載入時不標示。
   const bots = botLevelsOf(state.room);
 
@@ -59,10 +61,10 @@ export function ResultScreen({ controller }: { controller: TableController }) {
         {result?.score !== undefined && clothEnd && (
           <p data-testid="result-score">{t('play.resultScoreShared', { score: formatNumber(state.locale, result.score) })}</p>
         )}
-        {result?.score !== undefined && wonderEnd && (
+        {result?.score !== undefined && wonderComplete && (
           <p data-testid="result-score">{t('play.resultScoreWonder', { score: formatNumber(state.locale, result.score) })}</p>
         )}
-        {result?.score !== undefined && !noTarget && (
+        {result?.score !== undefined && !clothEnd && !wonderComplete && (
           <p data-testid="result-score">
             {t('play.resultScore', {
               score: formatNumber(state.locale, result.score),

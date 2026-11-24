@@ -346,11 +346,13 @@ describe('Wonders of Catan result screen', () => {
     cleanup();
   });
 
-  it('10 points with the highest level does not read as reaching the target score', () => {
+  it('10 points with the highest level names its cause and keeps the 10-point target in the score', () => {
     result('en', 'wonderLead');
     expect(screen.getByTestId('result-reason').textContent).toBe('10 or more victory points and the highest wonder level');
     expect(screen.getByTestId('result-screen').textContent).not.toContain('Victory target');
-    expect(screen.getByTestId('result-score').textContent).not.toMatch(/of 10/);
+    // 這個終局仍要求達到 10 分，所以分數帶目標分，不說「沒有目標分」。
+    expect(screen.getByTestId('result-score').textContent).toMatch(/of 10/);
+    expect(screen.getByTestId('result-score').textContent).not.toContain('no target score');
     result('zh-Hant', 'wonderLead');
     expect(screen.getByTestId('result-reason').textContent).toContain('奇觀完成層數最高');
     expect(screen.getByTestId('result-screen').textContent).not.toContain('勝利目標');
