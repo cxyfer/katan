@@ -22,6 +22,8 @@ export const messages = {
     'world.harborPlaced',
     'world.harborsSkipped',
     'world.regenerated',
+    'wonder.chosen',
+    'wonder.built',
   ] as const,
   errorCodes: [
     'E_SHIP_NOT_MOVABLE',
@@ -30,5 +32,10 @@ export const messages = {
     'E_PIRATE_BLOCKS',
     'E_PIRATE_SAME_HEX',
     'E_PIRATE_NEEDS_TRIBE',
+    'E_WONDER_HELD',
+    'E_WONDER_TAKEN',
+    'E_WONDER_REQUIREMENT',
+    'E_WONDER_NOT_CHOSEN',
+    'E_WONDER_COMPLETE',
   ] as const,
 };

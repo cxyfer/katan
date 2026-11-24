@@ -608,6 +608,12 @@ function checkVictory(state: GameState): void {
   const player = currentPlayer(state);
   const score = scoreOf(state, player.id, { includeHidden: true });
   const target = victoryTargetOf(state, player.id);
+  // 模組可以取代「達到目標分」的判定（卡坦奇觀）；沒有模組表態時走原本的 target 路徑，輸出不變。
+  const custom = moduleWinCause(state, player.id, score);
+  if (custom !== undefined) {
+    if (custom !== null) endGame(state, [player.id], custom);
+    return;
+  }
   if (score >= target) {
     state.result = { playerId: player.id, reason: 'victory', atSeq: state.seq };
     state.turn.phase = 'gameOver';
@@ -621,6 +627,18 @@ function checkVictory(state: GameState): void {
       target,
     });
   }
+}
+
+/** 第一個對這位行動者表態的模組的勝利判定；`undefined` 表示沒有模組表態。 */
+function moduleWinCause(state: GameState, playerId: string, score: number): GameEndCause | null | undefined {
+  const modules = modulesOf(state);
+  if (modules.length === 0) return undefined;
+  const ctx = viewContext(state);
+  for (const module of modules) {
+    const cause = module.winCause?.(state, playerId, score, ctx);
+    if (cause !== undefined) return cause;
+  }
+  return undefined;
 }
 
 /**

@@ -41,6 +41,16 @@ import {
 import { SEAFARERS, initialSeafarersState, seafarersState, seafarersView } from './state.ts';
 import { HARBOR_FRAME, activateHarborFrame, harborChoices, initTribe, isForgottenTribe, offerHarbors, placeHarbor, projectHarborFrame, projectTribe } from './tribe.ts';
 import { WORLD_HARBOR_COMMAND, initWorld, isNewWorld, placeWorldHarbor, projectWorld, regenerateWorld, worldHints } from './world.ts';
+import {
+  buildWonder,
+  chooseWonder,
+  claimableWonders,
+  initWonders,
+  isWondersOfCatan,
+  nextLevelCost,
+  projectWonders,
+  wonderCause,
+} from './wonders.ts';
 import { setModuleState } from '../state.ts';
 
 /**
@@ -72,6 +82,8 @@ export function projectSeafarers(state: GameState) {
     ...(slot.cloth ? { cloth: projectCloth(slot.cloth) } : {}),
     // 新世界：現在抽到的港口與已放數量（尚未抽的港口不投影）。
     ...(slot.world ? { world: projectWorld(slot.world, state) } : {}),
+    // 卡坦奇觀的標記、各玩家的奇觀與層數（全部公開）；其餘劇本不帶此欄。
+    ...(slot.wonders ? { wonders: projectWonders(slot.wonders) } : {}),
   };
 }
 
@@ -118,6 +130,8 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
       ? clothVictims(state, state.pending.candidates) : [] as string[] } : {}),
     // 新世界設置階段的港口：只有輪到的玩家有選邊提示；其他劇本不帶這些鍵。
     ...(view.world ? worldHints(state, playerId) : {}),
+    // 卡坦奇觀才有奇觀提示欄位：可認領的奇觀與能否蓋下一層（只對自己的行動階段）；其他劇本的鍵集合不變（D7）。
+    ...(view.wonders ? { wonders: wonderHints(state, playerId, ctx, inAction) } : {}),
     goldRequired: required,
     /**
      * 金礦作答所需的銀行存量：每種 `min(存量, goldRequired)`，只給當下作答的玩家（其他人
@@ -128,6 +142,15 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
 }
 
 export type SeafarersHints = ReturnType<typeof seafarersHints>;
+
+/** 卡坦奇觀的提示：現在可認領的奇觀，以及能否付得起並蓋下一層。 */
+function wonderHints(state: GameState, playerId: string, ctx: ModuleViewContext, inAction: boolean): { claimable: string[]; buildable: boolean } {
+  if (!inAction) return { claimable: [], buildable: false };
+  const cost = nextLevelCost(state, playerId);
+  const player = state.players.find((candidate) => candidate.id === playerId);
+  const affordable = !!cost && !!player && Object.entries(cost).every(([resource, amount]) => player.resources[resource as keyof typeof player.resources] >= (amount ?? 0));
+  return { claimable: claimableWonders(state, playerId, ctx), buildable: affordable };
+}
 
 /** 世外部落：強盜只能移到有數字圓片的格（7 與騎士都一樣，SF25 p. 12）。 */
 function robberHexAllowed(state: GameState, hex: number, ctx: ModuleViewContext): boolean {
@@ -152,7 +175,13 @@ export const seafarersModule: RulesModule = {
       setup.third = false;
     }
     if (isNewWorld(ctx)) initWorld(state, ctx, slot);
+    if (isWondersOfCatan(ctx)) initWonders(state, slot);
     setModuleState(state, SEAFARERS, slot);
+  },
+
+  // 卡坦奇觀：完成自己的奇觀，或達到目標分且層數比其他每位玩家都高（取代單純的目標分）。
+  winCause(state, playerId, score, ctx) {
+    return isWondersOfCatan(ctx) ? wonderCause(state, playerId, score, ctx) : undefined;
   },
 
   // 建造路之後探索；船在 `ships.ts` 的建造與設置指令裡探索。
@@ -236,6 +265,8 @@ export const seafarersModule: RulesModule = {
     'harbor.place': placeHarbor,
     'cloth.steal': stealCloth,
     [WORLD_HARBOR_COMMAND]: placeWorldHarbor,
+    'wonder.choose': chooseWonder,
+    'wonder.build': buildWonder,
   },
   pendingCommands: ['build.ship', 'gold.choose', 'fog.choose', 'harbor.place', 'cloth.steal'],
 

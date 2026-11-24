@@ -315,8 +315,11 @@ export interface GameEvent {
   private?: { to: string[]; params: Record<string, unknown> };
 }
 
-/** 終局原因：達到目標分（預設，不寫入）或布匹耗盡（布匹產地，回合結束時 ≥5 個部落沒有布匹）。 */
-export type GameEndCause = 'target' | 'clothExhausted';
+/**
+ * 終局原因：達到目標分（預設，不寫入）、布匹耗盡（布匹產地，回合結束時 ≥5 個部落沒有布匹）、
+ * 完成奇觀（`wonderComplete`）或達到目標分且奇觀層數最高（`wonderLead`，卡坦奇觀）。
+ */
+export type GameEndCause = 'target' | 'clothExhausted' | 'wonderComplete' | 'wonderLead';
 
 export interface GameResult {
   /** 單一勝者；共同勝利時是座位最小的勝者（舊讀者仍看得到一位）。 */
@@ -325,7 +328,7 @@ export interface GameResult {
   atSeq: number;
   /** 全部勝者（座位序）。只有布匹耗盡的終局寫入；單一勝者的 target 路徑沒有此欄位，輸出不變。 */
   playerIds?: string[];
-  /** 終局原因。只有布匹耗盡寫入 `'clothExhausted'`；缺省等於 `'target'`。 */
+  /** 終局原因。只有布匹耗盡與卡坦奇觀的終局寫入；缺省等於 `'target'`。 */
   cause?: GameEndCause;
 }
 

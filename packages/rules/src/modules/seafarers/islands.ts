@@ -12,6 +12,7 @@ import type { IslandBonusRule } from '../../profiles.ts';
 import type { GameState } from '../../types.ts';
 import type { ModuleContext, ModuleViewContext } from '../types.ts';
 import { isSmallIslandHex } from './cloth.ts';
+import { isSetupForbidden } from './wonders.ts';
 import { seafarersState, type SeafarersState } from './state.ts';
 
 /** Island ids of the land hexes around an intersection. */
@@ -73,6 +74,9 @@ export function allowBuilding(state: GameState, _playerId: string, vertex: numbe
     return !info?.hexes.some((hex) => isLandHex(state, hex) && isSmallIslandHex(state, hex));
   }
   if (!options.setup) return true;
+  // 卡坦奇觀（SF25 p. 18）：起始村落只放大島，不可在 Great Bridge、Great Wall 與 X 標記的交叉點；
+  // 之後（非設置）可以在 Great Wall／Great Bridge 標記處蓋村落（那是施工條件）。
+  if (scenario === 'wonders-of-catan') return islandsAt(state, vertex).includes(MAIN_ISLAND) && !isSetupForbidden(state, vertex);
   if (scenario === 'fog-islands') return onKnownLand(state, vertex);
   if (scenario === 'new-shores') return islandsAt(state, vertex).includes(MAIN_ISLAND);
   if (scenario === 'through-the-desert') {

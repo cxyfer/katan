@@ -15,6 +15,8 @@ import { isFogHex } from './fog.ts';
 /** Sea hexes the pirate may move to, plus `null` for the frame; unrevealed fog spaces are no tiles. */
 export function pirateTargets(state: GameState): (number | null)[] {
   const out: (number | null)[] = [];
+  // 卡坦奇觀不使用海盜（SF25 p. 18：海盜放回盒中）。
+  if (seafarersView(state).wonders) return out;
   const hexes = topologyOf(state).hexes.length;
   for (let hex = 0; hex < hexes; hex++) {
     if (!isLandHex(state, hex) && hex !== state.board.pirate && !isFogHex(state, hex)) out.push(hex);
@@ -47,6 +49,10 @@ export function moveBandit(
   ctx: ModuleContext,
 ): BanditMove | undefined {
   const { kit } = ctx;
+  // 卡坦奇觀：7 與騎士只能動強盜；海格與框都不是合法目標。
+  if (seafarersView(state).wonders && (target === null || !isLandHex(state, target))) {
+    return { ok: false, error: kit.fail('E_ILLEGAL_TARGET', { hex: target }) };
+  }
   if (target !== null) {
     if (typeof target !== 'number' || !Number.isInteger(target) || !topologyOf(state).hexes[target]) return undefined;
     // Land hexes belong to the robber.

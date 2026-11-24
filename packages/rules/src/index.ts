@@ -39,6 +39,8 @@ export { CARGO_SIZE as EP_CARGO_SIZE, HOLD_CAPACITY as EP_HOLD_CAPACITY } from '
 export type { Cargo as EpCargo, SpiceAbility as EpSpiceAbility, EpSite } from './modules/explorersPirates/state.ts';
 export { SHIP_COST } from './modules/seafarers/ships.ts';
 export { GOLD_FRAME } from './modules/seafarers/gold.ts';
+export { WONDERS, WONDER_IDS, WONDER_LEVELS } from './modules/seafarers/wonders.ts';
+export type { WonderDef, WonderId, WonderCondition } from './modules/seafarers/wonders.ts';
 export type { CitiesKnightsView, CitiesKnightsHints } from './modules/citiesKnights/index.ts';
 export {
   CITIES_KNIGHTS,
