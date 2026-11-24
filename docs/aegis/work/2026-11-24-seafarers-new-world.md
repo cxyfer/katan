@@ -156,6 +156,10 @@ one needs every human seat; no choice of cells.
 | I9 | Setup mode | `variable` only (the board is random). `fixed` is refused. |
 | I10 | Bots | Not supported (profile `botSeats` is false, the room refuses a bot seat with reason `profile`). |
 | I11 | Variant "Further setup options" | Not implemented (free hex counts, gold fields); no gold or desert in this scenario. |
+| I12 | One-island boards | About 14 % of random boards are one island, so no island bonus is possible. Kept as is (maintainer decision): the lobby does not warn about it; the all-seat redraw is the way out, and the help text explains it. |
+| I13 | Robber and pirate on the frame | Kept as is (maintainer decision): the robber (`-1`) and the pirate (`null`) are not drawn on the frame before they first move; drawing them there would need a change in both renderers and is out of scope. |
+| I14 | Who may propose a redraw | Kept as is (maintainer decision): only the host proposes, as the spec words it; every other human seat can only agree or decline. |
+| I15 | Redraw edge cases | Consent is idempotent (a retry or double click counts once). It is refused with `E_GAME_SUSPENDED` while the table is suspended, and a suspension cancels an open redraw proposal. A redraw empties the client's port selection so a port cannot be placed on an old edge. |
 
 ## Evidence
 
