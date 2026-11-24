@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, type KeyboardEvent, type RefObject } from 'react';
+import type { FogKind } from '../board/explorersPirates.ts';
 import type { PublicBoardView, BoardTopology } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import type { CssRect, ProjectedTarget } from '../board/render-contract.ts';
@@ -22,7 +23,7 @@ export interface BoardTargetOverlayProps {
   renderer?: 'svg' | 'r3f';
   selection?: { kind: TargetKind; index: number } | null;
   /** Explorers & Pirates: unexplored hexes, described without revealing their contents. */
-  fog?: ReadonlyMap<number, 'parrot' | 'goose'>;
+  fog?: ReadonlyMap<number, FogKind>;
 }
 
 function targetKey(kind: TargetKind, index: number): string {

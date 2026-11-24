@@ -67,8 +67,8 @@ export function inspectDescription(context: TargetContext, target: BoardInspecti
   let title = option.label;
   const fogRegion = target.kind === 'hex' ? context.fog?.get(target.index) : undefined;
   if (fogRegion) {
-    // An unexplored hex: only its region is public.
-    lines.push(tr('ep.fog.title', { region: tr(`ep.region.${fogRegion}`) }));
+    // An unexplored hex: only its region is public (Seafarers fog has none: it is simply unexplored).
+    lines.push(fogRegion === 'open' ? tr('sf.fog.title') : tr('ep.fog.title', { region: tr(`ep.region.${fogRegion}`) }));
   } else if (target.kind === 'hex') {
     const terrain = board.terrain[target.index] ?? 'sea';
     const number = board.numbers[target.index];

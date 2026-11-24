@@ -125,3 +125,24 @@ describe('simulated Through the Desert games (SFX-S4)', () => {
     expect(gold).toBeGreaterThan(0);
   }, 120_000);
 });
+
+describe('simulated Fog Islands games (SFX-S3)', () => {
+  for (const players of [3, 4] as const) {
+    it(`${players} players finish with a 12-point winner after revealing fog, with a conserved supply`, () => {
+      const run = simulateSeafarers(players, 31 + players, 30000, 'sf-fog-islands-2025');
+      const { state } = run;
+      expect(state.result?.reason).toBe('victory');
+      expect(scoreOf(state, state.result!.playerId!, { includeHidden: true })).toBeGreaterThanOrEqual(12);
+      const bank = getProfile(state.profileId)!.bankPerResource;
+      for (const resource of RESOURCES) {
+        const total = state.bank[resource] + state.players.reduce((sum, player) => sum + player.resources[resource], 0);
+        expect(total, resource).toBe(bank);
+      }
+      checkBoard(state);
+      // 不能空洞通過：真的有空格被翻開，且翻開數 = 12 − 剩餘空格。
+      expect(run.fogReveals).toBeGreaterThan(0);
+      const slot = (state.moduleState as unknown as { seafarers: { fog: { hexes: number[] } } }).seafarers.fog;
+      expect(12 - slot.hexes.length).toBe(run.fogReveals);
+    }, 60_000);
+  }
+});

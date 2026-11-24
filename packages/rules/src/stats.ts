@@ -32,6 +32,8 @@ export interface PlayerStats {
   sevens: number;
   /** Resources received from dice production. */
   produced: ResourceCounts;
+  /** 探索迷霧得到的資源（翻開的陸地與金礦）；只在第一次獲得時建立，其他劇本不出現。 */
+  explored?: ResourceCounts;
   /** Resources received from the second setup settlement. */
   startingResources: ResourceCounts;
   /** Resources taken from the bank with Year of Plenty. */
@@ -86,6 +88,12 @@ export interface GameStats {
    */
   timeline: number[][];
   players: Record<string, PlayerStats>;
+}
+
+/** 探索獎勵的計數（不算進擲骰生產）。 */
+export function exploredStats(state: GameState, playerId: string): ResourceCounts {
+  const stats = playerStats(state, playerId);
+  return (stats.explored ??= zeroResources());
 }
 
 export function zeroResources(): ResourceCounts {

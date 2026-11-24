@@ -13,7 +13,7 @@
  */
 
 import { playerById, topologyOf } from '../../analysis.ts';
-import { addResource, playerStats } from '../../stats.ts';
+import { addResource, exploredStats, playerStats } from '../../stats.ts';
 import { verticesOfHex } from '../../topology.ts';
 import { RESOURCES, type CommandOutcome, type GameState, type ModulePending, type Resource } from '../../types.ts';
 import type { ModuleCommand, ModuleContext, ModuleViewContext, PublicModulePendingView, RollResult } from '../types.ts';
@@ -23,6 +23,8 @@ export const GOLD_FRAME = 'seafarers.gold' as const;
 interface GoldData {
   /** Resources still owed per player. */
   picks: Record<string, number>;
+  /** 探索金礦的選擇：資源記為探索獎勵，不算擲骰生產。 */
+  explored?: true;
 }
 
 /** Gold entitlements for a roll, by player (robber-blocked hexes excluded). */
@@ -54,11 +56,17 @@ function turnOrder(state: GameState): string[] {
 export function afterProduction(state: GameState, roll: RollResult, ctx: ModuleContext): void {
   if (roll.total === 7) return;
   const picks = goldEntitlements(state, roll.total);
-  const responders = turnOrder(state).filter((id) => (picks[id] ?? 0) > 0);
+  enqueueGold(state, picks, turnOrder(state).filter((id) => (picks[id] ?? 0) > 0), ctx);
+}
+
+/** 排入金礦作答 frame（擲骰產出，或未知海域探索到金礦）；沒有人要作答就什麼都不做。 */
+export function enqueueGold(state: GameState, picks: Record<string, number>, responders: string[], ctx: ModuleContext, source: 'roll' | 'fog' = 'roll'): void {
   if (responders.length === 0) return;
-  const frame: ModulePending = { kind: GOLD_FRAME, module: 'seafarers', responders, data: { picks } };
+  const frame: ModulePending = { kind: GOLD_FRAME, module: 'seafarers', responders, data: source === 'fog' ? { picks, explored: true } : { picks } };
   ctx.kit.emit(state, 'gold.required', { picks });
-  ctx.kit.enqueuePending(state, frame);
+  // 探索金礦的選擇緊接在目前的 frame 之後，不排到已排隊的 frame 後面。
+  if (source === 'fog') ctx.kit.insertPendingNext(state, frame);
+  else ctx.kit.enqueuePending(state, frame);
   if (state.pending === frame) skipEmptySupply(state, frame, ctx);
 }
 
@@ -104,11 +112,11 @@ export function chooseGold(state: GameState, actorId: string, command: ModuleCom
     if (state.bank[resource] < amount) return kit.fail('E_BANK_EMPTY', { resource });
   }
   const player = playerById(state, actorId)!;
-  const stats = playerStats(state, actorId);
+  const tally = (gold.data as unknown as GoldData).explored ? exploredStats(state, actorId) : playerStats(state, actorId).produced;
   for (const [resource, amount] of Object.entries(counts) as [Resource, number][]) {
     player.resources[resource] += amount;
     state.bank[resource] -= amount;
-    addResource(stats.produced, resource, amount);
+    addResource(tally, resource, amount);
   }
   const owed = (gold.data as unknown as GoldData).picks[actorId] ?? 0;
   gold.responders.shift();

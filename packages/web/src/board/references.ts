@@ -14,7 +14,8 @@
 import type { Locale } from '@katan/protocol';
 import { getTopology, type BoardTopology, type GameView, type PublicBoardView } from '@katan/rules';
 import { t } from '../i18n/index.ts';
-import { epView, fogRegions } from './explorersPirates.ts';
+import { epView, fogRegions, type FogKind } from './explorersPirates.ts';
+import { seafarersFog } from './seafarers.ts';
 import { pipsFor, resourceOfTerrain } from './terrain.ts';
 
 export interface ReferenceContext {
@@ -22,7 +23,7 @@ export interface ReferenceContext {
   topology: BoardTopology;
   board: PublicBoardView;
   /** Explorers & Pirates: unexplored hexes and their region (their contents are not known yet). */
-  fog?: ReadonlyMap<number, 'parrot' | 'goose'>;
+  fog?: ReadonlyMap<number, FogKind>;
 }
 
 export type ReferenceKind = 'vertex' | 'edge' | 'hex';
@@ -30,7 +31,7 @@ export type ReferenceKind = 'vertex' | 'edge' | 'hex';
 /** 由公開牌桌建立參照情境；Explorers & Pirates 會帶入未探索地塊。 */
 export function viewReferenceContext(locale: Locale, view: Pick<GameView, 'board' | 'modules'>): ReferenceContext {
   const ep = epView(view);
-  return { locale, topology: getTopology(view.board.topologyId), board: view.board, fog: ep ? fogRegions(ep) : undefined };
+  return { locale, topology: getTopology(view.board.topologyId), board: view.board, fog: ep ? fogRegions(ep) : seafarersFog(view) };
 }
 
 /** 「靠近」最多列出的地塊數，避免標籤過長。 */

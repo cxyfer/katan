@@ -2,6 +2,7 @@
 
 import { isLandHex, topologyOf, totalResources } from '../src/analysis.ts';
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
+import { fogHexesAtEdge } from '../src/modules/seafarers/fog.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
 import { RESOURCES, type GameState, type ModulePending, type Resource } from '../src/types.ts';
 import { seafarersGame } from './seafarers-helpers.ts';
@@ -94,6 +95,11 @@ function resolvePending(state: GameState, rng: Rng, step: number): GameState | n
     }
     default: {
       const frame = pending as ModulePending;
+      // 未知海域：放置者碰到多個空格時選第一個（輪流換一個，兩種都走過）。
+      if (frame.kind === 'seafarers.fog') {
+        const hexes = (frame.data as { hexes: number[] }).hexes;
+        return attempt(state, frame.responders[0]!, { type: 'fog.choose', hex: hexes[step % hexes.length]! }, rng);
+      }
       if (frame.kind !== 'seafarers.gold') return null;
       const id = frame.responders[0]!;
       const needed = sfHints(state, id).goldRequired;
@@ -130,12 +136,14 @@ export interface SimulationResult {
   pirateMoves: number;
   goldChoices: number;
   islandBonuses: number;
+  /** 翻開的空格數（未知海域）。 */
+  fogReveals: number;
 }
 
 export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 30000, profileId?: string): SimulationResult {
   const rng = seededRng(seed * 7919 + players);
   let { state } = seafarersGame(players, seed, profileId);
-  const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0 };
+  const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0, fogReveals: 0 };
   const count = (before: GameState, after: GameState) => {
     for (const event of after.log) {
       if (event.seq <= before.seq) continue;
@@ -144,6 +152,7 @@ export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps
       if (event.type === 'pirate.moved') counters.pirateMoves++;
       if (event.type === 'gold.chosen') counters.goldChoices++;
       if (event.type === 'island.bonus') counters.islandBonuses++;
+      if (event.type === 'fog.revealed') counters.fogReveals++;
     }
   };
   for (let step = 0; step < maxSteps && !state.result; step++) {
@@ -189,7 +198,10 @@ export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps
       }
     }
     if (hints.legalSettlements.length === 0) {
-      const ships = sea.legalShips.slice().sort((a, b) => shipScore(state, actor.id, a) - shipScore(state, actor.id, b));
+      // 未知海域：隔回合偏好碰到空格的邊，讓模擬真的探索（否則船一路直奔已知的另一座島）。
+      const fogFirst = (edge: number): number => (step % 2 === 0 && fogHexesAtEdge(state, edge).length > 0 ? 0 : 1);
+      const ships = sea.legalShips.slice().sort((a, b) =>
+        fogFirst(a) - fogFirst(b) || shipScore(state, actor.id, a) - shipScore(state, actor.id, b));
       if (ships[0] !== undefined) tries.push({ type: 'build.ship', edge: ships[0] });
       if (hints.legalRoads[0] !== undefined && step % 3 === 0) tries.push({ type: 'build.road', edge: hints.legalRoads[(step >> 2) % hints.legalRoads.length]! });
       const movable = sea.movableShips[0];

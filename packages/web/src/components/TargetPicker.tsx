@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef } from 'react';
+import type { FogKind } from '../board/explorersPirates.ts';
 import type { BoardTopology, PublicBoardView } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { ambiguousWith, describeTarget, type TargetKind, type TargetOption } from '../board/targets.ts';
@@ -89,7 +90,7 @@ export function TargetPicker({
   /** 觸發消歧目標的目前投影位置（視窗 CSS 像素）；有值時 popover 貼近該點。 */
   anchor?: Point;
   /** Explorers & Pirates 的未探索地塊；描述時不透露其內容。 */
-  fog?: ReadonlyMap<number, 'parrot' | 'goose'>;
+  fog?: ReadonlyMap<number, FogKind>;
 }) {
   const t = useT();
   const locale = useLocale();

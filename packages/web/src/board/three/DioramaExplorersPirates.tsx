@@ -51,7 +51,7 @@ function Cargo({ piece, color, position, rotationY = 0, material, castShadow }: 
 }
 
 /** The fog bank of a freshly explored hex rises and fades once. */
-function FogLift({ position, material, motionAllowed, animationKey }: { position: Vec3; material: Material; motionAllowed: boolean; animationKey: string }) {
+export function FogLift({ position, material, motionAllowed, animationKey }: { position: Vec3; material: Material; motionAllowed: boolean; animationKey: string }) {
   const model = useDioramaGeometry(createFogModel, []);
   const faded = useMemo(() => {
     const clone = (material as MeshStandardMaterial).clone();

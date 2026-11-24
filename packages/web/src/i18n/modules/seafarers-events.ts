@@ -46,6 +46,15 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
       };
     case 'island.bonus':
       return { player, points: num(p.points) };
+    case 'fog.revealed': {
+      const terrain = t(locale, `terrain.${str(p.tile)}`).replace(/\s*[（(][^)）]*[)）]\s*$/, '');
+      return {
+        player,
+        hex: num(p.hex),
+        found: str(p.tile) === 'sea' ? t(locale, 'sf.fog.foundSea') : t(locale, 'sf.fog.foundLand', { terrain, number: num(p.number) }),
+        rewardSuffix: typeof p.resource === 'string' ? t(locale, 'sf.fog.rewardResource', { resource: t(locale, `resource.${p.resource}`) }) : '',
+      };
+    }
     default:
       return undefined;
   }

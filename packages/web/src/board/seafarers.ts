@@ -20,6 +20,8 @@ export interface SeafarersModuleView {
   shipMoved: boolean;
   /** 各玩家的 home islands（四島群島、新世界在設置結束後才有）。 */
   home: Record<string, number[]> | null;
+  /** 未知海域尚未翻開的空格（hex 索引）；其他劇本為空。牌庫不在投影裡。 */
+  fog: number[];
 }
 
 export interface SeafarersHints {
@@ -58,6 +60,7 @@ export function seafarersView(view: Pick<GameView, 'modules'> | null | undefined
     shipsBuiltThisTurn: slot.shipsBuiltThisTurn ?? [],
     shipMoved: !!slot.shipMoved,
     home: slot.home ?? null,
+    fog: slot.fog ?? [],
   };
 }
 
@@ -79,4 +82,18 @@ export function seafarersHints(view: Pick<GameView, 'hints'> | null | undefined)
 /** Island bonus points a player holds (public). */
 export function islandBonusPoints(view: Pick<GameView, 'modules'> | null | undefined, playerId: string): number {
   return (seafarersView(view)?.islandBonus[playerId]?.length ?? 0) * ISLAND_BONUS_POINTS;
+}
+
+/** 未知海域的空格（hex → 'open'）；沒有空格時回 undefined。 */
+export function seafarersFog(view: Pick<GameView, 'modules'> | null | undefined): Map<number, 'open'> | undefined {
+  const fog = seafarersView(view)?.fog ?? [];
+  return fog.length > 0 ? new Map(fog.map((hex) => [hex, 'open' as const])) : undefined;
+}
+
+/** 輪到我選要翻開哪個空格（`seafarers.fog` frame 的候選）；沒有則 null。 */
+export function fogChoice(view: Pick<GameView, 'pending'> | null | undefined, selfId: string | null): number[] | null {
+  const pending = view?.pending;
+  if (!pending || pending.kind !== 'seafarers.fog' || !('responders' in pending) || !selfId || !pending.responders.includes(selfId)) return null;
+  const hexes = (pending.data as { hexes?: unknown }).hexes;
+  return Array.isArray(hexes) ? hexes.filter((hex): hex is number => typeof hex === 'number') : null;
 }

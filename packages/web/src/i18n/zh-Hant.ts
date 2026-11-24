@@ -607,6 +607,7 @@ export const zhHant: Catalog = {
   'stats.col.total': '合計',
   'stats.col.produced': '骰子產出',
   'stats.col.starting': '開局資源',
+  'stats.col.explored': '探索獎勵',
   'stats.col.stolen': '搶奪',
   'stats.col.tradeIn': '交易換入',
   'stats.col.built': '建設花費',

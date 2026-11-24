@@ -1,0 +1,176 @@
+{
+  "scenario": "fog-islands",
+  "profile": "sf-fog-islands-2025",
+  "base": "http://127.0.0.1:3057",
+  "cases": [
+    {
+      "name": "lobby-fog-islands",
+      "status": "PASS",
+      "note": "lobby: Seafarers / The Fog Islands, 3-4 players only",
+      "sha256": "e3c610574c9e937797b09351abf7101b4d5fcfe5626debaf61f5f7aa986c955b",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-fog-islands-3",
+      "sha256": "284791019a88bab417cc59889a295cdd5220c99850662611df1d4b804de35c4a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-fog-islands-3",
+      "sha256": "7371bde6744c49154dd1c68d89bf37dab2909e508b8dced71deb6f485955afc1",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-fog-islands-4",
+      "sha256": "c772d88b9bde9df86363d54cb87161feac51aa0ec17288743e0b0ae6f01c94da",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-fog-islands-4",
+      "sha256": "033d93fa159d0122cf34ef3eac683d8c5395bd1b6d720545b03c302dcc7ecb44",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "help-fog-islands-svg-desktop",
+      "status": "PASS",
+      "note": "setup done; help panel shows the Fog Islands rules",
+      "sha256": "c9e0b6d78b912e5e518afcd5b9a5c0bda183d1c1edb188d54d702079b2e429f4",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-before-svg",
+      "status": "PASS",
+      "note": "before: 12 clouds; build ship targets include the path 60 that touches one unexplored hex",
+      "sha256": "6f999073129e52fdb7e62779202054a5e4fc672f64009ffbe5277405d54d77ff",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-reveal-svg",
+      "status": "PASS",
+      "note": "ship built through the SVG board revealed hex 21: pasture 12; 11 clouds left",
+      "sha256": "62d75e71891f121d75f4c8e2abfd1ed5159daa7351219bdc61c5680a0caa62a6",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-choice-3d",
+      "status": "PASS",
+      "note": "the ship touches two unexplored hexes [0, 6]: the placer chooses one on the 3D board",
+      "sha256": "4421a16adedca033988ed7db44008f0a060bd36e6020f0199729fb31250c2fc8",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-reveal-3d",
+      "status": "PASS",
+      "note": "the chosen hex 6 is revealed in 3D: fields; 10 fog banks left",
+      "sha256": "cd78183ee5f45aa2b0d7235ff23b8aa75079b071544161e13fdd0c33342205be",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-choice-svg",
+      "status": "PASS",
+      "note": "SVG choice between [13, 20]: picked hex 13, the confirm preview says unexplored",
+      "sha256": "fa0c7b6a887399323ea0e04a30e8b6585749220c8a35ee9579222012dd3a34de",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-reveal-choice-svg",
+      "status": "PASS",
+      "note": "the chosen hex 13 is revealed on the SVG board: mountains; 9 clouds left",
+      "sha256": "4a4d8d5a2e9e66c00a0be29cd1ed73900af28843fda36b0b66a6912f192f73b0",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    },
+    {
+      "name": "live-fog-phone",
+      "status": "PASS",
+      "note": "phone width: 9 clouds left, three hexes revealed",
+      "sha256": "18726f2e128b71ac851c4c5ff425278f6f6cc6cead18813494d26f11310e7c7b",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "name": "live-result",
+      "status": "PASS",
+      "note": "a legal settlement reaches 12 VP (no island bonus): result screen",
+      "sha256": "0db8a00b0a8158ef8dd47f01a6b929a58b056fa713a31007eb4aa06aa602bb28",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      }
+    }
+  ],
+  "live": {
+    "reveal": {
+      "prefix": [],
+      "edge": 60,
+      "hex": 21
+    },
+    "choice": {
+      "prefix": [
+        12,
+        36,
+        6
+      ],
+      "edge": 7,
+      "hexes": [
+        0,
+        6
+      ]
+    },
+    "finish": {
+      "vertex": 12,
+      "edge": 13
+    },
+    "result": {
+      "playerId": "player_9d557d5b37254c1880e9",
+      "reason": "victory",
+      "score": 14
+    }
+  },
+  "errors": []
+}

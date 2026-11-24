@@ -9,6 +9,7 @@ import { ARCHIPELAGO_TOPOLOGY } from './sample-boards.ts';
 import { EXPLORERS_PIRATES_TOPOLOGIES } from './explorers-pirates-boards.ts';
 import { OFFICIAL_56_TOPOLOGY } from './official-56-board.ts';
 import { NEW_SHORES_TOPOLOGIES } from './seafarers-boards.ts';
+import { FOG_ISLANDS_TOPOLOGIES } from './seafarers-fog-islands-boards.ts';
 import { SCENARIO_TOPOLOGIES } from './seafarers-scenario-boards.ts';
 import {
   buildPlayer56Topology,
@@ -24,6 +25,7 @@ const definitions = new Map<string, TopologyDefinition>([
   [OFFICIAL_56_TOPOLOGY.id, OFFICIAL_56_TOPOLOGY],
   ...NEW_SHORES_TOPOLOGIES.map((definition) => [definition.id, definition] as const),
   ...SCENARIO_TOPOLOGIES.map((definition) => [definition.id, definition] as const),
+  ...FOG_ISLANDS_TOPOLOGIES.map((definition) => [definition.id, definition] as const),
   ...EXPLORERS_PIRATES_TOPOLOGIES.map((definition) => [definition.id, definition] as const),
 ]);
 

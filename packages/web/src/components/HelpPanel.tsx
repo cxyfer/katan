@@ -19,6 +19,8 @@ export function HelpPanel({ controller }: { controller: TableController }) {
   const scenario = getProfile(profileId)?.scenario;
   const fourIslands = scenario === 'four-islands';
   const desert = scenario === 'through-the-desert';
+  // 未知海域沒有主島也沒有島嶼獎勵，多了迷霧探索。
+  const fogIslands = scenario === 'fog-islands';
 
   return (
     <section className="panel" aria-labelledby="help-heading" data-testid="help-panel">
@@ -39,16 +41,21 @@ export function HelpPanel({ controller }: { controller: TableController }) {
       <TbHelp controller={controller} />
       {seafarersView(controller.state.game?.view) && (
         <section data-testid="help-seafarers">
-          <h3>{fourIslands ? t('sf.help.four.title') : desert ? t('sf.help.desert.title') : t('sf.help.title')}</h3>
+          <h3>{fourIslands ? t('sf.help.four.title') : desert ? t('sf.help.desert.title') : fogIslands ? t('sf.help.fog.title') : t('sf.help.title')}</h3>
           <ul className="help-rules">
             <li>{t('sf.build.ship')}: {formatResourceMap(locale, SHIP_COST)}</li>
             {fourIslands && <li data-testid="help-four-islands-setup">{t('sf.help.four.setup')}</li>}
             {desert && <li data-testid="help-desert-setup">{t('sf.help.desert.setup')}</li>}
+            {fogIslands && <li data-testid="help-fog-islands-setup">{t('sf.help.fog.setup')}</li>}
+            {fogIslands && <li data-testid="help-fog-islands-explore">{t('sf.help.fog.explore')}</li>}
             {(['setup', 'ships', 'move', 'pirate', 'gold', 'route', 'islands'] as const)
               .filter((key) => !(fourIslands && (key === 'setup' || key === 'islands' || key === 'gold')) && !(desert && (key === 'setup' || key === 'islands')))
+              .filter((key) => !(fogIslands && (key === 'setup' || key === 'islands' || key === 'pirate')))
               .map((key) => <li key={key}>{t(`sf.help.${key}`)}</li>)}
             {fourIslands && <li data-testid="help-four-islands-bonus">{t('sf.help.four.islands', { target: controller.state.game?.view.victoryTarget ?? 13 })}</li>}
             {desert && <li data-testid="help-desert-bonus">{t('sf.help.desert.islands', { target: controller.state.game?.view.victoryTarget ?? 14 })}</li>}
+            {fogIslands && <li data-testid="help-fog-islands-bandits">{t('sf.help.fog.bandits')}</li>}
+            {fogIslands && <li data-testid="help-fog-islands-win">{t('sf.help.fog.win', { target: controller.state.game?.view.victoryTarget ?? 12 })}</li>}
             {paired && <li>{t('sf.help.paired')}</li>}
           </ul>
         </section>
