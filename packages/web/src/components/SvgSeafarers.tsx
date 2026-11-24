@@ -80,7 +80,7 @@ export function IslandBonusToken({ x, y, color, testId }: { x: number; y: number
 export function GiftMarker({ x, y, kind, harbor, color, ratio, letter, testId }: {
   x: number; y: number; kind: 'vp' | 'devcard' | 'port'; harbor?: string; color?: string; ratio?: string; letter?: string; testId?: string;
 }) {
-  return <g transform={`translate(${x} ${y})`} data-testid={testId} data-gift-kind={kind} data-gift-harbor={harbor} pointerEvents="none">
+  return <g transform={`translate(${x} ${y}) scale(1.35)`} data-testid={testId} data-gift-kind={kind} data-gift-harbor={harbor} pointerEvents="none">
     {kind === 'vp' && <>
       <ellipse cx="0" cy="3" rx="12" ry="4.5" fill="#5d3a12" opacity=".7" />
       <ellipse cx="0" cy="0" rx="12" ry="4.5" fill="#f2c95a" stroke="#6b4512" strokeWidth="1.3" />

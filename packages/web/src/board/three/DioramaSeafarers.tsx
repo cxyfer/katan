@@ -69,7 +69,7 @@ function GiftGroup({ kind, harbor, edges, geometry, material }: Pick<Props, 'geo
   const model = useDioramaGeometry(() => createGiftModel(kind, harbor ? GIFT_TINT[harbor] : undefined), [kind, harbor]);
   const instances = useMemo(() => edges.flatMap((edge) => {
     const transform = giftTransform(geometry, edge);
-    return transform ? [{ position: transform.position, rotationY: transform.rotationY, scale: [1.5, 1.5, 1.5] as [number, number, number] }] : [];
+    return transform ? [{ position: transform.position, rotationY: transform.rotationY, scale: [2.1, 2.1, 2.1] as [number, number, number] }] : [];
   }), [edges, geometry]);
   return <InstancedPrimitive geometry={model} material={material} instances={instances} castShadow={false} />;
 }

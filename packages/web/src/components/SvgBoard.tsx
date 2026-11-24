@@ -240,7 +240,7 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
             if (!edge || !hex) return null;
             const mid = edgeMidpoint(edge);
             const length = Math.hypot(mid.x - hex.cx, mid.y - hex.cy) || 1;
-            const push = gift.kind === 'port' ? 22 : 15;
+            const push = gift.kind === 'port' ? 26 : 19;
             const x = mid.x + ((mid.x - hex.cx) / length) * push;
             const y = mid.y + ((mid.y - hex.cy) / length) * push;
             const name = gift.kind === 'vp' ? t('sf.gift.vp') : gift.kind === 'devcard' ? t('sf.gift.devcard')
