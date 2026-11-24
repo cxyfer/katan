@@ -308,9 +308,9 @@ Confirmed D-02 selects **Heading for New Shores** as the first Seafarers scenari
 | `ck-paired-2025` | 5, 6 | B56-25 board plus CK56-25 setup/supply | 13 | R-B where retained, R-CK, R-56 with CK56-25 permissions |
 | `sf-ck-new-shores-2025` | 3, 4 | Respective SF25 map plus CK25 setup and COMB | 16 | R-SF, R-CK, R-COMB |
 | `sf-ck-new-shores-paired-2025` | 5, 6 | SF56-25 map plus both 5–6 expansion rulebooks and COMB | 16 | R-SF, R-CK, R-56, R-COMB; verify the full combination rather than infer it |
-| `sf-four-islands-2025` | 3, 4 | SF25 The Four Islands pp. 6–7 | 13 | R-SF, R-SFX-S2 (implemented and enabled; no bot seats) |
-| `sf-fog-islands-2025` | 3, 4 | SF25 The Fog Islands pp. 8–9 | 12 | R-SF, R-SFX-S3 (implemented and enabled; no bot seats) |
-| `sf-through-the-desert-2025` | 3, 4 | SF25 Through the Desert pp. 10–11 | 14 | R-SF, R-SFX-S4 (implemented and enabled; no bot seats) |
+| `sf-four-islands-2025` | 3, 4 | SF25 The Four Islands pp. 6–7; setup modes `fixed`, `variable` (p. 7) | 13 | R-SF, R-SFX-S2, R-SFX-S10a (implemented and enabled; no bot seats) |
+| `sf-fog-islands-2025` | 3, 4 | SF25 The Fog Islands pp. 8–9; setup modes `fixed`, `variable` (p. 9) | 12 | R-SF, R-SFX-S3, R-SFX-S10a (implemented and enabled; no bot seats) |
+| `sf-through-the-desert-2025` | 3, 4 | SF25 Through the Desert pp. 10–11; setup modes `fixed`, `variable` (p. 11) | 14 | R-SF, R-SFX-S4, R-SFX-S10a (implemented and enabled; no bot seats) |
 | `sf-forgotten-tribe-2025` | 3, 4 | SF25 The Forgotten Tribe pp. 12–13 | 13 | R-SF, R-SFX-S5 (implemented and enabled; no bot seats) |
 | `sf-cloth-for-catan-2025` | 3, 4 | SF25 Cloth for Catan pp. 14–15 | 14, or five villages without cloth at the end of a turn | R-SF, R-SFX-S6 (implemented and enabled; no bot seats) |
 | `sf-pirate-islands-2025` | 3, 4 | SF25 The Pirate Islands pp. 16–17 | 10 and the own fortress retaken | R-SF, R-SFX (planned; not enabled) |

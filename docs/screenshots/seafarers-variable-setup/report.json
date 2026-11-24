@@ -1,0 +1,220 @@
+{
+  "scenario": "variable-setup",
+  "base": "http://127.0.0.1:3042",
+  "cases": [
+    {
+      "name": "four-islands-3p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": false, \"redOnGold\": false, \"lowOnForestPasture\": false, \"sameAsFixed\": false, \"robberOnTwelve\": true, \"robberTerrain\": \"hills\"}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "four-islands-map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-four-islands-3",
+      "sha256": "0bf0014141a3f8378dabbaeeb3d1860f827d6e4f1cc5bbe7add9ec8657a5cc3f",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "four-islands-lobby-variable",
+      "status": "PASS",
+      "note": "lobby: four-islands, setup mode switched to variable and saved",
+      "sha256": "49006f6e7704210631a3eca084cdc26a7e410e38a07d713c0f32f3515dce50d7",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "four-islands-4p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": true, \"redOnGold\": false, \"lowOnForestPasture\": false, \"sameAsFixed\": false, \"robberOnTwelve\": true, \"robberTerrain\": \"mountains\"}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "four-islands-map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-four-islands-4",
+      "sha256": "f333e6cbb86bac5b0c60f80f811a247632589de98ff18237014b3b0756526feb",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "four-islands-map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "variable sf-four-islands-4",
+      "sha256": "55872504b0d28ddc55bff26ed9ba23a07a6ffd4277a43bd748dace3880177631",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "four-islands-map-4p-svg-phone",
+      "status": "PASS",
+      "note": "variable sf-four-islands-4",
+      "sha256": "9c73ec1341722d91b670e18b0cb1565b0fcf6ea14228b5666eebd75ac22ef87b",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "fog-islands-3p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": true, \"redOnGold\": false, \"lowOnForestPasture\": true, \"sameAsFixed\": false, \"robberOnTwelve\": true, \"robberTerrain\": \"pasture\"}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "fog-islands-map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-fog-islands-3",
+      "sha256": "8b0782950b10ad6cd180a15e4b4ee241f928a3b878a5aec4c0ebe5ff7daa6492",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "fog-islands-lobby-variable",
+      "status": "PASS",
+      "note": "lobby: fog-islands, setup mode switched to variable and saved",
+      "sha256": "5b16113892a26abdc679c52076a49acf14caa6db6281de7c3ac243f09d4b1eab",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "fog-islands-4p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": true, \"redOnGold\": false, \"lowOnForestPasture\": true, \"sameAsFixed\": false, \"robberOnTwelve\": true, \"robberTerrain\": \"forest\"}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "fog-islands-map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-fog-islands-4",
+      "sha256": "04b1bb2d203b9a47cf834f6fc73c6d999ad4ca93b14f2cec6e145bf8d1d82551",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "fog-islands-map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "variable sf-fog-islands-4",
+      "sha256": "0c8685c05e0da21624ee43d08232156d8bbb2555e64dd2b821ea056d8f1332af",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "fog-islands-map-4p-svg-phone",
+      "status": "PASS",
+      "note": "variable sf-fog-islands-4",
+      "sha256": "0d934f75a560b1de359434a231837f6acbdd226b93052a03df141cf313e631ab",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "through-the-desert-3p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": false, \"redOnGold\": false, \"lowOnForestPasture\": true, \"sameAsFixed\": false, \"robberOnTwelve\": false, \"robberTerrain\": \"desert\"}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "through-the-desert-map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-through-the-desert-3",
+      "sha256": "ec637d728b82e86ce8ae9cb66baae6d6bd2d5bbae38b33cc934ef6820c4968f2",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "through-the-desert-lobby-variable",
+      "status": "PASS",
+      "note": "lobby: through-the-desert, setup mode switched to variable and saved",
+      "sha256": "a4d5c3b3d5c84659aed9918d5d0348ce24aafb7e3aee44c8759e695f6e3c59a0",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "through-the-desert-4p-board-check",
+      "status": "PASS",
+      "note": "{\"redAdjacent\": false, \"redOnGold\": false, \"lowOnForestPasture\": true, \"sameAsFixed\": false, \"robberOnTwelve\": false, \"robberTerrain\": \"desert\"}",
+      "sha256": null,
+      "viewport": null,
+      "committed": false
+    },
+    {
+      "name": "through-the-desert-map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "variable sf-through-the-desert-4",
+      "sha256": "a2efbac978f03c575299cc09a8cea86b62501755059ce9658156d6fa070cd22c",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "through-the-desert-map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "variable sf-through-the-desert-4",
+      "sha256": "d33b6178f1c926d610c3417a091c864f4b96e570415792a8676909b5efee04b3",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "through-the-desert-map-4p-svg-phone",
+      "status": "PASS",
+      "note": "variable sf-through-the-desert-4",
+      "sha256": "b628e236f1f6d295f2eaf461c027dab048159083a16bf6573ca257044800c56f",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    }
+  ],
+  "errors": []
+}

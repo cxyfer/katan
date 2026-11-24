@@ -12,6 +12,7 @@
  * docs/aegis/work/2026-11-23-seafarers-fog-islands.md。
  */
 
+import { variableFogKnownBoard } from './seafarers-variable-boards.ts';
 import type { LayoutContext } from './layout-registry.ts';
 import { fixedLayout, L, NS4_CELLS, type LandHex, type PortSpec } from './seafarers-boards.ts';
 import type { BoardTopology, HexCoord, TopologyDefinition } from './topology.ts';
@@ -134,6 +135,13 @@ export function fogIslandsLayout(context: LayoutContext, topologyFor: (id: strin
   const topology = topologyFor(fogIslandsTopologyId(context.playerCount));
   if (topology.hexes.length !== 42) throw new Error(`topology ${topology.id} has ${topology.hexes.length} hexes, expected 42`);
   const map = fogIslandsMap(context.playerCount);
+  if (context.mode === 'variable') {
+    // SF25 p. 9 variable setup：已知陸地與圓片在兩座島區內隨機（紅色圓片可相鄰）；港口位置不變、種類洗牌。
+    // 空格仍是無數字的海，迷霧牌庫與圓片由 module state 照舊處理。
+    const board = variableFogKnownBoard(map.land, map.ports, context.rng);
+    const twelve = board.land.find((hex) => hex.number === 12)!;
+    return fixedLayout(topology, board.land, board.ports, twelve);
+  }
   return fixedLayout(topology, map.land, map.ports, context.playerCount === 3 ? { q: -2, r: 3 } : { q: 4, r: -2 });
 }
 

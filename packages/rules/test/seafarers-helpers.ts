@@ -9,14 +9,14 @@ import type { GameState } from '../src/types.ts';
 import { COLORS, forceTurn, playerIds } from './helpers.ts';
 
 /** 預設是 New Shores；`profileId` 可改成其他只有 fixed 版圖的 Seafarers 劇本（3–4 人）。 */
-export function seafarersGame(players: 3 | 4 | 5 | 6 = 4, seed = 12345, profileId?: string): { state: GameState; rng: Rng } {
+export function seafarersGame(players: 3 | 4 | 5 | 6 = 4, seed = 12345, profileId?: string, setupMode?: 'fixed' | 'variable'): { state: GameState; rng: Rng } {
   const rng = seededRng(seed);
   const id = profileId ?? (players <= 4 ? 'sf-new-shores-2025' : 'sf-new-shores-paired-2025');
   const state = createGame({
     profileId: id,
     players: playerIds(players).map((id, index) => ({ id, nickname: id.toUpperCase(), color: COLORS[index]! })),
     // 新世界只有隨機版圖（variable）；其餘 3–4 人劇本是固定版圖。
-    setupMode: players <= 4 && getProfile(id)!.setupModes.includes('fixed') ? 'fixed' : 'variable',
+    setupMode: setupMode ?? (players <= 4 && getProfile(id)!.setupModes.includes('fixed') ? 'fixed' : 'variable'),
     rng,
   });
   return { state, rng };

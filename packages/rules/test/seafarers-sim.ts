@@ -170,9 +170,9 @@ export interface SimulationResult {
   wonderLevels: number;
 }
 
-export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 30000, profileId?: string): SimulationResult {
+export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 30000, profileId?: string, setupMode?: 'fixed' | 'variable'): SimulationResult {
   const rng = seededRng(seed * 7919 + players);
-  let { state } = seafarersGame(players, seed, profileId);
+  let { state } = seafarersGame(players, seed, profileId, setupMode);
   const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0, fogReveals: 0, gifts: 0, harborsPlaced: 0, clothTrades: 0, clothProduced: 0, clothStolen: 0, wonderClaims: 0, wonderLevels: 0 };
   const count = (before: GameState, after: GameState) => {
     for (const event of after.log) {

@@ -320,12 +320,14 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
   seafarersScenarioProfile('sf-four-islands-2025', 'four-islands', 13, 'pp. 6–7', {
     islandBonus: { points: 2, skip: 'home' },
     // 3、4 人同為 35 格外框，layout builder 依人數選港口位置不同的 topology。
+    setupModes: ['fixed', 'variable'],
     topologyId: 'sf-four-islands-3',
     implemented: true,
     enabled: true,
   }),
   seafarersScenarioProfile('sf-fog-islands-2025', 'fog-islands', 12, 'pp. 8–9', {
     // 3、4 人同為 42 格外框，layout builder 依人數選港口位置不同的 topology；無島嶼獎勵。
+    setupModes: ['fixed', 'variable'],
     topologyId: 'sf-fog-islands-3',
     fogOnMove: false,
     implemented: true,
@@ -334,6 +336,7 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
   seafarersScenarioProfile('sf-through-the-desert-2025', 'through-the-desert', 14, 'pp. 10–11', {
     islandBonus: { points: 2, skip: 'main' },
     // 外框依人數不同（3 人 35 格、4 人 42 格），layout builder 依人數選 topology。
+    setupModes: ['fixed', 'variable'],
     topologyId: 'sf-through-the-desert-3',
     implemented: true,
     enabled: true,
