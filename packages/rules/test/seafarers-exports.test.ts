@@ -55,6 +55,7 @@ const HINT_KEYS: Record<keyof SeafarersHints, true> = {
   shipMoved: true,
   pirateTargets: true,
   clothVictims: true,
+  robberChoice: true,
   robberTargets: true,
   goldRequired: true,
   goldBank: true,
@@ -69,7 +70,7 @@ const GOLD_DATA_KEYS: Record<keyof SeafarersGoldPendingView['data'], true> = { p
 
 const keysOf = (record: object): string[] => Object.keys(record).sort();
 /** 世外部落以外的劇本沒有港口放置的提示欄位。 */
-const HINT_KEYS_WITHOUT_TRIBE = Object.keys(HINT_KEYS).filter((key) => !['harborChoices', 'targets', 'board', 'clothVictims', 'wonders'].includes(key)).sort();
+const HINT_KEYS_WITHOUT_TRIBE = Object.keys(HINT_KEYS).filter((key) => !['harborChoices', 'targets', 'board', 'clothVictims', 'robberChoice', 'wonders'].includes(key)).sort();
 /** `home` 只在排除 home 島的劇本（四島群島、新世界）的設置結束後出現，New Shores 不帶。 */
 const VIEW_KEYS_WITHOUT_HOME = Object.keys(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'fog' && key !== 'tribe' && key !== 'cloth' && key !== 'world' && key !== 'wonders').sort();
 /** `fog` 只在未知海域劇本、`tribe` 只在世外部落、`cloth` 只在布匹產地、`world` 只在新世界、`wonders` 只在卡坦奇觀出現。 */
@@ -157,7 +158,7 @@ describe('seafarers module exports (bot plan RX)', () => {
   // D7：New Shores（sf-2025.2）與其他沒有禮物的劇本不得多出世外部落的提示欄位與指令。
   it('only The Forgotten Tribe adds the harbour hint keys; elsewhere harbor.place keeps the unknown-command errors', () => {
     const tribe = emptySeafarersGame(3, 0, 'action', 'sf-forgotten-tribe-2025');
-    expect(keysOf(hintsOf(tribe, 'p1'))).toEqual(keysOf(HINT_KEYS).filter((key) => key !== 'clothVictims' && key !== 'wonders'));
+    expect(keysOf(hintsOf(tribe, 'p1'))).toEqual(keysOf(HINT_KEYS).filter((key) => key !== 'clothVictims' && key !== 'robberChoice' && key !== 'wonders'));
     for (const profileId of ['sf-new-shores-2025', 'sf-four-islands-2025', 'sf-through-the-desert-2025']) {
       const state = emptySeafarersGame(4, 0, 'action', profileId);
       expect(keysOf(hintsOf(state, 'p1')), profileId).toEqual(HINT_KEYS_WITHOUT_TRIBE);
@@ -170,7 +171,7 @@ describe('seafarers module exports (bot plan RX)', () => {
   // D7：只有布匹產地有 clothVictims 提示與 cloth.steal 指令；其他劇本的鍵集合與錯誤碼不變。
   it('only Cloth for Catan adds clothVictims; elsewhere cloth.steal keeps the unknown-command errors', () => {
     const cloth = emptySeafarersGame(3, 0, 'action', 'sf-cloth-for-catan-2025');
-    expect(keysOf(hintsOf(cloth, 'p1'))).toEqual(keysOf(HINT_KEYS).filter((key) => !['harborChoices', 'targets', 'board', 'wonders'].includes(key)));
+    expect(keysOf(hintsOf(cloth, 'p1'))).toEqual(keysOf(HINT_KEYS).filter((key) => !['harborChoices', 'targets', 'board', 'robberChoice', 'wonders'].includes(key)));
     for (const profileId of ['sf-new-shores-2025', 'sf-four-islands-2025', 'sf-forgotten-tribe-2025', 'sf-through-the-desert-2025', 'sf-new-world-2025']) {
       const state = emptySeafarersGame(profileId === 'sf-new-shores-2025' ? 4 : 3, 0, 'action', profileId);
       expect(keysOf(hintsOf(state, 'p1')), profileId).not.toContain('clothVictims');
@@ -183,7 +184,7 @@ describe('seafarers module exports (bot plan RX)', () => {
   it('New World adds `world` to the view and the harbour hint keys to the hints, and takes world.harbor only there', () => {
     const state = seafarersGame(4, 1, 'sf-new-world-2025').state;
     expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => !['home', 'fog', 'tribe', 'cloth', 'wonders'].includes(key)));
-    const worldHints = keysOf(HINT_KEYS).filter((key) => key !== 'clothVictims' && key !== 'wonders');
+    const worldHints = keysOf(HINT_KEYS).filter((key) => key !== 'clothVictims' && key !== 'robberChoice' && key !== 'wonders');
     expect(keysOf(hintsOf(state, 'p1'))).toEqual(worldHints);
     expect(keysOf(hintsOf(state, 'p2'))).toEqual(worldHints);
     for (const profileId of ['sf-new-shores-2025', 'sf-forgotten-tribe-2025']) {
@@ -195,7 +196,7 @@ describe('seafarers module exports (bot plan RX)', () => {
   it('only The Wonders of Catan adds the wonders view and hint keys; elsewhere wonder.* keeps the unknown-command errors', () => {
     const wonders = emptySeafarersGame(3, 0, 'action', 'sf-wonders-of-catan-2025');
     expect(keysOf(projectSeafarers(wonders))).toEqual(keysOf(VIEW_KEYS).filter((key) => !['home', 'fog', 'tribe', 'cloth', 'world'].includes(key)));
-    expect(keysOf(hintsOf(wonders, 'p1'))).toEqual(keysOf(HINT_KEYS).filter((key) => !['harborChoices', 'targets', 'board', 'clothVictims'].includes(key)));
+    expect(keysOf(hintsOf(wonders, 'p1'))).toEqual(keysOf(HINT_KEYS).filter((key) => !['harborChoices', 'targets', 'board', 'clothVictims', 'robberChoice'].includes(key)));
     for (const profileId of ['sf-new-shores-2025', 'sf-four-islands-2025', 'sf-forgotten-tribe-2025', 'sf-cloth-for-catan-2025', 'sf-through-the-desert-2025', 'sf-new-world-2025']) {
       const state = emptySeafarersGame(profileId === 'sf-new-shores-2025' ? 4 : 3, 0, 'action', profileId);
       expect(keysOf(viewOf(state, 'p1')), profileId).not.toContain('wonders');

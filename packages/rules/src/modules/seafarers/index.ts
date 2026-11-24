@@ -29,6 +29,7 @@ import {
 } from './cloth.ts';
 import { allowBuilding, claimIslands } from './islands.ts';
 import { moveBandit, pirateTargets } from './pirate.ts';
+import { CLOTH_ROBBER_COMMAND, chooseClothRobber, initRobberChoice, robberChoiceHints, robberChoicePhase } from './robber-choice.ts';
 import {
   buildShip,
   buildableShipEdges,
@@ -127,7 +128,9 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
     ...(view.tribe ? tribeHints : {}),
     // 布匹產地才有偷布匹的提示欄位（偷海盜的對象時可改偷布匹的玩家）；其他劇本的鍵集合不變（D7）。
     ...(view.cloth ? { clothVictims: state.pending?.kind === 'steal' && state.pending.actor === playerId && state.pending.pirate
-      ? clothVictims(state, state.pending.candidates) : [] as string[] } : {}),
+      ? clothVictims(state, state.pending.candidates) : [] as string[],
+      // variable setup 的選強盜：只有起始玩家在 `robber` 階段有可選的 12 號格（`board` 讓棋盤自動進入選格）。
+      ...(robberChoicePhase(state) ? robberChoiceHints(state, playerId) : {}) } : {}),
     // 新世界設置階段的港口：只有輪到的玩家有選邊提示；其他劇本不帶這些鍵。
     ...(view.world ? worldHints(state, playerId) : {}),
     // 卡坦奇觀才有奇觀提示欄位：可認領的奇觀與能否蓋下一層（只對自己的行動階段）；其他劇本的鍵集合不變（D7）。
@@ -169,6 +172,8 @@ export const seafarersModule: RulesModule = {
     if (isForgottenTribe(ctx)) initTribe(state, ctx, slot);
     if (isClothForCatan(ctx)) {
       initCloth(state, slot);
+      // variable setup：起始村落之前先由起始玩家在 12 號圓片格中選強盜（SF25 p. 15）。
+      initRobberChoice(state, ctx);
       // 第三輪（SF25 p. 14）：前兩輪之後，從起始玩家起順時針每人再放一個村落加一條路或船。
       const setup = state.turn.setup!;
       setup.order = [...setup.order, ...state.players.map((player) => player.seat)];
@@ -264,6 +269,7 @@ export const seafarersModule: RulesModule = {
     'fog.choose': chooseFog,
     'harbor.place': placeHarbor,
     'cloth.steal': stealCloth,
+    [CLOTH_ROBBER_COMMAND]: chooseClothRobber,
     [WORLD_HARBOR_COMMAND]: placeWorldHarbor,
     'wonder.choose': chooseWonder,
     'wonder.build': buildWonder,

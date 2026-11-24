@@ -15,7 +15,7 @@
 
 import type { AwardRules, ProductionResult, ScoreOptions } from '../analysis.ts';
 import type { CommandErrorCode } from '../messages.ts';
-import type { ProfileDefinition } from '../profiles.ts';
+import type { ProfileDefinition, SetupMode } from '../profiles.ts';
 import type { Rng } from '../rng.ts';
 import type { BoardTopology } from '../topology.ts';
 import type {
@@ -117,6 +117,8 @@ export interface RulesKit {
 
 export interface ModuleContext {
   profile: ProfileDefinition;
+  /** Setup mode of the game being created; only set for `initGame` (布匹產地的 variable setup 選強盜用). */
+  setupMode?: SetupMode;
   rng: Rng;
   kit: RulesKit;
 }

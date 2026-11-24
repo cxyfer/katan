@@ -186,8 +186,11 @@ export interface SetupState {
   /** Seat indices in placement order: forward round then reverse round. */
   order: number[];
   index: number;
-  /** `harbor`: New World players take turns placing ports before the starting settlements. */
-  stage: 'building' | 'road' | 'harbor';
+  /**
+   * `harbor`: New World players take turns placing ports before the starting settlements.
+   * `robber`: Cloth for Catan (variable setup) — the starting player picks the 12-disc hex for the robber first.
+   */
+  stage: 'building' | 'road' | 'harbor' | 'robber';
   round: 1 | 2;
   /**
    * 布匹產地（SF25 p. 14）的第三輪：順時針每人再放一個村落加一條路或船，起始資源按它發。

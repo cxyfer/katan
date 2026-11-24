@@ -87,7 +87,7 @@ export interface GameView {
     phase: string;
     dice: [number, number] | null;
     devCardPlayed: boolean;
-    setup: { seat: number; stage: 'building' | 'road' | 'harbor'; round: 1 | 2; remaining: number; third?: true } | null;
+    setup: { seat: number; stage: 'building' | 'road' | 'harbor' | 'robber'; round: 1 | 2; remaining: number; third?: true } | null;
     pairedActor: 1 | 2;
   };
   /** The active mandatory choice. */

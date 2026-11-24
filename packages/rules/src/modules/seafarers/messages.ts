@@ -18,6 +18,7 @@ export const messages = {
     'cloth.trade',
     'cloth.produced',
     'cloth.stolen',
+    'cloth.robberChosen',
     'world.harborDrawn',
     'world.harborPlaced',
     'world.harborsSkipped',
