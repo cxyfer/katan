@@ -826,6 +826,16 @@ describe('SFX-S6 終局：回合結束時 ≥5 個部落沒有布匹', () => {
     expect(single.result).toMatchObject({ playerId: 'p2', playerIds: ['p2'], cause: 'clothExhausted' });
   });
 
+  it('耗盡終局比較含隱藏分數牌的總分（與目標分判定一致）', () => {
+    const state = ready(3);
+    exhaust(state, 5);
+    settle(state, 'p1', legalBuildingVertices(state, 'p1', { setup: true })[0]!);
+    settle(state, 'p2', legalBuildingVertices(state, 'p2', { setup: true }).find((v) => !state.board.buildings[v] && v > 60)!);
+    player(state, 'p1').devCards = ['victoryPoint']; // 公開分數與 p2 相同（各 1 分），含隱藏牌 p1 勝
+    const done = endTurn(state).state;
+    expect(done.result).toMatchObject({ playerId: 'p1', playerIds: ['p1'], cause: 'clothExhausted' });
+  });
+
   it('分數含布匹的 VP：布匹 2 枚 = 1 分；耗盡終局比較的是含布匹分數的總分', () => {
     const state = ready(3);
     exhaust(state, 5);
