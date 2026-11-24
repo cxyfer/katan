@@ -13,7 +13,8 @@
  *   每加一艘船線的船，新邊必須接在船線的端點，並讓「端點到下一個目標的距離」減 1；距離是在目前空著的海邊上算的
  *   （別人的建築擋住的交叉點不能經過，海盜的暫時限制不算）。船放在船線端點且距離減 1 就是船線的延伸；
  *   否則，碰到東島陸地格的邊是「大島周圍的其他海路」（`isLineEdge` 為 false），不受限制；不碰東島的邊不是延伸就被拒絕。
- *   到達 beachhead 後目標換成堡壘；到達堡壘後船線完成，不能再延伸。船線上的船不可移動（`shipMoveBlocked`）。
+ *   到達 beachhead 後目標換成堡壘；到達堡壘後船線完成，不能再延伸。船線上的船不可移動（`shipMoveBlocked`），
+ *   只有一個例外：端點到目標完全不通（被圍死）時，末端的船可以用 `ship.move` 退回（`lineBacktrack`，偏離 SF25）。
  * - beachhead：船線到達後才可在那裡蓋村落（照常付費）。海盜群島（東島以外的陸地）上只有自己的 beachhead
  *   可以蓋村落，而且要自己的船線（船，不是路）已到達；起始村落只放東島。海盜群島上的路只能從合法取得的建築
  *   （beachhead 村落、收復的堡壘）接出去，未收復的堡壘不能當路的起點（`roadAllowed`）。
@@ -186,11 +187,6 @@ export interface LineContext {
   next: LineTarget;
   /** 下一個目標的交叉點；船線完成時為 null。 */
   targetVertex: number | null;
-  /**
-   * 船線還沒有船時：自己在東島的海岸建築所在的交叉點裡，有沒有到得了目標的（距離 ≥ 1）。
-   * 沒有的話才是「完全無路」（`shortestPathFallback`）。有船線時不用（看端點的距離）。
-   */
-  startable: boolean;
   /** 每個交叉點到目標的距離（只走空著的、不碰東島的海邊；別人的建築擋住的交叉點不能經過）；到不了為 -1。 */
   dist: number[];
 }
@@ -209,11 +205,19 @@ export function lineVertices(state: GameState, line: ShipLine): number[] {
   return out;
 }
 
+/** 去掉末端一艘船的船線；一艘都不剩時回到「沒有船線」（只能從海岸建築重新起頭）。 */
+function truncated(line: ShipLine): ShipLine {
+  const edges = line.edges.slice(0, -1);
+  return { start: edges.length > 0 ? line.start : null, edges };
+}
+
 /** 玩家船線的狀態：端點、下一個目標與目標的距離表。`vacated` 是正要被移走的船的邊（視為空）。 */
 export function lineContext(state: GameState, playerId: string, vacated?: number): LineContext | null {
   const slot = pirateIslandsView(state);
   if (!slot) return null;
-  const line = slot.lines[playerId] ?? { start: null, edges: [] };
+  const full = slot.lines[playerId] ?? { start: null, edges: [] };
+  // 正要被移走的是船線末端的船（退回）：船線視為已經少了它。
+  const line = vacated !== undefined && full.edges[full.edges.length - 1] === vacated ? truncated(full) : full;
   const vertices = lineVertices(state, line);
   const beachhead = slot.beachheads.find((entry) => entry.player === playerId)?.vertex ?? null;
   const fortress = slot.fortresses.find((entry) => entry.player === playerId)?.vertex ?? null;
@@ -245,9 +249,7 @@ export function lineContext(state: GameState, playerId: string, vacated?: number
     }
   }
   const end = vertices.length > 0 ? vertices[vertices.length - 1]! : null;
-  const startable = end !== null || dist.some((distance, vertex) =>
-    distance >= 1 && canStartAt(state, playerId, vertex));
-  return { line, end, next, targetVertex, startable, dist };
+  return { line, end, next, targetVertex, dist };
 }
 
 export interface LineShipOptions {
@@ -261,8 +263,7 @@ export interface LineShipOptions {
 
 export type LineShip =
   | { kind: 'free' }
-  /** `relaxed`：完全無路時的放寬（`shortestPathFallback`），沒有走最短路徑。 */
-  | { kind: 'line'; from: number; to: number; relaxed: boolean }
+  | { kind: 'line'; from: number; to: number }
   | { kind: 'refused'; reason: 'done' | 'not-at-end' | 'not-shortest' };
 
 /**
@@ -302,38 +303,22 @@ export function lineShip(state: GameState, playerId: string, edge: number, optio
     // 兩端都接得上時取較近目標的方向（距離較大的一端當出發點）。
     if (!best || here > ctx.dist[best.from]!) best = { from, to };
   }
-  if (best) return { kind: 'line', ...best, relaxed: false };
-  if (attached && fallbackApplies(state, ctx)) {
-    // 完全無路：往任何合法方向延伸（端點或自己的建築／船接得上的那一端）。
-    for (const [from, to] of candidates) {
-      // 放寬也不能把端點推到別人的建築上（之後再也接不下去），或繞回自己的船線。
-      if (isBlockedFor(state, to, playerId) || onLine.has(to)) continue;
-      // 放寬也不能把端點推進死巷：新端點還要有一條空著的邊可以再接出去。
-      if (!hasContinuation(state, playerId, to, edge, onLine)) continue;
-      if (ctx.end !== null ? from === ctx.end : (options.setupVertex !== undefined ? from === options.setupVertex : canStartAt(state, playerId, from))) {
-        return { kind: 'line', from, to, relaxed: true };
-      }
-    }
-  }
+  if (best) return { kind: 'line', ...best };
   if (coastal) return { kind: 'free' };
   return { kind: 'refused', reason: attached ? 'not-shortest' : 'not-at-end' };
 }
 
-/** 這個頂點除了 `except` 之外，還有空著的海邊通到沒被擋住、也不在自己船線上的頂點。 */
-function hasContinuation(state: GameState, playerId: string, vertex: number, except: number, onLine: ReadonlySet<number>): boolean {
-  const topo = topologyOf(state);
-  return topo.vertices[vertex]!.edges.some((edge) => {
-    if (edge === except || state.board.roads[edge] || !isSeaEdge(state, edge)) return false;
-    const [a, b] = topo.edges[edge]!.vertices;
-    const next = a === vertex ? b : a;
-    return !isBlockedFor(state, next, playerId) && !onLine.has(next);
-  });
-}
-
-/** 完全無路：目標在空著的海邊上到不了（有船線看端點，還沒有船線看有沒有可出發的建築或船）。 */
-function fallbackApplies(state: GameState, ctx: LineContext): boolean {
-  if (!getProfile(state.profileId)?.shortestPathFallback) return false;
-  return ctx.end !== null ? ctx.dist[ctx.end]! < 0 : !ctx.startable;
+/**
+ * 退回（`stuckLineBacktrack`，偏離 SF25，使用者決定 2026-11-24）：船線端點到目前目標在空著的海邊上完全不通
+ * 時，船線**末端**的那一艘船可以移動（用一般的 `ship.move`），玩家退一格再改走別條路；移走後仍不通就可以
+ * 再退下一艘。其他情況船線上的船不可移動。移走之後回到嚴格的最短路徑規則。
+ */
+export function lineBacktrack(state: GameState, playerId: string, edge: number): boolean {
+  if (!getProfile(state.profileId)?.stuckLineBacktrack) return false;
+  const line = pirateIslandsView(state)?.lines[playerId];
+  if (!line || line.edges[line.edges.length - 1] !== edge) return false;
+  const ctx = lineContext(state, playerId);
+  return !!ctx && ctx.next !== 'done' && ctx.end !== null && ctx.dist[ctx.end]! < 0;
 }
 
 /** 船線規則是否允許這個位置（沒有這個劇本的狀態時一律允許）。 */
@@ -341,18 +326,24 @@ export function lineAllows(state: GameState, playerId: string, edge: number, opt
   return lineShip(state, playerId, edge, options).kind !== 'refused';
 }
 
-/** 一艘船放到（或移到）`edge` 之前呼叫：若它是船線的延伸就記進船線。 */
+/** 一艘船放到（或移到）`edge` 之前呼叫：若它是船線的延伸就記進船線；移走的是末端的船時先把船線截短。 */
 export function recordLineShip(state: GameState, playerId: string, edge: number, options: LineShipOptions = {}): void {
+  const slot = pirateIslandsView(state);
+  if (!slot) return;
   const step = lineShip(state, playerId, edge, { ...options, line: undefined });
+  const line = slot.lines[playerId]!;
+  if (options.moving !== undefined && line.edges[line.edges.length - 1] === options.moving) {
+    line.edges.pop();
+    if (line.edges.length === 0) line.start = null;
+  }
   if (step.kind !== 'line') return;
-  const line = pirateIslandsView(state)!.lines[playerId]!;
   if (line.start === null) line.start = step.from;
   line.edges.push(edge);
 }
 
-/** 船線上的船不可移動（一般的船在大島周圍的海路上，照一般規則）。 */
+/** 船線上的船不可移動，除非是被圍死時可以退回的末端船（一般的船在大島周圍的海路上，照一般規則）。 */
 export function lineShipFixed(state: GameState, playerId: string, edge: number): boolean {
-  return pirateIslandsView(state)?.lines[playerId]?.edges.includes(edge) ?? false;
+  return (pirateIslandsView(state)?.lines[playerId]?.edges.includes(edge) ?? false) && !lineBacktrack(state, playerId, edge);
 }
 
 // ---------------------------------------------------------------------------
@@ -376,5 +367,6 @@ export function projectPirateIslands(state: GameState, slot: PirateIslandsState)
 export function pirateLineHints(state: GameState, playerId: string) {
   const ctx = lineContext(state, playerId);
   if (!ctx) return null;
-  return { next: ctx.next, target: ctx.targetVertex, end: ctx.end, edges: ctx.line.edges.slice() };
+  const last = ctx.line.edges[ctx.line.edges.length - 1];
+  return { next: ctx.next, target: ctx.targetVertex, end: ctx.end, edges: ctx.line.edges.slice(), stuck: last !== undefined && lineBacktrack(state, playerId, last) };
 }

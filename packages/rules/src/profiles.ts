@@ -146,10 +146,10 @@ export interface ProfileDefinition {
    */
   fogOnMove?: boolean;
   /**
-   * 海盜巢穴：西島船線的端點到目標在目前空著的海邊上完全不連通（被其他海路擋死）時，放寬成往任何合法方向
-   * 延伸，讓遊戲不會卡死。這是偏離 SF25 的防卡死處理（spec §6.6、OQ-3），S7a 的模擬證明它會發生。
+   * 海盜巢穴：西島船線的端點到目前目標在空著的海邊上完全不通（被其他海路圍死）時，玩家可以把船線末端的
+   * 船移走（退一格）再改走別條路。偏離 SF25（沒有定義），使用者決定 2026-11-24；spec §6.6、OQ-3。
    */
-  shortestPathFallback?: boolean;
+  stuckLineBacktrack?: boolean;
   variants: readonly VariantId[];
   /** Rules modules the engine runs for this profile, in hook order. */
   ruleModules: readonly string[];
@@ -366,7 +366,7 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
   // 3、4 人共用同一張 49 格圖；無島嶼獎勵；規則內關閉最長道路、最大軍隊與強盜。
   seafarersScenarioProfile('sf-pirate-islands-2025', 'pirate-islands', 10, 'pp. 16–17', {
     topologyId: 'sf-pirate-islands',
-    shortestPathFallback: true,
+    stuckLineBacktrack: true,
     implemented: true,
   }),
   // 結束條件是「完成奇觀，或 10 分且完成層數比其他每位玩家都高」（`winCause`）；`victoryTarget` 是其中的 10 分。
