@@ -9,7 +9,7 @@ import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { epView } from '../board/explorersPirates.ts';
 import { shownCitiesKnights, shownExplorersPirates, shownSeafarers, shownTradersBarbarians, shownHandSize } from '../state/table.ts';
-import { clothPoints, harborRatio, islandBonusPoints, seafarersView } from '../board/seafarers.ts';
+import { clothPoints, harborRatio, islandBonusPoints, seafarersHints, seafarersView } from '../board/seafarers.ts';
 import { activeStrength, citiesKnightsPoints, citiesKnightsView } from '../board/citiesKnights.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
@@ -376,6 +376,10 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           <span>{t('sf.cloth.supply')}: {formatNumber(state.locale, cloth.supply)} · {t('sf.cloth.exhausted', { count: formatNumber(state.locale, empty) })}</span>
         </p>;
       })()}
+      {seafarersHints(view)?.pirateLine?.stuck && <p className="players__cloth" data-testid="line-stuck" hidden={!expanded}>
+        <GameIcon name="ship" size={14} />
+        <span>{t('sf.pirate.stuck')}</span>
+      </p>}
       <p className="players__obligation" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}
         title={action ? t(action.messageId, action.params) : t('app.loading')}>
         <GameIcon name="flag" size={14} />

@@ -159,6 +159,38 @@ describe('Pirate Islands board (3D)', () => {
   });
 });
 
+describe('Pirate Islands boxed-in line', () => {
+  /** p1 的船線端點旁的邊全被 p4 的船占住：端點到目標完全不通，末端（預置）的船可以移動。 */
+  function boxedIn(): GameState {
+    const state = pirateState(4);
+    const slot = (state.moduleState as unknown as { seafarers: { pirateIslands: { lines: Record<string, { start: number; edges: number[] }> } } }).seafarers.pirateIslands;
+    const geometry = buildGeometry('sf-pirate-islands', 100, state.board.layout.terrain);
+    const line = slot.lines.p1!;
+    const info = geometry.topology.edges[line.edges[0]!]!;
+    const end = info.vertices.find((vertex) => vertex !== line.start)!;
+    for (const edge of geometry.topology.vertices[end]!.edges) if (!state.board.roads[edge]) state.board.roads[edge] = { player: 'p4', ship: true };
+    return state;
+  }
+
+  it('lists the last ship as movable and says so in the panel, in both locales; nothing when the line is free', () => {
+    const state = boxedIn();
+    const view = viewOf(state, 'p1');
+    const hints = seafarersHints(view)!;
+    expect(hints.pirateLine).toMatchObject({ stuck: true });
+    expect(hints.movableShips.map((entry) => entry.edge)).toContain(hints.pirateLine!.edges[0]);
+    for (const locale of ['en', 'zh-Hant'] as const) {
+      render(<LocaleProvider locale={locale}><PlayersPanel controller={controllerFor(view, locale)} /></LocaleProvider>);
+      expect(screen.getByTestId('line-stuck').textContent).toBe(translate(locale, 'sf.pirate.stuck'));
+      cleanup();
+    }
+    expect(translate('en', 'sf.pirate.stuck')).toContain('boxed in');
+    expect(translate('zh-Hant', 'sf.pirate.stuck')).toContain('被圍住');
+    render(<LocaleProvider locale="en"><PlayersPanel controller={controllerFor(viewOf(pirateState(4), 'p1'), 'en')} /></LocaleProvider>);
+    expect(screen.queryByTestId('line-stuck')).toBeNull();
+    cleanup();
+  });
+});
+
 describe('Pirate Islands player panel and messages', () => {
   it('does not count an unrecaptured fortress as a settlement: after setup 3 settlements, 3 VP', () => {
     const state = pirateState(4);
