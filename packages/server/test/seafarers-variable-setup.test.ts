@@ -38,10 +38,10 @@ describe('variable setup over the API', () => {
         expect(room).toMatchObject({ profileId: id, setupMode: 'variable' });
       }
     }
-    // 其他劇本（世外部落只有 fixed）仍拒絕 variable。
+    // 其他設定（Heading for New Shores 只有 fixed）仍拒絕 variable；S10b 起世外部落等也支援 variable。
     const response = await host.post('/api/rooms', {
       visibility: 'private', capacity: 4, setupMode: 'variable',
-      ruleset: { expansions: ['seafarers'], scenario: 'forgotten-tribe', variants: [] },
+      ruleset: { expansions: ['seafarers'], variants: [] },
     });
     host.expectError(response, 'E_UNSUPPORTED_COMBINATION');
   });

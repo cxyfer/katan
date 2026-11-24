@@ -192,7 +192,7 @@ export async function runSetupOverApi(
           hints?: {
             legalRoads: number[];
             legalSettlements: number[];
-            modules?: { seafarers?: { harborChoices?: { edges: number[] } } };
+            modules?: { seafarers?: { harborChoices?: { edges: number[] }; robberChoice?: number[] } };
           };
         };
       }>(`/api/games/${gameId}`),
@@ -202,6 +202,9 @@ export async function runSetupOverApi(
       // 新世界的港口階段：選第一個合法的邊。
       setup?.stage === 'harbor'
         ? { type: 'world.harbor', edge: hints!.modules!.seafarers!.harborChoices!.edges[0]! }
+        // 布匹產地 variable：起始玩家先在 12 號圓片格中選強盜。
+        : setup?.stage === 'robber'
+        ? { type: 'cloth.robber', hex: hints!.modules!.seafarers!.robberChoice![0]! }
         : setup?.stage === 'road'
         ? { type: 'setup.placeRoad', edge: hints!.legalRoads[0]! }
         : { type: 'setup.placeBuilding', vertex: hints!.legalSettlements[0]! };
