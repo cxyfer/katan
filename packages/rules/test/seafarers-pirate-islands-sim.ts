@@ -1,0 +1,208 @@
+/**
+ * The Pirate Islands（S7a）的隨機合法動作模擬：量測西島船線有沒有「完全無路可走」的情況
+ * （spec §6.6、OQ-3）。此時還沒有巡弋海盜與進攻，所以模擬只跑到每位玩家的船線到達堡壘（或回合上限）。
+ *
+ * 玩家只做隨機的合法動作：蓋船（偏向船線，其餘是任一合法的船）、村落、城市、路；手牌每次動作前補滿，
+ * 讓模擬測的是路徑而不是經濟。海盜在每個回合開始時隨機移到航道上的某一格（模擬 S7b 的巡弋，
+ * 所以海盜造成的暫時阻擋會出現在各處）。
+ */
+
+import { isLandHex, topologyOf } from '../src/analysis.ts';
+import { actionHints, applyCommand, type Command } from '../src/engine.ts';
+import { legalShipEdges } from '../src/modules/seafarers/ships.ts';
+import { lineContext, lineShip, pirateIslandsView } from '../src/modules/seafarers/pirateIslands.ts';
+import { seededRng, type Rng } from '../src/rng.ts';
+import type { GameState, Resource } from '../src/types.ts';
+import { seafarersGame } from './seafarers-helpers.ts';
+
+export const PI_PROFILE = 'sf-pirate-islands-2025';
+
+type AnyCommand = Command | { type: string; [field: string]: unknown };
+
+export interface PirateSimOptions {
+  players: 3 | 4;
+  seed: number;
+  /** 回合上限（每位玩家各算一回合）。 */
+  maxTurns?: number;
+  /** 每次動作選船線延伸（而不是其他合法動作）的機率。 */
+  lineBias?: number;
+  /** 除錯：船線無路可走時呼叫。 */
+  onUnreachable?: (state: GameState, playerId: string) => void;
+}
+
+export interface PirateSimResult {
+  state: GameState;
+  turns: number;
+  /** 到達堡壘（船線完成）的玩家數。 */
+  linesDone: number;
+  /** 船線有船、下一個目標在空著的海邊上到不了的次數（每個玩家每個回合各算一次）。 */
+  unreachable: number;
+  /** 船線還沒有船、所有可接出的交叉點都到不了目標的次數。 */
+  noStart: number;
+  /** 以放寬規則（`shortestPathFallback`）放下的船數。 */
+  relaxedShips: number;
+  /** 因為配件用完（15 艘）而沒完成的玩家數。 */
+  outOfShips: number;
+  /** 被「完成」之外的原因擋住：端點有路但目前沒有任何合法的船線延伸（海盜等暫時限制以外）。 */
+  noExtension: number;
+}
+
+function attempt(state: GameState, actor: string, command: AnyCommand, rng: Rng): GameState | null {
+  const outcome = applyCommand(state, actor, command as Command, rng);
+  return outcome.ok ? outcome.state : null;
+}
+
+const RICH: Record<Resource, number> = { lumber: 6, brick: 6, wool: 6, grain: 6, ore: 6 };
+
+function enrich(state: GameState, playerId: string): void {
+  const player = state.players.find((candidate) => candidate.id === playerId)!;
+  player.resources = { ...RICH };
+}
+
+function pick<T>(items: readonly T[], rng: Rng): T | undefined {
+  return items.length === 0 ? undefined : items[rng.int(items.length)];
+}
+
+interface Hints {
+  legalShips: number[];
+  setupShips: number[];
+}
+
+function sfHints(state: GameState, id: string): Hints {
+  return actionHints(state, id).modules!.seafarers as Hints;
+}
+
+function setupStep(state: GameState, rng: Rng): GameState {
+  const setup = state.turn.setup!;
+  const actor = state.players[setup.order[setup.index]!]!.id;
+  const hints = actionHints(state, actor);
+  if (setup.stage === 'building') {
+    return attempt(state, actor, { type: 'setup.placeBuilding', vertex: pick(hints.legalSettlements, rng)! }, rng)!;
+  }
+  const ships = sfHints(state, actor).setupShips;
+  const roads = hints.legalRoads;
+  const both = [...ships.map((edge) => ({ type: 'setup.placeShip', edge })), ...roads.map((edge) => ({ type: 'setup.placeRoad', edge }))];
+  return attempt(state, actor, pick(both, rng)!, rng)!;
+}
+
+/** 目前船線的延伸候選（用 `legalShips` 與船線判定的交集：不碰東島的邊）。 */
+function lineCandidates(state: GameState, actor: string): number[] {
+  const ctx = lineContext(state, actor)!;
+  if (ctx.next === 'done') return [];
+  const topo = topologyOf(state);
+  return legalShipEdges(state, actor).filter((edge) =>
+    !topo.edges[edge]!.hexes.some((hex) => isLandHex(state, hex) && state.board.layout.islands[hex] === 1));
+}
+
+export function simulatePirateIslands(options: PirateSimOptions): PirateSimResult {
+  const { players, seed, maxTurns = 80, lineBias = 0.85 } = options;
+  const rng = seededRng(seed * 104729 + players);
+  let { state } = seafarersGame(players, seed, PI_PROFILE);
+  const slot = pirateIslandsView(state)!;
+  let unreachable = 0;
+  let noStart = 0;
+  let noExtension = 0;
+  let relaxedShips = 0;
+  const topo = topologyOf(state);
+  const observe = (current: GameState): void => {
+    for (const player of current.players) {
+      const ctx = lineContext(current, player.id)!;
+      if (ctx.next === 'done') continue;
+      if (ctx.end !== null) {
+        if (ctx.dist[ctx.end]! < 0) {
+          unreachable++;
+          options.onUnreachable?.(current, player.id);
+        }
+        continue;
+      }
+      // 還沒有船線：自己的任一個建築或船所在的交叉點，或東島海岸上的任一交叉點，有沒有到得了目標的？
+      const reachable = ctx.dist.some((distance, vertex) => distance >= 1 && topo.vertices[vertex]!.edges.some((edge) =>
+        topo.edges[edge]!.hexes.some((hex) => isLandHex(current, hex) && current.board.layout.islands[hex] === 1)));
+      if (!reachable) noStart++;
+    }
+  };
+
+  const beachheads = new Set(slot.beachheads.map((entry) => entry.vertex));
+  let step = 0;
+  while (state.turn.phase === 'setup' && step++ < 200) {
+    state = setupStep(state, rng);
+    observe(state);
+  }
+  let turns = 0;
+  while (turns < maxTurns && !state.result) {
+    const actor = state.players[state.turn.seat]!;
+    if (state.players.every((player) => lineContext(state, player.id)!.next === 'done')) break;
+    turns++;
+    // 模擬巡弋：海盜隨機移到航道上的另一格（S7b 才會真的移動）。
+    state.board.pirate = slot.route[rng.int(slot.route.length)]!;
+    enrich(state, actor.id);
+    const rolled = attempt(state, actor.id, { type: 'turn.roll' }, rng);
+    if (!rolled) throw new Error('cannot roll');
+    state = rolled;
+    // 7：手牌超過 7 張的人棄牌（強盜不使用，沒有後續步驟）。
+    for (let guard = 0; state.pending && guard < 10; guard++) {
+      const pending = state.pending;
+      if (pending.kind !== 'discard') throw new Error(`unexpected pending ${pending.kind}`);
+      const id = Object.keys(pending.required).find((candidate) => !pending.submitted[candidate])!;
+      const player = state.players.find((candidate) => candidate.id === id)!;
+      const pool: Resource[] = [];
+      for (const resource of Object.keys(player.resources) as Resource[]) for (let i = 0; i < player.resources[resource]; i++) pool.push(resource);
+      state = attempt(state, id, { type: 'pending.discard', resources: pool.slice(0, pending.required[id]) }, rng)!;
+    }
+    const actions = 1 + rng.int(4);
+    for (let action = 0; action < actions; action++) {
+      enrich(state, actor.id);
+      const hints = actionHints(state, actor.id);
+      const candidates = lineCandidates(state, actor.id);
+      // 偏向船線延伸；其餘隨機：任一合法的船、村落、城市、路。
+      const tries: AnyCommand[] = [];
+      if (candidates.length > 0 && rng.int(1000) / 1000 < lineBias) tries.push({ type: 'build.ship', edge: pick(candidates, rng)! });
+      const others: AnyCommand[] = [
+        ...sfHints(state, actor.id).legalShips.map((edge) => ({ type: 'build.ship', edge })),
+        // 村落只蓋在 beachhead（避免模擬靠分數結束）；再加上隨機的路。
+        ...hints.legalSettlements.filter((vertex) => beachheads.has(vertex)).map((vertex) => ({ type: 'build.settlement', vertex })),
+        ...hints.legalRoads.map((edge) => ({ type: 'build.road', edge })),
+      ];
+      const other = pick(others, rng);
+      if (other) tries.push(other);
+      let done = false;
+      for (const command of tries) {
+        const edge = command.type === 'build.ship' ? Number(command.edge) : null;
+        const relaxed = edge !== null && (lineShip(state, actor.id, edge) as { relaxed?: boolean }).relaxed === true;
+        const next = attempt(state, actor.id, command, rng);
+        if (next) {
+          if (relaxed) relaxedShips++;
+          state = next;
+          done = true;
+          break;
+        }
+      }
+      if (!done) break;
+      observe(state);
+    }
+    // 端點有路卻沒有任何合法延伸（先不看海盜：海盜每回合都換位置）。
+    for (const player of state.players) {
+      const ctx = lineContext(state, player.id)!;
+      if (ctx.next === 'done' || ctx.end === null || ctx.dist[ctx.end]! < 0) continue;
+      const ships = state.board.roads.filter((road) => road?.ship && road.player === player.id).length;
+      if (ships >= 15) continue;
+      const saved = state.board.pirate;
+      state.board.pirate = null;
+      enrich(state, player.id);
+      if (lineCandidates(state, player.id).length === 0) noExtension++;
+      state.board.pirate = saved;
+    }
+    if (state.result) break;
+    const ended = applyCommand(state, actor.id, { type: 'turn.end' }, rng);
+    if (!ended.ok) throw new Error(`cannot end turn: ${ended.error.code} ${JSON.stringify(state.pending)}`);
+    state = ended.state;
+  }
+  let linesDone = 0;
+  let outOfShips = 0;
+  for (const player of state.players) {
+    const ctx = lineContext(state, player.id)!;
+    if (ctx.next === 'done') linesDone++;
+    else if (state.board.roads.filter((road) => road?.ship && road.player === player.id).length >= 15) outOfShips++;
+  }
+  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, relaxedShips };
+}
