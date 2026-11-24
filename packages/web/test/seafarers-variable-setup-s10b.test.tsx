@@ -16,7 +16,7 @@ import { LocaleProvider } from '../src/i18n/context.tsx';
 import { translateEvent } from '../src/i18n/events.ts';
 import { t as translate } from '../src/i18n/index.ts';
 import { requiredActionFor } from '../src/state/pending.ts';
-import { EMPTY_SELECTION, initialTableState, type TableState } from '../src/state/table.ts';
+import { activeTurnKey, EMPTY_SELECTION, initialTableState, type TableState } from '../src/state/table.ts';
 import { memoryStorage } from '../src/state/session.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { createFakeApi } from '../src/test/fake-api.ts';
@@ -159,6 +159,15 @@ describe('Cloth for Catan: choosing the robber in the variable setup', () => {
         expect(translate(locale, id), `${locale} ${id}`).not.toBe(id);
       }
     }
+  });
+
+  it('the active turn key changes when the robber is chosen (remaining steps do not change)', () => {
+    const state = gameState(CLOTH, 4, 'variable');
+    const before = activeTurnKey(tableWith(viewOf(state)))!;
+    const hex = state.board.layout.numbers.indexOf(12);
+    const outcome = applyCommand(state, 'p1', { type: 'cloth.robber', hex } as unknown as Command, seededRng(1));
+    if (!outcome.ok) throw new Error(outcome.error.code);
+    expect(activeTurnKey(tableWith(viewOf(outcome.state)))).not.toBe(before);
   });
 
   it('the guide for other players names the chooser', () => {

@@ -609,7 +609,9 @@ export function activeTurnKey(state: TableState): string | null {
   // 港口轉起始村落都是新的一步（其他劇本沒有 `world`，key 不變）。
   const world = (game.view.modules?.seafarers as { world?: { placed: number; rerolls: number } } | undefined)?.world;
   const worldStep = setup && world ? `:${setup.stage}:${world.placed}:${world.rerolls}` : '';
-  const setupStep = setup ? `${setup.round}:${setup.remaining}${worldStep}` : 'play';
+  // 布匹產地 variable 的選強盜階段同樣不動 `remaining`：加上階段名，選完進起始村落才是新的一步。
+  const robberStep = setup?.stage === 'robber' ? ':robber' : '';
+  const setupStep = setup ? `${setup.round}:${setup.remaining}${worldStep}${robberStep}` : 'play';
   return `${game.gameId}:${game.view.windowId}:${setupStep}`;
 }
 
