@@ -39,6 +39,7 @@ import { createRobberModel } from './diorama-robber.ts';
 import { DioramaExplorersPirates } from './DioramaExplorersPirates.tsx';
 import { TbScenePieces, tbNumberTokens } from './TbScenePieces.tsx';
 import { DioramaSeafarers, PirateGhost, ShipGhost } from './DioramaSeafarers.tsx';
+import { tribeNumberTokens } from './diorama-ships.ts';
 import { isShipCommand } from '../seafarers.ts';
 import { DioramaCitiesKnights, KnightGhost, Merchant } from './DioramaCitiesKnights.tsx';
 import { isCitiesKnightsVertexCommand, knightGhost, progressGhost, showsKnightGhost } from '../citiesKnights.ts';
@@ -182,8 +183,9 @@ function Lights({ quality }: { quality: 'standard' | 'low' }) {
 }
 
 function NumberBadges({ props, resources, texture }: { props: SceneProps; resources: BoardSceneResources; texture: Texture | null }) {
-  const tokens = useMemo(() => [...numberTokens(props.geometry, props.board), ...tbNumberTokens(props.geometry, props.modules, props.board)],
-    [props.board, props.geometry, props.modules]);
+  const tokens = useMemo(() => [...numberTokens(props.geometry, props.board), ...tbNumberTokens(props.geometry, props.modules, props.board),
+    ...tribeNumberTokens(props.geometry, props.seafarers?.cloth?.tribes)],
+  [props.board, props.geometry, props.modules, props.seafarers]);
   const bodies = tokens.map((token) => ({ ...token, scale: [1, 1, 1] as const }));
   const labels = tokens.map((token) => ({
     ...token,

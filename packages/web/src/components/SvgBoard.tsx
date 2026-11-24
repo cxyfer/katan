@@ -10,7 +10,7 @@ import { placementArrival } from '../board/effects.ts';
 import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HARBOR_TINT, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
 import { TbBridge, TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
-import { edgeAngle, edgeMidpoint, GiftMarker, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece } from './SvgSeafarers.tsx';
+import { edgeAngle, edgeMidpoint, GiftMarker, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece, TribeMarker } from './SvgSeafarers.tsx';
 import { harborRatio, isShipCommand, seafarersView } from '../board/seafarers.ts';
 import { FogCloud, SvgExplorersPiratesLayer } from './SvgExplorersPirates.tsx';
 import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
@@ -231,6 +231,20 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
             if (!vertex) return null;
             return <IslandBonusToken key={`island-${claim.player}-${claim.island}`} testId={`island-bonus-${claim.vertex}`}
               x={vertex.x + 17} y={vertex.y + 16} color={playerColorHex(owner?.color ?? 'white')} />;
+          })}
+          {/* 布匹產地：部落圓片、剩餘布匹與已建立關係的玩家（小島的上頂點把布匹疊在上方）。 */}
+          {seafarersView(view)?.cloth?.tribes.map((tribe, index) => {
+            const vertex = geometry.vertices[tribe.vertex];
+            if (!vertex) return null;
+            const island = geometry.topology.vertices[tribe.vertex]?.hexes.find((hex) => geometry.land[hex] !== false);
+            const centre = island === undefined ? undefined : geometry.hexes[island];
+            const linked = view.players
+              .filter((candidate) => seafarersView(view)!.cloth!.links[candidate.id]?.includes(index))
+              .map((candidate) => ({ id: candidate.id, color: playerColorHex(candidate.color), name: candidate.nickname }));
+            const label = tribe.cloth > 0 ? t('sf.cloth.tribe', { number: tribe.number, count: tribe.cloth }) : t('sf.cloth.tribeEmpty', { number: tribe.number });
+            return <TribeMarker key={`tribe-${index}`} testId={`tribe-${index}`} x={vertex.x} y={vertex.y} number={tribe.number} cloth={tribe.cloth}
+              up={!centre || vertex.y < centre.cy} linked={linked}
+              label={linked.length > 0 ? t('sf.cloth.tribeLinked', { number: tribe.number, count: tribe.cloth, players: linked.map((entry) => entry.name) }) : label} />;
           })}
           {/* 世外部落：邊上的禮物，略往框的方向推出；被拿走後從 module 狀態消失。 */}
           {seafarersView(view)?.tribe?.gifts.map((gift) => {

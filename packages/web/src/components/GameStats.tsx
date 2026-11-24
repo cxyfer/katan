@@ -97,7 +97,7 @@ export function buildStatsRows(view: GameView, stats: GameStatsData): StatsRow[]
       player,
       stats: stats.players[player.id] ?? createPlayerStats(),
       finalScore: final?.[index] ?? player.publicScore,
-      winner: view.result?.playerId === player.id,
+      winner: (view.result?.playerIds ?? [view.result?.playerId]).includes(player.id),
       settlements,
       cities,
       roads,
@@ -370,7 +370,10 @@ function StatsTable({ section, rows, bots, label }: {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, rank) => (
+            {rows.map((row, index) => {
+              // 共同勝者並列第 1；其後依標準競賽排名（兩位並列第 1 之後是第 3）。
+              const rank = row.winner ? 0 : index;
+              return (
               <tr key={row.player.id} data-testid={`stats-row-${row.player.id}`} data-winner={row.winner || undefined}>
                 <th scope="row" className="game-stats__player-col">
                   <span className="game-stats__player">
@@ -416,7 +419,8 @@ function StatsTable({ section, rows, bots, label }: {
                   );
                 })}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </StatsScroll>

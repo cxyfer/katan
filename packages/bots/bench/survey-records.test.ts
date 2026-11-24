@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { checkpointVp, openingMetrics } from './survey-observations.ts';
-import { parseRoles, parseShard, rolesFor } from './survey-records.ts';
+import { parseRoles, parseShard, rolesFor, winCredit } from './survey-records.ts';
 import { mergeShards, ShardMergeError } from './survey-merge.ts';
 
 const PROFILE = 'sf-new-shores-2025';
@@ -112,6 +112,47 @@ describe('parseShard', () => {
     expect(parseShard('c.jsonl', text(META, [game(0), unfinished])).games[1]!.finished).toBe(false);
   });
 
+  it('co-winners (Cloth for Catan, D12): every co-winner is won with a 1/k share, so a game still credits 1 win', () => {
+    const co = (seats: number[]): Json => ({
+      ...game(1, { winner: seats[0], coWinners: seats }),
+      seats: [0, 1, 2].map((index) => ({ ...seat(index, 'standard', null), won: seats.includes(index), ...(seats.includes(index) ? { winShare: 1 / seats.length } : {}) })),
+    });
+    const parsed = parseShard('co.jsonl', text(META, [game(0), co([0, 2])])).games[1]!;
+    expect(parsed.coWinners).toEqual([0, 2]);
+    expect(parsed.seats.map((entry) => winCredit(entry))).toEqual([0.5, 0, 0.5]);
+    expect(parsed.seats.reduce((sum, entry) => sum + winCredit(entry), 0)).toBe(1);
+    // 單一勝者的記錄與過去相同：份額 1，沒有 coWinners。
+    expect(parseShard('co.jsonl', text(META, [game(0), game(1)])).games.map((g) => g.coWinners)).toEqual([undefined, undefined]);
+    // 不一致：缺少份額、少於兩位、第一位不是 winner、勝者與 won 不符。
+    const noShare = { ...co([0, 2]), seats: [0, 1, 2].map((index) => ({ ...seat(index, 'standard', null), won: index !== 1 })) };
+    expect(() => parseShard('co.jsonl', text(META, [game(0), noShare]))).toThrow('needs winShare 0.5');
+    expect(() => parseShard('co.jsonl', text(META, [game(0), { ...co([0, 2]), coWinners: [0] }]))).toThrow(ShardMergeError);
+    expect(() => parseShard('co.jsonl', text(META, [game(0), { ...co([0, 2]), winner: 2 }]))).toThrow('inconsistent coWinners');
+  });
+
+  it('rejects malformed co-winner records', () => {
+    const mk = (seats: number[], winners: number[], shareOf: (index: number) => number | undefined, extra: Json = {}): Json => ({
+      ...game(1, { winner: seats[0], coWinners: seats, ...extra }),
+      seats: [0, 1, 2].map((index) => {
+        const share = shareOf(index);
+        return { ...seat(index, 'standard', null), won: winners.includes(index), ...(share === undefined ? {} : { winShare: share }) };
+      }),
+    });
+    const parse = (record: Json) => () => parseShard('bad.jsonl', text(META, [game(0), record]));
+    // 重複座位、順序顛倒、座位超出範圍。
+    expect(parse(mk([0, 0], [0], () => 0.5))).toThrow('inconsistent coWinners');
+    expect(parse(mk([2, 0], [0, 2], () => 0.5))).toThrow('inconsistent coWinners');
+    expect(parse(mk([0, 5], [0], () => 0.5))).toThrow('inconsistent coWinners');
+    // winShare 與人數不一致、缺少、或給了敗者／單一勝者。
+    expect(parse(mk([0, 2], [0, 2], (i) => (i === 1 ? undefined : 1)))).toThrow('needs winShare 0.5');
+    expect(parse(mk([0, 2], [0, 2], (i) => (i === 0 ? 0.5 : undefined)))).toThrow('needs winShare');
+    expect(parse(mk([0, 2], [0, 2], () => 0.5))).toThrow('winShare but is not a co-winner');
+    const singleWithShare = { ...game(1), seats: [0, 1, 2].map((index) => ({ ...seat(index, 'standard', 0), ...(index === 0 ? { winShare: 1 } : {}) })) };
+    expect(parse(singleWithShare)).toThrow('winShare but is not a co-winner');
+    // won 與 coWinners 不一致。
+    expect(parse(mk([0, 2], [0, 1], () => 0.5))).toThrow('disagrees');
+  });
+
   it('checks the focus rotation against --roles', () => {
     const meta = { ...META, roles: 'standard:naive' };
     const ok = game(1, { seats: [seat(0, 'naive', 0), seat(1, 'standard', 0), seat(2, 'naive', 0)] });
@@ -190,4 +231,23 @@ describe('survey observations', () => {
     expect(checkpointVp([...nextRound, [10, 4]], 5, 1, true)).toBe(3);
     expect(checkpointVp(nextRound, 5, 0, false)).toBe(4);
   });
+});
+
+describe('survey report with a shared victory', () => {
+  it('credits seats 0 and 2 half a win each in the seat table (merge report)', async () => {
+    const { mkdtempSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { spawnSync } = await import('node:child_process');
+    const share = (index: number, seats: number[]): Json => ({ ...seat(index, 'standard', null), won: seats.includes(index), ...(seats.includes(index) ? { winShare: 1 / seats.length } : {}) });
+    const co: Json = { ...game(0, { winner: 0, coWinners: [0, 2] }), seats: [0, 1, 2].map((index) => share(index, [0, 2])) };
+    const dir = mkdtempSync(join(tmpdir(), 'katan-survey-co-'));
+    const file = join(dir, 'shard.jsonl');
+    writeFileSync(file, text({ ...META, games: 1 }, [co]));
+    const run = spawnSync(process.execPath, [join(import.meta.dirname, 'survey.mjs'), '--merge', file], { encoding: 'utf8' });
+    expect(run.status, run.stderr).toBe(0);
+    // 座位勝利數：0.5、0、0.5（合計仍是 1 局）。
+    expect(run.stdout).toMatch(/\| 1 \| 1 \| 0\.5 \|/);
+    expect(run.stdout).toMatch(/\| 3 \| 1 \| 0\.5 \|/);
+  }, 60_000);
 });

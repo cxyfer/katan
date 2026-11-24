@@ -13,7 +13,7 @@ import { TradePanel } from '../src/components/TradePanel.tsx';
 import { TbPanel } from '../src/components/tb/TbPanel.tsx';
 import { tbController, tbSlot, tbState } from './tb-helpers.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
-import { initialTableState, shownBank, shownCitiesKnights, shownExplorersPirates, shownHand, tableReducer, type TableState } from '../src/state/table.ts';
+import { initialTableState, shownBank, shownCitiesKnights, shownBoardView, shownExplorersPirates, shownHand, shownSeafarers, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import type { GameView } from '@katan/rules';
 import { makeEvent, makeHints, makeIdentity, makeSnapshot, makeView } from '../src/test/fixtures.ts';
@@ -47,6 +47,36 @@ describe('roll hold in the table state', () => {
     expect(shownExplorersPirates(state)?.modules?.explorersPirates).toEqual({ players: { p1: { gold: 1 } } });
     state = tableReducer(state, { type: 'dice-presenting', value: false });
     expect(shownExplorersPirates(state)?.modules?.explorersPirates).toEqual({ players: { p1: { gold: 3 } } });
+  });
+
+  it.each(['snapshot', 'events'] as const)('holds Cloth for Catan tribes, cloth and scores until the dice settle (%s first)', (delivery) => {
+    const cloth = (tribe: number, mine: number) => ({ seafarers: { cloth: { tribes: [{ vertex: 3, number: 6, cloth: tribe }], supply: 10, links: { p1: [0] }, cloth: { p1: mine } } } });
+    const before = base();
+    before.game!.view.modules = cloth(5, 2);
+    before.game!.view.players[0]!.publicScore = 3;
+    const after = rolledSnapshot(9);
+    after.view.modules = cloth(4, 3);
+    after.view.players[0]!.publicScore = 4;
+    let state = delivery === 'events' ? tableReducer(before, { type: 'events', events: after.view.events }) : before;
+    state = tableReducer(state, { type: 'snapshot', snapshot: after });
+    expect(state.dicePresenting).toBe(true);
+    const clothOf = (view: GameView | null | undefined) => (view?.modules?.seafarers as { cloth: { tribes: { cloth: number }[]; cloth: Record<string, number> } }).cloth;
+    expect(clothOf(shownSeafarers(state))).toMatchObject({ tribes: [{ cloth: 5 }], cloth: { p1: 2 } });
+    expect(shownSeafarers(state)!.players[0]!.publicScore).toBe(3);
+    // 棋盤上的部落標記同樣停在擲骰前。
+    expect(clothOf(shownBoardView(state))).toMatchObject({ tribes: [{ cloth: 5 }] });
+    state = tableReducer(state, { type: 'dice-presenting', value: false });
+    expect(shownSeafarers(state)).toBeNull();
+    expect(clothOf(shownBoardView(state))).toMatchObject({ tribes: [{ cloth: 4 }], cloth: { p1: 3 } });
+  });
+
+  it('does not hold anything extra for scenarios without cloth', () => {
+    const before = base();
+    before.game!.view.modules = { seafarers: { islandBonus: {} } };
+    const state = tableReducer(before, { type: 'snapshot', snapshot: rolledSnapshot(9) });
+    expect(state.dicePresenting).toBe(true);
+    expect(state.rollHold?.seafarers).toBeNull();
+    expect(state.rollHold?.board).toBeNull();
   });
 
   it.each(['snapshot', 'events'] as const)('holds the bank exchange supply until the dice settle (%s first)', (delivery) => {

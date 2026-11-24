@@ -68,6 +68,22 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
         rewardSuffix: typeof p.resource === 'string' ? t(locale, 'sf.fog.rewardResource', { resource: t(locale, `resource.${p.resource}`) }) : '',
       };
     }
+    case 'cloth.trade':
+      return {
+        player, number: num(p.number),
+        gainedSuffix: num(p.gained) > 0 ? t(locale, 'sf.cloth.gainedSuffix') : t(locale, 'sf.cloth.noneSuffix'),
+      };
+    case 'cloth.produced': {
+      const gains = (p.gains ?? {}) as Record<string, number>;
+      const names = Object.keys(gains).map((id) => nameOf(id));
+      return {
+        number: num(p.number),
+        gains: names.length > 0 ? names : t(locale, 'sf.cloth.producedNone'),
+        shortSuffix: num(p.shortBy) > 0 ? t(locale, 'sf.cloth.shortSuffix', { count: num(p.shortBy) }) : '',
+      };
+    }
+    case 'cloth.stolen':
+      return { player, victim: nameOf(str(p.victim)) };
     default:
       return undefined;
   }

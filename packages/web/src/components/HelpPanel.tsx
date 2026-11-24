@@ -23,6 +23,8 @@ export function HelpPanel({ controller }: { controller: TableController }) {
   const fogIslands = scenario === 'fog-islands';
   // 世外部落沒有島嶼獎勵與金礦產出（小島全無圓片），有自己的禮物與港口規則。
   const tribe = scenario === 'forgotten-tribe';
+  // 布匹產地：沒有島嶼獎勵、最長道路與金礦產出（小島無圓片），起始設置有第三個村落，另有部落、布匹與兩種終局。
+  const cloth = scenario === 'cloth-for-catan';
 
   return (
     <section className="panel" aria-labelledby="help-heading" data-testid="help-panel">
@@ -43,7 +45,7 @@ export function HelpPanel({ controller }: { controller: TableController }) {
       <TbHelp controller={controller} />
       {seafarersView(controller.state.game?.view) && (
         <section data-testid="help-seafarers">
-          <h3>{fourIslands ? t('sf.help.four.title') : desert ? t('sf.help.desert.title') : fogIslands ? t('sf.help.fog.title') : tribe ? t('sf.help.tribe.title') : t('sf.help.title')}</h3>
+          <h3>{fourIslands ? t('sf.help.four.title') : desert ? t('sf.help.desert.title') : fogIslands ? t('sf.help.fog.title') : tribe ? t('sf.help.tribe.title') : cloth ? t('sf.help.cloth.title') : t('sf.help.title')}</h3>
           <ul className="help-rules">
             <li>{t('sf.build.ship')}: {formatResourceMap(locale, SHIP_COST)}</li>
             {fourIslands && <li data-testid="help-four-islands-setup">{t('sf.help.four.setup')}</li>}
@@ -52,6 +54,7 @@ export function HelpPanel({ controller }: { controller: TableController }) {
             {fogIslands && <li data-testid="help-fog-islands-explore">{t('sf.help.fog.explore')}</li>}
             {(['setup', 'ships', 'move', 'pirate', 'gold', 'route', 'islands'] as const)
               .filter((key) => !(fourIslands && (key === 'setup' || key === 'islands' || key === 'gold')) && !(desert && (key === 'setup' || key === 'islands')) && !(tribe && (key === 'setup' || key === 'islands' || key === 'gold')))
+              .filter((key) => !(cloth && (key === 'setup' || key === 'islands' || key === 'gold' || key === 'pirate' || key === 'route')))
               .filter((key) => !(fogIslands && (key === 'setup' || key === 'islands' || key === 'pirate')))
               .map((key) => <li key={key}>{t(`sf.help.${key}`)}</li>)}
             {fourIslands && <li data-testid="help-four-islands-bonus">{t('sf.help.four.islands', { target: controller.state.game?.view.victoryTarget ?? 13 })}</li>}
@@ -64,6 +67,15 @@ export function HelpPanel({ controller }: { controller: TableController }) {
               <li data-testid="help-tribe-gifts">{t('sf.help.tribe.gifts')}</li>
               <li data-testid="help-tribe-ports">{t('sf.help.tribe.ports')}</li>
               <li data-testid="help-tribe-win">{t('sf.help.tribe.win', { target: controller.state.game?.view.victoryTarget ?? 13 })}</li>
+            </>}
+            {cloth && <>
+              <li data-testid="help-cloth-setup">{t('sf.help.cloth.setup')}</li>
+              <li data-testid="help-cloth-trade">{t('sf.help.cloth.trade')}</li>
+              <li data-testid="help-cloth-produce">{t('sf.help.cloth.produce')}</li>
+              <li data-testid="help-cloth-score">{t('sf.help.cloth.score')}</li>
+              <li data-testid="help-cloth-ships">{t('sf.help.cloth.ships')}</li>
+              <li data-testid="help-cloth-pirate">{t('sf.help.cloth.pirate')}</li>
+              <li data-testid="help-cloth-win">{t('sf.help.cloth.win', { target: controller.state.game?.view.victoryTarget ?? 14 })}</li>
             </>}
             {paired && <li>{t('sf.help.paired')}</li>}
           </ul>

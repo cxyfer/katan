@@ -45,6 +45,14 @@ function renderPanel(locale: 'en' | 'zh-Hant' = 'en', complete = true, edit?: (v
 }
 
 describe('post-game statistics', () => {
+  it('ranks co-winners together as 1st, then 3rd', () => {
+    const view = makeView({ result: { playerId: 'p1', reason: 'victory', score: 6, playerIds: ['p1', 'p3'], cause: 'clothExhausted' } });
+    view.stats = statsFixture(view);
+    render(<LocaleProvider locale="en"><GameStatsPanel view={view} /></LocaleProvider>);
+    const rank = (id: string) => within(screen.getByTestId(`stats-row-${id}`)).getByLabelText(/rank/i).textContent;
+    expect([rank('p1'), rank('p3'), rank('p2')]).toEqual(['1', '1', '3']);
+  });
+
   it('ranks the winner first and uses the final timeline sample as the score', () => {
     const view = makeView({ result: { playerId: 'p1', reason: 'victory', score: 10 } });
     const rows = buildStatsRows(view, statsFixture(view));

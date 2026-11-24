@@ -7,6 +7,8 @@
 
 import { isLandHex, playerById, topologyOf, totalCards } from '../../analysis.ts';
 import type { GameState } from '../../types.ts';
+import { hasTribeRoute } from './cloth.ts';
+import { seafarersView } from './state.ts';
 import type { BanditMove, ModuleContext } from '../types.ts';
 import { isFogHex } from './fog.ts';
 
@@ -23,6 +25,7 @@ export function pirateTargets(state: GameState): (number | null)[] {
 
 /** Players (other than the actor) with a ship on the hex and a card to lose. */
 export function pirateVictims(state: GameState, hex: number, actorId: string): string[] {
+  const cloth = seafarersView(state).cloth;
   const topo = topologyOf(state);
   const out = new Set<string>();
   topo.edges.forEach((edge, index) => {
@@ -30,7 +33,8 @@ export function pirateVictims(state: GameState, hex: number, actorId: string): s
     const road = state.board.roads[index];
     if (!road?.ship || road.player === actorId) return;
     const owner = playerById(state, road.player);
-    if (owner && totalCards(owner) > 0) out.add(road.player);
+    // 布匹產地：有布匹的玩家也可以被偷（1 枚布匹取代 1 張資源牌）。
+    if (owner && (totalCards(owner) > 0 || (cloth?.cloth[road.player] ?? 0) > 0)) out.add(road.player);
   });
   return [...out].sort((a, b) => playerById(state, a)!.seat - playerById(state, b)!.seat);
 }
@@ -50,6 +54,9 @@ export function moveBandit(
     // 空格還不是板塊：海盜不能上去。
     if (isFogHex(state, target)) return { ok: false, error: kit.fail('E_ILLEGAL_TARGET', { hex: target }) };
   }
+
+  // 布匹產地：移動海盜需要玩家至少有一條通到部落的通路（SF25 p. 14）。
+  if (seafarersView(state).cloth && !hasTribeRoute(state, actorId)) return { ok: false, error: kit.fail('E_PIRATE_NEEDS_TRIBE') };
   if (target === state.board.pirate) return { ok: false, error: kit.fail('E_PIRATE_SAME_HEX', { hex: target }) };
   state.board.pirate = target;
   kit.emit(state, 'pirate.moved', { playerId: actorId, hex: target, cause });

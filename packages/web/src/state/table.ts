@@ -47,6 +47,8 @@ export interface RollHold {
   tradersBarbarians?: GameSnapshot['view'] | null;
   /** E&P 擲骰前的公開狀態，包括金幣與分數。 */
   explorersPirates?: GameSnapshot['view'] | null;
+  /** 布匹產地擲骰前的投影：部落布匹、各玩家布匹與分數（擲骰會當場產出布匹）；其他規則為 null。 */
+  seafarers?: GameSnapshot['view'] | null;
   /** 擲骰會當場改變盤面時（C&K 蠻族攻擊）的擲骰前投影；其他規則為 null。 */
   board?: GameSnapshot['view'] | null;
   /** 擲骰前已知的最後事件序號。 */
@@ -263,6 +265,7 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
       citiesKnights: citiesKnightsView(current.view) ? current.view : null,
       tradersBarbarians: current.view.modules?.tradersBarbarians ? current.view : null,
       explorersPirates: current.view.modules?.explorersPirates ? current.view : null,
+      seafarers: current.view.modules?.seafarers && (current.view.modules.seafarers as { cloth?: unknown }).cloth ? current.view : null,
       board: rollChangesBoard(current.view) ? current.view : null,
       eventSeq: lastSeq,
     },
@@ -271,10 +274,11 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
 
 /**
  * C&K 的事件骰在擲骰當下結算蠻族攻擊：騎士全數翻倒、首次攻擊時強盜進入沙漠、
- * 城市遭掠奪降為村莊或倒下並失去城牆。其他規則擲骰時盤面不變，不需凍結。
+ * 城市遭掠奪降為村莊或倒下並失去城牆。布匹產地的部落布匹也在擲骰當下改變（SVG 與 3D 的部落標記）。
+ * 其他規則擲骰時盤面不變，不需凍結。
  */
 function rollChangesBoard(view: GameSnapshot['view']): boolean {
-  return citiesKnightsView(view) !== null;
+  return citiesKnightsView(view) !== null || !!(view.modules?.seafarers as { cloth?: unknown } | undefined)?.cloth;
 }
 
 function activeHold(state: TableState): RollHold | null {
@@ -375,6 +379,13 @@ export function shownExplorersPirates(state: TableState): GameSnapshot['view'] |
   if (hold) return hold.explorersPirates ?? null;
   const view = state.game?.view ?? null;
   return view?.modules?.explorersPirates ? view : null;
+}
+
+/** 布匹產地的布匹與分數顯示共用擲骰前投影，避免產出的布匹與分數先於點數揭曉。 */
+export function shownSeafarers(state: TableState): GameSnapshot['view'] | null {
+  const hold = activeHold(state);
+  if (hold) return hold.seafarers ?? null;
+  return null;
 }
 
 /** 棋盤（SVG 與 3D）顯示的投影：擲骰會改變盤面時，演出期間用擲骰前投影。 */

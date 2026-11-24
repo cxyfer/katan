@@ -21,6 +21,7 @@ import type { BoardTopology } from '../topology.ts';
 import type {
   CardKind,
   CommandOutcome,
+  GameEndCause,
   GameEvent,
   GameState,
   ModulePending,
@@ -55,6 +56,11 @@ export interface RulesKit {
   afterBoardChange(state: GameState): void;
   /** Ends the game when the current actor has reached the target. */
   checkVictory(state: GameState): void;
+  /**
+   * Ends the game now with the given winners (seat order, non-empty) and cause.
+   * Used by scenarios with a second end condition (Cloth for Catan).
+   */
+  endGame(state: GameState, winners: readonly string[], cause: GameEndCause): void;
   enqueuePending(state: GameState, ...frames: PendingFrame[]): void;
   /** Queues frames right behind the active one, ahead of the frames already waiting. */
   insertPendingNext(state: GameState, ...frames: PendingFrame[]): void;
@@ -142,6 +148,8 @@ export interface RollResult {
 export interface SetupStep {
   playerId: string;
   round: 1 | 2;
+  /** 第三輪（布匹產地）；此時 `round` 仍是 2。 */
+  third?: boolean;
 }
 
 /** A piece the engine just placed (setup or action phase). */
@@ -197,6 +205,8 @@ export interface RulesModule {
   initGame?(state: GameState, ctx: ModuleContext): void;
   /** The building a setup step places; `undefined` keeps the settlement. */
   setupBuilding?(state: GameState, step: SetupStep, ctx: ModuleViewContext): 'settlement' | 'city' | undefined;
+  /** False when this setup building gets no starting resources (base: round 2 does). */
+  setupStartingResources?(state: GameState, step: SetupStep, ctx: ModuleViewContext): boolean;
 
   // -- roll resolution -------------------------------------------------------
   /** Supplies the roll instead of two base dice. At most one module may. */

@@ -195,7 +195,7 @@ export function BoardView({ controller }: { controller: TableController }) {
         <GameIcon name={setup.stage === 'building' ? 'home' : 'flag'} size={20} />
         <strong>{setupMine ? t('board.setupPlace', { piece: setupPiece }) : t('board.setupWaiting', { player: setupActor ? nameResolver(setupActor.id) : '—', piece: setupPiece })}</strong>
       </div>
-      <span>{t('board.setupGuide', { round: setup.round })}</span>
+      <span>{t('board.setupGuide', { round: setup.third ? 3 : setup.round })}</span>
       <span>{t('board.setupProgress', { remaining: setup.remaining })}</span>
       {setupMine && <p>{t('board.setupPickTarget')}</p>}
     </section>

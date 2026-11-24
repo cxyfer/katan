@@ -196,3 +196,61 @@ export function pirateTransform(geometry: BoardGeometry, board: PublicBoardView)
   const midZ = geometry.hexes.reduce((sum, cell) => sum + cell.cy / scale, 0) / Math.max(1, geometry.hexes.length);
   return { position: [maxX + 0.9, SEA_LEVEL + 0.01, midZ], onFrame: true };
 }
+
+// ---------------------------------------------------------------------------
+// 布匹產地的部落
+// ---------------------------------------------------------------------------
+
+/** 水中的木樁：撐起部落的數字圓片（圓片本身由 `NumberBadges` 畫在 y = 0）。 */
+export function createTribePostModel(): BufferGeometry {
+  const model = new ModelBuilder();
+  const height = -SEA_LEVEL - 0.03;
+  model.add(new CylinderGeometry(0.035, 0.045, height, 8), TIMBER, [0, -height / 2 - 0.03, 0]);
+  model.add(new CylinderGeometry(0.15, 0.15, 0.02, 14), '#8a5a32', [0, -0.03, 0]);
+  return model.build();
+}
+
+/** 一疊布匹：木托盤上橫放的布捲，數量 0–5（底層最多 3 捲，其上 2 捲）。 */
+export function createClothStackModel(count: number): BufferGeometry {
+  const model = new ModelBuilder();
+  box(model, '#6b442c', [0, 0.012, 0], [0.4, 0.024, 0.26]);
+  const rows: [number, number, number][] = [[-0.12, 0, 0], [0, 0, 0], [0.12, 0, 0], [-0.06, 0.1, 0], [0.06, 0.1, 0]];
+  rows.slice(0, Math.max(0, Math.min(5, count))).forEach(([x, y], index) => {
+    model.add(new CylinderGeometry(0.052, 0.052, 0.22, 10), index % 2 === 0 ? '#e9d8b0' : '#d9c28f', [x, 0.085 + y, 0], [1, 1, 1], [Math.PI / 2, 0, 0]);
+    model.add(new CylinderGeometry(0.054, 0.054, 0.05, 10), '#b8472f', [x, 0.085 + y, 0], [1, 1, 1], [Math.PI / 2, 0, 0]);
+  });
+  return model.build();
+}
+
+/** 與部落建立貿易關係的玩家標記：玩家色的小木樁。 */
+export function createLinkPinModel(color: string): BufferGeometry {
+  const model = new ModelBuilder();
+  model.add(new CylinderGeometry(0.035, 0.045, 0.1, 8), color, [0, 0.05, 0]);
+  model.add(new CylinderGeometry(0.05, 0.05, 0.02, 8), tint(color, 0.3), [0, 0.11, 0]);
+  return model.build();
+}
+
+/** 部落所在頂點的世界座標，以及從小島格往外（海的方向）的單位向量。 */
+export function tribeSpot(geometry: BoardGeometry, vertexIndex: number): { x: number; z: number; outX: number; outZ: number } | null {
+  const vertex = geometry.vertices[vertexIndex];
+  const info = geometry.topology.vertices[vertexIndex];
+  if (!vertex || !info) return null;
+  const scale = geometry.scale;
+  const x = vertex.x / scale;
+  const z = vertex.y / scale;
+  const land = info.hexes.find((hex) => geometry.land[hex] !== false);
+  const hex = land === undefined ? undefined : geometry.hexes[land];
+  if (!hex) return { x, z, outX: 0, outZ: -1 };
+  const dx = x - hex.cx / scale;
+  const dz = z - hex.cy / scale;
+  const length = Math.hypot(dx, dz) || 1;
+  return { x, z, outX: dx / length, outZ: dz / length };
+}
+
+/** 部落圓片（數字）在 3D 場景中的位置：頂點上、水中木樁頂端。 */
+export function tribeNumberTokens(geometry: BoardGeometry, tribes: readonly { vertex: number; number: number }[] | undefined): { index: number; value: number; position: Vec3; rotationY: number; scale: Vec3 }[] {
+  return (tribes ?? []).flatMap((tribe) => {
+    const spot = tribeSpot(geometry, tribe.vertex);
+    return spot ? [{ index: -1, value: tribe.number, position: [spot.x, 0, spot.z] as Vec3, rotationY: 0, scale: [0.5, 1, 0.5] as Vec3 }] : [];
+  });
+}

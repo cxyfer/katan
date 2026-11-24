@@ -8,8 +8,8 @@ import { playerColorHex, resourceLetter, seatDash } from '../board/terrain.ts';
 import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { epView } from '../board/explorersPirates.ts';
-import { shownCitiesKnights, shownExplorersPirates, shownTradersBarbarians, shownHandSize } from '../state/table.ts';
-import { harborRatio, islandBonusPoints, seafarersView } from '../board/seafarers.ts';
+import { shownCitiesKnights, shownExplorersPirates, shownSeafarers, shownTradersBarbarians, shownHandSize } from '../state/table.ts';
+import { clothPoints, harborRatio, islandBonusPoints, seafarersView } from '../board/seafarers.ts';
 import { activeStrength, citiesKnightsPoints, citiesKnightsView } from '../board/citiesKnights.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
@@ -79,7 +79,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
 }) {
   const t = useT();
   const { state } = controller;
-  const view = shownCitiesKnights(state) ?? shownTradersBarbarians(state) ?? shownExplorersPirates(state) ?? state.game?.view;
+  const view = shownCitiesKnights(state) ?? shownTradersBarbarians(state) ?? shownExplorersPirates(state) ?? shownSeafarers(state) ?? state.game?.view;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const expanded = pinned || previewOpen;
@@ -307,7 +307,10 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                     <ScoreMark icon="ship" label={t('ep.piece.ship')} value={number(ep.ships.filter((ship) => ship.player === player.id).length)} testId={`players-ep-ships-${player.seat}`} />
                     <ScoreMark icon="sparkles" label={t('ep.score.gold', { gold: number(epPlayer.gold) })} value={number(epPlayer.gold)} testId={`players-ep-gold-${player.seat}`} />
                   </>}
-                  {!ep && <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
+                  {sea?.cloth && <ScoreMark icon="scroll" testId={`players-cloth-${player.seat}`}
+                    label={t('sf.score.clothValue', { count: number(sea.cloth.cloth[player.id] ?? 0), points: number(clothPoints(sea.cloth.cloth[player.id] ?? 0)) })}
+                    value={number(sea.cloth.cloth[player.id] ?? 0)} detail={`${number(clothPoints(sea.cloth.cloth[player.id] ?? 0))}`} />}
+                  {!ep && !sea?.cloth && <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
                     value={number(player.longestRoadLength)} awarded={longestRoad} testId={`players-route-${player.seat}`} />}
                   {ck && <ScoreMark icon="shield" label={t('ck.score.knights')} value={number(activeStrength(ck, player.id))} testId={`players-knights-${player.seat}`} />}
                   {!ck && !ep && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
@@ -348,6 +351,14 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           );
         })}
       </ol>
+      {seafarersView(view)?.cloth && (() => {
+        const cloth = seafarersView(view)!.cloth!;
+        const empty = cloth.tribes.filter((tribe) => tribe.cloth <= 0).length;
+        return <p className="players__cloth" data-testid="cloth-status" data-empty-tribes={empty} data-supply={cloth.supply} hidden={!expanded}>
+          <GameIcon name="scroll" size={14} />
+          <span>{t('sf.cloth.supply')}: {formatNumber(state.locale, cloth.supply)} · {t('sf.cloth.exhausted', { count: formatNumber(state.locale, empty) })}</span>
+        </p>;
+      })()}
       <p className="players__obligation" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}
         title={action ? t(action.messageId, action.params) : t('app.loading')}>
         <GameIcon name="flag" size={14} />

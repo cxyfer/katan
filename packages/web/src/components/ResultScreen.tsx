@@ -22,9 +22,13 @@ export function ResultScreen({ controller }: { controller: TableController }) {
   const { state, actions } = controller;
   const view = state.game?.view;
   const result = view?.result ?? null;
-  const winner = result?.playerId
-    ? view?.players.find((player) => player.id === result.playerId) ?? null
-    : null;
+  // 共同勝利（布匹耗盡）：`playerIds` 列出全部勝者；其他終局只有 `playerId`。
+  const winnerIds = result?.playerIds ?? (result?.playerId ? [result.playerId] : []);
+  const winners = winnerIds.flatMap((id) => view?.players.find((player) => player.id === id) ?? []);
+  const winner = winners.length === 1 ? winners[0]! : null;
+  const shared = winners.length > 1;
+  // 布匹耗盡的終局不是靠目標分，所以不顯示目標分（單一或共同勝者都一樣）。
+  const clothEnd = result?.cause === 'clothExhausted';
   // 電腦座位由房間成員推得；房間尚未載入時不標示。
   const bots = botLevelsOf(state.room);
 
@@ -35,7 +39,11 @@ export function ResultScreen({ controller }: { controller: TableController }) {
         <div>
         <span className="result-hero__emblem"><GameIcon name={result?.reason === 'victory' ? 'crown' : 'anchor'} size={42} /></span>
         <h1 id="result-heading">{t('play.result')}</h1>
-        {result?.reason === 'victory' && winner ? (
+        {result?.reason === 'victory' && shared ? (
+          <p className="result__winner" data-testid="result-winners" data-shared="true">
+            {t('play.resultWinners', { players: winners.map((entry) => entry.nickname) })}
+          </p>
+        ) : result?.reason === 'victory' && winner ? (
           <p className="result__winner" data-testid="result-winner">
             {t('play.resultWinner', { player: winner.nickname })}
             {bots.has(winner.id) && <> <BotBadge level={bots.get(winner.id)} testId="result-winner-bot" /></>}
@@ -45,7 +53,10 @@ export function ResultScreen({ controller }: { controller: TableController }) {
             {t('play.resultAbandoned')} · {t('play.resultNoWinner')}
           </p>
         )}
-        {result?.score !== undefined && (
+        {result?.score !== undefined && clothEnd && (
+          <p data-testid="result-score">{t('play.resultScoreShared', { score: formatNumber(state.locale, result.score) })}</p>
+        )}
+        {result?.score !== undefined && !clothEnd && (
           <p data-testid="result-score">
             {t('play.resultScore', {
               score: formatNumber(state.locale, result.score),
@@ -53,9 +64,11 @@ export function ResultScreen({ controller }: { controller: TableController }) {
             })}
           </p>
         )}
-        <p className="muted">
-          {t('play.resultReason.' + (result?.reason ?? 'abandoned'))} ·{' '}
-          {t('play.resultTarget', { target: formatNumber(state.locale, view?.victoryTarget ?? 0) })}
+        <p className="muted" data-testid="result-reason" data-cause={clothEnd ? 'clothExhausted' : 'target'}>
+          {clothEnd ? t('play.resultReason.clothExhausted') : <>
+            {t('play.resultReason.' + (result?.reason ?? 'abandoned'))} ·{' '}
+            {t('play.resultTarget', { target: formatNumber(state.locale, view?.victoryTarget ?? 0) })}
+          </>}
         </p>
         <button
           type="button"

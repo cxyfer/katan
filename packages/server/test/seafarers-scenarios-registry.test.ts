@@ -9,7 +9,6 @@ import { getProfile } from '@katan/rules';
 import { startHarness, type TestHarness } from './helpers.ts';
 
 const SCENARIOS = [
-  ['sf-cloth-for-catan-2025', 'cloth-for-catan'],
   ['sf-pirate-islands-2025', 'pirate-islands'],
   ['sf-wonders-of-catan-2025', 'wonders-of-catan'],
   ['sf-new-world-2025', 'new-world'],
@@ -28,7 +27,7 @@ afterAll(async () => {
 const reason = (response: { body: { ok: boolean; error?: { params?: Record<string, unknown> } } }) =>
   response.body.ok ? 'ok' : response.body.error?.params?.reason;
 
-describe('seafarers further scenarios (S0 registry only; four islands, fog islands, through the desert and the forgotten tribe are live since S2–S5)', () => {
+describe('seafarers further scenarios (S0 registry only; four islands, fog islands, through the desert, the forgotten tribe and cloth for catan are live since S2–S6)', () => {
   it('lists the profiles as disabled and never offers them for selection', async () => {
     const host = await harness.client('ScenarioLister');
     const data = host.expectOk<{

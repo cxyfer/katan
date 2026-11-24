@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { isLandEdge, isLandVertex, isSeaEdge, neighborsOfVertex, scoreOf, topologyOf } from '../src/analysis.ts';
+import { seafarersState } from '../src/modules/seafarers/state.ts';
 import { getProfile } from '../src/profiles.ts';
 import { RESOURCES, type GameState } from '../src/types.ts';
 import { simulateSeafarers } from './seafarers-sim.ts';
@@ -176,4 +177,48 @@ describe('simulated Forgotten Tribe games (SFX-S5)', () => {
     expect(gifts).toBeGreaterThan(0);
     expect(harbors).toBeGreaterThan(0);
   }, 240_000);
+});
+
+describe('simulated Cloth for Catan games (SFX-S6)', () => {
+  /** 50 枚布匹守恆：部落 + 供應堆 + 玩家手上。 */
+  const clothTotal = (state: GameState): number => {
+    const cloth = seafarersState(state).cloth!;
+    return cloth.tribes.reduce((sum, tribe) => sum + tribe.cloth, 0) + cloth.supply + Object.values(cloth.cloth).reduce((sum, value) => sum + value, 0);
+  };
+
+  for (const players of [3, 4] as const) {
+    it(`${players} players finish with a winner, a conserved supply (resources and 50 cloth) and legal pieces`, () => {
+      const run = simulateSeafarers(players, 61 + players, 60000, 'sf-cloth-for-catan-2025');
+      const { state } = run;
+      expect(state.result?.reason).toBe('victory');
+      const winners = state.result!.playerIds ?? [state.result!.playerId!];
+      if (state.result!.cause === 'clothExhausted') {
+        expect(seafarersState(state).cloth!.tribes.filter((tribe) => tribe.cloth === 0).length).toBeGreaterThanOrEqual(5);
+      } else {
+        expect(scoreOf(state, winners[0]!, { includeHidden: true })).toBeGreaterThanOrEqual(14);
+      }
+      const bank = getProfile(state.profileId)!.bankPerResource;
+      for (const resource of RESOURCES) {
+        const total = state.bank[resource] + state.players.reduce((sum, player) => sum + player.resources[resource], 0);
+        expect(total, resource).toBe(bank);
+      }
+      expect(clothTotal(state)).toBe(50);
+      checkBoard(state);
+      expect(run.shipsBuilt).toBeGreaterThan(0);
+    }, 120_000);
+  }
+
+  it('across seeds ships reach tribes, cloth is produced and stolen, and the supply stays at 50', () => {
+    let trades = 0;
+    let produced = 0;
+    for (const seed of [1, 2, 3, 4]) {
+      const run = simulateSeafarers(seed % 2 === 0 ? 4 : 3, seed, 60000, 'sf-cloth-for-catan-2025');
+      expect(run.state.result?.reason).toBe('victory');
+      expect(clothTotal(run.state)).toBe(50);
+      trades += run.clothTrades;
+      produced += run.clothProduced;
+    }
+    expect(trades).toBeGreaterThan(0);
+    expect(produced).toBeGreaterThan(0);
+  }, 300_000);
 });

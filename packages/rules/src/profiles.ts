@@ -279,7 +279,7 @@ function tbProfile(
  * 尚未啟用的劇本，layout builder 與 topology 尚未存在（各切片自行登記），
  * `topologyId` 沿用 `baseProfile` 的預設值，只是佔位；在 `enabled: false`
  * 之下 `resolveCombination` 一律回 `disabled`，不會走到建圖。四島群島（S2）
- * 、穿越荒漠（S4）與世外部落（S5）已有版圖與規則證據，故啟用。
+ * 、穿越荒漠（S4）、世外部落（S5）與布匹產地（S6）已有版圖與規則證據，故啟用。
  * 不在 bot 支援清單內（`bots/src/modules/seafarers` 的 `SUPPORTED_SCENARIOS`），
  * 因此一律拒絕 bot 座位。
  */
@@ -344,8 +344,13 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
     implemented: true,
     enabled: true,
   }),
-  // 目標 14 分；另有「回合結束時部落耗盡」的終局與共同勝利（D12），在 S6 實作。
-  seafarersScenarioProfile('sf-cloth-for-catan-2025', 'cloth-for-catan', 14, 'pp. 14–15'),
+  // 目標 14 分；另有「回合結束時部落耗盡」的終局與共同勝利（D12，使用者決定的解釋）。
+  // 無島嶼獎勵；3 人與 4 人共用同一張 42 格圖；規則內關閉最長道路。
+  seafarersScenarioProfile('sf-cloth-for-catan-2025', 'cloth-for-catan', 14, 'pp. 14–15', {
+    topologyId: 'sf-cloth-for-catan',
+    implemented: true,
+    enabled: true,
+  }),
   // 真正條件是「收復自己的堡壘且 10 分」，複合條件在 S7 實作；此處只放分數部分。
   seafarersScenarioProfile('sf-pirate-islands-2025', 'pirate-islands', 10, 'pp. 16–17'),
   // 真正條件是「完成奇觀，或 10 分且層數最高」，複合條件在 S8 實作；此處只放分數部分。

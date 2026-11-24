@@ -1,0 +1,275 @@
+{
+  "scenario": "cloth-for-catan",
+  "profile": "sf-cloth-for-catan-2025",
+  "base": "http://127.0.0.1:3023",
+  "cases": [
+    {
+      "name": "lobby-cloth-for-catan",
+      "status": "PASS",
+      "note": "lobby: Seafarers / Cloth for Catan, 3-4 players only",
+      "sha256": "85427e5cdb54ffd125373551d1eafc5164ac4b6ce15eeffb4da18ae91e6b0ba4",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-cloth-for-catan",
+      "sha256": "de6b78fe696b83a824aa6845273c2f2db22ffb84ad78b0cb374806e861f251a9",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-cloth-for-catan",
+      "sha256": "6402d0984811a68e83bdc517cef8e5ac067bc99558633b4f58445ea77d549ad3",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-cloth-for-catan",
+      "sha256": "2f1af5f537f6342b53fe18ebbf317b114d8248e9e2abd07e576fe414f4bc70e7",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-cloth-for-catan",
+      "sha256": "48f639ee87d03f7d9ba3184a18ab3aa91fcaf70c8ba54886175b3bf13c432ad0",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-svg-phone",
+      "status": "PASS",
+      "note": "sf-cloth-for-catan",
+      "sha256": "bb2c00fcee7e466f1b1fa7f8fc4c40cb9a9f2729874287ec5a571045c37a8a9e",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "help-cloth-svg-desktop",
+      "status": "PASS",
+      "note": "setup done with three settlements each; help panel shows the Cloth for Catan rules",
+      "sha256": "d2003dccc163ffbf0eaa196d2e9ab542c0a97962c7154a41ea6cfb9173364442",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-trade-svg",
+      "status": "PASS",
+      "note": "first ship reaches a tribe in SVG: trade opens, +1 cloth, the tribe shows 4 and the player link",
+      "sha256": "17166814b6fa5f4798068e7eda5ee1fd60a0e7535e610a6f72a8a080126fff83",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-trade-3d",
+      "status": "PASS",
+      "note": "second ship reaches another tribe in 3D: the cloth stacks change, 2 cloth = 1 VP",
+      "sha256": "9f9fbb9932ec32aa4a5d2e42f2c1d3b3a2590302d233d705f5b05070180e0e74",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-steal-3d",
+      "status": "PASS",
+      "note": "the pirate moved beside player 2 in 3D: steal a card or a cloth token",
+      "sha256": "d4f62c05d169c15e1779fdd83ab39f979f4c3e4e0d6ad2783e386ac0848802d0",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-steal-svg-phone",
+      "status": "PASS",
+      "note": "the pirate moved on a phone in SVG: steal a card or a cloth token",
+      "sha256": "c4ccad92aa2057f5407c6bc6856374da673c6b1838bf6c35b43c2fdf40879fd4",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result-shared",
+      "status": "PASS",
+      "note": "the turn ends with 5 empty tribes: shared victory, no target score",
+      "sha256": "012a38b691ed386c41eb05b433da5cb9e3f31fd626d585df46f167ca3bc24d10",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result-shared-phone",
+      "status": "PASS",
+      "note": "the same shared result in a phone-sized viewport",
+      "sha256": "536e4a928c50d35b27e75f3ef9d5540a517597452c2dabaae41138ad7fb1d248",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    }
+  ],
+  "finish": {
+    "plan": {
+      "player": "player_792f31bf728343e880b8",
+      "other": "player_7dac6f5b0a494d8b9ac4",
+      "routes": [
+        {
+          "start": 27,
+          "edge": 54,
+          "tribe": 0,
+          "number": 10
+        },
+        {
+          "start": 33,
+          "edge": 63,
+          "tribe": 6,
+          "number": 4
+        }
+      ],
+      "pirate": {
+        "hex": 7,
+        "edge": 6
+      },
+      "pirate2": {
+        "hex": 8,
+        "edge": 17
+      },
+      "settled": [
+        {
+          "vertex": 0,
+          "player": "player_792f31bf728343e880b8",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 9,
+          "player": "player_f8d63eace098482ba0ba",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 11,
+          "player": "player_7dac6f5b0a494d8b9ac4",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 16,
+          "player": "player_f8d63eace098482ba0ba",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 23,
+          "player": "player_f8d63eace098482ba0ba",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 35,
+          "player": "player_3f481464594a41f5a3e3",
+          "islands": [
+            1
+          ]
+        },
+        {
+          "vertex": 68,
+          "player": "player_7dac6f5b0a494d8b9ac4",
+          "islands": [
+            6
+          ]
+        },
+        {
+          "vertex": 89,
+          "player": "player_3f481464594a41f5a3e3",
+          "islands": [
+            6
+          ]
+        },
+        {
+          "vertex": 99,
+          "player": "player_792f31bf728343e880b8",
+          "islands": [
+            6
+          ]
+        },
+        {
+          "vertex": 100,
+          "player": "player_792f31bf728343e880b8",
+          "islands": [
+            6
+          ]
+        },
+        {
+          "vertex": 102,
+          "player": "player_3f481464594a41f5a3e3",
+          "islands": [
+            6
+          ]
+        },
+        {
+          "vertex": 106,
+          "player": "player_7dac6f5b0a494d8b9ac4",
+          "islands": [
+            6
+          ]
+        }
+      ]
+    },
+    "result": {
+      "playerId": "player_792f31bf728343e880b8",
+      "reason": "victory",
+      "score": 6,
+      "playerIds": [
+        "player_792f31bf728343e880b8",
+        "player_f8d63eace098482ba0ba"
+      ],
+      "cause": "clothExhausted"
+    }
+  },
+  "errors": []
+}
