@@ -187,13 +187,22 @@ export async function runSetupOverApi(
     const client = clients.find((candidate) => candidate.playerId === actorId)!;
     // Hints are per-viewer: ask the actor's own client for its legal targets.
     const hints = client.expectOk(
-      await client.get<{ view: { hints?: { legalRoads: number[]; legalSettlements: number[] } } }>(
-        `/api/games/${gameId}`,
-      ),
+      await client.get<{
+        view: {
+          hints?: {
+            legalRoads: number[];
+            legalSettlements: number[];
+            modules?: { seafarers?: { harborChoices?: { edges: number[] } } };
+          };
+        };
+      }>(`/api/games/${gameId}`),
     ).view.hints;
     const setup = current.turn.setup as { stage: string } | null;
     const command =
-      setup?.stage === 'road'
+      // 新世界的港口階段：選第一個合法的邊。
+      setup?.stage === 'harbor'
+        ? { type: 'world.harbor', edge: hints!.modules!.seafarers!.harborChoices!.edges[0]! }
+        : setup?.stage === 'road'
         ? { type: 'setup.placeRoad', edge: hints!.legalRoads[0]! }
         : { type: 'setup.placeBuilding', vertex: hints!.legalSettlements[0]! };
     const receipt = client.expectOk(

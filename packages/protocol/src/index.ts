@@ -72,6 +72,7 @@ export const SERVER_ERROR_IDS: readonly string[] = [
   'error.E_NO_ABSENT_PLAYER',
   'error.E_NO_PROPOSAL',
   'error.E_NO_SESSION',
+  'error.E_REGENERATE_UNAVAILABLE',
   'error.E_ROOM_CAPACITY',
   'error.E_ROOM_FULL',
   'error.E_ROOM_NOT_FOUND',
@@ -231,6 +232,8 @@ export interface RoomView {
   pendingAbandon?: AbandonProposalView | null;
   /** 進行中（`playing`）對局的 open 全桌保存並暫停提案（§4.8）；沒有時為 null。 */
   pendingSuspend?: SuspendProposalView | null;
+  /** 進行中對局的 open 重新產生版圖提案（New World，全體真人同意）；沒有時為 null。 */
+  pendingRegenerate?: RegenerateProposalView | null;
   /** 暫停中（`suspended`）對局已表示準備繼續的真人 playerId；不是暫停中時為 null。 */
   resumeReady?: string[] | null;
   /**
@@ -282,6 +285,27 @@ export interface SuspendProposeResult {
 /** `POST /api/games/:gameId/suspend`（附 proposalId 表態）的回應。 */
 export interface SuspendConsentResult {
   suspended: boolean;
+}
+
+/** 重新產生版圖提案（New World，SF25 p. 20）：房主提出，所有真人座位都同意才重排，任何人拒絕即取消。 */
+export interface RegenerateProposalView {
+  id: string;
+  proposedBy: string;
+  /** 已同意的真人 playerId（提案者本身算一票）。 */
+  consents: string[];
+  createdAt: string;
+}
+
+/** `POST /api/games/:gameId/regenerate`（提案）的回應。 */
+export interface RegenerateProposeResult {
+  proposalId: string;
+  /** 提案即同意；唯一真人或同意者已齊時為 true，版圖已重新產生。 */
+  regenerated: boolean;
+}
+
+/** `POST /api/games/:gameId/regenerate`（附 proposalId 表態）的回應。 */
+export interface RegenerateConsentResult {
+  regenerated: boolean;
 }
 
 /** `POST /api/games/:gameId/resume` 的回應。 */

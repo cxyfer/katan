@@ -512,6 +512,23 @@ export function createHttpHandler(deps: HttpDeps) {
     return { data: await deps.games.proposeSuspend(playerId!, params.gameId!) };
   });
 
+  route('POST', '/api/games/:gameId/regenerate', async ({ params, body, playerId }) => {
+    requireSession(playerId);
+    const proposalId = optionalString(body, 'proposalId');
+    if (proposalId) {
+      const approve = asObject(body).approve;
+      return {
+        data: await deps.games.consentRegenerate(
+          playerId!,
+          params.gameId!,
+          proposalId,
+          approve === undefined ? true : approve === true,
+        ),
+      };
+    }
+    return { data: await deps.games.proposeRegenerate(playerId!, params.gameId!) };
+  });
+
   route('POST', '/api/games/:gameId/resume', async ({ params, body, playerId }) => {
     requireSession(playerId);
     const ready = asObject(body).ready;
