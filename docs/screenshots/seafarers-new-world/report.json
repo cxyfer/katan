@@ -1,0 +1,230 @@
+{
+  "scenario": "new-world",
+  "profile": "sf-new-world-2025",
+  "base": "http://127.0.0.1:3031",
+  "cases": [
+    {
+      "name": "lobby-new-world",
+      "status": "PASS",
+      "note": "lobby: Seafarers / New World, 3-4 players only",
+      "sha256": "8b3dc65231907c9cf904825a075ff30ccf3d61c0f5d6ca556e022a17298c7c23",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "random map, port stage: sf-new-world",
+      "sha256": "357f4b533361a72e3feb53f39dc51d940824955b02d40185b061a46439fdcdf1",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "random map, port stage: sf-new-world",
+      "sha256": "61dbd71bdcd2eb7bd272647e3514c2172bd13fcbb4cc9fc04896ffe2cad769c0",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "map-3p-svg-phone",
+      "status": "PASS",
+      "note": "sf-new-world",
+      "sha256": "c68da67f900c5b893d3ebba98ee6cec7b45c6a3e83bf5694ca2409069bb95cd4",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": false
+    },
+    {
+      "name": "regenerate-vote-svg",
+      "status": "PASS",
+      "note": "a non-host seat sees the vote: agree or decline (every human must agree)",
+      "sha256": "e5426116544acde930a78ce2d8459f1c582155320a07297a4da977feaefe5747",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-regenerated",
+      "status": "PASS",
+      "note": "after every seat agreed: a new random board, port counter back at 1 of 10",
+      "sha256": "377a14f740ea2ded32dc14180411a6906127368e30d9e55ad76ff540d10a9354",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "harbor-targets-svg",
+      "status": "PASS",
+      "note": "svg: the legal coast edges for the drawn port (grain)",
+      "sha256": "e1b986284b92e37589b090deb3365831057aaff3e9f1ccbf21df5aba03dfd067",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "harbor-targets-3d",
+      "status": "PASS",
+      "note": "r3f: the legal coast edges for the drawn port (generic)",
+      "sha256": "5eb2d6e8a04a0256ee78c815cdb96850d7c950d7b06c9ca8ecb3e49ba58cd425",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "harbor-placed-3d",
+      "status": "PASS",
+      "note": "port placed through the 3D board; it shows on the chosen edge",
+      "sha256": "216721b70d3806b8dd852a47de818309d0dc7a36050ebeee7bb28b99346f1ffd",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "harbor-targets-phone",
+      "status": "PASS",
+      "note": "phone svg: the legal coast edges for the drawn port (generic)",
+      "sha256": "1c3454079f87baa7dd5f7ff943839e27327cc7788a75fed075c486b22e31980f",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-ports",
+      "status": "PASS",
+      "note": "ten ports placed by the players, one edge apart; starting settlements next",
+      "sha256": "12916ea3eda7538eae136929028ab9be3b0a3c3c0c43994ed22f6a437d4acd7e",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "help-world-svg-desktop",
+      "status": "PASS",
+      "note": "ports and settlements done; help panel shows the New World rules",
+      "sha256": "535b5ba904609329fa3cc195fc0250d451847fdf35e39fed885b461a8f6a41e5",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-island-bonus-svg",
+      "status": "PASS",
+      "note": "first settlement on a non-home island: +1 settlement, +1 island bonus = 12 VP (preview)",
+      "sha256": "5c618c493236dc46f32acaf5c2598fae101799818e640ebcfc1c9daeeaf56de4",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result",
+      "status": "PASS",
+      "note": "12 VP on their own turn: result screen",
+      "sha256": "c1636c181619b2c4d1a77ff855943d219fd8d490afb2cfae7868cb3f74a9db9b",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "random map, port stage: sf-new-world",
+      "sha256": "f182cd49278bf80f799c9bc4e2ed8bbd3a533ef9feb4f695aa7fbca9650fc2c3",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "random map, port stage: sf-new-world",
+      "sha256": "4fbdc3a66203ee7e3cb8d68377772ca91c169bbceb5a06d83c6137d45f55803c",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    }
+  ],
+  "regenerate": {
+    "declined": true,
+    "revisionBefore": 1,
+    "revisionAfter": 2,
+    "rerolls": 1
+  },
+  "islands": {
+    "1": 13,
+    "2": 1,
+    "3": 1,
+    "4": 1,
+    "5": 7
+  },
+  "finish": {
+    "plan": {
+      "player": "player_d0d4934bd9af43fdbfd3",
+      "home": [
+        1
+      ],
+      "vertex": 74,
+      "edge": 120,
+      "island": 5
+    },
+    "result": {
+      "playerId": "player_d0d4934bd9af43fdbfd3",
+      "reason": "victory",
+      "score": 12
+    }
+  },
+  "fourPlayers": {
+    "harbors": 10,
+    "home": {
+      "player_8bcece8072424722b9ee": [
+        1
+      ],
+      "player_0b26b3b70dae47a6b657": [
+        1
+      ],
+      "player_2a5e520625b4400a945d": [
+        1
+      ],
+      "player_ce62d31bcdfa488499de": [
+        1
+      ]
+    }
+  },
+  "errors": []
+}
