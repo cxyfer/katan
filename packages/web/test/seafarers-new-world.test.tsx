@@ -17,7 +17,7 @@ import { SvgBoard } from '../src/components/SvgBoard.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { translateEvent } from '../src/i18n/events.ts';
 import { requiredActionFor } from '../src/state/pending.ts';
-import { EMPTY_SELECTION, initialTableState, type TableState } from '../src/state/table.ts';
+import { activeTurnKey, EMPTY_SELECTION, initialTableState, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeEvent, makeMember, makeRoom, makeSnapshot } from '../src/test/fixtures.ts';
 
@@ -288,5 +288,48 @@ describe('New World board redraw clears a stale port selection', () => {
     const rerolled = JSON.parse(JSON.stringify(view)) as GameView;
     (rerolled.modules!.seafarers as { world: { rerolls: number } }).world.rerolls = 1;
     expect(tableReducer(base, { type: 'snapshot', snapshot: makeSnapshot(rerolled, 15) }).selection).toEqual(EMPTY_SELECTION);
+  });
+});
+
+describe('New World setup stage details', () => {
+  it('the harbor stage never falls back to the starting-road board, even without a module board hint', () => {
+    const view = viewOf(worldState());
+    expect(boardIntent(tableWith(view), 'p1')).not.toBeNull();
+    const bare = JSON.parse(JSON.stringify(view)) as GameView;
+    const hints = bare.hints!.modules!.seafarers as { board: unknown; targets: Record<string, number[]> };
+    hints.board = null;
+    hints.targets = {};
+    expect(boardIntent(tableWith(bare), 'p1')).toBeNull();
+  });
+
+  it('the active turn key changes with every port, redraw and the move on to the starting settlements', () => {
+    const keyOf = (state: GameState) => activeTurnKey(tableWith(viewOf(state)))!;
+    const start = worldState(3, 7);
+    const keys = [keyOf(start)];
+    let state = start;
+    for (let step = 0; step < 10; step++) {
+      state = place(state);
+      keys.push(keyOf(state));
+    }
+    expect(new Set(keys).size).toBe(keys.length);
+    // 重排：港口數與 remaining 都沒變，但 rerolls 變了。
+    const redraw = JSON.parse(JSON.stringify(start)) as GameState;
+    (redraw.moduleState as unknown as { seafarers: { world: { rerolls: number } } }).seafarers.world.rerolls = 1;
+    expect(keyOf(redraw)).not.toBe(keys[0]);
+  });
+
+  it('the help panel shows port progress in the harbor stage, not the fixed placement count', () => {
+    const controller = { state: { ...initialTableState('en', 'Alex'), game: makeSnapshot(viewOf(worldState())) } } as unknown as TableController;
+    render(<LocaleProvider locale="en"><HelpPanel controller={controller} /></LocaleProvider>);
+    const text = screen.getByTestId('help-panel').textContent!;
+    expect(text).toContain('Setup · Placing ports: 1 of 10');
+    expect(text).not.toContain('remaining');
+    cleanup();
+    let state = worldState();
+    for (let step = 0; step < 10; step++) state = place(state);
+    const later = { state: { ...initialTableState('en', 'Alex'), game: makeSnapshot(viewOf(state)) } } as unknown as TableController;
+    render(<LocaleProvider locale="en"><HelpPanel controller={later} /></LocaleProvider>);
+    expect(screen.getByTestId('help-panel').textContent).toMatch(/Setup · \d+ remaining/);
+    cleanup();
   });
 });

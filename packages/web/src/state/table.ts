@@ -604,7 +604,11 @@ export function activeTurnKey(state: TableState): string | null {
   // and a reconnect that skipped a round). Setup does not open a window, so its
   // decreasing remaining-step count supplies the same boundary.
   const setup = game.view.turn.setup;
-  const setupStep = setup ? `${setup.round}:${setup.remaining}` : 'play';
+  // 新世界的港口階段 `remaining` 不變：把階段與已放港口數、重排次數納入，逐一放置、重排與
+  // 港口轉起始村落都是新的一步（其他劇本沒有 `world`，key 不變）。
+  const world = (game.view.modules?.seafarers as { world?: { placed: number; rerolls: number } } | undefined)?.world;
+  const worldStep = setup && world ? `:${setup.stage}:${world.placed}:${world.rerolls}` : '';
+  const setupStep = setup ? `${setup.round}:${setup.remaining}${worldStep}` : 'play';
   return `${game.gameId}:${game.view.windowId}:${setupStep}`;
 }
 

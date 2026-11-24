@@ -27,6 +27,7 @@ export function HelpPanel({ controller }: { controller: TableController }) {
   const cloth = scenario === 'cloth-for-catan';
   // 新世界：隨機版圖、輪流放港口、home islands 與每座非 home 島 1 分。
   const newWorld = scenario === 'new-world';
+  const harborWorld = seafarersView(controller.state.game?.view)?.world ?? null;
 
   return (
     <section className="panel" aria-labelledby="help-heading" data-testid="help-panel">
@@ -126,7 +127,10 @@ export function HelpPanel({ controller }: { controller: TableController }) {
       <p className="muted">{RESOURCES.map((resource) => t(`resource.${resource}`)).join('、')}</p>
       {controller.state.game?.view.turn.setup && (
         <p className="muted">
-          {t('play.phase.setup')} · {t('play.pending.remaining', { remaining: controller.state.game.view.turn.setup.remaining })}
+          {t('play.phase.setup')} · {harborWorld && controller.state.game.view.turn.setup.stage === 'harbor'
+            // 新世界的港口階段：剩餘次數固定是起始村落的步數，改顯示港口進度（與設置導引一致）。
+            ? t('sf.world.progress', { placed: Math.min(harborWorld.placed + 1, harborWorld.total), total: harborWorld.total })
+            : t('play.pending.remaining', { remaining: controller.state.game.view.turn.setup.remaining })}
         </p>
       )}
     </section>
