@@ -142,6 +142,11 @@ export function harborChoices(state: GameState, playerId: string): { harbors: Ha
 /** `harbor.place { edge, harbor }` — 把暫存的港口放到自己海岸村落旁的合法邊。 */
 export function placeHarbor(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
   const { kit } = ctx;
+  // 只有世外部落有這個指令；其他劇本要與送出未知指令時一致（同 `chooseFog`）：
+  // 有 pending frame 時是 E_PENDING_EFFECT，沒有時是 E_INVALID_COMMAND。
+  if (!seafarersView(state).tribe) {
+    return state.pending ? kit.fail('E_PENDING_EFFECT', { pending: state.pending.kind }) : kit.fail('E_INVALID_COMMAND');
+  }
   const frame = state.pending;
   if (!frame || !('module' in frame) || frame.kind !== HARBOR_FRAME) return kit.fail('E_PENDING_EFFECT', { pending: frame?.kind ?? 'none' });
   if (!frame.responders.includes(actorId)) return kit.fail('E_NOT_ACTOR');
