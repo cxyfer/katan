@@ -12,6 +12,7 @@ import { targetsFromGeometry } from '../src/board/projection.ts';
 import { islandBonusPoints, seafarersHints, seafarersView } from '../src/board/seafarers.ts';
 import { HelpPanel } from '../src/components/HelpPanel.tsx';
 import { NewWorldPrompt, RegeneratePanel } from '../src/components/NewWorldPrompt.tsx';
+import { BoardView } from '../src/components/BoardView.tsx';
 import { PlayersPanel } from '../src/components/PlayersPanel.tsx';
 import { SvgBoard } from '../src/components/SvgBoard.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
@@ -330,6 +331,29 @@ describe('New World setup stage details', () => {
     const later = { state: { ...initialTableState('en', 'Alex'), game: makeSnapshot(viewOf(state)) } } as unknown as TableController;
     render(<LocaleProvider locale="en"><HelpPanel controller={later} /></LocaleProvider>);
     expect(screen.getByTestId('help-panel').textContent).toMatch(/Setup · \d+ remaining/);
+    cleanup();
+  });
+});
+
+describe('New World redraw closes an open target list', () => {
+  it('the target picker opened on the old board is closed when the board is redrawn', async () => {
+    const boardFor = (view: GameView) => {
+      const controller = { state: tableWith(view), dispatch: vi.fn(), actions: {} } as unknown as TableController;
+      return <LocaleProvider locale="en"><BoardView controller={controller} /></LocaleProvider>;
+    };
+    const first = viewOf(worldState(3, 7));
+    const rendered = render(boardFor(first));
+    fireEvent.click(await screen.findByTestId('open-target-picker'));
+    expect(await screen.findByTestId('target-picker')).toBeTruthy();
+    // 同一張圖的新 snapshot：選單保留。
+    rendered.rerender(boardFor(viewOf(worldState(3, 7))));
+    expect(screen.queryByTestId('target-picker')).not.toBeNull();
+    // 重新產生：地形與港口池都變了，選單關閉（意圖仍在）。
+    const redrawn = viewOf(worldState(3, 8));
+    (redrawn.modules!.seafarers as { world: { rerolls: number } }).world.rerolls = 1;
+    rendered.rerender(boardFor(redrawn));
+    expect(screen.queryByTestId('target-picker')).toBeNull();
+    expect(screen.queryByTestId('open-target-picker')).not.toBeNull();
     cleanup();
   });
 });

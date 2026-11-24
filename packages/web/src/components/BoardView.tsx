@@ -177,6 +177,9 @@ export function BoardView({ controller }: { controller: TableController }) {
   // 佇列中仍有骰子（例如後一次擲骰排在前一組特效之後）時，靜態點數也先隱藏。
   const hideStaticDice = focusedRoll !== null || state.dicePresenting;
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); setPickerTarget(null); } }, [intent]);
+  // 新世界重新產生版圖：舊圖上開著的目標清單與重疊群組已失效，一併關閉（意圖仍在，只是換了盤面）。
+  const redrawKey = `${seaView?.world?.rerolls ?? 0}:${view?.board.terrain.join(',') ?? ''}`;
+  useEffect(() => { setPickerOpen(false); setCluster(null); setPickerTarget(null); }, [redrawKey]);
 
   if (!view || !boardView) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
   const board = view.board;
