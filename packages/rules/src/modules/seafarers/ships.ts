@@ -24,7 +24,7 @@ import type { CommandOutcome, GameState, Resource } from '../../types.ts';
 import { rulesModulesOf } from '../registry.ts';
 import type { ModuleCommand, ModuleContext } from '../types.ts';
 import { exploreAtEdge } from './fog.ts';
-import { lineAllows, lineBacktrack, lineContext, recordLineShip, type LineContext } from './pirateIslands.ts';
+import { lineAllows, lineBacktrackMovable, lineContext, recordLineShip, type LineContext } from './pirateIslands.ts';
 import { seafarersState, seafarersView } from './state.ts';
 import { takeGift } from './tribe.ts';
 
@@ -135,8 +135,8 @@ export function shipMoveBlock(state: GameState, playerId: string, edge: number):
   if (slot.moved) return 'already-moved';
   if (slot.built.includes(edge)) return 'built-this-turn';
   if (touchesPirate(state, edge)) return 'pirate';
-  // 海盜巢穴：被圍死時可以退回的末端船，即使端點接著自己的建築也可以移動。
-  if (!hasOpenEnd(state, playerId, edge) && !lineBacktrack(state, playerId, edge)) return 'closed';
+  // 海盜巢穴：被圍死時可以退回的末端船，即使端點接著自己的建築也可以移動（接著自己的船則不行）。
+  if (!hasOpenEnd(state, playerId, edge) && !lineBacktrackMovable(state, playerId, edge)) return 'closed';
   if (moduleShipMoveVeto(state, playerId, edge)) return 'closed';
   return null;
 }

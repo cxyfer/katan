@@ -233,6 +233,10 @@ export function lineContext(state: GameState, playerId: string, vacated?: number
   }
   const topo = topologyOf(state);
   const dist = new Array<number>(topo.vertices.length).fill(-1);
+  // 距離與 `lineShip` 用同一套可走的頂點：自己船線上除了端點以外的頂點不能再踏上（不成環）。
+  const lineEnd = vertices.length > 0 ? vertices[vertices.length - 1]! : null;
+  const ownLine = new Set(vertices);
+  if (lineEnd !== null) ownLine.delete(lineEnd);
   if (targetVertex !== null) {
     dist[targetVertex] = 0;
     const queue = [targetVertex];
@@ -242,7 +246,7 @@ export function lineContext(state: GameState, playerId: string, vacated?: number
         if ((state.board.roads[edge] && edge !== vacated) || !isSeaEdge(state, edge)) continue;
         const [a, b] = topo.edges[edge]!.vertices;
         const other = a === vertex ? b : a;
-        if (dist[other] >= 0 || isBlockedFor(state, other, playerId)) continue;
+        if (dist[other] >= 0 || ownLine.has(other) || isBlockedFor(state, other, playerId)) continue;
         dist[other] = dist[vertex]! + 1;
         queue.push(other);
       }
@@ -341,6 +345,19 @@ export function recordLineShip(state: GameState, playerId: string, edge: number,
   line.edges.push(edge);
 }
 
+/**
+ * 退回的末端船真的可以移動：被圍死，而且它的遠端（船線端點）沒有接著自己的其他船——遠端接著自己的建築可以
+ * （移走後建築還在），接著自己的自由海岸船就照一般規則不行（否則會留下與建築斷開的孤立船）。
+ */
+export function lineBacktrackMovable(state: GameState, playerId: string, edge: number): boolean {
+  if (!lineBacktrack(state, playerId, edge)) return false;
+  const end = lineContext(state, playerId)!.end!;
+  return !topologyOf(state).vertices[end]!.edges.some((other) => {
+    const road = state.board.roads[other];
+    return other !== edge && !!road && road.ship && road.player === playerId;
+  });
+}
+
 /** 船線上的船不可移動，除非是被圍死時可以退回的末端船（一般的船在大島周圍的海路上，照一般規則）。 */
 export function lineShipFixed(state: GameState, playerId: string, edge: number): boolean {
   return (pirateIslandsView(state)?.lines[playerId]?.edges.includes(edge) ?? false) && !lineBacktrack(state, playerId, edge);
@@ -368,5 +385,5 @@ export function pirateLineHints(state: GameState, playerId: string) {
   const ctx = lineContext(state, playerId);
   if (!ctx) return null;
   const last = ctx.line.edges[ctx.line.edges.length - 1];
-  return { next: ctx.next, target: ctx.targetVertex, end: ctx.end, edges: ctx.line.edges.slice(), stuck: last !== undefined && lineBacktrack(state, playerId, last) };
+  return { next: ctx.next, target: ctx.targetVertex, end: ctx.end, edges: ctx.line.edges.slice(), stuck: last !== undefined && lineBacktrackMovable(state, playerId, last) };
 }
