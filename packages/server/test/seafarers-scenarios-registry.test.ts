@@ -10,7 +10,6 @@ import { startHarness, type TestHarness } from './helpers.ts';
 
 const SCENARIOS = [
   ['sf-pirate-islands-2025', 'pirate-islands'],
-  ['sf-wonders-of-catan-2025', 'wonders-of-catan'],
 ] as const;
 
 let harness: TestHarness;
@@ -26,7 +25,7 @@ afterAll(async () => {
 const reason = (response: { body: { ok: boolean; error?: { params?: Record<string, unknown> } } }) =>
   response.body.ok ? 'ok' : response.body.error?.params?.reason;
 
-describe('seafarers further scenarios (S0 registry only; four islands, fog islands, through the desert, the forgotten tribe, cloth for catan and new world are live since S2–S6 and S9)', () => {
+describe('seafarers further scenarios (S0 registry only; only pirate islands is still registered but disabled; the other scenarios are live)', () => {
   it('lists the profiles as disabled and never offers them for selection', async () => {
     const host = await harness.client('ScenarioLister');
     const data = host.expectOk<{
