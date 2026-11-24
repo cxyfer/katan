@@ -165,9 +165,6 @@ describe('seafarers module exports (bot plan RX)', () => {
     }
   });
 
-    }
-  });
-
   // D7：只有布匹產地有 clothVictims 提示與 cloth.steal 指令；其他劇本的鍵集合與錯誤碼不變。
   it('only Cloth for Catan adds clothVictims; elsewhere cloth.steal keeps the unknown-command errors', () => {
     const cloth = emptySeafarersGame(3, 0, 'action', 'sf-cloth-for-catan-2025');
