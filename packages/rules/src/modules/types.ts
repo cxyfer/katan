@@ -203,6 +203,11 @@ export interface RulesModule {
   // -- setup ---------------------------------------------------------------
   /** Adds module state after the base state is built (bank, decks, pieces). */
   initGame?(state: GameState, ctx: ModuleContext): void;
+  /**
+   * Redraws the board during setup (New World). Not a player command: the
+   * service calls it through `regenerateBoard` once every human seat agreed.
+   */
+  regenerate?(state: GameState, ctx: ModuleContext): CommandOutcome;
   /** The building a setup step places; `undefined` keeps the settlement. */
   setupBuilding?(state: GameState, step: SetupStep, ctx: ModuleViewContext): 'settlement' | 'city' | undefined;
   /** False when this setup building gets no starting resources (base: round 2 does). */

@@ -16,6 +16,9 @@ function count(values: unknown): Record<string, number> {
 const num = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 const str = (value: unknown): string => (typeof value === 'string' ? value : '');
 
+const worldHarbor = (locale: Locale, harbor: string): string =>
+  harbor === 'generic' ? t(locale, 'sf.gift.port.generic') : t(locale, 'sf.gift.port.resource', { resource: t(locale, `resource.${harbor}`) });
+
 export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: NameResolver): Record<string, unknown> | undefined {
   const p = event.params ?? {};
   const player = nameOf(str(p.playerId));
@@ -45,7 +48,7 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
         shortSuffix: num(p.shortBy) > 0 ? t(locale, 'sf.gold.short', { count: num(p.shortBy) }) : '',
       };
     case 'island.bonus':
-      return { player, points: num(p.points) };
+      return { player, points: num(p.points), unit: t(locale, num(p.points) === 1 ? 'sf.vp.one' : 'sf.vp.many') };
     case 'tribe.gift': {
       const harbor = str(p.harbor);
       const gift = p.gift === 'vp' ? t(locale, 'sf.gift.vp') : p.gift === 'devcard' ? t(locale, 'sf.gift.devcard')
@@ -59,6 +62,14 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
         harbor: harbor === 'generic' ? t(locale, 'sf.gift.port.generic') : t(locale, 'sf.gift.port.resource', { resource: t(locale, `resource.${harbor}`) }),
       };
     }
+    case 'world.harborDrawn':
+      return { player, harbor: worldHarbor(locale, str(p.harbor)), number: num(p.number), total: 10 };
+    case 'world.harborPlaced':
+      return { player, edge: num(p.edge), harbor: worldHarbor(locale, str(p.harbor)) };
+    case 'world.harborsSkipped':
+      return { remaining: num(p.remaining) };
+    case 'world.regenerated':
+      return { count: num(p.count) };
     case 'fog.revealed': {
       const terrain = t(locale, `terrain.${str(p.tile)}`).replace(/\s*[（(][^)）]*[)）]\s*$/, '');
       return {

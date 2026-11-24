@@ -943,6 +943,7 @@ export const zhHant: Catalog = {
   'error.E_NOT_SEATED': '你在這個對局中沒有座位。',
   'error.E_NO_ABSENT_PLAYER': '目前沒有缺席或已退出的座位，沒有可結束的中斷對局。',
   'error.E_NO_PROPOSAL': '這個提案已不存在或已被取消。',
+  'error.E_REGENERATE_UNAVAILABLE': '只有第一個港口放下之前可以重新產生版圖。',
   'error.E_NO_SESSION': '請先輸入顯示名稱。',
   'error.E_ROOM_CAPACITY': '人數上限不可超過 {max}。',
   'error.E_ROOM_STARTED': '對局已開始，房間設定已鎖定。',

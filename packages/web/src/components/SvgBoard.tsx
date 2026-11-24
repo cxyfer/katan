@@ -10,6 +10,7 @@ import { placementArrival } from '../board/effects.ts';
 import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HARBOR_TINT, HarborMarker, IslandShore, NumberToken, RobberPiece, shade, TileFinish } from './SvgBoardArt.tsx';
 import { TerrainEmblem } from './TerrainArt.tsx';
 import { TbBridge, TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
+import { getProfile } from '@katan/rules';
 import { edgeAngle, edgeMidpoint, GiftMarker, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece, TribeMarker } from './SvgSeafarers.tsx';
 import { harborRatio, isShipCommand, seafarersView } from '../board/seafarers.ts';
 import { FogCloud, SvgExplorersPiratesLayer } from './SvgExplorersPirates.tsx';
@@ -230,7 +231,8 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
             const owner = view.players.find((candidate) => candidate.id === claim.player);
             if (!vertex) return null;
             return <IslandBonusToken key={`island-${claim.player}-${claim.island}`} testId={`island-bonus-${claim.vertex}`}
-              x={vertex.x + 17} y={vertex.y + 16} color={playerColorHex(owner?.color ?? 'white')} />;
+              x={vertex.x + 17} y={vertex.y + 16} color={playerColorHex(owner?.color ?? 'white')}
+              points={getProfile(view.profileId)?.islandBonus?.points} />;
           })}
           {/* 布匹產地：部落圓片、剩餘布匹與已建立關係的玩家（小島的上頂點把布匹疊在上方）。 */}
           {seafarersView(view)?.cloth?.tribes.map((tribe, index) => {

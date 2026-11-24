@@ -315,6 +315,13 @@ export function tableHold(state: TableState): TableHold | null {
 }
 
 /** 全桌已保存並暫停（或房間尚未載入、但續玩清單記為已暫停）。 */
+/** 新世界的版圖被重新產生（`world.rerolls` 變了，或地形不同）：任何依舊圖選的目標都已失效。 */
+function boardRedrawn(before: GameSnapshot | null, after: GameSnapshot): boolean {
+  if (!before) return false;
+  const rerolls = (view: GameSnapshot['view']) => (view.modules?.seafarers as { world?: { rerolls?: number } } | undefined)?.world?.rerolls ?? 0;
+  return rerolls(before.view) !== rerolls(after.view) || before.view.board.terrain.join() !== after.view.board.terrain.join();
+}
+
 export function tableSuspended(state: TableState): boolean {
   return tableHold(state) === 'suspended';
 }
@@ -507,6 +514,8 @@ export function tableReducer(state: TableState, action: TableAction): TableState
         // 換局時上一局的擲骰前投影不能套到新棋盤上。
         ...(sameGame ? holdForRoll(state, snapshot.view.events) : { dicePresenting: false, rollHold: null }),
         game: snapshot,
+        // 新世界重新產生版圖：舊圖上選好的港口邊不能帶到新圖。
+        selection: sameGame && boardRedrawn(current, snapshot) ? EMPTY_SELECTION : state.selection,
         // 換局或離開對局時，上一局未完成的發展卡資源選擇不能帶到下一局。
         devCardChoice: sameGame ? state.devCardChoice : null,
         awaitingRoomId: sameGame ? state.awaitingRoomId : null,
@@ -595,7 +604,11 @@ export function activeTurnKey(state: TableState): string | null {
   // and a reconnect that skipped a round). Setup does not open a window, so its
   // decreasing remaining-step count supplies the same boundary.
   const setup = game.view.turn.setup;
-  const setupStep = setup ? `${setup.round}:${setup.remaining}` : 'play';
+  // 新世界的港口階段 `remaining` 不變：把階段與已放港口數、重排次數納入，逐一放置、重排與
+  // 港口轉起始村落都是新的一步（其他劇本沒有 `world`，key 不變）。
+  const world = (game.view.modules?.seafarers as { world?: { placed: number; rerolls: number } } | undefined)?.world;
+  const worldStep = setup && world ? `:${setup.stage}:${world.placed}:${world.rerolls}` : '';
+  const setupStep = setup ? `${setup.round}:${setup.remaining}${worldStep}` : 'play';
   return `${game.gameId}:${game.view.windowId}:${setupStep}`;
 }
 

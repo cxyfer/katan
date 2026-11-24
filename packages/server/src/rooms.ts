@@ -15,6 +15,7 @@ import {
 import {
   DEFAULT_POLICY,
   type AbandonProposalView,
+  type RegenerateProposalView,
   type SuspendProposalView,
   type BotLevel,
   type GameOrderMode,
@@ -286,6 +287,20 @@ export class RoomService {
       }
     }
 
+    // 重新產生版圖提案（New World）只在進行中的對局有意義。
+    let pendingRegenerate: RegenerateProposalView | null = null;
+    if (room.game_id && room.status === 'playing') {
+      const regenerate = await this.repo.findOpenGameProposal(room.game_id, 'regenerate');
+      if (regenerate) {
+        pendingRegenerate = {
+          id: regenerate.id,
+          proposedBy: regenerate.proposed_by,
+          consents: await this.repo.listGameConsents(regenerate.id),
+          createdAt: regenerate.created_at,
+        };
+      }
+    }
+
     // 全桌暫停提案只在進行中的對局有意義；暫停中則改列出已表示準備繼續的真人（§4.8）。
     let pendingSuspend: SuspendProposalView | null = null;
     let resumeReady: string[] | null = null;
@@ -326,6 +341,7 @@ export class RoomService {
       pendingPolicy,
       pendingAbandon,
       pendingSuspend,
+      pendingRegenerate,
       resumeReady,
       ...(viewerId ? { viewerEntryEpoch: this.entryEpochOf(roomId, viewerId) } : {}),
     };

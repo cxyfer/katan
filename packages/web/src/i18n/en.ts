@@ -950,6 +950,7 @@ export const en: Catalog = {
   'error.E_NOT_SEATED': 'You do not hold a seat in this game.',
   'error.E_NO_ABSENT_PLAYER': 'No seat is absent or withdrawn, so there is nothing to end.',
   'error.E_NO_PROPOSAL': 'That proposal no longer exists or was cancelled.',
+  'error.E_REGENERATE_UNAVAILABLE': 'The board can only be redrawn before the first port is placed.',
   'error.E_NO_SESSION': 'Enter a display name first.',
   'error.E_ROOM_CAPACITY': 'Capacity cannot exceed {max}.',
   'error.E_ROOM_STARTED': 'The game has started, so room settings are locked.',

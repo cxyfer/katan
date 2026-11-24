@@ -42,6 +42,7 @@ const VIEW_KEYS: Record<keyof SeafarersView, true> = {
   fog: true,
   tribe: true,
   cloth: true,
+  world: true,
 };
 
 const CLAIM_KEYS: Record<keyof Claim, true> = { player: true, island: true, vertex: true };
@@ -68,8 +69,8 @@ const keysOf = (record: object): string[] => Object.keys(record).sort();
 /** 世外部落以外的劇本沒有港口放置的提示欄位。 */
 const HINT_KEYS_WITHOUT_TRIBE = Object.keys(HINT_KEYS).filter((key) => !['harborChoices', 'targets', 'board', 'clothVictims'].includes(key)).sort();
 /** `home` 只在排除 home 島的劇本（四島群島、新世界）的設置結束後出現，New Shores 不帶。 */
-const VIEW_KEYS_WITHOUT_HOME = Object.keys(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'fog' && key !== 'tribe' && key !== 'cloth').sort();
-/** `fog` 只在未知海域劇本、`tribe` 只在世外部落、`cloth` 只在布匹產地出現。 */
+const VIEW_KEYS_WITHOUT_HOME = Object.keys(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'fog' && key !== 'tribe' && key !== 'cloth' && key !== 'world').sort();
+/** `fog` 只在未知海域劇本、`tribe` 只在世外部落、`cloth` 只在布匹產地、`world` 只在新世界出現。 */
 
 // Both maps list the same modules, so a module added to one cannot be forgotten in the other.
 type SameKeys = [keyof ModuleViewMap] extends [keyof ModuleHintsMap]
@@ -110,7 +111,7 @@ describe('seafarers module exports (bot plan RX)', () => {
 
   it('a fog scenario adds the unrevealed hexes as `fog`', () => {
     const state = emptySeafarersGame(3, 0, 'action', 'sf-fog-islands-2025');
-    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'tribe' && key !== 'cloth'));
+    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'tribe' && key !== 'cloth' && key !== 'world'));
     expect(viewOf(state, 'p2').fog).toHaveLength(12);
   });
 
@@ -118,7 +119,7 @@ describe('seafarers module exports (bot plan RX)', () => {
     const state = emptySeafarersGame(4, 0, 'action', 'sf-four-islands-2025');
     expect(keysOf(projectSeafarers(state))).toEqual(VIEW_KEYS_WITHOUT_HOME);
     seafarersState(state).home = { p1: [2], p2: [3], p3: [], p4: [5, 4] };
-    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'fog' && key !== 'cloth' && key !== 'tribe'));
+    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'fog' && key !== 'cloth' && key !== 'tribe' && key !== 'world'));
     expect(viewOf(state, 'p3').home).toEqual({ p1: [2], p2: [3], p3: [], p4: [5, 4] });
   });
 
@@ -168,12 +169,23 @@ describe('seafarers module exports (bot plan RX)', () => {
   it('only Cloth for Catan adds clothVictims; elsewhere cloth.steal keeps the unknown-command errors', () => {
     const cloth = emptySeafarersGame(3, 0, 'action', 'sf-cloth-for-catan-2025');
     expect(keysOf(hintsOf(cloth, 'p1'))).toEqual(keysOf(HINT_KEYS).filter((key) => !['harborChoices', 'targets', 'board'].includes(key)));
-    for (const profileId of ['sf-new-shores-2025', 'sf-four-islands-2025', 'sf-forgotten-tribe-2025', 'sf-through-the-desert-2025']) {
+    for (const profileId of ['sf-new-shores-2025', 'sf-four-islands-2025', 'sf-forgotten-tribe-2025', 'sf-through-the-desert-2025', 'sf-new-world-2025']) {
       const state = emptySeafarersGame(profileId === 'sf-new-shores-2025' ? 4 : 3, 0, 'action', profileId);
       expect(keysOf(hintsOf(state, 'p1')), profileId).not.toContain('clothVictims');
       expect(applyCommand(state, 'p1', { type: 'cloth.steal', victim: 'p2' } as never, scriptedRng([]))).toMatchObject({ ok: false, error: { code: 'E_INVALID_COMMAND' } });
       state.pending = { kind: 'moveRobber', actor: 'p1', cause: 'seven', pirate: false };
       expect(applyCommand(state, 'p1', { type: 'cloth.steal', victim: 'p2' } as never, scriptedRng([]))).toMatchObject({ ok: false, error: { code: 'E_PENDING_EFFECT' } });
+    }
+  });
+
+  it('New World adds `world` to the view and the harbour hint keys to the hints, and takes world.harbor only there', () => {
+    const state = seafarersGame(4, 1, 'sf-new-world-2025').state;
+    expect(keysOf(projectSeafarers(state))).toEqual(keysOf(VIEW_KEYS).filter((key) => key !== 'home' && key !== 'fog' && key !== 'tribe' && key !== 'cloth'));
+    const worldHints = keysOf(HINT_KEYS).filter((key) => key !== 'clothVictims');
+    expect(keysOf(hintsOf(state, 'p1'))).toEqual(worldHints);
+    expect(keysOf(hintsOf(state, 'p2'))).toEqual(worldHints);
+    for (const profileId of ['sf-new-shores-2025', 'sf-forgotten-tribe-2025']) {
+      expect(applyCommand(emptySeafarersGame(4, 0, 'action', profileId), 'p1', { type: 'world.harbor', edge: 0 } as never, scriptedRng([]))).toMatchObject({ ok: false, error: { code: 'E_INVALID_COMMAND' } });
     }
   });
 

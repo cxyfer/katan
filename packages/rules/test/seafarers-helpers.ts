@@ -2,6 +2,7 @@
 
 import { topologyOf } from '../src/analysis.ts';
 import { createGame } from '../src/engine.ts';
+import { getProfile } from '../src/profiles.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
 import { hexCenter, NEIGHBOR_DIRS } from '../src/topology.ts';
 import type { GameState } from '../src/types.ts';
@@ -10,10 +11,12 @@ import { COLORS, forceTurn, playerIds } from './helpers.ts';
 /** 預設是 New Shores；`profileId` 可改成其他只有 fixed 版圖的 Seafarers 劇本（3–4 人）。 */
 export function seafarersGame(players: 3 | 4 | 5 | 6 = 4, seed = 12345, profileId?: string): { state: GameState; rng: Rng } {
   const rng = seededRng(seed);
+  const id = profileId ?? (players <= 4 ? 'sf-new-shores-2025' : 'sf-new-shores-paired-2025');
   const state = createGame({
-    profileId: profileId ?? (players <= 4 ? 'sf-new-shores-2025' : 'sf-new-shores-paired-2025'),
+    profileId: id,
     players: playerIds(players).map((id, index) => ({ id, nickname: id.toUpperCase(), color: COLORS[index]! })),
-    setupMode: players <= 4 ? 'fixed' : 'variable',
+    // 新世界只有隨機版圖（variable）；其餘 3–4 人劇本是固定版圖。
+    setupMode: players <= 4 && getProfile(id)!.setupModes.includes('fixed') ? 'fixed' : 'variable',
     rng,
   });
   return { state, rng };

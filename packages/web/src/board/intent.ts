@@ -192,6 +192,8 @@ export function boardIntent(state: TableState, selfId: string | null): BoardInte
   }
 
   const setup = view.turn.setup;
+  // 新世界的港口階段只有棋盤提示（上面的 `moduleBoardIntent`）；沒有提示時不能落到起始道路。
+  if (setup?.stage === 'harbor') return null;
   if (setup && selfId) {
     const actor = view.players.find((player) => player.seat === setup.seat);
     if (actor?.id === selfId) {

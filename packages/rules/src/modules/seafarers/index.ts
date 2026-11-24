@@ -40,6 +40,7 @@ import {
 } from './ships.ts';
 import { SEAFARERS, initialSeafarersState, seafarersState, seafarersView } from './state.ts';
 import { HARBOR_FRAME, activateHarborFrame, harborChoices, initTribe, isForgottenTribe, offerHarbors, placeHarbor, projectHarborFrame, projectTribe } from './tribe.ts';
+import { WORLD_HARBOR_COMMAND, initWorld, isNewWorld, placeWorldHarbor, projectWorld, regenerateWorld, worldHints } from './world.ts';
 import { setModuleState } from '../state.ts';
 
 /**
@@ -69,6 +70,8 @@ export function projectSeafarers(state: GameState) {
     ...(slot.tribe ? { tribe: projectTribe(slot.tribe) } : {}),
     // 布匹產地的部落、供應堆、各玩家布匹與貿易關係（全部公開）；其餘劇本不帶此欄。
     ...(slot.cloth ? { cloth: projectCloth(slot.cloth) } : {}),
+    // 新世界：現在抽到的港口與已放數量（尚未抽的港口不投影）。
+    ...(slot.world ? { world: projectWorld(slot.world, state) } : {}),
   };
 }
 
@@ -113,6 +116,8 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
     // 布匹產地才有偷布匹的提示欄位（偷海盜的對象時可改偷布匹的玩家）；其他劇本的鍵集合不變（D7）。
     ...(view.cloth ? { clothVictims: state.pending?.kind === 'steal' && state.pending.actor === playerId && state.pending.pirate
       ? clothVictims(state, state.pending.candidates) : [] as string[] } : {}),
+    // 新世界設置階段的港口：只有輪到的玩家有選邊提示；其他劇本不帶這些鍵。
+    ...(view.world ? worldHints(state, playerId) : {}),
     goldRequired: required,
     /**
      * 金礦作答所需的銀行存量：每種 `min(存量, goldRequired)`，只給當下作答的玩家（其他人
@@ -146,6 +151,7 @@ export const seafarersModule: RulesModule = {
       setup.order = [...setup.order, ...state.players.map((player) => player.seat)];
       setup.third = false;
     }
+    if (isNewWorld(ctx)) initWorld(state, ctx, slot);
     setModuleState(state, SEAFARERS, slot);
   },
 
@@ -185,6 +191,8 @@ export const seafarersModule: RulesModule = {
   robberTargets(state, _actorId, targets, ctx) {
     return targets.filter((hex) => robberHexAllowed(state, hex, ctx));
   },
+
+  regenerate: regenerateWorld,
 
   afterProduction(state, roll, ctx) {
     // 布匹先於金礦結算（SF25 p. 14）；擲骰者拿到布匹可能剛好湊到目標分，先判勝再開金礦選擇。
@@ -227,6 +235,7 @@ export const seafarersModule: RulesModule = {
     'fog.choose': chooseFog,
     'harbor.place': placeHarbor,
     'cloth.steal': stealCloth,
+    [WORLD_HARBOR_COMMAND]: placeWorldHarbor,
   },
   pendingCommands: ['build.ship', 'gold.choose', 'fog.choose', 'harbor.place', 'cloth.steal'],
 

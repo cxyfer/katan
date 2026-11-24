@@ -32,6 +32,8 @@ import type {
   RoomView,
   SaveReceipt,
   ServerConfigView,
+  RegenerateConsentResult,
+  RegenerateProposeResult,
   SuspendConsentResult,
   SuspendProposeResult,
   WithdrawResult,
@@ -130,6 +132,11 @@ export interface KatanApi {
     gameId: string,
     body?: { proposalId: string; approve: boolean },
   ): Promise<ApiResult<SuspendProposeResult | SuspendConsentResult>>;
+  /** 新世界：不帶 body 為房主提議重新產生版圖；帶 proposalId 為對該提案表態。 */
+  regenerateGame(
+    gameId: string,
+    body?: { proposalId: string; approve: boolean },
+  ): Promise<ApiResult<RegenerateProposeResult | RegenerateConsentResult>>;
   abandonGame(
     gameId: string,
     body?: { proposalId: string; approve: boolean },
@@ -318,6 +325,13 @@ export class ApiClient implements KatanApi {
     return this.#request<SuspendProposeResult | SuspendConsentResult>(
       'POST',
       `/api/games/${encodeURIComponent(gameId)}/suspend`,
+      body ?? {},
+    );
+  }
+  regenerateGame(gameId: string, body?: { proposalId: string; approve: boolean }) {
+    return this.#request<RegenerateProposeResult | RegenerateConsentResult>(
+      'POST',
+      `/api/games/${encodeURIComponent(gameId)}/regenerate`,
       body ?? {},
     );
   }

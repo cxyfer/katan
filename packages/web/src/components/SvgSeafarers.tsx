@@ -62,13 +62,13 @@ export function pirateFrameSpot(geometry: BoardGeometry): Point {
   return { x: x + width - 0.32 * geometry.scale, y: y + height / 2 };
 }
 
-/** Two stacked victory-point tokens tucked under a settlement (+2 island bonus). */
-export function IslandBonusToken({ x, y, color, testId }: { x: number; y: number; color: string; testId?: string }) {
+/** Two stacked victory-point tokens tucked under a settlement (the island bonus, +2 in New Shores, +1 in New World). */
+export function IslandBonusToken({ x, y, color, testId, points = 2 }: { x: number; y: number; color: string; testId?: string; points?: number }) {
   return <g transform={`translate(${x} ${y})`} data-testid={testId} aria-hidden="true">
     <ellipse cx="0" cy="5" rx="11" ry="4" fill="#5d3a12" />
     <ellipse cx="0" cy="2" rx="11" ry="4" fill="#d9a534" stroke="#6b4512" strokeWidth="1.2" />
     <ellipse cx="0" cy="-1" rx="11" ry="4" fill="#f2c95a" stroke="#6b4512" strokeWidth="1.2" />
-    <text x="0" y="1.5" textAnchor="middle" fontSize="7" fontWeight="700" fill="#5a3505">+2</text>
+    <text x="0" y="1.5" textAnchor="middle" fontSize="7" fontWeight="700" fill="#5a3505">{`+${points}`}</text>
     <circle cx="9" cy="-4" r="2.6" fill={color} stroke="#20180f" strokeWidth="1" />
   </g>;
 }

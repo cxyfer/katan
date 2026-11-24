@@ -279,7 +279,7 @@ function tbProfile(
  * 尚未啟用的劇本，layout builder 與 topology 尚未存在（各切片自行登記），
  * `topologyId` 沿用 `baseProfile` 的預設值，只是佔位；在 `enabled: false`
  * 之下 `resolveCombination` 一律回 `disabled`，不會走到建圖。四島群島（S2）
- * 、穿越荒漠（S4）、世外部落（S5）與布匹產地（S6）已有版圖與規則證據，故啟用。
+ * 、穿越荒漠（S4）、世外部落（S5）、布匹產地（S6）與新世界（S9）已有版圖與規則證據，故啟用。
  * 不在 bot 支援清單內（`bots/src/modules/seafarers` 的 `SUPPORTED_SCENARIOS`），
  * 因此一律拒絕 bot 座位。
  */
@@ -355,7 +355,14 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
   seafarersScenarioProfile('sf-pirate-islands-2025', 'pirate-islands', 10, 'pp. 16–17'),
   // 真正條件是「完成奇觀，或 10 分且層數最高」，複合條件在 S8 實作；此處只放分數部分。
   seafarersScenarioProfile('sf-wonders-of-catan-2025', 'wonders-of-catan', 10, 'pp. 18–19', { islandBonus: { points: 1, skip: 'main' } }),
-  seafarersScenarioProfile('sf-new-world-2025', 'new-world', 12, 'p. 20', { setupModes: ['variable'], islandBonus: { points: 1, skip: 'home' } }),
+  // 隨機版圖（42 格外框）；設置階段玩家輪流放港口；島嶼獎勵每座非 home island 1 分。
+  seafarersScenarioProfile('sf-new-world-2025', 'new-world', 12, 'p. 20', {
+    setupModes: ['variable'],
+    islandBonus: { points: 1, skip: 'home' },
+    topologyId: 'sf-new-world',
+    implemented: true,
+    enabled: true,
+  }),
 ];
 
 /**

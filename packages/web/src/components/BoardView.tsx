@@ -177,6 +177,9 @@ export function BoardView({ controller }: { controller: TableController }) {
   // 佇列中仍有骰子（例如後一次擲骰排在前一組特效之後）時，靜態點數也先隱藏。
   const hideStaticDice = focusedRoll !== null || state.dicePresenting;
   useEffect(() => { if (!intent) { setPickerOpen(false); setCluster(null); setPickerTarget(null); } }, [intent]);
+  // 新世界重新產生版圖：舊圖上開著的目標清單與重疊群組已失效，一併關閉（意圖仍在，只是換了盤面）。
+  const redrawKey = `${seaView?.world?.rerolls ?? 0}:${view?.board.terrain.join(',') ?? ''}`;
+  useEffect(() => { setPickerOpen(false); setCluster(null); setPickerTarget(null); }, [redrawKey]);
 
   if (!view || !boardView) return <p className="muted" data-testid="board-missing">{t('app.loading')}</p>;
   const board = view.board;
@@ -185,18 +188,23 @@ export function BoardView({ controller }: { controller: TableController }) {
   const setup = view.turn.setup;
   const setupActor = setup ? view.players.find((player) => player.seat === setup.seat) : undefined;
   const epStep = epView(view)?.setupStep ?? null;
-  const setupPiece = epStep ? t(`ep.setup.${epStep}`) : setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
+  const setupPiece = epStep ? t(`ep.setup.${epStep}`) : setup?.stage === 'harbor' ? t('sf.world.harbor') : setup?.stage === 'building' ? t('play.build.settlement') : t('play.build.road');
+  const world = seafarersView(view)?.world ?? null;
   const setupMine = setupActor?.id === selfId;
   const selection = intent && state.connection === 'online' && selfId && state.selection.kind === intent.kind && state.selection.index !== null && intent.targets.includes(state.selection.index)
     ? { kind: intent.kind, index: state.selection.index, playerId: selfId, params: state.selection.params } : null;
   const setupGuide = setup && (
     <section className={`board__setup-guide${setupMine ? ' board__setup-guide--mine' : ''}`} data-testid="setup-guide" aria-live="polite">
       <div className="board__setup-title">
-        <GameIcon name={setup.stage === 'building' ? 'home' : 'flag'} size={20} />
+        <GameIcon name={setup.stage === 'harbor' ? 'anchor' : setup.stage === 'building' ? 'home' : 'flag'} size={20} />
         <strong>{setupMine ? t('board.setupPlace', { piece: setupPiece }) : t('board.setupWaiting', { player: setupActor ? nameResolver(setupActor.id) : '—', piece: setupPiece })}</strong>
       </div>
-      <span>{t('board.setupGuide', { round: setup.third ? 3 : setup.round })}</span>
-      <span>{t('board.setupProgress', { remaining: setup.remaining })}</span>
+      {setup.stage === 'harbor' && world
+        ? <span data-testid="setup-harbor-progress">{t('sf.world.progress', { placed: Math.min(world.placed + 1, world.total), total: world.total })}</span>
+        : <>
+          <span>{t('board.setupGuide', { round: setup.third ? 3 : setup.round })}</span>
+          <span>{t('board.setupProgress', { remaining: setup.remaining })}</span>
+        </>}
       {setupMine && <p>{t('board.setupPickTarget')}</p>}
     </section>
   );

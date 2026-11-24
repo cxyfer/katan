@@ -13,6 +13,7 @@ import {
   createGame,
   projectEvent,
   projectGame,
+  regenerateBoard,
   requireProfile,
   secureRng,
   shuffle,
@@ -30,6 +31,8 @@ import type {
   CommandRequest,
   GameSnapshot,
   Notice,
+  RegenerateConsentResult,
+  RegenerateProposeResult,
   ResumableGameView,
   ResumeReadyResult,
   RoomStatus,
@@ -337,6 +340,7 @@ export class GameCoordinator {
 
       const revision = game.revision + 1;
       const events = outcome.events;
+      let lapsedProposals = 0;
       await this.repo.transaction(async () => {
         await this.repo.saveGame(
           gameId,
@@ -357,11 +361,14 @@ export class GameCoordinator {
           events_json: JSON.stringify(events.slice(-RECEIPT_EVENT_LIMIT)),
           created_at: new Date().toISOString(),
         });
+        // 版圖已往下走（例如第一個港口放下），重新產生版圖的提案隨之失效；與狀態同一個 transaction。
+        lapsedProposals = await this.repo.cancelOpenGameProposalsOfKind(gameId, 'regenerate');
       });
 
       if (outcome.state.result) {
         await this.repo.updateRoom(game.room_id, { status: 'completed' });
       }
+      if (lapsedProposals > 0) this.deps.rooms.broadcastRoom(game.room_id);
       this.publish(game.room_id, gameId, revision, events);
       this.notifyCommitted({
         gameId,
@@ -593,6 +600,7 @@ export class GameCoordinator {
       await this.repo.updateGameProposalStatus(proposalId, 'applied');
       await this.repo.updateRoom(game.room_id, { status: 'suspended' });
       await this.repo.cancelOpenProposals(game.room_id);
+      await this.repo.cancelOpenGameProposalsOfKind(game.id, 'regenerate');
       if (abandonVoteLapses) await this.repo.cancelOpenGameProposalsOfKind(game.id, 'abandon');
       await this.repo.clearGameReady(game.id);
     });
@@ -600,6 +608,104 @@ export class GameCoordinator {
     // 報價已失效：推送新的投影，牌桌上的交易面板才不會留著已取消的報價。
     if (events.length > 0) this.publish(game.room_id, game.id, revision, events);
     this.notifyLifecycle(game.id, 'suspended');
+    return true;
+  }
+
+  // -- regenerate the board (New World) -----------------------------------
+
+  /**
+   * 重新產生版圖（New World，SF25 p. 20「玩家可以同意調整」）：房主提出，每位真人座位都同意才成立，
+   * 任何人拒絕即取消；Bot 席位視為同意。只在第一個港口放下之前（規則端判定），不限次數但每次都要全員同意。
+   * 同意齊全時用新的 `secureRng()` 整盤重抽並存成新的修訂版本。
+   */
+  async proposeRegenerate(playerId: string, gameId: string): Promise<RegenerateProposeResult> {
+    return this.withLock(gameId, async () => {
+      const game = await this.requireGame(gameId);
+      await this.requireSeat(game, playerId);
+      this.assertNotTerminal(game);
+      const room = await this.repo.findRoom(game.room_id);
+      if (room?.status === 'suspended') {
+        throw new ServiceError('E_GAME_SUSPENDED', 'error.E_GAME_SUSPENDED', { gameId }, 409);
+      }
+      if (room?.host_id !== playerId) {
+        throw new ServiceError('E_NOT_HOST', 'error.E_NOT_HOST', { roomId: game.room_id }, 403);
+      }
+      this.assertRegenerable(game);
+      const existing = await this.repo.findOpenGameProposal(gameId, 'regenerate');
+      if (existing) return { proposalId: existing.id, regenerated: false };
+      const proposalId = newId('regenerate');
+      await this.repo.insertGameProposal({
+        id: proposalId,
+        game_id: gameId,
+        kind: 'regenerate',
+        proposed_by: playerId,
+        status: 'open',
+        created_at: new Date().toISOString(),
+      });
+      await this.repo.insertGameConsent(proposalId, playerId);
+      const regenerated = await this.tryApplyRegenerate(game, proposalId);
+      if (!regenerated) this.deps.rooms.broadcastRoom(game.room_id);
+      return { proposalId, regenerated };
+    });
+  }
+
+  async consentRegenerate(
+    playerId: string,
+    gameId: string,
+    proposalId: string,
+    approve: boolean,
+  ): Promise<RegenerateConsentResult> {
+    return this.withLock(gameId, async () => {
+      const game = await this.requireGame(gameId);
+      await this.requireSeat(game, playerId);
+      this.assertNotTerminal(game);
+      // 暫停中的桌子不能重排（暫停成立時也會取消開著的提案）。
+      if ((await this.repo.findRoom(game.room_id))?.status === 'suspended') {
+        throw new ServiceError('E_GAME_SUSPENDED', 'error.E_GAME_SUSPENDED', { gameId }, 409);
+      }
+      const proposal = await this.repo.findOpenGameProposal(gameId, 'regenerate');
+      if (!proposal || proposal.id !== proposalId) {
+        throw new ServiceError('E_NO_PROPOSAL', 'error.E_NO_PROPOSAL', { proposalId }, 404);
+      }
+      if (!approve) {
+        await this.repo.updateGameProposalStatus(proposalId, 'rejected');
+        this.deps.rooms.broadcastRoom(game.room_id);
+        return { regenerated: false };
+      }
+      // 冪等：重送（重試、雙擊）不會撞主鍵，也不重複計票。
+      await this.recordConsent(proposalId, playerId);
+      const regenerated = await this.tryApplyRegenerate(game, proposalId);
+      if (!regenerated) this.deps.rooms.broadcastRoom(game.room_id);
+      return { regenerated };
+    });
+  }
+
+  /** 規則端判定現在能不能重新產生（試算一次，不存檔）。 */
+  private assertRegenerable(game: GameRow): void {
+    const probe = regenerateBoard(JSON.parse(game.state_json) as GameState, secureRng());
+    if (!probe.ok) {
+      throw new ServiceError('E_REGENERATE_UNAVAILABLE', 'error.E_REGENERATE_UNAVAILABLE', { gameId: game.id }, 409);
+    }
+  }
+
+  private async tryApplyRegenerate(game: GameRow, proposalId: string): Promise<boolean> {
+    // Bot 席位視為同意，只需要真人一致同意。
+    const memberships = humanMembers(await this.repo.listMembers(game.room_id));
+    const consents = new Set(await this.repo.listGameConsents(proposalId));
+    if (!memberships.every((membership) => consents.has(membership.player_id))) return false;
+    const outcome = regenerateBoard(JSON.parse(game.state_json) as GameState, secureRng());
+    if (!outcome.ok) {
+      await this.repo.updateGameProposalStatus(proposalId, 'cancelled');
+      return false;
+    }
+    const revision = game.revision + 1;
+    await this.repo.transaction(async () => {
+      await this.repo.saveGame(game.id, outcome.state, revision, game.status, game.pause_reason);
+      await this.repo.appendEvents(game.id, revision, outcome.events);
+      await this.repo.updateGameProposalStatus(proposalId, 'applied');
+    });
+    this.deps.rooms.broadcastRoom(game.room_id);
+    this.publish(game.room_id, game.id, revision, outcome.events);
     return true;
   }
 

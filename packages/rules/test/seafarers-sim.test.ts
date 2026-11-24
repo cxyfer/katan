@@ -222,3 +222,32 @@ describe('simulated Cloth for Catan games (SFX-S6)', () => {
     expect(produced).toBeGreaterThan(0);
   }, 300_000);
 });
+
+describe('simulated New World games (SFX-S9)', () => {
+  for (const players of [3, 4] as const) {
+    it(`${players} players place ten ports, then finish with a 12-point winner, a conserved supply and legal pieces`, () => {
+      const run = simulateSeafarers(players, 51 + players, 40000, 'sf-new-world-2025');
+      const { state } = run;
+      expect(state.result?.reason).toBe('victory');
+      expect(scoreOf(state, state.result!.playerId!, { includeHidden: true })).toBeGreaterThanOrEqual(12);
+      const bank = getProfile(state.profileId)!.bankPerResource;
+      for (const resource of RESOURCES) {
+        const total = state.bank[resource] + state.players.reduce((sum, player) => sum + player.resources[resource], 0);
+        expect(total, resource).toBe(bank);
+      }
+      checkBoard(state);
+      expect(run.harborsPlaced).toBe(10);
+      expect(state.board.layout.harbors).toHaveLength(10);
+    }, 120_000);
+  }
+
+  it('across seeds the simulation earns 1-point island bonuses', () => {
+    let bonuses = 0;
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const run = simulateSeafarers(4, seed, 40000, 'sf-new-world-2025');
+      expect(run.state.result?.reason).toBe('victory');
+      bonuses += run.islandBonuses;
+    }
+    expect(bonuses).toBeGreaterThan(0);
+  }, 240_000);
+});
