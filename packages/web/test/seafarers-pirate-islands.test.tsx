@@ -168,13 +168,16 @@ describe('Pirate Islands player panel and messages', () => {
 
   it('shows each player’s fortress (lair tokens left, or recaptured) and ship line, and no Longest Road or Largest Army', () => {
     panel('en');
-    expect(screen.getByTestId('players-fortress-0').getAttribute('aria-label')).toBe('Pirate fortress: 3 lair token(s) left: 3');
-    expect(screen.getByTestId('players-fortress-1').getAttribute('aria-label')).toContain('recaptured');
-    expect(screen.getByTestId('players-ship-line-0').getAttribute('aria-label')).toBe('Ship line to the western islands: 0 ship(s), next: beachhead: 0');
+    expect(screen.getByTestId('players-fortress-0').getAttribute('aria-label')).toBe('Pirate fortress (lair tokens left): ×3');
+    expect(screen.getByTestId('players-fortress-0').textContent).toBe('×3');
+    expect(screen.getByTestId('players-fortress-1').getAttribute('aria-label')).toBe('Pirate fortress (lair tokens left): recaptured');
+    expect(screen.getByTestId('players-fortress-1').textContent).toBe('recaptured');
+    expect(screen.getByTestId('players-ship-line-0').getAttribute('aria-label')).toBe('Ship line to the western islands: 1 ship(s), next: beachhead: 1');
     expect(screen.queryByTestId('players-route-0')).toBeNull();
     cleanup();
     panel('zh-Hant');
-    expect(screen.getByTestId('players-fortress-0').getAttribute('aria-label')).toBe('海盜堡壘：還剩 3 枚 pirate lair: 3');
+    expect(screen.getByTestId('players-fortress-0').getAttribute('aria-label')).toBe('海盜堡壘（剩餘 pirate lair）: ×3');
+    expect(screen.getByTestId('players-fortress-1').getAttribute('aria-label')).toBe('海盜堡壘（剩餘 pirate lair）: 已收復');
     expect(screen.getByTestId('players-ship-line-0').getAttribute('aria-label')).toContain('下一站：beachhead');
     cleanup();
   });

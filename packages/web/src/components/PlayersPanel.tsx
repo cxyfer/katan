@@ -308,8 +308,8 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                     const line = sea.pirateIslands!.lines[player.id];
                     return <>
                       {fortress && <ScoreMark icon="shield" testId={`players-fortress-${player.seat}`}
-                        label={fortress.lairs > 0 ? t('sf.score.fortress', { count: number(fortress.lairs) }) : t('sf.score.fortressRecaptured')}
-                        value={number(fortress.lairs)} detail={fortress.lairs > 0 ? '×' + number(fortress.lairs) : undefined} />}
+                        label={t('sf.score.fortress')}
+                        value={fortress.lairs > 0 ? `×${number(fortress.lairs)}` : t('sf.score.fortressRecaptured')} />}
                       {line && <ScoreMark icon="route" testId={`players-ship-line-${player.seat}`}
                         label={t('sf.score.shipLine', { count: number(line.edges.length), next: t(`sf.pirate.next.${line.next}`) })}
                         value={number(line.edges.length)} />}
