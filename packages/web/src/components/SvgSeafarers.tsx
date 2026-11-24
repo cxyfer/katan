@@ -138,3 +138,22 @@ export function TribeMarker({ x, y, number, cloth, up, linked, label, testId }: 
     ))}
   </g>;
 }
+
+/**
+ * 卡坦奇觀的地圖標記（交叉點）：Great Wall 是棕色方塊、Great Bridge 是紫色方塊、設置禁設點 X 是紅色叉。
+ * 形狀與文字標題不只靠顏色區分；標記不擋點擊（`pointerEvents: none`）。
+ */
+export function WonderMarker({ x, y, kind, label, testId }: { x: number; y: number; kind: 'greatWall' | 'greatBridge' | 'x'; label: string; testId?: string }) {
+  return <g transform={`translate(${x} ${y})`} data-testid={testId} data-wonder-marker={kind} pointerEvents="none">
+    <title>{label}</title>
+    {kind === 'x' ? <>
+      <circle r="9" fill="#fff4f0" opacity=".85" stroke="#8c1d12" strokeWidth="1.2" />
+      <path d="M-5.5 -5.5 L5.5 5.5 M5.5 -5.5 L-5.5 5.5" stroke="#c2281a" strokeWidth="3.2" strokeLinecap="round" />
+    </> : <>
+      <rect x="-9" y="-9" width="18" height="18" rx="2.5" fill={kind === 'greatWall' ? '#8a5a32' : '#7a4fb0'} stroke="#20180f" strokeWidth="1.6" />
+      {kind === 'greatWall'
+        ? <path d="M-9 -3 H9 M-9 3 H9 M-3 -9 V-3 M3 -3 V3 M-3 3 V9" stroke="#e8c79a" strokeWidth="1.2" />
+        : <path d="M-6 3 Q0 -6 6 3 M-6 6 H6" stroke="#e8d8ff" strokeWidth="1.6" fill="none" />}
+    </>}
+  </g>;
+}

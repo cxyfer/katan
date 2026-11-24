@@ -4,6 +4,7 @@ import type { GameState } from '../../types.ts';
 import type { ClothState } from './cloth.ts';
 import type { TribeState } from './tribe.ts';
 import type { WorldState } from './world.ts';
+import type { WondersState } from './wonders.ts';
 import { moduleStateOf, setModuleState } from '../state.ts';
 
 export const SEAFARERS = 'seafarers';
@@ -32,6 +33,8 @@ export interface SeafarersState {
   cloth?: ClothState;
   /** 新世界（new-world）的港口設置階段；其他劇本沒有此欄位。 */
   world?: WorldState;
+  /** 卡坦奇觀（wonders-of-catan）的標記、各玩家的奇觀與層數；其他劇本沒有此欄位。 */
+  wonders?: WondersState;
 }
 
 /**

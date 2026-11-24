@@ -7,8 +7,8 @@ import { geometryToWorld } from './bounds.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
 import { createFogModel, hexPoint } from './diorama-explorers.ts';
 import { FogLift } from './DioramaExplorersPirates.tsx';
-import { createClothStackModel, createGiftModel, createIslandTokenModel, createLinkPinModel, createPirateModel, createShipModel, createTribePostModel, giftTransform, pirateTransform, SHIP_SCALE, shipInstances, shipTransform, tribeSpot } from './diorama-ships.ts';
-import type { ClothView, TribeGiftView } from '../seafarers.ts';
+import { createClothStackModel, createGiftModel, createIslandTokenModel, createLinkPinModel, createPirateModel, createWonderMarkerModel, createShipModel, createTribePostModel, giftTransform, pirateTransform, SHIP_SCALE, shipInstances, shipTransform, tribeSpot } from './diorama-ships.ts';
+import type { ClothView, TribeGiftView, WondersView } from '../seafarers.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import { SEA_LEVEL } from '../sea.ts';
 import { ROAD_ARRIVAL_TRANSFORM_MS } from './model-specs.ts';
@@ -161,6 +161,38 @@ function LinkPins({ color, instances, material }: Pick<Props, 'material'> & { co
   return <InstancedPrimitive geometry={model} material={material} instances={instances} castShadow={false} />;
 }
 
+/** 證據用掛勾：把場景實際畫出的奇觀標記數寫到 canvas 的 `data-wonder-markers`（Great Wall,Great Bridge,X）。 */
+function WonderProbe({ counts }: { counts: [number, number, number] }) {
+  const canvas = useThree((state) => state.gl.domElement);
+  const key = counts.join(',');
+  useEffect(() => {
+    canvas.dataset.wonderMarkers = key;
+    return () => { delete canvas.dataset.wonderMarkers; };
+  }, [canvas, key]);
+  return null;
+}
+
+/** 卡坦奇觀的標記：同種的合成一組實例，立在頂點上。 */
+function WonderMarkers({ kind, vertices, geometry, material }: Pick<Props, 'geometry' | 'material'> & { kind: 'greatWall' | 'greatBridge' | 'x'; vertices: readonly number[] }) {
+  const model = useDioramaGeometry(() => createWonderMarkerModel(kind), [kind]);
+  const instances = vertices.flatMap((index) => {
+    const vertex = geometry.vertices[index];
+    if (!vertex) return [];
+    const point = geometryToWorld(geometry, vertex.x, vertex.y);
+    return [{ position: [point.x - 0.1, 0.005, point.z - 0.08] as [number, number, number], rotationY: 0, scale: [1.5, 1.5, 1.5] as [number, number, number] }];
+  });
+  return <InstancedPrimitive geometry={model} material={material} instances={instances} castShadow={false} />;
+}
+
+function WondersLayer({ wonders, geometry, material }: Pick<Props, 'geometry' | 'material'> & { wonders: WondersView }) {
+  const kinds = ['greatWall', 'greatBridge', 'x'] as const;
+  const drawn = kinds.map((kind) => wonders.markers[kind].filter((index) => !!geometry.vertices[index]).length) as [number, number, number];
+  return <>
+    {kinds.map((kind) => <WonderMarkers key={kind} kind={kind} vertices={wonders.markers[kind]} geometry={geometry} material={material} />)}
+    <WonderProbe counts={drawn} />
+  </>;
+}
+
 /** Ships, the pirate, island-bonus tokens and the fog of unexplored hexes; nothing for base games. */
 export function DioramaSeafarers(props: Props) {
   const { geometry, board, players, seafarers, material, quality } = props;
@@ -188,6 +220,7 @@ export function DioramaSeafarers(props: Props) {
       <Tribes cloth={seafarers.cloth} geometry={geometry} material={material} players={players} />
       <TribeProbe cloth={seafarers.cloth.tribes.map((tribe) => tribe.cloth)} count={seafarers.cloth.tribes.filter((tribe) => !!tribeSpot(geometry, tribe.vertex)).length} />
     </>}
+    {seafarers.wonders && <WondersLayer wonders={seafarers.wonders} geometry={geometry} material={material} />}
     {seafarers.tribe && <>
       <Gifts gifts={seafarers.tribe.gifts} geometry={geometry} material={material} />
       <GiftProbe count={seafarers.tribe.gifts.filter((gift) => !!giftTransform(geometry, gift.edge)).length} />
@@ -196,8 +229,9 @@ export function DioramaSeafarers(props: Props) {
       const items = ships.filter((ship) => ship.playerId === player.id);
       return items.length ? <PlayerShips key={player.id} {...props} color={playerColorHex(player.color)} seat={player.seat} items={items} /> : null;
     })}
-    <mesh position={pirate.position} rotation={[0, pirate.onFrame ? Math.PI / 2 : 0.4, 0]} geometry={pirateModel}
-      material={material} castShadow={quality === 'standard'} dispose={null} />
+    {/* 卡坦奇觀不使用海盜。 */}
+    {!seafarers.wonders && <mesh position={pirate.position} rotation={[0, pirate.onFrame ? Math.PI / 2 : 0.4, 0]} geometry={pirateModel}
+      material={material} castShadow={quality === 'standard'} dispose={null} />}
     {players.map((player) => {
       const vertices = seafarers.islandClaims.filter((claim) => claim.player === player.id).map((claim) => claim.vertex);
       return vertices.length ? <IslandTokens key={player.id} color={playerColorHex(player.color)} vertices={vertices} geometry={geometry} material={material} /> : null;

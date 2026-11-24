@@ -3,7 +3,8 @@
  *
  * 目前有 The Four Islands（四島群島）、Through the Desert（穿越荒漠，SF25 pp. 10–11，
  * 外框依人數不同，見該節）、The Forgotten Tribe（世外部落，SF25 pp. 12–13，49 格寬版外框）
- * 與 Cloth for Catan（布匹產地，SF25 pp. 14–15，42 格，見該節）。四島群島：
+ * Cloth for Catan（布匹產地，SF25 pp. 14–15，42 格）與 The Wonders of Catan（卡坦奇觀，SF25 pp. 18–19，
+ * 與世外部落同一個 49 格外框）。四島群島：
  *   - 3 人：SF25 p. 6 的版圖與配件表；
  *   - 4 人：SF25 p. 7 的版圖與配件表。
  * 兩張圖都是 35 格外框，與 New Shores 3 人圖相同（rows 4-5-6-5-6-5-4，中排兩端的
@@ -387,6 +388,101 @@ export const CLOTH_FOR_CATAN_SOURCE = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// The Wonders of Catan（卡坦奇觀）— SF25 pp. 18–19
+// ---------------------------------------------------------------------------
+//
+// 3 人與 4 人共用同一張圖（SF25 只有一張，跨 pp. 18–19）。外框 49 格，rows 6-7-8-7-8-7-6，
+// 與世外部落（`FT_CELLS`）完全同形，所以共用 hex 清單與同一個平移 (dq, dr) = (-1, -3)；
+// 港口位置不同（9 個），故登記自己的 topology id `sf-wonders-of-catan`。逐格表與雙人轉錄比對見
+// docs/aegis/work/2026-11-24-seafarers-wonders-of-catan.md。
+//
+// 島編號：1 = 大島（25 格，含 3 塊沙漠）；2 = 西北小島（金礦與丘陵）；3 = 東南小島（金礦、森林、田野）。
+// 強盜放在任一沙漠（layout builder 以 `rng` 決定並寫進 layout）；海盜不使用（`pirate: null`）。
+
+export const WONDERS_OF_CATAN_TOPOLOGY_ID = 'sf-wonders-of-catan';
+
+/** 轉錄座標平移到置中座標（與 `FT_SHIFT` 相同）。 */
+const WC_SHIFT = { dq: -1, dr: -3 } as const;
+
+const wc = (q: number, r: number, terrain: LandHex['terrain'], number: number | null, island: number): LandHex =>
+  L(q + WC_SHIFT.dq, r + WC_SHIFT.dr, terrain, number, island);
+
+const WC_LAND: readonly LandHex[] = [
+  wc(0, 0, 'gold', 8, 2), wc(1, 0, 'hills', 2, 2), wc(3, 0, 'mountains', 10, 1),
+  wc(2, 1, 'forest', 11, 1), wc(4, 1, 'desert', null, 1),
+  wc(-2, 2, 'mountains', 12, 1), wc(-1, 2, 'fields', 6, 1), wc(0, 2, 'hills', 11, 1), wc(1, 2, 'fields', 10, 1),
+  wc(2, 2, 'pasture', 3, 1), wc(3, 2, 'forest', 9, 1), wc(4, 2, 'desert', null, 1),
+  wc(-2, 3, 'mountains', 3, 1), wc(-1, 3, 'fields', 4, 1), wc(0, 3, 'mountains', 6, 1), wc(1, 3, 'pasture', 5, 1),
+  wc(2, 3, 'hills', 4, 1), wc(3, 3, 'desert', null, 1),
+  wc(-3, 4, 'hills', 8, 1), wc(-2, 4, 'pasture', 9, 1), wc(1, 4, 'hills', 10, 1), wc(4, 4, 'gold', 6, 3),
+  wc(-2, 5, 'forest', 3, 1), wc(0, 5, 'forest', 8, 1), wc(1, 5, 'fields', 9, 1), wc(3, 5, 'forest', 4, 3),
+  wc(-3, 6, 'mountains', 5, 1), wc(-1, 6, 'pasture', 11, 1), wc(0, 6, 'pasture', 2, 1), wc(2, 6, 'fields', 5, 3),
+];
+
+/** 9 個港口位置（貼在陸地格朝向框的邊，圖上全是「?」）；種類是 5 個 2:1（各一種資源）+ 4 個 3:1，由 layout builder 洗牌。 */
+const wcPort = (q: number, r: number, side: number): HarborSlotSpec => ({ q: q + WC_SHIFT.dq, r: r + WC_SHIFT.dr, side });
+const WC_PORT_SLOTS: readonly HarborSlotSpec[] = [
+  wcPort(-1, 3, 5), wcPort(1, 2, 2), wcPort(-1, 2, 2), wcPort(2, 2, 1),
+  wcPort(-2, 3, 3), wcPort(-2, 5, 3), wcPort(1, 5, 1), wcPort(1, 5, 5), wcPort(-1, 6, 5),
+];
+
+export const WC_PORT_TOKENS: readonly HarborType[] = ['lumber', 'brick', 'wool', 'grain', 'ore', 'generic', 'generic', 'generic', 'generic'];
+
+/** 設置禁設點與奇觀施工位置的標記（都是交叉點；`hexes` 是共用該點、在版圖內的格，轉錄座標）。 */
+export type WonderMarkerKind = 'greatWall' | 'greatBridge' | 'x';
+
+export interface WonderMarkerSpec {
+  kind: WonderMarkerKind;
+  hexes: readonly (readonly [number, number])[];
+}
+
+export const WC_MARKERS: readonly WonderMarkerSpec[] = [
+  // Great Wall：沿 (3,2) 森林與三塊沙漠之間的 5 個交叉點（兩人轉錄一致）。
+  { kind: 'greatWall', hexes: [[3, 2], [3, 1], [4, 1]] },
+  { kind: 'greatWall', hexes: [[3, 2], [4, 1], [4, 2]] },
+  { kind: 'greatWall', hexes: [[3, 2], [4, 2], [3, 3]] },
+  { kind: 'greatWall', hexes: [[3, 2], [3, 3], [2, 3]] },
+  { kind: 'greatWall', hexes: [[2, 3], [3, 3], [2, 4]] },
+  // Great Bridge：海格 (-1,5)、(-2,6) 共用邊的兩端。
+  { kind: 'greatBridge', hexes: [[-2, 5], [-1, 5], [-2, 6]] },
+  { kind: 'greatBridge', hexes: [[-1, 6], [-2, 6], [-1, 5]] },
+  // X：Great Bridge 兩端各自旁邊的交叉點（設置禁設點，不是施工位置）。
+  { kind: 'x', hexes: [[-2, 5], [-1, 4], [-1, 5]] },
+  { kind: 'x', hexes: [[-2, 5], [-2, 6], [-3, 6]] },
+  { kind: 'x', hexes: [[-1, 6], [-1, 5], [0, 5]] },
+  // 第三格 (-2,7) 在下緣框外，所以只有兩格。
+  { kind: 'x', hexes: [[-1, 6], [-2, 6]] },
+];
+
+/** 標記的頂點索引：找出恰好由那幾格共用的頂點（轉錄座標平移後）。 */
+export function wonderMarkerVertices(topology: BoardTopology): Record<WonderMarkerKind, number[]> {
+  const out: Record<WonderMarkerKind, number[]> = { greatWall: [], greatBridge: [], x: [] };
+  for (const spec of WC_MARKERS) {
+    const hexes = spec.hexes.map(([q, r]) => topology.hexes.findIndex((hex) => hex.q === q + WC_SHIFT.dq && hex.r === r + WC_SHIFT.dr));
+    const vertex = topology.vertices.findIndex((info) => info.hexes.length === hexes.length && hexes.every((hex) => info.hexes.includes(hex)));
+    if (vertex < 0 || hexes.some((hex) => hex < 0)) throw new Error(`wonders of catan: ${spec.kind} marker ${JSON.stringify(spec.hexes)} has no vertex`);
+    out[spec.kind].push(vertex);
+  }
+  return out;
+}
+
+/** Layout builder，登記為 `sf-wonders-of-catan`：3 人與 4 人同一張圖；港口種類以 game rng 洗牌，強盜隨機放在三塊沙漠之一。 */
+export function wondersOfCatanLayout(context: LayoutContext, topologyFor: (id: string) => BoardTopology): BoardLayout {
+  const topology = checkedTopology(topologyFor, WONDERS_OF_CATAN_TOPOLOGY_ID, 49);
+  const tokens = shuffle(WC_PORT_TOKENS, context.rng);
+  const ports: PortSpec[] = WC_PORT_SLOTS.map((slot, index) => ({ ...slot, type: tokens[index]! }));
+  const deserts = WC_LAND.filter((hex) => hex.terrain === 'desert');
+  const robber = deserts[context.rng.int(deserts.length)]!;
+  // 海盜不使用（SF25 p. 18「Return the pirate to the box」）：`pirate: null`。
+  return fixedLayout(topology, WC_LAND, ports, robber);
+}
+
+/** 轉錄的配件，供 fixture 測試使用（SF25 pp. 18–19）。 */
+export const WONDERS_OF_CATAN_SOURCE = {
+  land: WC_LAND, portSlots: WC_PORT_SLOTS, markers: WC_MARKERS, cells: FT_CELLS.length, shift: WC_SHIFT,
+} as const;
+
+// ---------------------------------------------------------------------------
 // topology 與 layout
 // ---------------------------------------------------------------------------
 
@@ -399,6 +495,7 @@ export const SCENARIO_TOPOLOGIES: readonly TopologyDefinition[] = [
   { id: 'sf-through-the-desert-4', hexes: NS4_CELLS, harborSlots: slots(TD4_PORTS) },
   { id: FORGOTTEN_TRIBE_TOPOLOGY_ID, hexes: FT_CELLS, harborSlots: FT_PORT_SLOTS },
   { id: CLOTH_FOR_CATAN_TOPOLOGY_ID, hexes: NS4_CELLS, harborSlots: CFC_PORT_SLOTS.map(({ q, r, side }) => ({ q, r, side })) },
+  { id: WONDERS_OF_CATAN_TOPOLOGY_ID, hexes: FT_CELLS, harborSlots: WC_PORT_SLOTS.map(({ q, r, side }) => ({ q, r, side })) },
 ];
 
 /** 四島群島：3 人與 4 人都是 35 格外框，依人數選港口位置不同的 topology。 */

@@ -11,7 +11,7 @@ import { BoardArtDefs, BoardBuilding, boardArtIds, type BoardArtIds, HARBOR_TINT
 import { TerrainEmblem } from './TerrainArt.tsx';
 import { TbBridge, TbSvgOver, TbSvgUnder } from './tb/TbSvgLayers.tsx';
 import { getProfile } from '@katan/rules';
-import { edgeAngle, edgeMidpoint, GiftMarker, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece, TribeMarker } from './SvgSeafarers.tsx';
+import { edgeAngle, edgeMidpoint, GiftMarker, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece, TribeMarker, WonderMarker } from './SvgSeafarers.tsx';
 import { harborRatio, isShipCommand, seafarersView } from '../board/seafarers.ts';
 import { FogCloud, SvgExplorersPiratesLayer } from './SvgExplorersPirates.tsx';
 import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
@@ -123,6 +123,11 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
         <g transform={`translate(${viewBoxCenter.x + pan.x} ${viewBoxCenter.y + pan.y}) scale(${zoom}) translate(${-viewBoxCenter.x} ${-viewBoxCenter.y})`}>
           <StaticTiles geometry={geometry} terrain={board.terrain} numbers={board.numbers} ids={ids} />
           <TbSvgUnder geometry={geometry} view={view} />
+          {/* 卡坦奇觀：Great Wall、Great Bridge 與 X 標記（交叉點），畫在村落與城市之下，蓋在標記上的建築仍看得到。 */}
+          {(['greatWall', 'greatBridge', 'x'] as const).flatMap((kind) => (seafarersView(view)?.wonders?.markers[kind] ?? []).map((index) => {
+            const vertex = geometry.vertices[index];
+            return vertex ? <WonderMarker key={`${kind}-${index}`} testId={`wonder-marker-${kind}-${index}`} x={vertex.x} y={vertex.y} kind={kind} label={t(`sf.wonder.marker.${kind}`)} /> : null;
+          }))}
           {/* 未知海域的空格：畫在海港、船與村落之下，邊上的船不會被雲蓋住。 */}
           {seafarersView(view)?.fog.map((index) => {
             const hex = geometry.hexes[index];
@@ -268,7 +273,8 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
               <title>{name}</title>
             </g>;
           })}
-          {seafarersView(view) && (() => {
+          {/* 卡坦奇觀不使用海盜。 */}
+          {seafarersView(view) && !seafarersView(view)!.wonders && (() => {
             const hex = board.pirate === null ? null : geometry.hexes[board.pirate];
             const spot = hex ? { x: hex.cx, y: hex.cy + 4 } : pirateFrameSpot(geometry);
             return <g data-testid={hex ? 'pirate-hex' : 'pirate-frame'}>

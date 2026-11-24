@@ -193,7 +193,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
       }}
     >
       <header className="players__header">
-        <h2 id={headingId} className="players__heading"><GameIcon name="users" size={17} />{t('play.seats')}<span className="players__target">{t('play.resultTarget', { target: formatNumber(state.locale, view.victoryTarget) })}</span></h2>
+        <h2 id={headingId} className="players__heading"><GameIcon name="users" size={17} />{t('play.seats')}<span className="players__target">{seafarersView(view)?.wonders ? t('play.resultTarget.wonders', { target: formatNumber(state.locale, view.victoryTarget) }) : t('play.resultTarget', { target: formatNumber(state.locale, view.victoryTarget) })}</span></h2>
         <button
           ref={toggleRef}
           className="players__toggle"
@@ -322,6 +322,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                     label={`${t(wording ? `sf.score.islands.${wording}` : 'sf.score.islands')} · ${t(wording ? `sf.score.islandsValue.${wording}` : 'sf.score.islandsValue', { count: number(sea!.islandBonus[player.id]?.length ?? 0), points: number(islandPoints) })} (${t(`sf.score.islandId${(sea!.islandBonus[player.id]?.length ?? 0) === 1 ? '' : 's'}${wording === 'desert' ? '.desert' : ''}`, { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') })})`}
                     value={number(islandPoints)}
                     detail={wording ? t(`sf.score.islandId${(sea!.islandBonus[player.id]?.length ?? 0) === 1 ? '' : 's'}${wording === 'desert' ? '.desert' : ''}`, { ids: (sea!.islandBonus[player.id] ?? []).map(number).join(', ') }) : undefined} />}
+                  {sea?.wonders && <ScoreMark icon="crown" testId={`players-wonder-${player.seat}`}
+                    label={sea.wonders.owned[player.id] ? t(`sf.wonder.${sea.wonders.owned[player.id]}`) : t('sf.wonder.none')}
+                    value={sea.wonders.owned[player.id] ? `${number(sea.wonders.levels[player.id] ?? 0)}/4` : '–'} />}
                   {sea?.tribe && (sea.tribe.vp[player.id] ?? 0) > 0 && <ScoreMark icon="crown" testId={`players-tribe-vp-${player.seat}`}
                     label={t('sf.score.tribeVp')} value={number(sea.tribe.vp[player.id] ?? 0)} />}
                   {sea?.tribe && (sea.tribe.held[player.id]?.length ?? 0) > 0 && <ScoreMark icon="anchor" testId={`players-tribe-held-${player.seat}`}

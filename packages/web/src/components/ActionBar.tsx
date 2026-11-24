@@ -7,6 +7,7 @@ import type { TableController } from '../state/useTable.ts';
 import type { Selection } from '../state/table.ts';
 import { GameIcon, ResourceIcon } from './GameArt.tsx';
 import { isShipCommand } from '../board/seafarers.ts';
+import { WondersPanel } from './WondersPanel.tsx';
 
 /** 每個動作的主圖示與角標；同一類棋子（騎士、船）以角標區分動詞，收合時也認得出來。 */
 const ACTION_ICONS: Record<string, { icon: string; badge?: string }> = {
@@ -133,6 +134,7 @@ export function ActionBar({ controller }: { controller: TableController }) {
           );
         })}
       </div>
+      <WondersPanel controller={controller} />
     </section>
   );
 }

@@ -218,7 +218,9 @@ export function translateEvent(
   const finished = event.type === 'game.finished' && event.params?.cause === 'clothExhausted'
     ? `${base}.${Array.isArray(event.params.playerIds) && event.params.playerIds.length > 1 ? 'clothShared' : 'clothExhausted'}`
     : null;
-  const variant = finished ?? (wording ? `${base}.${wording}` : event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null);
+  const wonderFinish = event.type === 'game.finished' && (event.params?.cause === 'wonderComplete' || event.params?.cause === 'wonderLead')
+    ? `${base}.${event.params.cause}` : null;
+  const variant = finished ?? wonderFinish ?? (wording ? `${base}.${wording}` : event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null);
   const messageId = variant && t(locale, variant) !== variant ? variant : base;
   const text = t(locale, messageId, params);
   return {

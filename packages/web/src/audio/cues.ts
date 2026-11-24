@@ -166,6 +166,10 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
     // 未知海域翻開一格：與 E&P 探索同一個迷霧散去的音效。
     case 'fog.revealed':
       return 'explore.reveal';
+    // 卡坦奇觀：認領與每蓋一層沿用建造音效。
+    case 'wonder.chosen':
+    case 'wonder.built':
+      return 'build.city';
     case 'harbor.placed':
       return 'ship.build';
     // 布匹產地：與部落建立貿易沿用島嶼獎勵的音效；自己拿到布匹用生產音效；偷布匹與偷牌同音。

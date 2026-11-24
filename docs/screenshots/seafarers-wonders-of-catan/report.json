@@ -1,0 +1,166 @@
+{
+  "scenario": "wonders-of-catan",
+  "profile": "sf-wonders-of-catan-2025",
+  "base": "http://127.0.0.1:<port>",
+  "cases": [
+    {
+      "name": "lobby-wonders-of-catan",
+      "status": "PASS",
+      "note": "lobby: Seafarers / The Wonders of Catan, 3-4 players only",
+      "sha256": "a25c900da0b2b18b2d59a2ce447cfa9243b2bce709f50a16b21cdd5292bb7fc0",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-wonders-of-catan",
+      "sha256": "e2b5527e6efb0ebbb1d0e34ca42de2b304a2c831dc8d44cfe2c9f24e75d1ebda",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-wonders-of-catan",
+      "sha256": "e892e2ddeb1e820eebcc1199f25e1a4a70c8b320f3b1524ab75ffef14bad8594",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-wonders-of-catan",
+      "sha256": "3f34b379b003178280612f26e298176e89823722e5df7e878bfc46d51b5eabe5",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-wonders-of-catan",
+      "sha256": "57d3cb74c7830df4336dfc215ad3dd9be1e3cdb9e2bfa5eec6e36621b4c231a5",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-svg-phone",
+      "status": "PASS",
+      "note": "sf-wonders-of-catan",
+      "sha256": "f51b0e08bf6b067e42570305f23119fe39d6dddf9f1c5898780ea425ef9abc9e",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "help-wonders-svg-desktop",
+      "status": "PASS",
+      "note": "setup done; help panel shows the Wonders of Catan rules",
+      "sha256": "9005c770a59aebf654c63a0050b07b7554d7a30051ff2911e98b93daf63088cd",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-rail-collapsed",
+      "status": "PASS",
+      "note": "collapsed action rail: no wonder tiles squeezed into the narrow rail",
+      "sha256": "8ef3c7cd46fb8d537ed0ecc62b1c6568fbd56cc4c46b01c4ce472410875c7ca7",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-claim-svg",
+      "status": "PASS",
+      "note": "player 1 meets the Great Wall requirement and claims it in SVG (player 2 already holds the Great Bridge)",
+      "sha256": "e3a886641b5dd5b3c003e75b50e6bbaf10e4bf4a909a54a2df5c2607cdbb5916",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-build-3d",
+      "status": "PASS",
+      "note": "level 2 built in 3D: markers stand on their vertices, the panel shows the level",
+      "sha256": "2017ef3d82cc8fb98ed2095372a83104f1f3917202f2358e2cae5a0d4c8d1b98",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-build-phone",
+      "status": "PASS",
+      "note": "the wonders panel on a phone: level 2 of 4, build level 3",
+      "sha256": "2394136715f54fc50d4bc41c8852ca791ac4318d260d207e4aae6f13eda1e808",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result-wonder",
+      "status": "PASS",
+      "note": "level 4 completed: the wonder ending, no target score",
+      "sha256": "8ff3fbb3d04bb62994bb7d5c93349433d2db63090100cfdd83ac5df799b52be1",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result-wonder-phone",
+      "status": "PASS",
+      "note": "the same result in a phone-sized viewport",
+      "sha256": "2ef9bf579661aa4c92ad2d8b80c3599b6ec5711938f7e9f2bcb1a117a6bee9fd",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    }
+  ],
+  "finish": {
+    "plan": {
+      "wall": 36,
+      "bridge": 99
+    },
+    "result": {
+      "playerId": "player_d233a116ec964f16ba0e",
+      "reason": "victory",
+      "score": 3,
+      "playerIds": [
+        "player_d233a116ec964f16ba0e"
+      ],
+      "cause": "wonderComplete"
+    }
+  },
+  "errors": []
+}

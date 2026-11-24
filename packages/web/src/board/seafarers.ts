@@ -43,6 +43,13 @@ export interface ClothView {
   cloth: Record<string, number>;
 }
 
+/** 卡坦奇觀：地圖上的標記（交叉點索引）、各玩家認領的奇觀與完成層數（全部公開）。 */
+export interface WondersView {
+  markers: { greatWall: number[]; greatBridge: number[]; x: number[] };
+  owned: Record<string, string | null>;
+  levels: Record<string, number>;
+}
+
 /** 每 2 枚布匹 1 分，餘數不計（SF25 p. 14）。 */
 export const clothPoints = (count: number): number => Math.floor(count / 2);
 
@@ -73,6 +80,8 @@ export interface SeafarersModuleView {
   cloth: ClothView | null;
   /** 新世界的港口設置階段；其他劇本為 null。 */
   world: WorldView | null;
+  /** 卡坦奇觀的標記與奇觀進度；其他劇本為 null。 */
+  wonders: WondersView | null;
 }
 
 export interface SeafarersHints {
@@ -92,6 +101,8 @@ export interface SeafarersHints {
   harborChoices: { harbors: string[]; edges: number[] };
   /** 布匹產地：偷海盜旁的玩家時，手上有布匹因此可以改偷布匹的候選人。 */
   clothVictims: string[];
+  /** 卡坦奇觀：現在可認領的奇觀與能否蓋下一層（只在自己的行動階段有值）。 */
+  wonders: { claimable: string[]; buildable: boolean };
 }
 
 export const SHIP_COST: Partial<Record<Resource, number>> = { lumber: 1, wool: 1 };
@@ -122,6 +133,7 @@ export function seafarersView(view: Pick<GameView, 'modules'> | null | undefined
     tribe: slot.tribe ?? null,
     cloth: slot.cloth ?? null,
     world: slot.world ?? null,
+    wonders: slot.wonders ?? null,
   };
 }
 
@@ -139,6 +151,7 @@ export function seafarersHints(view: Pick<GameView, 'hints'> | null | undefined)
     goldBank: slot.goldBank ?? null,
     harborChoices: slot.harborChoices ?? { harbors: [], edges: [] },
     clothVictims: slot.clothVictims ?? [],
+    wonders: slot.wonders ?? { claimable: [], buildable: false },
   };
 }
 

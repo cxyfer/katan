@@ -367,6 +367,13 @@ export interface RulesModule {
   score?(state: GameState, playerId: string, options: ScoreOptions, ctx: ModuleViewContext): number;
   /** The points a player needs to win; `base` is the profile target. */
   victoryTarget?(state: GameState, playerId: string, base: number, ctx: ModuleViewContext): number;
+  /**
+   * Replaces the plain "reached the target" victory check for the current
+   * actor (The Wonders of Catan). Return the end cause when the actor wins, or
+   * `null` when they do not (the target alone then does not win); `undefined`
+   * keeps the base check. `score` includes the actor's hidden points.
+   */
+  winCause?(state: GameState, playerId: string, score: number, ctx: ModuleViewContext): GameEndCause | null | undefined;
 
   // -- projection ------------------------------------------------------------
   /** Viewer-filtered module state, published as `GameView.modules[id]`. */

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { RESOURCES, type Resource } from '@katan/rules';
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatResourceMap } from '../i18n/format.ts';
-import { seafarersHints } from '../board/seafarers.ts';
+import { seafarersHints, seafarersView } from '../board/seafarers.ts';
 import { banditTargets, seafarersCitiesKnightsHints } from '../board/seafarersCitiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
 import { followUpsHeld, shownBank } from '../state/table.ts';
@@ -35,10 +35,12 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
   const bandit = seafarersCitiesKnightsHints(view)?.bandit ?? null;
   // 海盜沒有任何合法目標（例如布匹產地還沒有通到部落的通路）時只提強盜。
   const pirateLocked = sea.pirateTargets.length === 0 && !frameOpen;
+  // 沒有海盜的劇本（卡坦奇觀）不提海盜；其他劇本海盜暫時不能動時才說「海盜現在不能移動」。
+  const noPirate = !!seafarersView(view)?.wonders;
   const banditText = knightArmed
-    ? pirateLocked ? 'sf.bandit.knightRobber' : 'sf.bandit.knight'
+    ? noPirate ? 'sf.bandit.knightRobberOnly' : pirateLocked ? 'sf.bandit.knightRobber' : 'sf.bandit.knight'
     : bandit === 'robber' ? 'sfck.bandit.robber' : bandit === 'pirate' ? 'sfck.bandit.pirate'
-    : pirateLocked ? 'sf.bandit.robber' : 'sf.bandit.choose';
+    : noPirate ? 'sf.bandit.robberOnly' : pirateLocked ? 'sf.bandit.robber' : 'sf.bandit.choose';
 
   const setup = view.turn.setup;
   const setupMine = !!setup && setup.stage === 'road' && view.turn.playerId === selfId;

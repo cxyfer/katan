@@ -15,6 +15,7 @@ interface SeafarersHints {
   robberTargets: number[];
   goldRequired: number;
   harborChoices: { harbors: string[]; edges: number[] };
+  wonders?: { claimable: string[]; buildable: boolean };
 }
 
 type AnyCommand = Command | { type: string; [field: string]: unknown };
@@ -165,12 +166,14 @@ export interface SimulationResult {
   clothTrades: number;
   clothProduced: number;
   clothStolen: number;
+  wonderClaims: number;
+  wonderLevels: number;
 }
 
 export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 30000, profileId?: string): SimulationResult {
   const rng = seededRng(seed * 7919 + players);
   let { state } = seafarersGame(players, seed, profileId);
-  const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0, fogReveals: 0, gifts: 0, harborsPlaced: 0, clothTrades: 0, clothProduced: 0, clothStolen: 0 };
+  const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0, fogReveals: 0, gifts: 0, harborsPlaced: 0, clothTrades: 0, clothProduced: 0, clothStolen: 0, wonderClaims: 0, wonderLevels: 0 };
   const count = (before: GameState, after: GameState) => {
     for (const event of after.log) {
       if (event.seq <= before.seq) continue;
@@ -185,6 +188,8 @@ export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps
       if (event.type === 'cloth.trade') counters.clothTrades++;
       if (event.type === 'cloth.produced') counters.clothProduced++;
       if (event.type === 'cloth.stolen') counters.clothStolen++;
+      if (event.type === 'wonder.chosen') counters.wonderClaims++;
+      if (event.type === 'wonder.built') counters.wonderLevels++;
     }
   };
   for (let step = 0; step < maxSteps && !state.result; step++) {
@@ -220,6 +225,9 @@ export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps
       continue;
     }
     const tries: AnyCommand[] = [];
+    // 卡坦奇觀：先蓋已認領的奇觀，再認領（隔一次偏好認領的第 n 張，讓五張牌都有機會）。
+    if (sea.wonders?.buildable) tries.push({ type: 'wonder.build' });
+    if (sea.wonders && sea.wonders.claimable.length > 0) tries.push({ type: 'wonder.choose', wonder: sea.wonders.claimable[step % sea.wonders.claimable.length]! });
     for (const vertex of hints.legalCities) tries.push({ type: 'build.city', vertex });
     for (const vertex of hints.legalSettlements) tries.push({ type: 'build.settlement', vertex });
     if (!state.turn.devCardPlayed) {
