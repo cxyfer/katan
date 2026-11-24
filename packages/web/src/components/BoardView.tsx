@@ -91,7 +91,7 @@ export function BoardView({ controller }: { controller: TableController }) {
   // 擲骰演出期間不開放由擲骰帶出的棋盤目標（例如七點後移動強盜）；玩家已選取中的建造不受影響。
   const intent = useMemo(() => followUpsHeld(state) && !state.selection.commandType ? null : boardIntent(state, selfId), [state, selfId]);
   const targets = useMemo(() => controls.projectedTargets(intent), [controls.projectedTargets, intent]);
-  const seaView = useMemo(() => seafarersView(boardView), [boardView?.modules]);
+  const seaView = useMemo(() => seafarersView(boardView), [boardView?.modules, boardView?.hints]);
   const epModule = useMemo(() => epView(boardView), [boardView?.modules]);
   const epFog = useMemo(() => (epModule ? fogRegions(epModule) : seafarersFog(boardView)), [epModule, boardView?.modules]);
   const ckView = useMemo(() => citiesKnightsView(boardView), [boardView?.modules]);

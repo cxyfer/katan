@@ -303,6 +303,18 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                     ? <ScoreMark icon="scroll" label={t('ck.score.progress')} value={number(ck.progressCounts[player.id] ?? 0)} testId={`players-progress-${player.seat}`} />
                     : !ep && <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />}
                   {sea && <ScoreMark icon="ship" label={t('sf.board.ship')} value={number(ships)} testId={`players-ships-${player.seat}`} />}
+                  {sea?.pirateIslands && (() => {
+                    const fortress = sea.pirateIslands!.fortresses.find((entry) => entry.player === player.id);
+                    const line = sea.pirateIslands!.lines[player.id];
+                    return <>
+                      {fortress && <ScoreMark icon="shield" testId={`players-fortress-${player.seat}`}
+                        label={fortress.lairs > 0 ? t('sf.score.fortress', { count: number(fortress.lairs) }) : t('sf.score.fortressRecaptured')}
+                        value={number(fortress.lairs)} detail={fortress.lairs > 0 ? '×' + number(fortress.lairs) : undefined} />}
+                      {line && <ScoreMark icon="route" testId={`players-ship-line-${player.seat}`}
+                        label={t('sf.score.shipLine', { count: number(line.edges.length), next: t(`sf.pirate.next.${line.next}`) })}
+                        value={number(line.edges.length)} />}
+                    </>;
+                  })()}
                   {ep && epPlayer && <>
                     <ScoreMark icon="ship" label={t('ep.piece.ship')} value={number(ep.ships.filter((ship) => ship.player === player.id).length)} testId={`players-ep-ships-${player.seat}`} />
                     <ScoreMark icon="sparkles" label={t('ep.score.gold', { gold: number(epPlayer.gold) })} value={number(epPlayer.gold)} testId={`players-ep-gold-${player.seat}`} />
@@ -310,10 +322,10 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                   {sea?.cloth && <ScoreMark icon="scroll" testId={`players-cloth-${player.seat}`}
                     label={t('sf.score.clothValue', { count: number(sea.cloth.cloth[player.id] ?? 0), points: number(clothPoints(sea.cloth.cloth[player.id] ?? 0)) })}
                     value={number(sea.cloth.cloth[player.id] ?? 0)} detail={`${number(clothPoints(sea.cloth.cloth[player.id] ?? 0))}`} />}
-                  {!ep && !sea?.cloth && <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
+                  {!ep && !sea?.cloth && !sea?.pirateIslands && <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
                     value={number(player.longestRoadLength)} awarded={longestRoad} testId={`players-route-${player.seat}`} />}
                   {ck && <ScoreMark icon="shield" label={t('ck.score.knights')} value={number(activeStrength(ck, player.id))} testId={`players-knights-${player.seat}`} />}
-                  {!ck && !ep && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
+                  {!ck && !ep && !sea?.pirateIslands && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
                     value={number(player.playedKnights)} awarded={largestArmy} />}
                 </div>
                 <div className="players__bonuses">
