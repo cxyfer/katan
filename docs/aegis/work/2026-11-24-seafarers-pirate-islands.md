@@ -9,7 +9,7 @@ cruising pirate and its attacks, S7c the warships, the attack on the fortress an
 
 S7a covers the map, the preset pieces, the beachhead markers, the fortresses (state, no production, no score, no city), the
 development-card deck, the starting-settlement restriction, the western ship line with the shortest-path rule (OQ-3 as
-confirmed by the user), the line fallback flag and its measurement, and both renderers.
+confirmed by the user), the boxed-in-line backtracking rule (`stuckLineBacktrack`) and its measurement, and both renderers.
 
 ## Sources (accessed 2026-11-24)
 
@@ -174,7 +174,7 @@ coordinates: (0, 6), (-1, 6), (-1, 5), (-1, 4), (0, 3), (0, 2), (1, 1), (2, 0), 
 | I6 | The shortest path (OQ-3, confirmed by the user) | Every new line ship must make the distance from the line's end to the **next target** (the beachhead first, then the fortress) smaller by exactly 1. The distance is a breadth-first count over **every currently empty sea edge** (coastal edges included), never through a vertex held by another player's building; the pirate's temporary restrictions are not counted. The distance is from the *current end*, so when another player's ship blocks the shortest route the detour's every step is legal, and several shortest paths are all allowed. The new end's distance is checked equal to the old one minus 1 on every step in the tests. | spec §6.6, OQ-3; SF25 p. 16 "must take the shortest path" |
 | I7 | One line, no branching | The line is the ordered list of the player's line ships (`lines[player] = { start, edges }`). A line ship must attach at the end; once the line has reached the fortress (`done`) no more line ships can be built, free coastal ships still can. Ships on the line (the preset ship included) cannot be moved (`shipMoveBlocked`); a free ship moved onto a line edge is judged exactly like a new ship (`ship.move` and `setup.placeShip` go through the same check and the same `E_SHIP_LINE`). A setup ship at a new settlement is a line ship only if that settlement is the line's end and the ship cuts the distance; otherwise it must be on a coastal edge. | SF25 p. 16 "one continuous line … No branching" |
 | I8 | Reaching the targets | The line reaches the beachhead when one of its vertices is the beachhead vertex (the target then becomes the fortress) and the fortress when it passes the fortress vertex (the line is complete). A settlement at the beachhead does not stop the line: it continues from there. Counting the preset ship, every colour needs 6 ships to the beachhead and 3 more to the fortress (`EXPECTED_LINE_LENGTHS`; the map is symmetric), well inside the 15 ships of the supply. | SF25 p. 16 |
-| I9 | When nothing leads to the target | **Fallback `shortestPathFallback` (flag kept, but see the simulation: it does not rescue a walled-off line)**: when the target is not reachable from the line's end over empty sea edges, the line may extend in any legal direction from the end (still one line). A relaxed step may not end on a vertex another player's building blocks, may not return to a vertex of the player's own line (no loop), and must leave the new end an empty edge to continue on (round 2 review). As soon as the end can reach the target again the exact rule resumes. **Departure from SF25**, which gives no definition; spec §6.6. | spec §6.6, §9 OQ-3 |
+| I9 | A boxed-in line: backtracking (`stuckLineBacktrack`) | **Departure from SF25** (which defines nothing here), **decided by the user on 2026-11-24**; it replaces the earlier "extend in any legal direction" relaxation, which could not help because a relaxed step stays inside the pocket that is cut off from the target (see the simulation), and that code is gone. When the distance from the line's end to the current target over empty sea edges is *completely* blocked, the **last ship of the line** (and only it, and only then) is no longer fixed: the player moves it with the ordinary `ship.move` (one ship move per action window as always, and not a ship built in this window) to any legal place, either a free coastal edge or a **strict** extension from the new end (every step cuts the distance by 1 again). The line is cut by that ship in the same transition (`lines[player].edges` and the end follow); if the new end is still blocked the next last ship can go back the same way, one per window, down to the preset ship, after which the line has no ship (`start: null`) and restarts only at an own coastal building (I5). A move is used instead of a removal to the supply because it reuses the existing move flow, hints and both renderers, and it keeps the ship count (15) honest. The end ship may be moved even when its far end touches an own building (a beachhead settlement). Hints: the end ship is in `movableShips`, `pirateLine.stuck` is true and the panel says so. If no route exists from anywhere (a complete wall of other players' ships), backtracking cannot help; see the simulation. | user decision 2026-11-24; spec §6.6, §9 OQ-3 |
 | I10 | The pirate and the robber in S7a | The pirate stands on the route's first hex and does not move until S7b; the base rule that no ship can be placed or moved onto an edge of the pirate's hex still applies. The robber is out of the game (`robberInactive`): a 7 makes players with more than 7 cards discard and nothing else happens (the "steal from any other player" step is S7b). Longest Road and Largest Army are disabled (`awardRules`). | SF25 p. 16 |
 | I11 | The deck | 3 players: the 5 victory point cards are removed (20 cards: 14 knights, 2 road building, 2 year of plenty, 2 monopoly). 4 players: they are replaced in place by knights (25 cards, 19 knights), so the shuffled order is unchanged. Playing them (warships) is S7c. | SF25 p. 16 |
 | I12 | Setup | Unchanged: two rounds, two starting settlements with a road or a ship each, on the main island only; the second settlement still gives its starting cards. Everyone then has 3 settlements and 3 VP (the fortress counts for 0). The preset pieces are placed in `initGame` without the rng. | SF25 p. 16 |
@@ -183,50 +183,44 @@ coordinates: (0, 6), (-1, 6), (-1, 5), (-1, 4), (0, 3), (0, 2), (1, 1), (2, 0), 
 | I15 | Robber and knights in S7a | The robber does not exist: `robberTargets`, `legalRobberHexes` and the pirate targets are empty. `dev.playKnight` is **refused** (`E_INVALID_COMMAND`, `vetoCommand`) until S7c, which turns knights into warship conversions ("knight cards may only be used to convert ships into warships"), so no command can put the removed robber back on the board. | SF25 p. 16–17 |
 | I16 | Panel settlement count | An unrecaptured fortress is not counted in the settlements of the player panel (it scores nothing), so the breakdown (e.g. Settlements (3 × 1) after setup) matches the total. | SF25 p. 16 |
 
-## Simulation: how often is a line left without a path
+## Simulation: how often is a line boxed in, and does backtracking free it
 
-Spec §6.6 and OQ-3: measure with random legal moves whether the exact shortest-path rule can leave a player with no way to
-extend the line; if it never does, drop `shortestPathFallback` and its code. **Re-measured twice after review** (round 1: no roads from
-unrecaptured fortresses, lines start at the preset coastal settlement, coastal edges count for the distance; round 2: the relaxed step may not
-end on a foreign building or loop back, and the "no legal extension" check now also runs while the relaxation is active, which round 1 skipped).
+Spec §6.6 and OQ-3: measure with random legal moves whether the exact shortest-path rule can leave a player with no way to extend the line. It
+can (about 5 % to 12 % of games with many free ships), and an earlier "extend in any direction" relaxation was shown **not to help** (the end stays in the
+pocket cut off from the target), so on 2026-11-24 the user replaced it with the backtracking rule of I9. This section is the measurement of the
+final rule (same player counts, policies and seeds as before).
 
 `packages/rules/test/seafarers-pirate-islands-sim.ts` plays whole setups and then turns of random **legal** actions
 (3 and 4 players, seeds 1..N, at most 60 turns, or until every line reaches its fortress): the actor rolls (a 7 only discards), then makes 1 to 4
 actions, each either an extension of the own line (probability `bias`) or any other legal ship (free coastal routes), a road, or a settlement on a
 beachhead (settlements elsewhere and cities are left out so nobody wins by points); the hand is refilled before every action so
 the run tests paths, not the economy; before every turn the pirate jumps to a random hex of the route (S7b will move it for
-real, so its temporary blocking shows up all over the board). Every command goes through `applyCommand`, so only legal actions
-happen, and at the end of each game every road is checked with `roadAllowed`. Three policies: `bias 1` (only line
-ships), `0.85` and `0.4` (more and more free coastal ships and roads). Measured after every action: *unreachable* = the next target cannot be reached
-from the line's end over empty sea edges; *noExtension* = the player has a line that is not finished and no legal line ship (pirate ignored, pieces left;
-counted per turn, so a stuck player is counted every turn); *stuck players* = players who ever had that; *badEnds* = a line ending on another player's building or
-visiting a vertex twice; *dead at placement* = a relaxed ship whose new end has no legal extension right away; *illegalRoads* = roads on a pirate island
-that `roadAllowed` would refuse. Run with
+real). **A boxed-in player first backtracks** (`ship.move` of the end ship, preferring a strict extension from the new end). Every command goes through
+`applyCommand`, and at the end of each game every road is checked with `roadAllowed` and every line end for a foreign building or a loop. Policies: `bias 1`
+(only line ships), `0.85` and `0.4` (more and more free coastal ships and roads). Run with
 `PI_SIM_GAMES=<n> PI_SIM_BIASES=<list> PI_SIM_REPORT=1 pnpm --filter @katan/rules exec vitest run test/seafarers-pirate-islands-sim.test.ts`
-(2026-11-24, shared machine, 111 s for `bias 1`, 350 s for `0.85` and `0.4`, 307 s for `0.4` again with the final counters):
+(2026-11-24, shared machine, 105 s for `bias 1`, 286 s for `0.85` and `0.4`, 421 s for `0.4` again with the final counters):
 
-| Players | Policy | Games | Games with a line left without a path | Games where the fallback placed a ship (ships) | Lines completed | Lines out of ships | Stuck players (noExtension turns) | Dead at placement | badEnds | illegalRoads |
+| Players | Policy | Games | Games with a boxed-in line | Boxed-in players | Backtracks (games) | Finished the line after being boxed in | Still boxed in at the end (of which no route from anywhere) | Permanently stuck (no extension and no backtrack) | badEnds | illegalRoads |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 3 | bias 1 | 300 | 0 | 0 (0) | 900 / 900 | 0 | 0 (0) | 0 | 0 | 0 |
-| 4 | bias 1 | 300 | 0 | 0 (0) | 1198 / 1200 | 2 | 0 (0) | 0 | 0 | 0 |
-| 3 | bias 0.85 | 400 | 0 | 0 (0) | 1196 / 1200 | 4 | 0 (0) | 0 | 0 | 0 |
-| 4 | bias 0.85 | 400 | 1 (12 observations) | 0 (0) | 1599 / 1600 | 1 | 0 (0) | 0 | 0 | 0 |
-| 3 | bias 0.4 | 400 | 19 (4.8 %) | 4 (15) | 1091 / 1200 | 102 | 6 (201) | 2 | 0 | 0 |
-| 4 | bias 0.4 | 400 | 46 (11.5 %) | 19 (81) | 1487 / 1600 | 81 | 23 (616) | 10 | 0 | 0 |
+| 3 | bias 1 | 300 | 0 | 0 | 0 (0) | 0 | 0 (0) | 0 | 0 | 0 |
+| 4 | bias 1 | 300 | 0 | 0 | 0 (0) | 0 | 0 (0) | 0 | 0 | 0 |
+| 3 | bias 0.85 | 400 | 0 | 0 | 0 (0) | 0 | 0 (0) | 0 | 0 | 0 |
+| 4 | bias 0.85 | 400 | 1 | 1 | 0 (0) | 0 | 0 (0) | 0 | 0 | 0 |
+| 3 | bias 0.4 | 400 | 19 (4.8 %) | 20 | 33 (16) | 1 | 4 (1) | 0 | 0 | 0 |
+| 4 | bias 0.4 | 400 | 46 (11.5 %) | 49 | 42 (25) | 0 | 30 (21) | 0 | 0 | 0 |
 
 Reading:
 
-- When players mostly extend their lines, the exact rule never traps anybody (0 stuck players in 1,400 games for `bias 1` and `0.85`; one passing
-  observation for 4 players): every line starts at its own preset ship and heads for its own target.
-- With many random free coastal ships (`bias 0.4`) a line can be walled off by other players' ships and buildings in 5 % (3 players) to 12 %
-  (4 players) of the games.
-- **The relaxation does not rescue such a line.** A relaxed step stays on empty edges, so the end stays in the component that is cut off from the
-  target; the walk only wastes ships, and the player is stuck once the pocket is full (6 and 23 stuck players above, 2 and 10 relaxed ships
-  that left no extension even at once). Round 1 hid this by skipping the check while the relaxation was active. The relaxation is safe now
-  (no foreign-building ends, no loops, 0 `badEnds`, 0 illegal roads in 2,200 games) but it does not "keep the game from stalling" as spec
-  §6.6 hoped. A real remedy needs a rule choice (for example letting a walled-off player move or remove the end ship of the line, or letting free
-  ships never wall a line); S7a keeps the user-confirmed definition and the flag as they are and reports this for a decision.
-  Honest status: the fallback is only useful if a blocker later disappears (a free ship is moved away).
+- With line-focused play nobody is boxed in (0 of 1,400 games for `bias 1` and `0.85`, one passing observation). With many random free coastal ships a
+  line is boxed in in 5 % (3 players) to 12 % (4 players) of the games.
+- **Nobody is permanently stuck**: every boxed-in player always has either a legal extension or a backtrack available (0 in 2,200 games), and the
+  moves are all legal (0 bad ends, 0 illegal roads).
+- Backtracking frees a line only if another route exists. Of the 69 boxed-in players at `bias 0.4`, 5 were still boxed in at the end with a route
+  somewhere (turn cap) and **22 (1 and 21) had no route from anywhere**: the target is enclosed by other players' fixed line ships and buildings, so no retreat can
+  find a way; 1 finished after backtracking, the rest were freed but ran out of ships or turns (free ships are wasted pieces, 15 per player). These
+  hopeless cases come from random free-ship play that walls a beachhead or fortress in; they would need another rule (for example forbidding
+  free ships that wall a target) and are reported for a decision rather than designed away here.
 
 ## What was built
 
@@ -234,7 +228,7 @@ Reading:
 |---|---|---|
 | Map | `packages/rules/src/seafarers-pirate-islands-boards.ts` (new), `topology-registry.ts`, `layout-registry.ts` | shifted coordinates, 8 shuffled ports, the 49-cell topology `sf-pirate-islands`, preset/route data, corner and side lookups |
 | Rules | `packages/rules/src/modules/seafarers/pirateIslands.ts` (new), `index.ts`, `state.ts`, `ships.ts`, `islands.ts`, `gold.ts`, `messages.ts` | presets, fortress lock (production, gold, score, city), beachhead and setup building, the ship line with the shortest path and the fallback, hints, projection, `E_SHIP_LINE` |
-| Profile | `packages/rules/src/profiles.ts` | `topologyId: sf-pirate-islands`, `shortestPathFallback`, `implemented` |
+| Profile | `packages/rules/src/profiles.ts` | `topologyId: sf-pirate-islands`, `stuckLineBacktrack`, `implemented` |
 | Web | `components/SvgPirateIslands.tsx`, `board/three/DioramaPirateIslands.tsx`, `board/three/diorama-pirate-islands.ts` (new); `SvgBoard.tsx`, `DioramaSeafarers.tsx`, `PlayersPanel.tsx`, `BoardView.tsx`, `board/seafarers.ts`, `i18n/modules/seafarers.ts` | lair stacks, beachhead discs, the next-target ring, the route in SVG and 3D, fortress and ship-line marks in the player panel, `E_SHIP_LINE` and the pirate texts in zh-Hant and en |
 | Evidence | `packages/rules/test/seafarers-pirate-islands.test.ts`, `seafarers-pirate-islands-sim.ts`, `seafarers-pirate-islands-sim.test.ts`, `packages/web/test/seafarers-pirate-islands.test.tsx` | see Verification |
 
@@ -243,7 +237,7 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
 
 ## Verification
 
-- Rules (`packages/rules/test/seafarers-pirate-islands.test.ts`, 38 tests; whole suite 71 files, 1181 tests):
+- Rules (`packages/rules/test/seafarers-pirate-islands.test.ts`, 40 tests; whole suite 71 files, 1183 tests):
   topology (49 hexes, rows 6-7-8-7-8-7-6 on the `sf-forgotten-tribe` outline, Euler, protrusions absent, 8 distinct frame harbour edges)
   and the (-1, -3) shift against the transcribed row ranges; layout checksums (terrain 19/3/2/5×5, 24 discs, the 6 hexes without a
   disc, islands 17/4/2/1/4/2, every transcribed cell, 8 harbour tokens reproducible and varying with the seed, route 14 consecutive
@@ -256,16 +250,16 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
   beachhead without the ship line, Blue's coast roads and ships beside its fortress refused, legitimate buildings still extend roads);
   the line (the preset ship is the first line ship, free coastal routes, wrong ship refused with `E_SHIP_LINE`, every colour reaches
   beachhead and fortress with every step cutting the distance by 1 and a simple path, a finished line cannot grow, an emptied line restarts
-  only at a coastal building and never at a free ship, no branching, detours around other ships and impassable vertices, the fallback with its
+  only at a coastal building and never at a free ship, no branching, detours around other ships and impassable vertices, backtracking with its
   flag on and off, settlement at the beachhead only after the line arrives and only the own one, line ships fixed and free ships judged when
-  moved, setup ships, the relaxed step never ends on a foreign building or loops back, the robber and knights are refused); public view equal for every
+  moved, setup ships, the robber and knights are refused); public view equal for every
   viewer; other scenarios without state, hints or line rules; profile enabled/implemented flags and player counts;
   `seafarers-pirate-islands-sim.test.ts` (2 tests: 12 games for each of 3 policies × 2 player counts, `illegalRoads` 0 and `badEnds` 0, the
-  large runs above); `profiles.test.ts` and `seafarers-exports.test.ts` updated for the new key and the implemented flag;
+  large runs above); `profiles.test.ts` and `seafarers-exports.test.ts` updated for the new key and the implemented flag; backtracking tests (only the end ship can move and only when boxed in, the flag off, the line is cut, step-by-step retreat to no line, a new strict route after backtracking, other scenarios unaffected);
   `message-ids.test.ts` covers `E_SHIP_LINE`.
 - Service: no code path is added (the profile is disabled); `seafarers-scenarios-registry.test.ts` still lists the profile as disabled and
   rejects 5 and 6 players with `bad-player-count` and 3–4 with `disabled`; `bots.test.ts` still refuses bot seats with reason `profile`.
-- Web (`seafarers-pirate-islands.test.tsx`, 8 tests): SVG board (49 hexes, 8 harbours, 8 buildings and 4 ships for 4 players, 4
+- Web (`seafarers-pirate-islands.test.tsx`, 9 tests): SVG board (49 hexes, 8 harbours, 8 buildings and 4 ships for 4 players, 4
   fortresses with 3 lairs and their titles, 4 beachheads, the 14-hex route, no robber, 3 players with 3 fortresses and no white
   pieces), the next-target ring (beachhead first), a recaptured fortress without lair tokens, no layer in other scenarios; 3D helper
   geometry (lair spot beside the fortress on land, beachhead on its vertex, taller stack for more lairs, models built); player panel
@@ -278,7 +272,7 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
 
 - No human playtest, physical device or screen-reader check; no browser capture in S7a (the profile is not enabled, so there is no
   lobby path; the capture belongs to S7c).
-- The shortest-path definition is the user-confirmed reading of SF25 (OQ-3), not a printed rule; the line fallback is a
+- The shortest-path definition is the user-confirmed reading of SF25 (OQ-3), not a printed rule; the line backtracking is a
   departure from SF25 (I9).
 - "Which ships belong to the line" (I4–I5) is our reading of "one continuous line to the western islands … you may create other
   routes around the main island", with the preset ship as the line's first ship.
