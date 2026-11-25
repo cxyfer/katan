@@ -217,7 +217,8 @@ describe('the pirate log lines and sounds', () => {
       .toBe('The pirate (strength 3) attacked P1 (warships: 0): the pirate is stronger: 2 card(s) discarded (1×Lumber、1×Ore).');
     // 手上沒牌：不出現「（—）」
     const empty = { ...lost, count: 0, owed: 1, resources: {} };
-    expect(text('en', 'pirate.attacked', empty).text).toBe('The pirate (strength 3) attacked P1 (warships: 0): the pirate is stronger: 0 card(s) discarded, 1 were owed.');
+    expect(text('en', 'pirate.attacked', empty).text).toBe('The pirate (strength 3) attacked P1 (warships: 0): the pirate is stronger: 0 card(s) discarded, 1 was owed.');
+    expect(text('zh-Hant', 'pirate.attacked', empty).text).toContain('應棄 1 張');
     expect(text('zh-Hant', 'pirate.attacked', empty).text).not.toMatch(/[（(]—[）)]/);
     expect(text('en', 'pirate.attacked', lost).text).toBe('The pirate (strength 3) attacked P1 (warships: 0): the pirate is stronger: 2 card(s) discarded.');
     expect(text('en', 'pirate.attacked', { ...lost, count: 1, owed: 2 }).text).toContain(', 2 were owed');

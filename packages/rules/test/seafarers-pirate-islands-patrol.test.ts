@@ -145,6 +145,15 @@ describe('pirate attacks', () => {
     expect(attacked.private).toEqual({ to: ['p1'], params: { resources: { lumber: 1 } } });
   });
 
+  it('棄牌的隨機索引真的決定拿哪一張：手牌 2 木 1 磚，索引 2 拿走磚、索引 1 拿走木（永遠拿第一張會失敗）', () => {
+    for (const [index, expected] of [[2, { lumber: 2, brick: 0 }], [1, { lumber: 1, brick: 1 }]] as const) {
+      const state = attackSetup();
+      setHand(state, 'p1', { lumber: 2, brick: 1 });
+      const rolled = roll(state, 'p1', [2, 4], [index]);
+      expect(rolled.state.players[0]!.resources).toMatchObject(expected);
+    }
+  });
+
   it('沒有相鄰建築的格不攻擊', () => {
     const state = ready();
     setHand(state, 'p1', { lumber: 3 });
@@ -450,6 +459,19 @@ describe('resolving a 7', () => {
     expect(event.params).toEqual({ playerId: 'p1', victim: 'p3' });
     expect(event.private).toEqual({ to: ['p1', 'p3'], params: { resource: 'lumber' } });
     expect(stolen.state.stats?.players.p1?.stolen.lumber).toBe(1);
+  });
+
+  it('偷牌的隨機索引決定偷哪一張：受害者 1 羊 1 麥 2 礦，索引 1 偷到麥、索引 3 偷到礦（永遠拿第一張會失敗）', () => {
+    for (const [index, resource] of [[1, 'grain'], [3, 'ore']] as const) {
+      const state = ready();
+      setHand(state, 'p2', { wool: 1, grain: 1, ore: 2 });
+      const rolled = roll(state, 'p1', [3, 4]);
+      const stolen = act(rolled.state, 'p1', cmd({ type: 'seven.steal', victim: 'p2' }), scriptedRng([index]));
+      expect(stolen.state.players[0]!.resources[resource]).toBe(1);
+      expect(total(stolen.state, 'p1')).toBe(1);
+      expect(stolen.state.players[1]!.resources[resource]).toBe(resource === 'ore' ? 1 : 0);
+      expect(stolen.events.find((event) => event.type === 'seven.stole')!.private).toEqual({ to: ['p1', 'p2'], params: { resource } });
+    }
   });
 
   it('沒有人要棄牌時直接進入偷牌；可以選擇不偷', () => {
