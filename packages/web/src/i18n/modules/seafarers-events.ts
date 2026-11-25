@@ -16,6 +16,9 @@ function count(values: unknown): Record<string, number> {
 const num = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 const str = (value: unknown): string => (typeof value === 'string' ? value : '');
 
+/** 括號補充：中文用全形，英文用半形並留一個空格。 */
+const paren = (locale: Locale, text: string): string => (locale === 'en' ? ` (${text})` : `（${text}）`);
+
 const worldHarbor = (locale: Locale, harbor: string): string =>
   harbor === 'generic' ? t(locale, 'sf.gift.port.generic') : t(locale, 'sf.gift.port.resource', { resource: t(locale, `resource.${harbor}`) });
 
@@ -36,6 +39,33 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
         target: p.hex === null || p.hex === undefined ? t(locale, 'sf.pirate.toFrame') : t(locale, 'sf.pirate.toHex', { hex: num(p.hex) }),
         cause: cause(),
       };
+    case 'pirate.cruised':
+      return { steps: num(p.steps), to: num(p.to) };
+    case 'pirate.attacked': {
+      const result = str(p.result);
+      const strength = num(p.strength);
+      const warships = num(p.warships);
+      let outcome: string;
+      if (result === 'lost') {
+        // 被棄的牌只有被攻擊的人看得到（私有欄位 `resources`）。
+        const lost = p.resources && typeof p.resources === 'object' ? formatResourceMap(locale, p.resources as Record<string, number>) : '';
+        outcome = t(locale, 'sf.pirate.outcome.lost', {
+          count: num(p.count),
+          resourceSuffix: lost ? paren(locale, lost) : '',
+          shortSuffix: num(p.owed) > num(p.count) ? t(locale, 'sf.pirate.outcome.short', { owed: num(p.owed) }) : '',
+        });
+      } else outcome = t(locale, result === 'won' ? 'sf.pirate.outcome.won' : 'sf.pirate.outcome.tie');
+      return { player, strength, warships, outcome };
+    }
+    case 'pirate.gifted':
+      return {
+        player,
+        taken: typeof p.resource === 'string' ? t(locale, 'sf.pirate.gifted.card', { resource: t(locale, `resource.${p.resource}`) }) : t(locale, 'sf.pirate.gifted.none'),
+      };
+    case 'seven.stole':
+      return { player, victim: nameOf(str(p.victim)), resourceSuffix: typeof p.resource === 'string' ? paren(locale, t(locale, `resource.${p.resource}`)) : '' };
+    case 'seven.stealSkipped':
+      return { player };
     case 'gold.required': {
       const picks = (p.picks ?? {}) as Record<string, number>;
       const parts = Object.keys(picks).map((id) => `${nameOf(id)} ${formatNumber(locale, picks[id] ?? 0)}`);

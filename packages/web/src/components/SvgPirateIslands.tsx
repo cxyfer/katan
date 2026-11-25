@@ -54,9 +54,37 @@ export function SvgPirateIslands({ geometry, view, nameResolver }: { geometry: B
     const cell = geometry.hexes[hex];
     return cell ? [`${cell.cx},${cell.cy + 4}`] : [];
   });
+  // 巡弋順序：航道上相鄰兩格之間畫一個順時針的箭頭；海盜現在的位置加環，前方 6 格標出「較小的骰是幾」會停在哪。
+  const cells = pirate.route.flatMap((hex) => {
+    const cell = geometry.hexes[hex];
+    return cell ? [{ hex, x: cell.cx, y: cell.cy + 4 }] : [];
+  });
+  const at = cells.findIndex((cell) => cell.hex === view.board.pirate);
   return <g data-testid="pirate-islands-layer">
     {route.length > 1 && <polygon data-testid="pirate-route" data-hexes={route.length} points={route.join(' ')} fill="none" stroke="#f4e9c6" strokeOpacity=".5"
       strokeWidth="4" strokeDasharray="2 12" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"><title>{t('sf.pirate.route')}</title></polygon>}
+    {cells.length > 1 && cells.map((cell, index) => {
+      const next = cells[(index + 1) % cells.length]!;
+      const angle = (Math.atan2(next.y - cell.y, next.x - cell.x) * 180) / Math.PI;
+      return <g key={`route-arrow-${cell.hex}`} data-testid={`pirate-route-arrow-${index}`} data-from={cell.hex} data-to={next.hex}
+        transform={`translate(${(cell.x + next.x) / 2} ${(cell.y + next.y) / 2}) rotate(${angle})`} pointerEvents="none">
+        <title>{t('sf.pirate.routeArrow')}</title>
+        <path d="M-8 -6L7 0L-8 6L-4 0Z" fill="#f4e9c6" stroke="#20180f" strokeWidth="1.4" strokeLinejoin="round" />
+      </g>;
+    })}
+    {at >= 0 && <g data-testid="pirate-position" data-hex={cells[at]!.hex} pointerEvents="none">
+      <title>{t('sf.pirate.here')}</title>
+      <circle cx={cells[at]!.x} cy={cells[at]!.y} r="30" fill="none" stroke="#ffd45c" strokeWidth="3" strokeDasharray="7 5" />
+    </g>}
+    {at >= 0 && Array.from({ length: 6 }, (_, offset) => {
+      const cell = cells[(at + offset + 1) % cells.length]!;
+      const steps = offset + 1;
+      return <g key={`route-step-${steps}`} data-testid={`pirate-step-${steps}`} data-hex={cell.hex} transform={`translate(${cell.x} ${cell.y})`} pointerEvents="none">
+        <title>{t('sf.pirate.step', { steps })}</title>
+        <circle r="9" fill="#2a2523" fillOpacity=".78" stroke="#f4e9c6" strokeWidth="1.4" />
+        <text y="4" textAnchor="middle" fontSize="12" fontWeight="800" fill="#f7efd9">{steps}</text>
+      </g>;
+    })}
     {pirate.beachheads.map((beachhead) => {
       const vertex = geometry.vertices[beachhead.vertex];
       if (!vertex) return null;

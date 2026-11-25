@@ -82,6 +82,8 @@ export interface PirateIslandsView {
   beachheads: PirateBeachheadView[];
   lines: Record<string, PirateLineView>;
   route: number[];
+  /** 各玩家的戰船（橫放的船所在的邊）；戰力 = 戰船數。S7b 還沒有戰船，全是空的。 */
+  warships: Record<string, number[]>;
 }
 
 /** 新世界設置階段的港口：現在抽到的港口（面朝上，公開）、已放數量與是否還能重新產生版圖。 */
@@ -135,6 +137,10 @@ export interface SeafarersHints {
   clothVictims: string[];
   /** 卡坦奇觀：現在可認領的奇觀與能否蓋下一層（只在自己的行動階段有值）。 */
   wonders: { claimable: string[]; buildable: boolean };
+  /** 海盜巢穴：贏了海盜時，輪到自己可從供應堆拿的資源；其他時候與其他劇本為空。 */
+  pirateGift: Resource[];
+  /** 海盜巢穴：擲出 7 後，輪到自己時可以偷的玩家（有牌的其他玩家）；其他時候與其他劇本為空。 */
+  sevenSteal: string[];
   /** 海盜巢穴：自己船線的下一個目標（beachhead、堡壘或已完成）、目標頂點、端點、船線的邊，是否被圍住（`stuck`），以及此刻末端的船真的可以移動（`backtrack`，與 `movableShips` 一致）。 */
   pirateLine: { next: 'beachhead' | 'fortress' | 'done'; target: number | null; end: number | null; edges: number[]; stuck: boolean; backtrack: boolean; backtrackBlocked: 'phase' | 'moved' | 'builtThisTurn' | 'pirate' | 'attached' | 'noTarget' | null } | null;
 }
@@ -189,6 +195,8 @@ export function seafarersHints(view: Pick<GameView, 'hints'> | null | undefined)
     clothVictims: slot.clothVictims ?? [],
     wonders: slot.wonders ?? { claimable: [], buildable: false },
     pirateLine: slot.pirateLine ?? null,
+    pirateGift: slot.pirateGift ?? [],
+    sevenSteal: slot.sevenSteal ?? [],
   };
 }
 
