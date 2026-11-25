@@ -27,6 +27,10 @@ export function createLairStackModel(count: number): BufferGeometry {
     model.add(new CylinderGeometry(0.135, 0.135, 0.008, 14), '#c9a14a', [0, 0.073 + index * 0.055, 0]);
   }
   const top = 0.1 + layers * 0.055;
+  // 高高的黑旗（骷髏旗）：堡壘常在山格的邊上，矮的疊會被山擋住，旗桿讓它從任何角度都看得到。
+  model.add(new CylinderGeometry(0.012, 0.016, 0.8, 6), '#6b442c', [0.13, 0.4, 0]);
+  model.add(new BoxGeometry(0.24, 0.15, 0.012), IRON, [0.26, 0.72, 0]);
+  model.add(new BoxGeometry(0.07, 0.07, 0.016), BONE, [0.26, 0.72, 0]);
   // 頂端的骷髏：圓頭、兩個眼窩與交叉的骨。
   model.add(new CylinderGeometry(0.045, 0.045, 0.03, 10), BONE, [0, top + 0.02, 0]);
   model.add(new BoxGeometry(0.014, 0.012, 0.014), IRON, [-0.016, top + 0.038, 0.03]);
@@ -40,10 +44,11 @@ export function createLairStackModel(count: number): BufferGeometry {
 export function createRecapturedBannerModel(color: string): BufferGeometry {
   const model = new ModelBuilder();
   model.add(new CylinderGeometry(0.12, 0.14, 0.025, 14), '#c9a14a', [0, 0.012, 0]);
-  model.add(new CylinderGeometry(0.014, 0.018, 0.5, 6), '#6b442c', [0, 0.26, 0]);
-  model.add(new BoxGeometry(0.2, 0.13, 0.012), color, [0.11, 0.42, 0]);
-  model.add(new BoxGeometry(0.2, 0.03, 0.014), '#ffd45c', [0.11, 0.42, 0]);
-  model.add(new CylinderGeometry(0.03, 0.03, 0.03, 8), '#ffd45c', [0, 0.53, 0]);
+  // 旗桿比山還高：收復的堡壘常在山格邊上，旗要從山後面露出來。
+  model.add(new CylinderGeometry(0.016, 0.02, 1, 6), '#6b442c', [0, 0.5, 0]);
+  model.add(new BoxGeometry(0.34, 0.22, 0.014), color, [0.18, 0.86, 0]);
+  model.add(new BoxGeometry(0.34, 0.05, 0.016), '#ffd45c', [0.18, 0.86, 0]);
+  model.add(new CylinderGeometry(0.04, 0.04, 0.04, 8), '#ffd45c', [0, 1.02, 0]);
   return model.build();
 }
 
@@ -101,7 +106,10 @@ export function routeArrows(geometry: BoardGeometry, route: readonly number[]): 
   });
 }
 
-/** 堡壘旁的 lair 疊位置：從頂點往陸地（碰到的陸地格中心）退一點，落在陸地上。 */
+/**
+ * 堡壘旁的 lair 疊（與收復後的旗）位置：沿著海岸線從頂點挪開一段，落在沙灘與格界上。
+ * 往陸地格中心退會被山、森林等地形模型蓋住（瀏覽器證據：金礦山格的堡壘看不到 lair 疊），所以改沿岸。
+ */
 export function lairSpot(geometry: BoardGeometry, vertexIndex: number): Vec3 | null {
   const vertex = geometry.vertices[vertexIndex];
   const info = geometry.topology.vertices[vertexIndex];
@@ -112,11 +120,19 @@ export function lairSpot(geometry: BoardGeometry, vertexIndex: number): Vec3 | n
   const land = info.hexes.find((hex) => geometry.land[hex] !== false);
   const hex = land === undefined ? undefined : geometry.hexes[land];
   if (!hex) return [x, 0.005, z];
-  const dx = hex.cx / scale - x;
-  const dz = hex.cy / scale - z;
-  const length = Math.hypot(dx, dz) || 1;
-  // 先往陸地中心 0.3，再往側邊挪，避開建築。
-  return [x + (dx / length) * 0.3 - (dz / length) * 0.1, 0.005, z + (dz / length) * 0.3 + (dx / length) * 0.1];
+  // 沿岸邊（一側是陸地格、另一側是海或框）走向相鄰的頂點。
+  // 兩側都是岸時取畫面下方（z 較大、朝相機）那一側，疊與旗才不會躲在堡壘和山的後面。
+  const ends = info.edges.map((edge) => geometry.topology.edges[edge]!).filter((edge) =>
+    edge.hexes.some((h) => geometry.land[h] !== false) && edge.hexes.some((h) => geometry.land[h] === false))
+    .map((edge) => geometry.vertices[edge.vertices.find((other) => other !== vertexIndex)!]).filter((other) => !!other);
+  const far = ends.sort((a, b) => b!.y - a!.y)[0];
+  const inward = { x: hex.cx / scale - x, z: hex.cy / scale - z };
+  const inwardLength = Math.hypot(inward.x, inward.z) || 1;
+  if (!far) return [x + (inward.x / inwardLength) * 0.3, 0.005, z + (inward.z / inwardLength) * 0.3];
+  const along = { x: far.x / scale - x, z: far.y / scale - z };
+  const alongLength = Math.hypot(along.x, along.z) || 1;
+  // 沿岸 0.3，再往陸地一點點（0.06）離開水面。
+  return [x + (along.x / alongLength) * 0.3 + (inward.x / inwardLength) * 0.06, 0.005, z + (along.z / alongLength) * 0.3 + (inward.z / inwardLength) * 0.06];
 }
 
 /** 頂點的世界座標（標記貼在地面）。 */

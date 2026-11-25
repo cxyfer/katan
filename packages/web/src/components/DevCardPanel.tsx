@@ -192,7 +192,7 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
         aria-describedby={card === 'knight' && warshipBlocked ? `warship-hint-${index}` : undefined}>
         {card === 'knight' && warship ? t('sf.warship.play') : t('play.playCard', { card: t(`devCard.${card}`) })}
       </button>}
-      {!isNew && card === 'knight' && warshipBlocked && <span id={`warship-hint-${index}`} className="visually-hidden" data-testid="warship-blocked">{t('sf.warship.noTarget')}</span>}
+      {!isNew && card === 'knight' && warshipBlocked && <span id={`warship-hint-${index}`} className="development-card__note" data-testid="warship-blocked">{t('sf.warship.noTarget')}</span>}
     </li>;
   };
 

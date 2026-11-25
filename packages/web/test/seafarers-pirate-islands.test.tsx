@@ -137,13 +137,14 @@ describe('Pirate Islands board (3D)', () => {
       const spot = lairSpot(geometry, fortress.vertex)!;
       const vertex = geometry.vertices[fortress.vertex]!;
       const info = geometry.topology.vertices[fortress.vertex]!;
-      const land = geometry.hexes[info.hexes.find((hex) => geometry.land[hex] !== false)!]!;
-      // 疊在堡壘旁：比頂點更靠近陸地格中心，且不在頂點正上方。
+      const lands = info.hexes.filter((hex) => geometry.land[hex] !== false).map((hex) => geometry.hexes[hex]!);
+      // 疊在堡壘旁（沿岸挪開一段，不在頂點正上方、也不遠離），而且落在某一格陸地之內（不會落進海裡）。
       const fromVertex = Math.hypot(spot[0] - vertex.x / geometry.scale, spot[2] - vertex.y / geometry.scale);
-      const toLand = Math.hypot(spot[0] - land.cx / geometry.scale, spot[2] - land.cy / geometry.scale);
-      const vertexToLand = Math.hypot(vertex.x - land.cx, vertex.y - land.cy) / geometry.scale;
+      const inside = Math.min(...lands.map((land) => Math.hypot(spot[0] - land.cx / geometry.scale, spot[2] - land.cy / geometry.scale)));
+      const vertexToLand = Math.hypot(vertex.x - lands[0]!.cx, vertex.y - lands[0]!.cy) / geometry.scale;
       expect(fromVertex).toBeGreaterThan(0.2);
-      expect(toLand).toBeLessThan(vertexToLand);
+      expect(fromVertex).toBeLessThan(0.45);
+      expect(inside).toBeLessThan(vertexToLand + 0.05);
     }
     for (const beachhead of pirate.beachheads) {
       const spot = vertexSpot(geometry, beachhead.vertex)!;
@@ -152,9 +153,12 @@ describe('Pirate Islands board (3D)', () => {
     for (const model of [createLairStackModel(1), createLairStackModel(3), createBeachheadModel('#d33'), createTargetRingModel(), createRouteMarkModel()]) {
       expect(model.getAttribute('position').count).toBeGreaterThan(0);
     }
-    // 更多的 lair 疊得更高。
-    const height = (count: number) => { const box = createLairStackModel(count); box.computeBoundingBox(); return box.boundingBox!.max.y; };
-    expect(height(3)).toBeGreaterThan(height(1));
+    // 更多的 lair 疊更多層（骷髏旗的旗桿固定高度，讓山格旁的堡壘不被地形擋住，所以比頂點數而不是高度）。
+    const vertices = (count: number) => createLairStackModel(count).getAttribute('position').count;
+    expect(vertices(3)).toBeGreaterThan(vertices(1));
+    const pole = createLairStackModel(1);
+    pole.computeBoundingBox();
+    expect(pole.boundingBox!.max.y).toBeGreaterThan(0.55);
     expect(pirate.route).toHaveLength(14);
   });
 });

@@ -158,6 +158,7 @@ describe('the knight button (warship conversion)', () => {
     expect(button.disabled).toBe(true);
     expect(button.title).toBe('No ordinary ship on your ship line to convert: build one first.');
     expect(screen.getByTestId('warship-blocked').textContent).toBe(button.title);
+    expect(screen.getByTestId('warship-blocked').className).not.toContain('visually-hidden');
     fireEvent.click(button);
     expect(submitCommand).not.toHaveBeenCalled();
     cleanup();
