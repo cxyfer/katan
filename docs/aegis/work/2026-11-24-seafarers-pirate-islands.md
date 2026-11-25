@@ -408,3 +408,10 @@ Test numbers after round 2: rules whole suite 75 files, 1,344 tests; `seafarers-
 | I47 | Documentation | I28 now agrees with I41 (pirate losses are added to `discarded`). |
 
 Test numbers after round 3: rules `seafarers-exports` 18, `seafarers-pirate-islands-patrol` 34, `seafarers-pirate-islands` 60, `message-ids` 5; web `seafarers-pirate-patrol` 13, `dice-hold` 23, `pirate-roll-presentation` 3, `audio-cues` 16, `i18n` 24, `game-stats` 13, `scoreboard-hover` and all 13 `seafarers*` files 172; `pnpm typecheck` passes.
+
+## Review round 4 fixes (S7b)
+
+- The random draws are now tested so that "always take the first card" fails: an attack on a hand of 2 lumber and 1 brick with the scripted index 2 takes the brick (index 1 takes a lumber); a 7's steal from a victim with wool, grain and 2 ore takes the grain at index 1 and the ore at index 3 (`seafarers-pirate-islands-patrol.test.ts`, now 36 tests).
+- English "1 was owed" / "N were owed" (`sf.pirate.outcome.shortOne`); zh-Hant has no plural and the same text for both keys.
+- Not accepted, already planned: the scenario help panel text stays in S7c (see Limitations: "The help panel has no scenario text yet (S7c)").
+- Tests: rules patrol 36; web `seafarers-pirate-patrol` 13 and `i18n` 24; `pnpm typecheck` passes.
