@@ -197,7 +197,7 @@ describe('Pirate Islands boxed-in line', () => {
       cleanup();
     }
     // 其他原因各有自己的文字：海盜在旁邊、遠端接著自己的船、沒有合法落點（不是「等你的行動階段」）。
-    for (const [reason, key] of [['pirate', 'sf.pirate.stuckPirate'], ['attached', 'sf.pirate.stuckAttached'], ['noTarget', 'sf.pirate.stuckNoTarget']] as const) {
+    for (const [reason, key] of [['builtThisTurn', 'sf.pirate.stuckBuilt'], ['pirate', 'sf.pirate.stuckPirate'], ['attached', 'sf.pirate.stuckAttached'], ['noTarget', 'sf.pirate.stuckNoTarget']] as const) {
       const view = viewOf(boxedIn(), 'p1');
       const hint = view.hints!.modules!.seafarers as { pirateLine: { backtrack: boolean; backtrackBlocked: string | null } };
       hint.pirateLine.backtrack = false;

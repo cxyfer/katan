@@ -35,6 +35,7 @@ function ScoreMark({ icon, label, value, awarded = false, testId, detail }: {
 function stuckMessage(line: { backtrack: boolean; backtrackBlocked: string | null }): string {
   if (line.backtrack) return 'sf.pirate.stuck';
   switch (line.backtrackBlocked) {
+    case 'builtThisTurn': return 'sf.pirate.stuckBuilt';
     case 'pirate': return 'sf.pirate.stuckPirate';
     case 'attached': return 'sf.pirate.stuckAttached';
     case 'noTarget': return 'sf.pirate.stuckNoTarget';
