@@ -13,6 +13,7 @@ const host = globalThis as unknown as { process: { env: Record<string, string | 
 const GAMES = Number(host.process.env.PI_SIM_GAMES ?? 12);
 const REPORT = host.process.env.PI_SIM_REPORT === '1';
 /** 偏向船線的程度：1 = 只蓋船線的船（沒有隨機的自由船），0.4 = 常常亂放其他合法的船。 */
+const FULL_BIASES = (host.process.env.PI_SIM_FULL_BIASES ?? '0.85').split(',').map(Number);
 const BIASES = (host.process.env.PI_SIM_BIASES ?? '1,0.85,0.4').split(',').map(Number);
 
 interface Summary {
@@ -44,12 +45,22 @@ interface Summary {
   steals: number;
   pirateBlockedTurns: number;
   lineTurns: number;
+  /** S7c（完整對局）：有贏家的局數、戰船改裝、進攻的結果、收復、海盜移出的局數、守恆與船數違規的局數。 */
+  won: number;
+  converted: number;
+  attacksWon: number;
+  attacksLost: number;
+  attacksTied: number;
+  recaptures: number;
+  pirateRemovedGames: number;
+  notConserved: number;
+  tooManyShips: number;
 }
 
-function run(players: 3 | 4, lineBias: number, from: number): Summary {
-  const sum: Summary = { games: 0, gamesWithUnreachable: 0, unreachableObservations: 0, noStart: 0, noExtension: 0, backtracks: 0, illegalRoads: 0, badEnds: 0, inconsistent: 0, ruleDeadlocks: 0, wallRefusals: 0, hintCalls: 0, hintMs: 0, walledPlayers: 0, escaped: 0, stillWalled: 0, hopeless: 0, stuckPlayers: 0, gamesWithBacktracks: 0, linesDone: 0, playerLines: 0, outOfShips: 0, turns: 0, rolls: 0, attacks: 0, steals: 0, pirateBlockedTurns: 0, lineTurns: 0 };
+function run(players: 3 | 4, lineBias: number, from: number, full = false): Summary {
+  const sum: Summary = { games: 0, gamesWithUnreachable: 0, unreachableObservations: 0, noStart: 0, noExtension: 0, backtracks: 0, illegalRoads: 0, badEnds: 0, inconsistent: 0, ruleDeadlocks: 0, wallRefusals: 0, hintCalls: 0, hintMs: 0, walledPlayers: 0, escaped: 0, stillWalled: 0, hopeless: 0, stuckPlayers: 0, gamesWithBacktracks: 0, linesDone: 0, playerLines: 0, outOfShips: 0, turns: 0, rolls: 0, attacks: 0, steals: 0, pirateBlockedTurns: 0, lineTurns: 0, won: 0, converted: 0, attacksWon: 0, attacksLost: 0, attacksTied: 0, recaptures: 0, pirateRemovedGames: 0, notConserved: 0, tooManyShips: 0 };
   for (let seed = from; seed < from + GAMES; seed++) {
-    const result: PirateSimResult = simulatePirateIslands({ players, seed, lineBias, maxTurns: 60 });
+    const result: PirateSimResult = simulatePirateIslands({ players, seed, lineBias, full, ...(full ? {} : { maxTurns: 60 }) });
     sum.games++;
     if (result.unreachable > 0) sum.gamesWithUnreachable++;
     sum.unreachableObservations += result.unreachable;
@@ -78,6 +89,15 @@ function run(players: 3 | 4, lineBias: number, from: number): Summary {
     sum.steals += result.steals;
     sum.pirateBlockedTurns += result.pirateBlockedTurns;
     sum.lineTurns += result.lineTurns;
+    if (result.winner !== null) sum.won++;
+    sum.converted += result.warshipsConverted;
+    sum.attacksWon += result.attacksWon;
+    sum.attacksLost += result.attacksLost;
+    sum.attacksTied += result.attacksTied;
+    sum.recaptures += result.recaptures;
+    if (result.pirateRemoved) sum.pirateRemovedGames++;
+    if (!result.conserved) sum.notConserved++;
+    if (!result.shipsWithinSupply) sum.tooManyShips++;
   }
   return sum;
 }
@@ -106,8 +126,29 @@ describe('Pirate Islands random legal-move simulation (S7a)', () => {
     }
   }, 3_600_000);
 
-  it('a finished game leaves every fortress unrecaptured and scores unaffected by it', () => {
-    const result = simulatePirateIslands({ players: 4, seed: 3, maxTurns: 30 });
+  it('S7c: full games (knights to warships, attacks on the fortress, recapture, 10 points) end with a winner, a conserved supply and at most 15 ships each', () => {
+    const table: Record<string, Summary> = {};
+    for (const players of [3, 4] as const) {
+      for (const bias of FULL_BIASES) table[`${players}p-bias${bias}`] = run(players, bias, 1, true);
+    }
+    if (REPORT) host.process.stderr.write(`PI_SIM_FULL ${JSON.stringify(table)}\n`);
+    for (const [name, sum] of Object.entries(table)) {
+      expect(sum.games, name).toBe(GAMES);
+      // 每一局都跑到有贏家（回合上限內），贏家一定收復了自己的堡壘（`fortressRecaptured`）。
+      expect(sum.won, name).toBe(GAMES);
+      expect(sum.recaptures, name).toBeGreaterThanOrEqual(GAMES);
+      expect(sum.converted, name).toBeGreaterThan(0);
+      expect(sum.attacksWon + sum.attacksLost + sum.attacksTied, name).toBeGreaterThan(0);
+      expect(sum.notConserved, name).toBe(0);
+      expect(sum.tooManyShips, name).toBe(0);
+      expect(sum.illegalRoads, name).toBe(0);
+      expect(sum.badEnds, name).toBe(0);
+      expect(sum.inconsistent, name).toBe(0);
+    }
+  }, 3_600_000);
+
+  it('a game stopped early leaves every fortress state consistent with its events', () => {
+    const result = simulatePirateIslands({ players: 4, seed: 3, maxTurns: 6 });
     for (const player of result.state.players) {
       expect(lineContext(result.state, player.id)).not.toBeNull();
       expect(scoreOf(result.state, player.id, { includeHidden: true })).toBeLessThan(10);

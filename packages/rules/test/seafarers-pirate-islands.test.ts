@@ -428,7 +428,7 @@ describe('Pirate Islands setup and building rules', () => {
 });
 
 describe('Pirate Islands robber and knights (agy P2)', () => {
-  it('強盜不存在：沒有強盜或海盜目標；騎士牌在 S7c 前不能打出，也不會把強盜放回棋盤', () => {
+  it('強盜不存在：沒有強盜或海盜目標；騎士牌不帶目標格，只能改裝戰船（S7c），不會把強盜放回棋盤', () => {
     const state = ready(4);
     const hints = sf(state, 'p1') as unknown as { robberTargets: number[]; pirateTargets: (number | null)[] };
     expect(hints.robberTargets).toEqual([]);
@@ -437,9 +437,8 @@ describe('Pirate Islands robber and knights (agy P2)', () => {
     state.players[0]!.devCards.push('knight');
     const land = state.board.layout.terrain.findIndex((terrain) => terrain !== 'sea');
     expectRejected(state, 'p1', { type: 'dev.playKnight', hex: land }, 'E_INVALID_COMMAND');
-    expectRejected(state, 'p1', { type: 'dev.playKnight', hex: null }, 'E_INVALID_COMMAND');
-    expect(state.board.robber).toBe(-1);
     expect(state.players[0]!.devCards).toContain('knight');
+    expect(act(state, 'p1', { type: 'dev.playKnight', hex: null }).state.board.robber).toBe(-1);
     // 其他劇本照舊：布匹產地仍有強盜目標，騎士牌可打。
     const cloth = emptySeafarersGame(3, 0, 'action', 'sf-cloth-for-catan-2025');
     expect((sf(cloth, 'p1') as unknown as { robberTargets: number[] }).robberTargets.length).toBeGreaterThan(0);
@@ -1463,14 +1462,14 @@ describe('Pirate Islands views and isolation (D7)', () => {
     }
   });
 
-  it('profile：實作但未啟用（S7c 才啟用）；3–4 人，目標 10 分，旗標 stuckLineBacktrack', () => {
+  it('profile：已啟用（S7c）；3–4 人，目標 10 分，旗標 stuckLineBacktrack', () => {
     expect(getProfile(PROFILE)).toMatchObject({
       scenario: 'pirate-islands', victoryTarget: 10, playerCounts: [3, 4], ruleVersion: 'sf-2025.3', topologyId: 'sf-pirate-islands',
-      layoutId: 'sf-pirate-islands', implemented: true, enabled: false, stuckLineBacktrack: true, setupModes: ['fixed'],
+      layoutId: 'sf-pirate-islands', implemented: true, enabled: true, stuckLineBacktrack: true, setupModes: ['fixed'],
     });
     expect(getProfile(PROFILE)!.islandBonus).toBeUndefined();
     for (const playerCount of [3, 4]) {
-      expect(resolveCombination({ expansions: ['seafarers'], scenario: 'pirate-islands', variants: [], setupMode: 'fixed', playerCount })).toEqual({ ok: false, reason: 'disabled' });
+      expect(resolveCombination({ expansions: ['seafarers'], scenario: 'pirate-islands', variants: [], setupMode: 'fixed', playerCount })).toMatchObject({ ok: true, profile: { id: PROFILE } });
     }
     for (const playerCount of [2, 5, 6]) {
       expect(resolveCombination({ expansions: ['seafarers'], scenario: 'pirate-islands', variants: [], setupMode: 'fixed', playerCount })).toEqual({ ok: false, reason: 'bad-player-count' });

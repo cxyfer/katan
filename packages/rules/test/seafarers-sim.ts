@@ -3,6 +3,7 @@
 import { isLandHex, topologyOf, totalResources } from '../src/analysis.ts';
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
 import { fogHexesAtEdge } from '../src/modules/seafarers/fog.ts';
+import { lineShip } from '../src/modules/seafarers/pirateIslands.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
 import { RESOURCES, type GameState, type ModulePending, type Resource } from '../src/types.ts';
 import { seafarersGame } from './seafarers-helpers.ts';
@@ -17,6 +18,10 @@ interface SeafarersHints {
   harborChoices: { harbors: string[]; edges: number[] };
   robberChoice?: number[];
   wonders?: { claimable: string[]; buildable: boolean };
+  /** 海盜巢穴：船線的下一個目標、可改裝的船、船線上的戰船數與結束回合時會不會進攻堡壘。 */
+  pirateLine?: { next: string; edges: number[]; warshipTarget: number | null; lineWarships: number; attackOnEnd: boolean };
+  pirateGift?: string[];
+  sevenSteal?: string[];
 }
 
 type AnyCommand = Command | { type: string; [field: string]: unknown };
@@ -118,6 +123,16 @@ function resolvePending(state: GameState, rng: Rng, step: number): GameState | n
         const choices = sfHints(state, id).harborChoices;
         return attempt(state, id, { type: 'harbor.place', edge: choices.edges[step % choices.edges.length]!, harbor: choices.harbors[0]! }, rng);
       }
+      // 海盜巢穴：贏了海盜的玩家從供應堆拿 1 張；7 的偷牌（偶數步偷第一位，否則不偷）。
+      if (frame.kind === 'seafarers.pirateGift') {
+        const id = frame.responders[0]!;
+        return attempt(state, id, { type: 'pirate.gift', resource: sfHints(state, id).pirateGift![step % sfHints(state, id).pirateGift!.length]! }, rng);
+      }
+      if (frame.kind === 'seafarers.sevenSteal') {
+        const id = frame.responders[0]!;
+        const victims = sfHints(state, id).sevenSteal!;
+        return attempt(state, id, { type: 'seven.steal', victim: step % 3 === 0 || victims.length === 0 ? null : victims[step % victims.length]! }, rng);
+      }
       if (frame.kind !== 'seafarers.gold') return null;
       const id = frame.responders[0]!;
       const needed = sfHints(state, id).goldRequired;
@@ -174,12 +189,15 @@ export interface SimulationResult {
   clothStolen: number;
   wonderClaims: number;
   wonderLevels: number;
+  warships: number;
+  fortressAttacks: number;
+  recaptures: number;
 }
 
 export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps = 30000, profileId?: string, setupMode?: 'fixed' | 'variable'): SimulationResult {
   const rng = seededRng(seed * 7919 + players);
   let { state } = seafarersGame(players, seed, profileId, setupMode);
-  const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0, fogReveals: 0, gifts: 0, harborsPlaced: 0, clothTrades: 0, clothProduced: 0, clothStolen: 0, wonderClaims: 0, wonderLevels: 0 };
+  const counters = { shipsBuilt: 0, shipsMoved: 0, pirateMoves: 0, goldChoices: 0, islandBonuses: 0, fogReveals: 0, gifts: 0, harborsPlaced: 0, clothTrades: 0, clothProduced: 0, clothStolen: 0, wonderClaims: 0, wonderLevels: 0, warships: 0, fortressAttacks: 0, recaptures: 0 };
   const count = (before: GameState, after: GameState) => {
     for (const event of after.log) {
       if (event.seq <= before.seq) continue;
@@ -196,6 +214,9 @@ export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps
       if (event.type === 'cloth.stolen') counters.clothStolen++;
       if (event.type === 'wonder.chosen') counters.wonderClaims++;
       if (event.type === 'wonder.built') counters.wonderLevels++;
+      if (event.type === 'warship.converted') counters.warships++;
+      if (event.type === 'fortress.attacked') counters.fortressAttacks++;
+      if (event.type === 'fortress.recaptured') counters.recaptures++;
     }
   };
   for (let step = 0; step < maxSteps && !state.result; step++) {
@@ -225,7 +246,9 @@ export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps
     if (hints.canRoll) {
       const knight = step % 4 === 0 && actor.devCards.includes('knight') && !state.turn.devCardPlayed;
       const target = step % 8 === 0 ? sea.pirateTargets[0] : sea.robberTargets[0];
-      const played = knight && target !== undefined ? attempt(state, actor.id, { type: 'dev.playKnight', hex: target }, rng) : null;
+      // 海盜巢穴：騎士牌只能改裝戰船（沒有目標格）。
+      const played = knight && sea.pirateLine ? (sea.pirateLine.warshipTarget !== null ? attempt(state, actor.id, { type: 'dev.playKnight', hex: null }, rng) : null)
+        : knight && target !== undefined ? attempt(state, actor.id, { type: 'dev.playKnight', hex: target }, rng) : null;
       state = played ?? attempt(state, actor.id, { type: 'turn.roll' }, rng)!;
       count(before, state);
       continue;
@@ -243,7 +266,15 @@ export function simulateSeafarers(players: 3 | 4 | 5 | 6, seed: number, maxSteps
         if (card === 'roadBuilding') tries.push({ type: 'dev.playRoadBuilding' });
       }
     }
-    if (hints.legalSettlements.length === 0) {
+    // 海盜巢穴：騎士牌改裝戰船；船只走船線（最後一步等戰船夠了才蓋，不然進攻只會輸掉船）。
+    const line = sea.pirateLine;
+    if (line) {
+      if (!state.turn.devCardPlayed && actor.devCards.includes('knight') && line.warshipTarget !== null) tries.unshift({ type: 'dev.playKnight', hex: null });
+      const hold = line.edges.length >= 8 && line.lineWarships < 4 && state.devDeck.includes('knight');
+      const steps = hold ? [] : sea.legalShips.filter((edge) => lineShip(state, actor.id, edge).kind === 'line');
+      if (steps[0] !== undefined) tries.push({ type: 'build.ship', edge: steps[step % steps.length]! });
+    }
+    if (hints.legalSettlements.length === 0 && !line) {
       // 未知海域：隔回合偏好碰到空格的邊，讓模擬真的探索（否則船一路直奔已知的另一座島）。
       const fogFirst = (edge: number): number => (step % 2 === 0 && fogHexesAtEdge(state, edge).length > 0 ? 0 : 1);
       const ships = sea.legalShips.slice().sort((a, b) =>

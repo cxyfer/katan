@@ -11,8 +11,9 @@ import { isLandHex, topologyOf } from '../src/analysis.ts';
 import { actionHints, applyCommand, type Command } from '../src/engine.ts';
 import { legalShipEdges } from '../src/modules/seafarers/ships.ts';
 import { lineBacktrackMovable, lineContext, lineShip, lineVertices, pirateIslandsView, roadAllowed, routeExists } from '../src/modules/seafarers/pirateIslands.ts';
+import { getProfile } from '../src/profiles.ts';
 import { seededRng, type Rng } from '../src/rng.ts';
-import type { GameState, Resource } from '../src/types.ts';
+import { RESOURCES, type GameState, type Resource } from '../src/types.ts';
 import { seafarersGame } from './seafarers-helpers.ts';
 
 export const PI_PROFILE = 'sf-pirate-islands-2025';
@@ -26,6 +27,11 @@ export interface PirateSimOptions {
   maxTurns?: number;
   /** 每次動作選船線延伸（而不是其他合法動作）的機率。 */
   lineBias?: number;
+  /**
+   * S7c 的完整對局：玩家買發展牌、用騎士牌改裝戰船、完成船線（戰船夠了才完成）、蓋城市與村落，
+   * 結束回合時引擎自動進攻堡壘；一直跑到有贏家或回合上限。手牌用「從供應堆補到 6 張」，供應守恆。
+   */
+  full?: boolean;
   /** 除錯：船線無路可走時呼叫。 */
   onUnreachable?: (state: GameState, playerId: string) => void;
 }
@@ -75,6 +81,18 @@ export interface PirateSimResult {
   lineTurns: number;
   /** 被「完成」之外的原因擋住：端點有路但目前沒有任何合法的船線延伸（海盜等暫時限制以外）。 */
   noExtension: number;
+  /** S7c：結束時的贏家、終局原因，以及戰船與堡壘的統計（數自事件記錄）。 */
+  winner: string | null;
+  cause: string | null;
+  warshipsConverted: number;
+  attacksWon: number;
+  attacksLost: number;
+  attacksTied: number;
+  recaptures: number;
+  pirateRemoved: boolean;
+  /** 供應守恆（供應堆 + 全部手牌 = 每種資源的總量）；玩家的船都不超過 15 艘。 */
+  conserved: boolean;
+  shipsWithinSupply: boolean;
 }
 
 function attempt(state: GameState, actor: string, command: AnyCommand, rng: Rng): GameState | null {
@@ -84,9 +102,21 @@ function attempt(state: GameState, actor: string, command: AnyCommand, rng: Rng)
 
 const RICH: Record<Resource, number> = { lumber: 6, brick: 6, wool: 6, grain: 6, ore: 6 };
 
-function enrich(state: GameState, playerId: string): void {
+/** 完整對局（`full`）時，所有補牌都從供應堆拿（供應守恆）；線上模式維持原本的直接補滿。 */
+let conserving = false;
+
+function enrich(state: GameState, playerId: string, conserve = conserving): void {
   const player = state.players.find((candidate) => candidate.id === playerId)!;
-  player.resources = { ...RICH };
+  if (!conserve) {
+    player.resources = { ...RICH };
+    return;
+  }
+  // 從供應堆補到 6 張（供應守恆；供應堆不夠就補到有多少算多少）。
+  for (const resource of RESOURCES) {
+    const take = Math.min(Math.max(0, RICH[resource] - player.resources[resource]), state.bank[resource]);
+    player.resources[resource] += take;
+    state.bank[resource] -= take;
+  }
 }
 
 function pick<T>(items: readonly T[], rng: Rng): T | undefined {
@@ -157,7 +187,9 @@ function permanentlyStuck(state: GameState, playerId: string): boolean {
 }
 
 export function simulatePirateIslands(options: PirateSimOptions): PirateSimResult {
-  const { players, seed, maxTurns = 80, lineBias = 0.85 } = options;
+  const { players, seed, lineBias = 0.85, full = false } = options;
+  const maxTurns = options.maxTurns ?? (full ? 400 : 80);
+  conserving = full;
   const rng = seededRng(seed * 104729 + players);
   let { state } = seafarersGame(players, seed, PI_PROFILE);
   const slot = pirateIslandsView(state)!;
@@ -213,9 +245,9 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   let turns = 0;
   while (turns < maxTurns && !state.result) {
     const actor = state.players[state.turn.seat]!;
-    if (state.players.every((player) => lineContext(state, player.id)!.next === 'done')) break;
+    if (!full && state.players.every((player) => lineContext(state, player.id)!.next === 'done')) break;
     turns++;
-    enrich(state, actor.id);
+    enrich(state, actor.id, full);
     const seqBefore = state.seq;
     const rolled = attempt(state, actor.id, { type: 'turn.roll' }, rng);
     if (!rolled) throw new Error('cannot roll');
@@ -255,17 +287,31 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
       if (without > 0) lineTurns++;
       if (without > 0 && withPirate === 0) pirateBlockedTurns++;
     }
-    const actions = 1 + rng.int(4);
+    const actions = (full ? 3 : 1) + rng.int(4);
     for (let action = 0; action < actions; action++) {
-      enrich(state, actor.id);
+      enrich(state, actor.id, full);
       const hintStart = Date.now();
       const hints = actionHints(state, actor.id);
       hintMs += Date.now() - hintStart;
       hintCalls++;
       wallRefusals += legalShipEdges(state, actor.id, { walls: null }).length - legalShipEdges(state, actor.id).length;
-      const candidates = lineCandidates(state, actor.id);
-      // 偏向船線延伸；其餘隨機：任一合法的船、村落、城市、路。
+      let candidates = lineCandidates(state, actor.id);
       const tries: AnyCommand[] = [];
+      if (full) {
+        const lineHint = (hints.modules!.seafarers as unknown as { pirateLine: { edges: number[]; warshipTarget: number | null; lineWarships: number } }).pirateLine;
+        const knightsLeft = state.devDeck.includes('knight');
+        const holdsKnight = state.players.find((candidate) => candidate.id === actor.id)!.devCards.includes('knight') && !state.turn.devCardPlayed;
+        // 騎士牌：改裝船線上最接近起點的一般船。
+        if (holdsKnight && lineHint.warshipTarget !== null) tries.push({ type: 'dev.playKnight', hex: null });
+        // 戰船不夠、而且牌堆還有騎士：買發展牌（船線快完成時才買）。
+        if (lineHint.lineWarships < 4 && knightsLeft && lineHint.edges.length >= 5 && rng.int(10) < 7) tries.push({ type: 'build.devCard' });
+        // 戰船夠了才完成最後一步（牌堆沒有騎士時只好賭一把）。
+        if (lineHint.edges.length >= 8 && lineHint.lineWarships < 4 && (knightsLeft || holdsKnight)) candidates = [];
+        // 分數：城市與任何合法的村落。
+        if (rng.int(2) === 0) for (const vertex of hints.legalCities) tries.push({ type: 'build.city', vertex });
+        if (rng.int(2) === 0) for (const vertex of hints.legalSettlements) tries.push({ type: 'build.settlement', vertex });
+      }
+      // 偏向船線延伸；其餘隨機：任一合法的船、村落、城市、路。
       // 被圍死：先退回末端的船（每回合一次的移船），優先接成新的船線延伸。
       const backtrack = backtrackMove(state, actor.id, rng);
       if (backtrack) tries.push(backtrack);
@@ -274,7 +320,7 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
         // 隨機的其他船：不含「重新開始船線」的第一步（玩家不會隨機重開船線）。
         ...sfHints(state, actor.id).legalShips.filter((edge) => !(lineShip(state, actor.id, edge) as { restart?: boolean }).restart).map((edge) => ({ type: 'build.ship', edge })),
         // 村落只蓋在 beachhead（避免模擬靠分數結束）；再加上隨機的路。
-        ...hints.legalSettlements.filter((vertex) => beachheads.has(vertex)).map((vertex) => ({ type: 'build.settlement', vertex })),
+        ...hints.legalSettlements.filter((vertex) => full || beachheads.has(vertex)).map((vertex) => ({ type: 'build.settlement', vertex })),
         ...hints.legalRoads.map((edge) => ({ type: 'build.road', edge })),
       ];
       const other = pick(others, rng);
@@ -291,6 +337,7 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
       }
       if (!done) break;
       observe(state);
+      if (state.result) break;
     }
     for (const player of state.players) {
       if (permanentlyStuck(state, player.id)) { noExtension++; stuckSet.add(player.id); }
@@ -333,5 +380,12 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   state.board.roads.forEach((road, edge) => {
     if (road && !road.ship && !roadAllowed(state, road.player, edge)) illegalRoads++;
   });
-  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, backtracks, illegalRoads, badEnds, wallRefusals, hintCalls, hintMs, inconsistent, ruleDeadlocks, rolls, attacks, steals, pirateBlockedTurns, lineTurns, walledPlayers: walled.size, escaped, stillWalled, hopeless, stuckPlayers: [...state.players].filter((player) => permanentlyStuck(state, player.id)).length };
+  const events = state.log;
+  const attacked = events.filter((event) => event.type === 'fortress.attacked').map((event) => (event.params as { result: string }).result);
+  const bankTotal = getProfile(state.profileId)!.bankPerResource;
+  const conserved = RESOURCES.every((resource) => state.bank[resource] + state.players.reduce((sum, player) => sum + player.resources[resource], 0) === bankTotal);
+  const shipsWithinSupply = state.players.every((player) => state.board.roads.filter((road) => road?.ship && road.player === player.id).length <= 15);
+  return { state, winner: state.result?.playerId ?? null, cause: state.result?.cause ?? null, warshipsConverted: events.filter((event) => event.type === 'warship.converted').length,
+    attacksWon: attacked.filter((result) => result === 'won').length, attacksLost: attacked.filter((result) => result === 'lost').length, attacksTied: attacked.filter((result) => result === 'tie').length,
+    recaptures: events.filter((event) => event.type === 'fortress.recaptured').length, pirateRemoved: events.some((event) => event.type === 'pirate.removed'), conserved, shipsWithinSupply, turns, linesDone, unreachable, noStart, outOfShips, noExtension, backtracks, illegalRoads, badEnds, wallRefusals, hintCalls, hintMs, inconsistent, ruleDeadlocks, rolls, attacks, steals, pirateBlockedTurns, lineTurns, walledPlayers: walled.size, escaped, stillWalled, hopeless, stuckPlayers: [...state.players].filter((player) => permanentlyStuck(state, player.id)).length };
 }
