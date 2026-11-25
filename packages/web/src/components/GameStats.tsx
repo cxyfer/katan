@@ -68,6 +68,7 @@ export function incomeOf(stats: PlayerStats): ResourceCounts {
   return combine(
     stats.produced,
     stats.explored ?? zeroResources(),
+    stats.supplyPicks ?? zeroResources(),
     stats.startingResources,
     stats.yearOfPlenty,
     stats.monopolyGained,
@@ -123,7 +124,7 @@ function countColumn(id: string, label: string, pick: (row: StatsRow) => number)
 }
 
 /** `explored`：有玩家探索過迷霧時才顯示探索獎勵欄（其他劇本版面不變）。 */
-function sectionsFor(tab: Exclude<TabId, 'timeline'>, t: (id: string) => string, explored = false): Section[] {
+function sectionsFor(tab: Exclude<TabId, 'timeline'>, t: (id: string) => string, explored = false, supplyPicks = false): Section[] {
   switch (tab) {
     case 'overview':
       return [
@@ -161,6 +162,7 @@ function sectionsFor(tab: Exclude<TabId, 'timeline'>, t: (id: string) => string,
           columns: [
             resourceColumn('produced', t('stats.col.produced'), (stats) => stats.produced),
             ...(explored ? [resourceColumn('explored', t('stats.col.explored'), (stats) => stats.explored ?? zeroResources())] : []),
+            ...(supplyPicks ? [resourceColumn('supplyPicks', t('stats.col.supplyPicks'), (stats) => stats.supplyPicks ?? zeroResources())] : []),
             resourceColumn('starting', t('stats.col.starting'), (stats) => stats.startingResources),
             resourceColumn('yearOfPlenty', t('devCard.yearOfPlenty'), (stats) => stats.yearOfPlenty),
             resourceColumn('monopolyGained', t('devCard.monopoly'), (stats) => stats.monopolyGained),
@@ -318,7 +320,7 @@ export function GameStatsPanel({ view, bots = new Map() }: {
                 <DiceDistributionChart dice={stats.dice} />
               </div>
             ) : (
-              sectionsFor(id, t, rows.some((row) => row.stats.explored)).map((section) => (
+              sectionsFor(id, t, rows.some((row) => row.stats.explored), rows.some((row) => row.stats.supplyPicks)).map((section) => (
                 <StatsTable key={section.id} section={section} rows={rows} bots={bots} label={section.title ?? t(`stats.tab.${id}`)} />
               ))
             ))}
