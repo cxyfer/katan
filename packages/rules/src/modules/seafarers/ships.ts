@@ -24,6 +24,7 @@ import type { CommandOutcome, GameState, Resource } from '../../types.ts';
 import { rulesModulesOf } from '../registry.ts';
 import type { ModuleCommand, ModuleContext } from '../types.ts';
 import { exploreAtEdge } from './fog.ts';
+import { lineAllows, lineBacktrackMovable, lineContext, lineShip, recordLineShip, wallContext, wallsAnyone, type LineContext, type WallContext } from './pirateIslands.ts';
 import { seafarersState, seafarersView } from './state.ts';
 import { takeGift } from './tribe.ts';
 
@@ -34,6 +35,10 @@ export interface ShipPlacementOptions {
   setupVertex?: number | null;
   /** A ship being moved: its current edge counts as empty and cannot link. */
   moving?: number;
+  /** 海盜巢穴：呼叫端已算好的船線狀態（一次列出所有合法邊時共用）。 */
+  line?: LineContext | null;
+  /** 海盜巢穴：呼叫端已算好的「圍死別人目標」狀態（`null` 略過這條規則）。 */
+  walls?: WallContext | null;
 }
 
 export function countShips(state: GameState, playerId: string): number {
@@ -66,21 +71,57 @@ export function canPlaceShip(state: GameState, playerId: string, edge: number, o
   if (!isSeaEdge(state, edge)) return false;
   if (touchesPirate(state, edge)) return false;
   if (options.setupVertex !== undefined) {
-    return options.setupVertex !== null && info.vertices.includes(options.setupVertex);
+    return options.setupVertex !== null && info.vertices.includes(options.setupVertex) && lineAllows(state, playerId, edge, options)
+      && !wallsShip(state, playerId, edge, options);
   }
   const except = options.moving === undefined ? [edge] : [edge, options.moving];
-  return info.vertices.some((vertex) => {
+  const connected = info.vertices.some((vertex) => {
     const building = state.board.buildings[vertex];
     if (building) return building.player === playerId;
     if (isBlockedFor(state, vertex, playerId)) return false;
     return ownShipAt(state, playerId, vertex, except);
   });
+  // 海盜巢穴：西島船線只能有一條不分叉的最短路徑（其他劇本一律允許）。
+  return connected && lineAllows(state, playerId, edge, options)
+    && !wallsShip(state, playerId, edge, options);
+}
+
+/**
+ * 這艘船會不會圍死任何玩家的目標。自己船線的嚴格最短延伸（新蓋的船，新端點距離 −1）不受限制：
+ * 走最短路徑是規則要求的，不算蓄意擋人（使用者決定 2026-11-24）；自由船、移船（含退回後的落點）照樣檢查。
+ */
+function wallsShip(state: GameState, playerId: string, edge: number, options: ShipPlacementOptions): boolean {
+  if (options.walls === null) return false;
+  const step = lineShip(state, playerId, edge, options);
+  // 只豁免現有船線末端的嚴格最短延伸；重新開始（restart）也要檢查。
+  if (step.kind === 'line' && !step.restart && options.moving === undefined) return false;
+  return wallsAnyone(state, {
+    edge,
+    owner: playerId,
+    ...(options.moving === undefined ? {} : { vacated: options.moving }),
+    ...(step.kind === 'line' ? { extend: step.to, from: step.from, ...(step.restart ? { restart: true } : {}) } : {}),
+  }, options.walls);
+}
+
+/**
+ * 放不下時的錯誤：一般規則都過了、只被海盜巢穴的船線規則擋下時回報 `E_SHIP_LINE`，其餘是 `E_ILLEGAL_TARGET`。
+ * （`line: null` 讓 `canPlaceShip` 略過船線規則。）
+ */
+function refusal(state: GameState, playerId: string, edge: number, options: ShipPlacementOptions, kit: ModuleContext['kit']): CommandOutcome {
+  const plain = { ...options, line: null, walls: null };
+  if (!canPlaceShip(state, playerId, edge, plain)) return kit.fail('E_ILLEGAL_TARGET', { edge });
+  // 一般規則都過了：先看船線規則，再看會不會把別人（或自己）的目標圍死。
+  return canPlaceShip(state, playerId, edge, { ...options, walls: null })
+    ? kit.fail('E_LINE_WALLED', { edge })
+    : kit.fail('E_SHIP_LINE', { edge });
 }
 
 export function legalShipEdges(state: GameState, playerId: string, options: ShipPlacementOptions = {}): number[] {
   const out: number[] = [];
   const edges = topologyOf(state).edges.length;
-  for (let edge = 0; edge < edges; edge++) if (canPlaceShip(state, playerId, edge, options)) out.push(edge);
+  // 海盜巢穴：船線的距離表只算一次（其他劇本是 null）。
+  const checked = { ...options, ...(options.line === undefined ? { line: lineContext(state, playerId, options.moving) } : {}), ...(options.walls === undefined ? { walls: wallContext(state) } : {}) };
+  for (let edge = 0; edge < edges; edge++) if (canPlaceShip(state, playerId, edge, checked)) out.push(edge);
   return out;
 }
 
@@ -118,7 +159,8 @@ export function shipMoveBlock(state: GameState, playerId: string, edge: number):
   if (slot.moved) return 'already-moved';
   if (slot.built.includes(edge)) return 'built-this-turn';
   if (touchesPirate(state, edge)) return 'pirate';
-  if (!hasOpenEnd(state, playerId, edge)) return 'closed';
+  // 海盜巢穴：被圍死時可以退回的末端船，即使端點接著自己的建築也可以移動（接著自己的船則不行）。
+  if (!hasOpenEnd(state, playerId, edge) && !lineBacktrackMovable(state, playerId, edge)) return 'closed';
   if (moduleShipMoveVeto(state, playerId, edge)) return 'closed';
   return null;
 }
@@ -176,13 +218,15 @@ export function buildShip(state: GameState, actorId: string, command: ModuleComm
   const edge = edgeOf(command, 'edge');
   if (edge === null) return kit.fail('E_INVALID_COMMAND');
   if (touchesPirate(state, edge)) return kit.fail('E_PIRATE_BLOCKS', { edge });
-  if (!canPlaceShip(state, actorId, edge)) return kit.fail('E_ILLEGAL_TARGET', { edge });
+  if (!canPlaceShip(state, actorId, edge)) return refusal(state, actorId, edge, {}, kit);
   if (countShips(state, actorId) >= ctx.profile.pieces.ships) return kit.fail('E_NO_PIECES', { piece: 'ship' });
   const player = playerById(state, actorId)!;
   if (!free) {
     if (!kit.canAfford(player, SHIP_COST)) return kit.fail('E_INSUFFICIENT_RESOURCES', { cost: SHIP_COST });
     kit.payBuild(state, player, SHIP_COST);
   }
+  // 海盜巢穴：船線的延伸先記進船線（判定用的是放下之前的盤面）。
+  recordLineShip(state, actorId, edge);
   state.board.roads[edge] = { player: actorId, ship: true };
   seafarersState(state).built.push(edge);
   kit.emit(state, 'ship.built', { playerId: actorId, edge, free: !!free });
@@ -218,9 +262,10 @@ export function moveShip(state: GameState, actorId: string, command: ModuleComma
       break;
   }
   if (touchesPirate(state, to)) return kit.fail('E_PIRATE_BLOCKS', { edge: to });
-  if (!canPlaceShip(state, actorId, to, { moving: from })) return kit.fail('E_ILLEGAL_TARGET', { edge: to });
+  if (!canPlaceShip(state, actorId, to, { moving: from })) return refusal(state, actorId, to, { moving: from }, kit);
   // Remove and place in one transition: awards and victory are only judged
   // on the final board (SF-FAQ 12).
+  recordLineShip(state, actorId, to, { moving: from });
   state.board.roads[to] = state.board.roads[from]!;
   state.board.roads[from] = null;
   seafarersState(state).moved = true;
@@ -248,7 +293,8 @@ export function setupShip(state: GameState, actorId: string, command: ModuleComm
   const edge = edgeOf(command, 'edge');
   if (edge === null) return kit.fail('E_INVALID_COMMAND');
   if (touchesPirate(state, edge)) return kit.fail('E_PIRATE_BLOCKS', { edge });
-  if (!canPlaceShip(state, actorId, edge, { setupVertex: setup.lastVertex })) return kit.fail('E_ILLEGAL_TARGET', { edge });
+  if (!canPlaceShip(state, actorId, edge, { setupVertex: setup.lastVertex })) return refusal(state, actorId, edge, { setupVertex: setup.lastVertex }, kit);
+  recordLineShip(state, actorId, edge, { setupVertex: setup.lastVertex });
   state.board.roads[edge] = { player: actorId, ship: true };
   kit.emit(state, 'setup.ship', { playerId: actorId, edge });
   // 設置階段放的船不翻開迷霧：探索寫在 Additional rules（遊戲中的建造）；設置中翻開會在

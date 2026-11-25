@@ -9,7 +9,7 @@ import { botBadgeLabel, botLevelsOf } from '../state/bots.ts';
 import { requiredActionFor } from '../state/pending.ts';
 import { epView } from '../board/explorersPirates.ts';
 import { shownCitiesKnights, shownExplorersPirates, shownSeafarers, shownTradersBarbarians, shownHandSize } from '../state/table.ts';
-import { clothPoints, harborRatio, islandBonusPoints, seafarersView } from '../board/seafarers.ts';
+import { clothPoints, harborRatio, islandBonusPoints, seafarersHints, seafarersView } from '../board/seafarers.ts';
 import { activeStrength, citiesKnightsPoints, citiesKnightsView } from '../board/citiesKnights.ts';
 import { GameIcon } from './GameArt.tsx';
 import type { TableController } from '../state/useTable.ts';
@@ -29,6 +29,18 @@ function ScoreMark({ icon, label, value, awarded = false, testId, detail }: {
     {awarded && <span className="score-mark__points" aria-hidden="true">+2</span>}
     {detail && <span className="score-mark__detail" aria-hidden="true">{detail}</span>}
   </span>;
+}
+
+/** 被圍住的船線：此刻能移就說可以移；不能移就依原因說明（時機、海盜、遠端接著自己的船、沒有合法落點）。 */
+function stuckMessage(line: { backtrack: boolean; backtrackBlocked: string | null }): string {
+  if (line.backtrack) return 'sf.pirate.stuck';
+  switch (line.backtrackBlocked) {
+    case 'builtThisTurn': return 'sf.pirate.stuckBuilt';
+    case 'pirate': return 'sf.pirate.stuckPirate';
+    case 'attached': return 'sf.pirate.stuckAttached';
+    case 'noTarget': return 'sf.pirate.stuckNoTarget';
+    default: return 'sf.pirate.stuckWait';
+  }
 }
 
 function TurnFlag({ floating }: { floating: boolean }) {
@@ -235,7 +247,9 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           const isSelf = player.id === selfId;
           const total = isSelf ? (player.ownScore ?? player.publicScore) : player.publicScore;
           const buildings = view.board.buildings.filter((building) => building?.player === player.id);
-          const settlements = buildings.filter((building) => !building!.city).length;
+          // 海盜巢穴：未收復的堡壘不算村落（它不計分，所以聚落數與總分才對得上）。
+          const lockedFortresses = (seafarersView(view)?.pirateIslands?.fortresses ?? []).filter((fortress) => fortress.player === player.id && fortress.lairs > 0).length;
+          const settlements = buildings.filter((building) => !building!.city).length - lockedFortresses;
           const cities = buildings.filter((building) => building!.city).length;
           const hiddenVp = isSelf ? [...(player.devCards ?? []), ...(player.newDevCards ?? [])].filter((card) => card === 'victoryPoint').length : 0;
           const hiddenBonus = isSelf && player.ownScore !== undefined ? Math.max(0, player.ownScore - player.publicScore - hiddenVp) : 0;
@@ -303,6 +317,18 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                     ? <ScoreMark icon="scroll" label={t('ck.score.progress')} value={number(ck.progressCounts[player.id] ?? 0)} testId={`players-progress-${player.seat}`} />
                     : !ep && <ScoreMark icon="book" label={t('play.devCardCount')} value={number(player.devCardCount)} />}
                   {sea && <ScoreMark icon="ship" label={t('sf.board.ship')} value={number(ships)} testId={`players-ships-${player.seat}`} />}
+                  {sea?.pirateIslands && (() => {
+                    const fortress = sea.pirateIslands!.fortresses.find((entry) => entry.player === player.id);
+                    const line = sea.pirateIslands!.lines[player.id];
+                    return <>
+                      {fortress && <ScoreMark icon="shield" testId={`players-fortress-${player.seat}`}
+                        label={t('sf.score.fortress')}
+                        value={fortress.lairs > 0 ? `×${number(fortress.lairs)}` : t('sf.score.fortressRecaptured')} />}
+                      {line && <ScoreMark icon="route" testId={`players-ship-line-${player.seat}`}
+                        label={t('sf.score.shipLine', { count: number(line.edges.length), next: t(`sf.pirate.next.${line.next}`) })}
+                        value={number(line.edges.length)} />}
+                    </>;
+                  })()}
                   {ep && epPlayer && <>
                     <ScoreMark icon="ship" label={t('ep.piece.ship')} value={number(ep.ships.filter((ship) => ship.player === player.id).length)} testId={`players-ep-ships-${player.seat}`} />
                     <ScoreMark icon="sparkles" label={t('ep.score.gold', { gold: number(epPlayer.gold) })} value={number(epPlayer.gold)} testId={`players-ep-gold-${player.seat}`} />
@@ -310,10 +336,10 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
                   {sea?.cloth && <ScoreMark icon="scroll" testId={`players-cloth-${player.seat}`}
                     label={t('sf.score.clothValue', { count: number(sea.cloth.cloth[player.id] ?? 0), points: number(clothPoints(sea.cloth.cloth[player.id] ?? 0)) })}
                     value={number(sea.cloth.cloth[player.id] ?? 0)} detail={`${number(clothPoints(sea.cloth.cloth[player.id] ?? 0))}`} />}
-                  {!ep && !sea?.cloth && <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
+                  {!ep && !sea?.cloth && !sea?.pirateIslands && <ScoreMark icon="route" label={`${t('play.longestRoadLength')}${longestRoad ? ` · ${routeAward} (+2)` : ''}`}
                     value={number(player.longestRoadLength)} awarded={longestRoad} testId={`players-route-${player.seat}`} />}
                   {ck && <ScoreMark icon="shield" label={t('ck.score.knights')} value={number(activeStrength(ck, player.id))} testId={`players-knights-${player.seat}`} />}
-                  {!ck && !ep && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
+                  {!ck && !ep && !sea?.pirateIslands && <ScoreMark icon="shield" label={`${t('play.knightsPlayed')}${largestArmy ? ` · ${t('play.award.largestArmy')} (+2)` : ''}`}
                     value={number(player.playedKnights)} awarded={largestArmy} />}
                 </div>
                 <div className="players__bonuses">
@@ -362,6 +388,10 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
           <span>{t('sf.cloth.supply')}: {formatNumber(state.locale, cloth.supply)} · {t('sf.cloth.exhausted', { count: formatNumber(state.locale, empty) })}</span>
         </p>;
       })()}
+      {seafarersHints(view)?.pirateLine?.stuck && <p className="players__cloth" data-testid="line-stuck" data-backtrack={seafarersHints(view)!.pirateLine!.backtrack ? 'true' : 'false'} hidden={!expanded}>
+        <GameIcon name="ship" size={14} />
+        <span>{t(stuckMessage(seafarersHints(view)!.pirateLine!))}</span>
+      </p>}
       <p className="players__obligation" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}
         title={action ? t(action.messageId, action.params) : t('app.loading')}>
         <GameIcon name="flag" size={14} />

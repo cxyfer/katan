@@ -56,6 +56,34 @@ export const clothPoints = (count: number): number => Math.floor(count / 2);
 /** 回合結束時沒有布匹的部落達到這個數目就終局。 */
 export const CLOTH_EXHAUSTED_TRIBES = 5;
 
+/** 海盜巢穴的堡壘：頂點與剩餘的 pirate lair 數（0 = 已收復）。 */
+export interface PirateFortressView {
+  player: string;
+  vertex: number;
+  lairs: number;
+}
+
+export interface PirateBeachheadView {
+  player: string;
+  vertex: number;
+}
+
+/** 一位玩家的西島船線：起點、依序的邊、端點與下一個目標。 */
+export interface PirateLineView {
+  start: number | null;
+  edges: number[];
+  end: number | null;
+  next: 'beachhead' | 'fortress' | 'done';
+}
+
+/** 海盜巢穴：堡壘、beachhead、各玩家船線與海盜航道（hex 索引，順時針）；全部公開。 */
+export interface PirateIslandsView {
+  fortresses: PirateFortressView[];
+  beachheads: PirateBeachheadView[];
+  lines: Record<string, PirateLineView>;
+  route: number[];
+}
+
 /** 新世界設置階段的港口：現在抽到的港口（面朝上，公開）、已放數量與是否還能重新產生版圖。 */
 export interface WorldView {
   drawn: string | null;
@@ -78,6 +106,10 @@ export interface SeafarersModuleView {
   tribe: TribeView | null;
   /** 布匹產地的部落與布匹；其他劇本為 null。 */
   cloth: ClothView | null;
+  /** 海盜巢穴的堡壘、beachhead、船線與航道；其他劇本為 null。 */
+  pirateIslands: PirateIslandsView | null;
+  /** 自己船線的下一個目標頂點（hints 的 `pirateLine.target`）；沒有時為 null。 */
+  lineTarget: number | null;
   /** 新世界的港口設置階段；其他劇本為 null。 */
   world: WorldView | null;
   /** 卡坦奇觀的標記與奇觀進度；其他劇本為 null。 */
@@ -103,6 +135,8 @@ export interface SeafarersHints {
   clothVictims: string[];
   /** 卡坦奇觀：現在可認領的奇觀與能否蓋下一層（只在自己的行動階段有值）。 */
   wonders: { claimable: string[]; buildable: boolean };
+  /** 海盜巢穴：自己船線的下一個目標（beachhead、堡壘或已完成）、目標頂點、端點、船線的邊，是否被圍住（`stuck`），以及此刻末端的船真的可以移動（`backtrack`，與 `movableShips` 一致）。 */
+  pirateLine: { next: 'beachhead' | 'fortress' | 'done'; target: number | null; end: number | null; edges: number[]; stuck: boolean; backtrack: boolean; backtrackBlocked: 'phase' | 'moved' | 'builtThisTurn' | 'pirate' | 'attached' | 'noTarget' | null } | null;
 }
 
 export const SHIP_COST: Partial<Record<Resource, number>> = { lumber: 1, wool: 1 };
@@ -120,7 +154,7 @@ export function isShipCommand(commandType: string | null | undefined): boolean {
   return !!commandType && (SHIP_COMMANDS.has(commandType) || isEpShipCommand(commandType));
 }
 
-export function seafarersView(view: Pick<GameView, 'modules'> | null | undefined): SeafarersModuleView | null {
+export function seafarersView(view: (Pick<GameView, 'modules'> & Partial<Pick<GameView, 'hints'>>) | null | undefined): SeafarersModuleView | null {
   const slot = view?.modules?.seafarers as Partial<SeafarersModuleView> | undefined;
   if (!slot) return null;
   return {
@@ -132,6 +166,8 @@ export function seafarersView(view: Pick<GameView, 'modules'> | null | undefined
     fog: slot.fog ?? [],
     tribe: slot.tribe ?? null,
     cloth: slot.cloth ?? null,
+    pirateIslands: slot.pirateIslands ?? null,
+    lineTarget: (view?.hints?.modules?.seafarers as { pirateLine?: { target?: number | null } | null } | undefined)?.pirateLine?.target ?? null,
     world: slot.world ?? null,
     wonders: slot.wonders ?? null,
   };
@@ -152,6 +188,7 @@ export function seafarersHints(view: Pick<GameView, 'hints'> | null | undefined)
     harborChoices: slot.harborChoices ?? { harbors: [], edges: [] },
     clothVictims: slot.clothVictims ?? [],
     wonders: slot.wonders ?? { claimable: [], buildable: false },
+    pirateLine: slot.pirateLine ?? null,
   };
 }
 

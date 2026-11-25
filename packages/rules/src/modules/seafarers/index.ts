@@ -9,7 +9,7 @@
 
 import { scoreOf, topologyOf } from '../../analysis.ts';
 import { bankView } from '../../bank-view.ts';
-import type { GameState } from '../../types.ts';
+import type { CommandOutcome, GameState } from '../../types.ts';
 import type { ModuleViewContext, PublicModulePendingView, RulesModule } from '../types.ts';
 import { afterProduction as goldProduction, chooseGold, goldRequired, GOLD_FRAME, projectGold, skipEmptySupply } from './gold.ts';
 import { activateFog, chooseFog, exploreAtEdge, FOG_FRAME, initialFog, projectFogFrame } from './fog.ts';
@@ -31,6 +31,18 @@ import { allowBuilding, claimIslands } from './islands.ts';
 import { moveBandit, pirateTargets } from './pirate.ts';
 import { CLOTH_ROBBER_COMMAND, chooseClothRobber, initRobberChoice, robberChoiceHints, robberChoicePhase } from './robber-choice.ts';
 import {
+  fortressLocked,
+  initPirateIslands,
+  isPirateIslands,
+  lineShipFixed,
+  lockedFortresses,
+  pirateLineHints,
+  lineBacktrackMovable,
+  villageRefusedOnlyByWalls,
+  projectPirateIslands,
+  roadAllowed as pirateRoadAllowed,
+} from './pirateIslands.ts';
+import {
   buildShip,
   buildableShipEdges,
   countShips,
@@ -38,6 +50,7 @@ import {
   movableShips,
   moveShip,
   setupShip,
+  touchesPirate,
 } from './ships.ts';
 import { SEAFARERS, initialSeafarersState, seafarersState, seafarersView } from './state.ts';
 import { HARBOR_FRAME, activateHarborFrame, harborChoices, initTribe, isForgottenTribe, offerHarbors, placeHarbor, projectHarborFrame, projectTribe } from './tribe.ts';
@@ -81,6 +94,8 @@ export function projectSeafarers(state: GameState) {
     ...(slot.tribe ? { tribe: projectTribe(slot.tribe) } : {}),
     // 布匹產地的部落、供應堆、各玩家布匹與貿易關係（全部公開）；其餘劇本不帶此欄。
     ...(slot.cloth ? { cloth: projectCloth(slot.cloth) } : {}),
+    // 海盜巢穴的堡壘、beachhead、各玩家船線與航道（全部公開）；其餘劇本不帶此欄。
+    ...(slot.pirateIslands ? { pirateIslands: projectPirateIslands(state, slot.pirateIslands) } : {}),
     // 新世界：現在抽到的港口與已放數量（尚未抽的港口不投影）。
     ...(slot.world ? { world: projectWorld(slot.world, state) } : {}),
     // 卡坦奇觀的標記、各玩家的奇觀與層數（全部公開）；其餘劇本不帶此欄。
@@ -101,6 +116,7 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
   const view = seafarersView(state);
   const required = goldRequired(state, playerId);
   const harbor = harborChoices(state, playerId);
+  const movable = inAction && !view.moved ? movableShips(state, playerId) : [];
   const tribeHints = {
     /** 世外部落：輪到此玩家放港口時，暫存的港口種類與可放的邊。 */
     harborChoices: harbor,
@@ -116,10 +132,11 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
   return {
     legalShips: inAction || freeRoads ? buildableShipEdges(state, playerId, ctx.profile.pieces.ships) : [],
     setupShips: setupShipStep ? legalShipEdges(state, playerId, { setupVertex: setup!.lastVertex }) : [],
-    movableShips: inAction && !view.moved ? movableShips(state, playerId) : [],
+    movableShips: movable,
     shipMoved: view.moved,
     // 布匹產地：沒有通到部落的通路就不能移動海盜（SF25 p. 14）。
-    pirateTargets: (robberMove || isTurn) && (!view.cloth || hasTribeRoute(state, playerId)) ? pirateTargets(state) : [],
+    // 海盜巢穴：海盜只沿航道前進（S7b），玩家不能搬它。
+    pirateTargets: !view.pirateIslands && (robberMove || isTurn) && (!view.cloth || hasTribeRoute(state, playerId)) ? pirateTargets(state) : [],
     robberTargets: robberMove || isTurn
       ? topologyOf(state).hexes.map((_, hex) => hex).filter((hex) =>
         state.board.layout.terrain[hex] !== 'sea' && hex !== state.board.robber && robberHexAllowed(state, hex, ctx))
@@ -131,6 +148,8 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
       ? clothVictims(state, state.pending.candidates) : [] as string[],
       // variable setup 的選強盜：只有起始玩家在 `robber` 階段有可選的 12 號格（`board` 讓棋盤自動進入選格）。
       ...(robberChoicePhase(state) ? robberChoiceHints(state, playerId) : {}) } : {}),
+    // 海盜巢穴：自己船線的下一個目標與端點（棋盤用來標出目標）；其他劇本不帶此鍵（D7）。
+    ...(view.pirateIslands ? { pirateLine: backtrackHint(state, playerId, pirateLineHints(state, playerId), movable, { inAction, moved: view.moved, built: view.built }) } : {}),
     // 新世界設置階段的港口：只有輪到的玩家有選邊提示；其他劇本不帶這些鍵。
     ...(view.world ? worldHints(state, playerId) : {}),
     // 卡坦奇觀才有奇觀提示欄位：可認領的奇觀與能否蓋下一層（只對自己的行動階段）；其他劇本的鍵集合不變（D7）。
@@ -142,6 +161,30 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
      */
     goldBank: bankView(state.bank, required),
   };
+}
+
+/** 被圍住（`stuck`）之外，加上此刻末端的船真的可以移動（`backtrack`，與 `movableShips` 一致）。 */
+function backtrackHint(
+  state: GameState,
+  playerId: string,
+  hint: ReturnType<typeof pirateLineHints>,
+  movable: { edge: number }[],
+  timing: { inAction: boolean; moved: boolean; built: readonly number[] },
+) {
+  if (!hint) return null;
+  const last = hint.edges[hint.edges.length - 1];
+  const backtrack = hint.stuck && last !== undefined && movable.some((entry) => entry.edge === last);
+  // 被圍住卻此刻不能移的原因：時機（`phase`、`moved`、`builtThisTurn`）、海盜、遠端接著自己的船（`attached`）或沒有合法落點（`noTarget`）。
+  let reason: 'phase' | 'moved' | 'builtThisTurn' | 'pirate' | 'attached' | 'noTarget' | null = null;
+  if (hint.stuck && !backtrack && last !== undefined) {
+    if (!timing.inAction) reason = 'phase';
+    else if (timing.moved) reason = 'moved';
+    else if (timing.built.includes(last)) reason = 'builtThisTurn';
+    else if (touchesPirate(state, last)) reason = 'pirate';
+    else if (!lineBacktrackMovable(state, playerId, last)) reason = 'attached';
+    else reason = 'noTarget';
+  }
+  return { ...hint, backtrack, backtrackBlocked: reason };
 }
 
 export type SeafarersHints = ReturnType<typeof seafarersHints>;
@@ -157,6 +200,8 @@ function wonderHints(state: GameState, playerId: string, ctx: ModuleViewContext,
 
 /** 世外部落：強盜只能移到有數字圓片的格（7 與騎士都一樣，SF25 p. 12）。 */
 function robberHexAllowed(state: GameState, hex: number, ctx: ModuleViewContext): boolean {
+  // 海盜巢穴：強盜放回盒子，沒有任何格可以放。
+  if (isPirateIslands(ctx)) return false;
   // 布匹產地：強盜不可移到四座小島（SF25 p. 14）。
   if (isClothForCatan(ctx)) return !isSmallIslandHex(state, hex);
   return !isForgottenTribe(ctx) || state.board.layout.numbers[hex] !== null;
@@ -179,6 +224,7 @@ export const seafarersModule: RulesModule = {
       setup.order = [...setup.order, ...state.players.map((player) => player.seat)];
       setup.third = false;
     }
+    if (isPirateIslands(ctx)) initPirateIslands(state, slot);
     if (isNewWorld(ctx)) initWorld(state, ctx, slot);
     if (isWondersOfCatan(ctx)) initWonders(state, slot);
     setModuleState(state, SEAFARERS, slot);
@@ -199,19 +245,51 @@ export const seafarersModule: RulesModule = {
     return !isClothForCatan(ctx) || step.third === true;
   },
 
-  // 每 2 枚布匹 1 分（餘數不計），全程計入。
+  // 每 2 枚布匹 1 分（餘數不計），全程計入；海盜巢穴的堡壘收復前不算村落分（-1）。
   score(state, playerId) {
-    return clothPoints(state, playerId);
+    return clothPoints(state, playerId) - lockedFortresses(state, playerId);
   },
 
-  // 不使用最長道路。
+  // 堡壘收復前不產出資源（海盜巢穴）。
+  productionAmount(state, _hex, vertex, amount) {
+    return fortressLocked(state, vertex) ? 0 : amount;
+  },
+
+  // 海盜群島上的路只能從合法取得的建築接出去（未收復的堡壘不行）。
+  roadAllowed(state, playerId, edge) {
+    return pirateRoadAllowed(state, playerId, edge);
+  },
+
+  // 堡壘收復前不能升級成城市。
+  allowCity(state, _playerId, vertex) {
+    return !fortressLocked(state, vertex);
+  },
+
+  // 布匹產地不使用最長道路；海盜巢穴不使用最長道路與最大軍隊。
   awardRules(_state, rules, ctx) {
+    if (isPirateIslands(ctx)) return { ...rules, minLongestRoad: Number.POSITIVE_INFINITY, minLargestArmy: Number.POSITIVE_INFINITY };
     return isClothForCatan(ctx) ? { ...rules, minLongestRoad: Number.POSITIVE_INFINITY } : rules;
   },
 
-  // 通往部落的通路中的船不可移動；延伸或分叉出去的船照一般規則。
+  // 海盜巢穴：騎士牌在 S7c 才改成只能改裝戰船；在那之前不能打出（否則會把盒子裡的強盜放回棋盤）。
+  vetoCommand(state, actorId, command, ctx) {
+    if (!isPirateIslands(ctx)) return undefined;
+    if (command.type === 'dev.playKnight') return { ok: false, error: { code: 'E_INVALID_COMMAND', params: {} } } as CommandOutcome;
+    // 會圍死別人的村落（含蓋在別人船線上）：回報專用的訊息（hints 的 legalSettlements 也據此濾掉）。
+    if ((command.type === 'build.settlement' || command.type === 'setup.placeBuilding') && ctx.rules && villageRefusedOnlyByWalls(state, actorId, command, ctx.rules)) {
+      return { ok: false, error: { code: 'E_LINE_WALLED', params: { vertex: command.vertex as number } } } as CommandOutcome;
+    }
+    return undefined;
+  },
+
+  // 海盜巢穴：強盜放回盒子，7 只有棄牌（偷牌的步驟在 S7b）。
+  robberInactive(_state, ctx) {
+    return isPirateIslands(ctx);
+  },
+
+  // 通往部落的通路中的船不可移動（延伸或分叉出去的船照一般規則）；西島船線上的船不可移動。
   shipMoveBlocked(state, playerId, edge) {
-    return closedTribeShip(state, playerId, edge);
+    return closedTribeShip(state, playerId, edge) || lineShipFixed(state, playerId, edge);
   },
 
   // 回合結束時 ≥5 個部落沒有布匹：最高分勝，平手比布匹，仍平手共同勝利（D12）。

@@ -14,6 +14,7 @@ import { getProfile } from '@katan/rules';
 import { edgeAngle, edgeMidpoint, GiftMarker, IslandBonusToken, PirateShip, pirateFrameSpot, ShipPiece, TribeMarker, WonderMarker } from './SvgSeafarers.tsx';
 import { harborRatio, isShipCommand, seafarersView } from '../board/seafarers.ts';
 import { FogCloud, SvgExplorersPiratesLayer } from './SvgExplorersPirates.tsx';
+import { SvgPirateIslands } from './SvgPirateIslands.tsx';
 import { citiesKnightsView, isCitiesKnightsVertexCommand, knightGhost, merchantSpot, progressGhost, showsKnightGhost } from '../board/citiesKnights.ts';
 import { MerchantPiece } from './SvgProgressArt.tsx';
 import { KnightPiece, SvgCitiesKnightsPieces, SvgCitiesKnightsWalls, ToppledCity, WallRing } from './SvgCitiesKnights.tsx';
@@ -273,6 +274,8 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
               <title>{name}</title>
             </g>;
           })}
+          {/* 海盜巢穴：航道、beachhead、堡壘旁的 lair 與船線的下一個目標。 */}
+          <SvgPirateIslands geometry={geometry} view={view} nameResolver={nameResolver} />
           {/* 卡坦奇觀不使用海盜。 */}
           {seafarersView(view) && !seafarersView(view)!.wonders && (() => {
             const hex = board.pirate === null ? null : geometry.hexes[board.pirate];

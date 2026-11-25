@@ -9,6 +9,7 @@ import { createFogModel, hexPoint } from './diorama-explorers.ts';
 import { FogLift } from './DioramaExplorersPirates.tsx';
 import { createClothStackModel, createGiftModel, createIslandTokenModel, createLinkPinModel, createPirateModel, createWonderMarkerModel, createShipModel, createTribePostModel, giftTransform, pirateTransform, SHIP_SCALE, shipInstances, shipTransform, tribeSpot } from './diorama-ships.ts';
 import type { ClothView, TribeGiftView, WondersView } from '../seafarers.ts';
+import { PirateIslandsLayer } from './DioramaPirateIslands.tsx';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import { SEA_LEVEL } from '../sea.ts';
 import { ROAD_ARRIVAL_TRANSFORM_MS } from './model-specs.ts';
@@ -221,6 +222,8 @@ export function DioramaSeafarers(props: Props) {
       <TribeProbe cloth={seafarers.cloth.tribes.map((tribe) => tribe.cloth)} count={seafarers.cloth.tribes.filter((tribe) => !!tribeSpot(geometry, tribe.vertex)).length} />
     </>}
     {seafarers.wonders && <WondersLayer wonders={seafarers.wonders} geometry={geometry} material={material} />}
+    {seafarers.pirateIslands && <PirateIslandsLayer geometry={geometry} pirate={seafarers.pirateIslands} players={players.map((player) => ({ id: player.id, color: player.color }))}
+      material={material} target={seafarers.lineTarget} />}
     {seafarers.tribe && <>
       <Gifts gifts={seafarers.tribe.gifts} geometry={geometry} material={material} />
       <GiftProbe count={seafarers.tribe.gifts.filter((gift) => !!giftTransform(geometry, gift.edge)).length} />

@@ -17,6 +17,7 @@ import { addResource, exploredStats, playerStats } from '../../stats.ts';
 import { verticesOfHex } from '../../topology.ts';
 import { RESOURCES, type CommandOutcome, type GameState, type ModulePending, type Resource } from '../../types.ts';
 import type { ModuleCommand, ModuleContext, ModuleViewContext, PublicModulePendingView, RollResult } from '../types.ts';
+import { fortressLocked } from './pirateIslands.ts';
 
 export const GOLD_FRAME = 'seafarers.gold' as const;
 
@@ -36,7 +37,8 @@ export function goldEntitlements(state: GameState, total: number): Record<string
     if (state.board.robber === hex) return;
     for (const vertex of verticesOfHex(topo, hex)) {
       const building = state.board.buildings[vertex];
-      if (!building) continue;
+      // 海盜巢穴：堡壘收復前不產出（金礦也一樣）。
+      if (!building || fortressLocked(state, vertex)) continue;
       picks[building.player] = (picks[building.player] ?? 0) + (building.city ? 2 : 1);
     }
   });

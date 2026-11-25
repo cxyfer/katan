@@ -38,5 +38,7 @@ export const messages = {
     'E_WONDER_REQUIREMENT',
     'E_WONDER_NOT_CHOSEN',
     'E_WONDER_COMPLETE',
+    'E_SHIP_LINE',
+    'E_LINE_WALLED',
   ] as const,
 };
