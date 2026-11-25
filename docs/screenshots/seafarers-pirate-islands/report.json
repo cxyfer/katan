@@ -1,0 +1,269 @@
+{
+  "scenario": "pirate-islands",
+  "profile": "sf-pirate-islands-2025",
+  "base": "http://127.0.0.1:3023",
+  "cases": [
+    {
+      "name": "lobby-pirate-islands",
+      "status": "PASS",
+      "note": "lobby: Seafarers / The Pirate Islands, 3-4 players only",
+      "sha256": "81f04bd7b73f47ec7b0ed32563a5dd0bdf39d198fc3eea1c14042d83aed2d47a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-pirate-islands",
+      "sha256": "ebdbb089557f32c570c17cfe6c8f9501a5b74cbab155f4122b2f4db152a0a9f0",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-3p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-pirate-islands",
+      "sha256": "107b076071bbdebb922f2d3c39acb7021780ff778a752b2f56281db09e0fbd6e",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "map-4p-svg-desktop",
+      "status": "PASS",
+      "note": "sf-pirate-islands",
+      "sha256": "1b590d2b77f875a31b96d88fa7ab1e03e5978e0fc12cc6feeb2defa592ae1d47",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-r3f-desktop",
+      "status": "PASS",
+      "note": "sf-pirate-islands",
+      "sha256": "db7153b6ed0846d551540ea0076b06563d2fcaefb0de86c94a77e0832667e43b",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "map-4p-svg-phone",
+      "status": "PASS",
+      "note": "sf-pirate-islands",
+      "sha256": "263d657e6fcec5a4b1f233b876b4c152fb15a0d991833fa1a70170a0026e79b1",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    },
+    {
+      "name": "help-pirate-svg-desktop",
+      "status": "PASS",
+      "note": "setup done; help panel shows the Pirate Islands rules",
+      "sha256": "6c0ec13866bb448d23283a17fe98241566b263c802a1614a8249bba71763a6ea",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "live-line-svg",
+      "status": "PASS",
+      "note": "build ship: only the shortest-path step of the ship line (plus free coastal routes) is offered; the next target is ringed",
+      "sha256": "23c4cae79f87b80ca4ecc4c22bac4f942e3ee84efb4210449baf7869d3af23e6",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-line-3d",
+      "status": "PASS",
+      "note": "the second line ship built in 3D",
+      "sha256": "467106dc483c90e6954d0efe45384110c0d60f0a98eace6355232303235135b5",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-line-phone",
+      "status": "PASS",
+      "note": "phone: the ship line toward the beachhead",
+      "sha256": "34a2dee456e67a3ea5a89f7f5160b71374daf9eadb5343cf032ed9a0b341419a",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": false
+    },
+    {
+      "name": "live-boxed-in-svg",
+      "status": "PASS",
+      "note": "the end of the line is walled in by other ships: the panel offers moving the end ship back",
+      "sha256": "5cb2c4821e1cce9af2444d3bcda6b8ebfa0aedab45eb6dd11c778d7473d1a745",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-backtrack-3d",
+      "status": "PASS",
+      "note": "ship.move of the end ship: its new places are offered (3D)",
+      "sha256": "0999f014b68851523b268d20d8e9adafabfd7f9537f0a231aaa05f339f1283f5",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-pirate-attack-svg",
+      "status": "PASS",
+      "note": "the pirate sailed along its route and attacked player 1 (no warships): the log and the new position ring",
+      "sha256": "66f44f7bdd746ad759f8e0d1ed73272abc4bd64de8d6daef62844ef843475a36",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-pirate-gift-3d",
+      "status": "PASS",
+      "note": "nine warships beat the pirate (any die): pick any 1 card from the supply",
+      "sha256": "3aa33f07c9f9ddc1526b47e6e32f25f576f5d54484d52aebd09c238ad1cfa722",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "live-knight-ready-svg",
+      "status": "PASS",
+      "note": "the knight card is raised: its button reads \"Convert a ship (knight)\" and the card text says what it does",
+      "sha256": "7a873a8e8f33d3d5d76a7c99d3974533dd38e4e14a8a9c3cbe82c98b9a83d6d3",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "live-warship-svg",
+      "status": "PASS",
+      "note": "a knight converted the ship closest to the starting village: four warships lie on their side",
+      "sha256": "e231b5c19777a89657834ce4859fbcaf234d348b30f4575ee2a614c5378b7c04",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-attack-log",
+      "status": "PASS",
+      "note": "automatic attack when ending the turn: die 1 against 4 warships is a won",
+      "sha256": "684ef20c909bc28a37a3404616c702e5597c79ea57adc1bc3e293c8e9c53a769",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": false
+    },
+    {
+      "name": "live-knight-blocked-3d",
+      "status": "PASS",
+      "note": "every ship of the line is a warship: the knight button is disabled and says why (3D)",
+      "sha256": "bc5c8d6729aaba15d9b7b738d4925fa9019fe18069f4c60928a535d137031628",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-recaptured-3d",
+      "status": "PASS",
+      "note": "the recaptured fortress: no lair stack, a banner in the owner colour (3D)",
+      "sha256": "98fa65e8db49ea7d38586e6e9268af42235e86f4553fd58262a8a6a10d04757a",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-attack-recapture-svg",
+      "status": "PASS",
+      "note": "fortress recaptured by the end-of-turn attack: the banner replaces the lair stack (SVG)",
+      "sha256": "3ef12a4cd2a53c68a2aa1c0cc3fb7f3d0baca3ab703fe0ff8d1aa3ab48a5d8f9",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result-pirate",
+      "status": "PASS",
+      "note": "all fortresses recaptured (the pirate is gone from the final board) and 10 VP: the fortress ending",
+      "sha256": "19fba04de88b43c577d382537c0efc8bb55ec3499471545e67778483a12e7d90",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "committed": true
+    },
+    {
+      "name": "live-result-pirate-phone",
+      "status": "PASS",
+      "note": "the same result in a phone-sized viewport",
+      "sha256": "f5bbba2dac50eb96d6d495e3d2b0787d2d5afc4f41bdc4854f9fd0ee1f83477c",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "committed": true
+    }
+  ],
+  "attack": {
+    "playerId": "player_08d9400acf884e6dae0c",
+    "die": 1,
+    "warships": 4,
+    "result": "won",
+    "lairs": 2,
+    "removed": []
+  },
+  "finish": {
+    "result": {
+      "playerId": "player_7114860fab62468d9eea",
+      "reason": "victory",
+      "score": 11,
+      "playerIds": [
+        "player_7114860fab62468d9eea"
+      ],
+      "cause": "fortressRecaptured"
+    }
+  },
+  "errors": []
+}
