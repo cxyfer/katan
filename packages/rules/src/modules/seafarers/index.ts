@@ -31,6 +31,21 @@ import { allowBuilding, claimIslands } from './islands.ts';
 import { moveBandit, pirateTargets } from './pirate.ts';
 import { CLOTH_ROBBER_COMMAND, chooseClothRobber, initRobberChoice, robberChoiceHints, robberChoicePhase } from './robber-choice.ts';
 import {
+  PIRATE_FRAMES,
+  PIRATE_GIFT_COMMAND,
+  PIRATE_GIFT_FRAME,
+  PIRATE_RESUME_FRAME,
+  SEVEN_STEAL_COMMAND,
+  cruise,
+  giftResource,
+  pirateFrameHints,
+  projectPirateFrame,
+  resumeCruise,
+  sevenSteal,
+  sevenStealStep,
+  skipEmptyGift,
+} from './pirateCruise.ts';
+import {
   fortressLocked,
   initPirateIslands,
   isPirateIslands,
@@ -150,6 +165,8 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
       ...(robberChoicePhase(state) ? robberChoiceHints(state, playerId) : {}) } : {}),
     // 海盜巢穴：自己船線的下一個目標與端點（棋盤用來標出目標）；其他劇本不帶此鍵（D7）。
     ...(view.pirateIslands ? { pirateLine: backtrackHint(state, playerId, pirateLineHints(state, playerId), movable, { inAction, moved: view.moved, built: view.built }) } : {}),
+    // 海盜巢穴：贏了海盜時可從供應堆拿的資源、擲出 7 時可偷的對象（只對作答中的玩家）；其他劇本不帶這兩個鍵（D7）。
+    ...(view.pirateIslands ? pirateFrameHints(state, playerId) : {}),
     // 新世界設置階段的港口：只有輪到的玩家有選邊提示；其他劇本不帶這些鍵。
     ...(view.world ? worldHints(state, playerId) : {}),
     // 卡坦奇觀才有奇觀提示欄位：可認領的奇觀與能否蓋下一層（只對自己的行動階段）；其他劇本的鍵集合不變（D7）。
@@ -282,10 +299,12 @@ export const seafarersModule: RulesModule = {
     return undefined;
   },
 
-  // 海盜巢穴：強盜放回盒子，7 只有棄牌（偷牌的步驟在 S7b）。
-  robberInactive(_state, ctx) {
-    return isPirateIslands(ctx);
-  },
+  // 海盜巢穴：強盜放回盒子（沒有 `moveRobber`），7 的偷牌由 `sevenRobberStep` 接手（S7b）。
+  // 擲骰後海盜先沿航道前進並攻擊，再收資源或處理 7。
+  beforeProduction: cruise,
+
+  // 海盜巢穴：7 的棄牌之後，擲骰者可以偷任一位其他玩家 1 張（可不偷）。
+  sevenRobberStep: sevenStealStep,
 
   // 通往部落的通路中的船不可移動（延伸或分叉出去的船照一般規則）；西島船線上的船不可移動。
   shipMoveBlocked(state, playerId, edge) {
@@ -351,13 +370,20 @@ export const seafarersModule: RulesModule = {
     [WORLD_HARBOR_COMMAND]: placeWorldHarbor,
     'wonder.choose': chooseWonder,
     'wonder.build': buildWonder,
+    [PIRATE_GIFT_COMMAND]: giftResource,
+    [SEVEN_STEAL_COMMAND]: sevenSteal,
   },
-  pendingCommands: ['build.ship', 'gold.choose', 'fog.choose', 'harbor.place', 'cloth.steal'],
+  pendingCommands: ['build.ship', 'gold.choose', 'fog.choose', 'harbor.place', 'cloth.steal', PIRATE_GIFT_COMMAND, SEVEN_STEAL_COMMAND],
+
+  resumePending(state, frame, ctx) {
+    if (frame.kind === PIRATE_RESUME_FRAME) resumeCruise(state, frame, ctx);
+  },
 
   activatePending(state, frame, ctx) {
     if (frame.kind === GOLD_FRAME) skipEmptySupply(state, frame, ctx);
     if (frame.kind === FOG_FRAME) activateFog(state, frame, ctx);
     if (frame.kind === HARBOR_FRAME) activateHarborFrame(state, frame, ctx);
+    if (frame.kind === PIRATE_GIFT_FRAME) skipEmptyGift(state, frame, ctx);
   },
 
   project: projectSeafarers,
@@ -366,6 +392,7 @@ export const seafarersModule: RulesModule = {
     if (frame.kind === GOLD_FRAME) return projectGold(state, frame, viewerId, ctx);
     if (frame.kind === FOG_FRAME) return projectFogFrame(state, frame);
     if (frame.kind === HARBOR_FRAME) return projectHarborFrame(state, frame);
+    if (PIRATE_FRAMES.includes(frame.kind)) return projectPirateFrame(state, frame, viewerId, ctx);
     return { kind: frame.kind, module: frame.module, responders: frame.responders.slice(), data: {} };
   },
 
