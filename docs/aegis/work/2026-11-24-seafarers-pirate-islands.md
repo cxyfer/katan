@@ -396,4 +396,4 @@ Limitation: **the server restart path cannot be tested for this scenario until S
 | I42 | Attack before production, with real production | The red preset village touches the 4-disc fields hex. Tests with the real disc layout: an empty-handed red is attacked (nothing to lose), then produces 1 grain and ends with 1 grain (an early grant would have lost it); with 1 grain it loses it first and then gets 1. |
 | I43 | Simulation denominator | `lineTurns` now skips turns of players who have used all 15 ships (4 players, seed 8, bias 0.4 had 6 of 38 such turns). Table above re-measured (300 games per cell); the other columns did not change. |
 
-Test numbers after round 2: see the final report of the round (rules whole suite, web files, server).
+Test numbers after round 2: rules whole suite 75 files, 1,344 tests; `seafarers-pirate-islands-patrol.test.ts` 34; web `pirate-roll-presentation` 3, `game-stats` 13, `dice-hold` 23, `board-animation*` 23, `seafarers-pirate-patrol` 11, all 13 `seafarers*` files 170; server registry, bots and recovery pass; `pnpm typecheck` passes.
