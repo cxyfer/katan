@@ -42,7 +42,14 @@ export function rulesModulesOf(profile: ProfileDefinition): readonly RulesModule
   return list;
 }
 
+/** Whether the module handles this command type in the profile (scenario-only commands excluded elsewhere). */
+export function moduleHandles(module: RulesModule, type: string, profile: ProfileDefinition): boolean {
+  if (!module.commands?.[type]) return false;
+  const scenario = module.commandScenarios?.[type];
+  return scenario === undefined || profile.scenario === scenario;
+}
+
 /** Every command type the profile's modules handle. */
 export function moduleCommandTypes(profile: ProfileDefinition): string[] {
-  return rulesModulesOf(profile).flatMap((module) => Object.keys(module.commands ?? {}));
+  return rulesModulesOf(profile).flatMap((module) => Object.keys(module.commands ?? {}).filter((type) => moduleHandles(module, type, profile)));
 }

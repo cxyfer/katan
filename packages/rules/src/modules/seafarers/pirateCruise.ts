@@ -153,8 +153,7 @@ export function skipEmptyGift(state: GameState, frame: ModulePending, ctx: Modul
 /** `pirate.gift { resource }` — 贏了海盜的玩家從供應堆拿 1 張自選的資源牌。 */
 export function giftResource(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
   const { kit } = ctx;
-  // D7：其他劇本照舊回未知指令（與 cloth.steal 一致）。
-  if (!isPirateIslands(ctx)) return kit.fail(state.pending ? 'E_PENDING_EFFECT' : 'E_INVALID_COMMAND');
+  // 其他劇本不登記這個指令（`commandScenarios`），不會走到這裡（D7）。
   const frame = state.pending;
   if (!frame || frame.kind !== PIRATE_GIFT_FRAME) return kit.fail('E_PENDING_EFFECT', { pending: frame?.kind ?? 'none' });
   const gift = frame as ModulePending;
@@ -185,7 +184,6 @@ export function sevenStealStep(state: GameState, actorId: string, ctx: ModuleCon
 /** `seven.steal { victim }` — 偷 1 張（隨機）；`victim: null` 表示不偷。 */
 export function sevenSteal(state: GameState, actorId: string, command: ModuleCommand, ctx: ModuleContext): CommandOutcome {
   const { kit } = ctx;
-  if (!isPirateIslands(ctx)) return kit.fail(state.pending ? 'E_PENDING_EFFECT' : 'E_INVALID_COMMAND');
   const frame = state.pending;
   if (!frame || frame.kind !== SEVEN_STEAL_FRAME) return kit.fail('E_PENDING_EFFECT', { pending: frame?.kind ?? 'none' });
   const steal = frame as ModulePending;

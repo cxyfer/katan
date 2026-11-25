@@ -373,6 +373,8 @@ export const seafarersModule: RulesModule = {
     [PIRATE_GIFT_COMMAND]: giftResource,
     [SEVEN_STEAL_COMMAND]: sevenSteal,
   },
+  // 海盜巢穴專用的兩個指令：其他劇本（含 sf-2025.2）不列出、也不放行，與沒有這個模組的 profile 一樣是未知指令（D7）。
+  commandScenarios: { [PIRATE_GIFT_COMMAND]: 'pirate-islands', [SEVEN_STEAL_COMMAND]: 'pirate-islands' },
   pendingCommands: ['build.ship', 'gold.choose', 'fog.choose', 'harbor.place', 'cloth.steal', PIRATE_GIFT_COMMAND, SEVEN_STEAL_COMMAND],
 
   resumePending(state, frame, ctx) {

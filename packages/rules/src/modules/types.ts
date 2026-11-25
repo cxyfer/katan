@@ -240,6 +240,12 @@ export interface RulesModule {
   // -- commands and building -------------------------------------------------
   /** Handlers for module-owned command types (never base command types). */
   commands?: Readonly<Record<string, ModuleCommandHandler>>;
+  /**
+   * Commands that exist only in one scenario (`profile.scenario`), by command type. Elsewhere
+   * the module neither lists them nor lets them through a pending frame, so they are as
+   * unknown as in a profile without the module (D7).
+   */
+  readonly commandScenarios?: Readonly<Record<string, string>>;
   /** Command types accepted while a frame is pending (base gate otherwise). */
   pendingCommands?: readonly string[];
   /**
