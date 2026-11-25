@@ -140,7 +140,7 @@ describe('pirate attacks', () => {
     expect(rolled.state.players[0]!.resources).toMatchObject({ lumber: 1, brick: 1 });
     expect(RESOURCES.reduce((sum, resource) => sum + rolled.state.bank[resource], 0)).toBe(bankBefore + 1);
     const attacked = rolled.events.find((event) => event.type === 'pirate.attacked')!;
-    expect(attacked.params).toMatchObject({ playerId: 'p1', pirate: 2, warships: 0, result: 'lost', cities: 0, count: 1, owed: 1 });
+    expect(attacked.params).toMatchObject({ playerId: 'p1', strength: 2, warships: 0, result: 'lost', cities: 0, count: 1, owed: 1 });
     // 只有受害者看得到被棄的牌
     expect(attacked.private).toEqual({ to: ['p1'], params: { resources: { lumber: 1 } } });
   });
@@ -228,13 +228,13 @@ describe('pirate attacks', () => {
     const rolled = roll(state, 'p1', [2, 4]);
     expect(rolled.state.pending).toMatchObject({ kind: 'seafarers.pirateGift', responders: ['p1'] });
     expect(types(rolled.state)).not.toContain('production.resolved');
-    expect(rolled.events.find((event) => event.type === 'pirate.attacked')!.params).toMatchObject({ result: 'won', pirate: 2, warships: 3 });
+    expect(rolled.events.find((event) => event.type === 'pirate.attacked')!.params).toMatchObject({ result: 'won', strength: 2, warships: 3 });
     const hints = actionHints(rolled.state, 'p1').modules!.seafarers as { pirateGift: Resource[]; sevenSteal: string[] };
     expect(hints.pirateGift).toEqual([...RESOURCES]);
     expect((actionHints(rolled.state, 'p2').modules!.seafarers as { pirateGift: Resource[] }).pirateGift).toEqual([]);
     // 公開的 frame：只有海盜戰力
     const view = projectGame(rolled.state, 'p3').pending as { kind: string; data: object };
-    expect(view).toMatchObject({ kind: 'seafarers.pirateGift', data: { pirate: 2 } });
+    expect(view).toMatchObject({ kind: 'seafarers.pirateGift', data: { strength: 2 } });
 
     const bank = rolled.state.bank.ore;
     const picked = act(rolled.state, 'p1', cmd({ type: 'pirate.gift', resource: 'ore' }));
@@ -276,7 +276,7 @@ describe('pirate attacks', () => {
     const rolled = roll(state, 'p1', [2, 4]);
     expect(rolled.state.pending).toBeNull();
     expect(total(rolled.state, 'p1')).toBe(2);
-    expect(rolled.events.find((event) => event.type === 'pirate.attacked')!.params).toMatchObject({ result: 'tie', pirate: 2, warships: 2 });
+    expect(rolled.events.find((event) => event.type === 'pirate.attacked')!.params).toMatchObject({ result: 'tie', strength: 2, warships: 2 });
   });
 
   it('贏與輸混在同一格：輸的立刻棄牌，贏的依序選牌，全部答完才收資源', () => {

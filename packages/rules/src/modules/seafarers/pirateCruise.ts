@@ -110,7 +110,7 @@ export function cruise(state: GameState, roll: RollResult, ctx: ModuleContext): 
     const player = playerById(state, playerId)!;
     const warships = warshipCount(state, playerId);
     const cities = cityCount(state, playerId);
-    const base = { playerId, pirate: die, warships };
+    const base = { playerId, strength: die, warships };
     if (die > warships) {
       // 海盜較強：1 張 + 每座城市 1 張，隨機棄，回到供應堆。
       const owed = 1 + cities;
@@ -124,7 +124,7 @@ export function cruise(state: GameState, roll: RollResult, ctx: ModuleContext): 
       kit.emit(state, 'pirate.attacked', { ...base, result: 'lost', cities, count, owed }, { to: [playerId], params: { resources: lost } });
     } else if (die < warships) {
       kit.emit(state, 'pirate.attacked', { ...base, result: 'won' });
-      gifts.push({ kind: PIRATE_GIFT_FRAME, module: 'seafarers', responders: [playerId], data: { pirate: die } });
+      gifts.push({ kind: PIRATE_GIFT_FRAME, module: 'seafarers', responders: [playerId], data: { strength: die } });
     } else {
       kit.emit(state, 'pirate.attacked', { ...base, result: 'tie' });
     }
@@ -213,7 +213,7 @@ export function sevenSteal(state: GameState, actorId: string, command: ModuleCom
 /** 新 frame 的公開形式：攻擊的戰力、7 的對象（手牌張數本來就公開）。 */
 export function projectPirateFrame(state: GameState, frame: ModulePending, _viewerId: string, _ctx: ModuleViewContext): PublicModulePendingView {
   const base = { kind: frame.kind, module: frame.module, responders: frame.responders.slice() };
-  if (frame.kind === PIRATE_GIFT_FRAME) return { ...base, data: { pirate: (frame.data as { pirate: number }).pirate } };
+  if (frame.kind === PIRATE_GIFT_FRAME) return { ...base, data: { strength: (frame.data as { strength: number }).strength } };
   if (frame.kind === SEVEN_STEAL_FRAME) return { ...base, data: { victims: frame.responders[0] ? sevenVictims(state, frame.responders[0]) : [] } };
   return { ...base, data: {} };
 }
