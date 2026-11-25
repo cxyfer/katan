@@ -220,7 +220,11 @@ export function translateEvent(
     : null;
   const wonderFinish = event.type === 'game.finished' && (event.params?.cause === 'wonderComplete' || event.params?.cause === 'wonderLead')
     ? `${base}.${event.params.cause}` : null;
-  const variant = finished ?? wonderFinish ?? (wording ? `${base}.${wording}` : event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null);
+  // 海盜巢穴：騎士牌改裝戰船；贏家靠收復堡壘。
+  const pirateIslands = options.scenario === 'pirate-islands';
+  const warshipKnight = pirateIslands && event.type === 'dev.knight' ? `${base}.warship` : null;
+  const fortressFinish = event.type === 'game.finished' && event.params?.cause === 'fortressRecaptured' ? `${base}.fortressRecaptured` : null;
+  const variant = finished ?? wonderFinish ?? warshipKnight ?? fortressFinish ?? (wording ? `${base}.${wording}` : event.params?.pirate === true ? `${base}.pirate` : event.params?.ship === true ? `${base}.ship` : null);
   const messageId = variant && t(locale, variant) !== variant ? variant : base;
   const text = t(locale, messageId, params);
   return {

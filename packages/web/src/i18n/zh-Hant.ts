@@ -580,6 +580,8 @@ export const zhHant: Catalog = {
   'play.resultTarget': '勝利目標：{target}',
   'play.resultReason.victory': '勝利點數',
   'play.resultReason.wonderComplete': '完成了一座卡坦奇觀',
+  'play.resultReason.fortressRecaptured': '收復自己的堡壘且達到 10 分以上',
+  'event.game.finished.fortressRecaptured': '{player} 收復了海盜堡壘，以 {score} 分獲勝。',
   'play.resultReason.wonderLead': '10 分以上且奇觀完成層數最高',
   'play.resultScoreWonder': '最終分數 {score}（奇觀終局，沒有目標分）',
   'event.game.finished.wonderComplete': '{player} 完成了卡坦奇觀，以 {score} 分獲勝。',

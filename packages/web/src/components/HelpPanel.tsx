@@ -30,6 +30,8 @@ export function HelpPanel({ controller }: { controller: TableController }) {
   const harborWorld = seafarersView(controller.state.game?.view)?.world ?? null;
   // 卡坦奇觀：小島獎勵每座 1 分、沒有海盜與金礦產出的特殊規則，另有奇觀與兩種終局。
   const wonders = scenario === 'wonders-of-catan';
+  // 海盜巢穴：船線、巡弋海盜、戰船、進攻堡壘與收復；沒有島嶼獎勵、最長道路與強盜。
+  const pirateIslands = scenario === 'pirate-islands';
 
   return (
     <section className="panel" aria-labelledby="help-heading" data-testid="help-panel">
@@ -44,13 +46,13 @@ export function HelpPanel({ controller }: { controller: TableController }) {
       </ul>
       <h3>{t('lobby.rulesSummary')}</h3>
       <p>
-        {t(`profile.${profileId}`)} · {wonders ? t('play.resultTarget.wonders', { target: controller.state.game?.view.victoryTarget ?? 10 }) : t('play.resultTarget', { target: controller.state.game?.view.victoryTarget ?? 10 })}
+        {t(`profile.${profileId}`)} · {wonders ? t('play.resultTarget.wonders', { target: controller.state.game?.view.victoryTarget ?? 10 }) : pirateIslands ? t('play.resultTarget.pirate', { target: controller.state.game?.view.victoryTarget ?? 10 }) : t('play.resultTarget', { target: controller.state.game?.view.victoryTarget ?? 10 })}
       </p>
       {paired && <p className="muted">{t('lobby.pairedNote')}</p>}
       <TbHelp controller={controller} />
       {seafarersView(controller.state.game?.view) && (
         <section data-testid="help-seafarers">
-          <h3>{fourIslands ? t('sf.help.four.title') : desert ? t('sf.help.desert.title') : fogIslands ? t('sf.help.fog.title') : tribe ? t('sf.help.tribe.title') : cloth ? t('sf.help.cloth.title') : wonders ? t('sf.help.wonders.title') : newWorld ? t('sf.help.world.title') : t('sf.help.title')}</h3>
+          <h3>{fourIslands ? t('sf.help.four.title') : desert ? t('sf.help.desert.title') : fogIslands ? t('sf.help.fog.title') : tribe ? t('sf.help.tribe.title') : cloth ? t('sf.help.cloth.title') : wonders ? t('sf.help.wonders.title') : pirateIslands ? t('sf.help.pi.title') : newWorld ? t('sf.help.world.title') : t('sf.help.title')}</h3>
           <ul className="help-rules">
             <li>{t('sf.build.ship')}: {formatResourceMap(locale, SHIP_COST)}</li>
             {fourIslands && <li data-testid="help-four-islands-setup">{t('sf.help.four.setup')}</li>}
@@ -60,6 +62,7 @@ export function HelpPanel({ controller }: { controller: TableController }) {
             {(['setup', 'ships', 'move', 'pirate', 'gold', 'route', 'islands'] as const)
               .filter((key) => !(fourIslands && (key === 'setup' || key === 'islands' || key === 'gold')) && !(desert && (key === 'setup' || key === 'islands')) && !(tribe && (key === 'setup' || key === 'islands' || key === 'gold')) && !(newWorld && (key === 'setup' || key === 'islands' || key === 'gold')))
               .filter((key) => !(wonders && (key === 'setup' || key === 'islands' || key === 'pirate')))
+              .filter((key) => !(pirateIslands && (key === 'setup' || key === 'islands' || key === 'pirate' || key === 'route')))
               .filter((key) => !(cloth && (key === 'setup' || key === 'islands' || key === 'gold' || key === 'pirate' || key === 'route')))
               .filter((key) => !(fogIslands && (key === 'setup' || key === 'islands' || key === 'pirate')))
               .map((key) => <li key={key}>{t(`sf.help.${key}`)}</li>)}
@@ -90,6 +93,14 @@ export function HelpPanel({ controller }: { controller: TableController }) {
               <li data-testid="help-world-bonus">{t('sf.help.world.islands')}</li>
               <li data-testid="help-world-regenerate">{t('sf.help.world.regenerate')}</li>
               <li data-testid="help-world-win">{t('sf.help.world.win', { target: controller.state.game?.view.victoryTarget ?? 12 })}</li>
+            </>}
+            {pirateIslands && <>
+              <li data-testid="help-pirate-line">{t('sf.help.pi.line')}</li>
+              <li data-testid="help-pirate-cruise">{t('sf.help.pi.pirate')}</li>
+              <li data-testid="help-pirate-seven">{t('sf.help.pi.seven')}</li>
+              <li data-testid="help-pirate-warship">{t('sf.help.pi.warship')}</li>
+              <li data-testid="help-pirate-attack">{t('sf.help.pi.attack')}</li>
+              <li data-testid="help-pirate-win">{t('sf.help.pi.win', { target: controller.state.game?.view.victoryTarget ?? 10 })}</li>
             </>}
             {wonders && <>
               <li data-testid="help-wonders-setup">{t('sf.help.wonders.setup')}</li>

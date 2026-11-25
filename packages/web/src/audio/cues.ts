@@ -159,6 +159,15 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
       return event.params?.result !== 'lost' || event.params?.count === 0 ? null : selfId !== null && playerId(event, 'playerId') === selfId ? 'robber.stolenFromYou' : 'robber.steal';
     case 'pirate.gifted':
       return event.params?.resource === null ? null : 'gold.pick';
+    // 戰船與進攻堡壘：改裝戰船沿用建造船的音效；贏了或收復沿用島嶼獎勵，輸了沿用被搶的音效，平手沿用移船；海盜離場沿用海盜移動。
+    case 'warship.converted':
+      return 'ship.build';
+    case 'fortress.attacked':
+      return event.params?.result === 'won' ? 'island.bonus' : event.params?.result === 'tie' ? 'ship.move' : selfId !== null && playerId(event, 'playerId') === selfId ? 'robber.stolenFromYou' : 'robber.steal';
+    case 'fortress.recaptured':
+      return 'build.city';
+    case 'pirate.removed':
+      return 'pirate.move';
     case 'gold.chosen':
       return 'gold.pick';
     case 'seven.stole':

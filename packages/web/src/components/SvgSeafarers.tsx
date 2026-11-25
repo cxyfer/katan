@@ -21,10 +21,23 @@ export function edgeMidpoint(edge: { x1: number; y1: number; x2: number; y2: num
 }
 
 /** A small cog with one square sail, drawn along the edge it occupies. */
-export function ShipPiece({ x, y, angle, color, dash, ghost = false, testId }: {
-  x: number; y: number; angle: number; color: string; dash?: string; ghost?: boolean; testId?: string;
+export function ShipPiece({ x, y, angle, color, dash, ghost = false, testId, warship = false }: {
+  x: number; y: number; angle: number; color: string; dash?: string; ghost?: boolean; testId?: string; warship?: boolean;
 }) {
   const dark = shade(color, -0.55);
+  // 戰船：同一艘船橫放（轉 90 度側躺），船腹一排炮口、紅色三角旗，與直立的一般船一眼可分。
+  if (warship) {
+    return <g transform={`translate(${x} ${y}) rotate(${angle})`} data-testid={testId} data-warship="true" opacity={ghost ? 0.75 : 1}>
+      <ellipse cy="4" rx="16" ry="27" fill="#06222e" opacity=".35" />
+      <g transform="rotate(90) scale(.9)">
+        <path d="M-26 0h52l-8 10h-36Z" fill={color} stroke={dark} strokeWidth="2" strokeLinejoin="round" />
+        <path d="M-20 4h40" stroke={shade(color, 0.55)} strokeWidth="1.6" strokeDasharray={dash} opacity=".8" />
+        {[-14, -5, 4, 13].map((cx) => <rect key={cx} x={cx - 3} y={2} width="6" height="4.5" rx="1" fill="#1b1716" stroke="#f4e9c6" strokeWidth=".8" />)}
+        <path d="M0 0v-26" stroke="#3b2a17" strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M0-26l12 4-12 4Z" fill="#b3261e" stroke="#4a0f0b" strokeWidth="1" />
+      </g>
+    </g>;
+  }
   return <g transform={`translate(${x} ${y}) rotate(${angle})`} data-testid={testId} opacity={ghost ? 0.75 : 1}>
     {!ghost && <ellipse cy="9" rx="27" ry="6" fill="#06222e" opacity=".35" />}
     {/* hull */}

@@ -205,7 +205,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
       }}
     >
       <header className="players__header">
-        <h2 id={headingId} className="players__heading"><GameIcon name="users" size={17} />{t('play.seats')}<span className="players__target">{seafarersView(view)?.wonders ? t('play.resultTarget.wonders', { target: formatNumber(state.locale, view.victoryTarget) }) : t('play.resultTarget', { target: formatNumber(state.locale, view.victoryTarget) })}</span></h2>
+        <h2 id={headingId} className="players__heading"><GameIcon name="users" size={17} />{t('play.seats')}<span className="players__target">{seafarersView(view)?.wonders ? t('play.resultTarget.wonders', { target: formatNumber(state.locale, view.victoryTarget) }) : seafarersView(view)?.pirateIslands ? t('play.resultTarget.pirate', { target: formatNumber(state.locale, view.victoryTarget) }) : t('play.resultTarget', { target: formatNumber(state.locale, view.victoryTarget) })}</span></h2>
         <button
           ref={toggleRef}
           className="players__toggle"
@@ -392,6 +392,14 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
         <GameIcon name="ship" size={14} />
         <span>{t(stuckMessage(seafarersHints(view)!.pirateLine!))}</span>
       </p>}
+      {seafarersHints(view)?.pirateLine && (() => {
+        const line = seafarersHints(view)!.pirateLine!;
+        const own = seafarersView(view)?.pirateIslands?.warships[selfId ?? ''] ?? [];
+        return <p className="players__cloth" data-testid="warship-status" data-warships={own.length} data-attack={line.attackOnEnd ? 'true' : 'false'} hidden={!expanded}>
+          <GameIcon name="shield" size={14} />
+          <span>{t('sf.warship.status', { count: formatNumber(state.locale, own.length), line: formatNumber(state.locale, line.lineWarships) })}{line.attackOnEnd ? ` ${t('sf.warship.attackOnEnd')}` : ''}</span>
+        </p>;
+      })()}
       <p className="players__obligation" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}
         title={action ? t(action.messageId, action.params) : t('app.loading')}>
         <GameIcon name="flag" size={14} />

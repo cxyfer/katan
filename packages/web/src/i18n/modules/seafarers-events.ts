@@ -39,6 +39,19 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
         target: p.hex === null || p.hex === undefined ? t(locale, 'sf.pirate.toFrame') : t(locale, 'sf.pirate.toHex', { hex: num(p.hex) }),
         cause: cause(),
       };
+    case 'warship.converted':
+      return { player, edge: num(p.edge), count: num(p.count) };
+    case 'fortress.attacked': {
+      const result = str(p.result);
+      const removed = Array.isArray(p.removed) ? p.removed.length : 0;
+      const outcome = result === 'won' ? t(locale, 'sf.fortress.outcome.won', { lairs: num(p.lairs) })
+        : t(locale, result === 'tie' ? 'sf.fortress.outcome.tie' : 'sf.fortress.outcome.lost', { count: removed });
+      return { player, die: num(p.die), warships: num(p.warships), outcome };
+    }
+    case 'fortress.recaptured':
+      return { player };
+    case 'pirate.removed':
+      return {};
     case 'pirate.cruised':
       return { steps: num(p.steps), to: num(p.to) };
     case 'pirate.attacked': {

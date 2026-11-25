@@ -31,7 +31,9 @@ export function ResultScreen({ controller }: { controller: TableController }) {
   const clothEnd = result?.cause === 'clothExhausted';
   // 卡坦奇觀的終局（完成奇觀，或 10 分且層數最高）也不是靠「達到目標分」，所以同樣不顯示目標分。
   const wonderEnd = result?.cause === 'wonderComplete' || result?.cause === 'wonderLead';
-  const noTarget = clothEnd || wonderEnd;
+  // 海盜巢穴：收復自己的堡壘且 10 分；分數照常帶目標分，原因另有說明。
+  const fortressEnd = result?.cause === 'fortressRecaptured';
+  const noTarget = clothEnd || wonderEnd || fortressEnd;
   // 「10 分且層數最高」仍要達到目標分，所以分數照常帶目標分；只有完成奇觀與目標分無關。
   const wonderComplete = result?.cause === 'wonderComplete';
   // 電腦座位由房間成員推得；房間尚未載入時不標示。

@@ -142,7 +142,7 @@ export interface SeafarersHints {
   /** 海盜巢穴：擲出 7 後，輪到自己時可以偷的玩家（有牌的其他玩家）；其他時候與其他劇本為空。 */
   sevenSteal: string[];
   /** 海盜巢穴：自己船線的下一個目標（beachhead、堡壘或已完成）、目標頂點、端點、船線的邊，是否被圍住（`stuck`），以及此刻末端的船真的可以移動（`backtrack`，與 `movableShips` 一致）。 */
-  pirateLine: { next: 'beachhead' | 'fortress' | 'done'; target: number | null; end: number | null; edges: number[]; stuck: boolean; backtrack: boolean; backtrackBlocked: 'phase' | 'moved' | 'builtThisTurn' | 'pirate' | 'attached' | 'noTarget' | null } | null;
+  pirateLine: { next: 'beachhead' | 'fortress' | 'done'; target: number | null; end: number | null; edges: number[]; stuck: boolean; backtrack: boolean; warshipTarget: number | null; lineWarships: number; attackOnEnd: boolean; backtrackBlocked: 'phase' | 'moved' | 'builtThisTurn' | 'pirate' | 'attached' | 'noTarget' | null } | null;
 }
 
 export const SHIP_COST: Partial<Record<Resource, number>> = { lumber: 1, wool: 1 };

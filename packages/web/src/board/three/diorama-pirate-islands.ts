@@ -36,6 +36,17 @@ export function createLairStackModel(count: number): BufferGeometry {
   return model.build();
 }
 
+/** 收復後的堡壘：lair 疊原本的位置立一支金色旗桿，掛玩家色的旗（海盜的骷髏牌已經不在）。 */
+export function createRecapturedBannerModel(color: string): BufferGeometry {
+  const model = new ModelBuilder();
+  model.add(new CylinderGeometry(0.12, 0.14, 0.025, 14), '#c9a14a', [0, 0.012, 0]);
+  model.add(new CylinderGeometry(0.014, 0.018, 0.5, 6), '#6b442c', [0, 0.26, 0]);
+  model.add(new BoxGeometry(0.2, 0.13, 0.012), color, [0.11, 0.42, 0]);
+  model.add(new BoxGeometry(0.2, 0.03, 0.014), '#ffd45c', [0.11, 0.42, 0]);
+  model.add(new CylinderGeometry(0.03, 0.03, 0.03, 8), '#ffd45c', [0, 0.53, 0]);
+  return model.build();
+}
+
 /** beachhead marker：貼地的玩家色圓片（白色內圈）加一支小旗。 */
 export function createBeachheadModel(color: string): BufferGeometry {
   const model = new ModelBuilder();

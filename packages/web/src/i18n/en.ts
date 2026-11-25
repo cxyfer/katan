@@ -584,6 +584,8 @@ export const en: Catalog = {
   'play.resultTarget.wonders': 'Win: complete a wonder, or {target} VP with the highest wonder level',
   'play.resultReason.victory': 'Victory points',
   'play.resultReason.wonderComplete': 'A Wonder of Catan was completed',
+  'play.resultReason.fortressRecaptured': 'Recaptured their fortress with 10 or more victory points',
+  'event.game.finished.fortressRecaptured': '{player} recaptured the pirate fortress and won with {score} victory points.',
   'play.resultReason.wonderLead': '10 or more victory points and the highest wonder level',
   'play.resultScoreWonder': 'Final score {score} (a wonder ended the game; there is no target score)',
   'event.game.finished.wonderComplete': '{player} completed a Wonder of Catan and won with {score} victory points.',

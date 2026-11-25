@@ -11,7 +11,7 @@ import type { PirateIslandsView } from '../seafarers.ts';
 import { SEA_LEVEL } from '../sea.ts';
 import { playerColorHex } from '../terrain.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
-import { createBeachheadModel, createLairStackModel, createPositionRingModel, createRouteArrowModel, createRouteMarkModel, createTargetRingModel, lairSpot, routeArrows, vertexSpot } from './diorama-pirate-islands.ts';
+import { createBeachheadModel, createLairStackModel, createRecapturedBannerModel, createPositionRingModel, createRouteArrowModel, createRouteMarkModel, createTargetRingModel, lairSpot, routeArrows, vertexSpot } from './diorama-pirate-islands.ts';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
 import type { InstanceTransform } from './transforms.ts';
 
@@ -40,6 +40,16 @@ function LairStacks({ count, vertices, geometry, material }: { count: number; ve
   return <InstancedPrimitive geometry={model} material={material} instances={instances} castShadow={false} />;
 }
 
+/** 收復的堡壘：在原本 lair 疊的位置立一支玩家色的旗。 */
+function Banners({ color, vertices, geometry, material }: { color: string; vertices: number[]; geometry: BoardGeometry; material: Material }) {
+  const model = useDioramaGeometry(() => createRecapturedBannerModel(color), [color]);
+  const instances = useMemo<InstanceTransform[]>(() => vertices.flatMap((vertex) => {
+    const position = lairSpot(geometry, vertex);
+    return position ? [{ position, rotationY: 0, scale: UNIT }] : [];
+  }), [vertices, geometry]);
+  return <InstancedPrimitive geometry={model} material={material} instances={instances} castShadow={false} />;
+}
+
 function Beachheads({ color, vertices, geometry, material }: { color: string; vertices: number[]; geometry: BoardGeometry; material: Material }) {
   const model = useDioramaGeometry(() => createBeachheadModel(color), [color]);
   const instances = useMemo<InstanceTransform[]>(() => vertices.flatMap((vertex) => {
@@ -53,6 +63,7 @@ export function PirateIslandsLayer({ geometry, pirate, players, material, target
   geometry: BoardGeometry; pirate: PirateIslandsView; players: readonly { id: string; color: string }[]; material: Material;
   /** 海盜現在所在的海格（`board.pirate`）：加一圈標示，航道箭頭指出巡弋方向。 */
   pirateHex?: number | null;
+  // `null` = 海盜已移出遊戲（全部堡壘收復）：航道標記、箭頭與位置環都不畫。
   /** 自己船線的下一個目標頂點（沒有則 null）。 */
   target: number | null;
 }) {
@@ -68,19 +79,23 @@ export function PirateIslandsLayer({ geometry, pirate, players, material, target
   }), [pirate.route, geometry]);
   const arrows = useMemo<InstanceTransform[]>(() => routeArrows(geometry, pirate.route).map((entry) => ({ position: entry.position, rotationY: entry.rotationY, scale: UNIT })), [pirate.route, geometry]);
   const here = useMemo<InstanceTransform[]>(() => {
-    const cell = pirateHex === null ? undefined : geometry.hexes[pirateHex];
+    const cell = pirateHex === null || pirateHex === undefined ? undefined : geometry.hexes[pirateHex];
     return cell ? [{ position: [cell.cx / geometry.scale, SEA_LEVEL + 0.012, cell.cy / geometry.scale] as [number, number, number], rotationY: 0, scale: UNIT }] : [];
   }, [pirateHex, geometry]);
   const ringSpot = target === null ? null : vertexSpot(geometry, target);
   return <>
-    <PirateProbe lairs={pirate.fortresses.map((fortress) => fortress.lairs).join(',')} beachheads={pirate.beachheads.filter((beachhead) => !!geometry.vertices[beachhead.vertex]).length} route={route.length} arrows={arrows.length} pirate={here.length > 0 ? pirateHex : null} />
+    <PirateProbe lairs={pirate.fortresses.map((fortress) => fortress.lairs).join(',')} beachheads={pirate.beachheads.filter((beachhead) => !!geometry.vertices[beachhead.vertex]).length} route={pirateHex === null ? 0 : route.length} arrows={pirateHex === null ? 0 : arrows.length} pirate={here.length > 0 ? pirateHex ?? null : null} />
+    {players.map((player) => {
+      const vertices = pirate.fortresses.filter((fortress) => fortress.player === player.id && fortress.lairs === 0).map((fortress) => fortress.vertex);
+      return vertices.length ? <Banners key={`banner-${player.id}`} color={playerColorHex(player.color as never)} vertices={vertices} geometry={geometry} material={material} /> : null;
+    })}
     {byLairs.map((group) => <LairStacks key={group.count} {...group} geometry={geometry} material={material} />)}
     {players.map((player) => {
       const vertices = pirate.beachheads.filter((beachhead) => beachhead.player === player.id).map((beachhead) => beachhead.vertex);
       return vertices.length ? <Beachheads key={player.id} color={playerColorHex(player.color as never)} vertices={vertices} geometry={geometry} material={material} /> : null;
     })}
-    <InstancedPrimitive geometry={mark} material={material} instances={route} castShadow={false} />
-    <InstancedPrimitive geometry={arrow} material={material} instances={arrows} castShadow={false} />
+    {pirateHex !== null && <InstancedPrimitive geometry={mark} material={material} instances={route} castShadow={false} />}
+    {pirateHex !== null && <InstancedPrimitive geometry={arrow} material={material} instances={arrows} castShadow={false} />}
     {here.length > 0 && <InstancedPrimitive geometry={positionRing} material={material} instances={here} castShadow={false} />}
     {ringSpot && <InstancedPrimitive geometry={ring} material={material} instances={[{ position: ringSpot, rotationY: 0, scale: UNIT }]} castShadow={false} />}
   </>;
