@@ -7,6 +7,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { actionHints, createGame, projectGame, seededRng, type GameState, type GameView } from '@katan/rules';
 import { buildGeometry } from '../src/board/geometry.ts';
+import { SEA_LEVEL } from '../src/board/sea.ts';
 import { seafarersHints, seafarersView } from '../src/board/seafarers.ts';
 import { createPositionRingModel, createRouteArrowModel, routeArrows } from '../src/board/three/diorama-pirate-islands.ts';
 import { SeafarersPrompt } from '../src/components/SeafarersPrompt.tsx';
@@ -117,6 +118,7 @@ describe('the cruising pirate on the board (3D)', () => {
       // 中點落在兩格中心之間
       expect(arrow.position[0]).toBeCloseTo((from.cx + to.cx) / 2 / geometry.scale, 6);
       expect(arrow.position[2]).toBeCloseTo((from.cy + to.cy) / 2 / geometry.scale, 6);
+      expect(arrow.position[1]).toBeCloseTo(SEA_LEVEL + 0.012, 6);
       // three.js 繞 Y 轉 θ 把 +x 轉到 (cos θ, 0, -sin θ)：要等於「從這格往下一格」的單位向量。
       const dx = (to.cx - from.cx) / geometry.scale;
       const dz = (to.cy - from.cy) / geometry.scale;
@@ -212,6 +214,10 @@ describe('the pirate log lines and sounds', () => {
     const lost = { playerId: 'p1', strength: 3, warships: 0, result: 'lost', cities: 1, count: 2, owed: 2 };
     expect(text('en', 'pirate.attacked', { ...lost, resources: { lumber: 1, ore: 1 } }).text)
       .toBe('The pirate (strength 3) attacked P1 (warships: 0): the pirate is stronger: 2 card(s) discarded (1×Lumber、1×Ore).');
+    // 手上沒牌：不出現「（—）」
+    const empty = { ...lost, count: 0, owed: 1, resources: {} };
+    expect(text('en', 'pirate.attacked', empty).text).toBe('The pirate (strength 3) attacked P1 (warships: 0): the pirate is stronger: 0 card(s) discarded, 1 were owed.');
+    expect(text('zh-Hant', 'pirate.attacked', empty).text).not.toMatch(/[（(]—[）)]/);
     expect(text('en', 'pirate.attacked', lost).text).toBe('The pirate (strength 3) attacked P1 (warships: 0): the pirate is stronger: 2 card(s) discarded.');
     expect(text('en', 'pirate.attacked', { ...lost, count: 1, owed: 2 }).text).toContain(', 2 were owed');
     expect(text('zh-Hant', 'pirate.attacked', lost).text).toBe('海盜（戰力 3）攻擊了 P1（戰船 0）：海盜較強，棄掉 2 張牌。');

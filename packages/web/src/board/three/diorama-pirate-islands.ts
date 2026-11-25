@@ -6,6 +6,7 @@
 
 import { BoxGeometry, BufferGeometry, Color, ConeGeometry, CylinderGeometry, TorusGeometry } from 'three';
 import type { BoardGeometry } from '../geometry.ts';
+import { SEA_LEVEL } from '../sea.ts';
 import { ModelBuilder } from './diorama-geometry.ts';
 import type { Vec3 } from './transforms.ts';
 
@@ -85,7 +86,7 @@ export function routeArrows(geometry: BoardGeometry, route: readonly number[]): 
   });
   return cells.map((cell, index) => {
     const next = cells[(index + 1) % cells.length]!;
-    return { position: [(cell.x + next.x) / 2, 0.012, (cell.z + next.z) / 2] as Vec3, rotationY: Math.atan2(-(next.z - cell.z), next.x - cell.x) };
+    return { position: [(cell.x + next.x) / 2, SEA_LEVEL + 0.012, (cell.z + next.z) / 2] as Vec3, rotationY: Math.atan2(-(next.z - cell.z), next.x - cell.x) };
   });
 }
 

@@ -48,7 +48,9 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
       let outcome: string;
       if (result === 'lost') {
         // 被棄的牌只有被攻擊的人看得到（私有欄位 `resources`）。
-        const lost = p.resources && typeof p.resources === 'object' ? formatResourceMap(locale, p.resources as Record<string, number>) : '';
+        const listed = p.resources && typeof p.resources === 'object' ? formatResourceMap(locale, p.resources as Record<string, number>) : '';
+        // 手上沒牌時 `formatResourceMap` 回「—」：不加括號。
+        const lost = listed === '—' ? '' : listed;
         outcome = t(locale, 'sf.pirate.outcome.lost', {
           count: num(p.count),
           resourceSuffix: lost ? paren(locale, lost) : '',

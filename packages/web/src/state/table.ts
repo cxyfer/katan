@@ -276,10 +276,12 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
 /**
  * C&K 的事件骰在擲骰當下結算蠻族攻擊：騎士全數翻倒、首次攻擊時強盜進入沙漠、
  * 城市遭掠奪降為村莊或倒下並失去城牆。布匹產地的部落布匹也在擲骰當下改變（SVG 與 3D 的部落標記）。
+ * 海盜巢穴的海盜在擲骰當下沿航道前進，新位置會透露較小的骰值，演出期間也用擲骰前的投影。
  * 其他規則擲骰時盤面不變，不需凍結。
  */
 function rollChangesBoard(view: GameSnapshot['view']): boolean {
-  return citiesKnightsView(view) !== null || !!(view.modules?.seafarers as { cloth?: unknown } | undefined)?.cloth;
+  const sea = view.modules?.seafarers as { cloth?: unknown; pirateIslands?: unknown } | undefined;
+  return citiesKnightsView(view) !== null || !!sea?.cloth || !!sea?.pirateIslands;
 }
 
 function activeHold(state: TableState): RollHold | null {
