@@ -7,7 +7,7 @@ import { geometryToWorld } from './bounds.ts';
 import { useDioramaGeometry } from './diorama-geometry.ts';
 import { createFogModel, hexPoint } from './diorama-explorers.ts';
 import { FogLift } from './DioramaExplorersPirates.tsx';
-import { createClothStackModel, createGiftModel, createIslandTokenModel, createLinkPinModel, createPirateModel, createWonderMarkerModel, createShipModel, createTribePostModel, giftTransform, pirateTransform, SHIP_SCALE, shipInstances, shipTransform, tribeSpot } from './diorama-ships.ts';
+import { createWarshipModel, createClothStackModel, createGiftModel, createIslandTokenModel, createLinkPinModel, createPirateModel, createWonderMarkerModel, createShipModel, createTribePostModel, giftTransform, pirateTransform, SHIP_SCALE, shipInstances, shipTransform, tribeSpot } from './diorama-ships.ts';
 import type { ClothView, TribeGiftView, WondersView } from '../seafarers.ts';
 import { PirateIslandsLayer } from './DioramaPirateIslands.tsx';
 import { InstancedPrimitive } from './InstancedPrimitive.tsx';
@@ -22,16 +22,18 @@ function PlayerShips({ color, seat, items, material, quality, motionAllowed }: O
   color: string; seat: number; items: ReturnType<typeof shipInstances>;
 }) {
   const model = useDioramaGeometry(() => createShipModel(color, seat), [color, seat]);
+  const warModel = useDioramaGeometry(() => createWarshipModel(color, seat), [color, seat]);
   const groups = useMemo(() => {
-    const grouped = new Map<string | null, typeof items>();
+    const grouped = new Map<string, { key: string | null; war: boolean; items: typeof items }>();
     for (const item of items) {
-      const group = grouped.get(item.arrivalKey) ?? [];
-      group.push(item);
-      grouped.set(item.arrivalKey, group);
+      const id = `${item.arrivalKey ?? ''}|${item.warship ? 'war' : 'ship'}`;
+      const group = grouped.get(id) ?? { key: item.arrivalKey, war: item.warship, items: [] };
+      group.items.push(item);
+      grouped.set(id, group);
     }
     return [...grouped.entries()];
   }, [items]);
-  return groups.map(([key, group]) => <InstancedPrimitive key={key ?? 'rest'} geometry={model} material={material}
+  return groups.map(([id, { key, war, items: group }]) => <InstancedPrimitive key={id} geometry={war ? warModel : model} material={material}
     instances={group} castShadow={quality === 'standard'} animationKey={key}
     durationMs={ROAD_ARRIVAL_TRANSFORM_MS} motionAllowed={motionAllowed} />);
 }
@@ -197,7 +199,8 @@ function WondersLayer({ wonders, geometry, material }: Pick<Props, 'geometry' | 
 /** Ships, the pirate, island-bonus tokens and the fog of unexplored hexes; nothing for base games. */
 export function DioramaSeafarers(props: Props) {
   const { geometry, board, players, seafarers, material, quality } = props;
-  const ships = useMemo(() => shipInstances(geometry, board, props.arrivals), [geometry, board, props.arrivals]);
+  const warshipEdges = seafarers?.pirateIslands?.warships;
+  const ships = useMemo(() => shipInstances(geometry, board, props.arrivals, warshipEdges), [geometry, board, props.arrivals, warshipEdges]);
   const pirateModel = useDioramaGeometry(createPirateModel, []);
   const fogModel = useDioramaGeometry(createFogModel, []);
   const fog = useMemo(() => (seafarers?.fog ?? []).flatMap((index) => {
@@ -233,7 +236,7 @@ export function DioramaSeafarers(props: Props) {
       return items.length ? <PlayerShips key={player.id} {...props} color={playerColorHex(player.color)} seat={player.seat} items={items} /> : null;
     })}
     {/* 卡坦奇觀不使用海盜。 */}
-    {!seafarers.wonders && <mesh position={pirate.position} rotation={[0, pirate.onFrame ? Math.PI / 2 : 0.4, 0]} geometry={pirateModel}
+    {!seafarers.wonders && !(seafarers.pirateIslands && board.pirate === null) && <mesh position={pirate.position} rotation={[0, pirate.onFrame ? Math.PI / 2 : 0.4, 0]} geometry={pirateModel}
       material={material} castShadow={quality === 'standard'} dispose={null} />}
     {players.map((player) => {
       const vertices = seafarers.islandClaims.filter((claim) => claim.player === player.id).map((claim) => claim.vertex);

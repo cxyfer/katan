@@ -488,7 +488,7 @@ describe('B-ROOM bot seats', () => {
   });
 
   it('refuses bot seats in the eight further Seafarers scenario profiles with reason profile', async () => {
-    // 這些 profile 是 disabled，房間建不出來，所以和上面一樣先建房再強制換 profile。
+    // 先建一個一般房間再強制換 profile，檢查 bot 座位的拒絕原因。
     const host = await harness.client('ScenarioBots');
     const room = await createRoom(host, { bots: 1 });
     for (const profileId of ['sf-four-islands-2025', 'sf-fog-islands-2025', 'sf-through-the-desert-2025', 'sf-forgotten-tribe-2025', 'sf-cloth-for-catan-2025', 'sf-pirate-islands-2025', 'sf-wonders-of-catan-2025', 'sf-new-world-2025']) {

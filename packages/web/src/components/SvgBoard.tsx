@@ -163,8 +163,8 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
               const mid = edgeMidpoint(edge);
               return (
                 <g key={arrival?.id ?? `ship-${edge.index}`} data-testid={`ship-${edge.index}`} className={arrival ? 'board__building-drop' : undefined}>
-                  <ShipPiece x={mid.x} y={mid.y} angle={edgeAngle(edge)} color={color} dash={seatDash(player?.seat ?? 0)} />
-                  <title>{`${t('sf.board.ship')} · ${nameResolver(road.player)}`}</title>
+                  <ShipPiece x={mid.x} y={mid.y} angle={edgeAngle(edge)} color={color} dash={seatDash(player?.seat ?? 0)} warship={seafarersView(view)?.pirateIslands?.warships[road.player]?.includes(edge.index) ?? false} />
+                  <title>{`${seafarersView(view)?.pirateIslands?.warships[road.player]?.includes(edge.index) ? t('sf.warship.title') : t('sf.board.ship')} · ${nameResolver(road.player)}`}</title>
                 </g>
               );
             }
@@ -277,7 +277,7 @@ export function SvgBoard({ svgRef, geometry, view, arrivals = [], active = null,
           {/* 海盜巢穴：航道、beachhead、堡壘旁的 lair 與船線的下一個目標。 */}
           <SvgPirateIslands geometry={geometry} view={view} nameResolver={nameResolver} />
           {/* 卡坦奇觀不使用海盜。 */}
-          {seafarersView(view) && !seafarersView(view)!.wonders && (() => {
+          {seafarersView(view) && !seafarersView(view)!.wonders && !(seafarersView(view)!.pirateIslands && board.pirate === null) && (() => {
             const hex = board.pirate === null ? null : geometry.hexes[board.pirate];
             const spot = hex ? { x: hex.cx, y: hex.cy + 4 } : pirateFrameSpot(geometry);
             return <g data-testid={hex ? 'pirate-hex' : 'pirate-frame'}>

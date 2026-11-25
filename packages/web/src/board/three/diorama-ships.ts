@@ -59,6 +59,33 @@ export function createShipModel(color: string, seat: number): BufferGeometry {
   return model.build();
 }
 
+/**
+ * 戰船：同一艘船「橫放」（船身繞龍骨轉約 70 度側躺在水面，桅杆平指向一側），船腹一排炮口與紅色三角旗，
+ * 和直立的一般船一眼可分。龍骨沿用一般船的方向，所以放置用的 `shipTransform` 不變。
+ */
+export function createWarshipModel(color: string, seat: number): BufferGeometry {
+  const model = new ModelBuilder();
+  model.add(hull(0.4, 0.06, 0.13, 0.04), color, [0, 0.045, 0]);
+  box(model, tint(color, -0.35), [0, 0.082, 0], [0.34, 0.012, 0.12]);
+  box(model, TIMBER, [0.14, 0.1, 0], [0.07, 0.04, 0.11]);
+  model.add(new CylinderGeometry(0.008, 0.01, 0.34, 6), TIMBER, [0, 0.25, 0]);
+  box(model, SAIL, [0, 0.27, 0.012], [0.012, 0.15, 0.17]);
+  box(model, '#b3261e', [0, 0.38, 0.02], [0.012, 0.05, 0.08]);
+  // 炮口：船舷一排深色方塊加亮色邊框（側躺後朝上），船身另有一條收起的白帆，遠看也和直立的船分得開。
+  for (const x of [-0.12, -0.04, 0.04, 0.12]) {
+    box(model, '#f4e9c6', [x, 0.07, 0.068], [0.05, 0.044, 0.01]);
+    box(model, '#1b1716', [x, 0.07, 0.074], [0.034, 0.028, 0.012]);
+  }
+  box(model, SAIL, [0, 0.1, -0.03], [0.3, 0.02, 0.03]);
+  const count = 1 + ((Math.trunc(seat) % 6) + 6) % 6;
+  for (let index = 0; index < count; index++) box(model, '#f8e9c9', [-0.1 + index * 0.04, 0.09, -0.062], [0.02, 0.012, 0.006]);
+  const geometry = model.build();
+  // 繞龍骨（x 軸）側躺，再抬到水面上，船舷不沉入水中。
+  geometry.rotateX(Math.PI / 2 * 0.78);
+  geometry.translate(0, 0.12, 0);
+  return geometry;
+}
+
 /** The pirate: a dark galleon with three black sails and a bone-white mark. */
 export function createPirateModel(): BufferGeometry {
   const model = new ModelBuilder();
@@ -138,6 +165,8 @@ export const SHIP_SCALE = 1.5;
 export interface ShipInstance extends InstanceTransform {
   index: number;
   playerId: string;
+  /** 海盜巢穴的戰船（橫放）。 */
+  warship: boolean;
   arrivalKey: string | null;
 }
 
@@ -169,7 +198,7 @@ export function shipTransform(geometry: BoardGeometry, edgeIndex: number): { pos
   };
 }
 
-export function shipInstances(geometry: BoardGeometry, board: PublicBoardView, arrivals: readonly BoardEffectGroup[]): ShipInstance[] {
+export function shipInstances(geometry: BoardGeometry, board: PublicBoardView, arrivals: readonly BoardEffectGroup[], warships: Readonly<Record<string, readonly number[]>> = {}): ShipInstance[] {
   const out: ShipInstance[] = [];
   board.roads.forEach((road, index) => {
     if (!road?.ship) return;
@@ -178,6 +207,7 @@ export function shipInstances(geometry: BoardGeometry, board: PublicBoardView, a
     out.push({
       index,
       playerId: road.player,
+      warship: warships[road.player]?.includes(index) ?? false,
       arrivalKey: placementArrival(arrivals, board, 'edge', index)?.id ?? null,
       position: transform.position,
       rotationY: transform.rotationY,

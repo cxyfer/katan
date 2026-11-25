@@ -44,6 +44,19 @@ export function BeachheadMarker({ x, y, color, label, target, testId }: { x: num
   </g>;
 }
 
+/** 收復後的堡壘：金色旗桿與玩家色的旗（海盜的巢穴標記已經移除）。 */
+export function RecapturedBanner({ x, y, color, label, testId }: { x: number; y: number; color: string; label: string; testId?: string }) {
+  return <g transform={`translate(${x} ${y})`} data-testid={testId} data-lairs={0} pointerEvents="none">
+    <title>{label}</title>
+    <ellipse cy="6" rx="16" ry="6" fill="#04161f" opacity=".4" />
+    <circle r="15" fill="none" stroke="#ffd45c" strokeWidth="2.4" strokeDasharray="5 3" />
+    <path d="M0 6V-22" stroke="#6b442c" strokeWidth="2.6" strokeLinecap="round" />
+    <path d="M1-22h17v11h-17Z" fill={color} stroke={shade(color, -0.55)} strokeWidth="1.4" strokeLinejoin="round" />
+    <path d="M1-17h17" stroke="#ffd45c" strokeWidth="2" />
+    <circle cy="-24" r="2.8" fill="#ffd45c" stroke="#6b442c" strokeWidth=".8" />
+  </g>;
+}
+
 export function SvgPirateIslands({ geometry, view, nameResolver }: { geometry: BoardGeometry; view: GameView; nameResolver: (id: string) => string }) {
   const t = useT();
   const sea = seafarersView(view);
@@ -59,11 +72,13 @@ export function SvgPirateIslands({ geometry, view, nameResolver }: { geometry: B
     const cell = geometry.hexes[hex];
     return cell ? [{ hex, x: cell.cx, y: cell.cy + 4 }] : [];
   });
-  const at = cells.findIndex((cell) => cell.hex === view.board.pirate);
+  // 海盜移出遊戲（全部堡壘收復）後不再畫航道。
+  const removed = view.board.pirate === null;
+  const at = removed ? -1 : cells.findIndex((cell) => cell.hex === view.board.pirate);
   return <g data-testid="pirate-islands-layer">
-    {route.length > 1 && <polygon data-testid="pirate-route" data-hexes={route.length} points={route.join(' ')} fill="none" stroke="#f4e9c6" strokeOpacity=".5"
+    {!removed && route.length > 1 && <polygon data-testid="pirate-route" data-hexes={route.length} points={route.join(' ')} fill="none" stroke="#f4e9c6" strokeOpacity=".5"
       strokeWidth="4" strokeDasharray="2 12" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"><title>{t('sf.pirate.route')}</title></polygon>}
-    {cells.length > 1 && cells.map((cell, index) => {
+    {!removed && cells.length > 1 && cells.map((cell, index) => {
       const next = cells[(index + 1) % cells.length]!;
       const angle = (Math.atan2(next.y - cell.y, next.x - cell.x) * 180) / Math.PI;
       return <g key={`route-arrow-${cell.hex}`} data-testid={`pirate-route-arrow-${index}`} data-from={cell.hex} data-to={next.hex}
@@ -103,7 +118,7 @@ export function SvgPirateIslands({ geometry, view, nameResolver }: { geometry: B
         {target && <circle cx={vertex.x} cy={vertex.y} r="26" fill="none" stroke="#ffd45c" strokeWidth="3.2" strokeDasharray="6 4" pointerEvents="none" data-testid="line-target" />}
         {fortress.lairs > 0
           ? <LairStack testId={`fortress-${fortress.vertex}`} x={vertex.x + 24} y={vertex.y + 12} lairs={fortress.lairs} label={label} />
-          : <g data-testid={`fortress-${fortress.vertex}`} data-lairs={0}><title>{label}</title></g>}
+          : <RecapturedBanner testId={`fortress-${fortress.vertex}`} x={vertex.x + 24} y={vertex.y + 12} color={colorOf(fortress.player)} label={label} />}
       </g>;
     })}
   </g>;

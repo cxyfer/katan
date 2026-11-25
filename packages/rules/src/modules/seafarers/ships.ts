@@ -18,6 +18,7 @@
  *   modules may veto a ship move (`shipMoveBlocked`).
  */
 
+import { moveWarship } from './pirateWarships.ts';
 import { isBlockedFor, isSeaEdge, playerById, topologyOf } from '../../analysis.ts';
 import { getProfile } from '../../profiles.ts';
 import type { CommandOutcome, GameState, Resource } from '../../types.ts';
@@ -268,6 +269,8 @@ export function moveShip(state: GameState, actorId: string, command: ModuleComma
   recordLineShip(state, actorId, to, { moving: from });
   state.board.roads[to] = state.board.roads[from]!;
   state.board.roads[from] = null;
+  // 海盜巢穴：退回的戰船還是戰船。
+  moveWarship(state, actorId, from, to);
   seafarersState(state).moved = true;
   kit.emit(state, 'ship.moved', { playerId: actorId, from, to });
   // 世外部落：移動到有禮物的邊也拿走（SF25 p. 12 `build or move`）。

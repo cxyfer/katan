@@ -14,6 +14,7 @@ import {
 import { useLocale, useT } from '../i18n/context.tsx';
 import { formatNumber, formatResourceMap } from '../i18n/format.ts';
 import { playerColorHex, seatDash } from '../board/terrain.ts';
+import { seafarersView } from '../board/seafarers.ts';
 import type { BotLevel } from '@katan/protocol';
 import { GameIcon } from './GameArt.tsx';
 import { BotBadge } from './BotBadge.tsx';
@@ -93,6 +94,8 @@ export function buildStatsRows(view: GameView, stats: GameStatsData): StatsRow[]
       if (building.city) cities += 1;
       else settlements += 1;
     }
+    // 海盜巢穴：未收復的堡壘不是村落（不產出、不計分），與玩家面板一致。
+    settlements -= (seafarersView(view)?.pirateIslands?.fortresses ?? []).filter((fortress) => fortress.player === player.id && fortress.lairs > 0).length;
     const roads = view.board.roads.filter((road) => road?.player === player.id).length;
     return {
       player,

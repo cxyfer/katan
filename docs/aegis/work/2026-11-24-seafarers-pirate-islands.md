@@ -287,7 +287,7 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
 - "Which ships belong to the line" (I4–I5) is our reading of "one continuous line to the western islands … you may create other
   routes around the main island", with the preset ship as the line's first ship.
 - The pirate's movement and attacks and the 7's steal step are S7b (below); the warship conversion and the attack on the fortress are S7c.
-- The help panel has no scenario text yet (S7c).
+- ~~The help panel has no scenario text yet~~ — done in S7c (`sf.help.pi.*`, see the S7c section).
 
 ---
 
@@ -415,3 +415,149 @@ Test numbers after round 3: rules `seafarers-exports` 18, `seafarers-pirate-isla
 - English "1 was owed" / "N were owed" (`sf.pirate.outcome.shortOne`); zh-Hant has no plural and the same text for both keys.
 - Not accepted, already planned: the scenario help panel text stays in S7c (see Limitations: "The help panel has no scenario text yet (S7c)").
 - Tests: rules patrol 36; web `seafarers-pirate-patrol` 13 and `i18n` 24; `pnpm typecheck` passes.
+
+
+---
+
+# Slice S7c: warships, the attack on the fortress, recapture, the ending, and the profile is enabled
+
+Branch `feat/sfx-s7c-warships-recapture`, stacked on S7b (`feat/sfx-s7b-pirate-patrol`, PR #235). SF25 p. 17 ("Warships", "Conquering a pirate
+fortress", "Winning the game"; `p17.txt` and `p17.png` re-read). `sf-pirate-islands-2025` is now `implemented: true, enabled: true`
+(lobby, server rooms for 3 and 4 players, `message-ids`, `profile` and `scenario` texts); bot seats are still refused
+(`E_INVALID_BOT`, reason `profile`). Code: `modules/seafarers/pirateWarships.ts` (new), hooks in `modules/seafarers/index.ts`.
+
+## Hooks used
+
+| Rule | Engine hook | Notes |
+|---|---|---|
+| Knight to warship | `moveBandit` (the knight path of `playKnight`) | the module answers `{ ok, hex: null, candidates: [] }`; the engine then removes the card, counts it as played and emits `dev.knight` as for a pirate move (`pirate: true`, `hex: null`); `warship.converted` follows. The base checks (one development card per turn, a card bought this turn cannot be played) are the engine's own. A refusal (`E_NO_WARSHIP_TARGET`) comes before the card is taken |
+| Attack | `onEndTurn` (called by `turn.end` before the turn passes) | see I49 |
+| Ending | `winCause` (the S8 hook) + `GameEndCause` `fortressRecaptured` | evaluated by the engine's `checkVictory` for the current actor, so "at any point during your turn" is every place the engine already checks (after builds, ship moves, the attack, and when the turn opens) |
+
+## Interpretations
+
+| # | Item | Decision | Basis |
+|---|---|---|---|
+| I48 | Which ship becomes a warship | The first ship of the line **in line order from the start** that is not a warship yet (the preset ship is the line's first ship, I4). Free coastal ships and offshore ships outside the line are never converted. The ship stays where it is, stays part of the line and keeps counting for the shortest-path rules; a warship is recorded by its edge in `pirateIslands.warships` (already projected publicly in S7b). With no ordinary line ship (no line ship at all, or all are warships) the knight is **refused with `E_NO_WARSHIP_TARGET`** and stays in the hand, the turn's card slot is not used. The command carries no target hex (`hex: null`; a hex is `E_INVALID_COMMAND`), because there is no robber or pirate to place. Before the roll and after it, like any knight. Knights are not counted for Largest Army (disabled in this scenario) and `stats.robberMoves` is still incremented by the engine's knight path (a statistics counter only) | SF25 p. 17 "Warships"; replaces I15 |
+| I49 | When the attack happens | **When the player presses end turn** (`turn.end`, hence also when a turn timer or the server ends the turn): `onEndTurn` runs the attack if the own line is `done` and the own fortress still has lairs, then the turn ends as always ("Your turn ends after attacking the fortress"). It is automatic and cannot be declined, as decided in the spec (§6.6, "行動階段結束時自動進攻"). It is not run for a player whose fortress is already recaptured or whose line is not complete. The die is one draw of the game rng (`rng.int(6) + 1`), so a replay or a restart reproduces it. A recapture that reaches 10 VP ends the game at once (the module defers the end of the turn) and the other players never see the next turn | spec §6.6; SF25 p. 17 "At the end of the Action phase when your route reaches the pirate fortress in your color, you attack" |
+| I50 | The player's strength | Against the fortress: the **warships on the line** (`lineWarships`, the line edges that are warships). Against the cruising pirate (S7b, I27): every warship of the player (`warshipCount`). They differ only for a warship that left the line by the backtracking move (I9, I52); the SF25 sentences are "the number of warships in your route" (fortress) and "the number of warships you have" (pirate) | SF25 p. 16 and p. 17 |
+| I51 | Removed ships | A lost attack takes the last 2 (a tie: the last 1) edges of the line (the ones closest to the fortress, because a finished line ends at the fortress, I7); fewer if the line is shorter. The ships go back to the supply (the road slots are cleared, so `countShips` drops and they can be built again), and warships among them are gone. The line, its end, `next` target (back to the fortress, in theory also the beachhead), `done`, the hints and the stuck/backtrack state are all derived from the remaining edges, so there is nothing else to keep consistent: tests check the target after a loss, that every old edge is a legal strict extension again, that the line can be rebuilt to `done`, and the hint keys. The no-wall rule (I17) is a rule about placements and is not applied to a removal (a removal only empties edges); the restart rule (I4, I5) can matter only when the whole line is gone, which a single attack cannot cause (a finished line has 9 ships) | SF25 p. 17 |
+| I52 | A warship that is moved back | A warship at the end of a boxed-in line may be moved with `ship.move` (I9). It **stays a warship** (the record follows the piece to its new edge, `moveWarship`), because the piece is the same; it then no longer counts against the fortress if it is not on the line. SF25 says nothing about backtracking at all | extension of I9 (user decision) |
+| I53 | Recapture | When the last lair is taken the fortress is an ordinary settlement, with no new state: production, gold, score (the lock in `score`), the city upgrade (`allowCity`) and roads (`roadAllowed`) follow `fortressLocked`, as prepared in S7a (I2, I3). It can be attacked by the cruising pirate only if a route hex touches it (none does, I25). **When every fortress on the board is recaptured** the pirate is removed from the game: `board.pirate = null`, event `pirate.removed`; later rolls do not cruise or attack (`cruise` returns at once), placement near the old hex is free (`touchesPirate` is false), the route is not drawn any more in either renderer, and the 7's steal remains (it never involved the pirate) | SF25 p. 17 note |
+| I54 | The ending | `winCause` answers for every player: `fortressRecaptured` when the actor's own fortress has 0 lairs and the score (hidden VP cards included) is at least the profile's 10; `null` otherwise, so 10 VP alone never ends the game and a recapture alone does not either. Only the actor's own turn is judged (the engine's `checkVictory`): a player who passes 10 VP on an opponent's turn wins when their own turn opens. Result: `reason: victory`, `cause: fortressRecaptured`, `playerIds: [winner]`; `game.finished` carries `playerIds`, `cause` and `score` and no `target` (the `endGame` path of S6 and S8) | spec §6.6; SF25 p. 17 |
+| I55 | Output of other profiles | The default victory path is untouched: `winCause` returns `undefined` outside this scenario and the wonders scenario, `GameEndCause` only gains a value, `game.finished` is unchanged for every other cause (`seafarers-exports.test.ts` D7 and the S8 tests). The result screen treats the new cause like the wonder endings (no "victory target" line, but the score line keeps the target because 10 VP is part of the condition); the seat header and the help panel state the condition ("recapture your fortress and have 10 VP") | S8 precedent |
+| I56 | 4 players and the deck | The 4-player deck has 19 knights (S7a, I11), the 3-player deck 14; every knight is a warship conversion, so warships are bounded by the deck and by the 15 ships. Nothing else in the deck changes | SF25 p. 16 |
+| I57 | Web | A knight in the hand sends `dev.playKnight { hex: null }` at once (no board selection), the button reads "Convert a ship (knight)" and the card text says what it does; with no ordinary line ship the button is disabled with a `title`, a visually hidden `warship-blocked` text and the reason in both locales. The player panel gets "Warships: n (m on the ship line)" and a line that ending the turn attacks the fortress. SVG: a warship is the cog turned 90 degrees with a row of gun ports and a red pennant; 3D: the cog model heeled over 80 degrees with guns and a pennant; a recaptured fortress shows a gold-ringed banner (SVG) or a banner on a plinth (3D) where the lair stack stood; with the pirate removed neither renderer draws it or the route. Log lines, sounds, help text, result text and `E_NO_WARSHIP_TARGET` exist in zh-Hant and en | spec §7 |
+| I58 | Departures from SF25 that are the user's decisions (also in `docs/FIDELITY.md`) | I9 (a boxed-in line may move its end ship back), I17 (nobody may wall off a target; a player's own strict shortest extension is exempt) and I21 (no settlement on another player's ship line) are **user decisions of 2026-11-24 that SF25 does not contain**; the shortest-path definition (I6, OQ-3) is the **user-confirmed reading** of "must take the shortest path". Everything else in S7c follows SF25 p. 17 literally | user decisions 2026-11-24 |
+
+## Simulation (S7c): full games to a winner, and the stuck-player re-measurement
+
+`seafarers-pirate-islands-sim.ts` gained a **full game** mode (`full: true`, also used by `seafarers-sim.ts`' hints for the scenario): the same random legal
+play as before (setup, a roll with every frame answered, 3 to 6 actions per turn) plus the S7c actions: buy development cards while the line has fewer than 4
+warships and the deck still holds knights, play a knight on the first ordinary line ship (`dev.playKnight { hex: null }`), complete the last line step only
+with 4 warships on the line (or when no knight is left), build cities and any legal settlement (so 10 VP is reachable), and answer the gold frame. The hand is
+refilled **from the supply** to 6 of each resource before every action (the S7a/S7b line mode still refills without touching the supply), so bank + hands is
+conserved. Games run until `state.result` or 400 turns. Every game must end with a winner whose `cause` is `fortressRecaptured`, the supply must be conserved
+and no player may own more than 15 ships. 300 games per player count, bias 0.4, seeds 1..300, 2026-11-25, one process (niced, on the shared machine):
+
+| Players | Games | With a winner | Winner cause | Rolls (avg per game) | Knights converted | Fortress attacks (won / lost / tied) | Recaptures | Supply not conserved | Over 15 ships | inconsistent | badEnds | illegalRoads | rule deadlocks |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | 300 | **300** | `fortressRecaptured` | 10,311 (34.4) | 2,763 | 2,121 (1,228 / 595 / 298) | 302 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 4 | 300 | **300** | `fortressRecaptured` | 13,045 (43.5) | 2,381 | 2,872 (1,620 / 844 / 408) | 384 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+Other policies (100 games per cell, same method; `PI_SIM_FULL_BIASES=1,0.85`):
+
+| Players | Policy | Games | With a winner | Rolls | Knights converted | Fortress attacks (won / lost / tied) | Recaptures | Stuck players | Boxed-in players | Backtracks | Out of ships | Supply not conserved | Over 15 ships | inconsistent / badEnds / illegalRoads |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | bias 1 | 100 | **100** | 2,437 | 1,067 | 1,077 (516 / 388 / 173) | 101 | 0 | 0 | 0 | 0 | 0 | 0 | 0 / 0 / 0 |
+| 3 | bias 0.85 | 100 | **100** | 2,602 | 1,038 | 1,097 (517 / 387 / 193) | 103 | 1 | 1 | 3 | 1 | 0 | 0 | 0 / 0 / 0 |
+| 4 | bias 1 | 100 | **100** | 3,263 | 935 | 1,320 (622 / 465 / 233) | 127 | 0 | 0 | 0 | 3 | 0 | 0 | 0 / 0 / 0 |
+| 4 | bias 0.85 | 100 | **100** | 3,507 | 863 | 1,254 (608 / 439 / 207) | 127 | 0 | 0 | 0 | 6 | 0 | 0 | 0 / 0 / 0 |
+
+(Every game ends before every fortress is recaptured, so the pirate never leaves in the simulation; that path is in the rules tests and the browser run. Recaptures
+can exceed the games because two players may recapture before one of them reaches 10 VP.) Hint cost under load: about 5.7 ms per `actionHints` call.
+
+**Stuck players, re-measured with S7c** (spec §11.2: failed attacks remove ships and change the board again). Same definition as S7a and S7b (players at the end of a
+game whose line is unfinished, who still have pieces, no legal extension and no end ship that can go back), bias 0.4, 300 games per player count:
+
+| | 3 players | 4 players |
+|---|---|---|
+| S7a (pirate jumps at random, no attacks) | 1 | 7 |
+| S7b (cruising pirate, no attacks on the fortress) | 1 | 12 |
+| S7c, the S7a/S7b line policy under the S7c rules (a finished line attacks at every end of turn with no warships, so every attack is lost and 2 ships are removed; games run 60 turns) | **5** (6 still boxed in, 0 route-less) | **6** (6 still boxed in, 4 route-less) |
+| S7c full games (to a winner, about 34 and 44 rolls) | **2** (5 still boxed in at the end, 3 route-less) | **8** (9 still boxed in, 6 route-less) |
+
+Line-policy columns of the same run: boxed-in line seen in 17 (3 players) and 8 (4 players) of 300 games, 28 and 7 backtracks, 236 and 133 players out of the 15 ships (they rebuild after
+every lost attack), rule deadlocks, wall refusals, `inconsistent`, `badEnds` and `illegalRoads` all 0. The line policy is not comparable with S7a/S7b: in those runs a
+finished line stayed finished, now it loses ships each turn, so the stuck count measures a different dynamic (a rebuilt line meets other players' free ships and lines more often). The
+rates are small (0.6 % and 0.5 % of player lines for the line policy; 0.2 % and 0.7 % of players in full games), none is caused by the removal itself (the line, its target and the hints stay
+consistent after a removal, tested), and `inconsistent`, `badEnds`, `illegalRoads` are 0. **Known limitation, unchanged** (I17): lines of two players can wall each other, and
+only the backtracking move helps; with S7c a failed attack also reopens edges, which is why the numbers are in the same range as S7b rather than higher.
+
+## Browser evidence (S7c)
+
+`scripts/seafarers/capture_pirate_islands.py` with `scripts/seafarers/pirate_fixture.mjs` (a test-only board preparation that uses the rules engine's own commands:
+`line`, `wall`, `ring`, `check`), against the built service, Playwright with software WebGL. Real games through the real UI and API; the service state is read back after
+every UI command. `docs/screenshots/seafarers-pirate-islands/report.json` lists **22 cases with sha256 and 0 page errors**; 16 captures are kept (`committed: true`).
+
+| Step | Renderer | What was done and checked |
+|---|---|---|
+| Lobby | desktop | Seafarers, The Pirate Islands: only 3 and 4 players are selectable |
+| Maps 3 and 4 players | SVG, 3D, phone (4) | 49 hexes, 8 harbours, one fortress with 3 lair tokens and one beachhead per player, 14 route arrows, the pirate on the first hex; 3D by the canvas probes `lairStacks`, `beachheadMarkers`, `routeArrows` |
+| Setup | API | `check`: every starting settlement on the main island, 3 villages each beside the preset, 4 fortresses of 3 lairs, one ship per line |
+| Ship line | SVG, 3D, phone | one line ship built by the UI in SVG and one in 3D at the engine's shortest-path steps; the next target is ringed |
+| Boxed in and backtrack | SVG (panel text), 3D (`ship.move`) | other players' ships around the end of the line; the panel offers the move; the end ship is moved back in 3D (the line gets shorter, `ship.moved` in the log) |
+| Cruise and attack | SVG | every die result lands beside one of player 1's buildings: `pirate.cruised`, then `pirate.attacked` (0 warships, lost); the 7 prompt is answered when it comes up |
+| Supply pick | 3D | with 9 warships the attack is won: the 5-button picker, one ore taken (`pirate.gifted`) |
+| Knight to warship | SVG | the knight card raised ("Convert a ship (knight)"), 4 warships on the first 4 line ships, `robber` stays -1 |
+| Fortress attack | SVG | ending the turn attacks automatically: the die, warships on the line and the result match the rules (this run: die 1 against 4 warships, a win) |
+| Knight blocked | 3D | every line ship is a warship: the button is disabled and the reason is written on the card |
+| Recapture | SVG, 3D | the last lair is taken: no lair stack, a banner; the game goes on |
+| Pirate leaves and the win | SVG, desktop and phone | every fortress recaptured: `pirate.removed`, `board.pirate` null, the pirate and its route are gone from the final board; 10 VP: `cause: fortressRecaptured`, result screen without overflow on a phone |
+
+**Looked at by eye (SVG and 3D), problems found and fixed:**
+
+1. **3D lair stacks hidden** (S7a code, first seen here): the stack was placed inside the hex towards its centre and the terrain models (mountains) covered it on the gold-mountains
+   fortress. It now stands along the shore in front of the fortress (towards the camera), and every stack and the recaptured banner carry a tall flag (black skull flag, red banner
+   with a gold stripe) so they show from any angle. Checked on all four fortresses and on the recaptured one.
+2. The 3D warship (heeled 90 degrees) read as a red slab from the camera: it is heeled 70 degrees, has a row of four gun ports with bright frames and a furled white sail.
+3. The knight button was only disabled with a tooltip: the reason is now visible text on the raised card.
+4. The test-only fixture first put buildings on sea vertices (they floated in the water); the fixture now chooses coastal vertices. This was the fixture's fault, not the product's.
+5. Checked without change: the S7b route arrows and the position ring (SVG: arrows on every leg and the dashed ring; 3D: arrows and ring on the water at sea level), the S7a beachhead
+   discs (SVG and 3D, on the coast of the pirate islands, not floating) and the preset villages and ships on the main island in both renderers.
+
+## Verification (S7c)
+
+- Rules: `seafarers-pirate-islands-warships.test.ts` (25 tests): conversion (the first ordinary line ship, the second one next turn, card removed, no robber), one development card per turn and a card
+  bought this turn, refusal without an ordinary ship (card kept) and without a line, a hex argument refused, no Largest Army, the deck; the four attack results (win, loss of 2, tie of 1, removed
+  warships reduce the count), only line warships count, no attack without a finished line or after the recapture or for another player, determinism of the die; line consistency after a removal (target, every
+  old edge a legal extension again, hints, rebuild to `done`); a moved warship stays a warship; recapture (score, no pirate removal while others remain, production, city, road), pirate removal and no more cruise, the
+  ending with the negative cases (10 VP alone, a recapture alone, another player's turn), the win at any point (a city), warships against the cruising pirate, snapshot equality. `seafarers-pirate-islands.test.ts` updated
+  (the knight test, the enabled profile). Whole suite **76 files, 1,376 tests** pass (1,372 before the four simulation-suite tests added last) (S7b: 75 files, 1,344); `message-ids` covers the new events and `E_NO_WARSHIP_TARGET`; D7 is unchanged (`seafarers-exports.test.ts`).
+  `seafarers-pirate-islands-sim.test.ts` (3 tests) includes the full-game run (12 games per player count by default; 300 for the table above).
+- Server: `seafarers-pirate-islands.test.ts` (7 tests): listing and selectability, rooms for 3 and 4 players and 5 and 6 refused (`bad-player-count`), a bot seat refused (`E_INVALID_BOT`, reason `profile`), the starts for 3 and 4 players,
+  **a restart with a pending `pirateGift` (continuation queued) that is answered afterwards and resumes the roll exactly once, a restart with a pending `sevenSteal` (S7b's deferred item)**, and a whole game from the ship line to the end-of-turn attack, recapture and the 10-point win (room `completed`).
+  `seafarers-scenarios-registry.test.ts` now lists all eight scenarios as enabled (3-4 players, no bot seats, 5-6 refused); `rooms`, `session`, `bots` updated. Whole server suite 43 files, 445 tests (20 skipped as before).
+- Web: `seafarers-pirate-warships.test.tsx` (14 tests): SVG warship and title, 3D flag and heeled model, the recaptured banner, the removed pirate and route, the knight button (no target, label, disabled with a visible reason, other scenarios unchanged), the player panel (warships, win condition),
+  log lines for the attack results, recapture, pirate leaving, warship and the knight, the ending, cues, ids in both locales, the help panel (6 rules, no robber wording), the result screen. `seafarers-pirate-islands.test.tsx` (lair spot along the shore, flag), `rulesets.test.ts` (the lobby lists the scenario).
+  Whole web suite 92 files, 1,178 tests; one lobby test timed out once under load (`lobby.test.tsx`, passes alone, 15 of 15).
+- Bots: `support.test.ts` and the server `bots.test.ts` still refuse the profile (`profile`). `pnpm typecheck` passes.
+
+## Limitations (S7c)
+
+- No human playtest, physical device or screen-reader check. The browser run is Chromium with software WebGL; phone evidence is a 390 x 844 viewport.
+- The SF25 text gives no rule for a boxed-in line (I9), walling (I17) or villages on another line (I21): these are the user's decisions and are in `docs/FIDELITY.md`. The attack on the fortress cannot be declined (spec decision, I49).
+- A removed pirate never happens in the random simulation (the game ends at the first win); it is covered by the rules tests and the browser run.
+- Hard bots and any bot seat in this scenario remain out of scope.
+
+## Review round 1 fixes (S7c)
+
+| # | Item | Decision |
+|---|---|---|
+| R1 | `robberMoves` | A knight turned into a warship is not a robber move: `BanditMove` has an optional `robberMove: false` (set by `knightToWarship`) and the engine skips `stats.robberMoves` for it; `devCardsPlayed.knight` and `playedKnights` still count. Every other profile still counts it (test with Cloth for Catan, D7). This replaces the "statistics counter only" limitation above |
+| R2 | 3D lair and banner spot | The shore-edge filter forgot land-to-frame edges (`edge.hexes.length === 1`), so the red (0,0) and orange (-3,6) fortresses fell back to the hex-centre direction. It now uses the same test as `isSeaEdge`. Test: for all four fortresses the spot is aligned with a shore edge (not the fallback). The 22 browser cases were re-run (0 page errors, 16 kept); the red banner now stands on the shore beside the fortress |
+| R3 | Result statistics | `buildStatsRows` subtracts unrecaptured fortresses (`lairs > 0`) from the settlement count, like `PlayersPanel`. Test: 2 buildings, 1 counted; 2 after the recapture |
+| R4 | Test name | The "free ship is not converted" test now adds a free coastal ship, makes every line ship a warship, and expects `E_NO_WARSHIP_TARGET` and that the free ship is not recorded as a warship |
+| R5 | `CURATED` | Lists exactly the 16 kept captures, so a re-run reproduces the report |
+
+Tests after the fixes: rules `seafarers-pirate-islands-warships` 26, `seafarers-exports` 18, `seafarers-pirate-islands` 60; web `seafarers-pirate-warships` 16, `game-stats` 13, `seafarers-pirate-islands` 9, `seafarers-pirate-patrol` 13; `pnpm typecheck` passes.

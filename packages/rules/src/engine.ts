@@ -1487,7 +1487,7 @@ function playKnight(state: GameState, actorId: string, hex: number | null, rng: 
   state.turn.devCardPlayed = true;
   const stats = playerStats(state, actorId);
   stats.devCardsPlayed.knight += 1;
-  stats.robberMoves += 1;
+  if (!bandit || bandit.robberMove !== false) stats.robberMoves += 1;
   if (bandit) {
     emit(state, 'dev.knight', { playerId: actorId, hex, playedKnights: player.playedKnights, pirate: true });
     afterBoardChange(state);

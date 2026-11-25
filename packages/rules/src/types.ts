@@ -322,7 +322,7 @@ export interface GameEvent {
  * 終局原因：達到目標分（預設，不寫入）、布匹耗盡（布匹產地，回合結束時 ≥5 個部落沒有布匹）、
  * 完成奇觀（`wonderComplete`）或達到目標分且奇觀層數最高（`wonderLead`，卡坦奇觀）。
  */
-export type GameEndCause = 'target' | 'clothExhausted' | 'wonderComplete' | 'wonderLead';
+export type GameEndCause = 'target' | 'clothExhausted' | 'wonderComplete' | 'wonderLead' | 'fortressRecaptured';
 
 export interface GameResult {
   /** 單一勝者；共同勝利時是座位最小的勝者（舊讀者仍看得到一位）。 */

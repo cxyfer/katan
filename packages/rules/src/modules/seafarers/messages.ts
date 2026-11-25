@@ -30,6 +30,10 @@ export const messages = {
     'world.regenerated',
     'wonder.chosen',
     'wonder.built',
+    'warship.converted',
+    'fortress.attacked',
+    'fortress.recaptured',
+    'pirate.removed',
   ] as const,
   errorCodes: [
     'E_SHIP_NOT_MOVABLE',
@@ -45,5 +49,6 @@ export const messages = {
     'E_WONDER_COMPLETE',
     'E_SHIP_LINE',
     'E_LINE_WALLED',
+    'E_NO_WARSHIP_TARGET',
   ] as const,
 };

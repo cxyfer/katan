@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as R
 import { createPortal } from 'react-dom';
 import { useT } from '../i18n/context.tsx';
 import { blocksNewCommands } from '../state/commands.ts';
+import { seafarersHints, seafarersView } from '../board/seafarers.ts';
 import { followUpsHeld, shownBank } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { GameIcon } from './GameArt.tsx';
@@ -65,12 +66,19 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
   // 銀行一張資源都沒有時豐收之年打不出去（伺服器回 E_BANK_EMPTY），乾脆不讓它出牌。
   const bank = shownBank(state);
   const bankEmpty = !!bank && Object.values(bank).every((count) => count <= 0);
-  const usable = (card: string) => PLAYABLE.has(card) && !(card === 'yearOfPlenty' && bankEmpty);
+  // 海盜巢穴：騎士牌只能把船線上最接近起點的一般船改成戰船（沒有可改的船就不能打）。
+  const warship = !!seafarersView(view)?.pirateIslands;
+  const warshipBlocked = warship && seafarersHints(view)?.pirateLine?.warshipTarget == null;
+  const usable = (card: string) => PLAYABLE.has(card) && !(card === 'yearOfPlenty' && bankEmpty) && !(card === 'knight' && warshipBlocked);
   const held = self?.devCards ?? [];
   const fresh = self?.newDevCards ?? [];
 
   const play = (card: string) => {
     setInspected(null);
+    if (card === 'knight' && warship) {
+      void actions.submitCommand({ type: 'dev.playKnight', hex: null }, 'sf.warship.title');
+      return;
+    }
     if (card === 'knight') {
       actions.selectTarget({ kind: 'hex', index: null, commandType: 'dev.playKnight', labelId: 'devCard.knight' });
       return;
@@ -166,7 +174,7 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
       <span className="development-card__pip"><GameIcon name={CARD_ICONS[card] ?? 'book'} size={15} /></span>
       {isNew && <span className="development-card__tag" aria-hidden="true">{t('table.newCardTag')}</span>}
       <strong className="development-card__name">{t(`devCard.${card}`)}</strong>
-      <span className="development-card__effect">{t(`devCard.effect.${card}`)}</span>
+      <span className="development-card__effect">{card === 'knight' && warship ? t('sf.warship.effect') : t(`devCard.effect.${card}`)}</span>
       <span className="development-card__state visually-hidden">{isNew ? t('play.newDevCards') : t('table.heldCards')}</span>
       {canDrag && <span id={hintId} className="visually-hidden">{t('devCard.dragHint')}</span>}
     </>;
@@ -179,9 +187,12 @@ export function DevCardPanel({ controller, embedded = false, handStyle, handExpa
         onClick={() => setInspected((current) => current === id ? null : id)}
         {...(canDrag ? dragHandlers(id, card) : {})}>{face}</button> : face}
       {!isNew && PLAYABLE.has(card) && <button type="button" className="button development-card__play"
-        data-testid={`play-${card}-${index}`} disabled={!playable || !usable(card)} onClick={() => play(card)}>
-        {t('play.playCard', { card: t(`devCard.${card}`) })}
+        data-testid={`play-${card}-${index}`} disabled={!playable || !usable(card)} onClick={() => play(card)}
+        title={card === 'knight' && warshipBlocked ? t('sf.warship.noTarget') : undefined}
+        aria-describedby={card === 'knight' && warshipBlocked ? `warship-hint-${index}` : undefined}>
+        {card === 'knight' && warship ? t('sf.warship.play') : t('play.playCard', { card: t(`devCard.${card}`) })}
       </button>}
+      {!isNew && card === 'knight' && warshipBlocked && <span id={`warship-hint-${index}`} className="development-card__note" data-testid="warship-blocked">{t('sf.warship.noTarget')}</span>}
     </li>;
   };
 
