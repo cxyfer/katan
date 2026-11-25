@@ -18,7 +18,7 @@
  */
 
 import { playerById, topologyOf, totalCards } from '../../analysis.ts';
-import { addResource, playerStats } from '../../stats.ts';
+import { addResource, playerStats, supplyPickStats } from '../../stats.ts';
 import { verticesOfHex } from '../../topology.ts';
 import { RESOURCES, type CommandOutcome, type GameState, type ModulePending, type Resource } from '../../types.ts';
 import type { ModuleCommand, ModuleContext, ModuleViewContext, PublicModulePendingView, RollResult } from '../types.ts';
@@ -120,6 +120,8 @@ export function cruise(state: GameState, roll: RollResult, ctx: ModuleContext): 
         const amount = lost[resource] ?? 0;
         state.bank[resource] += amount;
         count += amount;
+        // 統計：被海盜奪走的牌併入「棄牌」（支出欄）。
+        addResource(playerStats(state, playerId).discarded, resource, amount);
       }
       kit.emit(state, 'pirate.attacked', { ...base, result: 'lost', cities, count, owed }, { to: [playerId], params: { resources: lost } });
     } else if (die < warships) {
@@ -163,6 +165,7 @@ export function giftResource(state: GameState, actorId: string, command: ModuleC
   if (state.bank[resource] < 1) return kit.fail('E_BANK_EMPTY', { resource });
   state.bank[resource] -= 1;
   playerById(state, actorId)!.resources[resource] += 1;
+  addResource(supplyPickStats(state, actorId), resource);
   gift.responders.shift();
   kit.emit(state, 'pirate.gifted', { playerId: actorId, resource });
   kit.completePending(state, ctx.rng);
@@ -208,11 +211,11 @@ export function sevenSteal(state: GameState, actorId: string, command: ModuleCom
   return kit.accept(state);
 }
 
-/** 新 frame 的公開形式：攻擊的戰力、7 的對象（手牌張數本來就公開）。 */
+/** 新 frame 的公開形式：攻擊的戰力、7 的對象（手牌張數本來就公開）。`fromRoll` 表示這個待答由這次擲骰造成，客戶端在骰子演出完成前不先揭曉結果。 */
 export function projectPirateFrame(state: GameState, frame: ModulePending, _viewerId: string, _ctx: ModuleViewContext): PublicModulePendingView {
   const base = { kind: frame.kind, module: frame.module, responders: frame.responders.slice() };
-  if (frame.kind === PIRATE_GIFT_FRAME) return { ...base, data: { strength: (frame.data as { strength: number }).strength } };
-  if (frame.kind === SEVEN_STEAL_FRAME) return { ...base, data: { victims: frame.responders[0] ? sevenVictims(state, frame.responders[0]) : [] } };
+  if (frame.kind === PIRATE_GIFT_FRAME) return { ...base, data: { strength: (frame.data as { strength: number }).strength, fromRoll: true } };
+  if (frame.kind === SEVEN_STEAL_FRAME) return { ...base, data: { victims: frame.responders[0] ? sevenVictims(state, frame.responders[0]) : [], fromRoll: true } };
   return { ...base, data: {} };
 }
 
