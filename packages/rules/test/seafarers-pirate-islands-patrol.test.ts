@@ -562,7 +562,8 @@ describe('other scenarios are unaffected (D7)', () => {
   it('其他 Seafarers 劇本的海盜不會自己走，7 照舊移強盜', () => {
     const state = emptySeafarersGame(3, 0, 'preroll', 'sf-forgotten-tribe-2025');
     const pirate = state.board.pirate;
-    const rolled = act(state, 'p1', { type: 'turn.roll' }, scriptedRng([2, 3]));
+    const rolled = act(state, 'p1', { type: 'turn.roll' }, scriptedRng([1, 3]));
+    expect(rolled.state.turn.dice).toEqual([2, 4]);
     expect(rolled.state.board.pirate).toBe(pirate);
     expect(rolled.events.map((event) => event.type)).not.toContain('pirate.cruised');
     const seven = act(emptySeafarersGame(3, 0, 'preroll', 'sf-forgotten-tribe-2025'), 'p1', { type: 'turn.roll' }, scriptedRng([3, 2]));

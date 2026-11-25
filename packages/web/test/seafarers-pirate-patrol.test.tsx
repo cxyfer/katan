@@ -10,13 +10,14 @@ import { buildGeometry } from '../src/board/geometry.ts';
 import { SEA_LEVEL } from '../src/board/sea.ts';
 import { seafarersHints, seafarersView } from '../src/board/seafarers.ts';
 import { createPositionRingModel, createRouteArrowModel, routeArrows } from '../src/board/three/diorama-pirate-islands.ts';
+import { PlayersPanel } from '../src/components/PlayersPanel.tsx';
 import { SeafarersPrompt } from '../src/components/SeafarersPrompt.tsx';
 import { SvgBoard } from '../src/components/SvgBoard.tsx';
 import { LocaleProvider } from '../src/i18n/context.tsx';
 import { translateEvent } from '../src/i18n/events.ts';
 import { t as translate } from '../src/i18n/index.ts';
 import { cueForEvent } from '../src/audio/cues.ts';
-import { EMPTY_SELECTION, initialTableState, type TableState } from '../src/state/table.ts';
+import { EMPTY_SELECTION, initialTableState, tableReducer, type TableState } from '../src/state/table.ts';
 import type { TableController } from '../src/state/useTable.ts';
 import { makeEvent, makeSnapshot } from '../src/test/fixtures.ts';
 
@@ -249,11 +250,55 @@ describe('the pirate log lines and sounds', () => {
     }
   });
 
+  it('plays no theft cue when the pirate took nothing, and no supply cue when the supply was empty', () => {
+    expect(cueForEvent(makeEvent(1, 'pirate.attacked', { playerId: 'p1', result: 'lost', count: 0 }), 'p1')).toBeNull();
+    expect(cueForEvent(makeEvent(2, 'pirate.attacked', { playerId: 'p2', result: 'lost', count: 0 }), 'p1')).toBeNull();
+    expect(cueForEvent(makeEvent(3, 'pirate.gifted', { playerId: 'p1', resource: null }), 'p1')).toBeNull();
+    expect(cueForEvent(makeEvent(4, 'pirate.gifted', { playerId: 'p1', resource: 'ore' }), 'p1')).toBe('gold.pick');
+  });
+
   it('plays a sea cue for the cruise and a theft cue only for a lost attack', () => {
     expect(cueForEvent(makeEvent(1, 'pirate.cruised', { to: 1 }), 'p2')).toBe('pirate.move');
     expect(cueForEvent(makeEvent(2, 'pirate.attacked', { playerId: 'p1', result: 'lost' }), 'p1')).toBe('robber.stolenFromYou');
     expect(cueForEvent(makeEvent(3, 'pirate.attacked', { playerId: 'p2', result: 'lost' }), 'p1')).toBe('robber.steal');
     expect(cueForEvent(makeEvent(4, 'pirate.attacked', { playerId: 'p2', result: 'tie' }), 'p1')).toBeNull();
     expect(cueForEvent(makeEvent(5, 'seven.stole', { playerId: 'p1', victim: 'p2' }), 'p2')).toBe('robber.stolenFromYou');
+  });
+});
+
+describe('the player panel does not reveal where the pirate landed during the dice presentation', () => {
+  /** p1 的船線端點被圍死、末端船可以移動（與 S7a 的 boxedIn 相同的做法）。 */
+  function boxedIn(): GameState {
+    const state = pirateState();
+    const slot = (state.moduleState as unknown as { seafarers: { pirateIslands: { lines: Record<string, { start: number; edges: number[] }> } } }).seafarers.pirateIslands;
+    const geometry = buildGeometry('sf-pirate-islands', 100, state.board.layout.terrain);
+    const line = slot.lines.p1!;
+    const end = geometry.topology.edges[line.edges[0]!]!.vertices.find((vertex) => vertex !== line.start)!;
+    for (const edge of geometry.topology.vertices[end]!.edges) if (!state.board.roads[edge]) state.board.roads[edge] = { player: 'p4', ship: true };
+    return state;
+  }
+
+  it('keeps the pre-roll hint text for a 2 + 6 roll and updates once the dice settle', () => {
+    const beforeView = viewOf(boxedIn());
+    beforeView.seq = 12;
+    beforeView.events = [makeEvent(12, 'turn.started')];
+    const afterView = viewOf(boxedIn());
+    afterView.seq = 14;
+    afterView.events = [makeEvent(12, 'turn.started'), makeEvent(13, 'turn.rolled', { dice: [2, 6], total: 8 }), makeEvent(14, 'pirate.cruised', { from: 1, to: 3, steps: 2, dice: [2, 6] })];
+    // 擲骰後海盜落在末端船旁：提示改成「等海盜離開」。
+    const hint = (afterView.hints!.modules!.seafarers as { pirateLine: { backtrack: boolean; backtrackBlocked: string | null } }).pirateLine;
+    hint.backtrack = false;
+    hint.backtrackBlocked = 'pirate';
+    let state = tableWith(beforeView);
+    state = tableReducer(state, { type: 'events', events: afterView.events });
+    state = tableReducer(state, { type: 'snapshot', snapshot: makeSnapshot(afterView, 14) });
+    expect(state.dicePresenting).toBe(true);
+    const panel = (table: TableState) => <LocaleProvider locale="en"><PlayersPanel controller={{ state: table, dispatch: vi.fn(), actions: {} } as unknown as TableController} /></LocaleProvider>;
+    const { rerender } = render(panel(state));
+    expect(screen.getByTestId('line-stuck').textContent).toBe(translate('en', 'sf.pirate.stuck'));
+    state = tableReducer(state, { type: 'dice-presenting', value: false });
+    rerender(panel(state));
+    expect(screen.getByTestId('line-stuck').textContent).toBe(translate('en', 'sf.pirate.stuckPirate'));
+    cleanup();
   });
 });

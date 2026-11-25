@@ -221,7 +221,8 @@ describe('seafarers module exports (bot plan RX)', () => {
       const state = emptySeafarersGame(players, 0, 'preroll', profileId);
       const pirate = state.board.pirate;
       // 非 7：海盜不動、沒有巡弋或攻擊事件、沒有 frame、log 沒有新的事件種類。
-      const normal = act(state, 'p1', { type: 'turn.roll' }, scriptedRng([2, 3]));
+      const normal = act(state, 'p1', { type: 'turn.roll' }, scriptedRng([1, 3])); // 2 + 4 = 6（真正的非 7）
+      expect(normal.state.turn.dice).toEqual([2, 4]);
       expect(normal.state.board.pirate, profileId).toBe(pirate);
       const kinds = normal.state.log.map((event) => event.type);
       for (const type of ['pirate.cruised', 'pirate.attacked', 'pirate.gifted', 'seven.stole', 'seven.stealSkipped']) expect(kinds, `${profileId} ${type}`).not.toContain(type);
