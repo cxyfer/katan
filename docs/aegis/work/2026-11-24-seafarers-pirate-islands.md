@@ -407,4 +407,4 @@ Test numbers after round 2: rules whole suite 75 files, 1,344 tests; `seafarers-
 | I46 | Sounds | `pirate.attacked` with `count: 0` (nothing was taken) plays no theft cue, and `pirate.gifted` with `resource: null` (empty supply) no pick cue; one test each. |
 | I47 | Documentation | I28 now agrees with I41 (pirate losses are added to `discarded`). |
 
-Test numbers after round 3: see the round's report.
+Test numbers after round 3: rules `seafarers-exports` 18, `seafarers-pirate-islands-patrol` 34, `seafarers-pirate-islands` 60, `message-ids` 5; web `seafarers-pirate-patrol` 13, `dice-hold` 23, `pirate-roll-presentation` 3, `audio-cues` 16, `i18n` 24, `game-stats` 13, `scoreboard-hover` and all 13 `seafarers*` files 172; `pnpm typecheck` passes.
