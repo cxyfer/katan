@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { BASE_AWARD_RULES, isLandEdge, isLandHex, isSeaEdge, scoreOf, topologyOf } from '../src/analysis.ts';
+import { BASE_AWARD_RULES, isLandEdge, isLandHex, isSeaEdge, neighborsOfVertex, scoreOf, topologyOf } from '../src/analysis.ts';
 import { actionHints, createGame, legalBuildingVertices, legalRobberHexes } from '../src/engine.ts';
 import { productionForRoll } from '../src/analysis.ts';
 import { seafarersModule } from '../src/modules/seafarers/index.ts';
@@ -1205,21 +1205,78 @@ describe('Pirate Islands round 5 review fixes', () => {
     expect(lineShip(built, 'p1', 24).kind).toBe('free');
   });
 
+  it('重新開始只在對這位玩家嚴格更好時發生：反方向或別處的沿岸船是自由船，船線不變；真正較近的才換（agy 劫持情境）', () => {
+    const state = started(4);
+    const preset = JSON.parse(JSON.stringify(slot(state).lines.p1)) as unknown;
+    // 1. 預置村落往反方向（頂點 19 的另一條沿岸邊 47）：自由船。
+    expect(lineShip(state, 'p1', 47)).toEqual({ kind: 'free' });
+    const hijack = build(state, 'p1', 47);
+    expect(slot(hijack).lines.p1).toEqual(preset);
+    // 2. 東海岸遠處的另一個村落旁的船（頂點 21／邊 24）：自由船，船線不變。
+    const far = started(4);
+    settle(far, 'p1', 21);
+    expect(lineShip(far, 'p1', 24)).toEqual({ kind: 'free' });
+    expect(slot(build(far, 'p1', 24)).lines.p1).toEqual(preset);
+    // 3. 真正較近的（頂點 17／邊 19，距離比目前端點近）才重新開始。
+    const closer = started(4);
+    settle(closer, 'p1', 17);
+    const step = lineShip(closer, 'p1', 19);
+    expect(step).toMatchObject({ kind: 'line', restart: true });
+    const fresh = lineContext(closer, 'p1', undefined, { start: null, edges: [] })!;
+    expect(fresh.dist[(step as { to: number }).to]!).toBeLessThan(lineContext(closer, 'p1')!.dist[lineContext(closer, 'p1')!.end!]!);
+    expect(slot(build(closer, 'p1', 19)).lines.p1).toEqual({ start: 17, edges: [19] });
+    // 端點已經不通：任何最短第一步都可以重新開始。
+    const boxed = started(4);
+    wall(boxed);
+    settle(boxed, 'p1', 21);
+    expect(lineContext(boxed, 'p1')!.dist[lineContext(boxed, 'p1')!.end!]).toBe(-1);
+    expect(restartEdges(boxed, 'p1').length).toBeGreaterThan(0);
+  });
+
   it('不得在別人船線上的頂點蓋村落（建造與設置、hints、訊息）', () => {
-    const state = sail(started(4), 'p1', 'fortress');
-    const line = slot(state).lines.p1!;
+    const state = started(4);
     const topo = topologyOf(state);
+    // 船線經過東島海岸上的一個頂點 V（測試用的船線：a —e1— V —e2— b，兩艘船直接放）。
+    const landVertex = legalBuildingVertices(state, 'p3', { requireConnection: false, setup: true }).find((vertex) => {
+      const edges = topo.vertices[vertex]!.edges.filter((edge) => !state.board.roads[edge] && isSeaEdge(state, edge));
+      return edges.length >= 2 && neighborsOfVertex(topo, vertex).every((near) => !state.board.buildings[near]);
+    });
+    expect(landVertex, 'a main-island coastal vertex with two sea edges').toBeDefined();
+    const [e1, e2] = topo.vertices[landVertex!]!.edges.filter((edge) => !state.board.roads[edge] && isSeaEdge(state, edge));
+    ship(state, 'p1', e1!);
+    ship(state, 'p1', e2!);
+    const a = topo.edges[e1!]!.vertices.find((vertex) => vertex !== landVertex)!;
+    slot(state).lines.p1 = { start: a, edges: [e1!, e2!] };
+    const line = slot(state).lines.p1!;
     const vertices = lineVertices(state, line);
-    const landVertex = vertices.find((vertex, index) => index > 0 && index < vertices.length - 1 && topo.vertices[vertex]!.hexes.some((hex) => isLandHex(state, hex)) && !state.board.buildings[vertex]);
-    expect(landVertex, 'an interior land vertex of the line').toBeDefined();
+    expect(vertices[1]).toBe(landVertex);
     expect(villageWalls(state, 'p3', landVertex!)).toBe(true);
     // 自己的船線上不受限制（它是自己的建築位置）。
     expect(villageWalls(state, 'p1', landVertex!)).toBe(false);
     const ctx = { profile: getProfile(PROFILE)! };
     expect(seafarersModule.allowBuilding!(state, 'p3', landVertex!, { setup: false }, ctx)).toBe(false);
     expect(seafarersModule.allowBuilding!(state, 'p3', landVertex!, { setup: true }, ctx)).toBe(false);
-    expect(seafarersModule.vetoCommand!(state, 'p3', { type: 'build.settlement', vertex: landVertex! }, ctx)).toMatchObject({ ok: false, error: { code: 'E_LINE_WALLED' } });
-    expect(seafarersModule.vetoCommand!(state, 'p3', { type: 'setup.placeBuilding', vertex: landVertex! }, ctx)).toMatchObject({ ok: false, error: { code: 'E_LINE_WALLED' } });
+    // p3 在這個頂點旁有自己的船、輪到它、有資源：其他規則都過了，只差這一條，才回 E_LINE_WALLED。
+    const adjacent = topo.vertices[landVertex!]!.edges.find((edge) => !state.board.roads[edge])!;
+    ship(state, 'p3', adjacent);
+    forceTurn(state, 2, 'action');
+    setHand(state, 'p3', { lumber: 1, brick: 1, wool: 1, grain: 1 });
+    expectRejected(state, 'p3', { type: 'build.settlement', vertex: landVertex! }, 'E_LINE_WALLED');
+    // 錯誤碼的優先順序：別的原因照原本的碼（不是 E_LINE_WALLED）。
+    expectRejected(state, 'p1', { type: 'build.settlement', vertex: landVertex! }, 'E_NOT_YOUR_TURN');
+    const preroll = clone(state);
+    forceTurn(preroll, 2, 'preroll');
+    expectRejected(preroll, 'p3', { type: 'build.settlement', vertex: landVertex! }, 'E_WRONG_PHASE');
+    const poor = clone(state);
+    setHand(poor, 'p3', {});
+    // 資源不夠：不算「只差這一條」，回引擎原本的碼（引擎先判位置、再判資源，位置被這條規則擋下時是 E_ILLEGAL_TARGET）。
+    expectRejected(poor, 'p3', { type: 'build.settlement', vertex: landVertex! }, 'E_ILLEGAL_TARGET');
+    // 被占用的頂點（p1 自己的預置村落在船線起點）與外海頂點：一般的非法目標。
+    expectRejected(state, 'p3', { type: 'build.settlement', vertex: vertices[0]! }, 'E_ILLEGAL_TARGET');
+    const offshore = vertices.find((vertex) => !topo.vertices[vertex]!.hexes.some((hex) => isLandHex(state, hex)));
+    if (offshore !== undefined) expectRejected(state, 'p3', { type: 'build.settlement', vertex: offshore }, 'E_ILLEGAL_TARGET');
+    // 設置：不是設置階段時 veto 不回 E_LINE_WALLED。
+    expect(seafarersModule.vetoCommand!(state, 'p3', { type: 'setup.placeBuilding', vertex: landVertex! }, ctx)).toBeUndefined();
     expect(legalBuildingVertices(state, 'p3', { requireConnection: false })).not.toContain(landVertex!);
     // 其他劇本沒有這條限制。
     const cloth = emptySeafarersGame(3, 0, 'action', 'sf-cloth-for-catan-2025');
