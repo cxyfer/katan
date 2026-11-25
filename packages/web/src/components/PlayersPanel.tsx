@@ -31,6 +31,17 @@ function ScoreMark({ icon, label, value, awarded = false, testId, detail }: {
   </span>;
 }
 
+/** 被圍住的船線：此刻能移就說可以移；不能移就依原因說明（時機、海盜、遠端接著自己的船、沒有合法落點）。 */
+function stuckMessage(line: { backtrack: boolean; backtrackBlocked: string | null }): string {
+  if (line.backtrack) return 'sf.pirate.stuck';
+  switch (line.backtrackBlocked) {
+    case 'pirate': return 'sf.pirate.stuckPirate';
+    case 'attached': return 'sf.pirate.stuckAttached';
+    case 'noTarget': return 'sf.pirate.stuckNoTarget';
+    default: return 'sf.pirate.stuckWait';
+  }
+}
+
 function TurnFlag({ floating }: { floating: boolean }) {
   const t = useT();
   const anchorRef = useRef<HTMLSpanElement>(null);
@@ -378,7 +389,7 @@ export function PlayersPanel({ controller, onExpand, collapseRequested = false, 
       })()}
       {seafarersHints(view)?.pirateLine?.stuck && <p className="players__cloth" data-testid="line-stuck" data-backtrack={seafarersHints(view)!.pirateLine!.backtrack ? 'true' : 'false'} hidden={!expanded}>
         <GameIcon name="ship" size={14} />
-        <span>{t(seafarersHints(view)!.pirateLine!.backtrack ? 'sf.pirate.stuck' : 'sf.pirate.stuckWait')}</span>
+        <span>{t(stuckMessage(seafarersHints(view)!.pirateLine!))}</span>
       </p>}
       <p className="players__obligation" data-testid="turn-state" data-mine={action?.mine ? 'true' : 'false'}
         title={action ? t(action.messageId, action.params) : t('app.loading')}>

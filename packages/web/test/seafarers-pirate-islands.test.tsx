@@ -196,6 +196,19 @@ describe('Pirate Islands boxed-in line', () => {
       expect(screen.getByTestId('line-stuck').getAttribute('data-backtrack')).toBe('false');
       cleanup();
     }
+    // 其他原因各有自己的文字：海盜在旁邊、遠端接著自己的船、沒有合法落點（不是「等你的行動階段」）。
+    for (const [reason, key] of [['pirate', 'sf.pirate.stuckPirate'], ['attached', 'sf.pirate.stuckAttached'], ['noTarget', 'sf.pirate.stuckNoTarget']] as const) {
+      const view = viewOf(boxedIn(), 'p1');
+      const hint = view.hints!.modules!.seafarers as { pirateLine: { backtrack: boolean; backtrackBlocked: string | null } };
+      hint.pirateLine.backtrack = false;
+      hint.pirateLine.backtrackBlocked = reason;
+      for (const locale of ['en', 'zh-Hant'] as const) {
+        render(<LocaleProvider locale={locale}><PlayersPanel controller={controllerFor(view, locale)} /></LocaleProvider>);
+        expect(screen.getByTestId('line-stuck').textContent).toBe(translate(locale, key));
+        expect(translate(locale, key)).not.toBe(translate(locale, 'sf.pirate.stuckWait'));
+        cleanup();
+      }
+    }
     expect(translate('en', 'sf.pirate.stuck')).toContain('boxed in');
     expect(translate('zh-Hant', 'sf.pirate.stuck')).toContain('被圍住');
     render(<LocaleProvider locale="en"><PlayersPanel controller={controllerFor(viewOf(pirateState(4), 'p1'), 'en')} /></LocaleProvider>);
