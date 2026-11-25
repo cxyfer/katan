@@ -317,6 +317,54 @@ describe('pirate attacks', () => {
   });
 });
 
+/** 圓片沒有被拿掉的版圖：4 號圓片的田野（東島）在紅方預置村落旁，擲出 4 時紅方產 1 張小麥。 */
+const realBoard = () => emptySeafarersGame(4, 0, 'preroll', PROFILE);
+
+describe('the attack comes before production, with real production (2 + 2)', () => {
+  it('an empty-handed red has nothing to lose, then produces 1 grain: the hand ends with 1 grain, not an early grant', () => {
+    const state = realBoard();
+    pirateAt(state, 7);
+    setHand(state, 'p1', {});
+    const rolled = roll(state, 'p1', [2, 2]);
+    const order = rolled.events.map((event) => event.type);
+    expect(order.indexOf('pirate.attacked')).toBeLessThan(order.indexOf('production.resolved'));
+    expect(rolled.events.find((event) => event.type === 'pirate.attacked')!.params).toMatchObject({ result: 'lost', count: 0, owed: 1 });
+    // 若資源在攻擊前就發出，紅方會先有 1 張小麥而被棄掉：最後會是 0 張。
+    expect(rolled.state.players[0]!.resources.grain).toBe(1);
+    expect(total(rolled.state, 'p1')).toBe(1);
+  });
+
+  it('red holding 1 grain loses it first, then produces 1 grain: statistics match the hand', () => {
+    const state = realBoard();
+    pirateAt(state, 7);
+    setHand(state, 'p1', { grain: 1 });
+    const rolled = roll(state, 'p1', [2, 2], [0]);
+    expect(rolled.state.players[0]!.resources.grain).toBe(1);
+    const stats = rolled.state.stats!.players.p1!;
+    expect(stats.discarded.grain).toBe(1);
+    expect(stats.produced.grain).toBe(1);
+    // 手牌 = 起始 1 + 生產 1 - 被海盜奪走 1
+    expect(1 + stats.produced.grain - stats.discarded.grain).toBe(total(rolled.state, 'p1'));
+  });
+
+  it('a card taken from the supply for beating the pirate counts as income, and the 7’s steal as stolen/robbed', () => {
+    const state = realBoard();
+    pirateAt(state, 7);
+    pirateIslandsView(state)!.warships.p1 = [1, 2, 3];
+    setHand(state, 'p1', {});
+    const rolled = roll(state, 'p1', [2, 2]);
+    const picked = act(rolled.state, 'p1', cmd({ type: 'pirate.gift', resource: 'ore' })).state;
+    const stats = picked.stats!.players.p1!;
+    expect(stats.supplyPicks).toMatchObject({ ore: 1 });
+    expect(stats.produced.grain).toBe(1);
+    expect(picked.players[0]!.resources).toMatchObject({ ore: 1, grain: 1 });
+    expect(total(picked, 'p1')).toBe(stats.supplyPicks!.ore + stats.produced.grain);
+    // 其他劇本沒有這個欄位
+    const other = emptySeafarersGame(3, 0, 'preroll', 'sf-forgotten-tribe-2025');
+    expect(act(other, 'p1', { type: 'turn.roll' }, scriptedRng([1, 1])).state.stats?.players.p1?.supplyPicks).toBeUndefined();
+  });
+});
+
 describe('passing a hex does not attack (SF25: only where the pirate ends)', () => {
   it('4 + 6 from route[7] passes P1’s village at route[9] and stops at route[11], which touches no building', () => {
     const state = ready();

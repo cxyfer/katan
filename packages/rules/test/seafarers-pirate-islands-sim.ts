@@ -243,7 +243,9 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
     }
     attacks += state.log.filter((event) => event.seq > seqBefore && event.type === 'pirate.attacked').length;
     // 海盜的暫時阻擋：這回合船線的延伸只被海盜擋住（拿掉海盜才有合法延伸）。
-    if (lineContext(state, actor.id)!.next !== 'done') {
+    // 已經用完 15 艘船的玩家沒有棋子可延伸，不算在分母（否則海盜單獨造成的延誤被低估）。
+    const shipsLeft = 15 - state.board.roads.filter((road) => road?.ship && road.player === actor.id).length;
+    if (lineContext(state, actor.id)!.next !== 'done' && shipsLeft > 0) {
       const saved = state.board.pirate;
       enrich(state, actor.id);
       const withPirate = lineCandidates(state, actor.id).length;

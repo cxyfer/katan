@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { createGameStats, type GameStats, type GameView } from '@katan/rules';
 import { GameStatsPanel, buildStatsRows } from '../src/components/GameStats.tsx';
@@ -101,6 +101,20 @@ describe('post-game statistics', () => {
     expect(screen.getByTestId('stats-cell-income-explored-p1').textContent).toContain('3');
     expect(screen.getByTestId('stats-cell-income-produced-p1').textContent).toContain('6');
     expect(screen.getByTestId('stats-cell-income-incomeTotal-p1').textContent).toContain('9');
+  });
+
+  it('counts the supply pick for beating the pirate in income, in its own column only when someone took one', () => {
+    renderPanel();
+    fireEvent.click(screen.getByTestId('stats-tab-economy'));
+    expect(screen.queryByTestId('stats-cell-income-supplyPicks-p1')).toBeNull();
+    cleanup();
+    renderPanel('en', true, (view) => {
+      view.stats!.players['p1']!.supplyPicks = { lumber: 0, brick: 0, wool: 0, grain: 1, ore: 1 };
+    });
+    fireEvent.click(screen.getByTestId('stats-tab-economy'));
+    expect(screen.getByTestId('stats-cell-income-supplyPicks-p1').textContent).toContain('2');
+    expect(screen.getByTestId('stats-cell-income-produced-p1').textContent).toContain('6');
+    expect(screen.getByTestId('stats-cell-income-incomeTotal-p1').textContent).toContain('8');
   });
 
   it('lists drawn development cards by type', () => {
