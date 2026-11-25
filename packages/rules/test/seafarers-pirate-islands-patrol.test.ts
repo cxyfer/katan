@@ -317,6 +317,58 @@ describe('pirate attacks', () => {
   });
 });
 
+describe('passing a hex does not attack (SF25: only where the pirate ends)', () => {
+  it('4 + 6 from route[7] passes P1’s village at route[9] and stops at route[11], which touches no building', () => {
+    const state = ready();
+    pirateAt(state, 7);
+    expect(attackedPlayers(state, route(state)[9]!, 'p1')).toEqual(['p1']);
+    expect(attackedPlayers(state, route(state)[11]!, 'p1')).toEqual([]);
+    setHand(state, 'p1', { lumber: 2, brick: 1 });
+    const rolled = roll(state, 'p1', [4, 6]);
+    expect(rolled.state.board.pirate).toBe(route(state)[11]);
+    expect(rolled.events.map((event) => event.type)).not.toContain('pirate.attacked');
+    expect(rolled.state.players[0]!.resources).toMatchObject({ lumber: 2, brick: 1 });
+    expect(rolled.state.pending).toBeNull();
+  });
+});
+
+describe('restart with an answer pending (spec §11.3)', () => {
+  const restore = (state: GameState): GameState => JSON.parse(JSON.stringify(state)) as GameState;
+
+  it('2 + 5: the gift frame survives a restart, the queued continuation runs once, and the 7’s steal survives another', () => {
+    const state = ready();
+    pirateAt(state, 7);
+    pirateIslandsView(state)!.warships.p1 = [1, 2, 3];
+    setHand(state, 'p1', {});
+    setHand(state, 'p2', { grain: 2 });
+    const rolled = roll(state, 'p1', [2, 5]).state;
+    expect(rolled.pending).toMatchObject({ kind: 'seafarers.pirateGift', responders: ['p1'] });
+    expect(rolled.pendingQueue?.map((frame) => frame.kind)).toEqual(['seafarers.pirateResume']);
+    // 重啟：只剩序列化的狀態。
+    const afterRestart = restore(rolled);
+    expectRejected(afterRestart, 'p2', cmd({ type: 'pirate.gift', resource: 'ore' }), 'E_NOT_ACTOR');
+    const picked = act(afterRestart, 'p1', cmd({ type: 'pirate.gift', resource: 'ore' }));
+    // 續接只跑一次：剛好一個 7 的偷牌 frame，沒有重複的移動、攻擊或棄牌。
+    expect(picked.state.pending).toMatchObject({ kind: 'seafarers.sevenSteal', responders: ['p1'] });
+    expect(picked.state.pendingQueue).toBeUndefined();
+    const log = types(picked.state);
+    expect(log.filter((type) => type === 'pirate.cruised')).toHaveLength(1);
+    expect(log.filter((type) => type === 'pirate.attacked')).toHaveLength(1);
+    expect(log.filter((type) => type === 'pirate.gifted')).toHaveLength(1);
+    expect(picked.state.board.pirate).toBe(route(state)[9]);
+    // 偷牌 frame 再重啟一次，然後偷 p2。
+    const again = restore(picked.state);
+    const stolen = act(again, 'p1', cmd({ type: 'seven.steal', victim: 'p2' }), scriptedRng([0]));
+    expect(stolen.state.pending).toBeNull();
+    expect(stolen.state.players[0]!.resources).toMatchObject({ ore: 1, grain: 1 });
+    expect(stolen.state.players[1]!.resources.grain).toBe(1);
+    expect(stolen.state.turn.phase).toBe('action');
+    // 沒有重啟的路徑得到相同的結果。
+    const direct = act(act(rolled, 'p1', cmd({ type: 'pirate.gift', resource: 'ore' })).state, 'p1', cmd({ type: 'seven.steal', victim: 'p2' }), scriptedRng([0]));
+    expect(JSON.stringify(direct.state)).toBe(JSON.stringify(stolen.state));
+  });
+});
+
 describe('resolving a 7', () => {
   const bigHands = (state: GameState) => {
     setHand(state, 'p2', { lumber: 3, brick: 3, wool: 2, grain: 2 });

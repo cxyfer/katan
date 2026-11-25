@@ -19,7 +19,7 @@ import {
   type SeafarersHints,
   type SeafarersView,
 } from '../src/index.ts';
-import { requireProfile } from '../src/profiles.ts';
+import { getProfile, requireProfile } from '../src/profiles.ts';
 import { citiesKnightsModule } from '../src/modules/citiesKnights/index.ts';
 import { explorersPiratesModule } from '../src/modules/explorersPirates/index.ts';
 import { projectSeafarers, seafarersHints, seafarersModule } from '../src/modules/seafarers/index.ts';
@@ -27,8 +27,8 @@ import { seafarersState } from '../src/modules/seafarers/state.ts';
 import { seafarersCitiesKnightsModule } from '../src/modules/seafarersCitiesKnights/index.ts';
 import { tradersBarbariansModule } from '../src/modules/tradersBarbarians/index.ts';
 import type { GameState } from '../src/types.ts';
-import { applyCommand } from '../src/engine.ts';
-import { act, expectRejected, scriptedRng } from './helpers.ts';
+import { applyCommand, moduleCommandTypesOf } from '../src/engine.ts';
+import { act, expectRejected, forceTurn, newGame, scriptedRng } from './helpers.ts';
 import { corner, emptySeafarersGame, seafarersGame, settle, ship, side } from './seafarers-helpers.ts';
 
 type Claim = SeafarersView['islandClaims'][number];
@@ -239,6 +239,35 @@ describe('seafarers module exports (bot plan RX)', () => {
       busy.pending = { kind: 'yearOfPlenty', actor: 'p1', remaining: 2 };
       expectRejected(busy, 'p1', { type: 'pirate.gift', resource: 'ore' } as never, 'E_PENDING_EFFECT');
       expectRejected(busy, 'p1', { type: 'seven.steal', victim: null } as never, 'E_PENDING_EFFECT');
+    }
+  });
+
+  // D7（S7b，審查 P2）：sf-2025.2 的兩個 New Shores profile 不列出、也不放行海盜巢穴的兩個指令；
+  // 回應與沒有 Seafarers 模組的 base profile 完全一致（含待答狀態時的 E_PENDING_EFFECT 參數）。
+  it('the sf-2025.2 profiles do not register pirate.gift or seven.steal and answer them exactly like a base game', () => {
+    const base = (pending: boolean) => {
+      const { state } = newGame({ players: 4 });
+      forceTurn(state, 0, 'action');
+      if (pending) state.pending = { kind: 'yearOfPlenty', actor: 'p1', remaining: 2 };
+      return state;
+    };
+    const pirate = emptySeafarersGame(3, 0, 'action', 'sf-pirate-islands-2025');
+    expect(moduleCommandTypesOf(pirate)).toEqual(expect.arrayContaining(['pirate.gift', 'seven.steal']));
+    for (const players of [4, 5] as const) {
+      const sample = emptySeafarersGame(players, 0, 'action');
+      expect(getProfile(sample.profileId)!.ruleVersion).toBe('sf-2025.2');
+      expect(moduleCommandTypesOf(sample)).not.toContain('pirate.gift');
+      expect(moduleCommandTypesOf(sample)).not.toContain('seven.steal');
+      for (const command of [{ type: 'pirate.gift', resource: 'ore' }, { type: 'seven.steal', victim: null }]) {
+        for (const pending of [false, true]) {
+          const sea = emptySeafarersGame(players, 0, 'action');
+          if (pending) sea.pending = { kind: 'yearOfPlenty', actor: 'p1', remaining: 2 };
+          const mine = applyCommand(sea, 'p1', command as never, scriptedRng([]));
+          const reference = applyCommand(base(pending), 'p1', command as never, scriptedRng([]));
+          expect(mine.ok).toBe(false);
+          expect(mine).toEqual(reference);
+        }
+      }
     }
   });
 
