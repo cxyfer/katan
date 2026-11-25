@@ -135,13 +135,49 @@ function landIslands(state: GameState, vertex: number): number[] {
  * 這個村落會不會圍死別人：擋住任何一位玩家通往目標的路，或蓋在別人船線上的頂點（船線被對手村落切斷後再也接不回來；
  * 這是「禁止圍死別人的目標」的延伸，使用者決定 2026-11-24，偏離 SF25）。
  */
+/** 判斷「只差這一條」時暫停牆檢查（呼叫引擎的一般建造檢查，同步執行）。 */
+let wallCheckSuspended = false;
+
 export function villageWalls(state: GameState, playerId: string, vertex: number): boolean {
   const slot = pirateIslandsView(state);
-  if (!slot) return false;
+  if (!slot || wallCheckSuspended) return false;
   for (const [id, line] of Object.entries(slot.lines)) {
     if (id !== playerId && line.edges.length > 0 && lineVertices(state, line).includes(vertex)) return true;
   }
   return wallsAnyone(state, { vertex, owner: playerId });
+}
+
+/**
+ * 村落指令被拒絕**只**因為這條規則（會圍死別人或蓋在別人的船線上）嗎？回合、階段、有沒有待處理、資源、占用與
+ * 一般建造規則都過了才算；其他原因照原本的錯誤碼（比照船的 `refusal`）。
+ */
+export function villageRefusedOnlyByWalls(
+  state: GameState,
+  actorId: string,
+  command: { type: string; vertex?: unknown },
+  rules: NonNullable<ModuleViewContext['rules']>,
+): boolean {
+  const vertex = command.vertex;
+  if (typeof vertex !== 'number' || !villageWalls(state, actorId, vertex)) return false;
+  const player = state.players.find((candidate) => candidate.id === actorId);
+  if (!player) return false;
+  let otherwiseLegal: boolean;
+  wallCheckSuspended = true;
+  try {
+    if (command.type === 'setup.placeBuilding') {
+      const setup = state.turn.setup;
+      if (state.turn.phase !== 'setup' || !setup || setup.stage !== 'building' || state.players[setup.order[setup.index] ?? -1]?.id !== actorId) return false;
+      otherwiseLegal = rules.canPlaceBuilding(state, actorId, vertex, { setup: true });
+    } else {
+      if (state.turn.phase !== 'action' || state.players[state.turn.seat]?.id !== actorId || state.pending) return false;
+      const r = player.resources;
+      if (r.lumber < 1 || r.brick < 1 || r.wool < 1 || r.grain < 1) return false;
+      otherwiseLegal = rules.canPlaceBuilding(state, actorId, vertex);
+    }
+  } finally {
+    wallCheckSuspended = false;
+  }
+  return otherwiseLegal;
 }
 
 /**
@@ -338,10 +374,13 @@ export function lineShip(state: GameState, playerId: string, edge: number, optio
   if (options.moving === undefined && ctx.line.edges.length === 1 && !isLineEdge(state, ctx.line.edges[0]!)) {
     const fresh = lineContext(state, playerId, undefined, { start: null, edges: [] });
     if (fresh && fresh.next !== 'done') {
+      // 只有對這位玩家嚴格更好才重新開始：新船遠端到目標的距離必須小於目前船線端點的距離（端點已經不通時任何最短第一步都行）；
+      // 其他沿岸船（反方向、別的海岸村落旁）一律是自由船，不會換掉船線。
+      const current = ctx.end === null ? -1 : ctx.dist[ctx.end]!;
       for (const [from, to] of candidates) {
         if (options.setupVertex !== undefined ? from !== options.setupVertex : !canStartAt(state, playerId, from)) continue;
         const here = fresh.dist[from]!;
-        if (here > 0 && fresh.dist[to] === here - 1) return { kind: 'line', from, to, restart: true };
+        if (here > 0 && fresh.dist[to] === here - 1 && (current < 0 || fresh.dist[to]! < current)) return { kind: 'line', from, to, restart: true };
       }
     }
   }

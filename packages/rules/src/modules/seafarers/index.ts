@@ -38,7 +38,7 @@ import {
   lockedFortresses,
   pirateLineHints,
   lineBacktrackMovable,
-  villageWalls,
+  villageRefusedOnlyByWalls,
   projectPirateIslands,
   roadAllowed as pirateRoadAllowed,
 } from './pirateIslands.ts';
@@ -276,8 +276,8 @@ export const seafarersModule: RulesModule = {
     if (!isPirateIslands(ctx)) return undefined;
     if (command.type === 'dev.playKnight') return { ok: false, error: { code: 'E_INVALID_COMMAND', params: {} } } as CommandOutcome;
     // 會圍死別人的村落（含蓋在別人船線上）：回報專用的訊息（hints 的 legalSettlements 也據此濾掉）。
-    if ((command.type === 'build.settlement' || command.type === 'setup.placeBuilding') && typeof command.vertex === 'number' && villageWalls(state, actorId, command.vertex)) {
-      return { ok: false, error: { code: 'E_LINE_WALLED', params: { vertex: command.vertex } } } as CommandOutcome;
+    if ((command.type === 'build.settlement' || command.type === 'setup.placeBuilding') && ctx.rules && villageRefusedOnlyByWalls(state, actorId, command, ctx.rules)) {
+      return { ok: false, error: { code: 'E_LINE_WALLED', params: { vertex: command.vertex as number } } } as CommandOutcome;
     }
     return undefined;
   },
