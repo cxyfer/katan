@@ -54,7 +54,7 @@ export function seafarersEventParams(locale: Locale, event: GameEvent, nameOf: N
         outcome = t(locale, 'sf.pirate.outcome.lost', {
           count: num(p.count),
           resourceSuffix: lost ? paren(locale, lost) : '',
-          shortSuffix: num(p.owed) > num(p.count) ? t(locale, 'sf.pirate.outcome.short', { owed: num(p.owed) }) : '',
+          shortSuffix: num(p.owed) > num(p.count) ? t(locale, num(p.owed) === 1 ? 'sf.pirate.outcome.shortOne' : 'sf.pirate.outcome.short', { owed: num(p.owed) }) : '',
         });
       } else outcome = t(locale, result === 'won' ? 'sf.pirate.outcome.won' : 'sf.pirate.outcome.tie');
       return { player, strength, warships, outcome };
