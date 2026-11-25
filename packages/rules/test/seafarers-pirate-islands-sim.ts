@@ -271,6 +271,17 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
         const frame = pending as unknown as { responders: string[] };
         const choices = (actionHints(state, frame.responders[0]!).modules!.seafarers as unknown as { pirateGift: Resource[] }).pirateGift;
         state = attempt(state, frame.responders[0]!, { type: 'pirate.gift', resource: pick(choices, rng)! }, rng)!;
+      } else if (pending.kind === 'seafarers.gold') {
+        // 金礦（完整對局裡玩家也在金礦旁蓋村落或收復金礦旁的堡壘）：依序挑供應堆還有的資源，湊滿應得的張數。
+        const id = (pending as unknown as { responders: string[] }).responders[0]!;
+        const needed = (actionHints(state, id).modules!.seafarers as unknown as { goldRequired: number }).goldRequired;
+        const bank = { ...state.bank };
+        const picks: Resource[] = [];
+        for (let n = 0; picks.length < needed && n < 50; n++) {
+          const resource = RESOURCES[(n + rng.int(RESOURCES.length)) % RESOURCES.length]!;
+          if (bank[resource] > 0) { bank[resource] -= 1; picks.push(resource); }
+        }
+        state = attempt(state, id, { type: 'gold.choose', resources: picks }, rng)!;
       } else throw new Error(`unexpected pending ${pending.kind}`);
     }
     attacks += state.log.filter((event) => event.seq > seqBefore && event.type === 'pirate.attacked').length;
