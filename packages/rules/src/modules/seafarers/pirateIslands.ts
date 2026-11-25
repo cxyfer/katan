@@ -18,7 +18,8 @@
  * - beachhead：船線到達後才可在那裡蓋村落（照常付費）。海盜群島（東島以外的陸地）上只有自己的 beachhead
  *   可以蓋村落，而且要自己的船線（船，不是路）已到達；起始村落只放東島。海盜群島上的路只能從合法取得的建築
  *   （beachhead 村落、收復的堡壘）接出去，未收復的堡壘不能當路的起點（`roadAllowed`）。
- * - 不使用最長道路、最大軍隊與強盜（強盜在盒子裡：`layout.robber = -1`，`robberInactive`）。
+ * - 不使用最長道路、最大軍隊與強盜（強盜在盒子裡：`layout.robber = -1`）。
+ * - S7b：每次擲骰後海盜沿航道前進、攻擊相鄰的玩家（`pirateCruise.ts`），擲出 7 時擲骰者可偷任一位玩家 1 張牌。
  *
  * 狀態只存在 `SeafarersState.pirateIslands`；其他劇本沒有這個欄位，行為與摘要不變（D7）。
  */
@@ -52,8 +53,13 @@ export interface PirateIslandsState {
   fortresses: Fortress[];
   beachheads: Beachhead[];
   lines: Record<string, ShipLine>;
-  /** 海盜航道：14 個海格索引，依順時針（S7b 才會讓海盜沿著走）。 */
+  /** 海盜航道：14 個海格索引，依順時針；海盜（`board.pirate`）沿著它前進（S7b）。 */
   route: number[];
+  /**
+   * 各玩家的戰船（橫放的船所在的邊）。戰力 = 戰船數（`warshipCount`）；S7b 還沒有改裝戰船的指令，
+   * 所以全是空的，S7c 只要往這裡填資料。
+   */
+  warships: Record<string, number[]>;
 }
 
 export const isPirateIslands = (ctx: ModuleViewContext): boolean => ctx.profile.scenario === 'pirate-islands';
@@ -100,6 +106,7 @@ export function initPirateIslands(state: GameState, slot: SeafarersState): void 
     // 預置的船是船線的第一艘：從預置的海岸村落出發。
     lines: presetLines,
     route: routeHexes(topology),
+    warships: Object.fromEntries(state.players.map((player) => [player.id, [] as number[]])),
   };
 }
 
@@ -114,6 +121,11 @@ export function fortressAt(state: GameState, vertex: number): Fortress | undefin
 /** 尚未收復的堡壘（還有 pirate lair）。 */
 export function fortressLocked(state: GameState, vertex: number): boolean {
   return (fortressAt(state, vertex)?.lairs ?? 0) > 0;
+}
+
+/** 玩家的戰力：戰船數（SF25 p. 16 "Your strength is equal to the number of warships you have"）。 */
+export function warshipCount(state: GameState, playerId: string): number {
+  return pirateIslandsView(state)?.warships?.[playerId]?.length ?? 0;
 }
 
 /** 玩家尚未收復的堡壘數（每個讓村落分少 1 分）。 */
@@ -625,6 +637,7 @@ export function projectPirateIslands(state: GameState, slot: PirateIslandsState)
       return [id, { start: line.start, edges: line.edges.slice(), end: ctx.end, next: ctx.next }];
     })),
     route: slot.route.slice(),
+    warships: Object.fromEntries(Object.entries(slot.warships ?? {}).map(([id, edges]) => [id, edges.slice()])),
   };
 }
 

@@ -4,8 +4,9 @@
  * 沒有任何描摹官方美術的部分。
  */
 
-import { BoxGeometry, BufferGeometry, Color, CylinderGeometry, TorusGeometry } from 'three';
+import { BoxGeometry, BufferGeometry, Color, ConeGeometry, CylinderGeometry, TorusGeometry } from 'three';
 import type { BoardGeometry } from '../geometry.ts';
+import { SEA_LEVEL } from '../sea.ts';
 import { ModelBuilder } from './diorama-geometry.ts';
 import type { Vec3 } from './transforms.ts';
 
@@ -58,6 +59,35 @@ export function createRouteMarkModel(): BufferGeometry {
   const model = new ModelBuilder();
   model.add(new CylinderGeometry(0.06, 0.06, 0.008, 12), '#f4e9c6', [0, 0.004, 0]);
   return model.build();
+}
+
+/** 巡弋方向的箭頭：貼水面的三角柱，尖端朝 +x（轉成沿航道方向後使用）。 */
+export function createRouteArrowModel(): BufferGeometry {
+  const model = new ModelBuilder();
+  model.add(new ConeGeometry(0.1, 0.26, 3), '#f4e9c6', [0, 0.03, 0], [0.35, 1, 1], [0, 0, -Math.PI / 2]);
+  return model.build();
+}
+
+/** 海盜現在位置的環：圍著所在海格中央的金色細環。 */
+export function createPositionRingModel(): BufferGeometry {
+  const model = new ModelBuilder();
+  model.add(new TorusGeometry(0.55, 0.018, 6, 36), '#ffd45c', [0, 0.03, 0], [1, 1, 1], [Math.PI / 2, 0, 0]);
+  return model.build();
+}
+
+/**
+ * 航道上每一段（第 i 格到下一格，順時針、首尾相接）的箭頭位置與朝向。
+ * `rotationY` 讓 +x 的模型轉向「從這格到下一格」：three.js 繞 Y 轉 θ 會把 +x 轉到 (cos θ, 0, -sin θ)，所以 θ = atan2(-dz, dx)。
+ */
+export function routeArrows(geometry: BoardGeometry, route: readonly number[]): { position: Vec3; rotationY: number }[] {
+  const cells = route.flatMap((hex) => {
+    const cell = geometry.hexes[hex];
+    return cell ? [{ x: cell.cx / geometry.scale, z: cell.cy / geometry.scale }] : [];
+  });
+  return cells.map((cell, index) => {
+    const next = cells[(index + 1) % cells.length]!;
+    return { position: [(cell.x + next.x) / 2, SEA_LEVEL + 0.012, (cell.z + next.z) / 2] as Vec3, rotationY: Math.atan2(-(next.z - cell.z), next.x - cell.x) };
+  });
 }
 
 /** 堡壘旁的 lair 疊位置：從頂點往陸地（碰到的陸地格中心）退一點，落在陸地上。 */

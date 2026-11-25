@@ -175,7 +175,7 @@ coordinates: (0, 6), (-1, 6), (-1, 5), (-1, 4), (0, 3), (0, 2), (1, 1), (2, 0), 
 | I7 | One line, no branching | The line is the ordered list of the player's line ships (`lines[player] = { start, edges }`). A line ship must attach at the end; once the line has reached the fortress (`done`) no more line ships can be built, free coastal ships still can. Ships on the line (the preset ship included) cannot be moved (`shipMoveBlocked`); a free ship moved onto a line edge is judged exactly like a new ship (`ship.move` and `setup.placeShip` go through the same check and the same `E_SHIP_LINE`). A setup ship at a new settlement is a line ship only if that settlement is the line's end and the ship cuts the distance; otherwise it must be on a coastal edge. | SF25 p. 16 "one continuous line … No branching" |
 | I8 | Reaching the targets | The line reaches the beachhead when one of its vertices is the beachhead vertex (the target then becomes the fortress) and the fortress when it passes the fortress vertex (the line is complete). A settlement at the beachhead does not stop the line: it continues from there. Counting the preset ship, every colour needs 6 ships to the beachhead and 3 more to the fortress (`EXPECTED_LINE_LENGTHS`; the map is symmetric), well inside the 15 ships of the supply. | SF25 p. 16 |
 | I9 | A boxed-in line: backtracking (`stuckLineBacktrack`) | **Departure from SF25** (which defines nothing here), **decided by the user on 2026-11-24**; it replaces the earlier "extend in any legal direction" relaxation, which could not help because a relaxed step stays inside the pocket that is cut off from the target (see the simulation), and that code is gone. When the distance from the line's end to the current target over empty sea edges is *completely* blocked, the **last ship of the line** (and only it, and only then) is no longer fixed: the player moves it with the ordinary `ship.move` (one ship move per action window as always, and not a ship built in this window) to any legal place, either a free coastal edge or a **strict** extension from the new end (every step cuts the distance by 1 again). The line is cut by that ship in the same transition (`lines[player].edges` and the end follow); if the new end is still blocked the next last ship can go back the same way, one per window, down to the preset ship, after which the line has no ship (`start: null`) and restarts only at an own coastal building (I5). A move is used instead of a removal to the supply because it reuses the existing move flow, hints and both renderers, and it keeps the ship count (15) honest. The end ship may be moved when its far end (the line's end) touches an own building (a beachhead settlement; the building stays), but **not** when that end also touches another own ship (a free coastal ship), which would leave a ship cut off from every building: the ordinary open-end rule applies then (`lineBacktrackMovable`, round 3 review). The distances use the same walkable vertices as `lineShip`: the player's own line vertices other than the end cannot be entered, so a path back through the line is never counted. Hints: the end ship is in `movableShips`, `pirateLine.stuck` is true and the panel says so. If no route exists from anywhere (a complete wall of other players' ships), backtracking cannot help; see the simulation. | user decision 2026-11-24; spec §6.6, §9 OQ-3 |
-| I10 | The pirate and the robber in S7a | The pirate stands on the route's first hex and does not move until S7b; the base rule that no ship can be placed or moved onto an edge of the pirate's hex still applies. The robber is out of the game (`robberInactive`): a 7 makes players with more than 7 cards discard and nothing else happens (the "steal from any other player" step is S7b). Longest Road and Largest Army are disabled (`awardRules`). | SF25 p. 16 |
+| I10 | The pirate and the robber in S7a (superseded by I23–I31 in S7b: the pirate cruises and a 7 now steals) | The pirate stands on the route's first hex and does not move until S7b; the base rule that no ship can be placed or moved onto an edge of the pirate's hex still applies. The robber is out of the game (`robberInactive`): a 7 makes players with more than 7 cards discard and nothing else happens (the "steal from any other player" step is S7b). Longest Road and Largest Army are disabled (`awardRules`). | SF25 p. 16 |
 | I11 | The deck | 3 players: the 5 victory point cards are removed (20 cards: 14 knights, 2 road building, 2 year of plenty, 2 monopoly). 4 players: they are replaced in place by knights (25 cards, 19 knights), so the shuffled order is unchanged. Playing them (warships) is S7c. | SF25 p. 16 |
 | I12 | Setup | Unchanged: two rounds, two starting settlements with a road or a ship each, on the main island only; the second settlement still gives its starting cards. Everyone then has 3 settlements and 3 VP (the fortress counts for 0). The preset pieces are placed in `initGame` without the rng. | SF25 p. 16 |
 | I13 | Profile | `implemented: true`, `enabled: false`: the engine can build the game (tests, the sim) while the lobby and the server still refuse it (`disabled`); S7c enables it. `stuckLineBacktrack: true` is a registry field. | spec §10 |
@@ -276,7 +276,7 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
 
 ## Limitations
 
-- **The 3D renderer does not show the pirate's cruising order** (route markers are plain dots); S7b draws the order / arrows when the pirate really moves along the route.
+- ~~The 3D renderer does not show the pirate's cruising order~~ — done in S7b (arrows in SVG and 3D, see the S7b section).
 
 - **Dual-renderer evidence is deferred to S7c**: the profile is not enabled in S7a, so there is no lobby path and no browser run; S7c will build a line, move a ship (backtracking) and attack in both the SVG and the 3D renderer in a real browser. S7a only tests the SVG output, the 3D instance data and the hints that both renderers use.
 
@@ -286,6 +286,132 @@ only the legal edges (the line rule is inside `canPlaceShip`), and `pirateLine.t
   departure from SF25 (I9).
 - "Which ships belong to the line" (I4–I5) is our reading of "one continuous line to the western islands … you may create other
   routes around the main island", with the preset ship as the line's first ship.
-- Whether a recaptured or locked fortress counts as "a building adjacent to the pirate" for attacks, the pirate's movement and
-  attacks, the 7's steal step, the warship conversion and the attack on the fortress are S7b and S7c.
+- The pirate's movement and attacks and the 7's steal step are S7b (below); the warship conversion and the attack on the fortress are S7c.
 - The help panel has no scenario text yet (S7c).
+
+---
+
+# Slice S7b: the cruising pirate, its attacks and the 7's steal
+
+Branch `feat/sfx-s7b-pirate-patrol`, stacked on S7a (`feat/sfx-s7a-pirate-islands-board`, PR #234). SF25 p. 16 ("Pirate movement",
+"Pirate attacks", "Resolving a 7"; the p. 16–17 spread was re-read from `p16.txt` and `p16.png`). The profile is still
+`implemented: true, enabled: false` and the bots still refuse it; S7c adds the warships, the attack on the fortress, the ending and
+enables the profile.
+
+## Roll order
+
+`turn.roll` → the Seafarers module's `beforeProduction` (pirate cruises, attacks, then one `seafarers.pirateGift` frame per player who
+beat the pirate, then a hidden `seafarers.pirateResume` continuation frame) → production, or the 7 (discards, then
+`sevenRobberStep`: the `seafarers.sevenSteal` frame) → gold. Everything is in `modules/seafarers/pirateCruise.ts`; `index.ts` wires the
+hooks (`beforeProduction`, `sevenRobberStep`, `resumePending`, `activatePending`, `projectPending`, two commands) and `messages.ts` lists the five new
+events. No new error code is needed: the handlers use the base codes (`E_PENDING_EFFECT`, `E_NOT_ACTOR`, `E_INVALID_SELECTION`,
+`E_BANK_EMPTY`, `E_NO_ELIGIBLE_VICTIM`, and `E_INVALID_COMMAND` in the other eight scenarios, as `cloth.steal` does).
+
+## Interpretations
+
+| # | Item | Decision | Basis |
+|---|---|---|---|
+| I23 | Direction, start and state | The pirate moves **clockwise** along the 14-hex route transcribed in S7a, starting on its first hex; the position is only `board.pirate` (route hexes are distinct, so the route index is `route.indexOf(board.pirate)`); there is no extra state and no randomness, so replays are deterministic. The step count is the lower die (both dice equal: that number); it wraps past the last hex to the first (`(index + steps) mod 14`). Hexes passed over have no effect, only the final hex counts. Rolled in every roll, a 7 included. | SF25 p. 16 "Pirate movement" |
+| I24 | When | In the Seafarers module's `beforeProduction` hook, i.e. after `turn.rolled` and before production, gold or the 7. Event order in the log: `pirate.cruised`, then one `pirate.attacked` per attacked player, `pirate.gifted` for each pick, and only then `production.resolved` (or `discard.required` for a 7). | SF25 p. 16 "before players Collect Resources or Resolve a 7" |
+| I25 | Whose buildings count | Every settlement or city on a vertex of the pirate's hex counts for its owner, the roller included. An **unrecaptured fortress is not "your building"**: it belongs to the pirates (it holds the lair tokens, produces nothing and scores nothing, I2), so it never attracts the pirate; a recaptured fortress (lairs 0, S7c) is an ordinary settlement and counts. This is moot on the printed map: a test checks that **no route hex touches any fortress vertex**, and the route hexes touch only the beachhead vertices (route positions 1, 3, 5, 7: a village built on the beachhead can be attacked) and the preset main-island villages (positions 9, 10, 12, 13). The fortress rule therefore never changes an outcome in S7b; it only matters if S7c's data differed. Ships and roads never count ("buildings"). | SF25 p. 16 "adjacent to one of your buildings", p. 16 note "Pirate fortresses do not produce resources" |
+| I26 | Several players on one hex | Each is attacked, starting with the roller and going in seat order (the same order as gold). Losses are resolved at once (random draws on the game rng, in that order); the picks of players who won are queued as frames in the same order and the roll continues only after all of them are answered. | SF25 gives no order; same rule as the gold frame |
+| I27 | Strength | Pirate = the lower die (the die used for the move, I23). Player = the number of own warships (`warshipCount` = the length of `pirateIslands.warships[player]`, projected publicly). There are no warships in S7b (the knight is still refused, I15), so every attack is a loss for the player; S7c only fills `warships`. Tests inject warship edges to cover the won and tied cases. | SF25 p. 16 |
+| I28 | Lost attack | The player discards 1 random card plus 1 per own city (all cities on the board, not only adjacent ones), each drawn uniformly from what is left of the hand, capped by the hand size; the cards go back to the supply. The public log says how many were due and lost; the exact cards are a private parameter for the victim. For the statistics they are added to the player's `discarded` counter (an expense column, as with the 7), not to robbed/stolen (see I41). | SF25 p. 16 |
+| I29 | Won attack | A `seafarers.pirateGift` frame for that player: 1 resource of their choice from the supply (`pirate.gift { resource }`). Only resources the supply still has can be chosen (`E_BANK_EMPTY` otherwise; hints list them as `pirateGift`). If the supply has **none at all**, the player gets nothing, the frame is skipped and the log says so (`pirate.gifted` with `resource: null`). SF25 says nothing about an empty supply; this follows the base rule (a card the supply does not have cannot be taken) and the gold frame. | SF25 p. 16 "receive 1 resource card of your choice from the supply" |
+| I30 | Tie | Nothing happens (the attack is logged with `result: 'tie'`). | SF25 p. 16 |
+| I31 | The 7 | The robber is still out of the game (no `moveRobber` frame, `robberTargets` empty, layout robber -1). `robberInactive` is **gone** for this scenario so that the engine's own order (discards first, then the module's 7 step) runs; players over 7 cards discard half rounded down as usual, then the roller gets a `seafarers.sevenSteal` frame: `seven.steal { victim }` steals one **uniformly random card** from **any other player who has cards** (no hex, no pirate involved, not limited to neighbours), or `victim: null` to **choose not to steal** (SF25 "may"). With nobody holding a card there is no frame. Hints: `sevenSteal` lists the victims, only for the roller while the frame is active. The pirate's attack of the same roll comes first, so a victim may already have discarded to the pirate before the half-discard is computed. | SF25 p. 16 "Resolving a 7" |
+| I32 | Pending queue | `[gift(A), gift(B), pirateResume]` is queued before production; the resume frame has no responders and is resolved by the engine as soon as it becomes active (it is never visible to a client). A gift frame whose supply has gone empty is skipped when it activates. The frames use module kinds `seafarers.pirateGift` (public data: the pirate's strength), `seafarers.sevenSteal` (public data: the victims, whose hand sizes are public anyway) and `seafarers.pirateResume` (no data). | engine pending conventions (gold, fog) |
+| I33 | Ships next to the pirate, boxed-in hints | Unchanged rules (S7a): nothing can be placed or moved onto an edge of the pirate's hex, ships already there stay. The pirate's hex is read from `board.pirate` everywhere, so `backtrackBlocked: 'pirate'` and the new-ship restrictions follow the moving pirate (tests: roll the pirate next to a boxed-in line's end ship and read the hint). The shortest-path distances still ignore the pirate (I6), so a pirate that sits beside the end only delays the player. | SF25 p. 2 (pirate blocks ships) |
+| I34 | Web | SVG and 3D show the pirate where it is (the existing pirate piece) and add: a clockwise arrow in the middle of every route leg, a gold ring on the pirate's hex, and in SVG a small chip 1–6 on the next six hexes ("a lower die of N brings the pirate here"). Both pickers reuse existing layouts: the supply pick is the gold picker grid (5 resource buttons, same CSS), the 7's steal is a button per victim plus "Do not steal" in the prompt, so desktop and mobile share one component. Log lines and sounds exist in zh-Hant and en (`event.pirate.cruised`, `.attacked`, `.gifted`, `event.seven.stole`, `.stealSkipped`). | spec §6.6, S7a limitation |
+
+## Simulation (the real pirate)
+
+`seafarers-pirate-islands-sim.ts` no longer jumps the pirate: every roll goes through the engine, the sim answers the frames (discards; the
+7's steal at random: 1/3 of the time it skips; the gift cannot occur because there are no warships) and counts rolls, attacks, steals and
+the turns where the player's line is only held up by the pirate (with the pirate off the board a line extension exists, with it there is none).
+Same method and policies as S7a (300 games per player count and policy, at most 60 turns, 2026-11-25, one process on the shared machine):
+
+| Players | Policy | Games | Games with a boxed-in line | Boxed-in players | Backtracks | Still boxed in (route-less) | Stuck players | Rule deadlocks | Wall refusals | inconsistent | badEnds | illegalRoads | Lines done | Out of ships |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | bias 1 | 300 | 0 | 0 | 0 | 0 (0) | 0 | 0 | 0 | 0 | 0 | 0 | 900/900 | 0 |
+| 4 | bias 1 | 300 | 0 | 0 | 0 | 0 (0) | 0 | 0 | 0 | 0 | 0 | 0 | 1199/1200 | 1 |
+| 3 | bias 0.85 | 300 | 0 | 0 | 0 | 0 (0) | 0 | 0 | 0 | 0 | 0 | 0 | 900/900 | 0 |
+| 4 | bias 0.85 | 300 | 0 | 0 | 0 | 0 (0) | 0 | 0 | 0 | 0 | 0 | 0 | 1196/1200 | 4 |
+| 3 | bias 0.4 | 300 | 11 (3.7 %) | 11 | 24 | 1 (0) | **1** | 0 | 0 | 0 | 0 | 0 | 825/900 | 72 |
+| 4 | bias 0.4 | 300 | 12 (4 %) | 13 | 10 | 12 (5) | **12** | 0 | 0 | 0 | 0 | 0 | 1123/1200 | 62 |
+
+| Players | Policy | Rolls | Attacks | Steals (7) | Line held up only by the pirate (turns / turns with a line extension) |
+|---|---|---|---|---|---|
+| 3 | bias 1 | 3,957 | 1,100 (0.28 per roll) | 456 | 133 / 3,394 (3.9 %) |
+| 4 | bias 1 | 5,661 | 1,842 | 641 | 252 / 4,577 (5.5 %) |
+| 3 | bias 0.85 | 4,553 | 1,218 | 501 | 152 / 3,892 (3.9 %) |
+| 4 | bias 0.85 | 6,557 | 2,116 | 727 | 263 / 5,190 (5.1 %) |
+| 3 | bias 0.4 | 10,687 | 3,595 | 1,200 | 354 / 6,905 (5.1 %) |
+| 4 | bias 0.4 | 12,829 | 5,183 | 1,405 | 515 / 9,004 (5.7 %) |
+
+Reading:
+
+- The rule checks all stay at 0 (`inconsistent`, `badEnds`, `illegalRoads`, rule deadlocks, wall refusals): the moving pirate never makes the engine accept an illegal line, road or end.
+- The line-focused policies complete every line (all but 5 of 4,200 lines; those ran out of the 15 ships of the supply). With many random free ships (bias 0.4) 3.7 % (3 players) and 4 % (4 players) of the games have a boxed-in line and 1 and 12 players end stuck (5 of the 12 route-less). **S7a measured 1 and 7 for the same policy with a pirate that jumped at random**; the two runs use different random streams (the pirate no longer draws from the sim's rng and every 7 now steals), so the runs are not paired and the change from 7 to 12 is within what a different stream gives; the pirate does not cause stuck players (the check ignores it), it only delays a line for a few turns. **Known limitation, unchanged** (I17): lines of two players can wall each other; S7c will change the board again when a failed attack removes ships.
+- The pirate delays a line extension in about **4–5.7 % of the turns where an extension exists and the player still has ships** (round 2: players who already used all 15 ships are no longer in the denominator); it never blocks a line for good because the pirate moves every roll (at most a 14-turn cycle, and in practice the lower die moves it 1 to 6 hexes per roll).
+- Hint cost with the real pirate: about 1.5–2.0 ms per `actionHints` call (the machine was less loaded than for the S7a run, so it is not comparable).
+
+## What was built (S7b)
+
+| Area | Files | Notes |
+|---|---|---|
+| Rules | `modules/seafarers/pirateCruise.ts` (new), `pirateIslands.ts` (`warships`, `warshipCount`), `index.ts`, `messages.ts` | cruise, attack, gift and 7 frames, hints `pirateGift` and `sevenSteal`, projection of the frames and `warships` |
+| Web | `board/seafarers.ts`, `components/SeafarersPrompt.tsx`, `components/SvgPirateIslands.tsx`, `board/three/diorama-pirate-islands.ts`, `board/three/DioramaPirateIslands.tsx`, `board/three/DioramaSeafarers.tsx`, `audio/cues.ts`, `i18n/modules/seafarers.ts`, `i18n/modules/seafarers-events.ts`, `styles/seafarers.css` | route arrows and position ring (SVG and 3D), the two pickers, log texts and sounds |
+| Evidence | `test/seafarers-pirate-islands-patrol.test.ts` (new, 29 tests), `seafarers-pirate-islands.test.ts` (+1), `seafarers-exports.test.ts` (D7, +1 and the new hint keys), `seafarers-pirate-islands-sim.ts` and `.test.ts`, `packages/web/test/seafarers-pirate-patrol.test.tsx` (new, 11 tests) | |
+
+## Verification (S7b)
+
+- Rules, `seafarers-pirate-islands-patrol.test.ts` (29): steps (lower die, equal dice, wrap, helper functions, a run of seven rolls), the base rule that ships cannot be placed on the pirate's hex, attacks (adjacent only, 1 random card back to the supply with the private detail, no attack on empty hexes, per-city extra discards that count cities anywhere, a short hand, an empty hand, several players in roller-then-seat order, unrecaptured and recaptured fortresses and the map fact that no route hex touches a fortress, the four preset villages' hexes), a stronger player (frame, hints, public view, supply decrement, production only afterwards), pick errors, an empty supply, a tie, win + loss mixed on one hex with queued frames, event order; the 7 (pirate first, discards, steal from any player with cards, skip, no victims, no `moveRobber`, attack before discard, gift before discard) and determinism (a twelve-roll replay and a JSON round trip).
+- `seafarers-pirate-islands.test.ts` (+1): the boxed-in hint reads `'pirate'` after a real roll moved the pirate beside the end ship and clears when it moves on.
+- `seafarers-exports.test.ts` (D7): the eight other scenarios keep the pirate in place, have no new events or frames, no new hint keys, the 7 still opens their own step, and `pirate.gift` / `seven.steal` are `E_INVALID_COMMAND` (or `E_PENDING_EFFECT` with a frame open) there; the key sets of the view, hints and module state are unchanged.
+- Rules whole suite: 75 files, 1,338 tests pass (S7a: 74 files, 1,307). `pnpm typecheck` passes (rules, bots, protocol, web, server). Server `seafarers-scenarios-registry` and `bots` tests and the bots `support` test still refuse or hide the profile.
+- Web `seafarers-pirate-patrol.test.tsx` (11): SVG route arrows (14, consecutive and closing), position ring and step chips (also across the wrap), no layer elsewhere; 3D arrow geometry (direction in three.js' Y rotation, tip towards +x, ring model); the gift picker (disabled for resources the supply lacks, submits `pirate.gift`, hidden from others, both locales); the 7's picker (one button per victim, skip sends `victim: null`); log lines for the cruise and the three outcomes, the supply pick and the 7's steal in both locales; sounds. All 13 web `seafarers*` files (170 tests), `i18n`, `audio-cues`, `audio-board`, `audio-ui` pass.
+- Not done: no browser run or screenshot (the profile is not enabled; S7c). The new 3D arrows and ring are tested as geometry and instance data only.
+
+## Review round 1 fixes (S7b)
+
+| # | Item | Decision |
+|---|---|---|
+| I35 | D7: scenario-only commands (`commandScenarios`) | `pirate.gift` and `seven.steal` are registered **only in the pirate islands**. `RulesModule.commandScenarios` maps a command type to the one scenario that has it; `moduleCommandTypes`, `dispatchModuleCommand` and the pending gate (`modulePendingCommand`) honour it. Every other profile, the two `sf-2025.2` New Shores profiles included, neither lists the commands (protocol validation) nor lets them through a pending frame, so they answer exactly like a profile without the module (`E_INVALID_COMMAND`, or `E_PENDING_EFFECT` with the base params). The handlers no longer check the scenario themselves. Test: `seafarers-exports.test.ts` compares both `sf-2025.2` profiles with a base game, with and without a pending frame. |
+| I36 | The board keeps the pre-roll projection while the dice are shown | The pirate's new hex would reveal the lower die before the dice settle. `rollChangesBoard` (`web/src/state/table.ts`, the existing hold used for C&K and cloth) now also holds the board for scenarios with `pirateIslands`; SVG and 3D both draw from the held board, so the pirate, the position ring and the step chips stay on the old hex until the dice presentation ends. Test: `dice-hold.test.tsx`, a `2 + 5` roll, snapshot-first and events-first. |
+| I37 | Passing a hex does not attack | Only the hex where the pirate ends counts (I23). Test: four players, `route[7]` with `4 + 6` passes P1's village at `route[9]` and stops at `route[11]`: no attack event, P1's hand unchanged. |
+| I38 | Snapshot and restart with an answer pending (spec §11.3) | Test: `2 + 5` leaves a `pirateGift` frame with the hidden continuation queued; the state is serialized and restored, the pick runs the continuation exactly once (one `pirate.cruised`, `pirate.attacked`, `pirate.gifted` in the log, no leftover queue), then the `sevenSteal` frame survives a second restore and the steal gives the same state as the run without restarts. |
+| I39 | Small fixes | The 3D route arrows sit at `SEA_LEVEL + 0.012` like the route marks and the position ring (the test asserts `position[1]`). A victim with an empty hand no longer logs `(—)` in the attack line (web formatting, both locales). |
+
+Test numbers after the fixes: rules whole suite 75 files, 1,341 tests (was 1,338); `seafarers-pirate-islands-patrol.test.ts` 31 tests, `seafarers-exports.test.ts` 18; web `dice-hold` 23, `seafarers-pirate-patrol` 11, all 13 `seafarers*` files 170; server registry, bots, seafarers-bots and recovery tests and the bots `support` test pass; `pnpm typecheck` passes.
+
+Limitation: **the server restart path cannot be tested for this scenario until S7c enables the profile** (the lobby and `createGame` in the service refuse a disabled profile). The restart evidence is rules-level (state serialized and restored before the next command); S7c should add a server recovery test with a pending `pirateGift` and `sevenSteal`.
+
+## Review round 2 fixes (S7b)
+
+| # | Item | Decision |
+|---|---|---|
+| I40 | Pirate answers keep the dice presentation | A `seafarers.sevenSteal` or `seafarers.pirateGift` frame opened right after the roll made `useBoardAnimation` treat the roll as overtaken by a required action and clear the dice queue, so the pirate jumped at once. The rules now mark both frames' public data with `fromRoll: true` ("this answer was caused by the roll"); the client treats any module frame with `data.fromRoll === true` like a discard or a 7's robber step and keeps the last roll of the packet, **any total** (a gift can follow a non-7). Other module frames carry no such flag, so every other scenario behaves as before (D7; test: `seafarers.gold` and a frame without the flag still clear the dice). Test: `pirate-roll-presentation.test.tsx` (2 + 5 with a victim and nobody over 7 cards, a gift after 2 + 2). |
+| I41 | Statistics | Cards the pirate takes are added to the player's **discarded** counter (an expense column, as with the 7); a resource taken from the supply for beating the pirate is income in a new optional counter `supplyPicks` (created on first use, absent in other scenarios; `GameStats` shows a "Pirate prize" column only when someone has one, zh-Hant 海盜戰利品). The 7's steal already used stolen/robbed. Tests: red holds 1 grain, `2 + 2` from `route[7]`: lost first, then 1 grain produced, hand 1, `discarded.grain` 1, `produced.grain` 1; a gift counts in `supplyPicks` and the hand equals the income; `game-stats.test.tsx`. |
+| I42 | Attack before production, with real production | The red preset village touches the 4-disc fields hex. Tests with the real disc layout: an empty-handed red is attacked (nothing to lose), then produces 1 grain and ends with 1 grain (an early grant would have lost it); with 1 grain it loses it first and then gets 1. |
+| I43 | Simulation denominator | `lineTurns` now skips turns of players who have used all 15 ships (4 players, seed 8, bias 0.4 had 6 of 38 such turns). Table above re-measured (300 games per cell); the other columns did not change. |
+
+Test numbers after round 2: rules whole suite 75 files, 1,344 tests; `seafarers-pirate-islands-patrol.test.ts` 34; web `pirate-roll-presentation` 3, `game-stats` 13, `dice-hold` 23, `board-animation*` 23, `seafarers-pirate-patrol` 11, all 13 `seafarers*` files 170; server registry, bots and recovery pass; `pnpm typecheck` passes.
+
+## Review round 3 fixes (S7b)
+
+| # | Item | Decision |
+|---|---|---|
+| I44 | The player panel during the dice presentation | `holdForRoll` now also fills `rollHold.seafarers` for the pirate islands, so the panel (`PlayersPanel`, which reads `shownSeafarers`) keeps the pre-roll view **and hints**: the boxed-in text (`pirateLine.backtrackBlocked: 'pirate'`) no longer shows where the pirate landed. Other readers checked: `SeafarersPrompt` and the pending prompt return nothing while follow-ups are held; the board uses the held board (I36); the log hides events after the roll. Test: a boxed-in line and a `2 + 6` roll, the `line-stuck` text stays "boxed in" during the presentation and becomes the pirate text afterwards. |
+| I45 | D7 regression with a real non-7 | The earlier "non-7" case rolled `3 + 4`; it now rolls `2 + 4` (asserted) in `seafarers-exports.test.ts` and in the patrol test. |
+| I46 | Sounds | `pirate.attacked` with `count: 0` (nothing was taken) plays no theft cue, and `pirate.gifted` with `resource: null` (empty supply) no pick cue; one test each. |
+| I47 | Documentation | I28 now agrees with I41 (pirate losses are added to `discarded`). |
+
+Test numbers after round 3: rules `seafarers-exports` 18, `seafarers-pirate-islands-patrol` 34, `seafarers-pirate-islands` 60, `message-ids` 5; web `seafarers-pirate-patrol` 13, `dice-hold` 23, `pirate-roll-presentation` 3, `audio-cues` 16, `i18n` 24, `game-stats` 13, `scoreboard-hover` and all 13 `seafarers*` files 172; `pnpm typecheck` passes.
+
+## Review round 4 fixes (S7b)
+
+- The random draws are now tested so that "always take the first card" fails: an attack on a hand of 2 lumber and 1 brick with the scripted index 2 takes the brick (index 1 takes a lumber); a 7's steal from a victim with wool, grain and 2 ore takes the grain at index 1 and the ore at index 3 (`seafarers-pirate-islands-patrol.test.ts`, now 36 tests).
+- English "1 was owed" / "N were owed" (`sf.pirate.outcome.shortOne`); zh-Hant has no plural and the same text for both keys.
+- Not accepted, already planned: the scenario help panel text stays in S7c (see Limitations: "The help panel has no scenario text yet (S7c)").
+- Tests: rules patrol 36; web `seafarers-pirate-patrol` 13 and `i18n` 24; `pnpm typecheck` passes.

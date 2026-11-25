@@ -266,7 +266,8 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
       tradersBarbarians: current.view.modules?.tradersBarbarians ? current.view : null,
       explorersPirates: current.view.modules?.explorersPirates ? current.view : null,
       // 布匹產地的布匹與卡坦奇觀的可負擔層數都會隨擲骰改變，演出期間用擲骰前的投影。
-      seafarers: current.view.modules?.seafarers && ((current.view.modules.seafarers as { cloth?: unknown; wonders?: unknown }).cloth || (current.view.modules.seafarers as { wonders?: unknown }).wonders) ? current.view : null,
+      // 海盜巢穴：玩家面板的被圍住提示（`pirateLine.backtrackBlocked: 'pirate'`）會透露海盜的新落點，也用擲骰前的投影與提示。
+      seafarers: current.view.modules?.seafarers && ((current.view.modules.seafarers as { cloth?: unknown; wonders?: unknown; pirateIslands?: unknown }).cloth || (current.view.modules.seafarers as { wonders?: unknown }).wonders || (current.view.modules.seafarers as { pirateIslands?: unknown }).pirateIslands) ? current.view : null,
       board: rollChangesBoard(current.view) ? current.view : null,
       eventSeq: lastSeq,
     },
@@ -276,10 +277,12 @@ function holdForRoll(state: TableState, events: readonly GameEvent[]): Partial<T
 /**
  * C&K 的事件骰在擲骰當下結算蠻族攻擊：騎士全數翻倒、首次攻擊時強盜進入沙漠、
  * 城市遭掠奪降為村莊或倒下並失去城牆。布匹產地的部落布匹也在擲骰當下改變（SVG 與 3D 的部落標記）。
+ * 海盜巢穴的海盜在擲骰當下沿航道前進，新位置會透露較小的骰值，演出期間也用擲骰前的投影。
  * 其他規則擲骰時盤面不變，不需凍結。
  */
 function rollChangesBoard(view: GameSnapshot['view']): boolean {
-  return citiesKnightsView(view) !== null || !!(view.modules?.seafarers as { cloth?: unknown } | undefined)?.cloth;
+  const sea = view.modules?.seafarers as { cloth?: unknown; pirateIslands?: unknown } | undefined;
+  return citiesKnightsView(view) !== null || !!sea?.cloth || !!sea?.pirateIslands;
 }
 
 function activeHold(state: TableState): RollHold | null {

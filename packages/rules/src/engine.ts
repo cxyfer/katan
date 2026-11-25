@@ -31,7 +31,7 @@ import {
 } from './analysis.ts';
 import { buildProfileLayout } from './layout-registry.ts';
 import type { CommandErrorCode } from './messages.ts';
-import { moduleCommandTypes, rulesModulesOf } from './modules/registry.ts';
+import { moduleCommandTypes, moduleHandles, rulesModulesOf } from './modules/registry.ts';
 import type {
   BuildEvent,
   BanditMove,
@@ -802,7 +802,8 @@ function trackPeakHands(state: GameState): void {
 }
 
 function modulePendingCommand(state: GameState, type: string): boolean {
-  return modulesOf(state).some((module) => module.pendingCommands?.includes(type));
+  const profile = requireProfile(state.profileId);
+  return modulesOf(state).some((module) => module.pendingCommands?.includes(type) && (module.commandScenarios?.[type] ?? profile.scenario) === profile.scenario);
 }
 
 function moduleDisabledCommand(state: GameState, type: string): boolean {
@@ -929,7 +930,7 @@ function dispatchModuleCommand(
 ): CommandOutcome {
   const profile = requireProfile(state.profileId);
   for (const module of rulesModulesOf(profile)) {
-    const handler = module.commands?.[command.type];
+    const handler = moduleHandles(module, command.type, profile) ? module.commands![command.type] : undefined;
     if (handler) return handler(state, actorId, command, moduleContext(profile, rng, module.id));
   }
   return fail('E_INVALID_COMMAND');

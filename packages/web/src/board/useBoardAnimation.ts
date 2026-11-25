@@ -140,8 +140,10 @@ export function useBoardAnimation(
         updateDice((current) => current.length + rolls.length > MAX_EFFECT_GROUPS ? [] : [...current, ...rolls]);
         return;
       }
-      const rollPending = pending?.kind === 'discard' || (pending?.kind === 'moveRobber' && pending.cause === 'seven');
-      const isSeven = (roll: DiceRollPresentation) => roll.dice[0] + roll.dice[1] === 7;
+      // 模組的待答若在公開資料標明 `fromRoll`（海盜巢穴的選牌與 7 的偷牌），也是這次擲骰造成的，不限七點。
+      const fromRoll = !!pending && 'data' in pending && (pending.data as { fromRoll?: unknown }).fromRoll === true;
+      const rollPending = pending?.kind === 'discard' || (pending?.kind === 'moveRobber' && pending.cause === 'seven') || fromRoll;
+      const isSeven = (roll: DiceRollPresentation) => fromRoll || roll.dice[0] + roll.dice[1] === 7;
       // 事件先到時七點已在佇列中，投影帶來的必要操作仍與它並存。
       const seven = rollPending ? rolls.findLast(isSeven) ?? diceQueueRef.current.findLast(isSeven) : undefined;
       // 同包七點可與必要提示並存；任何後續權威進度都讓位給必要操作，且不補播。

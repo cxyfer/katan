@@ -1,5 +1,5 @@
 /**
- * S7a 的隨機合法動作模擬（spec §6.6、OQ-3、§11.2 SFX-S7）：西島船線有沒有「完全無路可走」。
+ * S7a 起的隨機合法動作模擬（S7b 起海盜真的沿航道走）（spec §6.6、OQ-3、§11.2 SFX-S7）：西島船線有沒有「完全無路可走」。
  * 預設只跑少量局；大量模擬用環境變數：`PI_SIM_GAMES=1500 PI_SIM_REPORT=1`（記錄在 work record）。
  */
 
@@ -39,10 +39,15 @@ interface Summary {
   playerLines: number;
   outOfShips: number;
   turns: number;
+  rolls: number;
+  attacks: number;
+  steals: number;
+  pirateBlockedTurns: number;
+  lineTurns: number;
 }
 
 function run(players: 3 | 4, lineBias: number, from: number): Summary {
-  const sum: Summary = { games: 0, gamesWithUnreachable: 0, unreachableObservations: 0, noStart: 0, noExtension: 0, backtracks: 0, illegalRoads: 0, badEnds: 0, inconsistent: 0, ruleDeadlocks: 0, wallRefusals: 0, hintCalls: 0, hintMs: 0, walledPlayers: 0, escaped: 0, stillWalled: 0, hopeless: 0, stuckPlayers: 0, gamesWithBacktracks: 0, linesDone: 0, playerLines: 0, outOfShips: 0, turns: 0 };
+  const sum: Summary = { games: 0, gamesWithUnreachable: 0, unreachableObservations: 0, noStart: 0, noExtension: 0, backtracks: 0, illegalRoads: 0, badEnds: 0, inconsistent: 0, ruleDeadlocks: 0, wallRefusals: 0, hintCalls: 0, hintMs: 0, walledPlayers: 0, escaped: 0, stillWalled: 0, hopeless: 0, stuckPlayers: 0, gamesWithBacktracks: 0, linesDone: 0, playerLines: 0, outOfShips: 0, turns: 0, rolls: 0, attacks: 0, steals: 0, pirateBlockedTurns: 0, lineTurns: 0 };
   for (let seed = from; seed < from + GAMES; seed++) {
     const result: PirateSimResult = simulatePirateIslands({ players, seed, lineBias, maxTurns: 60 });
     sum.games++;
@@ -68,6 +73,11 @@ function run(players: 3 | 4, lineBias: number, from: number): Summary {
     sum.playerLines += players;
     sum.outOfShips += result.outOfShips;
     sum.turns += result.turns;
+    sum.rolls += result.rolls;
+    sum.attacks += result.attacks;
+    sum.steals += result.steals;
+    sum.pirateBlockedTurns += result.pirateBlockedTurns;
+    sum.lineTurns += result.lineTurns;
   }
   return sum;
 }
@@ -90,6 +100,8 @@ describe('Pirate Islands random legal-move simulation (S7a)', () => {
       // 端點到得了目標時一定有合法的船線延伸（距離與可走頂點一致）。
       expect(sum.inconsistent, name).toBe(0);
       // `walledPlayers`、`stuckPlayers`、`ruleDeadlocks` 是觀測值（work record）：不得圍死的規則減少但不能消除卡死。
+      // S7b：每次擲骰海盜都走一步，所以整場至少有擲骰；沒有戰船，被攻擊就是輸（沒有選牌 frame），所以不會有人拿到牌。
+      expect(sum.rolls, name).toBeGreaterThan(0);
       expect(sum.backtracks >= 0 && sum.linesDone <= sum.playerLines, name).toBe(true);
     }
   }, 3_600_000);

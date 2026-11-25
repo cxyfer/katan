@@ -223,7 +223,7 @@ export function DioramaSeafarers(props: Props) {
     </>}
     {seafarers.wonders && <WondersLayer wonders={seafarers.wonders} geometry={geometry} material={material} />}
     {seafarers.pirateIslands && <PirateIslandsLayer geometry={geometry} pirate={seafarers.pirateIslands} players={players.map((player) => ({ id: player.id, color: player.color }))}
-      material={material} target={seafarers.lineTarget} />}
+      material={material} target={seafarers.lineTarget} pirateHex={board.pirate} />}
     {seafarers.tribe && <>
       <Gifts gifts={seafarers.tribe.gifts} geometry={geometry} material={material} />
       <GiftProbe count={seafarers.tribe.gifts.filter((gift) => !!giftTransform(geometry, gift.edge)).length} />

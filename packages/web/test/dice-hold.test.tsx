@@ -70,6 +70,25 @@ describe('roll hold in the table state', () => {
     expect(clothOf(shownBoardView(state))).toMatchObject({ tribes: [{ cloth: 4 }], cloth: { p1: 3 } });
   });
 
+  it.each(['snapshot', 'events'] as const)('holds the cruising pirate on its old hex until the dice settle, so the lower die is not revealed (%s first)', (delivery) => {
+    // 2 + 5：較小的骰是 2，海盜新的位置會透露它；演出期間棋盤（SVG 與 3D 共用）仍顯示擲骰前的位置。
+    const pirate = { fortresses: [], beachheads: [], lines: {}, route: [10, 11, 12, 13], warships: {} };
+    const before = base();
+    before.game!.view.board.pirate = 10;
+    before.game!.view.modules = { seafarers: { pirateIslands: pirate } };
+    const after = rolledSnapshot(9);
+    after.view.events = [makeEvent(12, 'turn.started'), makeEvent(13, 'turn.rolled', { dice: [2, 5], total: 7 }), makeEvent(14, 'pirate.cruised', { from: 10, to: 12, steps: 2, dice: [2, 5] })];
+    after.view.turn.dice = [2, 5];
+    after.view.board.pirate = 12;
+    after.view.modules = { seafarers: { pirateIslands: pirate } };
+    let state = delivery === 'events' ? tableReducer(before, { type: 'events', events: after.view.events }) : before;
+    state = tableReducer(state, { type: 'snapshot', snapshot: after });
+    expect(state.dicePresenting).toBe(true);
+    expect(shownBoardView(state)!.board.pirate).toBe(10);
+    state = tableReducer(state, { type: 'dice-presenting', value: false });
+    expect(shownBoardView(state)!.board.pirate).toBe(12);
+  });
+
   it('does not hold anything extra for scenarios without cloth', () => {
     const before = base();
     before.game!.view.modules = { seafarers: { islandBonus: {} } };

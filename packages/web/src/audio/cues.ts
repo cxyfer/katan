@@ -152,9 +152,17 @@ export function cueForEvent(event: GameEvent, selfId: string | null): SoundCue |
     case 'ship.moved':
       return 'ship.move';
     case 'pirate.moved':
+    case 'pirate.cruised':
       return 'pirate.move';
+    // 海盜巢穴：被攻擊並輸了（被棄牌）沿用偷牌音效；贏了選牌沿用金礦；7 的偷牌與一般偷牌同音。
+    case 'pirate.attacked':
+      return event.params?.result !== 'lost' || event.params?.count === 0 ? null : selfId !== null && playerId(event, 'playerId') === selfId ? 'robber.stolenFromYou' : 'robber.steal';
+    case 'pirate.gifted':
+      return event.params?.resource === null ? null : 'gold.pick';
     case 'gold.chosen':
       return 'gold.pick';
+    case 'seven.stole':
+      return selfId !== null && playerId(event, 'victim') === selfId ? 'robber.stolenFromYou' : 'robber.steal';
     case 'island.bonus':
     case 'tribe.gift':
       return 'island.bonus';

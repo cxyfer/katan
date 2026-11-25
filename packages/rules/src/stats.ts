@@ -34,6 +34,8 @@ export interface PlayerStats {
   produced: ResourceCounts;
   /** 探索迷霧得到的資源（翻開的陸地與金礦）；只在第一次獲得時建立，其他劇本不出現。 */
   explored?: ResourceCounts;
+  /** 海盜巢穴：打贏海盜從供應堆任選的資源；只在第一次獲得時建立，其他劇本不出現。 */
+  supplyPicks?: ResourceCounts;
   /** Resources received from the second setup settlement. */
   startingResources: ResourceCounts;
   /** Resources taken from the bank with Year of Plenty. */
@@ -94,6 +96,12 @@ export interface GameStats {
 export function exploredStats(state: GameState, playerId: string): ResourceCounts {
   const stats = playerStats(state, playerId);
   return (stats.explored ??= zeroResources());
+}
+
+/** 贏了海盜領到的資源（計入收入，不算擲骰生產）。 */
+export function supplyPickStats(state: GameState, playerId: string): ResourceCounts {
+  const stats = playerStats(state, playerId);
+  return (stats.supplyPicks ??= zeroResources());
 }
 
 export function zeroResources(): ResourceCounts {

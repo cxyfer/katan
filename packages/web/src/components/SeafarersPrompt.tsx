@@ -5,7 +5,7 @@ import { formatResourceMap } from '../i18n/format.ts';
 import { seafarersHints, seafarersView } from '../board/seafarers.ts';
 import { banditTargets, seafarersCitiesKnightsHints } from '../board/seafarersCitiesKnights.ts';
 import { blocksNewCommands } from '../state/commands.ts';
-import { followUpsHeld, shownBank } from '../state/table.ts';
+import { followUpsHeld, nameOf as resolveName, shownBank } from '../state/table.ts';
 import type { TableController } from '../state/useTable.ts';
 import { NewWorldPrompt } from './NewWorldPrompt.tsx';
 import { ResourceIcon } from './GameArt.tsx';
@@ -25,6 +25,7 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
   const selfId = state.session?.id ?? null;
   if (!view || !sea || !selfId || followUpsHeld(state)) return null;
   const blocked = blocksNewCommands(state.command);
+  const nameOf = resolveName(state);
   const pending = view.pending;
   const armed = state.selection.commandType;
 
@@ -54,6 +55,43 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
     {pending?.kind === 'seafarers.gold' && sea.goldRequired > 0 && (
       <GoldPicker key={`${view.seq}`} count={sea.goldRequired} bank={sea.goldBank ?? shownBank(state) ?? view.bank} disabled={blocked}
         onSubmit={(resources) => void actions.submitCommand({ type: 'gold.choose', resources }, 'play.pending.seafarers.gold')} />
+    )}
+    {/* 海盜巢穴：贏了海盜，從供應堆任選 1 張（沿用金礦選資源的版面，桌機與手機相同）。 */}
+    {pending?.kind === 'seafarers.pirateGift' && sea.pirateGift.length > 0 && (
+      <div className="prompt__body gold-picker pirate-gift" data-testid="pirate-gift">
+        <p>{t('sf.pirate.gift.pick', { strength: pirateStrength(pending.data) })}</p>
+        <ul className="resource-picker">
+          {RESOURCES.map((resource) => (
+            <li key={resource}>
+              <button type="button" className="button button--chip" data-testid={`pirate-gift-${resource}`}
+                disabled={blocked || !sea.pirateGift.includes(resource)}
+                onClick={() => void actions.submitCommand({ type: 'pirate.gift', resource }, 'play.pending.seafarers.pirateGift')}>
+                <ResourceIcon resource={resource} size={20} />{t(`resource.${resource}`)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+    {/* 海盜巢穴：擲出 7 之後，擲骰者可偷任一位有牌的玩家，也可以不偷。 */}
+    {pending?.kind === 'seafarers.sevenSteal' && pending.responders.includes(selfId) && (
+      <div className="prompt__body pirate-steal" data-testid="seven-steal">
+        <p className="muted">{t('sf.seven.steal.pick')}</p>
+        <ul className="resource-picker" data-testid="seven-steal-candidates">
+          {sea.sevenSteal.map((candidate) => (
+            <li key={candidate}>
+              <button type="button" className="button" data-testid={`seven-steal-${candidate}`} disabled={blocked}
+                onClick={() => void actions.submitCommand({ type: 'seven.steal', victim: candidate }, 'play.pending.seafarers.sevenSteal')}>
+                {nameOf(candidate)}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button type="button" className="button" data-testid="seven-steal-skip" disabled={blocked}
+          onClick={() => void actions.submitCommand({ type: 'seven.steal', victim: null }, 'play.pending.seafarers.sevenSteal')}>
+          {t('sf.seven.steal.skip')}
+        </button>
+      </div>
     )}
     {pending?.kind === 'seafarers.harbor' && sea.harborChoices.harbors.length > 0 && (
       <div className="prompt__body harbor-choice" data-testid="harbor-choice">
@@ -100,6 +138,11 @@ export function SeafarersPrompt({ controller }: { controller: TableController })
       </div>
     )}
   </>;
+}
+
+/** 贏了海盜的選牌 frame 帶的海盜戰力（`data.strength`，公開）。 */
+function pirateStrength(data: Record<string, unknown>): number {
+  return typeof data.strength === 'number' ? data.strength : 0;
 }
 
 /**

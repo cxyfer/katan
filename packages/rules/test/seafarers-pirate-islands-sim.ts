@@ -1,10 +1,10 @@
 /**
- * The Pirate Islands（S7a）的隨機合法動作模擬：量測西島船線有沒有「完全無路可走」的情況
+ * The Pirate Islands（S7a、S7b）的隨機合法動作模擬：量測西島船線有沒有「完全無路可走」的情況
  * （spec §6.6、OQ-3）。此時還沒有巡弋海盜與進攻，所以模擬只跑到每位玩家的船線到達堡壘（或回合上限）。
  *
  * 玩家只做隨機的合法動作：蓋船（偏向船線，其餘是任一合法的船）、村落、城市、路；手牌每次動作前補滿，
- * 讓模擬測的是路徑而不是經濟。海盜在每個回合開始時隨機移到航道上的某一格（模擬 S7b 的巡弋，
- * 所以海盜造成的暫時阻擋會出現在各處）。
+ * 讓模擬測的是路徑而不是經濟。S7b 起海盜真的沿航道走：每次擲骰（含 7）都由引擎移動與攻擊，
+ * 玩家對攻擊後的 frame（選牌、7 的偷牌）作隨機的合法回答，海盜造成的暫時阻擋因此出現在真實的位置。
  */
 
 import { isLandHex, topologyOf } from '../src/analysis.ts';
@@ -66,6 +66,13 @@ export interface PirateSimResult {
   illegalRoads: number;
   /** 因為配件用完（15 艘）而沒完成的玩家數。 */
   outOfShips: number;
+  /** 擲骰次數、海盜攻擊次數（相鄰才攻擊）、7 的偷牌次數（S7b 的真實巡弋）。 */
+  rolls: number;
+  attacks: number;
+  steals: number;
+  /** 回合開始（擲骰與 frame 之後）時，擲骰者的船線沒有完成，且「沒有海盜時有合法延伸、有海盜時沒有」的次數；以及可比較的回合數。 */
+  pirateBlockedTurns: number;
+  lineTurns: number;
   /** 被「完成」之外的原因擋住：端點有路但目前沒有任何合法的船線延伸（海盜等暫時限制以外）。 */
   noExtension: number;
 }
@@ -155,6 +162,11 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   let { state } = seafarersGame(players, seed, PI_PROFILE);
   const slot = pirateIslandsView(state)!;
   let unreachable = 0;
+  let rolls = 0;
+  let attacks = 0;
+  let steals = 0;
+  let pirateBlockedTurns = 0;
+  let lineTurns = 0;
   let noStart = 0;
   let noExtension = 0;
   let backtracks = 0;
@@ -203,21 +215,45 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
     const actor = state.players[state.turn.seat]!;
     if (state.players.every((player) => lineContext(state, player.id)!.next === 'done')) break;
     turns++;
-    // 模擬巡弋：海盜隨機移到航道上的另一格（S7b 才會真的移動）。
-    state.board.pirate = slot.route[rng.int(slot.route.length)]!;
     enrich(state, actor.id);
+    const seqBefore = state.seq;
     const rolled = attempt(state, actor.id, { type: 'turn.roll' }, rng);
     if (!rolled) throw new Error('cannot roll');
     state = rolled;
-    // 7：手牌超過 7 張的人棄牌（強盜不使用，沒有後續步驟）。
-    for (let guard = 0; state.pending && guard < 10; guard++) {
+    rolls++;
+    // 擲骰後的 frame：棄牌、贏海盜的選牌（S7b 沒有戰船，所以不會出現，仍照規則回答）、7 的偷牌（隨機偷或不偷）。
+    for (let guard = 0; state.pending && guard < 20; guard++) {
       const pending = state.pending;
-      if (pending.kind !== 'discard') throw new Error(`unexpected pending ${pending.kind}`);
-      const id = Object.keys(pending.required).find((candidate) => !pending.submitted[candidate])!;
-      const player = state.players.find((candidate) => candidate.id === id)!;
-      const pool: Resource[] = [];
-      for (const resource of Object.keys(player.resources) as Resource[]) for (let i = 0; i < player.resources[resource]; i++) pool.push(resource);
-      state = attempt(state, id, { type: 'pending.discard', resources: pool.slice(0, pending.required[id]) }, rng)!;
+      if (pending.kind === 'discard') {
+        const id = Object.keys(pending.required).find((candidate) => !pending.submitted[candidate])!;
+        const player = state.players.find((candidate) => candidate.id === id)!;
+        const pool: Resource[] = [];
+        for (const resource of Object.keys(player.resources) as Resource[]) for (let i = 0; i < player.resources[resource]; i++) pool.push(resource);
+        state = attempt(state, id, { type: 'pending.discard', resources: pool.slice(0, pending.required[id]) }, rng)!;
+      } else if (pending.kind === 'seafarers.sevenSteal') {
+        const victims = (actionHints(state, actor.id).modules!.seafarers as unknown as { sevenSteal: string[] }).sevenSteal;
+        const victim = rng.int(3) === 0 ? null : pick(victims, rng) ?? null;
+        state = attempt(state, actor.id, { type: 'seven.steal', victim }, rng)!;
+        if (victim !== null) steals++;
+      } else if (pending.kind === 'seafarers.pirateGift') {
+        const frame = pending as unknown as { responders: string[] };
+        const choices = (actionHints(state, frame.responders[0]!).modules!.seafarers as unknown as { pirateGift: Resource[] }).pirateGift;
+        state = attempt(state, frame.responders[0]!, { type: 'pirate.gift', resource: pick(choices, rng)! }, rng)!;
+      } else throw new Error(`unexpected pending ${pending.kind}`);
+    }
+    attacks += state.log.filter((event) => event.seq > seqBefore && event.type === 'pirate.attacked').length;
+    // 海盜的暫時阻擋：這回合船線的延伸只被海盜擋住（拿掉海盜才有合法延伸）。
+    // 已經用完 15 艘船的玩家沒有棋子可延伸，不算在分母（否則海盜單獨造成的延誤被低估）。
+    const shipsLeft = 15 - state.board.roads.filter((road) => road?.ship && road.player === actor.id).length;
+    if (lineContext(state, actor.id)!.next !== 'done' && shipsLeft > 0) {
+      const saved = state.board.pirate;
+      enrich(state, actor.id);
+      const withPirate = lineCandidates(state, actor.id).length;
+      state.board.pirate = null;
+      const without = lineCandidates(state, actor.id).length;
+      state.board.pirate = saved;
+      if (without > 0) lineTurns++;
+      if (without > 0 && withPirate === 0) pirateBlockedTurns++;
     }
     const actions = 1 + rng.int(4);
     for (let action = 0; action < actions; action++) {
@@ -297,5 +333,5 @@ export function simulatePirateIslands(options: PirateSimOptions): PirateSimResul
   state.board.roads.forEach((road, edge) => {
     if (road && !road.ship && !roadAllowed(state, road.player, edge)) illegalRoads++;
   });
-  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, backtracks, illegalRoads, badEnds, wallRefusals, hintCalls, hintMs, inconsistent, ruleDeadlocks, walledPlayers: walled.size, escaped, stillWalled, hopeless, stuckPlayers: [...state.players].filter((player) => permanentlyStuck(state, player.id)).length };
+  return { state, turns, linesDone, unreachable, noStart, outOfShips, noExtension, backtracks, illegalRoads, badEnds, wallRefusals, hintCalls, hintMs, inconsistent, ruleDeadlocks, rolls, attacks, steals, pirateBlockedTurns, lineTurns, walledPlayers: walled.size, escaped, stillWalled, hopeless, stuckPlayers: [...state.players].filter((player) => permanentlyStuck(state, player.id)).length };
 }
