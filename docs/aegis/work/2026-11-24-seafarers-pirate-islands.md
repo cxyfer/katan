@@ -547,6 +547,17 @@ every UI command. `docs/screenshots/seafarers-pirate-islands/report.json` lists 
 
 - No human playtest, physical device or screen-reader check. The browser run is Chromium with software WebGL; phone evidence is a 390 x 844 viewport.
 - The SF25 text gives no rule for a boxed-in line (I9), walling (I17) or villages on another line (I21): these are the user's decisions and are in `docs/FIDELITY.md`. The attack on the fortress cannot be declined (spec decision, I49).
-- The knight path of the engine still increments the player's `robberMoves` statistic and `playedKnights` (the latter is the real count of knights played).
 - A removed pirate never happens in the random simulation (the game ends at the first win); it is covered by the rules tests and the browser run.
 - Hard bots and any bot seat in this scenario remain out of scope.
+
+## Review round 1 fixes (S7c)
+
+| # | Item | Decision |
+|---|---|---|
+| R1 | `robberMoves` | A knight turned into a warship is not a robber move: `BanditMove` has an optional `robberMove: false` (set by `knightToWarship`) and the engine skips `stats.robberMoves` for it; `devCardsPlayed.knight` and `playedKnights` still count. Every other profile still counts it (test with Cloth for Catan, D7). This replaces the "statistics counter only" limitation above |
+| R2 | 3D lair and banner spot | The shore-edge filter forgot land-to-frame edges (`edge.hexes.length === 1`), so the red (0,0) and orange (-3,6) fortresses fell back to the hex-centre direction. It now uses the same test as `isSeaEdge`. Test: for all four fortresses the spot is aligned with a shore edge (not the fallback). The 22 browser cases were re-run (0 page errors, 16 kept); the red banner now stands on the shore beside the fortress |
+| R3 | Result statistics | `buildStatsRows` subtracts unrecaptured fortresses (`lairs > 0`) from the settlement count, like `PlayersPanel`. Test: 2 buildings, 1 counted; 2 after the recapture |
+| R4 | Test name | The "free ship is not converted" test now adds a free coastal ship, makes every line ship a warship, and expects `E_NO_WARSHIP_TARGET` and that the free ship is not recorded as a warship |
+| R5 | `CURATED` | Lists exactly the 16 kept captures, so a re-run reproduces the report |
+
+Tests after the fixes: rules `seafarers-pirate-islands-warships` 26, `seafarers-exports` 18, `seafarers-pirate-islands` 60; web `seafarers-pirate-warships` 16, `game-stats` 13, `seafarers-pirate-islands` 9, `seafarers-pirate-patrol` 13; `pnpm typecheck` passes.

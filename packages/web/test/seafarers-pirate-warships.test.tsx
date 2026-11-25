@@ -8,8 +8,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { actionHints, createGame, projectGame, seededRng, type GameState, type GameView } from '@katan/rules';
 import { buildGeometry } from '../src/board/geometry.ts';
 import { seafarersHints, seafarersView } from '../src/board/seafarers.ts';
-import { createRecapturedBannerModel } from '../src/board/three/diorama-pirate-islands.ts';
+import { createRecapturedBannerModel, lairSpot } from '../src/board/three/diorama-pirate-islands.ts';
 import { createShipModel, createWarshipModel, shipInstances } from '../src/board/three/diorama-ships.ts';
+import { buildStatsRows } from '../src/components/GameStats.tsx';
+import { createGameStats } from '@katan/rules';
 import { DevCardPanel } from '../src/components/DevCardPanel.tsx';
 import { HelpPanel } from '../src/components/HelpPanel.tsx';
 import { PlayersPanel } from '../src/components/PlayersPanel.tsx';
@@ -266,6 +268,42 @@ describe('the fortress log lines, sounds, help and result', () => {
       expect(screen.getByTestId('result-reason').getAttribute('data-cause')).toBe('fortressRecaptured');
       expect(screen.getByTestId('result-reason').textContent).toBe(reason);
       cleanup();
+    }
+  });
+});
+
+describe('review round 1', () => {
+  it('the result statistics do not count an unrecaptured fortress as a settlement', () => {
+    const state = pirateState();
+    const view = viewOf(state);
+    const row = (v: GameView) => buildStatsRows(v, createGameStats(pirateState().players, true)).find((entry) => entry.player.id === 'p1')!;
+    // 預置村落 1 + 堡壘 1（未收復）= 棋盤上 2 座，統計只算 1 座。
+    expect(view.board.buildings.filter((b) => b?.player === 'p1' && !b.city)).toHaveLength(2);
+    expect(row(view).settlements).toBe(1);
+    slotOf(state).fortresses.find((f) => f.player === 'p1')!.lairs = 0;
+    expect(row(viewOf(state)).settlements).toBe(2);
+  });
+
+  it('every fortress takes the shore branch (also land-to-frame edges), never the fallback towards the hex centre', () => {
+    const view = viewOf(pirateState());
+    const geometry = buildGeometry(view.board.topologyId, 100, view.board.terrain);
+    for (const fortress of seafarersView(view)!.pirateIslands!.fortresses) {
+      const spot = lairSpot(geometry, fortress.vertex)!;
+      const vertex = geometry.vertices[fortress.vertex]!;
+      const info = geometry.topology.vertices[fortress.vertex]!;
+      const shore = info.edges.map((edge) => geometry.topology.edges[edge]!).filter((edge) =>
+        edge.hexes.some((h) => geometry.land[h] !== false) && (edge.hexes.length === 1 || edge.hexes.some((h) => geometry.land[h] === false)));
+      expect(shore.length).toBeGreaterThan(0);
+      // 沿岸 0.3 加往陸地 0.06：離頂點約 0.3；fallback（只往格心）正好 0.3 且沒有沿岸分量，所以另外檢查落點在某條岸邊上。
+      const ends = shore.map((edge) => geometry.vertices[edge.vertices.find((o) => o !== fortress.vertex)!]!);
+      const dx = spot[0] - vertex.x / geometry.scale;
+      const dz = spot[2] - vertex.y / geometry.scale;
+      const aligned = ends.some((end) => {
+        const ax = end.x / geometry.scale - vertex.x / geometry.scale;
+        const az = end.y / geometry.scale - vertex.y / geometry.scale;
+        return (dx * ax + dz * az) / (Math.hypot(dx, dz) * Math.hypot(ax, az)) > 0.9;
+      });
+      expect(aligned, `fortress ${fortress.player}`).toBe(true);
     }
   });
 });

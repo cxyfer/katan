@@ -50,10 +50,10 @@ REPORT.update({'scenario': 'pirate-islands', 'profile': 'sf-pirate-islands-2025'
 NAMES = ['海岸領航員', 'Mira', '阿卡', 'Jonas']
 FIXTURE = str(base.ROOT / 'scripts/seafarers/pirate_fixture.mjs')
 CURATED = {
-    'lobby-pirate-islands', 'map-3p-svg-desktop', 'map-3p-r3f-desktop', 'map-4p-svg-desktop', 'map-4p-r3f-desktop', 'map-4p-svg-phone',
-    'help-pirate-svg-desktop', 'live-line-svg', 'live-line-3d', 'live-boxed-in-svg', 'live-backtrack-3d', 'live-pirate-attack-svg',
-    'live-pirate-gift-3d', 'live-warship-svg', 'live-knight-ready-svg', 'live-knight-blocked-3d', 'live-attack-recapture-svg', 'live-recaptured-3d',
-    'live-result-pirate', 'live-result-pirate-phone', 'live-line-phone', 'live-attack-log',
+    'lobby-pirate-islands', 'map-3p-svg-desktop', 'map-4p-svg-desktop', 'map-4p-r3f-desktop', 'map-4p-svg-phone',
+    'live-line-svg', 'live-line-3d', 'live-boxed-in-svg', 'live-backtrack-3d', 'live-pirate-attack-svg',
+    'live-warship-svg', 'live-knight-blocked-3d', 'live-attack-recapture-svg', 'live-recaptured-3d',
+    'live-result-pirate', 'live-result-pirate-phone',
 }
 
 

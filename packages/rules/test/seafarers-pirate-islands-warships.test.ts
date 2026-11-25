@@ -22,6 +22,7 @@ const seatOf = (state: GameState, id: string) => state.players.findIndex((player
 const clone = (state: GameState): GameState => JSON.parse(JSON.stringify(state)) as GameState;
 const cmd = (command: object) => command as Command;
 const score = (state: GameState, id: string) => scoreOf(state, id, { includeHidden: true });
+const isCoastal = (state: GameState, edge: number): boolean => topologyOf(state).edges[edge]!.hexes.some((hex) => state.board.layout.terrain[hex] !== 'sea' && state.board.layout.islands[hex] === 1);
 const types = (state: GameState): string[] => state.log.map((event) => event.type);
 
 /** 蓋一艘船（付 1 木 1 羊，輪到該玩家）。 */
@@ -127,10 +128,29 @@ describe('warships: knight cards', () => {
     const state = withKnight();
     const land = state.board.layout.terrain.findIndex((terrain) => terrain !== 'sea');
     expectRejected(state, 'p1', cmd({ type: 'dev.playKnight', hex: land }), 'E_INVALID_COMMAND');
-    // 把船線縮成只有預置船，另放一艘自由船：改的是船線上的船。
+    // 另放一艘自由沿岸船（不在船線上）：船線上的船都是戰船時，它不會被改，騎士被拒絕。
     const preset = lineOf(state)[0]!;
     const hints = actionHints(state, 'p1').modules!.seafarers as { pirateLine: { warshipTarget: number | null } };
     expect(hints.pirateLine.warshipTarget).toBe(preset);
+    const free = state.board.roads.findIndex((road, edge) => !road && !lineOf(state).includes(edge) && isCoastal(state, edge));
+    state.board.roads[free] = { player: 'p1', ship: true };
+    warships(state, 'p1', lineOf(state));
+    expectRejected(state, 'p1', cmd({ type: 'dev.playKnight', hex: null }), 'E_NO_WARSHIP_TARGET');
+    expect(slot(state).warships.p1).not.toContain(free);
+  });
+
+  it('改裝戰船不累加 robberMoves，騎士次數與 devCardsPlayed 照算；其他劇本的騎士仍累加（D7）', () => {
+    const state = withKnight();
+    const before = state.stats!.players.p1!.robberMoves;
+    const after = act(state, 'p1', cmd({ type: 'dev.playKnight', hex: null })).state;
+    expect(after.stats!.players.p1!.robberMoves).toBe(before);
+    expect(after.stats!.players.p1!.devCardsPlayed.knight).toBe(1);
+    expect(after.players[0]!.playedKnights).toBe(1);
+    const cloth = emptySeafarersGame(3, 0, 'action', 'sf-cloth-for-catan-2025');
+    cloth.players[0]!.devCards.push('knight');
+    const hex = cloth.board.layout.terrain.findIndex((t, i) => t !== 'sea' && i !== cloth.board.robber && cloth.board.layout.numbers[i] !== null);
+    const moved = act(cloth, 'p1', cmd({ type: 'dev.playKnight', hex })).state;
+    expect(moved.stats!.players.p1!.robberMoves).toBe(1);
   });
 
   it('不計最大軍隊：打出騎士牌後沒有人拿到最大軍隊', () => {

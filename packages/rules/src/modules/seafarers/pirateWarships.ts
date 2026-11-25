@@ -51,7 +51,7 @@ export function knightToWarship(state: GameState, actorId: string, target: numbe
   const slot = pirateIslandsView(state)!;
   (slot.warships[actorId] ??= []).push(edge);
   kit.emit(state, 'warship.converted', { playerId: actorId, edge, count: slot.warships[actorId]!.length });
-  return { ok: true, hex: null, candidates: [] };
+  return { ok: true, hex: null, candidates: [], robberMove: false };
 }
 
 /** 戰船被 `ship.move` 退回到新的邊：還是同一艘戰船（SF25 沒有規定，記為 interpretation）。 */

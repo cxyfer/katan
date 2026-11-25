@@ -120,10 +120,10 @@ export function lairSpot(geometry: BoardGeometry, vertexIndex: number): Vec3 | n
   const land = info.hexes.find((hex) => geometry.land[hex] !== false);
   const hex = land === undefined ? undefined : geometry.hexes[land];
   if (!hex) return [x, 0.005, z];
-  // 沿岸邊（一側是陸地格、另一側是海或框）走向相鄰的頂點。
+  // 沿岸邊（一側是陸地格、另一側是海、框或沒有格，與 `isSeaEdge` 同一個判定）走向相鄰的頂點。
   // 兩側都是岸時取畫面下方（z 較大、朝相機）那一側，疊與旗才不會躲在堡壘和山的後面。
   const ends = info.edges.map((edge) => geometry.topology.edges[edge]!).filter((edge) =>
-    edge.hexes.some((h) => geometry.land[h] !== false) && edge.hexes.some((h) => geometry.land[h] === false))
+    edge.hexes.some((h) => geometry.land[h] !== false) && (edge.hexes.length === 1 || edge.hexes.some((h) => geometry.land[h] === false)))
     .map((edge) => geometry.vertices[edge.vertices.find((other) => other !== vertexIndex)!]).filter((other) => !!other);
   const far = ends.sort((a, b) => b!.y - a!.y)[0];
   const inward = { x: hex.cx / scale - x, z: hex.cy / scale - z };

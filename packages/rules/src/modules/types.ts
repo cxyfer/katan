@@ -187,7 +187,7 @@ export type ModuleCommandHandler = (
  * `candidates` are the players the actor may rob afterwards.
  */
 export type BanditMove =
-  | { ok: true; hex: number | null; candidates: string[] }
+  | { ok: true; hex: number | null; candidates: string[]; /** `false`: not a robber/pirate move (a knight turned into a warship), so the robber-move statistic stays. */ robberMove?: boolean }
   | { ok: false; error: CommandOutcome };
 
 /** The public, viewer-filtered form of a module frame. */
