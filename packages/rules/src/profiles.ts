@@ -361,13 +361,14 @@ const SEAFARERS_SCENARIO_PROFILES: readonly ProfileDefinition[] = [
     implemented: true,
     enabled: true,
   }),
-  // 真正條件是「收復自己的堡壘且 10 分」，複合條件在 S7c 實作；此處只放分數部分。
-  // S7a：版圖、預置、堡壘、西島船線已實作（`implemented`），但海盜、戰船與進攻還沒有，所以不啟用（S7c 才開）。
+  // 結束條件是「收復自己的堡壘且 10 分」（`winCause`，`fortressRecaptured`）；`victoryTarget` 是其中的 10 分。
+  // S7a–S7c：版圖、預置、堡壘、西島船線、巡弋海盜、戰船、進攻堡壘與收復都已實作，所以啟用。
   // 3、4 人共用同一張 49 格圖；無島嶼獎勵；規則內關閉最長道路、最大軍隊與強盜。
   seafarersScenarioProfile('sf-pirate-islands-2025', 'pirate-islands', 10, 'pp. 16–17', {
     topologyId: 'sf-pirate-islands',
     stuckLineBacktrack: true,
     implemented: true,
+    enabled: true,
   }),
   // 結束條件是「完成奇觀，或 10 分且完成層數比其他每位玩家都高」（`winCause`）；`victoryTarget` 是其中的 10 分。
   // 小島獎勵每座 1 分；3 人與 4 人共用同一張 49 格圖；海盜在規則內關閉（`hasPirate` 欄位仍是 true，見 §7.1）。

@@ -80,6 +80,7 @@ import {
   projectWonders,
   wonderCause,
 } from './wonders.ts';
+import { attackFortress, convertibleShip, knightToWarship, lineWarships, pirateCause, willAttack } from './pirateWarships.ts';
 import { setModuleState } from '../state.ts';
 
 /**
@@ -201,7 +202,15 @@ function backtrackHint(
     else if (!lineBacktrackMovable(state, playerId, last)) reason = 'attached';
     else reason = 'noTarget';
   }
-  return { ...hint, backtrack, backtrackBlocked: reason };
+  return {
+    ...hint,
+    backtrack,
+    backtrackBlocked: reason,
+    // S7c：騎士牌可改裝的船（船線上最接近起點的一般船，沒有則 null）、船線上的戰船數、結束回合時是否會進攻堡壘。
+    warshipTarget: convertibleShip(state, playerId),
+    lineWarships: lineWarships(state, playerId),
+    attackOnEnd: willAttack(state, playerId),
+  };
 }
 
 export type SeafarersHints = ReturnType<typeof seafarersHints>;
@@ -248,7 +257,9 @@ export const seafarersModule: RulesModule = {
   },
 
   // 卡坦奇觀：完成自己的奇觀，或達到目標分且層數比其他每位玩家都高（取代單純的目標分）。
+  // 海盜巢穴：已收復自己的堡壘且達到目標分（自己的回合任一時刻）。
   winCause(state, playerId, score, ctx) {
+    if (isPirateIslands(ctx)) return pirateCause(state, playerId, score, ctx);
     return isWondersOfCatan(ctx) ? wonderCause(state, playerId, score, ctx) : undefined;
   },
 
@@ -288,10 +299,9 @@ export const seafarersModule: RulesModule = {
     return isClothForCatan(ctx) ? { ...rules, minLongestRoad: Number.POSITIVE_INFINITY } : rules;
   },
 
-  // 海盜巢穴：騎士牌在 S7c 才改成只能改裝戰船；在那之前不能打出（否則會把盒子裡的強盜放回棋盤）。
+  // 海盜巢穴：騎士牌只能改裝戰船（`moveBandit`），不會把盒子裡的強盜放回棋盤。
   vetoCommand(state, actorId, command, ctx) {
     if (!isPirateIslands(ctx)) return undefined;
-    if (command.type === 'dev.playKnight') return { ok: false, error: { code: 'E_INVALID_COMMAND', params: {} } } as CommandOutcome;
     // 會圍死別人的村落（含蓋在別人船線上）：回報專用的訊息（hints 的 legalSettlements 也據此濾掉）。
     if ((command.type === 'build.settlement' || command.type === 'setup.placeBuilding') && ctx.rules && villageRefusedOnlyByWalls(state, actorId, command, ctx.rules)) {
       return { ok: false, error: { code: 'E_LINE_WALLED', params: { vertex: command.vertex as number } } } as CommandOutcome;
@@ -312,7 +322,13 @@ export const seafarersModule: RulesModule = {
   },
 
   // 回合結束時 ≥5 個部落沒有布匹：最高分勝，平手比布匹，仍平手共同勝利（D12）。
-  onEndTurn(state, _actorId, ctx) {
+  onEndTurn(state, actorId, ctx) {
+    // 海盜巢穴：行動階段結束時，船線到達自己堡壘就自動進攻（之後照常結束回合）；進攻可能收復並贏得遊戲。
+    if (isPirateIslands(ctx)) {
+      if (!attackFortress(state, actorId, ctx)) return 'continue';
+      ctx.kit.checkVictory(state);
+      return state.result ? 'defer' : 'continue';
+    }
     const winners = exhaustionWinners(state, (id) => scoreOf(state, id, { includeHidden: true }));
     if (!winners) return 'continue';
     ctx.kit.endGame(state, winners, 'clothExhausted');
@@ -331,7 +347,10 @@ export const seafarersModule: RulesModule = {
     if (state.result) return;
     goldProduction(state, roll, ctx);
   },
-  moveBandit,
+  // 海盜巢穴：騎士牌改裝戰船；其他劇本照舊移動海盜。
+  moveBandit(state, actorId, target, cause, ctx) {
+    return isPirateIslands(ctx) ? knightToWarship(state, actorId, target, cause, ctx) : moveBandit(state, actorId, target, cause, ctx);
+  },
   allowBuilding,
 
   freeRouteTargets(state, playerId, ctx, options) {
