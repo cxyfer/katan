@@ -343,17 +343,17 @@ Same method and policies as S7a (300 games per player count and policy, at most 
 | Players | Policy | Rolls | Attacks | Steals (7) | Line held up only by the pirate (turns / turns with a line extension) |
 |---|---|---|---|---|---|
 | 3 | bias 1 | 3,957 | 1,100 (0.28 per roll) | 456 | 133 / 3,394 (3.9 %) |
-| 4 | bias 1 | 5,661 | 1,842 | 641 | 253 / 4,586 (5.5 %) |
+| 4 | bias 1 | 5,661 | 1,842 | 641 | 252 / 4,577 (5.5 %) |
 | 3 | bias 0.85 | 4,553 | 1,218 | 501 | 152 / 3,892 (3.9 %) |
-| 4 | bias 0.85 | 6,557 | 2,116 | 727 | 263 / 5,222 (5.0 %) |
-| 3 | bias 0.4 | 10,687 | 3,595 | 1,200 | 361 / 7,739 (4.7 %) |
-| 4 | bias 0.4 | 12,829 | 5,183 | 1,405 | 522 / 9,479 (5.5 %) |
+| 4 | bias 0.85 | 6,557 | 2,116 | 727 | 263 / 5,190 (5.1 %) |
+| 3 | bias 0.4 | 10,687 | 3,595 | 1,200 | 354 / 6,905 (5.1 %) |
+| 4 | bias 0.4 | 12,829 | 5,183 | 1,405 | 515 / 9,004 (5.7 %) |
 
 Reading:
 
 - The rule checks all stay at 0 (`inconsistent`, `badEnds`, `illegalRoads`, rule deadlocks, wall refusals): the moving pirate never makes the engine accept an illegal line, road or end.
 - The line-focused policies complete every line (all but 5 of 4,200 lines; those ran out of the 15 ships of the supply). With many random free ships (bias 0.4) 3.7 % (3 players) and 4 % (4 players) of the games have a boxed-in line and 1 and 12 players end stuck (5 of the 12 route-less). **S7a measured 1 and 7 for the same policy with a pirate that jumped at random**; the two runs use different random streams (the pirate no longer draws from the sim's rng and every 7 now steals), so the runs are not paired and the change from 7 to 12 is within what a different stream gives; the pirate does not cause stuck players (the check ignores it), it only delays a line for a few turns. **Known limitation, unchanged** (I17): lines of two players can wall each other; S7c will change the board again when a failed attack removes ships.
-- The pirate delays a line extension in about **4–5.5 % of the turns where an extension exists**; it never blocks a line for good because the pirate moves every roll (at most a 14-turn cycle, and in practice the lower die moves it 1 to 6 hexes per roll).
+- The pirate delays a line extension in about **4–5.7 % of the turns where an extension exists and the player still has ships** (round 2: players who already used all 15 ships are no longer in the denominator); it never blocks a line for good because the pirate moves every roll (at most a 14-turn cycle, and in practice the lower die moves it 1 to 6 hexes per roll).
 - Hint cost with the real pirate: about 1.5–2.0 ms per `actionHints` call (the machine was less loaded than for the S7a run, so it is not comparable).
 
 ## What was built (S7b)
@@ -386,3 +386,14 @@ Reading:
 Test numbers after the fixes: rules whole suite 75 files, 1,341 tests (was 1,338); `seafarers-pirate-islands-patrol.test.ts` 31 tests, `seafarers-exports.test.ts` 18; web `dice-hold` 23, `seafarers-pirate-patrol` 11, all 13 `seafarers*` files 170; server registry, bots, seafarers-bots and recovery tests and the bots `support` test pass; `pnpm typecheck` passes.
 
 Limitation: **the server restart path cannot be tested for this scenario until S7c enables the profile** (the lobby and `createGame` in the service refuse a disabled profile). The restart evidence is rules-level (state serialized and restored before the next command); S7c should add a server recovery test with a pending `pirateGift` and `sevenSteal`.
+
+## Review round 2 fixes (S7b)
+
+| # | Item | Decision |
+|---|---|---|
+| I40 | Pirate answers keep the dice presentation | A `seafarers.sevenSteal` or `seafarers.pirateGift` frame opened right after the roll made `useBoardAnimation` treat the roll as overtaken by a required action and clear the dice queue, so the pirate jumped at once. The rules now mark both frames' public data with `fromRoll: true` ("this answer was caused by the roll"); the client treats any module frame with `data.fromRoll === true` like a discard or a 7's robber step and keeps the last roll of the packet, **any total** (a gift can follow a non-7). Other module frames carry no such flag, so every other scenario behaves as before (D7; test: `seafarers.gold` and a frame without the flag still clear the dice). Test: `pirate-roll-presentation.test.tsx` (2 + 5 with a victim and nobody over 7 cards, a gift after 2 + 2). |
+| I41 | Statistics | Cards the pirate takes are added to the player's **discarded** counter (an expense column, as with the 7); a resource taken from the supply for beating the pirate is income in a new optional counter `supplyPicks` (created on first use, absent in other scenarios; `GameStats` shows a "Pirate prize" column only when someone has one, zh-Hant 海盜戰利品). The 7's steal already used stolen/robbed. Tests: red holds 1 grain, `2 + 2` from `route[7]`: lost first, then 1 grain produced, hand 1, `discarded.grain` 1, `produced.grain` 1; a gift counts in `supplyPicks` and the hand equals the income; `game-stats.test.tsx`. |
+| I42 | Attack before production, with real production | The red preset village touches the 4-disc fields hex. Tests with the real disc layout: an empty-handed red is attacked (nothing to lose), then produces 1 grain and ends with 1 grain (an early grant would have lost it); with 1 grain it loses it first and then gets 1. |
+| I43 | Simulation denominator | `lineTurns` now skips turns of players who have used all 15 ships (4 players, seed 8, bias 0.4 had 6 of 38 such turns). Table above re-measured (300 games per cell); the other columns did not change. |
+
+Test numbers after round 2: see the final report of the round (rules whole suite, web files, server).
