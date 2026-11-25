@@ -12,7 +12,7 @@ import { productionForRoll } from '../src/analysis.ts';
 import { seafarersModule } from '../src/modules/seafarers/index.ts';
 import { goldEntitlements } from '../src/modules/seafarers/gold.ts';
 import {
-  fortressLocked, isLineEdge, lineBacktrack, lineShipFixed, roadAllowed, lineBacktrackMovable, lineContext, lineShip, lineVertices, pirateIslandsView, wallContext, wallsAnyone,
+  fortressLocked, isLineEdge, lineBacktrack, lineShipFixed, roadAllowed, lineBacktrackMovable, lineContext, lineShip, lineVertices, pirateIslandsView, villageWalls, wallContext, wallsAnyone,
 } from '../src/modules/seafarers/pirateIslands.ts';
 import { canPlaceShip, legalShipEdges } from '../src/modules/seafarers/ships.ts';
 import { seafarersState } from '../src/modules/seafarers/state.ts';
@@ -1145,6 +1145,137 @@ describe('Pirate Islands round 4 review fixes', () => {
       expect(state.board.buildings.filter(Boolean), `${players}p buildings`).toHaveLength(players * 2);
       expect(state.devDeck, `${players}p deck`).toHaveLength(players === 3 ? 20 : 25);
     }
+  });
+});
+
+describe('Pirate Islands round 5 review fixes', () => {
+  /** 一個合法的海岸村落位置，旁邊有一條「不碰東島」的重新開始第一步（外海船）；`avoid` 是不能用的位置。 */
+  function offshoreRestart(state: GameState, avoid: number[] = []): { vertex: number; edge: number } | null {
+    const topo = topologyOf(state);
+    for (const vertex of legalBuildingVertices(state, 'p1', { requireConnection: false })) {
+      if (avoid.includes(vertex)) continue;
+      settle(state, 'p1', vertex);
+      const edge = restartEdges(state, 'p1').find((candidate) => isLineEdge(state, candidate) && topo.edges[candidate]!.vertices.includes(vertex));
+      state.board.buildings[vertex] = null;
+      if (edge !== undefined) return { vertex, edge };
+    }
+    return null;
+  }
+
+  it('舊的那艘船是外海船時不能重新開始（會留下船線外的孤兒外海船）：設置的兩次放置（4 人 seed 1，頂點 17／邊 19，頂點 21／邊 24）', () => {
+    const { state: fresh, rng } = game(4, 1);
+    let state = calm(fresh);
+    const mine: { vertex: number; edge: number }[] = [{ vertex: 17, edge: 19 }, { vertex: 21, edge: 24 }];
+    let turn = 0;
+    let secondShip: number | null = null;
+    for (let guard = 0; state.turn.phase === 'setup' && guard < 40; guard++) {
+      const setup = state.turn.setup!;
+      const actor = state.players[setup.order[setup.index]!]!.id;
+      if (setup.stage === 'building') {
+        const wanted = actor === 'p1' ? mine[turn]!.vertex : legalBuildingVertices(state, actor, { setup: true }).at(-1)!;
+        state = act(state, actor, { type: 'setup.placeBuilding', vertex: wanted }, rng).state;
+      } else if (actor === 'p1') {
+        const edge = mine[turn]!.edge;
+        if (turn === 1) {
+          // 第二次：舊的那艘（邊 19）已是船線唯一的外海船，不能再重新開始（否則它變成船線外的孤兒外海船）；
+          // 邊 24 是沿岸邊，所以只是一艘自由船，船線不變。
+          secondShip = edge;
+          expect(lineShip(state, 'p1', edge, { setupVertex: setup.lastVertex }).kind).toBe('free');
+          expect(canPlaceShip(state, 'p1', edge, { setupVertex: setup.lastVertex })).toBe(true);
+          state = act(state, 'p1', { type: 'setup.placeShip', edge } as never, rng).state;
+        } else {
+          expect(lineShip(state, 'p1', edge, { setupVertex: setup.lastVertex })).toMatchObject({ kind: 'line', restart: true });
+          state = act(state, 'p1', { type: 'setup.placeShip', edge } as never, rng).state;
+          expect(slot(state).lines.p1).toEqual({ start: 17, edges: [19] });
+        }
+        turn++;
+      } else {
+        state = act(state, actor, { type: 'setup.placeRoad', edge: actionHints(state, actor).legalRoads[0]! }, rng).state;
+      }
+    }
+    expect(secondShip).toBe(24);
+    // 邊 19 的船仍在船線記錄裡，沒有孤兒外海船。
+    expect(slot(state).lines.p1!.edges).toEqual([19]);
+    expect(state.board.roads[24]).toEqual({ player: 'p1', ship: true });
+    // 建造的路徑：同樣的第二個位置在遊戲中也被拒。
+    const built = calm(clone(state));
+    forceTurn(built, 0, 'action');
+    setHand(built, 'p1', { lumber: 1, wool: 1 });
+    expect(restartEdges(built, 'p1')).toEqual([]);
+    expect(lineShip(built, 'p1', 24).kind).toBe('free');
+  });
+
+  it('不得在別人船線上的頂點蓋村落（建造與設置、hints、訊息）', () => {
+    const state = sail(started(4), 'p1', 'fortress');
+    const line = slot(state).lines.p1!;
+    const topo = topologyOf(state);
+    const vertices = lineVertices(state, line);
+    const landVertex = vertices.find((vertex, index) => index > 0 && index < vertices.length - 1 && topo.vertices[vertex]!.hexes.some((hex) => isLandHex(state, hex)) && !state.board.buildings[vertex]);
+    expect(landVertex, 'an interior land vertex of the line').toBeDefined();
+    expect(villageWalls(state, 'p3', landVertex!)).toBe(true);
+    // 自己的船線上不受限制（它是自己的建築位置）。
+    expect(villageWalls(state, 'p1', landVertex!)).toBe(false);
+    const ctx = { profile: getProfile(PROFILE)! };
+    expect(seafarersModule.allowBuilding!(state, 'p3', landVertex!, { setup: false }, ctx)).toBe(false);
+    expect(seafarersModule.allowBuilding!(state, 'p3', landVertex!, { setup: true }, ctx)).toBe(false);
+    expect(seafarersModule.vetoCommand!(state, 'p3', { type: 'build.settlement', vertex: landVertex! }, ctx)).toMatchObject({ ok: false, error: { code: 'E_LINE_WALLED' } });
+    expect(seafarersModule.vetoCommand!(state, 'p3', { type: 'setup.placeBuilding', vertex: landVertex! }, ctx)).toMatchObject({ ok: false, error: { code: 'E_LINE_WALLED' } });
+    expect(legalBuildingVertices(state, 'p3', { requireConnection: false })).not.toContain(landVertex!);
+    // 其他劇本沒有這條限制。
+    const cloth = emptySeafarersGame(3, 0, 'action', 'sf-cloth-for-catan-2025');
+    expect(villageWalls(cloth, 'p1', 0)).toBe(false);
+  });
+
+  it('重新開始船線也走不得圍死的檢查（只豁免現有船線末端的嚴格延伸）；起點是自己的建築，別人本來就走不過去', () => {
+    const state = started(4);
+    const found = offshoreRestart(state);
+    expect(found).not.toBeNull();
+    settle(state, 'p1', found!.vertex);
+    expect(lineShip(state, 'p1', found!.edge)).toMatchObject({ kind: 'line', restart: true });
+    // 重新開始的第一步不會圍死任何人（出發點是自己的建築，別人過不了）：兩種判定一致，且合法。
+    expect(canPlaceShip(state, 'p1', found!.edge, { walls: null })).toBe(true);
+    expect(canPlaceShip(state, 'p1', found!.edge)).toBe(true);
+    // 檢查確實執行：把 p1 自己的路徑封死（出發點旁其他邊都占住、目標遠端也占住），重新開始就會圍死自己而被拒。
+    const topo = topologyOf(state);
+    const to = (lineShip(state, 'p1', found!.edge) as { to: number }).to;
+    const target = lineContext(state, 'p1', undefined, { start: null, edges: [] })!.targetVertex!;
+    for (const edge of topo.vertices[target]!.edges) if (!state.board.roads[edge]) ship(state, 'p4', edge);
+    expect(topo.vertices[to]).toBeDefined();
+    expect(canPlaceShip(state, 'p1', found!.edge)).toBe(canPlaceShip(state, 'p1', found!.edge, { walls: null }) && !wallsAnyone(state, { edge: found!.edge, owner: 'p1', extend: to, from: found!.vertex, restart: true }));
+  });
+
+  it('hints 說明為什麼被圍住卻不能移末端船（backtrackBlocked）', () => {
+    const base = started(4);
+    base.windowId += 1;
+    forceTurn(base, 0, 'action');
+    const last = slot(base).lines.p1!.edges.at(-1)!;
+    wall(base);
+    const reason = (state: GameState) => (sf(state, 'p1').pirateLine as unknown as { backtrack: boolean; backtrackBlocked: string | null });
+    expect(reason(base)).toMatchObject({ backtrack: true, backtrackBlocked: null });
+    const preroll = clone(base);
+    forceTurn(preroll, 0, 'preroll');
+    expect(reason(preroll).backtrackBlocked).toBe('phase');
+    const moved = clone(base);
+    seafarersState(moved).moved = true;
+    expect(reason(moved).backtrackBlocked).toBe('moved');
+    const built = clone(base);
+    seafarersState(built).built.push(last);
+    expect(reason(built).backtrackBlocked).toBe('builtThisTurn');
+    const pirate = clone(base);
+    pirate.board.pirate = topologyOf(pirate).edges[last]!.hexes.find((hex) => !isLandHex(pirate, hex)) ?? null;
+    expect(reason(pirate).backtrackBlocked).toBe('pirate');
+    // 遠端接著自己的自由船：attached。
+    const attached = clone(base);
+    const end = lineContext(attached, 'p1')!.end!;
+    const spare = topologyOf(attached).vertices[end]!.edges.find((edge) => !attached.board.roads[edge]);
+    if (spare !== undefined) ship(attached, 'p1', spare);
+    else {
+      const own = topologyOf(attached).vertices[end]!.edges.find((edge) => edge !== last && attached.board.roads[edge]?.player === 'p4')!;
+      attached.board.roads[own] = { player: 'p1', ship: true };
+    }
+    expect(reason(attached).backtrackBlocked).toBe('attached');
+    // 沒被圍住時沒有原因。
+    expect(reason(started(4))).toMatchObject({ backtrack: false, backtrackBlocked: null });
   });
 });
 
