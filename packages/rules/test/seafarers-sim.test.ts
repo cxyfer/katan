@@ -9,6 +9,7 @@ import { isLandEdge, isLandVertex, isSeaEdge, neighborsOfVertex, scoreOf, topolo
 import { seafarersState } from '../src/modules/seafarers/state.ts';
 import { getProfile } from '../src/profiles.ts';
 import { RESOURCES, type GameState } from '../src/types.ts';
+import { simulatePirateIslands } from './seafarers-pirate-islands-sim.ts';
 import { simulateSeafarers } from './seafarers-sim.ts';
 
 function checkBoard(state: GameState): void {
@@ -298,4 +299,33 @@ describe('simulated Wonders of Catan games (SFX-S8)', () => {
     // 種子 1 是 10 分且層數最高（wonderLead），種子 3 是完成第 4 層（wonderComplete）：兩種結局都在模擬中出現。
     expect([...causes].sort()).toEqual(['wonderComplete', 'wonderLead']);
   }, 300_000);
+});
+
+describe('simulated Pirate Islands games (SFX-S7)', () => {
+  for (const players of [3, 4] as const) {
+    it(`${players} players: random legal play (knights to warships, the attack on the fortress, recapture, 10 points) reaches a winner with a conserved supply and at most 15 ships each`, () => {
+      const run = simulatePirateIslands({ players, seed: 11 + players, full: true });
+      const { state } = run;
+      expect(state.result?.reason).toBe('victory');
+      expect(state.result?.cause).toBe('fortressRecaptured');
+      expect(scoreOf(state, state.result!.playerId!, { includeHidden: true })).toBeGreaterThanOrEqual(10);
+      expect(run.conserved).toBe(true);
+      expect(run.shipsWithinSupply).toBe(true);
+      expect(run.warshipsConverted).toBeGreaterThan(0);
+      expect(run.recaptures).toBeGreaterThan(0);
+      checkBoard(state);
+    }, 120_000);
+
+    it(`${players} players: the generic simulation also plays the scenario (frames answered, knights as warships) without breaking a piece or the supply`, () => {
+      const run = simulateSeafarers(players, 5 + players, 3000, 'sf-pirate-islands-2025');
+      const { state } = run;
+      const bank = getProfile(state.profileId)!.bankPerResource;
+      for (const resource of RESOURCES) {
+        const total = state.bank[resource] + state.players.reduce((sum, player) => sum + player.resources[resource], 0);
+        expect(total, resource).toBe(bank);
+      }
+      checkBoard(state);
+      expect(run.shipsBuilt).toBeGreaterThan(0);
+    }, 120_000);
+  }
 });
