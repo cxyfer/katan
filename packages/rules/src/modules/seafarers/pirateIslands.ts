@@ -132,6 +132,19 @@ function landIslands(state: GameState, vertex: number): number[] {
 }
 
 /**
+ * 這個村落會不會圍死別人：擋住任何一位玩家通往目標的路，或蓋在別人船線上的頂點（船線被對手村落切斷後再也接不回來；
+ * 這是「禁止圍死別人的目標」的延伸，使用者決定 2026-11-24，偏離 SF25）。
+ */
+export function villageWalls(state: GameState, playerId: string, vertex: number): boolean {
+  const slot = pirateIslandsView(state);
+  if (!slot) return false;
+  for (const [id, line] of Object.entries(slot.lines)) {
+    if (id !== playerId && line.edges.length > 0 && lineVertices(state, line).includes(vertex)) return true;
+  }
+  return wallsAnyone(state, { vertex, owner: playerId });
+}
+
+/**
  * 起始村落只放東島；之後東島照常，海盜群島上只有自己的 beachhead 可以蓋
  * （船線到達與否由一般的連接規則判定：要有自己的船接到那個交叉點）。
  */
@@ -139,7 +152,7 @@ export function buildingAllowed(state: GameState, playerId: string, vertex: numb
   const islands = landIslands(state, vertex);
   if (islands.length === 0) return false;
   // 蓋在這裡會擋住別人的通行；不能因此把任何一位玩家的目標圍死。
-  const open = (): boolean => !wallsAnyone(state, { vertex, owner: playerId });
+  const open = (): boolean => !villageWalls(state, playerId, vertex);
   if (islands.every((island) => island === PI_MAIN_ISLAND)) return open();
   if (options.setup) return false;
   // 只有自己的 beachhead，而且自己的西島船線（船，不是路）已經到達它。
@@ -321,7 +334,8 @@ export function lineShip(state: GameState, playerId: string, edge: number, optio
   }
   if (best) return { kind: 'line', ...best };
   // 船線還沒有延伸超過一艘船：可以從自己任一個東島海岸建築以最短路徑的第一步重新開始（SF25：從任一海岸建築出發）。
-  if (options.moving === undefined && ctx.line.edges.length === 1) {
+  // 舊的那艘船必須是沿岸船（變成自由船）；若是外海船，重開會留下船線外的孤兒外海船，不准。
+  if (options.moving === undefined && ctx.line.edges.length === 1 && !isLineEdge(state, ctx.line.edges[0]!)) {
     const fresh = lineContext(state, playerId, undefined, { start: null, edges: [] });
     if (fresh && fresh.next !== 'done') {
       for (const [from, to] of candidates) {

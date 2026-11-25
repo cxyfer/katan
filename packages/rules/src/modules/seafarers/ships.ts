@@ -93,7 +93,8 @@ export function canPlaceShip(state: GameState, playerId: string, edge: number, o
 function wallsShip(state: GameState, playerId: string, edge: number, options: ShipPlacementOptions): boolean {
   if (options.walls === null) return false;
   const step = lineShip(state, playerId, edge, options);
-  if (step.kind === 'line' && options.moving === undefined) return false;
+  // 只豁免現有船線末端的嚴格最短延伸；重新開始（restart）也要檢查。
+  if (step.kind === 'line' && !step.restart && options.moving === undefined) return false;
   return wallsAnyone(state, {
     edge,
     owner: playerId,

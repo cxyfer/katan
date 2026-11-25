@@ -37,6 +37,8 @@ import {
   lineShipFixed,
   lockedFortresses,
   pirateLineHints,
+  lineBacktrackMovable,
+  villageWalls,
   projectPirateIslands,
   roadAllowed as pirateRoadAllowed,
 } from './pirateIslands.ts';
@@ -48,6 +50,7 @@ import {
   movableShips,
   moveShip,
   setupShip,
+  touchesPirate,
 } from './ships.ts';
 import { SEAFARERS, initialSeafarersState, seafarersState, seafarersView } from './state.ts';
 import { HARBOR_FRAME, activateHarborFrame, harborChoices, initTribe, isForgottenTribe, offerHarbors, placeHarbor, projectHarborFrame, projectTribe } from './tribe.ts';
@@ -146,7 +149,7 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
       // variable setup 的選強盜：只有起始玩家在 `robber` 階段有可選的 12 號格（`board` 讓棋盤自動進入選格）。
       ...(robberChoicePhase(state) ? robberChoiceHints(state, playerId) : {}) } : {}),
     // 海盜巢穴：自己船線的下一個目標與端點（棋盤用來標出目標）；其他劇本不帶此鍵（D7）。
-    ...(view.pirateIslands ? { pirateLine: backtrackHint(pirateLineHints(state, playerId), movable) } : {}),
+    ...(view.pirateIslands ? { pirateLine: backtrackHint(state, playerId, pirateLineHints(state, playerId), movable, { inAction, moved: view.moved, built: view.built }) } : {}),
     // 新世界設置階段的港口：只有輪到的玩家有選邊提示；其他劇本不帶這些鍵。
     ...(view.world ? worldHints(state, playerId) : {}),
     // 卡坦奇觀才有奇觀提示欄位：可認領的奇觀與能否蓋下一層（只對自己的行動階段）；其他劇本的鍵集合不變（D7）。
@@ -161,10 +164,27 @@ export function seafarersHints(state: GameState, playerId: string, ctx: ModuleVi
 }
 
 /** 被圍住（`stuck`）之外，加上此刻末端的船真的可以移動（`backtrack`，與 `movableShips` 一致）。 */
-function backtrackHint(hint: ReturnType<typeof pirateLineHints>, movable: { edge: number }[]) {
+function backtrackHint(
+  state: GameState,
+  playerId: string,
+  hint: ReturnType<typeof pirateLineHints>,
+  movable: { edge: number }[],
+  timing: { inAction: boolean; moved: boolean; built: readonly number[] },
+) {
   if (!hint) return null;
   const last = hint.edges[hint.edges.length - 1];
-  return { ...hint, backtrack: hint.stuck && last !== undefined && movable.some((entry) => entry.edge === last) };
+  const backtrack = hint.stuck && last !== undefined && movable.some((entry) => entry.edge === last);
+  // 被圍住卻此刻不能移的原因：時機（`phase`、`moved`、`builtThisTurn`）、海盜、遠端接著自己的船（`attached`）或沒有合法落點（`noTarget`）。
+  let reason: 'phase' | 'moved' | 'builtThisTurn' | 'pirate' | 'attached' | 'noTarget' | null = null;
+  if (hint.stuck && !backtrack && last !== undefined) {
+    if (!timing.inAction) reason = 'phase';
+    else if (timing.moved) reason = 'moved';
+    else if (timing.built.includes(last)) reason = 'builtThisTurn';
+    else if (touchesPirate(state, last)) reason = 'pirate';
+    else if (!lineBacktrackMovable(state, playerId, last)) reason = 'attached';
+    else reason = 'noTarget';
+  }
+  return { ...hint, backtrack, backtrackBlocked: reason };
 }
 
 export type SeafarersHints = ReturnType<typeof seafarersHints>;
@@ -252,10 +272,14 @@ export const seafarersModule: RulesModule = {
   },
 
   // 海盜巢穴：騎士牌在 S7c 才改成只能改裝戰船；在那之前不能打出（否則會把盒子裡的強盜放回棋盤）。
-  vetoCommand(_state, _actorId, command, ctx) {
-    return isPirateIslands(ctx) && command.type === 'dev.playKnight'
-      ? ({ ok: false, error: { code: 'E_INVALID_COMMAND', params: {} } } as CommandOutcome)
-      : undefined;
+  vetoCommand(state, actorId, command, ctx) {
+    if (!isPirateIslands(ctx)) return undefined;
+    if (command.type === 'dev.playKnight') return { ok: false, error: { code: 'E_INVALID_COMMAND', params: {} } } as CommandOutcome;
+    // 會圍死別人的村落（含蓋在別人船線上）：回報專用的訊息（hints 的 legalSettlements 也據此濾掉）。
+    if ((command.type === 'build.settlement' || command.type === 'setup.placeBuilding') && typeof command.vertex === 'number' && villageWalls(state, actorId, command.vertex)) {
+      return { ok: false, error: { code: 'E_LINE_WALLED', params: { vertex: command.vertex } } } as CommandOutcome;
+    }
+    return undefined;
   },
 
   // 海盜巢穴：強盜放回盒子，7 只有棄牌（偷牌的步驟在 S7b）。
