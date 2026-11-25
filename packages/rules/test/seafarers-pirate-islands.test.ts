@@ -408,7 +408,7 @@ describe('Pirate Islands setup and building rules', () => {
     }
   });
 
-  it('不使用最長道路與最大軍隊；強盜不使用（7 只有棄牌，不開強盜步驟）', () => {
+  it('不使用最長道路與最大軍隊；強盜不使用（7 不開 moveRobber 步驟；S7b 起改成偷牌 frame）', () => {
     const state = ready(4);
     const profile = getProfile(PROFILE)!;
     const rules = seafarersModuleRules(state);
@@ -420,7 +420,7 @@ describe('Pirate Islands setup and building rules', () => {
     expect(rolled.turn.dice).toEqual([4, 3]);
     expect(rolled.pending).toBeNull();
     expect(rolled.turn.phase).toBe('action');
-    // 其他 Seafarers 劇本的 7 照舊要移強盜（robberInactive 只在這個劇本）。
+    // 其他 Seafarers 劇本的 7 照舊要移強盜（海盜巢穴沒有強盜；偷牌 frame 見 seafarers-pirate-islands-patrol.test.ts）。
     const other = emptySeafarersGame(3, 0, 'preroll', 'sf-forgotten-tribe-2025');
     const sevenOther = act(other, 'p1', { type: 'turn.roll' }, scriptedRng([3, 2])).state;
     expect(sevenOther.pending?.kind).toBe('moveRobber');
@@ -1333,6 +1333,30 @@ describe('Pirate Islands round 5 review fixes', () => {
     expect(reason(attached).backtrackBlocked).toBe('attached');
     // 沒被圍住時沒有原因。
     expect(reason(started(4))).toMatchObject({ backtrack: false, backtrackBlocked: null });
+  });
+
+  it('S7b：海盜真的走到末端船旁時，backtrackBlocked 與船的限制跟著海盜的實際位置', () => {
+    const base = started(4);
+    base.windowId += 1;
+    wall(base);
+    const last = slot(base).lines.p1!.edges.at(-1)!;
+    const seaHex = topologyOf(base).edges[last]!.hexes.find((hex) => !isLandHex(base, hex))!;
+    const index = slot(base).route.indexOf(seaHex);
+    expect(index).toBeGreaterThanOrEqual(0);
+    // 海盜在航道上這格的前 2 格，擲 [2, 6]（8，不是 7）就走到末端船旁邊。
+    base.board.pirate = slot(base).route[(index + 12) % 14]!;
+    for (const id of ['p1', 'p2', 'p3', 'p4']) setHand(base, id, {});
+    forceTurn(base, 0, 'preroll');
+    const rolled = act(base, 'p1', { type: 'turn.roll' }, scriptedRng([1, 5])).state;
+    expect(rolled.board.pirate).toBe(seaHex);
+    const hint = sf(rolled, 'p1').pirateLine as unknown as { backtrack: boolean; backtrackBlocked: string | null };
+    expect(hint).toMatchObject({ backtrack: false, backtrackBlocked: 'pirate' });
+    // 之後海盜走開，末端船又可以移（hint 跟著位置回來）。
+    const away = clone(rolled);
+    away.board.pirate = slot(away).route[(index + 5) % 14]!;
+    expect(sf(away, 'p1').pirateLine as unknown as { backtrackBlocked: string | null }).toMatchObject({ backtrackBlocked: null });
+    // 基礎規則：不能放船到海盜所在格的邊上。
+    for (const edge of sf(rolled, 'p1').legalShips) expect(topologyOf(rolled).edges[edge]!.hexes).not.toContain(seaHex);
   });
 });
 
